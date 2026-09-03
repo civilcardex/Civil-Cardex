@@ -21,11 +21,10 @@ interface BajanteRaw extends RawElement {
 }
 
 /**
- * Construye un grafo de adyacencia orientado y un mapa de conexiones de ventilación a partir de
- * los planos de dibujo y los tramos sanitarios. Detecta conexiones ramal-a-bajante y
- * ramal-a-ramal vía proximidad de extremos (umbral 2px), añade enlaces de sección vertical de
- * bajante y resuelve los destinos de descarga descargaEnId. Orienta cada componente conexo por
- * el menor puntaje de raíz (piso, bajante-primero).
+ * Construye el grafo de ventilación a partir de los planos dibujados: detecta conexiones
+ * ramal-a-bajante y ramal-a-ramal por cercanía de extremos, añade los enlaces de sección
+ * vertical de bajante y resuelve los destinos de descarga. Orienta cada componente desde
+ * la raíz de menor puntaje (piso, bajante primero).
  * @param plans - Entradas de plano con id y nivel.
  * @param tramosSan - Objetos de tramo sanitario.
  * @param udBase - Definiciones de base UD para el cálculo de UD por elemento.

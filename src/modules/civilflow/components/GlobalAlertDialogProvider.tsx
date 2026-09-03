@@ -49,15 +49,10 @@ interface AlertState {
 const CLOSED: AlertState = { isOpen: false, title: '', message: '' };
 
 /**
- * Monta un único AlertDialog de la app en la raíz y escucha los eventos de ventana
- * `civilflow_diametro_validation` (y cualquier otra validación personalizada). Sin este provider
- * en la raíz, las páginas de tabla de diseño que disparan ese evento cuando el visor PDF NO está
- * montado (ambos viven en rutas distintas, /civilflowareatrabajo vs /civilflowvisor) perderían
- * la alerta en silencio — el usuario jamás vería el rechazo.
- *
- * Ítem (rev 2026-08): las alertas genéricas SON estáticas y SÍ difuminan el plano (showModal +
- * ::backdrop con blur). La ÚNICA excepción sin blur y movible es el modal "Cambio de dirección
- * de flujo" (UcMoveModal), que el usuario necesita operar viendo el dibujo.
+ * Monta un único AlertDialog en la raíz de la app y muestra las alertas que llegan por
+ * eventos de ventana (por ejemplo, validaciones disparadas desde otras rutas). Sin él,
+ * esas alertas se perderían en silencio cuando el visor no está en pantalla. El modal
+ * de "Cambio de dirección de flujo" es la única excepción: no difumina el plano.
  */
 export function GlobalAlertDialogProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AlertState>(CLOSED);

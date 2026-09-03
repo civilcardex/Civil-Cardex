@@ -139,12 +139,9 @@ interface ProjectContextValue {
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
   setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
   resetToDefaults: () => void;
-  /** Suspende el guardado en la nube con debounce. Quienes resetean el estado y luego lo
-   * repueblan de forma asíncrona desde Supabase (ProfilePage.openProyecto,
-   * ProjectCreateDialog) deben llamar esto ANTES de resetear y `resumeCloudSync` DESPUÉS
-   * de que su propia restauración termine — si no, el estado vacío transitorio del reset
-   * queda escrito en la nube por el debounce antes de que la restauración pueda correr,
-   * borrando los datos reales del proyecto. */
+  /** Suspende el guardado en la nube con debounce. Quien resetee el estado y lo repueble
+   * desde la BD debe llamar esto ANTES de resetear y `resumeCloudSync` al terminar — si no,
+   * el estado vacío del reset se escribiría en la nube y borraría los datos reales. */
   pauseCloudSync: () => void;
   resumeCloudSync: () => void;
 }

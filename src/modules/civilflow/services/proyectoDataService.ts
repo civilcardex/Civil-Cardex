@@ -178,10 +178,8 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
 
 /**
  * Reemplaza las filas de pisos/proyecto_general/materiales/profundidades/criterios de un
- * proyecto con el snapshot dado, vía RPC SECURITY DEFINER (borra-e-inserta por tabla en una
- * transacción atómica, replicando la semántica previa de "sobrescribir todo el blob jsonb"
- * ahora que cada colección es una tabla normalizada). Ver
- * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
+ * proyecto con el snapshot dado, vía RPC seguro en la BD (borra e inserta por tabla en una
+ * transacción atómica). Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveProyectoCoreData(
   proyectoId: number,
@@ -240,11 +238,9 @@ export async function saveProyectoCoreData(
 }
 
 /**
- * Hace upsert solo de la columna `redes_activas` de proyecto_general vía RPC SECURITY
- * DEFINER — upsert parcial, no toca nombre/dir/mats/etc (a diferencia de
- * saveProyectoCoreData, que es dueña de toda la fila). Lo usa el toggle "Redes activas"/
- * "Equipos activos" de useWorkAreaState.ts, independiente del bundle de datos core de
- * ProjectContext.
+ * Actualiza solo la columna `redes_activas` del proyecto vía RPC seguro — no toca el resto
+ * de los datos del proyecto. Lo usa el toggle "Redes activas"/"Equipos activos", que es
+ * independiente del guardado principal del proyecto.
  */
 export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<void> {
   try {

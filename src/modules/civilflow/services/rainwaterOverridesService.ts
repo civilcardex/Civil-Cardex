@@ -91,10 +91,9 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
 }
 
 /**
- * Persiste el snapshot de overrides manuales vía RPC SECURITY DEFINER (borra-e-inserta por
- * tabla, misma semántica "sobrescribir todo" que saveProyectoCoreData). Solo se guardan filas
- * con clave estable: bajantes con `bajante` definido y canales con `sector` definido — las
- * filas en blanco recién creadas son efímeras y no sobreviven a la recarga. Ver
+ * Guarda el snapshot de overrides manuales de lluvias vía RPC seguro (borra e inserta por
+ * tabla). Solo persisten las filas con clave estable (bajante o sector definido); las filas
+ * en blanco recién creadas son efímeras y no sobreviven a la recarga. Ver
  * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveRainwaterOverrides(

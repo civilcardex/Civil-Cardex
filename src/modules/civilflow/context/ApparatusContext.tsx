@@ -48,11 +48,8 @@ function loadAps() {
 
 /**
  * Provee el catálogo de aparatos sanitarios (base UD + ítems personalizados).
- * Arranca con el caché de localStorage (para no parpadear) y se hidrata al montar desde
- * la fuente de verdad (aparatos_usuario, o aparatos_catalogo_global como base cuando el
- * usuario aún no tiene filas; udBase desde aparatos_ud_base_global). La BD gana sobre el
- * caché. La persistencia a la BD es debounced (600 ms) y SOLO cuando el usuario edita
- * (dirty) — así el catálogo base no se copia a filas propias sin modificación previa.
+ * Arranca con el caché local para no parpadear y lo actualiza con la BD al montar.
+ * Solo guarda a la BD (con retardo) cuando el usuario realmente editó algo.
  */
 export function ApparatusProvider({ children }: { children?: ReactNode }) {
   const [udBase, setUdBase] = useState<UdBaseItem[]>([...UD_BASE_INIT]);

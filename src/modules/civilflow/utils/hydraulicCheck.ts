@@ -34,13 +34,9 @@ interface HydraulicParams {
 }
 
 /**
- * Corre un chequeo hidráulico sanitario completo sobre un tramo de tubería.
- *
- * Calcula el flujo a tubo lleno (Qo) y velocidad (Vo), las razones de flujo parcial, el tirante
- * crítico (Yc), el tirante normal (Yn), el número de Froude, la fuerza tractiva, y devuelve
- * banderas de pasa/falla contra las restricciones de diseño (V_MIN, V_MAX, Y_D_MAX,
- * FUERZA_TRACTIVA_MIN).
- *
+ * Corre un chequeo hidráulico sanitario completo sobre un tramo de tubería: flujo y
+ * velocidad a tubo lleno, tirantes crítico y normal, número de Froude y fuerza tractiva,
+ * con banderas de pasa/falla contra las restricciones de diseño.
  * @param params.Q - Caudal de diseño (L/s).
  * @param params.S - Pendiente de tubería (m/m).
  * @param params.n - Coeficiente de rugosidad de Manning.

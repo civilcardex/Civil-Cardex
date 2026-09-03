@@ -7,16 +7,10 @@ const SUBE_BLOCKED_MESSAGE =
   'El bajante con dirección "sube" solo puede entregar flujo. Conecta el ramal al extremo inicial (no al final).';
 
 /**
- * Guardia centralizado para "extremo de ramal ↔ bajante" de dirección de flujo. Devuelve true si
- * la conexión está permitida, false si enrutaría el flujo al revés a través del bajante:
- * - un INICIO de ramal (pts[0]) en un bajante 'baja' (haría emitir a un bajante de solo-recibir), o
- * - un FIN de ramal (pts[last]) en un bajante 'sube' (haría recibir a un bajante de solo-emitir).
- *
- * Centralizarlo aquí significa que todo lugar que asigna r.ini = b.code o r.fin = b.code llama la
- * misma regla — sin esto, una corrección que solo guardara un camino dejaría que otros caminos
- * crearan en silencio la misma asociación inválida (un usuario arrastrando el ramal cerca del
- * bajante, o finishRamal coincidiendo por casualidad, etc.).
- *
+ * Regla central para conectar un extremo de ramal a un bajante según la dirección de flujo.
+ * Devuelve false si enrutaría el flujo al revés por el bajante: un INICIO de ramal en un
+ * bajante 'baja' (que solo recibe), o un FIN de ramal en un bajante 'sube' (que solo emite).
+ * Centralizada aquí para que todos los caminos que asignan ini/fin apliquen la misma regla.
  * @param engine  Instancia del núcleo del engine.
  * @param r       Ramal cuyo extremo se está conectando.
  * @param epIdx   Qué extremo: 0 para pts[0] (INICIO — el lado de origen), lastIdx para pts[fin].
@@ -45,15 +39,10 @@ export function isRamalBajanteConnectionAllowed(
 }
 
 /**
- * En una división de mitad de cuerpo AF/AC/gas (existing/downstream/incoming encontrándose en
- * `jc`), decide cuál de los tres ramales MUESTRA el total UC combinado: aquel cuya dirección de
- * flujo (según su propio `_tribReversed`) DISCREPA de los otros dos — la unión siempre necesita
- * al menos un ramal fluyendo fuera de ella (junctionHasOutgoingFlow), así que con tres ramales la
- * división es siempre 2-contra-1; el disidente solitario es el que realmente lleva la demanda
- * combinada hacia adelante (o la recibe, según hacia dónde coincidan los otros dos), nunca fijo a
- * "existing" o "el auto-creado". Cae a `existing.id` si `incoming` no puede resolverse o los tres
- * coinciden (degenerado/sin minoría), para que los callers sigan teniendo un default sensato en
- * vez de comportamiento indefinido.
+ * En una división de mitad de cuerpo AF/AC/gas, decide cuál de los tres ramales muestra el
+ * total UC combinado: el que discrepa en dirección de flujo de los otros dos (siempre hay
+ * uno, porque la unión necesita al menos una salida). Si no se puede resolver (unión
+ * degenerada), cae al id de `existing` para que los llamadores tengan un default sensato.
  * @param jc - Coordenadas del punto de unión.
  * @param existing - El ramal pre-división (mitad aguas arriba tras la truncación).
  * @param downstream - El ramal auto-creado que continúa más allá de `jc`.
@@ -135,16 +124,10 @@ export function junctionHasOutgoingFlow(
 }
 
 /**
- * Regla de unión AF/AC/gas cuando un TRIBUTARIO participa: en general basta con "al menos una
- * salida" (`junctionHasOutgoingFlow`). Pero la dirección de un tributario es fija (ver
- * `autoSplitJunctionAndSumFlow`: siempre fluye DESDE la unión hacia el aparato) — así que
- * `existing` y `downstream`, al ser la misma línea partida en dos, siempre se reparten
- * exactamente 1 entrada + 1 salida entre ellos MIENTRAS compartan `_tribReversed`. Si el usuario
- * invierte SOLO uno de los dos después de creada la unión, ese reparto se rompe (0 o 2 entradas
- * entre ambos) — algo que "al menos una salida" nunca detecta, porque el tributario ya aporta su
- * propia salida fija sin importar qué pase con el resto. Aquí se exige exactamente 1 entrada
- * total en el grupo cuando hay un tributario tocando el punto; sin tributario, se delega en la
- * regla general (sin cambios para uniones ramal-ramal-ramal).
+ * Regla de unión AF/AC/gas cuando un TRIBUTARIO participa. Su dirección es fija (fluye desde
+ * la unión hacia el aparato), así que las dos mitades del ramal partido deben repartir una
+ * entrada y una salida entre sí; si el usuario invirtió solo una, se rompe el reparto y la
+ * regla general no lo detecta — aquí se exige exactamente una entrada cuando hay tributario.
  * @param ramales - Ramales a considerar (mismo net que `net`).
  * @param net - Red a validar ('af' | 'ac' | 'gas').
  * @param pt - Punto de la unión.

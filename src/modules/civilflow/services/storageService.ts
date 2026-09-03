@@ -437,13 +437,10 @@ function rowToGhost(row: SupabaseRow): CrossFloorGhost {
 }
 
 /**
- * Hace upsert del estado completo de dibujo de un plano (cabecera + todas las colecciones de
- * elementos) vía el RPC SECURITY DEFINER `save_plano_data` — una sola transacción validada
- * server-side (propiedad, estructura, caps) que reemplaza las ~12 llamadas directas a tablas
- * que había antes. Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- * La firma externa no cambia, así todos los llamadores existentes (PdfViewer, PlanosTab,
- * associateBajanteAcrossFloors, writeDiameterToDrawing, etc.) siguen funcionando sin
- * modificaciones.
+ * Guarda el estado completo de dibujo de un plano (cabecera + todas las colecciones) vía
+ * el RPC seguro `save_plano_data`: una sola transacción validada del lado del servidor.
+ * La firma externa no cambió, así que todos los llamadores existentes siguen funcionando
+ * sin modificaciones. Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {

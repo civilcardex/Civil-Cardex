@@ -1,9 +1,7 @@
 /**
- * Tipos compartidos de geometría y de "fantasma" entre pisos. Viven en un archivo propio SIN
- * imports (solo tipos simples) para que PlanoState, associateBajanteAcrossFloors y
- * storageService no tengan que importarse entre sí — eso rompía los ciclos de import que se
- * formaban cuando CrossFloorGhost vivía en associateBajanteAcrossFloors y LabelBoxCorners en
- * PlanoState.
+ * Tipos compartidos de geometría y de "fantasma" entre pisos. Viven en un archivo propio
+ * sin imports (solo tipos simples) para que los módulos que los necesitan no tengan que
+ * importarse entre sí — eso rompía ciclos de import.
  */
 
 /** Caja de un texto dibujado en el plano, con sus esquinas ya calculadas — la usa el motor para

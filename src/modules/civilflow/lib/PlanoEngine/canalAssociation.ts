@@ -1,14 +1,10 @@
 import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
 
 /**
- * ¿Se puede hacer clic en este bajante? — Calcula qué tan lejos está el punto (x, y) del símbolo.
- * Devuelve Infinity si el clic no tocó nada, o 1 si acertó.
- *
- * El canal de lluvias se comporta distinto a los demás bajantes: su zona de clic es su propio
- * rectángulo (el que se ve en pantalla), no el círculo que usan los otros tipos. El círculo se
- * dimensiona con la DIAGONAL del rectángulo, así que para un canal alargado quedaba enorme
- * (hasta ~40% más grande que el dibujo) y se podía "clicar" el canal desde muy lejos de sus
- * bordes. Por eso el canal usa su rectángulo, y los demás tipos conservan su círculo.
+ * Calcula si un clic (x, y) toca este bajante y qué tan cerca está del símbolo.
+ * Devuelve Infinity si no tocó nada, o 1 si acertó. El canal de lluvias se clickea sobre
+ * su rectángulo visible (no sobre el círculo de los demás tipos) porque ese círculo,
+ * calculado con la diagonal, quedaba mucho más grande que el dibujo.
  */
 /** ¿El clic cayó dentro del rectángulo del canal? Devuelve 1 si sí, Infinity si no; padPx
  *  agranda el rectángulo unos píxeles para que sea más fácil de acertar. */
@@ -76,12 +72,10 @@ export function pointInCanal(
 }
 
 /**
- * ¿A qué canal pertenece este bajante de lluvia? — Busca el canal que contiene el punto (x, y).
- *
- * Si el bajante ya estaba asociado a un canal (`preferId`), se prefiere ESE canal aunque se
- * solape con otro: así, al arrastrar el bajante no "salta" de canal solo porque pasa por encima
- * de un vecino. Solo cuando no hay asociación previa (o el canal asociado ya no lo contiene) se
- * busca cualquier canal de lluvia que contenga el punto.
+ * Busca el canal de lluvias que contiene el punto (x, y). Si el bajante ya estaba asociado
+ * a un canal (`preferId`), se prefiere ese aunque se solape con otro: al arrastrar, el
+ * bajante no "salta" de canal al pasar sobre un vecino. Sin asociación previa, se busca
+ * cualquier canal que contenga el punto.
  */
 export function resolveCanalForPoint(
   engine: IPlanoEngineCore,
@@ -116,12 +110,10 @@ export function clampToCanal(
 }
 
 /**
- * Posiciona un bajante de lluvia DENTRO del canal y responde a qué canal quedó asociado.
- *
- * Hace dos cosas en una sola llamada: encuentra el canal del punto (ver resolveCanalForPoint),
- * y recorta la posición del bajante para que quede dentro (ver clampToCanal). Devuelve además el
- * id del canal asociado — o null si el punto quedó fuera de todo canal, caso en el que el
- * bajante se desasocia. Se usa al crear un bajante nuevo y durante su arrastre.
+ * Posiciona un bajante de lluvia dentro del canal y devuelve a qué canal quedó asociado.
+ * Encuentra el canal del punto, recorta la posición para que quede dentro y devuelve el id
+ * del canal (o null si quedó fuera de todo canal, desasociándolo). Se usa al crear y al
+ * arrastrar un bajante.
  */
 export function resolveAndClampToCanal(
   engine: IPlanoEngineCore,
@@ -147,19 +139,15 @@ export interface CanalFlowArrow {
 }
 
 /**
- * Calcula las flechas de flujo de un canal de lluvias.
- *
- * Regla de negocio: cada bajante asociado al canal recibe flechas que apuntan HACIA él desde
- * ambos lados — si el bajante está en un extremo del canal, una sola flecha; si está en medio,
- * dos (una por cada lado). Cada flecha nace en el punto medio entre bajantes vecinos (o en el
- * borde del canal para los extremos), de modo que las flechas no se pisan entre sí.
+ * Calcula las flechas de flujo de un canal de lluvias: cada bajante asociado recibe flechas
+ * que apuntan hacia él desde ambos lados (una sola si está en un extremo, dos si está en
+ * medio). Cada flecha nace a mitad de camino entre vecinos para que no se pisen.
  */
 
-/** Un tramo de canal servido por un bajante: el intervalo [tLeft, tRight] sobre el eje largo
- *  (0..1) que ese bajante recoge. Un bajante en el INTERIOR del canal produce DOS tramos (uno
- *  por cada lado de la división), cada uno con su propia etiqueta — un bajante en un extremo
- *  produce uno solo. Los límites caen en el punto medio entre bajantes vecinos (o en el borde
- *  del canal para los extremos). */
+/** Un tramo de canal servido por un bajante: el intervalo [tLeft, tRight] del eje largo del
+ *  canal que ese bajante recoge. Un bajante en el interior produce dos tramos (uno por lado,
+ *  cada uno con su etiqueta); uno en el extremo produce uno solo. Los límites caen a mitad
+ *  de camino entre bajantes vecinos (o en el borde del canal para los extremos). */
 export interface CanalSegment {
   bajante: PlanoBajante;
   tLeft: number;

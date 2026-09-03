@@ -1,9 +1,8 @@
 /**
  * Resuelve un diámetro crudo (como se guarda en el ramal: `1-1/2"`, `1/2" RDE 9`, o el valor
- * completo `1-1/2" — 42.7 mm`) al valor CANÓNICO de una opción de DIAM_BY_MAT ({n}).
- * El ramal almacena la forma corta (TramoEditor quita el sufijo ` — x mm`), mientras los
- * selectores de accesorio usan el valor completo — sin este match, `value=` nunca coincidía
- * con una <option> y el diámetro heredado del ramal se veía en blanco.
+ * completo `1-1/2" — 42.7 mm`) al valor canónico de la opción correspondiente de DIAM_BY_MAT.
+ * Sin este ajuste, el diámetro heredado del ramal no coincidía con ninguna opción del
+ * selector y se veía en blanco.
  */
 export function matchDiamOption(
   diamList: Array<{ n: string }>,

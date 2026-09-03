@@ -53,16 +53,10 @@ const FRAC_MAP: Record<string, string> = {
 };
 
 /**
- * Repara mojibake Latin-1/CP1252 (doble codificación UTF-8→CP1252→UTF-8) persistido por
- * versiones anteriores de la app o presente en textos viejos: "â€\u201D" → "—", "á" → "á",
- * "⇄" → "⇄", "½" → "½", etc. Los textos afectados muestran "Â"/"â" ("A con sombrero") en
- * etiquetas, menús, tablas y exports.
- *
- * Algoritmo: cada run de caracteres mapeables a bytes CP1252 se convierte a bytes y se
- * decodifica como UTF-8 con un decodificador TOLERANTE — las secuencias UTF-8 válidas se
- * reparan y los bytes sueltos inválidos se re-emiten como su carácter CP1252 original, así
- * un texto que mezcla caracteres limpios ("ó") con mojibake ("â€\u201D") se repara sin
- * tocar lo limpio. El texto ya limpio queda idéntico (cada carácter se re-emite a sí mismo).
+ * Repara textos viejos dañados por doble codificación (mojibake): "A con sombrero" (Â/â),
+ * guiones y símbolos raros que se ven mal en etiquetas, menús, tablas y exports, tanto en
+ * el código como en datos guardados por versiones anteriores. El texto que ya está limpio
+ * queda idéntico; solo se reparan las secuencias dañadas.
  */
 // Bytes 0x80-0x9F que CP1252 define (el resto coincide con Latin-1 / es indefinido).
 const CP1252_CHAR: Record<number, string> = {

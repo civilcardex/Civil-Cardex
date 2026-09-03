@@ -53,17 +53,10 @@ export function computeComponentTotals<T>(
 }
 
 /**
- * Como computeComponentTotals, pero DIRIGIDO: enraizado en `rootKey` (la fuente real de
- * suministro — contador/calentador), el total de cada nodo = su propio parcial + el total de
- * todo lo que está DEBAJO de él en el árbol (sus hijos, es decir, más lejos de la fuente). Un
- * nodo aguas arriba de una unión solo contribuye CON SU PROPIO total hacia lo que haya encima —
- * nunca muestra el total combinado él mismo; solo lo hace el nodo en el que las ramas CONFLUYEN.
- * computeComponentTotals en cambio sumaba toda la componente conexa no dirigida y entregaba ese
- * MISMO total global a cada miembro sin importar su posición, lo cual está mal para cualquier
- * red que no sea de un solo nodo: una rama pequeña que alimenta un aparato mostraba la demanda
- * de todo el edificio, igual que el tronco principal cerca de la fuente.
- * Recurre a computeComponentTotals cuando no se puede identificar ninguna raíz (red sin un
- * contador/calentador detectable), para seguir devolviendo algo sensato.
+ * Como computeComponentTotals, pero DIRIGIDO desde la fuente de suministro (`rootKey`, el
+ * contador o calentador): el total de cada nodo es su propio parcial más el de todo lo que
+ * está debajo de él en el árbol; el total combinado solo lo muestra el nodo donde las ramas
+ * confluyen. Si no hay raíz identificable, recurre al cálculo no dirigido.
  * @param tramos - Array de objetos tramo.
  * @param getKey - Extrae una clave única de un tramo.
  * @param adj - Mapa de adyacencia no dirigida (clave → claves vecinas).

@@ -185,21 +185,17 @@ export function allocNetNumber(
   return n;
 }
 
-/** ID único de ramal/tributario. `Date.now()` solo colisionaba cuando se creaban DOS objetos
- *  en el mismo milisegundo (p. ej. el splitter y su downstream al dividir un tramo): ambos
- *  quedaban con el MISMO id, y entonces borrar/seleccionar por id afectaba a los dos
- *  (el "trazado partido en dos objetos" que el usuario veía en el visor). Sufijo aleatorio
- *  garantiza unicidad aunque se creen en el mismo tick. */
+/** ID único de ramal/tributario: `Date.now()` + sufijo aleatorio. El sufijo evita que dos
+ *  objetos creados en el mismo milisegundo (p. ej. las dos mitades de un tramo partido)
+ *  compartan id — eso hacía que borrar o seleccionar por id afectara a los dos. */
 export function uniqRamalId(): string {
   return 'T' + Date.now() + Math.random().toString(36).slice(2, 7);
 }
 
-/** Número del siguiente tributario para un sufijo de label dado (`T{n}{sufijo}`): el PRIMER
- *  número libre desde 1. La numeración de tributarios es POR PADRE, no global — cada ramal
- *  padre empieza sus propios tributarios en T1 (T1RS1, T1RS2, ...). El contador global
- *  `_netCounts[net].tributario` (que allocNetNumber usa) avanzaba sin distinguir sufijo, así
- *  que el primer tributario de RS2 salía como T2RS2 si la red ya tenía T1RS1. El contador
- *  global queda solo como máximo histórico (persistencia), ya no se consulta para asignar. */
+/** Número del siguiente tributario para un sufijo dado (`T{n}{sufijo}`): el primer número
+ *  libre desde 1. La numeración es POR PADRE — cada ramal padre empieza sus tributarios en
+ *  T1 (T1RS1, T1RS2, ...). El contador global de la red ya no se usa para asignar, solo
+ *  queda como máximo histórico para persistencia. */
 export function allocTributaryNumber(
   target: { ramales: Array<{ label?: string }> },
   suffix: string,
@@ -210,11 +206,10 @@ export function allocTributaryNumber(
   return n;
 }
 
-/** Etiqueta del ramal RAÍZ de una cadena de tributarios (el primer no-tributario subiendo por
- *  la cadena de `padre`). Ítem 10: un tributario cuyo padre es OTRO tributario (p. ej. T1RS1)
- *  se numera contra el raíz (RS1) con consecutivo GLOBAL de ese raíz — sale T5RS1, no
- *  T1T1RS1 — y la numeración compite con la de los tributarios directos del raíz (allocTributary
- *  Number ya salta labels existentes, así que el consecutivo nunca colisiona). */
+/** Etiqueta del ramal RAÍZ de una cadena de tributarios (el primer no-tributario subiendo
+ *  por la cadena de `padre`). Un tributario de un tributario se numera contra el raíz con
+ *  consecutivo global de ese raíz — sale T5RS1, no T1T1RS1 — y compite con los tributarios
+ *  directos del raíz, así que nunca colisiona. */
 export function rootTributarioLabel(
   ramales: Array<{
     id: string;
@@ -418,11 +413,10 @@ export interface PlanoBajante {
    * calentador para que el "caudal ajustado" sobreviva al recargar y siga al usuario entre
    * dispositivos. */
   factorSim?: number;
-  /** Sección transversal del canal recolectora (tipo:'canal', solo red 'll'), en cm — se importa a
-   * la tabla de chequeo hidráulico "canal recolectora" (RainChannelsCheck.tsx). x/y es la esquina
-   * superior-izquierda del rectángulo (no el centro, a diferencia de los demás glifos de bajante).
-   * En planta el rectángulo dibujado es base (tamaño vertical) × longitud (tamaño horizontal);
-   * altura es la profundidad en el eje Z, solo visible en isometría. */
+  /** Sección transversal del canal recolectora (solo red 'll'), en cm, para la tabla de
+   * chequeo hidráulico. x/y es la esquina superior-izquierda del rectángulo (no el centro,
+   * a diferencia de los demás glifos): en planta, base × longitud; altura es la profundidad,
+   * visible solo en isometría. */
   base?: number;
   altura?: number;
   /** Tamaño horizontal del canal en planta (cm) — el largo que recorre el canal en el dibujo. */
@@ -435,11 +429,9 @@ export interface PlanoBajante {
    * arrastró al dibujarlo (esquina 1 → esquina 2), como la dirección dibujada de un ramal. Se
    * fija al crearlo en handleCanalDown; alimenta la flecha de flujo centrada del canal. */
   _canalFlowDir?: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
-  /** Solo tiene sentido en un bajante de lluvia ("ll"): id del canal (tipo:'canal') cuyo
-   * rectángulo lo contiene actualmente. Lo fija/limpia canalAssociation.ts automáticamente al
-   * crear o arrastrar el bajante — un bajante solo puede estar DENTRO de un canal, nunca fuera de
-   * uno al que está asociado (ver resolveAndClampToCanal). Alimenta las flechas de flujo del
-   * canal. */
+  /** Solo en bajantes de lluvia ("ll"): id del canal cuyo rectángulo lo contiene ahora.
+   * Se fija o limpia automáticamente al crear o arrastrar el bajante — siempre queda DENTRO
+   * del canal al que está asociado. Alimenta las flechas de flujo del canal. */
   canalId?: string | null;
   /** Asociación manual de un canal (tipo:'canal') con un bajante de lluvia que está FUERA de su
    *  rectángulo — se elige desde el menú contextual del canal y se dibuja una línea de conexión

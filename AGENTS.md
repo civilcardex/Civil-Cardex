@@ -409,3 +409,28 @@ No se pudo hacer una pasada de regresiÃ³n manual completa en navegador sobre e
 - Buenas prácticas: 54 eslint-disable auditados — 8 ny ya fuera, resto interop justificado; eact-hooks/refs|immutability off en clúster intacto.
 - Gates: tsc 0, lint 0 err (12 warn), build ✓, vitest 45 files 266 passed.
 
+
+## Session Summary — 2026-09-03 (ronda 2: des-monolitización + tipado + fix etiquetas)
+
+### Done
+- **8 archivos divididos** (mecánico, re-exports desde el archivo original): `deleteSelected.ts` (1,498 → hub 544 + deleteCascade/deleteJunctionCleanup/deleteRemerge/deleteYeePreserve), `tramoEditor/legacyEditors.tsx` (1,295 → 5 archivos por componente + hub), `ramalMenu.tsx` (1,325 → midRamalAccessorySelector + ramalMenuHelpers + RamalMenu 647), `renderers/renderBajantes.ts` (1,192 → bajanteLabels + renderCanal + bajanteGhosts + hub 307), `waterNetworkRows.ts` (1,153 → waterRowsShared/Core/Acometida + hub), `sanitaryRows.ts` (815 → sanConnectivity/sanRows/sanUdTable + hub), `PlanoEngineSelection.ts` (908 → + ventDiameters.ts 314), `SupplyConnection.tsx` (907 → + supplyConnectionParts.tsx).
+- **Tipado mecánico**: casts obsoletos de `setGridMode` eliminados en PdfViewer (el método existe en la clase); `RawElement` (drawingSync.ts) extendido con `labelX/labelY/_tribReversed/trib_reversed` → `writeDiameterToDrawing.ts` quedó con **0 casts** (tenía 21); 3 warnings `exhaustive-deps` corregidos → **lint 0 errores 0 warnings**. Deuda documentada sin tocar: unificar RawElement↔PlanoRamal, piso/dz numéricos, planId, `exactOptionalPropertyTypes` (82 err), `noUncheckedIndexedAccess` (4,405 err — no realista).
+- **Fix etiquetas sobre el trazo (T1RS1)**, causa raíz: commit 7b99259 revirtió el gap 12mm→5mm. Tres cambios: (1) gap dinámico en `renderRamales.ts` — `labelGap = -(boxH/2 + mm2cvs(2) + 4·zoom)`, el BORDE de la caja queda a distancia constante del trazo (inmune a labelScaleM y a la flecha de flujo); (2) ángulo fresco — 8 guards `if (x.labelAngle == null)` en handleDragMove/junctionAutoSplit cambiados a `if (!x.labelMoved)` para recalcular el ángulo al editar geometría (etiquetas movidas a mano intactas); (3) `labelDeclutter.ts` — el trazo PROPIO ahora es obstáculo con prueba precisa segmento-vs-rect-rotado (AABB daba falsos positivos con cajas rotadas) y la espiral saca la etiqueta de su propia tubería.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 52 files / 297 passed · vite build ✓ · graphify update ✓.
+
+### Verificación manual pendiente (requiere datos reales)
+Etiquetas de ramales/tributarios a 45° (caso T1RS1 de la captura), arrastre de etiquetas, borrar ramales con cascada/re-fusión, editores de tramo, menú contextual de ramal, tablas de agua (acometida/calentador) y sanitarias (san/ll), toggle de conteo de aparatos (FixturesPanel memo ahora depende de engineRef).
+
+## Session Summary — 2026-09-03 (ronda 3: WaterNetworkDesign + JSDoc de archivos nuevos)
+
+### Done
+- **WaterNetworkDesign.tsx (1,730 → 566 líneas) dividido en `components/waterNetworkDesign/`** (8 archivos): `lazyNumInput` (input perezoso), `useWaterNetworkGraph` (memo AP + memo gigante de 483 líneas de conectividad; output muerto `mergeBranches` descartado), `acometidaCalc` (`calcFila` pura + hook `useAcometidaParams` del clúster D), `pressureResolver` (`resolvePressures` pura; memo queda como envoltorio), `rowPhysics` (`hunterK`/`hunterQ`/`computeDesignRow` — unifica las 3 copias de la física por fila; las diferencias `velCumple` con guard `>0` se mantienen por sitio de llamada), `designTableHeader` (thead estático de 231 líneas), `designTableRow` + `otrosRamalesChips`. Deduplicados `BajanteRaw`/`isAf`/`isContador`/`isAC1`/`isAC2`/`APARATO_PMAX_BY_CODE`/`HEATER_LOSS_FACTOR` (ahora desde `utils/waterNetworkRows`). **Fix de rendimiento**: `DIAM_OPTS` ahora es `useMemo` (se reconstruía cada render y forzaba recálculo de `pressureByKey` + 2 efectos por frame). No tocados: 13 useState, handlers de edición, render-phase syncs, `acometidaEl`.
+- **JSDoc en español (≤4 líneas) a los 101 exports de los archivos nuevos de las 3 rondas** (motor: drawingUtils/junctionAutoSplit/finishRamal/lineTool/guideLines/drawingErase/delete*/ventDiameters/renderers; visor: hooks pdfViewer + menús contextuales + tramoEditor; utils: waterRows*/san*/supplyConnectionParts/waterNetworkDesign). Escáner: 0 sin JSDoc, 0 en inglés, 0 con descripciones >4 líneas.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 52 files / 297 passed · vite build ✓ · graphify update ✓.
+
+### Verificación manual pendiente (datos reales)
+Tablas de diseño AF/AC completas (editar diámetro, Pin/Pfin en modo edición, chips "Otros Ramales"), panel de acometida (AcometidaPage y modo showOnlyAcometida), persistencia de memoria (`civilflow_memoria_af/ac_rows` tras editar), badges de velocidad/presión en InfTab, y que el tramo tr2 siga adoptando el contador detectado al cambiar de plano.

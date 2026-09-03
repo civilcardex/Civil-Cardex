@@ -67,13 +67,10 @@ const CODO_MEDIO_90 = {
 };
 
 /**
- * Bug 2: conteo REAL de bushings — cada conexión de un ramal MENOR (más chico) contra un elemento
- * MAYOR (ramal de mayor diámetro o bajante/montante con más diámetro) es UNA reducción-bushing.
- * Puro: solo geometría + diámetros, testable sin fixtures. Clave `${mayor}_${menor}` (pulgadas).
- * Un extremo del menor debe caer sobre el cuerpo/vértice del mayor (tol 0.5, misma que usa el
- * resto de la detección de uniones del módulo). Bajantes se chequean primero: la conexión ramal→
- * montante es el caso de bushing más común y evita doble conteo cuando un ramal mayor y un
- * bajante comparten el punto.
+ * Conteo real de bushings (reducciones): cada conexión de un ramal MENOR contra un elemento
+ * MAYOR (ramal de más diámetro o bajante/montante) es una reducción. Solo usa geometría y
+ * diámetros, por lo que es fácil de probar. Los bajantes se chequean primero porque la
+ * conexión ramal→montante es el caso más común y evita doble conteo.
  */
 const BUSHING_TOL = 0.5;
 
