@@ -20,16 +20,9 @@ const aparatoImgCache = new Map<string, HTMLImageElement | null>();
 
 /**
  * Elige el lado de rama (perpendicular) para un glifo teeReduccion/teeLado en una unión.
- * `throughDx/throughDy` es la dirección propia del ramal en el punto (para un extremo: el
- * rumbo del segmento adyacente; para un vértice de medio cuerpo: la bisectriz). El brazo de
- * rama del glifo debe apuntar hacia el ramal que realmente cruza/se ramifica — no ciegamente
- * hacia arriba de pantalla.
- * Estrategia: buscar el segmento de la misma red cerca de `pt` que sea MÁS PERPENDICULAR a la
- * dirección de paso (|dot| mínimo). Un segmento colineal (p. ej. el tope dividido de esta
- * misma unión, u otros segmentos del propio ramal) también toca el punto pero da |dot| ~ 1 y
- * pierde ante el tributario realmente perpendicular (|dot| ~ 0). Si no se encuentra ninguno
- * (accesorio aislado, sin cruce), cae a la convención clásica "arriba de pantalla para
- * horizontal, derecha para vertical".
+ * El brazo de la tee debe apuntar hacia el ramal que realmente cruza o se ramifica, no
+ * ciegamente hacia arriba de la pantalla: se busca el segmento cercano más perpendicular
+ * a la dirección del ramal en el punto. Sin cruce, se usa la convención clásica.
  */
 export function pickTeeBranchDir(
   engine: IPlanoEngineCore,
@@ -373,7 +366,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const labelAngle = (labelAngleDeg * Math.PI) / 180;
       const cosA = Math.cos(labelAngle),
         sinA = Math.sin(labelAngle);
-      const labelGap = -engine.mm2cvs(5);
+      // Gap dinámico: el BORDE inferior de la caja (no su centro) queda a distancia constante
+      // del trazo — 2 mm de aire + holgura para la media anchura del trazo y la flecha de flujo
+      // (que cuelga 2·zoom por debajo de la caja). Un gap fijo en mm se quedaba corto cuando la
+      // caja crecía con labelScaleM y la etiqueta terminaba pintada encima del trazo.
+      const labelGap = -(boxH / 2 + engine.mm2cvs(2) + 4 * engine.zoom);
       const gapOffX = -labelGap * sinA;
       const gapOffY = labelGap * cosA;
       let adjCx = drawX + gapOffX;

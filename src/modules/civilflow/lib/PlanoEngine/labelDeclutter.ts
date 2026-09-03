@@ -98,16 +98,71 @@ function boxFree(
   box: { minX: number; minY: number; maxX: number; maxY: number },
   placed: DeclutterBox[],
   segs: DeclutterSeg[],
+  selfCorners?: Array<{ x: number; y: number }>,
 ): boolean {
   for (const p of placed) {
     if (p.id === selfId) continue;
     if (aabbsOverlap(box, p, PAD)) return false;
   }
   for (const s of segs) {
-    if (s.id === selfId) continue;
-    if (segHitsBox(s.x1, s.y1, s.x2, s.y2, box, PAD)) return false;
+    if (s.id !== selfId || !selfCorners) {
+      if (s.id === selfId) continue;
+      if (segHitsBox(s.x1, s.y1, s.x2, s.y2, box, PAD)) return false;
+    } else if (segHitsPoly(s.x1, s.y1, s.x2, s.y2, selfCorners)) {
+      // Trazo PROPIO: prueba precisa contra el rectángulo rotado — el AABB de una caja
+      // rotada sobresale del rect y daría falso choque con el trazo paralelo (que pasa
+      // limpio a gap del borde). Sin esto la etiqueta podía quedar pintada sobre su
+      // propia tubería y nada la corregía.
+      return false;
+    }
   }
   return true;
+}
+
+function pointInPoly(x: number, y: number, poly: Array<{ x: number; y: number }>): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i]!.x;
+    const yi = poly[i]!.y;
+    const xj = poly[j]!.x;
+    const yj = poly[j]!.y;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function segIntersectsSeg(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+): boolean {
+  const d1 = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+  const d2 = (bx - ax) * (dy - ay) - (by - ay) * (dx - ax);
+  const d3 = (dx - cx) * (ay - cy) - (dy - cy) * (ax - cx);
+  const d4 = (dx - cx) * (by - cy) - (dy - cy) * (bx - cx);
+  return d1 * d2 < 0 && d3 * d4 < 0;
+}
+
+// Intersección segmento vs rectángulo rotado (polígono convexo de 4 esquinas).
+function segHitsPoly(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  poly: Array<{ x: number; y: number }>,
+): boolean {
+  if (pointInPoly(x1, y1, poly) || pointInPoly(x2, y2, poly)) return true;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % poly.length]!;
+    if (segIntersectsSeg(x1, y1, x2, y2, a.x, a.y, b.x, b.y)) return true;
+  }
+  return false;
 }
 
 // Busca un centro libre para la caja (w×h, ángulo) empezando en el centro por defecto.
@@ -125,9 +180,9 @@ export function findFreeLabelCenter(
 ): { x: number; y: number } | null {
   const boxAt = (cx: number, cy: number) => {
     const r = rotatedRectCorners(cx, cy, boxW, boxH, angle);
-    return { minX: r.minX, minY: r.minY, maxX: r.maxX, maxY: r.maxY };
+    return { minX: r.minX, minY: r.minY, maxX: r.maxX, maxY: r.maxY, corners: r.corners };
   };
-  if (boxFree(selfId, boxAt(defCx, defCy), placed, segs)) return null;
+  if (boxFree(selfId, boxAt(defCx, defCy), placed, segs, boxAt(defCx, defCy).corners)) return null;
   const step = Math.max(boxW, boxH) * 0.55;
   for (let ring = 1; ring <= RINGS; ring++) {
     const rad = ring * step;
@@ -135,7 +190,8 @@ export function findFreeLabelCenter(
       const a = (k / DIRS) * Math.PI * 2 + ring * 0.35;
       const cx = defCx + Math.cos(a) * rad;
       const cy = defCy + Math.sin(a) * rad;
-      if (boxFree(selfId, boxAt(cx, cy), placed, segs)) return { x: cx, y: cy };
+      const b = boxAt(cx, cy);
+      if (boxFree(selfId, b, placed, segs, b.corners)) return { x: cx, y: cy };
     }
   }
   return null;
