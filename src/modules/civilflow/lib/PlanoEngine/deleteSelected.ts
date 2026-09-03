@@ -4,7 +4,7 @@ import {
   removeCrossFloorGhostsBySource,
   removeCrossFloorGhost,
   removeCrossFloorLdesvioRamal,
-  deleteBajanteFromStorage,
+  isLdesvioRamalId,
 } from '../../utils/associateBajanteAcrossFloors';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
@@ -65,11 +65,31 @@ function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: PlanoBaja
       removeCrossFloorLdesvioRamal(thisPlanId, deleted.id);
       if (targetPlanId === thisPlanId) {
         const t = engine.bajantes.find((b) => b.id === targetBajanteId);
-        if (t?.tipo === 'montante' || t?.tipo === 'bajante') {
-          engine.bajantes = engine.bajantes.filter((b) => b.id !== targetBajanteId);
-        } else if (t) t.origenId = null;
+        if (t) t.origenId = null;
       } else {
-        deleteBajanteFromStorage(targetPlanId, targetBajanteId);
+        // No borrar el bajante del otro piso, solo limpiar su asociación y fantasma 2/4
+        removeCrossFloorGhost(targetPlanId, thisPlanId, deleted.id);
+        // limpiar origenId del bajante destino en storage sin borrarlo
+        try {
+          const key = `trazos_${targetPlanId}`;
+          const raw = loadFromStorage<unknown>(key, null) as {
+            bajantes?: { id: string; origenId?: string | null }[];
+          } | null;
+          if (raw?.bajantes) {
+            let changed = false;
+            for (const b of raw.bajantes) {
+              if (b.id === targetBajanteId && b.origenId) {
+                b.origenId = null;
+                changed = true;
+              }
+            }
+            if (changed) {
+              saveToStorage(key, raw);
+            }
+          }
+        } catch {
+          /* storage cleanup not critical */
+        }
       }
     }
   }
@@ -83,11 +103,48 @@ function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: PlanoBaja
       removeCrossFloorLdesvioRamal(originPlanId, originBajanteId);
       if (originPlanId === thisPlanId) {
         const o = engine.bajantes.find((b) => b.id === originBajanteId);
-        if (o?.tipo === 'montante' || o?.tipo === 'bajante') {
-          engine.bajantes = engine.bajantes.filter((b) => b.id !== originBajanteId);
-        } else if (o) o.descargaEnId = null;
+        if (o) o.descargaEnId = null;
       } else {
-        deleteBajanteFromStorage(originPlanId, originBajanteId);
+        // No borrar el bajante del otro piso, solo limpiar su asociación
+        removeCrossFloorGhost(originPlanId, thisPlanId, deleted.id);
+        try {
+          const key = `trazos_${originPlanId}`;
+          const raw = loadFromStorage<unknown>(key, null) as {
+            bajantes?: {
+              id: string;
+              descargaEnId?: string | null;
+              desplazamientos?: Record<string, unknown>;
+              ghostData?: Record<string, unknown>;
+            }[];
+          } | null;
+          if (raw?.bajantes) {
+            let changed = false;
+            for (const b of raw.bajantes) {
+              if (b.id === originBajanteId && b.descargaEnId) {
+                b.descargaEnId = null;
+                changed = true;
+              }
+              // limpiar desplazamiento 2/4 del origen si apuntaba a este Ldesvio
+              if (b.desplazamientos) {
+                for (const lvl of Object.keys(b.desplazamientos)) {
+                  if (
+                    (b.desplazamientos[lvl] as { Ldesvio?: string })?.Ldesvio ===
+                    `LD_${originBajanteId}`
+                  ) {
+                    delete (b.desplazamientos as Record<string, unknown>)[lvl];
+                    if (b.ghostData) delete (b.ghostData as Record<string, unknown>)[lvl];
+                    changed = true;
+                  }
+                }
+              }
+            }
+            if (changed) {
+              saveToStorage(key, raw);
+            }
+          }
+        } catch {
+          /* storage cleanup not critical */
+        }
       }
     }
   }
@@ -746,24 +803,36 @@ function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
   const isHalf =
     !!d?.mergesFrom || engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[0] === ramalId);
   if (!isHalf) return [];
-  // BFS over merges edges: collect whole connected component
+  // BFS over merges edges: collect whole connected component — but skip yeeDoble hosts (deben borrarse solo segmento)
   const S = new Set<string>([ramalId]);
   let expanded = true;
   while (expanded) {
     expanded = false;
     for (const r of engine.ramales) {
       if (!r.mergesFrom) continue;
+      if (r.yeeDobleAt && r.yeeDobleAt.length === 2) continue;
+      if (engine.ramales.some((x) => x.id === r.id && x.yeeDobleAt && x.yeeDobleAt.length === 2))
+        continue;
       const [u, i] = r.mergesFrom;
       const did = r.id;
+      // no expandir si algún miembro ya es yeeDoble
+      if (
+        [u, i, did].some((id) =>
+          engine.ramales.some((x) => x.id === id && x.yeeDobleAt && x.yeeDobleAt.length === 2),
+        )
+      )
+        continue;
       const touches = S.has(u) || S.has(i) || S.has(did);
       if (!touches) continue;
       for (const nid of [u, i, did]) {
         if (nid && !S.has(nid) && engine.ramales.some((x) => x.id === nid)) {
+          // no meter yeeDoble hosts en el set
+          const cand = engine.ramales.find((x) => x.id === nid);
+          if (cand && cand.yeeDobleAt && cand.yeeDobleAt.length === 2) continue;
           S.add(nid);
           expanded = true;
         }
       }
-      // also divisors that are not ramales? they are ramales themselves, already covered
     }
   }
   S.delete(ramalId);
@@ -853,6 +922,34 @@ function preserveYeeDobleAt(engine: IPlanoEngineCore, deleted: PlanoRamal): void
       } catch {
         /* ignorar */
       }
+    }
+    // Y doble → tapón: el brazo eliminado deja extremo abierto que se cierra con tapón
+    // Asignar 'tapon' al extremo de best más cercano al punto del brazo borrado
+    try {
+      const delPt = deleted.pts?.[0] || deleted.yeeDobleAt[0];
+      const d0 = Math.hypot(best.pts[0][0] - delPt[0], best.pts[0][1] - delPt[1]);
+      const d1 = Math.hypot(
+        best.pts[best.pts.length - 1][0] - delPt[0],
+        best.pts[best.pts.length - 1][1] - delPt[1],
+      );
+      const atStart = d0 <= d1;
+      const accField = atStart ? 'accesorioInicio' : 'accesorioFin';
+      const diamField = atStart ? 'diametroInicio' : 'diametroFin';
+      if (!best[accField]) {
+        (best as unknown as Record<string, unknown>)[accField] = 'tapon';
+        if (!best[diamField]) (best as unknown as Record<string, unknown>)[diamField] = '2"';
+        // contar en hidroData
+        if (planId != null) {
+          const map2 = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+          const kBest2 = `san_${best.id}_${planId}`;
+          if (!map2[kBest2]) map2[kBest2] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+          if (!map2[kBest2].accesorios) map2[kBest2].accesorios = {};
+          map2[kBest2].accesorios['tapon'] = (map2[kBest2].accesorios['tapon'] || 0) + 1;
+          saveToStorage(HYDRO_DATA_STORAGE_KEY, map2);
+        }
+      }
+    } catch {
+      /* ignore */
     }
   }
 }
@@ -962,11 +1059,57 @@ export function deleteSelected(
           (r) => r.mergesFrom && r.mergesFrom[1] === deleted.id,
         );
         // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
-        reassignTributariosToHermano(engine, deleted, toDelete);
-        engine.ramales = engine.ramales.filter(
-          (r) => r.id !== deleted.id && r.padre !== deleted.id,
-        );
+        // Y doble: borrar solo el segmento, no todo el conjunto conectado ni tribs laterales
+        if (wasYeeDoblePart) {
+          reassignTributariosToHermano(engine, deleted, toDelete);
+          engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id);
+        } else {
+          reassignTributariosToHermano(engine, deleted, toDelete);
+          engine.ramales = engine.ramales.filter(
+            (r) => r.id !== deleted.id && r.padre !== deleted.id,
+          );
+        }
         preserveYeeDobleAt(engine, deleted);
+        // Y doble lateral → tapón (cuando se borra tributario parte de Y doble, el host queda con extremo abierto)
+        if (!deleted.yeeDobleAt && wasYeeDoblePart) {
+          try {
+            const host = engine.ramales.find(
+              (x) => x.yeeDobleAt && x.yeeDobleAt.length === 2 && x.net === 'san',
+            );
+            if (host && deleted.pts?.length) {
+              const delEnd = deleted.pts[deleted.pts.length - 1];
+              const d0h = Math.hypot(host.pts[0][0] - delEnd[0], host.pts[0][1] - delEnd[1]);
+              const d1h = Math.hypot(
+                host.pts[host.pts.length - 1][0] - delEnd[0],
+                host.pts[host.pts.length - 1][1] - delEnd[1],
+              );
+              // si el tributario tocaba cerca del host (dentro 20), asumimos Y doble
+              if (Math.min(d0h, d1h) < 25) {
+                const planId2 = engine._loadedPlanId;
+                const accField2 = d0h <= d1h ? 'accesorioInicio' : 'accesorioFin';
+                const diamField2 = d0h <= d1h ? 'diametroInicio' : 'diametroFin';
+                if (!host[accField2]) {
+                  (host as unknown as Record<string, unknown>)[accField2] = 'tapon';
+                  if (!host[diamField2])
+                    (host as unknown as Record<string, unknown>)[diamField2] = '2"';
+                  if (planId2 != null) {
+                    const map3 = loadFromStorage<Record<string, HidroDataEntry>>(
+                      HYDRO_DATA_STORAGE_KEY,
+                      {},
+                    );
+                    const kHost = `san_${host.id}_${planId2}`;
+                    if (!map3[kHost]) map3[kHost] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+                    if (!map3[kHost].accesorios) map3[kHost].accesorios = {};
+                    map3[kHost].accesorios['tapon'] = (map3[kHost].accesorios['tapon'] || 0) + 1;
+                    saveToStorage(HYDRO_DATA_STORAGE_KEY, map3);
+                  }
+                }
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
         // re-une la línea que quedó en dos mitades. Para "Borrar trazo" (noMerge) se salta:
         // el tronco de la yee doble debe quedar intacto (solo se borra el brazo lateral).
@@ -990,11 +1133,21 @@ export function deleteSelected(
           if (b.desplazamientos) {
             for (const lvlKey of Object.keys(b.desplazamientos)) {
               if (b.desplazamientos[lvlKey].Ldesvio === deleted.id) {
+                const sourceBajanteId = b.id;
                 delete b.desplazamientos[lvlKey];
                 if (b.ghostData) delete b.ghostData[lvlKey];
+                // Borrar también el fantasma punteado del piso inferior
+                if (isLdesvioRamalId(deleted.id)) {
+                  removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
+                }
               }
             }
           }
+        }
+        // Ldesvio borrado directamente (sin desplazamiento asociado) — limpiar fantasmas huérfanos
+        if (isLdesvioRamalId(deleted.id)) {
+          const sourceBajanteId = deleted.id.slice(3);
+          removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
         }
         continue;
       }
@@ -1157,7 +1310,11 @@ export function deleteSelected(
     const isDivisorSel = engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === deletedId);
     // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
     reassignTributariosToHermano(engine, deleted);
-    engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
+    if (wasYeeDoblePartSel) {
+      engine.ramales = engine.ramales.filter((r) => r.id !== deletedId);
+    } else {
+      engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
+    }
     preserveYeeDobleAt(engine, deleted);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
     // Yee doble: el brazo principal se borra individualmente (sin re-unir); el lateral sí re-une.
@@ -1177,13 +1334,36 @@ export function deleteSelected(
       if (b.desplazamientos) {
         for (const lvlKey of Object.keys(b.desplazamientos)) {
           if (b.desplazamientos[lvlKey].Ldesvio === deletedId) {
+            const sourceBajanteId = b.id;
             delete b.desplazamientos[lvlKey];
             if (b.ghostData) delete b.ghostData[lvlKey];
+            if (isLdesvioRamalId(deletedId)) {
+              removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
+            }
           }
         }
       }
     }
-    engine._renumberRamales(deleted.net);
+    if (isLdesvioRamalId(deletedId)) {
+      const sourceBajanteId = deletedId.slice(3);
+      removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
+    }
+    if (deleted.tipo === 'ramal') {
+      engine._renumberRamales(deleted.net);
+    } else {
+      const netId = deleted.net;
+      const remaining = engine.ramales.filter((r) => r.net === netId && r.tipo !== 'tributario');
+      if (remaining.length === 0) {
+        if (engine._netCounts[netId]) engine._netCounts[netId].ramal = 0;
+      } else {
+        let maxN = 0;
+        for (const r of remaining) {
+          const m = (r.label || r.id || '').match(/\d+/);
+          if (m) maxN = Math.max(maxN, parseInt(m[0], 10));
+        }
+        if (engine._netCounts[netId]) engine._netCounts[netId].ramal = maxN;
+      }
+    }
     engine.selId = null;
     engine._emitSelect(null);
     engine._emitDelete([deletedId]);
@@ -1201,7 +1381,6 @@ export function deleteSelected(
       const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
       if (lDesvioId) {
         engine.ramales = engine.ramales.filter((r) => r.id !== lDesvioId);
-        engine._renumberRamales(deleted.net);
       }
       delete deleted.desplazamientos[lvl];
       if (deleted.ghostData) delete deleted.ghostData[lvl];
@@ -1218,7 +1397,6 @@ export function deleteSelected(
         const d = deleted.desplazamientos[lvlKey];
         if (d.Ldesvio) {
           engine.ramales = engine.ramales.filter((r) => r.id !== d.Ldesvio);
-          engine._renumberRamales(deleted.net);
         }
       }
     }
@@ -1243,12 +1421,11 @@ export function deleteSelected(
     engine.bajantes.splice(idxB, 1);
     cascadeMontanteAssociation(engine, deleted);
     if (deleted.tipo === 'bajante') {
-      engine._renumberBajantes(deleted.net);
+      void deleted.net;
     } else if (deleted.tipo === 'montante') {
       // Un montante a mitad de cuerpo siempre escribió un marcador de tee (accMed) en su ramal
       // huésped al crearse — borrarlo sin esto dejaba ese glifo/conteo para siempre.
       cleanupTeeMarkersAt(engine, [deleted.x, deleted.y]);
-      engine._renumberMontantes();
     } else if (deleted.tipo === 'red_publica') {
       const rps = engine.bajantes.filter((b) => b.tipo === 'red_publica');
       rps.forEach((b, i) => {

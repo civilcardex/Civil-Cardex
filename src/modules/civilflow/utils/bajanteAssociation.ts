@@ -11,7 +11,11 @@ import {
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import {
+  TRAZOS_PREFIX,
+  APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+} from '../constants/storage-keys';
 import { pisoCorto, pisoLbl } from '../constants';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
 
@@ -109,12 +113,23 @@ export function clearBajanteAssociation(
   if (!targetPlanId || !targetBajanteId) return;
   const loadedPlanId = String(eng._loadedPlanId ?? '');
 
+  // Borrar fantasma y Ldesvio en ambas direcciones (upper->lower y lower->upper) para cubrir
+  // quita asociación desde cualquiera de los dos pisos y asegurar que el círculo 2/4 del inferior desaparezca
   removeCrossFloorGhost(targetPlanId, sourcePlanId, sourceBajanteId);
+  removeCrossFloorGhost(sourcePlanId, targetPlanId, targetBajanteId);
   removeCrossFloorLdesvioRamal(sourcePlanId, sourceBajanteId);
+  removeCrossFloorLdesvioRamal(targetPlanId, targetBajanteId);
   writeBajantePropToDrawing(
     `${targetBajanteId}-${targetPlanId}`,
     sourceNet,
     'origenId',
+    null,
+    plans,
+  );
+  writeBajantePropToDrawing(
+    `${sourceBajanteId}-${sourcePlanId}`,
+    sourceNet,
+    'descargaEnId',
     null,
     plans,
   );
@@ -125,6 +140,13 @@ export function clearBajanteAssociation(
     );
     const t = eng.bajantes.find((b) => b.id === targetBajanteId);
     if (t) eng.updateElementById(t.id, { origenId: null });
+  }
+  if (loadedPlanId === sourcePlanId) {
+    eng.crossFloorGhosts = eng.crossFloorGhosts.filter(
+      (g) => !(g.sourcePlanId === targetPlanId && g.sourceBajanteId === targetBajanteId),
+    );
+    const s = eng.bajantes.find((b) => b.id === sourceBajanteId);
+    if (s) eng.updateElementById(s.id, { descargaEnId: null, origenId: null });
   }
   // El Ldesvio (ramal autogenerado) se borra SIEMPRE del motor vivo, sin importar en qué piso se
   // esté: al desasociar desde el piso del TARGET (flujo "Origen") el Ldesvio vive en el piso del
@@ -282,6 +304,69 @@ export function applyBajanteAssociation(
       );
       eng.ramales = [...eng.ramales.filter((r) => r.id !== ldId), ramal as never];
     }
+  }
+
+  // UC inheritance: el fantasma (target) y su Ldesvio (si existe) heredan las UC/UD
+  // de los ramales SAN del piso superior que descargan en el bajante origen. Así tanto
+  // el caso alineado (sin Ldesvio) como el desalineado (con Ldesvio) comparten mismas UC.
+  // ponytail: minimal — copia el mapa APARATOS_BY_TRAMO / HYDRO del source a Ldesvio
+  try {
+    const srcRaw = loadFromStorage<{
+      bajantes?: { id: string; recibeDeIds?: string[] }[];
+      ramales?: { id: string; net: string }[];
+    } | null>(TRAZOS_PREFIX + source.planId, null);
+    const srcBaj = srcRaw?.bajantes?.find((b) => b.id === source.id);
+    const ramalIds: string[] = srcBaj?.recibeDeIds || [];
+    // fallback geom: si no hay recibeDeIds, colectar ramales SAN del piso origen (no Ldesvio)
+    if (ramalIds.length === 0 && srcRaw?.ramales?.length) {
+      for (const rr of srcRaw.ramales) {
+        if (rr.net === source.net && rr.id && !rr.id.startsWith('LD_')) ramalIds.push(rr.id);
+      }
+      // si sigue vacío, no copiar
+      if (ramalIds.length > 10) ramalIds.length = 10;
+    }
+    if (ramalIds.length) {
+      const apos = loadFromStorage<Record<string, Record<string, number>>>(
+        APARATOS_BY_TRAMO_KEY,
+        {},
+      );
+      const hydro = loadFromStorage<
+        Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+      >(HYDRO_DATA_STORAGE_KEY, {});
+      const agg: Record<string, number> = {};
+      let hydroAgg: Record<string, number> | null = null;
+      for (const rid of ramalIds) {
+        const sk = `${source.net}_${rid}_${source.planId}`;
+        const m = apos[sk];
+        if (m) for (const [k, v] of Object.entries(m)) agg[k] = (agg[k] || 0) + (v as number);
+        const h = hydro[sk];
+        if (h?.accesorios) {
+          if (!hydroAgg) hydroAgg = {};
+          for (const [k, v] of Object.entries(h.accesorios))
+            hydroAgg[k] = (hydroAgg[k] || 0) + (v as number);
+        }
+      }
+      if (Object.keys(agg).length || hydroAgg) {
+        let aposDirty = false;
+        let hydroDirty = false;
+        if (!aligned) {
+          const ldId = ldesvioIdFor(source.id);
+          const ldKey = `${source.net}_${ldId}_${source.planId}`;
+          if (Object.keys(agg).length) {
+            apos[ldKey] = { ...agg };
+            aposDirty = true;
+          }
+          if (hydroAgg) {
+            hydro[ldKey] = { accesorios: { ...hydroAgg }, Lh: 0, nSalidas: 0 };
+            hydroDirty = true;
+          }
+        }
+        if (aposDirty) saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
+        if (hydroDirty) saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
+      }
+    }
+  } catch {
+    /* ignore copy errors */
   }
 
   eng.render();
