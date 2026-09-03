@@ -153,21 +153,19 @@ export function BajanteDirectionSelector({
                 let updates: Record<string, unknown> = {};
 
                 if (opt === 'Sube') {
-                  // Guarda de dirección de flujo, espejo de la rama 'Baja' de abajo: un bajante
-                  // "sube" solo debe ENTREGAR flujo. Si ya llega un ramal a este bajante
-                  // (conectado por su FIN), marcarlo "sube" haría que recibiera flujo que solo
-                  // debería emitir — se bloquea el cambio en lugar de producir en silencio una
-                  // contradicción entre la dirección del bajante y sus conexiones.
-                  const bajCode = element.code || element.id;
-                  const arrivingRamal = (element.recibeDeIds || [])
-                    .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
-                    .find((ram) => ram && ram.fin === bajCode);
-                  if (arrivingRamal) {
-                    engineRef.current?.triggerAlert(
-                      'Dirección de flujo inconsistente',
-                      `El ramal ${arrivingRamal.label || arrivingRamal.id} llega a este bajante (está conectado por su extremo final). Un bajante con dirección "sube" solo puede entregar flujo — desconecta o invierte ese ramal antes de cambiar la dirección.`,
-                    );
-                    return;
+                  // Ventilación: sin validación de dirección de flujo (usuario pide desactivarla)
+                  if (element.net !== 'vent') {
+                    const bajCode = element.code || element.id;
+                    const arrivingRamal = (element.recibeDeIds || [])
+                      .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
+                      .find((ram) => ram && ram.net === element.net && ram.fin === bajCode);
+                    if (arrivingRamal) {
+                      engineRef.current?.triggerAlert(
+                        'Dirección de flujo inconsistente',
+                        `El ramal ${arrivingRamal.label || arrivingRamal.id} llega a este bajante (está conectado por su extremo final). Un bajante con dirección "sube" solo puede entregar flujo — desconecta o invierte ese ramal antes de cambiar la dirección.`,
+                      );
+                      return;
+                    }
                   }
                   updates = {
                     direccion: 'sube',
@@ -176,24 +174,18 @@ export function BajanteDirectionSelector({
                     desplazamientos: { ...(element.desplazamientos || {}) },
                   };
                 } else if (opt === 'Baja') {
-                  // Guarda de dirección de flujo, segunda parte: isRamalBajanteConnectionAllowed
-                  // (en flowDirection.ts) solo se dispara cuando un extremo de ramal se conecta
-                  // POR PRIMERA VEZ a un bajante. Nunca revalida las conexiones existentes cuando
-                  // después se cambia la dirección del propio bajante — que es el orden mucho más
-                  // común en la práctica (dibujar la geometría y luego fijar "Baja" aquí). Sin
-                  // esta comprobación, un bajante que ya recibe un ramal por su INICIO (es decir,
-                  // el ramal nace DEL bajante, no entra a él) podría marcarse "baja" en silencio
-                  // aunque entonces estaría emitiendo flujo en lugar de solo recibirlo.
-                  const bajCode = element.code || element.id;
-                  const emittingRamal = (element.recibeDeIds || [])
-                    .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
-                    .find((ram) => ram && ram.ini === bajCode);
-                  if (emittingRamal) {
-                    engineRef.current?.triggerAlert(
-                      'Dirección de flujo inconsistente',
-                      `El ramal ${emittingRamal.label || emittingRamal.id} sale de este bajante (está conectado por su extremo inicial). Un bajante con dirección "baja" solo puede recibir flujo — desconecta o invierte ese ramal antes de cambiar la dirección.`,
-                    );
-                    return;
+                  if (element.net !== 'vent') {
+                    const bajCode = element.code || element.id;
+                    const emittingRamal = (element.recibeDeIds || [])
+                      .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
+                      .find((ram) => ram && ram.net === element.net && ram.ini === bajCode);
+                    if (emittingRamal) {
+                      engineRef.current?.triggerAlert(
+                        'Dirección de flujo inconsistente',
+                        `El ramal ${emittingRamal.label || emittingRamal.id} sale de este bajante (está conectado por su extremo inicial). Un bajante con dirección "baja" solo puede recibir flujo — desconecta o invierte ese ramal antes de cambiar la dirección.`,
+                      );
+                      return;
+                    }
                   }
                   updates = {
                     direccion: 'baja',

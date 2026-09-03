@@ -91,9 +91,12 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
     // Bug 2: filas pseudo de bushing — UNA fila por par de diámetros que tenga conexiones reales
     // en el dibujo, con la CANTIDAD de bushings contada (no 1 fijo por par). El nombre del
     // accesorio es solo "Bushing" (sin diámetros) y los diámetros van en la columna "Diámetro"
-    // como `mayor" × menor"`. Solo en la tabla resumen de la UI (af/ac/gas); no viven ni en los
+    // como `mayor" × menor"`. Solo en la tabla resumen de la UI; no viven ni en los
     // catálogos ni en el storage ni en el dibujo.
-    if ((net === 'af' || net === 'ac' || net === 'gas') && table.bushingCounts) {
+    if (
+      (net === 'af' || net === 'ac' || net === 'gas' || net === 'san' || net === 'll') &&
+      table.bushingCounts
+    ) {
       const entries = Object.entries(table.bushingCounts)
         .map(([k, count]) => {
           const [mayor, menor] = k.split('_').map(Number);

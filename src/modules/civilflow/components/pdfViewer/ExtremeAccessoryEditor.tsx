@@ -117,23 +117,21 @@ export default function ExtremeAccessoryEditor({
         const updates: Record<string, unknown> = { [field]: val };
         const fieldDiam: 'diametroInicio' | 'diametroFin' =
           field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
-        // Al asignar accesorio: si el ramal ya tiene diámetro, el accesorio lo hereda;
-        // si no, el accesorio recibe un default de2" (igual que ramalMenu).
+        // Al asignar accesorio: sifón siempre 2", resto hereda o 2"
         if (val && !oldVal) {
-          const resolvedFromRamal = matchDiamOption(diamList, selElement.diametro);
-          updates[fieldDiam] = resolvedFromRamal || '2" — 50 mm';
+          if (val === 'sifon') updates[fieldDiam] = '2"';
+          else {
+            const resolvedFromRamal = matchDiamOption(diamList, selElement.diametro);
+            updates[fieldDiam] = resolvedFromRamal || '2" — 50 mm';
+          }
         }
         // Ítem 3: propagar el diámetro del accesorio al ramal si este estaba vacío.
         if (val && !selElement.diametro) {
           const accDiam = updates[fieldDiam] as string | undefined;
           if (accDiam) updates.diametro = accDiam;
         }
-        const fieldApp: 'aparatoInicio' | 'aparatoFin' =
-          field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
-        const removedApp = val && selElement[fieldApp] ? selElement[fieldApp] : '';
-        if (removedApp) {
-          updates[fieldApp] = null;
-        }
+        // Codo → codo ventilación no debe borrar aparato (bug #6)
+        const removedApp = '';
         engineRef.current.updateSelected(updates);
         setSelElement({ ...selElement, ...updates });
         engineRef.current.render();
