@@ -145,6 +145,9 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     show_length: r.showLength ?? true,
     show_name: r.showName ?? true,
     show_guide: r.showGuide ?? true,
+    show_flow_dir: (r as unknown as { showFlowDir?: boolean }).showFlowDir ?? true,
+    show_mat_diam_pend: (r as unknown as { showMatDiamPend?: boolean }).showMatDiamPend ?? true,
+    label_moved: r.labelMoved ?? false,
     fixtures: r.fixtures ?? {},
     // NOT NULL en planos_ramales (JSONB) — un ramal nuevo sin accesorios asignados tendría
     // `undefined`/null y tumbaría el INSERT completo de replaceCollection con 400
@@ -193,6 +196,9 @@ function rowToRamal(row: SupabaseRow): PlanoRamal {
     showLength: g(row, 'show_length', true),
     showName: g(row, 'show_name', true),
     showGuide: g(row, 'show_guide', true),
+    showFlowDir: g(row, 'show_flow_dir', true),
+    showMatDiamPend: g(row, 'show_mat_diam_pend', true),
+    labelMoved: g(row, 'label_moved', false),
     fixtures: g(row, 'fixtures', undefined),
     hydroAcc: g(row, 'hydro_accesorios', undefined),
     gasAcc: g(row, 'gas_accesorios', undefined),
@@ -222,6 +228,7 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     label_angle: b.labelAngle,
     label_x: b.labelX,
     label_y: b.labelY,
+    label_moved: b.labelMoved ?? false,
     direccion: b.direccion ?? null,
     aparato: b.aparato ?? null,
     total_l: b.totalL ?? null,
@@ -271,6 +278,7 @@ function rowToBajante(row: SupabaseRow): PlanoBajante {
     labelAngle: g(row, 'label_angle', 0),
     labelX: g(row, 'label_x', 0),
     labelY: g(row, 'label_y', 0),
+    labelMoved: g(row, 'label_moved', false),
     direccion: g(row, 'direccion', undefined),
     aparato: g(row, 'aparato', undefined),
     totalL: g(row, 'total_l', undefined),
@@ -300,6 +308,7 @@ function areaToRow(planoId: number, userId: string, a: PlanoArea) {
     label_x: a.labelX,
     label_y: a.labelY,
     label_angle: a.labelAngle,
+    label_moved: a.labelMoved ?? false,
     area_m2: a.areaM2,
     net: a.net ?? null,
   };
@@ -314,6 +323,7 @@ function rowToArea(row: SupabaseRow): PlanoArea {
     labelX: g(row, 'label_x', 0),
     labelY: g(row, 'label_y', 0),
     labelAngle: g(row, 'label_angle', 0),
+    labelMoved: g(row, 'label_moved', false),
     areaM2: g(row, 'area_m2', 0),
     net: g(row, 'net', undefined),
   };

@@ -123,6 +123,8 @@
 
 .scroll-top {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 62vh;
   transform: rotateX(180deg);
 }
 

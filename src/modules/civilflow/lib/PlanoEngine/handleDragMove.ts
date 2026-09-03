@@ -532,8 +532,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         baj.ghostData[lbl].labelX = p.x;
         baj.ghostData[lbl].labelY = p.y;
       } else {
-        (el as PlanoRamal | PlanoBajante | PlanoArea).labelX = p.x;
-        (el as PlanoRamal | PlanoBajante | PlanoArea).labelY = p.y;
+        const moved = el as PlanoRamal | PlanoBajante | PlanoArea;
+        moved.labelX = p.x;
+        moved.labelY = p.y;
+        // El usuario movió la etiqueta a mano: el auto-orden ya no la toca.
+        moved.labelMoved = true;
         // Etiqueta de ramal: actualizar también su ángulo para que la flecha siga
         // el segmento donde cae la etiqueta, manteniendo el mismo sentido
         if ('pts' in el && Array.isArray((el as PlanoRamal).pts)) {

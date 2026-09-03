@@ -345,6 +345,11 @@ export interface PlanoRamal {
   showLength?: boolean;
   showName?: boolean;
   showGuide?: boolean;
+  showFlowDir?: boolean;
+  showMatDiamPend?: boolean;
+  // Etiqueta movida a mano por el usuario (lblDrag). El auto-orden de etiquetas solo reubica
+  // las que nunca se movieron; las manuales quedan intactas y actúan como obstáculos fijos.
+  labelMoved?: boolean;
   // Identidad de una yee doble (ítem 2): posiciones de los dos vértices que forman el par
   // (`[[x1,y1],[x2,y2]]`). Se registra al DETECTAR la yee doble en networkSanitary.ts y se
   // persiste vía el sync, de modo que el símbolo sobrevive al borrado de uno de los brazos
@@ -385,6 +390,8 @@ export interface PlanoBajante {
   labelY: number;
   direccion?: 'sube' | 'baja' | 'continua' | 'mantiene';
   aparato?: string;
+  // Igual que en PlanoRamal: etiqueta movida a mano (ver comentario allá).
+  labelMoved?: boolean;
   totalL?: number;
   pendiente?: number;
   piso?: string;
@@ -451,6 +458,8 @@ export interface PlanoArea {
   labelAngle: number;
   areaM2: number;
   net?: string;
+  // Igual que en PlanoRamal: etiqueta movida a mano (ver comentario allá).
+  labelMoved?: boolean;
   _labelBox?: LabelBoxCorners;
   _polyBox?: CanvasBox;
 }

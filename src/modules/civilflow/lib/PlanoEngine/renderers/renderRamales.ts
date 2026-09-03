@@ -8,6 +8,7 @@ import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '..
 import { drawRamalPath } from './drawRamalPath';
 import { drawExtremeAccessorySymbol, drawCornerCodoArc } from './renderAccessorySymbols';
 import { renderJunctions } from './renderJunctions';
+import { beginDeclutterFrame, findFreeLabelCenter } from '../labelDeclutter';
 
 // Cache de nivel de módulo para los símbolos de aparato (drawRamalPath + pase de aparato
 // abajo). DEBE vivir aquí, no dentro de renderRamales: un cache por-render se borra en cada
@@ -108,6 +109,9 @@ export function pickTeeBranchDir(
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
+  // Foto de obstáculos para el auto-orden de etiquetas (solo mueve las nunca tocadas a mano).
+  const declutter = beginDeclutterFrame(engine);
+  let declutterNeedsSeed = false;
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     const net = NETS.find((n) => n.id === r.net);
@@ -237,6 +241,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const showName = r.showName !== false;
       const showLength = r.showLength !== false;
       const showGuide = r.showGuide !== false;
+      const showMatDiamPend =
+        (r as unknown as { showMatDiamPend?: boolean }).showMatDiamPend !== false;
       const lbl = showName && r.label ? `${r.label}${lvlSuffix}` : '';
       // Ítem 1: formatos por red. Para san/ll/ac/af/gas se produce un único string compacto;
       // vent y el resto mantienen el esquema de segmentos genérico de abajo.
@@ -258,65 +264,69 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       let infoStr: string | null = null;
       let matPart = '';
       if (r.net === 'san') {
-        // Ítem 1: formato san S<diam>" P<pend,1>% <long,2>m con espacios
-        const diamPart = diamPulg(r.diametro);
-        const pendVal = r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
+        const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
+        const pendVal =
+          showMatDiamPend && r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
         const longPartSan = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = [
-          `${diamPart ? `S${diamPart}` : 'S'}`,
-          pendVal ? `P${pendVal}%` : 'P%',
-          longPartSan,
-        ];
+        const segs = showMatDiamPend
+          ? [`${diamPart ? `S${diamPart}` : 'S'}`, pendVal ? `P${pendVal}%` : 'P%', longPartSan]
+          : [longPartSan];
         infoStr = segs.filter(Boolean).join(' ') || null;
         if (infoStr === 'S P% m' || infoStr === 'S') infoStr = null;
       } else if (r.net === 'll') {
-        // Ítem 1.1: ALL [diam]" P [pend,1]%
-        const diamPart = diamPulg(r.diametro);
-        const pendVal = r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
+        const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
+        const pendVal =
+          showMatDiamPend && r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
         const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = [
-          `ALL${diamPart ? ` ${diamPart}` : ''}`,
-          pendVal ? `P ${pendVal}%` : '',
-          longPart,
-        ];
+        const segs = showMatDiamPend
+          ? [`ALL${diamPart ? ` ${diamPart}` : ''}`, pendVal ? `P ${pendVal}%` : '', longPart]
+          : [longPart];
         infoStr = segs.filter(Boolean).join(' ') || null;
       } else if (r.net === 'ac') {
-        // Ítem 1.2: CPVC [diam]" [RDE/SCH]
         const norm = r.diametro
           ? normalizeDnLabel(r.diametro)
               .replace(/\s*—.*$/, '')
               .trim()
           : '';
-        const diamPart = inchPartOf(norm);
-        const rde = rdePartOf(norm);
+        const diamPart = showMatDiamPend ? inchPartOf(norm) : '';
+        const rde = showMatDiamPend ? rdePartOf(norm) : '';
         const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = [`CPVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart];
+        const segs = showMatDiamPend
+          ? [`CPVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart]
+          : [longPart];
         infoStr = segs.filter(Boolean).join(' ') || null;
       } else if (r.net === 'af') {
-        // Ítem 1.3: PVC [diam]" [RDE]
         const norm = r.diametro
           ? normalizeDnLabel(r.diametro)
               .replace(/\s*—.*$/, '')
               .trim()
           : '';
-        const diamPart = inchPartOf(norm);
-        const rde = rdePartOf(norm);
+        const diamPart = showMatDiamPend ? inchPartOf(norm) : '';
+        const rde = showMatDiamPend ? rdePartOf(norm) : '';
         const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = [`PVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart];
+        const segs = showMatDiamPend
+          ? [`PVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart]
+          : [longPart];
         infoStr = segs.filter(Boolean).join(' ') || null;
       } else if (r.net === 'gas') {
-        // Ítem 1.4: [material] [diam]"
-        const diamPart = diamPulg(r.diametro);
-        const mat = matDrawingLabel(r.material);
+        const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
+        const mat = showMatDiamPend ? matDrawingLabel(r.material) : '';
         const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = [mat ? `${mat}${diamPart ? ` ${diamPart}` : ''}` : diamPart, longPart];
+        const segs = showMatDiamPend
+          ? [mat ? `${mat}${diamPart ? ` ${diamPart}` : ''}` : diamPart, longPart]
+          : [longPart];
         infoStr = segs.filter(Boolean).join(' ') || null;
       }
-      const matPartFallback = matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '');
+      const matPartFallback = showMatDiamPend
+        ? matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '')
+        : '';
       matPart = infoStr ? '' : r.net === 'san' ? '' : matPartFallback;
       const dPart =
-        !infoStr && r.net !== 'san' && r.diametro ? `D=${normalizeDnLabel(r.diametro)}` : '';
-      const pPart = !infoStr && r.net !== 'san' && r.pendiente ? `S=${r.pendiente}%` : '';
+        !infoStr && showMatDiamPend && r.net !== 'san' && r.diametro
+          ? `D=${normalizeDnLabel(r.diametro)}`
+          : '';
+      const pPart =
+        !infoStr && showMatDiamPend && r.net !== 'san' && r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = r.net === 'san' || r.net === 'll';
       const pendPart = !infoStr && r.net !== 'san' && showPend && pPart ? pPart : '';
       const lblPart =
@@ -357,8 +367,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const contentW = Math.max(nameW, totalInfoW);
       const boxW = contentW + boxPadX * 2;
       const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
-      const drawX = lc.x;
-      const drawY = lc.y;
+      let drawX = lc.x;
+      let drawY = lc.y;
       const labelAngleDeg = r.labelAngle != null ? r.labelAngle : angleAtHalfLength(r.pts || []);
       const labelAngle = (labelAngleDeg * Math.PI) / 180;
       const cosA = Math.cos(labelAngle),
@@ -366,8 +376,35 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const labelGap = -engine.mm2cvs(5);
       const gapOffX = -labelGap * sinA;
       const gapOffY = labelGap * cosA;
-      const adjCx = drawX + gapOffX;
-      const adjCy = drawY + gapOffY;
+      let adjCx = drawX + gapOffX;
+      let adjCy = drawY + gapOffY;
+      // Auto-orden: la etiqueta nunca movida a mano busca un sitio libre (espiral) si su caja
+      // choca con otras etiquetas o trazos; la líder de abajo sigue sola al nuevo sitio.
+      if (!r.labelMoved && r.pts.length >= 2) {
+        const spot = findFreeLabelCenter(
+          r.id,
+          boxW,
+          boxH,
+          labelAngle,
+          adjCx,
+          adjCy,
+          declutter.placed,
+          declutter.segs,
+        );
+        if (spot) {
+          const p = engine.toPlane(spot.x - gapOffX, spot.y - gapOffY);
+          r.labelX = p.x;
+          r.labelY = p.y;
+          drawX = spot.x - gapOffX;
+          drawY = spot.y - gapOffY;
+          adjCx = spot.x;
+          adjCy = spot.y;
+        }
+      } else if (r.labelMoved && !r._labelBox) {
+        // Etiqueta manual sin caja calculada aún (primer frame tras cargar): el declutter de
+        // este frame trabajó sin ella como obstáculo; reprogramar un pase para converger.
+        declutterNeedsSeed = true;
+      }
 
       const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(
         adjCx,
@@ -388,6 +425,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         maxY,
         corners,
       };
+      // La caja final (auto o manual) es obstáculo para las siguientes etiquetas de este frame.
+      declutter.placed.push({ id: r.id, minX, minY, maxX, maxY });
 
       // Línea guía (leader): une la MITAD DEL LADO más cercano de la caja con el punto medio del
       // ramal, para amarrar visualmente la etiqueta flotante a su tubería (pedido explícito:
@@ -484,7 +523,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.textAlign = 'center';
       }
 
-      if (showFlow && flowLen > 12 * engine.zoom) {
+      if (
+        showFlow &&
+        (r as unknown as { showFlowDir?: boolean }).showFlowDir !== false &&
+        flowLen > 12 * engine.zoom
+      ) {
         const arrowY = boxH / 2 + 2 * engine.zoom;
         ctx.save();
         ctx.translate(0, arrowY);
@@ -699,6 +742,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
   });
+
+  // Primer frame tras cargar (cajas manuales aún sin calcular): el declutter trabajó sin
+  // ellas; un solo pase extra converge. scheduleRender coalesca, no hay recursión.
+  if (declutterNeedsSeed) engine.scheduleRender();
 
   // Dibujar accesorios de extremo (accesorioInicio/Fin) en su propio pase, después de que el
   // trazo del path de cada ramal ya se pintó — si no, la línea de un ramal iterado después
