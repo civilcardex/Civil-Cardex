@@ -433,6 +433,25 @@ export function buildSanConnectivity(
     const s = new Set<string>([...(childrenMap[k] || []), ...(mergeBranches[k] || [])]);
     fullChildrenMap[k] = Array.from(s);
   }
+  // Cross-floor: bajante descargaEnId → target bajante/ramal asegura que el piso inferior
+  // herede las UD/UC del superior, tanto si hay fantasma+Ldesvio como si es alineado (sin Ldesvio).
+  // Sin esto, el tramosSan del piso inferior quedaba con UD propias 0 aunque sus ramales
+  // tributarios estuvieran en otro piso (phantom no propagaba).
+  for (const t of tramosSan) {
+    if (!t.esBajante || !t.descargaEnId || !t._key) continue;
+    const [dPlanId, tgtId] = parseDescargaEnId(t.descargaEnId, '');
+    if (!tgtId || dPlanId == null) continue;
+    const tgtKey = `${tgtId}-${dPlanId}`;
+    // solo si el target existe como tramo (bajante inferior)
+    if (
+      !byKey.has(tgtKey) &&
+      !Object.prototype.hasOwnProperty.call(fullChildrenMap, tgtKey) &&
+      !Object.keys(ownTotals).includes(tgtKey)
+    )
+      continue;
+    if (!fullChildrenMap[tgtKey]) fullChildrenMap[tgtKey] = [];
+    if (!fullChildrenMap[tgtKey].includes(t._key)) fullChildrenMap[tgtKey].push(t._key);
+  }
   const componentTotalMap: Record<string, number> = {};
   // Para cada nodo, BFS/DFS sobre fullChildrenMap con visited para no duplicar hojas compartidas
   const allKeysForTotals = new Set<string>([
@@ -567,13 +586,56 @@ export function computeSanRows(
   displayTramos: Tramo[],
   componentTotalMap: Record<string, number>,
   mergedBase: MergedApBase[],
+  allTramos?: Tramo[],
+  fullChildrenMap?: Record<string, string[]>,
 ): SanRow[] {
+  // ponytail: lookup for tributary UD aggregation (support both _key and planId keys)
+  const byKey = new Map<string, Tramo>();
+  if (allTramos) {
+    for (const tr of allTramos) {
+      const k1 = tr._key || `${tr.id}-${tr.piso}`;
+      byKey.set(k1, tr);
+      if (tr.planId) byKey.set(`${tr.id}-${tr.planId}`, tr);
+    }
+  }
   return displayTramos
     .toSorted((a, b) => (a.piso || 0) - (b.piso || 0))
     .map((t) => {
       const tKey = t._key || `${t.id}-${t.piso}`;
-      const udPropias = calcUDparcial(t, mergedBase);
-      const udAcum = componentTotalMap[tKey] || 0;
+      const tPlanKey = t.planId ? `${t.id}-${t.planId}` : tKey;
+      let udPropias = calcUDparcial(t, mergedBase);
+      // Tributaries that discharge into this ramal count as "propias" (issue #2)
+      if (allTramos) {
+        const seen = new Set<string>();
+        let tribUD = 0;
+        // via fullChildrenMap immediate children where child is tributario
+        if (fullChildrenMap) {
+          for (const parentKey of [tKey, tPlanKey]) {
+            for (const ck of fullChildrenMap[parentKey] || []) {
+              if (seen.has(ck)) continue;
+              seen.add(ck);
+              const ct = byKey.get(ck);
+              if (ct && ct.tipo === 'tributario') {
+                tribUD += calcUDparcial(ct, mergedBase);
+              }
+            }
+          }
+        }
+        // via padre field (tributario.padre === parent id) — dedup
+        for (const ct of allTramos) {
+          if (ct.tipo !== 'tributario') continue;
+          if (ct.padre !== t.id) continue;
+          const ck = ct._key || `${ct.id}-${ct.piso}`;
+          const ckAlt = ct.planId ? `${ct.id}-${ct.planId}` : ck;
+          if (seen.has(ck) || seen.has(ckAlt)) continue;
+          if (ct.planId && t.planId && ct.planId !== t.planId) continue;
+          tribUD += calcUDparcial(ct, mergedBase);
+          seen.add(ck);
+          seen.add(ckAlt);
+        }
+        udPropias += tribUD;
+      }
+      const udAcum = componentTotalMap[tKey] ?? componentTotalMap[tPlanKey] ?? 0;
 
       const nSalidas = t.nSalidas ?? 0;
       const K =
@@ -659,10 +721,16 @@ export function computeUdTable(
   plans: PlanItem[],
   mergedBase: MergedApBase[],
 ): MemoriaTable | null {
-  const ramales = tramosSan
+  // Excluir ventilación: solo descarga sanitaria
+  const sanOnly = tramosSan.filter(
+    (t) =>
+      (t.net || (t as unknown as { _net?: string })._net) !== 'vent' &&
+      !(t.id || '').startsWith('BREV'),
+  );
+  const ramales = sanOnly
     .filter((t) => t.tipo === 'ramal' && !t.esBajante)
     .toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
-  const bajantes = tramosSan
+  const bajantes = sanOnly
     .filter((t) => t.esBajante)
     .toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
   const displayTramos = [...ramales, ...bajantes].toSorted((a, b) => {
@@ -675,7 +743,7 @@ export function computeUdTable(
     componentTotalMap,
     displayMap: _displayMap,
     fullChildrenMap,
-  } = buildSanConnectivity(tramosSan, plans, mergedBase);
+  } = buildSanConnectivity(sanOnly, plans, mergedBase);
 
   const headers = [
     'Ramal/Bajante',
@@ -724,7 +792,7 @@ export function computeUdTable(
     // Filtrar a tramos con aparatos (ramal/tributario) para desglose
     const extraFixtures: Record<string, number> = { ...t.fixtures };
     for (const ck of descendantKeys) {
-      const ct = tramosSan.find((x) => (x._key || `${x.id}-${x.piso}`) === ck);
+      const ct = sanOnly.find((x) => (x._key || `${x.id}-${x.piso}`) === ck);
       if (!ct || ct.esBajante) continue;
       if (ct.tipo !== 'ramal' && ct.tipo !== 'tributario') continue;
       for (const d of mergedBase)
@@ -735,10 +803,9 @@ export function computeUdTable(
     return [t.id, pisoCorto(t.piso), ini, fin, ...fixtureVals, acum];
   });
 
-  // Fila de sumatoria — coincide con el tfoot de la tabla en pantalla: subtotal por-aparato
-  // "cant × UD", más el total general de UD de toda la red.
+  // Fila de sumatoria — solo san, excluye vent
   const totales = mergedBase.map((d) => {
-    const cant = tramosSan.reduce((s, t) => s + (t.fixtures[d.id] || 0), 0);
+    const cant = sanOnly.reduce((s, t) => s + (t.fixtures[d.id] || 0), 0);
     return { cant, ud: d.ud, subtotal: cant * d.ud };
   });
   const totalUD = totales.reduce((s, d) => s + d.subtotal, 0);

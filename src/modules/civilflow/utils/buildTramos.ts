@@ -5,6 +5,7 @@ import { parseDescargaEnId } from './parseDescargaEnId';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
 import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from '../services/storageService';
 import { pisoLbl, pisoCorto } from '../constants';
+// ponytail: loadPlanTrazos kept for lazy write-back only — read path uses plane.bajantes/ramales directly to avoid second JSON.parse per plane
 import type { Tramo } from '../context/tramosReducer';
 
 interface DrawingRamal {
@@ -101,20 +102,8 @@ export function buildTramos(
     if (!key.startsWith(family + '_')) continue;
     const nivel = parseInt(key.slice(family.length + 1));
     const planId = plane.planoId || '';
-    const raw = loadPlanTrazos(String(planId));
-    let drawingBajantes: DrawingBajante[] = [];
-    let drawingData: { ramales?: DrawingRamal[]; bajantes?: DrawingBajante[] } | null = null;
-    if (raw) {
-      drawingData = raw as unknown as { ramales?: DrawingRamal[]; bajantes?: DrawingBajante[] };
-      if (typeof drawingData === 'string') {
-        try {
-          drawingData = JSON.parse(drawingData);
-        } catch {
-          /* ignore */
-        }
-      }
-      drawingBajantes = drawingData?.bajantes || [];
-    }
+    // ponytail: eliminate second loadPlanTrazos+JSON.parse per plane — plane already carries filtered ramales/bajantes from drawingSync
+    const drawingBajantes: DrawingBajante[] = (plane.bajantes || []) as DrawingBajante[];
 
     for (const r of plane.ramales || []) {
       const rId = r.id;
@@ -183,16 +172,30 @@ export function buildTramos(
           if (r.ini !== newIni || r.fin !== newFin) {
             r.ini = newIni;
             r.fin = newFin;
-
-            if (drawingData) {
-              for (const drawingRamal of drawingData.ramales || []) {
-                if (drawingRamal.id === r.id) {
-                  drawingRamal.ini = newIni;
-                  drawingRamal.fin = newFin;
-                  break;
+            // ponytail: lazy write-back — load full trazos only when correction needed, keep read path free of JSON.parse
+            const raw = loadPlanTrazos(String(planId));
+            if (raw) {
+              let full = raw as unknown as {
+                ramales?: DrawingRamal[];
+                bajantes?: DrawingBajante[];
+              };
+              if (typeof full === 'string') {
+                try {
+                  full = JSON.parse(full as unknown as string);
+                } catch {
+                  full = null as unknown as typeof full;
                 }
               }
-              savePlanTrazos(String(planId), drawingData);
+              if (full?.ramales) {
+                for (const dr of full.ramales) {
+                  if (dr.id === r.id) {
+                    dr.ini = newIni;
+                    dr.fin = newFin;
+                    break;
+                  }
+                }
+                savePlanTrazos(String(planId), full);
+              }
             }
           }
           ini = newIni;
@@ -235,16 +238,8 @@ export function buildTramos(
         };
       }
       const extra = hidroData[apKey] || {};
-      let dznSalidas = r.nSalidas || 1;
-      let dzLvert = Number(r.lvert ?? r.dz ?? 0);
-      if (drawingData) {
-        const dr = (drawingData.ramales || []).find((x) => x.id === r.id);
-        if (dr) {
-          if (!dznSalidas) dznSalidas = dr.nSalidas || 1;
-          if (dzLvert === 0 || dzLvert === undefined)
-            dzLvert = parseFloat(String(dr.lvert ?? dr.dz)) || 0;
-        }
-      }
+      const dznSalidas = r.nSalidas || 1;
+      const dzLvert = Number(r.lvert ?? r.dz ?? 0);
       incoming.push({
         _key: `${rId}-${planId}`,
         id: rId,
@@ -267,6 +262,7 @@ export function buildTramos(
         diametroOriginal: r.diametro || '',
         material: r.material || '',
         totalL: r.totalL || 0,
+        padre: r.padre ?? null,
         _nivelLabel: pisoLbl(
           typeof r.piso === 'number' ? r.piso : parseInt(String(r.piso || nivel)),
         ),
@@ -434,6 +430,7 @@ export function loadSanLlTramos() {
         diametroInicio: r.diametroInicio || '',
         diametroFin: r.diametroFin || '',
         caudal: r.caudal ?? undefined,
+        padre: r.padre ?? null,
         padreTributarioLabel: r.padre
           ? (plane.ramales || []).find((pr) => pr.id === r.padre)?.label || r.padre
           : null,
@@ -445,6 +442,8 @@ export function loadSanLlTramos() {
       }
     }
     for (const b of plane.bajantes || []) {
+      // Ventilación y canales no pertenecen a descarga sanitaria
+      if (b._net === 'vent' || b.net === 'vent') continue;
       // Los glifos de canal (tipo:'canal') viven en su propia tabla (canalesLlAuto lee
       // drawnCanalGlyphs directo de storage) — excluirlos aquí evita que aparezcan como
       // bajantes en la tabla de chequeo de bajantes de aguas lluvias.

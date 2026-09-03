@@ -251,8 +251,18 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     if (!hasSan) return null;
     const mergedBase = sanMergedBase;
     const displayTramos = tramosSan.filter((t) => t.tipo === 'ramal' && !t.esBajante);
-    const { componentTotalMap } = buildSanConnectivity(tramosSan, plans, mergedBase);
-    const rows = computeSanRows(displayTramos, componentTotalMap, mergedBase);
+    const { componentTotalMap, fullChildrenMap } = buildSanConnectivity(
+      tramosSan,
+      plans,
+      mergedBase,
+    );
+    const rows = computeSanRows(
+      displayTramos,
+      componentTotalMap,
+      mergedBase,
+      tramosSan,
+      fullChildrenMap,
+    );
     return {
       title: 'Diseño de red sanitaria',
       headerGroups: [

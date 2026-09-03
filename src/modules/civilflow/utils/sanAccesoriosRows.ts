@@ -77,6 +77,44 @@ const CODO_MEDIO_90 = {
  */
 const BUSHING_TOL = 0.5;
 
+// Compacta los brazos de una yee con igual diámetro a un solo valor, en orden de
+// aparición: ["4\"","4\"","2\""] → '4"×2"'. La columna Diámetro del resumen no repite medidas.
+export function compactYeeDiam(parts: string[]): string {
+  const seen: string[] = [];
+  for (const p of parts) {
+    const t = (p || '').trim();
+    if (!t || t === '—') continue;
+    if (!seen.includes(t)) seen.push(t);
+  }
+  return seen.join('×');
+}
+
+// ¿El ramal ya trae un codo manual (90° o 45°) en el extremo que toca al bajante? Si sí, ese
+// cubre la pieza y el bloque bajante no debe auto-agregar otro codo 90° (evita duplicar).
+const MANUAL_CODO_AT_BAJANTE = new Set([...CODO_90_IDS, 'codo45rc']);
+function ramalHasManualCodoAt(
+  r: { pts?: number[][]; accIni?: string; accFin?: string },
+  bx?: number,
+  by?: number,
+): boolean {
+  if (!r.pts || r.pts.length < 2 || bx == null || by == null) return false;
+  const first = r.pts[0];
+  const last = r.pts[r.pts.length - 1];
+  if (
+    r.accIni &&
+    MANUAL_CODO_AT_BAJANTE.has(r.accIni) &&
+    Math.hypot(first[0] - bx, first[1] - by) < 0.5
+  )
+    return true;
+  if (
+    r.accFin &&
+    MANUAL_CODO_AT_BAJANTE.has(r.accFin) &&
+    Math.hypot(last[0] - bx, last[1] - by) < 0.5
+  )
+    return true;
+  return false;
+}
+
 export function computeBushingCounts(
   minors: Array<{ id: string; diametro: string; pts: number[][] }>,
   majors: Array<{ id: string; diametro: string; pts: number[][] }>,
@@ -456,9 +494,11 @@ export function computeAccesoriosTable(
         if (!near) continue;
         const pk = `${parent.id}-${parent.planId}`;
         // Nomenclatura Yee: cada brazo de la Y — la tubería principal pasa recta (dos brazos del
-        // mismo diámetro) y el vent entra por el tercer brazo: san×san×vent.
+        // mismo diámetro) y el vent entra por el tercer brazo: san×san×vent, compactado
+        // (4"×4"×2" → 4"×2").
         const parentDiamStr = fmtPulg(diamPulgFromLabel(parent.diametro));
-        const combo = `${parentDiamStr}×${parentDiamStr}×${vDiamStr}`;
+        const combo = compactYeeDiam([parentDiamStr, parentDiamStr, vDiamStr]);
+        if (!combo) continue;
         const segLen = Math.hypot(segDx, segDy);
         const dot = Math.abs(
           (segDx / segLen) * (vVec[0] / vLen) + (segDy / segLen) * (vVec[1] / vLen),
@@ -493,10 +533,12 @@ export function computeAccesoriosTable(
         if (partner >= 0) {
           used.add(i);
           used.add(partner);
-          yd.doble.push(`${js[i].m1}×${js[i].m2}×${js[i].branch}×${js[partner].branch}`);
+          const combo = compactYeeDiam([js[i].m1, js[i].m2, js[i].branch, js[partner].branch]);
+          if (combo) yd.doble.push(combo);
         } else {
           used.add(i);
-          yd.simple.push(`${js[i].m1}×${js[i].m2}×${js[i].branch}`);
+          const combo = compactYeeDiam([js[i].m1, js[i].m2, js[i].branch]);
+          if (combo) yd.simple.push(combo);
         }
       }
     }
@@ -681,16 +723,19 @@ export function computeAccesoriosTable(
         );
         const v = Math.max(fromSrc, directCount[a.id] || 0);
         if (a.id === 'yeeSimple') {
-          // Nomenclatura Yee Simple: se muestra el diámetro de CADA brazo de la Y —
-          // Principal×Principal×Reducción (o Principal×Principal×Principal si la derivación
-          // es del mismo diámetro).
+          // Nomenclatura Yee Simple: brazos compactados (4"×4"×2" → 4"×2").
           if (yd.simple.length > 0) yd.simple.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
-          else if (v > 0) addAcc(`${mainDiamStr}×${mainDiamStr}×${mainDiamStr}`, a.id, v);
+          else if (v > 0) {
+            const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr]);
+            if (combo) addAcc(combo, a.id, v);
+          }
         } else if (a.id === 'yeeDoble') {
-          // Yee doble: dos derivaciones — Principal×Principal×Red×Red.
+          // Yee doble: dos derivaciones, brazos compactados.
           if (yd.doble.length > 0) yd.doble.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
-          else if (v > 0)
-            addAcc(`${mainDiamStr}×${mainDiamStr}×${mainDiamStr}×${mainDiamStr}`, a.id, v);
+          else if (v > 0) {
+            const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr, mainDiamStr]);
+            if (combo) addAcc(combo, a.id, v);
+          }
         } else if (a.id === 'codoReventilado') {
           // Item 7: un codo reventilado que une san con vent muestra el diámetro de ambos
           // ramales (san×vent), no solo el del ramal sanitario.
@@ -707,8 +752,9 @@ export function computeAccesoriosTable(
   });
 
   // 14. Bajante — ramal accessories (any net, not only sanitary)
-  // ponytail: simple (codo45 + Y simple) / double (2×codo45 + Y doble) + bushing per spec
+  // simple (codo 90° del bajante + Y simple) / double (2×codo45 + Y doble) + bushing per spec
   const bajanteBushing: Record<string, number> = {};
+  const bajanteAutoPts: Array<{ x: number; y: number }> = [];
   for (const b of bajanteDrawing as Array<{
     id: string;
     diametro: string;
@@ -742,14 +788,23 @@ export function computeAccesoriosTable(
     if (!bDiamStr || bDiamStr === '—') continue;
     const bPulg = diamPulgFromLabel(b.diametro);
     // Collect ramal diams for this bajante (same plan)
-    const ramalInfos: Array<{ id: string; diamStr: string; pulg: number }> = [];
+    const ramalInfos: Array<{
+      id: string;
+      diamStr: string;
+      pulg: number;
+      pts?: number[][];
+      accIni?: string;
+      accFin?: string;
+    }> = [];
     let missing = false;
     for (const rid of ids) {
       // Find ramal in drawingRamales/tribDrawing/ventRamales for same plan
       const allForPlan = [...drawingRamales, ...tribDrawing, ...ventRamales].filter(
         (r) => r.planId === b.planId,
       );
-      const found = allForPlan.find((r) => r.id === rid);
+      const found = allForPlan.find((r) => r.id === rid) as
+        | { diametro: string; pts: number[][]; accesorioInicio?: string; accesorioFin?: string }
+        | undefined;
       if (!found) {
         // Fallback: try pulgById for diam
         const p = pulgById[rid] || pulgById[`${rid}-${b.planId}`] || 0;
@@ -760,23 +815,35 @@ export function computeAccesoriosTable(
           break;
         }
       } else {
-        const p = diamPulgFromLabel(found.diametro) || pulgById[found.id] || 0;
+        const p = diamPulgFromLabel(found.diametro) || pulgById[rid] || 0;
         if (p <= 0) {
           missing = true;
           break;
         }
-        ramalInfos.push({ id: rid, diamStr: fmtPulg(p), pulg: p });
+        ramalInfos.push({
+          id: rid,
+          diamStr: fmtPulg(p),
+          pulg: p,
+          pts: found.pts,
+          accIni: found.accesorioInicio,
+          accFin: found.accesorioFin,
+        });
       }
     }
     if (missing || ramalInfos.length !== ids.length) continue;
+    // Punto del bajante procesado (para no duplicar bushing con la yee geométrica del mismo punto).
+    if (b.x != null && b.y != null) bajanteAutoPts.push({ x: b.x, y: b.y });
     const codo45Id = bNet === 'gas' ? 'codos_45' : 'codo45rc';
     const ySimpleId = 'yeeSimple';
     const yDobleId = 'yeeDoble';
     if (ramalInfos.length === 1) {
       const r = ramalInfos[0];
-      const diamCombo = `${r.diamStr} × ${bDiamStr}`;
-      addAcc(diamCombo, codo45Id, 1);
-      addAcc(diamCombo, ySimpleId, 1);
+      // Conexión ramal→bajante: yee simple (ramal×bajante, compactada) + codo 90° del
+      // diámetro del bajante. Si el ramal ya trae codo manual en el extremo que toca al
+      // bajante, ese cubre la pieza y no se auto-agrega otro.
+      const yCombo = compactYeeDiam([r.diamStr, bDiamStr]);
+      if (yCombo) addAcc(yCombo, ySimpleId, 1);
+      if (!ramalHasManualCodoAt(r, b.x, b.y)) addAcc(bDiamStr, 'codo90rm', 1);
       if (r.pulg !== bPulg) {
         const max = Math.max(r.pulg, bPulg);
         const min = Math.min(r.pulg, bPulg);
@@ -790,8 +857,8 @@ export function computeAccesoriosTable(
       if (Math.abs(r1.pulg - r2.pulg) > 0.01) {
         // lateral diam mismatch — skip Y double per spec (not allowed)
         // Still count codos but not Y
-        const diam1 = `${r1.diamStr} × ${bDiamStr}`;
-        const diam2 = `${r2.diamStr} × ${bDiamStr}`;
+        const diam1 = `${r1.diamStr}×${bDiamStr}`;
+        const diam2 = `${r2.diamStr}×${bDiamStr}`;
         addAcc(diam1, codo45Id, 1);
         addAcc(diam2, codo45Id, 1);
         // No Y double, no bushing? Could still have bushing per ramal? Spec says for double, bushing only if main vs lateral differ, not per ramal
@@ -799,17 +866,45 @@ export function computeAccesoriosTable(
       }
       const lateralStr = r1.diamStr; // same as r2
       const lateralPulg = r1.pulg;
-      const diam1 = `${r1.diamStr} × ${bDiamStr}`;
-      const diam2 = `${r2.diamStr} × ${bDiamStr}`;
+      const diam1 = `${r1.diamStr}×${bDiamStr}`;
+      const diam2 = `${r2.diamStr}×${bDiamStr}`;
       addAcc(diam1, codo45Id, 1);
       addAcc(diam2, codo45Id, 1);
-      const yDobleDiam = `${lateralStr} × ${lateralStr} × ${bDiamStr}`;
-      addAcc(yDobleDiam, yDobleId, 1);
+      const yDobleDiam = compactYeeDiam([lateralStr, lateralStr, bDiamStr]);
+      if (yDobleDiam) addAcc(yDobleDiam, yDobleId, 1);
       if (Math.abs(lateralPulg - bPulg) > 0.01) {
         const max = Math.max(lateralPulg, bPulg);
         const min = Math.min(lateralPulg, bPulg);
         const bk = `${max}_${min}`;
         bajanteBushing[bk] = (bajanteBushing[bk] || 0) + 1;
+      }
+    }
+  }
+
+  // Bushing en brazos de yee con diámetros diferentes (san): por unión, un bushing por cada
+  // par único (mayor,menor) entre sus brazos. Las uniones pegadas a un bajante ya procesado
+  // arriba se saltan (el bloque bajante ya contó sus reducciones) para no duplicar.
+  if (net === 'san') {
+    const addYeeBushing = (arms: number[]) => {
+      const uniq = [...new Set(arms.filter((p) => p > 0))];
+      const seen = new Set<string>();
+      for (let i = 0; i < uniq.length; i++) {
+        for (let j = i + 1; j < uniq.length; j++) {
+          if (uniq[i] === uniq[j]) continue;
+          const k = `${Math.max(uniq[i], uniq[j])}_${Math.min(uniq[i], uniq[j])}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          bajanteBushing[k] = (bajanteBushing[k] || 0) + 1;
+        }
+      }
+    };
+    for (const j of yeeJunctions) {
+      if (bajanteAutoPts.some((p) => Math.hypot(j.x - p.x, j.y - p.y) < 1.0)) continue;
+      addYeeBushing([j.m1, j.m2, j.branch].map((d) => diamPulgFromLabel(d || '')));
+    }
+    for (const combos of Object.values(ventYeeCombos)) {
+      for (const combo of combos) {
+        addYeeBushing(combo.split('×').map((d) => diamPulgFromLabel(d)));
       }
     }
   }

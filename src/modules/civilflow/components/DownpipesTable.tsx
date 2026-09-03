@@ -1,4 +1,4 @@
-import { memo, useMemo, useCallback, useState } from 'react';
+import { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
@@ -13,6 +13,8 @@ import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
+import { buildSanConnectivity } from '../utils/sanitaryRows';
+import { APARATOS_DEF, SAN_UC_IDS } from '../constants';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 
 interface RamalWithDiam extends RawElement {
@@ -91,7 +93,13 @@ function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacio
   const DpropMm = Dprop ? Dprop.mm : 0;
 
   const chequeoDiam =
-    DcalcPulg > 0 && DpropPulg > 0 ? (DcalcPulg <= DpropPulg ? 'Ok' : 'No cumple') : '—';
+    bajDprop > 0
+      ? DcalcPulg > 0 && DpropPulg > 0
+        ? DcalcPulg <= DpropPulg
+          ? 'Ok'
+          : 'No cumple'
+        : 'No cumple'
+      : 'No cumple';
 
   const QmaxBajante = DpropPulg > 0 ? 1.754 * Math.pow(r, 5 / 3) * Math.pow(DpropPulg, 8 / 3) : 0;
   const Vt =
@@ -162,10 +170,18 @@ const DownpipesTable_S1: React.CSSProperties = {
 
 const BajantesTable = memo(function BajantesTable_() {
   const [edit, setEdit] = useState(false);
-  const { tramosSan } = useTramos();
-  const { udBase } = useApparatus();
+  const { tramosSan, updTramoSan } = useTramos();
+  const { aps, udBase } = useApparatus();
   const { pisos } = usePisos();
   const { plans } = usePlans();
+
+  // ponytail: tick forces storageByPlan refresh after writeBajantePropToDrawing sync event
+  const [syncTick, setSyncTick] = useState(0);
+  useEffect(() => {
+    const h = () => setSyncTick((v) => v + 1);
+    window.addEventListener('civilflow_san_sync_changed', h);
+    return () => window.removeEventListener('civilflow_san_sync_changed', h);
+  }, []);
 
   const storageByPlan = useMemo(() => {
     const cache: Record<string, DrawingData> = {};
@@ -184,69 +200,45 @@ const BajantesTable = memo(function BajantesTable_() {
       }
     }
     return cache;
-  }, [plans]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, syncTick]);
 
-  const [conexiones, ventToSanMap, ventRamalDiamMap, components] = useMemo(
+  // Keep buildBajanteGraph only for vent mapping + components (UD now from sanitaryRows)
+  const [, ventToSanMap, ventRamalDiamMap, components] = useMemo(
     () => buildBajanteGraph(plans, tramosSan, udBase),
     [plans, tramosSan, udBase],
   );
 
-  const getDescendantsUD = useCallback(
-    (tKey: string, visited = new Set<string>()): number => {
-      if (visited.has(tKey)) return 0;
-      visited.add(tKey);
-      const children = conexiones[tKey] || [];
-      let sum = 0;
-      for (const childKey of children) {
-        const childTramo = tramosSan.find((x) => x._key === childKey);
-        if (childTramo) {
-          sum += calcUDparcial(childTramo, udBase) + getDescendantsUD(childKey, visited);
-        }
-      }
-      return sum;
-    },
-    [conexiones, tramosSan, udBase],
+  // #5: Unidades de descarga from drawing same source as SanitaryDesign (componentTotalMap)
+  const mergedBase = useMemo(() => {
+    const defMap = new Map(APARATOS_DEF.map((d) => [d.id, d]));
+    return SAN_UC_IDS.map((id) => {
+      const fromAps = aps.find((p) => p.id === id);
+      const def = defMap.get(id);
+      return { id, nombre: def?.nombre || id, ud: fromAps?.ud ?? def?.ud ?? 0 };
+    });
+  }, [aps]);
+
+  const { componentTotalMap } = useMemo(
+    () => buildSanConnectivity(tramosSan, plans, mergedBase),
+    [plans, tramosSan, mergedBase],
   );
 
   const getBajanteTotalUD = useCallback(
-    (bKey: string, visited = new Set<string>()): number => {
-      if (visited.has(bKey)) return 0;
-      visited.add(bKey);
-
-      const parts = bKey.split('-');
-      const bId = parts[0];
-      const planId = parts[1];
-
-      const planData = storageByPlan[planId];
-      const bObj = planData?.bajantes?.find((b) => b.id === bId);
-
+    (bKey: string): number => {
+      if (!bKey) return 0;
+      // primary key is _key (id-planId). Fallback to id-planId split variants
+      if (componentTotalMap[bKey] !== undefined) return componentTotalMap[bKey];
+      // try alternate planId resolution via tramosSan
       const tr = tramosSan.find((x) => x._key === bKey);
-      const propiasUD = tr ? calcUDparcial(tr, udBase) : 0;
-
-      let sum = propiasUD + getDescendantsUD(bKey);
-
-      // Buscar otras bajantes que descargan en esta bajante
-      for (const otherB of tramosSan) {
-        if (!otherB.esBajante || otherB._key === bKey) continue;
-
-        if (otherB.descargaEnId) {
-          const oParts = otherB.descargaEnId.split('|');
-          const oPlanId = oParts[0];
-          const oTgtId = oParts[1];
-
-          // Coincidir ya sea por ID exacto o por código/etiqueta personalizado
-          const matches =
-            String(oPlanId) === String(planId) &&
-            (oTgtId === bId || (bObj && bObj.code && oTgtId === bObj.code));
-          if (matches) {
-            sum += getBajanteTotalUD(otherB._key || `${otherB.id}-${otherB.planId}`, visited);
-          }
-        }
+      if (tr?.planId) {
+        const alt = `${tr.id}-${tr.planId}`;
+        if (componentTotalMap[alt] !== undefined) return componentTotalMap[alt];
       }
-
-      return sum;
+      // last fallback: sum propias if no connectivity entry
+      return componentTotalMap[bKey] ?? 0;
     },
-    [storageByPlan, tramosSan, udBase, getDescendantsUD],
+    [componentTotalMap, tramosSan],
   );
 
   return (
@@ -569,7 +561,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   const rStr =
                     rVal != null ? (Math.abs(rVal - 7 / 24) < 0.001 ? '7/24' : '1/4') : null;
 
-                  const propiasUD = calcUDparcial(t, udBase);
+                  const propiasUD = calcUDparcial(t, mergedBase);
                   const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
 
                   let targetPiso = '';
@@ -868,13 +860,21 @@ const BajantesTable = memo(function BajantesTable_() {
                             const matched = DIAM_BAN.find((d) => d.pulg === val);
                             let nom = matched ? matched.nom : '';
                             if (val > 0 && maxSanRamalDiamPulg > 0 && val < maxSanRamalDiamPulg) {
-                              alert(
-                                `El diámetro del bajante no puede ser inferior al del ramal sanitario (${maxSanRamalDiamPulg}")`,
+                              window.dispatchEvent(
+                                new CustomEvent('civilflow_diametro_validation', {
+                                  detail: {
+                                    title: 'Diámetro no permitido',
+                                    message: `El diámetro del bajante no puede ser inferior al del ramal sanitario (${maxSanRamalDiamPulg}")`,
+                                  },
+                                }),
                               );
                               nom = '';
                             }
+                            if (!nom && val > 0) return;
                             const targetKey = sanBajKey || tKey;
                             writeBajantePropToDrawing(targetKey, 'san', 'dNominal', nom, plans);
+                            // #6: immediate local state for real-time chequeo
+                            updTramoSan(targetKey, 'bajDprop', nom ? val : 0);
                           }}
                           style={{
                             fontSize: 9,
@@ -955,49 +955,53 @@ const BajantesTable = memo(function BajantesTable_() {
                             const raw = e.target.value.replace(/,/g, '.');
                             // Permitir vacío y solo números + punto
                             if (raw === '') {
-                              const tKey = t._key || `${t.id}-${t.piso}`;
+                              const tk = t._key || `${t.id}-${t.piso}`;
                               writeBajantePropToDrawing(
-                                tKey,
+                                tk,
                                 t._net || t.net || 'san',
                                 'bajLong',
                                 '',
                                 plans,
                               );
+                              updTramoSan(tk, 'bajLong', '');
                               return;
                             }
                             if (!/^[0-9]*\.?[0-9]*$/.test(raw)) return;
-                            const tKey = t._key || `${t.id}-${t.piso}`;
+                            const tk = t._key || `${t.id}-${t.piso}`;
                             // Guardar como string para permitir "5." intermedio, convertir a número en blur
                             writeBajantePropToDrawing(
-                              tKey,
+                              tk,
                               t._net || t.net || 'san',
                               'bajLong',
                               raw,
                               plans,
                             );
+                            updTramoSan(tk, 'bajLong', raw as unknown as number);
                           }}
                           onBlur={(e) => {
                             const raw = e.target.value.replace(/,/g, '.').trim();
-                            const tKey = t._key || `${t.id}-${t.piso}`;
+                            const tk = t._key || `${t.id}-${t.piso}`;
                             if (raw === '') {
                               writeBajantePropToDrawing(
-                                tKey,
+                                tk,
                                 t._net || t.net || 'san',
                                 'bajLong',
                                 '',
                                 plans,
                               );
+                              updTramoSan(tk, 'bajLong', '');
                               return;
                             }
                             const val = parseFloat(raw);
                             if (!isNaN(val)) {
                               writeBajantePropToDrawing(
-                                tKey,
+                                tk,
                                 t._net || t.net || 'san',
                                 'bajLong',
                                 val,
                                 plans,
                               );
+                              updTramoSan(tk, 'bajLong', val);
                             }
                           }}
                         />
@@ -1022,17 +1026,25 @@ const BajantesTable = memo(function BajantesTable_() {
                             const matched = DIAM_VENT.find((d) => d.pulg === val);
                             let nom = matched ? matched.nom : '';
                             if (val > 0 && ventRamalDiamPulg > 0 && val < ventRamalDiamPulg) {
-                              alert(
-                                `El diámetro de la ventilación no puede ser inferior al del ramal de ventilación (${ventRamalDiamPulg}")`,
+                              window.dispatchEvent(
+                                new CustomEvent('civilflow_diametro_validation', {
+                                  detail: {
+                                    title: 'Diámetro no permitido',
+                                    message: `El diámetro de la ventilación no puede ser inferior al del ramal de ventilación (${ventRamalDiamPulg}")`,
+                                  },
+                                }),
                               );
                               nom = '';
                             }
+                            if (!nom && val > 0) return;
                             if (ventBajKey) {
                               // Item 1: cambiar el "D vent propuesto" debe actualizar
                               // TODOS los bajantes de ventilación conectados al mismo
                               // bajante sanitario (no solo uno).
                               for (const vk of ventBajKeys.length ? ventBajKeys : [ventBajKey]) {
                                 writeBajantePropToDrawing(vk, 'vent', 'dNominal', nom, plans);
+                                // #6: immediate local state for real-time chequeo
+                                updTramoSan(vk, 'bajDprop', nom ? val : 0);
                               }
                             } else if (t.ventRamalKey) {
                               const res = writeDiametroToDrawing(
@@ -1060,6 +1072,8 @@ const BajantesTable = memo(function BajantesTable_() {
                               nom ? val : 0,
                               plans,
                             );
+                            // #6: immediate local state for vent chequeo
+                            updTramoSan(tKey, 'ventDprop', nom ? val : 0);
                           }}
                           style={{
                             fontSize: 9,
@@ -1111,8 +1125,8 @@ const BajantesTable = memo(function BajantesTable_() {
                           minWidth: 60,
                         }}
                       >
-                        {DventPropPulg > 0
-                          ? DventCalcPulg > 0
+                        {resolvedVentDprop > 0
+                          ? DventCalcPulg > 0 && DventPropPulg > 0
                             ? renderStatus(DventCalcPulg <= DventPropPulg ? 'Ok' : 'No cumple')
                             : renderStatus('No cumple')
                           : renderStatus('No cumple')}
