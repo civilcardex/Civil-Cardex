@@ -51,6 +51,7 @@ export function defaultState(): CivilManagerState {
       unidades_transporte: TRANSP_UNIDADES.slice(),
       perfiles_pais: perfilesPaisDefault(),
       tipos_unidad: [],
+      mapeos_formulario: [],
     },
     config: {
       pais: 'CO',
@@ -78,6 +79,18 @@ export function migrateState(
 ): CivilManagerState {
   const base = defaultState();
   if (!raw) return base;
+  // Los presupuestos guardados antes de los snapshots completos llegan sin las claves nuevas:
+  // se rellenan con sus valores vacíos para que el resto del código pueda confiar en ellas.
+  const presupuestos = Array.isArray(raw.presupuestos)
+    ? raw.presupuestos.map((p) => ({
+        ...p,
+        insumos_snap: p.insumos_snap ?? [],
+        equipos_snap: p.equipos_snap ?? [],
+        cuadrillas_snap: p.cuadrillas_snap ?? [],
+        perfil_pais_snap: p.perfil_pais_snap ?? null,
+        formulario_original: p.formulario_original ?? null,
+      }))
+    : base.presupuestos;
   return {
     ...base,
     ...raw,
@@ -90,6 +103,7 @@ export function migrateState(
       : base.factoresPrestaciones,
     cargos: Array.isArray(raw.cargos) ? raw.cargos : base.cargos,
     categorias_apu: Array.isArray(raw.categorias_apu) ? raw.categorias_apu : base.categorias_apu,
+    presupuestos,
     config_listas: { ...base.config_listas, ...(raw.config_listas || {}) },
     config: {
       ...base.config,

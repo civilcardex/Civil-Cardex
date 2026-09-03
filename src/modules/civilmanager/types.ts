@@ -131,6 +131,40 @@ export interface ApuCalculado {
   costo_unitario: number;
 }
 
+/**
+ * Columnas del formulario Excel del cliente: qué columna de la hoja corresponde a cada dato.
+ * Los valores son índices de columna (0 = primera) o null si esa columna no se usó.
+ */
+export interface MapeoFormulario {
+  fila_inicio: number;
+  col_item: number | null;
+  col_codigo_1: number | null;
+  col_codigo_2: number | null;
+  col_codigo_apu: number | null;
+  col_descripcion: number | null;
+  col_unidad: number | null;
+  col_cantidad: number | null;
+  col_vr_unitario: number | null;
+  nombre_mapeo: string;
+}
+
+/** Un mapeo de columnas guardado en la lista de favoritos, para reutilizarlo en otros formularios. */
+export type MapeoFormularioGuardado = MapeoFormulario & { id: string };
+
+/**
+ * Copia del formulario Excel original del cliente, guardada dentro del presupuesto.
+ * Si el archivo pesa más de 4 MB no se adjunta (archivo_b64 queda null) y solo se guarda su mapeo.
+ */
+export interface FormularioOriginal {
+  archivo_b64: string | null;
+  archivo_adjunto: boolean;
+  nombre_archivo: string;
+  fecha_importacion: string;
+  total_filas: number;
+  fila_inicio: number;
+  mapeo: MapeoFormulario;
+}
+
 export interface PresupuestoItem {
   id: string;
   num_item: string;
@@ -143,6 +177,16 @@ export interface PresupuestoItem {
   alerta_sin_apu: boolean;
   es_capitulo: boolean;
   es_capitulo_manual: boolean | null;
+  /** Datos adicionales que llegan del formulario Excel del cliente (opcional). */
+  fila_original?: number;
+  codigo_1?: string;
+  codigo_2?: string;
+  codigo_apu?: string;
+  /** De dónde sale el precio del ítem: de un APU propio o del precio que puso la entidad. */
+  tipoPrecio?: 'apu' | 'entidad';
+  precioEntidad?: number | null;
+  /** Marca que el precio de este ítem fue editado a mano dentro del proyecto. */
+  _editado_local?: boolean;
 }
 
 export interface AiuOverride {
@@ -151,6 +195,8 @@ export interface AiuOverride {
   pct_i: number;
   pct_u: number;
   iva_pct: number;
+  vr_resumido?: boolean;
+  usar_en_cada_apu?: boolean;
 }
 
 export type EstadoPresupuesto = 'borrador' | 'en_revision' | 'cerrado';
@@ -178,6 +224,16 @@ export interface Presupuesto {
   factores_snap: FactorPrestacional[];
   cargos_snap: Cargo[];
   apus_snap: Apu[];
+  /** Copias de los catálogos tomadas al crear el presupuesto: el proyecto calcula con estas, no con el catálogo global. */
+  insumos_snap: Insumo[];
+  equipos_snap: Equipo[];
+  cuadrillas_snap: Cuadrilla[];
+  perfil_pais_snap: PerfilPais | null;
+  formulario_original: FormularioOriginal | null;
+  /** Cómo se precian los ítems importados del formulario: con APU o con el precio de la entidad. */
+  tipoPrecioFormulario?: 'apu' | 'entidad';
+  /** Números de ítems que quedaron sin precio cuando el formulario es de tipo "entidad". */
+  alarmasPrecioFaltante?: string[] | null;
 }
 
 export interface ListaItem {
@@ -214,6 +270,8 @@ export interface ConfigListas {
   unidades_transporte: ListaItem[];
   perfiles_pais: PerfilPais[];
   tipos_unidad: string[];
+  /** Mapeos de columnas de formularios guardados por el usuario para reutilizarlos. */
+  mapeos_formulario: MapeoFormularioGuardado[];
 }
 
 export interface ComentariosApu {

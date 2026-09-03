@@ -51,6 +51,12 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
       factores_snap: state.factoresPrestaciones,
       cargos_snap: state.cargos,
       apus_snap: state.apus,
+      insumos_snap: state.insumos,
+      equipos_snap: state.equipos,
+      cuadrillas_snap: state.cuadrillas,
+      perfil_pais_snap:
+        state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ?? null,
+      formulario_original: null,
     };
     patch({ presupuestos: [...state.presupuestos, nuevo] });
     onSelect(nuevo.id);
