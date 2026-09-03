@@ -6,7 +6,11 @@ import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from '../constants';
 import { caudalHunterLPS, factorSimultaneidad } from '../utils/calcSanitaryCore';
-import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
+import {
+  writeDiametroToDrawing,
+  writePendienteToDrawing,
+  writeNSalidasToDrawing,
+} from '../utils/writeDiameterToDrawing';
 import {
   INODORO_APP_ID,
   sanDiamAllowedForApparatus,
@@ -49,9 +53,32 @@ const TH_SUB = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const
 export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
   const [editingPend, setEditingPend] = useState<Record<string, string>>({});
+  const [editingNSalidas, setEditingNSalidas] = useState<Record<string, string>>({});
   const { tramosSan, updTramoSan } = useTramos();
   const { aps } = useApparatus();
   const { plans } = usePlans();
+
+  const mergedBase = useMemo(() => {
+    const defMap = new Map(APARATOS_DEF.map((d) => [d.id, d]));
+    return SAN_UC_IDS.map((id) => {
+      const fromAps = aps.find((p) => p.id === id);
+      const def = defMap.get(id);
+      return { id, nombre: def?.nombre || id, ud: fromAps?.ud ?? def?.ud ?? 0 };
+    });
+  }, [aps]);
+
+  const displayTramos = useMemo(() => {
+    return tramosSan.filter((t) => t.tipo === 'ramal' && !t.esBajante);
+  }, [tramosSan]);
+
+  const {
+    displayMap: conexionesDisplay,
+    componentTotalMap,
+    fullChildrenMap,
+  } = useMemo(
+    () => buildSanConnectivity(tramosSan, plans, mergedBase),
+    [plans, tramosSan, mergedBase],
+  );
 
   const handleDiamChange = useCallback(
     (tramoId: string, newPulg: number) => {
@@ -94,27 +121,50 @@ export default function DisenosSanitarios() {
           return;
         }
         updTramoSan(tramoId, 'diamDisPulg', newPulg);
+
+        // ponytail: propagate larger diameter downstream (same maxDiametroLabel logic as drawing).
+        // fullChildrenMap is parent(downstream) -> children(upstream); reverse to find downstream parents of a node.
+        // BFS over reverse graph handles multiple levels and bajante hops.
+        if (newPulg > 0 && fullChildrenMap) {
+          const reverse: Record<string, string[]> = {};
+          for (const [parent, children] of Object.entries(fullChildrenMap)) {
+            for (const child of children) {
+              if (!reverse[child]) reverse[child] = [];
+              if (!reverse[child].includes(parent)) reverse[child].push(parent);
+            }
+          }
+          const visited = new Set<string>([tramoId]);
+          const queue: string[] = [...(reverse[tramoId] || [])];
+          const findTramo = (k: string) =>
+            tramosSan.find(
+              (t) => (t._key || `${t.id}-${t.piso}`) === k || `${t.id}-${t.planId}` === k,
+            );
+          while (queue.length > 0) {
+            const curKey = queue.shift()!;
+            if (visited.has(curKey)) continue;
+            visited.add(curKey);
+            const t = findTramo(curKey);
+            const isRamal = !!t && t.tipo === 'ramal' && !t.esBajante;
+            if (isRamal) {
+              const curPulg = t!.diamDisPulg || 0;
+              if (newPulg > curPulg) {
+                const dRes = writeDiametroToDrawing(curKey, 'san', opt.label, plans);
+                if (dRes.ok || dRes.reason !== 'accessory-larger') {
+                  updTramoSan(curKey, 'diamDisPulg', newPulg);
+                }
+                if (!dRes.ok && dRes.reason === 'accessory-larger') {
+                  continue;
+                }
+              }
+            }
+            for (const nxt of reverse[curKey] || []) {
+              if (!visited.has(nxt)) queue.push(nxt);
+            }
+          }
+        }
       }
     },
-    [updTramoSan, plans],
-  );
-
-  const mergedBase = useMemo(() => {
-    const defMap = new Map(APARATOS_DEF.map((d) => [d.id, d]));
-    return SAN_UC_IDS.map((id) => {
-      const fromAps = aps.find((p) => p.id === id);
-      const def = defMap.get(id);
-      return { id, nombre: def?.nombre || id, ud: fromAps?.ud ?? def?.ud ?? 0 };
-    });
-  }, [aps]);
-
-  const displayTramos = useMemo(() => {
-    return tramosSan.filter((t) => t.tipo === 'ramal' && !t.esBajante);
-  }, [tramosSan]);
-
-  const { displayMap: conexionesDisplay, componentTotalMap } = useMemo(
-    () => buildSanConnectivity(tramosSan, plans, mergedBase),
-    [plans, tramosSan, mergedBase],
+    [updTramoSan, plans, fullChildrenMap, tramosSan],
   );
 
   // ponytail: readable label (RS1, T1RS1...) for "Otros" badges — not raw tributario ids (T1780...)
@@ -176,8 +226,8 @@ export default function DisenosSanitarios() {
   );
 
   const sanRows = useMemo(
-    () => computeSanRows(displayTramos, componentTotalMap, mergedBase),
-    [displayTramos, componentTotalMap, mergedBase],
+    () => computeSanRows(displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap),
+    [displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap],
   );
 
   return (
@@ -223,7 +273,7 @@ export default function DisenosSanitarios() {
                     Unidades de descarga
                   </th>
                   <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
-                    No. Descargas
+                    descargas simultaneas
                   </th>
                   <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
                     K
@@ -454,11 +504,60 @@ export default function DisenosSanitarios() {
                           >
                             {udAcum}
                           </td>
-                          <td
-                            className="c"
-                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
-                          >
-                            {nSalidas > 0 ? nSalidas : '—'}
+                          <td className="c" style={{ padding: '1px 2px' }}>
+                            {edit ? (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={
+                                  editingNSalidas[tKey] !== undefined
+                                    ? editingNSalidas[tKey]
+                                    : nSalidas > 0
+                                      ? String(nSalidas)
+                                      : ''
+                                }
+                                placeholder="—"
+                                onFocus={() => {
+                                  if (editingNSalidas[tKey] === undefined && nSalidas > 0) {
+                                    setEditingNSalidas((prev) => ({
+                                      ...prev,
+                                      [tKey]: String(nSalidas),
+                                    }));
+                                  }
+                                }}
+                                onChange={(e) => {
+                                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                                  setEditingNSalidas((prev) => ({ ...prev, [tKey]: raw }));
+                                }}
+                                onBlur={(e) => {
+                                  const raw =
+                                    editingNSalidas[tKey] !== undefined
+                                      ? editingNSalidas[tKey]
+                                      : e.target.value;
+                                  const v = parseInt(String(raw), 10) || 1;
+                                  const clamped = Math.max(1, v);
+                                  setEditingNSalidas((prev) => {
+                                    const n = { ...prev };
+                                    delete n[tKey];
+                                    return n;
+                                  });
+                                  updTramoSan(tKey, 'nSalidas', clamped);
+                                  writeNSalidasToDrawing(tKey, 'san', clamped, plans);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                                }}
+                                style={{
+                                  ...SanitaryDesign_S1,
+                                  width: 52,
+                                  textAlign: 'center',
+                                }}
+                              />
+                            ) : nSalidas > 0 ? (
+                              <span style={{ fontFamily: 'var(--mono)' }}>{nSalidas}</span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td
                             className="c"

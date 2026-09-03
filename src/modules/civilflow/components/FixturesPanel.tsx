@@ -643,12 +643,14 @@ const AparatosPanel = memo(function AparatosPanel_({
         const accType = isSif ? 'sifon' : 'codo90rmSube';
         const updates: Record<string, unknown> = { [targetField]: accType };
         const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
-        // Para inodoro usar 4", para otros 2" como default del accesorio
-        const diamValRaw = isInodoro
-          ? '4"'
-          : live.diametro
-            ? matchDiamOption(diamListSan, live.diametro)
-            : '2"';
+        // sifón siempre 2" (fix bug 3"), inodoro 4", resto hereda o 2"
+        const diamValRaw = isSif
+          ? '2"'
+          : isInodoro
+            ? '4"'
+            : live.diametro
+              ? matchDiamOption(diamListSan, live.diametro)
+              : '2"';
         const diamVal = matchDiamOption(diamListSan, diamValRaw);
         if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
         eng.updateElementById(live.id, updates);

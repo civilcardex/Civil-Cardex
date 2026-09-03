@@ -437,6 +437,52 @@ export function writePendienteToDrawing(
   if (isSan) writeSanDrawingSync(plans);
 }
 
+export function writeNSalidasToDrawing(
+  ramalKey: string,
+  net: string,
+  newVal: number,
+  plans: SyncPlanInput[],
+): void {
+  if (!ramalKey || !net || !plans) return;
+  const isSan = SAN_FAMILIES.has(net);
+  const isHydro = HYDRO_FAMILIES.has(net);
+  const parts = ramalKey.split('-');
+  const ramalId = parts[0];
+  const planId = parts[1];
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    if (planId && String(plan.id) !== String(planId)) continue;
+    const key = TRAZOS_PREFIX + plan.id;
+    const raw = loadFromStorage<LocalDrawingData | null>(key, null);
+    if (!raw) continue;
+    const data = raw;
+    let changed = false;
+    for (const r of data.ramales || []) {
+      if (r.id === ramalId && r.net === net) {
+        (r as unknown as Record<string, unknown>).nSalidas = newVal;
+        changed = true;
+      }
+    }
+    // también actualizar hidroData nSalidas si existe
+    if (changed) {
+      data.ts = Date.now();
+      saveToStorage(key, data);
+      saveTrazosToDB(String(plan.id), data);
+      // sincronizar hidroData
+      const hKey = `${net}_${ramalId}_${plan.id}`;
+      const hidro = loadFromStorage<
+        Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+      >('tramo_hidro_data_v3', {});
+      if (hidro[hKey]) {
+        hidro[hKey].nSalidas = newVal;
+        saveToStorage('tramo_hidro_data_v3', hidro);
+      }
+    }
+  }
+  if (isSan) writeSanDrawingSync(plans);
+  if (isHydro) writeHydroDrawingSync(plans);
+}
+
 export function writeBajantePropToDrawing(
   bajanteKey: string,
   net: string,

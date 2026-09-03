@@ -50,6 +50,15 @@ function CalculoUD() {
       });
   }, [tramosSan]);
 
+  const tramosCount = useMemo(
+    () => displayTramos.filter((t) => !t.esBajante).length,
+    [displayTramos],
+  );
+  const bajantesCount = useMemo(
+    () => displayTramos.filter((t) => t.esBajante).length,
+    [displayTramos],
+  );
+
   const totales = useMemo(() => {
     return mergedBase.map((d) => ({
       id: d.id,
@@ -78,7 +87,9 @@ function CalculoUD() {
             />{' '}
             Cálculo de unidades de descarga
           </h3>
-          <span className="card-s">{displayTramos.length} tramos</span>
+          <span className="card-s">
+            {tramosCount} tramos / {bajantesCount} bajantes
+          </span>
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
