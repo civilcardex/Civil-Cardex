@@ -82,9 +82,10 @@ export function removeCrossFloorGhost(
 // referencie al bajante origen dado. Se llama cuando se borra un bajante — los fantasmas viejos
 // en otros pisos deben limpiarse.
 export function removeCrossFloorGhostsBySource(
-  sourcePlanId: string | number,
+  sourcePlanId: string | number | null,
   sourceBajanteId: string,
 ): void {
+  if (sourcePlanId == null) return;
   const sp = String(sourcePlanId);
   // saveToStorage prefija las claves de localStorage con 'civilflow_', así que TRAZOS_PREFIX
   // ('trazos_') se vuelve 'civilflow_trazos_' (== TRAZOS_PLAN_PREFIX) en el almacenamiento real.

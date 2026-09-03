@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { eraseRamalAt } from '../PlanoEngineDrawing';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
@@ -38,7 +38,7 @@ function makeEngine(ramales: PlanoRamal[]): {
   deleteCalls: string[];
 } {
   const deleteCalls: string[] = [];
-  const engine: Partial<IPlanoEngineCore> = {
+  const engine = {
     ramales,
     bajantes: [],
     dims: [],
