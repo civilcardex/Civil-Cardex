@@ -130,6 +130,7 @@ interface PdfViewerProps {
   pisos?: Piso[];
   planos?: PlanItem[];
   activeNetworks: Set<string>;
+  onReady?: () => void;
 }
 
 const mainContainerStyle: CSSProperties = {
@@ -170,6 +171,7 @@ function PdfViewer_({
   pisos = PdfViewer_EMPTY_PISOS,
   planos = [],
   activeNetworks,
+  onReady,
 }: PdfViewerProps) {
   const navigate = useNavigate();
   const { mats } = useProject();
@@ -891,6 +893,7 @@ function PdfViewer_({
     setScaleM,
     setLoading,
     setError,
+    onReady,
     scale,
     engineRef: engineRef as React.MutableRefObject<PlanoEngine | null>,
     loadingPlanRef,
@@ -1318,7 +1321,9 @@ function PdfViewer_({
       activeNet === 'gas'
         ? gasMatSel[activeNet] || ''
         : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
-    const d = activeNet === 'gas' ? diamSel[activeNet] || '' : diamSel[activeNet] || '';
+    // Fix issue #3: tributario no hereda diámetro 4" por defecto — solo inodoro lo requiere
+    const dRaw = activeNet === 'gas' ? diamSel[activeNet] || '' : diamSel[activeNet] || '';
+    const d = tipoTramo === 'tributario' ? '' : dRaw;
     const p = activeNet === 'san' || activeNet === 'll' ? DEFAULT_PENDIENTE_PCT : 0;
     eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
   }, [

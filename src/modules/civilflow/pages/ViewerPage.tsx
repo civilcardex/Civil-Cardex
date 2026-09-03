@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
@@ -12,6 +12,10 @@ import {
   VISOR_ACTIVE_PLAN_ID_KEY,
   VISOR_ACTIVE_INDEX_KEY,
 } from '../constants/storage-keys';
+
+// Module-level store for PDF ready state (useSyncExternalStore pattern).
+const pdfReadyStore = { ready: true, listeners: new Set<() => void>() };
+
 const ViewerPage_S1: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -97,7 +101,7 @@ const VIEWER_JSONLD = {
 };
 
 export default function ViewerPage() {
-  const { plans, addPlans, removePlan } = usePlans();
+  const { plans, addPlans, removePlan, restoreDone, cloudRestoreDone } = usePlans();
   const { pisos } = useProject();
   const [rawActiveIndex, setActiveIndex] = useState(() => {
     try {
@@ -229,8 +233,90 @@ export default function ViewerPage() {
     setDropdownOpen(false);
   }, []);
 
+  const hasFilesReady = files.length > 0 && files.every((f) => !!f.file);
+
+  // --- Loading overlay via useSyncExternalStore (avoids refs-in-render + setState-in-effect) ---
+  const isDrawingLoading = useSyncExternalStore(
+    (cb) => {
+      pdfReadyStore.listeners.add(cb);
+      return () => pdfReadyStore.listeners.delete(cb);
+    },
+    () => {
+      const ready = pdfReadyStore.ready;
+      if (plans.length > 0 && hasFilesReady && !ready) return true;
+      if (restoreDone && cloudRestoreDone && plans.length === 0) return false;
+      if (plans.length > 0 && hasFilesReady && ready) return false;
+      if (!plans.length) return false;
+      return true;
+    },
+  );
+  const handlePdfReady = useCallback(() => {
+    if (!pdfReadyStore.ready) {
+      pdfReadyStore.ready = true;
+      pdfReadyStore.listeners.forEach((l) => l());
+    }
+  }, []);
+  // Al cambiar de plano/archivo se vuelve a mostrar hasta el siguiente onReady.
+  useEffect(() => {
+    if (plans.length > 0 && hasFilesReady) {
+      pdfReadyStore.ready = false;
+      pdfReadyStore.listeners.forEach((l) => l());
+    }
+  }, [activeIndex, plans.length, hasFilesReady]);
+  // Fallback: si onReady nunca llega, no bloquear para siempre.
+  useEffect(() => {
+    if (plans.length > 0 && hasFilesReady) {
+      const t = setTimeout(() => {
+        pdfReadyStore.ready = true;
+        pdfReadyStore.listeners.forEach((l) => l());
+      }, 10000);
+      return () => clearTimeout(t);
+    }
+  }, [plans.length, hasFilesReady]);
+
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>
+      {isDrawingLoading && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: '#0a0e14',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            zIndex: 9999,
+            pointerEvents: 'auto',
+          }}
+        >
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              border: '3px solid #1e293b',
+              borderTopColor: '#00dce5',
+              borderRadius: '50%',
+              animation: 'spin 0.9s linear infinite',
+            }}
+          />
+          <div
+            style={{
+              fontFamily: 'Geist, monospace',
+              fontSize: 13,
+              color: '#e2e2e8',
+              letterSpacing: 1,
+            }}
+          >
+            Cargando planos y redes...
+          </div>
+          <div style={{ fontFamily: 'Geist, monospace', fontSize: 11, color: '#64748b' }}>
+            Preparando dibujo de redes
+          </div>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
       <input
         ref={fileRef}
         type="file"
@@ -403,7 +489,49 @@ export default function ViewerPage() {
           planos={plans}
           pisos={pisos}
           activeNetworks={activeNetworks}
+          onReady={handlePdfReady}
         />
+        {isDrawingLoading && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: '#0a0e14',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 16,
+              zIndex: 9999,
+              pointerEvents: 'auto',
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                border: '3px solid #1e293b',
+                borderTopColor: '#00dce5',
+                borderRadius: '50%',
+                animation: 'spin 0.9s linear infinite',
+              }}
+            />
+            <div
+              style={{
+                fontFamily: 'Geist, monospace',
+                fontSize: 13,
+                color: '#e2e2e8',
+                letterSpacing: 1,
+              }}
+            >
+              Cargando planos y redes...
+            </div>
+            <div style={{ fontFamily: 'Geist, monospace', fontSize: 11, color: '#64748b' }}>
+              Preparando dibujo de redes
+            </div>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </div>
+        )}
       </main>
     </div>
   );

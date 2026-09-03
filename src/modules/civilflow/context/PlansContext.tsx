@@ -47,6 +47,10 @@ interface PlansContextValue {
   confirmPlan: (id: number) => void;
   resetPlans: () => void;
   restorePlans: (items: PlanItem[]) => void;
+  /** Restauración local desde IndexedDB terminada — distingue "aún cargando" de "vacío real". */
+  restoreDone: boolean;
+  /** Restauración desde la nube terminada — hasta entonces un `plans` vacío puede ser transitorio. */
+  cloudRestoreDone: boolean;
   /** Suspende el efecto de guardado en la nube con debounce. Ver ProjectContext.pauseCloudSync
    * — aplica el mismo razonamiento: quien resetea `plans` y luego lo restaura de forma
    * asíncrona desde Supabase debe pausar primero o la lista vacía del reset se guarda
@@ -111,21 +115,23 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
         return;
       }
 
+      // ponytail: sanitize decimal ids — parallel IndexedDB reads via Promise.all, then eager parallel load for first paint
       let metaChanged = false;
-      const sanitizedMeta: PlanMeta[] = [];
-      const files: (File | null)[] = [];
+      const sanitizedMeta: PlanMeta[] = [...meta];
+      const files: (File | null)[] = new Array(meta.length).fill(null);
 
-      for (const m of meta) {
-        const isDecimal = !Number.isInteger(m.id);
-        if (isDecimal) {
-          const cleanId = Math.floor(m.id);
-          const file = await loadPDF(m.id);
+      const decimalEntries = meta
+        .map((m, i) => ({ m, i }))
+        .filter(({ m }) => !Number.isInteger(m.id));
+      if (decimalEntries.length > 0) {
+        const decimalFiles = await Promise.all(decimalEntries.map(({ m }) => loadPDF(m.id)));
+        for (let k = 0; k < decimalEntries.length; k++) {
+          const { m, i } = decimalEntries[k];
+          const file = decimalFiles[k];
           if (file) {
-            // Guarda el PDF bajo el ID entero limpio en IndexedDB para que el resto del flujo lo encuentre con el ID ya saneado.
+            const cleanId = Math.floor(m.id);
             await storePDF(cleanId, file);
             await deletePDF(m.id);
-
-            // Renombra la clave de trazos en localStorage si existe, para que los trazos sigan al plan con el ID corregido y no queden huérfanos con el ID decimal.
             const oldTrazosKey = `trazos_${m.id}`;
             const newTrazosKey = `trazos_${cleanId}`;
             const oldTrazos = loadFromStorage(oldTrazosKey, null);
@@ -133,21 +139,27 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
               saveToStorage(newTrazosKey, oldTrazos);
               removeFromStorage(oldTrazosKey);
             }
-
-            sanitizedMeta.push({ ...m, id: cleanId });
-            files.push(file);
+            sanitizedMeta[i] = { ...m, id: cleanId };
+            files[i] = file;
             metaChanged = true;
           }
-        } else {
-          sanitizedMeta.push(m);
-          files.push(null);
         }
       }
-      // Carga silenciosa (perf): los PDFs se cargan desde IndexedDB EN PARALELO (no secuencial)
-      // y en background — el visor abre con la metadata de todos los planos al instante y cada
-      // PDF se resuelve conforme llega, sin bloquear el montaje (carga lazy por piso).
       if (metaChanged) {
-        persistMeta(sanitizedMeta.map(({ id, ...r }) => ({ id, ...r })));
+        persistMeta(sanitizedMeta);
+      }
+
+      // ponytail: eager parallel load for first paint — was sequential for-loop, now Promise.all
+      const pendingIndices = sanitizedMeta
+        .map((_, i) => (files[i] ? -1 : i))
+        .filter((i) => i !== -1);
+      if (pendingIndices.length > 0) {
+        const loaded = await Promise.all(
+          pendingIndices.map((i) => loadPDF(Number(sanitizedMeta[i].id))),
+        );
+        loaded.forEach((file, idx) => {
+          if (file) files[pendingIndices[idx]] = file;
+        });
       }
 
       const restored: PlanItem[] = [];
@@ -391,6 +403,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       restorePlans,
       pauseCloudSync,
       resumeCloudSync,
+      restoreDone,
+      cloudRestoreDone,
     }),
     [
       plans,
@@ -403,6 +417,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       restorePlans,
       pauseCloudSync,
       resumeCloudSync,
+      restoreDone,
+      cloudRestoreDone,
     ],
   );
 

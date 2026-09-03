@@ -34,6 +34,7 @@ interface UsePdfViewerEngineParams {
   setScaleM: (sm: string) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
+  onReady?: () => void;
   scale: number;
   engineRef?: React.MutableRefObject<PlanoEngine | null>;
   loadingPlanRef?: React.MutableRefObject<boolean>;
@@ -60,6 +61,7 @@ export function usePdfViewerEngine({
   setScaleM,
   setLoading,
   setError,
+  onReady,
   scale,
   engineRef: externalEngineRef,
   loadingPlanRef: externalLoadingPlanRef,
@@ -87,6 +89,7 @@ export function usePdfViewerEngine({
     onAlert,
     onAccesorioModal,
     setActiveNet,
+    onReady,
   });
 
   useEffect(() => {
@@ -104,8 +107,10 @@ export function usePdfViewerEngine({
       onAlert,
       onAccesorioModal,
       setActiveNet,
+      onReady,
     };
   }, [
+    onReady,
     onStatus,
     onDirty,
     onSelect,
@@ -200,6 +205,11 @@ export function usePdfViewerEngine({
               }
             }
             pdfRenderedRef.current = true;
+            try {
+              callbacksRef.current.onReady?.();
+            } catch {
+              /* ignorar */
+            }
           }
         }
       } catch (err) {

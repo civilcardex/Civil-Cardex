@@ -200,58 +200,60 @@ function PdfCanvas({
       </div>
 
       {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
-      {(!currentFile || selectedNivel === null || selectedNivel === undefined) && !error && (
-        <div style={PdfCanvas_S2}>
-          <div style={PdfCanvas_S3}>
-            <div
-              style={{
-                fontSize: 56,
-                lineHeight: 1,
-                filter: 'drop-shadow(0 0 12px rgba(77,143,247,0.4))',
-              }}
-            >
-              📐
+      {(!currentFile || selectedNivel === null || selectedNivel === undefined) &&
+        !error &&
+        !loading && (
+          <div style={PdfCanvas_S2}>
+            <div style={PdfCanvas_S3}>
+              <div
+                style={{
+                  fontSize: 56,
+                  lineHeight: 1,
+                  filter: 'drop-shadow(0 0 12px rgba(77,143,247,0.4))',
+                }}
+              >
+                📐
+              </div>
+              <div
+                style={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: '#4D8FF7',
+                  fontFamily: "'Geist',monospace",
+                  letterSpacing: 0.5,
+                  textAlign: 'center',
+                }}
+              >
+                Selecciona un piso con plano asociado
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#e2e2e8',
+                  fontFamily: "'Geist',monospace",
+                  textAlign: 'center',
+                  lineHeight: 1.5,
+                  maxWidth: 360,
+                }}
+              >
+                Para empezar a dibujar, selecciona un{' '}
+                <strong style={{ color: '#00dce5' }}>piso</strong> que tenga un plano confirmado en
+                el panel derecho, o carga un plano desde la pestaña{' '}
+                <strong style={{ color: '#00dce5' }}>"Carga de planos"</strong>.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem('openTab', 'planos');
+                  navigate('/civilflowareatrabajo');
+                }}
+                style={PdfCanvas_S4}
+              >
+                📐 Ir a Carga de planos
+              </button>
             </div>
-            <div
-              style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: '#4D8FF7',
-                fontFamily: "'Geist',monospace",
-                letterSpacing: 0.5,
-                textAlign: 'center',
-              }}
-            >
-              Selecciona un piso con plano asociado
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#e2e2e8',
-                fontFamily: "'Geist',monospace",
-                textAlign: 'center',
-                lineHeight: 1.5,
-                maxWidth: 360,
-              }}
-            >
-              Para empezar a dibujar, selecciona un{' '}
-              <strong style={{ color: '#00dce5' }}>piso</strong> que tenga un plano confirmado en el
-              panel derecho, o carga un plano desde la pestaña{' '}
-              <strong style={{ color: '#00dce5' }}>"Carga de planos"</strong>.
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                sessionStorage.setItem('openTab', 'planos');
-                navigate('/civilflowareatrabajo');
-              }}
-              style={PdfCanvas_S4}
-            >
-              📐 Ir a Carga de planos
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {currentFile && error && (
         <div style={PdfCanvas_S5}>
@@ -267,6 +269,7 @@ function PdfCanvas({
 
       {currentFile &&
         !error &&
+        !loading &&
         selectedNivel !== null &&
         selectedNivel !== undefined &&
         !planos.some((p) => p.nivel === selectedNivel && p.status === 'confirmed') && (

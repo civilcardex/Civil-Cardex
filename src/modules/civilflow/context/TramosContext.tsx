@@ -47,11 +47,12 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
       const { sanIncoming, llIncoming } = loadSanLlTramos();
 
       const prevSan = stateRef.current.tramosSan;
+      const prevSanMap = new Map(prevSan.map((t) => [t._key, t]));
       const newSan =
         sanIncoming.length === 0
           ? []
           : sanIncoming.map((i) => {
-              const existing = prevSan.find((t) => t._key === i._key);
+              const existing = prevSanMap.get(i._key);
               return existing
                 ? {
                     ...i,
@@ -63,11 +64,12 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
       dispatch({ type: 'SET_TRAMOS', net: 'san', payload: newSan });
 
       const prevLl = stateRef.current.tramosLl;
+      const prevLlMap = new Map(prevLl.map((t) => [t._key, t]));
       const newLl =
         llIncoming.length === 0
           ? []
           : llIncoming.map((i) => {
-              const ex = prevLl.find((t) => t._key === i._key);
+              const ex = prevLlMap.get(i._key);
               return ex
                 ? {
                     ...i,
@@ -84,7 +86,8 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
     load();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const handler = () => {
-      timeoutId = setTimeout(load, 0);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      timeoutId = setTimeout(load, 100);
     };
     window.addEventListener('civilflow_san_sync_changed', handler);
     window.addEventListener('storage', handler);
@@ -100,11 +103,12 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
       const { afIncoming, acIncoming } = loadAfAcTramos();
 
       const prevAf = stateRef.current.tramosAf;
+      const prevAfMap = new Map(prevAf.map((t) => [t._key, t]));
       const newAf =
         afIncoming.length === 0
           ? []
           : afIncoming.map((i) => {
-              const ex = prevAf.find((t) => t._key === i._key);
+              const ex = prevAfMap.get(i._key);
               return ex
                 ? { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' }
                 : i;
@@ -112,11 +116,12 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
       dispatch({ type: 'SET_TRAMOS', net: 'af', payload: newAf });
 
       const prevAc = stateRef.current.tramosAc;
+      const prevAcMap = new Map(prevAc.map((t) => [t._key, t]));
       const newAc =
         acIncoming.length === 0
           ? []
           : acIncoming.map((i) => {
-              const ex = prevAc.find((t) => t._key === i._key);
+              const ex = prevAcMap.get(i._key);
               return ex
                 ? { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' }
                 : i;
@@ -126,7 +131,8 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
     load();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const handler = () => {
-      timeoutId = setTimeout(load, 0);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      timeoutId = setTimeout(load, 100);
     };
     window.addEventListener('civilflow_hidro_sync_changed', handler);
     window.addEventListener('storage', handler);
