@@ -375,11 +375,11 @@ function MidRamalAccessorySelector({
                 const accType = isSif ? 'sifon' : 'codo90rmSube';
                 const updates: Record<string, unknown> = { [fieldAcc]: accType };
                 const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
-                // ponytail: sifón always needs a diameter for its label — default to ramal's or 2"
+                // sifón: siempre 2" (fix bug 3" arbitrario)
                 const diamValRaw = isInodoro
                   ? '4"'
                   : isSif
-                    ? fresh.diametro || '2"'
+                    ? '2"'
                     : fresh.diametro
                       ? matchDiamOption(diamListSan, fresh.diametro)
                       : '2"';
@@ -1179,32 +1179,76 @@ export function RamalMenu() {
         />
       </div>
       <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Etiqueta</div>
-        {[
-          { key: 'showLength' as const, label: 'Longitud', checked: ramalEl.showLength !== false },
-          { key: 'showName' as const, label: 'Nombre', checked: ramalEl.showName !== false },
-          { key: 'showGuide' as const, label: 'Guía', checked: ramalEl.showGuide !== false },
-        ].map(({ key, label, checked }) => (
-          <label key={key} style={MENU_CHECK_ROW_STYLE}>
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => {
-                const val = e.target.checked;
-                if (engineRef.current) {
-                  engineRef.current.updateElementById(ramalEl.id, { [key]: val });
-                  if (selElement?.id === ramalEl.id) {
-                    setSelElement({ ...selElement, [key]: val } as unknown as PlanoRamal);
-                  }
-                  engineRef.current.render();
-                  engineRef.current._markDirty();
-                }
+        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Modificar etiqueta</div>
+        <div
+          style={{
+            fontSize: 11,
+            color: '#6b7280',
+            fontFamily: "'Geist',monospace",
+            marginBottom: 6,
+            lineHeight: 1.3,
+          }}
+        >
+          Elige qué información mostrar en la etiqueta del tramo
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '4px 8px',
+          }}
+        >
+          {[
+            {
+              key: 'showFlowDir' as const,
+              label: 'Dirección de flujo',
+              checked: (ramalEl as unknown as Record<string, unknown>).showFlowDir !== false,
+            },
+            {
+              key: 'showMatDiamPend' as const,
+              label: 'Material, diámetro y pendiente',
+              checked: (ramalEl as unknown as Record<string, unknown>).showMatDiamPend !== false,
+            },
+            {
+              key: 'showLength' as const,
+              label: 'Longitud',
+              checked: ramalEl.showLength !== false,
+            },
+            { key: 'showName' as const, label: 'Nombre', checked: ramalEl.showName !== false },
+            { key: 'showGuide' as const, label: 'Guía', checked: ramalEl.showGuide !== false },
+          ].map(({ key, label, checked }) => (
+            <label
+              key={key}
+              style={{
+                ...MENU_CHECK_ROW_STYLE,
+                padding: '4px 6px',
+                background: '#1e2024',
+                border: 'none',
+                borderRadius: 3,
               }}
-              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
-            />
-            <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>{label}</span>
-          </label>
-        ))}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  if (engineRef.current) {
+                    engineRef.current.updateElementById(ramalEl.id, { [key]: val });
+                    if (selElement?.id === ramalEl.id) {
+                      setSelElement({ ...selElement, [key]: val } as unknown as PlanoRamal);
+                    }
+                    engineRef.current.render();
+                    engineRef.current._markDirty();
+                  }
+                }}
+                style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+              />
+              <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                {label}
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
       {['san', 'll'].includes(ctx.activeNet) && (
         <div

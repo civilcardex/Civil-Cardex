@@ -272,14 +272,15 @@ export function buildTribFromGuide(
     const flowEx = flowVecAt(padre, crossPt, 1);
     if (flowEx) {
       const flowNew = [pEnd[0] - pStart[0], pEnd[1] - pStart[1]];
-      if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) {
+      if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] > 0) {
         tribReversedForFlow = true;
       }
     }
   }
-  // Ítem 10: la numeración va contra el RAÍZ de la cadena de padres — si el cruce cae sobre un
-  // tributario, el consecutivo es el global de su ramal raíz (T5RS1), no T1T1RS1.
-  const padreLabel = rootTributarioLabel(eng.ramales, padre.id);
+  const isPadreTrib = padre.tipo === 'tributario';
+  const padreLabel = isPadreTrib
+    ? rootTributarioLabel(eng.ramales, padre.id)
+    : padre.label || padre.id;
   const cnt = allocTributaryNumber(eng, padreLabel);
   const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
   const label = `T${cnt}${padreLabel}`;
@@ -313,6 +314,8 @@ export function buildTribFromGuide(
     showLength: true,
     showName: true,
     showGuide: true,
+    showFlowDir: true,
+    showMatDiamPend: true,
   };
   // Ítem 5: un tributario vent creado desde guía que termina fluyendo HACIA la unión san (codo
   // reventilado) se bloquea aquí — autoSplit no valida uniones extremo-con-extremo. Misma
