@@ -133,13 +133,13 @@ export function writeDiametroToDrawing(
               continue;
             }
           }
-          const accMax = maxAccessoryDiam(r as unknown as Parameters<typeof maxAccessoryDiam>[0]);
+          const accMax = maxAccessoryDiam(r);
           if (newIn > 0 && accMax > 0 && newIn < accMax) {
             // Informar CUÁL extremo bloquea: el accesorio máximo puede ser el de FIN aunque el
             // de INICIO sea menor, y mostrarlo era el origen de las alertas "imposibles" — el
             // usuario veía el diámetro del extremo equivocado en el mensaje.
-            const dI = (r as unknown as { diametroInicio?: string }).diametroInicio || '';
-            const dF = (r as unknown as { diametroFin?: string }).diametroFin || '';
+            const dI = r.diametroInicio || '';
+            const dF = r.diametroFin || '';
             const inpI = dI ? diamPulgFromLabel(inchPartOf(dI)) : 0;
             const inpF = dF ? diamPulgFromLabel(inchPartOf(dF)) : 0;
             const extremo = inpI >= inpF ? 'INICIO' : 'FIN';
@@ -158,14 +158,14 @@ export function writeDiametroToDrawing(
           // ramal (_tribReversed): la entrada llega al ORIGEN de flujo y las salidas salen del
           // DESTINO. Con varias salidas simultáneas, cada una se valida de forma independiente
           // contra la misma entrada (se toma la más restrictiva).
-          const myPts = (r as unknown as { pts?: number[][] }).pts;
+          const myPts = r.pts;
           if (
             newIn > 0 &&
             (net === 'af' || net === 'ac' || net === 'gas') &&
             myPts &&
             myPts.length >= 2
           ) {
-            const iAmRev = (r as unknown as { _tribReversed?: boolean })._tribReversed;
+            const iAmRev = r._tribReversed;
             const myOrigin = iAmRev ? myPts[myPts.length - 1] : myPts[0];
             const myDest = iAmRev ? myPts[0] : myPts[myPts.length - 1];
             const TOL = 2.0;
@@ -198,14 +198,11 @@ export function writeDiametroToDrawing(
             let maxChildOut = 0;
             let maxChildLabel = '';
             for (const other of data.ramales || []) {
-              if ((other as unknown as { id: string }).id === (r as unknown as { id: string }).id)
-                continue;
-              if ((other as unknown as { net: string }).net !== net) continue;
-              const oPts = (other as unknown as { pts?: number[][] }).pts;
+              if (other.id === r.id) continue;
+              if (other.net !== net) continue;
+              const oPts = other.pts;
               if (!oPts || oPts.length < 2) continue;
-              const oRev =
-                (other as unknown as { _tribReversed?: boolean })._tribReversed ||
-                (other as unknown as { trib_reversed?: boolean }).trib_reversed;
+              const oRev = other._tribReversed || other.trib_reversed;
               const oOrigin = oRev ? oPts[oPts.length - 1] : oPts[0];
               const oDest = oRev ? oPts[0] : oPts[oPts.length - 1];
               const feedsMe =
@@ -213,7 +210,7 @@ export function writeDiametroToDrawing(
                 Math.hypot(oDest[0] - myOrigin[0], oDest[1] - myOrigin[1]) < TOL;
               const bodyFeedsMe = touchesPt(oPts, myOrigin) === 'body';
               const iFeedIt = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
-              const oDiamLabel = (other as unknown as { diametro?: string }).diametro || '';
+              const oDiamLabel = other.diametro || '';
               const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
               if ((feedsMe || bodyFeedsMe) && oIn > maxParentIn) {
                 maxParentIn = oIn;
@@ -250,13 +247,12 @@ export function writeDiametroToDrawing(
             // cualquier ramal que toque mi origen/destino cuenta, para no dejar escapar la validación.
             if (maxParentIn === 0) {
               for (const other of data.ramales || []) {
-                if ((other as unknown as { id: string }).id === (r as unknown as { id: string }).id)
-                  continue;
-                if ((other as unknown as { net: string }).net !== net) continue;
-                const oPts = (other as unknown as { pts?: number[][] }).pts;
+                if (other.id === r.id) continue;
+                if (other.net !== net) continue;
+                const oPts = other.pts;
                 if (!oPts || oPts.length < 2) continue;
                 if (touchesPt(oPts, myOrigin) === null) continue;
-                const oDiamLabel = (other as unknown as { diametro?: string }).diametro || '';
+                const oDiamLabel = other.diametro || '';
                 const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
                 if (oIn > maxParentIn) {
                   maxParentIn = oIn;
@@ -266,10 +262,9 @@ export function writeDiametroToDrawing(
             }
             if (maxChildOut === 0) {
               for (const other of data.ramales || []) {
-                if ((other as unknown as { id: string }).id === (r as unknown as { id: string }).id)
-                  continue;
-                if ((other as unknown as { net: string }).net !== net) continue;
-                const oPts = (other as unknown as { pts?: number[][] }).pts;
+                if (other.id === r.id) continue;
+                if (other.net !== net) continue;
+                const oPts = other.pts;
                 if (!oPts || oPts.length < 2) continue;
                 const oOrigin = (oPts as number[][])[0];
                 let touches = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
@@ -294,7 +289,7 @@ export function writeDiametroToDrawing(
                   }
                 }
                 if (!touches) continue;
-                const oDiamLabel = (other as unknown as { diametro?: string }).diametro || '';
+                const oDiamLabel = other.diametro || '';
                 const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
                 if (oIn > maxChildOut) {
                   maxChildOut = oIn;
@@ -424,7 +419,7 @@ export function writePendienteToDrawing(
     let changed = false;
     for (const r of data.ramales || []) {
       if (r.id === ramalId && r.net === net) {
-        (r as unknown as Record<string, unknown>).pendiente = newPend;
+        r.pendiente = newPend;
         changed = true;
       }
     }
@@ -459,7 +454,7 @@ export function writeNSalidasToDrawing(
     let changed = false;
     for (const r of data.ramales || []) {
       if (r.id === ramalId && r.net === net) {
-        (r as unknown as Record<string, unknown>).nSalidas = newVal;
+        r.nSalidas = newVal;
         changed = true;
       }
     }

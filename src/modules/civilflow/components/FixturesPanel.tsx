@@ -495,6 +495,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     planId,
     target,
     netId,
+    engineRef,
   ]);
 
   const curHidro = useMemo(() => {

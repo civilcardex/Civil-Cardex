@@ -57,6 +57,11 @@ export interface RawElement {
   diametroFin?: string;
   accMed?: Record<string, string>;
   caudal?: number;
+  labelX?: number;
+  labelY?: number;
+  /** Flag de inversión de dirección para redes pts-driven (dos nombres según la vía de guardado). */
+  _tribReversed?: boolean;
+  trib_reversed?: boolean;
   [key: string]: unknown;
 }
 
