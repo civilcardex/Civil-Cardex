@@ -22,7 +22,7 @@ import {
   type LowerFloorRamales,
   type ProbedElement,
 } from './context';
-import { BajanteMenu } from './bajanteMenus';
+import { BajanteMenu } from './bajanteMenu';
 import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otherMenus';
 import { GuideLineMenu } from './guideLineMenu';
 import { RamalMenu } from './ramalMenu';

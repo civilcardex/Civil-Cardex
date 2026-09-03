@@ -5,12 +5,12 @@ import {
   MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context';
-import { BajanteCodeEditor } from './bajanteMenus';
+import { ElementCodeEditor } from './elementEditor';
 
 export function AreaMenu() {
   const ctx = useDrawingElementContextMenu();
   return (
-    <BajanteCodeEditor
+    <ElementCodeEditor
       element={ctx.element}
       engineRef={ctx.engineRef}
       selElement={ctx.selElement}
@@ -27,7 +27,7 @@ export function AreaMenu() {
 export function ContadorMenu() {
   const ctx = useDrawingElementContextMenu();
   return (
-    <BajanteCodeEditor
+    <ElementCodeEditor
       element={ctx.element}
       engineRef={ctx.engineRef}
       selElement={ctx.selElement}
@@ -44,7 +44,7 @@ export function ContadorMenu() {
 export function CalentadorMenu() {
   const ctx = useDrawingElementContextMenu();
   return (
-    <BajanteCodeEditor
+    <ElementCodeEditor
       element={ctx.element}
       engineRef={ctx.engineRef}
       selElement={ctx.selElement}

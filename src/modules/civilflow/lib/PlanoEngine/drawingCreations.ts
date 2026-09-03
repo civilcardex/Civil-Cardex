@@ -82,7 +82,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     engine.bajantes.filter((b) => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
   const bajId = netPfx + cnt;
   // Ítem: el bajante toma por defecto el diámetro del ramal conectado (el mayor de los
-  // asociados) y no puede bajarse de ahí — ver la validación en bajanteMenus.tsx.
+  // asociados) y no puede bajarse de ahí — ver la validación en bajanteMenu.tsx.
   let defDNominal = '';
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
@@ -754,7 +754,12 @@ export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: n
   engine._markDirty();
 }
 
-/** Creates a new contador (meter) at the given coordinates, auto-connecting to the nearest red pública with a ramal if one exists. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Crea un contador (medidor) en las coordenadas dadas y lo conecta automáticamente a la
+ *  red pública más cercana con un ramal, si existe alguna. @param engine Núcleo del motor.
+ *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Crea un contador (medidor) en las coordenadas dadas y lo conecta automáticamente a la
+ *  red pública más cercana con un ramal, si existe alguna. @param engine Núcleo del motor.
+ *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);

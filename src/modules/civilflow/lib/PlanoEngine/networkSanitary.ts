@@ -567,11 +567,9 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 }
 
 /**
- * Cuenta los accesorios a mitad de ramal (accMed*) y de extremo (accesorioInicio/Fin) en
- * las redes de agua (AF, AC, LL) y los escribe en tramo_hidro_data_v3 para que la tabla
- * "Accesorios por ramal" se complete correctamente en esas redes.
- * Replica la estructura usada por calcSanitaryAccessories pero generalizada para que se
- * cuente cualquier valor de accMed (p. ej. codo90rmSube, valvCompuerta, llaveTerminal).
+ * Cuenta los accesorios a mitad de ramal y de extremo en las redes de agua (AF, AC, LL) y
+ * los escribe en el storage de hidráulica para que la tabla "Accesorios por ramal" se
+ * complete correctamente. Generaliza el conteo sanitario para aceptar cualquier accesorio.
  */
 export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
@@ -620,7 +618,7 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
     // recalculado de nuevo cada vez (como hace calcSanitaryAccessories con SAN) en lugar de un
     // único escrito que queda obsoleto si la dirección cambia después. El equivalente de montante
     // en AF/AC en cambio vuelve a sincronizar un valor escrito de accesorioInicio/Fin al cambiar
-    // la dirección (BajanteDirectionSelector de DrawingElementContextMenu.tsx), ya que el codo de
+    // la dirección (BajanteDirectionSelector de bajanteMenu.tsx), ya que el codo de
     // un montante vive en un campo de glifo visual ya existente — las bajantes de LL no tienen ese
     // escrito en absoluto, así que no hay nada que sincronizar; se calcula aquí en su lugar.
     if (r.net === 'll') {
