@@ -188,11 +188,10 @@ function flowStartsAt(
   return atLogicalTail;
 }
 
-/** ¿El extremo `epPt` del ramal está ocupado por OTRO ramal de la misma red?
- *  ("Ocupado" en el sentido del ítem 13/5: el ramal se creó para conectar otro ramal.)
- *  Detecta tanto extremo-a-extremo como empalme sobre el CUERPO del otro ramal (un tributario
- *  nace sobre el cuerpo del padre con snap 45°, y un yee/empalme une el extremo al cuerpo de
- *  otro ramal sin dividirlo — el check de solo extremos los dejaba pasar como "libres"). */
+/** ¿El extremo `epPt` del ramal está ocupado por OTRO ramal de la misma red? Detecta tanto
+ *  extremo-con-extremo como empalmes sobre el cuerpo del otro ramal (un tributario nace
+ *  sobre el cuerpo del padre, y un yee une el extremo al cuerpo sin dividirlo) — revisar
+ *  solo extremos los dejaba pasar como "libres". */
 export function ramalExtremoOcupado(
   ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   ramal: { id: string; net?: string },
@@ -273,12 +272,10 @@ export function aparatoEnExtremoInvalido(
   return bad(pts[0], r.aparatoInicio) || bad(pts[pts.length - 1], r.aparatoFin);
 }
 
-/** ¿La polaridad del codo de montante (codo90rmSube/codo90rmBaja, codoSube/codoBaja) es
- *  coherente con la dirección de flujo del ramal en P? El codo sube solo puede ENTREGAR flujo
- *  (la cola de la flecha de flujo apunta al extremo P: el flujo SALE de P hacia el codo);
- *  el codo baja solo puede RECIBIR flujo (la cabeza de la flecha apunta al extremo P: el flujo
- *  LLEGA a P desde el codo). En el cuerpo (flujo que pasa de largo, ni llega ni sale) ninguno de
- *  los dos es válido. */
+/** ¿La polaridad del codo de montante (sube/baja) es coherente con el flujo del ramal en P?
+ *  El codo sube solo puede ENTREGAR flujo (el flujo SALE de P hacia el codo) y el codo baja
+ *  solo puede RECIBIR (el flujo LLEGA a P desde el codo). En el cuerpo del ramal, donde el
+ *  flujo solo pasa de largo, ninguno de los dos es válido. */
 export function codoPolarityOk(
   ramal: { pts: number[][]; _tribReversed?: boolean },
   pt: number[],
@@ -364,11 +361,10 @@ function ventSanAngleOk(
   return angleDeg <= 0.5 || Math.abs(angleDeg - 45) <= 0.5 || Math.abs(angleDeg - 90) <= 0.5;
 }
 
-/** Chequeo de dirección de flujo para san/ll/vent: cada extremo del ramal que toca otro ramal
- *  del mismo grupo (extremo o cuerpo) debe fluir en el mismo sentido que ese ramal; y un ramal
- *  vent que toca san (codo reventilado) debe alejarse de la unión. `extra` cubre el candidato
- *  cuando aún no está en engine.ramales (finishRamal pre-push). @returns mensaje de violación
- *  o null si todo cumple. */
+/** Chequeo de dirección de flujo para san/ll/vent: cada extremo del ramal que toca otro
+ *  ramal del mismo grupo debe fluir en el mismo sentido que él; y un ramal vent que toca
+ *  san (codo reventilado) debe alejarse de la unión. @returns mensaje de violación o null
+ *  si todo cumple. */
 export function ramalFlowDirectionCheck(
   engine: IPlanoEngineCore,
   ram: PlanoRamal,
