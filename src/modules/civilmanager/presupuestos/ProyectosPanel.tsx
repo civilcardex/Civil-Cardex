@@ -4,6 +4,7 @@ import { genCodeFor } from '../codeGen';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { CrudFooter } from '../shared/CrudFooter';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
+import { useEditable } from '../shared/EditLock';
 import type { EstadoPresupuesto, Presupuesto } from '../types';
 
 const ESTADO_LABEL: Record<EstadoPresupuesto, string> = {
@@ -19,6 +20,7 @@ interface Props {
 
 export function ProyectosPanel({ selId, onSelect }: Props) {
   const { state, patch } = useCivilManager();
+  const editable = useEditable();
   const flat = flattenPresupuestos(state.presupuestos);
 
   function crear() {
@@ -84,70 +86,72 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
   return (
     <XlWrap>
       <XlScroll>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Código</th>
-              <th>Nombre</th>
-              <th>Tipo</th>
-              <th>Estado</th>
-              <th>Ítems</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {flat.length === 0 && (
+        <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+          <table>
+            <thead>
               <tr>
-                <td colSpan={7} className="cm-empty-row">
-                  Sin presupuestos
-                </td>
+                <th>#</th>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Ítems</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {flat.map(({ pres, level }, i) => (
-              <tr
-                key={pres.id}
-                style={{
-                  background: selId === pres.id ? 'rgba(37,99,235,.1)' : undefined,
-                  cursor: 'pointer',
-                }}
-                tabIndex={0}
-                onClick={() => onSelect(pres.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onSelect(pres.id);
-                  }
-                }}
-              >
-                <XlRowNum n={i + 1} />
-                <td>{pres.codigo}</td>
-                <td style={{ paddingLeft: level ? 24 : undefined }}>
-                  {level > 0 ? '↳ ' : ''}
-                  {pres.nombre}
-                </td>
-                <td>{getTipoProyecto(pres, state.presupuestos)}</td>
-                <td>
-                  <select
-                    className="cm-sel"
-                    aria-label="Estado"
-                    value={pres.estado}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => upd(pres.id, 'estado', e.target.value)}
-                  >
-                    {Object.entries(ESTADO_LABEL).map(([k, l]) => (
-                      <option key={k} value={k}>
-                        {l}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td>{pres.items.length}</td>
-                <XlAct onEdit={() => onSelect(pres.id)} onDelete={() => eliminar(pres.id)} />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {flat.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="cm-empty-row">
+                    Sin presupuestos
+                  </td>
+                </tr>
+              )}
+              {flat.map(({ pres, level }, i) => (
+                <tr
+                  key={pres.id}
+                  style={{
+                    background: selId === pres.id ? 'rgba(37,99,235,.1)' : undefined,
+                    cursor: 'pointer',
+                  }}
+                  tabIndex={0}
+                  onClick={() => onSelect(pres.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelect(pres.id);
+                    }
+                  }}
+                >
+                  <XlRowNum n={i + 1} />
+                  <td>{pres.codigo}</td>
+                  <td style={{ paddingLeft: level ? 24 : undefined }}>
+                    {level > 0 ? '↳ ' : ''}
+                    {pres.nombre}
+                  </td>
+                  <td>{getTipoProyecto(pres, state.presupuestos)}</td>
+                  <td>
+                    <select
+                      className="cm-sel"
+                      aria-label="Estado"
+                      value={pres.estado}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => upd(pres.id, 'estado', e.target.value)}
+                    >
+                      {Object.entries(ESTADO_LABEL).map(([k, l]) => (
+                        <option key={k} value={k}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>{pres.items.length}</td>
+                  <XlAct onEdit={() => onSelect(pres.id)} onDelete={() => eliminar(pres.id)} />
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </fieldset>
       </XlScroll>
       <CrudFooter
         onAdd={crear}

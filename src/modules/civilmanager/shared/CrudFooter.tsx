@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ActionIcon } from './icons';
+import { useEditable } from './EditLock';
 
 interface ExcelHandle {
   fileInputEl: ReactNode;
@@ -10,7 +11,6 @@ interface ExcelHandle {
 interface Props {
   onAdd?: () => void;
   addLabel?: string;
-  addDisabled?: boolean;
   onClearAll?: () => void;
   clearLabel?: string;
   excel?: ExcelHandle;
@@ -21,21 +21,33 @@ interface Props {
   children?: ReactNode;
 }
 
-export function CrudFooter({ onAdd, addLabel, addDisabled, onClearAll, clearLabel, excel, exportLabel, search, countLabel, count, children }: Props) {
+export function CrudFooter({
+  onAdd,
+  addLabel,
+  onClearAll,
+  clearLabel,
+  excel,
+  exportLabel,
+  search,
+  countLabel,
+  count,
+  children,
+}: Props) {
+  const editable = useEditable();
   return (
     <div className="cm-xl-foot">
-      {onAdd && (
-        <button type="button" className="cm-btn cm-btn-ok" onClick={onAdd} disabled={addDisabled}>
+      {onAdd && editable && (
+        <button type="button" className="cm-btn cm-btn-ok" onClick={onAdd}>
           <ActionIcon name="add" label="" /> {addLabel}
         </button>
       )}
-      {onClearAll && (
+      {onClearAll && editable && (
         <button type="button" className="cm-btn cm-btn-err" onClick={onClearAll}>
           <ActionIcon name="delete" label="" /> {clearLabel}
         </button>
       )}
-      {excel && excel.fileInputEl}
-      {excel && (
+      {excel && editable && excel.fileInputEl}
+      {excel && editable && (
         <button type="button" className="cm-btn cm-btn-ac" onClick={excel.triggerImport}>
           <ActionIcon name="upload" label="" /> Importar
         </button>
@@ -52,7 +64,7 @@ export function CrudFooter({ onAdd, addLabel, addDisabled, onClearAll, clearLabe
           placeholder={search.placeholder}
           aria-label={search.placeholder}
           value={search.value}
-          onChange={e => search.onChange(e.target.value)}
+          onChange={(e) => search.onChange(e.target.value)}
         />
       )}
       <span className="cm-flex-1" />

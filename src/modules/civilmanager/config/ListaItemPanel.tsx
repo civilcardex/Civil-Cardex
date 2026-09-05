@@ -3,6 +3,7 @@ import { genCodeFor } from '../codeGen';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { showToast } from '../shared/Toast';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
+import { useEditable } from '../shared/EditLock';
 import type { ListaItem } from '../types';
 
 interface Props {
@@ -18,11 +19,26 @@ interface Props {
 }
 
 /** Panel genérico para las listas de configuración con forma {codigo, nombre|categoria, desc}. */
-export function ListaItemPanel({ title, items, onChange, prefix, labelField, labelHeader, countUsage, usageLabel }: Props) {
-  const [editIdx, setEditIdx] = useState<number | null>(null);
+export function ListaItemPanel({
+  title,
+  items,
+  onChange,
+  prefix,
+  labelField,
+  labelHeader,
+  countUsage,
+  usageLabel,
+}: Props) {
+  const [editIdx, setEditIdxState] = useState<number | null>(null);
+  const editable = useEditable();
+  const setEditIdx = (i: number | null) => setEditIdxState(editable ? i : null);
 
   function add() {
-    const nuevo: ListaItem = { codigo: genCodeFor(items, prefix), desc: '', [labelField]: 'Nuevo' } as ListaItem;
+    const nuevo: ListaItem = {
+      codigo: genCodeFor(items, prefix),
+      desc: '',
+      [labelField]: 'Nuevo',
+    } as ListaItem;
     onChange([...items, nuevo]);
     setEditIdx(items.length);
   }
@@ -38,7 +54,9 @@ export function ListaItemPanel({ title, items, onChange, prefix, labelField, lab
     if (countUsage) {
       const count = countUsage(item[labelField] ?? '');
       if (count > 0) {
-        showToast(`No se puede eliminar: usado en ${count} ${usageLabel ?? 'registro(s)'}`, { type: 'err' });
+        showToast(`No se puede eliminar: usado en ${count} ${usageLabel ?? 'registro(s)'}`, {
+          type: 'err',
+        });
         return;
       }
     }
@@ -62,7 +80,13 @@ export function ListaItemPanel({ title, items, onChange, prefix, labelField, lab
             </tr>
           </thead>
           <tbody>
-            {items.length === 0 && <tr><td colSpan={5} className="cm-empty-row">Sin registros</td></tr>}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={5} className="cm-empty-row">
+                  Sin registros
+                </td>
+              </tr>
+            )}
             {items.map((it, i) => {
               const editing = editIdx === i;
               return (
@@ -71,16 +95,28 @@ export function ListaItemPanel({ title, items, onChange, prefix, labelField, lab
                   <td>{it.codigo}</td>
                   <td>
                     {editing ? (
-                      <input className="cm-ni" aria-label={labelHeader} value={it[labelField] ?? ''} onChange={e => upd(i, labelField, e.target.value)} />
+                      <input
+                        className="cm-ni"
+                        aria-label={labelHeader}
+                        value={it[labelField] ?? ''}
+                        onChange={(e) => upd(i, labelField, e.target.value)}
+                      />
                     ) : (
                       <span onDoubleClick={() => setEditIdx(i)}>{it[labelField]}</span>
                     )}
                   </td>
                   <td>
                     {editing ? (
-                      <input className="cm-ni" aria-label="Descripción" value={it.desc} onChange={e => upd(i, 'desc', e.target.value)} />
+                      <input
+                        className="cm-ni"
+                        aria-label="Descripción"
+                        value={it.desc}
+                        onChange={(e) => upd(i, 'desc', e.target.value)}
+                      />
                     ) : (
-                      <span onDoubleClick={() => setEditIdx(i)} style={{ color: 'var(--txt2)' }}>{it.desc}</span>
+                      <span onDoubleClick={() => setEditIdx(i)} style={{ color: 'var(--txt2)' }}>
+                        {it.desc}
+                      </span>
                     )}
                   </td>
                   <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
@@ -91,9 +127,15 @@ export function ListaItemPanel({ title, items, onChange, prefix, labelField, lab
         </table>
       </XlScroll>
       <div className="cm-xl-foot">
-        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>Agregar</button>
+        {editable && (
+          <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
+            Agregar
+          </button>
+        )}
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>Total: <b>{items.length}</b></span>
+        <span style={{ fontSize: 11 }}>
+          Total: <b>{items.length}</b>
+        </span>
       </div>
     </XlWrap>
   );

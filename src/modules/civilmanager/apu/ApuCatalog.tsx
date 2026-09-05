@@ -5,6 +5,7 @@ import { genCodeFor } from '../codeGen';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { showToast } from '../shared/Toast';
 import { CrudFooter } from '../shared/CrudFooter';
+import { useEditable } from '../shared/EditLock';
 import { ActionIcon } from '../shared/icons';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import { ApuEditor } from './ApuEditor';
@@ -13,16 +14,22 @@ import type { Apu } from '../types';
 
 export function ApuCatalog() {
   const { state, patch, cargosCalc, esHora, apuCalcMap, apusBasicoCalc } = useCivilManager();
+  const editable = useEditable();
   const [selId, setSelId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
     if (!search) return state.apus;
     const s = search.toLowerCase();
-    return state.apus.filter(a => a.codigo.toLowerCase().includes(s) || a.nombre.toLowerCase().includes(s) || a.categoria.toLowerCase().includes(s));
+    return state.apus.filter(
+      (a) =>
+        a.codigo.toLowerCase().includes(s) ||
+        a.nombre.toLowerCase().includes(s) ||
+        a.categoria.toLowerCase().includes(s),
+    );
   }, [state.apus, search]);
 
-  const sel = selId ? state.apus.find(a => a.id === selId) ?? null : null;
+  const sel = selId ? (state.apus.find((a) => a.id === selId) ?? null) : null;
 
   function addApu() {
     const nuevo: Apu = {
@@ -43,18 +50,22 @@ export function ApuCatalog() {
   }
 
   function updateApu(id: string, p: Partial<Apu>) {
-    patch({ apus: state.apus.map(a => (a.id === id ? { ...a, ...p } : a)) });
+    patch({ apus: state.apus.map((a) => (a.id === id ? { ...a, ...p } : a)) });
   }
 
   async function delApu(id: string) {
-    const usadoEnPresupuestos = state.presupuestos.some(p => p.items.some(it => it.apu_id === id));
-    const usadoComoBasico = state.insumos.some(x => x.apu_basico_id === id);
+    const usadoEnPresupuestos = state.presupuestos.some((p) =>
+      p.items.some((it) => it.apu_id === id),
+    );
+    const usadoComoBasico = state.insumos.some((x) => x.apu_basico_id === id);
     if (usadoEnPresupuestos || usadoComoBasico) {
-      showToast('No se puede eliminar: el APU está referenciado en presupuestos o insumos', { type: 'err' });
+      showToast('No se puede eliminar: el APU está referenciado en presupuestos o insumos', {
+        type: 'err',
+      });
       return;
     }
     if (!(await askConfirm('¿Eliminar este APU?'))) return;
-    patch({ apus: state.apus.filter(a => a.id !== id) });
+    patch({ apus: state.apus.filter((a) => a.id !== id) });
     if (selId === id) setSelId(null);
   }
 
@@ -66,7 +77,7 @@ export function ApuCatalog() {
       usarFP: state.config.usar_fp_en_apu,
       esHora,
       apuCalcMap,
-      abMap: new Map(apusBasicoCalc.map(a => [a.id, a])),
+      abMap: new Map(apusBasicoCalc.map((a) => [a.id, a])),
     };
   }
 
@@ -87,9 +98,29 @@ export function ApuCatalog() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 && <tr><td colSpan={7} className="cm-empty-row">Sin APU</td></tr>}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="cm-empty-row">
+                    Sin APU
+                  </td>
+                </tr>
+              )}
               {filtered.map((a, i) => (
-                <tr key={a.id} style={{ background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined, cursor: 'pointer' }} tabIndex={0} onClick={() => setSelId(a.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelId(a.id); } }}>
+                <tr
+                  key={a.id}
+                  style={{
+                    background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined,
+                    cursor: 'pointer',
+                  }}
+                  tabIndex={0}
+                  onClick={() => setSelId(a.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelId(a.id);
+                    }
+                  }}
+                >
                   <XlRowNum n={i + 1} />
                   <td>{a.codigo}</td>
                   <td>{a.nombre}</td>
@@ -102,20 +133,36 @@ export function ApuCatalog() {
             </tbody>
           </table>
         </XlScroll>
-        <CrudFooter onAdd={addApu} addLabel="Nuevo APU" search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }} countLabel="Total:" count={filtered.length} />
+        <CrudFooter
+          onAdd={addApu}
+          addLabel="Nuevo APU"
+          search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+          countLabel="Total:"
+          count={filtered.length}
+        />
       </XlWrap>
 
       {sel && (
         <div>
           <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
-            <button type="button" className="cm-btn cm-btn-warn" onClick={() => exportApuExcel(sel, exportCtx())}>
+            <button
+              type="button"
+              className="cm-btn cm-btn-warn"
+              onClick={() => exportApuExcel(sel, exportCtx())}
+            >
               <ActionIcon name="download" label="" /> Exportar Excel
             </button>
-            <button type="button" className="cm-btn cm-btn-warn" onClick={() => exportApuPdf(sel, exportCtx())}>
+            <button
+              type="button"
+              className="cm-btn cm-btn-warn"
+              onClick={() => exportApuPdf(sel, exportCtx())}
+            >
               <ActionIcon name="picture_as_pdf" label="" /> Exportar PDF
             </button>
           </div>
-          <ApuEditor apu={sel} onUpdate={p => updateApu(sel.id, p)} />
+          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+            <ApuEditor apu={sel} onUpdate={(p) => updateApu(sel.id, p)} />
+          </fieldset>
         </div>
       )}
     </div>

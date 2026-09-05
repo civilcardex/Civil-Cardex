@@ -4,6 +4,7 @@ import { CivilManagerProvider, useCivilManager } from './context';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { Toast } from './shared/Toast';
 import { NavIcon, type NavIconName } from './shared/icons';
+import { EditableSection } from './shared/EditLock';
 import { ColaboradoresTab } from './catalogos/ColaboradoresTab';
 import { CuadrillasTab } from './catalogos/CuadrillasTab';
 import { EquiposTab } from './catalogos/EquiposTab';
@@ -24,7 +25,7 @@ type CatalogoTab =
 
 const MAIN_SECTIONS: { id: MainSection; label: string; icon: NavIconName; active: boolean }[] = [
   { id: 'catalogos', label: 'Catálogos', icon: 'catalogos', active: true },
-  { id: 'apus', label: 'APUs', icon: 'apus', active: true },
+  { id: 'apus', label: 'Análisis de precios unitarios', icon: 'apus', active: true },
   { id: 'presupuestos', label: 'Presupuestos', icon: 'proyectos', active: true },
 ];
 
@@ -64,7 +65,7 @@ function CivilManagerShell() {
             onClick={() => setMainSection(s.id)}
             aria-current={mainSection === s.id ? 'true' : undefined}
           >
-            <NavIcon name={s.icon} alt="" />
+            <NavIcon name={s.icon} size={26} alt="" />
             {s.label}
           </button>
         ))}
@@ -80,7 +81,7 @@ function CivilManagerShell() {
               onClick={() => setCatalogoTab(t.id)}
               aria-current={catalogoTab === t.id ? 'true' : undefined}
             >
-              <NavIcon name={t.icon} alt="" />
+              <NavIcon name={t.icon} size={26} alt="" />
               {t.label}
             </button>
           ))}
@@ -88,14 +89,47 @@ function CivilManagerShell() {
       )}
 
       <div className="cm-main">
-        {mainSection === 'catalogos' && catalogoTab === 'configuracion' && <ConfigTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'colaboradores' && <ColaboradoresTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'cuadrillas' && <CuadrillasTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'equipos' && <EquiposTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'insumos' && <InsumosTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'proveedores' && <ProveedoresTab />}
-        {mainSection === 'apus' && <ApuCatalog />}
-        {mainSection === 'presupuestos' && <PresupuestosTab />}
+        {/* Cada pestaña editable se envuelve en EditableSection: botón EDITAR/LISTO arriba a la derecha. */}
+        {mainSection === 'catalogos' && catalogoTab === 'configuracion' && (
+          <EditableSection>
+            <ConfigTab />
+          </EditableSection>
+        )}
+        {mainSection === 'catalogos' && catalogoTab === 'colaboradores' && (
+          <EditableSection>
+            <ColaboradoresTab />
+          </EditableSection>
+        )}
+        {mainSection === 'catalogos' && catalogoTab === 'cuadrillas' && (
+          <EditableSection>
+            <CuadrillasTab />
+          </EditableSection>
+        )}
+        {mainSection === 'catalogos' && catalogoTab === 'equipos' && (
+          <EditableSection>
+            <EquiposTab />
+          </EditableSection>
+        )}
+        {mainSection === 'catalogos' && catalogoTab === 'insumos' && (
+          <EditableSection>
+            <InsumosTab />
+          </EditableSection>
+        )}
+        {mainSection === 'catalogos' && catalogoTab === 'proveedores' && (
+          <EditableSection>
+            <ProveedoresTab />
+          </EditableSection>
+        )}
+        {mainSection === 'apus' && (
+          <EditableSection>
+            <ApuCatalog />
+          </EditableSection>
+        )}
+        {mainSection === 'presupuestos' && (
+          <EditableSection>
+            <PresupuestosTab />
+          </EditableSection>
+        )}
       </div>
     </div>
   );

@@ -15,43 +15,59 @@ export function ColaboradoresTab() {
 
   const countUsage = useMemo(() => {
     return (id: string) => {
-      const enCuadrillas = state.cuadrillas.reduce((n, c) => n + c.integrantes.filter(i => i.cargo_id === id).length, 0);
-      const enApus = state.apus.reduce((n, a) => n + a.recursos_mo.filter(r => r.cargo_id === id).length, 0);
+      const enCuadrillas = state.cuadrillas.reduce(
+        (n, c) => n + c.integrantes.filter((i) => i.cargo_id === id).length,
+        0,
+      );
+      const enApus = state.apus.reduce(
+        (n, a) => n + a.recursos_mo.filter((r) => r.cargo_id === id).length,
+        0,
+      );
       return enCuadrillas + enApus;
     };
   }, [state.cuadrillas, state.apus]);
   const tryDelete = useReferentialDelete(countUsage, 'referencia(s) en cuadrillas/APU');
 
-  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, handleKeyDown, excel } = useCrudTable<Cargo>({
-    items: state.cargos,
-    onChange: cargos => patch({ cargos }),
-    prefix: 'MO',
-    defaultItem: () => ({ id: crypto.randomUUID(), codigo: genCodeFor(state.cargos, 'MO'), descripcion: 'Nuevo cargo', num_salarios_base: 1 }),
-    searchKeys: ['codigo', 'descripcion'],
-    confirmDel: '¿Eliminar este colaborador?',
-    excelConfig: {
-      title: 'Colaboradores',
-      sheetName: 'Colaboradores',
-      filename: 'colaboradores_civilmanager.xlsx',
-      headers: ['Código', 'Descripción', 'N° Salarios Base'],
-      colWidths: [{ wch: 12 }, { wch: 36 }, { wch: 16 }],
-      mapRow: c => [c.codigo, c.descripcion, c.num_salarios_base],
-      parseRow: row => row,
-      buildItem: (row, idx, existing, nextCode) => ({
-        id: idx >= 0 ? existing[idx].id : crypto.randomUUID(),
-        codigo: String(row[0] || nextCode()),
-        descripcion: String(row[1] || ''),
-        num_salarios_base: Number(row[2]) || 1,
+  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, handleKeyDown, excel } =
+    useCrudTable<Cargo>({
+      items: state.cargos,
+      onChange: (cargos) => patch({ cargos }),
+      prefix: 'MO',
+      defaultItem: () => ({
+        id: crypto.randomUUID(),
+        codigo: genCodeFor(state.cargos, 'MO'),
+        descripcion: 'Nuevo cargo',
+        num_salarios_base: 1,
       }),
-    },
-  });
+      searchKeys: ['codigo', 'descripcion'],
+      confirmDel: '¿Eliminar este colaborador?',
+      excelConfig: {
+        title: 'Colaboradores',
+        sheetName: 'Colaboradores',
+        filename: 'colaboradores_civilmanager.xlsx',
+        headers: ['Código', 'Descripción', 'N° Salarios Base'],
+        colWidths: [{ wch: 12 }, { wch: 36 }, { wch: 16 }],
+        mapRow: (c) => [c.codigo, c.descripcion, c.num_salarios_base],
+        parseRow: (row) => row,
+        buildItem: (row, idx, existing, nextCode) => ({
+          id: idx >= 0 ? existing[idx].id : crypto.randomUUID(),
+          codigo: String(row[0] || nextCode()),
+          descripcion: String(row[1] || ''),
+          num_salarios_base: Number(row[2]) || 1,
+        }),
+      },
+    });
 
-  const calcMap = useMemo(() => new Map(cargosCalc.map(c => [c.id, c])), [cargosCalc]);
+  const calcMap = useMemo(() => new Map(cargosCalc.map((c) => [c.id, c])), [cargosCalc]);
 
   function del(i: number) {
     const item = filtered[i];
-    const realIdx = state.cargos.findIndex(c => c.id === item.id);
-    tryDelete(item.id, () => patch({ cargos: state.cargos.filter((_, j) => j !== realIdx) }), '¿Eliminar este colaborador?');
+    const realIdx = state.cargos.findIndex((c) => c.id === item.id);
+    tryDelete(
+      item.id,
+      () => patch({ cargos: state.cargos.filter((_, j) => j !== realIdx) }),
+      '¿Eliminar este colaborador?',
+    );
   }
 
   return (
@@ -73,7 +89,11 @@ export function ColaboradoresTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="cm-empty-row">Sin colaboradores</td></tr>
+                <tr>
+                  <td colSpan={8} className="cm-empty-row">
+                    Sin colaboradores
+                  </td>
+                </tr>
               )}
               {filtered.map((c, i) => {
                 const calc = calcMap.get(c.id);
@@ -84,14 +104,24 @@ export function ColaboradoresTab() {
                     <td>{c.codigo}</td>
                     <td>
                       {editing ? (
-                        <input className="cm-ni" aria-label="Descripción" value={c.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
+                        <input
+                          className="cm-ni"
+                          aria-label="Descripción"
+                          value={c.descripcion}
+                          onChange={(e) => upd(c.id, 'descripcion', e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(i, e)}
+                        />
                       ) : (
                         <span onDoubleClick={() => setEditIdx(i)}>{c.descripcion}</span>
                       )}
                     </td>
                     <td>
                       {editing ? (
-                        <NumInput value={c.num_salarios_base} decimals={2} onChange={v => upd(i, 'num_salarios_base', v)} />
+                        <NumInput
+                          value={c.num_salarios_base}
+                          decimals={2}
+                          onChange={(v) => upd(c.id, 'num_salarios_base', v)}
+                        />
                       ) : (
                         <span onDoubleClick={() => setEditIdx(i)}>{fmt(c.num_salarios_base)}</span>
                       )}
