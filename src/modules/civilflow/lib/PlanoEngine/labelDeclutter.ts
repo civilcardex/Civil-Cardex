@@ -27,11 +27,14 @@ export interface DeclutterFrame {
   segs: DeclutterSeg[];
 }
 
-// Aire entre cajas para no dejarlas pegadas.
-const PAD = 2;
+// Aire entre cajas para no dejarlas pegadas (4px: con 2 se veían solapadas, orig. usuario).
+const PAD = 4;
 // Anillos y direcciones de la espiral de búsqueda (centros candidatos en px canvas).
-const RINGS = 6;
-const DIRS = 8;
+// 12×12: en zonas densas (junto a la TERRAZA/textos del plano base) 9×12 se agotaba sin sitio
+// libre y la etiqueta quedaba superpuesta a la vecina (orig. usuario). Con más anillos la
+// etiqueta se aleja más — la línea guía (leader) mantiene la conexión visual con el trazo.
+const RINGS = 12;
+const DIRS = 12;
 
 function aabbsOverlap(
   a: { minX: number; minY: number; maxX: number; maxY: number },
@@ -222,6 +225,20 @@ export function beginDeclutterFrame(engine: IPlanoEngineCore): DeclutterFrame {
   for (const a of engine.areas) {
     if (a.net && engine._hiddenNets.has(a.net)) continue;
     if (a._labelBox) push(a.id, a._labelBox);
+  }
+  // Anotaciones de texto del plano (p. ej. "TERRAZA COMPARTIDA" del PDF): también son
+  // obstáculo — una etiqueta auto encima del texto quedaba pintada sin corrección.
+  // _box es AABB con esquina superior izquierda en (x, y).
+  for (const t of engine.textAnnots || []) {
+    if (t._box) {
+      placed.push({
+        id: t.id,
+        minX: t._box.x,
+        minY: t._box.y,
+        maxX: t._box.x + t._box.w,
+        maxY: t._box.y + t._box.h,
+      });
+    }
   }
   const segs: DeclutterSeg[] = [];
   for (const r of engine.ramales) {
