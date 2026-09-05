@@ -19,6 +19,7 @@ type RevisarRamalInput = {
   aparatoFin?: string;
   accesorioInicio?: string;
   accesorioFin?: string;
+  fixtures?: Record<string, number>;
   mergesFrom?: unknown;
 };
 
@@ -82,6 +83,11 @@ export function validateBeforeClose(
     if (tipo !== 'ramal' && tipo !== 'tributario') return;
     if ((r.uc || 0) > 0) return;
     if (r.aparatoInicio || r.aparatoFin) return;
+    // Aparatos persistidos EN el elemento (PlanoRamal.fixtures — writeDiameterToDrawing/sync los
+    // escriben): es carga asignada, igual que el mapa — sin esto, convertir ramal↔tributario
+    // (o cualquier edición que recree el tramo) disparaba "UC/UD pendientes" con aparatos vivos
+    // (orig. usuario).
+    if (r.fixtures && Object.keys(r.fixtures).length > 0) return;
     if (TEE_END_IDS.has(r.accesorioInicio || '') || TEE_END_IDS.has(r.accesorioFin || '')) return;
     {
       const prefix = `${r.net}_${r.id}`;
