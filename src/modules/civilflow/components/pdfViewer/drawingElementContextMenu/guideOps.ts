@@ -12,6 +12,8 @@ import {
   ramalFlowDirectionCheck,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { allocTributaryNumber, rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
+import { distToPolyline } from '../../../lib/shared/geometry';
+import { snapGuideCrossingToEndpoint } from '../../../lib/PlanoEngine/guideLines';
 
 // Rota pts[1] alrededor de pts[0] (el pivote fijo) en el paso de grados con signo dado,
 // validando el resultado contra las mismas reglas de ángulo que debería obedecer un ramal
@@ -125,6 +127,29 @@ export function isGuideRelativeAngleValid(
   return rem <= ANGLE_EPS || rem >= 45 - ANGLE_EPS;
 }
 
+// ¿El punto toca la red existente (extremo de un ramal o su cuerpo)? Para orientar el flujo
+// de ramales creados desde guía: san/ll drenan SIEMPRE hacia el extremo apoyado en la red —
+// el sentido en que se dibujó la guía no debe influir en la flecha (orig. usuario).
+// @param net red del ramal por orientar: SOLO esa red cuenta como apoyo (san admite vent,
+// que comparte sus uniones) — sin filtro, un roce con un ramal af/ac/gas invertía la flecha.
+export function guideEndTouchesNetwork(
+  eng: PlanoEngine,
+  pt: [number, number],
+  net?: string,
+): boolean {
+  const TOL = 0.6;
+  // Mismo agrupamiento que el motor: san y vent comparten uniones.
+  const sameGroup = (other: string | undefined) =>
+    !!net &&
+    (other === net || ((net === 'san' || net === 'vent') && (other === 'san' || other === 'vent')));
+  for (const r of eng.ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    if (net && !sameGroup(r.net)) continue;
+    if (distToPolyline(pt, r.pts) < TOL) return true;
+  }
+  return false;
+}
+
 function getPadreHostAngle(padre: PlanoRamal, crossPt: [number, number]): number | null {
   if (!padre.pts || padre.pts.length < 2) return null;
   const TOL = 0.6;
@@ -235,6 +260,33 @@ export function guideAngleAlertMessage(net: string, tipo: string): string {
   return 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.';
 }
 
+// Ordena los extremos de la guía para "Crear ramal" (lejano primero, flujo hacia el cruce) y
+// ancla el cercano al cruce exacto — con snap al extremo del ramal cruzado cuando cae cerca,
+// igual que la ruta de tributario. Sin esto, un extremo a >0.5px del cruce dejaba el ramal
+// flotando: sin split, sin UD y sin candidatos para "Convertir en tributario" (orig. usuario).
+export function resolveRamalEndsFromGuide(
+  eng: PlanoEngine,
+  guide: PlanoGuideLine,
+  crossing: { point: [number, number]; ramalId: string } | null,
+): { pStart: [number, number]; pEnd: [number, number] } {
+  const [p0, p1] = guide.pts;
+  let pStart: [number, number] = [p0[0], p0[1]];
+  let pEnd: [number, number] = [p1[0], p1[1]];
+  if (!crossing) return { pStart, pEnd };
+  const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
+  const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
+  if (d0 < d1) {
+    pStart = [p1[0], p1[1]];
+    pEnd = [p0[0], p0[1]];
+  }
+  const snapped = snapGuideCrossingToEndpoint(eng, crossing.ramalId, [
+    crossing.point[0],
+    crossing.point[1],
+  ]);
+  pEnd = [snapped[0], snapped[1]];
+  return { pStart, pEnd };
+}
+
 // Núcleo compartido de creación de un tributario desde línea guía (botón singular y el plural
 // del ítem 1.3): construye el tributario [freeEnd → cruce], valida ángulo/flujo, lo empuja y lo
 // parte si cae a mitad de cuerpo de su padre (autoSplitJunctionAndSumFlow). Devuelve el
@@ -340,6 +392,40 @@ export function buildTribFromGuide(
   (eng as unknown as { _guideTributary?: boolean })._guideTributary = true;
   autoSplitJunctionAndSumFlow(eng, newTrib);
   (eng as unknown as { _guideTributary?: boolean })._guideTributary = false;
+  // San/ll: el tributario se construye [freeEnd → cruce] y drena HACIA su unión con el padre —
+  // la flecha debe apuntar al cruce. El split a mitad de cuerpo ya deja _tribReversed en false,
+  // pero en unión extremo-con-extremo no hay split que lo reescriba y el ajuste de flujo previo
+  // puede haberlo dejado en true (flecha invertida, orig. usuario). Sin split en el cruce el
+  // tributario no partió nada: solo se fuerza cuando el cruce toca al padre.
+  if (padre.net === 'san' || padre.net === 'll') {
+    const splitAtCross = eng.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === newTrib.id);
+    if (!splitAtCross) {
+      const touchesPadre =
+        (padre.pts || []).some((p) => Math.hypot(p[0] - crossPt[0], p[1] - crossPt[1]) < 0.6) ||
+        (padre.pts && padre.pts.length >= 2 && distToPolyline(crossPt, padre.pts) < 0.6);
+      if (touchesPadre) newTrib._tribReversed = false;
+      // Unión extremo-con-extremo (sin split): san/ll drenan hacia la unión y siguen por el
+      // ramal que NACE en ella (pts[0] en el cruce) — ese receptor es el padre real del
+      // tributario y su label debe referenciarlo (orig. usuario: T2RS7 en la unión RS7|RS8
+      // cuando descarga a RS8). Si el receptor ES el propio padre, no hay nada que cambiar.
+      const TOL_EP = 0.5;
+      const receptor = eng.ramales.find(
+        (r) =>
+          r.id !== newTrib.id &&
+          r.id !== newTrib.padre &&
+          r.tipo !== 'tributario' &&
+          (r.net === 'san' || r.net === 'll') &&
+          !!r.pts &&
+          r.pts.length >= 2 &&
+          Math.hypot(r.pts[0][0] - crossPt[0], r.pts[0][1] - crossPt[1]) < TOL_EP,
+      );
+      if (receptor) {
+        const recLbl = receptor.label || receptor.id;
+        newTrib.padre = receptor.id;
+        newTrib.label = `T${allocTributaryNumber(eng, recLbl)}${recLbl}`;
+      }
+    }
+  }
   // El usuario pide que una conversión de línea guía a tributario NO dibuje NINGÚN símbolo de
   // accesorio (codo/tee) en la unión — ni siquiera uno que viniera persistido de una conversión
   // anterior con código viejo. En el punto de cruce se anula todo accesorio de extremo que otro

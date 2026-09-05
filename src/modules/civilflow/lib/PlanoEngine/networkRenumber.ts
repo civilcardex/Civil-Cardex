@@ -1,6 +1,11 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import {
+  APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+  GAS_ACC_KEY,
+} from '../../constants/storage-keys';
 import { devError } from '../../../../utils/devError';
 import {
   ldesvioIdFor,
@@ -287,6 +292,149 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
       b.id = `${pfx}${idx}_${netId}`;
       b.code = `${pfx}${idx}`;
     });
+  }
+}
+
+/** Renombra el id de un ramal migrando TODAS sus referencias (convertir tributario en
+ *  ramal: el T1788... pasa a RS8 y las tablas deben mostrar el nuevo id). Cubre motor (padre,
+ *  mergesFrom, ini/fin, recibeDeIds, descargaEnId, selId) y storage del plano cargado
+ *  (aparatos + hidro). No hace nada si el id ya es el nuevo. */
+export function renameRamalId(
+  engine: IPlanoEngineCore,
+  oldId: string,
+  newId: string,
+  oldLabel?: string,
+): void {
+  if (!oldId || !newId || oldId === newId) return;
+  const replaceRef = (v: string | null | undefined): string | null | undefined => {
+    if (v == null) return v;
+    if (v === oldId || (oldLabel && v === oldLabel)) return newId;
+    if (v.endsWith('|' + oldId)) return v.slice(0, v.length - oldId.length) + newId;
+    if (oldLabel && v.endsWith('|' + oldLabel))
+      return v.slice(0, v.length - oldLabel.length) + newId;
+    return v;
+  };
+  for (const r of engine.ramales) {
+    if (r.id === oldId) {
+      r.id = newId;
+      continue;
+    }
+    if (r.padre === oldId) r.padre = newId;
+    if (r.mergesFrom)
+      r.mergesFrom = [
+        r.mergesFrom[0] === oldId ? newId : r.mergesFrom[0],
+        r.mergesFrom[1] === oldId ? newId : r.mergesFrom[1],
+      ];
+    if (r.ini === oldId) r.ini = newId;
+    if (r.fin === oldId) r.fin = newId;
+  }
+  for (const b of engine.bajantes) {
+    if (b.recibeDeIds?.includes(oldId))
+      b.recibeDeIds = b.recibeDeIds.map((x) => (x === oldId ? newId : x));
+    if (b.descargaEnId) {
+      const nd = replaceRef(b.descargaEnId);
+      if (nd !== undefined) b.descargaEnId = nd;
+    }
+  }
+  if (engine.selId === oldId) engine.selId = newId;
+  // Storage del plano cargado: las claves son `${net}_${ramalId}_${planId}`.
+  const planId = engine._loadedPlanId;
+  if (planId != null) {
+    const netOf = (id: string) => engine.ramales.find((r) => r.id === id)?.net || '';
+    const net = netOf(newId);
+    if (net) {
+      // Aparatos: { aparatoId: cantidad }. El id nuevo casi nunca tiene clave propia — se MUEVE
+      // tal cual; solo si el destino ya tenía datos independientes se suma (sumar siempre
+      // duplicaba las UD al deshacer y reconvertir el mismo tributario).
+      try {
+        const all =
+          (loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as Record<string, Record<string, number>>) ||
+          {};
+        const from = `${net}_${oldId}_${planId}`;
+        const to = `${net}_${newId}_${planId}`;
+        if (all[from] !== undefined && from !== to) {
+          if (all[to] === undefined) {
+            all[to] = all[from];
+          } else {
+            // Mismo ramal, dos copias del conteo (p. ej. clave vieja resucitada por el estado
+            // stale de FixturesPanel): MAX por aparato — sumar duplicaba las UD al reconvertir.
+            const out = { ...all[to] };
+            for (const [k, v] of Object.entries(all[from]))
+              out[k] = Math.max(Number(out[k]) || 0, Number(v) || 0);
+            all[to] = out;
+          }
+          delete all[from];
+          saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+        }
+      } catch (e) {
+        devError('PlanoEngine:', e);
+      }
+      // Hidro guarda { accesorios, Lh, nSalidas }: fusionar accesorios por suma y conservar
+      // escalares del destino si existen.
+      try {
+        const all =
+          (loadFromStorage(HYDRO_DATA_STORAGE_KEY, {}) as Record<
+            string,
+            {
+              accesorios?: Record<string, number>;
+              Lh?: number;
+              nSalidas?: number;
+            }
+          >) || {};
+        const from = `${net}_${oldId}_${planId}`;
+        const to = `${net}_${newId}_${planId}`;
+        const src = all[from];
+        if (src !== undefined && from !== to) {
+          const dst = all[to];
+          if (dst === undefined) {
+            all[to] = src;
+          } else {
+            // Mismo ramal, dos copias: MAX por accesorio y por escalar (sumar duplicaba).
+            const acc = { ...(dst.accesorios || {}) };
+            for (const [k, v] of Object.entries(src.accesorios || {}))
+              acc[k] = Math.max(Number(acc[k]) || 0, Number(v) || 0);
+            all[to] = {
+              accesorios: acc,
+              Lh: Math.max(dst.Lh ?? 0, src.Lh ?? 0),
+              nSalidas: Math.max(dst.nSalidas ?? 0, src.nSalidas ?? 0),
+            };
+          }
+          delete all[from];
+          saveToStorage(HYDRO_DATA_STORAGE_KEY, all);
+        }
+      } catch (e) {
+        devError('PlanoEngine:', e);
+      }
+    }
+  }
+  // Gas usa claves de ramal peladas (sin red ni plano) — misma migración mover-o-sumar que
+  // aparatos/hidro.
+  try {
+    const all = loadFromStorage(GAS_ACC_KEY, {}) as Record<string, Record<string, number>>;
+    if (all[oldId] !== undefined && oldId !== newId) {
+      if (all[newId] === undefined) {
+        all[newId] = all[oldId];
+      } else {
+        // Mismo ramal, dos copias: MAX por aparato (sumar duplicaba).
+        const dst = all[newId];
+        for (const [k, v] of Object.entries(all[oldId]))
+          dst[k] = Math.max(Number(dst[k]) || 0, Number(v) || 0);
+      }
+      delete all[oldId];
+      saveToStorage(GAS_ACC_KEY, all);
+    }
+  } catch (e) {
+    devError('PlanoEngine:', e);
+  }
+  // FixturesPanel cachea el mapa de aparatos/hidro/gas en estado de React y lo re-escribe
+  // entero en cada cambio (saveAll en un effect). Sin este evento — que el storage nativo NO
+  // dispara en la misma pestaña — su copia stale resucitaba la clave vieja y borraba la
+  // migrada: las UD del ramal convertido se reseteaban (orig. usuario). Mismo patrón que
+  // _renumberRamales.
+  try {
+    window.dispatchEvent(new Event('storage'));
+  } catch {
+    /* ignore */
   }
 }
 

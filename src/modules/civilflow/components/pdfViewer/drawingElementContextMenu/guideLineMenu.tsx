@@ -4,7 +4,6 @@ import { NETS, allocNetNumber, uniqRamalId } from '../../../lib/PlanoEngine/Plan
 import { checkRamalAngles, _firstSegmentAngle } from '../../../lib/PlanoEngine/drawingAngles';
 import {
   autoSplitJunctionAndSumFlow,
-  ramalFlowDirectionCheck,
   flipRamalFlow,
   findGuideTCrossing,
   snapGuideCrossingToEndpoint,
@@ -21,8 +20,10 @@ import {
   rotateGuideLine,
   guideAngleAlertMessage,
   buildTribFromGuide,
+  resolveRamalEndsFromGuide,
   resolveGuideJunctionAccessory,
   isGuideRelativeAngleValid,
+  guideEndTouchesNetwork,
 } from './guideOps';
 
 export function GuideLineMenu() {
@@ -117,22 +118,13 @@ export function GuideLineMenu() {
             eng.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
           );
           const ramId = `${pfx}${cnt}`;
-          const [p0, p1] = liveGuide.pts;
           // El flujo se dibuja desde pts[0] hacia el último punto (renderRamales.ts) — se
           // orienta el nuevo ramal para que su flujo apunte siempre al ramal sobre el que se
-          // dibujó esta guía (el cruce ES la conexión que crea), desde el extremo de la guía
-          // más cercano primero.
+          // dibujó esta guía (el cruce ES la conexión que crea), con el extremo cercano
+          // anclado al cruce exacto para que nazca conectado (split + UD + "Convertir en
+          // tributario" disponible).
           const crossing = findGuideCrossing(eng, liveGuide);
-          let pStart: [number, number] = [p0[0], p0[1]];
-          let pEnd: [number, number] = [p1[0], p1[1]];
-          if (crossing) {
-            const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
-            const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
-            if (d0 < d1) {
-              pStart = [p1[0], p1[1]];
-              pEnd = [p0[0], p0[1]];
-            }
-          }
+          const { pStart, pEnd } = resolveRamalEndsFromGuide(eng, liveGuide, crossing);
           // Validación relativa si la guía cruza un ramal (ítem 4): host a 30° + guía a 120° es 90° relativa válida.
           const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
           const hostAng = crossing ? crossing.angle : null;
@@ -180,26 +172,24 @@ export function GuideLineMenu() {
             pendiente: 2,
             bloqueado: false,
           };
-          // Ítem 5: un vent creado desde guía que termina fluyendo HACIA una unión san (codo
-          // reventilado) se bloquea aquí — autoSplitJunctionAndSumFlow solo valida uniones a
-          // mitad de cuerpo, no extremo-con-extremo, así que sin este chequeo el vent se creaba
-          // recibiendo flujo en el extremo de un ramal sanitario. Misma validación pre-push para
-          // san/ll: los ramales creados desde línea guía deben cumplir la dirección de flujo de
-          // la red igual que los dibujados a mano (finishRamal).
-          // Para san/ll/vent, el ramal desde guía que CRUZA otro ramal se auto-orienta hacia la
-          // unión (el flujo fluye desde el extremo libre hacia el cruce) — orig. #5. Solo si tras
-          // la auto-orientación sigue en conflicto se bloquea.
-          // ponytail: guide is free — auto-correct flow, never block
-          if (effectiveNet === 'vent' || effectiveNet === 'san' || effectiveNet === 'll') {
-            let flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
-            if (flowErr) {
-              flipRamalFlow(newRamal);
-              flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
-              if (flowErr) {
-                // still error but guide explicit — allow
-              }
-            }
+          // san/ll: la flecha SIEMPRE entra a la conexión (el accesorio) — el sentido en que
+          // se dibujó la guía no influye (orig. usuario). El ramal drena hacia el extremo que
+          // toca la red existente; resolveRamalEndsFromGuide ya lo orienta cuando hay cruce,
+          // esta regla lo fuerza también sin cruce detectado (guía dibujada DESDE el ramal).
+          if (effectiveNet === 'san' || effectiveNet === 'll') {
+            const pts = newRamal.pts;
+            const lastTouch = guideEndTouchesNetwork(
+              eng,
+              [pts[pts.length - 1][0], pts[pts.length - 1][1]],
+              effectiveNet,
+            );
+            const firstTouch = guideEndTouchesNetwork(eng, [pts[0][0], pts[0][1]], effectiveNet);
+            if (firstTouch && !lastTouch) flipRamalFlow(newRamal);
           }
+          // El flip invierte pts (san/ll/vent) — el labelAngle quedó calculado ANTES del flip y
+          // sale 180° fuera; el gap perpendicular del render empujaba la caja HACIA el trazo en
+          // vez de alejarla (orig. usuario: etiqueta solapada "en ocasiones").
+          newRamal.labelAngle = _firstSegmentAngle(newRamal.pts);
           eng.ramales.push(newRamal);
           // Igual que un ramal terminado a mano (finishRamal): si el extremo cae a mitad del
           // cuerpo de otro ramal, ese ramal se parte en existing+downstream y el nuevo se suma
@@ -207,8 +197,16 @@ export function GuideLineMenu() {
           // una guía dibujada sobre el cuerpo de un ramal existente dejaba un cruce en T sin
           // partir de verdad (sin mergesFrom, sin acumulación de UC/UD).
           (eng as unknown as { _guideTributary: boolean })._guideTributary = true;
-          autoSplitJunctionAndSumFlow(eng, newRamal);
+          const blocked = autoSplitJunctionAndSumFlow(eng, newRamal);
           (eng as unknown as { _guideTributary: boolean })._guideTributary = false;
+          if (blocked) {
+            // Conexión bloqueada (ramal sobre tributario): retirar el ramal recién creado y
+            // conservar la guía para que el usuario la reposicione.
+            eng.ramales = eng.ramales.filter((x) => x.id !== newRamal.id);
+            eng.render();
+            ctx.setContextMenuState(null);
+            return;
+          }
           eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
           eng.selId = ramId;
           if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);

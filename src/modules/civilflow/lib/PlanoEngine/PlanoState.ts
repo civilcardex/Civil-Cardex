@@ -206,6 +206,22 @@ export function allocTributaryNumber(
   return n;
 }
 
+/** Primer id/etiqueta libre `${pfx}{n}` para convertir un tributario en ramal. `excludeId` es
+ *  el propio elemento en conversión: su id/label NO bloquea la numeración — al ir y volver
+ *  (RS2→T1RS2→ramal) el número RS2 quedó libre y se recupera (antes el id heredado empujaba a
+ *  RS3 y "seguía contando desde el ramal previo", orig. usuario). */
+export function nextFreeRamalId(
+  ramales: Array<{ id: string; label?: string }>,
+  pfx: string,
+  excludeId?: string,
+): string {
+  const ids = new Set(ramales.filter((r) => r.id !== excludeId).map((r) => r.id));
+  const labels = new Set(ramales.filter((r) => r.id !== excludeId).map((r) => r.label || ''));
+  let n = 1;
+  while (ids.has(`${pfx}${n}`) || labels.has(`${pfx}${n}`)) n++;
+  return `${pfx}${n}`;
+}
+
 /** Etiqueta del ramal RAÍZ de una cadena de tributarios (el primer no-tributario subiendo
  *  por la cadena de `padre`). Un tributario de un tributario se numera contra el raíz con
  *  consecutivo global de ese raíz — sale T5RS1, no T1T1RS1 — y compite con los tributarios

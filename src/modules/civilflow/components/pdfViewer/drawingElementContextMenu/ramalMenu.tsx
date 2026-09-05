@@ -8,7 +8,8 @@ import {
   aparatoEnExtremoInvalido,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { directNeighborRamales } from '../../../utils/flowDirection';
-import { allocTributaryNumber, rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
+import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState';
+import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber';
 import {
   useDrawingElementContextMenu,
   MENU_GRID_2COL_TALL_STYLE,
@@ -95,7 +96,11 @@ export function RamalMenu() {
     // (T{n}{labelRaíz}) — igual que autoSplitJunctionAndSumFlow al crear un tributario por
     // guía, y con la misma cadena de raíz global (rootTributarioLabel). Sin esto el ramal
     // conservaba su label de ramal normal (RS1, AS1...) y no se distinguía de los troncos.
-    const rootLbl = rootTributarioLabel(eng.ramales, padreId);
+    // El consecutivo va contra el padre ELEGIDO, no contra su raíz aguas arriba: los
+    // candidatos nunca son tributarios, y un padre auto-creado (con mergesFrom) hacía que
+    // rootTributarioLabel subiera hasta el tramo original — el usuario elegía RS8 y el label
+    // salía T2RS9 (orig. usuario).
+    const rootLbl = padre?.label || padreId;
     const updates: Record<string, unknown> = {
       tipo: 'tributario',
       padre: padreId,
@@ -142,19 +147,24 @@ export function RamalMenu() {
               ? 'RAC'
               : 'R'
       : 'R';
-    // fallback label via allocNetNumber-like: find next free
-    const existingLabels = new Set(eng.ramales.map((r) => r.label));
-    let n = 1;
-    while (existingLabels.has(`${pfx}${n}`)) n++;
+    // fallback label via allocNetNumber-like: primer id/etiqueta libre, EXCLUYENDO el propio
+    // elemento — su id heredado de ramal (RS2) no debe bloquear la numeración: ida y vuelta
+    // (RS2→T1RS2→ramal) recupera RS2 (nextFreeRamalId, orig. usuario).
+    const oldId = fresh.id;
+    const newId = nextFreeRamalId(eng.ramales, pfx, oldId);
     const updates: Record<string, unknown> = {
       tipo: 'ramal',
       padre: null,
-      label: `${pfx}${n}`,
+      label: newId,
       pts: fresh.pts,
       _tribReversed: fresh._tribReversed,
     };
-    eng.updateElementById(fresh.id, updates);
-    if (ctx.selElement?.id === fresh.id) ctx.setSelElement({ ...ctx.selElement, ...updates });
+    // El id de tributario (T1788...) quedaba en las tablas mientras el dibujo mostraba el
+    // label nuevo (RS8): se renombra el id y se migran todas sus referencias (orig. usuario).
+    renameRamalId(eng, oldId, newId, fresh.label);
+    eng.updateElementById(newId, updates);
+    if (ctx.selElement?.id === oldId)
+      ctx.setSelElement({ ...ctx.selElement, ...updates, id: newId });
     eng.render();
     eng._markDirty();
     ctx.setContextMenuState(null);
@@ -163,29 +173,11 @@ export function RamalMenu() {
     <>
       {ramalEl.tipo === 'tributario' && (
         <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-          <button
-            type="button"
-            onClick={convertToRamal}
-            style={{ ...MENU_ACTION_BTN_STYLE, textAlign: 'left' }}
-          >
+          <button type="button" onClick={convertToRamal} style={MENU_ACTION_BTN_STYLE}>
             Convertir tributario en ramal
           </button>
         </div>
       )}
-      <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-        <button
-          type="button"
-          onClick={() => {
-            const eng = ctx.engineRef.current;
-            if (!eng) return;
-            eng.deleteSelected([ramalEl.id], { noMerge: true });
-            ctx.setContextMenuState(null);
-          }}
-          style={{ ...MENU_ACTION_BTN_STYLE, color: '#ffb4ab' }}
-        >
-          Borrar trazo
-        </button>
-      </div>
       {ramalEl.tipo !== 'tributario' && tribCandidates.length > 0 && (
         <div
           style={{
@@ -201,12 +193,7 @@ export function RamalMenu() {
             type="button"
             onClick={() => setTribConvOpen((o) => !o)}
             aria-expanded={tribConvOpen}
-            style={{
-              ...MENU_ACTION_BTN_STYLE,
-              textAlign: 'left',
-              whiteSpace: 'normal',
-              lineHeight: 1.3,
-            }}
+            style={{ ...MENU_ACTION_BTN_STYLE, whiteSpace: 'normal', lineHeight: 1.3 }}
           >
             {tribConvOpen ? '▾' : '▸'} Convertir en tributario de...
           </button>
