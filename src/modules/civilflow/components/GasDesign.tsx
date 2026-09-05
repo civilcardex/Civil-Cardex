@@ -23,6 +23,7 @@ import {
   GAS_DATOS_KEY,
 } from '../constants/storage-keys';
 import { renouardByType } from '../utils/gasUtils';
+import { compareTramosPisoDesc } from '../utils/componentHelpers';
 import { GAS_DATOS_DEFAULT } from '../utils/gasRows';
 
 type GasAccMap = Record<string, Record<string, number>>;
@@ -200,7 +201,7 @@ function GasDesign() {
         });
       }
     }
-    return tramos.sort((a, b) => (b.piso || 0) - (a.piso || 0));
+    return tramos.sort(compareTramosPisoDesc);
   }, [plans]);
 
   const gasContBajantes = useMemo(() => {

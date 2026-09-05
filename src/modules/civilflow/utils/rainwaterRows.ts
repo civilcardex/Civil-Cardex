@@ -3,6 +3,7 @@ import type { PlanItem } from '../context/PlansContext';
 import { diametroManning } from './calcSanitaryCore';
 import { chequeoBajanteLluvia } from './calcRainwater';
 import { calcHydraulicCheck } from './hydraulicCheck';
+import { compareTramosPisoDesc } from './componentHelpers';
 import { DIAM_OPTIONS } from '../constants';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
@@ -271,76 +272,74 @@ export function computeLlRows(
   qMap: Record<string, number>,
   associations: Record<string, string[]>,
 ): LlRow[] {
-  return displayTramos
-    .toSorted((a, b) => (a.piso || 0) - (b.piso || 0))
-    .map((t) => {
-      const tKey = t._key ?? '';
-      const n = t.nmaning ?? 0;
-      const sVal = t.sPercent ?? 0;
-      const S = sVal != null && sVal > 0 ? sVal / 100 : null;
-      const Q = qMap[tKey] || 0;
-      const dSel = DIAM_OPTIONS.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
-      let DcalcPulg = 0;
-      const DdisPulg = dSel ? dSel.pulg : 0;
-      const DintMm = dSel ? dSel.mm : 0;
-      let Qo = 0,
-        Vo = 0,
-        qqo = 0;
-      let Vreal = 0,
-        chequeoV = '—';
-      let Yc = 0,
-        Yn = 0,
-        Froude = 0,
-        tipoFlujo = '—',
-        Ymax = 0,
-        chequeoYn = '—';
-      let fuerzaTractiva = 0,
-        chequeoFT = '—';
-      if (Q > 0 && S != null && S > 0 && n != null && n > 0) {
-        DcalcPulg = Math.round(((diametroManning(Q / 1000, n, S) * 1000) / 25.4) * 100) / 100;
-      }
-      if (Q > 0 && S != null && S > 0 && n != null && n > 0 && DintMm > 0) {
-        const hc = calcHydraulicCheck({ Q, S, n, DintMm });
-        Qo = hc.Qo;
-        Vo = hc.Vo;
-        qqo = hc.qqo;
-        Vreal = hc.Vreal;
-        chequeoV = hc.chequeoV;
-        Yc = hc.Yc;
-        Yn = hc.Yn;
-        Froude = hc.Froude;
-        tipoFlujo = hc.tipoFlujo;
-        Ymax = hc.Ymax;
-        chequeoYn = hc.chequeoYn;
-        fuerzaTractiva = hc.fuerzaTractiva;
-        chequeoFT = hc.chequeoFT;
-      }
-      return {
-        tKey,
-        id: t.id || tKey,
-        piso: t.piso,
-        desde: t.desde,
-        hasta: t.hasta,
-        bajantesAsociadas: associations[tKey] || [],
-        Q,
-        n,
-        sVal,
-        DcalcPulg,
-        DdisPulg,
-        DintMm,
-        Qo,
-        Vo,
-        qqo,
-        Vreal,
-        chequeoV,
-        Yc,
-        Yn,
-        Froude,
-        tipoFlujo,
-        Ymax,
-        chequeoYn,
-        fuerzaTractiva,
-        chequeoFT,
-      };
-    });
+  return displayTramos.toSorted(compareTramosPisoDesc).map((t) => {
+    const tKey = t._key ?? '';
+    const n = t.nmaning ?? 0;
+    const sVal = t.sPercent ?? 0;
+    const S = sVal != null && sVal > 0 ? sVal / 100 : null;
+    const Q = qMap[tKey] || 0;
+    const dSel = DIAM_OPTIONS.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
+    let DcalcPulg = 0;
+    const DdisPulg = dSel ? dSel.pulg : 0;
+    const DintMm = dSel ? dSel.mm : 0;
+    let Qo = 0,
+      Vo = 0,
+      qqo = 0;
+    let Vreal = 0,
+      chequeoV = '—';
+    let Yc = 0,
+      Yn = 0,
+      Froude = 0,
+      tipoFlujo = '—',
+      Ymax = 0,
+      chequeoYn = '—';
+    let fuerzaTractiva = 0,
+      chequeoFT = '—';
+    if (Q > 0 && S != null && S > 0 && n != null && n > 0) {
+      DcalcPulg = Math.round(((diametroManning(Q / 1000, n, S) * 1000) / 25.4) * 100) / 100;
+    }
+    if (Q > 0 && S != null && S > 0 && n != null && n > 0 && DintMm > 0) {
+      const hc = calcHydraulicCheck({ Q, S, n, DintMm });
+      Qo = hc.Qo;
+      Vo = hc.Vo;
+      qqo = hc.qqo;
+      Vreal = hc.Vreal;
+      chequeoV = hc.chequeoV;
+      Yc = hc.Yc;
+      Yn = hc.Yn;
+      Froude = hc.Froude;
+      tipoFlujo = hc.tipoFlujo;
+      Ymax = hc.Ymax;
+      chequeoYn = hc.chequeoYn;
+      fuerzaTractiva = hc.fuerzaTractiva;
+      chequeoFT = hc.chequeoFT;
+    }
+    return {
+      tKey,
+      id: t.id || tKey,
+      piso: t.piso,
+      desde: t.desde,
+      hasta: t.hasta,
+      bajantesAsociadas: associations[tKey] || [],
+      Q,
+      n,
+      sVal,
+      DcalcPulg,
+      DdisPulg,
+      DintMm,
+      Qo,
+      Vo,
+      qqo,
+      Vreal,
+      chequeoV,
+      Yc,
+      Yn,
+      Froude,
+      tipoFlujo,
+      Ymax,
+      chequeoYn,
+      fuerzaTractiva,
+      chequeoFT,
+    };
+  });
 }

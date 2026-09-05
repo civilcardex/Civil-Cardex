@@ -4,7 +4,7 @@ import { useTramos } from '../context/TramosContext';
 import { useProyecto } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { AF_UC_IDS, AC_UC_IDS, matHazenC } from '../constants';
-import { calcUCparcial } from '../utils/componentHelpers';
+import { calcUCparcial, compareTramosPisoDesc } from '../utils/componentHelpers';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import {
   writeDiametroToDrawing,
@@ -169,7 +169,7 @@ function WaterNetworkDesign({
     () =>
       tramos
         .filter((t) => t.tipo !== 'tributario' && !t.esBajante && !isAC1(t))
-        .sort((a, b) => (b.piso || 0) - (a.piso || 0)),
+        .sort(compareTramosPisoDesc),
     [tramos],
   );
 

@@ -102,6 +102,33 @@ export function calcUCacumulado(
 }
 
 /**
+ * Número de ramal para orden (RS10 → 10, T1RS1 → 1): primer entero del id.
+ * @param id - Identificador del ramal.
+ * @returns Primer entero del id, o 0 si no tiene.
+ */
+export function ramalNumero(id: string | undefined): number {
+  const m = (id || '').match(/\d+/);
+  return m ? parseInt(m[0], 10) : 0;
+}
+
+/**
+ * Orden de tablas de diseño: piso descendente, numeración de ramal ascendente.
+ * @param a - Tramo o fila con piso e id.
+ * @param b - Tramo o fila con piso e id.
+ * @returns Comparador para sort/toSorted.
+ */
+export function compareTramosPisoDesc(
+  a: { piso?: number; id?: string },
+  b: { piso?: number; id?: string },
+): number {
+  if ((b.piso || 0) !== (a.piso || 0)) return (b.piso || 0) - (a.piso || 0);
+  const na = ramalNumero(a.id);
+  const nb = ramalNumero(b.id);
+  if (na !== nb) return na - nb;
+  return (a.id || '').localeCompare(b.id || '', 'es');
+}
+
+/**
  * Renderiza una insignia de estado de cumplimiento: verde para "O.K.", roja para "NO CUMPLE",
  * neutra de lo contrario.
  * @param val - String de estado a renderizar.

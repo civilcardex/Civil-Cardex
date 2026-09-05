@@ -1,7 +1,7 @@
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext';
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
-import { calcUCparcial } from './componentHelpers';
+import { calcUCparcial, compareTramosPisoDesc } from './componentHelpers';
 import { calcLeAcces } from './accesoriosUtils';
 import { computeDirectedTotals } from '../lib/shared/connectionGraph';
 import { distToPolyline } from '../lib/shared/geometry';
@@ -466,7 +466,7 @@ export function computeWaterNetworkRows(
   const pRed = parseFloat(pRedStr) || 20;
   const tramosOrden = tramos
     .filter((t) => t.tipo !== 'tributario' && !t.esBajante && !isAC1(t))
-    .sort((a, b) => (b.piso || 0) - (a.piso || 0));
+    .sort(compareTramosPisoDesc);
 
   // ── Acometida (solo AF) — mismos defaults con los que arranca el useState propio de WaterNetworkDesign.tsx ──
   const tr1 = isAf(networkType) ? tramos.find(isAC1) : null;

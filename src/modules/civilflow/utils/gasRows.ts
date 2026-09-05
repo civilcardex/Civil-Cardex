@@ -10,6 +10,7 @@ import {
   GAS_DATOS_KEY,
 } from '../constants/storage-keys';
 import { renouardByType } from './gasUtils';
+import { compareTramosPisoDesc } from './componentHelpers';
 import type { DrawingData, RawElement } from './drawingSync';
 
 interface GasRamalRaw extends RawElement {
@@ -115,7 +116,7 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
       });
     }
   }
-  gasTramos.sort((a, b) => (b.piso || 0) - (a.piso || 0));
+  gasTramos.sort(compareTramosPisoDesc);
 
   const gasAcc = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
   const aparatos = loadFromStorage<Record<string, Record<string, number>>>(
