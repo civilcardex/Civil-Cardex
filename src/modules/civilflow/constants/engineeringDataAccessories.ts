@@ -180,7 +180,7 @@ export const ACCESORIOS_YEE = [
 ];
 
 export const SAN_ACCESORIOS = [
-  ...ACCESORIOS_HIDRO.filter((a) => a.id === 'codo90rm' || a.id === 'codo45rc'),
+  ...ACCESORIOS_HIDRO.filter((a) => a.id === 'codo90rm' || a.id === 'codo45rc' || a.id === 'tapon'),
   {
     id: 'codo90rmSube',
     emoji: '🔩',
