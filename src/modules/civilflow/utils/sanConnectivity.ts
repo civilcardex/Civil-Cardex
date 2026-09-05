@@ -127,6 +127,10 @@ export function buildSanConnectivity(
           }
         }
         const matches: { type: 'ramal'; id: string }[] = [];
+        // Candidatos co-sumidero descartados (todos descargan en este mismo punto): si `r` es
+        // tributario y NADIE lo recibe, se cuelga del mejor candidato para que su UD no se
+        // pierda del total (yee doble en cluster sin salida, orig. usuario).
+        const cosinkSkipped: Array<{ id: string; tipo?: string }> = [];
         for (const rx of ramales) {
           if (rx.id === r.id) continue;
           if (!rx.pts || rx.pts.length < 2) continue;
@@ -162,10 +166,23 @@ export function buildSanConnectivity(
                     o.pts.length >= 2 &&
                     distToPolyline(pt, o.pts) < 2.0,
                 );
-              if (!rxFin || finIsRamalAtPt) continue;
+              if (!rxFin || finIsRamalAtPt) {
+                if (r.tipo === 'tributario') cosinkSkipped.push({ id: rx.id, tipo: rx.tipo });
+                continue;
+              }
             }
             matches.push({ type: 'ramal' as const, id: rx.id });
           }
+        }
+        // Tributario sin receptor (todos los candidatos muertos sin `fin`): cuelga del padre
+        // declarado si está entre ellos, si no del primer tronco, si no del primer brazo.
+        // Sin esto su UD desaparecía del total (no se muestra en ninguna fila de diseño).
+        if (r.tipo === 'tributario' && matches.length === 0 && cosinkSkipped.length > 0) {
+          const pick =
+            cosinkSkipped.find((c) => c.id === r.padre) ||
+            cosinkSkipped.find((c) => c.tipo !== 'tributario') ||
+            cosinkSkipped[0];
+          if (pick) matches.push({ type: 'ramal' as const, id: pick.id });
         }
         return matches;
       };
