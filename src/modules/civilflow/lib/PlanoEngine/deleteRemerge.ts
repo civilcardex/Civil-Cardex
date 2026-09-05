@@ -127,12 +127,81 @@ export function remergeSplitRamales(
         ];
       }
     }
+    // Sanar vértices fantasma DESPUÉS de retirar D de ramales (si no, el propio D mantiene
+    // "ocupado" el punto compartido y el heal no elimina nada).
+    healMergedVertices(engine, a);
   }
   // Fallback (Ítem 9/v2): cuando se borra una de las MITADES de un ramal partido (no la rama
   // que causó el split), la otra mitad + un ramal colineal adyacente pueden quedar como dos
   // trazos. Si dos ramales comparten extremo, continúan en la misma línea (colineales) y en ese
   // punto NO se ramifican (grado 2), se funden en uno solo — un trazo continuo, un solo borrado.
   mergeCollinearPairs(engine);
+}
+
+// Elimina vértices interiores redundantes del ramal re-unido: colineales (la línea sigue recta
+// a través del punto), sin accesorio anclado y grado-2 (ningún otro ramal/bajante toca el
+// punto). Sin esto, las viejas uniones quedaban como quiebres fantasma y borrar un segmento
+// del ramal re-unido lo partía por ahí (orig. usuario: el trazo se veía unido pero partía al
+// borrarlo). Reindexa accMed tras cada splice.
+function healMergedVertices(engine: IPlanoEngineCore, a: PlanoRamal): void {
+  const TOL = 0.5;
+  if (!a.pts || a.pts.length < 3) return;
+  const pointBusy = (p: number[]): boolean => {
+    for (const r of engine.ramales) {
+      if (r.id === a.id || !r.pts || r.pts.length < 2) continue;
+      for (const q of r.pts) {
+        if (Math.hypot(q[0] - p[0], q[1] - p[1]) < TOL) return true;
+      }
+      for (let i = 0; i + 1 < r.pts.length; i++) {
+        const A = r.pts[i];
+        const B = r.pts[i + 1];
+        const dx = B[0] - A[0];
+        const dy = B[1] - A[1];
+        const l2 = dx * dx + dy * dy;
+        if (l2 < 1e-9) continue;
+        const t = ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / l2;
+        if (t <= 0.001 || t >= 0.999) continue;
+        if (Math.hypot(p[0] - (A[0] + t * dx), p[1] - (A[1] + t * dy)) < TOL) return true;
+      }
+    }
+    for (const b of engine.bajantes) {
+      if (Math.hypot(b.x - p[0], b.y - p[1]) < TOL) return true;
+    }
+    return false;
+  };
+  let i = 1;
+  while (i < a.pts.length - 1) {
+    const p = a.pts[i];
+    const ux = p[0] - a.pts[i - 1][0];
+    const uy = p[1] - a.pts[i - 1][1];
+    const vx = a.pts[i + 1][0] - p[0];
+    const vy = a.pts[i + 1][1] - p[1];
+    const lu = Math.hypot(ux, uy);
+    const lv = Math.hypot(vx, vy);
+    const colinear = lu > 1e-6 && lv > 1e-6 && Math.abs((ux * vx + uy * vy) / (lu * lv)) > 0.9;
+    if (!a.accMed?.[`accMed${i}`] && colinear && !pointBusy(p)) {
+      a.pts.splice(i, 1);
+      if (a.accMed) {
+        const shifted: Record<string, string> = {};
+        for (const [k, v] of Object.entries(a.accMed)) {
+          const m = k.match(/^accMed(\d+)$/);
+          const idx = m ? parseInt(m[1], 10) : -1;
+          shifted[idx > i ? `accMed${idx - 1}` : k] = v;
+        }
+        a.accMed = shifted;
+      }
+    } else {
+      i++;
+    }
+  }
+  a.totalL = calculateRamalLength(a.pts, engine);
+  // Respetar el posicionamiento manual: una etiqueta arrastrada a mano (labelMoved) no vuelve
+  // al midpoint del ramal re-unido (misma regla que junctionAutoSplit/editores).
+  if (!a.labelMoved) {
+    const [mx, my] = _midpoint(a.pts);
+    a.labelX = mx;
+    a.labelY = my;
+  }
 }
 
 // Funde ramales colineales que se tocan extremo-a-extremo sin ramificación en el punto.
@@ -244,6 +313,9 @@ function mergeCollinearPairs(engine: IPlanoEngineCore): void {
             ];
           }
         }
+        // Sanar vértices fantasma DESPUÉS de retirar secondary (si no, él mismo mantiene
+        // "ocupado" el punto compartido — ver healMergedVertices).
+        healMergedVertices(engine, primary);
         merged = true;
         break;
       }

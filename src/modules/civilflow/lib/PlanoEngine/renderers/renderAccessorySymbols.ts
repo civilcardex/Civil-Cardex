@@ -489,14 +489,22 @@ export function drawExtremeAccessorySymbol(
     ctx.lineTo(handleTickB.x, handleTickB.y);
     ctx.stroke();
   } else if (accType === 'tapon') {
-    // Tapa simple: una barra perpendicular cerrando el extremo de la tubería.
-    const capW = rad * 0.7;
+    // Tapa del extremo, DESPLAZADA hacia afuera sobre el eje del brazo (outX,outY — el eje del
+    // brazo eliminado): se lee como cierre de la tubería que ya no está, no como una marca
+    // pegada al vértice de la unión. Más grande y gruesa (orig. usuario).
+    const off = rad * 3.5;
+    const capW = rad * 0.9;
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = rad * 0.2;
+    ctx.lineWidth = rad * 0.6;
     ctx.lineCap = 'round';
+    // Tallo fino conectando la yee con la barra del tapón.
     ctx.beginPath();
-    ctx.moveTo(c.x + px * capW, c.y + py * capW);
-    ctx.lineTo(c.x - px * capW, c.y - py * capW);
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x + outX * off, c.y + outY * off);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(c.x + outX * off + px * capW, c.y + outY * off + py * capW);
+    ctx.lineTo(c.x + outX * off - px * capW, c.y + outY * off - py * capW);
     ctx.stroke();
   } else if (accType === 'codoReventilado') {
     // Proporcionado a `rad` (tamaño real del accesorio) en vez de una constante fija de mm de

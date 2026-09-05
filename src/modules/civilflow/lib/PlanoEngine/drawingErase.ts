@@ -7,6 +7,8 @@ import {
 } from './PlanoState';
 import type { PlanoRamal, PlanoBajante, IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
+import { isDeletedYeeDoblePart } from './deleteYeePreserve';
+import { assignCodoAfterBranchDelete } from './deleteJunctionCleanup';
 import { _firstSegmentAngle, angleAtHalfLength } from './drawingAngles';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import { _midpoint } from './drawingUtils';
@@ -242,40 +244,58 @@ export function eraseRamalAt(
     }
   }
 
-  // Si tiene más de 2 puntos y se hizo clic en un segmento extremo, recorta el extremo. UN
-  // RAMAL MIEMBRO DE UNA DIVISIÓN (mergesFrom propio, pareja upstream de otra división, o la
-  // RAMA ENTRANTE que la causó) NO se recorta: borrar un miembro debe borrar la división
-  // completa (deleteSelected expande splitMembersFor) o re-unir las mitades (rama entrante) —
-  // recortar un punto solo quita "un segmento a la vez" y el usuario tiene que borrar 2 veces.
-  const isSplitMember =
-    !!r.mergesFrom ||
-    engine.ramales.some(
-      (m) => m.mergesFrom && (m.mergesFrom[0] === r.id || m.mergesFrom[1] === r.id),
-    );
-  // ponytail: straight polyline (all points collinear) should delete whole, not trim one side — division point is not a real bend
-  const isStraight = (() => {
-    if (r.pts.length <= 2) return true;
-    const baseDx = r.pts[1][0] - r.pts[0][0];
-    const baseDy = r.pts[1][1] - r.pts[0][1];
-    const baseLen = Math.hypot(baseDx, baseDy);
-    if (baseLen < 1e-6) return false;
-    for (let i = 2; i < r.pts.length; i++) {
-      const dx = r.pts[i][0] - r.pts[i - 1][0];
-      const dy = r.pts[i][1] - r.pts[i - 1][1];
-      const cross = baseDx * dy - baseDy * dx;
-      const dot = baseDx * dx + baseDy * dy;
-      if (Math.abs(cross) > 1e-6 || dot < 0) return false;
-    }
-    return true;
-  })();
+  // ¿Hay tapón de yee anclado en `pt`? En ese punto no se asigna un codo de plano
+  // (el tapón marca el extremo abierto del caso yee — orig. usuario).
+  const taponAt = (pt: number[]) =>
+    engine.ramales.some((rr) => {
+      if (!rr.pts || rr.pts.length < 2) return false;
+      const at = (p: number[]) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < 0.5;
+      return (
+        (rr.accesorioInicio === 'tapon' && at(rr.pts[0])) ||
+        (rr.accesorioFin === 'tapon' && at(rr.pts[rr.pts.length - 1])) ||
+        (!!rr.accMed &&
+          Object.entries(rr.accMed).some(([k, v]) => {
+            const m = k.match(/^accMed(\d+)$/);
+            const idx = m ? parseInt(m[1], 10) : -1;
+            return v === 'tapon' && idx >= 0 && !!rr.pts[idx] && at(rr.pts[idx]);
+          }))
+      );
+    });
+
+  // El ramal del brazo de una yee doble se borra COMPLETO con cualquier clic del borrador:
+  // recortarlo/partirlo solo lo desconectaba y el resto quedaba huérfano en el plano (orig.
+  // usuario). deleteSelected lo quita individualmente (sin clúster) y preserveYeeDobleAt deja
+  // el tapón/símbolo de la yee en el sobreviviente.
+  if (isDeletedYeeDoblePart(engine, r)) {
+    const isDivisorYee = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
+    engine.deleteSelected(undefined, { noMerge: !isDivisorYee });
+    engine._emitSelect(null);
+    engine.selId = null;
+    engine._emitStatus('Brazo de yee doble eliminado');
+    engine.render();
+    engine._markDirty();
+    return;
+  }
+
+  // Segmento a segmento, SIN excepciones (orig. usuario): ramales/tributarios se recortan o
+  // parten por el segmento clicado aunque sean mitades de una división (mergesFrom), vengan de
+  // líneas guía o estén conectados a cualquier cosa. Solo un ramal de 1 segmento (2 puntos) se
+  // elimina completo — el segmento ES el ramal — y con noMerge para no arrastrar al resto del
+  // conjunto unido.
   const isEndpoint = bestIdx === 0 || bestIdx === r.pts.length - 1;
-  const canTrim = r.pts.length > 2 && !isSplitMember && !isStraight;
+  const canTrim = r.pts.length > 2;
   // Segmento intermedio clickeado: partir el ramal en dos en ese segmento
-  // (cada mitad conserva su parte; el segmento clickeado queda eliminado).
-  const isMidSegmentClick =
-    bestSegIdx > 0 && bestSegIdx < r.pts.length - 2 && r.pts.length >= 4 && !isSplitMember;
+  // (cada mitad conserva su parte; el segmento clicado queda eliminado).
+  const isMidSegmentClick = bestSegIdx > 0 && bestSegIdx < r.pts.length - 2 && r.pts.length >= 4;
   if (isMidSegmentClick) {
+    // Los dos puntos del segmento eliminado quedan como extremos abiertos (fin de la mitad
+    // superior, inicio de la inferior): cada uno puede formar una esquina L nueva con un ramal
+    // que termina ahí — mismo chequeo que el recorte de extremo.
+    const cutA = r.pts[bestSegIdx];
+    const cutB = r.pts[bestSegIdx + 1];
     splitRamalAtSegment(engine, r, bestSegIdx);
+    if (!taponAt(cutA)) assignCodoAfterBranchDelete(engine, cutA);
+    if (!taponAt(cutB)) assignCodoAfterBranchDelete(engine, cutB);
     engine._emitSelect(null);
     engine.selId = null;
     engine._emitStatus('Segmento eliminado — ramal dividido');
@@ -289,18 +309,34 @@ export function eraseRamalAt(
       bestIdx = d0 <= dLast ? 0 : r.pts.length - 1;
     }
     if (canTrim && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
+      // Copia ANTES del splice (r.pts.splice muta el mismo array).
+      const oldPts = r.pts.slice();
       r.pts.splice(bestIdx, 1);
       r.totalL = calculateRamalLength(r.pts, engine);
       if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;
       r.labelY = my;
+      // El recorte puede dejar una esquina en L (el vértice recortado era la unión con otro
+      // ramal): asignar codo de plano como haría el borrado completo — salvo que el punto
+      // quedó ocupado por el tapón del caso yee (orig. usuario).
+      if (!taponAt(oldPts[bestIdx])) assignCodoAfterBranchDelete(engine, oldPts[bestIdx]);
+      // El recorte también ABRE el extremo opuesto del segmento eliminado: si otro ramal termina
+      // ahí, nace una esquina L nueva en ese punto (desarmar una yee doble deja la esquina
+      // RS1|RS2 con su codo 45 — orig. usuario).
+      const openEnd = bestIdx === 0 ? r.pts[0] : r.pts[r.pts.length - 1];
+      if (!taponAt(openEnd)) assignCodoAfterBranchDelete(engine, openEnd);
       engine._emitSelect(null);
       engine.selId = null;
       engine._emitStatus('Segmento extremo recortado');
     } else {
-      // Si es el único segmento (2 puntos) o miembro de división, borra completo
-      engine.deleteSelected();
+      // Ramal de un solo segmento: el segmento ES el ramal — se elimina completo. noMerge
+      // (borrado quirúrgico, sin re-unir) SOLO si el ramal no partió a otro: borrar el trazo
+      // que dividió un ramal debe RE-UNIR las mitades (remerge) — con noMerge el ramal seguía
+      // partido (orig. usuario: RS4|RS5). Los divisores no expanden clúster (splitMembersFor
+      // devuelve []), así que noMerge:false solo habilita el re-merge.
+      const isDivisor = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
+      engine.deleteSelected(undefined, { noMerge: !isDivisor });
       engine._emitSelect(null);
       engine.selId = null;
       engine._emitStatus('Ramal eliminado');

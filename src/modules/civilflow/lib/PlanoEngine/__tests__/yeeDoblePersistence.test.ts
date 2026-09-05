@@ -78,15 +78,42 @@ describe('yeeDobleAt — identidad persistida (ítem 2)', () => {
     vi.restoreAllMocks();
   });
 
-  it('calcSanitaryAccessories conserva yeeDobleAt aunque la geometría ya no detecte el par', () => {
+  it('calcSanitaryAccessories conserva yeeDobleAt mientras alguna unión de la yee siga viva', () => {
+    // Tronco con bandera [10,0]-[20,0]; en [10,0] sigue viva una unión yee (lateral a 45°).
     const yeeDobleAt = [
       [10, 0],
       [20, 0],
     ];
     const ramal = R({ yeeDobleAt });
-    const engine = makeEngine([ramal]);
+    const lateral = R({
+      id: 'T1RS1',
+      tipo: 'tributario',
+      pts: [
+        [10 - 7.07, -7.07],
+        [10, 0],
+      ],
+    });
+    const engine = makeEngine([ramal, lateral]);
     calcSanitaryAccessories(engine);
     expect(engine.ramales[0].yeeDobleAt).toEqual(yeeDobleAt);
+  });
+
+  it('calcSanitaryAccessories limpia yeeDobleAt huérfana (ninguna unión de la yee sigue viva)', () => {
+    // Regla orig. usuario: si el caso yee doble ya no existe, bandera y tapón se retiran.
+    // El tapón ancla en pts[0] = primer punto de la yee.
+    const yeeDobleAt = [
+      [0, 0],
+      [20, 0],
+    ];
+    const ramal = R({
+      yeeDobleAt,
+      accesorioInicio: 'tapon',
+      diametroInicio: '4"',
+    });
+    const engine = makeEngine([ramal]);
+    calcSanitaryAccessories(engine);
+    expect(engine.ramales[0].yeeDobleAt).toBeUndefined();
+    expect(engine.ramales[0].accesorioInicio).toBe('');
   });
 
   it('calcSanitaryAccessories no escribe yeeDobleAt cuando no hay par y no había identidad previa', () => {

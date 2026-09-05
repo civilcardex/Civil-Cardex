@@ -366,11 +366,17 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const labelAngle = (labelAngleDeg * Math.PI) / 180;
       const cosA = Math.cos(labelAngle),
         sinA = Math.sin(labelAngle);
-      // Gap dinámico: el BORDE inferior de la caja (no su centro) queda a distancia constante
-      // del trazo — 2 mm de aire + holgura para la media anchura del trazo y la flecha de flujo
-      // (que cuelga 2·zoom por debajo de la caja). Un gap fijo en mm se quedaba corto cuando la
-      // caja crecía con labelScaleM y la etiqueta terminaba pintada encima del trazo.
-      const labelGap = -(boxH / 2 + engine.mm2cvs(2) + 4 * engine.zoom);
+      // Gap dinámico: el BORDE inferior de la caja (no su centro) queda separado del trazo.
+      // El aire mínimo crece con la propia caja (35% de su alto) y tiene piso en píxeles de
+      // pantalla (16·zoom): con menos aire las etiquetas quedaban muy encima del trazo y se
+      // solapaban con él (orig. usuario). La línea guía (leader) mantiene la lectura clara.
+      // labelClear es también la banda donde vive la flecha de flujo (ver más abajo).
+      const labelClear = Math.max(
+        engine.mm2cvs(4) + 6 * engine.zoom,
+        boxH * 0.35,
+        16 * engine.zoom,
+      );
+      const labelGap = -(boxH / 2 + labelClear);
       const gapOffX = -labelGap * sinA;
       const gapOffY = labelGap * cosA;
       let adjCx = drawX + gapOffX;
@@ -525,40 +531,112 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         (r as unknown as { showFlowDir?: boolean }).showFlowDir !== false &&
         flowLen > 12 * engine.zoom
       ) {
-        const arrowY = boxH / 2 + 2 * engine.zoom;
-        ctx.save();
-        ctx.translate(0, arrowY);
-        // Ítem 11a: la flecha debe apuntar según el flujo real, no según el labelAngle.
-        // Dentro del contexto rotado del label, el vector de flujo en coordenadas locales es
-        // (dot, perp); se dibuja la flecha a lo largo de ese vector, no horizontal.
+        // Ítem 11a: la flecha apunta según el flujo real, no según el labelAngle. En coordenadas
+        // locales del label el vector de flujo es (dot, perp); se dibuja a lo largo de él.
         const dot = flowDx * cosA + flowDy * sinA;
         const perp = -flowDx * sinA + flowDy * cosA;
         const len = Math.hypot(dot, perp) || 1;
         const ux = dot / len;
         const uy = perp / len;
         const halfSize = nameW ? nameW / 2 : 12 * engine.zoom;
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 1 * engine.zoom;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(-halfSize * ux, -halfSize * uy);
-        ctx.lineTo(halfSize * ux, halfSize * uy);
-        ctx.stroke();
-        const aSize = Math.min(6 * engine.zoom, halfSize * 0.6);
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        const tipX = halfSize * ux;
-        const tipY = halfSize * uy;
-        const baseX = tipX - ux * aSize;
-        const baseY = tipY - uy * aSize;
-        const perpX = -uy;
-        const perpY = ux;
-        ctx.moveTo(tipX, tipY);
-        ctx.lineTo(baseX + perpX * aSize * 0.4, baseY + perpY * aSize * 0.4);
-        ctx.lineTo(baseX - perpX * aSize * 0.4, baseY - perpY * aSize * 0.4);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+        const margin = 3 * engine.zoom;
+        const segsCanvas: Array<[number[], number[]]> = [];
+        for (let i = 0; i + 1 < (r.pts?.length || 0); i++) {
+          const a = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+          const b = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
+          segsCanvas.push([
+            [a.x, a.y],
+            [b.x, b.y],
+          ]);
+        }
+        const distToRamal = (p: [number, number]): number => {
+          let d = Infinity;
+          for (const [a, b] of segsCanvas) {
+            const vx = b[0] - a[0];
+            const vy = b[1] - a[1];
+            const l2 = vx * vx + vy * vy;
+            const t2 =
+              l2 < 1e-9
+                ? 0
+                : Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / l2));
+            d = Math.min(d, Math.hypot(p[0] - (a[0] + t2 * vx), p[1] - (a[1] + t2 * vy)));
+          }
+          return d;
+        };
+        // Dibuja la flecha anclada al lado `side` de la caja (1 = banda entre caja y trazo,
+        // −1 = lado opuesto). Devuelve false si el recorte la agotó. La banda restringe t·uy:
+        // lado del trazo → entre el borde de caja y la tubería; lado opuesto → solo despejar
+        // la caja (el recorte contra el trazo lo hace distToRamal más abajo).
+        const drawFlowArrow = (side: 1 | -1): boolean => {
+          const anchorY = side * (boxH / 2 + 2 * engine.zoom);
+          const arrowPt = (t: number): [number, number] => {
+            const lx = t * ux;
+            const ly = labelGap + anchorY + t * uy;
+            return [drawX + lx * cosA - ly * sinA, drawY + lx * sinA + ly * cosA];
+          };
+          const bandLo = side === 1 ? -1 * engine.zoom : -1e6;
+          const bandHi = side === 1 ? labelClear - 4 * engine.zoom : 1 * engine.zoom;
+          let tMin = -halfSize;
+          let tMax = halfSize;
+          if (uy > 1e-3) {
+            tMin = Math.max(tMin, bandLo / uy);
+            tMax = Math.min(tMax, bandHi / uy);
+          } else if (uy < -1e-3) {
+            tMin = Math.max(tMin, bandHi / uy);
+            tMax = Math.min(tMax, bandLo / uy);
+          }
+          // Recorte geométrico: los extremos de la flecha en canvas se miden contra la
+          // polilínea del propio ramal y el lado que invade el margen se acorta por
+          // iteraciones hasta despejar o agotar la flecha.
+          for (let it = 0; it < 24 && tMax - tMin >= 4 * engine.zoom; it++) {
+            const tailD = distToRamal(arrowPt(tMin));
+            const tipD = distToRamal(arrowPt(tMax));
+            // Punto medio: una esquina del trazo puede atravesar la flecha por el centro con
+            // ambos extremos despejados.
+            const midD = distToRamal(arrowPt((tMin + tMax) / 2));
+            const span = tMax - tMin;
+            if (tailD >= margin && tipD >= margin && midD >= margin) break;
+            if (midD < margin || (tailD < margin && tipD < margin)) {
+              // Acortar simétricamente conservando el tramo central.
+              tMin += span * 0.2;
+              tMax -= span * 0.2;
+            } else if (tailD < margin) {
+              tMin += span * 0.2;
+            } else {
+              tMax -= span * 0.2;
+            }
+          }
+          if (tMax - tMin < 4 * engine.zoom) return false;
+          ctx.save();
+          ctx.translate(0, anchorY);
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1 * engine.zoom;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(tMin * ux, tMin * uy);
+          ctx.lineTo(tMax * ux, tMax * uy);
+          ctx.stroke();
+          const aSize = Math.min(6 * engine.zoom, (tMax - tMin) * 0.4);
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          const tipX = tMax * ux;
+          const tipY = tMax * uy;
+          const baseX = tipX - ux * aSize;
+          const baseY = tipY - uy * aSize;
+          const perpX = -uy;
+          const perpY = ux;
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(baseX + perpX * aSize * 0.4, baseY + perpY * aSize * 0.4);
+          ctx.lineTo(baseX - perpX * aSize * 0.4, baseY - perpY * aSize * 0.4);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          return true;
+        };
+        // Abajo (banda caja-trazo); si el trazo —p. ej. en diagonal bajo una etiqueta
+        // horizontal— la agota, se reintenta ENCIMA de la caja: siempre visible, nunca bajo
+        // el trazo (orig. usuario: RS5 sin flecha de flujo).
+        if (!drawFlowArrow(1)) drawFlowArrow(-1);
       }
       ctx.restore();
     } else {

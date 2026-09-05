@@ -447,6 +447,27 @@ export function computeAccesoriosTable(
         // resumen la muestre en la fila de ese tramo; si todos son tributarios, al primero.
         const pairRamals = [uniq[bi].ramal, uniq[bj].ramal];
         const main = pairRamals.find((ram) => !ram.trib) || pairRamals[0];
+        // Yee doble en UN solo punto (4 vectores, 2 salidas laterales): se registran DOS
+        // entradas en el mismo punto para que el emparejamiento de abajo la clasifique como
+        // doble con las dos ramas. Salidas opuestas entre sí = cruce, no yee doble.
+        if (
+          branches.length >= 2 &&
+          branches[0].x * branches[1].x + branches[0].y * branches[1].y > -0.9
+        ) {
+          for (const br of branches) {
+            const bD = diamOf(br.ramal);
+            if (!bD || bD === '—') continue;
+            yeeJunctions.push({
+              x: P[0],
+              y: P[1],
+              m1: a1,
+              m2: a2,
+              branch: bD,
+              hostKey: `${main.id}-${main.planId}`,
+            });
+          }
+          continue;
+        }
         yeeJunctions.push({
           x: P[0],
           y: P[1],
@@ -560,6 +581,23 @@ export function computeAccesoriosTable(
   // aparecer en dropdowns de selección ni en otras tablas.
   let summaryCatalog =
     net === 'af' || net === 'ac' || net === 'll' ? [...catalog, CODO_MEDIO_90] : [...catalog];
+  // Yees siempre presentes en san/ll: el conteo puede venir de hidroData (yee doble con brazo
+  // borrado + tapón) aunque no haya geometría de par ni conexión de bajante. Las columnas sin
+  // datos las elimina dropAllZeroColumns.
+  if (net === 'san' || net === 'll') {
+    for (const yId of ['yeeSimple', 'yeeDoble']) {
+      if (!summaryCatalog.some((a) => a.id === yId)) {
+        const src = SAN_ACCESORIOS.find((a) => a.id === yId) || {
+          id: yId,
+          nombre: yId === 'yeeSimple' ? 'Y simple' : 'Y doble',
+          icono: '',
+          cat: 'Tees',
+          emoji: '🔧',
+        };
+        summaryCatalog = [...summaryCatalog, src as (typeof summaryCatalog)[number]];
+      }
+    }
+  }
   // 14. Ensure bajante codo45/Y appear for any net that has bajante connections
   const hasBajanteConn = bajanteDrawing.some(
     (b) => (b.net || net) === net && b.recibeDeIds && b.recibeDeIds.length > 0,
@@ -657,7 +695,13 @@ export function computeAccesoriosTable(
           pulgOf(t.diametroInicio || t.diametro || t.diametroOriginal, t.diamDisPulg || t.diamPulg),
         );
         const accId =
-          accIni === 'codoSube' ? 'codo90rmSube' : accIni === 'codoBaja' ? 'codo90rmBaja' : accIni;
+          accIni === 'codoSube'
+            ? 'codo90rmSube'
+            : accIni === 'codoBaja'
+              ? 'codo90rmBaja'
+              : net === 'san' && accIni === 'codo45'
+                ? 'codo45rc'
+                : accIni;
         if (accId !== 'sifon') addAcc(dStr, accId, 1);
       }
       const accFin = t.accesorioFin;
@@ -666,7 +710,13 @@ export function computeAccesoriosTable(
           pulgOf(t.diametroFin || t.diametro || t.diametroOriginal, t.diamDisPulg || t.diamPulg),
         );
         const accId =
-          accFin === 'codoSube' ? 'codo90rmSube' : accFin === 'codoBaja' ? 'codo90rmBaja' : accFin;
+          accFin === 'codoSube'
+            ? 'codo90rmSube'
+            : accFin === 'codoBaja'
+              ? 'codo90rmBaja'
+              : net === 'san' && accFin === 'codo45'
+                ? 'codo45rc'
+                : accFin;
         // ponytail: sifón no entra al resumen de accesorios (es un aparato)
         if (accId !== 'sifon') addAcc(dStr, accId, 1);
       }
@@ -679,7 +729,15 @@ export function computeAccesoriosTable(
       const direct: Record<string, number> = {};
       const teeLadoAlias = new Set(['teeTapon', 'teeLlaveTerminal', 'teeSube', 'teeBaja']);
       const directAccId = (acc: string) =>
-        acc === 'codoSube' ? 'codo90rmSube' : acc === 'codoBaja' ? 'codo90rmBaja' : acc;
+        acc === 'codoSube'
+          ? 'codo90rmSube'
+          : acc === 'codoBaja'
+            ? 'codo90rmBaja'
+            : // Codo de plano 45° en extremo (p. ej. esquina L tras desarmar una yee doble):
+              // misma pieza que codo45rc, nomenclatura del catálogo.
+              net === 'san' && acc === 'codo45'
+              ? 'codo45rc'
+              : acc;
       for (const acc of [t.accesorioInicio, t.accesorioFin]) {
         if (!acc) continue;
         const id = directAccId(acc);
@@ -690,6 +748,9 @@ export function computeAccesoriosTable(
       const codo45Med = accMed45Counts[String(t._key || `${t.id}-${t.planId}`)] || {};
       for (const a of catalog) {
         if ((net === 'af' || net === 'ac' || net === 'gas') && HYDRO_TEE_IDS.has(a.id)) continue;
+        // Yees: se cuentan SOLO en la fila del tramo host (yeeDiams, por hostKey) — el motor
+        // puede registrar la unión bajo el id del lateral y aquí se duplicaría (orig. usuario).
+        if (a.id === 'yeeSimple' || a.id === 'yeeDoble') continue;
         const extra = Math.max(
           0,
           (srcAcc[a.id] || 0) - (direct[a.id] || 0) - (codoMed[a.id] || 0) - (codo45Med[a.id] || 0),
@@ -707,7 +768,13 @@ export function computeAccesoriosTable(
       // ponytail: direct accesorioInicio/Fin fallback — sifón/codos count even if hidroData is stale
       const directCount: Record<string, number> = {};
       const directAccId = (acc: string) =>
-        acc === 'codoSube' ? 'codo90rmSube' : acc === 'codoBaja' ? 'codo90rmBaja' : acc;
+        acc === 'codoSube'
+          ? 'codo90rmSube'
+          : acc === 'codoBaja'
+            ? 'codo90rmBaja'
+            : net === 'san' && acc === 'codo45'
+              ? 'codo45rc'
+              : acc;
       for (const acc of [t.accesorioInicio, t.accesorioFin]) {
         if (!acc) continue;
         const id = directAccId(acc);
@@ -721,6 +788,11 @@ export function computeAccesoriosTable(
         const v = Math.max(fromSrc, directCount[a.id] || 0);
         if (a.id === 'yeeSimple') {
           // Nomenclatura Yee Simple: brazos compactados (4"×4"×2" → 4"×2").
+          // Si este tramo ya tiene YEE DOBLE (geométrica o contada en hidro), no se muestra
+          // una simple al lado: el conteo simple del motor puede quedar un recálculo por
+          // detrás de las banderas de la doble (orig. usuario: fila "Yee simple" fantasma).
+          const hasDoble = yd.doble.length > 0 || (srcAcc['yeeDoble'] || 0) > 0;
+          if (hasDoble) continue;
           if (yd.simple.length > 0) yd.simple.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
           else if (v > 0) {
             const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr]);

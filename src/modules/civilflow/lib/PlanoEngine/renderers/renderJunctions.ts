@@ -227,6 +227,23 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         usedInDouble.add(i);
         usedInDouble.add(j);
 
+        // Persistencia de identidad: el par dibujado geométricamente queda registrado en
+        // TODOS los ramales que tocan cualquiera de los dos puntos, para que el glifo
+        // sobreviva al borrado de un brazo aunque el recálculo (con condiciones propias más
+        // estrictas) no lo haya escrito (orig. usuario: borrar el brazo principal borraba el
+        // símbolo). Mismo patrón de escritura en render que _labelBox.
+        const pairPts: [number, number][] = [
+          [a.P[0], a.P[1]],
+          [b.P[0], b.P[1]],
+        ];
+        for (const pr of netRamales) {
+          if (!pr.pts || pr.yeeDobleAt) continue;
+          const touches =
+            pr.pts.some((p) => Math.hypot(p[0] - a.P[0], p[1] - a.P[1]) < 0.5) ||
+            pr.pts.some((p) => Math.hypot(p[0] - b.P[0], p[1] - b.P[1]) < 0.5);
+          if (touches) pr.yeeDobleAt = pairPts;
+        }
+
         const cvsA = engine.toCvs(a.P[0], a.P[1]);
         const cvsB = engine.toCvs(b.P[0], b.P[1]);
         const rad = engine.mm2cvs(2.0);
@@ -309,6 +326,36 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     for (let i = 0; i < junctions.length; i++) {
       if (usedInDouble.has(i)) continue;
       const j = junctions[i];
+
+      // Persistencia de identidad POR-UNIÓN — SOLO yee doble: la unión de 4 vectores (dos
+      // salidas laterales en el mismo punto del tronco, branches.length ≥ 2) es la yee doble
+      // dibujada en un solo punto y merece bandera [P,P]. Una yee SIMPLE (1 rama) no se
+      // persiste: borrar uno de sus brazos debe borrar el glifo (orig. usuario).
+      if (j.isYee && j.branches.length >= 2) {
+        for (const pr of netRamales) {
+          if (!pr.pts || pr.yeeDobleAt) continue;
+          if (pr.pts.some((p) => Math.hypot(p[0] - j.P[0], p[1] - j.P[1]) < 0.5)) {
+            pr.yeeDobleAt = [
+              [j.P[0], j.P[1]],
+              [j.P[0], j.P[1]],
+            ];
+          }
+        }
+      } else if (j.isYee) {
+        // Auto-limpieza de banderas [P,P] viejas en yees simples (datos guardados antes de
+        // esta regla) — sin esto un glifo simple seguía sobreviviendo al borrado.
+        for (const pr of netRamales) {
+          if (!pr.yeeDobleAt) continue;
+          const [fa, fb] = pr.yeeDobleAt;
+          if (
+            fa[0] === fb[0] &&
+            fa[1] === fb[1] &&
+            pr.pts?.some((p) => Math.hypot(p[0] - j.P[0], p[1] - j.P[1]) < 0.5)
+          ) {
+            pr.yeeDobleAt = undefined;
+          }
+        }
+      }
 
       ctx.save();
       ctx.strokeStyle = '#000000';
@@ -449,10 +496,14 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       const trunkLen = Math.hypot(trunkAx, trunkAy) || 1;
       const trunkDirA = { x: trunkAx / trunkLen, y: trunkAy / trunkLen };
       const trunkDirB = { x: -trunkAx / trunkLen, y: -trunkAy / trunkLen };
-      const hasTrunkA = vA.some((u) => Math.abs(u.x * trunkDirA.x + u.y * trunkDirA.y) > 0.85);
-      const hasTrunkB = vB.some((u) => Math.abs(u.x * trunkDirB.x + u.y * trunkDirB.y) > 0.85);
-      if (!hasTrunkA) vA = [...vA, trunkDirA];
-      if (!hasTrunkB) vB = [...vB, trunkDirB];
+      // Par degenerado [P,P] (yee por-unión): no hay dirección de tronco que sintetizar —
+      // los vectores vivos de la unión (laterales que siguen ahí) bastan para dibujar.
+      if (trunkLen > 0.01) {
+        const hasTrunkA = vA.some((u) => Math.abs(u.x * trunkDirA.x + u.y * trunkDirA.y) > 0.85);
+        const hasTrunkB = vB.some((u) => Math.abs(u.x * trunkDirB.x + u.y * trunkDirB.y) > 0.85);
+        if (!hasTrunkA) vA = [...vA, trunkDirA];
+        if (!hasTrunkB) vB = [...vB, trunkDirB];
+      }
       if (vA.length === 0 || vB.length === 0) continue;
       const cvsA = engine.toCvs(A[0], A[1]);
       const cvsB = engine.toCvs(B[0], B[1]);

@@ -181,7 +181,8 @@ function endpointArmsAt(engine: IPlanoEngineCore, pt: number[]): { d: number[]; 
   };
   const arms: { d: number[]; r: PlanoRamal }[] = [];
   for (const r of engine.ramales) {
-    if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') continue;
+    // san/ll incluidas (orig. usuario: desarmar una yee doble sanitaria deja una esquina L
+    // RS1|RS2 que debe recibir su codo 45 como cualquier otra red).
     if (!r.pts || r.pts.length < 2) continue;
     const li = r.pts.length - 1;
     let d: number[] | null = null;
@@ -195,7 +196,10 @@ function endpointArmsAt(engine: IPlanoEngineCore, pt: number[]): { d: number[]; 
   return arms;
 }
 
-function assignCodoAfterBranchDelete(engine: IPlanoEngineCore, pt: number[]): void {
+/** Asigna el codo de plano (45°/90° según ángulo) a la esquina en L que queda en `pt`
+ *  después de un borrado o recorte. Sin efecto si el punto tiene bajante, no forma una L
+ *  (1 o ≥3 brazos, o brazos colineales) o ya tiene accesorio el sobreviviente elegido. */
+export function assignCodoAfterBranchDelete(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   if (engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL)) return;
   const arms = endpointArmsAt(engine, pt);
@@ -205,8 +209,10 @@ function assignCodoAfterBranchDelete(engine: IPlanoEngineCore, pt: number[]): vo
   // Escribir el codo en UN solo sobreviviente (evitar doble conteo en calcHydroAccessories):
   // preferir el ramal normal sobre un tributario; sin tocar un campo ya ocupado.
   const host = (arms.find((a) => a.r.tipo !== 'tributario') || arms[0]).r;
-  // Ángulo entre los brazos de salida ≈45° → codo 45; si no, 90.
-  const is45 = arms[0].d[0] * arms[1].d[0] + arms[0].d[1] * arms[1].d[1] > 0.5;
+  // Ángulo ENTRE EJES de las tuberías ≈45° → codo 45; ≈90° → codo 90. La esquina de yee al lado
+  // muerto sale de los brazos a 135° (dot −0.707): mismos ejes a 45° que el caso espejo (dot
+  // +0.707), así que el nombre del accesorio depende de |dot|, no del signo.
+  const is45 = Math.abs(arms[0].d[0] * arms[1].d[0] + arms[0].d[1] * arms[1].d[1]) > 0.5;
   const accId = is45
     ? host.net === 'gas'
       ? 'codos_45'

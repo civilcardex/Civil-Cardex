@@ -5,8 +5,6 @@ import {
   isLdesvioRamalId,
 } from '../../utils/associateBajanteAcrossFloors';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
-import { loadFromStorage, saveToStorage } from '../../services/storageService';
-import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
 import { _midpoint } from './PlanoEngineDrawing';
 
 /**
@@ -14,7 +12,7 @@ import { _midpoint } from './PlanoEngineDrawing';
  * recalcula longitudes y renumera. Usado por `PlanoEngine.deleteSelected()`.
  */
 
-import { cascadeMontanteAssociation, type HidroDataEntry } from './deleteCascade';
+import { cascadeMontanteAssociation } from './deleteCascade';
 import { cleanupJunctionsAfterRamalDelete, cleanupTeeMarkersAt } from './deleteJunctionCleanup';
 import { remergeSplitRamales } from './deleteRemerge';
 import { isDeletedYeeDoblePart, preserveYeeDobleAt, splitMembersFor } from './deleteYeePreserve';
@@ -108,46 +106,6 @@ export function deleteSelected(
           );
         }
         preserveYeeDobleAt(engine, deleted);
-        // Y doble lateral → tapón (cuando se borra tributario parte de Y doble, el host queda con extremo abierto)
-        if (!deleted.yeeDobleAt && wasYeeDoblePart) {
-          try {
-            const host = engine.ramales.find(
-              (x) => x.yeeDobleAt && x.yeeDobleAt.length === 2 && x.net === 'san',
-            );
-            if (host && deleted.pts?.length) {
-              const delEnd = deleted.pts[deleted.pts.length - 1];
-              const d0h = Math.hypot(host.pts[0][0] - delEnd[0], host.pts[0][1] - delEnd[1]);
-              const d1h = Math.hypot(
-                host.pts[host.pts.length - 1][0] - delEnd[0],
-                host.pts[host.pts.length - 1][1] - delEnd[1],
-              );
-              // si el tributario tocaba cerca del host (dentro 20), asumimos Y doble
-              if (Math.min(d0h, d1h) < 25) {
-                const planId2 = engine._loadedPlanId;
-                const accField2 = d0h <= d1h ? 'accesorioInicio' : 'accesorioFin';
-                const diamField2 = d0h <= d1h ? 'diametroInicio' : 'diametroFin';
-                if (!host[accField2]) {
-                  (host as unknown as Record<string, unknown>)[accField2] = 'tapon';
-                  if (!host[diamField2])
-                    (host as unknown as Record<string, unknown>)[diamField2] = '2"';
-                  if (planId2 != null) {
-                    const map3 = loadFromStorage<Record<string, HidroDataEntry>>(
-                      HYDRO_DATA_STORAGE_KEY,
-                      {},
-                    );
-                    const kHost = `san_${host.id}_${planId2}`;
-                    if (!map3[kHost]) map3[kHost] = { accesorios: {}, Lh: 0, nSalidas: 0 };
-                    if (!map3[kHost].accesorios) map3[kHost].accesorios = {};
-                    map3[kHost].accesorios['tapon'] = (map3[kHost].accesorios['tapon'] || 0) + 1;
-                    saveToStorage(HYDRO_DATA_STORAGE_KEY, map3);
-                  }
-                }
-              }
-            }
-          } catch {
-            /* ignore */
-          }
-        }
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
         // re-une la línea que quedó en dos mitades. Para "Borrar trazo" (noMerge) se salta:
         // el tronco de la yee doble debe quedar intacto (solo se borra el brazo lateral).
@@ -337,7 +295,8 @@ export function deleteSelected(
     const deletedId = deleted.id;
     // Ítem 9/v2: borrar una mitad de división borra toda la división (misma expansión que el
     // path de ids). Se delega en deleteSelected con el set expandido para un solo camino.
-    const members = splitMembersFor(engine, deletedId);
+    // Excepción noMerge (borrado quirúrgico del borrador): solo el ramal indicado.
+    const members = opts?.noMerge ? [] : splitMembersFor(engine, deletedId);
     if (members.length > 0) {
       const expanded = [deletedId, ...members];
       engine.selId = null;
@@ -345,7 +304,6 @@ export function deleteSelected(
       return;
     }
     const wasYeeDoblePartSel = isDeletedYeeDoblePart(engine, deleted);
-    const isDivisorSel = engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === deletedId);
     // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
     reassignTributariosToHermano(engine, deleted);
     if (wasYeeDoblePartSel) {
@@ -355,11 +313,23 @@ export function deleteSelected(
     }
     preserveYeeDobleAt(engine, deleted);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
-    // Yee doble: el brazo principal se borra individualmente (sin re-unir); el lateral sí re-une.
-    if (!(wasYeeDoblePartSel && !isDivisorSel)) {
+    // Yee doble: los brazos de una yee (tronco o lateral) NUNCA re-unen — borrar un brazo deja
+    // las piezas como están (orig. usuario: borrar el 4º brazo remergeaba el tronco y luego
+    // borrar el lateral de la yee simple remasada dejaba un codo 45 fantasma). Antes el divisor
+    // de yee sí re-unía (condición wasYeeDoblePartSel && !isDivisorSel).
+    if (!opts?.noMerge && !wasYeeDoblePartSel) {
       remergeSplitRamales(engine, deletedId, deleted.uc || 0);
     }
     if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
+    // Borrado quirúrgico o brazo de yee (sin re-merge): los sobrevivientes quedan con
+    // mergesFrom que referencian el id borrado — referencias fantasma que confunden un
+    // re-merge futuro y las validaciones de split. Solo cuando el remerge NO corrió: si corrió,
+    // él mismo reescribe las referencias.
+    if (opts?.noMerge || wasYeeDoblePartSel) {
+      for (const r of engine.ramales) {
+        if (r.mergesFrom && r.mergesFrom.includes(deletedId)) r.mergesFrom = undefined;
+      }
+    }
     // Limpia las referencias al ramal borrado en los bajantes
     for (const b of engine.bajantes) {
       if (b.recibeDeIds) {

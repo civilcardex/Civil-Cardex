@@ -154,6 +154,9 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     // ("null value in column ... violates not-null constraint"). `{}` es el valor vacío válido.
     hydro_accesorios: r.hydroAcc ?? {},
     gas_accesorios: r.gasAcc ?? {},
+    // Identidad de la yee doble (par de vértices): sin esto el glifo persistido muere en el
+    // viaje a la BD y tras recargar el plano el borrado de un brazo lo borraba (orig. usuario).
+    yee_doble: r.yeeDobleAt ?? null,
   };
 }
 
@@ -202,6 +205,7 @@ function rowToRamal(row: SupabaseRow): PlanoRamal {
     fixtures: g(row, 'fixtures', undefined),
     hydroAcc: g(row, 'hydro_accesorios', undefined),
     gasAcc: g(row, 'gas_accesorios', undefined),
+    yeeDobleAt: g(row, 'yee_doble', undefined),
   };
 }
 
