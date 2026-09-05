@@ -23,6 +23,7 @@ export {
   MAT_HAZEN_C,
   matHazenC,
   DIAM_OPTIONS,
+  DIAM_OPTIONS_SAN,
   DIAM_BAN,
   DIAM_BAN_SAN,
   DIAM_VENT,

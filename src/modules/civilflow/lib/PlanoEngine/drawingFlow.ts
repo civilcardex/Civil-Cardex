@@ -1,7 +1,9 @@
 import type { PlanoRamal } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
+import { distToPolyline } from '../shared/geometry';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { sanFeederMinMsg, sanReceptorMaxMsg } from '../../utils/sanitaryDiamCompat';
 
 // Validación de diámetros en nodos de redes de presión (salida ≤ entrada), sobre el estado VIVO
 // del motor. Corre en updateElementById para que CUALQUIER camino que escriba `diametro`
@@ -87,6 +89,144 @@ export function diametroCambioPermitido(
     };
   }
   return { ok: true };
+}
+
+// Red sanitaria: el receptor no puede quedar con menor diámetro que el mayor ramal que le
+// descarga directo (regla inversa a presión: aguas abajo SIEMPRE >= aguas arriba). Corre en
+// updateElementById vía guardDiametroNodo para que CUALQUIER camino de dibujo (menú
+// contextual, TramoEditor) quede validado con alerta — igual que la tabla de diseño.
+// Solo cuentan alimentadores tipo `ramal` (tributarios y bajantes no restringen).
+export function sanReceptorDiametroPermitido(
+  ramales: Array<{
+    id: string;
+    net?: string;
+    tipo?: string;
+    pts?: number[][];
+    _tribReversed?: boolean;
+    diametro?: string;
+    label?: string;
+    fin?: string;
+    mergesFrom?: string[];
+  }>,
+  ramalId: string,
+  newLabel: string,
+): { ok: boolean; msg?: string } {
+  const r = ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return { ok: true };
+  const newIn = newLabel ? diamPulgFromLabel(newLabel) : 0;
+  if (newIn <= 0) return { ok: true };
+  const TOL = 2.0;
+  const mergeSiblingPairs = new Set<string>();
+  for (const q of ramales) {
+    if (q.mergesFrom) mergeSiblingPairs.add([...q.mergesFrom].sort().join('|'));
+  }
+  let maxFeeder = 0;
+  let feederLbl = '';
+  for (const o of ramales) {
+    if (o.id === ramalId || o.net !== r.net || o.tipo !== 'ramal') continue;
+    if (!o.pts || o.pts.length < 2) continue;
+    if (mergeSiblingPairs.has([o.id, ramalId].sort().join('|'))) continue;
+    const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
+    if (oIn <= 0) continue;
+    // Destino de flujo del candidato sobre mi cuerpo: me descarga.
+    const oDest = o._tribReversed ? o.pts[0] : o.pts[o.pts.length - 1];
+    if (distToPolyline(oDest, r.pts) >= TOL) continue;
+    // Si el candidato declara `fin` hacia OTRO elemento (bajante u otro ramal), su flujo va
+    // allá, no a mí (co-sumideros al mismo bajante, continuación tipeada) — no me alimenta.
+    const oFin = o.fin || '';
+    if (oFin && oFin !== r.id && oFin !== r.label) continue;
+    if (oIn > maxFeeder) {
+      maxFeeder = oIn;
+      feederLbl = o.label || o.id;
+    }
+  }
+  if (maxFeeder > 0 && newIn < maxFeeder) {
+    return { ok: false, msg: sanFeederMinMsg(feederLbl, maxFeeder) };
+  }
+  return { ok: true };
+}
+
+// Espejo de la regla anterior para el ALIMENTADOR: subir el diámetro de un ramal por encima
+// de su receptor rompe el mismo invariante (aguas abajo >= aguas arriba) — sin este chequeo la
+// regla era burlable editando el alimentador en vez del receptor. Solo aplica al SUBIR (la
+// bajada la valida sanReceptorDiametroPermitido). Receptor = ramal del mismo net cuyo cuerpo
+// pasa por el punto de descarga; si el ramal declara `fin` hacia un elemento que no es un
+// ramal san del grupo (p. ej. un bajante), no hay receptor que restringir.
+export function sanAlimentadorDiametroPermitido(
+  ramales: Array<{
+    id: string;
+    net?: string;
+    tipo?: string;
+    pts?: number[][];
+    _tribReversed?: boolean;
+    diametro?: string;
+    label?: string;
+    fin?: string;
+    mergesFrom?: string[];
+  }>,
+  ramalId: string,
+  newLabel: string,
+): { ok: boolean; msg?: string } {
+  const r = ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return { ok: true };
+  const newIn = newLabel ? diamPulgFromLabel(newLabel) : 0;
+  if (newIn <= 0) return { ok: true };
+  const curIn = r.diametro ? diamPulgFromLabel(r.diametro) : 0;
+  if (newIn <= curIn) return { ok: true };
+  const TOL = 2.0;
+  const rDest = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
+  // Receptor declarado por `fin` (referencia a OTRO ramal) o geométrico.
+  let receptor: (typeof ramales)[number] | null = null;
+  let recD = Infinity;
+  const rFin = r.fin || '';
+  if (rFin) {
+    const declared = ramales.find(
+      (q) => q.id !== ramalId && q.tipo === 'ramal' && (q.id === rFin || q.label === rFin),
+    );
+    if (declared) {
+      receptor = declared;
+      recD = declared.diametro ? diamPulgFromLabel(declared.diametro) : 0;
+    }
+    // `fin` hacia un bajante u otro elemento: el flujo sale de la red san — sin restricción.
+  } else {
+    const mergeSiblingPairs = new Set<string>();
+    for (const q of ramales) {
+      if (q.mergesFrom) mergeSiblingPairs.add([...q.mergesFrom].sort().join('|'));
+    }
+    for (const q of ramales) {
+      if (q.id === ramalId || q.net !== r.net || q.tipo !== 'ramal') continue;
+      if (!q.pts || q.pts.length < 2) continue;
+      if (mergeSiblingPairs.has([q.id, ramalId].sort().join('|'))) continue;
+      const d = distToPolyline(rDest, q.pts);
+      if (d >= TOL) continue;
+      if (d < recD) {
+        recD = d;
+        receptor = q;
+      }
+    }
+  }
+  if (receptor) {
+    const recIn = receptor.diametro ? diamPulgFromLabel(receptor.diametro) : 0;
+    if (recIn > 0 && newIn > recIn) {
+      return {
+        ok: false,
+        msg: sanReceptorMaxMsg(receptor.label || receptor.id || '', recIn),
+      };
+    }
+  }
+  return { ok: true };
+}
+
+/** Ambas direcciones del invariante sanitario: bajar por debajo del mayor alimentador y subir
+ *  por encima del receptor. Punto único de entrada para guardDiametroNodo. */
+export function sanDiametroPermitido(
+  ramales: Parameters<typeof sanReceptorDiametroPermitido>[0],
+  ramalId: string,
+  newLabel: string,
+): { ok: boolean; msg?: string } {
+  const down = sanReceptorDiametroPermitido(ramales, ramalId, newLabel);
+  if (!down.ok) return down;
+  return sanAlimentadorDiametroPermitido(ramales, ramalId, newLabel);
 }
 
 export function flipRamalFlow(ram: PlanoRamal): void {

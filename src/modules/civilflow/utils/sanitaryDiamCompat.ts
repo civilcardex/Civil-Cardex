@@ -35,3 +35,44 @@ export function sanDiamLabelAllowedForApparatus(
 /** Mensaje de alerta canónico para el bloqueo por inodoro. */
 export const SAN_INODORO_MIN_MSG =
   'El ramal con inodoro requiere diámetro mínimo de 4". Selecciona un diámetro mayor o igual a 4".';
+
+/** Alimentador directo tipo ramal (sin bajantes ni tributarios) con su diámetro de diseño. */
+export interface SanFeederDiam {
+  pulg: number;
+  label: string;
+}
+
+/** Vista mínima de un tramo para resolver alimentadores (compatible con Tramo sin importarlo). */
+export interface SanTramoView {
+  diamDisPulg?: number;
+  label?: string;
+  id?: string;
+  tipo?: string;
+  esBajante?: boolean;
+}
+
+/** Mayor diámetro entre los ramales que descargan directo en el receptor.
+ *  Solo cuentan hijos tipo `ramal` sin bajante: tributarios y bajantes no restringen. */
+export function sanMaxFeederDiam(
+  childrenKeys: string[],
+  find: (key: string) => SanTramoView | undefined,
+): SanFeederDiam | null {
+  let best: SanFeederDiam | null = null;
+  for (const k of childrenKeys) {
+    const t = find(k);
+    if (!t || t.tipo !== 'ramal' || t.esBajante) continue;
+    const p = t.diamDisPulg || 0;
+    if (p > 0 && (!best || p > best.pulg)) best = { pulg: p, label: t.label || t.id || k };
+  }
+  return best;
+}
+
+/** Mensaje canónico cuando el receptor quedaría menor que su alimentador. */
+export function sanFeederMinMsg(feederLabel: string, feederPulg: number): string {
+  return `El ramal recibe la descarga de ${feederLabel} (${feederPulg}"). Su diámetro no puede ser menor a ${feederPulg}". Aumenta el diámetro del receptor o reduce primero el del ramal que descarga.`;
+}
+
+/** Mensaje canónico cuando el alimentador quedaría mayor que su receptor. */
+export function sanReceptorMaxMsg(receptorLabel: string, receptorPulg: number): string {
+  return `El ramal descarga en ${receptorLabel} (${receptorPulg}"). Su diámetro no puede ser mayor a ${receptorPulg}". Reduce este diámetro o aumenta primero el del ramal que lo recibe.`;
+}

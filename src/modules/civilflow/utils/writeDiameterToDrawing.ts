@@ -9,7 +9,7 @@ import {
 import type { SyncPlanInput, RawElement } from './drawingSync';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { INODORO_APP_ID, sanDiamAllowedForApparatus } from './sanitaryDiamCompat';
-import { maxDiametroLabel } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import { maxDiametroLabel, followBajanteToMaxRamal } from '../lib/PlanoEngine/PlanoEngineDrawing';
 
 interface LocalDrawingData {
   ts?: number;
@@ -317,6 +317,7 @@ export function writeDiametroToDrawing(
             }
           }
         }
+        const oldDiamLabel = r.diametro || '';
         r.diametro = newDiamLabel;
         changed = true;
         // Propagar a cualquier ramal aguas abajo auto-creado por un merge de tee-split DESDE este —
@@ -338,6 +339,24 @@ export function writeDiametroToDrawing(
           const newChildDiam = maxDiametroLabel(d1, d2);
           if (newChildDiam && newChildDiam !== child.diametro) {
             child.diametro = newChildDiam;
+            changed = true;
+          }
+        }
+        // El bajante sigue al mayor diámetro de sus ramales en ambas direcciones: si seguía
+        // al máximo anterior adopta el nuevo (suba o baje); un oversize explícito mayor se
+        // conserva salvo que el nuevo máximo lo supere. Misma regla que en canvas.
+        for (const b of data.bajantes || []) {
+          if (b.net !== net || !(b.recibeDeIds || []).includes(r.id)) continue;
+          const followed = followBajanteToMaxRamal(
+            data.ramales || [],
+            b.recibeDeIds,
+            b.dNominal || '',
+            r.id,
+            oldDiamLabel,
+            newDiamLabel,
+          );
+          if (followed) {
+            b.dNominal = followed;
             changed = true;
           }
         }

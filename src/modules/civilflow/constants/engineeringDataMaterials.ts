@@ -125,6 +125,15 @@ export const DIAM_OPTIONS = DIAM_BAN.map((d) => ({ pulg: d.pulg, label: d.nom, m
 // opción de diámetro. El resto de redes (af/ac/ll/vent) conservan DIAM_BAN completo.
 export const DIAM_BAN_SAN = DIAM_BAN.filter((d) => d.pulg !== 1.5);
 
+// Colectores/ramales sanitarios: sin 1-1/2" en toda la red san (pedido usuario).
+// ponytail: deriva de DIAM_BAN_SAN para no duplicar la lista.
+// Lluvias sigue con DIAM_OPTIONS completo.
+export const DIAM_OPTIONS_SAN = DIAM_BAN_SAN.map((d) => ({
+  pulg: d.pulg,
+  label: d.nom,
+  mm: d.mm,
+}));
+
 export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r) => ({
   pulg: diamPulgFromLabel(r.dn),
   mm: r.d,

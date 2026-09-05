@@ -9,9 +9,13 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { NETS, checkActiveNet } from './PlanoState';
-import { _midpoint, maxDiametroLabel } from './PlanoEngineDrawing';
-import { diametroCambioPermitido } from './drawingFlow';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import {
+  _midpoint,
+  maxDiametroLabel,
+  bumpBajanteToMaxRamal,
+  followBajanteToMaxRamal,
+} from './PlanoEngineDrawing';
+import { diametroCambioPermitido, sanDiametroPermitido } from './drawingFlow';
 import {
   pointInPoly,
   pointInLabelBox,
@@ -397,6 +401,11 @@ export function getSelected(
 
 export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, unknown>): void {
   const el = getSelected(engine);
+  // Diámetro previo para el seguimiento del bajante (follow en ambas direcciones).
+  const prevRamDiam =
+    el && fields.diametro !== undefined && (el as PlanoRamal).pts
+      ? (el as PlanoRamal).diametro || ''
+      : '';
   if (el) {
     checkVentDiameterLimits(engine, el, fields);
     if (!guardDiametroNodo(engine, el, fields)) {
@@ -415,6 +424,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
     // toman el mismo diámetro. La conexión se resuelve por descargaEnId (vent →
     // san) y por recibeDeIds del san (incluye vents que descargan en él).
     syncVentBajanteDiameters(engine, el, fields);
+    // El cambio de diámetro por el panel (TramoEditor) también arrastra al bajante.
+    if (fields.diametro !== undefined && (el as PlanoRamal).pts && el.id) {
+      bumpConnectedBajantes(engine, el.id, prevRamDiam, String(fields.diametro ?? ''));
+    }
     // Ítem 6/8: propagar el elemento mutado al snapshot de selección del panel derecho/ menú
     // contextual (única fuente de verdad). _emitSelect ya emite una copia superficial, así que
     // React recibe una referencia nueva y re-renderiza sin que el usuario deba re-seleccionar.
@@ -429,6 +442,8 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
 // Validación de diámetros en nodos de presión (salida ≤ entrada) a nivel motor: intercepta
 // CUALQUIER escritura de `diametro` sobre un ramal af/ac/gas (menú contextual, TramoEditor,
 // editores) y bloquea con alerta la configuración inválida — sin reasignación automática.
+// Sanitaria usa la regla inversa en AMBAS direcciones (receptor ≥ alimentador y alimentador ≤
+// receptor) vía sanDiametroPermitido.
 function guardDiametroNodo(
   engine: IPlanoEngineCore,
   el: { pts?: number[][]; net?: string; id?: string },
@@ -436,13 +451,60 @@ function guardDiametroNodo(
 ): boolean {
   if (fields.diametro === undefined) return true;
   const ram = el as PlanoRamal;
-  if (!ram.pts || (ram.net !== 'af' && ram.net !== 'ac' && ram.net !== 'gas')) return true;
-  const res = diametroCambioPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''));
+  if (!ram.pts || (ram.net !== 'af' && ram.net !== 'ac' && ram.net !== 'gas' && ram.net !== 'san'))
+    return true;
+  const res =
+    ram.net === 'san'
+      ? sanDiametroPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''))
+      : diametroCambioPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''));
   if (!res.ok) {
     engine.triggerAlert('Diámetro no permitido', res.msg || '');
     return false;
   }
   return true;
+}
+
+/** Piso del bajante = máximo de sus ramales asociados: sigue al cambio en ambas direcciones
+ *  (si seguía al máximo anterior adopta el nuevo; un oversize explícito mayor se conserva).
+ *  Se aplica en updateElementById Y updateSelected: cambiar el diámetro por cualquier editor
+ *  (menú o panel) arrastra al bajante conectado. @param engine Motor con ramales y bajantes vivos. */
+export function bumpConnectedBajantes(
+  engine: IPlanoEngineCore,
+  ramId: string,
+  oldRamD: string,
+  newRamD: string,
+): void {
+  const changedRam = engine.ramales.find((r) => r.id === ramId);
+  if (!changedRam?.pts) return;
+  const lvlLabel = engine.nivelActual?.label ?? '';
+  for (const b of engine.bajantes) {
+    if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
+    const assocRamIds = b.recibeDeIds || [];
+    // ¿conectado a este ramal? (explícito por recibeDeIds o geométrico)
+    let isConnected = assocRamIds.includes(ramId);
+    if (!isConnected) {
+      const disp = b.desplazamientos?.[lvlLabel] || {};
+      const bx = b.x + (disp.dx || 0);
+      const by = b.y + (disp.dy || 0);
+      const head = changedRam.pts[changedRam.pts.length - 1];
+      const tail = changedRam.pts[0];
+      if (
+        Math.hypot(head[0] - bx, head[1] - by) < 2.0 ||
+        Math.hypot(tail[0] - bx, tail[1] - by) < 2.0
+      )
+        isConnected = true;
+    }
+    if (!isConnected) continue;
+    const followed = followBajanteToMaxRamal(
+      engine.ramales,
+      assocRamIds,
+      b.dNominal || '',
+      ramId,
+      oldRamD,
+      newRamD,
+    );
+    if (followed) b.dNominal = followed;
+  }
 }
 
 export function updateElementById(
@@ -455,6 +517,11 @@ export function updateElementById(
     engine.bajantes.find((b) => b.id === id) ||
     engine.textAnnots.find((t) => t.id === id) ||
     engine.areas.find((a) => a.id === id);
+  // Diámetro previo para el seguimiento del bajante (follow en ambas direcciones).
+  const prevRamDiam =
+    el && fields.diametro !== undefined && (el as PlanoRamal).pts
+      ? (el as PlanoRamal).diametro || ''
+      : '';
   if (el) {
     checkVentDiameterLimits(engine, el, fields);
     if (!guardDiametroNodo(engine, el, fields)) {
@@ -476,41 +543,16 @@ export function updateElementById(
     // recalcular el floor del bajante = max de todos los ramales asociados — nunca
     // queda por debajo. Si el bajante no tenía diámetro, se le asigna este.
     if (fields.diametro !== undefined && (el as PlanoRamal).pts) {
-      const newRamD = String(fields.diametro ?? '');
-      const newRamIn = diamPulgFromLabel(newRamD);
-      if (newRamIn > 0) {
-        const lvlLabel = engine.nivelActual?.label ?? '';
-        const changedRam = el as PlanoRamal;
-        for (const b of engine.bajantes) {
-          if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
-          const assocRamIds = b.recibeDeIds || [];
-          // ¿conectado a este ramal? (explícito por recibeDeIds o geométrico)
-          let isConnected = assocRamIds.includes(id);
-          if (!isConnected && changedRam.pts) {
-            const disp = b.desplazamientos?.[lvlLabel] || {};
-            const bx = b.x + (disp.dx || 0);
-            const by = b.y + (disp.dy || 0);
-            const head = changedRam.pts[changedRam.pts.length - 1];
-            const tail = changedRam.pts[0];
-            if (
-              Math.hypot(head[0] - bx, head[1] - by) < 2.0 ||
-              Math.hypot(tail[0] - bx, tail[1] - by) < 2.0
-            )
-              isConnected = true;
-          }
-          if (!isConnected) continue;
-          // Floor = max de todos los ramales asociados + el que cambió
-          let maxRam = '';
-          for (const rid of assocRamIds) {
-            const rr = engine.ramales.find((x) => x.id === rid);
-            if (rr?.diametro) maxRam = maxDiametroLabel(maxRam, rr.diametro);
-          }
-          maxRam = maxDiametroLabel(maxRam, newRamD);
-          const bIn = diamPulgFromLabel(b.dNominal || '');
-          const maxIn = diamPulgFromLabel(maxRam);
-          if (bIn <= 0) b.dNominal = maxRam;
-          else if (maxIn > bIn) b.dNominal = maxRam;
-        }
+      bumpConnectedBajantes(engine, id, prevRamDiam, String(fields.diametro ?? ''));
+    }
+    // Al ASOCIAR ramales a un bajante/montante (recibeDeIds), su diámetro sube al mayor de
+    // los asociados — nunca queda por debajo (misma regla que al crear el bajante y que el
+    // piso por cambio de diámetro de ramal de arriba). Solo sube, nunca baja.
+    if (fields.recibeDeIds !== undefined && !(el as PlanoRamal).pts) {
+      const b = el as PlanoBajante;
+      if (b.tipo === 'bajante' || b.tipo === 'montante') {
+        const bumped = bumpBajanteToMaxRamal(engine.ramales, b.recibeDeIds, b.dNominal || '');
+        if (bumped) b.dNominal = bumped;
       }
     }
     // ponytail: propagate diameter change to downstream auto-split ramals (mergesFrom chains).

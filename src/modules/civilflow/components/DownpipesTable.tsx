@@ -7,9 +7,9 @@ import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
+import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
@@ -87,7 +87,7 @@ function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacio
     bajDprop > 0
       ? DIAM_BAN.find((d) => Number(d.pulg) === Number(bajDprop))
       : DcalcMm > 0
-        ? DIAM_BAN.find((d) => d.mm > DcalcMm) || DIAM_BAN[DIAM_BAN.length - 1]
+        ? DIAM_BAN_SAN.find((d) => d.mm > DcalcMm) || DIAM_BAN_SAN[DIAM_BAN_SAN.length - 1]
         : null;
   const DpropPulg = Dprop ? Dprop.pulg : 0;
   const DpropMm = Dprop ? Dprop.mm : 0;
@@ -713,34 +713,21 @@ const BajantesTable = memo(function BajantesTable_() {
                     resolvedVentDprop > 0 &&
                     resolvedVentDprop < ventRamalDiamPulg;
 
-                  const maxSanRamalDiamPulg = (() => {
-                    let maxD = 0;
-                    const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
-                    const rIds = t.recibeDeIds || [];
-                    if (rIds.length === 0) return 0;
-
-                    const raw = storageByPlan[planIdStr];
-                    if (!raw) return 0;
-
-                    const planRamales = (raw.ramales || []) as RamalWithDiam[];
-                    for (const rId of rIds) {
-                      const ram = planRamales.find(
-                        (r) => r.id === rId && (r.net === 'san' || r._net === 'san'),
-                      );
-                      if (ram) {
-                        const dVal = ram.diamPulg || diamPulgFromLabel(ram.diametro);
-                        if (dVal > maxD) {
-                          maxD = dVal;
-                        }
-                      }
-                    }
-                    return maxD;
-                  })();
+                  // Mayor diámetro san de los ramales conectados — helper compartido con la
+                  // memoria de bajantes (bajanteVentRows).
+                  const maxSanConectDiam = maxSanRamalDiamPulg(
+                    t.recibeDeIds,
+                    t.planId || (t._key ? t._key.split('-')[1] : ''),
+                    storageByPlan,
+                  );
 
                   const sanDiamWarn =
-                    maxSanRamalDiamPulg > 0 &&
+                    maxSanConectDiam > 0 &&
                     resolvedSanDprop > 0 &&
-                    resolvedSanDprop < maxSanRamalDiamPulg;
+                    resolvedSanDprop < maxSanConectDiam;
+
+                  // Por defecto el bajante toma el mayor diámetro de sus ramales conectados.
+                  const effSanDprop = resolvedSanDprop > 0 ? resolvedSanDprop : maxSanConectDiam;
 
                   const res = calculateVentStack({
                     bajante: t.id,
@@ -750,7 +737,7 @@ const BajantesTable = memo(function BajantesTable_() {
                     UD_acum: totalUD,
                     r: t.bajR,
                     n: t.nmaning || 0.009,
-                    bajDprop: resolvedSanDprop || 0,
+                    bajDprop: effSanDprop || 0,
                     bajLong: t.bajLong || 3,
                     bajFDarcy: t.bajFDarcy || 0.025,
                     ventDprop: resolvedVentDprop || 0,
@@ -859,12 +846,12 @@ const BajantesTable = memo(function BajantesTable_() {
                             const val = parseFloat(e.target.value) || 0;
                             const matched = DIAM_BAN.find((d) => d.pulg === val);
                             let nom = matched ? matched.nom : '';
-                            if (val > 0 && maxSanRamalDiamPulg > 0 && val < maxSanRamalDiamPulg) {
+                            if (val > 0 && maxSanConectDiam > 0 && val < maxSanConectDiam) {
                               window.dispatchEvent(
                                 new CustomEvent('civilflow_diametro_validation', {
                                   detail: {
                                     title: 'Diámetro no permitido',
-                                    message: `El diámetro del bajante no puede ser inferior al del ramal sanitario (${maxSanRamalDiamPulg}")`,
+                                    message: `El diámetro del bajante no puede ser inferior al del ramal sanitario (${maxSanConectDiam}")`,
                                   },
                                 }),
                               );
@@ -905,7 +892,7 @@ const BajantesTable = memo(function BajantesTable_() {
                               lineHeight: 1.2,
                             }}
                           >
-                            Debe ser mayor o igual al &oslash; del ramal san. ({maxSanRamalDiamPulg}
+                            Debe ser mayor o igual al &oslash; del ramal san. ({maxSanConectDiam}
                             &quot;)
                           </div>
                         )}

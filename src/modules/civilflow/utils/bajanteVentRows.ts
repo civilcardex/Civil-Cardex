@@ -3,7 +3,8 @@ import type { PlanItem } from '../context/PlansContext';
 import type { UDBase } from './componentHelpers';
 import { calcUDparcial } from './componentHelpers';
 import { buildBajanteGraph } from './buildBajanteGraph';
-import { DIAM_BAN, DIAM_VENT } from '../constants';
+import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
+import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore';
 import { parseDescargaEnId } from './parseDescargaEnId';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
@@ -31,7 +32,7 @@ function calculateVentStack(params: {
     bajDprop > 0
       ? DIAM_BAN.find((d) => Number(d.pulg) === Number(bajDprop))
       : DcalcMm > 0
-        ? DIAM_BAN.find((d) => d.mm > DcalcMm) || DIAM_BAN[DIAM_BAN.length - 1]
+        ? DIAM_BAN_SAN.find((d) => d.mm > DcalcMm) || DIAM_BAN_SAN[DIAM_BAN_SAN.length - 1]
         : null;
   const DpropPulg = Dprop ? Dprop.pulg : 0;
 
@@ -77,6 +78,37 @@ function calculateVentStack(params: {
     D_vent_calc_pulg: parseFloat(D_vent_calc_pulg.toFixed(2)),
     D_vent_prop_pulg: DventPropPulg,
   };
+}
+
+/** Mayor diámetro san (pulg) entre los ramales conectados a un bajante (recibeDeIds), según los
+ *  ramales persistidos del plano — la misma regla que sigue el motor al asociar/cambiar
+ *  diámetros. Compartido por la tabla en pantalla (DownpipesTable) y la memoria (aquí). */
+export function maxSanRamalDiamPulg(
+  recibeDeIds: string[] | undefined,
+  planId: string | number | undefined,
+  storageByPlan: Record<string, DrawingData>,
+): number {
+  let maxD = 0;
+  const rIds = recibeDeIds || [];
+  if (rIds.length === 0) return 0;
+  const raw = planId !== undefined && planId !== '' ? storageByPlan[String(planId)] : undefined;
+  if (!raw) return 0;
+  // Vista suelta de los ramales persistidos: RawElement no declara diamPulg pero los datos
+  // guardados por writeBajantePropToDrawing sí lo traen.
+  const planRamales = (raw.ramales || []) as Array<{
+    id: string;
+    net?: string;
+    _net?: string;
+    diamPulg?: number;
+    diametro?: string;
+  }>;
+  for (const rId of rIds) {
+    const ram = planRamales.find((r) => r.id === rId && (r.net === 'san' || r._net === 'san'));
+    if (!ram) continue;
+    const dVal = ram.diamPulg || diamPulgFromLabel(ram.diametro || '');
+    if (dVal > maxD) maxD = dVal;
+  }
+  return maxD;
 }
 
 export function computeBajanteVentTable(
@@ -252,6 +284,12 @@ export function computeBajanteVentTable(
     let resolvedSanDprop = 0;
     if (!isVent) {
       resolvedSanDprop = t.bajDprop || 0;
+      // Por defecto el bajante toma el mayor diámetro de sus ramales conectados
+      // (misma regla compartida que la tabla en pantalla).
+      if (!resolvedSanDprop) {
+        const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
+        resolvedSanDprop = maxSanRamalDiamPulg(t.recibeDeIds, planIdStr, storageByPlan);
+      }
     } else {
       for (const sk of sanBajKeys) {
         const st = tramosSan.find((x) => x._key === sk);

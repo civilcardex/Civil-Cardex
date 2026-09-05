@@ -4,7 +4,7 @@ import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
-import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from '../constants';
+import { pisoCorto, DIAM_OPTIONS_SAN, SAN_UC_IDS, APARATOS_DEF } from '../constants';
 import { caudalHunterLPS, factorSimultaneidad } from '../utils/calcSanitaryCore';
 import {
   writeDiametroToDrawing,
@@ -15,6 +15,9 @@ import {
   INODORO_APP_ID,
   sanDiamAllowedForApparatus,
   SAN_INODORO_MIN_MSG,
+  sanMaxFeederDiam,
+  sanFeederMinMsg,
+  sanReceptorMaxMsg,
 } from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
@@ -82,7 +85,7 @@ export default function DisenosSanitarios() {
 
   const handleDiamChange = useCallback(
     (tramoId: string, newPulg: number) => {
-      const opt = DIAM_OPTIONS.find((o) => o.pulg === newPulg);
+      const opt = DIAM_OPTIONS_SAN.find((o) => o.pulg === newPulg);
       if (opt) {
         // Ítem 6/7/8: regla central (inodoro → 4" mínimo). Bloqueo directo en UI sin esperar al write.
         if (newPulg > 0 && !sanDiamAllowedForApparatus(newPulg, INODORO_APP_ID)) {
@@ -106,6 +109,56 @@ export default function DisenosSanitarios() {
             }
           } catch (_e) {
             void _e;
+          }
+        }
+        // Invariante sanitario en AMBAS direcciones, contra el mapa de conectividad (hijos =
+        // quien me descarga; padres = a quien yo descargo). Bloqueo con alerta, igual que dibujo.
+        if (newPulg > 0 && fullChildrenMap) {
+          // _key real es `${id}-${planId}` (buildTramos) — un único formato para todas las lookups.
+          const findTramo = (k: string) =>
+            tramosSan.find((t) => (t._key || (t.planId ? `${t.id}-${t.planId}` : '')) === k);
+          const self = findTramo(tramoId);
+          const keys = [tramoId];
+          if (self) {
+            if (self._key && !keys.includes(self._key)) keys.push(self._key);
+            const planKey = self.planId ? `${self.id}-${self.planId}` : '';
+            if (planKey && !keys.includes(planKey)) keys.push(planKey);
+          }
+          // Bajada: el mayor hijo ramal que me descarga fija el mínimo.
+          const childKeys = keys.flatMap((k) => fullChildrenMap[k] || []);
+          const feeder = sanMaxFeederDiam(childKeys, findTramo);
+          if (feeder && newPulg < feeder.pulg) {
+            window.dispatchEvent(
+              new CustomEvent('civilflow_diametro_validation', {
+                detail: {
+                  title: 'Diámetro no permitido',
+                  message: sanFeederMinMsg(feeder.label, feeder.pulg),
+                },
+              }),
+            );
+            return;
+          }
+          // Subida: cualquier receptor (padre ramal, sin bajante) fija el máximo — el mismo
+          // invariante visto desde el alimentador; los bajantes siguen al máximo por su cuenta.
+          const parentKeys = Object.keys(fullChildrenMap).filter((k) =>
+            (fullChildrenMap[k] || []).some((ck) => keys.includes(ck)),
+          );
+          for (const pk of parentKeys) {
+            const receptor = findTramo(pk);
+            const recPulg = receptor?.diamDisPulg || 0;
+            if (!receptor || receptor.esBajante || receptor.tipo !== 'ramal' || recPulg <= 0)
+              continue;
+            if (newPulg > recPulg) {
+              window.dispatchEvent(
+                new CustomEvent('civilflow_diametro_validation', {
+                  detail: {
+                    title: 'Diámetro no permitido',
+                    message: sanReceptorMaxMsg(receptor.label || receptor.id || '', recPulg),
+                  },
+                }),
+              );
+              return;
+            }
           }
         }
         const res = writeDiametroToDrawing(tramoId, 'san', opt.label, plans);
@@ -192,7 +245,7 @@ export default function DisenosSanitarios() {
       const S = sVal > 0 ? sVal / 100 : null;
       const Q =
         udAcum > 0 && K != null ? Math.round(caudalHunterLPS(udAcum, K) * 1000) / 1000 : null;
-      const dSel = DIAM_OPTIONS.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
+      const dSel = DIAM_OPTIONS_SAN.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
       const DintMm = dSel ? dSel.mm : 0;
       let v_real = 0,
         yD = 0,
@@ -655,7 +708,7 @@ export default function DisenosSanitarios() {
                               style={SanitaryDesign_S1}
                             >
                               <option value="">—</option>
-                              {DIAM_OPTIONS.map((o) => (
+                              {DIAM_OPTIONS_SAN.map((o) => (
                                 <option key={o.pulg} value={o.pulg}>
                                   {o.label}
                                 </option>

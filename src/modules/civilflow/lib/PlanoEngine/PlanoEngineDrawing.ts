@@ -54,6 +54,8 @@ export {
   _calcPolyArea,
   inchPartOfDiametro,
   maxDiametroLabel,
+  bumpBajanteToMaxRamal,
+  followBajanteToMaxRamal,
   cancelRamal,
   cancelArea,
   finishArea,

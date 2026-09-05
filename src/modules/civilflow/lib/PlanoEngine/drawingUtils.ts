@@ -98,6 +98,51 @@ export function maxDiametroLabel(a: string, b: string): string {
   return vb > va ? b : a;
 }
 
+/** dNominal resultante al asociar ramales a un bajante/montante: el mayor entre el actual y
+ *  los asociados (solo sube, nunca baja). @returns nuevo dNominal, o null si no cambia. */
+export function bumpBajanteToMaxRamal(
+  ramales: Array<{ id: string; diametro?: string }>,
+  recibeDeIds: string[] | undefined,
+  curDNominal: string,
+): string | null {
+  let maxRam = '';
+  for (const rid of recibeDeIds || []) {
+    const rr = ramales.find((x) => x.id === rid);
+    if (rr?.diametro) maxRam = maxDiametroLabel(maxRam, rr.diametro);
+  }
+  if (maxRam && diamPulgFromLabel(maxRam) > diamPulgFromLabel(curDNominal || '')) return maxRam;
+  return null;
+}
+
+/** dNominal resultante al CAMBIAR el diámetro de un ramal: el bajante sigue al máximo de sus
+ *  asociados en ambas direcciones — si seguía al máximo anterior (o estaba vacío), adopta el
+ *  nuevo; un oversize explícito mayor se conserva salvo que el nuevo máximo lo supere.
+ *  @returns nuevo dNominal, o null si no cambia. */
+export function followBajanteToMaxRamal(
+  ramales: Array<{ id: string; diametro?: string }>,
+  recibeDeIds: string[] | undefined,
+  curDNominal: string,
+  changedId: string,
+  oldLabel: string,
+  newLabel: string,
+): string | null {
+  let maxOthers = '';
+  for (const rid of recibeDeIds || []) {
+    if (rid === changedId) continue;
+    const rr = ramales.find((x) => x.id === rid);
+    if (rr?.diametro) maxOthers = maxDiametroLabel(maxOthers, rr.diametro);
+  }
+  const newMax = maxDiametroLabel(maxOthers, newLabel);
+  const oldMax = maxDiametroLabel(maxOthers, oldLabel);
+  const curIn = diamPulgFromLabel(curDNominal || '');
+  const newIn = diamPulgFromLabel(newMax);
+  const oldIn = diamPulgFromLabel(oldMax);
+  if (!newIn) return null;
+  if (curIn === oldIn) return newIn === curIn ? null : newMax;
+  if (newIn > curIn) return newMax;
+  return null;
+}
+
 /** Cancela el dibujo del ramal activo sin persistir. @param engine Instancia del motor. */
 export function cancelRamal(engine: IPlanoEngineCore): void {
   engine._yeeFlashKey = null;

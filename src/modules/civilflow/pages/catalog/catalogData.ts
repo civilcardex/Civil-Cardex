@@ -2,7 +2,7 @@ export const SANITARIAS = [
   {
     mat: 'PVC-S',
     rows: [
-      { dn: '1 ½"', d: 42.68 },
+      // 1 ½" retirado por pedido del usuario — la red sanitaria arranca en 2".
       { dn: '2"', d: 54.48 },
       { dn: '3"', d: 76.2 },
       { dn: '4"', d: 107.7 },
