@@ -470,10 +470,25 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine._markDirty();
         engine.render();
       } else {
-        engine._dragLinkedBackupPts = null;
-        if (ram) {
-          autoSplitJunctionAndSumFlow(engine, ram);
-          checkAccesorioTrigger(engine, ram.id);
+        const blocked = ram ? autoSplitJunctionAndSumFlow(engine, ram) : false;
+        if (ram && blocked) {
+          // Conexión bloqueada (a tributario): revertir el arrastre como el caso de flujo.
+          if (engine._dragBackupPts) {
+            ram.pts = engine._dragBackupPts;
+            engine._dragBackupPts = null;
+          }
+          const linkedBackups = engine._dragLinkedBackupPts;
+          if (linkedBackups) {
+            for (const r of linkedRamales) {
+              if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
+            }
+          }
+          engine._dragLinkedBackupPts = null;
+          engine._markDirty();
+          engine.render();
+        } else {
+          engine._dragLinkedBackupPts = null;
+          if (ram) checkAccesorioTrigger(engine, ram.id);
         }
       }
     }
@@ -527,8 +542,15 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       } else if (srcBaj) {
         const sourcePlanId = String(engine._loadedPlanId ?? '');
         updateCrossFloorGhostPositionBySource(sourcePlanId, srcBaj.id, srcBaj.x, srcBaj.y);
+      } else if (autoSplitJunctionAndSumFlow(engine, ram)) {
+        // Conexión bloqueada (a tributario): revertir el arrastre como el caso de flujo.
+        // (srcBaj ya fue manejado por la rama anterior — aquí siempre es null.)
+        if (origPts) {
+          ram.pts = origPts;
+          engine._markDirty();
+          engine.render();
+        }
       } else {
-        autoSplitJunctionAndSumFlow(engine, ram);
         checkAccesorioTrigger(engine, ram.id);
       }
     }

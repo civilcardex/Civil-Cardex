@@ -148,7 +148,7 @@ describe('dirección de flujo — canónicos', () => {
     expect(alerts.some((a) => /reventilado/i.test(a))).toBe(false);
   });
 
-  it('vent que llega al EXTREMO de san contra flujo se bloquea (Item 4)', () => {
+  it('vent que llega al EXTREMO de san se auto-orienta (ya no se bloquea)', () => {
     const existing = mkRamal(
       'RS1',
       'san',
@@ -160,13 +160,16 @@ describe('dirección de flujo — canónicos', () => {
     );
     const { engine, alerts } = makeEngine([existing], [], 'vent');
     const n = engine.ramales.length;
-    // Vent llega al EXTREMO [0,0] del san fluyendo hacia la unión (contra flujo).
+    // Vent dibujado de afuera hacia el EXTREMO [0,0] del san: se invierte solo para fluir
+    // alejándose (reventilado) en vez de bloquearse — orig. usuario, falsa alerta.
     draw(engine, 'vent', [
       [0, 40],
       [0, 0],
     ]);
-    expect(engine.ramales).toHaveLength(n);
-    expect(alerts.some((a) => /reventilado/i.test(a))).toBe(true);
+    expect(engine.ramales).toHaveLength(n + 1);
+    const vent = engine.ramales[engine.ramales.length - 1];
+    expect(vent.pts[0]).toEqual([0, 0]);
+    expect(alerts.some((a) => /reventilado/i.test(a))).toBe(false);
   });
 
   it('vent arrancando del EXTREMO de san en línea recta NO dispara alerta de ángulo', () => {

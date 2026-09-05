@@ -11,7 +11,7 @@ import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/fl
 import { ramalFlowDirectionCheck } from './drawingFlow';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
-import { _midpoint, maxDiametroLabel } from './drawingUtils';
+import { _midpoint, maxDiametroLabel, bumpBajanteToMaxRamal } from './drawingUtils';
 
 // Cuando el extremo de un ramal recién terminado (o arrastrado) cae a mitad del cuerpo de un
 // ramal EXISTENTE — una tee T/Y de verdad, no una unión extremo-con-extremo — se divide ese
@@ -39,8 +39,16 @@ export function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal):
  *  deriva del orden de los puntos (san/ll/vent). NO sirve para af/ac/gas (su dirección real
  *  es un flag aparte). Aplicarla dos veces restaura el estado original. */
 
-export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: PlanoRamal): void {
-  if (!incoming.pts || incoming.pts.length < 2) return;
+/** Divide el ramal existente cuando el extremo de `incoming` cae a mitad de su cuerpo, acumulando
+ *  caudal/diámetro en el downstream. @returns true si la conexión fue BLOQUEADA por la regla
+ *  "los ramales no se conectan a tributarios" (ya alertó al usuario): el caller debe revertir el
+ *  arrastre o retirar el ramal. Antes esto viajaba en una bandera de instancia que las rutas de
+ *  drag/guía nunca consumían — el siguiente ramal válido terminaba borrado por la bandera residual. */
+export function autoSplitJunctionAndSumFlow(
+  engine: IPlanoEngineCore,
+  incoming: PlanoRamal,
+): boolean {
+  if (!incoming.pts || incoming.pts.length < 2) return false;
   const TOL = 0.5;
   // San + vent comparten uniones como una sola subred — permitir también la detección de
   // extremos entre redes aquí.
@@ -81,17 +89,18 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
             // Advertencia "Ramal padre incorrecto" inhabilitada (orig. usuario) — el padre se
             // autodetecta; la conexión no se bloquea.
           }
-        } else if (existing.tipo === 'tributario') {
-          // Los ramales no se conectan a tributarios — el extremo de un ramal no puede
-          // unirse al vértice de UN tributario, salvo que el punto sea también vértice
-          // de un ramal normal (la conexión real es ramal-a-ramal — ver
-          // alsoNormalRamalHere).
-          if (!alsoNormalRamalHere) {
-            engine.triggerAlert(
-              'Conexión no permitida',
-              'Los ramales no se conectan a tributarios.',
-            );
-          }
+        }
+        // Regla del usuario: un RAMAL no se conecta al vértice de un TRIBUTARIO (salvo que el
+        // punto sea también vértice de un ramal normal — la conexión real es ramal-a-ramal,
+        // ver alsoNormalRamalHere). Retorno bloqueado: el caller revierte/retira el ramal.
+        // Los tributarios sí pueden unirse entre sí (tribToTribOk).
+        else if (
+          incoming.tipo === 'ramal' &&
+          existing.tipo === 'tributario' &&
+          !alsoNormalRamalHere
+        ) {
+          engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
+          return true;
         }
         continue;
       }
@@ -128,8 +137,14 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // partían). Lo mismo para trib-trib (id. comentario previo).
         const isSplitBody = segIdx >= 0;
         const isTribTrib = existing.tipo === 'tributario' && incoming.tipo === 'tributario';
-        // Solo tributarios se auto-orientan al aterrizar en cuerpo — ramales deben validar flujo
-        const skipSplitFlow = (isSplitBody && incoming.tipo === 'tributario') || isTribTrib;
+        // Solo tributarios se auto-orientan al aterrizar en cuerpo — ramales deben validar flujo.
+        // Excepción: ramal creado desde LÍNEA GUÍA (_guideTributary) cruzando el cuerpo —
+        // resolveRamalEndsFromGuide ya lo orientó drenando hacia el cruce; el chequeo aquí
+        // bloqueaba el split y dejaba el ramal suelto con la flecha invertida (orig. usuario).
+        const skipSplitFlow =
+          (isSplitBody && incoming.tipo === 'tributario') ||
+          isTribTrib ||
+          (isSplitBody && !!(engine as unknown as { _guideTributary?: boolean })._guideTributary);
         const flowErr = skipSplitFlow ? null : ramalFlowDirectionCheck(engine, incoming, [], TOL);
         if (flowErr) {
           // Sin auto-orientación: una conexión san/ll/vent con dirección de flujo distinta a la
@@ -204,9 +219,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // Los ramales no se conectan a tributarios: un ramal principal que cae a mitad de
         // cuerpo sobre un tributario debe bloquearse con alerta (antes continuaba en silencio,
         // y la división heredaba `tipo: 'tributario'` cargando UC/UD fusionados mal etiquetados).
+        // Retorno bloqueado: el caller revierte/retira el ramal (punto sin mutaciones aún).
         if (incoming.tipo === 'ramal') {
           engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
-          continue;
+          return true;
         }
         // Tributario-a-tributario (ítem 7/2/3): permitido en cualquier red y sin exigir el mismo
         // ramal padre. Un tributario SÍ puede partir (splitear) a otro tributario: el tramo que
@@ -333,6 +349,19 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         mergesFrom: [existing.id, incoming.id],
       };
       engine.ramales.push(downstream);
+      // El padre real de un tributario que parte a su padre es el ramal AUTO-CREADO
+      // (downstream): la unión queda en su nacimiento y es él quien recibe la descarga y
+      // acumula el caudal. Sin esto, padre y label seguían apuntando al tramo aguas arriba
+      // (T2RS9) aunque el tributario drena al segmento nuevo (RS8) — etiqueta equivocada en
+      // el plano (orig. usuario).
+      if (incoming.tipo === 'tributario') {
+        incoming.padre = downstream.id;
+        const rootLbl =
+          (isTrib ? rootTributarioLabel(engine.ramales, downstream.id) : '') ||
+          downstream.label ||
+          downstream.id;
+        incoming.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
+      }
       if (farAparato && engine._loadedPlanId != null) {
         moveAparatoCount(existing.net, existing.id, newId, engine._loadedPlanId, farAparato);
       }
@@ -379,9 +408,21 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           b.recibeDeIds = (b.recibeDeIds || []).filter((id) => id !== downstream.id);
         }
       }
+      // El downstream nace con el mayor diámetro de la unión: los bajantes que quedaron
+      // asociados a él suben a ese piso si estaban por debajo (misma regla de asociación).
+      for (const b of engine.bajantes) {
+        if (
+          (b.tipo === 'bajante' || b.tipo === 'montante') &&
+          (b.recibeDeIds || []).includes(downstream.id)
+        ) {
+          const bumped = bumpBajanteToMaxRamal(engine.ramales, b.recibeDeIds, b.dNominal || '');
+          if (bumped) b.dNominal = bumped;
+        }
+      }
       break;
     }
   }
+  return false;
 }
 
 /** 3.3/6: detecta una yee SIMPLE cerca de (px,py). Auto-snap deshabilitado por UX

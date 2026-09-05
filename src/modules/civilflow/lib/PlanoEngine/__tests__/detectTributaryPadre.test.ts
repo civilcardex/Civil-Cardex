@@ -127,7 +127,7 @@ describe('detectTributaryPadre (feature #5 auto-detección)', () => {
     ).toBeNull();
   });
 
-  it('finishRamal asigna el padre autodetectado y numeración T{n}RS1 sin padre seleccionado', () => {
+  it('finishRamal: padre autodetectado; el split re-asigna padre/label al ramal auto-creado', () => {
     const padre = R({
       pts: [
         [0, 0],
@@ -148,7 +148,12 @@ describe('detectTributaryPadre (feature #5 auto-detección)', () => {
     finishRamal(engine);
     const trib = engine.ramales.find((r) => r.tipo === 'tributario');
     expect(trib).toBeTruthy();
-    expect(trib!.padre).toBe('P1');
-    expect(trib!.label).toMatch(/^T1RS1$/);
+    // El extremo (20,0) cae a mitad del cuerpo de P1 → autoSplit lo parte y el padre real del
+    // tributario pasa a ser el segmento AUTO-CREADO aguas abajo (recibe la descarga), no el
+    // tronco truncado (orig. usuario: etiquetas T2RS9 → deben ser del tramo nuevo).
+    const down = engine.ramales.find((r) => r.mergesFrom?.[1] === trib!.id);
+    expect(down).toBeTruthy();
+    expect(trib!.padre).toBe(down!.id);
+    expect(trib!.label).toBe(`T1${down!.label}`);
   });
 });

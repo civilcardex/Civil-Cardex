@@ -57,7 +57,16 @@ export function finishRamal(engine: IPlanoEngineCore): void {
           return;
         }
       }
-      autoSplitJunctionAndSumFlow(engine, existing);
+      // Conexión bloqueada (ramal sobre tributario): revertir la edición como el caso de flujo
+      // de arriba — el retorno llega sin mutaciones del autoSplit en ese extremo.
+      if (autoSplitJunctionAndSumFlow(engine, existing)) {
+        existing.pts = origPts;
+        existing.totalL = calculateRamalLength(origPts, engine);
+        engine.activeRamal = null;
+        engine._markDirty();
+        engine.render();
+        return;
+      }
       engine.activeRamal = null;
       engine.selId = existing.id;
       engine._emitSelect(existing);
@@ -410,6 +419,18 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       }
       return false;
     };
+    // ¿El punto toca un ramal SAN (vértice o cuerpo)? Para auto-orientar el vent recién
+    // dibujado hacia afuera de la unión reventilado.
+    const touchesSan = (ep: number[]): boolean => {
+      for (const other of engine.ramales) {
+        if (other.net !== 'san' || !other.pts || other.pts.length < 2) continue;
+        if (other.pts.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL)) return true;
+        for (let i = 0; i < other.pts.length - 1; i++) {
+          if (pointOnSegment(ep, other.pts[i], other.pts[i + 1], TOL)) return true;
+        }
+      }
+      return false;
+    };
     if (r.tipo === 'tributario' || r.pts.length >= 2) {
       const t0 = touchesRamal(r.pts[0]);
       const t1 = touchesRamal(r.pts[r.pts.length - 1]);
@@ -427,6 +448,24 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       // desde la unión (comportamiento original).
       if (r.tipo === 'tributario' && t0 && !t1) {
         flipRamalFlow(r);
+      }
+      // Vent recién dibujado: debe fluir ALEJÁNDOSE del punto sanitario (reventilado). Si el
+      // usuario lo dibujó de afuera hacia el san (termina en san, empieza libre), se invierte
+      // solo — igual que san/ll se auto-orienta hacia la unión. Sin esto, el trazo conectado
+      // disparaba "Dirección de flujo incorrecta" obligando a redibujar. Nunca toca un vent
+      // que termina en su propio bajante (stack): ahí terminar es lo correcto.
+      if (r.net === 'vent' && r.pts.length >= 2) {
+        const pStart = r.pts[0];
+        const pEnd = r.pts[r.pts.length - 1];
+        const endOnVentBajante = (engine.bajantes || []).some(
+          (b) => b.net === 'vent' && Math.hypot(b.x - pEnd[0], b.y - pEnd[1]) < TOL,
+        );
+        const endOnSanBajante = (engine.bajantes || []).some(
+          (b) => b.net === 'san' && Math.hypot(b.x - pEnd[0], b.y - pEnd[1]) < TOL,
+        );
+        if (!endOnVentBajante && (touchesSan(pEnd) || endOnSanBajante) && !touchesRamal(pStart)) {
+          flipRamalFlow(r);
+        }
       }
     }
     // Ítem 2/5: chequeo pre-push con el helper compartido (r aún no está en engine.ramales, se
@@ -493,7 +532,15 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     engine.render();
     return;
   }
-  autoSplitJunctionAndSumFlow(engine, r);
+  // Regla "Los ramales no se conectan a tributarios": autoSplitJunctionAndSumFlow devuelve si la
+  // conexión fue bloqueada — aquí se hace cumplir retirando el ramal recién terminado (antes la
+  // alerta salía y el ramal quedaba dibujado igualmente).
+  if (autoSplitJunctionAndSumFlow(engine, r)) {
+    engine.ramales = engine.ramales.filter((x) => x.id !== r.id);
+    engine.activeRamal = null;
+    engine.render();
+    return;
+  }
   // Asocia el ramal con un bajante si su extremo cae en el centro del bajante. Un ramal solo
   // puede LLEGAR a un bajante (real o fantasma) — nunca EMPEZAR ahí — por pedido explícito;
   // handleLineDown ya bloquea el clic mismo de empezar un ramal fresco ahí, esto es el cinturón
