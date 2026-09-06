@@ -244,6 +244,9 @@ export function usePdfViewerEngine({
     const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
     const eng = new PlanoEngine(cw, pdfWrap!, canv);
     engineRef.current = eng;
+    // Diagnóstico: instancia accesible desde la consola para depurar conteos/trazos
+    // (window.__cfEngine.ramales.map(r=>[r.id,r.label,r.tipo])).
+    (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
     eng.onSelect((el) => callbacksRef.current.onSelect(el));
