@@ -190,7 +190,14 @@ export function buildSanConnectivity(
       // El orden de dibujo (la flecha) es la fuente de verdad del flujo; `_tribReversed` solo lo
       // invierte cuando el motor lo fijó explícitamente.
       const downstreamPt = r._tribReversed ? pStart : pEnd;
-      const connections = checkEndpoint(downstreamPt);
+      let connections = checkEndpoint(downstreamPt);
+      // Sin receptor por el extremo de descarga: la flecha puede haber quedado INVERTIDA por
+      // historia (conversiones ramal↔tributario, splits, borrados) — reintentar por el OTRO
+      // extremo antes de dar el tramo por huérfano. Sin esto su UD no llegaba al receptor ni
+      // propagaba aguas abajo (orig. usuario: T2RS7 vacía pese a llegarle T10RS7 y T4RS7).
+      if (connections.length === 0) {
+        connections = checkEndpoint(r._tribReversed ? pEnd : pStart);
+      }
 
       for (const connection of connections) {
         const targetKey = `${connection.id}-${plan.id}`;
