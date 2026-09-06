@@ -107,7 +107,16 @@ describe('validateBeforeClose — conversión ramal↔tributario', () => {
   });
 
   it('tributario SIN carga ninguna sí dispara (la validación sigue funcionando)', () => {
-    const trib = R({ tipo: 'tributario', padre: 'RS1', label: 'T1RS1' });
+    // Geometría propia lejos de RS1: nadie con UD le descarga encima → sigue flaggeado.
+    const trib = R({
+      tipo: 'tributario',
+      padre: 'RS1',
+      label: 'T1RS1',
+      pts: [
+        [60, 0],
+        [100, 0],
+      ],
+    });
     const eng = makeEngine([RS1(), trib]);
     expect(validateBeforeClose(eng, [], onAlert)).toBe(false);
     expect(alertas[0]?.title).toBe('UC/UD pendientes');
@@ -124,5 +133,119 @@ describe('validateBeforeClose — conversión ramal↔tributario', () => {
     const eng = makeEngine([RS1(), trib]);
     const planos = [{ id: 1, status: 'confirmed' }];
     expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(true);
+  });
+
+  it('RS8 con aparatos en el nivel cargado: la copia stale en OTRO plan no dispara la alerta', () => {
+    // Reporte usuario: RS8 con 18 UD asignadas recibía "UC/UD pendientes" porque otro plano
+    // confirmado (piso replicado / trazo stale) traía el mismo id sin aparatos.
+    setLS('civilflow_aparatos_by_tramo_v2', { san_RS8_1: { sif: 2, lvm: 2, ino: 4 } });
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'RS8', net: 'san', tipo: 'ramal', label: 'RS8', diametro: '2"' }],
+      bajantes: [],
+    });
+    const eng = makeEngine([
+      R({ id: 'RS8', label: 'RS8', uc: 0, fixtures: { sif: 2, lvm: 2, ino: 4 } }),
+    ]);
+    const planos = [
+      { id: 1, name: 'P2', status: 'confirmed' },
+      { id: 2, name: 'P1', status: 'confirmed' },
+    ];
+    expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('copia en otro plan SIN carga y sin cobertura del engine: alerta nombrando el plano', () => {
+    // RS9 existe SOLO en el trazo del plano 2 sin aparatos → alerta legítima, y ahora nombra
+    // de qué plano viene el pendiente.
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'RS9', net: 'san', tipo: 'ramal', label: 'RS9', diametro: '2"' }],
+      bajantes: [],
+    });
+    const eng = makeEngine([R({ id: 'RS8', label: 'RS8', uc: 5 })]);
+    const planos = [{ id: 2, name: 'P1', status: 'confirmed' }];
+    expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(false);
+    expect(alertas[0]?.title).toBe('UC/UD pendientes');
+    expect(alertas[0]?.msg).toContain('RS9');
+    expect(alertas[0]?.msg).toContain('P1');
+  });
+
+  it('receptor sin carga propia pero que RECIBE UD de un alimentador cargado: no dispara', () => {
+    // Alineado con las tablas: la fila del receptor muestra la UD que le llega por el grafo —
+    // no está vacía → sin aviso (orig. usuario: RS8/T2RS7 con UDs visibles recibían el aviso).
+    const trib = R({
+      id: 'T2RS1',
+      tipo: 'tributario',
+      label: 'T2RS1',
+      pts: [
+        [30, 30],
+        [30, 0],
+      ],
+      fixtures: { lv: 0 },
+    });
+    const feeder = R({
+      id: 'T1RS1',
+      tipo: 'tributario',
+      label: 'T1RS1',
+      pts: [
+        [30, 60],
+        [30, 30],
+      ],
+      fixtures: { lv: 4 },
+    });
+    const eng = makeEngine([RS1(), trib, feeder]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('piso replicado: T3 de ESTE nivel con aparatos cubre la copia T3 (otro id) de otro plano', () => {
+    // Escenario exacto del usuario: yee doble en P2; borrar un segmento del brazo principal;
+    // T3 (id uniq de P2) tiene SIF 1 = 2 UD visibles en el panel. El plano P1 confirmado trae
+    // OTRA copia con la misma etiqueta T3, id uniq distinto y sin aparatos → sin alerta.
+    setLS('civilflow_aparatos_by_tramo_v2', { san_T1788abc_1: { sif: 1 } });
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'T9999xyz', tipo: 'tributario', net: 'san', label: 'T3', diametro: '2"' }],
+      bajantes: [],
+    });
+    const t3 = R({
+      id: 'T1788abc',
+      tipo: 'tributario',
+      label: 'T3',
+      fixtures: { sif: 1 },
+      pts: [
+        [30, 30],
+        [30, 0],
+      ],
+    });
+    const eng = makeEngine([t3]);
+    const planos = [
+      { id: 1, name: 'P2', status: 'confirmed' },
+      { id: 2, name: 'P1', status: 'confirmed' },
+    ];
+    expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('piso replicado: copia con etiqueta NO cubierta en el engine sigue alertando', () => {
+    // T9 de otro plano sin cobertura por etiqueta en el nivel cargado → alerta legítima.
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'T7777abc', tipo: 'tributario', net: 'san', label: 'T9', diametro: '2"' }],
+      bajantes: [],
+    });
+    const eng = makeEngine([
+      R({
+        id: 'T1788abc',
+        tipo: 'tributario',
+        label: 'T3',
+        fixtures: { sif: 1 },
+        pts: [
+          [30, 30],
+          [30, 0],
+        ],
+      }),
+    ]);
+    const planos = [{ id: 2, name: 'P1', status: 'confirmed' }];
+    expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(false);
+    expect(alertas[0]?.msg).toContain('T9');
+    expect(alertas[0]?.msg).toContain('P1');
   });
 });
