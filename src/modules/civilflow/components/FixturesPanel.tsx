@@ -18,7 +18,7 @@ import type { DrawingData } from '../utils/drawingSync';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { devError } from '../../../utils/devError';
-import { loadFromStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
 import {
   UNIDAD,
   loadAll,
@@ -154,6 +154,17 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   useEffect(() => {
     try {
+      // Los trazos deben estar FRESCOS antes del sync: writeSanDrawingSync corre la GC de
+      // claves aparatos/hidro contra los trazos GUARDADOS — con trazos stale (elementos
+      // recién dibujados que el autosave aún no persistía) borraba las claves de aparatos
+      // recién asignadas: el panel las seguía mostrando (estado vivo) pero la validación de
+      // cierre las leía vacías y disparaba "UC/UD pendientes" (orig. usuario).
+      const eng = engineRef.current;
+      if (eng && eng._loadedPlanId != null) {
+        const work = eng.saveWork();
+        work.ts = Date.now();
+        saveToStorage(`${TRAZOS_PREFIX}${String(eng._loadedPlanId)}`, work);
+      }
       writeSanDrawingSync(plans);
     } catch (e) {
       devError('AparatosPanel:', e);
@@ -163,7 +174,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     } catch (e) {
       devError('AparatosPanel:', e);
     }
-  }, [counts, hidroData, plans]);
+  }, [counts, hidroData, plans, engineRef]);
 
   // Un bajante de calentador es siempre elemento AC (net 'ac') aunque el usuario lo ancle estando
   // en la red AF — sus aparatos deben caer en `ac_<id>_<planId>` para que el ramal sintético
