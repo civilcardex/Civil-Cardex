@@ -172,7 +172,7 @@ describe('borrador por segmentos sin excepciones', () => {
 describe('yee doble: símbolo persiste y tapón automático', () => {
   beforeEach(() => resetStorage());
 
-  it('brazo lateral (tributario) con yeeDobleAt propia: preserveYeeDobleAt NO hace nada (regla vigente: borrar lateral no tapa)', () => {
+  it('brazo lateral (tributario) con yeeDobleAt propia: tapón en el puerto (regla consolidada: tributario tapa)', () => {
     setLocalStorage('tramo_hidro_data_v3', {});
     const host = R({
       id: 'RS1',
@@ -203,20 +203,21 @@ describe('yee doble: símbolo persiste y tapón automático', () => {
     });
     const eng = makeEngine([host]);
     preserveYeeDobleAt(eng, lateral);
-    // Regla vigente (orig. usuario): borrar un LATERAL no tapa ni re-ancla nada — la yee
-    // sigue viva con el tronco + el otro lateral; el glifo lo gestiona calcSanitaryAccessories.
+    // Regla consolidada (orig. usuario): borrar el LATERAL TRIBUTARIO deja la pierna abierta
+    // → tapón en el puerto [0,60] (anclado en vértice insertado sobre el tronco vertical).
     expect(host.yeeDobleAt).toEqual([
       [0, 40],
       [0, 60],
     ]);
-    expect(host.accMed).toBeUndefined();
+    expect(Object.values(host.accMed || {}).includes('tapon')).toBe(true);
     expect(host.pts).toEqual([
       [0, 0],
       [0, 50],
+      [0, 60],
       [0, 100],
     ]);
     const hidro = getStore('tramo_hidro_data_v3');
-    expect(hidro['san_RS1_1']?.accesorios?.['tapon']).toBeUndefined();
+    expect(hidro['san_RS1_1']?.accesorios?.['tapon']).toBe(1);
   });
 
   it('tributario sin bandera que toca un punto de yee del host → tapón en accMed (vértice intermedio)', () => {

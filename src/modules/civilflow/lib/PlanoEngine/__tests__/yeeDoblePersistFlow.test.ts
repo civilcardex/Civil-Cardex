@@ -106,7 +106,7 @@ function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
 describe('yee doble: persistencia tras borrar un lateral (flujo completo con recálculo)', () => {
   beforeEach(() => resetStorage());
 
-  it('borrar T1RS1 conserva la bandera en el tronco y NO coloca tapón', () => {
+  it('borrar T1RS1 conserva la bandera en el tronco y SÍ coloca tapón (regla consolidada)', () => {
     setLocalStorage('tramo_hidro_data_v3', {});
     const tronco = R({
       id: 'RS1',
@@ -131,8 +131,8 @@ describe('yee doble: persistencia tras borrar un lateral (flujo completo con rec
       tipo: 'tributario',
       label: 'T2RS1',
       pts: [
-        [21.2, 89.2],
-        [0, 68],
+        [21.2, 59.2],
+        [0, 60],
       ],
     });
     const t4 = R({
@@ -146,28 +146,39 @@ describe('yee doble: persistencia tras borrar un lateral (flujo completo con rec
     });
     const eng = makeEngine([tronco, t1, t2, t4]);
     calcSanitaryAccessories(eng);
-    // La detección escribió la identidad del par en tronco y laterales.
-    expect(tronco.yeeDobleAt).toBeDefined();
-    expect(t1.yeeDobleAt).toBeDefined();
-    expect(t2.yeeDobleAt).toBeDefined();
+    // Regla del usuario: doble SOLO en un punto — T1RS1 y T2RS1 caen en [0,60] (4 dirs).
+    // El render persiste la identidad [P,P] en los participantes; se simula aquí.
+    expect(tronco.yeeDobleAt).toBeUndefined();
+    tronco.yeeDobleAt = [
+      [0, 60],
+      [0, 60],
+    ];
+    t1.yeeDobleAt = [
+      [0, 60],
+      [0, 60],
+    ];
+    t2.yeeDobleAt = [
+      [0, 60],
+      [0, 60],
+    ];
 
     // Borrar T1RS1 (borrador/Supr: selección + eraseRamalAt sobre ramal de 2 puntos).
     eng.selId = 'T1RS1';
     eraseRamalAt(eng, t1, -21.2, 81.2);
     expect(eng.ramales.some((r) => r.id === 'T1RS1')).toBe(false);
-    // El tronco conserva el símbolo persistido y el punto queda SIN tapón (borrar un lateral
-    // no tapa — la yee sigue viva con el otro lateral).
+    // El tronco conserva el símbolo persistido y el puerto de T1RS1 queda TAPADO (regla
+    // consolidada: borrar el lateral tributario tapa — orig. usuario T1RS1/T1RS2).
     expect(tronco.yeeDobleAt).toBeDefined();
     expect(
       Object.values(tronco.accMed || {}).includes('tapon') ||
         tronco.accesorioInicio === 'tapon' ||
         tronco.accesorioFin === 'tapon',
-    ).toBe(false);
+    ).toBe(true);
     const hidro = JSON.parse(
       (globalThis as unknown as { localStorage: Storage }).localStorage.getItem(
         'civilflow_tramo_hidro_data_v3',
       ) || '{}',
     ) as Record<string, { accesorios?: Record<string, number> }>;
-    expect(hidro['san_RS1_1']?.accesorios?.['tapon']).toBeUndefined();
+    expect(hidro['san_RS1_1']?.accesorios?.['tapon']).toBe(1);
   });
 });

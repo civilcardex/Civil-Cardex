@@ -478,7 +478,7 @@ export function detectYeeSimpleNear(
     const branches = uniq.filter((_, k) => k !== bestPair.i && k !== bestPair.j);
     if (branches.length === 0) continue;
     const cosVal = branches[0].x * uniq[bestPair.j].x + branches[0].y * uniq[bestPair.j].y;
-    const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
+    const isYee = Math.abs(cosVal) >= 0.25 && Math.abs(cosVal) <= 0.85;
     if (!isYee) continue;
     // ¿Ya es doble (otra unión a ≤10mm alineada)? Si sí, no empujar más.
     let isDouble = false;

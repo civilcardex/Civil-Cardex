@@ -2,8 +2,6 @@ import { NETS } from '../PlanoState';
 import type { IPlanoEngineCore } from '../PlanoState';
 
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  const DOUBLE_YEE_THRESHOLD_MM = 10;
-
   // Ventilación es parte de la red sanitaria: un tubo de ventilación que se conecta a una línea
   // san debe dibujar el mismo símbolo de tee/yee que cualquier unión san-san, no un codo
   // especial. Para lograrlo, se procesan juntas (comparten vértices) y cada otra red se procesa
@@ -192,7 +190,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           // ángulo), pero por si acaso queda algún dato viejo de antes de esa restricción, se
           // prefiere no dibujar nada a dibujar una Y que no corresponde a esta red.
           const isAfAc = group.includes('af') || group.includes('ac');
-          const isYee = !isAfAc && Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
+          const isYee = !isAfAc && Math.abs(cosVal) >= 0.25 && Math.abs(cosVal) <= 0.85;
 
           // AF/AC con un tipo de tee específico ya asignado en este punto (teeReduccion/teeLado/
           // teeSube/teeBaja/etc.) se salta el tick genérico — ese caso ya tiene su propio glifo
@@ -205,126 +203,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       }
     });
 
-    const usedInDouble = new Set<number>();
-
     for (let i = 0; i < junctions.length; i++) {
-      for (let j = i + 1; j < junctions.length; j++) {
-        if (usedInDouble.has(i) || usedInDouble.has(j)) continue;
-        const a = junctions[i],
-          b = junctions[j];
-        const distMm = Math.hypot(a.P[0] - b.P[0], a.P[1] - b.P[1]);
-        if (distMm > DOUBLE_YEE_THRESHOLD_MM) continue;
-
-        const auA = a.uA,
-          buA = b.uA,
-          buB = b.uB;
-        const dotMain = auA.x * buA.x + auA.y * buA.y;
-        const dotMain2 = auA.x * buB.x + auA.y * buB.y;
-        const aligned =
-          Math.abs(Math.abs(dotMain) - 1) < 0.15 || Math.abs(Math.abs(dotMain2) - 1) < 0.15;
-        if (!aligned) continue;
-
-        usedInDouble.add(i);
-        usedInDouble.add(j);
-
-        // Persistencia de identidad: el par dibujado geométricamente queda registrado en
-        // TODOS los ramales que tocan cualquiera de los dos puntos, para que el glifo
-        // sobreviva al borrado de un brazo aunque el recálculo (con condiciones propias más
-        // estrictas) no lo haya escrito (orig. usuario: borrar el brazo principal borraba el
-        // símbolo). Mismo patrón de escritura en render que _labelBox.
-        const pairPts: [number, number][] = [
-          [a.P[0], a.P[1]],
-          [b.P[0], b.P[1]],
-        ];
-        for (const pr of netRamales) {
-          if (!pr.pts || pr.yeeDobleAt) continue;
-          const touches =
-            pr.pts.some((p) => Math.hypot(p[0] - a.P[0], p[1] - a.P[1]) < 0.5) ||
-            pr.pts.some((p) => Math.hypot(p[0] - b.P[0], p[1] - b.P[1]) < 0.5);
-          if (touches) pr.yeeDobleAt = pairPts;
-        }
-
-        const cvsA = engine.toCvs(a.P[0], a.P[1]);
-        const cvsB = engine.toCvs(b.P[0], b.P[1]);
-        const rad = engine.mm2cvs(2.0);
-        const tickLen = engine.mm2cvs(1.0);
-
-        ctx.save();
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1.2 * engine.zoom;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.setLineDash([]);
-
-        const vectorsA = [];
-        const vecAB = { x: b.P[0] - a.P[0], y: b.P[1] - a.P[1] };
-        const dotAa = a.uA.x * vecAB.x + a.uA.y * vecAB.y;
-        if (dotAa <= 0) vectorsA.push(a.uA);
-        else vectorsA.push(a.uB);
-        a.branches.forEach((uC) => vectorsA.push(uC));
-
-        const vectorsB = [];
-        const vecBA = { x: a.P[0] - b.P[0], y: a.P[1] - b.P[1] };
-        const dotBa = b.uA.x * vecBA.x + b.uA.y * vecBA.y;
-        if (dotBa <= 0) vectorsB.push(b.uA);
-        else vectorsB.push(b.uB);
-        b.branches.forEach((uC) => vectorsB.push(uC));
-
-        ctx.beginPath();
-        if (vectorsA.length > 0) {
-          ctx.moveTo(cvsA.x + rad * vectorsA[0].x, cvsA.y + rad * vectorsA[0].y);
-          for (let i = 1; i < vectorsA.length; i++) {
-            ctx.lineTo(cvsA.x, cvsA.y);
-            ctx.lineTo(cvsA.x + rad * vectorsA[i].x, cvsA.y + rad * vectorsA[i].y);
-          }
-          ctx.lineTo(cvsA.x, cvsA.y);
-        } else {
-          ctx.moveTo(cvsA.x, cvsA.y);
-        }
-
-        ctx.lineTo(cvsB.x, cvsB.y);
-
-        if (vectorsB.length > 0) {
-          ctx.lineTo(cvsB.x + rad * vectorsB[0].x, cvsB.y + rad * vectorsB[0].y);
-          for (let i = 1; i < vectorsB.length; i++) {
-            ctx.lineTo(cvsB.x, cvsB.y);
-            ctx.lineTo(cvsB.x + rad * vectorsB[i].x, cvsB.y + rad * vectorsB[i].y);
-          }
-        }
-
-        // White halo: masks the pipe under the junction so the black symbol reads clean.
-        ctx.lineWidth = 1.8 * engine.zoom;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
-        ctx.lineWidth = 1.2 * engine.zoom;
-        ctx.strokeStyle = '#000000';
-        ctx.stroke();
-
-        // N5: trazos transversales ligeramente más gruesos, extremos cuadrados (butt→square), llegan a extremos
-        const tickW = 1 * engine.zoom;
-        ctx.lineCap = 'square';
-        ctx.lineWidth = tickW;
-        ctx.beginPath();
-        vectorsA.forEach((u) => {
-          const T_pt = { x: cvsA.x + rad * u.x, y: cvsA.y + rad * u.y };
-          const perp = { x: -u.y, y: u.x };
-          ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
-          ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
-        });
-        vectorsB.forEach((u) => {
-          const T_pt = { x: cvsB.x + rad * u.x, y: cvsB.y + rad * u.y };
-          const perp = { x: -u.y, y: u.x };
-          ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
-          ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
-        });
-        ctx.stroke();
-
-        ctx.restore();
-      }
-    }
-
-    for (let i = 0; i < junctions.length; i++) {
-      if (usedInDouble.has(i)) continue;
       const j = junctions[i];
 
       // Persistencia de identidad POR-UNIÓN — SOLO yee doble: la unión de 4 vectores (dos
@@ -407,26 +286,6 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     // deja de ser "junction", por lo que el par no se forma y el símbolo desaparecía. Con la
     // identidad persistida en el ramal, se dibuja el glifo igual: los dos puntos del par + ticks
     // por brazo, mientras el tronco siga pasando por ambos.
-    const drawnPairs = new Set<string>();
-    for (let i = 0; i < junctions.length; i++) {
-      if (!usedInDouble.has(i)) continue;
-      for (let j = i + 1; j < junctions.length; j++) {
-        if (!usedInDouble.has(j)) continue;
-        const d = Math.hypot(
-          junctions[i].P[0] - junctions[j].P[0],
-          junctions[i].P[1] - junctions[j].P[1],
-        );
-        if (d <= DOUBLE_YEE_THRESHOLD_MM) {
-          const [a, b] = [junctions[i].P, junctions[j].P];
-          drawnPairs.add(
-            `${a[0].toFixed(2)}_${a[1].toFixed(2)}_${b[0].toFixed(2)}_${b[1].toFixed(2)}`,
-          );
-          drawnPairs.add(
-            `${b[0].toFixed(2)}_${b[1].toFixed(2)}_${a[0].toFixed(2)}_${a[1].toFixed(2)}`,
-          );
-        }
-      }
-    }
     const vecsAt = (P: number[]): { x: number; y: number }[] => {
       const out: { x: number; y: number }[] = [];
       for (const r of netRamales) {
@@ -483,8 +342,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     for (const r of netRamales) {
       if (!r.yeeDobleAt || r.yeeDobleAt.length !== 2) continue;
       const [A, B] = r.yeeDobleAt;
-      const key = `${A[0].toFixed(2)}_${A[1].toFixed(2)}_${B[0].toFixed(2)}_${B[1].toFixed(2)}`;
-      if (drawnPairs.has(key)) continue;
+      // Regla del usuario: Yee doble SOLO en un punto. Pares de dos uniones [P1,P2] ya no se
+      // dibujan como doble — cada unión dibuja su Y simple en el pase por-junction.
+      if (Math.hypot(B[0] - A[0], B[1] - A[1]) >= 0.5) continue;
       let vA = vecsAt(A);
       let vB = vecsAt(B);
       // Persistencia pedida: el símbolo debe mantenerse aunque un ramal del brazo principal

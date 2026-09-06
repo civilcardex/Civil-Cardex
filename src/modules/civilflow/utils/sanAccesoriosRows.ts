@@ -436,13 +436,18 @@ export function computeAccesoriosTable(
         const cosVal = Math.abs(branches[0].x * uniq[bj].x + branches[0].y * uniq[bj].y);
         // Yee: derivación en ~45° — mismo rango |cos| ∈ [0.4, 0.85] que el engine;
         // perpendicular (~0, tee) o colineal (~1, empalme de línea) no cuenta como yee.
-        if (cosVal < 0.4 || cosVal > 0.85) continue;
+        if (cosVal < 0.25 || cosVal > 0.85) continue;
         const m1 = diamOf(uniq[bi].ramal);
         const m2 = diamOf(uniq[bj].ramal);
         const a1 = m1 && m1 !== '—' ? m1 : m2 || '';
         const a2 = m2 && m2 !== '—' ? m2 : m1 || '';
-        const branchDiam = diamOf(branches[0].ramal);
-        if (!a1 || !a2 || !branchDiam || branchDiam === '—') continue;
+        // Sin diámetro asignado la unión IGUAL existe: el combo cae al diámetro del tronco en
+        // vez de descartar el conteo — una derivación sin dimensionar hacía desaparecer la yee
+        // del resumen (orig. usuario: contaba 2 de 3). Solo se descarta si NADA tiene diámetro.
+        const runDiam = a1 || a2;
+        const branchDiamRaw = diamOf(branches[0].ramal);
+        const branchDiam = branchDiamRaw && branchDiamRaw !== '—' ? branchDiamRaw : runDiam;
+        if (!runDiam || runDiam === '—' || !branchDiam || branchDiam === '—') continue;
         // Se atribuye a un ramal NO tributario del punto (la tubería principal) para que el
         // resumen la muestre en la fila de ese tramo; si todos son tributarios, al primero.
         const pairRamals = [uniq[bi].ramal, uniq[bj].ramal];
@@ -527,9 +532,10 @@ export function computeAccesoriosTable(
         if (!target[pk].includes(combo)) target[pk].push(combo);
       }
     }
-    // Emparejamiento de uniones: dos uniones a ≤10 mm en el mismo punto forman una yee doble
-    // (mismo DOBLE_YEE_MM del engine); las uniones en puntos distintos son yees simples
-    // separadas, aunque compartan diámetro.
+    // Emparejamiento de uniones — REGLA DEL USUARIO: yee doble SOLO cuando las dos derivadas
+    // caen en el MISMO punto (mismo glifo, 2 ramas). Dos uniones separadas —aunque estén
+    // pegadas— son SIEMPRE yees simples: la cercanía ya no crea dobles (orig. usuario: 3
+    // simples contadas 2 + doble fantasma).
     const byHost: Record<string, (typeof yeeJunctions)[number][]> = {};
     for (const j of yeeJunctions) {
       if (!byHost[j.hostKey]) byHost[j.hostKey] = [];
@@ -543,7 +549,7 @@ export function computeAccesoriosTable(
         let partner = -1;
         for (let j = i + 1; j < js.length; j++) {
           if (used.has(j)) continue;
-          if (Math.hypot(js[j].x - js[i].x, js[j].y - js[i].y) <= 10) {
+          if (Math.hypot(js[j].x - js[i].x, js[j].y - js[i].y) <= 0.5) {
             partner = j;
             break;
           }
@@ -746,11 +752,20 @@ export function computeAccesoriosTable(
       }
       const codoMed = accMedCodoCounts[String(t._key || `${t.id}-${t.planId}`)] || {};
       const codo45Med = accMed45Counts[String(t._key || `${t.id}-${t.planId}`)] || {};
+      // El motor es dueño del conteo de yees cuando YA recalculó este tramo (claves yee
+      // presentes): uniones ENTRE tributarios se registran bajo el id del tributario host y
+      // DEBEN mostrarse en su fila — antes el skip incondicional las hacía desaparecer del
+      // resumen (orig. usuario: contaba 2 de 3).
+      const engineYeeKnown = 'yeeSimple' in srcAcc || 'yeeDoble' in srcAcc;
       for (const a of catalog) {
         if ((net === 'af' || net === 'ac' || net === 'gas') && HYDRO_TEE_IDS.has(a.id)) continue;
-        // Yees: se cuentan SOLO en la fila del tramo host (yeeDiams, por hostKey) — el motor
-        // puede registrar la unión bajo el id del lateral y aquí se duplicaría (orig. usuario).
-        if (a.id === 'yeeSimple' || a.id === 'yeeDoble') continue;
+        if (a.id === 'yeeSimple' || a.id === 'yeeDoble') {
+          if (engineYeeKnown) {
+            const n = srcAcc[a.id] || 0;
+            if (n > 0) addAcc(mainDiamStr, a.id, n);
+          }
+          continue;
+        }
         const extra = Math.max(
           0,
           (srcAcc[a.id] || 0) - (direct[a.id] || 0) - (codoMed[a.id] || 0) - (codo45Med[a.id] || 0),
@@ -760,6 +775,10 @@ export function computeAccesoriosTable(
     } else {
       const key = `${net}_${t.id}_${t.planId}`;
       const srcAcc = hidroData[key]?.accesorios || {};
+      // El motor es dueño del conteo de yees cuando YA recalculó este host (alguna clave yee
+      // presente — las claves a 0 las elimina el recuento dueño). Sin recalculo previo se usa
+      // el camino geométrico legado.
+      const engineYeeKnown = 'yeeSimple' in srcAcc || 'yeeDoble' in srcAcc;
       const tKey = String(t._key || `${t.id}-${t.planId}`);
       const yd = yeeDiams[tKey] || { simple: [], doble: [] };
       const ventC = ventCodoCombos[tKey] || [];
@@ -787,23 +806,43 @@ export function computeAccesoriosTable(
         );
         const v = Math.max(fromSrc, directCount[a.id] || 0);
         if (a.id === 'yeeSimple') {
-          // Nomenclatura Yee Simple: brazos compactados (4"×4"×2" → 4"×2").
-          // Si este tramo ya tiene YEE DOBLE (geométrica o contada en hidro), no se muestra
-          // una simple al lado: el conteo simple del motor puede quedar un recálculo por
-          // detrás de las banderas de la doble (orig. usuario: fila "Yee simple" fantasma).
-          const hasDoble = yd.doble.length > 0 || (srcAcc['yeeDoble'] || 0) > 0;
-          if (hasDoble) continue;
-          if (yd.simple.length > 0) yd.simple.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
-          else if (v > 0) {
+          // Conteo = VERDAD del motor (srcAcc es dueño y se recalcula del dibujo con el mismo
+          // host canónico): la cercanía entre uniones ya no inventa dobles ni pierde simples
+          // respecto a los glifos dibujados (orig. usuario: 3 simples contadas 2). Cuando el
+          // motor NO ha recalculado (sin entrada de hidro para el host) se conserva el
+          // comportamiento geométrico legado. Nomenclatura: brazos compactados.
+          const nSimple = engineYeeKnown ? srcAcc['yeeSimple'] || 0 : -1;
+          if (!engineYeeKnown) {
+            const hasDoble = yd.doble.length > 0 || (srcAcc['yeeDoble'] || 0) > 0;
+            if (!hasDoble) {
+              if (yd.simple.length > 0)
+                yd.simple.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
+              else if (v > 0) {
+                const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr]);
+                if (combo) addAcc(combo, a.id, v);
+              }
+            }
+          } else if (yd.simple.length > 0 && yd.simple.length === nSimple) {
+            yd.simple.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
+          } else if (nSimple > 0) {
             const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr]);
-            if (combo) addAcc(combo, a.id, v);
+            if (combo) addAcc(combo, a.id, nSimple);
           }
         } else if (a.id === 'yeeDoble') {
-          // Yee doble: dos derivaciones, brazos compactados.
-          if (yd.doble.length > 0) yd.doble.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
-          else if (v > 0) {
+          // Ídem: el conteo doble lo manda el motor (emparejamiento con alineación de tronco);
+          // yd.doble solo rotula cuando coincide, y sin motor se conserva el legado.
+          const nDoble = engineYeeKnown ? srcAcc['yeeDoble'] || 0 : -1;
+          if (!engineYeeKnown) {
+            if (yd.doble.length > 0) yd.doble.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
+            else if (v > 0) {
+              const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr, mainDiamStr]);
+              if (combo) addAcc(combo, a.id, v);
+            }
+          } else if (yd.doble.length > 0 && yd.doble.length === nDoble) {
+            yd.doble.forEach((diamCombo) => addAcc(diamCombo, a.id, 1));
+          } else if (nDoble > 0) {
             const combo = compactYeeDiam([mainDiamStr, mainDiamStr, mainDiamStr, mainDiamStr]);
-            if (combo) addAcc(combo, a.id, v);
+            if (combo) addAcc(combo, a.id, nDoble);
           }
         } else if (a.id === 'codoReventilado') {
           // Item 7: un codo reventilado que une san con vent muestra el diámetro de ambos

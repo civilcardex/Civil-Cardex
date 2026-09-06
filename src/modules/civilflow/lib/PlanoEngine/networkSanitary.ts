@@ -129,12 +129,9 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
   let changed = false;
 
-  const DOUBLE_YEE_MM = 10;
   const junctionRamalIds: string[] = [];
   const junctionPositions: { x: number; y: number }[] = [];
   const junctionBranchCos: number[] = [];
-  // Todos los ramales que tocan cada unión yee (índice paralelo a junctionRamalIds).
-  const junctionAllRamalIds: string[][] = [];
   const teeRamalIds: string[] = [];
 
   const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
@@ -213,7 +210,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     const branches = uniq.filter((_, k) => k !== bestPair.i && k !== bestPair.j);
     if (branches.length === 0) return;
     const cosVal = branches[0].x * uniq[bestPair.j].x + branches[0].y * uniq[bestPair.j].y;
-    const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
+    const isYee = Math.abs(cosVal) >= 0.25 && Math.abs(cosVal) <= 0.85;
     const isTee = Math.abs(cosVal) < 0.15;
 
     // Escape de la bandera persistida: geometría de TEE genuina (par colineal + rama
@@ -267,10 +264,18 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
         if (found) idsAtP.push(String(rr.id));
       }
       if (idsAtP.length > 0) {
-        junctionRamalIds.push(idsAtP[0]);
+        // Host canónico: primer ramal NO tributario que toca el punto (la tubería principal) —
+        // misma regla que el hostKey de la tabla de resumen. Antes el orden del array podía
+        // registrar la yee bajo el id del lateral y la tabla la perdía (orig. usuario: contaba
+        // 2 de 3 yees simples).
+        const hostId =
+          idsAtP.find((id) => {
+            const rr = engine.ramales.find((x) => x.id === id);
+            return !!rr && rr.tipo !== 'tributario';
+          }) || idsAtP[0];
+        junctionRamalIds.push(hostId);
         junctionPositions.push({ x: P[0], y: P[1] });
         junctionBranchCos.push(cosVal);
-        junctionAllRamalIds.push(idsAtP);
       }
     }
 
@@ -305,146 +310,21 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   });
 
   const yeeCounts: Record<string, { simple: number; doble: number }> = {};
-  const usedInDouble = new Set<number>();
-  // Para validar doble yee se necesita la dirección del tronco de cada unión, igual que en
-  // renderJunctions.ts (trunk vectors). Se recalcula aquí para no depender del vector posición
-  // radial que era incorrecto.
-  const junctionTrunks: { x: number; y: number }[] = [];
-  // Recalcular trunk dirs a partir de los vectores únicos ya detectados arriba es costoso;
-  // se aproxima usando la geometría de junctionPositions vs ramales: se busca el par colineal
-  // más opuesto entre los vectores únicos de cada P (misma lógica que arriba) y se guarda uA.
-  // Para simplificar, se deriva del mapa de vectores únicos recalculando por P.
-  const trunkDirForPos = (P: { x: number; y: number }): { x: number; y: number } | null => {
-    const vecs: { x: number; y: number }[] = [];
-    sanRamales.forEach((rr) => {
-      if (!rr.pts) return;
-      let isV = false;
-      for (let k = 0; k < rr.pts.length; k++) {
-        if (Math.hypot(rr.pts[k][0] - P.x, rr.pts[k][1] - P.y) < 0.5) {
-          isV = true;
-          if (k > 0) {
-            const dx = rr.pts[k - 1][0] - P.x;
-            const dy = rr.pts[k - 1][1] - P.y;
-            const l = Math.hypot(dx, dy);
-            if (l > 0.1) vecs.push({ x: dx / l, y: dy / l });
-          }
-          if (k < rr.pts.length - 1) {
-            const dx = rr.pts[k + 1][0] - P.x;
-            const dy = rr.pts[k + 1][1] - P.y;
-            const l = Math.hypot(dx, dy);
-            if (l > 0.1) vecs.push({ x: dx / l, y: dy / l });
-          }
-        }
-      }
-      if (!isV) {
-        for (let k = 0; k < rr.pts.length - 1; k++) {
-          const A = rr.pts[k];
-          const B = rr.pts[k + 1];
-          const ddx = B[0] - A[0];
-          const ddy = B[1] - A[1];
-          const lenSq = ddx * ddx + ddy * ddy;
-          if (lenSq > 0.001) {
-            let t = ((P.x - A[0]) * ddx + (P.y - A[1]) * ddy) / lenSq;
-            t = Math.max(0, Math.min(1, t));
-            const projX = A[0] + t * ddx;
-            const projY = A[1] + t * ddy;
-            const dist = Math.hypot(P.x - projX, P.y - projY);
-            const lenA = Math.hypot(A[0] - P.x, A[1] - P.y);
-            const lenB = Math.hypot(B[0] - P.x, B[1] - P.y);
-            if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
-              vecs.push({ x: (A[0] - P.x) / lenA, y: (A[1] - P.y) / lenA });
-              vecs.push({ x: (B[0] - P.x) / lenB, y: (B[1] - P.y) / lenB });
-            }
-          }
-        }
-      }
-    });
-    const uniq: typeof vecs = [];
-    vecs.forEach((v) => {
-      if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
-    });
-    if (uniq.length < 3) return null;
-    let best = { i: -1, j: -1, dot: 1 };
-    for (let a = 0; a < uniq.length; a++)
-      for (let b = a + 1; b < uniq.length; b++) {
-        const d = uniq[a].x * uniq[b].x + uniq[a].y * uniq[b].y;
-        if (d < best.dot) best = { i: a, j: b, dot: d };
-      }
-    if (best.dot >= -0.9) return null;
-    return uniq[best.i];
-  };
-  for (let idx = 0; idx < junctionPositions.length; idx++) {
-    const tr = trunkDirForPos(junctionPositions[idx]);
-    junctionTrunks.push(tr || { x: 0, y: 0 });
-  }
 
   for (let i = 0; i < junctionPositions.length; i++) {
-    for (let j = i + 1; j < junctionPositions.length; j++) {
-      if (usedInDouble.has(i) || usedInDouble.has(j)) continue;
-      const dist = Math.hypot(
-        junctionPositions[j].x - junctionPositions[i].x,
-        junctionPositions[j].y - junctionPositions[i].y,
-      );
-      if (dist > DOUBLE_YEE_MM) continue;
-      // Doble yee válida solo si los troncos de ambas Y están alineados (misma línea)
-      const tA = junctionTrunks[i];
-      const tB = junctionTrunks[j];
-      if (!tA || !tB) continue;
-      const dotTrunk = tA.x * tB.x + tA.y * tB.y;
-      const aligned = Math.abs(Math.abs(dotTrunk) - 1) < 0.15;
-      if (!aligned) continue;
-      usedInDouble.add(i);
-      usedInDouble.add(j);
-      const id1 = junctionRamalIds[i];
-      const id2 = junctionRamalIds[j];
-      // Ítem 2: registrar la identidad de la yee doble (par de vértices) en TODOS los ramales
-      // que tocan cualquiera de las dos uniones (tronco pasante incluido — antes solo el
-      // primer ramal encontrado por unión llevaba la bandera y borrar ese ramal borraba el
-      // símbolo). calcHydroAccessories lo lleva después al sync persistido.
-      const pairPts = [
-        [junctionPositions[i].x, junctionPositions[i].y],
-        [junctionPositions[j].x, junctionPositions[j].y],
-      ];
-      const pairIds = new Set<string>([
-        ...(junctionAllRamalIds[i] || [id1]),
-        ...(junctionAllRamalIds[j] || [id2]),
-      ]);
-      for (const rid of pairIds) {
-        const host = engine.ramales.find((rr) => rr.id === rid);
-        if (host) host.yeeDobleAt = pairPts;
-      }
-      if (id1 === id2) {
-        if (!yeeCounts[id1]) yeeCounts[id1] = { simple: 0, doble: 0 };
-        yeeCounts[id1].doble += 1;
-      } else {
-        if (!yeeCounts[id1]) yeeCounts[id1] = { simple: 0, doble: 0 };
-        if (!yeeCounts[id2]) yeeCounts[id2] = { simple: 0, doble: 0 };
-        yeeCounts[id1].doble += 1;
-        yeeCounts[id2].doble += 1;
-      }
-    }
-  }
-
-  for (let i = 0; i < junctionPositions.length; i++) {
-    if (usedInDouble.has(i)) continue;
     const id = junctionRamalIds[i];
     if (!yeeCounts[id]) yeeCounts[id] = { simple: 0, doble: 0 };
     const P = junctionPositions[i];
     const pt = [P.x, P.y];
-    // Doble SOLO si la pieza física sigue siéndolo: 2 salidas laterales (4 dirs, doble en un
-    // punto), el punto PAR de la bandera sigue vivo (doble de dos uniones), o un lateral
-    // tapiado (doble con brazo borrado). La bandera persistida preserva la identidad/símbolo
-    // pero NO el conteo: al quitar un lateral sin tapón la pieza es una Y simple (orig.
-    // usuario: doble→simple nunca actualizaba el conteo).
+    // Regla del usuario (definición fija): Yee doble SOLO cuando las DOS derivaciones caen en
+    // el MISMO punto (4 direcciones = 2 salidas laterales en un solo glifo). Dos uniones
+    // separadas —aunque estén pegadas— son SIEMPRE yees simples. La bandera [P,P] persistida
+    // preserva la identidad a través del render; un lateral tapiado mantiene la doble viva.
     const pair = pairOf(pt);
     const branches = dirsAt(pt) - 2;
     const isDoble =
       !!pair &&
-      (branches >= 2 ||
-        pairOtherAlive(pair, pt) ||
-        taponAnchoredAt(pt) ||
-        taponAnchoredAt(pair.a) ||
-        taponAnchoredAt(pair.b));
+      (branches >= 2 || taponAnchoredAt(pt) || taponAnchoredAt(pair.a) || taponAnchoredAt(pair.b));
     if (isDoble) yeeCounts[id].doble += 1;
     else yeeCounts[id].simple += 1;
   }
@@ -459,6 +339,14 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   // puntos de la yee siga siendo una unión yee viva. Si ambas uniones desaparecieron (se
   // borraron las piezas que las formaban), el caso ya no aplica — se retiran bandera y
   // tapones anclados en esos puntos; el reconteo de abajo actualiza hidroData (orig. usuario).
+  // Puertos recién tapados por preserveYeeDobleAt (borrado del segmento medio del tronco de
+  // la doble): la limpieza de banderas muertas NO debe retirar esos tapones en esta pasada —
+  // la geometría L resultante es idéntica al desarme viejo y solo esta marca los distingue.
+  // Se consume aquí (una sola pasada).
+  const taponKeepPts = (engine as unknown as { _taponKeepPts?: number[][] })._taponKeepPts;
+  const taponKept = (p: number[]): boolean =>
+    (taponKeepPts || []).some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.5);
+  (engine as unknown as { _taponKeepPts?: number[][] })._taponKeepPts = undefined;
   for (const r of [...sanRamales]) {
     if (!r.yeeDobleAt || r.yeeDobleAt.length !== 2) continue;
     const [f1, f2] = r.yeeDobleAt;
@@ -471,12 +359,17 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       (same(a[0], b[0]) && same(a[1], b[1])) || (same(a[0], b[1]) && same(a[1], b[0]));
     for (const rr of sanRamales) {
       if (!rr.pts) continue;
-      if (rr.accesorioInicio === 'tapon' && (near(f1)(rr.pts[0]) || near(f2)(rr.pts[0])))
+      if (
+        rr.accesorioInicio === 'tapon' &&
+        (near(f1)(rr.pts[0]) || near(f2)(rr.pts[0])) &&
+        !taponKept(rr.pts[0])
+      )
         rr.accesorioInicio = '';
       if (
         rr.accesorioFin === 'tapon' &&
         rr.pts.length >= 2 &&
-        (near(f1)(rr.pts[rr.pts.length - 1]) || near(f2)(rr.pts[rr.pts.length - 1]))
+        (near(f1)(rr.pts[rr.pts.length - 1]) || near(f2)(rr.pts[rr.pts.length - 1])) &&
+        !taponKept(rr.pts[rr.pts.length - 1])
       )
         rr.accesorioFin = '';
       if (rr.accMed) {
@@ -485,7 +378,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           const m = k.match(/^accMed(\d+)$/);
           const idx = m ? parseInt(m[1], 10) : -1;
           const p = rr.pts[idx];
-          if (p && (near(f1)(p) || near(f2)(p))) delete rr.accMed[k];
+          if (p && (near(f1)(p) || near(f2)(p)) && !taponKept(p)) delete rr.accMed[k];
         }
       }
       // Bandera con los mismos puntos (cualquier titular de la referencia/valores) → fuera.
@@ -504,14 +397,28 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   // seguía dibujado y contado).
   {
     const taponGoneAt: number[][] = [];
+    // Tapón anclado en un punto de yee doble PERSISTIDA viva: es el cierre legítimo del
+    // extremo abierto del caso doble (borrar el tronco-terminal deja la unión en 2 direcciones
+    // con su lateral) — NO se retira aunque dirsAt dé 2 (orig. usuario: el tapón dejaba de
+    // aparecer). El desarme viejo (banderas ya muertas) sí se retira → codo.
+    const onPersistedYeePt = (p: number[]): boolean =>
+      persistedYeePts.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.5);
     for (const rr of sanRamales) {
       if (!rr.pts || rr.pts.length < 2) continue;
-      if (rr.accesorioInicio === 'tapon' && dirsAt(rr.pts[0]) === 2) {
+      if (
+        rr.accesorioInicio === 'tapon' &&
+        dirsAt(rr.pts[0]) === 2 &&
+        !onPersistedYeePt(rr.pts[0])
+      ) {
         rr.accesorioInicio = '';
         taponGoneAt.push(rr.pts[0]);
       }
       const li = rr.pts.length - 1;
-      if (rr.accesorioFin === 'tapon' && dirsAt(rr.pts[li]) === 2) {
+      if (
+        rr.accesorioFin === 'tapon' &&
+        dirsAt(rr.pts[li]) === 2 &&
+        !onPersistedYeePt(rr.pts[li])
+      ) {
         rr.accesorioFin = '';
         taponGoneAt.push(rr.pts[li]);
       }
@@ -521,7 +428,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           const m = k.match(/^accMed(\d+)$/);
           const idx = m ? parseInt(m[1], 10) : -1;
           const p = rr.pts[idx];
-          if (p && dirsAt(p) === 2) {
+          if (p && dirsAt(p) === 2 && !onPersistedYeePt(p)) {
             delete rr.accMed[k];
             taponGoneAt.push(p);
           }
@@ -695,11 +602,27 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
         delete acc['codo45rc'];
         changed = true;
       }
-      if ('yeeSimple' in acc) {
+      // Yees de uniones ENTRE tributarios (todos los brazos son T, p. ej. T1RS3+T3RS1+T2RS1):
+      // el host del conteo cae en el primer tributario del punto — si este tributario ES host
+      // de una yee, el recuento la conserva; si no, se limpia la clave (anti-duplicado de
+      // siempre). Antes el borrado incondicional hacía desaparecer la yee del resumen
+      // (orig. usuario: contaba 2 de 3 — la unión entre tributarios se perdía).
+      const yeeOwn = yeeCounts[String(r.id)];
+      if (yeeOwn?.simple) {
+        if (acc['yeeSimple'] !== yeeOwn.simple) {
+          acc['yeeSimple'] = yeeOwn.simple;
+          changed = true;
+        }
+      } else if ('yeeSimple' in acc) {
         delete acc['yeeSimple'];
         changed = true;
       }
-      if ('yeeDoble' in acc) {
+      if (yeeOwn?.doble) {
+        if (acc['yeeDoble'] !== yeeOwn.doble) {
+          acc['yeeDoble'] = yeeOwn.doble;
+          changed = true;
+        }
+      } else if ('yeeDoble' in acc) {
         delete acc['yeeDoble'];
         changed = true;
       }

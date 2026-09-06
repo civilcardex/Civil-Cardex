@@ -128,15 +128,18 @@ describe('mantenimiento de yee doble (borrar segmentos/laterales)', () => {
     expect(eng.ramales.find((r) => r.id === 'T2RS1')!.accesorioFin).toBe('tapon');
   });
 
-  it('borrar un ramal lateral: SIN tapón y la yee doble sigue viva', () => {
+  it('borrar un LATERAL TRIBUTARIO de la doble: SÍ tapón (T1RS1/T1RS2, orig. usuario)', () => {
     localStorage.clear();
+    // Regla consolidada: el lateral TRIBUTARIO borrado deja la pierna abierta → tapón en el
+    // sobreviviente (a diferencia de los laterales RAMAL, que no tapan). Vertical o diagonal
+    // da igual: el tributario siempre tapa.
     const { tronco, lat1, lat2 } = yeeSetup();
     const eng = makeEngine([tronco, lat1, lat2]);
     eng.selId = 'T1RS1';
     eraseRamalAt(eng, lat1, 35.9, -14.1);
     calcSanitaryAccessories(eng);
     expect(eng.ramales.map((r) => r.id)).toEqual(['RS1', 'T2RS1']);
-    expect(taponCount(eng)).toBe(0);
+    expect(taponCount(eng)).toBe(1);
     for (const r of eng.ramales)
       expect(r.yeeDobleAt).toEqual([
         [50, 0],
@@ -350,6 +353,139 @@ describe('mantenimiento de yee doble (borrar segmentos/laterales)', () => {
     expect(eng.ramales.map((r) => r.id)).toEqual(['RS4', 'RS2']);
     // El tronco toca AMBAS uniones → pasa el filtro lateral/tronco y entra al anclaje del
     // tapón (el sobreviviente elegido depende del delPt; no se afirma cuál).
+  });
+
+  it('borrar el SEGMENTO TERMINAL del tronco (más allá de una unión) SÍ crea el tapón', () => {
+    localStorage.clear();
+    // Reporte usuario: yee doble de dos uniones; el tronco sigue más allá de P2. Borrar esa
+    // pieza TERMINAL (colineal al eje) deja el extremo abierto → tapón (no es un lateral).
+    const tronco = R({
+      id: 'RS1',
+      label: 'RS1',
+      pts: [
+        [0, 0],
+        [50, 0],
+        [60, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const terminal = R({
+      id: 'RS3',
+      label: 'RS3',
+      pts: [
+        [60, 0],
+        [100, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const latA = R({
+      id: 'RS4',
+      label: 'RS4',
+      pts: [
+        [42.9, -7.1],
+        [50, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const latB = R({
+      id: 'RS2',
+      label: 'RS2',
+      pts: [
+        [67.1, -7.1],
+        [60, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const eng = makeEngine([tronco, terminal, latA, latB]);
+    eng.selId = 'RS3';
+    eraseRamalAt(eng, terminal, 80, 0);
+    calcSanitaryAccessories(eng);
+    expect(eng.ramales.map((r) => r.id)).toEqual(['RS1', 'RS4', 'RS2']);
+    expect(taponCount(eng)).toBeGreaterThan(0);
+  });
+
+  it('borrar el SEGMENTO MEDIO de la doble: DOS tapones (un puerto por unión)', () => {
+    localStorage.clear();
+    // El tronco de la doble está partido: RS1 | RS5(medio) | RS3. Borrar el medio abre los
+    // DOS puertos de la doble → un tapón por unión (antes solo se tapaba uno).
+    const rs1 = R({
+      id: 'RS1',
+      label: 'RS1',
+      pts: [
+        [0, 0],
+        [50, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const medio = R({
+      id: 'RS5',
+      label: 'RS5',
+      pts: [
+        [50, 0],
+        [60, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const rs3 = R({
+      id: 'RS3',
+      label: 'RS3',
+      pts: [
+        [60, 0],
+        [100, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const latA = R({
+      id: 'RS4',
+      label: 'RS4',
+      pts: [
+        [42.9, -7.1],
+        [50, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const latB = R({
+      id: 'RS2',
+      label: 'RS2',
+      pts: [
+        [67.1, -7.1],
+        [60, 0],
+      ],
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const eng = makeEngine([rs1, medio, rs3, latA, latB]);
+    eng.selId = 'RS5';
+    eraseRamalAt(eng, medio, 55, 0);
+    calcSanitaryAccessories(eng);
+    expect(eng.ramales.map((r) => r.id)).toEqual(['RS1', 'RS3', 'RS4', 'RS2']);
+    expect(taponCount(eng)).toBe(2);
   });
 
   it('tapón retirado en esquina L por la validación → el codo 45 lo sustituye', () => {
