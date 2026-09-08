@@ -557,125 +557,147 @@ const AparatosPanel = memo(function AparatosPanel_({
     const eng = engineRef.current;
     const live = eng?.ramales.find((r) => r.id === targetId);
     const firstUnit = !(counts[storageKey] || {})[apId];
-    if (
-      eng &&
-      live &&
-      live.pts &&
-      live.pts.length >= 2 &&
-      (live.net === 'af' || live.net === 'ac' || live.net === 'gas')
-    ) {
-      const head = live.pts[live.pts.length - 1];
-      const tail = live.pts[0];
-      // Item 1 (regla global): ocupado = entrelazado con la red. Los glifos de
-      // codo/sifón no cuentan (el aparato los reemplaza). Ambos ocupados → sin
-      // símbolo y sin alerta.
-      const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
-      const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
-      const headOk = !headOcc && flowEndsAt(live, head, 0.5);
-      const tailOk = !tailOcc && flowEndsAt(live, tail, 0.5);
-      if (headOcc && tailOcc) {
-        return;
-      }
-      if (!headOk && !tailOk) {
-        eng.triggerAlert(
-          'Aparato no permitido',
-          'El flujo del ramal apunta a la conexión (va en contra del extremo libre): el aparato solo se dibuja en el extremo libre hacia el que apunta el flujo. Invierte la dirección del ramal antes de asignar el aparato.',
+    // Una asignación = UN snapshot: pausa durante TODAS las mutaciones + escritura a disco.
+    // try/finally garantiza el resume aunque algo lance — una pausa huérfana dejaba el
+    // historial mudo y el Ctrl+Z sin efecto sobre los aparatos recién asignados.
+    if (eng) eng.pauseHistory();
+    try {
+      if (
+        eng &&
+        live &&
+        live.pts &&
+        live.pts.length >= 2 &&
+        (live.net === 'af' || live.net === 'ac' || live.net === 'gas')
+      ) {
+        const head = live.pts[live.pts.length - 1];
+        const tail = live.pts[0];
+        // Item 1 (regla global): ocupado = entrelazado con la red. Los glifos de
+        // codo/sifón no cuentan (el aparato los reemplaza). Ambos ocupados → sin
+        // símbolo y sin alerta.
+        const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
+        const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
+        const headOk = !headOcc && flowEndsAt(live, head, 0.5);
+        const tailOk = !tailOcc && flowEndsAt(live, tail, 0.5);
+        if (headOcc && tailOcc) {
+          return;
+        }
+        if (!headOk && !tailOk) {
+          eng.triggerAlert(
+            'Aparato no permitido',
+            'El flujo del ramal apunta a la conexión (va en contra del extremo libre): el aparato solo se dibuja en el extremo libre hacia el que apunta el flujo. Invierte la dirección del ramal antes de asignar el aparato.',
+          );
+          return;
+        }
+        const endPt = headOk ? head : tail;
+        const field: 'aparatoInicio' | 'aparatoFin' =
+          endPt === head ? 'aparatoFin' : 'aparatoInicio';
+        const accField = field === 'aparatoInicio' ? 'accesorioInicio' : 'accesorioFin';
+        const hasBajante = (eng.bajantes || []).some(
+          (b) =>
+            Math.abs(b.x - endPt[0]) < 0.5 && Math.abs(b.y - endPt[1]) < 0.5 && b.net === live.net,
         );
-        return;
+        if (live[accField] || hasBajante) {
+          eng.triggerAlert(
+            'Extremo ocupado',
+            'El extremo libre del ramal ya tiene accesorio o bajante. Elimínalo antes de asignar el aparato desde la sidebar.',
+          );
+          return;
+        }
+        if (firstUnit && !live.aparatoInicio && !live.aparatoFin) {
+          eng.updateElementById(live.id, { [field]: apId });
+          eng.render();
+        }
       }
-      const endPt = headOk ? head : tail;
-      const field: 'aparatoInicio' | 'aparatoFin' = endPt === head ? 'aparatoFin' : 'aparatoInicio';
-      const accField = field === 'aparatoInicio' ? 'accesorioInicio' : 'accesorioFin';
-      const hasBajante = (eng.bajantes || []).some(
-        (b) =>
-          Math.abs(b.x - endPt[0]) < 0.5 && Math.abs(b.y - endPt[1]) < 0.5 && b.net === live.net,
-      );
-      if (live[accField] || hasBajante) {
-        eng.triggerAlert(
-          'Extremo ocupado',
-          'El extremo libre del ramal ya tiene accesorio o bajante. Elimínalo antes de asignar el aparato desde la sidebar.',
-        );
-        return;
+      if (eng && live && live.net === 'san' && firstUnit) {
+        // Ítem 6/7/8: regla central (inodoro → 4" mínimo; otros → relleno 2" si vacío)
+        const isInodoro = apId === 'san';
+        const targetDiamForAcc = isInodoro ? '4"' : '2"';
+        const curDiamPulg = live.diametro ? diamPulgFromLabel(live.diametro) : 0;
+        // Detect previous aparato for switch diam perception
+        let prevAparatoFix: string | null = null;
+        try {
+          const prevCountsFix = loadAll();
+          const prevMapFix = prevCountsFix[storageKey] || {};
+          const foundFix = Object.keys(prevMapFix).find(
+            (k) => k !== apId && (prevMapFix[k] || 0) > 0,
+          );
+          if (foundFix) prevAparatoFix = foundFix;
+        } catch (_e) {
+          void _e;
+        }
+        const needsDiam =
+          (isInodoro && (curDiamPulg < 4 || !sanDiamAllowedForApparatus(curDiamPulg, apId))) ||
+          (!isInodoro && (!live.diametro || prevAparatoFix === 'san'));
+        if (needsDiam) {
+          eng.updateElementById(live.id, { diametro: targetDiamForAcc });
+          // Sincronizar el snapshot de React para que el dropdown del panel derecho refleje el cambio.
+          if (selElement?.id === live.id)
+            setSelElement?.({
+              ...selElement,
+              diametro: targetDiamForAcc,
+            } as unknown as ProbedElement);
+        }
+        const head = live.pts[live.pts.length - 1];
+        const tail = live.pts[0];
+        const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
+        const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
+        // Item 1 (regla global): ambos extremos ocupados → no crear símbolo, sin
+        // alerta. La selección de targetField abajo ya cubre accesorios y conexiones.
+        let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
+        let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
+        if (!headOcc && !live.accesorioFin) {
+          targetField = 'accesorioFin';
+          targetDiamField = 'diametroFin';
+        } else if (!tailOcc && !live.accesorioInicio) {
+          targetField = 'accesorioInicio';
+          targetDiamField = 'diametroInicio';
+        }
+        if (targetField && targetDiamField) {
+          // Sifón (aparato 'sif') dibuja el glifo de sifón (accesorio 'sifon'), no el codo 90°.
+          // El conteo de accesorios sigue sumando un codo 90° por sifón (requisito orig. #3).
+          const isSif = apId === 'sif';
+          const accType = isSif ? 'sifon' : 'codo90rmSube';
+          const updates: Record<string, unknown> = { [targetField]: accType };
+          const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
+          // sifón siempre 2" (fix bug 3"), inodoro 4", resto hereda o 2"
+          const diamValRaw = isSif
+            ? '2"'
+            : isInodoro
+              ? '4"'
+              : live.diametro
+                ? matchDiamOption(diamListSan, live.diametro)
+                : '2"';
+          const diamVal = matchDiamOption(diamListSan, diamValRaw);
+          if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
+          eng.updateElementById(live.id, updates);
+          eng.render();
+          const planId = eng._loadedPlanId ?? '';
+          if (isSif) bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
+          else bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
+        }
       }
-      if (firstUnit && !live.aparatoInicio && !live.aparatoFin) {
-        eng.updateElementById(live.id, { [field]: apId });
-        eng.render();
-      }
-    }
-    if (eng && live && live.net === 'san' && firstUnit) {
-      // Ítem 6/7/8: regla central (inodoro → 4" mínimo; otros → relleno 2" si vacío)
-      const isInodoro = apId === 'san';
-      const targetDiamForAcc = isInodoro ? '4"' : '2"';
-      const curDiamPulg = live.diametro ? diamPulgFromLabel(live.diametro) : 0;
-      // Detect previous aparato for switch diam perception
-      let prevAparatoFix: string | null = null;
+      // Ítem 1: persistencia síncrona a disco ANTES del snapshot final — el useEffect que
+      // guarda es asíncrono y el snapshot debe incluir los conteos nuevos (si no, redo
+      // restauraría geometría nueva con conteos viejos). Disco-primero evita stale closures.
       try {
-        const prevCountsFix = loadAll();
-        const prevMapFix = prevCountsFix[storageKey] || {};
-        const foundFix = Object.keys(prevMapFix).find(
-          (k) => k !== apId && (prevMapFix[k] || 0) > 0,
-        );
-        if (foundFix) prevAparatoFix = foundFix;
+        const disk = loadAll();
+        const curD = disk[storageKey] || {};
+        const nextDisk = { ...disk, [storageKey]: { ...curD, [apId]: (curD[apId] || 0) + 1 } };
+        saveAll(nextDisk);
+        setCounts(nextDisk);
       } catch (_e) {
         void _e;
+        setCounts((prev) => {
+          const cur = prev[storageKey] || {};
+          return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
+        });
       }
-      const needsDiam =
-        (isInodoro && (curDiamPulg < 4 || !sanDiamAllowedForApparatus(curDiamPulg, apId))) ||
-        (!isInodoro && (!live.diametro || prevAparatoFix === 'san'));
-      if (needsDiam) {
-        eng.updateElementById(live.id, { diametro: targetDiamForAcc });
-        // Actualizar live para que el siguiente matchDiamOption use el nuevo
-        (live as unknown as { diametro: string }).diametro = targetDiamForAcc;
-        // Sincronizar el snapshot de React para que el dropdown del panel derecho refleje el cambio.
-        if (selElement?.id === live.id)
-          setSelElement?.({
-            ...selElement,
-            diametro: targetDiamForAcc,
-          } as unknown as ProbedElement);
-      }
-      const head = live.pts[live.pts.length - 1];
-      const tail = live.pts[0];
-      const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
-      const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
-      // Item 1 (regla global): ambos extremos ocupados → no crear símbolo, sin
-      // alerta. La selección de targetField abajo ya cubre accesorios y conexiones.
-      let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
-      let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
-      if (!headOcc && !live.accesorioFin) {
-        targetField = 'accesorioFin';
-        targetDiamField = 'diametroFin';
-      } else if (!tailOcc && !live.accesorioInicio) {
-        targetField = 'accesorioInicio';
-        targetDiamField = 'diametroInicio';
-      }
-      if (targetField && targetDiamField) {
-        // Sifón (aparato 'sif') dibuja el glifo de sifón (accesorio 'sifon'), no el codo 90°.
-        // El conteo de accesorios sigue sumando un codo 90° por sifón (requisito orig. #3).
-        const isSif = apId === 'sif';
-        const accType = isSif ? 'sifon' : 'codo90rmSube';
-        const updates: Record<string, unknown> = { [targetField]: accType };
-        const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
-        // sifón siempre 2" (fix bug 3"), inodoro 4", resto hereda o 2"
-        const diamValRaw = isSif
-          ? '2"'
-          : isInodoro
-            ? '4"'
-            : live.diametro
-              ? matchDiamOption(diamListSan, live.diametro)
-              : '2"';
-        const diamVal = matchDiamOption(diamListSan, diamValRaw);
-        if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
-        eng.updateElementById(live.id, updates);
-        eng.render();
-        const planId = eng._loadedPlanId ?? '';
-        if (isSif) bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
-        else bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
-      }
+    } finally {
+      if (eng) eng.resumeHistory();
     }
-    setCounts((prev) => {
-      const cur = prev[storageKey] || {};
-      return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
-    });
+    if (eng) {
+      eng._markDirty();
+    }
   };
 
   const dec = (apId: string) => {
@@ -683,61 +705,87 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (target?.tipo === 'bajante') return; // solo lectura
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
-    if (vBefore <= 0 && targetId) {
-      const eng = engineRef.current;
-      const live = eng?.ramales.find((r) => r.id === targetId);
-      if (eng && live) {
-        if (live.aparatoInicio === apId || live.aparatoFin === apId) {
-          const updates: Record<string, unknown> = {};
-          if (live.aparatoInicio === apId) updates.aparatoInicio = null;
-          if (live.aparatoFin === apId) updates.aparatoFin = null;
-          eng.updateElementById(targetId, updates);
-          eng.render();
-          eng._markDirty();
-        }
-        // Sanitaria: al quitar el último aparato, también quitar el accesorio del extremo libre
-        // (codo 90° sube o sifón) — orig. usuario #5: quitar el sifón desde el panel debe quitar
-        // su símbolo en el dibujo.
-        if (live.net === 'san') {
-          const totalAfter = Object.entries(counts[storageKey] || {}).reduce(
-            (s, [k, v]) => s + (k === apId ? Math.max(0, v - 1) : v),
-            0,
-          );
-          if (totalAfter === 0) {
-            const accIni = live.accesorioInicio;
-            const accFin = live.accesorioFin;
-            const hasAccIni = accIni === 'codo90rmSube' || accIni === 'sifon';
-            const hasAccFin = accFin === 'codo90rmSube' || accFin === 'sifon';
-            if (hasAccIni || hasAccFin) {
-              const updates: Record<string, unknown> = {};
-              if (hasAccIni) {
-                updates.accesorioInicio = '';
-                updates.diametroInicio = '';
-              }
-              if (hasAccFin) {
-                updates.accesorioFin = '';
-                updates.diametroFin = '';
-              }
-              eng.updateElementById(targetId, updates);
-              eng.render();
-              const planId = eng._loadedPlanId ?? '';
+    // Una desasignación = UN snapshot: pausa + try/finally (mismo razonamiento que inc).
+    const engDec = engineRef.current;
+    if (engDec) engDec.pauseHistory();
+    try {
+      if (vBefore <= 0 && targetId) {
+        const eng = engineRef.current;
+        const live = eng?.ramales.find((r) => r.id === targetId);
+        if (eng && live) {
+          if (live.aparatoInicio === apId || live.aparatoFin === apId) {
+            const updates: Record<string, unknown> = {};
+            if (live.aparatoInicio === apId) updates.aparatoInicio = null;
+            if (live.aparatoFin === apId) updates.aparatoFin = null;
+            eng.updateElementById(targetId, updates);
+            eng.render();
+            eng._markDirty();
+          }
+          // Sanitaria: al quitar el último aparato, también quitar el accesorio del extremo libre
+          // (codo 90° sube o sifón) — orig. usuario #5: quitar el sifón desde el panel debe quitar
+          // su símbolo en el dibujo.
+          if (live.net === 'san') {
+            const totalAfter = Object.entries(counts[storageKey] || {}).reduce(
+              (s, [k, v]) => s + (k === apId ? Math.max(0, v - 1) : v),
+              0,
+            );
+            if (totalAfter === 0) {
+              const accIni = live.accesorioInicio;
+              const accFin = live.accesorioFin;
+              const hasAccIni = accIni === 'codo90rmSube' || accIni === 'sifon';
+              const hasAccFin = accFin === 'codo90rmSube' || accFin === 'sifon';
               if (hasAccIni || hasAccFin) {
-                bumpHidroAccesorio('san', 'codo90rmSube', -1, targetId, planId);
+                const updates: Record<string, unknown> = {};
+                if (hasAccIni) {
+                  updates.accesorioInicio = '';
+                  updates.diametroInicio = '';
+                }
+                if (hasAccFin) {
+                  updates.accesorioFin = '';
+                  updates.diametroFin = '';
+                }
+                eng.updateElementById(targetId, updates);
+                eng.render();
+                const planId = eng._loadedPlanId ?? '';
+                if (hasAccIni || hasAccFin) {
+                  bumpHidroAccesorio('san', 'codo90rmSube', -1, targetId, planId);
+                }
               }
             }
           }
         }
       }
+      // Ítem 1: disco-primero (ver inc) + un snapshot final con todo persistido.
+      try {
+        const disk = loadAll();
+        const curD = { ...(disk[storageKey] || {}) };
+        const v = (curD[apId] || 0) - 1;
+        if (v <= 0) delete curD[apId];
+        else curD[apId] = v;
+        const nextDisk = { ...disk };
+        if (Object.keys(curD).length === 0) delete nextDisk[storageKey];
+        else nextDisk[storageKey] = curD;
+        saveAll(nextDisk);
+        setCounts(nextDisk);
+      } catch (_e) {
+        void _e;
+        setCounts((prev) => {
+          const cur = { ...(prev[storageKey] || {}) };
+          const v = (cur[apId] || 0) - 1;
+          if (v <= 0) delete cur[apId];
+          else cur[apId] = v;
+          const next = { ...prev, [storageKey]: cur };
+          if (Object.keys(cur).length === 0) delete next[storageKey];
+          return next;
+        });
+      }
+    } finally {
+      if (engDec) engDec.resumeHistory();
     }
-    setCounts((prev) => {
-      const cur = { ...(prev[storageKey] || {}) };
-      const v = (cur[apId] || 0) - 1;
-      if (v <= 0) delete cur[apId];
-      else cur[apId] = v;
-      const next = { ...prev, [storageKey]: cur };
-      if (Object.keys(cur).length === 0) delete next[storageKey];
-      return next;
-    });
+    const engEnd = engineRef.current;
+    if (engEnd) {
+      engEnd._markDirty();
+    }
   };
 
   const incAcc = (accId: string) => {

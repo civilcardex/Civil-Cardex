@@ -731,11 +731,32 @@ function PdfViewer_({
     engineRef,
   ]);
 
+  // El Ctrl+Z de teclado lo maneja el propio engine (keydown en document) — este listener
+  // limpia las copias congeladas de la UI (menú contextual/panel) tras cada undo/redo.
+  useEffect(() => {
+    const clearFrozenUi = () => {
+      setSelElement(null);
+      setContextMenuState(null);
+    };
+    window.addEventListener('civilflow_undone', clearFrozenUi);
+    return () => window.removeEventListener('civilflow_undone', clearFrozenUi);
+  }, []);
+
   const handleUndo = useCallback(() => {
-    if (engineRef.current) engineRef.current.undoLast();
+    if (engineRef.current) {
+      engineRef.current.undoLast();
+      // El menú contextual y el panel muestran COPIAS congeladas del elemento — tras revertir
+      // hay que cerrarlas o el usuario sigue viendo el aparato/accesorio que el undo ya quitó.
+      setSelElement(null);
+      setContextMenuState(null);
+    }
   }, [engineRef]);
   const handleRedo = useCallback(() => {
-    if (engineRef.current) engineRef.current.redoLast();
+    if (engineRef.current) {
+      engineRef.current.redoLast();
+      setSelElement(null);
+      setContextMenuState(null);
+    }
   }, [engineRef]);
   const handleFit = useCallback(() => {
     const eng = engineRef.current;

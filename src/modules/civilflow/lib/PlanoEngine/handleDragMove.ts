@@ -9,7 +9,7 @@ import {
 import { checkRamalAngles, angleAtPosition, angleAtHalfLength } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
-import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
+import { puedeConectarRamalABajante } from './bajanteRules';
 import { resolveAndClampToCanal, clampToCanal, pointInCanal } from './canalAssociation';
 
 /**
@@ -72,10 +72,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     if (g) {
       const tp = engine.toPlane(x, y);
       if (engine.guideDrag.endIdx !== undefined && g.pts.length >= 2) {
-        // ponytail: estirar/encoger desde el extremo tomado — solo se mueve ESE extremo,
-        // con el mismo snap que el dibujo de guías (ángulo + pegado a elementos).
+        // Ítem 2: mover ESE vértice (cualquiera, no solo extremos), con el mismo snap que el
+        // dibujo de guías — el ángulo se mide contra el vecino adyacente.
         const idx = engine.guideDrag.endIdx;
-        const other = engine.guideDrag.origPts[1 - idx];
+        const other =
+          idx > 0 ? engine.guideDrag.origPts[idx - 1] : engine.guideDrag.origPts[idx + 1];
         let px = tp.x;
         let py = tp.y;
         if (engine.snapMode) {
@@ -361,26 +362,24 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       for (const r of b.tipo === 'canal' ? [] : engine.ramales || []) {
         if (!r.pts || r.pts.length === 0) continue;
         if (r.net !== b.net) continue;
+        // Tributarios ni llegan ni salen de un bajante (orig. usuario) — se saltan en silencio
+        // durante el arrastre.
+        if (r.tipo === 'tributario') continue;
         if (recibeDeSet.has(r.id)) continue;
         const pStart = r.pts[0];
         const pEnd = r.pts[r.pts.length - 1];
         const dStart = Math.hypot(pStart[0] - p.x, pStart[1] - p.y);
         const dEnd = Math.hypot(pEnd[0] - p.x, pEnd[1] - p.y);
-        // Guardia de dirección de flujo (centralizada en flowDirection.ts): un bajante 'baja'
-        // solo debe RECIBIR flujo — nunca INICIAR un ramal; un 'sube' solo debe EMITIR — nunca
-        // TERMINAR uno. La guardia dispara una vez por el extremo infractor y sigue buscando el
-        // siguiente ramal, así otras asociaciones válidas del mismo movimiento no quedan
-        // bloqueadas.
+        // Regla central (bajanteRules): misma red + tope de asociaciones — se dispara una vez
+        // por el extremo infractor y sigue buscando el siguiente ramal, así otras asociaciones
+        // válidas del mismo movimiento no quedan bloqueadas. Iniciar un ramal en el bajante es
+        // válido: el extremo pts[0] alimenta (r.ini).
         if (dStart < autoThresh && dStart <= dEnd) {
-          if ((b.recibeDeIds?.length ?? 0) >= 2) {
-            engine.triggerAlert(
-              'Bajante completo',
-              'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
-            );
+          const check = puedeConectarRamalABajante(b, r);
+          if (!check.ok) {
+            if (check.title && check.msg) engine.triggerAlert(check.title, check.msg);
             continue;
           }
-          const allowed = isRamalBajanteConnectionAllowed(engine, r, 0, b);
-          if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
           if (!b.recibeDeIds.includes(r.id)) b.recibeDeIds.push(r.id);
           r.ini = b.code || b.id;
@@ -388,15 +387,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           p.y = pStart[1];
           break;
         } else if (dEnd < autoThresh) {
-          if ((b.recibeDeIds?.length ?? 0) >= 2) {
-            engine.triggerAlert(
-              'Bajante completo',
-              'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
-            );
+          const check = puedeConectarRamalABajante(b, r);
+          if (!check.ok) {
+            if (check.title && check.msg) engine.triggerAlert(check.title, check.msg);
             continue;
           }
-          const allowed = isRamalBajanteConnectionAllowed(engine, r, r.pts.length - 1, b);
-          if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
           if (!b.recibeDeIds.includes(r.id)) b.recibeDeIds.push(r.id);
           r.fin = b.code || b.id;

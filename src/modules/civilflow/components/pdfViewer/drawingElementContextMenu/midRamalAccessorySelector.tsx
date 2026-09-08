@@ -69,6 +69,9 @@ export function MidRamalAccessorySelector({
             aria-label="Accesorio en cuerpo del ramal"
             onChange={(e) => {
               const accId = e.target.value;
+              // Suelta el foco: si queda en el <select>, el Ctrl+Z del motor no llega (el
+              // keydown se aborta sobre selects) y el usuario no puede deshacer la asignación.
+              e.target.blur();
               const eng = engineRef.current;
               if (!eng) return;
               const fresh = eng.ramales.find((r) => r.id === element.id);
@@ -113,6 +116,11 @@ export function MidRamalAccessorySelector({
                 }
               }
 
+              // Una elección de accesorio = UN snapshot: updateElementById ya marca dirty
+              // internamente, y el bump de conteos en medio dejaba DOS snapshots — el
+              // primer Ctrl+Z restauraba el intermedio (con el accesorio ya puesto) y
+              // parecía no hacer nada.
+              eng.pauseHistory();
               if (existingKey) {
                 const newAccMed = { ...(fresh.accMed || {}) };
                 if (accId) {
@@ -193,6 +201,7 @@ export function MidRamalAccessorySelector({
                 if (typeof window !== 'undefined')
                   window.dispatchEvent(new CustomEvent('aparatos-clear'));
               }
+              eng.resumeHistory();
               eng.render();
               eng._markDirty();
             }}
@@ -314,6 +323,8 @@ export function MidRamalAccessorySelector({
                 }
                 // Ítem 6/7/8: regla central (inodoro → 4" mínimo; otros → relleno 2" si vacío) + switch
                 const isInodoro = val === 'san';
+                // Ítem 1: una asignación de aparato = un snapshot (pausa durante los pasos).
+                eng.pauseHistory();
                 // Detect previous aparato for this ramal to handle switch quantity & diam
                 const planIdForSwitch = eng._loadedPlanId ?? '';
                 const switchKey = `san_${element.id}_${planIdForSwitch || ''}`;
@@ -333,7 +344,6 @@ export function MidRamalAccessorySelector({
                   const curDiamPulg = fresh.diametro ? diamPulgFromLabel(fresh.diametro) : 0;
                   if (curDiamPulg < 4 || !sanDiamAllowedForApparatus(curDiamPulg, 'san')) {
                     eng.updateElementById(element.id, { diametro: '4"' });
-                    (fresh as unknown as { diametro: string }).diametro = '4"';
                     if (selElement?.id === element.id)
                       setSelElement({ ...selElement, diametro: '4"' } as PlanoRamal);
                     setContextMenuState((prev) =>
@@ -345,7 +355,6 @@ export function MidRamalAccessorySelector({
                   const shouldSet2 = !fresh.diametro || prevAparato === 'san';
                   if (shouldSet2) {
                     eng.updateElementById(element.id, { diametro: '2"' });
-                    (fresh as unknown as { diametro: string }).diametro = '2"';
                     if (selElement?.id === element.id)
                       setSelElement({ ...selElement, diametro: '2"' } as PlanoRamal);
                     setContextMenuState((prev) =>
@@ -378,7 +387,6 @@ export function MidRamalAccessorySelector({
                   prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
                 );
                 eng.render();
-                eng._markDirty();
                 if (planosCtx?.plans) {
                   const planId = eng._loadedPlanId ?? '';
                   const counts2 = loadAll();
@@ -406,6 +414,9 @@ export function MidRamalAccessorySelector({
                   if (typeof window !== 'undefined')
                     window.dispatchEvent(new CustomEvent('aparatos-clear'));
                 }
+                // Ítem 1: un snapshot para toda la asignación (geometría + conteos).
+                eng.resumeHistory();
+                eng._markDirty();
                 return;
               } else {
                 // Find actual field that has codo/sifon — not just nearStart (mid click may be far from free end)
@@ -421,6 +432,7 @@ export function MidRamalAccessorySelector({
                   targetField = 'accesorioFin';
                   targetDiamField = 'diametroFin';
                 } else {
+                  eng.resumeHistory();
                   return;
                 }
                 const updates: Record<string, unknown> = { [targetField]: '' };
@@ -432,7 +444,6 @@ export function MidRamalAccessorySelector({
                   prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
                 );
                 eng.render();
-                eng._markDirty();
                 const planId = eng._loadedPlanId ?? '';
                 bumpHidroAccesorio('san', 'codo90rmSube', -1, element.id, planId);
                 if (typeof window !== 'undefined')
@@ -453,6 +464,9 @@ export function MidRamalAccessorySelector({
                       window.dispatchEvent(new CustomEvent('aparatos-clear'));
                   }
                 }
+                // Ítem 1: un snapshot para toda la desasignación (geometría + conteos).
+                eng.resumeHistory();
+                eng._markDirty();
                 return;
               }
             }
@@ -510,6 +524,10 @@ export function MidRamalAccessorySelector({
               if (fresh.aparatoInicio) actualField = 'aparatoInicio';
               else if (fresh.aparatoFin) actualField = 'aparatoFin';
               else return;
+              // Ítem 1: una (des)asignación = un snapshot — los conteos se escriben ANTES del
+              // snapshot final (si no, un Ctrl+Z restauraba geometría nueva con conteos viejos
+              // y el aparato seguía visible hasta el segundo Ctrl+Z).
+              eng.pauseHistory();
               const actualOldApp = String(
                 (fresh as unknown as Record<string, unknown>)[actualField] || '',
               );
@@ -522,12 +540,15 @@ export function MidRamalAccessorySelector({
                 setSelElement({ ...selElement, ...actualUpdates } as PlanoRamal);
               }
               eng.render();
-              eng._markDirty();
               if (planosCtx?.plans) {
                 syncExtremeAparatoToCounts(element.id, actualOldApp, '', planosCtx.plans);
               }
+              eng.resumeHistory();
+              eng._markDirty();
               return;
             }
+            // Ítem 1: ver rama desasignar (pausa hasta el snapshot final).
+            eng.pauseHistory();
             const oldApp = fresh[field] || '';
             const updates: Record<string, unknown> = { [field]: val || null };
             eng.updateElementById(element.id, updates);
@@ -538,10 +559,11 @@ export function MidRamalAccessorySelector({
               setSelElement({ ...selElement, ...updates } as PlanoRamal);
             }
             eng.render();
-            eng._markDirty();
             if (planosCtx?.plans) {
               syncExtremeAparatoToCounts(element.id, oldApp, val || '', planosCtx.plans);
             }
+            eng.resumeHistory();
+            eng._markDirty();
           };
           return (
             <div style={{ marginTop: 6 }}>
@@ -549,7 +571,10 @@ export function MidRamalAccessorySelector({
               <select
                 value={currentApp}
                 aria-label="Seleccionar Aparato"
-                onChange={(e) => applyAparato(e.target.value)}
+                onChange={(e) => {
+                  e.target.blur();
+                  applyAparato(e.target.value);
+                }}
                 style={MENU_SELECT_STYLE}
               >
                 <option value="">Ninguno</option>

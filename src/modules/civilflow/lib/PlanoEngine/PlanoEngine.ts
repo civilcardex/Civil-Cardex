@@ -55,11 +55,13 @@ import {
   handleContadorDown,
   handleCalentadorDown,
   handleCanalDown,
+  handleCajaDown,
   handleEraseDown,
   handleAreaDown,
   eraseRamalAt,
   handleDrawingMouseMove,
   handleDoubleClick,
+  commitOpenGuide,
   deleteSegmentAt as _deleteSegmentAt,
   setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
@@ -97,6 +99,7 @@ import {
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
 import { fixVentCodoToTee } from './ventCodoTeeFix';
+import { healTribPadres } from './junctionAutoSplit';
 import { PlanoHistory } from './PlanoHistory';
 import { PlanoNetworkModel } from './PlanoNetworkModel';
 import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting';
@@ -119,6 +122,7 @@ export type ToolType =
   | 'cont'
   | 'calent'
   | 'canal'
+  | 'caja'
   | 'guide';
 export type TramoType = 'ramal' | 'tributario';
 
@@ -203,7 +207,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     startX: number;
     startY: number;
     origPts: [number, number][];
-    endIdx?: 0 | 1;
+    endIdx?: number;
   } | null;
   lblDrag!: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
@@ -245,6 +249,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   } | null;
   _dimStart!: Point | null;
   _guideStart!: Point | null;
+  _guidePts!: [number, number][] | null;
   _canalStart!: Point | null;
   nivelActual!: PlanoLevel | null;
   nptLevels!: PlanoLevel[];
@@ -389,6 +394,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.marqueeRect = null;
     this._dimStart = null;
     this._guideStart = null;
+    this._guidePts = null;
     this._canalStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
@@ -617,6 +623,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
       fixVentCodoToTee(this);
     } catch (_e) {
       void _e;
+    }
+    try {
+      // Sanado global de padres de tributarios: el label manda (T{n}{raíz}) — cualquier
+      // camino que haya asignado un padre equivocado al tramo autocreado queda corregido.
+      healTribPadres(this);
+    } catch (e) {
+      devError('PlanoEngine _markDirty healTribPadres:', e);
     }
     try {
       calcSanitaryAccessories(this);
@@ -953,6 +966,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
   redoLast(): void {
     this._history.redoLast();
   }
+  /** Pausa el historial (operación compuesta: una acción = un snapshot). */
+  pauseHistory(): void {
+    this._history.pause();
+  }
+  /** Reanuda el historial tras una operación compuesta. */
+  resumeHistory(): void {
+    this._history.resume();
+  }
   clearAll(): void {
     this._history.clearAll();
   }
@@ -1211,6 +1232,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       handleCalentadorDown(this, p.x, p.y);
     } else if (this.tool === 'canal') {
       handleCanalDown(this, p.x, p.y);
+    } else if (this.tool === 'caja') {
+      handleCajaDown(this, p.x, p.y);
     } else if (this.tool === 'area') {
       handleAreaDown(this, p.x, p.y);
     } else if (this.tool === 'erase') {
@@ -1286,23 +1309,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onKeyDownHandler(e: KeyboardEvent): void {
-    if (
-      (e.target as HTMLElement).tagName === 'INPUT' ||
-      (e.target as HTMLElement).tagName === 'SELECT' ||
-      (e.target as HTMLElement).tagName === 'TEXTAREA'
-    )
-      return;
+    const tag = (e.target as HTMLElement).tagName;
     const k = e.key.toLowerCase();
-    if (e.ctrlKey && k === 'z') {
-      this.undoLast();
+    // Ctrl+Z/Ctrl+Y funcionan AUNQUE el foco haya quedado en un <select> (p. ej. el selector de
+    // aparato del menú contextual, que no hace blur al elegir): un select no edita texto y el
+    // undo debe llegar siempre. En INPUT/TEXTAREA Ctrl+Z es el deshacer nativo del texto.
+    if (e.ctrlKey && (k === 'z' || k === 'y') && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      if (k === 'z' && e.shiftKey) this.redoLast();
+      else if (k === 'z') this.undoLast();
+      else this.redoLast();
       e.preventDefault();
       return;
     }
-    if (e.ctrlKey && k === 'y') {
-      this.redoLast();
-      e.preventDefault();
-      return;
-    }
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (e.ctrlKey && k === 's') {
       e.preventDefault();
       return;
@@ -1333,6 +1352,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this.setTool('calent');
       }
       e.preventDefault();
+    } else if (k === 'j') {
+      // 'J' → Caja de recolección (CAN en san, CALL en ll) — solo con esas redes activas,
+      // espejo de isToolDisabledForNet('caja') en la barra. ('X' ya es "borrar montante".)
+      if (['san', 'll'].includes(this.activeNet)) {
+        this.setTool('caja');
+        e.preventDefault();
+      }
     } else if (k === 'd') {
       this.setTool('dim');
       e.preventDefault();
@@ -1379,6 +1405,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
       } else if (this.activeArea) {
         this.finishArea();
         e.preventDefault();
+      } else if (this.tool === 'guide' && this._guideStart) {
+        // Ítem 2: Enter también cierra (commitea) la guía en construcción.
+        commitOpenGuide(this);
+        e.preventDefault();
       }
     } else if (k === 'escape') {
       if (this.activeRamal) {
@@ -1392,8 +1422,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this.render();
         e.preventDefault();
       } else if (this._guideStart) {
-        this._guideStart = null;
-        this.render();
+        // Ítem 2: Esc cierra (commitea) la guía multisegmento en vez de descartarla.
+        commitOpenGuide(this);
         e.preventDefault();
       } else if (this._canalStart) {
         this._canalStart = null;
@@ -1412,7 +1442,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (k === 'delete' || k === 'backspace') {
       if (!this.activeRamal && !this.activeArea) {
         if (this.multiSel && this.multiSel.length > 0) {
-          this.deleteSelected(this.multiSel, { noMerge: true });
+          // Sin noMerge: los brazos de yee doble ya se protegen por id dentro de
+          // deleteSelected (borrado individual sin re-unir) y splitMembersFor los excluye.
+          // Con noMerge los splits del tronco causados por los tributarios borrados nunca
+          // se re-unían y el ramal principal quedaba partido (orig. usuario).
+          this.deleteSelected(this.multiSel);
           this.multiSel = [];
         } else if (this.selId) {
           const sel = this.getSelected() as Record<string, unknown> | null;

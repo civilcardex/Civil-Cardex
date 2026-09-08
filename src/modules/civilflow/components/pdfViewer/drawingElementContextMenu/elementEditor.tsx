@@ -8,7 +8,6 @@ import {
 } from '../../../pages/catalog/catalogData';
 import { DIAMETROS_AF } from '../../../constants/hydraulicData';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
-import { maxDiametroLabel } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import {
   writeAcoDiamToDrawing,
   writeContadorDiamToDrawing,
@@ -175,7 +174,7 @@ export function ElementCodeEditor({
             </div>
           </>
         )}
-        <div style={MENU_SECTION_LABEL_STYLE}>Diámetro de ramal</div>
+        <div style={MENU_SECTION_LABEL_STYLE}>Diámetro de ramal/tributario</div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={
@@ -183,7 +182,7 @@ export function ElementCodeEditor({
               ramalEl.diametro ??
               ''
             }
-            aria-label="Diámetro de ramal"
+            aria-label="Diámetro de ramal/tributario"
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
@@ -255,34 +254,10 @@ export function ElementCodeEditor({
                 if (activeNet === ramalEl.net) {
                   setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
                 }
-                // Propagar a cualquier ramal aguas abajo auto-creado por una fusión de división
-                // en tee DESDE este — mergesFrom guarda los ids de los padres [aguas arriba,
-                // entrante] en el momento de la división (PlanoEngineDrawing.ts), y el diametro
-                // de ese hijo solo se calculó una vez, al crearlo. Sin esto, cambiar el
-                // diámetro de un padre después nunca llega al ramal fusionado/auto-creado ya
-                // existente. Aplica a todas las redes: el hijo siempre sigue al mayor (max).
-                const eng = engineRef.current;
-                for (const child of eng.ramales) {
-                  if (!child.mergesFrom || !child.mergesFrom.includes(ramalEl.id)) continue;
-                  const [pid1, pid2] = child.mergesFrom;
-                  const d1 =
-                    pid1 === ramalEl.id
-                      ? val
-                      : eng.ramales.find((r) => r.id === pid1)?.diametro || '';
-                  const d2 =
-                    pid2 === ramalEl.id
-                      ? val
-                      : eng.ramales.find((r) => r.id === pid2)?.diametro || '';
-                  const newChildDiam = maxDiametroLabel(d1, d2);
-                  if (newChildDiam && newChildDiam !== child.diametro) {
-                    eng.updateElementById(child.id, {
-                      diametro: newChildDiam,
-                      diametroInicio: newChildDiam,
-                      diametroFin: newChildDiam,
-                    });
-                  }
-                }
-                eng.render();
+                // Ítems 5+6: la propagación aguas abajo (mergesFrom + receptores
+                // geométricos) la hace updateElementById vía recomputeDownstreamDiameters —
+                // un solo snapshot para toda la operación.
+                engineRef.current.render();
               }
             }}
             style={MENU_SELECT_STYLE}
