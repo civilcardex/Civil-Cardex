@@ -137,26 +137,6 @@ export function applyWorkData(
         pts?: number[][];
       }>
     ).filter((r) => (r.net === 'san' || r.net === 'll') && r.diametro);
-    // DIAGNÓSTICO temporal (doble etiqueta/diámetros): volcar topología san/ll y el efecto de
-    // la retro-propagación. Quitar cuando el usuario confirme que RS3 hereda.
-    const dump = (): string =>
-      JSON.stringify(
-        (engine.ramales as Array<Record<string, unknown>>)
-          .filter((r) => r.net === 'san' || r.net === 'll')
-          .map((r) => ({
-            id: r.id,
-            tipo: r.tipo,
-            diam: r.diametro || '',
-            rev: !!r._tribReversed,
-            fin: r.fin || '',
-            ini: r.ini || '',
-            padre: r.padre || '',
-            mf: r.mergesFrom || null,
-            pts: r.pts,
-          })),
-      );
-    // eslint-disable-next-line no-console
-    console.log('[CivilFlow] retro-prop ANTES:', dump());
     for (const r of sanLl) {
       propagarSanDiametroAguasAbajo(
         engine.ramales as unknown as Parameters<typeof propagarSanDiametroAguasAbajo>[0],
@@ -164,8 +144,6 @@ export function applyWorkData(
         engine.bajantes as unknown as Array<{ recibeDeIds?: string[]; alimentaIds?: string[] }>,
       );
     }
-    // eslint-disable-next-line no-console
-    console.log('[CivilFlow] retro-prop DESPUÉS:', dump());
   }
   engine.selId = null;
   engine.activeRamal = null;

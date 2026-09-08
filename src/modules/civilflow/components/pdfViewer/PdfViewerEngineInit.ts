@@ -247,9 +247,6 @@ export function usePdfViewerEngine({
     // Diagnóstico: instancia accesible desde la consola para depurar conteos/trazos
     // (window.__cfEngine.ramales.map(r=>[r.id,r.label,r.tipo])).
     (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
-    // Marcador de build: verifica en consola que la pestaña corre el código nuevo — el engine
-    // NO se re-instancia con hot-reload, requiere recarga completa de la pestaña.
-    console.info('[CivilFlow] PlanoEngine build 2026-09-07-r6 (trib-trib padre + saneo global)');
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
     eng.onSelect((el) => callbacksRef.current.onSelect(el));
