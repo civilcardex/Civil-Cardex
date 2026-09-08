@@ -115,11 +115,35 @@ describe('persistencia aparatos al borrar + renumerar (orig. #8)', () => {
       }),
     );
     const engine = makeEngine([
-      R({ id: 'RS1', label: 'RS1', fixtures: { lvm: 1 } }),
-      R({ id: 'RS2', label: 'RS2', fixtures: { san: 1 } }),
-      R({ id: 'RS3', label: 'RS3', fixtures: { duc: 1 } }),
+      R({
+        id: 'RS1',
+        label: 'RS1',
+        fixtures: { lvm: 1 },
+        pts: [
+          [0, 0],
+          [10, 0],
+        ],
+      }),
+      R({
+        id: 'RS2',
+        label: 'RS2',
+        fixtures: { san: 1 },
+        pts: [
+          [100, 0],
+          [110, 0],
+        ],
+      }),
+      R({
+        id: 'RS3',
+        label: 'RS3',
+        fixtures: { duc: 1 },
+        pts: [
+          [200, 0],
+          [210, 0],
+        ],
+      }),
     ]);
-    // Borrar RS2 (del medio) → renumerar RS3→RS2
+    // Borrar RS2 (del medio) → renumerar RS3→RS2. Ramales separados: sin cascada.
     deleteSelected(engine, ['RS2']);
     const data = JSON.parse(store.get('civilflow_aparatos_by_tramo_v2') || '{}') as Record<
       string,
@@ -137,9 +161,33 @@ describe('persistencia aparatos al borrar + renumerar (orig. #8)', () => {
 
   it('el objeto en memoria conserva fixtures al renumerar', () => {
     const engine = makeEngine([
-      R({ id: 'RS1', label: 'RS1', fixtures: { lvm: 1 } }),
-      R({ id: 'RS2', label: 'RS2', fixtures: { san: 1 } }),
-      R({ id: 'RS3', label: 'RS3', fixtures: { duc: 1 } }),
+      R({
+        id: 'RS1',
+        label: 'RS1',
+        fixtures: { lvm: 1 },
+        pts: [
+          [0, 0],
+          [10, 0],
+        ],
+      }),
+      R({
+        id: 'RS2',
+        label: 'RS2',
+        fixtures: { san: 1 },
+        pts: [
+          [100, 0],
+          [110, 0],
+        ],
+      }),
+      R({
+        id: 'RS3',
+        label: 'RS3',
+        fixtures: { duc: 1 },
+        pts: [
+          [200, 0],
+          [210, 0],
+        ],
+      }),
     ]);
     deleteSelected(engine, ['RS2']);
     const rs1 = engine.ramales.find((r) => r.id === 'RS1');
@@ -158,9 +206,33 @@ describe('persistencia aparatos al borrar + renumerar (orig. #8)', () => {
       }),
     );
     const engine = makeEngine([
-      R({ id: 'RS1', label: 'RS1', fixtures: { lvm: 1 } }),
-      R({ id: 'RS2', label: 'RS2', fixtures: { san: 1 } }),
-      R({ id: 'RS3', label: 'RS3', fixtures: { duc: 1 } }),
+      R({
+        id: 'RS1',
+        label: 'RS1',
+        fixtures: { lvm: 1 },
+        pts: [
+          [0, 0],
+          [10, 0],
+        ],
+      }),
+      R({
+        id: 'RS2',
+        label: 'RS2',
+        fixtures: { san: 1 },
+        pts: [
+          [100, 0],
+          [110, 0],
+        ],
+      }),
+      R({
+        id: 'RS3',
+        label: 'RS3',
+        fixtures: { duc: 1 },
+        pts: [
+          [200, 0],
+          [210, 0],
+        ],
+      }),
     ]);
     deleteSelected(engine, ['RS1']);
     const data = JSON.parse(store.get('civilflow_aparatos_by_tramo_v2') || '{}') as Record<
@@ -204,7 +276,9 @@ describe('persistencia aparatos al borrar + renumerar (orig. #8)', () => {
       fixtures: { duc: 1 },
     });
     const engine = makeEngine([a, b, d]);
-    deleteSelected(engine, ['T1']);
+    // Borrado INDIVIDUAL (selId): conserva la cascada/remerge de la división.
+    engine.selId = 'T1';
+    deleteSelected(engine);
     const survivor = engine.ramales.find((r) => r.id === 'RS1') || engine.ramales[0];
     expect(survivor.pts[0]).toEqual([0, 0]);
     expect(survivor.pts[survivor.pts.length - 1]).toEqual([60, 0]);

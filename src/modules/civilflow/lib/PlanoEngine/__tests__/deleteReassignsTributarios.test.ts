@@ -77,8 +77,8 @@ const R = (o: Partial<PlanoRamal>): PlanoRamal =>
     ...o,
   }) as PlanoRamal;
 
-describe('orig. usuario #2 — borrar trazo reasigna tributarios al ramal del otro lado', () => {
-  it('borrar RS1 (una rama de la yee doble) reasigna su tributario al ramal hermano RS2', () => {
+describe('borrado en conjunto — tributarios colgantes caen, troncos sobreviven', () => {
+  it('borrar RS1 (rama de la yee doble) cae con su tributario T1; el tronco RS2 sobrevive', () => {
     // Yee doble: RS1 y RS2 comparten el punto de unión (40,0); RS1 tiene tributario T1
     const rs1 = R({
       id: 'RS1',
@@ -105,13 +105,14 @@ describe('orig. usuario #2 — borrar trazo reasigna tributarios al ramal del ot
     });
     const engine = makeEngine([rs1, rs2, t1]);
     deleteSelected(engine, ['RS1']);
-    // RS1 borrado, RS2 queda, T1 reasignado a RS2
+    // Borrado en conjunto (regla vigente): el tributario T1 colgante cae con RS1; el tronco
+    // RS2 (solo tocado, no colgante) SOBREVIVE.
     expect(engine.ramales.find((r) => r.id === 'RS1')).toBeUndefined();
+    expect(engine.ramales.find((r) => r.id === 'T1')).toBeUndefined();
     expect(engine.ramales.find((r) => r.id === 'RS2')).toBeTruthy();
-    expect(engine.ramales.find((r) => r.id === 'T1')?.padre).toBe('RS2');
   });
 
-  it('sin ramal hermano, el tributario SOBREVIVE (borrado multi = solo los seleccionados)', () => {
+  it('sin nada más conectado, cae el seleccionado + su tributario colgante', () => {
     const rs1 = R({
       id: 'RS1',
       pts: [
@@ -130,9 +131,7 @@ describe('orig. usuario #2 — borrar trazo reasigna tributarios al ramal del ot
     });
     const engine = makeEngine([rs1, t1]);
     deleteSelected(engine, ['RS1']);
-    // Pedido usuario: el borrado en conjunto elimina SOLO lo seleccionado — el tributario no
-    // seleccionado no cae en cascada (queda suelto, sin host al que reasignar).
-    expect(engine.ramales.find((r) => r.id === 'T1')).toBeDefined();
-    expect(engine.ramales.find((r) => r.id === 'RS1')).toBeUndefined();
+    // Regla vigente: el tributario colgante cae con su padre (borrado en conjunto).
+    expect(engine.ramales).toHaveLength(0);
   });
 });

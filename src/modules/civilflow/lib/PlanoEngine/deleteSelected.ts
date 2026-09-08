@@ -15,8 +15,9 @@ import { _midpoint } from './PlanoEngineDrawing';
 
 import { cascadeMontanteAssociation } from './deleteCascade';
 import { cleanupJunctionsAfterRamalDelete, cleanupTeeMarkersAt } from './deleteJunctionCleanup';
-import { remergeSplitRamales, mergeTribPairAt } from './deleteRemerge';
+import { remergeSplitRamales, mergeTribPairAt, mergeTouchingRemnant } from './deleteRemerge';
 import { isDeletedYeeDoblePart, preserveYeeDobleAt, splitMembersFor } from './deleteYeePreserve';
+import { distToPolyline } from '../shared/geometry';
 
 // Orig. usuario #2: al borrar un trazo, sus tributarios se REASIGNAN al ramal del otro lado de
 // la unión si existe (p. ej. el otro brazo de una yee doble, o la continuación del paso), en vez
@@ -121,36 +122,45 @@ export function deleteSelected(
     const bajNetsToRenumber = new Set<string>();
     let renumberAreas = false;
     const toDelete = new Set<string>(ids);
-    // Las mitades de una división (mergesFrom) son la MISMA línea física partida — borrar una
-    // borra todas (ítem #4/#5 orig. usuario). La cascada que SÍ se quita (pedido usuario actual)
-    // es la de tributarios por `padre`: en conjunto solo cae lo seleccionado.
-    if (!opts?.noMerge) {
-      for (const id of [...ids]) {
-        for (const extra of splitMembersFor(engine, id)) toDelete.add(extra);
+    // Borrado en conjunto (orig. usuario): caen los TRIBUTARIOS que llegan a lo seleccionado
+    // (transitivamente: un tributario puede recibir a otro) y los colgantes por `padre`.
+    // Los RAMALES tronco tocados NO caen (RS1/RS3 sobreviven al borrar laterales — imagen 1).
+    // SIN splitMembersFor: en la maraña casi todo son mitades de splits encadenados
+    // (mergesFrom) y esa expansión arrastraba el tronco entero.
+    {
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const r of engine.ramales) {
+          if (toDelete.has(r.id) || r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
+          const dest = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
+          const feeds = engine.ramales.some(
+            (p) =>
+              toDelete.has(p.id) && p.pts && p.pts.length >= 2 && distToPolyline(dest, p.pts) < 0.5,
+          );
+          if (feeds || (r.padre && toDelete.has(r.padre))) {
+            toDelete.add(r.id);
+            grew = true;
+          }
+        }
       }
     }
     const deletedRamalIds = new Set<string>();
+    const deletedPts: number[][] = [];
     for (const id of toDelete) {
       const idxR = engine.ramales.findIndex((r) => r.id === id);
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
         deletedRamalIds.add(deleted.id);
+        if (deleted.pts) for (const p of deleted.pts) deletedPts.push(p);
         const wasYeeDoblePart = isDeletedYeeDoblePart(engine, deleted);
         const isDivisor = engine.ramales.some(
           (r) => r.mergesFrom && r.mergesFrom[1] === deleted.id,
         );
-        // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
-        // Y doble: borrar solo el segmento, no todo el conjunto conectado ni tribs laterales
-        if (wasYeeDoblePart) {
-          reassignTributariosToHermano(engine, deleted, toDelete);
-          engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id);
-        } else {
-          reassignTributariosToHermano(engine, deleted, toDelete);
-          // Borrado EN CONJUNTO: SOLO los elementos seleccionados caen — los tributarios de
-          // cada ramal seleccionado ya se reasignaron al hermano (arriba); borrarlos aquí en
-          // cascada eliminaba elementos que el usuario no seleccionó.
-          engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id);
-        }
+        // Orig. usuario (borrado en conjunto): los tributarios que llegan a los seleccionados
+        // CAEN con ellos (ya están en toDelete por la expansión de red conectada) — ya no se
+        // reasignan a un hermano.
+        engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id);
         preserveYeeDobleAt(engine, deleted);
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
         // re-une la línea que quedó en dos mitades. Para "Borrar trazo" (noMerge) se salta:
@@ -307,6 +317,10 @@ export function deleteSelected(
         continue;
       }
     }
+    // Yee doble desarmada (orig. usuario): los brazos restantes que quedan tocándose en un
+    // punto donde HABÍA un brazo borrado (grado 2) se funden en UN ramal (aunque formen
+    // esquina) — el trazo restante queda como uno solo.
+    if (!opts?.noMerge) mergeTouchingRemnant(engine, deletedPts);
     for (const net of netsToRenumber) engine._renumberRamales(net);
     for (const net of bajNetsToRenumber) {
       if (net === 'montante') engine._renumberMontantes();
@@ -369,6 +383,9 @@ export function deleteSelected(
     if (!opts?.noMerge && !wasYeeDoblePartSel) {
       remergeSplitRamales(engine, deletedId, deleted.uc || 0);
     }
+    // Yee doble desarmada (orig. usuario): brazos restantes tocándose donde HABÍA un brazo
+    // borrado (grado 2) se funden en UN ramal — también por la ruta de borrado individual.
+    if (!opts?.noMerge) mergeTouchingRemnant(engine, deleted.pts || []);
     if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
     // Borrado quirúrgico o brazo de yee (sin re-merge): los sobrevivientes quedan con
     // mergesFrom que referencian el id borrado — referencias fantasma que confunden un

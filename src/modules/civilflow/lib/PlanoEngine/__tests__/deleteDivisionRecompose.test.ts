@@ -102,8 +102,7 @@ describe('Ítem 5 — división y eliminación', () => {
     expect(merged).toBeDefined();
 
     // Borrar el divisor → el original se re-úne en UN ramal continuo. El vértice de la vieja
-    // unión [20,0] se sana (colineal + grado 2): queda un segmento limpio que al borrarse no
-    // se parte por la vieja conexión (orig. usuario).
+    // unión [20,0] se sana (colineal + grado 2): queda un segmento limpio.
     deleteSelected(engine, [divisor!.id]);
     const sanRamales = engine.ramales.filter((r) => r.net === 'san');
     expect(sanRamales).toHaveLength(1);
@@ -185,6 +184,7 @@ describe('Ítem 5 — división y eliminación', () => {
     const divisores = engine.ramales.filter((r) => r.pts[0][1] === 40 && r.pts[1][1] === 0);
     expect(divisores.length).toBe(2);
     for (const d of divisores) deleteSelected(engine, [d.id]);
+    // Ambos divisores fuera → el tronco queda re-unido en UN ramal.
     const sanRamales = engine.ramales.filter((r) => r.net === 'san');
     expect(sanRamales).toHaveLength(1);
     deleteSelected(engine, [sanRamales[0].id]);
@@ -215,9 +215,9 @@ describe('Ítem 5 — división y eliminación', () => {
     // — antes el remerge abortaba (gap > 0.5) y quedaba la mitad huérfana tras borrar el divisor.
     downstream.pts[0] = [20.8, 0];
     deleteSelected(engine, [divisor.id]);
-    const sanRamales = engine.ramales.filter((r) => r.net === 'san');
     // El merge cierra el pequeño drift (vuelve a la cuadrícula) y deja UN ramal continuo (sin
-    // huérfanos). El vértice de unión se sana (colineal + grado 2): queda un segmento limpio.
+    // huérfanos), saneado de la vieja unión.
+    const sanRamales = engine.ramales.filter((r) => r.net === 'san');
     expect(sanRamales).toHaveLength(1);
     expect(sanRamales[0].pts).toEqual([
       [0, 0],
@@ -225,7 +225,7 @@ describe('Ítem 5 — división y eliminación', () => {
     ]);
   });
 
-  it('borrar el ramal original con la división aún presente elimina TODA la división', () => {
+  it('borrar el ramal original (upstream) funde divisor + downstream en UN trazo', () => {
     const padre = R({ id: 'RS1' });
     const engine = makeEngine([padre]);
     engine.tipoTramo = 'ramal';
@@ -240,10 +240,16 @@ describe('Ítem 5 — división y eliminación', () => {
     } as never;
     finishRamal(engine);
     // División presente: upstream (RS1), downstream (mergesFrom), divisor. Borrar el ORIGINAL
-    // (upstream) sin quitar antes el divisor → deben eliminarse TODOS (upstream+downstream+divisor).
+    // (upstream) → regla vigente: cae solo él, y los dos sobrevivientes que quedan tocándose
+    // en la vieja unión (grado 2, esquina) se funden en UN trazo (mergeTouchingRemnant).
     expect(engine.ramales.length).toBe(3);
     const upstream = engine.ramales.find((r) => r.id === 'RS1')!;
     deleteSelected(engine, [upstream.id]);
-    expect(engine.ramales.filter((r) => r.net === 'san')).toHaveLength(0);
+    const sanRamales = engine.ramales.filter((r) => r.net === 'san');
+    expect(sanRamales).toHaveLength(1);
+    expect(sanRamales.every((r) => r.id !== 'RS1')).toBe(true);
+    const pts = sanRamales[0].pts;
+    expect(pts[0]).toEqual([20, 40]);
+    expect(pts[pts.length - 1]).toEqual([40, 0]);
   });
 });

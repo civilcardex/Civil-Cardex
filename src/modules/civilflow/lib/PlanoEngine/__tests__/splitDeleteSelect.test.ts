@@ -130,7 +130,7 @@ describe('#1 borrar ramal usado para splitear', () => {
     const x = engine.ramales.find((rr) => rr.id !== 'P1' && !rr.mergesFrom)!;
     expect(engine.ramales.length).toBe(3);
     deleteSelected(engine, [x.id]);
-    // rejoin → UN solo ramal continuo
+    // rejoin → UN solo ramal continuo (borrar el splitter no arrastra al tronco)
     expect(engine.ramales.length).toBe(1);
     const merged = engine.ramales[0];
     expect(merged.pts[0]).toEqual([0, 0]);

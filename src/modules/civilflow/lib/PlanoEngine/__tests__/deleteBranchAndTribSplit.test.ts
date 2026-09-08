@@ -74,6 +74,8 @@ const mk = (o: Partial<PlanoRamal>): PlanoRamal =>
 describe('#1 tee no se desplaza al extremo al borrar el brazo', () => {
   it('cuando el brazo borrado lleva la tee, el sobreviviente NO recibe codo nuevo', () => {
     // Host colineal + brazo que carga el marcador tee en su extremo de unión.
+    // Borrado en conjunto (regla vigente): los TRIBUTARIOS que llegan caen; los ramales
+    // tronco conectados (H) sobreviven — y no reciben codo desplazado.
     const brazo = mk({
       id: 'B',
       pts: [
@@ -157,9 +159,9 @@ describe('#4 borrar una mitad de división borra TODA la división', () => {
     });
     const engine = makeEngine([upstream, incoming, downstream]);
     deleteSelected(engine, ['A']);
-    // No deben quedar restos de la división (D y X se eliminan junto con A)
-    expect(engine.ramales.some((r) => ['D', 'X'].includes(r.id))).toBe(false);
-    expect(engine.ramales).toHaveLength(0);
+    // Regla vigente (borrado en conjunto): caen los TRIBUTARIOS que llegan a lo seleccionado
+    // — las mitades hermanas de una división NO se arrastran entre sí. Solo cae A.
+    expect(engine.ramales.map((r) => r.id)).toEqual(['X', 'D']);
   });
   it('borrar la mitad aguas abajo elimina upstream + rama entrante', () => {
     const upstream = mk({
@@ -189,7 +191,8 @@ describe('#4 borrar una mitad de división borra TODA la división', () => {
     });
     const engine = makeEngine([upstream, incoming, downstream]);
     deleteSelected(engine, ['D']);
-    expect(engine.ramales.some((r) => ['A', 'X'].includes(r.id))).toBe(false);
-    expect(engine.ramales).toHaveLength(0);
+    // Regla vigente: borrar la mitad downstream SOLO cae ella — el upstream (tronco) y la
+    // rama entrante sobreviven.
+    expect(engine.ramales.map((r) => r.id)).toEqual(['A', 'X']);
   });
 });

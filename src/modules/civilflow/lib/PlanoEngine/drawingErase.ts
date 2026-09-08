@@ -8,6 +8,7 @@ import {
 import type { PlanoRamal, PlanoBajante, IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 import { isDeletedYeeDoblePart } from './deleteYeePreserve';
+import { mergeTouchingRemnant } from './deleteRemerge';
 import { assignCodoAfterBranchDelete } from './deleteJunctionCleanup';
 import { _firstSegmentAngle, angleAtHalfLength } from './drawingAngles';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
@@ -333,6 +334,9 @@ export function eraseRamalAt(
       engine._emitSelect(null);
       engine.selId = null;
       engine._emitStatus('Segmento extremo recortado');
+      // Yee desarmada con el borrador (orig. usuario): tras el recorte, los brazos restantes
+      // que se tocan donde estaba el vértice eliminado se funden en UN ramal.
+      mergeTouchingRemnant(engine, [oldPts[bestIdx]]);
     } else {
       // Ramal de un solo segmento: el segmento ES el ramal — se elimina completo. noMerge
       // (borrado quirúrgico, sin re-unir) SOLO si el ramal no partió a otro: borrar el trazo
@@ -340,10 +344,13 @@ export function eraseRamalAt(
       // partido (orig. usuario: RS4|RS5). Los divisores no expanden clúster (splitMembersFor
       // devuelve []), así que noMerge:false solo habilita el re-merge.
       const isDivisor = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
+      const removedPts = r.pts.slice();
       engine.deleteSelected(undefined, { noMerge: !isDivisor });
       engine._emitSelect(null);
       engine.selId = null;
       engine._emitStatus('Ramal eliminado');
+      // Yee desarmada: los sobrevivientes que se tocan donde estaba este ramal se funden.
+      mergeTouchingRemnant(engine, removedPts);
     }
   }
   engine.render();

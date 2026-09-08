@@ -11,6 +11,8 @@ function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
     ramales,
     bajantes: [],
     textAnnots: [],
+    crossFloorGhosts: [],
+    dims: [],
     areas: [],
     guideLines: [],
     selId: null,
@@ -160,11 +162,11 @@ describe('borrar el tributario que llega a la esquina fusiona los dos restantes'
     expect(eng.ramales.filter((r) => r.tipo === 'tributario')).toHaveLength(2);
   });
 
-  it('multi-delete de los tributarios que partieron el tronco: el tronco remergea (orig. usuario)', () => {
+  it('multi-delete de los tributarios que partieron el tronco: el tronco remergea', () => {
     localStorage.clear();
     // Tronco RS2 partido por dos tributarios que aterrizaron a mitad de cuerpo (downstream
     // con mergesFrom). Borrar TODOS los tributarios juntos (multi-select → deleteSelected(ids)
-    // SIN noMerge ahora) re-une el tronco en un solo ramal.
+    // sin noMerge): borrado en conjunto — los troncos conectados caen con ellos.
     const rs2a = R({
       id: 'RS2',
       label: 'RS2',
@@ -214,7 +216,8 @@ describe('borrar el tributario que llega a la esquina fusiona los dos restantes'
     const eng = makeEngine([rs2a, rs2b, rs2c, t1, t2]);
     // Multi-delete como el teclado: deleteSelected(ids) sin noMerge.
     _deleteSelected(eng, ['T1RS2', 'T2RS2']);
-    // El tronco queda en UNA pieza (el heal elimina los vértices colineales del joint).
+    // Borrar los tributarios NO arrastra al tronco: queda re-unido en UNA pieza
+    // (el heal elimina los vértices colineales del joint).
     const tronco = eng.ramales.filter((r) => r.tipo === 'ramal' && r.net === 'san');
     expect(tronco).toHaveLength(1);
     expect(tronco[0].pts).toEqual([

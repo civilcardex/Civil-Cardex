@@ -142,6 +142,125 @@ export function remergeSplitRamales(
   mergeCollinearPairs(engine);
 }
 
+/** Orig. usuario (yee doble desarmada): tras borrar brazos, dos ramales que quedan TOCÁNDOSE
+ *  en un punto donde HABÍA un brazo borrado (grado 2, sin bajante ni otro ramal) se funden en
+ *  UN solo ramal conservando el vértice — aunque NO sean colineales (esquina RS1|RS2 del trazo
+ *  restante). Solo san/ll. `deletedPts` = todos los puntos de los ramales borrados en esta
+ *  operación: la fusión solo ocurre en el sitio del borrado, nunca en uniones ajenas. */
+export function mergeTouchingRemnant(engine: IPlanoEngineCore, deletedPts: number[][]): void {
+  const TOL = 0.5;
+  const atDeleted = (p: number[]): boolean =>
+    deletedPts.some((d) => Math.hypot(d[0] - p[0], d[1] - p[1]) < TOL);
+  let merged = true;
+  while (merged) {
+    merged = false;
+    const ramales = [...engine.ramales];
+    for (let i = 0; i < ramales.length; i++) {
+      const A = ramales[i];
+      if (!A?.pts || A.pts.length < 2 || (A.net !== 'san' && A.net !== 'll')) continue;
+      for (let j = i + 1; j < ramales.length; j++) {
+        const B = ramales[j];
+        if (!B?.pts || B.pts.length < 2 || B.net !== A.net || B.id === A.id) continue;
+        const a0 = A.pts[0];
+        const a1 = A.pts[A.pts.length - 1];
+        const b0 = B.pts[0];
+        const b1 = B.pts[B.pts.length - 1];
+        let shared = -1; // 0: A.end-B.start, 1: A.end-B.end, 2: A.start-B.end, 3: A.start-B.start
+        if (Math.hypot(a1[0] - b0[0], a1[1] - b0[1]) < TOL) shared = 0;
+        else if (Math.hypot(a1[0] - b1[0], a1[1] - b1[1]) < TOL) shared = 1;
+        else if (Math.hypot(a0[0] - b1[0], a0[1] - b1[1]) < TOL) shared = 2;
+        else if (Math.hypot(a0[0] - b0[0], a0[1] - b0[1]) < TOL) shared = 3;
+        if (shared < 0) continue;
+        const sharedPt = shared === 0 || shared === 2 ? a1 : a0;
+        // Solo en el sitio del borrado: el punto compartido debe coincidir con un punto de
+        // un brazo eliminado en esta operación. Sin esto el merge destruía particiones
+        // legítimas del tronco (divisores que el usuario quiere conservar separados).
+        if (!atDeleted(sharedPt)) continue;
+        // SOLO esquinas: si los dos ramales son COLINEALES a través del punto (misma línea),
+        // son un tronco continuo — fusionarlos haría desaparecer la etiqueta del segundo
+        // (orig. usuario: RS1|RS3 colineales se "borraban"). La esquina diagonal+horizontal
+        // del trazo restante de la yee SÍ se fusiona en un solo ramal.
+        const intoA = sharedPt === a1 ? A.pts[A.pts.length - 2] : A.pts[1];
+        const intoB = sharedPt === b1 ? B.pts[B.pts.length - 2] : B.pts[1];
+        const dax = intoA[0] - sharedPt[0];
+        const day = intoA[1] - sharedPt[1];
+        const dbx = intoB[0] - sharedPt[0];
+        const dby = intoB[1] - sharedPt[1];
+        const la = Math.hypot(dax, day);
+        const lb = Math.hypot(dbx, dby);
+        if (la < 1e-6 || lb < 1e-6) continue;
+        if (Math.abs((dax * dbx + day * dby) / (la * lb)) > 0.9) continue; // colineales → no fusionar
+        // Grado exacto 2 en el punto (sin otros ramales ni bajantes): continuación simple.
+        let touching = 2;
+        for (const r of engine.ramales) {
+          if (r.id === A.id || r.id === B.id || !r.pts || r.pts.length < 2) continue;
+          if (r.pts.some((p) => Math.hypot(p[0] - sharedPt[0], p[1] - sharedPt[1]) < TOL)) {
+            touching++;
+            break;
+          }
+        }
+        if (touching !== 2) continue;
+        for (const baj of engine.bajantes) {
+          if (Math.hypot(baj.x - sharedPt[0], baj.y - sharedPt[1]) < TOL) {
+            touching++;
+            break;
+          }
+        }
+        if (touching !== 2) continue;
+        scrubAccMedTeeAt(engine, sharedPt);
+        scrubPlanCodoAt(engine, sharedPt);
+        // Fusionar conservando el vértice (puede NO ser colineal — esquina real del trazo).
+        let primary = A;
+        let mergedPts: number[][];
+        if (shared === 0) mergedPts = [...A.pts, ...B.pts.slice(1)];
+        else if (shared === 1) mergedPts = [...A.pts, ...B.pts.slice(1).reverse()];
+        else if (shared === 2) {
+          mergedPts = [...B.pts, ...A.pts.slice(1)];
+          primary = B;
+        } else {
+          mergedPts = [...B.pts, ...A.pts.slice(1)];
+          primary = B;
+        }
+        primary.pts = mergedPts;
+        primary.totalL = calculateRamalLength(primary.pts, engine);
+        if (B.accesorioFin) primary.accesorioFin = B.accesorioFin;
+        if (B.diametroFin) primary.diametroFin = B.diametroFin;
+        if (B.aparatoFin) primary.aparatoFin = B.aparatoFin;
+        if (B.sifonLabelFin) primary.sifonLabelFin = B.sifonLabelFin;
+        if (B.fixtures) {
+          const merged = { ...(primary.fixtures || {}) };
+          for (const [k, v] of Object.entries(B.fixtures)) merged[k] = (merged[k] || 0) + (v || 0);
+          primary.fixtures = merged;
+        }
+        if (B.hydroAcc) primary.hydroAcc = B.hydroAcc;
+        if (B.gasAcc) {
+          const merged = { ...(primary.gasAcc || {}) };
+          for (const [k, v] of Object.entries(B.gasAcc)) merged[k] = (merged[k] || 0) + (v || 0);
+          primary.gasAcc = merged;
+        }
+        healMergedVertices(engine, primary);
+        const [mx, my] = _midpoint(primary.pts);
+        primary.labelX = mx;
+        primary.labelY = my;
+        if (primary.labelAngle == null) primary.labelAngle = angleAtHalfLength(primary.pts);
+        const secondaryId = B.id;
+        engine.ramales = engine.ramales.filter((r) => r.id !== secondaryId);
+        for (const m of engine.ramales) {
+          if (m.mergesFrom) {
+            m.mergesFrom = [
+              m.mergesFrom[0] === secondaryId ? primary.id : m.mergesFrom[0],
+              m.mergesFrom[1] === secondaryId ? primary.id : m.mergesFrom[1],
+            ];
+          }
+        }
+        merged = true;
+        break;
+      }
+      if (merged) break;
+    }
+  }
+}
+
 // Elimina vértices interiores redundantes del ramal re-unido: colineales (la línea sigue recta
 // a través del punto), sin accesorio anclado y grado-2 (ningún otro ramal/bajante toca el
 // punto). Sin esto, las viejas uniones quedaban como quiebres fantasma y borrar un segmento

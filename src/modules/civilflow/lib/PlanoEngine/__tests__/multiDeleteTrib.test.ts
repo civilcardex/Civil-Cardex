@@ -126,22 +126,11 @@ function buildScene(): PlanoEngine {
 }
 
 describe('borrado en conjunto de tributarios — los troncos sobreviven y se re-mezclan', () => {
-  it('borrar T1RS1: el tronco partido se re-unifica con tee limpiado', () => {
+  it('borrar T1RS1 (tributario): el tronco partido SOBREVIVE y se re-unifica', () => {
     const eng = buildScene();
     eng.deleteSelected(['T1RS1']);
-    console.log(
-      'AFTER:',
-      JSON.stringify(
-        eng.ramales.map((r) => ({
-          id: r.id,
-          label: r.label,
-          mf: (r as unknown as { mergesFrom?: string[] }).mergesFrom ?? null,
-          accI: (r as unknown as { accesorioInicio: string }).accesorioInicio,
-          accF: (r as unknown as { accesorioFin: string }).accesorioFin,
-        })),
-      ),
-    );
-    // El tronco sigue existiendo (una sola pieza re-unificada o las dos originales).
+    // Regla vigente: borrar un TRIBUTARIO no arrastra al tronco que toca — RS1|RS2
+    // sobreviven y se re-unifican en un solo tronco colineal.
     expect(eng.ramales.some((r) => r.id === 'RS1' || r.id === 'RS2')).toBe(true);
   });
 
@@ -149,7 +138,6 @@ describe('borrado en conjunto de tributarios — los troncos sobreviven y se re-
     const eng = buildScene();
     const trams = eng.ramales.filter((r) => r.tipo === 'tributario').map((r) => r.id);
     eng.deleteSelected(trams);
-    console.log('AFTER2:', JSON.stringify(eng.ramales.map((r) => ({ id: r.id, label: r.label }))));
     expect(eng.ramales.length).toBeGreaterThan(0);
     expect(eng.ramales.some((r) => r.id === 'RS1' || r.id === 'RS2')).toBe(true);
   });

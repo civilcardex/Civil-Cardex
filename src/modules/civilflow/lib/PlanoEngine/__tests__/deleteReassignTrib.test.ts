@@ -64,8 +64,8 @@ const R = (o: Partial<PlanoRamal> & { id: string }): PlanoRamal =>
     ...o,
   }) as PlanoRamal;
 
-describe('ítem 4 — reasignación tras borrar en Y simple', () => {
-  it('borrar RS1 reasigna T1RS1 a RS2 (lo toca) con label nuevo, no el del borrado', () => {
+describe('borrado en conjunto — tributario colgante cae, troncos sobreviven', () => {
+  it('borrar RS1 cae con su tributario Tx; el tronco RS2 sobrevive', () => {
     const eng = makeEngine([
       R({
         id: 'RS1',
@@ -95,13 +95,14 @@ describe('ítem 4 — reasignación tras borrar en Y simple', () => {
       }),
     ]);
     deleteSelected(eng, ['RS1']);
-    const trib = eng.ramales.find((r) => r.id === 'Tx');
-    expect(trib).toBeDefined();
-    expect(trib?.padre).toBe('RS2');
-    expect(trib?.label).toBe('T1RS2');
+    // Borrado en conjunto (regla vigente): el tributario Tx colgante cae con RS1; el tronco
+    // RS2 sobrevive.
+    expect(eng.ramales.find((r) => r.id === 'RS1')).toBeUndefined();
+    expect(eng.ramales.find((r) => r.id === 'Tx')).toBeUndefined();
+    expect(eng.ramales.find((r) => r.id === 'RS2')).toBeTruthy();
   });
 
-  it('sin ramal tocado, el tributario sobrevive sin adoptar un ramal lejano (multi = solo seleccionados)', () => {
+  it('sin ramal conectado, cae solo el seleccionado + su tributario colgante (no adopta lejanos)', () => {
     const eng = makeEngine([
       R({
         id: 'RS1',
@@ -131,9 +132,7 @@ describe('ítem 4 — reasignación tras borrar en Y simple', () => {
       }),
     ]);
     deleteSelected(eng, ['RS1']);
-    // RS9 está a >20px: no lo adopta (regla ítem 4) y el pedido "multi = solo seleccionados"
-    // impide la cascada — el tributario queda suelto para que el usuario decida.
-    expect(eng.ramales.find((r) => r.id === 'Tx')).toBeDefined();
-    expect(eng.ramales.find((r) => r.id === 'Tx')?.padre).not.toBe('RS9');
+    // RS9 está a >20px y no conecta: sobrevive. El tributario colgante cae con su padre.
+    expect(eng.ramales.map((r) => r.id)).toEqual(['RS9']);
   });
 });
