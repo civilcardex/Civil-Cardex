@@ -361,8 +361,63 @@ export function applyBajanteAssociation(
             hydroDirty = true;
           }
         }
+        // UCs automáticas al piso inferior (orig. usuario): los ramales conectados al bajante
+        // DESTINO reciben el agregado del piso superior SUMADO a lo que ya tengan — y el
+        // bajante destino marca el total en ucAcum.
+        const tgtRaw = loadFromStorage<{
+          bajantes?: { id: string; recibeDeIds?: string[] }[];
+          ramales?: { id: string; net: string }[];
+        } | null>(TRAZOS_PREFIX + target.planId, null);
+        const tgtBaj = tgtRaw?.bajantes?.find((b) => b.id === target.id);
+        const tgtRamalIds: string[] = tgtBaj?.recibeDeIds || [];
+        if (tgtRamalIds.length === 0 && tgtRaw?.ramales?.length) {
+          // fallback geom: ramales de la red con un extremo en el bajante destino.
+          for (const rr of tgtRaw.ramales) {
+            if (rr.net !== target.net || !rr.id || rr.id.startsWith('LD_')) continue;
+            tgtRamalIds.push(rr.id);
+            if (tgtRamalIds.length > 10) break;
+          }
+        }
+        for (const rid of tgtRamalIds) {
+          const tk = `${target.net}_${rid}_${target.planId}`;
+          if (Object.keys(agg).length) {
+            const cur = apos[tk] || {};
+            for (const [k, v] of Object.entries(agg)) cur[k] = (cur[k] || 0) + (v as number);
+            apos[tk] = cur;
+            aposDirty = true;
+          }
+          if (hydroAgg) {
+            const cur = hydro[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+            const acc = { ...(cur.accesorios || {}) };
+            for (const [k, v] of Object.entries(hydroAgg)) acc[k] = (acc[k] || 0) + (v as number);
+            hydro[tk] = { ...cur, accesorios: acc };
+            hydroDirty = true;
+          }
+        }
         if (aposDirty) saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
         if (hydroDirty) saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
+        // ucAcum del bajante destino = total UC agregada del piso superior (visible en tablas).
+        const totalUc = Object.values(agg).reduce((s, v) => s + (v as number), 0);
+        if (totalUc > 0) {
+          writeBajantePropToDrawing(
+            `${target.id}-${target.planId}`,
+            target.net,
+            'ucAcum',
+            totalUc,
+            plans,
+          );
+          if (loadedPlanId === target.planId) {
+            eng.updateElementById(target.id, { ucAcum: totalUc });
+          }
+        }
+        if (aposDirty || hydroDirty) {
+          try {
+            window.dispatchEvent(new CustomEvent('aparatos-clear'));
+            window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
+          } catch {
+            /* ignore */
+          }
+        }
       }
     }
   } catch {
