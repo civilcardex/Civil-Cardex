@@ -8,8 +8,6 @@ import {
   sanDiamLabelAllowedForApparatus,
   SAN_INODORO_MIN_MSG,
 } from '../../../utils/sanitaryDiamCompat';
-import { maxDiametroLabel } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
-import { distToPolyline } from '../../../lib/shared/geometry';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import {
@@ -92,54 +90,8 @@ export function RamalEditor({
   const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
   const showCaudal = activeNet === 'll';
 
-  // Un ramal que RECIBE la descarga de este (su pts[0] toca el extremo de descarga del ramal
-  // asignado) debe seguir al mayor de los diámetros de sus alimentadores — igual que el
-  // auto-split de PlanoEngineDrawing hace en creación. La sidebar antes no propagaba nada:
-  // el receptor (p. ej. RS5 recibe de RS1/RS4, RS3 de RS5/RS2) quedaba con el diámetro de
-  // creación y nunca subía al mayor. Recursivo aguas abajo con visited (misma regla
-  // geométrica que sanitaryRows, aplicada a san/ll — las demás redes usan mergesFrom).
-  const propagateDiamToReceivers = (fromId: string, diam: string) => {
-    const eng = engineRef.current;
-    if (!eng || !diam) return;
-    const mergeSiblingPairs = new Set<string>();
-    for (const r of eng.ramales) {
-      if (r.mergesFrom) mergeSiblingPairs.add(r.mergesFrom.toSorted().join('|'));
-    }
-    const visited = new Set<string>([fromId]);
-    const stack = [{ id: fromId, d: diam }];
-    while (stack.length > 0) {
-      const { id, d } = stack.pop()!;
-      const src = eng.ramales.find((r) => r.id === id);
-      if (!src || !src.pts || src.pts.length < 2) continue;
-      if (src.net !== 'san' && src.net !== 'll') continue;
-      const srcEnd = src._tribReversed ? src.pts[0] : src.pts[src.pts.length - 1];
-      for (const r of eng.ramales) {
-        if (visited.has(r.id) || r.id === id || r.net !== src.net) continue;
-        if (!r.pts || r.pts.length < 2) continue;
-        if (mergeSiblingPairs.has([src.id, r.id].sort().join('|'))) continue;
-        if (distToPolyline(srcEnd, r.pts) >= 2.0) continue;
-        const rDownstream = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
-        if (Math.hypot(srcEnd[0] - rDownstream[0], srcEnd[1] - rDownstream[1]) < 2.0) {
-          const rFin = (r as unknown as { fin?: string }).fin || '';
-          if (!rFin) continue;
-          const finIsRamalAtPt = eng.ramales.some(
-            (o) =>
-              (o.id === rFin || (o as unknown as { label?: string }).label === rFin) &&
-              o.pts &&
-              o.pts.length >= 2 &&
-              distToPolyline(srcEnd, o.pts) < 2.0,
-          );
-          if (finIsRamalAtPt) continue;
-        }
-        visited.add(r.id);
-        const next = maxDiametroLabel(r.diametro || '', d);
-        if (next !== r.diametro) {
-          eng.updateElementById(r.id, { diametro: next });
-          stack.push({ id: r.id, d: next });
-        }
-      }
-    }
-  };
+  // Ítems 5+6: la propagación aguas abajo la hacen updateSelected/updateElementById vía
+  // recomputeDownstreamDiameters — un solo snapshot por cambio, sin llamadas extra aquí.
   return (
     <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
       <div
@@ -313,7 +265,6 @@ export function RamalEditor({
                   if (engineRef.current && selElement) {
                     engineRef.current.updateSelected({ diametro: dn });
                     setSelElement({ ...selElement, diametro: dn });
-                    propagateDiamToReceivers(selElement.id, dn);
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
                     const lastRamal = [...eng.ramales]
@@ -324,7 +275,6 @@ export function RamalEditor({
                       eng.updateSelected({ diametro: dn });
                       const { _labelBox, ...rest } = lastRamal;
                       setSelElement({ ...rest, diametro: dn });
-                      propagateDiamToReceivers(lastRamal.id, dn);
                     }
                   }
                 }}
@@ -433,7 +383,6 @@ export function RamalEditor({
                   if (engineRef.current && selElement) {
                     engineRef.current.updateSelected({ diametro: v });
                     setSelElement({ ...selElement, diametro: v });
-                    propagateDiamToReceivers(selElement.id, v);
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
                     const lastRamal = [...eng.ramales]
@@ -444,7 +393,6 @@ export function RamalEditor({
                       eng.updateSelected({ diametro: v });
                       const { _labelBox, ...rest } = lastRamal;
                       setSelElement({ ...rest, diametro: v });
-                      propagateDiamToReceivers(lastRamal.id, v);
                     }
                   }
                 }}
@@ -498,6 +446,9 @@ export function RamalEditor({
                 onChange={(e) => {
                   const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
                   setPendInput(raw);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
                 }}
                 onBlur={(e) => {
                   const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;

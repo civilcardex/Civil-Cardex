@@ -7,6 +7,7 @@ import type {
   PlanoRamal,
   PlanoTextAnnotation,
 } from '../../../lib/PlanoEngine/PlanoState';
+import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
 import {
   useTramoEditorContext,
   INPUT_CENTER_STYLE,
@@ -550,6 +551,16 @@ export function RamalEditorSection() {
                         type="checkbox"
                         checked={isAssoc}
                         onChange={(e) => {
+                          // Regla central (ítem 1.2): tope de asociaciones ANTES de escribir.
+                          if (e.target.checked && !isAssoc) {
+                            const check = puedeConectarRamalABajante(b, selElement);
+                            if (!check.ok) {
+                              if (check.title && check.msg)
+                                engineRef.current?.triggerAlert(check.title, check.msg);
+                              e.preventDefault();
+                              return;
+                            }
+                          }
                           if (e.target.checked && !isAssoc && b.recibeDeIds.length === 1) {
                             const existing = (engineRef.current?.ramales || []).find(
                               (x) => x.id === b.recibeDeIds[0],

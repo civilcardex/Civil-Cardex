@@ -3,6 +3,7 @@ import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
+import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
 import { SELECT_STYLE, INPUT_CENTER_STYLE, CHECK_GRID_STYLE, CHECK_ROW_STYLE } from './context';
 
 /** Editor del bajante/montante seleccionado: diámetro, altura vertical, llenado (R) y área
@@ -404,12 +405,23 @@ export function BajanteEditor({
                     </div>
                   );
                 const recibidos = selElement.recibeDeIds || [];
+                const alimentan = selElement.alimentaIds || [];
                 return bajRamales.map((r) => (
                   <label key={r.id} style={CHECK_ROW_STYLE}>
                     <input
                       type="checkbox"
-                      checked={recibidos.includes(r.id)}
+                      checked={recibidos.includes(r.id) || alimentan.includes(r.id)}
                       onChange={(e) => {
+                        // Regla central (ítem 1.2): tope de asociaciones ANTES de escribir.
+                        if (e.target.checked && !recibidos.includes(r.id)) {
+                          const check = puedeConectarRamalABajante(selElement, r);
+                          if (!check.ok) {
+                            if (check.title && check.msg)
+                              engineRef.current?.triggerAlert(check.title, check.msg);
+                            e.preventDefault();
+                            return;
+                          }
+                        }
                         if (e.target.checked && recibidos.length === 1) {
                           const existing = (engineRef.current?.ramales || []).find(
                             (x) => x.id === recibidos[0],

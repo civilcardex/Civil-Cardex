@@ -5,8 +5,12 @@ import { getAccessoryOptions } from '../../../utils/accessoryOptions';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../../lib/PlanoEngine/drawingCreations';
 import { codoPolarityOk, flowEndsAt } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
-import { syncExtremeAccessoryToHidroData } from '../../../utils/syncExtremeAccessory';
+import {
+  syncExtremeAccessoryToHidroData,
+  bumpAparatoCount,
+} from '../../../utils/syncExtremeAccessory';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
 import { matchDiamOption } from '../../../utils/diamOptionMatch';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import {
@@ -119,6 +123,17 @@ export function BajanteConnectionPanel({
                             (bb) => bb.id === bajEl.id,
                           );
                           const liveRecibe: string[] = liveBaj?.recibeDeIds || recibidos;
+                          // Regla central (ítem 1.2): el tope de asociaciones se valida ANTES de
+                          // escribir cualquier campo — recibeDeIds, ini/fin o estado del panel.
+                          if (checked && liveBaj) {
+                            const check = puedeConectarRamalABajante(liveBaj, r);
+                            if (!check.ok) {
+                              if (check.title && check.msg)
+                                engineRef.current?.triggerAlert(check.title, check.msg);
+                              e.preventDefault();
+                              return;
+                            }
+                          }
                           if (checked && liveRecibe.length === 1) {
                             const existing = engineRef.current?.ramales.find(
                               (x) => x.id === liveRecibe[0],
@@ -497,6 +512,12 @@ export function BajanteConnectionPanel({
                                   ramalEl.diametro,
                                 );
                               }
+                              // Sifón desde el EXTREMO = mismo comportamiento que desde el
+                              // cuerpo (orig. usuario): suma el aparato 'sif' y auto-asigna el
+                              // diámetro del ramal si está vacío.
+                              if (val === 'sifon' && ramalEl.net === 'san' && !ramalEl.diametro) {
+                                updates.diametro = '2"';
+                              }
                               engineRef.current.updateElementById(ramalEl.id, updates);
                               setContextMenuState((prev) =>
                                 prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
@@ -516,6 +537,14 @@ export function BajanteConnectionPanel({
                                   val,
                                   planosCtx.plans,
                                 );
+                              } else if (val !== oldVal && ramalEl.net === 'san') {
+                                // Sin planes confirmados el sync no corre — el bump del aparato
+                                // 'sif' se hace directo para no perder la cantidad (orig. usuario).
+                                const planId = engineRef.current?._loadedPlanId ?? '';
+                                if (val === 'sifon')
+                                  bumpAparatoCount('san', ramalEl.id, planId, 'sif', +1);
+                                if (oldVal === 'sifon')
+                                  bumpAparatoCount('san', ramalEl.id, planId, 'sif', -1);
                               }
                               engineRef.current._markDirty();
                             }

@@ -9,6 +9,7 @@ import {
 import { bajanteHitDistance, bajanteAsociadoACanal } from './canalAssociation';
 import { pointInLabelBox, pointOnAnyBodySegment } from './HitTester';
 import { getSelected, selectAt } from './PlanoEngineSelection';
+import { guideBodyHit } from './guideLines';
 import {
   _tryCanalResizeHit,
   _tryBajanteHit,
@@ -330,7 +331,11 @@ export function handleSelectDown(
       { slot: 'fin', box: r._sifonLabelBoxFin },
     ];
     for (const { slot, box } of slots) {
-      if (!box || !pointInLabelBox(x, y, box)) continue;
+      if (!box) continue;
+      // Ítem usuario: fallback por cercanía al centro (12px) — la caja del frame anterior
+      // puede quedar chica/desfasada a zoom bajo y la etiqueta se volvía inseleccionable.
+      const nearCenter = Math.hypot(x - box.cx, y - box.cy) < 12;
+      if (!pointInLabelBox(x, y, box) && !nearCenter) continue;
       if (ensureActiveNet(engine, r.net)) return;
       engine.selId = r.id;
       engine.lblDrag = { id: r.id, offX: x - box.cx, offY: y - box.cy, slot };
@@ -484,19 +489,27 @@ export function handleSelectDown(
   // selectAt genérico.
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
     for (const g of engine.guideLines) {
-      if (!g._labelBox || !pointInLabelBox(x, y, g._labelBox)) continue;
+      const inBox = g._labelBox && pointInLabelBox(x, y, g._labelBox);
+      const tpHit = engine.toPlane(x, y);
+      if (!inBox && !guideBodyHit(engine, g, tpHit.x, tpHit.y)) continue;
       engine.selId = g.id;
       engine._emitSelect(g);
       const tp = engine.toPlane(x, y);
-      // ponytail: si el clic cae sobre un EXTREMO de la guía → arrastre de extremo (estirar/encoger)
+      // Ítem 2: si el clic cae sobre CUALQUIER vértice de la guía → arrastre de ese vértice
+      // (edición individual); si no, arrastre de cuerpo completo.
       const END_TOL = 12;
-      let endIdx: 0 | 1 | undefined;
+      let endIdx: number | undefined;
       if (g.pts.length >= 2) {
-        const c0 = engine.toCvs(g.pts[0][0], g.pts[0][1]);
-        const c1 = engine.toCvs(g.pts[1][0], g.pts[1][1]);
-        const d0 = Math.hypot(x - c0.x, y - c0.y);
-        const d1 = Math.hypot(x - c1.x, y - c1.y);
-        if (d0 <= END_TOL || d1 <= END_TOL) endIdx = d0 <= d1 ? 0 : 1;
+        let bestD = Infinity;
+        g.pts.forEach((p, i) => {
+          const c = engine.toCvs(p[0], p[1]);
+          const d = Math.hypot(x - c.x, y - c.y);
+          if (d < bestD) {
+            bestD = d;
+            endIdx = i;
+          }
+        });
+        if (bestD > END_TOL) endIdx = undefined;
       }
       engine.guideDrag = {
         id: g.id,

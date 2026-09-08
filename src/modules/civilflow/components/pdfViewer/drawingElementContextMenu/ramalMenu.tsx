@@ -10,6 +10,7 @@ import {
 import { directNeighborRamales } from '../../../utils/flowDirection';
 import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState';
 import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber';
+import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
 import {
   useDrawingElementContextMenu,
   MENU_GRID_2COL_TALL_STYLE,
@@ -127,6 +128,40 @@ export function RamalMenu() {
     if (!eng) return;
     const fresh = eng.ramales.find((r) => r.id === ramalEl.id);
     if (!fresh) return;
+    // Ítem 9 (aclaración usuario): la conversión es una transformación, no un dibujo nuevo —
+    // se convierte y recalcula sin la alerta de conexión nueva. PERO si el ramal resultante
+    // queda conectado a un tributario, la regla "los ramales no se conectan a tributarios"
+    // SÍ aplica y la alerta debe aparecer. La geometría no cambia en la conversión, así que
+    // la conexión resultante se evalúa sobre la topología actual: padre tributario, o algún
+    // extremo tocando un tributario que no sea hijo propio (los hijos pasan a ser
+    // tributarios de un ramal — válido). Mismo texto que el path de dibujo.
+    if (fresh.tipo === 'tributario' && fresh.pts && fresh.pts.length >= 2) {
+      const TOL = 0.5;
+      const sameGroup = (a: string, b: string) =>
+        a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+      const prevPadre = fresh.padre ? eng.ramales.find((r) => r.id === fresh.padre) : undefined;
+      const padreIsTrib =
+        !!prevPadre && prevPadre.tipo === 'tributario' && sameGroup(prevPadre.net, fresh.net);
+      const eps = [fresh.pts[0], fresh.pts[fresh.pts.length - 1]];
+      const touchesTrib = eng.ramales.some(
+        (o) =>
+          o.id !== fresh.id &&
+          o.tipo === 'tributario' &&
+          o.padre !== fresh.id &&
+          sameGroup(o.net, fresh.net) &&
+          !!o.pts &&
+          o.pts.length >= 2 &&
+          eps.some(
+            (e) =>
+              (o.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
+              pointOnRamalBody(o.pts || [], e, TOL),
+          ),
+      );
+      if (padreIsTrib || touchesTrib) {
+        eng.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
+        return;
+      }
+    }
     // El flip de la flecha del renderer depende de `tipo`: san/ll/vent solo aplican
     // _tribReversed a TRIBUTARIOS; al pasar a ramal el flip vuelve a 1 y la flecha se
     // invertiría si el tributario traía _tribReversed. Revertir pts + limpiar el flag
@@ -582,6 +617,16 @@ export function RamalMenu() {
                       type="checkbox"
                       checked={isAssociated}
                       onChange={(e) => {
+                        // Regla central (ítem 1.2): tope de asociaciones validado ANTES de escribir.
+                        if (e.target.checked) {
+                          const check = puedeConectarRamalABajante(b, ramalEl);
+                          if (!check.ok) {
+                            if (check.title && check.msg)
+                              engineRef.current?.triggerAlert(check.title, check.msg);
+                            e.preventDefault();
+                            return;
+                          }
+                        }
                         const recibidos = b.recibeDeIds || [];
                         const newRecibe = e.target.checked
                           ? [...recibidos, currentId]

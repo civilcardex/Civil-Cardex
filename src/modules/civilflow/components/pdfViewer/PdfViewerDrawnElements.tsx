@@ -9,13 +9,24 @@ interface PdfViewerDrawnElementsProps {
   engineRef: React.MutableRefObject<PlanoEngine | null>;
 }
 
-const GROUP_ORDER = ['bajante', 'ramal', 'tributario', 'montante', 'canal', 'area'] as const;
+const GROUP_ORDER = [
+  'bajante',
+  'ramal',
+  'tributario',
+  'montante',
+  'canal',
+  'caja_san',
+  'caja_ll',
+  'area',
+] as const;
 const GROUP_LABEL: Record<string, string> = {
   bajante: 'Bajantes',
   ramal: 'Ramales',
   tributario: 'Tributarios',
   montante: 'Montantes',
   canal: 'Canales',
+  caja_san: 'Cajas aguas negras',
+  caja_ll: 'Cajas aguas lluvias',
   area: 'Áreas',
 };
 

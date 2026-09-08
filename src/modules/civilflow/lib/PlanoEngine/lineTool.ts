@@ -1,6 +1,5 @@
-import { NETS, netsSnapLinked } from './PlanoState';
+import { NETS } from './PlanoState';
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
-import { canalRectHitDistance } from './canalAssociation';
 import {
   _firstSegmentAngle,
   checkRamalAngles,
@@ -11,6 +10,7 @@ import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import { finishRamal, checkCrossRamalAngle } from './finishRamal';
 import { canJoinTributario } from './junctionAutoSplit';
 import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils';
+import { commitOpenGuide } from './guideLines';
 
 type ToolType =
   | 'sel'
@@ -28,6 +28,7 @@ type ToolType =
   | 'cont'
   | 'calent'
   | 'canal'
+  | 'caja'
   | 'guide';
 
 function toolCursor(tool: string): string {
@@ -41,7 +42,9 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   else if (engine.activeRamal && t !== 'line') cancelRamal(engine);
   if (engine.activeArea && t !== 'area') finishArea(engine);
   if (t !== 'dim') engine._dimStart = null;
-  if (t !== 'guide') engine._guideStart = null;
+  // Ítem 2: salir de la herramienta commitea la guía multisegmento (≥2 vértices) en vez de
+  // descartarla; con 0-1 vértices commitOpenGuide la descarta.
+  if (t !== 'guide') commitOpenGuide(engine);
   if (t !== 'canal') engine._canalStart = null;
   engine.tool = t;
   engine.canv.style.cursor = toolCursor(t);
@@ -191,43 +194,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       return;
     }
 
-    // Un ramal solo puede LLEGAR a un bajante — real (de su piso) o fantasma (de cualquier
-    // tipo) — nunca EMPEZAR ahí. Se verifica contra el clic crudo (antes de cualquier snap):
-    // simplemente quitar el snap-a-bajante de abajo no basta, porque el punto crudo del clic ya
-    // está justo encima del círculo y aun así empezaría un ramal ahí, solo que sin asociar. Se
-    // bloquea de plano. Usa los mismos círculos de acierto cacheados (_circ para el bajante
-    // real, _ghost para cualquier fantasma) que el pase de render ya calcula cada frame, así
-    // que siempre coincide exactamente con lo que está en pantalla.
-    {
-      const rawC = engine.toCvs(pt.x, pt.y);
-      const onBajante = engine.bajantes.some((b) => {
-        if (!netsSnapLinked(b.net, engine.activeNet) || engine._hiddenNets.has(b.net)) return false;
-        if (
-          b.tipo === 'canal'
-            ? canalRectHitDistance(b, rawC.x, rawC.y, 6 * engine.zoom) < Infinity
-            : b._circ &&
-              Math.hypot(b._circ.x - rawC.x, b._circ.y - rawC.y) < b._circ.r + 6 * engine.zoom
-        )
-          return true;
-        return false;
-      });
-      const onFantasma =
-        !onBajante &&
-        engine.getBajantesFantasma().some((b) => {
-          if (!netsSnapLinked(b.net, engine.activeNet)) return false;
-          if (!b._ghost) return false;
-          return (
-            Math.hypot(b._ghost.x - rawC.x, b._ghost.y - rawC.y) < b._ghost.r + 6 * engine.zoom
-          );
-        });
-      if (onBajante || onFantasma) {
-        engine.triggerAlert(
-          'No se puede iniciar aquí',
-          'Un ramal solo puede conectarse a un bajante como punto de llegada. Empieza el trazo en otro punto y termínalo en el bajante.',
-        );
-        return;
-      }
-    }
+    // Iniciar un trazo SOBRE un bajante está PERMITIDO (pedido explícito del usuario): el
+    // snapToExisting de abajo ancla el clic al centro del bajante y finishRamal asocia el
+    // inicio vía alimentaIds + r.ini — igual que la llegada con recibeDeIds + r.fin.
 
     const sp = engine.snapToExisting(pt.x, pt.y, engine.activeNet, engine.tipoTramo);
     if (sp) {
@@ -556,13 +525,19 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
               if (engine.tipoTramo === 'tributario') {
                 // Feature orig. #5: sin padre seleccionado, un tributario puede cruzar
                 // cualquier ramal (ese será su padre autodetectado). Con padre explícito,
-                // solo se permite el propio padre (o trib-trib del mismo padre).
+                // CRUZAR (pasar de largo, no llegar) un ramal que no es el padre —ni un
+                // tributario— dispara el cruce (orig. usuario). Llegar AL padre no cruza:
+                // segmentsIntersect descarta el extremo de llegada.
                 if (
                   engine.padreTributario &&
                   r.id !== engine.padreTributario &&
-                  !canJoinTributario(engine, r)
+                  r.tipo !== 'tributario'
                 ) {
-                  // Advertencia "Ramal padre incorrecto" inhabilitada — cruce de tributario permitido.
+                  engine.triggerAlert(
+                    'Cruce de líneas no permitido',
+                    'El trazo cruza otro trazo de la misma red. No se permite el cruce de líneas en la misma cota de dibujo.',
+                  );
+                  return;
                 }
               } else {
                 engine.triggerAlert(
@@ -744,5 +719,9 @@ export function handleDoubleClick(engine: IPlanoEngineCore): void {
   }
   if (engine.tool === 'area' && engine.activeArea && engine.activeArea.pts.length >= 3) {
     finishArea(engine);
+  }
+  // Ítem 2: doble-click commitea la guía multisegmento en construcción.
+  if (engine.tool === 'guide' && engine._guidePts && engine._guidePts.length >= 2) {
+    commitOpenGuide(engine);
   }
 }

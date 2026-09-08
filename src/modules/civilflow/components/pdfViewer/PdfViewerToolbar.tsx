@@ -23,6 +23,8 @@ export function isToolDisabledForNet(
   // ACTIVA en esa sesión — de lo contrario la herramienta dibujaría formas de una red que el
   // proyecto no está diseñando (ni el piso la está viendo).
   if (toolId === 'canal') return net !== 'll' || !recolectoraActive;
+  // Cajas de recolección: CAN solo con sanitaria activa, CALL solo con lluvias activa.
+  if (toolId === 'caja') return !['san', 'll'].includes(net);
   return false;
 }
 
@@ -193,6 +195,16 @@ function PdfViewerToolbar_({
     key: 'C',
     icoCol: '#8B5CF6',
     shortcut: 'C',
+  });
+  // Caja de recolección (san → CAN, ll → CALL): cuadrado con cuadrado interior. La etiqueta
+  // y la red del elemento las decide handleCajaDown según activeNet. ('X' ya borra montante.)
+  netTools.splice(7, 0, {
+    id: 'caja',
+    label: 'Caja',
+    ico: '⧉',
+    key: 'J',
+    icoCol: '#10B981',
+    shortcut: 'J',
   });
 
   const visibleTools = netTools.filter(

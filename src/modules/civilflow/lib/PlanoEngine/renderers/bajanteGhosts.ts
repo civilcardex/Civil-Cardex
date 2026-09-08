@@ -11,6 +11,10 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const net = NETS.find((n) => n.id === b.net);
     const col = net ? net.col : '#e2e2e8';
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+    // Doble etiqueta (orig. usuario): un bajante que pertenece a ESTE piso y no tiene
+    // desplazamiento en él ya dibuja su círculo y etiqueta reales en renderBajantes — su
+    // "fantasma" es el mismo punto y solo duplica la etiqueta con la dirección contra.
+    if (b.pisoBase === engine.nivelActual?.label && !disp) return;
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
@@ -190,6 +194,15 @@ export function renderCrossFloorGhosts(
 ): void {
   (engine.crossFloorGhosts || []).forEach((g) => {
     if (engine._hiddenNets.has(g.net)) return;
+    // Una sola etiqueta por bajante (orig. usuario): si en ESTE piso ya existe un bajante REAL
+    // con el mismo código y red — p. ej. llegó por "Copiar elementos entre pisos" —, el
+    // fantasma es residual y no se dibuja; el real ya materializa esa proyección. Solo queda
+    // fantasma cuando ningún bajante real de este piso lleva ese código.
+    const lvl = engine.nivelActual?.label ?? '';
+    const duplicatedByReal = engine.bajantes.some(
+      (b) => b.pisoBase === lvl && b.net === g.net && (b.code || b.id) === (g.code || g.id),
+    );
+    if (duplicatedByReal) return;
     const net = NETS.find((n) => n.id === g.net);
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(g.x, g.y);

@@ -921,6 +921,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         diamLabel,
         r,
         idx === 0 ? 'ini' : 'fin',
+        declutter,
       );
       ctx.restore();
       // Los glifos de codo (codoSube/codoBaja/codo90rmSube/codo90rmBaja) son discos blancos
@@ -1089,7 +1090,23 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, px, py, rad);
+      drawExtremeAccessorySymbol(
+        ctx,
+        engine,
+        accType,
+        c,
+        dx,
+        dy,
+        px,
+        py,
+        px,
+        py,
+        rad,
+        undefined,
+        undefined,
+        undefined,
+        declutter,
+      );
       ctx.restore();
     }
   });

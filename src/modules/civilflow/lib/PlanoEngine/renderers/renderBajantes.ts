@@ -183,6 +183,22 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
+    } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
+      // Caja de recolección (CAN/CALL): cuadrado exterior relleno + cuadrado interior más
+      // pequeño centrado — el símbolo pedido; la etiqueta la dibuja el pipeline de b.code.
+      const netObj = NETS.find((n) => n.id === b.net);
+      const col = netObj ? netObj.col : '#e2e2e8';
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = sel ? '#FFEB3B' : col;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+      ctx.beginPath();
+      ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.fill();
+      ctx.stroke();
+      const ir = r * 0.45;
+      ctx.beginPath();
+      ctx.rect(-ir, -ir, ir * 2, ir * 2);
+      ctx.stroke();
     } else {
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
@@ -215,6 +231,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('C', 0, 0);
+    } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
+      // Interior del símbolo de caja: solo el cuadrado interior, sin letra ni símbolo de
+      // dirección (la etiqueta CAN/CALL vive debajo, dibujada por el pipeline de b.code).
     } else {
       drawDireccionSymbol(ctx, b.tipo, r, b.direccion);
     }

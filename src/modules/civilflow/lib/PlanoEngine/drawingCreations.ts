@@ -1,7 +1,6 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { calculateRamalLength, _statusMsg } from './ramalMeasure';
-import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
 import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
@@ -13,6 +12,60 @@ import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
 // compuertas.
 export const BAJANTE_NETS = ['san', 'vent', 'll'];
 export const MONTANTE_NETS = ['gas', 'ac', 'af'];
+// Cajas de recolección (cuadrado con cuadrado interior): CAN en sanitaria, CALL en lluvias.
+export const CAJA_NETS = ['san', 'll'];
+
+/** Crea una Caja de aguas negras (san) o de aguas lluvias (ll) en el punto del clic — un solo
+ *  clic la coloca (como contador). Es un nodo real de conexión: los trazos terminados sobre
+ *  ella se asocian vía finishRamal→recibeDeIds (máximo 1 ramal por caja, ver bajanteRules). */
+export function handleCajaDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (!CAJA_NETS.includes(engine.activeNet)) return;
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) {
+      px = sp.x;
+      py = sp.y;
+    }
+  }
+  const codePfx = engine.activeNet === 'san' ? 'CAN' : 'CALL';
+  const cnt =
+    engine.bajantes.filter(
+      (b) => (b.tipo === 'caja_san' || b.tipo === 'caja_ll') && b.net === engine.activeNet,
+    ).length + 1;
+  const cajaId = codePfx + cnt;
+  engine.bajantes.push({
+    id: cajaId,
+    net: engine.activeNet,
+    tipo: engine.activeNet === 'san' ? 'caja_san' : 'caja_ll',
+    code: cajaId,
+    x: px,
+    y: py,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
+    hVert: 0,
+    dNominal: '',
+    recibeDeIds: [],
+    alimentaIds: [],
+    descargaEnId: null,
+    ucAcum: 0,
+    ucExtra: 0,
+    area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0,
+    lblOffY: 0,
+    labelAngle: 0,
+    labelX: px,
+    labelY: py + 20,
+    bajR: 7 / 24,
+  });
+  engine.selId = cajaId;
+  engine._isGhostSel = false;
+  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
+  engine.render();
+  engine._markDirty();
+}
 
 /** Crea un bajante nuevo en las coordenadas dadas, auto-asociándolo con extremos de ramal
  *  cercanos y auto-rellenando sus campos ini/fin. @param engine Instancia del motor.
@@ -38,17 +91,29 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   // bajante, contra los ramales que estén conectados para entonces.
   for (const r of engine.ramales) {
     if (r.net !== engine.activeNet || !r.pts?.length) continue;
+    // Tributarios ni llegan ni salen de un bajante (orig. usuario) — solo ramales se asocian.
+    if (r.tipo === 'tributario') continue;
     const startDist = Math.hypot(px - r.pts[0][0], py - r.pts[0][1]);
     const li = r.pts.length - 1;
     const endDist = Math.hypot(px - r.pts[li][0], py - r.pts[li][1]);
     if (endDist < ASSOC_THRESH && endDist <= startDist) {
       px = r.pts[li][0];
       py = r.pts[li][1];
-      assocRamales.push(r.id);
+      if (assocRamales.length >= 2) {
+        engine.triggerAlert(
+          'Bajante completo',
+          'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
+        );
+      } else assocRamales.push(r.id);
     } else if (startDist < ASSOC_THRESH) {
       px = r.pts[0][0];
       py = r.pts[0][1];
-      assocRamales.push(r.id);
+      if (assocRamales.length >= 2) {
+        engine.triggerAlert(
+          'Bajante completo',
+          'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
+        );
+      } else assocRamales.push(r.id);
     }
   }
   // Regla de negocio: dentro de un canal recolectora solo caben bajantes de aguas lluvias (ll).
@@ -121,7 +186,6 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     canalId,
   });
   // Auto-rellenar ini/fin en los ramales asociados
-  const newBaj = engine.bajantes[engine.bajantes.length - 1];
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
     if (!r || !r.pts) continue;
@@ -129,14 +193,6 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     const lastIdx = r.pts.length - 1;
     const distEnd = Math.hypot(r.pts[lastIdx][0] - px, r.pts[lastIdx][1] - py);
     const epIdx: 0 | number = distStart <= distEnd ? 0 : lastIdx;
-    // Guardia centralizada de dirección — hoy es un no-op porque un bajante recién creado no
-    // tiene dirección todavía, pero se conserva como defensa en profundidad por si eso cambia
-    // algún día; si alguna vez rechaza, también se quita la asociación de `newBaj.recibeDeIds`
-    // (ya pusheada arriba como parte del payload inicial del bajante).
-    if (!isRamalBajanteConnectionAllowed(engine, r, epIdx, newBaj)) {
-      if (newBaj.recibeDeIds) newBaj.recibeDeIds = newBaj.recibeDeIds.filter((id) => id !== rid);
-      continue;
-    }
     if (epIdx === 0) {
       r.ini = bajId;
     } else {
@@ -668,7 +724,9 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
       ? 'abajo'
       : 'arriba';
   const cnt = engine.bajantes.filter((b) => b.tipo === 'canal').length + 1;
-  const code = `CALL${cnt}-${pisoCortoLoose(engine.nivelActual?.n ?? 0)}`;
+  // El prefijo CALL quedó reservado para las cajas de aguas lluvias (caja_ll); los canales
+  // recolectores usan CNL{n}-P{n} (migración de códigos viejos en PlanoPersistence).
+  const code = `CNL${cnt}-${pisoCortoLoose(engine.nivelActual?.n ?? 0)}`;
   engine.bajantes.push({
     id: code,
     net: 'll',

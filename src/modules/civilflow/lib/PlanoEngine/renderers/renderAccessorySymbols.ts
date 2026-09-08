@@ -1,5 +1,7 @@
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
+import { findFreeLabelCenter } from '../labelDeclutter';
+import type { DeclutterFrame } from '../labelDeclutter';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { planCodoCornerAt } from './drawRamalPath';
 
@@ -23,6 +25,7 @@ export function drawExtremeAccessorySymbol(
   diamLabel?: string,
   ramal?: PlanoRamal,
   slot?: 'ini' | 'fin',
+  declutter?: DeclutterFrame,
 ): void {
   if (accType === 'sifon') {
     // Esto es una vista en PLANTA (mirando desde arriba) — la "caída" 2D de la trampa no tiene
@@ -110,7 +113,9 @@ export function drawExtremeAccessorySymbol(
 
     // 7. Etiqueta "S  D=<diametro>" junto a la tapa — arrastrable: usa la posición de plano
     // guardada una vez que el usuario la movió (sifonLabelIni/Fin), si no la posición calculada
-    // por defecto.
+    // por defecto. Ítem usuario: el default NUNCA movido a mano pasa por el declutter (igual
+    // que la etiqueta principal) para no nacer superpuesto; la posición custom se respeta
+    // siempre. Moverla no toca geometría (handleDragMove solo escribe sifonLabelIni/Fin).
     if (diamLabel) {
       const fs = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
       ctx.font = `bold ${fs}px Geist, monospace`;
@@ -118,20 +123,31 @@ export function drawExtremeAccessorySymbol(
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const labelOff = H2 * 0.9 + fs * 0.6;
-      const defaultLabelX = pt_riser_topX - dnX * labelOff;
-      const defaultLabelY = pt_riser_topY - dnY * labelOff;
+      const text = `S  D=${normalizeDnLabel(String(diamLabel).replace(/["″”]+$/, ''))}"`;
+      const tw = ctx.measureText(text).width;
+      const boxW = tw + engine.mm2cvs(2);
+      const boxH = fs + engine.mm2cvs(1);
       const storedPlane =
         ramal && slot ? (slot === 'ini' ? ramal.sifonLabelIni : ramal.sifonLabelFin) : undefined;
-      const labelCvs = storedPlane
+      let labelCvs = storedPlane
         ? engine.toCvs(storedPlane[0], storedPlane[1])
-        : { x: defaultLabelX, y: defaultLabelY };
-      const text = `S  D=${normalizeDnLabel(String(diamLabel).replace(/["″”]+$/, ''))}"`;
+        : { x: pt_riser_topX - dnX * labelOff, y: pt_riser_topY - dnY * labelOff };
+      if (!storedPlane && ramal && slot && declutter) {
+        const spot = findFreeLabelCenter(
+          `${ramal.id}:sifon${slot === 'ini' ? 'Ini' : 'Fin'}`,
+          boxW,
+          boxH,
+          0,
+          labelCvs.x,
+          labelCvs.y,
+          declutter.placed,
+          declutter.segs,
+        );
+        if (spot) labelCvs = spot;
+      }
       ctx.fillText(text, labelCvs.x, labelCvs.y);
 
       if (ramal && slot) {
-        const tw = ctx.measureText(text).width;
-        const boxW = tw + engine.mm2cvs(2);
-        const boxH = fs + engine.mm2cvs(1);
         const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(
           labelCvs.x,
           labelCvs.y,
@@ -153,6 +169,15 @@ export function drawExtremeAccessorySymbol(
         };
         if (slot === 'ini') ramal._sifonLabelBoxIni = box;
         else ramal._sifonLabelBoxFin = box;
+        // La caja de este frame también ordena a las etiquetas que se dibujan después.
+        if (declutter)
+          declutter.placed.push({
+            id: `${ramal.id}:sifon${slot === 'ini' ? 'Ini' : 'Fin'}`,
+            minX,
+            minY,
+            maxX,
+            maxY,
+          });
       }
     }
   } else if (accType === 'codoSube') {

@@ -236,7 +236,9 @@ export function _trySelBajanteDrag(
       engine._emitSelect(sel);
       engine.render();
     }
-    engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+    // Copia entre pisos: símbolo seleccionable pero no arrastrable (2º clic sobre el seleccionado).
+    if (!(sel as { copiaPiso?: boolean }).copiaPiso)
+      engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
     _captureBajDragBackup(engine, sel);
     return true;
   }
@@ -295,6 +297,9 @@ export function _trySelRamalDrag(
   // cuerpo completo inoperante para todo tributario de la app, lo que a su vez significaba que
   // su ramal padre nunca lo veía como algo a cascadear de todos modos.
   if (!isRamal(sel) || (sel.tipo !== 'ramal' && sel.tipo !== 'tributario')) return false;
+  // Copia entre pisos: el elemento copiado no responde a NINGUNA herramienta de movimiento
+  // (cuerpo, vértices, extremos, accMed) — bloqueo permanente en el piso destino.
+  if ((sel as { copiaPiso?: boolean }).copiaPiso) return false;
 
   // Ítem usuario (bug 2): el clic sobre el CUERPO de OTRO ramal colineal (p.ej. el tramo
   // auto-creado por un split, que comparte línea con el ramal que lo partió y con el que quedó
@@ -468,15 +473,16 @@ export function _trySelRamalDrag(
       // Los ramales/tributarios conectados transitivamente (por una cadena de extremos
       // compartidos, o como tributario de algo en esa cadena) se mueven juntos como cuerpo
       // rígido, para que la conexión no se despegue al arrastrar un ramal sin bloquear — no solo
-      // sus vecinos directos (de 1 salto).
+      // sus vecinos directos (de 1 salto). Copias entre pisos (copiaPiso): excluidas de la
+      // cascada — arrastrar el vecino no debe mover el elemento bloqueado.
       const { ramales: connRamales, bajantes: connBaj } = collectConnectedGraph(engine, sel);
       engine.ramalDrag = {
         id: sel.id,
         startX: tp.x,
         startY: tp.y,
         origPts,
-        connBaj,
-        connRamales,
+        connBaj: connBaj.filter((b) => !(b as { copiaPiso?: boolean }).copiaPiso),
+        connRamales: connRamales.filter((r) => !(r as { copiaPiso?: boolean }).copiaPiso),
         origLabelX: sel.labelX,
         origLabelY: sel.labelY,
       };

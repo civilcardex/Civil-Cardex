@@ -93,7 +93,9 @@ export function _tryBajanteHit(
           engine.render();
         }
         const dragAnchor = engine.toCvs(b.x, b.y);
-        engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
+        // Copia entre pisos: símbolo seleccionable pero no arrastrable (2 sitios de bajDrag).
+        if (!b.copiaPiso)
+          engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
         _captureBajDragBackup(engine, b);
         return true;
       }
@@ -149,7 +151,9 @@ export function _tryBajanteHit(
           engine.render();
         }
         const dragAnchor = engine.toCvs(b.x, b.y);
-        engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
+        // Copia entre pisos: símbolo seleccionable pero no arrastrable (2 sitios de bajDrag).
+        if (!b.copiaPiso)
+          engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
         _captureBajDragBackup(engine, b);
         return true;
       }
