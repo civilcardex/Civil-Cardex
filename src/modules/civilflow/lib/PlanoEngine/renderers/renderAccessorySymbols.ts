@@ -26,6 +26,7 @@ export function drawExtremeAccessorySymbol(
   ramal?: PlanoRamal,
   slot?: 'ini' | 'fin',
   declutter?: DeclutterFrame,
+  pipeToward?: { x: number; y: number },
 ): void {
   if (accType === 'sifon') {
     // Esto es una vista en PLANTA (mirando desde arriba) — la "caída" 2D de la trampa no tiene
@@ -514,22 +515,39 @@ export function drawExtremeAccessorySymbol(
     ctx.lineTo(handleTickB.x, handleTickB.y);
     ctx.stroke();
   } else if (accType === 'tapon') {
-    // Tapa del extremo, DESPLAZADA hacia afuera sobre el eje del brazo (outX,outY — el eje del
-    // brazo eliminado): se lee como cierre de la tubería que ya no está, no como una marca
-    // pegada al vértice de la unión. Más grande y gruesa (orig. usuario).
-    const off = rad * 3.5;
-    const capW = rad * 0.9;
+    // Horquilla de extremo (orig. usuario, imagen de referencia): tallo LARGO hacia afuera
+    // sobre el eje del brazo eliminado (outX,outY) y DOS brazos cortos paralelos al TRAZO
+    // (dx,dy) unidos por una barra — forma de ⨅ abierta hacia la tubería.
+    const stem = rad * 4.5;
+    const arm = rad * 1.4;
+    const gap = rad * 1.0;
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = rad * 0.6;
-    ctx.lineCap = 'round';
-    // Tallo fino conectando la yee con la barra del tapón.
+    ctx.lineWidth = rad * 0.45;
+    ctx.lineCap = 'butt';
+    // Punta del tallo (donde nace la horquilla).
+    const tx = c.x + outX * stem;
+    const ty = c.y + outY * stem;
+    // Tallo.
     ctx.beginPath();
     ctx.moveTo(c.x, c.y);
-    ctx.lineTo(c.x + outX * off, c.y + outY * off);
+    ctx.lineTo(tx, ty);
     ctx.stroke();
+    // Dos brazos paralelos al trazo, abiertos hacia la tubería (pipeToward = vector del cuerpo
+    // del ramal; −out como fallback para el pase de extremos).
+    const tdx = pipeToward ? pipeToward.x : -outX;
+    const tdy = pipeToward ? pipeToward.y : -outY;
+    const a1x = tx + px * gap,
+      a1y = ty + py * gap;
+    const a2x = tx - px * gap,
+      a2y = ty - py * gap;
     ctx.beginPath();
-    ctx.moveTo(c.x + outX * off + px * capW, c.y + outY * off + py * capW);
-    ctx.lineTo(c.x + outX * off - px * capW, c.y + outY * off - py * capW);
+    ctx.moveTo(a1x, a1y);
+    ctx.lineTo(a1x + tdx * arm, a1y + tdy * arm);
+    ctx.moveTo(a2x, a2y);
+    ctx.lineTo(a2x + tdx * arm, a2y + tdy * arm);
+    // Barra de cierre uniendo los inicios de ambos brazos.
+    ctx.moveTo(a1x, a1y);
+    ctx.lineTo(a2x, a2y);
     ctx.stroke();
   } else if (accType === 'codoReventilado') {
     // Proporcionado a `rad` (tamaño real del accesorio) en vez de una constante fija de mm de

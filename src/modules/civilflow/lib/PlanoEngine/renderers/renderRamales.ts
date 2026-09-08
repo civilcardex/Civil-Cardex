@@ -922,6 +922,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         r,
         idx === 0 ? 'ini' : 'fin',
         declutter,
+        // Hacia el cuerpo del ramal (los brazos de la horquilla del tapón abren al trazo).
+        { x: -outX, y: -outY },
       );
       ctx.restore();
       // Los glifos de codo (codoSube/codoBaja/codo90rmSube/codo90rmBaja) son discos blancos
@@ -1106,6 +1108,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         undefined,
         undefined,
         declutter,
+        // Horquilla del tapón a mitad de ramal: abierta a lo largo del eje del trazo.
+        { x: dx, y: dy },
       );
       ctx.restore();
     }
