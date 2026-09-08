@@ -90,7 +90,9 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     if (!eng) return;
     // Sin objetivo (toggle directo sin modal): se mantiene el toggle de _tribReversed sobre el
     // ramal del menú con validación de unión, como antes.
+    // Ítem 1: validaciones que escriben y revierten no dejan snapshots muertos (una acción = un snapshot).
     if (!targetId) {
+      eng.pauseHistory();
       const val = !ramal._tribReversed;
       eng.updateElementById(ramal.id, { _tribReversed: val });
       const fresh = eng.ramales.find((x) => x.id === ramal.id);
@@ -116,6 +118,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
           'Al invertir la dirección del flujo, el aparato asignado queda en contra del flujo o en un extremo conectado a la red. Quita o reasigna el aparato antes de invertir la dirección.',
         );
         eng.render();
+        eng.resumeHistory();
         return;
       }
       if (!okAtBothEnds) {
@@ -126,6 +129,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
           'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
         );
         eng.render();
+        eng.resumeHistory();
         return;
       }
       const okIncoming = fresh
@@ -141,12 +145,14 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
           'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
         );
         eng.render();
+        eng.resumeHistory();
         return;
       }
       if (props.selElement?.id === ramal.id) {
         props.setSelElement({ ...props.selElement, _tribReversed: val });
       }
       eng.render();
+      eng.resumeHistory();
       eng._markDirty();
       props.setContextMenuState(null);
       return;
@@ -393,7 +399,11 @@ function DrawingElementContextMenuInner() {
 
   const element = contextMenuState.element as ProbedElement;
   const isBajanteTipo =
-    element.tipo === 'bajante' || element.tipo === 'montante' || element.id?.startsWith('B');
+    element.tipo === 'bajante' ||
+    element.tipo === 'montante' ||
+    element.tipo === 'caja_san' ||
+    element.tipo === 'caja_ll' ||
+    element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
   // Las líneas guía también llevan `pts` (reutilizado para la detección de clics) pero nunca
   // deben caer en RamalMenu, que asume que existe todo campo exclusivo de PlanoRamal

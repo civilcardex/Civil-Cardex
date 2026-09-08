@@ -1,12 +1,11 @@
-﻿import { useState } from 'react';
-import type { PlanoGuideLine, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
+﻿import type { PlanoGuideLine, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import { NETS, allocNetNumber, uniqRamalId } from '../../../lib/PlanoEngine/PlanoState';
 import { checkRamalAngles, _firstSegmentAngle } from '../../../lib/PlanoEngine/drawingAngles';
+import { calculateRamalLength } from '../../../lib/PlanoEngine/ramalMeasure';
 import {
   autoSplitJunctionAndSumFlow,
   flipRamalFlow,
   findGuideTCrossing,
-  snapGuideCrossingToEndpoint,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import {
   useDrawingElementContextMenu,
@@ -17,19 +16,20 @@ import {
   findGuideCrossing,
   resolveGuideNet,
   netAllowedSteps,
-  rotateGuideLine,
+  autoAdjustGuide,
   guideAngleAlertMessage,
   buildTribFromGuide,
   resolveRamalEndsFromGuide,
   resolveGuideJunctionAccessory,
+  snapGuideArrivalToHost,
   isGuideRelativeAngleValid,
   guideEndTouchesNetwork,
+  guidePolylineSide,
 } from './guideOps';
 
 export function GuideLineMenu() {
   const ctx = useDrawingElementContextMenu();
   const guide = ctx.element as PlanoGuideLine;
-  const [side, setSide] = useState<'sup' | 'inf'>('sup');
   const eng = ctx.engineRef.current;
   // Detecta la red real desde el ramal que la guía está cruzando en este momento — no la red que
   // estaba activa cuando se dibujó la guía — así los botones de ángulo mostrados siempre
@@ -54,58 +54,19 @@ export function GuideLineMenu() {
   return (
     <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
       <div style={MENU_SECTION_LABEL_STYLE}>Línea guía</div>
-      <div
-        style={{
-          fontSize: 11,
-          color: '#6b7280',
-          fontFamily: "'Geist',monospace",
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
+      {/* Ajuste único auto-orientado: la red determina el paso (45° san/ll/vent, 90° resto) y
+          el sistema calcula solo la orientación — sin Superior/Inferior ni izquierda/derecha. */}
+      <button
+        type="button"
+        onClick={() => {
+          const eng = ctx.engineRef.current;
+          if (!eng) return;
+          autoAdjustGuide(eng, guide, ctx.setSelElement, ctx.selElement);
         }}
+        style={{ ...MENU_ACTION_BTN_STYLE, textAlign: 'center' }}
       >
-        Lado del cruce
-      </div>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {(['sup', 'inf'] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setSide(s)}
-            style={{
-              ...MENU_ACTION_BTN_STYLE,
-              flex: 1,
-              textAlign: 'center',
-              background: side === s ? 'rgba(245,166,35,0.18)' : MENU_ACTION_BTN_STYLE.background,
-              borderColor: side === s ? '#F5A623' : undefined,
-            }}
-          >
-            {s === 'sup' ? 'Superior' : 'Inferior'}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 4 }}>
-        {[
-          { lbl: '45° izq', deg: -45, step: 45 as const },
-          { lbl: '45° der', deg: 45, step: 45 as const },
-          { lbl: '90° izq', deg: -90, step: 90 as const },
-          { lbl: '90° der', deg: 90, step: 90 as const },
-        ]
-          .filter(({ step }) => allowedSteps.includes(step))
-          .map(({ lbl, deg }) => (
-            <button
-              key={lbl}
-              type="button"
-              onClick={() => {
-                const eng = ctx.engineRef.current;
-                if (!eng) return;
-                rotateGuideLine(eng, guide, deg, side, ctx.setSelElement, ctx.selElement);
-              }}
-              style={{ ...MENU_ACTION_BTN_STYLE, flex: 1, textAlign: 'center' }}
-            >
-              {lbl}
-            </button>
-          ))}
-      </div>
+        {`Ajustar a ${allowedSteps[0]}°`}
+      </button>
       <button
         type="button"
         onClick={() => {
@@ -124,14 +85,44 @@ export function GuideLineMenu() {
           // anclado al cruce exacto para que nazca conectado (split + UD + "Convertir en
           // tributario" disponible).
           const crossing = findGuideCrossing(eng, liveGuide);
-          const { pStart, pEnd } = resolveRamalEndsFromGuide(eng, liveGuide, crossing);
+          let { pts: guidePts } = resolveRamalEndsFromGuide(eng, liveGuide, crossing);
           // Validación relativa si la guía cruza un ramal (ítem 4): host a 30° + guía a 120° es 90° relativa válida.
           const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
           const hostAng = crossing ? crossing.angle : null;
+          // Corrección fina de la llegada (±7.5°) antes de validar: una guía freehand llega a
+          // 44.3° y la validación exige exactitud — se corrige el desfase en vez de alertar.
+          if (hostAng !== null) {
+            const snapped = snapGuideArrivalToHost(guidePts, hostAng, effectiveNet, 'ramal');
+            if (!snapped) {
+              eng.triggerAlert(
+                'Ángulo no permitido',
+                guideAngleAlertMessage(effectiveNet, 'ramal'),
+              );
+              return;
+            }
+            guidePts = snapped;
+          }
+          // Validación de guía: SOLO el segmento de LLEGADA, relativo al trazo cruzado — el
+          // ajuste a 45°/90° garantiza ese ángulo y el doblez interior del resto de la guía es
+          // decisión del usuario (la regla absoluta de checkRamalAngles bloqueaba conversiones
+          // legítimas de guías ajustadas con alerta "Ángulo no permitido").
+          const arrivalSeg: [number, number][] =
+            guidePts.length >= 2
+              ? [guidePts[guidePts.length - 2], guidePts[guidePts.length - 1]]
+              : guidePts.slice(0, 2);
+          const pStart = guidePts[0];
+          const pEnd = guidePts[guidePts.length - 1];
           const ramalAngleOk =
             hostAng !== null
-              ? isGuideRelativeAngleValid(pStart, pEnd, hostAng, effectiveNet, 'ramal', snapOn)
-              : checkRamalAngles([pStart, pEnd], effectiveNet, 'ramal', snapOn);
+              ? isGuideRelativeAngleValid(
+                  arrivalSeg[0],
+                  arrivalSeg[1],
+                  hostAng,
+                  effectiveNet,
+                  'ramal',
+                  snapOn,
+                )
+              : checkRamalAngles(guidePts, effectiveNet, 'ramal', snapOn);
           if (!ramalAngleOk) {
             eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(effectiveNet, 'ramal'));
             return;
@@ -139,15 +130,14 @@ export function GuideLineMenu() {
           // Sin auto-orientación aquí: si la dirección de flujo del ramal creado no coincide con
           // la del ramal cruzado, autoSplitJunctionAndSumFlow muestra la alerta y bloquea la
           // unión (item 1). La auto-orientación al crear queda solo para tributarios (item 10).
-          const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
           void (crossing as { ramalId?: string } | undefined);
           const newRamal: PlanoRamal = {
             id: ramId,
             net: effectiveNet,
             tipo: 'ramal',
             padre: null,
-            pts: [pStart, pEnd],
-            totalL: +eng.pxToM(distMm).toFixed(3),
+            pts: guidePts.map((p) => [p[0], p[1]] as [number, number]),
+            totalL: +calculateRamalLength(guidePts, eng).toFixed(3),
             label: ramId,
             ini: '',
             fin: '',
@@ -161,7 +151,7 @@ export function GuideLineMenu() {
             // invertía pStart/pEnd, tirando la etiqueta al lado opuesto del trazo.
             labelX: (pStart[0] + pEnd[0]) / 2,
             labelY: (pStart[1] + pEnd[1]) / 2,
-            labelAngle: _firstSegmentAngle([pStart, pEnd]),
+            labelAngle: _firstSegmentAngle(guidePts),
             // Mismo material que el ramal cruzado por la guía (o el default de la red), igual
             // que finishRamal — sin esto la etiqueta del canvas salía sin material.
             material:
@@ -171,6 +161,9 @@ export function GuideLineMenu() {
             diametro: '',
             pendiente: 2,
             bloqueado: false,
+            // Sin glifos de accesorio en los dobleces internos: los codos dibujados son parte
+            // del trazo de la guía (mismo flag que los tributarios creados desde guía).
+            _sinAccMedInterior: true,
           };
           // san/ll: la flecha SIEMPRE entra a la conexión (el accesorio) — el sentido en que
           // se dibujó la guía no influye (orig. usuario). El ramal drena hacia el extremo que
@@ -237,11 +230,34 @@ export function GuideLineMenu() {
             const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
             // Misma red restringida que la visibilidad del botón (ver tCross arriba)
             if (!padre || (padre.net !== 'af' && padre.net !== 'ac' && padre.net !== 'gas')) return;
-            const [p0, p1] = liveGuide.pts;
+            // Ítem 2: cada lado del cruce aporta su polyline recortada (L/U → dos tributarios
+            // multisegmento, uno por lado).
+            const gpts = (liveGuide.pts || []).map((p) => [p[0], p[1]] as [number, number]);
+            const { sideA, sideB } = guidePolylineSide(gpts, [
+              crossing.point[0],
+              crossing.point[1],
+            ]);
+            const viaA = sideA.slice(1, sideA.length - 1);
+            const lastB = sideB[sideB.length - 1];
+            const viaB = sideB.slice(1, sideB.length - 1).reverse();
             const base = uniqRamalId();
-            const t1 = buildTribFromGuide(eng, padre, crossing.point, [p0[0], p0[1]], base + '_a');
+            const t1 = buildTribFromGuide(
+              eng,
+              padre,
+              crossing.point,
+              [sideA[0][0], sideA[0][1]],
+              base + '_a',
+              viaA,
+            );
             if (!t1) return;
-            const t2 = buildTribFromGuide(eng, padre, crossing.point, [p1[0], p1[1]], base + '_b');
+            const t2 = buildTribFromGuide(
+              eng,
+              padre,
+              crossing.point,
+              [lastB[0], lastB[1]],
+              base + '_b',
+              viaB,
+            );
             if (!t2) {
               // El cruce es extremo-con-extremo, así que autoSplit no partió al padre — basta
               // con quitar el primero para no dejar el estado a medias.
@@ -275,26 +291,23 @@ export function GuideLineMenu() {
               );
               return;
             }
-            // Ítem 3 (guías): cruce que cae CERCA del extremo del ramal se ajusta al extremo
-            // exacto — sin esto, un cruce a 1-2px del extremo divide el ramal creando un stub
-            // invisible y un símbolo de tee en vez del codo 90° esperado.
-            crossing.point = snapGuideCrossingToEndpoint(eng, crossing.ramalId, crossing.point);
             const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
             if (!padre) return;
-            // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta
-            // para que la cabeza apunte AL cruce (la intersección con el ramal padre que
-            // alimenta).
-            const [p0, p1] = liveGuide.pts;
-            const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
-            const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
-            const freeEnd: [number, number] = d0 < d1 ? [p1[0], p1[1]] : [p0[0], p0[1]];
-            const trib = buildTribFromGuide(
-              eng,
-              padre,
-              [crossing.point[0], crossing.point[1]],
-              freeEnd,
-              uniqRamalId(),
-            );
+            // Mismo anclaje que "Crear ramal" (resolveRamalEndsFromGuide): lado lejano
+            // orientado hacia el cruce, extremo anclado al punto exacto (con snap al vértice
+            // del host SOLO si el cruce cae cerca de él — a mitad de cuerpo el anclaje es
+            // exacto donde la guía tocó el trazo). Ítem 2: el tributario toma esa polyline
+            // completa con sus vértices.
+            const { pts: tribPts } = resolveRamalEndsFromGuide(eng, liveGuide, crossing);
+            const freeEnd: [number, number] = [tribPts[0][0], tribPts[0][1]];
+            const via: [number, number][] = tribPts
+              .slice(1, -1)
+              .map((p) => [p[0], p[1]] as [number, number]);
+            const crossPt: [number, number] = [
+              tribPts[tribPts.length - 1][0],
+              tribPts[tribPts.length - 1][1],
+            ];
+            const trib = buildTribFromGuide(eng, padre, crossPt, freeEnd, uniqRamalId(), via);
             if (!trib) return;
             eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
             eng.selId = trib.id;
