@@ -212,74 +212,29 @@ export function drawRamalPath(
           if (hasOtherRamalAtPoint) isJunc = true;
         }
         if (!isJunc) {
+          // Supresión del arco de codo SOLO cuando un bajante ocupa REALMENTE la unión:
+          // radio de contacto del símbolo (rimTol), no una banda fija de 10 unidades de plano
+          // alrededor del vértice y de los segmentos adyacentes — en trazos largos, cualquier
+          // bajante que pasaba cerca de la tubería (no de la unión) mataba el codo (orig.
+          // usuario: la longitud del trazo no debe influir en los accesorios).
           isJunc = engine.bajantes.some((b) => {
             if (b.net !== netId) return false;
             const lvl = engine.nivelActual?.label ?? '';
             const disp = b.desplazamientos?.[lvl];
             const bx = b.x + (disp?.dx || 0);
             const by = b.y + (disp?.dy || 0);
-            // Verifica la proximidad al propio vértice
-            if (Math.hypot(bx - pt[0], by - pt[1]) < 10) return true;
-            // También comprueba si la bajante está cerca de los segmentos adyacentes
-            const prev = pts[i - 1];
-            const next = pts[i + 1];
-            if (prev) {
-              const dx = pt[0] - prev[0],
-                dy = pt[1] - prev[1];
-              const lenSq = dx * dx + dy * dy;
-              if (lenSq > 0.001) {
-                let t = ((bx - prev[0]) * dx + (by - prev[1]) * dy) / lenSq;
-                t = Math.max(0, Math.min(1, t));
-                const px = prev[0] + t * dx,
-                  py = prev[1] + t * dy;
-                if (Math.hypot(bx - px, by - py) < 10) return true;
-              }
-            }
-            if (next) {
-              const dx = next[0] - pt[0],
-                dy = next[1] - pt[1];
-              const lenSq = dx * dx + dy * dy;
-              if (lenSq > 0.001) {
-                let t = ((bx - pt[0]) * dx + (by - pt[1]) * dy) / lenSq;
-                t = Math.max(0, Math.min(1, t));
-                const px = pt[0] + t * dx,
-                  py = pt[1] + t * dy;
-                if (Math.hypot(bx - px, by - py) < 10) return true;
-              }
-            }
-            return false;
+            const rimTol = (b._circ?.r || 8 * engine.zoom) / (engine.zoom || 1) + 1;
+            return Math.hypot(bx - pt[0], by - pt[1]) < rimTol;
           });
           if (!isJunc) {
+            // Mismo criterio para fantasmas entre pisos: solo si el fantasma está EN el vértice.
             isJunc = engine.crossFloorGhosts.some((g) => {
               if (g.net !== netId) return false;
-              if (Math.hypot(g.x - pt[0], g.y - pt[1]) < 10) return true;
-              const prev = pts[i - 1];
-              const next = pts[i + 1];
-              if (prev) {
-                const dx = pt[0] - prev[0],
-                  dy = pt[1] - prev[1];
-                const lenSq = dx * dx + dy * dy;
-                if (lenSq > 0.001) {
-                  let t = ((g.x - prev[0]) * dx + (g.y - prev[1]) * dy) / lenSq;
-                  t = Math.max(0, Math.min(1, t));
-                  const px = prev[0] + t * dx,
-                    py = prev[1] + t * dy;
-                  if (Math.hypot(g.x - px, g.y - py) < 10) return true;
-                }
-              }
-              if (next) {
-                const dx = next[0] - pt[0],
-                  dy = next[1] - pt[1];
-                const lenSq = dx * dx + dy * dy;
-                if (lenSq > 0.001) {
-                  let t = ((g.x - pt[0]) * dx + (g.y - pt[1]) * dy) / lenSq;
-                  t = Math.max(0, Math.min(1, t));
-                  const px = pt[0] + t * dx,
-                    py = pt[1] + t * dy;
-                  if (Math.hypot(g.x - px, g.y - py) < 10) return true;
-                }
-              }
-              return false;
+              const ghostTol =
+                ((g as { _ghost?: { r?: number } })._ghost?.r || 8 * engine.zoom) /
+                  (engine.zoom || 1) +
+                1;
+              return Math.hypot(g.x - pt[0], g.y - pt[1]) < ghostTol;
             });
           }
         }
