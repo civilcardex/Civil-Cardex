@@ -1,40 +1,18 @@
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../lib/PlanoEngine/PlanoState';
 
-const BLOCKED_MESSAGE =
-  'El bajante con dirección "baja" solo puede recibir flujo. Conecta el ramal al extremo final (no al inicio).';
-
-const SUBE_BLOCKED_MESSAGE =
-  'El bajante con dirección "sube" solo puede entregar flujo. Conecta el ramal al extremo inicial (no al final).';
-
 /**
- * Regla central para conectar un extremo de ramal a un bajante según la dirección de flujo.
- * Devuelve false si enrutaría el flujo al revés por el bajante: un INICIO de ramal en un
- * bajante 'baja' (que solo recibe), o un FIN de ramal en un bajante 'sube' (que solo emite).
- * Centralizada aquí para que todos los caminos que asignan ini/fin apliquen la misma regla.
- * @param engine  Instancia del núcleo del engine.
- * @param r       Ramal cuyo extremo se está conectando.
- * @param epIdx   Qué extremo: 0 para pts[0] (INICIO — el lado de origen), lastIdx para pts[fin].
- * @param b       Bajante al que se está conectando.
- * @returns true si la conexión está bien; false si debe bloquearse.
+ * Regla de conexión de un extremo de ramal a un bajante según su dirección. HISTÓRICA: el
+ * usuario pidió permitir iniciar trazos desde cualquier bajante (y llegar a cualquiera), así
+ * que la restricción por `direccion` ya no aplica — la función se conserva por firma (la
+ * llaman finishRamal, handleDragMove y drawingCreations) y ahora siempre permite.
+ * @returns true siempre.
  */
 export function isRamalBajanteConnectionAllowed(
-  engine: IPlanoEngineCore,
+  _engine: IPlanoEngineCore,
   _r: PlanoRamal,
-  epIdx: 0 | number,
-  b: PlanoBajante,
+  _epIdx: 0 | number,
+  _b: PlanoBajante,
 ): boolean {
-  if (epIdx === 0 && b.direccion === 'baja') {
-    if (engine.triggerAlert) {
-      engine.triggerAlert('Dirección de flujo inconsistente', BLOCKED_MESSAGE);
-    }
-    return false;
-  }
-  if (b.direccion === 'sube' && epIdx !== 0) {
-    if (engine.triggerAlert) {
-      engine.triggerAlert('Dirección de flujo inconsistente', SUBE_BLOCKED_MESSAGE);
-    }
-    return false;
-  }
   return true;
 }
 

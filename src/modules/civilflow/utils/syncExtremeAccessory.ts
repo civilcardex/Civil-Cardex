@@ -102,8 +102,10 @@ export function bumpHidroAccesorio(
   }
 }
 
-/** Incrementa el conteo de aparato (p. ej. 'sif') en APARATOS_BY_TRAMO_KEY */
-function bumpAparatoCount(
+/** Incrementa/decrementa el conteo de aparato (p. ej. 'sif') en APARATOS_BY_TRAMO_KEY.
+ *  Exportada para los selectores de accesorio de extremo: asignar el sifón desde el extremo
+ *  del ramal debe sumar el aparato igual que desde el cuerpo (orig. usuario). */
+export function bumpAparatoCount(
   netId: string,
   ramalId: string,
   planId: string | number,

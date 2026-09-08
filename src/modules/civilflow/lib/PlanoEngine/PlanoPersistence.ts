@@ -1,5 +1,6 @@
 import { NETS, initNetCounts } from './PlanoState';
 import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts';
+import { propagarSanDiametroAguasAbajo } from './drawingFlow';
 import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 
 export interface PlanoWorkData {
@@ -94,13 +95,78 @@ export function applyWorkData(
   engine.ramales = d.ramales || [];
   engine.dims = d.dims || [];
   engine.textAnnots = d.textAnnots || [];
-  engine.bajantes = d.bajantes || [];
+  // Migración: los canales recolectores usaban el prefijo de código CALL{n}-P{n}, reservado
+  // ahora para las cajas de aguas lluvias (tipo caja_ll). Canales → CNL{n}-P{n}.
+  engine.bajantes = (d.bajantes || []).map((b) => {
+    const bb = b as { tipo?: string; code?: string; id?: string };
+    if (bb.tipo === 'canal' && typeof bb.code === 'string' && bb.code.startsWith('CALL')) {
+      bb.code = 'CNL' + bb.code.slice(4);
+    }
+    return b;
+  });
   engine.areas = d.areas || [];
   engine.nptLevels = d.nptLevels || [];
-  engine.crossFloorGhosts = d.crossFloorGhosts?.length
-    ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[])
-    : [];
+  // Una sola etiqueta por bajante (orig. usuario): un fantasma cuyo código ya existe como
+  // bajante REAL en este piso (p. ej. llegó por "Copiar elementos entre pisos") duplica su
+  // etiqueta (BAN1 Sube + BAN1 Baja) — se retira en carga. Los fantasmas cuyo código no
+  // corresponde a ningún bajante real de este piso son proyecciones legítimas y sobreviven.
+  {
+    const bajCodes = new Set(
+      (engine.bajantes as Array<{ net: string; code?: string; id: string }>).map(
+        (b) => `${b.net}|${b.code || b.id}`,
+      ),
+    );
+    engine.crossFloorGhosts = d.crossFloorGhosts?.length
+      ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[]).filter(
+          (g) => !bajCodes.has(`${g.net}|${g.code || g.id}`),
+        )
+      : [];
+  }
   engine.guideLines = d.guideLines || [];
+  // Retro-propagación de diámetros al cargar (orig. usuario): dibujos guardados ANTES de que
+  // existiera la propagación quedaron con receptores vacíos/menores aunque sus llegadores ya
+  // tenían diámetro (RS1 4" + RS2 2" → RS3 vacío). Cada trazo con diámetro propaga su mayor;
+  // la compuerta "todos asignados" y el nunca-bajar hacen que la pasada converja al estado
+  // que habría quedado si la propagación hubiera estado activa al asignar.
+  {
+    const sanLl = (
+      engine.ramales as Array<{
+        id: string;
+        net?: string;
+        diametro?: string;
+        pts?: number[][];
+      }>
+    ).filter((r) => (r.net === 'san' || r.net === 'll') && r.diametro);
+    // DIAGNÓSTICO temporal (doble etiqueta/diámetros): volcar topología san/ll y el efecto de
+    // la retro-propagación. Quitar cuando el usuario confirme que RS3 hereda.
+    const dump = (): string =>
+      JSON.stringify(
+        (engine.ramales as Array<Record<string, unknown>>)
+          .filter((r) => r.net === 'san' || r.net === 'll')
+          .map((r) => ({
+            id: r.id,
+            tipo: r.tipo,
+            diam: r.diametro || '',
+            rev: !!r._tribReversed,
+            fin: r.fin || '',
+            ini: r.ini || '',
+            padre: r.padre || '',
+            mf: r.mergesFrom || null,
+            pts: r.pts,
+          })),
+      );
+    // eslint-disable-next-line no-console
+    console.log('[CivilFlow] retro-prop ANTES:', dump());
+    for (const r of sanLl) {
+      propagarSanDiametroAguasAbajo(
+        engine.ramales as unknown as Parameters<typeof propagarSanDiametroAguasAbajo>[0],
+        r.id,
+        engine.bajantes as unknown as Array<{ recibeDeIds?: string[]; alimentaIds?: string[] }>,
+      );
+    }
+    // eslint-disable-next-line no-console
+    console.log('[CivilFlow] retro-prop DESPUÉS:', dump());
+  }
   engine.selId = null;
   engine.activeRamal = null;
   engine.activeArea = null;

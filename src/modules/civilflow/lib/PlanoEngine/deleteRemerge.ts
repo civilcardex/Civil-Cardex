@@ -1,5 +1,9 @@
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
+import { relabelTribChain, allocTributaryNumber } from './PlanoState';
 import { _midpoint } from './PlanoEngineDrawing';
+import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
+import { devError } from '../../../../utils/devError';
 import { scrubAccMedTeeAt, scrubPlanCodoAt } from './deleteJunctionCleanup';
 import { dirAt } from './deleteCascade';
 
@@ -330,4 +334,129 @@ function mergeCollinearPairs(engine: IPlanoEngineCore): void {
       m.mergesFrom = undefined;
     }
   }
+}
+
+/** Tras borrar un tributario que llegaba a un vértice, DOS tributarios pueden quedar tocándose
+ *  extremo-a-extremo en ese punto (esquina) — la estela de un split antiguo con piezas nunca
+ *  re-unidas. Si en el punto SOLO están esos dos (sin ramal, bajante ni tercer brazo), se
+ *  fusionan en un solo tributario: geometría concatenada, refs (padre/recibeDeIds/mergesFrom)
+ *  migradas y contadores de aparatos/hidro combinados por MAX (orig. usuario: borrar T1RS2
+ *  debía dejar UN tributario, no la esquina T2RS1|T3RS1). */
+export function mergeTribPairAt(engine: IPlanoEngineCore, pt: number[]): void {
+  const TOL = 0.5;
+  if (engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL)) return;
+  const tribAt = engine.ramales.filter(
+    (r) =>
+      r.tipo === 'tributario' &&
+      r.pts &&
+      r.pts.length >= 2 &&
+      (Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL ||
+        Math.hypot(r.pts[r.pts.length - 1][0] - pt[0], r.pts[r.pts.length - 1][1] - pt[1]) < TOL),
+  );
+  if (tribAt.length !== 2 || tribAt[0].net !== tribAt[1].net) return;
+  // Un ramal (no tributario) tocando el punto = unión real (tee/codo con el tronco): no fusionar.
+  const otherTouching = engine.ramales.some((r) => {
+    if (r.tipo === 'tributario' || !r.pts || r.pts.length < 2) return false;
+    if (r.net !== tribAt[0].net) return false;
+    if (
+      r.pts.some((p) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL) ||
+      distToPolylineBody(pt, r.pts) < TOL
+    )
+      return true;
+    return false;
+  });
+  if (otherTouching) return;
+  const [a, b] = tribAt;
+  // Concatenar en orden: las 4 combinaciones de orientación.
+  const near = (p: number[], q: number[]) => Math.hypot(p[0] - q[0], p[1] - q[1]) < TOL;
+  let merged: number[][] | null = null;
+  const aF = a.pts![a.pts!.length - 1];
+  const bS = b.pts![0];
+  const bF = b.pts![b.pts!.length - 1];
+  const aS = a.pts![0];
+  if (near(aF, bS)) merged = [...a.pts!, ...b.pts!.slice(1)];
+  else if (near(aF, bF)) merged = [...a.pts!, ...[...b.pts!].reverse().slice(1)];
+  else if (near(aS, bS)) merged = [...[...b.pts!].reverse(), ...a.pts!.slice(1)];
+  else if (near(aS, bF)) merged = [...a.pts!, ...b.pts!.slice(1)];
+  if (!merged || merged.length < 2) return;
+  a.pts = merged;
+  a.totalL = calculateRamalLength(a.pts, engine);
+  if (!a.labelMoved) {
+    const [mx, my] = _midpoint(a.pts);
+    a.labelX = mx;
+    a.labelY = my;
+    a.labelAngle = angleAtHalfLength(a.pts);
+  }
+  // Refs de B → A
+  for (const r of engine.ramales) {
+    if (r.padre === b.id) r.padre = a.id;
+    if (r.mergesFrom)
+      r.mergesFrom = r.mergesFrom.map((x) => (x === b.id ? a.id : x)) as typeof r.mergesFrom;
+  }
+  for (const baj of engine.bajantes) {
+    if (baj.recibeDeIds?.includes(b.id))
+      baj.recibeDeIds = baj.recibeDeIds.map((x) => (x === b.id ? a.id : x));
+  }
+  if (engine.selId === b.id) engine.selId = a.id;
+  engine.ramales = engine.ramales.filter((r) => r.id !== b.id);
+  // La cadena del sobreviviente re-etiqueta con la raíz actual.
+  relabelTribChain(engine.ramales, a.id, (suffix) => allocTributaryNumber(engine, suffix));
+  // Contadores: aparatos/hidro de B se combinan en A por MAX (misma pieza, dos claves).
+  const planId = engine._loadedPlanId;
+  if (planId != null) {
+    try {
+      const all = loadFromStorage<Record<string, Record<string, number>>>(
+        APARATOS_BY_TRAMO_KEY,
+        {},
+      );
+      const from = `${b.net}_${b.id}_${planId}`;
+      const to = `${b.net}_${a.id}_${planId}`;
+      if (all[from]) {
+        const dst = { ...(all[to] || {}) };
+        for (const [k, v] of Object.entries(all[from]))
+          dst[k] = Math.max(Number(dst[k]) || 0, Number(v) || 0);
+        all[to] = dst;
+        delete all[from];
+        saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+      }
+    } catch (e) {
+      devError('PlanoEngine:', e);
+    }
+    try {
+      const all = loadFromStorage<Record<string, { accesorios?: Record<string, number> }>>(
+        HYDRO_DATA_STORAGE_KEY,
+        {},
+      );
+      const from = `${b.net}_${b.id}_${planId}`;
+      const to = `${b.net}_${a.id}_${planId}`;
+      if (all[from]) {
+        const dst = { ...(all[to]?.accesorios || {}) };
+        for (const [k, v] of Object.entries(all[from].accesorios || {}))
+          dst[k] = Math.max(Number(dst[k]) || 0, Number(v) || 0);
+        all[to] = { ...(all[to] || {}), accesorios: dst };
+        delete all[from];
+        saveToStorage(HYDRO_DATA_STORAGE_KEY, all);
+      }
+    } catch (e) {
+      devError('PlanoEngine:', e);
+    }
+  }
+}
+
+/** Distancia de un punto al CUERPO de una polilínea (vértices + segmentos). */
+function distToPolylineBody(p: number[], pts: number[][]): number {
+  let d = Infinity;
+  for (let i = 0; i < pts.length; i++)
+    d = Math.min(d, Math.hypot(pts[i][0] - p[0], pts[i][1] - p[1]));
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const A = pts[i];
+    const B = pts[i + 1];
+    const dx = B[0] - A[0];
+    const dy = B[1] - A[1];
+    const l2 = dx * dx + dy * dy;
+    if (l2 < 1e-9) continue;
+    const t = Math.max(0, Math.min(1, ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / l2));
+    d = Math.min(d, Math.hypot(p[0] - (A[0] + t * dx), p[1] - (A[1] + t * dy)));
+  }
+  return d;
 }

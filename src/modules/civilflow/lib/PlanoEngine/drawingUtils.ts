@@ -2,6 +2,7 @@ import { NETS, allocTributaryNumber, rootTributarioLabel } from './PlanoState';
 import type { PlanoRamal, PlanoArea, IPlanoEngineCore } from './PlanoState';
 import { _statusMsg } from './ramalMeasure';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { distToPolyline } from '../shared/geometry';
 
 /** Siguiente etiqueta automática para la red activa (R{n}, o T{n}{padre} si se está dibujando un tributario). */
 export function _nextLabel(engine: IPlanoEngineCore): string {
@@ -212,4 +213,107 @@ export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
 export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.definedScaleM = parseFloat(String(v)) || 0;
   engine.render();
+}
+
+// Ítems 5+6: el ramal receptor toma el MAYOR diámetro de los ramales que llegan a él, y cada
+// cambio de diámetro re-dispara el cálculo aguas abajo (suba o baje). Única fuente de la
+// regla — la llaman updateElementById (menú, panel, aparatos), finishRamal (creación ya lo
+// hace en su herencia) y el path tabla→dibujo. Mutación directa sin snapshots por nodo: el
+// caller emite UN snapshot para toda la operación. @param ramales Red actual (motor o
+// storage). @param _changedId Reservado (origen del cambio; el recálculo es global).
+/** Recalcula receptores como el mayor de sus alimentadores actuales, hasta punto fijo. */
+export function recomputeDownstreamDiameters(
+  ramales: Array<{
+    id: string;
+    net: string;
+    pts?: number[][];
+    diametro?: string;
+    mergesFrom?: string[];
+    _tribReversed?: boolean;
+  }>,
+  _changedId: string,
+): void {
+  const TOL = 2.0;
+  const byId = new Map(ramales.map((r) => [r.id, r]));
+  // Pares hermanos de un mismo split: no son alimentador/receptor entre sí.
+  const mergeSiblingPairs = new Set<string>();
+  for (const r of ramales) {
+    if (r.mergesFrom) mergeSiblingPairs.add([...r.mergesFrom].sort().join('|'));
+  }
+  const dischargeEnd = (r: (typeof ramales)[number]): number[] | null => {
+    if (!r.pts || r.pts.length < 2) return null;
+    // san/ll/vent drenan hacia la unión; el resto (af/ac/gas) fluye pts[0]→pts[último].
+    if ((r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed) return r.pts[0];
+    return r.pts[r.pts.length - 1];
+  };
+  // ¿R continúa aguas abajo del punto Q (en su dirección de flujo)? Sin esto, un tributario
+  // que descarga justo en el extremo FINAL de un tramo lo marcaría como receptor y el tramo
+  // aguas arriba subiría de diámetro con un caudal que en realidad sigue por otro lado.
+  const continuesPast = (r: (typeof ramales)[number], q: number[]): boolean => {
+    if (!r.pts || r.pts.length < 2) return false;
+    const reversed = (r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed;
+    const seq = reversed ? [...r.pts].reverse() : r.pts;
+    let total = 0;
+    const segLens: number[] = [];
+    for (let i = 0; i < seq.length - 1; i++) {
+      const l = Math.hypot(seq[i + 1][0] - seq[i][0], seq[i + 1][1] - seq[i][1]);
+      segLens.push(l);
+      total += l;
+    }
+    if (total < 1e-9) return false;
+    let sMax = -Infinity;
+    let acc = 0;
+    for (let i = 0; i < seq.length - 1; i++) {
+      const [ax, ay] = seq[i];
+      const [bx, by] = seq[i + 1];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq > 1e-12) {
+        const t = Math.max(0, Math.min(1, ((q[0] - ax) * dx + (q[1] - ay) * dy) / lenSq));
+        const px = ax + t * dx;
+        const py = ay + t * dy;
+        if (Math.hypot(q[0] - px, q[1] - py) < TOL) sMax = Math.max(sMax, acc + t * segLens[i]);
+      }
+      acc += segLens[i];
+    }
+    return sMax >= 0 && total - sMax > TOL;
+  };
+  // Alimentadores geométricos de R: ramales cuya descarga toca el cuerpo de R en un punto
+  // desde el cual R TODAVÍA continúa aguas abajo (redes de recolección san/ll/vent — en
+  // presión manda mergesFrom + guards de nodo).
+  const geometricFeedersOf = (r: (typeof ramales)[number]): Array<(typeof ramales)[number]> => {
+    if (r.net !== 'san' && r.net !== 'll' && r.net !== 'vent') return [];
+    if (!r.pts || r.pts.length < 2) return [];
+    const out: Array<(typeof ramales)[number]> = [];
+    for (const f of ramales) {
+      if (f.id === r.id || f.net !== r.net) continue;
+      if (!f.diametro) continue;
+      if (mergeSiblingPairs.has([f.id, r.id].sort().join('|'))) continue;
+      const end = dischargeEnd(f);
+      if (!end) continue;
+      if (distToPolyline(end, r.pts) < TOL && continuesPast(r, end)) out.push(f);
+    }
+    return out;
+  };
+  for (let pass = 0; pass < 20; pass++) {
+    let touched = false;
+    for (const r of ramales) {
+      if (!r.pts || r.pts.length < 2) continue;
+      let want = '';
+      if (r.mergesFrom) {
+        for (const pid of r.mergesFrom) {
+          const p = byId.get(pid);
+          if (p?.diametro) want = maxDiametroLabel(want, p.diametro);
+        }
+      } else {
+        for (const f of geometricFeedersOf(r)) want = maxDiametroLabel(want, f.diametro || '');
+      }
+      if (want && want !== (r.diametro || '')) {
+        r.diametro = want;
+        touched = true;
+      }
+    }
+    if (!touched) break;
+  }
 }

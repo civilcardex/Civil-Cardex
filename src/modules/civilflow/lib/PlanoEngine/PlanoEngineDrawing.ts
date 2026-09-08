@@ -43,6 +43,7 @@ export {
   handleRedPublicaDown,
   handleContadorDown,
   handleCanalDown,
+  handleCajaDown,
 } from './drawingCreations';
 
 export { _statusMsg, calculateRamalLength } from './ramalMeasure';
@@ -85,8 +86,10 @@ export {
 
 export {
   snapGuidePoint,
-  snapGuideLineToRamal,
+  snapGuideSegmentToRamal,
   handleGuideDown,
+  commitOpenGuide,
+  guideBodyHit,
   snapGuideCrossingToEndpoint,
   guideRamalJunctions,
   findGuideTCrossing,

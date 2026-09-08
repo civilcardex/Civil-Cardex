@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState';
+import { allocTributaryNumber } from './PlanoState';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import {
   removeCrossFloorGhostsBySource,
@@ -14,7 +15,7 @@ import { _midpoint } from './PlanoEngineDrawing';
 
 import { cascadeMontanteAssociation } from './deleteCascade';
 import { cleanupJunctionsAfterRamalDelete, cleanupTeeMarkersAt } from './deleteJunctionCleanup';
-import { remergeSplitRamales } from './deleteRemerge';
+import { remergeSplitRamales, mergeTribPairAt } from './deleteRemerge';
 import { isDeletedYeeDoblePart, preserveYeeDobleAt, splitMembersFor } from './deleteYeePreserve';
 
 // Orig. usuario #2: al borrar un trazo, sus tributarios se REASIGNAN al ramal del otro lado de
@@ -23,6 +24,7 @@ import { isDeletedYeeDoblePart, preserveYeeDobleAt, splitMembersFor } from './de
 // no tributario) y sigue existiendo tras el borrado.
 // Yee doble: los dos brazos están a ~10 unidades a lo largo del tronco, no comparten vértice
 // exacto — se busca primero coincidencia exacta (0.5) y en segunda pasada hasta 20px.
+// Ítem 4: reasignación validada contra la estructura final + re-etiqueta inmediata.
 function reassignTributariosToHermano(
   engine: IPlanoEngineCore,
   deleted: PlanoRamal,
@@ -31,6 +33,7 @@ function reassignTributariosToHermano(
   if (!deleted.pts?.length) return;
   const TOL = 0.5;
   const LARGE = 20;
+  const TOUCH = 2.0;
   const isCandidate = (o: PlanoRamal) =>
     o.id !== deleted.id &&
     o.net === deleted.net &&
@@ -56,12 +59,54 @@ function reassignTributariosToHermano(
     }
     return best;
   };
-  const hermano = findByTol(TOL) ?? findByTol(LARGE);
-  if (!hermano) return;
-  for (const t of engine.ramales) {
-    if (t.tipo === 'tributario' && t.padre === deleted.id) {
-      t.padre = hermano.id;
+  const hermanoExact = findByTol(TOL) ?? findByTol(LARGE);
+  // Ítem 4: cada tributario debe TOCAR al hermano elegido (estructura final, no ids previos) —
+  // si no lo toca se busca otro candidato tocado; sin host válido cae en cascada como antes.
+  // Además se re-etiqueta T{nuevo}{hermano} de inmediato (antes conservaba T{n}{borrado}).
+  const tribTouches = (t: PlanoRamal, o: PlanoRamal): boolean => {
+    if (!t.pts || t.pts.length < 2 || !o.pts || o.pts.length < 2) return false;
+    const tEps = [t.pts[0], t.pts[t.pts.length - 1]];
+    for (const e of tEps) {
+      if ((o.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOUCH)) return true;
+      for (let i = 0; i < o.pts.length - 1; i++) {
+        const [ax, ay] = o.pts[i];
+        const [bx, by] = o.pts[i + 1];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 1e-9) continue;
+        const tt = Math.max(0, Math.min(1, ((e[0] - ax) * dx + (e[1] - ay) * dy) / lenSq));
+        if (Math.hypot(e[0] - (ax + tt * dx), e[1] - (ay + tt * dy)) < TOUCH) return true;
+      }
     }
+    return false;
+  };
+  const orphans = engine.ramales.filter((t) => t.tipo === 'tributario' && t.padre === deleted.id);
+  for (const t of orphans) {
+    let host: PlanoRamal | undefined;
+    if (hermanoExact && tribTouches(t, hermanoExact)) {
+      host = hermanoExact;
+    } else {
+      let bestD = Infinity;
+      for (const o of engine.ramales) {
+        if (!isCandidate(o) || o.id === hermanoExact?.id) continue;
+        if (!tribTouches(t, o)) continue;
+        const tEps = [t.pts[0], t.pts[t.pts.length - 1]];
+        for (const e of tEps) {
+          for (const op of o.pts) {
+            const d = Math.hypot(e[0] - op[0], e[1] - op[1]);
+            if (d < bestD) {
+              bestD = d;
+              host = o;
+            }
+          }
+        }
+      }
+    }
+    if (!host) continue;
+    t.padre = host.id;
+    const rootLbl = host.label || host.id;
+    t.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
   }
 }
 
@@ -76,9 +121,9 @@ export function deleteSelected(
     const bajNetsToRenumber = new Set<string>();
     let renumberAreas = false;
     const toDelete = new Set<string>(ids);
-    // "Borrar trazo" (opts.noMerge) borra SOLO el ramal indicado: no expande mitades de
-    // split ni re-úne el tronco — necesario para el borrado parcial de una yee doble
-    // (orig. #2), donde borrar un brazo lateral no debe colapsar la yee completa.
+    // Las mitades de una división (mergesFrom) son la MISMA línea física partida — borrar una
+    // borra todas (ítem #4/#5 orig. usuario). La cascada que SÍ se quita (pedido usuario actual)
+    // es la de tributarios por `padre`: en conjunto solo cae lo seleccionado.
     if (!opts?.noMerge) {
       for (const id of [...ids]) {
         for (const extra of splitMembersFor(engine, id)) toDelete.add(extra);
@@ -101,9 +146,10 @@ export function deleteSelected(
           engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id);
         } else {
           reassignTributariosToHermano(engine, deleted, toDelete);
-          engine.ramales = engine.ramales.filter(
-            (r) => r.id !== deleted.id && r.padre !== deleted.id,
-          );
+          // Borrado EN CONJUNTO: SOLO los elementos seleccionados caen — los tributarios de
+          // cada ramal seleccionado ya se reasignaron al hermano (arriba); borrarlos aquí en
+          // cascada eliminaba elementos que el usuario no seleccionó.
+          engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id);
         }
         preserveYeeDobleAt(engine, deleted);
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
@@ -309,7 +355,10 @@ export function deleteSelected(
     if (wasYeeDoblePartSel) {
       engine.ramales = engine.ramales.filter((r) => r.id !== deletedId);
     } else {
-      engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
+      // Borrado INDIVIDUAL (selId): el tributario entrante de una división que se deshace
+      // cae con ella (ítem #3). El BORRADO EN CONJUNTO (ids) no tiene esta cascada — pedido
+      // usuario: en conjunto solo cae lo seleccionado.
+      engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deletedId);
     }
     preserveYeeDobleAt(engine, deleted);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
@@ -329,6 +378,12 @@ export function deleteSelected(
       for (const r of engine.ramales) {
         if (r.mergesFrom && r.mergesFrom.includes(deletedId)) r.mergesFrom = undefined;
       }
+    }
+    // Tributario borrado: si en alguno de sus extremos quedan EXACTAMENTE dos tributarios
+    // tocándose (esquina huérfana de un split viejo), se fusionan en uno (orig. usuario:
+    // borrar T1RS2 debía dejar un solo tributario, no T2RS1|T3RS1).
+    if (deleted.tipo === 'tributario') {
+      for (const ep of deleted.pts || []) mergeTribPairAt(engine, ep);
     }
     // Limpia las referencias al ramal borrado en los bajantes
     for (const b of engine.bajantes) {

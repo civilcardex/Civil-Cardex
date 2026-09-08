@@ -123,7 +123,11 @@ export function sanReceptorDiametroPermitido(
   let maxFeeder = 0;
   let feederLbl = '';
   for (const o of ramales) {
-    if (o.id === ramalId || o.net !== r.net || o.tipo !== 'ramal') continue;
+    // Alimentadores: ramales Y tributarios, con la regla de dirección — un receptor
+    // TRIBUTARIO solo recibe de otros tributarios (un ramal nunca alimenta a un tributario).
+    if (o.id === ramalId || o.net !== r.net || (o.tipo !== 'ramal' && o.tipo !== 'tributario'))
+      continue;
+    if (r.tipo === 'tributario' && o.tipo === 'ramal') continue;
     if (!o.pts || o.pts.length < 2) continue;
     if (mergeSiblingPairs.has([o.id, ramalId].sort().join('|'))) continue;
     const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
@@ -173,6 +177,10 @@ export function sanAlimentadorDiametroPermitido(
   if (newIn <= 0) return { ok: true };
   const curIn = r.diametro ? diamPulgFromLabel(r.diametro) : 0;
   if (newIn <= curIn) return { ok: true };
+  // Primera asignación (el alimentador no tenía diámetro): libre aunque supere al receptor —
+  // el usuario asigna el aparato y su diámetro de una vez; la validación aplica a partir de
+  // la segunda edición (orig. usuario).
+  if (curIn <= 0) return { ok: true };
   const TOL = 2.0;
   const rDest = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
   // Receptor declarado por `fin` (referencia a OTRO ramal) o geométrico.
@@ -217,16 +225,16 @@ export function sanAlimentadorDiametroPermitido(
   return { ok: true };
 }
 
-/** Ambas direcciones del invariante sanitario: bajar por debajo del mayor alimentador y subir
- *  por encima del receptor. Punto único de entrada para guardDiametroNodo. */
+/** Invariante sanitario: el receptor no baja por debajo del mayor alimentador. La SUBIDA del
+ *  alimentador por encima del receptor está permitida — se propaga automáticamente aguas
+ *  abajo (propagarSanDiametroAguasAbajo) en vez de bloquearse (orig. usuario: no debe saltar
+ *  alerta al cambiar el diámetro desde los tributarios que llegan). */
 export function sanDiametroPermitido(
   ramales: Parameters<typeof sanReceptorDiametroPermitido>[0],
   ramalId: string,
   newLabel: string,
 ): { ok: boolean; msg?: string } {
-  const down = sanReceptorDiametroPermitido(ramales, ramalId, newLabel);
-  if (!down.ok) return down;
-  return sanAlimentadorDiametroPermitido(ramales, ramalId, newLabel);
+  return sanReceptorDiametroPermitido(ramales, ramalId, newLabel);
 }
 
 export function flipRamalFlow(ram: PlanoRamal): void {
@@ -632,4 +640,168 @@ export function ramalFlowDirectionCheck(
     }
   }
   return null;
+}
+
+/** Tras cambiar el diámetro de un trazo san, propaga aguas abajo AL MAYOR (regla del usuario):
+ *  en cada conexión, el receptor (ramal O tributario — trib→trib y ramal→trib propagan) se
+ *  ajusta al mayor entre su diámetro y el de TODOS los alimentadores que llegan a él, y la
+ *  cadena sigue por cualquier largo. Solo asigna cuando TODOS los llegadores del receptor ya
+ *  tienen diámetro; nunca baja un diámetro (bajar el receptor manualmente lo bloquea la
+ *  alerta de sanReceptorDiametroPermitido vía guardDiametroNodo). Converge por conjunto de
+ *  procesados incluso con ciclos. `bajantes` (opcional) permite excluir pares CO-SUMIDERO:
+ *  dos ramales que descargan (o nacen) en el MISMO bajante son laterales paralelos, no
+ *  continuación uno del otro — subir uno no debe subir el otro. */
+export function propagarSanDiametroAguasAbajo(
+  ramales: Parameters<typeof sanReceptorDiametroPermitido>[0],
+  ramalId: string,
+  bajantes?: Array<{ recibeDeIds?: string[]; alimentaIds?: string[] }>,
+): void {
+  const start = ramales.find((x) => x.id === ramalId);
+  if (!start || !start.pts || start.pts.length < 2) return;
+  const TOL = 2.0;
+  const esRedSan = (o: { tipo?: string }) => o.tipo === 'ramal' || o.tipo === 'tributario';
+  // Dirección hidráulica (orig. usuario): un RAMAL nunca alimenta a un TRIBUTARIO. Un
+  // tributario receptor solo recibe de otros tributarios; un ramal receptor recibe de
+  // tributarios (trib→ramal) y de la continuación del tronco (ramal→ramal, piezas de split).
+  const puedeAlimentar = (feeder: { tipo?: string }, rec: { tipo?: string }): boolean =>
+    rec.tipo === 'ramal' || feeder.tipo === 'tributario';
+  const mergeSiblingPairs = new Set<string>();
+  for (const q of ramales) {
+    if (q.mergesFrom) mergeSiblingPairs.add([...q.mergesFrom].sort().join('|'));
+  }
+  // Pares co-sumidero: comparten bajante (ambos en recibeDeIds o ambos en alimentaIds).
+  const coSumidero = new Set<string>();
+  for (const b of bajantes || []) {
+    const llegan = b.recibeDeIds || [];
+    for (let i = 0; i < llegan.length; i++)
+      for (let j = i + 1; j < llegan.length; j++)
+        coSumidero.add([llegan[i], llegan[j]].sort().join('|'));
+    const nacen = b.alimentaIds || [];
+    for (let i = 0; i < nacen.length; i++)
+      for (let j = i + 1; j < nacen.length; j++)
+        coSumidero.add([nacen[i], nacen[j]].sort().join('|'));
+  }
+  const esCoSumidero = (a: string, b: string): boolean => coSumidero.has([a, b].sort().join('|'));
+  // Alimentadores de un receptor: trazos cuyo punto de descarga (destino de flujo) cae en su
+  // cuerpo/extremos, sin contar las mitades de una misma división (hermanas mergesFrom) ni
+  // trazos con `fin` declarado hacia otro elemento (co-sumideros). SOLO el destino de flujo:
+  // con fallback de dos extremos una pieza de AGUAS ABAJO (su origen toca el cuerpo) se
+  // contaba como llegadora y bloqueaba la compuerta de todos-asignados.
+  const feedersOf = (rec: (typeof ramales)[0]): typeof ramales => {
+    const out: typeof ramales = [];
+    for (const o of ramales) {
+      if (o.id === rec.id || o.net !== rec.net || !esRedSan(o)) continue;
+      if (!puedeAlimentar(o, rec)) continue;
+      if (!o.pts || o.pts.length < 2) continue;
+      const oDest = o._tribReversed ? o.pts[0] : o.pts[o.pts.length - 1];
+      if (distToPolyline(oDest, rec.pts!) >= TOL) continue;
+      if (esCoSumidero(o.id, rec.id)) continue;
+      // El `fin` declarado excluye solo si apunta a un TERCERO REMOTO. En uniones de split y
+      // trib→trib los fin/ini quedan como referencias cruzadas ENTRE PARTICIPANTES de la misma
+      // unión (RS1.fin="RS2", RS2.fin="RS1" apuntándose mutuamente — datos reales del usuario):
+      // si el tramo declarado pasa por ESTA MISMA descarga, es contabilidad de la conexión y no
+      // excluye. Solo un fin hacia un elemento remoto (co-sumidero al bajante, continuación
+      // tipeada) sigue excluyendo.
+      const oFin = o.fin || '';
+      if (oFin && oFin !== rec.id && oFin !== rec.label) {
+        const finT = ramales.find(
+          (x) => (x.id === oFin || x.label === oFin) && x.pts && x.pts.length >= 2,
+        );
+        const finEnLaUnion =
+          !!finT?.pts &&
+          distToPolyline(oDest, finT.pts) < TOL &&
+          distToPolyline(oDest, rec.pts!) < TOL;
+        if (!finEnLaUnion) continue;
+      }
+      if (mergeSiblingPairs.has([o.id, rec.id].sort().join('|'))) continue;
+      out.push(o);
+    }
+    return out;
+  };
+  const processed = new Set<string>();
+  const queue: string[] = [start.id];
+  while (queue.length > 0) {
+    const curId = queue.shift()!;
+    if (processed.has(curId)) continue;
+    processed.add(curId);
+    const cur = ramales.find((x) => x.id === curId);
+    if (!cur || !cur.pts || cur.pts.length < 2) continue;
+    const curPulg = diamPulgFromLabel(cur.diametro || '');
+    if (curPulg <= 0) continue;
+    // Descarga de cur: el destino de flujo; si no toca nada (bandera stale), el otro extremo.
+    const destFlow = cur._tribReversed ? cur.pts[0] : cur.pts[cur.pts.length - 1];
+    const destOther = cur._tribReversed ? cur.pts[cur.pts.length - 1] : cur.pts[0];
+    const destOn = (q: typeof cur): boolean =>
+      distToPolyline(destFlow, q.pts!) < TOL || distToPolyline(destOther, q.pts!) < TOL;
+    // Receptor: tramo mismo net cuyo cuerpo/extremos toca mi descarga — con la misma regla de
+    // dirección (el descargo de un ramal solo puede caer en OTRO ramal; la de un tributario,
+    // en ramal o tributario). Dos pasadas: PRIMERO los que NACEN en mi descarga (su origen
+    // toca el punto — continuación del tronco, RS3 en la unión RS1|RS2|RS3); si no hay, el
+    // más cercano. Sin esto un HERMANO que también llega (RS2, origen lejano) podía ganar el
+    // desempate por orden de array y "engullir" el caudal (orig. usuario).
+    let receptor: typeof cur | null = null;
+    let recD = Infinity;
+    for (const q of ramales) {
+      if (q.id === cur.id || q.net !== cur.net || !esRedSan(q)) continue;
+      if (!puedeAlimentar(cur, q)) continue;
+      if (esCoSumidero(cur.id, q.id)) continue;
+      if (!q.pts || q.pts.length < 2) continue;
+      const d = distToPolyline(destFlow, q.pts);
+      if (d >= TOL) continue;
+      const qOrigin = q._tribReversed ? q.pts[q.pts.length - 1] : q.pts[0];
+      if (Math.hypot(qOrigin[0] - destFlow[0], qOrigin[1] - destFlow[1]) < TOL) {
+        // nace aquí: candidato preferente inmediato.
+        receptor = q;
+        recD = d;
+        break;
+      }
+      if (d < recD) {
+        recD = d;
+        receptor = q;
+      }
+    }
+    if (!receptor) {
+      for (const q of ramales) {
+        if (q.id === cur.id || q.net !== cur.net || !esRedSan(q)) continue;
+        if (!puedeAlimentar(cur, q)) continue;
+        if (esCoSumidero(cur.id, q.id)) continue;
+        if (!q.pts || q.pts.length < 2) continue;
+        const d = distToPolyline(destOther, q.pts);
+        if (d >= TOL) continue;
+        const qOrigin = q._tribReversed ? q.pts[q.pts.length - 1] : q.pts[0];
+        if (Math.hypot(qOrigin[0] - destOther[0], qOrigin[1] - destOther[1]) < TOL) {
+          receptor = q;
+          recD = d;
+          break;
+        }
+        if (d < recD) {
+          recD = d;
+          receptor = q;
+        }
+      }
+    }
+    if (!receptor || !destOn(receptor)) continue;
+    // El receptor toma el MAYOR de los llegadores que tengan diámetro asignado (orig. usuario,
+    // regla vigente en marañas reales): los llegadores sin diámetro NO bloquean — una pieza
+    // troncal sin llegadores propios (p. ej. T6RS8) congelaría toda la cadena con la compuerta
+    // estricta "todos asignados". Nunca baja: solo escribe si el mayor supera al actual.
+    const feeders = feedersOf(receptor);
+    let maxPulg = 0;
+    let maxLbl = '';
+    for (const f of feeders) {
+      const p = diamPulgFromLabel(f.diametro || '');
+      if (p > maxPulg) {
+        maxPulg = p;
+        maxLbl = f.diametro || '';
+      }
+    }
+    if (maxPulg > 0) {
+      const recPulg = diamPulgFromLabel(receptor.diametro || '');
+      // Asigna también al receptor VACÍO (recPulg 0): el caso típico es el trazo nuevo que
+      // recibe de llegadores ya asignados.
+      if (recPulg < maxPulg) receptor.diametro = maxLbl;
+    }
+    // El receptor continúa la cadena aguas abajo (subiera o no).
+    queue.push(receptor.id);
+  }
 }

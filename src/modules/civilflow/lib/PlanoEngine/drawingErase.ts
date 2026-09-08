@@ -59,7 +59,9 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
     return;
   }
   if (r.pts.length <= 2) {
-    engine.ramales = engine.ramales.filter((x) => x.id !== r.id && x.padre !== r.id);
+    // Borrado = SOLO el trazo borrador (pedido usuario): los tributarios que colgaban no se
+    // borran en cascada — el sanado global los re-ancla a la raíz que nombra su label.
+    engine.ramales = engine.ramales.filter((x) => x.id !== r.id);
     if (r.tipo !== 'tributario') engine._renumberRamales(r.net);
     engine.selId = null;
     engine._emitSelect(null);
@@ -102,6 +104,8 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
   if (
     tipo === 'bajante' ||
     tipo === 'montante' ||
+    tipo === 'caja_san' ||
+    tipo === 'caja_ll' ||
     tipo === 'red_publica' ||
     tipo === 'contador' ||
     tipo === 'calentador' ||

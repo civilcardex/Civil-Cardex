@@ -469,6 +469,11 @@ export function detectAccesorioTrigger(
   }
 
   if (r.pts.length >= 3) {
+    // Tributarios creados desde LÍNEA GUÍA (_sinAccMedInterior): sus dobleces son parte del
+    // trazo dibujado por el usuario — sin glifos de accesorio interiores ni modales por ellos.
+    if ((r as unknown as { _sinAccMedInterior?: boolean })._sinAccMedInterior) {
+      return null;
+    }
     for (let i = 1; i < lastIdx; i++) {
       // accMed es un mapa anidado con llaves 'accMed<i>' en PlanoRamal (PlanoState.ts:245) — la
       // lectura plana anterior r['accMed<i>'] nunca coincidía en silencio, así que los vértices

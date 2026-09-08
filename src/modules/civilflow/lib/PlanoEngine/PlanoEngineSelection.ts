@@ -9,13 +9,13 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { NETS, checkActiveNet } from './PlanoState';
+import { _midpoint, bumpBajanteToMaxRamal, followBajanteToMaxRamal } from './PlanoEngineDrawing';
+import { recomputeDownstreamDiameters } from './drawingUtils';
 import {
-  _midpoint,
-  maxDiametroLabel,
-  bumpBajanteToMaxRamal,
-  followBajanteToMaxRamal,
-} from './PlanoEngineDrawing';
-import { diametroCambioPermitido, sanDiametroPermitido } from './drawingFlow';
+  diametroCambioPermitido,
+  propagarSanDiametroAguasAbajo,
+  sanDiametroPermitido,
+} from './drawingFlow';
 import {
   pointInPoly,
   pointInLabelBox,
@@ -427,6 +427,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
     // El cambio de diámetro por el panel (TramoEditor) también arrastra al bajante.
     if (fields.diametro !== undefined && (el as PlanoRamal).pts && el.id) {
       bumpConnectedBajantes(engine, el.id, prevRamDiam, String(fields.diametro ?? ''));
+      // Ítems 5+6: igual que updateElementById — receptor = max(alimentadores); san propaga.
+      if ((el as PlanoRamal).net === 'san')
+        propagarSanDiametroAguasAbajo(engine.ramales, el.id, engine.bajantes);
+      else recomputeDownstreamDiameters(engine.ramales, el.id);
     }
     // Ítem 6/8: propagar el elemento mutado al snapshot de selección del panel derecho/ menú
     // contextual (única fuente de verdad). _emitSelect ya emite una copia superficial, así que
@@ -555,28 +559,15 @@ export function updateElementById(
         if (bumped) b.dNominal = bumped;
       }
     }
-    // ponytail: propagate diameter change to downstream auto-split ramals (mergesFrom chains).
-    // Covers BOTH manual dropdown AND aparato assignment — aparato write goes through updateElementById.
+    // Ítems 5+6: cada cambio de diámetro re-dispara el cálculo aguas abajo (suba o baje) —
+    // receptor = max(alimentadores) desde la topología actual. Mutación directa (un solo
+    // snapshot para toda la operación, el _markDirty de abajo). Cubre menú, panel y aparatos.
+    // Sanitaria: cambiar el diámetro desde un ALIMENTADOR no alerta — se ACEPTA y el receptor
+    // (y la cadena aguas abajo) sube automáticamente al mayor de los que llegan (nunca baja).
     if (fields.diametro !== undefined && (el as PlanoRamal).pts) {
-      const newD = String(fields.diametro ?? '');
-      const visited = new Set<string>([id]);
-      const stack = [id];
-      while (stack.length > 0) {
-        const cur = stack.pop()!;
-        for (const child of engine.ramales) {
-          if (!child.mergesFrom || !child.mergesFrom.includes(cur)) continue;
-          if (visited.has(child.id)) continue;
-          visited.add(child.id);
-          const [p0, p1] = child.mergesFrom;
-          const d0 = p0 === cur ? newD : engine.ramales.find((r) => r.id === p0)?.diametro || '';
-          const d1 = p1 === cur ? newD : engine.ramales.find((r) => r.id === p1)?.diametro || '';
-          const maxD = maxDiametroLabel(d0, d1);
-          if (maxD && maxD !== child.diametro) {
-            child.diametro = maxD;
-          }
-          stack.push(child.id);
-        }
-      }
+      if ((el as PlanoRamal).net === 'san')
+        propagarSanDiametroAguasAbajo(engine.ramales, id, engine.bajantes);
+      else recomputeDownstreamDiameters(engine.ramales, id);
     }
   }
   // Refleja los cambios de propiedad del bajante (dNominal, dirección) a todo fantasma entre
@@ -632,6 +623,8 @@ export function rotateLabelSnap(engine: IPlanoEngineCore): void {
   }
   engine._emitSelect(el);
   engine.render();
+  // Ítem 1: rotar la etiqueta modifica el estado → snapshot para Ctrl+Z.
+  engine._markDirty();
 }
 
 export function resetLabel(engine: IPlanoEngineCore): void {
@@ -658,4 +651,6 @@ export function resetLabel(engine: IPlanoEngineCore): void {
     elPositionable.labelAngle = 0;
   }
   engine.render();
+  // Ítem 1: restablecer la etiqueta modifica el estado → snapshot para Ctrl+Z.
+  engine._markDirty();
 }

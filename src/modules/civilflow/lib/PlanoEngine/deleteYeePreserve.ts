@@ -1,8 +1,9 @@
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
-import { _midpoint } from './PlanoEngineDrawing';
+import { _midpoint, maxDiametroLabel } from './PlanoEngineDrawing';
 import { _firstSegmentAngle } from './drawingAngles';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { type HidroDataEntry } from './deleteCascade';
 import { devError } from '../../../../utils/devError';
 
@@ -257,6 +258,66 @@ export function preserveYeeDobleAt(
     }
     return false;
   };
+  const placedHosts: { host: PlanoRamal; port: number[] }[] = [];
+  const bumpChainFrom = (host: PlanoRamal, port: number[]): void => {
+    if (!host.pts || host.pts.length < 2) return;
+    // mayor diámetro de los brazos laterales que tocan el puerto (excluyendo al host)
+    let lateralLbl = '';
+    let lateralPulg = 0;
+    for (const o of engine.ramales) {
+      if (o.id === host.id || o.net !== 'san' || !o.pts?.length || !o.diametro) continue;
+      if (!o.pts.some((p) => Math.hypot(p[0] - port[0], p[1] - port[1]) < 0.5)) continue;
+      const p_ = diamPulgFromLabel(o.diametro);
+      if (p_ > lateralPulg) {
+        lateralPulg = p_;
+        lateralLbl = o.diametro;
+      }
+    }
+    if (lateralPulg <= 0) return;
+    let cur = host;
+    let running = lateralLbl;
+    let runningPulg = lateralPulg;
+    let fromPt = port;
+    let guard = 0;
+    while (guard++ < 50) {
+      cur.diametro = maxDiametroLabel(cur.diametro || '', running);
+      const curPulg = diamPulgFromLabel(cur.diametro || '');
+      if (curPulg > runningPulg) {
+        runningPulg = curPulg;
+        running = cur.diametro || running;
+      }
+      const farIdx =
+        cur.pts.findIndex((p) => Math.hypot(p[0] - fromPt[0], p[1] - fromPt[1]) < 0.5) === 0
+          ? cur.pts.length - 1
+          : 0;
+      const far = cur.pts[farIdx];
+      const next = engine.ramales.find(
+        (o) =>
+          o.id !== cur.id &&
+          o.net === 'san' &&
+          !!o.pts?.length &&
+          o.pts.some((p) => Math.hypot(p[0] - far[0], p[1] - far[1]) < 0.5),
+      );
+      if (!next) break;
+      // en una unión (3+ piezas en el punto) el flujo se redistribuye: parar tras el siguiente
+      const armsAt = engine.ramales.filter(
+        (o) =>
+          o.net === 'san' &&
+          !!o.pts?.length &&
+          o.pts.some((p) => Math.hypot(p[0] - far[0], p[1] - far[1]) < 0.5),
+      ).length;
+      next.diametro = maxDiametroLabel(next.diametro || '', running);
+      const nextPulg = diamPulgFromLabel(next.diametro || '');
+      if (nextPulg > runningPulg) {
+        runningPulg = nextPulg;
+        running = next.diametro || running;
+      }
+      cur = next;
+      fromPt = far;
+      if (armsAt > 2) break;
+    }
+  };
+
   const ports: number[][] = [];
   for (const p of [f1, f2]) {
     if (!ports.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.5) && touchesPt(p)) {
@@ -330,6 +391,7 @@ export function preserveYeeDobleAt(
       }
     }
     if (!best) continue;
+    placedHosts.push({ host: best, port });
     if (!best.yeeDobleAt) {
       best.yeeDobleAt = deleted.yeeDobleAt;
       const planId = engine._loadedPlanId;
@@ -351,6 +413,12 @@ export function preserveYeeDobleAt(
     }
     placeTaponOnHost(engine, best, port);
   }
+  for (const { host, port } of placedHosts) bumpChainFrom(host, port);
+  // El flujo de los laterales pasa ahora entero por los sobrevivientes: el tramo tapado y la
+  // cadena conectada en dirección del flujo toman el MAYOR diámetro de los brazos laterales
+  // del puerto — antes el segmento restante quedaba con su diámetro (o vacío) y el faltante se
+  // propagaba al trazo conectado (orig. usuario).
+
   // Memoria de un pase para calcSanitaryAccessories: estos tapones son del caso doble VIVO
   // (puertos recién tapados) — su limpieza de banderas muertas no debe retirarlos en la
   // misma pasada (la geometría L resultante es idéntica al desarme viejo).

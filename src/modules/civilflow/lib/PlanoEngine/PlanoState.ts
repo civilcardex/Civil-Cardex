@@ -222,6 +222,45 @@ export function nextFreeRamalId(
   return `${pfx}${n}`;
 }
 
+/** Re-etiqueta la cadena de tributarios bajo `id` (incluido él) con la raíz ACTUAL de su
+ *  cadena de padres (rootTributarioLabel). T2RS1 con padre RS2 debe llamarse T{n}RS2 — los
+ *  trib-trib intermedios arrastraban la raíz vieja en la etiqueta (orig. usuario). Recursivo
+ *  sobre los hijos (padre === id), con guard de profundidad. */
+export function relabelTribChain(
+  ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
+  id: string,
+  alloc: (suffix: string) => number,
+  depth = 0,
+): void {
+  if (depth > 20) return;
+  const r = ramales.find((x) => x.id === id);
+  if (!r || r.tipo !== 'tributario') return;
+  // Raíz = caminar la cadena de padres hasta el primer NO tributario (el tronco receptor).
+  let root = '';
+  let cur: string | null = r.padre;
+  let guard = 0;
+  while (cur && guard++ < 20) {
+    const p_ = ramales.find((x) => x.id === cur);
+    if (!p_) break;
+    if (p_.tipo !== 'tributario') {
+      root = p_.label || p_.id;
+      break;
+    }
+    cur = p_.padre;
+  }
+  if (root) {
+    const endsOk = !!r.label && r.label.endsWith(root);
+    if (!endsOk) {
+      r.label = `T${alloc(root)}${root}`;
+    }
+  }
+  for (const child of ramales) {
+    if (child.padre === id && child.tipo === 'tributario') {
+      relabelTribChain(ramales, child.id, alloc, depth + 1);
+    }
+  }
+}
+
 /** Etiqueta del ramal RAÍZ de una cadena de tributarios (el primer no-tributario subiendo
  *  por la cadena de `padre`). Un tributario de un tributario se numera contra el raíz con
  *  consecutivo global de ese raíz — sale T5RS1, no T1T1RS1 — y compite con los tributarios
@@ -249,12 +288,12 @@ export function rootTributarioLabel(
   const seen = new Set<string>();
   while (cur && !seen.has(cur.id)) {
     seen.add(cur.id);
-    // Si es tributario, seguir por padre; si es ramal partido, seguir por mergesFrom[0] (upstream)
+    // La raíz es el PRIMER no-tributario de la cadena de padres (el padre inmediato del
+    // tributario). NO se sigue mergesFrom hacia el tronco original: un tributario cuyo padre
+    // es el downstream autocreado de un split (RS2) debe etiquetarse contra RS2, no contra el
+    // tronco original (RS1) — regla usuario: el label nombra al padre inmediato.
     if (cur.tipo === 'tributario' && cur.padre) {
       cur = ramales.find((r) => r.id === cur!.padre) as typeof cur;
-    } else if ((cur as { mergesFrom?: [string, string] }).mergesFrom) {
-      const upstream = (cur as { mergesFrom: [string, string] }).mergesFrom[0];
-      cur = ramales.find((r) => r.id === upstream) as typeof cur;
     } else {
       break;
     }
@@ -311,6 +350,10 @@ export interface PlanoRamal {
   diametro: string;
   pendiente: number;
   bloqueado?: boolean;
+  // Elemento creado por "Copiar elementos en pisos": movimiento bloqueado permanentemente en
+  // el piso destino (no se arrastra cuerpo/extremos, ni el símbolo si es bajante); borrar y
+  // editar propiedades siguen funcionando.
+  copiaPiso?: boolean;
   accesorioInicio?: string;
   accesorioFin?: string;
   diametroInicio?: string;
@@ -322,6 +365,9 @@ export interface PlanoRamal {
   _net?: string;
   diamPulg?: number;
   _tribReversed?: boolean;
+  // Tributario creado desde LÍNEA GUÍA: sus dobleces internos no reciben glifos de accesorio
+  // (detectAccesorioTrigger los salta) — los codos dibujados son parte del trazo de la guía.
+  _sinAccMedInterior?: boolean;
   accMed?: Record<string, string>;
   caudal?: number;
   lvert?: string;
@@ -375,6 +421,13 @@ export interface PlanoBajante {
   net: string;
   tipo: string;
   code: string;
+  // Elemento creado por "Copiar elementos entre pisos": movimiento bloqueado permanentemente
+  // (ver comentario en PlanoRamal.copiaPiso).
+  copiaPiso?: boolean;
+  // Origen de la copia (plano + id de origen): permite reconocer y retirar los fantasmas
+  // entre pisos que proyectaban ESTE bajante antes de que la copia lo materializara aquí.
+  copiadoDePlan?: string;
+  copiadoDeId?: string;
   x: number;
   y: number;
   pisoBase: string;
@@ -578,6 +631,10 @@ export interface IPlanoEngineCore {
   crossFloorGhosts: CrossFloorGhost[];
   guideLines: PlanoGuideLine[];
   _guideStart: { x: number; y: number } | null;
+  // Ítem 2 (guías multisegmento): vértices acumulados de la guía en construcción (el último
+  // coincide con _guideStart). Se commitea a guideLines con doble-click/Esc/cambio de
+  // herramienta; null cuando no hay trazo en curso.
+  _guidePts: [number, number][] | null;
   activeRamal: PlanoActiveRamal | null;
   activeArea: PlanoActiveArea | null;
   selId: string | null;
@@ -715,8 +772,9 @@ export interface IPlanoEngineCore {
     startX: number;
     startY: number;
     origPts: [number, number][];
-    // ponytail: índice del extremo tomado (0|1) → estirar/encoger; undefined → arrastre de cuerpo
-    endIdx?: 0 | 1;
+    // ponytail: índice del vértice tomado → estirar/encoger; undefined → arrastre de cuerpo.
+    // Ítem 2: cualquier vértice de la guía (no solo 0|1).
+    endIdx?: number;
   } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
   MM: {

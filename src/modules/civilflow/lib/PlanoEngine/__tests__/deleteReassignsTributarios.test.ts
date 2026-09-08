@@ -111,7 +111,7 @@ describe('orig. usuario #2 — borrar trazo reasigna tributarios al ramal del ot
     expect(engine.ramales.find((r) => r.id === 'T1')?.padre).toBe('RS2');
   });
 
-  it('sin ramal hermano, los tributarios se borran junto con el padre', () => {
+  it('sin ramal hermano, el tributario SOBREVIVE (borrado multi = solo los seleccionados)', () => {
     const rs1 = R({
       id: 'RS1',
       pts: [
@@ -130,6 +130,9 @@ describe('orig. usuario #2 — borrar trazo reasigna tributarios al ramal del ot
     });
     const engine = makeEngine([rs1, t1]);
     deleteSelected(engine, ['RS1']);
-    expect(engine.ramales.find((r) => r.id === 'T1')).toBeUndefined();
+    // Pedido usuario: el borrado en conjunto elimina SOLO lo seleccionado — el tributario no
+    // seleccionado no cae en cascada (queda suelto, sin host al que reasignar).
+    expect(engine.ramales.find((r) => r.id === 'T1')).toBeDefined();
+    expect(engine.ramales.find((r) => r.id === 'RS1')).toBeUndefined();
   });
 });

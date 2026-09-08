@@ -169,7 +169,14 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
     const superior = engine.nptLevels
       .filter((l) => (l.npt || 0) > npt)
       .sort((a, b) => (a.npt || 0) - (b.npt || 0))[0]?.npt;
-    return superior !== undefined && (b.nptBase === superior || b.nptCima === superior);
+    if (superior === undefined) return false;
+    // Un bajante que pertenece a ESTE piso (pisoBase = nivel actual) nunca es su propio
+    // fantasma — renderBajantes ya dibuja su círculo y etiqueta. Sin este guard, un bajante
+    // COPIADO entre pisos conservaba los nptBase/nptCima del piso origen y esta rama lo
+    // listaba como fantasma: doble etiqueta (BAN1 Sube + BAN1 Baja) hasta editarlo a mano
+    // (orig. usuario). Las otras dos ramas ya tienen su guard equivalente.
+    if (b.pisoBase === engine.nivelActual!.label) return false;
+    return b.nptBase === superior || b.nptCima === superior;
   }) as unknown as PlanoBajante[];
 }
 
@@ -287,14 +294,9 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       const name = ACC_LABELS[accIni] || accIni;
       tStart = { code: name.toUpperCase(), isAcc: true, ref: null };
     } else {
+      // Iniciar un trazo en CUALQUIER bajante está permitido (pedido explícito del usuario):
+      // sin descarte por direccion — el inicio se asocia vía alimentaIds en finishRamal.
       tStart = findEndpointTarget(r, pStart);
-      // Guardia de dirección de flujo: un bajante 'baja' en pts[0] crearía exactamente el estado
-      // inválido del reporte de bug (RS5-P1 con flecha saliendo de un BAN4-P1 "Baja"). Se descarta
-      // tStart si el objetivo auto-detectado es un bajante 'baja' — misma regla que usa la ruta de
-      // creación activa.
-      if (tStart && tStart.ref && (tStart.ref as PlanoBajante).direccion === 'baja') {
-        tStart = null;
-      }
     }
 
     const accFin = r.accesorioFin;

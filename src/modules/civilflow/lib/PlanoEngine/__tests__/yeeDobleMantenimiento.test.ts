@@ -488,6 +488,100 @@ describe('mantenimiento de yee doble (borrar segmentos/laterales)', () => {
     expect(taponCount(eng)).toBe(2);
   });
 
+  it('borrar el segmento medio: los sobrevivientes y el trazo conectado toman el diámetro mayor (orig. usuario)', () => {
+    localStorage.clear();
+    // Yee doble de dos uniones; el segmento medio del brazo principal se borra → tapones en
+    // ambos puertos y los sobrevivientes (y el trazo conectado aguas abajo) toman el MAYOR
+    // diámetro de los brazos laterales. Antes quedaban con su diámetro o vacíos.
+    const rs1 = R({
+      id: 'RS1',
+      label: 'RS1',
+      pts: [
+        [0, 0],
+        [50, 0],
+      ],
+      diametro: '',
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const medio = R({
+      id: 'RS5',
+      label: 'RS5',
+      pts: [
+        [50, 0],
+        [60, 0],
+      ],
+      diametro: '4"',
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const rs3 = R({
+      id: 'RS3',
+      label: 'RS3',
+      pts: [
+        [60, 0],
+        [100, 0],
+      ],
+      diametro: '',
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const rs6 = R({
+      id: 'RS6',
+      label: 'RS6',
+      pts: [
+        [100, 0],
+        [140, 0],
+      ],
+      diametro: '',
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const latA = R({
+      id: 'RS4',
+      label: 'RS4',
+      pts: [
+        [42.9, -7.1],
+        [50, 0],
+      ],
+      diametro: '2"',
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const latB = R({
+      id: 'RS2',
+      label: 'RS2',
+      pts: [
+        [67.1, -7.1],
+        [60, 0],
+      ],
+      diametro: '2"',
+      yeeDobleAt: [
+        [50, 0],
+        [60, 0],
+      ],
+    });
+    const eng = makeEngine([rs1, medio, rs3, rs6, latA, latB]);
+    eng.selId = 'RS5';
+    eraseRamalAt(eng, medio, 55, 0);
+    expect(taponCount(eng)).toBe(2);
+    // Los sobrevivientes toman el mayor de los laterales (2"): RS1 y RS3 estaban vacíos.
+    expect(rs1.diametro).toBe('2"');
+    expect(rs3.diametro).toBe('2"');
+    // Propagación: el trazo conectado a RS3 también toma el diámetro.
+    expect(rs6.diametro).toBe('2"');
+  });
+
   it('tapón retirado en esquina L por la validación → el codo 45 lo sustituye', () => {
     localStorage.clear();
     // Estado final del desarme de la yee: esquina L (diagonal + horizontal) con el tapón del

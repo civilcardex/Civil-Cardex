@@ -3,6 +3,7 @@ import {
   allocNetNumber,
   allocTributaryNumber,
   rootTributarioLabel,
+  relabelTribChain,
   uniqRamalId,
 } from './PlanoState';
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
@@ -60,14 +61,20 @@ export function autoSplitJunctionAndSumFlow(
     // conexión real es ramal-a-ramal; un tributario que comparte ese vértice (p.ej.
     // porque aterrizó ahí antes) no debe disparar "Los ramales no se conectan a
     // tributarios" al extender el ramal desde ese extremo.
-    const alsoNormalRamalHere = engine.ramales.some(
-      (ex) =>
+    let normalRamalId: string | null = null;
+    for (const ex of engine.ramales) {
+      if (
         ex.id !== incoming.id &&
         sameNetGroup(ex.net, incoming.net) &&
         ex.tipo !== 'tributario' &&
         !!ex.pts &&
-        ex.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL),
-    );
+        ex.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)
+      ) {
+        normalRamalId = ex.id;
+        break;
+      }
+    }
+    const alsoNormalRamalHere = !!normalRamalId;
     for (const existing of engine.ramales) {
       if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
       if (!existing.pts || existing.pts.length < 2) continue;
@@ -85,6 +92,25 @@ export function autoSplitJunctionAndSumFlow(
           // red (no solo af/ac/gas), sin exigir el mismo ramal padre — para dibujar un tributario
           // conectado a otro tributario. El símbolo de la unión lo genera el flujo AccesorioModal.
           const tribToTribOk = existing.tipo === 'tributario';
+          // Regla del usuario: si hay RAMAL (tronco) en el punto, ese es el padre de TODOS los
+          // tributarios del punto; solo trib-trib aislado adopta el padre del otro.
+          if (normalRamalId) {
+            normalizeTribPadresAt(engine, ep, normalRamalId, sameNetGroup, TOL);
+          } else if (tribToTribOk) {
+            incoming.padre = existing.padre;
+            // La cadena del incoming re-etiqueta con la raíz ACTUAL (los trib intermedios
+            // arrastraban la raíz vieja, orig. usuario).
+            relabelTribChain(engine.ramales, incoming.id, (suffix) =>
+              allocTributaryNumber(engine, suffix),
+            );
+            // Todos los tributarios del punto comparten el padre del primero (regla usuario),
+            // saneado contra el label (dibujos viejos con padre stale).
+            const healedEp = healedPadreId(engine.ramales, existing.id);
+            if (healedEp) {
+              incoming.padre = healedEp;
+              normalizeTribPadresAtPoint(engine, ep, healedEp, existing.net, sameNetGroup, TOL);
+            }
+          }
           if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
             // Advertencia "Ramal padre incorrecto" inhabilitada (orig. usuario) — el padre se
             // autodetecta; la conexión no se bloquea.
@@ -227,7 +253,8 @@ export function autoSplitJunctionAndSumFlow(
         // Tributario-a-tributario (ítem 7/2/3): permitido en cualquier red y sin exigir el mismo
         // ramal padre. Un tributario SÍ puede partir (splitear) a otro tributario: el tramo que
         // cae a mitad de cuerpo del tributario existente lo divide igual que un ramal, creando
-        // el `downstream` correspondiente. No cortamos aquí — dejamos fluir al split de abajo.
+        // el `downstream` correspondiente. No cortamos aquí — dejamos fluir al split de abajo,
+        // que adopta padres/re-etiqueta UNA sola vez (regla usuario: todos comparten la raíz).
       }
 
       // Las uniones entre redes san↔vent a mitad de cuerpo NO deben dividir el ramal existente.
@@ -302,6 +329,13 @@ export function autoSplitJunctionAndSumFlow(
       const netDef = NETS.find((n) => n.id === existing.net);
       const pfx = netDef ? netDef.lbl : 'R';
       const isTrib = existing.tipo === 'tributario';
+      // Sanear el padre del existing ANTES de derivar la raíz del downstream: con dibujos
+      // legacy (padre stale, p. ej. T1RS2 con padre RS1) el tramo autocreado heredaba el
+      // padre podrido y su label salía con la raíz equivocada — el bug reportado 3 veces.
+      if (isTrib) {
+        const healedPre = healedPadreId(engine.ramales, existing.id);
+        if (healedPre && existing.padre !== healedPre) existing.padre = healedPre;
+      }
       // Numeración CONTRA LA RAÍZ (ítem 10/2): un tributario cuyo padre es otro tributario se
       // numera contra el ramal raíz con consecutivo global — T5RS1, nunca T1T1RS1. `allocTributaryNumber`
       // ya salta labels existentes, así que el consecutivo no colisiona con los tributarios
@@ -355,12 +389,30 @@ export function autoSplitJunctionAndSumFlow(
       // (T2RS9) aunque el tributario drena al segmento nuevo (RS8) — etiqueta equivocada en
       // el plano (orig. usuario).
       if (incoming.tipo === 'tributario') {
-        incoming.padre = downstream.id;
+        // Regla del usuario: trib-trib → los PADRES quedan iguales. Si el existing es
+        // tributario, el incoming adopta SU padre (no el downstream autocreado); si es un
+        // ramal, el padre real es el downstream autocreado que recibe la descarga.
+        incoming.padre = isTrib ? existing.padre : downstream.id;
         const rootLbl =
           (isTrib ? rootTributarioLabel(engine.ramales, downstream.id) : '') ||
           downstream.label ||
           downstream.id;
         incoming.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
+        // Cadena del incoming con la raíz actual (hijos incluidos).
+        relabelTribChain(engine.ramales, incoming.id, (suffix) =>
+          allocTributaryNumber(engine, suffix),
+        );
+        // Regla del usuario: TODOS los tributarios del punto (incluido el downstream recién
+        // creado) comparten el padre del primer tributario — cualquier dirección, cualquier
+        // estado previo de los padres. El padre se SANEA contra el label (dibujos viejos con
+        // padre stale: T1RS2 con padre RS1).
+        if (isTrib) {
+          const healed = healedPadreId(engine.ramales, existing.id);
+          if (healed) {
+            existing.padre = healed;
+            normalizeTribPadresAtPoint(engine, ep, healed, existing.net, sameNetGroup, TOL);
+          }
+        }
       }
       if (farAparato && engine._loadedPlanId != null) {
         moveAparatoCount(existing.net, existing.id, newId, engine._loadedPlanId, farAparato);
@@ -613,4 +665,158 @@ export function checkRamalAnglesExcludingConnections(
   else if (startConnects) ptsToCheck = r.pts.slice(1);
   if (ptsToCheck.length < 2) return true;
   return checkRamalAngles(ptsToCheck, r.net, r.tipo, engine.snapMode);
+}
+
+/** Todos los tributarios con extremo en `ep` (mismo grupo de red) adoptan `trunkId` como padre
+ *  y etiqueta T{n}{labelDelTronco} (orig. usuario: 3 tributarios llegando a RS2, solo uno con
+ *  RS2 en su etiqueta — los trib-trib intermedios arrastraban el padre equivocado). */
+function normalizeTribPadresAt(
+  engine: IPlanoEngineCore,
+  ep: number[],
+  trunkId: string,
+  sameNetGroup: (a: string, b: string) => boolean,
+  TOL: number,
+): void {
+  const trunk = engine.ramales.find((r) => r.id === trunkId);
+  if (!trunk) return;
+  const trunkLbl = trunk.label || trunk.id;
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario' || !r.pts?.length) continue;
+    if (!sameNetGroup(r.net, trunk.net)) continue;
+    if (!r.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) continue;
+    r.padre = trunkId;
+    const root = rootTributarioLabel(engine.ramales, trunkId) || trunkLbl;
+    if (!r.label || !r.label.endsWith(root)) {
+      r.label = `T${allocTributaryNumber(engine, root)}${root}`;
+    }
+    relabelTribChain(engine.ramales, r.id, (suffix) => allocTributaryNumber(engine, suffix));
+  }
+}
+
+// Auto-sanado de dibujos viejos: el label T{n}RS2 es la señal visible para el usuario — si el
+// `padre` persistido apunta a OTRA raíz (RS1, stale de antes de estas reglas), se confía en el
+// label y se re-ancla el padre al ramal raíz que nombra. Sin esto, la regla "todos comparten el
+// padre del primer tributario" copiaba el padre podrido a toda la unión nueva.
+function healedPadreId(
+  ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
+  tribId: string,
+): string | null {
+  const r = ramales.find((x) => x.id === tribId);
+  if (!r || r.tipo !== 'tributario') return null;
+  const m = /^T\d+(.+)$/.exec(r.label || '');
+  if (!m) return r.padre;
+  const rootLbl = m[1];
+  const root = ramales.find(
+    (x) => x.tipo !== 'tributario' && (x.label === rootLbl || x.id === rootLbl),
+  );
+  if (!root) return r.padre;
+  // ¿El padre actual ya resuelve a esa misma raíz? Nada que sanear.
+  let cur: string | null = r.padre;
+  let guard = 0;
+  while (cur && guard++ < 20) {
+    const p = ramales.find((x) => x.id === cur);
+    if (!p) break;
+    if (p.tipo !== 'tributario') return p.id === root.id ? r.padre : root.id;
+    cur = p.padre;
+  }
+  return root.id;
+}
+
+// Regla del usuario (trib-trib): TODOS los tributarios que tocan el punto de unión comparten
+// el padre del primer tributario (el existing) — incluido el tramo autocreado por el split
+// (downstream) y las cadenas de cada uno, que se re-etiquetan con esa raíz. Cubre cualquier
+// dirección de la unión y cualquier estado legacy de los padres previos.
+function normalizeTribPadresAtPoint(
+  engine: IPlanoEngineCore,
+  ep: number[],
+  targetPadreId: string,
+  net: string,
+  sameNetGroup: (a: string, b: string) => boolean,
+  TOL: number,
+): void {
+  if (!targetPadreId) return;
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario' || !r.pts?.length) continue;
+    if (!sameNetGroup(r.net, net)) continue;
+    if (!r.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) continue;
+    // SIN guard de "padre ya correcto": aunque el padre no cambie, el LABEL puede estar stale
+    // (T2RS1 con padre RS2) — relabelTribChain re-etiqueta a la raíz de la cadena.
+    r.padre = targetPadreId;
+    relabelTribChain(engine.ramales, r.id, (suffix) => allocTributaryNumber(engine, suffix));
+  }
+}
+
+// Sanado GLOBAL de padres (corre en cada _markDirty). Dos pasadas conservadoras:
+//   1) cadena rota (padre null o id inexistente) → se ancla a la raíz que nombra el label;
+//   2) piezas autocreadas (mergesFrom) heredan el padre del upstream que continúan y su label
+//      se alinea a esa raíz.
+// Deliberadamente NO hay una pasada "el padre manda" ni árbitro geométrico: en piezas legacy el
+// padre puede estar stale y el label es la única pista (re-etiquetar por padre las destruía en
+// cascada — T1RS2 → T1RS1 —, y el punto de unión es ambiguo geométricamente: toca ambos troncos).
+// El label stale de un entrante se corrige en su propia unión (normalize sin guard + línea 395).
+export function healTribPadres(engine: IPlanoEngineCore): void {
+  // 1) Cadenas rotas: el label sugiere la raíz correcta.
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
+    if (r.padre != null && engine.ramales.some((x) => x.id === r.padre)) continue;
+    const m = /^T\d+(.+)$/.exec(r.label || '');
+    const root =
+      m &&
+      engine.ramales.find((x) => x.tipo !== 'tributario' && (x.label === m[1] || x.id === m[1]));
+    if (root) r.padre = root.id;
+  }
+  // 1b) Piezas de LÍNEA GUÍA (_sinAccMedInterior): sus dobleces no llevan glifos — limpia
+  // accMed persistido por versiones anteriores al flag.
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario') continue;
+    if (!(r as unknown as { _sinAccMedInterior?: boolean })._sinAccMedInterior) continue;
+    if (r.accMed && Object.keys(r.accMed).length > 0) r.accMed = {};
+  }
+  // 2) Autocreados (mergesFrom): heredan el padre del upstream que continúan y su label se
+  //    alinea a esa raíz.
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
+    const mf = (r as unknown as { mergesFrom?: string[] }).mergesFrom;
+    if (!mf || !mf.length) continue;
+    const upstream = engine.ramales.find((x) => x.id === mf[0]);
+    if (!upstream || upstream.tipo !== 'tributario') continue;
+    const upRoot = rootTributarioLabel(engine.ramales, upstream.id);
+    if (!upRoot) continue;
+    if (r.padre !== upstream.padre) r.padre = upstream.padre;
+    const rootLbl = rootTributarioLabel(engine.ramales, r.id);
+    if (rootLbl && !(r.label || '').endsWith(rootLbl)) {
+      r.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
+    }
+  }
+  // 3) Cadena INTACTA manda sobre el label: un tributario cuyo padre sube limpio a un tronco
+  //    se re-etiqueta con la raíz de esa cadena y el consecutivo siguiente (T1RS1 con padre
+  //    RS2 → T3RS2, pedido usuario). Las piezas con cadena rota ya fueron ancladas en (1).
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
+    const rootLbl = rootTributarioLabel(engine.ramales, r.id);
+    if (rootLbl && !(r.label || '').endsWith(rootLbl)) {
+      r.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
+    }
+  }
+  // 4) Renumerar SIN HUECOS (pedido usuario: "se está saltando la etiqueta de T2RS#"): los
+  //    relabels intermedios queman consecutivos. Por raíz, ordenar por el número actual del
+  //    label y reasignar T1..Tn seguidos. Idempotente: con la serie ya seguida no cambia nada.
+  const groups = new Map<string, Array<{ r: PlanoRamal; n: number }>>();
+  for (const r of engine.ramales) {
+    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
+    const rootLbl = rootTributarioLabel(engine.ramales, r.id);
+    if (!rootLbl) continue;
+    const m = /^T(\d+)/.exec(r.label || '');
+    const arr = groups.get(rootLbl) || [];
+    arr.push({ r, n: m ? parseInt(m[1], 10) : 9999 });
+    groups.set(rootLbl, arr);
+  }
+  for (const [rootLbl, arr] of groups) {
+    if (arr.length <= 1) continue;
+    arr.sort((x, y) => x.n - y.n);
+    arr.forEach((item, i) => {
+      const want = `T${i + 1}${rootLbl}`;
+      if (item.r.label !== want) item.r.label = want;
+    });
+  }
 }

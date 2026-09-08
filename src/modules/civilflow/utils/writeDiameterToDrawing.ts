@@ -9,7 +9,9 @@ import {
 import type { SyncPlanInput, RawElement } from './drawingSync';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { INODORO_APP_ID, sanDiamAllowedForApparatus } from './sanitaryDiamCompat';
-import { maxDiametroLabel, followBajanteToMaxRamal } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import { followBajanteToMaxRamal } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import { recomputeDownstreamDiameters } from '../lib/PlanoEngine/drawingUtils';
+import { propagarSanDiametroAguasAbajo } from '../lib/PlanoEngine/drawingFlow';
 
 interface LocalDrawingData {
   ts?: number;
@@ -320,27 +322,25 @@ export function writeDiametroToDrawing(
         const oldDiamLabel = r.diametro || '';
         r.diametro = newDiamLabel;
         changed = true;
-        // Propagar a cualquier ramal aguas abajo auto-creado por un merge de tee-split DESDE este —
-        // espejo del paseo en canvas de DrawingElementContextMenu.tsx:1949-1969. El diametro del
-        // hijo solo se calcula en tiempo de creación, así que editar un padre desde una página de
-        // tabla de diseño debe re-resolverlo o el ramal fusionado conserva su diámetro obsoleto
-        // en storage.
-        for (const child of data.ramales || []) {
-          if (!child.mergesFrom || !child.mergesFrom.includes(r.id)) continue;
-          const [pid1, pid2] = child.mergesFrom;
-          const d1 =
-            pid1 === r.id
-              ? newDiamLabel
-              : (data.ramales || []).find((p) => p.id === pid1)?.diametro || '';
-          const d2 =
-            pid2 === r.id
-              ? newDiamLabel
-              : (data.ramales || []).find((p) => p.id === pid2)?.diametro || '';
-          const newChildDiam = maxDiametroLabel(d1, d2);
-          if (newChildDiam && newChildDiam !== child.diametro) {
-            child.diametro = newChildDiam;
-            changed = true;
+        // Ítems 5+6: re-resolver receptores aguas abajo desde la topología actual. San/ll
+        // (trib→ramal/trib y troncos partidos): propagarSanDiametroAguasAbajo — receptor =
+        // mayor de SUS llegadores cuando todos tienen diámetro (la tabla escribe DIRECTO al
+        // storage sin pasar por updateElementById, así que sin esta llamada la propagación
+        // nunca corría desde la tabla — orig. usuario: RS3 vacío no heredaba de RS1/RS2).
+        // Resto de redes: recomputeDownstreamDiameters (mergesFrom).
+        if (data.ramales) {
+          const before = (data.ramales || []).map((x) => `${x.id}=${x.diametro || ''}`).join('|');
+          if (net === 'san' || net === 'll') {
+            propagarSanDiametroAguasAbajo(
+              data.ramales as unknown as Parameters<typeof propagarSanDiametroAguasAbajo>[0],
+              r.id,
+              (data.bajantes || []) as Array<{ recibeDeIds?: string[]; alimentaIds?: string[] }>,
+            );
+          } else {
+            recomputeDownstreamDiameters(data.ramales, r.id);
           }
+          const after = (data.ramales || []).map((x) => `${x.id}=${x.diametro || ''}`).join('|');
+          if (after !== before) changed = true;
         }
         // El bajante sigue al mayor diámetro de sus ramales en ambas direcciones: si seguía
         // al máximo anterior adopta el nuevo (suba o baje); un oversize explícito mayor se

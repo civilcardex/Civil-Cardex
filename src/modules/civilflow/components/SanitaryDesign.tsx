@@ -17,7 +17,6 @@ import {
   SAN_INODORO_MIN_MSG,
   sanMaxFeederDiam,
   sanFeederMinMsg,
-  sanReceptorMaxMsg,
 } from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
@@ -138,28 +137,8 @@ export default function DisenosSanitarios() {
             );
             return;
           }
-          // Subida: cualquier receptor (padre ramal, sin bajante) fija el máximo — el mismo
-          // invariante visto desde el alimentador; los bajantes siguen al máximo por su cuenta.
-          const parentKeys = Object.keys(fullChildrenMap).filter((k) =>
-            (fullChildrenMap[k] || []).some((ck) => keys.includes(ck)),
-          );
-          for (const pk of parentKeys) {
-            const receptor = findTramo(pk);
-            const recPulg = receptor?.diamDisPulg || 0;
-            if (!receptor || receptor.esBajante || receptor.tipo !== 'ramal' || recPulg <= 0)
-              continue;
-            if (newPulg > recPulg) {
-              window.dispatchEvent(
-                new CustomEvent('civilflow_diametro_validation', {
-                  detail: {
-                    title: 'Diámetro no permitido',
-                    message: sanReceptorMaxMsg(receptor.label || receptor.id || '', recPulg),
-                  },
-                }),
-              );
-              return;
-            }
-          }
+          // Subida libre: el alimentador puede superar al receptor — el motor propaga el
+          // mayor aguas abajo automáticamente (sin alerta, orig. usuario).
         }
         const res = writeDiametroToDrawing(tramoId, 'san', opt.label, plans);
         if (!res.ok && res.reason === 'accessory-larger') {

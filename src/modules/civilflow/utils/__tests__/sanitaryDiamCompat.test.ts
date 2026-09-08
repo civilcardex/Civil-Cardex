@@ -125,7 +125,7 @@ describe('sanitaria — receptor >= alimentador (dibujo)', () => {
     expect(sanReceptorDiametroPermitido(geom(), 'RS1', '2"').ok).toBe(true);
   });
 
-  it('tributarios no restringen al receptor', () => {
+  it('tributarios SÍ restringen al receptor (regla vigente: el mayor de los llegadores manda)', () => {
     const gs: EngRamal[] = [
       ...geom(),
       {
@@ -163,7 +163,8 @@ describe('sanitaria — receptor >= alimentador (dibujo)', () => {
         ],
       },
     ];
-    expect(sanReceptorDiametroPermitido(solo, 'RS3', '2"').ok).toBe(true);
+    // El tributario 4" que llega a RS3 ahora restringe: bajar RS3 a 2" dispara la alerta.
+    expect(sanReceptorDiametroPermitido(solo, 'RS3', '2"').ok).toBe(false);
   });
 
   it('candidato con fin hacia otro elemento no alimenta (co-sumidero al bajante)', () => {
@@ -193,9 +194,9 @@ describe('sanitaria — receptor >= alimentador (dibujo)', () => {
   });
 });
 
-// Dirección SUBIDA del invariante: el alimentador no puede quedar mayor que su receptor
-// (antes la regla solo se validaba al editar el receptor y era burlable editando el feeder).
-describe('sanitaria — alimentador <= receptor (dibujo, vía sanDiametroPermitido)', () => {
+// Dirección SUBIDA: libre — el motor propaga el mayor aguas abajo (recomputeDownstream-
+// Diameters); la alerta solo aplica al REDUCIR el receptor por debajo del mayor alimentador.
+describe('sanitaria — alimentador <= receptor: subida libre con propagación', () => {
   type EngRamal = {
     id: string;
     net?: string;
@@ -228,11 +229,8 @@ describe('sanitaria — alimentador <= receptor (dibujo, vía sanDiametroPermiti
       ],
     }),
   ];
-  it('bloquea subir el alimentador por encima de su receptor', () => {
-    const res = sanDiametroPermitido(geom(), 'RS0', '6"');
-    expect(res.ok).toBe(false);
-    expect(res.msg).toContain('RS3');
-    expect(res.msg).toContain('2"');
+  it('permite subir el alimentador por encima de su receptor (propagación automática)', () => {
+    expect(sanDiametroPermitido(geom(), 'RS0', '6"').ok).toBe(true);
   });
 
   it('permite igualar al receptor y reducirse (sin alimentadores propios)', () => {

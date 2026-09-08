@@ -4,7 +4,7 @@ import {
   HYDRO_DATA_STORAGE_KEY,
   GAS_ACC_KEY,
 } from '../constants/storage-keys';
-import { NETS } from '../lib/PlanoEngine/PlanoState';
+import { NETS, uniqRamalId } from '../lib/PlanoEngine/PlanoState';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 
 export interface CopySourceSelection {
@@ -34,6 +34,8 @@ interface CopyElement {
   fin?: string;
   padre?: string | null;
   label?: string;
+  copiaPiso?: boolean;
+  bloqueado?: boolean;
   _labelBox?: unknown;
   _circ?: unknown;
   _ghost?: unknown;
@@ -41,12 +43,6 @@ interface CopyElement {
   _net?: unknown;
   isFantasma?: unknown;
   ghostData?: unknown;
-}
-
-function deleteKeys(store: Record<string, unknown>, pred: (k: string) => boolean): void {
-  for (const k of Object.keys(store)) {
-    if (pred(k)) delete store[k];
-  }
 }
 
 /**
@@ -99,7 +95,6 @@ export function copyDrawingFromPlan(
     // Para redes donde bmType === 'bajante' (saneamiento, ll), los montantes tienen su propio
     // prefijo 'M'+lbl
     const monPfx = net.bmType === 'montante' ? net.bmPfx || 'MON' : 'M' + (net.lbl || 'MON');
-    const tPfx = 'T'; // Tributario prefix
 
     const copyRamalTipos = new Set(['ramal', 'tributario'].filter((t) => tipos.has(t)));
     const copyBajanteTipos = new Set(['bajante', 'montante'].filter((t) => tipos.has(t)));
@@ -134,50 +129,12 @@ export function copyDrawingFromPlan(
       if (gasAcc[el.id] !== undefined) srcSnapshot[el.id].gasAcc = structuredClone(gasAcc[el.id]);
     }
 
-    /* ── Eliminar elementos coincidentes existentes del engine ── */
-    const existingToRemove: (PlanoRamal | PlanoBajante)[] = [];
-    if (copyRamalTipos.size > 0) {
-      existingToRemove.push(
-        ...engine.ramales.filter((r) => r.net === netId && copyRamalTipos.has(r.tipo)),
-      );
-    }
-    if (copyBajanteTipos.size > 0) {
-      existingToRemove.push(
-        ...engine.bajantes.filter((b) => b.net === netId && copyBajanteTipos.has(b.tipo)),
-      );
-    }
-    if (copyGlobalTipos.size > 0) {
-      existingToRemove.push(...engine.bajantes.filter((b) => copyGlobalTipos.has(b.tipo)));
-    }
-    const removeIds = new Set(existingToRemove.map((e) => e.id));
-
-    engine.ramales = engine.ramales.filter((r) => !removeIds.has(r.id));
-    engine.bajantes = engine.bajantes.filter((b) => !removeIds.has(b.id));
-
-    for (const r of engine.ramales) {
-      if (removeIds.has(r.ini)) r.ini = '';
-      if (removeIds.has(r.fin)) r.fin = '';
-      if (r.padre && removeIds.has(r.padre)) r.padre = null;
-    }
-    for (const b of engine.bajantes) {
-      b.recibeDeIds = (b.recibeDeIds || []).filter((id: string) => !removeIds.has(id));
-      b.alimentaIds = (b.alimentaIds || []).filter((id: string) => !removeIds.has(id));
-      if (b.descargaEnId && removeIds.has(b.descargaEnId)) b.descargaEnId = null;
-    }
-
-    /* ── Limpiar selección si el elemento seleccionado fue eliminado ── */
-    if (engine.selId && removeIds.has(engine.selId)) {
-      engine.selId = null;
-      engine._isGhostSel = false;
-      engine._emitSelect(null);
-    }
-
-    /* ── Limpiar entradas target de los 3 stores ── */
-    for (const id of removeIds) {
-      deleteKeys(aparatos, (k: string) => k.endsWith(`_${id}_${tgtPid}`));
-      deleteKeys(hidroData, (k: string) => k.endsWith(`_${id}_${tgtPid}`));
-      deleteKeys(gasAcc, (k: string) => k === id);
-    }
+    /* ── Los elementos del piso destino SE CONSERVAN (orig. usuario) ── */
+    /* Antes se borraban los coincidentes (misma red+tipo) y los contadores reiniciaban en 1,
+     * reseteando el piso actual. Ahora todo lo existente se mantiene y las copias toman la
+     * numeración consecutivo siguiente de ESTE piso (los contadores de abajo ya siembran del
+     * máximo existente); copiar dos veces el mismo origen duplica el dibujo — el usuario puede
+     * borrar lo que sobra a mano. */
 
     /* ── Generar nuevos IDs ── */
     const maxForType = (arr: (PlanoRamal | PlanoBajante)[], regex: RegExp): number =>
@@ -210,10 +167,6 @@ export function copyDrawingFromPlan(
       engine.bajantes.filter((b) => b.tipo === 'calentador'),
       /^(?:CALENT|calentG)(\d+)$/,
     );
-    const maxTrib = maxForType(
-      engine.ramales.filter((r) => r.net === netId && r.tipo === 'tributario'),
-      /^T(\d+)$/,
-    );
 
     let ramalCounter = maxRamal;
     let bajanteCounter = maxBajante;
@@ -221,7 +174,26 @@ export function copyDrawingFromPlan(
     let rpCounter = maxRp;
     let cntCounter = maxCnt;
     let calCounter = maxCal;
-    let tributarioCounter = maxTrib;
+
+    // Etiquetas de tributario ocupadas (engine + copias de este lote): los tributarios reales
+    // usan uniqRamalId() como id (timestamp), así que sembrar el contador por ID (/^T(\d+)$/)
+    // casi siempre arrancaba en 1 y acuñaba T1RS5 duplicando una etiqueta existente — doble
+    // etiqueta en el plano tras copiar (orig. usuario). La numeración se hace por ETIQUETA y
+    // por raíz de padre, igual que allocTributaryNumber en el motor.
+    const usedTribLabels = new Set(
+      engine.ramales
+        .filter((r) => r.tipo === 'tributario' && r.net === netId)
+        .map((r) => r.label || r.id),
+    );
+    const nextTribLabel = (root: string): { id: string; label: string } => {
+      for (let n = 1; ; n++) {
+        const label = `T${n}${root}`;
+        if (!usedTribLabels.has(label)) {
+          usedTribLabels.add(label);
+          return { id: uniqRamalId(), label };
+        }
+      }
+    };
 
     // Construir mapa: oldPadreId -> newLabel del padre en destino
     const padreLabelMap: Record<string, string> = {};
@@ -236,28 +208,36 @@ export function copyDrawingFromPlan(
       }
     }
 
+    // Ramales primero (los tributarios necesitan el mapa de padres completo); luego
+    // tributarios en orden de fuente — el padre de un tributario copiado (otro tributario)
+    // ya pasó por aquí y dejó su label nuevo en padreLabelMap.
     for (const r of srcRamales) {
-      if (r.tipo === 'ramal') {
-        const oldId = r.id;
-        ramalCounter++;
-        const newId = pfx + ramalCounter;
-        oldToNew[oldId] = newId;
-        r.id = newId;
-        r.label = newId;
-        // Actualizar mapa del padre: los tributarios futuros con este padre deben referenciar la
-        // nueva etiqueta
-        padreLabelMap[oldId] = newId;
-      } else {
-        const oldId = r.id;
-        const oldPadre = r.padre || '';
-        tributarioCounter++;
-        const newId = tPfx + tributarioCounter;
-        oldToNew[oldId] = newId;
-        r.id = newId;
-        // Etiqueta de tributario: T#<padreLabel> p. ej. T1RS5
-        const padreLabel = oldPadre ? padreLabelMap[oldPadre] || oldPadre : '';
-        r.label = padreLabel ? `${newId}${padreLabel}` : newId;
-      }
+      if (r.tipo !== 'ramal') continue;
+      const oldId = r.id;
+      ramalCounter++;
+      const newId = pfx + ramalCounter;
+      oldToNew[oldId] = newId;
+      r.id = newId;
+      r.label = newId;
+      // Actualizar mapa del padre: los tributarios futuros con este padre deben referenciar la
+      // nueva etiqueta
+      padreLabelMap[oldId] = newId;
+      r.copiaPiso = true;
+      r.bloqueado = true;
+    }
+    for (const r of srcRamales) {
+      if (r.tipo !== 'tributario') continue;
+      const oldId = r.id;
+      const oldPadre = r.padre || '';
+      // Etiqueta de tributario: T#<padreLabel> p. ej. T1RS5 — número libre POR RAÍZ.
+      const padreLabel = oldPadre ? padreLabelMap[oldPadre] || oldPadre : '';
+      const { id: newId, label } = nextTribLabel(padreLabel);
+      oldToNew[oldId] = newId;
+      r.id = newId;
+      r.label = label;
+      padreLabelMap[oldId] = label;
+      r.copiaPiso = true;
+      r.bloqueado = true;
     }
 
     for (const b of srcBajantes) {
@@ -275,6 +255,11 @@ export function copyDrawingFromPlan(
         b.id = newId;
         b.code = monPfx + montanteCounter;
       }
+      b.copiaPiso = true;
+      // Origen de la copia: los fantasmas entre pisos que proyectaban ESTE bajante quedan
+      // redundantes (su etiqueta se duplica) y se reconocen por esta huella.
+      (b as { copiadoDePlan?: string; copiadoDeId?: string }).copiadoDePlan = srcPid;
+      (b as { copiadoDePlan?: string; copiadoDeId?: string }).copiadoDeId = origId;
     }
 
     for (const b of srcGlobals) {
@@ -299,6 +284,7 @@ export function copyDrawingFromPlan(
         b.id = newId;
         b.code = newId;
       }
+      b.copiaPiso = true;
     }
 
     /* ── Reasignar referencias internas ── */
@@ -377,6 +363,28 @@ export function copyDrawingFromPlan(
       ...(srcBajantes as unknown as PlanoBajante[]),
       ...(srcGlobals as unknown as PlanoBajante[]),
     );
+
+    // Doble etiqueta (orig. usuario): si el piso origen proyectó un FANTASMA del bajante en
+    // este piso destino, el bajante ahora copiado coexistía con ese fantasma residual que
+    // muestra el mismo código — dos etiquetas para el mismo elemento. Tras copiar DESDE un
+    // plano, TODOS sus fantasmas proyectados aquí son redundantes (sus bajantes ya están
+    // materializados como copias); se retiran por sourcePlanId y por id viejo/nuevo.
+    const copiedOldIds = new Set(Object.keys(oldToNew));
+    const copiedNewIds = new Set(Object.values(oldToNew));
+    engine.crossFloorGhosts = (engine.crossFloorGhosts || []).filter((g) => {
+      const ghost = g as {
+        sourceBajanteId?: string;
+        targetBajanteId?: string;
+        code?: string;
+        sourcePlanId?: string | number;
+      };
+      return (
+        String(ghost.sourcePlanId ?? '') !== srcPid &&
+        !copiedOldIds.has(ghost.sourceBajanteId || '') &&
+        !copiedNewIds.has(ghost.targetBajanteId || '') &&
+        !(ghost.code && copiedNewIds.has(ghost.code))
+      );
+    });
 
     engine._netCounts[netId] = engine._netCounts[netId] || { ramal: 0, tributario: 0 };
     if (ramalCounter > engine._netCounts[netId].ramal) {

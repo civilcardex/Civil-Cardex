@@ -3,6 +3,7 @@ import {
   allocNetNumber,
   allocTributaryNumber,
   rootTributarioLabel,
+  relabelTribChain,
   uniqRamalId,
 } from './PlanoState';
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
@@ -10,19 +11,21 @@ import { devError } from '../../../../utils/devError';
 import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { DEFAULT_PENDIENTE_PCT } from '../../constants';
+import { puedeConectarRamalABajante } from './bajanteRules';
+import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection';
 import {
-  isRamalBajanteConnectionAllowed,
-  junctionHasIncomingFlow,
-  junctionHasOutgoingFlow,
-} from '../../utils/flowDirection';
-import { flipRamalFlow, ramalFlowDirectionCheck } from './drawingFlow';
+  flipRamalFlow,
+  ramalFlowDirectionCheck,
+  propagarSanDiametroAguasAbajo,
+} from './drawingFlow';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import {
   autoSplitJunctionAndSumFlow,
   detectTributaryPadre,
   checkRamalAnglesExcludingConnections,
 } from './junctionAutoSplit';
-import { _nextLabel, _midpoint } from './drawingUtils';
+import { _nextLabel, _midpoint, maxDiametroLabel } from './drawingUtils';
+import { distToPolyline } from '../shared/geometry';
 
 /** Termina el ramal activo: valida ángulos, crea el PlanoRamal, auto-divide uniones y asocia
  *  con bajantes. @param engine Instancia del motor. */
@@ -244,6 +247,37 @@ export function finishRamal(engine: IPlanoEngineCore): void {
             target.labelX = labX;
             target.labelY = labY;
             if (target.labelAngle == null) target.labelAngle = angleAtHalfLength(mergedPts);
+            // Herencia de diámetro en la extensión: si el ramal extendido quedó sin diámetro,
+            // adopta el MAYOR de los ramales que tocan la pieza fusionada (los vecinos por el
+            // otro extremo de la extensión) — sin esto, extender un tramo sin dimensionar
+            // dejaba la pieza fusionada sin diámetro y disparaba "Diámetros pendientes"
+            // (orig. usuario).
+            // Extensión de tributario: la cadena re-etiqueta con la raíz ACTUAL del padre
+            // (los trib intermedios arrastraban la raíz vieja en la etiqueta, orig. usuario).
+            if (target.tipo === 'tributario') {
+              relabelTribChain(engine.ramales, target.id, (suffix) =>
+                allocTributaryNumber(engine, suffix),
+              );
+            }
+            if (!target.diametro) {
+              const mergedEnds = [mergedPts[0], mergedPts[mergedPts.length - 1]];
+              let inherited = '';
+              for (const o of engine.ramales) {
+                if (o.id === target.id || o.net !== target.net) continue;
+                if (!o.pts || o.pts.length < 2 || !o.diametro) continue;
+                const oEnds = [o.pts[0], o.pts[o.pts.length - 1]];
+                const touches =
+                  oEnds.some((e) =>
+                    mergedEnds.some((m) => Math.hypot(e[0] - m[0], e[1] - m[1]) < 2.0),
+                  ) || mergedEnds.some((m) => distToPolyline(m, o.pts) < 2.0);
+                if (touches) inherited = maxDiametroLabel(inherited, o.diametro);
+              }
+              if (!inherited) {
+                const defD = (engine._ramalDefaults || { diametro: '' }).diametro || '';
+                if (defD) inherited = defD;
+              }
+              if (inherited) target.diametro = inherited;
+            }
             if (!checkRamalAnglesExcludingConnections(engine, target)) {
               // revertir TODO el estado de target
               target.pts = snap.pts;
@@ -283,6 +317,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   if (!engine.activeRamal) return;
 
   const def = engine._ramalDefaults || { material: '', diametro: '', pendiente: 0 };
+  // El 2" con que nacen los ramales san/vent sin default es un VALOR POR DEFECTO, no una
+  // elección: la herencia de diámetro (más abajo) puede mejorarlo con el mayor de los
+  // ramales que toca. Un def.diametro explícito del usuario nunca se sobreescribe.
+  const diametroBornDefault = !def.diametro;
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
   const isTrib = engine.tipoTramo === 'tributario';
@@ -327,19 +365,11 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     labelY: labelY,
     labelAngle: firstAngle,
     material: def.material || '',
-    // Item 3: todo ramal de ventilación nuevo nace con diámetro 2" por defecto
-    // (no solo visual del desplegable — el valor almacenado). Si _ramalDefaults
-    // trae un diámetro, se respeta; el 2" es el fallback cuando no hay default.
-    // Fix issue #3: tributario nunca hereda 4" por defecto — solo inodoro requiere 4"
-    // (ramalMenu/FixturesPanel lo asignan explícitamente al elegir aparato). Tributario
-    // nace vacío (vent: 2" fallback) para no forzar 4" sin aparato.
-    diametro: isTrib
-      ? engine.activeRamal!.net === 'vent' && !def.diametro
-        ? '2"'
-        : ''
-      : engine.activeRamal!.net === 'vent' && !def.diametro
-        ? '2"'
-        : def.diametro || '',
+    // Ítem usuario (diámetro inicial): todo trazo nace SIN diámetro asignado — solo un
+    // default explícito del usuario (def.diametro) o una acción posterior (asignar aparato,
+    // herencia de ramales que toca) lo establece. Sin default manda '' (el cierre marca
+    // "Diámetros pendientes" hasta asignarlo).
+    diametro: def.diametro || '',
     // Ítem 4: los ramales sanitarios nuevos nacen con pendiente por defecto 2% cuando no se
     // eligió explícitamente otra. El default del selector para san ya trae DEFAULT_PENDIENTE_PCT
     // desde PdfViewer; este fallback cubre el caso de _ramalDefaults ausente o pendiente sin
@@ -532,6 +562,60 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     engine.render();
     return;
   }
+  // Los tributarios no pueden CRUZAR otro ramal (atravesarlo por el interior): alerta + bloqueo.
+  // La intersección se descarta si cae pegada a un extremo del propio tributario (≤2 unid): el
+  // aterrizaje legítimo a mitad del cuerpo del host (split de tee) ocurre justo en su punta —
+  // con snap imperfecto el cruce queda a <2 de la punta y NO es un atravesamiento real.
+  if (r.tipo === 'tributario') {
+    const sameGroup = (x: string, y: string) =>
+      x === y || ((x === 'san' || x === 'vent') && (y === 'san' || y === 'vent'));
+    const strictHit = (
+      a1: number[],
+      a2: number[],
+      b1: number[],
+      b2: number[],
+    ): [number, number] | null => {
+      const d = (a1[0] - a2[0]) * (b1[1] - b2[1]) - (a1[1] - a2[1]) * (b1[0] - b2[0]);
+      if (Math.abs(d) < 1e-10) return null;
+      const t = ((a1[0] - b1[0]) * (b1[1] - b2[1]) - (a1[1] - b1[1]) * (b1[0] - b2[0])) / d;
+      const u = -((a1[0] - a2[0]) * (a1[1] - b1[1]) - (a1[1] - a2[1]) * (a1[0] - b1[0])) / d;
+      if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+      const ix = a1[0] + t * (a2[0] - a1[0]);
+      const iy = a1[1] + t * (a2[1] - a1[1]);
+      if (
+        Math.hypot(ix - a1[0], iy - a1[1]) < 0.001 ||
+        Math.hypot(ix - a2[0], iy - a2[1]) < 0.001 ||
+        Math.hypot(ix - b1[0], iy - b1[1]) < 0.001 ||
+        Math.hypot(ix - b2[0], iy - b2[1]) < 0.001
+      )
+        return null;
+      return [ix, iy];
+    };
+    const near = (p: number[], q: number[], tol: number) =>
+      Math.hypot(p[0] - q[0], p[1] - q[1]) < tol;
+    for (const o of engine.ramales) {
+      if (o.id === r.id || !sameGroup(o.net, r.net) || !o.pts || o.pts.length < 2) continue;
+      let crosses = false;
+      for (let i = 0; i < r.pts.length - 1 && !crosses; i++) {
+        for (let j = 0; j < o.pts.length - 1 && !crosses; j++) {
+          const hit = strictHit(r.pts[i], r.pts[i + 1], o.pts[j], o.pts[j + 1]);
+          if (hit && !near(hit, r.pts[i], 2.0) && !near(hit, r.pts[r.pts.length - 1], 2.0))
+            crosses = true;
+        }
+      }
+      if (crosses) {
+        engine.triggerAlert(
+          'Conexión no permitida',
+          'Un tributario no puede cruzar un ramal. Conéctalo en un extremo o a mitad del trazo, sin atravesarlo.',
+        );
+        engine.ramales.pop();
+        engine.activeRamal = null;
+        engine._markDirty();
+        engine.render();
+        return;
+      }
+    }
+  }
   // Regla "Los ramales no se conectan a tributarios": autoSplitJunctionAndSumFlow devuelve si la
   // conexión fue bloqueada — aquí se hace cumplir retirando el ramal recién terminado (antes la
   // alerta salía y el ramal quedaba dibujado igualmente).
@@ -541,12 +625,51 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     engine.render();
     return;
   }
-  // Asocia el ramal con un bajante si su extremo cae en el centro del bajante. Un ramal solo
-  // puede LLEGAR a un bajante (real o fantasma) — nunca EMPEZAR ahí — por pedido explícito;
-  // handleLineDown ya bloquea el clic mismo de empezar un ramal fresco ahí, esto es el cinturón
-  // y tirantes sobre los extremos del ramal TERMINADO (también cubre conexiones creadas por
-  // arrastre). Un fantasma desplazado se empareja contra su propia posición desplazada del piso
-  // actual; un fantasma sin desplazar o un bajante real emparejan en su (b.x, b.y) simple.
+  // Ítem 3 (dibujo manual, unión extremo-con-extremo sin split): el tributario no partió nada
+  // — si en su punto de conexión NACE otro ramal (el tramo autocreado aguas abajo), ese es su
+  // padre real, no el tramo aguas arriba que detectTributaryPadre eligió por cercanía. Misma
+  // regla que buildTribFromGuide para guías; el split a mitad de cuerpo ya lo resolvió
+  // junctionAutoSplit (incoming.padre = downstream).
+  if (r.tipo === 'tributario' && r.padre && r.pts.length >= 2) {
+    const TOL_EP = 0.5;
+    const sameGroup = (a: string, b: string) =>
+      a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+    const splitHappened = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
+    if (!splitHappened) {
+      const padre = engine.ramales.find((x) => x.id === r.padre);
+      const eps = [r.pts[0], r.pts[r.pts.length - 1]];
+      const connPt = padre
+        ? eps.find(
+            (e) =>
+              (padre.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL_EP) ||
+              distToPolyline(e, padre.pts || []) < TOL_EP,
+          )
+        : undefined;
+      if (connPt) {
+        const receptor = engine.ramales.find(
+          (x) =>
+            x.id !== r.id &&
+            x.id !== r.padre &&
+            x.tipo !== 'tributario' &&
+            sameGroup(x.net, r.net) &&
+            !!x.pts &&
+            x.pts.length >= 2 &&
+            Math.hypot(x.pts[0][0] - connPt[0], x.pts[0][1] - connPt[1]) < TOL_EP,
+        );
+        if (receptor) {
+          const recLbl = receptor.label || receptor.id;
+          r.padre = receptor.id;
+          r.label = `T${allocTributaryNumber(engine, recLbl)}${recLbl}`;
+        }
+      }
+    }
+  }
+  // Asocia el ramal con un bajante si alguno de sus extremos cae en el centro del bajante:
+  // la LLEGADA (último punto) escribe fin + recibeDeIds; el INICIO (pts[0], permitido por
+  // pedido explícito del usuario) escribe ini + alimentaIds — el bajante entrega flujo a ese
+  // trazo. handleLineDown ya no bloquea iniciar ahí; el snap ancla el clic al centro.
+  // Un fantasma desplazado se empareja contra su propia posición desplazada del piso actual;
+  // un fantasma sin desplazar o un bajante real emparejan en su (b.x, b.y) simple.
   if (r.pts.length >= 2) {
     const TOLLERANCE = 0.5;
     const lastIdx = r.pts.length - 1;
@@ -560,9 +683,9 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         })
         .map((b) => b.id),
     );
+    let rejected = false;
     for (const epIdx of [0, lastIdx]) {
       const isArrival = epIdx === lastIdx;
-      if (!isArrival) continue;
       const ep = r.pts[epIdx];
       const baj = engine.bajantes.find((b) => {
         if (b.net !== r.net || engine._hiddenNets.has(b.net)) return false;
@@ -578,47 +701,78 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         }
         return Math.hypot(b.x - ep[0], b.y - ep[1]) < rimTol;
       });
-      if (baj && !baj.recibeDeIds.includes(r.id)) {
-        // Límite: hasta 2 ramales por bajante (orig. #14)
-        if (baj.recibeDeIds.length >= 2) {
-          engine.triggerAlert(
-            'Bajante completo',
-            'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
-          );
-          continue;
-        }
-        // 14.2 Y doble: laterales must be same diam
-        if (baj.recibeDeIds.length === 1) {
-          const existing = engine.ramales.find((x) => x.id === baj.recibeDeIds[0]);
-          if (existing && existing.diametro && r.diametro) {
-            const p1 = diamPulgFromLabel(existing.diametro);
-            const p2 = diamPulgFromLabel(r.diametro);
-            if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
-              engine.triggerAlert(
-                'Diámetros no compatibles',
-                'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
-              );
-              continue;
-            }
+      if (!baj || baj.recibeDeIds.includes(r.id) || baj.alimentaIds?.includes(r.id)) continue;
+      // Regla central: misma red + tope de asociaciones (2 bajante / 1 caja) — antes de
+      // escribir cualquier campo (ítems 1/9). Rechazo = NO se crea el trazo: la alerta
+      // saliendo y el ramal quedando dibujado igualmente era el estado inválido (orig. usuario).
+      const check = puedeConectarRamalABajante(baj, r);
+      if (!check.ok) {
+        if (check.title && check.msg) engine.triggerAlert(check.title, check.msg);
+        rejected = true;
+        break;
+      }
+      // 14.2 Y doble: laterales must be same diam (solo llegadas — 2 ramales que descargan)
+      if (isArrival && baj.recibeDeIds.length === 1) {
+        const existing = engine.ramales.find((x) => x.id === baj.recibeDeIds[0]);
+        if (existing && existing.diametro && r.diametro) {
+          const p1 = diamPulgFromLabel(existing.diametro);
+          const p2 = diamPulgFromLabel(r.diametro);
+          if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
+            engine.triggerAlert(
+              'Diámetros no compatibles',
+              'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
+            );
+            rejected = true;
+            break;
           }
         }
-        // Guardia centralizada de dirección — un bajante 'baja' solo puede RECIBIR flujo, así
-        // que nunca se permite que el INICIO de un ramal (pts[0]) se asocie con uno. Sin esto,
-        // un ramal cuyo inicio dibujado por el usuario cae sobre un bajante 'baja' tomaría esa
-        // asociación en silencio, creando exactamente el estado del reporte de bug (RS5-P1
-        // saliendo de BAN4-P1 con dirección "Baja").
-        const epIdxTyped = epIdx === 0 ? 0 : r.pts.length - 1;
-        if (!isRamalBajanteConnectionAllowed(engine, r, epIdxTyped, baj)) continue;
-        if (!baj.recibeDeIds.includes(r.id)) baj.recibeDeIds.push(r.id);
-        // Auto-rellenar ini/fin del ramal
-        const bajCode = baj.code || baj.id;
-        if (epIdx === 0) {
-          r.ini = bajCode;
-        } else {
-          r.fin = bajCode;
-        }
+      }
+      const bajCode = baj.code || baj.id;
+      if (isArrival) {
+        baj.recibeDeIds.push(r.id);
+        r.fin = bajCode;
+      } else {
+        if (!baj.alimentaIds) baj.alimentaIds = [];
+        baj.alimentaIds.push(r.id);
+        r.ini = bajCode;
       }
     }
+    if (rejected) {
+      engine.ramales = engine.ramales.filter((x) => x.id !== r.id);
+      engine.activeRamal = null;
+      engine.render();
+      return;
+    }
+  }
+  // Herencia de diámetro: un ramal/tributario NUEVO sin diámetro que conecta con la red
+  // adopta el MAYOR diámetro de los ramales que toca, y propaga el suyo a los que tocan sin
+  // diámetro. Tras borrar un segmento del brazo de una yee doble y redibujarlo, la pieza
+  // nueva nacía sin diámetro y disparaba "Diámetros pendientes" (orig. usuario). Nunca
+  // sobreescribe un diámetro explícito.
+  if (r.pts && r.pts.length >= 2) {
+    const epsD = [r.pts[0], r.pts[r.pts.length - 1]];
+    const TOL_D = 2.0;
+    const touching = engine.ramales.filter(
+      (o) =>
+        o.id !== r.id &&
+        o.net === r.net &&
+        o.pts &&
+        o.pts.length >= 2 &&
+        (o.pts.some((p) => epsD.some((e) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL_D)) ||
+          epsD.some((e) => distToPolyline(e, o.pts) < TOL_D)),
+    );
+    if (!r.diametro || diametroBornDefault) {
+      let inherited = r.diametro || '';
+      for (const o of touching) if (o.diametro) inherited = maxDiametroLabel(inherited, o.diametro);
+      if (inherited && inherited !== r.diametro) r.diametro = inherited;
+    }
+    if (r.diametro) {
+      for (const o of touching) if (!o.diametro) o.diametro = r.diametro;
+    }
+    // San: el trazo nuevo (o el diámetro que heredó) propaga el mayor aguas abajo — la cadena
+    // receptora (ramales y tributarios) se ajusta al mayor de sus llegadores (orig. usuario).
+    if (r.net === 'san' || r.net === 'll')
+      propagarSanDiametroAguasAbajo(engine.ramales, r.id, engine.bajantes);
   }
   // Correr _markDirty ANTES de revisar el modal para que autoDetectRamalConnections tenga
   // oportunidad de detectar cualquier unión nueva que el usuario acaba de crear al terminar

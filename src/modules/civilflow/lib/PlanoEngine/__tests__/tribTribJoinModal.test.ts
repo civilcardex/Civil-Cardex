@@ -125,11 +125,11 @@ describe('trib-trib join (same padre) — modal must still fire', () => {
   });
 });
 
-describe('trib-trib join (different padre) — permitido en cualquier red', () => {
-  it('allows the join regardless of padre and fires the AccesorioModal', () => {
+describe('trib-trib join sobre el tronco — todos con padre = tronco (regla usuario)', () => {
+  it('T1 y T2 adoptan al TRONCO del punto como padre y dispara el AccesorioModal', () => {
     const padre = makePadre();
-    // T1 pertenece a un ramal padre DIFERENTE (o ninguno) — el usuario quiere conectar un
-    // tributario a otro tributario libremente.
+    // T1 pertenece a un ramal padre DIFERENTE — al unir T2 con T1, T2 adopta el padre de T1
+    // (regla del usuario: trib-trib → los padres quedan iguales).
     const t1 = makeTributario('T1', 'RAF_OTHER');
     const engine = makeEngine([padre, t1]);
     const calls = (engine as unknown as { calls: string[] }).calls;
@@ -146,11 +146,53 @@ describe('trib-trib join (different padre) — permitido en cualquier red', () =
 
     finishRamal(engine);
 
-    // El tributario nuevo queda confirmado
-    expect(engine.ramales.filter((r) => r.padre === 'RAF_PADRE')).toHaveLength(1);
+    // Ambos tributarios del punto adoptan al tronco RAF_PADRE como padre (regla: los tres
+    // llegan al mismo ramal → todos con ese padre).
+    const t2 = engine.ramales.find((r) => r.id !== 'T1' && r.tipo === 'tributario');
+    expect(t2).toBeDefined();
+    expect(t2!.padre).toBe('RAF_PADRE');
+    expect(t1.padre).toBe('RAF_PADRE');
     // NO salta alerta de padre equivocado
     expect(calls.some((c) => c.startsWith('alert:'))).toBe(false);
     // El modal de accesorio (symbol de unión) sigue abriéndose
     expect(calls).toContain('modal');
+  });
+
+  describe('relabelTribChain vía join — cadena completa re-etiquetada', () => {
+    it('trib-trib aislado: los tributarios de la cadena toman la raíz ACTUAL del padre', () => {
+      // T2RS1 tiene padre RS2 pero label vieja "T2RS1" (raíz RS1, arrastrada); T3RS1 cuelga de
+      // T2RS1. Un tercer trib se une a T2RS1 en punto SIN tronco → la cadena entera re-etiqueta.
+      const t1 = makeTributario('T2RS1', 'RS2');
+      t1.pts = [
+        [40, 30],
+        [40, 0],
+      ];
+      const t3 = makeTributario('T3RS1', 'T2RS1');
+      t3.pts = [
+        [40, 60],
+        [40, 30],
+      ];
+      const rs2 = makePadre();
+      rs2.id = 'RS2';
+      rs2.label = 'RS2';
+      const engine = makeEngine([rs2, t1, t3]);
+      const calls = (engine as unknown as { calls: string[] }).calls;
+      (engine as unknown as { _debugRelabel?: boolean })._debugRelabel = true;
+
+      engine.activeRamal = {
+        net: 'af',
+        tipo: 'tributario',
+        padre: 'RAF_X',
+        pts: [
+          [40, 0],
+          [60, 0],
+        ],
+      } as never;
+      finishRamal(engine);
+
+      expect(t1.label.endsWith('RS2')).toBe(true);
+      expect(t3.label.endsWith('RS2')).toBe(true);
+      expect(calls).toContain('modal');
+    });
   });
 });

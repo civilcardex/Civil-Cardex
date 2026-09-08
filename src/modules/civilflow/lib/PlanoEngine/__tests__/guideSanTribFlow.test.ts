@@ -179,7 +179,7 @@ describe('guía — crear ramal ancla al cruce', () => {
   it('extremo corto del cruce se extiende hasta él', () => {
     const padre = R({});
     const eng = makeEngine([padre]);
-    const { pStart, pEnd } = resolveRamalEndsFromGuide(
+    const { pts } = resolveRamalEndsFromGuide(
       asEngine(eng),
       guide([
         [50, -60],
@@ -190,15 +190,15 @@ describe('guía — crear ramal ancla al cruce', () => {
         ramalId: 'RS1',
       },
     );
-    expect(pStart).toEqual([50, -60]);
+    expect(pts[0]).toEqual([50, -60]);
     // El cercano cae EXACTO sobre el cruce (antes quedaba en [50,-3], flotando).
-    expect(pEnd).toEqual([50, 0]);
+    expect(pts[pts.length - 1]).toEqual([50, 0]);
   });
 
   it('cruce cerca del vértice ajusta al vértice exacto', () => {
     const padre = R({});
     const eng = makeEngine([padre]);
-    const { pEnd } = resolveRamalEndsFromGuide(
+    const { pts } = resolveRamalEndsFromGuide(
       asEngine(eng),
       guide([
         [120, -30],
@@ -209,13 +209,13 @@ describe('guía — crear ramal ancla al cruce', () => {
         ramalId: 'RS1',
       },
     );
-    expect(pEnd).toEqual([100, 0]);
+    expect(pts[pts.length - 1]).toEqual([100, 0]);
   });
 
   it('sin cruce conserva los extremos de la guía', () => {
     const padre = R({});
     const eng = makeEngine([padre]);
-    const { pStart, pEnd } = resolveRamalEndsFromGuide(
+    const { pts } = resolveRamalEndsFromGuide(
       asEngine(eng),
       guide([
         [200, 0],
@@ -223,7 +223,29 @@ describe('guía — crear ramal ancla al cruce', () => {
       ]),
       null,
     );
-    expect(pStart).toEqual([200, 0]);
-    expect(pEnd).toEqual([260, 0]);
+    expect(pts[0]).toEqual([200, 0]);
+    expect(pts[pts.length - 1]).toEqual([260, 0]);
+  });
+
+  it('ítem 2: guía en L produce ramal multisegmento anclado al cruce', () => {
+    const padre = R({});
+    const eng = makeEngine([padre]);
+    const { pts } = resolveRamalEndsFromGuide(
+      asEngine(eng),
+      guide([
+        [50, -60],
+        [50, -30],
+        [80, -30],
+        [80, -3],
+      ]),
+      {
+        point: [80, 0],
+        ramalId: 'RS1',
+      },
+    );
+    // Lado lejano completo (4 vértices + cruce anclado), flujo hacia el cruce.
+    expect(pts.length).toBe(5);
+    expect(pts[0]).toEqual([50, -60]);
+    expect(pts[pts.length - 1]).toEqual([80, 0]);
   });
 });
