@@ -15,6 +15,11 @@ import {
   perfilesPaisDefault,
 } from './seedData';
 import type { CivilManagerState } from './types';
+// TEMPORAL (ponytail): backup real 2026-09-06 sembrado a la fuerza en el módulo.
+// Revertir: borrar este import, la constante SEED_BACKUP_2026_09_06 y el `if` que la retorna en civilManagerLoad.
+import seedBackup20260906 from './seedBackup20260906.json';
+
+const SEED_BACKUP_2026_09_06 = seedBackup20260906 as unknown as Partial<CivilManagerState> | null;
 
 const DB_NAME = 'CivilManagerDB';
 const STORE_NAME = 'state';
@@ -241,6 +246,8 @@ async function saveToIdb(state: CivilManagerState): Promise<void> {
 }
 
 export async function civilManagerLoad(): Promise<CivilManagerState | null> {
+  // TEMPORAL: el backup gana sobre Supabase/IDB en cada carga (para revertir, poner SEED_BACKUP_2026_09_06 = null).
+  if (SEED_BACKUP_2026_09_06) return migrateState(SEED_BACKUP_2026_09_06);
   // 1) Try Supabase if authenticated
   const fromSupa = await loadFromSupabase();
   if (fromSupa) {
