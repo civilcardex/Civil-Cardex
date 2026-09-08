@@ -434,3 +434,191 @@ tsc 0 · lint 0 err 0 warn · vitest 52 files / 297 passed · vite build ✓ · 
 
 ### Verificación manual pendiente (datos reales)
 Tablas de diseño AF/AC completas (editar diámetro, Pin/Pfin en modo edición, chips "Otros Ramales"), panel de acometida (AcometidaPage y modo showOnlyAcometida), persistencia de memoria (`civilflow_memoria_af/ac_rows` tras editar), badges de velocidad/presión en InfTab, y que el tramo tr2 siga adoptando el contador detectado al cambiar de plano.
+
+## Session Summary — 2026-09-07 (guías multisegmento + ajuste auto + recorte + fix Ctrl+Z aparatos)
+
+### Done
+- **Guías multisegmento (base, ya en WIP)**: corrección local de ángulo al conectar — nueva `snapGuideSegmentToRamal` en `guideLines.ts` (reemplaza `snapGuideLineToRamal` global de 2pt): si el segmento nuevo pasa cerca del EXTREMO de un ramal con ángulo relativo fuera de regla (45/90/135 san/ll/vent; 90 af/ac/gas), corrige SOLO ese segmento (pivote fijo = vértice anterior; extremo desliza al cruce exacto con la línea del ramal). Conectada en `handleGuideDown` (clic), pasada idempotente por segmento en `commitOpenGuide`, ghost WYSIWYG en `renderGuideGhost`. Puerta de detección t≤1.2 (clic sobre el extremo, t≈1). Tipo `guideDrag.endIdx` → number.
+- **Fix Ctrl+Z aparatos**: causa raíz = snapshots duplicados (`updateElementById` marca dirty internamente + caller marca al final) → primer Ctrl+Z restauraba el duplicado y "no hacía nada". Fix: dedupe de snapshots consecutivos idénticos en `PlanoHistory.saveSnapshot` (JSON compare con tope) + pausa en el selector de accesorio de cuerpo (`midRamalAccessorySelector`, que escribía conteos entre los dos marks). Tests `planoHistoryDedupe.test.ts`.
+- **Menú de guía rework**: eliminadas Superior/Inferior/45izq/45der/90izq/90der (`pickSideAngle`, `rotateGuideLine` borrados + `guideRotateRelative.test.ts`). Botón único "Ajustar a 45°/90°" (`netAllowedSteps` por red) → nueva `autoAdjustGuide` en `guideOps.ts`: detecta cruce, auto-orienta (menor giro), agrega segmento de conexión desde la punta que sobrepasa el trazo a XX° respecto al host (segmento original intacto; el punto real de conexión = intersección del rayo legal con el ramal, snap a extremo si cae cerca). `b` = extremo más allá del cruce (dot con d1).
+- **Recorte del trazo existente**: nueva `trimCrossedStub` en `guideOps.ts` — cuando la conversión (crear ramal/tributario/tributarios) parte el ramal cruzado (mergesFrom), recorta SOLO la mitad muerta (sin ramal conectado en su extremo lejano, sin bajante, sin accesorio/aparato, sin fin, sin tributarios) y solo si exactamente una mitad es muerta. Conectada en los 3 handlers de conversión de `guideLineMenu.tsx` antes del snapshot.
+- **Tests**: `guideAutoAdjust.test.ts` (9: etiqueta por red, san 45°, gas 90°, multisegmento, sin cruce, recorte sí/no/con-conexión/ambas-vivas). Suite 87 files / 458 tests ✓.
+
+### Gates
+tsc 0 · lint 0 err · vitest 458/458 · vite build ✓ · graphify update ✓.
+
+### Verificación manual pendiente (datos reales)
+Menú de guía (un solo botón con etiqueta según red), ajuste sobre guía que cruza "ligeramente" un ramal, conversión posterior con recorte del muerto, y Ctrl+Z tras asignar aparato desde panel derecho y menú contextual (un solo Ctrl+Z debe revertir símbolo + conteo).
+
+### Nota de sesión
+Durante el diagnóstico de Ctrl+Z hubo edición en paralelo (otra sesión) sobre `drawingFlow.ts`/tests de diámetro sanitario — 3 tests estuvieron rojos transitoriamente y convergieron a verde al cierre.
+
+## Session Summary — 2026-09-07 (ronda 2: borrado multi, ajuste guía 45°/90°, Ctrl+Z aparatos, diámetros san)
+
+### Done
+- **Borrado en conjunto = solo lo seleccionado**: `deleteSelected.ts` path multi (ids) ya NO borra en cascada los tributarios por `padre` — se reasignan al hermano (reasignación ítem 4 intacta) y sobreviven si no hay host. El borrado INDIVIDUAL conserva la cascada (orig. usuario #2). Tests `deleteReassignsTributarios`/`deleteReassignTrib` actualizados a la regla nueva.
+- **Ajustar a 45°/90° reconstruido** (`autoAdjustGuide`): la construcción anterior "agregaba un segmento desde la punta" y dejaba la guía cruzando (con gancho). Nueva: detecta cruce, recorta el SOBRANTE de la guía más allá del trazo, dobla sobre la propia línea original a distancia t = sobrante (clamp 0.8·aToC) y remata con segmento a XX° respecto al ramal — la guía TERMINA en el trazo, sin atravesarlo; punto de conexión = intersección del rayo legal (elegido por giro mínimo entre las orientaciones que apuntan del lado de la guía), snap a extremo si cae cerca. Multisegmento: solo el segmento conectador. Esto elimina también el cruce residual del convertido (captura RS3).
+- **Diámetros san (regla usuario)**: `propagarSanDiametroAguasAbajo` (WIP paralelo) enganchada en `updateElementById`/`updateSelected` — cambiar diámetro desde un ALIMENTADOR no alerta: se acepta y el receptor + cadena aguas abajo suben al mayor (nunca bajan). Receptor que baja bajo el mayor alimentador → alerta (sanFeederMinMsg, ya existente). `sanAlimentadorDiametroPermitido` quedó sin callers (sin alerta al subir).
+- **Ctrl+Z aparatos (ronda 2)**: test de integración con MOTOR REAL (`undoAparatosIntegration.test.ts`) probó que el motor revierte aparato+accesorio+conteos con un Ctrl+Z. Blindaje: pausa de historial por CONTADOR + auto-rearme a 1s (pausa huérfana por excepción dejaba el historial mudo — causa probable del "no hace nada"), try/finally en inc/dec del panel, y undo/redo cierran menú contextual + panel (`civilflow_undone` event + handleUndo). Al probar: RECARGA DURA (Ctrl+Shift+R) — HMR no re-instancia el engine.
+- Tests: `guideAutoAdjust` 9 (recorte+remate 45/90, multisegmento, sin cruce, trim host), `undoAparatosIntegration` 4 (incl. propagación san con motor real + alerta de receptor).
+
+### Gates
+tsc 0 · lint 0 err · vitest 463/463 (81 files) · vite build ✓ · graphify ✓.
+
+### Pendiente verificación manual (recarga dura)
+1. Multi-selección + Supr: solo lo seleccionado se borra (tributarios de los seleccionados quedan, reasignados si tocan a otro ramal).
+2. Guía que cruza un ramal → "Ajustar a 45°/90°": doblez sobre la línea original + remate al ángulo, SIN cruzar; convertir después → convertido termina en el trazo.
+3. Ctrl+Z tras asignar aparato (panel y menú): un solo Ctrl+Z revierte símbolo + campo + conteo.
+4. San: cambiar diámetro desde un tributario/alimentador → sin alerta, receptor sube al mayor; bajar el receptor bajo el mayor alimentador → alerta.
+
+## Session Summary — 2026-09-07 (ronda 3: trib-trib padre, multi-borrado, ajuste 45° final, cruce de tributarios, Ctrl+Z foco)
+
+### Done
+- **Trib-trib comparten padre**: cuando un tributario cae a mitad de CUERPO de otro tributario (junctionAutoSplit, bloque `existing.tipo === 'tributario'`), el incoming ADOPTA `existing.padre` + `relabelTribChain` (T2RS1 unido a T1RS2 → T2RS2). El caso extremo-con-extremo ya lo hacía el WIP (`normalizeTribPadresAt` + regla del tronco).
+- **Multi-borrado**: sin cascada de tributarios por `padre` en el path ids (se reasignan al hermano; sin host, sobreviven). La expansión de MITADES de división (misma línea física, ítem #4/#5) SE MANTIENE. Tests `deleteReassign*` actualizados a la regla nueva.
+- **Ajustar a 45°/90° — construcción final** (`autoAdjustGuide` v3): el segmento conectador se RE-ANGULA alrededor de su vértice de llegada (`a`, existente) al paso legal de la red (45/90) y aterriza donde ese rayo cruza al ramal; la punta que sobraba desaparece — la guía TERMINA en el trazo, sin cruzar. Auto-orientación por giro mínimo; alerta si el rayo no alcanza. Multisegmento conserva los vértices anteriores.
+- **Tributario que CRUZA un ramal → bloqueo** (`finishRamal`): `segmentsIntersect` estricta contra ramales del mismo grupo de red — alerta "Un tributario no puede cruzar un ramal" + se retira el ramal. El aterrizaje legítimo a mitad de cuerpo (split tee) no cuenta (excluye toques de extremo).
+- **Ctrl+Z con foco en `<select>`** (causa raíz del reporte #3): el keydown del motor abortaba con `target === 'SELECT'` — al asignar aparato desde el menú contextual el foco quedaba en el select y Ctrl+Z nunca llegaba. Ahora Ctrl+Z/Y pasan aunque el foco esté en un SELECT (INPUT/TEXTAREA conservan el undo nativo de texto) + `blur()` en los selects del menú tras aplicar.
+
+### Gates
+tsc 0 · lint 0 err · vitest 463/463 (81 files) · vite build ✓ · graphify ✓.
+
+### Pendiente verificación manual (recarga dura)
+1. T2 unido a T1 → adopta el padre/raíz de T1 (T2RS2).
+2. Multi-selección + Supr: solo lo seleccionado (tributarios de los seleccionados sobreviven).
+3. Guía que cruza → "Ajustar a 45°/90°": re-angulada, aterriza en el trazo, sin pedazo sobrante; convertir → limpio.
+4. Dibujar un tributario que atraviese un ramal → alerta y no se crea.
+5. Asignar aparato desde el menú contextual y luego Ctrl+Z (sin clic previo en el canvas): debe deshacer.
+
+## Session Summary — 2026-09-07 (ronda 4: padre del trazo autocreado — saneo legacy + matriz)
+
+### Done
+- **Diagnóstico con matriz de reproducción** (`tribTribMatrix.test.ts`, motor real, 5 casos): tributario que aterriza a (A) cuerpo, (B) vértice interior, (C) extremo libre (rechazo legítimo por flujo san), (D) desde línea guía, (E) LEGACY con padre stale. En A/B/D el padre del trazo autocreado (downstream), el entrante y sus cadenas quedan en la raíz del primer tributario.
+- **Causa del reporte persistente**: dibujos guardados con `padre` stale (label T1RS2 correcto, padre=RS1 de antes de las reglas) — la regla "comparten el padre del primero" copiaba el padre podrido al downstream autocreado. Fix: `healedPadreId` (junctionAutoSplit.ts) — si el label T{n}{root} nombra un ramal raíz distinto al que resuelve la cadena de `padre`, se confía en el LABEL y se re-ancla. Aplicado en ambos call sites (split por cuerpo + unión extremo-con-extremo) antes de `normalizeTribPadresAtPoint`.
+- Gates: tsc 0 · lint 0 · vitest 469/469 (83 files) · build ✓ · graphify ✓.
+- Recordatorio operativo: el visor debe RECARGARSE DURO (Ctrl+Shift+R) tras estos fixes — HMR no re-instancia PlanoEngine y los síntomas "sigue igual" pueden ser instancia vieja.
+
+## Session Summary — 2026-09-07 (ronda 5: sanado GLOBAL de padres de tributarios)
+
+### Done
+- **healTribPadres (junctionAutoSplit.ts) + wiring en PlanoEngine._markDirty**: sanado global que corre en CADA _markDirty. Invariante impuesto: el label de un tributario (T{n}{raíz}) es la verdad — la cadena de `padre` debe resolver al ramal raíz que nombra el label; si resuelve a otra raíz, está rota o es null, se re-ancla directo al raíz del label. Cubre CUALQUIER camino que asigne mal el padre del tramo autocreado (conocido o no) y repara dibujos viejos continuamente. Las cadenas legítimas (T2RS2 → T1RS2 → RS2) no se tocan.
+- Motivación: el usuario reportó 3 veces padre RS1 en el tramo autocreado; los repros de motor pasaban, así que el camino exacto de su sesión no estaba cubierto — el sanado global impone el invariante en lugar de perseguir cada camino.
+- Tests: `tribTribBodyAdoption.test.ts` +2 (mal padre → RS2; cadena legítima intacta). Total 471/471 (83 files), tsc 0, lint 0, build ✓, graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 6: orden del saneo en el split + segunda pasada mergesFrom)
+
+### Done
+- **Sanado ANTES de derivar la raíz del downstream**: `healedPadreId(existing)` corre ahora ANTES de `rootTributarioLabel`/creación del downstream en junctionAutoSplit — con dibujos legacy el tramo autocreado nacía heredando el padre podrido (RS1) y label con raíz equivocada; ahora nace correcto.
+- **Segunda pasada de healTribPadres** para piezas AUTOCREADAS (mergesFrom): downstream hereda el padre del upstream que continúa (mergesFrom[0]) y re-etiqueta su label a esa raíz — repara los nacidos antes de las reglas con label+padre consistentemente equivocados (persistidos en el plano del usuario).
+- Tests: tribTribBodyAdoption 4/4 (incl. pre-reglas). Gates: 471/471... run final: vitest 84 files, tsc 0, lint 0, build ✓.
+
+## Session Summary — 2026-09-07 (ronda 7: invariant final del padre de tributarios)
+
+### Causa raíz de la cascada de reports
+El `_markDirty` inicial del plano corría el sanado "el padre manda" que re-etiquetaba el label legacy T1RS2 → T1RS1 (el padre stale mandaba sobre el label), y de ahí la unión heredaba RS1 para TODO (incluido el downstream autocreado). El label legacy era la única pista de la raíz verdadera.
+
+### Invariante final
+- `healTribPadres`: (1) cadenas rotas (padre null/id muerto) se anclan con el label como pista; (2) mergesFrom hereda padre del upstream que continúa + re-label SOLO para autocreados; SIN pasada global "padre manda" (destruía labels legacy — probado en test).
+- `normalizeTribPadresAtPoint` SIN guard: en cada unión, todos los tributarios del punto se re-etiquetan a la raíz del padre del primero aunque su padre ya coincidiera (el label stale del entrante quedaba sin arreglar por el guard).
+- Pre-split: healedPadreId(existing) corre ANTES de rootLabel/creación del downstream.
+- Verificación de build en consola: `[CivilFlow] PlanoEngine build 2026-09-07-r6` (el engine no se re-instancia con HMR).
+- Debug test temporal eliminado. Tests: tribTribMatrix 5/5 (A cuerpo, B vértice, C extremo, D guía, E legacy stale), tribTribBodyAdoption 3/3. Total 472/472 (83 files), tsc 0, lint 0, build ✓.
+
+## Session Summary — 2026-09-07 (ronda 8: confirmación del sanado + deliberaciones descartadas)
+
+### Estado
+- Datos del usuario (consola, build r6): T1RS2/RS2 ✓, T2RS2/RS2 ✓, T2RS1 → **padre RS2 ✓** (el sanado funcionó). Pendiente visible: su LABEL aún dice T2RS1 (stale, sin mergesFrom en esa pieza) — se corrige rehaciendo esa unión (el normalize sin guard ahora relabel a todos los del punto) o al re-crearla.
+- Se probó y DESCARTÓ el árbitro geométrico global (raíz por extremo de drenaje): en las juntas el punto toca ambos troncos (RS1|RS2) y la elección es ambigua — revertido al sanado conservador (cadenas rotas + mergesFrom). Documentado en el código.
+- Gates: tsc 0 · lint 0 err (1 warning no-console intencional) · vitest 471/471 (83 files) · build ✓ · graphify ✓.
+- Multi-borrado (ronda anterior): cascada de tributarios quitada del path multi; expansión de mitades de división se mantiene; re-merge + limpieza de accesorios al borrar tributarios queda como verificación pendiente del usuario.
+
+## Session Summary — 2026-09-07 (ronda 9: label sigue al padre + borrador sin cascada)
+
+### Done
+- **Pass 3 restaurada (label sigue al padre)**: tributario con cadena de padre INTACTA se re-etiqueta a la raíz de esa cadena con el consecutivo siguiente (T1RS1/padre RS2 → T3RS2, pedido usuario explícito con datos de consola: padre correcto, label stale). El caso legacy inverso (padre stale + label correcto) se resuelve en la UNIÓN vía healedPadreId (label-truth puntual) — no globalmente.
+- **Borrador sin cascada** (drawingErase.ts:62): quitado `x.padre !== r.id` — el borrador es quirúrgico; los tributarios colgantes se re-anclan con el sanado global.
+- **Borrado individual (selId) conserva la cascada de la división** (ítem #3: borrar una mitad retira la división completa incl. el entrante) — tests deleteSplitAll verdes. El borrado EN CONJUNTO (ids) sigue sin cascada de tributarios.
+- Test nuevo: multiDeleteTrib (motor real): borrar tributarios en conjunto → troncos sobreviven re-unificados con tee limpiado.
+- Gates: tsc 0 · lint 0 err (1 warning no-console intencional) · vitest 473/473 (84 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 10: renumeración sin huecos por raíz)
+
+### Done
+- **Pass 4 en healTribPadres** — renumeración SIN HUECOS por raíz: los relabels intermedios quemaban consecutivos (T1RS1, T3RS1, T4RS1 sin T2RS1 — reporte usuario). Por cada raíz, ordena las piezas por el número actual del label y reasigna T1..Tn seguidos. Idempotente (serie ya seguida = sin cambios). Test nuevo: T1/T3/T4 → T1/T2/T3 ✓.
+- Confirmado con el usuario: en el split de un RAMAL, el padre del entrante ES el downstream autocreado (RS2) — ya implementado (line 390, isTrib false → downstream.id) y el entrante se re-etiqueta al root del downstream (line 397-402, isTrib false → downstream.label).
+- Gates: tsc 0 · lint 0 err (1 warning no-console) · vitest 474/474 (84 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 11: raíz = padre inmediato — rootTributarioLabel sin walk por mergesFrom)
+
+### CAUSA RAÍZ DEFINITIVA del label RS1 en tributarios de troncos partidos
+`rootTributarioLabel` (PlanoState.ts) seguía `mergesFrom[0]` hacia el tronco ORIGINAL al caminar la cadena: tributario con padre RS2 (downstream autocreado, mergesFrom→RS1) resolvía raíz RS1 → labels T{n}RS1 aunque el padre fuera RS2. Fix: la raíz es el PRIMER no-tributario de la cadena de padres (el padre inmediato) — sin walk por mergesFrom. Regla usuario: el label nombra al padre inmediato; la serie por raíz es continua (pass 4 sin huecos).
+
+### Además
+- Test `tribTrunkDownstreamLabel.test.ts` (motor real): T1RS1 aterriza al cuerpo de T1RS2 (padre RS2, serie T1RS2/T2RS2 preexistente) → downstream autocreado = **T3RS2** (padre RS2) y el entrante adopta la serie como T4RS2. El bloque anti-cruce refinado: intersecciones a ≤2 unid de los extremos del tributario no cuentan como cruce (el aterrizaje con snap imperfecto no es atravesamiento).
+- El bloque anti-cruce funciona: rechazó el cruce real del primer intento del test (geometría mal puesta).
+- Gates: tsc 0 · lint 0 err (2 warnings no-console/otros) · vitest 475/475 (85 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 12: conversión de guías ajustadas sin falsa alerta de ángulo)
+
+### Done
+- **Validación de conversión de guías = SOLO la llegada relativa al host**: "Crear ramal" (guideLineMenu) y buildTribFromGuide (guideOps) validaban la llegada a 45°/90° relativa Y el resto de la polyline con checkRamalAngles absoluto (ángulos internos 135°/180° estrictos en san) — el doblez de una guía ajustada/freehand no siempre lo cumple y SIEMPRE salía "Ángulo no permitido" al convertir. Fix: cuando hay cruce (hostAng != null), la validación es únicamente isGuideRelativeAngleValid de la llegada (el ajuste garantiza 45°/90° respecto al trazo; el doblez interior es decisión del usuario). Sin cruce → validación absoluta clásica (sin cambios). Aplica a todas las redes (san 45°, gas/af/ac 90° vía netAllowedSteps + isGuideRelativeAngleValid).
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 475/475 (85 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 13: conversión sin alerta — guía freehand y cruces fantasma)
+
+### Causas de la alerta "Ángulo no permitido" persistente al convertir guías
+1. **Cruces fantasma**: `intersectGuideWithSegment` trataba la guía como LÍNEA INFINITA — la extensión de OTRO segmento de la guía (la vertical de una L) "cruzaba" el tronco a 230 unid del toque real → el cruce elegido era un punto inexistente → el lado orientado quedaba en zigzag (punta→cruce) y el ángulo de llegada ~163° → alerta. Fix: el cruce debe caer a ≤12 unid de la extensión REAL del segmento de la guía.
+2. **guidePolylineSide zigzag**: para un cruce INTERIOR al segmento (guía que sobresale del tronco), el lado A incluía la punta sobrante Y el cruce ([..., vértice, punta, cruce]) → llegada rota. Fix: distinguir cruce INTERIOR (t≤1: sideA termina EN el cruce, la punta va a sideB) vs cruce por EXTENSIÓN (t>1: el lado se EXTIENDE hasta el cruce — caso de guía corta, restaurado).
+3. **Llegada freehand ±0.5°**: la validación exigía 45°/90° EXACTOS; una guía freehand llega a 44.3° → alerta. Fix: `snapGuideArrivalToHost` (guideOps) — corrige el desfase ≤7.5° rotando el vértice previo alrededor de la punta anclada; aplicado en "Crear ramal" y buildTribFromGuide. Desfase >7.5° → sí alerta.
+- La validación de conversión es SOLO la llegada relativa (el restPts absoluto ya quitado en ronda 12). Aplica a todas las redes (45° san/ll/vent, 90° gas/af/ac-trib).
+- Test espejo `guideConvertNoAlert.test.ts` (motor real): guía vertical+45° cruzando el tronco → validación OK, "Crear tributario" sin alerta.
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 477/477 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 14: Enter commitea guía + sin glifos interiores en trib de guía)
+
+### Done
+- **Enter termina la línea guía**: k === 'enter' con tool 'guide' y guía en construcción → commitOpenGuide (integrado en la cadena 'enter' existente junto a finishRamal/finishArea).
+- **Tributario creado desde guía SIN glifos de accesorio interiores**: flag `_sinAccMedInterior` (PlanoRamal) fijado por buildTribFromGuide; detectAccesorioTrigger lo honra y salta la detección de dobleces interiores (los codos dibujados son parte del trazo de la guía — símbolo de tee en el doblez de la captura eliminado).
+- Pendiente de confirmación del usuario: la interpretación de "desplazar el trazo al cual se le conectó a un extremo del tributario" — implementado: el conexión cae en la punta del tributario y el objetivo se parte ahí (autoSplit) con los símbolos de ese punto limpiados (scrubGuideJunctionAccessories); el flag suprime el glifo del doblez.
+- Gates: tsc 0 · lint 0 err · vitest 477/477 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 15: CAUSA RAÍZ del Ctrl+Z de aparatos + anclaje exacto)
+
+### CAUSA RAÍZ DEFINITIVA del "Ctrl+Z no borra la cantidad de aparatos"
+`storageService.saveToStorage` escribe con PREFIJO `civilflow_` (clave real: `civilflow_aparatos_by_tramo_v2`), pero `PlanoHistory.readCounts/writeCounts` leían/escribían la clave SIN prefijo con localStorage crudo → el snapshot capturaba SIEMPRE counts vacíos y el Ctrl+Z restauraba a una clave que nadie lee: el accesorio (campo del motor) sí se revertía pero la CANTIDAD del panel no. FIX: readCounts/writeCounts vía storageService (prefijo correcto, JSON round-trip) + dispatch 'aparatos-clear' además de 'storage' para refrescar el panel al instante. Tests de historial actualizados a claves prefijadas.
+
+### Anclaje EXACTO del tributario creado desde guía ajustada
+- resolveRamalEndsFromGuide + handler singular: el snap al vértice del host (16/zoom) SOLO aplica si el cruce está cerca del vértice del host (codo 90°); a mitad de cuerpo el anclaje es EXACTO en el punto donde la guía ajustada tocó el trazo (nearTip && !nearHostEnd) — "ambos conectados en sus extremos".
+- Refinado el bloque anti-cruce (exclusión por distancia ≤2 a los extremos del tributario) para no bloquear aterrizajes con snap imperfecto.
+- Enter commitea la guía (ronda 14). Sin glifos interiores en trib de guía (_sinAccMedInterior).
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 477/477 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 16: Crear tributario = mismo anclaje que Crear ramal)
+
+### Done
+- **"Crear tributario" unificado con "Crear ramal"**: el handler singular ahora usa resolveRamalEndsFromGuide (la MISMA función que "Crear ramal") para orientar/anclar la polyline de la guía — freeEnd = pts[0], via = intermedios, crossPt = el último (anclado con los guards nearTip && !nearHostEnd). Antes usaba su propia lógica guidePolylineSide+freeEnd/via que desplazaba los extremos. snapGuideCrossingToEndpoint import removido del menú (resolve lo hace internamente).
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 477/477 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 17: trimCrossedStub nunca toca el host + limpieza accMed de guía)
+
+### CAUSA del "se borran los ramales de arriba" al convertir
+`trimCrossedStub` (agregado en la ronda de recortes) evaluaba como "muerta" TAMBIÉN la pieza aguas arriba (mergesFrom[0], el tronco original al que se conectó la guía) y la borraba si su extremo lejano estaba libre. FIX: SOLO el downstream autocreado (mergesFrom[1] = incoming) puede ser sobrante; el host JAMÁS se recorta.
+
+### Además
+- Limpieza de accMed persistido en piezas con `_sinAccMedInterior` (trib de guía): pass 1b en healTribPadres — el glifo de tee en el doblez de la captura desaparece al primer _markDirty.
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 477/477 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 18: flag _sinAccMedInterior también en ramales desde guía)
+
+### Done
+- "Crear ramal a partir de línea guía": el ramal creado ahora lleva `_sinAccMedInterior: true` (igual que los tributarios desde guía) — sin glifos de tee/codo en los dobleces internos del trazo dibujado. El arco de codo del extremo L (resolveGuideJunctionAccessory, accesorioFin) no se afecta.
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 477/477 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-07 (ronda 19: trimCrossedStub eliminado — borraba la continuación del tronco)
+
+### CAUSA del "se dañó el de crear ramal"
+`trimCrossedStub` (mi recorte de "mitad muerta") borraba la CONTINUACIÓN del tronco al convertir: el downstream del split con extremo lejano libre era clasificado como stub y eliminado — el tronco perdía su pieza derecha (2.62m → 0.84m en la captura). Ese recorte nunca fue pedido: el autoSplit ya parte el tronco correctamente y AMBAS piezas (upstream + downstream) deben quedar.
+
+### Fix
+- Eliminadas las 3 llamadas a trimCrossedStub (crear ramal, crear tributario singular y plural) + la función + sus 4 tests. El split del tronco lo hace autoSplitJunctionAndSumFlow y ambas mitades persisten.
+- Gates: tsc 0 · lint 0 err (1 warning) · vitest 473/473 (86 files) · build ✓ · graphify ✓.
