@@ -365,11 +365,16 @@ export function applyBajanteAssociation(
         // DESTINO reciben el agregado del piso superior SUMADO a lo que ya tengan — y el
         // bajante destino marca el total en ucAcum.
         const tgtRaw = loadFromStorage<{
-          bajantes?: { id: string; recibeDeIds?: string[] }[];
+          bajantes?: { id: string; recibeDeIds?: string[]; alimentaIds?: string[] }[];
           ramales?: { id: string; net: string }[];
         } | null>(TRAZOS_PREFIX + target.planId, null);
         const tgtBaj = tgtRaw?.bajantes?.find((b) => b.id === target.id);
-        const tgtRamalIds: string[] = tgtBaj?.recibeDeIds || [];
+        // Ramales que LLEGAN (recibeDeIds) y los que SALEN del bajante destino (alimentaIds,
+        // orig. usuario: los ramales que salen del bajante también reciben las UDs).
+        const tgtRamalIds: string[] = [
+          ...(tgtBaj?.recibeDeIds || []),
+          ...(tgtBaj?.alimentaIds || []),
+        ];
         if (tgtRamalIds.length === 0 && tgtRaw?.ramales?.length) {
           // fallback geom: ramales de la red con un extremo en el bajante destino.
           for (const rr of tgtRaw.ramales) {
@@ -378,11 +383,16 @@ export function applyBajanteAssociation(
             if (tgtRamalIds.length > 10) break;
           }
         }
+        // UDs propias del bajante destino: los ramales que SALEN de él deben tener las mismas
+        // UDs que el bajante (orig. usuario, asignación automática).
+        const own = apos[`${target.net}_${target.id}_${target.planId}`] || {};
         for (const rid of tgtRamalIds) {
           const tk = `${target.net}_${rid}_${target.planId}`;
-          if (Object.keys(agg).length) {
+          const esAlimenta = (tgtBaj?.alimentaIds || []).includes(rid);
+          const extra = esAlimenta ? { ...agg, ...own } : agg;
+          if (Object.keys(extra).length) {
             const cur = apos[tk] || {};
-            for (const [k, v] of Object.entries(agg)) cur[k] = (cur[k] || 0) + (v as number);
+            for (const [k, v] of Object.entries(extra)) cur[k] = (cur[k] || 0) + (v as number);
             apos[tk] = cur;
             aposDirty = true;
           }

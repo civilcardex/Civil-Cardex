@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   APARATOS_DEF,
   UD_BASE_INIT,
@@ -213,14 +213,16 @@ const AparatosPanel = memo(function AparatosPanel_({
   }, [netId, unitKey, aps]);
 
   const isBajanteSan = selElement?.tipo === 'bajante' && (netId === 'san' || netId === 'll');
+  // Conectividad del árbol sanitario de la red activa — se calcula también sin bajante
+  // seleccionado: el espejo automático de UDs a ramales de salida usa la misma fuente.
   const sanConnectivity = useMemo(() => {
-    if (!isBajanteSan) return null;
+    if (netId !== 'san' && netId !== 'll') return null;
     return buildSanConnectivity(
       tramosSan,
       plans,
       items as unknown as import('../utils/sanitaryRows').MergedApBase[],
     );
-  }, [isBajanteSan, tramosSan, plans, items]);
+  }, [netId, tramosSan, plans, items]);
 
   const target = useMemo(
     () =>
@@ -431,62 +433,105 @@ const AparatosPanel = memo(function AparatosPanel_({
     return geomExtra.length > 0 ? [...allKeys, ...geomExtra] : allKeys;
   })();
 
+  // Ramales que SALEN de un bajante: la COLA de la flecha de flujo queda del lado del bajante
+  // (criterio del usuario). Geométrico sobre pts (misma convención de flowVecAt: flujo de
+  // pts[0] al último, invertido si _tribReversed) con alimentaIds como respaldo para trazos
+  // viejos; si la cabeza cae en el bajante, DRENA en él y no es salida.
+  const exitsDeBajante = useCallback(
+    (bajId: string): Set<string> => {
+      const eng = engineRef.current;
+      const baj = eng?.bajantes.find((b) => b.id === bajId);
+      const out = new Set<string>();
+      if (!eng || !baj) return out;
+      const tol = (baj._circ?.r || 8 * (eng.zoom || 1)) / (eng.zoom || 1) + 1;
+      const endAt = (r: { pts: number[][]; _tribReversed?: boolean }, tail: boolean) => {
+        if (!r.pts || r.pts.length < 2) return false;
+        const t = r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
+        const h = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
+        const p = tail ? t : h;
+        const o = tail ? h : t;
+        return (
+          Math.hypot(p[0] - baj.x, p[1] - baj.y) < tol &&
+          Math.hypot(o[0] - baj.x, o[1] - baj.y) >= tol
+        );
+      };
+      for (const r of eng.ramales) {
+        if (r.tipo === 'tributario' || r.net !== baj.net) continue;
+        const tail = endAt(r, true);
+        const head = endAt(r, false);
+        if (tail) out.add(r.id);
+        else if (!head && (baj.alimentaIds || []).includes(r.id)) out.add(r.id);
+      }
+      return out;
+    },
+    [engineRef],
+  );
+
+  // Agregado de UDs del bajante: clave propia + UDs de todos sus descendientes en el árbol
+  // sanitario (ramales y tributarios que drenan en él, transitivo), excepto los ramales de
+  // SALIDA (espejos) con su subárbol — jamás son fuente, para evitar el eco espejo→agregado
+  // →espejo. Compartido entre el display (currentMap) y la asignación automática (efecto):
+  // el número del panel del bajante y el copiado al ramal siempre coinciden.
+  const agregadoBajante = useCallback(
+    (bajId: string): Record<string, number> => {
+      const agg: Record<string, number> = {};
+      const ownKey = planId ? `${netId}_${bajId}_${planId}` : `${netId}_${bajId}`;
+      for (const [k, v] of Object.entries(counts[ownKey] || {}))
+        agg[k] = (agg[k] || 0) + (v as number);
+      const exits = exitsDeBajante(bajId);
+      // Suma el storageKey de un tramo; sin counts propios usa sus fixtures directos.
+      const sumCounts = (ck: string, fixtures?: Record<string, number>) => {
+        const m = counts[ck] || {};
+        if (Object.keys(m).length > 0) {
+          for (const [k, v] of Object.entries(m)) agg[k] = (agg[k] || 0) + (v as number);
+        } else if (fixtures) {
+          for (const [k, v] of Object.entries(fixtures)) agg[k] = (agg[k] || 0) + (v as number);
+        }
+      };
+      const visited = new Set<string>();
+      const walkKey = (tKey: string) => {
+        if (visited.has(tKey)) return;
+        visited.add(tKey);
+        const ct = tramosSan.find((x) => x._key === tKey);
+        if (!ct) return;
+        if (!ct.esBajante) {
+          if (exits.has(ct.id)) return; // espejo: no suma NI recorre su subárbol
+          if (ct.tipo === 'ramal' || ct.tipo === 'tributario')
+            sumCounts(
+              `${netId}_${ct.id}_${String(planId ?? ct.planId ?? '')}`,
+              ct.fixtures as Record<string, number> | undefined,
+            );
+        }
+        for (const child of sanConnectivity?.fullChildrenMap[tKey] || []) walkKey(child);
+      };
+      const bajT = tramosSan.find((t) => t.esBajante && t.id === bajId);
+      if (bajT?._key) {
+        for (const child of sanConnectivity?.fullChildrenMap[bajT._key] || []) walkKey(child);
+      } else {
+        // Fallback sin árbol sanitario: ramales asociados (recibeDeIds) + cadenas de
+        // tributarios colgantes.
+        const eng = engineRef.current;
+        const baj = eng?.bajantes.find((b) => b.id === bajId);
+        const seen = new Set<string>([bajId, ...exits]);
+        const sum = (rid: string) => {
+          if (seen.has(rid)) return;
+          seen.add(rid);
+          sumCounts(planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
+          for (const trib of eng?.ramales || [])
+            if (trib.tipo === 'tributario' && trib.padre === rid) sum(trib.id);
+        };
+        for (const rid of baj?.recibeDeIds || []) sum(rid);
+      }
+      return agg;
+    },
+    [counts, netId, planId, sanConnectivity, tramosSan, exitsDeBajante, engineRef],
+  );
+
   const currentMap = useMemo(() => {
     if (!storageKey) return {};
-    // Bajante san/ll: agregar aparatos de todos los ramales/tribs que drenan en él (fullChildrenMap transitivo)
-    if (isBajanteSan && sanConnectivity) {
-      const bajanteTramo = tramosSan.find((t) => t.id === target?.id && t.esBajante);
-      const tKey = bajanteTramo?._key || `${target?.id}-${String(planId ?? '')}`;
-      const visited = new Set<string>([tKey]);
-      const stack = [...(sanConnectivity.fullChildrenMap[tKey] || [])];
-      const descendants: string[] = [];
-      while (stack.length > 0) {
-        const cur = stack.pop()!;
-        if (visited.has(cur)) continue;
-        visited.add(cur);
-        descendants.push(cur);
-        for (const child of sanConnectivity.fullChildrenMap[cur] || [])
-          if (!visited.has(child)) stack.push(child);
-      }
-      const aggregated: Record<string, number> = { ...(counts[storageKey] || {}) };
-      for (const ck of descendants) {
-        const ct = tramosSan.find((x) => x._key === ck);
-        if (!ct || ct.esBajante) continue;
-        if (ct.tipo !== 'ramal' && ct.tipo !== 'tributario') continue;
-        const storageKeyForDesc = `${netId}_${ct.id}_${String(planId ?? ct.planId ?? '')}`;
-        const descCounts = counts[storageKeyForDesc] || {};
-        for (const [apId, v] of Object.entries(descCounts)) {
-          aggregated[apId] = (aggregated[apId] || 0) + (v as number);
-        }
-        // Fallback: si no hay counts por storageKey, usar fixtures directos del tramo (por si tramosSan ya trae fixtures)
-        if (Object.keys(descCounts).length === 0 && ct.fixtures) {
-          for (const [apId, v] of Object.entries(ct.fixtures)) {
-            aggregated[apId] = (aggregated[apId] || 0) + (v as number);
-          }
-        }
-      }
-      // Si no hay descendientes vía sanConnectivity (tramosSan vacío), fallback a recibeDeIds explícitos
-      if (descendants.length === 0 && engineRef.current?.bajantes) {
-        const baj = engineRef.current.bajantes.find((b) => b.id === target?.id);
-        const rIds = baj?.recibeDeIds || [];
-        for (const rid of rIds) {
-          const storageKeyForR = `${netId}_${rid}_${String(planId ?? '')}`;
-          const descCounts = counts[storageKeyForR] || {};
-          for (const [apId, v] of Object.entries(descCounts))
-            aggregated[apId] = (aggregated[apId] || 0) + (v as number);
-          // incluir tributarios de ese ramal
-          for (const trib of engineRef.current?.ramales || []) {
-            if (trib.tipo === 'tributario' && trib.padre === rid) {
-              const storageKeyForTrib = `${netId}_${trib.id}_${String(planId ?? '')}`;
-              const tribCounts = counts[storageKeyForTrib] || {};
-              for (const [apId, v] of Object.entries(tribCounts))
-                aggregated[apId] = (aggregated[apId] || 0) + (v as number);
-            }
-          }
-        }
-      }
-      return aggregated;
-    }
+    // Bajante san/ll: agregado vía el helper compartido — el mismo cálculo que el espejo a los
+    // ramales de salida, panel y copias siempre idénticos.
+    if (isBajanteSan && targetId) return agregadoBajante(targetId);
     const own = counts[storageKey] || {};
     if (!mergeKeys) return own;
     const merged: Record<string, number> = { ...own };
@@ -496,18 +541,7 @@ const AparatosPanel = memo(function AparatosPanel_({
       }
     }
     return merged;
-  }, [
-    counts,
-    storageKey,
-    mergeKeys,
-    isBajanteSan,
-    sanConnectivity,
-    tramosSan,
-    planId,
-    target,
-    netId,
-    engineRef,
-  ]);
+  }, [counts, storageKey, mergeKeys, isBajanteSan, targetId, agregadoBajante]);
 
   const curHidro = useMemo(() => {
     if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
@@ -536,9 +570,67 @@ const AparatosPanel = memo(function AparatosPanel_({
     return total.toFixed(2);
   }, [total]);
 
+  // Asignación automática (orig. usuario): los ramales que SALEN de un bajante deben tener
+  // las MISMAS UDs que el bajante. "Sale" = cola de la flecha de flujo del lado del bajante
+  // (exitsDeBajante, geométrico); el valor copiado es el MISMO agregado que muestra el panel
+  // del bajante (agregadoBajante, compartido con currentMap). Recorre TODOS los bajantes de
+  // la red activa en cada cambio de conteos o selección: editar un ramal que drena en BAN1
+  // actualiza su ramal de salida al momento, sin depender de qué tramo está seleccionado.
+  useEffect(() => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const disk = loadAll();
+    const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
+    let dirty = false;
+    for (const baj of eng.bajantes) {
+      if (baj.net !== netId) continue;
+      const agg = agregadoBajante(baj.id);
+      if (!Object.keys(agg).length) continue;
+      for (const rid of exitsDeBajante(baj.id)) {
+        const rk = pkey(rid);
+        if (JSON.stringify(disk[rk] || {}) !== JSON.stringify(agg)) {
+          disk[rk] = { ...agg };
+          dirty = true;
+        }
+      }
+    }
+    if (dirty) {
+      saveAll(disk);
+      setCounts(disk);
+    }
+  }, [
+    counts,
+    storageKey,
+    targetId,
+    target?.tipo,
+    planId,
+    netId,
+    sanConnectivity,
+    tramosSan,
+    agregadoBajante,
+    exitsDeBajante,
+    engineRef,
+  ]);
+
+  // Ramal de salida de un bajante (espejo): sus UDs las manda el bajante — panel en modo
+  // opaco/solo lectura, igual que el panel de bajante. Sin chequeo de target.tipo: el elemento
+  // seleccionado puede llegar sin tipo (por eso isCountableTarget usa prefijos del id) y el
+  // conjunto de salidas ya solo contiene ramales por construcción.
+  const esEspejoBajante = useMemo(() => {
+    if (!targetId || (netId !== 'san' && netId !== 'll')) return false;
+    const eng = engineRef.current;
+    if (!eng) return false;
+    for (const baj of eng.bajantes) {
+      if (baj.net !== netId) continue;
+      if (exitsDeBajante(baj.id).has(targetId)) return true;
+    }
+    return false;
+  }, [targetId, netId, exitsDeBajante, engineRef]);
+
   const inc = (apId: string) => {
     if (!storageKey) return;
     if (target?.tipo === 'bajante') return; // bajante panel es solo lectura
+    if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
     const effectiveMergeKeys = isBajanteSan ? null : mergeKeys;
     if (effectiveMergeKeys) return;
     // Ítem 6: máximo UN aparato por ramal (manual)
@@ -703,6 +795,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   const dec = (apId: string) => {
     if (!storageKey) return;
     if (target?.tipo === 'bajante') return; // solo lectura
+    if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
     // Una desasignación = UN snapshot: pausa + try/finally (mismo razonamiento que inc).
@@ -1038,7 +1131,7 @@ const AparatosPanel = memo(function AparatosPanel_({
                   dec={dec}
                   targetId={targetId}
                   accent={accent}
-                  disabled={isBajanteSan ? true : !!mergeKeys}
+                  disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys}
                 />
                 {items.length === 0 && (
                   <div

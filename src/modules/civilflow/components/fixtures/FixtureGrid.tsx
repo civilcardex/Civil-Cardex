@@ -140,56 +140,72 @@ export default function FixtureGrid({
                 {uStr} {unidadLbl}
               </span>
             </button>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'stretch',
-                borderTop: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
-                background: active ? 'rgba(37,99,235,.06)' : 'transparent',
-              }}
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (targetId) dec(ap.id);
-                }}
-                disabled={gridDisabled || c === 0}
-                style={{
-                  ...FixtureGrid_S4,
-                  color: c === 0 || gridDisabled ? 'var(--line)' : '#ffb4ab',
-                  cursor: c === 0 || gridDisabled ? 'not-allowed' : 'pointer',
-                  borderRight: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
-                }}
-              >
-                −
-              </button>
+            {gridDisabled ? (
+              // Solo lectura (bajante / espejo de bajante): sin steppers, la caja del valor
+              // ocupa toda la fila — mismo look en ambos paneles.
               <div
                 style={{
                   ...FixtureGrid_S5,
+                  borderTop: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
+                  background: active ? 'rgba(37,99,235,.06)' : 'transparent',
+                  padding: '2px 0',
                   color: c > 0 ? accent : 'var(--txt2)',
-                  background: c > 0 ? 'rgba(37,99,235,.18)' : 'transparent',
                 }}
               >
                 {c} {unidadLbl}
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (targetId) inc(ap.id);
-                }}
-                disabled={gridDisabled}
+            ) : (
+              <div
                 style={{
-                  ...FixtureGrid_S4,
-                  color: gridDisabled ? 'var(--line)' : accent,
-                  cursor: gridDisabled ? 'not-allowed' : 'pointer',
-                  borderLeft: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  borderTop: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
+                  background: active ? 'rgba(37,99,235,.06)' : 'transparent',
                 }}
               >
-                +
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (targetId) dec(ap.id);
+                  }}
+                  disabled={gridDisabled || c === 0}
+                  style={{
+                    ...FixtureGrid_S4,
+                    color: c === 0 || gridDisabled ? 'var(--line)' : '#ffb4ab',
+                    cursor: c === 0 || gridDisabled ? 'not-allowed' : 'pointer',
+                    borderRight: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
+                  }}
+                >
+                  −
+                </button>
+                <div
+                  style={{
+                    ...FixtureGrid_S5,
+                    color: c > 0 ? accent : 'var(--txt2)',
+                    background: c > 0 ? 'rgba(37,99,235,.18)' : 'transparent',
+                  }}
+                >
+                  {c} {unidadLbl}
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (targetId) inc(ap.id);
+                  }}
+                  disabled={gridDisabled}
+                  style={{
+                    ...FixtureGrid_S4,
+                    color: gridDisabled ? 'var(--line)' : accent,
+                    cursor: gridDisabled ? 'not-allowed' : 'pointer',
+                    borderLeft: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            )}
           </div>
         );
       })}

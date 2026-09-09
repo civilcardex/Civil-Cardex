@@ -239,8 +239,13 @@ function seedAsociacion() {
     bajantes: [{ id: 'BAN9', net: 'san', tipo: 'bajante', recibeDeIds: ['RS9'] }],
   });
   set('trazos_1', {
-    ramales: [{ id: 'RS8', net: 'san', tipo: 'ramal' }],
-    bajantes: [{ id: 'BAN8', net: 'san', tipo: 'bajante', recibeDeIds: ['RS8'] }],
+    ramales: [
+      { id: 'RS8', net: 'san', tipo: 'ramal' },
+      { id: 'RS7', net: 'san', tipo: 'ramal' },
+    ],
+    bajantes: [
+      { id: 'BAN8', net: 'san', tipo: 'bajante', recibeDeIds: ['RS8'], alimentaIds: ['RS7'] },
+    ],
   });
   set('aparatos_by_tramo_v2', { san_RS9_2: { san: 2 } });
   set('tramo_hidro_data_v3', {
