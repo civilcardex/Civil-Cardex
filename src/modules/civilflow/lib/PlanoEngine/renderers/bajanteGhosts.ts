@@ -194,15 +194,16 @@ export function renderCrossFloorGhosts(
 ): void {
   (engine.crossFloorGhosts || []).forEach((g) => {
     if (engine._hiddenNets.has(g.net)) return;
-    // Una sola etiqueta por bajante (orig. usuario): si en ESTE piso ya existe un bajante REAL
-    // con el mismo código y red — p. ej. llegó por "Copiar elementos entre pisos" —, el
-    // fantasma es residual y no se dibuja; el real ya materializa esa proyección. Solo queda
-    // fantasma cuando ningún bajante real de este piso lleva ese código.
-    const lvl = engine.nivelActual?.label ?? '';
-    const duplicatedByReal = engine.bajantes.some(
-      (b) => b.pisoBase === lvl && b.net === g.net && (b.code || b.id) === (g.code || g.id),
+    // Asociación ALINEADA verticalmente (orig. usuario): el bajante real de este piso ocupa
+    // la misma posición que el fantasma — marcador y etiqueta del piso superior sobran y no
+    // se dibujan. Asociaciones desalineadas (fantasma desplazado) siguen mostrándose.
+    const overlapReal = engine.bajantes.some(
+      (b) =>
+        b.pisoBase === (engine.nivelActual?.label ?? '') &&
+        b.net === g.net &&
+        Math.hypot(b.x - g.x, b.y - g.y) < 0.5,
     );
-    if (duplicatedByReal) return;
+    if (overlapReal) return;
     const net = NETS.find((n) => n.id === g.net);
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(g.x, g.y);

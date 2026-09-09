@@ -106,22 +106,11 @@ export function applyWorkData(
   });
   engine.areas = d.areas || [];
   engine.nptLevels = d.nptLevels || [];
-  // Una sola etiqueta por bajante (orig. usuario): un fantasma cuyo código ya existe como
-  // bajante REAL en este piso (p. ej. llegó por "Copiar elementos entre pisos") duplica su
-  // etiqueta (BAN1 Sube + BAN1 Baja) — se retira en carga. Los fantasmas cuyo código no
-  // corresponde a ningún bajante real de este piso son proyecciones legítimas y sobreviven.
-  {
-    const bajCodes = new Set(
-      (engine.bajantes as Array<{ net: string; code?: string; id: string }>).map(
-        (b) => `${b.net}|${b.code || b.id}`,
-      ),
-    );
-    engine.crossFloorGhosts = d.crossFloorGhosts?.length
-      ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[]).filter(
-          (g) => !bajCodes.has(`${g.net}|${g.code || g.id}`),
-        )
-      : [];
-  }
+  // Fantasmas entre pisos se cargan tal cual: son el AVISO del enlace de asociación. Los
+  // residuales de bajantes copiados se limpian al copiar (copyDrawingFromPlan), no aquí.
+  engine.crossFloorGhosts = d.crossFloorGhosts?.length
+    ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[])
+    : [];
   engine.guideLines = d.guideLines || [];
   // Retro-propagación de diámetros al cargar (orig. usuario): dibujos guardados ANTES de que
   // existiera la propagación quedaron con receptores vacíos/menores aunque sus llegadores ya
