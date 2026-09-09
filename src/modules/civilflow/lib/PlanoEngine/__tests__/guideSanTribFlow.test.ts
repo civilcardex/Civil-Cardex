@@ -99,13 +99,15 @@ describe('guía san — tributario con flujo hacia la unión', () => {
     expect(trib!.label).toBe(`T1${down.label}`);
   });
 
-  it('mitad de cuerpo en contra del flujo: flecha al cruce + split', () => {
+  it('mitad de cuerpo en contra del flujo (desde aguas abajo) → bloqueada', () => {
+    // Regla orig. usuario: el tributario no puede entrar a la unión en contraria del anfitrión
+    // (llegando desde su lado aguas abajo — flecha contra el flujo del ramal). La guía se
+    // rechaza con alerta aunque su flecha apunte al cruce.
     const padre = R({});
     const eng = makeEngine([padre]);
     const trib = buildTribFromGuide(asEngine(eng), padre, [50, 0], [70, -20], 'T2');
-    expect(trib).not.toBeNull();
-    expect(trib!._tribReversed).toBeFalsy();
-    expect(eng.ramales.some((r) => r.mergesFrom?.[1] === trib!.id)).toBe(true);
+    expect(trib).toBeNull();
+    expect(alertsOf(eng).some((a) => a.includes('Dirección'))).toBe(true);
   });
 
   it('extremo del padre en contra del flujo: flecha al cruce (sin split que la corrija)', () => {

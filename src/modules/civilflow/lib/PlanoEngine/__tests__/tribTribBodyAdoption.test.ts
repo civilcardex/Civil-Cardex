@@ -115,11 +115,12 @@ describe('trib-trib por cuerpo — todos comparten el padre del primer tributari
 
     // T2RS1: dibujado con padre RS1 (detectTributaryPadre lo tomó de RS1), su punta aterriza
     // a mitad del CUERPO de T1RS2 (segmento (260,180)→(230,260), punto exacto (248,212)).
+    // Llega desde abajo-derecha (113° relativa al anfitrión — dentro del margen permitido).
     const incoming = mk(
       'T2RS1',
       'T2RS1',
       [
-        [120, 260],
+        [330, 290],
         [248, 212],
       ],
       { tipo: 'tributario', padre: 'RS1', bloqueado: true },

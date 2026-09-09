@@ -609,15 +609,19 @@ export function buildTribFromGuide(
   // reventilado) se bloquea aquí — autoSplit no valida uniones extremo-con-extremo. Misma
   // validación pre-push para san/ll: los tributarios creados desde línea guía deben cumplir la
   // dirección de flujo de la red.
-  // ponytail: guide is free — flow check should auto-correct, not block
+  // Auto-corrección primero (flip de orientación); si aun así contraviene la dirección,
+  // SE BLOQUEA con alerta (orig. usuario: T1T3 se creó en contraria porque el "allow" final
+  // la dejaba pasar).
   if (padre.net === 'vent' || padre.net === 'san' || padre.net === 'll') {
     let flowErr = ramalFlowDirectionCheck(eng, newTrib, [newTrib], 0.5);
     if (flowErr) {
       newTrib._tribReversed = !newTrib._tribReversed;
       flowErr = ramalFlowDirectionCheck(eng, newTrib, [newTrib], 0.5);
-      if (flowErr) {
-        // still error but guide is explicit — allow, autoSplit will handle
-      }
+      if (flowErr) newTrib._tribReversed = !newTrib._tribReversed; // restaurar orientación
+    }
+    if (flowErr) {
+      eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+      return null;
     }
   }
   eng.ramales.push(newTrib);

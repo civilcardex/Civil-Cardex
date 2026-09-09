@@ -563,27 +563,6 @@ export function ramalFlowDirectionCheck(
       (b) => b.net === ram.net && Math.hypot(b.x - ep[0], b.y - ep[1]) < tol,
     );
     if (epAtBajante) continue;
-    // Un brazo lateral TRIBUTARIO en una unión de 3+ ramales (yee/tee, p. ej. el brazo de una yee
-    // doble) define su dirección por topología, no por dot product entre vectores — un brazo en 45°
-    // puede tener dot ≤0 contra el tronco. Saltar la validación de dirección ahí SOLO para
-    // tributarios; un ramal normal (tipo 'ramal') en san/ll SIEMPRE debe validarse contra el flujo
-    // del ramal al que se conecta (no puede ir en contra).
-    if (ram.tipo === 'tributario') {
-      let junctionCount = 0;
-      for (const c of candidates) {
-        if (!c.pts || c.pts.length < 2) continue;
-        const cEps = [c.pts[0], c.pts[c.pts.length - 1]];
-        if (
-          cEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < tol) ||
-          c.pts.some(
-            (_, i) =>
-              i < c.pts!.length - 1 && pointOnRamalSegment(ep, c.pts![i], c.pts![i + 1], tol),
-          )
-        )
-          junctionCount++;
-      }
-      if (junctionCount >= 3) continue;
-    }
     for (const other of candidates) {
       if (other.id === ram.id || !sameNetGroupNet(other.net, ram.net)) continue;
       // ponytail: vent-vent no flow check per spec (only vent-san revent)
@@ -634,8 +613,41 @@ export function ramalFlowDirectionCheck(
       // ese par: un vent conectado a san sale a 45°/90° contra el flujo sanitario (Y / codo
       // reventilado), así que su dot contra el san es negativo y lo señalaba como falsa
       // violación de dirección aunque estuviera dibujado correctamente (Ítem 5 del .md).
-      if (!crossVentSan && !flowDirectionOkAt(ram, other, ep, tol)) {
-        return 'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.';
+      if (!crossVentSan) {
+        // Tributario que se CONECTA (orig. usuario): su DESTINO de flujo debe caer en la
+        // unión — llega al ramal/tributario principal, nunca drenan desde él. El dot-product
+        // daba falsos positivos en laterales a 45° dibujados desde el lado contrario.
+        // Un tributario que solo RECIBE la conexión (other tributario) no se valida aquí:
+        // la prohibición ramal→tributario se aplica aparte.
+        if (ram.tipo === 'tributario') {
+          if (!flowEndsAt(ram, ep, tol)) {
+            const principal = other.tipo === 'tributario' ? 'tributario' : 'ramal';
+            return `El tributario que se conecta debe llevar la dirección de flujo hacia el ${principal} principal. Dibújalo desde el aparato hacia la conexión.`;
+          }
+          // Sentido (orig. usuario): el tributario no puede ENTRAR a la unión claramente en
+          // contraria del anfitrión (llegando desde su lado aguas abajo, flecha contra el
+          // flujo del trazo al que conecta — capturas ≥135°). Solo aplica si el anfitrión
+          // ATRAVIESA la unión: si su flujo empieza o termina ahí, es convergencia de
+          // fuentes (sin dirección de cruce contra la cual contrastar). Umbral cos < −0.6
+          // (≈127°): laterales perpendiculares y obtusos moderados (cuerpos a 45° entre
+          // tributarios) siguen pasando.
+          const finTrib = flowVecAt(ram, ep, tol);
+          const hostCrosses = !flowEndsAt(other, ep, tol) && !flowStartsAt(other, ep, tol);
+          const fexHost = hostCrosses ? flowVecAt(other, ep, tol) : null;
+          if (finTrib && fexHost) {
+            const cos =
+              (finTrib[0] * fexHost[0] + finTrib[1] * fexHost[1]) /
+              (Math.hypot(finTrib[0], finTrib[1]) * Math.hypot(fexHost[0], fexHost[1]));
+            if (cos < -0.6) {
+              return 'El tributario llega en dirección contraria al trazo al que conecta. Dibújalo con el flujo entrando a la unión en el mismo sentido del ramal.';
+            }
+          }
+          continue;
+        }
+        if (other.tipo === 'tributario') continue;
+        if (!flowDirectionOkAt(ram, other, ep, tol)) {
+          return 'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.';
+        }
       }
     }
   }

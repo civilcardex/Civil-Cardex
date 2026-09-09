@@ -77,10 +77,11 @@ describe('BUG 1 — split + _renumberRamales + borrar divisor', () => {
       [0, 0],
       [40, 0],
     ]);
-    // B (tributario padre A) aterriza en (10,0): A se parte RS1+RS2(downstream)
+    // B (tributario padre A) aterriza en (10,0): A se parte RS1+RS2(downstream).
+    // Llega a favor del flujo de A (desde arriba-izquierda) — regla sin entrada en contraria.
     engine.tipoTramo = 'tributario';
     engine.padreTributario = aId;
-    handleLineDown(engine, 40, 30);
+    handleLineDown(engine, -20, -30);
     handleLineDown(engine, 10, 0);
     finishRamal(engine);
     const down = engine.ramales.find((r) => r.mergesFrom);

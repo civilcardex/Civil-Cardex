@@ -162,14 +162,13 @@ export function autoSplitJunctionAndSumFlow(
         // bloqueaba con "Dirección de flujo incorrecta" y el split nunca ocurría (bug: no se
         // partían). Lo mismo para trib-trib (id. comentario previo).
         const isSplitBody = segIdx >= 0;
-        const isTribTrib = existing.tipo === 'tributario' && incoming.tipo === 'tributario';
-        // Solo tributarios se auto-orientan al aterrizar en cuerpo — ramales deben validar flujo.
-        // Excepción: ramal creado desde LÍNEA GUÍA (_guideTributary) cruzando el cuerpo —
-        // resolveRamalEndsFromGuide ya lo orientó drenando hacia el cruce; el chequeo aquí
-        // bloqueaba el split y dejaba el ramal suelto con la flecha invertida (orig. usuario).
+        // Tributario que aterriza a CUERPO ajeno: se auto-orienta al partir el trazo abajo
+        // (semántica de arrastre/adopción, tests de cadenas trib-trib). El bloqueo de
+        // contrarias para tributarios aplica en la CREACIÓN (finishRamal) y en los re-anclajes
+        // de arrastre vía dragFlowCheck. Excepción guía: resolveRamalEndsFromGuide ya orientó
+        // el trazo drenando hacia el cruce.
         const skipSplitFlow =
           (isSplitBody && incoming.tipo === 'tributario') ||
-          isTribTrib ||
           (isSplitBody && !!(engine as unknown as { _guideTributary?: boolean })._guideTributary);
         const flowErr = skipSplitFlow ? null : ramalFlowDirectionCheck(engine, incoming, [], TOL);
         if (flowErr) {

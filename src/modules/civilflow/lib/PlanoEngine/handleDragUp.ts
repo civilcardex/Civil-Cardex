@@ -448,10 +448,29 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
-      // Advertencia "Ramal padre incorrecto" inhabilitada — se permite el movimiento.
-      engine._dragLinkedBackupPts = null;
-      engine._markDirty();
-      engine.render();
+      // Advertencia "Ramal padre incorrecto" inhabilitada — se permite el movimiento, pero la
+      // dirección de flujo SÍ se valida: trib→ramal y trib→trib como ramal→ramal (orig. usuario).
+      const flowErr = dragFlowCheck(engine, ram, linkedRamales);
+      if (flowErr) {
+        engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
+        if (engine._dragBackupPts) {
+          ram.pts = engine._dragBackupPts;
+          engine._dragBackupPts = null;
+        }
+        const linkedBackups = engine._dragLinkedBackupPts;
+        if (linkedBackups) {
+          for (const r of linkedRamales) {
+            if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
+          }
+        }
+        engine._dragLinkedBackupPts = null;
+        engine._markDirty();
+        engine.render();
+      } else {
+        engine._dragLinkedBackupPts = null;
+        engine._markDirty();
+        engine.render();
+      }
     } else {
       const flowErr = ram ? dragFlowCheck(engine, ram, linkedRamales) : null;
       if (ram && flowErr) {
@@ -523,9 +542,24 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
-      // Advertencia "Ramal padre incorrecto" inhabilitada — se permite el movimiento.
-      engine._markDirty();
-      engine.render();
+      // Advertencia "Ramal padre incorrecto" inhabilitada — se permite el movimiento, pero la
+      // dirección de flujo SÍ se valida (orig. usuario): mal direction = revertir el arrastre.
+      const flowErr = dragFlowCheck(engine, ram, []);
+      if (flowErr) {
+        engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
+        if (origPts) {
+          ram.pts = origPts;
+          if (srcBaj && origSrcXY) {
+            srcBaj.x = origSrcXY.x;
+            srcBaj.y = origSrcXY.y;
+          }
+          engine._markDirty();
+          engine.render();
+        }
+      } else {
+        engine._markDirty();
+        engine.render();
+      }
     } else if (ram) {
       const flowErr = dragFlowCheck(engine, ram, []);
       if (flowErr) {

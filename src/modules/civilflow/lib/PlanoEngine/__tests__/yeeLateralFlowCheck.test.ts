@@ -101,7 +101,7 @@ describe('yee lateral — validación de flujo (orig. usuario #3)', () => {
     expect(err).toBeTruthy();
   });
 
-  it('un brazo lateral TRIBUTARIO (unión de 3+) no valida dirección por dot product', () => {
+  it('brazo lateral TRIBUTARIO dibujado desde la unión: alerta de dirección (tributario↔ramal)', () => {
     const troncoA = R({
       id: 'RS1',
       pts: [
@@ -126,8 +126,11 @@ describe('yee lateral — validación de flujo (orig. usuario #3)', () => {
       padre: 'RS1',
     });
     const engine = makeEngine([troncoA, troncoB, brazo]);
+    // Regla vigente (orig. usuario): el tributario debe LLEGAR con su destino a la unión.
+    // Dibujado desde la unión hacia el aparato (drena desde el tronco) → alerta.
     const err = ramalFlowDirectionCheck(engine, brazo, [], 0.5);
-    expect(err).toBeNull();
+    expect(err).toContain('El tributario que se conecta');
+    expect(err).toContain('ramal principal');
   });
 
   it('ramal simple conectado al tronco (2 ramales en el punto) SÍ valida dirección', () => {

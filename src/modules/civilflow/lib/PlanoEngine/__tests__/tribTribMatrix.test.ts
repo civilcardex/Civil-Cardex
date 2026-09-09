@@ -215,7 +215,7 @@ describe('matriz trib-trib — el trazo autocreado y el entrante quedan en RS2',
       eng,
       padre!,
       [248, 212],
-      [193, 237], // llegada a 135° relativa respecto del segmento (260,180)→(230,260)
+      [207, 121], // llegada a 45° relativa y a favor del anfitrión (sin entrada en contraria)
       'T2_fromGuide',
     );
     expect(trib).not.toBeNull();

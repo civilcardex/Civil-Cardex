@@ -468,17 +468,15 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       // san/ll/vent debe fluir HACIA la unión (free→body), af/ac/gas DESDE la unión.
       // Para san, si el inicio toca cuerpo y el fin es libre, invertir para que fluya hacia el cuerpo.
       if (r.net === 'san' || r.net === 'll' || r.net === 'vent') {
-        if (t0 && !t1 && onBody(r.pts[0])) {
+        if (r.tipo !== 'tributario' && t0 && !t1 && onBody(r.pts[0])) {
           flipRamalFlow(r);
         }
       } else if (t1 && !t0 && onBody(r.pts[r.pts.length - 1])) {
         flipRamalFlow(r);
       }
-      // Tributario: además de lo anterior, si empieza tocando un ramal y termina libre, fluye
-      // desde la unión (comportamiento original).
-      if (r.tipo === 'tributario' && t0 && !t1) {
-        flipRamalFlow(r);
-      }
+      // Tributario SIN auto-voltteo (orig. usuario): se valida igual que un ramal — dibujado
+      // en contraria (unión→aparato) dispara "Dirección de flujo incorrecta" y NO se crea.
+      // Solo el dibujo aparato→unión (flujo hacia la conexión) pasa.
       // Vent recién dibujado: debe fluir ALEJÁNDOSE del punto sanitario (reventilado). Si el
       // usuario lo dibujó de afuera hacia el san (termina en san, empieza libre), se invierte
       // solo — igual que san/ll se auto-orienta hacia la unión. Sin esto, el trazo conectado
@@ -501,11 +499,9 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     // Ítem 2/5: chequeo pre-push con el helper compartido (r aún no está en engine.ramales, se
     // pasa como extra). Aborto limpio: sin push, activeRamal = null + alerta.
     // Solo tributarios se auto-orientan al aterrizar en cuerpo — ramales deben validar flujo
-    const landsOnBody =
-      (r.pts.length >= 2 && onBody(r.pts[r.pts.length - 1])) ||
-      (r.pts.length >= 2 && onBody(r.pts[0]));
-    const skipFlowForBody = landsOnBody && r.tipo === 'tributario';
-    const flowErr = skipFlowForBody ? null : ramalFlowDirectionCheck(engine, r, [r], TOL);
+    // Tributarios también validan (orig. usuario: T1T3 se creó en contra y pasó): su DESTINO
+    // de flujo debe caer en la unión — drenar desde el tronco al aparato = alerta.
+    const flowErr = ramalFlowDirectionCheck(engine, r, [r], TOL);
     if (flowErr) {
       engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
       engine.activeRamal = null;
