@@ -38,6 +38,14 @@ export function puedeConectarRamalABajante(
     };
   }
   if (ramal.tipo === 'tributario') {
+    if (esCaja(baj)) {
+      const nombre = baj.tipo === 'caja_ll' ? 'aguas lluvias' : 'aguas negras';
+      return {
+        ok: false,
+        title: 'Conexión no permitida',
+        msg: `Un tributario no puede llegar ni salir de una caja. Las cajas de ${nombre} solo aceptan ramales.`,
+      };
+    }
     return {
       ok: false,
       title: 'Conexión no permitida',

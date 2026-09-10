@@ -131,13 +131,21 @@ export function _tryBajanteHit(
           engine._lblDragIsParent = false;
           engine.lblDrag = { id: gHit.id, offX: x - c.cx, offY: y - c.cy };
         } else {
-          engine.ghostDrag = {
-            id: gHit.id,
-            startX: x,
-            startY: y,
-            baseDx: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
-            baseDy: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
-          };
+          // Anillo de ASOCIACIÓN entre pisos (su desplazamiento apunta a un conector LD_):
+          // SIEMPRE bloqueado (orig. usuario) — su posición es la proyección del bajante del
+          // otro piso y solo cambia arrastrando a ese bajante. Solo los anillos creados por
+          // arrastre manual (Ldesvio con id secuencial) siguen siendo movibles.
+          const assocRing =
+            gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.Ldesvio?.startsWith('LD_');
+          if (!assocRing) {
+            engine.ghostDrag = {
+              id: gHit.id,
+              startX: x,
+              startY: y,
+              baseDx: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
+              baseDy: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
+            };
+          }
         }
         return true;
       }

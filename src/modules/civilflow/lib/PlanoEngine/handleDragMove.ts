@@ -473,9 +473,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         });
       }
 
-      // Mantener pegado el ramal conector del fantasma (Ldesvio): el primer extremo sigue al
-      // padre, el segundo se queda en su posición absoluta fija (el fantasma no deriva con el
-      // padre — el desplazamiento se compensa con el delta del movimiento).
+      // Mantener pegado el ramal conector del fantasma (Ldesvio). Layout nuevo: el portador
+      // del desplazamiento es el bajante INFERIOR — el extremo del Ldesvio en ESTE piso
+      // (pts[último], lado inferior) sigue al arrastrado, y el extremo lejano queda anclado en
+      // la posición proyectada del bajante superior: el anillo (b.x+dx) NO deriva con el
+      // arrastre — el delta del movimiento se compensa en dx/dy.
       if (b.desplazamientos) {
         const dxMove = p.x - oldX;
         const dyMove = p.y - oldY;
@@ -483,10 +485,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           if (!d.Ldesvio) continue;
           const r = ramalesById.get(d.Ldesvio);
           if (!r) continue;
-          r.pts[0] = [b.x, b.y];
+          r.pts[r.pts.length - 1] = [b.x, b.y];
           d.dx -= dxMove;
           d.dy -= dyMove;
-          r.pts[r.pts.length - 1] = [b.x + d.dx, b.y + d.dy];
+          r.pts[0] = [b.x + d.dx, b.y + d.dy];
           r.totalL = calculateRamalLength(r.pts, engine);
           if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
           const [mx, my] = _midpoint(r.pts);

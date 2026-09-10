@@ -211,8 +211,7 @@ export function renderCrossFloorGhosts(
     g._hitCircle = { x: c.x, y: c.y, r };
 
     // Línea punteada hacia el bajante destino en este piso — más tenue que el color de la red y
-    // punteada, para que el conector entre pisos se lea como referencia (no como tubería real)
-    // y quede visiblemente más claro que los ramales de este mismo piso.
+    // punteada, para que el conector entre pisos se lea como referencia (no como tubería real).
     if (g.targetBajanteId) {
       const targetB = engine.bajantes.find((b) => b.id === g.targetBajanteId);
       if (targetB) {

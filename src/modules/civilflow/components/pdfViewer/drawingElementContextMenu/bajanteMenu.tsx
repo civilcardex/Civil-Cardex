@@ -122,8 +122,11 @@ export function BajanteDirectionSelector({
                 let updates: Record<string, unknown> = {};
 
                 if (opt === 'Sube') {
-                  // Ventilación: sin validación de dirección de flujo (usuario pide desactivarla)
-                  if (element.net !== 'vent') {
+                  // Ventilación: sin validación de dirección de flujo (usuario pide desactivarla).
+                  // Bajantes asociados entre pisos: tampoco — el Ldesvio llega al padre original,
+                  // la dirección la manda la asociación.
+                  const isAsociado = !!(element.origenId || element.descargaEnId);
+                  if (element.net !== 'vent' && !isAsociado) {
                     const bajCode = element.code || element.id;
                     const arrivingRamal = (element.recibeDeIds || [])
                       .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
@@ -143,7 +146,10 @@ export function BajanteDirectionSelector({
                     desplazamientos: { ...(element.desplazamientos || {}) },
                   };
                 } else if (opt === 'Baja') {
-                  if (element.net !== 'vent') {
+                  // Asociados entre pisos sin validación: el Ldesvio llega al padre original y
+                  // la dirección la manda la asociación (orig. usuario).
+                  const isAsociadoBaja = !!(element.origenId || element.descargaEnId);
+                  if (element.net !== 'vent' && !isAsociadoBaja) {
                     const bajCode = element.code || element.id;
                     const emittingRamal = (element.recibeDeIds || [])
                       .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
@@ -524,7 +530,7 @@ export function BajanteDiameterSelector({
     );
     triggerConfirm(
       'Crear fantasma de asociación',
-      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${srcLabel}. ¿Continuar?`,
+      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma y un ramal de desvío en este piso, en la posición de ${srcLabel}. ¿Continuar?`,
       commit,
       'Aceptar',
     );
@@ -652,7 +658,7 @@ export function BajanteDiameterSelector({
                   );
                   triggerConfirm(
                     'Crear fantasma de asociación',
-                    `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en el piso de origen, en la posición de ${srcLabel}. ¿Continuar?`,
+                    `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma y un ramal de desvío en el piso de origen, en la posición de ${srcLabel}. ¿Continuar?`,
                     commit,
                     'Aceptar',
                   );

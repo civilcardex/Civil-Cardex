@@ -155,7 +155,7 @@ export default function BajanteAsociacion({
     );
     triggerConfirm(
       'Crear fantasma de asociación',
-      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en el piso de origen, en la posición de ${srcLabel}. ¿Continuar?`,
+      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma y un ramal de desvío en el piso de origen, en la posición de ${srcLabel}. ¿Continuar?`,
       commit,
       'Aceptar',
     );
@@ -254,7 +254,7 @@ export default function BajanteAsociacion({
     );
     triggerConfirm(
       'Crear fantasma de asociación',
-      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${srcLabel}. ¿Continuar?`,
+      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma y un ramal de desvío en este piso, en la posición de ${srcLabel}. ¿Continuar?`,
       commit,
       'Aceptar',
     );

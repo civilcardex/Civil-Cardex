@@ -14,8 +14,8 @@ import {
 } from './PlanoEngineDrawing';
 import {
   updateCrossFloorGhostPositionBySource,
-  updateCrossFloorLdesvioFarEndpoint,
-  updateCrossFloorDesplazamientoBySource,
+  updateCrossFloorLdesvioStartPoint,
+  updateCrossFloorDesplazamientoAnchor,
   buildLdesvioRamal,
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
@@ -328,62 +328,52 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     }
-    // Sea cual sea la posición final x/y (incluida la posterior al rollback), propagarla a todo
-    // fantasma entre pisos del que este bajante sea origen — así el espejo del otro piso se
-    // mantiene alineado — y al extremo cercano de su propio conector Ldesvio, que vive en ESTE
-    // mismo piso (array en vivo), porque el conector siempre pertenece al piso del origen.
+    // Sea cual sea la posición final x/y (incluida la posterior al rollback), propagarla según
+    // el layout nuevo: este bajante SUPERIOR (descargaEnId) no mueve el ghost-marcador — ese
+    // vive en ESTE piso anclado a las coords del inferior y la línea punteada se redibuja sola
+    // desde posiciones vivas — pero sí el inicio de su Ldesvio y su anillo, que viven en el
+    // piso INFERIOR (no cargado): escritura directa a storage.
     if (b && b.descargaEnId) {
-      const [targetPlanId] = b.descargaEnId.split('|');
-      const sourcePlanId = String(engine._loadedPlanId ?? '');
-      if (targetPlanId) {
-        updateCrossFloorGhostPositionBySource(sourcePlanId, b.id, b.x, b.y);
-        if (String(targetPlanId) === sourcePlanId) {
-          engine.crossFloorGhosts = engine.crossFloorGhosts.map((g) =>
-            g.sourcePlanId === sourcePlanId && g.sourceBajanteId === b.id
-              ? { ...g, x: b.x, y: b.y }
-              : g,
-          );
-        }
-        const ldId = ldesvioIdFor(b.id);
+      const [targetPlanId, targetBajanteId] = b.descargaEnId.split('|');
+      if (targetPlanId && targetBajanteId) {
+        updateCrossFloorLdesvioStartPoint(targetPlanId, b.id, b.x, b.y);
+        updateCrossFloorDesplazamientoAnchor(
+          targetPlanId,
+          targetBajanteId,
+          ldesvioIdFor(b.id),
+          b.x,
+          b.y,
+        );
+        engine.render();
+      }
+    }
+    // Este bajante es el lado INFERIOR del enlace (origenId) y su piso SÍ está cargado: el
+    // Ldesvio y el anillo viven aquí (arrays vivos — el arrastre ya los siguió) y el
+    // ghost-marcador del piso superior se re-ancla a las nuevas coords vía storage.
+    if (b && b.origenId) {
+      const [originPlanId, originBajanteId] = b.origenId.split('|');
+      if (originPlanId && originBajanteId) {
+        const ldId = ldesvioIdFor(originBajanteId);
         const ld = engine.ramales.find((r) => r.id === ldId);
         if (ld && ld.pts?.length === 2) {
-          const [, far] = ld.pts;
+          const [start] = ld.pts;
           const updated = buildLdesvioRamal(
             ldId,
             ld.label || ldId,
             ld.net,
+            start[0],
+            start[1],
             b.x,
             b.y,
-            far[0],
-            far[1],
             ld.diametro || '',
             Number(ld.piso) || 0,
             engine.scaleM || 0.5,
             ld.bloqueado,
           );
           Object.assign(ld, updated);
-          // Re-anclar el marcador de círculo desplazado al extremo lejano (que no cambió): el
-          // anillo se dibuja en b.x + dx, así que mantener dx/dy constante lo arrastraría junto
-          // con el origen en vez de dejarlo anclado en la posición proyectada del destino.
-          const lvl = engine.nivelActual?.label ?? '';
-          const desp = lvl ? b.desplazamientos?.[lvl] : undefined;
-          if (desp) {
-            desp.dx = far[0] - b.x;
-            desp.dy = far[1] - b.y;
-            engine._markDirty();
-          }
         }
+        updateCrossFloorGhostPositionBySource(String(engine._loadedPlanId ?? ''), b.id, b.x, b.y);
         engine.render();
-      }
-    }
-    // Este bajante es el lado DESTINO del enlace de algún otro bajante (posiblemente de otro
-    // piso) — el extremo lejano de su Ldesvio vive allá, inalcanzable desde el motor en vivo, así
-    // que se sincroniza con una escritura directa a storage.
-    if (b && b.origenId) {
-      const [originPlanId, originBajanteId] = b.origenId.split('|');
-      if (originPlanId && originBajanteId) {
-        updateCrossFloorLdesvioFarEndpoint(originPlanId, originBajanteId, b.x, b.y);
-        updateCrossFloorDesplazamientoBySource(originPlanId, originBajanteId, b.x, b.y);
       }
     }
   }

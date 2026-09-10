@@ -196,37 +196,20 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         // por el vector extremo-a-extremo, que en ramales multipunto cambia de orientación
         // visual al rotar/editar segmentos posteriores. Al ser un vector geométrico del propio
         // trazo, rota rígidamente con él y nunca se reinvierte por cambios de orientación.
-        // Solo _tribReversed (decisión explícita del usuario) lo invierte. El caso especial
-        // LD_ (conector entre bajantes) se mantiene: apunta al bajante 'baja'.
-        if (r.id.startsWith('LD_')) {
-          const srcBaj = engine.bajantes.find((b) => b.id === r.id.slice(3));
-          let flowFromIdx = 0;
-          let flowToIdx = r.pts.length - 1;
-          if (srcBaj?.direccion === 'baja') {
-            flowFromIdx = r.pts.length - 1;
-            flowToIdx = 0;
-          }
-          const fc = engine.toCvs(r.pts[flowFromIdx][0], r.pts[flowFromIdx][1]);
-          const lastc = engine.toCvs(r.pts[flowToIdx][0], r.pts[flowToIdx][1]);
-          flowDx = lastc.x - fc.x;
-          flowDy = lastc.y - fc.y;
-          flowLen = Math.hypot(flowDx, flowDy);
-        } else {
-          // Dirección de flujo según el SEGMENTO donde está la etiqueta (mitad de longitud
-          // por defecto), manteniendo el SENTIDO del flujo global (no se invierte por
-          // inclinación). Solo _tribReversed invierte el sentido.
-          const seg = segmentAtPosition(r.pts, r.labelX, r.labelY);
-          const useIdx = seg ? seg.idx : 0;
-          const a = engine.toCvs(r.pts[useIdx][0], r.pts[useIdx][1]);
-          const b = engine.toCvs(r.pts[useIdx + 1][0], r.pts[useIdx + 1][1]);
-          const flip =
-            r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))
-              ? -1
-              : 1;
-          flowDx = (b.x - a.x) * flip;
-          flowDy = (b.y - a.y) * flip;
-          flowLen = Math.hypot(flowDx, flowDy);
-        }
+        // Solo _tribReversed (decisión explícita del usuario) lo invierte. El Ldesvio (LD_)
+        // usa la misma regla: sus pts nacen [anillo fantasma → bajante original], flecha hacia
+        // el original.
+        const seg = segmentAtPosition(r.pts, r.labelX, r.labelY);
+        const useIdx = seg ? seg.idx : 0;
+        const a = engine.toCvs(r.pts[useIdx][0], r.pts[useIdx][1]);
+        const b = engine.toCvs(r.pts[useIdx + 1][0], r.pts[useIdx + 1][1]);
+        const flip =
+          r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))
+            ? -1
+            : 1;
+        flowDx = (b.x - a.x) * flip;
+        flowDy = (b.y - a.y) * flip;
+        flowLen = Math.hypot(flowDx, flowDy);
       }
 
       const pCorto = getPisoCorto(engine.nivelActual?.n);

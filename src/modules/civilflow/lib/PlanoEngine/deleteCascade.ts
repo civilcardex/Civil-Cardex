@@ -2,6 +2,7 @@ import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
 import {
   removeCrossFloorGhost,
   removeCrossFloorLdesvioRamal,
+  ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
@@ -55,6 +56,10 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
     if (targetPlanId && targetBajanteId) {
       removeCrossFloorGhost(targetPlanId, thisPlanId, deleted.id);
       removeCrossFloorLdesvioRamal(thisPlanId, deleted.id);
+      // Layout nuevo: el ghost vive en el piso PROPIO (superior) referenciando al inferior, y
+      // el Ldesvio vive en el piso del target con el id del borrado.
+      removeCrossFloorGhost(thisPlanId, targetPlanId, targetBajanteId);
+      removeCrossFloorLdesvioRamal(targetPlanId, deleted.id);
       if (targetPlanId === thisPlanId) {
         const t = engine.bajantes.find((b) => b.id === targetBajanteId);
         if (t) t.origenId = null;
@@ -65,7 +70,11 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
         try {
           const key = `trazos_${targetPlanId}`;
           const raw = loadFromStorage<unknown>(key, null) as {
-            bajantes?: { id: string; origenId?: string | null }[];
+            bajantes?: {
+              id: string;
+              origenId?: string | null;
+              desplazamientos?: Record<string, { Ldesvio?: string } | undefined>;
+            }[];
           } | null;
           if (raw?.bajantes) {
             let changed = false;
@@ -73,6 +82,16 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
               if (b.id === targetBajanteId && b.origenId) {
                 b.origenId = null;
                 changed = true;
+              }
+              // Layout nuevo: el anillo (desplazamientos) vive en el bajante destino y apunta
+              // al Ldesvio del borrado — limpiarlo también.
+              if (b.id === targetBajanteId && b.desplazamientos) {
+                for (const lvl of Object.keys(b.desplazamientos)) {
+                  if (b.desplazamientos[lvl]?.Ldesvio === ldesvioIdFor(deleted.id)) {
+                    delete b.desplazamientos[lvl];
+                    changed = true;
+                  }
+                }
               }
             }
             if (changed) {
@@ -93,6 +112,10 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
     if (originPlanId && originBajanteId) {
       removeCrossFloorGhost(thisPlanId, originPlanId, originBajanteId);
       removeCrossFloorLdesvioRamal(originPlanId, originBajanteId);
+      // Layout nuevo: el ghost (marcador del inferior) vive en el piso del ORIGEN (superior)
+      // referenciando al borrado; el Ldesvio vive en el piso PROPIO (inferior).
+      removeCrossFloorGhost(originPlanId, thisPlanId, deleted.id);
+      removeCrossFloorLdesvioRamal(thisPlanId, originBajanteId);
       if (originPlanId === thisPlanId) {
         const o = engine.bajantes.find((b) => b.id === originBajanteId);
         if (o) o.descargaEnId = null;
