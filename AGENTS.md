@@ -622,3 +622,127 @@ El `_markDirty` inicial del plano corría el sanado "el padre manda" que re-etiq
 ### Fix
 - Eliminadas las 3 llamadas a trimCrossedStub (crear ramal, crear tributario singular y plural) + la función + sus 4 tests. El split del tronco lo hace autoSplitJunctionAndSumFlow y ambas mitades persisten.
 - Gates: tsc 0 · lint 0 err (1 warning) · vitest 473/473 (86 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-09 (code review WIP: asociación entre pisos + isometría + validación global)
+
+### Contexto
+El WIP en el árbol (asociación bajantes entre pisos con layout nuevo: fantasma+Ldesvio en el piso INFERIOR, marcadores en el superior; prefetch global de trazos; validación de cierre multi-piso; isometría con cajas/red_publica/tributarios) se revisó como PR ("intenta romperlo"). Se encontraron 2 bugs de pérdida de datos + mejoras; plan unificado aprobado y ejecutado.
+
+### Bugs corregidos (P1 — pérdida de datos)
+- **Bug 1 — anillo nunca llegaba al piso inferior**: en la pasada 2 de `migrateAssocLayoutOnLoad`, las mutaciones sobre `lowerData` (desplazamientos + ghostData 'sube' del bajante inferior) no se persistían — `markAssocLayout`/`removeCrossFloorGhost` re-cargan fresco y pisan. Fix: reordenar (anillo + `saveData(lowerPlanId, lowerData)` ANTES del movimiento del LD, cuyo create hace load+save fresco) — el primer intento guardaba DESPUÉS del create y pisaba el LD (lo destaparon los tests de regresión).
+- **Bug 2 — pasada 2 borraba LDs de la pasada 1**: `data` se cargaba una vez; un plan intermedio (lower Y upper en cadena de 3+ pisos) guardaba con `data.ramales` stale y eliminaba el LD recién creado. Fix: `data = loadData(pid)` entre pasadas + re-sync de `data.ramales` tras el create en pasada 1 (iteración N pisaba el LD de la N-1).
+- **Bug 3 — cubierta (n=99) bajo el piso 0 en isometría**: el zMap nuevo la trataba como "sótano bajo piso 0" (+2700) pero `pisoLbl(99)='Cubierta'` en TODA la app y el layout viejo la ponía topmost. Fix: `m[99] = -(nSobreSuelo+1)*spacing` (encima de todo; de paso elimina la colisión con n=-1).
+
+### Robustez
+- Cierre del visor (`PdfViewer.tsx` onClose): ahora `await prefetchAllTrazos(planos)` antes de `validateBeforeClose` — un piso sin caché ya no se salta la validación global en silencio.
+- `prefetchAllTrazos`: nunca rechaza (try/catch interno + devError); call sites con `.catch` (Isometria) o `void` seguro.
+- Rasterizador isometría: try/catch/finally con `setIsoLoading(false)` en finally — sin spinner infinito si `loadPlanImage` lanza.
+
+### Refactors (cero comportamiento salvo lo anotado)
+- **`assocLayoutMigration.ts` (nuevo)**: `markAssocLayout`/`readAssocLayout`/`migrateAssocLayoutOnLoad`/`sweepMisplacedLdesvios` + `moveLdesvioAparatosKey` salieron de `associateBajanteAcrossFloors.ts` (re-export desde el original). `LocalGhostDrawingData` ahora tipada y exportada (assocLayout/scaleM/ramales/bajantes) + `StoredBajante` compartida — 10+ casts eliminados.
+- Guard barato: la migración sale temprano si el raw del plan ya trae `"assocLayout":2` (sin parsear); el sweep solo parsea planes cuyo raw menciona `LD_`.
+- **`closeValidation.ts`**: helper compartido `revisarDiametros` + `formatLista` (−70 líneas dup local/global); `pisoLbl(plan.nivel)` en mensajes globales (ya no "Piso 99"); **LD_ excluido de la validación de diámetros** (local y global — espeja el dNominal de su bajante, alerta doble eliminada). Cambio de validación acordado en el plan.
+- `useIsometriaRender.ts`: un solo `drawIsoRect(iso, zPix, wM, dM, stroke, lw)` para cajas y red_publica (antes duplicado).
+- **Caja CAN/CALL 2D apaisada real**: `eh = ew/1.35`, interior 65%/55% — igual que el comentario y la iso (antes cuadrada).
+- `deleteCascade.ts`: `ldesvioIdFor(deleted.id)` en vez del literal `LD_${...}`.
+- `bajanteRules.ts`: mensaje de caja con template único (lluvias/negras).
+- `guideLineMenu.tsx`: `extra = []` en `ramalFlowDirectionCheck` (incluía el ramal dos veces).
+- Overlay de carga de isometría: clases `.iso-loading-*` + `@keyframes isoSpin` en `index.css` (con prefers-reduced-motion) — adiós a 40 líneas de estilos inline y al `<style>` inline.
+
+### Consola
+- Grep: **0 `console.log/debug` en src**; el único `console.*` era 1 `console.warn` en `PdfViewer.tsx:390` — eliminado.
+- Navegador (IAB sobre dev server): /, /login, /pricing, /civilflow, /docs — **0 errores/warnings de consola**. `/civilflowareatrabajo` redirige a login sin sesión: el visor autenticado (trazos, asociación, isometría con datos reales) queda para verificación del usuario.
+
+### Tests
+- `assocLadosLayout.test.ts` +2: anillo PERSISTIDO migrando desde el superior sin abrir el inferior; plan intermedio conserva el LD creado por la pasada 1.
+
+### Gates finales
+tsc 0 · vitest **519/519** (93 files) · lint 0 errores · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura, con sesión)
+Anillo visible en el piso inferior tras abrir el superior (asociación legacy), isometría con cubierta arriba, símbolo de caja apaisado en 2D, y cierre del visor validando pisos remotos.
+
+## Session Summary — 2026-09-09 (ronda 2: herencia UD en vivo entre pisos + inodoro RS4)
+
+### Bug 2 — UDs no llegan al piso inferior al asociar bajantes (FIX)
+- **Causa**: `applyBajanteAssociation` / `clearBajanteAssociation` leían `recibeDeIds`/`alimentaIds`/`ucAplicado` SOLO del storage de trazos. El autosave del motor tiene debounce de 1.5 s: asociar justo después de dibujar/conectar leía storage stale (recibeDeIds vacío) → `agg` vacío → el enlace se creaba con CERO unidades heredadas, en silencio. Con caché local ausente (trazos solo en BD), el fallback geométrico también moría (`srcRaw` null).
+- **Fix** (`bajanteAssociation.ts`): criterio "motor vivo sobre storage" — cuando el piso del bajante (origen o destino) es el cargado, `recibeDeIds`/`alimentaIds`/`ucAplicado` se leen del `eng.bajantes`; el fallback geométrico también puede salir de `eng.ramales`. Storage queda como fallback para pisos no cargados.
+- La herencia en vivo cuando se asignan aparatos DESPUÉS de asociar ya existía (efecto de FixturesPanel que propaga `agregadoBajante` al LD + libro del destino en cada cambio de conteos).
+
+### Bug 1 — inodoro de RS4-P2 "se borra" (diagnóstico + blindaje)
+- **Verificado con motor real (tests de regresión)**: dibujar ramal de ventilación desde/hacia el extremo aparatado, crear bajante de ventilación, borrar el vent, renumeración de ramales (migración de claves aparatos incluida) y guardado/recarga NO borran el aparato (campo `aparatoInicio` + conteo sobreviven a cada paso). La conexión del vent NO es la causa directa a nivel motor.
+- **Defecto real encontrado y corregido** (`FixturesPanel.dec`): el campo `aparatoInicio/Fin` del ramal se limpiaba siempre que el conteo propio llegara a ≤0 — incluso cuando la clave propia NUNCA tuvo el aparato (el panel muestra UDs combinadas/heredadas de una asociación; un clic en "-" borraba el símbolo del dibujo). Ahora el campo solo se limpia con decremento legítimo del conteo propio (`teniaPropio`).
+- Si reaparece: revisar consola `[CF-UC] asociar: agg=` / `[CF-panel]` y verificar que la clave `civilflow_aparatos_by_tramo_v2` contenga `san_RS4_<planId>`.
+
+### Tests
+- `inodoroVentRegression.test.ts` (motor real): sesión completa vent+aparato paso a paso.
+- `assocUdHerencia.test.ts` (4): flujo A (superior cargado), flujo B (inferior cargado), ciclo asociar/desasociar/reasociar (inodoro sobrevive, sin duplicación), storage stale + motor vivo.
+
+### Gates
+tsc 0 · lint 0 errores (5 warnings pre-existentes de la sesión de debug paralela) · vitest **524/524** (95 files) · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura, con datos reales)
+Asociar bajantes entre pisos justo después de conectar ramales (sin esperar el autosave) → UDs visibles en fantasma/Ldesvio/bajante original al instante; clic en "-" sobre UDs heredadas no borra el inodoro del ramal propio.
+
+## Session Summary — 2026-09-09 (ronda 3: herencia idempotente + doble libro + fuga de clave LD)
+
+### Herencia UD idempotente (bug 2, regla "no duplicar al reprocesar")
+- **Causa**: `applyBajanteAssociation` sumaba el agregado a ciegas (`cur[k]+v`) sobre los ramales destino — re-aplicar sin desasociar duplicaba UDs; el hidro se sumaba igual en cada pasada. El efecto en vivo de `FixturesPanel` ya usaba delta con libro, pero reescribía el libro SIN la entrada del LD.
+- **Fix**: apply con delta `nuevo = max(0, actual − aplicado_previo) + extra` (igual que el vivo) + libro gemelo `ucAplicadoHidro` para accesorios hidro; el libro también se sincroniza al motor vivo (`updateElementById`) porque la próxima aplicación lee el vivo primero. Limpieza de herencia hidro colgada cuando el superior la pierde + borrado (no `{}` vacío) de claves LD sin agregado.
+- **Fuga LD al desasociar**: el path con libro no borraba la clave de aparatos/hidro del Ldesvio (y el vivo la había sacado del libro) → UDs fantasma tras desasociar. Fix: borrado explícito de claves LD (ambos ids × ambos pisos, layout nuevo + viejo) + cascarón hidro vacío eliminado; el vivo incluye la entrada LD en `ucAplicadoNuevo` y borra `disk[lk]` cuando el agregado queda vacío.
+- **Tipos**: `PlanoBajante.ucHerencia`/`udPreAsoc` (muertos, sin lectores) → `ucAplicado`/`ucAplicadoHidro` tipados; casts eliminados en `bajanteAssociation.ts`. El libro vive solo en trazos localStorage (no viaja a Supabase — `bajanteToRow` no lo mapea); sin libro, el clear usa el fallback de recómputo (dibujos viejos / otro dispositivo).
+- Limpieza: 0 `console.*` en src productivo (fuera `[CF-UC]`/`[CF-panel]`; quedan logs en tests viejos + `devError` con gate DEV).
+
+### Bug 1 — inodoro RS4-P2 vs ventilación (verificación ampliada)
+- Nuevo test: vent con extremo SOBRE el cuerpo de RS4 (cruce san↔vent, sin split) + arrastre del extremo + borrado del vent + renumero + recarga → campo + conteo intactos, RS4 sin partir. La red vent no escribe claves `san_*` en ningún camino (GC conservadora, renumeros por red, splits bloqueados entre redes).
+
+### Tests
+- `assocUdHerencia.test.ts` (7): + escenario B alineado (sin LD, original directo, re-apply sin dup), + live-update (aparato nuevo arriba + manual abajo → reemplazo exacto), + hidro (no-dup al re-aplicar, clear restaura y borra LD).
+- `inodoroVentRegression.test.ts` (2): + cruce vent-sobre-cuerpo-san.
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente `exhaustive-deps` en FixturesPanel) · vitest **528/528** (95 files) · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura, con datos reales)
+1. Asociar → agregar inodoro arriba → ver UD al instante en LD/fantasma/original sin re-asociar; re-asociar el mismo par → sin duplicados en tablas.
+2. Desasociar → claves `san_LD_*` fuera de `civilflow_aparatos_by_tramo_v2` y `ucAcum` en 0.
+3. RS4-P2 con inodoro + vent tocándolo → recargar → inodoro sigue asignado.
+
+## Session Summary — 2026-09-09 (ronda 4: herencia parcial 24→16, cambio sin efecto, cruzados)
+
+### 1. Herencia parcial — el inferior quedaba con menos UDs (FIX)
+- **Causa**: el apply sumaba solo `recibeDeIds` directos (con tope de 10): fuera quedaban tributarios, clave propia del bajante, cadenas extremo-con-extremo y ramales 11+. El panel mostraba el árbol completo (24) pero se heredaba el parcial (16).
+- **Fix**: `collectSourceAgg`/`upstreamRamalIdsForBajante` (`bajanteAssociation.ts`) — UNA verdad para asociar y vivo: clave propia + recibeDeIds + tributarios por padre (toda profundidad) + fuentes mergesFrom + vecinos geométricos aguas arriba; excluye espejos (alimentaIds + colas geométricas), LDs y otras redes; semilla geométrica por extremo (cubre recibeDeIds stale del autosave); sin topes. El efecto vivo de `FixturesPanel` usa el mismo helper (ya no `agregadoBajante` para heredar).
+
+### 2. Cambiar de asociado no actualizaba el inferior (FIX)
+- **Causa**: el extremo opuesto quedaba como escritor rancio (su `descargaEnId`/`origenId` seguía apuntando) y su vivo re-empujaba el agregado viejo sobre la herencia nueva.
+- **Fix**: el apply limpia enlaces en conflicto PRIMERO (ambos extremos, idempotente por punteros) + guard de dirección en el vivo (solo escribe el extremo UPPER por npt; empate → titular origenId, igual que el apply) + el vivo cubre san+ll aunque el panel esté en la otra red + propaga hidro en vivo con su libro.
+
+### 3. Cruzados: desasociar uno rompía el otro (FIX)
+- **Causa**: barridos amplios por id pelado (`LD_BAN1` existe en piso 1 para un enlace y en piso 2 para otro): clear borraba LD/anillo/claves del enlace cruzado (ramales, desplazamientos, conteos; el ghost se salvaba por ir en par).
+- **Fix**: `resolveLinkRoles` (ghost XFG dice la verdad; sin ghost, npt con empate→target como el apply) y TODO el clear con scope exacto (LD/ghost/anillo/claves/punteros con guard de valor; el source ya no anula `origenId` ajeno — rompía cadenas de 3 pisos). Fallback legacy: reversión desde la propia clave LD (registro exacto de lo heredado); barrido amplio solo sin ghost ni npts. `renameBajanteAcrossFloorReferences`: `targetBajanteId` solo en piso propio (el de otros pisos nunca apunta aquí).
+
+### Tests
+- `assocUdHerencia.test.ts` (11): + agregado completo 24 (tributario+propia+cadena, espejo fuera), + 12 ramales sin tope, + cambio de asociado con auto-limpieza, + cruzados intactos al desasociar uno.
+- Gates: tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **532/532** (95 files) · build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura, con datos reales)
+1. BAN1-P2 con 24 (inodoro+tributarios+cadenas) → asociar → BAN1-P1 con 24 en LD/original/ucAcum.
+2. Cambiar el asociado del superior → el inferior refleja el nuevo sin re-asociar manual.
+3. Cruzados BAN1-P1↔BAN2-P2 + BAN1-P2↔BAN2-P1 → desasociar uno → el otro intacto (LD, anillo, ghost, UDs).
+
+## Session Summary — 2026-09-09 (ronda 5: Ldesvios con label duplicado RS1)
+
+### Causa
+- `nextRamalLabel` evaluaba `(r.id || r.label)`: como todo ramal tiene id, el label del LD (`LD_BAN1` → `RS2`) jamás ocupaba número y cada LD nuevo del mismo piso repetía (RS1, RS1...). Los allocators de ramales reales sí miran id+label, solo el de LD estaba mal.
+
+### Fix
+- `nextRamalLabel` escanea id Y label.
+- `healLdesvioLabels` (nuevo, corre en cada `sweepMisplacedLdesvios` al cargar): re-etiqueta LDs duplicados/vacíos/chocados al siguiente consecutivo de su red. Solo cambia lo impreso (id `LD_...` y claves de conteos intactos), idempotente.
+
+### Tests
+- `assocLdLabels.test.ts` (6): allocator ve labels LD, heal + idempotencia, sweep persiste únicos/consecutivos.
+- Gates: tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **538/538** (96 files) · build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura)
+Abrir el piso con LDs duplicados → recargar → labels únicos y consecutivos (RS1, RS2, RS3...) sin tocar conteos.
