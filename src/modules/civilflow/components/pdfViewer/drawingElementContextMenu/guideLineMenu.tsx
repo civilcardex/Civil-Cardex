@@ -6,6 +6,7 @@ import {
   autoSplitJunctionAndSumFlow,
   flipRamalFlow,
   findGuideTCrossing,
+  ramalFlowDirectionCheck,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import {
   useDrawingElementContextMenu,
@@ -183,6 +184,15 @@ export function GuideLineMenu() {
           // sale 180° fuera; el gap perpendicular del render empujaba la caja HACIA el trazo en
           // vez de alejarla (orig. usuario: etiqueta solapada "en ocasiones").
           newRamal.labelAngle = _firstSegmentAngle(newRamal.pts);
+          // Misma validación de dirección que un ramal terminado a mano (orig. usuario): la
+          // guía puede entrar en contraria del ramal que cruza — se bloquea con alerta y la
+          // guía se conserva para reposicionarla.
+          const flowErr = ramalFlowDirectionCheck(eng, newRamal, [], 0.5);
+          if (flowErr) {
+            eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+            ctx.setContextMenuState(null);
+            return;
+          }
           eng.ramales.push(newRamal);
           // Igual que un ramal terminado a mano (finishRamal): si el extremo cae a mitad del
           // cuerpo de otro ramal, ese ramal se parte en existing+downstream y el nuevo se suma

@@ -7,6 +7,7 @@ import { distToPolyline } from '../../lib/shared/geometry';
 import type { PlanTrazos } from '../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { pisoLbl } from '../../constants';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanItem } from '../../context/PlansContext';
 
@@ -192,47 +193,105 @@ export function validateBeforeClose(
   // ramal/tributario con diametro vacío (o una bajante/montante sin dNominal)
   // produciría una tabla de diseño/memoria rota. Bloquear el cierre y listar los
   // elementos faltantes en lugar de guardar silenciosamente un dibujo incompleto.
-  const sinDiamRamales = eng.ramales.filter((r) => !r.diametro).map((r) => r.label || r.id);
-  const sinDiamBajantes = eng.bajantes
-    .filter((b) => (b.tipo === 'bajante' || b.tipo === 'montante') && !b.dNominal)
-    .map((b) => b.code || b.id);
-  const total = sinDiamRamales.length + sinDiamBajantes.length;
-  if (total > 0) {
-    const lista = [...sinDiamRamales, ...sinDiamBajantes].slice(0, 8).join(', ');
-    const extra = total > 8 ? ` y ${total - 8} más` : '';
+  const { sinDiam, inferior } = revisarDiametros(eng.ramales, eng.bajantes);
+  if (sinDiam.length > 0) {
     onAlert(
       'Diámetros pendientes',
-      `${total} elemento(s) sin diámetro asignado: ${lista}${extra}. Asigna los diámetros antes de cerrar el dibujo.`,
+      `${sinDiam.length} elemento(s) sin diámetro asignado: ${formatLista(sinDiam)}. Asigna los diámetros antes de cerrar el dibujo.`,
     );
     return false;
   }
-  // Ítem: el diámetro de un bajante/montante no puede ser inferior al del ramal al que
-  // está conectado — validarlo también al cerrar el dibujo (no solo en edición) para que
-  // no se pueda cerrar con una inconsistencia de diámetros.
-  const sinDiamInferior: string[] = [];
-  for (const b of eng.bajantes) {
+  if (inferior.length > 0) {
+    onAlert(
+      'Diámetro no permitido',
+      `Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${formatLista(inferior)}. Ajusta los diámetros antes de cerrar el dibujo.`,
+    );
+    return false;
+  }
+  // Validación GLOBAL (orig. usuario): los pisos NO cargados también deben cumplir antes de
+  // cerrar. Con el prefetch global de trazos cada plano confirmado tiene caché local en este
+  // punto; sin ella, el piso se salta (comportamiento anterior: se podía cerrar igual).
+  for (const plan of (planos || []).filter(
+    (p) => p.status === 'confirmed' && String(p.id) !== String(planId ?? ''),
+  )) {
+    const data = leerTrazos(plan.id);
+    if (!data) continue;
+    const piso = plan.nivel != null ? `${pisoLbl(Number(plan.nivel))}: ` : '';
+    const otro = revisarDiametros(
+      (data.ramales || []) as DiamRamales,
+      (data.bajantes || []) as DiamBajantes,
+    );
+    if (otro.sinDiam.length > 0) {
+      onAlert(
+        'Diámetros pendientes',
+        `${piso}${otro.sinDiam.length} elemento(s) sin diámetro asignado: ${formatLista(otro.sinDiam)}. Asigna los diámetros antes de cerrar el dibujo.`,
+      );
+      return false;
+    }
+    if (otro.inferior.length > 0) {
+      onAlert(
+        'Diámetro no permitido',
+        `${piso}Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${formatLista(otro.inferior)}. Ajusta los diámetros antes de cerrar el dibujo.`,
+      );
+      return false;
+    }
+  }
+  return true;
+}
+
+type DiamRamales = Array<{ id?: string; label?: string; diametro?: string }>;
+type DiamBajantes = Array<{
+  id?: string;
+  code?: string;
+  tipo?: string;
+  dNominal?: string;
+  recibeDeIds?: string[];
+}>;
+
+/** Lista recortada a 8 elementos con sufijo "y N más" — mismo formato en piso local y global. */
+function formatLista(items: string[]): string {
+  return `${items.slice(0, 8).join(', ')}${items.length > 8 ? ` y ${items.length - 8} más` : ''}`;
+}
+
+/** Lee la caché local de trazos de un piso (acepta JSON en crudo); null si no hay o está rota. */
+function leerTrazos(id: string | number): PlanTrazos | null {
+  const raw = loadFromStorage<PlanTrazos | string | null>(TRAZOS_PREFIX + String(id), null);
+  if (!raw) return null;
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw) as PlanTrazos;
+  } catch {
+    return null;
+  }
+}
+
+/** Revisión de diámetros de un conjunto de trazos: elementos sin diámetro y bajantes/montantes
+ *  con diámetro inferior al del ramal conectado. Los Ldesvio (LD_) se excluyen de "sin
+ *  diámetro": espejan el dNominal de su bajante y lo duplicarían en la alerta. */
+function revisarDiametros(ramales: DiamRamales, bajantes: DiamBajantes) {
+  const sinDiam = [
+    ...ramales
+      .filter((r) => !r.diametro && !r.id?.startsWith('LD_'))
+      .map((r) => r.label || r.id || ''),
+    ...bajantes
+      .filter((b) => (b.tipo === 'bajante' || b.tipo === 'montante') && !b.dNominal)
+      .map((b) => b.code || b.id || ''),
+  ].filter(Boolean);
+  const inferior: string[] = [];
+  for (const b of bajantes) {
     if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
     if (!b.dNominal) continue;
     const bIn = diamPulgFromLabel(String(b.dNominal).replace(/-/g, ' '));
     if (bIn <= 0) continue;
     for (const rid of b.recibeDeIds || []) {
-      const ram = eng.ramales.find((r) => r.id === rid);
+      const ram = ramales.find((r) => r.id === rid);
       if (!ram || !ram.diametro) continue;
       const ramIn = diamPulgFromLabel(String(ram.diametro).replace(/-/g, ' '));
       if (ramIn > 0 && ramIn > bIn) {
-        sinDiamInferior.push(`${b.code || b.id} (${ram.label || ram.id} ${ram.diametro})`);
+        inferior.push(`${b.code || b.id} (${ram.label || ram.id} ${ram.diametro})`);
         break;
       }
     }
   }
-  if (sinDiamInferior.length > 0) {
-    const lista = sinDiamInferior.slice(0, 8).join(', ');
-    const extra = sinDiamInferior.length > 8 ? ` y ${sinDiamInferior.length - 8} más` : '';
-    onAlert(
-      'Diámetro no permitido',
-      `Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${lista}${extra}. Ajusta los diámetros antes de cerrar el dibujo.`,
-    );
-    return false;
-  }
-  return true;
+  return { sinDiam, inferior };
 }

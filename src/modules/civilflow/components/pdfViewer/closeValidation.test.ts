@@ -249,3 +249,66 @@ describe('validateBeforeClose — conversión ramal↔tributario', () => {
     expect(alertas[0]?.msg).toContain('P1');
   });
 });
+
+// Validación GLOBAL (orig. usuario): los pisos NO cargados también bloquean el cierre —
+// diámetros pendientes y bajante con diámetro menor al de su ramal, en cualquier piso.
+describe('validateBeforeClose — validación global multi-piso', () => {
+  beforeEach(() => {
+    resetStorage();
+    alertas.length = 0;
+  });
+
+  const planos2 = [
+    { id: 1, nivel: 1, name: 'P1', status: 'confirmed' },
+    { id: 2, nivel: 2, name: 'P2', status: 'confirmed' },
+  ] as unknown as Parameters<typeof validateBeforeClose>[1];
+
+  it('ramal sin diámetro en OTRO piso bloquea el cierre (con prefijo de piso)', () => {
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'RS9', net: 'san', tipo: 'ramal', label: 'RS9', diametro: '', uc: 5 }],
+      bajantes: [],
+    });
+    const ok = validateBeforeClose(makeEngine([RS1()]), planos2, onAlert);
+    expect(ok).toBe(false);
+    expect(
+      alertas.some((a) => a.title === 'Diámetros pendientes' && a.msg.includes('Piso 2')),
+    ).toBe(true);
+  });
+
+  it('bajante con diámetro menor que su ramal en OTRO piso bloquea el cierre', () => {
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'RS9', net: 'san', tipo: 'ramal', label: 'RS9', diametro: '4"', uc: 5 }],
+      bajantes: [
+        {
+          id: 'BAN9',
+          net: 'san',
+          tipo: 'bajante',
+          code: 'BAN9',
+          dNominal: '2"',
+          recibeDeIds: ['RS9'],
+        },
+      ],
+    });
+    const ok = validateBeforeClose(makeEngine([RS1()]), planos2, onAlert);
+    expect(ok).toBe(false);
+    expect(alertas.some((a) => a.title === 'Diámetro no permitido')).toBe(true);
+  });
+
+  it('otro piso completo → cierre permitido', () => {
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'RS9', net: 'san', tipo: 'ramal', label: 'RS9', diametro: '4"', uc: 5 }],
+      bajantes: [
+        {
+          id: 'BAN9',
+          net: 'san',
+          tipo: 'bajante',
+          code: 'BAN9',
+          dNominal: '4"',
+          recibeDeIds: ['RS9'],
+        },
+      ],
+    });
+    expect(validateBeforeClose(makeEngine([RS1()]), planos2, onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+});

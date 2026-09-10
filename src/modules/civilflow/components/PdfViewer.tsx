@@ -43,6 +43,7 @@ import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements';
 import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
 import AparatosPanel from './FixturesPanel';
 import { validateBeforeClose } from './pdfViewer/closeValidation';
+import { prefetchAllTrazos } from '../utils/prefetchTrazos';
 import { applyAccesorioPlacement } from './pdfViewer/accesorioPlacement';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionVisorPrefs';
 import { useNetColorsInit } from './pdfViewer/useNetColorsInit';
@@ -386,8 +387,6 @@ function PdfViewer_({
         if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r)) {
           if (!aparatoFlowAlertedRef.current.has(r.id)) {
             aparatoFlowAlertedRef.current.add(r.id);
-            // eslint-disable-next-line no-console
-            console.warn('[aparato-flow] inválido canal', r.id, r.label, r.net);
             eng.triggerAlert(
               'Aparato no permitido',
               `El ramal ${r.label || r.id} tiene un aparato en un extremo inválido: está conectado a la red (T/Y/bajante) o el flujo va en su contra. El aparato solo va en el extremo libre hacia el que apunta el flujo. Quita el aparato, invierte la dirección del ramal o muévelo al extremo correcto.`,
@@ -1001,10 +1000,19 @@ function PdfViewer_({
         onToggleLocked={handleToggleLocked}
         scaleText={scaleText}
         onClose={() => {
-          const eng = engineRef.current;
-          if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) return;
-          handleSave();
-          navigate('/civilflowareatrabajo');
+          void (async () => {
+            // Asegurar caché local de TODOS los pisos antes de validar: sin ella, un piso cuyo
+            // prefetch sigue en vuelo (o falló) se saltaba la validación global en silencio.
+            try {
+              await prefetchAllTrazos(planos);
+            } catch {
+              /* validar con la caché que haya */
+            }
+            const eng = engineRef.current;
+            if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) return;
+            handleSave();
+            navigate('/civilflowareatrabajo');
+          })();
         }}
       />
 
@@ -1189,11 +1197,12 @@ function PdfViewer_({
                 upperFloorGroup={upperFloorGroup}
                 planosCtx={planosCtx}
                 engineRef={engineRef}
-                triggerConfirm={(title, message, onConfirm) => {
+                triggerConfirm={(title, message, onConfirm, confirmLabel) => {
                   setConfirmState({
                     isOpen: true,
                     title,
                     message,
+                    confirmLabel,
                     onConfirm: () => {
                       onConfirm();
                       setConfirmState((prev) => ({ ...prev, isOpen: false }));
