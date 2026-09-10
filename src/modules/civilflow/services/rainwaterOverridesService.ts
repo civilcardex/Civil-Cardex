@@ -40,18 +40,17 @@ interface CanalOverrideRow {
 export async function loadRainwaterOverrides(proyectoId: number): Promise<RainwaterOverrides> {
   try {
     const [bajantesRes, canalesRes] = await Promise.all([
+      // select('*'): tolerante a esquemas de BD sin migrar — si una columna (p. ej. R) aún no
+      // existe, la carga no revienta (el mapeo ya rellena defaults). Cuando la columna exista,
+      // se puebla sola.
       supabase
         .from(CF_TABLES.anulacionesBajantes)
-        .select(
-          'id_cliente, bajante, area_parcial, area_acumulada, intensidad, coeficiente_c, R, manning, diam_propuesto',
-        )
+        .select('*')
         .eq('proyecto_id', proyectoId)
         .order('id'),
       supabase
         .from(CF_TABLES.anulacionesCanales)
-        .select(
-          'id_cliente, sector, area_parcial, area_acumulada, intensidad, coeficiente_c, manning, pendiente, b, h',
-        )
+        .select('*')
         .eq('proyecto_id', proyectoId)
         .order('id'),
     ]);
