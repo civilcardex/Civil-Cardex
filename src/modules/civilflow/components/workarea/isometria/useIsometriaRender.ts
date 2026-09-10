@@ -451,6 +451,48 @@ export function useIsometriaRender({
 
       const projPt = (px: number, py: number, pz: number) =>
         project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+
+      // Rectángulo acostado en el plano del piso (cajas CAN/CALL y red_publica): esquinas en
+      // unidades iso (1 m = ISO_SCALE) proyectadas a los 4 vértices, solo trazo.
+      const drawIsoRect = (
+        iso: { x: number; y: number },
+        zPix: number,
+        wM: number,
+        dM: number,
+        stroke: string,
+        lw: number,
+      ) => {
+        const hw = (wM / 2) * ISO_SCALE;
+        const hd = (dM / 2) * ISO_SCALE;
+        const corners: [number, number][] = [
+          [iso.x - hw, iso.y - hd],
+          [iso.x + hw, iso.y - hd],
+          [iso.x + hw, iso.y + hd],
+          [iso.x - hw, iso.y + hd],
+        ];
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+          const pr = project(
+            corners[i][0],
+            corners[i][1],
+            zPix,
+            rotZ,
+            rotX,
+            scaleZ,
+            zoom,
+            offX,
+            offY,
+            cx,
+            cy,
+          );
+          if (i === 0) ctx.moveTo(pr.sx, pr.sy);
+          else ctx.lineTo(pr.sx, pr.sy);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = lw;
+        ctx.stroke();
+      };
       for (const r of netData.ramales) {
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
         // respecto a NPT") se guarda NEGATIVO para instalaciones bajo losa (p. ej. sanitaria
@@ -564,6 +606,47 @@ export function useIsometriaRender({
         // Los canales ya se dibujaron en la pasada de fondo anterior.
         if (b.tipo === 'canal') continue;
 
+        // Cajas CAN/CALL: doble rectángulo SOLO trazo acostado en el plano del piso (espejo
+        // del símbolo 2D) — sin stub vertical, sin círculo, sin triángulo de dirección.
+        if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
+          const selKey = `${netId}:${b.planId}:${b.id}`;
+          const isSel = selKey === selTramo;
+          const zB = (nptMap[b.planNivel] || 0) - prof * 1000;
+          const zPixB = getZPix(zB, b.planNivel);
+          const isoB = getIsoCoords(b.x, b.y, b.planNivel);
+          const stroke = isSel ? '#FFEB3B' : netColor;
+          // exterior 0.9 m apaisado (1.35:1), interior al 65%/55%
+          drawIsoRect(isoB, zPixB, 0.9, 0.9 / 1.35, stroke, isSel ? 3 : 2);
+          drawIsoRect(isoB, zPixB, 0.9 * 0.65, (0.9 / 1.35) * 0.55, stroke, isSel ? 3 : 2);
+          if (isSel) {
+            const cc = projPt(isoB.x, isoB.y, zPixB);
+            ctx.fillStyle = '#FFEB3B';
+            ctx.font = 'bold 11px Geist,monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(b.code || b.id, cc.sx, cc.sy - 8);
+          }
+          continue;
+        }
+
+        // red_publica: cuadrado pequeño con "RP" a nivel del piso.
+        if (b.tipo === 'red_publica') {
+          const selKey = `${netId}:${b.planId}:${b.id}`;
+          const isSel = selKey === selTramo;
+          const zB = (nptMap[b.planNivel] || 0) - prof * 1000;
+          const zPixB = getZPix(zB, b.planNivel);
+          const isoB = getIsoCoords(b.x, b.y, b.planNivel);
+          const stroke = isSel ? '#FFEB3B' : netColor;
+          drawIsoRect(isoB, zPixB, 0.45, 0.45, stroke, isSel ? 3 : 2);
+          const cc = projPt(isoB.x, isoB.y, zPixB);
+          ctx.fillStyle = stroke;
+          ctx.font = 'bold 10px Geist,monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('RP', cc.sx, cc.sy);
+          continue;
+        }
+
         const profB = profByNet[b.net] ?? 0;
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
@@ -653,34 +736,17 @@ export function useIsometriaRender({
           targetPt = [targetBajante.x, targetBajante.y];
           targetPlanNivel = targetBajante.planNivel;
         }
-        // Cuando el destino es una bajante real, TODO el segmento — ambos extremos, no solo el
-        // del piso propio del destino — se proyecta con el (x,y) de la bajante destino. Eso hace
-        // del conector un único recorrido vertical recto (un solo x,y en todo el tramo, solo
-        // cambia z), que cae exactamente sobre la posición dibujada del destino sin importar el
-        // desfase en las coordenadas crudas del plano de origen (una desviación Ldesvio, o
-        // simplemente dos pisos dibujados por separado) — la bajante isométrica debe mostrar
-        // conectividad, no el detalle real e incidental del recorrido 2D del origen.
-        const hasBajanteTarget = !!targetBajante && targetPt != null && targetPlanNivel !== null;
-
+        // Layout nuevo (regla del usuario): el tramo vertical de una asociación bajante-bajante cae
+        // en el (x,y) PROPIO de la bajante superior — en el piso inferior esa posición es
+        // exactamente el anillo fantasma (desplazamientos del bajante destino), y de ahí el
+        // Ldesvio (dibujado como ramal del piso inferior, misma cota) cubre el desvío hasta la
+        // bajante destino real. Antes ambos extremos se forzaban al (x,y) del destino, pisando
+        // el dibujo real del desvío.
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
         const ownIso = getIsoCoords(b.x, b.y, b.planNivel);
-        // getIsoCoords convierte las coordenadas crudas en píxeles de plano a posición iso del
-        // mundo real usando la calibración de escala/origen PROPIA DE ESE PISO (cada PDF de plano
-        // se calibra de forma independiente — ver getIsoCoords en IsometriaTab.tsx). Reinterpretar
-        // los px crudos del destino bajo la calibración del piso del ORIGEN (como se hacía antes
-        // para el extremo que quedaba en el z propio del origen) aplicaba silenciosamente la
-        // escala/origen equivocada a ese extremo, torciendo un recorrido vertical recto en una
-        // diagonal aunque ambas bajantes estuvieran exactamente en la misma posición dibujada en
-        // sus respectivos pisos. Ambos extremos deben resolverse con la calibración del DESTINO —
-        // solo Z (baseZ_pix/cimaZ_pix, calculados por piso por separado arriba) debe diferir entre
-        // los dos extremos.
-        const targetIso =
-          hasBajanteTarget && targetPt && targetPlanNivel !== null
-            ? getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel)
-            : null;
-        const baseIso = !hasBajanteTarget ? ownIso : targetIso!;
-        const cimaIso = !hasBajanteTarget ? ownIso : targetIso!;
+        const baseIso = ownIso;
+        const cimaIso = ownIso;
         const pBase = project(
           baseIso.x,
           baseIso.y,
@@ -723,7 +789,7 @@ export function useIsometriaRender({
         // sigue presidiendo su propio piso (el círculo se desliza por la línea del conector hasta
         // la altura de currentZ).
         const floorZ_pix = getZPix(currentZ - profB * 1000, b.planNivel);
-        const floorIso = targetIso ?? ownIso;
+        const floorIso = ownIso;
         const floorPt = project(
           floorIso.x,
           floorIso.y,
@@ -794,9 +860,10 @@ export function useIsometriaRender({
             ctx.beginPath();
             ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
             ctx.lineTo(rProj.sx, rProj.sy);
-            ctx.strokeStyle = '#0ECC7A';
+            // Sólido (orig. usuario: en iso no van marcadores punteados) — es tubería real
+            // hacia el ramal de descarga, color de la red.
+            ctx.strokeStyle = netColor;
             ctx.lineWidth = 1.5;
-            ctx.setLineDash([4, 4]);
             ctx.stroke();
             ctx.restore();
           }

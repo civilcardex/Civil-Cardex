@@ -5,8 +5,9 @@ import {
   ISO_COLLAPSED_KEY,
   ISO_ACTIVE_NETS_KEY,
 } from '../../constants/storage-keys';
-import { loadFromStorage, saveToStorage, loadTrazosFromDB } from '../../services/storageService';
+import { loadFromStorage } from '../../services/storageService';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
+import { prefetchAllTrazos } from '../../utils/prefetchTrazos';
 import {
   readDrawingAll,
   loadPlanImage,
@@ -20,6 +21,7 @@ import { useIsometriaInteraction } from './isometria/useIsometriaInteraction';
 import { exportPdf, exportPng } from './isometria/export';
 import IsometriaToolbar from './IsometriaToolbar';
 import IsometriaSidebar from './IsometriaSidebar';
+import { devError } from '../../../../utils/devError';
 import type { useWorkAreaState } from '../useWorkAreaState';
 
 interface IsometriaTabProps {
@@ -115,20 +117,17 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   // aún no están cargados. Prefetch desde Supabase para todo piso sin caché local y luego
   // subir trazosPrefetchTick para que el memo de abajo se re-ejecute.
   const [trazosPrefetchTick, setTrazosPrefetchTick] = useState(0);
+  // Pantalla de carga (orig. usuario, como en dibujo de redes): visible hasta que los planos
+  // confirmados terminaron de rasterizarse.
+  const [isoLoading, setIsoLoading] = useState(true);
   useEffect(() => {
     if (!plans || plans.length === 0) return;
-    const missing = plans.filter((p) => loadFromStorage(TRAZOS_PREFIX + p.id, null) == null);
-    if (missing.length === 0) return;
     let cancelled = false;
-    (async () => {
-      await Promise.all(
-        missing.map(async (p) => {
-          const data = await loadTrazosFromDB(String(p.id));
-          if (data) saveToStorage(TRAZOS_PREFIX + p.id, data);
-        }),
-      );
-      if (!cancelled) setTrazosPrefetchTick((t) => t + 1);
-    })();
+    prefetchAllTrazos(plans)
+      .then(() => {
+        if (!cancelled) setTrazosPrefetchTick((t) => t + 1);
+      })
+      .catch((e) => devError('[ISO] prefetch de trazos:', e));
     return () => {
       cancelled = true;
     };
@@ -150,15 +149,16 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
     const defaultSpacingMm = 2700;
-    const sorted = pisosArr.toSorted((a, b) => a.n - b.n);
-    for (const p of sorted) {
-      const floorIdx =
-        p.n >= 0 && p.n < 90
-          ? p.n
-          : p.n === 99
-            ? sorted.filter((x) => x.n > 0 && x.n < 90).length + 1
-            : -Math.abs(p.n);
-      m[p.n] = -floorIdx * defaultSpacingMm;
+    // z+ se renderiza ABAJO en pantalla (project() con rotX=-45). Pisos sobre el suelo
+    // (n 0..89) apilan hacia arriba (z negativo, más alto = más negativo); los sótanos hacia
+    // abajo (z positivo, n negativo indica profundidad). La cubierta (n=99, 'C' en pisoLbl/
+    // pisoCorto) queda ENCIMA de todos los pisos — el z MÁS NEGATIVO del proyecto (el layout
+    // viejo la ubicaba así; una revisión la mandó bajo el piso 0 y quedaba "bajo tierra").
+    const nSobreSuelo = pisosArr.filter((p) => p.n >= 0 && p.n < 90).length;
+    for (const p of pisosArr) {
+      if (p.n >= 0 && p.n < 90) m[p.n] = -p.n * defaultSpacingMm;
+      else if (p.n === 99) m[p.n] = -(nSobreSuelo + 1) * defaultSpacingMm;
+      else m[p.n] = Math.abs(p.n) * defaultSpacingMm;
     }
     return m;
   }, [pisos]);
@@ -297,26 +297,36 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   }, []);
 
   useEffect(() => {
+    // Sin planos visibles no hay rasterización que esperar: el overlay se puerta con
+    // showPlanos (isoLoading && showPlanos) en el JSX.
     if (!showPlanos) return;
     let cancelled = false;
     (async () => {
       const newImages = new Map<number, { img: HTMLCanvasElement; w: number; h: number }>();
-      for (const plan of confirmedPlanos) {
-        if (cancelled) break;
-        const existing = planImagesRef.current.get(plan.id);
-        if (existing) {
-          newImages.set(plan.id, existing);
-          continue;
+      try {
+        for (const plan of confirmedPlanos) {
+          if (cancelled) break;
+          const existing = planImagesRef.current.get(plan.id);
+          if (existing) {
+            newImages.set(plan.id, existing);
+            continue;
+          }
+          const result = await loadPlanImage(plan);
+          if (result && !cancelled) {
+            newImages.set(plan.id, result);
+          }
         }
-        const result = await loadPlanImage(plan);
-        if (result && !cancelled) {
-          newImages.set(plan.id, result);
+      } catch (e) {
+        devError('[ISO] rasterización de planos:', e);
+      } finally {
+        // El overlay NUNCA debe quedar en spinner: un plan que lanza al rasterizar libera
+        // la pantalla igual (con los planos que sí llegaron).
+        if (!cancelled) {
+          planImagesRef.current = newImages;
+          setRenderTick((n) => n + 1);
+          setPlanosCount(`${newImages.size}/${confirmedPlanos.length}`);
+          setIsoLoading(false);
         }
-      }
-      if (!cancelled) {
-        planImagesRef.current = newImages;
-        setRenderTick((n) => n + 1);
-        setPlanosCount(`${newImages.size}/${confirmedPlanos.length}`);
       }
     })();
     return () => {
@@ -615,6 +625,13 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
             onMouseDown={handleMouseDown}
             onContextMenu={(e) => e.preventDefault()}
           />
+          {isoLoading && showPlanos && (
+            <div className="iso-loading-overlay">
+              <div className="iso-loading-spinner" />
+              <div className="iso-loading-title">Cargando planos y redes...</div>
+              <div className="iso-loading-sub">Preparando isometría</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

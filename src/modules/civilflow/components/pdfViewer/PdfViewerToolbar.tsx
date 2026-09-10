@@ -196,11 +196,12 @@ function PdfViewerToolbar_({
     icoCol: '#8B5CF6',
     shortcut: 'C',
   });
-  // Caja de recolección (san → CAN, ll → CALL): cuadrado con cuadrado interior. La etiqueta
-  // y la red del elemento las decide handleCajaDown según activeNet. ('X' ya borra montante.)
+  // Caja de recolección (san → CAN, ll → CALL): rectángulo apaisado con interior. La red del
+  // elemento la decide handleCajaDown según activeNet; la etiqueta de la herramienta nombra la
+  // red activa. ('X' ya borra montante.)
   netTools.splice(7, 0, {
     id: 'caja',
-    label: 'Caja',
+    label: activeNet === 'll' ? 'Caja aguas lluvias' : 'Caja aguas negras',
     ico: '⧉',
     key: 'J',
     icoCol: '#10B981',

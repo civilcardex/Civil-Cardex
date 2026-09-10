@@ -53,3 +53,46 @@
     animation: none;
   }
 }
+
+/* Overlay de carga de la isometría (IsometriaTab): visible mientras los planos confirmados
+   se rasterizan. Respeta prefers-reduced-motion. */
+.iso-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: #0a0e14;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 20;
+}
+.iso-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #1e293b;
+  border-top-color: #00dce5;
+  border-radius: 50%;
+  animation: isoSpin 0.9s linear infinite;
+}
+.iso-loading-title {
+  font-family: 'Geist', monospace;
+  font-size: 13px;
+  color: #e2e2e8;
+  letter-spacing: 1px;
+}
+.iso-loading-sub {
+  font-family: 'Geist', monospace;
+  font-size: 11px;
+  color: #64748b;
+}
+@keyframes isoSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iso-loading-spinner {
+    animation: none;
+  }
+}

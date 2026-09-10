@@ -40,7 +40,13 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // Item 2: Ángulo de etiqueta + restricción de snap (auto-rotación removida por pedido)
     const angle = ((b.labelAngle || 0) * Math.PI) / 180;
 
-    b._circ = { x: c.x, y: c.y, r };
+    // Las cajas dibujan ~110% más grande que el círculo del bajante — el hit del menú
+    // contextual (_circ.r) las sigue.
+    b._circ = {
+      x: c.x,
+      y: c.y,
+      r: b.tipo === 'caja_san' || b.tipo === 'caja_ll' ? r * 2.1 : r,
+    };
     if (isDirectionGhost) return;
 
     // Dibujar líneas verdes punteadas desde los ramales que alimentan este bajante
@@ -184,20 +190,23 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
     } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
-      // Caja de recolección (CAN/CALL): cuadrado exterior relleno + cuadrado interior más
-      // pequeño centrado — el símbolo pedido; la etiqueta la dibuja el pipeline de b.code.
+      // Caja de recolección (CAN/CALL): rectángulo apaisado SOLO trazo (sin relleno — el
+      // plano se ve a través) con rectángulo interior concéntrico también sin rellenar.
+      // Proporciones del símbolo pedido: exterior ~1.35:1, interior al 65%/55% — mismas
+      // proporciones que el símbolo isométrico. La etiqueta la dibuja el pipeline de b.code.
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
-      ctx.fillStyle = '#ffffff';
+      const ew = r * 4.2;
+      const eh = ew / 1.35;
+      const iw = ew * 0.65;
+      const ih = eh * 0.55;
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
       ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
       ctx.beginPath();
-      ctx.rect(-r, -r, r * 2, r * 2);
-      ctx.fill();
+      ctx.rect(-ew / 2, -eh / 2, ew, eh);
       ctx.stroke();
-      const ir = r * 0.45;
       ctx.beginPath();
-      ctx.rect(-ir, -ir, ir * 2, ir * 2);
+      ctx.rect(-iw / 2, -ih / 2, iw, ih);
       ctx.stroke();
     } else {
       const netObj = NETS.find((n) => n.id === b.net);

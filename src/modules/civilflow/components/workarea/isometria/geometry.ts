@@ -90,7 +90,9 @@ function readDrawingAll(plans: PlanItem[], netIds: string[]) {
     if (data.origen) origenMap[plan.nivel] = data.origen;
     for (const netId of netIds) {
       for (const r of data.ramales || []) {
-        if (r.net === netId && r.tipo === 'ramal')
+        // Ramales Y tributarios (orig. usuario: todos los elementos del plano en iso); los
+        // Ldesvio (LD_) ya entran porque son tipo 'ramal'.
+        if (r.net === netId && (r.tipo === 'ramal' || r.tipo === 'tributario'))
           dataByNet[netId].ramales.push({ ...r, planNivel: plan.nivel, planId: String(plan.id) });
       }
       for (const b of data.bajantes || []) {
