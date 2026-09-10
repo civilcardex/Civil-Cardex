@@ -443,6 +443,13 @@ export interface PlanoBajante {
    * DESCARGA en este — lo fija el selector "Origen". Es solo una ayuda de visualización/búsqueda;
    * el enlace real vive en el `descargaEnId` del origen (guardado en el storage de su piso). */
   origenId?: string | null;
+  /** Libro de herencia de aparatos/UDs por piso destino (asociación entre pisos):
+   * clave `${net}_${rid}_${planId}` → mapa heredado del piso superior. La propagación en
+   * vivo y la (re)asociación restan la herencia anterior y aplican la nueva (delta), sin
+   * borrar asignaciones manuales del piso destino y sin duplicar al reprocesar. */
+  ucAplicado?: Record<string, Record<string, number>>;
+  /** Libro gemelo de `ucAplicado` para los accesorios hidro heredados (misma clave). */
+  ucAplicadoHidro?: Record<string, Record<string, number>>;
   ucAcum: number;
   ucExtra: number;
   area_m2: number;

@@ -99,6 +99,8 @@ export function isCountableTarget(el: SelectableTarget | null): boolean {
     el.id?.startsWith('R') ||
     el.id?.startsWith('B') ||
     el.id?.startsWith('T') ||
+    // Ldesvio entre pisos: espejo de las UDs del bajante (seleccionable pero de solo lectura).
+    el.id?.startsWith('LD_') ||
     el.tipo === 'calentador'
   );
 }

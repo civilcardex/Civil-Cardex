@@ -18,7 +18,7 @@ import type { DrawingData } from '../utils/drawingSync';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { devError } from '../../../utils/devError';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   UNIDAD,
   loadAll,
@@ -36,6 +36,8 @@ import {
   type SelectableTarget,
 } from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
+import { collectSourceAgg, type InheritPoolRamal } from '../utils/bajanteAssociation';
+import { ldesvioIdFor } from '../utils/associateBajanteAcrossFloors';
 import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
 import { distToPolyline } from '../lib/shared/geometry';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
@@ -213,16 +215,24 @@ const AparatosPanel = memo(function AparatosPanel_({
   }, [netId, unitKey, aps]);
 
   const isBajanteSan = selElement?.tipo === 'bajante' && (netId === 'san' || netId === 'll');
-  // Conectividad del árbol sanitario de la red activa — se calcula también sin bajante
-  // seleccionado: el espejo automático de UDs a ramales de salida usa la misma fuente.
+  // Discriminación por piso (orig. usuario): BAN1 existe en P1 y en P2 con el MISMO id —
+  // todo lookup en tramosSan debe limitarse al piso actual o el panel agrega UDs del otro.
+  const samePlan = useCallback(
+    (t: { planId?: string | number }) =>
+      planId == null || t.planId == null || String(t.planId) === String(planId),
+    [planId],
+  );
+  const tramosPiso = useMemo(() => tramosSan.filter((t) => samePlan(t)), [tramosSan, samePlan]);
+  // Conectividad del árbol sanitario SOLO del piso actual — la geométrica conectaba tramos de
+  // pisos distintos (mismas coordenadas de plano) y mezclaba UDs entre BAN1-P1 y BAN1-P2.
   const sanConnectivity = useMemo(() => {
     if (netId !== 'san' && netId !== 'll') return null;
     return buildSanConnectivity(
-      tramosSan,
+      tramosPiso,
       plans,
       items as unknown as import('../utils/sanitaryRows').MergedApBase[],
     );
-  }, [netId, tramosSan, plans, items]);
+  }, [netId, tramosPiso, plans, items]);
 
   const target = useMemo(
     () =>
@@ -492,19 +502,21 @@ const AparatosPanel = memo(function AparatosPanel_({
       const walkKey = (tKey: string) => {
         if (visited.has(tKey)) return;
         visited.add(tKey);
-        const ct = tramosSan.find((x) => x._key === tKey);
+        const ct = tramosPiso.find((x) => x._key === tKey);
         if (!ct) return;
         if (!ct.esBajante) {
           if (exits.has(ct.id)) return; // espejo: no suma NI recorre su subárbol
+          // Cada tramo aporta con SU propia clave (su planId): los hijos pueden ser de otro
+          // piso (enlace de asociación entre pisos) y sus UDs viven bajo el plan de origen.
           if (ct.tipo === 'ramal' || ct.tipo === 'tributario')
             sumCounts(
-              `${netId}_${ct.id}_${String(planId ?? ct.planId ?? '')}`,
+              planId ? `${netId}_${ct.id}_${planId}` : `${netId}_${ct.id}`,
               ct.fixtures as Record<string, number> | undefined,
             );
         }
         for (const child of sanConnectivity?.fullChildrenMap[tKey] || []) walkKey(child);
       };
-      const bajT = tramosSan.find((t) => t.esBajante && t.id === bajId);
+      const bajT = tramosPiso.find((t) => t.esBajante && t.id === bajId);
       if (bajT?._key) {
         for (const child of sanConnectivity?.fullChildrenMap[bajT._key] || []) walkKey(child);
       } else {
@@ -524,14 +536,35 @@ const AparatosPanel = memo(function AparatosPanel_({
       }
       return agg;
     },
-    [counts, netId, planId, sanConnectivity, tramosSan, exitsDeBajante, engineRef],
+    [counts, netId, planId, sanConnectivity, tramosPiso, exitsDeBajante, engineRef],
   );
 
   const currentMap = useMemo(() => {
     if (!storageKey) return {};
-    // Bajante san/ll: agregado vía el helper compartido — el mismo cálculo que el espejo a los
-    // ramales de salida, panel y copias siempre idénticos.
-    if (isBajanteSan && targetId) return agregadoBajante(targetId);
+    // Bajante ASOCIADO desde arriba (origenId): muestra las UDs del GRUPO — la clave del
+    // Ldesvio las mantiene la propagación en vivo desde el piso superior.
+    // origenId leído del ENGINE VIVO (selElement puede quedar stale tras updateElementById).
+    const liveBaj = engineRef.current?.bajantes.find((b) => b.id === targetId);
+    const origen = liveBaj?.origenId ?? (selElement as { origenId?: string } | null)?.origenId;
+    // Bajante ASOCIADO desde arriba (origenId): muestra el LIBRO de herencia (`ucAplicado`
+    // del propio bajante en su trazo) — exactamente las UDs que la asociación trajo del
+    // piso superior, por aparato.
+    if (isBajanteSan && targetId && origen?.includes('|')) {
+      try {
+        const t = loadFromStorage<{
+          bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
+        } | null>(TRAZOS_PREFIX + planId, null);
+        const aplicado = t?.bajantes?.find((x) => x.id === targetId)?.ucAplicado;
+        const heredado: Record<string, number> = {};
+        for (const m of Object.values(aplicado || {}))
+          for (const [k, v] of Object.entries(m)) heredado[k] = (heredado[k] || 0) + (v as number);
+        if (Object.keys(heredado).length) return heredado;
+      } catch {
+        /* lectura best-effort */
+      }
+    }
+    const propio = isBajanteSan && targetId ? agregadoBajante(targetId) : null;
+    if (propio) return propio;
     const own = counts[storageKey] || {};
     if (!mergeKeys) return own;
     const merged: Record<string, number> = { ...own };
@@ -541,7 +574,7 @@ const AparatosPanel = memo(function AparatosPanel_({
       }
     }
     return merged;
-  }, [counts, storageKey, mergeKeys, isBajanteSan, targetId, agregadoBajante]);
+  }, [counts, storageKey, mergeKeys, isBajanteSan, targetId, planId, selElement, agregadoBajante]);
 
   const curHidro = useMemo(() => {
     if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
@@ -580,17 +613,168 @@ const AparatosPanel = memo(function AparatosPanel_({
     const eng = engineRef.current;
     if (!eng) return;
     const disk = loadAll();
+    const hdisk = loadHidroData();
     const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
     let dirty = false;
+    let hdirty = false;
     for (const baj of eng.bajantes) {
       if (baj.net !== netId) continue;
       const agg = agregadoBajante(baj.id);
       if (!Object.keys(agg).length) continue;
       for (const rid of exitsDeBajante(baj.id)) {
         const rk = pkey(rid);
-        if (JSON.stringify(disk[rk] || {}) !== JSON.stringify(agg)) {
-          disk[rk] = { ...agg };
+        // FUSIÓN (no reemplazo): las UDs del bajante se imponen en sus claves, pero cualquier
+        // aparato asignado a mano al ramal (p. ej. el inodoro) se conserva.
+        const merged = { ...(disk[rk] || {}), ...agg };
+        if (JSON.stringify(disk[rk] || {}) !== JSON.stringify(merged)) {
+          disk[rk] = merged;
           dirty = true;
+        }
+      }
+    }
+    // Propagación EN VIVO hacia el piso de abajo: la clave del Ldesvio y los ramales destino
+    // reciben el agregado COMPLETO del bajante superior — la misma verdad única que usa el
+    // apply (collectSourceAgg: cierre transitivo, sin topes), no el parcial de antes.
+    // Solo escribe el extremo SUPERIOR del enlace (guard por npt): el inferior nunca
+    // re-empuja hacia arriba (eso envenenaba la herencia al cambiar de asociado). Con npt
+    // desconocido se conserva el comportamiento previo (titular = descargaEnId).
+    // Cubre san y ll aunque el panel esté en la otra red (el cambio pudo venir del menú).
+    const loadedPid = planId != null ? String(planId) : '';
+    const nptOf = (pid: string): number | null => {
+      const p = plans.find((x) => String(x.id) === pid) as { npt?: number } | undefined;
+      return typeof p?.npt === 'number' ? p.npt : null;
+    };
+    const loadedNpt = loadedPid ? nptOf(loadedPid) : null;
+    for (const propNet of ['san', 'll']) {
+      for (const baj of eng.bajantes) {
+        if (baj.net !== propNet) continue;
+        const links: { ldPlan: string; lowerBajId: string; upperBajId: string }[] = [];
+        if (baj.descargaEnId?.includes('|')) {
+          const [q, qBaj] = baj.descargaEnId.split('|');
+          const nq = q ? nptOf(q) : null;
+          if (q && qBaj && (loadedNpt == null || nq == null || loadedNpt > nq))
+            links.push({ ldPlan: q, lowerBajId: qBaj, upperBajId: baj.id });
+        }
+        if (baj.origenId?.includes('|')) {
+          const [r, rBaj] = baj.origenId.split('|');
+          const nr = r ? nptOf(r) : null;
+          // Empate de npt (mismo piso): el titular upper es el origenId (igual que el apply).
+          if (r && rBaj && (loadedNpt == null || nr == null || loadedNpt > nr || loadedNpt === nr))
+            links.push({ ldPlan: r, lowerBajId: rBaj, upperBajId: baj.id });
+        }
+        for (const link of links) {
+          const { ldPlan: ldPlanId, lowerBajId, upperBajId } = link;
+          const srcAgg = collectSourceAgg({
+            net: propNet,
+            planId: loadedPid,
+            bajId: upperBajId,
+            liveBaj: eng.bajantes.find((b) => b.id === upperBajId) ?? null,
+            liveRamales: (eng.ramales ?? []) as unknown as InheritPoolRamal[],
+            storedBaj: null,
+            storedRamales: null,
+            counts: disk,
+            hidro: hdisk as unknown as Record<string, { accesorios?: Record<string, number> }>,
+          });
+          const liveAgg = srcAgg.agg;
+          const liveHydro = srcAgg.hydroAgg;
+          const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
+          if (Object.keys(liveAgg).length) {
+            if (JSON.stringify(disk[lk] || {}) !== JSON.stringify(liveAgg)) {
+              disk[lk] = { ...liveAgg };
+              dirty = true;
+            }
+          } else if (disk[lk]) {
+            delete disk[lk];
+            dirty = true;
+          }
+          const tgt = loadFromStorage<{
+            bajantes?: Array<{
+              id: string;
+              ucAcum?: number;
+              recibeDeIds?: string[];
+              alimentaIds?: string[];
+              ucAplicado?: Record<string, Record<string, number>>;
+              ucAplicadoHidro?: Record<string, Record<string, number>>;
+            }>;
+          } | null>(TRAZOS_PREFIX + ldPlanId, null);
+          const tBaj = tgt?.bajantes?.find((x) => x.id === lowerBajId);
+          const tgtRamalIds = [...(tBaj?.recibeDeIds || []), ...(tBaj?.alimentaIds || [])];
+          const ownKey = `${propNet}_${lowerBajId}_${ldPlanId}`;
+          const own = disk[ownKey] || {};
+          const aplicadoPrev = tBaj?.ucAplicado || {};
+          const aplicadoHidroPrev = tBaj?.ucAplicadoHidro || {};
+          let tgtChanged = false;
+          const ucAplicadoNuevo: Record<string, Record<string, number>> = {};
+          const ucAplicadoHidroNuevo: Record<string, Record<string, number>> = {};
+          for (const rid of tgtRamalIds) {
+            const tk = `${propNet}_${rid}_${ldPlanId}`;
+            const esAlimenta = (tBaj?.alimentaIds || []).includes(rid);
+            const extra = esAlimenta ? { ...liveAgg, ...own } : liveAgg;
+            const cur = disk[tk] || {};
+            const prevAp = aplicadoPrev[tk] || {};
+            const result: Record<string, number> = {};
+            const keys = new Set([...Object.keys(cur), ...Object.keys(extra)]);
+            for (const k of keys) {
+              const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
+              if (nv > 0) result[k] = nv;
+            }
+            if (JSON.stringify(disk[tk] || {}) !== JSON.stringify(result)) {
+              if (Object.keys(result).length) disk[tk] = result;
+              else delete disk[tk];
+              tgtChanged = true;
+            }
+            ucAplicadoNuevo[tk] = { ...extra };
+            if (liveHydro) {
+              const prevH = aplicadoHidroPrev[tk] || {};
+              const hcur = hdisk[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+              const acc: Record<string, number> = {};
+              for (const k of new Set([
+                ...Object.keys(hcur.accesorios || {}),
+                ...Object.keys(liveHydro),
+              ])) {
+                const nv =
+                  Math.max(0, ((hcur.accesorios || {})[k] || 0) - (prevH[k] || 0)) +
+                  (liveHydro[k] || 0);
+                if (nv > 0) acc[k] = nv;
+              }
+              if (JSON.stringify(hcur.accesorios || {}) !== JSON.stringify(acc)) {
+                hdisk[tk] = { ...hcur, accesorios: acc };
+                hdirty = true;
+              }
+              ucAplicadoHidroNuevo[tk] = { ...liveHydro };
+            }
+          }
+          const totalUc = Object.values(liveAgg).reduce((s, v) => s + (v as number), 0);
+          if (tBaj && (tBaj.ucAcum ?? 0) !== totalUc) {
+            tBaj.ucAcum = totalUc;
+            tgtChanged = true;
+          }
+          // El libro cubre también la clave del Ldesvio (el mismo agregado): sin esta entrada,
+          // la desasociación no sabría qué restar de ella y sus UDs quedarían colgadas.
+          ucAplicadoNuevo[lk] = { ...liveAgg };
+          if (tBaj && JSON.stringify(tBaj.ucAplicado || {}) !== JSON.stringify(ucAplicadoNuevo)) {
+            tBaj.ucAplicado = ucAplicadoNuevo;
+            tgtChanged = true;
+          }
+          if (liveHydro) {
+            ucAplicadoHidroNuevo[lk] = { ...liveHydro };
+            if (
+              JSON.stringify(tBaj?.ucAplicadoHidro || {}) !==
+                JSON.stringify(ucAplicadoHidroNuevo) &&
+              tBaj
+            ) {
+              tBaj.ucAplicadoHidro = ucAplicadoHidroNuevo;
+              tgtChanged = true;
+            }
+          } else if (tBaj && Object.keys(aplicadoHidroPrev).length) {
+            tBaj.ucAplicadoHidro = {};
+            tgtChanged = true;
+          }
+          if (tgtChanged) {
+            saveToStorage(TRAZOS_PREFIX + ldPlanId, tgt);
+            saveTrazosToDB(ldPlanId, tgt);
+            dirty = true;
+          }
         }
       }
     }
@@ -598,15 +782,19 @@ const AparatosPanel = memo(function AparatosPanel_({
       saveAll(disk);
       setCounts(disk);
     }
+    if (hdirty) {
+      saveHidroData(hdisk);
+      setHidroData(hdisk);
+    }
   }, [
     counts,
+    hidroData,
     storageKey,
     targetId,
     target?.tipo,
     planId,
+    plans,
     netId,
-    sanConnectivity,
-    tramosSan,
     agregadoBajante,
     exitsDeBajante,
     engineRef,
@@ -618,6 +806,11 @@ const AparatosPanel = memo(function AparatosPanel_({
   // conjunto de salidas ya solo contiene ramales por construcción.
   const esEspejoBajante = useMemo(() => {
     if (!targetId || (netId !== 'san' && netId !== 'll')) return false;
+    // Todo Ldesvio es el espejo del bajante superior — siempre solo lectura.
+    if (targetId.startsWith('LD_')) return true;
+    // Bajante asociado desde arriba (origenId): sus UDs las manda el grupo.
+    const origen = selElement as { origenId?: string } | null;
+    if (origen?.origenId) return true;
     const eng = engineRef.current;
     if (!eng) return false;
     for (const baj of eng.bajantes) {
@@ -625,7 +818,7 @@ const AparatosPanel = memo(function AparatosPanel_({
       if (exitsDeBajante(baj.id).has(targetId)) return true;
     }
     return false;
-  }, [targetId, netId, exitsDeBajante, engineRef]);
+  }, [targetId, netId, selElement, exitsDeBajante, engineRef]);
 
   const inc = (apId: string) => {
     if (!storageKey) return;
@@ -798,11 +991,17 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
+    // El campo del ramal solo se limpia cuando el conteo PROPIO tenía el aparato (vBefore === 0,
+    // decremento legítimo del último). Con conteo propio ya en 0 (el panel puede mostrar 1 por
+    // UDs heredadas/combinadas de una asociación entre pisos), un clic en "-" no debe borrar el
+    // símbolo del dibujo — solo vacía la clave, sin tocar aparatoInicio/Fin (orig. usuario:
+    // inodoro de RS4 desaparecía al descontar UDs heredadas).
+    const teniaPropio = (curBefore[apId] || 0) > 0;
     // Una desasignación = UN snapshot: pausa + try/finally (mismo razonamiento que inc).
     const engDec = engineRef.current;
     if (engDec) engDec.pauseHistory();
     try {
-      if (vBefore <= 0 && targetId) {
+      if (vBefore <= 0 && teniaPropio && targetId) {
         const eng = engineRef.current;
         const live = eng?.ramales.find((r) => r.id === targetId);
         if (eng && live) {
@@ -1133,6 +1332,7 @@ const AparatosPanel = memo(function AparatosPanel_({
                   accent={accent}
                   disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys}
                 />
+
                 {items.length === 0 && (
                   <div
                     style={{
