@@ -43,6 +43,9 @@ export interface CrossFloorGhost {
   sourcePlanId: string;
   sourceBajanteId: string;
   targetBajanteId?: string;
+  // Marca de versión del layout de asociación: 2 = fantasma-marcador en el piso superior
+  // (layout nuevo). La migración salta los ghosts que ya la traen.
+  layout?: number;
   // Caja de clic calculada en cada render (misma convención que _circ/_ghost de PlanoBajante) —
   // viaja en el JSON guardado como los demás campos, inofensivo.
   _hitCircle?: { x: number; y: number; r: number };

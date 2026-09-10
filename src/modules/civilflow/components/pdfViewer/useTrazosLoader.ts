@@ -11,6 +11,10 @@ import {
 } from '../../services/storageService';
 import type { PlanTrazos } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
+import {
+  migrateAssocLayoutOnLoad,
+  sweepMisplacedLdesvios,
+} from '../../utils/associateBajanteAcrossFloors';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
 interface UseTrazosLoaderParams {
@@ -71,6 +75,15 @@ export function useTrazosLoader({ activeNetRef, setActiveNet, setScaleM }: UseTr
         }
       } catch (e) {
         devError('[LOAD] Supabase error/sync error:', e);
+      }
+      // Migración del layout de asociación (fantasma+Ldesvio ahora viven en el piso inferior):
+      // corre tras la carga con el nivel actual como clave del anillo; idempotente por marca
+      // `assocLayout: 2` en el storage de cada piso.
+      try {
+        migrateAssocLayoutOnLoad(String(resolvedId), eng.nivelActual?.label ?? '');
+        sweepMisplacedLdesvios();
+      } catch (e) {
+        devError('[LOAD] migración asociaciones:', e);
       }
       return initiallyLoaded;
     },

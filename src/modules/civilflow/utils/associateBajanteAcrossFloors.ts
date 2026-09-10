@@ -10,7 +10,7 @@ import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 export type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 export { enrichCrossFloorGhosts } from './crossFloorGhosts';
 
-interface LocalLdesvioRamal {
+export interface LocalLdesvioRamal {
   id: string;
   net: string;
   tipo: 'ramal';
@@ -32,22 +32,54 @@ interface LocalLdesvioRamal {
   bloqueado: boolean;
 }
 
-interface LocalGhostDrawingData {
-  ts?: number;
-  crossFloorGhosts?: CrossFloorGhost[];
-  [key: string]: unknown;
+// Bajante tal como viaja en el JSON de trazos — solo los campos que este módulo lee/escribe;
+// el resto de propiedades del elemento viajan junto al objeto sin declararse aquí.
+export interface StoredBajante {
+  id: string;
+  x?: number;
+  y?: number;
+  code?: string;
+  nptBase?: number;
+  pisoBase?: string;
+  descargaEnId?: string | null;
+  origenId?: string | null;
+  desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
+  ghostData?: Record<string, { direccion?: string; labelX?: number; labelY?: number }>;
 }
 
-function loadData(planId: string | number): LocalGhostDrawingData {
+interface LocalGhostDrawingData {
+  ts?: number;
+  // Marca de versión del layout de asociación (2 = layout nuevo: fantasma+Ldesvio en el
+  // piso inferior). La migración la escribe y la usa como guard de idempotencia.
+  assocLayout?: number;
+  scaleM?: number;
+  crossFloorGhosts?: CrossFloorGhost[];
+  ramales?: LocalLdesvioRamal[];
+  bajantes?: StoredBajante[];
+}
+export type { LocalGhostDrawingData };
+
+/** Lee el JSON crudo de trazos de un piso (vacío si no existe) — uso interno y de la migración. */
+export function loadData(planId: string | number): LocalGhostDrawingData {
   const raw = loadFromStorage<LocalGhostDrawingData | null>(TRAZOS_PREFIX + planId, null);
   return raw || {};
 }
 
-function saveData(planId: string | number, data: LocalGhostDrawingData): void {
+/** Escribe el JSON crudo de trazos de un piso (localStorage + BD) — uso interno y de la migración. */
+export function saveData(planId: string | number, data: LocalGhostDrawingData): void {
   data.ts = Date.now();
   saveToStorage(TRAZOS_PREFIX + planId, data);
   saveTrazosToDB(String(planId), data);
 }
+
+// Migración y barrido del layout de asociación — viven en su propio módulo; re-exportado aquí
+// para que los consumidores existentes no cambien de ruta de import.
+export {
+  markAssocLayout,
+  readAssocLayout,
+  migrateAssocLayoutOnLoad,
+  sweepMisplacedLdesvios,
+} from './assocLayoutMigration';
 
 // Escribe (o reemplaza, si ya existe uno del mismo origen) un fantasma entre pisos en el
 // almacenamiento crudo del piso DESTINO — el piso destino no necesita estar cargado/activo.
@@ -115,7 +147,7 @@ export function removeCrossFloorGhostsBySource(
 // cargado) — se usa para borrar en cascada el OTRO extremo de una asociación entre pisos cuando
 // se borra un lado.
 export function deleteBajanteFromStorage(planId: string | number, bajanteId: string): void {
-  const data = loadData(planId) as LocalGhostDrawingData & { bajantes?: { id: string }[] };
+  const data = loadData(planId);
   if (!data.bajantes?.length) return;
   const before = data.bajantes.length;
   data.bajantes = data.bajantes.filter((b) => b.id !== bajanteId);
@@ -147,6 +179,9 @@ export function isLdesvioRamalId(id: string | null | undefined): boolean {
 // hace `PlanoPersistence.ts` al cargar: máximo `${prefix}N` existente para esta red, +1 — pero
 // solo entre ramales REALES (nunca otro Ldesvio, que de entrada nunca coincide con ese patrón,
 // así que no hace falta exclusión especial).
+// IMPORTANTE: se escanean id Y label — el id del LD (`LD_BAN1`) nunca coincide con el patrón,
+// así que mirar solo el id dejaba sus labels fuera del conteo y cada LD nuevo repetía el
+// número (varios LD con "RS1"). Los allocators de ramales reales ya miran ambos.
 export function nextRamalLabel(
   net: string,
   existingRamales: Array<{ id?: string; label?: string }>,
@@ -156,8 +191,10 @@ export function nextRamalLabel(
   const re = new RegExp('^' + prefix + '(\\d+)$');
   let maxN = 0;
   for (const r of existingRamales) {
-    const m = (r.id || r.label)?.match(re);
-    if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+    for (const cand of [r.id, r.label]) {
+      const m = (cand || '')?.match(re);
+      if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+    }
   }
   return `${prefix}${maxN + 1}`;
 }
@@ -227,10 +264,7 @@ export function createCrossFloorLdesvioRamal(
   diametro: string,
   pisoNivel: number,
 ): void {
-  const data = loadData(planId) as LocalGhostDrawingData & {
-    ramales?: LocalLdesvioRamal[];
-    scaleM?: number;
-  };
+  const data = loadData(planId);
   const id = ldesvioIdFor(sourceBajanteId);
   const existing = (data.ramales || []).find((r) => r.id === id);
   const label = existing?.label || nextRamalLabel(net, data.ramales || []);
@@ -258,7 +292,7 @@ export function removeCrossFloorLdesvioRamal(
   planId: string | number,
   sourceBajanteId: string,
 ): void {
-  const data = loadData(planId) as LocalGhostDrawingData & { ramales?: LocalLdesvioRamal[] };
+  const data = loadData(planId);
   const id = ldesvioIdFor(sourceBajanteId);
   const before = (data.ramales || []).length;
   data.ramales = (data.ramales || []).filter((r) => r.id !== id);
@@ -276,10 +310,7 @@ export function updateCrossFloorLdesvioFarEndpoint(
   x: number,
   y: number,
 ): void {
-  const data = loadData(sourcePlanId) as LocalGhostDrawingData & {
-    ramales?: LocalLdesvioRamal[];
-    scaleM?: number;
-  };
+  const data = loadData(sourcePlanId);
   const id = ldesvioIdFor(sourceBajanteId);
   const idx = (data.ramales || []).findIndex((r) => r.id === id);
   if (idx === -1) return;
@@ -302,11 +333,68 @@ export function updateCrossFloorLdesvioFarEndpoint(
   saveData(sourcePlanId, data);
 }
 
-interface StoredDesplazamientoBajante {
-  id: string;
-  x?: number;
-  y?: number;
-  desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
+// Layout nuevo: actualiza el punto INICIAL (pts[0], la posición del bajante SUPERIOR) del
+// Ldesvio que vive en el piso INFERIOR — se llama cuando se arrastra el bajante superior (ese
+// piso está cargado; el del Ldesvio, no, así que va directo a storage).
+export function updateCrossFloorLdesvioStartPoint(
+  planId: string | number,
+  upperBajanteId: string,
+  x: number,
+  y: number,
+): void {
+  const data = loadData(planId);
+  const id = ldesvioIdFor(upperBajanteId);
+  const idx = (data.ramales || []).findIndex((r) => r.id === id);
+  if (idx === -1) return;
+  const r = data.ramales![idx];
+  const [x2, y2] = r.pts[r.pts.length - 1];
+  if (Math.abs(r.pts[0][0] - x) < 0.01 && Math.abs(r.pts[0][1] - y) < 0.01) return;
+  data.ramales![idx] = buildLdesvioRamal(
+    id,
+    r.label || id,
+    r.net,
+    x,
+    y,
+    x2,
+    y2,
+    r.diametro,
+    Number(r.piso) || 0,
+    data.scaleM || 0.5,
+    r.bloqueado,
+  );
+  saveData(planId, data);
+}
+
+// Layout nuevo: re-ancla el anillo (desplazamientos) del bajante portador (`holderBajanteId`,
+// el inferior) para que siga apuntando al ancla (x,y) — el anillo se dibuja en b.x+dx, así que
+// dx = ancla − posición del portador. El conector se identifica por `ldId` (el id del bajante
+// superior), no por el id del portador. Escritura directa a storage del piso del portador.
+export function updateCrossFloorDesplazamientoAnchor(
+  planId: string | number,
+  holderBajanteId: string,
+  ldId: string,
+  anchorX: number,
+  anchorY: number,
+): void {
+  const data = loadData(planId);
+  if (!data.bajantes?.length) return;
+  const b = data.bajantes.find((x) => x.id === holderBajanteId);
+  if (!b?.desplazamientos) return;
+  let changed = false;
+  const desp = { ...b.desplazamientos };
+  for (const lvlKey of Object.keys(desp)) {
+    if (desp[lvlKey]?.Ldesvio === ldId) {
+      desp[lvlKey] = {
+        ...desp[lvlKey],
+        dx: anchorX - (b.x ?? 0),
+        dy: anchorY - (b.y ?? 0),
+      };
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  b.desplazamientos = desp;
+  saveData(planId, data);
 }
 
 // Re-ancla el marcador de "círculo desplazado" (desplazamientos) en el bajante del piso ORIGEN
@@ -323,9 +411,7 @@ export function updateCrossFloorDesplazamientoBySource(
   targetX: number,
   targetY: number,
 ): void {
-  const data = loadData(sourcePlanId) as LocalGhostDrawingData & {
-    bajantes?: StoredDesplazamientoBajante[];
-  };
+  const data = loadData(sourcePlanId);
   if (!data.bajantes?.length) return;
   const b = data.bajantes.find((x) => x.id === sourceBajanteId);
   if (!b?.desplazamientos) return;
@@ -447,10 +533,7 @@ export function renameBajanteAcrossFloorReferences(
   // Almacenamiento del piso propio: el ramal Ldesvio (si este bajante es origen entre pisos), la
   // auto-referencia de desplazamientos que lo acompaña, y cualquier extremo de ramal (ini/fin)
   // que todavía tenga el código viejo.
-  const own = loadData(thisPlanId) as LocalGhostDrawingData & {
-    ramales?: (LocalLdesvioRamal & { ini?: string; fin?: string })[];
-    bajantes?: StoredDesplazamientoBajante[];
-  };
+  const own = loadData(thisPlanId);
   let ownDirty = false;
   for (const r of own.ramales || []) {
     if (r.id === oldLd) {
@@ -475,6 +558,14 @@ export function renameBajanteAcrossFloorReferences(
       }
     }
   }
+  // Fantasmas del piso propio cuyo DESTINO es este bajante (el target vive en el mismo piso
+  // que el ghost — ver applyBajanteAssociation): siguen al renombre local.
+  for (const g of own.crossFloorGhosts || []) {
+    if (g.targetBajanteId === oldId) {
+      g.targetBajanteId = newId;
+      ownDirty = true;
+    }
+  }
   if (ownDirty) saveData(thisPlanId, own);
 
   // Almacenamiento de cualquier otro piso: el fantasma espejo que este bajante escribió (como
@@ -489,9 +580,7 @@ export function renameBajanteAcrossFloorReferences(
     try {
       const raw = localStorage.getItem(k);
       if (!raw) continue;
-      const data = JSON.parse(raw) as LocalGhostDrawingData & {
-        bajantes?: { descargaEnId?: string | null; origenId?: string | null }[];
-      };
+      const data = JSON.parse(raw) as LocalGhostDrawingData;
       let dirty = false;
       for (const g of data.crossFloorGhosts || []) {
         if (g.sourcePlanId === thisPlanId && g.sourceBajanteId === oldId) {
@@ -499,10 +588,10 @@ export function renameBajanteAcrossFloorReferences(
           g.id = `XFG_${newId}_${thisPlanId}`;
           dirty = true;
         }
-        if (g.targetBajanteId === oldId) {
-          g.targetBajanteId = newId;
-          dirty = true;
-        }
+        // El targetBajanteId de un ghost vive en el MISMO piso que el ghost: un ghost de OTRO
+        // piso nunca apunta aquí (reescribirlo por id pelado rompía enlaces cruzados que
+        // comparten id en otro piso: BAN1-P1↔BAN2-P2 + BAN1-P2↔BAN2-P1). El propio se cubre
+        // en el bloque `own` de arriba.
       }
       for (const b of data.bajantes || []) {
         if (b.descargaEnId === oldPointer) {

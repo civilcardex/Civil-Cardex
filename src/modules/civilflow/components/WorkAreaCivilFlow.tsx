@@ -1,17 +1,83 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useWorkAreaState } from "./useWorkAreaState";
-import { WorkAreaSidebar } from "./WorkAreaSidebar";
-import WorkAreaContent from "./WorkAreaContent";
-import { ErrorBoundary } from "../../../components/ErrorBoundary";
-import { REDES } from "../constants";
-const WorkAreaCivilFlow_S1: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'var(--bg2)', borderTop: '1px solid var(--line)', flexShrink: 0, overflowX: 'auto' };
-const WorkAreaCivilFlow_S2: React.CSSProperties = { maxWidth: '360px', width: '100%', background: 'rgba(20, 24, 33, 0.85)', border: '1px solid rgba(58, 73, 74, 0.6)', borderRadius: '16px', padding: '32px 24px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(12px)', };
-const WorkAreaCivilFlow_S3: React.CSSProperties = { width: '64px', height: '64px', background: 'rgba(37, 99, 235, 0.1)', border: '1px solid rgba(37, 99, 235, 0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#3B82F6', };
-const WorkAreaCivilFlow_S4: React.CSSProperties = { background: 'var(--acc)', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, fontFamily: 'Geist, monospace', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)', };
-const WorkAreaCivilFlow_S5: React.CSSProperties = { background: 'transparent', color: '#849495', border: '1px solid #3a494a', padding: '9px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, fontFamily: 'Geist, monospace', textDecoration: 'none', transition: 'all 0.2s', display: 'inline-block', };
-const WorkAreaCivilFlow_S6: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r)', border: '1px solid', flexShrink: 0, cursor: 'pointer', fontSize: 12, fontFamily: 'var(--body)', fontWeight: 600 };
-
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useWorkAreaState } from './useWorkAreaState';
+import { prefetchAllTrazos } from '../utils/prefetchTrazos';
+import { WorkAreaSidebar } from './WorkAreaSidebar';
+import WorkAreaContent from './WorkAreaContent';
+import { ErrorBoundary } from '../../../components/ErrorBoundary';
+import { REDES } from '../constants';
+const WorkAreaCivilFlow_S1: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '7px 12px',
+  background: 'var(--bg2)',
+  borderTop: '1px solid var(--line)',
+  flexShrink: 0,
+  overflowX: 'auto',
+};
+const WorkAreaCivilFlow_S2: React.CSSProperties = {
+  maxWidth: '360px',
+  width: '100%',
+  background: 'rgba(20, 24, 33, 0.85)',
+  border: '1px solid rgba(58, 73, 74, 0.6)',
+  borderRadius: '16px',
+  padding: '32px 24px',
+  textAlign: 'center',
+  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.7)',
+  backdropFilter: 'blur(12px)',
+};
+const WorkAreaCivilFlow_S3: React.CSSProperties = {
+  width: '64px',
+  height: '64px',
+  background: 'rgba(37, 99, 235, 0.1)',
+  border: '1px solid rgba(37, 99, 235, 0.3)',
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  margin: '0 auto 20px',
+  color: '#3B82F6',
+};
+const WorkAreaCivilFlow_S4: React.CSSProperties = {
+  background: 'var(--acc)',
+  color: '#fff',
+  border: 'none',
+  padding: '10px 16px',
+  borderRadius: '8px',
+  fontSize: '12px',
+  fontWeight: 600,
+  fontFamily: 'Geist, monospace',
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+};
+const WorkAreaCivilFlow_S5: React.CSSProperties = {
+  background: 'transparent',
+  color: '#849495',
+  border: '1px solid #3a494a',
+  padding: '9px 16px',
+  borderRadius: '8px',
+  fontSize: '12px',
+  fontWeight: 600,
+  fontFamily: 'Geist, monospace',
+  textDecoration: 'none',
+  transition: 'all 0.2s',
+  display: 'inline-block',
+};
+const WorkAreaCivilFlow_S6: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '6px 11px',
+  borderRadius: 'var(--r)',
+  border: '1px solid',
+  flexShrink: 0,
+  cursor: 'pointer',
+  fontSize: 12,
+  fontFamily: 'var(--body)',
+  fontWeight: 600,
+};
 
 interface NetworkBarProps {
   redesActivas: (typeof REDES)[number][];
@@ -28,9 +94,13 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
         const active = tab === 'redes' && redActiva === r.id;
         const netColor = r.col || '#666';
         return (
-          <button type="button"
+          <button
+            type="button"
             key={r.id}
-            onClick={() => { setTab('redes'); setRedActiva(r.id); }}
+            onClick={() => {
+              setTab('redes');
+              setRedActiva(r.id);
+            }}
             style={{
               ...WorkAreaCivilFlow_S6,
               borderColor: active ? netColor : 'var(--line)',
@@ -38,9 +108,18 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
               background: active ? 'rgba(0,0,0,.15)' : 'transparent',
             }}
           >
-            {r.icoImg
-              ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" />
-              : <span style={{ fontSize: 16 }}>{r.ico}</span>}
+            {r.icoImg ? (
+              <img
+                src={r.icoImg}
+                alt=""
+                width={22}
+                height={22}
+                style={{ width: 22, height: 22, verticalAlign: 'middle' }}
+                loading="lazy"
+              />
+            ) : (
+              <span style={{ fontSize: 16 }}>{r.ico}</span>
+            )}
             <span>{r.lbl}</span>
           </button>
         );
@@ -53,13 +132,18 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
 function CivilFlowInner() {
   const state = useWorkAreaState();
 
+  // Prefetch global de trazos (orig. usuario): las tablas muestran todos los pisos sin
+  // necesidad de abrir el visor 2D piso por piso. Trae de la BD lo que falte en caché local,
+  // migra asociaciones y re-escribe las claves de sync (los eventos refrescan TramosContext).
+  useEffect(() => {
+    if (!state.plans?.length) return;
+    void prefetchAllTrazos(state.plans);
+  }, [state.plans]);
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div className="app" style={{ flex: 1, minHeight: 0 }}>
-        <WorkAreaSidebar
-          tab={state.tab}
-          setTab={state.setTab}
-        />
+        <WorkAreaSidebar tab={state.tab} setTab={state.setTab} />
         <div className="layout">
           <div className="content" style={{ padding: state.tab === 'planos' ? 0 : undefined }}>
             <WorkAreaContent state={state} />
@@ -86,38 +170,49 @@ function MobileGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="fixed inset-0 z-[99999] flex md:hidden items-center justify-center p-4" style={{ 
-        background: 'radial-gradient(circle at center, #161b22 0%, #080a0f 100%)',
-        backdropFilter: 'blur(8px)',
-      }}>
+      <div
+        className="fixed inset-0 z-[99999] flex md:hidden items-center justify-center p-4"
+        style={{
+          background: 'radial-gradient(circle at center, #161b22 0%, #080a0f 100%)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
         <div style={WorkAreaCivilFlow_S2}>
           <div style={WorkAreaCivilFlow_S3}>
-            <span className="material-symbols-outlined text-3xl" aria-hidden="true">devices</span>
+            <span className="material-symbols-outlined text-3xl" aria-hidden="true">
+              devices
+            </span>
           </div>
-          
-          <h3 style={{ 
-            fontSize: '18px', 
-            fontWeight: 700, 
-            color: '#e2e2e8', 
-            margin: '0 0 10px', 
-            fontFamily: 'Hanken Grotesk, sans-serif',
-            letterSpacing: '0.5px'
-          }}>
+
+          <h3
+            style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              color: '#e2e2e8',
+              margin: '0 0 10px',
+              fontFamily: 'Hanken Grotesk, sans-serif',
+              letterSpacing: '0.5px',
+            }}
+          >
             Optimizado para Pantallas Grandes
           </h3>
-          
-          <p style={{ 
-            fontSize: '13px', 
-            color: '#b0b8b9', 
-            lineHeight: '1.6', 
-            margin: '0 0 24px',
-            fontFamily: 'Hanken Grotesk, sans-serif'
-          }}>
-            CivilFlow es una herramienta de ingeniería de alta precisión. Para diseñar redes, ver planos y cálculos, recomendamos usar una tablet o computador.
+
+          <p
+            style={{
+              fontSize: '13px',
+              color: '#b0b8b9',
+              lineHeight: '1.6',
+              margin: '0 0 24px',
+              fontFamily: 'Hanken Grotesk, sans-serif',
+            }}
+          >
+            CivilFlow es una herramienta de ingeniería de alta precisión. Para diseñar redes, ver
+            planos y cálculos, recomendamos usar una tablet o computador.
           </p>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button type="button" 
+            <button
+              type="button"
               onClick={() => setBypassGate(true)}
               style={WorkAreaCivilFlow_S4}
               onMouseOver={(e) => (e.currentTarget.style.background = 'var(--acc2)')}
@@ -127,8 +222,8 @@ function MobileGate({ children }: { children: React.ReactNode }) {
             >
               CONTINUAR DE TODOS MODOS
             </button>
-            
-            <Link 
+
+            <Link
               to="/"
               style={WorkAreaCivilFlow_S5}
               onMouseOver={(e) => {
@@ -145,9 +240,7 @@ function MobileGate({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
-      <div className="hidden md:block h-full">
-        {children}
-      </div>
+      <div className="hidden md:block h-full">{children}</div>
     </>
   );
 }

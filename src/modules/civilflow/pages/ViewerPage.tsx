@@ -6,6 +6,7 @@ import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { loadFromStorage } from '../services/storageService';
+import { prefetchAllTrazos } from '../utils/prefetchTrazos';
 import {
   ACTIVE_NETS_KEY,
   NETS_CHANGED_EVENT,
@@ -132,6 +133,13 @@ export default function ViewerPage() {
     // en la información general no persistía al abrir el visor.
     return new Set(['san', 'vent', 'll']);
   });
+
+  // Prefetch global de trazos (orig. usuario): asegura caché local de TODOS los pisos antes de
+  // cerrar el visor, para que la validación de cierre revise el proyecto completo.
+  useEffect(() => {
+    if (!plans?.length) return;
+    void prefetchAllTrazos(plans);
+  }, [plans]);
 
   // Las redes activas se asignan en el área de trabajo (InfoTab) y se persisten en
   // localStorage + Supabase; el visor debe re-leerlas cuando cambian, no quedarse con el
