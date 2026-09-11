@@ -78,7 +78,7 @@ export function renderBajanteLabel(
     ctx.moveTo(lineStartX, lineStartY);
     ctx.lineTo(intersection.x, intersection.y);
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.8 * engine.zoom;
+    ctx.lineWidth = 0.8 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.stroke();
     ctx.restore();
   }
@@ -117,7 +117,7 @@ export function renderBajanteLabel(
   const bTipo = 'tipo' in b ? b.tipo : undefined;
   if (bTipo === 'contador' || bTipo === 'calentador') {
     ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 0.8 * engine.zoom;
+    ctx.lineWidth = 0.8 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.stroke();
   }
 

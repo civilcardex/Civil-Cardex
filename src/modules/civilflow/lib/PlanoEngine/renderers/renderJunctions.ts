@@ -238,7 +238,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
       ctx.save();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1.2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
@@ -256,10 +256,10 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       }
 
       // White halo: masks the pipe under the junction so the black symbol reads clean.
-      ctx.lineWidth = 1.8 * engine.zoom;
+      ctx.lineWidth = 1.8 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
-      ctx.lineWidth = 1.2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.strokeStyle = '#000000';
       ctx.stroke();
 
@@ -267,7 +267,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       const tickW = 1 * engine.zoom;
       const tickL = engine.mm2cvs(1.0);
       ctx.lineCap = 'square';
-      ctx.lineWidth = tickW;
+      ctx.lineWidth = tickW * (engine.lineWidthScale || 1);
       ctx.beginPath();
       vectors.forEach((u) => {
         const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
@@ -369,7 +369,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       const cvsB = engine.toCvs(B[0], B[1]);
       ctx.save();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1.2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
@@ -389,14 +389,14 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         }
       }
       // White halo: masks the pipe under the junction so the black symbol reads clean.
-      ctx.lineWidth = 1.8 * engine.zoom;
+      ctx.lineWidth = 1.8 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
-      ctx.lineWidth = 1.2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.strokeStyle = '#000000';
       ctx.stroke();
       ctx.lineCap = 'square';
-      ctx.lineWidth = 1 * engine.zoom;
+      ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       for (const [P, vArr] of [
         [A, vA],

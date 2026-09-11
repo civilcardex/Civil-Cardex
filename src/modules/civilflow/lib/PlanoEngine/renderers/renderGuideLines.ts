@@ -13,11 +13,12 @@ import {
 export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.guideLines.forEach((g) => {
     if (!g.pts || g.pts.length < 2) return;
-    const selected = engine.selId === g.id;
+    // Selección individual O por arrastre (multiSel) — la guía completa se resalta.
+    const selected = engine.selId === g.id || (engine.multiSel || []).includes(g.id);
 
     ctx.save();
     ctx.strokeStyle = selected ? '#000000' : '#888888';
-    ctx.lineWidth = (selected ? 1.5 : 1) * engine.zoom;
+    ctx.lineWidth = (selected ? 1.5 : 1) * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
     ctx.beginPath();
     g.pts.forEach((p, i) => {
@@ -59,7 +60,7 @@ function guideConnCircle(
   r: number,
 ): void {
   ctx.strokeStyle = '#22D3EE';
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.setLineDash([4, 3]);
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -81,7 +82,7 @@ export function renderGuideGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
 
   ctx.save();
   ctx.strokeStyle = '#888888';
-  ctx.lineWidth = 1 * engine.zoom;
+  ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
   ctx.beginPath();
   // Ítem 2: la guía en construcción muestra sus vértices fijos + el segmento al cursor.

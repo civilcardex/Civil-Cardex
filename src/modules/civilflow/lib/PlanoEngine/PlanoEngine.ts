@@ -164,6 +164,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   zoom!: number;
   offX!: number;
   offY!: number;
+  lineWidthScale!: number;
   dpr!: number;
   tool!: ToolType;
   activeNet!: string;
@@ -346,6 +347,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.zoom = 1;
     this.offX = 0;
     this.offY = 0;
+    this.lineWidthScale = 1;
     this.dpr = 1;
     this.tool = 'sel';
     this.activeNet = 'af';
@@ -1023,6 +1025,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
           scaleM: number;
           definedScaleM: number;
           activeNet: string;
+          lineWidthScale?: number;
           ramales: unknown[];
           dims: unknown[];
           textAnnots: unknown[];
@@ -1329,29 +1332,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (k === 's') {
       this.setTool('sel');
       e.preventDefault();
-    } else if (k === 'l') {
-      this.setTool('line');
-      e.preventDefault();
-    } else if (k === 'c') {
-      // 'C' hace doble función: Contador en af/gas, Canal en el resto — el canal requiere la
-      // red de agua lluvias ('ll') ACTIVA en la sesión (espejo de isToolDisabledForNet('canal',
-      // ...) de PdfViewerToolbar): el atajo no debe saltarse la regla que el botón aplica.
-      if (
-        this.activeNet === 'll' &&
-        (!this.activeNetworks || this.activeNetworks.has('recolectora'))
-      ) {
-        this.setTool('canal');
-      } else {
-        this.setTool('cont');
-      }
-      e.preventDefault();
-    } else if (k === 'h') {
-      // El calentador es solo ac/gas: el botón de af se quitó de la barra, así que el atajo no
-      // debe saltarse la misma restricción.
-      if (['ac', 'gas'].includes(this.activeNet)) {
-        this.setTool('calent');
-      }
-      e.preventDefault();
     } else if (k === 'j') {
       // 'J' → Caja de recolección (CAN en san, CALL en ll) — solo con esas redes activas,
       // espejo de isToolDisabledForNet('caja') en la barra. ('X' ya es "borrar montante".)
@@ -1365,9 +1345,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (k === 'u') {
       // 'G' colisionaba con el atajo mostrado para Snap — U (de "gUía") queda libre.
       this.setTool('guide');
-      e.preventDefault();
-    } else if (k === 't') {
-      this.setTool('text');
       e.preventDefault();
     }
     // Bajante solo en san/vent/ll, montante solo en gas/ac/af — misma regla que PdfViewerToolbar.tsx

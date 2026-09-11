@@ -11,7 +11,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     // solo se atenúan la línea y las marcas.
     ctx.globalAlpha = 0.55;
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.moveTo(c1.x, c1.y);
     ctx.lineTo(c2.x, c2.y);
@@ -68,7 +68,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 2.5 * engine.zoom;
+    ctx.lineWidth = 2.5 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#ffffff';
     ctx.strokeText(txt, lx, ly);
@@ -88,7 +88,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   ctx.save();
   ctx.globalAlpha = 0.55;
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 1 * engine.zoom;
+  ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.beginPath();
   ctx.moveTo(s.x, s.y);
   ctx.lineTo(e.x, e.y);
@@ -134,7 +134,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ly = my + ony * offset;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 3 * engine.zoom;
+    ctx.lineWidth = 3 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#ffffff';
     ctx.strokeText(txt, lx, ly);

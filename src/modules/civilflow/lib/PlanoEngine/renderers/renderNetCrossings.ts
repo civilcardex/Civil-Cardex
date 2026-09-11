@@ -139,7 +139,7 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
 
           ctx.save();
           ctx.globalCompositeOperation = 'destination-out';
-          ctx.lineWidth = 3 * engine.zoom;
+          ctx.lineWidth = 3 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.lineCap = 'butt';
           ctx.beginPath();
           ctx.moveTo(c.x - jux * r, c.y - juy * r);
@@ -151,7 +151,7 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
           // deje una muesca visible, sea cual sea el ángulo en que se cruzan las dos líneas.
           ctx.save();
           ctx.strokeStyle = oCol;
-          ctx.lineWidth = 2 * engine.zoom;
+          ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(c.x - oux * oR, c.y - ouy * oR);
@@ -162,7 +162,7 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
           // El pequeño salto de la red que salta sobre el cruce.
           ctx.save();
           ctx.strokeStyle = jCol;
-          ctx.lineWidth = 2 * engine.zoom;
+          ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.lineCap = 'round';
           const bumpAngle = Math.atan2(jperpy, jperpx);
           ctx.beginPath();

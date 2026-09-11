@@ -32,7 +32,7 @@ export function renderCanalGlyph(
     ctx.save();
     ctx.strokeStyle = stroke;
     ctx.fillStyle = stroke;
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(tail.x, tail.y);
@@ -90,7 +90,7 @@ export function renderCanalGlyph(
         // mismo lenguaje que las de los ramales (renderRamales.ts: línea corta + punta).
         ctx.save();
         ctx.strokeStyle = col;
-        ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
+        ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom * (engine.lineWidthScale || 1);
         ctx.beginPath();
         ctx.moveTo(best.x, best.y);
         ctx.lineTo(rim.x, rim.y);
@@ -122,7 +122,7 @@ export function renderCanalGlyph(
         const ay = ly + fsP * 0.95;
         ctx.strokeStyle = col;
         ctx.fillStyle = col;
-        ctx.lineWidth = 1 * engine.zoom;
+        ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(lx - half * dir, ay);
@@ -146,7 +146,7 @@ export function renderCanalGlyph(
   // usando _canalBox/_circ (matemática pura), así que selección/asociación no cambian.
   ctx.globalAlpha = 0.9;
   ctx.strokeStyle = col;
-  ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
+  ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom * (engine.lineWidthScale || 1);
   // Perfil de canal: las líneas horizontales superior e inferior, más los dos segmentos
   // verticales laterales que cierran el contorno del canalón.
   ctx.beginPath();
@@ -186,7 +186,7 @@ export function renderCanalGlyph(
     const ox = tl.x + w + 14 * engine.zoom;
     ctx.fillStyle = '#FFEB3B';
     ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.shadowColor = '#000';
     ctx.shadowBlur = 6 * engine.zoom;
     ctx.beginPath();
@@ -331,7 +331,7 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
 
   ctx.save();
   ctx.strokeStyle = '#8B5CF6';
-  ctx.lineWidth = 1 * engine.zoom;
+  ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
   ctx.beginPath();
   ctx.rect(tl.x, tl.y, cw, ch);

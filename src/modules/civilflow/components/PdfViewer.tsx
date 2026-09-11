@@ -14,7 +14,12 @@ import type { PlanItem } from '../context/PlansContext';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
-import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
+import {
+  writeSanDrawingSync,
+  writeHydroDrawingSync,
+  setSyncLoadedLiveIds,
+} from '../utils/drawingSync';
+import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   GAS_ACC_KEY,
@@ -36,7 +41,6 @@ import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
 import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/context';
 import ConfirmDialog from './pdfViewer/ConfirmDialog';
 import AccesorioModal from './pdfViewer/AccesorioModal';
-import TipoTramoSelector from './pdfViewer/TipoTramoSelector';
 import TramoEditor from './pdfViewer/tramoEditor';
 import BajanteAsociacion from './pdfViewer/BajanteAsociacion';
 import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements';
@@ -167,6 +171,16 @@ function PdfViewer_({
     plansRef.current = planosCtx.plans;
   }, [planosCtx.plans]);
   const syncDrawings = useCallback(() => {
+    // Guard del GC: los ids VIVOS del engine del piso cargado — sin esto, una caché local
+    // vieja del piso activo hacía que el GC borrara claves de aparatos/hidro existentes
+    // (orig. usuario: recargar reseteaba las UDs del piso 2 a 0).
+    const eng = engineRef.current;
+    if (eng?._loadedPlanId) {
+      setSyncLoadedLiveIds(String(eng._loadedPlanId), [
+        ...eng.ramales.flatMap((r) => [r.id, r.label].filter(Boolean) as string[]),
+        ...eng.bajantes.flatMap((b) => [b.id, b.code].filter(Boolean) as string[]),
+      ]);
+    }
     try {
       writeSanDrawingSync(plansRef.current);
     } catch {}
@@ -418,6 +432,10 @@ function PdfViewer_({
       const cleanStore = (key: string) => {
         const store = loadFromStorage(key, {}) as Record<string, unknown>;
         let changed = false;
+        // Solo claves del piso cargado: borrar RS4 aquí no debe borrar `san_RS4_<otroPlano>`
+        // (cada piso numera por su cuenta; sin este filtro, borrar en un piso vaciaba las
+        // UDs del mismo id en los demás).
+        const loadedPid = engineRef.current?._loadedPlanId ?? null;
         // Ids actuales tras el borrado+renumerado (el nuevo RS1 ya existe en engine)
         const currentIds = new Set([
           ...(engineRef.current?.ramales.map((r) => r.id) ?? []),
@@ -425,6 +443,7 @@ function PdfViewer_({
           ...(engineRef.current?.ramales.map((r) => r.label) ?? []),
         ]);
         for (const k of Object.keys(store)) {
+          if (!isPlanKeyFor(k, loadedPid)) continue;
           const segs = k.split('_');
           const idInKey = segs[1] ?? '';
           for (const id of ids) {
@@ -586,6 +605,9 @@ function PdfViewer_({
     },
     [],
   );
+  // Grosor de líneas (slider bajo la barra de redes): factor multiplicador de todos los
+  // lineWidth del dibujo, persistido por plano (cf_planos.line_width vía serializeWork).
+  const [lineWidthScale, setLineWidthScale] = useState(1);
   const { engineReady } = usePdfViewerEngine({
     currentFile,
     currentId,
@@ -629,6 +651,10 @@ function PdfViewer_({
     [onAlertHandler],
   );
 
+  useEffect(() => {
+    const v = engineRef.current?.lineWidthScale;
+    if (v && v > 0) setLineWidthScale(v);
+  }, [engineReady, engineRef]);
   useEffect(() => {
     if (engineRef.current && engineReady && contextMenuCbRef.current)
       engineRef.current.onContextMenu(contextMenuCbRef.current);
@@ -780,7 +806,7 @@ function PdfViewer_({
     setConfirmState({
       isOpen: true,
       title: 'Limpiar red',
-      message: `¿Deseas eliminar todo el trazado de la red activa (${netName})? Esta acción no se puede deshacer.`,
+      message: `¿Deseas eliminar todo el trazado de la red activa (${netName})? Puedes revertirlo con Ctrl + Z.`,
       onConfirm: () => {
         engineRef.current?.clearNet(netId);
         setSelElement(null);
@@ -795,7 +821,7 @@ function PdfViewer_({
       isOpen: true,
       title: 'Borrar líneas guía',
       message:
-        '¿Deseas eliminar todas las líneas guía de todos los pisos? Esta acción no se puede deshacer.',
+        '¿Deseas eliminar todas las líneas guía de todos los pisos? Puedes revertirlo con Ctrl + Z.',
       onConfirm: () => {
         const eng = engineRef.current;
         if (eng) {
@@ -875,6 +901,20 @@ function PdfViewer_({
   }, [finalVisibleNets, activeNet]);
 
   const prevResetKey = useRef('');
+  // Error de guardado a BD (evento de storageService.saveTrazosToDB): franja en rojo + motivo
+  // en el botón Guardar — el fallo ya no es silencioso (orig. usuario).
+  const [bdError, setBdError] = useState<string | null>(null);
+  useEffect(() => {
+    const onBdError = (e: Event) => {
+      const detail = (e as CustomEvent<{ reason: string; message: string }>).detail;
+      setBdError(
+        detail?.message ? `${detail.reason}: ${detail.message}` : detail?.reason || 'error',
+      );
+    };
+    window.addEventListener('civilflow_bd_save_error', onBdError);
+    return () => window.removeEventListener('civilflow_bd_save_error', onBdError);
+  }, []);
+
   const resetKey = activeNet + '|' + tipoTramo;
   useEffect(() => {
     if (resetKey === prevResetKey.current) return;
@@ -882,7 +922,7 @@ function PdfViewer_({
     if (engineRef.current) engineRef.current.setPadreTributario(null);
   }, [resetKey]);
 
-  useKeyboardShortcuts({ setSnapOn, setTool, activeNet, recolectoraActive, engineRef });
+  useKeyboardShortcuts({ setSnapOn, setTool, setTipoTramo, setGridOn, engineRef });
 
   const prevSelId = useRef(selElement?.id);
   const prevActiveNetForDiam = useRef(activeNet);
@@ -1016,6 +1056,64 @@ function PdfViewer_({
         }}
       />
 
+      {/* Grosor de líneas: deslizador que define el grosor de TODAS las líneas y elementos de la
+          zona de dibujo (orig. usuario). Persistido por plano vía serializeWork → cf_planos. */}
+      <div
+        style={{
+          height: 30,
+          flexShrink: 0,
+          background: '#14161a',
+          borderBottom: '1px solid #2a3435',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '0 12px',
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#6b8cae',
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Grosor:
+        </div>
+        <input
+          type="range"
+          min={0.5}
+          max={3}
+          step={0.1}
+          value={lineWidthScale}
+          aria-label="Grosor de líneas"
+          onChange={(e) => {
+            const v = Number(e.target.value);
+            setLineWidthScale(v);
+            const eng = engineRef.current;
+            if (eng) {
+              eng.lineWidthScale = v;
+              eng.render();
+              eng._markDirty();
+            }
+          }}
+          style={{ width: 140, accentColor: '#F5A623' }}
+        />
+        <div
+          style={{
+            padding: '2px 8px',
+            background: '#1e2024',
+            border: '1px solid #2a3435',
+            color: '#8AB4D6',
+            fontSize: 12,
+            fontFamily: "'Geist',monospace",
+          }}
+        >
+          {lineWidthScale.toFixed(1)}×
+        </div>
+      </div>
+
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative', minWidth: 0 }}>
         <div className="visor-sidebar" style={dynamicLeftStyle}>
           <h2 style={PdfViewer_SR_ONLY}>Panel de capas</h2>
@@ -1024,16 +1122,19 @@ function PdfViewer_({
               height: 3,
               flexShrink: 0,
               transition: 'background .3s',
-              background: STATUS[saveStatus]?.color || STATUS.error.color,
+              background: bdError ? '#ef4444' : STATUS[saveStatus]?.color || STATUS.error.color,
             }}
           />
           <PdfViewerToolbar
             tool={tool}
+            tipoTramo={tipoTramo}
+            onTipoTramoSelect={(t) => setTipoTramo(t)}
             snapOn={snapOn}
             gridOn={gridOn}
             activeNet={activeNet}
             currentFile={currentFile}
             saveStatus={saveStatus}
+            bdError={bdError}
             collapsed={leftCollapsed}
             recolectoraActive={recolectoraActive}
             onSelectTool={setTool}
@@ -1162,8 +1263,6 @@ function PdfViewer_({
             pisos={pisos}
             visibleNets={finalVisibleNets}
           />
-
-          <TipoTramoSelector tipoTramo={tipoTramo} setTipoTramo={setTipoTramo} />
 
           {tool !== 'guide' && (
             <div style={rightSidebarOpacity}>

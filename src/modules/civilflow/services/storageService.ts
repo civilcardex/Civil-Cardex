@@ -252,6 +252,8 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     canal_id: b.canalId ?? null,
     descarga_en_id: b.descargaEnId ?? null,
     origen_id: b.origenId ?? null,
+    caja_origen_id: b.cajaOrigenId ?? null,
+    bomba_en_id: b.bombaEnId ?? null,
   };
 }
 
@@ -273,6 +275,8 @@ function rowToBajante(row: SupabaseRow): PlanoBajante {
     alimentaIds: [],
     descargaEnId: g(row, 'descarga_en_id', null),
     origenId: g(row, 'origen_id', undefined),
+    cajaOrigenId: g(row, 'caja_origen_id', undefined),
+    bombaEnId: g(row, 'bomba_en_id', undefined),
     ucAcum: g(row, 'uc_acum', 0),
     ucExtra: g(row, 'uc_extra', 0),
     area_m2: g(row, 'area_m2', 0),
@@ -446,16 +450,43 @@ function rowToGhost(row: SupabaseRow): CrossFloorGhost {
  * La firma externa no cambió, así que todos los llamadores existentes siguen funcionando
  * sin modificaciones. Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
+/**
+ * Aviso visible de fallo de guardado a BD (orig. usuario: "no se guarda nada y la UI no se
+ * entera"): cada salida temprana / error del RPC emite este evento; el visor lo escucha y
+ * pinta la franja de estado en rojo con el motivo.
+ */
+export function emitBdSaveError(reason: string, message: string): void {
+  try {
+    window.dispatchEvent(
+      new CustomEvent('civilflow_bd_save_error', { detail: { reason, message } }),
+    );
+  } catch {
+    /* sin window (tests) */
+  }
+}
+
 export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
     const user = await cachedSupabaseUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'No hay sesión activa en Supabase.');
+      return;
+    }
 
     const proyectoId = getActiveProyectoId();
-    if (!proyectoId) return;
+    if (!proyectoId) {
+      emitBdSaveError(
+        'sin-proyecto',
+        'No hay proyecto activo seleccionado (clave ' + 'de proyecto ausente).',
+      );
+      return;
+    }
 
     const id = Number(planoId);
-    if (!Number.isFinite(id)) return;
+    if (!Number.isFinite(id)) {
+      emitBdSaveError('plano-invalido', `Id de plano no numérico: ${planoId}`);
+      return;
+    }
 
     const d = (data ?? {}) as Partial<PlanoWorkData>;
 
@@ -555,6 +586,7 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
         zoom: d.zoom ?? 1,
         offX: d.offX ?? 0,
         offY: d.offY ?? 0,
+        lineWidth: d.lineWidth ?? 1,
         ts: d.ts ? new Date(d.ts).toISOString() : new Date().toISOString(),
       },
       ramales: ramales.map((r) => ramalToRow(id, user.id, r)),
@@ -574,9 +606,13 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       p_plano_id: id,
       p_data: payload,
     });
-    if (error) devError('storageService saveTrazosToDB rpc:', error.message);
+    if (error) {
+      devError('storageService saveTrazosToDB rpc:', error.message);
+      emitBdSaveError('rpc', error.message);
+    }
   } catch (e) {
     devError('storageService saveTrazosToDB exception:', e);
+    emitBdSaveError('excepcion', e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -619,6 +655,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
         zoom?: number;
         off_x?: number;
         off_y?: number;
+        line_width?: number;
       };
       bajantes?: SupabaseRow[];
       ramales?: SupabaseRow[];
@@ -661,6 +698,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       zoom: plano.zoom,
       offX: plano.off_x,
       offY: plano.off_y,
+      lineWidth: plano.line_width,
       ramales: (result.ramales ?? []).map(rowToRamal),
       bajantes,
       areas: (result.areas ?? []).map(rowToArea),

@@ -12,6 +12,7 @@ export interface PlanoWorkData {
   zoom: number;
   offX: number;
   offY: number;
+  lineWidth?: number;
   nets: { id: string; col: string }[];
   ramales: unknown[];
   dims: unknown[];
@@ -34,6 +35,7 @@ export function serializeWork(engine: {
   zoom: number;
   offX: number;
   offY: number;
+  lineWidthScale: number;
   ramales: unknown[];
   dims: unknown[];
   textAnnots: unknown[];
@@ -51,6 +53,7 @@ export function serializeWork(engine: {
     zoom: engine.zoom,
     offX: engine.offX,
     offY: engine.offY,
+    lineWidth: engine.lineWidthScale,
     nets: NETS.map((n) => ({ id: n.id, col: n.col })),
     ramales: engine.ramales,
     dims: engine.dims,
@@ -68,6 +71,7 @@ export function applyWorkData(
     scaleM: number;
     definedScaleM: number;
     activeNet: string;
+    lineWidthScale?: number;
     ramales: unknown[];
     dims: unknown[];
     textAnnots: unknown[];
@@ -92,6 +96,7 @@ export function applyWorkData(
   engine.zoom = d.zoom ?? 1;
   engine.offX = d.offX ?? 0;
   engine.offY = d.offY ?? 0;
+  engine.lineWidthScale = d.lineWidth && d.lineWidth > 0 ? d.lineWidth : 1;
   engine.ramales = d.ramales || [];
   engine.dims = d.dims || [];
   engine.textAnnots = d.textAnnots || [];

@@ -22,7 +22,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       const ox = boxW + 16 * engine.zoom;
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5 * engine.zoom;
+      ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 6 * engine.zoom;
       ctx.beginPath();
@@ -68,7 +68,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       ctx.save();
       ctx.fillStyle = '#4D8FF7';
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1 * engine.zoom;
+      ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
       [
         [b.x, b.y],
         [b.x + b.w, b.y],

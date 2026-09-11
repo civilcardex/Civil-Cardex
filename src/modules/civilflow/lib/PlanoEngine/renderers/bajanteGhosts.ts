@@ -53,7 +53,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       // (0.6*zoom, fijado en la rama bajante/montante por defecto de arriba) — esto era 1.5,
       // 2.5x más grueso que el padre, que es exactamente la queja de "el fantasma se ve más
       // grueso".
-      ctx.lineWidth = 0.6 * engine.zoom;
+      ctx.lineWidth = 0.6 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
       ctx.stroke();
@@ -88,7 +88,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.rotate(ghostAngle);
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5 * engine.zoom;
+      ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 6 * engine.zoom;
       const arrowR = 8 * engine.zoom;
@@ -219,7 +219,7 @@ export function renderCrossFloorGhosts(
         ctx.save();
         ctx.strokeStyle = col;
         ctx.globalAlpha = 0.5;
-        ctx.lineWidth = 1.5 * engine.zoom;
+        ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
         ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
         ctx.beginPath();
         ctx.moveTo(c.x, c.y);
@@ -234,7 +234,7 @@ export function renderCrossFloorGhosts(
     // Círculo punteado
     ctx.save();
     ctx.strokeStyle = col;
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
     ctx.beginPath();
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);

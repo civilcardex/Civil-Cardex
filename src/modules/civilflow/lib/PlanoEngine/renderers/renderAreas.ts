@@ -26,7 +26,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.strokeStyle = sel
       ? '#00dce5'
       : (a.color || 'rgba(0,220,229,0.5)').replace('0.2', '0.7').replace('33', 'aa');
-    ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom;
+    ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash(sel ? [] : []);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -104,7 +104,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
         ctx.save();
         ctx.fillStyle = '#FFEB3B';
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5 * engine.zoom;
+        ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
         ctx.shadowColor = '#000';
         ctx.shadowBlur = 6 * engine.zoom;
         ctx.beginPath();
@@ -130,7 +130,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.save();
   ctx.fillStyle = col + '22';
   ctx.strokeStyle = col;
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
@@ -155,7 +155,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     if (engine.snapMode) mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
     const mc = engine.toCvs(mp.x, mp.y);
     ctx.strokeStyle = col + '88';
-    ctx.lineWidth = 2 * engine.zoom;
+    ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
@@ -172,7 +172,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     if (engine.activeArea.pts.length >= 3 && distFirst < SNAP_CLOSE) {
       const fc = engine.toCvs(first[0], first[1]);
       ctx.strokeStyle = '#22D3EE';
-      ctx.lineWidth = 2 * engine.zoom;
+      ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.arc(fc.x, fc.y, 10 * engine.zoom, 0, Math.PI * 2);
       ctx.stroke();

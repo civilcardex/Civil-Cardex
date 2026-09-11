@@ -113,7 +113,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     const isPadre = r.id === padreId;
     ctx.save();
     ctx.strokeStyle = col;
-    ctx.lineWidth = (sel ? 3 : 2) * engine.zoom;
+    ctx.lineWidth = (sel ? 3 : 2) * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -121,7 +121,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (isPadre && isTributarioMode) {
         ctx.save();
         ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
-        ctx.lineWidth = 3 * engine.zoom;
+        ctx.lineWidth = 3 * engine.zoom * (engine.lineWidthScale || 1);
         ctx.strokeStyle = col;
         drawRamalPath(ctx, r.pts, engine, col);
         ctx.restore();
@@ -175,7 +175,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.save();
         ctx.fillStyle = col;
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2 * engine.zoom;
+        ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
         ctx.beginPath();
         ctx.arc(c.x, c.y, 5 * engine.zoom, 0, Math.PI * 2);
         ctx.fill();
@@ -463,7 +463,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           }
           ctx.save();
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 0.8 * engine.zoom;
+          ctx.lineWidth = 0.8 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(mc.x, mc.y);
@@ -593,7 +593,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.save();
           ctx.translate(0, anchorY);
           ctx.strokeStyle = col;
-          ctx.lineWidth = 1 * engine.zoom;
+          ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(tMin * ux, tMin * uy);
@@ -683,7 +683,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.save();
           ctx.fillStyle = '#FFEB3B';
           ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.shadowColor = '#000';
           ctx.shadowBlur = 6 * engine.zoom;
           ctx.beginPath();
@@ -779,7 +779,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.save();
           ctx.fillStyle = '#FFEB3B';
           ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.shadowColor = '#000';
           ctx.shadowBlur = 6 * engine.zoom;
           ctx.beginPath();
@@ -1113,7 +1113,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
 
   ctx.save();
   ctx.strokeStyle = col;
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
@@ -1150,7 +1150,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   // ya existía para bajantes, ahora unificado para toda conexión posible.
   const connCircle = (cx: number, cy: number, r: number) => {
     ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2 * engine.zoom;
+    ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash([4, 3]);
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -1220,7 +1220,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   if (ar.pts.length >= 3 && distFirst < SNAP_CLOSE) {
     const fc = engine.toCvs(first[0], first[1]);
     ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2 * engine.zoom;
+    ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(fc.x, fc.y, 4 * engine.zoom, 0, Math.PI * 2);
     ctx.stroke();
@@ -1235,7 +1235,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const mc = engine.toCvs(mp.x, mp.y);
 
   ctx.strokeStyle = col + '88';
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(lc.x, lc.y);
