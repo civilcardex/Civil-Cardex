@@ -597,7 +597,12 @@ export function RamalMenu() {
                   </div>
                 );
               return netBajantes.map((b) => {
-                const isAssociated = (b.recibeDeIds || []).includes(currentId);
+                // Igual que "Cajas asociadas": el checkbox refleja AMBAS direcciones —
+                // llegada (recibeDeIds) O salida (alimentaIds) — y el desmarque limpia la
+                // que esté. Antes solo miraba recibeDeIds y la salida nunca se marcaba.
+                const isRecibe = (b.recibeDeIds || []).includes(currentId);
+                const isAlimenta = (b.alimentaIds || []).includes(currentId);
+                const isAssociated = isRecibe || isAlimenta;
                 return (
                   <label key={b.id} style={MENU_CHECK_ROW_STYLE}>
                     <input
@@ -618,7 +623,13 @@ export function RamalMenu() {
                         const newRecibe = e.target.checked
                           ? [...recibidos, currentId]
                           : recibidos.filter((id: string) => id !== currentId);
-                        const extraFields: Record<string, unknown> = { recibeDeIds: newRecibe };
+                        const newAlimenta = e.target.checked
+                          ? b.alimentaIds || []
+                          : (b.alimentaIds || []).filter((id: string) => id !== currentId);
+                        const extraFields: Record<string, unknown> = {
+                          recibeDeIds: newRecibe,
+                          alimentaIds: newAlimenta,
+                        };
                         if (e.target.checked) {
                           extraFields.descargaEnId = currentId;
                         } else if (
@@ -628,7 +639,20 @@ export function RamalMenu() {
                           extraFields.descargaEnId = null;
                         }
                         engineRef.current?.updateElementById(b.id, extraFields);
-                        if (selElement?.id === b.id) {
+                        if (!e.target.checked) {
+                          // Desmarcar una salida también limpia el ini/fin del ramal si apunta
+                          // al código del bajante (igual que "Cajas asociadas").
+                          const code = b.code || b.id;
+                          const ramalUpdates: Record<string, unknown> = {};
+                          if (ramalEl.fin === code) ramalUpdates.fin = '';
+                          if ((ramalEl as unknown as { ini?: string }).ini === code)
+                            ramalUpdates.ini = '';
+                          if (Object.keys(ramalUpdates).length)
+                            engineRef.current?.updateElementById(ramalEl.id, ramalUpdates);
+                          if (selElement?.id === ramalEl.id) {
+                            setSelElement({ ...selElement, ...ramalUpdates });
+                          }
+                        } else if (selElement?.id === b.id) {
                           setSelElement({ ...selElement, ...extraFields });
                         }
                       }}

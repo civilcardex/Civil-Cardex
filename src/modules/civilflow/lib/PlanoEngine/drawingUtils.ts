@@ -3,6 +3,7 @@ import type { PlanoRamal, PlanoArea, IPlanoEngineCore } from './PlanoState';
 import { _statusMsg } from './ramalMeasure';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { distToPolyline } from '../shared/geometry';
+import { esCaja, puedeConectarRamalABajante } from './bajanteRules';
 
 /** Siguiente etiqueta automática para la red activa (R{n}, o T{n}{padre} si se está dibujando un tributario). */
 export function _nextLabel(engine: IPlanoEngineCore): string {
@@ -338,4 +339,142 @@ export function recomputeDownstreamDiameters(
     }
     if (!touched) break;
   }
+}
+
+/** Resultado de asociar los extremos de un ramal recién creado a bajantes. */
+export interface AssocBajanteResult {
+  /** La guard central rechazó la conexión: el caller debe retirar el trazo y alertar. */
+  rejected: boolean;
+  /** Llegó al CENTRO de una caja: sin propagación de diámetros. */
+  llegaACaja: boolean;
+  /** Alerta a mostrar si `rejected` (una sola: la primera infracción). */
+  alert?: { title: string; msg: string };
+}
+
+// Asocia los extremos de un ramal NUEVO a bajantes (llegada → fin + recibeDeIds; inicio →
+// ini + alimentaIds) con la guard central puedeConectarRamalABajante + regla de diámetros
+// según dirección (el que SALE adopta el dNominal; el que LLEGA conserva y empuja al mayor;
+// cajas sin adopción/empuje). Extraído de finishRamal para compartirlo con las creaciones
+// desde línea guía ("Crear ramal/tributario"), que antes no asociaban: el trazo quedaba
+// suelto del bajante (sin checks en paneles, sin UDs heredadas, sin espejo de salida).
+export function asociarRamalABajantes(
+  engine: IPlanoEngineCore,
+  r: PlanoRamal,
+  diametroBornDefault: boolean,
+): AssocBajanteResult {
+  let llegaACaja = false;
+  let alert: AssocBajanteResult['alert'];
+  let rejected = false;
+  if (!r.pts || r.pts.length < 2) return { rejected, llegaACaja };
+  const TOLLERANCE = 0.5;
+  const lastIdx = r.pts.length - 1;
+  const lvl = engine.nivelActual?.label ?? '';
+  const displacedFantasmaIds = new Set(
+    (engine.getBajantesFantasma?.() ?? [])
+      .filter((b) => {
+        const disp = b.desplazamientos?.[lvl];
+        return !!disp && (Math.abs(disp.dx) > 0.5 || Math.abs(disp.dy) > 0.5);
+      })
+      .map((b) => b.id),
+  );
+  for (const epIdx of [0, lastIdx]) {
+    const isArrival = epIdx === lastIdx;
+    const ep = r.pts[epIdx];
+    // Candidatos por distancia (la tolerancia cubre el radio del símbolo; en CAJAS el
+    // _circ es la semidiagonal del cuadro — la asociación usa el SEMILADO para no alcanzar
+    // elementos vecinos y acabar validando el trazo contra el bajante equivocado).
+    const cands = engine.bajantes.filter((b) => {
+      if (b.net !== r.net || engine._hiddenNets.has(b.net)) return false;
+      const circ = b._circ?.r || 8 * engine.zoom;
+      const rimTol = (esCaja(b) ? circ / Math.SQRT2 : circ) / (engine.zoom || 1) + TOLLERANCE;
+      if (displacedFantasmaIds.has(b.id)) {
+        const disp = b.desplazamientos?.[lvl];
+        const bx = b.x + (disp?.dx || 0);
+        const by = b.y + (disp?.dy || 0);
+        return Math.hypot(bx - ep[0], by - ep[1]) < rimTol;
+      }
+      return Math.hypot(b.x - ep[0], b.y - ep[1]) < rimTol;
+    });
+    // Elegir el PRIMER candidato cuya guard central acepte el trazo — con cajas y vecinos
+    // en el mismo punto, el primer candidato por orden de array puede rechazar (p.ej. un
+    // montante que no admite tributarios) mientras el correcto (la caja) sí lo hace.
+    let baj: (typeof engine.bajantes)[number] | undefined;
+    let firstCheck: ReturnType<typeof puedeConectarRamalABajante> | null = null;
+    for (const c of cands) {
+      if (c.recibeDeIds.includes(r.id) || c.alimentaIds?.includes(r.id)) {
+        baj = c;
+        break;
+      }
+      const chk = puedeConectarRamalABajante(c, r, isArrival ? 'recibe' : 'alimenta');
+      if (chk.ok) {
+        baj = c;
+        break;
+      }
+      if (!firstCheck) firstCheck = chk;
+    }
+    if (!baj) {
+      // Regla central: misma red + tope de asociaciones (2 bajante / 1 caja) — antes de
+      // escribir cualquier campo (ítems 1/9). Rechazo = NO se crea el trazo: la alerta
+      // saliendo y el ramal quedando dibujado igualmente era el estado inválido.
+      if (cands.length > 0) {
+        if (firstCheck?.title && firstCheck.msg)
+          alert = { title: firstCheck.title, msg: firstCheck.msg };
+        rejected = true;
+        break;
+      }
+      continue;
+    }
+    if (baj.recibeDeIds.includes(r.id) || baj.alimentaIds?.includes(r.id)) continue;
+    // Diámetro según cómo se dibuja (orig. usuario): el ramal que SALE del bajante
+    // (nace en pts[0]) adopta el dNominal del bajante; si el bajante aún no tiene, toma
+    // el del ramal. El ramal que LLEGA conserva su diámetro y empuja al bajante al mayor
+    // (nunca baja) — pero si nació sin diámetro explícito (default/empty), adopta el del
+    // bajante, de modo que la Y doble converja sin alerta falsa.
+    // CAJAS: sin adopción/empuje de diámetro — su dNominal se maneja por menú y no
+    // participan en propagación (orig. usuario). Llegada a caja marca la bandera que
+    // desactiva más abajo herencia y propagación de diámetros.
+    const bornSinDiam = !r.diametro || diametroBornDefault;
+    if (esCaja(baj)) {
+      if (isArrival) llegaACaja = true;
+    } else if (isArrival) {
+      if (bornSinDiam && baj.dNominal) r.diametro = baj.dNominal;
+    } else if (baj.dNominal) {
+      r.diametro = baj.dNominal;
+    } else if (r.diametro) {
+      baj.dNominal = r.diametro;
+    }
+    // 14.2 Y doble: laterales must be same diam (solo llegadas — 2 ramales que descargan).
+    // Las cajas admiten N entradas y no son una Y física: el chequeo no aplica.
+    if (isArrival && !esCaja(baj) && baj.recibeDeIds.length === 1) {
+      const existing = engine.ramales.find((x) => x.id === baj.recibeDeIds[0]);
+      if (existing && existing.diametro && r.diametro) {
+        const p1 = diamPulgFromLabel(existing.diametro);
+        const p2 = diamPulgFromLabel(r.diametro);
+        if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
+          alert = {
+            title: 'Diámetros no compatibles',
+            msg: 'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
+          };
+          rejected = true;
+          break;
+        }
+      }
+    }
+    const bajCode = baj.code || baj.id;
+    if (isArrival) {
+      baj.recibeDeIds.push(r.id);
+      r.fin = bajCode;
+      // El bajante sigue al MAYOR de sus llegadores — nunca queda por debajo (misma regla
+      // que bumpConnectedBajantes al editar).
+      if (!esCaja(baj)) {
+        const bumped = bumpBajanteToMaxRamal(engine.ramales, baj.recibeDeIds, baj.dNominal || '');
+        if (bumped) baj.dNominal = bumped;
+      }
+    } else {
+      if (!baj.alimentaIds) baj.alimentaIds = [];
+      baj.alimentaIds.push(r.id);
+      r.ini = bajCode;
+    }
+  }
+  return { rejected, llegaACaja, alert };
 }

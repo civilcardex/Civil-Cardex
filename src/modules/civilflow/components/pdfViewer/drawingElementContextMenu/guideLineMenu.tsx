@@ -2,6 +2,7 @@
 import { NETS, allocNetNumber, uniqRamalId } from '../../../lib/PlanoEngine/PlanoState';
 import { checkRamalAngles, _firstSegmentAngle } from '../../../lib/PlanoEngine/drawingAngles';
 import { calculateRamalLength } from '../../../lib/PlanoEngine/ramalMeasure';
+import { asociarRamalABajantes } from '../../../lib/PlanoEngine/drawingUtils';
 import {
   autoSplitJunctionAndSumFlow,
   flipRamalFlow,
@@ -209,6 +210,19 @@ export function GuideLineMenu() {
             eng.render();
             ctx.setContextMenuState(null);
             return;
+          }
+          // Igual que un ramal terminado a mano (finishRamal): asociar extremos a bajantes
+          // (alimentaIds/recibeDeIds + ini/fin) — sin esto el trazo quedaba suelto: sin
+          // checks en paneles, sin UDs heredadas y sin espejo de salida.
+          {
+            const assoc = asociarRamalABajantes(eng, newRamal, false);
+            if (assoc.alert) eng.triggerAlert(assoc.alert.title, assoc.alert.msg);
+            if (assoc.rejected) {
+              eng.ramales = eng.ramales.filter((x) => x.id !== newRamal.id);
+              eng.render();
+              ctx.setContextMenuState(null);
+              return;
+            }
           }
           eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
           eng.selId = ramId;

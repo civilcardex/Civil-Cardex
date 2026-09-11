@@ -629,7 +629,12 @@ export function RamalEditorSection() {
                     </div>
                   );
                 return netBajs.map((b) => {
-                  const isAssoc = (b.recibeDeIds || []).includes(selElement.id);
+                  // Igual que "Cajas asociadas": el checkbox refleja AMBAS direcciones —
+                  // llegada (recibeDeIds) O salida (alimentaIds) — y el desmarque limpia la
+                  // que esté. Antes solo miraba recibeDeIds y la salida nunca se marcaba.
+                  const isRecibe = (b.recibeDeIds || []).includes(selElement.id);
+                  const isAlimenta = (b.alimentaIds || []).includes(selElement.id);
+                  const isAssoc = isRecibe || isAlimenta;
                   return (
                     <label key={b.id} style={CHECK_ROW_STYLE}>
                       <input
@@ -669,7 +674,26 @@ export function RamalEditorSection() {
                               ? b.recibeDeIds
                               : [...b.recibeDeIds, selElement.id]
                             : b.recibeDeIds.filter((id: string) => id !== selElement.id);
-                          engineRef.current?.updateElementById(b.id, { recibeDeIds: newRecibe });
+                          const newAlimenta = e.target.checked
+                            ? b.alimentaIds || []
+                            : (b.alimentaIds || []).filter((id: string) => id !== selElement.id);
+                          engineRef.current?.updateElementById(b.id, {
+                            recibeDeIds: newRecibe,
+                            alimentaIds: newAlimenta,
+                          });
+                          if (!e.target.checked) {
+                            // Desmarcar una salida también limpia el ini/fin del ramal si apunta
+                            // al código del bajante (igual que "Cajas asociadas").
+                            const code = b.code || b.id;
+                            const ramalUpdates: Record<string, unknown> = {};
+                            if ((selElement as unknown as { fin?: string }).fin === code)
+                              ramalUpdates.fin = '';
+                            if ((selElement as unknown as { ini?: string }).ini === code)
+                              ramalUpdates.ini = '';
+                            if (Object.keys(ramalUpdates).length)
+                              engineRef.current?.updateElementById(selElement.id, ramalUpdates);
+                            if (selElement) setSelElement({ ...selElement, ...ramalUpdates });
+                          }
                           engineRef.current?.render();
                           engineRef.current?._markDirty();
                         }}

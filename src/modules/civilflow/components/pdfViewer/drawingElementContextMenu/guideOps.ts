@@ -15,6 +15,7 @@ import { allocTributaryNumber, rootTributarioLabel } from '../../../lib/PlanoEng
 import { distToPolyline } from '../../../lib/shared/geometry';
 import { snapGuideCrossingToEndpoint } from '../../../lib/PlanoEngine/guideLines';
 import { calculateRamalLength } from '../../../lib/PlanoEngine/ramalMeasure';
+import { asociarRamalABajantes } from '../../../lib/PlanoEngine/drawingUtils';
 
 // Rota pts[1] alrededor de pts[0] (el pivote fijo) en el paso de grados con signo dado,
 // validando el resultado contra las mismas reglas de ángulo que debería obedecer un ramal
@@ -675,6 +676,19 @@ export function buildTribFromGuide(
   // anterior con código viejo. En el punto de cruce se anula todo accesorio de extremo que otro
   // ramal (padre, downstream o el propio tributario) tuviera anclado.
   scrubGuideJunctionAccessories(eng, crossPt);
+  // Igual que un trazo terminado a mano (finishRamal): asociar extremos a bajantes
+  // (alimentaIds/recibeDeIds + ini/fin). Sin esto el tributario quedaba suelto del bajante
+  // aunque naciera sobre él. La guard central puede rechazar (p.ej. tributario sobre
+  // bajante): se retira el trazo con alerta, igual que en dibujo manual.
+  {
+    const assoc = asociarRamalABajantes(eng, newTrib, false);
+    if (assoc.alert) eng.triggerAlert(assoc.alert.title, assoc.alert.msg);
+    if (assoc.rejected) {
+      eng.ramales = eng.ramales.filter((x) => x.id !== newTrib.id);
+      eng.render();
+      return null;
+    }
+  }
   return newTrib;
 }
 

@@ -6,6 +6,7 @@ import {
   autoSplitJunctionAndSumFlow,
   ramalFlowDirectionCheck,
   checkRamalAnglesExcludingConnections,
+  puntoEnCaja,
 } from './PlanoEngineDrawing';
 import {
   updateCrossFloorGhostPositionBySource,
@@ -14,6 +15,7 @@ import {
   buildLdesvioRamal,
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
+import { asociarRamalABajantes } from './drawingUtils';
 
 // Las uniones de san/ll/vent (tee/codo/yee) se crean solas vía calcSanitaryAccessories +
 // renderJunctions — solo AF/AC/gas necesitan que el usuario elija el tipo de tee.
@@ -446,7 +448,11 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const primaryOk = ram ? checkRamalAnglesExcludingConnections(engine, ram) : true;
     const linkedOk = linkedRamales.every((r) => checkRamalAnglesExcludingConnections(engine, r));
 
-    if (ram && (!primaryOk || !linkedOk)) {
+    // Entrada a caja (orig. usuario): el ángulo de llegada lo dicta la caja, no la
+    // cuadrícula — si el extremo arrastrado cayó dentro de una caja de la red, NO se valida
+    // por ángulo (sin alerta ni rollback); el flujo y el split sí se validan abajo.
+    const droppedInCaja = ram ? puntoEnCaja(engine, ram.pts[ptIdx], ram.net) : false;
+    if (ram && (!primaryOk || !linkedOk) && !droppedInCaja) {
       // Un arrastre de extremo que se PEGÓ sobre un bajante (handleDragMove fija el punto
       // exactamente sobre el bajante) no debe revertirse — perder la conexión que el usuario
       // acaba de hacer es peor que perder el punto exacto del cursor. Se rota el ramal alrededor
@@ -539,8 +545,48 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           engine._markDirty();
           engine.render();
         } else {
-          engine._dragLinkedBackupPts = null;
-          if (ram) checkAccesorioTrigger(engine, ram.id);
+          // Soltar un extremo SOBRE un bajante asocia igual que dibujarlo ahí
+          // (recibeDeIds/alimentaIds + ini/fin) — antes el trazo quedaba visualmente
+          // conectado pero suelto (sin checks en paneles, sin UDs heredadas, sin espejo
+          // de salida). La guard central puede rechazar (tope/red): se revierte el
+          // arrastre como los demás casos. Un extremo que YA estaba asociado (suelto
+          // dentro de la caja del símbolo) no se duplica: asociar salta los ya escritos.
+          const assocBajs = new Map(
+            engine.bajantes.map((b) => [
+              b.id,
+              {
+                recibe: [...(b.recibeDeIds || [])],
+                alimenta: [...(b.alimentaIds || [])],
+                dNominal: b.dNominal || '',
+              },
+            ]),
+          );
+          const assocR = ram ? { ini: ram.ini, fin: ram.fin, diametro: ram.diametro } : null;
+          const assoc = ram
+            ? asociarRamalABajantes(engine, ram, false)
+            : { rejected: false as const, alert: undefined };
+          if (assoc.alert) engine.triggerAlert(assoc.alert.title, assoc.alert.msg);
+          if (assoc.rejected && ram && assocR) {
+            for (const b of engine.bajantes) {
+              const s = assocBajs.get(b.id);
+              if (!s) continue;
+              b.recibeDeIds = s.recibe;
+              b.alimentaIds = s.alimenta;
+              b.dNominal = s.dNominal;
+            }
+            ram.ini = assocR.ini;
+            ram.fin = assocR.fin;
+            ram.diametro = assocR.diametro;
+            if (engine._dragBackupPts) {
+              ram.pts = engine._dragBackupPts;
+              engine._dragBackupPts = null;
+            }
+            engine._markDirty();
+            engine.render();
+          } else {
+            engine._dragLinkedBackupPts = null;
+            if (ram) checkAccesorioTrigger(engine, ram.id);
+          }
         }
       }
     }
@@ -617,9 +663,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           engine._markDirty();
           engine.render();
         }
-      } else {
-        checkAccesorioTrigger(engine, ram.id);
-      }
+      } else checkAccesorioTrigger(engine, ram.id);
     }
   }
 }
