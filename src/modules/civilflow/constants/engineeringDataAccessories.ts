@@ -79,7 +79,7 @@ export const ACCESORIOS_HIDRO = [
   {
     id: 'teeTapon',
     emoji: '🔧',
-    nombre: 'Tee con tapón',
+    nombre: 'Tapón de limpieza',
     icono: '/iconos_civilflow/accesorios/teeDirecto.webp',
     cat: 'Tees',
   },
@@ -93,7 +93,7 @@ export const ACCESORIOS_HIDRO = [
   {
     id: 'tapon',
     emoji: '🔘',
-    nombre: 'Tapón',
+    nombre: 'Tapón soldado',
     icono: '/iconos_civilflow/accesorios/otros.webp',
     cat: 'Otros',
   },
@@ -267,6 +267,13 @@ export const GAS_ACCESORIOS = [
     emoji: '🔧',
     nombre: 'Te ramal',
     icono: '/iconos_civilflow/accesorios/te_ramal.webp',
+    cat: 'Tees',
+  },
+  {
+    id: 'teeTapon',
+    emoji: '🔧',
+    nombre: 'Tapón de limpieza',
+    icono: '/iconos_civilflow/accesorios/te_en_linea.webp',
     cat: 'Tees',
   },
   {

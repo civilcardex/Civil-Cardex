@@ -549,6 +549,13 @@ export function drawExtremeAccessorySymbol(
     ctx.moveTo(a1x, a1y);
     ctx.lineTo(a2x, a2y);
     ctx.stroke();
+    // Raya flotante encima del símbolo, paralela a la barra y del MISMO ancho que ella
+    // (orig. usuario), despegada hacia afuera a lo largo del eje del tallo.
+    const dashOff = rad * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(a1x + outX * dashOff, a1y + outY * dashOff);
+    ctx.lineTo(a2x + outX * dashOff, a2y + outY * dashOff);
+    ctx.stroke();
   } else if (accType === 'codoReventilado') {
     // Proporcionado a `rad` (tamaño real del accesorio) en vez de una constante fija de mm de
     // papel, para que escale junto con el fix de ajuste a pared como todo otro símbolo de
