@@ -312,3 +312,91 @@ describe('validateBeforeClose — validación global multi-piso', () => {
     expect(alertas).toHaveLength(0);
   });
 });
+
+describe('validateBeforeClose — receptores con UD autosumada por flujo', () => {
+  beforeEach(() => {
+    resetStorage();
+    alertas.length = 0;
+  });
+
+  it('cadena transitiva T(con aparato)→RS1→RS2: ni RS1 ni RS2 disparan la alerta', () => {
+    const t1 = R({
+      id: 'T1RS1',
+      label: 'T1RS1',
+      tipo: 'tributario',
+      aparatoFin: 'lav',
+      pts: [
+        [0, 0],
+        [20, 0],
+      ],
+    });
+    const rs1 = R({
+      id: 'RS1',
+      label: 'RS1',
+      pts: [
+        [20, 0],
+        [60, 0],
+      ],
+    });
+    const rs2 = R({
+      id: 'RS2',
+      label: 'RS2',
+      pts: [
+        [60, 0],
+        [100, 0],
+      ],
+    });
+    const eng = makeEngine([t1, rs1, rs2]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('alimentador dibujado al revés (descarga por pts[0]) también cubre al receptor', () => {
+    // RS1 con carga propia (uc) pero dibujado de derecha a izquierda: su descarga cae en
+    // pts[0]=[40,0]; el chequeo direccional viejo miraba el último punto y marcaba a RS2.
+    const rs1 = R({
+      id: 'RS1',
+      label: 'RS1',
+      uc: 5,
+      pts: [
+        [40, 0],
+        [0, 0],
+      ],
+    });
+    const rs2 = R({
+      id: 'RS2',
+      label: 'RS2',
+      pts: [
+        [60, 0],
+        [40, 0],
+      ],
+    });
+    const eng = makeEngine([rs1, rs2]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('un tramo verdaderamente huérfano (sin carga ni alimentador) sigue disparando', () => {
+    const rs1 = R({
+      id: 'RS1',
+      label: 'RS1',
+      uc: 5,
+      pts: [
+        [0, 0],
+        [20, 0],
+      ],
+    });
+    const islas = R({
+      id: 'RS9',
+      label: 'RS9',
+      pts: [
+        [500, 500],
+        [540, 500],
+      ],
+    });
+    const eng = makeEngine([rs1, islas]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(false);
+    expect(alertas[0]?.title).toBe('UC/UD pendientes');
+    expect(alertas[0]?.msg).toContain('RS9');
+  });
+});

@@ -167,18 +167,39 @@ export function validateBeforeClose(
   }
   // Alineado con las tablas: un tramo sin carga PROPIA pero que RECIBE la descarga de otro
   // tramo CON UD no produce fila vacía (su UD llega por el grafo) — no se avisa. Sin esto,
-  // receptores con UD visible agregada disparaban el aviso (orig. usuario).
-  const vivos = sinUc.filter(({ r }) => {
-    const rPts = r.pts;
-    if (!rPts || rPts.length < 2) return true;
-    return !conUd.some(({ r: o }) => {
-      if (o.net !== r.net || o.id === r.id) return false;
-      const oPts = o.pts;
-      if (!oPts || oPts.length < 2) return false;
-      const dest = o._tribReversed ? oPts[0] : oPts[oPts.length - 1];
-      return distToPolyline(dest, rPts) < 2.0;
-    });
-  });
+  // receptores con UD visible agregada disparaban el aviso (orig. usuario). Dos refinamientos
+  // del mismo reporte ("tramos con UD autosumada por flujo salían en la alerta"):
+  // (1) la recepción se detecta por CUALQUIER extremo del alimentador — un ramal dibujado
+  //     "al revés" descarga por pts[0] y el chequeo direccional (dest = último punto) nunca
+  //     lo veía;
+  // (2) cierre TRANSITIVO hasta punto fijo — en la cadena T(con aparatos)→RS1→RS2, RS1
+  //     recibe de T y RS2 recibe de RS1; el pase único dejaba a RS2 marcado.
+  const receptos = [...sinUc];
+  const cargados = [...conUd];
+  const extremoToca = (o: RevisarRamalInput, rPts: number[][]): boolean => {
+    const oPts = o.pts;
+    if (!oPts || oPts.length < 2) return false;
+    return distToPolyline(oPts[0], rPts) < 2.0 || distToPolyline(oPts[oPts.length - 1], rPts) < 2.0;
+  };
+  let propagado = true;
+  while (propagado) {
+    propagado = false;
+    for (let i = receptos.length - 1; i >= 0; i--) {
+      const { r, planFor } = receptos[i];
+      const rPts = r.pts;
+      if (!rPts || rPts.length < 2) continue;
+      const alimentado = cargados.some(
+        ({ r: o }) => o.net === r.net && o.id !== r.id && extremoToca(o, rPts),
+      );
+      if (alimentado) {
+        // El receptor queda cubierto y a su vez alimenta a los suyos en la próxima pasada.
+        cargados.push({ r, planFor });
+        receptos.splice(i, 1);
+        propagado = true;
+      }
+    }
+  }
+  const vivos = receptos;
   if (vivos.length > 0) {
     // Lista COMPLETA — recortarla a 8 ocultaba elementos pendientes (reporte: "la
     // alerta no muestra todos los elementos con UC/UD pendientes").
