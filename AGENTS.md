@@ -842,6 +842,42 @@ tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **560/560** (100 fil
 ### Pendiente manual (recarga dura)
 T1RS8 → convierte sin alerta; T5RS8 → alerta; Destino legible.
 
+## Session Summary — 2026-09-11 (ronda 2: bomba UD×valor, espejo de salidas, sin ángulo a caja)
+
+### 1. Columna UD sótano multiplicada (4→10, FIX real)
+- **Causa**: `equiposBombaDesdeTrazos().uds` sumaba CONTEOS (1+1+1+1=4); el panel multiplica por valor UD (2+2+4+2=10). Nuevo `udsDeMapa` (tabla `APARATOS_DEF` + override de customs desde `APS_STORAGE_KEY`, misma que el panel) usado en `equipos` y pasado desde `BombaARDesign`. `ucAcum` sigue en conteos (ninguna tabla lo lee como UD).
+- Tests `bombaUd` actualizados a ids reales y UD ponderada.
+
+### 2. Salida del bajante asociado = UDs de la bomba (FIX)
+- **Causa**: el espejo de salidas usaba `agregadoBajante` (árbol), que puede no contener las ramales heredadas → RS7 en 0 con BAN2 en 10.
+- **Fix**: si el dueño tiene `bombaEnId`, el espejo usa `mapUdBombaDesdeTrazos` (misma lectura que el panel del bajante; con pool vivo si coincide el piso). Vale al asociar (vía efecto) y en vivo.
+
+### 3. Sin alerta de ángulo al entrar a caja (FIX)
+- Nuevo `puntoEnCaja` (`junctionAutoSplit.ts`): test de caja 100×100 a escala vía `cmToPlanePx` (sin depender de `_circ`, con fallback para mocks viejos). `touchesAny` lo usa primero (reemplaza el tol por `_circ`) y `lineTool` recorta el tramo de llegada comprometido. Cubre dibujo + arrastres (todos funelan por `checkRamalAnglesExcludingConnections`).
+- Tests `cajaAngleExempt` (3): punto (centro/borde/esquina/fuera/otra red) + kink exento con llegada vs alerta sin caja.
+- Incidente: `cmToPlanePx` directo tumbó 30 tests viejos (mocks sin el método) → fallback + suite de nuevo en verde.
+
+### Gates
+tsc 0 · lint 0 errores 0 warnings · vitest **595/595** (100 files) · build ✓ · graphify ✓.
+
+### Pendiente manual (recarga dura)
+Columna UD sótano = 10 al instante y en vivo; RS7 con las UDs de BAN2; conectar entradas a caja sin alerta ni rollback.
+
+## Session Summary — 2026-09-11 (bomba: UDs bien tomadas + columna UD sótano en vivo)
+
+### Causa del 4 vs 10
+- El panel (10) lee el espejo vivo (árbol geométrico del motor); la página/tablas (4) leían `mapUdBombaDesdeTrazos` solo de trazos en disco: con `recibeDeIds` stale o llegada en cadena sin registro, el cierre parcial solo veía la clave propia (`{san:1}` = 4). Divergencia disco-vs-vivo.
+- Además la página Bomba no se re-suscribía a storage/sync: si los datos llegaban tras el montaje (prefetch, visor, asociar), la columna se quedaba en el valor viejo.
+
+### Fix
+- `mapUdBombaDesdeTrazos` delega en `collectSourceAgg` (clave propia + recibe + tributarios + mergesFrom + cadenas geométricas + semilla; espejos/LD/otras redes fuera; espejo solo como última instancia) + pool VIVO cuando el piso de la bomba es el cargado (en `propagarHerenciaBomba`, espejo del panel y display del bajante).
+- `BombaARDesign`: suscripción a `storage`/`aparatos-clear`/`civilflow_*_sync_changed` → la fila "UD acumuladas en sótano" (`udTotAuto` = Σ equipos, misma fuente) se actualiza en vivo.
+- Tests: `bombaUd` +3 (cadena extremo-extremo, mergesFrom, pool vivo con disco stale) +1 (equipos relee storage); resto intacto.
+- Gates: tsc 0 · lint 0 errores · vitest **592/592** · build ✓ · graphify ✓.
+
+### Pendiente manual (recarga dura)
+Asociar bomba → panel del bajante y columna UD sótano con el total al instante y en vivo; si algún caso sigue bajo, revisar en DevTools `civilflow_trazos_<piso>`: `recibeDeIds` de la caja, `x/y` de caja vs `pts` de ramales y claves `san_*_<piso>`.
+
 ## Session Summary — 2026-09-10 (7 ítems: grosor, validación UC/UD, ruta congelada, caja AN, diámetros, GC de UDs, menú)
 
 ### 1. Deslizador de grosor de líneas (persistido en BD)
@@ -1006,3 +1042,8 @@ Bomba: crear desde caja → BOMAN-S1 punteado a la derecha con UDs de la caja; c
 - `mapUdBombaDesdeTrazos` gana fallback a la clave espejo de la bomba cuando los tramos no tienen nada en disco.
 - FixturesPanel (espejo de bomba): aggBomba = mapa desde trazos con fallback al agregado vivo — el espejo y BombaARDesign comparten FUENTE ÚNICA.
 - Tests: `bombaUd.test.ts` (2 — mapa caja+tramos+tribs y fallback espejo).
+
+### Ronda 15 (misma sesión): ramal de salida de bajante-con-bomba toma las UDs
+- **Causa del "RS7 en 0 UD"**: `propagarHerenciaBomba` escribía el libro + ramales del bajante pero NO su CLAVE PROPIA — y el espejo de salidas copia `agregadoBajante(BAN2)`, que parte de la clave propia → copiaba vacío.
+- **Fix**: en `propagarHerenciaBomba` (bombaAssociation.ts) el bajante ligado a bomba TAMBIÉN espeja `aggBomba` en su clave propia (`disk[net_bajId_plan]`) — el espejo de salidas ahora copia el agregado correcto y el ramal de salida toma las UDs del bajante (ej. 2 UD).
+- Nota: la sesión en paralelo refactorizó el bloque a `propagarHerenciaBomba` con `collectSourceAgg` (cierre transitivo completo + blindaje anti-bucle de espejos); el fix se aplicó sobre esa versión.
