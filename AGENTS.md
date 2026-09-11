@@ -746,3 +746,263 @@ tsc 0 · lint 0 errores (1 warning pre-existente `exhaustive-deps` en FixturesPa
 
 ### Pendiente de verificación manual (recarga dura)
 Abrir el piso con LDs duplicados → recargar → labels únicos y consecutivos (RS1, RS2, RS3...) sin tocar conteos.
+
+## Session Summary — 2026-09-10 (reset de UDs entre pisos al renumerar)
+
+### Causa
+- `_renumberRamales` (`networkRenumber.ts`) operaba claves `aparatos/hidro` SIN scoping por plano, y se dispara con acciones rutinarias (borrar trazo, borrador, crear stub): (1) `cleanOrphans` borraba claves `san_RS…` de OTROS pisos con ids no presentes en el cargado; (2) `migrateKeys` renombraba/movía claves ajenas (`san_RS4_1`, `san_T1RS4_1` — los labels de tributario se repiten por piso). Mismo defecto en `PdfViewer.cleanStore` al borrar. Sobrevivían por coincidencia ids repetidos, tributarios opacos y claves de bajante/LD — por eso "todo vacío menos el inodoro". Confirmado por respuestas: trabajó en otro piso la víspera + vacío real en panel y tablas.
+
+### Fix
+- `keyPlanSuffixOf`/`isPlanKeyFor` (nuevos, exportados): solo se tocan claves con sufijo `_<planoCargado>` (o sin sufijo numérico, legado). Aplicado en `cleanOrphans`, ambas ramas de `migrateKeys` y `PdfViewer.cleanStore`. `renameRamalId`/`deleteRemerge`/copy/LD ya iban con sufijo — sin cambios.
+
+### Tests
+- `renumberCrossPlan.test.ts` (3): helper + cleanOrphans no borra P1 + migrate no mueve/fusiona P1 (ramal, tributario por label e hidro). Verificado que los 3 FALLAN sin el fix.
+- Gates: tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **541/541** (97 files) · build ✓ · graphify ✓.
+
+### Recuperación + pendiente manual
+- Las UDs también viven en BD (`planos_ramales.fixtures`): al abrir cada piso, `loadTrazosFromDB` rellena claves ausentes — no editar/borrar en ningún piso hasta abrirlos todos y verificar (el autosave puede pisar la BD con `{}`).
+- Verificar: UDs de vuelta en pisos afectados; borrar en P2 no toca P1.
+
+## Session Summary — 2026-09-10 (ronda 2: 6 ítems usuario — conversión, doble-clic, diámetros, copia, caja, menú)
+
+### 1. Convertir tributario en ramal bloqueado por sus propios tributarios (FIX)
+- **Causa**: el chequeo `o.padre !== fresh.id` nunca reconoce hijos (en trib-trib el padre apunta a la RAÍZ, y los segmentos hermanos también) → cualquier línea con tributarios o partida siempre alertaba.
+- **Fix**: `tribsBlockingRamalConversion` (`ramalMenuHelpers.ts`, puro y testeado) — grupo "misma línea" por BFS de toques con igual `rootTributarioLabel` (nunca bloquea); padre trib fuera del grupo bloquea; ajenos solo si fresh les ENTREGA (san/ll: su head sobre fresh; vent/af/ac/gas: su tail). `convertToRamal` lo usa; solo convierte el clicado.
+
+### 2. Aparato pedía dos clics (FIX, tres no-ops silenciosos)
+- Menú: conteos gated por `planosCtx?.plans` (prop que tarda) → símbolo sin conteo. Nuevos `setSingleAparatoCount`/`decrementFirstAparato` + `bumpAparatoCount` directo por `eng._loadedPlanId`, sin gates (también `ExtremeAccessoryEditor` vía `effPlans` fallback).
+- Ambos-extremos-ocupados ahora alerta en menú y panel (antes silencio = "clic muerto").
+- Panel: eliminado el re-guardado ciego (`saveAll(counts)` ante cualquier cambio pisaba escrituras externas); `incAcc/decAcc/incAccGas/decAccGas` y purga gas ahora write-through.
+
+### 3. Trazos nacían con 4"/2" al conectar (FIX direccional)
+- `ramalDischargeEnd` + `ramalContinuesPast` exportados (`drawingUtils.ts`); `finishRamal` creación y extensión solo adoptan de ALIMENTADORES y solo empujan a RECEPTORES (nunca de vuelta). Split/propagación aguas abajo e inodoro→4" intactos. "Diámetros pendientes" reaparece hasta asignar (pedido).
+
+### 4. Copiar elementos solo posición (FIX)
+- `copyDrawingFromPlan.ts`: nuevo `stripToPosition` (geometría + estructura remapeada; `diametro/material/accesorios/aparatos/fixtures/hydroAcc/gasAcc/caudal/mergesFrom` y `dNominal/ucAcum/ucExtra/area/hVert/capacidad…` fuera); eliminado el `srcSnapshot` y sus escrituras a los 3 stores.
+
+### 5. Caja 70/100 cuadrada a escala (FIX)
+- 2D (`renderBajantes.ts`): cuadrados `realMmToCanvasPx(1000)/(700)`; hit `_circ` = media diagonal. Iso (`useIsometriaRender.ts`): `drawIsoRect` 1.0 y 0.7. Comentarios apaisado actualizados.
+
+### 6. Menú bajante más ancho (FIX)
+- `MENU_PANEL_BAJANTE_STYLE` (min 210 / max 360) solo en rama `isBajanteTipo` (`index.tsx:458`).
+
+### Tests
+- `tribConvertWithChildren` (4), `ucMoveAndBushing` +4 (helpers directos), `finishRamalDiamDireccion` (3, fallan 2 sin fix), `finishRamalHerencia` actualizado a regla direccional, `copySoloPosicion` (1), `cajaCanCall` +1 (1000/700 + hit).
+- Gates: tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **554/554** (100 files) · build ✓ · graphify ✓.
+
+### Pendiente manual (recarga dura)
+Conversión con hijos, un clic de aparato, diámetros al conectar, copiar entre pisos, caja a escala, ancho del menú.
+
+## Session Summary — 2026-09-10 (ronda 3: conversión estricta, menú 240/400, guard con continuesPast)
+
+### 1. Conversión tributario→ramal ESTRICTA (decisión usuario: bloquear siempre)
+- `tribsBlockingRamalConversion`: cualquier tributario fuera de la misma línea que toque (extremos o cuerpo, cualquier dirección) bloquea. Solo exentos los segmentos hermanos (misma raíz + toques). Quitado lo direccional + `tribHead/tribTail`.
+- Test +1 (lateral de otra raíz drenando igual bloquea).
+
+### 2. Menú bajante más ancho
+- `MENU_PANEL_BAJANTE_STYLE` 240/400 (estaba 210/360 — el "Sin destino" se cortaba).
+
+### 3. "Llega" = alimenta → vacío Y fijable menor (aclaración usuario)
+- Llegada ya quedaba vacía (ronda 2); faltaba que el guard dejara fijar menor: `sanReceptorDiametroPermitido` ahora exige `ramalContinuesPast(r, oDest)` (igual que `geometricFeedersOf`) — el tronco que sigue de largo por la unión no alimenta a la rama que entrega. Receptor que continúa sigue restringido.
+- Tests: `sanitaryDiamCompat` +1 (entrega fija 2" bajo tronco 4"); previos intactos.
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **556/556** (100 files) · build ✓ · graphify ✓.
+
+### Pendiente manual (recarga dura)
+Conversión con rama lateral (alerta), menú Destino legible, llegada vacía + fijar 2" bajo red 4".
+
+## Session Summary — 2026-09-10 (ronda 4: conversión receptor vs llegada + menú ancho)
+
+### 1. Conversión: bloquea solo si el trazo LLEGA al tributario (fix real)
+- El grupo "misma raíz + toque" tragaba ramas laterales (T5RS8 llegando a T1RS8 pasaba en silencio). Regla final: el grupo es SOLO la línea física (linaje `mergesFrom[0]` + unión limpia extremo-con-extremo sin tercer trazo); fuera de él, bloquea únicamente si un EXTREMO PROPIO cae sobre el tributario (con excepción de tee compartido con tronco). Las llegadas hacia el trazo (caso T1RS8 receptor) no bloquean.
+- Tests: lateral al cuerpo convierte, tee compartido convierte, llegada a T1RS8 bloquea con alerta.
+
+### 2. Menú bajante más ancho
+- `MENU_PANEL_BAJANTE_STYLE` 240/400 (el 210/360 seguía cortando "Sin destino").
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **559/559** (100 files) · build ✓ · graphify ✓.
+
+### Pendiente manual (recarga dura)
+T5RS8 → alerta; T1RS8 (solo llegadas) → convierte; Destino legible.
+
+## Session Summary — 2026-09-10 (ronda 5: cabeza manda + menú 280)
+
+### 1. Conversión: solo la CABEZA bloquea (fix al "sigue saliendo la alerta")
+- El chequeo simétrico leía los extremos coincidentes al revés: una llegada justo al extremo de T1 se contaba como si T1 llegara. Regla final: bloquea únicamente la cabeza de flujo propia sobre el tributario ajeno (T1 entrega); con la cola, T1 recibe y convierte. Tronco compartido exime como antes; grupo físico intacto.
+- Tests: receptor con llegadas a cola+cuerpo convierte (caso T1RS8 espejo); resto intacto.
+
+### 2. Menú bajante MÁS ancho
+- `MENU_PANEL_BAJANTE_STYLE` 280/440.
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **560/560** (100 files) · build ✓ · graphify ✓.
+
+### Pendiente manual (recarga dura)
+T1RS8 → convierte sin alerta; T5RS8 → alerta; Destino legible.
+
+## Session Summary — 2026-09-10 (7 ítems: grosor, validación UC/UD, ruta congelada, caja AN, diámetros, GC de UDs, menú)
+
+### 1. Deslizador de grosor de líneas (persistido en BD)
+- Fila nueva bajo la barra de redes activas en `PdfViewer.tsx`: range 0.5–3.0 step 0.1 + chip `X.X×`. `engine.lineWidthScale` (nuevo campo en `PlanoState.ts`, init 1 en ctor) multiplicado en ~64 asignaciones `lineWidth` de 12 renderers (excluidos grilla, símbolos finos de accesorios y flechas de dirección del glifo).
+- Persistencia: `PlanoWorkData.lineWidth` → `serializeWork`/`applyWorkData`/`loadWork` → header del RPC (`storageService.ts`: `lineWidth: d.lineWidth ?? 1`) → **migración `20260910000000_cf_planos_line_width.sql`** (`cf_planos.line_width numeric not null default 1` + `save_plano_data` recreado con la columna; `get_plano_data` no cambia). PENDIENTE: aplicar la migración (supabase db push / dashboard).
+
+### 2. Validación "UC/UD pendientes" — falsos positivos (fix)
+- `closeValidation.ts` filtro de receptores: (1) recepción detectada por CUALQUIER extremo del alimentador (un ramal dibujado al revés descarga por pts[0] y el chequeo direccional no lo veía); (2) cierre TRANSITIVO hasta punto fijo (cadena T→RS1→RS2 dejaba RS2 marcado). Tests: transitive + reversed-feeder + huérfano-sigue-alertando.
+
+### 3. Cambiar de ruta congelaba la pantalla (fix)
+- `PdfViewerEngineInit.ts`: `eng.setTool`/`eng.destroy()` estaban FUERA del try del cleanup — una excepción en el desmonte crasheaba el árbol y dejaba el visor pintado tras navegar. Ahora todo el desmonte va en try/catch con `devError`.
+
+### 4. Caja AN (aguas negras)
+- Renombre: toolbar `'Caja AN'` (y `'Caja LL'`), leyenda `'Cajas AN'`/`'Cajas LL'`.
+- `puedeConectarRamalABajante(baj, ramal, direccion: 'recibe'|'alimenta' = 'recibe')` — caja: ENTRADAS ilimitadas de ramales Y tributarios; SALIDA máximo UNA y SOLO ramal (tributario que sale → alerta). Bajante: reglas intactas. Call sites con dirección: finishRamal (isArrival), handleDragMove (dStart=alimenta, dEnd=recibe); los paneles UI escriben llegadas (default). Y-doble check no aplica a cajas. `esCaja` exportada.
+- UDs: la propagación existente de FixturesPanel (agregado → ramal de salida) ya cubre cajas sin filtro de tipo; `esBajante` de buildTramos incluye caja_san/caja_ll.
+- Panel derecho: `isCountableTarget` acepta caja_san/caja_ll; `isBajanteSan` (agregado) y guards `inc`/`dec` extendidos → sección Aparatos de SOLO LECTURA con las UDs de entrada.
+
+### 5. Diámetros ramal↔bajante según cómo se dibuja
+- `finishRamal` bloque de asociación: ramal que SALE del bajante adopta su dNominal (o el bajante toma el del ramal si está vacío); ramal que LLEGA conserva su diámetro y sube el bajante al mayor (`bumpBajanteToMaxRamal`); llegada sin diámetro explícito adopta el del bajante (la Y doble converge sin alerta falsa). Mismo criterio en el arrastre (`handleDragMove`). `handleBajanteDown` adopta el diámetro de un ramal cuyo cuerpo pase bajo el punto (además de los extremos). Tests en `finishRamalDiamDireccion` (7).
+
+### 6. UDs a 0 al recargar (piso 2) — guard del GC
+- Causa: `performGarbageCollection` (drawingSync) lista claves válidas desde las cachés locales; con la caché del piso cargado vieja (el loader la pisa con la copia de BD), las claves de aparatos/hidro de ramales recientes parecían huérfanas y se BORRABAN. El inodoro sobrevivía por vivir como campo `aparatoInicio` en los trazos.
+- Fix: `setSyncLoadedLiveIds(planId, ids)` (ids/códigos vivos del engine del piso cargado, seteado en `syncDrawings` de PdfViewer y `doSave` de usePdfAutoSave) — una clave del piso cargado con id vivo en el engine nunca se borra. Tests `syncGcGuard.test.ts`.
+
+### 7. Menú bajante más ancho
+- `MENU_PANEL_BAJANTE_STYLE` 280/480 (antes 240/400) + select "Destino" a width 100% — "Sin destino" entra completo.
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **572/572** (101 files) · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura, datos reales)
+- **Aplicar la migración de line_width a la BD** antes de probar el slider en producción.
+- Slider persiste tras recargar y entre pisos; grosor se nota en tuberías/bajantes/cotas.
+- Cierre del visor sin falsos "UC/UD pendientes" en tramos con UD autosumada.
+- Navegar visor → Inicio sin recarga.
+- Caja AN: N entradas (ramales+tributarios), 1 salida ramal, UDs de salida = suma de entradas, panel read-only.
+- Diámetros: ramal que nace del bajante toma su diámetro; llegada sube el bajante; bajante sobre cuerpo de ramal lo adopta.
+- Recargar en piso 2 con UDs asignadas → nada se resetea.
+
+## Session Summary — 2026-09-10 (ronda 2: caja AN sin duplicar UDs + sección "Cajas asociadas")
+
+### Caja AN — UDs del ramal de salida duplicadas (FIX)
+- **Causa**: `exitsDeBajante` (FixturesPanel) detectaba la salida SOLO por geometría cola/cabeza; un ramal de salida con `_tribReversed` (o sin extremo lejano claro) dejaba de contar como salida → `agregadoBajante` de la caja caminaba su subárbol INCLUYENDO el ramal de salida, cuya clave ya contenía el agregado fusionado de la pasada anterior → el merge re-crecía en cada cambio de conteos (crecimiento sin tope).
+- **Fix**: lógica extraída a helper puro `idsSalidasDeBajante(baj, ramales, zoom)` (`fixturesStorage.ts`) con detección por REFERENCIA explícita primero (`alimentaIds` incluye al ramal O `r.ini === código del elemento`) + geometría cola/cabeza como respaldo. `exitsDeBajante` del panel ahora lo usa; misma función sirve a `agregadoBajante` (excluye salidas del walk), `esEspejoBajante` y al efecto de propagación. Tests: `salidasCaja.test.ts` (4).
+
+### Menú contextual de ramales — sección "Cajas asociadas" (nueva)
+- `ramalMenu.tsx`: los bajantes de la sección "Bajantes asociados" ahora EXCLUYEN cajas (`esCaja`) y debajo se agregó la sección **"Cajas asociadas"**: lista de cajas de la misma red con checkboxes; asociación lógica = la que crea finishRamal (llegada): `recibeDeIds` de la caja + `fin` del ramal apuntando al código de la caja (se limpia al desasociar). La guard `puedeConectarRamalABajante(caja, ramal, 'recibe')` valida red/dirección (entradas ilimitadas, salida única ya protegida). "Sin cajas" cuando no hay.
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **576/576** (102 files) · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura)
+Caja con entrada (inodoro) + salida: la clave del ramal de salida queda estable (sin crecer al recalcular); checkbox "Cajas asociadas" asocia/desasocia con fin del ramal; UDs de la salida = suma de entradas, sin duplicación.
+
+### Ronda 3 (misma sesión): el ramal de SALIDA también aparece asociado en "Cajas asociadas"
+- El checkbox de la sección refleja la relación en CUALQUIER dirección: llegada (recibeDeIds + `fin` = código de la caja) o salida (`alimentaIds` + `ini` = código). Marcar = asociar como llegada; desmarcar = limpia la relación que tenga (recibeDeIds/alimentaIds de la caja + fin/ini del ramal, solo si apuntan a esa caja).
+
+### Ronda 4 (misma sesión): "Cajas asociadas" también en el panel derecho
+- `tramoEditor/variants.tsx`: "Bajantes asociados" excluye cajas y debajo se agregó la sección **"Cajas asociadas"** con la MISMA semántica del menú contextual: checkbox refleja llegada (recibeDeIds + fin) o salida (alimentaIds + ini); marcar = asociar como llegada (guard `puedeConectarRamalABajante(..., 'recibe')`); desmarcar = limpia la relación que esté + fin/ini del ramal solo si apuntan a esa caja. "Sin cajas en esta red" cuando no hay.
+
+## Session Summary — 2026-09-10 (ronda 5: dup UDs caja (raíz profunda), alerta tributario→caja, toolbar)
+
+### 1. Caja AN — duplicación de UDs del ramal de salida (causa raíz profunda, FIX)
+- **Causa real**: la detección de salidas usaba `_circ.r` como tolerancia — en CAJAS el `_circ` es la SEMIDIAGONAL del cuadro de 100cm (~0.7m, 54× un bajante) → un ramal de salida corto quedaba con AMBOS extremos dentro de la tolerancia y no se detectaba como salida → `agregadoBajante` de la caja caminaba su subárbol (la conectividad incluso adopta la salida como hija de su propia caja vía el reintento por el otro extremo) y la clave de la salida, que ya contenía el agregado, crecía en cada pasada.
+- **Fixes**: (a) `idsSalidasDeBajante` resuelve el caso ambiguo (ambos extremos dentro de la tolerancia) por DIRECCIÓN DE FLUJO — salida si el extremo de descarga está lejos del elemento; (b) `walkKey` de `agregadoBajante` excluye por REFERENCIA incondicional (alimentaIds / ini = código) además del set geométrico; (c) el efecto de propagación de salidas pasa de FUSIÓN a REEMPLAZO — las salidas son espejos de solo lectura, y el reemplazo SANA las claves ya infladas en el próximo pase. Tests `salidasCaja.test.ts` (5).
+
+### 2. Alerta espuria al conectar tributario a caja (FIX)
+- **Causa**: `finishRamal` asociaba el PRIMER bajante dentro de `rimTol`; con la semidiagonal gigante de la caja ese radio alcanzaba al montante/vecino, que rechaza tributarios ("Solo los ramales pueden conectarse a un bajante") y el trazo se eliminaba aunque el usuario apuntó a la caja.
+- **Fix**: se reúnen TODOS los candidatos y se acepta el PRIMERO cuya guard `puedeConectarRamalABajante` acepte el trazo (alerta solo si NINGUNO acepta); tolerancia de asociación para cajas = semilado (`_circ.r / Math.SQRT2`).
+
+### 3. Toolbar
+- Subtextos fuera de Deshacer/Rehacer/Limpiar/Borrar líneas guía; labels: "Deshacer (Ctrl + Z)", "Rehacer (Ctrl + Y)", "Borrar trazos de red" (Limpiar). Variantes compactas consistentes. Confirmaciones de limpiar/guías ahora dicen "Puedes revertirlo con Ctrl + Z" (quitado "no se puede deshacer").
+- **Ramal principal / Tributario al panel izquierdo**: TOOLS con `line-ramal` (R) y `line-trib` (T) — comparten tool `line`; click fija tool+tipoTramo (nuevas props `tipoTramo`/`onTipoTramoSelect`); resaltado por par tool+tipo. Eliminada la sección "¿Qué voy a dibujar?" del sidebar derecho (TipoTramoSelector.tsx borrado). Funcionamiento idéntico (syncEngine + sessionStorage).
+- **Atajos**: R = ramal principal, T = tributario, C = Texto, H = Grilla (letra # → H). Contador/Canal pierden atajo (solo botón). `useKeyboardShortcuts` maneja r/t/c/h/g + Suprimir; el engine retira 't'→texto, 'c'→contador/canal y 'h'→calentador de su keydown para evitar doble manejo.
+
+### Gates
+tsc 0 · lint 0 errores (1 warning pre-existente) · vitest **577/577** (102 files) · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura)
+Salida corta de caja: UDs estables y sanadas a la suma correcta · tributario llegando a caja sin alerta ni borrado · toolbar: sin subtextos, R/T/C/H operativos, ramal/tributario desde el panel izquierdo, contador/canal/calentador por botón.
+
+### Ronda 6 (misma sesión): glifo tapón con raya flotante + nombres en resumen de accesorios
+- **Glifo 'tapon'** (horquilla del borrado de brazo de yee doble, `renderAccessorySymbols.ts`): nueva RAYA FLOTANTE encima del símbolo — paralela a la barra de cierre y del MISMO ancho que ella (extremos a1/a2 desplazados `rad*0.9` por el eje del tallo).
+- **Resumen de accesorios** (`engineeringDataAccessories.ts`): `tapon` → **"Tapón soldado"** (el de la yee doble, san); `teeTapon` → **"Tapón de limpieza"** (el de AC/AF). `GAS_ACCESORIOS` ahora incluye `teeTapon` ("Tapón de limpieza") para que el resumen de gas tenga la columna.
+
+### Ronda 7 (misma sesión): dup UDs caja (display), L fuera, ramal dibujado hasta el borde de la caja
+- **Duplicación en la salida (display)**: `currentMap` para un ramal ESPEJO de salida ahora devuelve EXACTAMENTE `agregadoBajante` del elemento dueño (el primer bajante/caja cuyas salidas lo incluyen) — ignora la clave propia del ramal y sus mergeKeys, donde copias viejas del agregado mostraban los aparatos de entrada duplicados. El reemplazo en disco de la ronda anterior se mantiene (tablas).
+- **Atajo L retirado** del keydown del engine (el ramal genérico ya no se selecciona con L; R/T son la vía).
+- **Ramal hacia caja se dibuja hasta el borde** (`drawRamalPath`): si `fin`/`ini` del ramal es el código de una caja (caja_san/caja_ll), el extremo conectado se DIBUJA en el punto medio del lado más cercano del cuadro exterior (solo visual, cvsPts clamped; la geometría guardada no cambia — conectividad y asociaciones intactas). Eje dominante por el vértice adyacente.
+
+### Ronda 8 (misma sesión): el anclaje visual al borde de la caja aplica SOLO a salidas
+- `drawRamalPath`: solo los ramales que SALEN de la caja (`ini` = código de caja) se dibujan hasta el punto medio del lado más cercano; los que LLEGAN (`fin`) siguen apuntando al centro de la caja como antes.
+
+## Session Summary — 2026-09-10 (ronda 6: bombas en cajas + tipo de tubería + guías multi-selección + diagnóstico BD)
+
+### BLOQUE A — Bombas (BOMAN) en cajas AN/LL
+- **Elemento**: `PlanoBajante` tipo `'bomba'` con `cajaOrigenId` (nuevo campo). Creación `handleCreateBomba` (`drawingCreations.ts`): una bomba por caja (alerta si existe), código único `BOMAN-<pisoCorto>` (consecutivo `-2`, `-3` si colisiona), posición a la DERECHA del símbolo de la caja.
+- **Render** (`renderBajantes.ts`): círculo PUNTEADO radio `realMmToCanvasPx(700)` (70cm reales), `_circ` = radio completo (hit/menú), etiqueta = código SIN sufijo `-P1` (el nivel va dentro), sin flecha de dirección.
+- **Menú de caja** (`bajanteMenu.tsx · CajaBombaSection`): "Crear bomba" o, si existe, "Bomba asociada" (nomenclatura, nivel, caja de origen, UDs — clave de la bomba, bajante asociado — buscado por `bombaEnId` en los pisos).
+- **UDs caja→bomba EN VIVO** (FixturesPanel): la clave de la bomba SIEMPRE espeja `agregadoBajante(cajaOrigenId)` (reemplazo idempotente). Desconexiones/recconexiones de la red recalculan solos.
+- **Asociar bomba del piso inferior** (`AsociarBombaSection` en el menú del bajante superior): lista bombas de pisos inferiores (por `nivel` ordinal — PlanItem no trae npt) con `BOMAN-S1 — S1 — Caja CAN1`. Al asociar: campo DEDICADO `bombaEnId` en el bajante (`<planId>|<bombaId>`) + `direccion 'sube'` automática. NO usa descargaEnId/origenId (dispararían la herencia hacia ABAJO, invertida). Botón "Quitar asociación" resta el libro aplicado.
+- **Herencia hacia ARRIBA** (nuevo bloque en el efecto de FixturesPanel): clave de la bomba → ramales del bajante (recibe+alimenta) vía libro `ucAplicado` (delta exacto, mismo algoritmo que la herencia hacia abajo) + `ucAcum`. Panel del bajante: `bombaEnId` muestra el libro (heredado) y activa solo lectura.
+- **Persistencia**: `cf_planos_bajantes.caja_origen_id` + `bomba_en_id` — **migración `20260910120000_cf_bajantes_caja_origen.sql`** (alter + `save_plano_data` recreado con ambas columnas en insert/update de bajantes); mapeo en `bajanteToRow`/`rowToBajante`.
+
+### BLOQUE B — Tabla de equipos + Tipo de tubería
+- **Page 5 "Equipos de bomba"** en `BombaARDesign`: tabla solo lectura `Bomba | Nivel | Unidades acumuladas del sótano` — barre trazos de TODOS los pisos (`tipo 'bomba'`), valor = clave de la bomba (espejo de su caja).
+- **Tipo de tubería** (page 1): dropdown PVC-PR / Acero galvanizado / Acero al carbón → `cf_bomba_datos_proyecto.tipo_tuberia` (**migración `20260910130000_cf_bomba_tipo_tuberia.sql`** + RPC `save_bomba_datos` recreado). Persistido en BD + snapshot memoria.
+- **C Hazen-Williams AUTOMÁTICO** (solo lectura): `matHazenC` del Catálogo Maestro — PVC-PR→150, Acero galvanizado→120 (`Acero HG`), Acero al carbón→120 (`A.C.`). Fallback: valor manual viejo o 150. Los cálculos usan ese C.
+
+### BLOQUE C — Guías: multi-selección y borrado
+- Marquee (`handleDragUp`): guía seleccionada (ENTIDAD completa) si un vértice cae en el rect o un segmento lo cruza (Liang-Barsky).
+- Drag grupal: `_tryMultiSelDrag` hit-testa guías + `origData type 'guide'` (PlanoState union extendida); `handleDragMove` traslada todos los pts. `renderGuideLines` resalta con `multiSel`.
+- Supr/borrador/undo ya existían (deleteSelected acepta GL*; snapshot incluye guideLines).
+
+### BLOQUE D — Diagnóstico guardado BD
+- `saveTrazosToDB`: toda salida temprana/error emite `civilflow_bd_save_error {reason, message}` ('sin-sesion' | 'sin-proyecto' | 'plano-invalido' | 'rpc' | 'excepcion'). `PdfViewer` escucha → franja de estado roja + título del botón Guardar con el motivo. Si sigue sin guardar tras el incidente de Supabase, el motivo ahora es visible en la UI (p.ej. "sin-proyecto" = clave de proyecto activo ausente; error rpc = migración de line_width sin aplicar).
+
+### Gates
+tsc 0 · lint 0 errores · vitest **577/577** · build ✓ · graphify ✓.
+
+### Migraciones pendientes de aplicar
+1. `20260910120000_cf_bajantes_caja_origen.sql` · 2. `20260910130000_cf_bomba_tipo_tuberia.sql`
+
+### Pendiente de verificación manual (recarga dura)
+Bomba: crear desde caja → BOMAN-S1 punteado a la derecha con UDs de la caja; cambiar red de la caja → bomba actualiza; en piso superior asociar bomba a bajante → SUBE + UDs heredadas propagando; quitar asociación resta; tabla de equipos page 5; tipo de tubería persiste y C se recalcula. Guías: marquee + drag grupal + Supr completa + Ctrl+Z. BD: trazo guardado visible y, si falla, motivo en la franja/título Guardar.
+
+### Ronda 7-bis (misma sesión): radio bomba 35cm + UD sótano auto + una bomba por piso
+- **Radio del símbolo de bomba**: 70cm → **35cm** (render, `_circ` y posición de creación).
+- **"UD acumuladas en sótano"** (BombaARDesign): ahora AUTOMÁTICA = sumatoria de las UDs de todas las bombas (claves espejo de sus cajas, todos los pisos) — solo lectura; los cálculos (Qb) y la BD (`ud_tot`) usan ese valor (setState en render-phase, patrón oficial).
+- **Una bomba por PISO**: `handleCreateBomba` rechaza si ya existe CUALQUIER bomba en el piso cargado (antes era por caja).
+- K Hunter: petición del usuario RETIRADA (se queda K = 1/√(n−1)).
+
+### Ronda 8-bis (misma sesión): asociación bomba→bajante también en el panel derecho + checkboxes
+- **Util compartido** `utils/bombaAssociation.ts`: `bombsImmediateLowerFloor` (SOLO bombas del piso INMEDIATAMENTE inferior — mayor nivel menor al actual), `asociarBomba` (bombaEnId + direccion 'sube' + resta libro de una asociación previa distinta), `quitarBomba` (limpia campo + resta libro aplicado).
+- **Menú contextual** (`bajanteMenu.tsx`): la sección pasó de botones a CHECKBOX(es) — una fila por bomba del piso inmediatamente inferior (`BOMAN-S1 — S1 — Caja CAN1`), marcada = asociada; se reubicó justo DESPUÉS del selector "Origen (piso superior)".
+- **Panel derecho** (`variants.tsx · AsociarBombaPanel` dentro de BajanteEditorSection): mismos checkboxes + UDs de cada bomba en la etiqueta; aplica la misma asociación (el bajante recibe las UDs de la bomba vía el bloque de herencia hacia arriba de FixturesPanel — book ucAplicado + ucAcum).
+
+### Ronda 9 (misma sesión): llegada al centro de caja — sin validación de ángulo ni propagación de diámetros
+- **Ángulo**: `checkRamalAnglesExcludingConnections.touchesAny` (junctionAutoSplit) usaba tolerancia de 8px para bajantes; para CAJAS ahora usa el SEMILADO (mismo criterio de asociación de finishRamal) — un trazo que entra al centro/al cuadro de la caja queda excluido del chequeo de ángulos y no dispara "Ángulo no recomendado".
+- **Diámetros**: bandera `llegaACaja` en finishRamal — cuando el trazo LLEGA al centro de una caja: cero adopción/empuje de diámetro con la caja (su dNominal se maneja por menú), cero `bumpBajanteToMaxRamal`, y la herencia ramal-ramal + `propagarSanDiametroAguasAbajo` NO corren (return temprano). Tests: 9 en finishRamalDiamDireccion (ángulo + no-propagación).
+
+### Ronda 10 (misma sesión): glifo de bomba centrífuga
+- Símbolo de bomba reemplazado (imagen de referencia): volute = círculo sólido R=35cm reales + centro concéntrico (0.32R) + DOS boquillas con brida en diagonales opuestas (135° arriba-izq / 45° abajo-der, largo 0.5R, ancho 0.42R, brida = barra gruesa). Sin punteado. `_circ` = 1.5R para cubrir boquillas (hit/menú).
+
+### Ronda 11 (misma sesión): las bombas no tienen menú contextual
+- `drawingElementContextMenu/index.tsx`: `if (element.tipo === 'bomba') return null;` antes del render — la gestión de la bomba vive en su caja ("Bomba asociada") y en el bajante asociado. Sin hooks tras el early return (verificado).
+
+### Ronda 12 (misma sesión): UDs de bomba importadas desde trazos + etiqueta solo BOMAN
+- **Causa del "0 UD"**: la herencia leía la clave de la bomba del mapa global — vacía si el piso de la bomba no estaba cargado — y el panel leía el libro antes de que el autosave lo persistiera.
+- **Fix**: `mapUdBombaDesdeTrazos(planId, pumpId, net)` (bombaAssociation.ts) — mapa por aparato leído de los TRAZOS del piso de la bomba (clave de su caja + recibeDeIds + cadenas de tributarios). Lo usan: el bloque de herencia hacia arriba (aggBomba), el display del panel del bajante (currentMap, rama bombaEnId — sin depender del libro en disco) y el total del bajante. El libro se persiste YA (saveToStorage + saveTrazosToDB) tras cada herencia + eventos aparatos-clear/storage para refresco inmediato del panel.
+- **Checkbox**: etiqueta simplificada a solo el código de la bomba (BOMAN-S1) en menú contextual y panel derecho.
+- Fix colateral: los lectores de 'aparatos_by_tramo_v2' en bajanteMenu pasaban clave con prefijo 'civilflow_' duplicado a loadFromStorage/saveToStorage (que ya anteponen el prefijo) → claves corregidas a la cruda.
+
+### Ronda 13 (misma sesión): cajas — exclusión TOTAL (ángulo, flujo, Enter roto)
+- **Enter roto (fix crítico)**: mi `if (llegaACaja) return;` temprano en finishRamal se saltaba `activeRamal = null` + markDirty → el Enter "no terminaba" el trazo y seguía creando ramales. Ahora el bloque de diámetros se envuelve en `if (!llegaACaja) { ... }` y el tail corre SIEMPRE.
+- **Flujo**: `ramalFlowDirectionCheck.epAtBajante` (drawingFlow) ahora incluye CAJAS con tolerancia de semilado — tramos que llegan a la caja no se validan por dirección de flujo (creación Y arrastre; "que lleguen a la caja no significa que estén conectados entre ellos").
+- **Ángulo en TODAS las rutas**: los chequeos con `checkRamalAngles` plano en handleDragMove (187/486/926), handleDragUp.tryRotateToValidAngle y el rollback de LD-drag (566) ahora usan `checkRamalAnglesExcludingConnections` — la exclusión de caja por semilado aplica también dibujando por arrastre.
+
+### Ronda 14 (misma sesión): import de UDs de bomba centralizado y testeado
+- `equiposBombaDesdeTrazos()` (bombaAssociation.ts): lista TODAS las bombas de todos los pisos (claves CRUDAS `civilflow_trazos_*` — bug: usar TRAZOS_PREFIX sin 'civilflow_' + loadFromStorage con clave cruda = doble prefijo → lista vacía) con `uds` desde `mapUdBombaDesdeTrazos`.
+- `mapUdBombaDesdeTrazos` gana fallback a la clave espejo de la bomba cuando los tramos no tienen nada en disco.
+- FixturesPanel (espejo de bomba): aggBomba = mapa desde trazos con fallback al agregado vivo — el espejo y BombaARDesign comparten FUENTE ÚNICA.
+- Tests: `bombaUd.test.ts` (2 — mapa caja+tramos+tribs y fallback espejo).
