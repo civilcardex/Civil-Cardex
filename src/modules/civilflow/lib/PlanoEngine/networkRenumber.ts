@@ -13,10 +13,31 @@ import {
   renameBajanteAcrossFloorReferences,
 } from '../../utils/associateBajanteAcrossFloors';
 
+/** Sufijo de plano de una clave `${net}_${id}_${planId}` — solo dígitos finales, o null. */
+export function keyPlanSuffixOf(key: string): string | null {
+  const i = key.lastIndexOf('_');
+  if (i <= 0) return null;
+  const tail = key.slice(i + 1);
+  return /^\d+$/.test(tail) ? tail : null;
+}
+
+/**
+ * ¿Pertenece esta clave de conteos al plano dado? Las claves llevan el plano como sufijo
+ * (`${net}_${id}_${planId}`). Sin este filtro, renumerar el piso cargado borraba o
+ * renombraba claves de OTROS pisos (las UDs "amanecían vacías" tras trabajar en otro piso).
+ * Claves sin sufijo numérico (legado) o sin plano conocido se procesan como antes.
+ */
+export function isPlanKeyFor(key: string, planId: string | number | null | undefined): boolean {
+  if (planId == null) return true;
+  const sfx = keyPlanSuffixOf(key);
+  return sfx == null || sfx === String(planId);
+}
+
 export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find((n) => n.id === netId);
   if (!net) return;
   const pfx = net.lbl;
+  const ownPlan = engine._loadedPlanId ?? null;
   const ramalesNet = engine.ramales.filter(
     (r) => r.net === netId && r.tipo !== 'tributario' && !isLdesvioRamalId(r.id),
   );
@@ -43,6 +64,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
       const data = loadFromStorage(storageKey, {}) as Record<string, unknown>;
       let changed = false;
       for (const k of Object.keys(data)) {
+        // Solo claves del piso cargado: las de otros pisos no se tocan aunque el id no
+        // exista aquí (cada piso numera RS1..RSn por su cuenta).
+        if (!isPlanKeyFor(k, ownPlan)) continue;
         const segs = k.split('_');
         // Solo limpiar huérfanos de ramales de esta red (prefijo pfx, ej. RS, RALL).
         // No borrar tributarios (T...), Ldesvio (LD_...), ni bajantes (BAN...), que tienen otro prefijo.
@@ -76,6 +100,10 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
           const data = loadFromStorage(storageKey, {}) as Record<string, unknown>;
           let changed = false;
           for (const k of Object.keys(data)) {
+            // Solo claves del piso cargado: renombrar RS4→RS1 aquí no debe mover ni fusionar
+            // `san_RS4_<otroPlano>` ni `san_T1RS4_<otroPlano>` (los labels de tributario se
+            // repiten por piso).
+            if (!isPlanKeyFor(k, ownPlan)) continue;
             const segs = k.split('_');
             let newK: string | null = null;
             let isTributarySuffix = false;

@@ -360,6 +360,32 @@ export const isOrphanKey = (key: string, validKeys: Set<string>): boolean => {
   return true;
 };
 
+// Registro del piso CARGADO (lo escribe el visor antes de cada sincronización): ids/códigos
+// vivos del engine del plano activo. El GC construye sus claves válidas desde las cachés
+// locales de los pisos; si la caché del piso cargado quedó vieja (el loader la puede reemplazar
+// por la copia de BD en cualquier momento), las claves de aparatos/hidro de ramales recientes
+// parecían huérfanas y se borraban — "recargar reseteaba las UDs a 0" (orig. usuario). Con el
+// guard, una clave del piso cargado cuyo id exista en el engine nunca se borra.
+let _loadedLive: { planId: string; ids: Set<string> } | null = null;
+
+/** Registra los ids/códigos vivos del engine del piso cargado para el guard del GC. */
+export function setSyncLoadedLiveIds(planId: string | number | null, ids: string[]): void {
+  _loadedLive = planId == null ? null : { planId: String(planId), ids: new Set(ids) };
+}
+
+/** ¿Es una clave `<net>_<id>[_<plan>]` del piso cargado con id vivo en el engine? */
+function isLoadedLiveKey(key: string): boolean {
+  if (!_loadedLive) return false;
+  const last = key.lastIndexOf('_');
+  if (last <= 0) return false;
+  const suffix = key.slice(last + 1);
+  if (!/^\d+$/.test(suffix) || suffix !== _loadedLive.planId) return false;
+  const base = key.slice(0, last);
+  const first = base.indexOf('_');
+  const id = first > 0 ? base.slice(first + 1) : base;
+  return _loadedLive.ids.has(id);
+}
+
 function performGarbageCollection(plans: SyncPlanInput[]) {
   if (!Array.isArray(plans) || plans.length === 0) return;
   const validKeys = new Set<string>();
@@ -410,6 +436,7 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
   let aparatosChanged = false;
   for (const key of Object.keys(rawAparatos)) {
+    if (isLoadedLiveKey(key)) continue;
     if (isOrphanKey(key, validKeys)) {
       delete rawAparatos[key];
       aparatosChanged = true;
@@ -423,6 +450,7 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
   let hidroChanged = false;
   for (const key of Object.keys(rawHidro)) {
+    if (isLoadedLiveKey(key)) continue;
     if (isOrphanKey(key, validKeys)) {
       delete rawHidro[key];
       hidroChanged = true;

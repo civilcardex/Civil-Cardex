@@ -1,7 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
-import { writeSanDrawingSync, writeHydroDrawingSync } from '../../utils/drawingSync';
+import {
+  writeSanDrawingSync,
+  writeHydroDrawingSync,
+  setSyncLoadedLiveIds,
+} from '../../utils/drawingSync';
 import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
 import type { PlanItem } from '../../context/PlansContext';
 
@@ -40,6 +44,14 @@ export function usePdfAutoSave(
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     eng._dirty = false;
     performSave(eng, id);
+    // Guard del GC (mismo motivo que syncDrawings en PdfViewer): el autosave también
+    // dispara write*DrawingSync.
+    if (eng._loadedPlanId) {
+      setSyncLoadedLiveIds(String(eng._loadedPlanId), [
+        ...eng.ramales.flatMap((r) => [r.id, r.label].filter(Boolean) as string[]),
+        ...eng.bajantes.flatMap((b) => [b.id, b.code].filter(Boolean) as string[]),
+      ]);
+    }
     try {
       writeSanDrawingSync(plans);
     } catch {
