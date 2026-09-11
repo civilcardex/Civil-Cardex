@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { finishRamal } from '../PlanoEngineDrawing';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
-// Herencia de diámetro (orig. usuario): tras borrar un segmento del brazo de una yee doble y
-// REDIBUJARLO, la pieza nueva nacía sin diámetro y disparaba "Diámetros pendientes". Un trazo
-// nuevo sin diámetro que conecta con la red adopta el MAYOR diámetro de los que toca, y
-// propaga el suyo a vecinos sin diámetro. Nunca sobreescribe un diámetro explícito.
+// Herencia de diámetro DIRECCIONAL (orig. usuario): el trazo nuevo SOLO adopta de sus
+// alimentadores (quien descarga sobre él) y nunca empuja de vuelta al que alimenta. Un
+// trazo que ENTREGA nace vacío ("Diámetros pendientes" lo marca hasta asignarlo); el que
+// RECIBE adopta el mayor. Nunca sobreescribe un diámetro explícito.
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {
     ramales,
@@ -75,7 +75,7 @@ const R = (o: Partial<PlanoRamal>): PlanoRamal =>
   }) as PlanoRamal;
 
 describe('finishRamal — herencia de diámetro', () => {
-  it('tributario sin diámetro que aterriza en un ramal D=2" lo hereda', () => {
+  it('tributario que ENTREGA a un ramal D=2" nace vacío (no adopta)', () => {
     const rs1 = R({
       id: 'RS1',
       label: 'RS1',
@@ -98,10 +98,11 @@ describe('finishRamal — herencia de diámetro', () => {
     } as never;
     finishRamal(eng);
     const trib = eng.ramales.find((r) => r.tipo === 'tributario');
-    expect(trib?.diametro).toBe('2"');
+    expect(trib?.diametro || '').toBe('');
+    expect(rs1.diametro).toBe('2"');
   });
 
-  it('toma el MAYOR de los diámetros que toca (4" y 2" → 4")', () => {
+  it('tributario que entrega entre 4" y 2" nace vacío (no toma el mayor)', () => {
     const rs1 = R({
       id: 'RS1',
       label: 'RS1',
@@ -133,8 +134,10 @@ describe('finishRamal — herencia de diámetro', () => {
     } as never;
     finishRamal(eng);
     const trib = eng.ramales.find((r) => r.tipo === 'tributario');
-    // Nace vacío y hereda el 4" del vecino tocado.
-    expect(trib?.diametro).toBe('4"');
+    // Entrega con la cabeza al cuerpo del ramal: nace vacío aunque toque 4" y 2".
+    expect(trib?.diametro || '').toBe('');
+    expect(rs1.diametro).toBe('4"');
+    expect(rs2.diametro).toBe('2"');
   });
 
   it('extensión de un tramo sin diámetro: adopta el diámetro por defecto', () => {

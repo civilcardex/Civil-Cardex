@@ -3,7 +3,9 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 import { distToPolyline } from '../shared/geometry';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { ramalContinuesPast } from './drawingUtils';
 import { sanFeederMinMsg, sanReceptorMaxMsg } from '../../utils/sanitaryDiamCompat';
+import { esCaja } from './bajanteRules';
 
 // Validación de diámetros en nodos de redes de presión (salida ≤ entrada), sobre el estado VIVO
 // del motor. Corre en updateElementById para que CUALQUIER camino que escriba `diametro`
@@ -132,9 +134,13 @@ export function sanReceptorDiametroPermitido(
     if (mergeSiblingPairs.has([o.id, ramalId].sort().join('|'))) continue;
     const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
     if (oIn <= 0) continue;
-    // Destino de flujo del candidato sobre mi cuerpo: me descarga.
+    // Destino de flujo del candidato sobre mi cuerpo: me descarga — pero solo si YO
+    // continúo aguas abajo de ese punto. Si la unión cae en mi extremo FINAL (yo entrego
+    // ahí, no recibo), el candidato no me alimenta y no restringe: el trazo que llega a
+    // otro queda vacío y después sí puede fijar un diámetro menor (orig. usuario).
     const oDest = o._tribReversed ? o.pts[0] : o.pts[o.pts.length - 1];
     if (distToPolyline(oDest, r.pts) >= TOL) continue;
+    if (!ramalContinuesPast(r, oDest, TOL)) continue;
     // Si el candidato declara `fin` hacia OTRO elemento (bajante u otro ramal), su flujo va
     // allá, no a mí (co-sumideros al mismo bajante, continuación tipeada) — no me alimenta.
     const oFin = o.fin || '';
@@ -559,10 +565,15 @@ export function ramalFlowDirectionCheck(
     // montado sobre un bajante del mismo net, no validar la dirección contra otros ramales
     // en ese punto — sus vectores (desde lados opuestos hacia el bajante) son opuestos y
     // dispararían una falsa advertencia de dirección de flujo.
-    const epAtBajante = (engine.bajantes || []).some(
-      (b) => b.net === ram.net && Math.hypot(b.x - ep[0], b.y - ep[1]) < tol,
-    );
-    if (epAtBajante) continue;
+    // CAJAS incluidas con SEMILADO (mismo criterio de asociación): que lleguen a la caja NO
+    // las conecta entre sí — la dirección de flujo no se valida (orig. usuario).
+    const epEnCajaOBajante = (engine.bajantes || []).some((b) => {
+      if (b.net !== ram.net) return false;
+      const circ = b._circ?.r || 8 * (engine.zoom || 1);
+      const bTol = esCaja(b) ? circ / Math.SQRT2 / (engine.zoom || 1) + 0.5 : tol;
+      return Math.hypot(b.x - ep[0], b.y - ep[1]) < bTol;
+    });
+    if (epEnCajaOBajante) continue;
     for (const other of candidates) {
       if (other.id === ram.id || !sameNetGroupNet(other.net, ram.net)) continue;
       // ponytail: vent-vent no flow check per spec (only vent-san revent)

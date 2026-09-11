@@ -6,10 +6,12 @@ import {
   _firstSegmentAngle,
   snapGuidePoint,
 } from './PlanoEngineDrawing';
-import { checkRamalAngles, angleAtPosition, angleAtHalfLength } from './drawingAngles';
+import { angleAtPosition, angleAtHalfLength } from './drawingAngles';
+import { checkRamalAnglesExcludingConnections } from './junctionAutoSplit';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { puedeConectarRamalABajante } from './bajanteRules';
+import { bumpBajanteToMaxRamal } from './drawingUtils';
 import { resolveAndClampToCanal, clampToCanal, pointInCanal } from './canalAssociation';
 
 /**
@@ -61,6 +63,12 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         if (t) {
           t.x = (orig.origX || 0) + dx;
           t.y = (orig.origY || 0) + dy;
+        }
+      } else if (orig.type === 'guide') {
+        // Guía = UNA entidad: se trasladan TODOS sus vértices.
+        const g = engine.guideLines.find((gl) => gl.id === id);
+        if (g) {
+          g.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
         }
       }
     }
@@ -177,7 +185,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         r.labelY = engine.ramalDrag.origLabelY + slideDy;
       }
       r.totalL = calculateRamalLength(r.pts, engine);
-      checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode);
+      checkRamalAnglesExcludingConnections(engine, r);
       if (engine.ramalDrag.connRamales) {
         for (const cr of engine.ramalDrag.connRamales) {
           const other = ramalesById.get(cr.id);
@@ -375,11 +383,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         // válidas del mismo movimiento no quedan bloqueadas. Iniciar un ramal en el bajante es
         // válido: el extremo pts[0] alimenta (r.ini).
         if (dStart < autoThresh && dStart <= dEnd) {
-          const check = puedeConectarRamalABajante(b, r);
+          const check = puedeConectarRamalABajante(b, r, 'alimenta');
           if (!check.ok) {
             if (check.title && check.msg) engine.triggerAlert(check.title, check.msg);
             continue;
           }
+          // Diámetro según cómo se conecta (orig. usuario): el ramal que nace del bajante
+          // adopta su dNominal; si el bajante no tiene, toma el del ramal.
+          if (b.dNominal) r.diametro = r.diametro || b.dNominal;
+          else if (r.diametro) b.dNominal = r.diametro;
           if (!b.recibeDeIds) b.recibeDeIds = [];
           if (!b.recibeDeIds.includes(r.id)) b.recibeDeIds.push(r.id);
           r.ini = b.code || b.id;
@@ -387,13 +399,17 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           p.y = pStart[1];
           break;
         } else if (dEnd < autoThresh) {
-          const check = puedeConectarRamalABajante(b, r);
+          const check = puedeConectarRamalABajante(b, r, 'recibe');
           if (!check.ok) {
             if (check.title && check.msg) engine.triggerAlert(check.title, check.msg);
             continue;
           }
+          // Llegada: el ramal conserva su diámetro (si lo tiene) y el bajante sube al mayor.
+          if (!r.diametro && b.dNominal) r.diametro = b.dNominal;
           if (!b.recibeDeIds) b.recibeDeIds = [];
           if (!b.recibeDeIds.includes(r.id)) b.recibeDeIds.push(r.id);
+          const bumped = bumpBajanteToMaxRamal(engine.ramales, b.recibeDeIds, b.dNominal || '');
+          if (bumped) b.dNominal = bumped;
           r.fin = b.code || b.id;
           p.x = pEnd[0];
           p.y = pEnd[1];
@@ -468,7 +484,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             const [mx, my] = _midpoint(r.pts);
             r.labelX = mx;
             r.labelY = my;
-            checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode);
+            checkRamalAnglesExcludingConnections(engine, r);
           }
         });
       }
@@ -908,7 +924,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;
       r.labelY = my;
-      checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode);
+      checkRamalAnglesExcludingConnections(engine, r);
       engine.scheduleRender();
     }
     return;

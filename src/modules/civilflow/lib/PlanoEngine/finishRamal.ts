@@ -6,12 +6,12 @@ import {
   relabelTribChain,
   uniqRamalId,
 } from './PlanoState';
-import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
+import type { PlanoRamal, PlanoBajante, IPlanoEngineCore } from './PlanoState';
 import { devError } from '../../../../utils/devError';
 import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { DEFAULT_PENDIENTE_PCT } from '../../constants';
-import { puedeConectarRamalABajante } from './bajanteRules';
+import { puedeConectarRamalABajante, esCaja } from './bajanteRules';
 import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection';
 import {
   flipRamalFlow,
@@ -24,7 +24,14 @@ import {
   detectTributaryPadre,
   checkRamalAnglesExcludingConnections,
 } from './junctionAutoSplit';
-import { _nextLabel, _midpoint, maxDiametroLabel } from './drawingUtils';
+import {
+  _nextLabel,
+  _midpoint,
+  maxDiametroLabel,
+  ramalDischargeEnd,
+  ramalContinuesPast,
+  bumpBajanteToMaxRamal,
+} from './drawingUtils';
 import { distToPolyline } from '../shared/geometry';
 
 /** Termina el ramal activo: valida ángulos, crea el PlanoRamal, auto-divide uniones y asocia
@@ -248,10 +255,9 @@ export function finishRamal(engine: IPlanoEngineCore): void {
             target.labelY = labY;
             if (target.labelAngle == null) target.labelAngle = angleAtHalfLength(mergedPts);
             // Herencia de diámetro en la extensión: si el ramal extendido quedó sin diámetro,
-            // adopta el MAYOR de los ramales que tocan la pieza fusionada (los vecinos por el
-            // otro extremo de la extensión) — sin esto, extender un tramo sin dimensionar
-            // dejaba la pieza fusionada sin diámetro y disparaba "Diámetros pendientes"
-            // (orig. usuario).
+            // adopta el MAYOR solo de sus ALIMENTADORES (ramales que descargan sobre la pieza
+            // fusionada) — igual que la creación. El máximo ciego ponía diámetro a trazos que
+            // entregan (el usuario pide vacío; "Diámetros pendientes" lo marcará hasta asignarlo).
             // Extensión de tributario: la cadena re-etiqueta con la raíz ACTUAL del padre
             // (los trib intermedios arrastraban la raíz vieja en la etiqueta, orig. usuario).
             if (target.tipo === 'tributario') {
@@ -260,17 +266,21 @@ export function finishRamal(engine: IPlanoEngineCore): void {
               );
             }
             if (!target.diametro) {
-              const mergedEnds = [mergedPts[0], mergedPts[mergedPts.length - 1]];
               let inherited = '';
               for (const o of engine.ramales) {
                 if (o.id === target.id || o.net !== target.net) continue;
                 if (!o.pts || o.pts.length < 2 || !o.diametro) continue;
-                const oEnds = [o.pts[0], o.pts[o.pts.length - 1]];
-                const touches =
-                  oEnds.some((e) =>
-                    mergedEnds.some((m) => Math.hypot(e[0] - m[0], e[1] - m[1]) < 2.0),
-                  ) || mergedEnds.some((m) => distToPolyline(m, o.pts) < 2.0);
-                if (touches) inherited = maxDiametroLabel(inherited, o.diametro);
+                const d = ramalDischargeEnd(o);
+                if (!d) continue;
+                if (
+                  distToPolyline(d, mergedPts) < 2.0 &&
+                  ramalContinuesPast(
+                    { net: target.net, pts: mergedPts, _tribReversed: target._tribReversed },
+                    d,
+                    2.0,
+                  )
+                )
+                  inherited = maxDiametroLabel(inherited, o.diametro);
               }
               if (!inherited) {
                 const defD = (engine._ramalDefaults || { diametro: '' }).diametro || '';
@@ -666,6 +676,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // trazo. handleLineDown ya no bloquea iniciar ahí; el snap ancla el clic al centro.
   // Un fantasma desplazado se empareja contra su propia posición desplazada del piso actual;
   // un fantasma sin desplazar o un bajante real emparejan en su (b.x, b.y) simple.
+  let llegaACaja = false; // llegó al CENTRO de una caja: sin propagación de diámetros
   if (r.pts.length >= 2) {
     const TOLLERANCE = 0.5;
     const lastIdx = r.pts.length - 1;
@@ -683,12 +694,13 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     for (const epIdx of [0, lastIdx]) {
       const isArrival = epIdx === lastIdx;
       const ep = r.pts[epIdx];
-      const baj = engine.bajantes.find((b) => {
+      // Candidatos por distancia (la tolerancia cubre el radio del símbolo; en CAJAS el
+      // _circ es la semidiagonal del cuadro — la asociación usa el SEMILADO para no alcanzar
+      // elementos vecinos y acabar validando el trazo contra el bajante equivocado).
+      const cands = engine.bajantes.filter((b) => {
         if (b.net !== r.net || engine._hiddenNets.has(b.net)) return false;
-        // El extremo en snapMode puede aterrizar en el BORDE del círculo del bajante (proyección
-        // de ángulo válido), no en el centro — la tolerancia de asociación cubre el radio del
-        // símbolo para que el ramal quede igualmente conectado.
-        const rimTol = (b._circ?.r || 8 * engine.zoom) / (engine.zoom || 1) + TOLLERANCE;
+        const circ = b._circ?.r || 8 * engine.zoom;
+        const rimTol = (esCaja(b) ? circ / Math.SQRT2 : circ) / (engine.zoom || 1) + TOLLERANCE;
         if (displacedFantasmaIds.has(b.id)) {
           const disp = b.desplazamientos?.[lvl];
           const bx = b.x + (disp?.dx || 0);
@@ -697,18 +709,57 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         }
         return Math.hypot(b.x - ep[0], b.y - ep[1]) < rimTol;
       });
-      if (!baj || baj.recibeDeIds.includes(r.id) || baj.alimentaIds?.includes(r.id)) continue;
-      // Regla central: misma red + tope de asociaciones (2 bajante / 1 caja) — antes de
-      // escribir cualquier campo (ítems 1/9). Rechazo = NO se crea el trazo: la alerta
-      // saliendo y el ramal quedando dibujado igualmente era el estado inválido (orig. usuario).
-      const check = puedeConectarRamalABajante(baj, r);
-      if (!check.ok) {
-        if (check.title && check.msg) engine.triggerAlert(check.title, check.msg);
-        rejected = true;
-        break;
+      // Elegir el PRIMER candidato cuya guard central acepte el trazo — con cajas y vecinos
+      // en el mismo punto, el primer candidato por orden de array puede rechazar (p.ej. un
+      // montante que no admite tributarios) mientras el correcto (la caja) sí lo hace.
+      let baj: PlanoBajante | undefined;
+      let firstCheck: ReturnType<typeof puedeConectarRamalABajante> | null = null;
+      for (const c of cands) {
+        if (c.recibeDeIds.includes(r.id) || c.alimentaIds?.includes(r.id)) {
+          baj = c;
+          break;
+        }
+        const chk = puedeConectarRamalABajante(c, r, isArrival ? 'recibe' : 'alimenta');
+        if (chk.ok) {
+          baj = c;
+          break;
+        }
+        if (!firstCheck) firstCheck = chk;
       }
-      // 14.2 Y doble: laterales must be same diam (solo llegadas — 2 ramales que descargan)
-      if (isArrival && baj.recibeDeIds.length === 1) {
+      if (!baj) {
+        // Regla central: misma red + tope de asociaciones (2 bajante / 1 caja) — antes de
+        // escribir cualquier campo (ítems 1/9). Rechazo = NO se crea el trazo: la alerta
+        // saliendo y el ramal quedando dibujado igualmente era el estado inválido.
+        if (cands.length > 0) {
+          if (firstCheck?.title && firstCheck.msg)
+            engine.triggerAlert(firstCheck.title, firstCheck.msg);
+          rejected = true;
+          break;
+        }
+        continue;
+      }
+      if (baj.recibeDeIds.includes(r.id) || baj.alimentaIds?.includes(r.id)) continue;
+      // Diámetro según cómo se dibuja (orig. usuario): el ramal que SALE del bajante
+      // (nace en pts[0]) adopta el dNominal del bajante; si el bajante aún no tiene, toma
+      // el del ramal. El ramal que LLEGA conserva su diámetro y empuja al bajante al mayor
+      // (nunca baja) — pero si nació sin diámetro explícito (default/empty), adopta el del
+      // bajante, de modo que la Y doble converja sin alerta falsa.
+      // CAJAS: sin adopción/empuje de diámetro — su dNominal se maneja por menú y no
+      // participan en propagación (orig. usuario). Llegada a caja marca la bandera que
+      // desactiva más abajo herencia y propagación de diámetros.
+      const bornSinDiam = !r.diametro || diametroBornDefault;
+      if (esCaja(baj)) {
+        if (isArrival) llegaACaja = true;
+      } else if (isArrival) {
+        if (bornSinDiam && baj.dNominal) r.diametro = baj.dNominal;
+      } else if (baj.dNominal) {
+        r.diametro = baj.dNominal;
+      } else if (r.diametro) {
+        baj.dNominal = r.diametro;
+      }
+      // 14.2 Y doble: laterales must be same diam (solo llegadas — 2 ramales que descargan).
+      // Las cajas admiten N entradas y no son una Y física: el chequeo no aplica.
+      if (isArrival && !esCaja(baj) && baj.recibeDeIds.length === 1) {
         const existing = engine.ramales.find((x) => x.id === baj.recibeDeIds[0]);
         if (existing && existing.diametro && r.diametro) {
           const p1 = diamPulgFromLabel(existing.diametro);
@@ -727,6 +778,12 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       if (isArrival) {
         baj.recibeDeIds.push(r.id);
         r.fin = bajCode;
+        // El bajante sigue al MAYOR de sus llegadores — nunca queda por debajo (misma regla
+        // que bumpConnectedBajantes al editar).
+        if (!esCaja(baj)) {
+          const bumped = bumpBajanteToMaxRamal(engine.ramales, baj.recibeDeIds, baj.dNominal || '');
+          if (bumped) baj.dNominal = bumped;
+        }
       } else {
         if (!baj.alimentaIds) baj.alimentaIds = [];
         baj.alimentaIds.push(r.id);
@@ -740,35 +797,54 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       return;
     }
   }
-  // Herencia de diámetro: un ramal/tributario NUEVO sin diámetro que conecta con la red
-  // adopta el MAYOR diámetro de los ramales que toca, y propaga el suyo a los que tocan sin
-  // diámetro. Tras borrar un segmento del brazo de una yee doble y redibujarlo, la pieza
-  // nueva nacía sin diámetro y disparaba "Diámetros pendientes" (orig. usuario). Nunca
-  // sobreescribe un diámetro explícito.
-  if (r.pts && r.pts.length >= 2) {
-    const epsD = [r.pts[0], r.pts[r.pts.length - 1]];
-    const TOL_D = 2.0;
-    const touching = engine.ramales.filter(
-      (o) =>
-        o.id !== r.id &&
-        o.net === r.net &&
-        o.pts &&
-        o.pts.length >= 2 &&
-        (o.pts.some((p) => epsD.some((e) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL_D)) ||
-          epsD.some((e) => distToPolyline(e, o.pts) < TOL_D)),
-    );
-    if (!r.diametro || diametroBornDefault) {
-      let inherited = r.diametro || '';
-      for (const o of touching) if (o.diametro) inherited = maxDiametroLabel(inherited, o.diametro);
-      if (inherited && inherited !== r.diametro) r.diametro = inherited;
+  // Llegada al CENTRO de una caja: SIN propagación de diámetros (ni herencia ramal-ramal ni
+  // propagarSanDiametroAguasAbajo) — orig. usuario. SIN return temprano: el tail (activeRamal
+  // = null, selId, markDirty, modal) DEBE correr o el Enter "no termina" el trazo.
+  if (!llegaACaja) {
+    // Herencia de diámetro DIRECCIONAL: un ramal/tributario NUEVO sin diámetro SOLO adopta
+    // de sus ALIMENTADORES (ramales cuya descarga cae sobre él) y solo empuja el suyo a sus
+    // RECEPTORES. El máximo ciego en ambas direcciones creaba 4"/2" fantasma en trazos que
+    // ENTREGAN (el usuario pide nacer vacío) y lo empujaba de vuelta al alimentador pequeño.
+    // Tras borrar un segmento del brazo de una yee doble y redibujarlo, la pieza
+    // nueva nacía sin diámetro y disparaba "Diámetros pendientes" (orig. usuario) — ese caso
+    // es receptor y sigue heredando. Nunca sobreescribe un diámetro explícito.
+    if (r.pts && r.pts.length >= 2) {
+      const epsD = [r.pts[0], r.pts[r.pts.length - 1]];
+      const TOL_D = 2.0;
+      const touching = engine.ramales.filter(
+        (o) =>
+          o.id !== r.id &&
+          o.net === r.net &&
+          o.pts &&
+          o.pts.length >= 2 &&
+          (o.pts.some((p) => epsD.some((e) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL_D)) ||
+            epsD.some((e) => distToPolyline(e, o.pts) < TOL_D)),
+      );
+      const feeders = touching.filter((o) => {
+        const d = ramalDischargeEnd(o);
+        return !!d && distToPolyline(d, r.pts) < TOL_D && ramalContinuesPast(r, d, TOL_D);
+      });
+      if (!r.diametro || diametroBornDefault) {
+        let inherited = r.diametro || '';
+        for (const o of feeders)
+          if (o.diametro) inherited = maxDiametroLabel(inherited, o.diametro);
+        if (inherited && inherited !== r.diametro) r.diametro = inherited;
+      }
+      if (r.diametro) {
+        const rd = ramalDischargeEnd(r);
+        for (const o of touching) {
+          if (o.diametro || feeders.includes(o) || !rd) continue;
+          // Solo receptores: el trazo empuja a quien recibe de él (y continúa), nunca de
+          // vuelta al que lo alimenta.
+          if (distToPolyline(rd, o.pts) < TOL_D && ramalContinuesPast(o, rd, TOL_D))
+            o.diametro = r.diametro;
+        }
+      }
+      // San: el trazo nuevo (o el diámetro que heredó) propaga el mayor aguas abajo — la cadena
+      // receptora (ramales y tributarios) se ajusta al mayor de sus llegadores (orig. usuario).
+      if (r.net === 'san' || r.net === 'll')
+        propagarSanDiametroAguasAbajo(engine.ramales, r.id, engine.bajantes);
     }
-    if (r.diametro) {
-      for (const o of touching) if (!o.diametro) o.diametro = r.diametro;
-    }
-    // San: el trazo nuevo (o el diámetro que heredó) propaga el mayor aguas abajo — la cadena
-    // receptora (ramales y tributarios) se ajusta al mayor de sus llegadores (orig. usuario).
-    if (r.net === 'san' || r.net === 'll')
-      propagarSanDiametroAguasAbajo(engine.ramales, r.id, engine.bajantes);
   }
   // Correr _markDirty ANTES de revisar el modal para que autoDetectRamalConnections tenga
   // oportunidad de detectar cualquier unión nueva que el usuario acaba de crear al terminar

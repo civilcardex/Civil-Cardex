@@ -192,6 +192,33 @@ describe('sanitaria — receptor >= alimentador (dibujo)', () => {
     ];
     expect(sanReceptorDiametroPermitido(gs, 'RS2', '2"').ok).toBe(true);
   });
+
+  it('el que ENTREGA en su extremo final no es restringido (puede fijar menor)', () => {
+    // R8 cae con la cabeza [(15,-35)→(50,0)] al cuerpo de RS1 4": la unión está en el
+    // extremo FINAL de R8 (él entrega ahí, no recibe) → el 4" no lo restringe y puede
+    // quedar en 2". El receptor que continúa sí sigue restringido.
+    const gs: EngRamal[] = [
+      ramal({
+        id: 'RS1',
+        label: 'RS1',
+        diametro: '4"',
+        pts: [
+          [0, 0],
+          [100, 0],
+        ],
+      }),
+      ramal({
+        id: 'R8',
+        label: 'R8',
+        diametro: '',
+        pts: [
+          [15, -35],
+          [50, 0],
+        ],
+      }),
+    ];
+    expect(sanReceptorDiametroPermitido(gs, 'R8', '2"').ok).toBe(true);
+  });
 });
 
 // Dirección SUBIDA: libre — el motor propaga el mayor aguas abajo (recomputeDownstream-

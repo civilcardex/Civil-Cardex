@@ -221,6 +221,61 @@ export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): 
 // hace en su herencia) y el path tabla→dibujo. Mutación directa sin snapshots por nodo: el
 // caller emite UN snapshot para toda la operación. @param ramales Red actual (motor o
 // storage). @param _changedId Reservado (origen del cambio; el recálculo es global).
+/** Extremo de descarga de un ramal según su dirección de flujo: san/ll/vent drenan hacia
+ *  la unión; el resto fluye pts[0]→pts[último]. Misma convención que el recálculo de
+ *  receptores de abajo; la usa también la herencia direccional de finishRamal. */
+export function ramalDischargeEnd(r: {
+  net?: string;
+  pts?: number[][];
+  _tribReversed?: boolean;
+}): number[] | null {
+  if (!r.pts || r.pts.length < 2) return null;
+  if ((r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed) return r.pts[0];
+  return r.pts[r.pts.length - 1];
+}
+
+/** ¿R continúa aguas abajo del punto Q (en su dirección de flujo)? Sin esto, un tributario
+ *  que descarga justo en el extremo FINAL de un tramo lo marcaría como receptor, o una
+ *  descarga que sigue de largo por su propia línea se leería como alimentación a una rama
+ *  que en realidad entrega. */
+export function ramalContinuesPast(
+  r: {
+    net?: string;
+    pts?: number[][];
+    _tribReversed?: boolean;
+  },
+  q: number[],
+  tol = 2.0,
+): boolean {
+  if (!r.pts || r.pts.length < 2) return false;
+  const reversed = (r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed;
+  const seq = reversed ? [...r.pts].reverse() : r.pts;
+  let total = 0;
+  const segLens: number[] = [];
+  for (let i = 0; i < seq.length - 1; i++) {
+    const l = Math.hypot(seq[i + 1][0] - seq[i][0], seq[i + 1][1] - seq[i][1]);
+    segLens.push(l);
+    total += l;
+  }
+  if (total < 1e-9) return false;
+  let sMax = -Infinity;
+  let acc = 0;
+  for (let i = 0; i < seq.length - 1; i++) {
+    const [ax, ay] = seq[i];
+    const [bx, by] = seq[i + 1];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq > 1e-12) {
+      const t = Math.max(0, Math.min(1, ((q[0] - ax) * dx + (q[1] - ay) * dy) / lenSq));
+      const px = ax + t * dx;
+      const py = ay + t * dy;
+      if (Math.hypot(q[0] - px, q[1] - py) < tol) sMax = Math.max(sMax, acc + t * segLens[i]);
+    }
+    acc += segLens[i];
+  }
+  return sMax >= 0 && total - sMax > tol;
+}
 /** Recalcula receptores como el mayor de sus alimentadores actuales, hasta punto fijo. */
 export function recomputeDownstreamDiameters(
   ramales: Array<{
@@ -240,45 +295,12 @@ export function recomputeDownstreamDiameters(
   for (const r of ramales) {
     if (r.mergesFrom) mergeSiblingPairs.add([...r.mergesFrom].sort().join('|'));
   }
-  const dischargeEnd = (r: (typeof ramales)[number]): number[] | null => {
-    if (!r.pts || r.pts.length < 2) return null;
-    // san/ll/vent drenan hacia la unión; el resto (af/ac/gas) fluye pts[0]→pts[último].
-    if ((r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed) return r.pts[0];
-    return r.pts[r.pts.length - 1];
-  };
+  const dischargeEnd = (r: (typeof ramales)[number]): number[] | null => ramalDischargeEnd(r);
   // ¿R continúa aguas abajo del punto Q (en su dirección de flujo)? Sin esto, un tributario
   // que descarga justo en el extremo FINAL de un tramo lo marcaría como receptor y el tramo
   // aguas arriba subiría de diámetro con un caudal que en realidad sigue por otro lado.
-  const continuesPast = (r: (typeof ramales)[number], q: number[]): boolean => {
-    if (!r.pts || r.pts.length < 2) return false;
-    const reversed = (r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed;
-    const seq = reversed ? [...r.pts].reverse() : r.pts;
-    let total = 0;
-    const segLens: number[] = [];
-    for (let i = 0; i < seq.length - 1; i++) {
-      const l = Math.hypot(seq[i + 1][0] - seq[i][0], seq[i + 1][1] - seq[i][1]);
-      segLens.push(l);
-      total += l;
-    }
-    if (total < 1e-9) return false;
-    let sMax = -Infinity;
-    let acc = 0;
-    for (let i = 0; i < seq.length - 1; i++) {
-      const [ax, ay] = seq[i];
-      const [bx, by] = seq[i + 1];
-      const dx = bx - ax;
-      const dy = by - ay;
-      const lenSq = dx * dx + dy * dy;
-      if (lenSq > 1e-12) {
-        const t = Math.max(0, Math.min(1, ((q[0] - ax) * dx + (q[1] - ay) * dy) / lenSq));
-        const px = ax + t * dx;
-        const py = ay + t * dy;
-        if (Math.hypot(q[0] - px, q[1] - py) < TOL) sMax = Math.max(sMax, acc + t * segLens[i]);
-      }
-      acc += segLens[i];
-    }
-    return sMax >= 0 && total - sMax > TOL;
-  };
+  const continuesPast = (r: (typeof ramales)[number], q: number[]): boolean =>
+    ramalContinuesPast(r, q, TOL);
   // Alimentadores geométricos de R: ramales cuya descarga toca el cuerpo de R en un punto
   // desde el cual R TODAVÍA continúa aguas abajo (redes de recolección san/ll/vent — en
   // presión manda mergesFrom + guards de nodo).

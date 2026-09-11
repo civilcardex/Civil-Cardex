@@ -18,7 +18,12 @@ vi.stubGlobal('localStorage', {
 
 import { saveToStorage, loadFromStorage } from '../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
-import { moveAllAparatoCounts } from '../syncExtremeAccessory';
+import {
+  moveAllAparatoCounts,
+  bumpAparatoCount,
+  setSingleAparatoCount,
+  decrementFirstAparato,
+} from '../syncExtremeAccessory';
 import { directNeighborRamales } from '../flowDirection';
 
 describe('moveAllAparatoCounts', () => {
@@ -131,5 +136,36 @@ describe('directNeighborRamales', () => {
     const weird = [{ id: 'X', net: 'af', pts: [] as number[][] }, ...ramales];
     const neighbors = directNeighborRamales(weird, weird[1]);
     expect(neighbors.map((n) => n.id).sort()).toEqual(['R2', 'R3']);
+  });
+});
+
+describe('asignación directa sin contexto (un clic basta)', () => {
+  const read = () =>
+    loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
+
+  it('setSingleAparatoCount reemplaza (máx 1 por ramal) y persiste al primer llamado', () => {
+    saveToStorage(APARATOS_BY_TRAMO_KEY, { san_RS4_2: { lav: 1 } });
+    setSingleAparatoCount('san', 'RS4', 2, 'san');
+    expect(read()['san_RS4_2']).toEqual({ san: 1 });
+  });
+
+  it('setSingleAparatoCount es idempotente al repetir', () => {
+    setSingleAparatoCount('san', 'RS4', 2, 'san');
+    setSingleAparatoCount('san', 'RS4', 2, 'san');
+    expect(read()['san_RS4_2']).toEqual({ san: 1 });
+  });
+
+  it('decrementFirstAparato descuenta y limpia la clave vacía', () => {
+    saveToStorage(APARATOS_BY_TRAMO_KEY, { san_RS4_2: { san: 1 } });
+    expect(decrementFirstAparato('san', 'RS4', 2)).toBe(true);
+    expect(read()['san_RS4_2']).toBeUndefined();
+    expect(decrementFirstAparato('san', 'RS4', 2)).toBe(false);
+  });
+
+  it('bumpAparatoCount escribe por clave de plano sin buscar en plans', () => {
+    bumpAparatoCount('af', 'RS1', 7, 'lvm', +1);
+    expect(read()['af_RS1_7']).toEqual({ lvm: 1 });
+    bumpAparatoCount('af', 'RS1', 7, 'lvm', -1);
+    expect(read()['af_RS1_7']).toBeUndefined();
   });
 });
