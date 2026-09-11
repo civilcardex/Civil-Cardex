@@ -1,5 +1,6 @@
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
+import { rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
 import { extremoEntrelazado } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 
 // ¿El punto p cae sobre el CUERPO (mitad de segmento) de pts? Excluye extremos (t<0.02/0.98),
@@ -94,4 +95,129 @@ export function extremumOccupied(
 ): boolean {
   if (!eng) return false;
   return extremoEntrelazado(eng.ramales, eng.bajantes || [], ramal, epPt);
+}
+
+const CONV_TOL = 0.5;
+const convSameGroup = (a: string, b: string) =>
+  a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+
+function ptTouchesRamal(pts: number[][], p: number[]): boolean {
+  return (
+    pts.some(([x, y]) => Math.hypot(x - p[0], y - p[1]) < CONV_TOL) ||
+    pointOnRamalBody(pts, p, CONV_TOL)
+  );
+}
+
+// Cabeza (= salida) y cola (= entrada) de flujo del tributario: misma convención que
+// exitsDeBajante.
+function tribHead(o: PlanoRamal): number[] {
+  const p = o.pts;
+  return o._tribReversed ? p[0] : p[p.length - 1];
+}
+
+// Tributarios que SÍ impiden convertir `freshId` (tributario) en ramal: aquellos a los que
+// FRESH LLEGA con su cabeza (extremo de salida sobre el tributario ajeno) — el ramal resultante quedaría
+// llegando a un tributario y eso está prohibido (alerta "Los ramales no se conectan a
+// tributarios": caso T5RS8 llegando a T1RS8). NO bloquean: los segmentos hermanos de su
+// misma línea física (linaje de split o unión limpia extremo-con-extremo, ver grupo), ni
+// los tributarios que LLEGAN a fresh (él los recibe: caso T1RS8 receptor). Excepción: si el
+// punto de toque también pertenece a un TRONCO (ramal no-tributario), la unión es del
+// tronco — no cuenta como llegada al tributario.
+// El chequeo viejo `o.padre !== fresh.id` nunca reconocía hijos (el padre apunta a la raíz)
+// y el BFS por raíz tragaba ramas laterales (misma raíz + toque ≠ misma línea): un caso
+// pasaba en silencio y el otro bloqueaba de más.
+/** ¿Qué tributarios impiden convertir un tributario en ramal? Vacío = conversión válida. */
+export function tribsBlockingRamalConversion(ramales: PlanoRamal[], freshId: string): PlanoRamal[] {
+  const fresh = ramales.find((r) => r.id === freshId);
+  if (!fresh || fresh.tipo !== 'tributario' || !fresh.pts || fresh.pts.length < 2) return [];
+  // Grupo "misma línea": SOLO segmentos colineales del mismo trazo físico —
+  // (a) linaje de split (downstream.mergesFrom[0] = tramo que continúa), o
+  // (b) unión limpia extremo-con-extremo: mismo raíz, vértice con vértice, sin NINGÚN otro
+  //     ramal (tronco o rama) tocando ese punto. En un tee compartido o en una llegada
+  //     lateral siempre hay un tercer trazo en el punto → no se fusiona → bloquea.
+  const rootLbl = rootTributarioLabel(ramales, fresh.id);
+  const group = new Set<string>([fresh.id]);
+  const vertexMatch = (a: number[][], b: number[][]): number[] | null => {
+    for (const p of a) {
+      if (p !== a[0] && p !== a[a.length - 1]) continue;
+      for (const q of b) {
+        if (q !== b[0] && q !== b[b.length - 1]) continue;
+        if (Math.hypot(p[0] - q[0], p[1] - q[1]) < CONV_TOL) return p;
+      }
+    }
+    return null;
+  };
+  const jointIsClean = (p: number[], idA: string, idB: string): boolean => {
+    for (const r of ramales) {
+      if (r.id === idA || r.id === idB) continue;
+      if (!convSameGroup(r.net, fresh.net) || !r.pts || r.pts.length < 2) continue;
+      if (ptTouchesRamal(r.pts, p)) return false;
+    }
+    return true;
+  };
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const o of ramales) {
+      if (
+        group.has(o.id) ||
+        o.tipo !== 'tributario' ||
+        !convSameGroup(o.net, fresh.net) ||
+        !o.pts ||
+        o.pts.length < 2
+      )
+        continue;
+      let sameLine = false;
+      for (const mId of group) {
+        const m = ramales.find((r) => r.id === mId);
+        if (!m?.pts || m.pts.length < 2) continue;
+        // (a) linaje de split: el autocreado continúa al tramo que partió.
+        const mfM = (m as { mergesFrom?: string[] }).mergesFrom;
+        const mfO = (o as { mergesFrom?: string[] }).mergesFrom;
+        if ((mfM && mfM[0] === o.id) || (mfO && mfO[0] === m.id)) {
+          sameLine = true;
+          break;
+        }
+        // (b) unión limpia extremo-con-extremo con igual raíz.
+        if (!rootLbl || rootTributarioLabel(ramales, o.id) !== rootLbl) continue;
+        const jp = vertexMatch(m.pts, o.pts);
+        if (jp && jointIsClean(jp, m.id, o.id)) {
+          sameLine = true;
+          break;
+        }
+      }
+      if (sameLine) {
+        group.add(o.id);
+        grew = true;
+      }
+    }
+  }
+  const blockers: PlanoRamal[] = [];
+  if (fresh.padre) {
+    const p = ramales.find((r) => r.id === fresh.padre);
+    if (p && p.tipo === 'tributario' && convSameGroup(p.net, fresh.net) && !group.has(p.id))
+      blockers.push(p);
+  }
+  const freshHead = tribHead(fresh);
+  const trunkAt = (p: number[]): boolean =>
+    ramales.some(
+      (t) =>
+        t.tipo !== 'tributario' &&
+        convSameGroup(t.net, fresh.net) &&
+        t.pts &&
+        t.pts.length >= 2 &&
+        ptTouchesRamal(t.pts, p),
+    );
+  for (const o of ramales) {
+    if (o.id === fresh.id || group.has(o.id) || blockers.includes(o)) continue;
+    if (o.tipo !== 'tributario' || !convSameGroup(o.net, fresh.net) || !o.pts || o.pts.length < 2)
+      continue;
+    // Solo bloquea la CABEZA propia sobre el tributario ajeno (fresh entrega ahí):
+    // con la cola, fresh RECIBE (el lateral llega a su entrada); con el cuerpo no hay
+    // contacto propio. Si un tronco comparte el punto, la unión es del tronco.
+    if (ptTouchesRamal(o.pts, freshHead) && !trunkAt(freshHead)) {
+      blockers.push(o);
+    }
+  }
+  return blockers;
 }
