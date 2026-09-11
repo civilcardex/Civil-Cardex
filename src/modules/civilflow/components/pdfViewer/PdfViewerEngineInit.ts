@@ -305,10 +305,21 @@ export function usePdfViewerEngine({
       } catch (e) {
         devError('[CLEANUP] error', e);
       }
-      eng.setTool = origSetTool;
-      eng.destroy();
+      // El desmonte del engine JAMÁS debe lanzar: una excepción aquí crashea el árbol de
+      // React durante el cambio de ruta y deja la pantalla congelada en el visor (la URL
+      // sí cambia; solo una recarga la recupera — orig. usuario).
+      try {
+        eng.setTool = origSetTool;
+        eng.destroy();
+      } catch (e) {
+        devError('[CLEANUP] destroy error', e);
+      }
       engineRef.current = null;
-      setEngineReady(false);
+      try {
+        setEngineReady(false);
+      } catch {
+        /* owner ya desmontado */
+      }
     };
   }, [cwRef, currentIdRef, drawCanvasRef, engineRef, loadingPlanRef, pdfCanvasRef]);
 

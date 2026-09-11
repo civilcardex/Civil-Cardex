@@ -479,6 +479,26 @@ export function _tryMultiSelDrag(
         y >= te._box.y &&
         y <= te._box.y + te._box.h;
     }
+    const gde = engine.guideLines.find((g) => g.id === id);
+    if (!hit && gde?.pts) {
+      for (let i = 0; i < gde.pts.length; i++) {
+        const pc = engine.toCvs(gde.pts[i][0], gde.pts[i][1]);
+        if (Math.hypot(x - pc.x, y - pc.y) < 12) {
+          hit = true;
+          break;
+        }
+      }
+      if (!hit) {
+        for (let i = 0; i < gde.pts.length - 1; i++) {
+          const p1 = engine.toCvs(gde.pts[i][0], gde.pts[i][1]);
+          const p2 = engine.toCvs(gde.pts[i + 1][0], gde.pts[i + 1][1]);
+          if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 8) {
+            hit = true;
+            break;
+          }
+        }
+      }
+    }
     if (hit) {
       if (!isMultiSelectModifier) {
         const tp = engine.toPlane(x, y);
@@ -512,6 +532,12 @@ export function _tryMultiSelDrag(
           const mtx = engine.textAnnots.find((t) => t.id === mid);
           if (mtx) {
             origData[mid] = { type: 'text', origX: mtx.x, origY: mtx.y };
+            continue;
+          }
+          const mgl = engine.guideLines.find((g) => g.id === mid);
+          if (mgl) {
+            // La guía es UNA entidad: se traslada completa (todos sus vértices).
+            origData[mid] = { type: 'guide', origPts: mgl.pts.map((pt) => [...pt]) };
           }
         }
         engine.multiDrag = { startX: tp.x, startY: tp.y, origData };

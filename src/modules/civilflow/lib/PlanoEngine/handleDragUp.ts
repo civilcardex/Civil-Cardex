@@ -1,12 +1,7 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
-import {
-  checkRamalAngles,
-  _firstSegmentAngle,
-  angleAtHalfLength,
-  detectAccesorioTrigger,
-} from './drawingAngles';
+import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles';
 import {
   autoSplitJunctionAndSumFlow,
   ramalFlowDirectionCheck,
@@ -128,7 +123,7 @@ function tryRotateToValidAngle(
   if (Math.abs(snappedDeg - curDeg) < 1) return false;
   const rad = (snappedDeg * Math.PI) / 180;
   pts[1 - anchorIdx] = [ax + len * Math.cos(rad), ay + len * Math.sin(rad)];
-  return checkRamalAngles(pts, ram.net, ram.tipo, engine.snapMode);
+  return checkRamalAnglesExcludingConnections(engine, { ...ram, pts });
 }
 
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
@@ -204,6 +199,54 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
           if (!engine.multiSel.includes(t.id)) engine.multiSel.push(t.id);
         }
+      });
+      // Guías: ENTIDAD COMPLETA — basta un vértice dentro del rect o un segmento que lo
+      // cruce (Liang-Barsky, mismo test que ramales) para seleccionar la guía entera
+      // (orig. usuario: arrastre selecciona guías como los demás trazos).
+      engine.guideLines.forEach((g) => {
+        if (!g.pts || g.pts.length < 2) return;
+        let inside = false;
+        for (const pt of g.pts) {
+          const c = engine.toCvs(pt[0], pt[1]);
+          if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
+            inside = true;
+            break;
+          }
+        }
+        if (!inside) {
+          for (let i = 0; i < g.pts.length - 1; i++) {
+            const p1 = engine.toCvs(g.pts[i][0], g.pts[i][1]);
+            const p2 = engine.toCvs(g.pts[i + 1][0], g.pts[i + 1][1]);
+            let t0 = 0,
+              t1 = 1;
+            const dx = p2.x - p1.x,
+              dy = p2.y - p1.y;
+            const p = [-dx, dx, -dy, dy];
+            const q = [p1.x - minX, maxX - p1.x, p1.y - minY, maxY - p1.y];
+            let ok = true;
+            for (let k = 0; k < 4; k++) {
+              if (p[k] === 0) {
+                if (q[k] < 0) {
+                  ok = false;
+                  break;
+                }
+              } else {
+                const t = q[k] / p[k];
+                if (p[k] < 0) t0 = Math.max(t0, t);
+                else t1 = Math.min(t1, t);
+                if (t0 > t1) {
+                  ok = false;
+                  break;
+                }
+              }
+            }
+            if (ok) {
+              inside = true;
+              break;
+            }
+          }
+        }
+        if (inside && !engine.multiSel.includes(g.id)) engine.multiSel.push(g.id);
       });
       engine.selId = null;
       engine._emitSelect(null);
@@ -515,7 +558,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const srcBajId = rId.startsWith('LD_') ? rId.slice(3) : null;
     const srcBaj = srcBajId ? engine.bajantes.find((b) => b.id === srcBajId) : null;
     const origSrcXY = srcBaj ? { x: srcBaj.x, y: srcBaj.y } : null;
-    if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo, engine.snapMode)) {
+    if (ram && !checkRamalAnglesExcludingConnections(engine, ram)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
         ram.net === 'san' || ram.net === 'll'

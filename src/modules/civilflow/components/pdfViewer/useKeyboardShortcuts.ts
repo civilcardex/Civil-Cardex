@@ -1,32 +1,33 @@
-// Atajos de teclado globales del visor (fuera de inputs/selects): 'g' alterna snap, 'c'
-// selecciona contador (af/gas) o canal (si la red recolectora está activa), 'h' calentador,
-// y Suprimir/Backspace borra la selección fantasma (el borrado del resto de elementos lo
-// maneja el propio engine en su keydown). Los valores se leen vía ref para que el listener
-// registrado una sola vez siempre vea el estado actual.
+// Atajos de teclado globales del visor (fuera de inputs/selects): 'r' ramal principal,
+// 't' tributario, 'c' texto, 'h' grilla, 'g' snap, y Suprimir/Backspace borra la selección
+// fantasma (el borrado del resto de elementos lo maneja el propio engine en su keydown).
+// Los valores se leen vía ref para que el listener registrado una sola vez siempre vea el
+// estado actual.
 import { useEffect, useRef } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
 interface UseKeyboardShortcutsParams {
   setSnapOn: React.Dispatch<React.SetStateAction<boolean>>;
   setTool: (t: string) => void;
-  activeNet: string;
-  recolectoraActive: boolean;
+  setTipoTramo: (t: 'ramal' | 'tributario') => void;
+  setGridOn: React.Dispatch<React.SetStateAction<boolean>>;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
 }
 
-/** Atajos de teclado del visor: g alterna snap, c elige contador o canal, h calentador y
- *  Suprimir borra la selección fantasma. El estado se lee vía ref para que el listener único
- *  siempre vea los valores actuales. */
+/** Atajos de teclado del visor: r ramal principal, t tributario, c texto, h grilla, g snap y
+ *  Suprimir borra la selección fantasma (el borrado del resto de elementos lo maneja el propio
+ *  engine en su keydown). Los valores se leen vía ref para que el listener registrado una sola
+ *  vez siempre vea el estado actual. */
 export function useKeyboardShortcuts({
   setSnapOn,
   setTool,
-  activeNet,
-  recolectoraActive,
+  setTipoTramo,
+  setGridOn,
   engineRef,
 }: UseKeyboardShortcutsParams): void {
-  const latest = useRef({ setSnapOn, setTool, activeNet, recolectoraActive, engineRef });
+  const latest = useRef({ setSnapOn, setTool, setTipoTramo, setGridOn, engineRef });
   useEffect(() => {
-    latest.current = { setSnapOn, setTool, activeNet, recolectoraActive, engineRef };
+    latest.current = { setSnapOn, setTool, setTipoTramo, setGridOn, engineRef };
   });
 
   useEffect(() => {
@@ -41,28 +42,30 @@ export function useKeyboardShortcuts({
       const {
         setSnapOn: toggleSnap,
         setTool: selectTool,
-        activeNet: net,
-        recolectoraActive: recActive,
+        setTipoTramo: selectTipo,
+        setGridOn: toggleGrid,
         engineRef: engRef,
       } = latest.current;
       if (e.key.toLowerCase() === 'g') {
         toggleSnap((p) => !p);
         e.preventDefault();
       }
+      if (e.key.toLowerCase() === 'r') {
+        selectTipo('ramal');
+        selectTool('line');
+        e.preventDefault();
+      }
+      if (e.key.toLowerCase() === 't') {
+        selectTipo('tributario');
+        selectTool('line');
+        e.preventDefault();
+      }
       if (e.key.toLowerCase() === 'c') {
-        // Espejo del manejador 'c' del engine: contador en af/gas, canal en el resto (si canal
-        // recolectora está activa).
-        if (net === 'af' || net === 'gas') {
-          selectTool('cont');
-        } else if (recActive) {
-          selectTool('canal');
-        } else {
-          selectTool('cont');
-        }
+        selectTool('text');
         e.preventDefault();
       }
       if (e.key.toLowerCase() === 'h') {
-        selectTool('calent');
+        toggleGrid((p) => !p);
         e.preventDefault();
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {

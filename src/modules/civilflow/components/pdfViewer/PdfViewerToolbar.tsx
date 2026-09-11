@@ -38,12 +38,20 @@ const TOOLS: ToolDef[] = [
     shortcut: 'S',
   },
   {
-    id: 'line',
-    label: 'Ramal/Tributario',
+    id: 'line-ramal',
+    label: 'Ramal principal',
     ico: '\u2571',
-    key: 'L',
+    key: 'R',
     icoCol: '#4D8FF7',
-    shortcut: 'L',
+    shortcut: 'R',
+  },
+  {
+    id: 'line-trib',
+    label: 'Tributario',
+    ico: '\u2571',
+    key: 'T',
+    icoCol: '#4D8FF7',
+    shortcut: 'T',
   },
   { id: 'area', label: 'Área', ico: '\u2B21', key: 'A', icoCol: '#22D3EE', shortcut: 'A' },
   {
@@ -63,7 +71,7 @@ const TOOLS: ToolDef[] = [
     icoCol: '#888888',
     shortcut: 'U',
   },
-  { id: 'text', label: 'Texto', ico: 'T', key: 'T', icoCol: '#A855F7', shortcut: 'T' },
+  { id: 'text', label: 'Texto', ico: 'T', key: 'C', icoCol: '#A855F7', shortcut: 'C' },
   { id: 'baj', label: 'Bajante', ico: '\u2193', key: 'B', icoCol: '#F04545', shortcut: 'B' },
   { id: 'mon', label: 'Montante', ico: '\u2191', key: 'M', icoCol: '#3B82F6', shortcut: 'M' },
   { id: 'erase', label: 'Borrador', ico: '🧽', key: 'E', icoCol: '#ffb4ab', shortcut: 'E' },
@@ -115,6 +123,8 @@ type NavFn = () => void;
 type SelToolFn = (toolId: string) => void;
 export type PdfViewerToolbarProps = {
   tool: string;
+  tipoTramo: string;
+  onTipoTramoSelect: (t: 'ramal' | 'tributario') => void;
   snapOn: boolean;
   gridOn: boolean;
   activeNet: string;
@@ -131,6 +141,8 @@ export type PdfViewerToolbarProps = {
   onRedo: NavFn;
   onClear: NavFn;
   onClearGuides: NavFn;
+  /** Motivo del último fallo de guardado a BD (evento civilflow_bd_save_error). */
+  bdError?: string | null;
 };
 
 const compactBtn: React.CSSProperties = {
@@ -156,6 +168,8 @@ const compactShortcut = (s: string) => (s === 'Espacio' ? 'Esp' : s);
 
 function PdfViewerToolbar_({
   tool,
+  tipoTramo,
+  onTipoTramoSelect,
   snapOn,
   gridOn,
   activeNet,
@@ -172,6 +186,7 @@ function PdfViewerToolbar_({
   onRedo,
   onClear,
   onClearGuides,
+  bdError,
 }: PdfViewerToolbarProps) {
   const netTools = [...TOOLS];
   if (activeNet === 'af' || activeNet === 'gas') {
@@ -179,9 +194,9 @@ function PdfViewerToolbar_({
       id: 'cont',
       label: 'Contador',
       ico: '🔳',
-      key: 'C',
+      key: '',
       icoCol: '#4D8FF7',
-      shortcut: 'C',
+      shortcut: '',
     });
   }
   // El canal está disponible en cualquier piso/red activa mientras canal recolectora esté
@@ -192,16 +207,17 @@ function PdfViewerToolbar_({
     ico: '▭',
     // 'C' es compartido con Contador (af/gas) — redes mutuamente excluyentes, ver
     // PlanoEngine.ts's 'c' key handler.
-    key: 'C',
+    key: '',
     icoCol: '#8B5CF6',
-    shortcut: 'C',
+    shortcut: '',
   });
-  // Caja de recolección (san → CAN, ll → CALL): rectángulo apaisado con interior. La red del
+  // Caja de recolección (san → CAN, ll → CALL): cuadrados concéntricos 100×100/70×70cm
+  // a escala. La red del
   // elemento la decide handleCajaDown según activeNet; la etiqueta de la herramienta nombra la
   // red activa. ('X' ya borra montante.)
   netTools.splice(7, 0, {
     id: 'caja',
-    label: activeNet === 'll' ? 'Caja aguas lluvias' : 'Caja aguas negras',
+    label: activeNet === 'll' ? 'Caja ALL' : 'Caja AN',
     ico: '⧉',
     key: 'J',
     icoCol: '#10B981',
@@ -211,6 +227,28 @@ function PdfViewerToolbar_({
   const visibleTools = netTools.filter(
     (t) => !isToolDisabledForNet(t.id, activeNet, recolectoraActive),
   );
+
+  // Ramal principal / Tributario comparten la herramienta 'line' — el par tool+tipoTramo
+  // decide el resaltado y el click fija ambos (mismo flujo que el viejo selector del panel
+  // derecho, ahora solo en el panel izquierdo).
+  const isToolActive = (id: string): boolean => {
+    if (id === 'line-ramal') return tool === 'line' && tipoTramo === 'ramal';
+    if (id === 'line-trib') return tool === 'line' && tipoTramo === 'tributario';
+    return tool === id;
+  };
+  const onToolClick = (id: string): void => {
+    if (id === 'line-ramal') {
+      onTipoTramoSelect('ramal');
+      onSelectTool('line');
+      return;
+    }
+    if (id === 'line-trib') {
+      onTipoTramoSelect('tributario');
+      onSelectTool('line');
+      return;
+    }
+    onSelectTool(id);
+  };
 
   if (collapsed) {
     return (
@@ -222,23 +260,23 @@ function PdfViewerToolbar_({
                 <button
                   type="button"
                   key={t.id}
-                  onClick={() => onSelectTool(t.id)}
+                  onClick={() => onToolClick(t.id)}
                   aria-label={t.label}
                   title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
                   style={{
                     ...compactBtn,
-                    background: tool === t.id ? '#2563EB' : '#1e2024',
-                    border: `1px solid ${tool === t.id ? '#2563EB' : '#3a494a'}`,
+                    background: isToolActive(t.id) ? '#2563EB' : '#1e2024',
+                    border: `1px solid ${isToolActive(t.id) ? '#2563EB' : '#3a494a'}`,
                     cursor: 'pointer',
                   }}
                 >
-                  <span style={{ fontSize: 14, color: tool === t.id ? '#fff' : t.icoCol }}>
+                  <span style={{ fontSize: 14, color: isToolActive(t.id) ? '#fff' : t.icoCol }}>
                     {t.ico}
                   </span>
                   <span
                     style={{
                       fontSize: 9,
-                      color: tool === t.id ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                      color: isToolActive(t.id) ? 'rgba(255,255,255,.6)' : '#8AB4D6',
                     }}
                   >
                     {compactShortcut(t.shortcut)}
@@ -270,8 +308,8 @@ function PdfViewerToolbar_({
             <button
               type="button"
               onClick={onGridToggle}
-              aria-label="Grilla"
-              title="Mostrar/ocultar grilla"
+              aria-label="Grilla (H)"
+              title="Mostrar/ocultar grilla (H)"
               style={{
                 ...compactBtn,
                 background: gridOn ? '#10B98122' : '#1e2024',
@@ -312,7 +350,11 @@ function PdfViewerToolbar_({
               onClick={onSave}
               aria-label="Guardar"
               style={compactBtn}
-              title="Guarda los trazados y cambios realizados en el plano para la red activa"
+              title={
+                bdError
+                  ? `Error guardando a BD: ${bdError}`
+                  : 'Guarda los trazados y cambios realizados en el plano para la red activa'
+              }
             >
               <span
                 style={{ fontSize: 14, color: STATUS[saveStatus]?.color || STATUS.error.color }}
@@ -325,7 +367,7 @@ function PdfViewerToolbar_({
               onClick={onUndo}
               aria-label="Deshacer"
               style={compactBtn}
-              title="Deshace el último elemento dibujado: ramal, bajante, área, cota o texto. (Ctrl+Z)"
+              title="Deshacer (Ctrl + Z)"
             >
               <span style={{ fontSize: 14 }}>{'↩'}</span>
             </button>
@@ -334,7 +376,7 @@ function PdfViewerToolbar_({
               onClick={onRedo}
               aria-label="Rehacer"
               style={compactBtn}
-              title="Revierte el último cambio deshecho: restaura el ramal, bajante, área, cota o texto que se deshizo. (Ctrl+Y)"
+              title="Rehacer (Ctrl + Y)"
             >
               <span style={{ fontSize: 14 }}>{'↪'}</span>
             </button>
@@ -383,12 +425,12 @@ function PdfViewerToolbar_({
               <button
                 type="button"
                 key={t.id}
-                onClick={() => onSelectTool(t.id)}
+                onClick={() => onToolClick(t.id)}
                 title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
                 style={{
                   ...PdfViewerToolbar_S2,
-                  background: tool === t.id ? '#2563EB' : '#1e2024',
-                  border: `1px solid ${tool === t.id ? '#2563EB' : '#3a494a'}`,
+                  background: isToolActive(t.id) ? '#2563EB' : '#1e2024',
+                  border: `1px solid ${isToolActive(t.id) ? '#2563EB' : '#3a494a'}`,
                   borderRadius: '3px',
                   color: '#b9caca',
                   cursor: 'pointer',
@@ -399,7 +441,7 @@ function PdfViewerToolbar_({
                     fontSize: 14,
                     width: 18,
                     textAlign: 'center',
-                    color: tool === t.id ? '#fff' : t.icoCol,
+                    color: isToolActive(t.id) ? '#fff' : t.icoCol,
                   }}
                 >
                   {t.ico}
@@ -408,7 +450,7 @@ function PdfViewerToolbar_({
                 <span
                   style={{
                     fontSize: 12,
-                    color: tool === t.id ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                    color: isToolActive(t.id) ? 'rgba(255,255,255,.6)' : '#8AB4D6',
                     fontFamily: "'Geist',monospace",
                     marginLeft: 'auto',
                   }}
@@ -484,7 +526,7 @@ function PdfViewerToolbar_({
                 fontFamily: "'Geist',monospace",
               }}
             >
-              #
+              H
             </span>
           </button>
         </div>
@@ -569,7 +611,7 @@ function PdfViewerToolbar_({
             type="button"
             onClick={onUndo}
             style={{ ...accBtn, width: '100%' }}
-            title="Deshace el último elemento dibujado: ramal, bajante, área, cota o texto. (Ctrl+Z)"
+            title="Deshacer (Ctrl + Z)"
           >
             <span style={{ fontSize: 14 }}>{'\u21A9'}</span>
             <div
@@ -582,9 +624,8 @@ function PdfViewerToolbar_({
                 flex: 1,
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Deshacer</span>
-              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
-                Último trazo · Ctrl+Z
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Deshacer (Ctrl + Z)
               </span>
             </div>
           </button>
@@ -592,7 +633,7 @@ function PdfViewerToolbar_({
             type="button"
             onClick={onRedo}
             style={{ ...accBtn, width: '100%' }}
-            title="Revierte el último cambio deshecho: restaura el ramal, bajante, área, cota o texto que se deshizo. (Ctrl+Y)"
+            title="Rehacer (Ctrl + Y)"
           >
             <span style={{ fontSize: 14 }}>{'\u21AA'}</span>
             <div
@@ -605,9 +646,8 @@ function PdfViewerToolbar_({
                 flex: 1,
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Rehacer</span>
-              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
-                Revertir deshacer · Ctrl+Y
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Rehacer (Ctrl + Y)
               </span>
             </div>
           </button>
@@ -633,9 +673,8 @@ function PdfViewerToolbar_({
                 flex: 1,
               }}
             >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Limpiar</span>
-              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
-                Borrar trazado de red activa
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Borrar trazos de red
               </span>
             </div>
           </button>
@@ -663,9 +702,6 @@ function PdfViewerToolbar_({
             >
               <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
                 Borrar líneas guía
-              </span>
-              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
-                Quitar todas las guías dibujadas
               </span>
             </div>
           </button>
