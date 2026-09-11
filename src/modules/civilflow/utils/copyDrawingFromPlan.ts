@@ -1,9 +1,4 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
-import {
-  APARATOS_BY_TRAMO_KEY,
-  HYDRO_DATA_STORAGE_KEY,
-  GAS_ACC_KEY,
-} from '../constants/storage-keys';
 import { NETS, uniqRamalId } from '../lib/PlanoEngine/PlanoState';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 
@@ -45,8 +40,54 @@ interface CopyElement {
   ghostData?: unknown;
 }
 
+// Solo posición (orig. usuario): resetea TODO dato hidráulico/de cálculo de los elementos
+// copiados, conservando geometría (pts/x/y), identidad nueva y estructura remapeada
+// (padre/recibe/alimenta/ini/fin entre copiados — eso lo resolvió el bloque de referencias).
+// Los conteos de aparatos/hidro/gas NO viajan (se asignan de nuevo en el piso destino).
+function stripToPosition(els: CopyElement[]): void {
+  for (const el of els) {
+    const rec = el as unknown as Record<string, unknown>;
+    // Ramales: sin diámetro, material, pendiente, accesorios, aparatos ni conteos viajeros
+    // ('' explícito donde el motor espera string).
+    rec.diametro = '';
+    rec.material = '';
+    delete rec.accesorioInicio;
+    delete rec.accesorioFin;
+    delete rec.diametroInicio;
+    delete rec.diametroFin;
+    delete rec.accMed;
+    delete rec.aparatoInicio;
+    delete rec.aparatoFin;
+    delete rec.fixtures;
+    delete rec.hydroAcc;
+    delete rec.gasAcc;
+    delete rec.caudal;
+    delete rec.yeeDobleAt;
+    delete rec.sifonLabelIni;
+    delete rec.sifonLabelFin;
+    delete rec.mergesFrom;
+    rec.pendiente = 0;
+    rec.uc = 0;
+    rec.nSalidas = 1;
+    // Bajantes/globales: sin diámetro nominal, acumulados, áreas ni capacidades.
+    rec.dNominal = '';
+    delete rec.aparato;
+    delete rec.capacidad;
+    delete rec.factorSim;
+    delete rec.base;
+    delete rec.altura;
+    delete rec.longitud;
+    delete rec.canalId;
+    rec.ucAcum = 0;
+    rec.ucExtra = 0;
+    rec.area_m2 = 0;
+    rec.hVert = 0;
+  }
+}
+
 /**
  * Copia elementos filtrados por red/tipo de un plano origen a uno destino, renumerando ids.
+ * Solo copia la POSICIÓN (geometría + estructura remapeada): nada de datos hidráulicos.
  * Filtra redes ocultas y tipos no seleccionados; preserva asociaciones y recalcula totales.
  * @param engine - Motor destino (se usa para renumerar y persistir).
  * @param targetPlanId - Id del plano destino.
@@ -74,11 +115,6 @@ export function copyDrawingFromPlan(
   const skippedNets: string[] = [];
   const oldToNew: Record<string, string> = {};
   const srcPid = String(sourcePlanId);
-  const tgtPid = String(targetPlanId);
-
-  const aparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as Record<string, unknown>;
-  const hidroData = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {}) as Record<string, unknown>;
-  const gasAcc = loadFromStorage(GAS_ACC_KEY, {}) as Record<string, unknown>;
 
   for (const sel of selections) {
     const { netId, tipos } = sel;
@@ -111,23 +147,6 @@ export function copyDrawingFromPlan(
     if (srcRamales.length === 0 && srcBajantes.length === 0 && srcGlobals.length === 0) continue;
 
     const srcAll = [...srcRamales, ...srcBajantes, ...srcGlobals];
-
-    /* ── CAPTURAR datos fuente de los 3 stores ANTES de cualquier borrado ── */
-    const srcSnapshot: Record<string, { aparato?: unknown; hidro?: unknown; gasAcc?: unknown }> =
-      {};
-    for (const el of srcAll) {
-      srcSnapshot[el.id] = {};
-
-      const apKey = `${netId}_${el.id}_${srcPid}`;
-      if (aparatos[apKey] !== undefined)
-        srcSnapshot[el.id].aparato = structuredClone(aparatos[apKey]);
-
-      const hdKey = `${netId}_${el.id}_${srcPid}`;
-      if (hidroData[hdKey] !== undefined)
-        srcSnapshot[el.id].hidro = structuredClone(hidroData[hdKey]);
-
-      if (gasAcc[el.id] !== undefined) srcSnapshot[el.id].gasAcc = structuredClone(gasAcc[el.id]);
-    }
 
     /* ── Los elementos del piso destino SE CONSERVAN (orig. usuario) ── */
     /* Antes se borraban los coincidentes (misma red+tipo) y los contadores reiniciaban en 1,
@@ -333,6 +352,11 @@ export function copyDrawingFromPlan(
       delete el.isFantasma;
       delete el.ghostData;
     }
+    // Solo posición (orig. usuario): la copia conserva geometría (pts/x/y) y estructura
+    // remapeada (padre/recibe/alimenta/ini/fin entre copiados), pero NINGÚN dato hidráulico:
+    // sin diámetros, materiales, accesorios, aparatos ni conteos. Lo que pida diámetro o
+    // aparato se asigna de nuevo en el piso destino.
+    stripToPosition(srcAll);
     // Los punteros de asociación entre pisos (descargaEnId/origenId) referencian un bajante
     // específico en OTRO piso específico — copiar el elemento a un piso nuevo bajo un id nuevo
     // vuelve obsoleto cualquier puntero así (o apunta a la nada, o peor, a algún bajante no
@@ -391,28 +415,8 @@ export function copyDrawingFromPlan(
       engine._netCounts[netId].ramal = ramalCounter;
     }
 
-    /* ── Escribir datos fuente capturados en los nuevos IDs ── */
-    for (const [oldId, newId] of Object.entries(oldToNew)) {
-      const snap = srcSnapshot[oldId];
-      if (!snap) continue;
-
-      if (snap.aparato !== undefined) {
-        aparatos[`${netId}_${newId}_${tgtPid}`] = snap.aparato;
-      }
-      if (snap.hidro !== undefined) {
-        hidroData[`${netId}_${newId}_${tgtPid}`] = snap.hidro;
-      }
-      if (snap.gasAcc !== undefined) {
-        gasAcc[newId] = snap.gasAcc;
-      }
-    }
-
     totalCopied += srcAll.length;
   }
-
-  saveToStorage(APARATOS_BY_TRAMO_KEY, aparatos);
-  saveToStorage(HYDRO_DATA_STORAGE_KEY, hidroData);
-  saveToStorage(GAS_ACC_KEY, gasAcc);
 
   try {
     const work = engine.saveWork();
