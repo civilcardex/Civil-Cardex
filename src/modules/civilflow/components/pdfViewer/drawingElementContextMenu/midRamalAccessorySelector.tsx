@@ -1,7 +1,7 @@
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS } from '../../../constants/engineeringDataFixtures';
 import { UD_BASE_INIT } from '../../../constants';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions';
-import { esAplicable, loadAll, saveAll } from '../../fixturesStorage';
+import { esAplicable, loadAll } from '../../fixturesStorage';
 import { DIAM_BY_MAT } from '../../../constants';
 import { matchDiamOption } from '../../../utils/diamOptionMatch';
 import { sanDiamAllowedForApparatus } from '../../../utils/sanitaryDiamCompat';
@@ -13,7 +13,9 @@ import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import {
   bumpHidroAccesorio,
-  syncExtremeAparatoToCounts,
+  bumpAparatoCount,
+  setSingleAparatoCount,
+  decrementFirstAparato,
 } from '../../../utils/syncExtremeAccessory';
 import type { PlanItem } from '../../../context/PlansContext';
 import { MENU_SELECT_STYLE, MENU_SECTION_LABEL_ROW_STYLE, type ContextMenuState } from './context';
@@ -27,7 +29,6 @@ export function MidRamalAccessorySelector({
   selElement,
   setSelElement,
   setContextMenuState,
-  planosCtx,
 }: {
   element: PlanoRamal;
   midRamalHit: { segmentIdx: number; x: number; y: number };
@@ -281,6 +282,10 @@ export function MidRamalAccessorySelector({
               : false;
             if (val && blocked0 && blocked1) {
               setContextMenuState((prev) => (prev ? { ...prev, visible: false } : prev));
+              eng.triggerAlert(
+                'Extremos ocupados',
+                'Ambos extremos del ramal están conectados a la red. Libera una punta o invierte la dirección del ramal antes de asignar el aparato.',
+              );
               return;
             }
             if (fresh.net === 'san' || fresh.net === 'll') {
@@ -387,30 +392,16 @@ export function MidRamalAccessorySelector({
                   prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
                 );
                 eng.render();
-                if (planosCtx?.plans) {
+                // Conteo directo por clave de plano (sin gate de planosCtx: con el contexto aún
+                // cargando el menú escribía el símbolo pero no el conteo y el primer clic
+                // "no hacía nada").
+                {
                   const planId = eng._loadedPlanId ?? '';
-                  const counts2 = loadAll();
-                  const key2 = `san_${element.id}_${planId || ''}`;
-                  const cur2 = counts2[key2] || {};
-                  // ponytail: switch debe reemplazar, no sumar — solo 1 aparato por ramal
-                  const hadPrev = Object.keys(cur2).find((k) => k !== val && (cur2[k] || 0) > 0);
-                  if (hadPrev) {
-                    delete cur2[hadPrev];
-                    // diam ya ajustado arriba, no bump accesorio si ya existía
-                  }
-                  cur2[val] = 1;
-                  // limpiar ceros
-                  for (const k of Object.keys(cur2)) if (!cur2[k]) delete cur2[k];
-                  if (Object.keys(cur2).length === 0) delete counts2[key2];
-                  else counts2[key2] = cur2;
-                  saveAll(counts2);
+                  setSingleAparatoCount('san', element.id, planId, val);
                   // bump solo si accesorio no existía antes (evita doble conteo al cambiar de aparato con mismo codo)
                   const hadAccBefore = !!fresh[fieldAcc];
                   if (!hadAccBefore)
                     bumpHidroAccesorio('san', 'codo90rmSube', 1, element.id, planId);
-                  else if (hadPrev && hadPrev !== val) {
-                    // switching aparato con mismo accesorio: no bump, pero ensure counts correcto
-                  }
                   if (typeof window !== 'undefined')
                     window.dispatchEvent(new CustomEvent('aparatos-clear'));
                 }
@@ -448,22 +439,9 @@ export function MidRamalAccessorySelector({
                 bumpHidroAccesorio('san', 'codo90rmSube', -1, element.id, planId);
                 if (typeof window !== 'undefined')
                   window.dispatchEvent(new CustomEvent('aparatos-clear'));
-                if (planosCtx?.plans) {
-                  const counts3 = loadAll();
-                  const key3 = `san_${element.id}_${planId || ''}`;
-                  const cur3 = counts3[key3] || {};
-                  const apToDec = Object.keys(cur3).find((k) => (cur3[k] || 0) > 0);
-                  if (apToDec) {
-                    const v = (cur3[apToDec] || 0) - 1;
-                    if (v <= 0) delete cur3[apToDec];
-                    else cur3[apToDec] = v;
-                    if (Object.keys(cur3).length === 0) delete counts3[key3];
-                    else counts3[key3] = cur3;
-                    saveAll(counts3);
-                    if (typeof window !== 'undefined')
-                      window.dispatchEvent(new CustomEvent('aparatos-clear'));
-                  }
-                }
+                decrementFirstAparato('san', element.id, planId);
+                if (typeof window !== 'undefined')
+                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
                 // Ítem 1: un snapshot para toda la desasignación (geometría + conteos).
                 eng.resumeHistory();
                 eng._markDirty();
@@ -540,8 +518,12 @@ export function MidRamalAccessorySelector({
                 setSelElement({ ...selElement, ...actualUpdates } as PlanoRamal);
               }
               eng.render();
-              if (planosCtx?.plans) {
-                syncExtremeAparatoToCounts(element.id, actualOldApp, '', planosCtx.plans);
+              // Conteo directo por clave de plano (sin gate de planosCtx — ver rama san).
+              {
+                const pid = eng._loadedPlanId ?? '';
+                if (actualOldApp) bumpAparatoCount(element.net, element.id, pid, actualOldApp, -1);
+                if (typeof window !== 'undefined')
+                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
               }
               eng.resumeHistory();
               eng._markDirty();
@@ -559,8 +541,13 @@ export function MidRamalAccessorySelector({
               setSelElement({ ...selElement, ...updates } as PlanoRamal);
             }
             eng.render();
-            if (planosCtx?.plans) {
-              syncExtremeAparatoToCounts(element.id, oldApp, val || '', planosCtx.plans);
+            // Conteo directo por clave de plano (sin gate de planosCtx — ver rama san).
+            {
+              const pid = eng._loadedPlanId ?? '';
+              if (oldApp) bumpAparatoCount(element.net, element.id, pid, oldApp, -1);
+              if (val) bumpAparatoCount(element.net, element.id, pid, val || '', +1);
+              if (typeof window !== 'undefined')
+                window.dispatchEvent(new CustomEvent('aparatos-clear'));
             }
             eng.resumeHistory();
             eng._markDirty();

@@ -130,6 +130,49 @@ export function bumpAparatoCount(
   saveToStorage(APARATOS_BY_TRAMO_KEY, all);
 }
 
+/** Asigna UN aparato san/ll al ramal (reemplaza el anterior: máximo 1 por ramal) y
+ *  descuenta el primero que haya. Escritura directa al storage por clave de plano — NO depende
+ *  de contextos async (el menú cerraba sin asignar cuando planosCtx aún cargaba y el primer
+ *  clic "no hacía nada"). Devuelve false si no había nada que descontar. */
+export function setSingleAparatoCount(
+  netId: string,
+  ramalId: string,
+  planId: string | number,
+  aparatoId: string,
+): void {
+  const storeKey = `${netId}_${ramalId}_${planId}`;
+  const all =
+    loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+  const cur = { ...(all[storeKey] || {}) };
+  const hadPrev = Object.keys(cur).find((k) => k !== aparatoId && (cur[k] || 0) > 0);
+  if (hadPrev) delete cur[hadPrev];
+  cur[aparatoId] = 1;
+  for (const k of Object.keys(cur)) if (!cur[k]) delete cur[k];
+  if (Object.keys(cur).length === 0) delete all[storeKey];
+  else all[storeKey] = cur;
+  saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+}
+
+export function decrementFirstAparato(
+  netId: string,
+  ramalId: string,
+  planId: string | number,
+): boolean {
+  const storeKey = `${netId}_${ramalId}_${planId}`;
+  const all =
+    loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+  const cur = { ...(all[storeKey] || {}) };
+  const apToDec = Object.keys(cur).find((k) => (cur[k] || 0) > 0);
+  if (!apToDec) return false;
+  const v = (cur[apToDec] || 0) - 1;
+  if (v <= 0) delete cur[apToDec];
+  else cur[apToDec] = v;
+  if (Object.keys(cur).length === 0) delete all[storeKey];
+  else all[storeKey] = cur;
+  saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+  return true;
+}
+
 export function syncExtremeAparatoToCounts(
   ramalId: string,
   oldApp: string,

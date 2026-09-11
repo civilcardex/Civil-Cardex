@@ -11,6 +11,7 @@ import { codoPolarityOk, codoNivelPermitidoEn } from '../../lib/PlanoEngine/Plan
 import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventCodoTeeFix';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState';
+import type { SyncPlanInput } from '../../utils/drawingSync';
 import type { PlanItem } from '../../context/PlansContext';
 const ExtremeAccessoryEditor_S1: React.CSSProperties = {
   width: '100%',
@@ -139,8 +140,15 @@ export default function ExtremeAccessoryEditor({
         // / calcSanitaryAccessories), que reconstruye hidroData/aparatos desde los campos del
         // ramal: si corre después, el bump +1 se suma sobre el valor ya reconciliado y el
         // accesorio queda duplicado (p. ej. una reducción contada dos veces en el resumen).
-        if (val !== oldVal && plans) {
-          syncExtremeAccessoryToHidroData(selElement.id, field, oldVal, val, plans);
+        // Sin gate de plans: con el contexto aún cargando el accesorio quedaba sin conteo y
+        // había que asignarlo dos veces (ver midRamalAccessorySelector).
+        if (val !== oldVal) {
+          const effPlans =
+            plans ??
+            (engineRef.current._loadedPlanId != null
+              ? [{ id: engineRef.current._loadedPlanId, status: 'confirmed' } as SyncPlanInput]
+              : []);
+          syncExtremeAccessoryToHidroData(selElement.id, field, oldVal, val, effPlans);
         }
         engineRef.current._markDirty();
         if (removedApp && plans) {
