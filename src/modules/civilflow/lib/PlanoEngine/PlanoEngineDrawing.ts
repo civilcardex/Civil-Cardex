@@ -70,6 +70,7 @@ export {
   detectYeeSimpleNear,
   detectTributaryPadre,
   checkRamalAnglesExcludingConnections,
+  puntoEnCaja,
 } from './junctionAutoSplit';
 
 export { finishRamal, checkCrossRamalAngle } from './finishRamal';
