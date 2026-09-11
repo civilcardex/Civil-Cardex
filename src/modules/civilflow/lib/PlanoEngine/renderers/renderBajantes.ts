@@ -196,39 +196,75 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       // Bomba centrífuga (BOMAN-nivel, orig. usuario, imagen de referencia): volute + centro
       // + DOS boquillas VERTICALES con brida — arriba-IZQUIERDA (sube) y abajo-DERECHA (baja),
       // como el ícono. R = 1/4 del tamaño original (35cm → ~8.75cm de radio de volute).
+      // Los brazos NACEN conectados EN el borde del círculo (no entran a él) y la volute se
+      // interrumpe en las bocas (orig. usuario).
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
       const R = engine.realMmToCanvasPx(350) / 4;
       const lw = (sel ? 2.5 : 1.4) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
       ctx.lineWidth = lw;
-      // Volute + centro.
-      ctx.beginPath();
-      ctx.arc(0, 0, R, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, 0, R * 0.3, 0, Math.PI * 2);
-      ctx.stroke();
-      // Boquilla VERTICAL: dos líneas paralelas desde el cuadro de la volute hacia afuera +
-      // brida rectangular (outline) en la boca. x0 = ±0.45R (izq arriba / der abajo).
+      // Boquilla VERTICAL: dos líneas paralelas desde el BORDE de la volute hacia afuera +
+      // brida rectangular (outline) en la boca. x0 = ±0.45R (izq arriba / der abajo). Cada
+      // línea arranca EN su intersección con el círculo (al ras, sin entrar ni flotar); la
+      // volute se interrumpe justo en el filo exterior de cada línea (medio grosor).
       const w = R * 0.5;
       const fh = R * 0.22;
       const fw = w * 1.7;
+      // Un poco más de círculo: los arcos se estiran hasta el CENTRO de cada línea de
+      // boquilla (un grosor de línea) para que el empalme quede conectado, sin morder.
+      const extAng = lw / R;
+      const TAU = Math.PI * 2;
+      const normAng = (a: number): number => {
+        let n = a % TAU;
+        if (n < 0) n += TAU;
+        return n;
+      };
+      const edgeY = (xs: number, dir: number): number => {
+        const xc = Math.max(-R * 0.999, Math.min(R * 0.999, xs));
+        return dir * Math.sqrt(R * R - xc * xc);
+      };
+      // Intervalo angular de la boca sobre la volute: hasta el filo EXTERIOR de cada línea
+      // (medio grosor de línea) para quedar al ras, sin hueco ni traslape visible.
+      const gaps: Array<[number, number]> = [];
       const nozzleV = (x0: number, dir: number) => {
-        const yA = dir * R * 0.72; // altura del arranque (sobre el cuadro de la volute)
         const yEnd = dir * (R * 0.72 + R * 0.55);
+        const sides = [x0 - w / 2, x0 + w / 2];
         ctx.beginPath();
-        ctx.moveTo(x0 - w / 2, yA);
-        ctx.lineTo(x0 - w / 2, yEnd);
-        ctx.moveTo(x0 + w / 2, yA);
-        ctx.lineTo(x0 + w / 2, yEnd);
+        for (const xs of sides) {
+          ctx.moveTo(xs, edgeY(xs, dir));
+          ctx.lineTo(xs, yEnd);
+        }
         ctx.stroke();
         // Brida: rectángulo outline cruzando la boca (fuera del extremo de las líneas).
         const fy = dir < 0 ? yEnd - fh : yEnd;
         ctx.strokeRect(x0 - fw / 2, fy, fw, fh);
+        const pad = lw / R / 2;
+        const angs = sides.map((xs) => {
+          const xc = Math.max(-R * 0.999, Math.min(R * 0.999, xs));
+          return normAng(Math.atan2(edgeY(xs, dir), xc));
+        });
+        gaps.push([Math.min(...angs) - pad, Math.max(...angs) + pad]);
       };
+      // Volute + centro.
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.3, 0, Math.PI * 2);
+      ctx.stroke();
       nozzleV(-R * 0.45, -1); // arriba-izquierda
       nozzleV(R * 0.45, 1); // abajo-derecha
+      // Volute: arcos complementarios a las bocas (sin el pedazo de círculo que tapaban),
+      // estirados hasta el centro de cada línea para un empalme conectado y al ras.
+      gaps.sort((a, b) => a[0] - b[0]);
+      const flat = gaps.flat();
+      for (let i = 0; i < flat.length; i += 2) {
+        const a = flat[i + 1] - extAng;
+        const b = flat[(i + 2) % flat.length] + (i + 2 >= flat.length ? TAU : 0) + extAng;
+        if (b - a > 1e-6) {
+          ctx.beginPath();
+          ctx.arc(0, 0, R, a, b);
+          ctx.stroke();
+        }
+      }
     } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
       // Caja de recolección (CAN/CALL): CUADRADOS concéntricos a escala real — exterior
       // 100×100cm, interior 70×70cm — solo trazo (el plano se ve a través). Mismas medidas

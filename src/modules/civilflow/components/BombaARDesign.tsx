@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { dec } from '../utils/parseDecimal';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
+import { APS_STORAGE_KEY } from '../constants/storage-keys';
 import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
 import { matHazenC } from '../constants/engineeringDataMaterials';
 import PageNav from './PageNav';
@@ -154,7 +155,43 @@ function BombaARDesign() {
   // Tabla de equipos de bomba (orig. usuario): TODAS las bombas (tipo 'bomba') de los pisos
   // confirmados, con las UDs acumuladas del sótano = la clave de la bomba (que el visor
   // mantiene espejando el agregado de su caja de origen). Solo lectura, se recalcula al montar.
-  const equiposBomba = equiposBombaDesdeTrazos();
+  // Suscripción a storage/sync: los equipos se leen de localStorage en cada render, pero sin
+  // esto la página NO se re-renderiza cuando los datos llegan después del montaje (prefetch
+  // global, ediciones del visor, asociar bomba) y la columna "UD acumuladas en sótano" se
+  // quedaba en el valor viejo (típicamente 0).
+  const [refreshTick, setRefreshTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setRefreshTick((n) => n + 1);
+    window.addEventListener('storage', bump);
+    window.addEventListener('aparatos-clear', bump as EventListener);
+    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
+    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    return () => {
+      window.removeEventListener('storage', bump);
+      window.removeEventListener('aparatos-clear', bump as EventListener);
+      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
+      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    };
+  }, []);
+  void refreshTick;
+  // Override de valores UD custom del usuario (misma tabla del panel de aparatos; base si no hay).
+  const udOverride = (() => {
+    try {
+      const arr = loadFromStorage<Array<{ id?: unknown; ud?: unknown }> | null>(
+        APS_STORAGE_KEY,
+        null,
+      );
+      if (!Array.isArray(arr)) return undefined;
+      const m: Record<string, number> = {};
+      for (const a of arr) {
+        if (typeof a?.id === 'string' && typeof a?.ud === 'number') m[a.id] = a.ud;
+      }
+      return Object.keys(m).length ? m : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const equiposBomba = equiposBombaDesdeTrazos(udOverride);
 
   // "UD acumuladas en sótano" (orig. usuario) = la SUMATORIA de las UDs de las bombas de los
   // sótanos — automático, no editable. Ajuste durante render (patrón oficial para sincronizar

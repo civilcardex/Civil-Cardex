@@ -12,7 +12,9 @@ import {
 } from '../constants/storage-keys';
 import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
 import { collectSourceAgg } from './bajanteAssociation';
+import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import { pisoLbl } from '../constants';
+import { APARATOS_DEF } from '../constants';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante, IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../context/PlansContext';
@@ -164,6 +166,10 @@ export function mapUdBombaDesdeTrazos(
   pumpPlanId: string,
   pumpId: string,
   net: string,
+  live?: {
+    bajantes: InheritPoolBajante[];
+    ramales: InheritPoolRamal[];
+  } | null,
 ): Record<string, number> {
   const trazos = loadFromStorage<{
     ramales?: Array<{
@@ -195,12 +201,16 @@ export function mapUdBombaDesdeTrazos(
       HYDRO_DATA_STORAGE_KEY,
       {},
     );
+    // Pool vivo cuando hay (piso cargado): los trazos en disco pueden ir por detrás
+    // (autosave 1.5 s, arrastres sin guardar) y dejar fuera ramales que el visor sí ve —
+    // el espejo del panel y esta lectura divergían (10 vs 4).
+    const liveCaja = live?.bajantes.find((b) => b.id === caja.id) ?? null;
     const { agg } = collectSourceAgg({
       net,
       planId: pumpPlanId,
       bajId: caja.id,
-      liveBaj: null,
-      liveRamales: null,
+      liveBaj: liveCaja,
+      liveRamales: liveCaja && live?.ramales.length ? live.ramales : null,
       storedBaj: caja,
       storedRamales: trazos?.ramales ?? null,
       counts,
@@ -239,8 +249,20 @@ export function propagarHerenciaBomba(
     if (!baj.bombaEnId?.includes('|')) continue;
     const [pPlan, pId] = baj.bombaEnId.split('|');
     // SIEMPRE desde los trazos del piso de la bomba: la clave espejo en `disk` puede estar
-    // vacía/vieja si ese piso no está cargado (orig. usuario: herencia salía 0 UD).
-    const aggBomba = mapUdBombaDesdeTrazos(pPlan, pId, netId);
+    // vacía/vieja si ese piso no está cargado (orig. usuario: herencia salía 0 UD). Con el
+    // piso cargado se suma el pool vivo (los trazos en disco van por detrás del motor).
+    const engMismoPiso = String(eng._loadedPlanId ?? '') === pPlan ? eng : null;
+    const aggBomba = mapUdBombaDesdeTrazos(
+      pPlan,
+      pId,
+      netId,
+      engMismoPiso
+        ? {
+            bajantes: engMismoPiso.bajantes as unknown as InheritPoolBajante[],
+            ramales: engMismoPiso.ramales as unknown as InheritPoolRamal[],
+          }
+        : null,
+    );
     const tgtRamalIds = [...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])];
     const ucNuevo: Record<string, Record<string, number>> = {};
     for (const rid of tgtRamalIds) {
@@ -260,6 +282,14 @@ export function propagarHerenciaBomba(
       ucNuevo[tk] = { ...aggBomba };
     }
     const totalB = Object.values(aggBomba).reduce((a, v) => a + (v as number), 0);
+    // CLAVE PROPIA del bajante = agregado de la bomba (orig. usuario: "el ramal que SALE del
+    // bajante no toma las UDs") — el espejo de salidas copia agregadoBajante(BAN2), que parte
+    // de la clave propia; sin esto copiaba la clave VACÍA y RS7 quedaba en 0 UD.
+    const bkSelf = pkey(baj.id);
+    if (JSON.stringify(disk[bkSelf] || {}) !== JSON.stringify(aggBomba)) {
+      disk[bkSelf] = { ...aggBomba };
+      diskDirty = true;
+    }
     if (
       JSON.stringify(baj.ucAplicado || {}) !== JSON.stringify(ucNuevo) ||
       (baj.ucAcum ?? 0) !== totalB
@@ -292,9 +322,31 @@ export interface EquipoBomba {
   id: string;
 }
 
+// Peso UD por aparato (misma tabla que el panel de aparatos): las UDs son conteo × valor
+// (1 lavamanos + 1 inodoro = 2+4 = 6 UD, no 2). Ids fuera de tabla pesan 0, igual que en el
+// panel (solo filas conocidas multiplican).
+const UD_POR_APARATO: Record<string, number> = Object.fromEntries(
+  (APARATOS_DEF as Array<{ id: string; ud?: unknown }>).map((d) => [
+    d.id,
+    typeof d.ud === 'number' ? d.ud : 0,
+  ]),
+);
+
+/** Suma UD de un mapa por aparato (conteo × valor UD, con override de valores custom). */
+export function udsDeMapa(
+  mapa: Record<string, number>,
+  udOverride?: Record<string, number>,
+): number {
+  return Object.entries(mapa).reduce(
+    (a, [k, v]) => a + (v as number) * (udOverride?.[k] ?? UD_POR_APARATO[k] ?? 0),
+    0,
+  );
+}
+
 /** Tabla de equipos de bomba: TODAS las bombas (tipo 'bomba') de todos los pisos con caché
- *  local, con sus UDs (mapUdBombaDesdeTrazos). Usada por BombaARDesign (page 5 + udTot). */
-export function equiposBombaDesdeTrazos(): EquipoBomba[] {
+ *  local, con sus UDs (mapUdBombaDesdeTrazos × valor UD). Usada por BombaARDesign (page 5 +
+ *  udTot). `udOverride`: valores UD custom del usuario (misma tabla del panel). */
+export function equiposBombaDesdeTrazos(udOverride?: Record<string, number>): EquipoBomba[] {
   const out: EquipoBomba[] = [];
   try {
     for (let i = 0; i < localStorage.length; i++) {
@@ -322,7 +374,7 @@ export function equiposBombaDesdeTrazos(): EquipoBomba[] {
           net: b.net || 'san',
           planId,
           id: b.id,
-          uds: Object.values(mapa).reduce((a, v) => a + (v as number), 0),
+          uds: udsDeMapa(mapa, udOverride),
         });
       }
     }
