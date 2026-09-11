@@ -616,6 +616,26 @@ export function detectTributaryPadre(
   return best ? best.id : null;
 }
 
+/** ¿El punto cae dentro del cuadro exterior (100×100cm a escala) de una caja de la red?
+ *  Test a escala real vía `cmToPlanePx` — NO depende de `_circ` (que solo existe tras
+ *  renderizar). Las llegadas a caja no se validan por ángulo (orig. usuario): el ángulo del
+ *  segmento de conexión lo dicta la caja, no la cuadrícula. */
+export function puntoEnCaja(
+  engine: Pick<IPlanoEngineCore, 'bajantes' | 'cmToPlanePx'>,
+  ep: number[],
+  net: string,
+): boolean {
+  // Cuadrado axis-aligned (la caja nunca rota) + margen de snap. Fallback sin el helper
+  // (mocks viejos de tests) ≈ semilado a escala por defecto.
+  const half = typeof engine.cmToPlanePx === 'function' ? engine.cmToPlanePx(100) / 2 + 2.0 : 40;
+  for (const b of engine.bajantes) {
+    if (b.net !== net || !esCaja(b)) continue;
+    if (b.x == null || b.y == null) continue;
+    if (Math.abs(ep[0] - b.x) <= half && Math.abs(ep[1] - b.y) <= half) return true;
+  }
+  return false;
+}
+
 /** Bug #7: valida los ángulos de un ramal EXCLUYENDO los segmentos de conexión — un extremo que
  *  pega a otro ramal existente (o a un bajante) tiene el ángulo dictado por la geometría del
  *  ramal existente, no por la cuadrícula de 45°/90°. Devuelve true si los segmentos libres son
@@ -638,6 +658,8 @@ export function checkRamalAnglesExcludingConnections(
     return Math.hypot(p[0] - px, p[1] - py) < TOL;
   };
   const touchesAny = (ep: number[]): boolean => {
+    // Llegada a caja: exenta siempre (test a escala, sin depender de `_circ`).
+    if (puntoEnCaja(engine, ep, r.net)) return true;
     for (const o of engine.ramales) {
       if (o.id === r.id || !o.pts || o.pts.length < 2) continue;
       const sameGroup =
@@ -651,12 +673,8 @@ export function checkRamalAnglesExcludingConnections(
         return true;
     }
     for (const b of engine.bajantes) {
-      if (b.net !== r.net) continue;
-      // CAJA: la asociación usa el SEMILADO del cuadro (mismo criterio que finishRamal) —
-      // un trazo que entra al centro/a la caja no debe validarse por ángulo (orig. usuario).
-      const circ = b._circ?.r || 8 * (engine.zoom || 1);
-      const tol = esCaja(b) ? circ / Math.SQRT2 / (engine.zoom || 1) + TOL : 8 / (engine.zoom || 1);
-      if (Math.hypot(b.x - ep[0], b.y - ep[1]) < tol) return true;
+      if (b.net !== r.net || esCaja(b)) continue;
+      if (Math.hypot(b.x - ep[0], b.y - ep[1]) < 8 / (engine.zoom || 1)) return true;
     }
     return false;
   };

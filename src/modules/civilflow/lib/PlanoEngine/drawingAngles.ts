@@ -104,26 +104,37 @@ export function checkRamalAngles(
   return true;
 }
 
-/** ¿Se cruzan dos segmentos (a1-a2, b1-b2)? Excluye los casos donde solo se tocan por un
- *  extremo. @returns true si se cruzan estrictamente por el interior. */
-export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
+/** Punto de cruce estricto entre dos segmentos (a1-a2, b1-b2), o null si no se cruzan
+ *  por el interior (se excluyen los toques por un extremo). */
+export function segmentIntersectionPoint(
+  a1: number[],
+  a2: number[],
+  b1: number[],
+  b2: number[],
+): [number, number] | null {
   const [x1, y1] = a1,
     [x2, y2] = a2,
     [x3, y3] = b1,
     [x4, y4] = b2;
   const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (Math.abs(d) < 1e-10) return false;
+  if (Math.abs(d) < 1e-10) return null;
   const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
   const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
-  if (t < 0 || t > 1 || u < 0 || u > 1) return false;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
   const ix = x1 + t * (x2 - x1);
   const iy = y1 + t * (y2 - y1);
   const dA1 = Math.hypot(ix - x1, iy - y1);
   const dA2 = Math.hypot(ix - x2, iy - y2);
   const dB1 = Math.hypot(ix - x3, iy - y3);
   const dB2 = Math.hypot(ix - x4, iy - y4);
-  if (dA1 < 0.001 || dA2 < 0.001 || dB1 < 0.001 || dB2 < 0.001) return false;
-  return true;
+  if (dA1 < 0.001 || dA2 < 0.001 || dB1 < 0.001 || dB2 < 0.001) return null;
+  return [ix, iy];
+}
+
+/** ¿Se cruzan dos segmentos (a1-a2, b1-b2)? Excluye los casos donde solo se tocan por un
+ *  extremo. @returns true si se cruzan estrictamente por el interior. */
+export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
+  return segmentIntersectionPoint(a1, a2, b1, b2) !== null;
 }
 
 /** Devuelve el ángulo (en grados, -90..90) del primer segmento de una lista de puntos — sirve

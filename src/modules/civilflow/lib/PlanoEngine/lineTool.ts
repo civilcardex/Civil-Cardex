@@ -3,12 +3,12 @@ import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
 import {
   _firstSegmentAngle,
   checkRamalAngles,
-  segmentsIntersect,
+  segmentIntersectionPoint,
   snapTributaryToPadre45Deg,
 } from './drawingAngles';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import { finishRamal, checkCrossRamalAngle } from './finishRamal';
-import { canJoinTributario } from './junctionAutoSplit';
+import { canJoinTributario, puntoEnCaja } from './junctionAutoSplit';
 import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils';
 import { commitOpenGuide } from './guideLines';
 
@@ -484,13 +484,24 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     if (engine.activeRamal.pts.length >= 2) {
       // Un segmento de CONEXIÓN (el extremo pega a un ramal existente o bajante) no se valida
       // contra la cuadrícula: su ángulo está dictado por la geometría del ramal existente, no
-      // por un giro libre. Validar solo los giros ya dibujados del ramal en curso.
-      const connectedToExisting = snappedToSeg || !!nearBaj;
-      const testPts = connectedToExisting
-        ? [...engine.activeRamal.pts]
-        : [...engine.activeRamal.pts, [pt.x, pt.y]];
+      // por un giro libre. Validar solo los giros ya dibujados del ramal en curso. El último
+      // tramo comprometido que ATERRIZA en una caja tampoco se valida (orig. usuario: las
+      // entradas a caja no llevan validación de ángulo).
+      const committed = [...engine.activeRamal.pts];
+      const lastCommitted = committed[committed.length - 1];
+      const landingCaja =
+        committed.length >= 2 && puntoEnCaja(engine, lastCommitted, engine.activeRamal.net);
+      const testPts = landingCaja ? committed.slice(0, -1) : committed;
+      // Cursor dentro de una caja (más allá del radio de snap al centro con zoom abierto):
+      // el tramo en curso aterriza en ella igual que un extremo conectado — no validar.
+      const connectedToExisting =
+        snappedToSeg || !!nearBaj || puntoEnCaja(engine, [pt.x, pt.y], engine.activeRamal.net);
+      const finalPts = connectedToExisting ? testPts : [...testPts, [pt.x, pt.y]];
       const trazoNet = engine.activeRamal.net;
-      if (!checkRamalAngles(testPts, trazoNet, engine.activeRamal.tipo, engine.snapMode)) {
+      if (
+        finalPts.length >= 2 &&
+        !checkRamalAngles(finalPts, trazoNet, engine.activeRamal.tipo, engine.snapMode)
+      ) {
         engine.triggerAlert(
           'Ángulo no recomendado',
           trazoNet === 'san' || trazoNet === 'll'
@@ -515,7 +526,11 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
           if (r.id === engine.activeRamal.id) continue;
           if (!r.pts || r.pts.length < 2) continue;
           for (let si = 0; si < r.pts.length - 1; si++) {
-            if (segmentsIntersect(segStart, segEnd, r.pts[si], r.pts[si + 1])) {
+            // Entrar a la misma caja no es cruzar: el cruce que cae dentro del cuadro de
+            // una caja de la red (los trazos solo entran a ella, no se conectan entre sí)
+            // no dispara la alerta.
+            const hit = segmentIntersectionPoint(segStart, segEnd, r.pts[si], r.pts[si + 1]);
+            if (hit && !puntoEnCaja(engine, hit, engine.activeRamal.net)) {
               // Un tributario que cruza cualquier ramal distinto a su padre es la violación de
               // padre, no un cruce genérico — este chequeo geométrico corrió ANTES de que el
               // chequeo de padre por snap-de-vértice de arriba tuviera oportunidad (ese solo
