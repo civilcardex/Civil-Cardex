@@ -35,10 +35,16 @@ import {
   type GasAccMap,
   type SelectableTarget,
   idsSalidasDeBajante,
+  libroHeredadoSumado,
+  aggParaEspejoSalida,
 } from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../utils/bombaAssociation';
-import { collectSourceAgg, type InheritPoolRamal } from '../utils/bajanteAssociation';
+import {
+  collectSourceAgg,
+  type InheritPoolBajante,
+  type InheritPoolRamal,
+} from '../utils/bajanteAssociation';
 import { ldesvioIdFor } from '../utils/associateBajanteAcrossFloors';
 import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
 import { distToPolyline } from '../lib/shared/geometry';
@@ -567,7 +573,15 @@ const AparatosPanel = memo(function AparatosPanel_({
       if (liveBaj?.bombaEnId?.includes('|')) {
         const [pPlan, pId] = liveBaj.bombaEnId.split('|');
         try {
-          const heredado = mapUdBombaDesdeTrazos(pPlan, pId, netId);
+          const engLive = engineRef.current;
+          const live =
+            engLive && String(engLive._loadedPlanId ?? '') === pPlan
+              ? {
+                  bajantes: engLive.bajantes as unknown as InheritPoolBajante[],
+                  ramales: engLive.ramales as unknown as InheritPoolRamal[],
+                }
+              : null;
+          const heredado = mapUdBombaDesdeTrazos(pPlan, pId, netId, live);
           if (Object.keys(heredado).length) return heredado;
         } catch {
           /* lectura best-effort */
@@ -667,6 +681,17 @@ const AparatosPanel = memo(function AparatosPanel_({
     const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
     let dirty = false;
     let hdirty = false;
+    // Libros de herencia cross-floor por bajante (misma lectura que el display del panel:
+    // TRAZOS del piso cargado) — el espejo de salidas copia lo que el bajante MUESTRA.
+    let trazBooks = new Map<string, Record<string, Record<string, number>>>();
+    try {
+      const t = loadFromStorage<{
+        bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
+      } | null>(TRAZOS_PREFIX + planId, null);
+      for (const b of t?.bajantes || []) if (b.ucAplicado) trazBooks.set(b.id, b.ucAplicado);
+    } catch {
+      trazBooks = new Map();
+    }
     for (const baj of eng.bajantes) {
       if (baj.net !== netId) continue;
       // BOMBA (orig. usuario): punto de transferencia — su clave SIEMPRE espeja el agregado
@@ -676,7 +701,12 @@ const AparatosPanel = memo(function AparatosPanel_({
       if (baj.tipo === 'bomba' && baj.cajaOrigenId) {
         // Misma fuente que BombaARDesign: trazos del piso de la caja (con fallback al agregado
         // vivo) — la clave de la bomba SIEMPRE termina valiendo lo mismo en ambos lados.
-        const desdeTrazos = mapUdBombaDesdeTrazos(String(planId), baj.id, netId);
+        // La bomba vive en el piso cargado: se suma el pool vivo (los trazos en disco van
+        // por detrás del motor y el espejo divergía del mapa de la página).
+        const desdeTrazos = mapUdBombaDesdeTrazos(String(planId), baj.id, netId, {
+          bajantes: eng.bajantes as unknown as InheritPoolBajante[],
+          ramales: eng.ramales as unknown as InheritPoolRamal[],
+        });
         const aggBomba = Object.keys(desdeTrazos).length
           ? desdeTrazos
           : agregadoBajante(baj.cajaOrigenId);
@@ -686,7 +716,32 @@ const AparatosPanel = memo(function AparatosPanel_({
           dirty = true;
         }
       } else {
-        const agg = agregadoBajante(baj.id);
+        // Bajante asociado a BOMBA (orig. usuario): sus salidas espejan las UDs DE LA BOMBA
+        // (misma lectura que el panel del bajante) — NO el agregado del árbol, que puede no
+        // contener las ramales heredadas y dejaba la salida en 0 aunque el bajante mostrara
+        // el total (caso RS7/BAN2). Con pool vivo si la bomba es de este piso.
+        let agg = agregadoBajante(baj.id);
+        if (baj.bombaEnId?.includes('|')) {
+          const [pp, pi] = baj.bombaEnId.split('|');
+          const engMismoPiso =
+            String(eng._loadedPlanId ?? '') === pp
+              ? {
+                  bajantes: eng.bajantes as unknown as InheritPoolBajante[],
+                  ramales: eng.ramales as unknown as InheritPoolRamal[],
+                }
+              : null;
+          agg = mapUdBombaDesdeTrazos(pp, pi, netId, engMismoPiso);
+        } else if (baj.origenId?.includes('|')) {
+          // Asociación cross-floor: el panel del bajante muestra el LIBRO heredado, no el
+          // árbol — el espejo copia lo mismo o la salida queda en 0 con el bajante lleno
+          // (orig. usuario: bajante con 2 UDs, ramal de salida sin nada).
+          const espejo = aggParaEspejoSalida(
+            agg,
+            libroHeredadoSumado({ ucAplicado: trazBooks.get(baj.id) }),
+          );
+          if (!espejo) continue;
+          agg = espejo;
+        }
         if (!Object.keys(agg).length) continue;
         for (const rid of exitsDeBajante(baj.id)) {
           const rk = pkey(rid);

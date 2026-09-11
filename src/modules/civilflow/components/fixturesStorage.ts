@@ -127,6 +127,30 @@ interface RamalLikeSalida {
   ini?: string;
 }
 
+/** Suma por aparato del libro de herencia cross-floor (`ucAplicado`) de un bajante — lo
+ *  mismo que muestra el panel del bajante asociado (currentMap suma este libro). Vacío si no
+ *  hay libro. */
+export function libroHeredadoSumado(baj: {
+  ucAplicado?: Record<string, Record<string, number>>;
+}): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const m of Object.values(baj.ucAplicado || {}))
+    for (const [k, v] of Object.entries(m)) out[k] = (out[k] || 0) + (v as number);
+  return out;
+}
+
+/** Valor a espejar en los ramales de SALIDA de un bajante: EXACTAMENTE lo que muestra su
+ *  panel — libro de herencia si lo hay (bajante asociado entre pisos), si no el agregado
+ *  del árbol. null = nada que copiar (vacío). Antes el espejo usaba solo el árbol y la
+ *  salida quedaba en 0 con el bajante lleno por herencia (orig. usuario). */
+export function aggParaEspejoSalida(
+  treeAgg: Record<string, number>,
+  libro: Record<string, number>,
+): Record<string, number> | null {
+  const agg = Object.keys(libro).length ? libro : treeAgg;
+  return Object.keys(agg).length ? { ...agg } : null;
+}
+
 /** Ids de los ramales que SALEN (nacen) del bajante/caja dado. Salida = extremo de nacimiento
  *  en el elemento y el otro extremo lejos, o referencia explícita (alimentaIds / r.ini = código).
  *  La referencia explícita manda: un ramal de salida con `_tribReversed` invertía la geometría
