@@ -12,23 +12,28 @@ export interface ConexionBajanteCheck {
 }
 
 // Un bajante recibe máximo 2 ramales (Y doble) contando AMBOS sentidos de la asociación
-// (recibeDeIds = llegan, alimentaIds = nacen ahí). Las cajas CAN/CALL aceptan máximo 1.
+// (recibeDeIds = llegan, alimentaIds = nacen ahí).
 const MAX_BAJANTE = 2;
-const MAX_CAJA = 1;
 
-const esCaja = (b: PlanoBajante): boolean => b.tipo === 'caja_san' || b.tipo === 'caja_ll';
+/** ¿El elemento es una caja (aguas negras/lluvias)? */
+export function esCaja(b: Pick<PlanoBajante, 'tipo'>): boolean {
+  return b.tipo === 'caja_san' || b.tipo === 'caja_ll';
+}
 
 /** Ids asociados al bajante por ambos sentidos, sin duplicados. */
 export function asociadosDeBajante(baj: PlanoBajante): Set<string> {
   return new Set([...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]);
 }
 
-/** ¿Puede `ramal` asociarse a `baj`? Valida misma red, que el trazo sea RAMAL (un tributario
- *  ni puede llegar ni salir de un bajante — orig. usuario) y tope de asociaciones (2 bajante,
- *  1 caja). */
+/** ¿Puede `ramal` asociarse a `baj` en la dirección dada? Valida misma red, reglas por tipo
+ *  y topes:
+ *  - Bajante: solo ramales (ni llegan ni salen tributarios), máximo 2 asociaciones en total.
+ *  - Caja (orig. usuario): ENTRADAS ilimitadas de ramales y tributarios (sin restricción);
+ *    SALIDA máximo UNA y SOLO de tipo ramal — un tributario que intenta salir se rechaza. */
 export function puedeConectarRamalABajante(
   baj: PlanoBajante,
   ramal: { id: string; net?: string; tipo?: string },
+  direccion: 'recibe' | 'alimenta' = 'recibe',
 ): ConexionBajanteCheck {
   if (baj.net !== (ramal.net ?? '')) {
     return {
@@ -37,15 +42,27 @@ export function puedeConectarRamalABajante(
       msg: 'El trazo y el elemento de conexión deben pertenecer a la misma red.',
     };
   }
-  if (ramal.tipo === 'tributario') {
-    if (esCaja(baj)) {
-      const nombre = baj.tipo === 'caja_ll' ? 'aguas lluvias' : 'aguas negras';
-      return {
-        ok: false,
-        title: 'Conexión no permitida',
-        msg: `Un tributario no puede llegar ni salir de una caja. Las cajas de ${nombre} solo aceptan ramales.`,
-      };
+  if (esCaja(baj)) {
+    if (direccion === 'alimenta') {
+      if (ramal.tipo === 'tributario') {
+        return {
+          ok: false,
+          title: 'Conexión no permitida',
+          msg: 'La salida de una caja debe ser un ramal: un tributario no puede salir de ella.',
+        };
+      }
+      if (!(baj.alimentaIds || []).includes(ramal.id) && (baj.alimentaIds || []).length >= 1) {
+        return {
+          ok: false,
+          title: 'Caja con salida',
+          msg: 'Esta caja ya tiene un ramal de salida (solo se permite una salida).',
+        };
+      }
     }
+    // Entrada a caja: ramal o tributario, cantidad ilimitada.
+    return { ok: true };
+  }
+  if (ramal.tipo === 'tributario') {
     return {
       ok: false,
       title: 'Conexión no permitida',
@@ -53,18 +70,12 @@ export function puedeConectarRamalABajante(
     };
   }
   const total = asociadosDeBajante(baj);
-  if (!total.has(ramal.id) && total.size >= (esCaja(baj) ? MAX_CAJA : MAX_BAJANTE)) {
-    return esCaja(baj)
-      ? {
-          ok: false,
-          title: 'Caja completa',
-          msg: 'Esta caja ya tiene un ramal conectado (máximo permitido).',
-        }
-      : {
-          ok: false,
-          title: 'Bajante completo',
-          msg: 'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
-        };
+  if (!total.has(ramal.id) && total.size >= MAX_BAJANTE) {
+    return {
+      ok: false,
+      title: 'Bajante completo',
+      msg: 'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
+    };
   }
   return { ok: true };
 }

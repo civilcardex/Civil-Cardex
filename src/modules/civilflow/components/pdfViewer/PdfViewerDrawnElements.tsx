@@ -25,8 +25,8 @@ const GROUP_LABEL: Record<string, string> = {
   tributario: 'Tributarios',
   montante: 'Montantes',
   canal: 'Canales',
-  caja_san: 'Cajas aguas negras',
-  caja_ll: 'Cajas aguas lluvias',
+  caja_san: 'Cajas AN',
+  caja_ll: 'Cajas ALL',
   area: 'Áreas',
 };
 

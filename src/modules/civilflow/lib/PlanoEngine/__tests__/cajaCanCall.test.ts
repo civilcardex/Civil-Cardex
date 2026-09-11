@@ -123,7 +123,9 @@ describe('cajas CAN/CALL', () => {
       bajR: 7 / 24,
     } as unknown as PlanoBajante;
     expect(puedeConectarRamalABajante(c, R({ id: 'RS1' })).ok).toBe(true); // ya asociado = noop
-    expect(puedeConectarRamalABajante(c, R({ id: 'RS2' })).ok).toBe(false);
+    // Regla nueva (orig. usuario): la caja admite ENTRADAS ilimitadas — el segundo ramal
+    // también puede llegar; la restricción quedó SOLO en la salida (1 ramal).
+    expect(puedeConectarRamalABajante(c, R({ id: 'RS2' }), 'recibe').ok).toBe(true);
   });
 
   it('el borrador elimina una caja de un clic (tipo reconocido en handleEraseDown)', () => {
@@ -143,5 +145,55 @@ describe('cajas CAN/CALL', () => {
       ].includes(t);
     expect(esTipoBorrable('caja_san')).toBe(true);
     expect(esTipoBorrable('caja_ll')).toBe(true);
+  });
+
+  it('símbolo 2D: cuadrados 1000/700 a escala con hit en la media diagonal', async () => {
+    const { renderBajantes } = await import('../renderers/renderBajantes');
+    const rects: number[][] = [];
+    const ctxStub = new Proxy(
+      {},
+      {
+        get: (_t, k) => {
+          if (k === 'rect')
+            return (x: number, y: number, w: number, h: number) => {
+              rects.push([x, y, w, h]);
+            };
+          if (k === 'measureText') return () => ({ width: 10 });
+          return () => {};
+        },
+        set: () => true,
+      },
+    ) as unknown as CanvasRenderingContext2D;
+    const eng = makeEngine();
+    (eng as unknown as Record<string, unknown>).realMmToCanvasPx = (mm: number) => mm;
+    (eng as unknown as Record<string, unknown>).mm2cvs = (mm: number) => mm;
+    (eng as unknown as Record<string, unknown>).MM = { lblName: 2, lblInfo: 2, coord: 2 };
+    (eng as unknown as Record<string, unknown>).labelScaleM = 1;
+    eng.bajantes = [
+      {
+        id: 'CAN1',
+        net: 'san',
+        tipo: 'caja_san',
+        code: 'CAN1',
+        x: 0,
+        y: 0,
+        pisoBase: 'P1',
+        recibeDeIds: [],
+        labelAngle: 0,
+        labelX: 0,
+        labelY: 20,
+        desplazamientos: {},
+      } as unknown as PlanoBajante,
+    ];
+    renderBajantes(ctxStub, eng);
+    expect(rects).toHaveLength(2);
+    const [outer, inner] = rects;
+    // Exterior 100×100 cuadrado centrado; interior 70×70
+    expect([outer[2], outer[3]]).toEqual([1000, 1000]);
+    expect([outer[0], outer[1]]).toEqual([-500, -500]);
+    expect([inner[2], inner[3]]).toEqual([700, 700]);
+    expect([inner[0], inner[1]]).toEqual([-350, -350]);
+    // Hit cubre las esquinas (media diagonal del exterior)
+    expect(eng.bajantes[0]._circ?.r).toBeCloseTo(500 * Math.SQRT2, 6);
   });
 });

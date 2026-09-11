@@ -104,6 +104,33 @@ export function drawRamalPath(
   const r =
     engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
 
+  // Ramal que SALE de una CAJA (ini = código de caja_san/caja_ll): su nacimiento se DIBUJA en
+  // el punto medio del lado más cercano del cuadro exterior del símbolo, salga o no el trazo
+  // por el borde (solo visual — la geometría guardada no cambia, orig. usuario: "si el usuario
+  // la dibujó por dentro que se redibuje"). Los que LLEGAN (fin) siguen apuntando al centro.
+  if (r && 'ini' in r && r.ini && engine.bajantes?.length) {
+    const rr = r as PlanoRamal;
+    const orig = cvsPts.map((p) => ({ x: p.x, y: p.y }));
+    const clampEnd = (idx: number, code?: string) => {
+      if (!code) return;
+      const caja = engine.bajantes.find(
+        (b) =>
+          (b.code === code || b.id === code) && (b.tipo === 'caja_san' || b.tipo === 'caja_ll'),
+      );
+      if (!caja) return;
+      const cc = engine.toCvs(caja.x, caja.y);
+      const hs = engine.realMmToCanvasPx(1000) / 2;
+      const adj = orig[idx === 0 ? 1 : orig.length - 2];
+      const dx = adj.x - cc.x;
+      const dy = adj.y - cc.y;
+      cvsPts[idx] =
+        Math.abs(dx) >= Math.abs(dy)
+          ? { x: cc.x + (dx >= 0 ? hs : -hs), y: cc.y }
+          : { x: cc.x, y: cc.y + (dy >= 0 ? hs : -hs) };
+    };
+    clampEnd(0, rr.ini || undefined);
+  }
+
   // Codo de plano en un extremo compartido: recortar el cuerpo hasta el punto de tangencia del
   // arco (mismo actualRad que drawCornerCodoArc).
   if (r && pts.length >= 2) {
@@ -255,7 +282,7 @@ export function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.2 * engine.zoom;
+            ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             // Hay que reiniciar el dash explícitamente — ctx.save() conserva el dash que el
@@ -302,7 +329,7 @@ export function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.2 * engine.zoom;
+            ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
             // Mismo problema de herencia de dash que el inglete de 45° de arriba — se reinicia explícitamente.
             ctx.setLineDash([]);
             ctx.beginPath();
@@ -334,12 +361,12 @@ export function drawRamalPath(
   if (elbows.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.2 * engine.zoom;
+    ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash([]);
     const tickLen = engine.mm2cvs(1.2);
     // N5: trazos transversales más gruesos, extremo cuadrado, llegan a extremos
     ctx.lineCap = 'square';
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
     elbows.forEach((elb) => {
       ctx.beginPath();
       ctx.moveTo(

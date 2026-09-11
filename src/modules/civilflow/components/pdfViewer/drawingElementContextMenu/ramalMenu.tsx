@@ -10,7 +10,7 @@ import {
 import { directNeighborRamales } from '../../../utils/flowDirection';
 import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState';
 import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber';
-import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
+import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules';
 import {
   useDrawingElementContextMenu,
   MENU_GRID_2COL_TALL_STYLE,
@@ -19,7 +19,11 @@ import {
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context';
 import { MidRamalAccessorySelector } from './midRamalAccessorySelector';
-import { pointOnRamalBody, ramalHasInterconnections } from './ramalMenuHelpers';
+import {
+  pointOnRamalBody,
+  ramalHasInterconnections,
+  tribsBlockingRamalConversion,
+} from './ramalMenuHelpers';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel';
 import { ElementCodeEditor } from './elementEditor';
 
@@ -130,34 +134,12 @@ export function RamalMenu() {
     if (!fresh) return;
     // Ítem 9 (aclaración usuario): la conversión es una transformación, no un dibujo nuevo —
     // se convierte y recalcula sin la alerta de conexión nueva. PERO si el ramal resultante
-    // queda conectado a un tributario, la regla "los ramales no se conectan a tributarios"
-    // SÍ aplica y la alerta debe aparecer. La geometría no cambia en la conversión, así que
-    // la conexión resultante se evalúa sobre la topología actual: padre tributario, o algún
-    // extremo tocando un tributario que no sea hijo propio (los hijos pasan a ser
-    // tributarios de un ramal — válido). Mismo texto que el path de dibujo.
+    // LLEGA a un tributario (un extremo propio sobre él), la regla "los ramales no se
+    // conectan a tributarios" SÍ aplica y la alerta debe aparecer. No bloquean los
+    // segmentos hermanos de la misma línea ni los tributarios que llegan a este (los
+    // recibe) — ver tribsBlockingRamalConversion. Mismo texto que el path de dibujo.
     if (fresh.tipo === 'tributario' && fresh.pts && fresh.pts.length >= 2) {
-      const TOL = 0.5;
-      const sameGroup = (a: string, b: string) =>
-        a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
-      const prevPadre = fresh.padre ? eng.ramales.find((r) => r.id === fresh.padre) : undefined;
-      const padreIsTrib =
-        !!prevPadre && prevPadre.tipo === 'tributario' && sameGroup(prevPadre.net, fresh.net);
-      const eps = [fresh.pts[0], fresh.pts[fresh.pts.length - 1]];
-      const touchesTrib = eng.ramales.some(
-        (o) =>
-          o.id !== fresh.id &&
-          o.tipo === 'tributario' &&
-          o.padre !== fresh.id &&
-          sameGroup(o.net, fresh.net) &&
-          !!o.pts &&
-          o.pts.length >= 2 &&
-          eps.some(
-            (e) =>
-              (o.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
-              pointOnRamalBody(o.pts || [], e, TOL),
-          ),
-      );
-      if (padreIsTrib || touchesTrib) {
+      if (tribsBlockingRamalConversion(eng.ramales, fresh.id).length > 0) {
         eng.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
         return;
       }
@@ -594,7 +576,12 @@ export function RamalMenu() {
             {(() => {
               const currentId = ramalEl.id;
               const netBajantes = (engineRef.current?.bajantes || []).filter(
-                (b) => b.net === ramalEl.net && b.id !== ramalEl.id && b.tipo !== 'tributario',
+                (b) =>
+                  b.net === ramalEl.net &&
+                  b.id !== ramalEl.id &&
+                  b.tipo !== 'tributario' &&
+                  // Las cajas tienen su propia sección "Cajas asociadas" (abajo).
+                  !esCaja(b),
               );
               if (netBajantes.length === 0)
                 return (
@@ -649,6 +636,111 @@ export function RamalMenu() {
                     />
                     <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                       {bajanteLabel(b, engineRef.current?.nivelActual?.label)}
+                    </span>
+                  </label>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
+      {['san', 'll'].includes(ctx.activeNet) && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            padding: '4px 8px',
+            borderTop: '1px solid #3a494a',
+            marginTop: 4,
+          }}
+        >
+          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Cajas asociadas</div>
+          <div style={MENU_GRID_2COL_TALL_STYLE}>
+            {(() => {
+              const currentId = ramalEl.id;
+              const cajas = (engineRef.current?.bajantes || []).filter(
+                (b) => b.net === ramalEl.net && esCaja(b),
+              );
+              if (cajas.length === 0)
+                return (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: '#6b8cae',
+                      fontFamily: "'Geist',monospace",
+                      gridColumn: 'span 4',
+                    }}
+                  >
+                    Sin cajas
+                  </div>
+                );
+              return cajas.map((c) => {
+                // Asociación lógica = la que crea finishRamal: llegada (recibeDeIds + fin del
+                // ramal = código de la caja) O salida (alimentaIds + ini del ramal) — el
+                // checkbox refleja AMBAS y el desmarque limpia la que esté.
+                const isRecibe = (c.recibeDeIds || []).includes(currentId);
+                const isAlimenta = (c.alimentaIds || []).includes(currentId);
+                const isAssociated = isRecibe || isAlimenta;
+                return (
+                  <label key={c.id} style={MENU_CHECK_ROW_STYLE}>
+                    <input
+                      type="checkbox"
+                      checked={isAssociated}
+                      onChange={(e) => {
+                        // Regla central: la caja admite N entradas de ramales/tributarios —
+                        // la guard valida red y dirección antes de escribir.
+                        if (e.target.checked) {
+                          const check = puedeConectarRamalABajante(c, ramalEl, 'recibe');
+                          if (!check.ok) {
+                            if (check.title && check.msg)
+                              engineRef.current?.triggerAlert(check.title, check.msg);
+                            e.preventDefault();
+                            return;
+                          }
+                        }
+                        const code = c.code || c.id;
+                        if (e.target.checked) {
+                          // Marcar = asociar como LLEGADA (nueva asociación).
+                          const updates: Record<string, unknown> = {
+                            recibeDeIds: [...(c.recibeDeIds || []), currentId],
+                          };
+                          engineRef.current?.updateElementById(c.id, updates);
+                          engineRef.current?.updateElementById(ramalEl.id, { fin: code });
+                          if (selElement?.id === ramalEl.id) {
+                            setSelElement({ ...selElement, fin: code } as unknown as PlanoRamal);
+                          }
+                        } else {
+                          // Desmarcar = quitar la relación que tenga: llegada y/o salida.
+                          const updates: Record<string, unknown> = {
+                            recibeDeIds: (c.recibeDeIds || []).filter(
+                              (id: string) => id !== currentId,
+                            ),
+                            alimentaIds: (c.alimentaIds || []).filter(
+                              (id: string) => id !== currentId,
+                            ),
+                          };
+                          engineRef.current?.updateElementById(c.id, updates);
+                          const ramalUpdates: Record<string, unknown> = {};
+                          if (ramalEl.fin === code) ramalUpdates.fin = '';
+                          if ((ramalEl as unknown as { ini?: string }).ini === code)
+                            ramalUpdates.ini = '';
+                          if (Object.keys(ramalUpdates).length)
+                            engineRef.current?.updateElementById(ramalEl.id, ramalUpdates);
+                          if (selElement?.id === ramalEl.id) {
+                            setSelElement({
+                              ...selElement,
+                              ...ramalUpdates,
+                            } as unknown as PlanoRamal);
+                          }
+                        }
+                        engineRef.current?.render();
+                        engineRef.current?._markDirty();
+                      }}
+                      style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+                    />
+                    <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                      {bajanteLabel(c, engineRef.current?.nivelActual?.label)}
                     </span>
                   </label>
                 );

@@ -606,7 +606,7 @@ export function useIsometriaRender({
         // Los canales ya se dibujaron en la pasada de fondo anterior.
         if (b.tipo === 'canal') continue;
 
-        // Cajas CAN/CALL: doble rectángulo SOLO trazo acostado en el plano del piso (espejo
+        // Cajas CAN/CALL: doble cuadrado SOLO trazo acostado en el plano del piso (espejo
         // del símbolo 2D) — sin stub vertical, sin círculo, sin triángulo de dirección.
         if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
           const selKey = `${netId}:${b.planId}:${b.id}`;
@@ -615,9 +615,9 @@ export function useIsometriaRender({
           const zPixB = getZPix(zB, b.planNivel);
           const isoB = getIsoCoords(b.x, b.y, b.planNivel);
           const stroke = isSel ? '#FFEB3B' : netColor;
-          // exterior 0.9 m apaisado (1.35:1), interior al 65%/55%
-          drawIsoRect(isoB, zPixB, 0.9, 0.9 / 1.35, stroke, isSel ? 3 : 2);
-          drawIsoRect(isoB, zPixB, 0.9 * 0.65, (0.9 / 1.35) * 0.55, stroke, isSel ? 3 : 2);
+          // exterior 1.0×1.0 m, interior 0.7×0.7 m (cuadrados, espejo del 2D)
+          drawIsoRect(isoB, zPixB, 1.0, 1.0, stroke, isSel ? 3 : 2);
+          drawIsoRect(isoB, zPixB, 0.7, 0.7, stroke, isSel ? 3 : 2);
           if (isSel) {
             const cc = projPt(isoB.x, isoB.y, zPixB);
             ctx.fillStyle = '#FFEB3B';

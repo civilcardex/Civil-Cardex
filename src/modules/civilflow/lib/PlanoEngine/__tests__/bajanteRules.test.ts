@@ -108,20 +108,20 @@ describe('bajanteRules — tope de asociaciones (ítems 1/9)', () => {
     expect(check.msg).toContain('máximo permitido');
   });
 
-  it('caja con 1 ramal: el segundo es rechazado con su mensaje propio', () => {
+  it('caja: entradas ilimitadas (regla nueva) — varios ramales pueden llegar', () => {
     const caja = B({ tipo: 'caja_san', code: 'CAN1', id: 'CAN1', recibeDeIds: ['RS1'] });
-    const check = puedeConectarRamalABajante(caja, R({ id: 'RS2' }));
-    expect(check.ok).toBe(false);
-    expect(check.msg).toContain('caja');
-    // Y la caja llena cuenta AMBOS sentidos (alimenta + recibe)
-    const caja2 = B({
+    // Antes la caja tenía tope 1; ahora admite N entradas de ramales y tributarios.
+    expect(puedeConectarRamalABajante(caja, R({ id: 'RS2' }), 'recibe').ok).toBe(true);
+    const cajaLlena = B({
       tipo: 'caja_ll',
+      net: 'll',
       code: 'CALL1',
       id: 'CALL1',
-      recibeDeIds: [],
-      alimentaIds: ['RALL1'],
+      recibeDeIds: ['RALL1', 'RALL2', 'T1RALL1'],
     });
-    expect(puedeConectarRamalABajante(caja2, R({ id: 'RS9', net: 'll' })).ok).toBe(false);
+    expect(puedeConectarRamalABajante(cajaLlena, R({ id: 'RS9', net: 'll' }), 'recibe').ok).toBe(
+      true,
+    );
   });
 
   it('un tributario NO puede llegar ni salir del bajante (regla solo-ramales)', () => {
@@ -157,5 +157,51 @@ describe('bajanteRules — tope de asociaciones (ítems 1/9)', () => {
   it('asociadosDeBajante une ambos sentidos sin duplicados', () => {
     const baj = B({ recibeDeIds: ['RS1'], alimentaIds: ['RS1', 'RS2'] });
     expect(asociadosDeBajante(baj)).toEqual(new Set(['RS1', 'RS2']));
+  });
+});
+
+describe('puedeConectarRamalABajante — cajas (AN/LL)', () => {
+  const caja = {
+    id: 'CAN1',
+    net: 'san',
+    tipo: 'caja_san',
+    code: 'CAN1',
+    x: 0,
+    y: 0,
+    recibeDeIds: [],
+    alimentaIds: [],
+  } as unknown as PlanoBajante;
+  const ramal = { id: 'RS1', net: 'san', tipo: 'ramal' };
+  const trib = { id: 'T1RS1', net: 'san', tipo: 'tributario' };
+
+  it('ENTRADAS ilimitadas: ramales y tributarios pueden llegar sin restricción', () => {
+    const cajaLlena = {
+      ...caja,
+      recibeDeIds: ['RS1', 'RS2', 'T1RS1', 'T2RS1', 'RS3', 'T3RS1'],
+    } as unknown as PlanoBajante;
+    expect(
+      puedeConectarRamalABajante(cajaLlena, { id: 'RS9', net: 'san', tipo: 'ramal' }, 'recibe').ok,
+    ).toBe(true);
+    expect(puedeConectarRamalABajante(cajaLlena, trib, 'recibe').ok).toBe(true);
+  });
+
+  it('SALIDA: solo un ramal, y solo uno', () => {
+    expect(puedeConectarRamalABajante(caja, ramal, 'alimenta').ok).toBe(true);
+    expect(puedeConectarRamalABajante(caja, trib, 'alimenta').ok).toBe(false);
+    const cajaConSalida = { ...caja, alimentaIds: ['RS1'] } as unknown as PlanoBajante;
+    const segundo = puedeConectarRamalABajante(
+      cajaConSalida,
+      { id: 'RS2', net: 'san', tipo: 'ramal' },
+      'alimenta',
+    );
+    expect(segundo.ok).toBe(false);
+    // Re-chequear la salida ya asociada es idempotente (permitido).
+    expect(puedeConectarRamalABajante(cajaConSalida, ramal, 'alimenta').ok).toBe(true);
+  });
+
+  it('red distinta sigue bloqueada para cajas', () => {
+    expect(
+      puedeConectarRamalABajante(caja, { id: 'RS1', net: 'll', tipo: 'ramal' }, 'recibe').ok,
+    ).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import {
   uniqRamalId,
 } from './PlanoState';
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
+import { esCaja } from './bajanteRules';
 import { _firstSegmentAngle, angleAtHalfLength, checkRamalAngles } from './drawingAngles';
 import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection';
 import { ramalFlowDirectionCheck } from './drawingFlow';
@@ -651,7 +652,11 @@ export function checkRamalAnglesExcludingConnections(
     }
     for (const b of engine.bajantes) {
       if (b.net !== r.net) continue;
-      if (Math.hypot(b.x - ep[0], b.y - ep[1]) < 8 / (engine.zoom || 1)) return true;
+      // CAJA: la asociación usa el SEMILADO del cuadro (mismo criterio que finishRamal) —
+      // un trazo que entra al centro/a la caja no debe validarse por ángulo (orig. usuario).
+      const circ = b._circ?.r || 8 * (engine.zoom || 1);
+      const tol = esCaja(b) ? circ / Math.SQRT2 / (engine.zoom || 1) + TOL : 8 / (engine.zoom || 1);
+      if (Math.hypot(b.x - ep[0], b.y - ep[1]) < tol) return true;
     }
     return false;
   };

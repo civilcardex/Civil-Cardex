@@ -7,7 +7,12 @@ import type {
   PlanoRamal,
   PlanoTextAnnotation,
 } from '../../../lib/PlanoEngine/PlanoState';
-import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
+import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules';
+import {
+  asociarBomba,
+  quitarBomba,
+  bombsImmediateLowerFloor,
+} from '../../../utils/bombaAssociation';
 import {
   useTramoEditorContext,
   INPUT_CENTER_STYLE,
@@ -446,16 +451,96 @@ export function BajanteEditorSection() {
       engineRef.current?._isGhostSel) ||
     false;
 
+  const esBajSanLl =
+    (selElement as PlanoBajante | null)?.tipo === 'bajante' &&
+    ['san', 'll'].includes(activeNet) &&
+    !isGhostSel;
+
   return (
-    <BajanteEditor
-      selElement={selElement as PlanoBajante}
-      activeNet={activeNet}
-      engineRef={engineRef}
-      setSelElement={ctx.setSelElement}
-      handleUpdateSel={ctx.handleUpdateSel}
-      isGhostSel={isGhostSel}
-      lvl={lvl}
-    />
+    <>
+      <BajanteEditor
+        selElement={selElement as PlanoBajante}
+        activeNet={activeNet}
+        engineRef={engineRef}
+        setSelElement={ctx.setSelElement}
+        handleUpdateSel={ctx.handleUpdateSel}
+        isGhostSel={isGhostSel}
+        lvl={lvl}
+      />
+      {esBajSanLl && (
+        <AsociarBombaPanel
+          selElement={selElement as PlanoBajante}
+          engineRef={engineRef}
+          setSelElement={ctx.setSelElement}
+          plans={ctx.plans || []}
+        />
+      )}
+    </>
+  );
+}
+
+/** Panel derecho — "Asociar bomba del piso inferior": mismos checkboxes que el menú
+ *  contextual (solo bombas del piso INMEDIATAMENTE inferior); al marcar, el bajante recibe
+ *  las MISMAS UDs de la bomba (herencia hacia arriba vía `bombaEnId` + libro ucAplicado). */
+function AsociarBombaPanel({
+  selElement,
+  engineRef,
+  setSelElement,
+  plans,
+}: {
+  selElement: PlanoBajante;
+  engineRef: React.MutableRefObject<import('../../../lib/PlanoEngine/PlanoEngine').default | null>;
+  setSelElement: (el: PlanoBajante) => void;
+  plans: { id: string | number; nivel: number | null; status?: string }[];
+}) {
+  const currentPlanId = String(engineRef.current?._loadedPlanId ?? '');
+  const bombas = bombsImmediateLowerFloor(plans as never, currentPlanId);
+  return (
+    <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: '#9BA8AA',
+          fontFamily: "'Geist',monospace",
+          marginBottom: 4,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+      >
+        Asociar bomba del piso inferior
+      </div>
+      {bombas.length === 0 && (
+        <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
+          Sin bombas en el piso inmediatamente inferior
+        </div>
+      )}
+      {bombas.map((row) => {
+        const checked = selElement.bombaEnId === `${row.planId}|${row.id}`;
+        return (
+          <label key={row.planId + '|' + row.id} style={CHECK_ROW_STYLE}>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => {
+                const eng = engineRef.current;
+                if (!eng) return;
+                if (e.target.checked)
+                  asociarBomba(eng, selElement, currentPlanId, row, plans as never);
+                else quitarBomba(eng, selElement, currentPlanId, plans as never);
+                setSelElement({
+                  ...selElement,
+                  bombaEnId: e.target.checked ? `${row.planId}|${row.id}` : null,
+                } as PlanoBajante);
+              }}
+              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+            />
+            <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+              {row.code}
+            </span>
+          </label>
+        );
+      })}
+    </div>
   );
 }
 
@@ -527,7 +612,7 @@ export function RamalEditorSection() {
             <div style={CHECK_GRID_STYLE}>
               {(() => {
                 const netBajs = (engineRef.current?.bajantes || []).filter(
-                  (b) => b.net === activeNet && b.tipo !== 'tributario',
+                  (b) => b.net === activeNet && b.tipo !== 'tributario' && !esCaja(b),
                 );
                 if (netBajs.length === 0)
                   return (
@@ -600,6 +685,98 @@ export function RamalEditorSection() {
             </div>
           </div>
         )}
+      {selElement?.pts && ['san', 'll'].includes(activeNet) && (
+        <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: '#9BA8AA',
+              fontFamily: "'Geist',monospace",
+              marginBottom: 4,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            Cajas asociadas
+          </div>
+          <div style={CHECK_GRID_STYLE}>
+            {(() => {
+              const cajas = (engineRef.current?.bajantes || []).filter(
+                (b) => b.net === activeNet && esCaja(b),
+              );
+              if (cajas.length === 0)
+                return (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: '#8AB4D6',
+                      fontFamily: "'Geist',monospace",
+                      padding: '4px',
+                      gridColumn: 'span 2',
+                    }}
+                  >
+                    Sin cajas en esta red
+                  </div>
+                );
+              return cajas.map((c) => {
+                // Asociación lógica = la que crea finishRamal: llegada (recibeDeIds + fin del
+                // ramal = código de la caja) O salida (alimentaIds + ini) — el checkbox refleja
+                // AMBAS direcciones y el desmarque limpia la que esté.
+                const isRecibe = (c.recibeDeIds || []).includes(selElement.id);
+                const isAlimenta = (c.alimentaIds || []).includes(selElement.id);
+                const isAssoc = isRecibe || isAlimenta;
+                return (
+                  <label key={c.id} style={CHECK_ROW_STYLE}>
+                    <input
+                      type="checkbox"
+                      checked={isAssoc}
+                      onChange={(e) => {
+                        const code = c.code || c.id;
+                        if (e.target.checked) {
+                          // Regla central: la caja admite N entradas de ramales/tributarios —
+                          // la guard valida red y dirección antes de escribir.
+                          const check = puedeConectarRamalABajante(c, selElement, 'recibe');
+                          if (!check.ok) {
+                            if (check.title && check.msg)
+                              engineRef.current?.triggerAlert(check.title, check.msg);
+                            e.preventDefault();
+                            return;
+                          }
+                          engineRef.current?.updateElementById(c.id, {
+                            recibeDeIds: [...(c.recibeDeIds || []), selElement.id],
+                          });
+                          engineRef.current?.updateElementById(selElement.id, { fin: code });
+                          if (selElement) setSelElement({ ...selElement, fin: code });
+                        } else {
+                          // Desmarcar = quitar la relación que tenga: llegada y/o salida.
+                          engineRef.current?.updateElementById(c.id, {
+                            recibeDeIds: (c.recibeDeIds || []).filter((id) => id !== selElement.id),
+                            alimentaIds: (c.alimentaIds || []).filter((id) => id !== selElement.id),
+                          });
+                          const ramalUpdates: Record<string, unknown> = {};
+                          if ((selElement as unknown as { fin?: string }).fin === code)
+                            ramalUpdates.fin = '';
+                          if ((selElement as unknown as { ini?: string }).ini === code)
+                            ramalUpdates.ini = '';
+                          if (Object.keys(ramalUpdates).length)
+                            engineRef.current?.updateElementById(selElement.id, ramalUpdates);
+                          if (selElement) setSelElement({ ...selElement, ...ramalUpdates });
+                        }
+                        engineRef.current?.render();
+                        engineRef.current?._markDirty();
+                      }}
+                      style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+                    />
+                    <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                      {bajanteLabel(c, engineRef.current?.nivelActual?.label)}
+                    </span>
+                  </label>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
     </>
   );
 }
