@@ -439,6 +439,11 @@ export interface PlanoBajante {
   recibeDeIds: string[];
   alimentaIds: string[];
   descargaEnId: string | null;
+  /** Bomba: id de la caja que la originó (una bomba por caja). */
+  cajaOrigenId?: string | null;
+  /** BAJANTE ligado a una bomba de piso inferior: "<planId>|<bombaId>". Campo dedicado —
+   *  descargaEnId/origenId dispararían la herencia hacia ABAJO (invertida para bombas). */
+  bombaEnId?: string | null;
   /** Puntero inverso: `${originPlanId}|${originBajanteId}` del bajante del piso superior que
    * DESCARGA en este — lo fija el selector "Origen". Es solo una ayuda de visualización/búsqueda;
    * el enlace real vive en el `descargaEnId` del origen (guardado en el storage de su piso). */
@@ -616,7 +621,7 @@ export interface PlanoRamalDefaults {
 export type MultiDragOrigData = Record<
   string,
   {
-    type: 'ramal' | 'bajante' | 'text';
+    type: 'ramal' | 'bajante' | 'text' | 'guide';
     origPts?: number[][];
     origLabelX?: number;
     origLabelY?: number;
@@ -659,6 +664,9 @@ export interface IPlanoEngineCore {
   zoom: number;
   offX: number;
   offY: number;
+  /** Factor multiplicador del grosor de TODAS las líneas del dibujo (slider de la barra de
+   *  redes; 1 = grosor base, persistido por plano en cf_planos.line_width). */
+  lineWidthScale: number;
   snapMode: boolean;
   gridMode: boolean;
   tool: string;

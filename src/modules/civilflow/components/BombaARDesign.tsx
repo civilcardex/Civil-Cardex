@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { dec } from '../utils/parseDecimal';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
+import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
+import { matHazenC } from '../constants/engineeringDataMaterials';
 import PageNav from './PageNav';
 import { SI, TH, TD } from '../styles/sharedTableStyles';
 import EditButton from './shared/EditButton';
@@ -113,6 +115,7 @@ function BombaARDesign() {
   const [lImp, setLImp] = useState(m0.lImp ?? '');
   const [dImp, setDImp] = useState(m0.dImp ?? '');
   const [cHW, setCHW] = useState(m0.cHW ?? '');
+  const [tipoTuberia, setTipoTuberia] = useState(m0.tipoTuberia ?? 'PVC-PR');
   const [pDesc, setPDesc] = useState(m0.pDesc ?? '');
   const [etaB, setEtaB] = useState(m0.etaB ?? '');
   const [fSrv, setFSrv] = useState(m0.fSrv ?? '');
@@ -128,10 +131,17 @@ function BombaARDesign() {
   const [editP4, setEditP4] = useState(false);
 
   const sal = dec(salSim);
-  const ud = dec(udTot);
   const li = dec(lImp);
   const di = dec(dImp);
-  const ch = dec(cHW) || 150;
+  // C de Hazen-Williams AUTOMÁTICO por tipo de tubería (Catálogo Maestro, matHazenC) —
+  // solo lectura (orig. usuario); el valor manual viejo queda como fallback inicial.
+  const MAT_POR_TIPO: Record<string, string> = {
+    'PVC-PR': 'PVC-PR',
+    'Acero galvanizado': 'Acero HG',
+    'Acero al carbón': 'A.C.',
+  };
+  const cAuto = matHazenC(MAT_POR_TIPO[tipoTuberia] ?? 'PVC-PR');
+  const ch = cAuto ?? (dec(cHW) || 150);
   const pd = dec(pDesc);
   const fs = dec(fSrv) || 1.25;
   const tc = dec(tCic);
@@ -140,6 +150,18 @@ function BombaARDesign() {
   const bc = dec(bCam);
   const lc = dec(lCam);
   const Dm = di * 0.0254;
+
+  // Tabla de equipos de bomba (orig. usuario): TODAS las bombas (tipo 'bomba') de los pisos
+  // confirmados, con las UDs acumuladas del sótano = la clave de la bomba (que el visor
+  // mantiene espejando el agregado de su caja de origen). Solo lectura, se recalcula al montar.
+  const equiposBomba = equiposBombaDesdeTrazos();
+
+  // "UD acumuladas en sótano" (orig. usuario) = la SUMATORIA de las UDs de las bombas de los
+  // sótanos — automático, no editable. Ajuste durante render (patrón oficial para sincronizar
+  // estado derivado sin cascadas) + los cálculos y la BD usan el valor automático.
+  const udTotAuto = String(equiposBomba.reduce((a, e) => a + e.uds, 0));
+  if (udTotAuto !== udTot) setUdTot(udTotAuto);
+  const ud = dec(udTotAuto || udTot);
 
   const K = sal <= 1 ? 1 : +(1 / Math.sqrt(sal - 1)).toFixed(2);
   const Qd = +(
@@ -188,6 +210,7 @@ function BombaARDesign() {
         bCam,
         lCam,
         npsh,
+        tipoTuberia,
         sal,
         ud,
       },
@@ -246,6 +269,7 @@ function BombaARDesign() {
     Sel,
     Vcam,
     Vchk,
+    tipoTuberia,
   ]);
 
   // Hidratar desde la fuente de verdad (bomba_datos_proyecto, 1:1 con el proyecto) al
@@ -265,6 +289,7 @@ function BombaARDesign() {
         setLImp(d.lImp);
         setDImp(d.dImp);
         setCHW(d.cHW);
+        setTipoTuberia(d.tipoTuberia || 'PVC-PR');
         setPDesc(d.pDesc);
         setEtaB(d.etaB);
         setFSrv(d.fSrv);
@@ -308,13 +333,31 @@ function BombaARDesign() {
         bCam,
         lCam,
         npsh,
+        tipoTuberia,
       });
     }, 1200);
     return () => {
       if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);
       bombaSaveTimerRef.current = null;
     };
-  }, [salSim, udTot, hz, lImp, dImp, cHW, pDesc, etaB, fSrv, tCic, hMin, hMax, bCam, lCam, npsh]);
+  }, [
+    salSim,
+    udTot,
+    hz,
+    lImp,
+    dImp,
+    cHW,
+    pDesc,
+    etaB,
+    fSrv,
+    tCic,
+    hMin,
+    hMax,
+    bCam,
+    lCam,
+    npsh,
+    tipoTuberia,
+  ]);
 
   const Nota = (
     <div
@@ -339,12 +382,23 @@ function BombaARDesign() {
   const COLS1 = BombaARDesign_COLS1;
   const COLS2 = BombaARDesign_COLS2;
 
+  // Valor ancho (cabe "Acero galvanizado" del dropdown); Fuente/norma estrecha con wrap.
+  const COLS1_STYLES: (React.CSSProperties | undefined)[] = [
+    { maxWidth: 170 },
+    undefined,
+    { minWidth: 160 },
+    undefined,
+    { maxWidth: 80 },
+    { width: 130, minWidth: 130, whiteSpace: 'normal', fontSize: 11 },
+  ];
+
   const page1 = (
     <Tbl
       thStyle={TH2}
       tdStyle={TD2}
       tdlStyle={TDL2}
       fontSize={13}
+      colStyles={COLS1_STYLES}
       valueCol={2}
       caption="Datos de entrada"
       cols={COLS1}
@@ -364,18 +418,14 @@ function BombaARDesign() {
           'Probabilidad de trabajar al máximo',
         ],
         [
-          'UD acumuladas en sótano',
+          'Unidades descarga acumuladas en sótano',
           'UD tot',
-          <Inp
-            disabled={!editP1}
-            v={udTot}
-            set={setUdTot}
-            ariaLabel="UD acumuladas en sótano"
-            style={SI2}
-          />,
+          <span title="Suma de las UDs de las bombas de los sótanos (automático, no editable)">
+            {udTot || '0'}
+          </span>,
           'UD',
           '—',
-          'NTC 1500',
+          'Suma de las bombas — automático',
         ],
         ['Coeficiente K simultaneidad Hunter', 'K', Fmt2(K), '—', '—', 'K = 1/√(n−1)'],
         [
@@ -435,18 +485,32 @@ function BombaARDesign() {
           'Mínimo 2" NTC 1500 §8',
         ],
         [
-          'Coeficiente C Hazen-Williams (PVC)',
-          'C HW',
-          <Inp
+          'Tipo de tubería',
+          '—',
+          <select
+            value={tipoTuberia}
             disabled={!editP1}
-            v={cHW}
-            set={setCHW}
-            ariaLabel="Coeficiente C Hazen-Williams"
+            aria-label="Tipo de tubería"
+            onChange={(e) => setTipoTuberia(e.target.value)}
             style={SI2}
-          />,
+          >
+            <option value="PVC-PR">PVC-PR</option>
+            <option value="Acero galvanizado">Acero galvanizado</option>
+            <option value="Acero al carbón">Acero al carbón</option>
+          </select>,
           '—',
           '—',
-          'RAS 2000 §B.6.4.2 — PVC liso nuevo',
+          'Selección de material',
+        ],
+        [
+          'Coeficiente C Hazen-Williams',
+          'C HW',
+          <span title="Calculado desde el Catálogo Maestro según el tipo de tubería (solo lectura)">
+            {cAuto ?? (dec(cHW) || 150)}
+          </span>,
+          '—',
+          '—',
+          'Catálogo Maestro — no editable',
         ],
         [
           'Presión mínima en descarga',
@@ -464,7 +528,7 @@ function BombaARDesign() {
           ) : (
             <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
           ),
-          'Presión en punto entrega piso 1',
+          'Presión en punto entrega',
         ],
         [
           'Eficiencia bomba η',
@@ -1053,6 +1117,21 @@ function BombaARDesign() {
     </div>
   );
 
+  const page5 = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+      <Tbl
+        cols={['Bomba', 'Nivel', 'Unidades acumuladas del sótano']}
+        rows={equiposBomba.map((e) => [e.code, e.nivel, String(e.uds)])}
+        caption="Equipos de bomba de aguas residuales — UDs transferidas desde el sótano (automático, no editable)"
+      />
+      {equiposBomba.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--txt3)' }}>
+          Sin bombas creadas. Crea una bomba desde el menú contextual de una caja en el visor.
+        </div>
+      )}
+    </div>
+  );
+
   const pages = [
     {
       t: 'Datos de entrada',
@@ -1076,6 +1155,11 @@ function BombaARDesign() {
       c: page4,
       noWrap: true,
     },
+    {
+      t: 'Equipos de bomba',
+      icon: '/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp',
+      c: page5,
+    },
   ];
 
   return (
@@ -1086,9 +1170,15 @@ function BombaARDesign() {
       <PageNav
         page={bp}
         setPage={setBp}
-        total={4}
+        total={5}
         color="var(--bom)"
-        labels={['Datos de entrada', 'Pérdidas de carga', 'Bomba sumergible', 'Cámara bombeo']}
+        labels={[
+          'Datos de entrada',
+          'Pérdidas de carga',
+          'Bomba sumergible',
+          'Cámara bombeo',
+          'Equipos de bomba',
+        ]}
       />
       <div
         style={{
@@ -1118,7 +1208,7 @@ function BombaARDesign() {
             style={{
               width: '90%',
               maxWidth: 900,
-              overflow: 'hidden',
+              overflowY: 'auto',
               borderRadius: 'var(--r)',
               border: '1px solid var(--line)',
             }}

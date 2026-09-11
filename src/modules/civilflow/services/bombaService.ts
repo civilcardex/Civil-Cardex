@@ -18,6 +18,8 @@ export interface BombaData {
   bCam: string;
   lCam: string;
   npsh: string;
+  /** PVC-PR | Acero galvanizado | Acero al carbón — define C Hazen-Williams (Catálogo Maestro). */
+  tipoTuberia: string;
 }
 
 interface BombaDatosRow {
@@ -36,6 +38,7 @@ interface BombaDatosRow {
   b_cam: string | null;
   l_cam: string | null;
   npsh: string | null;
+  tipo_tuberia: string | null;
 }
 
 /**
@@ -47,7 +50,7 @@ export async function loadBombaDatos(proyectoId: number): Promise<BombaData | nu
     const { data, error } = await supabase
       .from(CF_TABLES.bombaDatos)
       .select(
-        'sal_sim, ud_tot, hz, l_imp, d_imp, c_hw, p_desc, eta_b, f_srv, t_cic, h_min, h_max, b_cam, l_cam, npsh',
+        'sal_sim, ud_tot, hz, l_imp, d_imp, c_hw, p_desc, eta_b, f_srv, t_cic, h_min, h_max, b_cam, l_cam, npsh, tipo_tuberia',
       )
       .eq('proyecto_id', proyectoId)
       .maybeSingle();
@@ -74,6 +77,7 @@ export async function loadBombaDatos(proyectoId: number): Promise<BombaData | nu
       bCam: row.b_cam ?? '',
       lCam: row.l_cam ?? '',
       npsh: row.npsh ?? '',
+      tipoTuberia: row.tipo_tuberia ?? '',
     };
   } catch (e) {
     devError('bombaService load exception:', e);
@@ -112,6 +116,7 @@ export async function saveBombaDatos(proyectoId: number, b: BombaData): Promise<
         b_cam: b.bCam,
         l_cam: b.lCam,
         npsh: b.npsh,
+        tipo_tuberia: b.tipoTuberia,
       },
     });
     if (error) devError('bombaService save rpc:', error.message);

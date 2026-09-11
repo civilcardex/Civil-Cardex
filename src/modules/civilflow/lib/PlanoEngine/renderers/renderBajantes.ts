@@ -40,12 +40,15 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // Item 2: Ángulo de etiqueta + restricción de snap (auto-rotación removida por pedido)
     const angle = ((b.labelAngle || 0) * Math.PI) / 180;
 
-    // Las cajas dibujan ~110% más grande que el círculo del bajante — el hit del menú
-    // contextual (_circ.r) las sigue.
+    // Las cajas dibujan a escala real (100×100cm exterior): el hit del menú
+    // contextual (_circ.r) cubre la media diagonal para alcanzar las esquinas.
+    const cajaHalf =
+      b.tipo === 'caja_san' || b.tipo === 'caja_ll' ? engine.realMmToCanvasPx(1000) / 2 : 0;
+    const bombaR = b.tipo === 'bomba' ? (engine.realMmToCanvasPx(350) / 4) * 1.5 : 0;
     b._circ = {
       x: c.x,
       y: c.y,
-      r: b.tipo === 'caja_san' || b.tipo === 'caja_ll' ? r * 2.1 : r,
+      r: cajaHalf > 0 ? cajaHalf * Math.SQRT2 : bombaR > 0 ? bombaR : r,
     };
     if (isDirectionGhost) return;
 
@@ -78,7 +81,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           const rc = engine.toCvs(bestPt[0], bestPt[1]);
           ctx.save();
           ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 2 * engine.zoom;
+          ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
           ctx.beginPath();
           ctx.moveTo(rc.x, rc.y);
@@ -107,7 +110,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           const rc = engine.toCvs(bestPt[0], bestPt[1]);
           ctx.save();
           ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 2 * engine.zoom;
+          ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
           ctx.beginPath();
           ctx.moveTo(c.x, c.y);
@@ -121,7 +124,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           const tc = engine.toCvs(targetBaj.x, targetBaj.y);
           ctx.save();
           ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 2 * engine.zoom;
+          ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
           ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
           ctx.beginPath();
           ctx.moveTo(c.x, c.y);
@@ -143,7 +146,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : '#475569';
-      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
@@ -155,7 +158,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-devW / 2, -devH / 2, devW, devH);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : '#A855F7';
-      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.rect(-devW / 2, -devH / 2, devW, devH);
       ctx.stroke();
@@ -173,7 +176,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.stroke();
@@ -185,35 +188,69 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
-    } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
-      // Caja de recolección (CAN/CALL): rectángulo apaisado SOLO trazo (sin relleno — el
-      // plano se ve a través) con rectángulo interior concéntrico también sin rellenar.
-      // Proporciones del símbolo pedido: exterior ~1.35:1, interior al 65%/55% — mismas
-      // proporciones que el símbolo isométrico. La etiqueta la dibuja el pipeline de b.code.
+    } else if (b.tipo === 'bomba') {
+      // Bomba centrífuga (BOMAN-nivel, orig. usuario, imagen de referencia): volute + centro
+      // + DOS boquillas VERTICALES con brida — arriba-IZQUIERDA (sube) y abajo-DERECHA (baja),
+      // como el ícono. R = 1/4 del tamaño original (35cm → ~8.75cm de radio de volute).
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
-      const ew = r * 4.2;
-      const eh = ew / 1.35;
-      const iw = ew * 0.65;
-      const ih = eh * 0.55;
+      const R = engine.realMmToCanvasPx(350) / 4;
+      const lw = (sel ? 2.5 : 1.4) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+      ctx.lineWidth = lw;
+      // Volute + centro.
       ctx.beginPath();
-      ctx.rect(-ew / 2, -eh / 2, ew, eh);
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
       ctx.stroke();
       ctx.beginPath();
-      ctx.rect(-iw / 2, -ih / 2, iw, ih);
+      ctx.arc(0, 0, R * 0.3, 0, Math.PI * 2);
+      ctx.stroke();
+      // Boquilla VERTICAL: dos líneas paralelas desde el cuadro de la volute hacia afuera +
+      // brida rectangular (outline) en la boca. x0 = ±0.45R (izq arriba / der abajo).
+      const w = R * 0.5;
+      const fh = R * 0.22;
+      const fw = w * 1.7;
+      const nozzleV = (x0: number, dir: number) => {
+        const yA = dir * R * 0.72; // altura del arranque (sobre el cuadro de la volute)
+        const yEnd = dir * (R * 0.72 + R * 0.55);
+        ctx.beginPath();
+        ctx.moveTo(x0 - w / 2, yA);
+        ctx.lineTo(x0 - w / 2, yEnd);
+        ctx.moveTo(x0 + w / 2, yA);
+        ctx.lineTo(x0 + w / 2, yEnd);
+        ctx.stroke();
+        // Brida: rectángulo outline cruzando la boca (fuera del extremo de las líneas).
+        const fy = dir < 0 ? yEnd - fh : yEnd;
+        ctx.strokeRect(x0 - fw / 2, fy, fw, fh);
+      };
+      nozzleV(-R * 0.45, -1); // arriba-izquierda
+      nozzleV(R * 0.45, 1); // abajo-derecha
+    } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
+      // Caja de recolección (CAN/CALL): CUADRADOS concéntricos a escala real — exterior
+      // 100×100cm, interior 70×70cm — solo trazo (el plano se ve a través). Mismas medidas
+      // que el símbolo isométrico. La etiqueta la dibuja el pipeline de b.code.
+      const netObj = NETS.find((n) => n.id === b.net);
+      const col = netObj ? netObj.col : '#e2e2e8';
+      const side = engine.realMmToCanvasPx(1000);
+      const inSide = engine.realMmToCanvasPx(700);
+      ctx.strokeStyle = sel ? '#FFEB3B' : col;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
+      ctx.beginPath();
+      ctx.rect(-side / 2, -side / 2, side, side);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.rect(-inSide / 2, -inSide / 2, inSide, inSide);
       ctx.stroke();
     } else {
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 1.2 : 0.6) * engine.zoom;
+      ctx.lineWidth = (sel ? 1.2 : 0.6) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
@@ -243,6 +280,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
       // Interior del símbolo de caja: solo el cuadrado interior, sin letra ni símbolo de
       // dirección (la etiqueta CAN/CALL vive debajo, dibujada por el pipeline de b.code).
+    } else if (b.tipo === 'bomba') {
+      // Sin glifo interno ni flecha de dirección — la etiqueta BOMAN-nivel la dibuja el pipeline.
     } else {
       drawDireccionSymbol(ctx, b.tipo, r, b.direccion);
     }
@@ -255,7 +294,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.save();
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5 * engine.zoom;
+      ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 6 * engine.zoom;
       ctx.beginPath();
@@ -287,7 +326,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       }
 
       const pCorto = getPisoCorto(engine.nivelActual?.n);
-      const lvlSuffix = pCorto ? `-${pCorto}` : '';
+      // Bomba: el nivel ya va DENTRO del código (BOMAN-S1) — sin sufijo doble.
+      const lvlSuffix = b.tipo === 'bomba' ? '' : pCorto ? `-${pCorto}` : '';
       const codeStr =
         (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
       let diamStr = '';

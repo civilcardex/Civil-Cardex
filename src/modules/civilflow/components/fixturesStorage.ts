@@ -99,8 +99,72 @@ export function isCountableTarget(el: SelectableTarget | null): boolean {
     el.id?.startsWith('R') ||
     el.id?.startsWith('B') ||
     el.id?.startsWith('T') ||
+    // Cajas CAN/CALL (aguas negras/lluvias): panel de UDs en modo solo lectura.
+    el.tipo === 'caja_san' ||
+    el.tipo === 'caja_ll' ||
     // Ldesvio entre pisos: espejo de las UDs del bajante (seleccionable pero de solo lectura).
     el.id?.startsWith('LD_') ||
     el.tipo === 'calentador'
   );
+}
+
+interface BajanteLikeSalida {
+  id: string;
+  code?: string;
+  net: string;
+  x: number;
+  y: number;
+  _circ?: { r?: number };
+  recibeDeIds?: string[];
+  alimentaIds?: string[];
+}
+interface RamalLikeSalida {
+  id: string;
+  net?: string;
+  tipo?: string;
+  pts?: number[][];
+  _tribReversed?: boolean;
+  ini?: string;
+}
+
+/** Ids de los ramales que SALEN (nacen) del bajante/caja dado. Salida = extremo de nacimiento
+ *  en el elemento y el otro extremo lejos, o referencia explícita (alimentaIds / r.ini = código).
+ *  La referencia explícita manda: un ramal de salida con `_tribReversed` invertía la geometría
+ *  cola/cabeza y dejaba de detectarse — el agregado del bajante volvía a caminar su subárbol y
+ *  re-fusionaba las UDs en su propia clave de salida (crecían en cada pasada, orig. usuario:
+ *  "la caja AN duplica las UDs del ramal de salida"). */
+export function idsSalidasDeBajante(
+  baj: BajanteLikeSalida,
+  ramales: RamalLikeSalida[],
+  zoom: number,
+): Set<string> {
+  const out = new Set<string>();
+  const tol = (baj._circ?.r || 8 * (zoom || 1)) / (zoom || 1) + 1;
+  const code = baj.code || baj.id;
+  for (const r of ramales) {
+    if (r.tipo === 'tributario' || (r.net ?? '') !== baj.net) continue;
+    // Referencia explícita: nace en este elemento — salida sin ambigüedad geométrica.
+    if ((baj.alimentaIds || []).includes(r.id) || (r.ini && r.ini === code)) {
+      out.add(r.id);
+      continue;
+    }
+    if (!r.pts || r.pts.length < 2) continue;
+    const t = r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
+    const h = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
+    const tailAt = Math.hypot(t[0] - baj.x, t[1] - baj.y) < tol;
+    const headAt = Math.hypot(h[0] - baj.x, h[1] - baj.y) < tol;
+    if (tailAt && !headAt) {
+      out.add(r.id);
+      continue;
+    }
+    // Caso ambiguo (AMBOS extremos dentro de la tolerancia — p.ej. cajas, cuyo _circ es la
+    // semidiagonal del cuadro y se traga ramales cortos): decide la DIRECCIÓN DE FLUJO —
+    // es salida si el extremo de DESCARGA está lejos del elemento.
+    if (tailAt && headAt) {
+      const hDist = Math.hypot(h[0] - baj.x, h[1] - baj.y);
+      const tDist = Math.hypot(t[0] - baj.x, t[1] - baj.y);
+      if (hDist > tDist) out.add(r.id);
+    }
+  }
+  return out;
 }

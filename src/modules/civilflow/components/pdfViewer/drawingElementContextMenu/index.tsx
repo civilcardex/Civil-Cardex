@@ -18,6 +18,7 @@ import {
   DrawingElementContextMenuCtx,
   useDrawingElementContextMenu,
   MENU_PANEL_STYLE,
+  MENU_PANEL_BAJANTE_STYLE,
   type ContextMenuState,
   type LowerFloorRamales,
   type ProbedElement,
@@ -398,11 +399,15 @@ function DrawingElementContextMenuInner() {
   }, [setContextMenuState]);
 
   const element = contextMenuState.element as ProbedElement;
+  // Las BOMBAS no tienen menú contextual (orig. usuario): toda su gestión se hace desde la
+  // caja que las originó ("Bomba asociada") y desde el bajante asociado.
+  if (element.tipo === 'bomba') return null;
   const isBajanteTipo =
     element.tipo === 'bajante' ||
     element.tipo === 'montante' ||
     element.tipo === 'caja_san' ||
     element.tipo === 'caja_ll' ||
+    element.tipo === 'bomba' ||
     element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
   // Las líneas guía también llevan `pts` (reutilizado para la detección de clics) pero nunca
@@ -455,7 +460,11 @@ function DrawingElementContextMenuInner() {
             }
           }
         }}
-        style={{ ...MENU_PANEL_STYLE, left: adjustedPos.x, top: adjustedPos.y }}
+        style={{
+          ...(isBajanteTipo && !hasPts ? MENU_PANEL_BAJANTE_STYLE : MENU_PANEL_STYLE),
+          left: adjustedPos.x,
+          top: adjustedPos.y,
+        }}
         onContextMenu={(e) => e.preventDefault()}
       >
         {isBajanteTipo && !hasPts ? (

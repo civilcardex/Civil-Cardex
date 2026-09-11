@@ -1,8 +1,9 @@
 import { NETS } from './PlanoState';
-import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
+import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState';
 import { calculateRamalLength, _statusMsg } from './ramalMeasure';
-import { pisoCortoLoose } from '../../constants';
+import { pisoCorto, pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
+import { distToPolyline } from '../shared/geometry';
 import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
@@ -148,10 +149,22 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   const bajId = netPfx + cnt;
   // Ítem: el bajante toma por defecto el diámetro del ramal conectado (el mayor de los
   // asociados) y no puede bajarse de ahí — ver la validación en bajanteMenu.tsx.
+  // Soltado sobre el CUERPO de un ramal (lejos de sus extremos) también adopta su diámetro
+  // (orig. usuario: "viceversa según como se dibuje") — sin asociación, solo diámetro.
   let defDNominal = '';
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
     if (r && r.diametro) defDNominal = maxDiametroLabel(defDNominal, r.diametro);
+  }
+  if (!defDNominal) {
+    for (const r of engine.ramales) {
+      if (r.net !== engine.activeNet || r.tipo === 'tributario') continue;
+      if (!r.pts || r.pts.length < 2 || !r.diametro) continue;
+      if (distToPolyline([px, py], r.pts) < ASSOC_THRESH) {
+        defDNominal = r.diametro;
+        break;
+      }
+    }
   }
   // Item 3: bajante de ventilación nuevo → 2" por defecto si no hay ramal que lo defina.
   if (engine.activeNet === 'vent' && !defDNominal) defDNominal = '2"';
@@ -914,4 +927,73 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
 
   engine.render();
   engine._markDirty();
+}
+
+/** Crea la BOMBA asociada a una caja (AN/LL): círculo punteado a la derecha del símbolo,
+ *  código BOMAN-<nivel> único, vinculada permanentemente por `cajaOrigenId` — una bomba por
+ *  caja (orig. usuario). Un snapshot de historial por creación. */
+export function handleCreateBomba(engine: IPlanoEngineCore, caja: PlanoBajante): void {
+  if (caja.tipo !== 'caja_san' && caja.tipo !== 'caja_ll') return;
+  // Restricción (orig. usuario): UNA bomba por piso — basta que exista cualquier bomba en el
+  // piso cargado (engine.bajantes ES el piso activo).
+  const existente = engine.bajantes.find((b) => b.tipo === 'bomba');
+  if (existente) {
+    engine.triggerAlert(
+      'Ya existe una bomba en este piso',
+      `Solo se permite una bomba por piso: ${existente.code || existente.id} ya está creada aquí.`,
+    );
+    return;
+  }
+  const nivelN = Number(engine.nivelActual?.n ?? 0);
+  // Código único BOMAN-<pisoCorto>: escanea los códigos vivos del piso (mismo nivel →
+  // mismo sufijo; si ya existe BOMAN-S1 en ESTE piso, añade consecutivo BOMAN-S1-2).
+  const base = `BOMAN-${pisoCorto(nivelN) || 'P0'}`;
+  let code = base;
+  let n = 2;
+  const codes = new Set(engine.bajantes.map((b) => b.code || b.id));
+  while (codes.has(code)) {
+    code = `${base}-${n}`;
+    n++;
+  }
+  // Posición: a la DERECHA del símbolo de la caja (semilado caja + radio bomba + margen).
+  const cajaHalf = engine.realMmToCanvasPx(1000) / 2 / (engine.zoom || 1);
+  const bombaR = engine.realMmToCanvasPx(350) / 4 / (engine.zoom || 1);
+  const x = caja.x + cajaHalf + bombaR + cajaHalf * 0.3;
+  {
+    const bomba: PlanoBajante = {
+      id: code,
+      net: caja.net,
+      tipo: 'bomba',
+      code,
+      x,
+      y: caja.y,
+      direccion: 'sube',
+      pisoBase: engine.nivelActual?.label ?? '',
+      pisoCima: engine.nivelActual?.label ?? '',
+      nptBase: engine.nivelActual?.npt ?? 0,
+      nptCima: engine.nivelActual?.npt ?? 0,
+      hVert: 0,
+      dNominal: '',
+      recibeDeIds: [],
+      alimentaIds: [],
+      descargaEnId: null,
+      cajaOrigenId: caja.id,
+      ucAcum: 0,
+      ucExtra: 0,
+      area_m2: 0,
+      desplazamientos: {},
+      lblOffX: 0,
+      lblOffY: 0,
+      labelAngle: 0,
+      labelX: x,
+      labelY: caja.y + 20,
+      bajR: 7 / 24,
+    };
+    engine.bajantes.push(bomba);
+    engine.selId = code;
+    engine._isGhostSel = false;
+    engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
+    engine.render();
+    engine._markDirty();
+  }
 }

@@ -171,10 +171,14 @@ export function upstreamRamalIdsForBajante(args: {
   const out: string[] = [];
   while (queue.length) {
     const rid = queue.pop()!;
-    if (visited.has(rid) || excluded.has(rid)) continue;
+    if (visited.has(rid) || excluded.has(rid) || isLdesvioRamalId(rid)) continue;
+    const r = byId.get(rid);
+    // Solo ramales conocidos de la red: un id listado pero sin fila (renombrado, borrado… o
+    // el id de la propia bomba / un LD en listas mixtas) no aporta — su clave, si existe, es
+    // un espejo o un huérfano, y sumarla reinyectaría el agregado en cada pasada.
+    if (!r || !netOk(r)) continue;
     visited.add(rid);
     out.push(rid);
-    const r = byId.get(rid);
     // Hijos por padre (tributarios, toda profundidad).
     for (const c of pool) {
       if (c.padre === rid && netOk(c) && !visited.has(c.id) && !excluded.has(c.id))
@@ -186,7 +190,7 @@ export function upstreamRamalIdsForBajante(args: {
       for (const m of mf) {
         if (typeof m !== 'string' || visited.has(m) || excluded.has(m)) continue;
         const mr = byId.get(m);
-        if (mr && !netOk(mr)) continue;
+        if (!mr || !netOk(mr)) continue;
         queue.push(m);
       }
     }

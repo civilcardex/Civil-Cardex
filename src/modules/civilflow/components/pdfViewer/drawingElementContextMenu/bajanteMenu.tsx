@@ -9,6 +9,13 @@ import {
   DIAM_VENT,
 } from '../../../constants';
 import { loadFromStorage } from '../../../services/storageService';
+import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
+import { handleCreateBomba } from '../../../lib/PlanoEngine/drawingCreations';
+import {
+  asociarBomba,
+  quitarBomba,
+  bombsImmediateLowerFloor,
+} from '../../../utils/bombaAssociation';
 import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
 import { codoPolarityOk, codoNivelPermitidoEn } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
@@ -31,6 +38,8 @@ import {
   MENU_FANTASMA_BTN_STYLE,
   MENU_SECTION_LABEL_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
+  MENU_ACTION_BTN_STYLE,
+  MENU_CHECK_ROW_STYLE,
   type ContextMenuState,
   type LowerFloorRamales,
 } from './context';
@@ -663,7 +672,7 @@ export function BajanteDiameterSelector({
                     'Aceptar',
                   );
                 }}
-                style={{ ...MENU_SELECT_STYLE, width: '85%' }}
+                style={{ ...MENU_SELECT_STYLE, width: '100%' }}
               >
                 <option value="">Sin destino</option>
                 {lowerFloorsRamales.map((group) => {
@@ -936,15 +945,135 @@ export function BajanteDiameterSelector({
 }
 /** Menú contextual de un bajante/montante: compone el selector de dirección, el de diámetro y
  *  destino, y el panel de conexiones para redes sanitarias y de lluvias. */
+/** Sección BOMBA para cajas AN/LL: "Crear bomba" (una por caja) o, si ya existe,
+ *  "Bomba asociada" con nomenclatura, nivel, caja de origen, UDs y bajante asociado. */
+function CajaBombaSection({
+  ctx,
+  caja,
+}: {
+  ctx: ReturnType<typeof useDrawingElementContextMenu>;
+  caja: PlanoBajante;
+}) {
+  const eng = ctx.engineRef.current;
+  const bomba = eng?.bajantes.find((b) => b.tipo === 'bomba' && b.cajaOrigenId === caja.id);
+  if (!bomba) {
+    return (
+      <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bomba</div>
+        <button
+          type="button"
+          style={MENU_ACTION_BTN_STYLE}
+          onClick={() => {
+            if (!eng) return;
+            handleCreateBomba(eng, caja);
+            ctx.setContextMenuState((prev) =>
+              prev ? { ...prev, element: { ...prev.element } } : null,
+            );
+          }}
+        >
+          + Crear bomba
+        </button>
+      </div>
+    );
+  }
+  // Bomba asociada: info de solo lectura.
+  const planId = String(eng?._loadedPlanId ?? '');
+  const counts = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
+  const udMap = counts[`${bomba.net}_${bomba.id}_${planId}`] || {};
+  const uds = Object.values(udMap).reduce((a, b) => a + b, 0);
+  // Bajante asociado: algún piso tiene un bajante con bombaEnId → "<este plan>|<esta bomba>".
+  let bajInfo = '—';
+  for (const pl of ctx.planosCtx?.plans || []) {
+    if (pl.status !== 'confirmed') continue;
+    const t = loadFromStorage<{
+      bajantes?: Array<{ id: string; code?: string; bombaEnId?: string | null }>;
+    } | null>(TRAZOS_PREFIX + String(pl.id), null);
+    const dst = t?.bajantes?.find((b) => b.bombaEnId === `${planId}|${bomba.id}`);
+    if (dst) {
+      bajInfo = `${dst.code || dst.id} (${pl.nivel != null ? pisoLbl(Number(pl.nivel)) : pl.id})`;
+      break;
+    }
+  }
+  return (
+    <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bomba asociada</div>
+      <div
+        style={{ fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", lineHeight: 1.5 }}
+      >
+        <div>
+          Nomenclatura: <b>{bomba.code || bomba.id}</b>
+        </div>
+        <div>Nivel: {bomba.pisoBase || '—'}</div>
+        <div>Caja de origen: {caja.code || caja.id}</div>
+        <div>Unidades de descarga: {uds}</div>
+        <div>Bajante asociado: {bajInfo}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Sección "Asociar bomba del piso inferior": CHECKBOX con las bombas del piso
+ *  inmediatamente inferior (orig. usuario) — marcada refleja la asociación vía `bombaEnId`;
+ *  al marcar, el bajante recibe las MISMAS UDs de la bomba (herencia hacia arriba del efecto
+ *  de FixturesPanel) y la dirección pasa a SUBE. */
+function AsociarBombaSection({
+  ctx,
+  bajEl,
+}: {
+  ctx: ReturnType<typeof useDrawingElementContextMenu>;
+  bajEl: PlanoBajante;
+}) {
+  const eng = ctx.engineRef.current;
+  const plans = ctx.planosCtx?.plans || [];
+  const currentPlanId = String(eng?._loadedPlanId ?? '');
+  const bombas = bombsImmediateLowerFloor(plans, currentPlanId);
+
+  return (
+    <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Asociar bomba del piso inferior</div>
+      {bombas.length === 0 && (
+        <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace" }}>
+          Sin bombas en el piso inmediatamente inferior
+        </div>
+      )}
+      {bombas.map((row) => {
+        const checked = bajEl.bombaEnId === `${row.planId}|${row.id}`;
+        return (
+          <label key={row.planId + '|' + row.id} style={MENU_CHECK_ROW_STYLE}>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => {
+                if (!eng) return;
+                if (e.target.checked) asociarBomba(eng, bajEl, currentPlanId, row, plans);
+                else quitarBomba(eng, bajEl, currentPlanId, plans);
+                ctx.setContextMenuState((st) =>
+                  st ? { ...st, element: { ...st.element } } : null,
+                );
+              }}
+              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+            />
+            <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+              {row.code}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
 export function BajanteMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element } = ctx;
   const bajEl = element as PlanoBajante;
   const isGhostClick = contextMenuState.isGhostClick || false;
   const isSanOrLl = !isGhostClick && ['san', 'll'].includes(ctx.activeNet);
+  const esCajaMenu = bajEl.tipo === 'caja_san' || bajEl.tipo === 'caja_ll';
 
   return (
     <>
+      {esCajaMenu && !isGhostClick && <CajaBombaSection ctx={ctx} caja={bajEl} />}
       <BajanteDirectionSelector
         element={bajEl}
         isGhostClick={isGhostClick}
@@ -968,6 +1097,7 @@ export function BajanteMenu() {
         planosCtx={ctx.planosCtx}
         triggerConfirm={ctx.triggerConfirm}
       />
+      {bajEl.tipo === 'bajante' && isSanOrLl && <AsociarBombaSection ctx={ctx} bajEl={bajEl} />}
       {isSanOrLl && (
         <BajanteConnectionPanel
           element={bajEl}

@@ -189,6 +189,13 @@ export const MENU_PANEL_STYLE: React.CSSProperties = {
   overflow: 'hidden',
 };
 
+// Variante más ancha solo para menús de bajante/montante (más filas y selects largos).
+export const MENU_PANEL_BAJANTE_STYLE: React.CSSProperties = {
+  ...MENU_PANEL_STYLE,
+  minWidth: 280,
+  maxWidth: 480,
+};
+
 export const MENU_SECTION_LABEL_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#849495',

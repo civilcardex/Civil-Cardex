@@ -83,7 +83,7 @@ export function computeBombaTables(): MemoriaTable[] {
         '—',
         'Probabilidad de trabajar al máximo',
       ],
-      ['UD acumuladas en sótano', 'UD tot', or(i.udTot), 'UD', '—', 'NTC 1500'],
+      ['Unidades descarga acumuladas en sótano', 'UD tot', or(i.udTot), 'UD', '—', 'NTC 1500'],
       ['Coeficiente K simultaneidad Hunter', 'K', f2(o.K), '—', '—', 'K = 1/√(n−1)'],
       [
         'Caudal de diseño Q = UD × K',
@@ -132,7 +132,7 @@ export function computeBombaTables(): MemoriaTable[] {
         or(i.pDesc),
         'm.c.a.',
         pd ? `${f2(pd * 1.42)} psi` : '—',
-        'Presión en punto entrega piso 1',
+        'Presión en punto entrega',
       ],
       [
         'Eficiencia bomba η',
