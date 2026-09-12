@@ -84,6 +84,14 @@ export function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRa
   return false;
 }
 
+/** Lado de la COLA de flujo para el codo sube (orig. usuario: en un trazo aislado el
+ *  sube va donde NACE el flujo, no donde muere): 0 = inicio, 1 = fin, -1 = ambiguo. */
+export function flowTailEnd(endsAtStart: boolean, endsAtEnd: boolean): 0 | 1 | -1 {
+  if (endsAtEnd && !endsAtStart) return 0;
+  if (endsAtStart && !endsAtEnd) return 1;
+  return -1;
+}
+
 // ¿El extremo `epPt` del ramal está ENTRELAZADO con la red (otro ramal del mismo net o una
 // bajante/montante del mismo net en ese punto)? Cubre la unión en T por montante.
 /** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante/montante de la

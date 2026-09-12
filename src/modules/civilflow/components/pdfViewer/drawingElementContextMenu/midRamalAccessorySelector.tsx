@@ -7,7 +7,7 @@ import { matchDiamOption } from '../../../utils/diamOptionMatch';
 import { sanDiamAllowedForApparatus } from '../../../utils/sanitaryDiamCompat';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
-import { extremumOccupied } from './ramalMenuHelpers';
+import { extremumOccupied, flowTailEnd } from './ramalMenuHelpers';
 import { codoPolarityOk, flowEndsAt } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
@@ -250,7 +250,10 @@ export function MidRamalAccessorySelector({
           const isStart = dStart <= dEnd;
           const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
           let currentApp = element[fieldApp] || '';
-          if (element.net === 'san' || element.net === 'll') {
+          // LDesvio: el desplegable SIEMPRE vacío (orig. usuario) — sus UDs son la herencia
+          // del fantasma/bajante superior, no un aparato asignado al tramo.
+          if (element.id?.startsWith('LD_')) currentApp = '';
+          else if (element.net === 'san' || element.net === 'll') {
             // Para sanitaria/lluvias el aparato del cuerpo se guarda en el conteo de fixtures (sidebar),
             // no en aparatoInicio/Fin; mostrar el que tenga conteo >0 para este ramal.
             try {
@@ -306,6 +309,14 @@ export function MidRamalAccessorySelector({
               let nearStart: boolean;
               if (occ0 !== occ1) {
                 nearStart = occ1;
+              } else if (!occ0 && !occ1) {
+                // Trazo aislado (orig. usuario): el codo sube va del lado de la COLA de
+                // la flecha de flujo (el sube entrega) — no de la cabeza ni por
+                // proximidad del clic. Cola en p0 → true; cola en p1 → false.
+                const end0 = flowEndsAt(fresh, p0, 0.5);
+                const end1 = flowEndsAt(fresh, p1, 0.5);
+                const tail = flowTailEnd(end0, end1);
+                nearStart = tail === -1 ? fStart <= fEnd : tail === 0;
               } else {
                 const end0 = flowEndsAt(fresh, p0, 0.5);
                 const end1 = flowEndsAt(fresh, p1, 0.5);
@@ -422,21 +433,40 @@ export function MidRamalAccessorySelector({
                 ) {
                   targetField = 'accesorioFin';
                   targetDiamField = 'diametroFin';
-                } else {
+                }
+                // Residuo de asignación por panel (campo aparato sin codo): también se
+                // limpia — antes ese caso retornaba sin hacer nada y el menú quedaba
+                // mostrando el asignado.
+                const hasResidue = !!(fresh.aparatoInicio || fresh.aparatoFin);
+                if (!targetField && !hasResidue) {
                   eng.resumeHistory();
                   return;
                 }
-                const updates: Record<string, unknown> = { [targetField]: '' };
-                if (targetDiamField) (updates as Record<string, unknown>)[targetDiamField] = '';
+                const updates: Record<string, unknown> = {};
+                if (targetField) {
+                  updates[targetField] = '';
+                  if (targetDiamField) updates[targetDiamField] = '';
+                }
+                if (fresh.aparatoInicio) updates.aparatoInicio = '';
+                if (fresh.aparatoFin) updates.aparatoFin = '';
                 eng.updateElementById(element.id, updates);
+                // Refresco desde el motor vivo (no del snapshot): garantiza que el menú
+                // muestre "sin asignar" aunque el prop element llegara stale.
+                const liveAfter =
+                  engineRef.current?.ramales.find((r) => r.id === element.id) || null;
                 if (selElement?.id === element.id)
-                  setSelElement({ ...selElement, ...updates } as PlanoRamal);
+                  setSelElement({ ...((liveAfter ?? selElement) as PlanoRamal), ...updates });
                 setContextMenuState((prev) =>
-                  prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+                  prev
+                    ? {
+                        ...prev,
+                        element: { ...((liveAfter ?? prev.element) as PlanoRamal), ...updates },
+                      }
+                    : null,
                 );
                 eng.render();
                 const planId = eng._loadedPlanId ?? '';
-                bumpHidroAccesorio('san', 'codo90rmSube', -1, element.id, planId);
+                if (targetField) bumpHidroAccesorio('san', 'codo90rmSube', -1, element.id, planId);
                 if (typeof window !== 'undefined')
                   window.dispatchEvent(new CustomEvent('aparatos-clear'));
                 decrementFirstAparato('san', element.id, planId);
@@ -511,11 +541,26 @@ export function MidRamalAccessorySelector({
               );
               const actualUpdates: Record<string, unknown> = { [actualField]: null };
               eng.updateElementById(element.id, actualUpdates);
+              // Refresco desde el motor vivo (no del snapshot): garantiza que el menú
+              // muestre "sin asignar" aunque el prop element llegara stale.
+              const liveAfter2 =
+                engineRef.current?.ramales.find((r) => r.id === element.id) || null;
               setContextMenuState((prev) =>
-                prev ? { ...prev, element: { ...prev.element, ...actualUpdates } } : null,
+                prev
+                  ? {
+                      ...prev,
+                      element: {
+                        ...((liveAfter2 ?? prev.element) as PlanoRamal),
+                        ...actualUpdates,
+                      },
+                    }
+                  : null,
               );
               if (selElement?.id === element.id) {
-                setSelElement({ ...selElement, ...actualUpdates } as PlanoRamal);
+                setSelElement({
+                  ...((liveAfter2 ?? selElement) as PlanoRamal),
+                  ...actualUpdates,
+                } as PlanoRamal);
               }
               eng.render();
               // Conteo directo por clave de plano (sin gate de planosCtx — ver rama san).

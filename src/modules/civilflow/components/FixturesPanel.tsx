@@ -37,6 +37,7 @@ import {
   idsSalidasDeBajante,
   libroHeredadoSumado,
   aggParaEspejoSalida,
+  stableStringify,
 } from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../utils/bombaAssociation';
@@ -47,6 +48,7 @@ import {
 } from '../utils/bajanteAssociation';
 import { ldesvioIdFor } from '../utils/associateBajanteAcrossFloors';
 import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import { flowTailEnd } from './pdfViewer/drawingElementContextMenu/ramalMenuHelpers';
 import { distToPolyline } from '../lib/shared/geometry';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 import { useTramos } from '../context/TramosContext';
@@ -93,18 +95,41 @@ const FixturesPanel_S3: React.CSSProperties = {
 
 import type { ProbedElement } from './pdfViewer/tramoEditor/context';
 
+/** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
+ *  JSON contra el valor en disco. Con deleteEmpty, un next vacío ELIMINA la clave (borrar UDs
+ *  heredadas) en vez de dejar un espejo {} que reinsertaba basura vieja. */
+function syncMirrorKey(
+  disk: Record<string, Record<string, number>>,
+  key: string,
+  next: Record<string, number>,
+  deleteEmpty: boolean,
+): boolean {
+  if (!Object.keys(next).length) {
+    if (deleteEmpty && disk[key]) {
+      delete disk[key];
+      return true;
+    }
+    return false;
+  }
+  if (JSON.stringify(disk[key] || {}) === JSON.stringify(next)) return false;
+  disk[key] = { ...next };
+  return true;
+}
+
 const AparatosPanel = memo(function AparatosPanel_({
   activeNet,
   selElement,
   setSelElement,
   planId,
   engineRef,
+  loadingPlanRef,
 }: {
   activeNet: string;
   selElement: SelectableTarget | null;
   setSelElement?: React.Dispatch<React.SetStateAction<ProbedElement | null>>;
   planId?: string | number;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
+  loadingPlanRef?: React.MutableRefObject<boolean>;
 }) {
   const { plans } = usePlans();
   const { tramosSan } = useTramos();
@@ -155,16 +180,33 @@ const AparatosPanel = memo(function AparatosPanel_({
   }, [plans]);
 
   useEffect(() => {
+    // Recarga guardada: solo setea si el CONTENIDO cambió (misma ref = bail, sin re-render).
+    // Sin esto, escuchar los syncs entraría en loop sync→reload→sync (cada sync dispara
+    // evento y cada reload crea refs nuevas). Con esto el panel se entera del re-anclaje
+    // de claves (orig. usuario piso 2: montaba con el store vacío y nunca refrescaba).
     const reloadAll = () => {
-      setCounts(loadAll());
-      setHidroData(loadHidroData());
-      setGasAcc(loadGasAcc());
+      setCounts((prev) => {
+        const next = loadAll();
+        return stableStringify(prev) === stableStringify(next) ? prev : next;
+      });
+      setHidroData((prev) => {
+        const next = loadHidroData();
+        return stableStringify(prev) === stableStringify(next) ? prev : next;
+      });
+      setGasAcc((prev) => {
+        const next = loadGasAcc();
+        return stableStringify(prev) === stableStringify(next) ? prev : next;
+      });
     };
     window.addEventListener('storage', reloadAll);
     window.addEventListener('aparatos-clear', reloadAll);
+    window.addEventListener('civilflow_san_sync_changed', reloadAll);
+    window.addEventListener('civilflow_hidro_sync_changed', reloadAll);
     return () => {
       window.removeEventListener('storage', reloadAll);
       window.removeEventListener('aparatos-clear', reloadAll);
+      window.removeEventListener('civilflow_san_sync_changed', reloadAll);
+      window.removeEventListener('civilflow_hidro_sync_changed', reloadAll);
     };
   }, []);
 
@@ -176,7 +218,10 @@ const AparatosPanel = memo(function AparatosPanel_({
       // recién asignadas: el panel las seguía mostrando (estado vivo) pero la validación de
       // cierre las leía vacías y disparaba "UC/UD pendientes" (orig. usuario).
       const eng = engineRef.current;
-      if (eng && eng._loadedPlanId != null) {
+      // Carga en vuelo: el engine aún tiene el piso anterior (o nada) bajo el id del piso
+      // entrante — snapshot aquí persistía trabajo vacío/ajeno con ts fresco sobre la caché
+      // buena del piso entrante (orig. usuario: pisos vaciados al reabrir).
+      if (eng && eng._loadedPlanId != null && !loadingPlanRef?.current) {
         const work = eng.saveWork();
         work.ts = Date.now();
         saveToStorage(`${TRAZOS_PREFIX}${String(eng._loadedPlanId)}`, work);
@@ -190,7 +235,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     } catch (e) {
       devError('AparatosPanel:', e);
     }
-  }, [counts, hidroData, plans, engineRef]);
+  }, [counts, hidroData, plans, engineRef, loadingPlanRef]);
 
   // Un bajante de calentador es siempre elemento AC (net 'ac') aunque el usuario lo ancle estando
   // en la red AF — sus aparatos deben caer en `ac_<id>_<planId>` para que el ramal sintético
@@ -710,11 +755,10 @@ const AparatosPanel = memo(function AparatosPanel_({
         const aggBomba = Object.keys(desdeTrazos).length
           ? desdeTrazos
           : agregadoBajante(baj.cajaOrigenId);
-        const bk = pkey(baj.id);
-        if (JSON.stringify(disk[bk] || {}) !== JSON.stringify(aggBomba)) {
-          disk[bk] = { ...aggBomba };
-          dirty = true;
-        }
+        // Sin agregado (caja vacía o red aún en construcción): NO sobrescribir la clave con
+        // {} — el espejo vacío borraba UDs legítimas (orig. usuario).
+        if (!Object.keys(aggBomba).length) continue;
+        if (syncMirrorKey(disk, pkey(baj.id), aggBomba, false)) dirty = true;
       } else {
         // Bajante asociado a BOMBA (orig. usuario): sus salidas espejan las UDs DE LA BOMBA
         // (misma lectura que el panel del bajante) — NO el agregado del árbol, que puede no
@@ -749,10 +793,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           // elemento (inc/dec bloqueados) — conservar valores viejos en su clave mantenía
           // viva cualquier inflación pasada y la re-mostraba para siempre. El reemplazo la
           // sana al agregado exacto en el próximo pase (orig. usuario: caja AN duplicaba UDs).
-          if (JSON.stringify(disk[rk] || {}) !== JSON.stringify(agg)) {
-            disk[rk] = { ...agg };
-            dirty = true;
-          }
+          if (syncMirrorKey(disk, rk, agg, false)) dirty = true;
         }
       }
     }
@@ -809,15 +850,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           const liveAgg = srcAgg.agg;
           const liveHydro = srcAgg.hydroAgg;
           const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
-          if (Object.keys(liveAgg).length) {
-            if (JSON.stringify(disk[lk] || {}) !== JSON.stringify(liveAgg)) {
-              disk[lk] = { ...liveAgg };
-              dirty = true;
-            }
-          } else if (disk[lk]) {
-            delete disk[lk];
-            dirty = true;
-          }
+          if (syncMirrorKey(disk, lk, liveAgg, true)) dirty = true;
           const tgt = loadFromStorage<{
             bajantes?: Array<{
               id: string;
@@ -849,11 +882,7 @@ const AparatosPanel = memo(function AparatosPanel_({
               const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
               if (nv > 0) result[k] = nv;
             }
-            if (JSON.stringify(disk[tk] || {}) !== JSON.stringify(result)) {
-              if (Object.keys(result).length) disk[tk] = result;
-              else delete disk[tk];
-              tgtChanged = true;
-            }
+            if (syncMirrorKey(disk, tk, result, true)) tgtChanged = true;
             ucAplicadoNuevo[tk] = { ...extra };
             if (liveHydro) {
               const prevH = aplicadoHidroPrev[tk] || {};
@@ -1072,7 +1101,15 @@ const AparatosPanel = memo(function AparatosPanel_({
         // alerta. La selección de targetField abajo ya cubre accesorios y conexiones.
         let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
         let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
-        if (!headOcc && !live.accesorioFin) {
+        // Trazo aislado (orig. usuario): el codo sube va del lado de la COLA de la
+        // flecha de flujo (el sube entrega). Cola en pts[0] = el flujo termina en head.
+        const endHead = flowEndsAt(live, head, 0.5);
+        const endTail = flowEndsAt(live, tail, 0.5);
+        const tailEnd = flowTailEnd(endTail, endHead);
+        if (!headOcc && !tailOcc && tailEnd === 0 && !live.accesorioInicio) {
+          targetField = 'accesorioInicio';
+          targetDiamField = 'diametroInicio';
+        } else if (!headOcc && !live.accesorioFin) {
           targetField = 'accesorioFin';
           targetDiamField = 'diametroFin';
         } else if (!tailOcc && !live.accesorioInicio) {

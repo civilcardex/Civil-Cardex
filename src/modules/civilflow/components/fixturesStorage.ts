@@ -127,6 +127,17 @@ interface RamalLikeSalida {
   ini?: string;
 }
 
+/** JSON con claves ordenadas (comparar mapas sin falsos positivos por orden de inserción).
+ *  Se usa para recargar estado solo si el contenido cambió y no entrar en loop sync→reload. */
+export function stableStringify(m: unknown): string {
+  return JSON.stringify(m, (_k, v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return v as unknown;
+    const o = v as Record<string, unknown>;
+    const sorted: Record<string, unknown> = {};
+    for (const k of Object.keys(o).sort()) sorted[k] = o[k];
+    return sorted;
+  });
+}
 /** Suma por aparato del libro de herencia cross-floor (`ucAplicado`) de un bajante — lo
  *  mismo que muestra el panel del bajante asociado (currentMap suma este libro). Vacío si no
  *  hay libro. */

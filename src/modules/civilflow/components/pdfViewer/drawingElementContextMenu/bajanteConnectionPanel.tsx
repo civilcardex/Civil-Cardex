@@ -91,13 +91,21 @@ export function BajanteConnectionPanel({
                     </div>
                   );
                 const recibidos = bajEl.recibeDeIds || [];
+                const alimentados = bajEl.alimentaIds || [];
+                const bajCode = bajEl.code || bajEl.id;
                 return bajRamales.map((r) => {
-                  // Ítem: marcar como asociado TODO ramal cuyo extremo coincide con el bajante
-                  // (además de los de recibeDeIds), para que aparezcan checkeados todos los
-                  // conectados aunque recibeDeIds esté incompleto o stale.
+                  // Ítem: marcar como asociado TODO ramal conectado, entre o salga
+                  // (recibeDeIds, alimentaIds o ini/fin al código), además de los que tocan
+                  // geométricamente — para que aparezcan checkeados todos aunque alguna
+                  // referencia esté incompleta o stale.
                   const touchesBaj =
                     !!r.pts && r.pts.some((p) => Math.hypot(p[0] - bajEl.x, p[1] - bajEl.y) < 0.5);
-                  const isAssociated = recibidos.includes(r.id) || touchesBaj;
+                  const isAssociated =
+                    recibidos.includes(r.id) ||
+                    alimentados.includes(r.id) ||
+                    r.ini === bajCode ||
+                    r.fin === bajCode ||
+                    touchesBaj;
                   const rStart = r.pts?.[0];
                   const rEnd = r.pts?.[r.pts.length - 1];
                   const distStart = rStart
@@ -154,35 +162,53 @@ export function BajanteConnectionPanel({
                           const newRecibe = checked
                             ? [...liveRecibe, r.id]
                             : liveRecibe.filter((id: string) => id !== r.id);
+                          const liveAlimenta: string[] =
+                            (liveBaj?.alimentaIds as string[] | undefined) || alimentados;
+                          // Desmarcar una salida también la saca de alimentaIds (si no, el
+                          // checkbox seguiría marcado por la referencia explícita).
+                          const newAlimenta = checked
+                            ? liveAlimenta
+                            : liveAlimenta.filter((id: string) => id !== r.id);
                           engineRef.current?.updateElementById(bajEl.id, {
                             recibeDeIds: newRecibe,
+                            alimentaIds: newAlimenta,
                           });
                           setContextMenuState((prev) =>
                             prev
-                              ? { ...prev, element: { ...prev.element, recibeDeIds: newRecibe } }
+                              ? {
+                                  ...prev,
+                                  element: {
+                                    ...prev.element,
+                                    recibeDeIds: newRecibe,
+                                    alimentaIds: newAlimenta,
+                                  },
+                                }
                               : null,
                           );
                           if (selElement?.id === bajEl.id) {
-                            setSelElement({ ...selElement, recibeDeIds: newRecibe });
+                            setSelElement({
+                              ...selElement,
+                              recibeDeIds: newRecibe,
+                              alimentaIds: newAlimenta,
+                            });
                           }
                           const bajCode = bajEl.code || bajEl.id;
                           const currentIni = r.ini || '';
                           const currentFin = r.fin || '';
-                          if (isAtStart) {
-                            const newIni = checked
-                              ? bajCode
-                              : currentIni === bajCode
-                                ? ''
-                                : currentIni;
-                            engineRef.current?.updateElementById(r.id, { ini: newIni });
+                          // Desmarcar limpia ini/fin por VALOR (si apuntan a este bajante),
+                          // no por proximidad — el trazo pudo moverse y el extremo cercano ya
+                          // no ser el asociado (igual que "Cajas asociadas").
+                          const ramalUpdates: Record<string, unknown> = {};
+                          if (!checked) {
+                            if (currentIni === bajCode) ramalUpdates.ini = '';
+                            if (currentFin === bajCode) ramalUpdates.fin = '';
+                          } else if (isAtStart) {
+                            ramalUpdates.ini = bajCode;
                           } else {
-                            const newFin = checked
-                              ? bajCode
-                              : currentFin === bajCode
-                                ? ''
-                                : currentFin;
-                            engineRef.current?.updateElementById(r.id, { fin: newFin });
+                            ramalUpdates.fin = bajCode;
                           }
+                          if (Object.keys(ramalUpdates).length)
+                            engineRef.current?.updateElementById(r.id, ramalUpdates);
                           engineRef.current?.render();
                           engineRef.current?._markDirty();
                         }}

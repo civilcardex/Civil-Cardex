@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { libroHeredadoSumado, aggParaEspejoSalida } from '../fixturesStorage';
+import { libroHeredadoSumado, aggParaEspejoSalida, stableStringify } from '../fixturesStorage';
+import { flowTailEnd } from '../pdfViewer/drawingElementContextMenu/ramalMenuHelpers';
 
 // El ramal que SALE de un bajante espeja lo que el bajante MUESTRA: con asociación
 // cross-floor el panel muestra el LIBRO heredado (ucAplicado), no el árbol — antes el
@@ -38,5 +39,29 @@ describe('aggParaEspejoSalida', () => {
     expect(espejo).not.toBe(libro);
     espejo!.inodoro = 99;
     expect(libro).toEqual({ inodoro: 2 });
+  });
+});
+
+describe('stableStringify (recarga guardada anti-loop)', () => {
+  it('mismo contenido con distinto orden → igual', () => {
+    expect(stableStringify({ b: 1, a: 2 })).toBe(stableStringify({ a: 2, b: 1 }));
+    expect(stableStringify({ k: { y: 1, x: 2 } })).toBe(stableStringify({ k: { x: 2, y: 1 } }));
+  });
+  it('distinto contenido → distinto', () => {
+    expect(stableStringify({ a: 1 })).not.toBe(stableStringify({ a: 2 }));
+    expect(stableStringify({})).not.toBe(stableStringify({ a: 1 }));
+  });
+});
+
+describe('flowTailEnd (codo sube en la cola de flujo)', () => {
+  it('flujo termina en fin → cola en inicio (0)', () => {
+    expect(flowTailEnd(false, true)).toBe(0);
+  });
+  it('flujo termina en inicio (reverso) → cola en fin (1)', () => {
+    expect(flowTailEnd(true, false)).toBe(1);
+  });
+  it('ambiguo (ambos o ninguno) → -1', () => {
+    expect(flowTailEnd(true, true)).toBe(-1);
+    expect(flowTailEnd(false, false)).toBe(-1);
   });
 });
