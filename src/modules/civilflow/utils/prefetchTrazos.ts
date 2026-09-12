@@ -5,6 +5,7 @@
 import { loadFromStorage, saveToStorage, loadTrazosFromDB } from '../services/storageService';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from './assocLayoutMigration';
+import { healHerenciaInvertida } from './bajanteAssociation';
 import { writeSanDrawingSync, writeHydroDrawingSync, markPlanTrazosFresh } from './drawingSync';
 import type { SyncPlanInput } from './drawingSync';
 import { pisoLbl } from '../constants';
@@ -63,6 +64,19 @@ async function runPrefetch(
       sweepMisplacedLdesvios();
     } catch {
       /* barrido best-effort */
+    }
+    // Sanador del trinquete de herencia invertida (12→16 al reentrar): revierte los libros
+    // falsos que el guard de dirección muerto dejó en el piso superior. Best-effort.
+    try {
+      if (healHerenciaInvertida(plans)) {
+        try {
+          window.dispatchEvent(new CustomEvent('aparatos-clear'));
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch {
+      /* sanador best-effort */
     }
     // Re-escribir las claves de sync con TODAS las cachés presentes: write* ya dispara los
     // eventos que hacen que TramosContext reconstruya las tablas. El 'storage' extra refresca

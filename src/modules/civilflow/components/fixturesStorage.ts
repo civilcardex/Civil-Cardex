@@ -138,15 +138,17 @@ export function stableStringify(m: unknown): string {
     return sorted;
   });
 }
-/** Suma por aparato del libro de herencia cross-floor (`ucAplicado`) de un bajante — lo
- *  mismo que muestra el panel del bajante asociado (currentMap suma este libro). Vacío si no
- *  hay libro. */
-export function libroHeredadoSumado(baj: {
+/** Reduce el libro de herencia cross-floor (`ucAplicado`) a UN mapa por aparato: el MÁXIMO de
+ *  cada entrada. El libro guarda una entrada por clave destino (+ la del Ldesvio) y todas
+ *  contienen el MISMO agregado aplicado — sumarlas mostraba 2×/3× la herencia (12 → 24). Es
+ *  exactamente lo que muestra el panel del bajante asociado (rama A de currentMap) y lo que
+ *  espeja la salida. Vacío si no hay libro. */
+export function libroHeredado(baj: {
   ucAplicado?: Record<string, Record<string, number>>;
 }): Record<string, number> {
   const out: Record<string, number> = {};
   for (const m of Object.values(baj.ucAplicado || {}))
-    for (const [k, v] of Object.entries(m)) out[k] = (out[k] || 0) + (v as number);
+    for (const [k, v] of Object.entries(m)) out[k] = Math.max(out[k] || 0, Number(v) || 0);
   return out;
 }
 

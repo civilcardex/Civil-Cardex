@@ -74,6 +74,7 @@ import {
   GAS_ACC_KEY,
 } from '../constants/storage-keys';
 import type { PlanoWorkData } from '../lib/PlanoEngine/PlanoPersistence';
+import { dedupPorId } from '../lib/PlanoEngine/PlanoPersistence';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -274,6 +275,11 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     origen_id: b.origenId ?? null,
     caja_origen_id: b.cajaOrigenId ?? null,
     bomba_en_id: b.bombaEnId ?? null,
+    // Libro de herencia entre pisos: sin esto, un round-trip BD (árbitro por ts) borraba el
+    // libro de motor y caché y el fantasma/bajante original quedaban en 0 UD (LDesvio bien,
+    // porque su clave vive en el mapa global de aparatos).
+    uc_aplicado: b.ucAplicado ?? null,
+    uc_aplicado_hidro: b.ucAplicadoHidro ?? null,
     fixtures: (b as unknown as { fixtures?: Record<string, number> }).fixtures ?? {},
   };
 }
@@ -298,6 +304,8 @@ function rowToBajante(row: SupabaseRow): PlanoBajante {
     origenId: g(row, 'origen_id', undefined),
     cajaOrigenId: g(row, 'caja_origen_id', undefined),
     bombaEnId: g(row, 'bomba_en_id', undefined),
+    ucAplicado: g(row, 'uc_aplicado', undefined),
+    ucAplicadoHidro: g(row, 'uc_aplicado_hidro', undefined),
     fixtures: g(row, 'fixtures', undefined),
     ucAcum: g(row, 'uc_acum', 0),
     ucExtra: g(row, 'uc_extra', 0),
@@ -582,21 +590,26 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
     >(HYDRO_DATA_STORAGE_KEY, {});
     const gasMap = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
-    const ramales = ((d.ramales ?? []) as PlanoRamal[]).map((r) => {
-      const apKey = `${r.net}_${r.id}_${planoId}`;
-      const fixtures = aparatosMap[apKey];
-      const hydroEntry = hidroMap[apKey];
-      const hydroAcc =
-        hydroEntry &&
-        (Object.keys(hydroEntry.accesorios ?? {}).length > 0 ||
-          (hydroEntry.Lh ?? 0) > 0 ||
-          (hydroEntry.nSalidas ?? 0) > 0)
-          ? hydroEntry
-          : undefined;
-      const gasEntry = gasMap[apKey];
-      const gasAcc = gasEntry && Object.keys(gasEntry).length > 0 ? gasEntry : undefined;
-      return fixtures || hydroAcc || gasAcc ? { ...r, fixtures, hydroAcc, gasAcc } : r;
-    });
+    // Dedup por id: un documento viejo con el mismo bajante/ramal DOS veces hacía que el RPC
+    // fallara entero ("ON CONFLICT DO UPDATE cannot affect row a second time", 500) y ningún
+    // dato del piso llegaba a la BD.
+    const ramales = dedupPorId(
+      ((d.ramales ?? []) as PlanoRamal[]).map((r) => {
+        const apKey = `${r.net}_${r.id}_${planoId}`;
+        const fixtures = aparatosMap[apKey];
+        const hydroEntry = hidroMap[apKey];
+        const hydroAcc =
+          hydroEntry &&
+          (Object.keys(hydroEntry.accesorios ?? {}).length > 0 ||
+            (hydroEntry.Lh ?? 0) > 0 ||
+            (hydroEntry.nSalidas ?? 0) > 0)
+            ? hydroEntry
+            : undefined;
+        const gasEntry = gasMap[apKey];
+        const gasAcc = gasEntry && Object.keys(gasEntry).length > 0 ? gasEntry : undefined;
+        return fixtures || hydroAcc || gasAcc ? { ...r, fixtures, hydroAcc, gasAcc } : r;
+      }),
+    );
     // Los aparatos propios del calentador (asignados directo a la bajante CALENTn, clave
     // `ac_<calId>_<planoId>` o `af_<calId>_<planoId>`) no tienen un ramal real donde viajar —
     // el stub sintético AC-01-{calId} solo existe en la memoria de buildTramos. Se persiste aquí
@@ -648,7 +661,7 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     const textAnnots = (d.textAnnots ?? []) as PlanoTextAnnotation[];
     const guideLines = (d.guideLines ?? []) as PlanoGuideLine[];
     const crossFloorGhosts = (d.crossFloorGhosts ?? []) as CrossFloorGhost[];
-    const bajantes = (d.bajantes ?? []) as PlanoBajante[];
+    const bajantes = dedupPorId((d.bajantes ?? []) as PlanoBajante[]);
 
     // Un solo payload jsonb → el RPC SECURITY DEFINER valida propiedad/estructura/caps y hace
     // upsert de cabecera + reemplazo de colecciones + rebuild de bajante_conexiones en una

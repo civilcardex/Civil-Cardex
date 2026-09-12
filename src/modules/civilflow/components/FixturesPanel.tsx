@@ -35,7 +35,7 @@ import {
   type GasAccMap,
   type SelectableTarget,
   idsSalidasDeBajante,
-  libroHeredadoSumado,
+  libroHeredado,
   aggParaEspejoSalida,
   stableStringify,
 } from './fixturesStorage';
@@ -633,13 +633,17 @@ const AparatosPanel = memo(function AparatosPanel_({
         }
       }
       try {
-        const t = loadFromStorage<{
-          bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
-        } | null>(TRAZOS_PREFIX + planId, null);
-        const aplicado = t?.bajantes?.find((x) => x.id === targetId)?.ucAplicado;
-        const heredado: Record<string, number> = {};
-        for (const m of Object.values(aplicado || {}))
-          for (const [k, v] of Object.entries(m)) heredado[k] = (heredado[k] || 0) + (v as number);
+        // Libro del ENGINE vivo primero (el autosave tarda 1.5 s: recién asociar, la caché
+        // aún no trae el libro y el panel marcaba 0 — orig. usuario), storage de respaldo.
+        // libroHeredado toma el MÁXIMO por aparato entre entradas: cada entrada del libro es
+        // una copia del mismo agregado aplicado (sumarlas mostraba 2× la herencia).
+        const libro =
+          liveBaj?.ucAplicado ??
+          loadFromStorage<{
+            bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
+          } | null>(TRAZOS_PREFIX + planId, null)?.bajantes?.find((x) => x.id === targetId)
+            ?.ucAplicado;
+        const heredado = libroHeredado({ ucAplicado: libro });
         if (Object.keys(heredado).length) return heredado;
       } catch {
         /* lectura best-effort */
@@ -781,7 +785,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           // (orig. usuario: bajante con 2 UDs, ramal de salida sin nada).
           const espejo = aggParaEspejoSalida(
             agg,
-            libroHeredadoSumado({ ucAplicado: trazBooks.get(baj.id) }),
+            libroHeredado({ ucAplicado: trazBooks.get(baj.id) }),
           );
           if (!espejo) continue;
           agg = espejo;
@@ -812,9 +816,15 @@ const AparatosPanel = memo(function AparatosPanel_({
     // para propagar sincrónicamente al marcar.
     if (propagarHerenciaBomba(eng, planId, netId, disk)) dirty = true;
     const loadedPid = planId != null ? String(planId) : '';
+    // npt = NIVEL del plano (PlanItem.nivel). ANTES leía `p.npt` — campo que NO existe en
+    // PlanItem → guard siempre nulo → "desconocido = procesar" dejaba al piso INFERIOR
+    // escribir el enlace invertido: sumaba sus UD locales a la herencia y envenenaba el piso
+    // superior (orig. usuario: 12 UD abajo → 16 al reentrar; trinquete que nunca baja).
+    // Ahora, sin nivel conocido NO se procesa (el efecto re-corre cuando `plans` llega — ya
+    // está en sus deps).
     const nptOf = (pid: string): number | null => {
-      const p = plans.find((x) => String(x.id) === pid) as { npt?: number } | undefined;
-      return typeof p?.npt === 'number' ? p.npt : null;
+      const n = plans.find((x) => String(x.id) === pid)?.nivel;
+      return typeof n === 'number' && Number.isFinite(n) ? n : null;
     };
     const loadedNpt = loadedPid ? nptOf(loadedPid) : null;
     for (const propNet of ['san', 'll']) {
@@ -824,14 +834,18 @@ const AparatosPanel = memo(function AparatosPanel_({
         if (baj.descargaEnId?.includes('|')) {
           const [q, qBaj] = baj.descargaEnId.split('|');
           const nq = q ? nptOf(q) : null;
-          if (q && qBaj && (loadedNpt == null || nq == null || loadedNpt > nq))
+          // Titular = bajante SUPERIOR con descargaEnId al piso de abajo: escribe solo si de
+          // verdad está por encima del destino.
+          if (q && qBaj && loadedNpt != null && nq != null && loadedNpt > nq)
             links.push({ ldPlan: q, lowerBajId: qBaj, upperBajId: baj.id });
         }
         if (baj.origenId?.includes('|')) {
           const [r, rBaj] = baj.origenId.split('|');
           const nr = r ? nptOf(r) : null;
-          // Empate de npt (mismo piso): el titular upper es el origenId (igual que el apply).
-          if (r && rBaj && (loadedNpt == null || nr == null || loadedNpt > nr || loadedNpt === nr))
+          // Titular origenId = bajante INFERIOR (el apply se lo pone al destino): procesar
+          // aquí propagaría inferior→superior (el veneno del trinquete). Solo se permite el
+          // empate de nivel (misma regla del apply).
+          if (r && rBaj && loadedNpt != null && nr != null && loadedNpt === nr)
             links.push({ ldPlan: r, lowerBajId: rBaj, upperBajId: baj.id });
         }
         for (const link of links) {

@@ -1,22 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { libroHeredadoSumado, aggParaEspejoSalida, stableStringify } from '../fixturesStorage';
+import { libroHeredado, aggParaEspejoSalida, stableStringify } from '../fixturesStorage';
 import { flowTailEnd } from '../pdfViewer/drawingElementContextMenu/ramalMenuHelpers';
 
 // El ramal que SALE de un bajante espeja lo que el bajante MUESTRA: con asociación
 // cross-floor el panel muestra el LIBRO heredado (ucAplicado), no el árbol — antes el
 // espejo usaba solo el árbol y la salida quedaba en 0 con el bajante lleno (ej: 2 UDs).
 
-describe('libroHeredadoSumado', () => {
-  it('suma por aparato todas las entradas del libro', () => {
+describe('libroHeredado', () => {
+  it('MÁXIMO por aparato entre entradas (la herencia se cuenta UNA vez, no N×)', () => {
+    // El libro guarda una entrada por clave destino (+ la del Ldesvio), todas con el MISMO
+    // agregado aplicado — sumarlas mostraba 2×/3× (orig. usuario: 12 → 24).
     expect(
-      libroHeredadoSumado({
-        ucAplicado: { RS1: { inodoro: 1 }, RS2: { inodoro: 1, lavamanos: 2 } },
+      libroHeredado({
+        ucAplicado: {
+          RS1: { inodoro: 1, lavamanos: 1 },
+          RS2: { inodoro: 1, lavamanos: 2 },
+          LD_X: { inodoro: 1, lavamanos: 2 },
+        },
       }),
-    ).toEqual({ inodoro: 2, lavamanos: 2 });
+    ).toEqual({ inodoro: 1, lavamanos: 2 });
   });
   it('sin libro → vacío', () => {
-    expect(libroHeredadoSumado({})).toEqual({});
-    expect(libroHeredadoSumado({ ucAplicado: {} })).toEqual({});
+    expect(libroHeredado({})).toEqual({});
+    expect(libroHeredado({ ucAplicado: {} })).toEqual({});
   });
 });
 
