@@ -1047,3 +1047,142 @@ Bomba: crear desde caja → BOMAN-S1 punteado a la derecha con UDs de la caja; c
 - **Causa del "RS7 en 0 UD"**: `propagarHerenciaBomba` escribía el libro + ramales del bajante pero NO su CLAVE PROPIA — y el espejo de salidas copia `agregadoBajante(BAN2)`, que parte de la clave propia → copiaba vacío.
 - **Fix**: en `propagarHerenciaBomba` (bombaAssociation.ts) el bajante ligado a bomba TAMBIÉN espeja `aggBomba` en su clave propia (`disk[net_bajId_plan]`) — el espejo de salidas ahora copia el agregado correcto y el ramal de salida toma las UDs del bajante (ej. 2 UD).
 - Nota: la sesión en paralelo refactorizó el bloque a `propagarHerenciaBomba` con `collectSourceAgg` (cierre transitivo completo + blindaje anti-bucle de espejos); el fix se aplicó sobre esa versión.
+
+## Session Summary — 2026-09-10 (ronda 7: tapón persistente, aparatos a 0, bombas por bomba)
+
+### 1. Tapón soldado no se contaba (causa trazada)
+- `networkSanitary.ts`: la limpieza de banderas muertas borraba `yeeDobleAt` SIN blindaje — `_taponKeepPts` solo protegía el glifo UNA pasada; la pasada siguiente la validación de esquinas-L retiraba el tapón (puerto en 2 direcciones) y el recuento borraba `acc['tapon']` → 0 en la tabla.
+- **Fix**: los puertos de `_taponKeepPts` cuantan como yee PERSISTIDA en TODAS las pasadas (`persistedYeePts.push(...taponKeepPts)`, ya no se consume) y el flag `yeeDobleAt` NO se limpia cuando sus puertos tienen tapones protegidos. Test `taponSoldadoPersiste.test.ts` (borrar tronco → 4 pasadas extra → glifo+conteo estables).
+
+### 2. Aparatos a 0 al cerrar y reentrar (3 causas encadenadas)
+- **GC sin guard en mounts intermedios**: FixturesPanel (mount, engine null) y prefetch corrían writeSan/HydroDrawingSync → la GC borraba claves con cachés viejas y sin guard de ids vivos. Fixes: FixturesPanel salta syncs sin engine; `performGarbageCollection` NO borra nada si `setSyncLoadedLiveIds` nunca se registró, y trata caché sin array `ramales` como sospechosa (bail).
+- **saveWork esquelético**: FixturesPanel no escribe caché de un engine sin ramales/bajantes.
+- **Espejo de bomba**: no escribe `{}` sobre su clave con agregado vacío.
+- **Claves no-ramal irrecuperables**: saveTrazosToDB solo adjuntaba fixtures a ramales → bajantes/bombas/cajas jamás llegaban a BD. **Migración 3** `20260910140000_cf_bajantes_fixtures.sql` (`cf_planos_bajantes.fixtures jsonb` + RPC recreado); `bajanteToRow`/`rowToBajante` + `saveTrazosToDB` adjuntan fixtures de bajantes; `loadTrazosFromDB` los re-importa (solo claves ausentes).
+
+### 3. Bomba AR: cálculos POR BOMBA (tablas horizontales)
+- **Múltiples bombas por piso OTRA VEZ** (se revierte la restricción de una por piso; sigue una por caja).
+- `BombaARDesign.tsx` reescrito: **filas = bombas, columnas = parámetros** en las 4 páginas (Datos de entrada / Pérdidas / Bomba sumergible / Cámara). Sin columnas Símbolo/Equivalencia/Fuente-norma. Celdas editables por bomba (sin modo EDITAR). Cálculos (`calcsDe`) por bomba con SUS inputs y SUS UDs. Página "Equipos de bomba" eliminada (Bomba/Nivel/UDs viven como filas). Tablas apiladas verticalmente (sin grid lado a lado).
+- Persistencia por bomba: `cf_bomba_datos_proyecto.bombas` jsonb (mapa código→inputs) — **Migración 4** `20260910150000_cf_bomba_datos_por_bomba.sql` + RPC `save_bomba_datos` recreado. `bombaService.BombaData.bombas`. Memoria snapshot por bomba + legado plano de la primera.
+- Tipos de tubería por bomba (PVC-PR/Acero galvanizado/Acero al carbón); C Hazen-Williams automático por bomba desde Catálogo Maestro.
+
+### Migraciones acumuladas sin aplicar (orden)
+1. `20260910120000_cf_bajantes_caja_origen.sql` · 2. `20260910130000_cf_bomba_tipo_tuberia.sql` · 3. `20260910140000_cf_bajantes_fixtures.sql` · 4. `20260910150000_cf_bomba_datos_por_bomba.sql`
+
+### Gates
+tsc 0 · lint 0 errores · vitest **617/617** (103 files) · vite build ✓ · graphify ✓.
+
+### Pendiente de verificación manual (recarga dura + migraciones aplicadas)
+Tapón soldado persiste glifo+conteo. Aparatos: cerrar/reentrar → intactos; si falla BD, franja roja con motivo. Bombas: 2 bombas en pisos → cada una sus inputs/cálculos/persistencia; UD sótano por bomba + total; sin page 5.
+
+### Ronda 16 (misma sesión): nomenclatura de bombas BOMAN<consecutivo>-<piso>
+- `handleCreateBomba`: código = `BOMAN{n}-{pisoCorto}` (BOMAN1-S1, BOMAN2-P2...) — consecutivo = bombas ya creadas en el piso cargado +1, unicidad contra códigos vivos (sufijo -2/-3 si colisión).
+
+### Ronda 17 (misma sesión): franja roja pegajosa tras BD OK
+- `saveTrazosToDB` solo emitía errores — el éxito nunca limpiaba `bdError`, la franja quedaba roja para siempre con etiqueta "Guardado". Ahora emite `civilflow_bd_save_ok` tras RPC OK y PdfViewer limpia `bdError` (franja vuelve a verde/estado normal).
+
+### Ronda 18 (misma sesión): tarjetas con icono+título en las 6 tablas de bomba
+- `Card` (función top-level en BombaARDesign): cabecera icono webp + título con bordes curvos/contenido al ras — mismo estilo que las otras pestañas de diseño.
+- 6 tablas: P1 Datos de entrada · P2 Cálculo de pérdidas de carga · P3 Parámetros de diseño bomba sumergible + Especificación — Bomba sumergible trituradora · P4 Parámetros de diseño cámara de bombeo + Especificación — Cámara de bombeo. Notas de cámara como bloque de texto bajo la especificación. Iconos: perdidas_de_carga/bomba_sumergible_trituradora/especificacion_camara_trituradora/camara_bombeo/especificacion_camara_bombeo.webp + datos_de_entrada (general).
+
+## Session Summary — 2026-09-12 (consola perfil: CSP + 400s cm_* de civilmanager)
+
+### CSP (index.html meta + vercel.json header)
+- **frame-ancestors fuera del `<meta>`**: los navegadores lo ignoran ahí (warning por página); sigue en el header HTTP de vercel.json para producción.
+- **va.vercel-scripts.com agregado a script-src y connect-src** (ambos CSP): Vercel Analytics/Speed Insights cargan su script desde ahí y el CSP los bloqueaba — 4 warnings/errores por página eliminados.
+
+### Supabase civilmanager (src/modules/civilmanager/storage.ts)
+- **23502 es_basico / fecha_cierre**: nuevo mapa NULL_TO_DEFAULT — si el estado trae null en columnas NOT NULL con default BD (cm_apus.es_basico, cm_presupuestos.fecha_cierre), la clave se OMITe para que PostgREST aplique el default.
+- **cm_cuadrilla_integrantes insert 400**: delete/insert ahora reportan error con devError (el body del 400 es la única pista real); cantidad se redondea a entero ≥0 (decimal tumbaba el insert); integrantes sin cargo_id se saltan.
+- Tests cmUpsertSanitize +3 (omit-null, redondeo, skip sin cargo). Gates: tsc 0 · vitest 654/654 · lint 0 err · build ✓ · graphify ✓. Verificado en navegador: consola limpia con la CSP nueva.
+
+### Corrección 2026-09-12 (ronda 2 — body legible destapó causa real)
+- El 23502 de `es_basico` persistió CON el omit-null: `JSON.stringify(NaN)` serializa a **null** — `NaN == null` es false y pasaba. Además `observaciones` (otra NOT NULL) llegaba null: la lista targeted era whack-a-mole.
+- Fix final en `storage.ts`: regla GENÉRICA — en columnas NO anulables se omite cualquier valor null/undefined/NaN (la BD aplica default en fila nueva, conserva previo en upsert); null solo viaja en la whitelist `NULLABLE` (parent_id, perfil_pais_snap, formulario_original, proveedor_id, apu_basico_id) donde significa "limpiar".
+- `devError` aplana objetos a JSON de una línea (los PostgREST error colapsados escondían code/message).
+- Tests cmUpsertSanitize +2 (NaN omitido, null conservado en anulables). Gates: tsc 0 · vitest 656/656 · lint 0 · build ✓.
+
+### Corrección 2026-09-12 (ronda 3 — causa final de los 23502)
+- Omitir la clave NO bastaba: supabase-js deduce el param `columns` del union de claves y PostgREST rellena las claves ausentes con **NULL** (no con el default) → 23502 igual. Stack 304/345 confirmó código nuevo + null en BD.
+- Fix: `upsert(rows, { onConflict: 'id', defaultToNull: false })` → header `Prefer: missing=default`: PostgREST aplica el DEFAULT de la columna a las claves omitidas. La omisión saneada (null/undefined/NaN fuera de columnas NULLABLE) se queda.
+- Gates: tsc 0 · vitest 656/656 · lint 0 · build ✓.
+
+### Ronda 19 (misma sesión): botón eliminar proyecto NO borraba en la BD
+- **Causa**: `delete_proyecto` RPC quedó apuntando a `public.proyectos` tras el rename a `cf_proyectos` (20260814000002) — mismo bug de renombre que rompió los write RPCs en 20260814000006, pero estos 3 CRUD nunca se recrearon: delete fallaba "relation public.proyectos does not exist", `deleteProyecto` devolvía false en silencio y el proyecto solo se quitaba de la lista local.
+- **Fix**: **Migración 5** `20260910160000_cf_proyecto_crud_rpcs.sql` — recrea `save_proyecto`, `update_proyecto_nombre` y `delete_proyecto` contra `cf_proyectos` (la cascada de FKs borra planos/bajantes/datos asociados).
+- `deleteProyecto` ahora emite `civilflow_bd_save_error('delete-proyecto', msg)` en fallo → franja roja con motivo.
+
+## Session Summary — 2026-09-12 (auditoría brutal aplicada: 12 hallazgos)
+
+### Bloque A — CRÍTICO + robustez
+- **Single-flight en `prefetchAllTrazos`** (CRÍTICO): WorkArea/ViewerPage/Isometria lo disparan al montar; dos corridas concurrentes intercalaban read-modify-write de documentos completos. Ahora una promesa `inflight` compartida; test de identidad de promesa.
+- **Cierre del visor**: `cerrandoRef` (doble click idempotente) + `Promise.race` con tope de 4s al prefetch (red colgada ya no bloquea el cierre).
+- **Auto-activación honesta**: nuevo `fetchProyectosOrThrow` (lanza en error — `fetchProyectos` sigue devolviendo [] para compatibilidad); si tras 10 reintentos no hay proyecto → **banner visible** "Selecciona un proyecto en Perfil" (adiós al modo vacío silencioso). `proyectoResuelto` con init perezoso (lint set-state-in-effect).
+
+### Bloque B — corrección de datos
+- **Integrantes de cuadrilla**: upsert primero + delete SOLO de ids stale tras insert exitoso (el delete-all+insert anterior vaciaba cuadrillas en BD si el insert fallaba). Cubre "todas eliminadas". Tests: stale borrado, fallo de select → sin delete.
+- **Reversión UC/UD (B5)**: ya estaba resuelta por sesión paralela (respaldo geométrico por extremo, sin barrido de toda la red).
+- **`lvlKey` segura** pasada 1: `nivelLabel || g.piso || ''` — nunca la primera clave de desplazamientos ajenos.
+
+### Bloque C — arquitectura / rendimiento
+- **`crossFloorStorage.ts` (nuevo)**: tipos + loadData/saveData + helpers ghost/LD + sweeps de localStorage. Elimina el ciclo associateBajanteAcrossFloors ⇄ assocLayoutMigration (associate = fachada de re-exports + 3 wrappers; los consumidores de migración importan directo).
+- **`markAssocLayout` en bucle**: la marca viaja en el documento ya cargado (`data.assocLayout = 2` antes de los saveData por iteración); un solo guardado, N parse+save+BD menos.
+- **`moveLdesvioAparatosKey`**: max por aparato en vez de suma (re-ejecución a medias ya no duplica UDs).
+
+### Bloque D — limpieza
+- Borrados `updateCrossFloorLdesvioFarEndpoint` + `updateCrossFloorDesplazamientoBySource` (0 referencias tras el swap de layout).
+- `validateBeforeClose`: caché de parseo por cierre — cada plano se parsea UNA vez (UC/UD + diámetros comparten).
+
+### Gates
+tsc 0 · vitest 659/659 · lint 0 errores · build ✓ · graphify ✓.
+
+### Ronda 20 (misma sesión): LDesvio vacío + diámetro del superior en fantasma y bajante asociado
+- **LDesvio sin aparatos** (orig. usuario): `currentMap` de FixturesPanel devuelve `{}` para `targetId LD_*` — el panel del LDesvio muestra 0 UD siempre; su clave puede conservar herencia (la usa el teardown legacy) pero ya no se muestra. Writers intactos (riesgo cero en la desasociación).
+- **Diámetro del superior**: `applyBajanteAssociation` — el fantasma nace con `dNominal` del bajante SUPERIOR (antes del inferior) y el bajante inferior asociado COPIA ese dNominal (writeBajantePropToDrawing + campo vivo directo, bypass del guard de reducción de ramales — toma el del superior incondicionalmente). Cambios posteriores del superior siguen sincronizando el fantasma vía updateCrossFloorGhostFieldBySource.
+
+### Ronda 21 (misma sesión): LDesvio — desplegable de aparato vacío, panel conserva UDs
+- REVERTIDA la regla `currentMap {}` para LD_ (el panel derecho vuelve a mostrar las UDs heredadas del fantasma/bajante superior, que viven en su clave).
+- **Desplegable "Seleccionar Aparato" del LDesvio siempre vacío** (midRamalAccessorySelector): `if (element.id?.startsWith('LD_')) currentApp = '';` antes de la lectura de conteos — las UDs del LD son herencia del fantasma, no un aparato asignado.
+
+## Session Summary — 2026-09-12 (ponytail cuts + fix GC que borraba lo recién dibujado)
+
+### Ponytail cuts (~60 líneas, 0 deps, 0 comportamiento)
+- Borrados: `sanAlimentadorDiametroPermitido` + su huérfana `sanReceptorMaxMsg` (regla sustituida por propagación), `deleteBajanteFromStorage` (0 consumidores), `readAssocLayout` (0 callers), `Inp.tsx` huérfano + dir bombaAR.
+- `fixtureStoreKey`/`intersectGuideWithSegment`/`scrubGuideJunctionAccessories` pierden `export` (uso interno).
+- `FixturesPanel`: helper `syncMirrorKey(disk, key, next, deleteEmpty)` — 4 bloques de espejo idénticos (caja, salidas, Ldesvio, ramales destino).
+- `fmt` dedup DESCARTADO: cuerpos distintos (toFixed+'—' vs toLocaleString('en-US')+0) — unificar cambiaba el formato de civilmanager.
+
+### Fix GC — "se borra lo que acabo de hacer" (orig. usuario)
+- **Causa**: `performGarbageCollection` construye validKeys desde la CACHÉ de trazos, que va 1.5s (debounce autosave) por detrás del engine; y `_loadedLive` solo se refresca en el autosave. Un elemento dibujado en esa ventana + cualquier `writeSanDrawingSync` de los 6 sitios (diámetros, asociaciones, FixturesPanel, syncDrawings) = clave nueva vista como huérfana → borrada. El log era "GC sync: borradas {aparatos:2}".
+- **Fix**: `setSyncLoadedLiveIds` registra `ts`; `canDeleteKey` NO borra nada del piso cargado durante `GC_GRACE_MS=4000` — el próximo sync (ya con autosave dentro) re-evalúa con datos reales. Los huérfanos reales del piso cargado se limpian tras la ventana.
+- Test `udPerdidasPiso2` actualizado al contrato nuevo (gracia → luego borra con respaldo en `civilflow_gc_bak_ultimo`).
+- **Recuperación**: lo borrado queda respaldado en la clave `civilflow_gc_bak_ultimo` del localStorage.
+
+### Gates
+tsc 0 · vitest 659/659 · lint 0 · build ✓.
+
+## Session Summary — 2026-09-12 (ronda 2: pérdida de datos "todo se borró excepto un piso" — blindaje)
+
+### Causa raíz (verificada en código)
+`save_plano_data` es DESTRUCTIVO (borra y re-inserta TODAS las colecciones del piso) y el árbitro de carga (`useTrazosLoader`) prefiere el mayor `ts`. Combinación letal: cualquier escritor que guarde un documento vacío/parcial con `ts=ahora` borra el piso en BD y el recargado consolida el vaciado. Vectores confirmados:
+1. **Asesino principal**: `prefetchTrazos` corría `migrateAll()` ANTES del fetch de pisos sin caché; `migrateAssocLayoutOnLoad` marcaba `touched=true` INCONDICIONAL → sobre piso sin caché, `markAssocLayout` → `saveData` pisaba la fila BD con `{assocLayout:2, ts=ahora}` y el fetch posterior ya devolvía el vaciado. Con los 400 de la era columnas-faltantes, las cachés locales eran la única copia.
+2. Árbitro: BD vacía con ts nuevo pisaba caché local buena; local sin `ts` (PlanosTab) → localTs=0 → cualquier BD ganaba.
+3. Guardados vacíos en ventana de carga/cambio de piso: `doSave` sin guard de `loadingPlanRef`, cleanup del engine con flag capturado vencido, snapshot del engine en FixturesPanel sin guards (todos con `eng._loadedPlanId` ya reasignado al piso entrante).
+
+### Invariantes nuevos (defensa en profundidad)
+- **Tumba anti-vacío** (`storageService.saveTrazosToDB`, antes del check de sesión): payload sin colecciones + caché local con contenido → push abortado + `emitBdSaveError('vacio')`. El borrado legítimo converge (el autosave ya vació la caché → el push siguiente pasa). Predicado exportado: `trazosDocHasContent` + `trazosLocalGanaABdVacia`.
+- **Árbitro de carga**: documento BD SIN contenido jamás gana a caché local CON contenido (sin importar ts); la local manda y se re-sube para sanear la BD.
+- **Nadie fabrica documentos sobre caché ausente**: `hasCachedPlan` (crossFloorStorage) — `migrateAssocLayoutOnLoad`, `markAssocLayout`, `writeCrossFloorGhost`, `createCrossFloorLdesvioRamal` bail con devError si el piso no está en localStorage.
+- **prefetch**: fetch de BD primero, migración después (eliminada la 1ª `migrateAll`).
+- **Guards de ventana de carga**: `usePdfAutoSave` recibe `loadingPlanRef` (doSave/unload/unmount-save/debounce hacen skip); cleanup de `PdfViewerEngineInit` usa el ref VIVO (no el capturado); FixturesPanel no escribe el snapshot del engine mientras carga (prop `loadingPlanRef`).
+- **`clearBajanteAssociation`** no escribe `null` en la clave del trazos destino ni push vacío (snapshot null + libro vivo → skip).
+- **`PlanosTab.handleSaveConfig`**: sin caché previa BAJA el doc de BD antes de montar la calibración (antes fabricaba un doc solo-config que bloqueaba el prefetch para siempre y ganaba por ts).
+
+### Tests
+`services/__tests__/trazosBlindaje.test.ts` (15): predicado de contenido, árbitro, tumba (bloqueado/pasa/converge), migración+ghost+LD sin caché no escriben, prefetch recupera de BD y la migración no borra, clear no escribe null.
+
+### Gates
+tsc 0 · vitest 674/674 (119 files) · lint 0/0 · build ✓ · graphify ✓.
+
+### Recuperación del incidente (paso 0, antes de abrir pisos)
+Ver localStorage (`civilflow_trazos_<id>`: ts + conteos) y BD por piso (SQL de conteos por plano_id) ANTES de reabrir el proyecto: cada apertura de piso con la app vieja re-consolidaba el vaciado. Con el blindaje, reabrir es seguro; lo que siga en BD se restaura solo al abrir cada piso (BD→caché), y lo que solo viva en caché local se re-sube a BD en el primer guardado.
