@@ -1186,3 +1186,33 @@ tsc 0 · vitest 674/674 (119 files) · lint 0/0 · build ✓ · graphify ✓.
 
 ### Recuperación del incidente (paso 0, antes de abrir pisos)
 Ver localStorage (`civilflow_trazos_<id>`: ts + conteos) y BD por piso (SQL de conteos por plano_id) ANTES de reabrir el proyecto: cada apertura de piso con la app vieja re-consolidaba el vaciado. Con el blindaje, reabrir es seguro; lo que siga en BD se restaura solo al abrir cada piso (BD→caché), y lo que solo viva en caché local se re-sube a BD en el primer guardado.
+
+## Session Summary — 2026-09-12 (ronda 3: herencia UD 12→16 / 0 tras reentrar / 0 al asociar)
+
+### Tres síntomas, tres causas (verificadas)
+1. **Fantasma y bajante original en 0 tras reentrar (LDesvio bien)** — el libro de herencia `ucAplicado`/`ucAplicadoHidro` NO viajaba a la BD (`bajanteToRow`/`rowToBajante` no lo serializaban); un round-trip BD (árbitro por ts) lo borraba de motor+caché. FIX: migración `20260912000000_cf_bajantes_uc_aplicado.sql` (columnas `uc_aplicado`/`uc_aplicado_hidro` jsonb + recrea `save_plano_data`) + mappers. **El usuario debe aplicar la migración ANTES de usar la app nueva** (400 en cada guardado si no).
+2. **0 justo al asociar** — el panel leía el libro SOLO del storage; el autosave tarda 1.5 s. FIX: rama A de `currentMap` lee `liveBaj.ucAplicado` del engine primero, storage de respaldo.
+3. **12 → 16 al reentrar (trinquete)** — el guard de dirección de la propagación en vivo leía `p.npt`, campo INEXISTENTE en PlanItem (existe `nivel`) → siempre nulo → "desconocido = procesar" dejaba al piso INFERIOR escribir el enlace invertido: `collectSourceAgg` sobre el piso inferior = herencia (12) + UD locales (4: sifón+lavamanos) = 16 escrito en el piso SUPERIOR (claves + libro falso + espejo LD falso `san_LD_BAN1_<pisoSup>`); el pase legítimo bajaba ese 16 envenenado. FIX: `nptOf` = `Number(p.nivel)`; rama descargaEnId solo `loadedNpt > nq`; rama origenId solo `loadedNpt === nr` (empate); nivel desconocido → NO procesar.
+
+### Además
+- **`libroHeredado`** (antes `libroHeredadoSumado`, fixturesStorage): MÁXIMO por aparato entre entradas del libro en vez de suma — el libro guarda una copia del MISMO agregado por clave destino (+LD); sumarlas mostraba 2×/3× (12→24 latente). El espejo de salidas usa la misma función → panel y espejo nunca divergen.
+- **`healHerenciaInvertida(plans)`** (bajanteAssociation, storage-only, idempotente, llamada desde prefetch): revierte EXACTO los libros falsos (bajante con `ucAplicado` sin `origenId` a nivel estrictamente mayor y sin `bombaEnId` — resta por libro del mapa global aparatos/hidro, borra libro, borra sus espejos LD en/en-surco de su nivel) y preserva libros legítimos (origenId arriba; bombaEnId). Repara el dato YA envenenado del usuario sin re-asociar a mano. Conservador: sin niveles conocidos no hace nada.
+- **BUG LATENTE de BD reparado por la migración**: los cuerpos 20260910120000/140000 de `save_plano_data` tenían el INSERT de dimensiones con 9 expresiones para 10 columnas → TODO guardado de un plano con dimensiones fallaba (abortaba la transacción entera). El cuerpo nuevo deja 10/10.
+- El guard de `propagarHerenciaBomba` no se toca (bombaEnId es direccional por construcción).
+
+### Tests
+`healHerenciaInvertida.test.ts` (4: reversión exacta + espejo falso fuera/legítimo dentro, idempotente, preserva legítimos, conservador sin niveles), `espejoSalidaLibro.test.ts` actualizado a MÁXIMO.
+
+### Gates
+tsc 0 · vitest 678/678 (120 files) · lint 0/0 · build ✓ · graphify ✓.
+
+### Verificación manual (tras aplicar la migración + recarga dura)
+Asociar bajantes → 12 abajo; cerrar y reabrir (piso inferior primero) → sigue 12 en fantasma/original/LDesvio; abrir el superior y volver → sigue 12; el dato envenenado de hoy vuelve a 12 solo al entrar (sanador en prefetch).
+
+### Ronda 3b: franja roja + texto "Guardado" discrepaban
+- La franja usa `bdError` y el texto del botón Guardar usa `saveStatus` — y `doSave` ponía "saved" sin mirar el resultado del push a BD. FIX: el listener de `civilflow_bd_save_error`/`civilflow_local_quota` también hace `setSaveStatus('error')` → texto "⚠ Sin guardar" en rojo, coherente con la franja; el siguiente guardado exitoso vuelve a verde.
+
+### Ronda 3c: bajante duplicado BAN2 (500 del RPC + keys duplicadas + bucle setState)
+- Datos de sesiones con bugs viejos traían el MISMO bajante dos veces en un piso: el RPC `save_plano_data` rechazaba el insert entero ("ON CONFLICT DO UPDATE cannot affect row a second time", 500 — ningún dato del piso llegaba a BD), React avisaba keys duplicadas y las dos copias se peleaban la herencia en cada pasada del efecto (bucle "Maximum update depth").
+- FIX: `dedupPorId` (PlanoPersistence, queda la ÚLTIMA aparición) aplicado en `serializeWork`, `applyWorkData` (ramales/dims/annots/bajantes/areas/guideLines) y en el payload de `saveTrazosToDB`. Al recargar, el engine nace limpio y el siguiente autosave sube el documento deduplicado a BD.
+- Gates: tsc 0 · vitest 681/681 · lint 0/0 · build ✓.
