@@ -400,3 +400,72 @@ describe('validateBeforeClose — receptores con UD autosumada por flujo', () =>
     expect(alertas[0]?.msg).toContain('RS9');
   });
 });
+
+describe('validateBeforeClose — salidas y herencia con UD autoasignada', () => {
+  beforeEach(() => {
+    resetStorage();
+    alertas.length = 0;
+  });
+
+  const makeEngineConBajantes = (ramales: PlanoRamal[], bajantes: unknown[]) =>
+    ({
+      ...makeEngine(ramales),
+      bajantes,
+    }) as unknown as Parameters<typeof validateBeforeClose>[0];
+  const BAN2 = (o = {}) => ({
+    net: 'san',
+    id: 'BAN2',
+    code: 'BAN2',
+    tipo: 'bajante',
+    dNominal: '4"',
+    recibeDeIds: ['RS1'],
+    ...o,
+  });
+  // Salida sin nada propio: nace lejos de RS1 para no heredar por flujo.
+  const RS7 = (o = {}) =>
+    R({
+      id: 'RS7',
+      label: 'RS7',
+      pts: [
+        [500, 0],
+        [540, 0],
+      ],
+      ...o,
+    });
+
+  it('salida por alimentaIds sin conteos propios pasa (espejo de solo lectura)', () => {
+    const eng = makeEngineConBajantes([RS1(), RS7()], [BAN2({ alimentaIds: ['RS7'] })]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('salida por ini = código sin alimentaIds pasa', () => {
+    const eng = makeEngineConBajantes([RS1(), RS7({ ini: 'BAN2' })], [BAN2({})]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('ramal en libro de herencia (ucAplicado) sin conteos pasa', () => {
+    const eng = makeEngineConBajantes([RS1(), RS7()], [BAN2({ ucAplicado: { RS7: { san: 2 } } })]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('ini a código INEXISTENTE no exime (sigue disparando)', () => {
+    const eng = makeEngineConBajantes([RS1(), RS7({ ini: 'BANX' })], [BAN2({})]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(false);
+    expect(alertas[0]?.title).toBe('UC/UD pendientes');
+    expect(alertas[0]?.msg).toContain('RS7');
+  });
+
+  it('salida en piso cacheado no cargado pasa', () => {
+    setLS('civilflow_trazos_2', {
+      ramales: [{ id: 'RS7', net: 'san', tipo: 'ramal', label: 'RS7', diametro: '2"' }],
+      bajantes: [{ net: 'san', id: 'BAN2', code: 'BAN2', dNominal: '4"', alimentaIds: ['RS7'] }],
+    });
+    const eng = makeEngine([RS1()]);
+    const planos = [{ id: 2, status: 'confirmed' }];
+    expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+});

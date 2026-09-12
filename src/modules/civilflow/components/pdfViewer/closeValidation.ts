@@ -23,8 +23,17 @@ type RevisarRamalInput = {
   accesorioFin?: string;
   fixtures?: Record<string, number>;
   pts?: number[][];
+  ini?: string;
   _tribReversed?: boolean;
   mergesFrom?: unknown;
+};
+
+type BajanteAIndexar = {
+  net?: string;
+  id?: string;
+  code?: string;
+  alimentaIds?: string[];
+  ucAplicado?: Record<string, unknown>;
 };
 
 /** Validación de cierre del visor: alerta si hay ramales sin UC/UD, elementos sin diámetro o
@@ -69,6 +78,22 @@ export function validateBeforeClose(
   // Tramos CON carga propia (uc/aparatos/fixtures/mapa): alimentadores potenciales del grafo.
   const conUd: { r: RevisarRamalInput; planFor: number | string | null }[] = [];
   const revisados = new Set<string>();
+  // Espejos de salida y herencia (orig. usuario): un ramal/tributario SIN carga propia pero
+  // que NACE de un bajante/caja (alimentaIds o ini = código) o figura en un libro de herencia
+  // (ucAplicado) tiene sus UDs autoasignadas y su panel es de solo lectura — exigirle UD
+  // propia bloquearía un cierre que el usuario no puede resolver. Pasan la validación.
+  const salidasConDuenio = new Set<string>();
+  const codigosBajante = new Set<string>();
+  const conLibroHerencia = new Set<string>();
+  const indexarBajantes = (bajantes: BajanteAIndexar[] | undefined) => {
+    for (const b of bajantes || []) {
+      if (!b || !b.id) continue;
+      codigosBajante.add(`${b.net}_${b.code || b.id}`);
+      for (const rid of b.alimentaIds || []) salidasConDuenio.add(`${b.net}_${rid}`);
+      for (const k of Object.keys(b.ucAplicado || {})) conLibroHerencia.add(`${b.net}_${k}`);
+    }
+  };
+  indexarBajantes(eng.bajantes);
   /** @returns true si el tramo queda CUBIERTO (con carga o no evaluable) — false si se flaggeó. */
   const revisarRamal = (r: RevisarRamalInput, planFor: number | string | null): boolean => {
     if (!r.net || !r.id) return true;
@@ -122,6 +147,19 @@ export function validateBeforeClose(
         return true;
       }
     }
+    // Salida con dueño (espejo) o herencia por libro: UD autoasignada, panel solo lectura.
+    if (salidasConDuenio.has(`${r.net}_${r.id}`)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    if (r.ini && codigosBajante.has(`${r.net}_${r.ini}`)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    if (conLibroHerencia.has(`${r.net}_${r.id}`)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
     sinUc.push({ label: r.label || r.id, r, planFor });
     return false;
   };
@@ -142,20 +180,19 @@ export function validateBeforeClose(
   // dejaba la lista incompleta (ramales de otros planos sin UC/UD no salían). Se barren
   // los trazos guardados de cada plano confirmado con el mismo criterio, deduplicando
   // por red+id (el plano actual ya quedó cubierto por el engine).
+  // Caché de parseo por cierre: el barrido UC/UD y el global de diámetros comparten una
+  // única lectura/parseo por piso (el JSON de un plano se parseaba dos veces).
+  const cacheTrazos = new Map<string, PlanTrazos | null>();
+  const trazosDe = (id: string | number): PlanTrazos | null => {
+    const key = String(id);
+    if (!cacheTrazos.has(key)) cacheTrazos.set(key, leerTrazos(id));
+    return cacheTrazos.get(key) ?? null;
+  };
   for (const plan of (planos || []).filter((p) => p.status === 'confirmed')) {
-    const raw = loadFromStorage<PlanTrazos | string | null>(TRAZOS_PREFIX + String(plan.id), null);
-    if (!raw) continue;
-    let data: PlanTrazos | null = null;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw) as PlanTrazos;
-      } catch {
-        continue;
-      }
-    } else {
-      data = raw;
-    }
+    const data = trazosDe(plan.id);
     if (!data) continue;
+    // El dueño de una salida vive en el mismo piso: indexar sus bajantes antes de revisar.
+    indexarBajantes((data.bajantes || []) as BajanteAIndexar[]);
     for (const r of (data.ramales || []) as RevisarRamalInput[]) {
       if (engineCovered.has(`${r.net}_${r.id}`)) continue;
       if (r.label && engineCoveredLabels.has(`${r.net}_${r.label}`)) continue;
@@ -235,7 +272,7 @@ export function validateBeforeClose(
   for (const plan of (planos || []).filter(
     (p) => p.status === 'confirmed' && String(p.id) !== String(planId ?? ''),
   )) {
-    const data = leerTrazos(plan.id);
+    const data = trazosDe(plan.id);
     if (!data) continue;
     const piso = plan.nivel != null ? `${pisoLbl(Number(plan.nivel))}: ` : '';
     const otro = revisarDiametros(
