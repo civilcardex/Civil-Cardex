@@ -238,7 +238,6 @@ export function usePdfViewerEngine({
     if (!cwRef.current || !drawCanvasRef.current) return;
     const cw = cwRef.current;
     const canv = drawCanvasRef.current;
-    const loadingAtInit = loadingPlanRef.current;
     const currentIdAtInit = currentIdRef.current;
     if (engineRef.current) engineRef.current.destroy();
     const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
@@ -292,7 +291,11 @@ export function usePdfViewerEngine({
     }
     return () => {
       try {
-        if (!loadingAtInit && eng._dirty) {
+        // Check VIVO de carga (no el capturado al montar): desmontar durante una carga en
+        // vuelo con el engine a medio hidratar persistía un trabajo vacío/ajeno con ts fresco
+        // bajo el id del plano entrante — borrado de la caché y, vía autosave/BD, del piso.
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- el valor VIVO del ref en el cleanup es el objetivo del guard
+        if (!loadingPlanRef.current && eng._dirty) {
           const id = eng._loadedPlanId || currentIdAtInit || 'work';
           const work = eng.saveWork();
           work.ts = Date.now();

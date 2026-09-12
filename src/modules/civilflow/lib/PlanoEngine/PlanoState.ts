@@ -441,6 +441,8 @@ export interface PlanoBajante {
   descargaEnId: string | null;
   /** Bomba: id de la caja que la originó (una bomba por caja). */
   cajaOrigenId?: string | null;
+  /** UDs por aparato que viajan a la BD (claves net_id_plan de bajantes/bombas/cajas). */
+  fixtures?: Record<string, number>;
   /** BAJANTE ligado a una bomba de piso inferior: "<planId>|<bombaId>". Campo dedicado —
    *  descargaEnId/origenId dispararían la herencia hacia ABAJO (invertida para bombas). */
   bombaEnId?: string | null;
