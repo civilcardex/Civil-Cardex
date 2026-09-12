@@ -2,77 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { dec } from '../utils/parseDecimal';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
-import { APS_STORAGE_KEY } from '../constants/storage-keys';
-import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
 import { matHazenC } from '../constants/engineeringDataMaterials';
+import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
 import PageNav from './PageNav';
 import { SI, TH, TD } from '../styles/sharedTableStyles';
-import EditButton from './shared/EditButton';
-import Inp from './bombaAR/Inp';
 import Tbl from './shared/Tbl';
-const BombaARDesign_S2: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const BombaARDesign_S3: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const BombaARDesign_S4: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const BombaARDesign_S5: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
+import { APS_STORAGE_KEY } from '../constants/storage-keys';
 
-const TDBom: React.CSSProperties = { ...TD, background: '#1a1c20' };
-const TDL: React.CSSProperties = { ...TDBom, textAlign: 'left', fontFamily: 'var(--body)' };
-const Fmt = (v: string | number, u = '') => {
-  if (v === '' || v === null || v === undefined)
-    return <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>;
-  const val = typeof v === 'number' ? v.toFixed(2) : v;
-  return (
-    <span style={{ fontFamily: 'var(--mono)' }}>
-      {val}
-      {u ? ` ${u}` : ''}
-    </span>
-  );
-};
+// CÁLCULOS POR BOMBA (orig. usuario): cada bomba tiene SUS inputs y SUS resultados; las
+// tablas son horizontales — filas = bombas, columnas = parámetros. Sin columnas
+// Símbolo/Equivalencia/Fuente. Persistencia: cf_bomba_datos_proyecto.bombas (jsonb).
 
-const SI2 = { ...SI, fontSize: 13, padding: '4px 6px' };
-const TH2 = { ...TH, fontSize: 12 };
-const TD2 = { ...TDBom, fontSize: 13 };
-const TDL2 = { ...TDL, fontSize: 13, fontWeight: 700, color: 'var(--txt)' };
 const Fmt2 = (v: string | number, u = '') => {
   if (v === '' || v === null || v === undefined)
     return <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>;
@@ -85,120 +25,106 @@ const Fmt2 = (v: string | number, u = '') => {
   );
 };
 
-const BombaARDesign_COLS1 = [
-  'Parámetro',
-  'Símbolo',
-  'Valor',
-  'Unidad',
-  'Equivalencia',
-  'Fuente / norma',
-];
-const BombaARDesign_COLS2 = [
-  'Componente',
-  'Símbolo',
-  'Valor',
-  'Unidad',
-  'Equivalencia',
-  'Observación',
-];
+const SI2 = { ...SI, fontSize: 13, padding: '4px 6px' };
+const TH2 = { ...TH, fontSize: 12 };
+const TDBom: React.CSSProperties = { ...TD, background: '#1a1c20' };
+const TD2 = { ...TDBom, fontSize: 13 };
 
-function BombaARDesign() {
-  const [bp, setBp] = useState(1);
-  // Estado inicial desde el snapshot de memoria (caché en vivo) — la BD hidrata encima.
-  const memoriaInit = loadFromStorage<{ inputs?: Partial<Record<string, string>> } | null>(
-    'civilflow_memoria_bomba_data',
-    null,
+/** Tarjeta de tabla con icono + título (mismo estilo que las otras pestañas de diseño). */
+function Card({
+  icon,
+  title,
+  children,
+}: {
+  icon: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--r)',
+        overflow: 'hidden',
+        background: 'var(--bg)',
+      }}
+    >
+      <div style={{ padding: '8px 8px', display: 'flex', alignItems: 'center' }}>
+        <img
+          src={icon}
+          alt=""
+          style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+        />
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--txt)' }}>{title}</h3>
+      </div>
+      <div style={{ padding: '0 2px 2px' }}>{children}</div>
+    </div>
   );
-  const m0 = memoriaInit?.inputs ?? {};
-  const [salSim, setSalSim] = useState(m0.salSim ?? '');
-  const [udTot, setUdTot] = useState(m0.udTot ?? '');
-  const [hz, setHz] = useState(m0.hz ?? '');
-  const [lImp, setLImp] = useState(m0.lImp ?? '');
-  const [dImp, setDImp] = useState(m0.dImp ?? '');
-  const [cHW, setCHW] = useState(m0.cHW ?? '');
-  const [tipoTuberia, setTipoTuberia] = useState(m0.tipoTuberia ?? 'PVC-PR');
-  const [pDesc, setPDesc] = useState(m0.pDesc ?? '');
-  const [etaB, setEtaB] = useState(m0.etaB ?? '');
-  const [fSrv, setFSrv] = useState(m0.fSrv ?? '');
-  const [tCic, setTCic] = useState(m0.tCic ?? '');
-  const [hMin, setHMin] = useState(m0.hMin ?? '');
-  const [hMax, setHMax] = useState(m0.hMax ?? '');
-  const [bCam, setBCam] = useState(m0.bCam ?? '');
-  const [lCam, setLCam] = useState(m0.lCam ?? '');
-  const [npsh, setNpsh] = useState(m0.npsh ?? '');
+}
 
-  const [editP1, setEditP1] = useState(false);
-  const [editP3, setEditP3] = useState(false);
-  const [editP4, setEditP4] = useState(false);
+/** Inputs editables por bomba. */
+export interface BombaInputs {
+  sal: string;
+  hz: string;
+  lImp: string;
+  dImp: string;
+  pDesc: string;
+  etaB: string;
+  fSrv: string;
+  tCic: string;
+  hMin: string;
+  hMax: string;
+  bCam: string;
+  lCam: string;
+  npsh: string;
+  tipoTuberia: string;
+}
 
-  const sal = dec(salSim);
-  const li = dec(lImp);
-  const di = dec(dImp);
-  // C de Hazen-Williams AUTOMÁTICO por tipo de tubería (Catálogo Maestro, matHazenC) —
-  // solo lectura (orig. usuario); el valor manual viejo queda como fallback inicial.
-  const MAT_POR_TIPO: Record<string, string> = {
-    'PVC-PR': 'PVC-PR',
-    'Acero galvanizado': 'Acero HG',
-    'Acero al carbón': 'A.C.',
-  };
-  const cAuto = matHazenC(MAT_POR_TIPO[tipoTuberia] ?? 'PVC-PR');
-  const ch = cAuto ?? (dec(cHW) || 150);
-  const pd = dec(pDesc);
-  const fs = dec(fSrv) || 1.25;
-  const tc = dec(tCic);
-  const hmn = dec(hMin);
-  const hmx = dec(hMax);
-  const bc = dec(bCam);
-  const lc = dec(lCam);
+const INPUTS_DEFAULT: BombaInputs = {
+  sal: '',
+  hz: '',
+  lImp: '',
+  dImp: '',
+  pDesc: '',
+  etaB: '',
+  fSrv: '1.25',
+  tCic: '',
+  hMin: '',
+  hMax: '',
+  bCam: '',
+  lCam: '',
+  npsh: '',
+  tipoTuberia: 'PVC-PR',
+};
+
+const MAT_POR_TIPO: Record<string, string> = {
+  'PVC-PR': 'PVC-PR',
+  'Acero galvanizado': 'Acero HG',
+  'Acero al carbón': 'A.C.',
+};
+
+/** C de Hazen-Williams: Catálogo Maestro según tipo de tubería — solo lectura. */
+function cHazenDe(tipoTuberia: string): number {
+  return matHazenC(MAT_POR_TIPO[tipoTuberia] ?? 'PVC-PR') ?? 150;
+}
+
+/** Todos los cálculos de la bomba a partir de SUS inputs y SUS UDs (mismas fórmulas que la
+ *  versión plana anterior). */
+function calcsDe(inp: BombaInputs, uds: number) {
+  const sal = dec(inp.sal);
+  const li = dec(inp.lImp);
+  const di = dec(inp.dImp);
+  const ch = cHazenDe(inp.tipoTuberia);
+  const fs = dec(inp.fSrv) || 1.25;
+  const tc = dec(inp.tCic);
+  const hmn = dec(inp.hMin);
+  const hmx = dec(inp.hMax);
+  const bc = dec(inp.bCam);
+  const lc = dec(inp.lCam);
   const Dm = di * 0.0254;
-
-  // Tabla de equipos de bomba (orig. usuario): TODAS las bombas (tipo 'bomba') de los pisos
-  // confirmados, con las UDs acumuladas del sótano = la clave de la bomba (que el visor
-  // mantiene espejando el agregado de su caja de origen). Solo lectura, se recalcula al montar.
-  // Suscripción a storage/sync: los equipos se leen de localStorage en cada render, pero sin
-  // esto la página NO se re-renderiza cuando los datos llegan después del montaje (prefetch
-  // global, ediciones del visor, asociar bomba) y la columna "UD acumuladas en sótano" se
-  // quedaba en el valor viejo (típicamente 0).
-  const [refreshTick, setRefreshTick] = useState(0);
-  useEffect(() => {
-    const bump = () => setRefreshTick((n) => n + 1);
-    window.addEventListener('storage', bump);
-    window.addEventListener('aparatos-clear', bump as EventListener);
-    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
-    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
-    return () => {
-      window.removeEventListener('storage', bump);
-      window.removeEventListener('aparatos-clear', bump as EventListener);
-      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
-      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
-    };
-  }, []);
-  void refreshTick;
-  // Override de valores UD custom del usuario (misma tabla del panel de aparatos; base si no hay).
-  const udOverride = (() => {
-    try {
-      const arr = loadFromStorage<Array<{ id?: unknown; ud?: unknown }> | null>(
-        APS_STORAGE_KEY,
-        null,
-      );
-      if (!Array.isArray(arr)) return undefined;
-      const m: Record<string, number> = {};
-      for (const a of arr) {
-        if (typeof a?.id === 'string' && typeof a?.ud === 'number') m[a.id] = a.ud;
-      }
-      return Object.keys(m).length ? m : undefined;
-    } catch {
-      return undefined;
-    }
-  })();
-  const equiposBomba = equiposBombaDesdeTrazos(udOverride);
-
-  // "UD acumuladas en sótano" (orig. usuario) = la SUMATORIA de las UDs de las bombas de los
-  // sótanos — automático, no editable. Ajuste durante render (patrón oficial para sincronizar
-  // estado derivado sin cascadas) + los cálculos y la BD usan el valor automático.
-  const udTotAuto = String(equiposBomba.reduce((a, e) => a + e.uds, 0));
-  if (udTotAuto !== udTot) setUdTot(udTotAuto);
-  const ud = dec(udTotAuto || udTot);
+  const ud = uds;
 
   const K = sal <= 1 ? 1 : +(1 / Math.sqrt(sal - 1)).toFixed(2);
   const Qd = +(
@@ -227,68 +153,7 @@ function BombaARDesign() {
   const Vcam = Qb > 0 && tc > 0 ? +(Qb * tc * 60).toFixed(2) : 0;
   const Vgeo = bc > 0 && lc > 0 && hmx - hmn > 0 ? +(bc * lc * (hmx - hmn)).toFixed(2) : 0;
   const Vchk = Vgeo > 0 && Vcam > 0 ? (Vgeo >= Vcam / 1000 ? 'O.K.' : 'AMPLIAR CÁMARA') : '';
-
-  // Persist computed data for memoria final tables
-  useEffect(() => {
-    saveToStorage('civilflow_memoria_bomba_data', {
-      inputs: {
-        salSim,
-        udTot,
-        hz,
-        lImp,
-        dImp,
-        cHW,
-        pDesc,
-        etaB,
-        fSrv,
-        tCic,
-        hMin,
-        hMax,
-        bCam,
-        lCam,
-        npsh,
-        tipoTuberia,
-        sal,
-        ud,
-      },
-      outputs: {
-        K,
-        Qd,
-        Qb,
-        Vi,
-        Hf,
-        Hac,
-        Hfri,
-        Hest,
-        Hm,
-        Vch,
-        Ph,
-        Peje,
-        Pcom,
-        php,
-        Sel,
-        Vcam,
-        Vchk,
-      },
-    });
-  }, [
-    salSim,
-    udTot,
-    hz,
-    lImp,
-    dImp,
-    cHW,
-    pDesc,
-    etaB,
-    fSrv,
-    tCic,
-    hMin,
-    hMax,
-    bCam,
-    lCam,
-    npsh,
-    sal,
-    ud,
+  return {
     K,
     Qd,
     Qb,
@@ -305,13 +170,115 @@ function BombaARDesign() {
     php,
     Sel,
     Vcam,
+    Vgeo,
     Vchk,
-    tipoTuberia,
-  ]);
+  };
+}
 
-  // Hidratar desde la fuente de verdad (bomba_datos_proyecto, 1:1 con el proyecto) al
-  // montar — gana sobre el snapshot de memoria local; si no hay fila, se mantienen los
-  // valores del caché.
+function BombaARDesign() {
+  const [bp, setBp] = useState(1);
+  const memoriaInit = loadFromStorage<{
+    inputs?: Partial<Record<string, string>>;
+    bombas?: Record<string, Partial<BombaInputs>>;
+  } | null>('civilflow_memoria_bomba_data', null);
+
+  // Inputs POR BOMBA (mapa código → valores). Semilla: snapshot de memoria por bomba; el
+  // legado plano del caché (una bomba histórica) se aplica a la primera bomba real.
+  const [bombInputs, setBombInputs] = useState<Record<string, BombaInputs>>(() => {
+    const seed: Record<string, BombaInputs> = {};
+    for (const [code, vals] of Object.entries(memoriaInit?.bombas ?? {}))
+      seed[code] = { ...INPUTS_DEFAULT, ...vals } as BombaInputs;
+    const flat = memoriaInit?.inputs ?? {};
+    if (flat.salSim !== undefined) {
+      seed['__legacy__'] = {
+        sal: flat.salSim ?? '',
+        hz: flat.hz ?? '',
+        lImp: flat.lImp ?? '',
+        dImp: flat.dImp ?? '',
+        pDesc: flat.pDesc ?? '',
+        etaB: flat.etaB ?? '',
+        fSrv: flat.fSrv ?? '1.25',
+        tCic: flat.tCic ?? '',
+        hMin: flat.hMin ?? '',
+        hMax: flat.hMax ?? '',
+        bCam: flat.bCam ?? '',
+        lCam: flat.lCam ?? '',
+        npsh: flat.npsh ?? '',
+        tipoTuberia: flat.tipoTuberia ?? 'PVC-PR',
+      };
+    }
+    return seed;
+  });
+
+  // Bombas = elementos tipo 'bomba' de TODOS los pisos (trazos locales) + UDs desde trazos.
+  const [refreshTick, setRefreshTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setRefreshTick((n) => n + 1);
+    window.addEventListener('storage', bump);
+    window.addEventListener('aparatos-clear', bump as EventListener);
+    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
+    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    return () => {
+      window.removeEventListener('storage', bump);
+      window.removeEventListener('aparatos-clear', bump as EventListener);
+      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
+      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    };
+  }, []);
+  void refreshTick;
+
+  const udOverride = (() => {
+    try {
+      const arr = loadFromStorage<Array<{ id?: unknown; ud?: unknown }> | null>(
+        APS_STORAGE_KEY,
+        null,
+      );
+      if (!Array.isArray(arr)) return undefined;
+      const m: Record<string, number> = {};
+      for (const a of arr) {
+        if (typeof a?.id === 'string' && typeof a?.ud === 'number') m[a.id] = a.ud;
+      }
+      return Object.keys(m).length ? m : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const equipos = equiposBombaDesdeTrazos(udOverride);
+  const setIn = (code: string, key: keyof BombaInputs, val: string) => {
+    setBombInputs((prev) => ({
+      ...prev,
+      [code]: { ...INPUTS_DEFAULT, ...(prev[code] || {}), [key]: val },
+    }));
+  };
+  const inpOf = (code: string): BombaInputs => ({
+    ...INPUTS_DEFAULT,
+    ...(bombInputs[code] || {}),
+    // Legado sin código: la primera bomba hereda los valores viejos mientras no tenga propios.
+    ...((bombInputs['__legacy__'] && !bombInputs[code]
+      ? bombInputs['__legacy__']
+      : {}) as Partial<BombaInputs>),
+  });
+
+  // Vista modelo: por bomba, inputs + cálculos.
+  const rowsView = equipos.map((e) => {
+    const inp = inpOf(e.code);
+    return { ...e, inp, c: calcsDe(inp, e.uds) };
+  });
+  const first = rowsView[0];
+
+  // Legado plano del caché → primera bomba real (una sola vez). Ajuste en render-phase
+  // (patrón oficial para estado derivado — un useEffect con setState disparaba cascadas).
+  if (bombInputs['__legacy__'] && equipos.length > 0) {
+    const code = equipos[0].code;
+    const cur = bombInputs[code];
+    if (!cur || !Object.values(cur).some((v) => v)) {
+      const next = { ...bombInputs, [code]: { ...INPUTS_DEFAULT, ...bombInputs['__legacy__'] } };
+      delete next['__legacy__'];
+      setBombInputs(next);
+    }
+  }
+
+  // Hidratar desde BD (bombas jsonb + legado plano → primera bomba sin inputs propios).
   const hydratedRef = useRef(false);
   useEffect(() => {
     const proyectoId = getActiveProyectoId();
@@ -320,33 +287,45 @@ function BombaARDesign() {
     void loadBombaDatos(proyectoId).then((d) => {
       if (cancelled) return;
       if (d) {
-        setSalSim(d.salSim);
-        setUdTot(d.udTot);
-        setHz(d.hz);
-        setLImp(d.lImp);
-        setDImp(d.dImp);
-        setCHW(d.cHW);
-        setTipoTuberia(d.tipoTuberia || 'PVC-PR');
-        setPDesc(d.pDesc);
-        setEtaB(d.etaB);
-        setFSrv(d.fSrv);
-        setTCic(d.tCic);
-        setHMin(d.hMin);
-        setHMax(d.hMax);
-        setBCam(d.bCam);
-        setLCam(d.lCam);
-        setNpsh(d.npsh);
+        setBombInputs((prev) => {
+          const next: Record<string, BombaInputs> = { ...prev };
+          for (const [code, vals] of Object.entries(d.bombas ?? {}))
+            next[code] = { ...INPUTS_DEFAULT, ...vals } as BombaInputs;
+          if (d.salSim !== undefined && d.salSim !== '') {
+            const firstCode = equipos.map((e) => e.code)[0] || equipos.length.toString();
+            const cur = next[firstCode];
+            if (!cur || !Object.values(cur).some((v) => v))
+              next[firstCode] = {
+                sal: d.salSim,
+                hz: d.hz,
+                lImp: d.lImp,
+                dImp: d.dImp,
+                pDesc: d.pDesc,
+                etaB: d.etaB,
+                fSrv: d.fSrv || '1.25',
+                tCic: d.tCic,
+                hMin: d.hMin,
+                hMax: d.hMax,
+                bCam: d.bCam,
+                lCam: d.lCam,
+                npsh: d.npsh,
+                tipoTuberia: d.tipoTuberia || 'PVC-PR',
+              };
+          }
+          return next;
+        });
       }
       hydratedRef.current = true;
     });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persistir a la BD debounced (1200 ms). No se guarda hasta que la hidratación terminó,
-  // para no pisar la fila existente con los defaults del caché.
+  // Persistencia debounced a BD: bombas jsonb + legado plano de la PRIMERA bomba.
   const bombaSaveTimerRef = useRef<number | null>(null);
+  const viewKey = rowsView.map((r) => `${r.code}:${r.uds}`).join('|');
   useEffect(() => {
     if (!hydratedRef.current) return;
     const proyectoId = getActiveProyectoId();
@@ -354,818 +333,316 @@ function BombaARDesign() {
     if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);
     bombaSaveTimerRef.current = window.setTimeout(() => {
       bombaSaveTimerRef.current = null;
+      const f = first;
       void saveBombaDatos(proyectoId, {
-        salSim,
-        udTot,
-        hz,
-        lImp,
-        dImp,
-        cHW,
-        pDesc,
-        etaB,
-        fSrv,
-        tCic,
-        hMin,
-        hMax,
-        bCam,
-        lCam,
-        npsh,
-        tipoTuberia,
+        salSim: f ? f.inp.sal : '',
+        udTot: f ? String(f.uds) : '0',
+        hz: f ? f.inp.hz : '',
+        lImp: f ? f.inp.lImp : '',
+        dImp: f ? f.inp.dImp : '',
+        cHW: '',
+        pDesc: f ? f.inp.pDesc : '',
+        etaB: f ? f.inp.etaB : '',
+        fSrv: f ? f.inp.fSrv : '1.25',
+        tCic: f ? f.inp.tCic : '',
+        hMin: f ? f.inp.hMin : '',
+        hMax: f ? f.inp.hMax : '',
+        bCam: f ? f.inp.bCam : '',
+        lCam: f ? f.inp.lCam : '',
+        npsh: f ? f.inp.npsh : '',
+        tipoTuberia: f ? f.inp.tipoTuberia : 'PVC-PR',
+        bombas: bombInputs as unknown as Record<string, Record<string, string>>,
       });
     }, 1200);
     return () => {
       if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);
       bombaSaveTimerRef.current = null;
     };
-  }, [
-    salSim,
-    udTot,
-    hz,
-    lImp,
-    dImp,
-    cHW,
-    pDesc,
-    etaB,
-    fSrv,
-    tCic,
-    hMin,
-    hMax,
-    bCam,
-    lCam,
-    npsh,
-    tipoTuberia,
-  ]);
+  }, [bombInputs, viewKey, hydratedRef, first]);
 
-  const Nota = (
-    <div
-      style={{
-        fontSize: 12,
-        color: 'var(--txt3)',
-        lineHeight: 1.6,
-        padding: '8px 12px',
-        marginTop: 6,
-        borderRadius: 'var(--r)',
-        background: 'var(--bg2)',
-      }}
+  // Snapshot de memoria (compat con informes): primera bomba plana + mapa por bomba.
+  useEffect(() => {
+    const f = first;
+    saveToStorage('civilflow_memoria_bomba_data', {
+      inputs: f
+        ? {
+            salSim: f.inp.sal,
+            udTot: String(f.uds),
+            hz: f.inp.hz,
+            lImp: f.inp.lImp,
+            dImp: f.inp.dImp,
+            pDesc: f.inp.pDesc,
+            etaB: f.inp.etaB,
+            fSrv: f.inp.fSrv,
+            tCic: f.inp.tCic,
+            hMin: f.inp.hMin,
+            hMax: f.inp.hMax,
+            bCam: f.inp.bCam,
+            lCam: f.inp.lCam,
+            npsh: f.inp.npsh,
+            tipoTuberia: f.inp.tipoTuberia,
+          }
+        : {},
+      bombas: bombInputs,
+    });
+  }, [bombInputs, viewKey, first]);
+
+  // Celda editable compacta (inputs siempre habilitados — sin modo EDITAR por página).
+  const CellInp = ({
+    code,
+    k,
+    aria,
+    w = 84,
+  }: {
+    code: string;
+    k: keyof BombaInputs;
+    aria: string;
+    w?: number;
+  }) => (
+    <input
+      value={inpOf(code)[k]}
+      aria-label={aria}
+      onChange={(e) => setIn(code, k, e.target.value)}
+      style={{ ...SI2, width: w }}
+    />
+  );
+  const CellSel = ({ code, aria, w = 150 }: { code: string; aria: string; w?: number }) => (
+    <select
+      value={inpOf(code).tipoTuberia}
+      aria-label={aria}
+      onChange={(e) => setIn(code, 'tipoTuberia', e.target.value)}
+      style={{ ...SI2, width: w }}
     >
-      <b style={{ color: 'var(--txt)' }}>Nota normativa</b> — Diseño conforme{' '}
-      <b style={{ color: 'var(--txt)' }}>NTC 1500 §8</b> y{' '}
-      <b style={{ color: 'var(--txt)' }}>RAS 2000 Título D</b>. La bomba trituradora es obligatoria
-      para sólidos fecales. Verificar caudal con empresa de servicios (EMAB/AMB) antes de definir
-      acometida.
-    </div>
+      <option value="PVC-PR">PVC-PR</option>
+      <option value="Acero galvanizado">Acero galvanizado</option>
+      <option value="Acero al carbón">Acero al carbón</option>
+    </select>
   );
 
-  const COLS1 = BombaARDesign_COLS1;
-  const COLS2 = BombaARDesign_COLS2;
-
-  // Valor ancho (cabe "Acero galvanizado" del dropdown); Fuente/norma estrecha con wrap.
-  const COLS1_STYLES: (React.CSSProperties | undefined)[] = [
-    { maxWidth: 170 },
-    undefined,
-    { minWidth: 160 },
-    undefined,
-    { maxWidth: 80 },
-    { width: 130, minWidth: 130, whiteSpace: 'normal', fontSize: 11 },
-  ];
-
+  const sinBombas = rowsView.length === 0;
+  const bombCell = (code: string) => (
+    <span style={{ fontWeight: 700, fontFamily: 'var(--mono)' }}>{code}</span>
+  );
+  // ---- Página 1: Datos de entrada (transpuesta: filas = bombas) ----
   const page1 = (
-    <Tbl
-      thStyle={TH2}
-      tdStyle={TD2}
-      tdlStyle={TDL2}
-      fontSize={13}
-      colStyles={COLS1_STYLES}
-      valueCol={2}
-      caption="Datos de entrada"
-      cols={COLS1}
-      rows={[
-        [
-          'Número de salidas simultáneas',
-          'Sal sim',
-          <Inp
-            disabled={!editP1}
-            v={salSim}
-            set={setSalSim}
-            ariaLabel="Número de salidas simultáneas"
-            style={SI2}
-          />,
-          'und',
-          '—',
-          'Probabilidad de trabajar al máximo',
-        ],
-        [
-          'Unidades descarga acumuladas en sótano',
-          'UD tot',
-          <span title="Suma de las UDs de las bombas de los sótanos (automático, no editable)">
-            {udTot || '0'}
-          </span>,
-          'UD',
-          '—',
-          'Suma de las bombas — automático',
-        ],
-        ['Coeficiente K simultaneidad Hunter', 'K', Fmt2(K), '—', '—', 'K = 1/√(n−1)'],
-        [
-          'Caudal de diseño Q = UD × K',
-          'Q dis',
-          Fmt2(Qd),
-          'lps',
-          Fmt2((Qd * 15.8503).toFixed(2), 'GPM'),
-          'Método Hunter NTC 1500',
-        ],
-        [
-          'Caudal bombeo Qb (reserva 25%)',
-          'Q b',
-          Fmt2(Qb),
-          'lps',
-          Fmt2((Qb * 15.8503).toFixed(2), 'GPM'),
-          'Factor seguridad sobre Q diseño',
-        ],
-        [
-          'Altura geométrica sótano → piso 1',
-          'Hz',
-          <Inp disabled={!editP1} v={hz} set={setHz} ariaLabel="Altura geométrica" style={SI2} />,
-          'm',
-          '—',
-          'Diferencia de nivel',
-        ],
-        [
-          'Longitud total tubería impulsión',
-          'L imp',
-          <Inp
-            disabled={!editP1}
-            v={lImp}
-            set={setLImp}
-            ariaLabel="Longitud tubería impulsión"
-            style={SI2}
-          />,
-          'm',
-          '—',
-          'Tramos verticales + horizontales',
-        ],
-        [
-          'Diámetro tubería impulsión',
-          'D imp',
-          <Inp
-            disabled={!editP1}
-            v={dImp}
-            set={setDImp}
-            ariaLabel="Diámetro tubería impulsión"
-            style={SI2}
-          />,
-          'pulg',
-          di ? (
-            Fmt2((di * 25).toFixed(2), 'mm')
-          ) : (
-            <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-          ),
-          'Mínimo 2" NTC 1500 §8',
-        ],
-        [
-          'Tipo de tubería',
-          '—',
-          <select
-            value={tipoTuberia}
-            disabled={!editP1}
-            aria-label="Tipo de tubería"
-            onChange={(e) => setTipoTuberia(e.target.value)}
-            style={SI2}
-          >
-            <option value="PVC-PR">PVC-PR</option>
-            <option value="Acero galvanizado">Acero galvanizado</option>
-            <option value="Acero al carbón">Acero al carbón</option>
-          </select>,
-          '—',
-          '—',
-          'Selección de material',
-        ],
-        [
-          'Coeficiente C Hazen-Williams',
-          'C HW',
-          <span title="Calculado desde el Catálogo Maestro según el tipo de tubería (solo lectura)">
-            {cAuto ?? (dec(cHW) || 150)}
-          </span>,
-          '—',
-          '—',
-          'Catálogo Maestro — no editable',
-        ],
-        [
-          'Presión mínima en descarga',
-          'P desc',
-          <Inp
-            disabled={!editP1}
-            v={pDesc}
-            set={setPDesc}
-            ariaLabel="Presión mínima en descarga"
-            style={SI2}
-          />,
-          'm.c.a.',
-          pd ? (
-            Fmt2((pd * 1.42).toFixed(2), 'psi')
-          ) : (
-            <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-          ),
-          'Presión en punto entrega',
-        ],
-        [
-          'Eficiencia bomba η',
-          'eta b',
-          <Inp
-            disabled={!editP1}
-            v={etaB}
-            set={setEtaB}
-            ariaLabel="Eficiencia bomba"
-            style={SI2}
-          />,
-          '—',
-          '—',
-          'Bomba sumergible trituradora típica: 60–70%',
-        ],
-        [
-          'Factor de servicio motor',
-          'f srv',
-          <Inp
-            disabled={!editP1}
-            v={fSrv}
-            set={setFSrv}
-            ariaLabel="Factor de servicio motor"
-            style={SI2}
-          />,
-          '—',
-          '—',
-          'NEMA MG1: reserva 25% sobre P calculada',
-        ],
-      ]}
-    />
-  );
-
-  const page2 = (
-    <Tbl
-      thStyle={TH2}
-      tdStyle={TD2}
-      tdlStyle={TDL2}
-      fontSize={13}
-      caption="Cálculo de pérdidas de carga"
-      cols={COLS2}
-      rows={[
-        [
-          'Velocidad en tubería impulsión',
-          'V imp',
-          Fmt2(Vi),
-          'm/s',
-          '—',
-          '0.6 < V < 3.5 m/s para residuales',
-        ],
-        [
-          'Pérdida fricción (Hazen-Williams)',
-          'Hf',
-          Fmt2(Hf),
-          'm.c.a.',
-          '—',
-          'hf = 10.67·L·Q^1.852 / (C^1.852·D^4.87)',
-        ],
-        [
-          'Pérdida en accesorios (25% de Hf)',
-          'H ac',
-          Fmt2(Hac),
-          'm.c.a.',
-          '—',
-          'Estimación conservadora',
-        ],
-        [
-          'Pérdida total por fricción',
-          'H fri',
-          Fmt2(Hfri),
-          'm.c.a.',
-          '—',
-          'Hf tubería + accesorios',
-        ],
-        [
-          'Altura estática total',
-          'H est',
-          Fmt2(Hest),
-          'm.c.a.',
-          '—',
-          'Hz geométrica + presión mínima descarga',
-        ],
-        [
-          'Altura manométrica total Hm',
-          'H m',
-          Fmt2(Hm),
-          'm.c.a.',
-          Hm ? (
-            Fmt2((Hm * 1.42).toFixed(2), 'psi')
-          ) : (
-            <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-          ),
-          'Hm = H fri + H est',
-        ],
-        [
-          'Chequeo velocidad',
-          'V chk',
-          <span
-            style={{
-              color: Vch === 'O.K.' ? '#22c55e' : '#ef5350',
-              fontWeight: 700,
-              fontFamily: 'var(--mono)',
-              fontSize: 13,
-            }}
-          >
-            {Vch}
-          </span>,
-          '—',
-          '—',
-          'Verificación automática',
-        ],
-      ]}
-    />
-  );
-
-  const page3 = (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 12,
-        width: '100%',
-        alignItems: 'start',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--r)',
-          overflow: 'hidden',
-          background: 'var(--bg)',
-        }}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+      <Card
+        icon="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
+        title="Datos de entrada"
       >
-        <div
-          className="card-h"
-          style={{ padding: '8px 8px', display: 'flex', alignItems: 'center' }}
-        >
-          <h3 className="card-t">
-            <img
-              src="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
-              alt="Bomba sumergible trituradora"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Parámetros de diseño bomba sumergible
-          </h3>
-          <EditButton edit={editP3} setEdit={setEditP3} />
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <caption style={BombaARDesign_S2}>Parámetros de diseño bomba sumergible</caption>
-          <thead>
-            <tr>
-              {COLS1.map((c, i) => (
-                <th scope="col" key={i} style={TH2}>
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              [
-                'Caudal nominal bomba',
-                'Q b',
-                Fmt(Qb),
-                'lps',
-                Fmt((Qb * 15.8503).toFixed(2), 'GPM'),
-                'Incluye reserva 25%',
-              ],
-              [
-                'Altura manométrica Hm',
-                'H m',
-                Fmt(Hm),
-                'm.c.a.',
-                Hm ? (
-                  Fmt((Hm * 1.42).toFixed(2), 'psi')
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-                'Tomado de bloque 2',
-              ],
-              [
-                'Potencia hidráulica',
-                'P hid',
-                Fmt(Ph),
-                'W',
-                Ph ? (
-                  Fmt((Ph / 746).toFixed(2), 'HP')
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-                'Ph = ρ·g·Q·Hm / 1000',
-              ],
-              [
-                'Potencia en el eje',
-                'P eje',
-                Fmt(Peje),
-                'W',
-                Peje ? (
-                  Fmt((Peje / 746).toFixed(2), 'HP')
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-                'P eje = Ph / η bomba',
-              ],
-              [
-                'Potencia comercial (×f srv)',
-                'P com',
-                Fmt(Pcom),
-                'W',
-                Pcom ? (
-                  Fmt(php.toFixed(2), 'HP')
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-                'Motor seleccionar ≥ este valor',
-              ],
-              [
-                'Selección comercial automática',
-                'Sel',
-                <span style={{ color: 'var(--acc2)', fontWeight: 700, fontFamily: 'var(--mono)' }}>
-                  {Sel}
-                </span>,
-                'HP',
-                '—',
-                'Estándar: 0.5 / 1 / 2 / 3 / 5 HP',
-              ],
-              [
-                'Tipo de bomba',
-                'Tipo',
-                'Sumergible trituradora',
-                '—',
-                '—',
-                'NTC 1500 §8.5 — residuales con sólidos',
-              ],
-              [
-                'NPSH disponible mínimo',
-                'NPSH',
-                <Inp
-                  disabled={!editP3}
-                  v={npsh}
-                  set={setNpsh}
-                  ariaLabel="NPSH disponible mínimo"
-                  style={{ ...SI, width: 35, fontSize: 12, padding: '2px 3px' }}
-                />,
-                'm',
-                '—',
-                'Verificar con curva del fabricante',
-              ],
-            ].map((r, i) => (
-              <tr key={i}>
-                {r.map((c, j) => (
-                  <td
-                    key={j}
-                    style={
-                      j === 0
-                        ? { ...TDL2, color: '#fff' }
-                        : j === 2
-                          ? { ...TDBom, fontSize: 12, width: '35px', whiteSpace: 'nowrap' }
-                          : j === 5
-                            ? { ...TD2, width: '30%' }
-                            : TD2
-                    }
-                  >
-                    {c}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--r)',
-          overflow: 'hidden',
-          background: 'var(--bg)',
-        }}
-      >
-        <div className="card-h" style={{ padding: '8px 8px' }}>
-          <h3 className="card-t">
-            <img
-              src="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
-              alt="Especificación cámara trituradora"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Especificación — Bomba sumergible trituradora
-          </h3>
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <caption style={BombaARDesign_S3}>Especificación — Bomba sumergible trituradora</caption>
-          <thead>
-            <tr>
-              {['Ítem', 'Valor'].map((c, i) => (
-                <th scope="col" key={i} style={TH2}>
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['Caudal nominal', Fmt((Qb * 15.8503).toFixed(2), 'GPM')],
-              ['Altura manométrica total (Hm)', Fmt(Hm, 'm.c.a.')],
-              [
-                'Potencia motor',
-                <span style={{ color: 'var(--acc2)', fontWeight: 700, fontFamily: 'var(--mono)' }}>
-                  {Sel}
-                </span>,
-              ],
-              ['Tipo', 'Bomba sumergible trituradora, impeler monocanal'],
-              ['Tensión', '110V o 220V monofásica — confirmar con proveedor'],
-            ].map((r, i) => (
-              <tr key={i}>
-                {r.map((c, j) => (
-                  <td key={j} style={j === 0 ? { ...TDL2, color: '#fff' } : TD2}>
-                    {c}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {Nota}
-      </div>
-    </div>
-  );
-
-  const page4 = (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 12,
-        width: '100%',
-        alignItems: 'start',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--r)',
-          overflow: 'hidden',
-          background: 'var(--bg)',
-        }}
-      >
-        <div
-          className="card-h"
-          style={{ padding: '8px 8px', display: 'flex', alignItems: 'center' }}
-        >
-          <h3 className="card-t">
-            <img
-              src="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
-              alt="Cámara de bombeo"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Parámetros de diseño cámara de bombeo
-          </h3>
-          <EditButton edit={editP4} setEdit={setEditP4} />
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <caption style={BombaARDesign_S4}>Parámetros de diseño cámara de bombeo</caption>
-          <thead>
-            <tr>
-              {COLS1.map((c, i) => (
-                <th scope="col" key={i} style={TH2}>
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              [
-                'Tiempo mínimo ciclo arranque',
-                't cic',
-                <Inp
-                  disabled={!editP4}
-                  v={tCic}
-                  set={setTCic}
-                  ariaLabel="Tiempo mínimo ciclo arranque"
-                  style={SI}
-                />,
-                'min',
-                '—',
-                'Mínimo 5 min entre arranques',
-              ],
-              [
-                'Volumen útil cámara mínimo',
-                'V cam',
-                Fmt(Vcam),
-                'lts',
-                Vcam ? (
-                  Fmt((Vcam / 1000).toFixed(2), 'm³')
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-                'V = Qb(lps) × t(s)',
-              ],
-              [
-                'Tirante mínimo sobre bomba',
-                'h min',
-                <Inp
-                  disabled={!editP4}
-                  v={hMin}
-                  set={setHMin}
-                  ariaLabel="Tirante mínimo sobre bomba"
-                  style={SI}
-                />,
-                'm',
-                '—',
-                'Evita cavitación',
-              ],
-              [
-                'Tirante máximo antes de arrancar',
-                'h max',
-                <Inp
-                  disabled={!editP4}
-                  v={hMax}
-                  set={setHMax}
-                  ariaLabel="Tirante máximo"
-                  style={SI}
-                />,
-                'm',
-                '—',
-                'Nivel activación flotador',
-              ],
-              [
-                'Ancho mínimo cámara',
-                'b cam',
-                <Inp
-                  disabled={!editP4}
-                  v={bCam}
-                  set={setBCam}
-                  ariaLabel="Ancho mínimo cámara"
-                  style={SI}
-                />,
-                'm',
-                '—',
-                'NTC 1500 §8.5 — mínimo 60 cm',
-              ],
-              [
-                'Largo mínimo cámara',
-                'l cam',
-                <Inp
-                  disabled={!editP4}
-                  v={lCam}
-                  set={setLCam}
-                  ariaLabel="Largo mínimo cámara"
-                  style={SI}
-                />,
-                'm',
-                '—',
-                'Verificar con dimensiones bomba',
-              ],
-              [
-                'Volumen geométrico disponible',
-                'V geo',
-                Fmt(Vgeo),
-                'm³',
-                Vgeo ? (
-                  Fmt((Vgeo * 1000).toFixed(2), 'lts')
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-                'b×l×(h max−h min)',
-              ],
-              [
-                'Chequeo volumen',
-                'V chk',
-                <span
-                  style={{
-                    color: Vchk === 'O.K.' ? '#22c55e' : '#ef5350',
-                    fontWeight: 700,
-                    fontFamily: 'var(--mono)',
-                  }}
-                >
-                  {Vchk || '—'}
-                </span>,
-                '—',
-                '—',
-                'V geo ≥ V cam requerido',
-              ],
-            ].map((r, i) => (
-              <tr key={i}>
-                {r.map((c, j) => (
-                  <td
-                    key={j}
-                    style={
-                      j === 0
-                        ? { ...TDL2, color: '#fff' }
-                        : j === 2
-                          ? { ...TD2, width: '1%', whiteSpace: 'nowrap' }
-                          : TD2
-                    }
-                  >
-                    {c}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--r)',
-          overflow: 'hidden',
-          background: 'var(--bg)',
-        }}
-      >
-        <div className="card-h" style={{ padding: '8px 8px' }}>
-          <h3 className="card-t">
-            <img
-              src="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
-              alt="Especificación cámara de bombeo"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Especificación — Cámara de bombeo
-          </h3>
-        </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <caption style={BombaARDesign_S5}>Especificación — Cámara de bombeo</caption>
-          <thead>
-            <tr>
-              {['Ítem', 'Valor'].map((c, i) => (
-                <th scope="col" key={i} style={TH2}>
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['Volumen útil requerido', Fmt(Vcam, 'lts')],
-              [
-                'Dimensiones mínimas (m)',
-                bc && lc && hmx - hmn ? (
-                  <span
-                    style={{ fontFamily: 'var(--mono)' }}
-                  >{`${bc} x ${lc} x ${(hmx - hmn).toFixed(2)}`}</span>
-                ) : (
-                  <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>
-                ),
-              ],
-              ['Material', 'Concreto impermeabilizado o polietileno PEAD'],
-              [
-                'Accesorios obligatorios',
-                'Rejilla aguas arriba + ventilación Ø2" + alarma nivel alto',
-              ],
-            ].map((r, i) => (
-              <tr key={i}>
-                {r.map((c, j) => (
-                  <td key={j} style={j === 0 ? { ...TDL2, color: '#fff' } : TD2}>
-                    {c}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
-  const page5 = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-      <Tbl
-        cols={['Bomba', 'Nivel', 'Unidades acumuladas del sótano']}
-        rows={equiposBomba.map((e) => [e.code, e.nivel, String(e.uds)])}
-        caption="Equipos de bomba de aguas residuales — UDs transferidas desde el sótano (automático, no editable)"
-      />
-      {equiposBomba.length === 0 && (
+        <Tbl
+          thStyle={TH2}
+          tdStyle={TD2}
+          fontSize={13}
+          cols={[
+            'Bomba',
+            'Nivel',
+            'UD sótano',
+            'Salidas simult.',
+            'K',
+            'Qd (lps)',
+            'Qb (lps)',
+            'Alt. geom. (m)',
+            'Long. imp. (m)',
+            'Diám. imp. (pulg)',
+            'Tipo de tubería',
+            'C HW',
+            'P desc. (m.c.a.)',
+            'η',
+            'F. servicio',
+          ]}
+          rows={rowsView.map((r) => [
+            bombCell(r.code),
+            r.nivel,
+            String(r.uds),
+            <CellInp code={r.code} k="sal" aria="Salidas simultáneas" w={70} />,
+            Fmt2(r.c.K),
+            Fmt2(r.c.Qd),
+            Fmt2(r.c.Qb),
+            <CellInp code={r.code} k="hz" aria="Altura geométrica" w={70} />,
+            <CellInp code={r.code} k="lImp" aria="Longitud impulsión" w={70} />,
+            <CellInp code={r.code} k="dImp" aria="Diámetro impulsión" w={70} />,
+            <CellSel code={r.code} aria="Tipo de tubería" />,
+            String(cHazenDe(r.inp.tipoTuberia)),
+            <CellInp code={r.code} k="pDesc" aria="Presión mínima descarga" w={70} />,
+            <CellInp code={r.code} k="etaB" aria="Eficiencia bomba" w={60} />,
+            <CellInp code={r.code} k="fSrv" aria="Factor de servicio" w={60} />,
+          ])}
+        />
+      </Card>
+      {sinBombas && (
         <div style={{ fontSize: 12, color: 'var(--txt3)' }}>
           Sin bombas creadas. Crea una bomba desde el menú contextual de una caja en el visor.
         </div>
       )}
+    </div>
+  );
+
+  // ---- Página 2: Pérdidas de carga (transpuesta) ----
+  const page2 = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+      <Card
+        icon="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
+        title="Cálculo de pérdidas de carga"
+      >
+        <Tbl
+          thStyle={TH2}
+          tdStyle={TD2}
+          fontSize={13}
+          cols={[
+            'Bomba',
+            'Nivel',
+            'V imp (m/s)',
+            'Hf (m.c.a.)',
+            'H ac (m.c.a.)',
+            'H fri (m.c.a.)',
+            'H est (m.c.a.)',
+            'Hm (m.c.a.)',
+            'Chequeo V',
+          ]}
+          rows={rowsView.map((r) => [
+            bombCell(r.code),
+            r.nivel,
+            Fmt2(r.c.Vi),
+            Fmt2(r.c.Hf),
+            Fmt2(r.c.Hac),
+            Fmt2(r.c.Hfri),
+            Fmt2(r.c.Hest),
+            Fmt2(r.c.Hm),
+            <span
+              style={{
+                color: r.c.Vch === 'O.K.' ? '#22c55e' : '#ef5350',
+                fontWeight: 700,
+                fontFamily: 'var(--mono)',
+                fontSize: 13,
+              }}
+            >
+              {r.c.Vch}
+            </span>,
+          ])}
+        />
+      </Card>
+      {sinBombas && <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Sin bombas creadas.</div>}
+    </div>
+  );
+
+  // ---- Página 3: Bomba sumergible (transpuesta) ----
+  const page3 = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+      <Card
+        icon="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
+        title="Parámetros de diseño bomba sumergible"
+      >
+        <Tbl
+          thStyle={TH2}
+          tdStyle={TD2}
+          fontSize={13}
+          cols={['Bomba', 'Nivel', 'NPSH disp (m)']}
+          rows={rowsView.map((r) => [
+            bombCell(r.code),
+            r.nivel,
+            <CellInp code={r.code} k="npsh" aria="NPSH disponible" w={70} />,
+          ])}
+        />
+      </Card>
+      <Card
+        icon="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
+        title="Especificación — Bomba sumergible trituradora"
+      >
+        <Tbl
+          thStyle={TH2}
+          tdStyle={TD2}
+          fontSize={13}
+          cols={[
+            'Bomba',
+            'Nivel',
+            'Qb (lps)',
+            'Hm (m.c.a.)',
+            'P hid (W)',
+            'P eje (W)',
+            'P com (W)',
+            'Potencia (HP)',
+            'Selección',
+          ]}
+          rows={rowsView.map((r) => [
+            bombCell(r.code),
+            r.nivel,
+            Fmt2(r.c.Qb),
+            Fmt2(r.c.Hm),
+            Fmt2(r.c.Ph),
+            Fmt2(r.c.Peje),
+            Fmt2(r.c.Pcom),
+            Fmt2(r.c.php, 'HP'),
+            <span style={{ fontWeight: 700, fontFamily: 'var(--mono)' }}>{r.c.Sel}</span>,
+          ])}
+        />
+      </Card>
+      {sinBombas && <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Sin bombas creadas.</div>}
+    </div>
+  );
+
+  const page4 = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+      <Card
+        icon="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
+        title="Parámetros de diseño cámara de bombeo"
+      >
+        <Tbl
+          thStyle={TH2}
+          tdStyle={TD2}
+          fontSize={13}
+          cols={[
+            'Bomba',
+            'Nivel',
+            'T. ciclo (min)',
+            'Tirante min (m)',
+            'Tirante max (m)',
+            'Ancho (m)',
+            'Largo (m)',
+          ]}
+          rows={rowsView.map((r) => [
+            bombCell(r.code),
+            r.nivel,
+            <CellInp code={r.code} k="tCic" aria="Tiempo ciclo" w={70} />,
+            <CellInp code={r.code} k="hMin" aria="Tirante mínimo" w={70} />,
+            <CellInp code={r.code} k="hMax" aria="Tirante máximo" w={70} />,
+            <CellInp code={r.code} k="bCam" aria="Ancho cámara" w={70} />,
+            <CellInp code={r.code} k="lCam" aria="Largo cámara" w={70} />,
+          ])}
+        />
+      </Card>
+      <Card
+        icon="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
+        title="Especificación — Cámara de bombeo"
+      >
+        <Tbl
+          thStyle={TH2}
+          tdStyle={TD2}
+          fontSize={13}
+          cols={['Bomba', 'Nivel', 'V útil (lts)', 'V geom (lts)', 'Chequeo']}
+          rows={rowsView.map((r) => [
+            bombCell(r.code),
+            r.nivel,
+            Fmt2(r.c.Vcam),
+            Fmt2(r.c.Vgeo),
+            <span
+              style={{
+                color: r.c.Vchk === 'O.K.' ? '#22c55e' : '#ef5350',
+                fontWeight: 700,
+                fontFamily: 'var(--mono)',
+                fontSize: 13,
+              }}
+            >
+              {r.c.Vchk}
+            </span>,
+          ])}
+        />
+        <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '6px 8px' }}>
+          Material: concreto impermeabilizado o polietileno PEAD. Accesorios obligatorios: rejilla
+          aguas arriba + ventilación Ø2" + alarma de nivel alto.
+        </div>
+      </Card>
+      {sinBombas && <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Sin bombas creadas.</div>}
     </div>
   );
 
@@ -1184,18 +661,11 @@ function BombaARDesign() {
       t: 'Bomba sumergible trituradora',
       icon: '/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp',
       c: page3,
-      noWrap: true,
     },
     {
       t: 'Cámara de bombeo (pozo húmedo)',
       icon: '/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp',
       c: page4,
-      noWrap: true,
-    },
-    {
-      t: 'Equipos de bomba',
-      icon: '/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp',
-      c: page5,
     },
   ];
 
@@ -1207,15 +677,9 @@ function BombaARDesign() {
       <PageNav
         page={bp}
         setPage={setBp}
-        total={5}
+        total={4}
         color="var(--bom)"
-        labels={[
-          'Datos de entrada',
-          'Pérdidas de carga',
-          'Bomba sumergible',
-          'Cámara bombeo',
-          'Equipos de bomba',
-        ]}
+        labels={['Datos de entrada', 'Pérdidas de carga', 'Bomba sumergible', 'Cámara de bombeo']}
       />
       <div
         style={{
@@ -1226,57 +690,21 @@ function BombaARDesign() {
           alignItems: 'center',
         }}
       >
-        {pages[bp - 1].noWrap ? (
-          <div
-            style={{
-              width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              flex: 1,
-              padding: '0 10px',
-              boxSizing: 'border-box',
-              overflowY: 'auto',
-            }}
-          >
-            {pages[bp - 1].c}
-          </div>
-        ) : (
-          <div
-            style={{
-              width: '90%',
-              maxWidth: 900,
-              overflowY: 'auto',
-              borderRadius: 'var(--r)',
-              border: '1px solid var(--line)',
-            }}
-          >
-            <div
-              className="card-h"
-              style={{
-                padding: '8px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <h3 className="card-t">
-                <img
-                  src={pages[bp - 1].icon}
-                  alt=""
-                  width={24}
-                  height={24}
-                  style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-                  loading="lazy"
-                />
-                {pages[bp - 1].t}
-              </h3>
-              {bp === 1 && <EditButton edit={editP1} setEdit={setEditP1} />}
-            </div>
-            <div style={{ flex: 1, padding: 0, overflow: 'auto' }}>{pages[bp - 1].c}</div>
-          </div>
-        )}
+        <div
+          style={{
+            width: '100%',
+            overflowY: 'auto',
+            borderRadius: 'var(--r)',
+            border: '1px solid var(--line)',
+            padding: '0 10px',
+            boxSizing: 'border-box',
+          }}
+        >
+          {pages[bp - 1].c}
+        </div>
       </div>
     </div>
   );
 }
-export default React.memo(BombaARDesign);
+
+export default BombaARDesign;

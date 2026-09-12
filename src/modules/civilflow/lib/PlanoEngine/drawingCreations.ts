@@ -934,20 +934,20 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
  *  caja (orig. usuario). Un snapshot de historial por creación. */
 export function handleCreateBomba(engine: IPlanoEngineCore, caja: PlanoBajante): void {
   if (caja.tipo !== 'caja_san' && caja.tipo !== 'caja_ll') return;
-  // Restricción (orig. usuario): UNA bomba por piso — basta que exista cualquier bomba en el
-  // piso cargado (engine.bajantes ES el piso activo).
-  const existente = engine.bajantes.find((b) => b.tipo === 'bomba');
+  // Una bomba por CAJA (por piso puede haber varias — cálculos por bomba, orig. usuario).
+  const existente = engine.bajantes.find((b) => b.tipo === 'bomba' && b.cajaOrigenId === caja.id);
   if (existente) {
     engine.triggerAlert(
-      'Ya existe una bomba en este piso',
-      `Solo se permite una bomba por piso: ${existente.code || existente.id} ya está creada aquí.`,
+      'La caja ya tiene bomba',
+      `Esta caja ya tiene la bomba ${existente.code || existente.id} asociada.`,
     );
     return;
   }
+  // Código único BOMAN<consecutivo>-<piso> (orig. usuario): el consecutivo cuenta las bombas
+  // ya creadas en el piso cargado; unicidad garantizada contra los códigos vivos.
   const nivelN = Number(engine.nivelActual?.n ?? 0);
-  // Código único BOMAN-<pisoCorto>: escanea los códigos vivos del piso (mismo nivel →
-  // mismo sufijo; si ya existe BOMAN-S1 en ESTE piso, añade consecutivo BOMAN-S1-2).
-  const base = `BOMAN-${pisoCorto(nivelN) || 'P0'}`;
+  const consec = engine.bajantes.filter((b) => b.tipo === 'bomba').length + 1;
+  const base = `BOMAN${consec}-${pisoCorto(nivelN) || 'P0'}`;
   let code = base;
   let n = 2;
   const codes = new Set(engine.bajantes.map((b) => b.code || b.id));
