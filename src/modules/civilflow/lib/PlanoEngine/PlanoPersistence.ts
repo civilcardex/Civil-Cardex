@@ -28,6 +28,25 @@ export interface PlanoWorkData {
   crossFloorGhosts?: unknown[];
 }
 
+/** Dedup por id (queda la ÚLTIMA aparición): datos de sesiones con bugs viejos traen el mismo
+ *  bajante/ramal dos veces en un piso — el RPC lo rechaza entero ("ON CONFLICT DO UPDATE
+ *  cannot affect row a second time", 500) y React se queja de keys duplicadas; además las dos
+ *  copias se pelean escribiendo la herencia en cada pasada (bucle de setState). */
+export function dedupPorId<T>(lista: T[]): T[] {
+  const pos = new Map<string, number>();
+  const out: T[] = [];
+  for (const el of lista) {
+    const id = ((el as { id?: string } | null)?.id || '') + '';
+    const i = id ? pos.get(id) : undefined;
+    if (i !== undefined) out[i] = el;
+    else {
+      if (id) pos.set(id, out.length);
+      out.push(el);
+    }
+  }
+  return out;
+}
+
 export function serializeWork(engine: {
   scaleM: number;
   definedScaleM: number;
@@ -68,14 +87,14 @@ export function serializeWork(engine: {
     offY: engine.offY,
     lineWidth: engine.lineWidthScale,
     nets: NETS.map((n) => ({ id: n.id, col: n.col })),
-    ramales: stripRenderCache(engine.ramales),
-    dims: stripRenderCache(engine.dims),
-    textAnnots: stripRenderCache(engine.textAnnots),
-    bajantes: stripRenderCache(engine.bajantes),
-    areas: stripRenderCache(engine.areas),
+    ramales: dedupPorId(stripRenderCache(engine.ramales)),
+    dims: dedupPorId(stripRenderCache(engine.dims)),
+    textAnnots: dedupPorId(stripRenderCache(engine.textAnnots)),
+    bajantes: dedupPorId(stripRenderCache(engine.bajantes)),
+    areas: dedupPorId(stripRenderCache(engine.areas)),
     nptLevels: engine.nptLevels,
     crossFloorGhosts: engine.crossFloorGhosts,
-    guideLines: stripRenderCache(engine.guideLines),
+    guideLines: dedupPorId(stripRenderCache(engine.guideLines)),
   };
 }
 
@@ -110,26 +129,28 @@ export function applyWorkData(
   engine.offX = d.offX ?? 0;
   engine.offY = d.offY ?? 0;
   engine.lineWidthScale = d.lineWidth && d.lineWidth > 0 ? d.lineWidth : 1;
-  engine.ramales = d.ramales || [];
-  engine.dims = d.dims || [];
-  engine.textAnnots = d.textAnnots || [];
+  engine.ramales = dedupPorId(d.ramales || []);
+  engine.dims = dedupPorId(d.dims || []);
+  engine.textAnnots = dedupPorId(d.textAnnots || []);
   // Migración: los canales recolectores usaban el prefijo de código CALL{n}-P{n}, reservado
   // ahora para las cajas de aguas lluvias (tipo caja_ll). Canales → CNL{n}-P{n}.
-  engine.bajantes = (d.bajantes || []).map((b) => {
-    const bb = b as { tipo?: string; code?: string; id?: string };
-    if (bb.tipo === 'canal' && typeof bb.code === 'string' && bb.code.startsWith('CALL')) {
-      bb.code = 'CNL' + bb.code.slice(4);
-    }
-    return b;
-  });
-  engine.areas = d.areas || [];
+  engine.bajantes = dedupPorId(
+    (d.bajantes || []).map((b) => {
+      const bb = b as { tipo?: string; code?: string; id?: string };
+      if (bb.tipo === 'canal' && typeof bb.code === 'string' && bb.code.startsWith('CALL')) {
+        bb.code = 'CNL' + bb.code.slice(4);
+      }
+      return b;
+    }),
+  );
+  engine.areas = dedupPorId(d.areas || []);
   engine.nptLevels = d.nptLevels || [];
   // Fantasmas entre pisos se cargan tal cual: son el AVISO del enlace de asociación. Los
   // residuales de bajantes copiados se limpian al copiar (copyDrawingFromPlan), no aquí.
   engine.crossFloorGhosts = d.crossFloorGhosts?.length
     ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[])
     : [];
-  engine.guideLines = d.guideLines || [];
+  engine.guideLines = dedupPorId(d.guideLines || []);
   // Retro-propagación de diámetros al cargar (orig. usuario): dibujos guardados ANTES de que
   // existiera la propagación quedaron con receptores vacíos/menores aunque sus llegadores ya
   // tenían diámetro (RS1 4" + RS2 2" → RS3 vacío). Cada trazo con diámetro propaga su mayor;
