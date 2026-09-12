@@ -364,7 +364,7 @@ function PdfViewer_({
   // sesión mientras siga inválido (se rehabilita al corregirse).
   const aparatoFlowAlertedRef = useRef<Set<string>>(new Set());
 
-  const { saveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
+  const { saveStatus, setSaveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
     engineRef,
     currentIdRef,
     planosCtx.plans,
@@ -914,6 +914,10 @@ function PdfViewer_({
       setBdError(
         detail?.message ? `${detail.reason}: ${detail.message}` : detail?.reason || 'error',
       );
+      // El texto del botón Guardar usa saveStatus (que doSave pone en 'saved' sin mirar el
+      // resultado del push a BD): sin esto, la franja quedaba roja mientras abajo decía
+      // "✔ Guardado" (orig. usuario).
+      setSaveStatus('error');
     };
     window.addEventListener('civilflow_bd_save_error', onBdError);
     const onBdOk = () => setBdError(null);
@@ -925,6 +929,7 @@ function PdfViewer_({
       setBdError(
         `almacenamiento local lleno (clave ${detail?.key || '?'}): libera espacio del navegador`,
       );
+      setSaveStatus('error');
     };
     window.addEventListener('civilflow_local_quota', onQuota);
     const onQuotaOk = () => setBdError(null);
@@ -935,7 +940,7 @@ function PdfViewer_({
       window.removeEventListener('civilflow_local_quota', onQuota);
       window.removeEventListener('civilflow_local_quota_ok', onQuotaOk);
     };
-  }, []);
+  }, [setSaveStatus]);
 
   const resetKey = activeNet + '|' + tipoTramo;
   useEffect(() => {
