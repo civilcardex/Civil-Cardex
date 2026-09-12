@@ -6,8 +6,9 @@ import {
 } from '../../constants/storage-keys';
 import { copyDrawingFromPlan } from '../copyDrawingFromPlan';
 
-// Copiar elementos solo copia la POSICIÓN: geometría + estructura remapeada, sin ningún
-// dato hidráulico (diámetros, materiales, accesorios, aparatos, conteos).
+// Copiar elementos copia TODO: geometría + estructura remapeada + datos hidráulicos
+// (diámetros, materiales, accesorios, aparatos, fixtures) y conteos remapeados a los ids
+// nuevos del piso destino (orig. usuario).
 
 function seedSource() {
   localStorage.setItem(
@@ -68,6 +69,7 @@ function seedSource() {
           ucAcum: 7,
           ucExtra: 0,
           area_m2: 1,
+          ucAplicado: { RS1: { san: 1 }, RS9: { san: 5 } },
           descargaEnId: '1|BAN9',
           desplazamientos: { P9: { dx: 1, dy: 1 } },
         },
@@ -82,7 +84,7 @@ function seedSource() {
     'civilflow_' + HYDRO_DATA_STORAGE_KEY,
     JSON.stringify({ san_RS1_99: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 0 } }),
   );
-  localStorage.setItem('civilflow_' + GAS_ACC_KEY, JSON.stringify({}));
+  localStorage.setItem('civilflow_' + GAS_ACC_KEY, JSON.stringify({ gas_RS1_99: { acc: 1 } }));
 }
 
 function makeEngine() {
@@ -104,14 +106,15 @@ const readApos = () =>
   JSON.parse(localStorage.getItem('civilflow_' + APARATOS_BY_TRAMO_KEY) || '{}');
 const readHidro = () =>
   JSON.parse(localStorage.getItem('civilflow_' + HYDRO_DATA_STORAGE_KEY) || '{}');
+const readGas = () => JSON.parse(localStorage.getItem('civilflow_' + GAS_ACC_KEY) || '{}');
 
 beforeEach(() => {
   localStorage.clear();
   seedSource();
 });
 
-describe('copyDrawingFromPlan solo posición', () => {
-  it('geometría idéntica, datos reseteados, conteos sin claves nuevas, estructura remapeada', () => {
+describe('copyDrawingFromPlan copia todo', () => {
+  it('geometría + hidráulicos + conteos remapeados; estructura y origen intactos', () => {
     const eng = makeEngine();
     // El piso destino ya tiene su RS1: la copia toma el consecutivo siguiente
     eng.ramales.push({
@@ -138,11 +141,12 @@ describe('copyDrawingFromPlan solo posición', () => {
       [100, 0],
     ]);
     expect(rs.id).toBe('RS2');
-    expect(rs.diametro).toBe('');
-    expect(rs.material).toBe('');
-    expect(rs.accesorioFin || '').toBe('');
-    expect(rs.aparatoInicio || '').toBe('');
-    expect(rs.uc).toBe(0);
+    // Datos hidráulicos viajan
+    expect(rs.diametro).toBe('4"');
+    expect(rs.material).toBe('PVC-S');
+    expect(rs.accesorioFin).toBe('codo90rmSube');
+    expect(rs.aparatoInicio).toBe('san');
+    expect(rs.uc).toBe(3);
 
     const trib = eng.ramales.find((r) => r.tipo === 'tributario') as unknown as Record<
       string,
@@ -154,21 +158,30 @@ describe('copyDrawingFromPlan solo posición', () => {
     ]);
     // Estructura: el padre apunta al ramal NUEVO, no al viejo RS1
     expect(trib.padre).toBe(rs.id);
-    expect(trib.diametro).toBe('');
+    expect(trib.diametro).toBe('2"');
 
     const bj = eng.bajantes.find((b) => b.id !== undefined) as unknown as Record<string, unknown>;
     expect([bj.x, bj.y]).toEqual([0, 0]);
-    expect(bj.dNominal).toBe('');
-    expect(bj.ucAcum).toBe(0);
+    expect(bj.dNominal).toBe('4"');
+    expect(bj.ucAcum).toBe(7);
     expect(bj.recibeDeIds).toEqual([rs.id]);
+    // Libro de herencia remapeado (RS1→RS2) y sin el id no copiado (RS9 fuera)
+    expect(bj.ucAplicado).toEqual({ [rs.id as string]: { san: 1 } });
     // Punteros entre pisos fuera
     expect(bj.descargaEnId ?? null).toBeNull();
     expect(bj.desplazamientos).toBeUndefined();
 
-    // Sin claves nuevas de conteos en el piso destino
-    expect(Object.keys(readApos()).filter((k) => k.endsWith('_100'))).toEqual([]);
-    expect(Object.keys(readHidro()).filter((k) => k.endsWith('_100'))).toEqual([]);
+    // Conteos remapeados al piso destino con los ids nuevos
+    expect(readApos()[`san_${rs.id}_100`]).toEqual({ san: 1 });
+    expect(readApos()[`san_${bj.id}_100`]).toEqual({ duc: 2 });
+    expect(readHidro()[`san_${rs.id}_100`]).toEqual({
+      accesorios: { codo90rmSube: 1 },
+      Lh: 0,
+      nSalidas: 0,
+    });
+    expect(readGas()[`gas_${rs.id}_100`]).toEqual({ acc: 1 });
     // Origen intacto
     expect(readApos()['san_RS1_99']).toEqual({ san: 1 });
+    expect(readApos()['san_BAN1_99']).toEqual({ duc: 2 });
   });
 });

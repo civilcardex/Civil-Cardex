@@ -1,4 +1,9 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import {
+  APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+  GAS_ACC_KEY,
+} from '../constants/storage-keys';
 import { NETS, uniqRamalId } from '../lib/PlanoEngine/PlanoState';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 
@@ -40,55 +45,59 @@ interface CopyElement {
   ghostData?: unknown;
 }
 
-// Solo posición (orig. usuario): resetea TODO dato hidráulico/de cálculo de los elementos
-// copiados, conservando geometría (pts/x/y), identidad nueva y estructura remapeada
-// (padre/recibe/alimenta/ini/fin entre copiados — eso lo resolvió el bloque de referencias).
-// Los conteos de aparatos/hidro/gas NO viajan (se asignan de nuevo en el piso destino).
-function stripToPosition(els: CopyElement[]): void {
-  for (const el of els) {
-    const rec = el as unknown as Record<string, unknown>;
-    // Ramales: sin diámetro, material, pendiente, accesorios, aparatos ni conteos viajeros
-    // ('' explícito donde el motor espera string).
-    rec.diametro = '';
-    rec.material = '';
-    delete rec.accesorioInicio;
-    delete rec.accesorioFin;
-    delete rec.diametroInicio;
-    delete rec.diametroFin;
-    delete rec.accMed;
-    delete rec.aparatoInicio;
-    delete rec.aparatoFin;
-    delete rec.fixtures;
-    delete rec.hydroAcc;
-    delete rec.gasAcc;
-    delete rec.caudal;
-    delete rec.yeeDobleAt;
-    delete rec.sifonLabelIni;
-    delete rec.sifonLabelFin;
-    delete rec.mergesFrom;
-    rec.pendiente = 0;
-    rec.uc = 0;
-    rec.nSalidas = 1;
-    // Bajantes/globales: sin diámetro nominal, acumulados, áreas ni capacidades.
-    rec.dNominal = '';
-    delete rec.aparato;
-    delete rec.capacidad;
-    delete rec.factorSim;
-    delete rec.base;
-    delete rec.altura;
-    delete rec.longitud;
-    delete rec.canalId;
-    rec.ucAcum = 0;
-    rec.ucExtra = 0;
-    rec.area_m2 = 0;
-    rec.hVert = 0;
+// Copia total (orig. usuario): los datos hidráulicos SÍ viajan — diámetros, materiales,
+// accesorios, aparatos, fixtures y conteos (remapeados a los ids nuevos del piso destino).
+// Solo se descartan cachés de render/fantasmas y punteros entre pisos (descargaEnId/origenId),
+// que referencian otro piso y ya no significan nada en el destino.
+function copyStoreKeys(
+  pairs: Array<{ oldId: string; newId: string }>,
+  netId: string,
+  srcPid: string,
+  dstPid: string,
+): void {
+  if (pairs.length === 0) return;
+  const aparatos = loadFromStorage<Record<string, Record<string, number>>>(
+    APARATOS_BY_TRAMO_KEY,
+    {},
+  );
+  const hidro = loadFromStorage<
+    Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+  >(HYDRO_DATA_STORAGE_KEY, {});
+  const gas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
+  let aC = false;
+  let hC = false;
+  let gC = false;
+  for (const { oldId, newId } of pairs) {
+    const from = `${netId}_${oldId}_${srcPid}`;
+    const to = `${netId}_${newId}_${dstPid}`;
+    if (aparatos[from] && !aparatos[to]) {
+      aparatos[to] = { ...aparatos[from] };
+      aC = true;
+    }
+    if (hidro[from] && !hidro[to]) {
+      hidro[to] = { ...hidro[from], accesorios: { ...(hidro[from].accesorios || {}) } };
+      hC = true;
+    }
+    // Gas vive como `gas_<id>_<plan>` (y legado `gas_<id>` sin plan, compartido — ese no
+    // se toca: copiarlo duplicaría el conteo en el piso origen).
+    const gFrom = `gas_${oldId}_${srcPid}`;
+    const gTo = `gas_${newId}_${dstPid}`;
+    const gVal = gas[gFrom] ?? gas[`gas_${oldId}`];
+    if (gVal && !gas[gTo]) {
+      gas[gTo] = { ...gVal };
+      gC = true;
+    }
   }
+  if (aC) saveToStorage(APARATOS_BY_TRAMO_KEY, aparatos);
+  if (hC) saveToStorage(HYDRO_DATA_STORAGE_KEY, hidro);
+  if (gC) saveToStorage(GAS_ACC_KEY, gas);
 }
 
 /**
  * Copia elementos filtrados por red/tipo de un plano origen a uno destino, renumerando ids.
- * Solo copia la POSICIÓN (geometría + estructura remapeada): nada de datos hidráulicos.
- * Filtra redes ocultas y tipos no seleccionados; preserva asociaciones y recalcula totales.
+ * Copia TODO (geometría + diámetros, materiales, accesorios, aparatos, fixtures y conteos
+ * remapeados a los ids nuevos). Filtra redes ocultas y tipos no seleccionados; preserva
+ * asociaciones y recalcula totales.
  * @param engine - Motor destino (se usa para renumerar y persistir).
  * @param targetPlanId - Id del plano destino.
  * @param sourcePlanId - Id del plano origen.
@@ -147,6 +156,7 @@ export function copyDrawingFromPlan(
     if (srcRamales.length === 0 && srcBajantes.length === 0 && srcGlobals.length === 0) continue;
 
     const srcAll = [...srcRamales, ...srcBajantes, ...srcGlobals];
+    const knownIds = new Set(Object.keys(oldToNew));
 
     /* ── Los elementos del piso destino SE CONSERVAN (orig. usuario) ── */
     /* Antes se borraban los coincidentes (misma red+tipo) y los contadores reiniciaban en 1,
@@ -352,11 +362,36 @@ export function copyDrawingFromPlan(
       delete el.isFantasma;
       delete el.ghostData;
     }
-    // Solo posición (orig. usuario): la copia conserva geometría (pts/x/y) y estructura
-    // remapeada (padre/recibe/alimenta/ini/fin entre copiados), pero NINGÚN dato hidráulico:
-    // sin diámetros, materiales, accesorios, aparatos ni conteos. Lo que pida diámetro o
-    // aparato se asigna de nuevo en el piso destino.
-    stripToPosition(srcAll);
+    // Copia total (orig. usuario): geometría + estructura remapeada + TODOS los datos
+    // hidráulicos (diámetros, materiales, accesorios, aparatos, fixtures) y los conteos
+    // remapeados a los ids nuevos del piso destino.
+    const selPairs = Object.keys(oldToNew)
+      .filter((k) => !knownIds.has(k))
+      .map((k) => ({ oldId: k, newId: oldToNew[k] }));
+    // mergesFrom: remapear a los ids nuevos; sin sus piezas, se suelta (colgaría un
+    // downstream de un upstream que no existe en el destino).
+    for (const r of srcRamales as unknown as { mergesFrom?: unknown }[]) {
+      if (!Array.isArray(r.mergesFrom)) continue;
+      const m = (r.mergesFrom as string[]).map((id) => oldToNew[id]).filter(Boolean);
+      if (m.length) r.mergesFrom = m;
+      else delete r.mergesFrom;
+    }
+    // Libros de herencia (ucAplicado/ucAplicadoHidro): sus claves son ids de ramales
+    // destino — remapear los copiados, soltar el resto (acreditarían UDs de trazos que no
+    // existen en el destino).
+    for (const b of [...srcBajantes, ...srcGlobals] as unknown as Record<string, unknown>[]) {
+      for (const k of ['ucAplicado', 'ucAplicadoHidro'] as const) {
+        const book = b[k] as Record<string, Record<string, number>> | undefined;
+        if (!book || typeof book !== 'object') continue;
+        const nb: Record<string, Record<string, number>> = {};
+        for (const [dk, dv] of Object.entries(book)) {
+          if (oldToNew[dk]) nb[oldToNew[dk]] = dv;
+        }
+        if (Object.keys(nb).length) b[k] = nb;
+        else delete b[k];
+      }
+    }
+    copyStoreKeys(selPairs, netId, srcPid, String(targetPlanId));
     // Los punteros de asociación entre pisos (descargaEnId/origenId) referencian un bajante
     // específico en OTRO piso específico — copiar el elemento a un piso nuevo bajo un id nuevo
     // vuelve obsoleto cualquier puntero así (o apunta a la nada, o peor, a algún bajante no
