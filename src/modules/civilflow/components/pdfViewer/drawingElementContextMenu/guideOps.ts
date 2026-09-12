@@ -26,7 +26,7 @@ import { asociarRamalABajantes } from '../../../lib/PlanoEngine/drawingUtils';
 // Sin el límite del lado guía, la EXTENSIÓN de otro segmento de la guía producía cruces
 // fantasma lejísimos del toque real (la vertical de una guía en L cruzando el tronco "por
 // extensión") y la conversión validaba contra un punto de conexión inexistente.
-export function intersectGuideWithSegment(
+function intersectGuideWithSegment(
   p0: number[],
   p1: number[],
   q0: number[],
@@ -593,7 +593,8 @@ export function buildTribFromGuide(
     // la etiqueta del canvas no mostraba material (matDrawingLabel('') = ''), a diferencia de
     // los ramales dibujados a mano, que lo heredan de _ramalDefaults en finishRamal.
     material: padre.material || eng._ramalDefaults?.material || '',
-    diametro: '',
+    // Red vent: nace en 2" como los trazos dibujados a mano (orig. usuario).
+    diametro: padre.net === 'vent' ? '2"' : '',
     pendiente: 2,
     bloqueado: true,
     _tribReversed: tribReversedForFlow,
@@ -696,7 +697,7 @@ export function buildTribFromGuide(
 // extremo coincide con el punto de la unión de conversión, para que no quede el glifo "C90"/tee
 // persistido por código viejo. El codo de SEGMENTOS (arco) que sí se quiere se asigna DESPUÉS,
 // por resolveGuideJunctionAccessory, en el handler del botón.
-export function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, number]): void {
+function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, number]): void {
   const TOL = 0.5;
   for (const r of eng.ramales) {
     if (!r.pts || r.pts.length < 2) continue;

@@ -160,7 +160,8 @@ export function GuideLineMenu() {
               (crossing && eng.ramales.find((r) => r.id === crossing.ramalId)?.material) ||
               eng._ramalDefaults?.material ||
               '',
-            diametro: '',
+            // Red vent: nace en 2" como los trazos dibujados a mano (orig. usuario).
+            diametro: effectiveNet === 'vent' ? '2"' : '',
             pendiente: 2,
             bloqueado: false,
             // Sin glifos de accesorio en los dobleces internos: los codos dibujados son parte

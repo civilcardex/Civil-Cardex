@@ -377,8 +377,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     // Ítem usuario (diámetro inicial): todo trazo nace SIN diámetro asignado — solo un
     // default explícito del usuario (def.diametro) o una acción posterior (asignar aparato,
     // herencia de ramales que toca) lo establece. Sin default manda '' (el cierre marca
-    // "Diámetros pendientes" hasta asignarlo).
-    diametro: def.diametro || '',
+    // "Diámetros pendientes" hasta asignarlo). EXCEPCIÓN (orig. usuario): la red de
+    // ventilación nace en 2" (igual que sus bajantes/montantes) — cuenta como default de
+    // regla, no explícito: la herencia aún puede mejorarlo (diametroBornDefault intacto).
+    diametro: def.diametro || (engine.activeRamal!.net === 'vent' ? '2"' : ''),
     // Ítem 4: los ramales sanitarios nuevos nacen con pendiente por defecto 2% cuando no se
     // eligió explícitamente otra. El default del selector para san ya trae DEFAULT_PENDIENTE_PCT
     // desde PdfViewer; este fallback cubre el caso de _ramalDefaults ausente o pendiente sin

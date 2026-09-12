@@ -71,8 +71,3 @@ export function sanMaxFeederDiam(
 export function sanFeederMinMsg(feederLabel: string, feederPulg: number): string {
   return `El ramal recibe la descarga de ${feederLabel} (${feederPulg}"). Su diámetro no puede ser menor a ${feederPulg}". Aumenta el diámetro del receptor o reduce primero el del ramal que descarga.`;
 }
-
-/** Mensaje canónico cuando el alimentador quedaría mayor que su receptor. */
-export function sanReceptorMaxMsg(receptorLabel: string, receptorPulg: number): string {
-  return `El ramal descarga en ${receptorLabel} (${receptorPulg}"). Su diámetro no puede ser mayor a ${receptorPulg}". Reduce este diámetro o aumenta primero el del ramal que lo recibe.`;
-}

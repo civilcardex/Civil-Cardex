@@ -406,11 +406,17 @@ export function BajanteEditor({
                   );
                 const recibidos = selElement.recibeDeIds || [];
                 const alimentan = selElement.alimentaIds || [];
+                const bajCode = selElement.code || selElement.id;
                 return bajRamales.map((r) => (
                   <label key={r.id} style={CHECK_ROW_STYLE}>
                     <input
                       type="checkbox"
-                      checked={recibidos.includes(r.id) || alimentan.includes(r.id)}
+                      checked={
+                        recibidos.includes(r.id) ||
+                        alimentan.includes(r.id) ||
+                        r.ini === bajCode ||
+                        r.fin === bajCode
+                      }
                       onChange={(e) => {
                         // Regla central (ítem 1.2): tope de asociaciones ANTES de escribir.
                         if (e.target.checked && !recibidos.includes(r.id)) {
@@ -442,9 +448,22 @@ export function BajanteEditor({
                         const newRecibe = e.target.checked
                           ? [...recibidos, r.id]
                           : recibidos.filter((id: string) => id !== r.id);
+                        // Desmarcar una salida también la saca de alimentaIds y limpia
+                        // ini/fin si apuntan a este bajante (si no, seguiría marcado).
+                        const newAlimenta = e.target.checked
+                          ? alimentan
+                          : alimentan.filter((id: string) => id !== r.id);
                         engineRef.current?.updateElementById(selElement.id, {
                           recibeDeIds: newRecibe,
+                          alimentaIds: newAlimenta,
                         });
+                        if (!e.target.checked) {
+                          const ramalUpdates: Record<string, unknown> = {};
+                          if (r.ini === bajCode) ramalUpdates.ini = '';
+                          if (r.fin === bajCode) ramalUpdates.fin = '';
+                          if (Object.keys(ramalUpdates).length)
+                            engineRef.current?.updateElementById(r.id, ramalUpdates);
+                        }
                         const fresh = engineRef.current?.bajantes.find(
                           (bb) => bb.id === selElement.id,
                         );

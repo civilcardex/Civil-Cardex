@@ -24,6 +24,7 @@ import {
   pointOnAnyBodySegment,
 } from './HitTester';
 import { updateCrossFloorGhostFieldBySource } from '../../utils/associateBajanteAcrossFloors';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { bajanteHitDistance } from './canalAssociation';
 import { checkVentDiameterLimits, syncVentBajanteDiameters } from './ventDiameters';
 
@@ -412,6 +413,13 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
       engine.render();
       return;
     }
+    // Sincronía bajante→ramal san/ll (orig. usuario): igual que updateElementById.
+    if (fields.dNominal !== undefined && !(el as PlanoRamal).pts && el.id) {
+      if (!pushBajanteDiameterToRamales(engine, el.id, String(fields.dNominal ?? ''))) {
+        engine.render();
+        return;
+      }
+    }
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
       const [mx, my] = _midpoint((el as PlanoRamal).pts);
@@ -511,6 +519,44 @@ export function bumpConnectedBajantes(
   }
 }
 
+/** Sincronía bajante↔ramal san/ll al EDITAR el dNominal del bajante/montante (orig. usuario,
+ *  como las otras redes): el bajante nunca queda por debajo de sus ramales asociados
+ *  (bloquea con alerta — primero debe bajarse el ramal), y al subir arrastra a los ramales
+ *  con diámetro explícito menor (los vacíos no se tocan: nacen vacíos por doctrina). Los
+ *  ramales empujados propagan aguas abajo como una edición propia. Escribe directo en el
+ *  motor (sin snapshots); el llamador asigna el dNominal. @returns false si se bloqueó. */
+export function pushBajanteDiameterToRamales(
+  engine: IPlanoEngineCore,
+  bajId: string,
+  newDNominal: string,
+): boolean {
+  const baj = engine.bajantes.find((b) => b.id === bajId);
+  if (!baj || (baj.net !== 'san' && baj.net !== 'll')) return true;
+  if (baj.tipo !== 'bajante' && baj.tipo !== 'montante') return true;
+  const newIn = diamPulgFromLabel(newDNominal || '');
+  if (!(newIn > 0)) return true;
+  const ramales = [...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]
+    .map((id) => engine.ramales.find((x) => x.id === id))
+    .filter((r): r is PlanoRamal => !!r && !!r.diametro);
+  const maxRam = ramales.reduce((m, r) => Math.max(m, diamPulgFromLabel(r.diametro || '')), 0);
+  if (maxRam > newIn) {
+    const top = ramales.find((r) => diamPulgFromLabel(r.diametro || '') === maxRam);
+    engine.triggerAlert(
+      'Diámetro no permitido',
+      `El diámetro del bajante (${newDNominal}) no puede ser inferior al del ramal conectado (${top?.label || top?.id} ${top?.diametro}). Cambia primero el diámetro del ramal.`,
+    );
+    return false;
+  }
+  for (const rr of ramales) {
+    if (diamPulgFromLabel(rr.diametro || '') < newIn) {
+      rr.diametro = newDNominal;
+      if (rr.net === 'san') propagarSanDiametroAguasAbajo(engine.ramales, rr.id, engine.bajantes);
+      else recomputeDownstreamDiameters(engine.ramales, rr.id);
+    }
+  }
+  return true;
+}
+
 export function updateElementById(
   engine: IPlanoEngineCore,
   id: string,
@@ -531,6 +577,14 @@ export function updateElementById(
     if (!guardDiametroNodo(engine, el, fields)) {
       engine.render();
       return;
+    }
+    // Sincronía bajante→ramal san/ll (orig. usuario): editar el dNominal arrastra a los
+    // ramales asociados (o se bloquea si quedaría por debajo). Antes de asignar.
+    if (fields.dNominal !== undefined && !(el as PlanoRamal).pts) {
+      if (!pushBajanteDiameterToRamales(engine, id, String(fields.dNominal ?? ''))) {
+        engine.render();
+        return;
+      }
     }
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
