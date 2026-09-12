@@ -164,16 +164,149 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
   const userId = await getUserId();
   if (!userId) return;
   const proyectoId = localStorage.getItem('cm_proyecto_activo_id') || null;
+  if (!proyectoId) {
+    // Sin proyecto no se puede atribuir ninguna fila (proyecto_id uuid not null) — mandar
+    // '' rompía con 400 (uuid inválido). Se guarda solo local hasta elegir proyecto.
+    devError('saveToSupabase: sin proyecto activo, solo IDB.');
+    return;
+  }
   try {
-    const proyectoUid = proyectoId || ''; // RLS exige proyecto válido del usuario
+    const proyectoUid = proyectoId; // RLS exige proyecto válido del usuario
+    // Columnas reales por tabla (migración cm_schema + snaps): todo campo de más (p. ej.
+    // tipoPrecioFormulario/alarmasPrecioFaltante en presupuestos) tumbaba el upsert con 400.
+    const TABLE_COLUMNS: Record<string, string[]> = {
+      cm_factores_prestacionales: ['id', 'codigo', 'nombre', 'factor', 'tipo'],
+      cm_cargos: ['id', 'codigo', 'descripcion', 'num_salarios_base'],
+      cm_proveedores: [
+        'id',
+        'codigo',
+        'nombre',
+        'nit',
+        'contacto',
+        'tel1',
+        'tel2',
+        'email',
+        'direccion',
+        'ciudad',
+        'departamento',
+        'tipo',
+        'notas',
+        'activo',
+      ],
+      cm_cuadrillas: ['id', 'codigo', 'descripcion'],
+      cm_equipos: [
+        'id',
+        'codigo',
+        'nombre',
+        'tipo',
+        'unidad',
+        'costo_hora',
+        'fecha_cotizacion',
+        'proveedor_id',
+      ],
+      cm_insumos: [
+        'id',
+        'codigo',
+        'nombre',
+        'unidad',
+        'origen',
+        'categoria',
+        'subcategoria',
+        'marca_referencia',
+        'costo_unitario',
+        'fecha_cotizacion',
+        'apu_basico_id',
+        'proveedor_id',
+      ],
+      cm_apus: [
+        'id',
+        'codigo',
+        'nombre',
+        'categoria',
+        'unidad',
+        'fecha_creacion',
+        'es_basico',
+        'recursos_mo',
+        'recursos_eq',
+        'recursos_ins',
+        'recursos_transporte',
+      ],
+      cm_presupuestos: [
+        'id',
+        'codigo',
+        'nombre',
+        'entidad',
+        'contrato',
+        'objeto',
+        'plazo',
+        'fecha_creacion',
+        'ciudad',
+        'departamento',
+        'elaborado_por',
+        'activo',
+        'con_sub_proyectos',
+        'parent_id',
+        'estado',
+        'fecha_cierre',
+        'observaciones',
+        'items',
+        'aiu_override',
+        'factores_snap',
+        'cargos_snap',
+        'apus_snap',
+        'insumos_snap',
+        'equipos_snap',
+        'cuadrillas_snap',
+        'perfil_pais_snap',
+        'formulario_original',
+      ],
+    };
+    // FKs anulables: '' no existe en la tabla referenciada y violaba la FK con 409.
+    const NULLABLE_FK_EMPTY_TO_NULL: Record<string, string[]> = {
+      cm_equipos: ['proveedor_id'],
+      cm_insumos: ['proveedor_id'],
+    };
+    // Columnas anulables donde null significa "limpiar el valor" — viajan tal cual. En el
+    // resto, null/undefined/NaN se OMITEN: JSON.stringify(NaN) serializa a null y tumbaba el
+    // upsert con 23502 (es_basico, observaciones...); omitir deja que la BD aplique su default
+    // (fila nueva) o conserve el valor previo (upsert).
+    const NULLABLE: Record<string, string[]> = {
+      cm_equipos: ['proveedor_id'],
+      cm_insumos: ['proveedor_id', 'apu_basico_id'],
+      cm_presupuestos: ['parent_id', 'perfil_pais_snap', 'formulario_original'],
+    };
     const upsert = async (table: string, rows: unknown[]) => {
       if (!rows || (rows as unknown[]).length === 0) return;
-      const withUser = (rows as Record<string, unknown>[]).map((r) => ({
-        ...r,
-        user_id: userId,
-        proyecto_id: (r as Record<string, unknown>).proyecto_id ?? proyectoUid,
-      }));
-      const { error } = await supabase.from(table).upsert(withUser as never, { onConflict: 'id' });
+      const cols = TABLE_COLUMNS[table];
+      const nullFks = NULLABLE_FK_EMPTY_TO_NULL[table] || [];
+      const nullables = NULLABLE[table] || [];
+      const withUser = (rows as Record<string, unknown>[]).map((r) => {
+        const clean: Record<string, unknown> = {};
+        if (cols) {
+          for (const c of cols) {
+            if (!(c in r)) continue;
+            const v = r[c];
+            if (!nullables.includes(c)) {
+              if (v == null) continue;
+              if (typeof v === 'number' && Number.isNaN(v)) continue;
+            }
+            clean[c] = v;
+          }
+        } else {
+          Object.assign(clean, r);
+        }
+        clean.user_id = userId;
+        clean.proyecto_id = (r as Record<string, unknown>).proyecto_id ?? proyectoUid;
+        for (const fk of nullFks) if (clean[fk] === '') clean[fk] = null;
+        return clean;
+      });
+      // defaultToNull:false → header "Prefer: missing=default": las claves omitidas por el
+      // saneo (null/NaN en columnas NOT NULL) las rellena PostgREST con el DEFAULT de la
+      // columna; sin esto las rellenaba con NULL y tumbaba el upsert (23502).
+      const { error } = await supabase.from(table).upsert(withUser as never, {
+        onConflict: 'id',
+        defaultToNull: false,
+      });
       if (error) devError(`upsert ${table}:`, error);
     };
     await upsert('cm_factores_prestacionales', state.factoresPrestaciones);
@@ -184,20 +317,42 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
       state.cuadrillas.map(({ integrantes: _integrantes, ...q }) => q),
     );
     const allIntegrantes = state.cuadrillas.flatMap((q) =>
-      q.integrantes.map((it) => ({
-        id: it.id,
-        user_id: userId,
-        proyecto_id: proyectoUid,
-        cuadrilla_id: q.id,
-        cargo_id: it.cargo_id,
-        cantidad: it.cantidad,
-      })),
+      q.integrantes
+        .filter((it) => it.cargo_id)
+        .map((it) => ({
+          id: it.id,
+          user_id: userId,
+          proyecto_id: proyectoUid,
+          cuadrilla_id: q.id,
+          cargo_id: it.cargo_id,
+          // cantidad integer not null check >= 0: NaN serializa a null y un decimal tumba el
+          // insert con 400 — redondear y acotar.
+          cantidad: Math.max(0, Math.round(Number(it.cantidad) || 0)),
+        })),
     );
-    if (allIntegrantes.length > 0) {
-      const cuadrillaIds = state.cuadrillas.map((q) => q.id);
-      if (cuadrillaIds.length > 0) {
-        await supabase.from('cm_cuadrilla_integrantes').delete().in('cuadrilla_id', cuadrillaIds);
-        await supabase.from('cm_cuadrilla_integrantes').insert(allIntegrantes as never);
+    const cuadrillaIds = state.cuadrillas.map((q) => q.id);
+    if (cuadrillaIds.length > 0) {
+      // Upsert PRIMERO y borrado SOLO de ids que ya no existen, DESPUÉS de un insert exitoso:
+      // el delete-all + insert anterior vaciaba las cuadrillas en la BD cuando el insert
+      // fallaba (400 de validación, red). Cubre también "todas las integrantes eliminadas".
+      const ins = await supabase.from('cm_cuadrilla_integrantes').upsert(allIntegrantes as never);
+      if (ins.error) {
+        devError('upsert cm_cuadrilla_integrantes:', ins.error);
+      } else {
+        const existentes = await supabase
+          .from('cm_cuadrilla_integrantes')
+          .select('id')
+          .in('cuadrilla_id', cuadrillaIds);
+        if (existentes.error) {
+          devError('select cm_cuadrilla_integrantes:', existentes.error);
+        } else {
+          const keep = new Set(allIntegrantes.map((r) => r.id));
+          const stale = existentes.data.map((r) => r.id).filter((id) => !keep.has(id));
+          if (stale.length > 0) {
+            const del = await supabase.from('cm_cuadrilla_integrantes').delete().in('id', stale);
+            if (del.error) devError('delete cm_cuadrilla_integrantes:', del.error);
+          }
+        }
       }
     }
     await upsert('cm_equipos', state.equipos);
