@@ -1,6 +1,6 @@
 // Resolvedores de asociaciones entre pisos para el bajante/montante seleccionado:
-//  - lowerFloorsRamales: lista de bajantes reales en los pisos IGUALES O INFERIORES (selector
-//    "Destino" — hacia dónde descarga).
+//  - lowerFloorsRamales: bajantes del ÚNICO piso inmediatamente inferior (selector "Destino" —
+//    hacia dónde descarga). Solo el adyacente, no todos los de abajo (orig. usuario).
 //  - upperFloorGroup: el ÚNICO piso inmediatamente superior (selector "Origen" — de dónde
 //    recibe). Una bajante solo recibe del montante directamente encima.
 // Cada piso se resuelve síncronamente (motor vivo para el actual, localStorage para el resto)
@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { loadFromStorage, loadTrazosFromDB } from '../../services/storageService';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { esCaja } from '../../lib/PlanoEngine/bajanteRules';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
 import type { Piso } from '../../lib/shared/projectTypes';
@@ -25,13 +26,18 @@ interface UseFloorRamalesParams {
 }
 
 // Solo bajantes/montantes reales que atraviesan pisos entran en los selectores —
-// contador/calentador/red_publica son aparatos puntuales, no líneas troncales.
+// contador/calentador/red_publica son aparatos puntuales, no líneas troncales, y las
+// cajas y bombas tienen su propia sección (nunca en Destino/Origen, orig. usuario).
 const isRiser = (b: PlanoBajante) =>
-  b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
+  b.tipo !== 'contador' &&
+  b.tipo !== 'calentador' &&
+  b.tipo !== 'red_publica' &&
+  b.tipo !== 'bomba' &&
+  !esCaja(b);
 
-/** Asociaciones entre pisos del bajante/montante seleccionado: lista de pisos iguales o
- *  inferiores (selector Destino) y el piso inmediatamente superior (selector Origen), leyendo
- *  del motor vivo, localStorage y BD con fallback por piso. */
+/** Asociaciones entre pisos del bajante/montante seleccionado: el ÚNICO piso
+ *  inmediatamente inferior (selector Destino) y el piso inmediatamente superior
+ *  (selector Origen), leyendo del motor vivo, localStorage y BD con fallback por piso. */
 export function useFloorRamales({
   selElement,
   selectedNivel,
@@ -59,10 +65,20 @@ export function useFloorRamales({
     // entre dos strings es lexicográfico ("9.00" > "30.00") y descartaba silenciosamente de la
     // lista pisos realmente más bajos.
     const currentNpt = currentFloor ? Number(currentFloor.npt) : Infinity;
-    const relevantPlans = plans.filter((plan) => {
-      const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
-      return pF && Number(pF.npt) <= currentNpt;
-    });
+    // Destino = SOLO el piso inmediatamente inferior (menor npt estrictamente menor al
+    // actual más cercano), espejo del selector Origen — no todos los de abajo ni el propio
+    // piso (orig. usuario).
+    let bestLower: { plan: PlanItem; npt: number } | null = null;
+    if (currentFloor) {
+      for (const plan of plans) {
+        const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
+        if (!pF) continue;
+        const npt = Number(pF.npt);
+        if (!(npt < currentNpt)) continue;
+        if (!bestLower || npt > bestLower.npt) bestLower = { plan, npt };
+      }
+    }
+    const relevantPlans = bestLower ? [bestLower.plan] : [];
 
     // Resolver cada plan SINCRÓNICAMENTE primero (motor vivo para el piso actual, localStorage
     // para el resto) y mostrarlo de inmediato — el dropdown nunca debe quedarse vacío solo porque

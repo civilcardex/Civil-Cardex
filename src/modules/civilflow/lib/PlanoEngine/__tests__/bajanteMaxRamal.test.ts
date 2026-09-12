@@ -187,3 +187,55 @@ describe('bajante sigue al mayor ramal al cambiar diámetros', () => {
     expect(baj.dNominal).toBe('4"');
   });
 });
+
+describe('pushBajanteDiameterToRamales — el bajante arrastra al ramal y nunca queda debajo', () => {
+  it('subir el bajante 2"→4" sube el ramal asociado', () => {
+    const eng = makeEngine([R({})], [B({})]);
+    eng.selId = 'B1';
+    updateSelected(eng, { dNominal: '4"' });
+    expect(eng.bajantes[0].dNominal).toBe('4"');
+    expect(eng.ramales[0].diametro).toBe('4"');
+  });
+
+  it('bajar el bajante bajo el ramal se bloquea con alerta (primero el ramal)', () => {
+    const alerts: string[] = [];
+    const eng = makeEngine([R({ diametro: '4"' })], [B({ dNominal: '4"' })]);
+    eng.triggerAlert = ((t: string, m: string) => alerts.push(`${t}|${m}`)) as never;
+    eng.selId = 'B1';
+    updateSelected(eng, { dNominal: '2"' });
+    expect(alerts.length).toBeGreaterThan(0);
+    expect(eng.bajantes[0].dNominal).toBe('4"');
+    expect(eng.ramales[0].diametro).toBe('4"');
+  });
+
+  it('bajar el bajante sin quedar debajo se permite y arrastra al menor', () => {
+    const eng = makeEngine(
+      [R({ id: 'RS1', diametro: '4"' }), R({ id: 'RS2', diametro: '2"' })],
+      [B({ dNominal: '6"', recibeDeIds: ['RS1', 'RS2'] })],
+    );
+    eng.selId = 'B1';
+    updateSelected(eng, { dNominal: '4"' });
+    expect(eng.bajantes[0].dNominal).toBe('4"');
+    expect(eng.ramales.find((r) => r.id === 'RS1')!.diametro).toBe('4"');
+    expect(eng.ramales.find((r) => r.id === 'RS2')!.diametro).toBe('4"');
+  });
+
+  it('ramal vacío no se rellena solo', () => {
+    const eng = makeEngine([R({ diametro: '' })], [B({ dNominal: '2"' })]);
+    eng.selId = 'B1';
+    updateSelected(eng, { dNominal: '4"' });
+    expect(eng.bajantes[0].dNominal).toBe('4"');
+    expect(eng.ramales[0].diametro).toBe('');
+  });
+
+  it('otras redes no se tocan', () => {
+    const eng = makeEngine(
+      [R({ net: 'af', diametro: '2"' })],
+      [B({ net: 'af', dNominal: '2"', recibeDeIds: ['RS1'] })],
+    );
+    eng.selId = 'B1';
+    updateSelected(eng, { dNominal: '4"' });
+    expect(eng.bajantes[0].dNominal).toBe('4"');
+    expect(eng.ramales[0].diametro).toBe('2"');
+  });
+});
