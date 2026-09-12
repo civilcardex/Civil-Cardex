@@ -346,7 +346,11 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   const taponKeepPts = (engine as unknown as { _taponKeepPts?: number[][] })._taponKeepPts;
   const taponKept = (p: number[]): boolean =>
     (taponKeepPts || []).some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < 0.5);
-  (engine as unknown as { _taponKeepPts?: number[][] })._taponKeepPts = undefined;
+  // Puertos con tapón legítimo (borrado del tronco de la doble): cuantan como yee PERSISTIDA
+  // en TODAS las pasadas — la validación de esquinas-L y el recuento no los retiran (orig.
+  // usuario: el tapón soldado desaparecía de plano y resumen en la 2ª pasada). Ya NO se
+  // consume: vive en el engine hasta que la yee se re-establezca o se borre el tramo.
+  if (taponKeepPts?.length) persistedYeePts.push(...taponKeepPts);
   for (const r of [...sanRamales]) {
     if (!r.yeeDobleAt || r.yeeDobleAt.length !== 2) continue;
     const [f1, f2] = r.yeeDobleAt;
@@ -381,10 +385,14 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           if (p && (near(f1)(p) || near(f2)(p)) && !taponKept(p)) delete rr.accMed[k];
         }
       }
-      // Bandera con los mismos puntos (cualquier titular de la referencia/valores) → fuera.
+      // Bandera con los mismos puntos (cualquier titular de la referencia/valores) → fuera —
+      // SALVO que sus puertos tengan tapones protegidos (limpiarla dejaba sin blindaje la
+      // pasada siguiente y el tapón soldado se perdía, orig. usuario).
       if (
         rr.yeeDobleAt &&
-        (pairMatch(rr.yeeDobleAt, [f1, f2]) || pairMatch(rr.yeeDobleAt, [f2, f1]))
+        (pairMatch(rr.yeeDobleAt, [f1, f2]) || pairMatch(rr.yeeDobleAt, [f2, f1])) &&
+        !taponKept(f1) &&
+        !taponKept(f2)
       )
         rr.yeeDobleAt = undefined;
     }
