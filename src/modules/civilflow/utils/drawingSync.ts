@@ -366,13 +366,126 @@ export const isOrphanKey = (key: string, validKeys: Set<string>): boolean => {
 // por la copia de BD en cualquier momento), las claves de aparatos/hidro de ramales recientes
 // parecían huérfanas y se borraban — "recargar reseteaba las UDs a 0" (orig. usuario). Con el
 // guard, una clave del piso cargado cuyo id exista en el engine nunca se borra.
-let _loadedLive: { planId: string; ids: Set<string> } | null = null;
+let _loadedLive: { planId: string; ids: Set<string>; ts: number } | null = null;
+
+// Ventana de gracia del GC: los elementos dibujados hace menos de un autosave (debounce
+// 1500ms) aún no están NI en la caché de trazos (de donde sale validKeys) NI en los ids vivos
+// registrados (se refrescan en el autosave). Durante la ventana, nada del piso cargado se
+// borra; el próximo sync (ya con autosave dentro) los re-evalúa con datos reales.
+const GC_GRACE_MS = 4000;
 
 /** Registra los ids/códigos vivos del engine del piso cargado para el guard del GC. */
 export function setSyncLoadedLiveIds(planId: string | number | null, ids: string[]): void {
-  _loadedLive = planId == null ? null : { planId: String(planId), ids: new Set(ids) };
+  _loadedLive =
+    planId == null ? null : { planId: String(planId), ids: new Set(ids), ts: Date.now() };
 }
 
+// Pisos cuya caché de trazos escribió ESTA sesión (autosave, guardado manual, prefetch
+// desde BD). El GC solo borra claves de pisos elegibles: el cargado (guard de ids vivos)
+// o uno fresco de esta sesión. Con caché vieja (cuota llena, otra sesión, crash) no se
+// borra nada de ese piso — ese era el borrado de UDs del piso 2 (orig. usuario).
+const freshTrazosPlans = new Set<string>();
+
+/** Marca la caché de trazos de un piso como escrita por esta sesión (fresca para el GC). */
+export function markPlanTrazosFresh(planId: string | number | null | undefined): void {
+  if (planId == null || planId === 'work') return;
+  freshTrazosPlans.add(String(planId));
+}
+
+/** Respaldo de lo último borrado por el GC (una sola entrada, se sobrescribe). */
+const GC_BAK_KEY = 'gc_bak_ultimo';
+
+/** ¿Puede el GC borrar esta clave? Solo pisos elegibles: el cargado (fuera de la ventana de
+ *  gracia) o uno fresco de esta sesión. Las claves legado sin sufijo numérico conservan el
+ *  criterio anterior. */
+function canDeleteKey(key: string): boolean {
+  if (!hasNumericPlanSuffix(key)) return true;
+  const suffix = key.slice(key.lastIndexOf('_') + 1);
+  if (_loadedLive && suffix === _loadedLive.planId) {
+    if (Date.now() - _loadedLive.ts < GC_GRACE_MS) return false;
+    return true;
+  }
+  return freshTrazosPlans.has(suffix);
+}
+
+/** Clave de store para un elemento en un piso (misma regla que loadTrazosFromDB: los
+ *  stubs sintéticos AC-01-<calId> vuelven bajo `ac_<calId>_<plan>`). */
+function fixtureStoreKey(net: string, id: string, planId: string | number): string {
+  if (id.startsWith('AC-01-') && net === 'ac') return `ac_${id.slice('AC-01-'.length)}_${planId}`;
+  return `${net}_${id}_${planId}`;
+}
+
+interface FixtureCarrier {
+  id?: unknown;
+  net?: unknown;
+  fixtures?: Record<string, number>;
+  hydroAcc?: { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number };
+  gasAcc?: Record<string, number>;
+}
+
+/** Re-ancla claves AUSENTES de aparatos/hidro/gas desde los fixtures de los trazos LOCALES
+ *  (misma fusión que loadTrazosFromDB hace con la BD). Cubre el caso en que el store perdió
+ *  claves pero los trazos aún traen sus fixtures (orig. usuario piso 2: símbolos intactos,
+ *  conteos en 0). Solo rellena ausentes — jamás pisa. @returns claves restauradas. */
+export function reanclarClavesDesdeTrazosLocales(plans: SyncPlanInput[]): number {
+  if (!Array.isArray(plans) || plans.length === 0) return 0;
+  const mergedAparatos = loadFromStorage<Record<string, Record<string, number>>>(
+    APARATOS_BY_TRAMO_KEY,
+    {},
+  );
+  const mergedHidro = loadFromStorage<
+    Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+  >(HYDRO_DATA_STORAGE_KEY, {});
+  const mergedGas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
+  let aparatosChanged = false;
+  let hidroChanged = false;
+  let gasChanged = false;
+  let restored = 0;
+  for (const plan of plans) {
+    if (!plan || plan.id === undefined) continue;
+    let data = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
+    if (!data) continue;
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data) as TraceData;
+      } catch {
+        continue;
+      }
+    }
+    const items = [...(data.ramales || []), ...(data.bajantes || [])] as FixtureCarrier[];
+    for (const el of items) {
+      if (!el || typeof el.id !== 'string' || typeof el.net !== 'string') continue;
+      const apKey = fixtureStoreKey(el.net, el.id, String(plan.id));
+      if (el.fixtures && Object.keys(el.fixtures).length > 0 && !mergedAparatos[apKey]) {
+        mergedAparatos[apKey] = { ...el.fixtures };
+        aparatosChanged = true;
+        restored++;
+      }
+      if (
+        el.hydroAcc &&
+        (Object.keys(el.hydroAcc.accesorios ?? {}).length > 0 ||
+          (el.hydroAcc.Lh ?? 0) > 0 ||
+          (el.hydroAcc.nSalidas ?? 0) > 0) &&
+        !mergedHidro[apKey]
+      ) {
+        mergedHidro[apKey] = el.hydroAcc as {
+          accesorios: Record<string, number>;
+          Lh: number;
+          nSalidas: number;
+        };
+        hidroChanged = true;
+      }
+      if (el.gasAcc && Object.keys(el.gasAcc).length > 0 && !mergedGas[apKey]) {
+        mergedGas[apKey] = { ...el.gasAcc };
+        gasChanged = true;
+      }
+    }
+  }
+  if (aparatosChanged) saveToStorage(APARATOS_BY_TRAMO_KEY, mergedAparatos);
+  if (hidroChanged) saveToStorage(HYDRO_DATA_STORAGE_KEY, mergedHidro);
+  if (gasChanged) saveToStorage(GAS_ACC_KEY, mergedGas);
+  return restored;
+}
 /** ¿Es una clave `<net>_<id>[_<plan>]` del piso cargado con id vivo en el engine? */
 function isLoadedLiveKey(key: string): boolean {
   if (!_loadedLive) return false;
@@ -434,10 +547,17 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
 
   // 1. Clean APARATOS_BY_TRAMO_KEY
   const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
+  const bakDeletedAparatos: Record<string, unknown> = {};
   let aparatosChanged = false;
+  let aparatosSkipped = 0;
   for (const key of Object.keys(rawAparatos)) {
     if (isLoadedLiveKey(key)) continue;
+    if (!canDeleteKey(key)) {
+      aparatosSkipped++;
+      continue;
+    }
     if (isOrphanKey(key, validKeys)) {
+      bakDeletedAparatos[key] = rawAparatos[key];
       delete rawAparatos[key];
       aparatosChanged = true;
     }
@@ -448,10 +568,17 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
 
   // 2. Clean HYDRO_DATA_STORAGE_KEY
   const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
+  const bakDeletedHidro: Record<string, unknown> = {};
   let hidroChanged = false;
+  let hidroSkipped = 0;
   for (const key of Object.keys(rawHidro)) {
     if (isLoadedLiveKey(key)) continue;
+    if (!canDeleteKey(key)) {
+      hidroSkipped++;
+      continue;
+    }
     if (isOrphanKey(key, validKeys)) {
+      bakDeletedHidro[key] = rawHidro[key];
       delete rawHidro[key];
       hidroChanged = true;
     }
@@ -460,17 +587,36 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
     saveToStorage(HYDRO_DATA_STORAGE_KEY, rawHidro);
   }
 
-  // 3. Clean GAS_ACC_KEY
+  // 3. Clean GAS_ACC_KEY (claves sin sufijo de plan: sin atribución, criterio anterior)
   const rawGas = loadFromStorage<Record<string, unknown>>(GAS_ACC_KEY, {});
+  const bakDeletedGas: Record<string, unknown> = {};
   let gasChanged = false;
   for (const ramalId of Object.keys(rawGas)) {
     if (!validGasRamales.has(ramalId)) {
+      bakDeletedGas[ramalId] = rawGas[ramalId];
       delete rawGas[ramalId];
       gasChanged = true;
     }
   }
   if (gasChanged) {
     saveToStorage(GAS_ACC_KEY, rawGas);
+  }
+  if (aparatosChanged || hidroChanged || gasChanged) {
+    saveToStorage(GC_BAK_KEY, {
+      ts: Date.now(),
+      aparatos: bakDeletedAparatos,
+      hidro: bakDeletedHidro,
+      gas: bakDeletedGas,
+    });
+    // Solo se loguea si algo se borró (antes spameaba la consola en cada sync aunque
+    // borrara 0 — orig. usuario). Las retenidas por caché vieja son claves PROTEGIDAS,
+    // no pérdidas: se limpian al abrir su piso.
+    devError('GC sync: borradas', {
+      aparatos: Object.keys(bakDeletedAparatos).length,
+      hidro: Object.keys(bakDeletedHidro).length,
+      gas: Object.keys(bakDeletedGas).length,
+      retenidasPorCachéVieja: aparatosSkipped + hidroSkipped,
+    });
   }
 }
 
@@ -481,6 +627,10 @@ function buildSyncData(
   _storageKey: string,
 ): SyncDataResult {
   try {
+    // Re-anclar primero: si el store perdió claves pero los trazos traen fixtures, se
+    // restauran ANTES de evaluar huérfanos (si no, el GC las vería huérfanas... no las
+    // borraría con caché vieja, pero tampoco volverían solas — orig. usuario piso 2).
+    reanclarClavesDesdeTrazosLocales(plans);
     performGarbageCollection(plans);
   } catch (e) {
     devError('Garbage collection error:', e);

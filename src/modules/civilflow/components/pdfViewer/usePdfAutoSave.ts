@@ -5,6 +5,7 @@ import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
+  markPlanTrazosFresh,
 } from '../../utils/drawingSync';
 import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
 import type { PlanItem } from '../../context/PlansContext';
@@ -13,6 +14,7 @@ export function usePdfAutoSave(
   engineRef: React.MutableRefObject<PlanoEngine | null>,
   currentIdRef: React.MutableRefObject<string | number | undefined>,
   plans: PlanItem[],
+  loadingPlanRef?: React.MutableRefObject<boolean>,
 ) {
   const [saveStatus, setSaveStatus] = useState('saved');
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -22,6 +24,7 @@ export function usePdfAutoSave(
       const work = eng.saveWork();
       work.ts = Date.now();
       saveToStorage(`${TRAZOS_PREFIX}${id}`, work);
+      markPlanTrazosFresh(id);
       if (id !== 'work') {
         saveToStorage(LAST_TRAZOS_ID_KEY, id);
         saveTrazosToDB(String(id), work);
@@ -34,13 +37,18 @@ export function usePdfAutoSave(
   const saveTrazosToStorage = useCallback(() => {
     const eng = engineRef.current;
     if (!eng || !eng._dirty) return;
+    // Carga en vuelo: el engine está a medio hidratar (o aún con el piso anterior bajo el id
+    // nuevo, usePlanoLoadSwitch reasigna _loadedPlanId antes de cargar) — guardar aquí persiste
+    // un trabajo vacío/ajeno con ts fresco y pisa la caché buena del piso entrante.
+    if (loadingPlanRef?.current) return;
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     performSave(eng, id);
-  }, [currentIdRef, engineRef, performSave]);
+  }, [currentIdRef, engineRef, performSave, loadingPlanRef]);
 
   const doSave = useCallback(() => {
     const eng = engineRef.current;
     if (!eng) return;
+    if (loadingPlanRef?.current) return;
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     eng._dirty = false;
     performSave(eng, id);
@@ -63,7 +71,7 @@ export function usePdfAutoSave(
       /* ignore */
     }
     setSaveStatus('saved');
-  }, [currentIdRef, engineRef, plans, performSave]);
+  }, [currentIdRef, engineRef, plans, performSave, loadingPlanRef]);
 
   // Guardar de forma robusta al cerrar pestaña, ocultar ventana o recargar
   useEffect(() => {
@@ -105,7 +113,7 @@ export function usePdfAutoSave(
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       const eng = engineRef.current;
-      if (!eng?._dirty) {
+      if (!eng?._dirty || loadingPlanRef?.current) {
         setSaveStatus('saved');
         return;
       }
@@ -115,7 +123,7 @@ export function usePdfAutoSave(
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [saveStatus, doSave, engineRef]);
+  }, [saveStatus, doSave, engineRef, loadingPlanRef]);
 
   return { saveStatus, setSaveStatus, doSave, saveTrazosToStorage, autoSaveTimerRef, markDirty };
 }

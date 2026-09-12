@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { writeSanDrawingSync, setSyncLoadedLiveIds } from '../drawingSync';
+import { writeSanDrawingSync, setSyncLoadedLiveIds, markPlanTrazosFresh } from '../drawingSync';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
 
 // Guard del GC (bug "recargar reseteaba las UDs del piso 2 a 0"): el barrido de claves
@@ -53,7 +53,7 @@ describe('GC de sync — guard del piso cargado', () => {
     expect(counts['san_RS4_2']).toEqual({ san: 1 });
   });
 
-  it('sin guard, la clave huérfana se borra (comportamiento de limpieza intacto)', () => {
+  it('piso fresco de esta sesión: la clave huérfana se borra (limpieza intacta)', () => {
     localStorage.setItem(
       'civilflow_' + TRAZOS_PREFIX + '2',
       JSON.stringify({ ramales: [{ id: 'RS4', net: 'san' }], bajantes: [] }),
@@ -62,6 +62,8 @@ describe('GC de sync — guard del piso cargado', () => {
       'civilflow_' + APARATOS_BY_TRAMO_KEY,
       JSON.stringify({ san_MUERTO_2: { lav: 1 }, san_RS4_2: { san: 1 } }),
     );
+    // Sin guard de cargado, pero la caché la escribió esta sesión (fresca = confiable).
+    markPlanTrazosFresh('2');
 
     writeSanDrawingSync(PLANS);
 

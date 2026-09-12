@@ -24,13 +24,33 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
  * Serializa un valor a JSON y lo escribe en localStorage.
  * @param key - Clave de storage (con prefijo `civilflow_`).
  * @param data - Cualquier valor serializable a JSON.
+ * @returns true si se guardó; false si falló (p. ej. cuota llena — antes fallaba mudo y
+ * la caché local vieja hacía que el GC borrara claves de aparatos, orig. usuario piso 2).
+ * Emite `civilflow_local_quota` / `civilflow_local_quota_ok` en window para la franja de UI.
  */
-export function saveToStorage(key: string, data: unknown): void {
+const quotaFailedKeys = new Set<string>();
+export function saveToStorage(key: string, data: unknown): boolean {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(data));
   } catch (e) {
     devError('storageService save:', key, e);
+    quotaFailedKeys.add(key);
+    try {
+      window.dispatchEvent(new CustomEvent('civilflow_local_quota', { detail: { key } }));
+    } catch {
+      /* ignore */
+    }
+    return false;
   }
+  if (quotaFailedKeys.size > 0) {
+    quotaFailedKeys.clear();
+    try {
+      window.dispatchEvent(new Event('civilflow_local_quota_ok'));
+    } catch {
+      /* ignore */
+    }
+  }
+  return true;
 }
 
 /**
@@ -254,6 +274,7 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     origen_id: b.origenId ?? null,
     caja_origen_id: b.cajaOrigenId ?? null,
     bomba_en_id: b.bombaEnId ?? null,
+    fixtures: (b as unknown as { fixtures?: Record<string, number> }).fixtures ?? {},
   };
 }
 
@@ -277,6 +298,7 @@ function rowToBajante(row: SupabaseRow): PlanoBajante {
     origenId: g(row, 'origen_id', undefined),
     cajaOrigenId: g(row, 'caja_origen_id', undefined),
     bombaEnId: g(row, 'bomba_en_id', undefined),
+    fixtures: g(row, 'fixtures', undefined),
     ucAcum: g(row, 'uc_acum', 0),
     ucExtra: g(row, 'uc_extra', 0),
     area_m2: g(row, 'area_m2', 0),
@@ -465,8 +487,65 @@ export function emitBdSaveError(reason: string, message: string): void {
   }
 }
 
+/** Guardado a BD OK — apaga la alerta roja del visor (franja vuelve al estado normal). */
+function emitBdSaveOk(): void {
+  try {
+    window.dispatchEvent(new CustomEvent('civilflow_bd_save_ok'));
+  } catch {
+    /* sin window (tests) */
+  }
+}
+
+/** ¿El documento de trazos tiene contenido real (alguna colección con elementos)? La usan la
+ *  tumba anti-vacío del guardado y el árbitro de carga: un documento sin contenido (todas las
+ *  colecciones ausentes o en 0) NUNCA debe reemplazar a uno con contenido — el RPC de guardado
+ *  es destructivo (borra y re-inserta todo) y el árbitro prefiere el mayor ts, así que un vacío
+ *  con ts fresco borraba el piso (orig. usuario: "todo se borró excepto un piso"). */
+export function trazosDocHasContent(doc: unknown): boolean {
+  if (!doc || typeof doc !== 'object') return false;
+  const d = doc as Record<string, unknown>;
+  return [
+    'ramales',
+    'bajantes',
+    'areas',
+    'dims',
+    'textAnnots',
+    'guideLines',
+    'crossFloorGhosts',
+  ].some((k) => Array.isArray(d[k]) && (d[k] as unknown[]).length > 0);
+}
+
+/** Regla anti-vaciado del árbitro de carga: la caché local gana sobre una fila BD SIN contenido
+ *  aunque el ts de la BD sea mayor — un vaciado accidental estampa ts=ahora y el mayor-ts
+ *  mandaba, borrando el piso. Devuelve true si la local debe ganar por contenido. */
+export function trazosLocalGanaABdVacia(local: unknown, db: unknown): boolean {
+  return trazosDocHasContent(local) && !trazosDocHasContent(db);
+}
+
 export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
+    // Tumba anti-vacío (antes del check de sesión: abort barato): el RPC borra y re-inserta
+    // TODAS las colecciones del piso. Un payload sin contenido (engine a medio hidratar,
+    // guardado en la ventana de cambio de piso, escritor cross-floor sobre caché ausente...)
+    // con ts fresco borraba el piso en BD y el árbitro de carga lo consolidaba. Si la caché
+    // local aún tiene contenido, un push vacío es un defecto de origen: se aborta y se avisa.
+    // (El borrado legítimo converge: el autosave ya vació la caché local, así que el push
+    // vacío siguiente sí pasa.)
+    if (!trazosDocHasContent(data)) {
+      const local = loadFromStorage<unknown>(TRAZOS_PREFIX + planoId, null);
+      if (trazosDocHasContent(local)) {
+        devError(
+          'storageService saveTrazosToDB: push vacío bloqueado sobre caché con contenido',
+          planoId,
+        );
+        emitBdSaveError(
+          'vacio',
+          'Guardado a BD abortado: el trabajo está vacío pero el plano tiene datos guardados.',
+        );
+        return;
+      }
+    }
+
     const user = await cachedSupabaseUser();
     if (!user) {
       emitBdSaveError('sin-sesion', 'No hay sesión activa en Supabase.');
@@ -590,11 +669,20 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
         ts: d.ts ? new Date(d.ts).toISOString() : new Date().toISOString(),
       },
       ramales: ramales.map((r) => ramalToRow(id, user.id, r)),
-      bajantes: bajantes.map((b) => ({
-        ...bajanteToRow(id, user.id, b),
-        recibe_de_ids: b.recibeDeIds ?? [],
-        alimenta_ids: b.alimentaIds ?? [],
-      })),
+      bajantes: bajantes.map((b) => {
+        // BOMBAS/BAJANTES también llevan sus UDs a la BD (claves net_<id>_<plano>) — antes
+        // solo los ramales persistían fixtures y sus claves no se podían recuperar jamás
+        // (orig. usuario: aparatos a 0 tras reentrar).
+        const bkKey = `${(b as unknown as { net?: string }).net || ''}_${b.id}_${planoId}`;
+        const bFix = aparatosMap[bkKey];
+        const row = bajanteToRow(id, user.id, b);
+        return {
+          ...row,
+          fixtures: bFix && Object.keys(bFix).length ? bFix : row.fixtures,
+          recibe_de_ids: b.recibeDeIds ?? [],
+          alimenta_ids: b.alimentaIds ?? [],
+        };
+      }),
       areas: areas.map((a) => areaToRow(id, user.id, a)),
       dimensiones: dims.map((x) => dimToRow(id, user.id, x)),
       anotaciones_texto: textAnnots.map((t) => textAnnotToRow(id, user.id, t)),
@@ -609,6 +697,8 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     if (error) {
       devError('storageService saveTrazosToDB rpc:', error.message);
       emitBdSaveError('rpc', error.message);
+    } else {
+      emitBdSaveOk();
     }
   } catch (e) {
     devError('storageService saveTrazosToDB exception:', e);
@@ -728,6 +818,14 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     const existingGas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
     let gasChanged = false;
     const mergedGas = { ...existingGas };
+    for (const b of bajantes as PlanoBajante[]) {
+      if (!b.fixtures || Object.keys(b.fixtures).length === 0) continue;
+      const apKey = `${b.net}_${b.id}_${planoId}`;
+      if (!mergedAparatos[apKey]) {
+        mergedAparatos[apKey] = b.fixtures;
+        aparatosChanged = true;
+      }
+    }
     for (const r of (work.ramales ?? []) as PlanoRamal[]) {
       // Los stubs sintéticos de calentador (AC-01-{calId}, persistidos por saveTrazosToDB
       // para que los fixtures de la bajante CALENTn sobrevivan) deben volver bajo la clave que

@@ -18,6 +18,7 @@ import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
+  markPlanTrazosFresh,
 } from '../utils/drawingSync';
 import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
@@ -297,6 +298,7 @@ function PdfViewer_({
   }, [currentId]);
 
   const engineRef = useRef<PlanoEngine | null>(null);
+  const cerrandoRef = useRef(false);
   const loadingPlanRef = useRef(false);
   const cwRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -366,6 +368,7 @@ function PdfViewer_({
     engineRef,
     currentIdRef,
     planosCtx.plans,
+    loadingPlanRef,
   );
   useEffect(() => {
     markDirtyRef.current = markDirty;
@@ -416,6 +419,7 @@ function PdfViewer_({
           const work = eng.saveWork();
           work.ts = Date.now();
           saveToStorage(TRAZOS_PREFIX + String(id), work);
+          markPlanTrazosFresh(id);
           if (id !== 'work') {
             saveToStorage(LAST_TRAZOS_ID_KEY, id);
             saveTrazosToDB(String(id), work);
@@ -912,7 +916,25 @@ function PdfViewer_({
       );
     };
     window.addEventListener('civilflow_bd_save_error', onBdError);
-    return () => window.removeEventListener('civilflow_bd_save_error', onBdError);
+    const onBdOk = () => setBdError(null);
+    window.addEventListener('civilflow_bd_save_ok', onBdOk);
+    // Cuota local llena (evento de saveToStorage): misma franja roja — un guardado local
+    // fallido congelaba la caché del piso y el GC borraba sus UDs (orig. usuario piso 2).
+    const onQuota = (e: Event) => {
+      const detail = (e as CustomEvent<{ key: string }>).detail;
+      setBdError(
+        `almacenamiento local lleno (clave ${detail?.key || '?'}): libera espacio del navegador`,
+      );
+    };
+    window.addEventListener('civilflow_local_quota', onQuota);
+    const onQuotaOk = () => setBdError(null);
+    window.addEventListener('civilflow_local_quota_ok', onQuotaOk);
+    return () => {
+      window.removeEventListener('civilflow_bd_save_error', onBdError);
+      window.removeEventListener('civilflow_bd_save_ok', onBdOk);
+      window.removeEventListener('civilflow_local_quota', onQuota);
+      window.removeEventListener('civilflow_local_quota_ok', onQuotaOk);
+    };
   }, []);
 
   const resetKey = activeNet + '|' + tipoTramo;
@@ -1040,16 +1062,25 @@ function PdfViewer_({
         onToggleLocked={handleToggleLocked}
         scaleText={scaleText}
         onClose={() => {
+          // Idempotente: el doble click no re-dispara el flujo. El prefetch que asegura la
+          // caché de TODOS los pisos tiene tope de 4s — una red colgada no bloquea el cierre
+          // para siempre (valida con la caché que haya, igual que si el prefetch fallara).
+          if (cerrandoRef.current) return;
+          cerrandoRef.current = true;
           void (async () => {
-            // Asegurar caché local de TODOS los pisos antes de validar: sin ella, un piso cuyo
-            // prefetch sigue en vuelo (o falló) se saltaba la validación global en silencio.
             try {
-              await prefetchAllTrazos(planos);
+              await Promise.race([
+                prefetchAllTrazos(planos),
+                new Promise((r) => setTimeout(r, 4000)),
+              ]);
             } catch {
               /* validar con la caché que haya */
             }
             const eng = engineRef.current;
-            if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) return;
+            if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) {
+              cerrandoRef.current = false;
+              return;
+            }
             handleSave();
             navigate('/civilflowareatrabajo');
           })();
@@ -1323,6 +1354,7 @@ function PdfViewer_({
                   setSelElement={setSelElement}
                   planId={currentId}
                   engineRef={engineRef}
+                  loadingPlanRef={loadingPlanRef}
                 />
               )}
 

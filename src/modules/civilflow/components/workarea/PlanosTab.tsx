@@ -1,6 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { saveTrazosToDB, loadFromStorage, saveToStorage } from '../../services/storageService';
+import {
+  saveTrazosToDB,
+  loadTrazosFromDB,
+  loadFromStorage,
+  saveToStorage,
+} from '../../services/storageService';
 import {
   TRAZOS_PREFIX,
   VISOR_ACTIVE_PLAN_ID_KEY,
@@ -193,18 +198,34 @@ function PlanosTab({ state }: PlanosTabProps) {
 
     try {
       const trazosKey = TRAZOS_PREFIX + config.planId;
-      const data = loadFromStorage<Record<string, unknown>>(trazosKey, {});
-      data.origen = config.origen;
-      if (config.scaleM) {
-        data.scaleM = config.scaleM;
+      // Caché ausente: la BD puede tener trazos reales del piso (otro equipo / caché limpiada
+      // al reabrir el proyecto). Fabricar un doc solo-config dejaba la clave no-null para
+      // siempre — el prefetch no la rellena y el árbitro la hacía ganar por ts → piso vacío.
+      // Se baja el doc de BD primero y se le montan los campos de calibración.
+      const fill = (doc: Record<string, unknown>) => {
+        doc.origen = config.origen;
+        if (config.scaleM) {
+          doc.scaleM = config.scaleM;
+        }
+        doc.factorX = config.factorX;
+        doc.factorY = config.factorY;
+        doc.definedScale = config.definedScale;
+        // Doc nuevo: con ts, si no el árbitro de carga lo trataba como localTs=0 y cualquier
+        // fila BD lo pisaba.
+        if (!doc.ts) doc.ts = Date.now();
+        saveToStorage(trazosKey, doc);
+        saveTrazosToDB(String(config.planId), doc).catch((e) => {
+          devError('saveTrazosToDB error:', e);
+        });
+      };
+      const local = loadFromStorage<Record<string, unknown> | null>(trazosKey, null);
+      if (local) {
+        fill(local);
+      } else {
+        loadTrazosFromDB(String(config.planId))
+          .then((db) => fill((db as unknown as Record<string, unknown>) || {}))
+          .catch((e) => devError('Error syncing calibration to Supabase:', e));
       }
-      data.factorX = config.factorX;
-      data.factorY = config.factorY;
-      data.definedScale = config.definedScale;
-      saveToStorage(trazosKey, data);
-      saveTrazosToDB(String(config.planId), data).catch((e) => {
-        devError('saveTrazosToDB error:', e);
-      });
     } catch (e) {
       devError('Error syncing calibration to Supabase:', e);
     }

@@ -55,6 +55,37 @@ describe('saveToStorage', () => {
     expect(loadFromStorage('obj', null)).toEqual({ items: [1, 2, 3] });
   });
 
+  it('retorna true al guardar (orig. usuario piso 2: detectar cuota)', () => {
+    expect(saveToStorage('ok_key', { a: 1 })).toBe(true);
+  });
+
+  it('retorna false y emite evento si el guardado lanza (cuota llena)', () => {
+    const g = globalThis as Record<string, unknown>;
+    const prevWindow = g.window;
+    // Entorno node sin window: EventTarget mínimo para capturar el evento.
+    if (!g.window) g.window = new EventTarget();
+    const seen: string[] = [];
+    const win = g.window as EventTarget;
+    const onQuota = (e: Event) => seen.push((e as CustomEvent<{ key: string }>).detail?.key || '');
+    win.addEventListener('civilflow_local_quota', onQuota);
+    const prevLS = g.localStorage;
+    g.localStorage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+      removeItem: () => {},
+    };
+    try {
+      expect(saveToStorage('big_key', { a: 1 })).toBe(false);
+    } finally {
+      win.removeEventListener('civilflow_local_quota', onQuota);
+      g.localStorage = prevLS;
+      if (prevWindow === undefined) delete g.window;
+    }
+    expect(seen).toEqual(['big_key']);
+  });
+
   it('guarda y recupera array', () => {
     saveToStorage('arr', [1, 'dos', { tres: 3 }]);
     expect(loadFromStorage('arr', [])).toEqual([1, 'dos', { tres: 3 }]);

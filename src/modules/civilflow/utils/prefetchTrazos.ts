@@ -4,19 +4,38 @@
 // visor 2D piso por piso (orig. usuario). Idempotente: correrlo varias veces no duplica nada.
 import { loadFromStorage, saveToStorage, loadTrazosFromDB } from '../services/storageService';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
-import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from './associateBajanteAcrossFloors';
-import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync';
+import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from './assocLayoutMigration';
+import { writeSanDrawingSync, writeHydroDrawingSync, markPlanTrazosFresh } from './drawingSync';
 import type { SyncPlanInput } from './drawingSync';
 import { pisoLbl } from '../constants';
 import { devError } from '../../../utils/devError';
 
-/** Nunca rechaza: el prefetch es best-effort — un fallo de red/BD no debe romper al llamador
- *  (los call sites lo disparan con `void` al montar). */
-export async function prefetchAllTrazos(
+// Single-flight: WorkArea, ViewerPage e Isometria disparan el prefetch al montar sobre el
+// mismo estado. Sin esto, dos ejecuciones concurrentes intercalan read-modify-write de
+// documentos completos (migración) y pueden persistir estado medio aplicado.
+let inflight: Promise<void> | null = null;
+
+/** Nunca rechaza (best-effort — un fallo de red/BD no debe romper al llamador) y corre UNA sola
+ *  vez aunque varios componentes lo pidan a la vez: los concurrentes reciben la promesa en
+ *  vuelo; tras terminar, una llamada nueva vuelve a correr (toma planes que hayan aparecido). */
+export function prefetchAllTrazos(
+  plans: Array<SyncPlanInput & { nivel: string | number | null }>,
+): Promise<void> {
+  inflight ??= runPrefetch(plans).finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+/** Cuerpo del prefetch: caché local ← BD, migración de asociaciones, sweep y re-escritura de sync. */
+async function runPrefetch(
   plans: Array<SyncPlanInput & { nivel: string | number | null }>,
 ): Promise<void> {
   try {
-    // Pasada sincrónica: solo completa pares de asociación con ambos pisos ya en caché local.
+    // Migración DESPUÉS del fetch (nunca antes): sobre un piso sin caché local, migrateAssoc
+    // fabricaba `{assocLayout:2, ts}` y el RPC destructivo lo pisaba en BD ANTES de que el
+    // fetch de abajo pudiera restaurarlo — borrado total del piso. Con cachés ya descargadas,
+    // esta pasada única encuentra ambos extremos de cada asociación.
     const migrateAll = () => {
       for (const p of plans) {
         if (p.nivel == null) continue;
@@ -27,16 +46,18 @@ export async function prefetchAllTrazos(
         }
       }
     };
-    migrateAll();
     const missing = plans.filter((p) => loadFromStorage(TRAZOS_PREFIX + p.id, null) == null);
     await Promise.all(
       missing.map(async (p) => {
         const data = await loadTrazosFromDB(String(p.id));
-        if (data) saveToStorage(TRAZOS_PREFIX + p.id, data);
+        if (data) {
+          saveToStorage(TRAZOS_PREFIX + p.id, data);
+          markPlanTrazosFresh(p.id);
+        }
       }),
     );
-    // Segunda pasada completa: con todos los pisos en caché, cada asociación encuentra ambos
-    // extremos y el barrido elimina Ldesvios remanentes en el piso equivocado.
+    // Única pasada de migración: con todos los pisos ya en caché, cada asociación encuentra
+    // ambos extremos y el barrido elimina Ldesvios remanentes en el piso equivocado.
     migrateAll();
     try {
       sweepMisplacedLdesvios();

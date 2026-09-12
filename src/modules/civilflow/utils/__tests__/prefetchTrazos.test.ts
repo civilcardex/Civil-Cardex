@@ -113,3 +113,16 @@ describe('prefetchAllTrazos', () => {
     expect(loadFromStorage('trazos_1', null)).toBeTruthy();
   });
 });
+
+// Single-flight: los tres componentes que disparan el prefetch al montar deben compartir UNA
+// ejecución — dos corridas concurrentes intercalan read-modify-write de documentos completos.
+it('llamadas concurrentes comparten la misma promesa (una sola ejecución)', async () => {
+  const p1 = prefetchAllTrazos(plans);
+  const p2 = prefetchAllTrazos(plans);
+  expect(p2).toBe(p1);
+  await expect(p1).resolves.toBeUndefined();
+  // Terminada la ejecución, una llamada nueva vuelve a correr (no comparte la vieja).
+  const p3 = prefetchAllTrazos(plans);
+  expect(p3).not.toBe(p1);
+  await p3;
+});

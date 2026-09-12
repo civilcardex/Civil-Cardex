@@ -45,6 +45,19 @@ export function serializeWork(engine: {
   crossFloorGhosts: unknown[];
   guideLines: unknown[];
 }): PlanoWorkData {
+  // Strip de cachés de render (`_labelBox`, `_circ`): se recalculan en cada render y
+  // dominaban el tamaño del JSON (la cuota muda de localStorage congelaba la caché local
+  // del piso y el GC borraba sus claves de aparatos — orig. usuario piso 2). Copia
+  // superficial solo del elemento que trae cachés; el resto sigue por referencia.
+  const stripRenderCache = (arr: unknown[] | undefined): unknown[] =>
+    (arr ?? []).map((el) => {
+      if (!el || typeof el !== 'object') return el;
+      if (!('_labelBox' in el) && !('_circ' in el)) return el;
+      const cp = { ...(el as Record<string, unknown>) };
+      delete cp._labelBox;
+      delete cp._circ;
+      return cp;
+    });
   return {
     v: 6,
     scaleM: engine.scaleM,
@@ -55,14 +68,14 @@ export function serializeWork(engine: {
     offY: engine.offY,
     lineWidth: engine.lineWidthScale,
     nets: NETS.map((n) => ({ id: n.id, col: n.col })),
-    ramales: engine.ramales,
-    dims: engine.dims,
-    textAnnots: engine.textAnnots,
-    bajantes: engine.bajantes,
-    areas: engine.areas,
+    ramales: stripRenderCache(engine.ramales),
+    dims: stripRenderCache(engine.dims),
+    textAnnots: stripRenderCache(engine.textAnnots),
+    bajantes: stripRenderCache(engine.bajantes),
+    areas: stripRenderCache(engine.areas),
     nptLevels: engine.nptLevels,
     crossFloorGhosts: engine.crossFloorGhosts,
-    guideLines: engine.guideLines,
+    guideLines: stripRenderCache(engine.guideLines),
   };
 }
 

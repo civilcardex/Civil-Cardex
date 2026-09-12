@@ -8,13 +8,11 @@ import {
   saveToStorage,
   saveTrazosToDB,
   loadTrazosFromDB,
+  trazosLocalGanaABdVacia,
 } from '../../services/storageService';
 import type { PlanTrazos } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
-import {
-  migrateAssocLayoutOnLoad,
-  sweepMisplacedLdesvios,
-} from '../../utils/associateBajanteAcrossFloors';
+import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from '../../utils/assocLayoutMigration';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
 interface UseTrazosLoaderParams {
@@ -49,7 +47,13 @@ export function useTrazosLoader({ activeNetRef, setActiveNet, setScaleM }: UseTr
         if (dbData) {
           const dbTs = Number(dbData.ts || 0);
           const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);
-          if (dbTs > localTs || !localData) {
+          // Regla de contenido: un documento BD SIN contenido nunca gana a una caché local CON
+          // contenido, aunque su ts sea mayor — el ts fresco de un vaciado accidental no puede
+          // borrar el piso (el RPC de guardado es destructivo y el mayor-ts mandaba). La local
+          // manda y se re-sube para sanear la fila BD.
+          if (trazosLocalGanaABdVacia(localData, dbData)) {
+            saveTrazosToDB(String(resolvedId), localData);
+          } else if (dbTs > localTs || !localData) {
             const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
             eng.loadWork(workStr);
             if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);
