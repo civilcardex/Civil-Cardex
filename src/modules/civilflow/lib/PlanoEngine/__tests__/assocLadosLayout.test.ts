@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { applyBajanteAssociation } from '../../../utils/bajanteAssociation';
-import { migrateAssocLayoutOnLoad } from '../../../utils/associateBajanteAcrossFloors';
+import { migrateAssocLayoutOnLoad } from '../../../utils/assocLayoutMigration';
 import type { IPlanoEngineCore } from '../PlanoState';
 
 // Layout de asociación entre pisos (orig. usuario): fantasma (anillo) + Ldesvio en el piso

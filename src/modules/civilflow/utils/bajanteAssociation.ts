@@ -10,9 +10,9 @@ import {
   ldesvioIdFor,
   isLdesvioRamalId,
   nextRamalLabel,
-  markAssocLayout,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
+import { markAssocLayout } from './assocLayoutMigration';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   TRAZOS_PREFIX,
@@ -405,14 +405,24 @@ export function clearBajanteAssociation(
     );
   }
 
+  // Fantasma en el motor vivo: el piso abierto lo renderiza (punteada + cuarto de círculo)
+  // aunque el storage ya se limpió — antes solo se filtraba si el cargado era el TARGET, y
+  // desasociar desde el superior (SOURCE) dejaba el fantasma pintado (orig. usuario).
+  // Filtro por enlace exacto, sin importar qué lado está cargado.
+  if (roles) {
+    eng.crossFloorGhosts = eng.crossFloorGhosts.filter(
+      (g) => !(g.sourcePlanId === roles.lowerPlanId && g.sourceBajanteId === roles.lowerId),
+    );
+  } else {
+    eng.crossFloorGhosts = eng.crossFloorGhosts.filter(
+      (g) =>
+        !(
+          (g.sourcePlanId === sourcePlanId && g.sourceBajanteId === sourceBajanteId) ||
+          (g.sourcePlanId === targetPlanId && g.sourceBajanteId === targetBajanteId)
+        ),
+    );
+  }
   if (loadedPlanId === targetPlanId) {
-    eng.crossFloorGhosts = roles
-      ? eng.crossFloorGhosts.filter(
-          (g) => !(g.sourcePlanId === roles.lowerPlanId && g.sourceBajanteId === roles.lowerId),
-        )
-      : eng.crossFloorGhosts.filter(
-          (g) => !(g.sourcePlanId === sourcePlanId && g.sourceBajanteId === sourceBajanteId),
-        );
     const t = eng.bajantes.find((b) => b.id === targetBajanteId);
     if (t && (t.origenId ?? null) === reverseValue) eng.updateElementById(t.id, { origenId: null });
   }
@@ -605,8 +615,13 @@ export function clearBajanteAssociation(
       }
       saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
       saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
-      saveToStorage(TRAZOS_PREFIX + targetPlanId, tgtTrazosSnap);
-      saveTrazosToDB(targetPlanId, tgtTrazosSnap);
+      // Sin snapshot del trazos destino (caché ausente, libro venía del motor vivo) no hay
+      // nada que revertir en disco: escribir null fabricaba una caché muerta y el push vacío
+      // a BD borraba el piso. Solo se re-escribe un documento existente.
+      if (tgtTrazosSnap) {
+        saveToStorage(TRAZOS_PREFIX + targetPlanId, tgtTrazosSnap);
+        saveTrazosToDB(targetPlanId, tgtTrazosSnap);
+      }
       try {
         writeSanDrawingSync(plans);
         writeHydroDrawingSync(plans);
@@ -867,7 +882,7 @@ export function applyBajanteAssociation(
     code: lower.code || lower.id,
     x: lower.x,
     y: lower.y,
-    dNominal: lower.dNominal || '',
+    dNominal: upper.dNominal || lower.dNominal || '',
     direccion: ghostDireccion,
     parentDireccion: sourceDireccion,
     piso: pisoCorto(lower.nivelN),
@@ -878,6 +893,23 @@ export function applyBajanteAssociation(
   };
   writeCrossFloorGhost(upper.planId, ghost);
   markAssocLayout(upper.planId);
+  // Diámetro (orig. usuario): el bajante inferior asociado toma el dNominal del SUPERIOR
+  // (escritura directa al storage + campo vivo; bypass del guard de reducción de ramales —
+  // el usuario quiere que tome el diámetro del superior incondicionalmente). El fantasma ya
+  // nace con ese dNominal y los cambios posteriores del superior lo sincronizan solos.
+  if (upper.dNominal && upper.dNominal !== lower.dNominal) {
+    writeBajantePropToDrawing(
+      `${lower.id}-${lower.planId}`,
+      lower.net,
+      'dNominal',
+      upper.dNominal,
+      plans,
+    );
+    if (loadedPlanId === lower.planId) {
+      const liveLower = eng.bajantes.find((b) => b.id === lower.id);
+      if (liveLower) liveLower.dNominal = upper.dNominal;
+    }
+  }
   if (loadedPlanId === upper.planId) {
     eng.crossFloorGhosts = [
       ...eng.crossFloorGhosts.filter(

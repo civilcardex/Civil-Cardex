@@ -13,23 +13,22 @@ import {
   removeCrossFloorLdesvioRamal,
   writeCrossFloorGhost,
   removeCrossFloorGhost,
+  hasCachedPlan,
   ldesvioIdFor,
   isLdesvioRamalId,
   nextRamalLabel,
   type LocalGhostDrawingData,
-} from './associateBajanteAcrossFloors';
+} from './crossFloorStorage';
 
 /** Marca un piso con la versión 2 del layout de asociación (idempotente). */
 export function markAssocLayout(planId: string | number): void {
+  // Sin caché local del piso no se marca: saveData fabricaría `{assocLayout:2}` y el RPC
+  // destructivo lo persistiría en BD — borrado del piso. El prefetch marca tras descargar.
+  if (!hasCachedPlan(planId)) return;
   const data = loadData(planId);
   if (data.assocLayout === 2) return;
   data.assocLayout = 2;
   saveData(planId, data);
-}
-
-/** Lee la versión del layout de asociación de un piso (1 = viejo/sin marca). */
-export function readAssocLayout(planId: string | number): number {
-  return loadData(planId).assocLayout ?? 1;
 }
 
 /** Migración automática al layout nuevo: reconstruye anillos, Ldesvios y ghost-marcadores en
@@ -43,9 +42,17 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
   } catch {
     /* sin localStorage accesible: sigue el camino normal */
   }
+  // Piso sin caché local: nada que migrar. Fabricar el documento aquí (touched incondicional +
+  // markAssocLayout) pisaba la fila BD del piso con `{assocLayout:2, ts}` vía el RPC destructivo
+  // y además dejaba la clave no-null, bloqueando para siempre el relleno del prefetch.
+  if (!hasCachedPlan(pid)) return;
   let data = loadData(pid);
   const ghosts = data.crossFloorGhosts || [];
   let touched = false;
+  // Marca de versión sobre el documento YA cargado: cada saveData de abajo la persiste sin
+  // cargar/re-guardar el plan de nuevo (markAssocLayout por iteración era O(N) parse+save+BD).
+  data.assocLayout = 2;
+  touched = true;
   for (const g of ghosts) {
     // Ya migrado por una pasada anterior (o creado por la asociación nueva) — no re-procesar.
     if (g.layout === 2) continue;
@@ -68,7 +75,9 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
     const ldId = ldesvioIdFor(upperId);
     // 1. Mutar este piso: anillo sobre el bajante inferior (dx invertido) y quitar el ghost
     // viejo de la lista local. Alineados: sin anillo ni etiqueta (orig. usuario).
-    const lvlKey = nivelLabel || Object.keys(lower.desplazamientos || {})[0] || g.piso || '';
+    // Clave de nivel fiable: el actual o la del ghost — NUNCA la primera clave de otros
+    // desplazamientos (podía pertenecer a otro nivel/asociación y el anillo quedaba perdido).
+    const lvlKey = nivelLabel || g.piso || '';
     if (lvlKey && !alignedPair) {
       const desp = { ...(lower.desplazamientos || {}) };
       desp[lvlKey] = {
@@ -89,6 +98,7 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
     touched = true;
     // 2. Piso superior: limpiar el anillo viejo del bajante superior (ANTES de mover el LD —
     //    el guardado incluye el array ramales leído, y re-escribirlo después repondría el LD).
+    //    La marca de versión viaja en el MISMO guardado (un parse+save menos).
     let upperDirty = false;
     for (const b of upperData.bajantes || []) {
       if (!b.desplazamientos) continue;
@@ -99,7 +109,10 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
         }
       }
     }
-    if (upperDirty) saveData(upperPlanId, upperData);
+    if (upperDirty) {
+      upperData.assocLayout = 2;
+      saveData(upperPlanId, upperData);
+    }
     // 3. Ldesvio: mover del piso superior a ESTE piso (inferior), conservando geometría.
     const oldLd = (loadData(upperPlanId) as LocalGhostDrawingData).ramales?.find(
       (r) => r.id === ldId,
@@ -136,6 +149,7 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
       layout: 2,
     };
     writeCrossFloorGhost(upperPlanId, newGhost);
+    // Sin marca persistida en el superior (paso 2 solo guarda si limpió anillos): marcar aquí.
     markAssocLayout(upperPlanId);
   }
 
@@ -236,7 +250,8 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
 }
 
 /** Al migrar/mover un Ldesvio de piso, su clave de aparatos (UDs) cambia de sufijo de plan —
- *  se re-acomoda para que las UDs del bajante lo sigan a donde viva el conector. */
+ *  se re-acomoda tomando el MÁXIMO por aparato (la clave espeja un agregado; sumar duplicaría
+ *  si el destino ya tenía valores de una re-ejecución a medias). */
 function moveLdesvioAparatosKey(
   net: string,
   upperBajanteId: string,
@@ -249,7 +264,9 @@ function moveLdesvioAparatosKey(
   const to = `${net}_LD_${upperBajanteId}_${toPlanId}`;
   if (!map[from]) return;
   const cur = map[to] || {};
-  for (const [k, v] of Object.entries(map[from])) cur[k] = (cur[k] || 0) + (v as number);
+  for (const [k, v] of Object.entries(map[from])) {
+    cur[k] = Math.max(cur[k] || 0, Number(v) || 0);
+  }
   map[to] = cur;
   delete map[from];
   saveToStorage(APARATOS_BY_TRAMO_KEY, map);
