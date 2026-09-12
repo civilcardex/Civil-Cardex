@@ -144,15 +144,14 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       }
       engine.ramales.forEach((r) => {
         let inside = false;
-        const lc = engine.toCvs(r.labelX || 0, r.labelY || 0);
-        if (lc.x >= minX && lc.x <= maxX && lc.y >= minY && lc.y <= maxY) inside = true;
-        if (!inside) {
-          for (const pt of r.pts) {
-            const c = engine.toCvs(pt[0], pt[1]);
-            if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
-              inside = true;
-              break;
-            }
+        // Solo geometría (vértices dentro o segmento que cruza): la etiqueta puede
+        // arrastrarse lejos del trazo y seleccionaba ramales fuera del recuadro
+        // (orig. usuario). Sin cruce de líneas no hay selección parcial.
+        for (const pt of r.pts) {
+          const c = engine.toCvs(pt[0], pt[1]);
+          if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
+            inside = true;
+            break;
           }
         }
         if (!inside && r.pts.length >= 2) {
