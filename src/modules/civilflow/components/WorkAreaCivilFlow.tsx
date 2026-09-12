@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWorkAreaState } from './useWorkAreaState';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos';
+import { fetchProyectosOrThrow } from '../services/proyectosService';
+import { getActiveProyectoId } from '../services/storageService';
+import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { WorkAreaSidebar } from './WorkAreaSidebar';
 import WorkAreaContent from './WorkAreaContent';
 import { ErrorBoundary } from '../../../components/ErrorBoundary';
@@ -131,6 +134,50 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
 
 function CivilFlowInner() {
   const state = useWorkAreaState();
+  // null = sin decidir aún; true = hay proyecto activo o se auto-activó; false = no se pudo
+  // (sin proyectos o fallo de red tras los reintentos) → banner visible. Init perezoso: con
+  // proyecto activo no hay efecto que correr ni setState síncrono.
+  const [proyectoResuelto, setProyectoResuelto] = useState<boolean | null>(() =>
+    getActiveProyectoId() ? true : null,
+  );
+
+  // Validación/auto-activación del proyecto: la clave `civilflow_active_proyecto_id` puede
+  // quedar apuntando a un proyecto BORRADO (cascada de cf_planos) — entonces TODOS los
+  // guardados de la nube fallan con no_autorizado en silencio y el dibujo solo vive en
+  // localStorage. Reglas: id válido → ok; id muerto o ausente → limpiar y auto-activar si el
+  // usuario tiene exactamente uno; con varios/ninguno/BD caída → banner en vez de silencio.
+  // La sesión de Supabase puede tardar en restaurarse al montar: reintentar unos segundos.
+  useEffect(() => {
+    let ignore = false;
+    let intentos = 0;
+    const intentar = async () => {
+      intentos += 1;
+      try {
+        const proyectos = await fetchProyectosOrThrow();
+        if (ignore) return;
+        const activo = getActiveProyectoId();
+        const activoVivo = activo != null && proyectos.some((p) => String(p.id) === String(activo));
+        if (activoVivo) {
+          setProyectoResuelto(true);
+          return;
+        }
+        if (activo != null) localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
+        if (proyectos.length === 1) {
+          localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proyectos[0].id));
+          window.location.reload();
+          return;
+        }
+        setProyectoResuelto(false);
+      } catch {
+        if (!ignore && intentos < 10) setTimeout(intentar, 1000);
+        else setProyectoResuelto(false);
+      }
+    };
+    intentar();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Prefetch global de trazos (orig. usuario): las tablas muestran todos los pisos sin
   // necesidad de abrir el visor 2D piso por piso. Trae de la BD lo que falte en caché local,
@@ -142,6 +189,28 @@ function CivilFlowInner() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {proyectoResuelto === false && (
+        <div
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 14px',
+            background: 'rgba(180, 83, 9, 0.15)',
+            borderBottom: '1px solid rgba(217, 119, 6, 0.4)',
+            color: '#fbbf24',
+            fontSize: 12,
+            fontFamily: 'var(--body)',
+            flexShrink: 0,
+          }}
+        >
+          <span>Sin proyecto activo: el área está vacía y no se guarda nada en la nube.</span>
+          <Link to="/perfil" style={{ color: '#f59e0b', fontWeight: 600, flexShrink: 0 }}>
+            Selecciona un proyecto en Perfil
+          </Link>
+        </div>
+      )}
       <div className="app" style={{ flex: 1, minHeight: 0 }}>
         <WorkAreaSidebar tab={state.tab} setTab={state.setTab} />
         <div className="layout">

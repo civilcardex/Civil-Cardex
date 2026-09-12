@@ -1,6 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
 import { CF_TABLES } from '../constants/tableNames';
+import { emitBdSaveError } from './storageService';
 
 export interface ProyectoRow {
   id: number;
@@ -8,6 +9,22 @@ export interface ProyectoRow {
   codigo: string;
   nombre: string;
   created_at?: string;
+}
+
+/** Variante estricta para flujos que deben distinguir "sin proyectos" de "fallo de red/BD":
+ *  lanza en error del servidor o de red; solo devuelve [] cuando el usuario no tiene ninguno. */
+export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin-sesion');
+  const { data, error } = await supabase
+    .from(CF_TABLES.proyectos)
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data as ProyectoRow[]) || [];
 }
 
 /**
@@ -126,6 +143,7 @@ export async function deleteProyecto(id: number): Promise<boolean> {
 
     if (error) {
       devError('proyectosService delete rpc:', error.message);
+      emitBdSaveError('delete-proyecto', error.message);
       return false;
     }
 
