@@ -179,6 +179,7 @@ export default function EPVerificationPage({
             headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}
           >
             <Tbl
+              tableStyle={{ tableLayout: 'fixed' }}
               caption="Parámetros del equipo"
               thStyle={TH_S}
               tdStyle={TD_S}
@@ -279,6 +280,7 @@ export default function EPVerificationPage({
             bodyStyle={{ padding: 0 }}
           >
             <Tbl
+              tableStyle={{ tableLayout: 'fixed' }}
               caption="Altura manométrica total"
               thStyle={TH_S}
               tdStyle={TD_S}
@@ -356,6 +358,7 @@ export default function EPVerificationPage({
             bodyStyle={{ padding: 0 }}
           >
             <Tbl
+              tableStyle={{ tableLayout: 'fixed' }}
               caption="Potencia de la bomba"
               thStyle={TH_S}
               tdStyle={TD_S}
@@ -400,6 +403,7 @@ export default function EPVerificationPage({
               bodyStyle={{ padding: 0 }}
             >
               <Tbl
+                tableStyle={{ tableLayout: 'fixed' }}
                 caption="Caudales"
                 thStyle={TH_S}
                 tdStyle={TD_S}
@@ -489,6 +493,7 @@ export default function EPVerificationPage({
           bodyStyle={{ padding: 0 }}
         >
           <Tbl
+            tableStyle={{ tableLayout: 'fixed' }}
             caption="Presión de setpoint y tanque hidroneumático"
             thStyle={TH_R}
             tdStyle={TD_R}
@@ -555,6 +560,7 @@ export default function EPVerificationPage({
           bodyStyle={{ padding: 0 }}
         >
           <Tbl
+            tableStyle={{ tableLayout: 'fixed' }}
             caption="Diámetros seleccionados por el usuario"
             thStyle={TH_R}
             tdStyle={TD_R}
@@ -598,6 +604,7 @@ export default function EPVerificationPage({
           headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}
         >
           <Tbl
+            tableStyle={{ tableLayout: 'fixed' }}
             caption="Diámetros nominales de tuberías del equipo"
             thStyle={TH_R}
             tdStyle={{ ...TD_R, width: '1%', whiteSpace: 'nowrap' }}
@@ -646,6 +653,7 @@ export default function EPVerificationPage({
           bodyStyle={{ padding: 0 }}
         >
           <Tbl
+            tableStyle={{ tableLayout: 'fixed' }}
             caption="Especificación técnica del equipo"
             thStyle={TH_R}
             tdStyle={TD_R}
