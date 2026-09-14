@@ -59,6 +59,14 @@ export function usePlanoLoadSwitch({
       loadingPlanRef.current = false;
       return;
     }
+    const finCarga = (): void => {
+      loadingPlanRef.current = false;
+      try {
+        window.dispatchEvent(new Event('civilflow_plan_loaded'));
+      } catch {
+        /* ignore */
+      }
+    };
     eng._loadedPlanId = resolvedId;
     loadingPlanRef.current = true;
     (async () => {
@@ -66,7 +74,7 @@ export function usePlanoLoadSwitch({
         const loaded = await loadTrazosForPlan(eng, resolvedId);
         const currentRefId = currentIdRef.current || 'work';
         if (resolvedId !== currentRefId) {
-          loadingPlanRef.current = false;
+          finCarga();
           return;
         }
         if (loaded) {
@@ -81,7 +89,7 @@ export function usePlanoLoadSwitch({
           setActiveNet(loadedNet);
           if (sm != null) setScaleM(String(sm));
           requestAnimationFrame(() => {
-            loadingPlanRef.current = false;
+            finCarga();
             if (engineRef.current) engineRef.current.render();
           });
         } else if (currentId) {
@@ -95,11 +103,11 @@ export function usePlanoLoadSwitch({
           eng.activeArea = null;
           eng.setActiveNet(activeNetRef.current);
           eng.render();
-          loadingPlanRef.current = false;
+          finCarga();
         }
       } catch (e) {
         devError('[LOAD] error', e);
-        loadingPlanRef.current = false;
+        finCarga();
       }
     })();
     syncDrawings();

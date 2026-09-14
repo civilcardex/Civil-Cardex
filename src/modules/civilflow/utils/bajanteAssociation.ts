@@ -1017,6 +1017,14 @@ export function applyBajanteAssociation(
       counts: apos,
       hidro: hydro,
     });
+    // Sin caché del piso origen el agregado sale vacío y la herencia se omite en silencio:
+    // avisar en vez de dejar el panel en 0 sin explicación (orig. usuario).
+    if (!srcRaw && !Object.keys(agg).length && !hydroAgg) {
+      eng.triggerAlert(
+        'Unidades no heredadas',
+        `No se pudieron leer las unidades de ${source.code || source.id} (piso ${source.planId}): su piso no tiene datos en este equipo. Ábrelo en el visor y vuelve a asociar para traer sus UD.`,
+      );
+    }
     if (Object.keys(agg).length || hydroAgg) {
       let aposDirty = false;
       let hydroDirty = false;
@@ -1237,8 +1245,9 @@ interface HealBajante {
  *  inexistente), el efecto con el piso INFERIOR cargado trató al bajante inferior como fuente:
  *  sumó sus UD locales a la herencia y escribió el resultado en el piso SUPERIOR (claves de
  *  ramales + libro falso + espejo LD falso). Revierte EXACTO restando el libro (misma resta que
- *  clearBajanteAssociation), borra el libro y sus espejos LD, y preserva los libros legítimos
- *  (origenId a nivel estrictamente mayor; bombaEnId). Storage-only, idempotente. */
+ *  clearBajanteAssociation), borra el libro y sus espejos LD. Libro falso = titular SIN
+ *  `origenId` y SIN `bombaEnId` (no recibe de nadie), u `origenId` a plan CONOCIDO estrictamente
+ *  abajo; origen desconocido o empate → legítimo, no se toca. Storage-only, idempotente. */
 export function healHerenciaInvertida(
   plans: Array<{ id: string | number; nivel: number | string | null }>,
 ): boolean {
@@ -1277,7 +1286,17 @@ export function healHerenciaInvertida(
       if (!libro || Object.keys(libro).length === 0) continue;
       const o = (b.origenId || '').split('|')[0];
       const nivO = o ? nivelDe.get(o) : undefined;
-      if (!!b.bombaEnId || (nivO != null && nivO > nivPid)) continue; // libro legítimo
+      // Regla ESTRUCTURAL (no de niveles): un titular solo recibe herencia vía `origenId`
+      // (bajante↔bajante) o `bombaEnId` (bomba) — sin punteros, cualquier libro es del
+      // trinquete invertido. Con origenId es falso SOLO si el plan origen es CONOCIDO y está
+      // estrictamente ABAJO; nivel desconocido (lista de planes parcial) o empate (regla del
+      // apply) → legítimo, no se toca (orig. usuario: el sanador borraba libros legítimos).
+      if (b.bombaEnId) continue;
+      if (!o) {
+        // sin punteros: libro falso estructural → sanar
+      } else if (nivO === undefined || nivO >= nivPid) {
+        continue;
+      }
       for (const [tk, m] of Object.entries(libro)) {
         const cur = apos[tk];
         if (cur) {

@@ -40,7 +40,12 @@ import {
   stableStringify,
 } from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
-import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../utils/bombaAssociation';
+import {
+  aggBajanteAsociado,
+  mapUdBombaDesdeTrazos,
+  propagarHerenciaBomba,
+  type AsocLiveBaj,
+} from '../utils/bombaAssociation';
 import {
   collectSourceAgg,
   type InheritPoolBajante,
@@ -137,6 +142,55 @@ const AparatosPanel = memo(function AparatosPanel_({
   const [counts, setCounts] = useState<CountsMap>(loadAll);
   const [hidroData, setHidroData] = useState<HidroDataMap>(loadHidroData);
   const [gasAcc, setGasAcc] = useState<GasAccMap>(loadGasAcc);
+  // Señal de fin de carga de un piso (usePlanoLoadSwitch dispara 'civilflow_plan_loaded'): el
+  // efecto de espejos/herencia se SALTA mientras carga (anti-carrera) y con este tick vuelve a
+  // correr justo después — sin él, la herencia bomba→bajante no se reescribía al abrir el piso
+  // y el bajante quedaba con el valor viejo (orig. usuario).
+  const [planLoadedTick, setPlanLoadedTick] = useState(0);
+  useEffect(() => {
+    const h = (): void => setPlanLoadedTick((t) => t + 1);
+    window.addEventListener('civilflow_plan_loaded', h);
+    return () => window.removeEventListener('civilflow_plan_loaded', h);
+  }, []);
+  // Sanado de sifones fantasma (orig. usuario: "crea un sifón de más"): el conteo 'sif' se
+  // acumulaba sin guard en caminos viejos (re-selección del accesorio en el dropdown, pisado
+  // del glifo al asignar otro aparato). Se reconcilia con los glifos vivos del piso cargado
+  // al abrir/cargar — el contador nunca puede diferir de los glifos dibujados.
+  useEffect(() => {
+    const eng = engineRef.current;
+    if (!eng || loadingPlanRef?.current) return;
+    const pid = String(eng._loadedPlanId ?? '');
+    if (!pid) return;
+    const all = loadAll();
+    let dirty = false;
+    for (const r of eng.ramales) {
+      if (r.net !== 'san' && r.net !== 'll') continue;
+      const key = `${r.net}_${r.id}_${pid}`;
+      let glifos = 0;
+      if (r.accesorioInicio === 'sifon') glifos++;
+      if (r.accesorioFin === 'sifon') glifos++;
+      if (r.accMed)
+        for (const v of Object.values(r.accMed as unknown as Record<string, string>))
+          if (v === 'sifon') glifos++;
+      const contado = all[key]?.['sif'] || 0;
+      if (contado === glifos) continue;
+      const cur = { ...(all[key] || {}) };
+      if (glifos > 0) cur.sif = glifos;
+      else delete cur.sif;
+      if (Object.keys(cur).length) all[key] = cur;
+      else delete all[key];
+      dirty = true;
+    }
+    if (dirty) {
+      saveAll(all);
+      setCounts(all);
+      try {
+        window.dispatchEvent(new CustomEvent('aparatos-clear'));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [planLoadedTick, engineRef, loadingPlanRef]);
   const [open, setOpen] = useState(true);
   const [pulse, setPulse] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -609,45 +663,20 @@ const AparatosPanel = memo(function AparatosPanel_({
       liveBaj?.bombaEnId ??
       (selElement as { origenId?: string; bombaEnId?: string } | null)?.origenId ??
       (selElement as { bombaEnId?: string } | null)?.bombaEnId;
-    // Bajante ASOCIADO desde arriba (origenId): muestra el LIBRO de herencia (`ucAplicado`
-    // del propio bajante en su trazo) — exactamente las UDs que la asociación trajo del
-    // piso superior, por aparato.
+    // FUENTE ÚNICA del bajante asociado (orig. usuario: original/fantasma/Ldesvio muestran
+    // SIEMPRE las UD del grupo — 12, nunca 16): bomba → libro → árbol real del origen.
     if (isBajanteSan && targetId && origen?.includes('|')) {
-      // Enlace a BOMBA (bombaEnId): las UDs heredadas se leen DIRECTO de los trazos del piso
-      // de la bomba (clave de su caja + tramos asociados) — sin depender del libro en disco.
-      if (liveBaj?.bombaEnId?.includes('|')) {
-        const [pPlan, pId] = liveBaj.bombaEnId.split('|');
-        try {
-          const engLive = engineRef.current;
-          const live =
-            engLive && String(engLive._loadedPlanId ?? '') === pPlan
-              ? {
-                  bajantes: engLive.bajantes as unknown as InheritPoolBajante[],
-                  ramales: engLive.ramales as unknown as InheritPoolRamal[],
-                }
-              : null;
-          const heredado = mapUdBombaDesdeTrazos(pPlan, pId, netId, live);
-          if (Object.keys(heredado).length) return heredado;
-        } catch {
-          /* lectura best-effort */
-        }
-      }
-      try {
-        // Libro del ENGINE vivo primero (el autosave tarda 1.5 s: recién asociar, la caché
-        // aún no trae el libro y el panel marcaba 0 — orig. usuario), storage de respaldo.
-        // libroHeredado toma el MÁXIMO por aparato entre entradas: cada entrada del libro es
-        // una copia del mismo agregado aplicado (sumarlas mostraba 2× la herencia).
-        const libro =
-          liveBaj?.ucAplicado ??
-          loadFromStorage<{
-            bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
-          } | null>(TRAZOS_PREFIX + planId, null)?.bajantes?.find((x) => x.id === targetId)
-            ?.ucAplicado;
-        const heredado = libroHeredado({ ucAplicado: libro });
-        if (Object.keys(heredado).length) return heredado;
-      } catch {
-        /* lectura best-effort */
-      }
+      const asoc = aggBajanteAsociado({
+        targetId,
+        netId,
+        planId: String(planId ?? ''),
+        liveBaj,
+        plans,
+        counts,
+        hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
+        engine: engineRef.current,
+      });
+      if (asoc) return asoc;
     }
     const propio = isBajanteSan && targetId ? agregadoBajante(targetId) : null;
     if (propio) return propio;
@@ -664,7 +693,53 @@ const AparatosPanel = memo(function AparatosPanel_({
       const owner = engM?.bajantes.find(
         (b) => b.net === netId && exitsDeBajante(b.id).has(targetId),
       );
-      if (owner) return agregadoBajante(owner.id);
+      if (owner) {
+        // Salida de un bajante ASOCIADO: misma fuente única (la suma cruda del árbol daba 16).
+        if (owner.origenId?.includes('|') || owner.bombaEnId?.includes('|')) {
+          const asoc = aggBajanteAsociado({
+            targetId: owner.id,
+            netId,
+            planId: String(planId ?? ''),
+            liveBaj: owner,
+            plans,
+            counts,
+            hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
+            engine: engineRef.current,
+          });
+          if (asoc) return asoc;
+        }
+        return agregadoBajante(owner.id);
+      }
+    }
+    // LDesvio: espeja el GRUPO de la asociación (la clave espejo `san_LD_X_plan` puede quedar
+    // stale de escrituras viejas). El grupo se resuelve por el bajante asociado local cuyo
+    // `origenId` referencia al titular del LD (`LD_<upperId>`).
+    if (targetId?.startsWith('LD_') && (netId === 'san' || netId === 'll')) {
+      const upperId = targetId.slice(3);
+      const engL = engineRef.current;
+      let lower = engL?.bajantes.find(
+        (b) => (b as { origenId?: string }).origenId?.split('|')[1] === upperId,
+      ) as unknown as AsocLiveBaj | undefined;
+      if (!lower) {
+        const rawLoc = loadFromStorage<{ bajantes?: AsocLiveBaj[] } | null>(
+          TRAZOS_PREFIX + String(planId ?? ''),
+          null,
+        );
+        lower = rawLoc?.bajantes?.find((b) => b.origenId?.split('|')[1] === upperId);
+      }
+      if (lower) {
+        const asoc = aggBajanteAsociado({
+          targetId: lower.id || targetId,
+          netId: (lower as { net?: string }).net || netId,
+          planId: String(planId ?? ''),
+          liveBaj: lower,
+          plans,
+          counts,
+          hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
+          engine: engineRef.current,
+        });
+        if (asoc) return asoc;
+      }
     }
     const own = counts[storageKey] || {};
     if (!mergeKeys) return own;
@@ -677,6 +752,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     return merged;
   }, [
     counts,
+    hidroData,
     storageKey,
     mergeKeys,
     isBajanteSan,
@@ -687,6 +763,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     engineRef,
     exitsDeBajante,
     netId,
+    plans,
   ]);
 
   const curHidro = useMemo(() => {
@@ -725,6 +802,10 @@ const AparatosPanel = memo(function AparatosPanel_({
   useEffect(() => {
     const eng = engineRef.current;
     if (!eng) return;
+    // Carrera de cambio de piso (orig. usuario): `_loadedPlanId` ya apunta al piso entrante
+    // pero `eng.bajantes` aún es el piso anterior — escribir aquí estampaba claves/libros con
+    // el sufijo de piso equivocado.
+    if (loadingPlanRef?.current) return;
     const disk = loadAll();
     const hdisk = loadHidroData();
     const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
@@ -863,6 +944,10 @@ const AparatosPanel = memo(function AparatosPanel_({
           });
           const liveAgg = srcAgg.agg;
           const liveHydro = srcAgg.hydroAgg;
+          // Sin agregado (el GC o claves stale vaciaron las claves del origen) NO se propaga:
+          // escribía libro vacío y restaba a 0 las UDs heredadas del destino (mismo guard que
+          // las ramas gemelas de espejos de salida).
+          if (Object.keys(liveAgg).length === 0) continue;
           const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
           if (syncMirrorKey(disk, lk, liveAgg, true)) dirty = true;
           const tgt = loadFromStorage<{
@@ -955,6 +1040,16 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (dirty) {
       saveAll(disk);
       setCounts(disk);
+      // Tablas y paneles que leen claves (InfTab, diseño, validación) deben reconstruirse al
+      // momento — sin estos eventos el bajante asociado a bomba quedaba con el valor viejo
+      // hasta tocar algo a mano (orig. usuario, problema de sincronización 2).
+      try {
+        window.dispatchEvent(new CustomEvent('aparatos-clear'));
+        window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
+        window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
+      } catch {
+        /* sin window (tests) */
+      }
     }
     if (hdirty) {
       saveHidroData(hdisk);
@@ -972,6 +1067,8 @@ const AparatosPanel = memo(function AparatosPanel_({
     agregadoBajante,
     exitsDeBajante,
     engineRef,
+    loadingPlanRef,
+    planLoadedTick,
   ]);
 
   // Ramal de salida de un bajante (espejo): sus UDs las manda el bajante — panel en modo
@@ -1004,9 +1101,9 @@ const AparatosPanel = memo(function AparatosPanel_({
     )
       return; // bajante/caja/bomba: panel de solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
-    const effectiveMergeKeys = isBajanteSan ? null : mergeKeys;
-    if (effectiveMergeKeys) return;
-    // Ítem 6: máximo UN aparato por ramal (manual)
+    if (mergeKeys) return; // ramal con tributarios: solo lectura (sus UDs vienen del árbol)
+    // Ítem 6: máximo UN aparato por ramal-tributario (manual). Para cambiar el aparato:
+    // Quitar (−) y asignar el nuevo — o usar el menú contextual, que hace el switch directo.
     if (ownTotal >= 1 && netId !== 'll') {
       engineRef.current?.triggerAlert(
         'Máximo 1 aparato por ramal-tributario',
@@ -1159,7 +1256,7 @@ const AparatosPanel = memo(function AparatosPanel_({
       // restauraría geometría nueva con conteos viejos). Disco-primero evita stale closures.
       try {
         const disk = loadAll();
-        const curD = disk[storageKey] || {};
+        const curD = { ...(disk[storageKey] || {}) };
         const nextDisk = { ...disk, [storageKey]: { ...curD, [apId]: (curD[apId] || 0) + 1 } };
         saveAll(nextDisk);
         setCounts(nextDisk);
@@ -1175,6 +1272,13 @@ const AparatosPanel = memo(function AparatosPanel_({
     }
     if (eng) {
       eng._markDirty();
+    }
+    // Consistencia entre superficies (orig. usuario): el menú contextual re-deriva su tarjeta
+    // de estos eventos (el panel derecho ya reacciona vía setCounts).
+    try {
+      window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    } catch {
+      /* ignore */
     }
   };
 
@@ -1212,6 +1316,10 @@ const AparatosPanel = memo(function AparatosPanel_({
             eng.render();
             eng._markDirty();
           }
+          // La copia `fixtures` del ramal se escribió al CARGAR y nada la actualiza al quitar:
+          // invalidarla (el re-ancla del sync leería la copia del trazo y resucitaría el conteo
+          // recién borrado — orig. usuario "-" sin efecto tras reentrar).
+          live.fixtures = undefined;
           // Sanitaria: al quitar el último aparato, también quitar el accesorio del extremo libre
           // (codo 90° sube o sifón) — orig. usuario #5: quitar el sifón desde el panel debe quitar
           // su símbolo en el dibujo.
@@ -1276,6 +1384,12 @@ const AparatosPanel = memo(function AparatosPanel_({
     const engEnd = engineRef.current;
     if (engEnd) {
       engEnd._markDirty();
+    }
+    // Consistencia entre superficies (ver inc).
+    try {
+      window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    } catch {
+      /* ignore */
     }
   };
 
@@ -1580,7 +1694,7 @@ const AparatosPanel = memo(function AparatosPanel_({
                   dec={dec}
                   targetId={targetId}
                   accent={accent}
-                  disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys}
+                  disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys && ownTotal <= 0}
                 />
 
                 {items.length === 0 && (

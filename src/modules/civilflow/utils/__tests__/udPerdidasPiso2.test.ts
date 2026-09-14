@@ -104,11 +104,13 @@ describe('GC con caché vieja no borra (bug piso 2)', () => {
   });
 
   it('re-anclaje: claves borradas con fixtures vivos en trazos vuelven solas al sincronizar', () => {
-    // Caso exacto del usuario: trazos con fixtures (símbolos intactos), store vacío.
+    // Caso exacto del usuario: trazos con fixtures (símbolos intactos), store vacío. Un ramal
+    // con aparato propio lleva en el trazo el glifo codo90rmSube (san) o aparatoInicio/Fin —
+    // sin campo portador el re-ancla NO restaura (copia stale de un aparato ya quitado).
     lsSet(TRAZOS_PREFIX + '12', {
       ramales: [
-        { id: 'RS1', net: 'san', fixtures: { san: 1 } },
-        { id: 'TX', net: 'san', fixtures: { lvm: 1 } },
+        { id: 'RS1', net: 'san', accesorioInicio: 'codo90rmSube', fixtures: { san: 1 } },
+        { id: 'TX', net: 'san', accesorioInicio: 'codo90rmSube', fixtures: { lvm: 1 } },
         { id: 'RS2', net: 'san', fixtures: {} },
       ],
       bajantes: [{ id: 'BAN1', net: 'san', fixtures: { san: 2 } }],

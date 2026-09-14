@@ -137,6 +137,36 @@ describe('healHerenciaInvertida', () => {
     expect(parseLS('civilflow_trazos_1').bajantes[1].ucAplicado).toEqual({ san_RS8_1: { ino: 2 } });
   });
 
+  it('origenId a plan DESCONOCIDO o en empate de nivel → libro legítimo, no se toca (falso positivo del sanador, orig. usuario)', () => {
+    setLS('civilflow_trazos_1', {
+      bajantes: [
+        {
+          id: 'BANX',
+          net: 'san',
+          origenId: '42|BANFANTASMA', // plan 42 fuera de la lista de plans
+          ucAplicado: { san_RS7_1: { ino: 3 } },
+        },
+        {
+          id: 'BANY',
+          net: 'san',
+          origenId: '1|BANZ', // empate de nivel (regla del apply)
+          ucAplicado: { san_RS6_1: { lvm: 2 } },
+        },
+      ],
+    });
+    setLS('civilflow_aparatos_by_tramo_v2', {
+      san_RS7_1: { ino: 3 },
+      san_RS6_1: { lvm: 2 },
+    });
+    expect(healHerenciaInvertida(plans)).toBe(false);
+    const apos = parseLS('civilflow_aparatos_by_tramo_v2');
+    expect(apos.san_RS7_1).toEqual({ ino: 3 });
+    expect(apos.san_RS6_1).toEqual({ lvm: 2 });
+    const bajs = parseLS('civilflow_trazos_1').bajantes;
+    expect(bajs[0].ucAplicado).toEqual({ san_RS7_1: { ino: 3 } });
+    expect(bajs[1].ucAplicado).toEqual({ san_RS6_1: { lvm: 2 } });
+  });
+
   it('sin niveles conocidos no hace nada (conservador)', () => {
     seedEnvenenado();
     expect(healHerenciaInvertida([{ id: 1, nivel: null }])).toBe(false);
