@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { dec } from '../utils/parseDecimal';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
 import { matHazenC } from '../constants/engineeringDataMaterials';
 import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
 import PageNav from './PageNav';
-import { SI, TH, TD } from '../styles/sharedTableStyles';
+import { SI } from '../styles/sharedTableStyles';
 import Tbl from './shared/Tbl';
+import Card from './shared/Card';
 import { APS_STORAGE_KEY } from '../constants/storage-keys';
 
 // CÁLCULOS POR BOMBA (orig. usuario): cada bomba tiene SUS inputs y SUS resultados; las
@@ -25,44 +26,9 @@ const Fmt2 = (v: string | number, u = '') => {
   );
 };
 
-const SI2 = { ...SI, fontSize: 13, padding: '4px 6px' };
-const TH2 = { ...TH, fontSize: 12 };
-const TDBom: React.CSSProperties = { ...TD, background: '#1a1c20' };
-const TD2 = { ...TDBom, fontSize: 13 };
-
-/** Tarjeta de tabla con icono + título (mismo estilo que las otras pestañas de diseño). */
-function Card({
-  icon,
-  title,
-  children,
-}: {
-  icon: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--r)',
-        overflow: 'hidden',
-        background: 'var(--bg)',
-      }}
-    >
-      <div style={{ padding: '8px 8px', display: 'flex', alignItems: 'center' }}>
-        <img
-          src={icon}
-          alt=""
-          style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-        />
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--txt)' }}>{title}</h3>
-      </div>
-      <div style={{ padding: '0 2px 2px' }}>{children}</div>
-    </div>
-  );
-}
+// Mismos estilos que las tablas de Equipo de Presión (EPVerificationPage) — orig. usuario.
+const TH_R = { fontSize: 11, padding: '2px 4px' };
+const TD_R = { fontSize: 11, padding: '3px 4px' };
 
 /** Inputs editables por bomba. */
 export interface BombaInputs {
@@ -403,7 +369,7 @@ function BombaARDesign() {
       value={inpOf(code)[k]}
       aria-label={aria}
       onChange={(e) => setIn(code, k, e.target.value)}
-      style={{ ...SI2, width: w }}
+      style={{ ...SI, width: w }}
     />
   );
   const CellSel = ({ code, aria, w = 150 }: { code: string; aria: string; w?: number }) => (
@@ -411,7 +377,7 @@ function BombaARDesign() {
       value={inpOf(code).tipoTuberia}
       aria-label={aria}
       onChange={(e) => setIn(code, 'tipoTuberia', e.target.value)}
-      style={{ ...SI2, width: w }}
+      style={{ ...SI, width: w }}
     >
       <option value="PVC-PR">PVC-PR</option>
       <option value="Acero galvanizado">Acero galvanizado</option>
@@ -427,13 +393,13 @@ function BombaARDesign() {
   const page1 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       <Card
-        icon="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
+        iconImg="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
+        iconImgStyle={{ width: 22, height: 22 }}
         title="Datos de entrada"
       >
         <Tbl
-          thStyle={TH2}
-          tdStyle={TD2}
-          fontSize={13}
+          thStyle={TH_R}
+          tdStyle={TD_R}
           cols={[
             'Bomba',
             'Nivel',
@@ -482,13 +448,13 @@ function BombaARDesign() {
   const page2 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       <Card
-        icon="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
+        iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
+        iconImgStyle={{ width: 22, height: 22 }}
         title="Cálculo de pérdidas de carga"
       >
         <Tbl
-          thStyle={TH2}
-          tdStyle={TD2}
-          fontSize={13}
+          thStyle={TH_R}
+          tdStyle={TD_R}
           cols={[
             'Bomba',
             'Nivel',
@@ -530,13 +496,13 @@ function BombaARDesign() {
   const page3 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       <Card
-        icon="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
+        iconImg="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
+        iconImgStyle={{ width: 22, height: 22 }}
         title="Parámetros de diseño bomba sumergible"
       >
         <Tbl
-          thStyle={TH2}
-          tdStyle={TD2}
-          fontSize={13}
+          thStyle={TH_R}
+          tdStyle={TD_R}
           cols={['Bomba', 'Nivel', 'NPSH disp (m)']}
           rows={rowsView.map((r) => [
             bombCell(r.code),
@@ -546,13 +512,13 @@ function BombaARDesign() {
         />
       </Card>
       <Card
-        icon="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
+        iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
+        iconImgStyle={{ width: 22, height: 22 }}
         title="Especificación — Bomba sumergible trituradora"
       >
         <Tbl
-          thStyle={TH2}
-          tdStyle={TD2}
-          fontSize={13}
+          thStyle={TH_R}
+          tdStyle={TD_R}
           cols={[
             'Bomba',
             'Nivel',
@@ -584,13 +550,13 @@ function BombaARDesign() {
   const page4 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       <Card
-        icon="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
+        iconImg="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
+        iconImgStyle={{ width: 22, height: 22 }}
         title="Parámetros de diseño cámara de bombeo"
       >
         <Tbl
-          thStyle={TH2}
-          tdStyle={TD2}
-          fontSize={13}
+          thStyle={TH_R}
+          tdStyle={TD_R}
           cols={[
             'Bomba',
             'Nivel',
@@ -612,13 +578,13 @@ function BombaARDesign() {
         />
       </Card>
       <Card
-        icon="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
+        iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
+        iconImgStyle={{ width: 22, height: 22 }}
         title="Especificación — Cámara de bombeo"
       >
         <Tbl
-          thStyle={TH2}
-          tdStyle={TD2}
-          fontSize={13}
+          thStyle={TH_R}
+          tdStyle={TD_R}
           cols={['Bomba', 'Nivel', 'V útil (lts)', 'V geom (lts)', 'Chequeo']}
           rows={rowsView.map((r) => [
             bombCell(r.code),
@@ -681,27 +647,9 @@ function BombaARDesign() {
         color="var(--bom)"
         labels={['Datos de entrada', 'Pérdidas de carga', 'Bomba sumergible', 'Cámara de bombeo']}
       />
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          alignItems: 'center',
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            overflowY: 'auto',
-            borderRadius: 'var(--r)',
-            border: '1px solid var(--line)',
-            padding: '0 10px',
-            boxSizing: 'border-box',
-          }}
-        >
-          {pages[bp - 1].c}
-        </div>
+      {/* Contenedor plano como EP (sin marco extra: las Cards ya traen su borde) */}
+      <div style={{ flex: 1, padding: 6, overflowY: 'auto', overflowX: 'hidden', display: 'flex' }}>
+        {pages[bp - 1].c}
       </div>
     </div>
   );
