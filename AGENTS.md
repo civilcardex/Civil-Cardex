@@ -1216,3 +1216,106 @@ Asociar bajantes → 12 abajo; cerrar y reabrir (piso inferior primero) → sigu
 - Datos de sesiones con bugs viejos traían el MISMO bajante dos veces en un piso: el RPC `save_plano_data` rechazaba el insert entero ("ON CONFLICT DO UPDATE cannot affect row a second time", 500 — ningún dato del piso llegaba a BD), React avisaba keys duplicadas y las dos copias se peleaban la herencia en cada pasada del efecto (bucle "Maximum update depth").
 - FIX: `dedupPorId` (PlanoPersistence, queda la ÚLTIMA aparición) aplicado en `serializeWork`, `applyWorkData` (ramales/dims/annots/bajantes/areas/guideLines) y en el payload de `saveTrazosToDB`. Al recargar, el engine nace limpio y el siguiente autosave sube el documento deduplicado a BD.
 - Gates: tsc 0 · vitest 681/681 · lint 0/0 · build ✓.
+
+## Session Summary — 2026-09-14 (libro UC: falsos positivos del sanador + dedup-merge; Isometría 4 sub-pestañas + visor 3D Detalle Aparatos)
+
+### Parte 1 — "UDs bien al principio, vacías al reentrar": 5 causas exactas (todas fixeadas)
+1. **`healHerenciaInvertida` borraba libros LEGÍTIMOS** (falso positivo del sanador introducido en ronda anterior): exigía `nivO > nivPid`; con el plan del `origenId` ausente de `plans` (lista parcial al montar) o empate de nivel, trataba el libro como trinquete, lo restaba del mapa global y persistía con ts=ahora — y el prefetch corre también al CERRAR el visor. FIX: regla estructural — libro falso SOLO si el titular no tiene `origenId` ni `bombaEnId` (no recibe de nadie: único caso estructural del trinquete) o su `origenId` apunta a un plan CONOCIDO estrictamente abajo; desconocido/empate → legítimo.
+2. **dedup keep-LAST descartaba el libro de la copia 1**: `updateElementById` muta la PRIMERA copia; con datos legacy duplicados el autosave serializaba la copia sin libro pisando la caché buena. FIX: `dedupPorId(lista, merge)` + `mergeBajanteDedup` — base última copia + rellenar campos de asociación ausentes (ucAplicado/ucAplicadoHidro/origenId/descargaEnId/bombaEnId/recibeDeIds/alimentaIds) desde copias previas. Aplica en serializeWork, applyWorkData y saveTrazosToDB.
+3. **Propagación en vivo sin guard de agregado vacío**: `collectSourceAgg` → `{}` (GC/claves stale) borraba claves destino y escribía libro vacío. FIX: `if (!Object.keys(liveAgg).length) continue`.
+4. **Panel del fantasma leía con el planId del piso actual**: FIX remap `pisoBase` → plan (`pisoLbl(nivel)`) para la lectura del libro en rama A de currentMap.
+5. **Apply silencioso sin caché del piso origen**: FIX `triggerAlert` pidiendo abrir el piso superior y re-asociar.
+
+### Parte 2 — Isometría con 4 sub-pestañas
+`IsometriaTab.tsx` convertido en shell con `PageNav total={4}` (estado local): **Isometría general** (cuerpo extraído a `workarea/IsometriaGeneral.tsx`, contenido intacto), **Aparatos** (visor 3D nuevo), **Bomba red contra incendio** (`RciCuartoBombasViewer` + `RciCuartoBombasReferencia`, mismo bloque de la red rci, estado local), **Equipo de presión constante** (`PressureEquipmentDesign`, PageNav interno propio). Todo lazy+Suspense; sub-pestañas siempre visibles.
+
+### Parte 3 — Visor "Detalle Aparatos" (`components/aparatos3d/`)
+- **12 GLB byte-exactos** extraídos del HTML adjunto (DETALLE_APARATOS_v2) → `public/models/aparatos/*.glb` (18 MB; catálogo COMPONENTS/COMP_DESC/nota normativa transcritos LITERAL — petición: "tal cual, no modifiques nada").
+- División: `index.tsx` (entry lazy), `DetalleAparatosViewer.tsx` (layout), `aparatos3dData.ts` (datos literales), `useAparatos3DScene.ts` (three: renderer/cámaras persp+orto/rig 4 luces/OrbitControls/resize/cleanup + `colocarRigLuz`), `useGlbCatalogo.ts` (GLTFLoader dinámico, carga secuencial 150 ms, progreso, fix pulgadas→metros, pose ISO por defecto), `vistasCamara.ts` (ISO/FRENTE/LATERAL/PLANTA con fórmulas del original, animateTo ease-out 700 ms, zoomBy, reset), `ejeGizmo.ts` (gizmo 2D ejes), `AparatosSidebar.tsx` (listado+tooltip norma+panel descriptivo+nota colapsable), `SinSeleccionOverlay.tsx`.
+- three 0.185: `GLTFLoader`/`OrbitControls` de three/examples con dynamic import (chunk separado); `outputColorSpace` sRGB; look idéntico al original (fondo 0x0d1117 + fog, sombras 2048², LinearToneMapping). Bug del original corregido (toggleSection definido); panel de posicionamiento omitido (vestigial sin DOM en el original).
+
+### Gates
+tsc 0 · vitest 684/684 (121 files) · lint 0/0 · vite build ✓ · graphify ✓.
+
+### Verificación manual (recarga dura)
+Isometría → 4 sub-pestañas; Aparatos: catálogo 12 aparatos, selección/tooltip/descripción, vistas ISO/FRENTE/LATERAL/PLANTA, zoom/reset, gizmo. Asociación entre pisos: asignar → cerrar → reabrir (los libros legítimos ya no los toca el sanador aunque `plans` llegue parcial).
+
+### Ronda 3d: ajustes sub-pestañas Isometría + tablas EP
+- **Letra de Aparatos 3D** = Geist (misma del módulo, quitado JetBrains Mono).
+- **Bomba red contra incendio** (sub-pestaña): solo el visor 3D `RciCuartoBombasViewer` (quitada la página "opcional"/PageNav interno).
+- **Equipo de presión constante** (sub-pestaña): SOLO el esquema 3D — nuevo `components/ep/EsquemaEp.tsx` + hook compartido `components/ep/useEpSincronizado.ts` (estado EP + hidratación/persistencia BD extraídos de PressureEquipmentDesign para que Redes e Isometría compartan el mismo dato).
+- **PressureEquipmentDesign** (Redes): quedan 3 páginas (quitada "Esquema").
+- **Label** "Isometría general" → "Isometría".
+- **Tablas EP páginas 2-3** (`EPVerificationPage`, 8 tablas): `tableLayout: 'fixed'` → ancho completo con columnas equiespaciadas.
+- Gates: tsc 0 · vitest 684/684 · lint 0/0 · build ✓.
+
+### Ronda 3e: tablas de Bomba AR con estilo EP
+- `BombaARDesign.tsx`: quitados overrides locales (SI2 fontSize 13/padding, TH2 fontSize 12, TD2 fondo #1a1c20, Tbl fontSize={13}) → mismas constantes que `EPVerificationPage` (TH_R fontSize 11 / TD_R padding 3px 4px, Tbl fontSize 11 default, inputs `SI` sin fondo). 6 tablas idénticas en estilo a las de Equipo de Presión.
+- Gates: tsc 0 · vitest 684/684 · lint 0/0 · build ✓.
+
+### Ronda 3f: encabezado gris Bomba AR + panel del asociado nunca suma de más
+- **Bomba AR**: Card local → Card compartida (`shared/Card`, header `.card-h` con fondo gris por gradiente) en las 6 tablas.
+- **Panel del bajante asociado (16 vs 12, raíz de lectura)**: si el libro (`ucAplicado`) está ausente/vacío, rama B (`agregadoBajante`) sumaba heredado + UD locales del piso = 16. FIX: fallback en `currentMap` rama A — con libro vacío se espeja el árbol REAL del bajante origen vía `collectSourceAgg` sobre el trazos del piso superior (con pool vivo si ese piso está cargado). El panel del asociado ahora SIEMPRE refleja el bajante superior, con o sin libro.
+- Gates: tsc 0 · vitest 684/684 · lint 0/0 · build ✓.
+
+## Session Summary — 2026-09-14 (ronda 2: fuente única UD asociados + menú Quitar por ID)
+
+### Diagnóstico integral (exploración dirigida)
+- **16 vs 12**: múltiples superficies leían claves CRUDAS que llevan el heredado dentro: rama de salidas (`agregadoBajante(BAN1)` directo, sin libro), rama B del panel, y tablas (sanUdTable/sanRows/sanConnectivity suman RS2(12 heredado)+T1RS2(4 local)). La porción heredada YA está etiquetada en `ucAplicado[clave]` — faltaba que los lectores la usen.
+- **Bomba→bajante stale**: los holders del piso 1 (libro, claves de ramales, ucAcum) solo se reescribían con el piso 1 cargado; además el efecto de espejos podía correr en la ventana de cambio de piso (`_loadedPlanId` nuevo + `eng.bajantes` viejo).
+- **Menú Quitar**: era "first-found" (glifo por orden Inicio→Fin, conteo por primera clave >0) y sordo a `aparatos-clear` + dos retornos mudos → tarjeta congelada / sifón ocupando el lugar del inodoro.
+
+### Fixes
+- **`aggBajanteAsociado`** (bombaAssociation, nueva fuente única): bomba (`mapUdBombaDesdeTrazos`) → libro (`libroHeredado`, max por aparato) → árbol real del origen (`collectSourceAgg` sobre trazos del piso origen, con pool vivo). Consumidores: currentMap ramas 1-3 (reemplaza el bloque inline), rama de SALIDAS de un bajante asociado, y LDesvio (`LD_<upperId>` resuelve el asociado local por `origenId`). null = no asociado → ruta normal.
+- **Efecto espejos (FixturesPanel)**: bail con `loadingPlanRef` (anti-carrera) y, cuando escribe, dispara `aparatos-clear` + `civilflow_san/hidro_sync_changed` para que tablas/paneles refresquen al momento (problema 2 del usuario: cambiar UD de la caja sin ver el cambio).
+- **Menú (midRamalAccessorySelector)**: Quitar POR ID (`applyAparato(val, removedId)` — glifo por `removedAcc` (sif→'sifon', resto→'codo90rmSube'), conteo por `bumpAparatoCount(id)`, contador hidro solo si el glifo borrado era codo); listener de `aparatos-clear`/`storage` (tick); sin retornos mudos (siempre sincroniza menú+eventos); tarjetas MÚLTIPLES (una por aparato asignado, coexisten sifón+inodoro; asignar el mismo no re-incrementa); af/ac/gas quita el campo que coincide con el id.
+- **Decisión documentada (pendiente)**: las TABLAS (InfTab/diseño) siguen leyendo claves crudas → el bajante asociado puede mostrar 16 en tablas; moverlas al libro requiere plomería buildTramos→sanUdTable/sanRows (siguiente ronda si el usuario lo ve ahí).
+
+### Tests
+`aggBajanteAsociado.test.ts` (3: prioridad libro, fallback árbol origen, null sin punteros).
+
+### Gates
+tsc 0 · vitest 687/687 (122 files) · lint 0/0 · build ✓ · graphify ✓.
+
+### Ronda 2b: bomba no actualizaba + desasociar no dejaba 0
+- **Bomba stale**: el efecto de espejos/herencia se saltaba durante la carga (guard anti-carrera) y NO volvía a correr al terminar. FIX: `usePlanoLoadSwitch` dispara `civilflow_plan_loaded` al apagar `loadingPlanRef` (todos los paths); FixturesPanel escucha y re-corre (dep `planLoadedTick`).
+- **quitarBomba**: además de restar el libro, ahora ELIMINA la clave propia del bajante (`san_<bajId>_<plan>`, espejo escrito por propagarHerenciaBomba) — sin eso, tras desasociar el panel/rama B seguía mostrando el heredado viejo en vez de 0. `ucAcum=0` ya existía. Test `quitarBombaCero.test.ts`.
+- Gates: tsc 0 · vitest 688/688 (123 files) · lint 0/0 · build ✓.
+
+### Ronda 2c: sifón fantasma — conteo 'sif' idempotente
+- **Causa**: el conteo 'sif' se BUMP+1 sin guard en varios caminos (re-seleccionar "Sifón" en el dropdown del extremo re-sumaba cada vez; asignar otro aparato PISABA el glifo sifón sin decrementar su conteo) y ninguna pasada reconciliaba ese contador → sifón fantasma contado para siempre (16 vs 12).
+- **FIX**: (1) `setAparatoCountValue` + `contarSifonesDe` (syncExtremeAccessory) — el auto-sif es ahora SET = nº de glifos 'sifon' vivos (extremos+accMed) en `syncExtremeAccessoryToHidroData` (param nuevo `nSifonVivos`), `bajanteConnectionPanel` (ambas ramas) y `ExtremeAccessoryEditor`; (2) el menú decrementa 'sif' cuando su glifo es pisado por otro aparato; (3) autosanación en FixturesPanel al abrir/cargar piso: reconcilia 'sif' con los glifos vivos y repara los fantasmas ya persistidos.
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+### Ronda 2d: UN aparato por ramal (switch) + LDesvio checkeado
+- **Revertida la coexistencia**: de nuevo UN SOLO aparato por ramal (orig. usuario). Asignar otro REEMPLAZA: menú → `setSingleAparatoCount` + libera el glifo del extremo opuesto; panel derecho → en vez de la alerta de tope, hace SWITCH (libera glifo/campos del anterior antes de elegir extremo y borra su conteo). Ambas superficies quedan consistentes (inc/dec disparan `aparatos-clear` para el menú).
+- **LDesvio en panel derecho**: en "Bajantes asociados" aparece CHECKEADO su bajante asociado (match `origenId` vs `LD_<upperId>`), checkbox solo-lectura (el enlace se gestiona desde el menú del bajante).
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+### Ronda 2e: Quitar = vaciar TODO (semántica de un solo aparato)
+- Aclaración del usuario: tras un switch sifón→inodoro, "Quitar" debe dejar el ramal SIN NINGÚN aparato (el sifón anterior ya no existe conceptualmente). El Quitar del menú ahora VACÍA COMPLETO: limpia ambos glifos (sifon/codo90rmSube) + sus diámetros + campos aparatoInicio/Fin, y borra la clave de conteo COMPLETA del ramal (incluye residuos de eras previas). Igual en af/ac/gas (ambos campos). Sin retornos mudos: siempre sincroniza menú + eventos.
+- Asignar sigue siendo REEMPLAZO en ambas superficies (menú setSingle; panel switch liberando glifo/campos del anterior), e inc/dec disparan aparatos-clear para que el menú reaccione.
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+### Ronda 2f: grilla de aparatos = conteo propio
+- **Causa de "no puedo quitar / vuelve a contar el anterior" en el panel**: FixtureGrid mostraba `currentMap` (agregado: heredado + tributarios) pero `inc/dec` escriben la clave PROPIA → el "−" restaba conteos ajenos (no hacía nada) y el total "revivía" el aparato anterior.
+- **FIX**: la grilla editable muestra `counts[storageKey]` (propio); `currentMap` solo para superficies de solo lectura (bajante asociado, espejos). Además quitado el gate `mergeKeys` en `inc` (el aparato va a la clave propia; los tributarios no lo bloquean).
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+### Ronda 2g: grilla = agregado otra vez, pero "−" limpia de donde viva
+- Revertido el own-only de la grilla (los ramales/tributarios con UDs por flujo quedaban vacíos). La grilla vuelve a mostrar `currentMap` (agregado).
+- **"−" ahora quita de donde viva**: si el conteo propio llegó a 0 y el aparato vive en una clave fusionada (tributario), `quitarAparatoDeFusionadas(apId)` lo resta de esa clave y limpia su glifo en el tributario (glifo correspondiente al aparato: sif→'sifon', resto→'codo90rmSube').
+- **inc (switch)**: los aparatos anteriores salen también de las claves fusionadas (loop `otrosAparatos` → `quitarAparatoDeFusionadas`) además de la propia.
+- Quitado el gate `mergeKeys` en inc (bloqueaba asignar desde el panel en ramales con tributarios — orig. usuario).
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+### Ronda 2h: panel de ramales con aparatos por flujo = solo lectura + alerta de tope restaurada
+- **Grilla**: ramales/tributarios con UDs autoasignadas por flujo (mergeKeys) vuelven a ser SOLO LECTURA + opacos (disabled = !!mergeKeys, como antes). La muestra sigue siendo el agregado (currentMap).
+- **Alerta restaurada**: inc vuelve a bloquear con "Máximo 1 aparato por ramal-tributario" cuando ya hay un aparato propio (netId !== 'll'). Para cambiar aparato: "−" y luego "+" (o el menú contextual, que hace el switch directo).
+- Eliminados helpers muertos (quitarAparatoDeFusionadas/glifoDeAparato) tras restaurar el readonly.
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+### Ronda 2i: ajuste fino del panel (readonly solo cuando corresponde)
+- Grilla: readonly+opaca SOLO si el ramal no tiene aparatos propios (mergeKeys && ownTotal<=0). Si tiene aparato manual propio → editable (puede quitarlo con "−"). Restaurado gate mergeKeys en inc + alerta de tope.
+- Estado final: asignar = "+" (si vacío) o menú (switch directo); quitar = "−" o Quitar del menú (vacía todo); ramales con UDs por flujo y sin aparato propio = solo lectura+opacos.
+- Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
