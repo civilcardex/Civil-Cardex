@@ -10,6 +10,7 @@ import { pointToSegmentDist } from './HitTester';
 import { isDeletedYeeDoblePart } from './deleteYeePreserve';
 import { mergeTouchingRemnant } from './deleteRemerge';
 import { assignCodoAfterBranchDelete } from './deleteJunctionCleanup';
+import { purgarEstadoRamalesBorrados } from './deleteCascade';
 import { _firstSegmentAngle, angleAtHalfLength } from './drawingAngles';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import { _midpoint } from './drawingUtils';
@@ -63,6 +64,8 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
     // Borrado = SOLO el trazo borrador (pedido usuario): los tributarios que colgaban no se
     // borran en cascada — el sanado global los re-ancla a la raíz que nombra su label.
     engine.ramales = engine.ramales.filter((x) => x.id !== r.id);
+    // Purga conteos del piso (aparatos/hidro/gas) — el id puede reutilizarse al redibujar.
+    purgarEstadoRamalesBorrados(engine, [r.id]);
     if (r.tipo !== 'tributario') engine._renumberRamales(r.net);
     engine.selId = null;
     engine._emitSelect(null);

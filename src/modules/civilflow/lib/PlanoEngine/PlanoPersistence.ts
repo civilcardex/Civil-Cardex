@@ -31,20 +31,51 @@ export interface PlanoWorkData {
 /** Dedup por id (queda la ÚLTIMA aparición): datos de sesiones con bugs viejos traen el mismo
  *  bajante/ramal dos veces en un piso — el RPC lo rechaza entero ("ON CONFLICT DO UPDATE
  *  cannot affect row a second time", 500) y React se queja de keys duplicadas; además las dos
- *  copias se pelean escribiendo la herencia en cada pasada (bucle de setState). */
-export function dedupPorId<T>(lista: T[]): T[] {
+ *  copias se pelean escribiendo la herencia en cada pasada (bucle de setState). Con `merge`,
+ *  en colisión la base es la última copia pasada por la función. */
+export function dedupPorId<T>(lista: T[], merge?: (base: T, previa: T) => T): T[] {
   const pos = new Map<string, number>();
   const out: T[] = [];
   for (const el of lista) {
     const id = ((el as { id?: string } | null)?.id || '') + '';
     const i = id ? pos.get(id) : undefined;
-    if (i !== undefined) out[i] = el;
+    if (i !== undefined) out[i] = merge ? merge(el, out[i]) : el;
     else {
       if (id) pos.set(id, out.length);
       out.push(el);
     }
   }
   return out;
+}
+
+// Campos de asociación entre pisos que SOBREVIVEN al dedup: updateElementById muta la PRIMERA
+// copia del array; con el dedup keep-last, el libro (ucAplicado) escrito en la copia 1 se
+// descartaba al serializar y el autosave pisaba la caché buena (orig. usuario: herencia a 0
+// al reentrar con datos legacy duplicados).
+const CAMPOS_ASOC = [
+  'ucAplicado',
+  'ucAplicadoHidro',
+  'origenId',
+  'descargaEnId',
+  'bombaEnId',
+  'recibeDeIds',
+  'alimentaIds',
+] as const;
+
+/** Merge para bajantes en el dedup: base = copia más reciente; los campos de asociación
+ *  ausentes en la base se rellenan desde la copia previa. */
+export function mergeBajanteDedup<T>(base: T, previa: T): T {
+  const b = base as Record<string, unknown>;
+  const p = previa as Record<string, unknown> | null;
+  if (!p || typeof p !== 'object') return base;
+  let merged: Record<string, unknown> | null = null;
+  for (const k of CAMPOS_ASOC) {
+    if (b[k] == null && p[k] != null) {
+      if (!merged) merged = { ...b };
+      merged[k] = p[k];
+    }
+  }
+  return (merged as T) || base;
 }
 
 export function serializeWork(engine: {
@@ -90,7 +121,7 @@ export function serializeWork(engine: {
     ramales: dedupPorId(stripRenderCache(engine.ramales)),
     dims: dedupPorId(stripRenderCache(engine.dims)),
     textAnnots: dedupPorId(stripRenderCache(engine.textAnnots)),
-    bajantes: dedupPorId(stripRenderCache(engine.bajantes)),
+    bajantes: dedupPorId(stripRenderCache(engine.bajantes), mergeBajanteDedup),
     areas: dedupPorId(stripRenderCache(engine.areas)),
     nptLevels: engine.nptLevels,
     crossFloorGhosts: engine.crossFloorGhosts,
@@ -142,6 +173,7 @@ export function applyWorkData(
       }
       return b;
     }),
+    mergeBajanteDedup,
   );
   engine.areas = dedupPorId(d.areas || []);
   engine.nptLevels = d.nptLevels || [];

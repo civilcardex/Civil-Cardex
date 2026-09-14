@@ -84,6 +84,12 @@ export function setNetLocked(engine: IPlanoEngineCore, netId: string, locked: bo
 }
 
 export function clearNet(engine: IPlanoEngineCore, netId: string): void {
+  // Purga conteos de TODOS los ramales/bajantes de la red antes de soltarlos — mismo motivo
+  // que el borrado individual: el id puede reutilizarse y el trazo nuevo nacería con UDs viejas.
+  purgarEstadoRamalesBorrados(engine, [
+    ...engine.ramales.filter((r) => r.net === netId).map((r) => r.id),
+    ...engine.bajantes.filter((b) => b.net === netId).map((b) => b.id),
+  ]);
   engine.ramales = engine.ramales.filter((r) => r.net !== netId);
   engine.bajantes = engine.bajantes.filter((b) => b.net !== netId);
   engine.areas = engine.areas.filter((a) => a.net !== netId);
@@ -182,6 +188,7 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
 
 import { ACC_ABBR } from '../../utils/accessoryAbbreviations';
 import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
+import { purgarEstadoRamalesBorrados } from './deleteCascade';
 
 // Una unión de codo reventilado es el extremo de un ramal 'vent' coincidiendo con un punto de
 // un ramal 'san' (ver el umbral de 0.5 unidades que también usa el renderizador para dibujar el

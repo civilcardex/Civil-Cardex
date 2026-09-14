@@ -13,7 +13,7 @@ import { _midpoint } from './PlanoEngineDrawing';
  * recalcula longitudes y renumera. Usado por `PlanoEngine.deleteSelected()`.
  */
 
-import { cascadeMontanteAssociation } from './deleteCascade';
+import { cascadeMontanteAssociation, purgarEstadoRamalesBorrados } from './deleteCascade';
 import { cleanupJunctionsAfterRamalDelete, cleanupTeeMarkersAt } from './deleteJunctionCleanup';
 import { remergeSplitRamales, mergeTribPairAt, mergeTouchingRemnant } from './deleteRemerge';
 import { isDeletedYeeDoblePart, preserveYeeDobleAt, splitMembersFor } from './deleteYeePreserve';
@@ -224,6 +224,7 @@ export function deleteSelected(
           const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
           if (lDesvioId) {
             engine.ramales = engine.ramales.filter((r) => r.id !== lDesvioId);
+            deletedRamalIds.add(lDesvioId);
             netsToRenumber.add(deleted.net);
           }
           delete deleted.desplazamientos[lvl];
@@ -235,6 +236,7 @@ export function deleteSelected(
               const d = deleted.desplazamientos[lvlKey];
               if (d.Ldesvio) {
                 engine.ramales = engine.ramales.filter((r) => r.id !== d.Ldesvio);
+                deletedRamalIds.add(d.Ldesvio);
                 netsToRenumber.add(deleted.net);
               }
             }
@@ -252,6 +254,9 @@ export function deleteSelected(
             }
           }
           engine.bajantes.splice(idxB, 1);
+          // El bajante borrado también arrastra su clave de UDs (`net_<id>_<plan>`) — la
+          // renumeración reusa BAN1 y sin purga el nuevo nacería con las UDs viejas.
+          deletedRamalIds.add(deleted.id);
           cascadeMontanteAssociation(engine, deleted);
           // Un montante a mitad de cuerpo siempre escribió un marcador de tee (accMed) en su
           // ramal huésped al crearse — borrar el montante sin esto dejaba ese glifo/conteo para
@@ -321,6 +326,9 @@ export function deleteSelected(
     // punto donde HABÍA un brazo borrado (grado 2) se funden en UN ramal (aunque formen
     // esquina) — el trazo restante queda como uno solo.
     if (!opts?.noMerge) mergeTouchingRemnant(engine, deletedPts);
+    // Purga DESPUÉS de remerge/fusiones (mueven conteos al sobreviviente) y antes de la
+    // renumeración (que puede reasignar el id a otro trazo).
+    purgarEstadoRamalesBorrados(engine, deletedRamalIds);
     for (const net of netsToRenumber) engine._renumberRamales(net);
     for (const net of bajNetsToRenumber) {
       if (net === 'montante') engine._renumberMontantes();
@@ -364,6 +372,9 @@ export function deleteSelected(
       return;
     }
     const wasYeeDoblePartSel = isDeletedYeeDoblePart(engine, deleted);
+    // Ids a purgar del storage (aparatos/hidro/gas del piso): el borrado + sus tributarios en
+    // cascada — si el id se reutiliza al redibujar, el trazo nuevo no debe nacer con UDs viejas.
+    const purgarIds = new Set<string>([deletedId]);
     // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
     reassignTributariosToHermano(engine, deleted);
     if (wasYeeDoblePartSel) {
@@ -372,6 +383,7 @@ export function deleteSelected(
       // Borrado INDIVIDUAL (selId): el tributario entrante de una división que se deshace
       // cae con ella (ítem #3). El BORRADO EN CONJUNTO (ids) no tiene esta cascada — pedido
       // usuario: en conjunto solo cae lo seleccionado.
+      for (const t of engine.ramales) if (t.padre === deletedId) purgarIds.add(t.id);
       engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deletedId);
     }
     preserveYeeDobleAt(engine, deleted);
@@ -428,6 +440,9 @@ export function deleteSelected(
       const sourceBajanteId = deletedId.slice(3);
       removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
     }
+    // Purga DESPUÉS de remerge/fusiones (mueven conteos al sobreviviente) y antes de la
+    // renumeración (que puede reasignar el id a otro trazo).
+    purgarEstadoRamalesBorrados(engine, purgarIds);
     if (deleted.tipo === 'ramal') {
       engine._renumberRamales(deleted.net);
     } else {
@@ -456,11 +471,15 @@ export function deleteSelected(
     const deleted: PlanoBajante = engine.bajantes[idxB];
     const deletedId = deleted.id;
     const lvl = engine.nivelActual?.label ?? '';
+    // Ids (bajante + Ldesvios) cuya clave de UDs/conteos debe purgarse del piso — la
+    // renumeración reusa ids (BAN1) y el nuevo elemento no debe nacer con UDs viejas.
+    const purgarIds = new Set<string>([deletedId]);
     // Si isFantasma=true, se trata como borrado del padre (limpia TODOS los niveles)
     if (!deleted.isFantasma && engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
       const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
       if (lDesvioId) {
         engine.ramales = engine.ramales.filter((r) => r.id !== lDesvioId);
+        purgarEstadoRamalesBorrados(engine, [lDesvioId]);
       }
       delete deleted.desplazamientos[lvl];
       if (deleted.ghostData) delete deleted.ghostData[lvl];
@@ -477,6 +496,7 @@ export function deleteSelected(
         const d = deleted.desplazamientos[lvlKey];
         if (d.Ldesvio) {
           engine.ramales = engine.ramales.filter((r) => r.id !== d.Ldesvio);
+          purgarIds.add(d.Ldesvio);
         }
       }
     }
@@ -523,6 +543,7 @@ export function deleteSelected(
     // Limpia los fantasmas entre pisos de OTROS pisos que referencian este bajante
     if (engine._loadedPlanId != null)
       removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
+    purgarEstadoRamalesBorrados(engine, purgarIds);
     engine.selId = null;
     engine._emitSelect(null);
     engine._emitDelete([deletedId]);

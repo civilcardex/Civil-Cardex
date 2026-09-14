@@ -74,7 +74,7 @@ import {
   GAS_ACC_KEY,
 } from '../constants/storage-keys';
 import type { PlanoWorkData } from '../lib/PlanoEngine/PlanoPersistence';
-import { dedupPorId } from '../lib/PlanoEngine/PlanoPersistence';
+import { dedupPorId, mergeBajanteDedup } from '../lib/PlanoEngine/PlanoPersistence';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -661,7 +661,7 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     const textAnnots = (d.textAnnots ?? []) as PlanoTextAnnotation[];
     const guideLines = (d.guideLines ?? []) as PlanoGuideLine[];
     const crossFloorGhosts = (d.crossFloorGhosts ?? []) as CrossFloorGhost[];
-    const bajantes = dedupPorId((d.bajantes ?? []) as PlanoBajante[]);
+    const bajantes = dedupPorId((d.bajantes ?? []) as PlanoBajante[], mergeBajanteDedup);
 
     // Un solo payload jsonb → el RPC SECURITY DEFINER valida propiedad/estructura/caps y hace
     // upsert de cabecera + reemplazo de colecciones + rebuild de bajante_conexiones en una

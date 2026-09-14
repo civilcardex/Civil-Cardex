@@ -5,7 +5,11 @@ import {
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
-import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
+import {
+  APARATOS_BY_TRAMO_KEY,
+  GAS_ACC_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+} from '../../constants/storage-keys';
 import { _firstSegmentAngle } from './drawingAngles';
 
 /** Entrada del storage de hidráulica: conteo de accesorios, longitud horizontal y salidas de un ramal. */
@@ -38,6 +42,69 @@ export function decrementAccesorioCount(
   else nextAcc[accType] = next;
   map[storageKey] = { ...entry, accesorios: nextAcc };
   saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
+}
+
+// Al borrar un ramal/tributario su id puede REUTILIZARSE (la renumeración reasigna RS1/T1RS1 al
+// redibujar) y el conteo viejo sobrevivía en el storage: el trazo nuevo nacía "ya con aparato"
+// y al asignar otro se contaba doble (orig. usuario: "los borro y los vuelvo a hacer y ya tienen
+// un aparato"). El diámetro/accesorios viven en el objeto borrado — esto purga SOLO lo que vive
+// fuera de él, del PISO cargado (otros pisos con el mismo id no se tocan; las claves sin sufijo
+// numérico son legado y se tratan como del piso, igual que en networkRenumber).
+// Correr DESPUÉS de remerge/mergeTribPair/mergeTouchingRemnant: esos MUEVEN los conteos al
+// sobreviviente (deleteRemerge) — purgar antes destruiría conteos que deben migrar.
+/** Elimina del storage los conteos de aparatos, accesorios hidro y gas asociados a los ids borrados. */
+export function purgarEstadoRamalesBorrados(engine: IPlanoEngineCore, ids: Iterable<string>): void {
+  const idSet = new Set(ids);
+  if (idSet.size === 0) return;
+  const plan = engine._loadedPlanId != null ? String(engine._loadedPlanId) : null;
+  // Clave `net_<id>[_<plan>]` (ids con guión bajo — LD_BAN1 — incluidos). `net_<id>` sin sufijo = legado.
+  const claveDelBorrado = (key: string): boolean => {
+    const first = key.indexOf('_');
+    if (first <= 0) return false;
+    const rest = key.slice(first + 1);
+    const m = rest.match(/^(.*)_(\d+)$/);
+    const id = m ? m[1] : rest;
+    const suf = m ? m[2] : null;
+    if (!idSet.has(id)) return false;
+    return suf == null || suf === plan;
+  };
+  const aparatos = loadFromStorage<Record<string, Record<string, number>>>(
+    APARATOS_BY_TRAMO_KEY,
+    {},
+  );
+  const hidro = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+  let changed = false;
+  for (const key of Object.keys(aparatos)) {
+    if (claveDelBorrado(key)) {
+      delete aparatos[key];
+      changed = true;
+    }
+  }
+  for (const key of Object.keys(hidro)) {
+    if (claveDelBorrado(key)) {
+      delete hidro[key];
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveToStorage(APARATOS_BY_TRAMO_KEY, aparatos);
+    saveToStorage(HYDRO_DATA_STORAGE_KEY, hidro);
+    try {
+      window.dispatchEvent(new Event('aparatos-clear'));
+    } catch {
+      /* sin window (tests) */
+    }
+  }
+  // Gas: keyed por id pelado del ramal (sin red ni piso) — la clave solo existe si el ramal existía.
+  const gas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
+  let gasChanged = false;
+  for (const key of Object.keys(gas)) {
+    if (idSet.has(key)) {
+      delete gas[key];
+      gasChanged = true;
+    }
+  }
+  if (gasChanged) saveToStorage(GAS_ACC_KEY, gas);
 }
 
 // Un bajante/montante conectado a otro piso por "Origen"/"Destino" es el mismo tubo físico que
