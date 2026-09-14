@@ -143,7 +143,6 @@ describe('matriz trib-trib — el trazo autocreado y el entrante quedan en RS2',
     (eng as unknown as { tipoTramo: string }).tipoTramo = 'tributario';
     eng.finishRamal();
     const rows = dump(eng);
-    console.log('A:', JSON.stringify(rows));
     for (const r of rows.filter((x) => x.tipo === 'tributario')) {
       expect(r.padre).toBe('RS2');
       expect(r.label).toContain('RS2');
@@ -170,7 +169,6 @@ describe('matriz trib-trib — el trazo autocreado y el entrante quedan en RS2',
     (eng as unknown as { tipoTramo: string }).tipoTramo = 'tributario';
     eng.finishRamal();
     const rows = dump(eng);
-    console.log('B:', JSON.stringify(rows));
     expect(rows.filter((x) => x.tipo === 'tributario').length).toBe(2); // sí hubo unión
     for (const r of rows.filter((x) => x.tipo === 'tributario')) {
       expect(r.padre).toBe('RS2');
@@ -198,7 +196,6 @@ describe('matriz trib-trib — el trazo autocreado y el entrante quedan en RS2',
     (eng as unknown as { tipoTramo: string }).tipoTramo = 'tributario';
     eng.finishRamal();
     const rows = dump(eng);
-    console.log('C:', JSON.stringify(rows));
     // Si el motor rechazó la unión por dirección de flujo (extremo libre san), válido — lo
     // que JAMÁS puede pasar es un tributario con padre RS1 en este punto.
     for (const r of rows.filter((x) => x.tipo === 'tributario')) {
@@ -220,7 +217,6 @@ describe('matriz trib-trib — el trazo autocreado y el entrante quedan en RS2',
     );
     expect(trib).not.toBeNull();
     const rows = dump(eng);
-    console.log('D:', JSON.stringify(rows));
     for (const r of rows.filter((x) => x.tipo === 'tributario')) {
       expect(r.padre).toBe('RS2');
       expect(r.label).toContain('RS2');
@@ -258,7 +254,6 @@ describe('matriz trib-trib — el trazo autocreado y el entrante quedan en RS2',
     );
     eng._markDirty();
     const rows = dump(eng);
-    console.log('E:', JSON.stringify(rows));
     const trib = rows.find((x) => x.tipo === 'tributario');
     expect(trib?.padre).toBe('RS1');
     expect(trib?.label).toContain('RS1');

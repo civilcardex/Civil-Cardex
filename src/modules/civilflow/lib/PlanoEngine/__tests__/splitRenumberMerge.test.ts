@@ -86,23 +86,8 @@ describe('BUG 1 — split + _renumberRamales + borrar divisor', () => {
     finishRamal(engine);
     const down = engine.ramales.find((r) => r.mergesFrom);
     expect(down).toBeTruthy();
-    console.log(
-      'POST-SPLIT:',
-      engine.ramales
-        .map((r) => `${r.id}[${r.label}] mer=${JSON.stringify(r.mergesFrom)}`)
-        .join(' | '),
-    );
     // Simular el renumber que la app corre tras crear (los IDs de ramal pueden cambiar)
     _renumberRamales(engine, 'san');
-    console.log(
-      'POST-RENUMBER:',
-      engine.ramales
-        .map(
-          (r) =>
-            `${r.id}[${r.label}] mer=${JSON.stringify(r.mergesFrom)} pts=${JSON.stringify(r.pts)}`,
-        )
-        .join(' | '),
-    );
     // mergesFrom debe seguir apuntando a ids VIVOS (migrado por el renumber)
     for (const r of engine.ramales) {
       if (!r.mergesFrom) continue;
@@ -117,15 +102,6 @@ describe('BUG 1 — split + _renumberRamales + borrar divisor', () => {
     expect(divisor).toBeTruthy();
     engine.selId = divisor!.id;
     deleteSelected(engine);
-    console.log(
-      'POST-BORRAR:',
-      engine.ramales
-        .map(
-          (r) =>
-            `${r.id}[${r.label}] mer=${JSON.stringify(r.mergesFrom)} pts=${JSON.stringify(r.pts)}`,
-        )
-        .join(' | '),
-    );
     // UN solo ramal continuo: [0,0]→[40,0]
     const ramales = engine.ramales.filter((r) => r.tipo === 'ramal');
     expect(ramales).toHaveLength(1);

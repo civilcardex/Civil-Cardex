@@ -122,7 +122,6 @@ describe('conteo yee 4 vectores en un punto', () => {
       {},
     );
     // eslint-disable-next-line no-console
-    console.log('HIDRO2:', JSON.stringify(hidro2));
     const all = JSON.stringify(hidro2);
     expect(all.includes('"yeeSimple"')).toBe(false);
     expect(all.includes('"yeeDoble"')).toBe(true);

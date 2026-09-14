@@ -79,8 +79,7 @@ function makeEngine(): PlanoEngine {
   const canv = makeCanvas();
   const cw = { addEventListener: () => {}, removeEventListener: () => {}, style: {} };
   const eng = new PlanoEngineCtor(cw as never, null, canv as unknown as HTMLCanvasElement);
-  (eng as unknown as { _onAlertCb: ((t: string, m: string) => void) | null })._onAlertCb = (t, m) =>
-    console.log('ALERTA:', t, '|', m);
+  (eng as unknown as { _onAlertCb: ((t: string, m: string) => void) | null })._onAlertCb = () => {};
   return eng;
 }
 
@@ -146,18 +145,6 @@ describe('downstream de un split trib-trib hereda la raíz con el consecutivo si
     );
     // Depuración del bloqueo: alertas del motor
 
-    console.log(
-      'PIEZAS:',
-      JSON.stringify(
-        eng.ramales.map((r) => ({
-          id: r.id,
-          label: r.label,
-          padre: (r as unknown as { padre: string | null }).padre,
-          tipo: r.tipo,
-          mf: (r as unknown as { mergesFrom?: string[] }).mergesFrom ?? null,
-        })),
-      ),
-    );
     const downstream = eng.ramales.find(
       (r) =>
         r.tipo === 'tributario' &&

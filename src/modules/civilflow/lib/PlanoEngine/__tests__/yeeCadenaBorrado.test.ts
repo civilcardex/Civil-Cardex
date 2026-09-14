@@ -146,9 +146,6 @@ describe('cadena doble→simple→borrado final', () => {
     // 2) borrar el lateral restante RS2 (creó la unión de [50,0]) → sin codo 45 (reporte 2).
     eng.selId = 'RS2';
     eraseRamalAt(eng, lat2, 67.1, -7.1);
-    const ids = eng.ramales.map((r) => r.id);
-    // eslint-disable-next-line no-console
-    console.log('POST: ids=', JSON.stringify(ids), 'acc=', JSON.stringify(codosEn(eng)));
     expect(codosEn(eng).filter((c) => /codo/.test(c))).toEqual([]);
     expect(codosEn(eng).filter((c) => c.endsWith('tapon'))).toEqual([]);
   });

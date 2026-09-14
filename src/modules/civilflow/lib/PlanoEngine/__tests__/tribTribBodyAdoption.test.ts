@@ -129,15 +129,6 @@ describe('trib-trib por cuerpo — todos comparten el padre del primer tributari
     (eng as unknown as { tipoTramo: string }).tipoTramo = 'tributario';
     eng.finishRamal();
 
-    const after = eng.ramales.map((r) => ({
-      id: r.id,
-      label: r.label,
-      padre: (r as unknown as { padre: string | null }).padre,
-      tipo: r.tipo,
-      mergesFrom: (r as unknown as { mergesFrom?: string[] }).mergesFrom ?? null,
-    }));
-    console.log('AFTER:', JSON.stringify(after, null, 1));
-
     // El incoming adopta la raíz del tributario al que se unió (RS2) — label y padre.
     const trams = eng.ramales.filter(
       (r) => (r as unknown as { tipo: string }).tipo === 'tributario',

@@ -86,8 +86,7 @@ function makeEngine(): PlanoEngine {
   const canv = makeCanvas();
   const cw = { addEventListener: () => {}, removeEventListener: () => {}, style: {} };
   const eng = new PlanoEngineCtor(cw as never, null, canv as unknown as HTMLCanvasElement);
-  (eng as unknown as { _onAlertCb: ((t: string, m: string) => void) | null })._onAlertCb = (t, m) =>
-    console.log('ALERTA-DISPARADA:', t, '|', m);
+  (eng as unknown as { _onAlertCb: ((t: string, m: string) => void) | null })._onAlertCb = () => {};
   return eng;
 }
 
@@ -116,7 +115,6 @@ describe('conversión de guía vertical+45° que cruza el tronco — sin alerta'
     let { pts: guidePts } = resolveRamalEndsFromGuide(eng, guide, crossing);
     // Corrección fina de llegada (±7.5°) — igual que el menú real.
     const snapped = snapGuideArrivalToHost(guidePts, crossing!.angle, 'san', 'ramal');
-    console.log('SNAP:', JSON.stringify({ guidePts, ang: crossing!.angle, snapped }));
     guidePts = snapped!;
     const snapOn = true;
     const arrivalSeg: [number, number][] = [

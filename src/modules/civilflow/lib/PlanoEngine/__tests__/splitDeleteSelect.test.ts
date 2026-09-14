@@ -173,13 +173,6 @@ describe('#2 tributario parte tributario: el downstream debe ser seleccionable',
       ],
     } as never;
     finishRamal(engine);
-    console.log(
-      'R2:',
-      engine.ramales.map(
-        (r) =>
-          `id=${r.id} tipo=${r.tipo} pts=${JSON.stringify(r.pts)} label=${r.label} mer=${r.mergesFrom ? JSON.stringify(r.mergesFrom) : '-'}`,
-      ),
-    );
     // El tramo inferior de T1 (después de la unión) debe existir
     const downstream = engine.ramales.find(
       (rr) => rr.tipo === 'tributario' && rr.pts.some((p) => p[0] === 0 && p[1] > 15),

@@ -37,8 +37,8 @@ function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
     _emitStatus: () => {},
     _emitDelete: () => {},
     _markDirty: () => {},
-    triggerAlert: (t: string) => console.log('ALERT', t),
-    triggerAccesorioModal: () => console.log('MODAL'),
+    triggerAlert: () => {},
+    triggerAccesorioModal: () => {},
     _renumberRamales: () => {},
     _renumberBajantes: () => {},
     _renumberMontantes: () => {},
@@ -125,13 +125,6 @@ describe('tributario anidado: seleccionar tributario T1 como padre, dibujar T2 s
       ],
     } as never;
     finishRamal(engine);
-    console.log(
-      'RAMALES:',
-      engine.ramales.map(
-        (r) =>
-          `id=${r.id} tipo=${r.tipo} padre=${r.padre} pts=${JSON.stringify(r.pts)} label=${r.label} mer=${r.mergesFrom ? JSON.stringify(r.mergesFrom) : '-'}`,
-      ),
-    );
     // El tributario entrante T2 debe haberse agregado
     const t2 = engine.ramales.find(
       (r) =>
