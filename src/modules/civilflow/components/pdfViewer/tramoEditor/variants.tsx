@@ -634,12 +634,21 @@ export function RamalEditorSection() {
                   // que esté. Antes solo miraba recibeDeIds y la salida nunca se marcaba.
                   const isRecibe = (b.recibeDeIds || []).includes(selElement.id);
                   const isAlimenta = (b.alimentaIds || []).includes(selElement.id);
-                  const isAssoc = isRecibe || isAlimenta;
+                  // LDesvio (LD_<upperId>, orig. usuario): su bajante asociado es el del
+                  // `origenId` — se muestra CHECKEADO (solo lectura; el enlace se gestiona
+                  // desde el menú del bajante).
+                  const esLd = String(selElement.id || '').startsWith('LD_');
+                  const esSuAsociado =
+                    esLd &&
+                    String((b as unknown as { origenId?: string }).origenId || '').split('|')[1] ===
+                      String(selElement.id).slice(3);
+                  const isAssoc = isRecibe || isAlimenta || esSuAsociado;
                   return (
                     <label key={b.id} style={CHECK_ROW_STYLE}>
                       <input
                         type="checkbox"
                         checked={isAssoc}
+                        disabled={esSuAsociado && !isRecibe && !isAlimenta}
                         onChange={(e) => {
                           // Regla central (ítem 1.2): tope de asociaciones ANTES de escribir.
                           if (e.target.checked && !isAssoc) {

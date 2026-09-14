@@ -163,7 +163,6 @@ describe('replay usuario — 3 yees simples + 1 doble (coordenadas exactas)', ()
       totalDoble += yd;
     }
     // eslint-disable-next-line no-console
-    console.log('YEES:', detalle.join(' | '));
     expect(totalSimple).toBe(3);
     expect(totalDoble).toBe(1);
   });

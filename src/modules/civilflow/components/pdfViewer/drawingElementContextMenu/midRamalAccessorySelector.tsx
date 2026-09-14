@@ -1,5 +1,6 @@
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS } from '../../../constants/engineeringDataFixtures';
 import { UD_BASE_INIT } from '../../../constants';
+import { useState, useEffect } from 'react';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions';
 import { esAplicable, loadAll } from '../../fixturesStorage';
 import { DIAM_BY_MAT } from '../../../constants';
@@ -15,7 +16,6 @@ import {
   bumpHidroAccesorio,
   bumpAparatoCount,
   setSingleAparatoCount,
-  decrementFirstAparato,
 } from '../../../utils/syncExtremeAccessory';
 import type { PlanItem } from '../../../context/PlansContext';
 import { MENU_SELECT_STYLE, MENU_SECTION_LABEL_ROW_STYLE, type ContextMenuState } from './context';
@@ -38,6 +38,19 @@ export function MidRamalAccessorySelector({
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   planosCtx?: { plans: PlanItem[] };
 }) {
+  // Reactividad del menú (orig. usuario: quedaba congelado tras "Quitar" — era sordo a los
+  // eventos de conteo que sí escucha el panel derecho). El tick fuerza re-derivar currentApp
+  // (que se relee de storage en cada render).
+  const [, setMenuTick] = useState(0);
+  useEffect(() => {
+    const bump = (): void => setMenuTick((n) => n + 1);
+    window.addEventListener('aparatos-clear', bump);
+    window.addEventListener('storage', bump);
+    return () => {
+      window.removeEventListener('aparatos-clear', bump);
+      window.removeEventListener('storage', bump);
+    };
+  }, []);
   // La 'llaveTerminal' simple solo tiene sentido en un extremo real del ramal (termina la
   // tubería allí) — en el cuerpo debe ir mediante 'teeLlaveTerminal' (un tee con la pierna
   // libre tapada), por eso se excluye la válvula pelada de este selector de cuerpo aunque
@@ -268,7 +281,28 @@ export function MidRamalAccessorySelector({
               void _e;
             }
           }
-          const currentAppDef = APARATOS_DEF.find((a) => a.id === currentApp);
+          // Asignados COEXISTEN (orig. usuario: sifón + inodoro): una tarjeta por aparato con
+          // su propio Quitar por id — san/ll desde el mapa de conteos; af/ac/gas por campos.
+          const asignados: Array<{ id: string; n: number }> = (() => {
+            if (element.id?.startsWith('LD_')) return [];
+            if (element.net === 'san' || element.net === 'll') {
+              try {
+                const planIdForCur =
+                  (engineRef.current as unknown as { _loadedPlanId?: string })?._loadedPlanId ?? '';
+                const curMap = loadAll()[`san_${element.id}_${planIdForCur || ''}`] || {};
+                return aparatoIds
+                  .filter((id) => (curMap[id] || 0) > 0)
+                  .map((id) => ({ id, n: curMap[id] }));
+              } catch {
+                return [];
+              }
+            }
+            const f0 = String(element.aparatoInicio || '');
+            const f1 = String(element.aparatoFin || '');
+            return Array.from(new Set([f0, f1].filter(Boolean))).map((id) => ({ id, n: 1 }));
+          })();
+          // removedId: el aparato que la TARJETA muestra — Quitar debe eliminar exactamente
+          // ese (antes era "primer encontrado" y con sifón+inodoro quitaba el equivocado).
           const applyAparato = (val: string) => {
             const eng = engineRef.current;
             if (!eng) return;
@@ -381,7 +415,20 @@ export function MidRamalAccessorySelector({
                 // Sifón (aparato 'sif') dibuja el glifo sifón, no codo 90°; conteo sigue sumando codo90.
                 const isSif = val === 'sif';
                 const accType = isSif ? 'sifon' : 'codo90rmSube';
+                // UN SOLO aparato por ramal (orig. usuario): el nuevo REEMPLAZA al anterior —
+                // el glifo viejo del extremo opuesto se libera junto con la escritura.
+                const otherAcc: 'accesorioInicio' | 'accesorioFin' =
+                  fieldAcc === 'accesorioInicio' ? 'accesorioFin' : 'accesorioInicio';
+                const otherDiamF =
+                  otherAcc === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
+                const otherVal = String(
+                  (fresh as unknown as Record<string, unknown>)[otherAcc] || '',
+                );
                 const updates: Record<string, unknown> = { [fieldAcc]: accType };
+                if (otherVal === 'sifon' || otherVal === 'codo90rmSube') {
+                  updates[otherAcc] = '';
+                  updates[otherDiamF] = '';
+                }
                 const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
                 // sifón: siempre 2" (fix bug 3" arbitrario)
                 const diamValRaw = isInodoro
@@ -405,9 +452,12 @@ export function MidRamalAccessorySelector({
                 eng.render();
                 // Conteo directo por clave de plano (sin gate de planosCtx: con el contexto aún
                 // cargando el menú escribía el símbolo pero no el conteo y el primer clic
-                // "no hacía nada").
+                // "no hacía nada"). Aparatos COEXISTEN (+1 sin limpiar los demás — orig.
+                // usuario: sifón + inodoro a la vez; Quitar es por id).
                 {
                   const planId = eng._loadedPlanId ?? '';
+                  // UN SOLO aparato por ramal: el nuevo REEMPLAZA los conteos anteriores
+                  // (max-1) — misma semántica del panel derecho (orig. usuario).
                   setSingleAparatoCount('san', element.id, planId, val);
                   // bump solo si accesorio no existía antes (evita doble conteo al cambiar de aparato con mismo codo)
                   const hadAccBefore = !!fresh[fieldAcc];
@@ -421,37 +471,32 @@ export function MidRamalAccessorySelector({
                 eng._markDirty();
                 return;
               } else {
-                // Find actual field that has codo/sifon — not just nearStart (mid click may be far from free end)
-                let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
-                let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
-                if (fresh.accesorioInicio === 'codo90rmSube' || fresh.accesorioInicio === 'sifon') {
-                  targetField = 'accesorioInicio';
-                  targetDiamField = 'diametroInicio';
-                } else if (
-                  fresh.accesorioFin === 'codo90rmSube' ||
-                  fresh.accesorioFin === 'sifon'
-                ) {
-                  targetField = 'accesorioFin';
-                  targetDiamField = 'diametroFin';
-                }
-                // Residuo de asignación por panel (campo aparato sin codo): también se
-                // limpia — antes ese caso retornaba sin hacer nada y el menú quedaba
-                // mostrando el asignado.
-                const hasResidue = !!(fresh.aparatoInicio || fresh.aparatoFin);
-                if (!targetField && !hasResidue) {
-                  eng.resumeHistory();
-                  return;
-                }
+                // QUITAR = VACIAR toda la asignación de aparatos del ramal (orig. usuario:
+                // tras un switch sifón→inodoro, el botón debe dejar el ramal SIN NINGÚN
+                // aparato — glifos, campos y conteo —, no reasignar el anterior).
+                eng.pauseHistory();
                 const updates: Record<string, unknown> = {};
-                if (targetField) {
-                  updates[targetField] = '';
-                  if (targetDiamField) updates[targetDiamField] = '';
+                let codosBorrados = 0;
+                for (const [f, dF] of [
+                  ['accesorioInicio', 'diametroInicio'],
+                  ['accesorioFin', 'diametroFin'],
+                ] as const) {
+                  const v = (fresh as unknown as Record<string, unknown>)[f];
+                  if (v === 'sifon' || v === 'codo90rmSube') {
+                    updates[f] = '';
+                    updates[dF] = '';
+                    if (v === 'codo90rmSube') codosBorrados++;
+                  }
                 }
                 if (fresh.aparatoInicio) updates.aparatoInicio = '';
                 if (fresh.aparatoFin) updates.aparatoFin = '';
-                eng.updateElementById(element.id, updates);
-                // Refresco desde el motor vivo (no del snapshot): garantiza que el menú
-                // muestre "sin asignar" aunque el prop element llegara stale.
+                if (Object.keys(updates).length) eng.updateElementById(element.id, updates);
+                // La copia `fixtures` del ramal se escribió al CARGAR y nada la actualiza al
+                // quitar: invalidarla aquí (el re-ancla del sync leería la copia del trazo y
+                // resucitaría el conteo recién borrado — orig. usuario Quitar sin efecto).
+                fresh.fixtures = undefined;
+                // Refresco desde el motor vivo (no del snapshot): el menú muestra el estado
+                // real aunque el prop element llegara stale.
                 const liveAfter =
                   engineRef.current?.ramales.find((r) => r.id === element.id) || null;
                 if (selElement?.id === element.id)
@@ -466,10 +511,17 @@ export function MidRamalAccessorySelector({
                 );
                 eng.render();
                 const planId = eng._loadedPlanId ?? '';
-                if (targetField) bumpHidroAccesorio('san', 'codo90rmSube', -1, element.id, planId);
-                if (typeof window !== 'undefined')
-                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
-                decrementFirstAparato('san', element.id, planId);
+                if (codosBorrados > 0)
+                  bumpHidroAccesorio('san', 'codo90rmSube', -codosBorrados, element.id, planId);
+                // Conteo: se VACÍA COMPLETO (todos los aparatos del ramal, incluidos
+                // residuos de switches anteriores).
+                {
+                  const cur = loadAll()[`san_${element.id}_${planId}`] || {};
+                  for (const [k, n] of Object.entries(cur)) {
+                    const cnt = Number(n) || 0;
+                    if (cnt > 0) bumpAparatoCount('san', element.id, planId, k, -cnt);
+                  }
+                }
                 if (typeof window !== 'undefined')
                   window.dispatchEvent(new CustomEvent('aparatos-clear'));
                 // Ítem 1: un snapshot para toda la desasignación (geometría + conteos).
@@ -528,19 +580,17 @@ export function MidRamalAccessorySelector({
               }
             }
             if (!val) {
-              let actualField: 'aparatoInicio' | 'aparatoFin' | null = null;
-              if (fresh.aparatoInicio) actualField = 'aparatoInicio';
-              else if (fresh.aparatoFin) actualField = 'aparatoFin';
-              else return;
-              // Ítem 1: una (des)asignación = un snapshot — los conteos se escriben ANTES del
-              // snapshot final (si no, un Ctrl+Z restauraba geometría nueva con conteos viejos
-              // y el aparato seguía visible hasta el segundo Ctrl+Z).
+              // QUITAR = VACIAR toda la asignación del ramal (ambos campos aparato) — el menú
+              // debe quedar "sin asignar" siempre (orig. usuario).
               eng.pauseHistory();
-              const actualOldApp = String(
-                (fresh as unknown as Record<string, unknown>)[actualField] || '',
-              );
-              const actualUpdates: Record<string, unknown> = { [actualField]: null };
-              eng.updateElementById(element.id, actualUpdates);
+              const actualUpdates: Record<string, unknown> = {};
+              if (fresh.aparatoInicio) actualUpdates.aparatoInicio = null;
+              if (fresh.aparatoFin) actualUpdates.aparatoFin = null;
+              if (Object.keys(actualUpdates).length) {
+                eng.updateElementById(element.id, actualUpdates);
+              }
+              // Misma invalidación de la copia `fixtures` que en la rama san/ll (anti-resurrección).
+              fresh.fixtures = undefined;
               // Refresco desde el motor vivo (no del snapshot): garantiza que el menú
               // muestre "sin asignar" aunque el prop element llegara stale.
               const liveAfter2 =
@@ -563,13 +613,17 @@ export function MidRamalAccessorySelector({
                 } as PlanoRamal);
               }
               eng.render();
-              // Conteo directo por clave de plano (sin gate de planosCtx — ver rama san).
+              // Conteo: se VACÍA COMPLETO (todos los aparatos del ramal).
               {
                 const pid = eng._loadedPlanId ?? '';
-                if (actualOldApp) bumpAparatoCount(element.net, element.id, pid, actualOldApp, -1);
-                if (typeof window !== 'undefined')
-                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                const cur = loadAll()[`${element.net}_${element.id}_${pid}`] || {};
+                for (const [k, n] of Object.entries(cur)) {
+                  const cnt = Number(n) || 0;
+                  if (cnt > 0) bumpAparatoCount(element.net, element.id, pid, k, -cnt);
+                }
               }
+              if (typeof window !== 'undefined')
+                window.dispatchEvent(new CustomEvent('aparatos-clear'));
               eng.resumeHistory();
               eng._markDirty();
               return;
@@ -620,50 +674,54 @@ export function MidRamalAccessorySelector({
                   derecha) y remoción bidireccional — Quitar limpia el campo del ramal, la
                   sidebar decrementa el conteo y el glifo de codo implícito desaparece (ambos
                   se derivan de aparatoInicio/Fin). */}
-              {currentApp && (
-                <div
-                  style={{
-                    marginTop: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 6,
-                    background: 'rgba(0,220,229,0.06)',
-                    border: '1px solid rgba(0,220,229,0.25)',
-                    borderRadius: 3,
-                    padding: '4px 6px',
-                  }}
-                >
-                  <span
+              {asignados.map((asig) => {
+                const asigDef = APARATOS_DEF.find((a) => a.id === asig.id);
+                return (
+                  <div
+                    key={asig.id}
                     style={{
-                      fontSize: 11,
-                      color: '#e2e2e8',
-                      fontFamily: "'Geist',monospace",
-                      whiteSpace: 'normal',
-                    }}
-                  >
-                    ✓ {currentAppDef?.nombre || currentApp} × 1
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => applyAparato('')}
-                    aria-label="Quitar aparato"
-                    style={{
-                      flexShrink: 0,
-                      padding: '2px 8px',
-                      background: 'transparent',
-                      border: '1px solid #3a494a',
+                      marginTop: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 6,
+                      background: 'rgba(0,220,229,0.06)',
+                      border: '1px solid rgba(0,220,229,0.25)',
                       borderRadius: 3,
-                      color: '#ffb4ab',
-                      fontSize: 10,
-                      fontFamily: "'Geist',monospace",
-                      cursor: 'pointer',
+                      padding: '4px 6px',
                     }}
                   >
-                    Quitar
-                  </button>
-                </div>
-              )}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: '#e2e2e8',
+                        fontFamily: "'Geist',monospace",
+                        whiteSpace: 'normal',
+                      }}
+                    >
+                      ✓ {asigDef?.nombre || asig.id} × {asig.n}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => applyAparato('')}
+                      aria-label={`Quitar ${asigDef?.nombre || asig.id}`}
+                      style={{
+                        flexShrink: 0,
+                        padding: '2px 8px',
+                        background: 'transparent',
+                        border: '1px solid #3a494a',
+                        borderRadius: 3,
+                        color: '#ffb4ab',
+                        fontSize: 10,
+                        fontFamily: "'Geist',monospace",
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           );
         })()}

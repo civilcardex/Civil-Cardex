@@ -245,12 +245,48 @@ export function moveAllAparatoCounts(
   }
 }
 
+/** Fija el conteo de un aparato a un valor exacto (SET, no bump) — el auto-sif debe ser
+ *  idempotente: el bump ciego acumulaba sifones fantasma al re-seleccionar el accesorio
+ *  (orig. usuario: "sigue creando un sifón de más"). */
+export function setAparatoCountValue(
+  netId: string,
+  ramalId: string,
+  planId: string | number,
+  aparatoId: string,
+  value: number,
+): void {
+  const storeKey = `${netId}_${ramalId}_${planId}`;
+  const all =
+    loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+  const cur = { ...(all[storeKey] || {}) };
+  if (value > 0) cur[aparatoId] = value;
+  else delete cur[aparatoId];
+  if (Object.keys(cur).length === 0) delete all[storeKey];
+  else all[storeKey] = cur;
+  saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+}
+
+/** Nº de glifos sifón vivos de un ramal (extremos + accMed) — verdad del conteo 'sif'. */
+export function contarSifonesDe(ramal: unknown): number {
+  const r = (ramal ?? {}) as {
+    accesorioInicio?: string;
+    accesorioFin?: string;
+    accMed?: Record<string, unknown>;
+  };
+  let n = 0;
+  if (r.accesorioInicio === 'sifon') n++;
+  if (r.accesorioFin === 'sifon') n++;
+  if (r.accMed) for (const v of Object.values(r.accMed)) if (v === 'sifon') n++;
+  return n;
+}
+
 export function syncExtremeAccessoryToHidroData(
   ramalId: string,
   _field: 'accesorioInicio' | 'accesorioFin',
   oldVal: string,
   newVal: string,
   plans: SyncPlanInput[],
+  nSifonVivos?: number,
 ): void {
   if (oldVal === newVal) return;
 
@@ -276,12 +312,11 @@ export function syncExtremeAccessoryToHidroData(
       }
     }
 
-    // Auto-incrementar aparato 'sif' cuando se añade/quita el accesorio sifón
-    if (oldVal === 'sifon') {
-      bumpAparatoCount(found.net, ramalId, found.planId, 'sif', -1);
-    }
-    if (newVal === 'sifon') {
-      bumpAparatoCount(found.net, ramalId, found.planId, 'sif', +1);
+    // Auto-sif IDEMPOTENTE por nº de glifos vivos (SET, no bump): re-seleccionar el accesorio
+    // en el dropdown sumaba +1 cada vez y el sifón quedaba contado de más (orig. usuario).
+    if (oldVal === 'sifon' || newVal === 'sifon') {
+      const n = nSifonVivos ?? (newVal === 'sifon' ? 1 : 0);
+      setAparatoCountValue(found.net, ramalId, found.planId, 'sif', n);
     }
 
     found.data.ts = Date.now();

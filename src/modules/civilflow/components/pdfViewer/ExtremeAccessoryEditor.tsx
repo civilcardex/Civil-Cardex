@@ -1,6 +1,7 @@
 import {
   syncExtremeAccessoryToHidroData,
   syncExtremeAparatoToCounts,
+  contarSifonesDe,
 } from '../../utils/syncExtremeAccessory';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { DIAM_BY_MAT } from '../../constants';
@@ -148,7 +149,17 @@ export default function ExtremeAccessoryEditor({
             (engineRef.current._loadedPlanId != null
               ? [{ id: engineRef.current._loadedPlanId, status: 'confirmed' } as SyncPlanInput]
               : []);
-          syncExtremeAccessoryToHidroData(selElement.id, field, oldVal, val, effPlans);
+          // Auto-sif SET por glifos vivos tras la escritura (idempotente — el bump ciego
+          // acumulaba sifones fantasma al re-seleccionar).
+          const vivo = engineRef.current.ramales.find((r) => r.id === selElement.id) ?? selElement;
+          syncExtremeAccessoryToHidroData(
+            selElement.id,
+            field,
+            oldVal,
+            val,
+            effPlans,
+            contarSifonesDe(vivo),
+          );
         }
         engineRef.current._markDirty();
         if (removedApp && plans) {

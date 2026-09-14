@@ -452,32 +452,73 @@ export function reanclarClavesDesdeTrazosLocales(plans: SyncPlanInput[]): number
         continue;
       }
     }
-    const items = [...(data.ramales || []), ...(data.bajantes || [])] as FixtureCarrier[];
-    for (const el of items) {
-      if (!el || typeof el.id !== 'string' || typeof el.net !== 'string') continue;
-      const apKey = fixtureStoreKey(el.net, el.id, String(plan.id));
-      if (el.fixtures && Object.keys(el.fixtures).length > 0 && !mergedAparatos[apKey]) {
-        mergedAparatos[apKey] = { ...el.fixtures };
+    // Anti-resurrección (orig. usuario: Quitar/"-" sin efecto tras reentrar): la copia
+    // `fixtures` de un RAMAL se escribe al CARGAR (BD) y nada la invalida al quitar el aparato
+    // (el mapa es la verdad viva; el motor no la lee). Re-anclar esa copia stale devolvía el
+    // conteo recién borrado en CADA sync — el símbolo sí desaparecía (campos del motor) pero la
+    // cantidad y la tarjeta del menú volvían solas. Un ramal sin campo aparatoInicio/Fin ni
+    // glifo de aparato (codo90rmSube/sifon en extremos) no puede tener aparato propio; los
+    // espejos de salida y la herencia entre pisos (tampoco llevan campos) se re-escriben solos
+    // desde su bajante dueño en el efecto de espejos del panel.
+    // Anti-resurrección en la ventana del autosave (orig. usuario: "sigue pasando en ramales"):
+    // tras borrar, el trazo LOCAL sigue stale (con el ramal borrado, sus campos y fixtures)
+    // hasta el próximo saveWork (1.5 s). Si un sync corre en esa ventana (onDeleteHandler →
+    // syncDrawings, panel de aparatos), el re-ancla por campos ve "aparato legítimo" y devuelve
+    // la clave recién purgada. Para el piso CARGADO la verdad de vida es el engine (_loadedLive,
+    // el mismo guard del GC): un id que ya no vive ahí NO se re-ancla. Para otros pisos no hay
+    // verdad local — se conserva el comportamiento anterior.
+    const elVivoEnCargado = (planIdStr: string, elId: string): boolean =>
+      !_loadedLive || _loadedLive.planId !== planIdStr || _loadedLive.ids.has(elId);
+    const ramalLlevaAparato = (r: FixtureCarrier & RawElement): boolean =>
+      !!r.aparatoInicio ||
+      !!r.aparatoFin ||
+      r.accesorioInicio === 'codo90rmSube' ||
+      r.accesorioFin === 'codo90rmSube' ||
+      r.accesorioInicio === 'sifon' ||
+      r.accesorioFin === 'sifon';
+    for (const r of (data.ramales || []) as (FixtureCarrier & RawElement)[]) {
+      if (!r || typeof r.id !== 'string' || typeof r.net !== 'string') continue;
+      if (!elVivoEnCargado(String(plan.id), r.id)) continue;
+      const apKey = fixtureStoreKey(r.net, r.id, String(plan.id));
+      if (
+        r.fixtures &&
+        Object.keys(r.fixtures).length > 0 &&
+        !mergedAparatos[apKey] &&
+        ramalLlevaAparato(r)
+      ) {
+        mergedAparatos[apKey] = { ...r.fixtures };
         aparatosChanged = true;
         restored++;
       }
       if (
-        el.hydroAcc &&
-        (Object.keys(el.hydroAcc.accesorios ?? {}).length > 0 ||
-          (el.hydroAcc.Lh ?? 0) > 0 ||
-          (el.hydroAcc.nSalidas ?? 0) > 0) &&
+        r.hydroAcc &&
+        (Object.keys(r.hydroAcc.accesorios ?? {}).length > 0 ||
+          (r.hydroAcc.Lh ?? 0) > 0 ||
+          (r.hydroAcc.nSalidas ?? 0) > 0) &&
         !mergedHidro[apKey]
       ) {
-        mergedHidro[apKey] = el.hydroAcc as {
+        mergedHidro[apKey] = r.hydroAcc as {
           accesorios: Record<string, number>;
           Lh: number;
           nSalidas: number;
         };
         hidroChanged = true;
       }
-      if (el.gasAcc && Object.keys(el.gasAcc).length > 0 && !mergedGas[apKey]) {
-        mergedGas[apKey] = { ...el.gasAcc };
+      if (r.gasAcc && Object.keys(r.gasAcc).length > 0 && !mergedGas[apKey]) {
+        mergedGas[apKey] = { ...r.gasAcc };
         gasChanged = true;
+      }
+    }
+    // Bajantes sin guard: sus UDs (bombas/cajas, claves net_<id>_<plan>) no tienen campo
+    // portador equivalente — la copia del trazo es su única vía de restauración.
+    for (const b of (data.bajantes || []) as FixtureCarrier[]) {
+      if (!b || typeof b.id !== 'string' || typeof b.net !== 'string') continue;
+      if (!elVivoEnCargado(String(plan.id), b.id)) continue;
+      const apKey = fixtureStoreKey(b.net, b.id, String(plan.id));
+      if (b.fixtures && Object.keys(b.fixtures).length > 0 && !mergedAparatos[apKey]) {
+        mergedAparatos[apKey] = { ...b.fixtures };
+        aparatosChanged = true;
+        restored++;
       }
     }
   }

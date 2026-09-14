@@ -7,7 +7,8 @@ import { codoPolarityOk, flowEndsAt } from '../../../lib/PlanoEngine/PlanoEngine
 import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
 import {
   syncExtremeAccessoryToHidroData,
-  bumpAparatoCount,
+  setAparatoCountValue,
+  contarSifonesDe,
 } from '../../../utils/syncExtremeAccessory';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
@@ -556,21 +557,34 @@ export function BajanteConnectionPanel({
                               // correr ANTES del reconcile de _markDirty, o el bump +1 duplica el
                               // accesorio en hidroData (reducción contada dos veces en el resumen).
                               if (val !== oldVal && planosCtx?.plans) {
+                                // Nº de glifos sifón vivos TRAS la escritura — el auto-sif es
+                                // SET (idempotente): el bump ciego acumulaba sifones fantasma
+                                // al re-seleccionar (orig. usuario).
+                                const ramalVivo = engineRef.current?.ramales.find(
+                                  (r) => r.id === ramalEl.id,
+                                );
                                 syncExtremeAccessoryToHidroData(
                                   ramalEl.id,
                                   useFieldAcc,
                                   oldVal,
                                   val,
                                   planosCtx.plans,
+                                  contarSifonesDe(ramalVivo ?? ramalEl),
                                 );
                               } else if (val !== oldVal && ramalEl.net === 'san') {
-                                // Sin planes confirmados el sync no corre — el bump del aparato
-                                // 'sif' se hace directo para no perder la cantidad (orig. usuario).
+                                // Sin planes confirmados el sync no corre — el conteo 'sif'
+                                // se fija directo por glifos vivos (SET, nunca bump ciego).
                                 const planId = engineRef.current?._loadedPlanId ?? '';
-                                if (val === 'sifon')
-                                  bumpAparatoCount('san', ramalEl.id, planId, 'sif', +1);
-                                if (oldVal === 'sifon')
-                                  bumpAparatoCount('san', ramalEl.id, planId, 'sif', -1);
+                                const ramalVivo = engineRef.current?.ramales.find(
+                                  (r) => r.id === ramalEl.id,
+                                );
+                                setAparatoCountValue(
+                                  'san',
+                                  ramalEl.id,
+                                  planId,
+                                  'sif',
+                                  contarSifonesDe(ramalVivo ?? ramalEl),
+                                );
                               }
                               engineRef.current._markDirty();
                             }
