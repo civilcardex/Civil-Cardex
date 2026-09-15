@@ -1101,7 +1101,15 @@ const AparatosPanel = memo(function AparatosPanel_({
     )
       return; // bajante/caja/bomba: panel de solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
-    if (mergeKeys) return; // ramal con tributarios: solo lectura (sus UDs vienen del árbol)
+    if (mergeKeys) {
+      // Ramal con tributarios: solo lectura (sus UDs vienen del árbol). El botón queda
+      // habilitado cuando hay aparato propio → sin alerta era click muerto (orig. auditoría).
+      engineRef.current?.triggerAlert(
+        'Ramal con tributarios',
+        'Las unidades de este ramal vienen de sus tributarios. Asigna aparatos en los ramales/tributarios que alimentan este punto.',
+      );
+      return;
+    }
     // Ítem 6: máximo UN aparato por ramal-tributario (manual). Para cambiar el aparato:
     // Quitar (−) y asignar el nuevo — o usar el menú contextual, que hace el switch directo.
     if (ownTotal >= 1 && netId !== 'll') {

@@ -942,7 +942,7 @@ const BajantesTable = memo(function BajantesTable_() {
                             const raw = e.target.value.replace(/,/g, '.');
                             // Permitir vacío y solo números + punto
                             if (raw === '') {
-                              const tk = t._key || `${t.id}-${t.piso}`;
+                              const tk = t._key || `${t.id}-${planIdStr}`;
                               writeBajantePropToDrawing(
                                 tk,
                                 t._net || t.net || 'san',
@@ -954,7 +954,7 @@ const BajantesTable = memo(function BajantesTable_() {
                               return;
                             }
                             if (!/^[0-9]*\.?[0-9]*$/.test(raw)) return;
-                            const tk = t._key || `${t.id}-${t.piso}`;
+                            const tk = t._key || `${t.id}-${planIdStr}`;
                             // Guardar como string para permitir "5." intermedio, convertir a número en blur
                             writeBajantePropToDrawing(
                               tk,
@@ -967,7 +967,7 @@ const BajantesTable = memo(function BajantesTable_() {
                           }}
                           onBlur={(e) => {
                             const raw = e.target.value.replace(/,/g, '.').trim();
-                            const tk = t._key || `${t.id}-${t.piso}`;
+                            const tk = t._key || `${t.id}-${planIdStr}`;
                             if (raw === '') {
                               writeBajantePropToDrawing(
                                 tk,

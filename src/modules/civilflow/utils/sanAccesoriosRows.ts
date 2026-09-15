@@ -604,10 +604,25 @@ export function computeAccesoriosTable(
       }
     }
   }
-  // 14. Ensure bajante codo45/Y appear for any net that has bajante connections
-  const hasBajanteConn = bajanteDrawing.some(
-    (b) => (b.net || net) === net && b.recibeDeIds && b.recibeDeIds.length > 0,
-  );
+  // 14. Ensure bajante codo45/Y appear for any net that has bajante connections — por
+  // recibeDeIds O por conexión geométrica (el conteo de abajo detecta geométricos; sin esto
+  // el gate del catálogo descartaba las piezas contadas cuando recibeDeIds estaba vacío).
+  const hasBajanteConn = bajanteDrawing.some((b) => {
+    if ((b.net || net) !== net) return false;
+    if (b.recibeDeIds && b.recibeDeIds.length > 0) return true;
+    if (b.x == null || b.y == null) return false;
+    const candidatos = [...drawingRamales, ...tribDrawing, ...ventRamales].filter(
+      (r) => r.planId === b.planId,
+    );
+    return candidatos.some(
+      (r) =>
+        r.pts &&
+        r.pts.length >= 2 &&
+        [r.pts[0], r.pts[r.pts.length - 1]].some(
+          (pt) => Math.hypot(pt[0] - b.x!, pt[1] - b.y!) < 0.5,
+        ),
+    );
+  });
   if (hasBajanteConn) {
     const needCodo45 = net === 'gas' ? 'codos_45' : 'codo45rc';
     if (!summaryCatalog.some((a) => a.id === needCodo45)) {

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 const TABLA_A: { n: number; txt: string }[] = [
   { n: 1, txt: 'VÁLVULA DE COMPUERTA OS&Y (VÁLVULA DE CONTROL EN LA SUCCIÓN)' },
@@ -212,7 +212,9 @@ export default function RciCuartoBombasReferencia() {
     el.style.transformOrigin = 'center center';
   };
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
+  // Listener NATIVO no-pasivo: React registra wheel como passive y preventDefault avisaba
+  // en consola con cada scroll (orig. auditoría).
+  const onWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     const container = containerRef.current;
     if (!container) return;
@@ -237,6 +239,14 @@ export default function RciCuartoBombasReferencia() {
     if (ns === 1) posRef.current = { x: 0, y: 0 };
     applyTransform();
   }, []);
+  // wheel nativo no-pasivo (React onWheel es passive → preventDefault avisaba en consola)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => onWheel(e);
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [onWheel]);
 
   const resetZoom = () => {
     scaleRef.current = 1;
@@ -478,7 +488,6 @@ export default function RciCuartoBombasReferencia() {
 
             <div
               ref={containerRef}
-              onWheel={onWheel}
               style={{
                 flex: 1,
                 minHeight: 0,

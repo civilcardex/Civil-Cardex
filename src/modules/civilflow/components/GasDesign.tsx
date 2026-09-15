@@ -181,6 +181,11 @@ function GasDesign() {
     });
   }, [plans]);
 
+  // Clave compuesta por plano: los ids de ramal se REPITEN entre pisos (RS1 en P1 y P2 son
+  // tramos distintos) — indexar diámetros/resultados solo por id hacía colisiones entre pisos
+  // y claves React duplicadas.
+  const tramoKey = (t: { planId: string | number; id: string }): string => `${t.planId}:${t.id}`;
+
   const gasTramos = useMemo(() => {
     const tramos = [];
     for (const plano of plans) {
@@ -236,10 +241,11 @@ function GasDesign() {
         const dn = r.diametro || '';
         const opt = lookupDn(mat, dn);
         if (opt) {
-          toSetMat[r.id] = mat;
-          toSetDn[r.id] = opt.dn;
-          toSetInt[r.id] = opt.d;
-          toSetK[r.id] = opt.K;
+          const tk = `${plano.id}:${r.id}`;
+          toSetMat[tk] = mat;
+          toSetDn[tk] = opt.dn;
+          toSetInt[tk] = opt.d;
+          toSetK[tk] = opt.K;
         }
       }
     }
@@ -328,7 +334,7 @@ function GasDesign() {
     const result = [];
     let pAcum = pMin;
     for (const t of gasTramos) {
-      const dInt = diamInt[t.id] || 0;
+      const dInt = diamInt[tramoKey(t)] || 0;
 
       const acc: Record<string, number> = gasAcc[t.id] || {};
       let sumLe = 0;
@@ -363,10 +369,10 @@ function GasDesign() {
         piso: t.piso,
         ini: t.ini || '',
         fin: t.fin || '',
-        material: diamMat[t.id] || '',
-        dn: diamDn[t.id] || '',
-        dInt: diamInt[t.id] || 0,
-        K: diamK[t.id] || 0,
+        material: diamMat[tramoKey(t)] || '',
+        dn: diamDn[tramoKey(t)] || '',
+        dInt: diamInt[tramoKey(t)] || 0,
+        K: diamK[tramoKey(t)] || 0,
         longitud: t.longitud || 0,
         le: chk ? chk.le : 0,
         dP: chk ? chk.dP : 0,
@@ -538,12 +544,12 @@ function GasDesign() {
                   </tr>
                 )}
                 {gasTramos.map((t) => {
-                  const mat = diamMat[t.id] || '';
-                  const dn = diamDn[t.id] || '';
-                  const dInt = diamInt[t.id] || 0;
-                  const kVal = diamK[t.id] || 0;
+                  const mat = diamMat[tramoKey(t)] || '';
+                  const dn = diamDn[tramoKey(t)] || '';
+                  const dInt = diamInt[tramoKey(t)] || 0;
+                  const kVal = diamK[tramoKey(t)] || 0;
                   return (
-                    <tr key={t.id}>
+                    <tr key={tramoKey(t)}>
                       <td className="c" style={{ padding: '0 1px' }}>
                         <span className="sigla" style={{ fontSize: 10, padding: '1px 4px' }}>
                           {t.id}
@@ -569,11 +575,15 @@ function GasDesign() {
                           onChange={(e) => {
                             const val = e.target.value;
                             if (!val) {
-                              handleDiamChange(t.id, '', '');
+                              handleDiamChange(tramoKey(t), '', '');
                               return;
                             }
                             const sep = val.lastIndexOf('|');
-                            handleDiamChange(t.id, val.substring(0, sep), val.substring(sep + 1));
+                            handleDiamChange(
+                              tramoKey(t),
+                              val.substring(0, sep),
+                              val.substring(sep + 1),
+                            );
                           }}
                           style={{ ...SD, width: '100%', fontSize: 10 }}
                         >
@@ -672,7 +682,10 @@ function GasDesign() {
                             disabled={!edit}
                             onChange={(e) => {
                               const dNom = e.target.value ? `${e.target.value}"` : '';
-                              writeContadorDiamToDrawing(dNom, plans, 'gas');
+                              writeContadorDiamToDrawing(dNom, plans, 'gas', {
+                                planId: b.planId,
+                                id: b.id,
+                              });
                             }}
                             style={{ ...SD, fontSize: 10 }}
                           >
@@ -850,7 +863,7 @@ function GasDesign() {
                   </tr>
                 )}
                 {gasTramos.map((t) => {
-                  const dInt = diamInt[t.id] || 0;
+                  const dInt = diamInt[tramoKey(t)] || 0;
                   const chk = checkRows.find((r) => r.id === t.id);
                   const le = chk ? chk.le : 0;
                   const dP = chk ? chk.dP : 0;
@@ -860,7 +873,7 @@ function GasDesign() {
                   const ok = chk ? chk.chequeo : '—';
                   const acc = getAcc(t.id);
                   return (
-                    <tr key={t.id}>
+                    <tr key={tramoKey(t)}>
                       <td className="c" style={{ padding: '0 1px' }}>
                         <span className="sigla" style={{ fontSize: 10, padding: '1px 1px' }}>
                           {t.id}

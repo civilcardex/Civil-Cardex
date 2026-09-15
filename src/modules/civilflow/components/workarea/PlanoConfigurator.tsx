@@ -345,12 +345,27 @@ function PlanoConfiguratorBase({
         ctx.fillText(txt, 22, 30);
       }
     }
-    // El repintado del overlay depende deliberadamente solo de los valores dibujados (no de
-    // factorX/factorY/lenX/lenY/isPdf/preScaleM, que alimentan el texto de la etiqueta
-    // calculado inline arriba) — comportamiento preexistente conservado tal cual desde antes
-    // de que este efecto se extrajera del componente.
+    // La etiqueta "→ ref: X m" del texto de arriba se calcula con factorX/factorY/lenX/lenY/
+    // isPdf/preScaleM — sin incluirlos en deps, teclear la longitud sin mover el cursor no
+    // repintaba la anotación (orig. auditoría).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [origen, calStart, calPreview, modoOrigen, modoCalX, modoCalY, scaleM, imgLoaded, cursorPos]);
+  }, [
+    origen,
+    calStart,
+    calPreview,
+    modoOrigen,
+    modoCalX,
+    modoCalY,
+    scaleM,
+    imgLoaded,
+    cursorPos,
+    factorX,
+    factorY,
+    lenX,
+    lenY,
+    isPdf,
+    preScaleM,
+  ]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -435,7 +450,7 @@ function PlanoConfiguratorBase({
     setCursorPos(null);
   };
 
-  const onWheel = (e: React.WheelEvent) => {
+  const onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const { x, y } = getCursorPos(e);
     const d = e.deltaY > 0 ? -0.1 : 0.1;
@@ -446,6 +461,16 @@ function PlanoConfiguratorBase({
     }));
     setZoom(nz);
   };
+
+  // Wheel NATIVO no-pasivo (React onWheel es passive → preventDefault avisaba en consola).
+  // Sin deps: se re-registra en cada render para leer zoom/setOffset frescos por closure.
+  useEffect(() => {
+    const el = overlayContRef.current;
+    if (!el) return;
+    const handler = (e: WheelEvent) => onWheel(e);
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  });
 
   const cursor = () => {
     if (modoOrigen || modoCalX || modoCalY) return 'crosshair';
@@ -625,7 +650,6 @@ function PlanoConfiguratorBase({
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
           onMouseLeave={onMouseUp}
-          onWheel={onWheel}
         >
           {loading && (
             <div
