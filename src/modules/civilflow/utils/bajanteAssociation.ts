@@ -38,7 +38,7 @@ interface StoredBajanteDesp {
 // de este bajante — claveada por el id de Ldesvio (único por source) en vez de por una etiqueta
 // de nivel, porque la etiqueta no siempre puede reconstruirse del piso (posiblemente distinto)
 // cargado actualmente del caller.
-function setBajanteDesplazamientoInStorage(
+export function setBajanteDesplazamientoInStorage(
   planId: string,
   bajanteId: string,
   lvl: string,

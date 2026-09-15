@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabase';
+import { emitBdSaveError } from './storageService';
 import { devError } from '../../../utils/devError';
 import { CF_TABLES } from '../constants/tableNames';
 import type { Piso } from '../lib/shared/projectTypes';
@@ -184,12 +185,15 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
 export async function saveProyectoCoreData(
   proyectoId: number,
   core: ProyectoCoreData,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return false;
+    }
 
     const { error } = await supabase.rpc('save_proyecto_core', {
       p_proyecto_id: proyectoId,
@@ -231,9 +235,14 @@ export async function saveProyectoCoreData(
         })),
       },
     });
-    if (error) devError('proyectoDataService saveCore rpc:', error.message);
+    if (error) {
+      emitBdSaveError('save-core', error.message);
+      return false;
+    }
+    return true;
   } catch (e) {
     devError('proyectoDataService saveCore exception:', e);
+    return false;
   }
 }
 
@@ -242,20 +251,28 @@ export async function saveProyectoCoreData(
  * de los datos del proyecto. Lo usa el toggle "Redes activas"/"Equipos activos", que es
  * independiente del guardado principal del proyecto.
  */
-export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<void> {
+export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<boolean> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return false;
+    }
 
     const { error } = await supabase.rpc('save_redes_activas', {
       p_proyecto_id: proyectoId,
       p_redes: redes,
     });
-    if (error) devError('proyectoDataService saveRedesActivas rpc:', error.message);
+    if (error) {
+      emitBdSaveError('save-redes', error.message);
+      return false;
+    }
+    return true;
   } catch (e) {
     devError('proyectoDataService saveRedesActivas exception:', e);
+    return false;
   }
 }
 
@@ -293,12 +310,15 @@ export async function loadGasDatos(proyectoId: number): Promise<GasDatosGenerale
  * saveRedesActivas, no toca otras tablas. Lo usa GasDesign (debounced) como fuente de
  * verdad; localStorage queda como caché en vivo.
  */
-export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales): Promise<void> {
+export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales): Promise<boolean> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return false;
+    }
 
     const { error } = await supabase.rpc('save_gas_datos', {
       p_proyecto_id: proyectoId,
@@ -310,9 +330,14 @@ export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales)
         densidad_relativa: datos.densRel,
       },
     });
-    if (error) devError('proyectoDataService saveGasDatos rpc:', error.message);
+    if (error) {
+      emitBdSaveError('save-gas', error.message);
+      return false;
+    }
+    return true;
   } catch (e) {
     devError('proyectoDataService saveGasDatos exception:', e);
+    return false;
   }
 }
 
@@ -323,12 +348,15 @@ export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales)
 export async function saveProyectoPlansMeta(
   proyectoId: number,
   plansMeta: PlanMeta[],
-): Promise<void> {
+): Promise<boolean> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return false;
+    }
 
     const { error } = await supabase.rpc('save_planos_meta', {
       p_proyecto_id: proyectoId,
@@ -346,9 +374,14 @@ export async function saveProyectoPlansMeta(
         defined_scale: p.definedScale ?? null,
       })),
     });
-    if (error) devError('proyectoDataService savePlansMeta rpc:', error.message);
+    if (error) {
+      emitBdSaveError('save-planos-meta', error.message);
+      return false;
+    }
+    return true;
   } catch (e) {
     devError('proyectoDataService savePlansMeta exception:', e);
+    return false;
   }
 }
 
@@ -419,7 +452,10 @@ export async function saveAfAlimentacion(proyectoId: number, value: string): Pro
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return;
+    }
     const { error } = await supabase
       .from(CF_TABLES.proyectoGeneral)
       .upsert(
@@ -437,7 +473,10 @@ export async function saveTanqueNpt(proyectoId: number, value: string): Promise<
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return;
+    }
     const { error } = await supabase
       .from(CF_TABLES.proyectoGeneral)
       .upsert(
@@ -491,7 +530,10 @@ export async function savePresionGarantizada(proyectoId: number, value: string):
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return;
+    }
     const { error } = await supabase
       .from(CF_TABLES.proyectoGeneral)
       .upsert(
