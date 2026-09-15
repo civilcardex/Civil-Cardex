@@ -1319,3 +1319,65 @@ tsc 0 · vitest 687/687 (122 files) · lint 0/0 · build ✓ · graphify ✓.
 - Grilla: readonly+opaca SOLO si el ramal no tiene aparatos propios (mergeKeys && ownTotal<=0). Si tiene aparato manual propio → editable (puede quitarlo con "−"). Restaurado gate mergeKeys en inc + alerta de tope.
 - Estado final: asignar = "+" (si vacío) o menú (switch directo); quitar = "−" o Quitar del menú (vacía todo); ramales con UDs por flujo y sin aparato propio = solo lectura+opacos.
 - Gates: tsc 0 · vitest 688/688 · lint 0/0 · build ✓.
+
+## Session Summary — 2026-09-14 (auditoría general ambos módulos + huecos BD + isometría)
+
+### Auditoría: 30 hallazgos (3 exploradores + verificación manual). Aplicados P0+P1:
+
+#### P0 — pérdida/corrupción de datos
+- **C1 civilmanager**: QUITADO el override `SEED_BACKUP_2026_09_06` (borraba todas las cargas — cada recarga revertía al 06-09). ANTES se arregló la lectura rota de cm_config: `cm_get_data` devuelve wrapper `d.config={config,config_listas,categorias_apu}` y el código asignaba el wrapper entero a config Y config_listas, y categorias_apu nunca se extraía → sin este fix, quitar el seed habría perdido la config al primer load. seedBackup20260906.json eliminado del repo.
+- **C2**: `cachedSupabaseUser` invalida su caché en `onAuthStateChange` (logout/refresh/cambio de usuario) y no cachea rechazos — antes un null capturado temprano dejaba los saves en sin-sesion hasta recargar. `.optional chaining` para mocks de test.
+- **C3**: `findContadorBajante(plans, net, objetivo?)` — el diámetro del contador gas viaja a la FILA editada (planId+id); antes siempre el primer contador del proyecto (multifloor escribía en el piso equivocado y persistía a BD).
+- **C4 REVERTIDO**: guard ts en saveData rompía la disciplina load-mutate-save del módulo (los helpers intermedios escriben el mismo doc y el guard descartaba mutaciones propias — lo destapó assocLadosLayout). Deuda documentada: lost-update cross-tab/dispositivo sigue posible.
+- **C5**: `useTrazosLoader` — si el engine quedó `_dirty` tras el await de BD, NO se aplica dbData (loadWork destruiría lo dibujado durante la red); la caché fresca se re-sube.
+- **C6**: `saveTrazosToDB` con COLA por planId — el RPC es destructivo y había decenas de callers fire-and-forget; dos pushes del mismo plano ya no pueden aterrizar en orden arbitrario.
+
+#### P0.5 — huecos de BD (migración 20260914000000_cf_campos_copia_externo_rpc.sql — APLICAR EN SQL EDITOR)
+- RPC vivo `save_plano_data` recreado CON factor_sim/longitud (columnas existían desde 20260825 pero las recreaciones del RPC las descartaban → NULL siempre).
+- Columnas nuevas + mapeo ramalToRow/bajanteToRow/rowTo*: copia_piso (ramales+bajantes), sin_acc_med_interior, copiado_de_plan, copiado_de_id, bajante_externo_id (bloqueo de copias entre pisos y enlace canal↔bajante externo se perdían al recargar).
+- AGENTS: la nota "ucAplicado no viaja a BD" estaba DESACTUALIZADA — bajanteToRow lo mapea desde 20260912000000.
+
+#### Isometría
+- `activeNets` inicial = redes ACTIVAS del proyecto (`state.redesActivas`, las de la barra de redes); eliminada la persistencia ISO_ACTIVE_NETS_KEY (global entre proyectos, quedaba stale → "al entrar aparecían todas"). Fallback: redes con datos en caché. On/off es de sesión.
+
+#### P1
+- **C7**: proyectoDataService (4 saves + 3 menores) → `emitBdSaveError` en sin-sesión/error RPC + boolean.
+- **C8**: clave de doc de sync `familia_nivel` → `familia_nivel_planId` (dos planos mismo nivel/nivel null se pisaban) + buildTramos deriva piso del VALOR (plane.nivel).
+- **C9**: restauración nube con firma local: ProjectContext (pisos+nombre) y PlansContext (plansCountRef) — ediciones durante el fetch ya no son pisadas por sets absolutos.
+- **C10**: usePersistedState flush en pagehide (cerrar/recargar dentro del debounce 300ms ya no pierde la edición).
+- **C11**: civilmanager saveToSupabase — reconciliación de borrados por tabla (delete de ids stale tras upsert exitoso): registros eliminados ya no resucitan.
+- **C12**: cm_config upsert con chequeo de error + evento `cm_save_error` (devError es no-op en prod).
+- **C13**: cola serial de `civilManagerSave` (antes: apus de una generación y presupuestos de otra en BD).
+- **C14**: `migrateState` con Array.isArray para cuadrillas/equipos/insumos/apus/proveedores (RPC null → TypeError tragado → UI vacía).
+- **C15**: calc consumo/desperdicio con Number.isFinite (0 legítimo; antes 0→1 y 0%→5%).
+- **C16**: "Preparado en obra" sin básico válido → devError + fallback costo propio.
+- **C17**: presupuestos huérfanos (padre borrado) tratados como raíz.
+- **C18**: GasDesign — mapas de diámetros y keys de filas por `planId:id` (mismo id de ramal en 2 pisos colisionaba).
+- **C19**: EPSchemePage — dispose de materiales (clones por mesh + catálogo base) + forceContextLoss (fuga WebGL por toggle/remontaje).
+
+#### Tests
++8 (migrateState nulls, calc 0 legítimo, findContador objetivo, parseNum). Suite: **710/710** (mock cm select con .eq para reconciliación).
+
+#### Deuda documentada (no aplicada)
+- C4 real (lost-update multi-dispositivo) — requiere merge por campo o CRDT; el guard naive rompía flujos single-user.
+- cf_redes tabla sin lectores (NETS hardcodeada).
+- parseNum europeo "1.234,56" → 1.234; key={i} en secciones APU.
+
+### Gates
+tsc 0 · vitest 710/710 · lint 0 · build ✓ · graphify ✓. Migración 20260914000000 PENDIENTE de aplicar en Supabase.
+
+## Session Summary — 2026-09-14 (ronda 2: los 8 menores de la auditoría)
+
+1. **FixturesPanel inc**: ramal con tributarios y aparato propio — el "+" ahora avisa (triggerAlert "Ramal con tributarios") en vez de click muerto.
+2. **bajanteMenu (2 sitios)**: diámetro rechazado → `setContextMenuState({...element})` fuerza re-render; el select ya no muestra el valor inválido.
+3. **sanAccesoriosRows**: el gate del catálogo (codo45/Y por red) acepta conexión GEOMÉTRICA del bajante (extremo a <0.5), no solo recibeDeIds — las piezas contadas ya no se descartan en lluvias/gas.
+4. **DownpipesTable (3 sitios)**: fallback de clave `t.piso` → `planIdStr` (igual que el resto de la fila).
+5. **PlanoConfigurator**: deps del overlay de calibración += factorX/factorY/lenX/lenY/isPdf/preScaleM — teclear longitud repinta la anotación sin mover cursor.
+6. **GasDesign**: `ALL_DN.sort()` en render → copia `[...ALL_DN].sort()`.
+7. **civilmanager**: (a) `calcCuadrillaCost` guarda ÷0 (defaults 30/240 como calcCargos); (b) `parseNum` acepta "1.234,56" europeo (chequeo ANTES de la coma→punto genérica; "1,5"/"1.5" siguen = 1.5); (c) secciones APU: `filaId(r)` identidad perezosa que viaja en el jsonb de recursos — adiós key={i} desalineando inputs al borrar fila previa.
+
+Gates: tsc 0 · vitest 710/710 · lint 0 · build ✓ · graphify ✓. Auditoría 2026-09-14: 30/30 hallazgos cerrados (29 fijados + C4 deuda documentada).
+
+### Ronda 3 — wheel pasivo + recordatorio migración
+- `RciCuartoBombasReferencia` y `PlanoConfigurator`: onWheel de React → listener nativo `{ passive: false }` (preventDefault avisaba en consola con cada scroll). Efecto sin deps que se re-registra por render para leer zoom/offset frescos.
+- **Migración 20260914000000 PENDIENTE en BD del usuario** (error `column copia_piso does not exist` en saveTrazosToDB rpc hasta aplicarla en SQL Editor).
