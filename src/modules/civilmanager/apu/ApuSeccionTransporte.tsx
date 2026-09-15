@@ -10,12 +10,23 @@ interface Props {
   onChange: (recursos_transporte: ApuRecursoTransporte[]) => void;
 }
 
+// Identidad perezosa de fila: se asigna una vez al objeto (viaja en el jsonb persistido) y
+// sobrevive a inserciones/borrados — key={i} desalineaba inputs al eliminar una fila previa.
+function filaId(r: unknown): string {
+  const o = r as { _fid?: string };
+  if (!o._fid) o._fid = `f${Math.random().toString(36).slice(2, 10)}`;
+  return o._fid;
+}
+
 export function ApuSeccionTransporte({ apu, onChange }: Props) {
   const { state } = useCivilManager();
   const unidades = state.config_listas.unidades_transporte;
 
   function add() {
-    onChange([...apu.recursos_transporte, { unidad: unidades[0]?.nombre ?? 'Global', tarifa: 0, distancia_km: 0 }]);
+    onChange([
+      ...apu.recursos_transporte,
+      { unidad: unidades[0]?.nombre ?? 'Global', tarifa: 0, distancia_km: 0 },
+    ]);
   }
 
   function upd(i: number, k: keyof ApuRecursoTransporte, v: string | number) {
@@ -29,7 +40,9 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
   }
 
   function itemTotal(r: ApuRecursoTransporte): number {
-    return r.unidad === 'Global' ? parseNum(r.tarifa) : parseNum(r.tarifa) * parseNum(r.distancia_km);
+    return r.unidad === 'Global'
+      ? parseNum(r.tarifa)
+      : parseNum(r.tarifa) * parseNum(r.distancia_km);
   }
 
   const subtotal = apu.recursos_transporte.reduce((s, r) => s + itemTotal(r), 0);
@@ -50,24 +63,55 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
             </tr>
           </thead>
           <tbody>
-            {apu.recursos_transporte.length === 0 && <tr><td colSpan={6} className="cm-empty-row">Sin transporte</td></tr>}
+            {apu.recursos_transporte.length === 0 && (
+              <tr>
+                <td colSpan={6} className="cm-empty-row">
+                  Sin transporte
+                </td>
+              </tr>
+            )}
             {apu.recursos_transporte.map((r, i) => {
               const esGlobal = r.unidad === 'Global';
               return (
-                <tr key={i}>
+                <tr key={filaId(r)}>
+                  {
+                    // key={i} desalineaba los NumInput al borrar una fila intermedia con edición
+                    // pendiente — identidad perezosa que viaja en el jsonb de recursos.
+                  }
                   <XlRowNum n={i + 1} />
                   <td>
-                    <select className="cm-sel" value={r.unidad} onChange={e => upd(i, 'unidad', e.target.value)} aria-label="Unidad de transporte">
-                      {unidades.map(u => <option key={u.codigo} value={u.nombre}>{u.nombre}</option>)}
+                    <select
+                      className="cm-sel"
+                      value={r.unidad}
+                      onChange={(e) => upd(i, 'unidad', e.target.value)}
+                      aria-label="Unidad de transporte"
+                    >
+                      {unidades.map((u) => (
+                        <option key={u.codigo} value={u.nombre}>
+                          {u.nombre}
+                        </option>
+                      ))}
                     </select>
                   </td>
-                  <td><NumInput value={r.tarifa} format onChange={v => upd(i, 'tarifa', v)} /></td>
                   <td>
-                    <NumInput value={r.distancia_km} decimals={2} onChange={v => upd(i, 'distancia_km', v)} disabled={esGlobal} />
+                    <NumInput value={r.tarifa} format onChange={(v) => upd(i, 'tarifa', v)} />
+                  </td>
+                  <td>
+                    <NumInput
+                      value={r.distancia_km}
+                      decimals={2}
+                      onChange={(v) => upd(i, 'distancia_km', v)}
+                      disabled={esGlobal}
+                    />
                   </td>
                   <td>{fmt(itemTotal(r))}</td>
                   <td className="cm-col-act">
-                    <button type="button" className="cm-btn-icon" onClick={() => del(i)} aria-label="Eliminar recurso">
+                    <button
+                      type="button"
+                      className="cm-btn-icon"
+                      onClick={() => del(i)}
+                      aria-label="Eliminar recurso"
+                    >
                       <ActionIcon name="delete" label="Eliminar recurso" color="var(--err)" />
                     </button>
                   </td>
@@ -78,9 +122,13 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
         </table>
       </XlScroll>
       <div className="cm-xl-foot">
-        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>Agregar Transporte</button>
+        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
+          Agregar Transporte
+        </button>
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>Subtotal Transporte: <b>{fmt(subtotal)}</b></span>
+        <span style={{ fontSize: 11 }}>
+          Subtotal Transporte: <b>{fmt(subtotal)}</b>
+        </span>
       </div>
     </XlWrap>
   );

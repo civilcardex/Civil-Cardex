@@ -15,11 +15,6 @@ import {
   perfilesPaisDefault,
 } from './seedData';
 import type { CivilManagerState } from './types';
-// TEMPORAL (ponytail): backup real 2026-09-06 sembrado a la fuerza en el módulo.
-// Revertir: borrar este import, la constante SEED_BACKUP_2026_09_06 y el `if` que la retorna en civilManagerLoad.
-import seedBackup20260906 from './seedBackup20260906.json';
-
-const SEED_BACKUP_2026_09_06 = seedBackup20260906 as unknown as Partial<CivilManagerState> | null;
 
 const DB_NAME = 'CivilManagerDB';
 const STORE_NAME = 'state';
@@ -109,6 +104,14 @@ export function migrateState(
     cargos: Array.isArray(raw.cargos) ? raw.cargos : base.cargos,
     categorias_apu: Array.isArray(raw.categorias_apu) ? raw.categorias_apu : base.categorias_apu,
     presupuestos,
+    // RPC con forma inesperada (null/clave ausente): sin guard, `undefined` pisaba al base y
+    // `loadedState.apus.length` reventaba — el catch lo tragaba y la UI mostraba defaults
+    // vacíos con datos existentes en BD.
+    cuadrillas: Array.isArray(raw.cuadrillas) ? raw.cuadrillas : base.cuadrillas,
+    equipos: Array.isArray(raw.equipos) ? raw.equipos : base.equipos,
+    insumos: Array.isArray(raw.insumos) ? raw.insumos : base.insumos,
+    apus: Array.isArray(raw.apus) ? raw.apus : base.apus,
+    proveedores: Array.isArray(raw.proveedores) ? raw.proveedores : base.proveedores,
     config_listas: { ...base.config_listas, ...(raw.config_listas || {}) },
     config: {
       ...base.config,
@@ -150,8 +153,14 @@ async function loadFromSupabase(): Promise<CivilManagerState | null> {
       apus: (d as unknown as { apus: unknown[] }).apus as never,
       presupuestos: (d as unknown as { presupuestos: unknown[] }).presupuestos as never,
       proveedores: (d as unknown as { proveedores: unknown[] }).proveedores as never,
-      config: (d as unknown as { config: { config: unknown } }).config as never,
-      config_listas: (d as unknown as { config: { config_listas: unknown } }).config as never,
+      // cm_get_data devuelve d.config = {config, config_listas, categorias_apu} (wrapper) —
+      // antes se asignaba el wrapper entero a ambas claves y categorias_apu no se extraía:
+      // migrateState caía en defaults y se perdían país/salario/listas al cargar de Supabase.
+      config: (d as unknown as { config?: { config?: unknown } }).config?.config as never,
+      config_listas: (d as unknown as { config?: { config_listas?: unknown } }).config
+        ?.config_listas as never,
+      categorias_apu: (d as unknown as { config?: { categorias_apu?: unknown } }).config
+        ?.categorias_apu as never,
     };
     return migrateState(raw);
   } catch (e) {
@@ -307,7 +316,23 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
         onConflict: 'id',
         defaultToNull: false,
       });
-      if (error) devError(`upsert ${table}:`, error);
+      if (error) {
+        devError(`upsert ${table}:`, error);
+        return;
+      }
+      // Reconciliación de borrados: el upsert solo cubre filas presentes — sin delete de los
+      // ids que ya no están, un registro eliminado resucitaba al recargar desde Supabase.
+      const ids = withUser.map((r) => String(r.id));
+      const existing = await supabase.from(table).select('id').eq('proyecto_id', proyectoUid);
+      if (existing.error) {
+        devError(`select ${table}:`, existing.error);
+        return;
+      }
+      const stale = existing.data.map((r) => String(r.id)).filter((id) => !ids.includes(id));
+      if (stale.length) {
+        const del = await supabase.from(table).delete().in('id', stale);
+        if (del.error) devError(`delete ${table}:`, del.error);
+      }
     };
     await upsert('cm_factores_prestacionales', state.factoresPrestaciones);
     await upsert('cm_cargos', state.cargos);
@@ -359,7 +384,7 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     await upsert('cm_insumos', state.insumos);
     await upsert('cm_apus', state.apus);
     await upsert('cm_presupuestos', state.presupuestos);
-    await supabase.from('cm_config').upsert(
+    const cfgRes = await supabase.from('cm_config').upsert(
       {
         user_id: userId,
         config: state.config as unknown as never,
@@ -368,6 +393,15 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
       } as never,
       { onConflict: 'user_id' },
     );
+    if (cfgRes.error) {
+      devError('upsert cm_config:', cfgRes.error);
+      // Señal para UI (devError es no-op en prod): parámetros de proyecto sin respaldo.
+      try {
+        window.dispatchEvent(new CustomEvent('cm_save_error', { detail: { table: 'cm_config' } }));
+      } catch {
+        /* ignore */
+      }
+    }
   } catch (e) {
     devError('saveToSupabase:', e);
   }
@@ -401,8 +435,6 @@ async function saveToIdb(state: CivilManagerState): Promise<void> {
 }
 
 export async function civilManagerLoad(): Promise<CivilManagerState | null> {
-  // TEMPORAL: el backup gana sobre Supabase/IDB en cada carga (para revertir, poner SEED_BACKUP_2026_09_06 = null).
-  if (SEED_BACKUP_2026_09_06) return migrateState(SEED_BACKUP_2026_09_06);
   // 1) Try Supabase if authenticated
   const fromSupa = await loadFromSupabase();
   if (fromSupa) {
@@ -431,8 +463,20 @@ export async function civilManagerLoad(): Promise<CivilManagerState | null> {
   return null;
 }
 
-export async function civilManagerSave(state: CivilManagerState): Promise<void> {
-  // Save to both — IDB always, Supabase if authed
-  await saveToIdb(state);
-  await saveToSupabase(state);
+// Cola serial: dos civilManagerSave en vuelo intercalaban ~10 upserts y la BD podía quedar
+// con apus de una generación y presupuestos de otra. Una nueva llamada espera a la anterior.
+let saveChain: Promise<void> = Promise.resolve();
+
+/** Guarda en IDB + Supabase. Las llamadas se SERIALIZAN: cada save espera al anterior. */
+export function civilManagerSave(state: CivilManagerState): Promise<void> {
+  const job = saveChain
+    .catch(() => {})
+    .then(async () => {
+      await saveToIdb(state);
+      await saveToSupabase(state);
+    });
+  saveChain = job.finally(() => {
+    if (saveChain === job) saveChain = Promise.resolve();
+  });
+  return job;
 }

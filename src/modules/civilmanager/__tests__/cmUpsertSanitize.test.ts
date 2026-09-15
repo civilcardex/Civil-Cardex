@@ -20,6 +20,8 @@ vi.mock('../../../lib/supabase', () => ({
           integrantesExistentes.fail
             ? { data: null, error: { message: 'select fail' } }
             : { data: integrantesExistentes.data, error: null },
+        // reconciliación de borrados por tabla: sin filas existentes no hay stale
+        eq: async () => ({ data: [], error: null }),
       }),
       delete: () => ({
         in: (_col: string, ids: string[]) => {

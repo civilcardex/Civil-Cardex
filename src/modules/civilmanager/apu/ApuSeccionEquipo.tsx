@@ -10,9 +10,17 @@ interface Props {
   onChange: (recursos_eq: ApuRecursoEquipo[]) => void;
 }
 
+// Identidad perezosa de fila: se asigna una vez al objeto (viaja en el jsonb persistido) y
+// sobrevive a inserciones/borrados — key={i} desalineaba inputs al eliminar una fila previa.
+function filaId(r: unknown): string {
+  const o = r as { _fid?: string };
+  if (!o._fid) o._fid = `f${Math.random().toString(36).slice(2, 10)}`;
+  return o._fid;
+}
+
 export function ApuSeccionEquipo({ apu, onChange }: Props) {
   const { state } = useCivilManager();
-  const eqMap = new Map(state.equipos.map(e => [e.id, e]));
+  const eqMap = new Map(state.equipos.map((e) => [e.id, e]));
 
   function add() {
     if (!state.equipos.length) return;
@@ -50,22 +58,52 @@ export function ApuSeccionEquipo({ apu, onChange }: Props) {
             </tr>
           </thead>
           <tbody>
-            {apu.recursos_eq.length === 0 && <tr><td colSpan={6} className="cm-empty-row">Sin recursos de equipo</td></tr>}
+            {apu.recursos_eq.length === 0 && (
+              <tr>
+                <td colSpan={6} className="cm-empty-row">
+                  Sin recursos de equipo
+                </td>
+              </tr>
+            )}
             {apu.recursos_eq.map((r, i) => {
               const eq = eqMap.get(r.equipo_id);
               return (
-                <tr key={i}>
+                <tr key={filaId(r)}>
+                  {
+                    // key={i} desalineaba los NumInput al borrar una fila intermedia con edición
+                    // pendiente — identidad perezosa que viaja en el jsonb de recursos.
+                  }
                   <XlRowNum n={i + 1} />
                   <td>
-                    <select className="cm-sel" value={r.equipo_id} onChange={e => upd(i, 'equipo_id', e.target.value)} aria-label="Equipo">
-                      {state.equipos.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                    <select
+                      className="cm-sel"
+                      value={r.equipo_id}
+                      onChange={(e) => upd(i, 'equipo_id', e.target.value)}
+                      aria-label="Equipo"
+                    >
+                      {state.equipos.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.nombre}
+                        </option>
+                      ))}
                     </select>
                   </td>
-                  <td><NumInput value={r.rendimiento} decimals={4} onChange={v => upd(i, 'rendimiento', v)} /></td>
+                  <td>
+                    <NumInput
+                      value={r.rendimiento}
+                      decimals={4}
+                      onChange={(v) => upd(i, 'rendimiento', v)}
+                    />
+                  </td>
                   <td>{fmt(eq?.costo_hora ?? 0)}</td>
                   <td>{fmt((eq?.costo_hora ?? 0) * (Number(r.rendimiento) || 0))}</td>
                   <td className="cm-col-act">
-                    <button type="button" className="cm-btn-icon" onClick={() => del(i)} aria-label="Eliminar recurso">
+                    <button
+                      type="button"
+                      className="cm-btn-icon"
+                      onClick={() => del(i)}
+                      aria-label="Eliminar recurso"
+                    >
                       <ActionIcon name="delete" label="Eliminar recurso" color="var(--err)" />
                     </button>
                   </td>
@@ -76,9 +114,13 @@ export function ApuSeccionEquipo({ apu, onChange }: Props) {
         </table>
       </XlScroll>
       <div className="cm-xl-foot">
-        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>Agregar Recurso</button>
+        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
+          Agregar Recurso
+        </button>
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>Subtotal Equipo: <b>{fmt(subtotal)}</b></span>
+        <span style={{ fontSize: 11 }}>
+          Subtotal Equipo: <b>{fmt(subtotal)}</b>
+        </span>
       </div>
     </XlWrap>
   );
