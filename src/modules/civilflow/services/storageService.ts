@@ -178,6 +178,8 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     // Identidad de la yee doble (par de vértices): sin esto el glifo persistido muere en el
     // viaje a la BD y tras recargar el plano el borrado de un brazo lo borraba (orig. usuario).
     yee_doble: r.yeeDobleAt ?? null,
+    copia_piso: r.copiaPiso ?? false,
+    sin_acc_med_interior: r._sinAccMedInterior ?? false,
   };
 }
 
@@ -227,6 +229,8 @@ function rowToRamal(row: SupabaseRow): PlanoRamal {
     hydroAcc: g(row, 'hydro_accesorios', undefined),
     gasAcc: g(row, 'gas_accesorios', undefined),
     yeeDobleAt: g(row, 'yee_doble', undefined),
+    copiaPiso: g(row, 'copia_piso', undefined),
+    _sinAccMedInterior: g(row, 'sin_acc_med_interior', undefined),
   };
 }
 
@@ -270,6 +274,10 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     base: b.base ?? null,
     altura: b.altura ?? null,
     longitud: b.longitud ?? null,
+    copia_piso: b.copiaPiso ?? false,
+    copiado_de_plan: b.copiadoDePlan ?? null,
+    copiado_de_id: b.copiadoDeId ?? null,
+    bajante_externo_id: b.bajanteExternoId ?? null,
     canal_id: b.canalId ?? null,
     descarga_en_id: b.descargaEnId ?? null,
     origen_id: b.origenId ?? null,
@@ -333,6 +341,10 @@ function rowToBajante(row: SupabaseRow): PlanoBajante {
     base: g(row, 'base', undefined),
     altura: g(row, 'altura', undefined),
     longitud: g(row, 'longitud', undefined),
+    copiaPiso: g(row, 'copia_piso', undefined),
+    copiadoDePlan: g(row, 'copiado_de_plan', undefined),
+    copiadoDeId: g(row, 'copiado_de_id', undefined),
+    bajanteExternoId: g(row, 'bajante_externo_id', undefined),
     canalId: g(row, 'canal_id', undefined),
   };
 }
@@ -530,7 +542,28 @@ export function trazosLocalGanaABdVacia(local: unknown, db: unknown): boolean {
   return trazosDocHasContent(local) && !trazosDocHasContent(db);
 }
 
-export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
+// Cola por plano: el RPC es destructivo (borra y reinserta colecciones) y hay decenas de
+// llamadores fire-and-forget (autosave, escritores cross-floor, copiar plano). Dos pushes
+// en vuelo para el mismo plano podían aterrizar en orden arbitrario y dejar el doc viejo
+// último en BD. Los pushes de planos DISTINTOS siguen en paralelo.
+const trazosSaveQueue = new Map<string, Promise<void>>();
+
+/** Guarda los trazos de un plano en BD (BD local? no — Supabase vía RPC). Serializa por
+ *  plano: una nueva llamada espera a que termine la anterior del MISMO plano. */
+export function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
+  const key = String(planoId);
+  const prev = trazosSaveQueue.get(key) ?? Promise.resolve();
+  const job = prev.catch(() => {}).then(() => doSaveTrazosToDB(planoId, data));
+  trazosSaveQueue.set(
+    key,
+    job.finally(() => {
+      if (trazosSaveQueue.get(key) === job) trazosSaveQueue.delete(key);
+    }),
+  );
+  return job;
+}
+
+async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
     // Tumba anti-vacío (antes del check de sesión: abort barato): el RPC borra y re-inserta
     // TODAS las colecciones del piso. Un payload sin contenido (engine a medio hidratar,
@@ -724,14 +757,27 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
  * el RPC get_plano_data (cabecera + ramales + bajantes + conexiones + areas + dims +
  * anotaciones + líneas guía + cross-floor ghosts), en lugar de 8 selects secuenciales.
  */
-// ponytail: cache Supabase user to avoid a network auth.getUser() round-trip on every plan load
+// ponytail: cache Supabase user to avoid a network auth.getUser() round-trip on every plan load.
+// La caché se invalida en CUALQUIER cambio de estado de auth (logout, refresh de token, cambio
+// de usuario) — sin eso, un null capturado antes de restaurar la sesión dejaba todos los
+// guardados en sin-sesion hasta recargar (y un logout/login escribía con el user_id viejo).
 let _cachedUserPromise: Promise<{ id: string } | null> | null = null;
 function cachedSupabaseUser(): Promise<{ id: string } | null> {
   if (!_cachedUserPromise) {
-    _cachedUserPromise = supabase.auth.getUser().then(({ data: { user } }) => user || null);
+    _cachedUserPromise = supabase.auth
+      .getUser()
+      .then(({ data: { user } }) => user || null)
+      .catch((e) => {
+        _cachedUserPromise = null; // un fallo transitorio no queda cacheado
+        throw e;
+      });
   }
   return _cachedUserPromise;
 }
+// optional chaining: los mocks de test construyen auth mínimo sin este listener
+supabase.auth.onAuthStateChange?.(() => {
+  _cachedUserPromise = null;
+});
 
 export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {

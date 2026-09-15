@@ -5,10 +5,10 @@
  * aquí) — existe para que no haya ciclos de importación entre módulos hermanos.
  */
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
+import { devError } from '../../../utils/devError';
 import { TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
-import { devError } from '../../../utils/devError';
 
 export type { CrossFloorGhost };
 
@@ -78,7 +78,6 @@ export function loadData(planId: string | number): LocalGhostDrawingData {
   const raw = loadFromStorage<LocalGhostDrawingData | null>(TRAZOS_PREFIX + planId, null);
   return raw || {};
 }
-
 /** Escribe el JSON crudo de trazos de un piso (localStorage + BD) — uso interno y de la migración. */
 export function saveData(planId: string | number, data: LocalGhostDrawingData): void {
   data.ts = Date.now();

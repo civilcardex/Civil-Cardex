@@ -81,6 +81,9 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const restoredRef = useRef(false);
+  // Largo local VIVO: el closure del efecto de montaje captura el array del primer render;
+  // sin ref, el guard anti-pisado de la restauración nube comparaba el snapshot consigo mismo.
+  const plansCountRef = useRef(plans.length);
   const [restoreDone, setRestoreDone] = useState(false);
   // Distinto de restoreDone (que solo significa "la restauración local desde IndexedDB
   // terminó"): el efecto de respaldo en la nube con debounce de abajo no debe dispararse
@@ -90,6 +93,9 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   // de leerlos — perdiendo todos los planos en refresh/re-login/reapertura.
   const [cloudRestoreDone, setCloudRestoreDone] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    plansCountRef.current = plans.length;
+  }, [plans]);
 
   useEffect(
     () => () => {
@@ -256,8 +262,14 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       return;
     }
     let ignore = false;
+    const cantLocalPre = plans.length;
     (async () => {
       const data = await loadProyectoData(proyectoId);
+      // Planos agregados localmente durante la red: el set absoluto de abajo los reemplazaría.
+      if (!ignore && plansCountRef.current > cantLocalPre) {
+        setCloudRestoreDone(true);
+        return;
+      }
       const meta = data?.plans_meta;
       if (!ignore && meta && meta.length > 0) {
         // Carga silenciosa: descargar PDFs de la nube EN PARALELO (no secuencial) — cada uno

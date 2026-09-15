@@ -44,6 +44,17 @@ export function useTrazosLoader({ activeNetRef, setActiveNet, setScaleM }: UseTr
       }
       try {
         const dbData = await loadTrazosFromDB(String(resolvedId));
+        // El usuario dibujó durante el await de red: el engine tiene ediciones que aún no
+        // llegaron a caché/BD — aplicar dbData (loadWork reemplaza TODO) las destruiría y el
+        // autosave siguiente consolidaría el vaciado. La caché local (ya escrita por el
+        // autosave) manda; la BD se re-sube desde ella.
+        if (eng._dirty) {
+          const fresco = tryLoad(resolvedId);
+          if (fresco) {
+            saveTrazosToDB(String(resolvedId), fresco);
+            return initiallyLoaded;
+          }
+        }
         if (dbData) {
           const dbTs = Number(dbData.ts || 0);
           const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);

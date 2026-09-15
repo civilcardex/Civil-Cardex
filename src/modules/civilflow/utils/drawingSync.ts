@@ -208,7 +208,9 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
           });
         }
       }
-      const planoKey = family + '_' + nivel;
+      // Clave con planId: dos planos podían compartir nivel (o caer ambos al fallback '0'
+      // sin confirmar) y el segundo SOBRESCRIBÍA al primero — sus ramales desaparecían de
+      // las tablas. El nivel viaja en el valor; los lectores ya lo prefieren a la clave.
       const bajantes = (data.bajantes || [])
         .filter((b) => b.net === family)
         .map((b) => ({
@@ -226,7 +228,7 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
       // genera el stub sintético AC-01-{calId} por plano prefijado, y sin él los fixtures del
       // calentador nunca llegan a las tablas de selección de calentador.
       if (ramales.length === 0 && bajantes.length === 0) continue;
-      out.planes[planoKey] = {
+      out.planes[`${family}_${nivel}_${plan.id}`] = {
         planoId: plan.id,
         planoName: plan.name || '',
         nivel,
@@ -328,7 +330,7 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
       }
     }
     if (ramales.length === 0 && bajantes.length === 0) continue;
-    out.planes[nivel] = {
+    out.planes[String(plan.id)] = {
       planoId: plan.id,
       planoName: plan.name || '',
       nivel: String(plan.nivel || ''),

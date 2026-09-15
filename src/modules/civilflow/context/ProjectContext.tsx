@@ -238,9 +238,16 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
     const proyectoId = getActiveProyectoId();
     if (!proyectoId) return;
     let ignore = false;
+    // Firma local antes del fetch: si el usuario editó durante la red (los sets absolutos de
+    // abajo son reemplazos, no merges), aplicar el respaldo desharía esas ediciones.
+    const firmaPre = JSON.stringify([pisos, proy.nombre]);
     (async () => {
       const data = await loadProyectoData(proyectoId);
       if (ignore) return;
+      if (JSON.stringify([pisos, proy.nombre]) !== firmaPre) {
+        setRestoreDone(true);
+        return;
+      }
       if (data?.pisos && data.pisos.length > 0) setPisos(data.pisos);
       if (data?.proy) {
         // El mapper de filas del RPC devuelve Partial<Proyecto> con campos undefined para

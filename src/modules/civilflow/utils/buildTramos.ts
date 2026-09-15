@@ -374,7 +374,8 @@ export function loadSanLlTramos() {
     for (const r of plane.ramales || []) {
       if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
     }
-    const piso = parseInt(nivel);
+    // Piso desde el VALOR (la clave incluye planId y ya no es parseable como nivel).
+    const piso = parseInt(String((plane as { nivel?: string }).nivel ?? nivel));
     const fmtNivel = (v: unknown): string => {
       const n = Number(v);
       if (!isNaN(n)) return pisoCorto(n);

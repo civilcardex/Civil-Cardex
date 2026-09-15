@@ -57,7 +57,23 @@ function maxAccessoryDiam(ramal: {
 export function findContadorBajante(
   plans: SyncPlanInput[],
   net: string,
+  objetivo?: { planId: string | number; id: string },
 ): { planId: string | number; bajante: RawElement } | null {
+  // Objetivo explícito: resolver SOLO esa fila (planId+id) — sin él, el primer contador del
+  // proyecto ganaba y con ≥2 contadores el diámetro se escribía en el piso equivocado.
+  if (objetivo) {
+    for (const plan of plans) {
+      if (!plan || plan.status !== 'confirmed') continue;
+      if (String(plan.id) !== String(objetivo.planId)) continue;
+      const raw = loadFromStorage<LocalDrawingData | null>(TRAZOS_PREFIX + plan.id, null);
+      if (!raw) continue;
+      const bajante = (raw.bajantes || []).find(
+        (b) => b.tipo === 'contador' && b.net === net && b.id === objetivo.id,
+      );
+      if (bajante) return { planId: plan.id, bajante };
+    }
+    return null;
+  }
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     const key = TRAZOS_PREFIX + plan.id;
@@ -377,9 +393,17 @@ export function writeDiametroToDrawing(
   return { ok: true };
 }
 
-export function writeContadorDiamToDrawing(val: string, plans: SyncPlanInput[], net: string): void {
+/** Objetivo explícito: fila (planId+bajanteId) que el usuario editó. Sin él se conserva el
+ *  comportamiento legado (primer contador encontrado), que con ≥2 contadores escribía en el
+ *  equivocado. */
+export function writeContadorDiamToDrawing(
+  val: string,
+  plans: SyncPlanInput[],
+  net: string,
+  objetivo?: { planId: string | number; id: string },
+): void {
   if (!plans) return;
-  const found = findContadorBajante(plans, net);
+  const found = findContadorBajante(plans, net, objetivo);
   if (!found) return;
   const key = TRAZOS_PREFIX + found.planId;
   const raw = loadFromStorage<LocalDrawingData | null>(key, null);
