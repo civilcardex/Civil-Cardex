@@ -10,7 +10,7 @@ import { moveAllAparatoCounts } from '../../../utils/syncExtremeAccessory';
 import { writeHydroDrawingSync } from '../../../utils/drawingSync';
 import UcMoveModal, { type UcMoveModalState } from '../UcMoveModal';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
-import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
+import type { PlanoBajante, PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import type { Piso } from '../../../lib/shared/projectTypes';
 import type { PlanItem } from '../../../context/PlansContext';
 import type { MaterialItem } from '../../../context/ProjectContext';
@@ -24,6 +24,7 @@ import {
   type ProbedElement,
 } from './context';
 import { BajanteMenu } from './bajanteMenu';
+import { BombaAsociarBajantesSection } from './bombaMenu';
 import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otherMenus';
 import { GuideLineMenu } from './guideLineMenu';
 import { RamalMenu } from './ramalMenu';
@@ -401,13 +402,14 @@ function DrawingElementContextMenuInner() {
   const element = contextMenuState.element as ProbedElement;
   // Las BOMBAS no tienen menú contextual (orig. usuario): toda su gestión se hace desde la
   // caja que las originó ("Bomba asociada") y desde el bajante asociado.
-  if (element.tipo === 'bomba') return null;
+  // BOMBA (orig. usuario): menú propio con la lista de bajantes del piso superior a asociar —
+  // la creación/solo-lectura sigue en la caja que la originó.
+  const isBombaMenu = element.tipo === 'bomba';
   const isBajanteTipo =
     element.tipo === 'bajante' ||
     element.tipo === 'montante' ||
     element.tipo === 'caja_san' ||
     element.tipo === 'caja_ll' ||
-    element.tipo === 'bomba' ||
     element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
   // Las líneas guía también llevan `pts` (reutilizado para la detección de clics) pero nunca
@@ -467,7 +469,19 @@ function DrawingElementContextMenuInner() {
         }}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {isBajanteTipo && !hasPts ? (
+        {isBombaMenu ? (
+          <BombaAsociarBajantesSection
+            engineRef={ctx.engineRef}
+            plans={ctx.planosCtx?.plans || []}
+            bomba={element as unknown as PlanoBajante}
+            triggerConfirm={ctx.triggerConfirm}
+            onChanged={() =>
+              setContextMenuState((prev) =>
+                prev ? { ...prev, element: { ...prev.element } } : null,
+              )
+            }
+          />
+        ) : isBajanteTipo && !hasPts ? (
           <BajanteMenu />
         ) : isArea ? (
           <AreaMenu />

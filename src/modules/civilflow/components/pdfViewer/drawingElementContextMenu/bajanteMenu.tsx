@@ -737,6 +737,11 @@ export function BajanteDiameterSelector({
                               `Diámetro del bajante no puede ser menor al del ramal conectado (${ram.diametro})`,
                             );
                             e.target.value = element.dNominal || '';
+                            // Select controlado: sin re-render, el DOM seguía mostrando el
+                            // valor rechazado (React no sabía del cambio directo).
+                            setContextMenuState((prev) =>
+                              prev ? { ...prev, element: { ...prev.element } } : null,
+                            );
                             return;
                           }
                         }
@@ -905,6 +910,11 @@ export function BajanteDiameterSelector({
                             `Diámetro del bajante no puede ser menor al del ramal conectado (${ram.diametro})`,
                           );
                           e.target.value = element.dNominal || '';
+                          // Select controlado: sin re-render, el DOM seguía mostrando el
+                          // valor rechazado (React no sabía del cambio directo).
+                          setContextMenuState((prev) =>
+                            prev ? { ...prev, element: { ...prev.element } } : null,
+                          );
                           return;
                         }
                       }
@@ -1045,10 +1055,39 @@ function AsociarBombaSection({
               checked={checked}
               onChange={(e) => {
                 if (!eng) return;
-                if (e.target.checked) asociarBomba(eng, bajEl, currentPlanId, row, plans);
-                else quitarBomba(eng, bajEl, currentPlanId, plans);
-                ctx.setContextMenuState((st) =>
-                  st ? { ...st, element: { ...st.element } } : null,
+                // Capturar el booleano YA: el checkbox es controlado — al abrir el modal React
+                // lo re-renderiza a `checked` (bombaEnId aún no cambió) y un `e.target.checked`
+                // leído DIFERIDO (en Aceptar) vuelve false → llamaba quitarBomba y "no pasaba
+                // nada" (orig. usuario).
+                const checked = e.target.checked;
+                const commit = () => {
+                  if (checked) asociarBomba(eng, bajEl, currentPlanId, row, plans);
+                  else quitarBomba(eng, bajEl, currentPlanId, plans);
+                  ctx.setContextMenuState((st) =>
+                    st ? { ...st, element: { ...st.element } } : null,
+                  );
+                };
+                // Mismo aviso que la asociación entre pisos (ids correctos): al marcar con la
+                // bomba desalineada se creará un ramal de desvío en el piso de la bomba.
+                const aligned =
+                  Math.abs((bajEl.x ?? 0) - row.x) < 0.5 && Math.abs((bajEl.y ?? 0) - row.y) < 0.5;
+                if (aligned || !checked) {
+                  commit();
+                  return;
+                }
+                const bajLbl = buildBajanteVisualLabel(
+                  { code: bajEl.code || bajEl.id },
+                  bajEl.pisoBase || undefined,
+                );
+                const bombaLbl = buildBajanteVisualLabel(
+                  { code: row.code },
+                  row.nivel != null ? row.nivel : undefined,
+                );
+                ctx.triggerConfirm(
+                  'Crear fantasma de asociación',
+                  `${bajLbl} y ${bombaLbl} no están alineados. Se creará un ramal de desvío en el piso de la bomba, desde la posición de ${bombaLbl}. ¿Continuar?`,
+                  commit,
+                  'Aceptar',
                 );
               }}
               style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}

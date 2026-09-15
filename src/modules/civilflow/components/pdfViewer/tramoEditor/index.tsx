@@ -41,6 +41,7 @@ interface TramoEditorProps {
   handleRotateLabel: () => void;
   plans?: PlanItem[];
   pisos?: Piso[];
+  triggerConfirm?: (title: string, message: string, onOk: () => void, okLabel?: string) => void;
 }
 
 export default function TramoEditor(props: TramoEditorProps) {
@@ -63,6 +64,7 @@ export default function TramoEditor(props: TramoEditorProps) {
     matLongName: props.matLongName,
     plans: props.plans,
     pisos: props.pisos,
+    triggerConfirm: props.triggerConfirm,
   };
 
   return (

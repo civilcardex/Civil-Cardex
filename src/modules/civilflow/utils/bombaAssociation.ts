@@ -11,8 +11,20 @@ import {
   HYDRO_DATA_STORAGE_KEY,
 } from '../constants/storage-keys';
 import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
-import { collectSourceAgg } from './bajanteAssociation';
+import {
+  writeCrossFloorGhost,
+  removeCrossFloorGhostsBySource,
+  createCrossFloorLdesvioRamal,
+  removeCrossFloorLdesvioRamal,
+  buildLdesvioRamal,
+  ldesvioIdFor,
+  nextRamalLabel,
+  type CrossFloorGhost,
+} from './associateBajanteAcrossFloors';
+import { markAssocLayout } from './assocLayoutMigration';
+import { collectSourceAgg, setBajanteDesplazamientoInStorage } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
+import { pisoCorto } from '../constants';
 import { pisoLbl } from '../constants';
 import { APARATOS_DEF } from '../constants';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
@@ -25,6 +37,8 @@ export interface BombaRow {
   code: string;
   caja: string;
   nivel: string;
+  /** plan.nivel numérico del piso de la bomba — clave del anillo (desplazamientos) y pisoCorto. */
+  nivelN: number;
   x: number;
   y: number;
   net: string;
@@ -65,6 +79,7 @@ export function bombsImmediateLowerFloor(plans: PlanItem[], currentPlanId: strin
         code: b.code || b.id,
         caja: b.cajaOrigenId || '—',
         nivel: pl.nivel != null ? pisoLbl(Number(pl.nivel)) : String(pl.id),
+        nivelN: typeof pl.nivel === 'number' ? pl.nivel : 0,
         x: b.x ?? 0,
         y: b.y ?? 0,
         net: b.net || 'san',
@@ -74,35 +89,98 @@ export function bombsImmediateLowerFloor(plans: PlanItem[], currentPlanId: strin
   return out;
 }
 
+export interface BajanteSuperiorRow {
+  planId: string;
+  id: string;
+  code: string;
+  x: number;
+  y: number;
+  net: string;
+  dNominal: string;
+  nivel: string;
+  nivelN: number;
+  bombaEnId: string | null;
+}
+
+/** Bajantes (tipo 'bajante') del piso INMEDIATAMENTE SUPERIOR al actual — opciones para
+ *  asociar DESDE la bomba (orig. usuario). Inverso de `bombsImmediateLowerFloor`: el menor
+ *  `nivel` que sea mayor al actual. */
+export function bajantesImmediateUpperFloor(
+  plans: PlanItem[],
+  currentPlanId: string,
+): BajanteSuperiorRow[] {
+  const current = plans.find((pl) => String(pl.id) === currentPlanId);
+  if (!current || typeof current.nivel !== 'number') return [];
+  const upper = plans.filter(
+    (pl) =>
+      pl.status === 'confirmed' &&
+      String(pl.id) !== currentPlanId &&
+      typeof pl.nivel === 'number' &&
+      (pl.nivel as number) > (current.nivel as number),
+  );
+  if (!upper.length) return [];
+  const inmNivel = Math.min(...upper.map((pl) => pl.nivel as number));
+  const out: BajanteSuperiorRow[] = [];
+  for (const pl of upper.filter((pl) => pl.nivel === inmNivel)) {
+    const t = loadFromStorage<{
+      bajantes?: Array<{
+        id: string;
+        code?: string;
+        net?: string;
+        tipo?: string;
+        x?: number;
+        y?: number;
+        dNominal?: string;
+        bombaEnId?: string | null;
+      }>;
+    } | null>(TRAZOS_PREFIX + String(pl.id), null);
+    for (const b of t?.bajantes || []) {
+      if (b.tipo !== 'bajante') continue;
+      out.push({
+        planId: String(pl.id),
+        id: b.id,
+        code: b.code || b.id,
+        x: b.x ?? 0,
+        y: b.y ?? 0,
+        net: b.net || 'san',
+        dNominal: b.dNominal || '',
+        nivel: pl.nivel != null ? pisoLbl(Number(pl.nivel)) : String(pl.id),
+        nivelN: typeof pl.nivel === 'number' ? pl.nivel : 0,
+        bombaEnId: b.bombaEnId ?? null,
+      });
+    }
+  }
+  return out;
+}
+
 /** Asocia la bomba al bajante: `bombaEnId` en el bajante + direccion 'sube' automática.
- *  La herencia de UDs la ejecuta el efecto en vivo de FixturesPanel. */
+ *  La herencia de UDs la ejecuta el efecto en vivo de FixturesPanel. `bajPlanId`: piso del
+ *  bajante (necesario al asociar DESDE el piso de la bomba, donde currentPlanId es el piso de
+ *  la bomba y el bajante vive arriba). */
 export function asociarBomba(
   eng: PlanoEngine,
-  baj: { id: string; net?: string; dNominal?: string; bombaEnId?: string | null },
+  baj: {
+    id: string;
+    net?: string;
+    dNominal?: string;
+    bombaEnId?: string | null;
+    x?: number;
+    y?: number;
+  },
   currentPlanId: string,
   row: BombaRow,
   plans: PlanItem[],
+  bajPlanId: string = currentPlanId,
 ): void {
   // Asociación previa distinta: restar su libro antes de escribir la nueva.
   if (baj.bombaEnId && baj.bombaEnId !== `${row.planId}|${row.id}`) {
     quitarBomba(eng, baj as PlanoBajante, currentPlanId, plans);
   }
   const link = `${row.planId}|${row.id}`;
-  writeBajantePropToDrawing(
-    `${baj.id}-${currentPlanId}`,
-    baj.net || 'san',
-    'bombaEnId',
-    link,
-    plans,
-  );
-  writeBajantePropToDrawing(
-    `${baj.id}-${currentPlanId}`,
-    baj.net || 'san',
-    'direccion',
-    'sube',
-    plans,
-  );
+  writeBajantePropToDrawing(`${baj.id}-${bajPlanId}`, baj.net || 'san', 'bombaEnId', link, plans);
+  writeBajantePropToDrawing(`${baj.id}-${bajPlanId}`, baj.net || 'san', 'direccion', 'sube', plans);
   eng.updateElementById(baj.id, { bombaEnId: link, direccion: 'sube' as const });
+  sincronizarDesvioBomba(eng, baj, bajPlanId, row);
   // Propagación SÍNCRONA al marcar (orig. usuario: las UDs deben aparecer en el bajante
   // superior y su panel sin esperar al próximo pase del efecto en vivo).
   try {
@@ -114,23 +192,263 @@ export function asociarBomba(
   }
   window.dispatchEvent(new CustomEvent('aparatos-clear'));
   window.dispatchEvent(new Event('storage'));
+  // Redibujo INMEDIATO del canvas: el fantasma/LD/anillo viven en storage+engine y sin esto
+  // solo aparecían cuando otra acción re-renderizaba (orig. usuario: "no pasa nada… y se
+  // demoran").
+  eng.render?.();
 }
 
-/** Quita la asociación de bomba: limpia el campo y RESTA el libro aplicado de las claves. */
+// --- Desvío bomba→bajante superior (orig. usuario: "lo mismo de los bajantes entre pisos") ---
+// Alineados: solo el marcador fantasma en el piso superior (en 2D queda oculto bajo los
+// elementos reales, igual que en la asociación bajante↔bajante). Desalineados: anillo en la
+// BOMBA + ramal Ldesvio `LD_<bajId>` que SALE DE LA BOMBA en su piso — un ramal normal que
+// cuenta como cualquier otro — y su clave de aparatos ESPEJA las UDs de la bomba (la mantiene
+// fresca propagarHerenciaBomba). Sin elementos extra: debajo de la bajante superior solo está
+// la bomba ya existente.
+
+/** Coordenadas del bajante asociado: las del engine vivo si su piso está cargado; el caller
+ *  (lista de checkboxes desde la bomba) pasa las del trazos si no. */
+function coordsBajDe(
+  eng: PlanoEngine,
+  baj: { id: string; x?: number; y?: number },
+  bajPlanId: string,
+): { x: number; y: number } | null {
+  if (typeof baj.x === 'number' && typeof baj.y === 'number') return { x: baj.x, y: baj.y };
+  if (String(eng._loadedPlanId ?? '') === bajPlanId) {
+    const live = eng.bajantes.find((b) => b.id === baj.id);
+    if (live && live.x != null && live.y != null) return { x: live.x, y: live.y };
+  }
+  return null;
+}
+
+/** Crea/limpia (idempotente) los artefactos visuales del enlace bomba↔bajante. */
+export function sincronizarDesvioBomba(
+  eng: PlanoEngine,
+  baj: { id: string; net?: string; dNominal?: string; x?: number; y?: number },
+  bajPlanId: string,
+  row: BombaRow,
+): void {
+  const net = baj.net || 'san';
+  const ldId = ldesvioIdFor(baj.id);
+  limpiarArtefactosDesvioBomba(eng, baj, bajPlanId, { planId: row.planId, id: row.id });
+  const bajXY = coordsBajDe(eng, baj, bajPlanId);
+  if (!bajXY) return;
+
+  // Fantasma SIEMPRE (alineado incluido): el piso superior lleva el marcador que referencia a
+  // la bomba — overlapReal del render lo oculta cuando coincide con elementos reales.
+  const ghost: CrossFloorGhost = {
+    id: `XFG_${row.id}_${row.planId}`,
+    net,
+    code: row.code || row.id,
+    x: row.x,
+    y: row.y,
+    dNominal: baj.dNominal || '',
+    direccion: 'sube',
+    piso: pisoCorto(row.nivelN),
+    sourcePlanId: row.planId,
+    sourceBajanteId: row.id,
+    targetBajanteId: baj.id,
+    layout: 2,
+  };
+  writeCrossFloorGhost(bajPlanId, ghost);
+  markAssocLayout(bajPlanId);
+  if (String(eng._loadedPlanId ?? '') === bajPlanId && Array.isArray(eng.crossFloorGhosts)) {
+    eng.crossFloorGhosts = [
+      ...eng.crossFloorGhosts.filter(
+        (g) => !(g.sourcePlanId === row.planId && g.sourceBajanteId === row.id),
+      ),
+      ghost,
+    ];
+  }
+
+  // Alineación (misma regla 0.5 que bajantes entre pisos): alineados no se crea LD ni anillo.
+  const aligned = Math.abs(bajXY.x - row.x) < 0.5 && Math.abs(bajXY.y - row.y) < 0.5;
+  if (aligned) return;
+
+  // Anillo en la BOMBA (su piso lleva el anillo y el Ldesvio, layout v2 de bajante↔bajante).
+  const lvlBomba = pisoLbl(row.nivelN);
+  setBajanteDesplazamientoInStorage(
+    row.planId,
+    row.id,
+    lvlBomba,
+    {
+      dx: bajXY.x - row.x,
+      dy: bajXY.y - row.y,
+      Ldesvio: ldId,
+    },
+    'sube',
+  );
+  markAssocLayout(row.planId);
+  if (String(eng._loadedPlanId ?? '') === row.planId) {
+    const liveBomba = eng.bajantes.find((b) => b.id === row.id);
+    if (liveBomba) {
+      const desp = { ...(liveBomba.desplazamientos || {}) } as Record<
+        string,
+        { dx: number; dy: number; Ldesvio?: string }
+      >;
+      const gd: Record<string, { direccion?: string; labelX?: number; labelY?: number }> = {
+        ...(liveBomba.ghostData || {}),
+      };
+      desp[lvlBomba] = {
+        dx: bajXY.x - row.x,
+        dy: bajXY.y - row.y,
+        Ldesvio: ldId,
+      };
+      gd[lvlBomba] = { ...(gd[lvlBomba] ?? {}), direccion: 'sube' };
+      eng.updateElementById(row.id, { desplazamientos: desp, ghostData: gd });
+    }
+  }
+
+  // Ldesvio que SALE DE LA BOMBA hacia la posición de la bajante superior (piso de la bomba).
+  createCrossFloorLdesvioRamal(
+    row.planId,
+    baj.id,
+    net,
+    row.x,
+    row.y,
+    bajXY.x,
+    bajXY.y,
+    baj.dNominal || '',
+    row.nivelN,
+  );
+  if (String(eng._loadedPlanId ?? '') === row.planId) {
+    const existing = eng.ramales.find((r) => r.id === ldId);
+    const label = existing?.label || nextRamalLabel(net, eng.ramales);
+    const ramal = buildLdesvioRamal(
+      ldId,
+      label,
+      net,
+      row.x,
+      row.y,
+      bajXY.x,
+      bajXY.y,
+      baj.dNominal || '',
+      row.nivelN,
+      eng.scaleM || 0.5,
+      existing ? existing.bloqueado : true,
+    );
+    eng.ramales = [...eng.ramales.filter((r) => r.id !== ldId), ramal as never];
+  }
+
+  // Mismas UDs: la clave del Ldesvio ESPEJA el agregado de la bomba (propagarHerenciaBomba la
+  // mantiene en vivo; aquí la escritura directa cubre el caso "piso de la bomba no cargado").
+  try {
+    const aggBomba = mapUdBombaDesdeTrazos(row.planId, row.id, net, null);
+    if (Object.keys(aggBomba).length) {
+      const apos = loadFromStorage<Record<string, Record<string, number>>>(
+        APARATOS_BY_TRAMO_KEY,
+        {},
+      );
+      apos[`${net}_${ldId}_${row.planId}`] = { ...aggBomba };
+      saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
+    }
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Quita anillo de la bomba, ramal LD_ (piso de la bomba), fantasma del piso superior y la
+ *  clave de aparatos del Ldesvio. Idempotente. El LD se identifica con el id del BAJANTE
+ *  (LD_<bajId> — mismo espacio de ids que bajante↔bajante: un bajante solo se enlaza a uno). */
+export function limpiarArtefactosDesvioBomba(
+  eng: PlanoEngine,
+  baj: { id: string; net?: string },
+  bajPlanId: string,
+  row: Pick<BombaRow, 'planId' | 'id'>,
+): void {
+  const net = baj.net || 'san';
+  const ldId = ldesvioIdFor(baj.id);
+  const bombaFloorLoaded = String(eng._loadedPlanId ?? '') === row.planId;
+  const quitarDeDesp = (
+    desp: Record<string, { dx: number; dy: number; Ldesvio?: string }>,
+    gd: Record<string, { direccion?: string; labelX?: number; labelY?: number }>,
+  ): boolean => {
+    let tocado = false;
+    for (const lvl of Object.keys(desp)) {
+      if (desp[lvl]?.Ldesvio === ldId) {
+        delete desp[lvl];
+        if (gd[lvl] && !gd[lvl].labelX && !gd[lvl].labelY) delete gd[lvl];
+        tocado = true;
+      }
+    }
+    return tocado;
+  };
+  // Anillo: claves de desplazamientos de la bomba etiquetadas con ESTE Ldesvio (storage).
+  const raw = loadFromStorage<{
+    bajantes?: Array<{
+      id: string;
+      desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
+      ghostData?: Record<string, { direccion?: string; labelX?: number; labelY?: number }>;
+    }>;
+  } | null>(TRAZOS_PREFIX + row.planId, null);
+  const bombaRaw = raw?.bajantes?.find((b) => b.id === row.id);
+  if (bombaRaw) {
+    const desp = { ...(bombaRaw.desplazamientos || {}) };
+    const gd = { ...(bombaRaw.ghostData || {}) };
+    if (quitarDeDesp(desp, gd)) {
+      bombaRaw.desplazamientos = desp;
+      bombaRaw.ghostData = gd;
+      saveToStorage(TRAZOS_PREFIX + row.planId, raw);
+      saveTrazosToDB(row.planId, raw);
+    }
+  }
+  if (bombaFloorLoaded) {
+    const liveBomba = eng.bajantes.find((b) => b.id === row.id);
+    if (liveBomba) {
+      const desp = { ...(liveBomba.desplazamientos || {}) } as Record<
+        string,
+        { dx: number; dy: number; Ldesvio?: string }
+      >;
+      const gd = { ...(liveBomba.ghostData || {}) } as Record<
+        string,
+        { direccion?: string; labelX?: number; labelY?: number }
+      >;
+      if (quitarDeDesp(desp, gd))
+        eng.updateElementById(row.id, { desplazamientos: desp, ghostData: gd });
+    }
+  }
+  // Ramal LD_ en el piso de la bomba (storage + vivo si cargado).
+  removeCrossFloorLdesvioRamal(row.planId, baj.id);
+  if (bombaFloorLoaded) {
+    eng.ramales = eng.ramales.filter((r) => r.id !== ldId);
+  }
+  // Fantasma en el piso superior (storage: recorre otros pisos buscando sourcePlanId=piso de
+  // la bomba + vivo si el piso superior está cargado).
+  removeCrossFloorGhostsBySource(row.planId, row.id);
+  if (String(eng._loadedPlanId ?? '') === bajPlanId && Array.isArray(eng.crossFloorGhosts)) {
+    eng.crossFloorGhosts = eng.crossFloorGhosts.filter(
+      (g) => !(g.sourcePlanId === row.planId && g.sourceBajanteId === row.id),
+    );
+  }
+  // Clave de aparatos del Ldesvio.
+  try {
+    const apos = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
+    const ldKey = `${net}_${ldId}_${row.planId}`;
+    if (apos[ldKey]) {
+      delete apos[ldKey];
+      saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
+    }
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Quita la asociación de bomba: limpia el campo, los artefactos del desvío (anillo, Ldesvio,
+ *  fantasma, clave LD) y RESTA el libro aplicado de las claves. `bajPlanId`: piso del bajante
+ *  si se conoce (desasociar desde el piso de la bomba); por defecto el piso cargado. */
 export function quitarBomba(
   eng: PlanoEngine,
   baj: PlanoBajante,
   currentPlanId: string,
   plans: PlanItem[],
+  bajPlanId: string = currentPlanId,
 ): void {
   if (!baj.bombaEnId) return;
-  writeBajantePropToDrawing(
-    `${baj.id}-${currentPlanId}`,
-    baj.net || 'san',
-    'bombaEnId',
-    null,
-    plans,
-  );
+  const [prevPlan, prevId] = baj.bombaEnId.split('|');
+  if (prevPlan && prevId) {
+    limpiarArtefactosDesvioBomba(eng, baj, bajPlanId, { planId: prevPlan, id: prevId });
+  }
+  writeBajantePropToDrawing(`${baj.id}-${bajPlanId}`, baj.net || 'san', 'bombaEnId', null, plans);
   const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
   // Libro desde el motor VIVO (el snapshot `baj` del menú/panel puede ir stale y no haber
   // visto la última herencia: restar ese libro viejo dejaba UDs colgadas que se sumaban en
@@ -154,6 +472,7 @@ export function quitarBomba(
   eng.updateElementById(baj.id, { bombaEnId: null, ucAplicado: undefined, ucAcum: 0 });
   window.dispatchEvent(new CustomEvent('aparatos-clear'));
   window.dispatchEvent(new Event('storage'));
+  eng.render?.();
 }
 
 /** Mapa por aparato de las UDs de una bomba (= las UDs de su CAJA asociada): cierre transitivo
@@ -292,6 +611,20 @@ export function propagarHerenciaBomba(
     const bkSelf = pkey(baj.id);
     if (JSON.stringify(disk[bkSelf] || {}) !== JSON.stringify(aggBomba)) {
       disk[bkSelf] = { ...aggBomba };
+      diskDirty = true;
+    }
+    // Espejo del LDESVIO de la bomba (LD_<bajId> en el piso de la bomba, creado al asociar
+    // desalineados): REEMPLAZO puro con el agregado — contar como cualquier ramal con las
+    // MISMAS UDs de la bomba (orig. usuario). Vacío → borrar la clave.
+    const lk = `${netId}_${ldesvioIdFor(baj.id)}_${pPlan}`;
+    const aggNoVacio = Object.keys(aggBomba).length > 0;
+    if (aggNoVacio) {
+      if (JSON.stringify(disk[lk] || {}) !== JSON.stringify(aggBomba)) {
+        disk[lk] = { ...aggBomba };
+        diskDirty = true;
+      }
+    } else if (disk[lk]) {
+      delete disk[lk];
       diskDirty = true;
     }
     if (

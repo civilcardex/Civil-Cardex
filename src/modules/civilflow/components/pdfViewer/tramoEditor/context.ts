@@ -35,6 +35,9 @@ export interface TramoEditorContextValue {
   matLongName: (short: string) => string;
   plans?: PlanItem[];
   pisos?: Piso[];
+  /** Confirm modal del visor (misma ventana que el menú contextual) — el panel de asociación
+   *  de bomba lo usa para el aviso de desalineación. Opcional: los tests no lo montan. */
+  triggerConfirm?: (title: string, message: string, onOk: () => void, okLabel?: string) => void;
 }
 
 export const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null);

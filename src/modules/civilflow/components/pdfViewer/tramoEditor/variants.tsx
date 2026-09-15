@@ -473,6 +473,7 @@ export function BajanteEditorSection() {
           engineRef={engineRef}
           setSelElement={ctx.setSelElement}
           plans={ctx.plans || []}
+          triggerConfirm={ctx.triggerConfirm}
         />
       )}
     </>
@@ -487,11 +488,13 @@ function AsociarBombaPanel({
   engineRef,
   setSelElement,
   plans,
+  triggerConfirm,
 }: {
   selElement: PlanoBajante;
   engineRef: React.MutableRefObject<import('../../../lib/PlanoEngine/PlanoEngine').default | null>;
   setSelElement: (el: PlanoBajante) => void;
   plans: { id: string | number; nivel: number | null; status?: string }[];
+  triggerConfirm?: (title: string, message: string, onOk: () => void, okLabel?: string) => void;
 }) {
   const currentPlanId = String(engineRef.current?._loadedPlanId ?? '');
   const bombas = bombsImmediateLowerFloor(plans as never, currentPlanId);
@@ -524,13 +527,32 @@ function AsociarBombaPanel({
               onChange={(e) => {
                 const eng = engineRef.current;
                 if (!eng) return;
-                if (e.target.checked)
-                  asociarBomba(eng, selElement, currentPlanId, row, plans as never);
-                else quitarBomba(eng, selElement, currentPlanId, plans as never);
-                setSelElement({
-                  ...selElement,
-                  bombaEnId: e.target.checked ? `${row.planId}|${row.id}` : null,
-                } as PlanoBajante);
+                // Capturar el booleano YA (checkbox controlado: el modal re-renderiza y
+                // resetea el DOM antes de que Aceptar ejecute el commit).
+                const checked = e.target.checked;
+                const commit = () => {
+                  if (checked) asociarBomba(eng, selElement, currentPlanId, row, plans as never);
+                  else quitarBomba(eng, selElement, currentPlanId, plans as never);
+                  setSelElement({
+                    ...selElement,
+                    bombaEnId: checked ? `${row.planId}|${row.id}` : null,
+                  } as PlanoBajante);
+                };
+                // Mismo aviso que la asociación entre pisos (ids correctos): al marcar con la
+                // bomba desalineada se creará un ramal de desvío en el piso de la bomba.
+                const aligned =
+                  Math.abs((selElement.x ?? 0) - row.x) < 0.5 &&
+                  Math.abs((selElement.y ?? 0) - row.y) < 0.5;
+                if (aligned || !checked) {
+                  commit();
+                  return;
+                }
+                triggerConfirm?.(
+                  'Crear fantasma de asociación',
+                  `${selElement.code || selElement.id} y ${row.code} no están alineados. Se creará un ramal de desvío en el piso de la bomba, desde la posición de ${row.code}. ¿Continuar?`,
+                  commit,
+                  'Aceptar',
+                );
               }}
               style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
             />

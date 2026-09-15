@@ -11,6 +11,7 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
 import type { LowerFloorRamales } from './drawingElementContextMenu/context';
+import { BombaAsociarBajantesSection } from './drawingElementContextMenu/bombaMenu';
 const BajanteAsociacion_S1: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',
@@ -52,6 +53,19 @@ export default function BajanteAsociacion({
   engineRef,
   triggerConfirm,
 }: BajanteAsociacionProps) {
+  // BOMBA seleccionada (orig. usuario): lista de bajantes del piso superior a asociar — misma
+  // sección que el menú contextual de la bomba, con el mismo aviso de desalineación.
+  if (rawSelElement && (rawSelElement as { tipo?: string }).tipo === 'bomba') {
+    return (
+      <BombaAsociarBajantesSection
+        engineRef={engineRef}
+        plans={planosCtx.plans}
+        bomba={rawSelElement as unknown as PlanoBajante}
+        triggerConfirm={triggerConfirm}
+        onChanged={() => setSelElement({ ...(rawSelElement as unknown as PlanoBajante) })}
+      />
+    );
+  }
   if (
     !(
       rawSelElement &&

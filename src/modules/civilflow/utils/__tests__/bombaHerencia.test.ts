@@ -189,6 +189,7 @@ describe('asociarBomba propaga sincrónicamente', () => {
       code: 'BOMAN-S1',
       caja: 'CAN1',
       nivel: 'S1',
+      nivelN: -1,
       x: 10,
       y: 10,
       net: 'san',
