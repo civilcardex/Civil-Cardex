@@ -145,7 +145,7 @@ export default function IsometriaToolbar({
                 fontWeight: isOn ? 600 : 400,
               }}
             >
-              {n.emoji} {n.lbl}
+              {n.name}
             </button>
           );
         })}

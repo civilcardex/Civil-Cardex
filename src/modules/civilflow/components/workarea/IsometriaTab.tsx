@@ -13,7 +13,7 @@ const RciCuartoBombasViewer = React.lazy(() => import('../RciCuartoBombasViewer'
 const EsquemaEp = React.lazy(() => import('../ep/EsquemaEp'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
-const SUBTABS = ['General', 'Aparatos', 'Bomba red contra incendio', 'Equipo de presión constante'];
+const SUBTABS = ['Redes', 'Aparatos', 'Bomba red contra incendio', 'Equipo de presión constante'];
 
 function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState> }) {
   const [sub, setSub] = useState(1);

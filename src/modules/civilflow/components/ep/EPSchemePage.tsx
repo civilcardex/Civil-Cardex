@@ -689,8 +689,17 @@ export default function EPSchemePage({ ep, updEP }: Props) {
         canvas.removeEventListener('wheel', onWheel);
         if (badgeWrap) badgeWrap.innerHTML = '';
         renderer.dispose();
-        meshes.forEach((m) => (m.geometry as THREE.BufferGeometry).dispose());
+        // Materiales: cada mesh lleva un clone() propio + los ~20 base del catálogo M — sin
+        // dispose(), cada toggle 2T/3T (o remontaje) filtraba memoria GPU/JS.
+        meshes.forEach((m) => {
+          (m.geometry as THREE.BufferGeometry).dispose();
+          const mat = (m as THREE.Mesh).material as THREE.Material | THREE.Material[];
+          if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+          else mat?.dispose();
+        });
+        Object.values(M).forEach((mat: THREE.Material) => mat.dispose());
         scene.clear();
+        renderer.forceContextLoss();
       };
     })();
     return () => {

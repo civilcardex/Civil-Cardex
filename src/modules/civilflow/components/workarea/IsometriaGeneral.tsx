@@ -1,10 +1,6 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { NETS } from '../../lib/PlanoEngine/PlanoState';
-import {
-  TRAZOS_PREFIX,
-  ISO_COLLAPSED_KEY,
-  ISO_ACTIVE_NETS_KEY,
-} from '../../constants/storage-keys';
+import { TRAZOS_PREFIX, ISO_COLLAPSED_KEY } from '../../constants/storage-keys';
 import { loadFromStorage } from '../../services/storageService';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { prefetchAllTrazos } from '../../utils/prefetchTrazos';
@@ -33,15 +29,13 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Redes visibles en la isometría = las REDES ACTIVAS del proyecto (las mismas de la barra
+  // de redes/InfoTab) — no todas las que tengan datos ni una preferencia global de navegador
+  // (la clave ISO_ACTIVE_NETS_KEY era compartida entre proyectos y quedaba stale). Fallback:
+  // redes con datos en caché si el proyecto aún no definió redes activas. El on/off es de
+  // sesión (visual), no se persiste.
   const [activeNets, setActiveNets] = useState<Set<string>>(() => {
-    const saved = (() => {
-      try {
-        return JSON.parse(localStorage.getItem(ISO_ACTIVE_NETS_KEY) || 'null');
-      } catch {
-        return null;
-      }
-    })();
-    if (Array.isArray(saved) && saved.length > 0) return new Set(saved);
+    if (redes && redes.size > 0) return new Set(redes);
     if (!plans) return new Set();
     const withData: string[] = [];
     for (const n of NETS) {
@@ -66,9 +60,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     }
     return new Set(withData);
   });
-  useEffect(() => {
-    localStorage.setItem(ISO_ACTIVE_NETS_KEY, JSON.stringify([...activeNets]));
-  }, [activeNets]);
 
   const toggleNet = useCallback((netId: string) => {
     setActiveNets((prev) => {
@@ -190,6 +181,18 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     });
   }, []);
 
+  // Pisos colapsables por red (orig. usuario): misma mecánica que collapsedNets, clave
+  // `${netId}:${nivel}`. Solo sesión (visual), sin persistencia.
+  const [collapsedNiveles, setCollapsedNiveles] = useState<Set<string>>(new Set());
+  const toggleCollapsedNivel = useCallback((key: string) => {
+    setCollapsedNiveles((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   const tramoTree = useMemo(() => {
     const tree: {
       netId: string;
@@ -220,8 +223,11 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         if (!nivelMap[niv]) nivelMap[niv] = { ramales: [], bajantes: [] };
         nivelMap[niv].bajantes.push(b);
       }
+      // Arriba→abajo (pedido usuario): cubierta (99) PRIMERA, luego pisos de mayor a menor y
+      // los sótanos al final (S1 antes que S2).
+      const rankNivel = (n: number): number => (n === 99 ? -Number.MAX_SAFE_INTEGER : -n);
       const niveles = Object.entries(nivelMap)
-        .sort(([a], [b]) => Number(a) - Number(b))
+        .sort(([a], [b]) => rankNivel(Number(a)) - rankNivel(Number(b)))
         .map(([nivel, data]) => ({
           nivel: Number(nivel),
           label:
@@ -577,10 +583,9 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     >
       {/* Toolbar */}
       <IsometriaToolbar
-        nets={(populatedNets.length === 0
-          ? NETS
-          : populatedNets.map((nid) => NETS.find((x) => x.id === nid)!).filter(Boolean)
-        ).filter((n) => redes.has(n.id))}
+        // Solo redes con trazos (orig. usuario): sin fallback a NETS — la primera entrada
+        // mostraba TODAS mientras el prefetch llenaba populatedNets.
+        nets={populatedNets.map((nid) => NETS.find((x) => x.id === nid)!).filter(Boolean)}
         activeNets={activeNets}
         toggleNet={toggleNet}
         showPlanos={showPlanos}
@@ -609,6 +614,8 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
           tramoTree={tramoTree}
           collapsedNets={collapsedNets}
           toggleCollapsedNet={toggleCollapsedNet}
+          collapsedNiveles={collapsedNiveles}
+          toggleCollapsedNivel={toggleCollapsedNivel}
           selTramo={selTramo}
           setSelTramo={setSelTramo}
           totals={totals}

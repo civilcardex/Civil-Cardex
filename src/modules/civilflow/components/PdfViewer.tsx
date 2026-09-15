@@ -1321,6 +1321,18 @@ function PdfViewer_({
                 handleRotateLabel={handleRotateLabel}
                 plans={planosCtx.plans}
                 pisos={pisos}
+                triggerConfirm={(title, message, onConfirm, confirmLabel) => {
+                  setConfirmState({
+                    isOpen: true,
+                    title,
+                    message,
+                    confirmLabel,
+                    onConfirm: () => {
+                      onConfirm();
+                      setConfirmState((prev) => ({ ...prev, isOpen: false }));
+                    },
+                  });
+                }}
               />
 
               <BajanteAsociacion

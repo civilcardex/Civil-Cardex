@@ -4,7 +4,7 @@ import SinSeleccionOverlay from './SinSeleccionOverlay';
 import { COMPONENTS } from './aparatos3dData';
 import { colocarRigLuz, useAparatos3DScene } from './useAparatos3DScene';
 import { useGlbCatalogo } from './useGlbCatalogo';
-import { resetVista, vistaIso, vistaOrto, zoomBy, type VistaKey } from './vistasCamara';
+import { resetVista, vistaIso, vistaOrto, type VistaKey } from './vistasCamara';
 
 // Visor 3D "Detalle Aparatos" — port del HTML standalone a React + three 0.185 (GLTFLoader y
 // OrbitControls de three/examples sustituyen el parser y controles hechos a mano del original;
@@ -17,12 +17,6 @@ const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
   { key: 'front', label: 'FRENTE' },
   { key: 'side', label: 'LATERAL' },
   { key: 'top', label: 'PLANTA' },
-];
-const BOTONES_ZOOM: Array<{ factor: number; label: string; title: string }> = [
-  { factor: 1.5, label: '⟪', title: 'Alejar mucho' },
-  { factor: 1.15, label: '◂', title: 'Alejar' },
-  { factor: 0.87, label: '▸', title: 'Acercar' },
-  { factor: 0.67, label: '⟫', title: 'Acercar mucho' },
 ];
 
 const btnVista = (active: boolean): React.CSSProperties => ({
@@ -37,22 +31,6 @@ const btnVista = (active: boolean): React.CSSProperties => ({
   cursor: 'pointer',
   lineHeight: 1,
 });
-const btnCtrl: React.CSSProperties = {
-  background: '#161b22',
-  border: '1px solid #30363d',
-  color: '#e6edf3',
-  fontFamily: MONO,
-  fontSize: '0.75rem',
-  fontWeight: 500,
-  width: 32,
-  height: 32,
-  borderRadius: 4,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  lineHeight: 1,
-};
 
 export default function DetalleAparatosViewer(): React.JSX.Element {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -107,14 +85,6 @@ export default function DetalleAparatosViewer(): React.JSX.Element {
       if (!api) return;
       if (k === 'iso') vistaIso(api, setVista);
       else vistaOrto(api, k, setVista);
-    },
-    [apiRef],
-  );
-
-  const handleZoom = useCallback(
-    (factor: number) => {
-      const api = apiRef.current;
-      if (api) zoomBy(api, factor);
     },
     [apiRef],
   );
@@ -236,31 +206,6 @@ export default function DetalleAparatosViewer(): React.JSX.Element {
           </div>
         </div>
 
-        {/* Zoom (bottom-right, sobre el gizmo) */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 20,
-            right: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            zIndex: 100,
-          }}
-        >
-          {BOTONES_ZOOM.map((z) => (
-            <button
-              key={z.label}
-              type="button"
-              style={btnCtrl}
-              title={z.title}
-              onClick={() => handleZoom(z.factor)}
-            >
-              {z.label}
-            </button>
-          ))}
-        </div>
-
         {/* Gizmo de ejes */}
         <canvas
           ref={gizmoRef}
@@ -277,24 +222,6 @@ export default function DetalleAparatosViewer(): React.JSX.Element {
             opacity: 0.85,
           }}
         />
-
-        {/* Hint */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 20,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            fontSize: '0.60rem',
-            color: '#7d8590',
-            pointerEvents: 'none',
-            zIndex: 100,
-            whiteSpace: 'nowrap',
-            fontFamily: MONO,
-          }}
-        >
-          arrastrar · scroll · clic der + arrastrar
-        </div>
       </div>
     </div>
   );

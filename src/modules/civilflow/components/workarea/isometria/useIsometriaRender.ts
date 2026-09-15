@@ -664,7 +664,20 @@ export function useIsometriaRender({
         // segunda vez, desde el otro extremo.
         let targetRamal = null;
         let targetBajante = null;
-        if (b.descargaEnId && !b._isCrossFloorGhost) {
+        // BOMBA asociada (orig. usuario): `bombaEnId` en la bajante superior resuelve a la
+        // bomba del piso inferior — la columna de la bajante baja hasta el piso de la bomba
+        // (alineados: unión vertical continua en el mismo x,y; desalineados: dos columnas y el
+        // desvío lo cubre el ramal LD_ del piso de la bomba, que ya se dibuja como ramal).
+        if (b.bombaEnId?.includes('|') && !b._isCrossFloorGhost) {
+          const [pPlan, pId] = b.bombaEnId.split('|');
+          targetBajante =
+            netData.bajantes.find(
+              (bb) => !bb._isCrossFloorGhost && bb.id === pId && String(bb.planId) === pPlan,
+            ) || null;
+          if (targetBajante) {
+            targetZ = nptMap[targetBajante.planNivel] || 0;
+          }
+        } else if (b.descargaEnId && !b._isCrossFloorGhost) {
           const ownRef = `${b.planId}|${b.id}`;
           const ghost = netData.bajantes.find(
             (bb) => bb._isCrossFloorGhost && bb.descargaEnId === ownRef,
