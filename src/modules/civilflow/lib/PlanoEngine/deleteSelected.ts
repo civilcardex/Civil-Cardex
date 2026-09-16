@@ -14,6 +14,7 @@ import { _midpoint } from './PlanoEngineDrawing';
  */
 
 import { cascadeMontanteAssociation, purgarEstadoRamalesBorrados } from './deleteCascade';
+import { desasociarBombaEnTrazos } from '../../utils/bombaAssociation';
 import { cleanupJunctionsAfterRamalDelete, cleanupTeeMarkersAt } from './deleteJunctionCleanup';
 import { remergeSplitRamales, mergeTribPairAt, mergeTouchingRemnant } from './deleteRemerge';
 import { isDeletedYeeDoblePart, preserveYeeDobleAt, splitMembersFor } from './deleteYeePreserve';
@@ -171,10 +172,13 @@ export function deleteSelected(
         }
         if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
         netsToRenumber.add(deleted.net);
-        // Limpia las referencias al ramal borrado en los bajantes
+        // Limpia las referencias al ramal borrado en los bajantes (alimentaIds también).
         for (const b of engine.bajantes) {
           if (b.recibeDeIds) {
             b.recibeDeIds = b.recibeDeIds.filter((rid) => rid !== deleted.id);
+          }
+          if (b.alimentaIds) {
+            b.alimentaIds = b.alimentaIds.filter((rid) => rid !== deleted.id);
           }
           if (b.descargaEnId) {
             const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
@@ -258,6 +262,9 @@ export function deleteSelected(
           // renumeración reusa BAN1 y sin purga el nuevo nacería con las UDs viejas.
           deletedRamalIds.add(deleted.id);
           cascadeMontanteAssociation(engine, deleted);
+          // BORRAR bomba (orig. usuario): desasociar cualquier bajante que la referencie.
+          if (deleted.tipo === 'bomba')
+            desasociarBombaEnTrazos(deleted.id, String(engine._loadedPlanId ?? ''));
           // Un montante a mitad de cuerpo siempre escribió un marcador de tee (accMed) en su
           // ramal huésped al crearse — borrar el montante sin esto dejaba ese glifo/conteo para
           // siempre, porque nada más vuelve a revisar accMed una vez escrito.
@@ -330,6 +337,7 @@ export function deleteSelected(
     // renumeración (que puede reasignar el id a otro trazo).
     purgarEstadoRamalesBorrados(engine, deletedRamalIds);
     for (const net of netsToRenumber) engine._renumberRamales(net);
+    if (renumberAreas) engine._renumberAreas();
     for (const net of bajNetsToRenumber) {
       if (net === 'montante') engine._renumberMontantes();
       else if (net === 'red_publica') {
@@ -347,7 +355,6 @@ export function deleteSelected(
         });
       } else engine._renumberBajantes(net);
     }
-    if (renumberAreas) engine._renumberAreas();
     engine.selId = null;
     engine._emitSelect(null);
     engine._emitDelete(ids);
@@ -414,10 +421,15 @@ export function deleteSelected(
     if (deleted.tipo === 'tributario') {
       for (const ep of deleted.pts || []) mergeTribPairAt(engine, ep);
     }
-    // Limpia las referencias al ramal borrado en los bajantes
+    // Limpia las referencias al ramal borrado en los bajantes (alimentaIds TAMBIÉN: el id
+    // stale en una caja hacía que el 2º ramal dibujado desde ella se rechazara/dibujara sin
+    // recorte al borde — orig. usuario).
     for (const b of engine.bajantes) {
       if (b.recibeDeIds) {
         b.recibeDeIds = b.recibeDeIds.filter((r) => r !== deletedId);
+      }
+      if (b.alimentaIds) {
+        b.alimentaIds = b.alimentaIds.filter((r) => r !== deletedId);
       }
       if (b.descargaEnId) {
         const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
@@ -520,6 +532,9 @@ export function deleteSelected(
     }
     engine.bajantes.splice(idxB, 1);
     cascadeMontanteAssociation(engine, deleted);
+    // BORRAR bomba: desasociar cualquier bajante que la referencie (cross-floor).
+    if (deleted.tipo === 'bomba')
+      desasociarBombaEnTrazos(deletedId, String(engine._loadedPlanId ?? ''));
     if (deleted.tipo === 'bajante') {
       void deleted.net;
     } else if (deleted.tipo === 'montante') {
@@ -566,6 +581,8 @@ export function deleteSelected(
   if (idxA >= 0) {
     const deletedId = engine.areas[idxA].id;
     engine.areas.splice(idxA, 1);
+    // PUNTO 4 (orig. usuario): borrar un área RENUMERA las restantes (compacta), igual que
+    // ramales/tributarios.
     engine._renumberAreas();
     engine.selId = null;
     engine._emitSelect(null);

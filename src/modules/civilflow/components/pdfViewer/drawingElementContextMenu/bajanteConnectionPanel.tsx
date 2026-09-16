@@ -1,4 +1,5 @@
 import { ramalLabel } from '../../../utils/accessoryAbbreviations';
+import { direccionSegura } from '../../../lib/PlanoEngine/direccionReglas';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { DIAM_BY_MAT } from '../../../constants';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions';
@@ -286,7 +287,12 @@ export function BajanteConnectionPanel({
                           const nl = eng.nivelActual;
                           // Ítem 3: dirección automática según flujo del ramal en el extremo
                           const flowToEp = flowEndsAt(ramalEl, [ep.x, ep.y], 0.5);
-                          const autoDir = (flowToEp ? 'baja' : 'sube') as 'baja' | 'sube';
+                          // PUNTO 9: 'baja' sin piso debajo → 'continua' (creación).
+                          const autoDir = (direccionSegura(
+                            eng,
+                            { nptBase: nl?.npt ?? 0 },
+                            flowToEp ? 'baja' : 'sube',
+                          ) ?? 'sube') as 'baja' | 'sube' | 'continua';
                           eng.bajantes.push({
                             id,
                             net: ramalEl.net,

@@ -13,6 +13,7 @@ import {
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
 import { markAssocLayout } from './assocLayoutMigration';
+import { direccionSegura } from '../lib/PlanoEngine/direccionReglas';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   TRAZOS_PREFIX,
@@ -77,6 +78,10 @@ export interface AssocEndpoint {
   /** plan.nivel — el índice ordinal del piso, usado para etiquetas de piso y comparación de elevación. */
   nivelN: number;
   npt: number;
+  /** Tipo del elemento (bajante/montante) — los montantes siempre fluyen 'sube', la asociación
+   *  no les debe estampar la dirección calculada de bajantes. Opcional: los callers viejos no
+   *  lo pasan y se asume bajante. */
+  tipo?: string;
 }
 
 function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
@@ -791,8 +796,11 @@ export function applyBajanteAssociation(
   const linkValue = `${target.planId}|${target.id}`;
   const reverseValue = `${source.planId}|${source.id}`;
   const targetIsBelow = target.npt < source.npt;
-  const sourceDireccion: 'sube' | 'baja' = targetIsBelow ? 'baja' : 'sube';
-  const ghostDireccion: 'sube' | 'baja' = targetIsBelow ? 'sube' : 'baja';
+  // MONTANTES (orig. usuario): siempre fluyen 'sube' — la asociación no les estampa la
+  // dirección calculada de bajantes ('baja' les voltearía el glifo).
+  const sonMontantes = source.tipo === 'montante' && target.tipo === 'montante';
+  const sourceDireccion: 'sube' | 'baja' = sonMontantes ? 'sube' : targetIsBelow ? 'baja' : 'sube';
+  const ghostDireccion: 'sube' | 'baja' = sonMontantes ? 'sube' : targetIsBelow ? 'sube' : 'baja';
   const aligned = isAligned(source, target);
 
   // Enlaces en conflicto: si el destino ya colgaba de OTRO origen, o el origen descargaba
@@ -854,15 +862,24 @@ export function applyBajanteAssociation(
   writeBajantePropToDrawing(
     `${target.id}-${target.planId}`,
     target.net,
+    // PUNTO 9: el original inferior recibe 'baja' — salvo que sea el último nivel (sin piso
+    // debajo), en cuyo caso se coerces a 'continua' (dirección válida alternativa).
     'direccion',
-    sourceDireccion,
+    sonMontantes
+      ? sourceDireccion
+      : (direccionSegura(eng, { nptBase: target.npt }, sourceDireccion) ?? sourceDireccion),
     plans,
   );
   if (loadedPlanId === source.planId) {
     eng.updateElementById(source.id, { descargaEnId: linkValue, direccion: sourceDireccion });
   }
   if (loadedPlanId === target.planId) {
-    eng.updateElementById(target.id, { origenId: reverseValue, direccion: sourceDireccion });
+    eng.updateElementById(target.id, {
+      origenId: reverseValue,
+      direccion: sonMontantes
+        ? sourceDireccion
+        : (direccionSegura(eng, { nptBase: target.npt }, sourceDireccion) ?? sourceDireccion),
+    });
   }
 
   // Layout de la asociación (orig. usuario): el FANTASMA (anillo del bajante superior) y el
@@ -1340,7 +1357,9 @@ export function healHerenciaInvertida(
   // (descarga hacia abajo) — solo se borra el espejo situado EN su piso o ARRIBA (el trinquete
   // escribía hacia arriba). El guion final del prefijo evita colisión (BAN1 vs BAN10).
   for (const [X, homeNiv] of bogusIds) {
-    for (const net of ['san', 'll']) {
+    // MONTANTES entre pisos (orig. usuario): el sanado de espejos invertidos cubre también
+    // las redes de suministro donde viven.
+    for (const net of ['san', 'll', 'af', 'ac', 'gas', 'vent']) {
       const pref = `${net}_LD_${X}_`;
       for (const k of Object.keys(apos)) {
         if (!k.startsWith(pref)) continue;

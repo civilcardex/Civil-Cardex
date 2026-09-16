@@ -104,31 +104,37 @@ export function drawRamalPath(
   const r =
     engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
 
-  // Ramal que SALE de una CAJA (ini = código de caja_san/caja_ll): su nacimiento se DIBUJA en
-  // el punto medio del lado más cercano del cuadro exterior del símbolo, salga o no el trazo
-  // por el borde (solo visual — la geometría guardada no cambia, orig. usuario: "si el usuario
-  // la dibujó por dentro que se redibuje"). Los que LLEGAN (fin) siguen apuntando al centro.
-  if (r && 'ini' in r && r.ini && engine.bajantes?.length) {
+  // PUNTO 1 (orig. usuario): ramal conectado a una CAJA — el tramo dentro del cuadro se
+  // RECORTA AL BORDE, siguiendo la dirección del trazo dibujado por el usuario (jamás al
+  // punto medio del lado). Se aplica en render a TODA conexión caja (ini o fin) para que
+  // ninguna ruta de creación/redibujado deje tramo interno; el modelo también recorta al
+  // asociar (asociarRamalABajantes).
+  if (r && 'ini' in r && pts.length >= 2 && engine.bajantes?.length) {
     const rr = r as PlanoRamal;
-    const orig = cvsPts.map((p) => ({ x: p.x, y: p.y }));
-    const clampEnd = (idx: number, code?: string) => {
-      if (!code) return;
+    const half = engine.cmToPlanePx(100) / 2;
+    const esCajaCode = (code?: string) =>
+      !!code &&
+      engine.bajantes.some(
+        (b) =>
+          (b.code === code || b.id === code) && (b.tipo === 'caja_san' || b.tipo === 'caja_ll'),
+      );
+    const clipToEdge = (idx: number, code?: string) => {
+      if (!esCajaCode(code)) return;
       const caja = engine.bajantes.find(
         (b) =>
           (b.code === code || b.id === code) && (b.tipo === 'caja_san' || b.tipo === 'caja_ll'),
       );
-      if (!caja) return;
-      const cc = engine.toCvs(caja.x, caja.y);
-      const hs = engine.realMmToCanvasPx(1000) / 2;
-      const adj = orig[idx === 0 ? 1 : orig.length - 2];
-      const dx = adj.x - cc.x;
-      const dy = adj.y - cc.y;
-      cvsPts[idx] =
-        Math.abs(dx) >= Math.abs(dy)
-          ? { x: cc.x + (dx >= 0 ? hs : -hs), y: cc.y }
-          : { x: cc.x, y: cc.y + (dy >= 0 ? hs : -hs) };
+      if (!caja || caja.x == null || caja.y == null) return;
+      const other = pts[idx === 0 ? 1 : pts.length - 2];
+      const dx = other[0] - caja.x;
+      const dy = other[1] - caja.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.001) return;
+      const t = half / Math.max(Math.abs(dx) / len, Math.abs(dy) / len);
+      pts[idx] = [caja.x + (dx / len) * t, caja.y + (dy / len) * t];
     };
-    clampEnd(0, rr.ini || undefined);
+    clipToEdge(0, rr.ini || undefined);
+    clipToEdge(pts.length - 1, rr.fin || undefined);
   }
 
   // Codo de plano en un extremo compartido: recortar el cuerpo hasta el punto de tangencia del

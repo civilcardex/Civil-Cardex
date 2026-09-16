@@ -32,10 +32,8 @@ export function BombaAsociarBajantesSection({
   const currentPlanId = String(eng?._loadedPlanId ?? '');
   const net = bomba.net || 'san';
   const bajantes = bajantesImmediateUpperFloor(plans, currentPlanId).filter((b) => b.net === net);
-  const bombaLbl = buildBajanteVisualLabel(
-    { code: bomba.code || bomba.id },
-    bomba.pisoBase || undefined,
-  );
+  // PUNTO 4: el code de la bomba ya trae el piso (BOMAN1-S1) — sin sufijo duplicado.
+  const bombaLbl = buildBajanteVisualLabel({ code: bomba.code || bomba.id });
 
   const toggleBajante = (row: BajanteSuperiorRow, checked: boolean) => {
     if (!eng) return;
