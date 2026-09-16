@@ -5,6 +5,8 @@ import {
   GAS_ACC_KEY,
 } from '../constants/storage-keys';
 import { NETS, uniqRamalId } from '../lib/PlanoEngine/PlanoState';
+import { isLdesvioRamalId } from './crossFloorStorage';
+import { direccionSegura } from '../lib/PlanoEngine/direccionReglas';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 
 export interface CopySourceSelection {
@@ -34,6 +36,11 @@ interface CopyElement {
   fin?: string;
   padre?: string | null;
   label?: string;
+  totalL?: number;
+  direccion?: string;
+  nptBase?: number;
+  labelX?: number;
+  labelY?: number;
   copiaPiso?: boolean;
   bloqueado?: boolean;
   _labelBox?: unknown;
@@ -116,6 +123,7 @@ export function copyDrawingFromPlan(
   const sourceData = (typeof sourceRaw === 'string' ? JSON.parse(sourceRaw) : sourceRaw) as {
     ramales?: CopyElement[];
     bajantes?: CopyElement[];
+    scaleM?: number;
   };
   const sourceRamales: CopyElement[] = sourceData.ramales || [];
   const sourceBajantes: CopyElement[] = sourceData.bajantes || [];
@@ -124,6 +132,15 @@ export function copyDrawingFromPlan(
   const skippedNets: string[] = [];
   const oldToNew: Record<string, string> = {};
   const srcPid = String(sourcePlanId);
+
+  // PUNTO (orig. usuario: 3.99 vs 3.92 a la misma referencia): cada piso calibra su propio
+  // PDF (scaleM = metros por pixel). Copiar coordenadas en crudo arrastra la diferencia de
+  // calibración — el mismo trazo mide distinto en cada piso. Normalizar: escalar las
+  // coordenadas copiadas por escala_origen/escala_destino; con calibraciones iguales el
+  // factor es 1 y nada cambia.
+  const srcScale = Number(sourceData.scaleM) || 0.5;
+  const dstScale = (engine as { scaleM?: number }).scaleM || srcScale;
+  const calibFactor = dstScale > 0 ? srcScale / dstScale : 1;
 
   for (const sel of selections) {
     const { netId, tipos } = sel;
@@ -147,7 +164,10 @@ export function copyDrawingFromPlan(
       ['red_publica', 'contador', 'calentador'].filter((t) => tipos.has(t)),
     );
 
-    const srcRamales = sourceRamales.filter((r) => r.net === netId && copyRamalTipos.has(r.tipo));
+    // PUNTO 5: los Ldesvio de asociaciones jamás se convierten en ramales reales al copiar.
+    const srcRamales = sourceRamales.filter(
+      (r) => r.net === netId && copyRamalTipos.has(r.tipo) && !isLdesvioRamalId(r.id),
+    );
     const srcBajantes = sourceBajantes.filter(
       (b) => b.net === netId && copyBajanteTipos.has(b.tipo),
     );
@@ -224,18 +244,12 @@ export function copyDrawingFromPlan(
       }
     };
 
-    // Construir mapa: oldPadreId -> newLabel del padre en destino
+    // Mapa: oldPadreId -> ETIQUETA NUEVA del padre en el destino (se llena durante el
+    // renombre de ramales, abajo). Antes se llenaba con las etiquetas del ORIGEN y los
+    // tributarios copiados quedaban referenciando la numeración del piso viejo
+    // (T1RS1 aunque su padre renombrado fuera RS2 — orig. usuario: la etiqueta debe llevar
+    // el consecutivo DEL PISO destino).
     const padreLabelMap: Record<string, string> = {};
-    // Primero procesar todas las entradas 'ramal' para llenar padreLabelMap
-    for (const r of srcRamales) {
-      if (r.tipo === 'ramal' && r.padre) {
-        // El padre existe en source - mapear su etiqueta
-        const padreInSrc = srcRamales.find((x) => x.id === r.padre);
-        if (padreInSrc) {
-          padreLabelMap[r.padre] = padreInSrc.label || padreInSrc.id;
-        }
-      }
-    }
 
     // Ramales primero (los tributarios necesitan el mapa de padres completo); luego
     // tributarios en orden de fuente — el padre de un tributario copiado (otro tributario)
@@ -248,6 +262,7 @@ export function copyDrawingFromPlan(
       oldToNew[oldId] = newId;
       r.id = newId;
       r.label = newId;
+      padreLabelMap[oldId] = newId;
       // Actualizar mapa del padre: los tributarios futuros con este padre deben referenciar la
       // nueva etiqueta
       padreLabelMap[oldId] = newId;
@@ -417,11 +432,49 @@ export function copyDrawingFromPlan(
       b.pisoBase = engine.nivelActual?.label ?? '';
     }
 
+    // Normalización de calibración: escalar TODA la geometría copiada por origen/destino.
+    const escalaPt = (pt: number[]): number[] => [
+      +(pt[0] * calibFactor).toFixed(3),
+      +(pt[1] * calibFactor).toFixed(3),
+    ];
+    for (const r of srcRamales) {
+      if (r.pts) r.pts = r.pts.map((pt) => escalaPt(pt));
+      if (r.labelX != null) r.labelX = +(r.labelX * calibFactor).toFixed(3);
+      if (r.labelY != null) r.labelY = +(r.labelY * calibFactor).toFixed(3);
+    }
+    for (const b of srcBajantes as unknown as Array<{
+      x?: number;
+      y?: number;
+      labelX?: number;
+      labelY?: number;
+    }>) {
+      if (b.x != null) b.x = +(b.x * calibFactor).toFixed(3);
+      if (b.y != null) b.y = +(b.y * calibFactor).toFixed(3);
+      if (b.labelX != null) b.labelX = +(b.labelX * calibFactor).toFixed(3);
+      if (b.labelY != null) b.labelY = +(b.labelY * calibFactor).toFixed(3);
+    }
+    // PUNTO 13: totalL recalculado con la ESCALA DEL PISO DESTINO (la copia heredaba el total
+    // del origen — con escalas distintas las distancias no coincidían).
+    const scaleDestino = (engine as { scaleM?: number }).scaleM || 0.5;
+    for (const r of srcRamales) {
+      if (!r.pts || r.pts.length < 2) continue;
+      let px = 0;
+      for (let i = 0; i + 1 < r.pts.length; i++)
+        px += Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]);
+      r.totalL = +((px / 96) * 2.54 * scaleDestino).toFixed(3);
+    }
+    // PUNTO 9 (copia): 'baja' sin piso debajo en el destino → 'continua'.
+    for (const b of srcBajantes)
+      b.direccion = direccionSegura(engine, b, b.direccion) ?? b.direccion;
     engine.ramales.push(...(srcRamales as unknown as PlanoRamal[]));
     engine.bajantes.push(
       ...(srcBajantes as unknown as PlanoBajante[]),
       ...(srcGlobals as unknown as PlanoBajante[]),
     );
+
+    // PUNTO (orig. usuario): las COTAS NO se copian — al copiar bajantes con una cota cerca,
+    // la cota viajaba también con la copia. Las cotas pertenecen a la anotación del plano
+    // destino y se acotan allí manualmente.
 
     // Doble etiqueta (orig. usuario): si el piso origen proyectó un FANTASMA del bajante en
     // este piso destino, el bajante ahora copiado coexistía con ese fantasma residual que
