@@ -2,6 +2,8 @@ import React from 'react';
 import { renderStatus } from '../utils/componentHelpers';
 import { useRainwater } from '../context/RainwaterContext';
 import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../utils/calcRainwater';
+import { trunc2 } from '../utils/formatUtils';
+import EditButton from './shared/EditButton';
 
 const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente' | 'longitud', string> = {
   b: 'Base (cm)',
@@ -50,9 +52,9 @@ const CanalDimField = React.memo(function CanalDimField({
       }}
       style={{
         textAlign: 'center',
-        fontSize: 9,
-        padding: '1px 2px',
-        width: 36,
+        fontSize: 10.5,
+        padding: '2px 4px',
+        width: 42,
         fontFamily: 'var(--mono)',
         background: 'var(--bg2)',
         border: '1px solid var(--line)',
@@ -65,10 +67,14 @@ const CanalDimField = React.memo(function CanalDimField({
 
 export default function ChequeoCanalesLluvias() {
   const { canalesLl, updCanalLL, conRecolectora } = useRainwater();
+  const [edit, setEdit] = React.useState(false);
 
   return (
     <section className="card">
-      <div className="card-h">
+      <div
+        className="card-h"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+      >
         <h3 className="card-t">
           <img
             src="/iconos_civilflow/diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.webp"
@@ -80,6 +86,7 @@ export default function ChequeoCanalesLluvias() {
           />{' '}
           Chequeo capacidad canal recolectora cubierta aguas lluvias
         </h3>
+        <EditButton edit={edit} setEdit={setEdit} />
       </div>
       {!conRecolectora ? (
         <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 12 }}>
@@ -91,7 +98,7 @@ export default function ChequeoCanalesLluvias() {
             <table
               className="tbl"
               style={{
-                fontSize: 9,
+                fontSize: 10.5,
                 tableLayout: 'auto',
                 width: '100%',
                 borderCollapse: 'collapse',
@@ -103,15 +110,15 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
-                    Ramal
+                    Canal
                   </th>
                   <th
                     scope="col"
                     className="col-h ll"
                     colSpan={2}
-                    style={{ textAlign: 'center', fontSize: 9, padding: '1px 1px' }}
+                    style={{ textAlign: 'center', fontSize: 10.5, padding: '3px 5px' }}
                   >
                     Área (m²)
                   </th>
@@ -119,7 +126,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Intensidad (I)
                     <br />
@@ -129,7 +136,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Coeficiente
                     <br />
@@ -139,7 +146,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Caudal real
                     <br />
@@ -149,7 +156,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Manning
                   </th>
@@ -157,7 +164,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Pendiente
                     <br />
@@ -167,7 +174,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ok"
                     colSpan={5}
-                    style={{ textAlign: 'center', fontSize: 9, padding: '1px 1px' }}
+                    style={{ textAlign: 'center', fontSize: 10.5, padding: '3px 5px' }}
                   >
                     Sección propuesta (cm)
                   </th>
@@ -175,7 +182,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Caudal máximo
                     <br />
@@ -185,7 +192,7 @@ export default function ChequeoCanalesLluvias() {
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Chequeo
                     <br />
@@ -196,49 +203,49 @@ export default function ChequeoCanalesLluvias() {
                   <th
                     scope="col"
                     className="col-h ll"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Parcial
                   </th>
                   <th
                     scope="col"
                     className="col-h ll"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Acumulada
                   </th>
                   <th
                     scope="col"
                     className="col-h ok"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Base
                   </th>
                   <th
                     scope="col"
                     className="col-h ok"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Altura
                   </th>
                   <th
                     scope="col"
                     className="col-h ok"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Longitud
                   </th>
                   <th
                     scope="col"
                     className="col-h ok"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Borde libre
                   </th>
                   <th
                     scope="col"
                     className="col-h ok"
-                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Total
                   </th>
@@ -253,7 +260,7 @@ export default function ChequeoCanalesLluvias() {
                         padding: '24px 0',
                         textAlign: 'center',
                         color: 'var(--txt3)',
-                        fontSize: 9,
+                        fontSize: 10.5,
                       }}
                     >
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
@@ -265,49 +272,49 @@ export default function ChequeoCanalesLluvias() {
                     return (
                       <tr key={c.id}>
                         <td className="c">
-                          <span className="sigla" style={{ fontSize: 9 }}>
+                          <span className="sigla" style={{ fontSize: 10.5 }}>
                             {c.sector || '—'}
                           </span>
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
-                            {c.areaParcial || '—'}
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                            {c.areaParcial ? Number(c.areaParcial).toFixed(2) : '—'}
                           </span>
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
-                            {c.areaAcumulada || '—'}
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                            {c.areaAcumulada ? Number(c.areaAcumulada).toFixed(2) : '—'}
                           </span>
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
                             {c.intensidad || '—'}
                           </span>
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
                             {c.coeficienteC || '—'}
                           </span>
                         </td>
                         <td
                           className="c"
-                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 9 }}
+                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10.5 }}
                         >
-                          {Qreal > 0 ? Qreal.toFixed(2) : '—'}
+                          {Qreal > 0 ? trunc2(Qreal) : '—'}
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
                             {c.manning || '—'}
                           </span>
                         </td>
                         <td className="c">
                           {/* Pendiente del canal fija en 2% (S=2%) — por diseño, no editable. */}
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>2</span>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>2</span>
                         </td>
                         <td className="c">
                           {c.fromCanal ? (
                             <span
-                              style={{ fontFamily: 'var(--mono)', fontSize: 9 }}
+                              style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
                               title="Configurado desde el canal dibujado en el plano"
                             >
                               {c.b || '—'}
@@ -319,7 +326,7 @@ export default function ChequeoCanalesLluvias() {
                         <td className="c">
                           {c.fromCanal ? (
                             <span
-                              style={{ fontFamily: 'var(--mono)', fontSize: 9 }}
+                              style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
                               title="Configurado desde el canal dibujado en el plano"
                             >
                               {c.h || '—'}
@@ -331,7 +338,7 @@ export default function ChequeoCanalesLluvias() {
                         <td className="c">
                           {c.fromCanal ? (
                             <span
-                              style={{ fontFamily: 'var(--mono)', fontSize: 9 }}
+                              style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
                               title="Configurado desde el canal dibujado en el plano"
                             >
                               {c.longitud || '—'}
@@ -346,23 +353,23 @@ export default function ChequeoCanalesLluvias() {
                           )}
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
                             {BORDE_LIBRE_CANAL_CM}
                           </span>
                         </td>
                         <td
                           className="c"
-                          style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 9 }}
+                          style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10.5 }}
                         >
                           {totalStr}
                         </td>
                         <td
                           className="c"
-                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 9 }}
+                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10.5 }}
                         >
-                          {Qmax > 0 ? Qmax.toFixed(2) : '—'}
+                          {Qmax > 0 ? trunc2(Qmax) : '—'}
                         </td>
-                        <td className="c" style={{ fontSize: 9 }}>
+                        <td className="c" style={{ fontSize: 10.5 }}>
                           {renderStatus(chequeo)}
                         </td>
                       </tr>

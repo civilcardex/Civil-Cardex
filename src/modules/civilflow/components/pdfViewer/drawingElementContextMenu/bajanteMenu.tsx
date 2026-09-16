@@ -11,6 +11,7 @@ import {
 import { loadFromStorage } from '../../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
 import { handleCreateBomba } from '../../../lib/PlanoEngine/drawingCreations';
+import { direccionBajaPermitida } from '../../../lib/PlanoEngine/direccionReglas';
 import {
   asociarBomba,
   quitarBomba,
@@ -131,6 +132,15 @@ export function BajanteDirectionSelector({
                 let updates: Record<string, unknown> = {};
 
                 if (opt === 'Sube') {
+                  // PUNTO 8: el bajante ORIGINAL del piso inferior de una asociación (origenId)
+                  // solo admite baja/continua — el flujo le llega desde arriba, nunca sube.
+                  if (element.origenId) {
+                    engineRef.current?.triggerAlert(
+                      'Dirección no permitida',
+                      'Este bajante es el original de una asociación entre pisos: solo admite "Baja" o "Continua".',
+                    );
+                    return;
+                  }
                   // Ventilación: sin validación de dirección de flujo (usuario pide desactivarla).
                   // Bajantes asociados entre pisos: tampoco — el Ldesvio llega al padre original,
                   // la dirección la manda la asociación.
@@ -155,6 +165,14 @@ export function BajanteDirectionSelector({
                     desplazamientos: { ...(element.desplazamientos || {}) },
                   };
                 } else if (opt === 'Baja') {
+                  // PUNTO 9: 'baja' exige un piso debajo — bloqueada en el último nivel inferior.
+                  if (!direccionBajaPermitida(engineRef.current, element)) {
+                    engineRef.current?.triggerAlert(
+                      'Dirección no permitida',
+                      'Este es el último nivel del proyecto: no hay un piso inferior hacia el cual continuar el flujo. Usa "Continua".',
+                    );
+                    return;
+                  }
                   // Asociados entre pisos sin validación: el Ldesvio llega al padre original y
                   // la dirección la manda la asociación (orig. usuario).
                   const isAsociadoBaja = !!(element.origenId || element.descargaEnId);
@@ -402,7 +420,10 @@ export function BajanteDiameterSelector({
       return;
     }
     const isRiser = (b: PlanoBajante) =>
-      b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
+      b.tipo !== 'contador' &&
+      b.tipo !== 'calentador' &&
+      b.tipo !== 'red_publica' &&
+      b.tipo !== 'canal'; // canales FUERA de Destino/Origen (solo bajantes, orig. usuario)
     const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(
       TRAZOS_PREFIX + upperFloorGroup.planId,
       null,
@@ -447,6 +468,7 @@ export function BajanteDiameterSelector({
       code: element.code || element.id,
       nivelN: Number(eng.nivelActual?.n ?? 0),
       npt: Number(eng.nivelActual?.npt ?? 0),
+      tipo: element.tipo,
     };
     const prevOrigen = element.origenId;
     const syncLocal = () => {
@@ -505,6 +527,7 @@ export function BajanteDiameterSelector({
       code: originBaj.code || originBajanteId,
       nivelN: originPlan?.nivel ?? 0,
       npt: Number(upperFloorGroup?.npt ?? 0),
+      tipo: (originBaj as { tipo?: string }).tipo,
     };
 
     const commit = () => {
@@ -619,6 +642,7 @@ export function BajanteDiameterSelector({
                     code: element.code || element.id,
                     nivelN: Number(eng.nivelActual?.n ?? 0),
                     npt: Number(eng.nivelActual?.npt ?? 0),
+                    tipo: element.tipo,
                   };
                   const target: AssocEndpoint = {
                     planId: targetPlanId,
@@ -630,6 +654,7 @@ export function BajanteDiameterSelector({
                     code: targetBaj.code || targetBajanteId,
                     nivelN: targetPlan?.nivel ?? 0,
                     npt: Number(targetGroup?.npt ?? 0),
+                    tipo: (targetBaj as { tipo?: string }).tipo,
                   };
 
                   const commit = () => {
@@ -986,6 +1011,8 @@ function CajaBombaSection({
       </div>
     );
   }
+  // Checkbox con la bomba asociada (orig. usuario): marcada = existe; desmarcar elimina la
+  // bomba (con confirmación — es destructivo: desasocia su bajante).
   // Bomba asociada: info de solo lectura.
   const planId = String(eng?._loadedPlanId ?? '');
   const counts = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
@@ -1018,6 +1045,30 @@ function CajaBombaSection({
         <div>Unidades de descarga: {uds}</div>
         <div>Bajante asociado: {bajInfo}</div>
       </div>
+      <label style={MENU_CHECK_ROW_STYLE}>
+        <input
+          type="checkbox"
+          checked
+          onChange={() => {
+            if (!eng) return;
+            ctx.triggerConfirm(
+              'Eliminar bomba',
+              `Se eliminará ${bomba.code || bomba.id} y se desasociará su bajante. ¿Continuar?`,
+              () => {
+                eng.deleteSelected([bomba.id]);
+                ctx.setContextMenuState((prev) =>
+                  prev ? { ...prev, element: { ...prev.element } } : null,
+                );
+              },
+              'Eliminar',
+            );
+          }}
+          style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+        />
+        <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+          {bomba.code || bomba.id}
+        </span>
+      </label>
     </div>
   );
 }
@@ -1079,10 +1130,8 @@ function AsociarBombaSection({
                   { code: bajEl.code || bajEl.id },
                   bajEl.pisoBase || undefined,
                 );
-                const bombaLbl = buildBajanteVisualLabel(
-                  { code: row.code },
-                  row.nivel != null ? row.nivel : undefined,
-                );
+                // PUNTO 4: el code de la bomba ya trae el piso — sin sufijo duplicado.
+                const bombaLbl = buildBajanteVisualLabel({ code: row.code });
                 ctx.triggerConfirm(
                   'Crear fantasma de asociación',
                   `${bajLbl} y ${bombaLbl} no están alineados. Se creará un ramal de desvío en el piso de la bomba, desde la posición de ${bombaLbl}. ¿Continuar?`,
@@ -1113,29 +1162,35 @@ export function BajanteMenu() {
   return (
     <>
       {esCajaMenu && !isGhostClick && <CajaBombaSection ctx={ctx} caja={bajEl} />}
-      <BajanteDirectionSelector
-        element={bajEl}
-        isGhostClick={isGhostClick}
-        selectedNivel={ctx.selectedNivel}
-        pisos={ctx.pisos}
-        engineRef={ctx.engineRef}
-        selElement={ctx.selElement}
-        setSelElement={ctx.setSelElement}
-        setContextMenuState={ctx.setContextMenuState}
-      />
-      <BajanteDiameterSelector
-        element={bajEl}
-        isGhostClick={isGhostClick}
-        selectedNivel={ctx.selectedNivel}
-        engineRef={ctx.engineRef}
-        selElement={ctx.selElement}
-        setSelElement={ctx.setSelElement}
-        setContextMenuState={ctx.setContextMenuState}
-        lowerFloorsRamales={ctx.lowerFloorsRamales}
-        upperFloorGroup={ctx.upperFloorGroup}
-        planosCtx={ctx.planosCtx}
-        triggerConfirm={ctx.triggerConfirm}
-      />
+      {/* CAJA (orig. usuario): menú mínimo — solo bomba (crear/checkbox/info) y ramales
+          asociados. Sin dirección ni diámetro (la caja no tiene propiedades hidráulicas). */}
+      {!esCajaMenu && (
+        <BajanteDirectionSelector
+          element={bajEl}
+          isGhostClick={isGhostClick}
+          selectedNivel={ctx.selectedNivel}
+          pisos={ctx.pisos}
+          engineRef={ctx.engineRef}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
+        />
+      )}
+      {!esCajaMenu && (
+        <BajanteDiameterSelector
+          element={bajEl}
+          isGhostClick={isGhostClick}
+          selectedNivel={ctx.selectedNivel}
+          engineRef={ctx.engineRef}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
+          lowerFloorsRamales={ctx.lowerFloorsRamales}
+          upperFloorGroup={ctx.upperFloorGroup}
+          planosCtx={ctx.planosCtx}
+          triggerConfirm={ctx.triggerConfirm}
+        />
+      )}
       {bajEl.tipo === 'bajante' && isSanOrLl && <AsociarBombaSection ctx={ctx} bajEl={bajEl} />}
       {isSanOrLl && (
         <BajanteConnectionPanel

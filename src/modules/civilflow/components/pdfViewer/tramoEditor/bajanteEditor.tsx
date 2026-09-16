@@ -1,4 +1,5 @@
 import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
+import { direccionBajaPermitida } from '../../../lib/PlanoEngine/direccionReglas';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
@@ -344,12 +345,29 @@ export function BajanteEditor({
                   key={val}
                   onClick={() => {
                     if (!eng) return;
+                    // PUNTO 8: original de asociación (origenId) → solo baja/continua.
+                    if (val === 'sube' && selElement.origenId) {
+                      eng.triggerAlert(
+                        'Dirección no permitida',
+                        'Este bajante es el original de una asociación entre pisos: solo admite "Baja" o "Continua".',
+                      );
+                      return;
+                    }
                     const newDir = selElement.direccion === val ? undefined : val;
+                    // PUNTO 9: 'baja' sin piso debajo → coerces a 'continua' con alerta.
+                    let dirFinal = newDir;
+                    if (newDir === 'baja' && !direccionBajaPermitida(eng, selElement)) {
+                      dirFinal = 'continua';
+                      eng.triggerAlert(
+                        'Dirección no permitida',
+                        'Este es el último nivel del proyecto: no hay un piso inferior hacia el cual continuar el flujo. Se aplicó "Continua".',
+                      );
+                    }
                     eng.updateSelected({
-                      direccion: newDir,
+                      direccion: dirFinal,
                       desplazamientos: { ...(selElement.desplazamientos || {}) },
                     });
-                    setSelElement({ ...selElement, direccion: newDir });
+                    setSelElement({ ...selElement, direccion: dirFinal });
                     eng.render();
                   }}
                   style={{

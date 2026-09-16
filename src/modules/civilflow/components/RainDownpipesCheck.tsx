@@ -6,6 +6,9 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater';
 import { renderStatus } from '../utils/componentHelpers';
+import { trunc2 } from '../utils/formatUtils';
+import EditButton from './shared/EditButton';
+import React from 'react';
 import { parseDecimalInput } from '../utils/parseDecimal';
 import type { DrawingData } from '../utils/drawingSync';
 
@@ -31,12 +34,13 @@ const RainDownpipesCheck_S1: React.CSSProperties = {
   borderRadius: 2,
   color: 'var(--txt)',
   fontFamily: 'var(--mono)',
-  fontSize: 10,
+  fontSize: 11,
   textAlign: 'center',
 };
 
 export default function ChequeoBajantesLluvias() {
   const { bajantesLl, updBajanteLL } = useRainwater();
+  const [edit, setEdit] = React.useState(false);
   const { tramosLl } = useTramos();
   const { plans } = usePlans();
 
@@ -159,11 +163,14 @@ export default function ChequeoBajantesLluvias() {
           />{' '}
           Chequeo capacidad bajantes aguas lluvias
         </h3>
+        <div style={{ marginLeft: 'auto' }}>
+          <EditButton edit={edit} setEdit={setEdit} />
+        </div>
       </div>
       <div style={{ padding: '16px' }}>
         <table
           className="tbl"
-          style={{ fontSize: 10, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}
+          style={{ fontSize: 11, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}
         >
           <thead>
             <tr>
@@ -172,7 +179,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -187,7 +194,7 @@ export default function ChequeoBajantesLluvias() {
                 colSpan={2}
                 style={{
                   textAlign: 'center',
-                  fontSize: 10,
+                  fontSize: 11,
                   padding: '1px 1px',
                   whiteSpace: 'normal',
                   overflow: 'hidden',
@@ -200,7 +207,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -216,7 +223,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -232,7 +239,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -247,7 +254,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -263,7 +270,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -279,7 +286,7 @@ export default function ChequeoBajantesLluvias() {
                 colSpan={2}
                 style={{
                   textAlign: 'center',
-                  fontSize: 10,
+                  fontSize: 11,
                   padding: '1px 1px',
                   whiteSpace: 'normal',
                   overflow: 'hidden',
@@ -292,7 +299,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 rowSpan={2}
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -309,7 +316,7 @@ export default function ChequeoBajantesLluvias() {
                 scope="col"
                 className="col-h ll"
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -322,7 +329,7 @@ export default function ChequeoBajantesLluvias() {
                 scope="col"
                 className="col-h ll"
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -335,7 +342,7 @@ export default function ChequeoBajantesLluvias() {
                 scope="col"
                 className="col-h ok"
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -348,7 +355,7 @@ export default function ChequeoBajantesLluvias() {
                 scope="col"
                 className="col-h ok"
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   textAlign: 'center',
                   padding: '1px 1px',
                   whiteSpace: 'normal',
@@ -368,7 +375,7 @@ export default function ChequeoBajantesLluvias() {
                     padding: '24px 0',
                     textAlign: 'center',
                     color: 'var(--txt3)',
-                    fontSize: 10,
+                    fontSize: 11,
                   }}
                 >
                   No hay bajantes de lluvias definidos. Dibuje bajantes en el plano o agréguelos en
@@ -389,18 +396,18 @@ export default function ChequeoBajantesLluvias() {
                 return (
                   <tr key={row.key}>
                     <td className="c">
-                      <span className="sigla" style={{ fontSize: 10 }}>
+                      <span className="sigla" style={{ fontSize: 11 }}>
                         {row.bajante || '—'}
                       </span>
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
-                        {row.areaParcial > 0 ? row.areaParcial.toFixed(2) : '—'}
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                        {row.areaParcial > 0 ? trunc2(row.areaParcial) : '—'}
                       </span>
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
-                        {row.areaAcum > 0 ? row.areaAcum.toFixed(2) : '—'}
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                        {row.areaAcum > 0 ? trunc2(row.areaAcum) : '—'}
                       </span>
                     </td>
                     <td className="c">
@@ -409,6 +416,7 @@ export default function ChequeoBajantesLluvias() {
                         inputMode="decimal"
                         value={row.intensidad ?? 100}
                         aria-label="Intensidad (I)"
+                        disabled={!edit}
                         key={row.key + '_in'}
                         onChange={() => {}}
                         onBlur={(e) => {
@@ -417,40 +425,40 @@ export default function ChequeoBajantesLluvias() {
                             updBajanteLL(row.bajante, 'intensidad', v);
                           }
                         }}
-                        style={RainDownpipesCheck_S1}
+                        style={{ ...RainDownpipesCheck_S1, opacity: edit ? 1 : 0.6 }}
                       />
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>0.0278</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>0.0278</span>
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.R || '—'}
                       </span>
                     </td>
                     <td
                       className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10 }}
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 11 }}
                     >
-                      {Q > 0 ? Q.toFixed(2) : '—'}
+                      {Q > 0 ? trunc2(Q) : '—'}
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.manning || '—'}
                       </span>
                     </td>
                     <td
                       className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10 }}
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11 }}
                     >
-                      {diamCalc > 0 ? diamCalc.toFixed(2) : '—'}
+                      {diamCalc > 0 ? trunc2(diamCalc) : '—'}
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.diamPropuesto ? row.diamPropuesto + '"' : '—'}
                       </span>
                     </td>
-                    <td className="c" style={{ fontSize: 10 }}>
+                    <td className="c" style={{ fontSize: 11 }}>
                       {renderStatus(chequeo)}
                     </td>
                   </tr>
