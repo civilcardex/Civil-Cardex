@@ -613,13 +613,14 @@ export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number):
   }
   if (!engine._dimStart) {
     engine._dimStart = { x: pt.x, y: pt.y };
+    // PUNTO (orig. usuario): sin esto, el preview heredaba el _dimPreviewPt de la cota
+    // anterior (posiblemente lejano) y el primer clic pintaba una línea larga fantasma.
+    engine._dimPreviewPt = null;
   } else {
     const s = engine._dimStart;
     let endPt: { x: number; y: number } = { x: pt.x, y: pt.y };
     if (engine.snapMode) {
-      endPt = engine.snapAngle(s.x, s.y, pt.x, pt.y);
-      const sp2 = engine.snapToExisting(endPt.x, endPt.y);
-      if (sp2) endPt = sp2;
+      endPt = dimSnapEnd(engine, s, pt);
     }
     const len = Math.hypot(endPt.x - s.x, endPt.y - s.y);
     engine.dims.push({
@@ -631,6 +632,10 @@ export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number):
       L: engine.pxToM(len),
     });
     engine._dimStart = null;
+    engine._dimPreviewPt = null;
+    // PUNTO 2 (orig. usuario): sin _markDirty la cota jamás llegaba al autosave — solo vivía
+    // en memoria y desaparecía al recargar (nada en caché local ni en BD).
+    engine._markDirty();
     engine.render();
   }
 }
@@ -723,6 +728,15 @@ export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: n
   ) {
     engine.mouseX = x;
     engine.mouseY = y;
+    // PUNTO 3: preview de cota CON snap — lo que se ve durante el arrastre es exactamente
+    // lo que se aterriza al hacer clic (mismo comportamiento visual que ramales/tributarios).
+    if (engine._dimStart) {
+      // Solo hay punto previo cuando el snap está activo (el marcador indica anclaje).
+      // ojo: x/y llegan en CANVAS — convertir a PLANO antes de aplicar el snap (mezclar
+      // sistemas estiraba el preview a un punto lejísimo, orig. usuario).
+      const pp = engine.toPlane(x, y);
+      engine._dimPreviewPt = engine.snapMode ? dimSnapEnd(engine, engine._dimStart, pp) : null;
+    }
     engine.scheduleRender();
   }
 }
@@ -739,4 +753,45 @@ export function handleDoubleClick(engine: IPlanoEngineCore): void {
   if (engine.tool === 'guide' && engine._guidePts && engine._guidePts.length >= 2) {
     commitOpenGuide(engine);
   }
+}
+
+/** PUNTO 3: snap del extremo de cota — MISMA regla que el clic (ángulo + elemento existente).
+ *  Reutilizada por el preview en mousemove para que lo que se ve sea lo que se aterriza. */
+export function dimSnapEnd(
+  engine: IPlanoEngineCore,
+  start: { x: number; y: number },
+  raw: { x: number; y: number },
+): { x: number; y: number } {
+  let endPt = engine.snapAngle(start.x, start.y, raw.x, raw.y);
+  const sp = engine.snapToExisting(endPt.x, endPt.y);
+  if (sp) endPt = sp;
+  // Snap también a LÍNEAS GUÍA (las referencias punteadas): proyección sobre cada segmento
+  // de la guía si el punto cae cerca — así las cotas a una misma guía son deterministas.
+  let bestD = Infinity;
+  let guidePt: { x: number; y: number } | null = null;
+  for (const g of engine.guideLines || []) {
+    if (!g.pts || g.pts.length < 2) continue;
+    for (let i = 0; i + 1 < g.pts.length; i++) {
+      const ax = g.pts[i][0];
+      const ay = g.pts[i][1];
+      const bx = g.pts[i + 1][0];
+      const by = g.pts[i + 1][1];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq < 0.001) continue;
+      let t = ((endPt.x - ax) * dx + (endPt.y - ay) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      const fx = ax + t * dx;
+      const fy = ay + t * dy;
+      const d = Math.hypot(endPt.x - fx, endPt.y - fy);
+      if (d < bestD) {
+        bestD = d;
+        guidePt = { x: fx, y: fy };
+      }
+    }
+  }
+  const TH = 12 / (engine.zoom || 1);
+  if (guidePt && bestD <= TH) endPt = guidePt;
+  return endPt;
 }

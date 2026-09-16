@@ -135,6 +135,25 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       }
     }
 
+    // PUNTO 3 (orig. usuario): relación GRÁFICA bomba→caja de origen — línea punteada de
+    // centro a centro. Exclusivamente visual: NO crea ramal/tributario, NO suma UD, NO entra
+    // en tablas ni topología (es pincelada del render; el vínculo vive en `cajaOrigenId`).
+    if (b.tipo === 'bomba' && b.cajaOrigenId) {
+      const caja = engine.bajantes.find((bb) => bb.id === b.cajaOrigenId);
+      if (caja && caja.x != null && caja.y != null) {
+        const cc = engine.toCvs(caja.x, caja.y);
+        ctx.save();
+        ctx.strokeStyle = '#0ECC7A';
+        ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
+        ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y);
+        ctx.lineTo(cc.x, cc.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.rotate(angle);

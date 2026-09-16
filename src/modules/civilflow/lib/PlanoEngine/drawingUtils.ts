@@ -4,6 +4,7 @@ import { _statusMsg } from './ramalMeasure';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { distToPolyline } from '../shared/geometry';
 import { esCaja, puedeConectarRamalABajante } from './bajanteRules';
+import { angleAtHalfLength } from './drawingAngles';
 
 /** Siguiente etiqueta automática para la red activa (R{n}, o T{n}{padre} si se está dibujando un tributario). */
 export function _nextLabel(engine: IPlanoEngineCore): string {
@@ -171,6 +172,7 @@ export function finishArea(engine: IPlanoEngineCore): void {
   const pts = engine.activeArea.pts;
   const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  // PUNTO 4: el borrar ya RENUMERA (compacta) — la creación es el consecutivo siguiente.
   const areaCnt = engine.areas.length + 1;
   const area: PlanoArea = {
     id: 'AR' + Date.now(),
@@ -464,6 +466,7 @@ export function asociarRamalABajantes(
     if (isArrival) {
       baj.recibeDeIds.push(r.id);
       r.fin = bajCode;
+      if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
       // El bajante sigue al MAYOR de sus llegadores — nunca queda por debajo (misma regla
       // que bumpConnectedBajantes al editar).
       if (!esCaja(baj)) {
@@ -474,6 +477,27 @@ export function asociarRamalABajantes(
       if (!baj.alimentaIds) baj.alimentaIds = [];
       baj.alimentaIds.push(r.id);
       r.ini = bajCode;
+      // PUNTO 6 (orig. usuario): etiqueta PARALELA al trazo al asociar — sin tocar las
+      // etiquetas movidas a mano por el usuario.
+      if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
+      // PUNTO 1 (orig. usuario): ramal que SALE de una CAJA — recortar el tramo interno al
+      // BORDE de la caja, siguiendo la dirección que dibujó el usuario (sin mover el inicio
+      // al punto medio del lado). Caja exterior = cuadro de 100 cm: semilado en px de plano.
+      if (esCaja(baj)) {
+        const next = r.pts[epIdx + 1] || r.pts[epIdx - 1];
+        if (next) {
+          const dx = next[0] - baj.x;
+          const dy = next[1] - baj.y;
+          const len = Math.hypot(dx, dy);
+          if (len > 0.001) {
+            const half = engine.cmToPlanePx(100) / 2;
+            const ux = dx / len;
+            const uy = dy / len;
+            const t = half / Math.max(Math.abs(ux), Math.abs(uy));
+            if (t < len) r.pts[epIdx] = [baj.x + ux * t, baj.y + uy * t];
+          }
+        }
+      }
     }
   }
   return { rejected, llegaACaja, alert };

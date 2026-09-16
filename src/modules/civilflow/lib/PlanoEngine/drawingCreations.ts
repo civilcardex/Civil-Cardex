@@ -5,6 +5,7 @@ import { pisoCorto, pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
 import { distToPolyline } from '../shared/geometry';
 import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
+import { angleAtHalfLength } from './drawingAngles';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
@@ -144,8 +145,19 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   }
   const net = NETS.find((n) => n.id === engine.activeNet);
   const netPfx = net ? net.bmPfx : 'BAJ';
-  const cnt =
-    engine.bajantes.filter((b) => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
+  // PUNTO 9 (orig. usuario): MENOR NÚMERO LIBRE sobre ids existentes — borrar BAN-2 de
+  // {1,2,3} reutiliza el 2 (antes count+1 generaba huecos y duplicados tras borrar).
+  const usedNums = new Set<number>(
+    engine.bajantes
+      .filter((b) => b.tipo === 'bajante' && b.net === engine.activeNet)
+      .map((b) => {
+        const mm = /(\d+)\s*$/.exec(b.id || '');
+        return mm ? parseInt(mm[1], 10) : NaN;
+      })
+      .filter((n) => Number.isFinite(n)),
+  );
+  let cnt = 1;
+  while (usedNums.has(cnt)) cnt++;
   const bajId = netPfx + cnt;
   // Ítem: el bajante toma por defecto el diámetro del ramal conectado (el mayor de los
   // asociados) y no puede bajarse de ahí — ver la validación en bajanteMenu.tsx.
@@ -210,6 +222,14 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
       r.ini = bajId;
     } else {
       r.fin = bajId;
+    }
+    // PUNTO 6 (orig. usuario): la etiqueta del ramal queda PARALELA al trazo — el ángulo se
+    // fija a la mitad de longitud (el default 0 lo dejaba horizontal en ramales diagonales).
+    if (!r.labelMoved) {
+      r.labelAngle = angleAtHalfLength(r.pts);
+      const mid = r.pts[Math.floor(r.pts.length / 2)];
+      r.labelX = r.labelX || mid[0];
+      r.labelY = r.labelY || mid[1];
     }
     // Bloquear el ramal para que este bajante recién pegado no pueda arrastrarse por separado
     r.bloqueado = true;
