@@ -311,8 +311,23 @@ export function sincronizarDesvioBomba(
     baj.dNominal || '',
     row.nivelN,
   );
+  try {
+    const rawLd = loadFromStorage<{
+      ramales?: Array<{ id: string; label?: string; _sinEtiqueta?: boolean }>;
+    } | null>(TRAZOS_PREFIX + row.planId, null);
+    const ldRaw = rawLd?.ramales?.find((r) => r.id === ldId);
+    // Direccion SIEMPRE bomba→bajante: pts en ese orden y sin inversión.
+    if (rawLd && ldRaw) {
+      ldRaw._sinEtiqueta = false;
+      saveToStorage(TRAZOS_PREFIX + row.planId, rawLd);
+    }
+  } catch {
+    /* best-effort */
+  }
   if (String(eng._loadedPlanId ?? '') === row.planId) {
     const existing = eng.ramales.find((r) => r.id === ldId);
+    // Ldesvio de bomba CON etiqueta de ramal y todas sus características (orig. usuario) —
+    // excluido de tablas por el filtro LD_ y con flujo SIEMPRE bomba→bajante (pts en ese orden).
     const label = existing?.label || nextRamalLabel(net, eng.ramales);
     const ramal = buildLdesvioRamal(
       ldId,
@@ -430,6 +445,60 @@ export function limpiarArtefactosDesvioBomba(
     }
   } catch {
     /* best-effort */
+  }
+}
+
+/** PUNTO (orig. usuario): al BORRAR la bomba se desasocia de cualquier bajante que la
+ *  referencie (bombaEnId), en cualquier piso — storage-side (el bajante suele vivir en otro
+ *  piso): resta el libro de UDs, limpia claves espejo y los artefactos del desvío. */
+export function desasociarBombaEnTrazos(bombaId: string, bombaPlanId: string): void {
+  if (!bombaId) return;
+  const sufijo = '|' + bombaId;
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+    const pid = k.slice(TRAZOS_PLAN_PREFIX.length);
+    const raw = loadFromStorage<{
+      bajantes?: Array<{
+        id: string;
+        net?: string;
+        bombaEnId?: string | null;
+        ucAplicado?: Record<string, Record<string, number>>;
+      }>;
+    } | null>(TRAZOS_PREFIX + pid, null);
+    const baj = raw?.bajantes?.find((b) => b.bombaEnId?.endsWith(sufijo));
+    if (!raw || !baj) continue;
+    const bajPlanId = pid;
+    // Limpiar artefactos del desvío con un stub sin piso cargado → solo storage.
+    const stub = { _loadedPlanId: null } as unknown as PlanoEngine;
+    limpiarArtefactosDesvioBomba(stub, { id: baj.id, net: baj.net }, bajPlanId, {
+      planId: bombaPlanId,
+      id: bombaId,
+    });
+    // Restar el libro aplicado a las claves del piso del bajante.
+    const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
+    const libro = baj.ucAplicado || {};
+    for (const [tk, applied] of Object.entries(libro)) {
+      const cur = disk[tk];
+      if (!cur) continue;
+      for (const [kk, vv] of Object.entries(applied)) {
+        const nv = Math.max(0, (cur[kk] || 0) - (vv as number));
+        if (nv > 0) cur[kk] = nv;
+        else delete cur[kk];
+      }
+    }
+    delete disk[`${baj.net || 'san'}_${baj.id}_${bajPlanId}`];
+    saveToStorage(APARATOS_BY_TRAMO_KEY, disk);
+    // Soltar el puntero en el trazo del bajante.
+    baj.bombaEnId = null;
+    saveToStorage(TRAZOS_PREFIX + pid, raw);
+    saveTrazosToDB(pid, raw);
+  }
+  try {
+    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    window.dispatchEvent(new Event('storage'));
+  } catch {
+    /* sin window (tests) */
   }
 }
 

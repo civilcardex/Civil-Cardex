@@ -28,11 +28,15 @@ interface UseFloorRamalesParams {
 // Solo bajantes/montantes reales que atraviesan pisos entran en los selectores —
 // contador/calentador/red_publica son aparatos puntuales, no líneas troncales, y las
 // cajas y bombas tienen su propia sección (nunca en Destino/Origen, orig. usuario).
+// PUNTO (orig. usuario): los CANALES NO aparecen en Destino/Origen — solo BAJANTES.
+// La relación canal↔bajante es el canalId por proximité (clamp al crear), no una
+// asociación entre pisos.
 const isRiser = (b: PlanoBajante) =>
   b.tipo !== 'contador' &&
   b.tipo !== 'calentador' &&
   b.tipo !== 'red_publica' &&
   b.tipo !== 'bomba' &&
+  b.tipo !== 'canal' &&
   !esCaja(b);
 
 /** Asociaciones entre pisos del bajante/montante seleccionado: el ÚNICO piso

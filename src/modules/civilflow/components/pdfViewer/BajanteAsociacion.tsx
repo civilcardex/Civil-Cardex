@@ -89,6 +89,7 @@ export default function BajanteAsociacion({
     code: selElement.code || selElement.id,
     nivelN: selectedNivel ?? 0,
     npt: Number(engineRef.current?.nivelActual?.npt ?? 0),
+    tipo: selElement.tipo,
   });
 
   const associate = (v: string | null) => {
@@ -135,6 +136,7 @@ export default function BajanteAsociacion({
       code: targetBaj.code || targetBajanteId,
       nivelN: targetPlan?.nivel ?? 0,
       npt: Number(targetGroup?.npt ?? 0),
+      tipo: (targetBaj as { tipo?: string }).tipo,
     };
 
     const commit = () => {
@@ -235,6 +237,7 @@ export default function BajanteAsociacion({
       code: originBaj.code || originBajanteId,
       nivelN: originPlan?.nivel ?? 0,
       npt: Number(upperFloorGroup?.npt ?? 0),
+      tipo: (originBaj as { tipo?: string }).tipo,
     };
 
     const commit = () => {

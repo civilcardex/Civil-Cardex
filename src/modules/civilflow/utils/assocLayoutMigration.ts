@@ -291,6 +291,8 @@ export function healLdesvioLabels(data: LocalGhostDrawingData): boolean {
   let changed = false;
   for (const r of ramales) {
     if (!isLdesvioRamalId(r.id)) continue;
+    // Ldesvio de BOMBA (orig. usuario): SIN etiqueta por diseño — no consume número de ramal.
+    if ((r as { _sinEtiqueta?: boolean })._sinEtiqueta) continue;
     const lbl = r.label || '';
     if (lbl && !seen.has(lbl) && !realTaken.has(lbl)) {
       seen.add(lbl);
