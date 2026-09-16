@@ -106,33 +106,36 @@ export function renderCanalGlyph(
         const my = dy / len;
         const fsP = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.9);
         ctx.save();
+        // PUNTO (orig. usuario): la etiqueta va PARALELA a la tubería — se rota con el ángulo
+        // del trazo, normalizado para que el texto nunca quede boca abajo.
+        let pipeAngle = Math.atan2(dy, dx);
+        if (pipeAngle > Math.PI / 2 || pipeAngle < -Math.PI / 2) pipeAngle += Math.PI;
+        ctx.translate(mid.x + my * 9 * engine.zoom, mid.y - mx * 9 * engine.zoom);
+        ctx.rotate(pipeAngle);
         ctx.font = `600 ${fsP}px Geist, monospace`;
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        // Etiqueta desplazada a un lado del trazo (perpendicular a la dirección de la tubería)
-        const lx = mid.x + my * 9 * engine.zoom;
-        const ly = mid.y - mx * 9 * engine.zoom;
-        ctx.fillText(pipeLabel, lx, ly);
+        ctx.fillText(pipeLabel, 0, 0);
         // Flecha de flujo bajo la etiqueta, canal→bajante — misma forma que la de los ramales
         // (renderRamales.ts:1194-1217).
         const tw = ctx.measureText(pipeLabel).width;
         const dir = mx >= 0 ? 1 : -1;
         const half = tw / 2 + 4 * engine.zoom;
-        const ay = ly + fsP * 0.95;
+        const ay = fsP * 0.95;
         ctx.strokeStyle = col;
         ctx.fillStyle = col;
         ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(lx - half * dir, ay);
-        ctx.lineTo(lx + half * dir, ay);
+        ctx.moveTo(-half * dir, ay);
+        ctx.lineTo(half * dir, ay);
         ctx.stroke();
         const aSize = Math.min(6 * engine.zoom, half * 0.6);
         ctx.beginPath();
-        ctx.moveTo(lx + half * dir, ay);
-        ctx.lineTo(lx + half * dir - dir * aSize, ay - aSize * 0.4);
-        ctx.lineTo(lx + half * dir - dir * aSize, ay + aSize * 0.4);
+        ctx.moveTo(half * dir, ay);
+        ctx.lineTo(half * dir - dir * aSize, ay - aSize * 0.4);
+        ctx.lineTo(half * dir - dir * aSize, ay + aSize * 0.4);
         ctx.closePath();
         ctx.fill();
         ctx.restore();

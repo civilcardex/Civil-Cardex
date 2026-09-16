@@ -12,15 +12,25 @@ export function getAccessoryOptions(netId: string) {
   }
   if (netId === 'vent') {
     // La ventilación no admite sifón ni codo reventilado (ambos son de la rama sanitaria).
-    return SAN_ACCESORIOS.filter((a) => a.id !== 'sifon' && a.id !== 'codoReventilado').map(
-      (a) => ({ value: a.id, label: a.nombre }),
-    );
+    // 'tapon' (Tapón de limpieza) fuera de los CUERPOS (orig. usuario pt. 7) — sigue existiendo
+    // como accesorio de extremo/menú.
+    return SAN_ACCESORIOS.filter(
+      (a) => a.id !== 'sifon' && a.id !== 'codoReventilado' && a.id !== 'tapon',
+    ).map((a) => ({ value: a.id, label: a.nombre }));
   }
   if (netId === 'll') {
-    return SAN_ACCESORIOS.map((a) => ({ value: a.id, label: a.nombre }));
+    // 'tapon' (Tapón de limpieza) fuera de los CUERPOS (orig. usuario pt. 7).
+    return SAN_ACCESORIOS.filter((a) => a.id !== 'tapon').map((a) => ({
+      value: a.id,
+      label: a.nombre,
+    }));
   }
   if (netId === 'gas') {
-    return GAS_ACCESORIOS.map((a) => ({ value: a.id, label: a.nombre }));
+    // PUNTO 7b: 'teeTapon' ("Tapón soldado") fuera de los cuerpos de gas también.
+    return GAS_ACCESORIOS.filter((a) => a.id !== 'teeTapon').map((a) => ({
+      value: a.id,
+      label: a.nombre,
+    }));
   }
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
     // AF/AC: válvulas (incluida llave terminal — válida como accesorio de extremo, ver
@@ -41,7 +51,7 @@ export function getAccessoryOptions(netId: string) {
         a.id === 'codo90rmBaja' ||
         a.id === 'teeSube' ||
         a.id === 'teeBaja' ||
-        a.id === 'teeTapon' ||
+        // PUNTO 7b (orig. usuario): 'teeTapon' ("Tapón soldado") también fuera de los cuerpos.
         a.id === 'teeLlaveTerminal',
     ).map((a) =>
       a.id === 'codo90rm'

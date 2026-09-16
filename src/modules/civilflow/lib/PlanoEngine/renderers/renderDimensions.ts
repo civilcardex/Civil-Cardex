@@ -48,6 +48,10 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
 
     const mx = (c1.x + c2.x) / 2,
       my = (c1.y + c2.y) / 2;
+    // PUNTO 1/13 (revisado con el usuario): la etiqueta muestra la L ALMACENADA — medida al
+    // dibujar. El layout copiado es idéntico en px y conserva su L original, así que original y
+    // copia muestran SIEMPRE la misma distancia (re-escalar con la calibración de cada piso
+    // amplificaba ruido sub-píxel: 3.94 vs 3.95 para la misma referencia).
     const txt = `${d.L.toFixed(2)}m`;
     ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.5)}px Geist, monospace`;
     let lx: number, ly: number;
@@ -82,8 +86,11 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
 export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine._dimStart || engine.tool !== 'dim') return;
   const s = engine.toCvs(engine._dimStart.x, engine._dimStart.y);
-  const mp = engine.toPlane(engine.mouseX, engine.mouseY);
+  // PUNTO 3: el preview usa el extremo CON SNAP (_dimPreviewPt, calculado en mousemove con la
+  // misma regla que el clic) — el rubber band muestra exactamente dónde aterrizará la cota.
+  const mp = engine._dimPreviewPt ?? engine.toPlane(engine.mouseX, engine.mouseY);
   const e = engine.toCvs(mp.x, mp.y);
+  const snapped = !!engine._dimPreviewPt;
 
   ctx.save();
   ctx.globalAlpha = 0.55;
@@ -122,6 +129,12 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       my = (s.y + e.y) / 2;
     const px = Math.hypot(mp.x - engine._dimStart.x, mp.y - engine._dimStart.y);
     const txt = `${engine.pxToM(px).toFixed(2)}m`;
+    if (snapped) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, 4 * engine.zoom, 0, Math.PI * 2);
+      ctx.fillStyle = '#00dce5';
+      ctx.fill();
+    }
     ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.5)}px Geist, monospace`;
     let onx = nx,
       ony = ny;

@@ -164,11 +164,19 @@ function ProfilePage() {
       }
       try {
         userIdRef.current = user.id;
-        const { data, error } = await supabase
-          .from(CF_TABLES.perfiles)
-          .select('*')
-          .eq('id', user.id)
-          .single();
+        // 401 con JWT vencido/futuro (reloj desfasado o token justo expirado): un refresh
+        // de sesión + un reintento lo resuelve sin mostrar error (orig. usuario consola).
+        const queryPerfil = () =>
+          supabase.from(CF_TABLES.perfiles).select('*').eq('id', user.id).single();
+        let { data, error } = await queryPerfil();
+        if (error && (error as unknown as { status?: number }).status === 401) {
+          try {
+            await supabase.auth.refreshSession();
+          } catch {
+            /* ignore */
+          }
+          ({ data, error } = await queryPerfil());
+        }
         if (ignore) return;
         if (error) {
           devError('Error cargando perfil:', error.message);
