@@ -13,7 +13,11 @@ import { sanDiamAllowedForApparatus } from '../utils/sanitaryDiamCompat';
 import { bumpHidroAccesorio } from '../utils/syncExtremeAccessory';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
-import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
+import {
+  writeSanDrawingSync,
+  writeHydroDrawingSync,
+  setSyncLoadedLiveIds,
+} from '../utils/drawingSync';
 import type { DrawingData } from '../utils/drawingSync';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
@@ -40,6 +44,7 @@ import {
   stableStringify,
 } from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
+import { bajanteLabel, ramalLabel } from '../utils/accessoryAbbreviations';
 import {
   aggBajanteAsociado,
   mapUdBombaDesdeTrazos,
@@ -280,6 +285,14 @@ const AparatosPanel = memo(function AparatosPanel_({
         work.ts = Date.now();
         saveToStorage(`${TRAZOS_PREFIX}${String(eng._loadedPlanId)}`, work);
       }
+      // Registrar los ids VIVOS del piso cargado ANTES de sincronizar (el GC los consulta):
+      // sincronizar sin ellos permitía borrar claves de ramales recientes (guard del GC).
+      if (eng && eng._loadedPlanId != null) {
+        setSyncLoadedLiveIds(String(eng._loadedPlanId), [
+          ...eng.ramales.flatMap((r) => [r.id, r.label].filter(Boolean) as string[]),
+          ...eng.bajantes.flatMap((b) => [b.id, b.code].filter(Boolean) as string[]),
+        ]);
+      }
       writeSanDrawingSync(plans);
     } catch (e) {
       devError('AparatosPanel:', e);
@@ -328,12 +341,15 @@ const AparatosPanel = memo(function AparatosPanel_({
   }, [netId, unitKey, aps]);
 
   // Bajantes y CAJAS (AN/LL) muestran el agregado de UDs de sus trazos de entrada.
+  // Elemento "agregable" en el panel: bajantes/cajas/bomba en redes de bajante + MONTANTES
+  // (orig. usuario: asociación entre pisos aplica igual) en cualquier red de suministro.
+  const esBajSanOLl =
+    selElement?.tipo === 'bajante' ||
+    selElement?.tipo === 'caja_san' ||
+    selElement?.tipo === 'caja_ll' ||
+    selElement?.tipo === 'bomba';
   const isBajanteSan =
-    (selElement?.tipo === 'bajante' ||
-      selElement?.tipo === 'caja_san' ||
-      selElement?.tipo === 'caja_ll' ||
-      selElement?.tipo === 'bomba') &&
-    (netId === 'san' || netId === 'll');
+    selElement?.tipo === 'montante' || (esBajSanOLl && (netId === 'san' || netId === 'll'));
   // Discriminación por piso (orig. usuario): BAN1 existe en P1 y en P2 con el MISMO id —
   // todo lookup en tramosSan debe limitarse al piso actual o el panel agrega UDs del otro.
   const samePlan = useCallback(
@@ -363,7 +379,23 @@ const AparatosPanel = memo(function AparatosPanel_({
     [selElement],
   );
   const targetId = target?.id || null;
-  const targetLbl = target?.label || target?.code || target?.id || '';
+  // Etiqueta COMPLETA con sufijo de piso (p. ej. "RS1-P1"/"BAN2-P1") — la misma del canvas
+  // (orig. usuario pt. 2). Ramales llevan el piso ACTUAL; bajantes/cajas/bomba/montantes su
+  // pisoBase. Reactiva: selElement se re-deriva en cada dirty del engine.
+  const targetLbl = (() => {
+    const t = target as {
+      tipo?: string;
+      label?: string;
+      code?: string;
+      id?: string;
+      pisoBase?: string;
+    } | null;
+    if (!t) return '';
+    if (t.tipo === 'bajante' || t.tipo === 'caja_san' || t.tipo === 'caja_ll' || t.tipo === 'bomba')
+      return bajanteLabel(t, t.pisoBase);
+    if (t.tipo === 'montante') return bajanteLabel(t, t.pisoBase);
+    return ramalLabel(t, engineRef.current?.nivelActual?.label || undefined) || t.id || '';
+  })();
   const storageKey = targetId
     ? planId
       ? `${netId}_${targetId}_${planId}`
@@ -531,6 +563,8 @@ const AparatosPanel = memo(function AparatosPanel_({
     const jc = hostR.pts[0];
     const existingObj = allRamalesForPlan.find((r) => r.id === aId);
     const incomingObj = allRamalesForPlan.find((r) => r.id === bId);
+    // `resolveJunctionEntrant` = la pata MINORITARIA por rol de flujo del empalme: 2 salidas +
+    // 1 entrada → la ENTRADA; 2 entradas + 1 salida → la SALIDA (orig. usuario AF/AC/gas).
     const entrantId = existingObj
       ? resolveJunctionEntrant(
           jc,
@@ -539,7 +573,12 @@ const AparatosPanel = memo(function AparatosPanel_({
           incomingObj,
         )
       : aId;
-    if (hostR.id !== target.id && entrantId !== target.id) return null;
+    // AF/AC/gas (orig. usuario): SOLO la pata única muestra el combinado y es de solo lectura;
+    // las otras dos patas muestran sus UDs propias y quedan asignables manualmente. San/ll
+    // conserva el comportamiento anterior (combinado en cualquiera de los participantes).
+    const esRedAgua = netId === 'af' || netId === 'ac' || netId === 'gas';
+    if (esRedAgua ? entrantId !== target.id : hostR.id !== target.id && entrantId !== target.id)
+      return null;
     // TRANSITIVIDAD: un ramal auto-creado puede ser a su vez fuente de un empalme aguas arriba
     // (cadena RS1+T1RS1→RS2, RS2+T2RS2→RS3). Las fuentes directas de RS3 incluyen a RS2, que
     // es también un merge point sin aparatos propios — sus conteos viven en RS1/T1RS1. Sumar
@@ -626,7 +665,11 @@ const AparatosPanel = memo(function AparatosPanel_({
         for (const child of sanConnectivity?.fullChildrenMap[tKey] || []) walkKey(child);
       };
       const bajT = tramosPiso.find((t) => t.esBajante && t.id === bajId);
-      if (bajT?._key) {
+      // El árbol sanitario solo existe en san/ll — para montantes/suministro (af/ac/gas) o sin
+      // conectividad, el agregado va por el FALLBACK (recibeDeIds + tributarios por padre): es
+      // donde viven los ramales que el montante alimenta. Con `bajT` pero conectividad null el
+      // walk sumaba CERO (orig. usuario: "no aparecen las uds del ramal conectado").
+      if (sanConnectivity && bajT?._key) {
         for (const child of sanConnectivity?.fullChildrenMap[bajT._key] || []) walkKey(child);
       } else {
         // Fallback sin árbol sanitario: ramales asociados (recibeDeIds) + cadenas de
@@ -634,9 +677,16 @@ const AparatosPanel = memo(function AparatosPanel_({
         // las geométricas: sin engine (o con geometría ambigua) una salida con la clave ya
         // espejada volvería al walk y re-fusionaría el agregado en su propia clave en cada
         // pasada (misma familia que el dup de caja AN / suma infinita de bomba).
+        // MONTANTES (orig. usuario): sus ramales nacen EN él (la dirección de flujo los hace
+        // parecer "salidas") pero son sus ALIMENTADOS — se suman, jamás se excluyen.
         const eng = engineRef.current;
         const baj = eng?.bajantes.find((b) => b.id === bajId);
-        const seen = new Set<string>([bajId, ...exits, ...(baj?.alimentaIds || [])]);
+        const esMontante = baj?.tipo === 'montante';
+        const seen = new Set<string>([
+          bajId,
+          ...(esMontante ? [] : exits),
+          ...(baj?.alimentaIds || []),
+        ]);
         const sum = (rid: string) => {
           if (seen.has(rid)) return;
           seen.add(rid);
@@ -824,6 +874,9 @@ const AparatosPanel = memo(function AparatosPanel_({
     }
     for (const baj of eng.bajantes) {
       if (baj.net !== netId) continue;
+      // MONTANTES (orig. usuario): NO espejan sus ramales — son la inversa de un bajante (los
+      // alimentan, no los reciben); sus ramales mantienen UDs propias asignables.
+      if (baj.tipo === 'montante') continue;
       // BOMBA (orig. usuario): punto de transferencia — su clave SIEMPRE espeja el agregado
       // de su caja de origen (recalculado por conectividad; nunca genera UDs propias). SIN
       // `continue`: la bomba también puede sostener un enlace cross-floor (descargaEnId →
@@ -908,7 +961,9 @@ const AparatosPanel = memo(function AparatosPanel_({
       return typeof n === 'number' && Number.isFinite(n) ? n : null;
     };
     const loadedNpt = loadedPid ? nptOf(loadedPid) : null;
-    for (const propNet of ['san', 'll']) {
+    // MONTANTES entre pisos (orig. usuario): mismas asociaciones que bajantes — la propagación
+    // viva cubre TODAS las redes con elementos asociables (el cuerpo filtra por baj.net).
+    for (const propNet of ['san', 'll', 'af', 'ac', 'gas', 'vent']) {
       for (const baj of eng.bajantes) {
         if (baj.net !== propNet) continue;
         const links: { ldPlan: string; lowerBajId: string; upperBajId: string }[] = [];
@@ -1076,7 +1131,22 @@ const AparatosPanel = memo(function AparatosPanel_({
   // seleccionado puede llegar sin tipo (por eso isCountableTarget usa prefijos del id) y el
   // conjunto de salidas ya solo contiene ramales por construcción.
   const esEspejoBajante = useMemo(() => {
-    if (!targetId || (netId !== 'san' && netId !== 'll')) return false;
+    if (!targetId) return false;
+    // MONTANTES asociados entre pisos (orig. usuario): mismo solo-lectura que bajantes, en su
+    // red (af/ac/gas/vent). El resto de gates de espejos quedan en san/ll como estaban.
+    const esRedAsociable =
+      netId === 'san' ||
+      netId === 'll' ||
+      netId === 'af' ||
+      netId === 'ac' ||
+      netId === 'gas' ||
+      netId === 'vent';
+    if (!esRedAsociable) return false;
+    if (selElement?.tipo === 'montante') {
+      const origenM = selElement as { origenId?: string };
+      if (origenM.origenId) return true;
+    }
+    if (netId !== 'san' && netId !== 'll') return false;
     // Todo Ldesvio es el espejo del bajante superior — siempre solo lectura.
     if (targetId.startsWith('LD_')) return true;
     // Bajante asociado desde arriba (origenId) o a una bomba (bombaEnId): UDs del grupo.
@@ -1102,11 +1172,15 @@ const AparatosPanel = memo(function AparatosPanel_({
       return; // bajante/caja/bomba: panel de solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
     if (mergeKeys) {
-      // Ramal con tributarios: solo lectura (sus UDs vienen del árbol). El botón queda
-      // habilitado cuando hay aparato propio → sin alerta era click muerto (orig. auditoría).
+      // Pata única de una unión (AF/AC/gas, orig. usuario) o ramal con tributarios (san/ll):
+      // sus UDs son el total combinado — no asignables manualmente. El botón queda habilitado
+      // cuando hay aparato propio → sin alerta era click muerto (orig. auditoría).
+      const esAgua = netId === 'af' || netId === 'ac' || netId === 'gas';
       engineRef.current?.triggerAlert(
-        'Ramal con tributarios',
-        'Las unidades de este ramal vienen de sus tributarios. Asigna aparatos en los ramales/tributarios que alimentan este punto.',
+        esAgua ? 'Unión de ramales' : 'Ramal con tributarios',
+        esAgua
+          ? 'Las unidades de este ramal son la SUMA de las patas de la unión: asigna aparatos en las otras dos patas, que sí admiten asignación manual.'
+          : 'Las unidades de este ramal vienen de sus tributarios. Asigna aparatos en los ramales/tributarios que alimentan este punto.',
       );
       return;
     }
@@ -1300,6 +1374,9 @@ const AparatosPanel = memo(function AparatosPanel_({
     )
       return; // solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
+    // AF/AC/gas: pata única de una unión (mergeKeys) — sus UDs son la suma combinada, no
+    // asignables (mismo gate que inc; orig. usuario).
+    if (mergeKeys && (netId === 'af' || netId === 'ac' || netId === 'gas')) return;
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
     // El campo del ramal solo se limpia cuando el conteo PROPIO tenía el aparato (vBefore === 0,

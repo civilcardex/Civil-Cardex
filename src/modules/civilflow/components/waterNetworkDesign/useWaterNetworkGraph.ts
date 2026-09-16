@@ -450,17 +450,15 @@ export function useWaterNetworkGraph({
       }
       if (!changedAny) break;
     }
-    // Un ramal que ALIMENTA una fusión (una rama en mergeBranches) nunca debe mostrar un total
-    // distinto solo por ser fuente de fusión — su total mostrado queda exactamente en su propia
-    // UC/UD, sin importar lo que el plegado de árbol dirigido haya tomado para él por alguna otra
-    // vía no cortada. Omitir ramas que a su vez son objetivo de fusión (cadenas anidadas) — esas
-    // sí conservan legítimamente el valor sumado del ciclo de arriba, no su valor propio crudo.
+    // Regla de UDs en nodos AF/AC/gas (orig. usuario): las patas no-minoritarias quedan con su
+    // UC/UD PROPIO aunque sean a su vez destino de otro merge (p. ej. un tributario que aterriza
+    // en una salida: su UD NO se suma a ella) — antes el skip por `mergeBranches[branchId]`
+    // dejaba al ramal con la suma del sub-merge.
     const allBranchIds = new Set<string>();
     for (const branches of Object.values(mergeBranches)) {
       for (const b of branches) allBranchIds.add(b);
     }
     for (const branchId of allBranchIds) {
-      if (mergeBranches[branchId]) continue;
       const t = tramos.find((x) => (x._key || x.id) === branchId);
       if (t) componentTotalMap[branchId] = calcUCparcial(t, AP, 'uc');
     }

@@ -99,6 +99,10 @@ export function isCountableTarget(el: SelectableTarget | null): boolean {
     el.id?.startsWith('R') ||
     el.id?.startsWith('B') ||
     el.id?.startsWith('T') ||
+    // MONTANTES (orig. usuario): panel de aparatos con las UDs que se les propagan — igual que
+    // bajantes (original/fantasma/asociado). Los ids `MON{n}_{red}` no entran por prefijo.
+    el.tipo === 'montante' ||
+    el.id?.startsWith('MON') ||
     // Cajas CAN/CALL (aguas negras/lluvias): panel de UDs en modo solo lectura.
     el.tipo === 'caja_san' ||
     el.tipo === 'caja_ll' ||
