@@ -447,7 +447,13 @@ export async function loadProyectoData(proyectoId: number): Promise<ProyectoData
   }
 }
 
-export async function saveAfAlimentacion(proyectoId: number, value: string): Promise<void> {
+/** Escribe UN campo whitelisteado de cf_proyecto_general vía RPC SECURITY DEFINER — el
+ *  upsert directo chocaba con el revoke de 20260813000003 (permission denied silencioso). */
+async function saveCampoProyectoGeneral(
+  proyectoId: number,
+  campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada',
+  value: string,
+): Promise<void> {
   try {
     const {
       data: { user },
@@ -456,37 +462,23 @@ export async function saveAfAlimentacion(proyectoId: number, value: string): Pro
       emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return;
     }
-    const { error } = await supabase
-      .from(CF_TABLES.proyectoGeneral)
-      .upsert(
-        { proyecto_id: proyectoId, user_id: user.id, af_alimentacion: value },
-        { onConflict: 'proyecto_id' },
-      );
-    if (error) devError('saveAfAlimentacion:', error.message);
+    const { error } = await supabase.rpc('save_proyecto_general_campo', {
+      p_proyecto_id: proyectoId,
+      p_campo: campo,
+      p_valor: value,
+    } as never);
+    if (error) emitBdSaveError(`save-${campo}`, error.message);
   } catch (e) {
-    devError('saveAfAlimentacion exception:', e);
+    devError(`saveCampoProyectoGeneral(${campo}) exception:`, e);
   }
 }
 
+export async function saveAfAlimentacion(proyectoId: number, value: string): Promise<void> {
+  return saveCampoProyectoGeneral(proyectoId, 'af_alimentacion', value);
+}
+
 export async function saveTanqueNpt(proyectoId: number, value: string): Promise<void> {
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
-      return;
-    }
-    const { error } = await supabase
-      .from(CF_TABLES.proyectoGeneral)
-      .upsert(
-        { proyecto_id: proyectoId, user_id: user.id, tanque_npt: value },
-        { onConflict: 'proyecto_id' },
-      );
-    if (error) devError('saveTanqueNpt:', error.message);
-  } catch (e) {
-    devError('saveTanqueNpt exception:', e);
-  }
+  return saveCampoProyectoGeneral(proyectoId, 'tanque_npt', value);
 }
 
 export async function loadAfAlimentacion(proyectoId: number): Promise<string | null> {
@@ -526,24 +518,7 @@ export async function loadTanqueNpt(proyectoId: number): Promise<string | null> 
 }
 
 export async function savePresionGarantizada(proyectoId: number, value: string): Promise<void> {
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
-      return;
-    }
-    const { error } = await supabase
-      .from(CF_TABLES.proyectoGeneral)
-      .upsert(
-        { proyecto_id: proyectoId, user_id: user.id, presion_garantizada: value },
-        { onConflict: 'proyecto_id' },
-      );
-    if (error) devError('savePresionGarantizada:', error.message);
-  } catch (e) {
-    devError('savePresionGarantizada exception:', e);
-  }
+  return saveCampoProyectoGeneral(proyectoId, 'presion_garantizada', value);
 }
 
 export async function loadPresionGarantizada(proyectoId: number): Promise<string | null> {
