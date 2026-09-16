@@ -138,6 +138,16 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const w = maxX - minX,
       h = maxY - minY;
     engine.marqueeRect = null;
+    // Click simple sobre un área (sin arrastre): seleccionarla.
+    if (w < 3 && h < 3 && engine._areaClickCandidate) {
+      const cand = engine._areaClickCandidate;
+      engine._areaClickCandidate = null;
+      engine.selId = cand;
+      engine._emitSelect(engine.areas.find((a) => a.id === cand) ?? null);
+      engine.render();
+      return;
+    }
+    engine._areaClickCandidate = null;
     if (w >= 3 || h >= 3) {
       if (!isCtrl) {
         engine.multiSel = [];
@@ -200,6 +210,28 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
           if (!engine.multiSel.includes(t.id)) engine.multiSel.push(t.id);
         }
+      });
+      // PUNTO (orig. usuario): ÁREAS en la multiselección del recuadro — criterio de
+      // INTERSECCIÓN con el bbox del área (el recuadro que toque o cubra el área la
+      // selecciona; el label puede estar arrastrado lejos y no influye).
+      engine.areas.forEach((a) => {
+        let pb = a._polyBox;
+        if (!pb && a.pts && a.pts.length >= 3) {
+          const xs = a.pts.map((p) => p[0]);
+          const ys = a.pts.map((p) => p[1]);
+          pb = {
+            x: Math.min(...xs),
+            y: Math.min(...ys),
+            w: Math.max(...xs) - Math.min(...xs),
+            h: Math.max(...ys) - Math.min(...ys),
+          };
+        }
+        if (!pb) return;
+        // _polyBox ya está en CANVAS (renderAreas lo setea con toCvs) — comparar directo
+        // contra el marquee (también canvas). Sin doble conversión.
+        const intersecta =
+          pb.x <= maxX && pb.x + pb.w >= minX && pb.y <= maxY && pb.y + pb.h >= minY;
+        if (intersecta && !engine.multiSel.includes(a.id)) engine.multiSel.push(a.id);
       });
       // Guías: ENTIDAD COMPLETA — basta un vértice dentro del rect o un segmento que lo
       // cruce (Liang-Barsky, mismo test que ramales) para seleccionar la guía entera
@@ -424,6 +456,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.areaDrag) {
     engine._markDirty();
     engine.areaDrag = null;
+  }
+  if (engine.areaPtDrag) {
+    engine._markDirty();
+    engine.areaPtDrag = null;
   }
   if (engine.dimDrag) {
     engine._markDirty();

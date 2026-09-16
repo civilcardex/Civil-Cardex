@@ -402,6 +402,51 @@ export function getSelected(
 
 export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, unknown>): void {
   const el = getSelected(engine);
+  // LDESVIO de bomba (orig. usuario): su diámetro no puede superar el del bajante asociado
+  // (padre = id sin 'LD_'). Alerta + bloqueo.
+  const elId = (el as { id?: string }).id || '';
+  if (fields.diametro !== undefined && elId.startsWith('LD_')) {
+    const padre = engine.bajantes?.find((b) => b.id === elId.slice(3));
+    const dPulg = (v: string) => {
+      const q = parseFloat(v) || parseFloat((v || '').replace(/[^\d.]/g, ''));
+      return Number.isFinite(q) ? q : 0;
+    };
+    const nuevo = dPulg(String(fields.diametro));
+    const tope = dPulg(padre?.dNominal || '');
+    if (tope > 0 && nuevo > tope + 0.01) {
+      engine.triggerAlert(
+        'Diámetro no permitido',
+        `El Ldesvio no puede tener un diámetro mayor al del bajante (${padre?.dNominal || '—'}).`,
+      );
+      engine.render();
+      return;
+    }
+  }
+  // CAJAS (orig. usuario): sin propiedades hidráulicas — diámetro/material/pendiente no se
+  // escriben en el modelo, ni viniendo del panel, menú o copia. Las cajas ya están fuera de
+  // tablas y cálculo (0 refs en sanitaryRows/sanAccesoriosRows).
+  if (
+    el &&
+    ((el as { tipo?: string }).tipo === 'caja_san' || (el as { tipo?: string }).tipo === 'caja_ll')
+  ) {
+    const bloqueadas = ['diametro', 'material', 'pendiente', 'dNominal', 'diamPulg'].filter(
+      (k) => fields[k] !== undefined,
+    );
+    if (bloqueadas.length) {
+      const rest = { ...fields };
+      for (const k of bloqueadas) delete rest[k];
+      if (engine.triggerAlert)
+        engine.triggerAlert(
+          'Caja sin propiedades hidráulicas',
+          'La caja no admite diámetro, material ni pendiente.',
+        );
+      if (!Object.keys(rest).length) {
+        engine.render();
+        return;
+      }
+      fields = rest;
+    }
+  }
   // Diámetro previo para el seguimiento del bajante (follow en ambas direcciones).
   const prevRamDiam =
     el && fields.diametro !== undefined && (el as PlanoRamal).pts

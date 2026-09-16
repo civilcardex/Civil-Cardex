@@ -11,7 +11,7 @@ import { checkRamalAnglesExcludingConnections } from './junctionAutoSplit';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { puedeConectarRamalABajante } from './bajanteRules';
-import { bumpBajanteToMaxRamal } from './drawingUtils';
+import { bumpBajanteToMaxRamal, _calcPolyArea } from './drawingUtils';
 import { resolveAndClampToCanal, clampToCanal, pointInCanal } from './canalAssociation';
 
 /**
@@ -69,6 +69,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         const g = engine.guideLines.find((gl) => gl.id === id);
         if (g) {
           g.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
+        }
+      } else if (orig.type === 'area') {
+        // ÁREA del grupo: trasladar vértices + etiqueta.
+        const a = engine.areas.find((ar) => ar.id === id);
+        if (a) {
+          a.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
+          if (a.labelX != null) a.labelX += dx;
+          if (a.labelY != null) a.labelY += dy;
         }
       }
     }
@@ -653,6 +661,46 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       }
       engine.dimDrag.startX = p.x;
       engine.dimDrag.startY = p.y;
+      engine.scheduleRender();
+    }
+    return;
+  }
+  // PUNTO 5: arrastre de VÉRTICE — redimensionar el área moviendo esa esquina. Área mínima
+  // (bbox de 20 unid. de plano) para evitar geometrías degeneradas.
+  if (engine.areaPtDrag) {
+    const a = engine.areas.find((aa) => aa.id === engine.areaPtDrag!.id);
+    if (a && a.pts[engine.areaPtDrag.idx]) {
+      const p = engine.toPlane(x, y);
+      const drag = engine.areaPtDrag;
+      // PUNTO 5: offset agarre→vértice — sin salto inicial; el vértice sigue al puntero
+      // manteniendo su agarre relativo.
+      let nx = p.x + drag.offX;
+      let ny = p.y + drag.offY;
+      // Límite anti-degenerado: el vértice no puede acercarse a sus DOS vértices adyacentes
+      // menos de MIN (antes lo confinaba al bbox de los demás — eso lo pegaba a esos ejes y
+      // lo hacía saltar al borde de la caja al agarrar, orig. usuario).
+      const n = a.pts.length;
+      const prev = a.pts[(drag.idx - 1 + n) % n];
+      const next = a.pts[(drag.idx + 1) % n];
+      const MIN = 10;
+      const pushOut = (ax: number, ay: number) => {
+        const dx = nx - ax;
+        const dy = ny - ay;
+        const d = Math.hypot(dx, dy);
+        if (d < MIN) {
+          if (d < 0.001) {
+            nx = ax + MIN;
+            ny = ay;
+          } else {
+            nx = ax + (dx / d) * MIN;
+            ny = ay + (dy / d) * MIN;
+          }
+        }
+      };
+      pushOut(prev[0], prev[1]);
+      pushOut(next[0], next[1]);
+      a.pts[drag.idx] = [nx, ny];
+      a.areaM2 = _calcPolyArea(engine, a.pts);
       engine.scheduleRender();
     }
     return;

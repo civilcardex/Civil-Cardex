@@ -236,6 +236,28 @@ export function handleSelectDown(
         }
       }
       const tp = engine.toPlane(x, y);
+      // PUNTO 5 (orig. usuario): clic sobre un VÉRTICE del área YA seleccionada → arrastrar
+      // esa esquina (redimensionar) en vez de mover el polígono completo. Este fast-path
+      // capturaba el clic ANTES del loop de áreas y nunca dejaba llegar al chequeo.
+      {
+        const tol = 8 / (engine.zoom || 1);
+        let hitIdx = -1;
+        sel.pts.forEach((pt, idx) => {
+          if (hitIdx < 0 && Math.hypot(pt[0] - tp.x, pt[1] - tp.y) < tol) hitIdx = idx;
+        });
+        if (hitIdx >= 0) {
+          const vx = sel.pts[hitIdx][0];
+          const vy = sel.pts[hitIdx][1];
+          engine.areaPtDrag = {
+            id: sel.id,
+            idx: hitIdx,
+            offX: vx - tp.x,
+            offY: vy - tp.y,
+          };
+          engine.render();
+          return;
+        }
+      }
       engine.areaDrag = { id: sel.id, startX: tp.x, startY: tp.y };
       return;
     }
@@ -255,8 +277,21 @@ export function handleSelectDown(
     }
   }
 
+  // PUNTO (orig. usuario): áreas en MULTISELECCIÓN (shift+clic) — mismo toggle que ramales.
+  const toggleMultiArea = (id: string): boolean => {
+    if (!isMultiSelectModifier) return false;
+    if (engine.selId && !engine.multiSel.includes(engine.selId)) engine.multiSel.push(engine.selId);
+    engine.selId = null;
+    if (engine.multiSel.includes(id)) engine.multiSel = engine.multiSel.filter((m) => m !== id);
+    else engine.multiSel.push(id);
+    engine._emitSelect(null);
+    engine.render();
+    return true;
+  };
+
   for (const a of engine.areas) {
     if (a._labelBox && pointInLabelBox(x, y, a._labelBox)) {
+      if (toggleMultiArea(a.id)) return;
       engine.selId = a.id;
       const lPos = engine.toCvs(a.labelX, a.labelY);
       engine.lblDrag = { id: a.id, offX: x - lPos.x, offY: y - lPos.y };
@@ -287,8 +322,42 @@ export function handleSelectDown(
           }
         }
         if (bajAtPos) break;
+        if (toggleMultiArea(a.id)) return;
+        // PUNTO (orig. usuario): presionar dentro de un área NO seleccionada NO la agarra —
+        // el arrastre debe poder convertirse en RECUADRO de multiselección. El click simple
+        // (sin arrastre) la selecciona en handleDragUp vía _areaClickCandidate. Si ya está
+        // seleccionada, sí se agarra para moverla.
+        const yaSeleccionada = engine.multiSel.includes(a.id) || engine.selId === a.id;
+        if (!yaSeleccionada) {
+          engine.marqueeRect = { x1: x, y1: y, x2: x, y2: y };
+          engine._areaClickCandidate = a.id;
+          engine.render();
+          return;
+        }
         engine.selId = a.id;
         const tp = engine.toPlane(x, y);
+        // PUNTO 5 (orig. usuario): clic sobre un VÉRTICE del área seleccionada → arrastrar
+        // esa esquina (redimensionar) en vez de mover el polígono completo. Tolerancia ~8px.
+        {
+          const tol = 8 / (engine.zoom || 1);
+          let hitIdx = -1;
+          a.pts.forEach((pt, idx) => {
+            if (hitIdx < 0 && Math.hypot(pt[0] - tp.x, pt[1] - tp.y) < tol) hitIdx = idx;
+          });
+          if (hitIdx >= 0) {
+            const vx = a.pts[hitIdx][0];
+            const vy = a.pts[hitIdx][1];
+            engine.areaPtDrag = {
+              id: a.id,
+              idx: hitIdx,
+              offX: vx - tp.x,
+              offY: vy - tp.y,
+            };
+            engine._emitSelect(a);
+            engine.render();
+            return;
+          }
+        }
         engine.areaDrag = { id: a.id, startX: tp.x, startY: tp.y };
         engine._emitSelect(a);
         engine.render();

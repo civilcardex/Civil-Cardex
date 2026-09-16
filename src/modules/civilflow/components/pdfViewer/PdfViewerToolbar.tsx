@@ -674,7 +674,7 @@ function PdfViewerToolbar_({
               }}
             >
               <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
-                Borrar trazos de red
+                Borrar elementos de red
               </span>
             </div>
           </button>

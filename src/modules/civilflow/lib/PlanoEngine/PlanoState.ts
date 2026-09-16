@@ -623,7 +623,7 @@ export interface PlanoRamalDefaults {
 export type MultiDragOrigData = Record<
   string,
   {
-    type: 'ramal' | 'bajante' | 'text' | 'guide';
+    type: 'ramal' | 'bajante' | 'text' | 'guide' | 'area';
     origPts?: number[][];
     origLabelX?: number;
     origLabelY?: number;
@@ -758,6 +758,14 @@ export interface IPlanoEngineCore {
     linkedPts?: { id: string; ptIdx: number }[];
   } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
+  /** PUNTO 5: arrastre de un VÉRTICE del área seleccionada (redimensionar por esquinas). */
+  areaPtDrag: { id: string; idx: number; offX: number; offY: number } | null;
+  /** PUNTO (orig. usuario): área candidata al presionar dentro de ella — si hay arrastre
+   *  se convierte en marquee; si no lo hay (click simple) se selecciona. */
+  _areaClickCandidate: string | null;
+  /** PUNTO 3: extremo PREVIADO (con snap aplicado) de la cota en curso — el preview dibuja
+   *  exactamente lo que aterrizará al hacer clic. */
+  _dimPreviewPt: { x: number; y: number } | null;
   dimDrag: { id: string; startX: number; startY: number } | null;
   ramalDrag: {
     id: string;

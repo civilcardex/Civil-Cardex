@@ -998,6 +998,12 @@ function PdfViewer_({
     if (c) c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
   }, [tool]);
 
+  // COTA seleccionada (orig. usuario): sin paneles — la cota no tiene datos hidráulicos
+  // ni aparatos; se ocultan TramoEditor y AparatosPanel.
+  const esCotaSel = (() => {
+    const sel = selElement as { id?: string; tipo?: string } | null;
+    return !!sel && !sel.tipo && String(sel.id ?? '').startsWith('D');
+  })();
   const rightSidebarOpacity = useMemo(
     () => ({
       opacity: !selElement ? 0.35 : 1,
@@ -1302,38 +1308,40 @@ function PdfViewer_({
 
           {tool !== 'guide' && (
             <div style={rightSidebarOpacity}>
-              <TramoEditor
-                selElement={selElement as PlanoElement | null}
-                activeNet={activeNet}
-                engineRef={engineRef}
-                diamSel={diamSel}
-                gasMatSel={gasMatSel}
-                pendSel={pendSel}
-                pendInput={pendInput}
-                mats={mats}
-                matLongName={matLongName}
-                setDiamSel={setDiamSel}
-                setGasMatSel={setGasMatSel}
-                setPendSel={setPendSel}
-                setPendInput={setPendInput}
-                setSelElement={setSelElement}
-                handleUpdateSel={handleUpdateSel}
-                handleRotateLabel={handleRotateLabel}
-                plans={planosCtx.plans}
-                pisos={pisos}
-                triggerConfirm={(title, message, onConfirm, confirmLabel) => {
-                  setConfirmState({
-                    isOpen: true,
-                    title,
-                    message,
-                    confirmLabel,
-                    onConfirm: () => {
-                      onConfirm();
-                      setConfirmState((prev) => ({ ...prev, isOpen: false }));
-                    },
-                  });
-                }}
-              />
+              {!esCotaSel && (
+                <TramoEditor
+                  selElement={selElement as PlanoElement | null}
+                  activeNet={activeNet}
+                  engineRef={engineRef}
+                  diamSel={diamSel}
+                  gasMatSel={gasMatSel}
+                  pendSel={pendSel}
+                  pendInput={pendInput}
+                  mats={mats}
+                  matLongName={matLongName}
+                  setDiamSel={setDiamSel}
+                  setGasMatSel={setGasMatSel}
+                  setPendSel={setPendSel}
+                  setPendInput={setPendInput}
+                  setSelElement={setSelElement}
+                  handleUpdateSel={handleUpdateSel}
+                  handleRotateLabel={handleRotateLabel}
+                  plans={planosCtx.plans}
+                  pisos={pisos}
+                  triggerConfirm={(title, message, onConfirm, confirmLabel) => {
+                    setConfirmState({
+                      isOpen: true,
+                      title,
+                      message,
+                      confirmLabel,
+                      onConfirm: () => {
+                        onConfirm();
+                        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+                      },
+                    });
+                  }}
+                />
+              )}
 
               <BajanteAsociacion
                 selElement={selElement}
@@ -1358,10 +1366,12 @@ function PdfViewer_({
                 }}
               />
 
+              {/* MONTANTES SÍ tienen panel de aparatos (orig. usuario): UDs propagadas/asignadas
+                  como bajantes. Solo áreas y guías lo excluyen. */}
               {!(
                 selElement &&
-                (selElement.tipo === 'montante' ||
-                  selElement.tipo === 'area' ||
+                (selElement.tipo === 'area' ||
+                  esCotaSel ||
                   selElement.id?.startsWith('AR') ||
                   selElement.id?.startsWith('GL'))
               ) && (
@@ -1375,12 +1385,14 @@ function PdfViewer_({
                 />
               )}
 
-              <PdfViewerDrawnElements
-                drawnElements={drawnElements}
-                activeNet={activeNet}
-                selElement={selElement}
-                engineRef={engineRef}
-              />
+              {!esCotaSel && (
+                <PdfViewerDrawnElements
+                  drawnElements={drawnElements}
+                  activeNet={activeNet}
+                  selElement={selElement}
+                  engineRef={engineRef}
+                />
+              )}
 
               <div style={{ flex: 1 }} />
             </div>

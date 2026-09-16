@@ -479,6 +479,13 @@ export function _tryMultiSelDrag(
         y >= te._box.y &&
         y <= te._box.y + te._box.h;
     }
+    // PUNTO (orig. usuario): las ÁREAS de la multiselección también agarran el arrastre del
+    // grupo — press dentro de su bbox (criterio igual al marquee).
+    const ae = engine.areas.find((a) => a.id === id);
+    if (!hit && ae?._polyBox) {
+      const pb = ae._polyBox;
+      hit = x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h;
+    }
     const gde = engine.guideLines.find((g) => g.id === id);
     if (!hit && gde?.pts) {
       for (let i = 0; i < gde.pts.length; i++) {
@@ -538,6 +545,17 @@ export function _tryMultiSelDrag(
           if (mgl) {
             // La guía es UNA entidad: se traslada completa (todos sus vértices).
             origData[mid] = { type: 'guide', origPts: mgl.pts.map((pt) => [...pt]) };
+            continue;
+          }
+          const mar = engine.areas.find((a) => a.id === mid);
+          if (mar) {
+            // ÁREA: se traslada completa (vértices + etiqueta), igual que el resto del grupo.
+            origData[mid] = {
+              type: 'area',
+              origPts: mar.pts.map((pt) => [...pt]),
+              origLabelX: mar.labelX,
+              origLabelY: mar.labelY,
+            };
           }
         }
         engine.multiDrag = { startX: tp.x, startY: tp.y, origData };

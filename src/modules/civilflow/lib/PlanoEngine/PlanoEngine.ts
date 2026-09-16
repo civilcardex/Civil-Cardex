@@ -196,6 +196,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   selId!: string | null;
   selectedGhostId!: string | null;
   areaDrag!: { id: string; startX: number; startY: number } | null;
+  areaPtDrag!: { id: string; idx: number; offX: number; offY: number } | null;
+  _areaClickCandidate!: string | null;
+  _dimPreviewPt!: { x: number; y: number } | null;
   dimDrag!: { id: string; startX: number; startY: number } | null;
   panning!: boolean;
   panX0!: number;
@@ -375,6 +378,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._isGhostSel = false;
     this._yeeFlashKey = null;
     this.areaDrag = null;
+    this.areaPtDrag = null;
+    this._dimPreviewPt = null;
+    this._areaClickCandidate = null;
     this.dimDrag = null;
     this.panning = false;
     this.panX0 = 0;
@@ -1263,6 +1269,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.txtResize ||
       this.dimLblDrag ||
       this.areaDrag ||
+      this.areaPtDrag ||
       this.ptDrag ||
       this.ramalDrag ||
       this.multiDrag;
@@ -1428,8 +1435,15 @@ export default class PlanoEngine implements IPlanoEngineCore {
         } else if (this.selId) {
           const sel = this.getSelected() as Record<string, unknown> | null;
           const ptsArr = ((sel as { pts?: unknown } | null)?.pts ?? []) as number[][];
+          // ÁREAS fuera: con pts pasaban por eraseRamalAt y el borrador recortaba UN VÉRTICE
+          // ("se borra la mitad del área") en vez del elemento completo.
+          const esArea =
+            (sel as { tipo?: string } | null)?.tipo === 'area' ||
+            String((sel as { id?: unknown }).id ?? '').startsWith('AR');
           const isRamalLike =
-            ptsArr.length >= 2 && !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
+            ptsArr.length >= 2 &&
+            !esArea &&
+            !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
           if (isRamalLike) {
             const sp = this._selPointCvs;
             const cv =

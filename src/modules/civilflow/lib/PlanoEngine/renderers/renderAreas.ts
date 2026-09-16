@@ -6,7 +6,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
   engine.areas.forEach((a) => {
     if (a.net && engine._hiddenNets.has(a.net)) return;
     if (a.pts.length < 3) return;
-    const sel = a.id === engine.selId;
+    const sel = a.id === engine.selId || engine.multiSel.includes(a.id);
     const pts = a.pts.map((p: number[]) => engine.toCvs(p[0], p[1]));
     let minX = Infinity,
       minY = Infinity,
@@ -23,8 +23,10 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
 
     ctx.fillStyle = a.color || 'rgba(0,220,229,0.12)';
     ctx.fill();
+    // PUNTO (orig. usuario): el borde del área seleccionada usa el COLOR DE SU RED (no cyan).
+    const netCol = NETS.find((nn) => nn.id === a.net)?.col || '#00dce5';
     ctx.strokeStyle = sel
-      ? '#00dce5'
+      ? netCol
       : (a.color || 'rgba(0,220,229,0.5)').replace('0.2', '0.7').replace('33', 'aa');
     ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom * (engine.lineWidthScale || 1);
     ctx.setLineDash(sel ? [] : []);
@@ -38,6 +40,21 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       if (p.y > maxY) maxY = p.y;
     });
     a._polyBox = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+
+    // PUNTO 5 (orig. usuario): manijas en los VÉRTICES del área seleccionada — arrastrar una
+    // esquina redimensiona (handleMouseDown detecta el vértice y lanza areaPtDrag).
+    if (sel) {
+      // PUNTO (orig. usuario): las esquinas también del color de la red.
+      for (const p of pts) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5 * (engine.zoom || 1), 0, Math.PI * 2);
+        ctx.fillStyle = netCol;
+        ctx.fill();
+        ctx.strokeStyle = '#0d1117';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
 
     const lx = engine.toCvs(a.labelX, a.labelY);
 
