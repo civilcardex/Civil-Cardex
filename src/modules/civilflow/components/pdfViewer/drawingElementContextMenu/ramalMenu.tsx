@@ -322,7 +322,7 @@ export function RamalMenu() {
                 }}
                 style={MENU_ACTION_BTN_STYLE}
               >
-                + {accId === 'tapon' ? 'Tapón' : 'Llave Terminal'}
+                + {accId === 'tapon' ? 'Tapón de limpieza' : 'Llave Terminal'}
               </button>
             ))}
           </div>
