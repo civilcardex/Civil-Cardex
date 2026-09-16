@@ -1381,3 +1381,15 @@ Gates: tsc 0 · vitest 710/710 · lint 0 · build ✓ · graphify ✓. Auditorí
 ### Ronda 3 — wheel pasivo + recordatorio migración
 - `RciCuartoBombasReferencia` y `PlanoConfigurator`: onWheel de React → listener nativo `{ passive: false }` (preventDefault avisaba en consola con cada scroll). Efecto sin deps que se re-registra por render para leer zoom/offset frescos.
 - **Migración 20260914000000 PENDIENTE en BD del usuario** (error `column copia_piso does not exist` en saveTrazosToDB rpc hasta aplicarla en SQL Editor).
+
+## Session Summary — 2026-09-15 (revisión de esquema: tablas/columnas/RLS necesarias)
+
+### Veredicto de la revisión completa (migraciones ↔ código, 2 exploradores + verificación manual)
+- **ROTO desde 2026-08-13 (fix aplicado)**: `saveAfAlimentacion`/`saveTanqueNpt`/`savePresionGarantizada` hacían UPDATE directo sobre cf_proyecto_general, pero 20260813000003 revocó INSERT/UPDATE/DELETE a authenticated → permission denied silencioso → nunca llegaban a BD. Nuevo RPC `save_proyecto_general_campo(p_proyecto_id, p_campo, p_valor)` (SECURITY DEFINER, whitelist de 3 campos, upsert del cascarón, owner check) + los 3 saves delegan. Migración `20260915000000_cf_rpc_campo_proyecto_limpieza.sql` — APLICAR EN SQL EDITOR.
+- **Limpieza en la misma migración**: drop de `legacy_proyectos/legacy_proyecto_data/legacy_plano_trazos` (staging one-time de 20260730000003, si existen) + `drop function if exists get_proyecto_data_ep_bomba(bigint)` (RPC fantasma, nunca creado). Diagnóstico de políticas RLS duplicadas incluido como comentario (pg_policies).
+- **Refutados (NO tocar)**: columnas meta de cf_planos (name/nivel/scale/status/origen_*: son la lista de planos); af_alimentacion/tanque_npt/presion_garantizada (columnas vivas, el camino estaba roto); cf_redes (FK de active_net); factor_sim/longitud/canal_id; uc_aplicado viaja y se relee ✓.
+- Nota: AGENTS "ucAplicado no viaja a BD" ya corregido en la entrada de 2026-09-14.
+- Tests: faseE.test.ts (WIP de sesión paralela) necesitaba `tipo: string` en su tipo de areas — añadido.
+
+### Gates
+vitest 730/730 ✓. tsc/lint reflejan WIP en vuelo de faseE.test.ts (sesión paralela) — re-run al cerrar esa sesión.
