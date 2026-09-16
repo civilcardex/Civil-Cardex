@@ -542,11 +542,28 @@ function isLoadedLiveKey(key: string): boolean {
   return _loadedLive.ids.has(id);
 }
 
+/** Huérfanos vistos en la pasada anterior (misma sesión): el borrado exige DOS pasadas
+ *  consecutivas viendo la clave huérfana. Rompe la oscilación escritor↔GC (el escritor
+ *  re-crea la clave entre pasadas y nunca se borra) sin impedir la limpieza real, que solo
+ *  se retrasa un sync. @returns true si ya se puede borrar. */
+const orphanSuspects = new Set<string>();
+function shouldDeleteOrphan(key: string, stillOrphan: boolean): boolean {
+  if (!stillOrphan) {
+    orphanSuspects.delete(key);
+    return false;
+  }
+  if (orphanSuspects.has(key)) {
+    orphanSuspects.delete(key);
+    return true;
+  }
+  orphanSuspects.add(key);
+  return false;
+}
+
 function performGarbageCollection(plans: SyncPlanInput[]) {
   if (!Array.isArray(plans) || plans.length === 0) return;
   const validKeys = new Set<string>();
   const validGasRamales = new Set<string>();
-
   for (const plan of plans) {
     if (!plan || plan.id === undefined) continue;
     const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
@@ -568,8 +585,12 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
 
     for (const r of data.ramales || []) {
       if (r && r.id && r.net) {
-        const key = `${r.net}_${r.id}_${plan.id}`;
-        validKeys.add(key);
+        // PUNTO 10: usar el MISMO mapeo de clave que reanclarClavesDesdeTrazosLocales y
+        // loadTrazosFromDB (fixtureStoreKey) — el stub del calentador (`AC-01-<calId>`, net
+        // 'ac') restaura `ac_<calId>_<plan>`, pero validKeys armaba `ac_AC-01-<calId>_<plan>`:
+        // la clave era huérfana-para-GC y restaurable-para-reanclar → borrado/restauración en
+        // CADA sync (ping-pong "GC sync: borradas" + Maximum update depth, orig. usuario).
+        validKeys.add(fixtureStoreKey(r.net, r.id, String(plan.id)));
         if (r.net === 'gas') {
           validGasRamales.add(r.id);
         }
@@ -578,7 +599,7 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
 
     for (const b of data.bajantes || []) {
       if (b && b.id && b.net) {
-        validKeys.add(`${b.net}_${b.id}_${plan.id}`);
+        validKeys.add(fixtureStoreKey(b.net, b.id, String(plan.id)));
         if (b.tipo === 'contador') {
           validKeys.add(`af_${b.id}_${plan.id}`);
         } else if (b.tipo === 'calentador') {
@@ -594,16 +615,18 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   let aparatosChanged = false;
   let aparatosSkipped = 0;
   for (const key of Object.keys(rawAparatos)) {
-    if (isLoadedLiveKey(key)) continue;
+    if (isLoadedLiveKey(key)) {
+      orphanSuspects.delete(key);
+      continue;
+    }
     if (!canDeleteKey(key)) {
       aparatosSkipped++;
       continue;
     }
-    if (isOrphanKey(key, validKeys)) {
-      bakDeletedAparatos[key] = rawAparatos[key];
-      delete rawAparatos[key];
-      aparatosChanged = true;
-    }
+    if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
+    bakDeletedAparatos[key] = rawAparatos[key];
+    delete rawAparatos[key];
+    aparatosChanged = true;
   }
   if (aparatosChanged) {
     saveToStorage(APARATOS_BY_TRAMO_KEY, rawAparatos);
@@ -615,16 +638,18 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   let hidroChanged = false;
   let hidroSkipped = 0;
   for (const key of Object.keys(rawHidro)) {
-    if (isLoadedLiveKey(key)) continue;
+    if (isLoadedLiveKey(key)) {
+      orphanSuspects.delete(key);
+      continue;
+    }
     if (!canDeleteKey(key)) {
       hidroSkipped++;
       continue;
     }
-    if (isOrphanKey(key, validKeys)) {
-      bakDeletedHidro[key] = rawHidro[key];
-      delete rawHidro[key];
-      hidroChanged = true;
-    }
+    if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
+    bakDeletedHidro[key] = rawHidro[key];
+    delete rawHidro[key];
+    hidroChanged = true;
   }
   if (hidroChanged) {
     saveToStorage(HYDRO_DATA_STORAGE_KEY, rawHidro);
@@ -635,7 +660,7 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   const bakDeletedGas: Record<string, unknown> = {};
   let gasChanged = false;
   for (const ramalId of Object.keys(rawGas)) {
-    if (!validGasRamales.has(ramalId)) {
+    if (shouldDeleteOrphan(`gas:${ramalId}`, !validGasRamales.has(ramalId))) {
       bakDeletedGas[ramalId] = rawGas[ramalId];
       delete rawGas[ramalId];
       gasChanged = true;
@@ -653,12 +678,19 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
     });
     // Solo se loguea si algo se borró (antes spameaba la consola en cada sync aunque
     // borrara 0 — orig. usuario). Las retenidas por caché vieja son claves PROTEGIDAS,
-    // no pérdidas: se limpian al abrir su piso.
+    // no pérdidas: se limpian al abrir su piso. Se listan nombres (capados) para
+    // identificar oscilaciones escritor↔GC sin abrir el Storage.
+    const clavesBorradas = [
+      ...Object.keys(bakDeletedAparatos),
+      ...Object.keys(bakDeletedHidro),
+      ...Object.keys(bakDeletedGas),
+    ];
     devError('GC sync: borradas', {
       aparatos: Object.keys(bakDeletedAparatos).length,
       hidro: Object.keys(bakDeletedHidro).length,
       gas: Object.keys(bakDeletedGas).length,
       retenidasPorCachéVieja: aparatosSkipped + hidroSkipped,
+      claves: clavesBorradas.slice(0, 20),
     });
   }
 }

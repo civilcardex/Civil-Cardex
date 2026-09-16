@@ -68,10 +68,13 @@ describe('GC con caché vieja no borra (bug piso 2)', () => {
     // esta ventana era exactamente "se borra lo que acabo de hacer" (orig. usuario).
     expect(counts['san_MUERTO_11']).toEqual({ lav: 1 });
     expect(counts['san_RS1_11']).toEqual({ san: 1 });
-    // Pasada la ventana de gracia (4s), el próximo sync limpia al huérfano real y deja
-    // respaldo de lo borrado.
+    // Pasada la ventana de gracia (4s), el huérfano real queda marcado sospechoso pero
+    // NO se borra aún: el borrado exige DOS pasadas consecutivas (anti-oscilación
+    // escritor↔GC). Tercera pasada: ahora sí se limpia, con respaldo.
     setSyncLoadedLiveIds('11', ['RS1']);
     const spyAhora = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000);
+    writeSanDrawingSync(PLANS);
+    expect(lsGet(APARATOS_BY_TRAMO_KEY)['san_MUERTO_11']).toEqual({ lav: 1 });
     writeSanDrawingSync(PLANS);
     spyAhora.mockRestore();
     const counts2 = lsGet(APARATOS_BY_TRAMO_KEY);
@@ -133,5 +136,29 @@ describe('GC con caché vieja no borra (bug piso 2)', () => {
     expect(after['san_TX_12']).toEqual({ lvm: 1 });
     expect(after['san_RS1_12']).toEqual({ san: 1 });
     expect(after['san_BAN1_12']).toEqual({ san: 2 });
+  });
+
+  it('sospechoso que vuelve a ser válido nunca se borra (rompe la oscilación)', () => {
+    // Patrón del loop: pasada 1 lo marca huérfano; antes de la 2 la caché se refresca
+    // (autosave) y el id vuelve a ser válido → se limpia el sospechoso y jamás se borra.
+    lsSet(TRAZOS_PREFIX + '11', { ramales: [{ id: 'RS1', net: 'san' }], bajantes: [] });
+    lsSet(TRAZOS_PREFIX + '12', { ramales: [{ id: 'RS1', net: 'san' }], bajantes: [] });
+    lsSet(APARATOS_BY_TRAMO_KEY, { san_FLAKY_11: { lvm: 1 } });
+    setSyncLoadedLiveIds('11', ['RS1']);
+    const spyAhora = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000);
+    writeSanDrawingSync(PLANS);
+    expect(lsGet(APARATOS_BY_TRAMO_KEY)['san_FLAKY_11']).toEqual({ lvm: 1 });
+    // La caché se pone al día antes de la segunda pasada.
+    lsSet(TRAZOS_PREFIX + '11', {
+      ramales: [
+        { id: 'RS1', net: 'san' },
+        { id: 'FLAKY', net: 'san' },
+      ],
+      bajantes: [],
+    });
+    writeSanDrawingSync(PLANS);
+    spyAhora.mockRestore();
+    expect(lsGet(APARATOS_BY_TRAMO_KEY)['san_FLAKY_11']).toEqual({ lvm: 1 });
+    expect(localStorage.getItem('civilflow_gc_bak_ultimo')).toBeNull();
   });
 });

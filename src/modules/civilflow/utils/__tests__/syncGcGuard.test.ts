@@ -53,7 +53,7 @@ describe('GC de sync — guard del piso cargado', () => {
     expect(counts['san_RS4_2']).toEqual({ san: 1 });
   });
 
-  it('piso fresco de esta sesión: la clave huérfana se borra (limpieza intacta)', () => {
+  it('piso fresco de esta sesión: la clave huérfana se borra al SEGUNDO sync (limpieza intacta)', () => {
     localStorage.setItem(
       'civilflow_' + TRAZOS_PREFIX + '2',
       JSON.stringify({ ramales: [{ id: 'RS4', net: 'san' }], bajantes: [] }),
@@ -65,6 +65,15 @@ describe('GC de sync — guard del piso cargado', () => {
     // Sin guard de cargado, pero la caché la escribió esta sesión (fresca = confiable).
     markPlanTrazosFresh('2');
 
+    // El borrado exige DOS pasadas consecutivas viendo la clave huérfana (anti-oscilación
+    // escritor↔GC): la primera solo la marca sospechosa.
+    writeSanDrawingSync(PLANS);
+    {
+      const counts = JSON.parse(
+        localStorage.getItem('civilflow_' + APARATOS_BY_TRAMO_KEY) || '{}',
+      ) as Record<string, unknown>;
+      expect(counts['san_MUERTO_2']).toEqual({ lav: 1 });
+    }
     writeSanDrawingSync(PLANS);
 
     const counts = JSON.parse(

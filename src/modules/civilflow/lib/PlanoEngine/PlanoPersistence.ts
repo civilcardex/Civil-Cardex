@@ -1,6 +1,7 @@
 import { NETS, initNetCounts } from './PlanoState';
 import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts';
 import { propagarSanDiametroAguasAbajo } from './drawingFlow';
+import { direccionBajaPermitida } from './direccionReglas';
 import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 
 export interface PlanoWorkData {
@@ -177,6 +178,28 @@ export function applyWorkData(
   );
   engine.areas = dedupPorId(d.areas || []);
   engine.nptLevels = d.nptLevels || [];
+  // PUNTO 9: barrido de carga — ningún bajante del ÚLTIMO nivel inferior persiste con
+  // direccion 'baja' (coerce a 'continua' + una sola alerta).
+  {
+    let invalidos = 0;
+    for (const b of engine.bajantes as Array<{
+      direccion?: string;
+      nptBase?: number;
+      tipo?: string;
+    }>) {
+      if (b.direccion !== 'baja' || b.tipo === 'montante') continue;
+      if (!direccionBajaPermitida(engine, b)) {
+        b.direccion = 'continua';
+        invalidos++;
+      }
+    }
+    const alerta = (engine as { triggerAlert?: (t: string, m: string) => void }).triggerAlert;
+    if (invalidos && alerta)
+      alerta(
+        'Dirección inválida corregida',
+        `${invalidos} bajante(s) del último nivel del proyecto tenían dirección "baja" (no hay piso debajo) y fueron corregidos a "continua".`,
+      );
+  }
   // Fantasmas entre pisos se cargan tal cual: son el AVISO del enlace de asociación. Los
   // residuales de bajantes copiados se limpian al copiar (copyDrawingFromPlan), no aquí.
   engine.crossFloorGhosts = d.crossFloorGhosts?.length
