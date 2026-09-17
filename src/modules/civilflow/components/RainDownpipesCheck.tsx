@@ -12,13 +12,13 @@ import React from 'react';
 import { parseDecimalInput } from '../utils/parseDecimal';
 import type { DrawingData } from '../utils/drawingSync';
 
-interface AreaRaw {
-  areaM2?: number;
-}
 interface Row {
   key: string;
   bajante: string;
   areaParcial: number;
+  /** Área Otras (orig. usuario): editable, default 0. */
+  areaOtras: number;
+  /** TOTAL = areaParcial + areaOtras — alimenta el caudal. */
   areaAcum: number;
   intensidad: number;
   coeficienteC: number;
@@ -37,6 +37,51 @@ const RainDownpipesCheck_S1: React.CSSProperties = {
   fontSize: 11,
   textAlign: 'center',
 };
+
+// Área Otras (orig. usuario): SIEMPRE editable — estado local de texto con commit en blur.
+// (Un input controlado con value fijo + onChange no-op congela la tipografía: no se podía
+// borrar el 0.)
+const OtrasField = React.memo(function OtrasField({
+  rowKey,
+  bajante,
+  value,
+  onCommit,
+}: {
+  rowKey: string;
+  bajante: string;
+  value: number;
+  onCommit: (bajante: string, v: number) => void;
+}) {
+  const [text, setText] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
+  const display = editing ? text : String(value ?? 0);
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      aria-label="Área otras"
+      key={rowKey + '_otras'}
+      onFocus={() => {
+        setEditing(true);
+        // Al enfocar un 0 el campo arranca vacío: no hay que "quitar el 0" a mano.
+        setText(value > 0 ? String(value) : '');
+      }}
+      onChange={(e) => {
+        setText(e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, ''));
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+      onBlur={() => {
+        setEditing(false);
+        const v = parseFloat(text) || 0;
+        if (bajante) onCommit(bajante, v);
+      }}
+      style={RainDownpipesCheck_S1}
+    />
+  );
+});
 
 export default function ChequeoBajantesLluvias() {
   const { bajantesLl, updBajanteLL } = useRainwater();
@@ -72,28 +117,8 @@ export default function ChequeoBajantesLluvias() {
     return map;
   }, [plans]);
 
-  const areaAcumMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const plan of plans || []) {
-      if (plan.nivel == null) continue;
-      const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
-        TRAZOS_PREFIX + plan.id,
-        null,
-      );
-      if (!raw) continue;
-      let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
-      if (typeof raw === 'string') {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-      }
-      const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
-      map[String(plan.nivel)] = totalArea;
-    }
-    return map;
-  }, [plans]);
+  // (areaAcumMap del total dibujado del piso retirado — orig. usuario: TOTAL = Parcial + Otras,
+  // sin fallback al total del piso; el área que no sea la del dibujo se escribe en Otras.)
 
   const rows = useMemo(() => {
     const manualMap = new Map<string, BajanteLL>();
@@ -110,15 +135,17 @@ export default function ChequeoBajantesLluvias() {
       const manual = manualMap.get(code) || manualMap.get(d.id);
       if (manual) usedManual.add(manual.bajante || manual.id);
       const areaDib = areaDibujoMap[code] || areaDibujoMap[d.id] || 0;
+      // Parcial = área asociada al bajante en el dibujo; Otras = editable (default 0);
+      // TOTAL = Parcial + Otras alimenta el caudal (orig. usuario).
       const areaParcial = areaDib || d.area_m2 || manual?.areaParcial || 0;
-      // Área acumulada PROPIA del bajante primero (orig. usuario: el caudal real se calcula con
-      // la columna "Área acumulada"); el total del piso es solo el fallback.
-      const areaAcum = manual?.areaAcumulada || areaAcumMap[String(d.piso)] || 0;
+      const areaOtras = manual?.areaOtras ?? 0;
+      const areaAcum = areaParcial + areaOtras;
       const rVal = d.bajR != null ? (Math.abs(d.bajR - 0.25) < 0.001 ? '1/4' : '7/24') : '7/24';
       out.push({
         key: 'd_' + d.id + '_' + d.piso,
         bajante: code,
         areaParcial,
+        areaOtras,
         areaAcum,
         intensidad: manual?.intensidad ?? 100,
         coeficienteC: 0.0278,
@@ -134,11 +161,13 @@ export default function ChequeoBajantesLluvias() {
       const bajDib = drawingBajantes.find((d) => d.code === m.bajante || d.id === m.bajante);
       const areaDib = areaDibujoMap[m.bajante] || 0;
       const areaParcial = areaDib || bajDib?.area_m2 || m.areaParcial || 0;
-      const areaAcum = m.areaAcumulada || areaAcumMap[String(bajDib?.piso)] || 0;
+      const areaOtras = m.areaOtras ?? 0;
+      const areaAcum = areaParcial + areaOtras;
       out.push({
         key: 'm_' + m.id,
         bajante: m.bajante || m.id,
         areaParcial,
+        areaOtras,
         areaAcum,
         intensidad: m.intensidad ?? 100,
         coeficienteC: 0.0278,
@@ -149,7 +178,7 @@ export default function ChequeoBajantesLluvias() {
     }
 
     return out;
-  }, [drawingBajantes, bajantesLl, areaDibujoMap, areaAcumMap]);
+  }, [drawingBajantes, bajantesLl, areaDibujoMap]);
 
   return (
     <section className="card">
@@ -193,7 +222,7 @@ export default function ChequeoBajantesLluvias() {
               <th
                 scope="col"
                 className="col-h ll"
-                colSpan={2}
+                colSpan={3}
                 style={{
                   textAlign: 'center',
                   fontSize: 11,
@@ -338,7 +367,20 @@ export default function ChequeoBajantesLluvias() {
                   overflow: 'hidden',
                 }}
               >
-                Acumulada
+                Otras
+              </th>
+              <th
+                scope="col"
+                className="col-h ll"
+                style={{
+                  fontSize: 11,
+                  textAlign: 'center',
+                  padding: '1px 1px',
+                  whiteSpace: 'normal',
+                  overflow: 'hidden',
+                }}
+              >
+                Total
               </th>
               <th
                 scope="col"
@@ -372,7 +414,7 @@ export default function ChequeoBajantesLluvias() {
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   style={{
                     padding: '24px 0',
                     textAlign: 'center',
@@ -408,7 +450,22 @@ export default function ChequeoBajantesLluvias() {
                       </span>
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                      {/* Otras (orig. usuario): editable siempre, default 0 — nunca vacía. */}
+                      <OtrasField
+                        rowKey={row.key}
+                        bajante={row.bajante}
+                        value={row.areaOtras ?? 0}
+                        onCommit={(baj, v) => updBajanteLL(baj, 'areaOtras', v)}
+                      />
+                    </td>
+                    <td className="c">
+                      <span
+                        style={{
+                          fontFamily: 'var(--mono)',
+                          fontSize: 11,
+                          fontWeight: 600,
+                        }}
+                      >
                         {row.areaAcum > 0 ? trunc2(row.areaAcum) : '—'}
                       </span>
                     </td>

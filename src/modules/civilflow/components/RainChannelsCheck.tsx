@@ -5,11 +5,12 @@ import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../utils/calcRainwater
 import { trunc2 } from '../utils/formatUtils';
 import EditButton from './shared/EditButton';
 
-const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente' | 'longitud', string> = {
+const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente' | 'longitud' | 'areaOtras', string> = {
   b: 'Base (cm)',
   h: 'Altura (cm)',
   pendiente: 'Pendiente (%)',
   longitud: 'Longitud (cm)',
+  areaOtras: 'Área otras',
 };
 
 const CanalDimField = React.memo(function CanalDimField({
@@ -19,13 +20,23 @@ const CanalDimField = React.memo(function CanalDimField({
   onChange,
 }: {
   id: string;
-  field: 'b' | 'h' | 'pendiente' | 'longitud';
+  field: 'b' | 'h' | 'pendiente' | 'longitud' | 'areaOtras';
   value: number;
   onChange: (id: string, field: string, val: number) => void;
 }) {
   const [text, setText] = React.useState('');
   const [editing, setEditing] = React.useState(false);
-  const display = editing ? text : value > 0 ? String(value) : '';
+  // Otras (orig. usuario): nunca vacía — muestra 0 cuando el valor es 0.
+  const display =
+    field === 'areaOtras'
+      ? editing
+        ? text
+        : String(value ?? 0)
+      : editing
+        ? text
+        : value > 0
+          ? String(value)
+          : '';
   return (
     <input
       type="text"
@@ -35,7 +46,9 @@ const CanalDimField = React.memo(function CanalDimField({
       aria-label={CANAL_FIELD_LABELS[field]}
       onFocus={() => {
         setEditing(true);
-        setText(display);
+        // Otras en 0 arranca VACÍA al enfocar (orig. usuario: no había que "quitar el 0").
+        const vaciar = field === 'areaOtras' && !(value > 0);
+        setText(vaciar ? '' : display);
       }}
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
@@ -117,7 +130,7 @@ export default function ChequeoCanalesLluvias() {
                   <th
                     scope="col"
                     className="col-h ll"
-                    colSpan={2}
+                    colSpan={3}
                     style={{ textAlign: 'center', fontSize: 10.5, padding: '3px 5px' }}
                   >
                     Área (m²)
@@ -212,7 +225,14 @@ export default function ChequeoCanalesLluvias() {
                     className="col-h ll"
                     style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
-                    Acumulada
+                    Otras
+                  </th>
+                  <th
+                    scope="col"
+                    className="col-h ll"
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
+                  >
+                    Total
                   </th>
                   <th
                     scope="col"
@@ -255,7 +275,7 @@ export default function ChequeoCanalesLluvias() {
                 {canalesLl.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={15}
+                      colSpan={16}
                       style={{
                         padding: '24px 0',
                         textAlign: 'center',
@@ -282,7 +302,22 @@ export default function ChequeoCanalesLluvias() {
                           </span>
                         </td>
                         <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                          {/* Otras (orig. usuario): editable, default 0 — nunca vacía. */}
+                          <CanalDimField
+                            id={c.id}
+                            field="areaOtras"
+                            value={c.areaOtras ?? 0}
+                            onChange={updCanalLL}
+                          />
+                        </td>
+                        <td className="c">
+                          <span
+                            style={{
+                              fontFamily: 'var(--mono)',
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                            }}
+                          >
                             {c.areaAcumulada ? Number(c.areaAcumulada).toFixed(2) : '—'}
                           </span>
                         </td>

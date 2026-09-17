@@ -447,7 +447,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     const headers = [
       'Ramal',
       'Área parcial (m²)',
-      'Área acum. (m²)',
+      'Otras (m²)',
+      'Área total (m²)',
       'Intensidad (mm/hr)',
       'Coef. escorrentía',
       'Caudal real (LPS)',
@@ -466,6 +467,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       return [
         c.sector || '—',
         c.areaParcial || '—',
+        c.areaOtras ?? 0,
         c.areaAcumulada || '—',
         c.intensidad || '—',
         c.coeficienteC || '—',

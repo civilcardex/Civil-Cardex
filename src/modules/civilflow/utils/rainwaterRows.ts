@@ -21,6 +21,9 @@ export interface BajanteLl {
   bajante?: string;
   id?: string;
   areaAcumulada?: number;
+  /** Área Otras (orig. usuario): editable, default 0 — Total = Parcial + Otras. */
+  areaOtras?: number;
+  areaParcial?: number;
   intensidad?: number;
   coeficienteC?: number;
 }
@@ -175,7 +178,8 @@ export function computeLlQMap(
       );
       const int = manual?.intensidad ?? 100;
       const coef = manual?.coeficienteC ?? 0.0278;
-      ownQ = (t.area_m2 * int * coef) / 100;
+      // Área TOTAL (orig. usuario) = área propia + Otras.
+      ownQ = ((t.area_m2 + (manual?.areaOtras ?? 0)) * int * coef) / 100;
     } else {
       ownQ = t.qLps || 0;
     }
@@ -193,20 +197,22 @@ export function computeLlQMap(
         const bajante = bajantesLl.find((b) => b.bajante === code || b.id === code);
         const trBaj = tramosLl.find((tb) => tb.code === code || tb.id === code);
 
-        // Área acumulada PROPIA del bajante primero (orig. usuario: el caudal real se calcula
-        // con la columna "Área acumulada"); el total dibujado del piso es solo el fallback.
-        const areaAcum = bajante?.areaAcumulada || areaAcumMap[String(trBaj?.piso)] || 0;
+        // Área TOTAL (orig. usuario) = Parcial + Otras: la parcial del dibujo (override manual
+        // del bajante primero, total del piso como fallback) más las Otras editables.
+        const areaTotal =
+          (bajante?.areaParcial || areaAcumMap[String(trBaj?.piso)] || 0) +
+          (bajante?.areaOtras ?? 0);
 
         if (bajante) {
           const Q = chequeoBajanteLluvia({
-            areaAcumulada: areaAcum,
+            areaAcumulada: areaTotal,
             intensidad: bajante.intensidad ?? 100,
             coeficienteC: bajante.coeficienteC ?? 0.0278,
           }).Q;
           total += Q;
         } else if (trBaj) {
           const Q = chequeoBajanteLluvia({
-            areaAcumulada: areaAcum,
+            areaAcumulada: areaTotal,
             intensidad: 100,
             coeficienteC: 0.0278,
           }).Q;

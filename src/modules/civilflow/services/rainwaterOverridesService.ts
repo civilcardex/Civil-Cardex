@@ -12,6 +12,8 @@ interface BajanteOverrideRow {
   id_cliente: string;
   bajante: string;
   area_parcial: number | null;
+  /** Área Otras (orig. usuario): editable, default 0. */
+  area_otras: number | null;
   area_acumulada: number | null;
   intensidad: number | null;
   coeficiente_c: number | null;
@@ -23,6 +25,8 @@ interface CanalOverrideRow {
   id_cliente: string;
   sector: string;
   area_parcial: number | null;
+  /** Área Otras (orig. usuario): editable, default 0. */
+  area_otras: number | null;
   area_acumulada: number | null;
   intensidad: number | null;
   coeficiente_c: number | null;
@@ -62,7 +66,8 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
         id: `BLL-${i + 1}`,
         bajante: r.bajante,
         areaParcial: r.area_parcial ?? 0,
-        areaAcumulada: r.area_acumulada ?? 0,
+        areaOtras: r.area_otras ?? 0,
+        areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
         intensidad: r.intensidad ?? 100,
         coeficienteC: r.coeficiente_c ?? 0.0278,
         R: r.R ?? '',
@@ -74,7 +79,8 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
       id: `CLL-${i + 1}`,
       sector: r.sector,
       areaParcial: r.area_parcial ?? 0,
-      areaAcumulada: r.area_acumulada ?? 0,
+      areaOtras: r.area_otras ?? 0,
+      areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
       intensidad: r.intensidad ?? 100,
       coeficienteC: r.coeficiente_c ?? 0.0278,
       manning: r.manning ?? 0.011,
@@ -111,27 +117,31 @@ export async function saveRainwaterOverrides(
       .map((b) => ({
         id_cliente: b.bajante.trim(),
         bajante: b.bajante.trim(),
-        area_parcial: b.areaParcial,
-        area_acumulada: b.areaAcumulada,
-        intensidad: b.intensidad,
-        coeficiente_c: b.coeficienteC,
-        R: b.R,
-        manning: b.manning,
-        diam_propuesto: b.diamPropuesto,
+        // Defaults defensivos: un campo undefined en el payload llega NULL al RPC y viola
+        // los NOT NULL de la tabla (orig. usuario: "null value in column R").
+        area_parcial: b.areaParcial ?? 0,
+        area_otras: b.areaOtras ?? 0,
+        area_acumulada: b.areaAcumulada ?? 0,
+        intensidad: b.intensidad ?? 100,
+        coeficiente_c: b.coeficienteC ?? 0.0278,
+        R: b.R ?? '',
+        manning: b.manning ?? 0,
+        diam_propuesto: b.diamPropuesto ?? 0,
       }));
     const canalRows = canales
       .filter((c) => c.sector.trim().length > 0)
       .map((c) => ({
         id_cliente: c.sector.trim(),
         sector: c.sector.trim(),
-        area_parcial: c.areaParcial,
-        area_acumulada: c.areaAcumulada,
-        intensidad: c.intensidad,
-        coeficiente_c: c.coeficienteC,
-        manning: c.manning,
-        pendiente: c.pendiente,
-        b: c.b,
-        h: c.h,
+        area_parcial: c.areaParcial ?? 0,
+        area_otras: c.areaOtras ?? 0,
+        area_acumulada: c.areaAcumulada ?? 0,
+        intensidad: c.intensidad ?? 100,
+        coeficiente_c: c.coeficienteC ?? 0.0278,
+        manning: c.manning ?? 0.011,
+        pendiente: c.pendiente ?? 0,
+        b: c.b ?? 0,
+        h: c.h ?? 0,
       }));
 
     const { error } = await supabase.rpc('save_rainwater_overrides', {

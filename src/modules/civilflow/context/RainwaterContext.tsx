@@ -24,6 +24,9 @@ export interface BajanteLL {
   id: string;
   bajante: string;
   areaParcial: number;
+  /** Área Otras (orig. usuario): editable desde la tabla, default 0. */
+  areaOtras: number;
+  /** Área TOTAL = areaParcial + areaOtras — alimenta el caudal real. */
   areaAcumulada: number;
   intensidad: number;
   coeficienteC: number;
@@ -35,6 +38,9 @@ export interface CanalLL {
   id: string;
   sector: string;
   areaParcial: number;
+  /** Área Otras (orig. usuario): editable desde la tabla, default 0. */
+  areaOtras: number;
+  /** Área TOTAL = areaParcial + areaOtras — alimenta el caudal real. */
   areaAcumulada: number;
   intensidad: number;
   coeficienteC: number;
@@ -132,6 +138,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         id: `CLL-${p.length + 1}`,
         sector: '',
         areaParcial: 0,
+        areaOtras: 0,
         areaAcumulada: 0,
         intensidad: 0,
         coeficienteC: 0,
@@ -196,11 +203,16 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       // columna "Área acumulada") — override manual primero; el total dibujado del piso es
       // solo el fallback cuando el canal no tiene valor propio.
       const areaAcum = manual?.areaAcumulada || areaAcumMap[String(d.piso)] || 0;
+      // Área TOTAL (orig. usuario) = Parcial + Otras — materializada en areaAcumulada, que es
+      // lo que consume chequeoCanalLluvia para el caudal real.
+      const areaOtras = manual?.areaOtras ?? 0;
+      const areaParcial = manual?.areaParcial || areaAcum;
       out.push({
         id: 'c_' + (d._key || d.id),
         sector,
-        areaParcial: manual?.areaParcial || areaAcum,
-        areaAcumulada: areaAcum,
+        areaParcial,
+        areaOtras,
+        areaAcumulada: areaParcial + areaOtras,
         intensidad: manual?.intensidad ?? 100,
         coeficienteC: manual?.coeficienteC ?? 0.0278,
         manning: manual?.manning ?? 0.011,
@@ -217,11 +229,14 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       // Mismo criterio que ramales-canal arriba: valor propio del canal primero, total del
       // piso solo como fallback.
       const areaAcum = manual?.areaAcumulada || areaAcumMap[glyph.piso] || 0;
+      const areaOtras = manual?.areaOtras ?? 0;
+      const areaParcial = manual?.areaParcial || areaAcum;
       out.push({
         id: 'cg_' + glyph.id,
         sector,
-        areaParcial: manual?.areaParcial || areaAcum,
-        areaAcumulada: areaAcum,
+        areaParcial,
+        areaOtras,
+        areaAcumulada: areaParcial + areaOtras,
         intensidad: manual?.intensidad ?? 100,
         coeficienteC: manual?.coeficienteC ?? 0.0278,
         manning: manual?.manning ?? 0.009,
@@ -256,6 +271,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         id: `BLL-${p.length + 1}`,
         bajante: '',
         areaParcial: 0,
+        areaOtras: 0,
         areaAcumulada: 0,
         intensidad: 100,
         coeficienteC: 0.0278,
@@ -275,6 +291,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
             id: `BLL-${p.length + 1}`,
             bajante: id,
             areaParcial: 0,
+            areaOtras: field === 'areaOtras' ? (val as number) : 0,
             areaAcumulada: 0,
             intensidad: field === 'intensidad' ? (val as number) : 100,
             coeficienteC: 0.0278,
