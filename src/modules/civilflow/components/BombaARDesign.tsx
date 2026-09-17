@@ -10,16 +10,19 @@ import Tbl from './shared/Tbl';
 import Card from './shared/Card';
 import { APS_STORAGE_KEY } from '../constants/storage-keys';
 
-// CÁLCULOS POR BOMBA (orig. usuario): cada bomba tiene SUS inputs y SUS resultados; las
-// tablas son horizontales — filas = bombas, columnas = parámetros. Sin columnas
-// Símbolo/Equivalencia/Fuente. Persistencia: cf_bomba_datos_proyecto.bombas (jsonb).
+// Diseño VERTICAL (orig. usuario): filas = parámetros, columnas Parámetro/Símbolo/Valor/
+// Unidad/Equivalencia/Fuente (entrada) y Componente/Símbolo/Valor/Unidad/Equivalencia/
+// Observación (cálculo). Los datos son POR BOMBA: un filtro arriba-izquierda elige la bomba
+// (las reales del diseño vía equiposBombaDesdeTrazos) y todas las tablas muestran esa bomba.
+// Persistencia: cf_bomba_datos_proyecto.bombas (jsonb, mapa por código) + espejo plano de la
+// primera bomba para compat con informes.
 
 const Fmt2 = (v: string | number, u = '') => {
   if (v === '' || v === null || v === undefined)
-    return <span style={{ color: 'var(--txt3)', fontSize: 12 }}>—</span>;
+    return <span style={{ color: 'var(--txt3)', fontSize: 13 }}>—</span>;
   const val = typeof v === 'number' ? v.toFixed(2) : v;
   return (
-    <span style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>
+    <span style={{ fontFamily: 'var(--mono)', fontSize: 14 }}>
       {val}
       {u ? ` ${u}` : ''}
     </span>
@@ -27,8 +30,27 @@ const Fmt2 = (v: string | number, u = '') => {
 };
 
 // Mismos estilos que las tablas de Equipo de Presión (EPVerificationPage) — orig. usuario.
-const TH_R = { fontSize: 11, padding: '2px 4px' };
-const TD_R = { fontSize: 11, padding: '3px 4px' };
+const TH_R = { fontSize: 12.5, padding: '3px 4px' };
+const TD_R = { fontSize: 12.5, padding: '2px 4px' };
+// Compacto: la columna Parámetro/Componente sin el ancho grande por defecto de Tbl.
+const TDL_R = { minWidth: 0, fontSize: 13.5, fontWeight: 600 };
+// Equivalencia/Fuente: columna de notas — texto que sí puede partir en varias líneas.
+const NOTE_COL = { whiteSpace: 'normal' as const, minWidth: 130, fontSize: 12 };
+// Bordes EXTERIORES en las celdas extremas (orig. usuario: al ras del contenido — el borde
+// del elemento <table> quedaba separado de la grilla por el reparto de columnas).
+const EDGE_L = { borderLeft: '1px solid var(--line)' };
+const EDGE_R = { ...NOTE_COL, borderRight: '1px solid var(--line)' };
+const COLS_IN = ['Parámetro', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Fuente / norma'];
+const COLS_OUT = ['Componente', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Observación'];
+const COL_STYLES = [EDGE_L, undefined, undefined, undefined, NOTE_COL, EDGE_R];
+
+/** Valor equivalente REAL (orig. usuario): muestra `valor × factor + unidad` de la propia
+ *  celda — p.ej. Qd 12 lps → "190.20 GPM". Sin valor → "—". */
+const Eq = (raw: string | number | undefined, f: number, u: string) => {
+  const v = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').replace(',', '.'));
+  if (!v || !isFinite(v)) return '—';
+  return `${(v * f).toFixed(2)} ${u}`;
+};
 
 /** Inputs editables por bomba. */
 export interface BombaInputs {
@@ -80,8 +102,10 @@ function cHazenDe(tipoTuberia: string): number {
  *  versión plana anterior). */
 function calcsDe(inp: BombaInputs, uds: number) {
   const sal = dec(inp.sal);
+  const hz = dec(inp.hz);
   const li = dec(inp.lImp);
   const di = dec(inp.dImp);
+  const eta = dec(inp.etaB);
   const ch = cHazenDe(inp.tipoTuberia);
   const fs = dec(inp.fSrv) || 1.25;
   const tc = dec(inp.tCic);
@@ -107,11 +131,13 @@ function calcsDe(inp: BombaInputs, uds: number) {
       : 0;
   const Hac = +(Hf * 0.25).toFixed(2);
   const Hfri = +(Hf + Hac).toFixed(2);
-  const Hest = +(li + Hfri).toFixed(2);
+  // Altura estática = altura geométrica Hz (antes no entraba al cálculo); Hm = fricción + estática.
+  const Hest = +hz.toFixed(2);
   const Hm = +(Hfri + Hest).toFixed(2);
   const Vch = Vi >= 0.6 && Vi <= 3.5 ? 'O.K.' : 'REVISAR DIÁMETRO';
   const Ph = Qb > 0 ? +((Qb * 1000 * 9.81 * Hm) / 1000).toFixed(2) : 0;
-  const Peje = +(Ph / fs).toFixed(2);
+  // η bomba (orig. usuario): P eje = P hid / η. Sin η (vacía o 0) P eje ≈ P hid.
+  const Peje = eta > 0 ? +(Ph / (eta / 100)).toFixed(2) : Ph;
   const Pcom = +(Peje * fs).toFixed(2);
   const php = Pcom / 746;
   const Sel =
@@ -231,6 +257,12 @@ function BombaARDesign() {
     return { ...e, inp, c: calcsDe(inp, e.uds) };
   });
   const first = rowsView[0];
+
+  // FILTRO (orig. usuario): la bomba elegida en el desplegable; si se borró del diseño o
+  // aún no hay selección, queda la primera. Todas las páginas muestran ESTA bomba.
+  const [selBomba, setSelBomba] = useState('');
+  const selCode = equipos.some((e) => e.code === selBomba) ? selBomba : equipos[0]?.code || '';
+  const sel = rowsView.find((r) => r.code === selCode);
 
   // Legado plano del caché → primera bomba real (una sola vez). Ajuste en render-phase
   // (patrón oficial para estado derivado — un useEffect con setState disparaba cascadas).
@@ -353,18 +385,9 @@ function BombaARDesign() {
     });
   }, [bombInputs, viewKey, first]);
 
-  // Celda editable compacta (inputs siempre habilitados — sin modo EDITAR por página).
-  const CellInp = ({
-    code,
-    k,
-    aria,
-    w = 84,
-  }: {
-    code: string;
-    k: keyof BombaInputs;
-    aria: string;
-    w?: number;
-  }) => (
+  // Funciones de render (NO componentes: react-hooks/static-components) — celda editable
+  // compacta, inputs siempre habilitados (sin modo EDITAR por página).
+  const cellInp = (code: string, k: keyof BombaInputs, aria: string, w = 110) => (
     <input
       value={inpOf(code)[k]}
       aria-label={aria}
@@ -372,7 +395,7 @@ function BombaARDesign() {
       style={{ ...SI, width: w }}
     />
   );
-  const CellSel = ({ code, aria, w = 150 }: { code: string; aria: string; w?: number }) => (
+  const cellSel = (code: string, aria: string, w = 160) => (
     <select
       value={inpOf(code).tipoTuberia}
       aria-label={aria}
@@ -386,229 +409,420 @@ function BombaARDesign() {
   );
 
   const sinBombas = rowsView.length === 0;
-  const bombCell = (code: string) => (
-    <span style={{ fontWeight: 700, fontFamily: 'var(--mono)' }}>{code}</span>
+  const c = sel?.c;
+
+  // Desplegable de selección de bomba (página 1, arriba a la izquierda) — solo con bombas.
+  const filtroBombas = !sinBombas && (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 12, fontWeight: 700 }}>Bomba seleccionada:</span>
+      <select
+        value={selCode}
+        onChange={(e) => setSelBomba(e.target.value)}
+        aria-label="Bomba seleccionada"
+        style={{ ...SI, width: 170 }}
+      >
+        {equipos.map((e) => (
+          <option key={e.code} value={e.code}>
+            {e.code}
+          </option>
+        ))}
+      </select>
+    </div>
   );
-  // ---- Página 1: Datos de entrada (transpuesta: filas = bombas) ----
+  const sinBombasNote = sinBombas && (
+    <div style={{ fontSize: 12, color: 'var(--txt3)' }}>
+      Sin bombas creadas. Crea una bomba desde el menú contextual de una caja en el visor.
+    </div>
+  );
+
+  // ---- Página 1: Datos de entrada (vertical: filas = parámetros de LA bomba elegida) ----
   const page1 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-      <Card
-        iconImg="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
-        iconImgStyle={{ width: 22, height: 22 }}
-        title="Datos de entrada"
-      >
-        <Tbl
-          thStyle={TH_R}
-          tdStyle={TD_R}
-          cols={[
-            'Bomba',
-            'Nivel',
-            'UD sótano',
-            'Salidas simult.',
-            'K',
-            'Qd (lps)',
-            'Qb (lps)',
-            'Alt. geom. (m)',
-            'Long. imp. (m)',
-            'Diám. imp. (pulg)',
-            'Tipo de tubería',
-            'C HW',
-            'P desc. (m.c.a.)',
-            'η',
-            'F. servicio',
-          ]}
-          rows={rowsView.map((r) => [
-            bombCell(r.code),
-            r.nivel,
-            String(r.uds),
-            <CellInp code={r.code} k="sal" aria="Salidas simultáneas" w={70} />,
-            Fmt2(r.c.K),
-            Fmt2(r.c.Qd),
-            Fmt2(r.c.Qb),
-            <CellInp code={r.code} k="hz" aria="Altura geométrica" w={70} />,
-            <CellInp code={r.code} k="lImp" aria="Longitud impulsión" w={70} />,
-            <CellInp code={r.code} k="dImp" aria="Diámetro impulsión" w={70} />,
-            <CellSel code={r.code} aria="Tipo de tubería" />,
-            String(cHazenDe(r.inp.tipoTuberia)),
-            <CellInp code={r.code} k="pDesc" aria="Presión mínima descarga" w={70} />,
-            <CellInp code={r.code} k="etaB" aria="Eficiencia bomba" w={60} />,
-            <CellInp code={r.code} k="fSrv" aria="Factor de servicio" w={60} />,
-          ])}
-        />
-      </Card>
-      {sinBombas && (
-        <div style={{ fontSize: 12, color: 'var(--txt3)' }}>
-          Sin bombas creadas. Crea una bomba desde el menú contextual de una caja en el visor.
-        </div>
+      {filtroBombas}
+      {!sinBombas && sel && c && (
+        <Card
+          style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+          iconImg="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
+          iconImgStyle={{ width: 22, height: 22 }}
+          title={`Datos de entrada — ${selCode}`}
+        >
+          <Tbl
+            tableStyle={{ width: '100%' }}
+            tdlStyle={TDL_R}
+            thStyle={TH_R}
+            tdStyle={TD_R}
+            cols={COLS_IN}
+            colStyles={COL_STYLES}
+            rows={[
+              [
+                'Número de salidas simultáneas',
+                'Sal sim',
+                cellInp(selCode, 'sal', 'Salidas simultáneas'),
+                '—',
+                '—',
+                'Método Hunter (NTC 1500)',
+              ],
+              [
+                'Unidades de descarga acumuladas en sótano',
+                'UD tot',
+                Fmt2(sel.uds),
+                'UD',
+                '—',
+                'Aparatos conectados a la bomba (trazos del diseño)',
+              ],
+              ['Coeficiente de simultaneidad', 'K', Fmt2(c.K), '—', '—', 'K = 1/√(n − 1)'],
+              [
+                'Caudal de diseño',
+                'Q dis',
+                Fmt2(c.Qd),
+                'lps',
+                Eq(c.Qd, 15.8503, 'GPM'),
+                'Q = UD × K (Hunter)',
+              ],
+              [
+                'Caudal de bombeo (reserva 25%)',
+                'Q b',
+                Fmt2(c.Qb),
+                'lps',
+                Eq(c.Qb, 15.8503, 'GPM'),
+                'Qb = 1.25 × Qd',
+              ],
+              [
+                'Altura geométrica',
+                'Hz',
+                cellInp(selCode, 'hz', 'Altura geométrica'),
+                'm',
+                Eq(sel.inp.hz, 3.28084, 'ft'),
+                'Sótano → punto de descarga',
+              ],
+              [
+                'Longitud total tubería de impulsión',
+                'L imp',
+                cellInp(selCode, 'lImp', 'Longitud impulsión'),
+                'm',
+                Eq(sel.inp.lImp, 3.28084, 'ft'),
+                '—',
+              ],
+              [
+                'Diámetro tubería de impulsión',
+                'D imp',
+                cellInp(selCode, 'dImp', 'Diámetro impulsión'),
+                'pulg',
+                Eq(sel.inp.dImp, 25.4, 'mm'),
+                'Mínimo 2" (NTC 1500)',
+              ],
+              ['Tipo de tubería', '—', cellSel(selCode, 'Tipo de tubería'), '—', '—', 'Catálogo'],
+              [
+                'Coeficiente Hazen-Williams',
+                'C HW',
+                Fmt2(cHazenDe(sel.inp.tipoTuberia)),
+                '—',
+                '—',
+                'Catálogo Maestro — no editable',
+              ],
+              [
+                'Presión mínima en descarga',
+                'P desc',
+                cellInp(selCode, 'pDesc', 'Presión mínima descarga'),
+                'm.c.a.',
+                Eq(sel.inp.pDesc, 1.42233, 'psi'),
+                '—',
+              ],
+              [
+                'Eficiencia de bomba',
+                'eta b',
+                cellInp(selCode, 'etaB', 'Eficiencia bomba', 90),
+                '%',
+                '—',
+                'Sumergible trituradora típica: 60–70%',
+              ],
+              [
+                'Factor de servicio del motor',
+                'f srv',
+                cellInp(selCode, 'fSrv', 'Factor de servicio', 90),
+                '—',
+                '—',
+                'NEMA MG-1: reserva 25% sobre P calculada',
+              ],
+            ]}
+          />
+        </Card>
       )}
+      {sinBombasNote}
     </div>
   );
 
-  // ---- Página 2: Pérdidas de carga (transpuesta) ----
+  // ---- Página 2: Pérdidas de carga (vertical, bomba elegida) ----
   const page2 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-      <Card
-        iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
-        iconImgStyle={{ width: 22, height: 22 }}
-        title="Cálculo de pérdidas de carga"
-      >
-        <Tbl
-          thStyle={TH_R}
-          tdStyle={TD_R}
-          cols={[
-            'Bomba',
-            'Nivel',
-            'V imp (m/s)',
-            'Hf (m.c.a.)',
-            'H ac (m.c.a.)',
-            'H fri (m.c.a.)',
-            'H est (m.c.a.)',
-            'Hm (m.c.a.)',
-            'Chequeo V',
-          ]}
-          rows={rowsView.map((r) => [
-            bombCell(r.code),
-            r.nivel,
-            Fmt2(r.c.Vi),
-            Fmt2(r.c.Hf),
-            Fmt2(r.c.Hac),
-            Fmt2(r.c.Hfri),
-            Fmt2(r.c.Hest),
-            Fmt2(r.c.Hm),
-            <span
-              style={{
-                color: r.c.Vch === 'O.K.' ? '#22c55e' : '#ef5350',
-                fontWeight: 700,
-                fontFamily: 'var(--mono)',
-                fontSize: 13,
-              }}
-            >
-              {r.c.Vch}
-            </span>,
-          ])}
-        />
-      </Card>
-      {sinBombas && <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Sin bombas creadas.</div>}
+      {!sinBombas && c && (
+        <Card
+          style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+          iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
+          iconImgStyle={{ width: 22, height: 22 }}
+          title={`Cálculo de pérdidas de carga — ${selCode}`}
+        >
+          <Tbl
+            tableStyle={{ width: '100%' }}
+            tdlStyle={TDL_R}
+            thStyle={TH_R}
+            tdStyle={TD_R}
+            cols={COLS_OUT}
+            colStyles={COL_STYLES}
+            rows={[
+              [
+                'Velocidad en tubería de impulsión',
+                'V imp',
+                Fmt2(c.Vi),
+                'm/s',
+                '—',
+                '0.6 < V < 3.5 m/s (residuales)',
+              ],
+              [
+                'Pérdida por fricción',
+                'Hf',
+                Fmt2(c.Hf),
+                'm.c.a.',
+                '—',
+                'Hazen-Williams: 10.67·L·Q^1.852 / (C^1.852·D^4.87)',
+              ],
+              ['Pérdida en accesorios', 'H ac', Fmt2(c.Hac), 'm.c.a.', '—', '25% de Hf'],
+              ['Pérdida total por fricción', 'H fri', Fmt2(c.Hfri), 'm.c.a.', '—', 'Hf + H ac'],
+              [
+                'Altura estática total',
+                'H est',
+                Fmt2(c.Hest),
+                'm.c.a.',
+                Eq(c.Hest, 1.42233, 'psi'),
+                'Altura geométrica Hz',
+              ],
+              [
+                'Altura manométrica total',
+                'H m',
+                Fmt2(c.Hm),
+                'm.c.a.',
+                Eq(c.Hm, 1.42233, 'psi'),
+                'H fri + H est',
+              ],
+              [
+                'Chequeo velocidad',
+                'V chk',
+                <span
+                  style={{
+                    color: c.Vch === 'O.K.' ? '#22c55e' : '#ef5350',
+                    fontWeight: 700,
+                    fontFamily: 'var(--mono)',
+                    fontSize: 13,
+                  }}
+                >
+                  {c.Vch}
+                </span>,
+                '—',
+                '—',
+                'O.K. si 0.6 ≤ V ≤ 3.5 m/s',
+              ],
+            ]}
+          />
+        </Card>
+      )}
+      {sinBombasNote}
     </div>
   );
 
-  // ---- Página 3: Bomba sumergible (transpuesta) ----
+  // ---- Página 3: Bomba sumergible (vertical, bomba elegida) ----
   const page3 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-      <Card
-        iconImg="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
-        iconImgStyle={{ width: 22, height: 22 }}
-        title="Parámetros de diseño bomba sumergible"
-      >
-        <Tbl
-          thStyle={TH_R}
-          tdStyle={TD_R}
-          cols={['Bomba', 'Nivel', 'NPSH disp (m)']}
-          rows={rowsView.map((r) => [
-            bombCell(r.code),
-            r.nivel,
-            <CellInp code={r.code} k="npsh" aria="NPSH disponible" w={70} />,
-          ])}
-        />
-      </Card>
-      <Card
-        iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
-        iconImgStyle={{ width: 22, height: 22 }}
-        title="Especificación — Bomba sumergible trituradora"
-      >
-        <Tbl
-          thStyle={TH_R}
-          tdStyle={TD_R}
-          cols={[
-            'Bomba',
-            'Nivel',
-            'Qb (lps)',
-            'Hm (m.c.a.)',
-            'P hid (W)',
-            'P eje (W)',
-            'P com (W)',
-            'Potencia (HP)',
-            'Selección',
-          ]}
-          rows={rowsView.map((r) => [
-            bombCell(r.code),
-            r.nivel,
-            Fmt2(r.c.Qb),
-            Fmt2(r.c.Hm),
-            Fmt2(r.c.Ph),
-            Fmt2(r.c.Peje),
-            Fmt2(r.c.Pcom),
-            Fmt2(r.c.php, 'HP'),
-            <span style={{ fontWeight: 700, fontFamily: 'var(--mono)' }}>{r.c.Sel}</span>,
-          ])}
-        />
-      </Card>
-      {sinBombas && <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Sin bombas creadas.</div>}
+      {!sinBombas && sel && c && (
+        <>
+          <Card
+            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
+            iconImgStyle={{ width: 22, height: 22 }}
+            title={`Parámetros de diseño bomba sumergible — ${selCode}`}
+          >
+            <Tbl
+              tableStyle={{ width: '100%' }}
+              tdlStyle={TDL_R}
+              thStyle={TH_R}
+              tdStyle={TD_R}
+              cols={COLS_IN}
+              colStyles={COL_STYLES}
+              rows={[
+                [
+                  'NPSH disponible',
+                  'NPSH',
+                  cellInp(selCode, 'npsh', 'NPSH disponible'),
+                  'm',
+                  Eq(sel.inp.npsh, 3.28084, 'ft'),
+                  'Bomba sumergible: no requiere cebado',
+                ],
+                ['Tipo de bomba', '—', 'Sumergible trituradora', '—', '—', 'NTC 1500'],
+              ]}
+            />
+          </Card>
+          <Card
+            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
+            iconImgStyle={{ width: 22, height: 22 }}
+            title={`Especificación — Bomba sumergible trituradora — ${selCode}`}
+          >
+            <Tbl
+              tableStyle={{ width: '100%' }}
+              tdlStyle={TDL_R}
+              thStyle={TH_R}
+              tdStyle={TD_R}
+              cols={COLS_OUT}
+              colStyles={COL_STYLES}
+              rows={[
+                ['Caudal nominal', 'Q b', Fmt2(c.Qb), 'lps', Eq(c.Qb, 15.8503, 'GPM'), '—'],
+                ['Altura manométrica', 'H m', Fmt2(c.Hm), 'm.c.a.', Eq(c.Hm, 1.42233, 'psi'), '—'],
+                [
+                  'Potencia hidráulica',
+                  'P hid',
+                  Fmt2(c.Ph),
+                  'W',
+                  Eq(c.Ph, 0.00134102, 'HP'),
+                  'P = ρ·g·Q·H',
+                ],
+                ['Potencia de eje', 'P eje', Fmt2(c.Peje), 'W', '—', 'P eje = P hid / η bomba'],
+                ['Potencia comercial', 'P com', Fmt2(c.Pcom), 'W', '—', 'P eje × f servicio'],
+                ['Potencia motor', 'P', Fmt2(c.php, 'HP'), 'HP', '—', 'P com / 746'],
+                [
+                  'Selección comercial',
+                  '—',
+                  <span style={{ fontWeight: 700, fontFamily: 'var(--mono)' }}>{c.Sel}</span>,
+                  '—',
+                  '—',
+                  'HP comercial siguiente',
+                ],
+              ]}
+            />
+          </Card>
+        </>
+      )}
+      {sinBombasNote}
     </div>
   );
 
+  // ---- Página 4: Cámara de bombeo (vertical, bomba elegida) ----
   const page4 = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
-      <Card
-        iconImg="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
-        iconImgStyle={{ width: 22, height: 22 }}
-        title="Parámetros de diseño cámara de bombeo"
-      >
-        <Tbl
-          thStyle={TH_R}
-          tdStyle={TD_R}
-          cols={[
-            'Bomba',
-            'Nivel',
-            'T. ciclo (min)',
-            'Tirante min (m)',
-            'Tirante max (m)',
-            'Ancho (m)',
-            'Largo (m)',
-          ]}
-          rows={rowsView.map((r) => [
-            bombCell(r.code),
-            r.nivel,
-            <CellInp code={r.code} k="tCic" aria="Tiempo ciclo" w={70} />,
-            <CellInp code={r.code} k="hMin" aria="Tirante mínimo" w={70} />,
-            <CellInp code={r.code} k="hMax" aria="Tirante máximo" w={70} />,
-            <CellInp code={r.code} k="bCam" aria="Ancho cámara" w={70} />,
-            <CellInp code={r.code} k="lCam" aria="Largo cámara" w={70} />,
-          ])}
-        />
-      </Card>
-      <Card
-        iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
-        iconImgStyle={{ width: 22, height: 22 }}
-        title="Especificación — Cámara de bombeo"
-      >
-        <Tbl
-          thStyle={TH_R}
-          tdStyle={TD_R}
-          cols={['Bomba', 'Nivel', 'V útil (lts)', 'V geom (lts)', 'Chequeo']}
-          rows={rowsView.map((r) => [
-            bombCell(r.code),
-            r.nivel,
-            Fmt2(r.c.Vcam),
-            Fmt2(r.c.Vgeo),
-            <span
-              style={{
-                color: r.c.Vchk === 'O.K.' ? '#22c55e' : '#ef5350',
-                fontWeight: 700,
-                fontFamily: 'var(--mono)',
-                fontSize: 13,
-              }}
-            >
-              {r.c.Vchk}
-            </span>,
-          ])}
-        />
-        <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '6px 8px' }}>
-          Material: concreto impermeabilizado o polietileno PEAD. Accesorios obligatorios: rejilla
-          aguas arriba + ventilación Ø2" + alarma de nivel alto.
-        </div>
-      </Card>
-      {sinBombas && <div style={{ fontSize: 12, color: 'var(--txt3)' }}>Sin bombas creadas.</div>}
+      {!sinBombas && c && (
+        <>
+          <Card
+            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
+            iconImgStyle={{ width: 22, height: 22 }}
+            title={`Parámetros de diseño cámara de bombeo — ${selCode}`}
+          >
+            <Tbl
+              tableStyle={{ width: '100%' }}
+              tdlStyle={TDL_R}
+              thStyle={TH_R}
+              tdStyle={TD_R}
+              cols={COLS_IN}
+              colStyles={COL_STYLES}
+              rows={[
+                [
+                  'Tiempo de ciclo',
+                  't cic',
+                  cellInp(selCode, 'tCic', 'Tiempo ciclo'),
+                  'min',
+                  '—',
+                  'Mínimo 5 min entre arranques',
+                ],
+                [
+                  'Tirante mínimo',
+                  'h min',
+                  cellInp(selCode, 'hMin', 'Tirante mínimo'),
+                  'm',
+                  Eq(sel.inp.hMin, 3.28084, 'ft'),
+                  'Evita cavitación',
+                ],
+                [
+                  'Tirante máximo',
+                  'h max',
+                  cellInp(selCode, 'hMax', 'Tirante máximo'),
+                  'm',
+                  Eq(sel.inp.hMax, 3.28084, 'ft'),
+                  'Nivel de activación del flotador',
+                ],
+                [
+                  'Ancho de cámara',
+                  'b cam',
+                  cellInp(selCode, 'bCam', 'Ancho cámara'),
+                  'm',
+                  Eq(sel.inp.bCam, 3.28084, 'ft'),
+                  '—',
+                ],
+                [
+                  'Largo de cámara',
+                  'l cam',
+                  cellInp(selCode, 'lCam', 'Largo cámara'),
+                  'm',
+                  Eq(sel.inp.lCam, 3.28084, 'ft'),
+                  '—',
+                ],
+              ]}
+            />
+          </Card>
+          <Card
+            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
+            iconImgStyle={{ width: 22, height: 22 }}
+            title={`Especificación — Cámara de bombeo — ${selCode}`}
+          >
+            <Tbl
+              tableStyle={{ width: '100%' }}
+              tdlStyle={TDL_R}
+              thStyle={TH_R}
+              tdStyle={TD_R}
+              cols={COLS_OUT}
+              colStyles={COL_STYLES}
+              rows={[
+                [
+                  'Volumen útil',
+                  'V cam',
+                  Fmt2(c.Vcam),
+                  'lts',
+                  Eq(c.Vcam, 0.001, 'm³'),
+                  'V = Qb(lps) × t(min) × 60',
+                ],
+                [
+                  'Volumen geométrico',
+                  'V geo',
+                  Fmt2(c.Vgeo),
+                  'lts',
+                  Eq(c.Vgeo, 0.001, 'm³'),
+                  'b × l × (h max − h min)',
+                ],
+                [
+                  'Chequeo',
+                  '—',
+                  <span
+                    style={{
+                      color: c.Vchk === 'O.K.' ? '#22c55e' : '#ef5350',
+                      fontWeight: 700,
+                      fontFamily: 'var(--mono)',
+                      fontSize: 13,
+                    }}
+                  >
+                    {c.Vchk}
+                  </span>,
+                  '—',
+                  '—',
+                  'V geom ≥ V útil',
+                ],
+              ]}
+            />
+            <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '6px 8px' }}>
+              Material: concreto impermeabilizado o polietileno PEAD. Accesorios obligatorios:
+              rejilla aguas arriba + ventilación Ø2" + alarma de nivel alto.
+            </div>
+          </Card>
+        </>
+      )}
+      {sinBombasNote}
     </div>
   );
 
