@@ -192,7 +192,10 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       const sector = d.label || d.id;
       const manual = manualMap.get(sector);
       if (manual) usedManual.add(manual.sector || manual.id);
-      const areaAcum = areaAcumMap[String(d.piso)] || manual?.areaAcumulada || 0;
+      // Área acumulada del PROPIO canal (orig. usuario: el Caudal real se calcula con la
+      // columna "Área acumulada") — override manual primero; el total dibujado del piso es
+      // solo el fallback cuando el canal no tiene valor propio.
+      const areaAcum = manual?.areaAcumulada || areaAcumMap[String(d.piso)] || 0;
       out.push({
         id: 'c_' + (d._key || d.id),
         sector,
@@ -211,7 +214,9 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       const sector = glyph.code || glyph.id;
       const manual = manualMap.get(sector);
       if (manual) usedManual.add(manual.sector || manual.id);
-      const areaAcum = areaAcumMap[glyph.piso] || manual?.areaAcumulada || 0;
+      // Mismo criterio que ramales-canal arriba: valor propio del canal primero, total del
+      // piso solo como fallback.
+      const areaAcum = manual?.areaAcumulada || areaAcumMap[glyph.piso] || 0;
       out.push({
         id: 'cg_' + glyph.id,
         sector,

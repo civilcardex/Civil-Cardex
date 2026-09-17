@@ -48,7 +48,11 @@ export function buildLlBajanteAssociations(
     }
 
     const ramales = (data.ramales || []).filter((r) => r.net === 'll');
-    const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === 'll');
+    // Canales fuera: no son bajantes (glifo recolector) y un recibeDeIds legacy del canal no
+    // debe contar como asociación de descarga.
+    const bajantes = (data.bajantes || []).filter(
+      (b): b is BajanteRaw => b.net === 'll' && b.tipo !== 'canal',
+    );
 
     for (const r of ramales) {
       if (!r.pts || r.pts.length < 2) continue;
@@ -189,7 +193,9 @@ export function computeLlQMap(
         const bajante = bajantesLl.find((b) => b.bajante === code || b.id === code);
         const trBaj = tramosLl.find((tb) => tb.code === code || tb.id === code);
 
-        const areaAcum = areaAcumMap[String(trBaj?.piso)] || bajante?.areaAcumulada || 0;
+        // Área acumulada PROPIA del bajante primero (orig. usuario: el caudal real se calcula
+        // con la columna "Área acumulada"); el total dibujado del piso es solo el fallback.
+        const areaAcum = bajante?.areaAcumulada || areaAcumMap[String(trBaj?.piso)] || 0;
 
         if (bajante) {
           const Q = chequeoBajanteLluvia({

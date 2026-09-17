@@ -111,7 +111,9 @@ export default function ChequeoBajantesLluvias() {
       if (manual) usedManual.add(manual.bajante || manual.id);
       const areaDib = areaDibujoMap[code] || areaDibujoMap[d.id] || 0;
       const areaParcial = areaDib || d.area_m2 || manual?.areaParcial || 0;
-      const areaAcum = areaAcumMap[String(d.piso)] || manual?.areaAcumulada || 0;
+      // Área acumulada PROPIA del bajante primero (orig. usuario: el caudal real se calcula con
+      // la columna "Área acumulada"); el total del piso es solo el fallback.
+      const areaAcum = manual?.areaAcumulada || areaAcumMap[String(d.piso)] || 0;
       const rVal = d.bajR != null ? (Math.abs(d.bajR - 0.25) < 0.001 ? '1/4' : '7/24') : '7/24';
       out.push({
         key: 'd_' + d.id + '_' + d.piso,
@@ -132,7 +134,7 @@ export default function ChequeoBajantesLluvias() {
       const bajDib = drawingBajantes.find((d) => d.code === m.bajante || d.id === m.bajante);
       const areaDib = areaDibujoMap[m.bajante] || 0;
       const areaParcial = areaDib || bajDib?.area_m2 || m.areaParcial || 0;
-      const areaAcum = areaAcumMap[String(bajDib?.piso)] || m.areaAcumulada || 0;
+      const areaAcum = m.areaAcumulada || areaAcumMap[String(bajDib?.piso)] || 0;
       out.push({
         key: 'm_' + m.id,
         bajante: m.bajante || m.id,
