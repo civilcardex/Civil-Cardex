@@ -859,7 +859,9 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
     // la dirección (BajanteDirectionSelector de bajanteMenu.tsx), ya que el codo de
     // un montante vive en un campo de glifo visual ya existente — las bajantes de LL no tienen ese
     // escrito en absoluto, así que no hay nada que sincronizar; se calcula aquí en su lugar.
-    if (r.net === 'll') {
+    if (r.net === 'll' && !r.esCanalId) {
+      // Ramal de canal EXCLUIDO (orig. usuario): su codo 90° baja vive en accesorioInicio
+      // (glifo en la salida del canal) — la inferencia por recibeDeIds lo contaría DOBLE.
       for (const baj of engine.bajantes) {
         if (baj.net !== 'll' || baj.tipo !== 'bajante') continue;
         if (!baj.recibeDeIds?.includes(r.id)) continue;
