@@ -7,7 +7,7 @@ import {
   rotateLocalPoint,
 } from './textAnnotationGeometry';
 import { bajanteHitDistance, bajanteAsociadoACanal } from './canalAssociation';
-import { pointInLabelBox, pointOnAnyBodySegment } from './HitTester';
+import { pointInLabelBox, pointOnAnyBodySegment, pointToSegmentDist } from './HitTester';
 import { getSelected, selectAt } from './PlanoEngineSelection';
 import { guideBodyHit } from './guideLines';
 import {
@@ -267,6 +267,22 @@ export function handleSelectDown(
     if (t._box) {
       const b = t._box;
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+        // Ctrl+clic sobre un texto: toggle en la multiselección (antes single-select temprano
+        // que nunca dejaba entrar textos al conjunto con el modificador).
+        if (isMultiSelectModifier) {
+          if (engine.selId && !engine.multiSel.includes(engine.selId)) {
+            engine.multiSel.push(engine.selId);
+          }
+          engine.selId = null;
+          if (engine.multiSel.includes(t.id)) {
+            engine.multiSel = engine.multiSel.filter((m) => m !== t.id);
+          } else {
+            engine.multiSel.push(t.id);
+          }
+          engine._emitSelect(null);
+          engine.render();
+          return;
+        }
         engine.selId = t.id;
         const tp = engine.toPlane(x, y);
         engine.txtDrag = { id: t.id, startX: tp.x, startY: tp.y, origX: t.x, origY: t.y };
@@ -321,7 +337,26 @@ export function handleSelectDown(
             }
           }
         }
-        if (bajAtPos) break;
+        // Ramal cerca del clic (orig. usuario): los ramales que cruzan o pasan por dentro de
+        // un área siguen seleccionables — el área cede igual que cede ante un bajante
+        // (vértice ≤12px, cuerpo ≤8px, mismos umbrales que el hit de ramal).
+        let ramalAtPos = false;
+        if (!bajAtPos) {
+          for (const r of engine.ramales) {
+            if (!r.pts || r.pts.length < 2) continue;
+            for (let i = 0; i < r.pts.length && !ramalAtPos; i++) {
+              const c = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+              if (Math.hypot(x - c.x, y - c.y) < 12) ramalAtPos = true;
+            }
+            for (let i = 0; i < r.pts.length - 1 && !ramalAtPos; i++) {
+              const p1 = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+              const p2 = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
+              if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 8) ramalAtPos = true;
+            }
+            if (ramalAtPos) break;
+          }
+        }
+        if (bajAtPos || ramalAtPos) break;
         if (toggleMultiArea(a.id)) return;
         // PUNTO (orig. usuario): presionar dentro de un área NO seleccionada NO la agarra —
         // el arrastre debe poder convertirse en RECUADRO de multiselección. El click simple

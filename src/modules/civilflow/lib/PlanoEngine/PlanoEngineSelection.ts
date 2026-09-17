@@ -334,6 +334,24 @@ export function selectAt(
     }
   }
   if (foundArea) {
+    // Ramal cerca del clic manda sobre el área (orig. usuario): el chequeo de cuerpo de
+    // ramal de arriba usa una tolerancia angosta (mm2cvs(3)) y el área gana por TODO su
+    // polígono — un clic "cerca del trazo" dentro del área seleccionaba el área y el ramal
+    // que la cruza quedaba inseleccionable. El ramal MÁS CERCANO a ≤15px se lleva el clic.
+    let ramalCerca: PlanoRamal | null = null;
+    let bestD = 15;
+    for (const r of engine.ramales) {
+      if (!r.pts || r.pts.length < 2 || engine._hiddenNets.has(r.net)) continue;
+      const d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), bestD);
+      if (d < bestD) {
+        bestD = d;
+        ramalCerca = r as PlanoRamal;
+      }
+    }
+    if (ramalCerca) {
+      if (!checkAndSwitchNet(ramalCerca)) return;
+      return applySelection(ramalCerca.id, ramalCerca);
+    }
     if (!checkAndSwitchNet(foundArea)) return;
     return applySelection(foundArea.id, foundArea);
   }

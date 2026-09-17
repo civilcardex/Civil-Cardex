@@ -506,8 +506,30 @@ export function _tryMultiSelDrag(
         }
       }
     }
+    const mdm = engine.dims?.find((d) => d.id === id);
+    if (!hit && mdm) {
+      // COTA del grupo: tocar el segmento (10px) o el punto de etiqueta arrastrada (12px).
+      const p1 = engine.toCvs(mdm.x1, mdm.y1);
+      const p2 = engine.toCvs(mdm.x2, mdm.y2);
+      if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 10) {
+        hit = true;
+      } else {
+        const lp =
+          mdm.lblX != null && mdm.lblY != null ? engine.toCvs(mdm.lblX, mdm.lblY) : mdm._labelPos;
+        if (lp && Math.hypot(x - lp.x, y - lp.y) < 12) hit = true;
+      }
+    }
     if (hit) {
-      if (!isMultiSelectModifier) {
+      if (isMultiSelectModifier) {
+        // Ctrl+clic sobre un miembro del conjunto: lo QUITA (toggle) — mismo comportamiento
+        // que toggleMultiArea; antes era un clic muerto (no arrastraba ni deseleccionaba).
+        engine.multiSel = engine.multiSel.filter((m) => m !== id);
+        engine.selId = null;
+        engine._emitSelect(null);
+        engine.render();
+        return true;
+      }
+      {
         const tp = engine.toPlane(x, y);
         const origData: MultiDragOrigData = {};
         for (const mid of engine.multiSel) {
@@ -555,6 +577,20 @@ export function _tryMultiSelDrag(
               origPts: mar.pts.map((pt) => [...pt]),
               origLabelX: mar.labelX,
               origLabelY: mar.labelY,
+            };
+            continue;
+          }
+          const mdm = engine.dims.find((d) => d.id === mid);
+          if (mdm) {
+            // COTA del grupo: extremos como "pts" (2 puntos) + etiqueta arrastrada si existe.
+            origData[mid] = {
+              type: 'dim',
+              origPts: [
+                [mdm.x1, mdm.y1],
+                [mdm.x2, mdm.y2],
+              ],
+              origLabelX: mdm.lblX,
+              origLabelY: mdm.lblY,
             };
           }
         }

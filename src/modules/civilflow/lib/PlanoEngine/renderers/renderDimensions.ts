@@ -2,20 +2,35 @@ import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.dims.forEach((d) => {
+    // Highlight de selección (individual o multiselección): mismo lenguaje amarillo que
+    // ramales/bajantes/textos — antes la cota no mostraba NINGÚN estado de selección.
+    const sel = d.id === engine.selId || (engine.multiSel || []).includes(d.id);
     const c1 = engine.toCvs(d.x1, d.y1);
     const c2 = engine.toCvs(d.x2, d.y2);
     ctx.save();
     // Las líneas de cota NO deben competir con tuberías/anotaciones reales: se dibujan con
     // opacidad reducida y trazo más fino que las líneas de red normales (1.5px → 1px). La
     // etiqueta de texto queda en negro pleno debajo para que la medida siga siendo legible;
-    // solo se atenúan la línea y las marcas.
-    ctx.globalAlpha = 0.55;
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
+    // solo se atenúan la línea y las marcas. (Seleccionada: opacidad plena + color acento.)
+    ctx.globalAlpha = sel ? 1 : 0.55;
+    ctx.strokeStyle = sel ? '#FFEB3B' : '#000000';
+    ctx.lineWidth = (sel ? 2 : 1) * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.moveTo(c1.x, c1.y);
     ctx.lineTo(c2.x, c2.y);
     ctx.stroke();
+    if (sel) {
+      // Manijas en los extremos (círculos rellenos, mismos que el preview de dibujo).
+      [c1, c2].forEach((pt) => {
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 4 * engine.zoom, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFEB3B';
+        ctx.fill();
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
+        ctx.stroke();
+      });
+    }
 
     const dx = c2.x - c1.x,
       dy = c2.y - c1.y;

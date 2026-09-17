@@ -3,7 +3,8 @@ import type { IPlanoEngineCore } from '../PlanoState';
 export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.textAnnots.forEach((t) => {
     const c = engine.toCvs(t.x + (t.lblOffX || 0), t.y + (t.lblOffY || 0));
-    const sel = t.id === engine.selId;
+    // Selección individual O multiselección (flecha + manijas para ambos estados).
+    const sel = t.id === engine.selId || (engine.multiSel || []).includes(t.id);
     const fs = engine.mm2cvs(t.fontMm || 2.5);
     const angle = ((t.textAngle || 0) * Math.PI) / 180;
     ctx.save();
