@@ -17,12 +17,12 @@ export const COMPONENTS: Aparato3D[] = [
   { id: 3, name: 'Ducha', modelKey: 'ducha', color: '#7d8590' },
   { id: 4, name: 'Lavaplatos', modelKey: 'lavaplatos', color: '#7d8590' },
   { id: 5, name: 'Lavadero', modelKey: 'lavadero', color: '#7d8590' },
-  { id: 6, name: 'Calentador de Agua', modelKey: 'calentador', color: '#7d8590' },
+  { id: 6, name: 'Calentador de agua', modelKey: 'calentador', color: '#7d8590' },
   { id: 7, name: 'Tina', modelKey: 'tina', color: '#7d8590' },
   { id: 8, name: 'Orinal', modelKey: 'orinal', color: '#7d8590' },
-  { id: 9, name: 'Canal de Aguas Lluvias', modelKey: 'canal', color: '#f0a830' },
-  { id: 10, name: 'Salida Ventilación en Cubierta', modelKey: 'ventilacion', color: '#f0a830' },
-  { id: 11, name: 'Tragantes / Rejillas', modelKey: 'tragantes', color: '#f0a830' },
+  { id: 9, name: 'Canal de aguas lluvias', modelKey: 'canal', color: '#f0a830' },
+  { id: 10, name: 'Salida ventilación en cubierta', modelKey: 'ventilacion', color: '#f0a830' },
+  { id: 11, name: 'Tragantes / rejillas', modelKey: 'tragantes', color: '#f0a830' },
   { id: 12, name: 'Lavadora', modelKey: 'lavadora', color: '#7d8590' },
 ];
 

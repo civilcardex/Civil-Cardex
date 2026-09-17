@@ -10,7 +10,7 @@ import type { useWorkAreaState } from '../useWorkAreaState';
 
 const Aparatos3D = React.lazy(() => import('../aparatos3d'));
 const RciCuartoBombasViewer = React.lazy(() => import('../RciCuartoBombasViewer'));
-const EsquemaEp = React.lazy(() => import('../ep/EsquemaEp'));
+const Epc3D = React.lazy(() => import('../epc3d'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 const SUBTABS = ['Redes', 'Aparatos', 'Bomba red contra incendio', 'Equipo de presión constante'];
@@ -43,7 +43,7 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
       )}
       {sub === 4 && (
         <Suspense fallback={FALLBACK}>
-          <EsquemaEp />
+          <Epc3D />
         </Suspense>
       )}
     </div>

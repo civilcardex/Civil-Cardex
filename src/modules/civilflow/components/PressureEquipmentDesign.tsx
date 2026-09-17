@@ -5,7 +5,7 @@ import EPVerificationPage from './ep/EPVerificationPage';
 import { useEpSincronizado } from './ep/useEpSincronizado';
 
 // Diseño del Equipo de Presión (redes 'ep'). La página "Esquema" se movió a la sub-pestaña
-// "Equipo de presión constante" de Isometría (components/ep/EsquemaEp.tsx) — aquí quedan solo
+// "Equipo de presión constante" de Isometría (components/epc3d/) — aquí quedan solo
 // las 3 páginas de diseño (orig. usuario).
 
 export default function PressureEquipmentDesign() {
