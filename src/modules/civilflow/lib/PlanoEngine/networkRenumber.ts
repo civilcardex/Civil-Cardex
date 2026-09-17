@@ -478,7 +478,18 @@ export function _renumberAreas(engine: IPlanoEngineCore): void {
       0;
     return na - nb;
   });
-  engine.areas.forEach((a, i) => {
-    a.label = 'AREA' + (i + 1);
+  // Numeración POR RED (orig. usuario): cada red numera sus áreas AREA1..N de forma
+  // independiente — borrar/crear en una red no altera la serie de las demás.
+  const porRed = new Map<string, IPlanoEngineCore['areas']>();
+  engine.areas.forEach((a) => {
+    const k = a.net || '';
+    const arr = porRed.get(k) || [];
+    arr.push(a);
+    porRed.set(k, arr);
+  });
+  porRed.forEach((arr) => {
+    arr.forEach((a, i) => {
+      a.label = 'AREA' + (i + 1);
+    });
   });
 }
