@@ -173,7 +173,9 @@ export function finishArea(engine: IPlanoEngineCore): void {
   const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
   // PUNTO 4: el borrar ya RENUMERA (compacta) — la creación es el consecutivo siguiente.
-  const areaCnt = engine.areas.length + 1;
+  // Numeración POR RED (orig. usuario): cada red lleva su propia serie AREA1..N.
+  const netKey = engine.activeNet || '';
+  const areaCnt = engine.areas.filter((a) => (a.net || '') === netKey).length + 1;
   const area: PlanoArea = {
     id: 'AR' + Date.now(),
     pts: pts.map((p) => [...p]),
@@ -387,6 +389,11 @@ export function asociarRamalABajantes(
     // elementos vecinos y acabar validando el trazo contra el bajante equivocado).
     const cands = engine.bajantes.filter((b) => {
       if (b.net !== r.net || engine._hiddenNets.has(b.net)) return false;
+      // El canal NUNCA es candidato (orig. usuario): su _circ cubre media longitud — sin esta
+      // exclusión, cualquier extremo dentro de su zona se "autoconectaba" al canal a distancia
+      // y el canal (tratado como bajante) se llenaba hasta disparar "Bajante completo". La
+      // relación ramal↔canal vive en esCanalId, no en recibeDeIds/alimentaIds del canal.
+      if (b.tipo === 'canal') return false;
       const circ = b._circ?.r || 8 * engine.zoom;
       const rimTol = (esCaja(b) ? circ / Math.SQRT2 : circ) / (engine.zoom || 1) + TOLLERANCE;
       if (displacedFantasmaIds.has(b.id)) {

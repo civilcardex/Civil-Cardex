@@ -1,4 +1,5 @@
 import { NETS, netsSnapLinked, initNetCounts } from './PlanoState';
+import { bajanteLleno } from './bajanteRules';
 import { devError } from '../../../../utils/devError';
 import type {
   PlanoElement,
@@ -184,6 +185,18 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return this._networkModel.bajantes;
   }
   set bajantes(v: PlanoBajante[]) {
+    // Saneo legacy (orig. usuario): el bug de auto-conexión trataba el canal como bajante y
+    // le guardaba recibeDeIds/alimentaIds — el canal no es bajante y esas membresías lo
+    // "llenaban" hasta disparar "Bajante completo". Limpiar al cargar, idempotente.
+    for (const b of v) {
+      if (
+        b.tipo === 'canal' &&
+        ((b.recibeDeIds?.length || 0) > 0 || (b.alimentaIds?.length || 0) > 0)
+      ) {
+        b.recibeDeIds = [];
+        b.alimentaIds = [];
+      }
+    }
     this._networkModel.bajantes = v;
   }
   crossFloorGhosts!: CrossFloorGhost[];
@@ -684,7 +697,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
   }
 
-  snapToExisting(x: number, y: number, net?: string, tipo?: string): Point | null {
+  snapToExisting(
+    x: number,
+    y: number,
+    net?: string,
+    tipo?: string,
+    permitirBajantesLlenos: boolean = false,
+  ): Point | null {
     const netRef = net ?? this.activeNet;
     let best: Point | null = null;
     let minD = 16 / this.zoom;
@@ -727,6 +746,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.bajantes.forEach((b) => {
       if (this._hiddenNets.has(b.net)) return;
       if (!netsSnapLinked(b.net, netRef)) return;
+      // El canal no atrae el snap: su _circ es media longitud y pegaría el extremo al CENTRO
+      // del canal, borrando el punto de salida arbitrario del ramal de canal (orig. usuario).
+      if (b.tipo === 'canal') return;
+      // Bajante LLENO fuera del snap (orig. usuario): enganchar el trazo a un bajante que ya
+      // tiene sus 2 asociaciones solo dispara "Bajante completo" sin conectar nada. Salvo
+      // cuando el trazo es de canal (exento del tope) — ahí el snap es la única forma precisa
+      // de aterrizar en el bajante.
+      if (!permitirBajantesLlenos && bajanteLleno(b)) return;
       const disp = b.desplazamientos?.[lvlLabel] || {};
       const bx = b.x + (disp.dx || 0);
       const by = b.y + (disp.dy || 0);

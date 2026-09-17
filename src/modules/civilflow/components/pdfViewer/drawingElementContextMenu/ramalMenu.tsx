@@ -17,7 +17,9 @@ import {
   MENU_ACTION_BTN_STYLE,
   MENU_CHECK_ROW_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
+  MENU_SELECT_STYLE,
 } from './context';
+import { moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
 import { MidRamalAccessorySelector } from './midRamalAccessorySelector';
 import {
   pointOnRamalBody,
@@ -188,6 +190,40 @@ export function RamalMenu() {
   };
   return (
     <>
+      {ramalEl.esCanalId && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramal de canal</div>
+          <div style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--mono)' }}>
+            Canal:{' '}
+            {engineRef.current?.bajantes.find((c) => c.id === ramalEl.esCanalId)?.code ||
+              ramalEl.esCanalId}
+          </div>
+          <select
+            value={
+              (engineRef.current?.bajantes || []).find((b) => b.recibeDeIds?.includes(ramalEl.id))
+                ?.id || ''
+            }
+            aria-label="Bajante asociado"
+            onChange={(e) => {
+              const eng = engineRef.current;
+              if (!eng) return;
+              moverAsociacionCanal(eng, ramalEl.id, e.target.value || null);
+              ctx.setContextMenuState((prev) => (prev ? { ...prev } : null));
+              engineRef.current?.render();
+            }}
+            style={MENU_SELECT_STYLE}
+          >
+            <option value="">— Sin bajante —</option>
+            {(engineRef.current?.bajantes || [])
+              .filter((b) => b.net === 'll' && b.tipo === 'bajante')
+              .map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code || b.id}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
       {ramalEl.tipo === 'tributario' && (
         <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
           <button type="button" onClick={convertToRamal} style={MENU_ACTION_BTN_STYLE}>
@@ -580,7 +616,9 @@ export function RamalMenu() {
                   b.net === ramalEl.net &&
                   b.id !== ramalEl.id &&
                   b.tipo !== 'tributario' &&
-                  // Las cajas tienen su propia sección "Cajas asociadas" (abajo).
+                  // Los canales no se asocian a ramales (orig. usuario): la conexión vive en
+                  // los ramales de canal — y las cajas tienen su sección "Cajas asociadas".
+                  b.tipo !== 'canal' &&
                   !esCaja(b),
               );
               if (netBajantes.length === 0)

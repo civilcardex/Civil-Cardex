@@ -368,6 +368,12 @@ export interface PlanoRamal {
   // Tributario creado desde LÍNEA GUÍA: sus dobleces internos no reciben glifos de accesorio
   // (detectAccesorioTrigger los salta) — los codos dibujados son parte del trazo de la guía.
   _sinAccMedInterior?: boolean;
+  // Ramal de CANAL (orig. usuario): ramal de lluvia que el usuario dibuja saliendo de un canal
+  // hacia un bajante. Un extremo nació dentro del rect del canal; el flujo es canal→bajante,
+  // pendiente 2% y diámetro espejo del bajante asociado (recibeDeIds). Excluido de las tablas
+  // de diseño ll (como lo estaba el conector automático que reemplaza) pero cuenta su
+  // codo 90° baja (accesorioInicio) en el resumen de accesorios.
+  esCanalId?: string | null;
   accMed?: Record<string, string>;
   caudal?: number;
   lvert?: string;
@@ -623,7 +629,7 @@ export interface PlanoRamalDefaults {
 export type MultiDragOrigData = Record<
   string,
   {
-    type: 'ramal' | 'bajante' | 'text' | 'guide' | 'area';
+    type: 'ramal' | 'bajante' | 'text' | 'guide' | 'area' | 'dim';
     origPts?: number[][];
     origLabelX?: number;
     origLabelY?: number;
@@ -831,6 +837,7 @@ export interface IPlanoEngineCore {
     y: number,
     net?: string,
     tipo?: string,
+    permitirBajantesLlenos?: boolean,
   ): { x: number; y: number } | null;
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;
   getBajantesFantasma(): PlanoBajante[];

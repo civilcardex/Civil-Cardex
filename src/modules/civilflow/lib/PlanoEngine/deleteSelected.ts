@@ -213,6 +213,12 @@ export function deleteSelected(
         // Borrar un canal debe desasociar sus bajantes — si no, su canalId seguiría apuntando a
         // un id que ya no existe (o peor, a un canal futuro que llegue a reutilizarlo).
         if (deleted.tipo === 'canal') {
+          // Ramal de canal (orig. usuario): cae con su canal. Se añaden al MISMO conjunto
+          // durante el recorrido para que pasen por el pipeline completo de borrado de ramal
+          // (re-merge, limpieza de recibeDeIds, purga de conteos).
+          for (const r of engine.ramales) {
+            if (r.esCanalId === deleted.id) toDelete.add(r.id);
+          }
           for (const b of engine.bajantes) {
             if (b.canalId === deleted.id) b.canalId = null;
           }

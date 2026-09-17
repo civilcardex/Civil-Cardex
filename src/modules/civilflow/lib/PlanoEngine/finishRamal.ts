@@ -32,6 +32,7 @@ import {
   asociarRamalABajantes,
 } from './drawingUtils';
 import { distToPolyline } from '../shared/geometry';
+import { detectarCanalEnExtremos } from './canalAssociation';
 
 /** Termina el ramal activo: valida ángulos, crea el PlanoRamal, auto-divide uniones y asocia
  *  con bajantes. @param engine Instancia del motor. */
@@ -287,7 +288,8 @@ export function finishRamal(engine: IPlanoEngineCore): void {
               }
               if (inherited) target.diametro = inherited;
             }
-            if (!checkRamalAnglesExcludingConnections(engine, target)) {
+            // Ramal de canal extendido: sin validación de ángulo (orig. usuario).
+            if (!target.esCanalId && !checkRamalAnglesExcludingConnections(engine, target)) {
               // revertir TODO el estado de target
               target.pts = snap.pts;
               target.totalL = snap.totalL;
@@ -350,6 +352,18 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         engine.ramales.some((r) => r.id === `${netPfx}${n}` || r.label === `${netPfx}${n}`),
       );
   const id = isTrib ? uniqRamalId() : netPfx + cnt;
+  // RAMAL DE CANAL (orig. usuario): un extremo del trazo dentro del rect de un canal ll marca
+  // el ramal como "sale de canal". La detección va ANTES de derivar ángulo/etiqueta para que,
+  // si el canal quedó en la LLEGADA, la polilínea se invierta aquí y TODO lo que sigue (flecha,
+  // validación de flujo, asociación a bajante) nazca en orientación canal→bajante.
+  let canalOrigenId: string | null = null;
+  if (engine.activeRamal!.net === 'll' && !isTrib && engine.activeRamal!.pts.length >= 2) {
+    const det = detectarCanalEnExtremos(engine, engine.activeRamal!.pts);
+    if (det.canal) {
+      canalOrigenId = det.canal.id;
+      if (det.voltear) engine.activeRamal!.pts = engine.activeRamal!.pts.slice().reverse();
+    }
+  }
   const firstAngle = angleAtHalfLength(engine.activeRamal.pts);
 
   const [midX, midY] = _midpoint(engine.activeRamal.pts);
@@ -554,7 +568,9 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // Bug #7: el segmento de CONEXIÓN (extremo que pega a otro ramal existente o a un bajante)
   // tiene el ángulo dictado por la geometría del ramal existente, no por la cuadrícula — no se
   // valida. Validar solo los segmentos libres (los que no tocan nada).
-  if (!checkRamalAnglesExcludingConnections(engine, r)) {
+  // Ramal de canal (orig. usuario): sale del canal desde cualquier punto/ángulo — sin
+  // validación de ángulo.
+  if (!canalOrigenId && !checkRamalAnglesExcludingConnections(engine, r)) {
     engine.triggerAlert(
       'Ángulo no recomendado',
       r.net === 'san' || r.net === 'll'
@@ -686,6 +702,9 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // Asociación a bajantes (llegada/salida + diámetros + Y doble): compartida con las
   // creaciones desde línea guía (ver asociarRamalABajantes en drawingUtils).
   let llegaACaja = false;
+  // Marcar ANTES de asociar: la exención del tope de 2 asociaciones (bajanteRules) lee
+  // r.esCanalId al validar la llegada del ramal de canal.
+  if (canalOrigenId) r.esCanalId = canalOrigenId;
   {
     const assoc = asociarRamalABajantes(engine, r, diametroBornDefault);
     llegaACaja = assoc.llegaACaja;
@@ -696,6 +715,15 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       engine.render();
       return;
     }
+  }
+  // Ramal de canal confirmado: codo 90° baja en la salida del canal (glifo + conteo en
+  // accesorios). Pendiente y diámetro por defecto 2 (2% / 2") — ambos editables desde el
+  // menú del ramal (orig. usuario: sin nombre, solo Longitud/Pendiente/Diámetro).
+  if (canalOrigenId) {
+    r.esCanalId = canalOrigenId;
+    r.accesorioInicio = 'codo90rmBaja';
+    r.pendiente = 2;
+    if (!r.diametro) r.diametro = '2"';
   }
   // Llegada al CENTRO de una caja: SIN propagación de diámetros (ni herencia ramal-ramal ni
   // propagarSanDiametroAguasAbajo) — orig. usuario. SIN return temprano: el tail (activeRamal

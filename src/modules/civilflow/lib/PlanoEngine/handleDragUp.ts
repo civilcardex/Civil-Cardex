@@ -128,6 +128,35 @@ function tryRotateToValidAngle(
   return checkRamalAnglesExcludingConnections(engine, { ...ram, pts });
 }
 
+/** Cruce segmento-rectángulo (Liang-Barsky) en coordenadas de canvas — usado por el marquee
+ *  de multiselección para decidir si un trazo (ramal/guía/cota) toca el recuadro. */
+function segIntersectsRect(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+): boolean {
+  let t0 = 0,
+    t1 = 1;
+  const dx = p2.x - p1.x,
+    dy = p2.y - p1.y;
+  const p = [-dx, dx, -dy, dy];
+  const q = [p1.x - minX, maxX - p1.x, p1.y - minY, maxY - p1.y];
+  for (let k = 0; k < 4; k++) {
+    if (p[k] === 0) {
+      if (q[k] < 0) return false;
+    } else {
+      const t = q[k] / p[k];
+      if (p[k] < 0) t0 = Math.max(t0, t);
+      else t1 = Math.min(t1, t);
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
+}
+
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
   if (engine.marqueeRect) {
     const { x1, y1, x2, y2 } = engine.marqueeRect;
@@ -168,30 +197,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           for (let i = 0; i < r.pts.length - 1; i++) {
             const p1 = engine.toCvs(r.pts[i][0], r.pts[i][1]);
             const p2 = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
-            let t0 = 0,
-              t1 = 1;
-            const dx = p2.x - p1.x,
-              dy = p2.y - p1.y;
-            const p = [-dx, dx, -dy, dy];
-            const q = [p1.x - minX, maxX - p1.x, p1.y - minY, maxY - p1.y];
-            let ok = true;
-            for (let k = 0; k < 4; k++) {
-              if (p[k] === 0) {
-                if (q[k] < 0) {
-                  ok = false;
-                  break;
-                }
-              } else {
-                const t = q[k] / p[k];
-                if (p[k] < 0) t0 = Math.max(t0, t);
-                else t1 = Math.min(t1, t);
-                if (t0 > t1) {
-                  ok = false;
-                  break;
-                }
-              }
-            }
-            if (ok) {
+            if (segIntersectsRect(p1, p2, minX, maxX, minY, maxY)) {
               inside = true;
               break;
             }
@@ -199,17 +205,53 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         }
         if (inside && !engine.multiSel.includes(r.id)) engine.multiSel.push(r.id);
       });
+      // TOCAR cualquier parte (orig. usuario): intersección del bbox del glifo con el
+      // recuadro — nunca solo el punto centro. Canal: su caja completa (_canalBox, con
+      // fallback a las dos esquinas en plano); el resto: el disco de render (_circ, que
+      // para cajas CAN/CALL ya es la media diagonal del cuadrado a escala real).
       engine.bajantes.forEach((b) => {
-        const c = engine.toCvs(b.x, b.y);
-        if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
-          if (!engine.multiSel.includes(b.id)) engine.multiSel.push(b.id);
+        let inside: boolean;
+        if (b.tipo === 'canal') {
+          let cb = b._canalBox;
+          if (!cb) {
+            const c1 = engine.toCvs(b.x, b.y);
+            const c2 = engine.toCvs(
+              b.x + engine.cmToPlanePx(b.longitud || 0),
+              b.y + engine.cmToPlanePx(b.base || 0),
+            );
+            cb = {
+              x: Math.min(c1.x, c2.x),
+              y: Math.min(c1.y, c2.y),
+              w: Math.abs(c2.x - c1.x),
+              h: Math.abs(c2.y - c1.y),
+            };
+          }
+          inside = cb.x <= maxX && cb.x + cb.w >= minX && cb.y <= maxY && cb.y + cb.h >= minY;
+        } else if (b._circ) {
+          const bb = b._circ;
+          inside =
+            bb.x - bb.r <= maxX &&
+            bb.x + bb.r >= minX &&
+            bb.y - bb.r <= maxY &&
+            bb.y + bb.r >= minY;
+        } else {
+          const c = engine.toCvs(b.x, b.y);
+          inside = c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY;
         }
+        if (inside && !engine.multiSel.includes(b.id)) engine.multiSel.push(b.id);
       });
+      // Textos: bbox completo (_box, render) — tocar cualquier parte del texto selecciona;
+      // fallback al punto ancla si aún no hay caja renderizada.
       engine.textAnnots.forEach((t) => {
-        const c = engine.toCvs(t.x, t.y);
-        if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
-          if (!engine.multiSel.includes(t.id)) engine.multiSel.push(t.id);
+        let inside: boolean;
+        if (t._box) {
+          const bb = t._box;
+          inside = bb.x <= maxX && bb.x + bb.w >= minX && bb.y <= maxY && bb.y + bb.h >= minY;
+        } else {
+          const c = engine.toCvs(t.x, t.y);
+          inside = c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY;
         }
+        if (inside && !engine.multiSel.includes(t.id)) engine.multiSel.push(t.id);
       });
       // PUNTO (orig. usuario): ÁREAS en la multiselección del recuadro — criterio de
       // INTERSECCIÓN con el bbox del área (el recuadro que toque o cubra el área la
@@ -250,36 +292,27 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           for (let i = 0; i < g.pts.length - 1; i++) {
             const p1 = engine.toCvs(g.pts[i][0], g.pts[i][1]);
             const p2 = engine.toCvs(g.pts[i + 1][0], g.pts[i + 1][1]);
-            let t0 = 0,
-              t1 = 1;
-            const dx = p2.x - p1.x,
-              dy = p2.y - p1.y;
-            const p = [-dx, dx, -dy, dy];
-            const q = [p1.x - minX, maxX - p1.x, p1.y - minY, maxY - p1.y];
-            let ok = true;
-            for (let k = 0; k < 4; k++) {
-              if (p[k] === 0) {
-                if (q[k] < 0) {
-                  ok = false;
-                  break;
-                }
-              } else {
-                const t = q[k] / p[k];
-                if (p[k] < 0) t0 = Math.max(t0, t);
-                else t1 = Math.min(t1, t);
-                if (t0 > t1) {
-                  ok = false;
-                  break;
-                }
-              }
-            }
-            if (ok) {
+            if (segIntersectsRect(p1, p2, minX, maxX, minY, maxY)) {
               inside = true;
               break;
             }
           }
         }
         if (inside && !engine.multiSel.includes(g.id)) engine.multiSel.push(g.id);
+      });
+      // COTAS: tocar el segmento (cruce Liang-Barsky, mismo test que ramales/guías) o el
+      // punto de etiqueta — la cota entra en la multiselección igual que cualquier trazo.
+      engine.dims?.forEach((d) => {
+        const p1 = engine.toCvs(d.x1, d.y1);
+        const p2 = engine.toCvs(d.x2, d.y2);
+        let inside = segIntersectsRect(p1, p2, minX, maxX, minY, maxY);
+        if (!inside) {
+          const lp = d.lblX != null && d.lblY != null ? engine.toCvs(d.lblX, d.lblY) : d._labelPos;
+          if (lp && lp.x >= minX && lp.x <= maxX && lp.y >= minY && lp.y <= maxY) {
+            inside = true;
+          }
+        }
+        if (inside && !engine.multiSel.includes(d.id)) engine.multiSel.push(d.id);
       });
       engine.selId = null;
       engine._emitSelect(null);

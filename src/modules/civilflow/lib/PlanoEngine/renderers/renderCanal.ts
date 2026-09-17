@@ -1,6 +1,5 @@
 import { NETS, type IPlanoEngineCore, type PlanoBajante } from '../PlanoState';
 import { BORDE_LIBRE_CANAL_CM } from '../../../utils/calcRainwater';
-import { computeCanalFlowArrows, computeCanalSegments } from '../canalAssociation';
 import { renderBajanteLabel } from './bajanteLabels';
 
 /** Rectángulo del canal recolectora en planta, con las flechas de flujo hacia cada bajante asociado. */
@@ -47,101 +46,6 @@ export function renderCanalGlyph(
     ctx.fill();
     ctx.restore();
   };
-
-  // Línea de conexión con un bajante de lluvia asociado POR FUERA del canal (bajanteExternoId):
-  // una tubería simple de la red ll — ni ramal ni tributario, sin semántica de flujo de red.
-  // Ítem 5: el origen es el PUNTO MEDIO del lado del rectángulo más cercano al bajante (no la
-  // esquina), la tubería termina en el borde del círculo del bajante y lleva flecha de flujo
-  // canal→bajante + etiqueta L/S/Ø. Se dibuja antes del relleno blanco para que el rectángulo
-  // del canal quede encima. Es render-only: no crea ningún ramal, por lo que las tablas de
-  // accesorios/insumos no la listan.
-  if (b.bajanteExternoId) {
-    const ext = engine.bajantes.find((x) => x.id === b.bajanteExternoId && x.tipo !== 'canal');
-    if (ext) {
-      const ec = engine.toCvs(ext.x, ext.y);
-      const sides = [
-        { x: tl.x + w / 2, y: tl.y }, // arriba
-        { x: tl.x + w / 2, y: tl.y + h }, // abajo
-        { x: tl.x, y: tl.y + h / 2 }, // izquierda
-        { x: tl.x + w, y: tl.y + h / 2 }, // derecha
-      ];
-      let best = sides[0];
-      let bestD = Infinity;
-      for (const s of sides) {
-        const d = (s.x - ec.x) ** 2 + (s.y - ec.y) ** 2;
-        if (d < bestD) {
-          bestD = d;
-          best = s;
-        }
-      }
-      const dx = ec.x - best.x;
-      const dy = ec.y - best.y;
-      const len = Math.hypot(dx, dy);
-      if (len > 1) {
-        const ux = dx / len;
-        const uy = dy / len;
-        // Mismo radio con que se renderiza el símbolo del bajante — la tubería se detiene en el
-        // borde del círculo en vez de atravesarlo.
-        const rim = {
-          x: ec.x - ux * engine.realMmToCanvasPx(20) * 0.6,
-          y: ec.y - uy * engine.realMmToCanvasPx(20) * 0.6,
-        };
-        // Tubería simple del color de la red ll — la flecha de flujo va en la etiqueta, con el
-        // mismo lenguaje que las de los ramales (renderRamales.ts: línea corta + punta).
-        ctx.save();
-        ctx.strokeStyle = col;
-        ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom * (engine.lineWidthScale || 1);
-        ctx.beginPath();
-        ctx.moveTo(best.x, best.y);
-        ctx.lineTo(rim.x, rim.y);
-        ctx.stroke();
-        ctx.restore();
-        const lenM = engine.pxToM(len / engine.zoom);
-        // Diámetro del BAJANTE externo en vivo (dNominal), no el del canal — si se cambia el
-        // diámetro del bajante, la etiqueta de la tubería lo refleja al re-renderizar.
-        const dNom = ext.dNominal || '';
-        const pipeLabel = `L=${lenM.toFixed(2)}m S=2% D=${dNom}`;
-        const mid = { x: (best.x + ec.x) / 2, y: (best.y + ec.y) / 2 };
-        const mx = dx / len;
-        const my = dy / len;
-        const fsP = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.9);
-        ctx.save();
-        // PUNTO (orig. usuario): la etiqueta va PARALELA a la tubería — se rota con el ángulo
-        // del trazo, normalizado para que el texto nunca quede boca abajo.
-        let pipeAngle = Math.atan2(dy, dx);
-        if (pipeAngle > Math.PI / 2 || pipeAngle < -Math.PI / 2) pipeAngle += Math.PI;
-        ctx.translate(mid.x + my * 9 * engine.zoom, mid.y - mx * 9 * engine.zoom);
-        ctx.rotate(pipeAngle);
-        ctx.font = `600 ${fsP}px Geist, monospace`;
-        ctx.fillStyle = '#000';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(pipeLabel, 0, 0);
-        // Flecha de flujo bajo la etiqueta, canal→bajante — misma forma que la de los ramales
-        // (renderRamales.ts:1194-1217).
-        const tw = ctx.measureText(pipeLabel).width;
-        const dir = mx >= 0 ? 1 : -1;
-        const half = tw / 2 + 4 * engine.zoom;
-        const ay = fsP * 0.95;
-        ctx.strokeStyle = col;
-        ctx.fillStyle = col;
-        ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(-half * dir, ay);
-        ctx.lineTo(half * dir, ay);
-        ctx.stroke();
-        const aSize = Math.min(6 * engine.zoom, half * 0.6);
-        ctx.beginPath();
-        ctx.moveTo(half * dir, ay);
-        ctx.lineTo(half * dir - dir * aSize, ay - aSize * 0.4);
-        ctx.lineTo(half * dir - dir * aSize, ay + aSize * 0.4);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-  }
 
   ctx.save();
   // Ítem 5: canal visualmente TRANSPARENTE — sin relleno y con líneas al ~45% de opacidad para
@@ -202,18 +106,17 @@ export function renderCanalGlyph(
   }
   ctx.restore();
 
-  // Flechas de dirección de flujo — negras y cortas, igual que la flecha de flujo propia de un
-  // ramal. Sin bajante DENTRO, una sola flecha centrada apunta hacia donde el canal se arrastró
-  // al dibujarse (_canalFlowDir). Con bajantes, esa flecha se reemplaza por una flecha corta por
-  // lado de bajante, cada una apuntando HACIA el bajante (dos si está a mitad de cuerpo; ver
-  // computeCanalFlowArrows en canalAssociation.ts), alineada con el centro del círculo del
-  // bajante y deteniéndose en su borde — las flechas quedan fuera del símbolo. El canal mismo
-  // nunca se divide.
-  const bajArrows = computeCanalFlowArrows(engine, b);
-  // Flechas y etiquetas internas del canal también semitransparentes (ítem 5)
+  // Flechas de flujo (orig. usuario): CON codos (ramales de canal) conectados, cada codo
+  // recibe un PAR de flechas a lo largo del eje largo del canal — una desde la izquierda y
+  // una desde la derecha — AMBAS apuntando HACIA el punto de salida del codo (el agua del
+  // canal fluye hacia ese punto). La flecha central original desaparece. Sin codos: queda
+  // la flecha central única según _canalFlowDir.
   ctx.save();
   ctx.globalAlpha = 0.9;
-  if (bajArrows.length === 0) {
+  const codosCanal = engine.ramales.filter(
+    (rc) => rc.esCanalId === b.id && rc.pts && rc.pts.length >= 2,
+  );
+  if (codosCanal.length === 0) {
     const cx = tl.x + w / 2;
     const cy = tl.y + h / 2;
     const half = 7 * engine.zoom;
@@ -222,57 +125,36 @@ export function renderCanalGlyph(
     else if (dir === 'izquierda') drawFlowArrow({ x: cx + half, y: cy }, { x: cx - half, y: cy });
     else if (dir === 'abajo') drawFlowArrow({ x: cx, y: cy - half }, { x: cx, y: cy + half });
     else drawFlowArrow({ x: cx, y: cy + half }, { x: cx, y: cy - half });
-  }
-  // Redondeado al mismo radio con que se renderiza el símbolo del bajante (el loop principal de
-  // renderBajantes), para que la cabeza de la flecha se detenga exactamente en el borde del
-  // círculo del bajante en vez de atravesarlo.
-  const bajR = engine.realMmToCanvasPx(20) * 0.6;
-  const shortLen = 14 * engine.zoom;
-  for (const arrow of bajArrows) {
-    const head = engine.toCvs(arrow.x1, arrow.y1);
-    const tail = engine.toCvs(arrow.x0, arrow.y0);
-    const dx = head.x - tail.x;
-    const dy = head.y - tail.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 1) continue;
-    const ux = dx / len;
-    const uy = dy / len;
-    const rim = { x: head.x - ux * bajR, y: head.y - uy * bajR };
-    const cut = Math.min(shortLen, len - bajR);
-    drawFlowArrow({ x: rim.x - ux * cut, y: rim.y - uy * cut }, rim);
-  }
-
-  // Etiquetas por tramo junto a las flechas: una por cada lado de la división del bajante —
-  // longitud proporcional del tramo, pendiente fija S=2% y el MISMO nombre del canal — misma
-  // matemática de límites que las flechas (computeCanalSegments) para que nunca diverjan.
-  const canalHorizontal = w >= h;
-  const fsSeg = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.9);
-  const canalName = b.code || '—';
-  for (const seg of computeCanalSegments(engine, b)) {
-    const midT = (seg.tLeft + seg.tRight) / 2;
-    const axisPlaneLen = (canalHorizontal ? w : h) / engine.zoom;
-    const lengthM = engine.pxToM((seg.tRight - seg.tLeft) * axisPlaneLen);
-    const segLabel = `L=${lengthM.toFixed(2)}m S=2% ${canalName}`;
-    // La etiqueta se alinea con la coordenada TRANSVERSAL del centro del bajante de su tramo
-    // (la misma línea sobre la que corre la flecha de ese tramo — computeCanalFlowArrows), no
-    // con el eje medio del canal: así queda siempre al MISMO nivel (mismo Y en canal horizontal,
-    // mismo X en vertical) que la flecha y que el bajante.
-    const bajCvs = engine.toCvs(seg.bajante.x, seg.bajante.y);
-    ctx.save();
-    ctx.font = `600 ${fsSeg}px Geist, monospace`;
-    ctx.fillStyle = '#000';
-    if (canalHorizontal) {
-      // Centrada sobre la línea de la flecha del tramo, al mismo nivel del bajante
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(segLabel, tl.x + midT * w, bajCvs.y);
-    } else {
-      // A la derecha de la línea de la flecha (eje del bajante), al mismo nivel vertical
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(segLabel, bajCvs.x + 5 * engine.zoom, tl.y + midT * h);
+  } else {
+    // Flechas CORTAS (mismo tamaño que la flecha central) y SEPARADAS del codo — un par
+    // convergente por codo: la de la izquierda apunta →, la de la derecha apunta ←.
+    const horizontal = w >= h;
+    const sep = 10 * engine.zoom; // hueco entre la punta y el punto de salida del codo
+    const len = 12 * engine.zoom; // largo de cada flecha (≈ la central)
+    for (const rc of codosCanal) {
+      // Salida del codo = inicio del ramal (el flujo siempre nace en el canal), proyectado
+      // sobre el eje largo; la flecha corre al nivel transversal del punto de salida.
+      const p = engine.toCvs(rc.pts[0][0], rc.pts[0][1]);
+      if (horizontal) {
+        const t = Math.min(1, Math.max(0, (p.x - tl.x) / w));
+        const px = tl.x + t * w;
+        const headL = { x: px - sep, y: p.y };
+        const tailL = { x: headL.x - len, y: p.y };
+        const headR = { x: px + sep, y: p.y };
+        const tailR = { x: headR.x + len, y: p.y };
+        if (tailL.x >= tl.x) drawFlowArrow(tailL, headL);
+        if (tailR.x <= tl.x + w) drawFlowArrow(tailR, headR);
+      } else {
+        const t = Math.min(1, Math.max(0, (p.y - tl.y) / h));
+        const py = tl.y + t * h;
+        const headU = { x: p.x, y: py - sep };
+        const tailU = { x: p.x, y: headU.y - len };
+        const headD = { x: p.x, y: py + sep };
+        const tailD = { x: p.x, y: headD.y + len };
+        if (tailU.y >= tl.y) drawFlowArrow(tailU, headU);
+        if (tailD.y <= tl.y + h) drawFlowArrow(tailD, headD);
+      }
     }
-    ctx.restore();
   }
   ctx.restore();
 

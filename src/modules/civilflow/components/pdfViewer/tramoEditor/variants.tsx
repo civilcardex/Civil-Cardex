@@ -21,8 +21,10 @@ import {
   INPUT_50_STYLE,
   INPUT_STYLE,
   READONLY_STYLE,
+  SELECT_STYLE,
   type ProbedElement,
 } from './context';
+import { ramalesDelCanal, moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { ContadorEditor, CalentadorEditor, BajanteEditor, RamalEditor } from './legacyEditors';
 
@@ -89,7 +91,10 @@ function CanalNumField({
 }
 
 export function CanalTramoEditor() {
-  const { selElement: rawSelElement, handleUpdateSel } = useTramoEditorContext();
+  const { selElement: rawSelElement, handleUpdateSel, engineRef } = useTramoEditorContext();
+  // Refresco local tras cambiar una asociación ramal→bajante (vive en los bajantes, no en el
+  // canal seleccionado — sin esto el panel mostraría el desplegable viejo hasta re-seleccionar).
+  const [, setAssocTick] = useState(0);
   if (!rawSelElement) return null;
   const selElement = rawSelElement as PlanoBajante;
   // Ítem 3.2: los tres campos del canal viven en una sola fila para no inflar el panel.
@@ -101,6 +106,10 @@ export function CanalTramoEditor() {
     textTransform: 'uppercase',
     letterSpacing: 1,
   };
+  // Ramales que nacen de este canal (orig. usuario) + su bajante asociado explícito.
+  const engine = engineRef.current;
+  const canalRamales = engine ? ramalesDelCanal(engine, selElement.id) : [];
+  const bajantesLl = (engine?.bajantes || []).filter((b) => b.net === 'll' && b.tipo === 'bajante');
   return (
     <>
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
@@ -145,6 +154,44 @@ export function CanalTramoEditor() {
             />
           </div>
         </div>
+      </div>
+
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div style={fieldLabel}>Ramales del canal</div>
+        {canalRamales.length === 0 && (
+          <div style={{ fontSize: 11, color: '#8fa0a2', fontFamily: "'Geist',monospace" }}>
+            Dibuja un ramal desde dentro del canal hacia un bajante.
+          </div>
+        )}
+        {canalRamales.map((r) => {
+          const asociado = bajantesLl.find((b) => b.recibeDeIds?.includes(r.id));
+          return (
+            <div key={r.id} style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: '#b9caca', fontFamily: "'Geist',monospace" }}>
+                {r.label || r.id} → {asociado?.code || asociado?.id || '— sin bajante —'}
+              </div>
+              <select
+                value={asociado?.id || ''}
+                aria-label={`Bajante asociado de ${r.label || r.id}`}
+                onChange={(e) => {
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  moverAsociacionCanal(eng, r.id, e.target.value || null);
+                  setAssocTick((n) => n + 1);
+                  engineRef.current?.render();
+                }}
+                style={SELECT_STYLE}
+              >
+                <option value="">— Sin bajante —</option>
+                {bajantesLl.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.code || b.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
       </div>
     </>
   );

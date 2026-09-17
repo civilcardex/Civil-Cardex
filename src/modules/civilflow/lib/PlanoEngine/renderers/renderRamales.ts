@@ -219,7 +219,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const showGuide = r.showGuide !== false;
       const showMatDiamPend =
         (r as unknown as { showMatDiamPend?: boolean }).showMatDiamPend !== false;
-      const lbl = showName && r.label ? `${r.label}${lvlSuffix}` : '';
+      // Ramal de canal (orig. usuario): SIN nombre — solo Longitud/Pendiente/Diámetro.
+      const esCanal = !!(r as unknown as { esCanalId?: string | null }).esCanalId;
+      const lbl = showName && r.label && !esCanal ? `${r.label}${lvlSuffix}` : '';
       // Ítem 1: formatos por red. Para san/ll/ac/af/gas se produce un único string compacto;
       // vent y el resto mantienen el esquema de segmentos genérico de abajo.
       const inchPartOf = (d: string): string => {
@@ -250,14 +252,28 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         infoStr = segs.filter(Boolean).join(' ') || null;
         if (infoStr === 'S P% m' || infoStr === 'S') infoStr = null;
       } else if (r.net === 'll') {
-        const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
-        const pendVal =
-          showMatDiamPend && r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
-        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = showMatDiamPend
-          ? [`ALL${diamPart ? ` ${diamPart}` : ''}`, pendVal ? `P ${pendVal}%` : '', longPart]
-          : [longPart];
-        infoStr = segs.filter(Boolean).join(' ') || null;
+        if (esCanal) {
+          // Ramal de canal: etiqueta L/S/D con los valores EDITABLES del ramal
+          // (pendiente y diámetro default 2 — orig. usuario).
+          const dPartC = diamPulg(r.diametro);
+          infoStr =
+            [
+              showLength && r.totalL ? `L=${r.totalL.toFixed(2)}m` : '',
+              r.pendiente ? `S=${Number(r.pendiente)}%` : '',
+              dPartC ? `D=${dPartC}` : '',
+            ]
+              .filter(Boolean)
+              .join(' ') || null;
+        } else {
+          const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
+          const pendVal =
+            showMatDiamPend && r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
+          const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
+          const segs = showMatDiamPend
+            ? [`ALL${diamPart ? ` ${diamPart}` : ''}`, pendVal ? `P ${pendVal}%` : '', longPart]
+            : [longPart];
+          infoStr = segs.filter(Boolean).join(' ') || null;
+        }
       } else if (r.net === 'ac') {
         const norm = r.diametro
           ? normalizeDnLabel(r.diametro)

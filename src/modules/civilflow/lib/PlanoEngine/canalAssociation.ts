@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
+import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState';
 
 /**
  * Calcula si un clic (x, y) toca este bajante y qué tan cerca está del símbolo.
@@ -254,4 +254,65 @@ export function computeCanalFlowArrows(
     }
   }
   return arrows;
+}
+
+// ===== Ramal de canal (orig. usuario: la asociación canal↔bajante vive SOLO en ramales que el
+// usuario dibuja del canal al bajante; ninguna asociación es automática por cercanía) =====
+
+/** Resultado de detectar el origen canal de un trazo recién dibujado. */
+export interface CanalOrigenDet {
+  canal: PlanoBajante | null;
+  /** El extremo que cayó dentro del canal es la LLEGADA (último punto) — hay que invertir la
+   *  polilínea para que el flujo nazca en el canal (canal→bajante). */
+  voltear: boolean;
+}
+
+/** Detecta si un trazo nace y/o termina dentro del rect de un canal. Con los DOS extremos
+ *  dentro no hay marca (el usuario dibujó por dentro del canal: ambiguo). */
+export function detectarCanalEnExtremos(engine: IPlanoEngineCore, pts: number[][]): CanalOrigenDet {
+  if (!pts || pts.length < 2) return { canal: null, voltear: false };
+  const p0 = pts[0];
+  const p1 = pts[pts.length - 1];
+  const c0 = resolveCanalForPoint(engine, p0[0], p0[1]);
+  const c1 = resolveCanalForPoint(engine, p1[0], p1[1]);
+  if (c0 && c1) return { canal: null, voltear: false };
+  if (c0) return { canal: c0, voltear: false };
+  if (c1) return { canal: c1, voltear: true };
+  return { canal: null, voltear: false };
+}
+
+// Diámetro espejo eliminado (orig. usuario ronda 2): el ramal de canal nace con diámetro
+// default 2" editable — ya no copia el dNominal del bajante.
+
+/** Ramales de canal que nacen de este canal. */
+export function ramalesDelCanal(engine: IPlanoEngineCore, canalId: string): PlanoRamal[] {
+  return engine.ramales.filter((r) => r.esCanalId === canalId);
+}
+
+/** Asociación EXPLÍCITA ramal-de-canal → bajante (panel derecho / menú contextual): mueve la
+ *  membresía en recibeDeIds de los bajantes ll y refleja fin. null = desasociar. Cualquier
+ *  llegada previa dibujada a otro bajante se reemplaza. */
+export function moverAsociacionCanal(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+  bajanteId: string | null,
+): void {
+  for (const b of engine.bajantes) {
+    if (!b.recibeDeIds?.includes(ramalId)) continue;
+    if (bajanteId && b.id === bajanteId) continue;
+    b.recibeDeIds = b.recibeDeIds.filter((rid) => rid !== ramalId);
+  }
+  const ramal = engine.ramales.find((r) => r.id === ramalId);
+  if (bajanteId) {
+    const b = engine.bajantes.find((x) => x.id === bajanteId);
+    if (b) {
+      if (!b.recibeDeIds) b.recibeDeIds = [];
+      if (!b.recibeDeIds.includes(ramalId)) b.recibeDeIds.push(ramalId);
+      // fin refleja el destino; el diámetro NO se toca (default 2" editable, orig. usuario).
+      if (ramal) ramal.fin = b.code || b.id;
+    }
+  } else if (ramal) {
+    ramal.fin = '';
+  }
+  engine._markDirty();
 }

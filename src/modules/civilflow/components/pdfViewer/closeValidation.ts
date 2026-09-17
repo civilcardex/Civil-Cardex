@@ -109,6 +109,9 @@ export function validateBeforeClose(
     if (revisados.has(clave)) return true;
     revisados.add(clave);
     if (r.net === 'vent') return true;
+    // Aguas lluvias (orig. usuario): SIN chequeo de UC/UD — sus tramos no llevan unidades de
+    // descarga. En ll el cierre valida solo diámetros.
+    if (r.net === 'll') return true;
     if (r.id.startsWith('LD_')) return true;
     if (r.accesorioFin === 'tapon' || r.accesorioInicio === 'tapon') return true;
     const tipo = r.tipo || 'ramal';
@@ -297,7 +300,12 @@ export function validateBeforeClose(
   return true;
 }
 
-type DiamRamales = Array<{ id?: string; label?: string; diametro?: string }>;
+type DiamRamales = Array<{
+  id?: string;
+  label?: string;
+  diametro?: string;
+  esCanalId?: string | null;
+}>;
 type DiamBajantes = Array<{
   id?: string;
   code?: string;
@@ -325,11 +333,13 @@ function leerTrazos(id: string | number): PlanTrazos | null {
 
 /** Revisión de diámetros de un conjunto de trazos: elementos sin diámetro y bajantes/montantes
  *  con diámetro inferior al del ramal conectado. Los Ldesvio (LD_) se excluyen de "sin
- *  diámetro": espejan el dNominal de su bajante y lo duplicarían en la alerta. */
+ *  diámetro": espejan el dNominal de su bajante y lo duplicarían en la alerta. Los ramales de
+ *  canal (esCanalId) también: su diámetro espeja al bajante asociado — sin asociado aún no hay
+ *  diámetro que revisar. */
 function revisarDiametros(ramales: DiamRamales, bajantes: DiamBajantes) {
   const sinDiam = [
     ...ramales
-      .filter((r) => !r.diametro && !r.id?.startsWith('LD_'))
+      .filter((r) => !r.diametro && !r.id?.startsWith('LD_') && !r.esCanalId)
       .map((r) => r.label || r.id || ''),
     ...bajantes
       .filter((b) => (b.tipo === 'bajante' || b.tipo === 'montante') && !b.dNominal)

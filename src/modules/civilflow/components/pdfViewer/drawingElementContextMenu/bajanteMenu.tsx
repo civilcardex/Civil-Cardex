@@ -169,7 +169,7 @@ export function BajanteDirectionSelector({
                   if (!direccionBajaPermitida(engineRef.current, element)) {
                     engineRef.current?.triggerAlert(
                       'Dirección no permitida',
-                      'Este es el último nivel del proyecto: no hay un piso inferior hacia el cual continuar el flujo. Usa "Continua".',
+                      'Este es el último nivel del proyecto: no hay un piso inferior hacia el cual continuar el flujo. Pon otra dirección de flujo al elemento',
                     );
                     return;
                   }

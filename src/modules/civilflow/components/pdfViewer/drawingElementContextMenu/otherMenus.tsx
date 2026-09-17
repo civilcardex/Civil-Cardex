@@ -6,6 +6,7 @@ import {
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context';
 import { ElementCodeEditor } from './elementEditor';
+import { ramalesDelCanal, moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
 
 export function AreaMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -112,6 +113,7 @@ export function CanalMenu() {
   const { element, engineRef, selElement, setSelElement, setContextMenuState } =
     useDrawingElementContextMenu();
   const canal = element as PlanoBajante;
+  const engine = engineRef.current;
 
   const commit = (field: 'base' | 'altura' | 'longitud', v: number) => {
     engineRef.current?.updateElementById(canal.id, { [field]: v });
@@ -122,6 +124,11 @@ export function CanalMenu() {
       setSelElement({ ...selElement, [field]: v });
     }
   };
+
+  // Ramales que nacen de este canal (orig. usuario: la asociación canal↔bajante vive en estos
+  // ramales, nada automático). Cada uno elige/limpia su bajante asociado por desplegable.
+  const canalRamales = engine ? ramalesDelCanal(engine, canal.id) : [];
+  const bajantesLl = (engine?.bajantes || []).filter((b) => b.net === 'll' && b.tipo === 'bajante');
 
   return (
     <>
@@ -136,32 +143,41 @@ export function CanalMenu() {
         </div>
       ))}
       <div style={{ padding: '0 8px 8px' }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Asociar bajante externo</div>
-        <select
-          value={canal.bajanteExternoId || ''}
-          aria-label="Asociar bajante externo"
-          onChange={(e) => {
-            const v = e.target.value || null;
-            engineRef.current?.updateElementById(canal.id, { bajanteExternoId: v });
-            setContextMenuState((prev) =>
-              prev ? { ...prev, element: { ...prev.element, bajanteExternoId: v } } : null,
-            );
-            if (selElement?.id === canal.id) {
-              setSelElement({ ...selElement, bajanteExternoId: v });
-            }
-            engineRef.current?.render();
-          }}
-          style={MENU_SELECT_STYLE}
-        >
-          <option value="">— Sin bajante —</option>
-          {(engineRef.current?.bajantes || [])
-            .filter((b) => b.net === 'll' && b.tipo !== 'canal')
-            .map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.code || b.id}
-              </option>
-            ))}
-        </select>
+        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales del canal</div>
+        {canalRamales.length === 0 && (
+          <div style={{ ...MENU_SELECT_STYLE, border: 'none', color: 'var(--txt3)' }}>
+            Dibuja un ramal desde dentro del canal hacia un bajante.
+          </div>
+        )}
+        {canalRamales.map((r) => {
+          const asociado = bajantesLl.find((b) => b.recibeDeIds?.includes(r.id));
+          return (
+            <div key={r.id} style={{ paddingBottom: 6 }}>
+              <div style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--mono)' }}>
+                {r.label || r.id} → {asociado?.code || asociado?.id || '— sin bajante —'}
+              </div>
+              <select
+                value={asociado?.id || ''}
+                aria-label={`Bajante asociado de ${r.label || r.id}`}
+                onChange={(e) => {
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  moverAsociacionCanal(eng, r.id, e.target.value || null);
+                  setContextMenuState((prev) => (prev ? { ...prev } : null));
+                  engineRef.current?.render();
+                }}
+                style={MENU_SELECT_STYLE}
+              >
+                <option value="">— Sin bajante —</option>
+                {bajantesLl.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.code || b.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
       </div>
     </>
   );

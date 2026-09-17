@@ -133,16 +133,9 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
       return;
     }
   }
-  // Los bajantes de lluvia soltados dentro del rectángulo de un canal recolectora deben
-  // quedarse dentro — se auto-asocian y se recortan al borde del canal si el clic cayó
-  // apenas afuera.
-  let canalId: string | null = null;
-  if (engine.activeNet === 'll') {
-    const resolved = resolveAndClampToCanal(engine, px, py);
-    px = resolved.x;
-    py = resolved.y;
-    canalId = resolved.canalId;
-  }
+  // (orig. usuario) YA NO hay auto-asociación canal↔bajante al soltar: la asociación vive en
+  // los ramales que el usuario dibuja del canal al bajante. El bajante queda donde cae.
+  const canalId: string | null = null;
   const net = NETS.find((n) => n.id === engine.activeNet);
   const netPfx = net ? net.bmPfx : 'BAJ';
   // PUNTO 9 (orig. usuario): MENOR NÚMERO LIBRE sobre ids existentes — borrar BAN-2 de

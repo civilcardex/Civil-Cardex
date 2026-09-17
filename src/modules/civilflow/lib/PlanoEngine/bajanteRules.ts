@@ -25,6 +25,14 @@ export function asociadosDeBajante(baj: PlanoBajante): Set<string> {
   return new Set([...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]);
 }
 
+/** ¿El bajante (NO caja) ya agotó sus 2 asociaciones? Las cajas aceptan entradas ilimitadas.
+ *  Usado por el snap: enganchar un trazo nuevo a un bajante lleno solo produce la alerta
+ *  "Bajante completo" sin conexión real (orig. usuario). */
+export function bajanteLleno(baj: PlanoBajante): boolean {
+  if (esCaja(baj)) return false;
+  return asociadosDeBajante(baj).size >= MAX_BAJANTE;
+}
+
 /** ¿Puede `ramal` asociarse a `baj` en la dirección dada? Valida misma red, reglas por tipo
  *  y topes:
  *  - Bajante: solo ramales (ni llegan ni salen tributarios), máximo 2 asociaciones en total.
@@ -32,7 +40,7 @@ export function asociadosDeBajante(baj: PlanoBajante): Set<string> {
  *    SALIDA máximo UNA y SOLO de tipo ramal — un tributario que intenta salir se rechaza. */
 export function puedeConectarRamalABajante(
   baj: PlanoBajante,
-  ramal: { id: string; net?: string; tipo?: string },
+  ramal: { id: string; net?: string; tipo?: string; esCanalId?: string | null },
   direccion: 'recibe' | 'alimenta' = 'recibe',
 ): ConexionBajanteCheck {
   if (baj.net !== (ramal.net ?? '')) {
@@ -70,7 +78,9 @@ export function puedeConectarRamalABajante(
     };
   }
   const total = asociadosDeBajante(baj);
-  if (!total.has(ramal.id) && total.size >= MAX_BAJANTE) {
+  // Ramal de canal (orig. usuario): EXENTO del tope de 2 asociaciones — los ramales que
+  // nacen de un canal conectan a los bajantes del área sin agotar la Y doble del bajante.
+  if (!total.has(ramal.id) && total.size >= MAX_BAJANTE && !ramal.esCanalId) {
     return {
       ok: false,
       title: 'Bajante completo',

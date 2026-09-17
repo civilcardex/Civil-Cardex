@@ -8,6 +8,7 @@ import {
 } from './drawingAngles';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import { finishRamal, checkCrossRamalAngle } from './finishRamal';
+import { detectarCanalEnExtremos, resolveCanalForPoint } from './canalAssociation';
 import { canJoinTributario, puntoEnCaja } from './junctionAutoSplit';
 import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils';
 import { commitOpenGuide } from './guideLines';
@@ -197,8 +198,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // Iniciar un trazo SOBRE un bajante está PERMITIDO (pedido explícito del usuario): el
     // snapToExisting de abajo ancla el clic al centro del bajante y finishRamal asocia el
     // inicio vía alimentaIds + r.ini — igual que la llegada con recibeDeIds + r.fin.
-
-    const sp = engine.snapToExisting(pt.x, pt.y, engine.activeNet, engine.tipoTramo);
+    // Si el inicio cae dentro de un canal, el trazo será ramal de canal (exento del tope de
+    // asociaciones) → se permiten bajantes llenos en el snap.
+    const inicioEnCanal = !!resolveCanalForPoint(engine, pt.x, pt.y);
+    const sp = engine.snapToExisting(pt.x, pt.y, engine.activeNet, engine.tipoTramo, inicioEnCanal);
     if (sp) {
       // snapToExisting felizmente pega a CUALQUIER vértice de ramal cercano, sin importar qué
       // ramal se eligió como padre del tributario — así un clic cerca de un ramal distinto al
@@ -398,7 +401,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
 
     if (!snappedToSeg) {
-      const sp = engine.snapToExisting(pt.x, pt.y, ar!.net, ar!.tipo);
+      // Trazo de canal en curso: extremo exento del tope → puede enganchar bajantes llenos.
+      const ptArr: number[] = Array.isArray(pt) ? pt : [pt.x, pt.y];
+      const esCanalActivo = !!detectarCanalEnExtremos(engine, [...(ar!.pts || []), ptArr]).canal;
+      const sp = engine.snapToExisting(pt.x, pt.y, ar!.net, ar!.tipo, esCanalActivo);
       if (sp) {
         // La misma guardia que la rama de "empezar un tributario nuevo" arriba —
         // snapToExisting no tiene restricciones y felizmente pega a CUALQUIER vértice de ramal,
@@ -570,11 +576,14 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
 
     // Chequeo de tee entre ramales: validar el ángulo entre el ramal activo y cualquier ramal
-    // existente
+    // existente. Ramal de canal (orig. usuario): sale del canal a cualquier ángulo y aterriza
+    // donde sea — sin validación de ángulo de cruce/llegada.
     {
       const ppts = engine.activeRamal.pts;
       const lastIdx = ppts.length - 1;
+      const esCanalActivo = !!detectarCanalEnExtremos(engine, ppts).canal;
       if (
+        !esCanalActivo &&
         lastIdx >= 1 &&
         !checkCrossRamalAngle(engine, ppts[lastIdx - 1], ppts[lastIdx], engine.activeRamal.id || '')
       ) {
@@ -587,6 +596,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       // Primer segmento: el punto de conexión es pts[0], así que se pasa pts[1] como pA y pts[0]
       // como pB
       if (
+        !esCanalActivo &&
         lastIdx >= 2 &&
         !checkCrossRamalAngle(engine, ppts[1], ppts[0], engine.activeRamal.id || '')
       ) {

@@ -57,6 +57,8 @@ export interface RawElement {
   diametroFin?: string;
   accMed?: Record<string, string>;
   caudal?: number;
+  /** Ramal de canal: id del canal del que nace (extremo inicial dentro de su rect). */
+  esCanalId?: string | null;
   labelX?: number;
   labelY?: number;
   /** Flag de inversión de dirección para redes pts-driven (dos nombres según la vía de guardado). */

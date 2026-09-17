@@ -36,6 +36,7 @@ interface DrawingRamal {
   diametroFin?: string;
   descargaEnId?: string | null;
   recibeDeIds?: string[];
+  esCanalId?: string | null;
 }
 
 interface DrawingBajante {
@@ -394,6 +395,10 @@ export function loadSanLlTramos() {
     for (const r of plane.ramales || []) {
       if (r._net === 'vent' || r.net === 'vent') continue;
       if (isLdesvioRamalId(r.id)) continue;
+      // Ramal de canal (orig. usuario): NO es un ramal de diseño — nace de un canal y su
+      // diámetro espeja al bajante asociado. Excluido de las tablas (como el conector
+      // automático que reemplaza); su codo 90° baja sí cuenta vía accesorioInicio.
+      if (r.esCanalId) continue;
       const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
       const hd = hidroData[apKey] || {};
       const tramo: Tramo = {

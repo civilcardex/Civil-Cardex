@@ -12,7 +12,6 @@ import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { puedeConectarRamalABajante } from './bajanteRules';
 import { bumpBajanteToMaxRamal, _calcPolyArea } from './drawingUtils';
-import { resolveAndClampToCanal, clampToCanal, pointInCanal } from './canalAssociation';
 
 /**
  * Construye un índice por id de los ramales del motor. Los handlers de arrastre corren por frame
@@ -77,6 +76,18 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           a.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
           if (a.labelX != null) a.labelX += dx;
           if (a.labelY != null) a.labelY += dy;
+        }
+      } else if (orig.type === 'dim') {
+        // COTA del grupo: trasladar extremos (origPts = [p1, p2]) + etiqueta si fue arrastrada.
+        const dm = engine.dims.find((dd) => dd.id === id);
+        const op = orig.origPts || [];
+        if (dm && op.length >= 2) {
+          dm.x1 = op[0][0] + dx;
+          dm.y1 = op[0][1] + dy;
+          dm.x2 = op[1][0] + dx;
+          dm.y2 = op[1][1] + dy;
+          if (orig.origLabelX != null) dm.lblX = orig.origLabelX + dx;
+          if (orig.origLabelY != null) dm.lblY = orig.origLabelY + dy;
         }
       }
     }
@@ -425,30 +436,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // Un bajante de lluvia asociado a un canal puede moverse libremente: dentro del
-      // rectángulo sigue asociado sin línea externa; fuera queda asociado pero el canal le
-      // dibuja la tubería de conexión (bajanteExternoId). Un bajante aún no asociado se asocia
-      // al caer dentro de un canal.
-      if (b.net === 'll' && b.tipo === 'bajante') {
-        if (b.canalId) {
-          const canal = engine.bajantes.find((c) => c.id === b.canalId && c.tipo === 'canal');
-          if (canal) {
-            if (pointInCanal(engine, canal, p.x, p.y)) {
-              if (
-                (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId === b.id
-              )
-                (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId = null;
-            } else {
-              (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId = b.id;
-            }
-          }
-        } else {
-          const resolved = resolveAndClampToCanal(engine, p.x, p.y, null);
-          p.x = resolved.x;
-          p.y = resolved.y;
-          b.canalId = resolved.canalId;
-        }
-      }
+      // (orig. usuario) YA NO hay asociación automática canal↔bajante al arrastrar: la
+      // asociación vive en los ramales que el usuario dibuja del canal al bajante
+      // (PlanoRamal.esCanalId + recibeDeIds del bajante, todo explícito).
 
       const dx = p.x - oldX;
       const dy = p.y - oldY;
@@ -457,18 +447,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       b.y = p.y;
       b.labelX = (b.labelX || 0) + dx;
       b.labelY = (b.labelY || 0) + dy;
-
-      // Mover el cuerpo completo de un canal debe arrastrar a sus bajantes asociados con él —
-      // guardan coordenadas absolutas de plano, no un desplazamiento relativo al canal, así que
-      // sin esto se quedarían quietos y terminarían fuera de la nueva posición del canal.
-      if (b.tipo === 'canal') {
-        for (const assoc of engine.bajantes) {
-          if (assoc.canalId !== b.id) continue;
-          const moved = clampToCanal(engine, b, assoc.x + dx, assoc.y + dy);
-          assoc.x = moved.x;
-          assoc.y = moved.y;
-        }
-      }
 
       if (b.recibeDeIds?.length) {
         b.recibeDeIds.forEach((rid) => {
@@ -623,14 +601,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       canal.y = Math.min(anchorY, p.y);
       canal.longitud = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
       canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
-      // Encoger el canal puede dejar un bajante asociado fuera de su rectángulo nuevo — se
-      // regresa, con la misma regla que un bajante arrastrado hacia el borde.
-      for (const assoc of engine.bajantes) {
-        if (assoc.canalId !== canal.id) continue;
-        const clamped = clampToCanal(engine, canal, assoc.x, assoc.y);
-        assoc.x = clamped.x;
-        assoc.y = clamped.y;
-      }
       engine.scheduleRender();
     }
     return;
