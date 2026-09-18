@@ -49,7 +49,7 @@ import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
 import AparatosPanel from './FixturesPanel';
 import { validateBeforeClose } from './pdfViewer/closeValidation';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos';
-import { useIsMobile } from '../../../hooks/useMediaQuery';
+import { useIsMobile, useMediaQuery } from '../../../hooks/useMediaQuery';
 import { applyAccesorioPlacement } from './pdfViewer/accesorioPlacement';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionVisorPrefs';
 import { useNetColorsInit } from './pdfViewer/useNetColorsInit';
@@ -195,23 +195,17 @@ function PdfViewer_({
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
   // Móvil = modo consulta: sin herramientas de dibujo, sidebars colapsadas, zoom por botones.
   const isMobile = useIsMobile();
+  // <1024 (tablet/laptop angosto): colapsar sidebars SOLO al entrar en la franja angosta — un
+  // listener de resize crudo re-cerraba los paneles en cada resize (el teclado del SO en tablet
+  // dispara resize y pisaba la re-expansión manual). Dentro de la franja el usuario puede
+  // re-abrir: el efecto solo corre cuando se CRUZA el breakpoint.
+  const isNarrow = useMediaQuery('(max-width: 1023px)');
   useEffect(() => {
-    if (isMobile) {
+    if (isNarrow) {
       setLeftCollapsed(true);
       setRightCollapsed(true);
     }
-  }, [isMobile]);
-  useEffect(() => {
-    const sync = () => {
-      const narrow = window.innerWidth < 1024;
-      if (narrow) {
-        setLeftCollapsed(true);
-        setRightCollapsed(true);
-      }
-    };
-    window.addEventListener('resize', sync);
-    return () => window.removeEventListener('resize', sync);
-  }, []);
+  }, [isNarrow]);
 
   const dynamicLeftStyle: CSSProperties = useMemo(
     () => ({
@@ -1216,62 +1210,87 @@ function PdfViewer_({
         <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
           <h2 style={PdfViewer_SR_ONLY}>Visor de planos</h2>
           {isMobile && (
-            <>
-              <div
-                role="status"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 10,
-                  padding: '6px 12px',
-                  background: 'rgba(14,20,28,0.92)',
-                  borderBottom: '1px solid #3a494a',
-                  color: '#849495',
-                  fontSize: 11,
-                  fontFamily: 'var(--body)',
-                }}
-              >
-                Modo consulta — el dibujo requiere tablet o PC.
-              </div>
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 12,
-                  bottom: 18,
-                  zIndex: 10,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                {[
-                  { label: '+', factor: 1.2, aria: 'Acercar' },
-                  { label: '−', factor: 1 / 1.2, aria: 'Alejar' },
-                ].map((z) => (
-                  <button
-                    key={z.label}
-                    type="button"
-                    aria-label={z.aria}
-                    onClick={() => engineRef.current?.zoomStep(z.factor)}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: '50%',
-                      border: '1px solid #3a494a',
-                      background: 'rgba(14,20,28,0.92)',
-                      color: '#e2e2e8',
-                      fontSize: 22,
-                      lineHeight: 1,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {z.label}
-                  </button>
-                ))}
-              </div>
-            </>
+            <div
+              role="status"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 10,
+                padding: '6px 12px',
+                background: 'rgba(14,20,28,0.92)',
+                borderBottom: '1px solid #3a494a',
+                color: '#849495',
+                fontSize: 11,
+                fontFamily: 'var(--body)',
+              }}
+            >
+              Modo consulta — el dibujo requiere tablet o PC.
+            </div>
+          )}
+          {isMobile && currentFile && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 30,
+                left: 0,
+                right: 0,
+                zIndex: 10,
+                textAlign: 'center',
+                color: '#849495',
+                fontSize: 10,
+                fontFamily: 'var(--body)',
+                pointerEvents: 'none',
+                padding: '0 12px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {currentFile.name}
+            </div>
+          )}
+          {/* Zoom táctil: también en tablet (768-1023), donde no hay botones de la toolbar
+              de escritorio a mano y el pinch es el único zoom alternativo. */}
+          {isNarrow && (
+            <div
+              style={{
+                position: 'absolute',
+                right: 12,
+                bottom: 18,
+                zIndex: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {[
+                { label: '⤢', aria: 'Ajustar a pantalla', run: handleFit },
+                { label: '+', aria: 'Acercar', run: () => engineRef.current?.zoomStep(1.2) },
+                { label: '−', aria: 'Alejar', run: () => engineRef.current?.zoomStep(1 / 1.2) },
+              ].map((z) => (
+                <button
+                  key={z.label}
+                  type="button"
+                  aria-label={z.aria}
+                  onClick={z.run}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    border: '1px solid #3a494a',
+                    background: 'rgba(14,20,28,0.92)',
+                    color: '#e2e2e8',
+                    fontSize: 22,
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {z.label}
+                </button>
+              ))}
+            </div>
           )}
           <PdfCanvas
             cwRef={cwRef}

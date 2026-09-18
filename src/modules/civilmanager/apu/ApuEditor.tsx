@@ -1,5 +1,6 @@
 import { useCivilManager } from '../context';
 import { fmt } from '../calc';
+import { useIsMobile } from '../../../hooks/useMediaQuery';
 import { ApuSeccionMO } from './ApuSeccionMO';
 import { ApuSeccionEquipo } from './ApuSeccionEquipo';
 import { ApuSeccionInsumos } from './ApuSeccionInsumos';
@@ -14,6 +15,7 @@ interface Props {
 export function ApuEditor({ apu, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const calc = apuCalcMap.get(apu.id);
+  const isMobile = useIsMobile();
 
   return (
     <div>
@@ -81,7 +83,11 @@ export function ApuEditor({ apu, onUpdate }: Props) {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              // Desktop: 4 columnas fijas (el "Total directo" con span 2 queda estable);
+              // auto-fit solo en móvil, donde 4 columnas no caben.
+              gridTemplateColumns: isMobile
+                ? 'repeat(auto-fit, minmax(180px, 1fr))'
+                : 'repeat(4, 1fr)',
               gap: 8,
             }}
           >

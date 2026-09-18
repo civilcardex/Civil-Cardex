@@ -101,6 +101,7 @@ function CivilFlowInner() {
   useEffect(() => {
     let ignore = false;
     let intentos = 0;
+    let timer: number | undefined;
     const intentar = async () => {
       intentos += 1;
       try {
@@ -120,13 +121,17 @@ function CivilFlowInner() {
         }
         setProyectoResuelto(false);
       } catch {
-        if (!ignore && intentos < 10) setTimeout(intentar, 1000);
+        // El guard rige en el fallo TAMBIÉN: sin él, el mount descartado de StrictMode (o
+        // desmontar con reintento pendiente) pinta el banner sobre la instancia viva.
+        if (ignore) return;
+        if (intentos < 10) timer = window.setTimeout(intentar, 1000);
         else setProyectoResuelto(false);
       }
     };
     intentar();
     return () => {
       ignore = true;
+      if (timer != null) window.clearTimeout(timer);
     };
   }, []);
 

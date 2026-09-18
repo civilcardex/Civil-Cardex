@@ -97,6 +97,7 @@ import {
   calcSanitaryAccessories,
   calcHydroAccessories,
   autoDetectRamalConnections,
+  podarReferenciasStaleDeBajantes,
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
 import { fixVentCodoToTee } from './ventCodoTeeFix';
@@ -465,6 +466,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   /** Distancia inicial del pinch (2 dedos); null = sin pinch activo. */
   private _pinchDist0: number | null = null;
+  /** Zoom del engine al iniciar el pinch: base para escalar por razón de distancias. */
   private _pinchZoom0 = 1;
 
   /** Registra el callback de cambios de selección de elemento. */
@@ -636,6 +638,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     // antes, el guardado se perdía en silencio. Se aísla cada paso y siempre se notifica dirty.
     try {
       autoDetectRamalConnections(this);
+      // Poda de referencias stale (después del auto-detect: fin/ini ya saneados) — un trazo
+      // recortado/borrado deja de figurar en recibeDeIds/alimentaIds de la caja/bajante.
+      podarReferenciasStaleDeBajantes(this);
     } catch (e) {
       devError('PlanoEngine _markDirty autoDetect:', e);
     }
@@ -831,6 +836,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.canv.addEventListener('touchstart', this._touchStartHandler, { passive: false });
     this.canv.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
     this.canv.addEventListener('touchend', this._touchEndHandler, { passive: false });
+    // Llamada/gesture del SO interrumpen el touch sin touchend: sin este reset, panning/drag
+    // quedan huérfanos y el próximo touchmove de 1 dedo arrastra o panea sin querer.
+    this.canv.addEventListener('touchcancel', this._touchEndHandler);
     document.addEventListener('keydown', this._onKeyDown);
   }
 
@@ -844,7 +852,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._touchStartHandler)
       this.canv.removeEventListener('touchstart', this._touchStartHandler);
     if (this._touchMoveHandler) this.canv.removeEventListener('touchmove', this._touchMoveHandler);
-    if (this._touchEndHandler) this.canv.removeEventListener('touchend', this._touchEndHandler);
+    if (this._touchEndHandler) {
+      this.canv.removeEventListener('touchend', this._touchEndHandler);
+      this.canv.removeEventListener('touchcancel', this._touchEndHandler);
+    }
     document.removeEventListener('keydown', this._onKeyDown);
   }
 
@@ -1084,6 +1095,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         d,
       );
       autoDetectRamalConnections(this);
+      podarReferenciasStaleDeBajantes(this);
       ensureRpCntRamal(this);
       if (this._history) {
         this._history.saveSnapshot();
@@ -1175,6 +1187,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
+    // 2º dedo del pinch (o palma apoyada): NO re-ejecutar hit-test/selección/dibujo — el
+    // touchstart de CADA dedo entra aquí y crearía vértices o selecciones fantasma.
+    if (e instanceof TouchEvent && e.touches.length > 1) return;
     const { x, y } = this._getPos(e);
 
     if ((e instanceof MouseEvent && e.button === 1) || this.tool === 'pan') {
@@ -1284,9 +1299,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onMouseMoveHandler(e: MouseEvent | TouchEvent): void {
-    // PINCH (2 dedos): zoom anclado al punto medio — modo consulta móvil/tablet. Con 2 dedos
-    // no se dibuja ni se arrastra nada; el estado de drag queda congelado hasta levantar.
-    if (e instanceof TouchEvent && e.touches.length === 2) {
+    // PINCH (≥2 dedos): zoom anclado al punto medio — modo consulta móvil/tablet. Con varios
+    // dedos no se dibuja ni se arrastra nada; el estado de drag queda congelado hasta levantar.
+    if (e instanceof TouchEvent && e.touches.length >= 2) {
       const [a, b] = [e.touches[0], e.touches[1]];
       const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const rect = this.canv.getBoundingClientRect();
@@ -1363,6 +1378,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   /** Zoom por botones (modo consulta móvil/tablet): escala alrededor del centro del canvas. */
   zoomStep(factor: number): void {
+    if (!Number.isFinite(factor) || factor <= 0) return;
     const rect = this.canv.getBoundingClientRect();
     const mx = rect.width / 2;
     const my = rect.height / 2;
