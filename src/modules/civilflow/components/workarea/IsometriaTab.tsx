@@ -9,7 +9,7 @@ import type { useWorkAreaState } from '../useWorkAreaState';
 // en Redes). Estado local de sub-pestaña (variante PressureEquipmentDesign).
 
 const Aparatos3D = React.lazy(() => import('../aparatos3d'));
-const RciCuartoBombasViewer = React.lazy(() => import('../RciCuartoBombasViewer'));
+const RciCuartoBombasViewer = React.lazy(() => import('../rci3d'));
 const Epc3D = React.lazy(() => import('../epc3d'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;

@@ -19,7 +19,7 @@ const BombaARDesign = lazy(() => import('../BombaARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
-const RciCuartoBombasViewer = lazy(() => import('../RciCuartoBombasViewer'));
+const RciCuartoBombasViewer = lazy(() => import('../rci3d'));
 const RciCuartoBombasReferencia = lazy(() => import('../RciCuartoBombasReferencia'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
