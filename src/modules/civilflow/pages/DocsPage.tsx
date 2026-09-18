@@ -55,7 +55,7 @@ function DocsPage() {
       </script>
       <style>{`::-webkit-scrollbar-thumb{background:#dce3ea}::-webkit-scrollbar-thumb:hover{background:#f0f4f8}::-webkit-scrollbar-track{background:#1a1c20}`}</style>
       <Navbar />
-      <div className="flex gap-4 h-[calc(100vh-64px)] pt-16">
+      <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-64px)] pt-16 overflow-y-auto md:overflow-hidden">
         <style>{`
         [data-section-color] .text-primary,
         [data-section-color] .\\!text-primary {
@@ -77,7 +77,7 @@ function DocsPage() {
       `}</style>
         <nav
           aria-label="Categorías de documentación"
-          className="w-64 shrink-0 border border-outline-variant bg-surface-container flex flex-col"
+          className="w-full md:w-64 shrink-0 border border-outline-variant bg-surface-container flex flex-col"
         >
           <div className="p-4 border-b border-outline-variant">
             <span className="block text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
@@ -131,7 +131,7 @@ function DocsPage() {
                 {search.trim() ? 'Resultados de búsqueda' : activeCategory?.name}
               </h1>
             </div>
-            <div className="w-72">
+            <div className="w-full md:w-72">
               <div className="flex items-center border border-outline-variant bg-surface-container px-3">
                 <span className="material-symbols-outlined text-on-surface-variant text-lg">
                   search

@@ -514,7 +514,10 @@ function ProfilePage() {
         >
           Información Personal
         </h2>
-        <ul className="grid grid-cols-2 gap-4" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <ul
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          style={{ listStyle: 'none', margin: 0, padding: 0 }}
+        >
           <li className="border-l-2 border-primary pl-3 py-2">
             <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
               Correo Electrónico

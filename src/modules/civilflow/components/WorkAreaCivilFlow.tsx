@@ -19,55 +19,6 @@ const WorkAreaCivilFlow_S1: React.CSSProperties = {
   flexShrink: 0,
   overflowX: 'auto',
 };
-const WorkAreaCivilFlow_S2: React.CSSProperties = {
-  maxWidth: '360px',
-  width: '100%',
-  background: 'rgba(20, 24, 33, 0.85)',
-  border: '1px solid rgba(58, 73, 74, 0.6)',
-  borderRadius: '16px',
-  padding: '32px 24px',
-  textAlign: 'center',
-  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.7)',
-  backdropFilter: 'blur(12px)',
-};
-const WorkAreaCivilFlow_S3: React.CSSProperties = {
-  width: '64px',
-  height: '64px',
-  background: 'rgba(37, 99, 235, 0.1)',
-  border: '1px solid rgba(37, 99, 235, 0.3)',
-  borderRadius: '50%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  margin: '0 auto 20px',
-  color: '#3B82F6',
-};
-const WorkAreaCivilFlow_S4: React.CSSProperties = {
-  background: 'var(--acc)',
-  color: '#fff',
-  border: 'none',
-  padding: '10px 16px',
-  borderRadius: '8px',
-  fontSize: '12px',
-  fontWeight: 600,
-  fontFamily: 'Geist, monospace',
-  cursor: 'pointer',
-  transition: 'all 0.2s',
-  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-};
-const WorkAreaCivilFlow_S5: React.CSSProperties = {
-  background: 'transparent',
-  color: '#849495',
-  border: '1px solid #3a494a',
-  padding: '9px 16px',
-  borderRadius: '8px',
-  fontSize: '12px',
-  fontWeight: 600,
-  fontFamily: 'Geist, monospace',
-  textDecoration: 'none',
-  transition: 'all 0.2s',
-  display: 'inline-block',
-};
 const WorkAreaCivilFlow_S6: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -230,96 +181,10 @@ function CivilFlowInner() {
   );
 }
 
-function MobileGate({ children }: { children: React.ReactNode }) {
-  const [bypassGate, setBypassGate] = useState(false);
-
-  if (bypassGate) {
-    return <div className="h-full">{children}</div>;
-  }
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 z-[99999] flex md:hidden items-center justify-center p-4"
-        style={{
-          background: 'radial-gradient(circle at center, #161b22 0%, #080a0f 100%)',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        <div style={WorkAreaCivilFlow_S2}>
-          <div style={WorkAreaCivilFlow_S3}>
-            <span className="material-symbols-outlined text-3xl" aria-hidden="true">
-              devices
-            </span>
-          </div>
-
-          <h3
-            style={{
-              fontSize: '18px',
-              fontWeight: 700,
-              color: '#e2e2e8',
-              margin: '0 0 10px',
-              fontFamily: 'Hanken Grotesk, sans-serif',
-              letterSpacing: '0.5px',
-            }}
-          >
-            Optimizado para Pantallas Grandes
-          </h3>
-
-          <p
-            style={{
-              fontSize: '13px',
-              color: '#b0b8b9',
-              lineHeight: '1.6',
-              margin: '0 0 24px',
-              fontFamily: 'Hanken Grotesk, sans-serif',
-            }}
-          >
-            CivilFlow es una herramienta de ingeniería de alta precisión. Para diseñar redes, ver
-            planos y cálculos, recomendamos usar una tablet o computador.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => setBypassGate(true)}
-              style={WorkAreaCivilFlow_S4}
-              onMouseOver={(e) => (e.currentTarget.style.background = 'var(--acc2)')}
-              onMouseOut={(e) => (e.currentTarget.style.background = 'var(--acc)')}
-              onFocus={(e) => (e.currentTarget.style.background = 'var(--acc2)')}
-              onBlur={(e) => (e.currentTarget.style.background = 'var(--acc)')}
-            >
-              CONTINUAR DE TODOS MODOS
-            </button>
-
-            <Link
-              to="/"
-              style={WorkAreaCivilFlow_S5}
-              onMouseOver={(e) => {
-                e.currentTarget.style.color = '#e2e2e8';
-                e.currentTarget.style.borderColor = '#e2e2e8';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.color = '#849495';
-                e.currentTarget.style.borderColor = '#3a494a';
-              }}
-            >
-              VOLVER AL INICIO
-            </Link>
-          </div>
-        </div>
-      </div>
-      <div className="hidden md:block h-full">{children}</div>
-    </>
-  );
-}
-
 export default function CivilFlow() {
   return (
     <ErrorBoundary>
-      <MobileGate>
-        <CivilFlowInner />
-      </MobileGate>
+      <CivilFlowInner />
     </ErrorBoundary>
   );
 }

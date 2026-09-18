@@ -460,7 +460,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._lastRightClickTime = 0;
     this._onUpdateCb = null;
     this._loadedPlanId = null;
+    this._pinchDist0 = null;
   }
+
+  /** Distancia inicial del pinch (2 dedos); null = sin pinch activo. */
+  private _pinchDist0: number | null = null;
+  private _pinchZoom0 = 1;
 
   /** Registra el callback de cambios de selección de elemento. */
   onSelect(cb: SelectCallback): void {
@@ -813,6 +818,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._touchMoveHandler = this._wrapTouch(this._onMove as (e: TouchEvent) => void);
     this._touchEndHandler = (e: TouchEvent) => {
       e.preventDefault();
+      if (e.touches.length < 2) this._pinchDist0 = null;
       this._onUp(e);
     };
 
@@ -1278,6 +1284,29 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onMouseMoveHandler(e: MouseEvent | TouchEvent): void {
+    // PINCH (2 dedos): zoom anclado al punto medio — modo consulta móvil/tablet. Con 2 dedos
+    // no se dibuja ni se arrastra nada; el estado de drag queda congelado hasta levantar.
+    if (e instanceof TouchEvent && e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const rect = this.canv.getBoundingClientRect();
+      const mx = (a.clientX + b.clientX) / 2 - rect.left;
+      const my = (a.clientY + b.clientY) / 2 - rect.top;
+      if (this._pinchDist0 == null) {
+        this._pinchDist0 = dist;
+        this._pinchZoom0 = this.zoom;
+        return;
+      }
+      const nz = Math.max(0.05, Math.min(6, (this._pinchZoom0 * dist) / this._pinchDist0));
+      if (nz !== this.zoom) {
+        this.offX = mx - (mx - this.offX) * (nz / this.zoom);
+        this.offY = my - (my - this.offY) * (nz / this.zoom);
+        this.zoom = nz;
+        this.render();
+      }
+      return;
+    }
+    this._pinchDist0 = null;
     const { x, y } = this._getPos(e);
     this._lastMouseCvs = { x, y };
     if (this.panning) {
@@ -1330,6 +1359,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onDblClickHandler(e: MouseEvent): void {
     void e;
     handleDoubleClick(this);
+  }
+
+  /** Zoom por botones (modo consulta móvil/tablet): escala alrededor del centro del canvas. */
+  zoomStep(factor: number): void {
+    const rect = this.canv.getBoundingClientRect();
+    const mx = rect.width / 2;
+    const my = rect.height / 2;
+    const nz = Math.max(0.05, Math.min(6, this.zoom * factor));
+    if (nz === this.zoom) return;
+    this.offX = mx - (mx - this.offX) * (nz / this.zoom);
+    this.offY = my - (my - this.offY) * (nz / this.zoom);
+    this.zoom = nz;
+    this.render();
   }
 
   _onWheelHandler(e: WheelEvent): void {

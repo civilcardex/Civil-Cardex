@@ -11,6 +11,7 @@ import {
   CoefFriccionTable,
 } from './catalog/CatalogTables';
 import { usePageMeta } from '../../../hooks/usePageMeta';
+import { useIsMobile } from '../../../hooks/useMediaQuery';
 const CatalogMasterPage_S1: React.CSSProperties = {
   position: 'absolute',
   left: 0,
@@ -45,6 +46,7 @@ const pageBtn = {
 };
 
 export default function CatalogMasterPage() {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [subpage, setSubpage] = useState(1);
   usePageMeta(
@@ -145,7 +147,7 @@ export default function CatalogMasterPage() {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '1fr 0.45fr',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 0.45fr',
                   gap: 12,
                   flexShrink: 0,
                 }}
@@ -164,7 +166,7 @@ export default function CatalogMasterPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                 gap: 12,
                 alignContent: 'start',
               }}
@@ -190,7 +192,7 @@ export default function CatalogMasterPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                 gap: 12,
                 alignContent: 'start',
               }}
@@ -211,7 +213,7 @@ export default function CatalogMasterPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                 gap: 12,
                 alignContent: 'start',
               }}

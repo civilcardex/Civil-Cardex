@@ -138,7 +138,7 @@ function RegisterPage() {
             <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-4">
               <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
                 <legend className="sr-only">Datos de registro</legend>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField
                     label="NOMBRE"
                     value={form.nombre}
@@ -173,7 +173,7 @@ function RegisterPage() {
                   autoComplete="organization-title"
                 />
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField
                     label="MATRÍCULA PROFESIONAL"
                     value={form.matricula}
@@ -190,7 +190,7 @@ function RegisterPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div style={{ position: 'relative' }}>
                     <FormField
                       label="CONTRASEÑA"

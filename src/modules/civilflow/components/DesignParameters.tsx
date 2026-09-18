@@ -274,7 +274,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               <EditButton edit={isEditingMateriales} setEdit={setIsEditingMateriales} />
             </div>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
               <caption style={DesignParameters_S1}>
                 Materiales y profundidad de instalación por red
@@ -487,7 +487,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               <EditButton edit={isEditingAparatos} setEdit={setIsEditingAparatos} />
             </div>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
@@ -624,7 +624,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               NTC 3728 · m³/hr
             </span>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
