@@ -1393,3 +1393,45 @@ Gates: tsc 0 · vitest 710/710 · lint 0 · build ✓ · graphify ✓. Auditorí
 
 ### Gates
 vitest 730/730 ✓. tsc/lint reflejan WIP en vuelo de faseE.test.ts (sesión paralela) — re-run al cerrar esa sesión.
+
+## Session Summary — 2026-09-15 (responsive: móvil consulta + trabajo ligero)
+
+### Infra
+- **`src/hooks/useMediaQuery.ts`** (nuevo): `useMediaQuery(query)` via useSyncExternalStore + atajo `useIsMobile()` (<768px, breakpoint md de Tailwind). Única vía de adaptación JS — los estilos inline dominan y no admiten media queries por clase.
+
+### Workarea civilflow
+- **MobileGate bloqueante ELIMINADO** (tapaba todo <768px; el bypass llevaba a desktop inservible). En móvil el workarea renderiza completo: nav de pestañas horizontal scrolleable, InfoTab/Normativa/Informes/Planos/Parámetros operativos (tablas ya scrolleaban). Estilos S2-S5 del gate fuera.
+
+### Visor /visor — modo consulta móvil
+- `useIsMobile` → toolbar de herramientas OCULTA (la herramienta queda en seleccionar; sin dibujo con dedo), ambas sidebars colapsadas, banner no-bloqueante "Modo consulta — el dibujo requiere tablet o PC", **botones flotantes +/−** → nuevo `PlanoEngine.zoomStep(factor)` (escala alrededor del centro).
+- **Pinch-zoom real** en PlanoEngine `_onMouseMoveHandler` (2 dedos: distancia→zoom anclado al punto medio; reset en touchend). Beneficia tablet también.
+- Listener de resize que colapsa sidebars <1024px (antes solo evaluaba al montar).
+
+### Rutas fixes
+- Register: 3 grids `grid-cols-2` → `grid-cols-1 sm:grid-cols-2`. Perfil: idem (lista de proyectos).
+- Docs: sidebar `w-64` → `w-full md:w-64` + contenedor columna→fila; buscador `w-72` → `w-full md:w-72`.
+- CatalogMasterPage: 4 grids fijos → condicionales con `useIsMobile` (1 col en móvil).
+- DesignParameters: `overflowX hidden→auto` (3 contenedores) — columnas ya no se recortan.
+- ApuEditor (cm): `repeat(4,1fr)` → `repeat(auto-fit, minmax(180px,1fr))`.
+- faseE.test.ts (WIP paralelo): `tipo: string` añadido a su tipo de areas.
+
+### Fuera de alcance (documentado)
+- Dibujo táctil completo en celular (pointer events unificados, menú contextual por long-press, multiselección táctil) — proyecto aparte.
+- Targets de click más grandes en tablet (innecesario: tablet ya usa la UI de PC).
+
+### Gates
+tsc 0 · vitest 759/759 · lint 0 · build ✓ · graphify ✓. Verificación manual del usuario: recarga dura en tablet + celular.
+
+## Session Summary — 2026-09-18 (incidente cf_planos vaciada + hardening)
+
+### Incidente
+- `cf_planos` quedó vacía; los dibujos (cf_planos_ramales/bajantes/areas/dims/guías/fantasmas — sin FK a cf_planos, nada cascadó) y los PDFs (bucket `plan_pdfs`, ruta `{uid}/{proyectoId}/{planId}.pdf`) sobrevivieron.
+- **Causa raíz**: `save_planos_meta` interpretaba lista vacía como "borra todo el proyecto" y el autosave debounced de PlansContext puede dispararse con `plans=[]` (caché local vacía / `get_proyecto_data` que falla una vez) → vaciado masivo.
+
+### Fix
+- Migración `20260918000000_save_planos_meta_guard.sql`: lista vacía = no-op en el RPC + nuevo `delete_plano_meta(p_plano_id)` dueño-only (aplica el usuario).
+- `PlansContext`: autosave salta con lista vacía; `removePlan` llama `deletePlanMeta` explícito (pdfStorageService) — sin ghost plans al borrar el último.
+- Recuperación de datos: SQL en la sesión (reconstruye cf_planos desde `storage.objects` con los MISMOS ids del filename → trazos/PDFs reconectan solos). Nombres/nivel/calibración se pierden (defaults de plan nuevo) salvo backup Supabase o `civilflow_plans_meta` en localStorage.
+
+### Gates
+tsc 0 · vitest 759/759 · lint 0 · build ✓ · graphify ✓.
