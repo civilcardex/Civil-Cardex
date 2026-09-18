@@ -1435,3 +1435,58 @@ tsc 0 · vitest 759/759 · lint 0 · build ✓ · graphify ✓. Verificación ma
 
 ### Gates
 tsc 0 · vitest 759/759 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-18 (auditoría ronda 3: rci3d + responsive + táctil)
+
+### Auditoría (3 exploradores: rci3d nuevo, diff responsive/táctil, higiene)
+- Regresiones previas verificadas EN VERDE: GC grace 4s, NULLABLE+defaultToNull, parseNum europeo, 0 dangerouslySetInnerHTML, 0 eval.
+- ADVISORY sin ejecutar: 40.3MB de .glb trackeados sin LFS (+14MB de rci entraron en 56f3400 — usar git lfs para assets futuros); RciCuartoBombasViewer (−1020) se borró dentro de un commit `docs:` (5bcefac).
+
+### Fase A — rci3d (críticos de integración React)
+- **C1 etiquetas muertas al 2º montaje**: `estado` module-level en etiquetasRci.ts cacheaba el ctx del canvas destruido → nuevo `resetEtiquetasRci()` llamado en cleanup de RciViewer.
+- **C2 spinner infinito**: usoRciCarga bailaba si `import('three')` no había terminado a 1000ms fijos → espera activa 150ms×100 + `.catch` en la IIFE de la escena (unhandled rejection → devError).
+- **C3 pantalla negra silenciosa**: fetch sin `res.ok` + ensamble vacío → dist=0/cámara en origen; ahora `res.ok` + contador de fallas (todas → onFallo) + guard `mr<=0` en finalizarCarga. UI de error con botón Reintentar (wrapper con key en RciViewer).
+- I3 `forceContextLoss()` (tope de contextos WebGL de Chrome), I4 restaurar `ColorManagement.enabled` en cleanup, I6 dispose del grupo parseado si desmonte a mitad de fetch, I7 `reencuadreOrto` poblado en `setOrthoView` (vistas orto ya no se distorsionan al resize), I2 normales del GLB ya no se sobrescriben, M5 piso en framesPendientes.
+- JSDoc de restricción en rciGlbParser (NO es parser glTF general: ignora nodes/transforms/byteStride — solo vale para estos 13 assets).
+- console.error → devError en rci3d/useRciCarga y aparatos3d/useGlbCatalogo.
+
+### Fase B — visor táctil/responsive
+- **H1 WorkAreaCivilFlow**: catch de auto-activación sin guard `ignore` (banner fantasma en StrictMode + setState tras unmount) → guard en ambas ramas + clearTimeout del reintento.
+- **H2**: touchstart del 2º dedo re-ejecutaba hit-test/dibujo → guard `touches.length > 1` en `_onDownHandler` (pinch en tablet ya no crea vértices fantasma con herramienta línea).
+- **H3**: listener `touchcancel` añadido (llamada/gesture del SO ya no dejan panning/drag huérfanos).
+- **H4**: pinch `=== 2` → `>= 2` (3 dedos/palma ya no dibujan).
+- **H5**: doble umbral responsive unificado — `useMediaQuery('(max-width: 1023px)')` colapsa sidebars SOLO al cruzar el breakpoint (el listener crudo re-cerraba paneles en cada resize, p.ej. teclado del SO en tablet).
+- **H7**: móvil gana botón ⤢ "Ajustar a pantalla" + nombre del plano bajo el banner; zoom flotante +/− ahora también en tablet (768-1023).
+- **H6**: `zoomStep` valida factor (finite > 0). JSDoc `_pinchZoom0`.
+
+### Fase C — higiene
+- 6 assets muertos borrados (grep 0 refs): EP_2T1R/EP_3T1R.webp (2.67MB), icons.svg, civilCorelogo.webp, teeBilateral.webp, canal_recolectora.svg.
+- `.continue/` a .gitignore; vitest include acotado a `src/**` (los .test.cjs de .agents/skills daban "No test suite found").
+- H8 ApuEditor: totals grid 4-col fija en desktop (el span-2 ya no queda huérfano), auto-fit solo móvil.
+- **H12 downgrade**: deletePlanMeta silencioso NO resucita plan — el siguiente autosave exitoso lo borra server-side (save_planos_meta borra ids ausentes).
+
+### Gates
+tsc 0 · lint 0 errores · vitest 759/759 (136 files) · build ✓ · graphify ✓.
+
+### Verificación manual pendiente (recarga dura)
+RCI: alternar sub-pestañas y volver (etiquetas viven), modo avión/carpeta sin models (banner de error + Reintentar). Tablet: pinch con herramienta línea sin dibujar, resize/teclado no cierra paneles. Móvil: ⤢ ajusta, nombre visible.
+
+### Cajas AN/ALL — recorte solo si el trazo SALE (2026-09-18, misma sesión)
+- **Causa**: `drawRamalPath.ts` clipToEdge recortaba al borde AMBOS extremos (ini y fin) — el trazo que ENTRABA a la caja quedaba cortado en el borde aunque terminara dentro.
+- **Regla nueva**: extremo que ENTRA (fin) y queda DENTRO del cuadro → se dibuja completo (la caja es solo trazo); si SOBRESALE (entra y sale), se recorta al borde por donde cruza, a lo largo del propio segmento. El extremo que SALE (ini) sigue recortándose siempre (PUNTO 1). El modelo (asociarRamalABajantes) ya era sale-only — sin cambio.
+- Test `cajaTrimEntradaSale.test.ts` (5). Gates: tsc 0 · vitest 764/764 · lint 0 · build ✓ · graphify ✓.
+
+### Poda de asociaciones stale caja/bajante↔trazo (2026-09-18, misma sesión)
+- **Síntoma**: borrar/recortar un trazo dejaba a la caja/bajante/montante "recordando" la asociación — `recibeDeIds`/`alimentaIds` conservaban ids de trazos que ya no llegan (Bajante completo fantasma). El lado del ramal ya lo saneaba `autoDetectRamalConnections` (limpia fin/ini por geometría), el lado del ELEMENTO nunca se podaba.
+- **Fix**: `podarReferenciasStaleDeBajantes` (PlanoEngineNetwork) — corre en `_markDirty` y en load DESPUÉS del auto-detect: una asociación sobrevive solo si el extremo del trazo SIGUE tocando el elemento (≤0.5, misma verdad geométrica del auto-detect, con desplazamientos entrepisos). Excluidos: canales (su asociación es explícita vía moverAsociacionCanal/esCanalId — no usa fin).
+- Test `podarReferenciasStale.test.ts` (6: borrado, recortado, válido sobrevive, alimenta stale, fantasma desplazado, canal intocado).
+- Nota: tsc tiene 1 error en `aparatos3d/useGlbCatalogo.ts` (`sleep` no encontrado) — sesión paralela, no de esta ronda.
+
+## Session Summary — 2026-09-18 (ponytail: corte over-engineering rci3d + visores 3D)
+
+- **Kernel compartido `shared/cargaSecuencial.ts`**: los 3 loaders GLB (aparatos/epc/rci) tenían su propio bucle secuencial (progreso 20→95 %, pausa 150 ms, conteo de fallas). Ahora uno solo; finish/encuadre sigue por visor. El sleep duplicado (aparatos/epc) salió del kernel.
+- **Etiquetas rci sin código muerto**: param `isActive` (siempre true) + rama cian `#00ffff` inalcanzable + fallbacks muertos (`ang ?? 0`/`L1 || 50`/`L2 || 40`) fuera.
+- **Constantes únicas en rci3dData**: `RCI_MONO` (antes ×3) y `RCI_FOV` (antes duplicado como literal — desincronizarlo rompía el encuadre en silencio).
+- **Fork documentado**: vistasRci vs aparatos3d/vistasCamara marcado como fork deliberado (comentario, no merge — el genérico acoplaría los 3 módulos 3D).
+- Neto real ~−20 líneas (el esqueleto de loaders era menos uniforme que lo estimado en la auditoría: sleep antes/después y fórmula de progreso divergían — el kernel unifica esa divergencia). Deuda deferida por riesgo: dedup de los 3 inputs numéricos perezosos (props divergentes, sin tests UI).
+- Gates: tsc 0 · lint 0 · vitest 770/770 (138 files, incluye tests nuevos de la sesión paralela) · build ✓ · graphify ✓.
