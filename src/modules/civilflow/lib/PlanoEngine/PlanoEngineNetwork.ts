@@ -227,6 +227,45 @@ export function findCodoReventiladoLinks(
   return links;
 }
 
+/** Poda referencias stale en bajantes/cajas/montantes: un trazo recortado, arrastrado fuera o
+ *  borrado deja de figurar en sus recibeDeIds/alimentaIds. La verdad es autoDetectRamalConnections
+ *  (fin/ini del ramal ya sanados al correr esto): solo sobrevive la asociación cuyo extremo SIGUE
+ *  tocando el elemento con el mismo criterio geométrico (≤0.5). Canal fuera: su asociación vive
+ *  en esCanalId (canalAssociation). Corre tras el auto-detect en cada _markDirty (orig. usuario:
+ *  borrar un trazo dejaba a la caja "recordando" la asociación — Bajante completo fantasma). */
+export function podarReferenciasStaleDeBajantes(engine: IPlanoEngineCore): void {
+  const lvlLabel = engine.nivelActual?.label ?? '';
+  const posDe = (b: PlanoBajante): { x: number; y: number } => {
+    const disp = b.desplazamientos?.[lvlLabel] || {};
+    return { x: b.x + (disp.dx || 0), y: b.y + (disp.dy || 0) };
+  };
+  const toca = (r: PlanoRamal, idx: number, b: PlanoBajante): boolean => {
+    const pt = (r.pts || [])[idx];
+    const pos = posDe(b);
+    return !!pt && Math.hypot(pt[0] - pos.x, pt[1] - pos.y) <= 0.5;
+  };
+  for (const b of engine.bajantes) {
+    if (b.tipo === 'canal') continue;
+    const code = b.code || b.id;
+    if (b.recibeDeIds?.length) {
+      b.recibeDeIds = b.recibeDeIds.filter((rid) => {
+        const r = engine.ramales.find((rr) => rr.id === rid);
+        // Ramal de canal: asociación EXPLÍCITA escrita por moverAsociacionCanal (no usa
+        // fin ni toque geométrico) — la poda no la toca.
+        if (r && (r as unknown as { esCanalId?: string }).esCanalId) return true;
+        return !!r && r.fin === code && toca(r, (r.pts || []).length - 1, b);
+      });
+    }
+    if (b.alimentaIds?.length) {
+      b.alimentaIds = b.alimentaIds.filter((rid) => {
+        const r = engine.ramales.find((rr) => rr.id === rid);
+        if (r && (r as unknown as { esCanalId?: string }).esCanalId) return true;
+        return !!r && r.ini === code && toca(r, 0, b);
+      });
+    }
+  }
+}
+
 export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
   const ACC_LABELS = ACC_ABBR;

@@ -104,11 +104,11 @@ export function drawRamalPath(
   const r =
     engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
 
-  // PUNTO 1 (orig. usuario): ramal conectado a una CAJA — el tramo dentro del cuadro se
-  // RECORTA AL BORDE, siguiendo la dirección del trazo dibujado por el usuario (jamás al
-  // punto medio del lado). Se aplica en render a TODA conexión caja (ini o fin) para que
-  // ninguna ruta de creación/redibujado deje tramo interno; el modelo también recorta al
-  // asociar (asociarRamalABajantes).
+  // PUNTO 1 (orig. usuario): ramal conectado a una CAJA — el extremo que SALE del cuadro se
+  // RECORTA AL BORDE, siguiendo la dirección del trazo dibujado (jamás al punto medio del
+  // lado). ENTRADA (fin): el trazo que termina DENTRO de la caja se deja completo (orig.
+  // usuario 2026-09-18) — solo se recorta si SOBRESALE por el otro lado. El modelo también
+  // recorta al asociar (asociarRamalABajantes, rama sale).
   if (r && 'ini' in r && pts.length >= 2 && engine.bajantes?.length) {
     const rr = r as PlanoRamal;
     const half = engine.cmToPlanePx(100) / 2;
@@ -118,7 +118,7 @@ export function drawRamalPath(
         (b) =>
           (b.code === code || b.id === code) && (b.tipo === 'caja_san' || b.tipo === 'caja_ll'),
       );
-    const clipToEdge = (idx: number, code?: string) => {
+    const clipToEdge = (idx: number, code?: string, soloSiSale = false) => {
       if (!esCajaCode(code)) return;
       const caja = engine.bajantes.find(
         (b) =>
@@ -126,6 +126,33 @@ export function drawRamalPath(
       );
       if (!caja || caja.x == null || caja.y == null) return;
       const other = pts[idx === 0 ? 1 : pts.length - 2];
+      if (soloSiSale) {
+        // ENTRADA sin salida (orig. usuario 2026-09-18): extremo DENTRO del cuadro → el trazo
+        // se dibuja hasta donde el usuario lo dejó (la caja es solo trazo, se ve a través).
+        // Si SOBRESALE (entra y sale del cuadro), el extremo se recorta al borde por donde
+        // cruza, a lo largo del propio segmento. El extremo que SALE de la caja (pts[0], ini)
+        // sigue recortándose siempre (PUNTO 1).
+        const e = pts[idx];
+        if (Math.abs(e[0] - caja.x) <= half && Math.abs(e[1] - caja.y) <= half) return;
+        const oLen = Math.hypot(e[0] - other[0], e[1] - other[1]);
+        if (oLen < 0.001) return;
+        const ux = (e[0] - other[0]) / oLen;
+        const uy = (e[1] - other[1]) / oLen;
+        let sExit = Infinity;
+        if (Math.abs(ux) > 1e-9) {
+          const s = (caja.x + Math.sign(ux) * half - other[0]) / ux;
+          const py = other[1] + uy * s;
+          if (s > 0.01 && s < oLen && Math.abs(py - caja.y) <= half + 0.01) sExit = s;
+        }
+        if (Math.abs(uy) > 1e-9) {
+          const s = (caja.y + Math.sign(uy) * half - other[1]) / uy;
+          const px = other[0] + ux * s;
+          if (s > 0.01 && s < oLen && Math.abs(px - caja.x) <= half + 0.01 && s < sExit) sExit = s;
+        }
+        if (!isFinite(sExit)) return;
+        pts[idx] = [other[0] + ux * sExit, other[1] + uy * sExit];
+        return;
+      }
       const dx = other[0] - caja.x;
       const dy = other[1] - caja.y;
       const len = Math.hypot(dx, dy);
@@ -134,7 +161,7 @@ export function drawRamalPath(
       pts[idx] = [caja.x + (dx / len) * t, caja.y + (dy / len) * t];
     };
     clipToEdge(0, rr.ini || undefined);
-    clipToEdge(pts.length - 1, rr.fin || undefined);
+    clipToEdge(pts.length - 1, rr.fin || undefined, true);
   }
 
   // Codo de plano en un extremo compartido: recortar el cuerpo hasta el punto de tangencia del
