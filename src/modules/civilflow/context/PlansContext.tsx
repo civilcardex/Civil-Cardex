@@ -15,7 +15,12 @@ import {
   getActiveProyectoId,
 } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
-import { uploadPlanPDF, deletePlanPDF, downloadPlanPDF } from '../services/pdfStorageService';
+import {
+  uploadPlanPDF,
+  deletePlanPDF,
+  deletePlanMeta,
+  downloadPlanPDF,
+} from '../services/pdfStorageService';
 import { saveProyectoPlansMeta, loadProyectoData } from '../services/proyectoDataService';
 import { PLANS_META_KEY } from '../constants/storage-keys';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
@@ -325,6 +330,11 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       if (!cloudRestoreDone) return;
       const proyectoId = getActiveProyectoId();
       if (!proyectoId) return;
+      // Lista vacía NUNCA respalda: un arranque con caché local vacía (o un get_proyecto_data
+      // que falla) disparaba el RPC con [] y vaciaba cf_planos (incidente 2026-09-18: la tabla
+      // se borró entera; PDFs intactos en el bucket). La limpieza del plano eliminado la hace
+      // removePlan vía deletePlanMeta — uno a uno, nunca un vaciado masivo.
+      if (plans.length === 0) return;
       const meta = plans.map(({ file: _file, ...m }) => m);
       saveProyectoPlansMeta(proyectoId, meta);
     },
@@ -378,6 +388,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     });
     const proyectoId = getActiveProyectoId();
     if (proyectoId) deletePlanPDF(proyectoId, id);
+    void deletePlanMeta(id);
   }, []);
 
   const updatePlan = useCallback((id: number, updates: Partial<PlanItem>) => {
