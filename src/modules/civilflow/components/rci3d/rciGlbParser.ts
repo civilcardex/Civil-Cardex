@@ -4,6 +4,10 @@ import type { Three } from './useRci3DScene';
 // Parser GLB del HTML original (port): los GLB del cuarto de bombas solo traen
 // POSITION/NORMAL/COLOR_0 (uint8 VEC4) + índices, sin materiales usables — GLTFLoader daría
 // un aspecto distinto. fetch(url) → arrayBuffer → parse.
+// RESTRICCIÓN (ponytail): NO es un parser glTF general — ignora la jerarquía de nodes (sus
+// transforms), primitives.mode y bufferView.byteStride. Solo vale para estos 13 assets,
+// exportados con transforms de nodo identidad y primitivos TRIANGLES sin entrelazar;
+// re-exportarlos desde otra herramienta exige re-verificar el visor.
 // RENDIMIENTO: el original creaba 1 mesh por PRIMITIVO (cientos de draw calls por pieza).
 // Aquí los primitivos se FUNDEN en ≤3 meshes por pieza según material: con COLOR_0 (vertex
 // colors), sin COLOR_0 (gris) y — solo en grupos cheque — los primitivos de vértices
@@ -95,7 +99,9 @@ export async function parseGLB(
         const d = readAcc(prim.indices);
         geom.setIndex(new THREE.BufferAttribute(new Uint32Array(d), 1));
       }
-      geom.computeVertexNormals();
+      // Las normales del GLB (bordes duros autorados) mandan: recomputar las promediaría y
+      // cambiaría el shading — solo se calculan si el asset no las trae.
+      if (prim.attributes.NORMAL == null) geom.computeVertexNormals();
 
       if (blanco) redGeoms.push(geom);
       else if (prim.attributes.COLOR_0 != null) colorGeoms.push(geom);

@@ -3,6 +3,7 @@ import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLB_POSITIONS, GLB_SCALE_OVERRIDE, GLB_URL } from './epc3dData';
 import { parseGLB } from './glbParser';
+import { cargarModelosSecuencial } from '../shared/cargaSecuencial';
 import { actualizarEtiquetas } from './etiquetas';
 import { dibujarGizmoEjes } from '../aparatos3d/ejeGizmo';
 
@@ -51,8 +52,6 @@ interface Opts {
   onProgress: (pct: number, label: string) => void;
   onReady: () => void;
 }
-
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** Monta la escena 3D del EPC sobre el canvas y carga los modelos. Corre una vez por montaje. */
 export function useEpc3DScene({
@@ -150,46 +149,45 @@ export function useEpc3DScene({
       }
       onResize();
 
-      // ── Carga secuencial de GLB (fetch + parser propio, 150 ms entre modelos) ──
-      progressRef.current.onProgress(20, 'Descargando modelo…');
-      for (let i = 0; i < MODELOS.length; i++) {
-        const name = MODELOS[i];
-        progressRef.current.onProgress(
-          20 + (i / MODELOS.length) * 75,
-          `Cargando ${name}… (${i + 1}/${MODELOS.length})`,
-        );
-        await sleep(150);
-        if (cancelled) return;
-        try {
-          const res = await fetch(GLB_URL(name));
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const buf = await res.arrayBuffer();
-          const group = await parseGLB(THREE, buf);
-          const pos = GLB_POSITIONS[name];
-          group.position.set(pos[0], pos[1], pos[2]);
-          const scl = GLB_SCALE_OVERRIDE[name];
-          if (scl) group.scale.set(scl[0], scl[1], scl[2]);
-          // Mampostería semitransparente (paredes del cuarto)
-          if (name === 'mamposteria') {
-            group.traverse((m) => {
-              if (!(m instanceof THREE.Mesh)) return;
-              m.material = new THREE.MeshStandardMaterial({
-                color: new THREE.Color(0.76, 0.7, 0.6),
-                metalness: 0.05,
-                roughness: 0.85,
-                transparent: true,
-                opacity: 0.35,
-                side: THREE.DoubleSide,
-                depthWrite: false,
+      // ── Carga secuencial de GLB (fetch + parser propio, núcleo común de los visores) ──
+      await cargarModelosSecuencial(
+        MODELOS,
+        (pct, texto) => progressRef.current.onProgress(pct, texto),
+        async (name) => {
+          try {
+            const res = await fetch(GLB_URL(name));
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const buf = await res.arrayBuffer();
+            const group = await parseGLB(THREE, buf);
+            const pos = GLB_POSITIONS[name];
+            group.position.set(pos[0], pos[1], pos[2]);
+            const scl = GLB_SCALE_OVERRIDE[name];
+            if (scl) group.scale.set(scl[0], scl[1], scl[2]);
+            // Mampostería semitransparente (paredes del cuarto)
+            if (name === 'mamposteria') {
+              group.traverse((m) => {
+                if (!(m instanceof THREE.Mesh)) return;
+                m.material = new THREE.MeshStandardMaterial({
+                  color: new THREE.Color(0.76, 0.7, 0.6),
+                  metalness: 0.05,
+                  roughness: 0.85,
+                  transparent: true,
+                  opacity: 0.35,
+                  side: THREE.DoubleSide,
+                  depthWrite: false,
+                });
               });
-            });
+            }
+            ensamble.add(group);
+            piezas.set(name, group);
+            return true;
+          } catch {
+            // best-effort: un modelo que falla no bloquea el visor
+            return false;
           }
-          ensamble.add(group);
-          piezas.set(name, group);
-        } catch {
-          // best-effort: un modelo que falla no bloquea el visor
-        }
-      }
+        },
+        () => cancelled,
+      );
       if (cancelled) return;
 
       // ── finishLoading: encuadre ISO fijo + refBox + occluders ──

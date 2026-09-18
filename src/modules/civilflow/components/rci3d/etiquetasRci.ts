@@ -1,5 +1,5 @@
 import type * as THREE_NS from 'three';
-import { LABEL_POSITIONS } from './rci3dData';
+import { LABEL_POSITIONS, RCI_MONO } from './rci3dData';
 import type { Rci3DApi } from './useRci3DScene';
 
 // Capa de etiquetas — port del HTML original: canvas 2D full-viewport (pointer-events none)
@@ -9,7 +9,6 @@ import type { Rci3DApi } from './useRci3DScene';
 // en el desplegable; sin selección no se dibuja ninguna (estado inicial del HTML tras cargar).
 
 const OCC_EVERY = 4;
-const MONO = "'Geist', monospace";
 
 interface EtiquetaEstado {
   ctx: CanvasRenderingContext2D | null;
@@ -19,6 +18,16 @@ interface EtiquetaEstado {
 }
 
 const estado: EtiquetaEstado = { ctx: null, occCache: {}, frameCnt: 0, raycaster: null };
+
+/** Invalida el estado cacheado (ctx del canvas, caché de oclusión, raycaster). Obligatorio al
+ *  desmontar el visor: el canvas 2D se destruye con él y un ctx viejo haría que el repintado
+ *  vaya a un canvas desconectado (etiquetas invisibles en el siguiente montaje). */
+export function resetEtiquetasRci(): void {
+  estado.ctx = null;
+  estado.occCache = {};
+  estado.frameCnt = 0;
+  estado.raycaster = null;
+}
 
 /** ¿La posición 3D está oculta por algún occluder desde la cámara activa? */
 function checkOcclusion(api: Rci3DApi, pos3d: THREE_NS.Vector3): boolean {
@@ -45,11 +54,10 @@ function drawLabel(
   ang: number,
   L1: number,
   L2: number,
-  isActive: boolean,
 ): void {
   const R = Math.round(14 * sc);
-  const col = isActive ? '#1f6feb' : '#00ffff';
-  const lw = isActive ? 2.5 : 1.5;
+  const col = '#1f6feb';
+  const lw = 2.5;
   const fs = Math.round(21 * sc);
   const as = Math.round(6 * sc);
 
@@ -92,7 +100,7 @@ function drawLabel(
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.font = `bold ${fs}px ${MONO}`;
+  ctx.font = `bold ${fs}px ${RCI_MONO}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(String(id), cx, cy);
@@ -149,6 +157,6 @@ export function dibujarEtiquetasRci(
     }
     if (estado.occCache[idStr] === false) continue; // oculta
 
-    drawLabel(ctx, x, y, refId, lbl.scale, lbl.dir, lbl.ang ?? 0, lbl.L1 || 50, lbl.L2 || 40, true);
+    drawLabel(ctx, x, y, refId, lbl.scale, lbl.dir, lbl.ang, lbl.L1, lbl.L2);
   }
 }

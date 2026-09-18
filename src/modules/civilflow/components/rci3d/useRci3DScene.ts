@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { dibujarGizmoEjes } from '../aparatos3d/ejeGizmo';
+import { RCI_FOV } from './rci3dData';
+import { devError } from '../../../../utils/devError';
 
 export type Three = typeof THREE_NS;
 
@@ -60,12 +62,14 @@ export function useRci3DScene(
     if (!wrap || !canvas) return;
     let cancelled = false;
     let raf = 0;
+    let threeMod: typeof THREE_NS | null = null;
     const ro = new ResizeObserver(() => apiRef.current?.ajustar?.());
 
     (async () => {
       const THREE = await import('three');
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
       if (cancelled) return;
+      threeMod = THREE;
       THREE.ColorManagement.enabled = false; // pipeline r128: vertex colors lineales + sRGB out
 
       const renderer = new THREE.WebGLRenderer({
@@ -88,7 +92,7 @@ export function useRci3DScene(
       scene.background = new THREE.Color(0x0d1117);
       scene.fog = new THREE.Fog(0x0d1117, 60, 300);
 
-      const camP = new THREE.PerspectiveCamera(50, 1, 0.01, 500);
+      const camP = new THREE.PerspectiveCamera(RCI_FOV, 1, 0.01, 500);
       camP.position.set(8, 4, 10);
       const camO = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.001, 1000);
 
@@ -171,19 +175,25 @@ export function useRci3DScene(
         // frames pendientes (carga, selección, sombras). Idle = no se pinta nada.
         const animando = api.cancelAnim != null;
         if (moved || animando || api.framesPendientes > 0) {
-          if (!animando) api.framesPendientes--;
+          if (!animando) api.framesPendientes = Math.max(0, api.framesPendientes - 1);
           dibujarGizmoEjes(gizmoRef.current, camActiva());
           renderer.render(scene, camActiva());
           onFrame?.current?.(api);
         }
       };
       loop();
-    })();
+    })().catch((e: unknown) => {
+      // Sin WebGL o con import fallido: el api queda null y useRciCarga reporta el fallo por
+      // su tope de espera de arranque (única vía de error; aquí solo evitamos la unhandled
+      // rejection).
+      devError('[rci3d] init escena', e);
+    });
 
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      if (threeMod) threeMod.ColorManagement.enabled = true; // es estado global de three: dejarlo como estaba
       const api = apiRef.current;
       if (api) {
         if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
@@ -197,6 +207,9 @@ export function useRci3DScene(
         });
         api.scene.clear();
         api.renderer.dispose();
+        // Libera el contexto WebGL real (dispose() solo libera recursos): sin esto, alternar
+        // visores 3D acumula contextos hasta el tope de Chrome y mata el canvas de otro visor.
+        api.renderer.forceContextLoss();
         apiRef.current = null;
       }
     };

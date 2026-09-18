@@ -1,10 +1,8 @@
-import { COMPONENTS, COMP_DESC, NOTA_NORMATIVA } from './rci3dData';
+import { COMPONENTS, COMP_DESC, NOTA_NORMATIVA, RCI_MONO } from './rci3dData';
 
 // Sidebar izquierdo del visor 3D RCI — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción del seleccionado debajo y nota normativa fija
 // abajo-izquierda. Geist + mismos tamaños/colores.
-
-const MONO = "'Geist', monospace";
 
 interface Props {
   selectedId: number | null;
@@ -31,7 +29,7 @@ export default function RciSidebar({ selectedId, onSelect }: Props): React.JSX.E
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
-        fontFamily: MONO,
+        fontFamily: RCI_MONO,
         zIndex: 10,
       }}
     >
@@ -58,7 +56,7 @@ export default function RciSidebar({ selectedId, onSelect }: Props): React.JSX.E
           style={{
             flex: 1,
             fontSize: '0.78rem',
-            fontFamily: MONO,
+            fontFamily: RCI_MONO,
             color: '#e6edf3',
             background: '#0d1117',
             border: '1px solid #30363d',

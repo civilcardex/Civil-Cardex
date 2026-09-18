@@ -2,6 +2,13 @@
 // (RCI CIVILCARDEX SEP 17 2026). Sin dependencias de three: las posiciones de etiquetas son
 // tuplas [x,y,z] en metros (el hook las convierte a Vector3).
 
+// Constantes compartidas del módulo rci3d (una sola fuente: desincronizarlas rompe el
+// encuadre/shading en silencio).
+/** Fuente monoespaciada de overlays/etiquetas/botones del visor. */
+export const RCI_MONO = "'Geist', monospace";
+/** FOV de la cámara persp; vistasRci deriva de aquí su tan(half-fov) de encuadre. */
+export const RCI_FOV = 50;
+
 export interface RciComponente {
   id: number;
   name: string;

@@ -1,13 +1,16 @@
 import type * as THREE_NS from 'three';
 import type { Rci3DApi } from './useRci3DScene';
+import { RCI_FOV } from './rci3dData';
 
+// FORK DELIBERADO de aparatos3d/vistasCamara (mismo esqueleto, otro pipeline/encuadre): no
+// fusionar sin revisar ambos visores — el genérico acoplaría los 3 módulos 3D (ponytail).
 // Vistas de cámara — port del HTML original: ISO persp interpolada (700 ms, ease-out cúbico);
 // FRENTE/LATERAL/PLANTA orto con encuadre por proyección de las 8 esquinas del bbox (margen
 // 8 %); zoom por escala de frustum (orto) o dolly sobre el vector cámara→target (persp).
 
 export type VistaKey = 'iso' | 'front' | 'side' | 'top';
 
-const TAN_HALF_FOV = Math.tan((50 / 2) * (Math.PI / 180)); // fov 50°
+const TAN_HALF_FOV = Math.tan((RCI_FOV / 2) * (Math.PI / 180));
 
 /** Vuelve a la cámara persp (las vistas ISO/animadas la usan). */
 export function activarPersp(api: Rci3DApi): void {
@@ -113,6 +116,10 @@ function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.V
   api.controls.object = camO;
   api.controls.target.copy(tgt);
   api.controls.update();
+  // Reencuadre en vivo: el ResizeObserver llama api.ajustar() tras cada resize y este hook
+  // recalcula el frustum orto con el aspect nuevo (sin esto, FRENTE/LATERAL/PLANTA quedan
+  // aplastadas/estiradas hasta re-clicar la vista).
+  api.reencuadreOrto = () => setOrthoView(api, posVec, upVec);
 }
 
 export function vistaOrto(api: Rci3DApi, key: 'front' | 'side' | 'top'): void {

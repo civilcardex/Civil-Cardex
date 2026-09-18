@@ -1,17 +1,41 @@
 import { useEffect, useRef } from 'react';
-import type { Rci3DApi, Rci3DApiRef } from './useRci3DScene';
+import type { Rci3DApi, Rci3DApiRef, Three } from './useRci3DScene';
 import { parseGLB } from './rciGlbParser';
 import { CHEQUE_GROUPS, GLB_POSITIONS, MODELO_KEYS, glbUrl } from './rci3dData';
+import { devError } from '../../../../utils/devError';
+import { cargarModelosSecuencial, sleep } from '../shared/cargaSecuencial';
 
-// Carga secuencial de las 13 piezas GLB (port del loadModel del HTML): 150 ms de pausa entre
-// modelos para no congelar el browser, barra 20→95 %, y al terminar el "finishLoading" —
-// bbox/centro/radio, rig de luces ajustado, pose ISO default y lista de oclusores para las
-// etiquetas. El recolor blanco→rojo de los grupos cheque vive en el parser (fusión por
-// material). Sombras estáticas: se repintan una sola vez al terminar (autoUpdate=false).
+// Carga secuencial de las 13 piezas GLB (port del loadModel del HTML) sobre el núcleo común
+// de los visores 3D (shared/cargaSecuencial): progreso 20→95 %, pausa entre modelos, y al
+// terminar el "finishLoading" — bbox/centro/radio, rig de luces ajustado, pose ISO default y
+// lista de oclusores para las etiquetas. El recolor blanco→rojo de los grupos cheque vive en
+// el parser (fusión por material). Sombras estáticas: un solo repintado al terminar.
+// Robustez: espera activa por la escena (import('three') tarda en bundle frío), fetch que
+// valida res.ok, y fallo visible en UI cuando no hay nada que mostrar (pantalla negra = bug).
 
 interface Opciones {
   onProgreso: (pct: number, texto: string) => void;
   onListo: () => void;
+  /** Fallo irrecuperable (escena sin iniciar tras ~15 s, assets ausentes, ensamble vacío). */
+  onFallo: (mensaje: string) => void;
+}
+
+/** Reintentos de arranque (150 ms c/u) esperando a que la escena termine de inicializarse. */
+const ESPERAS_MAX = 100;
+
+/** Libera geometría/material de una pieza parseada que ya no se usará (desmonte a mitad de
+ *  carga: el assembly viejo ya se disposeó con la escena — sin esto, fuga por carga cortada). */
+function disposePieza(THREE: Three, group: InstanceType<Three['Group']>): void {
+  group.traverse((obj) => {
+    const mesh = obj as InstanceType<typeof THREE.Mesh>;
+    if (mesh.geometry) mesh.geometry.dispose();
+    const mat = mesh.material as
+      | InstanceType<typeof THREE.Material>
+      | InstanceType<typeof THREE.Material>[]
+      | undefined;
+    if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+    else mat?.dispose();
+  });
 }
 
 /** Terminación de la carga (port del finishLoading): encadre, luces, near/far, pose ISO
@@ -22,6 +46,9 @@ function finalizarCarga(api: Rci3DApi): void {
   box.getCenter(api.mc);
   box.getSize(api.bbox);
   api.mr = box.getBoundingSphere(new THREE.Sphere()).radius;
+  // Ensamble vacío (assets ausentes) daría dist=0/near=0: cámara en el origen y pantalla
+  // negra "lista" — se reporta como fallo en vez de pintar nada.
+  if (!isFinite(api.mr) || api.mr <= 0) throw new Error('ensamble_vacio');
 
   const key = api.keyLight;
   key.position.set(api.mc.x + api.mr * 1.5, api.mc.y + api.mr * 3, api.mc.z + api.mr * 1.5);
@@ -72,57 +99,70 @@ function finalizarCarga(api: Rci3DApi): void {
   api.marcarSombras?.();
 }
 
-export function useRciCarga(apiRef: Rci3DApiRef, { onProgreso, onListo }: Opciones): void {
-  const optsRef = useRef({ onProgreso, onListo });
+export function useRciCarga(apiRef: Rci3DApiRef, { onProgreso, onListo, onFallo }: Opciones): void {
+  const optsRef = useRef({ onProgreso, onListo, onFallo });
   useEffect(() => {
-    optsRef.current = { onProgreso, onListo };
+    optsRef.current = { onProgreso, onListo, onFallo };
   });
 
   useEffect(() => {
     let cancelled = false;
-
-    const cargar = (i: number): void => {
-      const api = apiRef.current;
-      if (!api) return;
-      if (cancelled) return;
-      if (i >= MODELO_KEYS.length) {
-        finalizarCarga(api);
-        optsRef.current.onProgreso(100, '');
-        optsRef.current.onListo();
+    void (async () => {
+      // La escena se inicializa async (el import de three puede tardar en bundle frío):
+      // esperar en vez de bailar con el spinner a 0 % para siempre.
+      let api = apiRef.current;
+      for (let i = 0; i < ESPERAS_MAX && !api; i++) {
+        await sleep(150);
+        if (cancelled) return;
+        api = apiRef.current;
+      }
+      if (!api) {
+        optsRef.current.onFallo('No se pudo iniciar el visor 3D.');
         return;
       }
-      const name = MODELO_KEYS[i];
-      optsRef.current.onProgreso(
-        20 + (i / MODELO_KEYS.length) * 75,
-        `Cargando ${name}… (${i + 1}/${MODELO_KEYS.length})`,
-      );
-      // Pausa real entre modelos para que el browser no se congele (igual que el HTML).
-      window.setTimeout(() => {
-        if (cancelled) return;
-        const api2 = apiRef.current;
-        if (!api2) return;
-        void (async () => {
+      const escena = api;
+      const fallas = await cargarModelosSecuencial(
+        MODELO_KEYS,
+        (pct, texto) => optsRef.current.onProgreso(pct, texto),
+        async (name) => {
           try {
             const res = await fetch(glbUrl(name));
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const buf = await res.arrayBuffer();
-            const group = await parseGLB(api2.THREE, buf, CHEQUE_GROUPS.includes(name));
+            const group = await parseGLB(escena.THREE, buf, CHEQUE_GROUPS.includes(name));
+            if (cancelled) {
+              disposePieza(escena.THREE, group);
+              return true;
+            }
             const pos = GLB_POSITIONS[name];
             group.position.set(pos[0], pos[1], pos[2]);
-            api2.assembly.add(group);
-            api2.piezas.set(name, group);
+            escena.assembly.add(group);
+            escena.piezas.set(name, group);
+            return true;
           } catch (e) {
-            console.error(`Error ${name}:`, e);
+            devError('[rci3d] GLB', name, e);
+            return false;
           }
-          cargar(i + 1);
-        })();
-      }, 150);
-    };
-
-    // El original esperaba 1 s antes de empezar (deja montar la escena).
-    const t = window.setTimeout(() => cargar(0), 1000);
+        },
+        () => cancelled,
+      );
+      if (cancelled) return;
+      if (fallas >= MODELO_KEYS.length) {
+        optsRef.current.onFallo('No se pudieron cargar los modelos 3D.');
+        return;
+      }
+      try {
+        finalizarCarga(escena);
+      } catch (e) {
+        devError('[rci3d] encuadre', e);
+        optsRef.current.onFallo('El modelo 3D cargó vacío (recursos no disponibles).');
+        return;
+      }
+      optsRef.current.onProgreso(100, '');
+      optsRef.current.onListo();
+    })();
     return () => {
       cancelled = true;
-      window.clearTimeout(t);
     };
     // La carga corre una sola vez por montaje del visor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
