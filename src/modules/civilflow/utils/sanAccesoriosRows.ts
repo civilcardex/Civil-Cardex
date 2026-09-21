@@ -192,6 +192,8 @@ export function computeAccesoriosTable(
     accMed?: Record<string, string>;
     accesorioInicio?: string;
     accesorioFin?: string;
+    aparatoInicio?: string;
+    aparatoFin?: string;
     planId: string;
   }> = [];
   // Item 7: para san, también se leen los ramales de ventilación — la unión vent↔san se muestra
@@ -212,6 +214,8 @@ export function computeAccesoriosTable(
     pts: number[][];
     accesorioInicio?: string;
     accesorioFin?: string;
+    aparatoInicio?: string;
+    aparatoFin?: string;
     accMed?: Record<string, string>;
     planId: string;
   }> = [];
@@ -223,6 +227,7 @@ export function computeAccesoriosTable(
     x: number;
     y: number;
     net?: string;
+    tipo?: string;
     recibeDeIds?: string[];
     planId?: string;
   }> = [];
@@ -269,6 +274,7 @@ export function computeAccesoriosTable(
             dNominal?: string;
             diametro?: string;
             net?: string;
+            tipo?: string;
             recibeDeIds?: string[];
           }>;
         }
@@ -281,6 +287,7 @@ export function computeAccesoriosTable(
         x: b.x,
         y: b.y,
         net: b.net || net,
+        tipo: b.tipo || '',
         recibeDeIds: b.recibeDeIds || [],
         planId: String(plan.id),
       });
@@ -298,6 +305,8 @@ export function computeAccesoriosTable(
             accMed?: Record<string, string>;
             accesorioInicio?: string;
             accesorioFin?: string;
+            aparatoInicio?: string;
+            aparatoFin?: string;
           }>;
         }
       ).ramales || []
@@ -322,6 +331,8 @@ export function computeAccesoriosTable(
           pts: r.pts,
           accesorioInicio: r.accesorioInicio || '',
           accesorioFin: r.accesorioFin || '',
+          aparatoInicio: r.aparatoInicio || '',
+          aparatoFin: r.aparatoFin || '',
           accMed: r.accMed,
           planId: String(plan.id),
         });
@@ -334,6 +345,8 @@ export function computeAccesoriosTable(
           accMed: r.accMed,
           accesorioInicio: r.accesorioInicio || '',
           accesorioFin: r.accesorioFin || '',
+          aparatoInicio: r.aparatoInicio || '',
+          aparatoFin: r.aparatoFin || '',
           planId: String(plan.id),
         });
       }
@@ -704,6 +717,22 @@ export function computeAccesoriosTable(
     pulgById[`${t.id}-${t.planId}`] = p;
   }
 
+  // Extremos con aparato por tramo (del dibujo): el símbolo de aparato (inodoro, lavamanos...)
+  // representa la conexión física — cada uno lleva un codo 90 del diámetro del extremo. Los
+  // accesorios del extremo viajan junto al aparato para el dedupe (sifón ya produce un 90).
+  const extremoSan = new Map<
+    string,
+    { apIni?: string; apFin?: string; accIni?: string; accFin?: string }
+  >();
+  for (const r of [...drawingRamales, ...tribDrawing]) {
+    extremoSan.set(`${r.id}-${r.planId}`, {
+      apIni: r.aparatoInicio || undefined,
+      apFin: r.aparatoFin || undefined,
+      accIni: r.accesorioInicio || undefined,
+      accFin: r.accesorioFin || undefined,
+    });
+  }
+
   tramos.forEach((t) => {
     if (t.esBajante) return;
     const mainDiamStr = fmtPulg(
@@ -872,6 +901,45 @@ export function computeAccesoriosTable(
         }
       }
     }
+
+    // Codo 90 del EXTREMO con aparato o codo reventilado manual (san, orig. usuario): el
+    // símbolo de aparato conecta con 1 codo 90 del diámetro de ESE extremo, y el codo
+    // reventilado que reemplaza al 90 NO lo suprime — el 90 se sigue contando. Solo un
+    // extremo que ya produce un 90 propio (sifón → +1 sube, codoSube/codoBaja) no suma otro.
+    // El reventilado AUTOdetectado (unión vent⊥san, sin accesorio en el extremo) no suma 90:
+    // es pieza de unión, no un 90 reemplazado.
+    if (net === 'san') {
+      const ex = extremoSan.get(`${t.id}-${t.planId}`);
+      if (ex) {
+        const pares: Array<{ ap?: string; acc?: string; d: number }> = [
+          {
+            ap: ex.apIni,
+            acc: ex.accIni,
+            d: pulgOf(
+              t.diametroInicio || t.diametro || t.diametroOriginal,
+              t.diamDisPulg || t.diamPulg,
+            ),
+          },
+          {
+            ap: ex.apFin,
+            acc: ex.accFin,
+            d: pulgOf(
+              t.diametroFin || t.diametro || t.diametroOriginal,
+              t.diamDisPulg || t.diamPulg,
+            ),
+          },
+        ];
+        for (const p of pares) {
+          if (!p.ap && p.acc !== 'codoReventilado') continue;
+          if (
+            ['sifon', 'codoSube', 'codo90rmSube', 'codoBaja', 'codo90rmBaja'].includes(p.acc || '')
+          )
+            continue;
+          const dStr = fmtPulg(p.d);
+          if (dStr && dStr !== '—') addAcc(dStr, 'codo90rm', 1);
+        }
+      }
+    }
   });
 
   // 14. Bajante — ramal accessories (any net, not only sanitary)
@@ -884,6 +952,7 @@ export function computeAccesoriosTable(
     x?: number;
     y?: number;
     net?: string;
+    tipo?: string;
     recibeDeIds?: string[];
     planId?: string;
   }>) {
@@ -956,6 +1025,10 @@ export function computeAccesoriosTable(
     if (missing || ramalInfos.length !== ids.length) continue;
     // Punto del bajante procesado (para no duplicar bushing con la yee geométrica del mismo punto).
     if (b.x != null && b.y != null) bajanteAutoPts.push({ x: b.x, y: b.y });
+    // Cajas (caja_san/caja_ll) y bombas: CERO accesorios en el resumen (orig. usuario) — aunque
+    // tengan dNominal asignado y 1–2 ramales conectados. El punto ya se registró arriba para que
+    // la supresión de yees geométricas siga operando en ese punto.
+    if (b.tipo === 'caja_san' || b.tipo === 'caja_ll' || b.tipo === 'bomba') continue;
     const codo45Id = bNet === 'gas' ? 'codos_45' : 'codo45rc';
     const ySimpleId = 'yeeSimple';
     const yDobleId = 'yeeDoble';
