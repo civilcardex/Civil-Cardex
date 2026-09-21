@@ -1490,3 +1490,40 @@ RCI: alternar sub-pestañas y volver (etiquetas viven), modo avión/carpeta sin 
 - **Fork documentado**: vistasRci vs aparatos3d/vistasCamara marcado como fork deliberado (comentario, no merge — el genérico acoplaría los 3 módulos 3D).
 - Neto real ~−20 líneas (el esqueleto de loaders era menos uniforme que lo estimado en la auditoría: sleep antes/después y fórmula de progreso divergían — el kernel unifica esa divergencia). Deuda deferida por riesgo: dedup de los 3 inputs numéricos perezosos (props divergentes, sin tests UI).
 - Gates: tsc 0 · lint 0 · vitest 770/770 (138 files, incluye tests nuevos de la sesión paralela) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-21 (resumen accesorios san: codo por aparato + cajas/bombas fuera)
+
+### Reglas usuario implementadas (solo RESUMEN — sanAccesoriosRows.ts, el motor no cambia)
+- **Codo 90 por aparato**: cada extremo de tramo san con símbolo de aparato (aparatoInicio/aparatoFin del dibujo) suma 1 "Codo medio 90°" del diámetro de ESE extremo (diametroInicio/Fin). Dedupe: si el extremo ya produce un 90 (sifón→sube, codoSube/codoBaja) no se duplica. Mapa `extremoSan` (drawingRamales+tribDrawing, ahora con aparatoInicio/Fin en raw y entradas).
+- **Llegada a bajante**: sin cambios (1 ramal → Yee simple + codo 90 del diámetro del BAJANTE; 2 ramales → 2×codo45 + Yee doble — decisión confirmada por usuario).
+- **Cajas (caja_san/caja_ll) y bombas**: CERO accesorios en el resumen aunque tengan dNominal y 1–2 ramales — skip explícito en el bloque bajantes DESPUÉS de `bajanteAutoPts.push` (la supresión de yees geométricas en esos puntos sigue operando). `bajanteDrawing` ahora lleva `tipo`.
+- Test `sanResumenAparatoCaja.test.ts` (6; cero accesorios ⇒ tabla null). Gates: tsc 0 (fuera epc3d/aparatos3d de sesión paralela) · vitest 776/776 · lint 0 · build ✓ · graphify ✓.
+
+### Reventilado NO suprime el codo 90 (2026-09-21, misma sesión)
+- Regla usuario: donde se reemplaza un codo 90 por un **codo reventilado manual** (accesorio en el extremo del dibujo), el codo 90 **se sigue contando** (1 reventilado + 1 codo 90, mismo diámetro). Ya cubierto: `ramalHasManualCodoAt` no lista reventilado (el 90 del bajante nunca se suprimió) y la dedupe de aparato no lo suprimía; lo NUEVO es extremo con reventilado SIN aparato → +1 codo90rm.
+- Reventilado AUTOdetectado (unión vent⊥san sin accesorio en extremo) NO suma 90 — es pieza de unión. Distinción: la regla lee el accesorio del DIBUJO (`extremoSan`), no hidroData.
+- Tests `sanResumenAparatoCaja.test.ts` 9. Gates: tsc 0 (fuera sesión paralela) · vitest 779/779 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-21 (precisión copiado-entre-pisos + Acotar: escala única del proyecto)
+
+### Causa raíz del drift 0.03–0.05 m en cotas entre pisos
+- **scaleM era POR PISO**: cada trazos guarda el suyo (PlanoPersistence applyWorkData) y la propagación de la calibración global era manual ("Usar calibración previa" en PlanosTab). Calibraciones manuales divergen 0.5–1.5 % → cota de 4 m difiere 0.02–0.06 m por piso.
+- La cota congela L al crearse con la escala del piso (lineTool handleDimDown → pxToM) y el render usa esa L (renderDimensions:70) — la herramienta Acotar está BIEN (mide geometría de plano con snap); heredaba la divergencia.
+- Clobber (PdfViewer:332): al cambiar de nivel, si plano.scale/100 era estándar {0.5..2} se PISABA el scaleM calibrado de los trazos; el autosave persistía el valor pisado.
+- Copiado (copyDrawingFromPlan): normalizaba coords por srcScale/dstScale con toFixed(3) aunque el factor fuera 1.
+
+### Fix
+- **`rebasarEscalaTrazos(data, toScale)`** (PlanoPersistence): re-escala TODA la geometría del documento (ramales/bajantes/areas pts+labels, desplazamientos de fantasmas, dims x1y1x2y2, textAnnots+offsets, guideLines) por fromScale/toScale — posición REAL preservada; totalL/areaM2/L de cotas intactos (px y escala cambian en proporción inversa). Idempotente.
+- **Escala única al cargar**: useTrazosLoader recibe `escalaGlobalRef` (PdfViewer la llena desde el plan con calGlobal=true) — si el piso cargado trae otra escala, re-base + setScaleM + persistencia inmediata (local + BD). 2ª carga = no-op.
+- **Guard clobber**: el set estándar de plano.scale solo aplica a pisos SIN calibración (`!plano.origen`).
+- **Copiado bit-exacto**: con |srcScale−dstScale|<1e-9 la geometría viaja SIN tocar (sin toFixed); solo con escalas realmente distintas se normaliza.
+- Test `cotasCopiasPisos.test.ts` (3): cotas idénticas 3 pisos 3.990 m + bit-exacto; re-base preserva distancia real e idempotente; copia desde piso divergente → 3.99 con escala global.
+
+### Gates
+tsc 0 (fuera epc3d/aparatos3d sesión paralela) · vitest 782/782 · lint 0 · build ✓ · graphify ✓. Verificación manual: recarga dura; pisos ya dibujados con escala divergente se re-basan solos al primer load (posiciones reales intactas).
+
+### Alineación de láminas por origen de calibración (2026-09-21, misma sesión — ronda 2)
+- **Síntoma residual** (5.98 vs 6.05 con recarga + cotas re-dibujadas): escala ya unificada, pero el extremo derecho de la cota se pega a un elemento del PDF (AutoCAD) y **las láminas de cada piso no están alineadas px-a-px** — el mismo punto físico cae en px distintos por lámina; la copia bit-exacta aterriza desplazada.
+- **Fix**: `copyDrawingFromPlan` recibe `alineacion {origenSrc, origenDst}` (CopyFromPlanPanel la pasa desde el meta de plans): p_dst = (p_src − origen_src) × f + origen_dst. Orígenes iguales + f=1 ⇒ identidad EXACTA (bit-exacto intacto). Orígenes ausientes ⇒ comportamiento anterior.
+- **Requisito de protocolo**: el origen de calibración de cada piso debe marcarse en el MISMO punto físico del AutoCAD (Paso 2 del configurador). Si un piso usó "Usar calibración previa" (origen copiado), su origen px no alinea láminas desalineadas — recalibrar origen en ese piso.
+- Test `cotasCopiasPisos.test.ts` +1 (lámina desalineada 12 px → copia aterriza en el mismo punto físico, cota 5.99 idéntica). Gates: tsc 0 (fuera sesión paralela) · vitest 783/783 · lint 0 · build ✓ · graphify ✓.
