@@ -13,18 +13,26 @@ import {
 import type { PlanTrazos } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from '../../utils/assocLayoutMigration';
+import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
 interface UseTrazosLoaderParams {
   activeNetRef: React.RefObject<string>;
   setActiveNet: React.Dispatch<React.SetStateAction<string>>;
   setScaleM: React.Dispatch<React.SetStateAction<string>>;
+  /** Escala única del proyecto (del plan calGlobal) — ref actualizada por el visor. */
+  escalaGlobalRef: React.RefObject<number | null>;
 }
 
 /** Carga los trazos de un plano resolviendo local-vs-BD por marca de tiempo (gana el más
  *  reciente) y notifica los cambios para que las tablas montadas se actualicen. Devuelve true
  *  si el motor terminó con contenido cargado. */
-export function useTrazosLoader({ activeNetRef, setActiveNet, setScaleM }: UseTrazosLoaderParams) {
+export function useTrazosLoader({
+  activeNetRef,
+  setActiveNet,
+  setScaleM,
+  escalaGlobalRef,
+}: UseTrazosLoaderParams) {
   return useCallback(
     async (eng: PlanoEngine, resolvedId: string | number): Promise<boolean> => {
       const tryLoad = (id: string | number): PlanTrazos | string | null => {
@@ -91,6 +99,27 @@ export function useTrazosLoader({ activeNetRef, setActiveNet, setScaleM }: UseTr
       } catch (e) {
         devError('[LOAD] Supabase error/sync error:', e);
       }
+      // ESCALA ÚNICA DEL PROYECTO (causa raíz de cotas distintas entre pisos, incidente
+      // 2026-09-21): cada piso guardaba su propio scaleM y las calibraciones manuales
+      // divergían 0.5–1.5 % — una cota de 4 m medía distinto en cada piso. Si existe
+      // calibración global (calGlobal) y el piso trae otra escala, la geometría se RE-BASA
+      // (px × from/to: posición REAL preservada, totalL/L de cotas intactos) y el piso pasa
+      // a la escala global + persistencia inmediata. Idempotente: tras el re-base los trazos
+      // ya quedan con ella (2ª carga = no-op).
+      const escalaGlobal = escalaGlobalRef.current;
+      if (escalaGlobal && eng.scaleM && Math.abs(eng.scaleM - escalaGlobal) > 1e-9) {
+        try {
+          rebasarEscalaTrazos(eng as unknown as PlanoWorkData, escalaGlobal);
+          eng.setScaleM(escalaGlobal);
+          setScaleM(String(escalaGlobal));
+          const work = eng.saveWork();
+          saveToStorage(`trazos_${resolvedId}`, work);
+          void saveTrazosToDB(String(resolvedId), work);
+          window.dispatchEvent(new Event('storage'));
+        } catch (e) {
+          devError('[LOAD] re-base escala global:', e);
+        }
+      }
       // Migración del layout de asociación (fantasma+Ldesvio ahora viven en el piso inferior):
       // corre tras la carga con el nivel actual como clave del anillo; idempotente por marca
       // `assocLayout: 2` en el storage de cada piso.
@@ -102,6 +131,6 @@ export function useTrazosLoader({ activeNetRef, setActiveNet, setScaleM }: UseTr
       }
       return initiallyLoaded;
     },
-    [activeNetRef, setActiveNet, setScaleM],
+    [activeNetRef, setActiveNet, setScaleM, escalaGlobalRef],
   );
 }

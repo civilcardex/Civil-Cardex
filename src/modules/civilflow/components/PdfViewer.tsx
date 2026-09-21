@@ -260,6 +260,13 @@ function PdfViewer_({
   }, [activeNetworks, activeNet]);
 
   const [scaleM, setScaleM] = useState('0.5');
+  // Escala única del proyecto: scale/100 del plan calibrado con calGlobal (fuente de verdad
+  // para el re-base de pisos que calibraron a mano — incidente cotas distintas por piso).
+  const escalaGlobalRef = useRef<number | null>(null);
+  useEffect(() => {
+    const g = planos.find((p) => p.calGlobal === true && p.origen && p.scale);
+    escalaGlobalRef.current = g ? g.scale / 100 : null;
+  }, [planos]);
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
   const syncedNivelForIdRef = useRef<string | number | null>(null);
   const [hiddenNets, setHiddenNets] = useState<Set<string>>(() => {
@@ -332,7 +339,9 @@ function PdfViewer_({
   useEffect(() => {
     if (selectedNivel !== null) {
       const plano = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
-      if (plano && plano.scale) {
+      // Solo pisos SIN calibración: el set estándar pisaba el scaleM calibrado que vino en
+      // los trazos (y el autosave lo persistía pisado — normalización de copias corrupta).
+      if (plano && plano.scale && !plano.origen) {
         const derived = String(plano.scale / 100);
         if (['0.5', '0.75', '1', '1.25', '2'].includes(derived)) {
           setScaleM(derived);
@@ -370,7 +379,12 @@ function PdfViewer_({
     }
   }, [currentId, planos, selectedNivel]);
 
-  const loadTrazosForPlan = useTrazosLoader({ activeNetRef, setActiveNet, setScaleM });
+  const loadTrazosForPlan = useTrazosLoader({
+    activeNetRef,
+    setActiveNet,
+    setScaleM,
+    escalaGlobalRef,
+  });
 
   const markDirtyRef = useRef<() => void>(() => {});
 

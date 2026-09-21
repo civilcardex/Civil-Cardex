@@ -223,7 +223,14 @@ function CopyFromPlanPanel_({
         }),
       );
 
-      const result = copyDrawingFromPlan(eng, String(targetId), srcPlanId, selections);
+      const result = copyDrawingFromPlan(eng, String(targetId), srcPlanId, selections, {
+        // Alineación de láminas (mismo punto físico del AutoCAD marcado como origen de
+        // calibración en cada piso): sin esto, una lámina desalineada respecto a la del piso
+        // origen dejaba la copia a metros de donde debía — cotas distintas entre pisos.
+        origenSrc:
+          planosCtx.plans.find((pl) => String(pl.id) === String(srcPlanId))?.origen ?? null,
+        origenDst: planosCtx.plans.find((pl) => String(pl.id) === String(targetId))?.origen ?? null,
+      });
 
       if (result.copied > 0) {
         try {
@@ -249,7 +256,7 @@ function CopyFromPlanPanel_({
     } finally {
       setBusy(false);
     }
-  }, [engineRef, srcPlanId, netSelections, currentId, currentIdRef]);
+  }, [engineRef, srcPlanId, netSelections, currentId, currentIdRef, planosCtx.plans]);
 
   const hasSelection = Object.keys(netSelections).length > 0;
 

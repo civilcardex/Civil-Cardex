@@ -29,6 +29,65 @@ export interface PlanoWorkData {
   crossFloorGhosts?: unknown[];
 }
 
+/** Re-escala TODA la geometría de un documento de trazos de su scaleM actual a `toScale`
+ *  preservando posiciones REALES (px_nuevo = px_viejo × scaleM_viejo/toScale). Impone la
+ *  escala única del proyecto (calibración calGlobal) a un piso que calibró a mano. Las
+ *  magnitudes reales (totalL, areaM2, L de cotas) NO se tocan: px y escala cambian en proporción
+ *  inversa, la distancia real queda idéntica. Idempotente: con la escala ya igualada no muta. */
+export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void {
+  const fromScale = data.scaleM || 0.5;
+  if (!toScale || Math.abs(fromScale - toScale) < 1e-9) return;
+  const f = fromScale / toScale;
+  // 6 decimales de plane-px ≈ submicrón: estabiliza float sin pérdida práctica.
+  const n = (v: number): number => +(v * f).toFixed(6);
+  const pt2 = (p: number[]): number[] => [n(p[0]), n(p[1])];
+  const escPtLista = (obj: unknown, campo: string): void => {
+    const o = obj as Record<string, unknown>;
+    const pts = o[campo];
+    if (Array.isArray(pts)) o[campo] = (pts as number[][]).map(pt2);
+  };
+  for (const r of (data.ramales || []) as Record<string, unknown>[]) {
+    escPtLista(r, 'pts');
+    if (typeof r.labelX === 'number') r.labelX = n(r.labelX);
+    if (typeof r.labelY === 'number') r.labelY = n(r.labelY);
+  }
+  for (const b of (data.bajantes || []) as Record<string, unknown>[]) {
+    if (typeof b.x === 'number') b.x = n(b.x);
+    if (typeof b.y === 'number') b.y = n(b.y);
+    if (typeof b.labelX === 'number') b.labelX = n(b.labelX);
+    if (typeof b.labelY === 'number') b.labelY = n(b.labelY);
+    const desp = b.desplazamientos as Record<string, { dx?: number; dy?: number }> | undefined;
+    if (desp) {
+      for (const d of Object.values(desp)) {
+        if (typeof d.dx === 'number') d.dx = n(d.dx);
+        if (typeof d.dy === 'number') d.dy = n(d.dy);
+      }
+    }
+  }
+  for (const a of (data.areas || []) as Record<string, unknown>[]) {
+    escPtLista(a, 'pts');
+    if (typeof a.labelX === 'number') a.labelX = n(a.labelX);
+    if (typeof a.labelY === 'number') a.labelY = n(a.labelY);
+  }
+  for (const d of (data.dims || []) as Record<string, unknown>[]) {
+    if (typeof d.x1 === 'number') d.x1 = n(d.x1);
+    if (typeof d.y1 === 'number') d.y1 = n(d.y1);
+    if (typeof d.x2 === 'number') d.x2 = n(d.x2);
+    if (typeof d.y2 === 'number') d.y2 = n(d.y2);
+    // d.L (metros reales) intacto: px escala ×f y la escala ÷f — la distancia real no cambia.
+  }
+  for (const t of (data.textAnnots || []) as Record<string, unknown>[]) {
+    if (typeof t.x === 'number') t.x = n(t.x);
+    if (typeof t.y === 'number') t.y = n(t.y);
+    if (typeof t.lblOffX === 'number') t.lblOffX = n(t.lblOffX);
+    if (typeof t.lblOffY === 'number') t.lblOffY = n(t.lblOffY);
+  }
+  for (const g of (data.guideLines || []) as Record<string, unknown>[]) {
+    escPtLista(g, 'pts');
+  }
+  data.scaleM = toScale;
+}
+
 /** Dedup por id (queda la ÚLTIMA aparición): datos de sesiones con bugs viejos traen el mismo
  *  bajante/ramal dos veces en un piso — el RPC lo rechaza entero ("ON CONFLICT DO UPDATE
  *  cannot affect row a second time", 500) y React se queja de keys duplicadas; además las dos
