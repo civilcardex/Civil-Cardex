@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLB_POSITIONS, GLB_SCALE_OVERRIDE, GLB_URL } from './epc3dData';
+import { FOV_3D } from '../shared/config3d';
 import { parseGLB } from './glbParser';
 import { cargarModelosSecuencial } from '../shared/cargaSecuencial';
 import { cargarGlbBuffer } from '../shared/glbCache';
+import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controles3d';
 import { actualizarEtiquetas } from './etiquetas';
 import { dibujarGizmoEjes } from '../aparatos3d/ejeGizmo';
 
@@ -73,18 +75,14 @@ export function useEpc3DScene({
 
   useEffect(() => {
     let cancelled = false;
-    let antiAutoscroll: ((e: MouseEvent) => void) | null = null;
+    let detachAntiAutoscroll: (() => void) | null = null;
     let raf = 0;
     let ro: ResizeObserver | null = null;
 
     const canvasEl = canvas.current;
     if (!canvasEl) return;
     (async (): Promise<void> => {
-      // Botón central sin autoscroll nativo de Chrome (compite con el pan del OrbitControls).
-      antiAutoscroll = (e: MouseEvent): void => {
-        if (e.button === 1) e.preventDefault();
-      };
-      canvasEl.addEventListener('mousedown', antiAutoscroll);
+      detachAntiAutoscroll = attachAntiAutoscroll(canvasEl);
       const THREE = await import('three');
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
       if (cancelled) return;
@@ -105,7 +103,7 @@ export function useEpc3DScene({
       scene.background = new THREE.Color(0x0d1117);
       scene.fog = new THREE.Fog(0x0d1117, 60, 300);
 
-      const camP = new THREE.PerspectiveCamera(50, 1, 0.01, 500);
+      const camP = new THREE.PerspectiveCamera(FOV_3D, 1, 0.01, 500);
       camP.position.set(8, 4, 10);
       const camO = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.001, 1000);
 
@@ -129,6 +127,7 @@ export function useEpc3DScene({
       scene.add(topLight);
 
       const controls = new OrbitControls(camP, canvasEl);
+      aplicarControlesOrbit(controls, THREE.MOUSE); // mapeo unificado: derecho = nada (decisión 2026-09-22)
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
       controls.rotateSpeed = 0.25;
@@ -327,7 +326,7 @@ export function useEpc3DScene({
       cancelled = true;
       cancelAnimationFrame(raf);
       ro?.disconnect();
-      if (antiAutoscroll) canvasEl.removeEventListener('mousedown', antiAutoscroll);
+      detachAntiAutoscroll?.();
       const api = apiRef.current;
       apiRef.current = null;
       if (api?.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);

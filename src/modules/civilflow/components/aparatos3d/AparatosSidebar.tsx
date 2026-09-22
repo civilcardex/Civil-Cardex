@@ -1,10 +1,9 @@
 import { COMPONENTS, COMP_DESC, NOTA_NORMATIVA } from './aparatos3dData';
+import { MONO_3D } from '../shared/config3d';
 
 // Sidebar izquierdo del visor 3D de aparatos (orig. usuario): desplegable "Aparato:" arriba,
 // descripción del seleccionado debajo y nota normativa fija abajo. Sin listado (el desplegable
 // es el único selector). Texto agrandado (orig. usuario).
-
-const MONO = "'Geist', monospace";
 
 interface Props {
   selectedId: number | null;
@@ -32,7 +31,7 @@ export default function AparatosSidebar({ selectedId, onSelect }: Props): React.
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
-        fontFamily: MONO,
+        fontFamily: MONO_3D,
         zIndex: 10,
       }}
     >
@@ -59,7 +58,7 @@ export default function AparatosSidebar({ selectedId, onSelect }: Props): React.
           style={{
             flex: 1,
             fontSize: '0.78rem',
-            fontFamily: MONO,
+            fontFamily: MONO_3D,
             color: '#e6edf3',
             background: '#0d1117',
             border: '1px solid #30363d',

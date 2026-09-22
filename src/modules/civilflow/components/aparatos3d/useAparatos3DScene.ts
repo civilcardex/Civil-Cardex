@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { dibujarGizmoEjes } from './ejeGizmo';
+import { FOV_3D } from '../shared/config3d';
+import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controles3d';
 
 export type Three = typeof THREE_NS;
 export type Grupo3D = THREE_NS.Group;
@@ -51,7 +53,7 @@ export function useAparatos3DScene(
     const canvas = canvasRef.current;
     if (!wrap || !canvas) return;
     let cancelled = false;
-    let antiAutoscroll: ((e: MouseEvent) => void) | null = null;
+    let detachAntiAutoscroll: (() => void) | null = null;
     let raf = 0;
     const ro = new ResizeObserver(() => apiRef.current?.ajustar?.());
 
@@ -76,7 +78,7 @@ export function useAparatos3DScene(
       scene.background = new THREE.Color(0x0d1117);
       scene.fog = new THREE.Fog(0x0d1117, 60, 300);
 
-      const camP = new THREE.PerspectiveCamera(50, 1, 0.01, 500);
+      const camP = new THREE.PerspectiveCamera(FOV_3D, 1, 0.01, 500);
       camP.position.set(8, 4, 10);
       const camO = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.001, 1000);
 
@@ -93,10 +95,7 @@ export function useAparatos3DScene(
 
       // Botón central sin autoscroll nativo de Chrome (compite con el pan que acabamos de
       // asignarle).
-      antiAutoscroll = (e: MouseEvent): void => {
-        if (e.button === 1) e.preventDefault();
-      };
-      canvas.addEventListener('mousedown', antiAutoscroll);
+      detachAntiAutoscroll = attachAntiAutoscroll(canvas);
 
       const controls = new OrbitControls(camP, canvas);
       controls.enableDamping = true;
@@ -105,15 +104,7 @@ export function useAparatos3DScene(
       controls.panSpeed = 0.25;
       controls.minDistance = 0.02;
       controls.maxDistance = 200;
-      // Mapeo DELIBERADO distinto a la isometría de redes (allá el derecho es no-op):
-      // izquierda = girar, RUEDA/botón central = mover (el dolly del central se pierde — la
-      // rueda del mouse sigue zoomeando).
-      // (pan). La rueda-scroll sigue haciendo zoom.
-      controls.mouseButtons = {
-        LEFT: THREE.MOUSE.ROTATE,
-        MIDDLE: THREE.MOUSE.PAN,
-        RIGHT: THREE.MOUSE.PAN,
-      };
+      aplicarControlesOrbit(controls, THREE.MOUSE);
 
       const api: Aparatos3DApi = {
         THREE,
@@ -163,7 +154,7 @@ export function useAparatos3DScene(
       cancelled = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
-      if (antiAutoscroll) canvas.removeEventListener('mousedown', antiAutoscroll);
+      detachAntiAutoscroll?.();
       const api = apiRef.current;
       if (api) {
         if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);

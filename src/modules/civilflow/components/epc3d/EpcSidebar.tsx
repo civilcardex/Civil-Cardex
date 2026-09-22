@@ -1,10 +1,9 @@
 import { COMPONENTES, COMP_DESC } from './epc3dData';
+import { MONO_3D } from '../shared/config3d';
 
 // Sidebar izquierdo del visor 3D del EPC — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción debajo y nota normativa fija abajo.
 // Fuente Geist igual que la isometría de aparatos.
-
-const MONO = "'Geist', monospace";
 
 interface Props {
   selectedId: number | null;
@@ -31,7 +30,7 @@ export default function EpcSidebar({ selectedId, onSelect }: Props): React.JSX.E
         display: 'flex',
         flexDirection: 'column',
         overflowY: 'auto',
-        fontFamily: MONO,
+        fontFamily: MONO_3D,
         zIndex: 10,
       }}
     >
@@ -58,7 +57,7 @@ export default function EpcSidebar({ selectedId, onSelect }: Props): React.JSX.E
           style={{
             flex: 1,
             fontSize: '0.78rem',
-            fontFamily: MONO,
+            fontFamily: MONO_3D,
             color: '#e6edf3',
             background: '#0d1117',
             border: '1px solid #30363d',

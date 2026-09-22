@@ -1,13 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import EpcSidebar from './EpcSidebar';
+import { MONO_3D } from '../shared/config3d';
 import { useEpc3DScene, type Epc3DApi } from './useEpc3DScene';
 import { vistaIsoEpc, vistaOrtoEpc, type VistaKey } from './vistasEpc';
 
 // Visor 3D del Equipo de Presión Constante — port del HTML original al patrón aparatos3d:
 // sidebar con desplegable + canvas + cluster de vistas bottom-left + gizmo bottom-right.
 // Sin botones de zoom (orig. usuario): el scroll del mouse hace zoom.
-
-const MONO = "'Geist', monospace";
 
 const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
   { key: 'iso', label: 'ISO' },
@@ -20,7 +19,7 @@ const BTN_VISTA_STYLE = {
   background: '#161b22',
   border: '1px solid #30363d',
   color: '#e6edf3',
-  fontFamily: MONO,
+  fontFamily: MONO_3D,
   fontSize: '0.68rem',
   fontWeight: 500,
   padding: '5px 10px',
@@ -112,7 +111,7 @@ export default function EpcViewer(): React.JSX.Element {
               fontSize: '0.60rem',
               color: '#7d8590',
               letterSpacing: '.04em',
-              fontFamily: MONO,
+              fontFamily: MONO_3D,
               textTransform: 'uppercase',
             }}
           >
