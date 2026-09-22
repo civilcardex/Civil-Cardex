@@ -444,7 +444,7 @@ function BombaARDesign() {
           style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
           iconImg="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
           iconImgStyle={{ width: 22, height: 22 }}
-          title={`Datos de entrada — ${selCode}`}
+          title={`1. Datos de entrada — ${selCode}`}
         >
           <Tbl
             tableStyle={{ width: '100%' }}
@@ -560,7 +560,7 @@ function BombaARDesign() {
           style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
           iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
           iconImgStyle={{ width: 22, height: 22 }}
-          title={`Cálculo de pérdidas de carga — ${selCode}`}
+          title={`2.Cálculo de pérdidas de carga — ${selCode}`}
         >
           <Tbl
             tableStyle={{ width: '100%' }}
@@ -638,7 +638,7 @@ function BombaARDesign() {
             style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
             iconImgStyle={{ width: 22, height: 22 }}
-            title={`Parámetros de diseño bomba sumergible — ${selCode}`}
+            title={`3.Parámetros de diseño bomba sumergible — ${selCode}`}
           >
             <Tbl
               tableStyle={{ width: '100%' }}
@@ -664,7 +664,7 @@ function BombaARDesign() {
             style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
             iconImgStyle={{ width: 22, height: 22 }}
-            title={`Especificación — Bomba sumergible trituradora — ${selCode}`}
+            title={`4.Especificación — Bomba sumergible trituradora — ${selCode}`}
           >
             <Tbl
               tableStyle={{ width: '100%' }}
@@ -713,7 +713,7 @@ function BombaARDesign() {
             style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
             iconImgStyle={{ width: 22, height: 22 }}
-            title={`Parámetros de diseño cámara de bombeo — ${selCode}`}
+            title={`5.Parámetros de diseño cámara de bombeo — ${selCode}`}
           >
             <Tbl
               tableStyle={{ width: '100%' }}
@@ -770,7 +770,7 @@ function BombaARDesign() {
             style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
             iconImgStyle={{ width: 22, height: 22 }}
-            title={`Especificación — Cámara de bombeo — ${selCode}`}
+            title={`6.Especificación — Cámara de bombeo — ${selCode}`}
           >
             <Tbl
               tableStyle={{ width: '100%' }}
@@ -859,7 +859,12 @@ function BombaARDesign() {
         setPage={setBp}
         total={4}
         color="var(--bom)"
-        labels={['Datos de entrada', 'Pérdidas de carga', 'Bomba sumergible', 'Cámara de bombeo']}
+        labels={[
+          '1. Datos de entrada',
+          '2. Pérdidas de carga',
+          '3.Bomba sumergible trituradora',
+          '4.Cámara de bombeo',
+        ]}
       />
       {/* Contenedor plano como EP (sin marco extra: las Cards ya traen su borde) */}
       <div style={{ flex: 1, padding: 6, overflowY: 'auto', overflowX: 'hidden', display: 'flex' }}>
