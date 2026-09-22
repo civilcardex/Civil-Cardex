@@ -40,6 +40,9 @@ interface PlanoConfiguratorProps {
   }) => void;
   onIrADibujo: () => void;
   existingCal?: ExistingCal | null;
+  /** Flujo "Asignar piso" (origen aún sin marcar): activa el modo de marcado de origen al
+   *  abrir, para que el clic siguiente sea directamente el punto físico. */
+  autoOrigen?: boolean;
   pisos: Piso[];
   plans: PlanItem[];
   planNivel: number | null;
@@ -55,6 +58,7 @@ function PlanoConfiguratorBase({
   planId,
   onSaveConfig,
   existingCal,
+  autoOrigen,
   pisos,
   plans,
   planNivel,
@@ -153,6 +157,17 @@ function PlanoConfiguratorBase({
     activarModoCalY,
     getCursorPos,
   } = useCalibration({ zoom, offset, overlayContRef, isPdf, existingCal, showToast });
+
+  // Flujo "Asignar piso" (origen sin marcar): el paso 2 abre directo en modo marcado de
+  // origen — el siguiente clic sobre la lámina es el punto físico. El usuario puede salirse
+  // del modo con el mismo botón o Escape.
+  useEffect(() => {
+    if (autoOrigen && !origen) {
+      setModoCalX(false);
+      setModoCalY(false);
+      setModoOrigen(true);
+    }
+  }, [autoOrigen, origen, setModoCalX, setModoCalY, setModoOrigen]);
 
   // Render del overlay
   React.useEffect(() => {

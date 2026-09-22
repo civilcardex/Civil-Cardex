@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   saveTrazosToDB,
@@ -14,6 +14,7 @@ import {
 import { REQ_ITEMS, pisoLbl } from '../../constants';
 
 import { PlanoConfigurator } from './PlanoConfigurator';
+import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
 import {
   PlanosTab_S1,
   PlanosTab_S2,
@@ -77,6 +78,10 @@ function PlanosTab({ state }: PlanosTabProps) {
   const [showProtocolo, setShowProtocolo] = useState(false);
   const [btnHover, setBtnHover] = useState(false);
   const [nivelPickerPlanId, setNivelPickerPlanId] = useState<number | null>(null);
+  // Modal "define el origen de esta lámina" tras ASIGNAR PISO (flujo nuevo) + flag que abre el
+  // configurador directo en modo marcado de origen.
+  const [origenModalPlanId, setOrigenModalPlanId] = useState<number | null>(null);
+  const [autoOrigen, setAutoOrigen] = useState(false);
   const [calData, setCalData] = useState<Record<number, CalibrationData>>(() => {
     const initial: Record<number, CalibrationData> = {};
     if (plans) {
@@ -101,6 +106,9 @@ function PlanosTab({ state }: PlanosTabProps) {
   // 1a: la calibración se deriva de los planes vivos. Al borrar planos se purga el calData
   // huérfano (y la caché global en window._planosConfig cuando no queda ningún plano) para
   // que el modal de primera calibración reaparezca si se borran todos los planos.
+  // TAMBIÉN SIEMBRA: el initializer de calData corre una sola vez y en un remount plans
+  // suele llegar vacío (restauración async de PlansContext) — sin siembra, globalCal quedaba
+  // null para siempre y "Asignar piso" desaparecía tras cerrar y reabrir (bug 2026-09-22).
   useEffect(() => {
     const liveIds = new Set(plans.map((p) => p.id));
     setCalData((prev) => {
@@ -113,6 +121,23 @@ function PlanosTab({ state }: PlanosTabProps) {
         } else {
           changed = true;
         }
+      }
+      // Sembrar calibraciones que llegaron con plans y aún no tienen entrada (misma
+      // derivación que el initializer). Las entradas existentes del usuario NO se tocan.
+      for (const p of plans) {
+        if (!p.origen || !p.scale) continue;
+        if (next[p.id]) continue;
+        const sm = p.scale / 100;
+        next[p.id] = {
+          origen: p.origen,
+          scaleM: sm,
+          factorX: p.factorX !== undefined && p.factorX !== null ? p.factorX : sm,
+          factorY: p.factorY !== undefined && p.factorY !== null ? p.factorY : sm,
+          calGlobal: p.calGlobal !== undefined && p.calGlobal !== null ? p.calGlobal : null,
+          definedScale:
+            p.definedScale !== undefined && p.definedScale !== null ? p.definedScale : sm,
+        };
+        changed = true;
       }
       return changed ? next : prev;
     });
@@ -139,35 +164,58 @@ function PlanosTab({ state }: PlanosTabProps) {
         cd.calGlobal === true && cd.origen && cd.scaleM && plans.some((p) => calData[p.id] === cd),
     ) || null;
 
+  // Láminas confirmadas que comparten el MISMO origen px con otra: la herencia vieja clonaba el
+  // origen de la primera calibración a todos los planos — solo es legítimo si las hojas están
+  // realmente alineadas. El badge en la fila de "Cargados" guía a re-marcar el origen.
+  const origenesCompartidos = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of plans) {
+      if (p.status !== 'confirmed' || !p.origen) continue;
+      const k = `${p.origen.x_px}|${p.origen.y_px}`;
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([k]) => k));
+  }, [plans]);
+
   const handleAsignarPiso = (planId: number, nivel: number) => {
     // Con la calibración ya global (primera calibración confirmada con el modal), asignar piso
-    // reutiliza esa escala automáticamente: el plan queda calibrado y confirmado al instante.
-    if (globalCal) {
-      handleUsarCalibracionPrevia(planId, nivel);
-      return;
+    // hereda la ESCALA del proyecto, pero el ORIGEN ya NO se clona: las láminas del mismo
+    // AutoCAD no comparten posición absoluta (el edificio cae en px distintos por hoja) y con
+    // origenSrc === origenDst el desfase de copia quedaba en 0 — copias e isometría
+    // desalineadas entre pisos. Si el plan ya tiene calibración propia no se pisa: el
+    // configurador la muestra y el usuario decide.
+    const necesitaOrigen = !!globalCal && !calData[planId];
+    if (necesitaOrigen) {
+      setCalData((prev) => ({
+        ...prev,
+        [planId]: {
+          origen: null,
+          scaleM: globalCal!.scaleM,
+          factorX: globalCal!.factorX,
+          factorY: globalCal!.factorY,
+          calGlobal: null,
+          definedScale: globalCal!.definedScale,
+        },
+      }));
     }
-    // Sin calibración global todavía, este plan será el primero en calibrarse: se asigna el piso
-    // y se abre el configurador (que confirma su primera calibración con el modal de aviso).
     updatePlan(planId, { nivel });
     setNivelPickerPlanId(null);
+    if (necesitaOrigen) {
+      // Modal explicativo primero ("esta lámina necesita SU propio origen"); al confirmar se
+      // abre el configurador con el modo de marcado de origen ya activo.
+      setOrigenModalPlanId(planId);
+      return;
+    }
     setSelectedPlanId(planId);
     setCalibrating(true);
   };
 
-  const handleUsarCalibracionPrevia = (planId: number, nivel: number) => {
-    if (!globalCal) return;
-    handleSaveConfig({
-      planId,
-      origen: globalCal.origen,
-      scaleM: globalCal.scaleM,
-      factorX: globalCal.factorX,
-      factorY: globalCal.factorY,
-      calGlobal: true,
-      definedScale: globalCal.definedScale,
-    });
-    updatePlan(planId, { nivel });
-    confirmPlan(planId);
-    setNivelPickerPlanId(null);
+  // Confirma el modal de origen: abre el configurador directo en modo "marcar origen".
+  const abrirConfiguradorOrigen = (planId: number) => {
+    setOrigenModalPlanId(null);
+    setAutoOrigen(true);
+    setSelectedPlanId(planId);
+    setCalibrating(true);
   };
 
   const handleSaveConfig = (config: CalibrationData & { planId: number }) => {
@@ -185,7 +233,11 @@ function PlanosTab({ state }: PlanosTabProps) {
       fecha: new Date().toLocaleString('es-CO'),
     };
     updatePlan(config.planId, {
-      scale: config.scaleM ? Math.round(config.scaleM * 100) : 100,
+      // Escala EXACTA en el meta (×100, sin redondear): el meta alimenta escalaGlobalRef
+      // (PdfViewer) y la siembra de calData — redondearlo a entero (0.4723 → 47 → 0.47) hacía
+      // que escalaGlobal ≠ scaleM del doc y el re-base de carga RE-ESCALABA la geometría en
+      // cada primera reapertura (cotas desplazadas/dañadas, incidente 2026-09-22).
+      scale: config.scaleM ? config.scaleM * 100 : 100,
       origen: config.origen,
       factorX: config.factorX,
       factorY: config.factorY,
@@ -204,8 +256,30 @@ function PlanosTab({ state }: PlanosTabProps) {
       // Se baja el doc de BD primero y se le montan los campos de calibración.
       const fill = (doc: Record<string, unknown>) => {
         doc.origen = config.origen;
+        // Stamp de escala CONSISTENTE: si el doc ya reclamaba otra escala, re-basar su
+        // geometría aquí (misma regla del re-base de carga) — pisar el número sin mover los
+        // px dejaba un doc que decía una escala y estaba dibujado a otra: las cotas nuevas
+        // medían mal y la primera reapertura aplicaba un salto (incidente 2026-09-22).
+        const escalaPrev = typeof doc.scaleM === 'number' ? doc.scaleM : null;
+        // [CF-COTA] diagnóstico DEV del stamp de calibración sobre un doc con contenido.
+        devError(
+          `[CF-COTA] stamp calibración ${config.planId} escalaPrev=${escalaPrev} → ${config.scaleM} dims=${JSON.stringify(
+            ((doc.dims as Array<Record<string, number>>) || []).map(
+              (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
+            ),
+          )}`,
+        );
         if (config.scaleM) {
-          doc.scaleM = config.scaleM;
+          if (escalaPrev && Math.abs(escalaPrev - config.scaleM) > 1e-9) {
+            try {
+              rebasarEscalaTrazos(doc as unknown as PlanoWorkData, config.scaleM);
+            } catch (e) {
+              devError('rebase en guardado de calibración:', e);
+              doc.scaleM = config.scaleM;
+            }
+          } else {
+            doc.scaleM = config.scaleM;
+          }
         }
         doc.factorX = config.factorX;
         doc.factorY = config.factorY;
@@ -322,6 +396,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           onSaveConfig={handleSaveConfig}
           onIrADibujo={handleIrADibujo}
           existingCal={cal}
+          autoOrigen={autoOrigen}
           pisos={pisos}
           plans={plans}
           planNivel={selectedPlan.nivel ?? null}
@@ -833,6 +908,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                           type="button"
                           onClick={() => {
                             setSelectedPlanId(p.id);
+                            setAutoOrigen(false);
                             setCalibrating(true);
                           }}
                           style={{
@@ -942,6 +1018,14 @@ function PlanosTab({ state }: PlanosTabProps) {
                       }}
                     >
                       {p.nivel !== null && <span>{pisoLbl(p.nivel)}</span>}
+                      {p.origen && origenesCompartidos.has(`${p.origen.x_px}|${p.origen.y_px}`) && (
+                        <span
+                          style={{ color: '#F5A623', fontSize: 11, fontWeight: 600 }}
+                          title="Esta lámina comparte el origen px con otra: si las hojas no están exactamente alineadas, re-marque el origen (CALIBRAR) en el mismo punto físico del AutoCAD para que copias e isometría queden verticales entre pisos."
+                        >
+                          ⚠ Origen compartido
+                        </span>
+                      )}
                       {p.scale ? (
                         <>
                           <span style={{ color: 'var(--line)' }}>|</span>
@@ -956,6 +1040,18 @@ function PlanosTab({ state }: PlanosTabProps) {
                       ) : null}
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlanId(p.id);
+                      setAutoOrigen(false);
+                      setCalibrating(true);
+                    }}
+                    style={{ ...PlanosTab_verBtn, flexShrink: 0 }}
+                    title="Re-marcar origen / recalibrar esta lámina"
+                  >
+                    CALIBRAR
+                  </button>
                   <button
                     type="button"
                     onClick={() => setSelectedPlanId(p.id)}
@@ -1087,6 +1183,66 @@ function PlanosTab({ state }: PlanosTabProps) {
               }}
             >
               Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+      {origenModalPlanId !== null && (
+        // Modal de flujo: "esta lámina necesita SU propio origen". Al confirmar, el
+        // configurador abre directo en modo marcado de origen (autoOrigen).
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)',
+          }}
+          onClick={() => setOrigenModalPlanId(null)}
+        >
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+          <div
+            role="dialog"
+            aria-label="Definir origen de la lámina"
+            style={{
+              background: 'var(--bg2)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--r)',
+              padding: 16,
+              minWidth: 260,
+              maxWidth: 360,
+              boxShadow: '0 8px 32px rgba(0,0,0,.4)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--txt)' }}>
+              📍 Define el origen de este plano
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--txt2)', lineHeight: 1.5 }}>
+              Piso asignado a <b>{plans.find((p) => p.id === origenModalPlanId)?.name}</b>. La
+              escala del proyecto ya está aplicada, pero a cada plano se le debe definir su propio
+              origen.
+            </div>
+            <button
+              type="button"
+              onClick={() => abrirConfiguradorOrigen(origenModalPlanId)}
+              style={{
+                marginTop: 12,
+                width: '100%',
+                padding: '7px 0',
+                borderRadius: 'var(--r)',
+                border: '1px solid rgba(14,204,122,0.3)',
+                background: 'rgba(14,204,122,0.1)',
+                color: '#0ECC7A',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              📍 Marcar origen
             </button>
           </div>
         </div>
