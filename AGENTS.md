@@ -1660,3 +1660,42 @@ tsc 0 · lint 0 err 0 warn · vitest 795/795 (142 files) · build ✓ · graphif
 
 ### Verificación manual pendiente (recarga dura)
 Calibrar → dibujar → asociar (alineación sobrevive al autosave); arrastrar bajante con orígenes distintos (ghost del otro piso en el punto físico); recalibrar tras asociar y reabrir (ghosts re-anclados); piso legacy con meta 47 (primer re-open SIN salto de geometría); EPC alternando sub-pestañas a mitad de carga (sin contexto filtrado); Ctrl+L no cambia de herramienta. Aplicar el SQL de reparación en SQL Editor.
+
+## Session Summary — 2026-09-22 (ronda 2: los 4 diferidos resueltos)
+
+### F1 — glbCache con eviction LRU (48 MB, decisión usuario)
+- Map con orden de inserción = LRU, re-insert en hit (MRU), bytes contados AL RESOLVERSE (pendings intocables — sin drift del contador), error borra entrada y descuenta. 48 MB ≈ 1.2× catálogo: con el set activo nunca desaloja — techo de seguridad, no fricción. `_setMaxBytesForTests`/`_resetForTests`.
+- Tests glbCache.test.ts (5): LRU básico, MRU en hit, single-flight, error sin cacheo/drift, pending no evictable.
+
+### F2 — controles3d.ts unificado (decisión usuario: derecho = nada)
+- `aplicarControlesOrbit` (LEFT=ROTATE, MIDDLE=PAN, sin RIGHT = no-op como la isometría) + `attachAntiAutoscroll` con detach, en los 3 visores (aparatos/epc/rci). EPC adopta el mapeo (antes default de OrbitControls: derecho=pan, central=dolly). Comentario: el dolly del central se pierde, la rueda sigue zoomeando.
+
+### F3 — invalidación de asociaciones al recalibrar (deferido #2, resuelto)
+- `sanearAsociaciones.ts` (nuevo): `sanearAsociacionesTrasRecalibrar(planId, prevOrigen)` — traslación pura por Δ = nuevo − viejo sobre anillos (dx/dy), inicios de Ldesvio (pts[0]) y ghosts, en AMBOS roles (P inferior: +Δ propios; P superior: −Δ en el doc del partner, +Δ ghosts propios). Enganchado en handleSaveConfig (prevOrigen capturado antes del stamp). Barre docs con `LD_`/`crossFloorGhosts` sin parsear los demás; `storage` event al final.
+- Red de seguridad: `reanclarAnillosLayout2` en migrateAssocLayoutOnLoad (gate `LD_`) — re-ancla anillo/LD vía puntero origenId/descargaEnId con aFrameDe para orígenes cambiados en otro dispositivo.
+- Tests sanearAsociaciones.test.ts (5): P-inferior, P-superior, primera calibración no-op, Δ=0 idempotente, re-anclaje por carga.
+
+### F4 — splits mecánicos (hub + delegadores, cero cambios de imports)
+- **planoCoords.ts**: snapAngle + toCvs/toPlane/pxToM/mm2cvs/cmToPlanePx/cmToCanvasPx/realMmToCanvasPx/labelScaleM como puras (Point definido local — el del hub no está exportado).
+- **planoCamera.ts**: `zoomAnclado` — la misma matemática que vivía repetida en doZoom/zoomStep/rueda/pinch, ahora un solo lugar (clamp 0.05–6, no-op si el clamp no cambia).
+- **handleKeyDown.ts**: cuerpo de _onKeyDownHandler (~155 líneas) como función libre sobre IPlanoEngineCore; la clase delega. `setTool/finishRamal/finishArea/cancelRamal/cancelArea/undoLast/redoLast` añadidos al contrato (aditivo).
+- **PlanosTab → planosTabCalibracion.ts**: calDataDePlan/seedCalData (dedupe initializer-vs-efecto), computeGlobalCal, computeOrigenesCompartidos, stampCalibracion (fill pura). CalibrationData vive en el módulo.
+- **PdfViewer**: useViewerResponsive (umbrales 768/1024 en un lugar), ViewerMobileChrome (banner+nombre+zoom táctil), persistTrazos.ts (persistTrazosSnapshot compartido por onDirty y usePdfAutoSave.performSave — secuencia antes duplicada; claveDeBorrado testeable).
+- Tests: atjosYZoom (8: foco, Ctrl+L, Ctrl+Z en SELECT, zoom anclado/clamp/no-op, snapAngle), planosTabCalibracion (7).
+- **F4d parcial (desviación documentada)**: el split JSX de PlanosTab en 5 componentes (Pendientes/Cargados/modals/CalibracionView) NO se hizo — movería ~500 líneas inventando interfaces de 8-12 props sin tests de UI (el riesgo que rondas previas dejaron fuera por decisión explícita). La lógica ya salió testeada; el resto es composición. Queda para cuando haya red de UI tests o se toque esa UI por otra razón.
+
+### Neto
+PlanoEngine 1561→1371 · PdfViewer 1561→1448 · PlanosTab 1263→1187 (más 6 módulos nuevos pequeños y cohesivos). Sin cambios de comportamiento verificados por suite completa + tests nuevos (25 añadidos en la ronda).
+
+### Gates
+tsc 0 · lint 0/0 · vitest 820/820 (146 files) · build ✓ · graphify ✓.
+
+### Verificación manual pendiente (recarga dura)
+Visores 3D: giro/pan/rueda, DERECHO inerte (antes paneaba), central sin autoscroll, alternar sub-pestañas (2ª entrada sin red). Visor: atajos completos con foco canvas/input, Ctrl+Z en select de menú, zoom rueda/botones/pinch. Calibración: recalibrar piso asociado → anillo/LD/ghost quedan en el punto físico SIN re-asociar (la 1ª vez visible: recalibrar y reabrir ambos pisos).
+
+## Session Summary — 2026-09-22 (ronda 3: cortes ponytail post-splits)
+- `shared/config3d.ts` (nuevo): MONO_3D + FOV_3D — única fuente de tipografía y FOV de los 3 visores 3D. rci3dData re-exporta como RCI_MONO/RCI_FOV (cero churn en consumidores); aparatos/epc usan FOV_3D en su cámara; 4 sidebars/viewers con `const MONO` local ahora importan MONO_3D.
+- planoCamera importa Point de planoCoords (interface duplicada fuera).
+- `PlanoNetworkModel` se MANTIENE (piloto strangler-fig de la sesión paralela con accessor ya cableado — removerlo rompe diseño en vuelo; se re-evalúa si la migración muere).
+- Inputs perezosos (3 copias): siguen deferidos por decisión documentada (props divergentes, sin tests UI).
+- Gates: tsc 0 · lint 0/0 · vitest 820/820 · build ✓ · graphify ✓.
