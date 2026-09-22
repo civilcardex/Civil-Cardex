@@ -1527,3 +1527,104 @@ tsc 0 (fuera epc3d/aparatos3d sesión paralela) · vitest 782/782 · lint 0 · b
 - **Fix**: `copyDrawingFromPlan` recibe `alineacion {origenSrc, origenDst}` (CopyFromPlanPanel la pasa desde el meta de plans): p_dst = (p_src − origen_src) × f + origen_dst. Orígenes iguales + f=1 ⇒ identidad EXACTA (bit-exacto intacto). Orígenes ausientes ⇒ comportamiento anterior.
 - **Requisito de protocolo**: el origen de calibración de cada piso debe marcarse en el MISMO punto físico del AutoCAD (Paso 2 del configurador). Si un piso usó "Usar calibración previa" (origen copiado), su origen px no alinea láminas desalineadas — recalibrar origen en ese piso.
 - Test `cotasCopiasPisos.test.ts` +1 (lámina desalineada 12 px → copia aterriza en el mismo punto físico, cota 5.99 idéntica). Gates: tsc 0 (fuera sesión paralela) · vitest 783/783 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (5 ítems: numeración bomba AR + 2 bugs raíz + isometrías)
+
+### 1. Bomba AR numerada
+- 6 tablas con prefijo "Tabla N —" en el título del Card (orden de aparición); PageNav con labels 'Página 1..4' (solo BombaARDesign; PageNav intacto).
+
+### 2. BUG elementos corridos al reabrir el visor (causa raíz: re-base espurio — MÍO)
+- Cadena: al remontar, el estado React ('0.5' default / syncEngine) pisa eng.scaleM DURANTE el await de BD → el re-base de escala única comparaba el valor PISADO vs escalaGlobal → re-base con factor equivocado → geometría corrida y PERSISTIDA (se acumulaba en cada cierre/apertura).
+- Fix (useTrazosLoader): docScale capturado tras cada loadWork; re-base compara/como fromScale el scaleM DEL DOCUMENTO (inmune al pisón). Ruta local-gana ahora sincroniza setScaleM React desde el doc (solo BD-gana lo hacía). rebasarEscalaTrazos: escala también lblX/lblY de cotas.
+
+### 3. Rueda del ratón isometrías 3D
+- controls.mouseButtons {LEFT:ROTATE, MIDDLE:PAN, RIGHT:PAN} en rci3d + aparatos3d (igual que IsometriaGeneral: central mueve, izquierda gira; rueda-scroll sigue zoomeando). epc3d NO tocado (sesión paralela).
+
+### 4. Caché de GLBs
+- Nuevo `components/shared/glbCache.ts` (map + single-flight, patrón lazyPdfjs): ArrayBuffer por URL. rci3d fetch→caché; aparatos3d loader.parseAsync(buffer) desde caché. Re-entrar a sub-pestaña de isometría = sin descarga (parse-only).
+
+### 5. BUG "Asignar piso" desaparecía tras reabrir
+- Causa: calData de PlanosTab se inicializa UNA vez con plans vacío (restauración async); el efecto [plans] solo purgaba huérfanos → globalCal null para siempre → botón CALIBRAR en vez de ASIGNAR PISO.
+- Fix: el mismo efecto [plans] SIEMBRA entradas de calData para plans con origen&&scale que falten (misma derivación del initializer; no pisa entradas del usuario).
+
+### Gates
+tsc 0 (fuera epc3d/aparatos3d paralela) · vitest 783/783 · lint 0 · build ✓ · graphify ✓. Verificación manual: cerrar/reabrir visor (elementos en su sitio, cotas estables), rueda en isometrías, re-entrada a sub-pestañas sin pantalla de carga larga, "Asignar piso" visible tras reabrir.
+
+## Session Summary — 2026-09-22 (ronda 2: origen REAL por lámina + asociaciones origen-relativas + atajo L Canal)
+
+### Causa raíz del "el origen no sirve para nada / copias no alineadas"
+- `handleUsarCalibracionPrevia` (PlanosTab) clonaba `origen: globalCal.origen` a TODO plan asignado → `origenSrc === origenDst` siempre → desfase de copia 0 (copyDrawingFromPlan ya estaba correcto) e isometría corrida (getIsoCoords ya restaba origen por piso — con valores clonados no corrige nada). La transformación era correcta; los DATOS no.
+
+### Fixes
+- **F1 — Asignar piso ya no clona origen**: siembra `calData[planId] = { origen: null, scaleM/factorX/factorY/definedScale heredados de globalCal }` y abre el configurador; el gate "Defina el origen antes de guardar" obliga a marcar el origen en ESA lámina (mismo punto físico del AutoCAD). `handleUsarCalibracionPrevia` eliminado. Si el plan ya tiene calData no se pisa.
+- **F1 — Badge "⚠ Origen compartido"** en la lista Cargados cuando ≥2 planos confirmados comparten exactamente el mismo origen px (legacy clonado) + botón **CALIBRAR** en cada fila (los confirmados no tenían forma de reabrir el configurador).
+- **F2 — Asociaciones origen-relativas** (bajante↔bajante y bomba→bajante): `origenDeTrazos(planId)` + `aFrameDe(pt, from, to)` (nuevos en crossFloorStorage, leen `trazos_<id>.origen` — stamp de handleSaveConfig). `isAligned` compara origen-relativo (fallback crudo sin origen); fantasma se guarda traducido al frame del piso anfitrión; anillo `desplazamientos` con el delta FÍSICO; Ldesvio (storage + vivo) con coords del extremo lejano traducidas. Isometría: `distToFirst/distToLast` compara en coords ISO (cada punto por el origen de su piso).
+- **F3 — Atajo 'L' para Canal** (de aguas Lluvias): caso `k === 'l'` en PlanoEngine._onKeyDownHandler (solo red 'll' + recolectora activa, espejo de isToolDisabledForNet). Toolbar Canal key/shortcut 'L'. La 'C' es Texto (useKeyboardShortcuts) — el comentario viejo de compartir C con Contador era una aspiración nunca implementada.
+- **Invariante que gobierna todo**: mismo punto físico ⟺ misma coordenada (raw − origen) en cualquier piso. Copia (p_dst = (p_src−oS)·f + oD) e iso (resta origen por piso) ya lo respetaban; asociaciones ahora también.
+- **Datos existentes (decisión usuario)**: sin migración — tras re-marcar orígenes, re-copiar/re-asociar los pisos afectados; el badge señala qué láminas re-marcar.
+
+### Tests
+- `assocOrigenes.test.ts` (nuevo, 5): alineados físicos con px distintos → sin Ldesvio/anillo + ghost traducido; desalineados → anillo delta físico + LD con coords traducidas; fallback legacy sin origen; bomba alineada y desalineada (ghost/LD traducidos).
+
+### Gates
+tsc 0 · lint 0 · vitest **788/788** (141 files) · vite build ✓ · graphify ✓.
+
+### Pendiente verificación manual (recarga dura, datos reales)
+Re-marcar origen en 2+ láminas (mismo punto físico) → copiar entre pisos → elementos verticalmente alineados; isometría apila columnas; asociar bajantes alineados → sin Ldesvio espurio; tecla **L** con red lluvias + recolectora → Canal ('C' sigue siendo Texto).
+
+### Relevant Files
+- `src/modules/civilflow/components/workarea/PlanosTab.tsx` — asignación sin clonar origen, badge, CALIBRAR en Cargados.
+- `src/modules/civilflow/utils/crossFloorStorage.ts` — origenDeTrazos/aFrameDe.
+- `src/modules/civilflow/utils/bajanteAssociation.ts` / `bombaAssociation.ts` — comparaciones y artefactos origen-relativos.
+- `src/modules/civilflow/components/workarea/isometria/useIsometriaRender.ts` — comparación de extremos en coords ISO.
+- `src/modules/civilflow/lib/PlanoEngine/PlanoEngine.ts` + `components/pdfViewer/PdfViewerToolbar.tsx` — atajo L Canal.
+- `src/modules/civilflow/utils/__tests__/assocOrigenes.test.ts` — nuevo.
+
+## Session Summary — 2026-09-22 (ronda 3: cotas dañadas al reabrir — causa raíz meta redondeado)
+
+### Causa raíz
+- `handleSaveConfig` persistía el meta con `scale: Math.round(scaleM * 100)` (0.4723 → 47). El meta alimenta `escalaGlobalRef` (PdfViewer) y la siembra de calData (`p.scale / 100`) → escalaGlobal = 0.47 REDONDEADA ≠ scaleM exacto del doc (0.4723) → el re-base de escala única del loader disparaba en la primera reapertura (px ×1.005, cotas/croquis desplazados del PDF) o, tras re-marcar origen con calData sembrada del meta, el stamp pisaba doc.scaleM sin mover px (cotas nuevas medían 0.5% corto). Calibraciones manuales no estándar (3.99 vs 3.92) eran el caso normal — el redondeo garantizaba el mismatch.
+
+### Fixes
+- **Meta con escala EXACTA**: `scale: config.scaleM * 100` (float; columna `cf_planos.scale` ya es `numeric`). Consumidores (`p.scale / 100` en calData/escalaGlobal, lista estándar, displays `Math.round`) todos compatibles.
+- **Stamp consistente en `fill()`** (handleSaveConfig): si el doc ya reclamaba una escala distinta, se re-basa su geometría con `rebasarEscalaTrazos` EN el guardado (misma regla del loader) en vez de pisar el número dejando px@A reclamados a B.
+- Datos ya envenenados: se sanean al re-guardar la calibración de cada piso (CALIBRAR → origen → guardar) — el re-base pasa a ser visible en ese momento y estable después.
+
+### Gates
+tsc 0 · lint 0 · vitest 788/788 · build ✓ · graphify ✓.
+
+### Pendiente manual
+Recarga dura; re-guardar calibración por piso; dibujar cotas → cerrar → reabrir: sin salto de geometría ni cambio de medidas.
+
+## Session Summary — 2026-09-22 (ronda 4: auditoría re-base — cobertura de TODOS los elementos)
+
+### Auditoría
+- El mecanismo de daño de cotas (meta redondeado → re-base espurio / stamp sin re-base) afectaba a TODO elemento con px. `rebasarEscalaTrazos` ya cubría ramales/tributarios (pts, labelX/Y), bajantes/montantes/canal/cajas/contador/calentador/bomba (x, y, labelX/Y, desplazamientos), áreas, cotas (x1..y2 + lblX/lblY; L real intacta), textAnnots (x/y + lblOff) y guideLines (pts).
+- **Fugas encontradas y corregidas**: `crossFloorGhosts[].x/y` (marcadores de asociación — quedaban corridos tras re-base) y `bajantes[].ghostData[lvl].labelX/labelY` (etiquetas arrastradas del fantasma/anillo — descolgadas). Ambos ahora se re-basan en `rebasarEscalaTrazos`.
+- Verificados y sin problema: canal (vive en bajantes, extensión derivada de ramales), cajas (tamaño se recalcula con scaleM al render — re-base lo mantiene correcto), ángulos de etiqueta (escala uniforme preserva ángulos), areas.areaM2/cotas.L (magnitudes reales intactas), origen de calibración del doc (px de la LÁMINA — no se re-basa, correcto), zoom/offX/offY (viewport, no geometría).
+
+### Test
+- `cotasCopiasPisos.test.ts` +1: re-base mueve crossFloorGhosts/ghostData-labels/desplazamientos por el mismo factor y es idempotente. 5/5.
+
+### Gates
+tsc 0 · lint 0 · vitest 789/789 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 5: flujo visual de definición de origen)
+
+- **Modal post-asignación**: tras ASIGNAR PISO (cuando el plan no tiene calibración propia), aparece modal "📍 Define el origen de esta lámina" — explica que la escala ya viene aplicada, que cada lámina coloca el edificio en px distintos y que hay que marcar el MISMO punto físico del AutoCAD que en los demás pisos. Botón "📍 Marcar origen" abre el configurador; "Después" lo deja pendiente.
+- **Modo origen auto-activado**: nuevo prop `autoOrigen` en PlanoConfigurator — al abrir con origen null, activa el modo de marcado (cruz + prompt "Clic en la intersección de ejes") para que el clic siguiente sea el punto físico. Los botones CALIBRAR (re-marcar) lo dejan en false.
+- Gates: tsc 0 · lint 0 · vitest 789/789 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 6: cotas rotadas al reabrir — diagnóstico)
+
+- El usuario reporta cotas que ROTAN 90° al cerrar/reabrir (horizontal→vertical, ancla fija). Un re-base uniforme NO puede rotar — auditoría completa: round-trip del motor con test real (saveWork→loadWork preserva x1/y1/x2/y2/L exactos), applyWorkData no toca dims, creación/arrastre limpios, restauración de piso por planId, sweepMisplacedLdesvios/migrateAssocLayoutOnLoad sin stale. **Ningún código actual rota una cota** → hipótesis: (a) daño YA persistido de sesiones anteriores (los px rotados viven en el doc guardado), (b) prueba sin recarga dura (HMR no re-instancia el engine), (c) dims viejas de tests previos (cada dibujo = id nuevo, no se deduplican).
+- **Instrumentación DEV `[CF-COTA]`** (devError, silenciosa en prod) en los 4 puntos del ciclo: autosave (PdfViewer _markDirty), load LOCAL, load BD-GANA y RE-BASE (useTrazosLoader), stamp de calibración (PlanosTab fill). Cada línea imprime id+extremos+L de las cotas → la próxima reproducción ubica el punto exacto donde cambian las coordenadas.
+- Test temporal roundtripDim verificado y eliminado. Gates: tsc 0 · lint 0 · vitest 789/789 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 7: CAUSA RAÍZ DEFINITIVA — RPC transponía y1↔x2 de las cotas)
+
+- Las trazas [CF-COTA] lo capturaron: autosave guarda la cota horizontal correcta (693.9,707.07→1036.1,707.07), y el `load BD-GANA` (árbitro local-vs-BD con caché local ausente tras borrar planos) devuelve de BD `(693.9,1036.13→707.07,707.07)` — **y1↔x2 intercambiados = rotación 90°**.
+- **Causa**: las migraciones 20260912000000 y 20260914000000 recrearon `save_plano_data` con el SELECT de dimensiones cruzado — columnas (x1,y1,x2,y2) ← valores (r.x1, r.x2, r.y1, r.y2). Toda cota guardada a BD quedaba rotada. JS (dimToRow/rowToDim), tabla y RPCs de lectura correctos.
+- **Fix**: migración `20260922000000_fix_dimensiones_y1_x2.sql` recrea `save_plano_data` con el orden correcto (única línea que cambia vs 20260914000000, verificado). **APLICAR EN SQL EDITOR.**
+- Filas ya transpuestas: se reparan re-guardando cada piso desde la app tras aplicar (la caché local tiene las cotas correctas → el autosave reescribe la BD sana). Borrar las cotas visiblemente dañadas cuyo local ya se perdió.
+- Nota: el fix anterior del meta redondeado sigue en pie (era una causa real adicional de re-bases espurios); este RPC era la fuente de la ROTACIÓN.
