@@ -6,7 +6,7 @@
  */
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { devError } from '../../../utils/devError';
-import { TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
+import { PLANS_META_KEY, TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 
@@ -25,9 +25,8 @@ export function hasCachedPlan(planId: string | number): boolean {
   }
 }
 
-/** Origen de calibración de la lámina desde su doc de trazos (stamp de PlanosTab.handleSaveConfig
- *  — la misma fuente que la isometría usa como fallback). Null si la lámina no lo tiene: los
- *  consumidores caen entonces al comportamiento legacy (hojas asumidas alineadas, un solo frame). */
+/** Origen de calibración de la lámina desde su doc de trazos. ÚNICA vía interna: consumir
+ *  origenDePlan (meta primero). Se mantiene exportado porque la isometría y tests lo siembran. */
 export function origenDeTrazos(planId: string): { x_px: number; y_px: number } | null {
   try {
     const raw = loadFromStorage<{ origen?: { x_px?: number; y_px?: number } | null } | null>(
@@ -43,6 +42,25 @@ export function origenDeTrazos(planId: string): { x_px: number; y_px: number } |
   }
 }
 
+/** Origen de calibración — UNA sola fuente para todo el módulo: el META de plans
+ *  (PLANS_META_KEY, que viaja a BD y se restaura en otros dispositivos), con el doc de trazos
+ *  como fallback legacy (tests y dibujos viejos). Antes se leía SOLO el doc y el primer
+ *  autosave lo borraba (serializeWork no serializa origen): las asociaciones caían al frame
+ *  crudo en silencio y se mezclaban frames (auditoría 2026-09-22 F-1/F-7). */
+export function origenDePlan(planId: string): { x_px: number; y_px: number } | null {
+  try {
+    const meta = loadFromStorage<
+      Array<{ id: number | string; origen?: { x_px?: number; y_px?: number } | null }>
+    >(PLANS_META_KEY, []);
+    const om = meta.find((p) => String(p.id) === String(planId))?.origen;
+    if (om && typeof om.x_px === 'number' && typeof om.y_px === 'number')
+      return { x_px: om.x_px, y_px: om.y_px };
+  } catch {
+    // meta corrupto: caer al doc
+  }
+  return origenDeTrazos(planId);
+}
+
 /** Traduce un punto del frame de lámina `fromPlanId` al frame de `toPlanId` por el delta de
  *  orígenes de calibración: las láminas del mismo AutoCAD no comparten posición absoluta y el
  *  MISMO punto físico cae en px distintos por hoja. Sin origen en alguna de las dos devuelve el
@@ -52,8 +70,8 @@ export function aFrameDe(
   fromPlanId: string,
   toPlanId: string,
 ): { x: number; y: number } {
-  const oF = origenDeTrazos(fromPlanId);
-  const oT = origenDeTrazos(toPlanId);
+  const oF = origenDePlan(fromPlanId);
+  const oT = origenDePlan(toPlanId);
   if (!oF || !oT) return pt;
   return { x: pt.x - oF.x_px + oT.x_px, y: pt.y - oF.y_px + oT.y_px };
 }
@@ -394,15 +412,19 @@ export function updateCrossFloorGhostPositionBySource(
     try {
       const data: LocalGhostDrawingData = JSON.parse(localStorage.getItem(k) || '{}');
       if (!data.crossFloorGhosts?.length) continue;
+      // (x,y) llegan en el frame del piso origen: traducirlos al frame de CADA piso destino
+      // — los ghosts viven en el frame de su anfitrión (misma regla que bajanteAssociation
+      // al crearlos; sin esto, arrastrar el bajante origen desplazaba el ghost espejo).
+      const xy = aFrameDe({ x, y }, sp, targetPlanId);
       let dirty = false;
       for (let j = 0; j < data.crossFloorGhosts.length; j++) {
         const g = data.crossFloorGhosts[j];
         if (
           g.sourcePlanId === sp &&
           g.sourceBajanteId === sourceBajanteId &&
-          (g.x !== x || g.y !== y)
+          (g.x !== xy.x || g.y !== xy.y)
         ) {
-          data.crossFloorGhosts[j] = { ...g, x, y };
+          data.crossFloorGhosts[j] = { ...g, x: xy.x, y: xy.y };
           dirty = true;
         }
       }

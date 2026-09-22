@@ -17,8 +17,29 @@ import {
   ldesvioIdFor,
   isLdesvioRamalId,
   nextRamalLabel,
+  aFrameDe,
   type LocalGhostDrawingData,
 } from './crossFloorStorage';
+
+/** Re-ancla los ghost-marcadores (layout 2) a la posición espejo ACTUAL del bajante origen
+ *  expresada en el frame de ESTE piso. Mantiene el invariante `ghost.xy = aFrameDe(origen.xy)`:
+ *  recalibrar un origen cambia la traducción entre frames y el ghost persistido queda en px del
+ *  frame viejo — la próxima apertura lo re-ancla. @returns true si cambió algo. */
+function reanclarGhostsLayout2(data: LocalGhostDrawingData, pid: string): boolean {
+  let dirty = false;
+  for (const g of data.crossFloorGhosts || []) {
+    if (g.layout !== 2 || !g.sourcePlanId || g.sourcePlanId === pid) continue;
+    const src = loadData(g.sourcePlanId).bajantes?.find((b) => b.id === g.sourceBajanteId);
+    if (!src) continue;
+    const xy = aFrameDe({ x: src.x ?? g.x, y: src.y ?? g.y }, g.sourcePlanId, pid);
+    if (g.x !== xy.x || g.y !== xy.y) {
+      g.x = xy.x;
+      g.y = xy.y;
+      dirty = true;
+    }
+  }
+  return dirty;
+}
 
 /** Marca un piso con la versión 2 del layout de asociación (idempotente). */
 export function markAssocLayout(planId: string | number): void {
@@ -35,6 +56,17 @@ export function markAssocLayout(planId: string | number): void {
  *  los pisos correctos. Idempotente — un piso con la marca `assocLayout: 2` no se re-procesa. */
 export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: string): void {
   const pid = String(planId);
+  // Re-anclaje de ghosts layout-2 (frame cambió por recalibración): ANTES del guard barato,
+  // pero solo parsea docs que efectivamente tienen ghosts de layout nuevo — los demás pagan
+  // un `includes` y nada más.
+  try {
+    if ((localStorage.getItem(TRAZOS_PLAN_PREFIX + pid) || '').includes('"layout":2')) {
+      const d0 = loadData(pid);
+      if (reanclarGhostsLayout2(d0, pid)) saveData(pid, d0);
+    }
+  } catch {
+    /* best-effort: sin re-anclaje el ghost queda en px del frame viejo */
+  }
   // Guard barato: si el raw ya trae la marca, la migración está completa — sin parsear nada.
   // (saveToStorage serializa con JSON.stringify, así que la marca aparece literal.)
   try {
@@ -69,6 +101,10 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
     const upper = upperData.bajantes?.find((b) => b.id === upperId);
     if (!upper) continue;
     if ((lower.nptBase ?? 0) > (upper.nptBase ?? 0)) continue;
+    // NOTA ponytail (no "arreglar"): alignedPair y los deltas dx/dy comparan/restan px de los
+    // DOS pisos crudos y eso es CORRECTO — aFrameDe es una traslación y se cancela en deltas y
+    // distancias. Solo las posiciones ABSOLUTAS escritas en OTRO frame (el ghost del paso 4)
+    // necesitan conversión.
     const alignedPair =
       Math.abs((upper.x ?? 0) - (lower.x ?? 0)) < 0.5 &&
       Math.abs((upper.y ?? 0) - (lower.y ?? 0)) < 0.5;
@@ -136,13 +172,14 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
       data.ramales = loadData(pid).ramales;
     }
     // 4. Ghost-marcador: al piso superior, re-identificado como el bajante inferior y anclado
-    //    en sus coords.
+    //    en SUS coords traducidas al frame del anfitrión (posición absoluta cruzando pisos).
+    const lowerXY = aFrameDe({ x: lower.x ?? 0, y: lower.y ?? 0 }, pid, upperPlanId);
     const newGhost: CrossFloorGhost = {
       ...g,
       id: `XFG_${lower.id}_${pid}`,
       code: lower.code || g.code,
-      x: lower.x ?? g.x,
-      y: lower.y ?? g.y,
+      x: lower.x == null ? g.x : lowerXY.x,
+      y: lower.y == null ? g.y : lowerXY.y,
       sourcePlanId: pid,
       sourceBajanteId: lower.id,
       targetBajanteId: upperId,
@@ -228,12 +265,15 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
       (g) => g.sourcePlanId === pid && g.sourceBajanteId === b.id,
     );
     if (oldGhost) {
+      // Posición absoluta del ghost cruza pisos: traducir las coords del inferior al frame de
+      // ESTE piso (anfitrión). Deltas de anillos: ver NOTA ponytail de la pasada 1.
+      const lowerXY = aFrameDe({ x: lower.x ?? 0, y: lower.y ?? 0 }, lowerPlanId, pid);
       const newGhost: CrossFloorGhost = {
         ...oldGhost,
         id: `XFG_${lowerBajanteId}_${pid}`,
         code: lower.code || oldGhost.code,
-        x: lower.x ?? oldGhost.x,
-        y: lower.y ?? oldGhost.y,
+        x: lower.x == null ? oldGhost.x : lowerXY.x,
+        y: lower.y == null ? oldGhost.y : lowerXY.y,
         sourcePlanId: pid,
         sourceBajanteId: lowerBajanteId,
         targetBajanteId: b.id,

@@ -11,8 +11,9 @@ import {
   trazosLocalGanaABdVacia,
 } from '../../services/storageService';
 import type { PlanTrazos } from '../../services/storageService';
-import { devError } from '../../../../utils/devError';
+import { devError, devLog } from '../../../../utils/devError';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from '../../utils/assocLayoutMigration';
+import { origenDePlan } from '../../utils/crossFloorStorage';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
@@ -50,8 +51,8 @@ export function useTrazosLoader({
         const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
         eng.loadWork(workStr);
         docScale = eng.scaleM;
-        // [CF-COTA] diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
-        devError(
+        // [CF-COTA] (devLog, canal info) diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
+        devLog(
           `[CF-COTA] load LOCAL ${resolvedId} docScale=${docScale} ts=${Number((typeof localData === 'object' && localData ? (localData as { ts?: number }).ts : 0) || 0)} dims=${JSON.stringify(
             (eng.dims as unknown as Array<Record<string, number>>).map(
               (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
@@ -92,7 +93,7 @@ export function useTrazosLoader({
             const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
             eng.loadWork(workStr);
             docScale = eng.scaleM;
-            // [CF-COTA] la BD ganó el árbitro — si las cotas llegan distintas a las del
+            // [CF-COTA] (devLog, canal info) la BD ganó el árbitro — si las cotas llegan distintas a las del
             // autosave, este es el momento en que se intercambia el documento.
             devError(
               `[CF-COTA] load BD-GANA ${resolvedId} docScale=${docScale} dbTs=${dbTs} localTs=${localTs} dims=${JSON.stringify(
@@ -129,31 +130,68 @@ export function useTrazosLoader({
       // 2026-09-21): cada piso guardaba su propio scaleM y las calibraciones manuales
       // divergían 0.5–1.5 % — una cota de 4 m medía distinto en cada piso. Si existe
       // calibración global (calGlobal) y el piso trae otra escala, la geometría se RE-BASA
-      // (px × from/to: posición REAL preservada, totalL/L de cotas intactos) y el piso pasa
-      // a la escala global + persistencia inmediata. Idempotente: tras el re-base los trazos
-      // ya quedan con ella (2ª carga = no-op).
+      // anclada al origen de calibración del piso (px−origen constante = posición física
+      // preservada; totalL/L de cotas intactos) y el piso pasa a la escala global +
+      // persistencia inmediata. Idempotente: tras el re-base los trazos ya quedan con ella
+      // (2ª carga = no-op).
       // Compara el scaleM DEL DOCUMENTO (capturado tras loadWork) — el engine vivo puede
       // venir pisado por el estado React durante el await de BD (bug: elementos corridos).
       const escalaGlobal = escalaGlobalRef.current;
       if (escalaGlobal && docScale && Math.abs(docScale - escalaGlobal) > 1e-9) {
-        try {
-          devError(
-            `[CF-COTA] RE-BASE ${resolvedId} de ${docScale} a ${escalaGlobal} (antes: dims=${JSON.stringify(
-              (eng.dims as unknown as Array<Record<string, number>>).map(
-                (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})`,
-              ),
-            )})`,
-          );
-          (eng as unknown as PlanoWorkData).scaleM = docScale;
-          rebasarEscalaTrazos(eng as unknown as PlanoWorkData, escalaGlobal);
-          eng.setScaleM(escalaGlobal);
-          setScaleM(String(escalaGlobal));
-          const work = eng.saveWork();
-          saveToStorage(`trazos_${resolvedId}`, work);
-          void saveTrazosToDB(String(resolvedId), work);
-          window.dispatchEvent(new Event('storage'));
-        } catch (e) {
-          devError('[LOAD] re-base escala global:', e);
+        // Meta legacy REDONDEADO (0.4723 → 47 → 0.47): el re-base movería TODA la geometría
+        // ~0.5 % una vez por piso legacy. Self-heal: el doc (exacto) corrige al meta y no se
+        // tocan trazos. Divergencias reales (calibraciones manuales) superan el 0.6 %.
+        if (Math.abs(docScale - escalaGlobal) / escalaGlobal <= 0.006) {
+          escalaGlobalRef.current = docScale;
+          setScaleM(String(docScale));
+          try {
+            const meta = loadFromStorage<
+              Array<{ id: number; scale: number; calGlobal?: boolean | null }>
+            >('plans_meta', []);
+            const holder = meta.find(
+              (m) =>
+                m.calGlobal === true &&
+                typeof m.scale === 'number' &&
+                Math.abs(m.scale / 100 - escalaGlobal) < 1e-9,
+            );
+            if (holder) {
+              holder.scale = docScale * 100;
+              saveToStorage('plans_meta', meta);
+            }
+          } catch {
+            /* sin meta accesible: solo queda aplicado en la ref de esta sesión */
+          }
+        } else {
+          try {
+            devError(
+              `[CF-COTA] RE-BASE ${resolvedId} de ${docScale} a ${escalaGlobal} (antes: dims=${JSON.stringify(
+                (eng.dims as unknown as Array<Record<string, number>>).map(
+                  (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})`,
+                ),
+              )})`,
+            );
+            (eng as unknown as PlanoWorkData).scaleM = docScale;
+            rebasarEscalaTrazos(
+              eng as unknown as PlanoWorkData,
+              escalaGlobal,
+              origenDePlan(String(resolvedId)),
+            );
+            eng.setScaleM(escalaGlobal);
+            setScaleM(String(escalaGlobal));
+            const work = eng.saveWork();
+            // Tumba anti-vacío: un loadWork fallido a medias deja el engine sin contenido —
+            // persistir el re-base pisaría la caché (y luego BD vía el RPC destructivo) con
+            // un doc vacío. Solo persiste con contenido, o si no había nada que proteger.
+            const conContenido =
+              eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length > 0;
+            if (conContenido || !localData) {
+              saveToStorage(`trazos_${resolvedId}`, work);
+              void saveTrazosToDB(String(resolvedId), work);
+            }
+            window.dispatchEvent(new Event('storage'));
+          } catch (e) {
+            devError('[LOAD] re-base escala global:', e);
+          }
         }
       }
       // Migración del layout de asociación (fantasma+Ldesvio ahora viven en el piso inferior):

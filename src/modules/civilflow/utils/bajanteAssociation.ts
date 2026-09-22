@@ -12,9 +12,10 @@ import {
   nextRamalLabel,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
-import { aFrameDe, origenDeTrazos } from './crossFloorStorage';
+import { aFrameDe, origenDePlan } from './crossFloorStorage';
 import { markAssocLayout } from './assocLayoutMigration';
 import { direccionSegura } from '../lib/PlanoEngine/direccionReglas';
+import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   TRAZOS_PREFIX,
@@ -85,13 +86,18 @@ export interface AssocEndpoint {
   tipo?: string;
 }
 
+/** ¿Los dos extremos de asociación caen en el MISMO punto físico? Compara origen-relativo
+ *  (px − origen de calibración de cada lámina; misma resta que la isometría) con tolerancia
+ *  0.5 plane-px. Unidades: px de lámina. Con origen en UNA sola lámina (o en ninguna) cae al
+ *  crudo legacy (hojas asumidas alineadas) — deliberado: datos viejos sin calibrar no deben
+ *  romper asociaciones existentes. */
 function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   // Alineación FÍSICA (misma regla 0.5 px): px crudos de láminas distintas NO significan el
   // mismo punto del edificio cuando las hojas están corridas — se compara origen-relativo
   // (misma resta que hace la isometría). Sin origen en alguna lámina, fallback crudo
   // (comportamiento legacy: hojas asumidas alineadas).
-  const oa = origenDeTrazos(a.planId);
-  const ob = origenDeTrazos(b.planId);
+  const oa = origenDePlan(a.planId);
+  const ob = origenDePlan(b.planId);
   const ax = oa && ob ? a.x - oa.x_px : a.x;
   const ay = oa && ob ? a.y - oa.y_px : a.y;
   const bx = oa && ob ? b.x - ob.x_px : b.x;
@@ -99,6 +105,8 @@ function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   return Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
 }
 
+/** Variante exportada de isAligned (mismo contrato): puentebote para consumers fuera del
+ *  módulo que necesitan testear alineación sin duplicar la resta origen-relativa. */
 export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   return isAligned(a, b);
 }
@@ -1250,8 +1258,9 @@ export function applyBajanteAssociation(
         }
       }
     }
-  } catch {
-    /* ignore copy errors */
+  } catch (e) {
+    // La herencia UC/libro pudo quedar aplicada a MEDIAS: visible en DEV, no silencio total.
+    devError('[assoc] herencia UC/libro a medias:', e);
   }
 
   // Refresco garantizado tras asociar (en vivo, orig. usuario): reescribir las claves de sync

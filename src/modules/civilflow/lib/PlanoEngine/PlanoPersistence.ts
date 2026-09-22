@@ -30,17 +30,28 @@ export interface PlanoWorkData {
 }
 
 /** Re-escala TODA la geometría de un documento de trazos de su scaleM actual a `toScale`
- *  preservando posiciones REALES (px_nuevo = px_viejo × scaleM_viejo/toScale). Impone la
- *  escala única del proyecto (calibración calGlobal) a un piso que calibró a mano. Las
- *  magnitudes reales (totalL, areaM2, L de cotas) NO se tocan: px y escala cambian en proporción
- *  inversa, la distancia real queda idéntica. Idempotente: con la escala ya igualada no muta. */
-export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void {
+ *  preservando posiciones físicas. Los puntos ABSOLUTOS se escalan alrededor de `ancla` (el
+ *  origen de calibración del piso: en el mundo origen-relativo "misma posición física" es
+ *  `px − origen` constante; anclar en (0,0) — legacy sin calibrar — movía el punto físico
+ *  (1−f)·origen px y rompía la alineación de asociaciones). Los valores RELATIVOS (deltas de
+ *  anillos, offsets de etiquetas de texto) escalan puros: anclarlos los desplazaría. Las
+ *  magnitudes reales (totalL, areaM2, L de cotas) NO se tocan. Idempotente: con la escala ya
+ *  igualada no muta. */
+export function rebasarEscalaTrazos(
+  data: PlanoWorkData,
+  toScale: number,
+  ancla?: { x_px: number; y_px: number } | null,
+): void {
   const fromScale = data.scaleM || 0.5;
   if (!toScale || Math.abs(fromScale - toScale) < 1e-9) return;
   const f = fromScale / toScale;
+  const ax = ancla?.x_px ?? 0;
+  const ay = ancla?.y_px ?? 0;
   // 6 decimales de plane-px ≈ submicrón: estabiliza float sin pérdida práctica.
-  const n = (v: number): number => +(v * f).toFixed(6);
-  const pt2 = (p: number[]): number[] => [n(p[0]), n(p[1])];
+  const n = (v: number): number => +(v * f).toFixed(6); // relativo (deltas/offsets)
+  const nx = (v: number): number => +(ax + (v - ax) * f).toFixed(6); // absoluto x
+  const ny = (v: number): number => +(ay + (v - ay) * f).toFixed(6); // absoluto y
+  const pt2 = (p: number[]): number[] => [nx(p[0]), ny(p[1])];
   const escPtLista = (obj: unknown, campo: string): void => {
     const o = obj as Record<string, unknown>;
     const pts = o[campo];
@@ -48,14 +59,14 @@ export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void 
   };
   for (const r of (data.ramales || []) as Record<string, unknown>[]) {
     escPtLista(r, 'pts');
-    if (typeof r.labelX === 'number') r.labelX = n(r.labelX);
-    if (typeof r.labelY === 'number') r.labelY = n(r.labelY);
+    if (typeof r.labelX === 'number') r.labelX = nx(r.labelX);
+    if (typeof r.labelY === 'number') r.labelY = ny(r.labelY);
   }
   for (const b of (data.bajantes || []) as Record<string, unknown>[]) {
-    if (typeof b.x === 'number') b.x = n(b.x);
-    if (typeof b.y === 'number') b.y = n(b.y);
-    if (typeof b.labelX === 'number') b.labelX = n(b.labelX);
-    if (typeof b.labelY === 'number') b.labelY = n(b.labelY);
+    if (typeof b.x === 'number') b.x = nx(b.x);
+    if (typeof b.y === 'number') b.y = ny(b.y);
+    if (typeof b.labelX === 'number') b.labelX = nx(b.labelX);
+    if (typeof b.labelY === 'number') b.labelY = ny(b.labelY);
     const desp = b.desplazamientos as Record<string, { dx?: number; dy?: number }> | undefined;
     if (desp) {
       for (const d of Object.values(desp)) {
@@ -68,29 +79,30 @@ export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void 
     const gd = b.ghostData as Record<string, { labelX?: number; labelY?: number }> | undefined;
     if (gd) {
       for (const g of Object.values(gd)) {
-        if (g && typeof g.labelX === 'number') g.labelX = n(g.labelX);
-        if (g && typeof g.labelY === 'number') g.labelY = n(g.labelY);
+        if (g && typeof g.labelX === 'number') g.labelX = nx(g.labelX);
+        if (g && typeof g.labelY === 'number') g.labelY = ny(g.labelY);
       }
     }
   }
   for (const a of (data.areas || []) as Record<string, unknown>[]) {
     escPtLista(a, 'pts');
-    if (typeof a.labelX === 'number') a.labelX = n(a.labelX);
-    if (typeof a.labelY === 'number') a.labelY = n(a.labelY);
+    if (typeof a.labelX === 'number') a.labelX = nx(a.labelX);
+    if (typeof a.labelY === 'number') a.labelY = ny(a.labelY);
   }
   for (const d of (data.dims || []) as Record<string, unknown>[]) {
-    if (typeof d.x1 === 'number') d.x1 = n(d.x1);
-    if (typeof d.y1 === 'number') d.y1 = n(d.y1);
-    if (typeof d.x2 === 'number') d.x2 = n(d.x2);
-    if (typeof d.y2 === 'number') d.y2 = n(d.y2);
+    if (typeof d.x1 === 'number') d.x1 = nx(d.x1);
+    if (typeof d.y1 === 'number') d.y1 = ny(d.y1);
+    if (typeof d.x2 === 'number') d.x2 = nx(d.x2);
+    if (typeof d.y2 === 'number') d.y2 = ny(d.y2);
     // Etiqueta arrastrada de la cota (px de plano — sin esto quedaba descolgada del segmento).
-    if (typeof d.lblX === 'number') d.lblX = n(d.lblX);
-    if (typeof d.lblY === 'number') d.lblY = n(d.lblY);
+    if (typeof d.lblX === 'number') d.lblX = nx(d.lblX);
+    if (typeof d.lblY === 'number') d.lblY = ny(d.lblY);
     // d.L (metros reales) intacto: px escala ×f y la escala ÷f — la distancia real no cambia.
   }
   for (const t of (data.textAnnots || []) as Record<string, unknown>[]) {
-    if (typeof t.x === 'number') t.x = n(t.x);
-    if (typeof t.y === 'number') t.y = n(t.y);
+    if (typeof t.x === 'number') t.x = nx(t.x);
+    if (typeof t.y === 'number') t.y = ny(t.y);
+    // Offset relativo al punto de la anotación: escala puro, sin ancla.
     if (typeof t.lblOffX === 'number') t.lblOffX = n(t.lblOffX);
     if (typeof t.lblOffY === 'number') t.lblOffY = n(t.lblOffY);
   }
@@ -100,8 +112,8 @@ export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void 
   // Marcadores de asociación entre pisos: px de plano propios — sin esto quedaban corridos
   // tras un re-base (la geometría se movía y ellos no).
   for (const g of (data.crossFloorGhosts || []) as Record<string, unknown>[]) {
-    if (typeof g.x === 'number') g.x = n(g.x);
-    if (typeof g.y === 'number') g.y = n(g.y);
+    if (typeof g.x === 'number') g.x = nx(g.x);
+    if (typeof g.y === 'number') g.y = ny(g.y);
   }
   data.scaleM = toScale;
 }

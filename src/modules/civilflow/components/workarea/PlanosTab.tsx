@@ -37,7 +37,7 @@ import {
 import type { useWorkAreaState } from '../useWorkAreaState';
 import ModalProtocolo from './ModalProtocolo';
 import { PlanCropPanel } from './PlanCropPanel';
-import { devError } from '../../../../utils/devError';
+import { devError, devLog } from '../../../../utils/devError';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -184,7 +184,10 @@ function PlanosTab({ state }: PlanosTabProps) {
     // origenSrc === origenDst el desfase de copia quedaba en 0 — copias e isometría
     // desalineadas entre pisos. Si el plan ya tiene calibración propia no se pisa: el
     // configurador la muestra y el usuario decide.
-    const necesitaOrigen = !!globalCal && !calData[planId];
+    // Origen REAL (sembrado con origen:null por el primer clic NO cuenta): si el usuario
+    // canceló el modal, el segundo clic debe volver a abrir el flujo guiado (idempotente).
+    const necesitaOrigen =
+      !!globalCal && !calData[planId]?.origen && !plans.find((p) => p.id === planId)?.origen;
     if (necesitaOrigen) {
       setCalData((prev) => ({
         ...prev,
@@ -261,8 +264,8 @@ function PlanosTab({ state }: PlanosTabProps) {
         // px dejaba un doc que decía una escala y estaba dibujado a otra: las cotas nuevas
         // medían mal y la primera reapertura aplicaba un salto (incidente 2026-09-22).
         const escalaPrev = typeof doc.scaleM === 'number' ? doc.scaleM : null;
-        // [CF-COTA] diagnóstico DEV del stamp de calibración sobre un doc con contenido.
-        devError(
+        // [CF-COTA] (devLog, canal info) diagnóstico DEV del stamp de calibración sobre un doc con contenido.
+        devLog(
           `[CF-COTA] stamp calibración ${config.planId} escalaPrev=${escalaPrev} → ${config.scaleM} dims=${JSON.stringify(
             ((doc.dims as Array<Record<string, number>>) || []).map(
               (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
@@ -272,7 +275,9 @@ function PlanosTab({ state }: PlanosTabProps) {
         if (config.scaleM) {
           if (escalaPrev && Math.abs(escalaPrev - config.scaleM) > 1e-9) {
             try {
-              rebasarEscalaTrazos(doc as unknown as PlanoWorkData, config.scaleM);
+              // Re-base anclado al origen de la propia lámina (px−origen constante =
+              // posición física preservada; ver rebasarEscalaTrazos).
+              rebasarEscalaTrazos(doc as unknown as PlanoWorkData, config.scaleM, config.origen);
             } catch (e) {
               devError('rebase en guardado de calibración:', e);
               doc.scaleM = config.scaleM;
@@ -297,7 +302,12 @@ function PlanosTab({ state }: PlanosTabProps) {
         fill(local);
       } else {
         loadTrazosFromDB(String(config.planId))
-          .then((db) => fill((db as unknown as Record<string, unknown>) || {}))
+          // Sin doc en BD TAMPOCO: no fabricar doc solo-config — la clave quedaría no-null
+          // para siempre y bloquearía el relleno del prefetch (mismo hazard del comentario
+          // de arriba). La calibración vive en el meta; el doc nace con el primer trazo.
+          .then((db) => {
+            if (db) fill(db as unknown as Record<string, unknown>);
+          })
           .catch((e) => devError('Error syncing calibration to Supabase:', e));
       }
     } catch (e) {
