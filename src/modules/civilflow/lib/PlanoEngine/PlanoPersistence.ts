@@ -63,6 +63,15 @@ export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void 
         if (typeof d.dy === 'number') d.dy = n(d.dy);
       }
     }
+    // Etiquetas arrastradas del fantasma/anillo por nivel (px de plano — sin esto quedaban
+    // descolgadas de su marcador tras un re-base).
+    const gd = b.ghostData as Record<string, { labelX?: number; labelY?: number }> | undefined;
+    if (gd) {
+      for (const g of Object.values(gd)) {
+        if (g && typeof g.labelX === 'number') g.labelX = n(g.labelX);
+        if (g && typeof g.labelY === 'number') g.labelY = n(g.labelY);
+      }
+    }
   }
   for (const a of (data.areas || []) as Record<string, unknown>[]) {
     escPtLista(a, 'pts');
@@ -74,6 +83,9 @@ export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void 
     if (typeof d.y1 === 'number') d.y1 = n(d.y1);
     if (typeof d.x2 === 'number') d.x2 = n(d.x2);
     if (typeof d.y2 === 'number') d.y2 = n(d.y2);
+    // Etiqueta arrastrada de la cota (px de plano — sin esto quedaba descolgada del segmento).
+    if (typeof d.lblX === 'number') d.lblX = n(d.lblX);
+    if (typeof d.lblY === 'number') d.lblY = n(d.lblY);
     // d.L (metros reales) intacto: px escala ×f y la escala ÷f — la distancia real no cambia.
   }
   for (const t of (data.textAnnots || []) as Record<string, unknown>[]) {
@@ -84,6 +96,12 @@ export function rebasarEscalaTrazos(data: PlanoWorkData, toScale: number): void 
   }
   for (const g of (data.guideLines || []) as Record<string, unknown>[]) {
     escPtLista(g, 'pts');
+  }
+  // Marcadores de asociación entre pisos: px de plano propios — sin esto quedaban corridos
+  // tras un re-base (la geometría se movía y ellos no).
+  for (const g of (data.crossFloorGhosts || []) as Record<string, unknown>[]) {
+    if (typeof g.x === 'number') g.x = n(g.x);
+    if (typeof g.y === 'number') g.y = n(g.y);
   }
   data.scaleM = toScale;
 }

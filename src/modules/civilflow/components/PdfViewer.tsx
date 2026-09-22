@@ -58,6 +58,7 @@ import { useFloorRamales } from './pdfViewer/useFloorRamales';
 import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
 import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
+import { devError } from '../../../utils/devError';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -446,6 +447,14 @@ function PdfViewer_({
         if (id) {
           const work = eng.saveWork();
           work.ts = Date.now();
+          // [CF-COTA] diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
+          devError(
+            `[CF-COTA] autosave ${id} scaleM=${(work as { scaleM?: number }).scaleM} dims=${JSON.stringify(
+              ((work as { dims?: Array<Record<string, number>> }).dims || []).map(
+                (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
+              ),
+            )}`,
+          );
           saveToStorage(TRAZOS_PREFIX + String(id), work);
           markPlanTrazosFresh(id);
           if (id !== 'work') {
@@ -1042,7 +1051,7 @@ function PdfViewer_({
   );
   const scaleText = useMemo(() => {
     const planoAsoc = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
-    if (planoAsoc && planoAsoc.scale) return <span>1:{planoAsoc.scale}</span>;
+    if (planoAsoc && planoAsoc.scale) return <span>1:{Math.round(planoAsoc.scale)}</span>;
     const map: Record<string, string> = {
       '0.5': '1:50',
       '0.75': '1:75',
@@ -1083,7 +1092,7 @@ function PdfViewer_({
         <div
           style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", marginTop: 2 }}
         >
-          Escala 1:{planoAsoc.scale}
+          Escala 1:{Math.round(planoAsoc.scale)}
         </div>
       </div>
     );

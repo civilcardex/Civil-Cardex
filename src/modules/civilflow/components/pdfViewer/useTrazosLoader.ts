@@ -42,9 +42,25 @@ export function useTrazosLoader({
       };
       const localData = tryLoad(resolvedId);
       let initiallyLoaded = false;
+      // scaleM del DOCUMENTO capturado tras cada loadWork — el engine vivo puede ser pisado
+      // por el estado React (syncEngine/default '0.5') durante el await de BD; el re-base
+      // debe comparar la escala del doc, no la pisada (bug: elementos corridos al reabrir).
+      let docScale = 0;
       if (localData) {
         const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
         eng.loadWork(workStr);
+        docScale = eng.scaleM;
+        // [CF-COTA] diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
+        devError(
+          `[CF-COTA] load LOCAL ${resolvedId} docScale=${docScale} ts=${Number((typeof localData === 'object' && localData ? (localData as { ts?: number }).ts : 0) || 0)} dims=${JSON.stringify(
+            (eng.dims as unknown as Array<Record<string, number>>).map(
+              (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
+            ),
+          )}`,
+        );
+        // La ruta local-gana jamás sincronizaba el estado React con el doc — syncEngine
+        // re-pisaba el engine con el default/derivado y envenenaba cualquier lectura posterior.
+        if (docScale) setScaleM(String(docScale));
         initiallyLoaded = true;
         requestAnimationFrame(() => {
           eng.render();
@@ -75,6 +91,16 @@ export function useTrazosLoader({
           } else if (dbTs > localTs || !localData) {
             const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
             eng.loadWork(workStr);
+            docScale = eng.scaleM;
+            // [CF-COTA] la BD ganó el árbitro — si las cotas llegan distintas a las del
+            // autosave, este es el momento en que se intercambia el documento.
+            devError(
+              `[CF-COTA] load BD-GANA ${resolvedId} docScale=${docScale} dbTs=${dbTs} localTs=${localTs} dims=${JSON.stringify(
+                (eng.dims as unknown as Array<Record<string, number>>).map(
+                  (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
+                ),
+              )}`,
+            );
             if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);
             requestAnimationFrame(() => {
               eng.render();
@@ -106,9 +132,19 @@ export function useTrazosLoader({
       // (px × from/to: posición REAL preservada, totalL/L de cotas intactos) y el piso pasa
       // a la escala global + persistencia inmediata. Idempotente: tras el re-base los trazos
       // ya quedan con ella (2ª carga = no-op).
+      // Compara el scaleM DEL DOCUMENTO (capturado tras loadWork) — el engine vivo puede
+      // venir pisado por el estado React durante el await de BD (bug: elementos corridos).
       const escalaGlobal = escalaGlobalRef.current;
-      if (escalaGlobal && eng.scaleM && Math.abs(eng.scaleM - escalaGlobal) > 1e-9) {
+      if (escalaGlobal && docScale && Math.abs(docScale - escalaGlobal) > 1e-9) {
         try {
+          devError(
+            `[CF-COTA] RE-BASE ${resolvedId} de ${docScale} a ${escalaGlobal} (antes: dims=${JSON.stringify(
+              (eng.dims as unknown as Array<Record<string, number>>).map(
+                (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})`,
+              ),
+            )})`,
+          );
+          (eng as unknown as PlanoWorkData).scaleM = docScale;
           rebasarEscalaTrazos(eng as unknown as PlanoWorkData, escalaGlobal);
           eng.setScaleM(escalaGlobal);
           setScaleM(String(escalaGlobal));

@@ -239,3 +239,61 @@ describe('cotas idénticas entre pisos con elementos copiados', () => {
     expect(Math.abs(pts[0][0] - ejeDst.x)).toBeLessThan(0.01);
   });
 });
+
+describe('re-base cubre TODOS los elementos con px (audit 2026-09-22)', () => {
+  it('crossFloorGhosts, ghostData de etiquetas y desplazamientos se re-basan junto al resto', () => {
+    const global = 0.5;
+    const divergente = 0.4937;
+    const f = divergente / global;
+    const doc: PlanoWorkData = {
+      v: 6,
+      scaleM: divergente,
+      definedScaleM: 0,
+      activeNet: 'san',
+      zoom: 1,
+      offX: 0,
+      offY: 0,
+      nets: [],
+      ramales: [],
+      dims: [],
+      textAnnots: [],
+      areas: [],
+      nptLevels: [],
+      guideLines: [],
+      bajantes: [
+        {
+          id: 'BAN2',
+          x: 400,
+          y: 300,
+          desplazamientos: { P1: { dx: 12, dy: -4, Ldesvio: 'LD_BAN1' } },
+          ghostData: { P1: { direccion: 'sube', labelX: 420, labelY: 280 } },
+        },
+      ],
+      crossFloorGhosts: [{ id: 'XFG_BAN1_2', x: 388, y: 300 }],
+    } as unknown as PlanoWorkData;
+
+    rebasarEscalaTrazos(doc, global);
+
+    expect(doc.scaleM).toBe(global);
+    const b = doc.bajantes[0] as unknown as {
+      x: number;
+      y: number;
+      desplazamientos: Record<string, { dx: number; dy: number }>;
+      ghostData: Record<string, { labelX: number; labelY: number }>;
+    };
+    expect(b.x).toBeCloseTo(400 * f, 6);
+    expect(b.y).toBeCloseTo(300 * f, 6);
+    expect(b.desplazamientos.P1.dx).toBeCloseTo(12 * f, 6);
+    expect(b.desplazamientos.P1.dy).toBeCloseTo(-4 * f, 6);
+    expect(b.ghostData.P1.labelX).toBeCloseTo(420 * f, 6);
+    expect(b.ghostData.P1.labelY).toBeCloseTo(280 * f, 6);
+    const ghost = (doc.crossFloorGhosts || [])[0] as unknown as { x: number; y: number };
+    expect(ghost.x).toBeCloseTo(388 * f, 6);
+    expect(ghost.y).toBeCloseTo(300 * f, 6);
+
+    // Idempotente
+    const snapshot = JSON.stringify(doc);
+    rebasarEscalaTrazos(doc, global);
+    expect(JSON.stringify(doc)).toBe(snapshot);
+  });
+});
