@@ -58,7 +58,7 @@ import { useFloorRamales } from './pdfViewer/useFloorRamales';
 import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
 import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
-import { devError } from '../../../utils/devError';
+import { devLog } from '../../../utils/devError';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -447,8 +447,8 @@ function PdfViewer_({
         if (id) {
           const work = eng.saveWork();
           work.ts = Date.now();
-          // [CF-COTA] diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
-          devError(
+          // [CF-COTA] (devLog, canal info) diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
+          devLog(
             `[CF-COTA] autosave ${id} scaleM=${(work as { scaleM?: number }).scaleM} dims=${JSON.stringify(
               ((work as { dims?: Array<Record<string, number>> }).dims || []).map(
                 (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,

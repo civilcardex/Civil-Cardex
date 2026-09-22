@@ -1431,11 +1431,17 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this.setTool('caja');
         e.preventDefault();
       }
-    } else if (k === 'l') {
+    } else if (k === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Con modificadores NO es el atajo: Ctrl+L/Cmd+L es de la barra de direcciones.
       // 'L' → Canal recolectora (de aguas Lluvias) — solo con la red ll activa Y la
       // recolectora encendida, espejo de isToolDisabledForNet('canal') y del guard de
       // drawingCreations. ('C' ya es la herramienta Texto en useKeyboardShortcuts.)
-      if (this.activeNet === 'll' && this.activeNetworks?.has('recolectora')) {
+      // Set indefinido = sin restricción activa conocida: habilitar (mismo criterio que
+      // useActiveNetsVisibility, cuyo fallback también da true — si no, botón vivo + atajo muerto).
+      if (
+        this.activeNet === 'll' &&
+        (!this.activeNetworks || this.activeNetworks.has('recolectora'))
+      ) {
         this.setTool('canal');
         e.preventDefault();
       }
