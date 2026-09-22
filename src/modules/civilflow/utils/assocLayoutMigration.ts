@@ -21,6 +21,48 @@ import {
   type LocalGhostDrawingData,
 } from './crossFloorStorage';
 
+/** Re-ancla los ANILLOS layout-2 (dx/dy) a la posición ACTUAL del bajante superior traducida
+ *  con aFrameDe (el puntero `origenId`/`descargaEnId` del portador da el partner `plan|id`) y
+ *  el inicio del Ldesvio asociado. Red de seguridad para orígenes recalibrados en otro
+ *  dispositivo, que no pasaron por sanearAsociacionesTrasRecalibrar local.
+ *  @returns true si cambió algo. */
+function reanclarAnillosLayout2(data: LocalGhostDrawingData, pid: string): boolean {
+  let dirty = false;
+  for (const b of data.bajantes ?? []) {
+    const puntero = b.origenId || b.descargaEnId;
+    if (!puntero || !puntero.includes('|')) continue;
+    const [upperPlanId, upperId] = puntero.split('|');
+    if (!upperPlanId || !upperId || upperPlanId === pid) continue;
+    const upper = loadData(upperPlanId).bajantes?.find((x) => x.id === upperId);
+    if (!upper || upper.x == null || upper.y == null) continue;
+    const anchor = aFrameDe({ x: upper.x, y: upper.y }, upperPlanId, pid);
+    const desp = { ...(b.desplazamientos ?? {}) };
+    for (const lvlKey of Object.keys(desp)) {
+      if (desp[lvlKey]?.Ldesvio) {
+        desp[lvlKey] = { ...desp[lvlKey], dx: anchor.x - (b.x ?? 0), dy: anchor.y - (b.y ?? 0) };
+        dirty = true;
+      }
+    }
+    if (dirty) b.desplazamientos = desp;
+    // Inicio del Ldesvio = ancla del superior (mismo criterio que updateCrossFloorLdesvioStartPoint).
+    const ldId = ldesvioIdFor(upperId);
+    const ld = (data.ramales ?? []).find((r) => r.id === ldId);
+    if (ld?.pts?.length) {
+      const [x2, y2] = ld.pts[ld.pts.length - 1];
+      if (Math.abs(ld.pts[0][0] - anchor.x) > 0.01 || Math.abs(ld.pts[0][1] - anchor.y) > 0.01) {
+        ld.pts[0] = [anchor.x, anchor.y];
+        ld.totalL = +(
+          (Math.hypot(x2 - anchor.x, y2 - anchor.y) / 96) *
+          2.54 *
+          (data.scaleM || 0.5)
+        ).toFixed(3);
+        dirty = true;
+      }
+    }
+  }
+  return dirty;
+}
+
 /** Re-ancla los ghost-marcadores (layout 2) a la posición espejo ACTUAL del bajante origen
  *  expresada en el frame de ESTE piso. Mantiene el invariante `ghost.xy = aFrameDe(origen.xy)`:
  *  recalibrar un origen cambia la traducción entre frames y el ghost persistido queda en px del
@@ -66,6 +108,17 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
     }
   } catch {
     /* best-effort: sin re-anclaje el ghost queda en px del frame viejo */
+  }
+  // Re-anclaje de ANILLOS layout-2 (gemelo del de ghosts): un origen recalibrado en OTRO
+  // dispositivo no pasó por el saneador local — al abrir este piso, el anillo se re-ancla a la
+  // posición ACTUAL del superior traducida con aFrameDe (vía el puntero origenId/descargaEnId).
+  try {
+    if ((localStorage.getItem(TRAZOS_PLAN_PREFIX + pid) || '').includes('LD_')) {
+      const d0 = loadData(pid);
+      if (reanclarAnillosLayout2(d0, pid)) saveData(pid, d0);
+    }
+  } catch {
+    /* best-effort */
   }
   // Guard barato: si el raw ya trae la marca, la migración está completa — sin parsear nada.
   // (saveToStorage serializa con JSON.stringify, así que la marca aparece literal.)
