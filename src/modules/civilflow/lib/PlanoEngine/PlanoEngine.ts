@@ -62,11 +62,23 @@ import {
   eraseRamalAt,
   handleDrawingMouseMove,
   handleDoubleClick,
-  commitOpenGuide,
   deleteSegmentAt as _deleteSegmentAt,
   setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing';
+import {
+  snapAngle as snapAngleLib,
+  toCvs as toCvsLib,
+  toPlane as toPlaneLib,
+  pxToM as pxToMLib,
+  mm2cvs as mm2cvsLib,
+  cmToPlanePx as cmToPlanePxLib,
+  cmToCanvasPx as cmToCanvasPxLib,
+  realMmToCanvasPx as realMmToCanvasPxLib,
+  labelScaleM as labelScaleMLib,
+} from './planoCoords';
+import { zoomAnclado } from './planoCamera';
+import { handleKeyDown } from './handleKeyDown';
 import {
   selectAt as _selectAt,
   selectById as _selectById,
@@ -561,16 +573,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   toCvs(px: number, py: number): Point {
-    return { x: px * this.zoom + this.offX, y: py * this.zoom + this.offY };
+    return toCvsLib(this, px, py);
   }
   toPlane(cx: number, cy: number): Point {
-    return { x: (cx - this.offX) / this.zoom, y: (cy - this.offY) / this.zoom };
+    return toPlaneLib(this, cx, cy);
   }
   pxToM(px: number): number {
-    return +((px / 96) * 2.54 * this.scaleM).toFixed(3);
+    return pxToMLib(this.scaleM, px);
   }
   mm2cvs(mm: number): number {
-    return ((mm * 96) / 25.4) * this.zoom;
+    return mm2cvsLib(mm, this.zoom);
   }
 
   // Inversa de pxToM: convierte una longitud REAL en cm a px de coordenada de plano (el mismo
@@ -579,29 +591,21 @@ export default class PlanoEngine implements IPlanoEngineCore {
   // que totalL de un ramal (vía pxToM) ya ata la distancia de coordenada de plano a la
   // longitud real.
   cmToPlanePx(cm: number): number {
-    return ((cm / 100) * 96) / (2.54 * (this.scaleM || 0.5));
+    return cmToPlanePxLib(this.scaleM, cm);
   }
 
   // cmToPlanePx aplicado a la transformación actual del canvas — solo para renderizar; nunca
   // usar esto para guardar geometría (cambia con el zoom).
   cmToCanvasPx(cm: number): number {
-    return this.cmToPlanePx(cm) * this.zoom;
+    return cmToCanvasPxLib(this, cm);
   }
 
   realMmToCanvasPx(realRadiusMm: number): number {
-    // El piso se deja pequeño a propósito: en escalas arquitectónicas comunes (1:50, etc.)
-    // estos símbolos deben caber dentro de una pared de ~15cm, que en papel a 1:50 son solo
-    // ~3mm — un piso generoso aquí los haría imprecisos de escala (visiblemente más grandes
-    // que la pared donde están).
-    const MIN_PAPER_MM = 1;
-    const defScale = this.definedScaleM || this.scaleM || 0.5;
-    const paperMm = realRadiusMm / (100 * defScale);
-    return this.mm2cvs(Math.max(MIN_PAPER_MM, paperMm));
+    return realMmToCanvasPxLib(this, realRadiusMm);
   }
 
   get labelScaleM(): number {
-    const defScale = this.definedScaleM || this.scaleM;
-    return Math.max(0.1, Math.min(3.0, 0.5 / defScale));
+    return labelScaleMLib(this);
   }
 
   _emitStatus(msg: string): void {
@@ -683,28 +687,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   snapAngle(x0: number, y0: number, x1: number, y1: number, net?: string, tipo?: string): Point {
-    const dx = x1 - x0,
-      dy = y1 - y0;
-    const dist = Math.hypot(dx, dy);
-    if (dist < 0.001) return { x: x1, y: y1 };
-    const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
-    // Algunas redes solo permiten ciertas orientaciones (ver checkRamalAngles): los tributarios
-    // de af/ac deben caer en una cuadrícula de 90°, todo lo demás (incl. san/ll, que no tiene
-    // regla propia de orientación fija) usa la cuadrícula más laxa de 45° — pegar a 45° ahí
-    // nunca produce un ángulo inválido.
-    const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
-    const allowed = isTributarioAcAf ? [0, 90, 180, -90] : [0, 45, 90, 135, 180, -135, -90, -45];
-    let best = 0,
-      minDiff = 999;
-    allowed.forEach((a) => {
-      const diff = Math.abs(((deg - a + 540) % 360) - 180);
-      if (diff < minDiff) {
-        minDiff = diff;
-        best = a;
-      }
-    });
-    const sr = (best * Math.PI) / 180;
-    return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
+    return snapAngleLib(x0, y0, x1, y1, net, tipo);
   }
 
   snapToExisting(
@@ -1112,11 +1095,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       cx = this.cw.clientWidth / 2;
       cy = this.cw.clientHeight / 2;
     }
-    const nz = Math.max(0.05, Math.min(6, this.zoom + delta));
-    this.offX = cx - (cx - this.offX) * (nz / this.zoom);
-    this.offY = cy! - (cy! - this.offY) * (nz / this.zoom);
-    this.zoom = nz;
-    this.render();
+    zoomAnclado(this, this.zoom + delta, cx, cy!);
   }
 
   /** Ajusta la página PDF dentro del viewport con margen. */
@@ -1312,13 +1291,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this._pinchZoom0 = this.zoom;
         return;
       }
-      const nz = Math.max(0.05, Math.min(6, (this._pinchZoom0 * dist) / this._pinchDist0));
-      if (nz !== this.zoom) {
-        this.offX = mx - (mx - this.offX) * (nz / this.zoom);
-        this.offY = my - (my - this.offY) * (nz / this.zoom);
-        this.zoom = nz;
-        this.render();
-      }
+      zoomAnclado(this, (this._pinchZoom0 * dist) / this._pinchDist0, mx, my);
       return;
     }
     this._pinchDist0 = null;
@@ -1380,14 +1353,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   zoomStep(factor: number): void {
     if (!Number.isFinite(factor) || factor <= 0) return;
     const rect = this.canv.getBoundingClientRect();
-    const mx = rect.width / 2;
-    const my = rect.height / 2;
-    const nz = Math.max(0.05, Math.min(6, this.zoom * factor));
-    if (nz === this.zoom) return;
-    this.offX = mx - (mx - this.offX) * (nz / this.zoom);
-    this.offY = my - (my - this.offY) * (nz / this.zoom);
-    this.zoom = nz;
-    this.render();
+    zoomAnclado(this, this.zoom * factor, rect.width / 2, rect.height / 2);
   }
 
   _onWheelHandler(e: WheelEvent): void {
@@ -1396,169 +1362,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const rect = this.canv.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const nz = Math.max(0.05, Math.min(6, this.zoom + delta));
-    this.offX = mx - (mx - this.offX) * (nz / this.zoom);
-    this.offY = my - (my - this.offY) * (nz / this.zoom);
-    this.zoom = nz;
-    this.render();
+    zoomAnclado(this, this.zoom + delta, mx, my);
   }
 
   _onKeyDownHandler(e: KeyboardEvent): void {
-    const tag = (e.target as HTMLElement).tagName;
-    const k = e.key.toLowerCase();
-    // Ctrl+Z/Ctrl+Y funcionan AUNQUE el foco haya quedado en un <select> (p. ej. el selector de
-    // aparato del menú contextual, que no hace blur al elegir): un select no edita texto y el
-    // undo debe llegar siempre. En INPUT/TEXTAREA Ctrl+Z es el deshacer nativo del texto.
-    if (e.ctrlKey && (k === 'z' || k === 'y') && tag !== 'INPUT' && tag !== 'TEXTAREA') {
-      if (k === 'z' && e.shiftKey) this.redoLast();
-      else if (k === 'z') this.undoLast();
-      else this.redoLast();
-      e.preventDefault();
-      return;
-    }
-    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-    if (e.ctrlKey && k === 's') {
-      e.preventDefault();
-      return;
-    }
-    if (k === 's') {
-      this.setTool('sel');
-      e.preventDefault();
-    } else if (k === 'j') {
-      // 'J' → Caja de recolección (CAN en san, CALL en ll) — solo con esas redes activas,
-      // espejo de isToolDisabledForNet('caja') en la barra. ('X' ya es "borrar montante".)
-      if (['san', 'll'].includes(this.activeNet)) {
-        this.setTool('caja');
-        e.preventDefault();
-      }
-    } else if (k === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      // Con modificadores NO es el atajo: Ctrl+L/Cmd+L es de la barra de direcciones.
-      // 'L' → Canal recolectora (de aguas Lluvias) — solo con la red ll activa Y la
-      // recolectora encendida, espejo de isToolDisabledForNet('canal') y del guard de
-      // drawingCreations. ('C' ya es la herramienta Texto en useKeyboardShortcuts.)
-      // Set indefinido = sin restricción activa conocida: habilitar (mismo criterio que
-      // useActiveNetsVisibility, cuyo fallback también da true — si no, botón vivo + atajo muerto).
-      if (
-        this.activeNet === 'll' &&
-        (!this.activeNetworks || this.activeNetworks.has('recolectora'))
-      ) {
-        this.setTool('canal');
-        e.preventDefault();
-      }
-    } else if (k === 'd') {
-      this.setTool('dim');
-      e.preventDefault();
-    } else if (k === 'u') {
-      // 'G' colisionaba con el atajo mostrado para Snap — U (de "gUía") queda libre.
-      this.setTool('guide');
-      e.preventDefault();
-    }
-    // Bajante solo en san/vent/ll, montante solo en gas/ac/af — misma regla que PdfViewerToolbar.tsx
-    // aplica en sus botones (isToolDisabledForNet); duplicada aquí como chequeo plano en vez de
-    // importada, porque lib/PlanoEngine no debe depender de components/.
-    else if (k === 'b') {
-      if (['san', 'vent', 'll'].includes(this.activeNet)) {
-        this.setTool('baj');
-      }
-      e.preventDefault();
-    } else if (k === 'm') {
-      if (['gas', 'ac', 'af'].includes(this.activeNet)) {
-        this.setTool('mon');
-      }
-      e.preventDefault();
-    } else if (k === 'a') {
-      this.setTool('area');
-      e.preventDefault();
-    } else if (k === 'e') {
-      this.setTool('erase');
-      e.preventDefault();
-    } else if (k === 'x') {
-      this.setTool('delm');
-      e.preventDefault();
-    } else if (k === 'k') {
-      this.setTool('segdel');
-      e.preventDefault();
-    } else if (k === ' ') {
-      this.setTool(this.tool === 'pan' ? 'sel' : 'pan');
-      e.preventDefault();
-    } else if (k === 'enter') {
-      if (this.activeRamal) {
-        this.finishRamal();
-        e.preventDefault();
-      } else if (this.activeArea) {
-        this.finishArea();
-        e.preventDefault();
-      } else if (this.tool === 'guide' && this._guideStart) {
-        // Ítem 2: Enter también cierra (commitea) la guía en construcción.
-        commitOpenGuide(this);
-        e.preventDefault();
-      }
-    } else if (k === 'escape') {
-      if (this.activeRamal) {
-        this.cancelRamal();
-        e.preventDefault();
-      } else if (this.activeArea) {
-        this.cancelArea();
-        e.preventDefault();
-      } else if (this._dimStart) {
-        this._dimStart = null;
-        this.render();
-        e.preventDefault();
-      } else if (this._guideStart) {
-        // Ítem 2: Esc cierra (commitea) la guía multisegmento en vez de descartarla.
-        commitOpenGuide(this);
-        e.preventDefault();
-      } else if (this._canalStart) {
-        this._canalStart = null;
-        this.render();
-        e.preventDefault();
-      } else {
-        if (this.tool !== 'sel') {
-          this.setTool('sel');
-          e.preventDefault();
-        } else {
-          this.selId = null;
-          this._emitSelect(null);
-          this.render();
-        }
-      }
-    } else if (k === 'delete' || k === 'backspace') {
-      if (!this.activeRamal && !this.activeArea) {
-        if (this.multiSel && this.multiSel.length > 0) {
-          // Sin noMerge: los brazos de yee doble ya se protegen por id dentro de
-          // deleteSelected (borrado individual sin re-unir) y splitMembersFor los excluye.
-          // Con noMerge los splits del tronco causados por los tributarios borrados nunca
-          // se re-unían y el ramal principal quedaba partido (orig. usuario).
-          this.deleteSelected(this.multiSel);
-          this.multiSel = [];
-        } else if (this.selId) {
-          const sel = this.getSelected() as Record<string, unknown> | null;
-          const ptsArr = ((sel as { pts?: unknown } | null)?.pts ?? []) as number[][];
-          // ÁREAS fuera: con pts pasaban por eraseRamalAt y el borrador recortaba UN VÉRTICE
-          // ("se borra la mitad del área") en vez del elemento completo.
-          const esArea =
-            (sel as { tipo?: string } | null)?.tipo === 'area' ||
-            String((sel as { id?: unknown }).id ?? '').startsWith('AR');
-          const isRamalLike =
-            ptsArr.length >= 2 &&
-            !esArea &&
-            !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
-          if (isRamalLike) {
-            const sp = this._selPointCvs;
-            const cv =
-              sp && (sp.x !== 0 || sp.y !== 0)
-                ? { x: sp.x, y: sp.y }
-                : (() => {
-                    const mid = ptsArr[0];
-                    return this.toCvs(mid[0], mid[1]);
-                  })();
-            eraseRamalAt(this, sel as never, cv.x, cv.y);
-          } else {
-            this.deleteSelected();
-          }
-        }
-        e.preventDefault();
-      }
-    }
+    handleKeyDown(this, e);
   }
 }

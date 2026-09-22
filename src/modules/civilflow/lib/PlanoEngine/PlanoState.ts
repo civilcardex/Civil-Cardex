@@ -817,6 +817,13 @@ export interface IPlanoEngineCore {
   };
   readonly labelScaleM: number;
 
+  setTool(t: string): void;
+  finishRamal(): void;
+  finishArea(): void;
+  cancelRamal(): void;
+  cancelArea(): void;
+  undoLast(): void;
+  redoLast(): void;
   toCvs(px: number, py: number): { x: number; y: number };
   toPlane(cx: number, cy: number): { x: number; y: number };
   mm2cvs(mm: number): number;
