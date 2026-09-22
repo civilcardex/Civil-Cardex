@@ -22,6 +22,7 @@ import {
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
 import { markAssocLayout } from './assocLayoutMigration';
+import { aFrameDe } from './crossFloorStorage';
 import { collectSourceAgg, setBajanteDesplazamientoInStorage } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import { pisoCorto } from '../constants';
@@ -233,6 +234,11 @@ export function sincronizarDesvioBomba(
   limpiarArtefactosDesvioBomba(eng, baj, bajPlanId, { planId: row.planId, id: row.id });
   const bajXY = coordsBajDe(eng, baj, bajPlanId);
   if (!bajXY) return;
+  // La bomba traducida al frame del piso de la bajante (para el fantasma) y la bajante
+  // traducida al frame de la bomba (alineación, anillo y Ldesvio viven en SU piso): px crudos
+  // de láminas distintas no significan el mismo punto físico cuando las hojas están corridas.
+  const bombaEnBaj = aFrameDe({ x: row.x, y: row.y }, row.planId, bajPlanId);
+  const bajEnBomba = aFrameDe(bajXY, bajPlanId, row.planId);
 
   // Fantasma SIEMPRE (alineado incluido): el piso superior lleva el marcador que referencia a
   // la bomba — overlapReal del render lo oculta cuando coincide con elementos reales.
@@ -240,8 +246,8 @@ export function sincronizarDesvioBomba(
     id: `XFG_${row.id}_${row.planId}`,
     net,
     code: row.code || row.id,
-    x: row.x,
-    y: row.y,
+    x: bombaEnBaj.x,
+    y: bombaEnBaj.y,
     dNominal: baj.dNominal || '',
     direccion: 'sube',
     piso: pisoCorto(row.nivelN),
@@ -261,8 +267,9 @@ export function sincronizarDesvioBomba(
     ];
   }
 
-  // Alineación (misma regla 0.5 que bajantes entre pisos): alineados no se crea LD ni anillo.
-  const aligned = Math.abs(bajXY.x - row.x) < 0.5 && Math.abs(bajXY.y - row.y) < 0.5;
+  // Alineación (misma regla 0.5 que bajantes entre pisos, origen-relativa): alineados no se
+  // crea LD ni anillo.
+  const aligned = Math.abs(bajEnBomba.x - row.x) < 0.5 && Math.abs(bajEnBomba.y - row.y) < 0.5;
   if (aligned) return;
 
   // Anillo en la BOMBA (su piso lleva el anillo y el Ldesvio, layout v2 de bajante↔bajante).
@@ -272,8 +279,8 @@ export function sincronizarDesvioBomba(
     row.id,
     lvlBomba,
     {
-      dx: bajXY.x - row.x,
-      dy: bajXY.y - row.y,
+      dx: bajEnBomba.x - row.x,
+      dy: bajEnBomba.y - row.y,
       Ldesvio: ldId,
     },
     'sube',
@@ -290,8 +297,8 @@ export function sincronizarDesvioBomba(
         ...(liveBomba.ghostData || {}),
       };
       desp[lvlBomba] = {
-        dx: bajXY.x - row.x,
-        dy: bajXY.y - row.y,
+        dx: bajEnBomba.x - row.x,
+        dy: bajEnBomba.y - row.y,
         Ldesvio: ldId,
       };
       gd[lvlBomba] = { ...(gd[lvlBomba] ?? {}), direccion: 'sube' };
@@ -299,15 +306,16 @@ export function sincronizarDesvioBomba(
     }
   }
 
-  // Ldesvio que SALE DE LA BOMBA hacia la posición de la bajante superior (piso de la bomba).
+  // Ldesvio que SALE DE LA BOMBA hacia la posición de la bajante superior (traducida a esta
+  // hoja; piso de la bomba).
   createCrossFloorLdesvioRamal(
     row.planId,
     baj.id,
     net,
     row.x,
     row.y,
-    bajXY.x,
-    bajXY.y,
+    bajEnBomba.x,
+    bajEnBomba.y,
     baj.dNominal || '',
     row.nivelN,
   );
@@ -335,8 +343,8 @@ export function sincronizarDesvioBomba(
       net,
       row.x,
       row.y,
-      bajXY.x,
-      bajXY.y,
+      bajEnBomba.x,
+      bajEnBomba.y,
       baj.dNominal || '',
       row.nivelN,
       eng.scaleM || 0.5,

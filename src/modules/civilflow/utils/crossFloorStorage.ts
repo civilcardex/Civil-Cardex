@@ -25,6 +25,39 @@ export function hasCachedPlan(planId: string | number): boolean {
   }
 }
 
+/** Origen de calibración de la lámina desde su doc de trazos (stamp de PlanosTab.handleSaveConfig
+ *  — la misma fuente que la isometría usa como fallback). Null si la lámina no lo tiene: los
+ *  consumidores caen entonces al comportamiento legacy (hojas asumidas alineadas, un solo frame). */
+export function origenDeTrazos(planId: string): { x_px: number; y_px: number } | null {
+  try {
+    const raw = loadFromStorage<{ origen?: { x_px?: number; y_px?: number } | null } | null>(
+      TRAZOS_PREFIX + planId,
+      null,
+    );
+    const o = raw?.origen;
+    return o && typeof o.x_px === 'number' && typeof o.y_px === 'number'
+      ? { x_px: o.x_px, y_px: o.y_px }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Traduce un punto del frame de lámina `fromPlanId` al frame de `toPlanId` por el delta de
+ *  orígenes de calibración: las láminas del mismo AutoCAD no comparten posición absoluta y el
+ *  MISMO punto físico cae en px distintos por hoja. Sin origen en alguna de las dos devuelve el
+ *  punto intacto (fallback legacy). */
+export function aFrameDe(
+  pt: { x: number; y: number },
+  fromPlanId: string,
+  toPlanId: string,
+): { x: number; y: number } {
+  const oF = origenDeTrazos(fromPlanId);
+  const oT = origenDeTrazos(toPlanId);
+  if (!oF || !oT) return pt;
+  return { x: pt.x - oF.x_px + oT.x_px, y: pt.y - oF.y_px + oT.y_px };
+}
+
 export interface LocalLdesvioRamal {
   id: string;
   net: string;

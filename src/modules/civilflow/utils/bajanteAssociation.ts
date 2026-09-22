@@ -12,6 +12,7 @@ import {
   nextRamalLabel,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
+import { aFrameDe, origenDeTrazos } from './crossFloorStorage';
 import { markAssocLayout } from './assocLayoutMigration';
 import { direccionSegura } from '../lib/PlanoEngine/direccionReglas';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
@@ -85,7 +86,17 @@ export interface AssocEndpoint {
 }
 
 function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
-  return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+  // Alineación FÍSICA (misma regla 0.5 px): px crudos de láminas distintas NO significan el
+  // mismo punto del edificio cuando las hojas están corridas — se compara origen-relativo
+  // (misma resta que hace la isometría). Sin origen en alguna lámina, fallback crudo
+  // (comportamiento legacy: hojas asumidas alineadas).
+  const oa = origenDeTrazos(a.planId);
+  const ob = origenDeTrazos(b.planId);
+  const ax = oa && ob ? a.x - oa.x_px : a.x;
+  const ay = oa && ob ? a.y - oa.y_px : a.y;
+  const bx = oa && ob ? b.x - ob.x_px : b.x;
+  const by = oa && ob ? b.y - ob.y_px : b.y;
+  return Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
 }
 
 export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
@@ -890,16 +901,22 @@ export function applyBajanteAssociation(
   const upper = targetIsBelow ? source : target;
   const lower = targetIsBelow ? target : source;
   const ldId = ldesvioIdFor(upper.id);
+  // El upper traducido al frame del piso inferior (delta de orígenes de calibración): anillo y
+  // Ldesvio viven en el piso inferior y deben apuntar a dónde cae la columna superior FÍSICAMENTE
+  // en esa hoja, no a sus px crudos de otra lámina.
+  const upperEnLower = aFrameDe({ x: upper.x, y: upper.y }, upper.planId, lower.planId);
 
-  // Marcadores en el piso SUPERIOR: ghost posicionado en las coords del bajante inferior, con
-  // targetBajanteId = bajante superior — renderCrossFloorGhosts dibuja el círculo punteado en
-  // (x,y) del inferior y la línea punteada hasta el superior.
+  // Marcadores en el piso SUPERIOR: ghost posicionado donde cae el bajante inferior en ESA hoja
+  // (coords del inferior traducidas al frame del superior), con targetBajanteId = bajante
+  // superior — renderCrossFloorGhosts dibuja el círculo punteado en ese punto y la línea
+  // punteada hasta el superior.
+  const ghostPos = aFrameDe({ x: lower.x, y: lower.y }, lower.planId, upper.planId);
   const ghost: CrossFloorGhost = {
     id: `XFG_${lower.id}_${lower.planId}`,
     net: lower.net,
     code: lower.code || lower.id,
-    x: lower.x,
-    y: lower.y,
+    x: ghostPos.x,
+    y: ghostPos.y,
     dNominal: upper.dNominal || lower.dNominal || '',
     direccion: ghostDireccion,
     parentDireccion: sourceDireccion,
@@ -948,7 +965,11 @@ export function applyBajanteAssociation(
         const lowBaj = eng.bajantes.find((b) => b.id === lower.id);
         if (lowBaj) {
           const desp = { ...(lowBaj.desplazamientos || {}) };
-          desp[lvl] = { dx: upper.x - lower.x, dy: upper.y - lower.y, Ldesvio: ldId };
+          desp[lvl] = {
+            dx: upperEnLower.x - lower.x,
+            dy: upperEnLower.y - lower.y,
+            Ldesvio: ldId,
+          };
           // El anillo (en la posición del bajante superior) muestra siempre el flujo SUBIENDO
           // (orig. usuario) — vía ghostData del nivel, sin tocar la dirección propia de B.
           const gd = { ...(lowBaj.ghostData || {}) };
@@ -964,8 +985,8 @@ export function applyBajanteAssociation(
         lower.id,
         pisoLbl(lower.nivelN),
         {
-          dx: upper.x - lower.x,
-          dy: upper.y - lower.y,
+          dx: upperEnLower.x - lower.x,
+          dy: upperEnLower.y - lower.y,
           Ldesvio: ldId,
         },
         'sube',
@@ -975,13 +996,14 @@ export function applyBajanteAssociation(
   markAssocLayout(lower.planId);
 
   if (!aligned) {
-    // Ldesvio en el PISO INFERIOR: del punto del bajante superior al inferior.
+    // Ldesvio en el PISO INFERIOR: del punto del bajante superior (traducido a esta hoja) al
+    // inferior.
     createCrossFloorLdesvioRamal(
       lower.planId,
       upper.id,
       lower.net,
-      upper.x,
-      upper.y,
+      upperEnLower.x,
+      upperEnLower.y,
       lower.x,
       lower.y,
       upper.dNominal || '',
@@ -994,8 +1016,8 @@ export function applyBajanteAssociation(
         ldId,
         label,
         lower.net,
-        upper.x,
-        upper.y,
+        upperEnLower.x,
+        upperEnLower.y,
         lower.x,
         lower.y,
         upper.dNominal || '',

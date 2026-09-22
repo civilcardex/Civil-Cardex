@@ -735,15 +735,19 @@ export function useIsometriaRender({
         if (targetRamal && targetRamal.pts.length > 0) {
           // Extremo del ramal destino más cercano al (x,y) propio de la bajante — no siempre es
           // pts[0], que podría ser el extremo lejano de un ramal largo y orientar mal el conector.
-          const distToFirst = Math.hypot(targetRamal.pts[0][0] - b.x, targetRamal.pts[0][1] - b.y);
-          const distToLast = Math.hypot(
-            targetRamal.pts[targetRamal.pts.length - 1][0] - b.x,
-            targetRamal.pts[targetRamal.pts.length - 1][1] - b.y,
+          // Comparación en coords ISO (cada punto por el origen de SU piso): px crudos de
+          // láminas distintas no significan el mismo punto físico cuando las hojas están corridas.
+          const bIsoCmp = getIsoCoords(b.x, b.y, b.planNivel);
+          const firstIsoCmp = getIsoCoords(
+            targetRamal.pts[0][0],
+            targetRamal.pts[0][1],
+            targetRamal.planNivel,
           );
-          targetPt =
-            distToFirst <= distToLast
-              ? targetRamal.pts[0]
-              : targetRamal.pts[targetRamal.pts.length - 1];
+          const lastPt = targetRamal.pts[targetRamal.pts.length - 1];
+          const lastIsoCmp = getIsoCoords(lastPt[0], lastPt[1], targetRamal.planNivel);
+          const distToFirst = Math.hypot(firstIsoCmp.x - bIsoCmp.x, firstIsoCmp.y - bIsoCmp.y);
+          const distToLast = Math.hypot(lastIsoCmp.x - bIsoCmp.x, lastIsoCmp.y - bIsoCmp.y);
+          targetPt = distToFirst <= distToLast ? targetRamal.pts[0] : lastPt;
           targetPlanNivel = targetRamal.planNivel;
         } else if (targetBajante) {
           targetPt = [targetBajante.x, targetBajante.y];
