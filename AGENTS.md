@@ -1628,3 +1628,35 @@ tsc 0 · lint 0 · vitest 789/789 · build ✓ · graphify ✓.
 - **Fix**: migración `20260922000000_fix_dimensiones_y1_x2.sql` recrea `save_plano_data` con el orden correcto (única línea que cambia vs 20260914000000, verificado). **APLICAR EN SQL EDITOR.**
 - Filas ya transpuestas: se reparan re-guardando cada piso desde la app tras aplicar (la caché local tiene las cotas correctas → el autosave reescribe la BD sana). Borrar las cotas visiblemente dañadas cuyo local ya se perdió.
 - Nota: el fix anterior del meta redondeado sigue en pie (era una causa real adicional de re-bases espurios); este RPC era la fuente de la ROTACIÓN.
+
+## Session Summary — 2026-09-22 (auditoría ronda 4: frame del origen + fugas 3D)
+
+### Fase A — una sola fuente del origen (F-1 CRÍTICO + F-4/F-5/F-7)
+- **origenDePlan** (crossFloorStorage): meta de plans (civilflow_plans_meta, viaja a BD) PRIMERO, doc de trazos como fallback — el autosave que borra doc.origen (serializeWork no lo serializa) ya no degrada las asociaciones a frame crudo. aFrameDe e isAligned/origenDePlan bajanteAssociation lo usan. El stamp de PlanosTab ya escribía el meta.
+- **Ghost drag** (updateCrossFloorGhostPositionBySource): convierte (x,y) al frame del piso destino con aFrameDe antes de escribir — arrastrar el bajante origen ya no desplaza el ghost espejo.
+- **Re-anclaje de ghosts layout-2** en migrateAssocLayoutOnLoad: corre ANTES del guard barato (gate por raw `'"layout":2'`) y re-ancla ghost.xy = aFrameDe(origen.xy) — recalibrar sana los marcadores al reabrir. Los 2 escritores absolutos de la migración convierten al frame del anfitrión.
+- **Hallazgo que ajustó el alcance**: deltas de anillos (dx/dy) y comparaciones `< 0.5` son INVARIANTES por traslación (aFrameDe se cancela) — crudos correctos; NOTA ponytail en la migración evita "arreglos" futuros. Limitación conocida documentada: recalibrar UN piso después de asociar deja el anillo dx/dy del frame viejo (re-asociar lo arregla; recomputarlo automático necesita registro de asociación — YAGNI hoy).
+- **Re-base anclado**: rebasarEscalaTrazos(data, to, ancla) — puntos absolutos escalan alrededor del origen de calibración (px−origen constante), deltas de anillos y offsets de texto escalan puros. Call sites: useTrazosLoader (origenDePlan) y stamp de PlanosTab (config.origen).
+- **Self-heal del meta legacy redondeado** (47 vs 0.4723): divergencia ≤0.6% NO re-basa trazos — el doc exacto corrige el meta del plan calGlobal (una vez). Reales mayores siguen re-basando.
+- **Tumba anti-vacío** en el re-base: engine sin contenido no pisa la caché (loadWork fallido a medias).
+- **F-16**: stamp sin doc local NI BD ya no fabrica doc solo-config (bloqueaba el prefetch para siempre).
+- Tests: frameOrigen.test.ts (6) — meta-first, autosave-wipe, fallback, ghost drag, re-anclaje con flag, re-base anclado vs deltas.
+
+### Fase B — 3D y atajos
+- **epc3d WebGL leak cerrado**: si canceló antes de asignar apiRef, dispose local completo (controls/escena/renderer/forceContextLoss) — antes quedaba un contexto filtrado por desmonte a mitad de carga.
+- **disposeGrupo compartida** (cargaSecuencial): rci y aparatos liberan el grupo parseado al desmontar entre fetch y add.
+- **epc adopta glbCache** (tercer visor ya no re-descarga).
+- Anti-autoscroll del botón central en los 3 visores; comentario del mapeo de mouse corregido (deliberado, NO igual a la isometría).
+- Atajo 'l' ignora Ctrl/Cmd/Alt (Ctrl+L del navegador intacto); guard de recolectora alineado con useActiveNetsVisibility (Set indefinido = habilitar).
+
+### Fase C — higiene
+- devLog (canal info, gated DEV) para los [CF-COTA]; devError queda para errores. Catch de herencia UC a medias con devError. JSDoc de isAligned/areEndpointsAligned. glbCache: trade-off sin-eviction documentado (catálogo fijo, ponytail).
+
+### Fase D — SQL para el usuario
+- `20260922000001_repara_dimensiones_transpuestas.sql`: repara cotas guardadas con el swap y1↔x2 (bug RPC 20260914000000→20260922000000). Oráculo: l ≠ dist_guardada Y l = dist_reconstruida (tolerancia 1%). Correr el SELECT de diagnóstico primero. Corrección matemática verificada con ejemplo numérico.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 795/795 (142 files) · build ✓ · graphify ✓.
+
+### Verificación manual pendiente (recarga dura)
+Calibrar → dibujar → asociar (alineación sobrevive al autosave); arrastrar bajante con orígenes distintos (ghost del otro piso en el punto físico); recalibrar tras asociar y reabrir (ghosts re-anclados); piso legacy con meta 47 (primer re-open SIN salto de geometría); EPC alternando sub-pestañas a mitad de carga (sin contexto filtrado); Ctrl+L no cambia de herramienta. Aplicar el SQL de reparación en SQL Editor.
