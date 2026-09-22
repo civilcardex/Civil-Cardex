@@ -1431,6 +1431,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this.setTool('caja');
         e.preventDefault();
       }
+    } else if (k === 'l') {
+      // 'L' → Canal recolectora (de aguas Lluvias) — solo con la red ll activa Y la
+      // recolectora encendida, espejo de isToolDisabledForNet('canal') y del guard de
+      // drawingCreations. ('C' ya es la herramienta Texto en useKeyboardShortcuts.)
+      if (this.activeNet === 'll' && this.activeNetworks?.has('recolectora')) {
+        this.setTool('canal');
+        e.preventDefault();
+      }
     } else if (k === 'd') {
       this.setTool('dim');
       e.preventDefault();

@@ -201,15 +201,14 @@ function PdfViewerToolbar_({
   }
   // El canal está disponible en cualquier piso/red activa mientras canal recolectora esté
   // activa — la visibilidad la controla isToolDisabledForNet(..., recolectoraActive) abajo.
+  // Atajo 'L' (de aguas Lluvias): la 'C' ya es la herramienta Texto (useKeyboardShortcuts).
   netTools.splice(7, 0, {
     id: 'canal',
     label: 'Canal',
     ico: '▭',
-    // 'C' es compartido con Contador (af/gas) — redes mutuamente excluyentes, ver
-    // PlanoEngine.ts's 'c' key handler.
-    key: '',
+    key: 'L',
     icoCol: '#8B5CF6',
-    shortcut: '',
+    shortcut: 'L',
   });
   // Caja de recolección (san → CAN, ll → CALL): cuadrados concéntricos 100×100/70×70cm
   // a escala. La red del
