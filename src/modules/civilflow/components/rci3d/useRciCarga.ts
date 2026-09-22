@@ -4,6 +4,7 @@ import { parseGLB } from './rciGlbParser';
 import { CHEQUE_GROUPS, GLB_POSITIONS, MODELO_KEYS, glbUrl } from './rci3dData';
 import { devError } from '../../../../utils/devError';
 import { cargarModelosSecuencial, sleep } from '../shared/cargaSecuencial';
+import { cargarGlbBuffer } from '../shared/glbCache';
 
 // Carga secuencial de las 13 piezas GLB (port del loadModel del HTML) sobre el núcleo común
 // de los visores 3D (shared/cargaSecuencial): progreso 20→95 %, pausa entre modelos, y al
@@ -126,9 +127,8 @@ export function useRciCarga(apiRef: Rci3DApiRef, { onProgreso, onListo, onFallo 
         (pct, texto) => optsRef.current.onProgreso(pct, texto),
         async (name) => {
           try {
-            const res = await fetch(glbUrl(name));
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const buf = await res.arrayBuffer();
+            // Caché module-level: re-entrar a la sub-pestaña no re-descarga el GLB.
+            const buf = await cargarGlbBuffer(glbUrl(name));
             const group = await parseGLB(escena.THREE, buf, CHEQUE_GROUPS.includes(name));
             if (cancelled) {
               disposePieza(escena.THREE, group);

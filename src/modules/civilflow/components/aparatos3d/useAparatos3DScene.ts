@@ -97,6 +97,13 @@ export function useAparatos3DScene(
       controls.panSpeed = 0.25;
       controls.minDistance = 0.02;
       controls.maxDistance = 200;
+      // Igual que la isometría de redes: izquierda = girar, RUEDA (botón central) = mover
+      // (pan). La rueda-scroll sigue haciendo zoom.
+      controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.PAN,
+        RIGHT: THREE.MOUSE.PAN,
+      };
 
       const api: Aparatos3DApi = {
         THREE,

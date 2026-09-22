@@ -4,6 +4,7 @@ import { colocarRigLuz, type Aparatos3DApiRef } from './useAparatos3DScene';
 import { poseIso } from './vistasCamara';
 import { devError } from '../../../../utils/devError';
 import { cargarModelosSecuencial, sleep } from '../shared/cargaSecuencial';
+import { cargarGlbBuffer } from '../shared/glbCache';
 
 /** Carga SECUENCIAL de los 12 GLB del catálogo (150 ms entre modelos, como el original, para
  *  no congelar la UI), con progreso 20→95 %; al terminar arma el rig del ensamble completo y
@@ -37,7 +38,9 @@ export function useGlbCatalogo(
         (pct) => cbRef.current.onProgress(pct),
         async (modelKey) => {
           try {
-            const gltf = await loader.loadAsync(glbUrl(modelKey));
+            // Caché module-level + parse en memoria: re-entrar no re-descarga el GLB.
+            const buf = await cargarGlbBuffer(glbUrl(modelKey));
+            const gltf = await loader.parseAsync(buf, '');
             if (cancelled) return true;
             const grupo = gltf.scene;
             grupo.traverse((obj) => {

@@ -122,6 +122,13 @@ export function useRci3DScene(
       controls.panSpeed = 0.25;
       controls.minDistance = 0.02;
       controls.maxDistance = 400;
+      // Igual que la isometría de redes: izquierda = girar, RUEDA (botón central) = mover
+      // (pan). La rueda-scroll sigue haciendo zoom.
+      controls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.PAN,
+        RIGHT: THREE.MOUSE.PAN,
+      };
 
       const api: Rci3DApi = {
         THREE,
