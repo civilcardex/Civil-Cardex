@@ -4,6 +4,7 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import { GLB_POSITIONS, GLB_SCALE_OVERRIDE, GLB_URL } from './epc3dData';
 import { parseGLB } from './glbParser';
 import { cargarModelosSecuencial } from '../shared/cargaSecuencial';
+import { cargarGlbBuffer } from '../shared/glbCache';
 import { actualizarEtiquetas } from './etiquetas';
 import { dibujarGizmoEjes } from '../aparatos3d/ejeGizmo';
 
@@ -72,12 +73,18 @@ export function useEpc3DScene({
 
   useEffect(() => {
     let cancelled = false;
+    let antiAutoscroll: ((e: MouseEvent) => void) | null = null;
     let raf = 0;
     let ro: ResizeObserver | null = null;
 
+    const canvasEl = canvas.current;
+    if (!canvasEl) return;
     (async (): Promise<void> => {
-      const canvasEl = canvas.current;
-      if (!canvasEl) return;
+      // Botón central sin autoscroll nativo de Chrome (compite con el pan del OrbitControls).
+      antiAutoscroll = (e: MouseEvent): void => {
+        if (e.button === 1) e.preventDefault();
+      };
+      canvasEl.addEventListener('mousedown', antiAutoscroll);
       const THREE = await import('three');
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
       if (cancelled) return;
@@ -155,9 +162,7 @@ export function useEpc3DScene({
         (pct, texto) => progressRef.current.onProgress(pct, texto),
         async (name) => {
           try {
-            const res = await fetch(GLB_URL(name));
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const buf = await res.arrayBuffer();
+            const buf = await cargarGlbBuffer(GLB_URL(name));
             const group = await parseGLB(THREE, buf);
             const pos = GLB_POSITIONS[name];
             group.position.set(pos[0], pos[1], pos[2]);
@@ -261,6 +266,22 @@ export function useEpc3DScene({
         if (Math.max(occSz.x, occSz.y, occSz.z) >= 0.3 * MR) occluders.push(obj);
       });
 
+      if (cancelled) {
+        // Desmonte a mitad de carga: el cleanup ya corrió con apiRef.current == null y NUNCA
+        // verá este api — disposear aquí o queda renderer + contexto WebGL + escena filtrados
+        // (el tope de contextos de Chrome mata el canvas de otro visor).
+        controls.dispose();
+        scene.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) {
+            obj.geometry.dispose();
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach((m) => m.dispose());
+          }
+        });
+        renderer.dispose();
+        renderer.forceContextLoss();
+        return;
+      }
       apiRef.current = {
         THREE,
         renderer,
@@ -282,7 +303,6 @@ export function useEpc3DScene({
         occFrameCnt: 0,
         occRay: new THREE.Raycaster(),
       };
-      if (cancelled) return;
       // Sombras calculadas una sola vez (escena estática; orbitar no las cambia)
       renderer.shadowMap.needsUpdate = true;
       progressRef.current.onProgress(100, '');
@@ -307,6 +327,7 @@ export function useEpc3DScene({
       cancelled = true;
       cancelAnimationFrame(raf);
       ro?.disconnect();
+      if (antiAutoscroll) canvasEl.removeEventListener('mousedown', antiAutoscroll);
       const api = apiRef.current;
       apiRef.current = null;
       if (api?.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);

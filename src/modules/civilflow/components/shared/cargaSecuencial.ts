@@ -1,5 +1,24 @@
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** Dispose de geometría/material de un grupo three ya parseado que ya no se usará (desmonte a
+ *  mitad de carga: la escena vieja se disposeó y el grupo quedaría huérfano en memoria).
+ *  THREE llega por parámetro para que el kernel no dependa del paquete three. */
+export function disposeGrupo(
+  THREE: { Mesh: new (...args: never[]) => unknown },
+  grupo: { traverse(cb: (obj: unknown) => void): void },
+): void {
+  grupo.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return;
+    const mesh = obj as {
+      geometry?: { dispose(): void };
+      material?: { dispose(): void } | Array<{ dispose(): void }>;
+    };
+    mesh.geometry?.dispose();
+    if (Array.isArray(mesh.material)) mesh.material.forEach((m) => m.dispose());
+    else mesh.material?.dispose();
+  });
+}
+
 /** Núcleo común de los 3 visores 3D (aparatos/epc/rci): recorre las claves con progreso
  *  20→95 % y pausa de 150 ms entre modelos para no congelar la UI. cargarPieza loguea sus
  *  propios errores y devuelve false si la pieza falló; abort() corta el recorrido (desmonte).

@@ -3,7 +3,7 @@ import { COMPONENTS, glbUrl } from './aparatos3dData';
 import { colocarRigLuz, type Aparatos3DApiRef } from './useAparatos3DScene';
 import { poseIso } from './vistasCamara';
 import { devError } from '../../../../utils/devError';
-import { cargarModelosSecuencial, sleep } from '../shared/cargaSecuencial';
+import { cargarModelosSecuencial, disposeGrupo, sleep } from '../shared/cargaSecuencial';
 import { cargarGlbBuffer } from '../shared/glbCache';
 
 /** Carga SECUENCIAL de los 12 GLB del catálogo (150 ms entre modelos, como el original, para
@@ -41,7 +41,12 @@ export function useGlbCatalogo(
             // Caché module-level + parse en memoria: re-entrar no re-descarga el GLB.
             const buf = await cargarGlbBuffer(glbUrl(modelKey));
             const gltf = await loader.parseAsync(buf, '');
-            if (cancelled) return true;
+            // Desmonte a mitad de carga: la escena ya se disposeó — liberar el grupo
+            // parseado o queda huérfano en memoria (igual que hace rci).
+            if (cancelled) {
+              disposeGrupo(api.THREE, gltf.scene);
+              return true;
+            }
             const grupo = gltf.scene;
             grupo.traverse((obj) => {
               const mesh = obj as import('three').Mesh;

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
-import type { Rci3DApi, Rci3DApiRef, Three } from './useRci3DScene';
+import type { Rci3DApi, Rci3DApiRef } from './useRci3DScene';
 import { parseGLB } from './rciGlbParser';
 import { CHEQUE_GROUPS, GLB_POSITIONS, MODELO_KEYS, glbUrl } from './rci3dData';
 import { devError } from '../../../../utils/devError';
-import { cargarModelosSecuencial, sleep } from '../shared/cargaSecuencial';
+import { cargarModelosSecuencial, disposeGrupo, sleep } from '../shared/cargaSecuencial';
 import { cargarGlbBuffer } from '../shared/glbCache';
 
 // Carga secuencial de las 13 piezas GLB (port del loadModel del HTML) sobre el núcleo común
@@ -23,21 +23,6 @@ interface Opciones {
 
 /** Reintentos de arranque (150 ms c/u) esperando a que la escena termine de inicializarse. */
 const ESPERAS_MAX = 100;
-
-/** Libera geometría/material de una pieza parseada que ya no se usará (desmonte a mitad de
- *  carga: el assembly viejo ya se disposeó con la escena — sin esto, fuga por carga cortada). */
-function disposePieza(THREE: Three, group: InstanceType<Three['Group']>): void {
-  group.traverse((obj) => {
-    const mesh = obj as InstanceType<typeof THREE.Mesh>;
-    if (mesh.geometry) mesh.geometry.dispose();
-    const mat = mesh.material as
-      | InstanceType<typeof THREE.Material>
-      | InstanceType<typeof THREE.Material>[]
-      | undefined;
-    if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-    else mat?.dispose();
-  });
-}
 
 /** Terminación de la carga (port del finishLoading): encadre, luces, near/far, pose ISO
  *  default, oclusores (meshes con lado máximo ≥ 0.3·MR) y repintado único de sombras. */
@@ -131,7 +116,7 @@ export function useRciCarga(apiRef: Rci3DApiRef, { onProgreso, onListo, onFallo 
             const buf = await cargarGlbBuffer(glbUrl(name));
             const group = await parseGLB(escena.THREE, buf, CHEQUE_GROUPS.includes(name));
             if (cancelled) {
-              disposePieza(escena.THREE, group);
+              disposeGrupo(escena.THREE, group);
               return true;
             }
             const pos = GLB_POSITIONS[name];

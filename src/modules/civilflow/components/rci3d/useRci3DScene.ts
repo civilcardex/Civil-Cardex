@@ -61,6 +61,7 @@ export function useRci3DScene(
     const canvas = canvasRef.current;
     if (!wrap || !canvas) return;
     let cancelled = false;
+    let antiAutoscroll: ((e: MouseEvent) => void) | null = null;
     let raf = 0;
     let threeMod: typeof THREE_NS | null = null;
     const ro = new ResizeObserver(() => apiRef.current?.ajustar?.());
@@ -115,6 +116,13 @@ export function useRci3DScene(
       const assembly = new THREE.Group();
       scene.add(assembly);
 
+      // Botón central sin autoscroll nativo de Chrome (compite con el pan que acabamos de
+      // asignarle).
+      antiAutoscroll = (e: MouseEvent): void => {
+        if (e.button === 1) e.preventDefault();
+      };
+      canvas.addEventListener('mousedown', antiAutoscroll);
+
       const controls = new OrbitControls(camP, canvas);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
@@ -122,7 +130,9 @@ export function useRci3DScene(
       controls.panSpeed = 0.25;
       controls.minDistance = 0.02;
       controls.maxDistance = 400;
-      // Igual que la isometría de redes: izquierda = girar, RUEDA (botón central) = mover
+      // Mapeo DELIBERADO distinto a la isometría de redes (allá el derecho es no-op):
+      // izquierda = girar, RUEDA/botón central = mover (el dolly del central se pierde — la
+      // rueda del mouse sigue zoomeando).
       // (pan). La rueda-scroll sigue haciendo zoom.
       controls.mouseButtons = {
         LEFT: THREE.MOUSE.ROTATE,
@@ -200,6 +210,7 @@ export function useRci3DScene(
       cancelled = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      if (antiAutoscroll) canvas.removeEventListener('mousedown', antiAutoscroll);
       if (threeMod) threeMod.ColorManagement.enabled = true; // es estado global de three: dejarlo como estaba
       const api = apiRef.current;
       if (api) {

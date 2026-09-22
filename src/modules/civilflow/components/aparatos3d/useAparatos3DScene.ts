@@ -51,6 +51,7 @@ export function useAparatos3DScene(
     const canvas = canvasRef.current;
     if (!wrap || !canvas) return;
     let cancelled = false;
+    let antiAutoscroll: ((e: MouseEvent) => void) | null = null;
     let raf = 0;
     const ro = new ResizeObserver(() => apiRef.current?.ajustar?.());
 
@@ -90,6 +91,13 @@ export function useAparatos3DScene(
       topLight.position.set(0, 20, 2);
       scene.add(ambient, keyLight, fillLight, rimLight, topLight);
 
+      // Botón central sin autoscroll nativo de Chrome (compite con el pan que acabamos de
+      // asignarle).
+      antiAutoscroll = (e: MouseEvent): void => {
+        if (e.button === 1) e.preventDefault();
+      };
+      canvas.addEventListener('mousedown', antiAutoscroll);
+
       const controls = new OrbitControls(camP, canvas);
       controls.enableDamping = true;
       controls.dampingFactor = 0.08;
@@ -97,7 +105,9 @@ export function useAparatos3DScene(
       controls.panSpeed = 0.25;
       controls.minDistance = 0.02;
       controls.maxDistance = 200;
-      // Igual que la isometría de redes: izquierda = girar, RUEDA (botón central) = mover
+      // Mapeo DELIBERADO distinto a la isometría de redes (allá el derecho es no-op):
+      // izquierda = girar, RUEDA/botón central = mover (el dolly del central se pierde — la
+      // rueda del mouse sigue zoomeando).
       // (pan). La rueda-scroll sigue haciendo zoom.
       controls.mouseButtons = {
         LEFT: THREE.MOUSE.ROTATE,
@@ -153,6 +163,7 @@ export function useAparatos3DScene(
       cancelled = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
+      if (antiAutoscroll) canvas.removeEventListener('mousedown', antiAutoscroll);
       const api = apiRef.current;
       if (api) {
         if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
