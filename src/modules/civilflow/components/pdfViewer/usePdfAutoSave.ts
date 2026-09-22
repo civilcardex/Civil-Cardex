@@ -1,14 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
-  markPlanTrazosFresh,
 } from '../../utils/drawingSync';
-import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
 import type { PlanItem } from '../../context/PlansContext';
+import { persistTrazosSnapshot } from './persistTrazos';
 
 export function usePdfAutoSave(
   engineRef: React.MutableRefObject<PlanoEngine | null>,
@@ -21,14 +19,8 @@ export function usePdfAutoSave(
 
   const performSave = useCallback((eng: PlanoEngine, id: string | number) => {
     try {
-      const work = eng.saveWork();
-      work.ts = Date.now();
-      saveToStorage(`${TRAZOS_PREFIX}${id}`, work);
-      markPlanTrazosFresh(id);
-      if (id !== 'work') {
-        saveToStorage(LAST_TRAZOS_ID_KEY, id);
-        saveTrazosToDB(String(id), work);
-      }
+      // Misma secuencia que el onDirty del engine — núcleo compartido en persistTrazos.
+      persistTrazosSnapshot(eng, id);
     } catch {
       // ignore
     }

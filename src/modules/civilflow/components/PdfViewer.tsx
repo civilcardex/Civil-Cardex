@@ -18,21 +18,22 @@ import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
-  markPlanTrazosFresh,
 } from '../utils/drawingSync';
 import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber';
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
   ACTIVE_NETS_KEY,
-  TRAZOS_PREFIX,
-  LAST_TRAZOS_ID_KEY,
   PDF_HIDDEN_NETS_KEY,
   PDF_LOCKED_NETS_KEY,
 } from '../constants/storage-keys';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
+
+import { useViewerResponsive } from './pdfViewer/useViewerResponsive';
+import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome';
+import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistTrazos';
 import PdfCanvas from './pdfViewer/PdfCanvas';
 import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
@@ -49,7 +50,6 @@ import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
 import AparatosPanel from './FixturesPanel';
 import { validateBeforeClose } from './pdfViewer/closeValidation';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos';
-import { useIsMobile, useMediaQuery } from '../../../hooks/useMediaQuery';
 import { applyAccesorioPlacement } from './pdfViewer/accesorioPlacement';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionVisorPrefs';
 import { useNetColorsInit } from './pdfViewer/useNetColorsInit';
@@ -58,7 +58,6 @@ import { useFloorRamales } from './pdfViewer/useFloorRamales';
 import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
 import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
-import { devLog } from '../../../utils/devError';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -192,21 +191,9 @@ function PdfViewer_({
     } catch {}
   }, []);
   const [scale, setScale] = useState(1);
-  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
-  const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
-  // Móvil = modo consulta: sin herramientas de dibujo, sidebars colapsadas, zoom por botones.
-  const isMobile = useIsMobile();
-  // <1024 (tablet/laptop angosto): colapsar sidebars SOLO al entrar en la franja angosta — un
-  // listener de resize crudo re-cerraba los paneles en cada resize (el teclado del SO en tablet
-  // dispara resize y pisaba la re-expansión manual). Dentro de la franja el usuario puede
-  // re-abrir: el efecto solo corre cuando se CRUZA el breakpoint.
-  const isNarrow = useMediaQuery('(max-width: 1023px)');
-  useEffect(() => {
-    if (isNarrow) {
-      setLeftCollapsed(true);
-      setRightCollapsed(true);
-    }
-  }, [isNarrow]);
+  // Estado responsive del visor centralizado (umbrales 768/1024 + colapso al cruzar 1024).
+  const { isMobile, isNarrow, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed } =
+    useViewerResponsive();
 
   const dynamicLeftStyle: CSSProperties = useMemo(
     () => ({
@@ -444,24 +431,7 @@ function PdfViewer_({
       }
       try {
         const id = eng._loadedPlanId || currentIdRef.current || 'work';
-        if (id) {
-          const work = eng.saveWork();
-          work.ts = Date.now();
-          // [CF-COTA] (devLog, canal info) diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
-          devLog(
-            `[CF-COTA] autosave ${id} scaleM=${(work as { scaleM?: number }).scaleM} dims=${JSON.stringify(
-              ((work as { dims?: Array<Record<string, number>> }).dims || []).map(
-                (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
-              ),
-            )}`,
-          );
-          saveToStorage(TRAZOS_PREFIX + String(id), work);
-          markPlanTrazosFresh(id);
-          if (id !== 'work') {
-            saveToStorage(LAST_TRAZOS_ID_KEY, id);
-            saveTrazosToDB(String(id), work);
-          }
-        }
+        if (id) persistTrazosSnapshot(eng, id);
       } catch {}
       syncDrawings();
     },
@@ -485,18 +455,11 @@ function PdfViewer_({
         ]);
         for (const k of Object.keys(store)) {
           if (!isPlanKeyFor(k, loadedPid)) continue;
-          const segs = k.split('_');
-          const idInKey = segs[1] ?? '';
-          for (const id of ids) {
-            const isExact = idInKey === id;
-            const isTributaryOfDeleted = idInKey.startsWith('T') && idInKey.endsWith(id);
-            if ((isExact || isTributaryOfDeleted) && !currentIds.has(idInKey)) {
-              // No borrar si el nuevo ramal renumerado ocupa ese mismo id (ej. RS2→RS1)
-              // currentIds contiene el nuevo RS1, así que no se borra
-              delete store[k];
-              changed = true;
-              break;
-            }
+          // No borrar si el nuevo ramal renumerado ocupa ese mismo id (ej. RS2→RS1):
+          // currentIds contiene el nuevo RS1, así que no se borra.
+          if (claveDeBorrado(k, ids, currentIds)) {
+            delete store[k];
+            changed = true;
           }
         }
         if (changed) saveToStorage(key, store);
@@ -1232,89 +1195,14 @@ function PdfViewer_({
 
         <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
           <h2 style={PdfViewer_SR_ONLY}>Visor de planos</h2>
-          {isMobile && (
-            <div
-              role="status"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 10,
-                padding: '6px 12px',
-                background: 'rgba(14,20,28,0.92)',
-                borderBottom: '1px solid #3a494a',
-                color: '#849495',
-                fontSize: 11,
-                fontFamily: 'var(--body)',
-              }}
-            >
-              Modo consulta — el dibujo requiere tablet o PC.
-            </div>
-          )}
-          {isMobile && currentFile && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 30,
-                left: 0,
-                right: 0,
-                zIndex: 10,
-                textAlign: 'center',
-                color: '#849495',
-                fontSize: 10,
-                fontFamily: 'var(--body)',
-                pointerEvents: 'none',
-                padding: '0 12px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {currentFile.name}
-            </div>
-          )}
-          {/* Zoom táctil: también en tablet (768-1023), donde no hay botones de la toolbar
-              de escritorio a mano y el pinch es el único zoom alternativo. */}
-          {isNarrow && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 12,
-                bottom: 18,
-                zIndex: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
-              {[
-                { label: '⤢', aria: 'Ajustar a pantalla', run: handleFit },
-                { label: '+', aria: 'Acercar', run: () => engineRef.current?.zoomStep(1.2) },
-                { label: '−', aria: 'Alejar', run: () => engineRef.current?.zoomStep(1 / 1.2) },
-              ].map((z) => (
-                <button
-                  key={z.label}
-                  type="button"
-                  aria-label={z.aria}
-                  onClick={z.run}
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: '50%',
-                    border: '1px solid #3a494a',
-                    background: 'rgba(14,20,28,0.92)',
-                    color: '#e2e2e8',
-                    fontSize: 22,
-                    lineHeight: 1,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {z.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <ViewerMobileChrome
+            isMobile={isMobile}
+            isNarrow={isNarrow}
+            currentFile={currentFile ?? null}
+            onFit={handleFit}
+            onZoomStep={(f) => engineRef.current?.zoomStep(f)}
+          />
+
           <PdfCanvas
             cwRef={cwRef}
             containerRef={containerRef}
