@@ -14,7 +14,8 @@ import {
 import { REQ_ITEMS, pisoLbl } from '../../constants';
 
 import { PlanoConfigurator } from './PlanoConfigurator';
-import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
+import { origenDePlan } from '../../utils/crossFloorStorage';
+import { sanearAsociacionesTrasRecalibrar } from '../../utils/sanearAsociaciones';
 import {
   PlanosTab_S1,
   PlanosTab_S2,
@@ -37,21 +38,21 @@ import {
 import type { useWorkAreaState } from '../useWorkAreaState';
 import ModalProtocolo from './ModalProtocolo';
 import { PlanCropPanel } from './PlanCropPanel';
-import { devError, devLog } from '../../../../utils/devError';
+import { devError } from '../../../../utils/devError';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
+import {
+  calDataDePlan,
+  seedCalData,
+  computeGlobalCal,
+  computeOrigenesCompartidos,
+  stampCalibracion,
+  type CalibrationData,
+} from './planosTabCalibracion';
+
 interface PlanosTabProps {
   state: WorkAreaState;
-}
-
-interface CalibrationData {
-  origen: { x_px: number; y_px: number } | null;
-  scaleM: number | null;
-  factorX: number | null;
-  factorY: number | null;
-  calGlobal: boolean | null;
-  definedScale?: number | null;
 }
 
 function PlanosTab({ state }: PlanosTabProps) {
@@ -86,18 +87,7 @@ function PlanosTab({ state }: PlanosTabProps) {
     const initial: Record<number, CalibrationData> = {};
     if (plans) {
       for (const p of plans) {
-        if (p.origen && p.scale) {
-          const sm = p.scale / 100;
-          initial[p.id] = {
-            origen: p.origen,
-            scaleM: sm,
-            factorX: p.factorX !== undefined && p.factorX !== null ? p.factorX : sm,
-            factorY: p.factorY !== undefined && p.factorY !== null ? p.factorY : sm,
-            calGlobal: p.calGlobal !== undefined && p.calGlobal !== null ? p.calGlobal : null,
-            definedScale:
-              p.definedScale !== undefined && p.definedScale !== null ? p.definedScale : sm,
-          };
-        }
+        if (p.origen && p.scale) initial[p.id] = calDataDePlan(p);
       }
     }
     return initial;
@@ -110,35 +100,8 @@ function PlanosTab({ state }: PlanosTabProps) {
   // suele llegar vacío (restauración async de PlansContext) — sin siembra, globalCal quedaba
   // null para siempre y "Asignar piso" desaparecía tras cerrar y reabrir (bug 2026-09-22).
   useEffect(() => {
-    const liveIds = new Set(plans.map((p) => p.id));
     setCalData((prev) => {
-      const next: Record<number, CalibrationData> = {};
-      let changed = false;
-      for (const [idStr, cd] of Object.entries(prev)) {
-        const id = Number(idStr);
-        if (liveIds.has(id)) {
-          next[id] = cd;
-        } else {
-          changed = true;
-        }
-      }
-      // Sembrar calibraciones que llegaron con plans y aún no tienen entrada (misma
-      // derivación que el initializer). Las entradas existentes del usuario NO se tocan.
-      for (const p of plans) {
-        if (!p.origen || !p.scale) continue;
-        if (next[p.id]) continue;
-        const sm = p.scale / 100;
-        next[p.id] = {
-          origen: p.origen,
-          scaleM: sm,
-          factorX: p.factorX !== undefined && p.factorX !== null ? p.factorX : sm,
-          factorY: p.factorY !== undefined && p.factorY !== null ? p.factorY : sm,
-          calGlobal: p.calGlobal !== undefined && p.calGlobal !== null ? p.calGlobal : null,
-          definedScale:
-            p.definedScale !== undefined && p.definedScale !== null ? p.definedScale : sm,
-        };
-        changed = true;
-      }
+      const { next, changed } = seedCalData(prev, plans);
       return changed ? next : prev;
     });
     if (plans.length === 0) {
@@ -158,24 +121,12 @@ function PlanosTab({ state }: PlanosTabProps) {
   // Un plan calibrado con "Alcance: Todos" debería aplicar a todo piso futuro — pero hasta ahora
   // nada se lo ofrecía a un plan recién subido; cada uno debía calibrarse a mano. Se expone
   // como alternativa de un clic a CALIBRAR.
-  const globalCal =
-    Object.values(calData).find(
-      (cd) =>
-        cd.calGlobal === true && cd.origen && cd.scaleM && plans.some((p) => calData[p.id] === cd),
-    ) || null;
+  const globalCal = useMemo(() => computeGlobalCal(calData, plans), [calData, plans]);
 
   // Láminas confirmadas que comparten el MISMO origen px con otra: la herencia vieja clonaba el
   // origen de la primera calibración a todos los planos — solo es legítimo si las hojas están
   // realmente alineadas. El badge en la fila de "Cargados" guía a re-marcar el origen.
-  const origenesCompartidos = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const p of plans) {
-      if (p.status !== 'confirmed' || !p.origen) continue;
-      const k = `${p.origen.x_px}|${p.origen.y_px}`;
-      counts.set(k, (counts.get(k) || 0) + 1);
-    }
-    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([k]) => k));
-  }, [plans]);
+  const origenesCompartidos = useMemo(() => computeOrigenesCompartidos(plans), [plans]);
 
   const handleAsignarPiso = (planId: number, nivel: number) => {
     // Con la calibración ya global (primera calibración confirmada con el modal), asignar piso
@@ -222,6 +173,8 @@ function PlanosTab({ state }: PlanosTabProps) {
   };
 
   const handleSaveConfig = (config: CalibrationData & { planId: number }) => {
+    // Frame ANTERIOR del plan (meta/doc): el saneador lo necesita ANTES de estampar el nuevo.
+    const prevOrigen = origenDePlan(String(config.planId));
     setCalData((prev) => ({ ...prev, [config.planId]: config }));
     const win = window as unknown as { _planosConfig?: Record<string, unknown> };
     if (!win._planosConfig) win._planosConfig = {};
@@ -258,40 +211,17 @@ function PlanosTab({ state }: PlanosTabProps) {
       // siempre — el prefetch no la rellena y el árbitro la hacía ganar por ts → piso vacío.
       // Se baja el doc de BD primero y se le montan los campos de calibración.
       const fill = (doc: Record<string, unknown>) => {
-        doc.origen = config.origen;
-        // Stamp de escala CONSISTENTE: si el doc ya reclamaba otra escala, re-basar su
-        // geometría aquí (misma regla del re-base de carga) — pisar el número sin mover los
-        // px dejaba un doc que decía una escala y estaba dibujado a otra: las cotas nuevas
-        // medían mal y la primera reapertura aplicaba un salto (incidente 2026-09-22).
-        const escalaPrev = typeof doc.scaleM === 'number' ? doc.scaleM : null;
-        // [CF-COTA] (devLog, canal info) diagnóstico DEV del stamp de calibración sobre un doc con contenido.
-        devLog(
-          `[CF-COTA] stamp calibración ${config.planId} escalaPrev=${escalaPrev} → ${config.scaleM} dims=${JSON.stringify(
-            ((doc.dims as Array<Record<string, number>>) || []).map(
-              (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
-            ),
-          )}`,
+        // Mutación pura del doc (stamp + re-base anclado) — vive en planosTabCalibracion.
+        stampCalibracion(
+          {
+            ...config,
+            scaleM: config.scaleM ?? 0,
+            factorX: config.factorX ?? 0,
+            factorY: config.factorY ?? 0,
+            definedScale: config.definedScale ?? 0,
+          },
+          doc,
         );
-        if (config.scaleM) {
-          if (escalaPrev && Math.abs(escalaPrev - config.scaleM) > 1e-9) {
-            try {
-              // Re-base anclado al origen de la propia lámina (px−origen constante =
-              // posición física preservada; ver rebasarEscalaTrazos).
-              rebasarEscalaTrazos(doc as unknown as PlanoWorkData, config.scaleM, config.origen);
-            } catch (e) {
-              devError('rebase en guardado de calibración:', e);
-              doc.scaleM = config.scaleM;
-            }
-          } else {
-            doc.scaleM = config.scaleM;
-          }
-        }
-        doc.factorX = config.factorX;
-        doc.factorY = config.factorY;
-        doc.definedScale = config.definedScale;
-        // Doc nuevo: con ts, si no el árbitro de carga lo trataba como localTs=0 y cualquier
-        // fila BD lo pisaba.
-        if (!doc.ts) doc.ts = Date.now();
         saveToStorage(trazosKey, doc);
         saveTrazosToDB(String(config.planId), doc).catch((e) => {
           devError('saveTrazosToDB error:', e);
@@ -310,6 +240,9 @@ function PlanosTab({ state }: PlanosTabProps) {
           })
           .catch((e) => devError('Error syncing calibration to Supabase:', e));
       }
+      // Origen cambió: trasladar anillos/LDs/ghosts de las asociaciones que cruzan este plan
+      // (traslación pura por Δ; no-op en la primera calibración).
+      sanearAsociacionesTrasRecalibrar(config.planId, prevOrigen);
     } catch (e) {
       devError('Error syncing calibration to Supabase:', e);
     }
