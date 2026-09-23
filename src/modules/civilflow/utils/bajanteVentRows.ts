@@ -236,7 +236,10 @@ export function computeBajanteVentTable(
       }
     }
 
-    const ramalesIds = t.recibeDeIds || [];
+    const ramalesIds = (t.recibeDeIds || []).filter(
+      // Solo ramales del MISMO piso del bajante: el id debe existir en el doc de ese piso.
+      (rid) => !!storageByPlan[planIdStr]?.ramales?.some((r) => r.id === rid),
+    );
     const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
 
     let totalUD = getBajanteTotalUD(t._key || `${t.id}-${planIdStr}`);

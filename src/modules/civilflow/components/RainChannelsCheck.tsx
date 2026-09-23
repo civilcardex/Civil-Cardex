@@ -1,9 +1,10 @@
 import React from 'react';
+import EditButton from './shared/EditButton';
 import { renderStatus } from '../utils/componentHelpers';
+import { pisoCorto } from '../constants';
 import { useRainwater } from '../context/RainwaterContext';
 import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../utils/calcRainwater';
 import { trunc2 } from '../utils/formatUtils';
-import EditButton from './shared/EditButton';
 
 const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente' | 'longitud' | 'areaOtras', string> = {
   b: 'Base (cm)',
@@ -18,11 +19,14 @@ const CanalDimField = React.memo(function CanalDimField({
   field,
   value,
   onChange,
+  disabled = false,
 }: {
   id: string;
   field: 'b' | 'h' | 'pendiente' | 'longitud' | 'areaOtras';
   value: number;
   onChange: (id: string, field: string, val: number) => void;
+  /** Edición gated por el botón EDITAR de la tabla. */
+  disabled?: boolean;
 }) {
   const [text, setText] = React.useState('');
   const [editing, setEditing] = React.useState(false);
@@ -44,6 +48,7 @@ const CanalDimField = React.memo(function CanalDimField({
       value={display}
       placeholder="0"
       aria-label={CANAL_FIELD_LABELS[field]}
+      disabled={disabled}
       onFocus={() => {
         setEditing(true);
         // Otras en 0 arranca VACÍA al enfocar (orig. usuario: no había que "quitar el 0").
@@ -66,6 +71,7 @@ const CanalDimField = React.memo(function CanalDimField({
       style={{
         textAlign: 'center',
         fontSize: 10.5,
+        opacity: disabled ? 0.6 : 1,
         padding: '2px 4px',
         width: 42,
         fontFamily: 'var(--mono)',
@@ -79,8 +85,8 @@ const CanalDimField = React.memo(function CanalDimField({
 });
 
 export default function ChequeoCanalesLluvias() {
-  const { canalesLl, updCanalLL, conRecolectora } = useRainwater();
   const [edit, setEdit] = React.useState(false);
+  const { canalesLl, updCanalLL, conRecolectora } = useRainwater();
 
   return (
     <section className="card">
@@ -99,8 +105,8 @@ export default function ChequeoCanalesLluvias() {
           />{' '}
           Chequeo capacidad canal recolectora cubierta aguas lluvias
         </h3>
-        <EditButton edit={edit} setEdit={setEdit} />
       </div>
+      <EditButton edit={edit} setEdit={setEdit} />
       {!conRecolectora ? (
         <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 12 }}>
           Activa el canal recolectora para ver este chequeo.
@@ -126,6 +132,14 @@ export default function ChequeoCanalesLluvias() {
                     style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
                   >
                     Canal
+                  </th>
+                  <th
+                    scope="col"
+                    className="col-h ll"
+                    rowSpan={2}
+                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
+                  >
+                    Nivel
                   </th>
                   <th
                     scope="col"
@@ -275,7 +289,7 @@ export default function ChequeoCanalesLluvias() {
                 {canalesLl.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={16}
+                      colSpan={17}
                       style={{
                         padding: '24px 0',
                         textAlign: 'center',
@@ -283,7 +297,8 @@ export default function ChequeoCanalesLluvias() {
                         fontSize: 10.5,
                       }}
                     >
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                      No hay canales. Dibuja canales recolectores en el visor para que aparezcan
+                      aquí.
                     </td>
                   </tr>
                 ) : (
@@ -298,6 +313,11 @@ export default function ChequeoCanalesLluvias() {
                         </td>
                         <td className="c">
                           <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                            {c.piso != null ? pisoCorto(c.piso) : '—'}
+                          </span>
+                        </td>
+                        <td className="c">
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
                             {c.areaParcial ? Number(c.areaParcial).toFixed(2) : '—'}
                           </span>
                         </td>
@@ -308,6 +328,7 @@ export default function ChequeoCanalesLluvias() {
                             field="areaOtras"
                             value={c.areaOtras ?? 0}
                             onChange={updCanalLL}
+                            disabled={!edit}
                           />
                         </td>
                         <td className="c">
@@ -355,7 +376,13 @@ export default function ChequeoCanalesLluvias() {
                               {c.b || '—'}
                             </span>
                           ) : (
-                            <CanalDimField id={c.id} field="b" value={c.b} onChange={updCanalLL} />
+                            <CanalDimField
+                              id={c.id}
+                              field="b"
+                              value={c.b}
+                              onChange={updCanalLL}
+                              disabled={!edit}
+                            />
                           )}
                         </td>
                         <td className="c">
@@ -367,7 +394,13 @@ export default function ChequeoCanalesLluvias() {
                               {c.h || '—'}
                             </span>
                           ) : (
-                            <CanalDimField id={c.id} field="h" value={c.h} onChange={updCanalLL} />
+                            <CanalDimField
+                              id={c.id}
+                              field="h"
+                              value={c.h}
+                              onChange={updCanalLL}
+                              disabled={!edit}
+                            />
                           )}
                         </td>
                         <td className="c">
@@ -384,6 +417,7 @@ export default function ChequeoCanalesLluvias() {
                               field="longitud"
                               value={c.longitud ?? 0}
                               onChange={updCanalLL}
+                              disabled={!edit}
                             />
                           )}
                         </td>

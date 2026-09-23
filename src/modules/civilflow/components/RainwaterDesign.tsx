@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import ChipList from './shared/ChipList';
 import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
@@ -105,6 +106,17 @@ export default function DisenoLluvias() {
     }
   }, [displayTramos, qMap, updTramoLL]);
 
+  // Piso de cada bajante (por code/id) para etiquetar los chips "Bajantes asociados" (BAN1-P1).
+  const pisoByBajCode = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of tramosLl) {
+      if (!t.esBajante) continue;
+      if (t.code) m[t.code] = t.piso;
+      m[t.id] = t.piso;
+    }
+    return m;
+  }, [tramosLl]);
+
   const llRows = useMemo(
     () => computeLlRows(displayTramos, qMap, bajanteAssociations),
     [displayTramos, qMap, bajanteAssociations],
@@ -150,7 +162,7 @@ export default function DisenoLluvias() {
                   <th scope="col" className="col-h ll" rowSpan={2} style={TH_HDR}>
                     Bajantes
                     <br />
-                    asociadas
+                    asociados
                   </th>
                   <th scope="col" className="col-h ll" rowSpan={2} style={TH_HDR}>
                     Caudal
@@ -342,37 +354,10 @@ export default function DisenoLluvias() {
                           style={{ padding: '2px 3px', minWidth: 60, maxWidth: 120 }}
                         >
                           {(() => {
-                            const associatedBajantes = bajantesAsociadas;
-                            return associatedBajantes.length === 0 ? (
-                              <span style={{ fontSize: 11, color: 'var(--txt3)' }}>—</span>
-                            ) : (
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  gap: 2,
-                                  justifyContent: 'center',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                {associatedBajantes.map((bajName: string) => (
-                                  <span
-                                    key={bajName}
-                                    style={{
-                                      fontSize: 11,
-                                      padding: '2px 3px',
-                                      border: '1px solid var(--ll)',
-                                      borderRadius: 3,
-                                      color: 'var(--ll)',
-                                      fontFamily: 'var(--mono)',
-                                      lineHeight: 1.3,
-                                    }}
-                                  >
-                                    {bajName}
-                                  </span>
-                                ))}
-                              </div>
+                            const associatedBajantes = bajantesAsociadas.map((c) =>
+                              pisoByBajCode[c] != null ? `${c}-${pisoCorto(pisoByBajCode[c])}` : c,
                             );
+                            return <ChipList items={associatedBajantes} />;
                           })()}
                         </td>
                         <td

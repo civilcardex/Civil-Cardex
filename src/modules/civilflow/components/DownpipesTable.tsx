@@ -9,7 +9,7 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
-import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
+import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
@@ -585,8 +585,18 @@ const BajantesTable = memo(function BajantesTable_() {
                     }
                   }
 
-                  const ramalesIds = t.recibeDeIds || [];
-                  const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
+                  const ramalesIds = (t.recibeDeIds || []).filter(
+                    // Solo ramales del MISMO piso del bajante (orig. usuario): el id debe
+                    // existir entre los tramos san de ese piso.
+                    (rid) =>
+                      !!tramosSan.find(
+                        (x) => x.id === rid && String(x.planId ?? '') === String(t.planId ?? ''),
+                      ),
+                  );
+                  const ramalesAsocVal =
+                    ramalesIds.length > 0
+                      ? ramalesIds.map((rid) => `${rid}-${pisoCorto(t.piso)}`).join(', ')
+                      : '—';
 
                   let totalUD = getBajanteTotalUD(t._key || `${t.id}-${planIdStr}`);
                   let ramalesUD = totalUD - propiasUD;

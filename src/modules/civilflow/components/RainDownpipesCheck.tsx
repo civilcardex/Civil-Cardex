@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext';
 import { useTramos } from '../context/TramosContext';
+import EditButton from './shared/EditButton';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
+import { buildLlBajanteAssociations } from '../utils/rainwaterRows';
+import ChipList from './shared/ChipList';
 import { usePlans } from '../context/PlansContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater';
 import { renderStatus } from '../utils/componentHelpers';
-import { DIAM_BAN } from '../constants';
+import { DIAM_BAN, pisoCorto } from '../constants';
 import { trunc2 } from '../utils/formatUtils';
-import EditButton from './shared/EditButton';
 import React from 'react';
 import { parseDecimalInput } from '../utils/parseDecimal';
 import type { DrawingData } from '../utils/drawingSync';
@@ -30,6 +32,9 @@ interface Row {
   /** Bajante del dibujo (fila d_): escritura bidireccional de Llenado al trazado. */
   drawId?: string;
   drawPlanId?: string;
+  nivel: string;
+  asociadosSup: string[];
+  ramalesAsoc: string[];
 }
 const RainDownpipesCheck_S1: React.CSSProperties = {
   width: 56,
@@ -51,11 +56,14 @@ const OtrasField = React.memo(function OtrasField({
   bajante,
   value,
   onCommit,
+  disabled = false,
 }: {
   rowKey: string;
   bajante: string;
   value: number;
   onCommit: (bajante: string, v: number) => void;
+  /** Edición gated por el botón EDITAR de la tabla. */
+  disabled?: boolean;
 }) {
   const [text, setText] = React.useState('');
   const [editing, setEditing] = React.useState(false);
@@ -67,6 +75,7 @@ const OtrasField = React.memo(function OtrasField({
       value={display}
       aria-label="Área otras"
       key={rowKey + '_otras'}
+      disabled={disabled}
       onFocus={() => {
         setEditing(true);
         // Al enfocar un 0 el campo arranca vacío: no hay que "quitar el 0" a mano.
@@ -83,14 +92,14 @@ const OtrasField = React.memo(function OtrasField({
         const v = parseFloat(text) || 0;
         if (bajante) onCommit(bajante, v);
       }}
-      style={RainDownpipesCheck_S1}
+      style={{ ...RainDownpipesCheck_S1, opacity: disabled ? 0.6 : 1 }}
     />
   );
 });
 
 export default function ChequeoBajantesLluvias() {
-  const { bajantesLl, updBajanteLL } = useRainwater();
   const [edit, setEdit] = React.useState(false);
+  const { bajantesLl, updBajanteLL } = useRainwater();
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
 
@@ -125,6 +134,60 @@ export default function ChequeoBajantesLluvias() {
   // (areaAcumMap del total dibujado del piso retirado — orig. usuario: TOTAL = Parcial + Otras,
   // sin fallback al total del piso; el área que no sea la del dibujo se escribe en Otras.)
 
+  // Bajantes del piso superior que descargan en cada bajante: el bajante superior deja
+  // descargaEnId = "planId|id" apuntando al inferior (asociación entre pisos) — un escaneo de
+  // todos los pisos construye el mapa inverso.
+  const uppersByBajante = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const plan of plans || []) {
+      if (plan.nivel == null) continue;
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
+      if (!raw) continue;
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+      }
+      const suf = pisoCorto(plan.nivel);
+      for (const b of data.bajantes || []) {
+        if (b.net !== 'll' || !b.descargaEnId) continue;
+        if (!map[b.descargaEnId]) map[b.descargaEnId] = [];
+        const code = `${b.code || b.id}-${suf}`;
+        if (!map[b.descargaEnId].includes(code)) map[b.descargaEnId].push(code);
+      }
+    }
+    return map;
+  }, [plans]);
+
+  // Ramales asociados a cada bajante: misma BFS que Diseño de red lluvias, invertida
+  // (clave de bajante → ids de ramales que le drenan).
+  const bajanteAssociations = useMemo(
+    () => buildLlBajanteAssociations(tramosLl, plans),
+    [tramosLl, plans],
+  );
+  const ramalesByBajante = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
+      const [ramalId, planId] = ramalKey.split('-');
+      // Piso del ramal (de su plano) → etiqueta "RS1-P1" en el chip.
+      const nivel = plans?.find((pl) => String(pl.id) === planId)?.nivel;
+      const label = nivel != null ? `${ramalId}-${pisoCorto(nivel)}` : ramalId;
+      for (const code of codes) {
+        const t = tramosLl.find((x) => x.esBajante && (x.code === code || x.id === code));
+        const k = t?._key;
+        if (!k) continue;
+        // Solo ramales del MISMO piso del bajante (orig. usuario).
+        if (String(t.planId ?? '') !== planId) continue;
+        if (!map[k]) map[k] = [];
+        if (!map[k].includes(label)) map[k].push(label);
+      }
+    }
+    return map;
+  }, [bajanteAssociations, tramosLl, plans]);
+
   const rows = useMemo(() => {
     const manualMap = new Map<string, BajanteLL>();
     for (const m of bajantesLl) {
@@ -151,6 +214,9 @@ export default function ChequeoBajantesLluvias() {
         bajante: code,
         drawId: d.id,
         drawPlanId: String(d.planId ?? ''),
+        nivel: pisoCorto(d.piso),
+        asociadosSup: uppersByBajante[`${d.planId}|${d.id}`] ?? [],
+        ramalesAsoc: ramalesByBajante[`${d.id}-${d.planId}`] ?? [],
         areaParcial,
         areaOtras,
         areaAcum,
@@ -173,6 +239,9 @@ export default function ChequeoBajantesLluvias() {
       out.push({
         key: 'm_' + m.id,
         bajante: m.bajante || m.id,
+        nivel: '—',
+        asociadosSup: [],
+        ramalesAsoc: [],
         areaParcial,
         areaOtras,
         areaAcum,
@@ -185,7 +254,7 @@ export default function ChequeoBajantesLluvias() {
     }
 
     return out;
-  }, [drawingBajantes, bajantesLl, areaDibujoMap]);
+  }, [drawingBajantes, bajantesLl, areaDibujoMap, uppersByBajante, ramalesByBajante]);
 
   return (
     <section className="card">
@@ -225,6 +294,50 @@ export default function ChequeoBajantesLluvias() {
                 }}
               >
                 Bajante
+              </th>
+              <th
+                scope="col"
+                className="col-h ll"
+                rowSpan={2}
+                style={{
+                  fontSize: 11,
+                  textAlign: 'center',
+                  padding: '1px 1px',
+                  whiteSpace: 'normal',
+                  overflow: 'hidden',
+                }}
+              >
+                Nivel
+              </th>
+              <th
+                scope="col"
+                className="col-h ll"
+                rowSpan={2}
+                style={{
+                  fontSize: 11,
+                  textAlign: 'center',
+                  padding: '1px 1px',
+                  whiteSpace: 'normal',
+                  overflow: 'hidden',
+                }}
+              >
+                Bajantes
+                <br />
+                asociados
+              </th>
+              <th
+                scope="col"
+                className="col-h ll"
+                rowSpan={2}
+                style={{
+                  fontSize: 11,
+                  textAlign: 'center',
+                  padding: '1px 1px',
+                  whiteSpace: 'normal',
+                  overflow: 'hidden',
+                }}
+              >
+                Ramales asociados
               </th>
               <th
                 scope="col"
@@ -421,7 +534,7 @@ export default function ChequeoBajantesLluvias() {
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={12}
+                  colSpan={15}
                   style={{
                     padding: '24px 0',
                     textAlign: 'center',
@@ -452,6 +565,15 @@ export default function ChequeoBajantesLluvias() {
                       </span>
                     </td>
                     <td className="c">
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{row.nivel}</span>
+                    </td>
+                    <td className="c">
+                      <ChipList items={row.asociadosSup} />
+                    </td>
+                    <td className="c">
+                      <ChipList items={row.ramalesAsoc} />
+                    </td>
+                    <td className="c">
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.areaParcial > 0 ? trunc2(row.areaParcial) : '—'}
                       </span>
@@ -463,6 +585,7 @@ export default function ChequeoBajantesLluvias() {
                         bajante={row.bajante}
                         value={row.areaOtras ?? 0}
                         onCommit={(baj, v) => updBajanteLL(baj, 'areaOtras', v)}
+                        disabled={!edit}
                       />
                     </td>
                     <td className="c">

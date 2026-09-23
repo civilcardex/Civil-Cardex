@@ -28,11 +28,11 @@ export interface BajanteLl {
   coeficienteC?: number;
 }
 
-// Ramal ll que pertenece a un canal recolector (los que llegan al canal quedan marcados con
-// esCanalId por finishRamal; fallback geométrico: extremo dentro del rectángulo del canal, que
-// crece desde (x,y) según longitud/base en cm a la escala del doc): es conexión del canal, no
-// colector de diseño — fuera de la tabla Diseño de red aguas lluvias. Claves `${id}-${planId}`
-// (mismo formato _key de los tramos).
+// Ramal ll que DESCARGA en un canal recolector (su ÚLTIMO punto cae dentro del rectángulo del
+// canal, que crece desde (x,y) según longitud/base en cm a la escala del doc): es descarga al
+// canal, no colector de diseño — fuera de la tabla Diseño de red aguas lluvias. Los que SALEN
+// del canal (primer punto en el rect, o esCanalId de finishRamal) SÍ son colectores y se
+// quedan. Claves `${id}-${planId}` (mismo formato _key de los tramos).
 export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
   const keys = new Set<string>();
   for (const plan of plans || []) {
@@ -56,28 +56,21 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
     const pxPerCm = (Number(data.scaleM ?? 0.5) * 96) / 2.54;
 
     for (const r of (data.ramales || []) as Array<RawElement & { esCanalId?: string | null }>) {
-      if (r.net !== 'll') continue;
-      if (r.esCanalId) {
-        keys.add(`${r.id}-${plan.id}`);
-        continue;
-      }
-      if (!r.pts || r.pts.length < 2) continue;
-      const pS = r.pts[0];
+      if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
       const pE = r.pts[r.pts.length - 1];
-      const enRect = (pt: number[]): boolean =>
-        canales.some((c) => {
-          if (c.x == null || c.y == null) return false;
-          const w = (c.longitud ?? 0) * pxPerCm;
-          const h = (c.base ?? 0) * pxPerCm;
-          const pad = 4;
-          return (
-            pt[0] >= c.x - pad &&
-            pt[0] <= c.x + w + pad &&
-            pt[1] >= c.y - pad &&
-            pt[1] <= c.y + h + pad
-          );
-        });
-      if (enRect(pS) || enRect(pE)) keys.add(`${r.id}-${plan.id}`);
+      const enRect = canales.some((c) => {
+        if (c.x == null || c.y == null) return false;
+        const w = (c.longitud ?? 0) * pxPerCm;
+        const h = (c.base ?? 0) * pxPerCm;
+        const pad = 4;
+        return (
+          pE[0] >= c.x - pad &&
+          pE[0] <= c.x + w + pad &&
+          pE[1] >= c.y - pad &&
+          pE[1] <= c.y + h + pad
+        );
+      });
+      if (enRect) keys.add(`${r.id}-${plan.id}`);
     }
   }
   return keys;

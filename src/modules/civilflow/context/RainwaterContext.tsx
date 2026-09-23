@@ -7,7 +7,6 @@ import {
   useContext,
   type ReactNode,
 } from 'react';
-import { useTramos } from './TramosContext';
 import { usePlans } from './PlansContext';
 import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService';
@@ -50,6 +49,8 @@ export interface CanalLL {
   h: number;
   /** Largo horizontal del canal (cm), solo para glifos dibujados (fromCanal). */
   longitud?: number;
+  /** plan.nivel del piso del canal — solo glifos dibujados (para la columna Nivel). */
+  piso?: number;
   /** Es true cuando b/h provienen de un glifo de canal dibujado (tipo:'canal' en la red 'll') — en
    * ese caso la tabla debe mostrar esos dos campos como solo lectura, porque el dibujo es la
    * fuente de verdad de ambos (ver canalesLlAuto abajo). */
@@ -72,7 +73,6 @@ const RainwaterContext = createContext<RainwaterContextValue | null>(null);
 
 /** Provee los cálculos de drenaje pluvial: bajantes LL, canales LL, toggle de recolectora. Se auto-puebla desde los datos del dibujo. */
 export function RainwaterProvider({ children }: { children?: ReactNode }) {
-  const { tramosLl } = useTramos();
   const { plans } = usePlans();
 
   const [bajantesLl, setBajantesLl] = useState<BajanteLL[]>([]);
@@ -187,43 +187,15 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     return { areaAcumMap: map, drawnCanalGlyphs: glyphs };
   }, [plans]);
 
-  const drawingCanales = useMemo(() => tramosLl.filter((t) => !t.esBajante), [tramosLl]);
-
   const canalesLlAuto = useMemo(() => {
     const manualMap = new Map<string, CanalLL>();
     for (const c of canalesLl) manualMap.set(c.sector || c.id, c);
     const usedManual = new Set<string>();
     const out: CanalLL[] = [];
 
-    for (const d of drawingCanales) {
-      const sector = d.label || d.id;
-      const manual = manualMap.get(sector);
-      if (manual) usedManual.add(manual.sector || manual.id);
-      // Área acumulada del PROPIO canal (orig. usuario: el Caudal real se calcula con la
-      // columna "Área acumulada") — override manual primero; el total dibujado del piso es
-      // solo el fallback cuando el canal no tiene valor propio.
-      const areaAcum = manual?.areaAcumulada || areaAcumMap[String(d.piso)] || 0;
-      // Área TOTAL (orig. usuario) = Parcial + Otras — materializada en areaAcumulada, que es
-      // lo que consume chequeoCanalLluvia para el caudal real.
-      const areaOtras = manual?.areaOtras ?? 0;
-      const areaParcial = manual?.areaParcial || areaAcum;
-      out.push({
-        id: 'c_' + (d._key || d.id),
-        sector,
-        areaParcial,
-        areaOtras,
-        areaAcumulada: areaParcial + areaOtras,
-        intensidad: manual?.intensidad ?? 100,
-        coeficienteC: manual?.coeficienteC ?? 0.0278,
-        manning: manual?.manning ?? 0.011,
-        pendiente: manual?.pendiente ?? 0,
-        b: manual?.b ?? 0,
-        h: manual?.h ?? 0,
-      });
-    }
-
     for (const glyph of drawnCanalGlyphs) {
-      const sector = glyph.code || glyph.id;
+      // Solo el nombre base ("CNL1" de "CNL1-P1") — el piso va en su propia columna.
+      const sector = (glyph.code || glyph.id).split('-')[0];
       const manual = manualMap.get(sector);
       if (manual) usedManual.add(manual.sector || manual.id);
       // Mismo criterio que ramales-canal arriba: valor propio del canal primero, total del
@@ -248,6 +220,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         b: (glyph.base as number) || 0,
         h: (glyph.altura as number) || 0,
         longitud: (glyph.longitud as number) || 0,
+        piso: Number(glyph.piso),
         fromCanal: true,
       });
     }
@@ -262,7 +235,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     for (const c of out) c.pendiente = 2;
 
     return out;
-  }, [drawingCanales, drawnCanalGlyphs, canalesLl, areaAcumMap]);
+  }, [drawnCanalGlyphs, canalesLl, areaAcumMap]);
 
   const addBajanteLL = () =>
     setBajantesLl((p) => [
