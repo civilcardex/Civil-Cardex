@@ -405,8 +405,10 @@ No se pudo hacer una pasada de regresiÃ³n manual completa en navegador sobre e
 ### Ronda 6 — Tipados + Ponytail + Semántica (2026-08-21)
 - Tipados: storageService.ts 8 ny → SupabaseRow + helper g<T>(row,k,fb) (ponytail, 1 helper para 7 mappers, + data as {plano, ramales...}). 	sc --noEmit 0; s unknown as baratos reducidos donde String(pl.id) basta (190→~180, resto interop conservado).
 - Ponytail: borrados AlimentacionCard.tsx (140L muerta, no importada por InfoTab) + src/assets/{typescript.svg,vite.svg,hero.png} (23KB scaffold) + repro tests ya fuera (1112L). Dedup 6 inputs lazy (LazyDecimalInput/LazyNumInput/CanalDim*) documentado como follow-up — props divergentes, riesgo sin tests UI.
-- Semántica HTML: audit 181 <button> sin 	ype= (deferido por riesgo duplicado, documentado), 10 ole= en no-nativos (legítimos dialog/status), 4 onClick en div (backdrops), headings 120 sanos. No se toca canvas.
-- Buenas prácticas: 54 eslint-disable auditados — 8 ny ya fuera, resto interop justificado; eact-hooks/refs|immutability off en clúster intacto.
+- Semántica HTML: audit 181 <button> sin 	ype= (deferido por riesgo duplicado, documentado), 10 
+ole= en no-nativos (legítimos dialog/status), 4 onClick en div (backdrops), headings 120 sanos. No se toca canvas.
+- Buenas prácticas: 54 eslint-disable auditados — 8 ny ya fuera, resto interop justificado; 
+eact-hooks/refs|immutability off en clúster intacto.
 - Gates: tsc 0, lint 0 err (12 warn), build ✓, vitest 45 files 266 passed.
 
 
@@ -1699,3 +1701,20 @@ Visores 3D: giro/pan/rueda, DERECHO inerte (antes paneaba), central sin autoscro
 - `PlanoNetworkModel` se MANTIENE (piloto strangler-fig de la sesión paralela con accessor ya cableado — removerlo rompe diseño en vuelo; se re-evalúa si la migración muere).
 - Inputs perezosos (3 copias): siguen deferidos por decisión documentada (props divergentes, sin tests UI).
 - Gates: tsc 0 · lint 0/0 · vitest 820/820 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 8: ramales canal↔bajante fuera de diseño ll + Llenado editable bidireccional)
+
+1. **Ramales canal↔bajante fuera de Diseño de red aguas lluvias**: `computeCanalBajanteRamalKeys(plans)` (rainwaterRows.ts) detecta ramales ll que conectan un canal recolector (tipo 'canal') con un bajante (extremos a ≤2 unid, o legado recibeDeIds/descargaEnId del canal) — claves `${id}-${planId}`. RainwaterDesign filtra esas claves de displayTramos (las asociaciones/Q no cambian).
+2. **Columna Llenado (R) editable + bidireccional** en las dos tablas interactivas (bajR: 7/24 default, 1/4): RainDownpipesCheck (filas d_ escriben `writeBajantePropToDrawing(id-planId,'ll','bajR',…)` + updTramoLL + updBajanteLL del contexto; filas m_ solo contexto) y DownpipesTable (BAN san: writeBajantePropToDrawing + updTramoSan, respetando edit mode). Del dibujo → tablas ya existía (celdas leen bajR). Memoria/exports derivan solos.
+- Gates: tsc 0 · lint 0 · vitest 820/820 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 9: D propuesto editable en chequeo bajantes ll)
+
+- RainDownpipesCheck: columna "D propuesto (\")" ahora select con DIAM_BAN (1-1/2"–6", opciones del dibujo), en modo edición. Bidireccional: `writeBajantePropToDrawing(id-planId,'ll','dNominal',nom,…)` + `updTramoLL(key,'diamDisPulg',pulg)` — el chequeo (Dcalc vs Dprop) recalcula al instante desde tramosLl. Del dibujo→tabla ya existía (fila lee d.diamDisPulg).
+- Gates: tsc 0 · lint 0 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 10: fix filtro canal + D propuesto mostraba vacío)
+
+- **Filtro canal↔bajante v2**: la detección por distancia al CENTRO del canal fallaba (el canal es un RECTÁNGULO base×longitud). Ahora: (1) marcador canónico `r.esCanalId` que finishRamal estampa al llegar al canal, (2) fallback: extremo dentro del rectángulo del canal (x,y + longitud/base cm → px vía scaleM del doc, pad 4). Test `canalBajanteRamales.test.ts` (2).
+- **D propuesto (ll) select vacío**: value era el pulg numérico contra options con `nom` ('2"') → nunca coincidía. value = `DIAM_BAN.find(d => d.pulg === row.diamPropuesto)?.nom ?? ''`.
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
