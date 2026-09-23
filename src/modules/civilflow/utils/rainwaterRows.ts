@@ -28,6 +28,61 @@ export interface BajanteLl {
   coeficienteC?: number;
 }
 
+// Ramal ll que pertenece a un canal recolector (los que llegan al canal quedan marcados con
+// esCanalId por finishRamal; fallback geométrico: extremo dentro del rectángulo del canal, que
+// crece desde (x,y) según longitud/base en cm a la escala del doc): es conexión del canal, no
+// colector de diseño — fuera de la tabla Diseño de red aguas lluvias. Claves `${id}-${planId}`
+// (mismo formato _key de los tramos).
+export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const plan of plans || []) {
+    if (plan.nivel == null) continue;
+    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
+    if (!raw) continue;
+    let data: DrawingData = raw as DrawingData;
+    if (typeof raw === 'string') {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+    }
+    const canales = (data.bajantes || []).filter(
+      (b): b is BajanteRaw & { base?: number; longitud?: number } =>
+        b.net === 'll' && b.tipo === 'canal',
+    );
+    if (canales.length === 0) continue;
+    // px de plano por cm, según la escala del propio documento.
+    const pxPerCm = (Number(data.scaleM ?? 0.5) * 96) / 2.54;
+
+    for (const r of (data.ramales || []) as Array<RawElement & { esCanalId?: string | null }>) {
+      if (r.net !== 'll') continue;
+      if (r.esCanalId) {
+        keys.add(`${r.id}-${plan.id}`);
+        continue;
+      }
+      if (!r.pts || r.pts.length < 2) continue;
+      const pS = r.pts[0];
+      const pE = r.pts[r.pts.length - 1];
+      const enRect = (pt: number[]): boolean =>
+        canales.some((c) => {
+          if (c.x == null || c.y == null) return false;
+          const w = (c.longitud ?? 0) * pxPerCm;
+          const h = (c.base ?? 0) * pxPerCm;
+          const pad = 4;
+          return (
+            pt[0] >= c.x - pad &&
+            pt[0] <= c.x + w + pad &&
+            pt[1] >= c.y - pad &&
+            pt[1] <= c.y + h + pad
+          );
+        });
+      if (enRect(pS) || enRect(pE)) keys.add(`${r.id}-${plan.id}`);
+    }
+  }
+  return keys;
+}
+
 // Qué códigos de bajante alimentan cada ramal — la misma BFS de proximidad geométrica usada por
 // la tabla DisenoLluvias, compartida con la exportación de memoria para que ambas reporten las
 // mismas asociaciones.

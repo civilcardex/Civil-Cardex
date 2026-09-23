@@ -9,6 +9,7 @@ import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { useRainwater } from '../context/RainwaterContext';
 import {
   buildLlBajanteAssociations,
+  computeCanalBajanteRamalKeys,
   computeLlQMap,
   computeLlRows,
   getTributarioIds,
@@ -66,8 +67,16 @@ export default function DisenoLluvias() {
   );
 
   const tribIds = getTributarioIds(tramosLl);
+  // Ramales canal↔bajante: conexión física del bajante al canal recolector, no colector de
+  // diseño — fuera de la tabla (orig. usuario).
+  const canalBajKeys = useMemo(() => computeCanalBajanteRamalKeys(plans), [plans]);
   const displayTramos = tramosLl.filter(
-    (t) => t._key != null && !t.esBajante && !tribIds.has(t._key) && !tribIds.has(t.id),
+    (t) =>
+      t._key != null &&
+      !t.esBajante &&
+      !tribIds.has(t._key) &&
+      !tribIds.has(t.id) &&
+      !canalBajKeys.has(t._key),
   );
 
   // Persiste el punto de control hidráulico (velocidad + relación de llenado) en cada Tramo
