@@ -1718,3 +1718,65 @@ Visores 3D: giro/pan/rueda, DERECHO inerte (antes paneaba), central sin autoscro
 - **Filtro canal↔bajante v2**: la detección por distancia al CENTRO del canal fallaba (el canal es un RECTÁNGULO base×longitud). Ahora: (1) marcador canónico `r.esCanalId` que finishRamal estampa al llegar al canal, (2) fallback: extremo dentro del rectángulo del canal (x,y + longitud/base cm → px vía scaleM del doc, pad 4). Test `canalBajanteRamales.test.ts` (2).
 - **D propuesto (ll) select vacío**: value era el pulg numérico contra options con `nom` ('2"') → nunca coincidía. value = `DIAM_BAN.find(d => d.pulg === row.diamPropuesto)?.nom ?? ''`.
 - Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 11: columnas nuevas chequeo bajantes ll + canales sin ramales)
+
+1. **RainDownpipesCheck** (+2 columnas): "Nivel" (pisoLbl del piso del bajante; '—' en filas manuales) y "Bajantes asociados piso superior" (escaneo inverso de descargaEnId en TODOS los pisos: el bajante superior deja `descargaEnId = "planId|id"` apuntando al inferior → mapa inverso por plano; '—' en filas manuales). colSpan vacío 12→14.
+2. **Chequeo capacidad canal recolectora**: `canalesLlAuto` incluyó SIEMPRE todos los ramales ll (`drawingCanales = tramosLl.filter(!esBajante)`) — eliminado el loop: la tabla solo muestra glifos de canal (tipo 'canal') + entradas manuales. infTab (memoria) mapea canalesLl → hereda el fix. Texto vacío actualizado.
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 12: botón EDITAR restaurado y funcional)
+
+- Malentendido corregido: el botón EDITAR no se elimina — se restaura y queda FUNCIONAL en ambas tablas de chequeo. EDITAR habilita los campos; LISTO los congela (opacidad 0.6 + disabled).
+- RainDownpipesCheck: edit state + EditButton (en el wrapper marginLeft:auto del header) gating Llenado, D propuesto, Intensidad y Área Otras (OtrasField con prop disabled nueva).
+- RainChannelsCheck: edit state + EditButton gating CanalDimField (prop disabled nueva) en áreaOtras, b, h y longitud. Valores informativos (Q, borde libre, etc.) siguen de solo lectura.
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 13: ramales asociados + regla canal por DIRECCIÓN)
+
+- **Regla canal corregida (usuario)**: los ramales que SALEN del canal SÍ son de diseño. `computeCanalBajanteRamalKeys` ahora solo excluye ramales cuyo ÚLTIMO punto cae dentro del rectángulo del canal (llegada); salidas (esCanalId/primer punto en el rect) y colectores se quedan. Test actualizado a la regla por dirección.
+- **RainDownpipesCheck (+1 columna)**: "Ramales asociados" — misma BFS de buildLlBajanteAssociations que Diseño de red lluvias, invertida (clave bajante → ids de ramales). Estilo de celda = chips de la columna Bajantes asociados: nuevo componente compartido `shared/ChipList.tsx` (borde/color var(--ll), mono, wrap), usado también por RainwaterDesign (reemplaza el markup inline). "Bajantes asociados piso superior" pasó de texto a chips. colSpan vacío 14→15.
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 14: chips con piso)
+
+- Chips de "Bajantes asociados" (RainwaterDesign), "Bajantes asociados piso superior" y "Ramales asociados" (RainDownpipesCheck) y "Ramales asociados" (DownpipesTable) ahora etiquetan con piso: BAN1-P1, BALL2-P2, RS1-S1 (pisoCorto). Fuentes: scan de superiores usa el plan del bajante; ramales el planId de su clave; RainwaterDesign un mapa code/id→piso de tramosLl; DownpipesTable el piso propio de la fila.
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 15: título sin "piso superior" + ramales asociados mismo piso)
+
+- Columna renombrada: "Bajantes asociados piso superior" → "Bajantes asociados" (RainDownpipesCheck).
+- "Ramales asociados" SOLO ramales del mismo piso del bajante, en las 3 tablas: RainDownpipesCheck (planId de la clave vs planId del bajante), bajanteVentRows (el id debe existir en el doc del piso del bajante — storageByPlan), DownpipesTable (el id debe existir en tramosSan del mismo planId).
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 16: EDITAR en Bomba AR + verificación vs Excel)
+
+- **BombaARDesign**: botón EDITAR/LISTO (Card.headerRight) en las 3 páginas con inputs — gating cellInp/cellSel (disabled + opacidad), mismo patrón de las demás tablas.
+- **Verificación vs Excel "6. Bomba Aguas Residuales"**: la APP calcula BIEN; el EXCEL tiene 6 fórmulas con referencias cruzadas: D28 (Hf usa D pulg como L, P_desc como C y C como D → 0), D31 (H_est = L_imp+Hf en vez de Hz+P_desc), D32 (Hm duplica la fricción), D40 (P_eje ÷ f_srv en vez de ÷ η), D41 (×D24 inexistente → 0), F19 (25 vs 25.4 mm) y F21 (ref D22). Fórmulas correctas: D28 `=10.67*D18*(D16/1000)^1.852/(D20^1.852*(D19*0.0254)^4.87)`; D31 `=D17+D21`; D32 `=D30+D17+D21`; D40 `=D39/D22`; D41 `=D40*D23`; F19 `=D19*25.4`; F21 `=D21*1.42`. Valores corregidos con los datos de la hoja: Hf≈0.01, Hm≈4.52 m.c.a., Ph≈39.5 W, Peje≈60.7 W, Pcom≈75.9 W → 0.5 HP; Vcam 267 lts < Vgeo 432 lts O.K.
+- **Ajuste app**: V de impulsión ahora con Qb (el caudal bombeado — mismo de Hf; antes Qd). Nota: η se ingresa en % (65, no 0.65).
+- Gates: tsc 0 · lint 0 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 17: H est con P desc en Bomba AR)
+
+- calcsDe ignoraba pDesc: H est = Hz + P desc (presión mínima en descarga) y H m = H fri + H est. Observación de la fila actualizada ("Hz + P desc"). Sin P desc (vacío) queda Hz — compat.
+- Gates: tsc 0 · lint 0 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 18: V de impulsión con Qd)
+
+- Revertido: V de impulsión con Qd (caudal de diseño — metodología del Excel maestro D27, que tenía referencias correctas). Mi cambio previo a Qb fue el error.
+- Gates: tsc 0 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 19: 3 decimales en pérdidas de carga Bomba AR)
+
+- Página 2 (Cálculo de pérdidas de carga): Vi/Hf/Hac/Hfri/Hest/Hm se calculan y muestran a 3 decimales (Fmt3 nuevo). Hm alimenta potencias.
+- Gates: tsc 0 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 20: η tolerante a fracción/% en P eje)
+
+- calcsDe: η acepta fracción (0.65, convención del Excel maestro) o porcentaje (65) — ≤1 se trata como fracción. Antes solo %: entrar 0.65 multiplicaba P eje ×154. Fila P eje con equivalencia HP.
+- Gates: tsc 0 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 22: η SOLO del campo, sin default)
+
+- Corrección (usuario): η NO tiene default — se lee del campo "Eficiencia bomba η" (Datos de entrada). Revertidos los seeds '0.65' (INPUTS_DEFAULT/legacy/BD/memoria → ''). Campo vacío ⇒ P eje, P com, HP y Selección muestran '—' (nunca inventar η). Tolerante a fracción (0.65) o % (65).
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
