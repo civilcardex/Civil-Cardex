@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext';
 import { useTramos } from '../context/TramosContext';
+import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
 import { usePlans } from '../context/PlansContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater';
 import { renderStatus } from '../utils/componentHelpers';
+import { DIAM_BAN } from '../constants';
 import { trunc2 } from '../utils/formatUtils';
 import EditButton from './shared/EditButton';
 import React from 'react';
@@ -25,6 +27,9 @@ interface Row {
   R: string;
   manning: number;
   diamPropuesto: number;
+  /** Bajante del dibujo (fila d_): escritura bidireccional de Llenado al trazado. */
+  drawId?: string;
+  drawPlanId?: string;
 }
 const RainDownpipesCheck_S1: React.CSSProperties = {
   width: 56,
@@ -86,7 +91,7 @@ const OtrasField = React.memo(function OtrasField({
 export default function ChequeoBajantesLluvias() {
   const { bajantesLl, updBajanteLL } = useRainwater();
   const [edit, setEdit] = React.useState(false);
-  const { tramosLl } = useTramos();
+  const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
 
   const drawingBajantes = useMemo(() => {
@@ -144,6 +149,8 @@ export default function ChequeoBajantesLluvias() {
       out.push({
         key: 'd_' + d.id + '_' + d.piso,
         bajante: code,
+        drawId: d.id,
+        drawPlanId: String(d.planId ?? ''),
         areaParcial,
         areaOtras,
         areaAcum,
@@ -491,9 +498,36 @@ export default function ChequeoBajantesLluvias() {
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>0.0278</span>
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
-                        {row.R || '—'}
-                      </span>
+                      <select
+                        value={row.R || '7/24'}
+                        aria-label="Llenado (R)"
+                        disabled={!edit}
+                        onChange={(e) => {
+                          const label = e.target.value;
+                          const num = label === '1/4' ? 0.25 : 7 / 24;
+                          // Bidireccional: escribe el bajante del dibujo (engine vivo o storage)
+                          // y refleja en el tramo + entrada manual del contexto.
+                          if (row.drawId) {
+                            writeBajantePropToDrawing(
+                              `${row.drawId}-${row.drawPlanId}`,
+                              'll',
+                              'bajR',
+                              num,
+                              plans,
+                            );
+                            updTramoLL(`${row.drawId}-${row.drawPlanId}`, 'bajR', num);
+                          }
+                          updBajanteLL(row.bajante, 'R', label);
+                        }}
+                        style={{
+                          ...RainDownpipesCheck_S1,
+                          opacity: edit ? 1 : 0.6,
+                          cursor: edit ? 'pointer' : 'default',
+                        }}
+                      >
+                        <option value="7/24">7/24</option>
+                        <option value="1/4">1/4</option>
+                      </select>
                     </td>
                     <td
                       className="c"
@@ -513,9 +547,39 @@ export default function ChequeoBajantesLluvias() {
                       {diamCalc > 0 ? trunc2(diamCalc) : '—'}
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
-                        {row.diamPropuesto ? row.diamPropuesto + '"' : '—'}
-                      </span>
+                      <select
+                        value={DIAM_BAN.find((d) => d.pulg === row.diamPropuesto)?.nom ?? ''}
+                        aria-label="Diámetro propuesto"
+                        disabled={!edit}
+                        onChange={(e) => {
+                          const nom = e.target.value;
+                          const opt = DIAM_BAN.find((d) => d.nom === nom);
+                          // Bidireccional (orig. usuario): escribe el dNominal del bajante en el
+                          // dibujo (engine vivo o storage) y refleja el pulg en el tramo.
+                          if (row.drawId && opt) {
+                            writeBajantePropToDrawing(
+                              `${row.drawId}-${row.drawPlanId}`,
+                              'll',
+                              'dNominal',
+                              nom,
+                              plans,
+                            );
+                            updTramoLL(`${row.drawId}-${row.drawPlanId}`, 'diamDisPulg', opt.pulg);
+                          }
+                        }}
+                        style={{
+                          ...RainDownpipesCheck_S1,
+                          opacity: edit ? 1 : 0.6,
+                          cursor: edit ? 'pointer' : 'default',
+                        }}
+                      >
+                        <option value="">—</option>
+                        {DIAM_BAN.map((d) => (
+                          <option key={d.pulg} value={d.nom}>
+                            {d.nom}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="c" style={{ fontSize: 11 }}>
                       {renderStatus(chequeo)}

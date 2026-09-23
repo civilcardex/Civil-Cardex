@@ -808,11 +808,39 @@ const BajantesTable = memo(function BajantesTable_() {
                         {totalUD > 0 ? totalUD : '—'}
                       </td>
                       <td className="c" style={{ padding: '1px 1px' }}>
-                        <span
-                          style={{ fontSize: 9, fontFamily: 'var(--mono)', color: 'var(--txt2)' }}
+                        <select
+                          value={rStr || '7/24'}
+                          aria-label="Llenado (R)"
+                          disabled={!edit}
+                          onChange={(e) => {
+                            const num = e.target.value === '1/4' ? 0.25 : 7 / 24;
+                            // Bidireccional (orig. usuario): escribe el bajante en el dibujo
+                            // (engine vivo o storage) y refleja el valor en el tramo.
+                            const targetKey = t._key || `${t.id}-${planIdStr}`;
+                            writeBajantePropToDrawing(
+                              targetKey,
+                              t.net || 'san',
+                              'bajR',
+                              num,
+                              plans,
+                            );
+                            updTramoSan(targetKey, 'bajR', num);
+                          }}
+                          style={{
+                            fontSize: 9,
+                            padding: '1px 2px',
+                            background: 'var(--bg2)',
+                            border: '1px solid var(--line)',
+                            borderRadius: 2,
+                            color: 'var(--txt)',
+                            fontFamily: 'var(--mono)',
+                            maxWidth: 64,
+                            opacity: edit ? 1 : 0.6,
+                          }}
                         >
-                          {rStr || '—'}
-                        </span>
+                          <option value="7/24">7/24</option>
+                          <option value="1/4">1/4</option>
+                        </select>
                       </td>
                       <td
                         className="c"
