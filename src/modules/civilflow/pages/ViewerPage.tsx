@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore }
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../../../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
+import { RainwaterProvider } from '../context/RainwaterContext';
 import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
 import { usePageMeta } from '../../../hooks/usePageMeta';
@@ -496,17 +497,19 @@ export default function ViewerPage() {
           position: 'relative',
         }}
       >
-        <PdfViewer
-          files={files}
-          activeIndex={activeIndex}
-          onSelectPlan={handleSelectPlan}
-          onAddPlan={handleAddPlan}
-          onRemovePlan={handleRemovePlan}
-          planos={plans}
-          pisos={pisos}
-          activeNetworks={activeNetworks}
-          onReady={handlePdfReady}
-        />
+        <RainwaterProvider>
+          <PdfViewer
+            files={files}
+            activeIndex={activeIndex}
+            onSelectPlan={handleSelectPlan}
+            onAddPlan={handleAddPlan}
+            onRemovePlan={handleRemovePlan}
+            planos={plans}
+            pisos={pisos}
+            activeNetworks={activeNetworks}
+            onReady={handlePdfReady}
+          />
+        </RainwaterProvider>
         {isDrawingLoading && (
           <div
             style={{

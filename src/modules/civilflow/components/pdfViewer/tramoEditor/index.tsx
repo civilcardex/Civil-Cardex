@@ -169,23 +169,6 @@ function TramoEditorInner() {
       </div>
 
       {selElement && !isArea && isBajMont && <BajanteEditorSection />}
-      {/* CAJAS (orig. usuario): sin propiedades hidráulicas — info de solo lectura, sin los
-          campos de diámetro/material/pendiente que el fallback de ramal les renderizaba. */}
-      {selElement && (selElement.tipo === 'caja_san' || selElement.tipo === 'caja_ll') && (
-        <div
-          style={{
-            padding: '10px 12px',
-            fontSize: 12,
-            color: '#8AB4D6',
-            fontFamily: "'Geist',monospace",
-            lineHeight: 1.6,
-          }}
-        >
-          Caja de {selElement.tipo === 'caja_san' ? 'aguas negras' : 'aguas lluvias'} — elemento de
-          captura sin propiedades hidráulicas (diámetro, material y pendiente no aplican). Sus
-          unidades de descarga se gestionan desde el panel de aparatos.
-        </div>
-      )}
       {selElement &&
         !isArea &&
         !isBajMont &&

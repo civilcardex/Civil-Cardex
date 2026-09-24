@@ -1,67 +1,164 @@
-import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
+import { useContext } from 'react';
+import { PLANS_META_KEY, TRAZOS_PREFIX } from '../../../constants/storage-keys';
 import { loadFromStorage } from '../../../services/storageService';
+import { RainwaterContext } from '../../../context/RainwaterContext';
 import { buildLlBajanteAssociations } from '../../../utils/rainwaterRows';
 import { chequeoBajanteLluvia } from '../../../utils/calcRainwater';
 import type { DrawingData } from '../../../utils/drawingSync';
 
-/** Caudal (LPS) del ramal/bajante de aguas lluvias seleccionado — lee DIRECTO el doc de
- *  trazos del piso cargado (sin contexts, que en el visor pueden no estar sincronizados):
- *  bajante → Q de su área (I=100, C=0.0278); ramal → Σ Q de los bajantes que le drenan
- *  (misma BFS de proximidad que Diseño de red lluvias). null si no aplica o Q = 0. */
+/** Forma mínima de un override manual de bajante ll (BajanteLL de RainwaterContext). */
+interface BajanteLLManual {
+  id: string;
+  bajante: string;
+  areaParcial: number;
+  areaOtras: number;
+  areaAcumulada: number;
+  intensidad: number;
+  coeficienteC: number;
+}
+
+/** Caudal (LPS) del ramal/bajante de aguas lluvias seleccionado en el panel del visor.
+ *  Réplica del cálculo de la tabla Diseño de red lluvias: aporte de bajantes de TODOS los pisos
+ *  (misma BFS de asociación, planes desde el meta), caudal manual del dibujo como precedencia y
+ *  overrides manuales (Área Otras/intensidad/coef) del RainwaterContext cuando hay provider
+ *  (el visor lo monta en ViewerPage; sin provider — tests — cae al cálculo del dibujo). */
 export function useCaudalLl(
   selElement: { id?: string; tipo?: string } | null,
   activeNet: string,
   loadedPlanId?: string | number | null,
 ): number | null {
-  {
-    if (activeNet !== 'll' || !selElement?.id) return null;
-    const planId = String(loadedPlanId ?? '');
-    if (!planId) return null;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + planId, null);
+  // Hooks SIEMPRE antes de cualquier early return (reglas de hooks).
+  const ctx = useContext(RainwaterContext);
+  if (activeNet !== 'll' || !selElement?.id) return null;
+  const planId = String(loadedPlanId ?? '');
+  if (!planId) return null;
+
+  const parseDoc = (raw: unknown): DrawingData | null => {
     if (!raw) return null;
-    let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        return null;
-      }
+    if (typeof raw !== 'string') return raw as DrawingData;
+    try {
+      return JSON.parse(raw) as DrawingData;
+    } catch {
+      return null;
     }
-    const bajLl = (data.bajantes || []).filter(
-      (
-        b,
-      ): b is DrawingData['bajantes'] extends (infer T)[] | undefined
-        ? T & { area_m2?: number }
-        : never => b.net === 'll' && b.tipo === 'bajante',
-    );
-    const qDe = (b: { area_m2?: number }): number =>
-      chequeoBajanteLluvia({ areaAcumulada: b.area_m2 || 0, intensidad: 100, coeficienteC: 0.0278 })
-        .Q;
+  };
 
-    if (selElement.tipo === 'bajante') {
-      const b = bajLl.find((x) => x.id === selElement.id);
-      if (!b) return null;
-      const q = qDe(b);
-      return q > 0 ? q : null;
-    }
+  // Pisos conocidos (meta de plans); el propio piso cargado SIEMPRE participa aunque el
+  // meta aún no lo refleje.
+  const meta = loadFromStorage<Array<{ id: number; nivel: number | null }>>(PLANS_META_KEY, []);
+  const planIds = Array.from(new Set([...meta.map((m) => String(m.id)), planId]));
 
-    // Ramal: asociaciones ramal→bajantes del propio doc (BFS de proximidad compartida).
-    const miniTramos = bajLl.map((b) => ({
-      id: b.id,
-      code: b.code || b.id,
-      _key: `${b.id}-${planId}`,
-      esBajante: true,
-    }));
-    const assoc = buildLlBajanteAssociations(
-      miniTramos as never,
-      [{ id: planId, nivel: 0 }] as never,
-    );
-    const codes = assoc[`${selElement.id}-${planId}`] || [];
-    let q = 0;
-    for (const code of codes) {
-      const b = bajLl.find((x) => (x.code || x.id) === code);
-      if (b) q += qDe(b);
+  // Bajantes ll de TODOS los pisos (el drenaje es multi-piso: un bajante de otro piso puede
+  // drenar al ramal seleccionado — antes solo se veía el doc cargado).
+  const bajLl: Array<{
+    b: DrawingData['bajantes'] extends (infer T)[] | undefined
+      ? T & { area_m2?: number; caudal?: number }
+      : never;
+    planId: string;
+  }> = [];
+  const docs = new Map<string, DrawingData>();
+  for (const pid of planIds) {
+    const data = parseDoc(loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + pid, null));
+    if (!data) continue;
+    docs.set(pid, data);
+    for (const b of data.bajantes || []) {
+      if (b.net === 'll' && b.tipo === 'bajante')
+        bajLl.push({
+          b: b as never,
+          planId: pid,
+        });
     }
+  }
+
+  // Overrides manuales: clave = code del bajante.
+  const manualByCode = new Map<string, BajanteLLManual>();
+  for (const m of ctx?.bajantesLl ?? []) manualByCode.set(m.bajante || m.id, m);
+
+  const qDe = (b: { area_m2?: number; caudal?: number }, code?: string): number => {
+    if (b.caudal != null && b.caudal > 0) return b.caudal;
+    // Overrides manuales de la tabla (Área Otras / intensidad) vía RainwaterContext — el
+    // visor lo monta (ViewerPage); sin provider (tests), cae al cálculo del dibujo.
+    const manual = code ? manualByCode.get(code) : undefined;
+    if (manual && ((manual.areaAcumulada ?? 0) > 0 || (manual.areaParcial ?? 0) > 0)) {
+      return chequeoBajanteLluvia({
+        areaAcumulada: manual.areaAcumulada || manual.areaParcial || 0,
+        intensidad: manual.intensidad ?? 100,
+        coeficienteC: manual.coeficienteC || 0.0278,
+      }).Q;
+    }
+    return chequeoBajanteLluvia({
+      areaAcumulada: b.area_m2 || 0,
+      intensidad: 100,
+      coeficienteC: 0.0278,
+    }).Q;
+  };
+
+  // Caudal HEREDADO por asociación entre pisos: el puntero `origenId` del bajante inferior
+  // apunta al superior que descarga en él ("planId|id") — recursivo con visited para
+  // cadenas de 3+ pisos. El LD_<idSuperior> y el fantasma/anillo transportan este aporte.
+  const heredadoDe = (pid: string, bajId: string, seen: Set<string>): number => {
+    const b = (docs.get(pid)?.bajantes || []).find((x) => x.id === bajId) as
+      | { origenId?: string }
+      | undefined;
+    const o = b?.origenId || '';
+    if (!o.includes('|')) return 0;
+    const [op, oid] = o.split('|');
+    const k = `${op}|${oid}`;
+    if (seen.has(k)) return 0;
+    seen.add(k);
+    const sup = bajLl.find((x) => x.planId === op && (x.b as { id?: string }).id === oid);
+    if (!sup) return 0;
+    const sb = sup.b as { code?: string; id?: string };
+    return qDe(sup.b, sb.code || sb.id) + heredadoDe(op, oid, seen);
+  };
+
+  if (selElement.tipo === 'bajante') {
+    const b = bajLl.find(
+      (x) => x.planId === planId && (x.b as { id?: string }).id === selElement.id,
+    );
+    if (!b) return null;
+    const bb = b.b as { code?: string; id?: string };
+    // Bajante inferior asociado: caudal PROPIO + lo que baja por la columna del superior.
+    const seen = new Set([`${planId}|${selElement.id}`]);
+    const q = qDe(b.b, bb.code || bb.id) + heredadoDe(planId, selElement.id, seen);
     return q > 0 ? q : null;
   }
+
+  // Ldesvio (LD_<idSuperior>): transporta el caudal del bajante superior (más su propia
+  // herencia si hay cadena) — sin sumar el aporte propio del inferior.
+  if (selElement.id.startsWith('LD_')) {
+    const supId = selElement.id.slice(3);
+    const sup = bajLl.find((x) => x.planId === planId && (x.b as { id?: string }).id === supId);
+    if (sup) {
+      const sb = sup.b as { code?: string; id?: string };
+      const seen = new Set([`${planId}|${supId}`]);
+      const q = qDe(sup.b, sb.code || sb.id) + heredadoDe(planId, supId, seen);
+      return q > 0 ? q : null;
+    }
+    return null;
+  }
+
+  // Ramal: asociaciones ramal→bajantes de TODOS los pisos (BFS compartida con la tabla).
+  const miniTramos = bajLl.map(({ b, planId: pid }) => {
+    const bb = b as { id?: string; code?: string };
+    return { id: bb.id, code: bb.code || bb.id, _key: `${bb.id}-${pid}`, esBajante: true };
+  });
+  const assoc = buildLlBajanteAssociations(
+    miniTramos as never,
+    planIds.map((id) => ({ id: Number(id), nivel: 0 })) as never,
+  );
+  const codes = assoc[`${selElement.id}-${planId}`] || [];
+  // Caudal manual del ramal en el dibujo manda (misma precedencia que la tabla).
+  const ramal = (docs.get(planId)?.ramales || []).find(
+    (r: { id?: string }) => r.id === selElement.id,
+  ) as { caudal?: number } | undefined;
+  if (ramal?.caudal != null && ramal.caudal > 0) return ramal.caudal;
+  let q = 0;
+  for (const code of codes) {
+    const hit = bajLl.find(
+      ({ b }) => ((b as { code?: string }).code || (b as { id?: string }).id) === code,
+    );
+    if (hit) q += qDe(hit.b, code);
+  }
+  return q > 0 ? q : null;
 }

@@ -3,13 +3,18 @@ import { useRainwater, type BajanteLL } from '../context/RainwaterContext';
 import { useTramos } from '../context/TramosContext';
 import EditButton from './shared/EditButton';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
-import { buildLlBajanteAssociations, computeCanalBajanteRamalKeys } from '../utils/rainwaterRows';
+import {
+  buildLlBajanteAssociations,
+  computeCanalBajanteRamalKeys,
+  maxRamalPulgDeBajante,
+} from '../utils/rainwaterRows';
 import ChipList from './shared/ChipList';
 import { usePlans } from '../context/PlansContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater';
 import { renderStatus } from '../utils/componentHelpers';
+import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { DIAM_BAN, pisoCorto } from '../constants';
 import { trunc2 } from '../utils/formatUtils';
 import React from 'react';
@@ -89,7 +94,8 @@ const OtrasField = React.memo(function OtrasField({
       }}
       onBlur={() => {
         setEditing(false);
-        const v = parseFloat(text) || 0;
+        // Área física: negativo = basura de tipeo (I·C·A negativo aguas abajo).
+        const v = Math.max(0, parseFloat(text) || 0);
         if (bajante) onCommit(bajante, v);
       }}
       style={{ ...RainDownpipesCheck_S1, opacity: disabled ? 0.6 : 1 }}
@@ -159,10 +165,15 @@ export default function ChequeoBajantesLluvias() {
       }
       const suf = pisoCorto(plan.nivel);
       for (const b of data.bajantes || []) {
-        if (b.net !== 'll' || !b.descargaEnId) continue;
-        if (!map[b.descargaEnId]) map[b.descargaEnId] = [];
+        // Cajas CALL fuera: no son bajantes asociados (glifo de captura).
+        if (b.net !== 'll' || b.tipo === 'caja_ll' || !b.descargaEnId) continue;
+        // Formato canónico 'plan|id'; el LEGACY sin '|' apunta al MISMO plan — sin
+        // normalizarlo la columna "asociados" quedaba en — para esos datos viejos.
+        const [dPlan, dId] = parseDescargaEnId(b.descargaEnId, plan.id);
+        const clave = `${dPlan}|${dId}`;
+        if (!map[clave]) map[clave] = [];
         const code = `${b.code || b.id}-${suf}`;
-        if (!map[b.descargaEnId].includes(code)) map[b.descargaEnId].push(code);
+        if (!map[clave].includes(code)) map[clave].push(code);
       }
     }
     return map;
@@ -620,7 +631,7 @@ export default function ChequeoBajantesLluvias() {
                         key={row.key + '_in'}
                         onChange={() => {}}
                         onBlur={(e) => {
-                          const v = parseDecimalInput(e.target.value) ?? 100;
+                          const v = Math.max(0, parseDecimalInput(e.target.value) ?? 100);
                           if (v !== null && row.bajante) {
                             updBajanteLL(row.bajante, 'intensidad', v);
                           }
@@ -688,6 +699,25 @@ export default function ChequeoBajantesLluvias() {
                         onChange={(e) => {
                           const nom = e.target.value;
                           const opt = DIAM_BAN.find((d) => d.nom === nom);
+                          // Regla ll: el bajante no puede quedar menor que sus ramales conectados.
+                          if (opt && row.drawId) {
+                            const maxRamal = maxRamalPulgDeBajante(
+                              row.drawId,
+                              String(row.drawPlanId ?? ''),
+                              tramosLl,
+                            );
+                            if (maxRamal > 0 && opt.pulg < maxRamal) {
+                              window.dispatchEvent(
+                                new CustomEvent('civilflow_diametro_validation', {
+                                  detail: {
+                                    title: 'Diámetro no permitido',
+                                    message: `El diámetro del bajante no puede ser menor al de los ramales conectados (máximo ${maxRamal}"). Sube primero el diámetro de los ramales o selecciona un bajante mayor.`,
+                                  },
+                                }),
+                              );
+                              return;
+                            }
+                          }
                           // Bidireccional (orig. usuario): escribe el dNominal del bajante en el
                           // dibujo (engine vivo o storage) y refleja el pulg en el tramo.
                           if (row.drawId && opt) {

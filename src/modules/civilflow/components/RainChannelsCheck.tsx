@@ -65,7 +65,8 @@ const CanalDimField = React.memo(function CanalDimField({
       }}
       onBlur={() => {
         setEditing(false);
-        const v = parseFloat(text) || 0;
+        // Dimensión física (b/h/longitud/pendiente): negativo = basura de tipeo, no dato.
+        const v = Math.max(0, parseFloat(text) || 0);
         onChange(id, field, text === '' ? 0 : v);
       }}
       style={{

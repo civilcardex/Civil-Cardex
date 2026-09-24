@@ -13,6 +13,7 @@ import {
 import type { PlanTrazos } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from '../../utils/assocLayoutMigration';
+import { restaurarAsociacionesDesdeLocal } from '../../utils/crossFloorStorage';
 import { origenDePlan } from '../../utils/crossFloorStorage';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
@@ -82,7 +83,14 @@ export function useTrazosLoader({
           if (trazosLocalGanaABdVacia(localData, dbData)) {
             saveTrazosToDB(String(resolvedId), localData);
           } else if (dbTs > localTs || !localData) {
-            const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
+            const merged = typeof dbData === 'string' ? (JSON.parse(dbData) as PlanTrazos) : dbData;
+            // Asociación entre pisos (orig. usuario): fantasma XFG / Ldesvio / anillo que la
+            // caché local sí tiene y el doc BD perdió (guardado RPC fallido, pisa-ts de otra
+            // vía) se RESTAURAN desde la local — la desasociación legítima borra en ambos, así
+            // que un doc BD sin ellas frente a una local con ellas siempre significa pérdida.
+            const restauradas = restaurarAsociacionesDesdeLocal(localData, merged);
+            if (restauradas) saveTrazosToDB(String(resolvedId), merged);
+            const workStr = JSON.stringify(merged);
             eng.loadWork(workStr);
             docScale = eng.scaleM;
             if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);

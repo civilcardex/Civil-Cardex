@@ -35,6 +35,9 @@ export function BajanteEditor({
 }) {
   // Caudal calculado (mismo qMap que Diseño de red lluvias) para bajantes ll.
   const caudalLl = useCaudalLl(selElement, activeNet, engineRef.current?._loadedPlanId);
+  // H (m) solo en montantes AF/AC/gas (orig. usuario) — el resto de redes no lo usa.
+  const mostrarH = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
+  const mostrarArea = (engineRef.current?.areas || []).some((a) => a.net === selElement.net);
   if (isGhostSel) {
     const gd = selElement.ghostData?.[lvl] || {};
     const currentGhostDiam = gd.dNominal || '';
@@ -69,6 +72,27 @@ export function BajanteEditor({
           Datos específicos (Fantasma)
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {selElement.net === 'll' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#9BA8AA',
+                    fontFamily: "'Geist',monospace",
+                    marginBottom: 2,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  Caudal (LPS)
+                </div>
+                <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+                  {caudalLl != null ? caudalLl.toFixed(2) : '—'}
+                </div>
+              </div>
+            </div>
+          )}
           <div>
             <div
               style={{
@@ -181,33 +205,36 @@ export function BajanteEditor({
         Datos específicos
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Fila 1: H | Diámetro en montantes; Diámetro | Llenado en el resto (sin H). */}
         <div style={{ display: 'flex', gap: 6 }}>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              H (m)
+          {mostrarH && (
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#9BA8AA',
+                  fontFamily: "'Geist',monospace",
+                  marginBottom: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}
+              >
+                H (m)
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                value={selElement.hVert ?? ''}
+                placeholder="0.00"
+                aria-label="Altura H (m)"
+                onChange={(e) => {
+                  const v = e.target.value;
+                  handleUpdateSel('hVert', v ? parseFloat(v) : 0);
+                }}
+                style={INPUT_CENTER_STYLE}
+              />
             </div>
-            <input
-              type="number"
-              step="0.01"
-              value={selElement.hVert ?? ''}
-              placeholder="0.00"
-              aria-label="Altura H (m)"
-              onChange={(e) => {
-                const v = e.target.value;
-                handleUpdateSel('hVert', v ? parseFloat(v) : 0);
-              }}
-              style={INPUT_CENTER_STYLE}
-            />
-          </div>
+          )}
           <div style={{ flex: 1 }}>
             <div
               style={{
@@ -259,73 +286,133 @@ export function BajanteEditor({
               ))}
             </select>
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Llenado (R)
+          {!mostrarH && (
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#9BA8AA',
+                  fontFamily: "'Geist',monospace",
+                  marginBottom: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}
+              >
+                Llenado (R)
+              </div>
+              <select
+                value={
+                  selElement.bajR != null
+                    ? Math.abs(selElement.bajR - 7 / 24) < 0.001
+                      ? '7/24'
+                      : '1/4'
+                    : '7/24'
+                }
+                aria-label="Llenado (R)"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  handleUpdateSel('bajR', val === '7/24' ? 7 / 24 : 0.25);
+                }}
+                style={SELECT_STYLE}
+              >
+                <option value="7/24">7/24</option>
+                <option value="1/4">1/4</option>
+              </select>
             </div>
-            <select
-              value={
-                selElement.bajR != null
-                  ? Math.abs(selElement.bajR - 7 / 24) < 0.001
-                    ? '7/24'
-                    : '1/4'
-                  : '7/24'
-              }
-              aria-label="Llenado (R)"
-              onChange={(e) => {
-                const val = e.target.value;
-                handleUpdateSel('bajR', val === '7/24' ? 7 / 24 : 0.25);
-              }}
-              style={SELECT_STYLE}
-            >
-              <option value="7/24">7/24</option>
-              <option value="1/4">1/4</option>
-            </select>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Área
-            </div>
-            <select
-              value={selElement.area_m2 ? String(selElement.area_m2) : ''}
-              aria-label="Área"
-              onChange={(e) => {
-                handleUpdateSel('area_m2', parseFloat(e.target.value) || 0);
-              }}
-              style={SELECT_STYLE}
-            >
-              <option value="">— Sin área —</option>
-              {(engineRef.current?.areas || [])
-                .filter((a) => a.net === selElement.net)
-                .map((a) => (
-                  <option key={a.id} value={a.areaM2}>
-                    {a.label} · {a.areaM2} m²
-                  </option>
-                ))}
-            </select>
-          </div>
+          )}
         </div>
-        {selElement.net === 'll' && caudalLl != null && (
+        {/* Fila 2: Llenado | Área en montantes; Área | Caudal en ll, Área sola en san/vent. */}
+        {mostrarArea && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {mostrarH && (
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#9BA8AA',
+                    fontFamily: "'Geist',monospace",
+                    marginBottom: 2,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  Llenado (R)
+                </div>
+                <select
+                  value={
+                    selElement.bajR != null
+                      ? Math.abs(selElement.bajR - 7 / 24) < 0.001
+                        ? '7/24'
+                        : '1/4'
+                      : '7/24'
+                  }
+                  aria-label="Llenado (R)"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleUpdateSel('bajR', val === '7/24' ? 7 / 24 : 0.25);
+                  }}
+                  style={SELECT_STYLE}
+                >
+                  <option value="7/24">7/24</option>
+                  <option value="1/4">1/4</option>
+                </select>
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#9BA8AA',
+                  fontFamily: "'Geist',monospace",
+                  marginBottom: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}
+              >
+                Área
+              </div>
+              <select
+                value={selElement.area_m2 ? String(selElement.area_m2) : ''}
+                aria-label="Área"
+                onChange={(e) => {
+                  handleUpdateSel('area_m2', parseFloat(e.target.value) || 0);
+                }}
+                style={SELECT_STYLE}
+              >
+                <option value="">— Sin área —</option>
+                {(engineRef.current?.areas || [])
+                  .filter((a) => a.net === selElement.net)
+                  .map((a) => (
+                    <option key={a.id} value={a.areaM2}>
+                      {a.label} · {a.areaM2} m²
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        )}
+        {selElement.net === 'll' && !mostrarH && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#9BA8AA',
+                  fontFamily: "'Geist',monospace",
+                  marginBottom: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                }}
+              >
+                Caudal (LPS)
+              </div>
+              <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+                {caudalLl != null ? caudalLl.toFixed(2) : '—'}
+              </div>
+            </div>
+          </div>
+        )}
+        {selElement.net === 'll' && mostrarH && (
           <div>
             <div
               style={{
@@ -340,7 +427,7 @@ export function BajanteEditor({
               Caudal (LPS)
             </div>
             <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
-              {caudalLl.toFixed(2)}
+              {caudalLl != null ? caudalLl.toFixed(2) : '—'}
             </div>
           </div>
         )}

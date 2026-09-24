@@ -14,6 +14,7 @@ import {
   computeLlQMap,
   computeLlRows,
   getTributarioIds,
+  minBajantePulgDeRamal,
 } from '../utils/rainwaterRows';
 
 const RainwaterDesign_S2: React.CSSProperties = {
@@ -49,6 +50,23 @@ export default function DisenoLluvias() {
     (tramoKey: string, tramoId: string, newPulg: number) => {
       const opt = DIAM_OPTIONS.find((o) => o.pulg === newPulg);
       if (opt && tramoId) {
+        // Regla ll: el ramal no puede superar al bajante en el que descarga.
+        const bajPulg = minBajantePulgDeRamal(
+          tramoId,
+          String(tramoKey.split('-')[1] ?? ''),
+          tramosLl,
+        );
+        if (bajPulg > 0 && newPulg > bajPulg) {
+          window.dispatchEvent(
+            new CustomEvent('civilflow_diametro_validation', {
+              detail: {
+                title: 'Diámetro no permitido',
+                message: `El diámetro del ramal no puede ser mayor al del bajante en el que descarga (${bajPulg}"). Sube primero el diámetro del bajante o selecciona un ramal menor.`,
+              },
+            }),
+          );
+          return;
+        }
         const res = writeDiametroToDrawing(tramoId, 'll', opt.label, plans);
         if (!res.ok && res.reason === 'accessory-larger') {
           window.dispatchEvent(
@@ -64,7 +82,7 @@ export default function DisenoLluvias() {
         updTramoLL(tramoKey, 'diamDisPulg', newPulg);
       }
     },
-    [updTramoLL, plans],
+    [updTramoLL, plans, tramosLl],
   );
 
   const tribIds = getTributarioIds(tramosLl);
@@ -180,7 +198,7 @@ export default function DisenoLluvias() {
                   <th
                     scope="col"
                     className="col-h ok"
-                    colSpan={3}
+                    colSpan={4}
                     style={{ textAlign: 'center', fontSize: 10, padding: '2px 3px' }}
                   >
                     Diámetro
@@ -255,6 +273,9 @@ export default function DisenoLluvias() {
                     <br />
                     <small>(mm)</small>
                   </th>
+                  <th scope="col" className="col-h ok" style={TH_HDR}>
+                    Chequeo
+                  </th>
                   <th scope="col" className="col-h ven" style={TH_HDR}>
                     Real
                     <br />
@@ -294,6 +315,7 @@ export default function DisenoLluvias() {
                       sVal,
                       DcalcPulg,
                       DdisPulg,
+                      chequeoD,
                       DintMm,
                       Qo,
                       Vo,
@@ -404,6 +426,9 @@ export default function DisenoLluvias() {
                         </td>
                         <td className="c" style={{ fontSize: 11, padding: '2px 3px' }}>
                           {DintMm > 0 ? DintMm : '—'}
+                        </td>
+                        <td className="c" style={{ fontSize: 11, padding: '2px 3px' }}>
+                          {renderStatus(chequeoD)}
                         </td>
                         <td
                           className="c"

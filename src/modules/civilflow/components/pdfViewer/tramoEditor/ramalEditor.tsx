@@ -487,7 +487,12 @@ export function RamalEditor({
             </div>
           ) : null}
         </div>
-        {showCaudal && <CaudalField selElement={selElement} value={caudalLl} />}
+        {/* Misma media columna que Diámetro/Pendiente (grid 2 col con un solo hijo). */}
+        {showCaudal && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+            <CaudalField selElement={selElement} value={caudalLl} />
+          </div>
+        )}
         {(showDeltaZ || showDescargas) && (
           <div
             style={{
