@@ -64,8 +64,15 @@ export function useKeyboardShortcuts({
         selectTool('text');
         e.preventDefault();
       }
-      // 'o' de cOntador (contador de agua — tool 'cont' del engine).
-      if (e.key.toLowerCase() === 'o') {
+      // 'o' de cOntador — SOLO af/gas (donde existe el botón) y sin modificadores
+      // (Ctrl/Cmd+O es del navegador; misma doctrina que la rama 'l' del engine).
+      if (
+        e.key.toLowerCase() === 'o' &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        ['af', 'gas'].includes(engRef.current?.activeNet ?? '')
+      ) {
         selectTool('cont');
         e.preventDefault();
       }

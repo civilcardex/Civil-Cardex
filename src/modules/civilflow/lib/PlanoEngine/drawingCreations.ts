@@ -845,6 +845,9 @@ export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: n
  *  red pública más cercana con un ramal, si existe alguna. @param engine Núcleo del motor.
  *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  // Guard de red (defensa en profundidad — el atajo/botón ya filtran): un contador insertado
+  // en san/ll/vent contaminaba las tablas hidráulicas con CNTAF fantasma.
+  if (!['af', 'gas'].includes(engine.activeNet)) return;
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);
     if (sp) {

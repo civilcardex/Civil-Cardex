@@ -1088,17 +1088,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
   }
 
-  /** @param delta - Incremento de zoom (positivo = acercar). @param cx - Centro X en coords de
-   *  canvas (por defecto el centro). @param cy - Centro Y. */
-  doZoom(delta: number, cx?: number, cy?: number): void {
-    if (cx === undefined || cy === undefined) {
-      // Ambos o ninguno: con solo cx definido, cy! era undefined → offY = NaN.
-      cx = this.cw.clientWidth / 2;
-      cy = this.cw.clientHeight / 2;
-    }
-    zoomAnclado(this, this.zoom + delta, cx, cy);
-  }
-
   /** Ajusta la página PDF dentro del viewport con margen. */
   fitPage(): void {
     if (!this.pageW || !this.pageH) return;
