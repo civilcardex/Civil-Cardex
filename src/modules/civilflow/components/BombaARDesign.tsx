@@ -137,27 +137,31 @@ function calcsDe(inp: BombaInputs, uds: number) {
   const Qb = +(Qd * 1.25).toFixed(2);
   // V con Qd (caudal de diseño — metodología del Excel maestro, D27).
   const Vi = Qd > 0 && Dm > 0 ? +((Qd * 0.001) / (3.14159 * Math.pow(Dm / 2, 2))).toFixed(3) : 0;
-  const Hf =
+  // Cadena H a PRECISIÓN COMPLETA (el Excel encadena sin redondear y solo muestra 3 dec):
+  // redondear cada eslabón divergía ±0.001-0.002 del maestro justo en el umbral del 3er decimal.
+  const HfRaw =
     Qb > 0 && li > 0 && Dm > 0
-      ? +(
-          (10.67 * li * Math.pow(Qb / 1000, 1.852)) /
-          (Math.pow(ch, 1.852) * Math.pow(Dm, 4.87))
-        ).toFixed(3)
+      ? (10.67 * li * Math.pow(Qb / 1000, 1.852)) / (Math.pow(ch, 1.852) * Math.pow(Dm, 4.87))
       : 0;
-  const Hac = +(Hf * 0.25).toFixed(3);
-  const Hfri = +(Hf + Hac).toFixed(3);
+  const Hf = +HfRaw.toFixed(3);
+  const HacRaw = HfRaw * 0.25;
+  const Hac = +HacRaw.toFixed(3);
+  const Hfri = +(HfRaw + HacRaw).toFixed(3);
   // Altura estática = Hz geométrica + presión mínima en descarga; Hm = fricción + estática.
-  const Hest = +(hz + pd).toFixed(3);
-  const Hm = +(Hfri + Hest).toFixed(3);
+  const HestRaw = hz + pd;
+  const Hest = +HestRaw.toFixed(3);
+  const HmRaw = HfRaw + HacRaw + HestRaw;
+  const Hm = +HmRaw.toFixed(3);
   const Vch = Vi >= 0.6 && Vi <= 3.5 ? 'O.K.' : 'REVISAR DIÁMETRO';
-  const Ph = Qb > 0 ? +((Qb * 1000 * 9.81 * Hm) / 1000).toFixed(2) : 0;
+  const Ph = Qb > 0 ? +((Qb * 1000 * 9.81 * HmRaw) / 1000).toFixed(2) : 0;
   // η bomba: se LEE del campo "Eficiencia bomba η" (Datos de entrada) — sin default. P eje =
   // P hid / η. Tolerante a fracción (0.65) o porcentaje (65); ≤1 es fracción. Campo vacío ⇒
   // P eje/P com/HP/selección sin valor (—), nunca inventar η.
   const etaFrac = eta > 0 ? (eta <= 1 ? eta : eta / 100) : 0;
   const Peje: number | '' = etaFrac > 0 ? +(Ph / etaFrac).toFixed(2) : '';
   const Pcom: number | '' = Peje !== '' ? +(Peje * fs).toFixed(2) : '';
-  const php: number | '' = Pcom !== '' ? +(Pcom / 746).toFixed(2) : '';
+  // 745.7 W/HP — la MISMA constante de las equivalencias Eq(...) de abajo.
+  const php: number | '' = Pcom !== '' ? +(Pcom / 745.7).toFixed(2) : '';
   const Sel: string =
     php === ''
       ? ''
@@ -727,7 +731,7 @@ function BombaARDesign() {
                   'P eje = P hid / η bomba',
                 ],
                 ['Potencia comercial', 'P com', Fmt2(c.Pcom), 'W', '—', 'P eje × f servicio'],
-                ['Potencia motor', 'P', Fmt2(c.php, 'HP'), 'HP', '—', 'P com / 746'],
+                ['Potencia motor', 'P', Fmt2(c.php, 'HP'), 'HP', '—', 'P com / 745.7'],
                 [
                   'Selección comercial',
                   '—',
