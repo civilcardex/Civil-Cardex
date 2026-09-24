@@ -11,6 +11,33 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
+## Suscripciones por módulo (IMPLEMENTADAS PERO DESHABILITADAS)
+
+Sistema de suscripción por módulo (solo `flow` y `manage` en catálogo) con Wompi y **vencimiento manual** (se paga 1 mes o 1 año por adelantado; `cf_suscripciones.fecha_fin > now()` es la única verdad, no hay cron ni cobro automático). Apagado en DOS niveles — con ambos off, la app se comporta exactamente como antes (nadie se bloquea):
+
+1. **Cliente**: `VITE_SUSCRIPCIONES !== 'true'` (default off). Sin gating en rutas, perfil ni ModulePage; PricingPage muestra la página de marketing; el widget de Wompi nunca se carga.
+2. **BD**: `cf_app_config('suscripciones_activas', false)`. `public.acceso_modulo(uid, modulo)` devuelve `true` para todos con el flag apagado; con él encendido exige fila vigente. Este flag gobierna el check dentro del RPC `save_proyecto` (flow) y la política INSERT de `cm_proyectos` (manage).
+
+### Piezas
+- Migración: `supabase/migrations/20260924000000_suscripciones.sql` (tablas `cf_suscripciones`, `cf_pagos`, `cf_app_config`; funciones `suscripciones_habilitadas`, `acceso_modulo`, `activar_suscripciones` idempotente; candados en `save_proyecto` y policy `cm_proyectos_propietario_insertar`).
+- Edge functions (Deno, requieren deploy): `supabase/functions/crear-intencion-pago` (valida precios server-side + firma de integridad), `wompi-verify` (consulta API Wompi con llave privada y activa), `wompi-webhook` (respaldo con checksum de eventos). `_shared/wompi.ts` tiene la COPIA del catálogo de precios (sincronizar con el cliente).
+- Cliente: `src/lib/suscripciones/catalogo.ts` (precios COP placeholder $19.900/mes, $199.000/año, 15% dto por los 2 + flag), `suscripcionesService.ts` (`estaActiva` pura), `src/hooks/useSuscripciones.ts`, `src/components/suscripciones/{WompiCheckoutModal,ModuleSelectDialog,RequireModule}.tsx`.
+- Flujo perfil: "Nuevo proyecto" → `ModuleSelectDialog` lista SOLO módulos comprados y vigentes ("Activo hasta X"); 0 activos → "Ver planes" a `/pricing`; 1 → entra directo; flow → `ProjectCreateDialog` → `/civilflowareatrabajo`; manage → `ProjectCreateDialogCM` → `/civilmanagerareatrabajo`.
+- Gating adicional: `RequireModule` envuelve `/civilflowareatrabajo` y `/civilmanagerareatrabajo` en `App.tsx` (evalúa la fecha en cada render → vence en vivo); CTA de `ModulePage` redirige a `/pricing?modulo=X` sin compra; los diálogos de creación muestran aviso "Suscripción inactiva" (la BD es el candado real).
+
+### ACTIVACIÓN (cuando haya credenciales Wompi)
+```sql
+update public.cf_app_config set valor = true where clave = 'suscripciones_activas';
+```
+1. `VITE_SUSCRIPCIONES=true` en Vercel + redeploy.
+2. `supabase secrets set WOMPI_PUBLICO=... WOMPI_PRIVADO=... WOMPI_INTEGRIDAD=... WOMPI_EVENTOS=...`
+3. `supabase functions deploy crear-intencion-pago wompi-verify wompi-webhook`
+4. Definir precios finales en `src/lib/suscripciones/catalogo.ts` Y `supabase/functions/_shared/wompi.ts`.
+5. Configurar la URL del webhook en el panel Wompi: `<SUPABASE_URL>/functions/v1/wompi-webhook`.
+6. Probar en sandbox (`WOMPI_BASE=https://sandbox.wompi.co` como secret) con tarjetas de prueba antes de producción.
+
+Consecuencia conocida (decisión del usuario): al activar NO existe plan gratis — todos los usuarios quedan bloqueados hasta pagar.
+
 ## Security Notes
 
 ### Known Risks (Client-Side Only â€” Requires Backend Changes)
@@ -1914,3 +1941,59 @@ Visores 3D: giro/pan/rueda, DERECHO inerte (antes paneaba), central sin autoscro
 
 - El clon fantasma heredaba labelX/labelY del bajante base → etiqueta muy arriba (posición vieja). Ahora el clon borra labelX/labelY — el render la auto-posiciona junto al glifo desplazado.
 - Gates: tsc 0 · vitest copiaFantasmas 3/3 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 43: landing civil flow — redes faltantes en ESPECIFICACIONES)
+
+- Spec interface extensible: campos `vent?` y `rci?`. Specs del módulo flow: filas con Ventilación (IPC/UPC vent) y Contra incendio (NFPA 13 Densidad/Área; NFPA 13/14 verificación). "Redes soportadas" de hidráulica ya sin contraincendio (tiene columna propia).
+- ModulePage tabla specs: columnas Ventilación + Contra Incendio (— si la fila no las trae); min-width 600→760.
+- FlowHero: card Ventilación añadida a NETWORKS (RCI ya existía).
+- Gates: tsc 0 · lint 0 · vitest 833/833 (150 files, incluye sesiones paralelas) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (auditoría ronda 5: copia fantasma rota + rect canal inflado)
+
+### Críticos (verificados en código)
+- **W-1 copyDrawingFromPlan**: offsetFantasma se keyeaba por id YA renumerado y el lookup buscaba por id viejo → clones jamás generados con destino poblado. Ahora el mapa se captura con el id VIEJO en el loop de renumerado. Test nuevo copiaFantasmasDestinoOcupado (3): "ambos" = base+clon con destino ocupado; "fantasmas" deja solo el clon; "fantasmas" sin anillo = copied 0.
+- **W-2**: modo "solo fantasmas" spliceba las copias y contaba srcAll igual (éxito falso + claves de conteos huérfanas). Ahora: conteo HONESTO (lo que queda en el destino), punteros recibe/alimenta/descarga de clones saneados contra lo vivo, y purgarClavesDeCopias borra las claves destino de las copias retiradas. copyTodo actualizado (3→4: el clon ahora SÍ se genera).
+- **C-1 rainwaterRows + RainwaterContext (canalAreaMap)**: pxPerCm INVERTIDA ((scaleM·96)/2.54 vs cmToPlanePx del engine que divide) → rect de clasificación canal 25×(1:50)-100×(1:100) el glifo real; colectores legítimos se borraban de la tabla. Ambos sitios usan cmToPlanePx.
+
+### Importantes
+- W-3: offset del clon escalado por calibFactor (vector en px del frame origen).
+- W-4: cleanup de XFG extendido a modos con clon (SOLO bajantes con clon generado — sin clon, la proyección se conserva como decidió el test 'ambos' de la otra sesión).
+- W-5: DBG2 console.log fuera; JSDoc/comentarios reescritos a la semántica real (fantasma = bajante desplazado).
+- W-6 useCaudalLl: aporte multi-piso (planes desde el meta; antes solo el doc cargado) + caudal manual del dibujo como precedencia. LÍMITE documentado: overrides I/C/Área Otras viven en BD (RainwaterContext) y no se aplican en el panel del visor — con overrides la TABLA manda.
+- W-7 asocPersistTrasCopia: assert real del LD_ del piso 1 (antes console.info; tautológico).
+- C-1: uppersByBajante normaliza descargaEnId legacy (sin '|') con parseDescargaEnId.
+- C-2: clamps no-negativos en Área Otras/Intensidad/b/h/longitud/pendiente.
+- C-3: Bomba AR — cadena H a precisión completa (HfRaw→HacRaw→HmRaw; redondeo solo al mostrar; Ph usa HmRaw) y HP unificado a 745.7.
+- C-5 (fix propio): sanearAsociaciones decide el rol por el PUNTERO del portador (origenId/descargaEnId → plan), no por membresía de id — ids BAN<n> colisionan entre pisos (falso negativo propio + falso positivo en 3 pisos). Tests espejo: colisión y cadena de 3 pisos.
+- C-6 (fix propio): reanclarAnillosLayout2 — épsilon en el dirty (antes saveData+RPC en cada apertura de piso asociado), LD reconstruido con buildLdesvioRamal (etiqueta ya no descolgada), preferencia origenId (down-pointer no toca el LD).
+
+### Menores
+W-8 espejo de diámetros también al LIMPIAR · W-9 origenDePlan en el panel de copia · W-11 backdrop sin click handler (a11y + no cierra en busy; Escape/Cancelar siguen) · W-12 catch con devError · S-4b claveDeBorrado maneja claves LD_ (id compuesto) · S-5b doZoom cy simétrico (NaN latente).
+
+### Deuda documentada (sin fix)
+Memos con deps [plans] leyendo storage (requiere rediseño de fuente de verdad del contexto) · punteros Ldesvio huérfanos post-sweep-claims · filtro CALL por prefijo · overrides I/C del panel del visor (requiere montar RainwaterContext o leer BD async).
+
+### Gates
+tsc 0 · lint 0 err (2 warn pre-existentes exhaustive-deps) · vitest 833/833 (150 files) · build ✓ · graphify ✓. Tests nuevos esta ronda: copiaFantasmasDestinoOcupado (3) + espejos saneo (2) + copyTodo actualizado.
+
+### Verificación manual pendiente (recarga dura)
+Copiar bajantes ll 1→2 con destino YA poblado, modo "ambos" → base + clon visibles, un glifo por código; "solo fantasmas" con origen sin anillos → "No se copiaron elementos" (sin éxito falso); colector pasando cerca de un canal SIGUE en la tabla Diseño lluvias; EDITAR área otras con negativo → clamp a 0; Bomba AR Hf/Hac/Hfri/Hm contra las fórmulas corregidas del Excel.
+
+## Session Summary — 2026-09-24 (ronda 2: cajas fuera de tablas ll, chequeo D, regla bajante≥ramales, caudal panel, asociación anti-pérdida)
+
+### Done
+- **Panel cajas (DATOS DEL TRAMO)**: bloque de texto "Caja de … — elemento de captura…" eliminado en `tramoEditor/index.tsx` (los guards que evitaban el editor de ramal siguen).
+- **Cajas CALL fuera de "Bajantes asociados"**: `buildLlBajanteAssociations` solo acepta `tipo:'bajante'` como endpoint y semilla BFS (ni canal ni caja); chips de cadena `descargaEnId` en RainDownpipesCheck filtran `caja_ll`. Test en canalBajanteRamales.
+- **Ramales canal↔bajante fuera de Diseño lluvias y "Ramales asociados"**: `computeCanalBajanteRamalKeys` marca si CUALQUIER extremo toca el rect del canal (antes solo el último punto) — llega/sale/conecta en cualquier sentido. Test canal→bajante.
+- **Subcolumna Chequeo bajo Diámetro en Diseño de red lluvias**: `computeLlRows.chequeoD` = D diseño ≥ D calculado (Ok/No cumple/—), `renderStatus` en UI (colSpan 3→4).
+- **Regla ll "bajante ≥ ramales conectados" en tablas**: helpers puros `maxRamalPulgDeBajante` (recibeDeIds mismo piso) / `minBajantePulgDeRamal` (hasta) en rainwaterRows; D propuesto del bajante (Chequeo) y Diseño del ramal (Diseño) bloquean con alerta `civilflow_diametro_validation` (GlobalAlertDialogProvider). Tests.
+- **Caudal en panel derecho de bajantes ll**: siempre visible en "Datos específicos" (— si null). Valor vía `useCaudalLl` que AHORA aplica overrides manuales (Área Otras/intensidad/coef) del `RainwaterContext` (montado en ViewerPage; useContext null-safe para tests) — misma fuente que la tabla.
+- **Caudal de ramales a media columna** (grid 2 col, igual ancho que Diámetro/Pendiente) — ya aplicado; requiere RECARGA DURA para verse.
+- **Asociación entre pisos se borraba al cerrar/reabrir** (diagnóstico): el ciclo local pasa con motor real (`assocCicloCierre.test.ts`, nuevo). Causa probable: al reabrir, BD gana por ts con un doc al que le faltan las piezas (guardado RPC fallido / pisa-ts). Defensa: `restaurarAsociacionesDesdeLocal` (crossFloorStorage) en `useTrazosLoader` — cuando BD gana pero la caché local tiene XFG/LD_/anillo que BD perdió, se restauran al doc ganador y se re-sube. La desasociación legítima borra en ambos lados, así que el merge no resucita nada borrado a propósito.
+
+### Gates
+tsc 0 · vitest 850/850 (153 files) · build ✓ · graphify ✓.
+
+### Verificación manual pendiente (recarga dura Ctrl+Shift+R)
+Asociar bajantes entre pisos → cerrar visor → reabrir: fantasma/LD/anillo deben persistir (si vuelve a pasar, la restauración local→BD debería taparlo); caudal del bajante ll en el panel con Área Otras puesta desde la tabla; ancho del caudal de ramales; subcolumna Chequeo; regla bajante≥ramales con alerta en ambas tablas.
