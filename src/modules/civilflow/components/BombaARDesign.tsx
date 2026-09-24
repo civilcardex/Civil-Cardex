@@ -83,7 +83,8 @@ export interface BombaInputs {
   tipoTuberia: string;
 }
 
-const INPUTS_DEFAULT: BombaInputs = {
+/** Semilla de la UI (exportada: el test de regresión necesita la forma completa). */
+export const INPUTS_DEFAULT: BombaInputs = {
   sal: '',
   hz: '',
   lImp: '',
@@ -113,7 +114,9 @@ function cHazenDe(tipoTuberia: string): number {
 
 /** Todos los cálculos de la bomba a partir de SUS inputs y SUS UDs (mismas fórmulas que la
  *  versión plana anterior). */
-function calcsDe(inp: BombaInputs, uds: number) {
+/** Cálculos de la cadena de pérdidas/cargas — puro (exportado para test de regresión
+ *  contra las fórmulas corregidas del Excel maestro, ronda 11-16 del log). */
+export function calcsDe(inp: BombaInputs, uds: number) {
   const sal = dec(inp.sal);
   const hz = dec(inp.hz);
   const li = dec(inp.lImp);
