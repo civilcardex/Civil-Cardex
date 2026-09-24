@@ -28,6 +28,9 @@ import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStor
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset';
 import { saveToStorage } from '../../modules/civilflow/services/storageService';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog';
+import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM';
+import ModuleSelectDialog from '../../components/suscripciones/ModuleSelectDialog';
+import { SUSCRIPCIONES_ACTIVAS, type ModuloId } from '../../lib/suscripciones/catalogo';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames';
 import {
   ACTIVE_PROYECTO_ID_KEY,
@@ -62,6 +65,8 @@ function ProfilePage() {
   const [filtroModulo, setFiltroModulo] = useState<'todos' | 'cf' | 'cm'>('todos');
   const [proyLoading, setProyLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showModSel, setShowModSel] = useState(false);
+  const [moduloElegido, setModuloElegido] = useState<ModuloId | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [cmDeleteConfirm, setCmDeleteConfirm] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<number | null>(null);
@@ -326,7 +331,27 @@ function ProfilePage() {
   return (
     <div className="space-y-6">
       <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
-      <ProjectCreateDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      {/* Con suscripciones activas, "Nuevo proyecto" pregunta primero por el módulo
+          comprado; el flujo interno de cada módulo sigue intacto. */}
+      <ModuleSelectDialog
+        open={showModSel}
+        onClose={() => setShowModSel(false)}
+        onPick={(m) => {
+          setShowModSel(false);
+          setModuloElegido(m);
+        }}
+      />
+      <ProjectCreateDialog
+        open={showCreate || moduloElegido === 'flow'}
+        onClose={() => {
+          setShowCreate(false);
+          if (moduloElegido === 'flow') setModuloElegido(null);
+        }}
+      />
+      <ProjectCreateDialogCM
+        open={moduloElegido === 'manage'}
+        onClose={() => setModuloElegido(null)}
+      />
       {deleteConfirm != null && (
         <div
           style={{
@@ -622,7 +647,10 @@ function ProfilePage() {
               <button
                 type="button"
                 className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
-                onClick={() => setShowCreate(true)}
+                onClick={() => {
+                  if (SUSCRIPCIONES_ACTIVAS) setShowModSel(true);
+                  else setShowCreate(true);
+                }}
               >
                 <span className="material-symbols-outlined text-lg">add_circle</span>
                 Nuevo proyecto

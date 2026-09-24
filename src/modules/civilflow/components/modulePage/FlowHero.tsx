@@ -49,6 +49,17 @@ const NETWORKS: NetCard[] = [
     ],
   },
   {
+    name: 'Ventilación',
+    color: '#38BDF8',
+    icon: 'air',
+    features: [
+      'Ramal y columna de ventilación',
+      'Verificación IPC/UPC (vent)',
+      'Diámetro y altura de ventilación',
+      'Cálculo integrado con la red sanitaria',
+    ],
+  },
+  {
     name: 'Aguas lluvias',
     color: '#8B5CF6',
     icon: 'rainy',

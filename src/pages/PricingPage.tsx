@@ -1,6 +1,22 @@
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useAuth } from '../context/AuthContext';
+import { MODULES_DATA } from './moduleData';
+import WompiCheckoutModal from '../components/suscripciones/WompiCheckoutModal';
+import {
+  CATALOGO,
+  DESCUENTO_PAQUETE,
+  SUSCRIPCIONES_ACTIVAS,
+  calcularTotalCentavos,
+  formatCOP,
+  type ModuloId,
+  type ModuloVenta,
+  type Periodo,
+} from '../lib/suscripciones/catalogo';
+import { estaActiva } from '../lib/suscripciones/suscripcionesService';
+import { useSuscripciones } from '../hooks/useSuscripciones';
 
 const plans = [
   {
@@ -122,11 +138,325 @@ const PRODUCT_JSONLD = {
   },
 };
 
+const BADGE_STYLE = {
+  borderColor: '#1D4ED8',
+  color: '#3B82F6',
+  padding: '3px 10px',
+  borderRadius: 20,
+  fontSize: 12,
+  fontFamily: 'Geist, monospace',
+  border: '1px solid #1D4ED8',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Página de compra por módulo (SUSCRIPCIONES_ACTIVAS = true).
+// ---------------------------------------------------------------------------
+function PricingSuscripciones() {
+  usePageMeta(
+    'Precios',
+    'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual o anual, con descuento por paquete. Pago seguro con Wompi.',
+  );
+  const { user } = useAuth();
+  const { rows, loading } = useSuscripciones();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [periodo, setPeriodo] = useState<Periodo>('mensual');
+  const [seleccion, setSeleccion] = useState<Set<ModuloId>>(() => {
+    const q = new URLSearchParams(location.search).get('modulo');
+    const inicial = new Set<ModuloId>();
+    if (q && CATALOGO.some((m) => m.id === q)) inicial.add(q as ModuloId);
+    return inicial;
+  });
+  const [checkoutAbierto, setCheckoutAbierto] = useState(false);
+
+  const modulosProx = useMemo(
+    () =>
+      (['structure', 'terrain', 'bim', 'mep', 'roads'] as const).map(
+        (id) => MODULES_DATA[id]?.title ?? id,
+      ),
+    [],
+  );
+
+  const total = calcularTotalCentavos([...seleccion], periodo);
+  const conDescuento = seleccion.size >= 2;
+
+  function toggle(id: ModuloId) {
+    setSeleccion((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function pagar() {
+    if (seleccion.size === 0) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    setCheckoutAbierto(true);
+  }
+
+  function vigente(id: ModuloId) {
+    return rows.find((r) => r.modulo === id && estaActiva(r));
+  }
+
+  return (
+    <div
+      className="landing-root"
+      style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}
+    >
+      <Navbar />
+      <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
+        <section className="text-center space-y-4 mb-12">
+          <h1
+            className="text-primary uppercase"
+            style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}
+          >
+            Módulos y Precios
+          </h1>
+          <p className="text-base text-on-surface-variant max-w-xl mx-auto">
+            Compre solo los módulos que necesita. Llévese los dos y obtenga{' '}
+            {Math.round(DESCUENTO_PAQUETE * 100)}% de descuento. Pago seguro con Wompi (tarjeta, PSE
+            o Nequi).
+          </p>
+          <div className="flex justify-center gap-1 pt-2">
+            {(['mensual', 'anual'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPeriodo(p)}
+                aria-pressed={periodo === p}
+                style={{
+                  ...BADGE_STYLE,
+                  cursor: 'pointer',
+                  background: periodo === p ? '#1D4ED8' : 'transparent',
+                  color: periodo === p ? '#fff' : '#3B82F6',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+          {periodo === 'anual' && (
+            <p className="text-[12px] text-outline">Pagando anual ahorras 2 meses por módulo.</p>
+          )}
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          {CATALOGO.map((m) => (
+            <ModuleCard
+              key={m.id}
+              modulo={m}
+              periodo={periodo}
+              seleccionado={seleccion.has(m.id)}
+              vigencia={vigente(m.id)}
+              loading={loading}
+              onToggle={() => toggle(m.id)}
+            />
+          ))}
+        </section>
+
+        <section
+          className="max-w-4xl mx-auto mt-8 border p-6"
+          style={{ background: '#111317', borderColor: '#3a494a' }}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="text-[13px] text-on-surface-variant space-y-1">
+              <p>
+                {seleccion.size === 0
+                  ? 'Seleccione uno o ambos módulos.'
+                  : [...seleccion]
+                      .map((id) => CATALOGO.find((c) => c.id === id)?.nombre)
+                      .join(' + ')}
+              </p>
+              {conDescuento && (
+                <p style={{ color: '#2ff801' }}>
+                  Descuento por paquete (−{Math.round(DESCUENTO_PAQUETE * 100)}%) aplicado.
+                </p>
+              )}
+              {(['flow', 'manage'] as const)
+                .filter((id) => vigente(id))
+                .map((id) => (
+                  <p key={id}>
+                    {CATALOGO.find((c) => c.id === id)?.nombre} activo hasta{' '}
+                    {new Date(vigente(id)!.fecha_fin).toLocaleDateString('es-CO')} — comprar de
+                    nuevo extiende la vigencia desde la fecha actual.
+                  </p>
+                ))}
+            </div>
+            <div className="text-right">
+              <p
+                style={{
+                  fontSize: 28,
+                  fontWeight: 700,
+                  fontFamily: 'Hanken Grotesk, sans-serif',
+                  color: '#00f5ff',
+                }}
+              >
+                {formatCOP(total)}
+              </p>
+              <p className="text-[11px] text-outline mb-2">
+                {periodo === 'anual' ? 'por año' : 'por mes'} · renovación manual
+              </p>
+              <button
+                type="button"
+                onClick={pagar}
+                disabled={seleccion.size === 0}
+                className="uppercase tracking-widest font-bold transition-all"
+                style={{
+                  fontSize: 12,
+                  fontFamily: 'Geist, monospace',
+                  padding: '10px 22px',
+                  background: seleccion.size === 0 ? '#1a1c20' : '#00f5ff',
+                  color: seleccion.size === 0 ? '#5a6a6b' : '#003739',
+                  border: 'none',
+                  cursor: seleccion.size === 0 ? 'default' : 'pointer',
+                }}
+              >
+                {user || seleccion.size === 0 ? 'Pagar con Wompi' : 'Inicia sesión y paga'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="max-w-4xl mx-auto mt-12">
+          <h2
+            className="uppercase tracking-widest mb-4"
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: 'Geist, monospace',
+              color: '#849495',
+            }}
+          >
+            Próximamente
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {modulosProx.map((m) => (
+              <span
+                key={m}
+                className="text-[12px] px-3 py-1 border"
+                style={{ borderColor: '#3a494a', color: '#849495' }}
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="text-center mt-16 space-y-2"
+          style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}
+        >
+          <p className="text-[12px] text-outline">
+            Precios en COP. Pago único por período elegido; la renovación es manual — la app le
+            avisará al vencer.
+          </p>
+        </section>
+      </main>
+
+      <WompiCheckoutModal
+        open={checkoutAbierto}
+        onClose={() => setCheckoutAbierto(false)}
+        modulos={[...seleccion]}
+        periodo={periodo}
+      />
+    </div>
+  );
+}
+
+function ModuleCard({
+  modulo,
+  periodo,
+  seleccionado,
+  vigencia,
+  loading,
+  onToggle,
+}: {
+  modulo: ModuloVenta;
+  periodo: Periodo;
+  seleccionado: boolean;
+  vigencia?: { fecha_fin: string };
+  loading: boolean;
+  onToggle: () => void;
+}) {
+  const precio = periodo === 'anual' ? modulo.precioAnualCentavos : modulo.precioMensualCentavos;
+  return (
+    <div
+      className="border p-8 flex flex-col relative"
+      style={{
+        background: seleccionado ? '#1a1c20' : '#111317',
+        borderColor: seleccionado ? '#00f5ff' : '#3a494a',
+        borderWidth: seleccionado ? 2 : 1,
+      }}
+    >
+      <label
+        className="absolute top-4 right-4 flex items-center gap-2 cursor-pointer"
+        style={{ fontSize: 11, color: '#849495' }}
+      >
+        <input
+          type="checkbox"
+          checked={seleccionado}
+          onChange={onToggle}
+          aria-label={`Comprar ${modulo.nombre}`}
+        />
+        Comprar
+      </label>
+      <div className="text-center mb-6">
+        <h2
+          className="uppercase tracking-widest mb-2"
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            fontFamily: 'Geist, monospace',
+            color: '#00f5ff',
+          }}
+        >
+          {modulo.nombre}
+        </h2>
+        <div className="flex items-baseline justify-center gap-1">
+          <span
+            style={{
+              fontSize: 40,
+              fontWeight: 700,
+              fontFamily: 'Hanken Grotesk, sans-serif',
+              color: '#00f5ff',
+            }}
+          >
+            {formatCOP(precio)}
+          </span>
+          <span
+            className="text-on-surface-variant"
+            style={{ fontSize: 14, fontFamily: 'Hanken Grotesk, sans-serif' }}
+          >
+            {periodo === 'anual' ? '/año' : '/mes'}
+          </span>
+        </div>
+        <p className="text-sm text-on-surface-variant mt-3" style={{ minHeight: 40 }}>
+          {modulo.descripcion}
+        </p>
+        {!loading && vigencia && (
+          <p className="text-[12px] mt-2" style={{ color: '#2ff801' }}>
+            Activo hasta {new Date(vigencia.fecha_fin).toLocaleDateString('es-CO')}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Página de planes (marketing) — rama por defecto con SUSCRIPCIONES_ACTIVAS off.
+// ---------------------------------------------------------------------------
 function PricingPage() {
   usePageMeta(
     'Precios',
-    'Planes y precios de CivilCardex. Elija el plan ideal para ingenier\u00eda civil: b\u00e1sico, profesional o empresarial.',
+    'Planes y precios de CivilCardex. Elija el plan ideal para ingeniería civil: básico, profesional o empresarial.',
   );
+  if (SUSCRIPCIONES_ACTIVAS) return <PricingSuscripciones />;
   return (
     <>
       <script type="application/ld+json">{JSON.stringify(FAQ_JSONLD)}</script>
@@ -150,58 +480,10 @@ function PricingPage() {
               verificación automática contra normativa colombiana vigente.
             </p>
             <div className="flex justify-center gap-3 pt-2">
-              <span
-                style={{
-                  borderColor: '#1D4ED8',
-                  color: '#3B82F6',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontFamily: 'Geist, monospace',
-                  border: '1px solid #1D4ED8',
-                }}
-              >
-                NTC 1500
-              </span>
-              <span
-                style={{
-                  borderColor: '#1D4ED8',
-                  color: '#3B82F6',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontFamily: 'Geist, monospace',
-                  border: '1px solid #1D4ED8',
-                }}
-              >
-                RAS 2000
-              </span>
-              <span
-                style={{
-                  borderColor: '#1D4ED8',
-                  color: '#3B82F6',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontFamily: 'Geist, monospace',
-                  border: '1px solid #1D4ED8',
-                }}
-              >
-                NTC 3728
-              </span>
-              <span
-                style={{
-                  borderColor: '#1D4ED8',
-                  color: '#3B82F6',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 12,
-                  fontFamily: 'Geist, monospace',
-                  border: '1px solid #1D4ED8',
-                }}
-              >
-                NSR-10
-              </span>
+              <span style={BADGE_STYLE}>NTC 1500</span>
+              <span style={BADGE_STYLE}>RAS 2000</span>
+              <span style={BADGE_STYLE}>NTC 3728</span>
+              <span style={BADGE_STYLE}>NSR-10</span>
             </div>
           </section>
 

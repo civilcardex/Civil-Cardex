@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PlansContext } from '../../context/PlansContext';
 import { ProjectContext } from '../../context/ProjectContext';
 import { createProyecto } from '../../services/proyectosService';
@@ -8,6 +8,9 @@ import { clearLocalWorkspace } from '../../services/workspaceReset';
 import { saveToStorage } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys';
+import { SUSCRIPCIONES_ACTIVAS } from '../../../../lib/suscripciones/catalogo';
+import { estaActiva } from '../../../../lib/suscripciones/suscripcionesService';
+import { useSuscripciones } from '../../../../hooks/useSuscripciones';
 
 interface Props {
   open: boolean;
@@ -21,6 +24,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
   const plansCtx = useContext(PlansContext);
   const projectCtx = useContext(ProjectContext);
   const navigate = useNavigate();
+  const { rows: subs, loading: subsLoading } = useSuscripciones();
 
   useEffect(() => {
     if (open) requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
@@ -84,6 +88,96 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
   }
 
   if (!open) return null;
+
+  // Candado de UX; el real es el check de suscripción dentro de save_proyecto.
+  // Mientras cargan las suscripciones se deja pasar (la BD decide al final).
+  if (
+    SUSCRIPCIONES_ACTIVAS &&
+    !subsLoading &&
+    !subs.some((r) => r.modulo === 'flow' && estaActiva(r))
+  ) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)',
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--surface-container, #1e1e24)',
+            border: '1px solid var(--outline-variant, #3a3a44)',
+            borderRadius: 8,
+            padding: 24,
+            minWidth: 360,
+            maxWidth: 420,
+            boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+          }}
+        >
+          <h3
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--on-surface, #e2e2e8)',
+              margin: '0 0 4px',
+            }}
+          >
+            Suscripción CivilFlow inactiva
+          </h3>
+          <p
+            style={{
+              fontSize: 12,
+              color: 'var(--on-surface-variant, #9ba8aa)',
+              margin: '0 0 16px',
+            }}
+          >
+            Tu suscripción de CivilFlow está vencida o no existe. Adquiere o renueva el plan para
+            crear proyectos.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                background: 'transparent',
+                border: '1px solid var(--outline-variant, #3a3a44)',
+                borderRadius: 4,
+                color: 'var(--on-surface, #e2e2e8)',
+                cursor: 'pointer',
+              }}
+            >
+              Cerrar
+            </button>
+            <Link
+              to="/pricing"
+              onClick={onClose}
+              style={{
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                background: 'var(--primary, #4D8FF7)',
+                border: 'none',
+                borderRadius: 4,
+                color: 'var(--on-primary, #fff)',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              Ver planes
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

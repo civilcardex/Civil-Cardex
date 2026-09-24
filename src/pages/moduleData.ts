@@ -16,6 +16,8 @@ export interface Spec {
   hid: string;
   san: string;
   gas: string;
+  vent?: string;
+  rci?: string;
 }
 
 export interface ModuleConfig {
@@ -80,18 +82,24 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
         hid: 'Hunter',
         san: 'Manning (ASCE)',
         gas: 'Renouard (NFPA 54)',
+        vent: 'IPC/UPC (ventilación)',
+        rci: 'NFPA 13 (Densidad/Área)',
       },
       {
         param: 'Redes soportadas',
-        hid: 'Agua fría, agua caliente, contraincendio',
+        hid: 'Agua fría, agua caliente',
         san: 'Sanitaria, aguas lluvias',
         gas: 'Gas',
+        vent: 'Ventilación',
+        rci: 'Contra incendio',
       },
       {
         param: 'Verificación normativa',
         hid: 'IPC / UPC',
         san: 'ASCE / Manning',
         gas: 'NFPA 54 (ΔP)',
+        vent: 'IPC/UPC (vent)',
+        rci: 'NFPA 13 / 14',
       },
     ],
     normas: [

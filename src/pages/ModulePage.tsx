@@ -6,6 +6,10 @@ import { HERO_BY_LAYOUT } from '../components/modulePage/heroByLayout';
 import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog';
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { SUSCRIPCIONES_ACTIVAS } from '../lib/suscripciones/catalogo';
+import { estaActiva } from '../lib/suscripciones/suscripcionesService';
+import { useSuscripciones } from '../hooks/useSuscripciones';
 const ModulePage_S1: React.CSSProperties = {
   position: 'absolute',
   width: '1px',
@@ -25,6 +29,9 @@ interface ModulePageProps {
 export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { rows } = useSuscripciones();
+  const tieneModulo = (id: 'flow' | 'manage') => rows.some((r) => r.modulo === id && estaActiva(r));
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateCM, setShowCreateCM] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
@@ -69,12 +76,20 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                   setShowLoginAlert(true);
                   return;
                 }
+                if (SUSCRIPCIONES_ACTIVAS && !tieneModulo('flow')) {
+                  navigate('/pricing?modulo=flow');
+                  return;
+                }
                 setShowCreate(true);
               }
             : moduleId === 'manage'
               ? () => {
                   if (!user) {
                     setShowLoginAlert(true);
+                    return;
+                  }
+                  if (SUSCRIPCIONES_ACTIVAS && !tieneModulo('manage')) {
+                    navigate('/pricing?modulo=manage');
                     return;
                   }
                   setShowCreateCM(true);
@@ -457,7 +472,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             </div>
             <div className="flex-grow p-4 flex gap-4 overflow-x-auto">
               <div
-                className="min-w-[600px] w-full flex flex-col gap-1 text-[12px]"
+                className="min-w-[760px] w-full flex flex-col gap-1 text-[12px]"
                 style={{ fontFamily: 'Geist, monospace' }}
               >
                 <div className="grid grid-cols-5 text-on-surface-variant border-b border-outline-variant pb-1 mb-1 uppercase text-[10px]">
@@ -532,6 +547,20 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     >
                       Red de Gas
                     </th>
+                    <th
+                      scope="col"
+                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                      style={{ fontFamily: 'Geist, monospace' }}
+                    >
+                      Ventilación
+                    </th>
+                    <th
+                      scope="col"
+                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                      style={{ fontFamily: 'Geist, monospace' }}
+                    >
+                      Contra Incendio
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="text-on-surface-variant">
@@ -546,6 +575,8 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                       <td className="p-4">{s.hid}</td>
                       <td className="p-4">{s.san}</td>
                       <td className="p-4">{s.gas}</td>
+                      <td className="p-4">{s.vent ?? '—'}</td>
+                      <td className="p-4">{s.rci ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

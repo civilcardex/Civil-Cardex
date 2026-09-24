@@ -23,6 +23,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PricingPage from './pages/PricingPage';
+import RequireModule from './components/suscripciones/RequireModule';
 
 import NotFound from './pages/NotFound';
 
@@ -200,23 +201,27 @@ function App() {
                   <Route
                     path="/civilflowareatrabajo"
                     element={
-                      <ErrorBoundary>
-                        <CivilFlowProviders>
-                          <Suspense fallback={<Fallback />}>
-                            <WorkAreaCivilFlowPage />
-                          </Suspense>
-                        </CivilFlowProviders>
-                      </ErrorBoundary>
+                      <RequireModule modulo="flow">
+                        <ErrorBoundary>
+                          <CivilFlowProviders>
+                            <Suspense fallback={<Fallback />}>
+                              <WorkAreaCivilFlowPage />
+                            </Suspense>
+                          </CivilFlowProviders>
+                        </ErrorBoundary>
+                      </RequireModule>
                     }
                   />
                   <Route
                     path="/civilmanagerareatrabajo"
                     element={
-                      <ErrorBoundary>
-                        <Suspense fallback={<Fallback />}>
-                          <WorkAreaCivilManagerPage />
-                        </Suspense>
-                      </ErrorBoundary>
+                      <RequireModule modulo="manage">
+                        <ErrorBoundary>
+                          <Suspense fallback={<Fallback />}>
+                            <WorkAreaCivilManagerPage />
+                          </Suspense>
+                        </ErrorBoundary>
+                      </RequireModule>
                     }
                   />
                   <Route
