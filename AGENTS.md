@@ -40,6 +40,12 @@ Consecuencia conocida (decisión del usuario): al activar NO existe plan gratis 
 
 ## Security Notes
 
+### Linter Supabase — WARNs aceptados (2026-09-24)
+- `authenticated_security_definer_function_executable` sobre los WRAPPERS de contenido (save_plano_data, save_proyecto, etc.): patrón INTENCIONAL — SECURITY DEFINER con ownership check interno (`auth.uid()` + verificación de propiedad en cada cuerpo), auditado en rondas 4-6. El lint es WARN por diseño; no hay acción.
+- `acceso_modulo`/`suscripciones_habilitadas` ejecutables por authenticated: REQUERIDO — las policies RLS de cm_proyectos las invocan como el rol del usuario (sin EXECUTE las policies fallan). Solo exponen un booleano, sin datos de usuario.
+- **NO aceptado y corregido** en `20260924000002_revokes_impl.sql`: las `*_impl` heredaron EXECUTE de authenticated vía el rename (los grants viajan con la función) — bypass del gating de USO. Revocadas de public/anon/authenticated; solo los wrappers (con candado) quedan ejecutables.
+- `auth_leaked_password_protection`: toggle de Dashboard → Authentication → Policies (acción del usuario, sin migración).
+
 ### Known Risks (Client-Side Only â€” Requires Backend Changes)
 
 - **Auth tokens in localStorage**: Supabase's client SDK stores JWT auth tokens (access + refresh) under `sb-*-auth-token` keys in `localStorage`. This is the default Supabase behavior and cannot be changed without switching to a server-side auth flow (e.g., Supabase SSR with httpOnly cookies). In the current SPA architecture:
@@ -1997,3 +2003,31 @@ tsc 0 · vitest 850/850 (153 files) · build ✓ · graphify ✓.
 
 ### Verificación manual pendiente (recarga dura Ctrl+Shift+R)
 Asociar bajantes entre pisos → cerrar visor → reabrir: fantasma/LD/anillo deben persistir (si vuelve a pasar, la restauración local→BD debería taparlo); caudal del bajante ll en el panel con Área Otras puesta desde la tabla; ancho del caudal de ramales; subcolumna Chequeo; regla bajante≥ramales con alerta en ambas tablas.
+
+## Session Summary — 2026-09-24 (auditoría ronda 6: suscripciones/dinero + ll checks)
+
+### Suscripciones (decisión usuario: BD bloquea USO, no solo creación)
+- **C1 race de doble activación** (migración `20260924000001_suscripciones_race_y_uso.sql`): activar_suscripciones con `select…for update` + verificación de rowcount tras el UPDATE — N wompi-verify paralelas ya no convierten 1 pago en N períodos.
+- **Gating de USO**: patrón rename→*_impl + wrapper delgado con `acceso_modulo(auth.uid(),'flow')` en los 10 RPCs de contenido (save_plano_data, save_proyecto_core, save_redes_activas, save_gas/ep/bomba_datos, save_planos_meta, save_rainwater_overrides, delete_plano_meta, save_proyecto_general_campo) + policies INSERT/UPDATE/DELETE de cm_proyectos con 'manage'. Con el flag apagado el comportamiento es idéntico (acceso_modulo=true para todos).
+- **Webhook valida monto+moneda** contra cf_pagos antes de activar (409 monto_no_coincide) — el canal menos confiable ya no asume. txn_id null (no ''): el unique no colisiona. `supabase/config.toml` con verify_jwt=false SOLO para el webhook (sin esto el gateway 401-eaba todos los eventos de Wompi).
+- crear-intencion-pago: reúso de intención pendiente <24h con misma selección + firma ANTES del insert (sin filas huérfanas en 503).
+- Revokes: anon en tablas nuevas; acceso_modulo/suscripciones_habilitadas ya no ejecutables por PUBLIC.
+- Cliente: createProyecto devuelve {ok,msg} y el dialog distingue 'suscripcion_requerida' (mensaje humano) de fallo de red; moduloVenta null-safe (el fallback silencioso cobraba otro módulo); ?modulo= reactivo vía useMemo derivado (setState en effect prohibido por el linter del repo).
+- Test catalogoParidad (4): compara literales del edge (leído como texto) vs catálogo cliente — el drift de precios ya no pasa en silencio.
+
+### ll checks (decisión usuario: doctrina AUTO-SUBE el bajante)
+- **useCaudalLl**: LD_ busca al superior en TODOS los pisos (antes solo el cargado — panel '—' siempre); XFG resuelve al bajante fuente (el bloque de caudal del fantasma renderizaba '—' al 100%); cálculo extraído a `caudalLlDe` pura con useMemo (I/O multi-piso por render fuera); qDe delega en qBajanteLl.
+- **qBajanteLl (rainwaterRows)**: ÚNICA precedencia (caudal manual > override Parcial+Otras/I/C > área dibujo) — computeLlQMap la adopta; panel y tablas ya no discrepant.
+- **Regla bajante≥ramal cerrada en sus 2 agujeros**: updateGhostField valida dNominal del ghost (misma alerta que el menú); espejo cross-floor auto-sube al máximo de los ramales del piso destino en vez de arrastrar el menor.
+- **Doctrina unificada**: RainwaterDesign ya no bloquea el ramal mayor con alerta — el engine auto-sube el bajante (bump/follow) — decisión del usuario.
+- **Anti-loss consistente**: la caché local guarda EXACTAMENTE lo que cargó el engine (merged si restauró, dbData si no — antes pisaba el merged con dbData y producía la pérdida que curaba) + GATE anti-stale: restaurar solo si BD carece de TODO artefacto de asociación O divergencia <1h (no resucita desasociaciones legítimas multi-dispositivo). Tests: asocPersistTrasCopia +2 (gate, import estático).
+- Atajo 'O' → guard red af/gas + sin modificadores (Ctrl+O del navegador) + guard de defensa en handleContadorDown (CNTAF en san/ll contaminaba tablas). F8: v!==null muerto fuera; caja seleccionada muestra placeholder informativo. doZoom muerto ELIMINADO (el zoom real vive en planoCamera). calcsDe/INPUTS_DEFAULT exportados + bombaARCalcs.test (3: cadena full-precision, η vacío → '', Qd Hunter/Qb/HP 745.7).
+
+### Deuda documentada (sin fix)
+M7 vencimiento-en-vivo de RequireModule (re-render lo cubre) · M9 estado cancelada muerto · M10 rate-limit en endpoints de dinero (al activar) · fuente única de precios (paridad testeeada como red) · gating fila-a-fila de tablas cm_hijas (cm_get_data no carga nada sin el proyecto padre).
+
+### Aplicar tú
+SQL Editor: `20260924000001_suscripciones_race_y_uso.sql` (re-ejecutable). Deploy: `supabase functions deploy wompi-webhook wompi-verify crear-intencion-pago` + asegurar config.toml en el deploy.
+
+### Gates
+tsc 0 · lint 0 err (3 warn pre-existentes) · vitest 859/859 (155 files) · build ✓ · graphify ✓. Tests nuevos ronda: paridad 4 + gate anti-loss 2 + bombaARCalcs 3.
