@@ -2,8 +2,15 @@ import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import { READONLY_CENTER_STYLE } from './context';
 
 /** Campo de caudal del extremo con aparato de un ramal. */
-export function CaudalField({ selElement }: { selElement: PlanoRamal | null }) {
-  const extVal = selElement?.caudal;
+export function CaudalField({
+  selElement,
+  value,
+}: {
+  selElement: PlanoRamal | null;
+  /** Caudal calculado (ll) — prioridad sobre el campo manual del ramal. */
+  value?: number | null;
+}) {
+  const extVal = value != null ? value : selElement?.caudal;
   const display =
     extVal != null && (extVal as unknown as string) !== '' && !isNaN(Number(extVal))
       ? Number(extVal).toFixed(2)

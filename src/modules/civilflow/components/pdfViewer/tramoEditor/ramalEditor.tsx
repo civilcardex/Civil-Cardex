@@ -8,6 +8,7 @@ import {
   sanDiamLabelAllowedForApparatus,
   SAN_INODORO_MIN_MSG,
 } from '../../../utils/sanitaryDiamCompat';
+import { useCaudalLl } from './useCaudalLl';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import {
@@ -89,6 +90,8 @@ export function RamalEditor({
   const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
   const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
   const showCaudal = activeNet === 'll';
+  // Caudal calculado (mismo qMap que Diseño de red lluvias) — el ramal ll lo muestra en el panel.
+  const caudalLl = useCaudalLl(selElement, activeNet, engineRef.current?._loadedPlanId);
 
   // Ítems 5+6: la propagación aguas abajo la hacen updateSelected/updateElementById vía
   // recomputeDownstreamDiameters — un solo snapshot por cambio, sin llamadas extra aquí.
@@ -484,7 +487,7 @@ export function RamalEditor({
             </div>
           ) : null}
         </div>
-        {showCaudal && <CaudalField selElement={selElement} />}
+        {showCaudal && <CaudalField selElement={selElement} value={caudalLl} />}
         {(showDeltaZ || showDescargas) && (
           <div
             style={{

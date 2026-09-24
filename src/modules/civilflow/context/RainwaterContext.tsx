@@ -160,7 +160,8 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   // de storage por plano — los glifos de canal no pasan por TramosContext/buildTramos.ts (esa
   // tubería solo modela ramales/bajantes con semántica sanitaria/bajante), así que se leen
   // directo aquí, igual que `areas` arriba.
-  const { areaAcumMap, drawnCanalGlyphs } = useMemo(() => {
+  const { areaAcumMap, drawnCanalGlyphs, canalAreaMap } = useMemo(() => {
+    const canalAreaMap: Record<string, number> = {};
     const map: Record<string, number> = {};
     const glyphs: (RawElement & { piso: string })[] = [];
     for (const plan of plans || []) {
@@ -183,14 +184,69 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       for (const b of data.bajantes || []) {
         if (b.tipo === 'canal' && b.net === 'll') glyphs.push({ ...b, piso: String(plan.nivel) });
       }
+      // Área de cada canal = Σ áreas de los bajantes que le descargan (orig. usuario): un
+      // ramal ll cuyo ÚLTIMO punto cae en el rectángulo del canal trae el área de SU bajante
+      // (el otro extremo a ≤2 px del glifo). Rect del canal desde (x,y) + longitud/base cm.
+      const canales = (data.bajantes || []).filter(
+        (b): b is RawElement & { base?: number; longitud?: number; x?: number; y?: number } =>
+          b.tipo === 'canal' && b.net === 'll',
+      );
+      const bajLl = (data.bajantes || []).filter(
+        (b): b is RawElement & { area_m2?: number; x?: number; y?: number } =>
+          b.net === 'll' && b.tipo === 'bajante',
+      );
+      const pxPerCm = (Number(data.scaleM ?? 0.5) * 96) / 2.54;
+      for (const c of canales) {
+        if (c.x == null || c.y == null) continue;
+        const cx = c.x;
+        const cy = c.y;
+        const w = (c.longitud ?? 0) * pxPerCm;
+        const h = (c.base ?? 0) * pxPerCm;
+        const pad = 4;
+        const enRect = (pt: number[]): boolean =>
+          pt[0] >= cx - pad && pt[0] <= cx + w + pad && pt[1] >= cy - pad && pt[1] <= cy + h + pad;
+        // SET de bajantes alimentadores (un bajante con VARIOS ramales al canal cuenta UNA vez).
+        const alimentadores = new Set<string>();
+        for (const r of data.ramales || []) {
+          if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
+          // Cualquier DIRECCIÓN: un extremo dentro del canal y el OTRO sobre el glifo del
+          // bajante (el ramal puede salir del canal o llegar a él — esCanalId marca salida).
+          const pS = r.pts[0];
+          const pE = r.pts[r.pts.length - 1];
+          const pBaj = enRect(pS) ? pE : enRect(pE) ? pS : null;
+          if (!pBaj) continue;
+          for (const b of bajLl) {
+            if (b.x == null || b.y == null) continue;
+            if (Math.hypot(pBaj[0] - b.x, pBaj[1] - b.y) < 2) {
+              alimentadores.add(String(b.id));
+              break;
+            }
+          }
+        }
+        // Bajante dibujado directamente sobre el canal (sin ramal): también alimentador.
+        for (const b of bajLl) {
+          if (b.x == null || b.y == null) continue;
+          if (enRect([b.x, b.y])) alimentadores.add(String(b.id));
+        }
+        // Área = Σ una sola vez por bajante alimentador.
+        let area = 0;
+        for (const idB of alimentadores) {
+          const b = bajLl.find((x) => String(x.id) === idB);
+          area += b?.area_m2 || 0;
+        }
+        if (area > 0) canalAreaMap[String(c.id)] = area;
+      }
     }
-    return { areaAcumMap: map, drawnCanalGlyphs: glyphs };
+    return { areaAcumMap: map, drawnCanalGlyphs: glyphs, canalAreaMap };
   }, [plans]);
 
   const canalesLlAuto = useMemo(() => {
     const manualMap = new Map<string, CanalLL>();
     for (const c of canalesLl) manualMap.set(c.sector || c.id, c);
     const usedManual = new Set<string>();
+    // Overrides manuales de bajantes (para etiquetar SU área asignada al canal).
+    const manualBajMap = new Map<string, (typeof bajantesLl)[number]>();
+    for (const m of bajantesLl) manualBajMap.set(m.bajante || m.id, m);
     const out: CanalLL[] = [];
 
     for (const glyph of drawnCanalGlyphs) {
@@ -198,11 +254,20 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       const sector = (glyph.code || glyph.id).split('-')[0];
       const manual = manualMap.get(sector);
       if (manual) usedManual.add(manual.sector || manual.id);
-      // Mismo criterio que ramales-canal arriba: valor propio del canal primero, total del
-      // piso solo como fallback.
-      const areaAcum = manual?.areaAcumulada || areaAcumMap[glyph.piso] || 0;
+      // Área del canal = Σ áreas asignadas a los bajantes que le descargan (orig. usuario).
+      // Override manual del canal primero; total dibujado del piso solo si ningún bajante
+      // le descarga.
+      const areaDeBajantes = canalAreaMap[String(glyph.id)] || 0;
+      const manualBaj = manualBajMap.get(glyph.code || glyph.id);
+      const areaAcum =
+        manual?.areaAcumulada ||
+        areaDeBajantes ||
+        manualBaj?.areaAcumulada ||
+        areaAcumMap[glyph.piso] ||
+        0;
       const areaOtras = manual?.areaOtras ?? 0;
-      const areaParcial = manual?.areaParcial || areaAcum;
+      const areaParcial =
+        manual?.areaParcial || areaDeBajantes || manualBaj?.areaParcial || areaAcum;
       out.push({
         id: 'cg_' + glyph.id,
         sector,
@@ -235,7 +300,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     for (const c of out) c.pendiente = 2;
 
     return out;
-  }, [drawnCanalGlyphs, canalesLl, areaAcumMap]);
+  }, [drawnCanalGlyphs, canalesLl, bajantesLl, areaAcumMap, canalAreaMap]);
 
   const addBajanteLL = () =>
     setBajantesLl((p) => [

@@ -28,11 +28,10 @@ export interface BajanteLl {
   coeficienteC?: number;
 }
 
-// Ramal ll que DESCARGA en un canal recolector (su ÚLTIMO punto cae dentro del rectángulo del
-// canal, que crece desde (x,y) según longitud/base en cm a la escala del doc): es descarga al
-// canal, no colector de diseño — fuera de la tabla Diseño de red aguas lluvias. Los que SALEN
-// del canal (primer punto en el rect, o esCanalId de finishRamal) SÍ son colectores y se
-// quedan. Claves `${id}-${planId}` (mismo formato _key de los tramos).
+// Ramales DE los canales (orig. usuario): los marcados `esCanalId` por finishRamal (geometría
+// del canal) y los que DESCARGAN en un canal (último punto dentro del rectángulo del canal,
+// que crece desde (x,y) según longitud/base en cm a la escala del doc) — fuera de la tabla
+// Diseño de red aguas lluvias. Claves `${id}-${planId}` (mismo formato _key de los tramos).
 export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
   const keys = new Set<string>();
   for (const plan of plans || []) {
@@ -57,6 +56,10 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
 
     for (const r of (data.ramales || []) as Array<RawElement & { esCanalId?: string | null }>) {
       if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
+      if (r.esCanalId) {
+        keys.add(`${r.id}-${plan.id}`);
+        continue;
+      }
       const pE = r.pts[r.pts.length - 1];
       const enRect = canales.some((c) => {
         if (c.x == null || c.y == null) return false;

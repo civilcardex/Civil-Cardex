@@ -5,12 +5,20 @@ import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
 import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
-import { SELECT_STYLE, INPUT_CENTER_STYLE, CHECK_GRID_STYLE, CHECK_ROW_STYLE } from './context';
+import {
+  SELECT_STYLE,
+  INPUT_CENTER_STYLE,
+  CHECK_GRID_STYLE,
+  CHECK_ROW_STYLE,
+  READONLY_CENTER_STYLE,
+} from './context';
+import { useCaudalLl } from './useCaudalLl';
 
 /** Editor del bajante/montante seleccionado: diámetro, altura vertical, llenado (R) y área
  *  servida. */
 export function BajanteEditor({
   selElement,
+  activeNet,
   engineRef,
   setSelElement,
   handleUpdateSel,
@@ -25,6 +33,8 @@ export function BajanteEditor({
   isGhostSel: boolean;
   lvl: string;
 }) {
+  // Caudal calculado (mismo qMap que Diseño de red lluvias) para bajantes ll.
+  const caudalLl = useCaudalLl(selElement, activeNet, engineRef.current?._loadedPlanId);
   if (isGhostSel) {
     const gd = selElement.ghostData?.[lvl] || {};
     const currentGhostDiam = gd.dNominal || '';
@@ -315,6 +325,25 @@ export function BajanteEditor({
             </select>
           </div>
         </div>
+        {selElement.net === 'll' && caudalLl != null && (
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#9BA8AA',
+                fontFamily: "'Geist',monospace",
+                marginBottom: 2,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              Caudal (LPS)
+            </div>
+            <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+              {caudalLl.toFixed(2)}
+            </div>
+          </div>
+        )}
         <div>
           <div
             style={{

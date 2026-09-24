@@ -3,7 +3,7 @@ import { useRainwater, type BajanteLL } from '../context/RainwaterContext';
 import { useTramos } from '../context/TramosContext';
 import EditButton from './shared/EditButton';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
-import { buildLlBajanteAssociations } from '../utils/rainwaterRows';
+import { buildLlBajanteAssociations, computeCanalBajanteRamalKeys } from '../utils/rainwaterRows';
 import ChipList from './shared/ChipList';
 import { usePlans } from '../context/PlansContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
@@ -103,8 +103,14 @@ export default function ChequeoBajantesLluvias() {
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
 
+  // Las CAJAS de aguas lluvias (CALL, tipo caja_ll) no son bajantes: fuera de la tabla.
   const drawingBajantes = useMemo(() => {
-    return tramosLl.filter((t) => t.esBajante);
+    return tramosLl.filter(
+      (t) =>
+        t.esBajante &&
+        !String(t.code ?? '').startsWith('CALL') &&
+        !String(t.id ?? '').startsWith('CALL'),
+    );
   }, [tramosLl]);
 
   const areaDibujoMap = useMemo(() => {
@@ -168,6 +174,9 @@ export default function ChequeoBajantesLluvias() {
     () => buildLlBajanteAssociations(tramosLl, plans),
     [tramosLl, plans],
   );
+  // Ramales de/descargando al canal: nunca son "ramales asociados" de un bajante.
+  const canalRamalKeys = useMemo(() => computeCanalBajanteRamalKeys(plans), [plans]);
+
   const ramalesByBajante = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
@@ -175,6 +184,8 @@ export default function ChequeoBajantesLluvias() {
       // Piso del ramal (de su plano) → etiqueta "RS1-P1" en el chip.
       const nivel = plans?.find((pl) => String(pl.id) === planId)?.nivel;
       const label = nivel != null ? `${ramalId}-${pisoCorto(nivel)}` : ramalId;
+      // Ramal de canal: fuera.
+      if (canalRamalKeys.has(ramalKey)) continue;
       for (const code of codes) {
         const t = tramosLl.find((x) => x.esBajante && (x.code === code || x.id === code));
         const k = t?._key;
@@ -186,7 +197,7 @@ export default function ChequeoBajantesLluvias() {
       }
     }
     return map;
-  }, [bajanteAssociations, tramosLl, plans]);
+  }, [bajanteAssociations, tramosLl, plans, canalRamalKeys]);
 
   const rows = useMemo(() => {
     const manualMap = new Map<string, BajanteLL>();

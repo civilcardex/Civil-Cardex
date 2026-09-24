@@ -3,8 +3,8 @@ import { computeCanalBajanteRamalKeys } from '../rainwaterRows';
 import type { PlanItem } from '../../context/PlansContext';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 
-// Regla por DIRECCIÓN: los ramales que DESCARGAN en el canal (último punto dentro del
-// rectángulo) NO son colectores de diseño; los que SALEN del canal (o no lo tocan) SÍ.
+// Ramales DE los canales fuera de diseño: marcados esCanalId O que descargan en el
+// canal (último punto dentro del rectángulo). Colectores reales se quedan.
 
 const PLANS = [{ id: '1', nivel: 0, status: 'confirmed' }] as unknown as PlanItem[];
 
@@ -24,7 +24,7 @@ function seed(ramales: Array<Record<string, unknown>>): void {
 beforeEach(() => localStorage.clear());
 
 describe('computeCanalBajanteRamalKeys (llegadas al canal)', () => {
-  it('excluye el que LLEGA al canal; el que SALE y el colector lejano se quedan', () => {
+  it('excluye esCanalId y llegadas; colector lejano se queda', () => {
     seed([
       // Llega: último punto dentro del rect (100..~667, 100..~760+pad).
       {
@@ -35,7 +35,7 @@ describe('computeCanalBajanteRamalKeys (llegadas al canal)', () => {
           [140, 108],
         ],
       },
-      // Sale: primer punto en el canal, fin lejos fuera del rect — SÍ es de diseño.
+      // esCanalId: ramal DEL canal — fuera.
       {
         id: 'R2',
         net: 'll',
@@ -66,7 +66,7 @@ describe('computeCanalBajanteRamalKeys (llegadas al canal)', () => {
     ]);
     const keys = computeCanalBajanteRamalKeys(PLANS);
     expect(keys.has('R1-1')).toBe(true);
-    expect(keys.has('R2-1')).toBe(false);
+    expect(keys.has('R2-1')).toBe(true);
     expect(keys.has('R3-1')).toBe(false);
     expect(keys.has('R4-1')).toBe(false);
   });
