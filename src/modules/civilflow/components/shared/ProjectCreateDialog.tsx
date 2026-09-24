@@ -44,12 +44,19 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
         '-' +
         String(now.getHours()).padStart(2, '0') +
         String(now.getMinutes()).padStart(2, '0');
-      const proyecto = await createProyecto(codigo, trimmed);
-      if (!proyecto) {
-        devError('Error creando proyecto');
+      const res = await createProyecto(codigo, trimmed);
+      if (!res.ok) {
+        devError('Error creando proyecto:', res.msg);
+        // El candado real (BD) habla: distinguirlo del fallo genérico de red.
+        alert(
+          res.msg === 'suscripcion_requerida'
+            ? 'Tu suscripción a este módulo está vencida — renuévala en Precios para crear proyectos.'
+            : 'No se pudo crear el proyecto. Revisa tu conexión e inténtalo de nuevo.',
+        );
         setCreating(false);
         return;
       }
+      const proyecto = res.row;
       // Pausa los efectos de guardado en la nube (debounced) durante el reset de abajo — misma lógica que
       // ProfilePage.openProyecto (ver ProjectContext.pauseCloudSync).
       projectCtx?.pauseCloudSync();

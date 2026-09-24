@@ -71,12 +71,19 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
  * @param nombre - Nombre legible del proyecto.
  * @returns ProyectoRow insertado o null ante fallo.
  */
-export async function createProyecto(codigo: string, nombre: string): Promise<ProyectoRow | null> {
+/** Resultado de crear proyecto: fila creada, o fallo con mensaje del RPC (p. ej.
+ *  'suscripcion_requerida' cuando la BD tiene el gating activo y la suscripción venció). */
+export type CreateProyectoResult = { ok: true; row: ProyectoRow } | { ok: false; msg: string };
+
+export async function createProyecto(
+  codigo: string,
+  nombre: string,
+): Promise<CreateProyectoResult> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) return { ok: false, msg: 'sin_sesion' };
 
     const { data, error } = await supabase.rpc('save_proyecto', {
       p_codigo: codigo,
@@ -85,13 +92,14 @@ export async function createProyecto(codigo: string, nombre: string): Promise<Pr
 
     if (error) {
       devError('proyectosService create rpc:', error.message);
-      return null;
+      // '' colisiona con "ok pero vacío": los mensajes se propagan como { ok:false, msg }.
+      return { ok: false, msg: error.message };
     }
 
-    return data as unknown as ProyectoRow;
+    return { ok: true, row: data as unknown as ProyectoRow };
   } catch (e) {
     devError('proyectosService create exception:', e);
-    return null;
+    return { ok: false, msg: 'error_red' };
   }
 }
 

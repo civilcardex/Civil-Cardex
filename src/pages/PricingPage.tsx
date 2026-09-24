@@ -167,6 +167,15 @@ function PricingSuscripciones() {
     if (q && CATALOGO.some((m) => m.id === q)) inicial.add(q as ModuloId);
     return inicial;
   });
+  // ?modulo= reactivo: RequireModule redirige a /pricing?modulo=X con la página YA montada
+  // (desde "Ver planes" con otro módulo) — el useState inicial no corre de nuevo. Derivado
+  // en render (patrón repo: setState en effect dispara cascada).
+  const seleccionMemo = useMemo(() => {
+    const q = new URLSearchParams(location.search).get('modulo');
+    if (q && CATALOGO.some((m) => m.id === q)) return new Set([q as ModuloId]);
+    return null;
+  }, [location.search]);
+  const seleccionEfectiva = seleccionMemo ?? seleccion;
   const [checkoutAbierto, setCheckoutAbierto] = useState(false);
 
   const modulosProx = useMemo(
@@ -178,7 +187,7 @@ function PricingSuscripciones() {
   );
 
   const total = calcularTotalCentavos([...seleccion], periodo);
-  const conDescuento = seleccion.size >= 2;
+  const conDescuento = seleccionEfectiva.size >= 2;
 
   function toggle(id: ModuloId) {
     setSeleccion((prev) => {
@@ -190,7 +199,7 @@ function PricingSuscripciones() {
   }
 
   function pagar() {
-    if (seleccion.size === 0) return;
+    if (seleccionEfectiva.size === 0) return;
     if (!user) {
       navigate('/login');
       return;
@@ -251,7 +260,7 @@ function PricingSuscripciones() {
               key={m.id}
               modulo={m}
               periodo={periodo}
-              seleccionado={seleccion.has(m.id)}
+              seleccionado={seleccionEfectiva.has(m.id)}
               vigencia={vigente(m.id)}
               loading={loading}
               onToggle={() => toggle(m.id)}
@@ -266,7 +275,7 @@ function PricingSuscripciones() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="text-[13px] text-on-surface-variant space-y-1">
               <p>
-                {seleccion.size === 0
+                {seleccionEfectiva.size === 0
                   ? 'Seleccione uno o ambos módulos.'
                   : [...seleccion]
                       .map((id) => CATALOGO.find((c) => c.id === id)?.nombre)
@@ -304,19 +313,19 @@ function PricingSuscripciones() {
               <button
                 type="button"
                 onClick={pagar}
-                disabled={seleccion.size === 0}
+                disabled={seleccionEfectiva.size === 0}
                 className="uppercase tracking-widest font-bold transition-all"
                 style={{
                   fontSize: 12,
                   fontFamily: 'Geist, monospace',
                   padding: '10px 22px',
-                  background: seleccion.size === 0 ? '#1a1c20' : '#00f5ff',
-                  color: seleccion.size === 0 ? '#5a6a6b' : '#003739',
+                  background: seleccionEfectiva.size === 0 ? '#1a1c20' : '#00f5ff',
+                  color: seleccionEfectiva.size === 0 ? '#5a6a6b' : '#003739',
                   border: 'none',
-                  cursor: seleccion.size === 0 ? 'default' : 'pointer',
+                  cursor: seleccionEfectiva.size === 0 ? 'default' : 'pointer',
                 }}
               >
-                {user || seleccion.size === 0 ? 'Pagar con Wompi' : 'Inicia sesión y paga'}
+                {user || seleccionEfectiva.size === 0 ? 'Pagar con Wompi' : 'Inicia sesión y paga'}
               </button>
             </div>
           </div>

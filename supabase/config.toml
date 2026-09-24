@@ -1,0 +1,13 @@
+# Config de despliegue de las edge functions (supabase CLI la lee en `supabase functions deploy`).
+# El webhook de Wompi POSTea SIN Authorization header: con el default verify_jwt = true el
+# gateway responde 401 antes de ejecutar una línea y el "canal de respaldo" nunca corre.
+# Su autenticidad la da el checksum del evento (verificarFirmaEventos) — no necesita JWT.
+# Las otras dos SÍ usan JWT de usuario (el cliente las llama logueado).
+[functions.wompi-webhook]
+verify_jwt = false
+
+[functions.crear-intencion-pago]
+verify_jwt = true
+
+[functions.wompi-verify]
+verify_jwt = true

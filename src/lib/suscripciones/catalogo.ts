@@ -45,10 +45,10 @@ export const DESCUENTO_PAQUETE = 0.15; // al comprar los 2 módulos
 /** Interruptor global del sistema de suscripciones. OFF = app como siempre. */
 export const SUSCRIPCIONES_ACTIVAS = import.meta.env.VITE_SUSCRIPCIONES === 'true';
 
-export function moduloVenta(id: ModuloId): ModuloVenta {
-  const m = CATALOGO.find((x) => x.id === id);
-  if (!m) devError('moduloVenta: id desconocido:', id);
-  return m ?? CATALOGO[0];
+/** Busca un módulo del catálogo. Devuelve null (NO un fallback silencioso) si el id no
+ *  existe — un typo aquí cobraba/mostraba otro módulo. */
+export function moduloVenta(id: ModuloId): ModuloVenta | null {
+  return CATALOGO.find((x) => x.id === id) ?? null;
 }
 
 /** Total en centavos; descuento de paquete al llevar 2 módulos. Deduplica. */
@@ -56,6 +56,10 @@ export function calcularTotalCentavos(modulos: ModuloId[], periodo: Periodo): nu
   const unicos = [...new Set(modulos)];
   const bruto = unicos.reduce((s, id) => {
     const m = moduloVenta(id);
+    if (!m) {
+      devError('calcularTotalCentavos: id desconocido:', id);
+      return s;
+    }
     return s + (periodo === 'anual' ? m.precioAnualCentavos : m.precioMensualCentavos);
   }, 0);
   return Math.round(unicos.length >= 2 ? bruto * (1 - DESCUENTO_PAQUETE) : bruto);

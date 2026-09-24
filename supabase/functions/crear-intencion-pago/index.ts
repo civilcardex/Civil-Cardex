@@ -41,25 +41,47 @@ Deno.serve(async (req) => {
     return json(400, { error: 'parametros_invalidos' });
   }
 
+  // Reúso de intención pendiente <24 h con la MISMA selección: cada apertura del modal
+  // creaba una fila nueva (spam) y las viejas congelaban el precio para siempre.
+  const desde = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+  const { data: pendiente } = await admin
+    .from('cf_pagos')
+    .select('referencia, monto_centavos, modulos, periodo')
+    .eq('user_id', uid)
+    .eq('estado', 'pendiente')
+    .eq('periodo', periodo)
+    .gte('created_at', desde)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  const mismaSeleccion = (pendiente ?? []).find(
+    (row) =>
+      row.monto_centavos === calcularTotalCentavos(modulos, periodo) &&
+      JSON.stringify([...(row.modulos as string[])].sort()) === JSON.stringify([...modulos].sort()),
+  );
+
   const montoCentavos = calcularTotalCentavos(modulos, periodo);
-  const referencia = `CC-${uid.slice(0, 8)}-${Date.now()}`;
-
-  const { error } = await admin.from('cf_pagos').insert({
-    referencia,
-    user_id: uid,
-    modulos,
-    periodo,
-    monto_centavos: montoCentavos,
-    moneda: 'COP',
-    estado: 'pendiente',
-  });
-  if (error) return json(500, { error: 'no_se_pudo_registrar_intencion' });
-
+  // Referencia UNA sola vez (reutilizada o nueva) y firma ANTES del insert: si falta
+  // WOMPI_INTEGRIDAD no dejamos filas huérfanas, y la firma siempre corresponde a la
+  // referencia devuelta.
+  const referencia = mismaSeleccion?.referencia ?? `CC-${uid.slice(0, 8)}-${Date.now()}`;
   let firma: string;
   try {
     firma = await firmaIntegridad(referencia, montoCentavos, 'COP');
   } catch {
     return json(503, { error: 'wompi_no_configurado' });
+  }
+
+  if (!mismaSeleccion) {
+    const { error } = await admin.from('cf_pagos').insert({
+      referencia,
+      user_id: uid,
+      modulos,
+      periodo,
+      monto_centavos: montoCentavos,
+      moneda: 'COP',
+      estado: 'pendiente',
+    });
+    if (error) return json(500, { error: 'no_se_pudo_registrar_intencion' });
   }
 
   return json(200, {

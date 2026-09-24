@@ -63,7 +63,8 @@ Deno.serve(async (req) => {
 
   const { error: errRpc } = await admin.rpc('activar_suscripciones', {
     p_referencia: referencia,
-    p_txn_id: String(tx.id ?? ''),
+    // null (no '') sin id: la columna es unique y dos '' colisionan con 500.
+    p_txn_id: tx.id != null ? String(tx.id) : null,
   });
   if (errRpc) return json(500, { error: 'no_se_pudo_activar' });
   return json(200, { aprobado: true });
