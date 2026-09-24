@@ -111,22 +111,52 @@ function copyStoreKeys(
   if (gC) saveToStorage(GAS_ACC_KEY, gas);
 }
 
+/** Modo "solo fantasmas": las copias reales se retiraron DESPUÉS de sembrar sus claves de
+ *  conteos — borrar las claves destino de esos ids para no dejar UDs huérfanas contando. */
+function purgarClavesDeCopias(
+  pairs: Array<{ oldId: string; newId: string }>,
+  netId: string,
+  dstPid: string,
+): void {
+  if (pairs.length === 0) return;
+  const aparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
+  const hidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
+  const gas = loadFromStorage<Record<string, unknown>>(GAS_ACC_KEY, {});
+  let cambio = false;
+  for (const { newId } of pairs) {
+    for (const [store, key] of [
+      [aparatos, `${netId}_${newId}_${dstPid}`],
+      [hidro, `${netId}_${newId}_${dstPid}`],
+      [gas, `gas_${newId}_${dstPid}`],
+    ] as const) {
+      if (key in store) {
+        delete store[key];
+        cambio = true;
+      }
+    }
+  }
+  if (cambio) {
+    saveToStorage(APARATOS_BY_TRAMO_KEY, aparatos);
+    saveToStorage(HYDRO_DATA_STORAGE_KEY, hidro);
+    saveToStorage(GAS_ACC_KEY, gas);
+  }
+}
+
 /**
  * Copia elementos filtrados por red/tipo de un plano origen a uno destino, renumerando ids.
  * Copia TODO (geometría + diámetros, materiales, accesorios, aparatos, fixtures y conteos
- * remapeados a los ids nuevos). Filtra redes ocultas y tipos no seleccionados; preserva
- * asociaciones y recalcula totales.
+ * remapeados a los ids nuevos). Filtra redes ocultas y tipos no seleccionados.
+ * FANTASMA (definición usuario): el MISMO bajante copiado en su posición DESPLAZADA
+ * (x+dx, y+dy del anillo de asociación) — según `opciones.fantasmas` se copian solo los
+ * originales, solo los desplazados o ambos.
  * @param engine - Motor destino (se usa para renumerar y persistir).
  * @param targetPlanId - Id del plano destino.
  * @param sourcePlanId - Id del plano origen.
  * @param selections - Redes y tipos a copiar.
- * @returns Conteo copiado y redes omitidas.
+ * @param opciones - Modo fantasma (default 'ambos').
+ * @returns Conteo copiado (lo que queda en el destino) y redes omitidas.
  */
-/** Qué hacer con los fantasmas del piso origen al copiar (elección del modal). */
 export interface CopyOpciones {
-  /** 'originales': solo bajantes del piso (sin marcas de desplazamiento/asociación).
-   *  'fantasmas': solo los bajantes desplazados/fantasma — copiados como bajantes reales.
-   *  'ambos' (default): ambos grupos. */
   fantasmas?: 'fantasmas' | 'originales' | 'ambos';
 }
 
@@ -147,13 +177,10 @@ export function copyDrawingFromPlan(
     scaleM?: number;
     crossFloorGhosts?: Array<Record<string, unknown>>;
   };
-  // Semántica de fantasmas (orig. usuario): el FANTASMA es el marcador XFG entre pisos —
-  // los bajantes SIEMPRE son "originales" y se copian aplanados; el modo solo decide si los
-  // XFG del origen viajan al destino como marcadores.
+  // FANTASMA (orig. usuario) = el MISMO bajante copiado en su posición DESPLAZADA por el
+  // anillo de asociación (x+dx, y+dy), con dirección 'sube'. El modo decide qué viaja:
+  // originales / desplazados / ambos (ver CopyOpciones).
   const modoFantasmas = opciones?.fantasmas ?? 'ambos';
-  // FANTASMA (orig. usuario) = bajante DESPLAZADO: trae marcas de desplazamiento/asociación
-  // (isFantasma / ghostData / desplazamientos por nivel). Es un bajante como tal — al copiar
-  // viaja aplanado, igual que los originales; el modo solo decide QUIÉNES viajan.
   const srcPid = String(sourcePlanId);
 
   // PUNTO (orig. usuario: 3.99 vs 3.92 a la misma referencia): cada piso calibra su propio
@@ -330,6 +357,18 @@ export function copyDrawingFromPlan(
       r.bloqueado = true;
     }
 
+    // Offset del FANTASMA por bajante, keyeado por el ID VIEJO (revOld en el consumo busca
+    // por viejo): capturarlo AQUÍ, antes de pisar b.id — keyear después llenaba el mapa con
+    // ids nuevos y los clones jamás se generaban con destino ya poblado (bug destino ocupado).
+    const offsetFantasma = new Map<string, { dx: number; dy: number }>();
+    for (const b of srcBajantes as unknown as Array<{
+      id: string;
+      desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+    }>) {
+      const d = b.desplazamientos && Object.values(b.desplazamientos)[0];
+      if (d && (d.dx || d.dy)) offsetFantasma.set(b.id, { dx: d.dx || 0, dy: d.dy || 0 });
+    }
+
     for (const b of srcBajantes) {
       const origId = b.id;
       if (b.tipo === 'bajante') {
@@ -412,17 +451,6 @@ export function copyDrawingFromPlan(
       if (el.descargaEnId && oldToNew[el.descargaEnId]) {
         el.descargaEnId = oldToNew[el.descargaEnId];
       }
-    }
-
-    // Offset del FANTASMA por bajante (ANTES del strip): el fantasma es el MISMO bajante
-    // renderizado desplazado (definición usuario) — primer desplazamiento {dx,dy} del anillo.
-    const offsetFantasma = new Map<string, { dx: number; dy: number }>();
-    for (const b of srcBajantes as unknown as Array<{
-      id: string;
-      desplazamientos?: Record<string, { dx?: number; dy?: number }>;
-    }>) {
-      const d = b.desplazamientos && Object.values(b.desplazamientos)[0];
-      if (d && (d.dx || d.dy)) offsetFantasma.set(b.id, { dx: d.dx || 0, dy: d.dy || 0 });
     }
 
     for (const el of srcAll) {
@@ -548,6 +576,7 @@ export function copyDrawingFromPlan(
     const revOld: Record<string, string> = {};
     for (const [o, n] of Object.entries(oldToNew)) revOld[n] = o;
     const phantoms: PlanoBajante[] = [];
+    const oldIdsConClon = new Set<string>();
     if (modoFantasmas !== 'originales') {
       const nuevos = (
         engine.bajantes as unknown as Array<
@@ -557,10 +586,14 @@ export function copyDrawingFromPlan(
       for (const b of nuevos) {
         const off = offsetFantasma.get(revOld[b.id] || b.id);
         if (!off) continue;
+        oldIdsConClon.add(revOld[b.id] || b.id);
+        // El anillo es un VECTOR en px crudos del frame origen: escalarlo por calibFactor
+        // (la traslación ya se cancela — b.x/y están transformados; la escala no).
+        const f = calibFactor || 1;
         const ph = {
           ...b,
-          x: (b.x ?? 0) + off.dx,
-          y: (b.y ?? 0) + off.dy,
+          x: (b.x ?? 0) + off.dx * f,
+          y: (b.y ?? 0) + off.dy * f,
           direccion: 'sube',
         } as Record<string, unknown> & { tipo: string; id: string };
         // Sin labelX/labelY heredados: quedaban en la posición del bajante base, lejos del
@@ -578,13 +611,31 @@ export function copyDrawingFromPlan(
         phantoms.push(ph as unknown as PlanoBajante);
       }
       if (modoFantasmas === 'fantasmas') {
-        // Solo fantasmas: retirar las copias REALES recién agregadas (y ramales) — queda
-        // solo la versión desplazada (sube) de los bajantes con anillo.
+        // Solo fantasmas: retirar las copias REALES recién agregadas (y ramales seleccionados)
+        // — queda solo la versión desplazada (sube). SIN bajantes con anillo (phantoms vacío)
+        // el destino queda como estaba: se retira todo y el conteo da 0 (antes: splice total
+        // + "✓ N copiados" con el canvas intacto).
         (engine.bajantes as unknown[]).splice(
           engine.bajantes.length - srcBajantes.length - srcGlobals.length,
           srcBajantes.length + srcGlobals.length,
         );
         (engine.ramales as unknown[]).splice(engine.ramales.length - srcRamales.length);
+        if (phantoms.length) {
+          // Los clones heredaron punteros de las copias retiradas: sanear contra lo que
+          // SIGUE vivo (los ramales referenciados se splicean arriba).
+          const vivos = new Set<string>([
+            ...(engine.bajantes as Array<{ id: string }>).map((b) => b.id),
+            ...(engine.ramales as Array<{ id: string }>).map((r) => r.id),
+          ]);
+          for (const ph of phantoms as unknown as Array<Record<string, unknown>>) {
+            for (const k of ['recibeDeIds', 'alimentaIds'] as const) {
+              const arr = ph[k] as string[] | undefined;
+              if (Array.isArray(arr)) ph[k] = arr.filter((id) => vivos.has(id));
+            }
+            if (ph.descargaEnId && !vivos.has(String(ph.descargaEnId))) delete ph.descargaEnId;
+          }
+          purgarClavesDeCopias(selPairs, netId, String(targetPlanId));
+        }
       }
       if (phantoms.length) engine.bajantes.push(...(phantoms as unknown as PlanoBajante[]));
     }
@@ -598,9 +649,20 @@ export function copyDrawingFromPlan(
     // muestra el mismo código — dos etiquetas para el mismo elemento. Tras copiar DESDE un
     // plano, TODOS sus fantasmas proyectados aquí son redundantes (sus bajantes ya están
     // materializados como copias); se retiran por sourcePlanId y por id viejo/nuevo.
-    if (modoFantasmas === 'originales') {
-      const copiedOldIds = new Set(Object.keys(oldToNew));
-      const copiedNewIds = new Set(Object.values(oldToNew));
+    // Doble etiqueta: el XFG que este destino proyectaba del origen es redundante cuando el
+    // bajante quedó MATERIALIZADO aquí. En 'originales' son todos; con clones ('ambos'/
+    // 'fantasmas') SOLO los que tienen clon — sin clon el usuario pidió conservar la proyección
+    // (test copyFloorsAndDiametros 'ambos': XFG sin anillo sobrevive).
+    if (modoFantasmas === 'originales' || oldIdsConClon.size > 0) {
+      const conClonOld = [...oldIdsConClon].map((o) => ({ o, n: oldToNew[o] }));
+      const copiedOldIds = new Set(
+        modoFantasmas === 'originales' ? Object.keys(oldToNew) : conClonOld.map((x) => x.o),
+      );
+      const copiedNewIds = new Set(
+        modoFantasmas === 'originales'
+          ? Object.values(oldToNew)
+          : conClonOld.map((x) => x.n).filter(Boolean as unknown as (n: string) => boolean),
+      );
       engine.crossFloorGhosts = (engine.crossFloorGhosts || []).filter((g) => {
         const ghost = g as {
           sourceBajanteId?: string;
@@ -622,14 +684,10 @@ export function copyDrawingFromPlan(
       engine._netCounts[netId].ramal = ramalCounter;
     }
 
-    // eslint-disable-next-line no-console
-    console.log(
-      'DBG2 push→ bajantes=',
-      (engine.bajantes as unknown[]).length,
-      'srcBaj=',
-      srcBajantes.length,
-    );
-    totalCopied += srcAll.length;
+    // Conteo HONESTO: lo que queda en el destino tras los splice — en modo fantasmas solo
+    // los clones (las bases se retiraron; antes se contaba srcAll completo siempre).
+    if (modoFantasmas === 'fantasmas') totalCopied += phantoms.length;
+    else totalCopied += srcAll.length + (modoFantasmas === 'ambos' ? phantoms.length : 0);
   }
 
   try {

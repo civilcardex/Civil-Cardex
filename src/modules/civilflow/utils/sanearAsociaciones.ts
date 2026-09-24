@@ -46,16 +46,6 @@ export function sanearAsociacionesTrasRecalibrar(
   const dy = nuevo.y_px - prevOrigen.y_px;
   if (!dx && !dy) return;
 
-  // Ids de bajantes de P: distinguen si un LD_<id> / anillo pertenece a una asociación donde
-  // P es el SUPERIOR (el id existe en P) o el INFERIOR (no existe).
-  let idsP = new Set<string>();
-  try {
-    idsP = new Set((loadData(pid).bajantes ?? []).map((b) => b.id).filter(Boolean) as string[]);
-  } catch (e) {
-    devError('[assoc-recal] doc de P ilegible:', e);
-    return;
-  }
-
   let tocado = false;
   try {
     for (let i = 0; i < localStorage.length; i++) {
@@ -81,31 +71,49 @@ export function sanearAsociacionesTrasRecalibrar(
           g.y = (g.y ?? 0) + signo * dy;
           dirty = true;
         }
-        // 2) Anillos con Ldesvio: P inferior (host, upper afuera) → +Δ;
-        //    partner inferior (upper vive en P) → −Δ.
+        // 2) Anillos con Ldesvio: el ROL se decide por el PUNTERO del portador
+        //    (origenId/descargaEnId = 'plan|id', inequívoco) — NO por membresía de id:
+        //    los ids BAN<n> se renumeran POR PISO y colisionan (falso negativo propio +
+        //    falso positivo en terceros pisos de la misma cadena).
+        //    P inferior (portador en P, partner afuera) → +Δ; portador ajeno con partner en
+        //    P (P superior) → −Δ.
+        const rolDe = (portador: {
+          origenId?: string | null;
+          descargaEnId?: string | null;
+        }): 1 | -1 | 0 => {
+          const puntero = portador.origenId || portador.descargaEnId || '';
+          const planPtr = puntero.includes('|') ? puntero.split('|')[0] : '';
+          if (!planPtr) return 0;
+          if (docId === pid && planPtr !== pid) return 1;
+          if (docId !== pid && planPtr === pid) return -1;
+          return 0;
+        };
         for (const b of data.bajantes ?? []) {
           const desp = b.desplazamientos;
           if (!desp) continue;
+          const signo = rolDe(b as { origenId?: string | null; descargaEnId?: string | null });
+          if (!signo) continue;
           for (const d of Object.values(desp)) {
             if (!d?.Ldesvio || !isLdesvioRamalId(d.Ldesvio)) continue;
-            const upperId = d.Ldesvio.slice(3);
-            const esHostInferior = docId === pid && !idsP.has(upperId);
-            const esPartner = docId !== pid && idsP.has(upperId);
-            if (!esHostInferior && !esPartner) continue;
-            const signo = esHostInferior ? 1 : -1;
             d.dx = (d.dx ?? 0) + signo * dx;
             d.dy = (d.dy ?? 0) + signo * dy;
             dirty = true;
           }
         }
-        // 3) Inicio del Ldesvio (pts[0] = superior traducido): mismos roles que el anillo.
+        // 3) Inicio del Ldesvio (pts[0] = superior traducido): el LD pertenece a la asociación
+        //    cuyo portador (bajante con anillo) lo referencia — buscar por Ldesvio.
+        const portadorDe: Record<string, 1 | -1> = {};
+        for (const b of data.bajantes ?? []) {
+          const signo = rolDe(b as { origenId?: string | null; descargaEnId?: string | null });
+          if (!signo) continue;
+          for (const d of Object.values(b.desplazamientos ?? {})) {
+            if (d?.Ldesvio) portadorDe[d.Ldesvio] = signo;
+          }
+        }
         for (const r of data.ramales ?? []) {
           if (!isLdesvioRamalId(r.id) || !r.pts?.length) continue;
-          const upperId = r.id.slice(3);
-          const esHostInferior = docId === pid && !idsP.has(upperId);
-          const esPartner = docId !== pid && idsP.has(upperId);
-          if (!esHostInferior && !esPartner) continue;
-          const signo = esHostInferior ? 1 : -1;
+          const signo = portadorDe[r.id];
+          if (!signo) continue;
           r.pts[0] = [r.pts[0][0] + signo * dx, r.pts[0][1] + signo * dy];
           dirty = true;
         }

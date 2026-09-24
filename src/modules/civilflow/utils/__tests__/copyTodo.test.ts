@@ -130,7 +130,9 @@ describe('copyDrawingFromPlan copia todo', () => {
     const res = copyDrawingFromPlan(eng as never, '100', '99', [
       { netId: 'san', tipos: new Set(['ramal', 'tributario', 'bajante']) },
     ]);
-    expect(res.copied).toBe(3);
+    // "ambos": BAN1 (anillo {dx:1,dy:1}) genera el CLON desplazado — antes el mapa de
+    // offsets se keyeaba por id renumerado y el clon jamás se generaba (conteo roto = 3).
+    expect(res.copied).toBe(4);
 
     const rs = eng.ramales.find((r) => r.tipo === 'ramal' && r.id !== 'RS1') as unknown as Record<
       string,

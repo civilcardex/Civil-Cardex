@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { devError } from '../../../../utils/devError';
+import { origenDePlan } from '../../utils/crossFloorStorage';
 import { pisoLbl } from '../../constants';
 import { loadFromStorage, saveTrazosToDB } from '../../services/storageService';
 import {
@@ -267,10 +268,10 @@ function CopyFromPlanPanel_({
             // Alineación de láminas (mismo punto físico del AutoCAD marcado como origen de
             // calibración en cada piso): sin esto, una lámina desalineada respecto a la del piso
             // origen dejaba la copia a metros de donde debía — cotas distintas entre pisos.
-            origenSrc:
-              planosCtx.plans.find((pl) => String(pl.id) === String(srcPlanId))?.origen ?? null,
-            origenDst:
-              planosCtx.plans.find((pl) => String(pl.id) === String(targetId))?.origen ?? null,
+            // Única fuente del origen (meta primero, doc fallback): plans del contexto puede
+            // estar vacío durante la restauración async y desactivaba la traslación en silencio.
+            origenSrc: origenDePlan(String(srcPlanId)),
+            origenDst: origenDePlan(String(targetId)),
           },
           { fantasmas: modo },
         );
@@ -294,7 +295,8 @@ function CopyFromPlanPanel_({
           if (result.skippedNets.length > 0) msg += ': ' + result.skippedNets.join(', ');
           setFeedback({ ok: false, msg });
         }
-      } catch {
+      } catch (e) {
+        devError('[CF-COPIA] error en doCopy:', e);
         setFeedback({ ok: false, msg: 'Error al copiar' });
       } finally {
         setBusy(false);

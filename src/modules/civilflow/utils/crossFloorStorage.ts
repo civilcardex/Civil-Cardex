@@ -136,6 +136,66 @@ export function saveData(planId: string | number, data: LocalGhostDrawingData): 
   saveTrazosToDB(String(planId), data);
 }
 
+/** Restauración de asociación entre pisos en la carga: copia al doc GANADOR (BD) las piezas de
+ *  asociación (fantasmas XFG, ramales LD_, anillo+ghostData del bajante) que la caché local
+ *  perdedora sí tiene. Genérico sobre el doc ganador (PlanTrazos / LocalGhostDrawingData).
+ *  Devuelve true si añadió algo (el caller re-sube el doc saneado). */
+export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown, db: T): boolean {
+  if (typeof local === 'string') {
+    try {
+      local = JSON.parse(local);
+    } catch {
+      return false;
+    }
+  }
+  if (!local || typeof local !== 'object') return false;
+  const l = local as LocalGhostDrawingData;
+  const d = db as {
+    crossFloorGhosts?: Array<{ id: string }>;
+    ramales?: Array<{ id: string }>;
+    bajantes?: Array<{
+      id?: string;
+      desplazamientos?: Record<string, unknown>;
+      ghostData?: Record<string, unknown>;
+    }>;
+  };
+  let changed = false;
+  // Fantasmas XFG que faltan en BD.
+  const lGhosts = l.crossFloorGhosts || [];
+  if (lGhosts.length) {
+    const dbIds = new Set((d.crossFloorGhosts || []).map((g) => g.id));
+    const faltan = lGhosts.filter((g) => !dbIds.has(g.id));
+    if (faltan.length) {
+      d.crossFloorGhosts = [...(d.crossFloorGhosts || []), ...faltan];
+      changed = true;
+    }
+  }
+  // Ramales Ldesvio que faltan en BD.
+  const lLds = (l.ramales || []).filter((r) => isLdesvioRamalId(r.id));
+  if (lLds.length) {
+    const dbRamIds = new Set((d.ramales || []).map((r) => r.id));
+    const faltan = lLds.filter((r) => !dbRamIds.has(r.id));
+    if (faltan.length) {
+      d.ramales = [...(d.ramales || []), ...faltan];
+      changed = true;
+    }
+  }
+  // Anillo (desplazamientos) + ghostData por bajante.
+  for (const lb of l.bajantes || []) {
+    if (!lb.desplazamientos || Object.keys(lb.desplazamientos).length === 0) continue;
+    const dbB = (d.bajantes || []).find((x) => x.id === lb.id);
+    if (!dbB) continue;
+    const dbKeys = Object.keys(dbB.desplazamientos || {});
+    const lKeys = Object.keys(lb.desplazamientos);
+    if (lKeys.some((k) => !dbKeys.includes(k))) {
+      dbB.desplazamientos = { ...lb.desplazamientos, ...(dbB.desplazamientos || {}) };
+      if (lb.ghostData) dbB.ghostData = { ...lb.ghostData, ...(dbB.ghostData || {}) };
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 // Escribe (o reemplaza, si ya existe uno del mismo origen) un fantasma entre pisos en el
 // almacenamiento crudo del piso DESTINO — el piso destino no necesita estar cargado/activo.
 export function writeCrossFloorGhost(targetPlanId: string | number, ghost: CrossFloorGhost): void {

@@ -153,6 +153,87 @@ describe('sanearAsociacionesTrasRecalibrar', () => {
     expect(JSON.stringify(trazosDe('1'))).toBe(antes);
   });
 
+  it('ids colisionados entre pisos: el rol lo decide el PUNTERO, no el id', () => {
+    // P=1 recalibrado; P tiene su BAN1 local y el partner superior TAMBIÉN se llama BAN1
+    // (los ids BAN<n> se renumeran por piso y colisionan). Con membresía de id el anillo
+    // propio quedaba sin trasladar (falso negativo); con el puntero '2|BAN1' va bien.
+    seedPlan('1', {
+      origen: O1_INICIAL,
+      bajantes: [
+        { id: 'BAN1', x: 800, y: 800 }, // local colisionado
+        {
+          id: 'BAN2',
+          x: 500,
+          y: 400,
+          origenId: '2|BAN1',
+          desplazamientos: { P2: { dx: -50, dy: 30, Ldesvio: 'LD_BAN1' } },
+        },
+      ],
+      ramales: [
+        {
+          id: 'LD_BAN1',
+          pts: [
+            [450, 430],
+            [500, 400],
+          ],
+        },
+      ],
+    });
+    seedPlan('2', {
+      origen: O2,
+      bajantes: [{ id: 'BAN1', x: 550, y: 380, descargaEnId: '1|BAN2' }],
+    });
+    const nuevo = { x_px: 120, y_px: 110 }; // Δ = (+20, +10)
+    seedPlan('1', { ...trazosDe('1'), origen: nuevo });
+    sanearAsociacionesTrasRecalibrar('1', O1_INICIAL);
+    expect(trazosDe('1').bajantes?.[1].desplazamientos?.P2).toMatchObject({ dx: -30, dy: 40 });
+    expect(trazosDe('1').ramales?.[0].pts[0]).toEqual([470, 440]);
+  });
+
+  it('cadena de 3 pisos: recalibrar P no toca asociaciones ajenas con ids que colisionan', () => {
+    // P=3 (con BAN1 local); el piso 5 tiene un anillo cuyo superior es el BAN1 del piso 4.
+    // Con membresía de id, esPartner disparaba y restaba el Δ de P a esa asociación ajena.
+    seedPlan('3', {
+      origen: { x_px: 300, y_px: 300 },
+      bajantes: [{ id: 'BAN1', x: 100, y: 100 }],
+    });
+    seedPlan('4', {
+      origen: { x_px: 400, y_px: 400 },
+      bajantes: [{ id: 'BAN1', x: 550, y: 380 }],
+    });
+    seedPlan('5', {
+      origen: { x_px: 500, y_px: 500 },
+      bajantes: [
+        {
+          id: 'BAN2',
+          x: 600,
+          y: 600,
+          origenId: '4|BAN1',
+          desplazamientos: { P4: { dx: -50, dy: -220, Ldesvio: 'LD_BAN1' } },
+        },
+      ],
+      ramales: [
+        {
+          id: 'LD_BAN1',
+          pts: [
+            [550, 380],
+            [600, 600],
+          ],
+        },
+      ],
+    });
+    const nuevo3 = { x_px: 310, y_px: 305 }; // Δ3 = (+10, +5)
+    seedPlan('3', { ...trazosDe('3'), origen: nuevo3 });
+    sanearAsociacionesTrasRecalibrar('3', { x_px: 300, y_px: 300 });
+    // El piso 5 NO se mueve (su asociación es 5←4, nada que ver con P=3).
+    expect(trazosDe('5').bajantes?.[0].desplazamientos?.P4).toEqual({
+      dx: -50,
+      dy: -220,
+      Ldesvio: 'LD_BAN1',
+    });
+    expect(trazosDe('5').ramales?.[0].pts[0]).toEqual([550, 380]);
+  });
+
   it('re-anclaje por carga (gemelo de ghosts para anillos) sana origen cambiado afuera', async () => {
     seedAsociacion();
     // Otro dispositivo recalibró plan 1 a {120,110} (doc + meta ya estampados al abrir).

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePlans } from './PlansContext';
+import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords';
 import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService';
 import {
@@ -69,7 +70,9 @@ interface RainwaterContextValue {
   setConRecolectora: (v: boolean) => void;
 }
 
-const RainwaterContext = createContext<RainwaterContextValue | null>(null);
+/** Exportado para lecturas null-safe (useContext directo) desde árboles sin provider —
+ *  p. ej. useCaudalLl del visor, que debe funcionar también sin RainwaterProvider. */
+export const RainwaterContext = createContext<RainwaterContextValue | null>(null);
 
 /** Provee los cálculos de drenaje pluvial: bajantes LL, canales LL, toggle de recolectora. Se auto-puebla desde los datos del dibujo. */
 export function RainwaterProvider({ children }: { children?: ReactNode }) {
@@ -195,7 +198,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         (b): b is RawElement & { area_m2?: number; x?: number; y?: number } =>
           b.net === 'll' && b.tipo === 'bajante',
       );
-      const pxPerCm = (Number(data.scaleM ?? 0.5) * 96) / 2.54;
+      const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
       for (const c of canales) {
         if (c.x == null || c.y == null) continue;
         const cx = c.x;

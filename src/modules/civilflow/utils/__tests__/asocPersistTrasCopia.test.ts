@@ -107,10 +107,11 @@ describe('persistencia de Ldesvio + fantasma tras copiar', () => {
     });
     localStorage.setItem('civilflow_' + TRAZOS_PREFIX + '2', JSON.stringify(doc2));
     sweepMisplacedLdesvios();
+    // ASSERT real (antes quedaba en console.info y el test era tautológico): el LD_ del piso 1
+    // es reclamado por BALL2F de ahí → el sweep NO debe borrarlo; con el 'home' viejo
+    // (último gana) el claim de BALL1C (piso 2) lo habría mandado a borrar.
     const p1 = JSON.parse(localStorage.getItem('civilflow_' + TRAZOS_PREFIX + '1') || '{}');
-    const ld1 = (p1.ramales || []).filter((r: { id?: string }) => String(r.id).startsWith('LD_'));
-    // eslint-disable-next-line no-console
-    console.info('LD_ piso1 tras sweep:', JSON.stringify(ld1));
+    expect((p1.ramales || []).some((r: { id?: string }) => r.id === 'LD_BALL1')).toBe(true);
 
     // Recarga: el doc leído debe seguir teniendo todo.
     const reloaded = JSON.parse(

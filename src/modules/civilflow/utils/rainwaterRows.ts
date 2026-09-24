@@ -1,4 +1,5 @@
 import type { Tramo } from '../context/tramosReducer';
+import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords';
 import type { PlanItem } from '../context/PlansContext';
 import { diametroManning } from './calcSanitaryCore';
 import { chequeoBajanteLluvia } from './calcRainwater';
@@ -52,7 +53,18 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
     );
     if (canales.length === 0) continue;
     // px de plano por cm, según la escala del propio documento.
-    const pxPerCm = (Number(data.scaleM ?? 0.5) * 96) / 2.54;
+    const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
+
+    const enRectCanal = (p: number[]) =>
+      canales.some((c) => {
+        if (c.x == null || c.y == null) return false;
+        const w = (c.longitud ?? 0) * pxPerCm;
+        const h = (c.base ?? 0) * pxPerCm;
+        const pad = 4;
+        return (
+          p[0] >= c.x - pad && p[0] <= c.x + w + pad && p[1] >= c.y - pad && p[1] <= c.y + h + pad
+        );
+      });
 
     for (const r of (data.ramales || []) as Array<RawElement & { esCanalId?: string | null }>) {
       if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
@@ -60,23 +72,47 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
         keys.add(`${r.id}-${plan.id}`);
         continue;
       }
-      const pE = r.pts[r.pts.length - 1];
-      const enRect = canales.some((c) => {
-        if (c.x == null || c.y == null) return false;
-        const w = (c.longitud ?? 0) * pxPerCm;
-        const h = (c.base ?? 0) * pxPerCm;
-        const pad = 4;
-        return (
-          pE[0] >= c.x - pad &&
-          pE[0] <= c.x + w + pad &&
-          pE[1] >= c.y - pad &&
-          pE[1] <= c.y + h + pad
-        );
-      });
-      if (enRect) keys.add(`${r.id}-${plan.id}`);
+      // Cualquier extremo tocando el canal (llega, sale o conecta canal↔bajante): fuera de
+      // Diseño de red y de "Ramales asociados" del chequeo.
+      if (enRectCanal(r.pts[0]) || enRectCanal(r.pts[r.pts.length - 1])) {
+        keys.add(`${r.id}-${plan.id}`);
+      }
     }
   }
   return keys;
+}
+
+/** Regla ll: diámetro del bajante >= diámetro de sus ramales conectados directos (recibeDeIds).
+ *  Devuelve el máximo pulg de esos ramales (0 si no hay ninguno con diámetro). */
+export function maxRamalPulgDeBajante(
+  bajanteId: string,
+  planId: string,
+  tramosLl: Tramo[],
+): number {
+  const b = tramosLl.find(
+    (t) => t.esBajante && t.id === bajanteId && String(t.planId ?? '') === String(planId),
+  );
+  let max = 0;
+  for (const rid of b?.recibeDeIds || []) {
+    const r = tramosLl.find(
+      (t) => !t.esBajante && t.id === rid && String(t.planId ?? '') === String(planId),
+    );
+    if (r && (r.diamDisPulg || 0) > max) max = r.diamDisPulg || 0;
+  }
+  return max;
+}
+
+/** Regla ll (sentido inverso): pulg del bajante en el que descarga el ramal (campo `hasta`),
+ *  0 si no hay bajante destino con diámetro. */
+export function minBajantePulgDeRamal(ramalId: string, planId: string, tramosLl: Tramo[]): number {
+  const r = tramosLl.find(
+    (t) => !t.esBajante && t.id === ramalId && String(t.planId ?? '') === String(planId),
+  );
+  if (!r?.hasta) return 0;
+  const b = tramosLl.find(
+    (t) => t.esBajante && t.id === r.hasta && String(t.planId ?? '') === String(planId),
+  );
+  return b?.diamDisPulg || 0;
 }
 
 // Qué códigos de bajante alimentan cada ramal — la misma BFS de proximidad geométrica usada por
@@ -104,8 +140,9 @@ export function buildLlBajanteAssociations(
     const ramales = (data.ramales || []).filter((r) => r.net === 'll');
     // Canales fuera: no son bajantes (glifo recolector) y un recibeDeIds legacy del canal no
     // debe contar como asociación de descarga.
+    // Cajas CALL fuera: no son bajantes (glifo de captura) — ni endpoint de asociación ni chip.
     const bajantes = (data.bajantes || []).filter(
-      (b): b is BajanteRaw => b.net === 'll' && b.tipo !== 'canal',
+      (b): b is BajanteRaw => b.net === 'll' && b.tipo === 'bajante' && b.x != null && b.y != null,
     );
 
     for (const r of ramales) {
@@ -160,8 +197,17 @@ export function buildLlBajanteAssociations(
   }
 
   const ramalToBajantes: Record<string, string[]> = {};
+  // Las cajas (CALL) tienen tramo esBajante pero no son bajantes: fuera de las semillas
+  // del BFS para que nunca salgan como chips "Bajantes asociados".
+  const isCajaCode = (s: string) => s.startsWith('CALL');
   const bajanteKeys = tramosLl
-    .filter((t) => t.esBajante && t._key)
+    .filter(
+      (t) =>
+        t.esBajante &&
+        t._key &&
+        !isCajaCode(String(t.code ?? '')) &&
+        !isCajaCode(String(t.id ?? '')),
+    )
     .map((t) => ({ key: t._key!, code: t.code || t.id }));
 
   for (const b of bajanteKeys) {
@@ -312,6 +358,7 @@ export interface LlRow {
   sVal: number;
   DcalcPulg: number;
   DdisPulg: number;
+  chequeoD: string;
   DintMm: number;
   Qo: number;
   Vo: number;
@@ -389,6 +436,8 @@ export function computeLlRows(
       sVal,
       DcalcPulg,
       DdisPulg,
+      // Chequeo de diámetro (como red sanitaria): D diseño >= D calculado.
+      chequeoD: DdisPulg > 0 && DcalcPulg > 0 ? (DdisPulg >= DcalcPulg ? 'Ok' : 'No cumple') : '—',
       DintMm,
       Qo,
       Vo,

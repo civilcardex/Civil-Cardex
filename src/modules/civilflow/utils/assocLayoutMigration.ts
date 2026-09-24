@@ -17,6 +17,7 @@ import {
   ldesvioIdFor,
   isLdesvioRamalId,
   nextRamalLabel,
+  buildLdesvioRamal,
   aFrameDe,
   type LocalGhostDrawingData,
 } from './crossFloorStorage';
@@ -29,6 +30,9 @@ import {
 function reanclarAnillosLayout2(data: LocalGhostDrawingData, pid: string): boolean {
   let dirty = false;
   for (const b of data.bajantes ?? []) {
+    // PREFERIR origenId (apunta ARRIBA = el ancla del anillo). descargaEnId apunta ABAJO: para
+    // el anillo la fórmula dx = partner − portador sigue siendo correcta (anillo legacy sobre
+    // el superior), pero el LD_<id> derivado de un down-pointer no existe — ese no se toca.
     const puntero = b.origenId || b.descargaEnId;
     if (!puntero || !puntero.includes('|')) continue;
     const [upperPlanId, upperId] = puntero.split('|');
@@ -36,26 +40,49 @@ function reanclarAnillosLayout2(data: LocalGhostDrawingData, pid: string): boole
     const upper = loadData(upperPlanId).bajantes?.find((x) => x.id === upperId);
     if (!upper || upper.x == null || upper.y == null) continue;
     const anchor = aFrameDe({ x: upper.x, y: upper.y }, upperPlanId, pid);
+    let dirtyB = false;
     const desp = { ...(b.desplazamientos ?? {}) };
     for (const lvlKey of Object.keys(desp)) {
       if (desp[lvlKey]?.Ldesvio) {
-        desp[lvlKey] = { ...desp[lvlKey], dx: anchor.x - (b.x ?? 0), dy: anchor.y - (b.y ?? 0) };
-        dirty = true;
+        const nx = anchor.x - (b.x ?? 0);
+        const ny = anchor.y - (b.y ?? 0);
+        // Épsilon: sin esto el "cambio" idempotente marcaba dirty en CADA apertura →
+        // saveData + RPC destructivo por piso asociado y por carga, sin cambiar nada.
+        if (
+          Math.abs((desp[lvlKey]?.dx ?? 0) - nx) > 1e-9 ||
+          Math.abs((desp[lvlKey]?.dy ?? 0) - ny) > 1e-9
+        ) {
+          desp[lvlKey] = { ...desp[lvlKey], dx: nx, dy: ny };
+          dirtyB = true;
+        }
       }
     }
-    if (dirty) b.desplazamientos = desp;
-    // Inicio del Ldesvio = ancla del superior (mismo criterio que updateCrossFloorLdesvioStartPoint).
+    if (dirtyB) {
+      b.desplazamientos = desp;
+      dirty = true;
+    }
+    // Inicio del Ldesvio = ancla del superior. RECONSTRUIR con buildLdesvioRamal (como hace
+    // updateCrossFloorLdesvioStartPoint): tocar solo pts[0]/totalL dejaba la etiqueta
+    // descolgada del segmento movido.
     const ldId = ldesvioIdFor(upperId);
     const ld = (data.ramales ?? []).find((r) => r.id === ldId);
     if (ld?.pts?.length) {
       const [x2, y2] = ld.pts[ld.pts.length - 1];
       if (Math.abs(ld.pts[0][0] - anchor.x) > 0.01 || Math.abs(ld.pts[0][1] - anchor.y) > 0.01) {
-        ld.pts[0] = [anchor.x, anchor.y];
-        ld.totalL = +(
-          (Math.hypot(x2 - anchor.x, y2 - anchor.y) / 96) *
-          2.54 *
-          (data.scaleM || 0.5)
-        ).toFixed(3);
+        const nuevo = buildLdesvioRamal(
+          ld.id,
+          ld.label || ldId,
+          ld.net,
+          anchor.x,
+          anchor.y,
+          x2,
+          y2,
+          ld.diametro,
+          Number(ld.piso) || 0,
+          data.scaleM || 0.5,
+          ld.bloqueado,
+        );
+        Object.assign(ld, nuevo);
         dirty = true;
       }
     }

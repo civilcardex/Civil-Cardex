@@ -34,7 +34,10 @@ export function persistTrazosSnapshot(
  *  mismo id en los demás. Tampoco se borra si un ramal renumerado ocupó ese id (RS2→RS1). */
 export function claveDeBorrado(k: string, ids: string[], currentIds: Set<string>): boolean {
   const segs = k.split('_');
-  const idInKey = segs[1] ?? '';
+  let idInKey = segs[1] ?? '';
+  // Claves de Ldesvio (san_LD_BAN2_17): el id real es compuesto (LD_BAN2) — con segs[1]='LD'
+  // estas claves jamás se limpiaban en esta ruta (quedaban solo para la cascada del engine).
+  if (idInKey === 'LD') idInKey = `LD_${segs[2] ?? ''}`;
   for (const id of ids) {
     const isExact = idInKey === id;
     const isTributaryOfDeleted = idInKey.startsWith('T') && idInKey.endsWith(id);

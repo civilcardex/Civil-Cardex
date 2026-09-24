@@ -540,6 +540,11 @@ function punterosBajante(
   return { descargaEnId: b?.descargaEnId, origenId: b?.origenId };
 }
 
+/** Escribe una propiedad de bajante (Llenado, D propuesto…) al doc de trazos del piso + BD,
+ *  y ESPEJA dNominal al bajante asociado del otro piso. LÍMITE (documentado): NO toca un
+ *  engine vivo de OTRA ventana — si el visor tiene el piso abierto en otra pestaña, su
+ *  autosave (saveWork completo, sin comparación de ts) puede pisar esta escritura; en una
+ *  sola ventana lo salva el desmonte mutuo visor↔tablas. */
 export function writeBajantePropToDrawing(
   bajanteKey: string,
   net: string,
@@ -584,7 +589,9 @@ export function writeBajantePropToDrawing(
   // Espejo de diámetros entre pisos (orig. usuario): al cambiar dNominal de un bajante
   // asociado entre pisos, su pareja (descargaEnId/origenId → "planId|id") copia el mismo
   // diámetro en SU piso. Guard de valor ya igual corta el bucle bidireccional.
-  if (prop === 'dNominal' && !espejoEnCurso && val && planId) {
+  // También al LIMPIAR ('' = sin diámetro): si solo se espeja al asignar, la pareja del
+  // otro piso conserva el valor viejo y las tablas de ambos pisos divergen.
+  if (prop === 'dNominal' && !espejoEnCurso && val !== undefined && val !== null && planId) {
     const punteros = punterosBajante(String(planId), bajanteId);
     const partner = punteros.descargaEnId || punteros.origenId;
     const pipe = partner ? partner.indexOf('|') : -1;
