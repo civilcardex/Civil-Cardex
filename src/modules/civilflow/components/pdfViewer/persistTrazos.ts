@@ -6,7 +6,6 @@
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import { markPlanTrazosFresh } from '../../utils/drawingSync';
 import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
-import { devLog } from '../../../../utils/devError';
 
 /** Guarda el trabajo del engine bajo `id` con ts fresco; a BD solo si el id es real (no 'work',
  *  el doc de trabajo sin plano). Sincronía total con el storage local. */
@@ -22,12 +21,6 @@ export function persistTrazosSnapshot(
 ): void {
   const work = eng.saveWork();
   work.ts = Date.now();
-  const dims = (work.dims ?? []) as Array<Record<string, number>>;
-  devLog(
-    `[CF-COTA] autosave ${id} scaleM=${work.scaleM} dims=${JSON.stringify(
-      dims.map((d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`),
-    )}`,
-  );
   saveToStorage(TRAZOS_PREFIX + String(id), work);
   markPlanTrazosFresh(id);
   if (id !== 'work') {

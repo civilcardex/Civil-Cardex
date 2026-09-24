@@ -11,7 +11,7 @@ import {
   trazosLocalGanaABdVacia,
 } from '../../services/storageService';
 import type { PlanTrazos } from '../../services/storageService';
-import { devError, devLog } from '../../../../utils/devError';
+import { devError } from '../../../../utils/devError';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from '../../utils/assocLayoutMigration';
 import { origenDePlan } from '../../utils/crossFloorStorage';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
@@ -51,14 +51,6 @@ export function useTrazosLoader({
         const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
         eng.loadWork(workStr);
         docScale = eng.scaleM;
-        // [CF-COTA] (devLog, canal info) diagnóstico DEV del ciclo save/load (rotación de cotas al reabrir).
-        devLog(
-          `[CF-COTA] load LOCAL ${resolvedId} docScale=${docScale} ts=${Number((typeof localData === 'object' && localData ? (localData as { ts?: number }).ts : 0) || 0)} dims=${JSON.stringify(
-            (eng.dims as unknown as Array<Record<string, number>>).map(
-              (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
-            ),
-          )}`,
-        );
         // La ruta local-gana jamás sincronizaba el estado React con el doc — syncEngine
         // re-pisaba el engine con el default/derivado y envenenaba cualquier lectura posterior.
         if (docScale) setScaleM(String(docScale));
@@ -93,15 +85,6 @@ export function useTrazosLoader({
             const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
             eng.loadWork(workStr);
             docScale = eng.scaleM;
-            // [CF-COTA] (devLog, canal info) la BD ganó el árbitro — si las cotas llegan distintas a las del
-            // autosave, este es el momento en que se intercambia el documento.
-            devError(
-              `[CF-COTA] load BD-GANA ${resolvedId} docScale=${docScale} dbTs=${dbTs} localTs=${localTs} dims=${JSON.stringify(
-                (eng.dims as unknown as Array<Record<string, number>>).map(
-                  (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})L${d.L}`,
-                ),
-              )}`,
-            );
             if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);
             requestAnimationFrame(() => {
               eng.render();
@@ -163,13 +146,6 @@ export function useTrazosLoader({
           }
         } else {
           try {
-            devError(
-              `[CF-COTA] RE-BASE ${resolvedId} de ${docScale} a ${escalaGlobal} (antes: dims=${JSON.stringify(
-                (eng.dims as unknown as Array<Record<string, number>>).map(
-                  (d) => `${d.id}(${d.x1},${d.y1}→${d.x2},${d.y2})`,
-                ),
-              )})`,
-            );
             (eng as unknown as PlanoWorkData).scaleM = docScale;
             rebasarEscalaTrazos(
               eng as unknown as PlanoWorkData,
