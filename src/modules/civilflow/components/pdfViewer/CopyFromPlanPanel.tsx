@@ -1,19 +1,32 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { devError } from '../../../../utils/devError';
 import { pisoLbl } from '../../constants';
 import { loadFromStorage, saveTrazosToDB } from '../../services/storageService';
-import { copyDrawingFromPlan, type CopySourceSelection } from '../../utils/copyDrawingFromPlan';
+import {
+  copyDrawingFromPlan,
+  type CopyOpciones,
+  type CopySourceSelection,
+} from '../../utils/copyDrawingFromPlan';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoNet } from '../../lib/PlanoEngine/PlanoState';
 import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 
 interface SrcPlanElement {
+  id: string;
   net: string;
   tipo: string;
+  direccion?: string;
+  isFantasma?: boolean;
+  ghostData?: Record<string, unknown> | null;
+  desplazamientos?: Record<string, unknown> | null;
+  pisoBase?: string;
 }
 interface SrcPlanData {
   ramales?: SrcPlanElement[];
   bajantes?: SrcPlanElement[];
+  crossFloorGhosts?: unknown[];
 }
 const CopyFromPlanPanel_S1: React.CSSProperties = {
   width: '100%',
@@ -118,6 +131,19 @@ function CopyFromPlanPanel_({
   const [netSelections, setNetSelections] = useState<Record<string, Set<string>>>({});
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  // Modal de fantasmas: null = cerrado; si el origen tiene fantasmas se pregunta qué copiar.
+  const [fantModal, setFantModal] = useState(false);
+  const [fantPick, setFantPick] = useState<'fantasmas' | 'originales' | 'ambos'>('ambos');
+
+  // Escape cierra el modal (listener a nivel documento: el dialog no captura teclado).
+  useEffect(() => {
+    if (!fantModal) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setFantModal(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [fantModal]);
 
   const currentNivel = useMemo(() => {
     const targetId = currentId || currentIdRef.current;
@@ -149,6 +175,14 @@ function CopyFromPlanPanel_({
     const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
     return d as SrcPlanData;
   }, [srcPlanId]);
+
+  // ¿El piso origen tiene bajantes FANTASMA? (orig. usuario) = direccion 'sube' (los
+  // autocreados por la asociación cuando dos bajantes no están alineados).
+  const origenConFantasmas = useMemo(() => {
+    const d = srcPlanData;
+    if (!d) return false;
+    return (d.bajantes || []).some((b) => b.direccion === 'sube');
+  }, [srcPlanData]);
 
   const availableNets = useMemo(() => {
     if (!srcPlanData) return [];
@@ -208,59 +242,104 @@ function CopyFromPlanPanel_({
     [getTiposForNet],
   );
 
-  const handleCopy = useCallback(async () => {
-    const eng = engineRef.current;
-    const targetId = currentId || currentIdRef.current || '';
-    if (!eng || !targetId || !srcPlanId || Object.keys(netSelections).length === 0) return;
+  const doCopy = useCallback(
+    async (modo: CopyOpciones['fantasmas']) => {
+      const eng = engineRef.current;
+      const targetId = currentId || currentIdRef.current || '';
+      if (!eng || !targetId || !srcPlanId || Object.keys(netSelections).length === 0) return;
 
-    setFeedback(null);
-    setBusy(true);
-    try {
-      const selections: CopySourceSelection[] = Object.entries(netSelections).map(
-        ([netId, tipos]) => ({
-          netId,
-          tipos: new Set(tipos),
-        }),
-      );
+      setFeedback(null);
+      setBusy(true);
+      try {
+        const selections: CopySourceSelection[] = Object.entries(netSelections).map(
+          ([netId, tipos]) => ({
+            netId,
+            tipos: new Set(tipos),
+          }),
+        );
 
-      const result = copyDrawingFromPlan(eng, String(targetId), srcPlanId, selections, {
-        // Alineación de láminas (mismo punto físico del AutoCAD marcado como origen de
-        // calibración en cada piso): sin esto, una lámina desalineada respecto a la del piso
-        // origen dejaba la copia a metros de donde debía — cotas distintas entre pisos.
-        origenSrc:
-          planosCtx.plans.find((pl) => String(pl.id) === String(srcPlanId))?.origen ?? null,
-        origenDst: planosCtx.plans.find((pl) => String(pl.id) === String(targetId))?.origen ?? null,
-      });
+        const result = copyDrawingFromPlan(
+          eng,
+          String(targetId),
+          srcPlanId,
+          selections,
+          {
+            // Alineación de láminas (mismo punto físico del AutoCAD marcado como origen de
+            // calibración en cada piso): sin esto, una lámina desalineada respecto a la del piso
+            // origen dejaba la copia a metros de donde debía — cotas distintas entre pisos.
+            origenSrc:
+              planosCtx.plans.find((pl) => String(pl.id) === String(srcPlanId))?.origen ?? null,
+            origenDst:
+              planosCtx.plans.find((pl) => String(pl.id) === String(targetId))?.origen ?? null,
+          },
+          { fantasmas: modo },
+        );
 
-      if (result.copied > 0) {
-        try {
-          const work = eng.saveWork();
-          if (work) {
-            work.ts = Date.now();
-            await saveTrazosToDB(String(targetId), work);
+        if (result.copied > 0) {
+          try {
+            const work = eng.saveWork();
+            if (work) {
+              work.ts = Date.now();
+              await saveTrazosToDB(String(targetId), work);
+            }
+          } catch {
+            /* ignore */
           }
-        } catch {
-          /* ignore */
+          setFeedback({
+            ok: true,
+            msg: `✓ ${result.copied} elemento${result.copied !== 1 ? 's' : ''} copiado${result.copied !== 1 ? 's' : ''}`,
+          });
+        } else {
+          let msg = 'No se copiaron elementos';
+          if (result.skippedNets.length > 0) msg += ': ' + result.skippedNets.join(', ');
+          setFeedback({ ok: false, msg });
         }
-        setFeedback({
-          ok: true,
-          msg: `✓ ${result.copied} elemento${result.copied !== 1 ? 's' : ''} copiado${result.copied !== 1 ? 's' : ''}`,
-        });
-      } else {
-        let msg = 'No se copiaron elementos';
-        if (result.skippedNets.length > 0) msg += ': ' + result.skippedNets.join(', ');
-        setFeedback({ ok: false, msg });
+      } catch {
+        setFeedback({ ok: false, msg: 'Error al copiar' });
+      } finally {
+        setBusy(false);
       }
-    } catch {
-      setFeedback({ ok: false, msg: 'Error al copiar' });
-    } finally {
-      setBusy(false);
+    },
+    [engineRef, srcPlanId, netSelections, currentId, currentIdRef, planosCtx.plans],
+  );
+
+  // Con fantasmas en el origen: preguntar qué copiar; sin ellos: copia directa.
+  const handleCopy = useCallback(() => {
+    // [CF-COPIA] diagnóstico DEV: por qué sale/no sale el modal de fantasmas.
+    devError(
+      `[CF-COPIA] click COPIAR origen=${String(srcPlanId)} origenConFantasmas=${origenConFantasmas} bajantes=${JSON.stringify(
+        (srcPlanData?.bajantes || []).map((b) => ({
+          id: b.id,
+          direccion: (b as { direccion?: string }).direccion ?? '—',
+        })),
+      )}`,
+    );
+    // Modal SIEMPRE que la selección incluya bajantes (orig. usuario): pregunta si copia
+    // originales, fantasmas o ambos. Sin bajantes en la selección, copia directo.
+    const hayBajantes = Object.values(netSelections).some(
+      (tipos) => tipos.has('bajante') || tipos.has('montante'),
+    );
+    if (hayBajantes) {
+      setFantPick('ambos');
+      setFantModal(true);
+      return;
     }
-  }, [engineRef, srcPlanId, netSelections, currentId, currentIdRef, planosCtx.plans]);
+    void doCopy('ambos');
+  }, [netSelections, doCopy]);
 
   const hasSelection = Object.keys(netSelections).length > 0;
 
   if (otherPlans.length === 0) return null;
+
+  const RADIO_ROW: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 8px',
+    cursor: 'pointer',
+    fontSize: 12.5,
+    color: 'var(--txt)',
+  };
 
   return (
     <div
@@ -461,6 +540,106 @@ function CopyFromPlanPanel_({
             </button>
           </div>
         </div>
+      )}
+
+      {createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2000,
+            display: fantModal ? 'flex' : 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.5)',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Qué copiar con fantasmas"
+            style={{
+              background: 'var(--bg2)',
+              color: 'var(--txt)',
+              border: '1px solid var(--line)',
+              borderRadius: 8,
+              padding: 16,
+              minWidth: 300,
+              boxShadow: '0 8px 32px rgba(0,0,0,.5)',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>
+              El piso origen tiene bajantes fantasmas entre pisos
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--txt2)', marginBottom: 8 }}>
+              ¿Qué deseas copiar al piso actual?
+            </div>
+            <label style={RADIO_ROW}>
+              <input
+                type="radio"
+                name="fant-copia"
+                checked={fantPick === 'fantasmas'}
+                onChange={() => setFantPick('fantasmas')}
+              />
+              Solo fantasmas
+            </label>
+            <label style={RADIO_ROW}>
+              <input
+                type="radio"
+                name="fant-copia"
+                checked={fantPick === 'originales'}
+                onChange={() => setFantPick('originales')}
+              />
+              Solo originales
+            </label>
+            <label style={RADIO_ROW}>
+              <input
+                type="radio"
+                name="fant-copia"
+                checked={fantPick === 'ambos'}
+                onChange={() => setFantPick('ambos')}
+              />
+              Ambos
+            </label>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setFantModal(false)}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 4,
+                  border: '1px solid var(--line)',
+                  background: 'transparent',
+                  color: 'var(--txt2)',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFantModal(false);
+                  void doCopy(fantPick);
+                }}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #1a8a4e, #2dbb6a)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Copiar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

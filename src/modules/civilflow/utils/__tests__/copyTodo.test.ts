@@ -167,7 +167,8 @@ describe('copyDrawingFromPlan copia todo', () => {
     expect(bj.recibeDeIds).toEqual([rs.id]);
     // Libro de herencia remapeado (RS1→RS2) y sin el id no copiado (RS9 fuera)
     expect(bj.ucAplicado).toEqual({ [rs.id as string]: { san: 1 } });
-    // Punteros entre pisos fuera
+    // Punteros entre pisos y desplazamientos fuera: los bajantes viajan APLANADOS — el
+    // anillo/Ldesvio pertenecen a la asociación del origen, no a la copia.
     expect(bj.descargaEnId ?? null).toBeNull();
     expect(bj.desplazamientos).toBeUndefined();
 

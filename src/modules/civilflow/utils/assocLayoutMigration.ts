@@ -410,19 +410,24 @@ export function sweepMisplacedLdesvios(): void {
     const pid = k.slice(TRAZOS_PLAN_PREFIX.length);
     plans.push({ pid, data: loadData(pid) });
   }
-  // home: ldId -> piso del bajante que porta su anillo
-  const home: Record<string, string> = {};
+  // home: ldId -> pisos cuyos bajantes portan un anillo que lo referencia. Un LD_ solo se
+  // considera desubicado si el piso donde VIVE no lo reclama (defensa contra punteros
+  // huérfanos dejados por copias entre pisos, que antes re-homizaban el LD_ real).
+  const claims: Record<string, Set<string>> = {};
   for (const { pid, data } of plans) {
     for (const b of data.bajantes || []) {
       for (const d of Object.values(b.desplazamientos || {})) {
-        if (d?.Ldesvio) home[d.Ldesvio] = pid;
+        if (d?.Ldesvio) {
+          if (!claims[d.Ldesvio]) claims[d.Ldesvio] = new Set();
+          claims[d.Ldesvio].add(pid);
+        }
       }
     }
   }
   for (const { pid, data } of plans) {
     const ramales = data.ramales || [];
     const misplaced = ramales.filter(
-      (r) => isLdesvioRamalId(r.id) && home[r.id] && home[r.id] !== pid,
+      (r) => isLdesvioRamalId(r.id) && claims[r.id] && !claims[r.id].has(pid),
     );
     let dirty = false;
     if (misplaced.length) {

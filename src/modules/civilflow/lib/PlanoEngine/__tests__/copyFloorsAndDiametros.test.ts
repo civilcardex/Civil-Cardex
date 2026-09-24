@@ -167,14 +167,72 @@ describe('copiar elementos entre pisos (ítems 2/3)', () => {
         },
       ],
     });
-    copyDrawingFromPlan(eng as never, '2', '1', [
-      { netId: 'san', tipos: new Set(['ramal', 'bajante']) },
-    ]);
+    copyDrawingFromPlan(
+      eng as never,
+      '2',
+      '1',
+      [{ netId: 'san', tipos: new Set(['ramal', 'bajante']) }],
+      undefined,
+      { fantasmas: 'originales' },
+    );
     expect(eng.ramales.every((r) => r.copiaPiso && r.bloqueado)).toBe(true);
     expect(eng.bajantes.every((b) => b.copiaPiso)).toBe(true);
     // El fantasma del BAN1 copiado ya no existe — una sola etiqueta BAN1 en el piso.
     expect(eng.crossFloorGhosts).toHaveLength(0);
     expect(eng.bajantes.filter((b) => b.code === 'BAN1')).toHaveLength(1);
+  });
+
+  it('modo ambos: el fantasma destino-hosted que duplica la copia se CONSERVA (elección usuario)', () => {
+    const eng = makeEngine([]);
+    eng.crossFloorGhosts = [
+      {
+        id: 'BAN1',
+        net: 'san',
+        code: 'BAN1',
+        x: 5,
+        y: 5,
+        dNominal: '',
+        direccion: 'baja',
+        piso: 'P1',
+        sourcePlanId: '1',
+        sourceBajanteId: 'BAN1',
+      },
+    ] as never;
+    setTrazos('1', {
+      ramales: [
+        {
+          id: 'RS1',
+          net: 'san',
+          tipo: 'ramal',
+          pts: [
+            [0, 0],
+            [10, 0],
+          ],
+          label: 'RS1',
+        },
+      ],
+      bajantes: [
+        {
+          id: 'BAN1',
+          net: 'san',
+          tipo: 'bajante',
+          code: 'BAN1',
+          x: 10,
+          y: 0,
+          recibeDeIds: ['RS1'],
+        },
+      ],
+    });
+    copyDrawingFromPlan(
+      eng as never,
+      '2',
+      '1',
+      [{ netId: 'san', tipos: new Set(['bajante']) }],
+      undefined,
+      { fantasmas: 'ambos' },
+    );
+    // 'ambos': la proyección del origen se conserva — el usuario pidió copiar fantasmas.
+    expect(eng.crossFloorGhosts).toHaveLength(1);
   });
 });
 
