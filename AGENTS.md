@@ -1780,3 +1780,137 @@ Visores 3D: giro/pan/rueda, DERECHO inerte (antes paneaba), central sin autoscro
 
 - Corrección (usuario): η NO tiene default — se lee del campo "Eficiencia bomba η" (Datos de entrada). Revertidos los seeds '0.65' (INPUTS_DEFAULT/legacy/BD/memoria → ''). Campo vacío ⇒ P eje, P com, HP y Selección muestran '—' (nunca inventar η). Tolerante a fracción (0.65) o % (65).
 - Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 23: ramales de canales fuera de diseño ll — regla final)
+
+- Regla FINAL (usuario): ramales DE los canales fuera de Diseño de red aguas lluvias = (1) marcados `esCanalId` por finishRamal, (2) llegadas con último punto dentro del rectángulo del canal. Colectores sin marca de canal se quedan. Test canalBajanteRamales actualizado.
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 24: modal fantasmas al copiar + desplegables + bomba solo san)
+
+- **console.logs**: barrido — 0 en src productivo (solo devError console.info, logger DEV intencional). Nada que borrar.
+- **Copia entre pisos con fantasmas (orig. usuario)**: `copyDrawingFromPlan` acepta `opciones.fantasmas: 'fantasmas'|'originales'|'ambos'` (default 'ambos' = compatible). CopyFromPlanPanel: si el origen tiene bajantes isFantasma o XFG → modal `<dialog>` de 3 radios antes de copiar; sin fantasmas → directo. 'originales' = comportamiento viejo (aplanar + limpiar XFG); 'fantasmas'/'ambos' preservan isFantasma/ghostData/desplazamientos y copian los XFG alojados en el origen (transformados por alineación, dedupe por id, sin limpieza destructiva).
+- **Desplegables origen/destino** (bajanteMenu + BajanteAsociacion): labels sin piso tras guion (el piso va en el optgroup) y bajantes ordenados ascendente por código (localeCompare numeric).
+- **Asociar bomba del piso inferior**: solo red 'san' — nunca en ll (bajanteMenu:1194; isSanOrLl se conserva para BajanteConnectionPanel).
+- Tests: copiaFantasmas.test.ts (3 modos, XFG dedupe) + copyFloorsAndDiametros.test.ts ('originales' limpia XFG / 'ambos' conserva). Gates: tsc 0 · lint 0 · vitest 826/826 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 25: caudal en panel ll + cajas fuera + ramales de canal fuera)
+
+1. **Caudal en panel derecho (ll)**: hook `useCaudalLl` (tramoEditor/) — mismo qMap que Diseño de red lluvias (computeLlQMap sobre tramosLl+plans, tramo localizado por id+planId cargado). RamalEditor: CaudalField con value calculado (prioridad sobre caudal manual). BajanteEditor: campo readonly "Caudal (LPS)" para net ll cuando caudal > 0. Sin overrides de RainwaterContext (no hay provider en el visor).
+2. **Cajas fuera de Chequeo bajantes ll**: drawingBajantes excluye prefijo CALL (caja_ll).
+3. **"Ramales asociados"** (RainDownpipesCheck): excluye ramales con esCanalId o que descargan al canal (computeCanalBajanteRamalKeys).
+- Gates: tsc 0 · lint 0 · vitest 822/822 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 26: espejo de diámetros entre pisos + área de canal desde bajantes)
+
+1. **Diámetro espejo entre bajantes asociados** (orig. usuario): `propagarDiametroBajanteAsociado` (bajanteAssociation.ts) — al cambiar dNominal desde Diseño de redes (DownpipesTable san / RainDownpipesCheck ll), la pareja entre pisos (por descargaEnId/origenId, formato "planId|id") copia el diámetro en su piso (storage + engine vivo). Bidireccional, sin propagación de vuelta.
+2. **Área parcial de canales** (Chequeo canal ll): memo de glifos ahora calcula canalAreaMap = Σ áreas de los bajantes que descargan al canal (ramal ll cuyo último punto cae en el rect del canal, otro extremo a ≤2 px del bajante). Prioridad: override manual del canal > Σ bajantes > área del bajante manual > total del piso.
+- Gates: tsc 0 · lint 0 · vitest 826/826 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 27: modal no salía — detección ampliada)
+
+- Causa: bajantes de un piso asociado llevan ghostData/desplazamientos SIN isFantasma — la detección (y el filtro de modo) solo miraba isFantasma===true. Nuevo criterio `tieneMarcaFantasma` (isFantasma O ghostData no vacío O desplazamientos no vacío) en detección del panel y en los filtros/preservación de copyDrawingFromPlan. copyTodo.test: default 'ambos' preserva la marca (expectativa actualizada).
+- Gates: tsc 0 · lint 0 · vitest 826/826 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 28: espejo de diámetros en el punto único)
+
+- El espejo no disparaba porque estaba enganchado solo a dos selects. Movido al CHOKE POINT: `writeBajantePropToDrawing` — cuando prop='dNominal', lee los punteros del bajante (descargaEnId/origenId → "planId|id") y escribe el mismo diámetro en la pareja de su piso (storage+engine vivo). Guards: reentrancia (espejoEnCurso) y valor-ya-igual (corta el ciclo bidireccional). Cubre TODAS las rutas de cambio de diámetro que pasan por el helper (tablas san/ll, menús, paneles). Helper duplicado propagarDiametroBajanteAsociado eliminado.
+- Nota: requiere que la asociación exista (punteros descargaEnId/origenId en el doc).
+- Gates: tsc 0 · lint 0 · vitest 826/826 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 29: el área no viaja en las copias)
+
+- copyDrawingFromPlan: `area_m2` de los bajantes copiados se elimina — la captación pertenece al bajante original; la copia arranca sin área hasta asignarle la suya. Aserción nueva en copiaFantasmas.test.
+- Gates: tsc 0 · lint 0 · vitest 826/826 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 30: modal cada vez + Ldesvio/fantasma que desaparecían)
+
+1. **Modal de fantasmas cada vez**: <dialog>/showModal fallaba al reabrir tras el primer cierre → overlay div fijo (patrón PlanosTab, zIndex 200, cierre por click-fuera/Cancelar/Copiar). Sale en CADA copia mientras el origen tenga marcas de fantasma.
+2. **Ldesvio/fantasma desaparecían al recargar** (repro confirmado con sweep real): la copia preservaba `desplazamientos[].Ldesvio` apuntando al LD_ del piso ORIGEN (los LD_ no se copian) → sweepMisplacedLdesvios registraba "home" del LD_ en el piso destino y BORRABA el LD_ real del origen. Fixes: (a) la copia conserva dx/dy pero suelta el puntero Ldesvio; (b) sweep endurecido — un LD_ solo se mueve/borra si el piso donde VIVE no lo reclama (claims por piso, no último-writer).
+- Test: asocPersistTrasCopia (repro del sweep + sanity). Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 31: semántica del modal corregida)
+
+- Aclaración usuario: FANTASMA = el marcador XFG (creado en la posición vertical del bajante asociado); los bajantes SIEMPRE son originales. Mi criterio anterior (isFantasma/ghostData/desplazamientos como marca) marcaba hasta el original asociado → 'originales' copiaba 0 y 'fantasmas' copiaba el original.
+- Regla final: modal solo si el origen tiene XFG. 'originales' = todos los bajantes aplanados (clásico, limpia XFG); 'fantasmas' = SOLO XFG (0 bajantes/ramales, contador 0); 'ambos' = bajantes aplanados + XFG (dedupe). Etiquetas del modal con aclaración. Tests copiaFantasmas a la semántica nueva (3/3).
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 32: área de canal — detección bidireccional)
+
+- Causa: la detección exigía el ÚLTIMO punto del ramal dentro del canal — pero el ramal típico SALE del canal (inicio en canal, fin en el bajante) → nunca matcheaba → fallback a área total del piso. Ahora cualquier dirección: un extremo en el rect del canal y el OTRO a ≤2 px del bajante → suma SU área. + caso bajante dibujado directamente sobre el canal (sin ramal).
+- Nota: si el bajante alimentador no tiene área asignada, el canal cae al total del piso (fallback documentado).
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 33: modal portal + área de canal sin duplicar)
+
+- **Modal fantasma**: ahora PORTAL a document.body, SIEMPRE montado (display flex/none) — inmune a apilamiento/clip del sidebar y a fallos de re-apertura. Sale en cada COPIAR con XFG en el origen.
+- **Área de canal sin duplicar**: SET de bajantes alimentadores primero (ramal en cualquier dirección + bajante directo sobre el canal), luego Σ área UNA vez por bajante — un bajante con varios ramales al canal ya no duplica su área.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 34: semántica FINAL del modal de fantasmas)
+
+- Definición usuario: FANTASMA = el marcador XFG en la posición vertical del bajante asociado del piso superior. Los bajantes SIEMPRE son originales y viajan aplanados.
+- Regla final: modal solo si el origen tiene XFG (traza [CF-COPIA] extendida con listado de bajantes+pisoBase). 'originales' = todos los bajantes aplanados + limpia XFG; 'fantasmas' = SOLO XFG (0 elementos); 'ambos' = bajantes + XFG (dedupe). Filtros por marca/esFantasma eliminados definitivamente (causaban 0 copias en 'originales' y bajantes en 'fantasmas').
+- Instrumentación [CF-COPIA] en handleCopy: origen, labelOrigen, origenConFantasmas, xfg, bajantes{id,pisoBase,isFantasma,desp,gho}.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 34-bis: semántica modal FINAL — fantasma = bajante desplazado)
+
+- Aclaración usuario: FANTASMA = bajante DESPLAZADO (con isFantasma/ghostData/desplazamientos — marcas de asociación/desplazamiento). Es un bajante como tal. XFG = id interno del marcador punteado (otra cosa).
+- Regla final: los tres modos copian bajantes APLANADOS; el modo decide el GRUPO: 'originales' = solo bajantes sin marca; 'fantasmas' = solo desplazados/marcados; 'ambos' = ambos. Sin copia de XFG, sin bloque condicional de push. Distinguir copia por copiadoDeId (los ids nuevos se renumeran).
+- [CF-COTA] eliminado (autosave en persistTrazos, load LOCAL/BD-GANA/RE-BASE en useTrazosLoader, RE-BASE en planosTabCalibracion vía devLog).
+- Tests copiaFantasmas a la semántica final (3/3).
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 35: modal 3 formas + limpieza trazas)
+
+- SEMÁNTICA FINAL del modal de copia entre pisos (aclaración usuario): 'solo originales' = TODOS los bajantes como reales (aplanados) + limpia XFG; 'solo fantasmas' = SOLO los bajantes con marca viajan como FANTASMA (isFantasma + ghostData/desplazamientos remapeados al label del piso destino + pisoBase del origen → dashed en destino), sin ramales; 'ambos' = cada bajante en ambas formas (real + clon fantasma con id propio). Sin filtros de bajantes, sin copia de XFG. Filtros duplicados eliminados (eran la causa de "solo originales no copia nada").
+- [CF-COTA] eliminado (autosave persistTrazos, load LOCAL/BD-GANA/RE-BASE useTrazosLoader). Queda solo [CF-COPIA] (diagnóstico activo).
+- Tests copiaFantasmas 3/3 a la semántica de formas. Declaraciones restauradas tras borrado en exceso.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 35-bis: copyTodo con clon fantasma)
+
+- copyTodo.test: 'ambos' duplica el bajante con marcas (real + clon fantasma) → copied = 4. Aserciones de estructura intactas.
+- Gates: tsc 0 · lint 0 · vitest 827/827 (148+1 archivos, ajuste de expectativa) · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 36: partidura del modal por DIRECCIÓN + push perdido)
+
+- Semántica FINAL por dirección (definición usuario): FANTASMA = bajantes autocreados por la asociación con direccion 'sube' (dos bajantes no alineados → fantasma + Ldesvio); ORIGINAL = direccion 'baja'/'continua'. Modo decide el GRUPO: 'originales' solo baja/continua; 'fantasmas' solo sube; 'ambos' ambos. Todos viajan aplanados (posición + diámetro + caudal/UD por red), sin marcas.
+- BUG REAL descubierto con test: los reemplazos sucesivos habían ELIMINADO el `engine.bajantes.push` del copy — copied=1 pero 0 elementos en el destino (la traza DBG2 lo mostró). Push restaurado.
+- Test copiaFantasmas: distinción por copiadoDeId (los ids se renumeran: la copia de BALL2 queda como BALL1 en el destino). 3/3.
+- Traza [CF-COPIA] simplificada a direcciones.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 37: sin clones, copia simple — copyTodo 3)
+
+- 'ambos' ya no genera clon fantasma (esa variante se abandonó): el bajante con desplazamiento viaja UNA vez, aplanado. copyTodo vuelve a copied=3.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 38: criterio fantasma unificado)
+
+- Detección del panel y partición del copy usan el MISMO criterio ampliado: fantasma = direccion 'sube' O isFantasma O ghostData no vacío O desplazamientos no vacíos. Así el modal aparece siempre que el origen tenga cualquier elemento fantasma, y la partición del copy coincide con la detección.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 39: partición SOLO por dirección)
+
+- Con la traza real (BALL1 direccion 'baja' con ghostData/desplazamientos de su asociación) se confirmó: el criterio ampliado clasificaba como fantasma al ORIGINAL asociado → 'solo originales' no copiaba nada. Partición del copy ahora SOLO por direccion: 'originales' = !== 'sube'; 'fantasmas' = === 'sube'. Detección del modal igual (hay 'sube' → modal).
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 40: modal SIEMPRE al copiar bajantes)
+
+- handleCopy: si la selección incluye bajante/montante → modal SIEMPRE (originales/fantasmas/ambos, default ambos). Sin bajantes en la selección → copia directo. Eliminada la dependencia de origenConFantasmas para abrir el modal.
+- Gates: tsc 0 · lint 0 · vitest 827/827 · build ✓.
+
+## Session Summary — 2026-09-22 (ronda 41: CAUSA RAÍZ del modal — fantasma = mismo bajante desplazado)
+
+- Con la imagen guía quedó claro: el fantasma NO es un bajante separado — es el MISMO bajante renderizado desplazado (anillo desplazamientos de la asociación, dirección sube dashed); el original es la posición base (baja). Por eso las particiones por elemento/dirección fallaban (había UN elemento con dos renders).
+- Fix: sin partición de fuente. Tras el push (x/y ya alineadas), modos 'fantasmas'/'ambos' generan un CLON por bajante con offset del anillo (x+dx, y+dy) y direccion 'sube'. 'originales' = solo la copia base. 'fantasmas' = retira las copias base y deja SOLO los clones desplazados. 'ambos' = base + clones. Diámetro/UD/caudal viajan en ambas versiones.
+- Modal sale siempre que la selección incluya bajantes.
+- Test copiaFantasmas por versiones (base 100,100 baja / desplazada 112,95 sube / ambos 2 copias). 3/3.
+- Gates: tsc 0 · lint 0 · vitest 828/828 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-22 (ronda 42: etiqueta del clon fantasma)
+
+- El clon fantasma heredaba labelX/labelY del bajante base → etiqueta muy arriba (posición vieja). Ahora el clon borra labelX/labelY — el render la auto-posiciona junto al glifo desplazado.
+- Gates: tsc 0 · vitest copiaFantasmas 3/3 · build ✓.
