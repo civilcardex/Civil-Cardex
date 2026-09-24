@@ -632,7 +632,7 @@ export default function ChequeoBajantesLluvias() {
                         onChange={() => {}}
                         onBlur={(e) => {
                           const v = Math.max(0, parseDecimalInput(e.target.value) ?? 100);
-                          if (v !== null && row.bajante) {
+                          if (row.bajante) {
                             updBajanteLL(row.bajante, 'intensidad', v);
                           }
                         }}

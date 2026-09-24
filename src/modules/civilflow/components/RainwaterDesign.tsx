@@ -14,7 +14,6 @@ import {
   computeLlQMap,
   computeLlRows,
   getTributarioIds,
-  minBajantePulgDeRamal,
 } from '../utils/rainwaterRows';
 
 const RainwaterDesign_S2: React.CSSProperties = {
@@ -50,23 +49,10 @@ export default function DisenoLluvias() {
     (tramoKey: string, tramoId: string, newPulg: number) => {
       const opt = DIAM_OPTIONS.find((o) => o.pulg === newPulg);
       if (opt && tramoId) {
-        // Regla ll: el ramal no puede superar al bajante en el que descarga.
-        const bajPulg = minBajantePulgDeRamal(
-          tramoId,
-          String(tramoKey.split('-')[1] ?? ''),
-          tramosLl,
-        );
-        if (bajPulg > 0 && newPulg > bajPulg) {
-          window.dispatchEvent(
-            new CustomEvent('civilflow_diametro_validation', {
-              detail: {
-                title: 'Diámetro no permitido',
-                message: `El diámetro del ramal no puede ser mayor al del bajante en el que descarga (${bajPulg}"). Sube primero el diámetro del bajante o selecciona un ramal menor.`,
-              },
-            }),
-          );
-          return;
-        }
+        // DOCTRINA (decisión 2026-09-24, unificada con el engine): si el ramal sube por
+        // ENCIMA del bajante, el bajante AUTO-SUBE (bumpConnectedBajantes en el choke point
+        // del engine / followBajanteToMaxRamal en el write) — no se bloquea. El guard que
+        // había aquí contradecía ese comportamiento con una alerta.
         const res = writeDiametroToDrawing(tramoId, 'll', opt.label, plans);
         if (!res.ok && res.reason === 'accessory-larger') {
           window.dispatchEvent(

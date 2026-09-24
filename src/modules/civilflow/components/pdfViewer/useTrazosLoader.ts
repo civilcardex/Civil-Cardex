@@ -88,12 +88,28 @@ export function useTrazosLoader({
             // caché local sí tiene y el doc BD perdió (guardado RPC fallido, pisa-ts de otra
             // vía) se RESTAURAN desde la local — la desasociación legítima borra en ambos, así
             // que un doc BD sin ellas frente a una local con ellas siempre significa pérdida.
-            const restauradas = restaurarAsociacionesDesdeLocal(localData, merged);
-            if (restauradas) saveTrazosToDB(String(resolvedId), merged);
-            const workStr = JSON.stringify(merged);
-            eng.loadWork(workStr);
+            // GATE anti stale (multi-dispositivo): restaurar solo si el doc BD no tiene
+            // NINGÚN artefacto de asociación (indicio de vaciado/RPC fallido) O la divergencia
+            // de ts es reciente (<1 h). Una caché VIEJA con fantasmas frente a una BD que los
+            // desasoció legítimamente hace horas no debe resucitarlos.
+            const dbSinAsocs =
+              !(merged as { crossFloorGhosts?: unknown[] }).crossFloorGhosts?.length &&
+              !((merged as { ramales?: Array<{ id?: string }> }).ramales || []).some((r) =>
+                String(r.id || '').startsWith('LD_'),
+              );
+            const reciente = !localData || dbTs - localTs < 3600_000;
+            const restauradas =
+              (dbSinAsocs || reciente) && restaurarAsociacionesDesdeLocal(localData, merged);
+            if (restauradas) {
+              saveTrazosToDB(String(resolvedId), merged);
+              eng.loadWork(JSON.stringify(merged));
+            } else {
+              eng.loadWork(typeof dbData === 'string' ? dbData : JSON.stringify(dbData));
+            }
             docScale = eng.scaleM;
-            if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);
+            // La caché refleja EXACTAMENTE lo cargado en el engine: guardar dbData cuando se
+            // restauró pisaba el merged y el anti-loss producía la pérdida que curaba.
+            saveToStorage(`trazos_${resolvedId}`, restauradas ? merged : dbData);
             requestAnimationFrame(() => {
               eng.render();
             });

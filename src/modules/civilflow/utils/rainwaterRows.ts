@@ -234,6 +234,32 @@ export function buildLlBajanteAssociations(
   return ramalToBajantes;
 }
 
+/** Q (LPS) de UN bajante de aguas lluvias — ÚNICA precedencia para panel y tablas:
+ *  caudal manual del dibujo > override manual con Área TOTAL (Parcial + Otras)/I/C > área
+ *  del dibujo > fallback del área del piso. Antes: 4 fórmulas distintas (panel, computeLlQMap,
+ *  chequeo bajantes, export) discrepaban para el mismo elemento. */
+export function qBajanteLl(
+  bajante: { id?: string; code?: string; area_m2?: number; caudal?: number },
+  manual?: BajanteLl | null,
+  areaPisoFallback = 0,
+): number {
+  if (bajante.caudal != null && bajante.caudal > 0) return bajante.caudal;
+  if (manual) {
+    const areaParcial = manual.areaParcial ?? bajante.area_m2 ?? 0;
+    const areaTotal = areaParcial + (manual.areaOtras ?? 0);
+    if (areaTotal > 0) {
+      return chequeoBajanteLluvia({
+        areaAcumulada: areaTotal,
+        intensidad: manual.intensidad ?? 100,
+        coeficienteC: manual.coeficienteC ?? 0.0278,
+      }).Q;
+    }
+  }
+  const area = bajante.area_m2 || areaPisoFallback || 0;
+  if (area <= 0) return 0;
+  return chequeoBajanteLluvia({ areaAcumulada: area, intensidad: 100, coeficienteC: 0.0278 }).Q;
+}
+
 // Caudal (LPS) que llega a cada tramo — escorrentía propia para un bajante, escorrentía del área
 // acumulada para un ramal colector vía sus bajantes asociados. Compartido con la exportación de
 // memoria.
@@ -266,20 +292,11 @@ export function computeLlQMap(
   const ownQMap: Record<string, number> = {};
   for (const t of tramosLl) {
     if (!t._key) continue;
-    let ownQ = 0;
-    if (t.caudal != null && t.caudal > 0) {
-      ownQ = t.caudal;
-    } else if (t.area_m2 && t.area_m2 > 0) {
-      const manual = bajantesLl.find(
-        (b) => b.bajante === t.id || b.bajante === t.code || b.id === t.id || b.id === t.code,
-      );
-      const int = manual?.intensidad ?? 100;
-      const coef = manual?.coeficienteC ?? 0.0278;
-      // Área TOTAL (orig. usuario) = área propia + Otras.
-      ownQ = ((t.area_m2 + (manual?.areaOtras ?? 0)) * int * coef) / 100;
-    } else {
-      ownQ = t.qLps || 0;
-    }
+    // Mismo cálculo que el panel (qBajanteLl): una sola precedencia.
+    const manual = bajantesLl.find(
+      (b) => b.bajante === t.id || b.bajante === t.code || b.id === t.id || b.id === t.code,
+    );
+    const ownQ = qBajanteLl(t, manual) || t.qLps || 0;
     ownQMap[t._key] = ownQ;
   }
 

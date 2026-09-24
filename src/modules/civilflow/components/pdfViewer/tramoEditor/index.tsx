@@ -175,6 +175,19 @@ function TramoEditorInner() {
         !isGuide &&
         selElement.tipo !== 'caja_san' &&
         selElement.tipo !== 'caja_ll' && <RamalEditorSection />}
+      {(selElement?.tipo === 'caja_san' || selElement?.tipo === 'caja_ll') && (
+        <div
+          style={{
+            fontSize: 11,
+            color: '#849495',
+            fontFamily: "'Geist',monospace",
+            padding: '6px 0',
+          }}
+        >
+          Caja de recolección seleccionada — sin propiedades hidráulicas (se configura por diámetro
+          del canal).
+        </div>
+      )}
     </form>
   );
 }

@@ -111,6 +111,38 @@ export function BajanteEditor({
               aria-label="Diámetro"
               onChange={(e) => {
                 const val = e.target.value;
+                // Regla ll bajante≥ramal en el GHOST también: sin esto, el fantasma aceptaba
+                // un diámetro menor que sus ramales sin alerta y sin espejar al real.
+                if (val && engineRef.current) {
+                  const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
+                  if (bajIn > 0) {
+                    const fuenteId = selElement.id.startsWith('XFG_') ? undefined : selElement.id;
+                    const idsRamales = fuenteId
+                      ? (selElement.recibeDeIds ?? [])
+                      : (
+                          engineRef.current.ramales as Array<{
+                            id?: string;
+                            net?: string;
+                            diametro?: string;
+                          }>
+                        )
+                          .filter((r) => r.net === selElement.net && r.diametro)
+                          .map((r) => r.id || '');
+                    for (const rid of idsRamales) {
+                      const ram = engineRef.current.ramales.find((r) => r.id === rid);
+                      if (!ram || !ram.diametro) continue;
+                      const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
+                      if (ramIn > 0 && ramIn > bajIn) {
+                        engineRef.current.triggerAlert(
+                          'Diámetro no permitido',
+                          `Diámetro del fantasma no puede ser menor al del ramal conectado (${ram.diametro})`,
+                        );
+                        e.target.value = currentGhostDiam;
+                        return;
+                      }
+                    }
+                  }
+                }
                 updateGhostField((cd) => {
                   cd.dNominal = val;
                 });

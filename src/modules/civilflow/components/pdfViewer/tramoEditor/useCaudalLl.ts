@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useMemo } from 'react';
 import { PLANS_META_KEY, TRAZOS_PREFIX } from '../../../constants/storage-keys';
 import { loadFromStorage } from '../../../services/storageService';
 import { RainwaterContext } from '../../../context/RainwaterContext';
@@ -29,6 +29,22 @@ export function useCaudalLl(
 ): number | null {
   // Hooks SIEMPRE antes de cualquier early return (reglas de hooks).
   const ctx = useContext(RainwaterContext);
+  // I/O síncrona multi-piso memoizada: el cuerpo corre por render del editor (cada
+  // keystroke del panel re-renderiza) — sin esto, parseaba los docs en cada una.
+  return useMemo(
+    () => caudalLlDe(selElement, activeNet, loadedPlanId, ctx?.bajantesLl ?? []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- inputs primitivos + identidad del array de overrides
+    [selElement?.id, selElement?.tipo, activeNet, loadedPlanId, ctx?.bajantesLl],
+  );
+}
+
+/** Cálculo puro (sin React), inyectable para tests. */
+function caudalLlDe(
+  selElement: { id?: string; tipo?: string } | null,
+  activeNet: string,
+  loadedPlanId?: string | number | null,
+  overrides: BajanteLLManual[] = [],
+): number | null {
   if (activeNet !== 'll' || !selElement?.id) return null;
   const planId = String(loadedPlanId ?? '');
   if (!planId) return null;
@@ -72,13 +88,13 @@ export function useCaudalLl(
 
   // Overrides manuales: clave = code del bajante.
   const manualByCode = new Map<string, BajanteLLManual>();
-  for (const m of ctx?.bajantesLl ?? []) manualByCode.set(m.bajante || m.id, m);
+  for (const m of overrides) manualByCode.set(m.bajante || m.id, m);
 
-  const qDe = (b: { area_m2?: number; caudal?: number }, code?: string): number => {
+  const qDe = (b: { id?: string; code?: string; area_m2?: number; caudal?: number }): number => {
     if (b.caudal != null && b.caudal > 0) return b.caudal;
     // Overrides manuales de la tabla (Área Otras / intensidad) vía RainwaterContext — el
     // visor lo monta (ViewerPage); sin provider (tests), cae al cálculo del dibujo.
-    const manual = code ? manualByCode.get(code) : undefined;
+    const manual = manualByCode.get(b.code || b.id || '');
     if (manual && ((manual.areaAcumulada ?? 0) > 0 || (manual.areaParcial ?? 0) > 0)) {
       return chequeoBajanteLluvia({
         areaAcumulada: manual.areaAcumulada || manual.areaParcial || 0,
@@ -108,19 +124,50 @@ export function useCaudalLl(
     seen.add(k);
     const sup = bajLl.find((x) => x.planId === op && (x.b as { id?: string }).id === oid);
     if (!sup) return 0;
-    const sb = sup.b as { code?: string; id?: string };
-    return qDe(sup.b, sb.code || sb.id) + heredadoDe(op, oid, seen);
+    return qDe(sup.b) + heredadoDe(op, oid, seen);
   };
+
+  // FANTASMA (XFG_<idInferior>_<planAnfitrion>): NO vive en bajantes — resolver el bajante
+  // FUENTE (targetBajanteId del ghost) y calcular sobre él. Sin esto el panel de fantasma
+  // mostraba '—' el 100% de las veces.
+  if (selElement.id.startsWith('XFG_')) {
+    let ghost: { targetBajanteId?: string; sourcePlanId?: string } | undefined;
+    for (const pid of planIds) {
+      const ghosts = (docs.get(pid)?.crossFloorGhosts ?? []) as Array<{
+        id?: string;
+        targetBajanteId?: string;
+        sourcePlanId?: string;
+      }>;
+      const g = ghosts.find((x) => x.id === selElement.id) as
+        | { targetBajanteId?: string; sourcePlanId?: string }
+        | undefined;
+      if (g) {
+        ghost = g;
+        break;
+      }
+    }
+    if (ghost?.targetBajanteId) {
+      const supId = ghost.targetBajanteId;
+      // El bajante fuente puede vivir en cualquier piso (el ghost espeja a través de pisos).
+      const sup = bajLl.find((x) => (x.b as { id?: string }).id === supId);
+      if (sup) {
+        const spid = sup.planId;
+        const seen = new Set([`${spid}|${supId}`]);
+        const q = qDe(sup.b) + heredadoDe(spid, supId, seen);
+        return q > 0 ? q : null;
+      }
+    }
+    return null;
+  }
 
   if (selElement.tipo === 'bajante') {
     const b = bajLl.find(
       (x) => x.planId === planId && (x.b as { id?: string }).id === selElement.id,
     );
     if (!b) return null;
-    const bb = b.b as { code?: string; id?: string };
     // Bajante inferior asociado: caudal PROPIO + lo que baja por la columna del superior.
     const seen = new Set([`${planId}|${selElement.id}`]);
-    const q = qDe(b.b, bb.code || bb.id) + heredadoDe(planId, selElement.id, seen);
+    const q = qDe(b.b) + heredadoDe(planId, selElement.id, seen);
     return q > 0 ? q : null;
   }
 
@@ -128,11 +175,13 @@ export function useCaudalLl(
   // herencia si hay cadena) — sin sumar el aporte propio del inferior.
   if (selElement.id.startsWith('LD_')) {
     const supId = selElement.id.slice(3);
-    const sup = bajLl.find((x) => x.planId === planId && (x.b as { id?: string }).id === supId);
+    // El LD vive en el piso INFERIOR y nombra al bajante del SUPERIOR: buscarlo en TODOS los
+    // pisos (limitado al plan cargado nunca lo encontraba — panel en '—' siempre).
+    const sup = bajLl.find((x) => (x.b as { id?: string }).id === supId);
     if (sup) {
-      const sb = sup.b as { code?: string; id?: string };
-      const seen = new Set([`${planId}|${supId}`]);
-      const q = qDe(sup.b, sb.code || sb.id) + heredadoDe(planId, supId, seen);
+      const spid = sup.planId;
+      const seen = new Set([`${spid}|${supId}`]);
+      const q = qDe(sup.b) + heredadoDe(spid, supId, seen);
       return q > 0 ? q : null;
     }
     return null;
@@ -158,7 +207,7 @@ export function useCaudalLl(
     const hit = bajLl.find(
       ({ b }) => ((b as { code?: string }).code || (b as { id?: string }).id) === code,
     );
-    if (hit) q += qDe(hit.b, code);
+    if (hit) q += qDe(hit.b);
   }
   return q > 0 ? q : null;
 }

@@ -600,13 +600,30 @@ export function writeBajantePropToDrawing(
       const pId = partner.slice(pipe + 1);
       if (pId && !(String(pPlan) === String(planId) && pId === bajanteId)) {
         const rawP = loadFromStorage<{
-          bajantes?: { id: string; dNominal?: unknown; net?: string }[];
+          bajantes?: { id: string; dNominal?: unknown; net?: string; recibeDeIds?: string[] }[];
+          ramales?: { id?: string; net?: string; diametro?: string }[];
         } | null>(TRAZOS_PREFIX + pPlan, null);
         const pareja = rawP?.bajantes?.find((x) => x.id === pId);
         if (pareja && pareja.net === net && pareja.dNominal !== val) {
+          // Doctrina ll "auto-sube" en el piso DESTINO también: si el valor espejado deja a
+          // la pareja por debajo del máximo de SUS ramales conectados, se sube al máximo en
+          // vez de espejar el menor (el guard del menú ya impide el gesto en origen; aquí es
+          // red de seguridad para valores que llegan por tabla/otra ventana).
+          let valPareja: unknown = val;
+          if (net === 'll' && val) {
+            const valIn = diamPulgFromLabel(String(val).replace(/-/g, ' '));
+            let maxRamIn = 0;
+            for (const rid of pareja.recibeDeIds ?? []) {
+              const ram = rawP?.ramales?.find((r) => r.id === rid);
+              if (!ram?.diametro) continue;
+              const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
+              if (ramIn > maxRamIn) maxRamIn = ramIn;
+            }
+            if (valIn > 0 && maxRamIn > valIn) valPareja = pareja.dNominal ?? val;
+          }
           espejoEnCurso = true;
           try {
-            writeBajantePropToDrawing(`${pId}-${pPlan}`, net, 'dNominal', val, plans);
+            writeBajantePropToDrawing(`${pId}-${pPlan}`, net, 'dNominal', valPareja, plans);
           } finally {
             espejoEnCurso = false;
           }
