@@ -64,6 +64,11 @@ export function useKeyboardShortcuts({
         selectTool('text');
         e.preventDefault();
       }
+      // 'o' de cOntador (contador de agua — tool 'cont' del engine).
+      if (e.key.toLowerCase() === 'o') {
+        selectTool('cont');
+        e.preventDefault();
+      }
       if (e.key.toLowerCase() === 'h') {
         toggleGrid((p) => !p);
         e.preventDefault();

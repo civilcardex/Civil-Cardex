@@ -194,9 +194,9 @@ function PdfViewerToolbar_({
       id: 'cont',
       label: 'Contador',
       ico: '🔳',
-      key: '',
+      key: 'O',
       icoCol: '#4D8FF7',
-      shortcut: '',
+      shortcut: 'O',
     });
   }
   // El canal está disponible en cualquier piso/red activa mientras canal recolectora esté
