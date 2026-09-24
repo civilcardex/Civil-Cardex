@@ -705,19 +705,24 @@ export function BajanteDiameterSelector({
                     (pl) => (pl.id as unknown as string) === group.planId,
                   );
                   const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                  const bajantesToShow = group.isCurrent
-                    ? (group.bajantes || []).filter((b) => b.id !== element.id)
-                    : group.bajantes || [];
+                  // Ascendente por código (orig. usuario) y sin piso tras el guion — el piso
+                  // ya se ve en el optgroup.
+                  const bajantesToShow = (
+                    group.isCurrent
+                      ? (group.bajantes || []).filter((b) => b.id !== element.id)
+                      : group.bajantes || []
+                  )
+                    .slice()
+                    .sort((a, b) =>
+                      (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
+                    );
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup key={group.planId} label={pLabel}>
                       {hasBajantes &&
                         bajantesToShow.map((b) => (
                           <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
-                            {buildBajanteVisualLabel(
-                              b,
-                              plano?.nivel != null ? pisoCorto(plano.nivel) : undefined,
-                            )}
+                            {b.code || b.id}
                           </option>
                         ))}
                       {!hasBajantes && (
@@ -817,7 +822,11 @@ export function BajanteDiameterSelector({
                   );
                   const pLabel =
                     plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
-                  const bajantesToShow = freshUpperBajantes ?? (upperFloorGroup.bajantes || []);
+                  const bajantesToShow = (freshUpperBajantes ?? (upperFloorGroup.bajantes || []))
+                    .slice()
+                    .sort((a, b) =>
+                      (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
+                    );
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup label={pLabel}>
@@ -1191,7 +1200,9 @@ export function BajanteMenu() {
           triggerConfirm={ctx.triggerConfirm}
         />
       )}
-      {bajEl.tipo === 'bajante' && isSanOrLl && <AsociarBombaSection ctx={ctx} bajEl={bajEl} />}
+      {bajEl.tipo === 'bajante' && ctx.activeNet === 'san' && (
+        <AsociarBombaSection ctx={ctx} bajEl={bajEl} />
+      )}
       {isSanOrLl && (
         <BajanteConnectionPanel
           element={bajEl}

@@ -355,9 +355,16 @@ export default function BajanteAsociacion({
                   (pl) => (pl.id as unknown as string) === group.planId,
                 );
                 const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                const bajantesToShow = group.isCurrent
-                  ? (group.bajantes || []).filter((b) => b.id !== selElement.id)
-                  : group.bajantes || [];
+                // Ascendente por código (orig. usuario).
+                const bajantesToShow = (
+                  group.isCurrent
+                    ? (group.bajantes || []).filter((b) => b.id !== selElement.id)
+                    : group.bajantes || []
+                )
+                  .slice()
+                  .sort((a, b) =>
+                    (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
+                  );
                 const hasBajantes = bajantesToShow.length > 0;
                 return (
                   <optgroup key={group.planId} label={pLabel}>
@@ -432,7 +439,12 @@ export default function BajanteAsociacion({
                   );
                   const pLabel =
                     plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
-                  const bajantesToShow = upperFloorGroup.bajantes || [];
+                  // Ascendente por código (orig. usuario).
+                  const bajantesToShow = (upperFloorGroup.bajantes || [])
+                    .slice()
+                    .sort((a, b) =>
+                      (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
+                    );
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup label={pLabel}>

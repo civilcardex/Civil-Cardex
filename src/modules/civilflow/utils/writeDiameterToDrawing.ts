@@ -521,6 +521,25 @@ export function writeNSalidasToDrawing(
   if (isHydro) writeHydroDrawingSync(plans);
 }
 
+// Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.
+let espejoEnCurso = false;
+
+/** Lee los punteros de asociación (descargaEnId/origenId) de un bajante desde SU doc de
+ *  trazos, sin depender del engine. Formato de puntero: "planId|id". */
+function punterosBajante(
+  planId: string,
+  bajanteId: string,
+): {
+  descargaEnId?: string | null;
+  origenId?: string | null;
+} {
+  const raw = loadFromStorage<{
+    bajantes?: { id: string; descargaEnId?: string | null; origenId?: string | null }[];
+  } | null>(TRAZOS_PREFIX + planId, null);
+  const b = raw?.bajantes?.find((x) => x.id === bajanteId);
+  return { descargaEnId: b?.descargaEnId, origenId: b?.origenId };
+}
+
 export function writeBajantePropToDrawing(
   bajanteKey: string,
   net: string,
@@ -561,4 +580,31 @@ export function writeBajantePropToDrawing(
 
   if (isHydro) writeHydroDrawingSync(plans);
   if (isSan) writeSanDrawingSync(plans);
+
+  // Espejo de diámetros entre pisos (orig. usuario): al cambiar dNominal de un bajante
+  // asociado entre pisos, su pareja (descargaEnId/origenId → "planId|id") copia el mismo
+  // diámetro en SU piso. Guard de valor ya igual corta el bucle bidireccional.
+  if (prop === 'dNominal' && !espejoEnCurso && val && planId) {
+    const punteros = punterosBajante(String(planId), bajanteId);
+    const partner = punteros.descargaEnId || punteros.origenId;
+    const pipe = partner ? partner.indexOf('|') : -1;
+    if (partner && pipe > 0) {
+      const pPlan = partner.slice(0, pipe);
+      const pId = partner.slice(pipe + 1);
+      if (pId && !(String(pPlan) === String(planId) && pId === bajanteId)) {
+        const rawP = loadFromStorage<{
+          bajantes?: { id: string; dNominal?: unknown; net?: string }[];
+        } | null>(TRAZOS_PREFIX + pPlan, null);
+        const pareja = rawP?.bajantes?.find((x) => x.id === pId);
+        if (pareja && pareja.net === net && pareja.dNominal !== val) {
+          espejoEnCurso = true;
+          try {
+            writeBajantePropToDrawing(`${pId}-${pPlan}`, net, 'dNominal', val, plans);
+          } finally {
+            espejoEnCurso = false;
+          }
+        }
+      }
+    }
+  }
 }
