@@ -106,8 +106,10 @@ export default function ChequeoCanalesLluvias() {
           />{' '}
           Chequeo capacidad canal recolectora cubierta aguas lluvias
         </h3>
+        <div style={{ marginLeft: 'auto' }}>
+          <EditButton edit={edit} setEdit={setEdit} />
+        </div>
       </div>
-      <EditButton edit={edit} setEdit={setEdit} />
       {!conRecolectora ? (
         <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 12 }}>
           Activa el canal recolectora para ver este chequeo.
