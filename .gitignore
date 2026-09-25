@@ -40,3 +40,6 @@ skills-lock.json
 
 # Tooling local de sesiones IA
 .continue/
+
+# Supabase CLI estado local de sesion
+supabase/.temp/
