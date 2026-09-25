@@ -141,8 +141,10 @@ export function buildLlBajanteAssociations(
     // Canales fuera: no son bajantes (glifo recolector) y un recibeDeIds legacy del canal no
     // debe contar como asociación de descarga.
     // Cajas CALL fuera: no son bajantes (glifo de captura) — ni endpoint de asociación ni chip.
+    // Tolerante a bajantes viejos SIN campo tipo: excluir por tipo explícito, no exigir 'bajante'.
     const bajantes = (data.bajantes || []).filter(
-      (b): b is BajanteRaw => b.net === 'll' && b.tipo === 'bajante' && b.x != null && b.y != null,
+      (b): b is BajanteRaw =>
+        b.net === 'll' && b.tipo !== 'canal' && b.tipo !== 'caja_ll' && b.x != null && b.y != null,
     );
 
     for (const r of ramales) {

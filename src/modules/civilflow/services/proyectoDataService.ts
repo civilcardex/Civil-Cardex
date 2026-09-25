@@ -406,6 +406,13 @@ export async function loadProyectoData(proyectoId: number): Promise<ProyectoData
     if (!data) return null;
 
     const result = data as GetProyectoDataResult;
+    // Trazas de diagnóstico (solo DEV): claves del RPC + conteos — distingue función de BD
+    // vieja (claves distintas) de RLS filtrando (claves correctas con arrays vacíos).
+    devError(
+      `[CF-RESTORE] uid=${user.id} rpc keys=${JSON.stringify(Object.keys(result))} ` +
+        `pisos=${result.pisos?.length ?? '?'} planos_meta=${result.planos_meta?.length ?? '?'} ` +
+        `mat=${Object.keys(result.materiales ?? {}).length}`,
+    );
     return {
       pisos: (result.pisos ?? []).map((p) => ({
         id: p.id,

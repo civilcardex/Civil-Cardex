@@ -17,6 +17,7 @@ import { renderStatus } from '../utils/componentHelpers';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { DIAM_BAN, pisoCorto } from '../constants';
 import { trunc2 } from '../utils/formatUtils';
+import { devError } from '../../../utils/devError';
 import React from 'react';
 import { parseDecimalInput } from '../utils/parseDecimal';
 import type { DrawingData } from '../utils/drawingSync';
@@ -190,6 +191,12 @@ export default function ChequeoBajantesLluvias() {
 
   const ramalesByBajante = useMemo(() => {
     const map: Record<string, string[]> = {};
+    // Trazas de diagnóstico (solo DEV): por qué la columna "Ramales asociados" queda vacía.
+    devError(
+      `[CF-RASOC] assoc=${Object.keys(bajanteAssociations).length} ` +
+        `canalKeys=${canalRamalKeys.size} tramosLl=${tramosLl.length} ` +
+        `assoc=${JSON.stringify(Object.entries(bajanteAssociations).slice(0, 6))}`,
+    );
     for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
       const [ramalId, planId] = ramalKey.split('-');
       // Piso del ramal (de su plano) → etiqueta "RS1-P1" en el chip.
@@ -197,8 +204,16 @@ export default function ChequeoBajantesLluvias() {
       const label = nivel != null ? `${ramalId}-${pisoCorto(nivel)}` : ramalId;
       // Ramal de canal: fuera.
       if (canalRamalKeys.has(ramalKey)) continue;
+      // Ldesvio: conector de asociación entre pisos, no ramal de drenaje — fuera.
+      if (ramalId.startsWith('LD_')) continue;
       for (const code of codes) {
-        const t = tramosLl.find((x) => x.esBajante && (x.code === code || x.id === code));
+        // Scoping POR PISO: el mismo id de bajante existe en cada piso (BALL1-P1, BALL1-P2) —
+        // sin el filtro de planId el find traía el de otro piso y el guard de abajo lo
+        // descartaba: columna "Ramales asociados" siempre vacía (incidente 2026-09-25).
+        const t = tramosLl.find(
+          (x) =>
+            x.esBajante && (x.code === code || x.id === code) && String(x.planId ?? '') === planId,
+        );
         const k = t?._key;
         if (!k) continue;
         // Solo ramales del MISMO piso del bajante (orig. usuario).

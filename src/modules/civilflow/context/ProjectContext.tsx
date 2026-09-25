@@ -196,14 +196,16 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
   const [restoreDone, setRestoreDone] = useState(() => {
     const proyectoId = getActiveProyectoId();
     if (!proyectoId) return true;
+    // Solo pisos locales marcan el estado como completo: nombre/mats sin pisos fue exactamente
+    // el estado del incidente 2026-09-24 (borrado de cf_pisos) y si marcara restoreDone la
+    // restauración de nube jamás correría — generador vacío para siempre con pisos en BD.
     // mats se excluye a propósito: siempre cae al default no vacío MATS_CLONED (categorías
     // predefinidas por red), así que Object.keys(mats).length da > 0 incluso con localStorage
     // vacío o acabado de limpiar — incluirlo aquí habría vuelto hasLocalData
     // incondicionalmente, saltándose el efecto de restauración de la nube de abajo en cada
     // montaje (navegador nuevo, logout/login, reapertura desde Profile) y el proyecto siempre
     // mostraría defaults en blanco en vez del respaldo real.
-    const hasLocalData = pisos.length > 0 || proy.nombre.trim() !== '';
-    return hasLocalData;
+    return pisos.length > 0;
   });
   useDebouncedEffect(
     () => {
@@ -217,6 +219,11 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
         Object.keys(mats).length === 0 &&
         proy.nombre.trim() === '';
       if (isEmptyCore) return;
+      // Pisos vacíos NUNCA respaldan (incidente 2026-09-24: estado local parcial — nombre/
+      // materiales presentes, pisos aún sin restaurar — guardaba pisos:[] y el RPC destructivo
+      // borraba cf_pisos entera, mismo patrón que cf_planos 2026-09-18). La lista se reconstruye
+      // desde la nube al montar; borrar pisos a mano se persiste con ≥1 restante.
+      if (pisos.length === 0) return;
       saveProyectoCoreData(proyectoId, { pisos, proy, mats, profs, crits });
     },
     1200,
@@ -249,7 +256,9 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
         return;
       }
       if (data?.pisos && data.pisos.length > 0) setPisos(data.pisos);
-      if (data?.proy) {
+      // Datos generales: solo si el local no tiene nombre (estado parcial sin nada propio) —
+      // un nombre recién tecleado en un proyecto nuevo no debe pisarse con el respaldo.
+      if (data?.proy && proy.nombre.trim() === '') {
         // El mapper de filas del RPC devuelve Partial<Proyecto> con campos undefined para
         // las columnas faltantes — se filtran para que los defaults de PROY_DEFAULTS
         // sobrevivan al merge.
