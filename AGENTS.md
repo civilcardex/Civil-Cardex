@@ -2031,3 +2031,21 @@ SQL Editor: `20260924000001_suscripciones_race_y_uso.sql` (re-ejecutable). Deplo
 
 ### Gates
 tsc 0 · lint 0 err (3 warn pre-existentes) · vitest 859/859 (155 files) · build ✓ · graphify ✓. Tests nuevos ronda: paridad 4 + gate anti-loss 2 + bombaARCalcs 3.
+
+## Session Summary — 2026-09-24 (ronda 3: incidente BD — RPCs pisados por re-aplicación del esquema viejo)
+
+### Incidente
+"sucedió de la nada": generador de pisos + lista de planos/visor vacíos. BD: cf_pisos vacía; cf_planos/ramales/bajantes intactos. Causas encadenadas:
+1. ProjectContext debounced save guardaba core con pisos:[] (estado local parcial: nombre/mats presentes, pisos sin restaurar) → save_proyecto_core DELETE cf_pisos. FIX: guard cliente (pisos.length===0 → no respaldar) + restauración nube ahora corre cuando pisos=[] aunque haya nombre (antes hasLocalData con nombre la saltaba para siempre).
+2. get_proyecto_data/get_plano_data/save_proyecto_core/save_planos_meta/save_plano_data en BD eran las versiones PRE-agosto (leen public.pisos/planos/materiales_proyecto — tablas viejas re-creadas y VACÍAS por una re-aplicación del esquema 20260730000001). RLS bien (simulación con set_config jwt = 4/4/29). FIX: migración de reparación 20260925000000_repara_rpcs_reaplicacion_vieja.sql re-aplica los 5 con cf_* + grants + guard server-side save_proyecto_core (pisos [] sobre proyecto con pisos → raise) + save_planos_meta [] = no-op.
+
+### Herramientas de diagnóstico añadidas (devError, solo DEV)
+- [CF-RESTORE] uid/rpc keys/pisos/planos_meta/mat en loadProyectoData (proyectoDataService.ts).
+- [CF-RESTORE] planos: meta count + PDF faltante en bucket (PlansContext).
+
+### Pendientes del usuario
+- Recarga dura y verificar repoblado. Luego DROP TABLE de las 6 tablas viejas (pisos, planos, materiales_proyecto, proyecto_general, profundidades_proyecto, criterios_proyecto).
+- Investigar QUÉ script se corrió en BD que re-aplicó el esquema viejo (si la sesión paralela tocó migraciones, hay más RPCs que revisar con position('cf_' in prosrc)).
+
+### Nota cliente
+- PlanoPersistence restaurarAsociacionesDesdeLocal (crossFloorStorage) + trazas ronda 2 siguen activas.
