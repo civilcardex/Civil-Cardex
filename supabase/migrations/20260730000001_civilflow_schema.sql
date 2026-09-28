@@ -597,3 +597,16 @@ $$;
 
 grant execute on function public.get_plano_data(bigint) to authenticated;
 grant execute on function public.get_proyecto_data(bigint) to authenticated;
+
+-- ═══ GUARD ANTI-REAPLICACIÓN (incidente 2026-09-24/25) ═══════════════════════════════
+-- Este archivo provocó el incidente al re-aplicarse sobre la BD actual: el rename cf_* de
+-- 20260814000002 liberó los nombres de tabla viejos, así que los create table PASAN limpio
+-- y los create or replace function PISAN los RPCs vigentes (perdió el candado acceso_modulo
+-- y la columna layout, entre otros). Si el esquema normalizado existe, abortar.
+do $$
+begin
+  if to_regclass('public.cf_proyectos') is not null then
+    raise exception 'ESQUEMA_VIEJO_NO_REAPLICAR: la BD ya usa el esquema cf_ (20260814+). Re-aplicar este archivo PISARIA los RPCs vigentes. Ver AGENTS.md ronda 7.';
+  end if;
+end
+$$;

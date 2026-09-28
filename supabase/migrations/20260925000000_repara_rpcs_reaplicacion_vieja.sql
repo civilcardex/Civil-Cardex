@@ -9,6 +9,11 @@
 -- ⚠️ APLICAR EN SQL EDITOR. Verificación al final del archivo.
 
 -- ═══ 1) get_proyecto_data ═════════════════════════════════════════════════════════════
+-- NOTA (auditoría ronda 7): esta reconstrucción omite 5 claves de la versión completa de
+-- 20260814000002: gas_datos, ep_datos, bomba_datos, anulaciones_bajantes_pluviales,
+-- anulaciones_canales_pluviales. Hoy NO rompe la app (esos datos cargan por selects directos
+-- en proyectoDataService), pero el contrato del RPC público es menor al documentado — si un
+-- consumidor nuevo espera esas claves, restaurarlas desde 20260814000002.
 create or replace function public.get_proyecto_data(p_proyecto_id bigint)
 returns jsonb language sql stable security invoker set search_path = public as $$
   select jsonb_build_object(

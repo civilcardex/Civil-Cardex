@@ -13,7 +13,8 @@ grant select on public.cf_suscripciones to authenticated;
 grant select on public.cf_pagos to anon;
 grant select on public.cf_pagos to authenticated;
 
--- PATRÓN para migraciones futuras (copiar junto al create table):
--- grant select on public.mi_tabla to anon;
--- grant select, insert, update, delete on public.mi_tabla to authenticated;
--- grant select, insert, update, delete on public.mi_tabla to service_role;
+-- PATRÓN para migraciones futuras (copiar junto al create table) — GRANTS MÍNIMOS:
+-- escrituras SOLO por RPC SECURITY DEFINER (con candado acceso_modulo), nunca directo.
+-- grant select on public.mi_tabla to authenticated;   -- lectura propia (RLS owner-only)
+-- grant select, insert, update, delete on public.mi_tabla to service_role;  -- solo backend
+-- NUNCA grant DML a authenticated ni nada a anon (doctrina 20260813000003).
