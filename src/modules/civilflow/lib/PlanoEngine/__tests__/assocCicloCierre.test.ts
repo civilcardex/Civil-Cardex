@@ -240,3 +240,25 @@ describe('asociación entre pisos — ciclo asociar → guardar → cerrar → r
     expect(work.bajantes[0].ghostData?.P1).toEqual({ direccion: 'sube' });
   });
 });
+
+// R-5 (auditoría ronda 7): el "vacío cuenta como ausente" del dedup solo aplica al ANILLO
+// (desplazamientos/ghostData nacen {}). Un recibeDeIds:[] es estado POST-BORRADO legítimo —
+// rellenarlo desde la copia stale resucitaría la asociación desasociada.
+describe('mergeBajanteDedup — vacío acotado al anillo', () => {
+  it('recibeDeIds vacío NO se rellena desde la copia previa', async () => {
+    const { mergeBajanteDedup } = await import('../PlanoPersistence');
+    const previa = {
+      id: 'BAN1',
+      recibeDeIds: ['RS1'],
+      desplazamientos: { P2: { dx: 5, dy: 0, Ldesvio: 'LD_BAN1' } },
+    };
+    const base = {
+      id: 'BAN1',
+      recibeDeIds: [], // desasociado legítimamente en la copia más reciente
+      desplazamientos: {}, // anillo nuevo (nace {} — este SÍ hereda)
+    };
+    const out = mergeBajanteDedup(base as never, previa as never) as typeof base;
+    expect(out.recibeDeIds).toEqual([]); // post-borrado se respeta
+    expect(out.desplazamientos).toEqual(previa.desplazamientos); // anillo sobrevive
+  });
+});

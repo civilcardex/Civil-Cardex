@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
   type ReactNode,
+  useRef,
 } from 'react';
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import { MATS_DEFAULT, CRIT0, PROFS_DEFAULT } from '../constants';
@@ -207,6 +208,34 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
     // mostraría defaults en blanco en vez del respaldo real.
     return pisos.length > 0;
   });
+  // TUMBA de borrado total (auditoría ronda 7 R-6): el guard anti-incidente de arriba hace
+  // imposible persistir pisos:[] por el RPC (server-side lo rechaza), y sin marca el borrado
+  // del ÚLTIMO piso se revertía en cada montaje — la restauración re-traía lo "borrado".
+  // Distinción: tumba = restoreDone ya true (restauración completa) + pisos pasan de >0 a 0.
+  // Ámbito LOCAL: cruzar dispositivos el borrado total no viaja (deuda documentada — necesita
+  // columna de tumba en cf_proyectos; hoy ningún path del RPC puede expresarlo).
+  const pisosPrevRef = useRef(pisos.length);
+  useEffect(() => {
+    const antes = pisosPrevRef.current;
+    pisosPrevRef.current = pisos.length;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
+    const key = `civilflow_pisos_tumba_${proyectoId}`;
+    if (restoreDone && antes > 0 && pisos.length === 0) {
+      try {
+        localStorage.setItem(key, JSON.stringify({ ts: Date.now() }));
+      } catch {
+        /* sin storage: la tumba no aplica */
+      }
+    } else if (pisos.length > 0) {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        /* ignorar */
+      }
+    }
+  }, [pisos.length, restoreDone]);
+
   useDebouncedEffect(
     () => {
       if (!restoreDone) return;
@@ -255,7 +284,15 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
         setRestoreDone(true);
         return;
       }
-      if (data?.pisos && data.pisos.length > 0) setPisos(data.pisos);
+      // Tumba vigente: el usuario borró TODOS los pisos en este dispositivo — no resucitar
+      // los de la nube (se limpia: agregar un piso de nuevo la elimina).
+      let tumba = false;
+      try {
+        tumba = localStorage.getItem(`civilflow_pisos_tumba_${proyectoId}`) != null;
+      } catch {
+        tumba = false;
+      }
+      if (data?.pisos && data.pisos.length > 0 && !tumba) setPisos(data.pisos);
       // Datos generales: solo si el local no tiene nombre (estado parcial sin nada propio) —
       // un nombre recién tecleado en un proyecto nuevo no debe pisarse con el respaldo.
       if (data?.proy && proy.nombre.trim() === '') {

@@ -3,7 +3,12 @@
  * autosave debounced (usePdfAutoSave.performSave) y el onDirty del engine — antes la secuencia
  * estaba duplicada en ambos lados y podía divergir (ts, LAST_TRAZOS_ID, sync a BD).
  */
-import { saveToStorage, saveTrazosToDB, loadFromStorage } from '../../services/storageService';
+import {
+  saveToStorage,
+  saveTrazosToDB,
+  loadFromStorage,
+  saveTrazosLocales,
+} from '../../services/storageService';
 import { markPlanTrazosFresh } from '../../utils/drawingSync';
 import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
 
@@ -28,7 +33,7 @@ export function persistTrazosSnapshot(
     const prev = loadFromStorage<{ assocLayout?: number } | null>(TRAZOS_PREFIX + String(id), null);
     if (prev?.assocLayout) w.assocLayout = prev.assocLayout;
   }
-  saveToStorage(TRAZOS_PREFIX + String(id), work);
+  saveTrazosLocales(id, work as Record<string, unknown>);
   markPlanTrazosFresh(id);
   if (id !== 'work') {
     saveToStorage(LAST_TRAZOS_ID_KEY, id);

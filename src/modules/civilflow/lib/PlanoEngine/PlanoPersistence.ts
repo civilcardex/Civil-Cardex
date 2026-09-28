@@ -155,9 +155,15 @@ const CAMPOS_ASOC = [
   'ghostData',
 ] as const;
 
+/** Solo desplazamientos/ghostData nacen {} (anillo nuevo): el vacío cuenta como ausente y el
+ *  anillo de la copia previa sobrevive. Los ARRAYS vacíos en recibeDeIds/alimentaIds son el
+ *  estado POST-BORRADO legítimo — rellenarlos desde la copia stale resucitaría asociaciones
+ *  desasociadas (auditoría ronda 7 R-5). */
+const CAMPOS_OBJETO_VACIO = new Set(['desplazamientos', 'ghostData']);
+
 /** Merge para bajantes en el dedup: base = copia más reciente; los campos de asociación
  *  ausentes en la base se rellenan desde la copia previa. Un objeto VACÍO cuenta como
- *  ausente (desplazamientos/ghostData nacen en {} — el anillo de la copia previa sobrevive). */
+ *  ausente SOLO en desplazamientos/ghostData (ver CAMPOS_OBJETO_VACIO). */
 export function mergeBajanteDedup<T>(base: T, previa: T): T {
   const b = base as Record<string, unknown>;
   const p = previa as Record<string, unknown> | null;
@@ -165,7 +171,10 @@ export function mergeBajanteDedup<T>(base: T, previa: T): T {
   let merged: Record<string, unknown> | null = null;
   for (const k of CAMPOS_ASOC) {
     const vacio =
-      b[k] != null && typeof b[k] === 'object' && Object.keys(b[k] as object).length === 0;
+      CAMPOS_OBJETO_VACIO.has(k) &&
+      b[k] != null &&
+      typeof b[k] === 'object' &&
+      Object.keys(b[k] as object).length === 0;
     if ((b[k] == null || vacio) && p[k] != null) {
       if (!merged) merged = { ...b };
       merged[k] = p[k];

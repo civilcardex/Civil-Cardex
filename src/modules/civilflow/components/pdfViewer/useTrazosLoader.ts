@@ -9,6 +9,7 @@ import {
   saveTrazosToDB,
   loadTrazosFromDB,
   trazosLocalGanaABdVacia,
+  saveTrazosLocales,
 } from '../../services/storageService';
 import type { PlanTrazos } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
@@ -109,7 +110,10 @@ export function useTrazosLoader({
             docScale = eng.scaleM;
             // La caché refleja EXACTAMENTE lo cargado en el engine: guardar dbData cuando se
             // restauró pisaba el merged y el anti-loss producía la pérdida que curaba.
-            saveToStorage(`trazos_${resolvedId}`, restauradas ? merged : dbData);
+            saveTrazosLocales(
+              resolvedId,
+              (restauradas ? merged : dbData) as Record<string, unknown>,
+            );
             requestAnimationFrame(() => {
               eng.render();
             });
@@ -185,7 +189,7 @@ export function useTrazosLoader({
             const conContenido =
               eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length > 0;
             if (conContenido || !localData) {
-              saveToStorage(`trazos_${resolvedId}`, work);
+              saveTrazosLocales(resolvedId, work as unknown as Record<string, unknown>);
               void saveTrazosToDB(String(resolvedId), work);
             }
             window.dispatchEvent(new Event('storage'));

@@ -1,4 +1,4 @@
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage, saveTrazosLocales } from '../services/storageService';
 import {
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
@@ -694,7 +694,7 @@ export function copyDrawingFromPlan(
     const work = engine.saveWork();
     if (work && typeof work === 'object') {
       (work as { ts?: number }).ts = Date.now();
-      saveToStorage(`trazos_${targetPlanId}`, work);
+      saveTrazosLocales(targetPlanId, work as Record<string, unknown>);
     }
   } catch {
     // Ignorar errores de guardado
