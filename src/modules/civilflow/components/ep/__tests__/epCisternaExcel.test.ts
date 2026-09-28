@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { dec } from '../../../utils/parseDecimal';
+import { calcularCisterna, type EpCisternaIn } from '../epCalculos';
 
 // Comparación contra el Excel CIVILFLOW_EPC hojas "CÁLCULO EPC" + "CISTERNA"
 // con sus valores de ejemplo (modo cisterna). Fórmulas extraídas del dump OOXML.
@@ -150,4 +151,54 @@ describe('EPC cisterna — paridad con Excel (hojas 1 y 2)', () => {
     expect(close(a.npshd, X.X_NPSHd)).toBe(true));
   it('NPSHd ≥ NPSHr + 0.5 → ✓ (C28)', () => expect(a.npshd >= ep.npshr + 0.5).toBe(true));
   it('desc() tolera coma decimal (input usuario)', () => expect(dec('2,88')).toBeCloseTo(2.88, 9));
+});
+
+// PARIDAD REAL (auditoría ronda 7 R-7): la cisterna se aserta contra el MÓDULO de producción
+// calcularCisterna — el appCalc de arriba es la copia RED de la página de verificación y se
+// deja para la rama RED; si el módulo deriva, ESTO falla.
+describe('calcularCisterna (módulo de producción) vs Excel CISTERNA', () => {
+  const base: EpCisternaIn = {
+    modo: 'cisterna',
+    ztop: String(X.ztop),
+    zcis: String(X.zcis),
+    hfac: String(X.hfac),
+    hfacs: String(X.hfacs),
+    hfotros: String(X.hfotros),
+    hfcis: String(X.hfcis),
+    pmin: String(X.pmin),
+    patm: '8.6', // del cache C27: 8.6-0.24-3-0.5 = 4.86
+    pv: '0.24',
+    npshr: '2.5',
+    dotL: '200',
+    nUsuarios: '5',
+    diasAut: '20',
+    bciL: '0',
+  };
+
+  it('Hg/Hf/HMT clavan los caches C8/C9/C10', () => {
+    const c = calcularCisterna(base);
+    expect(c.HgTotal).toBeCloseTo(X.X_HgTotal, 6);
+    expect(c.HfTotal).toBeCloseTo(X.X_HfTotal, 6);
+    expect(c.HMT).toBeCloseTo(X.X_HMT_CIST, 6);
+  });
+
+  it('volúmenes y NPSHd (con inputs poblados) clavan C18/C19/C27', () => {
+    const c = calcularCisterna(base);
+    expect(c.volConsumo).toBeCloseTo(X.X_VolConsumo, 6);
+    expect(c.volTotal).toBeCloseTo(X.X_VolTotal, 6);
+    expect(c.npshd).toBeCloseTo(X.X_NPSHd, 6);
+    expect(c.npshEvaluable).toBe(true);
+    expect(c.npshOk).toBe(true); // 4.86 ≥ 2.5+0.5
+  });
+
+  it('inputs vacíos: veredicto NO evaluable (sin falsa alarma de cavitación)', () => {
+    const c = calcularCisterna({ ...base, patm: '', pv: '', npshr: '' });
+    expect(c.npshEvaluable).toBe(false);
+    expect(c.npshOk).toBe(false);
+  });
+
+  it('modo RED: aplica=false (la página solo muestra el aviso)', () => {
+    const c = calcularCisterna({ ...base, modo: 'red' });
+    expect(c.aplica).toBe(false);
+  });
 });

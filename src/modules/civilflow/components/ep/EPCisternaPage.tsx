@@ -3,7 +3,7 @@ import Card from '../shared/Card';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton';
 import { LazyInp, Param, type EPData } from './EPShared';
-import { dec } from '../../utils/parseDecimal';
+import { calcularCisterna } from './epCalculos';
 
 interface EPCisternaPageProps {
   ep: EPData;
@@ -25,16 +25,18 @@ export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
   const [editVol, setEditVol] = React.useState(false);
   const [editNpsh, setEditNpsh] = React.useState(false);
   const [editSuc, setEditSuc] = React.useState(false);
-  const zcis = dec(ep.zcis);
-  const hfsuc = dec(ep.hfcis);
-  const hAcrit = Math.max(dec(ep.hfac), dec(ep.hfacs));
-  const HgTotal = dec(ep.ztop) - zcis;
-  const HfTotal = hAcrit + dec(ep.hfotros) + hfsuc;
-  const HMT = HgTotal + HfTotal + dec(ep.pmin);
-  const npshd = dec(ep.patm) - dec(ep.pv) - Math.abs(zcis) - hfsuc;
-  const npshOk = npshd >= dec(ep.npshr) + 0.5;
-  const volConsumo = dec(ep.dotL) * dec(ep.nUsuarios) * dec(ep.diasAut);
-  const volTotal = volConsumo + dec(ep.bciL);
+  // Única fuente de las fórmulas (antes triplicadas contra EPVerificationPage y el test).
+  const c = calcularCisterna(ep);
+  const HgTotal = c.HgTotal;
+  const HfTotal = c.HfTotal;
+  const HMT = c.HMT;
+  const npshd = c.npshd;
+  // Veredicto NPSH solo con los 3 inputs poblados: los defaults vacíos daban npshd<0 y
+  // "⚠ RIESGO DE CAVITACIÓN" en rojo antes de tocar nada (falsa alarma).
+  const npshOk = c.npshOk;
+  const npshEvaluable = c.npshEvaluable;
+  const volConsumo = c.volConsumo;
+  const volTotal = c.volTotal;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -274,8 +276,14 @@ export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
               ],
               [
                 <span style={{ fontWeight: 700 }}>Verificación NPSHd ≥ NPSHr + 0.5 m</span>,
-                <span style={npshOk ? OK : ERR}>
-                  {npshOk ? '✓ Sin riesgo de cavitación' : '⚠ RIESGO DE CAVITACIÓN — revisar'}
+                <span
+                  style={!npshEvaluable ? { fontWeight: 600, color: '#849495' } : npshOk ? OK : ERR}
+                >
+                  {!npshEvaluable
+                    ? '— puebla Patm, Pv y NPSHr para evaluar'
+                    : npshOk
+                      ? '✓ Sin riesgo de cavitación'
+                      : '⚠ RIESGO DE CAVITACIÓN — revisar'}
                 </span>,
                 '',
                 '',

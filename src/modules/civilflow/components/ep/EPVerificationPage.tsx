@@ -4,6 +4,7 @@ import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton';
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from './calculations';
 import { LazyInp, Param, type EPData } from './EPShared';
+import { calcularCisterna } from './epCalculos';
 import { SI } from '../../styles/sharedTableStyles';
 import { dec } from '../../utils/parseDecimal';
 import { AGUA_DENSIDAD, GRAVEDAD } from '../../utils/calcSanitaryCore';
@@ -72,9 +73,7 @@ export default function EPVerificationPage({
     pmin = dec(ep.pmin),
     pmax = dec(ep.pmax);
   const zbomba = dec(ep.zbomba),
-    ztop = dec(ep.ztop),
-    zcis = dec(ep.zcis),
-    hfcis = dec(ep.hfcis);
+    ztop = dec(ep.ztop);
   const nt = dec(ep.nt) || 1;
   const etab = dec(ep.etab) || 0.65,
     etam = dec(ep.etam) || 0.85;
@@ -95,10 +94,12 @@ export default function EPVerificationPage({
   const Qgpm = Qd * 15.8503;
   const Qb = nt > 0 ? Qd / nt : Qd;
 
-  const Hg = isRed ? ztop - zbomba : ztop - zcis;
+  // Rama RED propia (descuenta Pred); rama CISTERNA delega en epCalculos (única fuente —
+  // antes HMT/NPSH vivían triplicados y derivaban en silencio).
+  const Hg = isRed ? ztop - zbomba : (() => calcularCisterna(ep).HgTotal)();
   const HfCrit = Math.max(hfac, hfacs);
-  const Hf = isRed ? HfCrit + hfotros : HfCrit + hfotros + hfcis;
-  const HMT = isRed ? Hg + Hf + pmin - pred : Hg + Hf + pmin;
+  const Hf = isRed ? HfCrit + hfotros : (() => calcularCisterna(ep).HfTotal)();
+  const HMT = isRed ? Hg + Hf + pmin - pred : (() => calcularCisterna(ep).HMT)();
 
   const Phid = AGUA_DENSIDAD * GRAVEDAD * (Qd / 1000) * (HMT > 0 ? HMT : 0);
   const Pfreno_w = etab * etam > 0 ? Phid / (etab * etam) : 0;
