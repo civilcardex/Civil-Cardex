@@ -2049,3 +2049,97 @@ tsc 0 · lint 0 err (3 warn pre-existentes) · vitest 859/859 (155 files) · bui
 
 ### Nota cliente
 - PlanoPersistence restaurarAsociacionesDesdeLocal (crossFloorStorage) + trazas ronda 2 siguen activas.
+
+## Session Summary — 2026-09-25 (causa raíz DEFINITIVA "Ldesvio+fantasma se borran" + pendiente ll editable)
+
+### Causa raíz (2 exploraciones del ciclo cerrar→reabrir)
+El roundtrip a BD perdía el campo `layout` del XFG (ghostToRow/rowToGhost no lo mapeaban; la tabla no tenía la columna) y serializeWork perdía la marca `assocLayout` del doc → al reabrir, migrateAssocLayoutOnLoad re-procesaba fantasmas layout-2 como LEGACY: pasada 1 borraba el XFG real del piso anfitrión; pasada 2 dejaba un claim huérfano que el sweep usaba para borrar el LD_. Los punteros (descargaEnId/origenId) viajan en el bajante → el menú seguía mostrando la asociación ("indica que debe ir un Ldesvio y un fantasma"). Secundario: dedup keep-last (CAMPOS_ASOC) no incluía desplazamientos/ghostData → bajante duplicado legacy perdía el anillo.
+
+### Fixes
+1. **20260925000002_ghost_layout_column.sql** (APLICAR EN SQL EDITOR): `alter table cf_planos_fantasmas_entrepisos add column if not exists layout int` + backfill `set layout=2 where null` (todos los XFG desde agosto son layout 2) + save_plano_data re-aplicado con `r.layout` en el INSERT de fantasmas.
+2. **storageService**: ghostToRow emite `layout`, rowToGhost lo lee (jsonb_populate_recordset ignora claves extra hasta aplicar la migración → deploy antes que SQL es seguro).
+3. **PlanoPersistence**: CAMPOS_ASOC += 'desplazamientos','ghostData'; mergeBajanteDedup trata objeto vacío como ausente (el anillo de la copia previa sobrevive al dedup).
+4. **assocLayoutMigration pasada 2**: el ghost escrito por writeCrossFloorGhost (~363) también se mete en la copia in-memory antes del saveData (~365) — el guardado persistía un doc leído ANTES y borraba el ghost recién escrito (espejo del resync de ramales de pasada 1).
+5. **persistTrazosSnapshot**: copia `assocLayout` del doc en storage al snapshot del engine — cada guardado re-armaba la migración.
+6. Tests assocCicloCierre (3): ciclo completo; XFG layout:2 sin marca doc + npt 0/0 sobrevive migrate+sweep; dedup conserva anillo.
+7. **RainwaterDesign**: columna Pendiente (%) editable (gated EDITAR, coma o punto, Enter=blur), escribe writePendienteToDrawing('ll') + updTramoLL sPercent — bidireccional (el dibujo ya alimenta sPercent vía buildTramos).
+
+### Gates
+tsc 0 · vitest 861/861 (155 files) · build ✓ · graphify ✓.
+
+### Pendiente usuario
+- APLICAR en SQL Editor: 20260925000002_ghost_layout_column.sql (tras deploy del código).
+- Verificación manual: asociar → cerrar visor → reabrir (recarga dura): fantasma/LD/anillo persisten; editar pendiente en Diseño ll con coma.
+
+## Session Summary — 2026-09-25 (ronda 2: EP vs Excel CÁLCULO EPC + grants Data API Oct 30)
+
+### Verificación Excel (CIVILFLOW_EPC_v4_Profesional.xlsx, hoja CÁLCULO EPC) vs módulo EP
+Flujo Excel: 0 datos generales / tipo succión (RED|CISTERNA) / 1 caudales / 2 pérdidas / 3 presiones+cotas / 4 config bombas / 5 parámetros equipo / 6 potencia comercial / 7 caudal Qd / 8 HMT / 9 potencia bomba / 10 setpoint+tanque / 11 diámetros / 12 especificación. Página 1 de la app ya numerada 1-4 ✓.
+- **Fórmulas idénticas verificadas** (sin cambios): Qd=MAX(Qac,Qasc), m³/h ×3.6, Qb=Qd/Nt, Hg=ztop−zbomba, Hf crítica=MAX(Hf_ac,Hf_acs)+Hf_otros, HMT=Hg+Hf+Pmin−Pred (RED; CISTERNA sin Pred, hoja aparte en Excel), P_hid=1000·9.81·(Q/1000)·HMT, P_b=P_hid/(ηb·ηm), HP=/745.7, P×FS, P_on=HMT, P_off=×1.10, N₂=×0.90, Vu=Qd·60/(4n), Vt=Vu/α, DN=√(4Q/πV) PVC Sch40.
+- **Fixes**: (1) bar = m.c.a. ×9.81/100 (Excel C94; estaba ÷10.2 — difiere en 3er decimal), en setpoints + especificación; (2) GPM ×15.8503 (estaba 15.85); (3) TODO resultado a 3 decimales (fmt* + toFixed inline HMT/potencia; usuario).
+- **Numeración flujo Excel**: página 2 → 5 Parámetros / 6 Pot comercial / 7 Caudal Qd / 8 HMT / 9 Potencia bomba; página 3 → 10 Setpoint+tanque / 11 Diámetros / 12 Especificación. Card "Diámetros seleccionados por el usuario" queda sin número (no existe en Excel).
+
+### Grants Supabase (aviso Oct 30: Data API ya no concede acceso automático a tablas nuevas en public)
+- **20260925000003_data_api_grants.sql** (APLICAR EN SQL EDITOR): grants select cf_suscripciones/cf_pagos a anon+authenticated. cf_app_config NO (revoke intencional, gestión solo service_role). Comentario-patrón para migraciones futuras: incluir grants en el MISMO archivo que crea la tabla.
+
+### Gates
+tsc 0 · vitest 827/827 civilflow · build ✓ · graphify ✓.
+
+### Pendiente usuario
+- SQL Editor: 20260925000002_ghost_layout_column.sql + 20260925000003_data_api_grants.sql.
+- Verificar EP páginas 2-3 contra el Excel con datos reales (bar ahora ×9.81/100).
+
+## Session Summary — 2026-09-28 (EP: 2 decimales + layout página 2 según boceto)
+
+- **EP a 2 decimales**: TODOS los resultados del módulo EPC (EPVerificationPage 28 sites + EPInputPage Qb) → toFixed(2). Factores Excel intactos (bar ×9.81/100, GPM ×15.8503).
+- **Página 2 "Cálculo hidráulico y potencia" reordenada al boceto FINAL (2026-09-28 2do)**: columna izquierda = 5 Parámetros (arriba) + fila 6 Pot comercial | 7 Caudal Qd side-by-side (abajo); columna derecha = 8 HMT (arriba) + 9 Potencia bomba (abajo).
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 2: reorganización EP SIN renumerar + flujo Z 2 filas/página)
+
+- **SIN renumeración** (petición explícita): tablas conservan 5-12. Tabla 6 Potencia comercial RESTAURADA (borrado anterior fue error de interpretación).
+- **Flujo Z por página** (1ª tabla arriba-izq, 2ª debajo, 3ª arriba-der, 4ª debajo; 2 filas/página): Página 1: izq [1 Caudales, 2 Pérdidas] · der [3 Presiones, 4 Bombas]. Página 2: izq [5 Parámetros, fila subdividida {6 Pot comercial | 7 Caudal}] · der [8 HMT, 9 Potencia bomba]. Página 3: izq [10 Setpoint, 11 Diámetros nominales] · der [12 Especificación, Diámetros usuario (sin número)].
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 3: modo cisterna completo según Excel hoja CISTERNA)
+
+- **Tabla 8 cisterna**: fila "Desnivel geométrico" tomaba z_bomba en AMBOS modos — en cisterna ahora usa z_top − z_cis (Excel C8) y muestra el nivel de cisterna. Página 1 cisterna: inputs nuevos z_cis y Pérdidas succión (hfcis).
+- **Volumetría de la cisterna** (Excel CISTERNA §2, página 1 cisterna): inputs Dotación (200 default)/N usuarios/Días autonomía (1)/Reserva BCI → Volumen consumo = Dot×N×Días, Volumen total (L y m³).
+- **Verificación NPSH** (Excel CISTERNA §3, página 3 cisterna): inputs Patm/Pv/NPSHr → NPSHd = Patm − Pv − |z_cis| − Hf_suc; verificación NPSHd ≥ NPSHr + 0.5 (✓/⚠ cavitación).
+- **Persistencia**: 7 columnas nuevas en cf_ep_datos_proyecto (dot_l, n_usuarios, dias_aut, bci_l, patm, pv, npshr) — **migración 20260925000004_ep_cisterna_campos.sql (APLICAR EN SQL EDITOR, re-aplica save_ep_datos)**. EPData/EP_DEFAULTS/epService FIELD_MAP ampliados; get via to_jsonb las incluye solo.
+- POT COMERCIAL hoja Excel ya cubierta (select COMM_HP + autoNema sugerido). REF NTC 1500 (Tablas 3/6/DN) queda como referencia documental en comentarios — no migrada a UI (decisión ponytail).
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 4: tabla 2 Volumetría + renumeración 1-13 + grid 3 col página 1)
+
+- **Página 1 reorganizada en GRID DE 3 COLUMNAS** (fila 1: 1, 2, 3 — fila 2: 4, 5): 1 Caudales · 2 Volumetría de la cisterna (solo cisterna) · 3 Pérdidas de carga · 4 Presiones y cotas · 5 Configuración de bombas.
+- **Renumeración completa**: pág 2 = 6 Parámetros, 7 Pot comercial, 8 Caudal, 9 HMT, 10 Potencia bomba; pág 3 = 11 Setpoint, 12 Diámetros nominales, 13 Especificación. Cards sin número en Excel (Diámetros usuario, NPSH) quedan sin numerar.
+- **INCIDENTE**: script python con io.open('w') + write(list) TRUNCÓ EPInputPage.tsx a 0 bytes (open trunca antes de que write falle). Reconstruido completo desde contexto (lectura previa + edits conocidos). LECCIÓN: construir el string completo ANTES de abrir el archivo en modo escritura.
+- EPInputPage Qb resumen ahora a 2 decimales (coherente con el resto).
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 5: página 4 Cisterna con las tablas del Excel)
+
+- **Nueva página 4 "Cisterna"** (PressureEquipmentDesign total=4) con las DOS tablas de la hoja CISTERNA del Excel que faltaban: **Datos de succión desde cisterna** (z_cis, Hf_suc inputs + Hg_total, Hf_total, HMT cisterna calculados) y **Verificación NPSH — cavitación** (Patm/Pv/NPSHr inputs + NPSHd + verificación ≥ NPSHr+0.5). Componente nuevo `ep/EPCisternaPage.tsx` (edit gated por botón; aviso si modo=red). En modo RED la página muestra aviso.
+- Limpieza duplicados: NPSH card quitada de página 3; inputs z_cis/hfcis quitados de página 1 (viven en la página Cisterna). Volumetría sigue como tabla 2 de página 1.
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 6: Volumetría a página Cisterna + Cisterna como página 2)
+
+- **Volumetría de la cisterna** movida de página 1 a la página Cisterna (columna izquierda, debajo de "Datos de succión desde cisterna"; NPSH queda a la derecha). Página 1 queda con 4 tablas (1 Caudales, 3 Pérdidas, 4 Presiones, 5 Bombas — numeración intacta, el 2 vive en la página Cisterna).
+- **Orden de páginas**: 1 Datos de entrada · 2 Cisterna · 3 Cálculo hidráulico y potencia · 4 Diámetros y especificación.
+- EPInputPage quedó sin editVol/volConsumo/volTotal (viven en EPCisternaPage).
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 7: página 1 layout original + numeración consecutiva global)
+
+- **Página 1 vuelve al layout 2 columnas original**: izq [1 Caudales, 2 Pérdidas] · der [3 Presiones, 4 Bombas].
+- **Numeración consecutiva global en orden de páginas**: pág Cisterna (2ª): 2 Datos de succión, 3 Volumetría, 4 Verificación NPSH; pág 3: 5 Parámetros, 6 Pot comercial, 7 Caudal, 8 HMT, 9 Potencia bomba; pág 4: 10 Setpoint, 11 Diámetros nominales, 12 Especificación. Diámetros usuario sin número.
+- Gates: tsc 0 · vitest 827/827 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (ronda 8: numeración por página + test paridad Excel cisterna)
+
+- **Numeración por página** (petición usuario: cada página arranca donde termina la anterior): pág1 = 1-4 (layout original 2 col restaurado: izq [1 Caudales, 2 Pérdidas] · der [3 Presiones, 4 Bombas]); pág Cisterna = 5 Datos succión, 6 Volumetría, 7 NPSH; pág Cálculo = 8 Parámetros, 9 Pot comercial, 10 Caudal, 11 HMT, 12 Potencia bomba; pág Diámetros = 13 Setpoint, 14 Diámetros nominales, 15 Especificación.
+- **Test de paridad con el Excel** (`ep/__tests__/epCisternaExcel.test.ts`, 23 tests): fórmulas hojas CÁLCULO EPC + CISTERNA con los valores de ejemplo del Excel — Hg_total, Hf_total, HMT cisterna (47.13), Qd/m³h/GPM/Qb, potencia (P_hid, P_freno W/HP, ×FS HP/kW), P_on/P_off/bar, Vu, Vt, volumetría (20000 L), NPSHd (4.86) y verificación cavitación. TODO matchea.
+- Hallazgo: los caches C82-C86 del Excel quedaron del estado RED (HMT 23.24) — el test verifica la fórmula exacta para ambos modos. La app usa el HMT correcto según modo ✓.
+- Gates: tsc 0 · vitest 827+23 · build ✓ · graphify ✓.
