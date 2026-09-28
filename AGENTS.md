@@ -2143,3 +2143,34 @@ tsc 0 · vitest 827/827 civilflow · build ✓ · graphify ✓.
 - **Test de paridad con el Excel** (`ep/__tests__/epCisternaExcel.test.ts`, 23 tests): fórmulas hojas CÁLCULO EPC + CISTERNA con los valores de ejemplo del Excel — Hg_total, Hf_total, HMT cisterna (47.13), Qd/m³h/GPM/Qb, potencia (P_hid, P_freno W/HP, ×FS HP/kW), P_on/P_off/bar, Vu, Vt, volumetría (20000 L), NPSHd (4.86) y verificación cavitación. TODO matchea.
 - Hallazgo: los caches C82-C86 del Excel quedaron del estado RED (HMT 23.24) — el test verifica la fórmula exacta para ambos modos. La app usa el HMT correcto según modo ✓.
 - Gates: tsc 0 · vitest 827+23 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (auditoría ronda 7: incidente BD — restauración de doctrina)
+
+### Críticos cerrados
+- **R-1 gating destruido por las reparaciones** → `20260928000001_restaura_gating_y_rainwater.sql`: DO-block renombra el CUERPO VIVO de los 9 RPCs a `_impl` (drop-if-exists del impl divergido del 24; NO se copian cuerpos del repo — la reparación anterior falló por copiar versiones podridas) + wrapper con candado `acceso_modulo('flow')` + revokes/grants. Doctrina wrapper+impl restaurada con los cuerpos vigentes (incluyen layout/cisterna).
+- **R-2 save_rainwater_overrides en versión podrida del 14-ago** → mismo archivo: impl sobrescrito con el cuerpo correcto de 20260917000000 (area_otras + coalesces). Cada guardado de lluvias ya NO resetea Área Otras.
+- **R-4 layout NULL de cliente viejo re-armaba el incidente** → en vez de parchear el body de 100 líneas, TRIGGER `fantasmas_layout_default` (before insert, layout NULL → 2) en la TABLA: cubre cualquier escritor futuro, incluida la próxima reparación que copie cuerpos.
+- **R-3 cisterna numeric vs tabla text** → `20260928000002_cisterna_text.sql`: 7 columnas a `text not null default ''` (save reventaba con '' y load crasheaba con numbers). Sin cambios de cliente.
+
+### Importantes
+- **R-5 dedup resucitaba desasociaciones**: `vacio` de mergeBajanteDedup acotado a desplazamientos/ghostData (CAMPOS_OBJETO_VACIO) — arrays vacíos en recibeDeIds/alimentaIds son post-borrado legítimo. Test espejo en assocCicloCierre.
+- **R-6 borrar TODOS los pisos era irreversible** → tumba local `civilflow_pisos_tumba_<proyId>` (restoreDone + >0→0): el debounce la permite, la restauración de nube la respeta; agregar piso la limpia. Ámbito local (cruzar dispositivos el borrado total no viaja — deuda: columna tumba en cf_proyectos).
+- **R-7 HMT/NPSH triplicados** → `ep/epCalculos.ts` único (calcularCisterna, JSDoc de celdas Excel); EPCisternaPage y EPVerificationPage (rama cisterna) lo consumen; test de paridad REAL contra el módulo (patm=8.6 del cache C27, 27/27); veredicto NPSH solo con inputs poblados (sin falsa alarma con defaults); modo RED sin card de cisterna; NPSHd sin evaluar → '—' gris.
+- **R-8 grants** → revoke select anon en cf_pagos/cf_suscripciones + comentario-patrón de 20260925000003 corregido (grants mínimos, escrituras por RPC).
+
+### Menores
+pendiente editable con rango (rechaza ≤0 o >15 con alerta, restaura previo) + JSDoc writePendienteToDrawing · RainDownpipesCheck lastIndexOf('-') (ids con guion) · `saveTrazosLocales` en storageService: los 4 escritores de caché de trazos preservan la marca assocLayout (antes solo persistTrazos — los otros 3 re-armaban la migración con push redundante) · JSDoc de get_proyecto_data anotando las 5 claves omitidas de la reconstrucción.
+
+### Recurrencia (R-9)
+Guards `ESQUEMA_VIEJO_NO_REAPLICAR` al inicio de 20260730000001 y 20260813000002 (abortan si existe cf_proyectos). Recomendación al usuario: migrar a `supabase db push` (CLI ya vinculada) para historial server-side.
+
+### Gates
+tsc 0 · lint 0 err (3 warn pre-existentes) · vitest 889/889 (156) · build ✓ · graphify ✓. Tests nuevos: dedup espejo (1) + calcularCisterna (4, paridad real).
+
+### Aplicar tú (PRIORIDAD — gating abierto y area_otras corrompiéndose HOY)
+1. SQL Editor: `20260928000001_restaura_gating_y_rainwater.sql`.
+2. SQL Editor: `20260928000002_cisterna_text.sql`.
+3. Verificación comentada al final del 01 (proacl sin authenticated, acceso_modulo, area_otras persiste).
+
+### Verificación manual (recarga dura)
+Editar Área Otras → guardar → recargar (persiste). EP cisterna: guardar → recargar sin crash, valores intactos, sin alarma de cavitación con página fresca. Suscripción vencida → guardar trazo → `suscripcion_requerida`. Borrar TODOS los pisos → recargar → siguen borrados; agregar piso → tumba se limpia.
