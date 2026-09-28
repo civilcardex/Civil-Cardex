@@ -6,6 +6,7 @@ import EditButton from '../shared/EditButton';
 import { LazyInp, Param, Comment } from './EPShared';
 import { SI } from '../../styles/sharedTableStyles';
 import { dec } from '../../utils/parseDecimal';
+
 const EPInputPage_S1: React.CSSProperties = {
   marginTop: 6,
   padding: '6px 10px',
@@ -95,8 +96,9 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
         </button>
       </div>
 
+      {/* Flujo de lectura: 1 arriba-izq, 2 debajo, 3 arriba-der, 4 debajo-der. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Card
             style={{ display: 'flex', flexDirection: 'column' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/caudales_diseno.webp"
@@ -145,6 +147,72 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
               ]}
             />
           </Card>
+          <Card
+            style={{ display: 'flex', flexDirection: 'column' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
+            iconImgStyle={{ width: 22, height: 22 }}
+            title="2. Pérdidas de carga"
+            bodyStyle={{ padding: 0 }}
+            headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}
+          >
+            <Tbl
+              caption="Pérdidas de carga"
+              thStyle={{ fontSize: 11 }}
+              tdStyle={{ fontSize: 12 }}
+              tdlStyle={{ fontSize: 13 }}
+              cols={['Parámetro', 'Valor', 'Ud.', 'Comentario / Referencia']}
+              rows={[
+                [
+                  <Param name="Pérdidas red AF" sub="Tramos + accesorios" />,
+                  <LazyInp
+                    ep={ep}
+                    updEP={updEP}
+                    disabled={!editPerdidas}
+                    field="hfac"
+                    ariaLabel="Pérdidas red AF"
+                  />,
+                  'm.c.a.',
+                  <Comment>
+                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Darcy-Weisbach</span> ·
+                    Sumatoria pérdidas tramo más desfavorable de la red AC.
+                  </Comment>,
+                ],
+                [
+                  <Param name="Pérdidas red ACS" sub="Tramos + accesorios" />,
+                  <LazyInp
+                    ep={ep}
+                    updEP={updEP}
+                    disabled={!editPerdidas}
+                    field="hfacs"
+                    ariaLabel="Pérdidas red ACS"
+                  />,
+                  'm.c.a.',
+                  <Comment>
+                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Darcy-Weisbach</span> ·
+                    El módulo usa MAX(Hf_ac, Hf_acs) como pérdida crítica de diseño.
+                  </Comment>,
+                ],
+                [
+                  <Param name="Pérdidas adicionales" sub="Intercambiador, filtros, zonas" />,
+                  <LazyInp
+                    ep={ep}
+                    updEP={updEP}
+                    disabled={!editPerdidas}
+                    field="hfotros"
+                    ariaLabel="Pérdidas adicionales"
+                  />,
+                  'm.c.a.',
+                  <Comment>
+                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Opcional</span> ·
+                    Calentador, filtros multimedia, válvulas de zona u otros no incluidos en el
+                    diseño de redes.
+                  </Comment>,
+                ],
+              ]}
+            />
+          </Card>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <Card
             style={{ display: 'flex', flexDirection: 'column' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/presiones_y_cotas.webp"
@@ -241,73 +309,6 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
               ]}
             />
           </Card>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
-            iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
-            title="2. Pérdidas de carga"
-            bodyStyle={{ padding: 0 }}
-            headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}
-          >
-            <Tbl
-              caption="Pérdidas de carga"
-              thStyle={{ fontSize: 11 }}
-              tdStyle={{ fontSize: 12 }}
-              tdlStyle={{ fontSize: 13 }}
-              cols={['Parámetro', 'Valor', 'Ud.', 'Comentario / Referencia']}
-              rows={[
-                [
-                  <Param name="Pérdidas red AF" sub="Tramos + accesorios" />,
-                  <LazyInp
-                    ep={ep}
-                    updEP={updEP}
-                    disabled={!editPerdidas}
-                    field="hfac"
-                    ariaLabel="Pérdidas red AF"
-                  />,
-                  'm.c.a.',
-                  <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Darcy-Weisbach</span> ·
-                    Sumatoria pérdidas tramo más desfavorable de la red AC.
-                  </Comment>,
-                ],
-                [
-                  <Param name="Pérdidas red ACS" sub="Tramos + accesorios" />,
-                  <LazyInp
-                    ep={ep}
-                    updEP={updEP}
-                    disabled={!editPerdidas}
-                    field="hfacs"
-                    ariaLabel="Pérdidas red ACS"
-                  />,
-                  'm.c.a.',
-                  <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Darcy-Weisbach</span> ·
-                    El módulo usa MAX(Hf_ac, Hf_acs) como pérdida crítica de diseño.
-                  </Comment>,
-                ],
-                [
-                  <Param name="Pérdidas adicionales" sub="Intercambiador, filtros, zonas" />,
-                  <LazyInp
-                    ep={ep}
-                    updEP={updEP}
-                    disabled={!editPerdidas}
-                    field="hfotros"
-                    ariaLabel="Pérdidas adicionales"
-                  />,
-                  'm.c.a.',
-                  <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Opcional</span> ·
-                    Calentador, filtros multimedia, válvulas de zona u otros no incluidos en el
-                    diseño de redes.
-                  </Comment>,
-                ],
-              ]}
-            />
-          </Card>
           <Card
             style={{ display: 'flex', flexDirection: 'column' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/config_bombas.webp"
@@ -382,7 +383,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 }}
               >
                 Total: {ntot} bombas · {nt} trabajo + {nr} reserva · Qb ={' '}
-                {Qb > 0 ? Qb.toFixed(3) : '—'} L/s c/u
+                {Qb > 0 ? Qb.toFixed(2) : '—'} L/s c/u
               </span>
             </div>
           </Card>

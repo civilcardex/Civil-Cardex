@@ -28,6 +28,15 @@ export interface EPData {
   dnimp: string;
   modo: 'red' | 'cisterna';
   pcomercial: string;
+  /** Cisterna — volumetría (Excel hoja CISTERNA sección 2). */
+  dotL: string;
+  nUsuarios: string;
+  diasAut: string;
+  bciL: string;
+  /** Cisterna — NPSH (Excel hoja CISTERNA sección 3). */
+  patm: string;
+  pv: string;
+  npshr: string;
 }
 
 export const EP_DEFAULTS: EPData = {
@@ -56,6 +65,13 @@ export const EP_DEFAULTS: EPData = {
   dnimp: '',
   modo: 'red',
   pcomercial: '',
+  dotL: '200',
+  nUsuarios: '',
+  diasAut: '1',
+  bciL: '0',
+  patm: '',
+  pv: '0.24',
+  npshr: '',
 };
 
 export function LazyInp({

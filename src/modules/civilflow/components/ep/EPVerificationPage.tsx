@@ -14,6 +14,32 @@ interface EPVerificationPageProps {
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
 }
 
+/** Calcula el diámetro y velocidad reales de un ramal dado un caudal y velocidad de diseño. */
+const ramalCol = (qLps: number, vDiseno: number) => {
+  const Qm3s = qLps / 1000;
+  const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
+  const diamCalcMm = diamCalcM * 1000;
+  const entry = selectDN(qLps, vDiseno);
+  return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
+};
+
+// Excel CÁLCULO EPC: resultados a 3 decimales (usuario: unificar TODO resultado a 3 dec).
+const fmtMm = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtHp = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtBar = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
+const fmtLps = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtM3h = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtGpm = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
+const fmtL = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtW = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+
+const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as const;
+const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;
+const OK = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--ok)' };
+const ERR = { fontFamily: 'var(--mono)', fontWeight: 700, color: '#ef5350' };
+
 const EPVerificationPage_selStyle: React.CSSProperties = {
   flex: 1,
   padding: '5px 8px',
@@ -26,31 +52,6 @@ const EPVerificationPage_selStyle: React.CSSProperties = {
   fontWeight: 600,
   boxSizing: 'border-box',
 };
-
-/** Calcula el diámetro y velocidad reales de un ramal dado un caudal y velocidad de diseño. */
-const ramalCol = (qLps: number, vDiseno: number) => {
-  const Qm3s = qLps / 1000;
-  const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
-  const diamCalcMm = diamCalcM * 1000;
-  const entry = selectDN(qLps, vDiseno);
-  return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
-};
-
-const fmtMm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
-const fmtHp = (v: number) => (v > 0 ? v.toFixed(3) : '—');
-const fmtBar = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
-const fmtLps = (v: number) => (v > 0 ? v.toFixed(3) : '—');
-const fmtM3h = (v: number) => (v > 0 ? v.toFixed(2) : '—');
-const fmtGpm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
-const fmtL = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-const fmtW = (v: number) => (v > 0 ? v.toFixed(0) : '—');
-
-const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as const;
-const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;
-const OK = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--ok)' };
-const ERR = { fontFamily: 'var(--mono)', fontWeight: 700, color: '#ef5350' };
 
 const TH_S = { fontSize: 10, padding: '2px 4px' };
 const TD_S = { fontSize: 10, padding: '2px 4px' };
@@ -90,7 +91,8 @@ export default function EPVerificationPage({
 
   const Qd = Math.max(qac, qasc);
   const Qm3h = Qd * 3.6;
-  const Qgpm = Qd * 15.85;
+  // Factor Excel C67 (15.8503 L/s→GPM).
+  const Qgpm = Qd * 15.8503;
   const Qb = nt > 0 ? Qd / nt : Qd;
 
   const Hg = isRed ? ztop - zbomba : ztop - zcis;
@@ -128,9 +130,10 @@ export default function EPVerificationPage({
   const Pon = HMT;
   const Poff = Pon * 1.1;
   const PN2 = Pon * 0.9;
-  const Pon_bar = Pon / 10.2;
-  const Poff_bar = Poff / 10.2;
-  const PN2_bar = PN2 / 10.2;
+  // Excel C94-C96: bar = m.c.a. × 9.81/100 (no ÷10.2 — difiere en el 3er decimal).
+  const Pon_bar = (Pon * 9.81) / 100;
+  const Poff_bar = (Poff * 9.81) / 100;
+  const PN2_bar = (PN2 * 9.81) / 100;
   const Vu = ciclos > 0 ? (Qd * 60) / (4 * ciclos) : 0;
   const Vt = alfa > 0 ? Vu / alfa : 0;
 
@@ -174,7 +177,7 @@ export default function EPVerificationPage({
             style={{ display: 'flex', flexDirection: 'column' }}
             iconImg="/iconos_civilflow/diseno_redes/equipos/parametros_equipo.webp"
             iconImgStyle={{ width: 20, height: 20 }}
-            title="Parámetros del equipo — Datos del fabricante"
+            title="8. Parámetros del equipo — Datos del fabricante"
             bodyStyle={{ padding: 0 }}
             headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}
           >
@@ -272,155 +275,13 @@ export default function EPVerificationPage({
               ]}
             />
           </Card>
-          <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
-            iconImg="/iconos_civilflow/diseno_redes/equipos/altura_manometrica.webp"
-            iconImgStyle={{ width: 20, height: 20 }}
-            title={`${isRed ? 'Altura manométrica total — Succión directa' : 'Altura manométrica total — Succión desde cisterna'}`}
-            bodyStyle={{ padding: 0 }}
-          >
-            <Tbl
-              tableStyle={{ tableLayout: 'fixed' }}
-              caption="Altura manométrica total"
-              thStyle={TH_S}
-              tdStyle={TD_S}
-              cols={['Parámetro', 'Valor', 'Unidad']}
-              rows={(() => {
-                const r: React.ReactNode[][] = [];
-                r.push([
-                  'Desnivel geométrico',
-                  <span style={hgOk ? OK : ERR}>
-                    {hgOk ? `✓ ${(ztop - zbomba).toFixed(2)}` : `✗ ${(ztop - zbomba).toFixed(2)}`}
-                  </span>,
-                  'm.c.a.',
-                ]);
-                if (!isRed)
-                  r.push(['Desnivel total', <span style={M}>{fmtMca(Hg)}</span>, 'm.c.a.']);
-                r.push([
-                  'Pérdidas de carga críticas',
-                  <span style={hfOk ? OK : ERR}>
-                    {hfOk ? `✓ ${HfCrit.toFixed(2)}` : `✗ ${HfCrit.toFixed(2)}`}
-                  </span>,
-                  'm.c.a.',
-                ]);
-                if (!isRed)
-                  r.push([
-                    'Pérdidas de carga totales',
-                    <span style={hfOk ? OK : ERR}>
-                      {hfOk ? `✓ ${Hf.toFixed(2)}` : `✗ ${Hf.toFixed(2)}`}
-                    </span>,
-                    'm.c.a.',
-                  ]);
-                r.push([
-                  'Presión mínima punto crítico',
-                  <span style={pminOk ? OK : ERR}>
-                    {pminOk ? `✓ ${pmin.toFixed(2)}` : `✗ ${pmin.toFixed(2)}`}
-                  </span>,
-                  'm.c.a.',
-                ]);
-                if (isRed)
-                  r.push([
-                    'Presión disponible acometida',
-                    <span style={predOk ? OK : ERR}>
-                      {predOk ? `✓ ${pred.toFixed(2)}` : `✗ ${pred.toFixed(2)}`}
-                    </span>,
-                    'm.c.a.',
-                  ]);
-                r.push([
-                  <span style={{ fontWeight: 700 }}>Altura manométrica total HMT</span>,
-                  <span style={hmtOk ? OK : ERR}>
-                    {hmtOk ? `✓ ${HMT.toFixed(2)}` : `✗ ${HMT.toFixed(2)}`}
-                  </span>,
-                  'm.c.a.',
-                ]);
-                r.push([
-                  'Verificación presión máxima del sistema',
-                  alertaPmax ? (
-                    <span style={ERR}>
-                      ⚠ {HMT.toFixed(2)} &gt; {pmax.toFixed(2)}
-                    </span>
-                  ) : (
-                    <span style={OK}>✓ HMT dentro del límite</span>
-                  ),
-                  'm.c.a.',
-                ]);
-                return r;
-              })()}
-            />
-          </Card>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
-          <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
-            iconImg="/iconos_civilflow/diseno_redes/equipos/potencia_bomba.webp"
-            iconImgStyle={{ width: 20, height: 20 }}
-            title="Potencia de la bomba"
-            bodyStyle={{ padding: 0 }}
-          >
-            <Tbl
-              tableStyle={{ tableLayout: 'fixed' }}
-              caption="Potencia de la bomba"
-              thStyle={TH_S}
-              tdStyle={TD_S}
-              cols={['Parámetro', 'Valor', 'Ud.']}
-              rows={[
-                ['Potencia hidráulica', <span style={M}>{fmtW(Phid)}</span>, 'W'],
-                ['Potencia al freno', <span style={M}>{fmtW(Pfreno_w)}</span>, 'W'],
-                ['Potencia al freno', <span style={M}>{fmtHp(Pfreno_hp)}</span>, 'HP'],
-                [
-                  'Potencia calculada con factor de seguridad',
-                  <span style={M}>
-                    {Pins_hp > 0
-                      ? `${Pins_hp.toFixed(2)} HP / ${Pins_kw > 0 ? Pins_kw.toFixed(2) : '—'} kW`
-                      : '—'}
-                  </span>,
-                  '',
-                ],
-                ['Potencia comercial seleccionada', <span style={MB}>{nemaSel}</span>, 'HP'],
-                [
-                  'Margen potencia comercial vs calculada',
-                  <span style={pComercialOk ? OK : ERR}>
-                    {pComercialOk ? `+${margenPct.toFixed(1)}%` : `${margenPct.toFixed(1)}%`}
-                  </span>,
-                  '%',
-                ],
-                [
-                  'Verificación potencia comercial',
-                  <span style={pComercialOk ? OK : ERR}>
-                    {pComercialOk ? '✓ Adecuada' : '⚠ Insuficiente'}
-                  </span>,
-                  '',
-                ],
-              ]}
-            />
-          </Card>
+          {/* Tablas 6 y 7 debajo de la 5, subdividiendo su columna. */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-            <Card
-              style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}
-              iconImg="/iconos_civilflow/diseno_redes/equipos/caudales.webp"
-              iconImgStyle={{ width: 20, height: 20 }}
-              title="Caudales"
-              bodyStyle={{ padding: 0 }}
-            >
-              <Tbl
-                tableStyle={{ tableLayout: 'fixed' }}
-                caption="Caudales"
-                thStyle={TH_S}
-                tdStyle={TD_S}
-                cols={['Parámetro', 'Valor', 'Ud.']}
-                rows={[
-                  ['Qd = MAX(Qac, Qasc)', <span style={M}>{fmtLps(Qd)}</span>, 'L/s'],
-                  ['Qd en m³/h', <span style={M}>{fmtM3h(Qm3h)}</span>, 'm³/h'],
-                  ['Qd en GPM', <span style={M}>{fmtGpm(Qgpm)}</span>, 'GPM'],
-                  ['Qb = Qd / Nt', <span style={M}>{fmtLps(Qb)}</span>, 'L/s'],
-                ]}
-              />
-            </Card>
             <Card
               style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}
               iconImg="/iconos_civilflow/diseno_redes/equipos/pot_comercial_seleccionada.webp"
               iconImgStyle={{ width: 20, height: 20 }}
-              title="Potencia comercial seleccionada"
+              title="9. Potencia comercial seleccionada"
               bodyStyle={{ padding: '5px 8px', display: 'flex', flexDirection: 'column', gap: 5 }}
               headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}
             >
@@ -476,7 +337,148 @@ export default function EPVerificationPage({
                 </span>
               </div>
             </Card>
+            <Card
+              style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}
+              iconImg="/iconos_civilflow/diseno_redes/equipos/caudales.webp"
+              iconImgStyle={{ width: 20, height: 20 }}
+              title="10. Caudal de diseño del equipo"
+              bodyStyle={{ padding: 0 }}
+            >
+              <Tbl
+                tableStyle={{ tableLayout: 'fixed' }}
+                caption="Caudales"
+                thStyle={TH_S}
+                tdStyle={TD_S}
+                cols={['Parámetro', 'Valor', 'Ud.']}
+                rows={[
+                  ['Qd = MAX(Qac, Qasc)', <span style={M}>{fmtLps(Qd)}</span>, 'L/s'],
+                  ['Qd en m³/h', <span style={M}>{fmtM3h(Qm3h)}</span>, 'm³/h'],
+                  ['Qd en GPM', <span style={M}>{fmtGpm(Qgpm)}</span>, 'GPM'],
+                  ['Qb = Qd / Nt', <span style={M}>{fmtLps(Qb)}</span>, 'L/s'],
+                ]}
+              />
+            </Card>
           </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
+          {/* Boceto usuario: izquierda 5 + fila 6|7; derecha 8 arriba y 9 abajo. */}
+          {/* Derecha: 8 arriba y 9 abajo. */}
+          <Card
+            style={{ display: 'flex', flexDirection: 'column' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/altura_manometrica.webp"
+            iconImgStyle={{ width: 20, height: 20 }}
+            title={`${isRed ? '11. Altura manométrica total — Succión directa' : '11. Altura manométrica total — Succión desde cisterna'}`}
+            bodyStyle={{ padding: 0 }}
+          >
+            <Tbl
+              tableStyle={{ tableLayout: 'fixed' }}
+              caption="Altura manométrica total"
+              thStyle={TH_S}
+              tdStyle={TD_S}
+              cols={['Parámetro', 'Valor', 'Unidad']}
+              rows={(() => {
+                const r: React.ReactNode[][] = [];
+                r.push([
+                  // RED: z_top − z_bomba · CISTERNA: z_top − z_cis (Excel CISTERNA C8).
+                  isRed ? 'Desnivel geométrico' : 'Desnivel total Hg (z_top − z_cis)',
+                  <span style={hgOk ? OK : ERR}>
+                    {hgOk ? `✓ ${Hg.toFixed(2)}` : `✗ ${Hg.toFixed(2)}`}
+                  </span>,
+                  'm.c.a.',
+                ]);
+                r.push([
+                  // Excel C73: "Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros" (incluye otros).
+                  // En cisterna el Excel solo trae Hf_total (C9) — la fila "críticas" es de RED.
+                  isRed ? 'Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros' : 'Hf total',
+                  <span style={hfOk ? OK : ERR}>
+                    {hfOk
+                      ? `✓ ${(isRed ? HfCrit + hfotros : Hf).toFixed(2)}`
+                      : `✗ ${(isRed ? HfCrit + hfotros : Hf).toFixed(2)}`}
+                  </span>,
+                  'm.c.a.',
+                ]);
+                r.push([
+                  'Presión mínima punto crítico',
+                  <span style={pminOk ? OK : ERR}>
+                    {pminOk ? `✓ ${pmin.toFixed(2)}` : `✗ ${pmin.toFixed(2)}`}
+                  </span>,
+                  'm.c.a.',
+                ]);
+                if (isRed)
+                  r.push([
+                    'Presión disponible acometida',
+                    <span style={predOk ? OK : ERR}>
+                      {predOk ? `✓ ${pred.toFixed(2)}` : `✗ ${pred.toFixed(2)}`}
+                    </span>,
+                    'm.c.a.',
+                  ]);
+                r.push([
+                  <span style={{ fontWeight: 700 }}>Altura manométrica total HMT</span>,
+                  <span style={hmtOk ? OK : ERR}>
+                    {hmtOk ? `✓ ${HMT.toFixed(2)}` : `✗ ${HMT.toFixed(2)}`}
+                  </span>,
+                  'm.c.a.',
+                ]);
+                r.push([
+                  'Verificación presión máxima del sistema',
+                  alertaPmax ? (
+                    <span style={ERR}>
+                      ⚠ {HMT.toFixed(2)} &gt; {pmax.toFixed(2)}
+                    </span>
+                  ) : (
+                    <span style={OK}>✓ HMT dentro del límite</span>
+                  ),
+                  'm.c.a.',
+                ]);
+                return r;
+              })()}
+            />
+          </Card>
+
+          <Card
+            style={{ display: 'flex', flexDirection: 'column' }}
+            iconImg="/iconos_civilflow/diseno_redes/equipos/potencia_bomba.webp"
+            iconImgStyle={{ width: 20, height: 20 }}
+            title="12. Potencia de la bomba"
+            bodyStyle={{ padding: 0 }}
+          >
+            <Tbl
+              tableStyle={{ tableLayout: 'fixed' }}
+              caption="Potencia de la bomba"
+              thStyle={TH_S}
+              tdStyle={TD_S}
+              cols={['Parámetro', 'Valor', 'Ud.']}
+              rows={[
+                ['Potencia hidráulica', <span style={M}>{fmtW(Phid)}</span>, 'W'],
+                ['Potencia al freno', <span style={M}>{fmtW(Pfreno_w)}</span>, 'W'],
+                ['Potencia al freno', <span style={M}>{fmtHp(Pfreno_hp)}</span>, 'HP'],
+                [
+                  'Potencia calculada con factor de seguridad',
+                  <span style={M}>
+                    {Pins_hp > 0
+                      ? `${Pins_hp.toFixed(2)} HP / ${Pins_kw > 0 ? Pins_kw.toFixed(2) : '—'} kW`
+                      : '—'}
+                  </span>,
+                  '',
+                ],
+                ['Potencia comercial seleccionada', <span style={MB}>{nemaSel}</span>, 'HP'],
+                [
+                  'Margen potencia comercial vs calculada',
+                  <span style={pComercialOk ? OK : ERR}>
+                    {pComercialOk ? `+${margenPct.toFixed(1)}%` : `${margenPct.toFixed(1)}%`}
+                  </span>,
+                  '%',
+                ],
+                [
+                  'Verificación potencia comercial',
+                  <span style={pComercialOk ? OK : ERR}>
+                    {pComercialOk ? '✓ Adecuada' : '⚠ Insuficiente'}
+                  </span>,
+                  '',
+                ],
+              ]}
+            />
+          </Card>
         </div>
       </div>
     );
@@ -489,7 +491,7 @@ export default function EPVerificationPage({
           style={{ display: 'flex', flexDirection: 'column' }}
           iconImg="/iconos_civilflow/diseno_redes/equipos/setpoint_tanque.webp"
           iconImgStyle={{ width: 22, height: 22 }}
-          title="Presión de setpoint y tanque hidroneumático"
+          title="13. Presión de setpoint y tanque hidroneumático"
           bodyStyle={{ padding: 0 }}
         >
           <Tbl
@@ -515,7 +517,7 @@ export default function EPVerificationPage({
                 'Presión de arranque en bar',
                 <span style={M}>{fmtBar(Pon_bar)}</span>,
                 'bar',
-                'P_arranque = HMT / 10.2',
+                'P_arranque = HMT × 9.81 / 100',
               ],
               [
                 'Presión de paro en bar',
@@ -545,7 +547,7 @@ export default function EPVerificationPage({
               ],
               [
                 'Volumen total tanque Vt',
-                <span style={M}>{Vt > 0 ? (Vt / 1000).toFixed(3) : '—'}</span>,
+                <span style={M}>{Vt > 0 ? (Vt / 1000).toFixed(2) : '—'}</span>,
                 'm³',
                 'Vt / 1000',
               ],
@@ -556,50 +558,7 @@ export default function EPVerificationPage({
           style={{ display: 'flex', flexDirection: 'column' }}
           iconImg="/iconos_civilflow/diseno_redes/equipos/diametros_velocidades.webp"
           iconImgStyle={{ width: 22, height: 22 }}
-          title="Diámetros seleccionados por el usuario (anulan los recomendados)"
-          bodyStyle={{ padding: 0 }}
-        >
-          <Tbl
-            tableStyle={{ tableLayout: 'fixed' }}
-            caption="Diámetros seleccionados por el usuario"
-            thStyle={TH_R}
-            tdStyle={TD_R}
-            cols={['Parámetro', 'Valor', 'Unidad']}
-            rows={[
-              [
-                <Param name="Tubería de succión" sub="Diámetro nominal comercial" />,
-                <LazyInp
-                  ep={ep}
-                  updEP={updEP}
-                  disabled={!editDiametros}
-                  field="dnsuc"
-                  ariaLabel="Tubería de succión"
-                />,
-                'mm DN',
-              ],
-              ['Velocidad real en succión', <span style={M}>{fmtMs(sucDiam.Vreal)}</span>, 'm/s'],
-              [
-                <Param name="Tubería de impulsión" sub="Diámetro nominal comercial" />,
-                <LazyInp
-                  ep={ep}
-                  updEP={updEP}
-                  disabled={!editDiametros}
-                  field="dnimp"
-                  ariaLabel="Tubería de impulsión"
-                />,
-                'mm DN',
-              ],
-              ['Velocidad real en impulsión', <span style={M}>{fmtMs(impDiam.Vreal)}</span>, 'm/s'],
-            ]}
-          />
-        </Card>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
-        <Card
-          style={{ display: 'flex', flexDirection: 'column' }}
-          iconImg="/iconos_civilflow/diseno_redes/equipos/diametros_velocidades.webp"
-          iconImgStyle={{ width: 22, height: 22 }}
-          title="Diámetros nominales de tuberías del equipo"
+          title="14. Diámetros nominales de tuberías del equipo"
           bodyStyle={{ padding: 0 }}
           headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}
         >
@@ -645,11 +604,13 @@ export default function EPVerificationPage({
             ]}
           />
         </Card>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
         <Card
           style={{ display: 'flex', flexDirection: 'column' }}
           iconImg="/iconos_civilflow/diseno_redes/equipos/setpoint_tanque.webp"
           iconImgStyle={{ width: 22, height: 22 }}
-          title="Especificación técnica del equipo"
+          title="15. Especificación técnica del equipo"
           bodyStyle={{ padding: 0 }}
         >
           <Tbl
@@ -668,7 +629,7 @@ export default function EPVerificationPage({
               [
                 'Altura manométrica total',
                 <span style={M}>
-                  {fmtMca(HMT)} m.c.a. = {fmtBar(HMT / 10.2)} bar
+                  {fmtMca(HMT)} m.c.a. = {fmtBar((HMT * 9.81) / 100)} bar
                 </span>,
               ],
               [
@@ -713,6 +674,47 @@ export default function EPVerificationPage({
                   NTC 1500:2018 · RAS 2000 Tít. B · NSR-10 Tít. H · NFPA 20
                 </span>,
               ],
+            ]}
+          />
+        </Card>
+        <Card
+          style={{ display: 'flex', flexDirection: 'column' }}
+          iconImg="/iconos_civilflow/diseno_redes/equipos/diametros_velocidades.webp"
+          iconImgStyle={{ width: 22, height: 22 }}
+          title="Diámetros seleccionados por el usuario (anulan los recomendados)"
+          bodyStyle={{ padding: 0 }}
+        >
+          <Tbl
+            tableStyle={{ tableLayout: 'fixed' }}
+            caption="Diámetros seleccionados por el usuario"
+            thStyle={TH_R}
+            tdStyle={TD_R}
+            cols={['Parámetro', 'Valor', 'Unidad']}
+            rows={[
+              [
+                <Param name="Tubería de succión" sub="Diámetro nominal comercial" />,
+                <LazyInp
+                  ep={ep}
+                  updEP={updEP}
+                  disabled={!editDiametros}
+                  field="dnsuc"
+                  ariaLabel="Tubería de succión"
+                />,
+                'mm DN',
+              ],
+              ['Velocidad real en succión', <span style={M}>{fmtMs(sucDiam.Vreal)}</span>, 'm/s'],
+              [
+                <Param name="Tubería de impulsión" sub="Diámetro nominal comercial" />,
+                <LazyInp
+                  ep={ep}
+                  updEP={updEP}
+                  disabled={!editDiametros}
+                  field="dnimp"
+                  ariaLabel="Tubería de impulsión"
+                />,
+                'mm DN',
+              ],
+              ['Velocidad real en impulsión', <span style={M}>{fmtMs(impDiam.Vreal)}</span>, 'm/s'],
             ]}
           />
         </Card>

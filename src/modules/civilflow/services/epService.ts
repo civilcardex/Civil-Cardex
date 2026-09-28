@@ -29,6 +29,13 @@ interface EpDatosRow {
   dnimp: string | null;
   pcomercial: string | null;
   modo: 'red' | 'cisterna' | null;
+  dot_l: string | null;
+  n_usuarios: string | null;
+  dias_aut: string | null;
+  bci_l: string | null;
+  patm: string | null;
+  pv: string | null;
+  npshr: string | null;
 }
 
 const FIELD_MAP: Record<keyof EPData, keyof EpDatosRow> = {
@@ -57,6 +64,13 @@ const FIELD_MAP: Record<keyof EPData, keyof EpDatosRow> = {
   dnimp: 'dnimp',
   pcomercial: 'pcomercial',
   modo: 'modo',
+  dotL: 'dot_l',
+  nUsuarios: 'n_usuarios',
+  diasAut: 'dias_aut',
+  bciL: 'bci_l',
+  patm: 'patm',
+  pv: 'pv',
+  npshr: 'npshr',
 };
 
 /**
@@ -103,6 +117,13 @@ export async function loadEpDatos(proyectoId: number): Promise<EPData | null> {
       dnimp: row.dnimp ?? '',
       pcomercial: row.pcomercial ?? '',
       modo: row.modo === 'cisterna' ? 'cisterna' : 'red',
+      dotL: row.dot_l ?? '',
+      nUsuarios: row.n_usuarios ?? '',
+      diasAut: row.dias_aut ?? '',
+      bciL: row.bci_l ?? '',
+      patm: row.patm ?? '',
+      pv: row.pv ?? '',
+      npshr: row.npshr ?? '',
     };
   } catch (e) {
     devError('epService load exception:', e);
