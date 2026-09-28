@@ -5,7 +5,7 @@ import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_OPTIONS } from '../constants';
-import { writeDiametroToDrawing } from '../utils/writeDiameterToDrawing';
+import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { useRainwater } from '../context/RainwaterContext';
 import {
@@ -27,10 +27,19 @@ const RainwaterDesign_S2: React.CSSProperties = {
   cursor: 'pointer',
   maxWidth: 72,
 };
+// Input de pendiente editable (mismo ancho/mono que el select de diámetro).
+const RainwaterDesign_S3: React.CSSProperties = {
+  ...RainwaterDesign_S2,
+  cursor: 'text',
+  textAlign: 'center',
+  width: 50,
+};
 const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '2px 3px' } as const;
 
 export default function DisenoLluvias() {
   const [edit, setEdit] = useState(false);
+  // Borrador del input de pendiente por tramo (commit en blur — mismo patrón que SanitaryDesign).
+  const [editingPend, setEditingPend] = useState<Record<string, string>>({});
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
   const { bajantesLl } = useRainwater();
@@ -380,11 +389,51 @@ export default function DisenoLluvias() {
                         >
                           {n > 0 ? n.toFixed(3) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '2px 3px' }}
-                        >
-                          {sVal > 0 ? sVal : '—'}
+                        <td className="c" style={{ padding: '2px 2px' }}>
+                          {edit ? (
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              aria-label="Pendiente (%)"
+                              value={editingPend[tKey] ?? (sVal > 0 ? String(sVal) : '')}
+                              placeholder="—"
+                              onFocus={() => {
+                                if (editingPend[tKey] === undefined && sVal > 0) {
+                                  setEditingPend((prev) => ({ ...prev, [tKey]: String(sVal) }));
+                                }
+                              }}
+                              onChange={(e) => {
+                                const raw = e.target.value
+                                  .replace(/,/g, '.')
+                                  .replace(/[^0-9.]/g, '')
+                                  .replace(/(\..*)\./g, '$1');
+                                setEditingPend((prev) => ({ ...prev, [tKey]: raw }));
+                              }}
+                              onBlur={(e) => {
+                                const raw =
+                                  editingPend[tKey] !== undefined
+                                    ? editingPend[tKey]
+                                    : e.target.value;
+                                // Coma o punto como separador decimal.
+                                const v = parseFloat(String(raw).replace(/,/g, '.')) || 0;
+                                setEditingPend((prev) => {
+                                  const n = { ...prev };
+                                  delete n[tKey];
+                                  return n;
+                                });
+                                writePendienteToDrawing(tKey, 'll', v, plans);
+                                updTramoLL(tKey, 'sPercent', v);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              }}
+                              style={RainwaterDesign_S3}
+                            />
+                          ) : (
+                            <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                              {sVal > 0 ? sVal : '—'}
+                            </span>
+                          )}
                         </td>
                         <td
                           className="c"
