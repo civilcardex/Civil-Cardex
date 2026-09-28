@@ -198,7 +198,11 @@ export default function ChequeoBajantesLluvias() {
         `assoc=${JSON.stringify(Object.entries(bajanteAssociations).slice(0, 6))}`,
     );
     for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
-      const [ramalId, planId] = ramalKey.split('-');
+      // lastIndexOf: el id del ramal puede contener '-' (patrón AC-01-<id> en otras redes) —
+      // split('-') rompería el par id|plan en la primera aparición.
+      const sep = ramalKey.lastIndexOf('-');
+      const ramalId = sep > 0 ? ramalKey.slice(0, sep) : ramalKey;
+      const planId = sep > 0 ? ramalKey.slice(sep + 1) : '';
       // Piso del ramal (de su plano) → etiqueta "RS1-P1" en el chip.
       const nivel = plans?.find((pl) => String(pl.id) === planId)?.nivel;
       const label = nivel != null ? `${ramalId}-${pisoCorto(nivel)}` : ramalId;

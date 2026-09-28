@@ -441,6 +441,8 @@ export function writeAcoDiamToDrawing(val: string, plans: SyncPlanInput[], net: 
   }
 }
 
+/** Escribe la pendiente (%) de un ramal ll al doc de trazos del piso + BD (y sync san —
+ *  'll' ∈ SAN_FAMILIES). El caller valida el rango físico; aquí solo persistencia dual. */
 export function writePendienteToDrawing(
   ramalKey: string,
   net: string,

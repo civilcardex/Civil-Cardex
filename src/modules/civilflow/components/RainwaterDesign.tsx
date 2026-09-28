@@ -421,6 +421,19 @@ export default function DisenoLluvias() {
                                   delete n[tKey];
                                   return n;
                                 });
+                                // Rango físico (manning/PVC): ≤0 drena mal, >15% es
+                                // basura de tipeo — se rechaza y restaura el valor previo.
+                                if (v <= 0 || v > 15) {
+                                  window.dispatchEvent(
+                                    new CustomEvent('civilflow_diametro_validation', {
+                                      detail: {
+                                        title: 'Pendiente fuera de rango',
+                                        message: `La pendiente debe estar entre 0.1 % y 15 % (${v} % no es válido).`,
+                                      },
+                                    }),
+                                  );
+                                  return;
+                                }
                                 writePendienteToDrawing(tKey, 'll', v, plans);
                                 updTramoLL(tKey, 'sPercent', v);
                               }}
