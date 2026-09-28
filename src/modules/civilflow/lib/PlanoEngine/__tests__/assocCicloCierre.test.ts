@@ -150,4 +150,93 @@ describe('asociación entre pisos — ciclo asociar → guardar → cerrar → r
     expect(Object.keys(baj8?.desplazamientos ?? {}).length).toBeGreaterThan(0);
     expect(upper.crossFloorGhosts?.some((g) => g.id === 'XFG_BAN8_1')).toBe(true);
   });
+
+  it('XFG layout:2 sobrevive a migrate+SIN marca assocLayout y npt 0/0 (post roundtrip BD)', () => {
+    // Estado post-roundtrip-viejo: la marca del doc se perdió pero el ghost conserva layout:2.
+    // El skip por ghost.layout debe bastar — el guard de npt (0>0) no salva nada aquí.
+    localStorage.clear();
+    const set = (k: string, v: unknown) =>
+      localStorage.setItem('civilflow_' + k, JSON.stringify(v));
+    set('trazos_2', {
+      scaleM: 0.5,
+      ramales: [],
+      bajantes: [{ id: 'BAN9', net: 'san', tipo: 'bajante', x: 100, y: 80, nptBase: 0 }],
+      crossFloorGhosts: [
+        {
+          id: 'XFG_BAN8_1',
+          net: 'san',
+          code: 'BAN8',
+          x: 300,
+          y: 200,
+          sourcePlanId: '1',
+          sourceBajanteId: 'BAN8',
+          targetBajanteId: 'BAN9',
+          layout: 2,
+        },
+      ],
+    });
+    set('trazos_1', {
+      scaleM: 0.5,
+      ramales: [
+        {
+          id: 'LD_BAN9',
+          net: 'san',
+          pts: [
+            [100, 80],
+            [300, 200],
+          ],
+        },
+      ],
+      bajantes: [
+        {
+          id: 'BAN8',
+          net: 'san',
+          tipo: 'bajante',
+          x: 300,
+          y: 200,
+          nptBase: 0,
+          desplazamientos: { P1: { dx: -200, dy: -120, Ldesvio: 'LD_BAN9' } },
+        },
+      ],
+    });
+    migrateAssocLayoutOnLoad('2', 'P2');
+    sweepMisplacedLdesvios();
+    migrateAssocLayoutOnLoad('1', 'P1');
+    sweepMisplacedLdesvios();
+    const upper = read('2');
+    const lower = read('1');
+    expect(upper.crossFloorGhosts?.some((g) => g.id === 'XFG_BAN8_1')).toBe(true);
+    expect(lower.ramales?.some((r) => r.id === 'LD_BAN9')).toBe(true);
+  });
+
+  it('dedup keep-last conserva el anillo (desplazamientos/ghostData) de un bajante duplicado', () => {
+    const eng = makeEngine();
+    eng._loadedPlanId = '1';
+    const base = {
+      id: 'BALL1',
+      net: 'll',
+      tipo: 'bajante',
+      x: 50,
+      y: 400,
+      desplazamientos: {},
+      ghostData: {},
+    };
+    // Copia 1 con el anillo (la que muta updateElementById); copia 2 sin él.
+    eng.bajantes.push({
+      ...base,
+      desplazamientos: { P1: { dx: 10, dy: 5, Ldesvio: 'LD_BALL1' } },
+      ghostData: { P1: { direccion: 'sube' } },
+    } as never);
+    eng.bajantes.push({ ...base } as never);
+    const work = eng.saveWork() as unknown as {
+      bajantes: Array<{
+        id: string;
+        desplazamientos?: Record<string, unknown>;
+        ghostData?: Record<string, unknown>;
+      }>;
+    };
+    expect(work.bajantes).toHaveLength(1);
+    expect(work.bajantes[0].desplazamientos?.P1).toEqual({ dx: 10, dy: 5, Ldesvio: 'LD_BALL1' });
+    expect(work.bajantes[0].ghostData?.P1).toEqual({ direccion: 'sube' });
+  });
 });

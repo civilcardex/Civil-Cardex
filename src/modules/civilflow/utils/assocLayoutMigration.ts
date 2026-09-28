@@ -361,6 +361,15 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
       };
       removeCrossFloorGhost(lowerPlanId, pid, b.id);
       writeCrossFloorGhost(pid, newGhost);
+      // writeCrossFloorGhost carga/guarda el doc por su cuenta; sin meter el ghost TAMBIÉN en
+      // esta copia, el saveData de abajo (leída antes del write) lo borraba — espejo del
+      // resync de ramales de la pasada 1.
+      data.crossFloorGhosts = [
+        ...(data.crossFloorGhosts || []).filter(
+          (g) => !(g.sourcePlanId === pid && g.sourceBajanteId === b.id),
+        ),
+        newGhost,
+      ];
     }
     saveData(pid, data);
     touched = true;

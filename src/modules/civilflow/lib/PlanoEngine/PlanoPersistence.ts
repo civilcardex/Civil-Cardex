@@ -141,7 +141,8 @@ export function dedupPorId<T>(lista: T[], merge?: (base: T, previa: T) => T): T[
 // Campos de asociación entre pisos que SOBREVIVEN al dedup: updateElementById muta la PRIMERA
 // copia del array; con el dedup keep-last, el libro (ucAplicado) escrito en la copia 1 se
 // descartaba al serializar y el autosave pisaba la caché buena (orig. usuario: herencia a 0
-// al reentrar con datos legacy duplicados).
+// al reentrar con datos legacy duplicados). desplazamientos/ghostData = el ANILLO del fantasma
+// (mismo destino si la copia que sobrevive no lo trae — incidente 2026-09-25).
 const CAMPOS_ASOC = [
   'ucAplicado',
   'ucAplicadoHidro',
@@ -150,17 +151,22 @@ const CAMPOS_ASOC = [
   'bombaEnId',
   'recibeDeIds',
   'alimentaIds',
+  'desplazamientos',
+  'ghostData',
 ] as const;
 
 /** Merge para bajantes en el dedup: base = copia más reciente; los campos de asociación
- *  ausentes en la base se rellenan desde la copia previa. */
+ *  ausentes en la base se rellenan desde la copia previa. Un objeto VACÍO cuenta como
+ *  ausente (desplazamientos/ghostData nacen en {} — el anillo de la copia previa sobrevive). */
 export function mergeBajanteDedup<T>(base: T, previa: T): T {
   const b = base as Record<string, unknown>;
   const p = previa as Record<string, unknown> | null;
   if (!p || typeof p !== 'object') return base;
   let merged: Record<string, unknown> | null = null;
   for (const k of CAMPOS_ASOC) {
-    if (b[k] == null && p[k] != null) {
+    const vacio =
+      b[k] != null && typeof b[k] === 'object' && Object.keys(b[k] as object).length === 0;
+    if ((b[k] == null || vacio) && p[k] != null) {
       if (!merged) merged = { ...b };
       merged[k] = p[k];
     }

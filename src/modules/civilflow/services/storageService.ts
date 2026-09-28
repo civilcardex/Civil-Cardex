@@ -465,6 +465,10 @@ function ghostToRow(planoId: number, userId: string, g: CrossFloorGhost) {
     plano_origen_id: g.sourcePlanId ? Number(g.sourcePlanId) : null,
     bajante_origen_id: g.sourceBajanteId,
     bajante_destino_id: g.targetBajanteId ?? null,
+    // Layout del XFG (2 = marcador en el superior): sin esta columna, el roundtrip a BD lo
+    // perdía y migrateAssocLayoutOnLoad re-procesaba fantasmas nuevos como legacy (borraba
+    // el XFG real + el LD_ vía sweep — incidente 2026-09-25).
+    layout: g.layout ?? null,
   };
 }
 
@@ -483,6 +487,7 @@ function rowToGhost(row: SupabaseRow): CrossFloorGhost {
       g(row, 'plano_origen_id', '') != null ? String(g(row, 'plano_origen_id', '')) : '',
     sourceBajanteId: g(row, 'bajante_origen_id', ''),
     targetBajanteId: g(row, 'bajante_destino_id', undefined),
+    layout: g<number | undefined>(row, 'layout', undefined),
   };
 }
 
