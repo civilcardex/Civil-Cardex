@@ -77,7 +77,7 @@ export default function DisenoLluvias() {
         updTramoLL(tramoKey, 'diamDisPulg', newPulg);
       }
     },
-    [updTramoLL, plans, tramosLl],
+    [updTramoLL, plans],
   );
 
   const tribIds = getTributarioIds(tramosLl);
