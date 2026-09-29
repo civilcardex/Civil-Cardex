@@ -8,6 +8,7 @@ import { useApparatus } from '../context/ApparatusContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
@@ -63,6 +64,17 @@ interface BajanteVentilacionResult {
   cumple: boolean;
 }
 
+/** Diámetro en pulgadas de un bajante de ventilación leído del doc crudo de storage.
+ *  Prefiere `diamPulg` (sincronizado por el autosave); si falta, parsea `dNominal` con
+ *  diamPulgFromLabel (fracciones unicode, mixtos '1-1/2'/'1 1/2' y sufijos '— mm' incluidos
+ *  — el parser ad-hoc anterior daba 0.5 para '1-1/2"' y eliminaba el ½, ronda 8 F-1). */
+function ventBajPulg(b: { diamPulg?: unknown; dNominal?: unknown }): number {
+  const n = Number(b.diamPulg);
+  if (Number.isFinite(n) && n > 0) return n;
+  const lbl = b.dNominal ? String(b.dNominal) : '';
+  return lbl ? diamPulgFromLabel(lbl) : 0;
+}
+
 function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacionResult {
   const {
     bajante = '',
@@ -112,8 +124,9 @@ function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacio
     DpropPulg > 0
       ? 1000 * V_aire * (1 - r) * (Math.PI / 4) * Math.pow((DpropPulg * 2.54) / 100, 2)
       : 0;
-  const fDarcy = bajFDarcy;
-  const Lbajante = bajLong;
+  const fDarcy = Number(bajFDarcy) || 0.025;
+  // Storage puede traer bajLong como string — toFixed crasheaba (orig. usuario).
+  const Lbajante = Number(bajLong) || 0;
 
   const D_vent_calc_pulg =
     Lbajante > 0 && Q_aire > 0 ? Math.pow((Lbajante * fDarcy * Q_aire * Q_aire) / 3.25, 1 / 5) : 0;
@@ -156,13 +169,17 @@ function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacio
   };
 }
 
-import { writeBajantePropToDrawing, writeDiametroToDrawing } from '../utils/writeDiameterToDrawing';
+import {
+  writeBajantePropToDrawing,
+  writeDiametroToDrawing,
+  writeDiametroToDrawingBatch,
+} from '../utils/writeDiameterToDrawing';
 const DownpipesTable_S1: React.CSSProperties = {
   width: 40,
   padding: 2,
   textAlign: 'center',
   fontFamily: 'var(--mono)',
-  fontSize: 9,
+  fontSize: 10,
   background: 'var(--bg2)',
   border: '1px solid var(--line)',
   color: 'var(--txt)',
@@ -262,7 +279,7 @@ const BajantesTable = memo(function BajantesTable_() {
       </div>
       <div className="scroll-top" style={{ padding: '16px' }}>
         <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-          <table className="tbl" style={{ fontSize: 9 }}>
+          <table className="tbl" style={{ fontSize: 10 }}>
             <caption className="visually-hidden">Bajantes de aguas negras y ventilación</caption>
             <thead>
               <tr>
@@ -270,7 +287,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   colSpan={8}
-                  style={{ textAlign: 'center', padding: '1px 2px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 2px', fontSize: 10 }}
                 >
                   INFORMACIÓN COMÚN
                 </th>
@@ -278,7 +295,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ok"
                   colSpan={7}
-                  style={{ textAlign: 'center', padding: '1px 2px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 2px', fontSize: 10 }}
                 >
                   BAJANTES AGUAS NEGRAS
                 </th>
@@ -286,7 +303,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ven"
                   colSpan={7}
-                  style={{ textAlign: 'center', padding: '1px 2px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 2px', fontSize: 10 }}
                 >
                   TUBERÍA DE VENTILACIÓN
                 </th>
@@ -296,7 +313,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   No.
                 </th>
@@ -304,7 +321,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   colSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Nivel
                 </th>
@@ -312,7 +329,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Ramales
                   <br />
@@ -322,7 +339,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Unidades
                   <br />
@@ -332,7 +349,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Llenado
                   <br />
@@ -341,7 +358,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Caudal
                   <br />
@@ -351,7 +368,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h san"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Manning
                   <br />
@@ -360,7 +377,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ok"
                   colSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Diámetro
                 </th>
@@ -368,7 +385,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ok"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Chequeo
                 </th>
@@ -376,7 +393,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ok"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Caudal máximo
                   <br />
@@ -386,7 +403,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ok"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Velocidad terminal
                   <br />
@@ -396,7 +413,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ok"
                   colSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Longitud terminal
                 </th>
@@ -404,7 +421,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ven"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Vel. Aire
                   <br />
@@ -414,7 +431,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ven"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Fricción
                   <br />
@@ -424,7 +441,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ven"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Caudal Aire
                   <br />
@@ -434,7 +451,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ven"
                   rowSpan={2}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Longitud Bajante
                   <br />
@@ -444,7 +461,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   scope="col"
                   className="col-h ven"
                   colSpan={3}
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Diámetro Ventilación
                 </th>
@@ -453,21 +470,21 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h san"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Origen
                 </th>
                 <th
                   scope="col"
                   className="col-h san"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Destino
                 </th>
                 <th
                   scope="col"
                   className="col-h ok"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Calculado
                   <br />
@@ -476,7 +493,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ok"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Propuesto
                   <br />
@@ -485,7 +502,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ok"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Calculada
                   <br />
@@ -494,7 +511,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ok"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Mínima
                   <br />
@@ -503,7 +520,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ven"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Calculado
                   <br />
@@ -512,7 +529,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ven"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Propuesto
                   <br />
@@ -521,7 +538,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ven"
-                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 10 }}
                 >
                   Chequeo
                 </th>
@@ -541,7 +558,7 @@ const BajantesTable = memo(function BajantesTable_() {
                           textAlign: 'center',
                           color: 'var(--txt3)',
                           padding: '24px 0',
-                          fontSize: 9,
+                          fontSize: 10,
                         }}
                       >
                         No hay bajantes definidos. Marque un tramo como bajante en la tabla de
@@ -665,27 +682,6 @@ const BajantesTable = memo(function BajantesTable_() {
                       }
                     }
                   }
-                  // 2. Resolver el diámetro propuesto de ventilación — el MAYOR de
-                  // todos los bajantes de ventilación conectados al mismo bajante
-                  // sanitario (Item 2: todos deben tener el mismo diámetro).
-                  let resolvedVentDprop = 0;
-                  let ventBajKey = '';
-                  if (isVent) {
-                    resolvedVentDprop = t.bajDprop || 0;
-                    ventBajKey = tKey;
-                  } else {
-                    let maxVPulg = 0;
-                    for (const vk of ventBajKeys) {
-                      const vt = tramosSan.find((x) => x._key === vk);
-                      if (vt) {
-                        if (!ventBajKey) ventBajKey = vk;
-                        const vPulg = vt.bajDprop || 0;
-                        if (vPulg > maxVPulg) maxVPulg = vPulg;
-                      }
-                    }
-                    resolvedVentDprop = maxVPulg > 0 ? maxVPulg : t.ventDprop || 0;
-                  }
-
                   const ventRamalDiamPulg = (() => {
                     let vKey = t.ventRamalKey;
                     if (!vKey) {
@@ -717,6 +713,38 @@ const BajantesTable = memo(function BajantesTable_() {
                     }
                     return 0;
                   })();
+
+                  // 2. Resolver el diámetro propuesto de ventilación — el MAYOR del D vent
+                  // propuesto de los bajantes de ventilación conectados (Item 2: mismo
+                  // diámetro para todos); si no hay, el del propio BAN (ventDprop) y como
+                  // última opción el del ramal de ventilación conectado (BREV), que antes
+                  // quedaba como vacío (orig. usuario).
+                  let resolvedVentDprop = 0;
+                  let ventBajKey = '';
+                  if (isVent) {
+                    resolvedVentDprop = t.bajDprop || 0;
+                    ventBajKey = tKey;
+                  } else {
+                    // Los tramos vent NO existen en tramosSan (buildTramos los salta) — leer
+                    // el BREV directamente del storage: diamPulg (sincronizado por el
+                    // autosave) o parse del dNominal.
+                    let maxVPulg = 0;
+                    for (const vk of ventBajKeys) {
+                      if (!ventBajKey) ventBajKey = vk;
+                      const vp = vk.split('-');
+                      const vId = vp[0];
+                      const vPlan = vp.slice(1).join('-');
+                      const doc = storageByPlan[vPlan];
+                      const vb = (doc?.bajantes || []).find(
+                        (x) => x.id === vId && (x.net === 'vent' || x._net === 'vent'),
+                      );
+                      if (!vb) continue;
+                      const vPulg = ventBajPulg(vb);
+                      if (vPulg > maxVPulg) maxVPulg = vPulg;
+                    }
+                    resolvedVentDprop =
+                      maxVPulg > 0 ? maxVPulg : t.ventDprop || 0 || ventRamalDiamPulg || 0;
+                  }
 
                   const ventDiamWarn =
                     ventRamalDiamPulg > 0 &&
@@ -769,7 +797,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   return (
                     <tr key={t._key || `${t.id}-${t.piso}`}>
                       <td className="c">
-                        <span className="sigla" style={{ fontSize: 9 }}>
+                        <span className="sigla" style={{ fontSize: 10 }}>
                           {t.code || t.id}
                         </span>
                       </td>
@@ -777,7 +805,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         className="c"
                         style={{
                           padding: '1px 1px',
-                          fontSize: 9,
+                          fontSize: 10,
                           fontFamily: 'var(--mono)',
                           color: 'var(--txt)',
                         }}
@@ -788,7 +816,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         className="c"
                         style={{
                           padding: '1px 1px',
-                          fontSize: 9,
+                          fontSize: 10,
                           fontFamily: 'var(--mono)',
                           color: 'var(--txt)',
                         }}
@@ -798,20 +826,51 @@ const BajantesTable = memo(function BajantesTable_() {
                       <td
                         className="c"
                         style={{
-                          fontSize: 9,
+                          fontSize: 10,
                           color: 'var(--txt2)',
                           fontFamily: 'var(--mono)',
                           padding: '1px 1px',
                         }}
                       >
-                        {ramalesAsocVal}
+                        {/* Mismo estilo de chips que "Ramales asociados" de diseño de redes:
+                            borde y texto con el color de la red san. */}
+                        {ramalesAsocVal === '—' ? (
+                          <span style={{ fontSize: 10, color: 'var(--txt3)' }}>—</span>
+                        ) : (
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 2,
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                            }}
+                          >
+                            {Array.from(new Set(ramalesAsocVal.split(', '))).map((rid) => (
+                              <span
+                                key={rid}
+                                style={{
+                                  fontSize: 9,
+                                  padding: '1px 1px',
+                                  border: '1px solid var(--san)',
+                                  borderRadius: 3,
+                                  color: 'var(--san)',
+                                  fontFamily: 'var(--mono)',
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {rid}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td
                         className="c"
                         style={{
                           fontFamily: 'var(--mono)',
                           fontWeight: 700,
-                          fontSize: 9,
+                          fontSize: 10,
                           padding: '1px 1px',
                         }}
                       >
@@ -837,7 +896,7 @@ const BajantesTable = memo(function BajantesTable_() {
                             updTramoSan(targetKey, 'bajR', num);
                           }}
                           style={{
-                            fontSize: 9,
+                            fontSize: 10,
                             padding: '1px 2px',
                             background: 'var(--bg2)',
                             border: '1px solid var(--line)',
@@ -857,7 +916,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         style={{
                           fontFamily: 'var(--mono)',
                           fontWeight: 600,
-                          fontSize: 9,
+                          fontSize: 10,
                           padding: '1px 1px',
                         }}
                       >
@@ -865,13 +924,13 @@ const BajantesTable = memo(function BajantesTable_() {
                       </td>
                       <td
                         className="c"
-                        style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 1px' }}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 1px' }}
                       >
                         {n > 0 ? n.toFixed(3) : '—'}
                       </td>
                       <td
                         className="c"
-                        style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 1px' }}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 1px' }}
                       >
                         {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}
                       </td>
@@ -902,7 +961,7 @@ const BajantesTable = memo(function BajantesTable_() {
                             updTramoSan(targetKey, 'bajDprop', nom ? val : 0);
                           }}
                           style={{
-                            fontSize: 9,
+                            fontSize: 10,
                             padding: '2px 4px',
                             background: 'var(--bg2)',
                             border: sanDiamWarn ? '1px solid var(--err)' : '1px solid var(--line)',
@@ -924,7 +983,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         {sanDiamWarn && (
                           <div
                             style={{
-                              fontSize: 9,
+                              fontSize: 10,
                               color: 'var(--err)',
                               marginTop: 2,
                               lineHeight: 1.2,
@@ -935,35 +994,35 @@ const BajantesTable = memo(function BajantesTable_() {
                           </div>
                         )}
                       </td>
-                      <td className="c" style={{ fontSize: 9, padding: '1px 1px' }}>
+                      <td className="c" style={{ fontSize: 10, padding: '1px 1px' }}>
                         {renderStatus(chequeo)}
                       </td>
                       <td
                         className="c"
-                        style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 1px' }}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 1px' }}
                       >
                         {QmaxB > 0 ? QmaxB.toFixed(2) : '—'}
                       </td>
-                      <td className="c" style={{ fontSize: 9, padding: '1px 1px' }}>
+                      <td className="c" style={{ fontSize: 10, padding: '1px 1px' }}>
                         {Vt > 0 ? Vt.toFixed(2) : '—'}
                       </td>
-                      <td className="c" style={{ fontSize: 9, padding: '1px 1px' }}>
+                      <td className="c" style={{ fontSize: 10, padding: '1px 1px' }}>
                         {Ltcalc > 0 ? Ltcalc.toFixed(2) : '—'}
                       </td>
-                      <td className="c" style={{ fontSize: 9, padding: '1px 1px' }}>
+                      <td className="c" style={{ fontSize: 10, padding: '1px 1px' }}>
                         {Ltmin > 0 ? Ltmin.toFixed(2) : '—'}
                       </td>
-                      <td className="c" style={{ fontSize: 9, padding: '1px 1px' }}>
+                      <td className="c" style={{ fontSize: 10, padding: '1px 1px' }}>
                         {Vair > 0 ? Vair.toFixed(2) : '—'}
                       </td>
                       <td className="c" style={{ padding: '1px 1px' }}>
-                        <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
                           {fDarcy > 0 ? fDarcy.toFixed(3) : '—'}
                         </span>
                       </td>
                       <td
                         className="c"
-                        style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 1px' }}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 1px' }}
                       >
                         {Qair > 0 ? Qair.toFixed(2) : '—'}
                       </td>
@@ -1033,7 +1092,7 @@ const BajantesTable = memo(function BajantesTable_() {
                       </td>
                       <td
                         className="c"
-                        style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 1px' }}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 1px' }}
                       >
                         {DventPropPulg > 0
                           ? DventCalcPulg > 0
@@ -1071,6 +1130,32 @@ const BajantesTable = memo(function BajantesTable_() {
                                 // #6: immediate local state for real-time chequeo
                                 updTramoSan(vk, 'bajDprop', nom ? val : 0);
                               }
+                              // Bidireccional: TODO ramal de ventilación conectado a los
+                              // brevs (ini/fin/code) adopta el mismo diámetro — sin depender
+                              // de ventRamalKey (los extremos del ramal apuntan al brev).
+                              // Ramales vent conectados a los brevs → UN batch write
+                              // (antes: writeDiametroToDrawing por ramal = N parses + N RPCs).
+                              const ventRamalKeys: string[] = [];
+                              for (const vk of ventBajKeys.length ? ventBajKeys : [ventBajKey]) {
+                                const vp = vk.split('-');
+                                const vId = vp[0];
+                                const vPlan = vp.slice(1).join('-');
+                                const vdoc = storageByPlan[vPlan];
+                                if (!vdoc) continue;
+                                const vBaj = (vdoc.bajantes || []).find((x) => x.id === vId);
+                                for (const vr of vdoc.ramales || []) {
+                                  if (vr.net !== 'vent' && vr._net !== 'vent') continue;
+                                  if (
+                                    vr.ini !== vId &&
+                                    vr.fin !== vId &&
+                                    vr.ini !== vBaj?.code &&
+                                    vr.fin !== vBaj?.code
+                                  )
+                                    continue;
+                                  ventRamalKeys.push(`${String(vr.id)}-${vPlan}`);
+                                }
+                              }
+                              writeDiametroToDrawingBatch(ventRamalKeys, 'vent', nom, plans);
                             } else if (t.ventRamalKey) {
                               const res = writeDiametroToDrawing(
                                 t.ventRamalKey,
@@ -1101,7 +1186,7 @@ const BajantesTable = memo(function BajantesTable_() {
                             updTramoSan(tKey, 'ventDprop', nom ? val : 0);
                           }}
                           style={{
-                            fontSize: 9,
+                            fontSize: 10,
                             padding: '2px 4px',
                             background: 'var(--bg2)',
                             border:
@@ -1130,7 +1215,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         {ventDiamWarn && (
                           <div
                             style={{
-                              fontSize: 9,
+                              fontSize: 10,
                               color: 'var(--err)',
                               marginTop: 2,
                               lineHeight: 1.2,

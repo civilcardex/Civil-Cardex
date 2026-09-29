@@ -376,6 +376,30 @@ export function writeDiametroToDrawing(
             changed = true;
           }
         }
+        // VENT (orig. usuario): el diámetro del ramal de ventilación es BIDIRECCIONAL con la
+        // tabla "Bajantes de aguas negras y ventilación" — espejar al BREV conectado
+        // (dNominal + diamPulg; la tabla lee diamPulg como "D vent propuesto").
+        if (net === 'vent' && newDiamLabel) {
+          const newPulg = diamPulgFromLabel(newDiamLabel.replace(/-/g, ' '));
+          for (const b of data.bajantes || []) {
+            if (b.net !== 'vent') continue;
+            const conectado =
+              b.id === r.ini ||
+              b.id === r.fin ||
+              r.ini === b.code ||
+              r.fin === b.code ||
+              (b.recibeDeIds || []).includes(r.id);
+            if (!conectado) continue;
+            if (b.dNominal !== newDiamLabel) {
+              b.dNominal = newDiamLabel;
+              changed = true;
+            }
+            if (newPulg > 0 && b.diamPulg !== newPulg) {
+              b.diamPulg = newPulg;
+              changed = true;
+            }
+          }
+        }
       }
     }
 
@@ -540,6 +564,52 @@ function punterosBajante(
   } | null>(TRAZOS_PREFIX + planId, null);
   const b = raw?.bajantes?.find((x) => x.id === bajanteId);
   return { descargaEnId: b?.descargaEnId, origenId: b?.origenId };
+}
+
+/** Mismo write de diámetro para VARIOS ramales con UN solo load+save del doc por plano
+ *  afectado + UN RPC por plano: el select "D ventilación propuesto" llamaba
+ *  writeDiametroToDrawing por cada ramal conectado (N parses del doc completo + N RPCs por
+ *  UNA interacción de la tabla). Sin espejo ni validación de accesorios — los ramales vent
+ *  conectados heredan el diámetro del bajante y su validación vive en el caller. */
+export function writeDiametroToDrawingBatch(
+  ramalKeys: string[],
+  net: string,
+  newDiamLabel: string,
+  plans: SyncPlanInput[],
+): void {
+  if (!ramalKeys.length || !net || !plans) return;
+  const isVent = net === 'vent';
+  const porPlan = new Map<string, string[]>();
+  for (const key of ramalKeys) {
+    const sep = key.lastIndexOf('-');
+    const rid = sep > 0 ? key.slice(0, sep) : key;
+    const pid = sep > 0 ? key.slice(sep + 1) : '';
+    if (!rid || !pid) continue;
+    const lista = porPlan.get(pid) ?? [];
+    lista.push(rid);
+    porPlan.set(pid, lista);
+  }
+  for (const [pid, ids] of porPlan) {
+    const raw = loadFromStorage<Record<string, unknown> | null>(TRAZOS_PREFIX + pid, null);
+    if (!raw) continue;
+    const doc = raw as Record<string, unknown> & { ramales?: Array<Record<string, unknown>> };
+    let dirty = false;
+    for (const r of doc.ramales || []) {
+      if (!ids.includes(String(r.id))) continue;
+      r.diametro = newDiamLabel;
+      if (isVent) r.diamPulg = diamPulgFromLabel(newDiamLabel);
+      dirty = true;
+    }
+    if (!dirty) continue;
+    (doc as { ts?: number }).ts = Date.now();
+    saveToStorage(TRAZOS_PREFIX + pid, doc);
+    void saveTrazosToDB(pid, doc as never);
+  }
+  try {
+    writeSanDrawingSync(plans);
+  } catch {
+    /* sync best-effort (vent ∈ SAN_FAMILIES) */
+  }
 }
 
 /** Escribe una propiedad de bajante (Llenado, D propuesto…) al doc de trazos del piso + BD,
