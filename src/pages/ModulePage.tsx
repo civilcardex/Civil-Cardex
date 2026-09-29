@@ -34,7 +34,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
   const tieneModulo = (id: 'flow' | 'manage') => rows.some((r) => r.modulo === id && estaActiva(r));
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateCM, setShowCreateCM] = useState(false);
-  const [showLoginAlert, setShowLoginAlert] = useState(false);
   usePageMeta(cfg?.metaTitle ?? '', cfg?.metaDesc ?? '');
   const softwareAppJsonLd = {
     '@context': 'https://schema.org',
@@ -72,8 +71,10 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
         onCtaClick={
           moduleId === 'flow'
             ? () => {
+                // Sin sesión → login llevando el destino: LoginPage vuelve a ESTE módulo
+                // tras autenticar (location.state.from; sin estado iría a /perfil).
                 if (!user) {
-                  setShowLoginAlert(true);
+                  navigate('/login', { state: { from: `/modulo/${moduleId}` } });
                   return;
                 }
                 if (SUSCRIPCIONES_ACTIVAS && !tieneModulo('flow')) {
@@ -85,7 +86,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             : moduleId === 'manage'
               ? () => {
                   if (!user) {
-                    setShowLoginAlert(true);
+                    navigate('/login', { state: { from: `/modulo/${moduleId}` } });
                     return;
                   }
                   if (SUSCRIPCIONES_ACTIVAS && !tieneModulo('manage')) {
@@ -620,87 +621,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
       ) : null}
       <ProjectCreateDialog open={showCreate} onClose={() => setShowCreate(false)} />
       <ProjectCreateDialogCM open={showCreateCM} onClose={() => setShowCreateCM(false)} />
-      {showLoginAlert && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(10,11,14,0.75)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
-              padding: 24,
-              borderRadius: 12,
-              minWidth: 320,
-              maxWidth: 420,
-              border: '1px solid rgba(245,166,35,0.25)',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 15px rgba(245,166,35,0.05)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                color: '#F5A623',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                paddingBottom: 10,
-              }}
-            >
-              <span style={{ fontSize: 22 }}>⚠️</span> Sesión requerida
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: '#a9b8bd',
-                lineHeight: 1.6,
-                fontFamily: "'Geist', sans-serif",
-                margin: '4px 0 16px',
-              }}
-            >
-              Debes iniciar sesión para crear un proyecto.
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                // autoFocus intencional: alerta es overlay custom sin gestión de foco propia — sin
-                // autoFocus el foco no entraría al diálogo. Migrar a <dialog> nativo en un pase futuro.
-                // eslint-disable-next-line jsx-a11y/no-autofocus
-                autoFocus
-                onClick={() => setShowLoginAlert(false)}
-                style={{
-                  padding: '8px 18px',
-                  background: 'linear-gradient(135deg, #F5A623 0%, #d48b11 100%)',
-                  border: 'none',
-                  borderRadius: 6,
-                  color: '#111317',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: 12,
-                  fontFamily: "'Geist', monospace",
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  boxShadow: '0 4px 12px rgba(245,166,35,0.25)',
-                }}
-              >
-                Aceptar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </ModulePageLayout>
   );
 }

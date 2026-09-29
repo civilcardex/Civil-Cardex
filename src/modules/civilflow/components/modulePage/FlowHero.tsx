@@ -502,7 +502,7 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
         </p>
 
         <div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 w-full mt-2 p-6 rounded-2xl"
+          className="flex flex-wrap justify-center gap-5 w-full mt-2 p-6 rounded-2xl"
           style={{
             background:
               'linear-gradient(135deg, rgba(40,42,46,0.5) 0%, rgba(17,19,23,0.7) 50%, rgba(28,30,34,0.5) 100%)',
@@ -564,7 +564,7 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
 
   return (
     <div
-      className="relative border px-10 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
+      className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] relative border px-10 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
       style={{
         background: 'rgba(17,19,23,0.6)',
         borderColor: '#3a494a',

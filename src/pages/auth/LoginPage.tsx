@@ -44,7 +44,9 @@ function LoginPage() {
 
     try {
       await signIn(email, password);
-      navigate('/perfil');
+      // Volver al destino que pidió login (ModulePage pasa state.from) — default /perfil.
+      const from = (location as { state?: { from?: string } }).state?.from ?? '/perfil';
+      navigate(from);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
       setError(message);

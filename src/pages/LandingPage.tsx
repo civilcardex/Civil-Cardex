@@ -5,7 +5,6 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { LANDING_STYLES } from './landingStyles';
 import BlueprintParticles from '../components/landing/BlueprintParticles';
 import CursorSpotlight from '../components/landing/CursorSpotlight';
-import StickyCtaBanner from '../components/landing/StickyCtaBanner';
 import Tilt3DCard from '../components/landing/Tilt3DCard';
 import TypewriterText from '../components/landing/TypewriterText';
 import ScrollIndicator from '../components/landing/ScrollIndicator';
@@ -627,8 +626,6 @@ function LandingPage() {
           </div>
         </div>
       </footer>
-
-      <StickyCtaBanner heroId="hero-section" ctaId="cta-section" />
     </div>
   );
 }

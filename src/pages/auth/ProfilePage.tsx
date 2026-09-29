@@ -31,6 +31,7 @@ import ProjectCreateDialog from '../../modules/civilflow/components/shared/Proje
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import ModuleSelectDialog from '../../components/suscripciones/ModuleSelectDialog';
 import { SUSCRIPCIONES_ACTIVAS, type ModuloId } from '../../lib/suscripciones/catalogo';
+import { useSuscripciones } from '../../hooks/useSuscripciones';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames';
 import {
   ACTIVE_PROYECTO_ID_KEY,
@@ -66,6 +67,7 @@ function ProfilePage() {
   const [proyLoading, setProyLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showModSel, setShowModSel] = useState(false);
+  const { activos: modulosActivosUser } = useSuscripciones();
   const [moduloElegido, setModuloElegido] = useState<ModuloId | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [cmDeleteConfirm, setCmDeleteConfirm] = useState<string | null>(null);
@@ -648,8 +650,12 @@ function ProfilePage() {
                 type="button"
                 className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
                 onClick={() => {
-                  if (SUSCRIPCIONES_ACTIVAS) setShowModSel(true);
-                  else setShowCreate(true);
+                  // 1 módulo activo → directo al modal de nombre; 0 o 2+ → selector
+                  // (0 muestra el aviso de pricing dentro del selector).
+                  if (!SUSCRIPCIONES_ACTIVAS) setShowCreate(true);
+                  else if (modulosActivosUser.size === 1)
+                    setModuloElegido([...modulosActivosUser][0]);
+                  else setShowModSel(true);
                 }}
               >
                 <span className="material-symbols-outlined text-lg">add_circle</span>
