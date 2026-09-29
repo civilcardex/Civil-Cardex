@@ -200,5 +200,8 @@ export function junctionRespectsTributarioDirection(
   }
   if (touching < 2) return true;
   if (!hasTributario) return junctionHasOutgoingFlow(ramales, net, pt, tol);
-  return entradas === 1;
+  // 'entradas === 1' era más estricto que el mensaje de la alerta ("al menos un ramal
+  // saliendo") y daba falso positivo con salida real + 2 entradas. La salida manda.
+  if (entradas === 1) return true;
+  return junctionHasOutgoingFlow(ramales, net, pt, tol);
 }
