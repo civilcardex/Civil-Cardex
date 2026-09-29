@@ -2174,3 +2174,163 @@ tsc 0 · lint 0 err (3 warn pre-existentes) · vitest 889/889 (156) · build ✓
 
 ### Verificación manual (recarga dura)
 Editar Área Otras → guardar → recargar (persiste). EP cisterna: guardar → recargar sin crash, valores intactos, sin alarma de cavitación con página fresca. Suscripción vencida → guardar trazo → `suscripcion_requerida`. Borrar TODOS los pisos → recargar → siguen borrados; agregar piso → tumba se limpia.
+
+## Session Summary — 2026-09-29 (landing: sticky banner fuera + flujo crear proyecto por módulo + grid redes)
+
+- **StickyCtaBanner eliminado** ("Lleve sus diseños al siguiente nivel"): removido de LandingPage (uso + import) y borrado el componente.
+- **Perfil → Nuevo proyecto**: con SUSCRIPCIONES_ACTIVAS: 1 módulo activo → directo al modal de nombre (sin selector); 0 activos → ModuleSelectDialog (con link a /pricing); 2+ → ModuleSelectDialog para elegir. Flag OFF → modal de nombre directo (igual que antes). Usa useSuscripciones().activos.
+- **ModulePage (flow/manage) botón iniciar**: sin sesión → navigate('/login') real (antes modal custom "Sesión requerida", eliminado junto a su estado); con sesión + SUSCRIPCIONES_ACTIVAS sin módulo → /pricing?modulo=X; pasando gates → ProjectCreateDialog/CM.
+- **FlowHero**: grid de redes ahora lg:grid-cols-4 → 7 tarjetas quedan 4+3 (antes 3+3+1 desparejo).
+- Nota: gates de suscripción siguen deshabilitados por defecto (VITE_SUSCRIPCIONES + cf_app_config) — comportamiento actual sin cambios con flag OFF.
+- Gates: tsc 0 · vitest 889/889 (156 files) · build ✓ · eslint landing/module/profile/flowhero ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (ronda 2: lint 0-0 absoluto en src)
+
+- CopyFromPlanPanel: doCopy sin dep `planosCtx.plans` (origen ya va por origenDePlan, meta-first) + handleCopy con deps de su traza DEV (origenConFantasmas, srcPlanData?.bajantes, srcPlanId). **ESLint: 0 errores 0 warnings en todo src** (los 2 warnings exhaustive-deps restantes eran míos, no de la sesión paralela).
+- Gates: tsc 0 · lint 0/0 · build ✓ · vitest 889/889 · graphify ✓.
+
+## Session Summary — 2026-09-29 (ronda 3: tarjetas redes 4+3 centradas)
+
+- FlowHero: grid → flex flex-wrap justify-center; card w-full / sm:calc(50%-10px) / lg:calc(25%-15px). 7 tarjetas = fila de 4 + fila de 3 centrada (sketch usuario).
+- Gates: tsc 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (selector de redes activas se perdía al entrar al visor)
+
+- **Causa (exploración)**: el selector (ActiveNetsCard) escribe solo estado React; la persistencia localStorage active_nets + NETS_CHANGED_EVENT iba en un useDebouncedEffect de 1200 ms que se CANCELABA al desmontar (navegar al visor dentro de la ventana) — el unmount-flush solo subía BD. ViewerPage lee active_nets UNA vez al montar → set viejo ("me toca volver a activarlas"). Secundario: el re-guardado posterior re-escribía el set viejo también a BD.
+- **Fix** (useWorkAreaState.ts): flushRedes unificado (localStorage + NETS_CHANGED_EVENT + saveRedesActivas) que corre en el debounce Y en el unmount — salir dentro de los 1.2 s ya no pierde los checks.
+- Gates: tsc 0 · build ✓ · vitest 889/889 · graphify ✓.
+
+## Session Summary — 2026-09-29 (grosor de línea afecta accesorios)
+
+- renderAccessorySymbols.ts: los 30 ctx.lineWidth + defs armW/ramalW ahora multiplican por (engine.lineWidthScale || 1) — el parámetro de grosor del visor escala tees/codos/reducciones/etc. y SIEMPRE quedan por encima de los trazos al subir grosor.
+- Gates: tsc 0 · build ✓ · vitest 443 PlanoEngine ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (caps rectos en accesorios)
+
+- renderAccessorySymbols.ts: los 10 lineCap 'round' → 'butt' — extremos rectos, el glifo no sobresale de los segmentos que lo delimitan (foto tee usuario).
+- Gates: tsc 0 · build ✓ · vitest 443 PlanoEngine ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (letra tablas diseño san/af/ac 9→10)
+
+- SanitaryDesign.tsx (15) + WaterNetworkDesign.tsx (2) + waterNetworkDesign/{designTableRow(6), designTableHeader(28)}: fontSize 9 → 10.
+- Gates: tsc 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (fracciones ASCII en desplegable AF/AC)
+
+- Los DN de agua caliente traen fracciones unicode (¾, ½, ¼ de catalogData) → el desplegable de diámetro mostraba '¾" RDE 11'. WaterNetworkDesign: helper fracAscii() (¼½¾⅛...) aplicado SOLO al label de DIAM_OPTS — el value/nominal no cambia para no romper diámetros ya guardados (select matchea por nominal).
+- Gates: tsc 0 · build ✓ · vitest 855/855 · graphify ✓.
+- fracAscii v2: '1 ½' → '1-1/2' (entero+fracción con guion, notación comercial). '1¼"' → '1-1/4" SCH 40'.
+- fracAscii regex final (una pasada, verificada): /(\d)?\s*[ \u00a0]?([unicode])/ → entero-'fracción'. Casos: ¾"→3/4" · 1 ½"→1-1/2" · 1¼"→1-1/4" · ½ solo→1/2.
+
+## Session Summary — 2026-09-29 (nomenclatura pulgadas ASCII en Resumen accesorios + fmtPulg)
+
+- **fracAscii movida a formatUtils.ts** (compartida): unicode→ASCII + guion comercial en mixtos ('1 ½'→'1-1/2', '1¼'→'1-1/4', '¾'→'3/4').
+- **fmtPulg ahora ASCII**: 0.5→'1/2"', 1.5→'1-1/2"' (antes '½"', '1 ½"'). Tests formatUtils actualizados.
+- **AccesoriosDiamPage**: labels de diámetro (fila + bushings vía fmtPulg) pasan por fracAscii — Resumen de accesorios por diámetro AC/AF con la misma nomenclatura que el desplegable de diseño.
+- WaterNetworkDesign importó fracAscii del utils (eliminado el helper local).
+- Gates: tsc 0 · vitest 889/889 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (2 alertas falsas AC: cambio de dirección + conexión sin salida)
+
+- **"Cambio de dirección de flujo"** (modal UC) saltaba sin UC asignada: readUcInfo contaba el registro aparatos_by_tramo de TODOS los pisos confirmados — los ids de ramal se repiten entre pisos → UC de OTRO piso activaba el modal. Fix: solo el piso cargado (eng._loadedPlanId).
+- **"Conexión sin salida"** salía habiendo salida: junctionRespectsTributarioDirection exigía 'entradas === 1' (más estricto que su propio mensaje). Fix: si entradas===1 → OK; si no, cae a junctionHasOutgoingFlow — la salida real manda.
+- Cadena: el modal falso (bug 1) metía al path de doble cambio que disparaba la alerta del bug 2.
+- Gates: tsc 0 · vitest 889/889 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (Bajantes AN/vent: D vent propuesto + crash + letra)
+
+- **Crash "Lbajante.toFixed is not a function"**: t.bajLong llega STRING del storage → Number() en calculateVentStack (bajLong/fDarcy).
+- **D vent propuesto vacío en el BAN**: la resolución (mayor de los brevs conectados → ventDprop propio) caía a vacío si fallaba la asociación brev↔BAN. Fallback nuevo: diámetro del RAMAL de ventilación conectado (ventRamalDiamPulg, computado antes ahora). Orden: mayor brevs → ventDprop → ramal vent.
+- **Letra** DownpipesTable 9→10 (54 sitios).
+- Gates: tsc 0 · build ✓ · vitest · graphify ✓.
+
+## Session Summary — 2026-09-29 (chips ramales asociados san con estilo de red)
+
+- DownpipesTable: celda "Ramales Asociados" de bajantes san ahora chips con borde/texto var(--san) (mismo estilo que OtrosRamalesChips de diseño AF/AC) en vez de texto plano.
+- Gates: tsc 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-29 (D vent propuesto bidireccional con el dibujo)
+
+- **Dibujo→tabla**: writeDiametroToDrawing para net 'vent' espeja al BREV conectado (ini/fin/code/recibeDeIds): dNominal + diamPulg — la tabla lee diamPulg como "D vent propuesto" (maxVPulg chain del BAN).
+- **Tabla→dibujo**: el select "D ventilación propuesto" del BAN, además de los brevs, escribe writeDiametroToDrawing sobre su ventRamalKey (el dibujo refleja el cambio).
+- Gates: tsc 0 · build ✓ · vitest 855 · graphify ✓.
+
+## Session Summary — 2026-09-29 (raíz definitiva Ldesvio/fantasma + D vent propuesto bidireccional REAL)
+
+### A) Ldesvio/anillo borrados (piso inferior) — el hueco era el ÁRBITRO del loader (exploración línea a línea)
+- Al asociar, los writes del anillo/LD_ a BD son fire-and-forget (W6-W9): pueden no aterrizar; luego un autosave estampa la fila BD más fresca SIN artefactos. Al reabrir: dbTs>localTs → BD gana → el gate `dbSinAsocs`/`reciente` de restaurarAsociacionesDesdeLocal era CIEGO para layout-2 (en el piso inferior dbSinAsocs=false si la BD tenía CUALQUIER otro LD_ ajeno; gap ≥1h saltaba la restauración) → `eng.loadWork(docBD)` pisaba engine+caché buenas. Chain 2: gate abierto pero anillo no restaurado si BD no tenía el bajante (renumerado) → sweep borraba el LD_.
+- **Fix**: (1) unión INCONDICIONAL cuando BD gana (desasociar borra en ambos lados → no resucita nada); (2) si local tiene bajante CON anillo y BD no tiene ese id → copiar bajante COMPLETO.
+- Tests reescritos (asocPersistTrasCopia): Chain1 (BD con LD_ ajeno + ts mayor), Chain2 (bajante ausente), desasociación legítima no resucita.
+
+### B) D vent propuesto vacío — la cadena real era otra
+- El panel del visor cambia el diámetro con `updateSelected` (NUNCA pasa por writeDiametroToDrawing donde estaba el espejo) → autosave crudo. Y la tabla buscaba tramos vent en tramosSan que NUNCA existen (buildTramos:452 los salta) → maxVPulg=0; ventRamalKey null (extremos del ramal apuntan al brev, no al BAN).
+- **Fix**: (1) persistTrazosSnapshot sincroniza diamPulg de bajantes vent desde su dNominal (choke point del autosave); (2) resolvedVentDprop lee el BREV del STORAGE (diamPulg || parse dNominal) en vez de tramosSan muerto, ventBajKey sin gate de tramo; (3) onChange escribe todos los ramales vent conectados a los brevs (ini/fin/code) vía writeDiametroToDrawing.
+- Gates: tsc 0 · lint 0/0 · vitest 890/890 · build ✓ · graphify ✓.
+- Lint final: NBSP literal en el regex de fracAscii → escape \u00a0 (no-irregular-whitespace). Gates: lint 0/0 · tsc 0 · vitest 890/890 · build ✓.
+
+## Session Summary — 2026-09-29 (blindaje choke-point: el autosave ya no puede borrar la asociación)
+
+- Evidencia BD del usuario: anillos BALL1 en AMBOS pisos reclamando LD_BALL1 + tras reentrar `cf_planos_ramales LD_ count = 0` — alguien subió save_plano_data sin los LD_.
+- **persistTrazosSnapshot (choke point de TODO autosave/cierre)**: si el doc en storage tiene ramales LD_ o bajantes con ANILLO ausentes en el snapshot del engine → se FUSIONAN al work antes de guardar (storage+BD). Seguro: desasociar borra en storage TAMBIÉN. Trazas DEV `[CF-PERSIST]` (work sin N LD_ / anillo restaurado) para cazar quién produce el doc sin piezas.
+- Gates: tsc 0 · lint 0/0 · build ✓ · vitest 890/890 · graphify ✓.
+- Limpieza: trazas [CF-RESTORE] removidas (diagnóstico del incidente BD cumplido). Quedan solo [CF-PERSIST] y [CF-COPIA] (diagnóstico activo de asociación/copia).
+
+## Session Summary — 2026-09-28 (auditoría ronda 8: WIP de sesión paralela)
+
+### Alcance
+Working tree sin commitear: marketing (StickyCtaBanner fuera, ModulePage −87, FlowHero flex-wrap), DownpipesTable (+239, D vent bidireccional), pipeline de guardado (blindaje anti-borrado + Chain 2), render accesorios (lineWidth), fontSize 9→10 masivo. Suite 890/890 al auditar.
+
+### Fixes aplicados SOBRE el WIP (no romper lo de la otra sesión)
+- **F-2 integridad multi-dispositivo**: la sesión paralela quitó el gate de la ronda 5 (era ciego al blind-spot layout-2 — causa raíz del borrado persistente) y reabrió la resurrección desde cachés stale. Reconciliado con **marca de desasociación**: `estamparAsocsClearedTs` (bajanteAssociation) al desasociar, en AMBOS pisos; `restaurarAsociacionesDesdeLocal` (crossFloorStorage) NO fusiona si `local.ts < db.asocsClearedTs`. Sin marca → restaura (blind-spot layout-2 cubierto). Centinela restaurado (3 tests en asocPersistTrasCopia: stale no resucita, posterior sí, sin marca sí).
+- **F-3 lineWidthScale² en 4 glifos** (yee/tee/teeReduccion/teeLlaveTerminal): defs ya escalaban y ctx.lineWidth volvía a multiplicar → escala² con el slider. Ahora una sola vez (6 sitios), coherente con drawRamalPath. Hit-testing intacto (geométrico).
+- **F-1 parser dNominal roto** → `ventBajPulg(b)` en DownpipesTable: diamPulg si >0, si no diamPulgFromLabel (el ad-hoc daba 0.5 para '1-1/2"' y eliminaba ½).
+- **F-4 login from-state**: ModulePage navega a /login con `state.from` y LoginPage honra `location.state.from ?? '/perfil'` (el comentario "volverá aquí" mentía).
+- **F-5 batch**: `writeDiametroToDrawingBatch(keys, net, label, plans)` — un load/save + un RPC por plano; select D vent ya no hace N parses + N RPCs por interacción.
+- **F-6**: persistTrazos — un solo prevDoc para blindaje + assocLayout (antes parseaba la misma clave 2× por autosave).
+- **F-7/8/9**: WaterNetworkDesign re-indentado; cirílico "фикса" fuera; JSDoc de fracAscii; chips dedup con Set (keys duplicadas).
+- Verificado limpio de la otra sesión: StickyCtaBanner fuera sin referencias rotas; FlowHero 4+3 correcto; flushRedes unificado (fix real); modal falso por UC de otro piso arreglado; CopyFromPlanPanel stale closure arreglado; guards de rondas 5-6 intactos.
+
+### Gates
+tsc 0 · lint 0 err · vitest 893/893 (156) · build ✓ · graphify ✓.
+
+### Verificación manual pendiente (recarga dura)
+Slider grosor de línea: glifos yee/tee al mismo grosor que la tubería (antes 4× con slider=2). D vent en tabla → Network tab: 1 RPC por plan, no N. Desasociar → recargar: no resucita. "Iniciar" sin sesión desde /modulo/flow → tras login vuelve al módulo (no /perfil).
+
+## Session Summary — 2026-09-28 (ponytail ronda 5: MONO_3D + sleep)
+- MONO_3D (shared/config3d) adoptado en los 4 archivos restantes con literal 'Geist, monospace' (GlobalAlertDialogProvider, AccesorioModal ×3, UcMoveModal ×3, renderAccessorySymbols — canvas font).
+- sleep de shared/cargaSecuencial reemplaza las 2 promesas inline restantes (PdfViewer race 4s, PlansContext 500ms).
+- Deuda mantiene: 3 inputs perezosos (sin tests UI) · PlanoNetworkModel (piloto paralela).
+- Gates: tsc 0 · lint 0 · vitest 893/893 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-09-28 (deudas #3 y #4: precios BD + rate-limit)
+
+### #4 catálogo único en BD
+- Migración `20260928000003_precios_bd_y_cota.sql` (aplica usuario): tabla `app_precios` (seed con los precios vigentes) + RPC `obtener_catalogo` (authenticated) + `intenciones_recientes` (service_role).
+- Edge crear-intencion-pago: precios leídos de app_precios (fallback al literal si tabla vacía — bootstrap); total recalculado con precioDe (mismo DESCUENTO_PAQUETE 15 %).
+- Cliente: `sincronizarPreciosBd()` en useSuscripciones pisa CATALOGO con la BD al montar; fallback silencioso si el RPC no existe (migración pendiente). Cambiar precio = UPDATE en SQL Editor, sin deploy.
+- Test de paridad de literales sigue como red de respaldo.
+
+### #3 rate-limit (abuso de cuota)
+- `permitirPeticion(bucket, uid, max)` en _shared/wompi.ts: ventana deslizante 60s in-memory. wompi-verify: 10/min. crear-intencion-pago: 5/min. Honestidad documentada: contador por instancia (N instancias = N×tope) — el abuso serio lo corta:
+- Cota dura GLOBAL en el edge: >20 intents pendientes/hora del usuario → 429 `demasiadas_intenciones` (query count a cf_pagos — la BD es una, no se diluye).
+
+### Pendiente usuario
+Aplicar `20260928000003` en SQL Editor + re-deploy de crear-intencion-pago y wompi-verify.
+
+### Gates
+tsc 0 · lint 0 · vitest 893/893 · build ✓.
+
+## Session Summary — 2026-09-28 (rename familia suscripciones: cf_ → app_)
+
+- `cf_suscripciones → app_suscripciones`, `cf_pagos → app_pagos`, `cf_app_config → app_config` — el sistema de suscripciones es de TODOS los módulos; el prefijo cf_ era el dominio de CivilFlow. `app_precios` (28000003) ya nació neutral.
+- Migración `20260928000004_rename_familia_suscripciones.sql` (aplica usuario, después de la 00003): 3 renames + recreación de los 4 RPCs que leían esas tablas (suscripciones_habilitadas, acceso_modulo, activar_suscripciones, intenciones_recientes) — los cuerpos plpgsql NO se reescriben con alter rename. Policies/RLS/grants/índices viajan con el rename. Re-ejecutable (if exists).
+- Referencias del repo actualizadas: 24000000/01/02, 25000003, 28000001/03, suscripcionesService, 3 edges + _shared. 0 residuos cf_ fuera de la migración de rename (comentarios/ALTER).
+- Verificación comentada: tablas cf_* 0 filas, suscripciones_habilitadas false, acceso_modulo true con flag apagado.
+- Pendiente: usuario aplica 28000003 + 28000004 en orden, luego re-deploy de las 3 edge functions (cambian los nombres de tabla en sus cuerpos).
+- Gates: tsc 0 · lint 0 · vitest 893/893 · build ✓.
+
+## Session Summary — 2026-09-29 (linter post-aplicación: trigger search_path + revoke authenticated)
+- **Lint 0011 (real, mío)**: `fantasmas_layout_default` sin `set search_path` → `20260929000001_trigger_search_path.sql` la recrea fija.
+- **Lint 0029 hallazgo nuevo**: `intenciones_recientes` ejecutable por authenticated — los default privileges de Supabase otorgan EXECUTE a anon/authenticated EXPLÍCITAMENTE; `revoke from public, anon` no basta. Regla nueva: en funciones service_role-only, revocar TAMBIÉN de authenticated. Fix en la misma migración.
+- Los WARNs de wrappers/acceso_modulo/obtener_catalogo/suscripciones_habilitadas: aceptados (patrón SECURITY DEFINER + policies, documentado ronda anterior). Leaked passwords: toggle pendiente del usuario.
+- Gates: tsc 0 · vitest 893/893 · build ✓.
