@@ -1,4 +1,5 @@
 import { rotatedRectCorners } from '../HitTester';
+import { MONO_3D } from '../../../components/shared/config3d';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 import { findFreeLabelCenter } from '../labelDeclutter';
 import type { DeclutterFrame } from '../labelDeclutter';
@@ -53,8 +54,8 @@ export function drawExtremeAccessorySymbol(
     const capW = rad * 0.35;
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     // 1. Segmento largo: de c a pt_corner1
@@ -184,7 +185,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codoSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -197,7 +198,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codoBaja') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -213,7 +214,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codo90rmSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -225,14 +226,14 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codo90rmBaja') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     const aS = rad * 0.7;
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = rad * 0.15;
+    ctx.lineWidth = rad * 0.15 * (engine.lineWidthScale || 1);
     ctx.lineCap = 'butt';
     ctx.beginPath();
     ctx.moveTo(c.x, c.y - aS * 0.9);
@@ -262,15 +263,15 @@ export function drawExtremeAccessorySymbol(
     // / mm2cvs(0.8) que usa renderJunctions.ts, así que la escala coincide exactamente.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(1.0);
-    const armW = 1.2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
+    const armW = 1.2 * engine.zoom * (engine.lineWidthScale || 1); // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const arms: { x: number; y: number }[] = [
       { x: dx, y: dy },
       { x: -dx, y: -dy },
       { x: px, y: py },
     ];
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = armW;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = armW; // el def YA incluye lineWidthScale — multiplicar de nuevo = escala² (auditoría r8 F-3)
+    ctx.lineCap = 'butt';
     ctx.beginPath();
     for (const a of arms) {
       ctx.moveTo(c.x, c.y);
@@ -279,7 +280,7 @@ export function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     // N5: trazos transversales ligeramente más gruesos, extremos cuadrados, llegan a extremos
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineCap = 'square';
     ctx.beginPath();
     for (const a of arms) {
@@ -298,7 +299,7 @@ export function drawExtremeAccessorySymbol(
     const circR = juncRad * 0.45;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
     ctx.fill();
@@ -315,7 +316,7 @@ export function drawExtremeAccessorySymbol(
       // cruz diagonal de codoBaja.
       const aS = circR * 0.85;
       ctx.fillStyle = '#000000';
-      ctx.lineWidth = circR * 0.22;
+      ctx.lineWidth = circR * 0.22 * (engine.lineWidthScale || 1);
       ctx.lineCap = 'butt';
       ctx.beginPath();
       ctx.moveTo(c.x, c.y - aS * 0.8);
@@ -336,12 +337,12 @@ export function drawExtremeAccessorySymbol(
     // la unión; teeLado mantiene la rama a ancho completo.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(1.0);
-    const armW = 1.2 * engine.zoom;
+    const armW = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
     const branchW = accType === 'teeReduccion' ? armW * 0.55 : armW;
     ctx.strokeStyle = '#000000';
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     // Brazos de paso (ancho completo)
-    ctx.lineWidth = armW;
+    ctx.lineWidth = armW; // el def YA incluye lineWidthScale — multiplicar de nuevo = escala² (auditoría r8 F-3)
     ctx.beginPath();
     ctx.moveTo(c.x + dx * juncRad, c.y + dy * juncRad);
     ctx.lineTo(c.x, c.y);
@@ -354,20 +355,20 @@ export function drawExtremeAccessorySymbol(
       ctx.moveTo(c.x + px * juncRad * 0.35, c.y + py * juncRad * 0.35);
       ctx.lineTo(c.x, c.y);
       ctx.stroke();
-      ctx.lineWidth = branchW;
+      ctx.lineWidth = branchW; // el def YA incluye lineWidthScale — multiplicar de nuevo = escala² (auditoría r8 F-3)
       ctx.beginPath();
       ctx.moveTo(c.x + px * juncRad * 0.35, c.y + py * juncRad * 0.35);
       ctx.lineTo(c.x + px * juncRad, c.y + py * juncRad);
       ctx.stroke();
     } else {
-      ctx.lineWidth = branchW;
+      ctx.lineWidth = branchW; // el def YA incluye lineWidthScale — multiplicar de nuevo = escala² (auditoría r8 F-3)
       ctx.beginPath();
       ctx.moveTo(c.x, c.y);
       ctx.lineTo(c.x + px * juncRad, c.y + py * juncRad);
       ctx.stroke();
     }
     // N5: marcas de extremo ligeramente más gruesas, extremos cuadrados, llegan a extremos
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineCap = 'square';
     ctx.beginPath();
     for (const a of [
@@ -391,8 +392,8 @@ export function drawExtremeAccessorySymbol(
     // (dx,dy), distinguiendo el punto de tee de la tubería simple a ambos lados. La línea real
     // del ramal ya pasa recta por este punto interior (dibujada por drawRamalPath); esto solo
     // agrega la rama, su tapa y la marca de unión.
-    const armW = 0.9 * engine.zoom;
-    const ramalW = 2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
+    const armW = 0.9 * engine.zoom * (engine.lineWidthScale || 1);
+    const ramalW = 2 * engine.zoom * (engine.lineWidthScale || 1); // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const stemLen = rad * 3.5;
     const capHalf = rad * 0.9;
     const capTick = rad * 1.1;
@@ -400,16 +401,16 @@ export function drawExtremeAccessorySymbol(
     const stemEndX = c.x + outX * stemLen,
       stemEndY = c.y + outY * stemLen;
     ctx.strokeStyle = '#000000';
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     // Marca de unión sobre el ramal mismo — mismo grosor que la tubería del ramal, no las líneas
     // (más finas) del símbolo de arriba.
-    ctx.lineWidth = ramalW;
+    ctx.lineWidth = ramalW; // el def YA incluye lineWidthScale — multiplicar de nuevo = escala² (auditoría r8 F-3)
     ctx.beginPath();
     ctx.moveTo(c.x + dx * jointHalf, c.y + dy * jointHalf);
     ctx.lineTo(c.x - dx * jointHalf, c.y - dy * jointHalf);
     ctx.stroke();
     // Tallo
-    ctx.lineWidth = armW;
+    ctx.lineWidth = armW; // el def YA incluye lineWidthScale — multiplicar de nuevo = escala² (auditoría r8 F-3)
     ctx.beginPath();
     ctx.moveTo(c.x, c.y);
     ctx.lineTo(stemEndX, stemEndY);
@@ -424,7 +425,7 @@ export function drawExtremeAccessorySymbol(
     ctx.lineTo(capRX, capRY);
     ctx.stroke();
     // Pies del corchete — se doblan hacia el tallo/ramal (-outX,-outY), no alejándose
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.moveTo(capLX, capLY);
     ctx.lineTo(capLX - outX * capTick, capLY - outY * capTick);
@@ -452,13 +453,13 @@ export function drawExtremeAccessorySymbol(
     });
 
     ctx.strokeStyle = '#000000';
-    ctx.lineCap = 'round';
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     // Barra tee sentada sobre el ramal — mismo grosor que la tubería del ramal misma.
     // (Sin marcas de extremo — el usuario pidió quitarlas para un look de teeLlaveTerminal más
     // limpio.)
-    ctx.lineWidth = 2 * engine.zoom;
+    ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
     const barL = P(-1, 0),
       barR = P(1, 0);
     ctx.beginPath();
@@ -467,7 +468,7 @@ export function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     // Todo lo de arriba del ramal — más fino que la barra del ramal misma.
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
 
     // Tallo subiendo del ramal a una sola barra transversal a media altura — tallo más largo
     // que el brazo de una tee simple para que el cuerpo de la llave quede visiblemente
@@ -522,7 +523,7 @@ export function drawExtremeAccessorySymbol(
     const arm = rad * 1.4;
     const gap = rad * 1.0;
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = rad * 0.45;
+    ctx.lineWidth = rad * 0.45 * (engine.lineWidthScale || 1);
     ctx.lineCap = 'butt';
     // Punta del tallo (donde nace la horquilla).
     const tx = c.x + outX * stem;
@@ -580,7 +581,7 @@ export function drawExtremeAccessorySymbol(
     ctx.fill();
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
     ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -606,8 +607,8 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     // Triángulo relleno apuntando perpendicular al ramal (a lo largo de px,py)
@@ -639,8 +640,8 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     // Círculo relleno centrado en el punto final
@@ -664,7 +665,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'valvCheque') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad * 0.9, 0, Math.PI * 2);
     ctx.fill();
@@ -696,8 +697,8 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     // 1. Tapa en T en el punto de conexión c
@@ -769,8 +770,8 @@ export function drawExtremeAccessorySymbol(
     const capTick = rad * 0.12;
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.35 * engine.zoom;
-    ctx.lineCap = 'round';
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
     // Tope recto largo empezando exactamente donde termina el ramal (c) y continuando hacia
@@ -842,7 +843,7 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.5 * engine.zoom;
+    ctx.lineWidth = 0.5 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -852,7 +853,7 @@ export function drawExtremeAccessorySymbol(
     // Dimensionado al radio propio del círculo (como todo otro glifo de accesorio) — un mínimo
     // fijo basado en zoom aquí se desbordaría del círculo cuando este se encoge a un tamaño
     // realista.
-    ctx.font = `bold ${rad * 0.6}px 'Geist', monospace`;
+    ctx.font = `bold ${rad * 0.6}px ${MONO_3D}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, c.x, c.y);
@@ -888,8 +889,8 @@ export function drawCornerCodoArc(
   const T_C = { x: c.x + rad * v.x, y: c.y + rad * v.y };
   ctx.save();
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 1.2 * engine.zoom;
-  ctx.lineCap = 'round';
+  ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
+  ctx.lineCap = 'butt';
   ctx.lineJoin = 'round';
   // Hay que reiniciar el dash explícitamente — el cuerpo del ramal puede estar discontinuo
   // (tributario) y el símbolo no debe heredar el dash.
@@ -909,7 +910,7 @@ export function drawCornerCodoArc(
     const cross = u.x * v.y - u.y * v.x;
     ctx.arc(ccx, ccy, rad, angle_TA, angle_TC, cross > 0);
   }
-  ctx.lineWidth = 1.2 * engine.zoom;
+  ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.strokeStyle = '#000000';
   ctx.stroke();
   // ponytail: ticks transversales en los extremos del arco — idéntico al quiebre
@@ -918,7 +919,7 @@ export function drawCornerCodoArc(
   const perp_u = { x: -u.y, y: u.x };
   const perp_v = { x: -v.y, y: v.x };
   ctx.lineCap = 'square';
-  ctx.lineWidth = 1 * engine.zoom;
+  ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
   ctx.strokeStyle = '#000000';
   ctx.beginPath();
   ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);
