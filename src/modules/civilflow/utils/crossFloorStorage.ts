@@ -149,8 +149,11 @@ export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown
     }
   }
   if (!local || typeof local !== 'object') return false;
-  const l = local as LocalGhostDrawingData;
+  const l = local as LocalGhostDrawingData & { ts?: number };
   const d = db as {
+    /** Marca de desasociación (estamparAsocsClearedTs): corta la resurrección desde
+     *  cachés stale de otros dispositivos — ver JSDoc del estamper. */
+    asocsClearedTs?: number;
     crossFloorGhosts?: Array<{ id: string }>;
     ramales?: Array<{ id: string }>;
     bajantes?: Array<{
@@ -159,6 +162,14 @@ export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown
       ghostData?: Record<string, unknown>;
     }>;
   };
+  // GATE por marca: si la BD registra una desasociación POSTERIOR a la caché local
+  // (local.ts < asocsClearedTs), esas piezas fueron borradas legítimamente DESPUÉS de que
+  // la caché se copiara — no resucitar. Sin marca, o caché más nueva que la marca
+  // (edición posterior a la desasociación), restaurar: blind-spot layout-2 sigue cubierto.
+  if (typeof d.asocsClearedTs === 'number') {
+    const lts = typeof l.ts === 'number' ? l.ts : 0;
+    if (lts < d.asocsClearedTs) return false;
+  }
   let changed = false;
   // Fantasmas XFG que faltan en BD.
   const lGhosts = l.crossFloorGhosts || [];
@@ -184,7 +195,14 @@ export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown
   for (const lb of l.bajantes || []) {
     if (!lb.desplazamientos || Object.keys(lb.desplazamientos).length === 0) continue;
     const dbB = (d.bajantes || []).find((x) => x.id === lb.id);
-    if (!dbB) continue;
+    if (!dbB) {
+      // Chain 2: la BD ni siquiera tiene el bajante (renumerado/escrito desde otro
+      // dispositivo) — copiarlo COMPLETO desde la caché local, anillo incluido; sin esto
+      // el anillo se perdía y el sweep borraba el LD_ huérfano.
+      d.bajantes = [...(d.bajantes || []), { ...lb }];
+      changed = true;
+      continue;
+    }
     const dbKeys = Object.keys(dbB.desplazamientos || {});
     const lKeys = Object.keys(lb.desplazamientos);
     if (lKeys.some((k) => !dbKeys.includes(k))) {

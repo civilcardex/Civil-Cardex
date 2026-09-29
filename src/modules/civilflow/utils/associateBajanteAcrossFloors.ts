@@ -34,6 +34,7 @@ export {
   updateCrossFloorGhostPositionBySource,
   type LocalLdesvioRamal,
   type StoredBajante,
+  hasCachedPlan,
   type LocalGhostDrawingData,
 } from './crossFloorStorage';
 

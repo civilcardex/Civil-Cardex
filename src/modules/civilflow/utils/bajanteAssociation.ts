@@ -10,6 +10,10 @@ import {
   ldesvioIdFor,
   isLdesvioRamalId,
   nextRamalLabel,
+  hasCachedPlan,
+  loadData,
+  saveData,
+  type LocalGhostDrawingData,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
 import { aFrameDe, origenDePlan } from './crossFloorStorage';
@@ -371,6 +375,26 @@ function resolveLinkRoles(
 // Scope EXACTO por enlace (roles upper/lower): los barridos amplios por id borraban el LD, el
 // anillo y las claves de OTRO enlace cruzado que comparte id de bajante en otro piso
 // (BAN1-P1↔BAN2-P2 + BAN1-P2↔BAN2-P1: LD_BAN1 vive en el piso 1 para el segundo enlace).
+/** Marca de desasociación (auditoría ronda 8 F-2): al desasociar se estampa `asocsClearedTs`
+ *  en el doc de trazos de AMBOS pisos. La restauración anti-loss (restaurarAsociacionesDesdeLocal)
+ *  solo fusiona piezas de cachés con `ts >= asocsClearedTs` — la caché vieja de un TERCER
+ *  dispositivo deja de resucitar LD_/anillos/ghosts que la desasociación legítima borró en
+ *  origen+BD. Sin marca (nunca se desasoció): la restauración corre — blind-spot layout-2
+ *  (BD sin artefactos por guardado fallido) sigue cubierto. */
+export function estamparAsocsClearedTs(planIds: string[]): void {
+  const ts = Date.now();
+  for (const pid of planIds) {
+    try {
+      if (!hasCachedPlan(pid)) continue;
+      const doc = loadData(pid) as LocalGhostDrawingData & { asocsClearedTs?: number };
+      doc.asocsClearedTs = ts;
+      saveData(pid, doc as LocalGhostDrawingData);
+    } catch (e) {
+      devError('[assoc] marca desasociación:', pid, e);
+    }
+  }
+}
+
 export function clearBajanteAssociation(
   eng: IPlanoEngineCore,
   sourcePlanId: string,
@@ -798,6 +822,10 @@ export function clearBajanteAssociation(
   } catch {
     /* reversión best-effort */
   }
+
+  // Marca de desasociación en AMBOS pisos (ver estamparAsocsClearedTs): corta la
+  // resurrección desde cachés stale de otros dispositivos.
+  estamparAsocsClearedTs(Array.from(new Set([sourcePlanId, targetPlanId])));
 }
 
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),

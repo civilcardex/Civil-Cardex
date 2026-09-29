@@ -129,9 +129,114 @@ describe('persistencia de Ldesvio + fantasma tras copiar', () => {
 // NO debe resucitar asociaciones desasociadas legítimamente en otro dispositivo (caché
 // vieja + BD sin ellas + ts divergente >1 h), y SÍ debe restaurar con vaciado indicio
 // (BD sin NINGÚN artefacto) o divergencia reciente.
-describe('restaurarAsociacionesDesdeLocal — gate anti-stale', () => {
+describe('restaurarAsociacionesDesdeLocal — unión incondicional (Chain 1/2)', () => {
   const localConAsoc = {
     scaleM: 0.5,
+    bajantes: [
+      {
+        id: 'BAN8',
+        net: 'san',
+        tipo: 'bajante',
+        desplazamientos: { P1: { dx: -200, dy: -120, Ldesvio: 'LD_BAN9' } },
+        ghostData: { P1: { direccion: 'sube' } },
+      },
+    ],
+    ramales: [
+      {
+        id: 'LD_BAN9',
+        net: 'san',
+        tipo: 'ramal',
+        pts: [
+          [0, 0],
+          [1, 1],
+        ],
+      },
+    ],
+    crossFloorGhosts: [],
+    ts: 1_000_000,
+  };
+
+  it('Chain 1: BD gana (ts mayor) con OTRO LD_ ajeno y sin anillo/LD_ propios → unión restaura', () => {
+    const db = {
+      scaleM: 0.5,
+      bajantes: [{ id: 'BAN8', net: 'san', tipo: 'bajante' }],
+      ramales: [
+        {
+          id: 'LD_OTRO',
+          net: 'san',
+          tipo: 'ramal',
+          pts: [
+            [5, 5],
+            [6, 6],
+          ],
+        },
+      ],
+      crossFloorGhosts: [],
+      ts: localConAsoc.ts + 7200_000,
+    };
+    const restauradas = restaurarAsociacionesDesdeLocal(localConAsoc, db);
+    expect(restauradas).toBe(true);
+    expect((db.ramales as Array<{ id?: string }>).some((r) => r.id === 'LD_BAN9')).toBe(true);
+    const baj = (
+      db.bajantes as Array<{ id?: string; desplazamientos?: Record<string, unknown> }>
+    ).find((x) => x.id === 'BAN8');
+    expect(baj?.desplazamientos?.P1).toBeTruthy();
+  });
+
+  it('Chain 2: BD sin el bajante (renumerado) → se copia COMPLETO desde local (anillo incluido)', () => {
+    const db = {
+      scaleM: 0.5,
+      bajantes: [{ id: 'BAN_OTRO', net: 'san', tipo: 'bajante' }],
+      ramales: [
+        {
+          id: 'LD_BAN9',
+          net: 'san',
+          tipo: 'ramal',
+          pts: [
+            [0, 0],
+            [1, 1],
+          ],
+        },
+      ],
+      crossFloorGhosts: [],
+      ts: localConAsoc.ts + 600_000,
+    };
+    const restauradas = restaurarAsociacionesDesdeLocal(localConAsoc, db);
+    expect(restauradas).toBe(true);
+    const baj = (
+      db.bajantes as Array<{ id?: string; desplazamientos?: Record<string, unknown> }>
+    ).find((x: { id?: string }) => x.id === 'BAN8');
+    expect(baj).toBeTruthy();
+    expect(baj?.desplazamientos?.P1).toBeTruthy();
+  });
+
+  it('desasociación legítima (local sin piezas) → unión no resucita nada', () => {
+    const db = {
+      scaleM: 0.5,
+      bajantes: [{ id: 'BAN8', net: 'san', tipo: 'bajante' }],
+      ramales: [],
+      crossFloorGhosts: [],
+      ts: localConAsoc.ts + 600_000,
+    };
+    const localSinAsoc = {
+      scaleM: 0.5,
+      bajantes: [{ id: 'BAN8', net: 'san', tipo: 'bajante' }],
+      ramales: [],
+      crossFloorGhosts: [],
+      ts: 1_000_000,
+    };
+    expect(restaurarAsociacionesDesdeLocal(localSinAsoc, db)).toBe(false);
+    expect(db.ramales).toHaveLength(0);
+  });
+});
+
+// CENTINELA multi-dispositivo (ronda 8 F-2, reemplaza el gate ciego de la ronda 5): caché
+// STALE de un tercer dispositivo NO resucita lo que una desasociación legítima borró en
+// origen+BD — la marca asocsClearedTs del doc BD lo corta. Caché POSTERIOR a la marca sí
+// restaura (blind-spot layout-2 cubierto).
+describe('restaurarAsociacionesDesdeLocal — gate por asocsClearedTs', () => {
+  const localStale = {
+    ts: 1_000,
     bajantes: [{ id: 'BAN1', net: 'll', tipo: 'bajante' }],
     ramales: [
       {
@@ -145,50 +250,34 @@ describe('restaurarAsociacionesDesdeLocal — gate anti-stale', () => {
       },
     ],
     crossFloorGhosts: [{ id: 'XFG_BAN1_1', layout: 2 }],
-    ts: 1_000_000,
+  };
+  const dbDesasociado = {
+    scaleM: 0.5,
+    bajantes: [{ id: 'BAN1', net: 'll', tipo: 'bajante' }],
+    ramales: [],
+    crossFloorGhosts: [],
+    asocsClearedTs: 2_000, // desasociado DESPUÉS de que la caché se copiara
   };
 
-  it('BD desasoció hace horas + caché vieja → NO resucita', () => {
-    const dbSinAsocs = {
-      scaleM: 0.5,
-      bajantes: [{ id: 'BAN1', net: 'll', tipo: 'bajante' }],
-      ramales: [],
-      crossFloorGhosts: [],
-      ts: localConAsoc.ts + 7200_000,
-    };
-    // dbSinAsocs cumple "sin artefactos"… PERO la divergencia de ts supera 1 h: el gate del
-    // loader (reciente=false) exige que dbSinAsocs decida — y el indicio de vaciado aquí NO
-    // existe de verdad porque la desasociación fue legítima (mismo contenido de bajantes).
-    // El gate live usa dbTs-localTs: con 2 h, la restauración no corre.
-    const dbTs = dbSinAsocs.ts;
-    const localTs = localConAsoc.ts;
-    const reciente = dbTs - localTs < 3600_000;
-    const dbSinArtefactos =
-      !(dbSinAsocs.crossFloorGhosts || []).length &&
-      !((dbSinAsocs.ramales || []) as Array<{ id?: string }>).some((r) =>
-        String(r.id || '').startsWith('LD_'),
-      );
-    const correria =
-      (dbSinArtefactos || reciente) && restaurarAsociacionesDesdeLocal(localConAsoc, dbSinAsocs);
-    expect(reciente).toBe(false);
-    // Con la regla actual dbSinArtefactos=true restauraría — documento la decisión: el gate
-    // del loader combina ambas; este pin фиксa que la VENTANA de 1 h gobierna el caso ambiguo.
-    expect(correria).toBe(true);
+  it('caché stale (< marca) → NO resucita', async () => {
+    const { restaurarAsociacionesDesdeLocal } = await import('../crossFloorStorage');
+    expect(restaurarAsociacionesDesdeLocal(localStale, dbDesasociado)).toBe(false);
+    expect(dbDesasociado.crossFloorGhosts).toHaveLength(0);
+    expect(dbDesasociado.ramales).toHaveLength(0);
   });
 
-  it('divergencia reciente (<1 h) → restaura las piezas perdidas', () => {
-    const dbSinAsocs = {
-      scaleM: 0.5,
-      bajantes: [{ id: 'BAN1', net: 'll', tipo: 'bajante' }],
-      ramales: [],
-      crossFloorGhosts: [],
-      ts: localConAsoc.ts + 600_000,
-    };
-    const restauradas = restaurarAsociacionesDesdeLocal(localConAsoc, dbSinAsocs);
-    expect(restauradas).toBe(true);
-    expect(dbSinAsocs.crossFloorGhosts).toHaveLength(1);
-    expect(
-      ((dbSinAsocs.ramales || []) as Array<{ id?: string }>).some((r) => r.id === 'LD_BAN1'),
-    ).toBe(true);
+  it('caché posterior a la marca → restaura (blind-spot layout-2 cubierto)', async () => {
+    const { restaurarAsociacionesDesdeLocal } = await import('../crossFloorStorage');
+    const db = { ...dbDesasociado };
+    expect(restaurarAsociacionesDesdeLocal({ ...localStale, ts: 3_000 }, db)).toBe(true);
+    expect(db.crossFloorGhosts).toHaveLength(1);
+    expect((db.ramales as Array<{ id?: string }>).some((r) => r.id === 'LD_BAN1')).toBe(true);
+  });
+
+  it('sin marca (nunca se desasoció) → restaura (comportamiento anti-loss intacto)', async () => {
+    const { restaurarAsociacionesDesdeLocal } = await import('../crossFloorStorage');
+    const db = { scaleM: 0.5, bajantes: [], ramales: [], crossFloorGhosts: [] };
+    expect(restaurarAsociacionesDesdeLocal(localStale, db)).toBe(true);
+    expect(db.crossFloorGhosts).toHaveLength(1);
   });
 });

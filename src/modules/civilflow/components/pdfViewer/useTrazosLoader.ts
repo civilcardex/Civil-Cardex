@@ -85,22 +85,15 @@ export function useTrazosLoader({
             saveTrazosToDB(String(resolvedId), localData);
           } else if (dbTs > localTs || !localData) {
             const merged = typeof dbData === 'string' ? (JSON.parse(dbData) as PlanTrazos) : dbData;
-            // Asociación entre pisos (orig. usuario): fantasma XFG / Ldesvio / anillo que la
-            // caché local sí tiene y el doc BD perdió (guardado RPC fallido, pisa-ts de otra
-            // vía) se RESTAURAN desde la local — la desasociación legítima borra en ambos, así
-            // que un doc BD sin ellas frente a una local con ellas siempre significa pérdida.
-            // GATE anti stale (multi-dispositivo): restaurar solo si el doc BD no tiene
-            // NINGÚN artefacto de asociación (indicio de vaciado/RPC fallido) O la divergencia
-            // de ts es reciente (<1 h). Una caché VIEJA con fantasmas frente a una BD que los
-            // desasoció legítimamente hace horas no debe resucitarlos.
-            const dbSinAsocs =
-              !(merged as { crossFloorGhosts?: unknown[] }).crossFloorGhosts?.length &&
-              !((merged as { ramales?: Array<{ id?: string }> }).ramales || []).some((r) =>
-                String(r.id || '').startsWith('LD_'),
-              );
-            const reciente = !localData || dbTs - localTs < 3600_000;
-            const restauradas =
-              (dbSinAsocs || reciente) && restaurarAsociacionesDesdeLocal(localData, merged);
+            // Asociación entre pisos (orig. usuario): unión SIEMPRE cuando BD gana — fantasma
+            // XFG / Ldesvio / anillo presentes en la caché local y ausentes en el doc BD se
+            // restauran. Sin gates: el gate dbSinAsocs/reciente era CIEGO para layout-2 (en el
+            // piso inferior dbSinAsocs era false si la BD tenía CUALQUIER otro LD_ ajeno, y con
+            // gap ≥1 h la restauración se saltaba → loadWork pisaba engine+caché buenas con el
+            // doc BD sin anillo/LD_ — causa raíz del borrado persistente). Seguro porque la
+            // desasociación legítima borra en AMBOS lados: la caché local sin piezas no aporta
+            // nada a la unión.
+            const restauradas = restaurarAsociacionesDesdeLocal(localData, merged);
             if (restauradas) {
               saveTrazosToDB(String(resolvedId), merged);
               eng.loadWork(JSON.stringify(merged));
