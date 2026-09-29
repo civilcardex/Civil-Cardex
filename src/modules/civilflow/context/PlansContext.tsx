@@ -1,3 +1,4 @@
+import { sleep } from '../components/shared/cargaSecuencial';
 import {
   useState,
   useEffect,
@@ -237,7 +238,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
             pending = pending.filter((x) => !lateIds.has(String(x.id)));
           }
           if (pending.length > 0 && attempt < MAX_ATTEMPTS - 1) {
-            await new Promise((r) => setTimeout(r, 500));
+            await sleep(500);
           }
         }
       })();
@@ -270,10 +271,6 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     const cantLocalPre = plans.length;
     (async () => {
       const data = await loadProyectoData(proyectoId);
-      // Trazas de diagnóstico (solo DEV): restauración de planos que no aparecen.
-      devError(
-        `[CF-RESTORE] planos: proyecto=${proyectoId} meta=${data?.plans_meta?.length ?? 'null'}`,
-      );
       // Planos agregados localmente durante la red: el set absoluto de abajo los reemplazaría.
       if (!ignore && plansCountRef.current > cantLocalPre) {
         setCloudRestoreDone(true);
@@ -300,7 +297,6 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
         const resolved = await Promise.all(
           meta.map(async (m) => {
             const file = await downloadPlanPDF(proyectoId, m.id, m.name);
-            if (!file) devError(`[CF-RESTORE] PDF no hallado en bucket: ${m.id} ${m.name}`);
             if (file)
               storePDF(m.id, file).catch((e) => {
                 devError('storePDF error during cloud restore:', e);

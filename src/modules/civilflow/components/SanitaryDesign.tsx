@@ -23,7 +23,7 @@ import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 
 const SanitaryDesign_S1: React.CSSProperties = {
   fontFamily: 'var(--mono)',
-  fontSize: 9,
+  fontSize: 10,
   padding: '1px 2px',
   border: '1px solid var(--line)',
   borderRadius: 2,
@@ -47,10 +47,10 @@ const EMPTY_ROW = {
   padding: '24px 0',
   textAlign: 'center',
   color: 'var(--txt3)',
-  fontSize: 9,
+  fontSize: 10,
 } as const;
-const TH_HDR = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const;
-const TH_SUB = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const;
+const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '1px 2px' } as const;
+const TH_SUB = { fontSize: 10, textAlign: 'center', padding: '1px 2px' } as const;
 
 export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
@@ -286,7 +286,7 @@ export default function DisenosSanitarios() {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
-            <table className="tbl" style={{ fontSize: 9 }}>
+            <table className="tbl" style={{ fontSize: 10 }}>
               <caption style={SR_ONLY}>Diseño de red sanitaria</caption>
               <thead>
                 <tr>
@@ -300,7 +300,7 @@ export default function DisenosSanitarios() {
                     scope="col"
                     className="col-h san"
                     colSpan={3}
-                    style={{ textAlign: 'center', fontSize: 9, padding: '1px 2px' }}
+                    style={{ textAlign: 'center', fontSize: 10, padding: '1px 2px' }}
                   >
                     Unidades de descarga
                   </th>
@@ -328,7 +328,7 @@ export default function DisenosSanitarios() {
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
-                    style={{ textAlign: 'center', fontSize: 9, padding: '1px 2px' }}
+                    style={{ textAlign: 'center', fontSize: 10, padding: '1px 2px' }}
                   >
                     Diámetro
                   </th>
@@ -381,7 +381,7 @@ export default function DisenosSanitarios() {
                     scope="col"
                     className="col-h ven"
                     colSpan={2}
-                    style={{ textAlign: 'center', fontSize: 9, padding: '1px 2px' }}
+                    style={{ textAlign: 'center', fontSize: 10, padding: '1px 2px' }}
                   >
                     Fuerza Tractiva
                   </th>
@@ -464,14 +464,14 @@ export default function DisenosSanitarios() {
                       return (
                         <tr key={tKey}>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            <span className="sigla" style={{ fontSize: 9 }}>
+                            <span className="sigla" style={{ fontSize: 10 }}>
                               {row.id}
                             </span>
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
                             <span
                               style={{
-                                fontSize: 9,
+                                fontSize: 10,
                                 fontFamily: 'var(--mono)',
                                 color: 'var(--txt2)',
                               }}
@@ -490,7 +490,7 @@ export default function DisenosSanitarios() {
                             style={{ padding: '1px 2px', minWidth: 60, maxWidth: 120 }}
                           >
                             {connectedKeys.length === 0 ? (
-                              <span style={{ fontSize: 9, color: 'var(--txt3)' }}>—</span>
+                              <span style={{ fontSize: 10, color: 'var(--txt3)' }}>—</span>
                             ) : (
                               <div
                                 style={{
@@ -509,7 +509,7 @@ export default function DisenosSanitarios() {
                                       key={childKey}
                                       title={`${rId} (${childTotalUd} UD)`}
                                       style={{
-                                        fontSize: 9,
+                                        fontSize: 10,
                                         padding: '1px 2px',
                                         border: '1px solid var(--san)',
                                         borderRadius: 3,
@@ -530,7 +530,7 @@ export default function DisenosSanitarios() {
                             style={{
                               fontFamily: 'var(--mono)',
                               fontWeight: 700,
-                              fontSize: 9,
+                              fontSize: 10,
                               padding: '1px 2px',
                             }}
                           >
@@ -672,7 +672,7 @@ export default function DisenosSanitarios() {
                           </td>
                           <td
                             className="c"
-                            style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 2px' }}
+                            style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 2px' }}
                           >
                             {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '--'}
                           </td>
@@ -749,7 +749,7 @@ export default function DisenosSanitarios() {
                           >
                             {DdisPulg > 0 && Froude > 0 ? Froude.toFixed(2) : '--'}
                           </td>
-                          <td className="c" style={{ fontSize: 9, padding: '1px 2px' }}>
+                          <td className="c" style={{ fontSize: 10, padding: '1px 2px' }}>
                             {DdisPulg > 0 ? tipoFlujo : '--'}
                           </td>
                           <td

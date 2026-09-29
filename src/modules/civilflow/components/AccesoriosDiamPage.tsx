@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
 import { computeAccesoriosTable } from '../utils/sanAccesoriosRows';
-import { fmtPulg } from '../utils/formatUtils';
+import { fmtPulg, fracAscii } from '../utils/formatUtils';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { SAN_ACCESORIOS, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
 
@@ -79,7 +79,7 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
     const headers = table.headers;
     const out: Array<{ diam: string; acc: (typeof catalog)[number]; count: number }> = [];
     for (const row of table.rows) {
-      const diam = String(row[0]);
+      const diam = fracAscii(String(row[0]));
       // headers[0] = 'Diámetro', el último = 'Total'; el resto son accesorios.
       for (let i = 1; i < headers.length - 1; i++) {
         const v = Number(row[i] || 0);

@@ -34,6 +34,7 @@ import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsive';
 import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome';
 import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistTrazos';
+import { sleep } from './shared/cargaSecuencial';
 import PdfCanvas from './pdfViewer/PdfCanvas';
 import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
@@ -1080,10 +1081,7 @@ function PdfViewer_({
           cerrandoRef.current = true;
           void (async () => {
             try {
-              await Promise.race([
-                prefetchAllTrazos(planos),
-                new Promise((r) => setTimeout(r, 4000)),
-              ]);
+              await Promise.race([prefetchAllTrazos(planos), sleep(4000)]);
             } catch {
               /* validar con la caché que haya */
             }

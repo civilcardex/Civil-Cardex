@@ -42,12 +42,33 @@ export function sanitizeFileName(name: string): string {
  * @param v - Valor en pulgadas decimales.
  * @returns String en pulgadas fraccionarias o "—" si ≤0.
  */
+// Fracciones unicode → ASCII '3/4' + guion comercial en enteros mixtos ('1 ½' → '1-1/2').
+const FRAC_ASCII: Record<string, string> = {
+  '½': '1/2',
+  '⅓': '1/3',
+  '⅔': '2/3',
+  '¼': '1/4',
+  '¾': '3/4',
+  '⅛': '1/8',
+  '⅜': '3/8',
+  '⅝': '5/8',
+  '⅞': '7/8',
+};
+/** Convierte fracciones unicode (½…⅞) a notación ASCII comercial: '½'→'1/2',
+ *  '1 ½'→'1-1/2'. Idempotente sobre strings ya ASCII (no-op). Compañero de fmtPulg,
+ *  que produce la notación con guion. */
+export function fracAscii(s: string): string {
+  return s.replace(/(\d)?\s*[\u00a0]?([½⅓⅔¼¾⅛⅜⅝⅞])/g, (_m, ent: string | undefined, f: string) =>
+    ent ? `${ent}-${FRAC_ASCII[f] ?? f}` : (FRAC_ASCII[f] ?? f),
+  );
+}
+
 export function fmtPulg(v: number): string {
   if (!v || v <= 0) return '—';
   const ent = Math.floor(v);
   const dec = Math.round((v - ent) * 1000) / 1000;
   const frac = FRAC[dec];
-  if (frac) return ent > 0 ? `${ent} ${frac}"` : `${frac}"`;
+  if (frac) return ent > 0 ? `${ent}-${fracAscii(frac)}"` : `${fracAscii(frac)}"`;
   if (dec === 0) return `${ent}"`;
   return `${v.toFixed(2)}"`;
 }

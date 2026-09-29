@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { MONO_3D } from './shared/config3d';
 
 const GAlertDialog_S1: React.CSSProperties = {
   background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
@@ -33,7 +34,7 @@ const GAlertDialog_S3: React.CSSProperties = {
   cursor: 'pointer',
   fontWeight: 700,
   fontSize: 12,
-  fontFamily: "'Geist', monospace",
+  fontFamily: MONO_3D,
   textTransform: 'uppercase',
   letterSpacing: 0.5,
   boxShadow: '0 4px 12px rgba(245, 166, 35, 0.25)',

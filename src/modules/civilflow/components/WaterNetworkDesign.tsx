@@ -13,6 +13,7 @@ import {
 } from '../utils/writeDiameterToDrawing';
 import { saveToStorage } from '../services/storageService';
 import { isAf, isAC1 } from '../utils/waterNetworkRows';
+import { fracAscii } from '../utils/formatUtils';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';
 import { useAcometidaParams, calcFila } from './waterNetworkDesign/acometidaCalc';
@@ -68,7 +69,7 @@ function WaterNetworkDesign({
       diamTable.map((d) => ({
         pulg: d.pulg,
         nominal: d.nominal,
-        label: d.nominal,
+        label: fracAscii(d.nominal),
         dInt: d.dInt,
       })),
     [diamTable],
@@ -511,7 +512,7 @@ function WaterNetworkDesign({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-top" style={{ padding: '6px' }}>
             <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-              <table className="tbl" style={{ fontSize: 9, tableLayout: 'auto', width: '100%' }}>
+              <table className="tbl" style={{ fontSize: 10, tableLayout: 'auto', width: '100%' }}>
                 <caption style={WaterNetworkDesign_S1}>{`Diseño de red ${title}`}</caption>
 
                 <DesignTableHeader cssClass={cssClass} />
@@ -524,7 +525,7 @@ function WaterNetworkDesign({
                           padding: '24px 0',
                           textAlign: 'center',
                           color: 'var(--txt3)',
-                          fontSize: 9,
+                          fontSize: 10,
                         }}
                       >
                         No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.

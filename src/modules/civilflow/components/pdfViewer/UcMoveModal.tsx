@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { MONO_3D } from '../shared/config3d';
 import { createPortal } from 'react-dom';
 const UcMoveModal_S1: React.CSSProperties = {
   background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
@@ -41,7 +42,7 @@ const UcMoveModal_S3: React.CSSProperties = {
   cursor: 'pointer',
   fontWeight: 600,
   fontSize: 12,
-  fontFamily: "'Geist', monospace",
+  fontFamily: MONO_3D,
   textTransform: 'uppercase',
 };
 const UcMoveModal_S4: React.CSSProperties = {
@@ -51,7 +52,7 @@ const UcMoveModal_S4: React.CSSProperties = {
   padding: '10px 12px',
   borderRadius: 4,
   cursor: 'pointer',
-  fontFamily: "'Geist', monospace",
+  fontFamily: MONO_3D,
   fontSize: 12,
   textAlign: 'left',
   transition: 'all 0.15s ease',
@@ -62,7 +63,7 @@ const UcMoveModal_S5: React.CSSProperties = {
   borderRadius: 6,
   fontWeight: 700,
   fontSize: 12,
-  fontFamily: "'Geist', monospace",
+  fontFamily: MONO_3D,
   textTransform: 'uppercase',
   transition: 'all 0.15s ease',
 };

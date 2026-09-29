@@ -92,24 +92,12 @@ export function useWorkAreaState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useDebouncedEffect(
-    () => {
-      saveToStorage(ACTIVE_NETS_KEY, [...redes]);
-      window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [...redes] }));
-      if (!redesRestoreDone) return;
-      const proyectoId = getActiveProyectoId();
-      if (!proyectoId) return;
-      saveRedesActivas(proyectoId, [...redes]);
-    },
-    1200,
-    [redes, redesRestoreDone],
-  );
-
   // El guardado con debounce de 1200ms se cancelaba al desmontar (navegar al visor/lógica antes
-  // de que corriera) — el AC asignado "no persistía" si el usuario salía del área de trabajo
-  // rápido: localStorage sí lo tenía, pero la nube (otro navegador/dispositivo) nunca lo veía.
-  // Aquí se vacía el estado final al desmontar, sin tocar ninguna red pendiente que un cambio
-  // posterior del efecto de arriba siga debounceando.
+  // de que corriera): localStorage y NETS_CHANGED_EVENT nunca se escribían y el visor — que lee
+  // active_nets UNA vez al montar — mostraba el set viejo ("me toca volver a activarlas").
+  // El unmount-flush ANTES solo subía BD. Ahora el flush hace TODO (localStorage + evento + BD)
+  // y corre tanto en el debounce como en el desmonte: salir dentro de la ventana de 1.2 s ya
+  // no pierde los checks.
   const redesSaveRef = useRef(redes);
   useEffect(() => {
     redesSaveRef.current = redes;
@@ -118,14 +106,27 @@ export function useWorkAreaState() {
   useEffect(() => {
     redesRestoreDoneSaveRef.current = redesRestoreDone;
   }, [redesRestoreDone]);
-  useEffect(() => {
-    return () => {
-      const proyectoId = getActiveProyectoId();
-      if (!proyectoId || !redesRestoreDoneSaveRef.current) return;
-      void saveRedesActivas(proyectoId, [...redesSaveRef.current]);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const flushRedes = useCallback(() => {
+    saveToStorage(ACTIVE_NETS_KEY, [...redesSaveRef.current]);
+    window.dispatchEvent(
+      new CustomEvent(NETS_CHANGED_EVENT, { detail: [...redesSaveRef.current] }),
+    );
+    if (!redesRestoreDoneSaveRef.current) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
+    saveRedesActivas(proyectoId, [...redesSaveRef.current]);
   }, []);
+  useDebouncedEffect(
+    () => {
+      flushRedes();
+    },
+    1200,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [redes, redesRestoreDone],
+  );
+  useEffect(() => {
+    return () => flushRedes();
+  }, [flushRedes]);
 
   const [redActiva, setRedActiva] = useState<string>('san');
   const [sanPage, setSanPage] = useState<number>(1);

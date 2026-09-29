@@ -302,7 +302,7 @@ function CopyFromPlanPanel_({
         setBusy(false);
       }
     },
-    [engineRef, srcPlanId, netSelections, currentId, currentIdRef, planosCtx.plans],
+    [engineRef, srcPlanId, netSelections, currentId, currentIdRef],
   );
 
   // Con fantasmas en el origen: preguntar qué copiar; sin ellos: copia directa.
@@ -327,7 +327,7 @@ function CopyFromPlanPanel_({
       return;
     }
     void doCopy('ambos');
-  }, [netSelections, doCopy]);
+  }, [netSelections, doCopy, origenConFantasmas, srcPlanData?.bajantes, srcPlanId]);
 
   const hasSelection = Object.keys(netSelections).length > 0;
 

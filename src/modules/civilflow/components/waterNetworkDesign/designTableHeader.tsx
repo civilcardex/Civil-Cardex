@@ -10,7 +10,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Tramo
         </th>
@@ -18,7 +18,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Inicio
         </th>
@@ -26,7 +26,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Final
         </th>
@@ -34,7 +34,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Piso
         </th>
@@ -42,7 +42,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           colSpan={3}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Unidades Consumo
         </th>
@@ -50,7 +50,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           No. de descargas
         </th>
@@ -58,7 +58,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           K
         </th>
@@ -66,7 +66,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Caudal
           <br />
@@ -76,7 +76,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Diámetro
           <br /> estimado
@@ -85,7 +85,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h ok"
           colSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Diámetro
         </th>
@@ -93,7 +93,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Coeficiente
           <br />C
@@ -102,7 +102,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Vel. <br />
           (mm/s)
@@ -111,7 +111,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           colSpan={4}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Longitud (m)
         </th>
@@ -122,7 +122,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           style={{
             textAlign: 'center',
             padding: '2px 1px',
-            fontSize: 9,
+            fontSize: 10,
             whiteSpace: 'nowrap',
             minWidth: 56,
           }}
@@ -137,7 +137,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           colSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10 }}
         >
           Presión
         </th>
@@ -146,91 +146,91 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
         <th
           scope="col"
           className={`col-h ${cssClass}`}
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Propia
         </th>
         <th
           scope="col"
           className={`col-h ${cssClass}`}
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Otros Ramales
         </th>
         <th
           scope="col"
           className={`col-h ${cssClass}`}
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Total
         </th>
         <th
           scope="col"
           className="col-h ok"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Diseño
         </th>
         <th
           scope="col"
           className="col-h ok"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Interno
         </th>
         <th
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Horizontal
         </th>
         <th
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Vertical
         </th>
         <th
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Eq. Accesorios
         </th>
         <th
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Total
         </th>
         <th
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           %
         </th>
         <th
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           m
         </th>
         <th
           scope="col"
           className={`col-h ${cssClass}`}
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Inicial
         </th>
         <th
           scope="col"
           className={`col-h ${cssClass}`}
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 9 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10 }}
         >
           Final
         </th>

@@ -15,11 +15,11 @@ describe('fmtPulg', () => {
   });
 
   it('retorna fraccion sola (sin entero)', () => {
-    expect(fmtPulg(0.5)).toBe('½"');
+    expect(fmtPulg(0.5)).toBe('1/2"');
   });
 
   it('retorna entero + fraccion', () => {
-    expect(fmtPulg(1.5)).toBe('1 ½"');
+    expect(fmtPulg(1.5)).toBe('1-1/2"');
   });
 
   it('retorna decimal con 2 cifras si no hay fraccion Unicode', () => {
@@ -27,11 +27,11 @@ describe('fmtPulg', () => {
   });
 
   it('soporta 0.75 → ¾"', () => {
-    expect(fmtPulg(0.75)).toBe('¾"');
+    expect(fmtPulg(0.75)).toBe('3/4"');
   });
 
   it('soporta 0.25 → ¼"', () => {
-    expect(fmtPulg(0.25)).toBe('¼"');
+    expect(fmtPulg(0.25)).toBe('1/4"');
   });
 });
 

@@ -13,7 +13,7 @@ const WaterNetworkDesign_S2: React.CSSProperties = {
   borderRadius: 3,
   background: '#1e2024',
   color: '#e2e2e8',
-  fontSize: 9,
+  fontSize: 10,
   fontFamily: "'Geist',monospace",
   cursor: 'pointer',
   maxWidth: 120,
@@ -85,17 +85,17 @@ export function DesignTableRow({
   return (
     <tr>
       <td className="c" style={{ padding: '0 1px' }}>
-        <span className="sigla" style={{ fontSize: 9, padding: '1px 4px' }}>
+        <span className="sigla" style={{ fontSize: 10, padding: '1px 4px' }}>
           {t.id}
         </span>
       </td>
-      <td className="c td-mono" style={{ padding: '0 1px', fontSize: 9 }}>
+      <td className="c td-mono" style={{ padding: '0 1px', fontSize: 10 }}>
         {t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '—'}
       </td>
-      <td className="c td-mono" style={{ padding: '0 1px', fontSize: 9 }}>
+      <td className="c td-mono" style={{ padding: '0 1px', fontSize: 10 }}>
         {t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}
       </td>
-      <td className="c" style={{ padding: '0 1px', color: 'var(--txt2)', fontSize: 9 }}>
+      <td className="c" style={{ padding: '0 1px', color: 'var(--txt2)', fontSize: 10 }}>
         {pisoCorto(t.piso)}
       </td>
       <td className="c td-mono">{fmt(propia, 2)}</td>
@@ -135,7 +135,7 @@ export function DesignTableRow({
         style={{
           fontWeight: 600,
           padding: '0 1px',
-          fontSize: 9,
+          fontSize: 10,
           background:
             calc.Vmms > 0 && vCumple
               ? 'rgba(34,197,94,.25)'
