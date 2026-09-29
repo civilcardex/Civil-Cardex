@@ -78,3 +78,25 @@ export function formatCOP(centavos: number): string {
     return `$${Math.round(centavos / 100).toLocaleString('es-CO')}`;
   }
 }
+
+import { supabase } from '../supabase';
+
+/** FUENTE ÚNICA de precios (deuda #4): pisa los literales de CATALOGO con app_precios (BD).
+ *  El servidor cobra con la MISMA tabla — sin deploy, cambiar precio = UPDATE en SQL Editor.
+ *  Fallback silencioso si la migración no está aplicada (RPC 404): literales siguen viviendo.
+ *  Llamar una vez al montar el sistema de suscripciones (useSuscripciones). */
+export async function sincronizarPreciosBd(): Promise<void> {
+  try {
+    const { data, error } = await supabase.rpc('obtener_catalogo');
+    if (error || !data) return;
+    for (const m of CATALOGO) {
+      const bd = data[m.id] as
+        | { precioMensualCentavos?: number; precioAnualCentavos?: number }
+        | undefined;
+      if (bd?.precioMensualCentavos) m.precioMensualCentavos = bd.precioMensualCentavos;
+      if (bd?.precioAnualCentavos) m.precioAnualCentavos = bd.precioAnualCentavos;
+    }
+  } catch {
+    /* sin BD accesible: literales */
+  }
+}

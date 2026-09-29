@@ -11,7 +11,7 @@ import {
   modulosActivos,
   type SuscripcionRow,
 } from '../lib/suscripciones/suscripcionesService';
-import type { ModuloId } from '../lib/suscripciones/catalogo';
+import { sincronizarPreciosBd, type ModuloId } from '../lib/suscripciones/catalogo';
 
 export function useSuscripciones() {
   const { user } = useAuth();
@@ -25,6 +25,9 @@ export function useSuscripciones() {
   }, [user]);
 
   useEffect(() => {
+    // Precios desde BD (fuente única, deuda #4): pisa CATALOGO con app_precios antes de
+    // que ningún modal muestre/mande un total. Fallback silencioso sin migración.
+    void sincronizarPreciosBd();
     // Patrón del codebase (cf. ProfilePage): función async local + bandera
     // ignore — evita setState síncrono desde el effect (react-hooks).
     let ignore = false;

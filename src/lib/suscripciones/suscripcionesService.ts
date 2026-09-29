@@ -26,7 +26,7 @@ export function dispararRefetchSuscripciones(): void {
 export async function fetchSuscripciones(): Promise<SuscripcionRow[]> {
   try {
     const { data, error } = await supabase
-      .from('cf_suscripciones')
+      .from('app_suscripciones')
       .select('id, modulo, periodo, estado, fecha_fin');
     if (error) {
       devError('fetchSuscripciones:', error.message);

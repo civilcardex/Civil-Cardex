@@ -22,18 +22,18 @@
 create or replace function public.activar_suscripciones(p_referencia text, p_txn_id text)
 returns void language plpgsql security definer set search_path = public as $$
 declare
-  v_pago public.cf_pagos%rowtype;
+  v_pago public.app_pagos%rowtype;
   v_mod text;
   v_delta interval;
 begin
   -- FOR UPDATE: la segunda tx concurrente ESPERA aquí, y al re-evaluar lee 'aprobado' →
   -- return. Sin el lock, N verify paralelas pasaban todas el check de estado y cada una
   -- sumaba su delta a fecha_fin (1 pago = N períodos).
-  select * into v_pago from public.cf_pagos where referencia = p_referencia for update;
+  select * into v_pago from public.app_pagos where referencia = p_referencia for update;
   if not found then raise exception 'pago_no_encontrado'; end if;
   if v_pago.estado = 'aprobado' then return; end if;
 
-  update public.cf_pagos
+  update public.app_pagos
   set estado = 'aprobado', wompi_txn_id = p_txn_id, aprobado_at = now()
   where id = v_pago.id and estado = 'pendiente';
   -- Cierre definitivo del race aunque alguien quite el FOR UPDATE: si el UPDATE no matcheó
@@ -42,14 +42,14 @@ begin
 
   v_delta := case v_pago.periodo when 'anual' then interval '12 months' else interval '1 month' end;
   foreach v_mod in array v_pago.modulos loop
-    insert into public.cf_suscripciones (user_id, modulo, periodo, fecha_fin)
+    insert into public.app_suscripciones (user_id, modulo, periodo, fecha_fin)
     values (v_pago.user_id, v_mod, v_pago.periodo, now() + v_delta)
     on conflict (user_id, modulo) do update
       set periodo = excluded.periodo,
           estado = 'activa',
           updated_at = now(),
           -- Renovar antes de vencer no pierde días: suma desde la vigencia actual.
-          fecha_fin = greatest(now(), public.cf_suscripciones.fecha_fin) + v_delta;
+          fecha_fin = greatest(now(), public.app_suscripciones.fecha_fin) + v_delta;
   end loop;
 end;
 $$;
@@ -227,7 +227,7 @@ create policy cm_proyectos_propietario_eliminar on public.cm_proyectos
   );
 
 -- ═══ 5) Menores de seguridad ═════════════════════════════════════════════════════════
-revoke insert, update, delete on public.cf_suscripciones, public.cf_pagos from anon;
+revoke insert, update, delete on public.app_suscripciones, public.app_pagos from anon;
 revoke execute on function public.acceso_modulo(uuid, text) from public, anon;
 revoke execute on function public.suscripciones_habilitadas() from public, anon;
 grant execute on function public.acceso_modulo(uuid, text) to authenticated;

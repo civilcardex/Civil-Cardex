@@ -8,6 +8,7 @@ import {
   suscripcionesHabilitadas,
   usuarioDelRequest,
   wompiGet,
+  permitirPeticion,
 } from '../_shared/wompi.ts';
 
 Deno.serve(async (req) => {
@@ -17,6 +18,11 @@ Deno.serve(async (req) => {
   const admin = supabaseAdmin();
   const uid = await usuarioDelRequest(admin, req);
   if (!uid) return json(401, { error: 'no_autenticado' });
+  // Rate-limit (deuda #3): 10 verificaciones/min por usuario (cada una dispara fetch a la
+  // API de Wompi — cuota del merchant).
+  if (!permitirPeticion('verify', uid, 10)) {
+    return json(429, { error: 'demasiadas_peticiones' });
+  }
   if (!(await suscripcionesHabilitadas(admin))) {
     return json(403, { error: 'suscripciones_deshabilitadas' });
   }
@@ -32,7 +38,7 @@ Deno.serve(async (req) => {
 
   // El pago debe existir y pertenecer al usuario que pregunta.
   const { data: pago, error: errPago } = await admin
-    .from('cf_pagos')
+    .from('app_pagos')
     .select('id, monto_centavos, estado')
     .eq('referencia', referencia)
     .eq('user_id', uid)

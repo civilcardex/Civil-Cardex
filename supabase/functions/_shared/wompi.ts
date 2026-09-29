@@ -36,7 +36,7 @@ export async function usuarioDelRequest(
   return data.user?.id ?? null;
 }
 
-/** El flag de BD (cf_app_config) es el único interruptor server-side. */
+/** El flag de BD (app_config) es el único interruptor server-side. */
 export async function suscripcionesHabilitadas(admin: SupabaseClient): Promise<boolean> {
   const { data } = await admin.rpc('suscripciones_habilitadas');
   return data === true;
@@ -71,6 +71,28 @@ export function calcularTotalCentavos(modulos: ModuloId[], periodo: Periodo): nu
     0,
   );
   return Math.round(unicos.length >= 2 ? bruto * (1 - DESCUENTO_PAQUETE) : bruto);
+}
+
+// ---------------------------------------------------------------------------
+// RATE-LIMIT in-memory por usuario (deuda #3, auditoría ronda 8): ventana deslizante
+// de 60 s con Map por uid. LÍMITE HONESTO: cada instancia del runtime tiene su propio
+// contador (Supabase escala a varias) → el techo real es N×el valor; mata el martilleo
+// casual, no a un atacante determinado (ese lo cubre la cota en BD de las intenciones).
+// ---------------------------------------------------------------------------
+const rateWindow = new Map<string, number[]>();
+
+/** true si la petición de `uid` en `bucket` pasa la ventana (max por 60 s). */
+export function permitirPeticion(bucket: string, uid: string, max: number): boolean {
+  const key = `${bucket}:${uid}`;
+  const ahora = Date.now();
+  const marc = (rateWindow.get(key) ?? []).filter((t) => ahora - t < 60_000);
+  if (marc.length >= max) {
+    rateWindow.set(key, marc);
+    return false;
+  }
+  marc.push(ahora);
+  rateWindow.set(key, marc);
+  return true;
 }
 
 // ---------------------------------------------------------------------------

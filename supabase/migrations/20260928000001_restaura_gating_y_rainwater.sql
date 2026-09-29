@@ -146,7 +146,7 @@ create trigger fantasmas_layout_default
 -- ═══ A4 · higiene de grants ═══════════════════════════════════════════════════════════
 -- Ledger de pagos: un anónimo no tiene vía legítima de lectura (RLS owner-only ya filtra;
 -- superficie gratis). Corregido también el comentario-"patrón" de 20260925000003 en el repo.
-revoke select on public.cf_pagos, public.cf_suscripciones from anon;
+revoke select on public.app_pagos, public.app_suscripciones from anon;
 
 -- ═══ VERIFICACIÓN (correr a mano tras aplicar) ════════════════════════════════════════
 -- 1) impls inaccesibles (9 filas, ninguna con authenticated):

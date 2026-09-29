@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
   // Monto/moneda contra la INTENCIÓN: el canal de menor confianza es el que MENOS debe
   // asumir (verify ya hace esta comparación con la API como fuente).
   const { data: pago } = await admin
-    .from('cf_pagos')
+    .from('app_pagos')
     .select('monto_centavos, moneda')
     .eq('referencia', referencia)
     .maybeSingle();

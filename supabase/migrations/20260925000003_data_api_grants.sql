@@ -3,15 +3,15 @@
 -- PostgREST devuelven permission denied; las migraciones que crean tablas deben incluirlos).
 --
 -- Tablas creadas en 20260924000000_suscripciones.sql sin grants:
---   cf_suscripciones / cf_pagos: lectura vía policies propietario → select a anon+authenticated
+--   app_suscripciones / app_pagos: lectura vía policies propietario → select a anon+authenticated
 --     (la escritura va por funciones SECURITY DEFINER con revoke de DML ya en la migración).
---   cf_app_config: NO se conceden — tiene revoke intencional (flag gestionado por service_role).
+--   app_config: NO se conceden — tiene revoke intencional (flag gestionado por service_role).
 -- Re-ejecutable.
 
-grant select on public.cf_suscripciones to anon;
-grant select on public.cf_suscripciones to authenticated;
-grant select on public.cf_pagos to anon;
-grant select on public.cf_pagos to authenticated;
+grant select on public.app_suscripciones to anon;
+grant select on public.app_suscripciones to authenticated;
+grant select on public.app_pagos to anon;
+grant select on public.app_pagos to authenticated;
 
 -- PATRÓN para migraciones futuras (copiar junto al create table) — GRANTS MÍNIMOS:
 -- escrituras SOLO por RPC SECURITY DEFINER (con candado acceso_modulo), nunca directo.
