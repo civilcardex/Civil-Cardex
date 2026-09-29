@@ -76,15 +76,15 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
   const readUcInfo = (ramal: PlanoRamal): { planId: string | number | null; total: number } => {
     const all =
       loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
-    for (const p of props.planosCtx?.plans || []) {
-      if (p.status !== 'confirmed') continue;
-      const rec = all[`${ramal.net}_${ramal.id}_${p.id}`];
-      if (rec && Object.keys(rec).length > 0) {
-        const total = Object.values(rec).reduce((s, n) => s + (n || 0), 0);
-        if (total > 0) return { planId: p.id, total };
-      }
-    }
-    return { planId: null, total: 0 };
+    // SOLO el piso cargado: los ids de ramal se repiten entre pisos — contar el registro de
+    // OTRO plano hacía saltar el modal "Cambio de dirección de flujo" sin UC asignada en el
+    // trazo actual (orig. usuario: si y solo si EL trazo tiene UC).
+    const planId = String(props.engineRef.current?._loadedPlanId ?? '');
+    if (!planId) return { planId: null, total: 0 };
+    const rec = all[`${ramal.net}_${ramal.id}_${planId}`];
+    if (!rec) return { planId: null, total: 0 };
+    const total = Object.values(rec).reduce((s, n) => s + (n || 0), 0);
+    return total > 0 ? { planId, total } : { planId: null, total: 0 };
   };
 
   const doInvert = (ramal: PlanoRamal, targetId: string | null) => {
