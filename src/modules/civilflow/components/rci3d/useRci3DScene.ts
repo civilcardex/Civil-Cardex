@@ -41,6 +41,8 @@ export interface Rci3DApi {
    *  loop solo pinta cuando OrbitControls reporta movimiento, hay animación de vista o este
    *  contador > 0 — idle = GPU en cero. */
   framesPendientes: number;
+  /** Lupa prendida: el loop repinta continuo (el círculo sigue al cursor sin mover la cámara). */
+  lupaOn?: boolean;
 }
 
 export type Rci3DApiRef = React.MutableRefObject<Rci3DApi | null>;
@@ -107,6 +109,9 @@ export function useRci3DScene(
       keyLight.position.set(8, 16, 10);
       keyLight.castShadow = true;
       keyLight.shadow.mapSize.set(2048, 2048);
+      // Anti shadow-acne del HTML §569-570 (sin esto, franjas que titilean en pisos/muros).
+      keyLight.shadow.bias = -0.0005;
+      keyLight.shadow.normalBias = 0.02;
       const fillLight = new THREE.DirectionalLight(0x88aaff, 0.5 * LEG);
       const rimLight = new THREE.DirectionalLight(0xffffff, 0.4 * LEG);
       rimLight.position.set(2, -3, -12);
@@ -179,7 +184,7 @@ export function useRci3DScene(
         // Render bajo demanda: solo si hubo movimiento, hay animación de vista o quedan
         // frames pendientes (carga, selección, sombras). Idle = no se pinta nada.
         const animando = api.cancelAnim != null;
-        if (moved || animando || api.framesPendientes > 0) {
+        if (moved || animando || api.framesPendientes > 0 || api.lupaOn) {
           if (!animando) api.framesPendientes = Math.max(0, api.framesPendientes - 1);
           dibujarGizmoEjes(gizmoRef.current, camActiva());
           renderer.render(scene, camActiva());

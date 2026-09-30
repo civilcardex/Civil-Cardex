@@ -26,8 +26,12 @@ const ESPERAS_MAX = 100;
 
 /** Terminación de la carga (port del finishLoading): encadre, luces, near/far, pose ISO
  *  default, oclusores (meshes con lado máximo ≥ 0.3·MR) y repintado único de sombras. */
+// Elementos un poco más grandes (orig. usuario, sub-pestaña Red contra incendio).
+const ESCALA_RCI_RED = 1.25;
+
 function finalizarCarga(api: Rci3DApi): void {
   const THREE = api.THREE;
+  api.assembly.scale.setScalar(ESCALA_RCI_RED);
   const box = new THREE.Box3().setFromObject(api.assembly);
   box.getCenter(api.mc);
   box.getSize(api.bbox);

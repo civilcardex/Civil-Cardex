@@ -66,6 +66,12 @@ export function cargarGlbBuffer(url: string): Promise<ArrayBuffer> {
   return promise;
 }
 
+/** ¿Ya está el buffer de `url` en caché (sin tocar red)? Para saltarse pausas de carga
+ *  decorativas en re-entradas: si todo está en caché la carga puede correr sin pacing. */
+export function glbEnCache(url: string): boolean {
+  return estado.entradas.has(url);
+}
+
 /** SOLO TESTS: fija el tope de bytes (p. ej. unos pocos para ejercitar el desalojo). */
 export function _setMaxBytesForTests(maxBytes: number): void {
   estado.maxBytes = maxBytes;

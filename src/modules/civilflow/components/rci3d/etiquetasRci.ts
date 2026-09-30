@@ -112,8 +112,9 @@ export function dibujarEtiquetasRci(
   api: Rci3DApi,
   lblCanvas: HTMLCanvasElement | null,
   seleccionado: number | null,
+  labelsOn = false,
 ): void {
-  if (!lblCanvas) return;
+  if (!lblCanvas || !labelsOn) return;
   if (!estado.ctx) estado.ctx = lblCanvas.getContext('2d');
   const ctx = estado.ctx;
   if (!ctx) return;

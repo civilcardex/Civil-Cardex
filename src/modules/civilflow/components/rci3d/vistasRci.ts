@@ -58,8 +58,8 @@ function distIso(api: Rci3DApi): number {
   );
 }
 
-/** Encuadre orto del original: proyecta las 8 esquinas del bbox sobre los ejes right/up,
- *  centra en el medio proyectado y fija halfW/halfH con margen 8 % corregido por aspect. */
+/** Encuadre orto del HTML §651-703: target = centro del box, esquinas proyectadas sobre los
+ *  ejes right/up relativas al target, halfW/halfH = máximo absoluto ×1.15 con aspect-fit. */
 function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.Vector3): void {
   const THREE = api.THREE;
   api.orthoOn = true;
@@ -69,6 +69,9 @@ function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.V
     0.1,
     api.renderer.domElement.clientWidth / Math.max(1, api.renderer.domElement.clientHeight),
   );
+
+  const tgt = new THREE.Vector3();
+  box.getCenter(tgt);
 
   const fwd = posVec.clone().negate().normalize();
   const right = new THREE.Vector3().crossVectors(fwd, upVec).normalize();
@@ -84,22 +87,19 @@ function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.V
   let minU = 1e9;
   let maxU = -1e9;
   for (const c of corners) {
-    const r = c.dot(right);
-    const u = c.dot(realUp);
+    const v = c.clone().sub(tgt);
+    const r = v.dot(right);
+    const u = v.dot(realUp);
     if (r < minR) minR = r;
     if (r > maxR) maxR = r;
     if (u < minU) minU = u;
     if (u > maxU) maxU = u;
   }
 
-  const cR = (minR + maxR) / 2;
-  const cU = (minU + maxU) / 2;
-  let halfW = ((maxR - minR) / 2) * 1.08;
-  let halfH = ((maxU - minU) / 2) * 1.08;
+  let halfW = Math.max(Math.abs(minR), Math.abs(maxR)) * 1.15;
+  let halfH = Math.max(Math.abs(minU), Math.abs(maxU)) * 1.15;
   if (halfW / halfH > aspect) halfH = halfW / aspect;
   else halfW = halfH * aspect;
-
-  const tgt = new THREE.Vector3().addScaledVector(right, cR).addScaledVector(realUp, cU);
 
   const camO = api.camO;
   camO.left = -halfW;
