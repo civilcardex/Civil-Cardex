@@ -194,6 +194,16 @@ export default function ChequeoCanalesLluvias() {
   // abajo lee storage crudo — sin tick, cambiar D de un bajante en el visor dejaba las
   // columnas "D baj."/"Lámina" con el valor viejo hasta remontar.
   const [diamTick, setDiamTick] = React.useState(0);
+  // Re-escaneo del storage cuando el dibujo sincroniza (el D baj. del colgroup se lee crudo).
+  React.useEffect(() => {
+    const h = () => setDiamTick((n) => n + 1);
+    window.addEventListener('storage', h);
+    window.addEventListener('civilflow_san_sync_changed', h as EventListener);
+    return () => {
+      window.removeEventListener('storage', h);
+      window.removeEventListener('civilflow_san_sync_changed', h as EventListener);
+    };
+  }, []);
   React.useEffect(() => {
     const bump = () => setDiamTick((n) => n + 1);
     window.addEventListener('storage', bump);
@@ -233,6 +243,7 @@ export default function ChequeoCanalesLluvias() {
       }
     }
     return map;
+    void diamTick; // dependencia intencional: fuerza el re-escaneo del storage (no se lee directo)
   }, [plans, diamTick]);
 
   return (
@@ -283,12 +294,11 @@ export default function ChequeoCanalesLluvias() {
               <col style={{ width: '3.2%' }} />
               <col style={{ width: '4.5%' }} />
               <col style={{ width: '4%' }} />
-              <col style={{ width: '4.1%' }} />
+              <col style={{ width: '7.5%' }} />
               <col style={{ width: '3.6%' }} />
               <col style={{ width: '3.4%' }} />
               <col style={{ width: '3.2%' }} />
               <col style={{ width: '3.2%' }} />
-              <col style={{ width: '3.4%' }} />
               <col style={{ width: '3.6%' }} />
               <col style={{ width: '3.4%' }} />
               <col style={{ width: '3.6%' }} />
@@ -353,7 +363,7 @@ export default function ChequeoCanalesLluvias() {
                   title="Dimensiones de la sección del canal (cm) — manda el dibujo."
                   scope="col"
                   className="col-h ok"
-                  colSpan={5}
+                  colSpan={4}
                   style={thG}
                 >
                   SECCIÓN PROPUESTA
@@ -437,7 +447,7 @@ export default function ChequeoCanalesLluvias() {
                   Efectiva
                 </th>
                 <th
-                  title="Material de la cubierta: define el coeficiente de escorrentía C."
+                  title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
                   scope="col"
                   className="col-h ll"
                   style={thL}
@@ -477,7 +487,7 @@ export default function ChequeoCanalesLluvias() {
                   <small>LPS</small>
                 </th>
                 <th
-                  title="Material del canal: define la rugosidad n (catálogo maestro)."
+                  title="Material del canal: define la rugosidad n. Visite el catálogo maestro para más información."
                   scope="col"
                   className="col-h ll"
                   style={thL}
@@ -521,16 +531,6 @@ export default function ChequeoCanalesLluvias() {
                   style={thOk}
                 >
                   Altura
-                  <br />
-                  <small>cm</small>
-                </th>
-                <th
-                  title="Longitud del canal (cm) — del glifo dibujado."
-                  scope="col"
-                  className="col-h ok"
-                  style={thOk}
-                >
-                  Long.
                   <br />
                   <small>cm</small>
                 </th>
@@ -637,7 +637,7 @@ export default function ChequeoCanalesLluvias() {
               {canalesLl.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={27}
+                    colSpan={26}
                     style={{
                       padding: '24px 0',
                       textAlign: 'center',
@@ -860,15 +860,6 @@ export default function ChequeoCanalesLluvias() {
                           id={c.id}
                           field="h"
                           value={c.h}
-                          onChange={onCanalField}
-                          disabled={!edit}
-                        />
-                      </td>
-                      <td className="c">
-                        <CanalDimField
-                          id={c.id}
-                          field="longitud"
-                          value={c.longitud ?? 0}
                           onChange={onCanalField}
                           disabled={!edit}
                         />

@@ -61,7 +61,7 @@ const RainDownpipesCheck_S1: React.CSSProperties = {
   borderRadius: 2,
   color: 'var(--txt)',
   fontFamily: 'var(--mono)',
-  fontSize: 10.5,
+  fontSize: 11,
   textAlign: 'center',
 };
 
@@ -326,12 +326,31 @@ export default function ChequeoBajantesLluvias() {
         <table
           className="tbl"
           style={{
-            fontSize: 10.5,
+            fontSize: 11,
             tableLayout: 'fixed',
             width: '100%',
             borderCollapse: 'collapse',
           }}
         >
+          <colgroup>
+            <col style={{ width: 70 }} />
+            <col style={{ width: 78 }} />
+            <col style={{ width: 78 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 52 }} />
+            <col style={{ width: 54 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 46 }} />
+            <col style={{ width: 48 }} />
+            <col style={{ width: 50 }} />
+            <col style={{ width: 40 }} />
+            <col style={{ width: 58 }} />
+          </colgroup>
           <thead>
             <tr>
               <th
@@ -426,7 +445,7 @@ export default function ChequeoBajantesLluvias() {
                 Total
               </th>
               <th
-                title="Material de la cubierta: define el coeficiente de escorrentía C (catálogo maestro)."
+                title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
                 scope="col"
                 className="col-h ll"
                 style={thC}
@@ -461,7 +480,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 style={thC}
               >
-                Q
+                Caudal
                 <br />
                 <small>LPS</small>
               </th>
@@ -487,7 +506,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ok"
                 style={thC}
               >
-                D calc.
+                Diam calc.
                 <br />
                 <small>pulg</small>
               </th>
@@ -497,7 +516,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ok"
                 style={thC}
               >
-                D prop.
+                Diam prop.
                 <br />
                 <small>pulg</small>
               </th>
@@ -512,12 +531,12 @@ export default function ChequeoBajantesLluvias() {
                 <small>LPS</small>
               </th>
               <th
-                title="Uso de la capacidad del tubo: debe ser ≤ 100%."
+                title="Qué tan lleno trabaja el tubo: relación entre el caudal de diseño y la capacidad del diámetro propuesto; debe quedar por debajo del 100%."
                 scope="col"
                 className="col-h ll"
                 style={thC}
               >
-                Q/Qcap
+                Uso
               </th>
             </tr>
           </thead>
@@ -530,7 +549,7 @@ export default function ChequeoBajantesLluvias() {
                     padding: '24px 0',
                     textAlign: 'center',
                     color: 'var(--txt3)',
-                    fontSize: 10.5,
+                    fontSize: 11,
                   }}
                 >
                   No hay bajantes de lluvias definidos. Dibuje bajantes en el plano o agréguelos en
@@ -552,7 +571,7 @@ export default function ChequeoBajantesLluvias() {
                 return (
                   <tr key={row.key}>
                     <td className="c">
-                      <span className="sigla" style={{ fontSize: 10.5 }}>
+                      <span className="sigla" style={{ fontSize: 11 }}>
                         {/* Sector + piso (orig. usuario): etiqueta tipo BALL1-C. */}
                         {row.bajante || '—'}
                         {row.nivel !== '—' ? `-${row.nivel}` : ''}
@@ -565,7 +584,7 @@ export default function ChequeoBajantesLluvias() {
                       <ChipList items={row.ramalesAsoc} />
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.areaParcial > 0 ? trunc2(row.areaParcial) : '—'}
                       </span>
                     </td>
@@ -583,7 +602,7 @@ export default function ChequeoBajantesLluvias() {
                       <span
                         style={{
                           fontFamily: 'var(--mono)',
-                          fontSize: 10.5,
+                          fontSize: 11,
                           fontWeight: 600,
                         }}
                       >
@@ -622,39 +641,39 @@ export default function ChequeoBajantesLluvias() {
                       {/* C derivado del material (hoja 1, criterio "por material"). */}
                       <span
                         title={row.materialCubierta || undefined}
-                        style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
                       >
                         {row.coeficienteC > 0 ? row.coeficienteC.toFixed(2) : '—'}
                       </span>
                     </td>
                     <td className="c">
                       {/* Intensidad: fórmula del Excel (col. F) — solo lectura. */}
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.intensidad > 0 ? row.intensidad : '—'}
                       </span>
                     </td>
                     <td
                       className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10.5 }}
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 11 }}
                     >
                       {Q > 0 ? trunc2(Q) : '—'}
                     </td>
                     <td className="c">
                       {/* Llenado r: fijo en el Excel (col. H) — solo lectura, sin desplegable. */}
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {row.R || '7/24'}
                       </span>
                     </td>
                     <td className="c">
                       {/* Manning = n de referencia del coeficiente K (0.009) — fijo, no
                       editable; para otro n se ajusta K·(n ref/n) en la fórmula. */}
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                         {(row.manning || 0.009).toFixed(3)}
                       </span>
                     </td>
                     <td
                       className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10.5 }}
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11 }}
                     >
                       {diamCalc > 0 ? trunc2(diamCalc) : '—'}
                     </td>
@@ -717,14 +736,14 @@ export default function ChequeoBajantesLluvias() {
                     </td>
                     <td
                       className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10.5 }}
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11 }}
                     >
                       {Qcap > 0 ? trunc2(Qcap) : '—'}
                     </td>
-                    <td className="c" style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                    <td className="c" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
                       {cociente > 0 ? `${(cociente * 100).toFixed(1)}%` : '—'}
                     </td>
-                    <td className="c" style={{ fontSize: 10.5 }}>
+                    <td className="c" style={{ fontSize: 11 }}>
                       {renderStatus(chequeo)}
                     </td>
                   </tr>
