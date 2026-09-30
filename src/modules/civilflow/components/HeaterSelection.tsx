@@ -150,10 +150,16 @@ export default function HeaterSelection() {
         <table className="tbl">
           <thead>
             <tr>
-              <th>Aparato</th>
-              <th className="c">Cantidad</th>
-              <th className="c">UC</th>
-              <th className="c">Total UC</th>
+              <th title="Aparato conectado a la red de agua caliente.">Aparato</th>
+              <th title="Cantidad de ese aparato en el proyecto." className="c">
+                Cantidad
+              </th>
+              <th title="Unidades de consumo por aparato." className="c">
+                UC
+              </th>
+              <th title="Unidades de consumo totales del aparato." className="c">
+                Total UC
+              </th>
             </tr>
           </thead>
           <tbody>

@@ -23,7 +23,7 @@ import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 
 const SanitaryDesign_S1: React.CSSProperties = {
   fontFamily: 'var(--mono)',
-  fontSize: 10,
+  fontSize: 11,
   padding: '1px 2px',
   border: '1px solid var(--line)',
   borderRadius: 2,
@@ -47,10 +47,10 @@ const EMPTY_ROW = {
   padding: '24px 0',
   textAlign: 'center',
   color: 'var(--txt3)',
-  fontSize: 10,
+  fontSize: 11,
 } as const;
-const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '1px 2px' } as const;
-const TH_SUB = { fontSize: 10, textAlign: 'center', padding: '1px 2px' } as const;
+const TH_HDR = { fontSize: 11, textAlign: 'center', padding: '1px 2px' } as const;
+const TH_SUB = { fontSize: 11, textAlign: 'center', padding: '1px 2px' } as const;
 
 export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
@@ -286,140 +286,287 @@ export default function DisenosSanitarios() {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
-            <table className="tbl" style={{ fontSize: 10 }}>
+            <table className="tbl" style={{ fontSize: 11 }}>
               <caption style={SR_ONLY}>Diseño de red sanitaria</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Tramo de la red sanitaria según el dibujo (ramal o bajante)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Tramo
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
-                    Nivel
-                  </th>
                   <th
+                    title="Unidades de descarga (Hunter) que acumula el tramo."
                     scope="col"
                     className="col-h san"
                     colSpan={3}
-                    style={{ textAlign: 'center', fontSize: 10, padding: '1px 2px' }}
+                    style={{ textAlign: 'center', fontSize: 11, padding: '1px 2px' }}
                   >
                     Unidades de descarga
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Descargas simultáneas esperadas en el tramo."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={{ ...TH_HDR, width: '6.5%' }}
+                  >
                     descargas simultaneas
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Coeficiente de simultaneidad K aplicado al cálculo del caudal."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={{ ...TH_HDR, width: '7%' }}
+                  >
                     K
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Caudal de diseño del tramo (L/s)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Caudal
                     <br />
                     <small>(LPS)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Rugosidad n del material de la tubería."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Manning
                     <br />
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Pendiente de diseño del tramo (%) — manda el dibujo."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Pendiente
                     <br />
                     <small>(%)</small>
                   </th>
                   <th
+                    title="Diámetro del tramo: calculado, propuesto y su interior."
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
-                    style={{ textAlign: 'center', fontSize: 10, padding: '1px 2px' }}
+                    style={{ textAlign: 'center', fontSize: 11, padding: '1px 2px' }}
                   >
                     Diámetro
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Capacidad máxima del diámetro propuesto (L/s)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Q<sub>o</sub>
                     <br />
                     <small>(LPS)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Velocidad de salida/capacidad asociada al diámetro (m/s)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     V<sub>o</sub>
                     <br />
                     <small>(m/s)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Uso de la capacidad: debe ser ≤ 100%."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Q/Q<sub>o</sub>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Velocidad real del flujo con el diámetro propuesto (m/s)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Velocidad real
                     <br />
                     <small>(m/s)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="O.K. si la velocidad está dentro del rango permitido."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Chequeo velocidad
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Tirante crítico del flujo (mm)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Y<sub>c</sub>
                     <br />
                     <small>(mm)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Tirante normal del flujo (mm)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Y<sub>n</sub>
                     <br />
                     <small>(mm)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Número de Froude del flujo (subcrítico si es menor a 1)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Froude
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Régimen del flujo según el número de Froude."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Flujo
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Altura máxima admisible del tirante (mm)."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Y<sub>max</sub>
                     <br />
                     <small>(mm)</small>
                   </th>
-                  <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>
+                  <th
+                    title="Comparación del tirante normal contra el crítico."
+                    scope="col"
+                    className="col-h"
+                    rowSpan={2}
+                    style={TH_HDR}
+                  >
                     Y<sub>n</sub> vs Y<sub>c</sub>
                   </th>
                   <th
+                    title="Esfuerzo de arrastre sobre el tubo; debe superar el mínimo de autolimpieza."
                     scope="col"
                     className="col-h ven"
                     colSpan={2}
-                    style={{ textAlign: 'center', fontSize: 10, padding: '1px 2px' }}
+                    style={{ textAlign: 'center', fontSize: 11, padding: '1px 2px' }}
                   >
                     Fuerza Tractiva
                   </th>
                 </tr>
                 <tr>
-                  <th scope="col" className="col-h san" style={TH_SUB}>
+                  <th
+                    title="Unidades de descarga generadas en el propio tramo."
+                    scope="col"
+                    className="col-h san"
+                    style={TH_SUB}
+                  >
                     Propia
                   </th>
-                  <th scope="col" className="col-h san" style={TH_SUB}>
+                  <th
+                    title="Unidades de descarga que llegan de tramos conectados aguas arriba."
+                    scope="col"
+                    className="col-h san"
+                    style={TH_SUB}
+                  >
                     Otros
                   </th>
-                  <th scope="col" className="col-h san" style={TH_SUB}>
+                  <th
+                    title="Unidades de descarga acumuladas del tramo."
+                    scope="col"
+                    className="col-h san"
+                    style={TH_SUB}
+                  >
                     Total
                   </th>
-                  <th scope="col" className="col-h ok" style={TH_SUB}>
+                  <th
+                    title="Diámetro calculado con el caudal y la pendiente (pulg)."
+                    scope="col"
+                    className="col-h ok"
+                    style={TH_SUB}
+                  >
                     Calculado
                     <br />
                     <small>(")</small>
                   </th>
-                  <th scope="col" className="col-h ok" style={TH_SUB}>
+                  <th
+                    title="Diámetro comercial propuesto (pulg) — editable."
+                    scope="col"
+                    className="col-h ok"
+                    style={TH_SUB}
+                  >
                     Diseño
                     <br />
                     <small>(")</small>
                   </th>
-                  <th scope="col" className="col-h ok" style={TH_SUB}>
+                  <th
+                    title="Diámetro interior del tubo propuesto (mm)."
+                    scope="col"
+                    className="col-h ok"
+                    style={TH_SUB}
+                  >
                     Interior
                     <br />
                     <small>(mm)</small>
                   </th>
-                  <th scope="col" className="col-h ok" style={TH_SUB}>
+                  <th
+                    title="O.K. si el diámetro propuesto cubre el calculado."
+                    scope="col"
+                    className="col-h ok"
+                    style={TH_SUB}
+                  >
                     Chequeo
                   </th>
-                  <th scope="col" className="col-h ven" style={TH_SUB}>
+                  <th
+                    title="Fuerza tractiva real del flujo (kg/m²)."
+                    scope="col"
+                    className="col-h ven"
+                    style={TH_SUB}
+                  >
                     Real
                     <br />
                     <small>(kg/m²)</small>
                   </th>
-                  <th scope="col" className="col-h ven" style={TH_SUB}>
+                  <th
+                    title="La fuerza tractiva debe superar 0,15 kg/m² (autolimpieza)."
+                    scope="col"
+                    className="col-h ven"
+                    style={TH_SUB}
+                  >
                     &gt;0.15
                   </th>
                 </tr>
@@ -427,7 +574,7 @@ export default function DisenosSanitarios() {
               <tbody>
                 {displayTramos.length === 0 ? (
                   <tr>
-                    <td colSpan={26} style={EMPTY_ROW}>
+                    <td colSpan={25} style={EMPTY_ROW}>
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                     </td>
                   </tr>
@@ -464,21 +611,13 @@ export default function DisenosSanitarios() {
                       return (
                         <tr key={tKey}>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            <span className="sigla" style={{ fontSize: 10 }}>
+                            <span className="sigla" style={{ fontSize: 11 }}>
+                              {/* Tramo + piso (orig. usuario): etiqueta tipo row-P1. */}
                               {row.id}
+                              {row.piso != null ? `-${pisoCorto(row.piso)}` : ''}
                             </span>
                           </td>
-                          <td className="c" style={{ padding: '1px 2px' }}>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontFamily: 'var(--mono)',
-                                color: 'var(--txt2)',
-                              }}
-                            >
-                              {pisoCorto(row.piso)}
-                            </span>
-                          </td>
+
                           <td
                             className="c"
                             style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
@@ -490,7 +629,7 @@ export default function DisenosSanitarios() {
                             style={{ padding: '1px 2px', minWidth: 60, maxWidth: 120 }}
                           >
                             {connectedKeys.length === 0 ? (
-                              <span style={{ fontSize: 10, color: 'var(--txt3)' }}>—</span>
+                              <span style={{ fontSize: 11, color: 'var(--txt3)' }}>—</span>
                             ) : (
                               <div
                                 style={{
@@ -509,7 +648,7 @@ export default function DisenosSanitarios() {
                                       key={childKey}
                                       title={`${rId} (${childTotalUd} UD)`}
                                       style={{
-                                        fontSize: 10,
+                                        fontSize: 11,
                                         padding: '1px 2px',
                                         border: '1px solid var(--san)',
                                         borderRadius: 3,
@@ -530,7 +669,7 @@ export default function DisenosSanitarios() {
                             style={{
                               fontFamily: 'var(--mono)',
                               fontWeight: 700,
-                              fontSize: 10,
+                              fontSize: 11,
                               padding: '1px 2px',
                             }}
                           >
@@ -672,7 +811,7 @@ export default function DisenosSanitarios() {
                           </td>
                           <td
                             className="c"
-                            style={{ fontFamily: 'var(--mono)', fontSize: 10, padding: '1px 2px' }}
+                            style={{ fontFamily: 'var(--mono)', fontSize: 11, padding: '1px 2px' }}
                           >
                             {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '--'}
                           </td>
@@ -749,7 +888,7 @@ export default function DisenosSanitarios() {
                           >
                             {DdisPulg > 0 && Froude > 0 ? Froude.toFixed(2) : '--'}
                           </td>
-                          <td className="c" style={{ fontSize: 10, padding: '1px 2px' }}>
+                          <td className="c" style={{ fontSize: 11, padding: '1px 2px' }}>
                             {DdisPulg > 0 ? tipoFlujo : '--'}
                           </td>
                           <td

@@ -87,6 +87,7 @@ function Acometida({
               <thead>
                 <tr>
                   <th
+                    title="Tramo de la acometida."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
@@ -95,6 +96,7 @@ function Acometida({
                     Tramo
                   </th>
                   <th
+                    title="Punto de toma del acueducto."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
@@ -103,6 +105,7 @@ function Acometida({
                     Desde
                   </th>
                   <th
+                    title="Llegada al equipo de medición."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
@@ -111,6 +114,7 @@ function Acometida({
                     Hasta
                   </th>
                   <th
+                    title="Longitudes horizontal y equivalente de accesorios (m)."
                     scope="colgroup"
                     className="col-h"
                     colSpan={2}
@@ -119,6 +123,7 @@ function Acometida({
                     Longitud (m)
                   </th>
                   <th
+                    title="Diámetro que sugiere el cálculo para la acometida."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
@@ -129,6 +134,7 @@ function Acometida({
                     Estimado
                   </th>
                   <th
+                    title="Diámetro comercial de la acometida."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
@@ -141,6 +147,7 @@ function Acometida({
                 </tr>
                 <tr>
                   <th
+                    title="Longitud horizontal del tramo (m)."
                     scope="col"
                     className="col-h"
                     style={{ ...TH_CENTER, fontSize: 9, fontWeight: 405, width: '13%' }}
@@ -148,6 +155,7 @@ function Acometida({
                     Horizontal
                   </th>
                   <th
+                    title="Longitud equivalente de accesorios (m)."
                     scope="col"
                     className="col-h"
                     style={{ ...TH_CENTER, fontSize: 9, fontWeight: 405, width: '13%' }}
@@ -335,16 +343,36 @@ function Acometida({
             >
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: '45%' }}>
+                  <th
+                    title="Nombre del parámetro de la acometida."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH_CENTER, width: '45%' }}
+                  >
                     Parámetro
                   </th>
-                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: '20%' }}>
+                  <th
+                    title="Valor para la acometida AC-01."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH_CENTER, width: '20%' }}
+                  >
                     AC-01
                   </th>
-                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: '20%' }}>
+                  <th
+                    title="Valor para la acometida AC-02."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH_CENTER, width: '20%' }}
+                  >
                     AC-02
                   </th>
-                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: '15%' }}>
+                  <th
+                    title="Unidad del parámetro."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH_CENTER, width: '15%' }}
+                  >
                     Unidad
                   </th>
                 </tr>
@@ -532,10 +560,20 @@ function Acometida({
             >
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: '55%' }}>
+                  <th
+                    title="Parámetro verificado de la acometida."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH_CENTER, width: '55%' }}
+                  >
                     Parámetro
                   </th>
-                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: '45%' }}>
+                  <th
+                    title="Valor o estado del chequeo."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH_CENTER, width: '45%' }}
+                  >
                     Valor / Estado
                   </th>
                 </tr>

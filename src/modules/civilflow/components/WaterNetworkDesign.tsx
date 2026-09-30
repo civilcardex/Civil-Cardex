@@ -512,7 +512,7 @@ function WaterNetworkDesign({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-top" style={{ padding: '6px' }}>
             <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-              <table className="tbl" style={{ fontSize: 10, tableLayout: 'auto', width: '100%' }}>
+              <table className="tbl" style={{ fontSize: 10.5, tableLayout: 'auto', width: '100%' }}>
                 <caption style={WaterNetworkDesign_S1}>{`Diseño de red ${title}`}</caption>
 
                 <DesignTableHeader cssClass={cssClass} />
@@ -520,12 +520,12 @@ function WaterNetworkDesign({
                   {tramosOrden.length === 0 && (
                     <tr>
                       <td
-                        colSpan={23}
+                        colSpan={22}
                         style={{
                           padding: '24px 0',
                           textAlign: 'center',
                           color: 'var(--txt3)',
-                          fontSize: 10,
+                          fontSize: 10.5,
                         }}
                       >
                         No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.

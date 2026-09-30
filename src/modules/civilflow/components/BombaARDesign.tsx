@@ -55,6 +55,22 @@ const EDGE_L = { borderLeft: '1px solid var(--line)' };
 const EDGE_R = { ...NOTE_COL, borderRight: '1px solid var(--line)' };
 const COLS_IN = ['Parámetro', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Fuente / norma'];
 const COLS_OUT = ['Componente', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Observación'];
+const TIPS_IN = [
+  'Nombre del parámetro de entrada.',
+  'Símbolo con el que se representa el parámetro.',
+  'Valor ingresado o calculado.',
+  'Unidad del valor.',
+  'Equivalencia del valor en otra unidad.',
+  'Fuente o norma de la que proviene el dato.',
+];
+const TIPS_OUT = [
+  'Componente o variable del cálculo.',
+  'Símbolo con el que se representa.',
+  'Valor calculado.',
+  'Unidad del valor.',
+  'Equivalencia del valor en otra unidad.',
+  'Observación sobre el resultado.',
+];
 const COL_STYLES = [EDGE_L, undefined, undefined, undefined, NOTE_COL, EDGE_R];
 
 /** Valor equivalente REAL (orig. usuario): muestra `valor × factor + unidad` de la propia
@@ -492,6 +508,7 @@ function BombaARDesign() {
             thStyle={TH_R}
             tdStyle={TD_R}
             cols={COLS_IN}
+            tips={TIPS_IN}
             colStyles={COL_STYLES}
             rows={[
               [
@@ -608,6 +625,7 @@ function BombaARDesign() {
             thStyle={TH_R}
             tdStyle={TD_R}
             cols={COLS_OUT}
+            tips={TIPS_OUT}
             colStyles={COL_STYLES}
             rows={[
               [
@@ -687,6 +705,7 @@ function BombaARDesign() {
               thStyle={TH_R}
               tdStyle={TD_R}
               cols={COLS_IN}
+              tips={TIPS_IN}
               colStyles={COL_STYLES}
               rows={[
                 [
@@ -713,6 +732,7 @@ function BombaARDesign() {
               thStyle={TH_R}
               tdStyle={TD_R}
               cols={COLS_OUT}
+              tips={TIPS_OUT}
               colStyles={COL_STYLES}
               rows={[
                 ['Caudal nominal', 'Q b', Fmt2(c.Qb), 'lps', Eq(c.Qb, 15.8503, 'GPM'), '—'],
@@ -770,6 +790,7 @@ function BombaARDesign() {
               thStyle={TH_R}
               tdStyle={TD_R}
               cols={COLS_IN}
+              tips={TIPS_IN}
               colStyles={COL_STYLES}
               rows={[
                 [
@@ -827,6 +848,7 @@ function BombaARDesign() {
               thStyle={TH_R}
               tdStyle={TD_R}
               cols={COLS_OUT}
+              tips={TIPS_OUT}
               colStyles={COL_STYLES}
               rows={[
                 [

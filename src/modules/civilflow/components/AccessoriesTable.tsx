@@ -57,7 +57,13 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tram
                 Tramo
               </th>
               {ACCESORIOS_COLS.map((a) => (
-                <th scope="col" key={a.id} className="col-h" style={AccessoriesTable_S5}>
+                <th
+                  scope="col"
+                  key={a.id}
+                  title={a.nombre}
+                  className="col-h"
+                  style={AccessoriesTable_S5}
+                >
                   <img
                     src={a.icono}
                     alt={a.nombre}

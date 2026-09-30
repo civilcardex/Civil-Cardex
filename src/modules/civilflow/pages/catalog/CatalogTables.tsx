@@ -1,17 +1,80 @@
-import React from 'react'
-import { GAS } from '../../constants/engineeringDataGas'
-import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData'
-import { normalizeDnLabel } from '../../utils/formatUtils'
-const CatalogTables_S1: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
-const CatalogTables_S2: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
-const CatalogTables_S3: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
-const CatalogTables_S4: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
-const CatalogTables_S5: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
-const CatalogTables_S6: React.CSSProperties = { padding: '2px 8px', textAlign: 'center', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)', };
+import React from 'react';
+import { GAS } from '../../constants/engineeringDataGas';
+import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData';
+import {
+  MATERIALES_CUBIERTA_LL,
+  MATERIALES_CANAL_LL,
+} from '../../constants/engineeringDataMaterials';
+import { normalizeDnLabel } from '../../utils/formatUtils';
+const CatalogTables_S1: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+const CatalogTables_S2: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+const CatalogTables_S3: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+const CatalogTables_S4: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+const CatalogTables_S5: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0,0,0,0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+const CatalogTables_S6: React.CSSProperties = {
+  padding: '2px 8px',
+  textAlign: 'center',
+  fontWeight: 700,
+  fontSize: 12,
+  textTransform: 'uppercase',
+  letterSpacing: 0.3,
+  background: 'var(--bg2)',
+  border: '1px solid var(--line)',
+  color: 'var(--txt)',
+};
 
-
-const HEADER_BG = 'var(--bg3)'
-const HEADER_TXT = '#00dce5'
+const HEADER_BG = 'var(--bg3)';
+const HEADER_TXT = '#00dce5';
 const CatalogTables_thBase: React.CSSProperties = {
   background: HEADER_BG,
   color: HEADER_TXT,
@@ -30,108 +93,251 @@ const CatalogTables_thBase: React.CSSProperties = {
 
 function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <th scope="col" className="td-mono-b" style={{ ...CatalogTables_thBase, ...style }}>{children}</th>
-  )
+    <th scope="col" className="td-mono-b" style={{ ...CatalogTables_thBase, ...style }}>
+      {children}
+    </th>
+  );
 }
 
-function Tr({ children, index, style }: { children?: React.ReactNode; index: number; style?: React.CSSProperties }) {
-  const bg = index % 2 === 0 ? 'var(--bg3)' : 'var(--bg)'
-  return <tr style={{ background: bg, ...style }}>{children}</tr>
+function Tr({
+  children,
+  index,
+  style,
+}: {
+  children?: React.ReactNode;
+  index: number;
+  style?: React.CSSProperties;
+}) {
+  const bg = index % 2 === 0 ? 'var(--bg3)' : 'var(--bg)';
+  return <tr style={{ background: bg, ...style }}>{children}</tr>;
 }
 
-function Td({ children, style, mono = false }: { children?: React.ReactNode; style?: React.CSSProperties; mono?: boolean; center?: boolean }) {
+function Td({
+  children,
+  style,
+  mono = false,
+}: {
+  children?: React.ReactNode;
+  style?: React.CSSProperties;
+  mono?: boolean;
+  center?: boolean;
+}) {
   return (
-    <td className={mono ? 'td-mono' : ''} style={{
-      ...(mono ? {} : { fontFamily: 'var(--body)' }),
-      fontSize: 12,
-      fontWeight: 500,
-      padding: '5px 10px',
-      textAlign: 'center',
-      color: 'var(--txt)',
-      border: '1px solid var(--line)',
-      ...style,
-    }}>{children}</td>
-  )
+    <td
+      className={mono ? 'td-mono' : ''}
+      style={{
+        ...(mono ? {} : { fontFamily: 'var(--body)' }),
+        fontSize: 12,
+        fontWeight: 500,
+        padding: '5px 10px',
+        textAlign: 'center',
+        color: 'var(--txt)',
+        border: '1px solid var(--line)',
+        ...style,
+      }}
+    >
+      {children}
+    </td>
+  );
 }
 
-interface GroupType { mat: string; rows: Array<{ dn: string; d: number }> }
-interface GasGroupType { mat: string; K: number; rows: Array<{ dn: string; d: number }> }
+interface GroupType {
+  mat: string;
+  rows: Array<{ dn: string; d: number }>;
+}
+interface GasGroupType {
+  mat: string;
+  K: number;
+  rows: Array<{ dn: string; d: number }>;
+}
 
 export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: boolean }) {
-  const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
+  const cp = compact
+    ? {
+        thPad: '3px 8px',
+        thFs: 11,
+        thLs: 0.5,
+        tdPad: '3px 8px',
+        tdFs: 12,
+        matFs: 14,
+        matPad: '3px 8px',
+        matFw: 700,
+      }
+    : {
+        thPad: '4px 8px',
+        thFs: 10,
+        thLs: 0.6,
+        tdPad: '5px 10px',
+        tdFs: 12,
+        matFs: 11,
+        matPad: '4px 8px',
+        matFw: 600,
+      };
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S1}>
-        Diámetros nominales e interiores por material
-      </caption>
+    <table
+      style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        tableLayout: 'fixed',
+        border: '1px solid var(--line)',
+      }}
+    >
+      <caption style={CatalogTables_S1}>Diámetros nominales e interiores por material</caption>
       <thead>
         <tr>
-          <Th style={{ width: '25%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Material</Th>
-          <Th style={{ width: '35%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Diámetro Nominal</Th>
-          <Th style={{ width: '40%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Ø Interior (mm)</Th>
+          <Th
+            style={{ width: '25%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Material
+          </Th>
+          <Th
+            style={{ width: '35%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Diámetro Nominal
+          </Th>
+          <Th
+            style={{ width: '40%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Ø Interior (mm)
+          </Th>
         </tr>
       </thead>
       <tbody>
         {groups.map((grp, gi) => {
-          let idx = 0
+          let idx = 0;
           return grp.rows.map((r, ri) => (
             <Tr key={`${gi}-${ri}`} index={idx++}>
               {ri === 0 && (
-                <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', border: '1px solid var(--line)' }}>
+                <td
+                  rowSpan={grp.rows.length}
+                  style={{
+                    padding: cp.matPad,
+                    fontSize: cp.matFs,
+                    fontWeight: cp.matFw,
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    color: 'var(--txt2)',
+                    border: '1px solid var(--line)',
+                  }}
+                >
                   {grp.mat}
                 </td>
               )}
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{normalizeDnLabel(r.dn)}</Td>
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2)}</Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
+                {normalizeDnLabel(r.dn)}
+              </Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
+                {r.d.toFixed(2)}
+              </Td>
             </Tr>
-          ))
+          ));
         })}
       </tbody>
     </table>
-  )
+  );
 }
 
 export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact?: boolean }) {
-  let idx = 0
-  const data = groups || GAS
-  const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
+  let idx = 0;
+  const data = groups || GAS;
+  const cp = compact
+    ? {
+        thPad: '3px 8px',
+        thFs: 11,
+        thLs: 0.5,
+        tdPad: '3px 8px',
+        tdFs: 12,
+        matFs: 14,
+        matPad: '3px 8px',
+        matFw: 700,
+      }
+    : {
+        thPad: '4px 8px',
+        thFs: 10,
+        thLs: 0.6,
+        tdPad: '5px 10px',
+        tdFs: 12,
+        matFs: 11,
+        matPad: '4px 8px',
+        matFw: 600,
+      };
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: '1px solid var(--line)' }}>
+    <table
+      style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        tableLayout: 'fixed',
+        border: '1px solid var(--line)',
+      }}
+    >
       <caption style={CatalogTables_S2}>
         Diámetros nominales, interiores y coeficiente K para gas
       </caption>
       <thead>
         <tr>
-          <Th style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Material</Th>
-          <Th style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Diámetro Nominal</Th>
-          <Th style={{ width: '24%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Ø Interior (mm)</Th>
-          <Th style={{ width: '20%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Coef. K</Th>
+          <Th
+            style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Material
+          </Th>
+          <Th
+            style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Diámetro Nominal
+          </Th>
+          <Th
+            style={{ width: '24%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Ø Interior (mm)
+          </Th>
+          <Th
+            style={{ width: '20%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
+          >
+            Coef. K
+          </Th>
         </tr>
       </thead>
       <tbody>
-        {data.map((grp, gi) => grp.rows.map((r: { dn: string; d: number }, ri: number) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 && (
-              <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', border: '1px solid var(--line)' }}>
-                {grp.mat}
-              </td>
-            )}
-            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{normalizeDnLabel(r.dn)}</Td>
-            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2)}</Td>
-            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{grp.K.toFixed(2)}</Td>
-          </Tr>
-        )))}
+        {data.map((grp, gi) =>
+          grp.rows.map((r: { dn: string; d: number }, ri: number) => (
+            <Tr key={`${gi}-${ri}`} index={idx++}>
+              {ri === 0 && (
+                <td
+                  rowSpan={grp.rows.length}
+                  style={{
+                    padding: cp.matPad,
+                    fontSize: cp.matFs,
+                    fontWeight: cp.matFw,
+                    textAlign: 'center',
+                    verticalAlign: 'middle',
+                    color: 'var(--txt2)',
+                    border: '1px solid var(--line)',
+                  }}
+                >
+                  {grp.mat}
+                </td>
+              )}
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
+                {normalizeDnLabel(r.dn)}
+              </Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
+                {r.d.toFixed(2)}
+              </Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
+                {grp.K.toFixed(2)}
+              </Td>
+            </Tr>
+          )),
+        )}
       </tbody>
     </table>
-  )
+  );
 }
 
 export function ContadoresTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S3}>
-        Caudales nominales de contadores por diámetro
-      </caption>
+      <caption style={CatalogTables_S3}>Caudales nominales de contadores por diámetro</caption>
       <thead>
         <tr>
           <Th style={{ width: '50%' }}>Diámetro</Th>
@@ -147,39 +353,39 @@ export function ContadoresTable() {
               <Td mono>{label}</Td>
               <Td mono>{c.q.toFixed(2)}</Td>
             </tr>
-          )
+          );
         })}
       </tbody>
     </table>
-  )
+  );
 }
 
-const cmpTd = { padding: '2px 6px', fontSize: 13 }
+const cmpTd = { padding: '2px 6px', fontSize: 13 };
 
 export function MaterialesPorRedTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S4}>
-        Materiales recomendados por tipo de red
-      </caption>
+      <caption style={CatalogTables_S4}>Materiales recomendados por tipo de red</caption>
       <thead>
         <tr>
-          <Th style={{ width: '30%', padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>Red</Th>
+          <Th style={{ width: '30%', padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>
+            Red
+          </Th>
           <Th style={{ padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>Materiales</Th>
         </tr>
       </thead>
       <tbody>
         {MATERIALES_POR_RED.map((c, i) => (
           <Tr key={i} index={i}>
-            <Td mono style={cmpTd}>{c.red}</Td>
-            <Td style={cmpTd}>
-              {'mat' in c ? c.mat : (c.mats ? c.mats.join(', ') : '')}
+            <Td mono style={cmpTd}>
+              {c.red}
             </Td>
+            <Td style={cmpTd}>{'mat' in c ? c.mat : c.mats ? c.mats.join(', ') : ''}</Td>
           </Tr>
         ))}
       </tbody>
     </table>
-  )
+  );
 }
 
 const coefTh = {
@@ -194,7 +400,7 @@ const coefTh = {
   border: '1px solid var(--line)',
   textAlign: 'center',
   whiteSpace: 'nowrap',
-} as React.CSSProperties
+} as React.CSSProperties;
 
 const coefTd = {
   fontFamily: 'var(--mono)',
@@ -204,15 +410,61 @@ const coefTd = {
   textAlign: 'center',
   color: 'var(--txt)',
   border: '1px solid var(--line)',
-} as React.CSSProperties
+} as React.CSSProperties;
+
+/** Coeficiente de escorrentía C por material de cubierta (aguas lluvias) — sin columna de referencia. */
+export function EscorrentiaCubiertaTable() {
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
+      <caption style={CatalogTables_S5}>
+        Coeficiente de escorrentía por material de cubierta
+      </caption>
+      <thead>
+        <tr>
+          <Th style={{ width: '70%' }}>Material de cubierta</Th>
+          <Th style={{ width: '30%' }}>C</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {MATERIALES_CUBIERTA_LL.map((m, i) => (
+          <Tr key={m.nombre} index={i}>
+            <Td style={{ textAlign: 'left' }}>{m.nombre}</Td>
+            <Td mono>{m.C.toFixed(2)}</Td>
+          </Tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Coeficiente de Manning n por material de canal de cubierta (aguas lluvias) — sin referencia. */
+export function ManningCanalesLlTable() {
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
+      <caption style={CatalogTables_S5}>Coeficiente de Manning por material (canales)</caption>
+      <thead>
+        <tr>
+          <Th style={{ width: '70%' }}>Material del canal</Th>
+          <Th style={{ width: '30%' }}>n</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {MATERIALES_CANAL_LL.map((m, i) => (
+          <Tr key={m.nombre} index={i}>
+            <Td style={{ textAlign: 'left' }}>{m.nombre}</Td>
+            <Td mono>{m.n.toFixed(3)}</Td>
+          </Tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 export function CoefFriccionTable() {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-        <caption style={CatalogTables_S5}>
-          Coeficientes de fricción por tipo de tubería
-        </caption>
+        <caption style={CatalogTables_S5}>Coeficientes de fricción por tipo de tubería</caption>
         <thead>
           <tr>
             <th scope="colgroup" colSpan={9} style={CatalogTables_S6}>
@@ -220,22 +472,42 @@ export function CoefFriccionTable() {
             </th>
           </tr>
           <tr>
-            <th scope="col" style={{ ...coefTh, width: '14%' }}>Tipo</th>
-            <th scope="col" style={{ ...coefTh, width: '14%' }}>Descripción</th>
-            <th scope="col" style={{ ...coefTh, width: '10%' }}>Sistema</th>
-            <th scope="col" style={{ ...coefTh, width: '7%' }}>Material</th>
-            <th scope="col" style={coefTh}>Manning n</th>
-            <th scope="col" style={coefTh}>Hazen C</th>
-            <th scope="col" style={coefTh}>Hazen C Uso</th>
-            <th scope="col" style={coefTh}>Rugosidad ε (mm)</th>
-            <th scope="col" style={coefTh}>Presión Nominal</th>
+            <th scope="col" style={{ ...coefTh, width: '14%' }}>
+              Tipo
+            </th>
+            <th scope="col" style={{ ...coefTh, width: '14%' }}>
+              Descripción
+            </th>
+            <th scope="col" style={{ ...coefTh, width: '10%' }}>
+              Sistema
+            </th>
+            <th scope="col" style={{ ...coefTh, width: '7%' }}>
+              Material
+            </th>
+            <th scope="col" style={coefTh}>
+              Manning n
+            </th>
+            <th scope="col" style={coefTh}>
+              Hazen C
+            </th>
+            <th scope="col" style={coefTh}>
+              Hazen C Uso
+            </th>
+            <th scope="col" style={coefTh}>
+              Rugosidad ε (mm)
+            </th>
+            <th scope="col" style={coefTh}>
+              Presión Nominal
+            </th>
           </tr>
         </thead>
         <tbody>
           {COEF_FRICCION.map((c, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
               <td style={{ ...coefTd, textAlign: 'center' }}>{c.tipo}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.desc}</td>
+              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>
+                {c.desc}
+              </td>
               <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.sis}</td>
               <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.mat}</td>
               <td style={coefTd}>{c.n.toFixed(3)}</td>
@@ -248,5 +520,5 @@ export function CoefFriccionTable() {
         </tbody>
       </table>
     </div>
-  )
+  );
 }

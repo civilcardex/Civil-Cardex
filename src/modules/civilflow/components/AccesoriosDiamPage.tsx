@@ -170,13 +170,23 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
             >
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{ ...TH, width: 90 }}>
+                  <th
+                    title="Diámetro del accesorio."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH, width: 90 }}
+                  >
                     Diámetro
                   </th>
-                  <th scope="col" className="col-h" style={TH}>
+                  <th title="Tipo de accesorio instalado." scope="col" className="col-h" style={TH}>
                     Accesorio
                   </th>
-                  <th scope="col" className="col-h" style={{ ...TH, width: 70 }}>
+                  <th
+                    title="Cantidad de accesorios de ese diámetro en la red."
+                    scope="col"
+                    className="col-h"
+                    style={{ ...TH, width: 70 }}
+                  >
                     Cantidad
                   </th>
                 </tr>

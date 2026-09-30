@@ -281,16 +281,33 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col" style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>
+                  <th
+                    title="Consecutivo de la red."
+                    scope="col"
+                    style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}
+                  >
                     #
                   </th>
-                  <th scope="col" style={{ padding: '4px 8px' }}>
+                  <th
+                    title="Red a la que aplica la configuración."
+                    scope="col"
+                    style={{ padding: '4px 8px' }}
+                  >
                     Red
                   </th>
-                  <th scope="col" style={{ padding: '4px 8px', minWidth: 90 }}>
+                  <th
+                    title="Material de tubería por defecto de la red."
+                    scope="col"
+                    style={{ padding: '4px 8px', minWidth: 90 }}
+                  >
                     Tubería
                   </th>
-                  <th scope="col" className="c" style={{ width: 130, padding: '4px 6px' }}>
+                  <th
+                    title="Profundidad de instalación respecto al nivel de piso terminado (m)."
+                    scope="col"
+                    className="c"
+                    style={{ width: 130, padding: '4px 6px' }}
+                  >
                     Profundidad de instalación
                     <br />
                     con respecto a NPT (m)
@@ -491,16 +508,29 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th scope="col" style={{ padding: '4px 8px' }}>
+                  <th
+                    title="Aparato sanitario del proyecto."
+                    scope="col"
+                    style={{ padding: '4px 8px' }}
+                  >
                     Aparato
                   </th>
-                  <th scope="col" style={{ width: 60, padding: '4px 6px' }}>
+                  <th
+                    title="Sigla con la que se identifica el aparato."
+                    scope="col"
+                    style={{ width: 60, padding: '4px 6px' }}
+                  >
                     Sigla
                   </th>
-                  <th scope="col" style={{ width: 80, padding: '4px 6px' }}>
+                  <th
+                    title="Tipo de control del aparato (llave, fluxómetro)."
+                    scope="col"
+                    style={{ width: 80, padding: '4px 6px' }}
+                  >
                     Tipo de Control
                   </th>
                   <th
+                    title="Unidades de consumo en agua fría."
                     scope="col"
                     className="c"
                     style={{
@@ -513,6 +543,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                     UC AF
                   </th>
                   <th
+                    title="Unidades de consumo en agua caliente."
                     scope="col"
                     className="c"
                     style={{
@@ -525,6 +556,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                     UC AC
                   </th>
                   <th
+                    title="Unidades de descarga en la red sanitaria."
                     scope="col"
                     className="c"
                     style={{
@@ -628,16 +660,33 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th scope="col" style={{ padding: '4px 8px' }}>
+                  <th
+                    title="Aparato de gas del proyecto."
+                    scope="col"
+                    style={{ padding: '4px 8px' }}
+                  >
                     Aparato
                   </th>
-                  <th scope="col" style={{ width: 88, padding: '4px 6px' }}>
+                  <th
+                    title="Sigla con la que se identifica el aparato."
+                    scope="col"
+                    style={{ width: 88, padding: '4px 6px' }}
+                  >
                     Sigla
                   </th>
-                  <th scope="col" style={{ width: 60, padding: '4px 6px' }}>
+                  <th
+                    title="Tipo de control del aparato."
+                    scope="col"
+                    style={{ width: 60, padding: '4px 6px' }}
+                  >
                     Tipo de Control
                   </th>
-                  <th scope="col" className="c" style={{ width: 90, padding: '4px 6px' }}>
+                  <th
+                    title="Consumo de gas por hora (m³/h)."
+                    scope="col"
+                    className="c"
+                    style={{ width: 90, padding: '4px 6px' }}
+                  >
                     Consumo m³/hr
                   </th>
                 </tr>

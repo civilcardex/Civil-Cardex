@@ -25,7 +25,9 @@ import { computeBajanteVentTable } from '../../utils/bajanteVentRows';
 import { computeAccesoriosTable } from '../../utils/sanAccesoriosRows';
 import { computeAccesoriosPorRamalTable } from '../../utils/accesoriosPorRamalRows';
 import { computeRainDownpipesTable } from '../../utils/rainDownpipesRows';
-import { chequeoCanalLluvia } from '../../utils/calcRainwater';
+import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../../utils/calcRainwater';
+import { nDeCanal } from '../../constants/engineeringDataMaterials';
+import { cEfectivoCubierta } from '../../constants/engineeringDataMaterials';
 import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows';
 import { computeResumenTuberiasTable } from '../../utils/resumenTuberiasRows';
 import { getPdfjs } from '../../utils/lazyPdfjs';
@@ -463,7 +465,16 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       'Chequeo',
     ];
     const rows = canalesLl.map((c) => {
-      const { Qreal, Qmax, chequeo, totalStr } = chequeoCanalLluvia(c);
+      const { Qreal, Qmax, chequeo, totalStr } = chequeoCanalLluvia({
+        ...c,
+        // C efectivo: material del catálogo con fallback al comportamiento anterior.
+        coeficienteC: cEfectivoCubierta(c.materialCubierta),
+        // n derivado del material del CANAL (misma fuente que ChequeoCanales) — con
+        // material definido, el manning persistido viejo (0.009) divergía de la pantalla.
+        manning: nDeCanal(c.materialCanal ?? '') ?? c.manning,
+        muroVertical: c.muroVertical ?? 0,
+        bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
+      });
       return [
         c.sector || '—',
         c.areaParcial || '—',

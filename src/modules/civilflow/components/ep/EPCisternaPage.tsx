@@ -72,6 +72,12 @@ export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
               thStyle={TH_R}
               tdStyle={TD_R}
               cols={['Parámetro', 'Valor', 'Unidad', 'Fórmula / Referencia']}
+              tips={[
+                'Nombre del parámetro.',
+                'Valor calculado o ingresado.',
+                'Unidad del valor.',
+                'Fórmula o referencia normativa del cálculo.',
+              ]}
               rows={[
                 [
                   <Param
@@ -143,6 +149,12 @@ export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
               thStyle={TH_R}
               tdStyle={TD_R}
               cols={['Parámetro', 'Valor', 'Unidad', 'Fórmula / Referencia']}
+              tips={[
+                'Nombre del parámetro.',
+                'Valor calculado o ingresado.',
+                'Unidad del valor.',
+                'Fórmula o referencia normativa del cálculo.',
+              ]}
               rows={[
                 [
                   <Param name="Dotación diaria" sub="Por usuario" />,
@@ -231,6 +243,12 @@ export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
               { width: '26%', whiteSpace: 'normal' },
             ]}
             cols={['Parámetro', 'Valor', 'Unidad', 'Fórmula / Referencia']}
+            tips={[
+              'Nombre del parámetro.',
+              'Valor calculado o ingresado.',
+              'Unidad del valor.',
+              'Fórmula o referencia normativa del cálculo.',
+            ]}
             rows={[
               [
                 <Param name="Presión atmosférica local" sub="Patm" />,

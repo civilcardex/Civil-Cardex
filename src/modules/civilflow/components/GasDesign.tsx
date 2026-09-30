@@ -34,8 +34,8 @@ interface GasBajanteRaw extends RawElement {
   capacidad?: string;
 }
 import { SI, SD, TH as _TH, TD as _TD } from '../styles/sharedTableStyles';
-const TH = { ..._TH, fontSize: 10, padding: '2px 3px' };
-const TD = { ..._TD, fontSize: 10, padding: '1px 2px' };
+const TH = { ..._TH, fontSize: 10.5, padding: '2px 3px' };
+const TD = { ..._TD, fontSize: 10.5, padding: '1px 2px' };
 
 const ALL_DN: { mat: string; K: number; dn: string; d: number }[] = [];
 const SR_ONLY = {
@@ -53,7 +53,7 @@ const EMPTY_ROW = {
   padding: '24px 0',
   textAlign: 'center',
   color: 'var(--txt3)',
-  fontSize: 10,
+  fontSize: 10.5,
   border: 'none',
 } as const;
 GAS.forEach((g) => {
@@ -72,9 +72,19 @@ const ACC_KEYS = [
   'te_ramal',
   'valvula_bola',
 ];
+// Notas descriptivas por columna del diseño de gas (tooltip en el encabezado).
+const GasDesign_TIPS = [
+  'Tramo de la red de gas según el dibujo.',
+  'Punto de inicio del tramo.',
+  'Punto donde termina el tramo.',
+  'Material y diámetro nominal del tramo.',
+  'Diámetro interior del tubo (mm).',
+  'Coeficiente K del material para el cálculo.',
+  'Longitud desarrollada del tramo (m).',
+];
+
 const GasDesign_COLS = [
   'Tramo',
-  'Nivel',
   'Inicio',
   'Fin',
   'Material y Diámetro',
@@ -82,7 +92,7 @@ const GasDesign_COLS = [
   'Coeficiente K',
   'Longitud (m)',
 ];
-const GasDesign_colW = ['8%', '5%', '8%', '8%', '18%', '10%', '8%', '12%'];
+const GasDesign_colW = ['10%', '9%', '9%', '18%', '10%', '8%', '12%'];
 
 function lookupDn(mat: string, dn: string) {
   const normDn = normalizeDnLabel(dn);
@@ -514,7 +524,7 @@ function GasDesign() {
             <table
               className="tbl"
               style={{
-                fontSize: 10,
+                fontSize: 10.5,
                 tableLayout: 'auto',
                 width: '100%',
                 borderCollapse: 'collapse',
@@ -529,7 +539,7 @@ function GasDesign() {
               <thead>
                 <tr>
                   {COLS.map((c, i) => (
-                    <th scope="col" key={i} style={TH}>
+                    <th scope="col" key={i} title={GasDesign_TIPS[i]} style={TH}>
                       {c}
                     </th>
                   ))}
@@ -551,16 +561,12 @@ function GasDesign() {
                   return (
                     <tr key={tramoKey(t)}>
                       <td className="c" style={{ padding: '0 1px' }}>
-                        <span className="sigla" style={{ fontSize: 10, padding: '1px 4px' }}>
+                        <span className="sigla" style={{ fontSize: 10.5, padding: '1px 4px' }}>
                           {t.id}
+                          {t.piso != null ? `-${pisoCorto(t.piso)}` : ''}
                         </span>
                       </td>
-                      <td
-                        className="c"
-                        style={{ padding: '0 1px', color: 'var(--txt2)', fontSize: 10 }}
-                      >
-                        {pisoCorto(t.piso)}
-                      </td>
+
                       <td className="c" style={{ ...TD, padding: '1px 2px' }}>
                         {t.ini || '—'}
                       </td>
@@ -585,7 +591,7 @@ function GasDesign() {
                               val.substring(sep + 1),
                             );
                           }}
-                          style={{ ...SD, width: '100%', fontSize: 10 }}
+                          style={{ ...SD, width: '100%', fontSize: 10.5 }}
                         >
                           <option value="">—</option>
                           {ALL_DN.sort(
@@ -645,22 +651,22 @@ function GasDesign() {
               <EditButton edit={edit} setEdit={setEdit} />
             </div>
             <div style={{ padding: 6 }}>
-              <table className="tbl" style={{ fontSize: 10 }}>
+              <table className="tbl" style={{ fontSize: 10.5 }}>
                 <thead>
                   <tr>
-                    <th scope="col" style={TH}>
+                    <th title="Identificador del equipo en el dibujo." scope="col" style={TH}>
                       ID
                     </th>
-                    <th scope="col" style={TH}>
+                    <th title="Tipo de equipo: contador o calentador." scope="col" style={TH}>
                       Tipo
                     </th>
-                    <th scope="col" style={TH}>
+                    <th title="Diámetro de la conexión del equipo." scope="col" style={TH}>
                       Diámetro
                     </th>
-                    <th scope="col" style={TH}>
+                    <th title="Tipo de conexión del equipo." scope="col" style={TH}>
                       Conexión
                     </th>
-                    <th scope="col" style={TH}>
+                    <th title="Capacidad del equipo." scope="col" style={TH}>
                       Capacidad
                     </th>
                   </tr>
@@ -687,7 +693,7 @@ function GasDesign() {
                                 id: b.id,
                               });
                             }}
-                            style={{ ...SD, fontSize: 10 }}
+                            style={{ ...SD, fontSize: 10.5 }}
                           >
                             <option value="">—</option>
                             {CONTADORES_CAT.map((c) => (
@@ -710,7 +716,7 @@ function GasDesign() {
                             const bajKey = `${b.id}-${b.planId}`;
                             writeBajantePropToDrawing(bajKey, 'gas', 'acoDiam', val, plans);
                           }}
-                          style={{ ...SD, fontSize: 10 }}
+                          style={{ ...SD, fontSize: 10.5 }}
                         >
                           <option value="">—</option>
                           {GAS_DN_LABELS.map((d) => (
@@ -731,7 +737,7 @@ function GasDesign() {
                               const bajKey = `${b.id}-${b.planId}`;
                               writeBajantePropToDrawing(bajKey, 'gas', 'capacidad', val, plans);
                             }}
-                            style={{ ...SD, fontSize: 10 }}
+                            style={{ ...SD, fontSize: 10.5 }}
                           >
                             <option value="">—</option>
                             {CAT_GAS.filter((g) => g.id.startsWith('cal')).map((g) => (
@@ -779,7 +785,7 @@ function GasDesign() {
             <table
               className="tbl"
               style={{
-                fontSize: 10,
+                fontSize: 10.5,
                 tableLayout: 'auto',
                 width: '100%',
                 borderCollapse: 'collapse',
@@ -788,18 +794,34 @@ function GasDesign() {
               <caption style={SR_ONLY}>Chequeo red de gas</caption>
               <thead>
                 <tr>
-                  <th scope="col" style={{ ...TH }} rowSpan={2}>
+                  <th
+                    title="Tramo chequeado de la red de gas."
+                    scope="col"
+                    style={{ ...TH }}
+                    rowSpan={2}
+                  >
                     Tramo
                   </th>
-                  <th scope="col" style={{ ...TH }} rowSpan={2}>
+                  <th
+                    title="Longitud desarrollada del tramo (m)."
+                    scope="col"
+                    style={{ ...TH }}
+                    rowSpan={2}
+                  >
                     Longitud (m)
                   </th>
-                  <th scope="col" style={{ ...TH }} rowSpan={2}>
+                  <th
+                    title="Diámetro interior del tubo (mm)."
+                    scope="col"
+                    style={{ ...TH }}
+                    rowSpan={2}
+                  >
                     Diámetro
                     <br />
                     interno (mm)
                   </th>
                   <th
+                    title="Accesorios instalados en el tramo (cantidad por tipo)."
                     scope="col"
                     style={{ ...TH, borderBottom: '2px solid var(--line)' }}
                     colSpan={5}
@@ -807,49 +829,94 @@ function GasDesign() {
                     Accesorios
                   </th>
                   <th
+                    title="Suma de longitudes equivalentes de los accesorios (m)."
                     scope="col"
                     style={{ ...TH, borderLeft: '2px solid var(--line)' }}
                     rowSpan={2}
                   >
                     Longitud equivalente (m)
                   </th>
-                  <th scope="col" style={TH} rowSpan={2}>
+                  <th
+                    title="Pérdida de presión del tramo (mbar)."
+                    scope="col"
+                    style={TH}
+                    rowSpan={2}
+                  >
                     {'Δ'}P (mbar)
                   </th>
-                  <th scope="col" style={{ ...TH }} rowSpan={2}>
+                  <th
+                    title="Velocidad del gas en el tramo (m/s)."
+                    scope="col"
+                    style={{ ...TH }}
+                    rowSpan={2}
+                  >
                     Velocidad (m/s)
                   </th>
                   <th
+                    title="Presión disponible al inicio y al final del tramo (mbar)."
                     scope="col"
                     style={{ ...TH, borderBottom: '2px solid var(--line)' }}
                     colSpan={2}
                   >
                     Presión (mbar)
                   </th>
-                  <th scope="col" style={{ ...TH }} rowSpan={2}>
+                  <th
+                    title="O.K. si la velocidad del gas no supera 10 m/s."
+                    scope="col"
+                    style={{ ...TH }}
+                    rowSpan={2}
+                  >
                     V {'≤'} 10 m/s
                   </th>
                 </tr>
                 <tr>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Codos de 90° estándar en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Codos 90{'°'} std
                   </th>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Codos de 90° de radio largo en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Codos 90{'°'} rl
                   </th>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Tes con el flujo en línea recta."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Te en l&iacute;nea (flujo recto)
                   </th>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Tes con el flujo desviado al ramal."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Te ramal (flujo desviado)
                   </th>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Válvulas de bola (1/4 de vuelta) en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Válvula de bola (1/4 de vuelta)
                   </th>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Longitud acumulada desde el inicio del tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Inicio
                   </th>
-                  <th scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th
+                    title="Longitud acumulada hasta el fin del tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
                     Fin
                   </th>
                 </tr>
@@ -875,11 +942,11 @@ function GasDesign() {
                   return (
                     <tr key={tramoKey(t)}>
                       <td className="c" style={{ padding: '0 1px' }}>
-                        <span className="sigla" style={{ fontSize: 10, padding: '1px 1px' }}>
+                        <span className="sigla" style={{ fontSize: 10.5, padding: '1px 1px' }}>
                           {t.id}
                         </span>
                       </td>
-                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10 }}>
+                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10.5 }}>
                         {t.longitud > 0 ? t.longitud.toFixed(2) : '—'}
                       </td>
                       <td
@@ -887,7 +954,7 @@ function GasDesign() {
                         style={{
                           ...TD,
                           padding: '1px 1px',
-                          fontSize: 10,
+                          fontSize: 10.5,
                           color: dInt ? 'var(--txt)' : 'var(--txt3)',
                         }}
                       >
@@ -905,7 +972,7 @@ function GasDesign() {
                         >
                           <span
                             style={{
-                              fontSize: 10,
+                              fontSize: 10.5,
                               fontWeight: 600,
                               fontFamily: 'var(--mono)',
                               color: (acc[k] || 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
@@ -920,7 +987,7 @@ function GasDesign() {
                         style={{
                           ...TD,
                           padding: '1px 1px',
-                          fontSize: 10,
+                          fontSize: 10.5,
                           fontWeight: 600,
                           borderLeft: '2px solid var(--line)',
                         }}
@@ -932,7 +999,7 @@ function GasDesign() {
                         style={{
                           ...TD,
                           padding: '1px 1px',
-                          fontSize: 10,
+                          fontSize: 10.5,
                           fontWeight: 600,
                           color: dP > 0 ? 'var(--txt)' : 'var(--txt3)',
                         }}
@@ -944,22 +1011,22 @@ function GasDesign() {
                         style={{
                           ...TD,
                           padding: '1px 1px',
-                          fontSize: 10,
+                          fontSize: 10.5,
                           color: vel > 0 ? 'var(--txt)' : 'var(--txt3)',
                         }}
                       >
                         {vel.toFixed(2)}
                       </td>
-                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10 }}>
+                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10.5 }}>
                         {pIni.toFixed(2)}
                       </td>
-                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10 }}>
+                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10.5 }}>
                         {pFin.toFixed(2)}
                       </td>
                       <td className="c" style={{ padding: '1px 1px' }}>
                         <span
                           style={{
-                            fontSize: 10,
+                            fontSize: 10.5,
                             fontWeight: 700,
                             fontFamily: 'var(--mono)',
                             color:

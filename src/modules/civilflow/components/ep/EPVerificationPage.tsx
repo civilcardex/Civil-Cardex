@@ -188,6 +188,7 @@ export default function EPVerificationPage({
               thStyle={TH_S}
               tdStyle={TD_S}
               cols={['Parámetro', 'Valor', 'Unidad']}
+              tips={['Nombre del parámetro.', 'Valor calculado o ingresado.', 'Unidad del valor.']}
               rows={[
                 [
                   'Eficiencia bomba (η_b)',
@@ -351,6 +352,11 @@ export default function EPVerificationPage({
                 thStyle={TH_S}
                 tdStyle={TD_S}
                 cols={['Parámetro', 'Valor', 'Ud.']}
+                tips={[
+                  'Nombre del parámetro.',
+                  'Valor calculado o ingresado.',
+                  'Unidad del valor.',
+                ]}
                 rows={[
                   ['Qd = MAX(Qac, Qasc)', <span style={M}>{fmtLps(Qd)}</span>, 'L/s'],
                   ['Qd en m³/h', <span style={M}>{fmtM3h(Qm3h)}</span>, 'm³/h'],
@@ -377,6 +383,7 @@ export default function EPVerificationPage({
               thStyle={TH_S}
               tdStyle={TD_S}
               cols={['Parámetro', 'Valor', 'Unidad']}
+              tips={['Nombre del parámetro.', 'Valor calculado o ingresado.', 'Unidad del valor.']}
               rows={(() => {
                 const r: React.ReactNode[][] = [];
                 r.push([
@@ -449,6 +456,7 @@ export default function EPVerificationPage({
               thStyle={TH_S}
               tdStyle={TD_S}
               cols={['Parámetro', 'Valor', 'Ud.']}
+              tips={['Nombre del parámetro.', 'Valor calculado o ingresado.', 'Unidad del valor.']}
               rows={[
                 ['Potencia hidráulica', <span style={M}>{fmtW(Phid)}</span>, 'W'],
                 ['Potencia al freno', <span style={M}>{fmtW(Pfreno_w)}</span>, 'W'],
@@ -501,6 +509,12 @@ export default function EPVerificationPage({
             thStyle={TH_R}
             tdStyle={TD_R}
             cols={['Parámetro', 'Valor', 'Unidad', 'Fórmula']}
+            tips={[
+              'Nombre del parámetro.',
+              'Valor calculado o ingresado.',
+              'Unidad del valor.',
+              'Expresión con la que se obtiene el valor.',
+            ]}
             rows={[
               [
                 'Presión de arranque',
@@ -569,6 +583,14 @@ export default function EPVerificationPage({
             thStyle={TH_R}
             tdStyle={{ ...TD_R, width: '1%', whiteSpace: 'nowrap' }}
             cols={['Ramal', 'Q (L/s)', 'V diseño (m/s)', 'D calc (mm)', 'DN (mm)', 'V real (m/s)']}
+            tips={[
+              'Ramal del equipo.',
+              'Caudal de diseño del ramal (L/s).',
+              'Velocidad de diseño (m/s).',
+              'Diámetro calculado (mm).',
+              'Diámetro nominal comercial (mm).',
+              'Velocidad real con el diámetro nominal (m/s).',
+            ]}
             rows={[
               [
                 'Succión colector (Qd)',
@@ -620,6 +642,7 @@ export default function EPVerificationPage({
             thStyle={TH_R}
             tdStyle={TD_R}
             cols={['Parámetro', 'Valor']}
+            tips={['Nombre del parámetro.', 'Valor calculado o ingresado.']}
             rows={[
               [
                 'Caudal nominal',
@@ -691,6 +714,7 @@ export default function EPVerificationPage({
             thStyle={TH_R}
             tdStyle={TD_R}
             cols={['Parámetro', 'Valor', 'Unidad']}
+            tips={['Nombre del parámetro.', 'Valor calculado o ingresado.', 'Unidad del valor.']}
             rows={[
               [
                 <Param name="Tubería de succión" sub="Diámetro nominal comercial" />,

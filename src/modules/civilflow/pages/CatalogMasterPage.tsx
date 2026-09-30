@@ -9,6 +9,8 @@ import {
   ContadoresTable,
   MaterialesPorRedTable,
   CoefFriccionTable,
+  EscorrentiaCubiertaTable,
+  ManningCanalesLlTable,
 } from './catalog/CatalogTables';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { useIsMobile } from '../../../hooks/useMediaQuery';
@@ -162,6 +164,34 @@ export default function CatalogMasterPage() {
             </>
           )}
 
+          {/* Aguas lluvias: escorrentía y Manning de canales de cubierta (orig. usuario:
+          página propia, una fila con dos columnas al 50%). */}
+          {subpage === 5 && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: 12,
+                alignContent: 'start',
+              }}
+            >
+              <SectionCard
+                title="Escorrentía por material de cubierta"
+                subtitle="Aguas lluvias"
+                compact
+              >
+                <EscorrentiaCubiertaTable />
+              </SectionCard>
+              <SectionCard
+                title="Manning por material — canal cubierta"
+                subtitle="Aguas lluvias"
+                compact
+              >
+                <ManningCanalesLlTable />
+              </SectionCard>
+            </div>
+          )}
+
           {subpage === 2 && (
             <div
               style={{
@@ -259,7 +289,7 @@ export default function CatalogMasterPage() {
           >
             ←
           </button>
-          {[1, 2, 3, 4].map((n) => (
+          {[1, 2, 3, 4, 5].map((n) => (
             <button
               type="button"
               key={n}
@@ -278,11 +308,11 @@ export default function CatalogMasterPage() {
           <button
             type="button"
             aria-label="Página siguiente"
-            onClick={() => setSubpage(Math.min(4, subpage + 1))}
+            onClick={() => setSubpage(Math.min(5, subpage + 1))}
             style={{
               ...pageBtn,
-              opacity: subpage === 4 ? 0.3 : 1,
-              cursor: subpage === 4 ? 'default' : 'pointer',
+              opacity: subpage === 5 ? 0.3 : 1,
+              cursor: subpage === 5 ? 'default' : 'pointer',
             }}
           >
             →

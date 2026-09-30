@@ -38,6 +38,8 @@ const TDL_DEFAULT: React.CSSProperties = {
 
 interface TblProps {
   cols: string[];
+  /** Notas descriptivas por columna (tooltip en el th, mismo orden que cols). */
+  tips?: string[];
   rows: React.ReactNode[][];
   thStyle?: React.CSSProperties;
   tdStyle?: React.CSSProperties;
@@ -66,6 +68,7 @@ const VH: React.CSSProperties = {
 
 const Tbl = React.memo(function Tbl({
   cols,
+  tips,
   rows,
   thStyle,
   tdStyle,
@@ -98,7 +101,7 @@ const Tbl = React.memo(function Tbl({
       <thead>
         <tr>
           {cols.map((c, i) => (
-            <th scope="col" key={i} style={{ ...th, ...colStyles?.[i] }}>
+            <th scope="col" key={i} title={tips?.[i]} style={{ ...th, ...colStyles?.[i] }}>
               {c}
             </th>
           ))}
