@@ -11,9 +11,16 @@ import type { useWorkAreaState } from '../useWorkAreaState';
 const Aparatos3D = React.lazy(() => import('../aparatos3d'));
 const RciCuartoBombasViewer = React.lazy(() => import('../rci3d'));
 const Epc3D = React.lazy(() => import('../epc3d'));
+const RciRed3D = React.lazy(() => import('../rci-red3d/RciRedViewer'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
-const SUBTABS = ['Redes', 'Aparatos', 'Bomba red contra incendio', 'Equipo de presión constante'];
+const SUBTABS = [
+  'Redes',
+  'Aparatos',
+  'Bomba red contra incendio',
+  'Equipo de presión constante',
+  'Red contra incendio',
+];
 
 function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState> }) {
   const [sub, setSub] = useState(1);
@@ -29,7 +36,7 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
         overflow: 'hidden',
       }}
     >
-      <PageNav page={sub} setPage={setSub} total={4} labels={SUBTABS} color="var(--acc)" />
+      <PageNav page={sub} setPage={setSub} total={5} labels={SUBTABS} color="var(--acc)" />
       {sub === 1 && <IsometriaGeneral state={state} />}
       {sub === 2 && (
         <Suspense fallback={FALLBACK}>
@@ -44,6 +51,11 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
       {sub === 4 && (
         <Suspense fallback={FALLBACK}>
           <Epc3D />
+        </Suspense>
+      )}
+      {sub === 5 && (
+        <Suspense fallback={FALLBACK}>
+          <RciRed3D />
         </Suspense>
       )}
     </div>
