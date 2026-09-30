@@ -43,3 +43,7 @@ skills-lock.json
 
 # Supabase CLI estado local de sesion
 supabase/.temp/
+
+# ZCode sesion (tooling local)
+.zcode/
+.zcodeignore
