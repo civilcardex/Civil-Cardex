@@ -18,7 +18,6 @@ import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
 import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDataMaterials';
 import { trunc2 } from '../utils/formatUtils';
-import { devError } from '../../../utils/devError';
 import React from 'react';
 import type { DrawingData } from '../utils/drawingSync';
 
@@ -203,12 +202,6 @@ export default function ChequeoBajantesLluvias() {
 
   const ramalesByBajante = useMemo(() => {
     const map: Record<string, string[]> = {};
-    // Trazas de diagnóstico (solo DEV): por qué la columna "Ramales asociados" queda vacía.
-    devError(
-      `[CF-RASOC] assoc=${Object.keys(bajanteAssociations).length} ` +
-        `canalKeys=${canalRamalKeys.size} tramosLl=${tramosLl.length} ` +
-        `assoc=${JSON.stringify(Object.entries(bajanteAssociations).slice(0, 6))}`,
-    );
     for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
       // lastIndexOf: el id del ramal puede contener '-' (patrón AC-01-<id> en otras redes) —
       // split('-') rompería el par id|plan en la primera aparición.
