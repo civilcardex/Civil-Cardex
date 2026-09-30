@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { bajanteLabel } from '../../../utils/accessoryAbbreviations';
 import ExtremeAccessoryEditor from '../ExtremeAccessoryEditor';
 import type {
@@ -31,6 +31,7 @@ import {
 } from '../../../lib/PlanoEngine/canalAssociation';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { ContadorEditor, CalentadorEditor, BajanteEditor, RamalEditor } from './legacyEditors';
+import { RainwaterContext } from '../../../context/RainwaterContext';
 
 export function ContadorTramoEditor() {
   const { selElement, activeNet, handleUpdateSel } = useTramoEditorContext();
@@ -96,6 +97,9 @@ function CanalNumField({
 
 export function CanalTramoEditor() {
   const { selElement: rawSelElement, handleUpdateSel, engineRef } = useTramoEditorContext();
+  // Intensidad vive en los overrides del RainwaterContext (no en el glifo) — acceso
+  // null-safe: el panel también corre en árboles sin provider (tests).
+  const rw = useContext(RainwaterContext);
   // Refresco local tras cambiar una asociación ramal→bajante (vive en los bajantes, no en el
   // canal seleccionado — sin esto el panel mostraría el desplegable viejo hasta re-seleccionar).
   const [, setAssocTick] = useState(0);
@@ -189,6 +193,24 @@ export function CanalTramoEditor() {
               label="Pendiente (%)"
               value={selElement.pendiente ?? 2}
               onCommit={(v) => onCanalField('pendiente', v)}
+            />
+          </div>
+          <div>
+            <div style={fieldLabel}>Intensidad (mm/h)</div>
+            <CanalNumField
+              label="Intensidad (mm/h)"
+              value={
+                rw?.canalesLl.find(
+                  (c) => (c.sector || c.id) === (selElement.code || selElement.id).split('-')[0],
+                )?.intensidad ?? 100
+              }
+              onCommit={(v) => {
+                const sector = (selElement.code || selElement.id).split('-')[0];
+                // Bidireccional con la tabla de chequeo (orig. usuario): mismo override por
+                // sector; default 100 si viene vacío.
+                if (sector) rw?.updCanalSector(sector, 'intensidad', v || 100);
+                else rw?.updCanalLL(selElement.id, 'intensidad', v || 100);
+              }}
             />
           </div>
         </div>
