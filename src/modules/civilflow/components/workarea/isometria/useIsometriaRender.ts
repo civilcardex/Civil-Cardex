@@ -266,21 +266,60 @@ export function useIsometriaRender({
       const profCanal = profByNet[netId] ?? 0;
       for (const b of netData.bajantes) {
         if (b._isCrossFloorGhost || b.tipo !== 'canal') continue;
-        const baseM = (b.base || 0) / 100;
+        // Marco efectivo en METROS (misma regla que canalMarco del motor, sin engine): con
+        // `angulo` se respeta; sin él (legacy) el flowDir manda y sin flowDir la forma
+        // (base>longitud→90°). Los shifts de origen van en metros (getIsoCoords es lineal).
+        let baseM = (b.base || 0) / 100;
+        let longM = (b.longitud || 0) / 100;
         const altM = (b.altura || 0) / 100;
-        const longM = (b.longitud || 0) / 100;
         if (longM <= 0.001 || baseM <= 0.001 || altM <= 0.001) continue;
+        let angC = 0;
+        let shU = 0;
+        let shV = 0;
+        if (b.angulo != null) {
+          angC = (b.angulo * Math.PI) / 180;
+        } else {
+          const dir = (b as { _canalFlowDir?: string })._canalFlowDir;
+          if (dir === 'izquierda') {
+            angC = Math.PI;
+            shU = longM;
+            shV = baseM;
+          } else if (dir === 'arriba') {
+            angC = -Math.PI / 2;
+            shV = baseM;
+            const t = longM;
+            longM = baseM;
+            baseM = t;
+          } else if (dir === 'abajo' || baseM > longM) {
+            angC = Math.PI / 2;
+            shU = longM;
+            const t = longM;
+            longM = baseM;
+            baseM = t;
+          }
+        }
         const selKey = `${netId}:${b.planId}:${b.id}`;
         const isSel = selKey === selTramo;
         const hl = isSel ? '#FFEB3B' : netColorCanal;
         const zC = (nptMap[b.planNivel] || 0) - profCanal * 1000;
         const zPixC = getZPix(zC, b.planNivel);
-        const iso0 = getIsoCoords(b.x, b.y, b.planNivel);
+        const iso0raw = getIsoCoords(b.x, b.y, b.planNivel);
+        const iso0 = { x: iso0raw.x + shU * ISO_SCALE, y: iso0raw.y + shV * ISO_SCALE };
+        // Ejes del canal en espacio iso (unitarios): U = eje largo, V = base. Con ángulo 0
+        // son (1,0)/(0,1) — idéntico al código anterior.
+        const ux = Math.cos(angC);
+        const uy = Math.sin(angC);
+        const P = (suM: number, tvM: number, pz: number) =>
+          projPtCanal(
+            iso0.x + (ux * suM - uy * tvM) * ISO_SCALE,
+            iso0.y + (uy * suM + ux * tvM) * ISO_SCALE,
+            pz,
+          );
         // Esquinas superiores del rectángulo de abertura (símbolo en planta)
-        const pA = projPtCanal(iso0.x, iso0.y, zPixC);
-        const pB = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y, zPixC);
-        const pC = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y + baseM * ISO_SCALE, zPixC);
-        const pD = projPtCanal(iso0.x, iso0.y + baseM * ISO_SCALE, zPixC);
+        const pA = P(0, 0, zPixC);
+        const pB = P(longM, 0, zPixC);
+        const pC = P(longM, baseM, zPixC);
+        const pD = P(0, baseM, zPixC);
         // Altura de pared (editable)
         const wall = altM;
         const bottomZ = zPixC + wall * ISO_SCALE;
@@ -309,27 +348,27 @@ export function useIsometriaRender({
         //     la pared trasera flotante, a todo lo largo (el corte visible desde los laterales)
         //   - Pared delantera y piso completos
         ctx.fillStyle = hexA(netColorCanal, 0.18);
-        const pN = (px: number, py: number, pz: number) => projPtCanal(px, py, pz);
-        const xL = iso0.x;
-        const xR = iso0.x + longM * ISO_SCALE;
-        const yB = iso0.y;
-        const yF = iso0.y + baseM * ISO_SCALE;
+        // pN toma (su, tv) en METROS sobre los ejes U/V del canal (no iso crudo): las llamadas
+        // de abajo no cambian — xL/xR son su a lo largo, yB..yF3 son tv a lo ancho.
+        const pN = (su: number, tv: number, pz: number) => P(su, tv, pz);
+        const xL = 0;
+        const xR = longM;
+        const yB = 0;
+        const yF = baseM;
         const zT = zPixC;
         const zM = notchZ; // nivel del escalón
         const zB = bottomZ;
-        // Región de las muescas: corren a TODO lo largo del canal (en X). Las muescas se ven como
+        // Región de las muescas: corren a TODO lo largo del canal (eje U). Las muescas se ven como
         // ESCALONES que BAJAN hacia el centro del canal: la muesca exterior (junto a cada pared,
         // 15% del ancho) es somera — se quita POR ABAJO el 25% de la altura (zB..zM) y la pared
         // flota desde ahí; la muesca interior escalonada (10% del ancho, arranca donde termina la
         // exterior) es más profunda — se quita hasta el 75% de la altura (zB..zM2). El piso
         // (nivel zB) queda solo en la franja central.
-        const nY = baseM * 0.15 * ISO_SCALE; // ancho de la muesca exterior (somera)
-        const nY2 = baseM * 0.1 * ISO_SCALE; // ancho de la muesca interior (profunda)
+        const yB2 = baseM * 0.15; // borde interior de la muesca trasera exterior
+        const yB3 = baseM * 0.25; // borde interior de la muesca trasera interior
+        const yF2 = baseM * 0.85; // borde interior de la muesca delantera exterior
+        const yF3 = baseM * 0.75; // borde interior de la muesca delantera interior
         const zM2 = zPixC + wall * 0.75 * ISO_SCALE; // nivel del escalón interior (profundo, 75%)
-        const yB2 = yB + nY; // extremo interior de la muesca trasera exterior
-        const yB3 = yB + nY + nY2; // extremo interior de la muesca trasera interior
-        const yF2 = yF - nY; // extremo interior de la muesca delantera exterior
-        const yF3 = yF - nY - nY2; // extremo interior de la muesca delantera interior
 
         // Piso (base inferior) — solo la franja central fuera de las muescas
         quad(pN(xL, yB3, zB), pN(xR, yB3, zB), pN(xR, yF3, zB), pN(xL, yF3, zB));
@@ -423,11 +462,7 @@ export function useIsometriaRender({
           ctx.lineWidth = 2.5;
           quad(pA, pB, pC, pD);
           ctx.stroke();
-          const rectCenter = projPtCanal(
-            iso0.x + (longM * ISO_SCALE) / 2,
-            iso0.y + (baseM * ISO_SCALE) / 2,
-            zPixC,
-          );
+          const rectCenter = P(longM / 2, baseM / 2, zPixC);
           const topSy = Math.min(pA.sy, pB.sy, pC.sy, pD.sy);
           ctx.fillStyle = '#FFEB3B';
           ctx.font = 'bold 11px Geist,monospace';

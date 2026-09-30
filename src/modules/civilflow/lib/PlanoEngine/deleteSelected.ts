@@ -112,6 +112,44 @@ function reassignTributariosToHermano(
   }
 }
 
+/**
+ * Compacta CNL1..N tras borrar (ítem 6 usuario): id==code en canales, en orden de
+ * creación, conservando el sufijo de piso de cada uno. Remapea las referencias vivas de
+ * OTROS canales (esCanalId de sus ramales, canalId de sus bajantes) — las del canal
+ * borrado ya cayeron en cascada en el mismo borrado.
+ */
+function renumberCanales(engine: IPlanoEngineCore): void {
+  const idMap = new Map<string, string>();
+  let n = 0;
+  for (const b of engine.bajantes) {
+    if (b.tipo !== 'canal') continue;
+    n++;
+    const raw = b.code || b.id || '';
+    const suf = raw.includes('-') ? raw.split('-').slice(1).join('-') : '';
+    const code = suf ? `CNL${n}-${suf}` : `CNL${n}`;
+    if (b.id !== code) idMap.set(b.id, code);
+    b.id = code;
+    b.code = code;
+  }
+  if (idMap.size === 0) return;
+  for (const r of engine.ramales) {
+    if (r.esCanalId && idMap.has(r.esCanalId)) r.esCanalId = idMap.get(r.esCanalId)!;
+  }
+  for (const b of engine.bajantes) {
+    if (b.canalId && idMap.has(b.canalId)) b.canalId = idMap.get(b.canalId)!;
+  }
+  // Overrides de canales (cf_anulaciones_canales_pluviales) se clavean por sector = code
+  // base: sin este aviso, la fila manual quedaba huérfana y el canal renombrado nacía sin
+  // material/áreas (duplicado + datos desasociados). RainwaterContext migra sus sectores.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('civilflow_canales_renumerados', {
+        detail: { idMap: Object.fromEntries(idMap) },
+      }),
+    );
+  }
+}
+
 export function deleteSelected(
   engine: IPlanoEngineCore,
   ids?: string[],
@@ -122,6 +160,7 @@ export function deleteSelected(
     const netsToRenumber = new Set<string>();
     const bajNetsToRenumber = new Set<string>();
     let renumberAreas = false;
+    let renumberCanalesNeeded = false;
     const toDelete = new Set<string>(ids);
     // Borrado en conjunto (orig. usuario): caen los TRIBUTARIOS que llegan a lo seleccionado
     // (transitivamente: un tributario puede recibir a otro) y los colgantes por `padre`.
@@ -279,6 +318,7 @@ export function deleteSelected(
           else if (deleted.tipo === 'montante') bajNetsToRenumber.add('montante');
           else if (deleted.tipo === 'red_publica') bajNetsToRenumber.add('red_publica');
           else if (deleted.tipo === 'contador') bajNetsToRenumber.add('contador');
+          else if (deleted.tipo === 'canal') renumberCanalesNeeded = true;
           // Limpia los fantasmas entre pisos de OTROS pisos que referencian este bajante
           if (engine._loadedPlanId != null)
             removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
@@ -344,6 +384,7 @@ export function deleteSelected(
     purgarEstadoRamalesBorrados(engine, deletedRamalIds);
     for (const net of netsToRenumber) engine._renumberRamales(net);
     if (renumberAreas) engine._renumberAreas();
+    if (renumberCanalesNeeded) renumberCanales(engine);
     for (const net of bajNetsToRenumber) {
       if (net === 'montante') engine._renumberMontantes();
       else if (net === 'red_publica') {
@@ -536,6 +577,28 @@ export function deleteSelected(
     for (const c of engine.bajantes) {
       if (c.tipo === 'canal' && c.bajanteExternoId === deletedId) c.bajanteExternoId = null;
     }
+    // Ítem 6 usuario: borrar UN canal (ruta individual) aplica la misma cascada que el
+    // borrado en conjunto (caen sus ramales esCanalId, se nulan canalId) + compacta CNL1..N.
+    // Sin esto el canal borrado dejaba ramales huérfanos y la numeración con huecos que el
+    // allocator length+1 convertía en duplicados.
+    if (deleted.tipo === 'canal') {
+      const canalRamals = engine.ramales.filter((r) => r.esCanalId === deletedId);
+      for (const r of canalRamals) purgarIds.add(r.id);
+      engine.ramales = engine.ramales.filter((r) => r.esCanalId !== deletedId);
+      for (const r of canalRamals) {
+        if (r.pts?.length) cleanupJunctionsAfterRamalDelete(engine, r);
+      }
+      for (const b of engine.bajantes) {
+        if (b.canalId === deletedId) b.canalId = null;
+        if (b.recibeDeIds) {
+          b.recibeDeIds = b.recibeDeIds.filter((rid) => !canalRamals.some((r) => r.id === rid));
+        }
+        if (b.alimentaIds) {
+          b.alimentaIds = b.alimentaIds.filter((aid) => !canalRamals.some((r) => r.id === aid));
+        }
+      }
+      if (canalRamals.length > 0) engine._renumberRamales('ll');
+    }
     engine.bajantes.splice(idxB, 1);
     cascadeMontanteAssociation(engine, deleted);
     // BORRAR bomba: desasociar cualquier bajante que la referencie (cross-floor).
@@ -565,6 +628,7 @@ export function deleteSelected(
     if (engine._loadedPlanId != null)
       removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
     purgarEstadoRamalesBorrados(engine, purgarIds);
+    if (deleted.tipo === 'canal') renumberCanales(engine);
     engine.selId = null;
     engine._emitSelect(null);
     engine._emitDelete([deletedId]);

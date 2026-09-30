@@ -3,6 +3,14 @@ import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState';
 import { calculateRamalLength, _statusMsg } from './ramalMeasure';
 import { pisoCorto, pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
+import {
+  geometriaCanalDesdePuntos,
+  geometriaCanalAncho,
+  normalizarCanal,
+  pxPerCmDe,
+  esquinasCanalOBB,
+  canalMarco,
+} from './canalAssociation';
 import { distToPolyline } from '../shared/geometry';
 import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
 import { angleAtHalfLength } from './drawingAngles';
@@ -699,8 +707,10 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
 // precisión por el menú contextual (CanalMenu). A diferencia del bajante (que agrega su sufijo
 // de piso solo al renderizar, porque un bajante puede abarcar pisos), el piso queda incrustado
 // en el code/id aquí al crearlo — un canal vive en un solo piso.
-/** Maneja un clic con la herramienta de canal activa: fija la esquina 1 en el primer clic y
- *  crea el rectángulo del canal en el segundo. Exclusivo de la red de aguas lluvias (ll).
+/** Maneja un clic con la herramienta de canal activa: fija la esquina 1 en el primer clic;
+ *  el segundo fija la esquina opuesta (rect eje-alineado, 2 clics) o el extremo del eje en
+ *  diagonal (el ancho lo define un 3er clic — pedido usuario: antes salía siempre fijo).
+ *  Exclusivo de la red de aguas lluvias (ll).
  *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y
  *  de plano. */
 export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number): void {
@@ -715,44 +725,140 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
       py = sp.y;
     }
   }
+  // Fase de ancho (diagonal): el eje ya quedó fijo con el 2º clic — este clic define el ancho.
+  if (engine._canalEje) {
+    commitCanalAncho(engine, px, py);
+    return;
+  }
   if (!engine._canalStart) {
     engine._canalStart = { x: px, y: py };
-    engine._emitStatus('Canal — clic para la esquina opuesta');
+    engine._emitStatus('Canal — clic para la esquina opuesta (en diagonal: eje, luego ancho)');
     engine.render();
     return;
   }
   const s = engine._canalStart;
   engine._canalStart = null;
-  // En planta el rectángulo dibujado es base (tamaño vertical) × longitud (tamaño horizontal);
-  // altura es la profundidad del canal en el eje Z, solo visible en isometría — se fija con un
-  // valor por defecto aquí y se edita desde el menú contextual (CanalMenu).
-  const base = +(engine.pxToM(Math.abs(py - s.y)) * 100).toFixed(1);
-  const longitud = +(engine.pxToM(Math.abs(px - s.x)) * 100).toFixed(1);
-  const altura = 20;
-  // Guardia contra un doble-clic accidental en el mismo sitio que produzca un rectángulo
-  // degenerado de 0x0.
-  if (base < 1 && longitud < 1) {
+  // Geometría compartida con el ghost (rect clásico o eje diagonal, ítem 4 usuario) y
+  // normalizada a base-corta/lado-largo (ítem 5 usuario).
+  const g = geometriaCanalDesdePuntos(s, { x: px, y: py }, (d) => engine.pxToM(d));
+  if (!g) {
     engine._emitStatus(_statusMsg(engine));
     engine.render();
     return;
   }
-  const x = Math.min(s.x, px);
-  const y = Math.min(s.y, py);
-  // El flujo apunta hacia donde el usuario arrastró el rectángulo (esquina 1 → esquina 2), a lo
-  // largo del eje más largo — misma convención de "dirección dibujada" que la flecha de flujo de
-  // un ramal.
-  const horizontal = Math.abs(px - s.x) >= Math.abs(py - s.y);
-  const canalFlowDir: 'derecha' | 'izquierda' | 'abajo' | 'arriba' = horizontal
-    ? px >= s.x
-      ? 'derecha'
-      : 'izquierda'
-    : py >= s.y
-      ? 'abajo'
-      : 'arriba';
-  const cnt = engine.bajantes.filter((b) => b.tipo === 'canal').length + 1;
+  if (g.modo === 'eje') {
+    // El ancho NO sale del arrastre: se fija el eje y se espera el 3er clic (WYSIWYG en ghost).
+    engine._canalEje = { x1: s.x, y1: s.y, x2: px, y2: py };
+    engine._emitStatus(
+      'Canal — clic define el ancho (más allá del extremo del eje lo alarga; Enter commitea)',
+    );
+    engine.render();
+    return;
+  }
+  crearCanalGlifo(engine, {
+    x: g.x,
+    y: g.y,
+    longitud: g.longitudCm,
+    base: g.baseCm,
+    angulo: g.angulo,
+    flujo: g.flujo,
+  });
+}
+
+/** Commitea la fase de ancho del canal en diagonal (3er clic o Enter): ancho = distancia
+ *  perpendicular del punto al eje. Un punto que proyecta más allá del extremo del eje lo
+ *  alarga (geometriaCanalAncho). @param engine Instancia del motor. @param px/py Punto de
+ *  plano que define el ancho. */
+export function commitCanalAncho(engine: IPlanoEngineCore, px: number, py: number): void {
+  const eje = engine._canalEje;
+  engine._canalEje = null;
+  if (!eje) {
+    engine.render();
+    return;
+  }
+  // Guardarraíles del "1 cm" (orig. usuario): un clic a <6 px del eje (doble-clic de
+  // término, jitter) es accidental — se respeta su lado pero se aplica un ancho mínimo
+  // útil de 20 cm moviendo el punto perpendicular al mismo pie de proyección.
+  {
+    const dx = eje.x2 - eje.x1;
+    const dy = eje.y2 - eje.y1;
+    const L = Math.hypot(dx, dy);
+    if (L > 0) {
+      const cross = dx * (py - eje.y1) - dy * (px - eje.x1);
+      const dist = Math.abs(cross) / L;
+      const minPx = 20 * engine.cmToPlanePx(1);
+      if (dist < minPx && dist < 6) {
+        const sgn = cross >= 0 ? 1 : -1;
+        const nx = (-dy / L) * sgn;
+        const ny = (dx / L) * sgn;
+        const t = ((px - eje.x1) * dx + (py - eje.y1) * dy) / (L * L);
+        const fx = eje.x1 + dx * t;
+        const fy = eje.y1 + dy * t;
+        px = fx + nx * minPx;
+        py = fy + ny * minPx;
+        engine._emitStatus('Canal — ancho mínimo 20 cm (clic más lejos del eje para otro ancho)');
+      }
+    }
+  }
+  const g = geometriaCanalAncho(
+    eje,
+    { x: px, y: py },
+    (d) => engine.pxToM(d),
+    engine.cmToPlanePx(1),
+  );
+  if (!g) {
+    engine._emitStatus(_statusMsg(engine));
+    engine.render();
+    return;
+  }
+  crearCanalGlifo(engine, {
+    x: g.x,
+    y: g.y,
+    longitud: g.longitudCm,
+    base: g.baseCm,
+    angulo: g.angulo,
+    flujo: g.flujo,
+  });
+}
+
+/** Crea el glifo de canal con geometría ya normalizada (base-corta): allocator único,
+ *  etiqueta bajo el AABB, selección y snapshot. @param engine Instancia del motor.
+ *  @param geo Marco en cm/grados + sentido de flujo. */
+function crearCanalGlifo(
+  engine: IPlanoEngineCore,
+  geo: {
+    x: number;
+    y: number;
+    longitud: number;
+    base: number;
+    angulo: number;
+    flujo: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
+  },
+): void {
+  const marco = { x: geo.x, y: geo.y, longitud: geo.longitud, base: geo.base, angulo: geo.angulo };
+  normalizarCanal(pxPerCmDe(engine), marco);
+  const base = marco.base || 0;
+  const longitud = marco.longitud || 0;
+  const altura = 20;
+  const x = marco.x;
+  const y = marco.y;
+  const canalFlowDir = geo.flujo;
+  // Consecutivo único: max+1 sobre CNL/CALL existentes (length+1 reutilizaba el número del
+  // canal borrado y duplicaba id=code — ítem 6 usuario).
+  let maxN = 0;
+  for (const bb of engine.bajantes) {
+    if (bb.tipo !== 'canal') continue;
+    const m = /(?:CNL|CALL)(\d+)/.exec(bb.code || bb.id || '');
+    if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+  }
   // El prefijo CALL quedó reservado para las cajas de aguas lluvias (caja_ll); los canales
   // recolectores usan CNL{n}-P{n} (migración de códigos viejos en PlanoPersistence).
-  const code = `CNL${cnt}-${pisoCortoLoose(engine.nivelActual?.n ?? 0)}`;
+  const code = `CNL${maxN + 1}-${pisoCortoLoose(engine.nivelActual?.n ?? 0)}`;
+  // Etiqueta bajo el AABB del OBB (válido también en diagonal).
+  const _mLbl = canalMarco(engine.cmToPlanePx(1), { x, y, longitud, base, angulo: marco.angulo });
+  const _csLbl = esquinasCanalOBB(_mLbl);
+  const _cxLbl = _csLbl.reduce((a, c) => a + c.x, 0) / 4;
+  const _maxYLbl = Math.max(..._csLbl.map((c) => c.y));
   engine.bajantes.push({
     id: code,
     net: 'll',
@@ -776,12 +882,16 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
     lblOffX: 0,
     lblOffY: 0,
     labelAngle: 0,
-    labelX: x,
-    labelY: y + Math.abs(py - s.y) + 20,
+    labelX: _cxLbl,
+    labelY: _maxYLbl + 20,
     bajR: 7 / 24,
     base,
     altura,
     longitud,
+    angulo: marco.angulo,
+    // Pendiente default del canal (misma que la tabla de chequeo): manda el dibujo
+    // (ítem 7 usuario) — editable desde menú contextual y panel derecho.
+    pendiente: 2,
     _canalFlowDir: canalFlowDir,
   });
   engine.selId = code;

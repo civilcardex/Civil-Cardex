@@ -1,4 +1,4 @@
-import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
+import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/direccionReglas';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
@@ -154,7 +154,9 @@ export function BajanteEditor({
                 ? DIAM_VENT
                 : selElement.net === 'san'
                   ? DIAM_BAN_SAN
-                  : DIAM_BAN
+                  : selElement.net === 'll'
+                    ? DIAM_BAN_LL
+                    : DIAM_BAN
               ).map((d) => (
                 <option key={d.pulg} value={d.nom}>
                   {normalizeDnLabel(d.nom)}
@@ -310,7 +312,9 @@ export function BajanteEditor({
                 ? DIAM_VENT
                 : selElement.net === 'san'
                   ? DIAM_BAN_SAN
-                  : DIAM_BAN
+                  : selElement.net === 'll'
+                    ? DIAM_BAN_LL
+                    : DIAM_BAN
               ).map((d) => (
                 <option key={d.pulg} value={d.nom}>
                   {normalizeDnLabel(d.nom)}

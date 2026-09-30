@@ -6,7 +6,11 @@ import {
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context';
 import { ElementCodeEditor } from './elementEditor';
-import { ramalesDelCanal, moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
+import {
+  ramalesDelCanal,
+  moverAsociacionCanal,
+  normalizarCanal,
+} from '../../../lib/PlanoEngine/canalAssociation';
 
 export function AreaMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -59,10 +63,11 @@ export function CalentadorMenu() {
   );
 }
 
-const CANAL_FIELD_LABELS: Record<'base' | 'altura' | 'longitud', string> = {
+const CANAL_FIELD_LABELS: Record<'base' | 'altura' | 'longitud' | 'pendiente', string> = {
   base: 'Base (cm)',
   altura: 'Altura (cm)',
   longitud: 'Longitud (cm)',
+  pendiente: 'Pendiente (%)',
 };
 
 // Patrón de commit con texto libre (buffer de edición local, commit al perder el foco) — igual
@@ -73,7 +78,7 @@ function CanalDimInput({
   value,
   onCommit,
 }: {
-  field: 'base' | 'altura' | 'longitud';
+  field: 'base' | 'altura' | 'longitud' | 'pendiente';
   value: number;
   onCommit: (v: number) => void;
 }) {
@@ -115,8 +120,28 @@ export function CanalMenu() {
   const canal = element as PlanoBajante;
   const engine = engineRef.current;
 
-  const commit = (field: 'base' | 'altura' | 'longitud', v: number) => {
+  const commit = (field: 'base' | 'altura' | 'longitud' | 'pendiente', v: number) => {
+    if (field === 'pendiente' && (v <= 0 || v > 15)) {
+      engineRef.current?.triggerAlert(
+        'Pendiente no permitida',
+        'La pendiente del canal debe ser mayor que 0% y hasta 15%. Se conserva el valor anterior.',
+      );
+      return;
+    }
     engineRef.current?.updateElementById(canal.id, { [field]: v });
+    // Base/longitud se normalizan a base-corta en el acto (ítem 5 usuario); se avisa a
+    // las tablas vía evento 'storage'.
+    const eng = engineRef.current;
+    const live = eng?.bajantes.find((b) => b.id === canal.id);
+    if (eng && live && (field === 'base' || field === 'longitud')) {
+      try {
+        normalizarCanal(eng.cmToPlanePx(1), live);
+      } catch {
+        // Canal corrupto: se conserva lo escrito sin normalizar.
+      }
+      eng.render();
+    }
+    window.dispatchEvent(new Event('storage'));
     setContextMenuState((prev) =>
       prev ? { ...prev, element: { ...prev.element, [field]: v } } : null,
     );
@@ -132,7 +157,7 @@ export function CanalMenu() {
 
   return (
     <>
-      {(['base', 'longitud', 'altura'] as const).map((field) => (
+      {(['base', 'longitud', 'altura', 'pendiente'] as const).map((field) => (
         <div key={field} style={{ padding: '0 8px 8px' }}>
           <div style={MENU_SECTION_LABEL_ROW_STYLE}>{CANAL_FIELD_LABELS[field]}</div>
           <CanalDimInput
