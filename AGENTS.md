@@ -2361,3 +2361,34 @@ tsc 0 · lint 0 · vitest 893/893 · build ✓.
 - Oclusores ahora = mallas marcadas userData.occ por la fusión (regla buildOccluders del HTML).
 - Lupa: círculo se OCULTA al salir del canvas (antes quedaba el último frame "atravesando" el sidebar).
 - Gates: tsc 0 · lint 0/0 · build ✓ · vitest 893/893 · graphify ✓.
+
+## Session Summary — 2026-09-30 (auditoría ronda 9: impls divergentes en BD + canal oblicuo)
+
+### BD — migración `20260930000002_impls_correctos_y_gating.sql` (aplica usuario)
+- **BD-I1**: save_ep_datos_impl recreado CON cisterna (perdió las 7 columnas — guardar EP caía a defaults '' desde el 28-sep).
+- **BD-I2**: save_proyecto_core_impl recreado CON guard 'pisos_vacios_no_permitidos' (incidente 2026-09-24 re-expuesto).
+- **BD-C1**: save_rainwater_overrides_impl CON material_* + wrapper público restaurado al delgado con candado (30000000_material lo había pisado con cuerpo directo — lección R-1 de nuevo).
+- **BD-I3**: update_proyecto_nombre/delete_proyecto con gate acceso_modulo('flow') inline.
+- **BD-I5**: app_config con RLS (deny-all intencional).
+- Verificación comentada: prosrc de impls (guard/cisterna/material) sin authenticated en proacl.
+
+### W — migraciones pendientes del WIP
+- Material renombrada a `20260930000001_...` (timestamp PK duplicado rompía db push) y su `create or replace` apuntado a `_impl` (no al wrapper) + revoke.
+- Nota: 20260930000002 recrea el impl con material_* igualmente — convergen en cualquier orden.
+
+### WIP canal/tablas (código, sobre el WIP de la sesión paralela)
+- **W-1**: designTableRow — `{t.id}` faltante (todas las filas AF mostraban literal "t.id-C").
+- **W-2**: writeCanalDimsToDrawing — engine vivo con el plan cargado → updateElementById (el autosave reviertía la edición de dims desde la tabla); writeSanDrawingSync dentro del if(changed).
+- **C-2**: sanearEsCanalIdFaltante → inferencia SOLO en la boca del canal (banda del borde corto en coords locales) — colectores que pasan bajo el glifo ya no se marcan y desaparecen de las tablas. Tests actualizados a la semántica boca.
+- **C-3**: renumberCanales → evento `civilflow_canales_renumerados` con idMap; RainwaterContext migra sectores de filas manuales (antes huérfanas + canal renombrado sin material).
+- **C-4**: diamPulgPorChip con tick de eventos (columnas D baj. stale hasta remount).
+- **C-5**: memoria de canales usa nDeCanal(materialCanal) — antes divergía del chequeo en pantalla.
+- **C-6**: sanearCanalLegacy rama 'izquierda' con h>w — swap + angulo 90 (verificado contra canalMarco: marco 180 sacaba el rectángulo mundo de su sitio). Test de mundo-idéntico añadido (28/28).
+- Menores: colSpan 24, option 1.5" readOnly en legacy, CLL id Date.now() (sin colisión tras deletes), mensaje pendiente ">0 y hasta 15", normAngulo90 muerto fuera, _canalBox al stripRenderCache, doctrina Esc canal (descarta) documentada, pxPerCmDe único (fallbacks ||1/||1e-9 fuera).
+
+### Gates
+tsc 0 · lint 0 err (1 warn) · vitest 927/927 (157) · build ✓ · graphify ✓.
+
+### Aplicar usuario (orden)
+1. SQL Editor: 20260930000000 (canales) → 20260930000001 (material, ya apunta a impl) → 20260930000002 (impls correctos + gating CRUD + RLS app_config).
+2. Verificación manual: EP cisterna guardar/recargar persiste; AF con pisos intactos tras guardar; dims canal editadas desde tabla con visor abierto NO revierten; renombrar canal con overrides migra sector; colector bajo canal SIGUE en tabla Diseño lluvias.
