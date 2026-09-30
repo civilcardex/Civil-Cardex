@@ -24,7 +24,11 @@ import {
   SELECT_STYLE,
   type ProbedElement,
 } from './context';
-import { ramalesDelCanal, moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
+import {
+  ramalesDelCanal,
+  moverAsociacionCanal,
+  normalizarCanal,
+} from '../../../lib/PlanoEngine/canalAssociation';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { ContadorEditor, CalentadorEditor, BajanteEditor, RamalEditor } from './legacyEditors';
 
@@ -97,7 +101,8 @@ export function CanalTramoEditor() {
   const [, setAssocTick] = useState(0);
   if (!rawSelElement) return null;
   const selElement = rawSelElement as PlanoBajante;
-  // Ítem 3.2: los tres campos del canal viven en una sola fila para no inflar el panel.
+  // Ítem 3.2: los campos del canal viven en una sola fila para no inflar el panel
+  // (base/altura/longitud/pendiente — ítem 7 usuario añade pendiente bidireccional).
   const fieldLabel: React.CSSProperties = {
     fontFamily: "'Geist',monospace",
     fontSize: 12,
@@ -110,6 +115,30 @@ export function CanalTramoEditor() {
   const engine = engineRef.current;
   const canalRamales = engine ? ramalesDelCanal(engine, selElement.id) : [];
   const bajantesLl = (engine?.bajantes || []).filter((b) => b.net === 'll' && b.tipo === 'bajante');
+  // Commit de dims del canal (ítem 7 usuario): pendiente con rango 0-15 (alerta y sin
+  // commit fuera de rango); base/longitud se normalizan a base-corta en el acto para que
+  // el dibujo nunca viole el invariante; se avisa a las tablas vía evento 'storage'.
+  const onCanalField = (field: 'base' | 'altura' | 'longitud' | 'pendiente', v: number) => {
+    if (field === 'pendiente' && (v <= 0 || v > 15)) {
+      engineRef.current?.triggerAlert(
+        'Pendiente no permitida',
+        'La pendiente del canal debe ser mayor que 0% y hasta 15%. Se conserva el valor anterior.',
+      );
+      return;
+    }
+    handleUpdateSel(field, v);
+    const eng = engineRef.current;
+    const live = eng?.bajantes.find((b) => b.id === selElement.id);
+    if (eng && live && (field === 'base' || field === 'longitud')) {
+      try {
+        normalizarCanal(eng.cmToPlanePx(1), live);
+      } catch {
+        // Canal corrupto: se conserva lo escrito sin normalizar.
+      }
+    }
+    eng?.render();
+    window.dispatchEvent(new Event('storage'));
+  };
   return (
     <>
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
@@ -128,13 +157,14 @@ export function CanalTramoEditor() {
       </div>
 
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+        {/* 2 filas × 2 columnas (pedido usuario): Base|Altura arriba, Longitud|Pendiente abajo. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
           <div>
             <div style={fieldLabel}>Base (cm)</div>
             <CanalNumField
               label="Base (cm)"
               value={selElement.base || 0}
-              onCommit={(v) => handleUpdateSel('base', v)}
+              onCommit={(v) => onCanalField('base', v)}
             />
           </div>
           <div>
@@ -142,7 +172,7 @@ export function CanalTramoEditor() {
             <CanalNumField
               label="Altura (cm)"
               value={selElement.altura || 0}
-              onCommit={(v) => handleUpdateSel('altura', v)}
+              onCommit={(v) => onCanalField('altura', v)}
             />
           </div>
           <div>
@@ -150,7 +180,15 @@ export function CanalTramoEditor() {
             <CanalNumField
               label="Longitud (cm)"
               value={selElement.longitud || 0}
-              onCommit={(v) => handleUpdateSel('longitud', v)}
+              onCommit={(v) => onCanalField('longitud', v)}
+            />
+          </div>
+          <div>
+            <div style={fieldLabel}>Pendiente (%)</div>
+            <CanalNumField
+              label="Pendiente (%)"
+              value={selElement.pendiente ?? 2}
+              onCommit={(v) => onCanalField('pendiente', v)}
             />
           </div>
         </div>

@@ -5,6 +5,7 @@
  */
 import type { IPlanoEngineCore } from './PlanoState';
 import { commitOpenGuide, eraseRamalAt } from './PlanoEngineDrawing';
+import { commitCanalAncho } from './drawingCreations';
 
 /** Procesa un keydown del canvas: herramientas (S/J/L/D/U/B/M/A/E/X/K/espacio), Enter/Esc
  *  (terminar/cancelar trazo, área o guía) y borrado (Supr/Backspace con eraseRamalAt para
@@ -98,6 +99,11 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
       // Ítem 2: Enter también cierra (commitea) la guía en construcción.
       commitOpenGuide(engine);
       e.preventDefault();
+    } else if (engine.tool === 'canal' && engine._canalEje) {
+      // Fase de ancho del canal (3er clic): Enter commitea con el ancho bajo el cursor.
+      const mp = engine.toPlane(engine.mouseX, engine.mouseY);
+      commitCanalAncho(engine, mp.x, mp.y);
+      e.preventDefault();
     }
   } else if (k === 'escape') {
     if (engine.activeRamal) {
@@ -114,7 +120,10 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
       // Ítem 2: Esc cierra (commitea) la guía multisegmento en vez de descartarla.
       commitOpenGuide(engine);
       e.preventDefault();
-    } else if (engine._canalStart) {
+    } else if (engine._canalEje || engine._canalStart) {
+      // Doctrina Esc: el canal DESCARTA (a diferencia de la guía, cuyo commit con Esc fue
+      // pedido explícito por el usuario — ítem 2). No unificar sin preguntar.
+      engine._canalEje = null;
       engine._canalStart = null;
       engine.render();
       e.preventDefault();

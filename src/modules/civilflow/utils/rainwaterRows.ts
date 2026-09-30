@@ -1,8 +1,10 @@
 import type { Tramo } from '../context/tramosReducer';
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords';
+import { canalOBBDe, puntoEnCanalOBB } from '../lib/PlanoEngine/canalAssociation';
 import type { PlanItem } from '../context/PlansContext';
 import { diametroManning } from './calcSanitaryCore';
 import { chequeoBajanteLluvia } from './calcRainwater';
+import { cEfectivoCubierta } from '../constants/engineeringDataMaterials';
 import { calcHydraulicCheck } from './hydraulicCheck';
 import { compareTramosPisoDesc } from './componentHelpers';
 import { DIAM_OPTIONS } from '../constants';
@@ -27,12 +29,13 @@ export interface BajanteLl {
   areaParcial?: number;
   intensidad?: number;
   coeficienteC?: number;
+  /** Material de cubierta (nombre completo) — C efectivo derivado del catálogo. */
+  materialCubierta?: string;
 }
 
-// Ramales DE los canales (orig. usuario): los marcados `esCanalId` por finishRamal (geometría
-// del canal) y los que DESCARGAN en un canal (último punto dentro del rectángulo del canal,
-// que crece desde (x,y) según longitud/base en cm a la escala del doc) — fuera de la tabla
-// Diseño de red aguas lluvias. Claves `${id}-${planId}` (mismo formato _key de los tramos).
+// Ramales DE los canales (orig. usuario): los marcados `esCanalId` por finishRamal y los que
+// DESCARGAN en un canal (extremo dentro del OBB del canal — misma regla que el motor) — fuera
+// de la tabla Diseño de red aguas lluvias. Claves `${id}-${planId}` (formato _key de tramos).
 export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
   const keys = new Set<string>();
   for (const plan of plans || []) {
@@ -48,7 +51,7 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
       }
     }
     const canales = (data.bajantes || []).filter(
-      (b): b is BajanteRaw & { base?: number; longitud?: number } =>
+      (b): b is BajanteRaw & { base?: number; longitud?: number; angulo?: number } =>
         b.net === 'll' && b.tipo === 'canal',
     );
     if (canales.length === 0) continue;
@@ -58,12 +61,8 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
     const enRectCanal = (p: number[]) =>
       canales.some((c) => {
         if (c.x == null || c.y == null) return false;
-        const w = (c.longitud ?? 0) * pxPerCm;
-        const h = (c.base ?? 0) * pxPerCm;
-        const pad = 4;
-        return (
-          p[0] >= c.x - pad && p[0] <= c.x + w + pad && p[1] >= c.y - pad && p[1] <= c.y + h + pad
-        );
+        // OBB (válido en diagonal): misma regla efectiva que el motor (canalMarco).
+        return puntoEnCanalOBB(canalOBBDe(pxPerCm, c), p[0], p[1], 4);
       });
 
     for (const r of (data.ramales || []) as Array<RawElement & { esCanalId?: string | null }>) {
@@ -253,13 +252,13 @@ export function qBajanteLl(
       return chequeoBajanteLluvia({
         areaAcumulada: areaTotal,
         intensidad: manual.intensidad ?? 100,
-        coeficienteC: manual.coeficienteC ?? 0.0278,
+        coeficienteC: cEfectivoCubierta(manual.materialCubierta),
       }).Q;
     }
   }
   const area = bajante.area_m2 || areaPisoFallback || 0;
   if (area <= 0) return 0;
-  return chequeoBajanteLluvia({ areaAcumulada: area, intensidad: 100, coeficienteC: 0.0278 }).Q;
+  return chequeoBajanteLluvia({ areaAcumulada: area, intensidad: 100, coeficienteC: 1 }).Q;
 }
 
 // Caudal (LPS) que llega a cada tramo — escorrentía propia para un bajante, escorrentía del área
@@ -323,14 +322,14 @@ export function computeLlQMap(
           const Q = chequeoBajanteLluvia({
             areaAcumulada: areaTotal,
             intensidad: bajante.intensidad ?? 100,
-            coeficienteC: bajante.coeficienteC ?? 0.0278,
+            coeficienteC: cEfectivoCubierta(bajante.materialCubierta),
           }).Q;
           total += Q;
         } else if (trBaj) {
           const Q = chequeoBajanteLluvia({
             areaAcumulada: areaTotal,
             intensidad: 100,
-            coeficienteC: 0.0278,
+            coeficienteC: 1,
           }).Q;
           total += Q;
         }

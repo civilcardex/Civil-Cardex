@@ -255,8 +255,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
   canalResizeDrag!: {
     id: string;
     corner: 'tl' | 'tr' | 'bl' | 'br';
-    anchorX: number;
-    anchorY: number;
+    anchorLX: number;
+    anchorLY: number;
+    oX: number;
+    oY: number;
+    ang: number;
   } | null;
   ptDrag!: {
     id: string;
@@ -281,6 +284,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _guideStart!: Point | null;
   _guidePts!: [number, number][] | null;
   _canalStart!: Point | null;
+  _canalEje!: { x1: number; y1: number; x2: number; y2: number } | null;
   nivelActual!: PlanoLevel | null;
   nptLevels!: PlanoLevel[];
   _hiddenNets!: Set<string>;
@@ -430,6 +434,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._guideStart = null;
     this._guidePts = null;
     this._canalStart = null;
+    this._canalEje = null;
     this.nivelActual = null;
     this.nptLevels = [];
     this._hiddenNets = new Set<string>();
@@ -1318,6 +1323,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this._dimStart ||
       this._guideStart ||
       this._canalStart ||
+      this._canalEje ||
       this.activeArea
     ) {
       handleDrawingMouseMove(this, x, y);

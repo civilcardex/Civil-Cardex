@@ -1,5 +1,10 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
+import {
+  geometriaCanalDesdePuntos,
+  geometriaCanalAncho,
+  normalizarCanal,
+} from './canalAssociation';
 
 /**
  * El texto de la barra de estado del visor según la herramienta activa — el mensaje que dice
@@ -34,11 +39,26 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
   if (engine.tool === 'area' && engine.activeArea) {
     m += ` (${engine.activeArea.pts.length} pts)`;
   }
-  if (engine.tool === 'canal' && engine._canalStart) {
+  if (engine.tool === 'canal' && (engine._canalStart || engine._canalEje)) {
     const mp = engine.toPlane(engine.mouseX, engine.mouseY);
-    const base = Math.round(engine.pxToM(Math.abs(mp.y - engine._canalStart.y)) * 100);
-    const longitud = Math.round(engine.pxToM(Math.abs(mp.x - engine._canalStart.x)) * 100);
-    m += ` (${base} x ${longitud} cm)`;
+    // Fase de ancho (3er clic): eje fijo + ancho vivo del cursor.
+    if (engine._canalEje) {
+      const g = geometriaCanalAncho(
+        engine._canalEje,
+        mp,
+        (d) => engine.pxToM(d),
+        engine.cmToPlanePx(1),
+      );
+      if (g) m += ` (ancho ${g.baseCm} x ${g.longitudCm} cm)`;
+      return m;
+    }
+    // Misma matemática que creación/ghost (rect o eje diagonal), ya normalizada.
+    const g = geometriaCanalDesdePuntos(engine._canalStart!, mp, (d) => engine.pxToM(d));
+    if (g) {
+      const tmp = { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm, angulo: g.angulo };
+      normalizarCanal(1 / (engine.pxToM(1) * 100 || 1), tmp);
+      m += ` (${tmp.base} x ${tmp.longitud} cm)`;
+    }
   }
   return m;
 }

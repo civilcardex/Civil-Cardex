@@ -2,6 +2,8 @@ import { NETS, initNetCounts } from './PlanoState';
 import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts';
 import { propagarSanDiametroAguasAbajo } from './drawingFlow';
 import { direccionBajaPermitida } from './direccionReglas';
+import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './canalAssociation';
+import { cmToPlanePx } from './planoCoords';
 import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 
 export interface PlanoWorkData {
@@ -207,10 +209,13 @@ export function serializeWork(engine: {
   const stripRenderCache = (arr: unknown[] | undefined): unknown[] =>
     (arr ?? []).map((el) => {
       if (!el || typeof el !== 'object') return el;
-      if (!('_labelBox' in el) && !('_circ' in el)) return el;
+      // _canalBox: caché de broadphase del canal — su JSDoc promete caché de render; sin
+      // tirarlo viajaba stale al JSON/BD (ronda 9 F10).
+      if (!('_labelBox' in el) && !('_circ' in el) && !('_canalBox' in el)) return el;
       const cp = { ...(el as Record<string, unknown>) };
       delete cp._labelBox;
       delete cp._circ;
+      delete cp._canalBox;
       return cp;
     });
   return {
@@ -270,16 +275,53 @@ export function applyWorkData(
   engine.textAnnots = dedupPorId(d.textAnnots || []);
   // Migración: los canales recolectores usaban el prefijo de código CALL{n}-P{n}, reservado
   // ahora para las cajas de aguas lluvias (tipo caja_ll). Canales → CNL{n}-P{n}.
+  // Sanado legacy (ítems 4-5 usuario): sin `angulo`, base=Y/longitud=X eje-alineado →
+  // base-corta + angulo (0/±90/180) con el mismo rectángulo mundo. Idempotente.
+  const pxPerCm = cmToPlanePx(d.scaleM || 0.5, 1);
   engine.bajantes = dedupPorId(
     (d.bajantes || []).map((b) => {
       const bb = b as { tipo?: string; code?: string; id?: string };
       if (bb.tipo === 'canal' && typeof bb.code === 'string' && bb.code.startsWith('CALL')) {
         bb.code = 'CNL' + bb.code.slice(4);
       }
+      if (bb.tipo === 'canal') {
+        try {
+          sanearCanalLegacy(
+            pxPerCm,
+            bb as { x: number; y: number; longitud?: number; base?: number; angulo?: number },
+          );
+        } catch {
+          // Un canal corrupto no tumba la carga del piso — queda como venga.
+        }
+      }
       return b;
     }),
     mergeBajanteDedup,
   );
+  // Ramales DE canal sin marca (docs pre-migración es_canal_id): re-derivar por geometría
+  // con los canales ya sanados (ítem 2 usuario) — nunca pisa marcas existentes.
+  try {
+    sanearEsCanalIdFaltante(
+      pxPerCm,
+      engine.ramales as Array<{
+        id?: string;
+        net?: string;
+        tipo?: string;
+        pts?: number[][];
+        esCanalId?: string | null;
+      }>,
+      engine.bajantes as Array<{
+        id?: string;
+        x?: number;
+        y?: number;
+        longitud?: number;
+        base?: number;
+        angulo?: number;
+      }>,
+    );
+  } catch {
+    // Mejor sin marca que sin piso.
+  }
   engine.areas = dedupPorId(d.areas || []);
   engine.nptLevels = d.nptLevels || [];
   // PUNTO 9: barrido de carga — ningún bajante del ÚLTIMO nivel inferior persiste con

@@ -12,6 +12,7 @@ import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { puedeConectarRamalABajante } from './bajanteRules';
 import { bumpBajanteToMaxRamal, _calcPolyArea } from './drawingUtils';
+import { normalizarCanal, pxPerCmDe } from './canalAssociation';
 
 /**
  * Construye un índice por id de los ramales del motor. Los handlers de arrastre corren por frame
@@ -143,9 +144,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         r.pts[si + 1][1] = engine.ramalDrag.origPts[si + 1][1] + dy;
       }
       r.totalL = calculateRamalLength(r.pts, engine);
-      const [mx, my] = _midpoint(r.pts);
-      r.labelX = mx;
-      r.labelY = my;
+      // Etiqueta movida a mano (ítem 2 usuario): los re-encuadres de geometría no la tocan —
+      // solo el arrastre de etiqueta (lblDrag) la mueve. Sin este gate, mover un extremo
+      // y clickar fuera "devolvía" la etiqueta al punto medio.
+      if (!r.labelMoved) {
+        const [mx, my] = _midpoint(r.pts);
+        r.labelX = mx;
+        r.labelY = my;
+      }
       if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
       engine.scheduleRender();
       return;
@@ -467,9 +473,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           if (changed) {
             r.totalL = calculateRamalLength(r.pts, engine);
             if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
-            const [mx, my] = _midpoint(r.pts);
-            r.labelX = mx;
-            r.labelY = my;
+            if (!r.labelMoved) {
+              const [mx, my] = _midpoint(r.pts);
+              r.labelX = mx;
+              r.labelY = my;
+            }
             checkRamalAnglesExcludingConnections(engine, r);
           }
         });
@@ -493,9 +501,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           r.pts[0] = [b.x + d.dx, b.y + d.dy];
           r.totalL = calculateRamalLength(r.pts, engine);
           if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
-          const [mx, my] = _midpoint(r.pts);
-          r.labelX = mx;
-          r.labelY = my;
+          if (!r.labelMoved) {
+            const [mx, my] = _midpoint(r.pts);
+            r.labelX = mx;
+            r.labelY = my;
+          }
         }
       }
 
@@ -589,18 +599,28 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.canalResizeDrag) {
-    // Genérico en todas las direcciones: la esquina arrastrada siempre termina siendo el punto
-    // de plano que NO es el ancla fija, así que no hace falta ramificar por esquina — agarrar
-    // cualquiera de las 4 esquinas resuelve a la misma matemática de min/abs contra su propia
-    // opuesta fija.
-    const { id, anchorX, anchorY } = engine.canalResizeDrag;
+    // Resize en el MARCO LOCAL del inicio del gesto (origen+ángulo fijos): la esquina opuesta
+    // no se mueve aunque el canal esté en diagonal. Dims en cm + normalizarCanal por si el
+    // marco se invierte al cruzar la diagonal.
+    const { id, anchorLX, anchorLY, oX, oY, ang } = engine.canalResizeDrag;
     const canal = engine.bajantes.find((b) => b.id === id);
     if (canal) {
       const p = engine.toPlane(x, y);
-      canal.x = Math.min(anchorX, p.x);
-      canal.y = Math.min(anchorY, p.y);
-      canal.longitud = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
-      canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
+      const c = Math.cos(ang);
+      const s = Math.sin(ang);
+      const plx = (p.x - oX) * c + (p.y - oY) * s;
+      const ply = -(p.x - oX) * s + (p.y - oY) * c;
+      const minLX = Math.min(anchorLX, plx);
+      const maxLX = Math.max(anchorLX, plx);
+      const minLY = Math.min(anchorLY, ply);
+      const maxLY = Math.max(anchorLY, ply);
+      canal.x = oX + minLX * c - minLY * s;
+      canal.y = oY + minLX * s + minLY * c;
+      const cmPorUnidad = 1 / pxPerCmDe(engine);
+      canal.longitud = Math.max(1, +((maxLX - minLX) * cmPorUnidad).toFixed(1));
+      canal.base = Math.max(1, +((maxLY - minLY) * cmPorUnidad).toFixed(1));
+      canal.angulo = (ang * 180) / Math.PI;
+      normalizarCanal(1 / cmPorUnidad, canal);
       engine.scheduleRender();
     }
     return;
@@ -894,9 +914,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
               movedRamalIds.add(other.id);
               other.totalL = calculateRamalLength(other.pts, engine);
               if (!other.labelMoved) other.labelAngle = angleAtHalfLength(other.pts);
-              const [mx, my] = _midpoint(other.pts);
-              other.labelX = mx;
-              other.labelY = my;
+              if (!other.labelMoved) {
+                const [mx, my] = _midpoint(other.pts);
+                other.labelX = mx;
+                other.labelY = my;
+              }
             }
           }
           frontier = nextFrontier;
@@ -914,9 +936,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.pts[link.ptIdx] = [p.x, p.y];
             other.totalL = calculateRamalLength(other.pts, engine);
             if (!other.labelMoved) other.labelAngle = angleAtHalfLength(other.pts);
-            const [mx, my] = _midpoint(other.pts);
-            other.labelX = mx;
-            other.labelY = my;
+            if (!other.labelMoved) {
+              const [mx, my] = _midpoint(other.pts);
+              other.labelX = mx;
+              other.labelY = my;
+            }
           }
         }
         // Los bajantes son los anclajes fijos de la red — un arrastre de extremo debe adaptar el
@@ -939,9 +963,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       }
       if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
       r.totalL = calculateRamalLength(r.pts, engine);
-      const [mx, my] = _midpoint(r.pts);
-      r.labelX = mx;
-      r.labelY = my;
+      if (!r.labelMoved) {
+        const [mx, my] = _midpoint(r.pts);
+        r.labelX = mx;
+        r.labelY = my;
+      }
       checkRamalAnglesExcludingConnections(engine, r);
       engine.scheduleRender();
     }

@@ -17,6 +17,8 @@ interface BajanteOverrideRow {
   area_acumulada: number | null;
   intensidad: number | null;
   coeficiente_c: number | null;
+  /** Material de cubierta (nombre completo del catálogo ll) — C derivado. */
+  material_cubierta: string | null;
   R: string | null;
   manning: number | null;
   diam_propuesto: number | null;
@@ -30,6 +32,11 @@ interface CanalOverrideRow {
   area_acumulada: number | null;
   intensidad: number | null;
   coeficiente_c: number | null;
+  /** Port hoja "2. Canales": materiales (C y n derivados), muro vertical y borde libre. */
+  material_cubierta: string | null;
+  material_canal: string | null;
+  muro_vertical: number | null;
+  borde_libre_cm: number | null;
   manning: number | null;
   pendiente: number | null;
   b: number | null;
@@ -70,6 +77,7 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
         areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
         intensidad: r.intensidad ?? 100,
         coeficienteC: r.coeficiente_c ?? 0.0278,
+        materialCubierta: r.material_cubierta ?? '',
         R: r.R ?? '',
         manning: r.manning ?? 0,
         diamPropuesto: r.diam_propuesto ?? 0,
@@ -83,6 +91,10 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
       areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
       intensidad: r.intensidad ?? 100,
       coeficienteC: r.coeficiente_c ?? 0.0278,
+      materialCubierta: r.material_cubierta ?? '',
+      materialCanal: r.material_canal ?? '',
+      muroVertical: r.muro_vertical ?? 0,
+      bordeLibreCm: r.borde_libre_cm ?? 10,
       manning: r.manning ?? 0.011,
       pendiente: r.pendiente ?? 0,
       b: r.b ?? 0,
@@ -124,6 +136,7 @@ export async function saveRainwaterOverrides(
         area_acumulada: b.areaAcumulada ?? 0,
         intensidad: b.intensidad ?? 100,
         coeficiente_c: b.coeficienteC ?? 0.0278,
+        material_cubierta: b.materialCubierta ?? '',
         R: b.R ?? '',
         manning: b.manning ?? 0,
         diam_propuesto: b.diamPropuesto ?? 0,
@@ -138,6 +151,10 @@ export async function saveRainwaterOverrides(
         area_acumulada: c.areaAcumulada ?? 0,
         intensidad: c.intensidad ?? 100,
         coeficiente_c: c.coeficienteC ?? 0.0278,
+        material_cubierta: c.materialCubierta ?? '',
+        material_canal: c.materialCanal ?? '',
+        muro_vertical: c.muroVertical ?? 0,
+        borde_libre_cm: c.bordeLibreCm ?? 10,
         manning: c.manning ?? 0.011,
         pendiente: c.pendiente ?? 0,
         b: c.b ?? 0,

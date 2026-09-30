@@ -16,6 +16,7 @@ import {
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 import { asociarRamalABajantes } from './drawingUtils';
+import { canalMarco, esquinasCanalOBB } from './canalAssociation';
 
 // Las uniones de san/ll/vent (tee/codo/yee) se crean solas vía calcSanitaryAccessories +
 // renderJunctions — solo AF/AC/gas necesitan que el usuario elija el tipo de tee.
@@ -214,16 +215,19 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         if (b.tipo === 'canal') {
           let cb = b._canalBox;
           if (!cb) {
-            const c1 = engine.toCvs(b.x, b.y);
-            const c2 = engine.toCvs(
-              b.x + engine.cmToPlanePx(b.longitud || 0),
-              b.y + engine.cmToPlanePx(b.base || 0),
+            // Fallback sin render previo: AABB del OBB (válido en diagonal, no solo ejes).
+            const cs = esquinasCanalOBB(canalMarco(engine.cmToPlanePx(1), b)).map((p) =>
+              engine.toCvs(p.x, p.y),
             );
+            const xs = cs.map((c) => c.x);
+            const ys = cs.map((c) => c.y);
+            const x0 = Math.min(...xs);
+            const y0 = Math.min(...ys);
             cb = {
-              x: Math.min(c1.x, c2.x),
-              y: Math.min(c1.y, c2.y),
-              w: Math.abs(c2.x - c1.x),
-              h: Math.abs(c2.y - c1.y),
+              x: x0,
+              y: y0,
+              w: Math.max(...xs) - x0,
+              h: Math.max(...ys) - y0,
             };
           }
           inside = cb.x <= maxX && cb.x + cb.w >= minX && cb.y <= maxY && cb.y + cb.h >= minY;

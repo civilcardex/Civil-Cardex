@@ -503,16 +503,22 @@ export interface PlanoBajante {
    * dispositivos. */
   factorSim?: number;
   /** Sección transversal del canal recolectora (solo red 'll'), en cm, para la tabla de
-   * chequeo hidráulico. x/y es la esquina superior-izquierda del rectángulo (no el centro,
-   * a diferencia de los demás glifos): en planta, base × longitud; altura es la profundidad,
-   * visible solo en isometría. */
+   * chequeo hidráulico. x/y es el ORIGEN del marco local del canal (una esquina del
+   * rectángulo orientado, no necesariamente la superior-izquierda): en planta, base es
+   * SIEMPRE el lado corto (ancho de la sección) y longitud el lado largo (eje del canal);
+   * altura es la profundidad, visible solo en isometría. `angulo` (grados, 0 = eje hacia
+   * +X) orienta el marco; sin él se asume eje-alineado (legacy). */
   base?: number;
   altura?: number;
-  /** Tamaño horizontal del canal en planta (cm) — el largo que recorre el canal en el dibujo. */
+  /** Tamaño del lado LARGO del canal en planta (cm) — el eje que recorre el canal. */
   longitud?: number;
-  /** Caja del canal en píxeles de canvas (alineada a los ejes, sin rotación), calculada al
-   * renderizar — se usa para detectar el clic en las manijas de redimensionado de las esquinas y
-   * para arrastrar el cuerpo. */
+  /** Ángulo del eje largo del canal en grados (0 = hacia +X del plano). Permite canales en
+   * diagonal con la misma UX de 2 clics (orig. usuario). Ausente = 0 (legacy eje-alineado;
+   * el sanado de carga convierte los verticales legacy a base-corta + angulo 90). */
+  angulo?: number;
+  /** Caja del canal en píxeles de canvas (AABB del rectángulo orientado), calculada al
+   * renderizar — broadphase de clic/manijas. El hit preciso usa el OBB
+   * (canalAssociation), no esta caja. */
   _canalBox?: { x: number; y: number; w: number; h: number };
   /** Dirección del flujo del canal recolectora, igual a la dirección en que el usuario lo
    * arrastró al dibujarlo (esquina 1 → esquina 2), como la dirección dibujada de un ramal. Se
@@ -705,6 +711,11 @@ export interface IPlanoEngineCore {
   // Estado de la primera esquina para la herramienta de arrastre de rectángulo del canal — mismo
   // patrón de "clic-mueve-clic" (rubber-band) que _dimStart/_guideStart.
   _canalStart: { x: number; y: number } | null;
+  // Eje fijado del canal en diagonal (fase de ancho, 3er clic): p1→p2 es el eje ya
+  // confirmado con el 2º clic; el 3er clic define el ancho por distancia perpendicular.
+  // En modo rect no se usa (el 2º clic crea directo). Se limpia al cambiar de herramienta
+  // o con Escape, igual que _canalStart.
+  _canalEje: { x1: number; y1: number; x2: number; y2: number } | null;
   // Estado transitorio de cada arrastre (se fija en handleMouseDown, se consume en
   // handleDragUp/handleDragMove; siempre vuelve a null al terminar el arrastre).
   _bajDragBackupXY?: { x: number; y: number; labelX?: number; labelY?: number } | null;
@@ -746,15 +757,18 @@ export interface IPlanoEngineCore {
     origBoxWpx: number;
   } | null;
   bajDrag: { id: string; offX: number; offY: number } | null;
-  // Redimensionado del rectángulo de un canal por sus manijas de esquina — anchorX/anchorY son las
-  // coordenadas de la esquina OPUESTA en el plano (no en píxeles de canvas, a diferencia de
-  // txtResize), capturadas al agarrar y fijas durante todo el gesto; base/altura y la esquina
-  // arrastrada se recalculan en vivo desde la posición del cursor en cada movimiento.
+  // Redimensionado del rectángulo de un canal por sus manijas de esquina — la esquina
+  // opuesta queda fija en el MARCO LOCAL del inicio del gesto (anchorLX/LY + origen oX/oY y
+  // ángulo ang en radianes): así el resize funciona también en diagonal. Las dims se
+  // recalculan en vivo desde el cursor y normalizarCanal re-ancla si el marco se invierte.
   canalResizeDrag: {
     id: string;
     corner: 'tl' | 'tr' | 'bl' | 'br';
-    anchorX: number;
-    anchorY: number;
+    anchorLX: number;
+    anchorLY: number;
+    oX: number;
+    oY: number;
+    ang: number;
   } | null;
   ptDrag: {
     id: string;

@@ -5,6 +5,7 @@ import {
   pisoCorto,
   buildBajanteVisualLabel,
   DIAM_BAN,
+  DIAM_BAN_LL,
   DIAM_BAN_SAN,
   DIAM_VENT,
 } from '../../../constants';
@@ -797,7 +798,9 @@ export function BajanteDiameterSelector({
                   ? DIAM_VENT
                   : element.net === 'san'
                     ? DIAM_BAN_SAN
-                    : DIAM_BAN
+                    : element.net === 'll'
+                      ? DIAM_BAN_LL
+                      : DIAM_BAN
                 ).map((d) => (
                   <option key={d.pulg} value={d.nom}>
                     {normalizeDnLabel(d.nom)}
@@ -975,7 +978,9 @@ export function BajanteDiameterSelector({
               ? DIAM_VENT
               : element.net === 'san'
                 ? DIAM_BAN_SAN
-                : DIAM_BAN
+                : element.net === 'll'
+                  ? DIAM_BAN_LL
+                  : DIAM_BAN
             ).map((d) => (
               <option key={d.pulg} value={d.nom}>
                 {normalizeDnLabel(d.nom)}

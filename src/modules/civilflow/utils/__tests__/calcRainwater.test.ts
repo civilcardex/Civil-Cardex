@@ -1,14 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { chequeoBajanteLluvia, chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../calcRainwater';
+import {
+  chequeoBajanteLluvia,
+  chequeoCanalLluvia,
+  chequeoEmbocaduraLluvia,
+} from '../calcRainwater';
 
-describe('chequeoBajanteLluvia', () => {
+// Valores de referencia: filas de ejemplo del Excel Chequeo_canales_cubierta ffff.xlsx
+// (BALL #1 hoja "1. Bajantes"; CNL #1 hoja "2. Canales"). Fórmulas portadas celda a celda:
+// Q = C·I·A/3600; Wyly-Eaton D = [Qgpm/(27.8·(0.009/n)·r^(5/3))]^(3/8); Qmáx Manning;
+// yn por punto fijo; H vertedero/orificio con Cw=1.7, Cd=0.6, g=9.81.
+describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
+  it('fila BALL #1 del Excel: Q=2.71, Dcalc=2.54, Qcap=9.07 (Dprop 4")', () => {
+    const { Q, dCalc, Qcap, cociente, chequeo } = chequeoBajanteLluvia({
+      areaAcumulada: 102.67,
+      intensidad: 100,
+      coeficienteC: 0.95,
+      R: '7/24',
+      manning: 0.009,
+      diamPropuesto: 4,
+    });
+    expect(Q).toBeCloseTo(2.71, 2);
+    expect(dCalc).toBeCloseTo(2.54, 1);
+    expect(Qcap).toBeCloseTo(9.07, 1);
+    expect(cociente).toBeCloseTo(0.2987, 2);
+    expect(chequeo).toBe('Ok');
+  });
+
   it('Q=0 con areaAcumulada=0', () => {
     const { Q, dCalc, chequeo } = chequeoBajanteLluvia({
       areaAcumulada: 0,
       intensidad: 100,
       coeficienteC: 0.8,
       R: '1/4',
-      diamPropuesto: 100,
+      diamPropuesto: 4,
     });
     expect(Q).toBe(0);
     expect(dCalc).toBe(0);
@@ -21,70 +45,117 @@ describe('chequeoBajanteLluvia', () => {
       intensidad: 0,
       coeficienteC: 0.8,
       R: '1/4',
-      diamPropuesto: 100,
     });
     expect(Q).toBe(0);
   });
 
-  it('calcula Q y dCalc con datos validos R=1/4', () => {
-    const { Q, dCalc, chequeo } = chequeoBajanteLluvia({
-      areaAcumulada: 200,
-      intensidad: 150,
-      coeficienteC: 0.8,
-      R: '1/4',
-      diamPropuesto: 100,
-    });
-    expect(Q).toBeGreaterThan(0);
-    expect(dCalc).toBeGreaterThan(0);
-    expect(['Ok', 'No cumple', 'Sin diseño']).toContain(chequeo);
-  });
-
-  it('OK cuando dCalc < diamPropuesto', () => {
+  it('Ok cuando Dcalc <= Dprop (cota del Excel: <=)', () => {
     const { chequeo } = chequeoBajanteLluvia({
-      areaAcumulada: 50,
+      areaAcumulada: 102.67,
       intensidad: 100,
-      coeficienteC: 0.7,
-      R: '1/4',
-      diamPropuesto: 200,
+      coeficienteC: 0.95,
+      R: '7/24',
+      manning: 0.009,
+      diamPropuesto: 2.54, // = Dcalc → aún Ok por el <=
     });
     expect(chequeo).toBe('Ok');
   });
 
-  it('No cumple cuando dCalc >= diamPropuesto', () => {
+  it('No cumple cuando Dcalc > Dprop', () => {
     const { chequeo } = chequeoBajanteLluvia({
       areaAcumulada: 500,
       intensidad: 100,
-      coeficienteC: 0.8,
+      coeficienteC: 1,
       R: '1/4',
-      diamPropuesto: 10,
+      manning: 0.009,
+      diamPropuesto: 2,
     });
     expect(chequeo).toBe('No cumple');
   });
 
-  it('R=7/24 produce Rv=7/24', () => {
-    const { Q } = chequeoBajanteLluvia({
+  it('Sin diseño con área pero sin D propuesto', () => {
+    const { chequeo } = chequeoBajanteLluvia({
       areaAcumulada: 100,
       intensidad: 100,
-      coeficienteC: 0.8,
+      coeficienteC: 0.95,
       R: '7/24',
+      manning: 0.009,
+      diamPropuesto: 0,
     });
-    expect(Q).toBeGreaterThan(0);
+    expect(chequeo).toBe('Sin diseño');
   });
 
-  it('R desconocido usa Rv=0 → dCalc=0', () => {
-    const { dCalc, chequeo } = chequeoBajanteLluvia({
+  it('R desconocido usa Rv=0 → dCalc=0 y Qcap=0', () => {
+    const { dCalc, Qcap } = chequeoBajanteLluvia({
       areaAcumulada: 100,
       intensidad: 100,
-      coeficienteC: 0.8,
+      coeficienteC: 0.95,
       R: 'otro',
-      diamPropuesto: 100,
+      manning: 0.009,
+      diamPropuesto: 4,
     });
     expect(dCalc).toBe(0);
-    expect(chequeo).toBe('—');
+    expect(Qcap).toBe(0);
+  });
+
+  it('el ajuste (n_ref/n) sube la capacidad con n mayor al de referencia al revés', () => {
+    // n=0.018 (doble del ref) → capacidad a la MITAD que con n=0.009.
+    const base = chequeoBajanteLluvia({
+      areaAcumulada: 100,
+      intensidad: 100,
+      coeficienteC: 1,
+      R: '7/24',
+      manning: 0.009,
+      diamPropuesto: 4,
+    });
+    const rugoso = chequeoBajanteLluvia({
+      areaAcumulada: 100,
+      intensidad: 100,
+      coeficienteC: 1,
+      R: '7/24',
+      manning: 0.018,
+      diamPropuesto: 4,
+    });
+    expect(rugoso.Qcap).toBeCloseTo(base.Qcap / 2, 2);
   });
 });
 
-describe('chequeoCanalLluvia', () => {
+describe('chequeoCanalLluvia (hoja 2 Canales)', () => {
+  it('fila CNL #1 del Excel: Q=2.71, Qmax=124.3, yn=0.0143, v=0.77', () => {
+    const { Qreal, Qmax, yn, velocidad, chequeo } = chequeoCanalLluvia({
+      areaAcumulada: 102.67,
+      muroVertical: 0,
+      intensidad: 100,
+      coeficienteC: 0.95,
+      manning: 0.01,
+      pendiente: 2,
+      b: 24.5,
+      h: 20,
+      bordeLibreCm: 10,
+    });
+    expect(Qreal).toBeCloseTo(2.71, 2);
+    expect(Qmax).toBeCloseTo(124.3, 0);
+    expect(yn).toBeCloseTo(0.014292, 4);
+    expect(velocidad).toBeCloseTo(0.77, 2);
+    expect(chequeo).toBe('Ok');
+  });
+
+  it('A efectiva = A + 0.5·muro vertical (hoja 2 col. E)', () => {
+    const { aEfectiva, Qreal } = chequeoCanalLluvia({
+      areaAcumulada: 100,
+      muroVertical: 20,
+      intensidad: 100,
+      coeficienteC: 1,
+      manning: 0.01,
+      pendiente: 2,
+      b: 30,
+      h: 20,
+    });
+    expect(aEfectiva).toBe(110);
+    // Q = 1·100·110/3600 = 3.0555… → 3.06
+    expect(Qreal).toBeCloseTo(3.06, 2);
+  });
+
   it('Qreal=0 con areaAcumulada=0', () => {
     const { Qreal, Qmax, chequeo } = chequeoCanalLluvia({
       areaAcumulada: 0,
@@ -114,22 +185,10 @@ describe('chequeoCanalLluvia', () => {
     expect(chequeo).toBe('Sin sección');
   });
 
-  it('Ok cuando Qmax > Qreal', () => {
-    const { chequeo } = chequeoCanalLluvia({
-      areaAcumulada: 50,
-      intensidad: 80,
-      coeficienteC: 0.7,
-      manning: 0.009,
-      pendiente: 2,
-      b: 40,
-      h: 30,
-    });
-    expect(chequeo).toBe('Ok');
-  });
-
-  it('No cumple cuando Qmax < Qreal', () => {
+  it('No cumple cuando Qreal > Qmax', () => {
     const { chequeo } = chequeoCanalLluvia({
       areaAcumulada: 5000,
+      muroVertical: 0,
       intensidad: 200,
       coeficienteC: 0.9,
       manning: 0.009,
@@ -140,7 +199,7 @@ describe('chequeoCanalLluvia', () => {
     expect(chequeo).toBe('No cumple');
   });
 
-  it('totalStr suma borde libre 10cm', () => {
+  it('totalStr usa el borde libre de la fila (editable, default 10)', () => {
     const { totalStr } = chequeoCanalLluvia({
       areaAcumulada: 100,
       intensidad: 100,
@@ -149,8 +208,9 @@ describe('chequeoCanalLluvia', () => {
       pendiente: 2,
       b: 30,
       h: 20,
+      bordeLibreCm: 15,
     });
-    expect(totalStr).toBe(`30x${20 + BORDE_LIBRE_CANAL_CM}`);
+    expect(totalStr).toBe('30x35');
   });
 
   it('totalStr "—" sin dimensiones', () => {
@@ -166,7 +226,7 @@ describe('chequeoCanalLluvia', () => {
     expect(totalStr).toBe('—');
   });
 
-  it('manning default 0.009 cuando no se pasa', () => {
+  it('manning default 0.009 cuando llega 0', () => {
     const { Qmax } = chequeoCanalLluvia({
       areaAcumulada: 100,
       intensidad: 100,
@@ -178,17 +238,45 @@ describe('chequeoCanalLluvia', () => {
     });
     expect(Qmax).toBeGreaterThan(0);
   });
+});
 
-  it('Qmax=0 con n <= 0', () => {
-    const { Qmax } = chequeoCanalLluvia({
-      areaAcumulada: 100,
-      intensidad: 100,
-      coeficienteC: 0.8,
-      manning: 0,
-      pendiente: 2,
-      b: 30,
-      h: 0,
+describe('chequeoEmbocaduraLluvia (hoja 2 AE/AG)', () => {
+  it('fila CNL #1 del Excel: Hreq = H vertedero = 0.0292 m ≤ h → Ok', () => {
+    const { QporBajante, Hreq, chequeo } = chequeoEmbocaduraLluvia({
+      Qreal: 2.71,
+      numBajantes: 1,
+      diamPulg: 4,
+      hUtilM: 0.2,
     });
-    expect(Qmax).toBe(0);
+    expect(QporBajante).toBeCloseTo(2.71, 2);
+    expect(Hreq).toBeCloseTo(0.0292, 3);
+    expect(chequeo).toBe('Ok');
+  });
+
+  it('N bajantes reparten el Q; H baja con más bajantes', () => {
+    const uno = chequeoEmbocaduraLluvia({ Qreal: 4, numBajantes: 1, diamPulg: 4, hUtilM: 0.2 });
+    const dos = chequeoEmbocaduraLluvia({ Qreal: 4, numBajantes: 2, diamPulg: 4, hUtilM: 0.2 });
+    expect(dos.QporBajante).toBeCloseTo(2, 2);
+    expect(dos.Hreq).toBeLessThan(uno.Hreq);
+  });
+
+  it('sin bajantes asociados → "Revisar bajante"', () => {
+    const { chequeo } = chequeoEmbocaduraLluvia({
+      Qreal: 4,
+      numBajantes: 0,
+      diamPulg: 0,
+      hUtilM: 0.2,
+    });
+    expect(chequeo).toBe('Revisar bajante');
+  });
+
+  it('No cumple cuando Hreq > h útil', () => {
+    const { chequeo } = chequeoEmbocaduraLluvia({
+      Qreal: 60,
+      numBajantes: 1,
+      diamPulg: 2,
+      hUtilM: 0.05,
+    });
+    expect(chequeo).toBe('No cumple');
   });
 });

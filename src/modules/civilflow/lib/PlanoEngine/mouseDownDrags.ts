@@ -300,6 +300,15 @@ export function _trySelRamalDrag(
   // Copia entre pisos: el elemento copiado no responde a NINGUNA herramienta de movimiento
   // (cuerpo, vértices, extremos, accMed) — bloqueo permanente en el piso destino.
   if ((sel as { copiaPiso?: boolean }).copiaPiso) return false;
+  // La etiqueta del seleccionado manda sobre sus vértices (ítem 2 usuario): en ramales
+  // cortos (p.ej. canal↔bajante) la etiqueta cae dentro del radio de extremo (15px) y el
+  // clic para moverla agarraba el vértice — se movía la geometría y la etiqueta "volvía"
+  // al punto medio al clickar fuera. Mismo hit-test que el loop de etiquetas.
+  if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) return false;
+  {
+    const lPos = engine.toCvs(sel.labelX, sel.labelY);
+    if (Math.hypot(x - lPos.x, y - lPos.y) < 12) return false;
+  }
 
   // Ítem usuario (bug 2): el clic sobre el CUERPO de OTRO ramal colineal (p.ej. el tramo
   // auto-creado por un split, que comparte línea con el ramal que lo partió y con el que quedó

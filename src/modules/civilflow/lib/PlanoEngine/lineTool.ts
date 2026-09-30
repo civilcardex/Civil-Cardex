@@ -46,7 +46,10 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   // Ítem 2: salir de la herramienta commitea la guía multisegmento (≥2 vértices) en vez de
   // descartarla; con 0-1 vértices commitOpenGuide la descarta.
   if (t !== 'guide') commitOpenGuide(engine);
-  if (t !== 'canal') engine._canalStart = null;
+  if (t !== 'canal') {
+    engine._canalStart = null;
+    engine._canalEje = null;
+  }
   engine.tool = t;
   engine.canv.style.cursor = toolCursor(t);
   engine._emitStatus(_statusMsg(engine));
@@ -734,6 +737,7 @@ export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: n
     engine._dimStart ||
     engine._guideStart ||
     engine._canalStart ||
+    engine._canalEje ||
     engine.activeArea
   ) {
     engine.mouseX = x;
@@ -762,6 +766,13 @@ export function handleDoubleClick(engine: IPlanoEngineCore): void {
   // Ítem 2: doble-click commitea la guía multisegmento en construcción.
   if (engine.tool === 'guide' && engine._guidePts && engine._guidePts.length >= 2) {
     commitOpenGuide(engine);
+  }
+  // Canal: el 2º click de un doble-clic queda como "fase 1" fantasma justo después del
+  // commit de ancho — se cancela para no abrir un canal nuevo accidental (y era la vía por
+  // la que un canal nacía con 1 cm: el click fantasma caía a ~0 del eje).
+  if (engine.tool === 'canal' && engine._canalStart && !engine._canalEje) {
+    engine._canalStart = null;
+    engine.render();
   }
 }
 

@@ -4,6 +4,7 @@ import { loadFromStorage } from '../../../services/storageService';
 import { RainwaterContext } from '../../../context/RainwaterContext';
 import { buildLlBajanteAssociations } from '../../../utils/rainwaterRows';
 import { chequeoBajanteLluvia } from '../../../utils/calcRainwater';
+import { cEfectivoCubierta } from '../../../constants/engineeringDataMaterials';
 import type { DrawingData } from '../../../utils/drawingSync';
 
 /** Forma mínima de un override manual de bajante ll (BajanteLL de RainwaterContext). */
@@ -15,6 +16,7 @@ interface BajanteLLManual {
   areaAcumulada: number;
   intensidad: number;
   coeficienteC: number;
+  materialCubierta?: string;
 }
 
 /** Caudal (LPS) del ramal/bajante de aguas lluvias seleccionado en el panel del visor.
@@ -99,13 +101,13 @@ function caudalLlDe(
       return chequeoBajanteLluvia({
         areaAcumulada: manual.areaAcumulada || manual.areaParcial || 0,
         intensidad: manual.intensidad ?? 100,
-        coeficienteC: manual.coeficienteC || 0.0278,
+        coeficienteC: cEfectivoCubierta(manual.materialCubierta),
       }).Q;
     }
     return chequeoBajanteLluvia({
       areaAcumulada: b.area_m2 || 0,
       intensidad: 100,
-      coeficienteC: 0.0278,
+      coeficienteC: 1,
     }).Q;
   };
 

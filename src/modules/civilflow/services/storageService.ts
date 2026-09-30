@@ -199,6 +199,9 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     yee_doble: r.yeeDobleAt ?? null,
     copia_piso: r.copiaPiso ?? false,
     sin_acc_med_interior: r._sinAccMedInterior ?? false,
+    // Ramal DE canal (ítem 2 usuario): sin esto el roundtrip BD lo devolvía como colector
+    // normal (filtros de tablas lo recuperan por geometría, pero la marca viaja igual).
+    es_canal_id: r.esCanalId ?? null,
   };
 }
 
@@ -250,6 +253,7 @@ function rowToRamal(row: SupabaseRow): PlanoRamal {
     yeeDobleAt: g(row, 'yee_doble', undefined),
     copiaPiso: g(row, 'copia_piso', undefined),
     _sinAccMedInterior: g(row, 'sin_acc_med_interior', undefined),
+    esCanalId: g(row, 'es_canal_id', undefined),
   };
 }
 
@@ -293,6 +297,11 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     base: b.base ?? null,
     altura: b.altura ?? null,
     longitud: b.longitud ?? null,
+    // Canal en diagonal (ítems 4-5 usuario) + sentido legacy del flujo: sin estas columnas el
+    // roundtrip BD aplanaba el canal a AABB (se crean con la migración 20260930; el
+    // jsonb_populate del RPC ignora claves extra hasta aplicarla — deploy seguro antes).
+    angulo: b.angulo ?? null,
+    canal_flow_dir: b._canalFlowDir ?? null,
     copia_piso: b.copiaPiso ?? false,
     copiado_de_plan: b.copiadoDePlan ?? null,
     copiado_de_id: b.copiadoDeId ?? null,
@@ -360,6 +369,8 @@ function rowToBajante(row: SupabaseRow): PlanoBajante {
     base: g(row, 'base', undefined),
     altura: g(row, 'altura', undefined),
     longitud: g(row, 'longitud', undefined),
+    angulo: g(row, 'angulo', undefined),
+    _canalFlowDir: g(row, 'canal_flow_dir', undefined),
     copiaPiso: g(row, 'copia_piso', undefined),
     copiadoDePlan: g(row, 'copiado_de_plan', undefined),
     copiadoDeId: g(row, 'copiado_de_id', undefined),

@@ -9,6 +9,12 @@ import {
 } from 'react';
 import { usePlans } from './PlansContext';
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords';
+import {
+  canalOBBDe,
+  puntoEnCanalOBB,
+  distPuntoACanalOBB,
+} from '../lib/PlanoEngine/canalAssociation';
+import { pisoCorto } from '../constants';
 import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService';
 import {
@@ -30,6 +36,9 @@ export interface BajanteLL {
   areaAcumulada: number;
   intensidad: number;
   coeficienteC: number;
+  /** Material de cubierta (nombre completo en MATERIALES_CUBIERTA_LL): C derivado del
+   *  catálogo de escorrentía. Sin material → fallback al coeficienteC manual. */
+  materialCubierta?: string;
   R: string;
   manning: number;
   diamPropuesto: number;
@@ -52,9 +61,21 @@ export interface CanalLL {
   longitud?: number;
   /** plan.nivel del piso del canal — solo glifos dibujados (para la columna Nivel). */
   piso?: number;
-  /** Es true cuando b/h provienen de un glifo de canal dibujado (tipo:'canal' en la red 'll') — en
-   * ese caso la tabla debe mostrar esos dos campos como solo lectura, porque el dibujo es la
-   * fuente de verdad de ambos (ver canalesLlAuto abajo). */
+  /** Material de cubierta (C derivado) y de canal (n derivado) — port hoja "2. Canales". */
+  materialCubierta?: string;
+  materialCanal?: string;
+  /** Área de muro vertical que descarga sobre el canal (m²) — A efectiva = A + 0.5·muro. */
+  muroVertical?: number;
+  /** Borde libre editable por fila (cm) — port hoja 2 (antes fijo 10 cm). */
+  bordeLibreCm?: number;
+  /** Id del canal dibujado (glifo) — solo fromCanal: para escribir b/h/longitud/pendiente
+   *  de vuelta al dibujo (writeCanalDimsToDrawing). */
+  drawId?: string;
+  /** Id del plano del glifo — solo fromCanal (el write necesita el piso exacto). */
+  drawPlanId?: string | number;
+  /** Es true cuando b/h/longitud/pendiente provienen de un glifo de canal dibujado
+   *  (tipo:'canal' en la red 'll') — la tabla los muestra editables y escribe de vuelta al
+   *  dibujo (writeCanalDimsToDrawing), que sigue siendo la fuente de verdad (ítem 7). */
   fromCanal?: boolean;
 }
 interface RainwaterContextValue {
@@ -66,6 +87,9 @@ interface RainwaterContextValue {
   addCanalLL: () => void;
   delCanalLL: (id: string) => void;
   updCanalLL: (id: string, field: string, val: string | number) => void;
+  updCanalSector: (sector: string, field: string, val: string | number) => void;
+  /** Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1". */
+  canalBajantes: Record<string, string[]>;
   conRecolectora: boolean;
   setConRecolectora: (v: boolean) => void;
 }
@@ -134,11 +158,42 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     return () => window.removeEventListener('civilflow_nets_changed', handler);
   }, []);
 
+  // Refresco reactivo de lo derivado del dibujo (ítem 7 usuario): el memo de abajo lee
+  // storage crudo — sin tick, editar base/pendiente en el visor (menú/panel) no se reflejaba
+  // en la tabla hasta remontar. Mismo trío de eventos que BombaARDesign/FixturesPanel.
+  const [trazosTick, setTrazosTick] = useState(0);
+  useEffect(() => {
+    const bump = () => setTrazosTick((n) => n + 1);
+    window.addEventListener('storage', bump);
+    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
+    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    return () => {
+      window.removeEventListener('storage', bump);
+      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
+      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    };
+  }, []);
+  // Remap de sectores cuando el motor renumera canales (borrar uno cierra huecos CNL):
+  // las filas manuales se clavean por sector = code — sin esto quedaban huérfanas y el
+  // canal renombrado nacía sin material/áreas.
+  useEffect(() => {
+    const onRenum = (e: Event): void => {
+      const idMap = (e as CustomEvent<{ idMap?: Record<string, string> }>).detail?.idMap;
+      if (!idMap) return;
+      setCanalesLl((prev) =>
+        prev.map((c) => (idMap[c.sector] ? { ...c, sector: idMap[c.sector] } : c)),
+      );
+    };
+    window.addEventListener('civilflow_canales_renumerados', onRenum);
+    return () => window.removeEventListener('civilflow_canales_renumerados', onRenum);
+  }, []);
+
   const addCanalLL = () =>
     setCanalesLl((p) => [
       ...p,
       {
-        id: `CLL-${p.length + 1}`,
+        // ponytail: sin colisión tras deletes (antes length+1 re-usaba ids)
+        id: `CLL-${Date.now().toString(36)}`,
         sector: '',
         areaParcial: 0,
         areaOtras: 0,
@@ -154,6 +209,37 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const delCanalLL = (id: string) => setCanalesLl((p) => p.filter((t) => t.id !== id));
   const updCanalLL = (id: string, field: string, val: string | number) =>
     setCanalesLl((p) => p.map((t) => (t.id === id ? { ...t, [field]: val } : t)));
+  /** Upsert de override por SECTOR (ítem 7 usuario): las filas fromCanal no viven en el
+   *  state (se sintetizan del dibujo), así que editarles área/intensidad creaba un no-op
+   *  silencioso. Crea la fila manual mínima (solo sector + campo) — el merge de
+   *  canalesLlAuto la consume y rellena el resto desde el glifo. */
+  const updCanalSector = (sector: string, field: string, val: string | number) =>
+    setCanalesLl((p) => {
+      const i = p.findIndex((t) => (t.sector || t.id) === sector);
+      if (i >= 0) {
+        const cp = [...p];
+        cp[i] = { ...cp[i], [field]: val };
+        return cp;
+      }
+      return [
+        ...p,
+        {
+          // ponytail: sin colisión tras deletes (antes length+1 re-usaba ids)
+          id: `CLL-${Date.now().toString(36)}`,
+          sector,
+          areaParcial: 0,
+          areaOtras: 0,
+          areaAcumulada: 0,
+          intensidad: 100,
+          coeficienteC: 0.0278,
+          manning: 0.009,
+          pendiente: 2,
+          b: 0,
+          h: 0,
+          [field]: val,
+        },
+      ];
+    });
 
   // Auto-puebla las filas de canal desde los ramales 'll' dibujados (net==='ll', no bajante),
   // con el mismo patrón de búsqueda de área por piso que ChequeoBajantesLluvias, en lugar de
@@ -163,10 +249,12 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   // de storage por plano — los glifos de canal no pasan por TramosContext/buildTramos.ts (esa
   // tubería solo modela ramales/bajantes con semántica sanitaria/bajante), así que se leen
   // directo aquí, igual que `areas` arriba.
-  const { areaAcumMap, drawnCanalGlyphs, canalAreaMap } = useMemo(() => {
+  const { areaAcumMap, drawnCanalGlyphs, canalAreaMap, canalBajantes } = useMemo(() => {
     const canalAreaMap: Record<string, number> = {};
+    // Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1".
+    const canalBajantes: Record<string, string[]> = {};
     const map: Record<string, number> = {};
-    const glyphs: (RawElement & { piso: string })[] = [];
+    const glyphs: (RawElement & { piso: string; planId: string | number })[] = [];
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
       const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
@@ -185,29 +273,37 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
       map[String(plan.nivel)] = totalArea;
       for (const b of data.bajantes || []) {
-        if (b.tipo === 'canal' && b.net === 'll') glyphs.push({ ...b, piso: String(plan.nivel) });
+        if (b.tipo === 'canal' && b.net === 'll')
+          glyphs.push({ ...b, piso: String(plan.nivel), planId: plan.id });
       }
       // Área de cada canal = Σ áreas de los bajantes que le descargan (orig. usuario): un
-      // ramal ll cuyo ÚLTIMO punto cae en el rectángulo del canal trae el área de SU bajante
-      // (el otro extremo a ≤2 px del glifo). Rect del canal desde (x,y) + longitud/base cm.
+      // ramal ll con un extremo dentro del OBB del canal trae el área de SU bajante
+      // (el otro extremo a ≤2 px del glifo). OBB válido en diagonal (canalMarco).
       const canales = (data.bajantes || []).filter(
-        (b): b is RawElement & { base?: number; longitud?: number; x?: number; y?: number } =>
-          b.tipo === 'canal' && b.net === 'll',
+        (
+          b,
+        ): b is RawElement & {
+          base?: number;
+          longitud?: number;
+          angulo?: number;
+          x?: number;
+          y?: number;
+        } => b.tipo === 'canal' && b.net === 'll',
       );
       const bajLl = (data.bajantes || []).filter(
         (b): b is RawElement & { area_m2?: number; x?: number; y?: number } =>
           b.net === 'll' && b.tipo === 'bajante',
       );
       const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
+      const etiquetaBaj = (idB: string): string => {
+        const bb = bajLl.find((x) => String(x.id) === idB);
+        const sector = String(bb?.code || bb?.id || idB).split('-')[0];
+        return `${sector}-${pisoCorto(Number(plan.nivel))}`;
+      };
       for (const c of canales) {
         if (c.x == null || c.y == null) continue;
-        const cx = c.x;
-        const cy = c.y;
-        const w = (c.longitud ?? 0) * pxPerCm;
-        const h = (c.base ?? 0) * pxPerCm;
-        const pad = 4;
-        const enRect = (pt: number[]): boolean =>
-          pt[0] >= cx - pad && pt[0] <= cx + w + pad && pt[1] >= cy - pad && pt[1] <= cy + h + pad;
+        const obb = canalOBBDe(pxPerCm, c);
+        const enCanal = (pt: number[]): boolean => puntoEnCanalOBB(obb, pt[0], pt[1], 4);
         // SET de bajantes alimentadores (un bajante con VARIOS ramales al canal cuenta UNA vez).
         const alimentadores = new Set<string>();
         for (const r of data.ramales || []) {
@@ -216,7 +312,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
           // bajante (el ramal puede salir del canal o llegar a él — esCanalId marca salida).
           const pS = r.pts[0];
           const pE = r.pts[r.pts.length - 1];
-          const pBaj = enRect(pS) ? pE : enRect(pE) ? pS : null;
+          const pBaj = enCanal(pS) ? pE : enCanal(pE) ? pS : null;
           if (!pBaj) continue;
           for (const b of bajLl) {
             if (b.x == null || b.y == null) continue;
@@ -227,10 +323,12 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
           }
         }
         // Bajante dibujado directamente sobre el canal (sin ramal): también alimentador.
+        // Distancia al OBB (no al centro) — en un canal largo el centro queda lejos.
         for (const b of bajLl) {
           if (b.x == null || b.y == null) continue;
-          if (enRect([b.x, b.y])) alimentadores.add(String(b.id));
+          if (distPuntoACanalOBB(obb, b.x, b.y) < 2) alimentadores.add(String(b.id));
         }
+        canalBajantes[String(c.id)] = [...alimentadores].map(etiquetaBaj).sort();
         // Área = Σ una sola vez por bajante alimentador.
         let area = 0;
         for (const idB of alimentadores) {
@@ -240,8 +338,9 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         if (area > 0) canalAreaMap[String(c.id)] = area;
       }
     }
-    return { areaAcumMap: map, drawnCanalGlyphs: glyphs, canalAreaMap };
-  }, [plans]);
+    return { areaAcumMap: map, drawnCanalGlyphs: glyphs, canalAreaMap, canalBajantes };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, trazosTick]);
 
   const canalesLlAuto = useMemo(() => {
     const manualMap = new Map<string, CanalLL>();
@@ -280,7 +379,13 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         intensidad: manual?.intensidad ?? 100,
         coeficienteC: manual?.coeficienteC ?? 0.0278,
         manning: manual?.manning ?? 0.009,
-        pendiente: 2,
+        materialCubierta: manual?.materialCubierta,
+        materialCanal: manual?.materialCanal,
+        muroVertical: manual?.muroVertical,
+        bordeLibreCm: manual?.bordeLibreCm,
+        // Pendiente MANDA EL DIBUJO (ítem 7 usuario): la del glifo (default 2 en creación,
+        // 2 en legacy sin el campo — igual que antes); fila manual → su propio valor.
+        pendiente: (glyph.pendiente as number) ?? 2,
         // b/h siempre vienen del glifo dibujado, nunca del override manual — porque son
         // exactamente los valores que la herramienta de canal "importa" a la tabla; una
         // entrada manual aquí igual se revertiría en silencio en el próximo render
@@ -290,6 +395,8 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         longitud: (glyph.longitud as number) || 0,
         piso: Number(glyph.piso),
         fromCanal: true,
+        drawId: String(glyph.id),
+        drawPlanId: glyph.planId,
       });
     }
 
@@ -298,9 +405,6 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       if (usedManual.has(key)) continue;
       out.push(m);
     }
-
-    // La pendiente del canal es siempre 2% (S=2%) — fija por diseño, no editable en la tabla.
-    for (const c of out) c.pendiente = 2;
 
     return out;
   }, [drawnCanalGlyphs, canalesLl, bajantesLl, areaAcumMap, canalAreaMap]);
@@ -336,6 +440,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
             areaAcumulada: 0,
             intensidad: field === 'intensidad' ? (val as number) : 100,
             coeficienteC: 0.0278,
+            materialCubierta: field === 'materialCubierta' ? (val as string) : '',
             R: field === 'R' ? (val as string) : '',
             manning: field === 'manning' ? (val as number) : 0,
             diamPropuesto: field === 'diamPropuesto' ? (val as number) : 0,
@@ -357,10 +462,12 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       addCanalLL,
       delCanalLL,
       updCanalLL,
+      updCanalSector,
+      canalBajantes,
       conRecolectora,
       setConRecolectora,
     }),
-    [bajantesLl, canalesLlAuto, conRecolectora],
+    [bajantesLl, canalesLlAuto, canalBajantes, conRecolectora],
   );
 
   return <RainwaterContext.Provider value={value}>{children}</RainwaterContext.Provider>;

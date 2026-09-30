@@ -1,17 +1,56 @@
 import React from 'react';
 import EditButton from './shared/EditButton';
+import ChipList from './shared/ChipList';
 import { renderStatus } from '../utils/componentHelpers';
-import { pisoCorto } from '../constants';
+import { pisoCorto, DIAM_BAN } from '../constants';
+import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import { loadFromStorage } from '../services/storageService';
 import { useRainwater } from '../context/RainwaterContext';
-import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../utils/calcRainwater';
+import { usePlans } from '../context/PlansContext';
+import { writeCanalDimsToDrawing } from '../utils/writeDiameterToDrawing';
+import {
+  chequeoCanalLluvia,
+  chequeoEmbocaduraLluvia,
+  BORDE_LIBRE_CANAL_CM,
+} from '../utils/calcRainwater';
+import {
+  MATERIALES_CUBIERTA_LL,
+  MATERIALES_CANAL_LL,
+  cDeCubierta,
+  nDeCanal,
+} from '../constants/engineeringDataMaterials';
 import { trunc2 } from '../utils/formatUtils';
+import type { DrawingData } from '../utils/drawingSync';
 
-const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente' | 'longitud' | 'areaOtras', string> = {
+// Encabezados compactos (orig. usuario: sin scroll horizontal): wrap a 2-3 líneas.
+const thL: React.CSSProperties = {
+  fontSize: 10,
+  textAlign: 'center',
+  padding: '1px 2px',
+  whiteSpace: 'normal',
+};
+const thG: React.CSSProperties = { ...thL, fontWeight: 700, letterSpacing: 0.3 };
+const thOk: React.CSSProperties = { ...thL };
+
+const CANAL_FIELD_LABELS: Record<
+  | 'b'
+  | 'h'
+  | 'pendiente'
+  | 'longitud'
+  | 'areaOtras'
+  | 'intensidad'
+  | 'muroVertical'
+  | 'bordeLibreCm',
+  string
+> = {
   b: 'Base (cm)',
   h: 'Altura (cm)',
   pendiente: 'Pendiente (%)',
   longitud: 'Longitud (cm)',
   areaOtras: 'Área otras',
+  intensidad: 'Intensidad (mm/hr)',
+  muroVertical: 'Muro vertical (m²)',
+  bordeLibreCm: 'Borde libre (cm)',
 };
 
 const CanalDimField = React.memo(function CanalDimField({
@@ -22,7 +61,15 @@ const CanalDimField = React.memo(function CanalDimField({
   disabled = false,
 }: {
   id: string;
-  field: 'b' | 'h' | 'pendiente' | 'longitud' | 'areaOtras';
+  field:
+    | 'b'
+    | 'h'
+    | 'pendiente'
+    | 'longitud'
+    | 'areaOtras'
+    | 'intensidad'
+    | 'muroVertical'
+    | 'bordeLibreCm';
   value: number;
   onChange: (id: string, field: string, val: number) => void;
   /** Edición gated por el botón EDITAR de la tabla. */
@@ -71,10 +118,10 @@ const CanalDimField = React.memo(function CanalDimField({
       }}
       style={{
         textAlign: 'center',
-        fontSize: 10.5,
+        fontSize: 10,
         opacity: disabled ? 0.6 : 1,
         padding: '2px 4px',
-        width: 42,
+        width: 38,
         fontFamily: 'var(--mono)',
         background: 'var(--bg2)',
         border: '1px solid var(--line)',
@@ -87,7 +134,106 @@ const CanalDimField = React.memo(function CanalDimField({
 
 export default function ChequeoCanalesLluvias() {
   const [edit, setEdit] = React.useState(false);
-  const { canalesLl, updCanalLL, conRecolectora } = useRainwater();
+  const { canalesLl, updCanalLL, updCanalSector, conRecolectora, canalBajantes } = useRainwater();
+  const { plans } = usePlans();
+  // Escritura bidireccional con el dibujo (ítem 7 usuario): b/h/longitud/pendiente de filas
+  // fromCanal van al glifo (writeCanalDimsToDrawing = manda el dibujo); área/intensidad van
+  // al override por sector (updCanalSector); filas manuales usan updCanalLL como siempre.
+  const onCanalField = (id: string, field: string, val: number) => {
+    const row = canalesLl.find((c) => c.id === id);
+    if (!row) return;
+    if (row.fromCanal && row.drawId != null && row.drawPlanId != null) {
+      if (field === 'b' || field === 'h' || field === 'longitud' || field === 'pendiente') {
+        if (field === 'pendiente' && (val <= 0 || val > 15)) {
+          window.dispatchEvent(
+            new CustomEvent('civilflow_diametro_validation', {
+              detail: {
+                title: 'Pendiente no permitida',
+                message:
+                  'La pendiente del canal debe ser mayor que 0% y hasta 15%. Se conserva el valor anterior.',
+              },
+            }),
+          );
+          return;
+        }
+        const key =
+          field === 'b'
+            ? 'base'
+            : field === 'h'
+              ? 'altura'
+              : field === 'longitud'
+                ? 'longitud'
+                : 'pendiente';
+        writeCanalDimsToDrawing(row.drawId, row.drawPlanId, { [key]: val }, plans);
+        return;
+      }
+      if (row.sector) {
+        updCanalSector(row.sector, field, val);
+        return;
+      }
+    }
+    updCanalLL(id, field, val);
+  };
+
+  // Campos de TEXTO (materiales): mismo routing que onCanalField — override por sector en
+  // filas fromCanal, estado en manuales. Los materiales viven en el override, no en el glifo.
+  const onCanalStrField = (id: string, field: string, val: string) => {
+    const row = canalesLl.find((c) => c.id === id);
+    if (!row) return;
+    if (row.fromCanal && row.sector) {
+      updCanalSector(row.sector, field, val);
+      return;
+    }
+    updCanalLL(id, field, val);
+  };
+
+  // D propuesto por CHIP de bajante asociado ("BALL1-P1"): el chequeo de embocadura usa el
+  // D menor de los asociados (conservador) y el N° de chips como N° de bajantes (port hoja 2
+  // AA/Z — columnas rojas del Excel, aquí derivadas del dibujo).
+  // Tick de refresco del dibujo (mismo trío de eventos que RainwaterContext): el memo de
+  // abajo lee storage crudo — sin tick, cambiar D de un bajante en el visor dejaba las
+  // columnas "D baj."/"Lámina" con el valor viejo hasta remontar.
+  const [diamTick, setDiamTick] = React.useState(0);
+  React.useEffect(() => {
+    const bump = () => setDiamTick((n) => n + 1);
+    window.addEventListener('storage', bump);
+    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
+    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    return () => {
+      window.removeEventListener('storage', bump);
+      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
+      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    };
+  }, []);
+  const diamPulgPorChip = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const plan of plans || []) {
+      if (plan.nivel == null) continue;
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
+      if (!raw) continue;
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+      }
+      const suf = pisoCorto(plan.nivel);
+      for (const b of data.bajantes || []) {
+        if (b.net !== 'll' || b.tipo !== 'bajante') continue;
+        const chip = `${String(b.code || b.id).split('-')[0]}-${suf}`;
+        // El dibujo guarda el diámetro como etiqueta nominal ('4"'); tramos guardan pulg.
+        const rawPulg = (b as { diamDisPulg?: number }).diamDisPulg;
+        const pulg =
+          rawPulg && rawPulg > 0
+            ? rawPulg
+            : (DIAM_BAN.find((d) => d.nom === b.dNominal)?.pulg ?? 0);
+        if (pulg > 0) map[chip] = pulg;
+      }
+    }
+    return map;
+  }, [plans, diamTick]);
 
   return (
     <section className="card">
@@ -115,342 +261,681 @@ export default function ChequeoCanalesLluvias() {
           Activa el canal recolectora para ver este chequeo.
         </div>
       ) : (
-        <div className="scroll-top" style={{ padding: '16px' }}>
-          <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            <table
-              className="tbl"
-              style={{
-                fontSize: 10.5,
-                tableLayout: 'auto',
-                width: '100%',
-                borderCollapse: 'collapse',
-              }}
-            >
-              <thead>
+        <div style={{ padding: '12px' }}>
+          <table
+            className="tbl"
+            style={{
+              fontSize: 10,
+              tableLayout: 'fixed',
+              width: '100%',
+              borderCollapse: 'collapse',
+            }}
+          >
+            <colgroup>
+              <col style={{ width: '4.5%' }} />
+              <col style={{ width: '5.5%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '3.4%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '4.5%' }} />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '4.1%' }} />
+              <col style={{ width: '3.6%' }} />
+              <col style={{ width: '3.4%' }} />
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '3.2%' }} />
+              <col style={{ width: '3.4%' }} />
+              <col style={{ width: '3.6%' }} />
+              <col style={{ width: '3.4%' }} />
+              <col style={{ width: '3.6%' }} />
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '3.8%' }} />
+              <col style={{ width: '4.2%' }} />
+              <col style={{ width: '4.2%' }} />
+              <col style={{ width: '4.4%' }} />
+              <col style={{ width: '4.2%' }} />
+              <col style={{ width: '4.2%' }} />
+            </colgroup>
+            <thead>
+              <tr>
+                <th
+                  title="Canal recolector de cubierta (CNL) según el dibujo."
+                  scope="col"
+                  className="col-h ll"
+                  rowSpan={2}
+                  style={thL}
+                >
+                  Canal
+                </th>
+                <th
+                  title="Bajantes que descargan al canal: definen el N° de bocas y el reparto del caudal."
+                  scope="col"
+                  className="col-h ll"
+                  rowSpan={2}
+                  style={thL}
+                >
+                  Bajantes
+                  <br />
+                  asociados
+                </th>
+                <th
+                  title="Áreas que drenan al canal (m²)."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={5}
+                  style={thG}
+                >
+                  ÁREA (m²)
+                </th>
+                <th
+                  title="Método racional aplicado al área efectiva."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={4}
+                  style={thG}
+                >
+                  CAUDAL DE DISEÑO
+                </th>
+                <th
+                  title="Material, rugosidad y pendiente del canal."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={3}
+                  style={thG}
+                >
+                  CANAL
+                </th>
+                <th
+                  title="Dimensiones de la sección del canal (cm) — manda el dibujo."
+                  scope="col"
+                  className="col-h ok"
+                  colSpan={5}
+                  style={thG}
+                >
+                  SECCIÓN PROPUESTA
+                </th>
+                <th
+                  title="Capacidad de la sección y uso del canal."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={2}
+                  style={thG}
+                >
+                  CAPACIDAD (Manning)
+                </th>
+                <th
+                  title="Tirante normal y velocidad del agua en el canal."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={2}
+                  style={thG}
+                >
+                  FLUJO REAL
+                </th>
+                <th
+                  title="Entrega del canal al bajante: embocadura y su altura de agua."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={2}
+                  style={thG}
+                >
+                  DESCARGA AL BAJANTE
+                </th>
+                <th
+                  title="Chequeos de capacidad del canal y de la embocadura."
+                  scope="col"
+                  className="col-h ll"
+                  colSpan={2}
+                  style={thG}
+                >
+                  CHEQUEOS
+                </th>
+              </tr>
+              <tr>
+                <th
+                  title="Área de los bajantes que descargan al canal (m²)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Parcial
+                </th>
+                <th
+                  title="Área adicional no dibujada, editable (m²)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Otras
+                </th>
+                <th
+                  title="Área total = Parcial + Otras (m²)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Total
+                </th>
+                <th
+                  title="Área de muros que descargan sobre el canal (m²)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Muro
+                </th>
+                <th
+                  title="Área efectiva = Total más la mitad del muro vertical."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Efectiva
+                </th>
+                <th
+                  title="Material de la cubierta: define el coeficiente de escorrentía C."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Material
+                  <br />
+                  cubierta
+                </th>
+                <th
+                  title="Coeficiente de escorrentía del material; sin material se usa C = 1,0."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Coef.
+                  <br />
+                  escorr.
+                </th>
+                <th
+                  title="Intensidad de lluvia de diseño (mm/h)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Intensidad
+                  <br />
+                  <small>mm/h</small>
+                </th>
+                <th
+                  title="Caudal real que llega al canal (L/s)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Q real
+                  <br />
+                  <small>LPS</small>
+                </th>
+                <th
+                  title="Material del canal: define la rugosidad n (catálogo maestro)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Material
+                  <br />
+                  canal
+                </th>
+                <th
+                  title="Rugosidad del material del canal."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Manning
+                </th>
+                <th
+                  title="Pendiente longitudinal del canal (%) — manda el dibujo."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Pend.
+                  <br />
+                  <small>%</small>
+                </th>
+                <th
+                  title="Ancho de la base del canal (cm) — editable, escribe al dibujo."
+                  scope="col"
+                  className="col-h ok"
+                  style={thOk}
+                >
+                  Base
+                  <br />
+                  <small>cm</small>
+                </th>
+                <th
+                  title="Altura útil del canal (cm) — editable, escribe al dibujo."
+                  scope="col"
+                  className="col-h ok"
+                  style={thOk}
+                >
+                  Altura
+                  <br />
+                  <small>cm</small>
+                </th>
+                <th
+                  title="Longitud del canal (cm) — del glifo dibujado."
+                  scope="col"
+                  className="col-h ok"
+                  style={thOk}
+                >
+                  Long.
+                  <br />
+                  <small>cm</small>
+                </th>
+                <th
+                  title="Borde libre sobre el tirante (cm) — editable, default 10."
+                  scope="col"
+                  className="col-h ok"
+                  style={thOk}
+                >
+                  Borde
+                  <br />
+                  <small>cm</small>
+                </th>
+                <th
+                  title="Sección total = base más altura más borde libre."
+                  scope="col"
+                  className="col-h ok"
+                  style={thOk}
+                >
+                  Total
+                  <br />
+                  <small>cm</small>
+                </th>
+                <th
+                  title="Capacidad máxima de la sección (L/s)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Q máx
+                  <br />
+                  <small>LPS</small>
+                </th>
+                <th
+                  title="Uso de la capacidad del canal: debe ser ≤ 100%."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Q real/
+                  <br />Q máx
+                </th>
+                <th
+                  title="Profundidad del agua en el canal (m)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Tirante
+                  <br />
+                  <small>m</small>
+                </th>
+                <th
+                  title="Velocidad del agua en el canal (m/s)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Vel.
+                  <br />
+                  <small>m/s</small>
+                </th>
+                <th
+                  title="Menor diámetro propuesto de los bajantes asociados (pulg)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  D baj.
+                  <br />
+                  <small>pulg</small>
+                </th>
+                <th
+                  title="Altura de lámina de agua requerida en la embocadura (m)."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Lámina
+                  <br />
+                  <small>m</small>
+                </th>
+                <th
+                  title="O.K. si el canal tiene capacidad para el caudal real."
+                  scope="col"
+                  className="col-h ll"
+                  style={thL}
+                >
+                  Qreal ≤<br />
+                  Qmáx
+                </th>
+                <th
+                  title="O.K. si la lámina requerida cabe en la altura útil; sin bajantes: Revisar."
+                  scope="col"
+                  className="col-h ok"
+                  style={thOk}
+                >
+                  H ≤ h<br />
+                  útil
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {canalesLl.length === 0 ? (
                 <tr>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
+                  <td
+                    colSpan={27}
+                    style={{
+                      padding: '24px 0',
+                      textAlign: 'center',
+                      color: 'var(--txt3)',
+                      fontSize: 10,
+                    }}
                   >
-                    Canal
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Nivel
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    colSpan={3}
-                    style={{ textAlign: 'center', fontSize: 10.5, padding: '3px 5px' }}
-                  >
-                    Área (m²)
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Intensidad (I)
-                    <br />
-                    <small>mm/hr</small>
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Coeficiente
-                    <br />
-                    Escorrentía
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Caudal real
-                    <br />
-                    <small>(LPS)</small>
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Manning
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Pendiente
-                    <br />
-                    <small>(%)</small>
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ok"
-                    colSpan={5}
-                    style={{ textAlign: 'center', fontSize: 10.5, padding: '3px 5px' }}
-                  >
-                    Sección propuesta (cm)
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Caudal máximo
-                    <br />
-                    <small>(LPS)</small>
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    rowSpan={2}
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Chequeo
-                    <br />
-                    Qreal &lt; Qmax
-                  </th>
+                    No hay canales. Dibuja canales recolectores en el visor para que aparezcan aquí.
+                  </td>
                 </tr>
-                <tr>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Parcial
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Otras
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ll"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Total
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ok"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Base
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ok"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Altura
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ok"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Longitud
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ok"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Borde libre
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h ok"
-                    style={{ fontSize: 10.5, textAlign: 'center', padding: '3px 5px' }}
-                  >
-                    Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {canalesLl.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={17}
-                      style={{
-                        padding: '24px 0',
-                        textAlign: 'center',
-                        color: 'var(--txt3)',
-                        fontSize: 10.5,
-                      }}
-                    >
-                      No hay canales. Dibuja canales recolectores en el visor para que aparezcan
-                      aquí.
-                    </td>
-                  </tr>
-                ) : (
-                  canalesLl.map((c) => {
-                    const { Qreal, Qmax, chequeo, totalStr } = chequeoCanalLluvia(c);
-                    return (
-                      <tr key={c.id}>
-                        <td className="c">
-                          <span className="sigla" style={{ fontSize: 10.5 }}>
-                            {c.sector || '—'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
-                            {c.piso != null ? pisoCorto(c.piso) : '—'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
-                            {c.areaParcial ? Number(c.areaParcial).toFixed(2) : '—'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          {/* Otras (orig. usuario): editable, default 0 — nunca vacía. */}
-                          <CanalDimField
-                            id={c.id}
-                            field="areaOtras"
-                            value={c.areaOtras ?? 0}
-                            onChange={updCanalLL}
-                            disabled={!edit}
-                          />
-                        </td>
-                        <td className="c">
-                          <span
-                            style={{
-                              fontFamily: 'var(--mono)',
-                              fontSize: 10.5,
-                              fontWeight: 600,
-                            }}
-                          >
-                            {c.areaAcumulada ? Number(c.areaAcumulada).toFixed(2) : '—'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
-                            {c.intensidad || '—'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
-                            {c.coeficienteC || '—'}
-                          </span>
-                        </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10.5 }}
-                        >
-                          {Qreal > 0 ? trunc2(Qreal) : '—'}
-                        </td>
-                        <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
-                            {c.manning || '—'}
-                          </span>
-                        </td>
-                        <td className="c">
-                          {/* Pendiente del canal fija en 2% (S=2%) — por diseño, no editable. */}
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>2</span>
-                        </td>
-                        <td className="c">
-                          {c.fromCanal ? (
-                            <span
-                              style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
-                              title="Configurado desde el canal dibujado en el plano"
-                            >
-                              {c.b || '—'}
-                            </span>
+              ) : (
+                canalesLl.map((c) => {
+                  // C y n derivados de los materiales (hoja 2); fallback al manual sin material.
+                  const Cder = cDeCubierta(c.materialCubierta ?? '') ?? c.coeficienteC ?? 0;
+                  const nder = nDeCanal(c.materialCanal ?? '') ?? c.manning ?? 0;
+                  const { Qreal, Qmax, yn, velocidad, chequeo, totalStr, aEfectiva } =
+                    chequeoCanalLluvia({
+                      ...c,
+                      coeficienteC: Cder,
+                      manning: nder,
+                      muroVertical: c.muroVertical ?? 0,
+                      bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
+                    });
+                  // Embocadura (hoja 2 AE/AG; Z/AB/AC/AD rojas quedan internas): N° = bajantes
+                  // asociados del canal, D = el menor propuesto (conservador).
+                  const items = c.drawId ? canalBajantes[c.drawId] || [] : [];
+                  const ds = items.map((ch) => diamPulgPorChip[ch] || 0).filter((x) => x > 0);
+                  const emb = chequeoEmbocaduraLluvia({
+                    Qreal,
+                    numBajantes: items.length,
+                    diamPulg: ds.length ? Math.min(...ds) : 0,
+                    hUtilM: (c.h || 0) / 100,
+                  });
+                  return (
+                    <tr key={c.id}>
+                      <td className="c">
+                        {/* Sector + piso (orig. usuario): etiqueta tipo CNL1-C. */}
+                        <span className="sigla" style={{ fontSize: 10 }}>
+                          {c.sector || '—'}
+                          {c.piso != null ? `-${pisoCorto(c.piso)}` : ''}
+                        </span>
+                      </td>
+                      <td className="c" style={{ padding: '2px 3px', minWidth: 60 }}>
+                        {/* Bajantes que descargan a este canal (ítem 8 usuario): chips
+                          CODE-PISO, misma lectura que el área parcial. */}
+                        {(() => {
+                          const items = c.drawId ? canalBajantes[c.drawId] || [] : [];
+                          return items.length > 0 ? (
+                            <ChipList items={items} />
                           ) : (
-                            <CanalDimField
-                              id={c.id}
-                              field="b"
-                              value={c.b}
-                              onChange={updCanalLL}
-                              disabled={!edit}
-                            />
-                          )}
-                        </td>
-                        <td className="c">
-                          {c.fromCanal ? (
-                            <span
-                              style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
-                              title="Configurado desde el canal dibujado en el plano"
-                            >
-                              {c.h || '—'}
-                            </span>
-                          ) : (
-                            <CanalDimField
-                              id={c.id}
-                              field="h"
-                              value={c.h}
-                              onChange={updCanalLL}
-                              disabled={!edit}
-                            />
-                          )}
-                        </td>
-                        <td className="c">
-                          {c.fromCanal ? (
-                            <span
-                              style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
-                              title="Configurado desde el canal dibujado en el plano"
-                            >
-                              {c.longitud || '—'}
-                            </span>
-                          ) : (
-                            <CanalDimField
-                              id={c.id}
-                              field="longitud"
-                              value={c.longitud ?? 0}
-                              onChange={updCanalLL}
-                              disabled={!edit}
-                            />
-                          )}
-                        </td>
-                        <td className="c">
-                          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
-                            {BORDE_LIBRE_CANAL_CM}
-                          </span>
-                        </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10.5 }}
+                            <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>—</span>
+                          );
+                        })()}
+                      </td>
+                      <td className="c">
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {c.areaParcial ? Number(c.areaParcial).toFixed(2) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Otras (orig. usuario): editable, default 0 — nunca vacía. */}
+                        <CanalDimField
+                          id={c.id}
+                          field="areaOtras"
+                          value={c.areaOtras ?? 0}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td className="c">
+                        <span
+                          style={{
+                            fontFamily: 'var(--mono)',
+                            fontSize: 10,
+                            fontWeight: 600,
+                          }}
                         >
-                          {totalStr}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10.5 }}
+                          {c.areaAcumulada ? Number(c.areaAcumulada).toFixed(2) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Muro vertical (hoja 2 col. D, entrada): m² que descargan al canal. */}
+                        <CanalDimField
+                          id={c.id}
+                          field="muroVertical"
+                          value={c.muroVertical ?? 0}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td className="c">
+                        {/* A efectiva = A acumulada + 0.5·muro (hoja 2 col. E). */}
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {aEfectiva > 0 ? Number(aEfectiva).toFixed(2) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Material de cubierta (hoja 2 col. G): abreviatura + hover completo. */}
+                        <select
+                          value={c.materialCubierta ?? ''}
+                          aria-label="Material de cubierta"
+                          title={c.materialCubierta || 'Material de cubierta'}
+                          disabled={!edit}
+                          onChange={(e) =>
+                            onCanalStrField(c.id, 'materialCubierta', e.target.value)
+                          }
+                          style={{
+                            textAlign: 'center',
+                            fontSize: 10,
+                            opacity: edit ? 1 : 0.6,
+                            padding: '2px 2px',
+                            width: '100%',
+                            minWidth: 0,
+                            fontFamily: 'var(--mono)',
+                            background: 'var(--bg2)',
+                            border: '1px solid var(--line)',
+                            borderRadius: 2,
+                            color: 'var(--txt)',
+                            cursor: edit ? 'pointer' : 'default',
+                          }}
                         >
-                          {Qmax > 0 ? trunc2(Qmax) : '—'}
-                        </td>
-                        <td className="c" style={{ fontSize: 10.5 }}>
-                          {renderStatus(chequeo)}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                          <option value="">—</option>
+                          {MATERIALES_CUBIERTA_LL.map((m) => (
+                            <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                              {m.abrev}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="c">
+                        {/* C derivado del material de cubierta (hoja 2, criterio por material). */}
+                        <span
+                          title={c.materialCubierta || undefined}
+                          style={{ fontFamily: 'var(--mono)', fontSize: 10 }}
+                        >
+                          {Cder > 0 ? Cder.toFixed(2) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Intensidad editable (ítem 7 usuario): override por sector en filas
+                          fromCanal, estado en manuales. */}
+                        <CanalDimField
+                          id={c.id}
+                          field="intensidad"
+                          value={c.intensidad ?? 0}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td
+                        className="c"
+                        style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10 }}
+                      >
+                        {Qreal > 0 ? trunc2(Qreal) : '—'}
+                      </td>
+                      <td className="c">
+                        {/* Material del canal (hoja 2 col. J): n derivado del catálogo. */}
+                        <select
+                          value={c.materialCanal ?? ''}
+                          aria-label="Material del canal"
+                          title={c.materialCanal || 'Material del canal'}
+                          disabled={!edit}
+                          onChange={(e) => onCanalStrField(c.id, 'materialCanal', e.target.value)}
+                          style={{
+                            textAlign: 'center',
+                            fontSize: 10,
+                            opacity: edit ? 1 : 0.6,
+                            padding: '2px 2px',
+                            width: '100%',
+                            minWidth: 0,
+                            fontFamily: 'var(--mono)',
+                            background: 'var(--bg2)',
+                            border: '1px solid var(--line)',
+                            borderRadius: 2,
+                            color: 'var(--txt)',
+                            cursor: edit ? 'pointer' : 'default',
+                          }}
+                        >
+                          <option value="">—</option>
+                          {MATERIALES_CANAL_LL.map((m) => (
+                            <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                              {m.abrev}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="c">
+                        {/* n derivado del material de canal; fallback al manual sin material. */}
+                        <span
+                          title={c.materialCanal || undefined}
+                          style={{ fontFamily: 'var(--mono)', fontSize: 10 }}
+                        >
+                          {nder > 0 ? nder.toFixed(3) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Pendiente editable y bidireccional con el dibujo (ítem 7 usuario):
+                          filas fromCanal escriben al glifo; manuales al estado. */}
+                        <CanalDimField
+                          id={c.id}
+                          field="pendiente"
+                          value={c.pendiente ?? 0}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td className="c">
+                        {/* Base editable también en filas fromCanal: escribe al glifo
+                          (ítem 7 usuario) en vez de mostrar solo lectura. */}
+                        <CanalDimField
+                          id={c.id}
+                          field="b"
+                          value={c.b}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td className="c">
+                        <CanalDimField
+                          id={c.id}
+                          field="h"
+                          value={c.h}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td className="c">
+                        <CanalDimField
+                          id={c.id}
+                          field="longitud"
+                          value={c.longitud ?? 0}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td className="c">
+                        {/* Borde libre editable por fila (hoja 2 col. O; antes fijo 10 cm). */}
+                        <CanalDimField
+                          id={c.id}
+                          field="bordeLibreCm"
+                          value={c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM}
+                          onChange={onCanalField}
+                          disabled={!edit}
+                        />
+                      </td>
+                      <td
+                        className="c"
+                        style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10 }}
+                      >
+                        {totalStr}
+                      </td>
+                      <td
+                        className="c"
+                        style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10 }}
+                      >
+                        {Qmax > 0 ? trunc2(Qmax) : '—'}
+                      </td>
+                      <td className="c">
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {Qmax > 0 && Qreal > 0 ? `${((Qreal / Qmax) * 100).toFixed(1)}%` : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Tirante normal (hoja 2 col. V): iteración de punto fijo en calc. */}
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {yn > 0 ? yn.toFixed(4) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Velocidad (hoja 2 col. W) = Q/(b·yn). */}
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {velocidad > 0 ? velocidad.toFixed(2) : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* D bajante (hoja 2 col. AA): el menor de los asociados. */}
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {ds.length ? `${Math.min(...ds)}"` : '—'}
+                        </span>
+                      </td>
+                      <td className="c">
+                        {/* Lámina requerida H = max(vertedero, orificio) (hoja 2 col. AE). */}
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
+                          {emb.Hreq > 0 ? emb.Hreq.toFixed(4) : '—'}
+                        </span>
+                      </td>
+                      <td className="c" style={{ fontSize: 10 }}>
+                        {renderStatus(chequeo)}
+                      </td>
+                      <td className="c" style={{ fontSize: 10 }}>
+                        {renderStatus(emb.chequeo)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

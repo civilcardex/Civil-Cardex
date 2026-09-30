@@ -7,7 +7,12 @@ import {
   pointOnAnyBodySegment,
 } from './HitTester';
 import { selectAt } from './PlanoEngineSelection';
-import { bajanteHitDistance, canalRectHitDistance } from './canalAssociation';
+import {
+  bajanteHitDistance,
+  canalRectHitDistance,
+  canalMarco,
+  esquinasCanalOBB,
+} from './canalAssociation';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 
 // Toma una foto de la posición del bajante y de todo ramal que toca (recibeDeIds, descargaEnId
@@ -192,26 +197,30 @@ export function _tryCanalResizeHit(
   y: number,
   sel: PlanoElement | null,
 ): boolean {
-  const canal = sel as
-    | (PlanoBajante & { _canalBox?: { x: number; y: number; w: number; h: number } })
-    | null;
-  if (!canal || canal.tipo !== 'canal' || !canal._canalBox) return false;
-  const box = canal._canalBox;
-  const corners: { x: number; y: number; corner: 'tl' | 'tr' | 'bl' | 'br' }[] = [
-    { x: box.x, y: box.y, corner: 'tl' },
-    { x: box.x + box.w, y: box.y, corner: 'tr' },
-    { x: box.x, y: box.y + box.h, corner: 'bl' },
-    { x: box.x + box.w, y: box.y + box.h, corner: 'br' },
-  ];
-  const grabbed = corners.find((c) => Math.hypot(x - c.x, y - c.y) < 10);
-  if (!grabbed) return false;
-  const wPlane = engine.cmToPlanePx(canal.longitud || 0);
-  const hPlane = engine.cmToPlanePx(canal.base || 0);
-  // Esquina opuesta, en coordenadas de PLANO (canal.x/y siempre es la esquina superior-
-  // izquierda) — queda fija durante todo el gesto sin importar qué esquina se agarró.
-  const anchorX = grabbed.corner === 'tl' || grabbed.corner === 'bl' ? canal.x + wPlane : canal.x;
-  const anchorY = grabbed.corner === 'tl' || grabbed.corner === 'tr' ? canal.y + hPlane : canal.y;
-  engine.canalResizeDrag = { id: canal.id, corner: grabbed.corner, anchorX, anchorY };
+  const canal = sel as PlanoBajante | null;
+  if (!canal || canal.tipo !== 'canal') return false;
+  // Esquinas del OBB en canvas (no del AABB): en diagonal las manijas viven en el rombo.
+  // Orden local: (0,0)=tl, (w,0)=tr, (w,h)=br, (0,h)=bl — con ángulo 0 coincide con el AABB.
+  const m = canalMarco(engine.cmToPlanePx(1), canal);
+  const corners = esquinasCanalOBB(m).map((p) => engine.toCvs(p.x, p.y));
+  const names = ['tl', 'tr', 'br', 'bl'] as const;
+  const grabbedIdx = corners.findIndex((c) => Math.hypot(x - c.x, y - c.y) < 10);
+  if (grabbedIdx < 0) return false;
+  const anchor = [
+    { lx: m.w, ly: m.h },
+    { lx: 0, ly: m.h },
+    { lx: 0, ly: 0 },
+    { lx: m.w, ly: 0 },
+  ][grabbedIdx];
+  engine.canalResizeDrag = {
+    id: canal.id,
+    corner: names[grabbedIdx],
+    anchorLX: anchor.lx,
+    anchorLY: anchor.ly,
+    oX: m.x,
+    oY: m.y,
+    ang: m.angRad,
+  };
   return true;
 }
 
@@ -223,6 +232,10 @@ export function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: num
   // ensureActiveNet del dueño.
   for (const r of engine.ramales) {
     if (r._labelBox && pointInLabelBox(x, y, r._labelBox)) return false;
+    // Fallback por cercanía al centro (12px, mismo que el loop de etiquetas de
+    // handleSelectDown): caja stale/ausente en ramales cortos (ítem 2 usuario).
+    const lPos = engine.toCvs(r.labelX, r.labelY);
+    if (Math.hypot(x - lPos.x, y - lPos.y) < 12) return false;
   }
   let bestRamal = null;
   let bestPtIdx = -1;

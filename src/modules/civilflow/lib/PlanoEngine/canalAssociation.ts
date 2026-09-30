@@ -51,24 +51,371 @@ export function bajanteAsociadoACanal(b: { tipo?: string; canalId?: string | nul
   return b.tipo === 'bajante' && !!b.canalId;
 }
 
-/** Devuelve la esquina superior-izquierda y la inferior-derecha del canal en coordenadas de
- *  plano. El canal se dibuja desde su esquina (b.x, b.y) y crece hacia abajo-derecha según su
- *  longitud (horizontal) y base (vertical), dadas en cm y convertidas a píxeles de plano aquí
- *  mismo. */
-function canalRect(engine: IPlanoEngineCore, canal: PlanoBajante) {
-  const w = engine.cmToPlanePx(canal.longitud || 0);
-  const h = engine.cmToPlanePx(canal.base || 0);
-  return { x0: canal.x, y0: canal.y, x1: canal.x + w, y1: canal.y + h };
+/** Rectángulo orientado del canal en px de plano: origen + dims locales + ángulo. El eje
+ *  local X es SIEMPRE el lado largo (longitud); el Y, el corto (base). Con angulo 0 es el
+ *  AABB de siempre. */
+export interface CanalOBB {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  angRad: number;
 }
 
+/** Marco efectivo del canal: con `angulo` lo respeta; sin él (legacy) reconstruye el
+ *  marco desde `_canalFlowDir` (izquierda→180, arriba→-90, abajo→90, resto→0) o, sin
+ *  flowDir, desde la forma (base>longitud→90). En todos los casos el rectángulo mundo es
+ *  el AABB clásico. Una sola verdad para motor y tablas. */
+export function canalMarco(
+  pxPerCm: number,
+  c: {
+    x?: number;
+    y?: number;
+    longitud?: number;
+    base?: number;
+    angulo?: number;
+    _canalFlowDir?: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
+  },
+): CanalOBB {
+  const ox = c.x ?? 0;
+  const oy = c.y ?? 0;
+  const w0 = Math.max(0, (c.longitud || 0) * pxPerCm);
+  const h0 = Math.max(0, (c.base || 0) * pxPerCm);
+  if (c.angulo != null) return { x: ox, y: oy, w: w0, h: h0, angRad: (c.angulo * Math.PI) / 180 };
+  const dir = c._canalFlowDir;
+  // Orígenes elegidos para que el conjunto mundo coincida con el AABB clásico en cada caso
+  // (verificado esquina por esquina: 180° ancla abajo-derecha, ±90° arriba/abajo-derecha).
+  if (dir === 'izquierda') return { x: ox + w0, y: oy + h0, w: w0, h: h0, angRad: Math.PI };
+  if (dir === 'arriba') return { x: ox, y: oy + h0, w: h0, h: w0, angRad: -Math.PI / 2 };
+  if (dir === 'abajo' || h0 > w0 + 1e-9)
+    return { x: ox + w0, y: oy, w: h0, h: w0, angRad: Math.PI / 2 };
+  return { x: ox, y: oy, w: w0, h: h0, angRad: 0 };
+}
+
+/** OBB puro (sin engine) desde un doc de storage + px por cm: lo usan las tablas de
+ *  lluvias que leen pisos no cargados. */
+export function canalOBBDe(
+  pxPerCm: number,
+  c: { x?: number; y?: number; longitud?: number; base?: number; angulo?: number },
+): CanalOBB {
+  return canalMarco(pxPerCm, c);
+}
+
+/** Lleva un punto mundo al marco local del canal (origen + rotación inversa). */
+export function canalToLocal(obb: CanalOBB, px: number, py: number): { lx: number; ly: number } {
+  const dx = px - obb.x;
+  const dy = py - obb.y;
+  const c = Math.cos(obb.angRad);
+  const s = Math.sin(obb.angRad);
+  return { lx: dx * c + dy * s, ly: -dx * s + dy * c };
+}
+
+/** Lleva un punto del marco local al mundo (origen + rotación). */
+export function canalToWorld(obb: CanalOBB, lx: number, ly: number): { x: number; y: number } {
+  const c = Math.cos(obb.angRad);
+  const s = Math.sin(obb.angRad);
+  return { x: obb.x + lx * c - ly * s, y: obb.y + lx * s + ly * c };
+}
+
+/** ¿El punto mundo cae dentro del OBB (pad en px de plano)? */
+export function puntoEnCanalOBB(obb: CanalOBB, px: number, py: number, pad = 0): boolean {
+  const { lx, ly } = canalToLocal(obb, px, py);
+  return lx >= -pad && lx <= obb.w + pad && ly >= -pad && ly <= obb.h + pad;
+}
+
+/** Distancia en px de plano de un punto al OBB (0 si está dentro). */
+export function distPuntoACanalOBB(obb: CanalOBB, px: number, py: number): number {
+  const { lx, ly } = canalToLocal(obb, px, py);
+  const dx = lx < 0 ? -lx : lx > obb.w ? lx - obb.w : 0;
+  const dy = ly < 0 ? -ly : ly > obb.h ? ly - obb.h : 0;
+  return Math.hypot(dx, dy);
+}
+
+/** Las 4 esquinas mundo del OBB, en orden (0,0)-(w,0)-(w,h)-(0,h) del marco local. */
+export function esquinasCanalOBB(obb: CanalOBB): Array<{ x: number; y: number }> {
+  return [
+    canalToWorld(obb, 0, 0),
+    canalToWorld(obb, obb.w, 0),
+    canalToWorld(obb, obb.w, obb.h),
+    canalToWorld(obb, 0, obb.h),
+  ];
+}
+
+/** OBB de un canal vivo del engine (dims en cm → px de plano). */
+export function canalOBBEngine(engine: IPlanoEngineCore, canal: PlanoBajante): CanalOBB {
+  return canalMarco(engine.cmToPlanePx(1), canal);
+}
+
+/** Normaliza base=LADO CORTO y longitud=LADO LARGO (ítem 5 usuario). Si el marco queda
+ *  con h>w, rota -90° y re-ancla el origen (o' = o + R·(0,h)) para que el rectángulo
+ *  mundo NO se mueva. Devuelve true si tocó algo. */
+/** px de plano por cm según el engine — ÚNICA fuente (antes 2 fallbacks distintos:
+ *  ||1 en drawingCreations y ||1e-9 en handleDragMove, ambos silenciando una escala
+ *  rota con dims corruptas). Falla fuerte si la escala no es positiva. */
+export function pxPerCmDe(engine: { pxToM(px: number): number }): number {
+  const v = engine.pxToM(1) * 100;
+  if (!(v > 0)) throw new Error('escala_invalida');
+  return 1 / v;
+}
+
+export function normalizarCanal(
+  pxPerCm: number,
+  c: { x: number; y: number; longitud?: number; base?: number; angulo?: number },
+): boolean {
+  const w = c.longitud || 0;
+  const h = c.base || 0;
+  if (h <= w + 1e-9) {
+    // Ya normal (o degenerado): solo siembra angulo 0 si falta.
+    if (c.angulo == null) {
+      c.angulo = 0;
+      return true;
+    }
+    return false;
+  }
+  // h>w: rota el marco -90° y re-ancla el origen con o' = o + R(A)·(0,h) para que el
+  // rectángulo mundo quede idéntico (R(-90)·(u,v) = (v,-u): el eje largo pasa al X).
+  const a = c.angulo ?? 0;
+  const rad = (a * Math.PI) / 180;
+  const hPx = h * pxPerCm;
+  c.x = c.x + -Math.sin(rad) * hPx;
+  c.y = c.y + Math.cos(rad) * hPx;
+  c.longitud = h;
+  c.base = w;
+  c.angulo = a - 90;
+  return true;
+}
+
+/** Normaliza grados a (-180, 180]. */
+function norm180(deg: number): number {
+  const m = (((deg + 180) % 360) + 360) % 360;
+  return m - 180;
+}
+
+/** Geometría de un canal desde 2 puntos del plano. La creación y el ghost comparten esta
+ *  matemática: casi-eje-alineado (≤15° del eje más cercano) = esquinas opuestas clásicas
+ *  (modo 'rect', 2 clics); diagonal = eje p1→p2 (modo 'eje': el 2º clic fija el eje y un
+ *  3er clic define el ancho con geometriaCanalAncho). Base siempre corta (ítem 5 usuario). */
+export interface TrazoCanal {
+  x: number;
+  y: number;
+  baseCm: number;
+  longitudCm: number;
+  angulo: number;
+  flujo: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
+  modo: 'rect' | 'eje';
+}
+
+export function geometriaCanalDesdePuntos(
+  s: { x: number; y: number },
+  p: { x: number; y: number },
+  pxToM: (d: number) => number,
+): TrazoCanal | null {
+  const dx = p.x - s.x;
+  const dy = p.y - s.y;
+  if (Math.hypot(dx, dy) < 1e-9) return null;
+  const axDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const offEje = Math.min(...[0, 90, 180, 270].map((k) => Math.abs(norm180(axDeg - k))));
+  if (offEje <= 15) {
+    // Modo clásico: el usuario arrastró (casi) sobre un eje — esquinas opuestas del AABB.
+    const baseCm = +(pxToM(Math.abs(dy)) * 100).toFixed(1);
+    const longitudCm = +(pxToM(Math.abs(dx)) * 100).toFixed(1);
+    if (baseCm < 1 && longitudCm < 1) return null;
+    const horizontal = Math.abs(dx) >= Math.abs(dy);
+    return {
+      x: Math.min(s.x, p.x),
+      y: Math.min(s.y, p.y),
+      baseCm,
+      longitudCm,
+      angulo: 0,
+      flujo: horizontal ? (dx >= 0 ? 'derecha' : 'izquierda') : dy >= 0 ? 'abajo' : 'arriba',
+      modo: 'rect',
+    };
+  }
+  // Modo eje (diagonal, orig. usuario #4): p1→p2 es el eje del canal; el ancho NO sale del
+  // arrastre (pedido usuario: siempre quedaba fijo) — lo define un 3er clic con
+  // geometriaCanalAncho. Aquí viaja un ancho provisional (= lado corto) solo para el ghost.
+  const longitudCm = +(pxToM(Math.hypot(dx, dy)) * 100).toFixed(1);
+  const baseCm = +(pxToM(Math.min(Math.abs(dx), Math.abs(dy))) * 100).toFixed(1);
+  if (baseCm < 1 && longitudCm < 1) return null;
+  const c = Math.cos((axDeg * Math.PI) / 180);
+  const sn = Math.sin((axDeg * Math.PI) / 180);
+  return {
+    x: s.x,
+    y: s.y,
+    baseCm,
+    longitudCm,
+    angulo: norm180(axDeg),
+    flujo:
+      Math.abs(c) >= Math.abs(sn) ? (c > 0 ? 'derecha' : 'izquierda') : sn > 0 ? 'abajo' : 'arriba',
+    modo: 'eje',
+  };
+}
+
+/** Geometría del canal en fase de ancho (3er clic): eje p1→p2 fijo, ancho = distancia
+ *  perpendicular del punto al eje (mínimo 1cm, igual que el resize). El rectángulo va del
+ *  lado del punto (origen desplazado) para que el clic caiga sobre el borde — sin cambios
+ *  de lado a lado una vez comprometido (el ghost ya lo mostró). Devuelve null si el eje
+ *  es degenerado. */
+export function geometriaCanalAncho(
+  eje: { x1: number; y1: number; x2: number; y2: number },
+  p: { x: number; y: number },
+  pxToM: (d: number) => number,
+  pxPerCm: number,
+): TrazoCanal | null {
+  const dx = eje.x2 - eje.x1;
+  const dy = eje.y2 - eje.y1;
+  const L = Math.hypot(dx, dy);
+  if (L < 1e-9) return null;
+  const axDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+  // ALARGAR EN VIVO (orig. usuario: no se podía alargar al crearlo): si el cursor proyecta
+  // MÁS ALLÁ del extremo del eje (t > 1), el canal crece hasta ese pie — un solo gesto
+  // define largo y ancho. El ancho sigue siendo la distancia perpendicular a la RECTA.
+  const t = ((p.x - eje.x1) * dx + (p.y - eje.y1) * dy) / (L * L);
+  const x2e = t > 1 ? eje.x1 + dx * t : eje.x2;
+  const y2e = t > 1 ? eje.y1 + dy * t : eje.y2;
+  const Le = Math.hypot(x2e - eje.x1, y2e - eje.y1);
+  // Distancia perpendicular con signo: >0 = lado +Y local (mismo que el ancho provisional).
+  const cross = dx * (p.y - eje.y1) - dy * (p.x - eje.x1);
+  const distPx = Math.abs(cross) / L;
+  const baseCm = Math.max(1, +(pxToM(distPx) * 100).toFixed(1));
+  const longitudCm = +(pxToM(Le) * 100).toFixed(1);
+  if (longitudCm < 1) return null;
+  // Lado del punto: si cae en −Y, el origen se desplaza para que el rect quede de ese lado
+  // con el mismo ángulo (o' = o + R·(0,−W), espejo de normalizarCanal).
+  let ox = eje.x1;
+  let oy = eje.y1;
+  if (cross < 0) {
+    const rad = (axDeg * Math.PI) / 180;
+    const wPx = baseCm * pxPerCm;
+    ox = eje.x1 + Math.sin(rad) * wPx;
+    oy = eje.y1 - Math.cos(rad) * wPx;
+  }
+  const c = Math.cos((axDeg * Math.PI) / 180);
+  const sn = Math.sin((axDeg * Math.PI) / 180);
+  return {
+    x: ox,
+    y: oy,
+    baseCm,
+    longitudCm,
+    angulo: norm180(axDeg),
+    flujo:
+      Math.abs(c) >= Math.abs(sn) ? (c > 0 ? 'derecha' : 'izquierda') : sn > 0 ? 'abajo' : 'arriba',
+    modo: 'eje',
+  };
+}
+/** Sanado de carga para canales legacy (sin `angulo`, con base=Y y longitud=X): materializa
+ *  el marco efectivo de canalMarco (flowDir manda; sin él, la forma) con el mismo rectángulo
+ *  mundo, más base-corta vía normalizarCanal. Idempotente. */
+export function sanearCanalLegacy(
+  pxPerCm: number,
+  c: {
+    x: number;
+    y: number;
+    longitud?: number;
+    base?: number;
+    angulo?: number;
+    _canalFlowDir?: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
+  },
+): boolean {
+  if (c.angulo != null) return normalizarCanal(pxPerCm, c);
+  const wCm = c.longitud || 0;
+  const hCm = c.base || 0;
+  const dir = c._canalFlowDir;
+  if (dir === 'izquierda' && hCm <= wCm + 1e-9) {
+    c.x += wCm * pxPerCm;
+    c.y += hCm * pxPerCm;
+    c.angulo = 180;
+    normalizarCanal(pxPerCm, c);
+    return true;
+  }
+  if (dir === 'izquierda') {
+    // Legacy inconsistente (h > w): con dims swapped el marco que preserva el AABB clásico
+    // (x..x+w, y..y+h — verificado contra canalMarco: R90·(u,v)=(−v,u)) es angulo=90 con
+    // o'=(x+w, y). normalizarCanal sería no-op tras el swap (base≤longitud ya cumple).
+    c.x += wCm * pxPerCm;
+    c.longitud = hCm;
+    c.base = wCm;
+    c.angulo = 90;
+    return true;
+  }
+  if (dir === 'arriba' || dir === 'abajo' || hCm > wCm + 1e-9) {
+    // Arriba (-90, origen abajo-izquierda) o abajo/vertical (+90, origen arriba-derecha);
+    // en ambos el swap deja base-corta. (Un 'derecha' inconsistente con h>w cae aquí.)
+    if (dir === 'arriba') c.y += hCm * pxPerCm;
+    else c.x += wCm * pxPerCm;
+    c.longitud = hCm;
+    c.base = wCm;
+    c.angulo = dir === 'arriba' ? -90 : 90;
+    normalizarCanal(pxPerCm, c);
+    return true;
+  }
+  c.angulo = 0;
+  return true;
+}
+
+/** Re-deriva `esCanalId` faltante (docs pre-migración, copias viejas): ramal ll con
+ *  EXACTAMENTE un extremo dentro del OBB de un canal adopta su id — misma regla que
+ *  detectarCanalEnExtremos al dibujar. Nunca pisa marcas existentes. Devuelve cuántos marcó. */
+export function sanearEsCanalIdFaltante(
+  pxPerCm: number,
+  ramales: Array<{
+    id?: string;
+    net?: string;
+    tipo?: string;
+    pts?: number[][];
+    esCanalId?: string | null;
+  }>,
+  canales: Array<{
+    id?: string;
+    x?: number;
+    y?: number;
+    longitud?: number;
+    base?: number;
+    angulo?: number;
+  }>,
+): number {
+  const obbs = canales
+    .filter((c) => c.id != null && c.x != null && c.y != null)
+    .map((c) => ({ id: String(c.id), obb: canalOBBDe(pxPerCm, c as { x: number; y: number }) }));
+  if (obbs.length === 0) return 0;
+  let n = 0;
+  for (const r of ramales || []) {
+    if (r.net !== 'll' || r.esCanalId || !r.pts || r.pts.length < 2) continue;
+    const p0 = r.pts[0];
+    const p1 = r.pts[r.pts.length - 1];
+    if (!p0 || !p1) continue;
+    for (const { id, obb } of obbs) {
+      // BOCA del canal solamente (ronda 9 C-2): el extremo cae en la banda del borde CORTO
+      // del OBB — proyección local x en [-pad, pad] (boca origen) o [w-pad, w+pad] (boca
+      // final). Inferir sobre cualquier punto del OBB marcaba colectores/LDs que pasan por
+      // debajo del glifo y los borraba de las tablas de diseño en cada carga.
+      const boca = (px: number, py: number): boolean => {
+        const { lx, ly } = canalToLocal(obb, px, py);
+        const pad = 0;
+        const enBanda = (lx >= -pad && lx <= pad) || (lx >= obb.w - pad && lx <= obb.w + pad);
+        return enBanda && ly >= -pad && ly <= obb.h + pad;
+      };
+      const b0 = boca(p0[0], p0[1]);
+      const b1 = boca(p1[0], p1[1]);
+      // Con los DOS extremos en la boca no hay marca (ambiguo — igual que al dibujar).
+      if ((b0 || b1) && !(b0 && b1)) {
+        r.esCanalId = id;
+        n++;
+        break;
+      }
+    }
+  }
+  return n;
+}
+
+/** ¿El punto (x, y) cae dentro del canal? */
 export function pointInCanal(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
   x: number,
   y: number,
 ): boolean {
-  const r = canalRect(engine, canal);
-  return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
+  return puntoEnCanalOBB(canalOBBEngine(engine, canal), x, y);
 }
 
 /**
@@ -102,11 +449,9 @@ export function clampToCanal(
   x: number,
   y: number,
 ): { x: number; y: number } {
-  const r = canalRect(engine, canal);
-  return {
-    x: Math.min(Math.max(x, r.x0), r.x1),
-    y: Math.min(Math.max(y, r.y0), r.y1),
-  };
+  const obb = canalOBBEngine(engine, canal);
+  const { lx, ly } = canalToLocal(obb, x, y);
+  return canalToWorld(obb, Math.min(Math.max(lx, 0), obb.w), Math.min(Math.max(ly, 0), obb.h));
 }
 
 /**
@@ -161,12 +506,10 @@ export function computeCanalSegments(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
 ): CanalSegment[] {
-  const w = engine.cmToPlanePx(canal.longitud || 0);
-  const h = engine.cmToPlanePx(canal.base || 0);
-  // El flujo corre por el lado LARGO del canal: un canal de drenaje se dibuja alargado, y el lado
-  // corto es solo el ancho de la sección — no tiene sentido dibujar flechas en esa dirección.
-  const horizontal = w >= h;
-  const axisLen = horizontal ? w : h;
+  const obb = canalOBBEngine(engine, canal);
+  // El flujo corre por el EJE LOCAL X, que tras normalizarCanal es siempre el lado largo
+  // (antes se elegía con w>=h en cada función — ahora el marco ya lo garantiza).
+  const axisLen = obb.w;
   if (axisLen <= 0) return [];
 
   const assoc = engine.bajantes.filter(
@@ -179,8 +522,7 @@ export function computeCanalSegments(
   );
   if (assoc.length === 0) return [];
 
-  const toAxisPos = (b: PlanoBajante) =>
-    horizontal ? (b.x - canal.x) / axisLen : (b.y - canal.y) / axisLen;
+  const toAxisPos = (b: PlanoBajante) => canalToLocal(obb, b.x, b.y).lx / axisLen;
 
   const sorted = assoc
     .map((b) => ({ b, t: Math.min(1, Math.max(0, toAxisPos(b))) }))
@@ -208,49 +550,36 @@ export function computeCanalFlowArrows(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
 ): CanalFlowArrow[] {
-  const w = engine.cmToPlanePx(canal.longitud || 0);
-  const h = engine.cmToPlanePx(canal.base || 0);
-  const horizontal = w >= h;
-  const axisLen = horizontal ? w : h;
+  const obb = canalOBBEngine(engine, canal);
+  const axisLen = obb.w;
   if (axisLen <= 0) return [];
-  const midCross = horizontal ? canal.y + h / 2 : canal.x + w / 2;
+  // Línea media del canal en marco local (ly = h/2); las colas se alinean con la cabeza en
+  // la misma transversal para que la flecha quede recta a lo largo del eje.
+  const midLy = obb.h / 2;
 
   const segments = computeCanalSegments(engine, canal);
   if (segments.length === 0) return [];
 
   const toPlanePoint = (t: number): { x: number; y: number } =>
-    horizontal
-      ? { x: canal.x + t * axisLen, y: midCross }
-      : { x: midCross, y: canal.y + t * axisLen };
+    canalToWorld(obb, t * axisLen, midLy);
 
   const arrows: CanalFlowArrow[] = [];
   const EPS = 0.02;
   for (const seg of segments) {
-    const entryT = horizontal
-      ? (seg.bajante.x - canal.x) / axisLen
-      : (seg.bajante.y - canal.y) / axisLen;
-    // La cabeza de la flecha apunta al CENTRO del círculo del bajante (su posición real), no al
-    // punto proyectado sobre el eje del canal — así el renderer puede recortar la flecha hasta el
-    // borde del círculo y siempre se ve bien alineada.
+    const entryT = canalToLocal(obb, seg.bajante.x, seg.bajante.y).lx / axisLen;
+    // La cabeza apunta al CENTRO del bajante (su posición real), no al punto proyectado
+    // sobre el eje — el renderer recorta hasta el borde del círculo.
     const head = { x: seg.bajante.x, y: seg.bajante.y };
+    const headL = canalToLocal(obb, head.x, head.y);
     if (entryT - seg.tLeft > EPS) {
       const tail = toPlanePoint(seg.tLeft);
-      // La cola se alinea en la misma línea que la cabeza (misma coordenada transversal) para que
-      // la flecha quede siempre recta a lo largo del canal — nada de diagonales raras sin importar
-      // dónde quede el bajante dentro del ancho.
-      if (horizontal) {
-        arrows.push({ x0: tail.x, y0: head.y, x1: head.x, y1: head.y });
-      } else {
-        arrows.push({ x0: head.x, y0: tail.y, x1: head.x, y1: head.y });
-      }
+      const tailW = canalToWorld(obb, canalToLocal(obb, tail.x, tail.y).lx, headL.ly);
+      arrows.push({ x0: tailW.x, y0: tailW.y, x1: head.x, y1: head.y });
     }
     if (seg.tRight - entryT > EPS) {
       const tail = toPlanePoint(seg.tRight);
-      if (horizontal) {
-        arrows.push({ x0: tail.x, y0: head.y, x1: head.x, y1: head.y });
-      } else {
-        arrows.push({ x0: head.x, y0: tail.y, x1: head.x, y1: head.y });
-      }
+      const tailW = canalToWorld(obb, canalToLocal(obb, tail.x, tail.y).lx, headL.ly);
+      arrows.push({ x0: tailW.x, y0: tailW.y, x1: head.x, y1: head.y });
     }
   }
   return arrows;

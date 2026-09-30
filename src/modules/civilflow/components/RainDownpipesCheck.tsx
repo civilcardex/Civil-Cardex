@@ -15,11 +15,11 @@ import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater';
 import { renderStatus } from '../utils/componentHelpers';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
-import { DIAM_BAN, pisoCorto } from '../constants';
+import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
+import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDataMaterials';
 import { trunc2 } from '../utils/formatUtils';
 import { devError } from '../../../utils/devError';
 import React from 'react';
-import { parseDecimalInput } from '../utils/parseDecimal';
 import type { DrawingData } from '../utils/drawingSync';
 
 interface Row {
@@ -31,7 +31,10 @@ interface Row {
   /** TOTAL = areaParcial + areaOtras — alimenta el caudal. */
   areaAcum: number;
   intensidad: number;
+  /** Coef. de escorrentía derivado del material de cubierta (port hoja 1); 0 sin material. */
   coeficienteC: number;
+  /** Material de cubierta (nombre completo en MATERIALES_CUBIERTA_LL). */
+  materialCubierta: string;
   R: string;
   manning: number;
   diamPropuesto: number;
@@ -42,6 +45,15 @@ interface Row {
   asociadosSup: string[];
   ramalesAsoc: string[];
 }
+// Encabezados compactos (orig. usuario: la tabla sin scroll horizontal): wrap a 2-3 líneas.
+const thC: React.CSSProperties = {
+  fontSize: 9.5,
+  textAlign: 'center',
+  padding: '2px 2px',
+  whiteSpace: 'normal',
+};
+const thCg: React.CSSProperties = { ...thC, fontWeight: 700, letterSpacing: 0.3 };
+
 const RainDownpipesCheck_S1: React.CSSProperties = {
   width: 56,
   padding: '2px 4px',
@@ -50,7 +62,7 @@ const RainDownpipesCheck_S1: React.CSSProperties = {
   borderRadius: 2,
   color: 'var(--txt)',
   fontFamily: 'var(--mono)',
-  fontSize: 11,
+  fontSize: 10.5,
   textAlign: 'center',
 };
 
@@ -262,9 +274,10 @@ export default function ChequeoBajantesLluvias() {
         areaOtras,
         areaAcum,
         intensidad: manual?.intensidad ?? 100,
-        coeficienteC: 0.0278,
+        coeficienteC: cDeCubierta(manual?.materialCubierta ?? '') ?? 0,
+        materialCubierta: manual?.materialCubierta ?? '',
         R: rVal,
-        manning: 0.009,
+        manning: manual?.manning || 0.009,
         diamPropuesto: d.diamDisPulg || 0,
       });
     }
@@ -287,9 +300,10 @@ export default function ChequeoBajantesLluvias() {
         areaOtras,
         areaAcum,
         intensidad: m.intensidad ?? 100,
-        coeficienteC: 0.0278,
+        coeficienteC: cDeCubierta(m.materialCubierta ?? '') ?? 0,
+        materialCubierta: m.materialCubierta ?? '',
         R: m.R,
-        manning: 0.009,
+        manning: m.manning || 0.009,
         diamPropuesto: m.diamPropuesto,
       });
     }
@@ -318,256 +332,199 @@ export default function ChequeoBajantesLluvias() {
       <div style={{ padding: '16px' }}>
         <table
           className="tbl"
-          style={{ fontSize: 11, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}
+          style={{
+            fontSize: 10.5,
+            tableLayout: 'fixed',
+            width: '100%',
+            borderCollapse: 'collapse',
+          }}
         >
           <thead>
             <tr>
               <th
+                title="Bajante de aguas lluvias (BALL) según el dibujo."
                 scope="col"
                 className="col-h ll"
                 rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
                 Bajante
               </th>
               <th
+                title="Bajantes de pisos superiores que descargan en este bajante."
                 scope="col"
                 className="col-h ll"
                 rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
-                Nivel
+                Bajantes asociados
               </th>
               <th
+                title="Ramales de la red de lluvias que drenan a este bajante."
                 scope="col"
                 className="col-h ll"
                 rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Bajantes
-                <br />
-                asociados
-              </th>
-              <th
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
                 Ramales asociados
               </th>
               <th
+                title="Área de cubierta que drena (m²)."
                 scope="col"
                 className="col-h ll"
                 colSpan={3}
-                style={{
-                  textAlign: 'center',
-                  fontSize: 11,
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thCg}
               >
-                Área (m²)
+                ÁREA (m²)
               </th>
               <th
+                title="Método racional: lluvia que cae sobre el área del grupo."
+                scope="col"
+                className="col-h ll"
+                colSpan={4}
+                style={thCg}
+              >
+                CAUDAL DE DISEÑO
+              </th>
+              <th
+                title="Verificación de capacidad y uso del tubo propuesto."
+                scope="col"
+                className="col-h ll"
+                colSpan={6}
+                style={thCg}
+              >
+                CAPACIDAD DEL TUBO (Wyly-Eaton)
+              </th>
+              <th
+                title="Estado del chequeo de diámetros."
                 scope="col"
                 className="col-h ll"
                 rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Intensidad (I)
-                <br />
-                <small>mm/hr</small>
-              </th>
-              <th
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Coeficiente
-                <br />
-                Escorrentía
-              </th>
-              <th
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Llenado
-                <br />
-              </th>
-              <th
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Q = C×I×A
-                <br />
-                <small>(LPS)</small>
-              </th>
-              <th
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Manning
-                <br />
-              </th>
-              <th
-                scope="col"
-                className="col-h ok"
-                colSpan={2}
-                style={{
-                  textAlign: 'center',
-                  fontSize: 11,
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
-              >
-                Diámetro (")
-              </th>
-              <th
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
                 Chequeo
                 <br />
-                Dcal &lt; Dprop
+                <small>Dcalc ≤ Dprop</small>
               </th>
             </tr>
             <tr>
               <th
+                title="Área que drena al bajante según el dibujo (m²)."
                 scope="col"
                 className="col-h ll"
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
                 Parcial
               </th>
               <th
+                title="Área adicional no dibujada, editable (m²)."
                 scope="col"
                 className="col-h ll"
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
                 Otras
               </th>
               <th
+                title="Área total = Parcial + Otras (m²)."
                 scope="col"
                 className="col-h ll"
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
                 Total
               </th>
               <th
+                title="Material de la cubierta: define el coeficiente de escorrentía C (catálogo maestro)."
                 scope="col"
-                className="col-h ok"
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                className="col-h ll"
+                style={thC}
               >
-                Calculado
+                Material
+                <br />
+                cubierta
               </th>
               <th
+                title="Coeficiente de escorrentía del material; sin material se usa C = 1,0 (conservador)."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Coef.
+                <br />
+                escorrentía
+              </th>
+              <th
+                title="Intensidad de lluvia de diseño (mm/h)."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Intensidad
+                <br />
+                <small>mm/h</small>
+              </th>
+              <th
+                title="Caudal de diseño del bajante (L/s) por método racional."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Q
+                <br />
+                <small>LPS</small>
+              </th>
+              <th
+                title="Fracción de la sección del tubo ocupada por el agua (flujo anular)."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Llenado
+              </th>
+              <th
+                title="Rugosidad de referencia del material de la bajante."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Manning
+              </th>
+              <th
+                title="Diámetro que exige el caudal de diseño (pulg)."
                 scope="col"
                 className="col-h ok"
-                style={{
-                  fontSize: 11,
-                  textAlign: 'center',
-                  padding: '1px 1px',
-                  whiteSpace: 'normal',
-                  overflow: 'hidden',
-                }}
+                style={thC}
               >
-                Propuesto
+                D calc.
+                <br />
+                <small>pulg</small>
+              </th>
+              <th
+                title="Diámetro comercial propuesto (pulg) — no menor al mayor ramal conectado."
+                scope="col"
+                className="col-h ok"
+                style={thC}
+              >
+                D prop.
+                <br />
+                <small>pulg</small>
+              </th>
+              <th
+                title="Capacidad del diámetro propuesto (L/s)."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Q cap.
+                <br />
+                <small>LPS</small>
+              </th>
+              <th
+                title="Uso de la capacidad del tubo: debe ser ≤ 100%."
+                scope="col"
+                className="col-h ll"
+                style={thC}
+              >
+                Q/Qcap
               </th>
             </tr>
           </thead>
@@ -575,12 +532,12 @@ export default function ChequeoBajantesLluvias() {
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={15}
+                  colSpan={17}
                   style={{
                     padding: '24px 0',
                     textAlign: 'center',
                     color: 'var(--txt3)',
-                    fontSize: 11,
+                    fontSize: 10.5,
                   }}
                 >
                   No hay bajantes de lluvias definidos. Dibuje bajantes en el plano o agréguelos en
@@ -592,21 +549,21 @@ export default function ChequeoBajantesLluvias() {
                 const {
                   Q,
                   dCalc: diamCalc,
+                  Qcap,
+                  cociente,
                   chequeo,
                 } = chequeoBajanteLluvia({
                   ...row,
-                  coeficienteC: 0.0278,
                   areaAcumulada: row.areaAcum || 0,
                 });
                 return (
                   <tr key={row.key}>
                     <td className="c">
-                      <span className="sigla" style={{ fontSize: 11 }}>
+                      <span className="sigla" style={{ fontSize: 10.5 }}>
+                        {/* Sector + piso (orig. usuario): etiqueta tipo BALL1-C. */}
                         {row.bajante || '—'}
+                        {row.nivel !== '—' ? `-${row.nivel}` : ''}
                       </span>
-                    </td>
-                    <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>{row.nivel}</span>
                     </td>
                     <td className="c">
                       <ChipList items={row.asociadosSup} />
@@ -615,7 +572,7 @@ export default function ChequeoBajantesLluvias() {
                       <ChipList items={row.ramalesAsoc} />
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
                         {row.areaParcial > 0 ? trunc2(row.areaParcial) : '—'}
                       </span>
                     </td>
@@ -633,7 +590,7 @@ export default function ChequeoBajantesLluvias() {
                       <span
                         style={{
                           fontFamily: 'var(--mono)',
-                          fontSize: 11,
+                          fontSize: 10.5,
                           fontWeight: 600,
                         }}
                       >
@@ -641,72 +598,70 @@ export default function ChequeoBajantesLluvias() {
                       </span>
                     </td>
                     <td className="c">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={row.intensidad ?? 100}
-                        aria-label="Intensidad (I)"
-                        disabled={!edit}
-                        key={row.key + '_in'}
-                        onChange={() => {}}
-                        onBlur={(e) => {
-                          const v = Math.max(0, parseDecimalInput(e.target.value) ?? 100);
-                          if (row.bajante) {
-                            updBajanteLL(row.bajante, 'intensidad', v);
-                          }
-                        }}
-                        style={{ ...RainDownpipesCheck_S1, opacity: edit ? 1 : 0.6 }}
-                      />
-                    </td>
-                    <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>0.0278</span>
-                    </td>
-                    <td className="c">
+                      {/* Material de cubierta (port hoja 1): abreviatura en la opción con
+                      title del nombre completo (hover). Persiste como override. */}
                       <select
-                        value={row.R || '7/24'}
-                        aria-label="Llenado (R)"
+                        value={row.materialCubierta}
+                        aria-label="Material de cubierta"
+                        title={row.materialCubierta || 'Material de cubierta'}
                         disabled={!edit}
                         onChange={(e) => {
-                          const label = e.target.value;
-                          const num = label === '1/4' ? 0.25 : 7 / 24;
-                          // Bidireccional: escribe el bajante del dibujo (engine vivo o storage)
-                          // y refleja en el tramo + entrada manual del contexto.
-                          if (row.drawId) {
-                            writeBajantePropToDrawing(
-                              `${row.drawId}-${row.drawPlanId}`,
-                              'll',
-                              'bajR',
-                              num,
-                              plans,
-                            );
-                            updTramoLL(`${row.drawId}-${row.drawPlanId}`, 'bajR', num);
+                          if (row.bajante) {
+                            updBajanteLL(row.bajante, 'materialCubierta', e.target.value);
                           }
-                          updBajanteLL(row.bajante, 'R', label);
                         }}
                         style={{
                           ...RainDownpipesCheck_S1,
+                          width: '100%',
                           opacity: edit ? 1 : 0.6,
                           cursor: edit ? 'pointer' : 'default',
                         }}
                       >
-                        <option value="7/24">7/24</option>
-                        <option value="1/4">1/4</option>
+                        <option value="">—</option>
+                        {MATERIALES_CUBIERTA_LL.map((m) => (
+                          <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                            {m.abrev}
+                          </option>
+                        ))}
                       </select>
                     </td>
-                    <td
-                      className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 11 }}
-                    >
-                      {Q > 0 ? trunc2(Q) : '—'}
+                    <td className="c">
+                      {/* C derivado del material (hoja 1, criterio "por material"). */}
+                      <span
+                        title={row.materialCubierta || undefined}
+                        style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}
+                      >
+                        {row.coeficienteC > 0 ? row.coeficienteC.toFixed(2) : '—'}
+                      </span>
                     </td>
                     <td className="c">
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
-                        {row.manning || '—'}
+                      {/* Intensidad: fórmula del Excel (col. F) — solo lectura. */}
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                        {row.intensidad > 0 ? row.intensidad : '—'}
                       </span>
                     </td>
                     <td
                       className="c"
-                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11 }}
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10.5 }}
+                    >
+                      {Q > 0 ? trunc2(Q) : '—'}
+                    </td>
+                    <td className="c">
+                      {/* Llenado r: fijo en el Excel (col. H) — solo lectura, sin desplegable. */}
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                        {row.R || '7/24'}
+                      </span>
+                    </td>
+                    <td className="c">
+                      {/* Manning = n de referencia del coeficiente K (0.009) — fijo, no
+                      editable; para otro n se ajusta K·(n ref/n) en la fórmula. */}
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                        {(row.manning || 0.009).toFixed(3)}
+                      </span>
+                    </td>
+                    <td
+                      className="c"
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10.5 }}
                     >
                       {diamCalc > 0 ? trunc2(diamCalc) : '—'}
                     </td>
@@ -757,14 +712,26 @@ export default function ChequeoBajantesLluvias() {
                         }}
                       >
                         <option value="">—</option>
-                        {DIAM_BAN.map((d) => (
+                        {/* Legacy: bajantes ll de 1.5" (excluida del catálogo) persisten —
+                            sin esta option el select renderiza vacío y un click la borra. */}
+                        {row.diamPropuesto === 1.5 && <option value="1-1/2">1-1/2"</option>}
+                        {DIAM_BAN_LL.map((d) => (
                           <option key={d.pulg} value={d.nom}>
                             {d.nom}
                           </option>
                         ))}
                       </select>
                     </td>
-                    <td className="c" style={{ fontSize: 11 }}>
+                    <td
+                      className="c"
+                      style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 10.5 }}
+                    >
+                      {Qcap > 0 ? trunc2(Qcap) : '—'}
+                    </td>
+                    <td className="c" style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+                      {cociente > 0 ? `${(cociente * 100).toFixed(1)}%` : '—'}
+                    </td>
+                    <td className="c" style={{ fontSize: 10.5 }}>
                       {renderStatus(chequeo)}
                     </td>
                   </tr>

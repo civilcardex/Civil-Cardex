@@ -485,9 +485,11 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
     }
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
-      const [mx, my] = _midpoint((el as PlanoRamal).pts);
-      (el as PlanoRamal).labelX = mx;
-      (el as PlanoRamal).labelY = my;
+      if (!(el as PlanoRamal).labelMoved) {
+        const [mx, my] = _midpoint((el as PlanoRamal).pts);
+        (el as PlanoRamal).labelX = mx;
+        (el as PlanoRamal).labelY = my;
+      }
     }
     // Item 2: sincronizar diámetros de bajantes de ventilación conectados al
     // mismo bajante sanitario. Si se cambia el dNominal de un bajante vent,
@@ -651,9 +653,11 @@ export function updateElementById(
     }
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
-      const [mx, my] = _midpoint((el as PlanoRamal).pts);
-      (el as PlanoRamal).labelX = mx;
-      (el as PlanoRamal).labelY = my;
+      if (!(el as PlanoRamal).labelMoved) {
+        const [mx, my] = _midpoint((el as PlanoRamal).pts);
+        (el as PlanoRamal).labelX = mx;
+        (el as PlanoRamal).labelY = my;
+      }
     }
     // Item 2: sincronizar diámetros de bajantes de ventilación conectados al
     // mismo bajante sanitario. updateElementById es el camino real del cambio

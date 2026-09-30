@@ -4,6 +4,7 @@ import type { BajanteLL } from '../context/RainwaterContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from './calcRainwater';
+import { cEfectivoCubierta } from '../constants/engineeringDataMaterials';
 import type { DrawingData } from './drawingSync';
 import type { MemoriaTable } from './exportMemoriaFinal';
 
@@ -14,6 +15,9 @@ interface Row {
   areaOtras: number;
   areaAcum: number;
   intensidad: number;
+  /** C derivado del material de cubierta (fallback 1.0, criterio NTC 1500). */
+  coeficienteC: number;
+  materialCubierta: string;
   R: string;
   manning: number;
   diamPropuesto: number;
@@ -70,8 +74,10 @@ export function computeRainDownpipesTable(
       areaOtras,
       areaAcum,
       intensidad: manual?.intensidad ?? 100,
+      coeficienteC: cEfectivoCubierta(manual?.materialCubierta),
+      materialCubierta: manual?.materialCubierta ?? '',
       R: rVal,
-      manning: 0.009,
+      manning: manual?.manning || 0.009,
       diamPropuesto: d.diamDisPulg || 0,
     });
   }
@@ -91,8 +97,10 @@ export function computeRainDownpipesTable(
       areaOtras,
       areaAcum,
       intensidad: m.intensidad ?? 100,
+      coeficienteC: cEfectivoCubierta(m.materialCubierta),
+      materialCubierta: m.materialCubierta ?? '',
       R: m.R,
-      manning: 0.009,
+      manning: m.manning || 0.009,
       diamPropuesto: m.diamPropuesto,
     });
   }
@@ -116,8 +124,8 @@ export function computeRainDownpipesTable(
   const tableRows = rows.map((row) => {
     const { Q, dCalc, chequeo } = chequeoBajanteLluvia({
       ...row,
-      coeficienteC: 0.0278,
       areaAcumulada: row.areaAcum || 0,
+      manning: row.manning || 0.009,
     });
     return [
       row.bajante || '—',
@@ -125,7 +133,7 @@ export function computeRainDownpipesTable(
       row.areaOtras.toFixed(2),
       row.areaAcum > 0 ? row.areaAcum.toFixed(2) : '—',
       row.intensidad ?? 100,
-      '0.0278',
+      row.coeficienteC > 0 ? row.coeficienteC.toFixed(2) : '—',
       row.R || '—',
       Q > 0 ? Q.toFixed(2) : '—',
       row.manning || '—',
