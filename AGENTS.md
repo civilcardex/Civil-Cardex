@@ -2334,3 +2334,30 @@ tsc 0 · lint 0 · vitest 893/893 · build ✓.
 - **Lint 0029 hallazgo nuevo**: `intenciones_recientes` ejecutable por authenticated — los default privileges de Supabase otorgan EXECUTE a anon/authenticated EXPLÍCITAMENTE; `revoke from public, anon` no basta. Regla nueva: en funciones service_role-only, revocar TAMBIÉN de authenticated. Fix en la misma migración.
 - Los WARNs de wrappers/acceso_modulo/obtener_catalogo/suscripciones_habilitadas: aceptados (patrón SECURITY DEFINER + policies, documentado ronda anterior). Leaked passwords: toggle pendiente del usuario.
 - Gates: tsc 0 · vitest 893/893 · build ✓.
+
+## Session Summary — 2026-09-29 (sub-pestaña "Red contra incendio" en Isometría con lupa + etiquetas)
+
+- **5ª sub-pestaña** en IsometriaTab ('Red contra incendio') → `rci3d/RciRedViewer.tsx` (derivado de RciViewer).
+- **Lupa circular** (`useLupa.ts`, port del HTML v19): renderer WebGL secundario 350×350 creado al primer ON, cámara clonada bajo el cursor (persp+ortho), rueda ×2–×12 en CAPTURA (no zoomea la vista), ciclo continuo vía `api.lupaOn` (escena repinta con lupa prendida). Botón LUPA ON/OFF con magnitud en el sidebar.
+- **ETIQUETAS ON/OFF**: botón en el sidebar; `dibujarEtiquetasRci(..., labelsOn)` — off = sin etiquetas.
+- **Elementos ×1.25**: `assembly.scale.setScalar(1.25)` en finalizarCarga ANTES del bbox (cámaras/sombras/occluders se recalculan con el tamaño nuevo).
+- .eslintrc: overrides react-hooks/refs+immutability extendidos a rci3d/aparatos3d/epc3d (mismo patrón engine-interop que pdfViewer).
+- Gates: tsc 0 · lint 0 err 1 warn (apiRef cleanup) · build ✓ · vitest 893/893 · graphify ✓.
+
+## Session Summary — 2026-09-29 (sub-pestaña Red CI re-hecha con el modelo REAL del HTML + lupa/etiquetas siempre ON)
+
+- **Corrección**: la 1ª versión cargaba los GLBs de cuarto de bombas (rci3d). Re-hecha con el modelo REAL del HTML adjunto (Isometrico_RCI_Open_Code_v19).
+- **GLBs extraídos** (base64 → archivos): public/models/rci-red/{mamposteria, piso1_bombas, red_completa, entrepiso, cubierta, abrazadera_4p}.glb.
+- **rci-red3d/** (nueva carpeta): rciRedData.ts (14 componentes RED + COMP_DESC + GLB_POSITIONS + INITIAL_SCALES + SPLIT_BUILDS 10 abrazaderas con bakeY + LABEL_POSITIONS + ISO_DEFAULT — extraído verbatim del HTML por marcadores), rciRedParser.ts (parseGLB CON jerarquía de nodos AutoCAD + materiales baseColor/lum-sat + sanitizador índices — el de rci3d ignora nodes), useRciRedCarga.ts (5 base + 10 splits: clasificación argolla/varilla por ancho>0.5, bakeY varilla, negro carbón varilla, mampostería 0.35 / losas 0.20 translúcidas, pose ISO_DEFAULT calibrada, ×1.25), RciRedViewer.tsx + RciRedSidebar.tsx (14 comps).
+- **LUPA SIEMPRE ON** (useLupaFija en useLupa.ts, sin botón; rueda ×2–×12) y **ETIQUETAS SIEMPRE ON** (dibujarEtiquetasRed, foco en el seleccionado, sin botón) — sin toggles.
+- .eslintrc: overrides extendidos a rci-red3d.
+- Gates: tsc 0 · lint 0/0 · build ✓ · vitest 893/893 · graphify ✓.
+- FIX "cargó vacío": scenes[0].nodes=[0] pero nodo 0 es HIJO del nodo 1 en este export — group.add de los scene-nodes arrancaba la jerarquía real (bbox 0). parseGLBRed ahora añade los nodeObjs SIN PADRE (verificado node: 3525 meshes, bbox 584×292×523).
+- Red CI: quitada la escala ×1.25 — rompía el encuadre ISO_DEFAULT calibrado (cámara dentro de la mampostería). Escalas calibradas del HTML mandan.
+
+## Session Summary — 2026-09-29 (Red CI: mergeModel port — rendimiento + orden de transparencias)
+
+- **mergeModel del HTML portado** (fusionarPieza en useRciRedCarga): cada pieza se fusiona en buckets material+occ+celda 4×4×4 (opacas primero) — 3525 draw calls → decenas Y las paredes translúcidas se pintan al final (antes tapaban/negro: "paredes y piso mal", "se ve muy lento").
+- Oclusores ahora = mallas marcadas userData.occ por la fusión (regla buildOccluders del HTML).
+- Lupa: círculo se OCULTA al salir del canvas (antes quedaba el último frame "atravesando" el sidebar).
+- Gates: tsc 0 · lint 0/0 · build ✓ · vitest 893/893 · graphify ✓.
