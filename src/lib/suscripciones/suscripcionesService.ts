@@ -56,3 +56,28 @@ export function modulosActivos(rows: SuscripcionRow[], ahora: Date = new Date())
   }
   return activos;
 }
+
+let promiseHabilitadas: Promise<boolean> | null = null;
+
+/** Flag global de la BD (app_config → RPC suscripciones_habilitadas). Cache por
+ *  sesión: un solo RPC aunque many instancias del hook lo pidan. Error → false:
+ *  sin confirmación de la BD el cliente NUNCA bloquea (el candado real es server-side).
+ *  El false por error NO se cachea: el próximo fetch reintenta. */
+export function suscripcionesHabilitadas(): Promise<boolean> {
+  promiseHabilitadas ??= (async () => {
+    try {
+      const { data, error } = await supabase.rpc('suscripciones_habilitadas');
+      if (error) {
+        devError('suscripciones_habilitadas:', error.message);
+        promiseHabilitadas = null; // fallo transitorio: reintentable en el próximo fetch
+        return false;
+      }
+      return data === true;
+    } catch (e) {
+      devError('suscripciones_habilitadas:', e);
+      promiseHabilitadas = null; // fallo transitorio: reintentable en el próximo fetch
+      return false;
+    }
+  })();
+  return promiseHabilitadas;
+}

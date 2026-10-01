@@ -30,8 +30,9 @@ import { saveToStorage } from '../../modules/civilflow/services/storageService';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import ModuleSelectDialog from '../../components/suscripciones/ModuleSelectDialog';
-import { SUSCRIPCIONES_ACTIVAS, type ModuloId } from '../../lib/suscripciones/catalogo';
+import type { ModuloId } from '../../lib/suscripciones/catalogo';
 import { useSuscripciones } from '../../hooks/useSuscripciones';
+import { estaActiva } from '../../lib/suscripciones/suscripcionesService';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames';
 import {
   ACTIVE_PROYECTO_ID_KEY,
@@ -46,6 +47,13 @@ const campos = [
   { key: 'matricula', label: 'Matrícula Profesional' },
   { key: 'telefono', label: 'Teléfono' },
 ];
+
+/** Días para la fecha_fin más próxima (reloj del cliente, igual que estaActiva).
+ *  Vive fuera del render: react-hooks/purity prohíbe Date.now() directo en él. */
+function diasParaVencer(fechasFin: string[]): number {
+  const min = Math.min(...fechasFin.map((f) => new Date(f).getTime()));
+  return Math.floor((min - Date.now()) / 86400000);
+}
 
 function ProfilePage() {
   const { user } = useAuth();
@@ -67,7 +75,11 @@ function ProfilePage() {
   const [proyLoading, setProyLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showModSel, setShowModSel] = useState(false);
-  const { activos: modulosActivosUser } = useSuscripciones();
+  const {
+    activos: modulosActivosUser,
+    bloqueando: subsBloqueando,
+    rows: subsRows,
+  } = useSuscripciones();
   const [moduloElegido, setModuloElegido] = useState<ModuloId | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [cmDeleteConfirm, setCmDeleteConfirm] = useState<string | null>(null);
@@ -312,6 +324,26 @@ function ProfilePage() {
 
   const nombreCompleto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ');
 
+  // Chip de vencimiento (solo en esta tarjeta): sin polling a propósito — se re-evalúa en
+  // cada render igual que RequireModule; la verdad de vencimiento es server-side
+  // (acceso_modulo). Solo con sesión y filas reales (rows[] vacío a anónimos mostraría
+  // "VENCIDA" falso).
+  let chipVencimiento: { tipo: 'rojo' | 'ambar'; texto: string } | null = null;
+  if (subsBloqueando && user && subsRows.length > 0) {
+    const activas = subsRows.filter((r) => estaActiva(r));
+    if (activas.length === 0) {
+      chipVencimiento = { tipo: 'rojo', texto: 'SUSCRIPCIÓN VENCIDA' };
+    } else {
+      const dias = diasParaVencer(activas.map((r) => r.fecha_fin));
+      if (dias <= 7) {
+        chipVencimiento = {
+          tipo: 'ambar',
+          texto: dias === 0 ? 'Vence hoy' : `Vence en ${dias} día${dias === 1 ? '' : 's'}`,
+        };
+      }
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -514,19 +546,44 @@ function ProfilePage() {
         </div>
       )}
       <header className="border border-outline-variant bg-surface-container p-6">
-        <div>
-          <h1 className="text-headline-md font-bold text-on-surface">
-            {nombreCompleto || 'Sin nombre'}
-          </h1>
-          <p className="text-body-md text-on-surface-variant mt-1">
-            {perfil.profesion || 'Profesión no definida'}
-          </p>
-          {perfil.matricula && (
-            <div className="flex items-center gap-2 mt-3">
-              <span className="px-2 py-1 text-[11px] font-bold tracking-wider uppercase bg-secondary text-on-secondary-container border border-outline-variant">
-                {perfil.matricula}
-              </span>
-            </div>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-headline-md font-bold text-on-surface">
+              {nombreCompleto || 'Sin nombre'}
+            </h1>
+            <p className="text-body-md text-on-surface-variant mt-1">
+              {perfil.profesion || 'Profesión no definida'}
+            </p>
+            {perfil.matricula && (
+              <div className="flex items-center gap-2 mt-3">
+                <span className="px-2 py-1 text-[11px] font-bold tracking-wider uppercase bg-secondary text-on-secondary-container border border-outline-variant">
+                  {perfil.matricula}
+                </span>
+              </div>
+            )}
+          </div>
+          {chipVencimiento && (
+            <button
+              type="button"
+              onClick={() => navigate('/pricing')}
+              aria-label={
+                chipVencimiento.tipo === 'rojo'
+                  ? 'Suscripción vencida: ver planes'
+                  : `${chipVencimiento.texto}: ver planes`
+              }
+              className="shrink-0 px-2.5 py-1 rounded-md uppercase text-[10px] tracking-[0.08em] font-bold cursor-pointer transition-all hover:brightness-110"
+              style={{
+                fontFamily: 'Geist, monospace',
+                color: chipVencimiento.tipo === 'rojo' ? '#fecdd3' : '#fde68a',
+                background:
+                  chipVencimiento.tipo === 'rojo'
+                    ? 'rgba(244,63,94,0.16)'
+                    : 'rgba(245,158,11,0.16)',
+                border: `1px solid ${chipVencimiento.tipo === 'rojo' ? '#f43f5e' : '#f59e0b'}`,
+              }}
+            >
+              {chipVencimiento.texto}
+            </button>
           )}
         </div>
       </header>
@@ -652,7 +709,7 @@ function ProfilePage() {
                 onClick={() => {
                   // 1 módulo activo → directo al modal de nombre; 0 o 2+ → selector
                   // (0 muestra el aviso de pricing dentro del selector).
-                  if (!SUSCRIPCIONES_ACTIVAS) setShowCreate(true);
+                  if (!subsBloqueando) setShowCreate(true);
                   else if (modulosActivosUser.size === 1)
                     setModuloElegido([...modulosActivosUser][0]);
                   else setShowModSel(true);

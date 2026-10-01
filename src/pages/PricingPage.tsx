@@ -7,10 +7,13 @@ import { MODULES_DATA } from './moduleData';
 import WompiCheckoutModal from '../components/suscripciones/WompiCheckoutModal';
 import {
   CATALOGO,
-  DESCUENTO_PAQUETE,
+  DESCUENTO_BASE,
+  DESCUENTO_POR_MODULO,
   SUSCRIPCIONES_ACTIVAS,
   calcularTotalCentavos,
+  descuentoAplicado,
   formatCOP,
+  precioDePeriodo,
   type ModuloId,
   type ModuloVenta,
   type Periodo,
@@ -154,7 +157,7 @@ const BADGE_STYLE = {
 function PricingSuscripciones() {
   usePageMeta(
     'Precios',
-    'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual o anual, con descuento por paquete. Pago seguro con Wompi.',
+    'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual, semestral o anual, con descuentos acumulativos. Pago seguro con Wompi.',
   );
   const { user } = useAuth();
   const { rows, loading } = useSuscripciones();
@@ -167,6 +170,7 @@ function PricingSuscripciones() {
     if (q && CATALOGO.some((m) => m.id === q)) inicial.add(q as ModuloId);
     return inicial;
   });
+  const [ignoraUrl, setIgnoraUrl] = useState(false);
   // ?modulo= reactivo: RequireModule redirige a /pricing?modulo=X con la página YA montada
   // (desde "Ver planes" con otro módulo) — el useState inicial no corre de nuevo. Derivado
   // en render (patrón repo: setState en effect dispara cascada).
@@ -175,7 +179,10 @@ function PricingSuscripciones() {
     if (q && CATALOGO.some((m) => m.id === q)) return new Set([q as ModuloId]);
     return null;
   }, [location.search]);
-  const seleccionEfectiva = seleccionMemo ?? seleccion;
+  /** ?modulo= siembra la selección SOLO hasta que el usuario interactúa: tras el
+   *  primer toggle la elección es del usuario y el override del URL debe morir,
+   *  si no total/checkbox/modal leen conjuntos distintos. */
+  const seleccionEfectiva = !ignoraUrl && seleccionMemo ? seleccionMemo : seleccion;
   const [checkoutAbierto, setCheckoutAbierto] = useState(false);
 
   const modulosProx = useMemo(
@@ -186,10 +193,14 @@ function PricingSuscripciones() {
     [],
   );
 
-  const total = calcularTotalCentavos([...seleccion], periodo);
-  const conDescuento = seleccionEfectiva.size >= 2;
+  const total = calcularTotalCentavos([...seleccionEfectiva], periodo);
+  const descPct = seleccionEfectiva.size
+    ? Math.round(descuentoAplicado([...seleccionEfectiva], periodo) * 100)
+    : 0;
+  const conDescuento = descPct > 0;
 
   function toggle(id: ModuloId) {
+    setIgnoraUrl(true);
     setSeleccion((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -226,12 +237,12 @@ function PricingSuscripciones() {
             Módulos y Precios
           </h1>
           <p className="text-base text-on-surface-variant max-w-xl mx-auto">
-            Compre solo los módulos que necesita. Llévese los dos y obtenga{' '}
-            {Math.round(DESCUENTO_PAQUETE * 100)}% de descuento. Pago seguro con Wompi (tarjeta, PSE
-            o Nequi).
+            Compre solo los módulos que necesita. Descuentos acumulativos: +10% por cada módulo
+            adicional, y el periodo semestral ya descuenta 10% desde el primer módulo (15% el
+            anual). Pago seguro con Wompi (tarjeta, PSE o Nequi).
           </p>
           <div className="flex justify-center gap-1 pt-2">
-            {(['mensual', 'anual'] as const).map((p) => (
+            {(['mensual', 'semestral', 'anual'] as const).map((p) => (
               <button
                 key={p}
                 type="button"
@@ -249,9 +260,11 @@ function PricingSuscripciones() {
               </button>
             ))}
           </div>
-          {periodo === 'anual' && (
-            <p className="text-[12px] text-outline">Pagando anual ahorras 2 meses por módulo.</p>
-          )}
+          <p className="text-[12px] text-outline">
+            {DESCUENTO_BASE[periodo] > 0
+              ? `${Math.round(DESCUENTO_BASE[periodo] * 100)}% de descuento desde el primer módulo; +${Math.round(DESCUENTO_POR_MODULO * 100)}% por cada módulo adicional.`
+              : `Sin descuento base: cada módulo adicional suma ${Math.round(DESCUENTO_POR_MODULO * 100)}% de descuento.`}
+          </p>
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
@@ -277,14 +290,12 @@ function PricingSuscripciones() {
               <p>
                 {seleccionEfectiva.size === 0
                   ? 'Seleccione uno o ambos módulos.'
-                  : [...seleccion]
+                  : [...seleccionEfectiva]
                       .map((id) => CATALOGO.find((c) => c.id === id)?.nombre)
                       .join(' + ')}
               </p>
               {conDescuento && (
-                <p style={{ color: '#2ff801' }}>
-                  Descuento por paquete (−{Math.round(DESCUENTO_PAQUETE * 100)}%) aplicado.
-                </p>
+                <p style={{ color: '#2ff801' }}>Descuento (−{descPct}%) aplicado.</p>
               )}
               {(['flow', 'manage'] as const)
                 .filter((id) => vigente(id))
@@ -308,7 +319,12 @@ function PricingSuscripciones() {
                 {formatCOP(total)}
               </p>
               <p className="text-[11px] text-outline mb-2">
-                {periodo === 'anual' ? 'por año' : 'por mes'} · renovación manual
+                {periodo === 'mensual'
+                  ? 'por mes'
+                  : periodo === 'semestral'
+                    ? 'por semestre'
+                    : 'por año'}{' '}
+                · renovación manual
               </p>
               <button
                 type="button"
@@ -370,7 +386,7 @@ function PricingSuscripciones() {
       <WompiCheckoutModal
         open={checkoutAbierto}
         onClose={() => setCheckoutAbierto(false)}
-        modulos={[...seleccion]}
+        modulos={[...seleccionEfectiva]}
         periodo={periodo}
       />
     </div>
@@ -392,7 +408,7 @@ function ModuleCard({
   loading: boolean;
   onToggle: () => void;
 }) {
-  const precio = periodo === 'anual' ? modulo.precioAnualCentavos : modulo.precioMensualCentavos;
+  const precio = precioDePeriodo(modulo, periodo);
   return (
     <div
       className="border p-8 flex flex-col relative"
@@ -441,7 +457,7 @@ function ModuleCard({
             className="text-on-surface-variant"
             style={{ fontSize: 14, fontFamily: 'Hanken Grotesk, sans-serif' }}
           >
-            {periodo === 'anual' ? '/año' : '/mes'}
+            {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
           </span>
         </div>
         <p className="text-sm text-on-surface-variant mt-3" style={{ minHeight: 40 }}>

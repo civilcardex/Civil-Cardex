@@ -3,8 +3,7 @@
 // El monto SIEMPRE se calcula en el servidor con el catálogo local.
 import {
   CATALOGO,
-  DESCUENTO_PAQUETE,
-  calcularTotalCentavos,
+  descuentoAplicado,
   permitirPeticion,
   firmaIntegridad,
   json,
@@ -54,26 +53,36 @@ Deno.serve(async (req) => {
   // FUENTE ÚNICA de precios (deuda #4): app_precios en BD. Fallback al literal solo si la
   // tabla está vacía (bootstrap). Cambiar precio = UPDATE en SQL Editor, sin deploy.
   const { data: preciosBd } = await admin.from('app_precios').select('*');
-  const catalogo: Record<string, { precioMensualCentavos: number; precioAnualCentavos: number }> =
-    {};
+  const catalogo: Record<
+    string,
+    { precioMensualCentavos: number; precioSemestralCentavos?: number; precioAnualCentavos: number }
+  > = {};
   for (const row of preciosBd ?? []) {
+    const sem = Number(row.precio_semestral_centavos ?? 0);
     catalogo[row.modulo] = {
       precioMensualCentavos: Number(row.precio_mensual_centavos),
+      // Ausente hasta aplicar la migración 20261001000000 → fallback al literal.
+      precioSemestralCentavos: Number.isFinite(sem) && sem > 0 ? sem : undefined,
       precioAnualCentavos: Number(row.precio_anual_centavos),
     };
   }
   const precioDe = (m: string, per: Periodo): number | null => {
-    const p = catalogo[m];
-    if (p) return per === 'anual' ? p.precioAnualCentavos : p.precioMensualCentavos;
-    return m in CATALOGO
-      ? per === 'anual'
-        ? CATALOGO[m as ModuloId].precioAnualCentavos
-        : CATALOGO[m as ModuloId].precioMensualCentavos
-      : null;
+    const bd = catalogo[m];
+    const lit = m in CATALOGO ? CATALOGO[m as ModuloId] : null;
+    if (!bd && !lit) return null;
+    const v =
+      per === 'semestral'
+        ? bd?.precioSemestralCentavos || lit?.precioSemestralCentavos || 0
+        : per === 'anual'
+          ? bd?.precioAnualCentavos || lit?.precioAnualCentavos || 0
+          : bd?.precioMensualCentavos || lit?.precioMensualCentavos || 0;
+    return v > 0 ? v : null;
   };
 
   const periodo: Periodo | null =
-    body.periodo === 'mensual' || body.periodo === 'anual' ? body.periodo : null;
+    body.periodo === 'mensual' || body.periodo === 'semestral' || body.periodo === 'anual'
+      ? body.periodo
+      : null;
   const modulos =
     Array.isArray(body.modulos) && periodo
       ? ([
@@ -100,10 +109,9 @@ Deno.serve(async (req) => {
     .gte('created_at', desde)
     .order('created_at', { ascending: false })
     .limit(10);
-  const montoDe = modulos.reduce((acc, m) => acc + (precioDe(m, periodo) ?? 0), 0);
-  const montoCentavos = Math.round(
-    modulos.length >= 2 ? montoDe * (1 - DESCUENTO_PAQUETE) : montoDe,
-  );
+  // BD manda (app_precios); solo los descuentos salen del catálogo compartido.
+  const bruto = modulos.reduce((acc, m) => acc + (precioDe(m, periodo) ?? 0), 0);
+  const montoCentavos = Math.round(bruto * (1 - descuentoAplicado(modulos, periodo)));
   const mismaSeleccion = (pendiente ?? []).find(
     (row) =>
       row.monto_centavos === montoCentavos &&

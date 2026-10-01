@@ -6,7 +6,7 @@
 import { devError } from '../../utils/devError';
 
 export type ModuloId = 'flow' | 'manage';
-export type Periodo = 'mensual' | 'anual';
+export type Periodo = 'mensual' | 'semestral' | 'anual';
 
 export interface ModuloVenta {
   id: ModuloId;
@@ -14,11 +14,12 @@ export interface ModuloVenta {
   descripcion: string;
   workarea: string;
   precioMensualCentavos: number;
+  precioSemestralCentavos: number;
   precioAnualCentavos: number;
 }
 
-// Montos en centavos COP (Wompi solo cobra en COP). Precios placeholder:
-// ajustar aquí (y en _shared/wompi.ts) antes de activar.
+// Montos en centavos COP (Wompi solo cobra en COP). Placeholders — la verdad es
+// app_precios en BD (sincronizarPreciosBd los pisa); cambiar precio = UPDATE en SQL Editor.
 export const CATALOGO: ModuloVenta[] = [
   {
     id: 'flow',
@@ -26,8 +27,9 @@ export const CATALOGO: ModuloVenta[] = [
     descripcion:
       'Diseño hidrosanitario completo: agua potable, sanitaria, gas, lluvias y ventilación con memorias de cálculo.',
     workarea: '/civilflowareatrabajo',
-    precioMensualCentavos: 1_990_000, // $19.900
-    precioAnualCentavos: 19_900_000, // $199.000 (equivalente a ~10 meses)
+    precioMensualCentavos: 6_000_000, // $60.000
+    precioSemestralCentavos: 36_000_000, // $360.000 (6 meses)
+    precioAnualCentavos: 72_000_000, // $720.000 (12 meses)
   },
   {
     id: 'manage',
@@ -35,12 +37,17 @@ export const CATALOGO: ModuloVenta[] = [
     descripcion:
       'Presupuestos y administración de obra: APU, insumos, factores prestacionales y control de costos.',
     workarea: '/civilmanagerareatrabajo',
-    precioMensualCentavos: 1_990_000, // $19.900
-    precioAnualCentavos: 19_900_000, // $199.000
+    precioMensualCentavos: 6_000_000, // $60.000
+    precioSemestralCentavos: 36_000_000, // $360.000
+    precioAnualCentavos: 72_000_000, // $720.000
   },
 ];
 
-export const DESCUENTO_PAQUETE = 0.15; // al comprar los 2 módulos
+/** Descuento BASE por periodo — aplica desde el PRIMER módulo. */
+export const DESCUENTO_BASE: Record<Periodo, number> = { mensual: 0, semestral: 0.1, anual: 0.15 };
+
+/** Extra acumulativo por cada módulo adicional (n−1): 2 módulos → +10%, 3 → +20%… */
+export const DESCUENTO_POR_MODULO = 0.1;
 
 /** Interruptor global del sistema de suscripciones. OFF = app como siempre. */
 export const SUSCRIPCIONES_ACTIVAS = import.meta.env.VITE_SUSCRIPCIONES === 'true';
@@ -51,7 +58,22 @@ export function moduloVenta(id: ModuloId): ModuloVenta | null {
   return CATALOGO.find((x) => x.id === id) ?? null;
 }
 
-/** Total en centavos; descuento de paquete al llevar 2 módulos. Deduplica. */
+/** Precio de un módulo para el periodo elegido. */
+export function precioDePeriodo(m: ModuloVenta, p: Periodo): number {
+  return p === 'anual'
+    ? m.precioAnualCentavos
+    : p === 'semestral'
+      ? m.precioSemestralCentavos
+      : m.precioMensualCentavos;
+}
+
+/** Fracción descontada: base del periodo + 10% por cada módulo adicional (tope 100%). */
+export function descuentoAplicado(modulos: ModuloId[], periodo: Periodo): number {
+  const n = new Set(modulos).size;
+  return Math.min(1, DESCUENTO_BASE[periodo] + Math.max(0, n - 1) * DESCUENTO_POR_MODULO);
+}
+
+/** Total en centavos con los descuentos acumulativos. Deduplica. */
 export function calcularTotalCentavos(modulos: ModuloId[], periodo: Periodo): number {
   const unicos = [...new Set(modulos)];
   const bruto = unicos.reduce((s, id) => {
@@ -60,12 +82,12 @@ export function calcularTotalCentavos(modulos: ModuloId[], periodo: Periodo): nu
       devError('calcularTotalCentavos: id desconocido:', id);
       return s;
     }
-    return s + (periodo === 'anual' ? m.precioAnualCentavos : m.precioMensualCentavos);
+    return s + precioDePeriodo(m, periodo);
   }, 0);
-  return Math.round(unicos.length >= 2 ? bruto * (1 - DESCUENTO_PAQUETE) : bruto);
+  return Math.round(bruto * (1 - descuentoAplicado(unicos, periodo)));
 }
 
-/** Centavos COP → "$19.900" (sin decimales, separador de miles). */
+/** Centavos COP → "$60.000" (sin decimales, separador de miles). */
 export function formatCOP(centavos: number): string {
   try {
     return new Intl.NumberFormat('es-CO', {
@@ -91,9 +113,14 @@ export async function sincronizarPreciosBd(): Promise<void> {
     if (error || !data) return;
     for (const m of CATALOGO) {
       const bd = data[m.id] as
-        | { precioMensualCentavos?: number; precioAnualCentavos?: number }
+        | {
+            precioMensualCentavos?: number;
+            precioSemestralCentavos?: number;
+            precioAnualCentavos?: number;
+          }
         | undefined;
       if (bd?.precioMensualCentavos) m.precioMensualCentavos = bd.precioMensualCentavos;
+      if (bd?.precioSemestralCentavos) m.precioSemestralCentavos = bd.precioSemestralCentavos;
       if (bd?.precioAnualCentavos) m.precioAnualCentavos = bd.precioAnualCentavos;
     }
   } catch {

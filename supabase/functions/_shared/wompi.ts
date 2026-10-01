@@ -47,30 +47,53 @@ export async function suscripcionesHabilitadas(admin: SupabaseClient): Promise<b
 // Montos en centavos COP.
 // ---------------------------------------------------------------------------
 export type ModuloId = 'flow' | 'manage';
-export type Periodo = 'mensual' | 'anual';
+export type Periodo = 'mensual' | 'semestral' | 'anual';
 
 export interface ModuloVenta {
   id: ModuloId;
   precioMensualCentavos: number;
+  precioSemestralCentavos: number;
   precioAnualCentavos: number;
 }
 
 export const CATALOGO: Record<ModuloId, ModuloVenta> = {
-  flow: { id: 'flow', precioMensualCentavos: 1_990_000, precioAnualCentavos: 19_900_000 },
-  manage: { id: 'manage', precioMensualCentavos: 1_990_000, precioAnualCentavos: 19_900_000 },
+  flow: {
+    id: 'flow',
+    precioMensualCentavos: 6_000_000,
+    precioSemestralCentavos: 36_000_000,
+    precioAnualCentavos: 72_000_000,
+  },
+  manage: {
+    id: 'manage',
+    precioMensualCentavos: 6_000_000,
+    precioSemestralCentavos: 36_000_000,
+    precioAnualCentavos: 72_000_000,
+  },
 };
 
-export const DESCUENTO_PAQUETE = 0.15; // al comprar los 2 módulos
+export const DESCUENTO_BASE: Record<Periodo, number> = { mensual: 0, semestral: 0.1, anual: 0.15 };
+export const DESCUENTO_POR_MODULO = 0.1;
+
+/** Fracción descontada: base del periodo + 10% por cada módulo adicional (tope 100%). */
+export function descuentoAplicado(modulos: ModuloId[], periodo: Periodo): number {
+  const n = new Set(modulos).size;
+  return Math.min(1, DESCUENTO_BASE[periodo] + Math.max(0, n - 1) * DESCUENTO_POR_MODULO);
+}
 
 export function calcularTotalCentavos(modulos: ModuloId[], periodo: Periodo): number {
   const unicos = [...new Set(modulos)];
-  const bruto = unicos.reduce(
-    (s, m) =>
+  const bruto = unicos.reduce((s, m) => {
+    const v = CATALOGO[m];
+    return (
       s +
-      (periodo === 'anual' ? CATALOGO[m].precioAnualCentavos : CATALOGO[m].precioMensualCentavos),
-    0,
-  );
-  return Math.round(unicos.length >= 2 ? bruto * (1 - DESCUENTO_PAQUETE) : bruto);
+      (periodo === 'anual'
+        ? v.precioAnualCentavos
+        : periodo === 'semestral'
+          ? v.precioSemestralCentavos
+          : v.precioMensualCentavos)
+    );
+  }, 0);
+  return Math.round(bruto * (1 - descuentoAplicado(unicos, periodo)));
 }
 
 // ---------------------------------------------------------------------------

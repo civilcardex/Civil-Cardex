@@ -54,3 +54,53 @@ describe('modulosActivos', () => {
     expect(modulosActivos([]).size).toBe(0);
   });
 });
+
+describe('suscripcionesHabilitadas', () => {
+  // El flag vive en cache a nivel de módulo (single-flight): cada test importa
+  // una instancia fresca vía resetModules para aislar la caché.
+  it('lee el flag de la BD y cachea un solo RPC', async () => {
+    vi.resetModules();
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+    vi.doMock('../../supabase', () => ({ supabase: { rpc, from: () => ({}) } }));
+    const svc = await import('../suscripcionesService');
+    const [a, b] = await Promise.all([
+      svc.suscripcionesHabilitadas(),
+      svc.suscripcionesHabilitadas(),
+    ]);
+    expect(a).toBe(true);
+    expect(b).toBe(true);
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('error de RPC → false: sin confirmación de la BD el cliente nunca bloquea', async () => {
+    vi.resetModules();
+    vi.doMock('../../supabase', () => ({
+      supabase: { rpc: async () => ({ data: null, error: { message: 'boom' } }), from: () => ({}) },
+    }));
+    const svc = await import('../suscripcionesService');
+    expect(await svc.suscripcionesHabilitadas()).toBe(false);
+  });
+
+  it('fallo transitorio de RPC NO se cachea: el próximo fetch reintenta', async () => {
+    vi.resetModules();
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: null, error: { message: 'boom' } })
+      .mockResolvedValueOnce({ data: true, error: null });
+    vi.doMock('../../supabase', () => ({ supabase: { rpc, from: () => ({}) } }));
+    const svc = await import('../suscripcionesService');
+    await expect(svc.suscripcionesHabilitadas()).resolves.toBe(false);
+    await expect(svc.suscripcionesHabilitadas()).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('false legítimo (flag apagado) SÍ se cachea: no re-consulta', async () => {
+    vi.resetModules();
+    const rpc = vi.fn().mockResolvedValue({ data: false, error: null });
+    vi.doMock('../../supabase', () => ({ supabase: { rpc, from: () => ({}) } }));
+    const svc = await import('../suscripcionesService');
+    await expect(svc.suscripcionesHabilitadas()).resolves.toBe(false);
+    await expect(svc.suscripcionesHabilitadas()).resolves.toBe(false);
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});

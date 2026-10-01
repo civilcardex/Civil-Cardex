@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { Link } from 'react-router-dom';
 
 export interface ToolDef {
   id: string;
@@ -105,6 +106,10 @@ export const STATUS: Record<string, { color: string; label: string }> = {
   error: { color: '#ef4444', label: '\u26A0 Sin guardar' },
 };
 
+/** Mensaje amable cuando el guardado a BD falla por suscripción vencida (excepción Postgres 'suscripcion_requerida'). */
+const SUSCRIPCION_VENCIDA_TXT =
+  'Suscripción vencida — tu trabajo se guarda solo en este dispositivo. Renueva en Precios para volver a guardar en la nube.';
+
 const accBtn: React.CSSProperties = {
   padding: '6px 8px',
   background: '#1e2024',
@@ -188,6 +193,10 @@ function PdfViewerToolbar_({
   onClearGuides,
   bdError,
 }: PdfViewerToolbarProps) {
+  // El RPC de guardado falla con 'suscripcion_requerida' cuando la suscripción venció: bdError
+  // ya viaja como "reason: message", así que basta detectar el marcador en la cadena completa
+  // (cubre el reason O el message).
+  const esSuscripcionVencida = !!bdError && bdError.includes('suscripcion_requerida');
   const netTools = [...TOOLS];
   if (activeNet === 'af' || activeNet === 'gas') {
     netTools.splice(7, 0, {
@@ -350,9 +359,11 @@ function PdfViewerToolbar_({
               aria-label="Guardar"
               style={compactBtn}
               title={
-                bdError
-                  ? `Error guardando a BD: ${bdError}`
-                  : 'Guarda los trazados y cambios realizados en el plano para la red activa'
+                esSuscripcionVencida
+                  ? SUSCRIPCION_VENCIDA_TXT
+                  : bdError
+                    ? `Error guardando a BD: ${bdError}`
+                    : 'Guarda los trazados y cambios realizados en el plano para la red activa'
               }
             >
               <span
@@ -361,6 +372,22 @@ function PdfViewerToolbar_({
                 {'💾'}
               </span>
             </button>
+            {esSuscripcionVencida && (
+              <Link
+                to="/pricing"
+                title="Ir a Precios para renovar la suscripción"
+                style={{
+                  ...compactBtn,
+                  padding: '4px 0',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#ffb4ab',
+                  textDecoration: 'none',
+                }}
+              >
+                Renovar
+              </Link>
+            )}
             <button
               type="button"
               onClick={onUndo}
@@ -545,6 +572,30 @@ function PdfViewerToolbar_({
           Acciones
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {esSuscripcionVencida && (
+            <div
+              role="alert"
+              style={{
+                padding: '6px 8px',
+                background: '#1e2024',
+                border: '1px solid #ef444455',
+                borderRadius: '4px',
+                fontFamily: "'Geist',monospace",
+                fontSize: 11,
+                lineHeight: 1.35,
+                color: '#ffb4ab',
+              }}
+            >
+              {SUSCRIPCION_VENCIDA_TXT}{' '}
+              <Link
+                to="/pricing"
+                title="Ir a Precios para renovar la suscripción"
+                style={{ color: '#8AB4D6', fontWeight: 700, textDecoration: 'underline' }}
+              >
+                Renovar
+              </Link>
+            </div>
+          )}
           <button
             type="button"
             onClick={onFit}
@@ -580,7 +631,11 @@ function PdfViewerToolbar_({
             type="button"
             onClick={onSave}
             style={{ ...accBtn, width: '100%' }}
-            title="Guarda los trazados y cambios realizados en el plano para la red activa"
+            title={
+              esSuscripcionVencida
+                ? SUSCRIPCION_VENCIDA_TXT
+                : 'Guarda los trazados y cambios realizados en el plano para la red activa'
+            }
           >
             <span style={{ fontSize: 14 }}>{'\uD83D\uDCBE'}</span>
             <div

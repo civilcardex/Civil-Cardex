@@ -7,7 +7,6 @@ import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectC
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { SUSCRIPCIONES_ACTIVAS } from '../lib/suscripciones/catalogo';
 import { estaActiva } from '../lib/suscripciones/suscripcionesService';
 import { useSuscripciones } from '../hooks/useSuscripciones';
 const ModulePage_S1: React.CSSProperties = {
@@ -30,7 +29,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { rows } = useSuscripciones();
+  const { rows, bloqueando } = useSuscripciones();
   const tieneModulo = (id: 'flow' | 'manage') => rows.some((r) => r.modulo === id && estaActiva(r));
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateCM, setShowCreateCM] = useState(false);
@@ -77,7 +76,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                   navigate('/login', { state: { from: `/modulo/${moduleId}` } });
                   return;
                 }
-                if (SUSCRIPCIONES_ACTIVAS && !tieneModulo('flow')) {
+                if (bloqueando && !tieneModulo('flow')) {
                   navigate('/pricing?modulo=flow');
                   return;
                 }
@@ -89,7 +88,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     navigate('/login', { state: { from: `/modulo/${moduleId}` } });
                     return;
                   }
-                  if (SUSCRIPCIONES_ACTIVAS && !tieneModulo('manage')) {
+                  if (bloqueando && !tieneModulo('manage')) {
                     navigate('/pricing?modulo=manage');
                     return;
                   }
