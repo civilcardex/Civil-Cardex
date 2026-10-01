@@ -77,9 +77,6 @@ export const COMP_DESC: Record<number, { body: string; norm: string }> = {
   },
 };
 
-export const NOTA_NORMATIVA =
-  '⚠ Nota normativa: El presente detalle es una representación técnica de referencia elaborada con base en las normas RAS 2000 Tít.D / Resolución 0330 de 2017, NTC 1500:2023, NSR-10 Tít.J y NTC 3631, vigentes a la fecha de publicación. Los criterios de diseño, dimensionamiento hidráulico, selección y ubicación de aparatos deben ser verificados y ajustados por un ingeniero competente conforme a las ediciones vigentes de cada norma en el momento de la ejecución del proyecto, así como a los catálogos de los respectivos fabricantes. CIVILCARDEX no asume responsabilidad por aplicaciones que no hayan sido validadas por el profesional responsable de la obra.';
-
 /** URL del GLB de un aparato (asset público byte-exacto del HTML original). */
 export function glbUrl(modelKey: string): string {
   return `/models/aparatos/${modelKey}.glb`;

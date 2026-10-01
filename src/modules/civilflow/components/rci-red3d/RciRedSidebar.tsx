@@ -1,7 +1,9 @@
-import { COMPONENTS, COMP_DESC, NOTA_NORMATIVA, RCI_MONO } from './rciRedDataHelpers';
+import { COMPONENTS, COMP_DESC, RCI_MONO } from './rciRedDataHelpers';
+import { NotaDisenoRci } from '../rci3d/RciSidebar';
 
 // Sidebar izquierdo del visor "Red contra incendio" — clon de RciSidebar con los 14
 // componentes de la RED (port del HTML). Mismo patrón: desplegable + descripción + nota.
+// La nota de diseño (con links) se comparte con RciSidebar — NotaDisenoRci.
 
 interface Props {
   selectedId: number | null;
@@ -113,7 +115,7 @@ export default function RciRedSidebar({ selectedId, onSelect }: Props): React.JS
           lineHeight: 1.65,
         }}
       >
-        <strong style={{ color: '#BF4E14' }}>Nota de diseño:</strong> {NOTA_NORMATIVA}
+        <NotaDisenoRci />
       </div>
     </div>
   );

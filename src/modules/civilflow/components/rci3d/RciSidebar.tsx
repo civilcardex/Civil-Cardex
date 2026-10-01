@@ -1,12 +1,36 @@
-import { COMPONENTS, COMP_DESC, NOTA_NORMATIVA, RCI_MONO } from './rci3dData';
+import { COMPONENTS, COMP_DESC, RCI_MONO } from './rci3dData';
+import { NormaLink } from '../shared/normasLinks';
 
 // Sidebar izquierdo del visor 3D RCI — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción del seleccionado debajo y nota normativa fija
 // abajo-izquierda. Geist + mismos tamaños/colores.
+// Links de la nota: cada norma a SU fuente oficial via NORMA_URLS (verificados 2026-09-30).
+// La lista colectiva «NFPA 20/13/14/22/25/72» queda plana (familia, sin objetivo único).
 
 interface Props {
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+}
+
+/** Nota de diseño normativa con links — compartida por RciSidebar y RciRedSidebar (mismo
+ *  texto/links; ambos visores RCI). */
+export function NotaDisenoRci() {
+  return (
+    <>
+      <strong style={{ color: '#BF4E14' }}>Nota de diseño:</strong> El presente detalle es una
+      representación técnica de referencia elaborada con base en las normas{' '}
+      <NormaLink nombre="NFPA 20">NFPA 20:2025</NormaLink> y{' '}
+      <NormaLink nombre="NSR-10">NSR-10 Título J</NormaLink> (Colombia). Las descripciones provienen
+      de la revisión de la base normativa internacional (NFPA 20/13/14/22/25/72 con sus numerales) y
+      de su adaptación nacional (
+      <NormaLink nombre="NTC 1669" />, <NormaLink nombre="NTC 2301" />,{' '}
+      <NormaLink nombre="NTC 2050" />, <NormaLink nombre="RETIE" />,{' '}
+      <NormaLink nombre="Decreto 0926/2010" />
+      ). Es responsabilidad del diseñador revisar y hacer los ajustes según la respectiva norma
+      vigente. El presente esquema y sus descripciones NO sustituyen las normas oficiales; su
+      propósito es servir de guía para robustecer las descripciones del visor CIVILCARDEX.
+    </>
+  );
 }
 
 /** Nombres en castellano correcto (orig. usuario): solo la PRIMERA letra de la PRIMERA
@@ -119,7 +143,7 @@ export default function RciSidebar({ selectedId, onSelect }: Props): React.JSX.E
           lineHeight: 1.65,
         }}
       >
-        <strong style={{ color: '#BF4E14' }}>Nota de diseño:</strong> {NOTA_NORMATIVA}
+        <NotaDisenoRci />
       </div>
     </div>
   );

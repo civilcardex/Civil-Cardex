@@ -152,9 +152,6 @@ export const COMP_DESC: Record<number, RciCompDesc> = {
   },
 };
 
-export const NOTA_NORMATIVA =
-  'El presente detalle es una representación técnica de referencia elaborada con base en las normas NFPA 20:2025 y NSR-10 Titulo J (Colombia). Las descripciones provienen de la revisión de la base normativa internacional (NFPA 20/13/14/22/25/72 con sus numerales) y de su adaptación nacional (NTC 1669, NTC 2301, NTC 2050, RETIE, Decreto 0926/2010). Es responsabilidad del diseñador revisar y hacer los ajustes según la respectiva norma vigente. El presente esquema y sus descripciones NO sustituyen las normas oficiales; su propósito es servir de guía para robustecer las descripciones del visor CIVILCARDEX.';
-
 /** Posición de montaje de cada pieza GLB (metros). */
 export const GLB_POSITIONS: Record<string, [number, number, number]> = {
   tanque: [-2.126, -2.513, -0.369],

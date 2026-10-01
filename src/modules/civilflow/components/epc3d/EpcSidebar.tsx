@@ -1,9 +1,11 @@
 import { COMPONENTES, COMP_DESC } from './epc3dData';
 import { MONO_3D } from '../shared/config3d';
+import { NormaLink } from '../shared/normasLinks';
 
 // Sidebar izquierdo del visor 3D del EPC — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción debajo y nota normativa fija abajo.
 // Fuente Geist igual que la isometría de aparatos.
+// Links de la nota: cada norma a SU fuente oficial via NORMA_URLS (verificados 2026-09-30).
 
 interface Props {
   selectedId: number | null;
@@ -113,45 +115,23 @@ export default function EpcSidebar({ selectedId, onSelect }: Props): React.JSX.E
         <p style={{ margin: 0 }}>
           <strong style={{ color: '#BF4E14' }}>⚠ Nota: </strong>
           El presente detalle es una representación técnica de referencia elaborada con base en las
-          normas{' '}
-          <a
-            href="https://www.minvivienda.gov.co"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#58a6ff' }}
-          >
-            RAS 2000
-          </a>{' '}
-          /{' '}
-          <a
-            href="https://www.icontec.org"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#58a6ff' }}
-          >
-            NTC 1500
-          </a>{' '}
-          y{' '}
-          <a
-            href="https://www.minenergia.gov.co"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#58a6ff' }}
-          >
-            RETIE / NTC 1500
-          </a>{' '}
-          vigentes a la fecha de publicación. Los criterios de diseño, dimensionamiento hidráulico,
-          selección y ubicación de los equipos deben ser verificados y ajustados por un ingeniero
-          competente conforme a las ediciones vigentes de cada norma en el momento de la ejecución
-          del proyecto, así como a los catálogos de los respectivos fabricantes. CIVILCARDEX no
-          asume responsabilidad por aplicaciones que no hayan sido validadas por el profesional
-          responsable de la obra. Se deben aplicar normas y criterios de cada país.
+          normas <NormaLink nombre="RAS 2000">RAS 2000</NormaLink> /{' '}
+          <NormaLink nombre="NTC 1500">NTC 1500</NormaLink> y{' '}
+          <NormaLink nombre="RETIE">RETIE</NormaLink> /{' '}
+          <NormaLink nombre="NTC 1500">NTC 1500</NormaLink> vigentes a la fecha de publicación. Los
+          criterios de diseño, dimensionamiento hidráulico, selección y ubicación de los equipos
+          deben ser verificados y ajustados por un ingeniero competente conforme a las ediciones
+          vigentes de cada norma en el momento de la ejecución del proyecto, así como a los
+          catálogos de los respectivos fabricantes. CIVILCARDEX no asume responsabilidad por
+          aplicaciones que no hayan sido validadas por el profesional responsable de la obra. Se
+          deben aplicar normas y criterios de cada país.
         </p>
         <p style={{ margin: '8px 0 0' }}>
           <strong style={{ color: '#BF4E14' }}>🔥 Nota: </strong>
           Si el equipo no corresponde a abastecimiento hidrosanitario convencional sino a un sistema
           de protección contra incendios, deben aplicarse los requisitos específicos del sistema y
-          las normas del proyecto, incluyendo NFPA 20 cuando corresponda.
+          las normas del proyecto, incluyendo <NormaLink nombre="NFPA 20">NFPA 20</NormaLink> cuando
+          corresponda.
         </p>
       </div>
     </div>
