@@ -1,10 +1,6 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
-import {
-  geometriaCanalDesdePuntos,
-  geometriaCanalAncho,
-  normalizarCanal,
-} from './canalAssociation';
+import { geometriaCanalDesdePuntos, geometriaCanalAncho, norm180 } from './canalAssociation';
 
 /**
  * El texto de la barra de estado del visor según la herramienta activa — el mensaje que dice
@@ -52,13 +48,10 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
       if (g) m += ` (ancho ${g.baseCm} x ${g.longitudCm} cm)`;
       return m;
     }
-    // Misma matemática que creación/ghost (rect o eje diagonal), ya normalizada.
+    // Misma matemática que creación/ghost (siempre eje, también horizontal/vertical).
+    // Ángulo mostrado en sentido ANTIHORARIO (convención matemática, orig. usuario).
     const g = geometriaCanalDesdePuntos(engine._canalStart!, mp, (d) => engine.pxToM(d));
-    if (g) {
-      const tmp = { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm, angulo: g.angulo };
-      normalizarCanal(1 / (engine.pxToM(1) * 100 || 1), tmp);
-      m += ` (${tmp.base} x ${tmp.longitud} cm)`;
-    }
+    if (g) m += ` (eje ${g.longitudCm} cm ∠${Math.round(norm180(-g.angulo))}°)`;
   }
   return m;
 }

@@ -8,6 +8,9 @@ import {
   normalizarCanal,
   geometriaCanalDesdePuntos,
   geometriaCanalAncho,
+  norm180,
+  pxPerCmDe,
+  puntoAnchoMinimo,
 } from '../canalAssociation';
 
 /** Rectángulo del canal recolectora en planta, con las flechas de flujo hacia cada bajante asociado. */
@@ -223,7 +226,13 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   if (engine.tool !== 'canal') return;
   // Fase de ancho (diagonal, 3er clic): eje fijo + ancho vivo del cursor — WYSIWYG del commit.
   if (engine._canalEje) {
-    const mp = engine.toPlane(engine.mouseX, engine.mouseY);
+    // Mismo guardarraíl del commit (puntoAnchoMinimo): el ghost muestra el ancho que el
+    // commit creará incluso con el clic accidental pegado al eje (doble-clic — WYSIWYG).
+    const mp = puntoAnchoMinimo(
+      engine._canalEje,
+      engine.toPlane(engine.mouseX, engine.mouseY),
+      engine.cmToPlanePx(1),
+    );
     const g = geometriaCanalAncho(
       engine._canalEje,
       mp,
@@ -232,7 +241,13 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     );
     if (!g) return;
     const tmp = { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm, angulo: g.angulo };
-    normalizarCanal(1 / (engine.pxToM(1) * 100 || 1), tmp);
+    // Escala rota (pxPerCmDe lanza 'escala_invalida'): el loop de render no tiene try/catch —
+    // el ghost falla en silencio (return) en vez de matar el frame completo.
+    try {
+      normalizarCanal(pxPerCmDe(engine), tmp);
+    } catch {
+      return;
+    }
     const m = canalMarco(engine.cmToPlanePx(1), tmp);
     const o = engine.toCvs(m.x, m.y);
     const cw = m.w * engine.zoom;
@@ -255,78 +270,41 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     ctx.fillStyle = '#8B5CF6';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`ancho: ${baseCm} cm (L=${longCm} cm)`, o.x, o.y - 4 * engine.zoom);
+    ctx.fillText(`ancho: ${baseCm} cm — eje: ${longCm} cm`, o.x, o.y - 4 * engine.zoom);
     ctx.restore();
     return;
   }
   if (!engine._canalStart) return;
   const mp = engine.toPlane(engine.mouseX, engine.mouseY);
-  // Misma matemática que la creación (rect clásico o eje diagonal): el ghost es WYSIWYG.
+  // Misma matemática que la creación (siempre eje + ancho, también horizontal/vertical —
+  // orig. usuario): el ghost es WYSIWYG y muestra el eje YA AJUSTADO si roza un cardinal (≤15°).
   const g = geometriaCanalDesdePuntos(engine._canalStart, mp, (d) => engine.pxToM(d));
   if (!g) return;
-  if (g.modo === 'eje') {
-    // Fase 1 diagonal: SOLO el eje, sin caja — el ancho lo define el 3er clic y una caja
-    // provisional (= lado corto del arrastre) se veía muy ancha y confundía (orig. usuario).
-    const o1 = engine.toCvs(engine._canalStart.x, engine._canalStart.y);
-    const o2 = engine.toCvs(mp.x, mp.y);
-    ctx.save();
-    ctx.strokeStyle = '#8B5CF6';
-    ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
-    ctx.setLineDash([8 * engine.zoom, 5 * engine.zoom]);
-    ctx.beginPath();
-    ctx.moveTo(o1.x, o1.y);
-    ctx.lineTo(o2.x, o2.y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    const longCm = Math.round(g.longitudCm * 10) / 10;
-    ctx.font = `${11 * engine.zoom}px Geist, monospace`;
-    ctx.fillStyle = '#8B5CF6';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(
-      `eje: ${longCm} cm ∠${Math.round(g.angulo)}° — clic fija el eje, luego el ancho`,
-      (o1.x + o2.x) / 2,
-      (o1.y + o2.y) / 2 - 6 * engine.zoom,
-    );
-    ctx.restore();
-    return;
-  }
-  const tmp = { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm, angulo: g.angulo };
-  normalizarCanal(1 / (engine.pxToM(1) * 100 || 1), tmp);
-  // Mismo marco que la creación (pxPerCm real): el ghost es WYSIWYG y la esquina bajo el
-  // cursor coincide con el clic que crea el canal.
-  const m = canalMarco(engine.cmToPlanePx(1), tmp);
-  const o = engine.toCvs(m.x, m.y);
-  const cw = m.w * engine.zoom;
-  const ch = m.h * engine.zoom;
-  const ang = m.angRad;
-
+  // Fase 1: SOLO el eje, sin caja — el ancho lo define el siguiente clic y una caja
+  // provisional (= lado corto del arrastre) se veía muy ancha y confundía (orig. usuario).
+  const o1 = engine.toCvs(engine._canalStart.x, engine._canalStart.y);
+  const o2 = engine.toCvs(g.p2.x, g.p2.y);
   ctx.save();
-  ctx.translate(o.x, o.y);
-  ctx.rotate(ang);
   ctx.strokeStyle = '#8B5CF6';
-  ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
-  ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
+  ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
+  ctx.setLineDash([8 * engine.zoom, 5 * engine.zoom]);
   ctx.beginPath();
-  ctx.rect(0, 0, cw, ch);
+  ctx.moveTo(o1.x, o1.y);
+  ctx.lineTo(o2.x, o2.y);
   ctx.stroke();
   ctx.setLineDash([]);
-
+  const longCm = Math.round(g.longitudCm * 10) / 10;
   ctx.font = `${11 * engine.zoom}px Geist, monospace`;
   ctx.fillStyle = '#8B5CF6';
-  ctx.textAlign = 'left';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  // Texto sin rotar (legible): se dibuja fuera del marco rotado, sobre el origen.
-  ctx.restore();
-  ctx.save();
-  const baseCm = Math.round((tmp.base || 0) * 10) / 10;
-  const longCm = Math.round((tmp.longitud || 0) * 10) / 10;
-  const ejeTxt = g.angulo !== 0 ? ` ∠${Math.round(g.angulo)}°` : '';
-  ctx.font = `${11 * engine.zoom}px Geist, monospace`;
-  ctx.fillStyle = '#8B5CF6';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(`${baseCm} x ${longCm} cm${ejeTxt}`, o.x, o.y - 4 * engine.zoom);
+  // Ángulo mostrado en sentido ANTIHORARIO (orig. usuario): convención matemática — girar
+  // la mano en contra de las manecillas hace crecer el número.
+  ctx.fillText(
+    `eje: ${longCm} cm ∠${Math.round(norm180(-g.angulo))}° — clic fija el eje, luego el ancho`,
+    (o1.x + o2.x) / 2,
+    (o1.y + o2.y) / 2 - 6 * engine.zoom,
+  );
   ctx.restore();
 }
 

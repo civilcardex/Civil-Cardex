@@ -146,17 +146,18 @@ export function canalOBBEngine(engine: IPlanoEngineCore, canal: PlanoBajante): C
   return canalMarco(engine.cmToPlanePx(1), canal);
 }
 
+/** px de plano por cm según el engine — única fuente, derivada de cmToPlanePx (sin el
+ *  toFixed de pxToM, que a 1 px redondeaba y desviaba ~1.8%: el re-ancla de normalizarCanal
+ *  quedaba descuadrado respecto del render). Falla fuerte si la escala no es positiva. */
+export function pxPerCmDe(engine: { cmToPlanePx(cm: number): number }): number {
+  const v = engine.cmToPlanePx(1);
+  if (!(v > 0)) throw new Error('escala_invalida');
+  return v;
+}
+
 /** Normaliza base=LADO CORTO y longitud=LADO LARGO (ítem 5 usuario). Si el marco queda
  *  con h>w, rota -90° y re-ancla el origen (o' = o + R·(0,h)) para que el rectángulo
  *  mundo NO se mueva. Devuelve true si tocó algo. */
-/** px de plano por cm según el engine — ÚNICA fuente (antes 2 fallbacks distintos:
- *  ||1 en drawingCreations y ||1e-9 en handleDragMove, ambos silenciando una escala
- *  rota con dims corruptas). Falla fuerte si la escala no es positiva. */
-export function pxPerCmDe(engine: { pxToM(px: number): number }): number {
-  const v = engine.pxToM(1) * 100;
-  if (!(v > 0)) throw new Error('escala_invalida');
-  return 1 / v;
-}
 
 export function normalizarCanal(
   pxPerCm: number,
@@ -186,15 +187,67 @@ export function normalizarCanal(
 }
 
 /** Normaliza grados a (-180, 180]. */
-function norm180(deg: number): number {
+export function norm180(deg: number): number {
   const m = (((deg + 180) % 360) + 360) % 360;
   return m - 180;
 }
 
+/** Fase 1 del canal (el 2º clic fija el eje): longitud/ángulo del eje + extremo ya ajustado.
+ *  El ancho lo define el 3er clic con geometriaCanalAncho. */
+export interface TrazoCanalEje {
+  /** Longitud del eje en cm. */
+  longitudCm: number;
+  angulo: number;
+  /** Extremo del eje ajustado (= p, o su proyección al eje cardinal si roza ≤15°). */
+  p2: { x: number; y: number };
+}
+
 /** Geometría de un canal desde 2 puntos del plano. La creación y el ghost comparten esta
- *  matemática: casi-eje-alineado (≤15° del eje más cercano) = esquinas opuestas clásicas
- *  (modo 'rect', 2 clics); diagonal = eje p1→p2 (modo 'eje': el 2º clic fija el eje y un
- *  3er clic define el ancho con geometriaCanalAncho). Base siempre corta (ítem 5 usuario). */
+ *  matemática: SIEMPRE modo eje (orig. usuario: horizontal/vertical también fijan el eje con
+ *  el 2º clic y definen el ancho con un 3er clic, igual que en diagonal — el ancho ya no sale
+ *  "de casualidad" del arrastre). Cerca de un cardinal (≤15°) hay IMÁN SUAVE (orig. usuario:
+ *  el paso vertical/horizontal ↔ diagonal debe ser prácticamente inexistente): el ángulo se
+ *  funde con el cardinal por smoothstep — continuo en el borde de 15° y casi exacto a ≤2°;
+ *  en diagonal el ángulo es libre. Base siempre corta (ítem 5 usuario, al crear). */
+export function geometriaCanalDesdePuntos(
+  s: { x: number; y: number },
+  p: { x: number; y: number },
+  pxToM: (d: number) => number,
+): TrazoCanalEje | null {
+  const dx = p.x - s.x;
+  const dy = p.y - s.y;
+  if (Math.hypot(dx, dy) < 1e-9) return null;
+  const axDeg0 = (Math.atan2(dy, dx) * 180) / Math.PI;
+  let axDeg = axDeg0;
+  let p2 = { x: p.x, y: p.y };
+  let bestOff = Infinity;
+  let bestK = 0;
+  for (const k of [0, 90, 180, 270]) {
+    const off = Math.abs(norm180(axDeg0 - k));
+    if (off < bestOff) {
+      bestOff = off;
+      bestK = k;
+    }
+  }
+  if (bestOff <= 15) {
+    // Imán suave: w=1 pegado al cardinal → w=0 en 15° (smoothstep, sin salto en el borde).
+    const t = bestOff / 15;
+    const w = 1 - t * t * (3 - 2 * t);
+    axDeg = bestK + (1 - w) * norm180(axDeg0 - bestK);
+    const rad = (axDeg * Math.PI) / 180;
+    const proj = dx * Math.cos(rad) + dy * Math.sin(rad);
+    p2 = { x: s.x + Math.cos(rad) * proj, y: s.y + Math.sin(rad) * proj };
+  }
+  const longitudCm = +(pxToM(Math.hypot(p2.x - s.x, p2.y - s.y)) * 100).toFixed(1);
+  if (longitudCm < 1) return null;
+  return { longitudCm, angulo: norm180(axDeg), p2 };
+}
+
+/** Geometría del canal comprometida (fase de ancho, 3er clic): eje p1→p2 fijo, ancho =
+ *  distancia perpendicular del punto al eje (mínimo 1cm, igual que el resize). El rectángulo
+ *  va del lado del punto (origen desplazado) para que el clic caiga sobre el borde — sin
+ *  cambios de lado a lado una vez comprometido (el ghost ya lo mostró). Devuelve null si el
+ *  eje es degenerado. */
 export interface TrazoCanal {
   x: number;
   y: number;
@@ -202,60 +255,8 @@ export interface TrazoCanal {
   longitudCm: number;
   angulo: number;
   flujo: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
-  modo: 'rect' | 'eje';
 }
 
-export function geometriaCanalDesdePuntos(
-  s: { x: number; y: number },
-  p: { x: number; y: number },
-  pxToM: (d: number) => number,
-): TrazoCanal | null {
-  const dx = p.x - s.x;
-  const dy = p.y - s.y;
-  if (Math.hypot(dx, dy) < 1e-9) return null;
-  const axDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-  const offEje = Math.min(...[0, 90, 180, 270].map((k) => Math.abs(norm180(axDeg - k))));
-  if (offEje <= 15) {
-    // Modo clásico: el usuario arrastró (casi) sobre un eje — esquinas opuestas del AABB.
-    const baseCm = +(pxToM(Math.abs(dy)) * 100).toFixed(1);
-    const longitudCm = +(pxToM(Math.abs(dx)) * 100).toFixed(1);
-    if (baseCm < 1 && longitudCm < 1) return null;
-    const horizontal = Math.abs(dx) >= Math.abs(dy);
-    return {
-      x: Math.min(s.x, p.x),
-      y: Math.min(s.y, p.y),
-      baseCm,
-      longitudCm,
-      angulo: 0,
-      flujo: horizontal ? (dx >= 0 ? 'derecha' : 'izquierda') : dy >= 0 ? 'abajo' : 'arriba',
-      modo: 'rect',
-    };
-  }
-  // Modo eje (diagonal, orig. usuario #4): p1→p2 es el eje del canal; el ancho NO sale del
-  // arrastre (pedido usuario: siempre quedaba fijo) — lo define un 3er clic con
-  // geometriaCanalAncho. Aquí viaja un ancho provisional (= lado corto) solo para el ghost.
-  const longitudCm = +(pxToM(Math.hypot(dx, dy)) * 100).toFixed(1);
-  const baseCm = +(pxToM(Math.min(Math.abs(dx), Math.abs(dy))) * 100).toFixed(1);
-  if (baseCm < 1 && longitudCm < 1) return null;
-  const c = Math.cos((axDeg * Math.PI) / 180);
-  const sn = Math.sin((axDeg * Math.PI) / 180);
-  return {
-    x: s.x,
-    y: s.y,
-    baseCm,
-    longitudCm,
-    angulo: norm180(axDeg),
-    flujo:
-      Math.abs(c) >= Math.abs(sn) ? (c > 0 ? 'derecha' : 'izquierda') : sn > 0 ? 'abajo' : 'arriba',
-    modo: 'eje',
-  };
-}
-
-/** Geometría del canal en fase de ancho (3er clic): eje p1→p2 fijo, ancho = distancia
- *  perpendicular del punto al eje (mínimo 1cm, igual que el resize). El rectángulo va del
- *  lado del punto (origen desplazado) para que el clic caiga sobre el borde — sin cambios
- *  de lado a lado una vez comprometido (el ghost ya lo mostró). Devuelve null si el eje
- *  es degenerado. */
 export function geometriaCanalAncho(
   eje: { x1: number; y1: number; x2: number; y2: number },
   p: { x: number; y: number },
@@ -300,8 +301,38 @@ export function geometriaCanalAncho(
     angulo: norm180(axDeg),
     flujo:
       Math.abs(c) >= Math.abs(sn) ? (c > 0 ? 'derecha' : 'izquierda') : sn > 0 ? 'abajo' : 'arriba',
-    modo: 'eje',
   };
+}
+
+/** Ancho mínimo útil del canal en cm: un clic a <6 px del eje (doble-clic de término, jitter)
+ *  es accidental y se infla a este ancho en vez de crear un canal degenerado. ÚNICO umbral
+ *  compartido por ghost (renderCanal) y commit (drawingCreations) — WYSIWYG. */
+export const CANAL_ANCHO_MIN_CM = 20;
+
+/** Guardarraíl del ancho compartido por ghost y commit (mismo criterio EXACTO): si el punto
+ *  cae a <CANAL_ANCHO_MIN_CM cm Y <6 px del eje, se respeta su lado pero se aleja
+ *  perpendicularmente al mismo pie de proyección hasta el ancho mínimo. Devuelve el MISMO
+ *  objeto si no aplica (decidible por identidad). */
+export function puntoAnchoMinimo(
+  eje: { x1: number; y1: number; x2: number; y2: number },
+  p: { x: number; y: number },
+  pxPerCm: number,
+): { x: number; y: number } {
+  const dx = eje.x2 - eje.x1;
+  const dy = eje.y2 - eje.y1;
+  const L = Math.hypot(dx, dy);
+  if (!(L > 0)) return p;
+  const cross = dx * (p.y - eje.y1) - dy * (p.x - eje.x1);
+  const dist = Math.abs(cross) / L;
+  const minPx = CANAL_ANCHO_MIN_CM * pxPerCm;
+  if (!(dist < minPx && dist < 6)) return p;
+  const sgn = cross >= 0 ? 1 : -1;
+  const nx = (-dy / L) * sgn;
+  const ny = (dx / L) * sgn;
+  const t = ((p.x - eje.x1) * dx + (p.y - eje.y1) * dy) / (L * L);
+  const fx = eje.x1 + dx * t;
+  const fy = eje.y1 + dy * t;
+  return { x: fx + nx * minPx, y: fy + ny * minPx };
 }
 /** Sanado de carga para canales legacy (sin `angulo`, con base=Y y longitud=X): materializa
  *  el marco efectivo de canalMarco (flowDir manda; sin él, la forma) con el mismo rectángulo
@@ -470,119 +501,6 @@ export function resolveAndClampToCanal(
   if (!canal) return { x, y, canalId: null };
   const clamped = clampToCanal(engine, canal, x, y);
   return { ...clamped, canalId: canal.id };
-}
-
-/** Una flecha de flujo dibujada sobre el canal, en coordenadas de plano: va desde la cola (x0,y0)
- *  hasta la cabeza (x1,y1), que siempre apunta al bajante. */
-export interface CanalFlowArrow {
-  /** Punto de inicio de la flecha (cola — queda lejos del bajante). */
-  x0: number;
-  y0: number;
-  /** Punto final de la flecha (cabeza — siempre termina en el bajante). */
-  x1: number;
-  y1: number;
-}
-
-/**
- * Calcula las flechas de flujo de un canal de lluvias: cada bajante asociado recibe flechas
- * que apuntan hacia él desde ambos lados (una sola si está en un extremo, dos si está en
- * medio). Cada flecha nace a mitad de camino entre vecinos para que no se pisen.
- */
-
-/** Un tramo de canal servido por un bajante: el intervalo [tLeft, tRight] del eje largo del
- *  canal que ese bajante recoge. Un bajante en el interior produce dos tramos (uno por lado,
- *  cada uno con su etiqueta); uno en el extremo produce uno solo. Los límites caen a mitad
- *  de camino entre bajantes vecinos (o en el borde del canal para los extremos). */
-export interface CanalSegment {
-  bajante: PlanoBajante;
-  tLeft: number;
-  tRight: number;
-}
-
-/** Calcula los tramos por bajante del canal (ver CanalSegment) — comparte la misma matemática
- *  de ejes/límites que computeCanalFlowArrows, así el renderer de etiquetas y las flechas nunca
- *  divergen. */
-export function computeCanalSegments(
-  engine: IPlanoEngineCore,
-  canal: PlanoBajante,
-): CanalSegment[] {
-  const obb = canalOBBEngine(engine, canal);
-  // El flujo corre por el EJE LOCAL X, que tras normalizarCanal es siempre el lado largo
-  // (antes se elegía con w>=h en cada función — ahora el marco ya lo garantiza).
-  const axisLen = obb.w;
-  if (axisLen <= 0) return [];
-
-  const assoc = engine.bajantes.filter(
-    (b) =>
-      b.tipo !== 'canal' &&
-      b.net === 'll' &&
-      b.canalId === canal.id &&
-      pointInCanal(engine, canal, b.x, b.y) &&
-      (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId !== b.id,
-  );
-  if (assoc.length === 0) return [];
-
-  const toAxisPos = (b: PlanoBajante) => canalToLocal(obb, b.x, b.y).lx / axisLen;
-
-  const sorted = assoc
-    .map((b) => ({ b, t: Math.min(1, Math.max(0, toAxisPos(b))) }))
-    .sort((a, c) => a.t - c.t);
-
-  const results: CanalSegment[] = [];
-  const EPS = 0.02;
-  for (let i = 0; i < sorted.length; i++) {
-    const entry = sorted[i];
-    const tLeft = i === 0 ? 0 : (sorted[i - 1].t + entry.t) / 2;
-    const tRight = i === sorted.length - 1 ? 1 : (entry.t + sorted[i + 1].t) / 2;
-    // Tramo hacia el lado izquierdo/inicio de la división: [tLeft, entry.t]
-    if (entry.t - tLeft > EPS) {
-      results.push({ bajante: entry.b, tLeft, tRight: entry.t });
-    }
-    // Tramo hacia el lado derecho/fin de la división: [entry.t, tRight]
-    if (tRight - entry.t > EPS) {
-      results.push({ bajante: entry.b, tLeft: entry.t, tRight });
-    }
-  }
-  return results;
-}
-
-export function computeCanalFlowArrows(
-  engine: IPlanoEngineCore,
-  canal: PlanoBajante,
-): CanalFlowArrow[] {
-  const obb = canalOBBEngine(engine, canal);
-  const axisLen = obb.w;
-  if (axisLen <= 0) return [];
-  // Línea media del canal en marco local (ly = h/2); las colas se alinean con la cabeza en
-  // la misma transversal para que la flecha quede recta a lo largo del eje.
-  const midLy = obb.h / 2;
-
-  const segments = computeCanalSegments(engine, canal);
-  if (segments.length === 0) return [];
-
-  const toPlanePoint = (t: number): { x: number; y: number } =>
-    canalToWorld(obb, t * axisLen, midLy);
-
-  const arrows: CanalFlowArrow[] = [];
-  const EPS = 0.02;
-  for (const seg of segments) {
-    const entryT = canalToLocal(obb, seg.bajante.x, seg.bajante.y).lx / axisLen;
-    // La cabeza apunta al CENTRO del bajante (su posición real), no al punto proyectado
-    // sobre el eje — el renderer recorta hasta el borde del círculo.
-    const head = { x: seg.bajante.x, y: seg.bajante.y };
-    const headL = canalToLocal(obb, head.x, head.y);
-    if (entryT - seg.tLeft > EPS) {
-      const tail = toPlanePoint(seg.tLeft);
-      const tailW = canalToWorld(obb, canalToLocal(obb, tail.x, tail.y).lx, headL.ly);
-      arrows.push({ x0: tailW.x, y0: tailW.y, x1: head.x, y1: head.y });
-    }
-    if (seg.tRight - entryT > EPS) {
-      const tail = toPlanePoint(seg.tRight);
-      const tailW = canalToWorld(obb, canalToLocal(obb, tail.x, tail.y).lx, headL.ly);
-      arrows.push({ x0: tailW.x, y0: tailW.y, x1: head.x, y1: head.y });
-    }
-  }
-  return arrows;
 }
 
 // ===== Ramal de canal (orig. usuario: la asociación canal↔bajante vive SOLO en ramales que el

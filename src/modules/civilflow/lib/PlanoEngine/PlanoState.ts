@@ -711,9 +711,9 @@ export interface IPlanoEngineCore {
   // Estado de la primera esquina para la herramienta de arrastre de rectángulo del canal — mismo
   // patrón de "clic-mueve-clic" (rubber-band) que _dimStart/_guideStart.
   _canalStart: { x: number; y: number } | null;
-  // Eje fijado del canal en diagonal (fase de ancho, 3er clic): p1→p2 es el eje ya
-  // confirmado con el 2º clic; el 3er clic define el ancho por distancia perpendicular.
-  // En modo rect no se usa (el 2º clic crea directo). Se limpia al cambiar de herramienta
+  // Eje fijado del canal (fase de ancho, 3er clic): p1→p2 es el eje ya confirmado con el
+  // 2º clic — para TODA orientación (horizontal/vertical incluidas, orig. usuario); el 3er
+  // clic define el ancho por distancia perpendicular. Se limpia al cambiar de herramienta
   // o con Escape, igual que _canalStart.
   _canalEje: { x1: number; y1: number; x2: number; y2: number } | null;
   // Estado transitorio de cada arrastre (se fija en handleMouseDown, se consume en
@@ -721,7 +721,6 @@ export interface IPlanoEngineCore {
   _bajDragBackupXY?: { x: number; y: number; labelX?: number; labelY?: number } | null;
   _bajDragBackupPts?: Record<string, number[][]> | null;
   _lblDragIsParent?: boolean;
-  _pendingLblDrag?: { id: string; offX: number; offY: number; dist: number; isGhost: boolean };
   _dragBackupPts?: number[][] | null;
   _dragLinkedBackupPts?: Record<string, number[][]> | null;
   _netCounts: Record<string, PlanoNetCounts>;

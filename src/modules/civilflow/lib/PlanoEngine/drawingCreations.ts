@@ -10,6 +10,8 @@ import {
   pxPerCmDe,
   esquinasCanalOBB,
   canalMarco,
+  puntoAnchoMinimo,
+  CANAL_ANCHO_MIN_CM,
 } from './canalAssociation';
 import { distToPolyline } from '../shared/geometry';
 import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
@@ -697,20 +699,24 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
 
 // Canal recolectora (canalón de techo) — un símbolo independiente, mismo patrón de array/sin-
 // asociación-a-ramal que contador/calentador, exclusivo de la red 'll' (aguas lluvias). A
-// diferencia de toda otra herramienta de glifo puntual, es un RECTÁNGULO dibujado por arrastre:
-// el primer clic fija la esquina 1 (_canalStart, mismo patrón clic-mueve-clic de goma que
+// diferencia de toda otra herramienta de glifo puntual, es un RECTÁNGULO dibujado por clics:
+// el primer clic fija el inicio del EJE (_canalStart, mismo patrón clic-mueve-clic de goma que
 // _dimStart/_guideStart), una vista previa en vivo sigue al cursor (renderCanalGhost), el
-// segundo clic fija la esquina 2 y calcula base/altura desde la distancia real entre las dos
-// esquinas (vía pxToM, a la escala de dibujo del plano) — así el rectángulo queda a escala del
-// plano desde el momento en que se dibuja, no tecleado después. Una vez creado, todavía puede
-// redimensionarse desde sus esquinas (_tryCanalResizeHit en handleMouseDown.ts) o editarse con
-// precisión por el menú contextual (CanalMenu). A diferencia del bajante (que agrega su sufijo
-// de piso solo al renderizar, porque un bajante puede abarcar pisos), el piso queda incrustado
-// en el code/id aquí al crearlo — un canal vive en un solo piso.
-/** Maneja un clic con la herramienta de canal activa: fija la esquina 1 en el primer clic;
- *  el segundo fija la esquina opuesta (rect eje-alineado, 2 clics) o el extremo del eje en
- *  diagonal (el ancho lo define un 3er clic — pedido usuario: antes salía siempre fijo).
- *  Exclusivo de la red de aguas lluvias (ll).
+// segundo clic fija el EXTREMO del eje — para TODA orientación (orig. usuario: horizontal y
+// vertical funcionan igual que la diagonal; el eje queda ajustado al cardinal si el trazo roza
+// ≤15°) — y el tercer clic define el ANCHO perpendicular al eje (geometriaCanalAncho; un punto
+// que proyecta más allá del extremo lo alarga). Así el canal queda a escala del plano desde el
+// momento en que se dibuja y el ancho nunca sale "de casualidad" del arrastre. Una vez creado,
+// todavía puede redimensionarse desde sus esquinas (_tryCanalResizeHit en handleMouseDown.ts) o
+// editarse con precisión por el menú contextual (CanalMenu). A diferencia del bajante (que
+// agrega su sufijo de piso solo al renderizar, porque un bajante puede abarcar pisos), el piso
+// queda incrustado en el code/id aquí al crearlo — un canal vive en un solo piso.
+/** Timestamp del clic que fijó _canalEje (module-scope: los campos _canal* viven en
+ *  PlanoState/PlanoEngine, fuera del alcance de este cambio) — detecta el doble-clic. */
+let canalEjeTs = 0;
+/** Maneja un clic con la herramienta de canal activa: el 1er clic fija el inicio del eje, el
+ *  2º fija su extremo (siempre modo eje, también horizontal/vertical — orig. usuario) y el
+ *  3er clic define el ancho (commitCanalAncho). Exclusivo de la red de aguas lluvias (ll).
  *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y
  *  de plano. */
 export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number): void {
@@ -725,44 +731,37 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
       py = sp.y;
     }
   }
-  // Fase de ancho (diagonal): el eje ya quedó fijo con el 2º clic — este clic define el ancho.
+  // Fase de ancho: el eje ya quedó fijo con el 2º clic — este clic define el ancho.
   if (engine._canalEje) {
+    // Doble-clic de término (orig. usuario): el 2º clic del dblclick cae en fase-ancho con
+    // dist≈0 — si llega <350 ms tras fijar el eje se ignora (no infla a 20 cm ni crea).
+    if (Date.now() - canalEjeTs < 350) return;
     commitCanalAncho(engine, px, py);
     return;
   }
   if (!engine._canalStart) {
     engine._canalStart = { x: px, y: py };
-    engine._emitStatus('Canal — clic para la esquina opuesta (en diagonal: eje, luego ancho)');
+    engine._emitStatus('Canal — clic fija el eje, luego el ancho');
     engine.render();
     return;
   }
   const s = engine._canalStart;
   engine._canalStart = null;
-  // Geometría compartida con el ghost (rect clásico o eje diagonal, ítem 4 usuario) y
-  // normalizada a base-corta/lado-largo (ítem 5 usuario).
+  // Geometría compartida con el ghost (eje + ancho para toda orientación): el eje queda
+  // ajustado al cardinal si el trazo roza ≤15° y normalizado a base-corta al crear (ítem 5).
   const g = geometriaCanalDesdePuntos(s, { x: px, y: py }, (d) => engine.pxToM(d));
   if (!g) {
     engine._emitStatus(_statusMsg(engine));
     engine.render();
     return;
   }
-  if (g.modo === 'eje') {
-    // El ancho NO sale del arrastre: se fija el eje y se espera el 3er clic (WYSIWYG en ghost).
-    engine._canalEje = { x1: s.x, y1: s.y, x2: px, y2: py };
-    engine._emitStatus(
-      'Canal — clic define el ancho (más allá del extremo del eje lo alarga; Enter commitea)',
-    );
-    engine.render();
-    return;
-  }
-  crearCanalGlifo(engine, {
-    x: g.x,
-    y: g.y,
-    longitud: g.longitudCm,
-    base: g.baseCm,
-    angulo: g.angulo,
-    flujo: g.flujo,
-  });
+  // El ancho NO sale del arrastre: fija el eje y espera el siguiente clic (WYSIWYG en ghost).
+  engine._canalEje = { x1: s.x, y1: s.y, x2: g.p2.x, y2: g.p2.y };
+  canalEjeTs = Date.now();
+  engine._emitStatus(
+    'Canal — clic define el ancho (más allá del extremo del eje lo alarga; Enter commitea)',
+  );
+  engine.render();
 }
 
 /** Commitea la fase de ancho del canal en diagonal (3er clic o Enter): ancho = distancia
@@ -776,29 +775,17 @@ export function commitCanalAncho(engine: IPlanoEngineCore, px: number, py: numbe
     engine.render();
     return;
   }
-  // Guardarraíles del "1 cm" (orig. usuario): un clic a <6 px del eje (doble-clic de
-  // término, jitter) es accidental — se respeta su lado pero se aplica un ancho mínimo
-  // útil de 20 cm moviendo el punto perpendicular al mismo pie de proyección.
-  {
-    const dx = eje.x2 - eje.x1;
-    const dy = eje.y2 - eje.y1;
-    const L = Math.hypot(dx, dy);
-    if (L > 0) {
-      const cross = dx * (py - eje.y1) - dy * (px - eje.x1);
-      const dist = Math.abs(cross) / L;
-      const minPx = 20 * engine.cmToPlanePx(1);
-      if (dist < minPx && dist < 6) {
-        const sgn = cross >= 0 ? 1 : -1;
-        const nx = (-dy / L) * sgn;
-        const ny = (dx / L) * sgn;
-        const t = ((px - eje.x1) * dx + (py - eje.y1) * dy) / (L * L);
-        const fx = eje.x1 + dx * t;
-        const fy = eje.y1 + dy * t;
-        px = fx + nx * minPx;
-        py = fy + ny * minPx;
-        engine._emitStatus('Canal — ancho mínimo 20 cm (clic más lejos del eje para otro ancho)');
-      }
-    }
+  // Guardarraíl del "1 cm" (orig. usuario): un clic a <6 px del eje (doble-clic de término,
+  // jitter) es accidental — puntoAnchoMinimo respeta su lado pero lo aleja perpendicular al
+  // mismo pie de proyección hasta el ancho mínimo (MISMA matemática que el ghost — WYSIWYG).
+  const crudo = { x: px, y: py };
+  const ajust = puntoAnchoMinimo(eje, crudo, engine.cmToPlanePx(1));
+  if (ajust !== crudo) {
+    px = ajust.x;
+    py = ajust.y;
+    engine._emitStatus(
+      `Canal — ancho mínimo ${CANAL_ANCHO_MIN_CM} cm (clic más lejos del eje para otro ancho)`,
+    );
   }
   const g = geometriaCanalAncho(
     eje,

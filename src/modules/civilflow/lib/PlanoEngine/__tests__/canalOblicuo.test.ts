@@ -93,32 +93,78 @@ function cornersKey(obb: { x: number; y: number; w: number; h: number; angRad: n
     .join('|');
 }
 
-describe('geometriaCanalDesdePuntos (ítem 4: diagonal con 2 clics)', () => {
-  it('arrastre sobre el eje = esquinas opuestas clásicas, angulo 0', () => {
-    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 300, y: 40 }, pxToM)!;
+describe('geometriaCanalDesdePuntos (eje + ancho para TODA orientación)', () => {
+  it('arrastre exactamente horizontal: angulo 0, eje proyectado', () => {
+    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 300, y: 0 }, pxToM)!;
     expect(g.angulo).toBe(0);
     expect(g.longitudCm).toBeCloseTo(300, 1);
-    expect(g.baseCm).toBeCloseTo(40, 1);
-    expect(g.flujo).toBe('derecha');
+    expect(g.p2.x).toBeCloseTo(300, 6);
+    expect(g.p2.y).toBeCloseTo(0, 6);
   });
 
-  it('arrastre vertical = rect clásico con flujo abajo', () => {
-    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 30, y: 300 }, pxToM)!;
-    expect(g.angulo).toBe(0);
-    expect(g.flujo).toBe('abajo');
+  it('imán suave: a ~7.6° del horizontal el ángulo se acerca SIN saltar (0 < a < crudo)', () => {
+    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 300, y: 40 }, pxToM)!;
+    const crudo = (Math.atan2(40, 300) * 180) / Math.PI;
+    expect(g.angulo).toBeGreaterThan(0);
+    expect(g.angulo).toBeLessThan(crudo);
+    expect(g.p2.y).toBeGreaterThan(0);
+    expect(g.p2.y).toBeLessThan(40);
   });
 
-  it('diagonal 45° = modo eje: angulo≈45, longitud=hipotenusa, base=lado corto', () => {
+  it('imán suave continuo: en el borde de 15° el ángulo ES el crudo (transición sin salto)', () => {
+    const p = { x: 300, y: 300 * Math.tan((15 * Math.PI) / 180) };
+    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, p, pxToM)!;
+    expect(g.angulo).toBeCloseTo(15, 3);
+  });
+
+  it('arrastre vertical exacto: angulo 90 (el flujo lo fija el ancho)', () => {
+    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 0, y: 300 }, pxToM)!;
+    expect(g.angulo).toBe(90);
+    expect(g.p2.x).toBeCloseTo(0, 6);
+    expect(g.p2.y).toBeCloseTo(300, 6);
+  });
+
+  it('diagonal 45° = eje libre: angulo≈45, longitud=hipotenusa', () => {
     const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 300, y: 300 }, pxToM)!;
     expect(g.angulo).toBeCloseTo(45, 0);
     expect(g.longitudCm).toBeCloseTo(Math.hypot(300, 300), 0);
-    expect(g.baseCm).toBeCloseTo(300, 0);
-    expect(g.x).toBe(0);
-    expect(g.y).toBe(0);
+    expect(g.p2).toEqual({ x: 300, y: 300 });
+  });
+
+  it('fuera de 15° del cardinal = ángulo libre (sin ajuste)', () => {
+    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 300, y: 120 }, pxToM)!;
+    expect(g.angulo).toBeCloseTo(21.8, 0);
+    expect(g.p2).toEqual({ x: 300, y: 120 });
   });
 
   it('doble-clic en el mismo sitio = null (degenerado)', () => {
     expect(geometriaCanalDesdePuntos({ x: 5, y: 5 }, { x: 5, y: 5 }, pxToM)).toBeNull();
+  });
+
+  it('imán protege el signo del wrap: bestK 90/180/270 funde hacia SU cardinal', () => {
+    const L = 300;
+    const p = (deg: number) => ({
+      x: L * Math.cos((deg * Math.PI) / 180),
+      y: L * Math.sin((deg * Math.PI) / 180),
+    });
+    // ~7° de 90°: funde ENTRE 83 y 90 (nunca cruza al otro lado del cardinal).
+    const g90 = geometriaCanalDesdePuntos({ x: 0, y: 0 }, p(83), pxToM)!;
+    expect(g90.angulo).toBeGreaterThan(83);
+    expect(g90.angulo).toBeLessThan(90);
+    expect(g90.angulo).toBeCloseTo(86.85, 1);
+    // ~7° de 180°: queda ENTRE 173 y 180 (positivo — norm180 del crudo no voltea el lado).
+    const g180 = geometriaCanalDesdePuntos({ x: 0, y: 0 }, p(173), pxToM)!;
+    expect(g180.angulo).toBeGreaterThan(173);
+    expect(g180.angulo).toBeLessThan(180);
+    // ~7° de 270°: axDeg0=-97 funde a -93.15 — del lado de -90, NO de -83 (signo de norm180).
+    const g270 = geometriaCanalDesdePuntos({ x: 0, y: 0 }, p(263), pxToM)!;
+    expect(g270.angulo).toBeLessThan(-90);
+    expect(g270.angulo).toBeGreaterThan(-97);
+    expect(g270.angulo).toBeCloseTo(-93.15, 1);
+    // Wrap de 180°: clic a 187° (axDeg0=-173) funde a -176.85, no a +183.
+    const gW = geometriaCanalDesdePuntos({ x: 0, y: 0 }, p(187), pxToM)!;
+    expect(gW.angulo).toBeLessThan(-173);
+    expect(gW.angulo).toBeCloseTo(-176.85, 1);
   });
 });
 
@@ -334,6 +380,16 @@ describe('fase de ancho diagonal — 3er clic (ancho libre)', () => {
     expect(g.baseCm).toBeGreaterThan(1);
   });
 
+  it('alargamiento en vivo: cursor más allá del extremo (t>1) alarga la longitud', () => {
+    const g = geometriaCanalAncho({ x1: 0, y1: 0, x2: 300, y2: 0 }, { x: 450, y: 40 }, pxToM, 1)!;
+    // El pie proyecta a t=1.5 → el canal crece hasta 450px; el ancho sigue midiendo la
+    // distancia perpendicular a la RECTA del eje original (40px).
+    expect(g.longitudCm).toBeGreaterThan(300);
+    expect(g.longitudCm).toBeCloseTo(450, 0);
+    expect(g.baseCm).toBeCloseTo(40, 0);
+    expect(g.angulo).toBe(0);
+  });
+
   it('flujo motor: 2º clic diagonal NO crea (fija eje), 3º crea delgado', () => {
     const eng = makeEngine();
     handleCanalDown(eng as never, 0, 0);
@@ -351,6 +407,66 @@ describe('fase de ancho diagonal — 3er clic (ancho libre)', () => {
     expect(canales[0].base).toBeLessThan(30);
     expect(canales[0].base).toBeGreaterThanOrEqual(1);
     expect(canales[0].angulo).toBeCloseTo(45, 0);
+  });
+
+  it('flujo motor: horizontal IGUAL que diagonal — 2º clic fija eje ajustado, 3º crea', () => {
+    const eng = makeEngine();
+    handleCanalDown(eng as never, 0, 0);
+    // Trazo horizontal exacto (el imán suave, testeado arriba, acerca los casi-horizontales).
+    handleCanalDown(eng as never, 500, 0);
+    expect(eng.bajantes.filter((b) => b.tipo === 'canal')).toHaveLength(0);
+    expect(eng._canalEje).toEqual({ x1: 0, y1: 0, x2: 500, y2: 0 });
+    // 3er clic 40px bajo el eje = el ancho; el canal nace horizontal.
+    commitCanalAncho(eng as never, 250, 40);
+    const canales = eng.bajantes.filter((b) => b.tipo === 'canal');
+    expect(canales).toHaveLength(1);
+    expect(canales[0].angulo).toBe(0);
+    expect(canales[0].base).toBeGreaterThanOrEqual(1);
+  });
+
+  it('guardarraíl 20 cm: clic a <6 px del eje en fase-ancho → commit produce el mínimo', () => {
+    const eng = makeEngine();
+    handleCanalDown(eng as never, 0, 0);
+    handleCanalDown(eng as never, 500, 0);
+    // Clic a 2 px del eje (doble-clic de término): el commit infla al mínimo — el MISMO
+    // criterio que el ghost ahora muestra vía puntoAnchoMinimo.
+    commitCanalAncho(eng as never, 250, 2);
+    const canales = eng.bajantes.filter((b) => b.tipo === 'canal');
+    expect(canales).toHaveLength(1);
+    // A scaleM 0.5: 20 cm ≈ 15.1 px → pxToM(15.1) ≈ 0.2 m → base 20.
+    expect(canales[0].base).toBeCloseTo(20, 1);
+    // El clic quedó del lado +Y: el origen no se desplaza.
+    expect(canales[0].y).toBe(0);
+  });
+
+  it('flujo motor: el eje committea el extremo magnetizado g.p2, no el mouse crudo', () => {
+    const eng = makeEngine();
+    eng.activeNet = 'll'; // el snap solo pega entre redes enlazadas (misma red aquí)
+    // Nodo existente cerca del 2º clic: el segmento se ALEJA del clic, así el snap de cuerpo
+    // (12 px) no dispara y pega el nodo exacto (16 px); el imán (~7.6° del horizontal) ajusta
+    // el extremo del eje a g.p2 — nunca el punto crudo del cursor.
+    eng.ramales.push({
+      id: 'R0',
+      net: 'll',
+      tipo: 'ramal',
+      label: 'RS0',
+      pts: [
+        [300, 40],
+        [340, 40],
+      ],
+      labelX: 320,
+      labelY: 60,
+      labelAngle: 0,
+      totalL: 1,
+    } as never);
+    handleCanalDown(eng as never, 0, 0);
+    handleCanalDown(eng as never, 286, 40); // a 14 px del nodo (300,40): snap de nodo, no de cuerpo
+    const g = geometriaCanalDesdePuntos({ x: 0, y: 0 }, { x: 300, y: 40 }, pxToM)!;
+    expect(eng._canalEje).not.toBeNull();
+    expect(eng._canalEje!.x2).toBeCloseTo(g.p2.x, 6);
+    expect(eng._canalEje!.y2).toBeCloseTo(g.p2.y, 6);
+    // El crudo era (300,40): p2 queda fundido hacia el eje horizontal (y < 40).
+    expect(eng._canalEje!.y2).toBeLessThan(40);
   });
 
   it('Escape cancela la fase de ancho sin crear', () => {
@@ -381,6 +497,8 @@ describe('renumeración de canales al borrar (ítem 6)', () => {
     (eng as { _canalStart: unknown })._canalStart = null;
     handleCanalDown(eng as never, x1, y1);
     handleCanalDown(eng as never, x2, y2);
+    // 3er clic: el ancho ya no sale del arrastre (modo eje para toda orientación).
+    commitCanalAncho(eng as never, (x1 + x2) / 2, y2 + 50);
     const last = eng.bajantes[eng.bajantes.length - 1];
     return last.id;
   }
