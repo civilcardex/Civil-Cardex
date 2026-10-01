@@ -153,26 +153,6 @@ export function setSingleAparatoCount(
   saveToStorage(APARATOS_BY_TRAMO_KEY, all);
 }
 
-export function decrementFirstAparato(
-  netId: string,
-  ramalId: string,
-  planId: string | number,
-): boolean {
-  const storeKey = `${netId}_${ramalId}_${planId}`;
-  const all =
-    loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
-  const cur = { ...(all[storeKey] || {}) };
-  const apToDec = Object.keys(cur).find((k) => (cur[k] || 0) > 0);
-  if (!apToDec) return false;
-  const v = (cur[apToDec] || 0) - 1;
-  if (v <= 0) delete cur[apToDec];
-  else cur[apToDec] = v;
-  if (Object.keys(cur).length === 0) delete all[storeKey];
-  else all[storeKey] = cur;
-  saveToStorage(APARATOS_BY_TRAMO_KEY, all);
-  return true;
-}
-
 export function syncExtremeAparatoToCounts(
   ramalId: string,
   oldApp: string,

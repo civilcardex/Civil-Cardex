@@ -10,13 +10,6 @@ export interface RciRedLabel {
   ref?: number;
 }
 
-export interface RciRedComponente {
-  id: number;
-  name: string;
-  color: string;
-  detail: string | null;
-}
-
 export const COMPONENTS = [
   { id: 1, name: 'Tubería de acero negro', color: '#f85149', detail: null },
   { id: 2, name: 'Rociador automático', color: '#e3b341', detail: 'rociador' },

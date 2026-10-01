@@ -25,17 +25,3 @@ export const CF_TABLES = {
   anulacionesBajantes: 'cf_anulaciones_bajantes_pluviales',
   anulacionesCanales: 'cf_anulaciones_canales_pluviales',
 } as const;
-
-export const CM_TABLES = {
-  proyectos: 'cm_proyectos',
-  factores: 'cm_factores_prestacionales',
-  cargos: 'cm_cargos',
-  cuadrillas: 'cm_cuadrillas',
-  cuadrillaIntegrantes: 'cm_cuadrilla_integrantes',
-  equipos: 'cm_equipos',
-  insumos: 'cm_insumos',
-  proveedores: 'cm_proveedores',
-  apus: 'cm_apus',
-  presupuestos: 'cm_presupuestos',
-  config: 'cm_config',
-} as const;

@@ -148,19 +148,6 @@ export function vistaIso(api: Aparatos3DApi, marcarBoton?: (k: VistaKey) => void
   marcarBoton?.('iso');
 }
 
-/** Dolly del original: acerca/aleja sobre el vector cámara→target (persp) o escala la orto. */
-export function zoomBy(api: Aparatos3DApi, factor: number): void {
-  if (api.orthoOn) {
-    api.camO.zoom = Math.min(50, Math.max(0.05, api.camO.zoom / factor));
-    api.camO.updateProjectionMatrix();
-    return;
-  }
-  const target = api.controls.target;
-  const dir = api.camP.position.clone().sub(target);
-  const newDist = Math.max(0.02, dir.length() * factor);
-  api.camP.position.copy(target).addScaledVector(dir.normalize(), newDist);
-}
-
 /** Reset (⟳): vuelve a la pose ISO por defecto calculada al terminar la carga. */
 export function resetVista(api: Aparatos3DApi, marcarBoton?: (k: VistaKey) => void): void {
   if (!api.defPos || !api.defTgt) {

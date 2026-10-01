@@ -22,7 +22,6 @@ import {
   moveAllAparatoCounts,
   bumpAparatoCount,
   setSingleAparatoCount,
-  decrementFirstAparato,
 } from '../syncExtremeAccessory';
 import { directNeighborRamales } from '../flowDirection';
 
@@ -153,13 +152,6 @@ describe('asignación directa sin contexto (un clic basta)', () => {
     setSingleAparatoCount('san', 'RS4', 2, 'san');
     setSingleAparatoCount('san', 'RS4', 2, 'san');
     expect(read()['san_RS4_2']).toEqual({ san: 1 });
-  });
-
-  it('decrementFirstAparato descuenta y limpia la clave vacía', () => {
-    saveToStorage(APARATOS_BY_TRAMO_KEY, { san_RS4_2: { san: 1 } });
-    expect(decrementFirstAparato('san', 'RS4', 2)).toBe(true);
-    expect(read()['san_RS4_2']).toBeUndefined();
-    expect(decrementFirstAparato('san', 'RS4', 2)).toBe(false);
   });
 
   it('bumpAparatoCount escribe por clave de plano sin buscar en plans', () => {

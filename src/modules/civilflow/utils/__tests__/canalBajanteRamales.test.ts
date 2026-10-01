@@ -3,7 +3,6 @@ import {
   computeCanalBajanteRamalKeys,
   buildLlBajanteAssociations,
   maxRamalPulgDeBajante,
-  minBajantePulgDeRamal,
 } from '../rainwaterRows';
 import type { PlanItem } from '../../context/PlansContext';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
@@ -193,10 +192,5 @@ describe('regla diámetro bajante >= ramales conectados', () => {
 
   it('maxRamalPulgDeBajante: máximo de los directos del mismo piso', () => {
     expect(maxRamalPulgDeBajante('BALL1', '1', tramos)).toBe(4);
-  });
-
-  it('minBajantePulgDeRamal: pulg del bajante destino', () => {
-    expect(minBajantePulgDeRamal('R2', '1', tramos)).toBe(4);
-    expect(minBajantePulgDeRamal('R4', '2', tramos)).toBe(0);
   });
 });

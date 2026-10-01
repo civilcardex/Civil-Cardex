@@ -1,20 +1,4 @@
-import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../lib/PlanoEngine/PlanoState';
-
-/**
- * Regla de conexión de un extremo de ramal a un bajante según su dirección. HISTÓRICA: el
- * usuario pidió permitir iniciar trazos desde cualquier bajante (y llegar a cualquiera), así
- * que la restricción por `direccion` ya no aplica — la función se conserva por firma (la
- * llaman finishRamal, handleDragMove y drawingCreations) y ahora siempre permite.
- * @returns true siempre.
- */
-export function isRamalBajanteConnectionAllowed(
-  _engine: IPlanoEngineCore,
-  _r: PlanoRamal,
-  _epIdx: 0 | number,
-  _b: PlanoBajante,
-): boolean {
-  return true;
-}
+import type { PlanoRamal } from '../lib/PlanoEngine/PlanoState';
 
 /**
  * En una división de mitad de cuerpo AF/AC/gas, decide cuál de los tres ramales muestra el

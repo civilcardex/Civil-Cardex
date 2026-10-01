@@ -45,8 +45,6 @@ export interface Equipo {
   proveedor_id: string;
 }
 
-export type OrigenInsumo = 'Local' | 'Nacional' | 'Importado' | 'Preparado en obra';
-
 export interface Insumo {
   id: string;
   codigo: string;
@@ -319,14 +317,3 @@ export interface CivilManagerState {
   config_listas: ConfigListas;
   config: CivilManagerConfig;
 }
-
-export type CivilManagerEntityKey =
-  | 'factoresPrestaciones'
-  | 'cargos'
-  | 'cuadrillas'
-  | 'equipos'
-  | 'insumos'
-  | 'apus'
-  | 'presupuestos'
-  | 'proveedores'
-  | 'categorias_apu';

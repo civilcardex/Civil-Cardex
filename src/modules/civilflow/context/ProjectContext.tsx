@@ -377,18 +377,3 @@ export const useProyecto = () => {
   const { proy, setP, setProyAll, setProy } = useProject();
   return { proy, setP, setProyAll, setProy };
 };
-
-export const useMateriales = () => {
-  const { mats, setMats } = useProject();
-  return { mats, setMats };
-};
-
-export const useProfundidades = () => {
-  const { profs, setProfs } = useProject();
-  return { profs, setProfs };
-};
-
-export const useCriterios = () => {
-  const { crits, setCrits } = useProject();
-  return { crits, setCrits };
-};

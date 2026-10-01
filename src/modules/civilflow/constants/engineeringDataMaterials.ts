@@ -299,13 +299,6 @@ export function cEfectivoCubierta(nombre: string | undefined): number {
   return cDeCubierta(nombre ?? '') ?? 1;
 }
 
-/** Abreviatura de un material de cubierta (para celdas/options con title del nombre largo). */
-export function abrevCubierta(nombre: string): string {
-  if (!nombre) return '—';
-  const hit = MATERIALES_CUBIERTA_LL.find((m) => m.nombre === nombre);
-  return hit ? hit.abrev : nombre;
-}
-
 export interface MaterialCanalLL {
   nombre: string;
   abrev: string;
@@ -329,11 +322,4 @@ export function nDeCanal(nombre: string): number | null {
   if (!nombre) return null;
   const hit = MATERIALES_CANAL_LL.find((m) => m.nombre === nombre);
   return hit ? hit.n : null;
-}
-
-/** Abreviatura de un material de canal (celdas/options con title del nombre largo). */
-export function abrevCanal(nombre: string): string {
-  if (!nombre) return '—';
-  const hit = MATERIALES_CANAL_LL.find((m) => m.nombre === nombre);
-  return hit ? hit.abrev : nombre;
 }

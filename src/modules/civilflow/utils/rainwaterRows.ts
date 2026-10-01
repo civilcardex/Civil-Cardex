@@ -101,19 +101,6 @@ export function maxRamalPulgDeBajante(
   return max;
 }
 
-/** Regla ll (sentido inverso): pulg del bajante en el que descarga el ramal (campo `hasta`),
- *  0 si no hay bajante destino con diámetro. */
-export function minBajantePulgDeRamal(ramalId: string, planId: string, tramosLl: Tramo[]): number {
-  const r = tramosLl.find(
-    (t) => !t.esBajante && t.id === ramalId && String(t.planId ?? '') === String(planId),
-  );
-  if (!r?.hasta) return 0;
-  const b = tramosLl.find(
-    (t) => t.esBajante && t.id === r.hasta && String(t.planId ?? '') === String(planId),
-  );
-  return b?.diamDisPulg || 0;
-}
-
 // Qué códigos de bajante alimentan cada ramal — la misma BFS de proximidad geométrica usada por
 // la tabla DisenoLluvias, compartida con la exportación de memoria para que ambas reporten las
 // mismas asociaciones.
