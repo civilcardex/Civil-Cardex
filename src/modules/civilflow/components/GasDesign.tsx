@@ -13,7 +13,6 @@ import {
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadGasDatos, saveGasDatos } from '../services/proyectoDataService';
 import GasCalcUC from './GasCalcUC';
-import PageNav from './PageNav';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 
 import {
@@ -100,8 +99,7 @@ function lookupDn(mat: string, dn: string) {
   return match || null;
 }
 
-function GasDesign() {
-  const [gp, setGp] = useState(1);
+function GasDesign({ pagina = 1 }: { pagina?: number }) {
   const [edit, setEdit] = useState(false);
   const datosGeneralesInit = loadFromStorage(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const [alt, setAlt] = useState(datosGeneralesInit.alt);
@@ -1052,15 +1050,8 @@ function GasDesign() {
       className="fu"
       style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}
     >
-      <PageNav
-        page={gp}
-        setPage={setGp}
-        total={3}
-        color="var(--gas)"
-        labels={['Datos generales', 'Cálculo de unidades de consumo', 'Diseño de red + Chequeo']}
-      />
       <div style={{ padding: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {gp === 1 ? page1 : gp === 2 ? page2 : page3}
+        {pagina === 1 ? page1 : pagina === 2 ? page2 : page3}
       </div>
     </div>
   );

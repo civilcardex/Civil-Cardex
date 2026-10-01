@@ -378,17 +378,22 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={gasPage}
             setPage={setGasPage}
-            total={2}
+            total={4}
             color="var(--gas)"
-            labels={['Diseño de gas', 'Resumen accesorios por diámetro']}
+            labels={[
+              'Datos generales',
+              'Cálculo de unidades de consumo',
+              'Diseño de red + Chequeo',
+              'Resumen accesorios por diámetro',
+            ]}
             onPageHover={prefetchHeavy}
           />
-          {gasPage === 1 && (
+          {gasPage <= 3 && (
             <Suspense fallback={FALLBACK}>
-              <GasDesign />
+              <GasDesign pagina={gasPage} />
             </Suspense>
           )}
-          {gasPage === 2 && (
+          {gasPage === 4 && (
             <Suspense fallback={FALLBACK}>
               <AccesoriosDiamPage net="gas" />
             </Suspense>
