@@ -2429,3 +2429,12 @@ tsc 0 · lint 0 err 0 warn · vitest **942/942** (157 files; +6 nuevos: 2 gating
 
 ### Gates
 tsc 0 · lint 0 err 0 warn · vitest **940/940** (157 files, −2 tests muertos) · build ✓ · graphify ✓.
+
+## Convención de nombres de archivo (2026-10-01, ronda 12)
+
+**File names en INGLÉS.** El vocabulario del dominio hidrosanitario/CAD permanece en español (coincide con la UI y con RAS/NSR). Glosario permitido en nombres: `ramal, bajante, tramo, aparato(s), montante, acometida, yee, codo, caudal, diam/diametro, pulg, npt, ll, af, ac, san, gas, canal, piso(s), nivel, trazo(s), sifon, inodoro, tapon, descarga, red, area, apu, cuadrilla, insumo(s), presupuesto(s), ldesvio, bomba(s), cisterna, plano(s)` + familia `Plano*` (marca del motor) + `civilflow/civilmanager/wompi`. Todo lo demás, en inglés (`sanearAsociaciones.ts → sanitizeAssociations.ts`, `suscripciones/ → subscriptions/`, `ayuda/ → help/`, `isometria/ → isometry/`, `presupuestos/ → budgets/`, `catalogos/ → catalogs/`).
+
+Alcance de la traducción ES→EN decidido por el usuario: SOLO nombres de archivo. Los identificadores (funciones/tipos/variables), comentarios/JSDoc y strings de UI permanecen en español; los ids de navegación de /docs (`hidraulica`, `manager`…) son strings de UI, no rutas — intactos. Los imports se reescribieron a las rutas nuevas (~768 specifiers, 102 archivos tocados). Pasada aplicada con `git mv` (preserva blame): 156 archivos + 6 carpetas.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 940/940 (157 files) · build ✓ · graphify ✓. Nota operativa: el dev server de Vite retiene handles de directorios en Windows — para renombrar carpetas bajo src/, parar `npm run dev` y reupload después (Vite reconecta HMR solo).
