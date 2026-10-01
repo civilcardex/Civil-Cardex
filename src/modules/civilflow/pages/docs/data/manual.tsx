@@ -1,5 +1,9 @@
+import { NormaLink } from '../../../components/shared/normasLinks';
+import { Tabla } from './ui';
+
 const manual = {
   name: 'Manual de usuario',
+  desc: 'Guía paso a paso del flujo de trabajo en Civil Flow y normatividad aplicada.',
   icon: 'menu_book',
   color: '#4D8FF7',
   sections: [
@@ -111,76 +115,18 @@ const manual = {
             Complete los datos generales en el Sidebar. Estos datos aparecen en todas las memorias
             de cálculo.
           </p>
-          <div className="overflow-x-auto my-2">
-            <table className="w-full text-[12px] font-mono border-collapse">
-              <tbody>
-                <tr>
-                  <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                    Campo
-                  </th>
-                  <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                    Ejemplo
-                  </th>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Nombre del proyecto
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Casa No. 26 CR Monte Real
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Dirección
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    CR 10 No. 25-40
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Ciudad
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Floridablanca
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Uso
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Vivienda unifamiliar
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Empresa prestadora
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    EMAB - Floridablanca
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    P. red (m.c.a.)
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    20
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    Dotación (L/hab/dia)
-                  </td>
-                  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                    280
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <Tabla
+            head={['Campo', 'Ejemplo']}
+            rows={[
+              ['Nombre del proyecto', 'Casa No. 26 CR Monte Real'],
+              ['Dirección', 'CR 10 No. 25-40'],
+              ['Ciudad', 'Floridablanca'],
+              ['Uso', 'Vivienda unifamiliar'],
+              ['Empresa prestadora', 'EMAB - Floridablanca'],
+              ['P. red (m.c.a.)', '20'],
+              ['Dotación (L/hab/dia)', '280'],
+            ]}
+          />
           <div className="text-[12px] text-on-surface-variant">
             Dotación según RAS 2000 Tabla B.2.1 — Vivienda unifamiliar: 200–280 L/hab/dia.
           </div>
@@ -206,296 +152,87 @@ const manual = {
     {
       title: 'Redes a calcular',
       body: (
-        <div className="overflow-x-auto my-2">
-          <table className="w-full text-[12px] font-mono border-collapse">
-            <tbody>
-              <tr>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  #
-                </th>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  Red
-                </th>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  Cuando activar
-                </th>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  1
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Sanitaria
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Siempre — obligatoria
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  2
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Aguas lluvias
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Cuando hay cubierta
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  4
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Agua fría
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Siempre — suministro
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  5
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Agua caliente
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Cuando hay calentador
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  6
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Red de Gas
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Cuando hay aparatos a gas
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  7
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Equipo presión
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Presión de red insuficiente
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  8
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Bomba AR
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Aguas residuales en sótano
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  9
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Recirculación AC
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  L de AC &gt; 15 m
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  10
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Contra incendio
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Según NSR-10 Título J
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <Tabla
+          head={['#', 'Red', 'Cuando activar']}
+          rows={[
+            ['1', 'Sanitaria', 'Siempre — obligatoria'],
+            ['2', 'Aguas lluvias', 'Cuando hay cubierta'],
+            ['4', 'Agua fría', 'Siempre — suministro'],
+            ['5', 'Agua caliente', 'Cuando hay calentador'],
+            ['6', 'Red de Gas', 'Cuando hay aparatos a gas'],
+            ['7', 'Equipo presión', 'Presión de red insuficiente'],
+            ['8', 'Bomba AR', 'Aguas residuales en sótano'],
+            ['9', 'Recirculación AC', 'L de AC > 15 m'],
+            ['10', 'Contra incendio', 'Según NSR-10 Título J'],
+          ]}
+        />
       ),
     },
     {
       title: 'Flujo de trabajo completo',
       body: (
-        <div className="overflow-x-auto my-2">
-          <table className="w-full text-[12px] font-mono border-collapse">
-            <tbody>
-              <tr>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  #
-                </th>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  Tarea
-                </th>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  1
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Datos del proyecto (Sidebar)
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  2
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Generar niveles
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  3
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Seleccionar materiales
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  4
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Activar redes
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  5
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Ajustar aparatos (UC, UD, Q gas)
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  6
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Ingresar cubierta (áreas, I)
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  7
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Calcular red de gas (Renouard)
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  8
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Seleccionar calentador
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  9
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Verificar validación
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  10
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Verificar validación final
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <Tabla
+          head={['#', 'Tarea']}
+          rows={[
+            ['1', 'Datos del proyecto (Sidebar)'],
+            ['2', 'Generar niveles'],
+            ['3', 'Seleccionar materiales'],
+            ['4', 'Activar redes'],
+            ['5', 'Ajustar aparatos (UC, UD, Q gas)'],
+            ['6', 'Ingresar cubierta (áreas, I)'],
+            ['7', 'Calcular red de gas (Renouard)'],
+            ['8', 'Seleccionar calentador'],
+            ['9', 'Verificar validación'],
+            ['10', 'Verificar validación final'],
+          ]}
+        />
       ),
     },
     {
       title: 'Normatividad aplicada',
       body: (
-        <div className="overflow-x-auto my-2">
-          <table className="w-full text-[12px] font-mono border-collapse">
-            <tbody>
-              <tr>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  Norma
-                </th>
-                <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-                  Aplicación
-                </th>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  NTC 1500:2020
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  UC, UD, presiones, velocidades, diámetros mínimos
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  RAS 2000
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Dotaciones, Manning, método racional
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  NTC 3728
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Renouard, caudales gas, factor fs
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  NSR-10 Título J
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Protección contra incendio
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  NFPA 13:2022
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  Rociadores, densidad, área operación
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  NTC 382
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  PVC a presión, RDE
-                </td>
-              </tr>
-              <tr>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  NTC 1087
-                </td>
-                <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-                  PVC sanitario y lluvias
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <Tabla
+          head={['Norma', 'Aplicación']}
+          rows={[
+            [
+              <NormaLink nombre="NTC 1500">NTC 1500:2020</NormaLink>,
+              'UC, UD, presiones, velocidades, diámetros mínimos',
+            ],
+            [
+              <NormaLink nombre="RAS 2000">RAS 2000</NormaLink>,
+              'Dotaciones, Manning, método racional',
+            ],
+            [
+              <NormaLink nombre="NTC 3728">NTC 3728</NormaLink>,
+              'Renouard, caudales gas, factor fs',
+            ],
+            [<NormaLink nombre="NSR-10">NSR-10 Título J</NormaLink>, 'Protección contra incendio'],
+            [
+              <NormaLink nombre="NFPA 13">NFPA 13:2022</NormaLink>,
+              'Rociadores, densidad, área operación',
+            ],
+            [
+              <NormaLink nombre="NFPA 20">NFPA 20</NormaLink>,
+              'Instalación de bombas contra incendio (cuarto de bombas)',
+            ],
+            [
+              <NormaLink nombre="NTC 3631">NTC 3631</NormaLink>,
+              'Aparatos sanitarios — requisitos y ensayos',
+            ],
+            [
+              <NormaLink nombre="RETIE">RETIE</NormaLink>,
+              'Instalaciones eléctricas (tableros, bombas, polo a tierra)',
+            ],
+            [<NormaLink nombre="NTC 382">NTC 382</NormaLink>, 'PVC a presión, RDE'],
+            [<NormaLink nombre="NTC 1087">NTC 1087</NormaLink>, 'PVC sanitario y lluvias'],
+          ]}
+          foot={
+            <div className="text-[11px] text-on-surface-variant mt-2">
+              Cada norma enlaza a su fuente oficial (MinVivienda, ICONTEC, NFPA, MinEnergía). Links
+              verificados el 2026-09-30.
+            </div>
+          }
+        />
       ),
     },
   ],

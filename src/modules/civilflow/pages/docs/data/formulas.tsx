@@ -1,32 +1,367 @@
+import { NormaLink } from '../../../components/shared/normasLinks';
+import { Tabla, donde, fx } from './ui';
+
 const formulas = {
-    name: 'Fórmulas del sistema',
-    icon: 'calculate',
-    color: '#F5A623',
-    sections: [
-      {
-        title: 'Número de Reynolds',
-        body: (
-          <div className="space-y-3">
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              Re = (V · D) / &nu;
-            </div>
-            <div><span className="text-on-surface-variant">Donde:</span></div>
-            <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-              <span className="font-semibold text-primary">Re</span><span>número de Reynolds (adimensional)</span>
-              <span className="font-semibold text-primary">V</span><span>velocidad del fluido (m/s)</span>
-              <span className="font-semibold text-primary">D</span><span>diámetro interno de la tubería (m)</span>
-              <span className="font-semibold text-primary">&nu;</span><span>viscosidad cinemática del agua (m²/s)</span>
-            </div>
-            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
-              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Tipo de flujo</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Rango Re</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Característica</th></tr>
-              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Laminar</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Re &lt; 2300</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Líneas paralelas</td></tr>
-              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Transición</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2300 &lt; Re &lt; 4000</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Inestable</td></tr>
-              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Turbulento</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Re &gt; 4000</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Mezcla intensa</td></tr>
-            </tbody></table></div>
+  name: 'Fórmulas del sistema',
+  desc: 'Catálogo completo de las fórmulas que CivilCardex aplica en cada cálculo, con sus variables, límites y norma de origen.',
+  icon: 'calculate',
+  color: '#F5A623',
+  sections: [
+    {
+      title: 'Reynolds y régimen de flujo (presurizado)',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Clasifica el flujo presurizado de agua fría y caliente: Hazen-Williams solo es aplicable
+            en régimen turbulento:
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            Re = (V · D<sub>h</sub>) / &nu;
           </div>
-        ),
-      },
-    ],
+          <div>
+            <span className="text-on-surface-variant">Donde:</span>
+          </div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
+            <span className="font-semibold text-primary">V</span>
+            <span>velocidad media (m/s)</span>
+            <span className="font-semibold text-primary">
+              D<sub>h</sub>
+            </span>
+            <span>
+              diámetro hidráulico (m): el D interior en tubería circular; 4·A/P en un canal
+              rectangular
+            </span>
+            <span className="font-semibold text-primary">&nu;</span>
+            <span>viscosidad cinemática (m²/s) — agua 20 °C ≈ 1.0×10⁻⁶; a 60 °C ≈ 0.47×10⁻⁶</span>
+          </div>
+          <Tabla
+            head={['Re', 'Régimen', 'Característica']}
+            rows={[
+              ['Re < 2.300', 'Laminar', 'Líneas paralelas'],
+              ['2.300 – 4.000', 'Transición', 'Inestable'],
+              ['Re > 4.000', 'Turbulento', 'Hazen-Williams aplica'],
+            ]}
+          />
+          <p className="text-[13px]">
+            Ejemplo: V = 1.8 m/s en un tubo de 20 mm con agua a 20 °C → Re = 1.8·0.02/1e-6 = 36.000
+            → turbulento.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Froude y régimen (flujo en parcialmente lleno)',
+      body: (
+        <div className="space-y-3">
+          <p>
+            El que usan las tablas sanitarias y de lluvias para clasificar el flujo de cada tramo
+            según su tirante:
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            Fr = V / &radic;(g · y<sub>h</sub>)
+          </div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
+            <span className="font-semibold text-primary">V</span>
+            <span>velocidad del flujo (m/s)</span>
+            <span className="font-semibold text-primary">
+              y<sub>h</sub>
+            </span>
+            <span>tirante hidráulico (m)</span>
+            <span className="font-semibold text-primary">g</span>
+            <span>gravedad = 9.81 m/s²</span>
+          </div>
+          <Tabla
+            head={['Fr', 'Régimen', 'Interpretación']}
+            rows={[
+              ['Fr < 1', 'Subcrítico', 'Gravedad domina: flujo lento y profundo'],
+              ['Fr ≈ 1', 'Crítico', 'Estado límite (no estable para diseño)'],
+              ['Fr > 1', 'Supercrítico', 'Flujo rápido y somero — el deseable en sanitarias'],
+            ]}
+          />
+          <p className="text-[13px]">
+            El tirante normal (Y<sub>n</sub>) y crítico (Y<sub>c</sub>) de cada tramo se resuelven
+            para la sección circular parcialmente llena; la app exige además Y<sub>n</sub>/D ≤ 0.75
+            (reserva de aire, <NormaLink nombre="NTC 1500">NTC 1500</NormaLink>).
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Fuerza tractiva (autolimpieza)',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Esfuerzo cortante sobre el fondo que arrastra los sólidos — verificación obligatoria de
+            las tablas sanitarias:
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            &tau; = &rho; · g · R<sub>h</sub> · S ≈ 1000 · R<sub>h</sub> · S &nbsp;&nbsp;[kg/m²]
+          </div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
+            <span className="font-semibold text-primary">
+              R<sub>h</sub>
+            </span>
+            <span>radio hidráulico de la sección parcialmente llena (m)</span>
+            <span className="font-semibold text-primary">S</span>
+            <span>pendiente (m/m)</span>
+          </div>
+          {fx('Criterio: τ ≥ 0.15 kg/m² → O.K.', true)}
+          <p className="text-[13px]">
+            Si no cumple: aumenta la pendiente del tramo. Es la razón de las pendientes mínimas por
+            diámetro de <NormaLink nombre="NTC 1500">NTC 1500</NormaLink>.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Curva de Hunter — caudal probable (agua fría y caliente)',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Convierte las unidades de consumo (UC) acumuladas de un tramo en el caudal de diseño,
+            admitiendo que no todos los aparatos descargan a la vez:
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            K = 1 &nbsp;&nbsp;(N = 1 descarga)
+            <br />
+            K = 1 / &radic;(N − 1) &nbsp;&nbsp;(N &gt; 1)
+            <br />
+            <br />q<sub>UC</sub> = 0.1163 · UC<sup>0.6875</sup> &nbsp;&nbsp;(UC &lt; 240) [L/s]
+            <br />q<sub>UC</sub> = 0.074 · UC<sup>0.7504</sup> &nbsp;&nbsp;(UC ≥ 240) [L/s]
+            <br />
+            <br />Q<sub>diseño</sub> = K · q<sub>UC</sub>
+          </div>
+          {donde({
+            N: 'número de descargas simultáneas del tramo (columna "No. de descargas")',
+            UC: 'unidades de consumo acumuladas (propias + otros ramales)',
+          })}
+          <p className="text-[13px]">
+            Ejemplo: tramo con 240 UC y 6 descargas → K = 1/&radic;5 = 0.447; q = 0.1163·240
+            <sup>0.6875</sup> ≈ 7.2 L/s → Q ≈ 3.2 L/s. Cambiar el diámetro NO cambia Q: la curva
+            solo depende de UC.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Hazen-Williams — pérdidas de carga (presurizado)',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Pérdidas de fricción de agua fría, caliente, acometida y bombeo (agua, flujo turbulento,
+            materiales de pared lisa):
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            h<sub>f</sub> = 10.67 · L · Q<sup>1.852</sup> / (C<sup>1.852</sup> · D<sup>4.87</sup>)
+            &nbsp;&nbsp;[m]
+          </div>
+          {donde({
+            Q: 'caudal (m³/s)',
+            D: 'diámetro INTERIOR (m) — por eso importa la serie RDE/schedule del material',
+            L: 'longitud del tramo: horizontal + vertical + longitud equivalente de accesorios (m)',
+            C: 'coeficiente del material (PVC ≈ 140–150, cobre ≈ 130, acero ≈ 100)',
+          })}
+          <p className="text-[13px]">
+            La tabla de diseño muestra el resultado como pérdida en metros y en % de la presión
+            disponible. Presión final del tramo: P<sub>fin</sub> = P<sub>ini</sub> − h<sub>f</sub> ±
+            ΔZ (cambio de cota).
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Velocidad — límites por red',
+      body: (
+        <div className="space-y-3">
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            V = Q / A = Q / ((π/4) · D<sub>i</sub>²)
+          </div>
+          <Tabla
+            head={['Red', 'Límite (m/s)', 'Por qué']}
+            rows={[
+              [
+                'Agua fría / caliente',
+                '0.45 – 4.0',
+                'Mín evita sedimentación; máx ruido y golpe de ariete',
+              ],
+              ['Sanitaria / lluvias', '≥ 0.45', 'Autolimpieza — complementa la fuerza tractiva'],
+              ['Gas', '≤ 10', 'Límite aplicado por la tabla de gas'],
+            ]}
+          />
+        </div>
+      ),
+    },
+    {
+      title: 'Renouard — red de gas',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Pérdida de presión por tramo y velocidad del flujo, como las aplica la tabla de diseño
+            de gas:
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            ΔP = 23200 · L · q<sup>1.82</sup> · DR<sup>0.82</sup> / D<sub>i</sub>
+            <sup>4.82</sup>
+            <br />V = (354 · q · 101.325) / (D<sub>i</sub>² · P)
+          </div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
+            <span className="font-semibold text-primary">q</span>
+            <span>caudal de gas del tramo (m³/h) — por simultaneidad de aparatos</span>
+            <span className="font-semibold text-primary">L</span>
+            <span>longitud equivalente del tramo (m)</span>
+            <span className="font-semibold text-primary">
+              D<sub>i</sub>
+            </span>
+            <span>diámetro interior (mm)</span>
+            <span className="font-semibold text-primary">DR</span>
+            <span>densidad relativa del gas (natural ≈ 0.6, GLP ≈ 1.5)</span>
+            <span className="font-semibold text-primary">P</span>
+            <span>presión del punto (kPa absoluta)</span>
+          </div>
+          <p className="text-[13px]">
+            El caudal de cada tramo suma los consumos (
+            <NormaLink nombre="NTC 3728">NTC 3728</NormaLink>) con el factor de simultaneidad por
+            tipos de aparato (mínimo 2.7 m³/h). La presión se consume aguas abajo: P<sub>fin</sub>{' '}
+            de un tramo = P<sub>ini</sub> del siguiente. Verificación: V ≤ 10 m/s.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Potencia y NPSH de bombas',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Cadena de potencia del cálculo de bombas (bomba aguas residuales y equipo de presión):
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            Q<sub>bombeo</sub> = 1.25 · Q<sub>diseño</sub> &nbsp;&nbsp;(reserva 25%)
+            <br />H<sub>m</sub> = H<sub>geom</sub> + h<sub>f,succión</sub> + h<sub>f,descarga</sub>
+            <br />P<sub>hid</sub> = &rho; · g · Q · H<sub>m</sub> &nbsp;&nbsp;[W]
+            <br />P<sub>eje</sub> = P<sub>hid</sub> / &eta;<sub>bomba</sub>
+            <br />
+            HP = W / 746
+          </div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
+            <span className="font-semibold text-primary">
+              H<sub>m</sub>
+            </span>
+            <span>altura manométrica total (m.c.a.)</span>
+            <span className="font-semibold text-primary">
+              &eta;<sub>bomba</sub>
+            </span>
+            <span>rendimiento según la curva del fabricante</span>
+            <span className="font-semibold text-primary">
+              P<sub>com</sub>
+            </span>
+            <span>
+              potencia comercial: se selecciona el motor comercial inmediatamente superior
+            </span>
+          </div>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            NPSH<sub>disp</sub> = P<sub>atm</sub>/&rho;g + h<sub>cisterna</sub> − h<sub>vap</sub>
+            /&rho;g − h<sub>f,suc</sub> &gt; NPSH<sub>req</sub>
+          </div>
+          <p className="text-[13px]">
+            Si el NPSH disponible no cubre el requerido, la bomba cavita: bájala respecto al nivel
+            de agua o reduce las pérdidas de succión. Caudal nominal para catálogo: Q
+            <sub>bombeo</sub> × 15.8503 = GPM.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Manning y sección circular parcialmente llena',
+      body: (
+        <div className="space-y-3">
+          <p>Base del diseño sanitario, de lluvias y de canales (flujo por gravedad):</p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            Q = (1/n) · A · R<sub>h</sub>
+            <sup>2/3</sup> · &radic;S
+            <br />R<sub>h</sub> = A / P<sub>mojado</sub>
+            <br />
+            <br />D = ((Q · n) / (1.754 · &radic;S))<sup>3/8</sup> × 1000 &nbsp;&nbsp;[mm]
+            &nbsp;&nbsp;(círculo lleno, despejado)
+          </div>
+          <p className="text-[13px]">
+            Para la sección parcialmente llena la app resuelve la geometría no lineal del círculo
+            (ángulo α del arco mojado, A y P<sub>mojado</sub> en función del tirante): dado el
+            diámetro y la pendiente, obtiene la razón de llenado r = Q/Q<sub>lleno</sub> y de ella
+            el tirante h/D, el R<sub>h</sub> y la velocidad V del tramo. El diámetro propuesto
+            "cumple" cuando h/D ≤ 0.75 y la velocidad cae en el rango permitido.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Vertedero y orificio — embocadura del canal',
+      body: (
+        <div className="space-y-3">
+          <p>
+            Altura de agua necesaria en el canal para que el caudal entre al bajante (chequeo de
+            canales de cubierta):
+          </p>
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            H<sub>vert</sub> = ( Q / (C<sub>w</sub> · π · D) )<sup>2/3</sup> &nbsp;&nbsp;C
+            <sub>w</sub> = 1.7
+            <br />H<sub>orif</sub> = ( Q / (C<sub>d</sub> · π · D²/4) )² / (2g) &nbsp;&nbsp;C
+            <sub>d</sub> = 0.6
+            <br />H<sub>req</sub> = máx(H<sub>vert</sub>, H<sub>orif</sub>) ≤ h<sub>útil</sub>
+          </div>
+          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
+            <span className="font-semibold text-primary">D</span>
+            <span>diámetro de la embocadura/bajante (m)</span>
+            <span className="font-semibold text-primary">
+              h<sub>útil</sub>
+            </span>
+            <span>altura útil del canal antes del rebalse</span>
+          </div>
+          <p className="text-[13px]">
+            El vertedero describe la entrada perimetral con lámina libre; el orificio, la embocadura
+            ahogada de arista viva. Gobierna el peor de los dos.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Método racional y Wyly-Eaton (lluvias)',
+      body: (
+        <div className="space-y-3">
+          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
+            Q = C · I · A / 3600 &nbsp;&nbsp;[L/s]
+            <br />Q<sub>cap</sub> = 27.8 · (0.009/n) · r<sup>5/3</sup> · D<sup>8/3</sup> · 0.0631
+            &nbsp;&nbsp;[L/s]
+          </div>
+          {donde({
+            C: 'coeficiente de escorrentía (por material de cubierta, catálogo maestro)',
+            I: 'intensidad de lluvia de diseño (mm/h)',
+            A: 'área aportante acumulada (m²) — incluye 50% de los muros verticales que descargan a la cubierta',
+            r: 'razón de llenado del bajante (1/4 o 7/24)',
+            'D, n': 'diámetro (pulg) y Manning del material',
+          })}
+          <p className="text-[13px]">
+            Detalle de Wyly-Eaton en la categoría <strong>Aguas lluvias</strong>. Verificación: Q/Q
+            <sub>cap</sub> ≤ 100%.
+          </p>
+        </div>
+      ),
+    },
+    {
+      title: 'Conversión de unidades usadas por el sistema',
+      body: (
+        <Tabla
+          head={['Conversión', 'Factor']}
+          rows={[
+            ['L/s → gpm', '× 0.0630902'],
+            ['m³/s → gpm (bombas)', '× 15850.3'],
+            ['Watt → HP', '÷ 746'],
+            ['pulg → mm', '× 25.4'],
+            ['mm/h → m/s (lluvia)', '÷ 3.6×10⁶'],
+          ]}
+        />
+      ),
+    },
+  ],
 };
 
 export default formulas;

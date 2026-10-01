@@ -8,5 +8,18 @@ import equipos from './equipos';
 import tablas from './tablas';
 import formulas from './formulas';
 import manual from './manual';
+import manager from './manager';
 
-export const docData = { hidraulica, sanitarias, lluvias, agua_fria, agua_caliente, gas, equipos, tablas, formulas, manual };
+export const docData = {
+  hidraulica,
+  sanitarias,
+  lluvias,
+  agua_fria,
+  agua_caliente,
+  gas,
+  equipos,
+  tablas,
+  formulas,
+  manual,
+  manager,
+};
