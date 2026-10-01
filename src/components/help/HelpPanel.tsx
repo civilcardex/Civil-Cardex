@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { AyudaContexto } from './ayudaContext';
-import { GUIA, iconoDeGrupo, type GuiaGrupo } from './ayudaGuide';
+import type { AyudaContexto } from './helpContext';
+import { GUIA, iconoDeGrupo, type GuiaGrupo } from './helpGuide';
 
 // Panel de ayuda IN-PLACE (orig. usuario: el botón AYUDA de la navbar NO redirige a otra
 // página): modal con portal — mismo patrón que ModalProtocolo (backdrop, Escape, foco
@@ -45,16 +45,6 @@ interface Props {
   onClose: () => void;
 }
 
-/** Nombres cortos de las 5 sub-vistas de isometría (espejo de SUBTABS en IsometriaTab;
- *  duplicados aquí para no crear dependencia components→modules). */
-const ISO_SUBS = [
-  'Redes',
-  'Aparatos',
-  'Bomba red contra incendio',
-  'Equipo de presión',
-  'Red contra incendio',
-];
-
 /** Envuelve atajos (`(S)`, `Ctrl+Z`) en chips <kbd> — el texto guía trae varios. */
 function conKbd(texto: string): React.JSX.Element {
   const partes = texto.split(/(\([A-Za-z]\)|Ctrl\+[A-Za-z])/g);
@@ -85,6 +75,43 @@ function conKbd(texto: string): React.JSX.Element {
         ),
       )}
     </>
+  );
+}
+
+/** Fila nombre → descripción de un ítem de guía (compartida por acordeón y lista plana). */
+function FilaItem({ it }: { it: { nombre: string; desc: string } }): React.JSX.Element {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(130px, 40%) 1fr',
+        gap: 10,
+        alignItems: 'start',
+        padding: '5px 6px',
+        borderRadius: 6,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,.025)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: 'var(--txt)',
+          fontFamily: 'var(--mono, monospace)',
+          lineHeight: 1.4,
+        }}
+      >
+        {conKbd(it.nombre)}
+      </span>
+      <span style={{ fontSize: 13, color: 'var(--txt2)', lineHeight: 1.55 }}>
+        {conKbd(it.desc)}
+      </span>
+    </div>
   );
 }
 
@@ -128,13 +155,12 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
 
   const toggle = (key: string) => setOpen((p) => ({ ...p, [key]: !p[key] }));
 
-  // Guía detallada de la pestaña (inventario funcional real de la UI), primer grupo abierto.
-  // En isometría se combinan las 5 sub-guías de una vez (pedido usuario: no página por página).
+  // Guía detallada de la pestaña (inventario funcional real de la UI).
+  // En isometría se combinan las 5 sub-guías y se muestran como LISTA PLANA (orig. usuario:
+  // quitar los títulos «Redes/Aparatos/…» que duplican el nombre de la página).
   const esIso = ctx.key.startsWith('cf:iso:');
-  const guia: Array<GuiaGrupo & { sub?: string }> = esIso
-    ? [1, 2, 3, 4, 5].flatMap((sub) =>
-        (GUIA[`cf:iso:${sub}`] || []).map((g) => ({ ...g, sub: ISO_SUBS[sub - 1] })),
-      )
+  const guia: GuiaGrupo[] = esIso
+    ? [1, 2, 3, 4, 5].flatMap((sub) => GUIA[`cf:iso:${sub}`] || [])
     : GUIA[ctx.key] || [];
 
   return (
@@ -247,136 +273,104 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
             </div>
           )}
           {guia.map((g) => {
-            const key = `guia:${g.sub || ''}:${g.titulo}`;
+            const key = `guia:${g.titulo}`;
             const isOpen = open[key] ?? false;
-            return (
-              <React.Fragment key={key}>
-                {g.sub && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: 'Geist, monospace',
-                      color: 'var(--txt2)',
-                      textTransform: 'uppercase',
-                      letterSpacing: 1,
-                      margin: '10px 2px 6px',
-                    }}
-                  >
-                    {g.sub}
-                  </div>
-                )}
+            // Grupo SIN título → lista plana sin acordeón (isometría: sin «Redes/Aparatos/…»).
+            if (!g.titulo) {
+              return (
                 <div
+                  key={key}
                   style={{
                     border: '1px solid var(--line)',
-                    borderLeft: `3px solid ${isOpen ? 'var(--acc2)' : 'var(--line)'}`,
                     borderRadius: 'var(--r2, 8px)',
                     background: 'var(--bg2)',
-                    overflow: 'hidden',
+                    padding: '6px 10px',
                     marginBottom: 8,
-                    transition: 'border-color .15s',
+                    display: 'grid',
+                    gap: 4,
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggle(key)}
-                    aria-expanded={isOpen}
+                  {g.items.map((it) => (
+                    <FilaItem key={it.nombre} it={it} />
+                  ))}
+                </div>
+              );
+            }
+            return (
+              <div
+                key={key}
+                style={{
+                  border: '1px solid var(--line)',
+                  borderLeft: `3px solid ${isOpen ? 'var(--acc2)' : 'var(--line)'}`,
+                  borderRadius: 'var(--r2, 8px)',
+                  background: 'var(--bg2)',
+                  overflow: 'hidden',
+                  marginBottom: 8,
+                  transition: 'border-color .15s',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggle(key)}
+                  aria-expanded={isOpen}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '10px 14px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined"
                     style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '10px 14px',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textAlign: 'left',
+                      fontSize: 18,
+                      color: 'var(--acc2)',
+                      transform: isOpen ? 'rotate(90deg)' : 'none',
+                      transition: 'transform .15s',
                     }}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="material-symbols-outlined"
-                      style={{
-                        fontSize: 18,
-                        color: 'var(--acc2)',
-                        transform: isOpen ? 'rotate(90deg)' : 'none',
-                        transition: 'transform .15s',
-                      }}
-                    >
-                      chevron_right
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      className="material-symbols-outlined"
-                      style={{ fontSize: 20, color: isOpen ? 'var(--acc2)' : 'var(--txt3)' }}
-                    >
-                      {iconoDeGrupo(g.titulo)}
-                    </span>
-                    <span
-                      style={{
-                        flex: 1,
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: 'var(--txt)',
-                        fontFamily: 'var(--body, sans-serif)',
-                      }}
-                    >
-                      {g.titulo}
-                    </span>
-                  </button>
-                  {isOpen && (
-                    <div
-                      style={{
-                        padding: '4px 14px 12px',
-                        borderTop: '1px solid var(--line)',
-                        display: 'grid',
-                        gap: 4,
-                      }}
-                    >
-                      {g.items.map((it) => (
-                        <div
-                          key={it.nombre}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'minmax(130px, 40%) 1fr',
-                            gap: 10,
-                            alignItems: 'start',
-                            padding: '5px 6px',
-                            borderRadius: 6,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,.025)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: 'var(--txt)',
-                              fontFamily: 'var(--mono, monospace)',
-                              lineHeight: 1.4,
-                            }}
-                          >
-                            {conKbd(it.nombre)}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 13,
-                              color: 'var(--txt2)',
-                              lineHeight: 1.55,
-                            }}
-                          >
-                            {conKbd(it.desc)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </React.Fragment>
+                    chevron_right
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20, color: isOpen ? 'var(--acc2)' : 'var(--txt3)' }}
+                  >
+                    {iconoDeGrupo(g.titulo)}
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: 'var(--txt)',
+                      fontFamily: 'var(--body, sans-serif)',
+                    }}
+                  >
+                    {g.titulo}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div
+                    style={{
+                      padding: '4px 14px 12px',
+                      borderTop: '1px solid var(--line)',
+                      display: 'grid',
+                      gap: 4,
+                    }}
+                  >
+                    {g.items.map((it) => (
+                      <FilaItem key={it.nombre} it={it} />
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
           {guia.length === 0 && (

@@ -18,9 +18,12 @@ export type GUIA_TYPE = Record<string, GuiaGrupo[]>;
 /** Icono material por grupo de ayuda (búsqueda por palabra en el título; primer match manda).
  *  AyudaPanel lo muestra junto al chevron — sin esto el modal se veía plano. */
 const ICONOS_POR_TITULO: Array<[string, string]> = [
+  // Primero: matchea antes que 'panel derecho' — icono propio del grupo "Panel derecho por elemento".
+  ['por elemento', 'category'],
   ['herramienta', 'construction'],
   ['panel derecho', 'tune'],
   ['menú contextual', 'mouse'],
+  ['redes', 'layers'],
   ['redes activa', 'layers'],
   ['barra superior', 'web_asset'],
   ['calibra', 'straighten'],
@@ -381,16 +384,49 @@ export const GUIA: GUIA_TYPE = {
           desc: 'Duplica el trazado de otro piso al actual: elige plano origen, redes y tipos de elemento. Pregunta qué hacer con los bajantes fantasma.',
         },
         {
-          nombre: 'Datos del tramo (TramoEditor)',
-          desc: 'Editor del elemento seleccionado: etiqueta, material, diámetro (con validación), pendiente %, códigos de bajante, asociaciones y datos del canal. El botón ↻ rota la etiqueta.',
+          nombre: 'Aparatos (acordeón)',
+          desc: 'Contadores +/− por aparato del ELEMENTO seleccionado: calcula UC/UD al instante y dibuja los símbolos. Sin selección dice "Selecciona un ramal/bajante"; con selección, "Asignado a <tramo>".',
         },
         {
-          nombre: 'Aparatos',
-          desc: 'Contadores +/− por aparato del ramal seleccionado: calcula UC/UD al instante y dibuja los símbolos. También accesorios (codos, sifones).',
+          nombre: 'Accesorios (acordeón)',
+          desc: 'Codos y accesorios por diámetro para AF/AC, y accesorios de gas, según el tramo seleccionado.',
         },
         {
           nombre: 'Elementos dibujados',
           desc: 'Lista de los elementos de la red activa; clic para localizarlos en el plano.',
+        },
+        {
+          nombre: 'Botón ↻ grados',
+          desc: 'Rota la etiqueta del elemento seleccionado entre 0/45/90/−45/−90 grados donde el editor lo permite.',
+        },
+      ],
+    },
+    {
+      titulo: 'Panel derecho por elemento',
+      items: [
+        {
+          nombre: 'Ramal / Tributario',
+          desc: 'Etiqueta del tramo, nodo inicial/final (— inicial — / — final —), material, diámetro con validación ("no permitido" si viola la regla de la red), pendiente % (san/ll), ΔZ y descargas simultáneas. Pie con resumen L=…m · n pts · tipo.',
+        },
+        {
+          nombre: 'Bajante / Montante / Caja',
+          desc: 'Código editable del glifo y sus asociaciones entre pisos: origen (piso superior), destino y área drenada. Diámetro, dirección y llenado R se cambian desde el menú contextual.',
+        },
+        {
+          nombre: 'Contador',
+          desc: 'Datos del contador de agua fría o gas conectado al trazado; sus campos alimentan la red aguas abajo.',
+        },
+        {
+          nombre: 'Calentador',
+          desc: 'Datos del calentador de AC (capacidad/tipo): fija la presión de entrada de toda la red de agua caliente.',
+        },
+        {
+          nombre: 'Canal',
+          desc: 'Base, altura, longitud (cm) y pendiente % (0–15, con alerta fuera de rango) en una sola fila; base/longitud se normalizan a base-corta al escribir. Abajo, "Ramales del canal": por cada ramal interior, el desplegable elige su bajante de destino.',
+        },
+        {
+          nombre: 'Área / Texto',
+          desc: 'Etiqueta del área de drenaje (alimenta el método racional) o contenido de la anotación libre.',
         },
       ],
     },
@@ -399,19 +435,27 @@ export const GUIA: GUIA_TYPE = {
       items: [
         {
           nombre: 'Sobre un ramal',
-          desc: 'Etiqueta, material, diámetro, dirección de flujo (mueve las UC con modal), bloquear movimiento, accesorio en el cuerpo, cajas/bajantes asociados y qué etiquetas mostrar.',
+          desc: 'Etiqueta, material, diámetro, dirección de flujo (con modal para decidir a qué ramal van las UC), bloquear movimiento, asignar accesorio en el cuerpo, convertir tributario↔ramal principal, segmento libre de la tee, bajantes y cajas asociados, y qué etiquetas mostrar (nombre/guía/dirección/material/longitud).',
         },
         {
-          nombre: 'Sobre un bajante',
-          desc: 'Origen y destino (piso), área drenada, diámetro, dirección, razón de llenado R, unidades de descarga y asociar bomba del piso inferior.',
+          nombre: 'Sobre un bajante o montante',
+          desc: 'Origen y destino (piso), área drenada, diámetro, dirección de flujo, razón de llenado R, unidades de descarga, cajas asociadas y asociar/desasociar la bomba del piso inferior.',
         },
         {
-          nombre: 'Sobre una guía',
-          desc: 'Crear ramal/tributario desde la guía (con recorte del trazo) y Ajustar a 45°/90° de la red.',
+          nombre: 'Sobre un canal',
+          desc: 'Datos del canal (base/altura/longitud/pendiente) y sus ramales con el bajante asociado de cada uno.',
         },
         {
-          nombre: 'Sobre canal / contador / área',
-          desc: 'Ramales del canal y su bajante asociado; datos del contador o calentador; etiqueta del área.',
+          nombre: 'Sobre un contador o calentador',
+          desc: 'Sus datos específicos y el tramo al que alimentan.',
+        },
+        {
+          nombre: 'Sobre un área o texto',
+          desc: 'Etiqueta/contenido y presentación.',
+        },
+        {
+          nombre: 'Sobre una línea guía',
+          desc: 'Crear ramal o tributario(s) desde la guía (con ajuste y recorte del trazo cruzado), Ajustar a 45°/90° de la red y eliminar la guía.',
         },
       ],
     },
@@ -595,7 +639,7 @@ export const GUIA: GUIA_TYPE = {
   // ── Isometría (sub-pestañas) ──
   'cf:iso:1': [
     {
-      titulo: 'Isometría general',
+      titulo: 'Redes',
       items: [
         {
           nombre: 'Vista isométrica',
@@ -610,7 +654,7 @@ export const GUIA: GUIA_TYPE = {
   ],
   'cf:iso:2': [
     {
-      titulo: 'Detalle de aparatos 3D',
+      titulo: 'Aparatos',
       items: [
         {
           nombre: 'Desplegable "Aparato:"',
@@ -625,7 +669,7 @@ export const GUIA: GUIA_TYPE = {
   ],
   'cf:iso:3': [
     {
-      titulo: 'Cuarto de bombas RCI',
+      titulo: 'Cuarto bomba red contra incendio',
       items: [
         {
           nombre: 'Desplegable "Componente:"',
@@ -644,7 +688,7 @@ export const GUIA: GUIA_TYPE = {
   ],
   'cf:iso:4': [
     {
-      titulo: 'Equipo de presión constante 3D',
+      titulo: 'Equipo de presión constante',
       items: [
         {
           nombre: 'Desplegable "Componente:"',
@@ -659,7 +703,7 @@ export const GUIA: GUIA_TYPE = {
   ],
   'cf:iso:5': [
     {
-      titulo: 'Red contra incendio 3D',
+      titulo: 'Red contra incendio',
       items: [
         {
           nombre: 'Desplegable "Componente:"',
