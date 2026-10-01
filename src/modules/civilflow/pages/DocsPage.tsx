@@ -24,20 +24,22 @@ const domId = (key: string): string =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-');
 
-/** Agrupación de categorías por módulo (orig. usuario: la doc se navega por módulo). */
+/** Agrupación de categorías por módulo (orig. usuario: la doc se navega por módulo).
+ *  Las claves SON las de docData (data/index.ts) — aunque el archivo fuente se llame
+ *  hydraulics.tsx etc., la clave exportada sigue en español. */
 const MODULOS: { label: string; nota: string; cats: string[] }[] = [
   {
     label: 'Civil Flow',
     nota: 'Diseño hidrosanitario',
     cats: [
-      'hydraulics',
-      'sanitary',
-      'rainwater',
-      'coldWater',
-      'hotWater',
+      'hidraulica',
+      'sanitarias',
+      'lluvias',
+      'agua_fria',
+      'agua_caliente',
       'gas',
-      'equipment',
-      'tables',
+      'equipos',
+      'tablas',
       'formulas',
       'manual',
     ],
@@ -54,7 +56,7 @@ function DocsPage() {
   // efecto ni setState-en-render).
   const [activeCat, setActiveCat] = useState(() => {
     const h = window.location.hash.replace('#', '');
-    return Object.keys(docData).includes(h) ? h : 'hydraulics';
+    return Object.keys(docData).includes(h) ? h : 'hidraulica';
   });
   const [search, setSearch] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
