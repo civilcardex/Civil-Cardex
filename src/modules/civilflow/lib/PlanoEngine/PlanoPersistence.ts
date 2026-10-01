@@ -1,7 +1,7 @@
 import { NETS, initNetCounts } from './PlanoState';
 import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts';
 import { propagarSanDiametroAguasAbajo } from './drawingFlow';
-import { direccionBajaPermitida } from './direccionReglas';
+import { direccionBajaPermitida } from './directionRules';
 import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './canalAssociation';
 import { cmToPlanePx } from './planoCoords';
 import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes';

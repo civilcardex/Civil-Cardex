@@ -1,7 +1,7 @@
 import { Suspense, lazy } from 'react';
 import PageNav from '../PageNav';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicData';
-import { lookupInterno, lookupInternoAC } from '../../utils/accesoriosUtils';
+import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
 import type { useWorkAreaState } from '../useWorkAreaState';
 
 const AccesoriosTable = lazy(() => import('../AccessoriesTable'));
@@ -9,18 +9,18 @@ const HeaterSelection = lazy(() => import('../HeaterSelection'));
 const CalculoUD = lazy(() => import('../FixtureUnitCalc'));
 const DisenosSanitarios = lazy(() => import('../SanitaryDesign'));
 const BajantesTable = lazy(() => import('../DownpipesTable'));
-const AccesoriosDiamPage = lazy(() => import('../AccesoriosDiamPage'));
+const AccesoriosDiamPage = lazy(() => import('../FittingsDiamPage'));
 const DisenoLluvias = lazy(() => import('../RainwaterDesign'));
 const ChequeoBajantesLluvias = lazy(() => import('../RainDownpipesCheck'));
 const ChequeoCanalesLluvias = lazy(() => import('../RainChannelsCheck'));
-const CalculoUC = lazy(() => import('../CalculoUC'));
+const CalculoUC = lazy(() => import('../CalcUC'));
 const WaterNetworkDesign = lazy(() => import('../WaterNetworkDesign'));
 const BombaARDesign = lazy(() => import('../BombaARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
 const RciCuartoBombasViewer = lazy(() => import('../rci3d'));
-const RciCuartoBombasReferencia = lazy(() => import('../RciCuartoBombasReferencia'));
+const RciCuartoBombasReferencia = lazy(() => import('../RciRoomBombasReference'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
@@ -56,20 +56,20 @@ const prefetchSan = (p: number) => {
   if (p === 1) import('../FixtureUnitCalc');
   else if (p === 2) import('../SanitaryDesign');
   else if (p === 3) import('../DownpipesTable');
-  else if (p === 4) import('../AccesoriosDiamPage');
+  else if (p === 4) import('../FittingsDiamPage');
 };
 const prefetchLl = (p: number) => {
   if (p === 1) import('../RainwaterDesign');
   else if (p === 2) import('../RainDownpipesCheck');
   else if (p === 3) import('../RainChannelsCheck');
-  else if (p === 4) import('../AccesoriosDiamPage');
+  else if (p === 4) import('../FittingsDiamPage');
 };
 const prefetchAfAc = (p: number) => {
-  if (p === 1) import('../CalculoUC');
+  if (p === 1) import('../CalcUC');
   else if (p === 2) import('../WaterNetworkDesign');
   else if (p === 3) import('../../pages/AcometidaPage');
   else if (p === 4) import('../AccessoriesTable');
-  else if (p === 5) import('../AccesoriosDiamPage');
+  else if (p === 5) import('../FittingsDiamPage');
 };
 const prefetchHeavy = () => {
   import('../BombaARDesign');

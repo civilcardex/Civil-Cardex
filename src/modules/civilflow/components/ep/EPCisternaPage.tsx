@@ -3,7 +3,7 @@ import Card from '../shared/Card';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton';
 import { LazyInp, Param, type EPData } from './EPShared';
-import { calcularCisterna } from './epCalculos';
+import { calcularCisterna } from './epCalcs';
 
 interface EPCisternaPageProps {
   ep: EPData;

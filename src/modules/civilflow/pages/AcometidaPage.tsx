@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { DIAMETROS_AF } from '../constants/hydraulicData';
-import { lookupInterno } from '../utils/accesoriosUtils';
+import { lookupInterno } from '../utils/fittingsUtils';
 
 const WaterNetworkDesign = React.lazy(() => import('../components/WaterNetworkDesign'));
 

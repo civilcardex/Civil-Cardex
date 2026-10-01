@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { dec } from '../../../utils/parseDecimal';
-import { calcularCisterna, type EpCisternaIn } from '../epCalculos';
+import { calcularCisterna, type EpCisternaIn } from '../epCalcs';
 
 // Comparación contra el Excel CIVILFLOW_EPC hojas "CÁLCULO EPC" + "CISTERNA"
 // con sus valores de ejemplo (modo cisterna). Fórmulas extraídas del dump OOXML.

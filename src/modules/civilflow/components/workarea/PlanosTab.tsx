@@ -15,7 +15,7 @@ import { REQ_ITEMS, pisoLbl } from '../../constants';
 
 import { PlanoConfigurator } from './PlanoConfigurator';
 import { origenDePlan } from '../../utils/crossFloorStorage';
-import { sanearAsociacionesTrasRecalibrar } from '../../utils/sanearAsociaciones';
+import { sanearAsociacionesTrasRecalibrar } from '../../utils/sanitizeAssociations';
 import {
   PlanosTab_S1,
   PlanosTab_S2,
@@ -36,7 +36,7 @@ import {
   PlanosTab_verBtn,
 } from './PlanosTab.styles';
 import type { useWorkAreaState } from '../useWorkAreaState';
-import ModalProtocolo from './ModalProtocolo';
+import ModalProtocolo from './ModalProtocol';
 import { PlanCropPanel } from './PlanCropPanel';
 import { devError } from '../../../../utils/devError';
 
@@ -49,7 +49,7 @@ import {
   computeOrigenesCompartidos,
   stampCalibracion,
   type CalibrationData,
-} from './planosTabCalibracion';
+} from './planosTabCalibration';
 
 interface PlanosTabProps {
   state: WorkAreaState;

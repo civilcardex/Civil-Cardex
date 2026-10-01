@@ -3,7 +3,7 @@ import { USOS } from '../../../constants';
 import EditButton from '../../shared/EditButton';
 import { devError } from '../../../../../utils/devError';
 import { getActiveProyectoId } from '../../../services/storageService';
-import { updateProyectoNombre } from '../../../services/proyectosService';
+import { updateProyectoNombre } from '../../../services/projectsService';
 
 interface ProjectIdInfo {
   nombre: string;

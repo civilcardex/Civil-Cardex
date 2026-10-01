@@ -64,7 +64,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     if (!pid) return;
     void (async () => {
       const { loadAfAlimentacion, loadTanqueNpt, loadPresionGarantizada } =
-        await import('../../../services/proyectoDataService');
+        await import('../../../services/projectDataService');
       const [afDb, nptDb, presDb] = await Promise.all([
         loadAfAlimentacion(pid),
         loadTanqueNpt(pid),
@@ -91,7 +91,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     saveToStorage(AF_ALIMENTACION_KEY, v);
     const pid = getActiveProyectoId();
     if (pid)
-      void import('../../../services/proyectoDataService').then(
+      void import('../../../services/projectDataService').then(
         ({ saveAfAlimentacion }) => void saveAfAlimentacion(pid, v),
       );
     const n = new Set(redes);
@@ -381,7 +381,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                     const pid = getActiveProyectoId();
                                     if (pid) {
                                       const { saveTanqueNpt } =
-                                        await import('../../../services/proyectoDataService');
+                                        await import('../../../services/projectDataService');
                                       void saveTanqueNpt(pid, v);
                                     }
                                   }}
@@ -431,7 +431,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                     const pid = getActiveProyectoId();
                                     if (pid) {
                                       const { savePresionGarantizada } =
-                                        await import('../../../services/proyectoDataService');
+                                        await import('../../../services/projectDataService');
                                       void savePresionGarantizada(pid, v);
                                     }
                                   }}

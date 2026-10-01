@@ -23,7 +23,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import PricingPage from './pages/PricingPage';
-import RequireModule from './components/suscripciones/RequireModule';
+import RequireModule from './components/subscriptions/RequireModule';
 
 import NotFound from './pages/NotFound';
 

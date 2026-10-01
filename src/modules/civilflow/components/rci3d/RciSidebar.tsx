@@ -1,5 +1,5 @@
 import { COMPONENTS, COMP_DESC, RCI_MONO } from './rci3dData';
-import { NormaLink } from '../shared/normasLinks';
+import { NormaLink } from '../shared/standardsLinks';
 
 // Sidebar izquierdo del visor 3D RCI — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción del seleccionado debajo y nota normativa fija

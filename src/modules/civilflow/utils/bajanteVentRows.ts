@@ -10,7 +10,7 @@ import { parseDescargaEnId } from './parseDescargaEnId';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData } from './drawingSync';
-import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
+import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 import { fmtPiso } from '../constants';
 
 function calculateVentStack(params: {

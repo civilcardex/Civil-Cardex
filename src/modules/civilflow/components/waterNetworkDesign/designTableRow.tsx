@@ -3,7 +3,7 @@ import type { Tramo } from '../../context/tramosReducer';
 import { pisoCorto } from '../../constants';
 import { fmt } from '../../utils/formatUtils';
 import { hunterK, computeDesignRow } from './rowPhysics';
-import { OtrosRamalesChips } from './otrosRamalesChips';
+import { OtrosRamalesChips } from './otherRamalesChips';
 import { LazyNumInput } from './lazyNumInput';
 
 const WaterNetworkDesign_S2: React.CSSProperties = {

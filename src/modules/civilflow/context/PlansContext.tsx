@@ -1,4 +1,4 @@
-import { sleep } from '../components/shared/cargaSecuencial';
+import { sleep } from '../components/shared/sequentialLoad';
 import {
   useState,
   useEffect,
@@ -22,7 +22,7 @@ import {
   deletePlanMeta,
   downloadPlanPDF,
 } from '../services/pdfStorageService';
-import { saveProyectoPlansMeta, loadProyectoData } from '../services/proyectoDataService';
+import { saveProyectoPlansMeta, loadProyectoData } from '../services/projectDataService';
 import { PLANS_META_KEY } from '../constants/storage-keys';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { devError } from '../../../utils/devError';

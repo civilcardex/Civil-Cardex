@@ -6,7 +6,7 @@ import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from './calcRainwater';
 import { cEfectivoCubierta } from '../constants/engineeringDataMaterials';
 import type { DrawingData } from './drawingSync';
-import type { MemoriaTable } from './exportMemoriaFinal';
+import type { MemoriaTable } from './exportMemoryFinal';
 
 interface Row {
   key: string;

@@ -2,7 +2,7 @@ import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext';
 import { AF_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
 import { calcUCparcial } from './componentHelpers';
-import { calcLeAcces } from './accesoriosUtils';
+import { calcLeAcces } from './fittingsUtils';
 import { computeComponentTotals } from '../lib/shared/connectionGraph';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';

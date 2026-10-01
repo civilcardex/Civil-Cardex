@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createCmProyecto } from '../../services/cmProyectosService';
+import { createCmProyecto } from '../../services/cmProjectsService';
 import { devError } from '../../../../utils/devError';
-import { estaActiva } from '../../../../lib/suscripciones/suscripcionesService';
-import { useSuscripciones } from '../../../../hooks/useSuscripciones';
+import { estaActiva } from '../../../../lib/subscriptions/subscriptionsService';
+import { useSuscripciones } from '../../../../hooks/useSubscriptions';
 
 interface Props {
   open: boolean;

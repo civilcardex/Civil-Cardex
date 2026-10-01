@@ -4,11 +4,11 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import { GLB_POSITIONS, GLB_SCALE_OVERRIDE, GLB_URL } from './epc3dData';
 import { FOV_3D } from '../shared/config3d';
 import { parseGLB } from './glbParser';
-import { cargarModelosSecuencial } from '../shared/cargaSecuencial';
+import { cargarModelosSecuencial } from '../shared/sequentialLoad';
 import { cargarGlbBuffer } from '../shared/glbCache';
-import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controles3d';
-import { actualizarEtiquetas } from './etiquetas';
-import { dibujarGizmoEjes } from '../aparatos3d/ejeGizmo';
+import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controls3d';
+import { actualizarEtiquetas } from './labels';
+import { dibujarGizmoEjes } from '../aparatos3d/axisGizmo';
 
 // Hook imperativo del visor EPC (patrón useAparatos3DScene): API en un ref que la UI lee
 // directamente. Port del HTML original "EPC CIVILCARDEX SEP 16 2026 VF" — renderer, escena,

@@ -6,7 +6,7 @@ import {
 } from '../constants/storage-keys';
 import { NETS, uniqRamalId } from '../lib/PlanoEngine/PlanoState';
 import { isLdesvioRamalId } from './crossFloorStorage';
-import { direccionSegura } from '../lib/PlanoEngine/direccionReglas';
+import { direccionSegura } from '../lib/PlanoEngine/directionRules';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 
 export interface CopySourceSelection {

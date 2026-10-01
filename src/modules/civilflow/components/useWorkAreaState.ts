@@ -11,7 +11,7 @@ import { parseDecimalInput, parseIntInput } from '../utils/parseDecimal';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
-import { loadProyectoData, saveRedesActivas } from '../services/proyectoDataService';
+import { loadProyectoData, saveRedesActivas } from '../services/projectDataService';
 import { loadNetColors, applyNetColors } from '../services/netColorsService';
 import {
   ACTIVE_NETS_KEY,
@@ -21,7 +21,7 @@ import {
 } from '../constants/storage-keys';
 import type { Piso } from '../lib/shared/projectTypes';
 import { NAV_TABS } from '../constants/uiConfig';
-import { setAyudaContext } from '../../../components/ayuda/ayudaContext';
+import { setAyudaContext } from '../../../components/help/helpContext';
 
 /** Intro de 1-2 líneas por pestaña para el panel de ayuda. */
 const AYUDA_INTROS: Record<string, string> = {

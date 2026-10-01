@@ -9,7 +9,7 @@ const PlanosTab = lazy(() => import('./workarea/PlanosTab'));
 const BaseDatos = lazy(() => import('./DesignParameters'));
 const Normativa = lazy(() => import('./Regulations/Regulations'));
 const IsometriaTab = lazy(() =>
-  import('./workarea/IsometriaTab').then((m) => ({ default: m.IsometriaTab })),
+  import('./workarea/IsometryTab').then((m) => ({ default: m.IsometriaTab })),
 );
 
 const SR_ONLY_STYLE: React.CSSProperties = {

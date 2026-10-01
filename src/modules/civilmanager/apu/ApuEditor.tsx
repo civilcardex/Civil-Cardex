@@ -1,10 +1,10 @@
 import { useCivilManager } from '../context';
 import { fmt } from '../calc';
 import { useIsMobile } from '../../../hooks/useMediaQuery';
-import { ApuSeccionMO } from './ApuSeccionMO';
-import { ApuSeccionEquipo } from './ApuSeccionEquipo';
-import { ApuSeccionInsumos } from './ApuSeccionInsumos';
-import { ApuSeccionTransporte } from './ApuSeccionTransporte';
+import { ApuSeccionMO } from './ApuSectionMO';
+import { ApuSeccionEquipo } from './ApuSectionEquipment';
+import { ApuSeccionInsumos } from './ApuSectionInsumos';
+import { ApuSeccionTransporte } from './ApuSectionTransport';
 import type { Apu } from '../types';
 
 interface Props {

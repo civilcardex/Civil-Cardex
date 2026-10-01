@@ -4,7 +4,7 @@ import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton';
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from './calculations';
 import { LazyInp, Param, type EPData } from './EPShared';
-import { calcularCisterna } from './epCalculos';
+import { calcularCisterna } from './epCalcs';
 import { SI } from '../../styles/sharedTableStyles';
 import { dec } from '../../utils/parseDecimal';
 import { AGUA_DENSIDAD, GRAVEDAD } from '../../utils/calcSanitaryCore';

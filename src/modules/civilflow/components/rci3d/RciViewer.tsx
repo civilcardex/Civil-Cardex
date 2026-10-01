@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import RciSidebar from './RciSidebar';
 import { COMPONENTS, RCI_MONO } from './rci3dData';
 import { useRci3DScene, type Rci3DApi } from './useRci3DScene';
-import { useRciCarga } from './useRciCarga';
-import { resetVista, vistaIso, vistaOrto, type VistaKey } from './vistasRci';
-import { dibujarEtiquetasRci, resetEtiquetasRci } from './etiquetasRci';
+import { useRciCarga } from './useRciLoad';
+import { resetVista, vistaIso, vistaOrto, type VistaKey } from './viewsRci';
+import { dibujarEtiquetasRci, resetEtiquetasRci } from './labelsRci';
 
 // Visor 3D "Cuarto de Bombas RCI" — port del HTML standalone a React + three 0.185 con la
 // arquitectura de aparatos3d (escena en hook, carga secuencial GLB, vistas y gizmo). El

@@ -1,6 +1,6 @@
 import { COMPONENTS, COMP_DESC } from './aparatos3dData';
 import { MONO_3D } from '../shared/config3d';
-import { NormaLink } from '../shared/normasLinks';
+import { NormaLink } from '../shared/standardsLinks';
 
 // Sidebar izquierdo del visor 3D de aparatos (orig. usuario): desplegable "Aparato:" arriba,
 // descripción del seleccionado debajo y nota normativa fija abajo. Sin listado (el desplegable

@@ -18,7 +18,7 @@ import {
 } from './associateBajanteAcrossFloors';
 import { aFrameDe, origenDePlan } from './crossFloorStorage';
 import { markAssocLayout } from './assocLayoutMigration';
-import { direccionSegura } from '../lib/PlanoEngine/direccionReglas';
+import { direccionSegura } from '../lib/PlanoEngine/directionRules';
 import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {

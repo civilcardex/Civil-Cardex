@@ -4,7 +4,7 @@ import { APARATOS_DEF } from '../constants';
 import { CAT_APS } from '../constants/engineeringDataFixtures';
 import { CAT_GAS } from '../constants/engineeringDataGas';
 import { fmt } from './formatUtils';
-import type { MemoriaTable } from './exportMemoriaFinal';
+import type { MemoriaTable } from './exportMemoryFinal';
 import { computeHeaterNetworkTotal } from './waterNetworkRows';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';

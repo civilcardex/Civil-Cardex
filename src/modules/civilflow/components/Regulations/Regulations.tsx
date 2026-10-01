@@ -9,7 +9,7 @@ import { NTC3728 } from './sections/NTC3728';
 import { NSR10 } from './sections/NSR10';
 import { NFPA13 } from './sections/NFPA13';
 import { NTC3096 } from './sections/NTC3096';
-import { TablasRef } from './sections/TablasRef';
+import { TablasRef } from './sections/TablesRef';
 const Regulations_S1: React.CSSProperties = {
   display: 'flex',
   gap: 6,
@@ -350,7 +350,7 @@ function ContenidoSeccion({ id }: { id: string }) {
       return <NFPA13 />;
     case 'ntc3096':
       return <NTC3096 />;
-    case 'tablas':
+    case 'tables':
       return <TablasRef />;
     default:
       return null;

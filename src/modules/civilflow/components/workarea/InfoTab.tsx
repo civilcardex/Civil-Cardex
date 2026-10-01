@@ -2,7 +2,7 @@ import React from 'react';
 import type { useWorkAreaState } from '../useWorkAreaState';
 import ProjectIdCard from './infoTab/ProjectIdCard';
 import ActiveNetsCard from './infoTab/ActiveNetsCard';
-import ActiveEquiposCard from './infoTab/ActiveEquiposCard';
+import ActiveEquiposCard from './infoTab/ActiveEquipmentCard';
 import FloorGeneratorCard from './infoTab/FloorGeneratorCard';
 import LevelsCard from './infoTab/LevelsCard';
 import UsageGuideCard from './infoTab/UsageGuideCard';

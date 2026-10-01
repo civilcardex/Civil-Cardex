@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { UnidadesPanel } from './UnidadesPanel';
-import { CategoriasInsumoPanel } from './CategoriasInsumoPanel';
-import { CategoriasApuPanel } from './CategoriasApuPanel';
-import { TiposEquipoPanel } from './TiposEquipoPanel';
-import { OrigenesPanel } from './OrigenesPanel';
-import { UnidadesTransportePanel } from './UnidadesTransportePanel';
-import { ParametrosApuPanel } from './ParametrosApuPanel';
-import { PerfilPaisPanel } from './PerfilPaisPanel';
-import { FactorPrestacionalPanel } from './FactorPrestacionalPanel';
+import { UnidadesPanel } from './UnitsPanel';
+import { CategoriasInsumoPanel } from './CategoriesInsumoPanel';
+import { CategoriasApuPanel } from './CategoriesApuPanel';
+import { TiposEquipoPanel } from './TypesEquipmentPanel';
+import { OrigenesPanel } from './OriginsPanel';
+import { UnidadesTransportePanel } from './UnitsTransportPanel';
+import { ParametrosApuPanel } from './ParametersApuPanel';
+import { PerfilPaisPanel } from './ProfileCountryPanel';
+import { FactorPrestacionalPanel } from './FactorBenefitPanel';
 
 type ConfigSub =
   | 'parametros'
@@ -38,7 +38,7 @@ export function ConfigTab() {
   return (
     <div>
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-        {SUBS.map(s => (
+        {SUBS.map((s) => (
           <button
             key={s.id}
             type="button"

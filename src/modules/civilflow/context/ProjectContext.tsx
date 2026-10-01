@@ -11,7 +11,7 @@ import {
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import { MATS_DEFAULT, CRIT0, PROFS_DEFAULT } from '../constants';
 import { getActiveProyectoId } from '../services/storageService';
-import { saveProyectoCoreData, loadProyectoData } from '../services/proyectoDataService';
+import { saveProyectoCoreData, loadProyectoData } from '../services/projectDataService';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import type { Piso } from '../lib/shared/projectTypes';
 

@@ -11,7 +11,7 @@ import {
   writeBajantePropToDrawing,
 } from '../utils/writeDiameterToDrawing';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
-import { loadGasDatos, saveGasDatos } from '../services/proyectoDataService';
+import { loadGasDatos, saveGasDatos } from '../services/projectDataService';
 import GasCalcUC from './GasCalcUC';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 

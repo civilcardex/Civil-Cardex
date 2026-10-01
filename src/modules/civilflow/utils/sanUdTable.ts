@@ -2,7 +2,7 @@ import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext';
 import { pisoCorto } from '../constants';
 
-import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
+import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 import { buildSanConnectivity, type MergedApBase } from './sanConnectivity';
 
 // Cálculo de unidades de descarga — mismo grafo de conectividad que computeSanRows, columnas

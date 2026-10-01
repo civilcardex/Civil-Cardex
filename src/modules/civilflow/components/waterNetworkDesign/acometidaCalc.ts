@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import { matHazenC } from '../../constants';
-import { calcLeAcces } from '../../utils/accesoriosUtils';
+import { calcLeAcces } from '../../utils/fittingsUtils';
 import { isContador, isAC1, isAC2, isAf } from '../../utils/waterNetworkRows';
 
 type DiamOpt = { pulg: number; nominal: string; label?: string; dInt: number };

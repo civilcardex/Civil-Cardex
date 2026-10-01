@@ -1,1 +1,1 @@
-export { default } from './DetalleAparatosViewer';
+export { default } from './DetailAparatosViewer';

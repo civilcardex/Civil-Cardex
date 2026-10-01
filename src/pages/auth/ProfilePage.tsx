@@ -16,23 +16,23 @@ import {
   fetchProyectos,
   deleteProyecto,
   type ProyectoRow,
-} from '../../modules/civilflow/services/proyectosService';
+} from '../../modules/civilflow/services/projectsService';
 import {
   fetchCmProyectos,
   deleteCmProyecto,
   type CmProyectoRow,
-} from '../../modules/civilmanager/services/cmProyectosService';
-import { loadProyectoData } from '../../modules/civilflow/services/proyectoDataService';
+} from '../../modules/civilmanager/services/cmProjectsService';
+import { loadProyectoData } from '../../modules/civilflow/services/projectDataService';
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService';
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset';
 import { saveToStorage } from '../../modules/civilflow/services/storageService';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM';
-import ModuleSelectDialog from '../../components/suscripciones/ModuleSelectDialog';
-import type { ModuloId } from '../../lib/suscripciones/catalogo';
-import { useSuscripciones } from '../../hooks/useSuscripciones';
-import { estaActiva } from '../../lib/suscripciones/suscripcionesService';
+import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialog';
+import type { ModuloId } from '../../lib/subscriptions/catalog';
+import { useSuscripciones } from '../../hooks/useSubscriptions';
+import { estaActiva } from '../../lib/subscriptions/subscriptionsService';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames';
 import {
   ACTIVE_PROYECTO_ID_KEY,

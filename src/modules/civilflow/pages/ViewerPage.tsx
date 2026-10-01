@@ -14,7 +14,7 @@ import {
   VISOR_ACTIVE_PLAN_ID_KEY,
   VISOR_ACTIVE_INDEX_KEY,
 } from '../constants/storage-keys';
-import { setAyudaContext } from '../../../components/ayuda/ayudaContext';
+import { setAyudaContext } from '../../../components/help/helpContext';
 
 // Module-level store for PDF ready state (useSyncExternalStore pattern).
 // Arranca en `false` para que el overlay de carga pinte en el primer render cuando ya

@@ -2,14 +2,14 @@ import { useState, useRef, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlansContext } from '../../context/PlansContext';
 import { ProjectContext } from '../../context/ProjectContext';
-import { createProyecto } from '../../services/proyectosService';
+import { createProyecto } from '../../services/projectsService';
 import { clearAllPDFs } from '../../services/idbStorage';
 import { clearLocalWorkspace } from '../../services/workspaceReset';
 import { saveToStorage } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys';
-import { estaActiva } from '../../../../lib/suscripciones/suscripcionesService';
-import { useSuscripciones } from '../../../../hooks/useSuscripciones';
+import { estaActiva } from '../../../../lib/subscriptions/subscriptionsService';
+import { useSuscripciones } from '../../../../hooks/useSubscriptions';
 
 interface Props {
   open: boolean;

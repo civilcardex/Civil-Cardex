@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWorkAreaState } from './useWorkAreaState';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos';
-import { fetchProyectosOrThrow } from '../services/proyectosService';
+import { fetchProyectosOrThrow } from '../services/projectsService';
 import { getActiveProyectoId } from '../services/storageService';
 import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { WorkAreaSidebar } from './WorkAreaSidebar';

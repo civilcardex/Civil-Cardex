@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import EpcSidebar from './EpcSidebar';
 import { MONO_3D } from '../shared/config3d';
 import { useEpc3DScene, type Epc3DApi } from './useEpc3DScene';
-import { vistaIsoEpc, vistaOrtoEpc, type VistaKey } from './vistasEpc';
+import { vistaIsoEpc, vistaOrtoEpc, type VistaKey } from './viewsEpc';
 
 // Visor 3D del Equipo de Presión Constante — port del HTML original al patrón aparatos3d:
 // sidebar con desplegable + canvas + cluster de vistas bottom-left + gizmo bottom-right.

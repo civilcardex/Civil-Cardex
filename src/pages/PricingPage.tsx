@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useAuth } from '../context/AuthContext';
 import { MODULES_DATA } from './moduleData';
-import WompiCheckoutModal from '../components/suscripciones/WompiCheckoutModal';
+import WompiCheckoutModal from '../components/subscriptions/WompiCheckoutModal';
 import {
   CATALOGO,
   DESCUENTO_BASE,
@@ -17,9 +17,9 @@ import {
   type ModuloId,
   type ModuloVenta,
   type Periodo,
-} from '../lib/suscripciones/catalogo';
-import { estaActiva } from '../lib/suscripciones/suscripcionesService';
-import { useSuscripciones } from '../hooks/useSuscripciones';
+} from '../lib/subscriptions/catalog';
+import { estaActiva } from '../lib/subscriptions/subscriptionsService';
+import { useSuscripciones } from '../hooks/useSubscriptions';
 
 const plans = [
   {

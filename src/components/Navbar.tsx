@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useAyudaContext } from './ayuda/ayudaContext';
-import AyudaPanel from './ayuda/AyudaPanel';
+import { useAyudaContext } from './help/helpContext';
+import AyudaPanel from './help/HelpPanel';
 const Navbar_S1: React.CSSProperties = {
   width: 26,
   height: 26,

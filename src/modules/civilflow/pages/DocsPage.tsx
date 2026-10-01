@@ -30,14 +30,14 @@ const MODULOS: { label: string; nota: string; cats: string[] }[] = [
     label: 'Civil Flow',
     nota: 'Diseño hidrosanitario',
     cats: [
-      'hidraulica',
-      'sanitarias',
-      'lluvias',
-      'agua_fria',
-      'agua_caliente',
+      'hydraulics',
+      'sanitary',
+      'rainwater',
+      'coldWater',
+      'hotWater',
       'gas',
-      'equipos',
-      'tablas',
+      'equipment',
+      'tables',
       'formulas',
       'manual',
     ],
@@ -54,7 +54,7 @@ function DocsPage() {
   // efecto ni setState-en-render).
   const [activeCat, setActiveCat] = useState(() => {
     const h = window.location.hash.replace('#', '');
-    return Object.keys(docData).includes(h) ? h : 'hidraulica';
+    return Object.keys(docData).includes(h) ? h : 'hydraulics';
   });
   const [search, setSearch] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});

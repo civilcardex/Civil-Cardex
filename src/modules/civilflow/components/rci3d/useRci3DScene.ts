@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { dibujarGizmoEjes } from '../aparatos3d/ejeGizmo';
+import { dibujarGizmoEjes } from '../aparatos3d/axisGizmo';
 import { RCI_FOV } from './rci3dData';
-import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controles3d';
+import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controls3d';
 import { devError } from '../../../../utils/devError';
 
 export type Three = typeof THREE_NS;

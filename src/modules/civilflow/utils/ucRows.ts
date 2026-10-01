@@ -2,7 +2,7 @@ import type { Tramo } from '../context/tramosReducer';
 import type { ApsItem } from '../context/ApparatusContext';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
 import { calcUCparcial, calcUCacumulado } from './componentHelpers';
-import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
+import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 
 const TIPO_CFG = {
   af: {

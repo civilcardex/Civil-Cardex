@@ -3,10 +3,10 @@ import RciRedSidebar from './RciRedSidebar';
 import { COMPONENTS, LABEL_POSITIONS } from './rciRedData';
 import type { RciRedLabel } from './rciRedData';
 import { useRci3DScene, type Rci3DApi } from '../rci3d/useRci3DScene';
-import { useRciRedCarga } from './useRciRedCarga';
-import { useLupa } from '../rci3d/useLupa';
-import { vistaOrto, resetVista, type VistaKey } from '../rci3d/vistasRci';
-import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniVisorRed';
+import { useRciRedCarga } from './useRciRedLoad';
+import { useLupa } from '../rci3d/useMagnifier';
+import { vistaOrto, resetVista, type VistaKey } from '../rci3d/viewsRci';
+import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniViewerRed';
 
 // Visor 3D "Red contra incendio" — port del HTML Isometrico_RCI_Open_Code_v19. Modelo REAL
 // de la red (tubería por pisos + abrazaderas SPLIT + losas translúcidas). Lupa con toggle

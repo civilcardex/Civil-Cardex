@@ -12,7 +12,7 @@ import {
 import { loadFromStorage } from '../../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
 import { handleCreateBomba } from '../../../lib/PlanoEngine/drawingCreations';
-import { direccionBajaPermitida } from '../../../lib/PlanoEngine/direccionReglas';
+import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules';
 import {
   asociarBomba,
   quitarBomba,

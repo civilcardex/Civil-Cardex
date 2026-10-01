@@ -1,6 +1,6 @@
 import type { Tramo } from '../../context/tramosReducer';
 import { matHazenC } from '../../constants';
-import { calcLeAcces } from '../../utils/accesoriosUtils';
+import { calcLeAcces } from '../../utils/fittingsUtils';
 
 // Fórmula de Hunter (caudal probable): K depende del número de descargas y el caudal es
 // K·f(UC totales), con el cambio de fórmula en 240 UC. Misma operación (y mismos redondeos)

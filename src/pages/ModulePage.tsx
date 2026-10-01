@@ -7,8 +7,8 @@ import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectC
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { estaActiva } from '../lib/suscripciones/suscripcionesService';
-import { useSuscripciones } from '../hooks/useSuscripciones';
+import { estaActiva } from '../lib/subscriptions/subscriptionsService';
+import { useSuscripciones } from '../hooks/useSubscriptions';
 const ModulePage_S1: React.CSSProperties = {
   position: 'absolute',
   width: '1px',

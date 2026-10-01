@@ -1,6 +1,6 @@
 import { COMPONENTES, COMP_DESC } from './epc3dData';
 import { MONO_3D } from '../shared/config3d';
-import { NormaLink } from '../shared/normasLinks';
+import { NormaLink } from '../shared/standardsLinks';
 
 // Sidebar izquierdo del visor 3D del EPC — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción debajo y nota normativa fija abajo.

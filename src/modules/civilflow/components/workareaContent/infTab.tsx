@@ -5,11 +5,11 @@ import {
   generateMemoriaPdf,
   type MemoriaTable,
   type MemoriaData,
-} from '../../utils/exportMemoriaFinal';
+} from '../../utils/exportMemoryFinal';
 import { pisoLbl, pisoCorto, SAN_UC_IDS, APARATOS_DEF } from '../../constants';
 import { useRainwater } from '../../context/RainwaterContext';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicData';
-import { lookupInterno, lookupInternoAC } from '../../utils/accesoriosUtils';
+import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
 import { buildSanConnectivity, computeSanRows, computeUdTable } from '../../utils/sanitaryRows';
 import {
   buildLlBajanteAssociations,
@@ -18,18 +18,18 @@ import {
   getTributarioIds,
 } from '../../utils/rainwaterRows';
 import { computeWaterNetworkRows, computeAcometidaSummary } from '../../utils/waterNetworkRows';
-import { computeBombaTables, computeEpTables } from '../../utils/equiposRows';
+import { computeBombaTables, computeEpTables } from '../../utils/equipmentRows';
 import { computeGasRows } from '../../utils/gasRows';
 import { computeUcTable } from '../../utils/ucRows';
 import { computeBajanteVentTable } from '../../utils/bajanteVentRows';
-import { computeAccesoriosTable } from '../../utils/sanAccesoriosRows';
-import { computeAccesoriosPorRamalTable } from '../../utils/accesoriosPorRamalRows';
+import { computeAccesoriosTable } from '../../utils/sanFittingsRows';
+import { computeAccesoriosPorRamalTable } from '../../utils/fittingsByRamalRows';
 import { computeRainDownpipesTable } from '../../utils/rainDownpipesRows';
 import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../../utils/calcRainwater';
 import { nDeCanal } from '../../constants/engineeringDataMaterials';
 import { cEfectivoCubierta } from '../../constants/engineeringDataMaterials';
 import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows';
-import { computeResumenTuberiasTable } from '../../utils/resumenTuberiasRows';
+import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows';
 import { getPdfjs } from '../../utils/lazyPdfjs';
 import { downloadPlanosPdf } from '../../utils/exportPlanos';
 import type { useWorkAreaState } from '../useWorkAreaState';

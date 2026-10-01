@@ -3,7 +3,7 @@ import PageNav from './PageNav';
 import EPInputPage from './ep/EPInputPage';
 import EPVerificationPage from './ep/EPVerificationPage';
 import EPCisternaPage from './ep/EPCisternaPage';
-import { useEpSincronizado } from './ep/useEpSincronizado';
+import { useEpSincronizado } from './ep/useEpSynchronized';
 
 // Diseño del Equipo de Presión (redes 'ep'). La página "Esquema" se movió a la sub-pestaña
 // "Equipo de presión constante" de Isometría (components/epc3d/). Página "Cisterna" solo

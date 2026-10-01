@@ -8,7 +8,7 @@ export type NavIconName =
   | 'configuracion'
   | 'colaboradores'
   | 'cuadrilla'
-  | 'equipos'
+  | 'equipment'
   | 'insumos'
   | 'proveedores';
 
@@ -42,7 +42,12 @@ interface ActionIconProps {
 /** Ícono de acción genérico (editar/borrar/agregar/etc.) vía Material Symbols. */
 export function ActionIcon({ name, label, className, color }: ActionIconProps) {
   return (
-    <span className={`material-symbols-outlined ${className ?? ''}`} style={{ fontSize: 16, color }} role="img" aria-label={label}>
+    <span
+      className={`material-symbols-outlined ${className ?? ''}`}
+      style={{ fontSize: 16, color }}
+      role="img"
+      aria-label={label}
+    >
       {name}
     </span>
   );

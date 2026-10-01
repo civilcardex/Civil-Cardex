@@ -5,22 +5,22 @@ import { ConfirmDialog } from './shared/ConfirmDialog';
 import { Toast } from './shared/Toast';
 import { NavIcon, type NavIconName } from './shared/icons';
 import { EditableSection } from './shared/EditLock';
-import { ColaboradoresTab } from './catalogos/ColaboradoresTab';
-import { CuadrillasTab } from './catalogos/CuadrillasTab';
-import { EquiposTab } from './catalogos/EquiposTab';
-import { InsumosTab } from './catalogos/InsumosTab';
-import { ProveedoresTab } from './catalogos/ProveedoresTab';
+import { ColaboradoresTab } from './catalogs/CollaboratorsTab';
+import { CuadrillasTab } from './catalogs/CuadrillasTab';
+import { EquiposTab } from './catalogs/EquipmentTab';
+import { InsumosTab } from './catalogs/InsumosTab';
+import { ProveedoresTab } from './catalogs/SuppliersTab';
 import { ConfigTab } from './config/ConfigTab';
 import { ApuCatalog } from './apu/ApuCatalog';
-import { PresupuestosTab } from './presupuestos/PresupuestosTab';
-import { setAyudaContext } from '../../components/ayuda/ayudaContext';
+import { PresupuestosTab } from './budgets/PresupuestosTab';
+import { setAyudaContext } from '../../components/help/helpContext';
 
 type MainSection = 'catalogos' | 'apus' | 'presupuestos';
 type CatalogoTab =
   | 'configuracion'
   | 'colaboradores'
   | 'cuadrillas'
-  | 'equipos'
+  | 'equipment'
   | 'insumos'
   | 'proveedores';
 
@@ -34,7 +34,7 @@ const CATALOGO_TABS: { id: CatalogoTab; label: string; icon: NavIconName }[] = [
   { id: 'configuracion', label: 'Configuración', icon: 'configuracion' },
   { id: 'colaboradores', label: 'Colaboradores', icon: 'colaboradores' },
   { id: 'cuadrillas', label: 'Cuadrillas', icon: 'cuadrilla' },
-  { id: 'equipos', label: 'Equipos', icon: 'equipos' },
+  { id: 'equipment', label: 'Equipos', icon: 'equipment' },
   { id: 'insumos', label: 'Insumos', icon: 'insumos' },
   { id: 'proveedores', label: 'Proveedores', icon: 'proveedores' },
 ];
@@ -130,7 +130,7 @@ function CivilManagerShell() {
             <CuadrillasTab />
           </EditableSection>
         )}
-        {mainSection === 'catalogos' && catalogoTab === 'equipos' && (
+        {mainSection === 'catalogos' && catalogoTab === 'equipment' && (
           <EditableSection>
             <EquiposTab />
           </EditableSection>

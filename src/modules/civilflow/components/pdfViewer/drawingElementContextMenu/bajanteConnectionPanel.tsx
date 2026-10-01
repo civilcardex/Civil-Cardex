@@ -1,5 +1,5 @@
 import { ramalLabel } from '../../../utils/accessoryAbbreviations';
-import { direccionSegura } from '../../../lib/PlanoEngine/direccionReglas';
+import { direccionSegura } from '../../../lib/PlanoEngine/directionRules';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { DIAM_BY_MAT } from '../../../constants';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions';

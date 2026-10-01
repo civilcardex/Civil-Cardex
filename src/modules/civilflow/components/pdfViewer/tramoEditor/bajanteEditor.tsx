@@ -1,5 +1,5 @@
 import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
-import { direccionBajaPermitida } from '../../../lib/PlanoEngine/direccionReglas';
+import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
