@@ -2392,3 +2392,40 @@ tsc 0 · lint 0 err (1 warn) · vitest 927/927 (157) · build ✓ · graphify �
 ### Aplicar usuario (orden)
 1. SQL Editor: 20260930000000 (canales) → 20260930000001 (material, ya apunta a impl) → 20260930000002 (impls correctos + gating CRUD + RLS app_config).
 2. Verificación manual: EP cisterna guardar/recargar persiste; AF con pisos intactos tras guardar; dims canal editadas desde tabla con visor abierto NO revierten; renombrar canal con overrides migra sector; colector bajo canal SIGUE en tabla Diseño lluvias.
+
+## Session Summary — 2026-10-01 (ronda 10: auditoría WIP semestral/docs/canal + fixes F1-F13 con 7 agentes paralelos)
+
+### Auditoría (4 exploradores) → 13 fichas; fixes ejecutados en 2 waves
+- **F1 CRÍTICO**: migración `20261001000000_semestral_descuentos.sql` dejaba `app_precios` en el modelo viejo (UPDATE comentado; semestral = 6×$19.900 mientras /pricing anunciaba $360.000). Fix: UPDATE ACTIVO (precios definitivos confirmados: 6M/36M/72M centavos) + DO-block de verificación de VALOR (`precios_sin_migrar_al_modelo_nuevo`) + typo "DESEAR" fuera. BD = literales = cobro Wompi.
+- **F2**: PricingPage — `total`/resumen/modal usaban `seleccion` crudo y la UI `seleccionEfectiva` (con `?modulo=`: total $0 con botón activo → edge 400; descuento invisible). Fix: `ignoraUrl` state — el override del URL muere al primer toggle; TODO lee `seleccionEfectiva`.
+- **F3**: RequireModule montaba contenido protegido en flash antes de redirigir (`!bloqueando` antes del check de carga; flagBD arrancaba false). Fix: `flagBD: boolean|null` + `decidido` en useSuscripciones; spinner ANTES del early-return.
+- **F11**: `suscripcionesHabilitadas` cacheaba el `false` de un fallo transitorio toda la sesión → promesa reseteada en error/catch (el `false` legítimo sí se cachea). +2 tests.
+- **F4/F5**: `pxPerCmDe` derivaba de `pxToM(1)` (toFixed(3) → deriva 1.76% vs `cmToPlanePx`; re-ancla de normalizarCanal descuadrado + resize encogía acumulativo). Fix: `pxPerCmDe = engine.cmToPlanePx(1)` con guard; fuera el último `|| 1` del ghost de renderCanal (try/catch local — el loop de render no tiene). Grep global: 0 callers con la ruta vieja.
+- **F12a/b**: guardarraíl 20 cm extraído a `CANAL_ANCHO_MIN_CM` + `puntoAnchoMinimo` (commit y ghost comparten = WYSIWYG); guard dblclick 350 ms tras fijar eje (ya no crea canal de 20 cm por sorpresa). F12c (ghost mouse crudo vs commit snap) DEFER. +4 tests canalOblicuo (imán 90/180/270+wrap, t>1, guardarraíl, commit usa g.p2) → 37/37.
+- **F6/F7**: Navbar `cerrarAyuda` con useCallback (el efecto de foco del panel se remontaba en cada scroll); AyudaPanel con focus trap Tab cíclico + restauración de foco al cerrar.
+- **F8/F9/F10**: DocsPage H1 honesto en búsqueda ("Resultados de búsqueda" + contador); `aria-expanded ?? false` (React omite undefined); `domId()` slug para id/aria-controls (sin espacios; prop nueva `contentId` en SectionAccordion, keys de estado intactas).
+- **F13 notificación de vencimiento (nueva, decisión usuario)**: (a) chip en Navbar — rojo "SUSCRIPCIÓN VENCIDA" / ámbar "Vence en N días" (≤7), solo con sesión+filas reales, clic → /pricing, SIN polling a propósito (re-evalúa por render; verdad server-side = acceso_modulo); `Date.now()` en helper module-scope `diasParaVencer` (react-hooks/purity no permite el literal en render). (b) franja de guardado: `suscripcion_requerida` en `civilflow_bd_save_error` → texto amable + botón "Renovar" → /pricing (PdfViewerToolbar; emisor intacto).
+
+### Mecanismo de vencimiento (mapeado, sin cambios)
+Cliente: `estaActiva` (fecha_fin vs reloj cliente, por render — sin timers/polling; solo fetch al montar + EV_SUSCRIPCIONES tras pago). BD (verdad): `acceso_modulo` (`fecha_fin > now()`) invocado por save_proyecto/save_proyecto_core/policy cm_proyectos → `suscripcion_requerida`. El periodo solo define el delta al activar (+1m/+6m/+12m); después solo importa fecha_fin.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest **942/942** (157 files; +6 nuevos: 2 gating + 4 canal) · build ✓ · graphify ✓.
+
+### Aplicar usuario
+1. SQL Editor: `20261001000000_semestral_descuentos.sql` (ya con UPDATE activo — si se aplicó antes de este fix, re-ejecutar: idempotente y el DO-block valida los valores).
+2. Re-deploy: `supabase functions deploy crear-intencion-pago`.
+3. Verificación manual (recarga dura): /pricing con `?modulo=` marcar/desmarcar (total/checkbox/descuento coherentes); hard-refresh ruta gated sin suscripción (spinner, sin flash); chip Navbar (simular fecha_fin próxima o vencida en app_suscripciones); canal 3 clics cardinales (sin salto al cruzar base>longitud, dblclick no crea); foco del panel de ayuda (Tab cicla dentro, Escape devuelve el foco al botón AYUDA).
+
+## Session Summary — 2026-10-01 (ronda 11: ponytail audit full-tree + ejecución)
+
+### Auditoría (3 exploradores: dead-exports indexados 442 archivos, deps, duplicación) → cortes ejecutados
+- **docs/data (~335L netas)**: nuevo `pages/docs/data/ui.tsx` (67L, 3 helpers: `Tabla({head,rows,foot?})`, `fx(texto, compacto?)`, `donde(pares)`) — emiten el MISMO DOM (fila de th en tbody, foot dentro del wrapper de scroll). manual.tsx 535→209. La clase de 85 chars de `<td>` quedó definida 1 sola vez. Celdas con JSX (sub/sup/NormaLink) quedaron a mano — 0 pérdida de contenido. Búsqueda de DocsPage intacta (nodeText recorre children).
+- **Código muerto (~250L)**: cadena completa `CanalFlowArrow/CanalSegment/computeCanalSegments/computeCanalFlowArrows` en canalAssociation.ts (112L, bloque contiguo 506-617); `closestSegmentIndex` (HitTester), `isRamalBajanteConnectionAllowed` (flowDirection — siempre return true, JSDoc mentiroso), `zoomBy` (vistasCamara), hooks `useMateriales/useProfundidades/useCriterios` (ProjectContext), `CM_TABLES` (tableNames), `abrevCubierta/abrevCanal` (engineeringDataMaterials), `OrigenInsumo/CivilManagerEntityKey` (civilmanager/types), `RciRedComponente` (rciRedData), `TANQUE_NPT_KEY` (storage-keys), campo `_pendingLblDrag` (PlanoState).
+- **Cadena docCats muerta**: campo `docCats` de AyudaContexto sin lector → fuera de ayudaContext/useWorkAreaState (AYUDA_DOC_CATS completo)/IsometriaTab/ViewerPage/WorkAreaCivilManager + comentario mentiroso en ayudaGuide.
+- **Helpers solo-test**: `decrementFirstAparato` + su test, `minBajantePulgDeRamal` + su test.
+- **Cruft local borrado** (verificado git check-ignore antes): lint.log (680 KB), typecheck.log (33 KB), `src/modules/civilflow/components/node_modules/` (caché parásita de vitest).
+- **Deps: 0 eliminables** — las 13 con imports reales, pesados (three 708 KB, xlsx 844 KB, jspdf, docx, pdfjs) todos lazy en chunks. jspdf embarca core-js 148 KB + html2canvas 196 KB (no descargables en runtime, no removibles vía package.json). Sin dupes funcionales; Intl nativo, sin lodash/axios.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest **940/940** (157 files, −2 tests muertos) · build ✓ · graphify ✓.
