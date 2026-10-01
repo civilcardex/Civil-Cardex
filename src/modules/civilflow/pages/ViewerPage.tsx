@@ -14,6 +14,7 @@ import {
   VISOR_ACTIVE_PLAN_ID_KEY,
   VISOR_ACTIVE_INDEX_KEY,
 } from '../constants/storage-keys';
+import { setAyudaContext } from '../../../components/ayuda/ayudaContext';
 
 // Module-level store for PDF ready state (useSyncExternalStore pattern).
 // Arranca en `false` para que el overlay de carga pinte en el primer render cuando ya
@@ -184,6 +185,17 @@ export default function ViewerPage() {
     'Visor de planos',
     'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.',
   );
+  // Ayuda contextual (orig. usuario): el visor es la pestaña "Dibujo de redes" como ruta propia.
+  useEffect(() => {
+    setAyudaContext({
+      key: 'cf:visor',
+      modulo: 'Civil Flow',
+      seccion: 'Dibujo de redes',
+      intro:
+        'Dibujo de redes sobre el plano: trazar ramales, ubicar bajantes, aparatos y accesorios.',
+    });
+    return () => setAyudaContext(null);
+  }, []);
 
   // activeIndex recortado para un render seguro
   const activeIndex = plans.length > 0 ? Math.min(rawActiveIndex, plans.length - 1) : 0;

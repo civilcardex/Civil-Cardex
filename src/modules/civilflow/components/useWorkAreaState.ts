@@ -20,6 +20,20 @@ import {
   NETS_CHANGED_EVENT,
 } from '../constants/storage-keys';
 import type { Piso } from '../lib/shared/projectTypes';
+import { NAV_TABS } from '../constants/uiConfig';
+import { setAyudaContext } from '../../../components/ayuda/ayudaContext';
+
+/** Intro de 1-2 líneas por pestaña para el panel de ayuda. */
+const AYUDA_INTROS: Record<string, string> = {
+  info: 'Datos del proyecto, ubicación, niveles y parámetros generales que alimentan todo el diseño.',
+  planos: 'Carga y calibración de los planos PDF sobre los que se dibujan las redes.',
+  datos: 'Catálogo maestro de materiales y parámetros de cálculo por red.',
+  visor: 'Dibujo de redes sobre el plano: trazar ramales, ubicar bajantes, aparatos y accesorios.',
+  redes: 'Tablas de diseño por red: caudales, diámetros, velocidades y verificaciones normativas.',
+  iso: 'Representación isométrica 3D del diseño, detalle de aparatos y equipos de bombeo.',
+  inf: 'Informes y memorias de cálculo generadas a partir del diseño.',
+  crit: 'Normativa aplicada al proyecto y verificaciones de cumplimiento.',
+};
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
@@ -41,6 +55,21 @@ export function useWorkAreaState() {
   const plansCtx = usePlans();
 
   const [tab, setTab] = useState<string>('info');
+
+  // Ayuda contextual (orig. usuario): reporta módulo + pestaña activa a la navbar. La sub-pestaña
+  // de isometría la reporta IsometriaTab (hijo, reporta más específico): el padre la OMITE y al
+  // salir de 'iso' este efecto (que corre después del cleanup del hijo) restaura el reporte.
+  useEffect(() => {
+    if (tab === 'iso') return;
+    const label = NAV_TABS.find((t) => t.id === tab)?.l || tab;
+    setAyudaContext({
+      key: `cf:${tab}`,
+      modulo: 'Civil Flow',
+      seccion: label,
+      intro: AYUDA_INTROS[tab] || AYUDA_INTROS.info,
+    });
+    return () => setAyudaContext(null);
+  }, [tab]);
 
   useEffect(() => {
     const openTab = sessionStorage.getItem(OPEN_TAB_KEY);

@@ -1,7 +1,8 @@
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import PageNav from '../PageNav';
 import { IsometriaGeneral } from './IsometriaGeneral';
 import type { useWorkAreaState } from '../useWorkAreaState';
+import { setAyudaContext } from '../../../../components/ayuda/ayudaContext';
 
 // Pestaña Isometría con 4 sub-pestañas (orig. usuario): Isometría (el contenido histórico),
 // Aparatos (visor 3D del detalle de instalación), Bomba red contra incendio (solo el visor 3D
@@ -22,8 +23,33 @@ const SUBTABS = [
   'Red contra incendio',
 ];
 
+/** Sub-pestaña → intro para la ayuda contextual. */
+const AYUDA_ISO: Record<number, { intro: string }> = {
+  1: { intro: 'Vista isométrica general de las redes dibujadas en el visor.' },
+  2: {
+    intro: 'Detalle 3D de la instalación de cada aparato sanitario.',
+  },
+  3: { intro: 'Cuarto de bombas de la red contra incendio según NFPA 20.' },
+  4: {
+    intro: 'Esquema 3D del equipo de presión constante y sus criterios de selección.',
+  },
+  5: {
+    intro: 'Red contra incendio en 3D: componentes y referencias normativas.',
+  },
+};
+
 function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState> }) {
   const [sub, setSub] = useState(1);
+  // Ayuda contextual: reporta la sub-pestaña activa (el padre omite 'iso' por esto).
+  useEffect(() => {
+    setAyudaContext({
+      key: `cf:iso:${sub}`,
+      modulo: 'Civil Flow',
+      seccion: `Isometría · ${SUBTABS[sub - 1]}`,
+      intro: AYUDA_ISO[sub]?.intro || AYUDA_ISO[1].intro,
+    });
+    return () => setAyudaContext(null);
+  }, [sub]);
   return (
     <div
       className="fu"

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './styles.css';
 import { CivilManagerProvider, useCivilManager } from './context';
 import { ConfirmDialog } from './shared/ConfirmDialog';
@@ -13,6 +13,7 @@ import { ProveedoresTab } from './catalogos/ProveedoresTab';
 import { ConfigTab } from './config/ConfigTab';
 import { ApuCatalog } from './apu/ApuCatalog';
 import { PresupuestosTab } from './presupuestos/PresupuestosTab';
+import { setAyudaContext } from '../../components/ayuda/ayudaContext';
 
 type MainSection = 'catalogos' | 'apus' | 'presupuestos';
 type CatalogoTab =
@@ -38,10 +39,34 @@ const CATALOGO_TABS: { id: CatalogoTab; label: string; icon: NavIconName }[] = [
   { id: 'proveedores', label: 'Proveedores', icon: 'proveedores' },
 ];
 
+/** Intro de la ayuda contextual por sección (orig. usuario). */
+const AYUDA_INTROS_CM: Record<MainSection, string> = {
+  catalogos:
+    'Bases de datos del proyecto: colaboradores, cuadrillas, equipos, insumos y proveedores que alimentan los análisis de precios.',
+  apus: 'Construcción de análisis de precios unitarios: insumos, rendimientos, desperdicios, equipo y estructura AIU.',
+  presupuestos:
+    'Presupuestos: apus organizados por capítulos con cantidades, subtotales y resumen general.',
+};
+
 function CivilManagerShell() {
   const { loaded } = useCivilManager();
   const [mainSection, setMainSection] = useState<MainSection>('catalogos');
   const [catalogoTab, setCatalogoTab] = useState<CatalogoTab>('colaboradores');
+
+  // Ayuda contextual (orig. usuario): sección activa de Civil Manager para el panel de la navbar.
+  useEffect(() => {
+    const catLabel = CATALOGO_TABS.find((t) => t.id === catalogoTab)?.label || catalogoTab;
+    setAyudaContext({
+      key: mainSection === 'catalogos' ? `cm:catalogos:${catalogoTab}` : `cm:${mainSection}`,
+      modulo: 'Civil Manager',
+      seccion:
+        mainSection === 'catalogos'
+          ? `Catálogos · ${catLabel}`
+          : MAIN_SECTIONS.find((s) => s.id === mainSection)?.label || mainSection,
+      intro: AYUDA_INTROS_CM[mainSection],
+    });
+    return () => setAyudaContext(null);
+  }, [mainSection, catalogoTab]);
 
   if (!loaded) {
     return (

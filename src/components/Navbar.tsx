@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAyudaContext } from './ayuda/ayudaContext';
+import AyudaPanel from './ayuda/AyudaPanel';
 const Navbar_S1: React.CSSProperties = {
   width: 26,
   height: 26,
@@ -28,6 +30,13 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [prevPath, setPrevPath] = useState(path);
+  // Ayuda contextual (orig. usuario): las áreas de trabajo reportan su módulo/pestaña y el
+  // botón abre el panel in-place junto al perfil — sin redirigir.
+  const ayudaCtx = useAyudaContext();
+  const [ayudaOpen, setAyudaOpen] = useState(false);
+  // Estable (useCallback): el efecto de foco/Escape del panel no se remonta en cada
+  // scroll de la navbar (la navbar se re-renderiza con setScrollY en cada wheel).
+  const cerrarAyuda = useCallback(() => setAyudaOpen(false), []);
   if (path !== prevPath) {
     setPrevPath(path);
     setMenuOpen(false);
@@ -107,6 +116,30 @@ function Navbar() {
           </ul>
         </div>
         <div className="flex gap-3 items-center">
+          {ayudaCtx && (
+            <button
+              type="button"
+              onClick={() => setAyudaOpen(true)}
+              aria-haspopup="dialog"
+              aria-label={`Ayuda: ${ayudaCtx.modulo} — ${ayudaCtx.seccion}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all hover:bg-white/5 cursor-pointer"
+              style={{ border: '1px solid var(--glow)', background: 'rgba(245,214,104,0.06)' }}
+            >
+              <span
+                aria-hidden="true"
+                className="material-symbols-outlined"
+                style={{ fontSize: 16, color: 'var(--acc)' }}
+              >
+                help
+              </span>
+              <span
+                className="hidden sm:inline text-xs font-semibold text-on-surface-variant"
+                style={{ fontFamily: 'Geist, monospace' }}
+              >
+                AYUDA
+              </span>
+            </button>
+          )}
           {loading ? (
             <span className="text-on-surface-variant text-xs font-mono">...</span>
           ) : user ? (
@@ -158,6 +191,7 @@ function Navbar() {
           </div>
         )}
       </nav>
+      {ayudaOpen && ayudaCtx && <AyudaPanel ctx={ayudaCtx} onClose={cerrarAyuda} />}
     </>
   );
 }
