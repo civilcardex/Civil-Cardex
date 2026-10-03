@@ -47,9 +47,9 @@ export function Tabla({
   );
 }
 
-/** Caja de fórmula destacada (solo texto plano: las fórmulas con sub/sup/br
- *  se quedan escritas a mano). `compacto=true` para las cajas sin my-2/leading-relaxed. */
-export function fx(texto: string, compacto = false): JSX.Element {
+/** Caja de fórmula destacada; `contenido` acepta texto plano o JSX (sub/sup/br/entidades).
+ *  `compacto=true` para las cajas sin my-2/leading-relaxed. */
+export function fx(contenido: ReactNode, compacto = false): JSX.Element {
   return (
     <div
       className={
@@ -58,18 +58,18 @@ export function fx(texto: string, compacto = false): JSX.Element {
           : 'bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed'
       }
     >
-      {texto}
+      {contenido}
     </div>
   );
 }
 
-/** Grid "Donde:" de definiciones var → descripción (solo variables sin sub/sup;
- *  los grids con JSX en la variable se quedan escritos a mano). */
-export function donde(pares: Record<string, ReactNode>): JSX.Element {
+/** Grid "Donde:" de definiciones var → descripción; variable y descripción aceptan
+ *  ReactNode (sub/sup/entidades en la variable incluidos). */
+export function donde(pares: ReadonlyArray<readonly [ReactNode, ReactNode]>): JSX.Element {
   return (
     <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-      {Object.entries(pares).map(([variable, desc]) => (
-        <Fragment key={variable}>
+      {pares.map(([variable, desc], i) => (
+        <Fragment key={i}>
           <span className="font-semibold text-primary">{variable}</span>
           <span>{desc}</span>
         </Fragment>

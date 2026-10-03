@@ -18,23 +18,29 @@ const hidraulica = {
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          {donde({
-            v: 'velocidad del agua (m/s)',
-            g: 'gravedad = 9.81 m/s²',
-            DH: 'profundidad hidráulica = A/T',
-          })}
+          {donde([
+            ['v', 'velocidad del agua (m/s)'],
+            ['g', 'gravedad = 9.81 m/s²'],
+            ['DH', 'profundidad hidráulica = A/T'],
+          ])}
           <div className="mt-3">
             <span className="text-on-surface-variant text-[13px] font-semibold block mb-1">
               Interpretación del régimen:
             </span>
-            <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-              <span className="font-mono text-cyan-400 font-bold">Fr &gt; 1</span>
-              <span>Supercrítico — flujo rápido, energía cinética predominante</span>
-              <span className="font-mono text-yellow-400 font-bold">Fr = 1</span>
-              <span>Crítico — flujo limítrofe</span>
-              <span className="font-mono text-green-400 font-bold">Fr &lt; 1</span>
-              <span>Subcrítico — flujo lento, energía potencial predominante</span>
-            </div>
+            {donde([
+              [
+                <span className="font-mono text-cyan-400 font-bold">Fr &gt; 1</span>,
+                'Supercrítico — flujo rápido, energía cinética predominante',
+              ],
+              [
+                <span className="font-mono text-yellow-400 font-bold">Fr = 1</span>,
+                'Crítico — flujo limítrofe',
+              ],
+              [
+                <span className="font-mono text-green-400 font-bold">Fr &lt; 1</span>,
+                'Subcrítico — flujo lento, energía potencial predominante',
+              ],
+            ])}
           </div>
           <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3 mt-2">
             Recomendación: Para flujo estable se busca Fr &lt; 0.9 (subcrítico) o Fr &gt; 1.1
@@ -48,34 +54,35 @@ const hidraulica = {
       body: (
         <div className="space-y-3">
           <p>Flujo a superficie libre según Manning:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            V = (1/n) · R<sub>h</sub>
-            <sup>2/3</sup> · √S
-          </div>
+          {fx(
+            <>
+              V = (1/n) · R<sub>h</sub>
+              <sup>2/3</sup> · √S
+            </>,
+          )}
           <p className="text-[13px]">Caudal:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q = (1/n) · A · R<sub>h</sub>
-            <sup>2/3</sup> · √S
-          </div>
+          {fx(
+            <>
+              Q = (1/n) · A · R<sub>h</sub>
+              <sup>2/3</sup> · √S
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">V</span>
-            <span>velocidad (m/s)</span>
-            <span className="font-semibold text-primary">n</span>
-            <span>coeficiente de rugosidad de Manning</span>
-            <span className="font-semibold text-primary">
-              R<sub>h</sub>
-            </span>
-            <span>radio hidráulico (m)</span>
-            <span className="font-semibold text-primary">S</span>
-            <span>pendiente (m/m)</span>
-            <span className="font-semibold text-primary">A</span>
-            <span>área de la sección (m²)</span>
-            <span className="font-semibold text-primary">Q</span>
-            <span>caudal (m³/s)</span>
-          </div>
+          {donde([
+            ['V', 'velocidad (m/s)'],
+            ['n', 'coeficiente de rugosidad de Manning'],
+            [
+              <>
+                R<sub>h</sub>
+              </>,
+              'radio hidráulico (m)',
+            ],
+            ['S', 'pendiente (m/m)'],
+            ['A', 'área de la sección (m²)'],
+            ['Q', 'caudal (m³/s)'],
+          ])}
         </div>
       ),
     },
@@ -87,24 +94,25 @@ const hidraulica = {
             Fuerza que el fluido ejerce sobre el fondo del canal, responsable del arrastre de
             partículas sedimentadas.
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            T<sub>0</sub> = &gamma; · R · S
-          </div>
+          {fx(
+            <>
+              T<sub>0</sub> = &gamma; · R · S
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              T<sub>0</sub>
-            </span>
-            <span>tensión tractiva (kg/m²)</span>
-            <span className="font-semibold text-primary">&gamma;</span>
-            <span>peso específico del agua = 1000 kg/m³</span>
-            <span className="font-semibold text-primary">R</span>
-            <span>radio hidráulico (m)</span>
-            <span className="font-semibold text-primary">S</span>
-            <span>pendiente (m/m)</span>
-          </div>
+          {donde([
+            [
+              <>
+                T<sub>0</sub>
+              </>,
+              'tensión tractiva (kg/m²)',
+            ],
+            [<>&gamma;</>, 'peso específico del agua = 1000 kg/m³'],
+            ['R', 'radio hidráulico (m)'],
+            ['S', 'pendiente (m/m)'],
+          ])}
           <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
             Requisito NTC 1500: T<sub>0</sub> &ge; 0.10 kg/m² (mínimo). Recomendado: 0.15 kg/m².
           </div>
@@ -122,23 +130,27 @@ const hidraulica = {
             <span className="font-semibold text-primary">
               Relación v/V (velocidad real / tubo lleno):
             </span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              0.00 &lt; q/Q &le; 0.06 → v/V = 10<sup>(0.0298 + 0.2910 · log(q/Q))</sup>
-              <br />
-              0.06 &lt; q/Q &le; 0.26 → v/V = 10<sup>(0.0138 + 0.2860 · log(q/Q))</sup>
-              <br />
-              0.26 &lt; q/Q &le; 0.91 → v/V = 10<sup>(0.0218 + 0.2900 · log(q/Q))</sup>
-            </div>
+            {fx(
+              <>
+                0.00 &lt; q/Q &le; 0.06 → v/V = 10<sup>(0.0298 + 0.2910 · log(q/Q))</sup>
+                <br />
+                0.06 &lt; q/Q &le; 0.26 → v/V = 10<sup>(0.0138 + 0.2860 · log(q/Q))</sup>
+                <br />
+                0.26 &lt; q/Q &le; 0.91 → v/V = 10<sup>(0.0218 + 0.2900 · log(q/Q))</sup>
+              </>,
+            )}
           </div>
           <div className="text-[13px]">
             <span className="font-semibold text-primary">Relación h/D (calado / diámetro):</span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              0.00 &le; q/Q &lt; 0.11 → h/D = 0.3827 + 0.0645 · ln(q/Q)
-              <br />
-              0.11 &le; q/Q &lt; 0.21 → h/D = 0.6003 + 0.1547 · ln(q/Q)
-              <br />
-              0.21 &le; q/Q &lt; 0.91 → h/D = 0.225 + 0.667 · (q/Q)
-            </div>
+            {fx(
+              <>
+                0.00 &le; q/Q &lt; 0.11 → h/D = 0.3827 + 0.0645 · ln(q/Q)
+                <br />
+                0.11 &le; q/Q &lt; 0.21 → h/D = 0.6003 + 0.1547 · ln(q/Q)
+                <br />
+                0.21 &le; q/Q &lt; 0.91 → h/D = 0.225 + 0.667 · (q/Q)
+              </>,
+            )}
           </div>
           <div className="text-[13px]">
             <span className="font-semibold text-primary">Ángulo &alpha; (radianes):</span>
@@ -148,9 +160,11 @@ const hidraulica = {
             <span className="font-semibold text-primary">
               Relación R<sub>h</sub>/D:
             </span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              R<sub>h</sub>/D = ¼ · (1 − sen(&alpha;) / &alpha;)
-            </div>
+            {fx(
+              <>
+                R<sub>h</sub>/D = ¼ · (1 − sen(&alpha;) / &alpha;)
+              </>,
+            )}
           </div>
         </div>
       ),
@@ -160,20 +174,23 @@ const hidraulica = {
       body: (
         <div className="space-y-3">
           <p>Para canales de sección circular:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            S<sub>c</sub> = (4.579 &times; 10<sup>−4</sup>) / d<sup>3</sup>
-          </div>
+          {fx(
+            <>
+              S<sub>c</sub> = (4.579 &times; 10<sup>−4</sup>) / d<sup>3</sup>
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              S<sub>c</sub>
-            </span>
-            <span>pendiente crítica</span>
-            <span className="font-semibold text-primary">d</span>
-            <span>diámetro de tubería (m)</span>
-          </div>
+          {donde([
+            [
+              <>
+                S<sub>c</sub>
+              </>,
+              'pendiente crítica',
+            ],
+            ['d', 'diámetro de tubería (m)'],
+          ])}
           <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
             Si S &lt; S<sub>c</sub>: pendiente subcrítica para cualquier caudal.
             <br />
@@ -188,57 +205,62 @@ const hidraulica = {
         <div className="space-y-4">
           <div>
             <span className="text-[13px] font-semibold text-cyan-400">Rectangular</span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              A = b · y<br />
-              P = b + 2 · y<br />R<sub>h</sub> = (b · y) / (b + 2 · y)
-              <br />T = b
-            </div>
+            {fx(
+              <>
+                A = b · y
+                <br />
+                P = b + 2 · y
+                <br />R<sub>h</sub> = (b · y) / (b + 2 · y)
+                <br />T = b
+              </>,
+            )}
           </div>
           <div>
             <span className="text-[13px] font-semibold text-yellow-400">Trapezoidal</span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              A = (b + z · y) · y<br />
-              P = b + 2 · y · &radic;(1 + z²)
-              <br />R<sub>h</sub> = ((b + z · y) · y) / (b + 2 · y · &radic;(1 + z²))
-              <br />T = b + 2 · z · y
-            </div>
+            {fx(
+              <>
+                A = (b + z · y) · y
+                <br />
+                P = b + 2 · y · &radic;(1 + z²)
+                <br />R<sub>h</sub> = ((b + z · y) · y) / (b + 2 · y · &radic;(1 + z²))
+                <br />T = b + 2 · z · y
+              </>,
+            )}
           </div>
           <div>
             <span className="text-[13px] font-semibold text-green-400">
               Circular (parcialmente lleno)
             </span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              A = (D²/4) · (&theta; − sen(&theta;)) / 2<br />
-              P = D · &theta; / 2<br />R<sub>h</sub> = D/4 · (1 − sen(&theta;) / &theta;)
-              <br />T = D · sen(&theta;/2)
-            </div>
+            {fx(
+              <>
+                A = (D²/4) · (&theta; − sen(&theta;)) / 2
+                <br />
+                P = D · &theta; / 2
+                <br />R<sub>h</sub> = D/4 · (1 − sen(&theta;) / &theta;)
+                <br />T = D · sen(&theta;/2)
+              </>,
+            )}
             <div className="text-[11px] text-on-surface-variant ml-4">con &theta; en radianes</div>
           </div>
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">b</span>
-            <span>ancho de base (m)</span>
-            <span className="font-semibold text-primary">y</span>
-            <span>calado o profundidad del flujo (m)</span>
-            <span className="font-semibold text-primary">z</span>
-            <span>talud horizontal (relación H:V)</span>
-            <span className="font-semibold text-primary">D</span>
-            <span>diámetro de tubería (m)</span>
-            <span className="font-semibold text-primary">&theta;</span>
-            <span>ángulo del espejo de agua (rad)</span>
-            <span className="font-semibold text-primary">A</span>
-            <span>área hidráulica (m²)</span>
-            <span className="font-semibold text-primary">P</span>
-            <span>perímetro mojado (m)</span>
-            <span className="font-semibold text-primary">
-              R<sub>h</sub>
-            </span>
-            <span>radio hidráulico (m)</span>
-            <span className="font-semibold text-primary">T</span>
-            <span>espejo de agua (m)</span>
-          </div>
+          {donde([
+            ['b', 'ancho de base (m)'],
+            ['y', 'calado o profundidad del flujo (m)'],
+            ['z', 'talud horizontal (relación H:V)'],
+            ['D', 'diámetro de tubería (m)'],
+            [<>&theta;</>, 'ángulo del espejo de agua (rad)'],
+            ['A', 'área hidráulica (m²)'],
+            ['P', 'perímetro mojado (m)'],
+            [
+              <>
+                R<sub>h</sub>
+              </>,
+              'radio hidráulico (m)',
+            ],
+            ['T', 'espejo de agua (m)'],
+          ])}
         </div>
       ),
     },

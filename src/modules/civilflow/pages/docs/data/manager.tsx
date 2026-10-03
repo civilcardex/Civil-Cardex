@@ -16,11 +16,11 @@ const manager = {
             APU agrupa tres componentes de costo directo más la estructura de porcentajes:
           </p>
           {fx('Costo directo (CD) = Materiales + Mano de obra + Equipo')}
-          {donde({
-            Materiales: 'insumos del catálogo × cantidad × (1 + desperdicio)',
-            'Mano de obra': 'jornales de la cuadrilla ÷ rendimiento de la cuadrilla',
-            Equipo: 'tarifas de equipo ÷ rendimiento (cuando aplica)',
-          })}
+          {donde([
+            ['Materiales', 'insumos del catálogo × cantidad × (1 + desperdicio)'],
+            ['Mano de obra', 'jornales de la cuadrilla ÷ rendimiento de la cuadrilla'],
+            ['Equipo', 'tarifas de equipo ÷ rendimiento (cuando aplica)'],
+          ])}
           <p className="text-[13px]">
             Sobre el costo directo (o sobre la mano de obra, según la política del proyecto) se
             aplican los porcentajes de Administración, Imprevistos y Utilidad (AIU) para llegar al
@@ -37,11 +37,13 @@ const manager = {
             Cada insumo del APU lleva una cantidad por unidad de obra y un porcentaje de desperdicio
             (cortes, mermas, quebraduras) que lo engorda:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Cant. insumo = cant. teórica × (1 + desperdicio / 100)
-            <br />
-            Costo material = Cant. insumo × Precio unitario
-          </div>
+          {fx(
+            <>
+              Cant. insumo = cant. teórica × (1 + desperdicio / 100)
+              <br />
+              Costo material = Cant. insumo × Precio unitario
+            </>,
+          )}
           <p className="text-[13px]">
             Desperdicios típicos: tubería PVC 5–10% (cortes), accesorios 2–5%, concreto 3–5%. Los
             precios unitarios provienen del catálogo de insumos (con proveedor y fecha de
@@ -59,23 +61,28 @@ const manager = {
             terminadas por día). El costo de mano de obra por unidad reparte los jornales diarios
             del equipo entre lo que produce:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Rendimiento R = unidades de obra / día
-            <br />
-            Costo MO = ( Σ n<sub>i</sub> · J<sub>i</sub> ) / R
-          </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              n<sub>i</sub>
-            </span>
-            <span>cantidad de operarios del rol i en la cuadrilla</span>
-            <span className="font-semibold text-primary">
-              J<sub>i</sub>
-            </span>
-            <span>jornal diario del rol i (desde el catálogo)</span>
-            <span className="font-semibold text-primary">R</span>
-            <span>rendimiento de la cuadrilla (und/día)</span>
-          </div>
+          {fx(
+            <>
+              Rendimiento R = unidades de obra / día
+              <br />
+              Costo MO = ( Σ n<sub>i</sub> · J<sub>i</sub> ) / R
+            </>,
+          )}
+          {donde([
+            [
+              <>
+                n<sub>i</sub>
+              </>,
+              'cantidad de operarios del rol i en la cuadrilla',
+            ],
+            [
+              <>
+                J<sub>i</sub>
+              </>,
+              'jornal diario del rol i (desde el catálogo)',
+            ],
+            ['R', 'rendimiento de la cuadrilla (und/día)'],
+          ])}
           <p className="text-[13px]">
             Ejemplo: cuadrilla de 1 oficial ($60.000/día) + 1 ayudante ($40.000/día) con rendimiento
             20 und/día → costo MO = $100.000 / 20 = $5.000 por unidad.
@@ -91,17 +98,20 @@ const manager = {
             Cuando la actividad usa equipo ( vibradora, grúa, bomba ), su tarifa diaria se reparte
             igual que la mano de obra:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Costo equipo = ( Σ T<sub>i</sub> ) / R
-          </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              T<sub>i</sub>
-            </span>
-            <span>tarifa diaria del equipo i (desde el catálogo)</span>
-            <span className="font-semibold text-primary">R</span>
-            <span>rendimiento de la cuadrilla (und/día)</span>
-          </div>
+          {fx(
+            <>
+              Costo equipo = ( Σ T<sub>i</sub> ) / R
+            </>,
+          )}
+          {donde([
+            [
+              <>
+                T<sub>i</sub>
+              </>,
+              'tarifa diaria del equipo i (desde el catálogo)',
+            ],
+            ['R', 'rendimiento de la cuadrilla (und/día)'],
+          ])}
         </div>
       ),
     },
@@ -114,13 +124,15 @@ const manager = {
             del proyecto y la ganancia. Civil Manager aplica el estilo colombiano — IVA SOLO sobre
             la utilidad — exactamente así:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            A = CD · A% &nbsp;&nbsp;&nbsp; I = CD · I% &nbsp;&nbsp;&nbsp; U = CD · U%
-            <br />
-            Vr. unitario = CD<sub>unit</sub> · (1 + (A% + I% + U%) / 100)
-            <br />
-            IVA = U · IVA% &nbsp;&nbsp;(19% por defecto, solo sobre la utilidad)
-          </div>
+          {fx(
+            <>
+              A = CD · A% &nbsp;&nbsp;&nbsp; I = CD · I% &nbsp;&nbsp;&nbsp; U = CD · U%
+              <br />
+              Vr. unitario = CD<sub>unit</sub> · (1 + (A% + I% + U%) / 100)
+              <br />
+              IVA = U · IVA% &nbsp;&nbsp;(19% por defecto, solo sobre la utilidad)
+            </>,
+          )}
           <p className="text-[13px]">
             Ejemplo: APU de $10.000 con A=12%, I=3%, U=8% → A=$1.200, I=$300, U=$800, Vr. unitario =
             $12.300 y el IVA del ítem = $152. Los porcentajes globales vienen de Configuración →
@@ -138,13 +150,15 @@ const manager = {
             El presupuesto organiza los APU por capítulos (obras preliminares, sanitarias,
             eléctricas…) con cantidades de obra:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Subtotal ítem = Cantidad de obra × Vr. unitario del APU
-            <br />
-            CD total = Σ (CD de cada ítem)
-            <br />
-            Valor total = CD + A + I + U + IVA sobre U
-          </div>
+          {fx(
+            <>
+              Subtotal ítem = Cantidad de obra × Vr. unitario del APU
+              <br />
+              CD total = Σ (CD de cada ítem)
+              <br />
+              Valor total = CD + A + I + U + IVA sobre U
+            </>,
+          )}
           <p className="text-[13px]">
             Las filas marcadas "capítulo" no computan (solo agrupan). El resumen general suma el
             costo directo, la administración, los imprevistos, la utilidad y el IVA sobre utilidad

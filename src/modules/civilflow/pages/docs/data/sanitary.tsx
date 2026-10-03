@@ -1,4 +1,4 @@
-import { Tabla, donde } from './ui';
+import { Tabla, donde, fx } from './ui';
 
 const sanitarias = {
   name: 'Redes sanitarias',
@@ -36,33 +36,35 @@ const sanitarias = {
       body: (
         <div className="space-y-3">
           <p>Factor de simultaneidad y caudal de diseño por el método de Hunter:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            K = 1 / &radic;(N − 1) &nbsp;&nbsp; (N &gt; 1)
-            <br />K = 1 &nbsp;&nbsp; (N = 1)
-          </div>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q = K · Q<sub>UD</sub>
-            <br />
-            <br />Q<sub>UD</sub> = 0.1163 · UD<sup>0.6875</sup> &nbsp;&nbsp; (UD &lt; 240)
-            <br />Q<sub>UD</sub> = 0.074 · UD<sup>0.7504</sup> &nbsp;&nbsp; (UD &ge; 240)
-          </div>
+          {fx(
+            <>
+              K = 1 / &radic;(N − 1) &nbsp;&nbsp; (N &gt; 1)
+              <br />K = 1 &nbsp;&nbsp; (N = 1)
+            </>,
+          )}
+          {fx(
+            <>
+              Q = K · Q<sub>UD</sub>
+              <br />
+              <br />Q<sub>UD</sub> = 0.1163 · UD<sup>0.6875</sup> &nbsp;&nbsp; (UD &lt; 240)
+              <br />Q<sub>UD</sub> = 0.074 · UD<sup>0.7504</sup> &nbsp;&nbsp; (UD &ge; 240)
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">K</span>
-            <span>factor de simultaneidad</span>
-            <span className="font-semibold text-primary">N</span>
-            <span>número de aparatos conectados</span>
-            <span className="font-semibold text-primary">Q</span>
-            <span>caudal de diseño (L/min)</span>
-            <span className="font-semibold text-primary">
-              Q<sub>UD</sub>
-            </span>
-            <span>caudal por unidad de descarga (L/min)</span>
-            <span className="font-semibold text-primary">UD</span>
-            <span>unidades de descarga totales</span>
-          </div>
+          {donde([
+            ['K', 'factor de simultaneidad'],
+            ['N', 'número de aparatos conectados'],
+            ['Q', 'caudal de diseño (L/min)'],
+            [
+              <>
+                Q<sub>UD</sub>
+              </>,
+              'caudal por unidad de descarga (L/min)',
+            ],
+            ['UD', 'unidades de descarga totales'],
+          ])}
           <div className="text-[12px] text-on-surface-variant">
             Fórmula basada en Hunter - ASHRAE
           </div>
@@ -74,21 +76,26 @@ const sanitarias = {
       body: (
         <div className="space-y-3">
           <p>Diámetro de bajante por Manning:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            D = ((Q · n) / (0.312 · &radic;S))<sup>3/8</sup> &times; 1000 / 25.4 &nbsp;&nbsp;[pulg]
-          </div>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q = 0.312 · (D/1000)<sup>8/3</sup> · &radic;S / n
-          </div>
+          {fx(
+            <>
+              D = ((Q · n) / (0.312 · &radic;S))<sup>3/8</sup> &times; 1000 / 25.4
+              &nbsp;&nbsp;[pulg]
+            </>,
+          )}
+          {fx(
+            <>
+              Q = 0.312 · (D/1000)<sup>8/3</sup> · &radic;S / n
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          {donde({
-            D: 'diámetro (pulgadas)',
-            Q: 'caudal (m³/s)',
-            n: 'coeficiente de Manning',
-            S: 'pendiente (m/m)',
-          })}
+          {donde([
+            ['D', 'diámetro (pulgadas)'],
+            ['Q', 'caudal (m³/s)'],
+            ['n', 'coeficiente de Manning'],
+            ['S', 'pendiente (m/m)'],
+          ])}
           <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
             Velocidad mínima: 0.60 m/s (autolimpieza) · Velocidad máxima: 5.00 m/s
             <br />
@@ -115,35 +122,42 @@ const sanitarias = {
           <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3 mb-2">
             Diámetro mínimo NTC 1500: 1&frac12;" (38 mm)
           </div>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q<sub>aire</sub> = 1000 · V<sub>t</sub> · (&pi;/4) · D² · (17/24)
-          </div>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            D<sub>vent</sub> = ((Q<sub>aire</sub> · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup>
-          </div>
+          {fx(
+            <>
+              Q<sub>aire</sub> = 1000 · V<sub>t</sub> · (&pi;/4) · D² · (17/24)
+            </>,
+          )}
+          {fx(
+            <>
+              D<sub>vent</sub> = ((Q<sub>aire</sub> · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup>
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              Q<sub>aire</sub>
-            </span>
-            <span>caudal de aire requerido (m³/s)</span>
-            <span className="font-semibold text-primary">
-              V<sub>t</sub>
-            </span>
-            <span>velocidad del aire en la tubería (m/s)</span>
-            <span className="font-semibold text-primary">D</span>
-            <span>diámetro de la bajante (m)</span>
-            <span className="font-semibold text-primary">
-              D<sub>vent</sub>
-            </span>
-            <span>diámetro de ventilación (m)</span>
-            <span className="font-semibold text-primary">n</span>
-            <span>coeficiente de Manning</span>
-            <span className="font-semibold text-primary">S</span>
-            <span>pendiente (m/m)</span>
-          </div>
+          {donde([
+            [
+              <>
+                Q<sub>aire</sub>
+              </>,
+              'caudal de aire requerido (m³/s)',
+            ],
+            [
+              <>
+                V<sub>t</sub>
+              </>,
+              'velocidad del aire en la tubería (m/s)',
+            ],
+            ['D', 'diámetro de la bajante (m)'],
+            [
+              <>
+                D<sub>vent</sub>
+              </>,
+              'diámetro de ventilación (m)',
+            ],
+            ['n', 'coeficiente de Manning'],
+            ['S', 'pendiente (m/m)'],
+          ])}
         </div>
       ),
     },

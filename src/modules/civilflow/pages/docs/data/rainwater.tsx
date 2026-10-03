@@ -15,12 +15,12 @@ const lluvias = {
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          {donde({
-            Q: 'caudal de diseño (m³/s)',
-            C: 'coeficiente de escorrentía',
-            I: 'intensidad de lluvia (mm/h)',
-            A: 'área de drenaje (m²)',
-          })}
+          {donde([
+            ['Q', 'caudal de diseño (m³/s)'],
+            ['C', 'coeficiente de escorrentía'],
+            ['I', 'intensidad de lluvia (mm/h)'],
+            ['A', 'área de drenaje (m²)'],
+          ])}
         </div>
       ),
     },
@@ -46,37 +46,40 @@ const lluvias = {
       body: (
         <div className="space-y-3">
           <p>Diámetro de bajante de Aguas lluvias:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            D = ((Q · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup> &times; 1000 &nbsp;&nbsp;[mm]
-          </div>
+          {fx(
+            <>
+              D = ((Q · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup> &times; 1000 &nbsp;&nbsp;[mm]
+            </>,
+          )}
           <p className="text-[13px]">Canal rectangular — caudal máximo:</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q<sub>max</sub> = (1/n) · A · R<sub>h</sub>
-            <sup>2/3</sup> · √S
-          </div>
+          {fx(
+            <>
+              Q<sub>max</sub> = (1/n) · A · R<sub>h</sub>
+              <sup>2/3</sup> · √S
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">D</span>
-            <span>diámetro de bajante (mm)</span>
-            <span className="font-semibold text-primary">Q</span>
-            <span>caudal de diseño (m³/s)</span>
-            <span className="font-semibold text-primary">
-              Q<sub>max</sub>
-            </span>
-            <span>caudal máximo del canal (m³/s)</span>
-            <span className="font-semibold text-primary">n</span>
-            <span>coeficiente de Manning</span>
-            <span className="font-semibold text-primary">S</span>
-            <span>pendiente (m/m)</span>
-            <span className="font-semibold text-primary">A</span>
-            <span>área hidráulica del canal (m²)</span>
-            <span className="font-semibold text-primary">
-              R<sub>h</sub>
-            </span>
-            <span>radio hidráulico (m)</span>
-          </div>
+          {donde([
+            ['D', 'diámetro de bajante (mm)'],
+            ['Q', 'caudal de diseño (m³/s)'],
+            [
+              <>
+                Q<sub>max</sub>
+              </>,
+              'caudal máximo del canal (m³/s)',
+            ],
+            ['n', 'coeficiente de Manning'],
+            ['S', 'pendiente (m/m)'],
+            ['A', 'área hidráulica del canal (m²)'],
+            [
+              <>
+                R<sub>h</sub>
+              </>,
+              'radio hidráulico (m)',
+            ],
+          ])}
           <div className="text-[12px] text-on-surface-variant">
             Verificación: Q<sub>real</sub> &le; Q<sub>max</sub> → OK
           </div>
@@ -92,20 +95,22 @@ const lluvias = {
             Wyly-Eaton — la que usan las tablas de chequeo de bajantes de cubierta. Corrige el
             coeficiente K por la rugosidad del material como en Manning:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q<sub>cap</sub> = 27.8 · (0.009 / n) · r<sup>5/3</sup> · D<sup>8/3</sup>{' '}
-            &nbsp;&nbsp;[gpm]
-            <br />Q<sub>cap</sub> = Q<sub>cap,gpm</sub> × 0.0631 &nbsp;&nbsp;[L/s]
-          </div>
+          {fx(
+            <>
+              Q<sub>cap</sub> = 27.8 · (0.009 / n) · r<sup>5/3</sup> · D<sup>8/3</sup>{' '}
+              &nbsp;&nbsp;[gpm]
+              <br />Q<sub>cap</sub> = Q<sub>cap,gpm</sub> × 0.0631 &nbsp;&nbsp;[L/s]
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          {donde({
-            D: 'diámetro del bajante (pulg)',
-            r: 'razón de llenado del tubo (1/4 o 7/24)',
-            n: 'Manning del material (ref. 0.009 = tubería lisa)',
-            '27.8': 'coeficiente K de Wyly-Eaton (gpm, pulg)',
-          })}
+          {donde([
+            ['D', 'diámetro del bajante (pulg)'],
+            ['r', 'razón de llenado del tubo (1/4 o 7/24)'],
+            ['n', 'Manning del material (ref. 0.009 = tubería lisa)'],
+            ['27.8', 'coeficiente K de Wyly-Eaton (gpm, pulg)'],
+          ])}
           <p className="text-[13px]">
             Ejemplo: D = 4", n = 0.011, r = 7/24 → Q<sub>cap</sub> ≈ 7.4 L/s. El chequeo exige Q
             <sub>diseño</sub> / Q<sub>cap</sub> ≤ 100% (la tabla de chequeo lo muestra como %).

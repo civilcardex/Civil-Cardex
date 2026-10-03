@@ -1,4 +1,4 @@
-import { Tabla } from './ui';
+import { Tabla, donde, fx } from './ui';
 
 const agua_fria = {
   name: 'Agua fría',
@@ -34,30 +34,30 @@ const agua_fria = {
       body: (
         <div className="space-y-3">
           <p>Pérdida de carga por fricción de cada tramo (flujo turbulento en tubería lisa):</p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            h<sub>f</sub> = (10.67 · L · Q<sup>1.852</sup>) / (C<sup>1.852</sup> · D<sup>4.87</sup>)
-          </div>
+          {fx(
+            <>
+              h<sub>f</sub> = (10.67 · L · Q<sup>1.852</sup>) / (C<sup>1.852</sup> · D
+              <sup>4.87</sup>)
+            </>,
+          )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              h<sub>f</sub>
-            </span>
-            <span>pérdida por fricción (m)</span>
-            <span className="font-semibold text-primary">L</span>
-            <span>
-              longitud total: horizontal + vertical + longitud equivalente de accesorios (m)
-            </span>
-            <span className="font-semibold text-primary">Q</span>
-            <span>caudal de diseño (m³/s) — de la curva de Hunter</span>
-            <span className="font-semibold text-primary">C</span>
-            <span>coeficiente Hazen-Williams del material</span>
-            <span className="font-semibold text-primary">D</span>
-            <span>
-              diámetro INTERIOR (m): depende de la serie RDE del material, no solo del nominal
-            </span>
-          </div>
+          {donde([
+            [
+              <>
+                h<sub>f</sub>
+              </>,
+              'pérdida por fricción (m)',
+            ],
+            ['L', 'longitud total: horizontal + vertical + longitud equivalente de accesorios (m)'],
+            ['Q', 'caudal de diseño (m³/s) — de la curva de Hunter'],
+            ['C', 'coeficiente Hazen-Williams del material'],
+            [
+              'D',
+              'diámetro INTERIOR (m): depende de la serie RDE del material, no solo del nominal',
+            ],
+          ])}
           <div className="text-[13px] mt-2">
             <span className="font-semibold">Valores de C:</span>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 ml-4 mt-1">
@@ -87,27 +87,30 @@ const agua_fria = {
             Cómo la tabla de diseño construye cada fila — las cuatro columnas clave se encadenan
             así:
           </p>
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            UC total = UC propia + UC de otros ramales
-            <br />Q = K · 0.1163·UC<sup>0.6875</sup> &nbsp;&nbsp;(curva de Hunter)
-            <br />V = Q / ((π/4) · D<sub>i</sub>²)
-            <br />P<sub>fin</sub> = P<sub>ini</sub> − h<sub>f</sub> ± ΔZ
-          </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">K</span>
-            <span>factor de simultaneidad = 1/√(N−1), con N = descargas simultáneas del tramo</span>
-            <span className="font-semibold text-primary">ΔZ</span>
-            <span>
-              incremento de cota del tramo: sube resta presión (+h<sub>f</sub> efecto), baja la suma
-            </span>
-            <span className="font-semibold text-primary">
-              P<sub>ini</sub>
-            </span>
-            <span>
-              presión que llega del tramo anterior: desde acometida/contador (red) o del
-              tanque/equipo
-            </span>
-          </div>
+          {fx(
+            <>
+              UC total = UC propia + UC de otros ramales
+              <br />Q = K · 0.1163·UC<sup>0.6875</sup> &nbsp;&nbsp;(curva de Hunter)
+              <br />V = Q / ((π/4) · D<sub>i</sub>²)
+              <br />P<sub>fin</sub> = P<sub>ini</sub> − h<sub>f</sub> ± ΔZ
+            </>,
+          )}
+          {donde([
+            ['K', 'factor de simultaneidad = 1/√(N−1), con N = descargas simultáneas del tramo'],
+            [
+              'ΔZ',
+              <>
+                incremento de cota del tramo: sube resta presión (+h<sub>f</sub> efecto), baja la
+                suma
+              </>,
+            ],
+            [
+              <>
+                P<sub>ini</sub>
+              </>,
+              'presión que llega del tramo anterior: desde acometida/contador (red) o del tanque/equipo',
+            ],
+          ])}
           <p className="text-[13px]">
             Fijar un diámetro más grande reduce V y h<sub>f</sub> pero eleva el costo; uno más
             pequeño puede violar la velocidad máxima o dejar P<sub>fin</sub> por debajo del mínimo

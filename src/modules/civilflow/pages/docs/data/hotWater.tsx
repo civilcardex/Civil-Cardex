@@ -1,4 +1,4 @@
-import { Tabla } from './ui';
+import { Tabla, donde, fx } from './ui';
 
 const agua_caliente = {
   name: 'Agua caliente',
@@ -41,46 +41,57 @@ const agua_caliente = {
       title: 'Pérdidas de calor y recirculación',
       body: (
         <div className="space-y-3">
-          <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-            Q<sub>perd</sub> = U · A · (T<sub>m</sub> − T<sub>a</sub>)
-          </div>
+          {fx(
+            <>
+              Q<sub>perd</sub> = U · A · (T<sub>m</sub> − T<sub>a</sub>)
+            </>,
+          )}
           <div className="text-[13px]">
             <span className="font-semibold">Caudal de recirculación:</span>
-            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-              Q<sub>rec</sub> = Q<sub>perd</sub> / (c<sub>p</sub> · &Delta;T)
-            </div>
+            {fx(
+              <>
+                Q<sub>rec</sub> = Q<sub>perd</sub> / (c<sub>p</sub> · &Delta;T)
+              </>,
+            )}
           </div>
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
-          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-            <span className="font-semibold text-primary">
-              Q<sub>perd</sub>
-            </span>
-            <span>pérdida de calor (kcal/h)</span>
-            <span className="font-semibold text-primary">U</span>
-            <span>coeficiente global de transferencia (kcal/(h·m²·°C))</span>
-            <span className="font-semibold text-primary">A</span>
-            <span>área superficial del tubo (m²)</span>
-            <span className="font-semibold text-primary">
-              T<sub>m</sub>
-            </span>
-            <span>temperatura media del agua (°C)</span>
-            <span className="font-semibold text-primary">
-              T<sub>a</sub>
-            </span>
-            <span>temperatura ambiente (°C)</span>
-            <span className="font-semibold text-primary">
-              Q<sub>rec</sub>
-            </span>
-            <span>caudal de recirculación (kg/h)</span>
-            <span className="font-semibold text-primary">
-              c<sub>p</sub>
-            </span>
-            <span>calor específico = 1 kcal/(kg·°C)</span>
-            <span className="font-semibold text-primary">&Delta;T</span>
-            <span>diferencia de temperatura (5–10 °C)</span>
-          </div>
+          {donde([
+            [
+              <>
+                Q<sub>perd</sub>
+              </>,
+              'pérdida de calor (kcal/h)',
+            ],
+            ['U', 'coeficiente global de transferencia (kcal/(h·m²·°C))'],
+            ['A', 'área superficial del tubo (m²)'],
+            [
+              <>
+                T<sub>m</sub>
+              </>,
+              'temperatura media del agua (°C)',
+            ],
+            [
+              <>
+                T<sub>a</sub>
+              </>,
+              'temperatura ambiente (°C)',
+            ],
+            [
+              <>
+                Q<sub>rec</sub>
+              </>,
+              'caudal de recirculación (kg/h)',
+            ],
+            [
+              <>
+                c<sub>p</sub>
+              </>,
+              'calor específico = 1 kcal/(kg·°C)',
+            ],
+            [<>&Delta;T</>, 'diferencia de temperatura (5–10 °C)'],
+          ])}
           <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
             c<sub>p</sub> = 1 kcal/(kg·°C) · &Delta;T típico: 5–10 °C
           </div>
