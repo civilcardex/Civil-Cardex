@@ -2,6 +2,7 @@ import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
 
 export interface CmProyectoRow {
+  user_id?: string;
   id: string;
   codigo: string;
   nombre: string;
@@ -12,7 +13,7 @@ export async function fetchCmProyectos(): Promise<CmProyectoRow[]> {
   try {
     const { data, error } = await supabase
       .from('cm_proyectos')
-      .select('id, codigo, nombre, created_at')
+      .select('id, user_id, codigo, nombre, created_at')
       .order('created_at', { ascending: false });
     if (error) {
       devError('fetchCmProyectos:', error.message);
@@ -39,7 +40,7 @@ export async function createCmProyecto(
     const { data, error } = await supabase
       .from('cm_proyectos')
       .insert({ user_id: userId, codigo, nombre })
-      .select('id, codigo, nombre, created_at')
+      .select('id, user_id, codigo, nombre, created_at')
       .single();
     if (error) {
       devError('createCmProyecto:', error.message);

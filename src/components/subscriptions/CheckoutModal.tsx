@@ -8,7 +8,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import type { ModuloId, Periodo } from '../../lib/subscriptions/catalog';
+import type { ModuloId, Periodo, PuestosPorModulo } from '../../lib/subscriptions/catalog';
 import { edgePagoNoDesplegada } from '../../lib/subscriptions/subscriptionsService';
 import { devError } from '../../utils/devError';
 
@@ -17,9 +17,11 @@ interface Props {
   onClose: () => void;
   modulos: ModuloId[];
   periodo: Periodo;
+  /** Puestos por módulo (empresarial); ausente = 1 puesto por módulo. */
+  puestos?: PuestosPorModulo;
 }
 
-export default function CheckoutModal({ open, onClose, modulos, periodo }: Props) {
+export default function CheckoutModal({ open, onClose, modulos, periodo, puestos }: Props) {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState(false);
   // Evita pedir dos checkouts si el padre re-renderiza con el modal abierto.
@@ -35,7 +37,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo }: Props
     pedidoRef.current = true;
     void (async () => {
       const { data, error: err } = await supabase.functions.invoke('crear-checkout', {
-        body: { modulos, periodo },
+        body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
       });
       if (data?.checkoutUrl) {
         window.location.assign(data.checkoutUrl as string);
@@ -54,7 +56,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo }: Props
             : 'No se pudo iniciar el pago. Intenta de nuevo en unos minutos.',
       );
     })();
-  }, [open, modulos, periodo]);
+  }, [open, modulos, periodo, puestos]);
 
   // Reset del aviso al (re)abrir — patrón de ajuste de estado durante render.
   const [prevOpen, setPrevOpen] = useState(open);

@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CATALOGO, DESCUENTO_BASE, DESCUENTO_POR_MODULO, calcularTotalCentavos } from '../catalog';
+import {
+  CATALOGO,
+  DESCUENTO_BASE,
+  DESCUENTO_POR_MODULO,
+  DESCUENTO_POR_PUESTOS,
+  PUESTOS_TOPE_AUTOMATICO,
+  calcularTotalCentavos,
+} from '../catalog';
 
 // PARIDAD DE CATÁLOGO cliente↔edge: los precios viven en DOS archivos sin fuente única
 // (deuda documentada). El servidor cobra con el del edge; el modal muestra el del cliente —
@@ -54,8 +61,34 @@ describe('paridad catálogo cliente vs edge (Lemon Squeezy)', () => {
 
   it('la fórmula (base + acumulativo) produce el mismo número que el edge', () => {
     // Pines: si un lado cambia la regla, estos números fallan.
-    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(4500); // 5000¢ × 0.90
+    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(4050); // 5000¢ × 0.90 × 0.90
     expect(calcularTotalCentavos(['flow'], 'anual')).toBe(25500); // 30000¢ × 0.85
     expect(calcularTotalCentavos(['flow'], 'semestral')).toBe(13500); // 15000¢ × 0.90
+  });
+
+  it('los tramos de descuento por VOLUMEN (puestos) coinciden con el edge', () => {
+    const edge = EDGE_SRC.match(/DESCUENTO_POR_PUESTOS[^[]*\[([\s\S]*?)\];/);
+    expect(edge).toBeTruthy();
+    const tramosEdge = (
+      edge![1].match(/\{ min: ([\d]+), max: ([\d]+), pct: ([\d.]+) \}/g) ?? []
+    ).map((t) => {
+      const m = t.match(/\{ min: ([\d]+), max: ([\d]+), pct: ([\d.]+) \}/)!;
+      return { min: Number(m[1]), max: Number(m[2]), pct: Number(m[3]) };
+    });
+    expect(tramosEdge).toEqual(DESCUENTO_POR_PUESTOS);
+    expect(num(EDGE_SRC.match(/PUESTOS_TOPE_AUTOMATICO = ([\d]+)/)?.[1])).toBe(
+      PUESTOS_TOPE_AUTOMATICO,
+    );
+  });
+
+  it('la fórmula con PUESTOS (precio × puestos × descuentos) pinta los mismos números', () => {
+    // 3 puestos flow mensual: 7500¢ × 1.00 (sin base) × 0.90 (volumen 2-4) = 6750
+    expect(calcularTotalCentavos(['flow'], 'mensual', { flow: 3 })).toBe(6750);
+    // 6 puestos (3+3) semestral: 90000¢ × 0.80 (acumulativo) × 0.85 (volumen 5-9) = 61200
+    expect(calcularTotalCentavos(['flow', 'manage'], 'semestral', { flow: 3, manage: 3 })).toBe(
+      61200,
+    );
+    // puestos faltantes valen 1
+    expect(calcularTotalCentavos(['flow'], 'mensual', {})).toBe(2500);
   });
 });

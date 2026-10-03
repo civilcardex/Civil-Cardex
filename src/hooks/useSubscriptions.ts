@@ -7,10 +7,11 @@
  * `decidido` = false mientras el flag de BD está sin resolver (null): evita el
  * flash de contenido protegido en RequireModule (montar y luego redirigir).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
   EV_SUSCRIPCIONES,
+  fetchModulosConAcceso,
   fetchSuscripciones,
   modulosActivos,
   suscripcionesHabilitadas,
@@ -27,13 +28,9 @@ export function useSuscripciones() {
   const [rows, setRows] = useState<SuscripcionRow[] | null>(null);
   // null = aún consultando el flag de BD (evita el flash en RequireModule).
   const [flagBD, setFlagBD] = useState<boolean | null>(null);
-
-  const refetch = useCallback(async () => {
-    // setRows es la única llamada y ocurre SIEMPRE tras un await — el efecto
-    // de montaje no dispara setState síncrono (react-hooks/set-state-in-effect).
-    const filas = await (user ? fetchSuscripciones() : Promise.resolve([]));
-    setRows(filas);
-  }, [user]);
+  // Módulos del RPC mis_accesos (propias + asientos de empresa); [] sin sesión o
+  // sin migración (fail-open — ver fetchModulosConAcceso).
+  const [accesos, setAccesos] = useState<ModuloId[]>([]);
 
   useEffect(() => {
     // Precios desde BD (fuente única, deuda #4): pisa CATALOGO con app_precios antes de
@@ -43,14 +40,17 @@ export function useSuscripciones() {
     // ignore — evita setState síncrono desde el effect (react-hooks).
     let ignore = false;
     async function cargar() {
-      const [filas, hab] = await Promise.all([
+      const [filas, hab, acc] = await Promise.all([
         user ? fetchSuscripciones() : Promise.resolve([]),
         // VITE off → ni siquiera se consulta el flag (resuelve false).
         SUSCRIPCIONES_ACTIVAS ? suscripcionesHabilitadas() : Promise.resolve(false),
+        // Asientos de empresa: sin sesión no hay nada que unir (activos queda igual).
+        user ? fetchModulosConAcceso() : Promise.resolve<ModuloId[]>([]),
       ]);
       if (!ignore) {
         setRows(filas);
         setFlagBD(hab);
+        setAccesos(acc);
       }
     }
     void cargar();
@@ -62,11 +62,17 @@ export function useSuscripciones() {
     };
   }, [user]);
 
-  const activos = useMemo(() => modulosActivos(rows ?? []), [rows]);
+  // activos = suscripciones propias (RLS) + asientos de empresa (mis_accesos):
+  // el gating cliente no puede ver los asientos con la lectura owner-only.
+  const activos = useMemo(() => {
+    const base = modulosActivos(rows ?? []);
+    for (const m of accesos) base.add(m);
+    return base;
+  }, [rows, accesos]);
   const bloqueando = SUSCRIPCIONES_ACTIVAS && flagBD === true;
   const decidido = !SUSCRIPCIONES_ACTIVAS || flagBD !== null;
 
-  return { rows: rows ?? [], activos, loading: rows === null, bloqueando, decidido, refetch };
+  return { rows: rows ?? [], activos, loading: rows === null, bloqueando, decidido };
 }
 
 export type { ModuloId };

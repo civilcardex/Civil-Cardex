@@ -22,6 +22,9 @@ const Fallback = () => (
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 import PricingPage from './pages/PricingPage';
 import RequireModule from './components/subscriptions/RequireModule';
 
@@ -37,6 +40,8 @@ const WorkAreaCivilFlowPage = React.lazy(
 );
 const WorkAreaCivilManagerPage = React.lazy(() => import('./pages/WorkAreaCivilManagerPage'));
 const CatalogoMaestroPage = React.lazy(() => import('./modules/civilflow/pages/CatalogMasterPage'));
+const CompanyPage = React.lazy(() => import('./pages/CompanyPage'));
+const CompanyPreviewPage = React.lazy(() => import('./pages/CompanyPreviewPage'));
 const ModulePage = React.lazy(() => import('./pages/ModulePage'));
 
 function App() {
@@ -85,6 +90,30 @@ function App() {
                 element={
                   <ErrorBoundary>
                     <RegisterPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/restablecer"
+                element={
+                  <ErrorBoundary>
+                    <ResetPasswordPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/terminos"
+                element={
+                  <ErrorBoundary>
+                    <TermsPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/privacidad"
+                element={
+                  <ErrorBoundary>
+                    <PrivacyPage />
                   </ErrorBoundary>
                 }
               />
@@ -199,7 +228,7 @@ function App() {
               <Route element={<ProtectedRoute />}>
                 <Route element={<Layout />}>
                   <Route
-                    path="/civilflowareatrabajo"
+                    path="/civilflowareatrabajo/:proyectoId?"
                     element={
                       <RequireModule modulo="flow">
                         <ErrorBoundary>
@@ -213,7 +242,7 @@ function App() {
                     }
                   />
                   <Route
-                    path="/civilmanagerareatrabajo"
+                    path="/civilmanagerareatrabajo/:proyectoId?"
                     element={
                       <RequireModule modulo="manage">
                         <ErrorBoundary>
@@ -235,6 +264,16 @@ function App() {
                     }
                   />
                   <Route
+                    path="/empresa"
+                    element={
+                      <ErrorBoundary>
+                        <Suspense fallback={<Fallback />}>
+                          <CompanyPage />
+                        </Suspense>
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
                     path="/catalogomaestro"
                     element={
                       <ErrorBoundary>
@@ -246,6 +285,18 @@ function App() {
                   />
                 </Route>
               </Route>
+
+              {/* SOLO DESARROLLO: preview de /empresa con datos falsos (borrar) — fuera del bundle de prod la ruta cae al 404 */}
+              {import.meta.env.DEV && (
+                <Route
+                  path="/empresa-preview"
+                  element={
+                    <Suspense fallback={<Fallback />}>
+                      <CompanyPreviewPage />
+                    </Suspense>
+                  }
+                />
+              )}
 
               {/* 404 catch-all */}
               <Route

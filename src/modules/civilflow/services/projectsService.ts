@@ -18,10 +18,10 @@ export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error('sin-sesion');
+  // Sin filtro user_id: RLS devuelve propios + proyectos de la empresa (asiento activo).
   const { data, error } = await supabase
     .from(CF_TABLES.proyectos)
     .select('*')
-    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data as ProyectoRow[]) || [];
@@ -38,10 +38,10 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
     } = await supabase.auth.getUser();
     if (!user) return [];
 
+    // Sin filtro user_id: RLS devuelve propios + proyectos de la empresa (asiento activo).
     const { data, error } = await supabase
       .from(CF_TABLES.proyectos)
       .select('*')
-      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {

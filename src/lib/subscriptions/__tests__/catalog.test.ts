@@ -24,16 +24,16 @@ describe('calcularTotalCentavos (USD)', () => {
     expect(calcularTotalCentavos(['flow', 'flow'], 'mensual')).toBe(2500);
   });
 
-  it('dos módulos mensual: solo +10% por adicional → $45.00', () => {
-    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(4500); // 5000 × 0.90
+  it('dos módulos mensual: +10% adicional Y volumen 2 puestos −10% → $40.50', () => {
+    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(4050); // 5000 × 0.90 × 0.90
   });
 
-  it('dos módulos semestral: base 10% + adicional 10% → $240.00', () => {
-    expect(calcularTotalCentavos(['flow', 'manage'], 'semestral')).toBe(24000); // 30000 × 0.80
+  it('dos módulos semestral: 0.80 acumulativo × 0.90 volumen → $216.00', () => {
+    expect(calcularTotalCentavos(['flow', 'manage'], 'semestral')).toBe(21600); // 30000 × 0.80 × 0.90
   });
 
-  it('dos módulos anual: base 15% + adicional 10% → $450.00', () => {
-    expect(calcularTotalCentavos(['flow', 'manage'], 'anual')).toBe(45000); // 60000 × 0.75
+  it('dos módulos anual: 0.75 acumulativo × 0.90 volumen → $405.00', () => {
+    expect(calcularTotalCentavos(['flow', 'manage'], 'anual')).toBe(40500); // 60000 × 0.75 × 0.90
   });
 
   it('descuentoAplicado acumula', () => {

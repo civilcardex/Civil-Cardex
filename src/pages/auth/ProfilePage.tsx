@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { devError } from '../../utils/devError';
 import { useAuth } from '../../context/AuthContext';
@@ -718,6 +718,18 @@ function ProfilePage() {
                 <span className="material-symbols-outlined text-lg">add_circle</span>
                 Nuevo proyecto
               </button>
+              {user &&
+                subsRows.some(
+                  (r) => r.user_id === user.id && (r.puestos ?? 1) > 1 && estaActiva(r),
+                ) && (
+                  <Link
+                    to="/empresa"
+                    className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-lg">group</span>
+                    Gestionar equipo
+                  </Link>
+                )}
             </div>
 
             {proyLoading ? (
@@ -775,6 +787,18 @@ function ProfilePage() {
                         >
                           CF
                         </span>
+                        {user && proy.user_id !== user.id && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 border"
+                            style={{
+                              borderColor: '#52f2a5',
+                              color: '#52f2a5',
+                              fontFamily: 'Geist, monospace',
+                            }}
+                          >
+                            Empresa
+                          </span>
+                        )}
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
                           role="button"
@@ -843,6 +867,18 @@ function ProfilePage() {
                         >
                           CM
                         </span>
+                        {user && proy.user_id !== user.id && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 border"
+                            style={{
+                              borderColor: '#52f2a5',
+                              color: '#52f2a5',
+                              fontFamily: 'Geist, monospace',
+                            }}
+                          >
+                            Empresa
+                          </span>
+                        )}
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
                           role="button"

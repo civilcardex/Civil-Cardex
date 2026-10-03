@@ -13,6 +13,8 @@ export interface SuscripcionRow {
   periodo: string;
   estado: string;
   fecha_fin: string;
+  puestos?: number;
+  user_id?: string;
 }
 
 /** Evento DOM para pedir refetch tras un pago aprobado. */
@@ -27,7 +29,7 @@ export async function fetchSuscripciones(): Promise<SuscripcionRow[]> {
   try {
     const { data, error } = await supabase
       .from('app_suscripciones')
-      .select('id, modulo, periodo, estado, fecha_fin');
+      .select('id, modulo, periodo, estado, fecha_fin, puestos, user_id');
     if (error) {
       devError('fetchSuscripciones:', error.message);
       return [];
@@ -46,6 +48,20 @@ export function estaActiva(
 ): boolean {
   if (s.estado !== 'activa') return false;
   return new Date(s.fecha_fin).getTime() > ahora.getTime();
+}
+
+/** Módulos con acceso VIGENTE del usuario: propias por RLS + asientos de empresa.
+ *  El RPC mis_accesos une app_suscripciones y app_suscripciones_miembros server-side
+ *  (la policy owner-only de app_suscripciones no ve los asientos). Devuelve [] si el
+ *  RPC aún no existe en BD (feature no desplegada) — fail-open como el resto. */
+export async function fetchModulosConAcceso(): Promise<ModuloId[]> {
+  try {
+    const { data, error } = await supabase.rpc('mis_accesos');
+    if (error || !Array.isArray(data)) return [];
+    return data.filter((m: unknown): m is ModuloId => typeof m === 'string');
+  } catch {
+    return [];
+  }
 }
 
 /** Set de módulos con suscripción vigente. */

@@ -10,9 +10,11 @@ import {
   CATALOGO,
   DESCUENTO_BASE,
   DESCUENTO_POR_MODULO,
+  PUESTOS_TOPE_AUTOMATICO,
   SUSCRIPCIONES_ACTIVAS,
   calcularTotalCentavos,
   descuentoAplicado,
+  descuentoPorPuestos,
   formatUSD,
   precioDePeriodo,
   type ModuloId,
@@ -214,6 +216,10 @@ function PricingSuscripciones() {
    *  si no total/checkbox/modal leen conjuntos distintos. */
   const seleccionEfectiva = !ignoraUrl && seleccionMemo ? seleccionMemo : seleccion;
   const [checkoutAbierto, setCheckoutAbierto] = useState(false);
+  // Puestos por modulo (empresarial): 1 = individual. Tope automatico 24; 25+ negociado.
+  const [puestos, setPuestos] = useState<Record<ModuloId, number>>({ flow: 1, manage: 1 });
+  // Individual = 1 puesto por módulo (sin volumen). Empresarial = steppers + descuento por volumen.
+  const [modo, setModo] = useState<'individual' | 'empresarial'>('individual');
   // Aviso informativo (no error) del resultado de la verificación al volver del checkout.
   const [avisoPago, setAvisoPago] = useState('');
 
@@ -252,7 +258,17 @@ function PricingSuscripciones() {
     [],
   );
 
-  const total = calcularTotalCentavos([...seleccionEfectiva], periodo);
+  const total = calcularTotalCentavos(
+    [...seleccionEfectiva],
+    periodo,
+    modo === 'empresarial' ? puestos : undefined,
+  );
+  const totalPuestos =
+    modo === 'empresarial'
+      ? [...seleccionEfectiva].reduce((s2, id) => s2 + (puestos[id] ?? 1), 0)
+      : 0;
+  const negociado = modo === 'empresarial' && totalPuestos >= 25;
+  const dtoVolumen = modo === 'empresarial' ? descuentoPorPuestos(totalPuestos) : null;
   const descPct = seleccionEfectiva.size
     ? Math.round(descuentoAplicado([...seleccionEfectiva], periodo) * 100)
     : 0;
@@ -270,7 +286,7 @@ function PricingSuscripciones() {
   }
 
   function pagar() {
-    if (!hayPago) return;
+    if (!hayPago || negociado) return;
     if (!user) {
       navigate('/login');
       return;
@@ -343,6 +359,46 @@ function PricingSuscripciones() {
             Pago único por el período elegido — la renovación es manual y la app le avisa antes de
             vencer. Pago seguro con tarjeta — checkout hosteado por Lemon Squeezy.
           </p>
+          {/* Tipo de plan: individual (1 puesto) vs empresarial (puestos + volumen) */}
+          <div
+            className="inline-flex pt-2"
+            role="group"
+            aria-label="Tipo de plan"
+            style={{
+              border: '1px solid #3a494a',
+              borderRadius: 10,
+              padding: 4,
+              background: '#16191d',
+              gap: 4,
+            }}
+          >
+            {(['individual', 'empresarial'] as const).map((m) => {
+              const on = modo === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setModo(m)}
+                  aria-pressed={on}
+                  style={{
+                    cursor: 'pointer',
+                    border: 'none',
+                    borderRadius: 7,
+                    padding: '8px 18px',
+                    background: on ? '#4D8FF7' : 'transparent',
+                    color: on ? '#fff' : '#b9caca',
+                    fontFamily: 'Geist, monospace',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  {m}
+                </button>
+              );
+            })}
+          </div>
           {/* Selector de período segmentado (estático) */}
           <div
             className="inline-flex pt-2"
@@ -390,9 +446,11 @@ function PricingSuscripciones() {
             })}
           </div>
           <p className="text-[12px] text-outline">
-            {DESCUENTO_BASE[periodo] > 0
-              ? `${Math.round(DESCUENTO_BASE[periodo] * 100)}% de descuento desde el primer módulo; +${Math.round(DESCUENTO_POR_MODULO * 100)}% por cada módulo adicional.`
-              : `Sin descuento base: cada módulo adicional suma ${Math.round(DESCUENTO_POR_MODULO * 100)}% de descuento.`}
+            {modo === 'empresarial'
+              ? 'Precios POR PUESTO. Volumen: 2-4 puestos −10% · 5-9 −15% · 10-24 −20% · 25 o más, negociado con nosotros.'
+              : DESCUENTO_BASE[periodo] > 0
+                ? `${Math.round(DESCUENTO_BASE[periodo] * 100)}% de descuento desde el primer módulo; +${Math.round(DESCUENTO_POR_MODULO * 100)}% por cada módulo adicional.`
+                : `Sin descuento base: cada módulo adicional suma ${Math.round(DESCUENTO_POR_MODULO * 100)}% de descuento.`}
           </p>
         </section>
 
@@ -407,6 +465,9 @@ function PricingSuscripciones() {
               vigencia={vigente(m.id)}
               loading={loading}
               onToggle={() => toggle(m.id)}
+              empresarial={modo === 'empresarial'}
+              puesto={puestos[m.id] ?? 1}
+              onPuestos={(n) => setPuestos((pr) => ({ ...pr, [m.id]: n }))}
             />
           ))}
         </section>
@@ -452,6 +513,12 @@ function PricingSuscripciones() {
                       />
                       <span className="text-[14px]">
                         {CATALOGO.find((c) => c.id === id)?.nombre}
+                        {modo === 'empresarial' && (
+                          <span className="text-on-surface-variant">
+                            {' '}
+                            × {puestos[id] ?? 1} {(puestos[id] ?? 1) === 1 ? 'puesto' : 'puestos'}
+                          </span>
+                        )}
                       </span>
                     </div>
                   ))
@@ -461,6 +528,11 @@ function PricingSuscripciones() {
                     Descuento (−{descPct}%) aplicado.
                   </p>
                 )}
+                {dtoVolumen ? (
+                  <p style={{ color: '#52f2a5', fontSize: 14 }}>
+                    Volumen: −{Math.round(dtoVolumen * 100)}% por {totalPuestos} puestos.
+                  </p>
+                ) : null}
                 {(['flow', 'manage'] as const)
                   .filter((id) => vigente(id))
                   .map((id) => (
@@ -488,33 +560,58 @@ function PricingSuscripciones() {
                 </span>
               </div>
               <p className="text-[13px] text-outline mb-3">renovación manual</p>
-              <button
-                type="button"
-                onClick={pagar}
-                disabled={!hayPago}
-                aria-label={user || !hayPago ? 'Pagar ahora' : 'Inicia sesión para pagar'}
-                className="pr-cta inline-flex items-center gap-2 uppercase tracking-widest font-bold"
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Geist, monospace',
-                  padding: '15px 34px',
-                  borderRadius: 10,
-                  background: hayPago ? '#e8c84a' : '#1e2126',
-                  color: hayPago ? '#161a1e' : '#5a6a6b',
-                  border: 'none',
-                  boxShadow: hayPago ? '0 0 22px rgba(232,200,74,.22)' : 'none',
-                  cursor: hayPago ? 'pointer' : 'default',
-                }}
-              >
-                {user || !hayPago ? 'Pagar ahora' : 'Inicia sesión y paga'}
-                <span
-                  aria-hidden="true"
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 17 }}
+              {negociado ? (
+                <a
+                  href="mailto:contacto@civilcardex.com?subject=Plan%20empresarial%2025%2B%20puestos"
+                  className="pr-cta inline-flex items-center gap-2 uppercase tracking-widest font-bold"
+                  style={{
+                    fontSize: 14,
+                    fontFamily: 'Geist, monospace',
+                    padding: '15px 34px',
+                    borderRadius: 10,
+                    background: '#e8c84a',
+                    color: '#161a1e',
+                    textDecoration: 'none',
+                  }}
                 >
-                  arrow_forward
-                </span>
-              </button>
+                  25+ puestos: contáctenos
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 17 }}
+                  >
+                    mail
+                  </span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={pagar}
+                  disabled={!hayPago}
+                  aria-label={user || !hayPago ? 'Pagar ahora' : 'Inicia sesión para pagar'}
+                  className="pr-cta inline-flex items-center gap-2 uppercase tracking-widest font-bold"
+                  style={{
+                    fontSize: 14,
+                    fontFamily: 'Geist, monospace',
+                    padding: '15px 34px',
+                    borderRadius: 10,
+                    background: hayPago ? '#e8c84a' : '#1e2126',
+                    color: hayPago ? '#161a1e' : '#5a6a6b',
+                    border: 'none',
+                    boxShadow: hayPago ? '0 0 22px rgba(232,200,74,.22)' : 'none',
+                    cursor: hayPago ? 'pointer' : 'default',
+                  }}
+                >
+                  {user || !hayPago ? 'Pagar ahora' : 'Inicia sesión y paga'}
+                  <span
+                    aria-hidden="true"
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 17 }}
+                  >
+                    arrow_forward
+                  </span>
+                </button>
+              )}
               <p
                 className="flex items-center justify-end gap-1 mt-2 text-[13px]"
                 style={{ color: '#849495' }}
@@ -574,6 +671,7 @@ function PricingSuscripciones() {
         onClose={() => setCheckoutAbierto(false)}
         modulos={[...seleccionEfectiva]}
         periodo={periodo}
+        puestos={Object.fromEntries([...seleccionEfectiva].map((id) => [id, puestos[id] ?? 1]))}
       />
     </div>
   );
@@ -586,6 +684,9 @@ function ModuleCard({
   vigencia,
   loading,
   onToggle,
+  empresarial,
+  puesto,
+  onPuestos,
 }: {
   modulo: ModuloVenta;
   periodo: Periodo;
@@ -593,6 +694,9 @@ function ModuleCard({
   vigencia?: { fecha_fin: string };
   loading: boolean;
   onToggle: () => void;
+  empresarial: boolean;
+  puesto: number;
+  onPuestos: (n: number) => void;
 }) {
   const precio = precioDePeriodo(modulo, periodo);
   return (
@@ -671,7 +775,63 @@ function ModuleCard({
           {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
         </span>
       </div>
-      <p className="text-[11px] text-outline">pago único del período · renovación manual</p>
+      <p className="text-[11px] text-outline">
+        pago único del período · renovación manual{empresarial ? ' · precio por puesto' : ''}
+      </p>
+      {empresarial && (
+        <div className="mt-3 inline-flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={`Menos puestos de ${modulo.nombre}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPuestos(Math.max(1, puesto - 1));
+            }}
+            className="pr-cta"
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 7,
+              border: '1px solid #3a494a',
+              background: '#1e2126',
+              color: '#e2e2e8',
+              cursor: 'pointer',
+              fontSize: 15,
+              lineHeight: 1,
+            }}
+          >
+            −
+          </button>
+          <span
+            className="text-[13px] text-on-surface-variant"
+            style={{ minWidth: 78, textAlign: 'center' }}
+          >
+            {puesto} {puesto === 1 ? 'puesto' : 'puestos'}
+          </span>
+          <button
+            type="button"
+            aria-label={`Más puestos de ${modulo.nombre}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPuestos(Math.min(PUESTOS_TOPE_AUTOMATICO, puesto + 1));
+            }}
+            className="pr-cta"
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 7,
+              border: '1px solid #3a494a',
+              background: '#1e2126',
+              color: '#e2e2e8',
+              cursor: 'pointer',
+              fontSize: 15,
+              lineHeight: 1,
+            }}
+          >
+            +
+          </button>
+        </div>
+      )}
 
       <ul
         className="mt-4 space-y-2"
