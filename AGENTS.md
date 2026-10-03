@@ -27,13 +27,25 @@ Apagado en DOS niveles — con ambos off, la app se comporta exactamente como an
 - Flujo perfil: "Nuevo proyecto" → `ModuleSelectDialog` lista SOLO módulos comprados y vigentes ("Activo hasta X"); 0 activos → "Ver planes" a `/pricing`; 1 → entra directo; flow → `ProjectCreateDialog` → `/civilflowareatrabajo`; manage → `ProjectCreateDialogCM` → `/civilmanagerareatrabajo`.
 - Gating adicional: `RequireModule` envuelve los workareas en `App.tsx` (evalúa la fecha en cada render → vence en vivo); CTA de `ModulePage` redirige a `/pricing?modulo=X` sin compra; los diálogos de creación muestran aviso "Suscripción inactiva" (la BD es el candado real). Vuelta del checkout: `/pricing?ref=X` → `verificar-pago` → refetch.
 
+### Empresarial por puesto (fase 2 implementada)
+- **Compra**: N puestos por módulo (`app_suscripciones.puestos`; pago trae `puestos_por_modulo` jsonb). **Descuento por volumen** sobre puestos TOTALES de la compra (código, NO BD): 2-4 → −10% · 5-9 → −15% · 10-24 → −20% · **25+ → negociado** (UI: CTA "Contáctenos", `descuentoPorPuestos` devuelve null). Multiplicativo sobre base/acumulativo. Tope automático `PUESTOS_TOPE_AUTOMATICO = 24`.
+- **Miembros**: `app_suscripciones_miembros (suscripcion_id, user_id, asignado_por, puede_editar)`. Solo usuarios registrados: `asignar_puesto(bigint, text)` busca `auth.users` por email (SECURITY DEFINER; `cf_perfiles.email` NO es unique). RPCs de gestión: `asignar_puesto` / `quitar_puesto` / `cambiar_permiso_miembro` / `mis_miembros`. UI: `/empresa` (`CompanyPage.tsx`), enlace "Gestionar equipo" en perfil.
+- **acceso_modulo** también pasa MIEMBROS de suscripciones vigentes → wrappers CF y policies CM heredan.
+- **Compartir proyectos** (dueño → miembros, mientras el asiento esté vigente):
+  - Lectura: policies SELECT de tablas cf_*/cm_* con user_id recreadas con `or empresa_lectura(user_id,'flow'|'manage')` (DO dinámico sobre pg_policies; `cm_config` y catálogos globales excluidos).
+  - Escritura CF: cirugía sobre CUERPOS VIVOS de los 10 impls (lección R-1): guards `p.user_id = uid` → `or empresa_escritura(...)`; el sellado de INSERTs de miembros lo hace el TRIGGER `trg_sellar_owner` (19 tablas de contenido; re-sella new.user_id al owner vía proyecto_id/plano_id/bajante_origen_id). `save_proyecto`/`update_proyecto_nombre`/`delete_proyecto` quedan owner-only (ciclo de vida).
+  - Escritura CM: policies INSERT/UPDATE/DELETE de las 9 tablas hijas con `or empresa_escritura(user_id,'manage')` + helper `cm_proyecto_de_propietario`; el cliente sella `user_id` = dueño del proyecto activo (`storage.ts: ownerIdProyectoActivo` → `userIdEscritura`); `cm_config` sigue self-only.
+  - PDFs: policies storage `pdfs_empresa_*` sobre bucket `plan_pdfs` (lectura con asiento, escritura con puede_editar; helper `uuid_seguro` para el cast del segmento).
+  - Toggle puede-editar OFF → el server rechaza la escritura del miembro (aviso UI "solo lectura" = pulido futuro).
+
 ### ACTIVACIÓN (cuando haya cuenta Lemon Squeezy)
 1. Tienda LS: crear producto/variante por módulo×periodo (o custom price) y anotar IDs.
 2. `supabase secrets set LS_API_KEY=... LS_STORE=... LS_WEBHOOK_KEY=...`
 3. Escribir y deployar las 3 edge functions; configurar webhook en el panel LS: `<SUPABASE_URL>/functions/v1/ls-webhook` (descomentar su bloque en `supabase/config.toml`).
 4. Probar en modo test de LS (tarjetas de prueba) antes de producción.
-5. `VITE_SUSCRIPCIONES=true` en Vercel + redeploy.
-6. `update public.app_config set valor = true where clave = 'suscripciones_activas';`
+5. Aplicar en SQL Editor (en orden): `20261004000000_suscripciones_empresa.sql` → `20261005000000_empresa_escritura.sql` (el DO de cirugía ABORTA si un guard vivo no matchea — auditar antes de re-intentar).
+6. `VITE_SUSCRIPCIONES=true` en Vercel + redeploy.
+7. `update public.app_config set valor = true where clave = 'suscripciones_activas';`
 
 Consecuencia conocida (decisión del usuario): al activar NO existe plan gratis — todos los usuarios quedan bloqueados hasta pagar.
 
@@ -43,6 +55,7 @@ Consecuencia conocida (decisión del usuario): al activar NO existe plan gratis 
 ### Linter Supabase — WARNs aceptados (2026-09-24)
 - `authenticated_security_definer_function_executable` sobre los WRAPPERS de contenido (save_plano_data, save_proyecto, etc.): patrón INTENCIONAL — SECURITY DEFINER con ownership check interno (`auth.uid()` + verificación de propiedad en cada cuerpo), auditado en rondas 4-6. El lint es WARN por diseño; no hay acción.
 - `acceso_modulo`/`suscripciones_habilitadas` ejecutables por authenticated: REQUERIDO — las policies RLS de cm_proyectos las invocan como el rol del usuario (sin EXECUTE las policies fallan). Solo exponen un booleano, sin datos de usuario.
+- Familia EMPRESA (20261004000000/05000000, aceptada 2026-10-03): `asignar_puesto/quitar_puesto/cambiar_permiso_miembro/mis_miembros` (SECURITY DEFINER con guard `uid is null → no_autenticado` primero y check de propiedad interno) y `empresa_lectura/empresa_escritura` (para anon devuelven false constante — sin fuga de info; authenticated las necesitan las policies RLS y las storage policies de plan_pdfs). Hardening aplicado en `20261005000001` (revoke de anon; `uuid_seguro` con `set search_path = ''`).
 - **NO aceptado y corregido** en `20260924000002_revokes_impl.sql`: las `*_impl` heredaron EXECUTE de authenticated vía el rename (los grants viajan con la función) — bypass del gating de USO. Revocadas de public/anon/authenticated; solo los wrappers (con candado) quedan ejecutables.
 - `auth_leaked_password_protection`: toggle de Dashboard → Authentication → Policies (acción del usuario, sin migración).
 
@@ -2503,3 +2516,49 @@ tsc 0 · lint 0 err 0 warn · vitest 957/957 · build ✓ · graphify ✓.
 
 ### Verificación manual sugerida
 `/docs`: cajas de fórmula y grids "Donde:" deben verse idénticas al refactor anterior (entidades, sub/sup, espacios).
+
+## Session Summary — 2026-10-03 (términos + privacidad + restablecimiento de contraseña)
+
+### Nuevas rutas públicas (patrón ligero: import estático + ErrorBoundary, junto a /login)
+- **`/terminos`** — `src/pages/TermsPage.tsx`: T&C completos SaaS es-CO (11 secciones, ley colombiana) CON placeholders `[RAZÓN SOCIAL]/[NIT]/[CIUDAD]/[CORREO DE CONTACTO]/[FECHA]/[AJUSTA...]` para que el titular los edite inline. Particularidades del producto en el contrato: renovación MANUAL sin auto-cobro + acumulación de vigencia (4.2), pasarela no almacena tarjetas (4.3), responsabilidad profesional RAS/NSR/NTC (6.3), limitación al valor de la suscripción (8.2).
+- **`/privacidad`** — `src/pages/PrivacyPage.tsx`: política de datos expandida (Ley 1581/2012, Decreto 1377/2013): responsable, datos tratados, finalidades, derechos, procedimiento (10/15 días hábiles), conservación, encargados (placeholders). Decisión usuario: DOS páginas, no unificadas.
+- **`/restablecer`** — `src/pages/auth/ResetPasswordPage.tsx`: doble modo en una página (implicit flow de Supabase detecta la sesión recovery en la URL): sin sesión → pedir email (`resetPasswordForEmail` con redirectTo al origin); con sesión → nueva contraseña ×2 (`updateUser`) → /login. 400 ms de gracia para que el cliente consuma el token antes de decidir modo.
+- **AuthContext**: +`resetPassword(email)` y +`updatePassword(password)` (páginas no llaman supabase directo — patrón).
+
+### Cableado de botones muertos
+- LoginPage "¿Olvidó su contraseña?" → Link /restablecer (era button sin onClick).
+- RegisterPage "Términos de Servicio" → /terminos y "Política de Privacidad" → /privacidad (eran buttons muertos dentro del label del checkbox).
+- Footer de LandingPage: + link Términos.
+
+### Requisito de configuración (recordatorio)
+El correo de recovery de Supabase (Auth → Emails) y la Site URL del proyecto deben apuntar al dominio real para que `redirectTo: origin + '/restablecer'` aterrice bien en producción.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 962/962 (la paralela sumó tests de tramos de descuento por volumen en el test de paridad) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-03 (ronda 15: code review 3-exploradores → fixes C-1..I-12, 3 agentes)
+
+### Auditoría (empresa WIP + mis páginas auth + resto WIP) → 27 fichas; fixes ejecutados
+- **C-1 CRÍTICO**: `20261005000001_cf_areas_altura_m.sql` re-emitía `save_plano_data_impl` con cuerpo de 20260930000000 (SIN guards empresa) → cirugía perdida en provision fresco. Fix: cirugía sobre el CUERPO VIVO (strpos detecta altura_m ya presente = idempotente; verificación dura de ambos fragmentos). Advertencia operativa: si la BD viva ya tragó la versión vieja, re-aplicar `20261005000000` (hoy idempotente) restaura los guards.
+- **C-2 CRÍTICO**: trigger `cf_sellar_owner_contenido` con early-return `new.user_id = auth.uid()` anulaba el re-sellado (los impls sellan con auth.uid() — la fila SIEMPRE llega con el uuid del miembro). Fix: sin early-return, re-sellar si `new.user_id <> v_owner and empresa_escritura(v_owner,'flow')`, rama `plano_origen_id` añadida, fail-closed `sello_sin_owner`.
+- **C-3 CRÍTICO**: `rejillasGasodSync.pushBlobAhora` pisaba el blob BD con overrides/gas default en dispositivo fresco. Fix: merge (ovrDisk/gasDisk null-safe contra `prev` del blob vivo). + **I-8**: `hidratarRejillasGasod` con guard `ultimoCambioLocal` (skip si hubo edición local durante el fetch).
+- **I-2**: `asignar_puesto` con `for update` (cierre del race de sobrecupo). **I-12**: cirugía per-patrón (check `v_src ~ crudo AND v_new !~ contraparte`) + skip idempotente en el patrón `pl.user_id <> uid`. **Renumeración**: hardening → `20261005000002` (colisión con cf_areas eliminada; mis_accesos quedó 05000003).
+- **I-1**: cliente de gating ahora conoce asientos de empresa — RPC `mis_accesos()` (propios + miembros vigentes, text[]) + `fetchModulosConAcceso()` + merge en `activos` de useSuscripciones (RequireModule intacto). Fail-open si el RPC no existe.
+- **I-3**: `updatePassword` cierra la sesión recovery (`signOut()` tras updateUser — la sesión de un solo uso no sobrevive al cambio). **I-6**: `usePageMeta` sin query/fragment en og:url (tokens de recovery fuera del head). **I-7**: cleanup de metas remueve las que el mount creó (adiós noindex pegado a la SPA).
+- **I-5**: `loadAparatosUsuario` con owner del proyecto activo (evita unión de snapshots dueño+miembro). **I-9**: rollback del switch de proyecto por URL (restaura ACTIVE_PROYECTO_ID_KEY + resumeCloudSync de ambos contextos). **I-10**: `/empresa-preview` gated por `import.meta.env.DEV`, patch de supabase.rpc con restauración en cleanup, botón Asignar disabled en preview.
+- **Reset page (mis fichas F1/F6/F7/F8/F9/F10)**: clasificación del hash sin timer (error → "link inválido"; type=recovery → espera loading; sin hash → formulario directo — fuera la gracia de 400ms); redirect a /login con cleanup del timeout; `MIN_PWD` constante; `role="status"` en estados; `aria-pressed` en toggle. Adaptación: el check `cambiada` subió en el render (el signOut de I-3 hace user=null inmediato — el mensaje de éxito debía renderizarse antes).
+- Menores: JSDoc en `puestosDe`/`descuentoPorPuestos` (lemon.ts). Diferido F11 (state.from contrato muerto — debate producto).
+
+### Deudas restantes de la ronda (no ejecutadas hoy)
+- I-4 (objectPath PDFs por owner), I-11 (semántica de puestos: dueño ocupa silla o no — decisión de producto), F-04 (edge crear-checkout con validaCarrito cuando se escriba), F-09 (descuento por volumen visible en modo individual), F-13 (renovación con menos puestos: recorte o aviso), F-14 (miembro sin UI de sus asientos/salida).
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 962/962 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-03 (ronda 15.1: ponytail #4 — ~47L fuera)
+
+- **AuthSubmitButton.tsx** (nuevo, src/pages/auth/): botón submit cian con glow compartido por LoginPage/RegisterPage/ResetPasswordPage (4 usos → 1 componente; ~40L). Sin `busy` queda habilitado y opaco — login/register conservan su comportamiento exacto.
+- **`useSubscriptions.refetch` fuera** (0 de 9 callers; el efecto ya re-carga ante EV_SUSCRIPCIONES) + `useCallback` del import fuera. Fallout de la primera pasada corregido: estaba en el return del hook.
+- **2 des-exports** (0 consumidores, tsc lo valida): `moduloVenta`, `puestosDe` (catalog.ts). **3 des-exports REVERTIDOS**: los tests SÍ importaban `hasNumericPlanSuffix`/`isOrphanKey`/`reanclarClavesDesdeTrazosLocales` (drawingSyncGc.test/reanchorAparatos.test) — restaurados; lección: el barrido de export keywords debe grep-incluir __tests__ en cada símbolo (el auditor dijo que no, tsc dijo que sí).
+- **No cortado**: lemon.ts (scaffolding), CompanyPreviewPage (dev-only), divergencia rejillasGasodSync/RejillasVentilacion (por diseño), paridad lemon/catalog, migraciones empresa (loop-driven).
+- Neto: ~47L · 0 deps. Gates: tsc 0 · lint 0 · vitest 962/962 · build ✓ · graphify ✓.
