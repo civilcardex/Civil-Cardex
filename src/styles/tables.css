@@ -47,9 +47,11 @@
   z-index: 2;
 }
 
-/* Segunda fila de headers (tablas con rowSpan, ej. diseño de redes): no queda tapada. */
+/* Segunda fila de headers (tablas con rowSpan, ej. diseño de redes): no queda tapada.
+   El offset se puede medir por tabla con la var --thead2-top (hook useStickyThead2Offset);
+   el 27px queda como default para las tablas calibradas con ese alto de fila 1. */
 .tbl thead tr:nth-child(2) th {
-  top: 27px;
+  top: var(--thead2-top, 27px);
 }
 
 .tbl tr:hover td {

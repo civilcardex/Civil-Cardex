@@ -544,28 +544,44 @@ function isLoadedLiveKey(key: string): boolean {
   return _loadedLive.ids.has(id);
 }
 
-/** Huérfanos vistos en la pasada anterior (misma sesión): el borrado exige DOS pasadas
- *  consecutivas viendo la clave huérfana. Rompe la oscilación escritor↔GC (el escritor
- *  re-crea la clave entre pasadas y nunca se borra) sin impedir la limpieza real, que solo
- *  se retrasa un sync. @returns true si ya se puede borrar. */
-const orphanSuspects = new Set<string>();
+/** Huérfanos vistos en esta sesión con ts del PRIMER avistamiento: el borrado exige ver la
+ *  clave huérfana ≥GC_ORPHAN_MIN_MS. Motivo: writeSan y writeHydro corren GC en el MISMO
+ *  round — con un Set, dos pasadas seguidas la borraban al instante si el área salía de
+ *  validKeys, y la hidratación BD la resucitaba con valores viejos (ping-pong — orig. usuario:
+ *  "aparece un momento y se borra" / "se resetean a los anteriores"). El tiempo real entre
+ *  rounds de sync es lo que decide, no el número de pasadas. @returns true si ya se puede borrar. */
+const GC_ORPHAN_MIN_MS = 1500;
+const orphanSuspects = new Map<string, number>();
 function shouldDeleteOrphan(key: string, stillOrphan: boolean): boolean {
   if (!stillOrphan) {
     orphanSuspects.delete(key);
     return false;
   }
-  if (orphanSuspects.has(key)) {
-    orphanSuspects.delete(key);
-    return true;
+  const first = orphanSuspects.get(key);
+  if (first !== undefined) {
+    if (Date.now() - first >= GC_ORPHAN_MIN_MS) {
+      orphanSuspects.delete(key);
+      return true;
+    }
+    return false;
   }
-  orphanSuspects.add(key);
+  orphanSuspects.set(key, Date.now());
   return false;
+}
+
+/** Clave `gas_AR…_<plan>` de un plan cuya caché de trazos NO trae campo `areas`: sin la lista
+ *  no se puede PROBAR la orfandad (la pérdida puede ser de la caché — fila BD sin net vía
+ *  rowToArea, escritor que suelte áreas —, no del área). No borrar. */
+function areaSinPruebaDeOrfandad(key: string, sinAreas: Set<string>): boolean {
+  const m = /^gas_(AR\d+)_(\d+)$/.exec(key);
+  return !!m && sinAreas.has(m[2]);
 }
 
 function performGarbageCollection(plans: SyncPlanInput[]) {
   if (!Array.isArray(plans) || plans.length === 0) return;
   const validKeys = new Set<string>();
   const validGasRamales = new Set<string>();
+  const plansSinAreas = new Set<string>();
   for (const plan of plans) {
     if (!plan || plan.id === undefined) continue;
     const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
@@ -613,13 +629,15 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
     // ÁREAS de sector (módulo Rejillas de ventilación): las claves gas_AR..._<plan> son
     // legítimas — sin esto el GC las borraba en cada sync (orig. usuario: "se resta uno o
     // se borra" al asignar aparatos al área desde el panel derecho).
-    for (const a of ((data as { areas?: Array<{ id?: unknown; net?: unknown }> }).areas ||
-      []) as Array<{
-      id?: unknown;
-      net?: unknown;
-    }>) {
-      if (a && a.id && a.net) {
-        validKeys.add(fixtureStoreKey(String(a.net), String(a.id), String(plan.id)));
+    const areasRaw = (data as { areas?: unknown }).areas;
+    if (!Array.isArray(areasRaw)) {
+      // Sin campo areas en la caché no hay prueba de orfandad para gas_AR de este plan.
+      plansSinAreas.add(String(plan.id));
+    } else {
+      for (const a of areasRaw as Array<{ id?: unknown; net?: unknown }>) {
+        if (a && a.id && a.net) {
+          validKeys.add(fixtureStoreKey(String(a.net), String(a.id), String(plan.id)));
+        }
       }
     }
   }
@@ -631,6 +649,9 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   for (const key of Object.keys(rawAparatos)) {
     if (isLoadedLiveKey(key)) {
       orphanSuspects.delete(key);
+      continue;
+    }
+    if (areaSinPruebaDeOrfandad(key, plansSinAreas)) {
       continue;
     }
     if (!canDeleteKey(key)) {

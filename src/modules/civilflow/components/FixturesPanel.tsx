@@ -21,6 +21,7 @@ import {
 import type { DrawingData } from '../utils/drawingSync';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
+import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
@@ -240,6 +241,14 @@ const AparatosPanel = memo(function AparatosPanel_({
       return changed ? next : prev;
     });
   }, [plans]);
+
+  useEffect(() => {
+    // Conteos de áreas rejillas vivos sin la tabla: arranca el push global del blob
+    // (asignar/borrar desde el panel llega a BD) e hidrata el fill-missing al montar el
+    // visor — antes el panel arrancaba vacío hasta entrar a la tabla de Rejillas.
+    startRejillasGasodSync();
+    void hidratarRejillasGasod();
+  }, []);
 
   useEffect(() => {
     // Recarga guardada: solo setea si el CONTENIDO cambió (misma ref = bail, sin re-render).

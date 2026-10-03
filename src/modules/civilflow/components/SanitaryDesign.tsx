@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -51,9 +51,37 @@ const EMPTY_ROW = {
 } as const;
 const TH_HDR = { fontSize: 11.5, textAlign: 'center', padding: '1px 2px' } as const;
 const TH_SUB = { fontSize: 11.5, textAlign: 'center', padding: '1px 2px' } as const;
+// Agrupadores colSpan: sin border-bottom propio — el 1px de .tbl th se leía como hueco
+// contra las subcolumnas (mismo fondo --bg4 a ambos lados).
+const TH_GRUPO = {
+  textAlign: 'center',
+  fontSize: 11.5,
+  padding: '1px 2px',
+  borderBottom: 'none',
+} as const;
+
+/** Mide el alto real de la fila 1 del thead y lo publica como --thead2-top en la tabla:
+ *  el sticky de la fila 2 (tables.css, default 27px) queda EXACTO — con paddings de 1px la
+ *  fila 1 mide ~16px y el 27px hardcodeado abría un hueco banda entre grupo y subcolumnas. */
+function useStickyThead2Offset() {
+  const ref = useRef<HTMLTableElement | null>(null);
+  useEffect(() => {
+    const table = ref.current;
+    const tr1 = table?.querySelector('thead tr:first-child');
+    if (!table || !tr1) return;
+    const apply = () =>
+      table.style.setProperty('--thead2-top', `${tr1.getBoundingClientRect().height}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(tr1);
+    return () => ro.disconnect();
+  }, []);
+  return ref;
+}
 
 export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
+  const tablaRef = useStickyThead2Offset();
   const [editingPend, setEditingPend] = useState<Record<string, string>>({});
   const [editingNSalidas, setEditingNSalidas] = useState<Record<string, string>>({});
   const { tramosSan, updTramoSan } = useTramos();
@@ -286,7 +314,7 @@ export default function DisenosSanitarios() {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
-            <table className="tbl" style={{ fontSize: 11.5 }}>
+            <table ref={tablaRef} className="tbl" style={{ fontSize: 11.5 }}>
               <caption style={SR_ONLY}>Diseño de red sanitaria</caption>
               <thead>
                 <tr>
@@ -304,7 +332,7 @@ export default function DisenosSanitarios() {
                     scope="col"
                     className="col-h san"
                     colSpan={3}
-                    style={{ textAlign: 'center', fontSize: 11.5, padding: '1px 2px' }}
+                    style={TH_GRUPO}
                   >
                     Unidades de descarga
                   </th>
@@ -365,7 +393,7 @@ export default function DisenosSanitarios() {
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
-                    style={{ textAlign: 'center', fontSize: 11.5, padding: '1px 2px' }}
+                    style={TH_GRUPO}
                   >
                     Diámetro
                   </th>
@@ -485,7 +513,7 @@ export default function DisenosSanitarios() {
                     scope="col"
                     className="col-h ven"
                     colSpan={2}
-                    style={{ textAlign: 'center', fontSize: 11.5, padding: '1px 2px' }}
+                    style={TH_GRUPO}
                   >
                     Fuerza Tractiva
                   </th>

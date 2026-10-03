@@ -69,12 +69,14 @@ describe('GC con caché vieja no borra (bug piso 2)', () => {
     expect(counts['san_MUERTO_11']).toEqual({ lav: 1 });
     expect(counts['san_RS1_11']).toEqual({ san: 1 });
     // Pasada la ventana de gracia (4s), el huérfano real queda marcado sospechoso pero
-    // NO se borra aún: el borrado exige DOS pasadas consecutivas (anti-oscilación
-    // escritor↔GC). Tercera pasada: ahora sí se limpia, con respaldo.
+    // NO se borra aún: el borrado exige verlo huérfano ≥1,5 s (cruza rounds reales — el
+    // par san+hidro de un MISMO round ya no borra; anti-oscilación escritor↔GC).
     setSyncLoadedLiveIds('11', ['RS1']);
-    const spyAhora = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000);
+    const base = Date.now();
+    const spyAhora = vi.spyOn(Date, 'now').mockReturnValue(base + 5000);
     writeSanDrawingSync(PLANS);
     expect(lsGet(APARATOS_BY_TRAMO_KEY)['san_MUERTO_11']).toEqual({ lav: 1 });
+    spyAhora.mockReturnValue(base + 5000 + 1600);
     writeSanDrawingSync(PLANS);
     spyAhora.mockRestore();
     const counts2 = lsGet(APARATOS_BY_TRAMO_KEY);

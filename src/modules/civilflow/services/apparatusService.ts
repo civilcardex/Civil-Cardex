@@ -2,6 +2,7 @@ import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
 import type { ApsItem, UdBaseItem } from '../context/ApparatusContext';
 import { CF_TABLES } from '../constants/tableNames';
+import { getActiveProyectoId } from './storageService';
 
 export interface AparatosUsuarioData {
   udBase: UdBaseItem[];
@@ -43,6 +44,29 @@ interface CatalogoGlobalRow {
   blk_ud: boolean;
 }
 
+/** Owner (user_id) del proyecto activo: en proyectos de empresa el catálogo de aparatos
+ *  pertenece al dueño del proyecto, no al miembro que lo abre. null si no hay proyecto
+ *  activo, la fila no es visible (RLS) o falla la consulta — el llamador cae a user.id. */
+async function ownerProyectoActivo(): Promise<string | null> {
+  const pid = getActiveProyectoId();
+  if (!pid) return null;
+  try {
+    const { data, error } = await supabase
+      .from(CF_TABLES.proyectos)
+      .select('user_id')
+      .eq('id', pid)
+      .maybeSingle();
+    if (error) {
+      devError('apparatusService owner lookup:', error.message);
+      return null;
+    }
+    return (data as { user_id: string } | null)?.user_id ?? null;
+  } catch (e) {
+    devError('apparatusService owner lookup exception:', e);
+    return null;
+  }
+}
+
 /**
  * Carga el catálogo de aparatos del usuario: filas propias de aparatos_usuario si existen,
  * o el catálogo base (aparatos_catalogo_global) cuando el usuario aún no tiene filas.
@@ -56,11 +80,18 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
     } = await supabase.auth.getUser();
     if (!user) return null;
 
+    // Owner del proyecto activo ANTES de leer: filtra el catálogo por el dueño — sin
+    // esto un miembro de empresa y el dueño mezclaban snapshots de user_ids distintos
+    // (con filtro propio a secas el miembro no veía el catálogo del proyecto abierto).
+    const ownerId = await ownerProyectoActivo();
+
     const [userRes, udBaseRes] = await Promise.all([
       supabase
         .from(CF_TABLES.aparatosUsuario)
         .select('client_id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud')
-        .eq('user_id', user.id)
+        // Del OWNER del proyecto activo (propios sin proyecto activo): evita mezclar
+        // filas de dueño y miembro en un mismo snapshot de catálogo.
+        .eq('user_id', ownerId ?? user.id)
         .order('id'),
       supabase.from(CF_TABLES.aparatosUdBase).select('id, nombre, ud'),
     ]);

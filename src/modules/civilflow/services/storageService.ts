@@ -391,6 +391,7 @@ function areaToRow(planoId: number, userId: string, a: PlanoArea) {
     label_moved: a.labelMoved ?? false,
     area_m2: a.areaM2,
     net: a.net ?? null,
+    altura_m: a.alturaM ?? null,
   };
 }
 
@@ -406,6 +407,7 @@ function rowToArea(row: SupabaseRow): PlanoArea {
     labelMoved: g(row, 'label_moved', false),
     areaM2: g(row, 'area_m2', 0),
     net: g(row, 'net', undefined),
+    alturaM: g(row, 'altura_m', undefined),
   };
 }
 

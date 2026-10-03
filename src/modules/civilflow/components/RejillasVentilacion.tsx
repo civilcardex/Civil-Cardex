@@ -110,14 +110,19 @@ function onAparatoCol(
       return;
     }
     if (col.vacio) {
+      // El slot sintético se consume (→ columna real si eligen aparato, se libera si "— etc —").
       setOv(f.areaId, {
         slotsExtra: Math.max(0, (f.aparatos.filter((a) => a.vacio).length || 1) - 1),
       });
+      if (!nuevoId) return; // nada en disco que tocar al vaciar un slot sin entrada
     }
     delete cur[col.id];
     // Vaciar la columna (— etc —): solo borra el id en su clave, nunca escribe la clave ''.
     if (nuevoId) cur[nuevoId] = col.cant;
-    saveToStorage(APARATOS_BY_TRAMO_KEY, { ...disk, [col.clave]: cur });
+    const next = { ...disk };
+    if (Object.keys(cur).length === 0) delete next[col.clave];
+    else next[col.clave] = cur;
+    saveToStorage(APARATOS_BY_TRAMO_KEY, next);
     window.dispatchEvent(new Event('aparatos-clear'));
   } catch (e) {
     devError('RejillasVentilacion.onAparatoCol:', e);
@@ -147,7 +152,10 @@ function quitarColumna(
   setOv: (key: string, patch: RejOverride) => void,
 ): void {
   const col = f.aparatos[colIdx];
-  if (!col) return;
+  if (!col) {
+    devError('RejillasVentilacion.quitarColumna: columna inexistente', colIdx, f.aparatos.length);
+    return;
+  }
   if (col.vacio) {
     setOv(f.areaId, {
       slotsExtra: Math.max(0, (f.aparatos.filter((a) => a.vacio).length || 1) - 1),
@@ -163,7 +171,11 @@ function quitarAparato(clave: string, id: string): void {
   try {
     const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
     const cur = { ...(disk[clave] || {}) };
-    if (cur[id] === undefined) return;
+    if (cur[id] === undefined) {
+      // La fila de la tabla quedó desalineada del disco: rastro para diagnosticar el "− no hace nada".
+      devError('RejillasVentilacion.quitarAparato: id ausente en su clave', clave, id);
+      return;
+    }
     delete cur[id];
     const next = { ...disk };
     if (Object.keys(cur).length === 0) delete next[clave];
