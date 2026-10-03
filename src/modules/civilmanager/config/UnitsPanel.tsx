@@ -3,6 +3,7 @@ import { useCivilManager } from '../context';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { showToast } from '../shared/Toast';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
+import { DimEnLectura, TableHeader } from '../shared/EditLock';
 import { useEditable } from '../shared/EditLock';
 import { TIPOS_UNIDAD_PRE } from '../seedData';
 import type { UnidadMedida } from '../types';
@@ -45,80 +46,82 @@ export function UnidadesPanel() {
 
   return (
     <XlWrap>
-      <div className="cm-modal-head">Unidades de Medida</div>
-      <XlScroll>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Abreviatura</th>
-              <th>Descripción</th>
-              <th>Tipo</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 && (
+      <TableHeader title="Unidades de medida" icon="unidades_de_medida" />
+      <DimEnLectura>
+        <XlScroll>
+          <table>
+            <thead>
               <tr>
-                <td colSpan={5} className="cm-empty-row">
-                  Sin unidades
-                </td>
+                <th>#</th>
+                <th title="Símbolo corto de la unidad (m2, kg, und…).">Abreviatura</th>
+                <th title="Nombre completo de la unidad de medida.">Descripción</th>
+                <th title="Clase de unidad (longitud, área, volumen…).">Tipo</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {items.map((u, i) => {
-              const editing = editIdx === i;
-              return (
-                <tr key={u.abreviatura + i}>
-                  <XlRowNum n={i + 1} />
-                  <td>
-                    {editing ? (
-                      <input
-                        className="cm-ni"
-                        aria-label="Abreviatura"
-                        value={u.abreviatura}
-                        onChange={(e) => upd(i, 'abreviatura', e.target.value)}
-                      />
-                    ) : (
-                      u.abreviatura
-                    )}
+            </thead>
+            <tbody>
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="cm-empty-row">
+                    Sin unidades
                   </td>
-                  <td>
-                    {editing ? (
-                      <input
-                        className="cm-ni"
-                        aria-label="Descripción"
-                        value={u.descripcion}
-                        onChange={(e) => upd(i, 'descripcion', e.target.value)}
-                      />
-                    ) : (
-                      <span onDoubleClick={() => setEditIdx(i)}>{u.descripcion}</span>
-                    )}
-                  </td>
-                  <td>
-                    {editing ? (
-                      <select
-                        className="cm-sel"
-                        aria-label="Tipo"
-                        value={u.tipo}
-                        onChange={(e) => upd(i, 'tipo', e.target.value)}
-                      >
-                        {TIPOS_UNIDAD_PRE.map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      u.tipo
-                    )}
-                  </td>
-                  <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </XlScroll>
+              )}
+              {items.map((u, i) => {
+                const editing = editIdx === i;
+                return (
+                  <tr key={u.abreviatura + i}>
+                    <XlRowNum n={i + 1} />
+                    <td>
+                      {editing ? (
+                        <input
+                          className="cm-ni"
+                          aria-label="Abreviatura"
+                          value={u.abreviatura}
+                          onChange={(e) => upd(i, 'abreviatura', e.target.value)}
+                        />
+                      ) : (
+                        u.abreviatura
+                      )}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input
+                          className="cm-ni"
+                          aria-label="Descripción"
+                          value={u.descripcion}
+                          onChange={(e) => upd(i, 'descripcion', e.target.value)}
+                        />
+                      ) : (
+                        <span onDoubleClick={() => setEditIdx(i)}>{u.descripcion}</span>
+                      )}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <select
+                          className="cm-sel"
+                          aria-label="Tipo"
+                          value={u.tipo}
+                          onChange={(e) => upd(i, 'tipo', e.target.value)}
+                        >
+                          {TIPOS_UNIDAD_PRE.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        u.tipo
+                      )}
+                    </td>
+                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </XlScroll>
+      </DimEnLectura>
       <div className="cm-xl-foot">
         {editable && (
           <button type="button" className="cm-btn cm-btn-ok" onClick={add}>

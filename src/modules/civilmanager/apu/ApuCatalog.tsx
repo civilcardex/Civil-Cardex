@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useCivilManager } from '../context';
-import { fmt } from '../calc';
+import { fmtMoneda } from '../calc';
 import { genCodeFor } from '../codeGen';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { showToast } from '../shared/Toast';
 import { CrudFooter } from '../shared/CrudFooter';
-import { useEditable } from '../shared/EditLock';
+import { DimEnLectura, EditableSection, TableHeader, useEditable } from '../shared/EditLock';
+
 import { ActionIcon } from '../shared/icons';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import { ApuEditor } from './ApuEditor';
@@ -82,89 +83,99 @@ export function ApuCatalog() {
   }
 
   return (
-    <div>
+    <EditableSection dim={false}>
       <XlWrap>
-        <XlScroll>
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Categoría</th>
-                <th>Unidad</th>
-                <th>Costo Unitario</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
+        <TableHeader title="Análisis de precios unitarios" icon="analisis_precios_unitarios" />
+        <DimEnLectura>
+          <XlScroll>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={7} className="cm-empty-row">
-                    Sin APU
-                  </td>
+                  <th>#</th>
+                  <th title="Código único del APU (APU-xxx), generado automáticamente.">Código</th>
+                  <th title="Nombre de la actividad o partida del APU.">Nombre</th>
+                  <th title="Categoría del APU (lista editable en Configuración).">Categoría</th>
+                  <th title="Unidad de obra del APU (m2, m3, ml…).">Unidad</th>
+                  <th title="Costo directo calculado: mano de obra + equipo + insumos + transporte.">
+                    Costo Unitario
+                  </th>
+                  <th>Acciones</th>
                 </tr>
-              )}
-              {filtered.map((a, i) => (
-                <tr
-                  key={a.id}
-                  style={{
-                    background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined,
-                    cursor: 'pointer',
-                  }}
-                  tabIndex={0}
-                  onClick={() => setSelId(a.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelId(a.id);
-                    }
-                  }}
-                >
-                  <XlRowNum n={i + 1} />
-                  <td>{a.codigo}</td>
-                  <td>{a.nombre}</td>
-                  <td>{a.categoria}</td>
-                  <td>{a.unidad}</td>
-                  <td>{fmt(apuCalcMap.get(a.id)?.totalDirecto ?? 0)}</td>
-                  <XlAct onEdit={() => setSelId(a.id)} onDelete={() => delApu(a.id)} />
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </XlScroll>
-        <CrudFooter
-          onAdd={addApu}
-          addLabel="Nuevo APU"
-          search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-          countLabel="Total:"
-          count={filtered.length}
-        />
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="cm-empty-row">
+                      Sin APU
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((a, i) => (
+                  <tr
+                    key={a.id}
+                    style={{
+                      background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined,
+                      cursor: 'pointer',
+                    }}
+                    tabIndex={0}
+                    onClick={() => setSelId(a.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelId(a.id);
+                      }
+                    }}
+                  >
+                    <XlRowNum n={i + 1} />
+                    <td>{a.codigo}</td>
+                    <td>{a.nombre}</td>
+                    <td>{a.categoria}</td>
+                    <td>{a.unidad}</td>
+                    <td>{fmtMoneda(apuCalcMap.get(a.id)?.totalDirecto ?? 0)}</td>
+                    <XlAct onEdit={() => setSelId(a.id)} onDelete={() => delApu(a.id)} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </XlScroll>
+          <CrudFooter
+            onAdd={addApu}
+            addLabel="Nuevo APU"
+            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+            countLabel="Total:"
+            count={filtered.length}
+          />
+        </DimEnLectura>
       </XlWrap>
 
       {sel && (
-        <div>
-          <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
-            <button
-              type="button"
-              className="cm-btn cm-btn-warn"
-              onClick={() => exportApuExcel(sel, exportCtx())}
+        <DimEnLectura>
+          <div>
+            <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
+              <button
+                type="button"
+                className="cm-btn cm-btn-warn"
+                onClick={() => exportApuExcel(sel, exportCtx())}
+              >
+                <ActionIcon name="download" label="" /> Exportar Excel
+              </button>
+              <button
+                type="button"
+                className="cm-btn cm-btn-warn"
+                onClick={() => exportApuPdf(sel, exportCtx())}
+              >
+                <ActionIcon name="picture_as_pdf" label="" /> Exportar PDF
+              </button>
+            </div>
+            <fieldset
+              disabled={!editable}
+              style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}
             >
-              <ActionIcon name="download" label="" /> Exportar Excel
-            </button>
-            <button
-              type="button"
-              className="cm-btn cm-btn-warn"
-              onClick={() => exportApuPdf(sel, exportCtx())}
-            >
-              <ActionIcon name="picture_as_pdf" label="" /> Exportar PDF
-            </button>
+              <ApuEditor apu={sel} onUpdate={(p) => updateApu(sel.id, p)} />
+            </fieldset>
           </div>
-          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
-            <ApuEditor apu={sel} onUpdate={(p) => updateApu(sel.id, p)} />
-          </fieldset>
-        </div>
+        </DimEnLectura>
       )}
-    </div>
+    </EditableSection>
   );
 }

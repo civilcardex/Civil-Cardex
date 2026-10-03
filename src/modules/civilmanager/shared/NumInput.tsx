@@ -1,5 +1,5 @@
 import { useState, type InputHTMLAttributes } from 'react';
-import { fmt, parseNum } from '../calc';
+import { fmt, fmtMoneda, parseNum } from '../calc';
 
 function numVal(v: unknown, format?: boolean): string {
   const s = String(v ?? '').replace(/,/g, '.');
@@ -14,21 +14,36 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
   onChange: (v: number) => void;
   decimals?: number;
   format?: boolean;
+  /** Muestra el símbolo de la moneda activa (campos de dinero). */
+  moneda?: boolean;
   placeholder?: string;
 }
 
-export function NumInput({ value, onChange, decimals, format, placeholder, ...rest }: Props) {
+export function NumInput({
+  value,
+  onChange,
+  decimals,
+  format,
+  moneda,
+  placeholder,
+  ...rest
+}: Props) {
   const [raw, setRaw] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
 
-  const isEmpty = !focused && raw === null && (value === 0 || value === null || value === undefined || value === '');
+  const isEmpty =
+    !focused &&
+    raw === null &&
+    (value === 0 || value === null || value === undefined || value === '');
   const displayVal =
     raw !== null
       ? raw
       : focused
         ? String(value)
         : format
-          ? fmt(Number(value), typeof decimals === 'number' ? decimals : 2)
+          ? moneda
+            ? fmtMoneda(Number(value), typeof decimals === 'number' ? decimals : 2)
+            : fmt(Number(value), typeof decimals === 'number' ? decimals : 2)
           : typeof decimals === 'number'
             ? Number(value).toFixed(decimals)
             : numVal(value, true);
@@ -46,17 +61,39 @@ export function NumInput({ value, onChange, decimals, format, placeholder, ...re
     onChange(n);
   }
 
-  function handleBlur() { setRaw(null); setFocused(false); }
-  function handleFocus(e: React.FocusEvent<HTMLInputElement>) { setFocused(true); e.target.select(); }
+  function handleBlur() {
+    setRaw(null);
+    setFocused(false);
+  }
+  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+    setFocused(true);
+    e.target.select();
+  }
 
   if (placeholder) {
     return (
       <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
-        <input className="cm-ni" value={isEmpty ? '' : displayVal} onChange={handleChange} onBlur={handleBlur} onFocus={handleFocus} {...rest} />
+        <input
+          className="cm-ni"
+          value={isEmpty ? '' : displayVal}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          {...rest}
+        />
         {isEmpty && <span className="cm-ni-placeholder">{placeholder}</span>}
       </div>
     );
   }
 
-  return <input className="cm-ni" value={displayVal} onChange={handleChange} onBlur={handleBlur} onFocus={handleFocus} {...rest} />;
+  return (
+    <input
+      className="cm-ni"
+      value={displayVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onFocus={handleFocus}
+      {...rest}
+    />
+  );
 }

@@ -1,5 +1,5 @@
 import { useCivilManager } from '../context';
-import { fmt, parseNum } from '../calc';
+import { fmtMoneda, parseNum } from '../calc';
 import { NumInput } from '../shared/NumInput';
 import { ActionIcon } from '../shared/icons';
 import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
@@ -95,8 +95,8 @@ export function ApuSeccionEquipo({ apu, onChange }: Props) {
                       onChange={(v) => upd(i, 'rendimiento', v)}
                     />
                   </td>
-                  <td>{fmt(eq?.costo_hora ?? 0)}</td>
-                  <td>{fmt((eq?.costo_hora ?? 0) * (Number(r.rendimiento) || 0))}</td>
+                  <td>{fmtMoneda(eq?.costo_hora ?? 0)}</td>
+                  <td>{fmtMoneda((eq?.costo_hora ?? 0) * (Number(r.rendimiento) || 0))}</td>
                   <td className="cm-col-act">
                     <button
                       type="button"
@@ -119,7 +119,7 @@ export function ApuSeccionEquipo({ apu, onChange }: Props) {
         </button>
         <span className="cm-flex-1" />
         <span style={{ fontSize: 11 }}>
-          Subtotal Equipo: <b>{fmt(subtotal)}</b>
+          Subtotal Equipo: <b>{fmtMoneda(subtotal)}</b>
         </span>
       </div>
     </XlWrap>

@@ -11,6 +11,7 @@ export function CategoriasApuPanel() {
   return (
     <ListaItemPanel
       title="Categorías de APU"
+      icon="categorias_de_apu"
       items={state.categorias_apu}
       onChange={(categorias_apu) =>
         patch({ categorias_apu, config_listas: { ...state.config_listas, categorias_apu } })

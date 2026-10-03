@@ -3,11 +3,14 @@ import { genCodeFor } from '../codeGen';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { showToast } from '../shared/Toast';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
+import { DimEnLectura, TableHeader } from '../shared/EditLock';
 import { useEditable } from '../shared/EditLock';
 import type { ListaItem } from '../types';
 
 interface Props {
   title: string;
+  /** Icono (sin extensión) de /iconos_civilmanager/ junto al título. */
+  icon?: string;
   items: ListaItem[];
   onChange: (items: ListaItem[]) => void;
   prefix: string;
@@ -21,6 +24,7 @@ interface Props {
 /** Panel genérico para las listas de configuración con forma {codigo, nombre|categoria, desc}. */
 export function ListaItemPanel({
   title,
+  icon,
   items,
   onChange,
   prefix,
@@ -67,76 +71,78 @@ export function ListaItemPanel({
 
   return (
     <XlWrap>
-      <div className="cm-modal-head">{title}</div>
-      <XlScroll>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Código</th>
-              <th>{labelHeader}</th>
-              <th>Descripción</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 && (
+      <TableHeader title={title} icon={icon} />
+      <DimEnLectura>
+        <XlScroll>
+          <table>
+            <thead>
               <tr>
-                <td colSpan={5} className="cm-empty-row">
-                  Sin registros
-                </td>
+                <th>#</th>
+                <th title="Código único del ítem de la lista, generado automáticamente.">Código</th>
+                <th>{labelHeader}</th>
+                <th title="Detalle del ítem; la columna anterior es su nombre.">Descripción</th>
+                <th>Acciones</th>
               </tr>
-            )}
-            {items.map((it, i) => {
-              const editing = editIdx === i;
-              return (
-                <tr key={it.codigo}>
-                  <XlRowNum n={i + 1} />
-                  <td>{it.codigo}</td>
-                  <td>
-                    {editing ? (
-                      <input
-                        className="cm-ni"
-                        aria-label={labelHeader}
-                        value={it[labelField] ?? ''}
-                        onChange={(e) => upd(i, labelField, e.target.value)}
-                      />
-                    ) : (
-                      <span onDoubleClick={() => setEditIdx(i)}>{it[labelField]}</span>
-                    )}
+            </thead>
+            <tbody>
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="cm-empty-row">
+                    Sin registros
                   </td>
-                  <td>
-                    {editing ? (
-                      <input
-                        className="cm-ni"
-                        aria-label="Descripción"
-                        value={it.desc}
-                        onChange={(e) => upd(i, 'desc', e.target.value)}
-                      />
-                    ) : (
-                      <span onDoubleClick={() => setEditIdx(i)} style={{ color: 'var(--txt2)' }}>
-                        {it.desc}
-                      </span>
-                    )}
-                  </td>
-                  <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </XlScroll>
-      <div className="cm-xl-foot">
-        {editable && (
-          <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
-            Agregar
-          </button>
-        )}
-        <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>
-          Total: <b>{items.length}</b>
-        </span>
-      </div>
+              )}
+              {items.map((it, i) => {
+                const editing = editIdx === i;
+                return (
+                  <tr key={it.codigo}>
+                    <XlRowNum n={i + 1} />
+                    <td>{it.codigo}</td>
+                    <td>
+                      {editing ? (
+                        <input
+                          className="cm-ni"
+                          aria-label={labelHeader}
+                          value={it[labelField] ?? ''}
+                          onChange={(e) => upd(i, labelField, e.target.value)}
+                        />
+                      ) : (
+                        <span onDoubleClick={() => setEditIdx(i)}>{it[labelField]}</span>
+                      )}
+                    </td>
+                    <td>
+                      {editing ? (
+                        <input
+                          className="cm-ni"
+                          aria-label="Descripción"
+                          value={it.desc}
+                          onChange={(e) => upd(i, 'desc', e.target.value)}
+                        />
+                      ) : (
+                        <span onDoubleClick={() => setEditIdx(i)} style={{ color: 'var(--txt2)' }}>
+                          {it.desc}
+                        </span>
+                      )}
+                    </td>
+                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </XlScroll>
+        <div className="cm-xl-foot">
+          {editable && (
+            <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
+              Agregar
+            </button>
+          )}
+          <span className="cm-flex-1" />
+          <span style={{ fontSize: 11 }}>
+            Total: <b>{items.length}</b>
+          </span>
+        </div>
+      </DimEnLectura>
     </XlWrap>
   );
 }

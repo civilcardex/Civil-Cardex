@@ -10,7 +10,8 @@ export function TiposEquipoPanel() {
 
   return (
     <ListaItemPanel
-      title="Tipos de Equipo"
+      title="Tipos de equipo"
+      icon="tipos_de_equipo"
       items={state.config_listas.tipos_equipo}
       onChange={(tipos_equipo) =>
         patch({ config_listas: { ...state.config_listas, tipos_equipo } })

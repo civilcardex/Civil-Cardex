@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { useCivilManager } from '../context';
 import { genCodeFor } from '../codeGen';
-import { fmt } from '../calc';
+import { fmt, fmtMoneda } from '../calc';
 import { CrudFooter } from '../shared/CrudFooter';
 import { ExcelPreviewModal } from '../shared/ExcelPreviewModal';
 import { NumInput } from '../shared/NumInput';
 import { useCrudTable } from '../shared/useCrudTable';
+import { DimEnLectura, EditableSection, TableHeader } from '../shared/EditLock';
+
 import { useReferentialDelete } from '../shared/useReferentialDelete';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import type { Cargo } from '../types';
@@ -71,82 +73,96 @@ export function ColaboradoresTab() {
   }
 
   return (
-    <div>
+    <EditableSection dim={false}>
       <XlWrap>
-        <XlScroll>
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Código</th>
-                <th>Descripción</th>
-                <th>N° Salarios Base</th>
-                <th>Valor Básico</th>
-                <th>Costo Total Día</th>
-                <th>Costo Total Hora</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
+        <TableHeader title="Colaboradores" icon="colaboradores_tabla" />
+        <DimEnLectura>
+          <XlScroll>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={8} className="cm-empty-row">
-                    Sin colaboradores
-                  </td>
+                  <th>#</th>
+                  <th title="Código único del cargo (MO-xxx), generado automáticamente.">Código</th>
+                  <th title="Nombre del cargo (ayudante, oficial, maestro…).">Descripción</th>
+                  <th title="Cuántos salarios mínimos gana este cargo.">N° Salarios Base</th>
+                  <th title="Jornal del cargo = salarios base × salario del país activo.">
+                    Valor Básico
+                  </th>
+                  <th title="Jornal + prestaciones y seguridad social (costo empresa por día).">
+                    Costo Total Día
+                  </th>
+                  <th title="Costo día ÷ horas laboradas por día según el país activo.">
+                    Costo Total Hora
+                  </th>
+                  <th>Acciones</th>
                 </tr>
-              )}
-              {filtered.map((c, i) => {
-                const calc = calcMap.get(c.id);
-                const editing = editIdx === i;
-                return (
-                  <tr key={c.id}>
-                    <XlRowNum n={i + 1} />
-                    <td>{c.codigo}</td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Descripción"
-                          value={c.descripcion}
-                          onChange={(e) => upd(c.id, 'descripcion', e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(i, e)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{c.descripcion}</span>
-                      )}
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="cm-empty-row">
+                      Sin colaboradores
                     </td>
-                    <td>
-                      {editing ? (
-                        <NumInput
-                          value={c.num_salarios_base}
-                          decimals={2}
-                          onChange={(v) => upd(c.id, 'num_salarios_base', v)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{fmt(c.num_salarios_base)}</span>
-                      )}
-                    </td>
-                    <td>{fmt(calc?.valorBasico ?? 0)}</td>
-                    <td>{fmt(calc?.costo_total_dia ?? 0)}</td>
-                    <td>{fmt(calc?.costo_total_hora ?? 0)}</td>
-                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </XlScroll>
-        <CrudFooter
-          onAdd={add}
-          addLabel="Nuevo Colaborador"
-          excel={excel}
-          exportLabel="Exportar"
-          search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-          countLabel="Total:"
-          count={filtered.length}
-        />
+                )}
+                {filtered.map((c, i) => {
+                  const calc = calcMap.get(c.id);
+                  const editing = editIdx === i;
+                  return (
+                    <tr key={c.id}>
+                      <XlRowNum n={i + 1} />
+                      <td>{c.codigo}</td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="Descripción"
+                            value={c.descripcion}
+                            onChange={(e) => upd(c.id, 'descripcion', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(i, e)}
+                          />
+                        ) : (
+                          <span onDoubleClick={() => setEditIdx(i)}>{c.descripcion}</span>
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <NumInput
+                            value={c.num_salarios_base}
+                            decimals={2}
+                            onChange={(v) => upd(c.id, 'num_salarios_base', v)}
+                          />
+                        ) : (
+                          <span onDoubleClick={() => setEditIdx(i)}>
+                            {fmt(c.num_salarios_base)}
+                          </span>
+                        )}
+                      </td>
+                      <td>{fmtMoneda(calc?.valorBasico ?? 0)}</td>
+                      <td>{fmtMoneda(calc?.costo_total_dia ?? 0)}</td>
+                      <td>{fmtMoneda(calc?.costo_total_hora ?? 0)}</td>
+                      <XlAct
+                        onEdit={() => setEditIdx(editing ? null : i)}
+                        onDelete={() => del(i)}
+                      />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </XlScroll>
+          <CrudFooter
+            onAdd={add}
+            addLabel="Nuevo Colaborador"
+            excel={excel}
+            exportLabel="Exportar"
+            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+            countLabel="Total:"
+            count={filtered.length}
+          />
+        </DimEnLectura>
       </XlWrap>
       <ExcelPreviewModal excel={excel} />
-    </div>
+    </EditableSection>
   );
 }

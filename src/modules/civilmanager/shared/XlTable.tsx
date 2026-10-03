@@ -1,13 +1,21 @@
-import { memo, type ReactNode } from 'react';
+import { memo, type CSSProperties, type ReactNode } from 'react';
 import { ActionIcon } from './icons';
 import { useEditable } from './EditLock';
 
-export function XlWrap({ children }: { children: ReactNode }) {
-  return <div className="cm-xl-wrap">{children}</div>;
+export function XlWrap({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <div className="cm-xl-wrap" style={style}>
+      {children}
+    </div>
+  );
 }
 
-export function XlScroll({ children }: { children: ReactNode }) {
-  return <div className="cm-xl-scroll">{children}</div>;
+export function XlScroll({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return (
+    <div className="cm-xl-scroll" style={style}>
+      {children}
+    </div>
+  );
 }
 
 export const XlRowNum = memo(function XlRowNum({ n }: { n: number }) {

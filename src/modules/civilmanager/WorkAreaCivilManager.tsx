@@ -4,7 +4,7 @@ import { CivilManagerProvider, useCivilManager } from './context';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { Toast } from './shared/Toast';
 import { NavIcon, type NavIconName } from './shared/icons';
-import { EditableSection } from './shared/EditLock';
+
 import { ColaboradoresTab } from './catalogs/CollaboratorsTab';
 import { CuadrillasTab } from './catalogs/CuadrillasTab';
 import { EquiposTab } from './catalogs/EquipmentTab';
@@ -20,7 +20,7 @@ type CatalogoTab =
   | 'configuracion'
   | 'colaboradores'
   | 'cuadrillas'
-  | 'equipment'
+  | 'equipos'
   | 'insumos'
   | 'proveedores';
 
@@ -34,7 +34,7 @@ const CATALOGO_TABS: { id: CatalogoTab; label: string; icon: NavIconName }[] = [
   { id: 'configuracion', label: 'Configuración', icon: 'configuracion' },
   { id: 'colaboradores', label: 'Colaboradores', icon: 'colaboradores' },
   { id: 'cuadrillas', label: 'Cuadrillas', icon: 'cuadrilla' },
-  { id: 'equipment', label: 'Equipos', icon: 'equipment' },
+  { id: 'equipos', label: 'Equipos', icon: 'equipos' },
   { id: 'insumos', label: 'Insumos', icon: 'insumos' },
   { id: 'proveedores', label: 'Proveedores', icon: 'proveedores' },
 ];
@@ -114,47 +114,14 @@ function CivilManagerShell() {
       )}
 
       <div className="cm-main">
-        {/* Cada pestaña editable se envuelve en EditableSection: botón EDITAR/LISTO arriba a la derecha. */}
-        {mainSection === 'catalogos' && catalogoTab === 'configuracion' && (
-          <EditableSection>
-            <ConfigTab />
-          </EditableSection>
-        )}
-        {mainSection === 'catalogos' && catalogoTab === 'colaboradores' && (
-          <EditableSection>
-            <ColaboradoresTab />
-          </EditableSection>
-        )}
-        {mainSection === 'catalogos' && catalogoTab === 'cuadrillas' && (
-          <EditableSection>
-            <CuadrillasTab />
-          </EditableSection>
-        )}
-        {mainSection === 'catalogos' && catalogoTab === 'equipment' && (
-          <EditableSection>
-            <EquiposTab />
-          </EditableSection>
-        )}
-        {mainSection === 'catalogos' && catalogoTab === 'insumos' && (
-          <EditableSection>
-            <InsumosTab />
-          </EditableSection>
-        )}
-        {mainSection === 'catalogos' && catalogoTab === 'proveedores' && (
-          <EditableSection>
-            <ProveedoresTab />
-          </EditableSection>
-        )}
-        {mainSection === 'apus' && (
-          <EditableSection>
-            <ApuCatalog />
-          </EditableSection>
-        )}
-        {mainSection === 'presupuestos' && (
-          <EditableSection>
-            <PresupuestosTab />
-          </EditableSection>
-        )}
+        {mainSection === 'catalogos' && catalogoTab === 'configuracion' && <ConfigTab />}
+        {mainSection === 'catalogos' && catalogoTab === 'colaboradores' && <ColaboradoresTab />}
+        {mainSection === 'catalogos' && catalogoTab === 'cuadrillas' && <CuadrillasTab />}
+        {mainSection === 'catalogos' && catalogoTab === 'equipos' && <EquiposTab />}
+        {mainSection === 'catalogos' && catalogoTab === 'insumos' && <InsumosTab />}
+        {mainSection === 'catalogos' && catalogoTab === 'proveedores' && <ProveedoresTab />}
+        {mainSection === 'apus' && <ApuCatalog />}
+        {mainSection === 'presupuestos' && <PresupuestosTab />}
       </div>
     </div>
   );

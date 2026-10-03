@@ -14,7 +14,8 @@ export function UnidadesTransportePanel() {
 
   return (
     <ListaItemPanel
-      title="Unidades de Transporte"
+      title="Unidades de transporte"
+      icon="unidades_de_transporte"
       items={state.config_listas.unidades_transporte}
       onChange={(unidades_transporte) =>
         patch({ config_listas: { ...state.config_listas, unidades_transporte } })

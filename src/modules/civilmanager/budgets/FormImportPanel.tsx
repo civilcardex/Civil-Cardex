@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { parseCantidad } from '../excelImport';
 import { showToast } from '../shared/Toast';
-import { useEditable } from '../shared/EditLock';
+import { DimEnLectura, TableHeader, useEditable } from '../shared/EditLock';
 import { autoDetectarFilaInicio, detectarFilaCapitulo, type ColumnMapping } from './formImport';
 import type { Presupuesto, PresupuestoItem } from '../types';
 
@@ -82,132 +82,147 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
   }
 
   return (
-    <fieldset className="cm-xl-wrap" disabled={!editable} style={FIELDSET_STYLE}>
-      <p style={{ fontSize: 11, color: 'var(--txt2)', marginBottom: 10 }}>
-        Importa un formulario de presupuesto existente en Excel. Detecta automáticamente la fila de
-        inicio de datos y las filas de capítulo.
-      </p>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".xlsx,.xls"
-        style={{ display: 'none' }}
-        onChange={onFileSelect}
-        aria-hidden="true"
-      />
-      <button type="button" className="cm-btn cm-btn-ac" onClick={() => fileRef.current?.click()}>
-        Seleccionar archivo Excel
-      </button>
-
-      {rawRows && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-            <label style={{ fontSize: 11 }}>
-              Fila de inicio:{' '}
-              <input
-                className="cm-ni"
-                style={{ width: 60 }}
-                type="number"
-                min={0}
-                value={startRow}
-                onChange={(e) => setStartRow(Number(e.target.value) || 0)}
-              />
-            </label>
-            <label style={{ fontSize: 11 }}>
-              Col. Ítem:{' '}
-              <input
-                className="cm-ni"
-                style={{ width: 50 }}
-                type="number"
-                min={0}
-                value={mapping.col_item}
-                onChange={(e) => setMapping({ ...mapping, col_item: Number(e.target.value) || 0 })}
-              />
-            </label>
-            <label style={{ fontSize: 11 }}>
-              Col. Descripción:{' '}
-              <input
-                className="cm-ni"
-                style={{ width: 50 }}
-                type="number"
-                min={0}
-                value={mapping.col_descripcion}
-                onChange={(e) =>
-                  setMapping({ ...mapping, col_descripcion: Number(e.target.value) || 0 })
-                }
-              />
-            </label>
-            <label style={{ fontSize: 11 }}>
-              Col. Unidad:{' '}
-              <input
-                className="cm-ni"
-                style={{ width: 50 }}
-                type="number"
-                min={0}
-                value={mapping.col_unidad}
-                onChange={(e) =>
-                  setMapping({ ...mapping, col_unidad: Number(e.target.value) || 0 })
-                }
-              />
-            </label>
-            <label style={{ fontSize: 11 }}>
-              Col. Cantidad:{' '}
-              <input
-                className="cm-ni"
-                style={{ width: 50 }}
-                type="number"
-                min={0}
-                value={mapping.col_cantidad}
-                onChange={(e) =>
-                  setMapping({ ...mapping, col_cantidad: Number(e.target.value) || 0 })
-                }
-              />
-            </label>
-          </div>
-
-          <div
-            className="cm-modal-scroll"
-            style={{ maxHeight: 320, border: '1px solid var(--line)', borderRadius: 'var(--r)' }}
+    <div>
+      <TableHeader title="Importar formulario" icon="importar_formulario" />
+      <DimEnLectura>
+        <fieldset className="cm-xl-wrap" disabled={!editable} style={FIELDSET_STYLE}>
+          <p style={{ fontSize: 11, color: 'var(--txt2)', marginBottom: 10 }}>
+            Importa un formulario de presupuesto existente en Excel. Detecta automáticamente la fila
+            de inicio de datos y las filas de capítulo.
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={onFileSelect}
+            aria-hidden="true"
+          />
+          <button
+            type="button"
+            className="cm-btn cm-btn-ac"
+            onClick={() => fileRef.current?.click()}
           >
-            <table className="cm-tbl">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Ítem</th>
-                  <th>Descripción</th>
-                  <th>Unidad</th>
-                  <th>Cantidad</th>
-                  <th>Capítulo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map(({ item, esCap }, i) => (
-                  <tr
-                    key={item.id}
-                    style={esCap ? { fontWeight: 700, background: 'var(--bg3)' } : undefined}
-                  >
-                    <td>{i + 1}</td>
-                    <td>{item.num_item}</td>
-                    <td>{item.descripcion}</td>
-                    <td>{item.unidad}</td>
-                    <td>{item.cantidad}</td>
-                    <td>{esCap ? 'Sí' : ''}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            Seleccionar archivo Excel
+          </button>
 
-          <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-            <button type="button" className="cm-btn cm-btn-ok" onClick={confirmarImport}>
-              Importar {preview.length} filas
-            </button>
-            <button type="button" className="cm-btn" onClick={() => setRawRows(null)}>
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-    </fieldset>
+          {rawRows && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+                <label style={{ fontSize: 11 }}>
+                  Fila de inicio:{' '}
+                  <input
+                    className="cm-ni"
+                    style={{ width: 60 }}
+                    type="number"
+                    min={0}
+                    value={startRow}
+                    onChange={(e) => setStartRow(Number(e.target.value) || 0)}
+                  />
+                </label>
+                <label style={{ fontSize: 11 }}>
+                  Col. Ítem:{' '}
+                  <input
+                    className="cm-ni"
+                    style={{ width: 50 }}
+                    type="number"
+                    min={0}
+                    value={mapping.col_item}
+                    onChange={(e) =>
+                      setMapping({ ...mapping, col_item: Number(e.target.value) || 0 })
+                    }
+                  />
+                </label>
+                <label style={{ fontSize: 11 }}>
+                  Col. Descripción:{' '}
+                  <input
+                    className="cm-ni"
+                    style={{ width: 50 }}
+                    type="number"
+                    min={0}
+                    value={mapping.col_descripcion}
+                    onChange={(e) =>
+                      setMapping({ ...mapping, col_descripcion: Number(e.target.value) || 0 })
+                    }
+                  />
+                </label>
+                <label style={{ fontSize: 11 }}>
+                  Col. Unidad:{' '}
+                  <input
+                    className="cm-ni"
+                    style={{ width: 50 }}
+                    type="number"
+                    min={0}
+                    value={mapping.col_unidad}
+                    onChange={(e) =>
+                      setMapping({ ...mapping, col_unidad: Number(e.target.value) || 0 })
+                    }
+                  />
+                </label>
+                <label style={{ fontSize: 11 }}>
+                  Col. Cantidad:{' '}
+                  <input
+                    className="cm-ni"
+                    style={{ width: 50 }}
+                    type="number"
+                    min={0}
+                    value={mapping.col_cantidad}
+                    onChange={(e) =>
+                      setMapping({ ...mapping, col_cantidad: Number(e.target.value) || 0 })
+                    }
+                  />
+                </label>
+              </div>
+
+              <div
+                className="cm-modal-scroll"
+                style={{
+                  maxHeight: 320,
+                  border: '1px solid var(--line)',
+                  borderRadius: 'var(--r)',
+                }}
+              >
+                <table className="cm-tbl">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Ítem</th>
+                      <th>Descripción</th>
+                      <th>Unidad</th>
+                      <th>Cantidad</th>
+                      <th>Capítulo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map(({ item, esCap }, i) => (
+                      <tr
+                        key={item.id}
+                        style={esCap ? { fontWeight: 700, background: 'var(--bg3)' } : undefined}
+                      >
+                        <td>{i + 1}</td>
+                        <td>{item.num_item}</td>
+                        <td>{item.descripcion}</td>
+                        <td>{item.unidad}</td>
+                        <td>{item.cantidad}</td>
+                        <td>{esCap ? 'Sí' : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                <button type="button" className="cm-btn cm-btn-ok" onClick={confirmarImport}>
+                  Importar {preview.length} filas
+                </button>
+                <button type="button" className="cm-btn" onClick={() => setRawRows(null)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </fieldset>
+      </DimEnLectura>
+    </div>
   );
 }

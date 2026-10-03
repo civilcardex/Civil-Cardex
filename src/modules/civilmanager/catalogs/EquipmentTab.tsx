@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { useCivilManager } from '../context';
 import { genCodeFor } from '../codeGen';
-import { fmt } from '../calc';
+import { fmtMoneda } from '../calc';
 import { fmtDate, isCotOld } from '../excelImport';
 import { CrudFooter } from '../shared/CrudFooter';
 import { ExcelPreviewModal } from '../shared/ExcelPreviewModal';
 import { NumInput } from '../shared/NumInput';
 import { useCrudTable } from '../shared/useCrudTable';
+import { DimEnLectura, EditableSection, TableHeader } from '../shared/EditLock';
+
 import { useReferentialDelete } from '../shared/useReferentialDelete';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import type { Equipo } from '../types';
@@ -75,99 +77,114 @@ export function EquiposTab() {
   }
 
   return (
-    <div>
+    <EditableSection dim={false}>
       <XlWrap>
-        <XlScroll>
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Tipo</th>
-                <th>Costo/Hora</th>
-                <th>Cotizado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
+        <TableHeader title="Equipos" icon="equipos_tabla" />
+        <DimEnLectura>
+          <XlScroll>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={7} className="cm-empty-row">
-                    Sin equipos
-                  </td>
+                  <th>#</th>
+                  <th title="Código único del equipo (EQ-xxx), generado automáticamente.">
+                    Código
+                  </th>
+                  <th title="Nombre descriptivo del equipo.">Nombre</th>
+                  <th title="Clasificación: maquinaria pesada, equipo menor, transporte… (lista editable en Configuración).">
+                    Tipo
+                  </th>
+                  <th title="Tarifa por hora que el APU multiplica por el rendimiento del equipo.">
+                    Costo/Hora
+                  </th>
+                  <th title="Fecha de la última cotización; se resalta cuando está desactualizada.">
+                    Cotizado
+                  </th>
+                  <th>Acciones</th>
                 </tr>
-              )}
-              {filtered.map((e, i) => {
-                const editing = editIdx === i;
-                const old = isCotOld(e.fecha_cotizacion);
-                return (
-                  <tr key={e.id}>
-                    <XlRowNum n={i + 1} />
-                    <td>{e.codigo}</td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Nombre"
-                          value={e.nombre}
-                          onChange={(ev) => upd(e.id, 'nombre', ev.target.value)}
-                          onKeyDown={(ev) => handleKeyDown(i, ev)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{e.nombre}</span>
-                      )}
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="cm-empty-row">
+                      Sin equipos
                     </td>
-                    <td>
-                      {editing ? (
-                        <select
-                          className="cm-sel"
-                          aria-label="Tipo"
-                          value={e.tipo}
-                          onChange={(ev) => upd(e.id, 'tipo', ev.target.value)}
-                        >
-                          {state.config_listas.tipos_equipo.map((t) => (
-                            <option key={t.codigo} value={t.nombre}>
-                              {t.nombre}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        e.tipo
-                      )}
-                    </td>
-                    <td>
-                      {editing ? (
-                        <NumInput
-                          value={e.costo_hora}
-                          format
-                          onChange={(v) => upd(e.id, 'costo_hora', v)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{fmt(e.costo_hora)}</span>
-                      )}
-                    </td>
-                    <td style={{ color: old ? 'var(--warn)' : undefined }}>
-                      {fmtDate(e.fecha_cotizacion)}
-                    </td>
-                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </XlScroll>
-        <CrudFooter
-          onAdd={add}
-          addLabel="Nuevo Equipo"
-          excel={excel}
-          exportLabel="Exportar"
-          search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-          countLabel="Total:"
-          count={filtered.length}
-        />
+                )}
+                {filtered.map((e, i) => {
+                  const editing = editIdx === i;
+                  const old = isCotOld(e.fecha_cotizacion);
+                  return (
+                    <tr key={e.id}>
+                      <XlRowNum n={i + 1} />
+                      <td>{e.codigo}</td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="Nombre"
+                            value={e.nombre}
+                            onChange={(ev) => upd(e.id, 'nombre', ev.target.value)}
+                            onKeyDown={(ev) => handleKeyDown(i, ev)}
+                          />
+                        ) : (
+                          <span onDoubleClick={() => setEditIdx(i)}>{e.nombre}</span>
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <select
+                            className="cm-sel"
+                            aria-label="Tipo"
+                            value={e.tipo}
+                            onChange={(ev) => upd(e.id, 'tipo', ev.target.value)}
+                          >
+                            {state.config_listas.tipos_equipo.map((t) => (
+                              <option key={t.codigo} value={t.nombre}>
+                                {t.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          e.tipo
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <NumInput
+                            value={e.costo_hora}
+                            format
+                            moneda
+                            onChange={(v) => upd(e.id, 'costo_hora', v)}
+                          />
+                        ) : (
+                          <span onDoubleClick={() => setEditIdx(i)}>{fmtMoneda(e.costo_hora)}</span>
+                        )}
+                      </td>
+                      <td style={{ color: old ? 'var(--warn)' : undefined }}>
+                        {fmtDate(e.fecha_cotizacion)}
+                      </td>
+                      <XlAct
+                        onEdit={() => setEditIdx(editing ? null : i)}
+                        onDelete={() => del(i)}
+                      />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </XlScroll>
+          <CrudFooter
+            onAdd={add}
+            addLabel="Nuevo Equipo"
+            excel={excel}
+            exportLabel="Exportar"
+            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+            countLabel="Total:"
+            count={filtered.length}
+          />
+        </DimEnLectura>
       </XlWrap>
       <ExcelPreviewModal excel={excel} />
-    </div>
+    </EditableSection>
   );
 }

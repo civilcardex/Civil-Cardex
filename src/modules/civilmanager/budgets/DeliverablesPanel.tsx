@@ -1,5 +1,5 @@
 import { useCivilManager } from '../context';
-import { calcItemValue, calcResumenPresupuesto, esCapituloFinal, fmt } from '../calc';
+import { calcItemValue, calcResumenPresupuesto, esCapituloFinal, fmt, fmtMoneda } from '../calc';
 import { showToast } from '../shared/Toast';
 import { ActionIcon } from '../shared/icons';
 import type { ApuCalculado, CivilManagerConfig, Presupuesto, PresupuestoItem } from '../types';
@@ -90,7 +90,7 @@ export function EntregablesPanel({ pres }: Props) {
       body: rows.map((r) => r.map((c) => (typeof c === 'number' ? fmt(c) : c))),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [26, 36, 56] },
-      foot: [['', '', '', '', 'VALOR TOTAL', fmt(resumen.valorTotal)]],
+      foot: [['', '', '', '', 'VALOR TOTAL', fmtMoneda(resumen.valorTotal)]],
     });
     doc.save(`ficha_${pres.codigo}.pdf`);
     showToast('PDF exportado correctamente', { type: 'ok' });

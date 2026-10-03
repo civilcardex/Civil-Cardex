@@ -1,5 +1,5 @@
 import { useCivilManager } from '../context';
-import { fmt, parseNum } from '../calc';
+import { fmtMoneda, parseNum } from '../calc';
 import { NumInput } from '../shared/NumInput';
 import { ActionIcon } from '../shared/icons';
 import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
@@ -104,7 +104,7 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
                       disabled={esGlobal}
                     />
                   </td>
-                  <td>{fmt(itemTotal(r))}</td>
+                  <td>{fmtMoneda(itemTotal(r))}</td>
                   <td className="cm-col-act">
                     <button
                       type="button"
@@ -127,7 +127,7 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
         </button>
         <span className="cm-flex-1" />
         <span style={{ fontSize: 11 }}>
-          Subtotal Transporte: <b>{fmt(subtotal)}</b>
+          Subtotal Transporte: <b>{fmtMoneda(subtotal)}</b>
         </span>
       </div>
     </XlWrap>

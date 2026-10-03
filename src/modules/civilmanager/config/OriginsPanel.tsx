@@ -10,7 +10,8 @@ export function OrigenesPanel() {
 
   return (
     <ListaItemPanel
-      title="Orígenes de Insumo"
+      title="Orígenes de insumo"
+      icon="origenes_de_insumo"
       items={state.config_listas.origenes}
       onChange={(origenes) => patch({ config_listas: { ...state.config_listas, origenes } })}
       prefix="OR"

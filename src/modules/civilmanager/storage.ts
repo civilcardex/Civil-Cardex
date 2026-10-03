@@ -55,9 +55,10 @@ export function defaultState(): CivilManagerState {
     },
     config: {
       pais: 'CO',
-      moneda: 'COP',
-      salario_base: 1750905,
-      auxilio_transporte: 147674,
+      // Default USD (la app migró su moneda a USD): el salario ya se expresa en USD.
+      moneda: 'USD',
+      salario_base: 400,
+      auxilio_transporte: 0, // sembrar por país (PerfilPaisPanel)
       ibc_tope: 25,
       pct_administracion: 10,
       pct_imprevistos: 3,
@@ -181,8 +182,8 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
   }
   try {
     const proyectoUid = proyectoId; // RLS exige proyecto válido del usuario
-    // Columnas reales por tabla (migración cm_schema + snaps): todo campo de más (p. ej.
-    // tipoPrecioFormulario/alarmasPrecioFaltante en presupuestos) tumbaba el upsert con 400.
+    // Columnas reales por tabla (migración cm_schema + snaps): todo campo de más
+    // (fuera de esta lista) tumbaba el upsert con 400.
     const TABLE_COLUMNS: Record<string, string[]> = {
       cm_factores_prestacionales: ['id', 'codigo', 'nombre', 'factor', 'tipo'],
       cm_cargos: ['id', 'codigo', 'descripcion', 'num_salarios_base'],
@@ -268,6 +269,8 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
         'cuadrillas_snap',
         'perfil_pais_snap',
         'formulario_original',
+        'tipo_precio_formulario',
+        'alarmas_precio_faltante',
       ],
     };
     // FKs anulables: '' no existe en la tabla referenciada y violaba la FK con 409.
@@ -282,7 +285,13 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     const NULLABLE: Record<string, string[]> = {
       cm_equipos: ['proveedor_id'],
       cm_insumos: ['proveedor_id', 'apu_basico_id'],
-      cm_presupuestos: ['parent_id', 'perfil_pais_snap', 'formulario_original'],
+      cm_presupuestos: [
+        'parent_id',
+        'perfil_pais_snap',
+        'formulario_original',
+        'tipo_precio_formulario',
+        'alarmas_precio_faltante',
+      ],
     };
     const upsert = async (table: string, rows: unknown[]) => {
       if (!rows || (rows as unknown[]).length === 0) return;

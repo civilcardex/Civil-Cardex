@@ -8,7 +8,7 @@ export type NavIconName =
   | 'configuracion'
   | 'colaboradores'
   | 'cuadrilla'
-  | 'equipment'
+  | 'equipos'
   | 'insumos'
   | 'proveedores';
 

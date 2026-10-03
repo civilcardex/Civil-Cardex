@@ -5,7 +5,7 @@
   flex-direction: column;
   height: 100%;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--txt);
 }
 
@@ -23,11 +23,11 @@
   min-width: fit-content;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: 10px 10px 0 0;
   color: var(--txt2);
   font-family: var(--mono);
   font-size: 13px;
-  padding: 14px 16px;
+  padding: 12px 16px;
   cursor: pointer;
   white-space: nowrap;
   display: inline-flex;
@@ -35,17 +35,22 @@
   justify-content: center;
   gap: 8px;
   letter-spacing: 0.5px;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .cm-nav button:hover:not(:disabled) {
-  color: var(--acc);
-  background: rgba(37, 99, 235, 0.08);
+  color: #f0a830;
+  background: rgba(240, 168, 48, 0.06);
 }
 
+/* Activo en naranja tenue — va con el logo del módulo (orig. usuario). */
 .cm-nav button.cm-active {
-  color: var(--acc);
-  border-bottom-color: var(--acc);
-  background: rgba(37, 99, 235, 0.1);
+  color: #f0a830;
+  font-weight: 700;
+  background: rgba(240, 168, 48, 0.1);
+  box-shadow: inset 0 -2px 0 rgba(240, 168, 48, 0.75);
 }
 
 .cm-nav button:disabled {
@@ -85,7 +90,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .cm-xl-scroll thead {
@@ -95,10 +100,10 @@
 }
 
 .cm-xl-scroll th {
-  background: var(--bg3);
-  color: var(--txt2);
+  background: color-mix(in srgb, #f0a830 14%, var(--bg2));
+  color: color-mix(in srgb, #f0a830 55%, var(--txt));
   font-weight: 700;
-  padding: 5px 6px;
+  padding: 7px 8px;
   text-align: center;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -106,7 +111,7 @@
 }
 
 .cm-xl-scroll td {
-  padding: 4px 6px;
+  padding: 6px 9px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -173,9 +178,10 @@
   border-color: var(--warn);
 }
 .cm-btn-primary {
-  background: var(--acc);
-  border-color: var(--acc);
-  color: #fff;
+  background: rgba(240, 168, 48, 0.16);
+  border-color: rgba(240, 168, 48, 0.6);
+  color: #f0a830;
+  font-weight: 700;
 }
 
 .cm-btn-icon {
@@ -301,18 +307,19 @@
 .cm-tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .cm-tbl th {
-  background: var(--bg3);
-  color: var(--txt2);
-  padding: 5px 6px;
+  background: color-mix(in srgb, #f0a830 14%, var(--bg2));
+  color: color-mix(in srgb, #f0a830 55%, var(--txt));
+  font-weight: 700;
+  padding: 7px 8px;
   border: 1px solid var(--line);
 }
 
 .cm-tbl td {
-  padding: 4px 6px;
+  padding: 5px 8px;
   border: 1px solid var(--line);
 }
 

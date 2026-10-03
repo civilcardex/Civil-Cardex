@@ -10,7 +10,8 @@ export function CategoriasInsumoPanel() {
 
   return (
     <ListaItemPanel
-      title="Categorías de Insumo"
+      title="Categorías de insumo"
+      icon="categorias_de_insumo"
       items={state.config_listas.categorias_insumo}
       onChange={(categorias_insumo) =>
         patch({ config_listas: { ...state.config_listas, categorias_insumo } })

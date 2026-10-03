@@ -175,16 +175,6 @@ export interface PresupuestoItem {
   alerta_sin_apu: boolean;
   es_capitulo: boolean;
   es_capitulo_manual: boolean | null;
-  /** Datos adicionales que llegan del formulario Excel del cliente (opcional). */
-  fila_original?: number;
-  codigo_1?: string;
-  codigo_2?: string;
-  codigo_apu?: string;
-  /** De dónde sale el precio del ítem: de un APU propio o del precio que puso la entidad. */
-  tipoPrecio?: 'apu' | 'entidad';
-  precioEntidad?: number | null;
-  /** Marca que el precio de este ítem fue editado a mano dentro del proyecto. */
-  _editado_local?: boolean;
 }
 
 export interface AiuOverride {
@@ -229,9 +219,9 @@ export interface Presupuesto {
   perfil_pais_snap: PerfilPais | null;
   formulario_original: FormularioOriginal | null;
   /** Cómo se precian los ítems importados del formulario: con APU o con el precio de la entidad. */
-  tipoPrecioFormulario?: 'apu' | 'entidad';
+  tipo_precio_formulario?: 'apu' | 'entidad';
   /** Números de ítems que quedaron sin precio cuando el formulario es de tipo "entidad". */
-  alarmasPrecioFaltante?: string[] | null;
+  alarmas_precio_faltante?: string[] | null;
 }
 
 export interface ListaItem {

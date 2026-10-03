@@ -1,5 +1,5 @@
 import { useCivilManager } from '../context';
-import { fmt } from '../calc';
+import { fmtMoneda } from '../calc';
 import { useIsMobile } from '../../../hooks/useMediaQuery';
 import { ApuSeccionMO } from './ApuSectionMO';
 import { ApuSeccionEquipo } from './ApuSectionEquipment';
@@ -66,7 +66,7 @@ export function ApuEditor({ apu, onUpdate }: Props) {
         <span className="cm-flex-1" />
         <span style={{ fontSize: 13, fontWeight: 700 }}>
           Costo unitario:{' '}
-          <span style={{ color: 'var(--acc)' }}>{fmt(calc?.totalDirecto ?? 0)}</span>
+          <span style={{ color: 'var(--acc)' }}>{fmtMoneda(calc?.totalDirecto ?? 0)}</span>
         </span>
       </div>
 
@@ -92,25 +92,26 @@ export function ApuEditor({ apu, onUpdate }: Props) {
             }}
           >
             <div>
-              Mano de obra: <b>{fmt(calc.subMO)}</b>
+              Mano de obra: <b>{fmtMoneda(calc.subMO)}</b>
             </div>
             <div>
-              Herramienta menor: <b>{fmt(calc.herr)}</b>
+              Herramienta menor: <b>{fmtMoneda(calc.herr)}</b>
             </div>
             <div>
-              Prestaciones: <b>{fmt(calc.vrPrest)}</b>
+              Prestaciones: <b>{fmtMoneda(calc.vrPrest)}</b>
             </div>
             <div>
-              Equipo: <b>{fmt(calc.subEq)}</b>
+              Equipo: <b>{fmtMoneda(calc.subEq)}</b>
             </div>
             <div>
-              Insumos: <b>{fmt(calc.subIns)}</b>
+              Insumos: <b>{fmtMoneda(calc.subIns)}</b>
             </div>
             <div>
-              Transporte: <b>{fmt(calc.subTrans)}</b>
+              Transporte: <b>{fmtMoneda(calc.subTrans)}</b>
             </div>
             <div style={{ gridColumn: 'span 2', fontWeight: 700 }}>
-              Total directo: <span style={{ color: 'var(--acc)' }}>{fmt(calc.totalDirecto)}</span>
+              Total directo:{' '}
+              <span style={{ color: 'var(--acc)' }}>{fmtMoneda(calc.totalDirecto)}</span>
             </div>
           </div>
         </div>

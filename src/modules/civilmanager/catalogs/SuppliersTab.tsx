@@ -4,6 +4,8 @@ import { genCodeFor } from '../codeGen';
 import { CrudFooter } from '../shared/CrudFooter';
 import { ExcelPreviewModal } from '../shared/ExcelPreviewModal';
 import { useCrudTable } from '../shared/useCrudTable';
+import { DimEnLectura, EditableSection, TableHeader } from '../shared/EditLock';
+
 import { useReferentialDelete } from '../shared/useReferentialDelete';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import type { Proveedor } from '../types';
@@ -79,115 +81,123 @@ export function ProveedoresTab() {
   }
 
   return (
-    <div>
+    <EditableSection dim={false}>
       <XlWrap>
-        <XlScroll>
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>NIT</th>
-                <th>Contacto</th>
-                <th>Teléfono</th>
-                <th>Ciudad</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
+        <TableHeader title="Proveedores" icon="proveedores_tabla" />
+        <DimEnLectura>
+          <XlScroll>
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={8} className="cm-empty-row">
-                    Sin proveedores
-                  </td>
+                  <th>#</th>
+                  <th title="Código único del proveedor (PR-xxx), generado automáticamente.">
+                    Código
+                  </th>
+                  <th title="Razón social o nombre comercial.">Nombre</th>
+                  <th title="Número de identificación tributaria.">NIT</th>
+                  <th title="Persona de contacto del proveedor.">Contacto</th>
+                  <th title="Teléfono principal de contacto.">Teléfono</th>
+                  <th title="Ciudad de origen; afecta tiempos y costos de transporte.">Ciudad</th>
+                  <th>Acciones</th>
                 </tr>
-              )}
-              {filtered.map((p, i) => {
-                const editing = editIdx === i;
-                return (
-                  <tr key={p.id}>
-                    <XlRowNum n={i + 1} />
-                    <td>{p.codigo}</td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Nombre"
-                          value={p.nombre}
-                          onChange={(e) => upd(p.id, 'nombre', e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(i, e)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{p.nombre}</span>
-                      )}
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="cm-empty-row">
+                      Sin proveedores
                     </td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="NIT"
-                          value={p.nit}
-                          onChange={(e) => upd(p.id, 'nit', e.target.value)}
-                        />
-                      ) : (
-                        p.nit
-                      )}
-                    </td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Contacto"
-                          value={p.contacto}
-                          onChange={(e) => upd(p.id, 'contacto', e.target.value)}
-                        />
-                      ) : (
-                        p.contacto
-                      )}
-                    </td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Teléfono"
-                          value={p.tel1}
-                          onChange={(e) => upd(p.id, 'tel1', e.target.value)}
-                        />
-                      ) : (
-                        p.tel1
-                      )}
-                    </td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Ciudad"
-                          value={p.ciudad}
-                          onChange={(e) => upd(p.id, 'ciudad', e.target.value)}
-                        />
-                      ) : (
-                        p.ciudad
-                      )}
-                    </td>
-                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </XlScroll>
-        <CrudFooter
-          onAdd={add}
-          addLabel="Nuevo Proveedor"
-          excel={excel}
-          exportLabel="Exportar"
-          search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-          countLabel="Total:"
-          count={filtered.length}
-        />
+                )}
+                {filtered.map((p, i) => {
+                  const editing = editIdx === i;
+                  return (
+                    <tr key={p.id}>
+                      <XlRowNum n={i + 1} />
+                      <td>{p.codigo}</td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="Nombre"
+                            value={p.nombre}
+                            onChange={(e) => upd(p.id, 'nombre', e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(i, e)}
+                          />
+                        ) : (
+                          <span onDoubleClick={() => setEditIdx(i)}>{p.nombre}</span>
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="NIT"
+                            value={p.nit}
+                            onChange={(e) => upd(p.id, 'nit', e.target.value)}
+                          />
+                        ) : (
+                          p.nit
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="Contacto"
+                            value={p.contacto}
+                            onChange={(e) => upd(p.id, 'contacto', e.target.value)}
+                          />
+                        ) : (
+                          p.contacto
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="Teléfono"
+                            value={p.tel1}
+                            onChange={(e) => upd(p.id, 'tel1', e.target.value)}
+                          />
+                        ) : (
+                          p.tel1
+                        )}
+                      </td>
+                      <td>
+                        {editing ? (
+                          <input
+                            className="cm-ni"
+                            aria-label="Ciudad"
+                            value={p.ciudad}
+                            onChange={(e) => upd(p.id, 'ciudad', e.target.value)}
+                          />
+                        ) : (
+                          p.ciudad
+                        )}
+                      </td>
+                      <XlAct
+                        onEdit={() => setEditIdx(editing ? null : i)}
+                        onDelete={() => del(i)}
+                      />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </XlScroll>
+          <CrudFooter
+            onAdd={add}
+            addLabel="Nuevo Proveedor"
+            excel={excel}
+            exportLabel="Exportar"
+            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+            countLabel="Total:"
+            count={filtered.length}
+          />
+        </DimEnLectura>
       </XlWrap>
       <ExcelPreviewModal excel={excel} />
-    </div>
+    </EditableSection>
   );
 }

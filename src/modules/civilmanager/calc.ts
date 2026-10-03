@@ -38,6 +38,22 @@ export function fmt(v: number, d = 2): string {
     : n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
+// Símbolo de la moneda activa (config.moneda, fijado por configurarMoneda al
+// cargar/cambiar config). '$' por defecto cubre COP/USD antes de hidratar.
+let simboloMoneda = '$';
+
+const SIMBOLO_POR_MONEDA: Record<string, string> = { COP: '$', USD: '$', EUR: '€' };
+
+/** Fija el símbolo que fmtMoneda antepone (llamada única desde el provider). */
+export function configurarMoneda(moneda: string): void {
+  simboloMoneda = SIMBOLO_POR_MONEDA[moneda] ?? '$';
+}
+
+/** Dinero: símbolo de la moneda del país activo + fmt. Solo columnas de valor. */
+export function fmtMoneda(v: number, d = 2): string {
+  return simboloMoneda + fmt(v, d);
+}
+
 export function sumFactorPrestacional(factores: FactorPrestacional[]): number {
   return r2(factores.reduce((s, f) => s + parseNum(f.factor), 0));
 }
@@ -206,7 +222,7 @@ export function calcAPU(
   };
 }
 
-export interface AiuResult {
+interface AiuResult {
   cdUnit: number;
   cdTotal: number;
   aiuPct: number;
@@ -254,7 +270,7 @@ export function calcItemValue(
   };
 }
 
-export interface ResumenPresupuesto {
+interface ResumenPresupuesto {
   costoDirecto: number;
   administracion: number;
   imprevistos: number;

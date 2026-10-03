@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCivilManager } from '../context';
+import { EditableSection } from '../shared/EditLock';
 import { ProyectosPanel } from './ProjectsPanel';
 import { ItemsPanel } from './ItemsPanel';
 import { ResumenPanel } from './SummaryPanel';
@@ -17,6 +18,8 @@ const SUBS: { id: Sub; label: string }[] = [
   { id: 'formulario', label: 'Importar Formulario' },
 ];
 
+// Sidebar vertical de sub-pestañas + panel a la derecha (igual que ConfigTab — orig. usuario):
+// EDITAR/LISTO arriba a la derecha de la tabla; solo el panel se opaca en lectura.
 export function PresupuestosTab() {
   const { state, patch } = useCivilManager();
   const [selId, setSelId] = useState<string | null>(state.presupuestos[0]?.id ?? null);
@@ -30,34 +33,51 @@ export function PresupuestosTab() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-        {SUBS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`cm-btn ${sub === s.id ? 'cm-btn-primary' : ''}`}
-            onClick={() => setSub(s.id)}
-            disabled={s.id !== 'proyectos' && !pres}
-            aria-current={sub === s.id ? 'true' : undefined}
-          >
-            {s.label}
-          </button>
-        ))}
+    <EditableSection dim={false}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <nav
+          aria-label="Presupuestos"
+          style={{ width: 230, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
+        >
+          {SUBS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`cm-btn ${sub === s.id ? 'cm-btn-primary' : ''}`}
+              style={{
+                justifyContent: 'flex-start',
+                textAlign: 'left',
+                padding: '9px 12px',
+                fontSize: 13,
+                textTransform: 'uppercase',
+                letterSpacing: 0.3,
+              }}
+              onClick={() => setSub(s.id)}
+              disabled={s.id !== 'proyectos' && !pres}
+              aria-current={sub === s.id ? 'true' : undefined}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {sub === 'proyectos' && (
+            <ProyectosPanel
+              selId={selId}
+              onSelect={(id) => {
+                setSelId(id);
+                setSub('items');
+              }}
+            />
+          )}
+          {sub === 'items' && pres && <ItemsPanel pres={pres} onUpdate={updatePres} />}
+          {sub === 'resumen' && pres && <ResumenPanel pres={pres} onUpdate={updatePres} />}
+          {sub === 'entregables' && pres && <EntregablesPanel pres={pres} />}
+          {sub === 'formulario' && pres && (
+            <FormularioImportPanel pres={pres} onUpdate={updatePres} />
+          )}
+        </div>
       </div>
-      {sub === 'proyectos' && (
-        <ProyectosPanel
-          selId={selId}
-          onSelect={(id) => {
-            setSelId(id);
-            setSub('items');
-          }}
-        />
-      )}
-      {sub === 'items' && pres && <ItemsPanel pres={pres} onUpdate={updatePres} />}
-      {sub === 'resumen' && pres && <ResumenPanel pres={pres} onUpdate={updatePres} />}
-      {sub === 'entregables' && pres && <EntregablesPanel pres={pres} />}
-      {sub === 'formulario' && pres && <FormularioImportPanel pres={pres} onUpdate={updatePres} />}
-    </div>
+    </EditableSection>
   );
 }
