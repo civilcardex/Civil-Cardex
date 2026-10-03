@@ -745,7 +745,7 @@ export const GUIA: GUIA_TYPE = {
         },
         {
           nombre: 'Perfil de país — Activo/Usar',
-          desc: 'Copia moneda, SMMLV, auxilio y jornada de un país (31 perfiles precargados) a la configuración global.',
+          desc: 'Copia SMMLV, auxilio y jornada de un país (31 perfiles precargados) a la configuración global. La moneda global no se toca: se elige una vez y persiste.',
         },
       ],
     },
@@ -753,7 +753,7 @@ export const GUIA: GUIA_TYPE = {
       titulo: 'Listas auxiliares',
       items: [
         {
-          nombre: 'Unidades, Categorías, Tipos de equipo, Orígenes, Unid. transporte',
+          nombre: 'Unidades, Categorías, Tipos de equipo, Orígenes, Unidades de transporte',
           desc: 'Listas que alimentan los desplegables de insumos, APU y equipos. Borrado bloqueado si están en uso.',
         },
       ],
@@ -810,8 +810,20 @@ export const GUIA: GUIA_TYPE = {
           desc: 'Tarifa horaria del equipo que se reparte por rendimiento en la sección Equipo del APU.',
         },
         {
+          nombre: 'Tipo',
+          desc: 'Clasificación (maquinaria pesada, equipo menor, transporte…) — la lista se edita en Configuración.',
+        },
+        {
+          nombre: 'Proveedor',
+          desc: 'Ficha comercial asociada; se elige del catálogo de proveedores.',
+        },
+        {
           nombre: 'Cotizado',
           desc: 'Fecha de la última cotización — se resalta cuando está vieja para que la actualices.',
+        },
+        {
+          nombre: 'Buscar',
+          desc: 'Filtra por código, nombre o tipo mientras escribes.',
         },
         {
           nombre: 'Exportar / Importar Excel',
