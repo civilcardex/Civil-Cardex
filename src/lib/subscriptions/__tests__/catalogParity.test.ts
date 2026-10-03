@@ -9,11 +9,11 @@ import { CATALOGO, DESCUENTO_BASE, DESCUENTO_POR_MODULO, calcularTotalCentavos }
 // literales del edge (leído como texto, sin importar Deno) contra el catálogo cliente.
 // Al cambiar un precio: se editan AMBOS archivos y este test falla si quedó desparejo.
 
-const EDGE_SRC = readFileSync(join(process.cwd(), 'supabase/functions/_shared/wompi.ts'), 'utf8');
+const EDGE_SRC = readFileSync(join(process.cwd(), 'supabase/functions/_shared/lemon.ts'), 'utf8');
 
 const num = (s: string | undefined): number => Number((s ?? 'NaN').replace(/_/g, ''));
 
-describe('paridad catálogo cliente vs edge (Wompi)', () => {
+describe('paridad catálogo cliente vs edge (Lemon Squeezy)', () => {
   it('los 3 precios de cada módulo coinciden EXACTAMENTE con los del cliente', () => {
     for (const m of CATALOGO) {
       const reMen = new RegExp(`id: '${m.id}'[\\s\\S]{0,240}?precioMensualCentavos: ([\\d_]+)`);
@@ -54,8 +54,8 @@ describe('paridad catálogo cliente vs edge (Wompi)', () => {
 
   it('la fórmula (base + acumulativo) produce el mismo número que el edge', () => {
     // Pines: si un lado cambia la regla, estos números fallan.
-    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(10_800_000); // 12M × 0.90
-    expect(calcularTotalCentavos(['flow'], 'anual')).toBe(61_200_000); // 72M × 0.85
-    expect(calcularTotalCentavos(['flow'], 'semestral')).toBe(32_400_000); // 36M × 0.90
+    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(4500); // 5000¢ × 0.90
+    expect(calcularTotalCentavos(['flow'], 'anual')).toBe(25500); // 30000¢ × 0.85
+    expect(calcularTotalCentavos(['flow'], 'semestral')).toBe(13500); // 15000¢ × 0.90
   });
 });

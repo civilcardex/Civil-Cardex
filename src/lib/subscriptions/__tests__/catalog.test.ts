@@ -4,36 +4,36 @@ import {
   DESCUENTO_POR_MODULO,
   calcularTotalCentavos,
   descuentoAplicado,
-  formatCOP,
+  formatUSD,
 } from '../catalog';
 
-describe('calcularTotalCentavos', () => {
-  it('un módulo mensual = precio mensual (sin descuento base)', () => {
-    expect(calcularTotalCentavos(['flow'], 'mensual')).toBe(6_000_000);
+describe('calcularTotalCentavos (USD)', () => {
+  it('un módulo mensual = $25.00 (sin descuento base)', () => {
+    expect(calcularTotalCentavos(['flow'], 'mensual')).toBe(2500);
   });
 
-  it('un módulo semestral = base 10%', () => {
-    expect(calcularTotalCentavos(['manage'], 'semestral')).toBe(32_400_000); // 36M × 0.90
+  it('un módulo semestral = base 10% → $135.00', () => {
+    expect(calcularTotalCentavos(['manage'], 'semestral')).toBe(13500); // 15000 × 0.90
   });
 
-  it('un módulo anual = base 15%', () => {
-    expect(calcularTotalCentavos(['manage'], 'anual')).toBe(61_200_000); // 72M × 0.85
+  it('un módulo anual = base 15% → $255.00', () => {
+    expect(calcularTotalCentavos(['manage'], 'anual')).toBe(25500); // 30000 × 0.85
   });
 
   it('deduplica módulos repetidos', () => {
-    expect(calcularTotalCentavos(['flow', 'flow'], 'mensual')).toBe(6_000_000);
+    expect(calcularTotalCentavos(['flow', 'flow'], 'mensual')).toBe(2500);
   });
 
-  it('dos módulos mensual: solo +10% por adicional', () => {
-    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(10_800_000); // 12M × 0.90
+  it('dos módulos mensual: solo +10% por adicional → $45.00', () => {
+    expect(calcularTotalCentavos(['flow', 'manage'], 'mensual')).toBe(4500); // 5000 × 0.90
   });
 
-  it('dos módulos semestral: base 10% + adicional 10%', () => {
-    expect(calcularTotalCentavos(['flow', 'manage'], 'semestral')).toBe(57_600_000); // 72M × 0.80
+  it('dos módulos semestral: base 10% + adicional 10% → $240.00', () => {
+    expect(calcularTotalCentavos(['flow', 'manage'], 'semestral')).toBe(24000); // 30000 × 0.80
   });
 
-  it('dos módulos anual: base 15% + adicional 10%', () => {
-    expect(calcularTotalCentavos(['flow', 'manage'], 'anual')).toBe(108_000_000); // 144M × 0.75
+  it('dos módulos anual: base 15% + adicional 10% → $450.00', () => {
+    expect(calcularTotalCentavos(['flow', 'manage'], 'anual')).toBe(45000); // 60000 × 0.75
   });
 
   it('descuentoAplicado acumula', () => {
@@ -48,7 +48,8 @@ describe('calcularTotalCentavos', () => {
     expect(descuentoAplicado(['flow', 'manage'], 'anual')).toBeLessThanOrEqual(1);
   });
 
-  it('formatCOP muestra pesos sin decimales', () => {
-    expect(formatCOP(6_000_000).replace(/\s/g, '')).toBe('$60.000');
+  it('formatUSD muestra dólares con decimales', () => {
+    expect(formatUSD(2500)).toBe('$25.00');
+    expect(formatUSD(13500)).toBe('$135.00');
   });
 });

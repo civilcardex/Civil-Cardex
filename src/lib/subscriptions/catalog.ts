@@ -1,7 +1,8 @@
 /**
- * Catálogo de venta por módulo + cálculo de totales con descuento de paquete.
+ * Catálogo de venta por módulo + cálculo de totales con descuentos.
  * Única fuente de precios del cliente; el servidor mantiene una COPIA en
- * supabase/functions/_shared/wompi.ts (mantener ambas en sinconía).
+ * supabase/functions/_shared/lemon.ts (test de paridad vigila el sync) y la
+ * VERDAD está en app_precios (BD — sincronizarPreciosBd pisa estos literales).
  */
 import { devError } from '../../utils/devError';
 
@@ -18,28 +19,28 @@ export interface ModuloVenta {
   precioAnualCentavos: number;
 }
 
-// Montos en centavos COP (Wompi solo cobra en COP). Placeholders — la verdad es
+// Montos en centavos USD (pasarela Lemon Squeezy, cobra USD). La verdad es
 // app_precios en BD (sincronizarPreciosBd los pisa); cambiar precio = UPDATE en SQL Editor.
 export const CATALOGO: ModuloVenta[] = [
   {
     id: 'flow',
-    nombre: 'CivilFlow',
+    nombre: 'Civil Flow',
     descripcion:
       'Diseño hidrosanitario completo: agua potable, sanitaria, gas, lluvias y ventilación con memorias de cálculo.',
     workarea: '/civilflowareatrabajo',
-    precioMensualCentavos: 6_000_000, // $60.000
-    precioSemestralCentavos: 36_000_000, // $360.000 (6 meses)
-    precioAnualCentavos: 72_000_000, // $720.000 (12 meses)
+    precioMensualCentavos: 2500, // $25.00
+    precioSemestralCentavos: 15000, // $150.00 (6× mensual; −10% base → $135)
+    precioAnualCentavos: 30000, // $300.00 (12× mensual; −15% base → $255)
   },
   {
     id: 'manage',
-    nombre: 'CivilManager',
+    nombre: 'Civil Manager',
     descripcion:
       'Presupuestos y administración de obra: APU, insumos, factores prestacionales y control de costos.',
     workarea: '/civilmanagerareatrabajo',
-    precioMensualCentavos: 6_000_000, // $60.000
-    precioSemestralCentavos: 36_000_000, // $360.000
-    precioAnualCentavos: 72_000_000, // $720.000
+    precioMensualCentavos: 2500, // $25.00
+    precioSemestralCentavos: 15000, // $150.00
+    precioAnualCentavos: 30000, // $300.00
   },
 ];
 
@@ -87,17 +88,16 @@ export function calcularTotalCentavos(modulos: ModuloId[], periodo: Periodo): nu
   return Math.round(bruto * (1 - descuentoAplicado(unicos, periodo)));
 }
 
-/** Centavos COP → "$60.000" (sin decimales, separador de miles). */
-export function formatCOP(centavos: number): string {
+/** Centavos USD → "$25.00" / "$42.50". */
+export function formatUSD(centavos: number): string {
   try {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'COP',
-      maximumFractionDigits: 0,
+      currency: 'USD',
     }).format(centavos / 100);
   } catch (e) {
-    devError('formatCOP:', e);
-    return `$${Math.round(centavos / 100).toLocaleString('es-CO')}`;
+    devError('formatUSD:', e);
+    return `$${(centavos / 100).toFixed(2)}`;
   }
 }
 

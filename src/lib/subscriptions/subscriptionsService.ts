@@ -57,6 +57,17 @@ export function modulosActivos(rows: SuscripcionRow[], ahora: Date = new Date())
   return activos;
 }
 
+/**
+ * Detecta el fallo "edge function de pagos inexistente" (crear-checkout / verificar-pago
+ * aún sin deploy — ACTIVACIÓN paso 3 en AGENTS.md): el relay responde 404 ("Function
+ * not found") y supabase-js lo entrega en el mensaje y/o el status del error.
+ */
+export function edgePagoNoDesplegada(err: unknown): boolean {
+  const e = err as { message?: string; status?: number; context?: { status?: number } } | null;
+  const status = e?.status ?? e?.context?.status;
+  return /not found|404/i.test(e?.message ?? '') || status === 404;
+}
+
 let promiseHabilitadas: Promise<boolean> | null = null;
 
 /** Flag global de la BD (app_config → RPC suscripciones_habilitadas). Cache por

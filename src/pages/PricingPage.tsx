@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useAuth } from '../context/AuthContext';
 import { MODULES_DATA } from './moduleData';
-import WompiCheckoutModal from '../components/subscriptions/WompiCheckoutModal';
+import { supabase } from '../lib/supabase';
+import CheckoutModal from '../components/subscriptions/CheckoutModal';
 import {
   CATALOGO,
   DESCUENTO_BASE,
@@ -12,13 +13,17 @@ import {
   SUSCRIPCIONES_ACTIVAS,
   calcularTotalCentavos,
   descuentoAplicado,
-  formatCOP,
+  formatUSD,
   precioDePeriodo,
   type ModuloId,
   type ModuloVenta,
   type Periodo,
 } from '../lib/subscriptions/catalog';
-import { estaActiva } from '../lib/subscriptions/subscriptionsService';
+import {
+  dispararRefetchSuscripciones,
+  edgePagoNoDesplegada,
+  estaActiva,
+} from '../lib/subscriptions/subscriptionsService';
 import { useSuscripciones } from '../hooks/useSubscriptions';
 
 const plans = [
@@ -154,10 +159,35 @@ const BADGE_STYLE = {
 // ---------------------------------------------------------------------------
 // Página de compra por módulo (SUSCRIPCIONES_ACTIVAS = true).
 // ---------------------------------------------------------------------------
+
+/** Beneficios por módulo (estáticos — CATALOGO solo trae descripción corta). */
+const BENEFICIOS: Record<ModuloId, string[]> = {
+  flow: [
+    'Dibujo de redes sobre el plano PDF calibrado',
+    'Cálculo AF/AC (Hunter), sanitaria, lluvias y gas (Renouard)',
+    'Cuarto de bombas, equipos de presión y isometrías 3D',
+    'Memorias de cálculo en Excel, Word y PDF',
+    'Verificación NTC 1500 · RAS 2000 · NSR-10 · NTC 3728',
+  ],
+  manage: [
+    'Análisis de precios unitarios (APU) con 4 secciones de recursos',
+    'Catálogos: insumos, cuadrillas, equipos y proveedores',
+    'Factor prestacional y estructura AIU configurables',
+    'Presupuestos por capítulos con copia de catálogos',
+    'Importa el formulario Excel del cliente y exporta Excel/PDF',
+  ],
+};
+
+/** Logo por módulo (mismos assets del landing). */
+const LOGO: Record<ModuloId, string> = {
+  flow: '/logos/civilFlowlogo.webp',
+  manage: '/logos/civilManagelogo.webp',
+};
+
 function PricingSuscripciones() {
   usePageMeta(
     'Precios',
-    'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual, semestral o anual, con descuentos acumulativos. Pago seguro con Wompi.',
+    'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual, semestral o anual, con descuentos acumulativos. Pago seguro con tarjeta (Lemon Squeezy).',
   );
   const { user } = useAuth();
   const { rows, loading } = useSuscripciones();
@@ -184,6 +214,35 @@ function PricingSuscripciones() {
    *  si no total/checkbox/modal leen conjuntos distintos. */
   const seleccionEfectiva = !ignoraUrl && seleccionMemo ? seleccionMemo : seleccion;
   const [checkoutAbierto, setCheckoutAbierto] = useState(false);
+  // Aviso informativo (no error) del resultado de la verificación al volver del checkout.
+  const [avisoPago, setAvisoPago] = useState('');
+
+  // Vuelta desde el checkout hosteado de Lemon Squeezy: verifica la referencia
+  // con la edge function y refresca suscripciones. Limpia ?ref para no re-verificar.
+  const refPago = new URLSearchParams(location.search).get('ref');
+  useEffect(() => {
+    if (!refPago) return;
+    let ignore = false;
+    void (async () => {
+      const { data, error: errVerif } = await supabase.functions.invoke('verificar-pago', {
+        body: { referencia: refPago },
+      });
+      if (!ignore) {
+        if (data?.aprobado) dispararRefetchSuscripciones();
+        else if (errVerif && edgePagoNoDesplegada(errVerif)) {
+          // Edge Lemon pendiente de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falte,
+          // el guard evita el error crudo — se informa como verificación pendiente, neutro.
+          setAvisoPago(
+            'Estamos verificando tu pago; tu suscripción quedará activa en breve y esta página se actualizará sola.',
+          );
+        }
+      }
+      navigate('/pricing', { replace: true });
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [refPago, navigate]);
 
   const modulosProx = useMemo(
     () =>
@@ -198,6 +257,7 @@ function PricingSuscripciones() {
     ? Math.round(descuentoAplicado([...seleccionEfectiva], periodo) * 100)
     : 0;
   const conDescuento = descPct > 0;
+  const hayPago = seleccionEfectiva.size > 0;
 
   function toggle(id: ModuloId) {
     setIgnoraUrl(true);
@@ -210,7 +270,7 @@ function PricingSuscripciones() {
   }
 
   function pagar() {
-    if (seleccionEfectiva.size === 0) return;
+    if (!hayPago) return;
     if (!user) {
       navigate('/login');
       return;
@@ -227,38 +287,107 @@ function PricingSuscripciones() {
       className="landing-root"
       style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}
     >
+      <style>{`
+        .pr-card { transition: border-color .15s, background .15s; }
+        .pr-cta { transition: filter .15s, transform .15s; }
+        .pr-cta:hover:not(:disabled) { filter: brightness(1.08); }
+        .pr-cta:active:not(:disabled) { transform: translateY(1px); }
+        ::-webkit-scrollbar-thumb{background:#dce3ea}
+        ::-webkit-scrollbar-track{background:#1a1c20}
+      `}</style>
       <Navbar />
       <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
-        <section className="text-center space-y-4 mb-12">
-          <h1
-            className="text-primary uppercase"
-            style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}
+        {/* Aviso neutro de verificación pendiente (edges Lemon sin deploy) — nunca error. */}
+        {avisoPago && (
+          <p
+            role="status"
+            className="max-w-4xl mx-auto mb-8 text-center"
+            style={{
+              fontSize: 14,
+              color: '#b9caca',
+              border: '1px solid #3a494a',
+              borderRadius: 10,
+              background: '#16191d',
+              padding: '12px 18px',
+            }}
           >
-            Módulos y Precios
-          </h1>
-          <p className="text-base text-on-surface-variant max-w-xl mx-auto">
-            Compre solo los módulos que necesita. Descuentos acumulativos: +10% por cada módulo
-            adicional, y el periodo semestral ya descuenta 10% desde el primer módulo (15% el
-            anual). Pago seguro con Wompi (tarjeta, PSE o Nequi).
+            {avisoPago}
           </p>
-          <div className="flex justify-center gap-1 pt-2">
-            {(['mensual', 'semestral', 'anual'] as const).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPeriodo(p)}
-                aria-pressed={periodo === p}
-                style={{
-                  ...BADGE_STYLE,
-                  cursor: 'pointer',
-                  background: periodo === p ? '#1D4ED8' : 'transparent',
-                  color: periodo === p ? '#fff' : '#3B82F6',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {p}
-              </button>
-            ))}
+        )}
+        {/* Encabezado */}
+        <section className="text-center space-y-4 mb-12">
+          <p
+            className="uppercase"
+            style={{
+              fontSize: 11,
+              letterSpacing: 3,
+              fontWeight: 700,
+              fontFamily: 'Geist, monospace',
+              color: '#849495',
+            }}
+          >
+            Precios
+          </p>
+          <h1
+            style={{
+              fontSize: 40,
+              fontWeight: 700,
+              fontFamily: 'Hanken Grotesk, sans-serif',
+              color: '#e2e2e8',
+              lineHeight: 1.15,
+            }}
+          >
+            Compra solo los módulos que necesitas
+          </h1>
+          <p className="text-base text-on-surface-variant max-w-2xl mx-auto">
+            Pago único por el período elegido — la renovación es manual y la app le avisa antes de
+            vencer. Pago seguro con tarjeta — checkout hosteado por Lemon Squeezy.
+          </p>
+          {/* Selector de período segmentado (estático) */}
+          <div
+            className="inline-flex pt-2"
+            style={{
+              border: '1px solid #3a494a',
+              borderRadius: 10,
+              padding: 4,
+              background: '#16191d',
+              gap: 4,
+            }}
+          >
+            {(['mensual', 'semestral', 'anual'] as const).map((p) => {
+              const on = periodo === p;
+              const pct = Math.round(DESCUENTO_BASE[p] * 100);
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriodo(p)}
+                  aria-pressed={on}
+                  style={{
+                    cursor: 'pointer',
+                    border: 'none',
+                    borderRadius: 7,
+                    padding: '8px 18px',
+                    background: on ? '#e8c84a' : 'transparent',
+                    color: on ? '#161a1e' : '#b9caca',
+                    fontFamily: 'Geist, monospace',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  {p}
+                  {pct > 0 && !on && (
+                    <span
+                      style={{ color: '#52f2a5', marginLeft: 6, fontSize: 13, fontWeight: 700 }}
+                    >
+                      −{pct}%
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
           <p className="text-[12px] text-outline">
             {DESCUENTO_BASE[periodo] > 0
@@ -267,6 +396,7 @@ function PricingSuscripciones() {
           </p>
         </section>
 
+        {/* Tarjetas de módulo */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {CATALOGO.map((m) => (
             <ModuleCard
@@ -281,77 +411,133 @@ function PricingSuscripciones() {
           ))}
         </section>
 
+        {/* Resumen + compra */}
         <section
-          className="max-w-4xl mx-auto mt-8 border p-6"
-          style={{ background: '#111317', borderColor: '#3a494a' }}
+          className="max-w-4xl mx-auto mt-8"
+          style={{
+            border: '1px solid #3a494a',
+            borderRadius: 14,
+            background: '#16191d',
+            padding: '20px 24px',
+          }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="text-[13px] text-on-surface-variant space-y-1">
-              <p>
-                {seleccionEfectiva.size === 0
-                  ? 'Seleccione uno o ambos módulos.'
-                  : [...seleccionEfectiva]
-                      .map((id) => CATALOGO.find((c) => c.id === id)?.nombre)
-                      .join(' + ')}
-              </p>
-              {conDescuento && (
-                <p style={{ color: '#2ff801' }}>Descuento (−{descPct}%) aplicado.</p>
-              )}
-              {(['flow', 'manage'] as const)
-                .filter((id) => vigente(id))
-                .map((id) => (
-                  <p key={id}>
-                    {CATALOGO.find((c) => c.id === id)?.nombre} activo hasta{' '}
-                    {new Date(vigente(id)!.fecha_fin).toLocaleDateString('es-CO')} — comprar de
-                    nuevo extiende la vigencia desde la fecha actual.
-                  </p>
-                ))}
-            </div>
-            <div className="text-right">
+          <div className="flex items-center justify-between flex-wrap gap-5">
+            <div className="min-w-[220px]">
               <p
+                className="uppercase"
                 style={{
-                  fontSize: 28,
+                  fontSize: 14,
+                  letterSpacing: 2,
                   fontWeight: 700,
-                  fontFamily: 'Hanken Grotesk, sans-serif',
-                  color: '#00f5ff',
+                  fontFamily: 'Geist, monospace',
+                  color: '#849495',
                 }}
               >
-                {formatCOP(total)}
+                Tu compra
               </p>
-              <p className="text-[11px] text-outline mb-2">
-                {periodo === 'mensual'
-                  ? 'por mes'
-                  : periodo === 'semestral'
-                    ? 'por semestre'
-                    : 'por año'}{' '}
-                · renovación manual
-              </p>
+              <div className="mt-2 space-y-1">
+                {seleccionEfectiva.size === 0 ? (
+                  <p className="text-[14px] text-on-surface-variant">
+                    Seleccione uno o ambos módulos.
+                  </p>
+                ) : (
+                  [...seleccionEfectiva].map((id) => (
+                    <div key={id} className="flex items-center gap-2">
+                      <img
+                        src={LOGO[id]}
+                        alt=""
+                        width={18}
+                        height={18}
+                        style={{ objectFit: 'contain' }}
+                      />
+                      <span className="text-[14px]">
+                        {CATALOGO.find((c) => c.id === id)?.nombre}
+                      </span>
+                    </div>
+                  ))
+                )}
+                {conDescuento && (
+                  <p style={{ color: '#52f2a5', fontSize: 14 }}>
+                    Descuento (−{descPct}%) aplicado.
+                  </p>
+                )}
+                {(['flow', 'manage'] as const)
+                  .filter((id) => vigente(id))
+                  .map((id) => (
+                    <p key={id} className="text-[14px]" style={{ color: '#2ff801' }}>
+                      {CATALOGO.find((c) => c.id === id)?.nombre} activo hasta{' '}
+                      {new Date(vigente(id)!.fecha_fin).toLocaleDateString('es-CO')}
+                    </p>
+                  ))}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="flex items-baseline gap-2 justify-end">
+                <span
+                  style={{
+                    fontSize: 32,
+                    fontWeight: 700,
+                    fontFamily: 'Hanken Grotesk, sans-serif',
+                    color: '#e2e2e8',
+                  }}
+                >
+                  {formatUSD(total)}
+                </span>
+                <span className="text-[13px] text-on-surface-variant">
+                  {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
+                </span>
+              </div>
+              <p className="text-[13px] text-outline mb-3">renovación manual</p>
               <button
                 type="button"
                 onClick={pagar}
-                disabled={seleccionEfectiva.size === 0}
-                className="uppercase tracking-widest font-bold transition-all"
+                disabled={!hayPago}
+                aria-label={user || !hayPago ? 'Pagar ahora' : 'Inicia sesión para pagar'}
+                className="pr-cta inline-flex items-center gap-2 uppercase tracking-widest font-bold"
                 style={{
-                  fontSize: 12,
+                  fontSize: 14,
                   fontFamily: 'Geist, monospace',
-                  padding: '10px 22px',
-                  background: seleccionEfectiva.size === 0 ? '#1a1c20' : '#00f5ff',
-                  color: seleccionEfectiva.size === 0 ? '#5a6a6b' : '#003739',
+                  padding: '15px 34px',
+                  borderRadius: 10,
+                  background: hayPago ? '#e8c84a' : '#1e2126',
+                  color: hayPago ? '#161a1e' : '#5a6a6b',
                   border: 'none',
-                  cursor: seleccionEfectiva.size === 0 ? 'default' : 'pointer',
+                  boxShadow: hayPago ? '0 0 22px rgba(232,200,74,.22)' : 'none',
+                  cursor: hayPago ? 'pointer' : 'default',
                 }}
               >
-                {user || seleccionEfectiva.size === 0 ? 'Pagar con Wompi' : 'Inicia sesión y paga'}
+                {user || !hayPago ? 'Pagar ahora' : 'Inicia sesión y paga'}
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 17 }}
+                >
+                  arrow_forward
+                </span>
               </button>
+              <p
+                className="flex items-center justify-end gap-1 mt-2 text-[13px]"
+                style={{ color: '#849495' }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 14 }}
+                >
+                  verified_user
+                </span>
+                Pago seguro con tarjeta · Lemon Squeezy
+              </p>
             </div>
           </div>
         </section>
 
+        {/* Próximamente */}
         <section className="max-w-4xl mx-auto mt-12">
           <h2
             className="uppercase tracking-widest mb-4"
             style={{
-              fontSize: 12,
+              fontSize: 14,
               fontWeight: 700,
               fontFamily: 'Geist, monospace',
               color: '#849495',
@@ -363,8 +549,8 @@ function PricingSuscripciones() {
             {modulosProx.map((m) => (
               <span
                 key={m}
-                className="text-[12px] px-3 py-1 border"
-                style={{ borderColor: '#3a494a', color: '#849495' }}
+                className="text-[12px] px-3 py-1.5 border"
+                style={{ borderColor: '#3a494a', color: '#849495', borderRadius: 8 }}
               >
                 {m}
               </span>
@@ -377,13 +563,13 @@ function PricingSuscripciones() {
           style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}
         >
           <p className="text-[12px] text-outline">
-            Precios en COP. Pago único por período elegido; la renovación es manual — la app le
+            Precios en USD. Pago único por período elegido; la renovación es manual — la app le
             avisará al vencer.
           </p>
         </section>
       </main>
 
-      <WompiCheckoutModal
+      <CheckoutModal
         open={checkoutAbierto}
         onClose={() => setCheckoutAbierto(false)}
         modulos={[...seleccionEfectiva]}
@@ -410,65 +596,109 @@ function ModuleCard({
 }) {
   const precio = precioDePeriodo(modulo, periodo);
   return (
+    // Tarjeta = control de selección completo (role=checkbox): clic en cualquier parte.
     <div
-      className="border p-8 flex flex-col relative"
+      role="checkbox"
+      aria-checked={seleccionado}
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      className="pr-card border p-7 flex flex-col cursor-pointer select-none"
       style={{
-        background: seleccionado ? '#1a1c20' : '#111317',
-        borderColor: seleccionado ? '#00f5ff' : '#3a494a',
+        background: seleccionado ? '#181c21' : '#111317',
+        borderColor: seleccionado ? '#e8c84a' : '#3a494a',
         borderWidth: seleccionado ? 2 : 1,
+        borderRadius: 14,
+        margin: seleccionado ? -1 : 0,
       }}
     >
-      <label
-        className="absolute top-4 right-4 flex items-center gap-2 cursor-pointer"
-        style={{ fontSize: 11, color: '#849495' }}
-      >
-        <input
-          type="checkbox"
-          checked={seleccionado}
-          onChange={onToggle}
-          aria-label={`Comprar ${modulo.nombre}`}
-        />
-        Comprar
-      </label>
-      <div className="text-center mb-6">
-        <h2
-          className="uppercase tracking-widest mb-2"
+      <div className="flex items-start justify-between mb-4">
+        <img
+          src={LOGO[modulo.id]}
+          alt={`Logo ${modulo.nombre}`}
+          width={230}
+          height={76}
           style={{
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: 'Geist, monospace',
-            color: '#00f5ff',
+            objectFit: 'contain',
+            objectPosition: 'left center',
+            maxHeight: 76,
+            marginLeft: -8,
+          }}
+        />
+        {/* Check circular (visual — la tarjeta entera es el control) */}
+        <span
+          aria-hidden="true"
+          className="material-symbols-outlined"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            border: seleccionado ? 'none' : '1px solid #3a494a',
+            background: seleccionado ? '#e8c84a' : 'transparent',
+            color: seleccionado ? '#161a1e' : 'transparent',
           }}
         >
-          {modulo.nombre}
-        </h2>
-        <div className="flex items-baseline justify-center gap-1">
-          <span
-            style={{
-              fontSize: 40,
-              fontWeight: 700,
-              fontFamily: 'Hanken Grotesk, sans-serif',
-              color: '#00f5ff',
-            }}
-          >
-            {formatCOP(precio)}
-          </span>
-          <span
-            className="text-on-surface-variant"
-            style={{ fontSize: 14, fontFamily: 'Hanken Grotesk, sans-serif' }}
-          >
-            {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
-          </span>
-        </div>
-        <p className="text-sm text-on-surface-variant mt-3" style={{ minHeight: 40 }}>
-          {modulo.descripcion}
-        </p>
-        {!loading && vigencia && (
-          <p className="text-[12px] mt-2" style={{ color: '#2ff801' }}>
-            Activo hasta {new Date(vigencia.fecha_fin).toLocaleDateString('es-CO')}
-          </p>
-        )}
+          check
+        </span>
       </div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}>
+        {modulo.nombre}
+      </h2>
+      <p className="text-sm text-on-surface-variant mt-1">{modulo.descripcion}</p>
+
+      <div style={{ borderTop: '1px solid #2a3234', margin: '16px 0 14px' }} aria-hidden="true" />
+      <div className="flex items-baseline gap-2">
+        <span
+          style={{
+            fontSize: 34,
+            fontWeight: 700,
+            fontFamily: 'Hanken Grotesk, sans-serif',
+            color: '#e2e2e8',
+          }}
+        >
+          {formatUSD(precio)}
+        </span>
+        <span className="text-on-surface-variant" style={{ fontSize: 13 }}>
+          {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
+        </span>
+      </div>
+      <p className="text-[11px] text-outline">pago único del período · renovación manual</p>
+
+      <ul
+        className="mt-4 space-y-2"
+        style={{ listStyle: 'none', margin: 0, padding: 0, marginTop: 16 }}
+      >
+        {BENEFICIOS[modulo.id].map((f) => (
+          <li key={f} className="flex items-start gap-2">
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined"
+              style={{ color: '#2ff801', fontSize: 15, marginTop: 2 }}
+            >
+              check_circle
+            </span>
+            <span className="text-[13px] text-on-surface-variant">{f}</span>
+          </li>
+        ))}
+      </ul>
+
+      {!loading && vigencia && (
+        <p className="text-[12px] mt-4 flex items-center gap-1" style={{ color: '#2ff801' }}>
+          <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: 14 }}>
+            event_available
+          </span>
+          Activo hasta {new Date(vigencia.fecha_fin).toLocaleDateString('es-CO')}
+        </p>
+      )}
     </div>
   );
 }
