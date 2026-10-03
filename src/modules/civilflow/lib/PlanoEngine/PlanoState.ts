@@ -82,6 +82,17 @@ export const NETS = [
     name: 'Gas',
   },
   {
+    id: 'rejillas',
+    lbl: 'REJ',
+    col: '#A855F7',
+    ucType: null,
+    bmType: 'montante',
+    bmPfx: 'REJ',
+    bmIco: '▦',
+    emoji: '🪟',
+    name: 'Rejillas de ventilación',
+  },
+  {
     id: 'rci',
     lbl: 'RRCI',
     col: '#F87171',
@@ -534,7 +545,7 @@ export interface PlanoBajante {
   bajanteExternoId?: string | null;
 }
 
-/** Área poligonal dibujada en el plano (p.ej. techos, zonas de drenaje). */
+/** Área poligonal dibujada en el plano (p.ej. techos, zonas de drenaje, sectores de gas). */
 export interface PlanoArea {
   id: string;
   pts: number[][];
@@ -545,6 +556,8 @@ export interface PlanoArea {
   labelAngle: number;
   areaM2: number;
   net?: string;
+  // Altura libre del sector (m) — módulo Rejillas de ventilación (NTC 3631).
+  alturaM?: number;
   // Igual que en PlanoRamal: etiqueta movida a mano (ver comentario allá).
   labelMoved?: boolean;
   _labelBox?: LabelBoxCorners;

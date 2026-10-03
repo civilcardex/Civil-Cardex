@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GAS } from '../constants/engineeringDataGas';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData';
@@ -12,6 +12,7 @@ import {
   EscorrentiaCubiertaTable,
   ManningCanalesLlTable,
 } from './catalog/CatalogTables';
+const RejillasCatalogTable = lazy(() => import('./catalog/RejillasCatalogTable'));
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { useIsMobile } from '../../../hooks/useMediaQuery';
 const CatalogMasterPage_S1: React.CSSProperties = {
@@ -239,6 +240,11 @@ export default function CatalogMasterPage() {
             </div>
           )}
 
+          {subpage === 6 && (
+            <Suspense fallback={null}>
+              <RejillasCatalogTable />
+            </Suspense>
+          )}
           {subpage === 4 && (
             <div
               style={{
@@ -289,7 +295,7 @@ export default function CatalogMasterPage() {
           >
             ←
           </button>
-          {[1, 2, 3, 4, 5].map((n) => (
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <button
               type="button"
               key={n}
@@ -308,11 +314,11 @@ export default function CatalogMasterPage() {
           <button
             type="button"
             aria-label="Página siguiente"
-            onClick={() => setSubpage(Math.min(5, subpage + 1))}
+            onClick={() => setSubpage(Math.min(6, subpage + 1))}
             style={{
               ...pageBtn,
-              opacity: subpage === 5 ? 0.3 : 1,
-              cursor: subpage === 5 ? 'default' : 'pointer',
+              opacity: subpage === 6 ? 0.3 : 1,
+              cursor: subpage === 6 ? 'default' : 'pointer',
             }}
           >
             →

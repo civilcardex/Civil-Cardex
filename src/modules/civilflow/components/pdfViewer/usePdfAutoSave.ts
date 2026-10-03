@@ -50,6 +50,7 @@ export function usePdfAutoSave(
       setSyncLoadedLiveIds(String(eng._loadedPlanId), [
         ...eng.ramales.flatMap((r) => [r.id, r.label].filter(Boolean) as string[]),
         ...eng.bajantes.flatMap((b) => [b.id, b.code].filter(Boolean) as string[]),
+        ...eng.areas.flatMap((a) => [a.id, a.label].filter(Boolean) as string[]),
       ]);
     }
     try {

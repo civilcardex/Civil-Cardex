@@ -17,6 +17,10 @@ const CalculoUC = lazy(() => import('../CalcUC'));
 const WaterNetworkDesign = lazy(() => import('../WaterNetworkDesign'));
 const BombaARDesign = lazy(() => import('../BombaARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
+const RejillasVentilacion = lazy(() => import('../RejillasVentilacion'));
+const RejillasAlzadoPage = lazy(() =>
+  import('../RejillasVentilacion').then((m) => ({ default: m.RejillasAlzadoPage })),
+);
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
 const RciCuartoBombasViewer = lazy(() => import('../rci3d'));
@@ -378,13 +382,15 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={gasPage}
             setPage={setGasPage}
-            total={4}
+            total={redes.has('rejillas') ? 6 : 4}
             color="var(--gas)"
             labels={[
               'Datos generales',
               'Cálculo de unidades de consumo',
               'Diseño de red + Chequeo',
-              'Resumen accesorios por diámetro',
+              ...(redes.has('rejillas')
+                ? ['Rejillas de ventilación', 'Alzado de muro', 'Resumen accesorios por diámetro']
+                : ['Resumen accesorios por diámetro']),
             ]}
             onPageHover={prefetchHeavy}
           />
@@ -393,7 +399,17 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
               <GasDesign pagina={gasPage} />
             </Suspense>
           )}
-          {gasPage === 4 && (
+          {gasPage === 4 && redes.has('rejillas') && (
+            <Suspense fallback={FALLBACK}>
+              <RejillasVentilacion />
+            </Suspense>
+          )}
+          {gasPage === 5 && redes.has('rejillas') && (
+            <Suspense fallback={FALLBACK}>
+              <RejillasAlzadoPage />
+            </Suspense>
+          )}
+          {(gasPage === 6 || (gasPage >= 4 && !redes.has('rejillas'))) && (
             <Suspense fallback={FALLBACK}>
               <AccesoriosDiamPage net="gas" />
             </Suspense>

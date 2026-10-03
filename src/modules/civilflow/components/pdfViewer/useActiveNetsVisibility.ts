@@ -39,7 +39,9 @@ export function useActiveNetsVisibility(activeNetworks: Set<string>) {
 
   const finalVisibleNets = useMemo(() => {
     const excludeEquipment = (nets: PlanoNet[]) =>
-      nets.filter((n) => n.id !== 'ep' && n.id !== 'bom' && n.id !== 'recolectora');
+      nets.filter(
+        (n) => n.id !== 'ep' && n.id !== 'bom' && n.id !== 'recolectora' && n.id !== 'rejillas',
+      );
     const getNets = () => {
       if (activeNetworks && activeNetworks.size > 0)
         return excludeEquipment(NETS.filter((n) => activeNetworks.has(n.id)));
@@ -59,5 +61,13 @@ export function useActiveNetsVisibility(activeNetworks: Set<string>) {
     return true;
   }, [activeNetworks, liveActiveNets]);
 
-  return { liveActiveNets, finalVisibleNets, recolectoraActive };
+  // 'rejillas' tampoco tiene pestaña propia: las áreas de sector se dibujan con la pestaña
+  // 'gas' activa, y este flag habilita el panel de sector/altura/aparatos en el visor.
+  const rejillasActive = useMemo(() => {
+    if (activeNetworks && activeNetworks.size > 0) return activeNetworks.has('rejillas');
+    if (liveActiveNets) return liveActiveNets.has('rejillas');
+    return false;
+  }, [activeNetworks, liveActiveNets]);
+
+  return { liveActiveNets, finalVisibleNets, recolectoraActive, rejillasActive };
 }

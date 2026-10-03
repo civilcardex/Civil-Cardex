@@ -609,20 +609,31 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
         }
       }
     }
+
+    // ÁREAS de sector (módulo Rejillas de ventilación): las claves gas_AR..._<plan> son
+    // legítimas — sin esto el GC las borraba en cada sync (orig. usuario: "se resta uno o
+    // se borra" al asignar aparatos al área desde el panel derecho).
+    for (const a of ((data as { areas?: Array<{ id?: unknown; net?: unknown }> }).areas ||
+      []) as Array<{
+      id?: unknown;
+      net?: unknown;
+    }>) {
+      if (a && a.id && a.net) {
+        validKeys.add(fixtureStoreKey(String(a.net), String(a.id), String(plan.id)));
+      }
+    }
   }
 
   // 1. Clean APARATOS_BY_TRAMO_KEY
   const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
   const bakDeletedAparatos: Record<string, unknown> = {};
   let aparatosChanged = false;
-  let aparatosSkipped = 0;
   for (const key of Object.keys(rawAparatos)) {
     if (isLoadedLiveKey(key)) {
       orphanSuspects.delete(key);
       continue;
     }
     if (!canDeleteKey(key)) {
-      aparatosSkipped++;
       continue;
     }
     if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
@@ -638,14 +649,12 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
   const bakDeletedHidro: Record<string, unknown> = {};
   let hidroChanged = false;
-  let hidroSkipped = 0;
   for (const key of Object.keys(rawHidro)) {
     if (isLoadedLiveKey(key)) {
       orphanSuspects.delete(key);
       continue;
     }
     if (!canDeleteKey(key)) {
-      hidroSkipped++;
       continue;
     }
     if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
@@ -672,27 +681,12 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
     saveToStorage(GAS_ACC_KEY, rawGas);
   }
   if (aparatosChanged || hidroChanged || gasChanged) {
+    // Backup de la última tanda borrada (sin log: la consola spameaba en cada sync — orig. usuario).
     saveToStorage(GC_BAK_KEY, {
       ts: Date.now(),
       aparatos: bakDeletedAparatos,
       hidro: bakDeletedHidro,
       gas: bakDeletedGas,
-    });
-    // Solo se loguea si algo se borró (antes spameaba la consola en cada sync aunque
-    // borrara 0 — orig. usuario). Las retenidas por caché vieja son claves PROTEGIDAS,
-    // no pérdidas: se limpian al abrir su piso. Se listan nombres (capados) para
-    // identificar oscilaciones escritor↔GC sin abrir el Storage.
-    const clavesBorradas = [
-      ...Object.keys(bakDeletedAparatos),
-      ...Object.keys(bakDeletedHidro),
-      ...Object.keys(bakDeletedGas),
-    ];
-    devError('GC sync: borradas', {
-      aparatos: Object.keys(bakDeletedAparatos).length,
-      hidro: Object.keys(bakDeletedHidro).length,
-      gas: Object.keys(bakDeletedGas).length,
-      retenidasPorCachéVieja: aparatosSkipped + hidroSkipped,
-      claves: clavesBorradas.slice(0, 20),
     });
   }
 }

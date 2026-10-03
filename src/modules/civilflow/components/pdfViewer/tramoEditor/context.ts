@@ -21,6 +21,8 @@ export interface TramoEditorContextValue {
   selElement: PlanoElement | null;
   setSelElement: React.Dispatch<React.SetStateAction<PlanoElement | null>>;
   activeNet: string;
+  /** Subred Rejillas de ventilación activa (áreas de sector NTC 3631). */
+  rejillasActive?: boolean;
   handleUpdateSel: (field: string, value: unknown) => void;
   handleRotateLabel: () => void;
   diamSel: Record<string, string>;

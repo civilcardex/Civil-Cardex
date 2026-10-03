@@ -118,13 +118,23 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
           <span className="card-s" style={{ fontSize: 11 }}>
             {
               [...redes].filter(
-                (id) => id !== 'ep' && id !== 'bom' && id !== 'vent' && id !== 'recolectora',
+                (id) =>
+                  id !== 'ep' &&
+                  id !== 'bom' &&
+                  id !== 'vent' &&
+                  id !== 'recolectora' &&
+                  id !== 'rejillas',
               ).length
             }{' '}
             de{' '}
             {
               REDES.filter(
-                (r) => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'vent' && r.id !== 'recolectora',
+                (r) =>
+                  r.id !== 'ep' &&
+                  r.id !== 'bom' &&
+                  r.id !== 'vent' &&
+                  r.id !== 'recolectora' &&
+                  r.id !== 'rejillas',
               ).length
             }
           </span>
@@ -139,12 +149,15 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                 r.id !== 'bom' &&
                 r.id !== 'san' &&
                 r.id !== 'vent' &&
-                r.id !== 'recolectora',
+                r.id !== 'recolectora' &&
+                r.id !== 'rejillas',
             );
             const sanRede = REDES.find((x) => x.id === 'san');
             const ventRede = REDES.find((x) => x.id === 'vent');
             const llRede = REDES.find((x) => x.id === 'll');
             const recolectoraRede = REDES.find((x) => x.id === 'recolectora');
+            const gasRede = REDES.find((x) => x.id === 'gas');
+            const rejillasRede = REDES.find((x) => x.id === 'rejillas');
             const ordered = [...mainNets];
             if (sanRede) ordered.push(sanRede);
             if (ventRede) ordered.push(ventRede);
@@ -152,19 +165,29 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
               const llIdx = ordered.indexOf(llRede);
               if (llIdx >= 0) ordered.splice(llIdx + 1, 0, recolectoraRede);
             }
+            if (gasRede && rejillasRede) {
+              const gasIdx = ordered.indexOf(gasRede);
+              if (gasIdx >= 0) ordered.splice(gasIdx + 1, 0, rejillasRede);
+            }
 
             return ordered.map((r) => {
               const isVent = r.id === 'vent';
               const isRecolectora = r.id === 'recolectora';
-              const isSub = isVent || isRecolectora;
+              const isRejillas = r.id === 'rejillas';
+              const isSub = isVent || isRecolectora || isRejillas;
               const on = redes.has(r.id);
               const sanOn = redes.has('san');
               const llOn = redes.has('ll');
-              const parentOn = isVent ? sanOn : isRecolectora ? llOn : true;
+              const gasOn = redes.has('gas');
+              const parentOn = isVent ? sanOn : isRecolectora ? llOn : isRejillas ? gasOn : true;
               if (isSub && !parentOn) return null;
-              const cssVar = `--${r.id === 'recolectora' ? 'll' : r.id}`;
+              const cssVar = `--${r.id === 'recolectora' ? 'll' : isRejillas ? 'gas' : r.id}`;
               const currentColor =
-                r.id === 'recolectora' ? netColors['ll'] || '#8B5CF6' : netColors[r.id] || '#666';
+                r.id === 'recolectora'
+                  ? netColors['ll'] || '#8B5CF6'
+                  : isRejillas
+                    ? netColors['gas'] || '#A855F7'
+                    : netColors[r.id] || '#666';
               return (
                 <div key={r.id} style={{ display: 'contents' }}>
                   <button
@@ -176,6 +199,9 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                       const n = new Set(redes);
                       if (isRecolectora && !llOn && !on) {
                         n.add('ll');
+                        n.add(r.id);
+                      } else if (isRejillas && !gasOn && !on) {
+                        n.add('gas');
                         n.add(r.id);
                       } else if (isVent && !sanOn && !on) {
                         n.add(r.id);
@@ -223,7 +249,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                     >
                       {r.lbl}
                     </span>
-                    {!isRecolectora && (
+                    {!isRecolectora && !isRejillas && (
                       <input
                         type="color"
                         value={currentColor}

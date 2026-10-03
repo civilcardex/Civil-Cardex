@@ -81,6 +81,14 @@ export const REDES = [
     icoImg: '/iconos_civilflow/diseno_redes/gas/red_de_gas.webp',
     col: 'var(--gas)',
   },
+  {
+    id: 'rejillas',
+    lbl: 'Rejillas de ventilación',
+    sub: 'Subred gas · NTC 3631',
+    ico: '🪟',
+    icoImg: '/iconos_civilflow/diseno_redes/gas/rejilla_ventilacion.webp',
+    col: 'var(--gas)',
+  },
 ];
 
 export const USOS = [

@@ -9,7 +9,7 @@ import type { GasDatosGenerales } from '../utils/gasRows';
 
 export type { GasDatosGenerales } from '../utils/gasRows';
 
-export interface ProyectoCoreData {
+interface ProyectoCoreData {
   pisos: Piso[];
   proy: Proyecto;
   mats: Record<string, MaterialItem[]>;
@@ -17,7 +17,7 @@ export interface ProyectoCoreData {
   crits: CritItem[];
 }
 
-export interface ProyectoDataRow extends Partial<ProyectoCoreData> {
+interface ProyectoDataRow extends Partial<ProyectoCoreData> {
   plans_meta?: PlanMeta[];
   redesActivas?: string[];
 }
@@ -451,7 +451,7 @@ export async function loadProyectoData(proyectoId: number): Promise<ProyectoData
  *  upsert directo chocaba con el revoke de 20260813000003 (permission denied silencioso). */
 async function saveCampoProyectoGeneral(
   proyectoId: number,
-  campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada',
+  campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
   value: string,
 ): Promise<void> {
   try {
@@ -481,40 +481,45 @@ export async function saveTanqueNpt(proyectoId: number, value: string): Promise<
   return saveCampoProyectoGeneral(proyectoId, 'tanque_npt', value);
 }
 
-export async function loadAfAlimentacion(proyectoId: number): Promise<string | null> {
+/** Lee UNA columna whitelisteada de cf_proyecto_general por proyecto (null si no hay fila). */
+async function loadCampoProyectoGeneral<T>(
+  proyectoId: number,
+  campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
+): Promise<T | null> {
   try {
     const { data, error } = await supabase
       .from(CF_TABLES.proyectoGeneral)
-      .select('af_alimentacion')
+      .select(campo)
       .eq('proyecto_id', proyectoId)
       .maybeSingle();
     if (error) {
-      devError('loadAfAlimentacion:', error.message);
+      devError(`loadCampoProyectoGeneral(${campo}):`, error.message);
       return null;
     }
-    return (data as { af_alimentacion?: string | null })?.af_alimentacion ?? null;
+    return (data as Record<string, T | null> | null)?.[campo] ?? null;
   } catch (e) {
-    devError('loadAfAlimentacion exception:', e);
+    devError(`loadCampoProyectoGeneral(${campo}) exception:`, e);
     return null;
   }
 }
 
+export async function loadAfAlimentacion(proyectoId: number): Promise<string | null> {
+  return loadCampoProyectoGeneral<string>(proyectoId, 'af_alimentacion');
+}
+
 export async function loadTanqueNpt(proyectoId: number): Promise<string | null> {
-  try {
-    const { data, error } = await supabase
-      .from(CF_TABLES.proyectoGeneral)
-      .select('tanque_npt')
-      .eq('proyecto_id', proyectoId)
-      .maybeSingle();
-    if (error) {
-      devError('loadTanqueNpt:', error.message);
-      return null;
-    }
-    return (data as { tanque_npt?: string | null })?.tanque_npt ?? null;
-  } catch (e) {
-    devError('loadTanqueNpt exception:', e);
-    return null;
-  }
+  return loadCampoProyectoGeneral<string>(proyectoId, 'tanque_npt');
+}
+
+/** Blob de rejillas NTC 3631 (overrides + tipo de gas) → cf_proyecto_general.rejillas.
+ *  El RPC whitelistó 'rejillas' con cast ::jsonb (migración 20261002000000). */
+export async function saveRejillasProyecto(proyectoId: number, blob: unknown): Promise<void> {
+  return saveCampoProyectoGeneral(proyectoId, 'rejillas', JSON.stringify(blob ?? {}));
+}
+
+/** Lee el blob de rejillas del proyecto (null si no hay fila o aún no se guardó). */
+export async function loadRejillasProyecto(proyectoId: number): Promise<unknown> {
+  return loadCampoProyectoGeneral<unknown>(proyectoId, 'rejillas');
 }
 
 export async function savePresionGarantizada(proyectoId: number, value: string): Promise<void> {
@@ -522,19 +527,5 @@ export async function savePresionGarantizada(proyectoId: number, value: string):
 }
 
 export async function loadPresionGarantizada(proyectoId: number): Promise<string | null> {
-  try {
-    const { data, error } = await supabase
-      .from(CF_TABLES.proyectoGeneral)
-      .select('presion_garantizada')
-      .eq('proyecto_id', proyectoId)
-      .maybeSingle();
-    if (error) {
-      devError('loadPresionGarantizada:', error.message);
-      return null;
-    }
-    return (data as { presion_garantizada?: string | null })?.presion_garantizada ?? null;
-  } catch (e) {
-    devError('loadPresionGarantizada exception:', e);
-    return null;
-  }
+  return loadCampoProyectoGeneral<string>(proyectoId, 'presion_garantizada');
 }

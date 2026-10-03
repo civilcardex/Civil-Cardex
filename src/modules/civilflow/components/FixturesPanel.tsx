@@ -133,6 +133,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   planId,
   engineRef,
   loadingPlanRef,
+  rejillasArea,
 }: {
   activeNet: string;
   selElement: SelectableTarget | null;
@@ -140,6 +141,8 @@ const AparatosPanel = memo(function AparatosPanel_({
   planId?: string | number;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
   loadingPlanRef?: React.MutableRefObject<boolean>;
+  /** Área de sector (módulo Rejillas de ventilación): conteos libres por gasodoméstico. */
+  rejillasArea?: boolean;
 }) {
   const { plans } = usePlans();
   const { tramosSan } = useTramos();
@@ -291,6 +294,7 @@ const AparatosPanel = memo(function AparatosPanel_({
         setSyncLoadedLiveIds(String(eng._loadedPlanId), [
           ...eng.ramales.flatMap((r) => [r.id, r.label].filter(Boolean) as string[]),
           ...eng.bajantes.flatMap((b) => [b.id, b.code].filter(Boolean) as string[]),
+          ...eng.areas.flatMap((a) => [a.id, a.label].filter(Boolean) as string[]),
         ]);
       }
       writeSanDrawingSync(plans);
@@ -308,7 +312,11 @@ const AparatosPanel = memo(function AparatosPanel_({
   // en la red AF — sus aparatos deben caer en `ac_<id>_<planId>` para que el ramal sintético
   // AC-01-{id} (buildTramos) los tome en la tabla de selección de calentador. Usar activeNet aquí
   // los escribiría bajo `af_<id>_<planId>` y la tabla del calentador no leería nada.
-  const netId = selElement?.tipo === 'calentador' ? selElement.net || 'ac' : activeNet;
+  const netId = rejillasArea
+    ? 'gas' // el área de sector siempre cuanta gasodomésticos, sea cual sea la pestaña activa
+    : selElement?.tipo === 'calentador'
+      ? selElement.net || 'ac'
+      : activeNet;
   const isGas = netId === GAS_ID;
   const isHidro = HIDROSAN_IDS.has(netId);
   const isAfAc = netId === 'af' || netId === 'ac';
@@ -371,12 +379,12 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const target = useMemo(
     () =>
-      isCountableTarget(selElement)
+      isCountableTarget(selElement) || (rejillasArea && selElement?.id?.startsWith('AR'))
         ? selElement
         : selElement?.tipo === 'contador'
           ? { ...selElement, id: 'CNT1' }
           : null,
-    [selElement],
+    [selElement, rejillasArea],
   );
   const targetId = target?.id || null;
   // Etiqueta COMPLETA con sufijo de piso (p. ej. "RS1-P1"/"BAN2-P1") — la misma del canvas
@@ -394,6 +402,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (t.tipo === 'bajante' || t.tipo === 'caja_san' || t.tipo === 'caja_ll' || t.tipo === 'bomba')
       return bajanteLabel(t, t.pisoBase);
     if (t.tipo === 'montante') return bajanteLabel(t, t.pisoBase);
+    if (rejillasArea && t.id?.startsWith('AR')) return t.label || t.id;
     return ramalLabel(t, engineRef.current?.nivelActual?.label || undefined) || t.id || '';
   })();
   const storageKey = targetId
@@ -1171,7 +1180,10 @@ const AparatosPanel = memo(function AparatosPanel_({
     )
       return; // bajante/caja/bomba: panel de solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
-    if (mergeKeys) {
+    if (rejillasArea) {
+      // Área de sector (rejillas): conteos LIBRES por gasodoméstico — sin límite de 1 aparato
+      // ni merge de uniones; el glifo del ramal no existe (live undefined) y no se toca.
+    } else if (mergeKeys) {
       // Pata única de una unión (AF/AC/gas, orig. usuario) o ramal con tributarios (san/ll):
       // sus UDs son el total combinado — no asignables manualmente. El botón queda habilitado
       // cuando hay aparato propio → sin alerta era click muerto (orig. auditoría).
@@ -1186,7 +1198,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     }
     // Ítem 6: máximo UN aparato por ramal-tributario (manual). Para cambiar el aparato:
     // Quitar (−) y asignar el nuevo — o usar el menú contextual, que hace el switch directo.
-    if (ownTotal >= 1 && netId !== 'll') {
+    if (ownTotal >= 1 && netId !== 'll' && !rejillasArea) {
       engineRef.current?.triggerAlert(
         'Máximo 1 aparato por ramal-tributario',
         'Un ramal/tributario admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal o tributario desde el cuerpo de este.',
@@ -1375,8 +1387,8 @@ const AparatosPanel = memo(function AparatosPanel_({
       return; // solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
     // AF/AC/gas: pata única de una unión (mergeKeys) — sus UDs son la suma combinada, no
-    // asignables (mismo gate que inc; orig. usuario).
-    if (mergeKeys && (netId === 'af' || netId === 'ac' || netId === 'gas')) return;
+    // asignables (mismo gate que inc; orig. usuario). Área de rejillas: conteos libres.
+    if (!rejillasArea && mergeKeys && (netId === 'af' || netId === 'ac' || netId === 'gas')) return;
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
     // El campo del ramal solo se limpia cuando el conteo PROPIO tenía el aparato (vBefore === 0,
@@ -1745,7 +1757,11 @@ const AparatosPanel = memo(function AparatosPanel_({
                 padding: '2px 0',
               }}
             >
-              {isGas ? 'Selecciona un tramo de gas' : 'Selecciona un ramal/bajante en el dibujo'}
+              {rejillasArea
+                ? 'Selecciona un área de sector en el dibujo'
+                : isGas
+                  ? 'Selecciona un tramo de gas'
+                  : 'Selecciona un ramal/bajante en el dibujo'}
             </div>
           )}
 

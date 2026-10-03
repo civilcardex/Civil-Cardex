@@ -15,7 +15,7 @@ export const UNIDAD = {
   qgas: 'm³/h',
 };
 
-export const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
+const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
 
 export type CountsMap = Record<string, Record<string, number>>;
 export interface HidroDataEntry {
@@ -59,7 +59,7 @@ export function saveGasAcc(map: GasAccMap) {
   saveToStorage(GAS_ACC_KEY, map);
 }
 
-export type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
+type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
 
 export function unitFor(netId: string): ApUnitKey | null {
   const net = NETS.find((n) => n.id === netId);

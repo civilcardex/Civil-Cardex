@@ -3,7 +3,7 @@ import { getPdfjs } from '../../utils/lazyPdfjs';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
-import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
+import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 
 interface UsePdfViewerEngineParams {
@@ -301,7 +301,6 @@ export function usePdfViewerEngine({
           work.ts = Date.now();
           saveToStorage(TRAZOS_PREFIX + id, work);
           if (id !== 'work') {
-            saveToStorage(LAST_TRAZOS_ID_KEY, id);
             saveTrazosToDB(String(id), work);
           }
         }

@@ -2,7 +2,6 @@
 // sessionStorage — sobreviven a navegaciones dentro de la sesión pero se reinician al recargar.
 import { useState, useEffect } from 'react';
 import {
-  VISOR_TOOL_KEY,
   VISOR_TIPO_TRAMO_KEY,
   VISOR_SNAP_ON_KEY,
   VISOR_GRID_ON_KEY,
@@ -36,13 +35,6 @@ export function useSessionVisorPrefs() {
     }
   });
 
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(VISOR_TOOL_KEY, tool);
-    } catch {
-      /* ignore */
-    }
-  }, [tool]);
   useEffect(() => {
     try {
       sessionStorage.setItem(VISOR_TIPO_TRAMO_KEY, tipoTramo);

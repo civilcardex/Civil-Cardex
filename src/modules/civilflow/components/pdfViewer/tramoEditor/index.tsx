@@ -16,6 +16,7 @@ import {
   CanalTramoEditor,
   BajanteHeaderFields,
   AreaHeaderFields,
+  RejillasSectorFields,
   TextHeaderFields,
   RamalHeaderFields,
   BajanteEditorSection,
@@ -25,6 +26,8 @@ import {
 interface TramoEditorProps {
   selElement: PlanoElement | null;
   activeNet: string;
+  /** Subred Rejillas de ventilación activa (áreas de sector NTC 3631). */
+  rejillasActive?: boolean;
   engineRef: RefObject<PlanoEngine | null>;
   diamSel: Record<string, string>;
   gasMatSel: Record<string, string>;
@@ -50,6 +53,7 @@ export default function TramoEditor(props: TramoEditorProps) {
     selElement: props.selElement,
     setSelElement: props.setSelElement,
     activeNet: props.activeNet,
+    rejillasActive: props.rejillasActive,
     handleUpdateSel: props.handleUpdateSel,
     handleRotateLabel: props.handleRotateLabel,
     diamSel: props.diamSel,
@@ -147,6 +151,7 @@ function TramoEditorInner() {
             {isBajMont && <BajanteHeaderFields />}
             {isText && <TextHeaderFields />}
             {isArea && <AreaHeaderFields />}
+            {isArea && ctx.rejillasActive && <RejillasSectorFields />}
             {selElement.pts && (
               <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
                 L={selElement.totalL}m · {selElement.pts.length} pts

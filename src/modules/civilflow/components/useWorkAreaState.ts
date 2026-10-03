@@ -35,6 +35,19 @@ const AYUDA_INTROS: Record<string, string> = {
   crit: 'Normativa aplicada al proyecto y verificaciones de cumplimiento.',
 };
 
+/** Red activa → intro del panel de ayuda (orig. usuario: ayuda solo de la red activa). */
+const AYUDA_REDES_INTROS: Record<string, string> = {
+  san: 'Cálculo de UD, diseño de tramos, bajantes y ventilación de la red sanitaria.',
+  ll: 'Método racional, diseño de lluvias, chequeo de bajantes (Wyly-Eaton) y canales.',
+  af: 'Unidades de consumo, diseño Hazen-Williams, acometida y accesorios de agua fría.',
+  ac: 'Unidades de consumo, diseño, selección de calentador y accesorios de agua caliente.',
+  gas: 'Datos generales, Renouard (NTC 3728), chequeo de red y rejillas de ventilación (NTC 3631).',
+  rejillas: 'Ventilación de recintos con gas (NTC 3631): sectores, aberturas y rejillas.',
+  bom: 'Cálculo y selección de la bomba de aguas residuales y su cámara.',
+  ep: 'Equipo de presión constante: datos de entrada, potencia y especificación.',
+  rci: 'Cuarto de bombas de red contra incendio (NFPA 20).',
+};
+
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
   const ref = useRef(val);
@@ -60,7 +73,7 @@ export function useWorkAreaState() {
   // de isometría la reporta IsometriaTab (hijo, reporta más específico): el padre la OMITE y al
   // salir de 'iso' este efecto (que corre después del cleanup del hijo) restaura el reporte.
   useEffect(() => {
-    if (tab === 'iso') return;
+    if (tab === 'iso' || tab === 'redes') return;
     const label = NAV_TABS.find((t) => t.id === tab)?.l || tab;
     setAyudaContext({
       key: `cf:${tab}`,
@@ -86,7 +99,10 @@ export function useWorkAreaState() {
   });
 
   const redesActivas = useMemo(
-    () => REDES.filter((r) => redes.has(r.id) && r.id !== 'vent' && r.id !== 'recolectora'),
+    () =>
+      REDES.filter(
+        (r) => redes.has(r.id) && r.id !== 'vent' && r.id !== 'recolectora' && r.id !== 'rejillas',
+      ),
     [redes],
   );
 
@@ -158,13 +174,33 @@ export function useWorkAreaState() {
   }, [flushRedes]);
 
   const [redActiva, setRedActiva] = useState<string>('san');
+
+  // Ayuda contextual por RED (orig. usuario): en Diseño de redes el panel muestra SOLO la
+  // ayuda de la red/equipo activo (cf:redes:<red>).
+  useEffect(() => {
+    if (tab !== 'redes') return;
+    const red = REDES.find((r) => r.id === redActiva);
+    setAyudaContext({
+      key: `cf:redes:${redActiva}`,
+      modulo: 'Civil Flow',
+      seccion: `Diseño de redes · ${red?.lbl || redActiva}`,
+      intro: AYUDA_REDES_INTROS[redActiva] || 'Diseño y verificación de la red activa.',
+    });
+    return () => setAyudaContext(null);
+  }, [tab, redActiva]);
   const [sanPage, setSanPage] = useState<number>(1);
   const [llPage, setLlPage] = useState<number>(1);
   const [afPage, setAfPage] = useState<number>(1);
   const [acPage, setAcPage] = useState<number>(1);
-  const [bomPage, setBomPage] = useState<number>(1);
   const [gasPage, setGasPage] = useState<number>(1);
   const [rciPage, setRciPage] = useState<number>(1);
+
+  // Re-clamp: al apagar la subred 'rejillas', el total de gas baja a 6→4 y una página
+  // 5/6 quedaba fuera de rango (PageNav pintaba "6 de 4"). Encender 'rejillas' NO mueve
+  // la página — el render condicional ya redirige la 4 a RejillasVentilacion.
+  useEffect(() => {
+    if (!redes.has('rejillas') && gasPage > 4) setGasPage(4);
+  }, [redes, gasPage, setGasPage]);
 
   const [netColors, setNetColors] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -507,8 +543,6 @@ export function useWorkAreaState() {
     setAfPage,
     acPage,
     setAcPage,
-    bomPage,
-    setBomPage,
     gasPage,
     setGasPage,
     rciPage,
@@ -521,7 +555,6 @@ export function useWorkAreaState() {
     setSelectedPlanId,
     selectedPlan,
     selectedPlanUrl,
-    setSelectedPlanUrl,
     pendingPlanos,
     confirmedPlanos,
     nSotanos,
