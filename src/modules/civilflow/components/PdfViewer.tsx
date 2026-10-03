@@ -182,6 +182,7 @@ function PdfViewer_({
       setSyncLoadedLiveIds(String(eng._loadedPlanId), [
         ...eng.ramales.flatMap((r) => [r.id, r.label].filter(Boolean) as string[]),
         ...eng.bajantes.flatMap((b) => [b.id, b.code].filter(Boolean) as string[]),
+        ...eng.areas.flatMap((a) => [a.id, a.label].filter(Boolean) as string[]),
       ]);
     }
     try {
@@ -716,7 +717,8 @@ function PdfViewer_({
   // raíz de la app — permanece montado entre cambios de ruta para que las ediciones de la tabla
   // de diseño siempre muestren su alerta, no solo cuando el visor de PDF está en pantalla.
 
-  const { finalVisibleNets, recolectoraActive } = useActiveNetsVisibility(activeNetworks);
+  const { finalVisibleNets, recolectoraActive, rejillasActive } =
+    useActiveNetsVisibility(activeNetworks);
 
   // ── Acciones en línea ──
   const syncEngine = useCallback(() => {
@@ -1005,6 +1007,13 @@ function PdfViewer_({
     const sel = selElement as { id?: string; tipo?: string } | null;
     return !!sel && !sel.tipo && String(sel.id ?? '').startsWith('D');
   })();
+  // Área de sector del módulo Rejillas (NTC 3631): rejillas activa + área dibujada con la
+  // pestaña Gas — habilita aparatos de gasodomésticos en el panel derecho.
+  const esAreaRejillas =
+    !!selElement &&
+    rejillasActive &&
+    !!selElement.id?.startsWith('AR') &&
+    (selElement as { net?: string }).net === 'gas';
   const rightSidebarOpacity = useMemo(
     () => ({
       opacity: !selElement ? 0.35 : 1,
@@ -1320,6 +1329,7 @@ function PdfViewer_({
                 <TramoEditor
                   selElement={selElement as PlanoElement | null}
                   activeNet={activeNet}
+                  rejillasActive={rejillasActive}
                   engineRef={engineRef}
                   diamSel={diamSel}
                   gasMatSel={gasMatSel}
@@ -1375,13 +1385,14 @@ function PdfViewer_({
               />
 
               {/* MONTANTES SÍ tienen panel de aparatos (orig. usuario): UDs propagadas/asignadas
-                  como bajantes. Solo áreas y guías lo excluyen. */}
+                  como bajantes. Solo áreas y guías lo excluyen — EXCEPCIÓN: área de sector del
+                  módulo Rejillas de ventilación (rejillas activa + área gas), que cuenta
+                  gasodomésticos con conteos libres por aparato. */}
               {!(
                 selElement &&
-                (selElement.tipo === 'area' ||
-                  esCotaSel ||
-                  selElement.id?.startsWith('AR') ||
-                  selElement.id?.startsWith('GL'))
+                (esCotaSel ||
+                  selElement.id?.startsWith('GL') ||
+                  (selElement.id?.startsWith('AR') && !esAreaRejillas))
               ) && (
                 <AparatosPanel
                   activeNet={activeNet}
@@ -1390,6 +1401,7 @@ function PdfViewer_({
                   planId={currentId}
                   engineRef={engineRef}
                   loadingPlanRef={loadingPlanRef}
+                  rejillasArea={esAreaRejillas}
                 />
               )}
 
