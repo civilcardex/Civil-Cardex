@@ -131,6 +131,21 @@ async function getUserId(): Promise<string | null> {
   }
 }
 
+/** Empresarial: user_id del dueño del proyecto activo (visible por RLS solo si tengo
+ *  acceso). null = proyecto propio o inaccesible → las filas se sellan con la sesión. */
+async function ownerIdProyectoActivo(proyectoUid: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('cm_proyectos')
+      .select('user_id')
+      .eq('id', proyectoUid)
+      .single();
+    return (data?.user_id as string) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function loadFromSupabase(): Promise<CivilManagerState | null> {
   const userId = await getUserId();
   if (!userId) return null;
@@ -182,6 +197,10 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
   }
   try {
     const proyectoUid = proyectoId; // RLS exige proyecto válido del usuario
+    // Empresarial: miembro editando el proyecto del dueño → las filas se sellan con el
+    // user_id del DUEÑO (la policy RLS valida el asiento del miembro).
+    const ownerProyecto = await ownerIdProyectoActivo(proyectoUid);
+    const userIdEscritura = ownerProyecto && ownerProyecto !== userId ? ownerProyecto : userId;
     // Columnas reales por tabla (migración cm_schema + snaps): todo campo de más
     // (fuera de esta lista) tumbaba el upsert con 400.
     const TABLE_COLUMNS: Record<string, string[]> = {
@@ -313,7 +332,7 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
         } else {
           Object.assign(clean, r);
         }
-        clean.user_id = userId;
+        clean.user_id = userIdEscritura;
         clean.proyecto_id = (r as Record<string, unknown>).proyecto_id ?? proyectoUid;
         for (const fk of nullFks) if (clean[fk] === '') clean[fk] = null;
         return clean;
@@ -355,7 +374,7 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
         .filter((it) => it.cargo_id)
         .map((it) => ({
           id: it.id,
-          user_id: userId,
+          user_id: userIdEscritura,
           proyecto_id: proyectoUid,
           cuadrilla_id: q.id,
           cargo_id: it.cargo_id,
