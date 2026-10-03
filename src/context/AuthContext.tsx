@@ -20,6 +20,12 @@ interface AuthContextType {
     password: string,
     options?: { data?: Record<string, string> },
   ) => Promise<Awaited<ReturnType<typeof supabase.auth.signUp>>['data']>;
+  /** Envía el correo de restablecimiento; el link vuelve a /restablecer con sesión recovery. */
+  resetPassword: (email: string) => Promise<void>;
+  /** Cambia la contraseña del usuario con sesión activa (flujo recovery) y CIERRA la sesión:
+   *  la sesión de recovery nace de un link de un solo uso y no debe sobrevivir al cambio —
+   *  el usuario vuelve a /login con la nueva credencial. */
+  updatePassword: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -68,6 +74,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signUp({ email, password, options });
         if (error) throw error;
         return data;
+      },
+      resetPassword: async (email: string) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/restablecer`,
+        });
+        if (error) throw error;
+      },
+      /** Cambia la contraseña del usuario con sesión activa (flujo recovery) y CIERRA la sesión:
+       *  la sesión de recovery nace de un link de un solo uso y no debe sobrevivir al cambio —
+       *  el usuario vuelve a /login con la nueva credencial. */
+      updatePassword: async (password: string) => {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        await supabase.auth.signOut();
       },
     }),
     [user, loading],

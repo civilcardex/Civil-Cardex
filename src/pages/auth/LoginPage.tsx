@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import FormField from '../../components/FormField';
+import AuthSubmitButton from './AuthSubmitButton';
 import { useAuth } from '../../context/AuthContext';
 import { usePageMeta } from '../../hooks/usePageMeta';
 const LoginPage_S1: React.CSSProperties = {
@@ -156,33 +157,16 @@ function LoginPage() {
                     Recordarme
                   </span>
                 </label>
-                <button
-                  type="button"
+                <Link
+                  to="/restablecer"
                   className="text-xs hover:underline"
                   style={{ color: '#00dce5' }}
                 >
                   ¿Olvidó su contraseña?
-                </button>
+                </Link>
               </div>
 
-              <button
-                type="submit"
-                className="w-full h-12 font-bold text-[11px] tracking-widest uppercase transition-all"
-                style={{
-                  background: '#00dce5',
-                  color: '#0a0e14',
-                  fontFamily: 'Geist, monospace',
-                  boxShadow: '0 0 20px rgba(0,220,229,0.2)',
-                }}
-                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) =>
-                  (e.currentTarget.style.boxShadow = '0 0 30px rgba(0,220,229,0.4)')
-                }
-                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) =>
-                  (e.currentTarget.style.boxShadow = '0 0 20px rgba(0,220,229,0.2)')
-                }
-              >
-                {loading ? 'INGRESANDO...' : 'INICIAR SESIÓN'}
-              </button>
+              <AuthSubmitButton busy={loading} label="INICIAR SESIÓN" busyLabel="INGRESANDO..." />
               {error && (
                 <div role="alert" style={LoginPage_S1}>
                   {error}

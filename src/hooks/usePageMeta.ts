@@ -8,7 +8,7 @@ function setMeta(prop: string, name: string, content: string, prev: Record<strin
     el.setAttribute(prop, name);
     document.head.appendChild(el);
   }
-  prev[name] = el.getAttribute('content');
+  prev[sel] = el.getAttribute('content');
   el.setAttribute('content', content);
 }
 
@@ -32,7 +32,8 @@ export function usePageMeta(title: string, description?: string, noindex?: boole
       setMeta('name', 'robots', 'noindex, nofollow', prev);
     }
 
-    const url = window.location.href.split('?')[0];
+    // sin query ni fragment: en /restablecer el hash contiene tokens de recovery
+    const url = window.location.href.split(/[?#]/)[0];
     setMeta('property', 'og:url', url, prev);
 
     const canonical = window.location.origin + window.location.pathname;
@@ -47,10 +48,12 @@ export function usePageMeta(title: string, description?: string, noindex?: boole
 
     return () => {
       document.title = prevTitle;
-      for (const [name, val] of Object.entries(prev)) {
-        if (val === null) continue;
-        const el = document.querySelector(`meta[property="${name}"], meta[name="${name}"]`);
-        if (el) el.setAttribute('content', val);
+      for (const [sel, val] of Object.entries(prev)) {
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        if (val === null)
+          el.remove(); // el meta lo creó este mount: no debe sobrevivirlo
+        else el.setAttribute('content', val);
       }
       if (prevHref && link) link.setAttribute('href', prevHref);
     };

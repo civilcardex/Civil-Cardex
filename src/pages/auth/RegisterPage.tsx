@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import FormField from '../../components/FormField';
+import AuthSubmitButton from './AuthSubmitButton';
 import { useAuth } from '../../context/AuthContext';
 import { usePageMeta } from '../../hooks/usePageMeta';
 const RegisterPage_S1: React.CSSProperties = {
@@ -255,55 +256,34 @@ function RegisterPage() {
                   />
                   <span className="text-[11px] leading-tight" style={{ color: '#8AB4D6' }}>
                     Acepto los{' '}
-                    <button
-                      type="button"
+                    <Link
+                      to="/terminos"
                       className="cursor-pointer hover:underline"
                       style={{
                         color: '#00dce5',
-                        background: 'none',
-                        border: 'none',
                         padding: 0,
                         font: 'inherit',
                       }}
                     >
                       Términos de Servicio
-                    </button>{' '}
+                    </Link>{' '}
                     y la{' '}
-                    <button
-                      type="button"
+                    <Link
+                      to="/privacidad"
                       className="cursor-pointer hover:underline"
                       style={{
                         color: '#00dce5',
-                        background: 'none',
-                        border: 'none',
                         padding: 0,
                         font: 'inherit',
                       }}
                     >
                       Política de Privacidad
-                    </button>
+                    </Link>
                   </span>
                 </div>
               </fieldset>
 
-              <button
-                type="submit"
-                className="w-full h-12 font-bold text-[11px] tracking-widest uppercase transition-all"
-                style={{
-                  background: '#00dce5',
-                  color: '#0a0e14',
-                  fontFamily: 'Geist, monospace',
-                  boxShadow: '0 0 20px rgba(0,220,229,0.2)',
-                }}
-                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) =>
-                  (e.currentTarget.style.boxShadow = '0 0 30px rgba(0,220,229,0.4)')
-                }
-                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) =>
-                  (e.currentTarget.style.boxShadow = '0 0 20px rgba(0,220,229,0.2)')
-                }
-              >
-                {loading ? 'CREANDO CUENTA...' : 'CREAR CUENTA'}
-              </button>
+              <AuthSubmitButton busy={loading} label="CREAR CUENTA" busyLabel="CREANDO CUENTA..." />
               {error && (
                 <div role="alert" style={RegisterPage_S1}>
                   {error}

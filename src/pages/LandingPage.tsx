@@ -604,6 +604,18 @@ function LandingPage() {
               >
                 Precios
               </Link>
+              <Link
+                to="/terminos"
+                className="uppercase tracking-widest transition-colors hover:text-on-surface"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontFamily: 'Geist, monospace',
+                  color: '#6a8e8e',
+                }}
+              >
+                Términos
+              </Link>
               <button
                 type="button"
                 className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface"
