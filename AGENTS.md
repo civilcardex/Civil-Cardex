@@ -13,30 +13,30 @@ Rules:
 
 ## Suscripciones por módulo (IMPLEMENTADAS PERO DESHABILITADAS)
 
-Sistema de suscripción por módulo (solo `flow` y `manage` en catálogo) con Wompi y **vencimiento manual** (se paga 1 mes o 1 año por adelantado; `cf_suscripciones.fecha_fin > now()` es la única verdad, no hay cron ni cobro automático). Apagado en DOS niveles — con ambos off, la app se comporta exactamente como antes (nadie se bloquea):
+Suscripción por módulo (solo `flow` y `manage` en catálogo) con **Lemon Squeezy** y **vencimiento manual** (se paga 1 mes / 6 meses / 1 año por adelantado; `app_suscripciones.fecha_fin > now()` es la única verdad, no hay cron ni cobro automático). Precios LISTA por módulo en centavos USD: mensual 2500 ($25.00), semestral 15000 ($150.00 = 6× mensual), anual 30000 ($300.00 = 12×). Descuentos: base por periodo (mensual 0% / semestral 10% / anual 15%) + 10% acumulativo por módulo adicional (2 módulos anual = −25% → $450). La VERDAD de precios es `app_precios` en BD (RPC `obtener_catalogo` los sirve al cliente vía `sincronizarPreciosBd` — cambiar precio = UPDATE en SQL Editor, sin deploy); los literales de `catalog.ts` y `_shared/lemon.ts` son fallback y el test de paridad vigila que no diverjan.
 
-1. **Cliente**: `VITE_SUSCRIPCIONES !== 'true'` (default off). Sin gating en rutas, perfil ni ModulePage; PricingPage muestra la página de marketing; el widget de Wompi nunca se carga.
-2. **BD**: `cf_app_config('suscripciones_activas', false)`. `public.acceso_modulo(uid, modulo)` devuelve `true` para todos con el flag apagado; con él encendido exige fila vigente. Este flag gobierna el check dentro del RPC `save_proyecto` (flow) y la política INSERT de `cm_proyectos` (manage).
+Apagado en DOS niveles — con ambos off, la app se comporta exactamente como antes (nadie se bloquea):
+
+1. **Cliente**: `VITE_SUSCRIPCIONES !== 'true'` (default off). Sin gating en rutas, perfil ni ModulePage; PricingPage muestra la página de marketing; no se invoca ninguna edge function.
+2. **BD**: `app_config('suscripciones_activas', false)`. `public.acceso_modulo(uid, modulo)` devuelve `true` para todos con el flag apagado; con él encendido exige fila vigente. Este flag gobierna el check dentro del RPC `save_proyecto` (flow) y la política INSERT de `cm_proyectos` (manage).
 
 ### Piezas
-- Migración: `supabase/migrations/20260924000000_suscripciones.sql` (tablas `cf_suscripciones`, `cf_pagos`, `cf_app_config`; funciones `suscripciones_habilitadas`, `acceso_modulo`, `activar_suscripciones` idempotente; candados en `save_proyecto` y policy `cm_proyectos_propietario_insertar`).
-- Edge functions (Deno, requieren deploy): `supabase/functions/crear-intencion-pago` (valida precios server-side + firma de integridad), `wompi-verify` (consulta API Wompi con llave privada y activa), `wompi-webhook` (respaldo con checksum de eventos). `_shared/wompi.ts` tiene la COPIA del catálogo de precios (sincronizar con el cliente).
-- Cliente: `src/lib/suscripciones/catalogo.ts` (precios COP placeholder $19.900/mes, $199.000/año, 15% dto por los 2 + flag), `suscripcionesService.ts` (`estaActiva` pura), `src/hooks/useSuscripciones.ts`, `src/components/suscripciones/{WompiCheckoutModal,ModuleSelectDialog,RequireModule}.tsx`.
+- Migraciones: `20260924000000_suscripciones.sql` (tablas + funciones `suscripciones_habilitadas`/`acceso_modulo`/`activar_suscripciones`; candados en `save_proyecto` y policy `cm_proyectos_propietario_insertar`) · `20260924000001_suscripciones_race_y_uso.sql` (FOR UPDATE + rowcount) · `20260924000002_revokes_impl.sql` · `20260928000003_precios_bd_y_cota.sql` (`app_precios` + `obtener_catalogo`) · `20260928000004_rename_familia_suscripciones.sql` (cf_* → app_*) · `20261001000000_semestral_descuentos.sql` (semestral + descuentos acumulativos) · `20261002000000_usd_lemon.sql` (precios USD, moneda 'USD', columna de transacción renombrada a `txn_id`, activar re-emitida).
+- Edge functions PENDIENTES (requieren cuenta Lemon Squeezy): `crear-checkout` (valida contra `app_precios`, inserta pago pendiente en `app_pagos` con referencia única, crea checkout LS con el user_id en custom data y devuelve `checkoutUrl`), `verificar-pago` (consulta la orden en la API LS; si APPROVED → `activar_suscripciones`), `ls-webhook` (respaldo: valida firma HMAC del evento y activa — `activar_suscripciones` es idempotente, verify + webhook pueden llegar en cualquier orden). Copia server del catálogo: `supabase/functions/_shared/lemon.ts` (paridad vigilada por test).
+- Cliente: `src/lib/subscriptions/catalog.ts` (catálogo + `calcularTotalCentavos` + `formatUSD` + `sincronizarPreciosBd`), `subscriptionsService.ts` (`estaActiva` pura), `src/hooks/useSubscriptions.ts`, `src/components/subscriptions/{CheckoutModal,ModuleSelectDialog,RequireModule}.tsx`.
 - Flujo perfil: "Nuevo proyecto" → `ModuleSelectDialog` lista SOLO módulos comprados y vigentes ("Activo hasta X"); 0 activos → "Ver planes" a `/pricing`; 1 → entra directo; flow → `ProjectCreateDialog` → `/civilflowareatrabajo`; manage → `ProjectCreateDialogCM` → `/civilmanagerareatrabajo`.
-- Gating adicional: `RequireModule` envuelve `/civilflowareatrabajo` y `/civilmanagerareatrabajo` en `App.tsx` (evalúa la fecha en cada render → vence en vivo); CTA de `ModulePage` redirige a `/pricing?modulo=X` sin compra; los diálogos de creación muestran aviso "Suscripción inactiva" (la BD es el candado real).
+- Gating adicional: `RequireModule` envuelve los workareas en `App.tsx` (evalúa la fecha en cada render → vence en vivo); CTA de `ModulePage` redirige a `/pricing?modulo=X` sin compra; los diálogos de creación muestran aviso "Suscripción inactiva" (la BD es el candado real). Vuelta del checkout: `/pricing?ref=X` → `verificar-pago` → refetch.
 
-### ACTIVACIÓN (cuando haya credenciales Wompi)
-```sql
-update public.cf_app_config set valor = true where clave = 'suscripciones_activas';
-```
-1. `VITE_SUSCRIPCIONES=true` en Vercel + redeploy.
-2. `supabase secrets set WOMPI_PUBLICO=... WOMPI_PRIVADO=... WOMPI_INTEGRIDAD=... WOMPI_EVENTOS=...`
-3. `supabase functions deploy crear-intencion-pago wompi-verify wompi-webhook`
-4. Definir precios finales en `src/lib/suscripciones/catalogo.ts` Y `supabase/functions/_shared/wompi.ts`.
-5. Configurar la URL del webhook en el panel Wompi: `<SUPABASE_URL>/functions/v1/wompi-webhook`.
-6. Probar en sandbox (`WOMPI_BASE=https://sandbox.wompi.co` como secret) con tarjetas de prueba antes de producción.
+### ACTIVACIÓN (cuando haya cuenta Lemon Squeezy)
+1. Tienda LS: crear producto/variante por módulo×periodo (o custom price) y anotar IDs.
+2. `supabase secrets set LS_API_KEY=... LS_STORE=... LS_WEBHOOK_KEY=...`
+3. Escribir y deployar las 3 edge functions; configurar webhook en el panel LS: `<SUPABASE_URL>/functions/v1/ls-webhook` (descomentar su bloque en `supabase/config.toml`).
+4. Probar en modo test de LS (tarjetas de prueba) antes de producción.
+5. `VITE_SUSCRIPCIONES=true` en Vercel + redeploy.
+6. `update public.app_config set valor = true where clave = 'suscripciones_activas';`
 
 Consecuencia conocida (decisión del usuario): al activar NO existe plan gratis — todos los usuarios quedan bloqueados hasta pagar.
+
 
 ## Security Notes
 
@@ -2432,9 +2432,74 @@ tsc 0 · lint 0 err 0 warn · vitest **940/940** (157 files, −2 tests muertos)
 
 ## Convención de nombres de archivo (2026-10-01, ronda 12)
 
-**File names en INGLÉS.** El vocabulario del dominio hidrosanitario/CAD permanece en español (coincide con la UI y con RAS/NSR). Glosario permitido en nombres: `ramal, bajante, tramo, aparato(s), montante, acometida, yee, codo, caudal, diam/diametro, pulg, npt, ll, af, ac, san, gas, canal, piso(s), nivel, trazo(s), sifon, inodoro, tapon, descarga, red, area, apu, cuadrilla, insumo(s), presupuesto(s), ldesvio, bomba(s), cisterna, plano(s)` + familia `Plano*` (marca del motor) + `civilflow/civilmanager/wompi`. Todo lo demás, en inglés (`sanearAsociaciones.ts → sanitizeAssociations.ts`, `suscripciones/ → subscriptions/`, `ayuda/ → help/`, `isometria/ → isometry/`, `presupuestos/ → budgets/`, `catalogos/ → catalogs/`).
+**File names en INGLÉS.** El vocabulario del dominio hidrosanitario/CAD permanece en español (coincide con la UI y con RAS/NSR). Glosario permitido en nombres: `ramal, bajante, tramo, aparato(s), montante, acometida, yee, codo, caudal, diam/diametro, pulg, npt, ll, af, ac, san, gas, canal, piso(s), nivel, trazo(s), sifon, inodoro, tapon, descarga, red, area, apu, cuadrilla, insumo(s), presupuesto(s), ldesvio, bomba(s), cisterna, plano(s), rejilla(s), guia(s)` + familia `Plano*` (marca del motor) + `civilflow/civilmanager/lemon`. Todo lo demás, en inglés (`sanearAsociaciones.ts → sanitizeAssociations.ts`, `suscripciones/ → subscriptions/`, `ayuda/ → help/`, `isometria/ → isometry/`, `presupuestos/ → budgets/`, `catalogos/ → catalogs/`).
 
 Alcance de la traducción ES→EN decidido por el usuario: SOLO nombres de archivo. Los identificadores (funciones/tipos/variables), comentarios/JSDoc y strings de UI permanecen en español; los ids de navegación de /docs (`hidraulica`, `manager`…) son strings de UI, no rutas — intactos. Los imports se reescribieron a las rutas nuevas (~768 specifiers, 102 archivos tocados). Pasada aplicada con `git mv` (preserva blame): 156 archivos + 6 carpetas.
 
 ### Gates
 tsc 0 · lint 0 err 0 warn · vitest 940/940 (157 files) · build ✓ · graphify ✓. Nota operativa: el dev server de Vite retiene handles de directorios en Windows — para renombrar carpetas bajo src/, parar `npm run dev` y reupload después (Vite reconecta HMR solo).
+
+## Session Summary — 2026-10-02 (huecos de persistencia → columnas, NO tablas nuevas)
+
+### Auditoría previa (2 exploradores): la BD ya cubría casi todo
+- **civilmanager**: 100% respaldado (9 tablas + cm_config, pipeline híbrido IDB→Supabase con upsert whitelist por tabla + RPC `cm_get_data`). Único hueco: `tipoPrecioFormulario`/`alarmasPrecioFaltante` en el tipo `Presupuesto` sin columna.
+- **civilflow**: EP/bomba/gas/lluvias/trazos ya suben. Único dataset de usuario solo-localStorage: overrides de rejillas NTC 3631 + tipo de gas. `civilflow_memoria_af/ac/gas_rows` = write-only muertos; `civilflow_memoria_bomba_data` NO (lo lee `computeBombaTables` para la exportación — se conserva como caché viva; re-dirigir a calcsDe exigiría recomputar UDs desde fixtures: descartado por ponytail).
+
+### Implementado
+- **Migración `20261002000000_persistencia_huecos.sql`** (idempotente, SQL Editor): `cm_presupuestos` + `tipo_precio_formulario`/`alarmas_precio_faltante` jsonb; `cf_proyecto_general` + `rejillas` jsonb; RPC `save_proyecto_general_campo` con whitelist + 'rejillas' y rama `$1::jsonb` (cuerpo de 20260915000000 extendido, auto-suficiente). Lectura sin RPC nuevo: `get_proyecto_data` ya hace `to_jsonb(pg)` de la fila completa.
+- **storage.ts (CM)**: 2 campos nuevos en `TABLE_COLUMNS.cm_presupuestos` y en la lista nullable-jsonb (sin whitelist el upsert no los viaja).
+- **projectDataService.ts**: union de campo + `'rejillas'`; exports `saveRejillasProyecto` (JSON.stringify del blob) y `loadRejillasProyecto` (select ligero `cf_proyecto_general.rejillas`, RLS owner).
+- **RejillasVentilacion.tsx**: al montar hidrata del proyecto (BD gana sobre caché local si tiene datos); `setOv`/`cambiarGas` escriben local SIEMPRE + blob BD con debounce 800 ms `{overrides, gas, gasod}`. El blob incluye los conteos de gasodomésticos por sector (claves `gas_<areaId>_<planId>` del mapa de aparatos): `saveToSupabase` solo adjunta claves de ramal/bajante, así que sin esto se perdían al recargar desde BD (hueco detectado por el usuario). Los cambios de conteos fuera del hook (FixturesPanel/decGasod → evento 'aparatos-clear') reagenda el push; en la hidratación BD gana por clave (mismo criterio que fixtures de ramales). Sin proyecto activo → solo-local como antes.
+- **Writes muertos fuera**: efecto completo en GasDesign (snapshot gas) y en WaterNetworkDesign (snapshot AF/AC) + imports huérfanos. 0 referencias a las 3 claves.
+
+### Gates
+tsc 0 · lint 0 err · vitest 957/957 (159 files — la paralela sumó tests) · build ✓ · graphify ✓.
+
+### Aplicar usuario
+1. SQL Editor: `20261002000000_persistencia_huecos.sql`.
+2. Recarga dura; verificar: presupuesto con tipoPrecio/alarmas sobrevive recarga desde BD; rejillas editadas aparecen en otro dispositivo (con proyecto activo); tipo de gas persiste.
+
+## Session Summary — 2026-10-02 (ronda 13: auditoría del wiring rejillas + fixes F1-F9)
+
+### Auditoría (2 exploradores) → 14 fichas; fixes ejecutados (3 agentes paralelos)
+- **F1 CRÍTICO**: `quitarAparato` barría TODAS las claves del plano (`endsWith('_'+planId)`) → borrar una columna en un sector la borraba en los demás + ramales gas. Fix: opera SOLO la clave de origen (`col.clave`). Fósiles rv5 fuera (`_patch_rv5/rv7/tab.py` borrados de la raíz).
+- **F2 IMPORTANTE (bug propio de la ronda anterior)**: whitelist CM inerte — columnas `tipo_precio_formulario/alarmas_precio_faltante` en snake vs campos camel en el tipo `Presupuesto` → nunca viajaban al upsert. Fix: campos renombrados a snake (patrón `formulario_original`); test `cmUpsertSanitize` reescrito (sobreviven al saneo; null viaja por NULLABLE).
+- **F3 IMPORTANTE**: hidratación rejillas sin guard de frescura + debounce sin flush. Fix: blob con `ts`; `editadoRef` (edición local ⇒ blob ignorado); cleanup con flush fire-and-forget del push pendiente; `tsRef` del último push/hidratación.
+- **F4 IMPORTANTE**: `onAparatoCol` pisaba conteo con id duplicado y `value=""` creaba aparato fantasma (`cur['']`). Fix: rechazo con alert si duplicado; vacío solo borra; options de otras columnas de la fila filtradas.
+- **F5 IMPORTANTE**: blob `gasod` incluía claves de RAMAL (ya persistidas por saveToSupabase) → resurrección. Fix: `leerGasod` solo `/^gas_AR/` (áreas, el hueco real); hidratación llena SOLO claves ausentes del disco; compare con `stableStringify` (fixturesStorage).
+- **F6 IMPORTANTE (WIP declarado)**: edges Lemon Squeezy sin deploy → guard `edgePagoNoDesplegada(err)` (mensaje/404) en CheckoutModal ("pagos aún no disponibles") y PricingPage (aviso neutro `role="status"` para verificar-pago).
+- **F7 MEDIA**: pid validado al disparar el push (`proyectoIdActivo() !== pid → return`) — cambio de proyecto a mitad del debounce no escribe stale.
+- **F8 MEDIA**: encabezados de columnas de aparato por `filas[0]` → `Math.max` de todas las filas (colSpan/th alineados).
+- **F9 menores**: regex sótano `[2-9]\d*` (Sótano 10); abertura estimada no se pisa cuando la alerta crítica "no cabe" está activa; comentario `decGasod` huérfano corregido; updater de `setOv` puro (side-effects fuera); selects/botón − con `disabled={!edit}`; default CM coherente en USD (`salario_base 400`, `auxilio_transporte 0` — siembra por PerfilPaisPanel); migración `usd_lemon` renumerada a `20261002000001` (colisión de timestamp); re-clamp de `gasPage` al apagar 'rejillas' (useWorkAreaState, dueño del estado).
+
+### Verificado OK
+Contratos FixturesPanel↔claves de área; GC de claves de área (drawingSync + live ids incluyen `eng.areas`); gates FixturesPanel para áreas; refactor EditLock/moneda CM; purga de dominios Wompi en CSP; RPC `save_proyecto_general_campo` (ownership→whitelist→%I→cast, sin inyección).
+
+### Deudas / pendientes
+- Edges Lemon (`crear-checkout`, `verificar-pago`, `ls-webhook`) sin crear/deploy — con `VITE_SUSCRIPCIONES=false` inofensivo; activar flag solo tras deploy (guard nuevo evita el error crudo mientras tanto).
+- Resolución de conflictos del blob por `ts` es dispositivo-local (sin reloj compartido) — suficiente para el caso multi-dispositivo actual; si se vuelve insuficiente, `updated_at` de la fila.
+- Assets `public/iconos_*/**.webp` con nombre español: referenciados por strings del contenido de ayuda (capa contenido) — fuera de la convención de file names de src/, sin tocar.
+
+### Gates
+tsc 0 · lint 0 err · vitest 957/957 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-02 (ronda 14: ponytail audit #3 — ~240L + 1 asset fuera)
+
+### Cortes (3 agentes paralelos, excluido el WIP ajeno marcado ⚠️)
+- **docs/data (−180L)**: `fx(ReactNode)` y `donde(ReadonlyArray<readonly [ReactNode, ReactNode]>)` absorben los 47 boxes + 26 grids hand-written excluidos del primer refactor por JSX. Paridad DOM verificada caso a caso (whitespace JSX, entidades como fragment). 1 grid excluida a propósito (coldWater "Valores de C": clases propias). 2030→1850.
+- **projectDataService (−39L)**: `loadCampoProyectoGeneral<T>(campo)` (unión de columnas whitelisteada, espejo del save) + 4 wrappers de 1 línea.
+- **Muertos**: `notasProyecto()` (rejillasCalc), `PRESETS_KW` (rejillasNTC3631), 7 campos de `PresupuestoItem` sin lectores (types CM), `bomPage/setBomPage` + `setSelectedPlanUrl` del return (useWorkAreaState), 3 claves de storage muertas (`ISO_ACTIVE_NETS_KEY`, `LAST_TRAZOS_ID_KEY`, `VISOR_TOOL_KEY` — write-only, escrituras fuera), `entregables.webp` (único asset huérfano).
+- **17 `export` sobrantes fuera** (uso 100% interno, grep con tests incluidos): 8 en canalAssociation, 2 rejillasCalc, 2 fixturesStorage, 2 projectDataService, 2 calc CM, PAISES. Falso positivo respetado: `sugerirRef` (lo usa el test).
+- **Ponytail flag**: des-exportar `GRUPOS_GASOD` dejaba el const solo-como-tipo (warning eslint) → export restaurado (valor+tipo viven juntos).
+
+### NO cortado (falsos muertos / WIP ajeno ⚠️)
+- `tipo_precio_formulario/alarmas_precio_faltante`: wired a BD a propósito (productores llegan con la importación de formulario).
+- ⚠️ Bloque `FormularioOriginal/MapeoFormulario` (types CM, 33L) y evento `cm_save_error` sin oyente: WIP de la sesión paralela — cortes diferidos a consulta.
+- `_shared/lemon.ts` + config.toml comentado: scaffolding del pivot (checklist ACTIVACIÓN).
+- No calificaron: patrón disk→mutar→save de rejillas (12L neto), debounce-push-BD ×3 (divergen: flush/cancel/ts/gate), calc.ts moneda, EditLock (cero restos de EditableSection).
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 957/957 · build ✓ · graphify ✓.
+
+### Verificación manual sugerida
+`/docs`: cajas de fórmula y grids "Donde:" deben verse idénticas al refactor anterior (entidades, sub/sup, espacios).
