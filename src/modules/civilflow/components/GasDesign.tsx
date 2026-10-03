@@ -368,31 +368,6 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     return result;
   }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
 
-  // Persiste la fila completa de cada tramo para las tablas de la memoria final.
-  useEffect(() => {
-    const rows = gasTramos.map((t) => {
-      const chk = checkRows.find((r) => r.id === t.id);
-      return {
-        id: t.id,
-        piso: t.piso,
-        ini: t.ini || '',
-        fin: t.fin || '',
-        material: diamMat[tramoKey(t)] || '',
-        dn: diamDn[tramoKey(t)] || '',
-        dInt: diamInt[tramoKey(t)] || 0,
-        K: diamK[tramoKey(t)] || 0,
-        longitud: t.longitud || 0,
-        le: chk ? chk.le : 0,
-        dP: chk ? chk.dP : 0,
-        vel: chk ? chk.vel : 0,
-        pIni: chk ? chk.pIni : 0,
-        pFin: chk ? chk.pFin : 0,
-        chequeo: chk ? chk.chequeo : '—',
-      };
-    });
-    saveToStorage('civilflow_memoria_gas_rows', rows);
-  }, [gasTramos, diamMat, diamDn, diamInt, diamK, checkRows]);
-
   const COLS = GasDesign_COLS;
   const colW = GasDesign_colW;
 

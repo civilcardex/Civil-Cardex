@@ -54,7 +54,7 @@ export function bajanteAsociadoACanal(b: { tipo?: string; canalId?: string | nul
 /** Rectángulo orientado del canal en px de plano: origen + dims locales + ángulo. El eje
  *  local X es SIEMPRE el lado largo (longitud); el Y, el corto (base). Con angulo 0 es el
  *  AABB de siempre. */
-export interface CanalOBB {
+interface CanalOBB {
   x: number;
   y: number;
   w: number;
@@ -111,7 +111,7 @@ export function canalToLocal(obb: CanalOBB, px: number, py: number): { lx: numbe
 }
 
 /** Lleva un punto del marco local al mundo (origen + rotación). */
-export function canalToWorld(obb: CanalOBB, lx: number, ly: number): { x: number; y: number } {
+function canalToWorld(obb: CanalOBB, lx: number, ly: number): { x: number; y: number } {
   const c = Math.cos(obb.angRad);
   const s = Math.sin(obb.angRad);
   return { x: obb.x + lx * c - ly * s, y: obb.y + lx * s + ly * c };
@@ -142,7 +142,7 @@ export function esquinasCanalOBB(obb: CanalOBB): Array<{ x: number; y: number }>
 }
 
 /** OBB de un canal vivo del engine (dims en cm → px de plano). */
-export function canalOBBEngine(engine: IPlanoEngineCore, canal: PlanoBajante): CanalOBB {
+function canalOBBEngine(engine: IPlanoEngineCore, canal: PlanoBajante): CanalOBB {
   return canalMarco(engine.cmToPlanePx(1), canal);
 }
 
@@ -194,7 +194,7 @@ export function norm180(deg: number): number {
 
 /** Fase 1 del canal (el 2º clic fija el eje): longitud/ángulo del eje + extremo ya ajustado.
  *  El ancho lo define el 3er clic con geometriaCanalAncho. */
-export interface TrazoCanalEje {
+interface TrazoCanalEje {
   /** Longitud del eje en cm. */
   longitudCm: number;
   angulo: number;
@@ -248,7 +248,7 @@ export function geometriaCanalDesdePuntos(
  *  va del lado del punto (origen desplazado) para que el clic caiga sobre el borde — sin
  *  cambios de lado a lado una vez comprometido (el ghost ya lo mostró). Devuelve null si el
  *  eje es degenerado. */
-export interface TrazoCanal {
+interface TrazoCanal {
   x: number;
   y: number;
   baseCm: number;
@@ -440,7 +440,7 @@ export function sanearEsCanalIdFaltante(
 }
 
 /** ¿El punto (x, y) cae dentro del canal? */
-export function pointInCanal(
+function pointInCanal(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
   x: number,
@@ -474,7 +474,7 @@ export function resolveCanalForPoint(
 
 /** Mueve el punto (x, y) hacia adentro del canal si quedó fuera de él — sirve para que el
  *  bajante nunca quede "colgado" medio por fuera del canal al arrastrarlo. */
-export function clampToCanal(
+function clampToCanal(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
   x: number,
@@ -507,7 +507,7 @@ export function resolveAndClampToCanal(
 // usuario dibuja del canal al bajante; ninguna asociación es automática por cercanía) =====
 
 /** Resultado de detectar el origen canal de un trazo recién dibujado. */
-export interface CanalOrigenDet {
+interface CanalOrigenDet {
   canal: PlanoBajante | null;
   /** El extremo que cayó dentro del canal es la LLEGADA (último punto) — hay que invertir la
    *  polilínea para que el flujo nazca en el canal (canal→bajante). */

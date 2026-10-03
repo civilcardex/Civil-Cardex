@@ -11,14 +11,14 @@ import {
   writeContadorDiamToDrawing,
   findContadorBajante,
 } from '../utils/writeDiameterToDrawing';
-import { saveToStorage } from '../services/storageService';
+
 import { isAf, isAC1 } from '../utils/waterNetworkRows';
 import { fracAscii } from '../utils/formatUtils';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';
 import { useAcometidaParams, calcFila } from './waterNetworkDesign/acometidaCalc';
 import { resolvePressures } from './waterNetworkDesign/pressureResolver';
-import { hunterK, hunterQ, computeDesignRow } from './waterNetworkDesign/rowPhysics';
+import { hunterQ, computeDesignRow } from './waterNetworkDesign/rowPhysics';
 import { DesignTableHeader } from './waterNetworkDesign/designTableHeader';
 import { DesignTableRow } from './waterNetworkDesign/designTableRow';
 
@@ -354,65 +354,6 @@ function WaterNetworkDesign({
       if (resolved && t.pFin !== resolved.Pfin) updTramo(ownKey, 'pFin', resolved.Pfin);
     }
   }, [tramosOrden, pressureByKey, updTramo]);
-
-  // Persistir los datos completos de fila para las tablas de memoria final
-  useEffect(() => {
-    const rows = tramosOrden.map((t) => {
-      const ownKey = t._key || t.id;
-      const isTr2 = t === tr2;
-      const total = displayTotalMap[ownKey] || 0;
-      const nDesc = t.nSalidas || 0;
-      const Qprob2 = isTr2 ? Qaco : hunterQ(total, nDesc);
-      const raizQ = Qprob2 > 0 ? Math.round(Math.sqrt(Qprob2) * 100) / 100 : 0;
-      const c = computeDesignRow(t, {
-        qprob: Qprob2,
-        diamOpts: DIAM_OPTS,
-        diamNomMap,
-        diamIntMap,
-        lookupFn,
-      });
-      const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
-      return {
-        id: t.id,
-        ini: typeof t.ini === 'string' ? t.ini : '—',
-        fin: typeof t.fin === 'string' ? t.fin : '—',
-        piso: t.piso,
-        udPropia: propiaMap[ownKey] || 0,
-        udTotal: total,
-        nDesc,
-        K: hunterK(nDesc),
-        Qprob: Qprob2,
-        diamEst: raizQ,
-        diamDis: c.matchedOpt?.nominal || '—',
-        dInt: c.internoMm,
-        cHW: c.cHW,
-        Vmms: c.Vmms,
-        Lh: c.H,
-        Lv: c.Vvert,
-        Le: c.Le,
-        Lt: c.Lt,
-        hfPct: c.hfPct,
-        hfM: c.hfM,
-        Pin,
-        Pfin,
-      };
-    });
-    saveToStorage(`civilflow_memoria_${networkType}_rows`, rows);
-  }, [
-    tramosOrden,
-    displayTotalMap,
-    diamNomMap,
-    diamIntMap,
-    Qaco,
-    DIAM_OPTS,
-    lookupFn,
-    propiaMap,
-    tramos,
-    pRed,
-    pressureByKey,
-    networkType,
-    tr2,
-  ]);
 
   // Persistir el checkpoint de velocidad (y, para AF, el de presión de acometida) en cada Tramo
   // para que InfTab muestre una insignia real OK/Revisar en lugar de nada.
