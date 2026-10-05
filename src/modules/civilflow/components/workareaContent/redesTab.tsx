@@ -23,8 +23,10 @@ const RejillasAlzadoPage = lazy(() =>
 );
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
-const RciCuartoBombasViewer = lazy(() => import('../rci3d'));
-const RciCuartoBombasReferencia = lazy(() => import('../RciRoomBombasReference'));
+// RCI en construcción (orig. usuario: pestaña vacía) — para restaurar descomentar el bloque
+// del render y estos imports:
+// const RciCuartoBombasViewer = lazy(() => import('../rci3d'));
+// const RciCuartoBombasReferencia = lazy(() => import('../RciRoomBombasReference'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
@@ -99,8 +101,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
     setAcPage,
     gasPage,
     setGasPage,
-    rciPage,
-    setRciPage,
+    // rciPage/setRciPage sin uso mientras la pestaña RCI está vacía (red en construcción).
     tramosAf,
     tramosAc,
   } = state;
@@ -416,6 +417,13 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           )}
         </div>
       )}
+      {/* RCI en construcción (orig. usuario: "en esta pestaña no debe aparecer nada por
+          ahora") — pestaña vacía. Bloque completo para restaurar cuando salga:
+          <PageNav page={rciPage} setPage={setRciPage} total={2} color="var(--rci)"
+            labels={['Cuarto de bombas', 'Cuarto de bombas opcional']} />
+          {rciPage === 1 && <Suspense fallback={FALLBACK}><RciCuartoBombasViewer /></Suspense>}
+          {rciPage === 2 && <Suspense fallback={FALLBACK}><RciCuartoBombasReferencia /></Suspense>}
+          (import lazy del viewer: const RciCuartoBombasViewer = lazy(() => import('../rci3d'));) */}
       {redActiva === 'rci' && redes.has('rci') && (
         <div
           className="fu"
@@ -427,25 +435,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             minHeight: 0,
             overflowY: 'auto',
           }}
-        >
-          <PageNav
-            page={rciPage}
-            setPage={setRciPage}
-            total={2}
-            color="var(--rci)"
-            labels={['Cuarto de bombas', 'Cuarto de bombas opcional']}
-          />
-          {rciPage === 1 && (
-            <Suspense fallback={FALLBACK}>
-              <RciCuartoBombasViewer />
-            </Suspense>
-          )}
-          {rciPage === 2 && (
-            <Suspense fallback={FALLBACK}>
-              <RciCuartoBombasReferencia />
-            </Suspense>
-          )}
-        </div>
+        />
       )}
       {redesActivas
         .filter(
