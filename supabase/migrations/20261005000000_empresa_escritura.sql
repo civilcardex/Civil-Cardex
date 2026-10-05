@@ -113,8 +113,8 @@ begin
      and public.empresa_escritura(v_owner, 'flow') then
     new.user_id := v_owner;
   end if;
-  -- Fail-closed: no-dueño sin owner resoluble → fila huérfana no permitida.
-  if v_owner is null and new.user_id <> (select auth.uid()) then
+  -- Fail-closed real: no-dueño sin owner resoluble → bloqueado (auth.uid() null/anon también).
+  if v_owner is null and (auth.uid() is null or new.user_id <> auth.uid()) then
     raise exception 'sello_sin_owner';
   end if;
   return new;
@@ -145,7 +145,7 @@ do $do$
 declare r record; v_mod text;
 begin
   for r in
-    select pol.schemaname, pol.tablename, pol.policyname
+    select pol.schemaname, pol.tablename, pol.policyname, pol.roles
     from pg_policies pol
     where pol.schemaname = 'public'
       and pol.cmd = 'SELECT'
@@ -159,9 +159,13 @@ begin
   loop
     v_mod := case when r.tablename like 'cm\_%' then 'manage' else 'flow' end;
     execute format('drop policy %I on public.%I', r.policyname, r.tablename);
+    -- Conserva el TO de la policy original (pg_policies.roles): sin esto las re-creadas
+    -- quedaban to public y una policy to authenticated perdía su target.
     execute format(
-      'create policy %I on public.%I for select using ((select auth.uid()) = user_id or public.empresa_lectura(user_id, %L))',
-      r.policyname, r.tablename, v_mod);
+      'create policy %I on public.%I for select%s using ((select auth.uid()) = user_id or public.empresa_lectura(user_id, %L))',
+      r.policyname, r.tablename,
+      case when r.roles <> '{public}' then ' to ' || array_to_string(r.roles, ', ') else '' end,
+      v_mod);
   end loop;
 end $do$;
 
@@ -204,7 +208,7 @@ end $do$;
 
 -- ═══ 5) PDFs del bucket plan_pdfs: el miembro lee (y sube) los del dueño ════════════════
 create or replace function public.uuid_seguro(t text)
-returns uuid language plpgsql immutable as $$
+returns uuid language plpgsql immutable set search_path = '' as $$
 begin
   return t::uuid;
 exception when invalid_text_representation then

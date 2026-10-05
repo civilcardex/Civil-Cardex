@@ -35,9 +35,10 @@ begin
     raise exception 'save_plano_data_impl_no_encontrado';
   end if;
 
-  -- Solo si falta el parche (strpos y no like: el `_` de altura_m no debe actuar de
-  -- wildcard en la detección).
-  if strpos(v_src, 'altura_m') = 0 then
+  -- Solo si falta el parche del INSERT de areas (strpos y no like: el `_` de altura_m no
+  -- debe actuar de wildcard). Gate por el fragmento COMPLETO del INSERT, no por 'altura_m'
+  -- a secas: un substring futuro con altura_m no debe saltarse la cirugía.
+  if strpos(v_src, 'area_m2, net, altura_m)') = 0 then
     v_new := replace(v_src,
       'area_m2, net)',              -- lista de columnas del INSERT de areas
       'area_m2, net, altura_m)');
