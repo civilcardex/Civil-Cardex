@@ -966,8 +966,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
     // En AF/AC el símbolo del aparato no se dibuja: el glifo de accesorio implícito (codo 90°
     // sube junto al aparato, arriba) ya marca el extremo y la imagen del fixture solo ensucia
-    // el plano. En san se mantiene.
-    if (r.net === 'af' || r.net === 'ac') return;
+    // el plano. En gas tampoco (orig. usuario: al asignar un gasodoméstico no debe ponerse
+    // nada en el extremo) — el aparato vive en el campo/conteo, no como glifo.
+    if (r.net === 'af' || r.net === 'ac' || r.net === 'gas') return;
 
     [0, r.pts.length - 1].forEach((idx) => {
       const appType = idx === 0 ? r.aparatoInicio : r.aparatoFin;

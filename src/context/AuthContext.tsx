@@ -87,7 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatePassword: async (password: string) => {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
-        await supabase.auth.signOut();
+        await supabase.auth.signOut().catch(() => {
+          /* sesión puede quedar viva ante fallo de red; el cambio de contraseña ya ocurrió */
+        });
       },
     }),
     [user, loading],

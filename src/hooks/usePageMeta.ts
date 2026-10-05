@@ -55,7 +55,10 @@ export function usePageMeta(title: string, description?: string, noindex?: boole
           el.remove(); // el meta lo creó este mount: no debe sobrevivirlo
         else el.setAttribute('content', val);
       }
-      if (prevHref && link) link.setAttribute('href', prevHref);
+      if (link) {
+        if (prevHref) link.setAttribute('href', prevHref);
+        else link.remove(); // el canonical lo creó este mount: no debe sobrevivirlo
+      }
     };
   }, [title, description, noindex]);
 }

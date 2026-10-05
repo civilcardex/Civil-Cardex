@@ -83,7 +83,7 @@ export function useRci3DScene(
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
       // RENDIMIENTO (orig. usuario): la escena es estática — las sombras se pintan solo cuando
       // la carga/recolor marca needsUpdate, no en cada frame.
       renderer.shadowMap.autoUpdate = false;
