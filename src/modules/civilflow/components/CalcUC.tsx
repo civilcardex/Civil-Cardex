@@ -115,7 +115,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 64, textAlign: 'center' }}
+                    style={{ minWidth: 84, textAlign: 'center' }}
+                    title="Identificador del tramo con su nivel (ej. RAC1-P1 · S1 = sótano · C = cubierta)"
                   >
                     Tramo
                   </th>
@@ -123,15 +124,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 44, textAlign: 'center' }}
-                  >
-                    Nivel
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h"
-                    rowSpan={2}
                     style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
+                    title="Punto de inicio del tramo (nudo o bajante de origen)."
                   >
                     Inicio
                   </th>
@@ -140,6 +134,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     className="col-h"
                     rowSpan={2}
                     style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
+                    title="Punto donde termina el tramo (nudo o bajante de destino)."
                   >
                     Fin
                   </th>
@@ -148,6 +143,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     className={`col-h ${clsHeader}`}
                     colSpan={AP.length}
                     style={{ textAlign: 'center', padding: '4px' }}
+                    title={`Conteo de aparatos por tipo del tramo (unidades de consumo por aparato).`}
                   >
                     Aparatos
                   </th>
@@ -157,6 +153,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       className="col-h ok"
                       colSpan={2}
                       style={{ textAlign: 'center', padding: '4px' }}
+                      title="Parcial = Σ aparatos × UC del tramo; Total = acumulado con los tramos aguas arriba."
                     >
                       Unidades de consumo
                     </th>
@@ -166,6 +163,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       className="col-h ok"
                       rowSpan={2}
                       style={{ minWidth: 52, textAlign: 'center', padding: '4px' }}
+                      title="Suma de unidades de consumo del tramo (aparatos × UC)."
                     >
                       Parcial
                     </th>
@@ -176,6 +174,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       className="col-h"
                       rowSpan={2}
                       style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
+                      title="Longitud desarrollada del tramo (m)."
                     >
                       Longitud (m)
                     </th>
@@ -186,6 +185,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       className="col-h"
                       rowSpan={2}
                       style={{ minWidth: 52, textAlign: 'center', padding: '4px' }}
+                      title="Número de descargas simultáneas del tramo (Hunter)."
                     >
                       No de descarga
                       <br />
@@ -198,6 +198,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     <th
                       key={d.id}
                       className={`col-h ${clsHeader}`}
+                      title={`${d.nombre}: ${d[field]} UC por aparato.`}
                       style={{
                         minWidth: 70,
                         fontSize: 12,
@@ -227,7 +228,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 {tramos.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={showTotal ? 4 + AP.length + 2 + 2 : 4 + AP.length + 3}
+                      colSpan={showTotal ? 3 + AP.length + 2 + 2 : 3 + AP.length + 3}
                       style={{
                         padding: '24px 0',
                         textAlign: 'center',
@@ -247,13 +248,13 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     return (
                       <tr key={i}>
                         <td className="c">
-                          <span className="sigla" style={{ fontSize: 12 }}>
+                          <span
+                            className="sigla"
+                            style={{ fontSize: 12 }}
+                            title={`Tramo ${t.id} — nivel ${pisoCorto(t.piso)}`}
+                          >
                             {t.id}
-                          </span>
-                        </td>
-                        <td className="c">
-                          <span style={{ fontSize: 12, fontFamily: monof, color: txt2 }}>
-                            {pisoCorto(t.piso)}
+                            {t.piso != null ? `-${pisoCorto(t.piso)}` : ''}
                           </span>
                         </td>
                         <td
@@ -350,7 +351,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                   >
                     &sum;
                   </td>
-                  <td colSpan={3} style={{ borderTop: '2px solid var(--line)' }}></td>
+                  <td colSpan={2} style={{ borderTop: '2px solid var(--line)' }}></td>
                   {totales.map((d) => {
                     const subtotal = (d.cant || 0) * (d.uc || 0);
                     return (

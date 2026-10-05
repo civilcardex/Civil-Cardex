@@ -8,6 +8,7 @@ import { loadFromStorage } from '../services/storageService';
 import { useRainwater } from '../context/RainwaterContext';
 import { usePlans } from '../context/PlansContext';
 import { writeCanalDimsToDrawing } from '../utils/writeDiameterToDrawing';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import {
   chequeoCanalLluvia,
   chequeoEmbocaduraLluvia,
@@ -145,16 +146,13 @@ export default function ChequeoCanalesLluvias() {
     if (row.fromCanal && row.drawId != null && row.drawPlanId != null) {
       if (field === 'b' || field === 'h' || field === 'longitud' || field === 'pendiente') {
         if (field === 'pendiente' && (val <= 0 || val > 15)) {
-          window.dispatchEvent(
-            new CustomEvent('civilflow_diametro_validation', {
-              detail: {
-                title: 'Pendiente no permitida',
-                message:
-                  'La pendiente del canal debe ser mayor que 0% y hasta 15%. Se conserva el valor anterior.',
-              },
-            }),
-          );
-          return;
+          if (
+            avisarDiametroInvalido(
+              'La pendiente del canal debe ser mayor que 0% y hasta 15%. Se conserva el valor anterior.',
+              'Pendiente no permitida',
+            )
+          )
+            return;
         }
         const key =
           field === 'b'

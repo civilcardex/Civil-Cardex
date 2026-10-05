@@ -14,6 +14,7 @@ import {
 
 import { isAf, isAC1 } from '../utils/waterNetworkRows';
 import { fracAscii } from '../utils/formatUtils';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';
 import { useAcometidaParams, calcFila } from './waterNetworkDesign/acometidaCalc';
@@ -88,37 +89,28 @@ function WaterNetworkDesign({
       // ExtremeAccessoryEditor.tsx:110-117, que valida la dirección inversa). Sin esto la escritura
       // de la tabla de diseño tendría éxito en silencio y un accesorio más ancho terminaría dibujado
       // alrededor de un tubo más delgado — físicamente absurdo.
-      window.dispatchEvent(
-        new CustomEvent('civilflow_diametro_validation', {
-          detail: {
-            title: 'Diámetro no permitido',
-            message: `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
-          },
-        }),
-      );
-      return;
+      if (
+        avisarDiametroInvalido(
+          `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+        )
+      )
+        return;
     }
     if (!res.ok && (res as unknown as { reason?: string }).reason === 'parent-smaller') {
-      window.dispatchEvent(
-        new CustomEvent('civilflow_diametro_validation', {
-          detail: {
-            title: 'Diámetro no permitido',
-            message: `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
-          },
-        }),
-      );
-      return;
+      if (
+        avisarDiametroInvalido(
+          `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
+        )
+      )
+        return;
     }
     if (!res.ok && (res as unknown as { reason?: string }).reason === 'child-larger') {
-      window.dispatchEvent(
-        new CustomEvent('civilflow_diametro_validation', {
-          detail: {
-            title: 'Diámetro no permitido',
-            message: `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
-          },
-        }),
-      );
-      return;
+      if (
+        avisarDiametroInvalido(
+          `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
+        )
+      )
+        return;
     }
     updTramo(tramoId, 'diamDisPulg', pulg);
     setDiamIntMap((prev) => ({ ...prev, [tramoId]: opt.dInt }));

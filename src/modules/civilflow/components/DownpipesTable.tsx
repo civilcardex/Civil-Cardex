@@ -9,6 +9,7 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
@@ -1041,13 +1042,8 @@ const BajantesTable = memo(function BajantesTable_() {
                           const matched = DIAM_BAN.find((d) => d.pulg === val);
                           let nom = matched ? matched.nom : '';
                           if (val > 0 && maxSanConectDiam > 0 && val < maxSanConectDiam) {
-                            window.dispatchEvent(
-                              new CustomEvent('civilflow_diametro_validation', {
-                                detail: {
-                                  title: 'Diámetro no permitido',
-                                  message: `El diámetro del bajante no puede ser inferior al del ramal sanitario (${maxSanConectDiam}")`,
-                                },
-                              }),
+                            avisarDiametroInvalido(
+                              `El diámetro del bajante no puede ser inferior al del ramal sanitario (${maxSanConectDiam}")`,
                             );
                             nom = '';
                           }
@@ -1213,13 +1209,8 @@ const BajantesTable = memo(function BajantesTable_() {
                           const matched = DIAM_VENT.find((d) => d.pulg === val);
                           let nom = matched ? matched.nom : '';
                           if (val > 0 && ventRamalDiamPulg > 0 && val < ventRamalDiamPulg) {
-                            window.dispatchEvent(
-                              new CustomEvent('civilflow_diametro_validation', {
-                                detail: {
-                                  title: 'Diámetro no permitido',
-                                  message: `El diámetro de la ventilación no puede ser inferior al del ramal de ventilación (${ventRamalDiamPulg}")`,
-                                },
-                              }),
+                            avisarDiametroInvalido(
+                              `El diámetro de la ventilación no puede ser inferior al del ramal de ventilación (${ventRamalDiamPulg}")`,
                             );
                             nom = '';
                           }
@@ -1262,15 +1253,12 @@ const BajantesTable = memo(function BajantesTable_() {
                           } else if (t.ventRamalKey) {
                             const res = writeDiametroToDrawing(t.ventRamalKey, 'vent', nom, plans);
                             if (!res.ok && res.reason === 'accessory-larger') {
-                              window.dispatchEvent(
-                                new CustomEvent('civilflow_diametro_validation', {
-                                  detail: {
-                                    title: 'Diámetro no permitido',
-                                    message: `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
-                                  },
-                                }),
-                              );
-                              return;
+                              if (
+                                avisarDiametroInvalido(
+                                  `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+                                )
+                              )
+                                return;
                             }
                           }
                           writeBajantePropToDrawing(

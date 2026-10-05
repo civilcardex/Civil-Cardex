@@ -1,11 +1,13 @@
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import ChipList from './shared/ChipList';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_OPTIONS, DIAM_OPTIONS_LL } from '../constants';
 import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { useRainwater } from '../context/RainwaterContext';
 import {
@@ -38,6 +40,7 @@ const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '2px 3px' } as cons
 
 export default function DisenoLluvias() {
   const [edit, setEdit] = useState(false);
+  const tablaRef = useStickyThead2Offset();
   // Borrador del input de pendiente por tramo (commit en blur — mismo patrón que SanitaryDesign).
   const [editingPend, setEditingPend] = useState<Record<string, string>>({});
   const { tramosLl, updTramoLL } = useTramos();
@@ -64,15 +67,12 @@ export default function DisenoLluvias() {
         // había aquí contradecía ese comportamiento con una alerta.
         const res = writeDiametroToDrawing(tramoId, 'll', opt.label, plans);
         if (!res.ok && res.reason === 'accessory-larger') {
-          window.dispatchEvent(
-            new CustomEvent('civilflow_diametro_validation', {
-              detail: {
-                title: 'Diámetro no permitido',
-                message: `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
-              },
-            }),
-          );
-          return;
+          if (
+            avisarDiametroInvalido(
+              `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+            )
+          )
+            return;
         }
         updTramoLL(tramoKey, 'diamDisPulg', newPulg);
       }
@@ -157,7 +157,7 @@ export default function DisenoLluvias() {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
-            <table className="tbl" style={{ fontSize: 11.5 }}>
+            <table ref={tablaRef} className="tbl" style={{ fontSize: 11.5 }}>
               <thead>
                 <tr>
                   <th
@@ -234,7 +234,12 @@ export default function DisenoLluvias() {
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
-                    style={{ textAlign: 'center', fontSize: 10, padding: '2px 3px' }}
+                    style={{
+                      textAlign: 'center',
+                      fontSize: 10,
+                      padding: '2px 3px',
+                      borderBottom: 'none',
+                    }}
                   >
                     Diámetro
                   </th>
@@ -354,7 +359,12 @@ export default function DisenoLluvias() {
                     scope="col"
                     className="col-h ven"
                     colSpan={2}
-                    style={{ textAlign: 'center', fontSize: 10, padding: '2px 3px' }}
+                    style={{
+                      textAlign: 'center',
+                      fontSize: 10,
+                      padding: '2px 3px',
+                      borderBottom: 'none',
+                    }}
                   >
                     Fuerza Tractiva
                   </th>
@@ -552,15 +562,13 @@ export default function DisenoLluvias() {
                                 // Rango físico (manning/PVC): ≤0 drena mal, >15% es
                                 // basura de tipeo — se rechaza y restaura el valor previo.
                                 if (v <= 0 || v > 15) {
-                                  window.dispatchEvent(
-                                    new CustomEvent('civilflow_diametro_validation', {
-                                      detail: {
-                                        title: 'Pendiente fuera de rango',
-                                        message: `La pendiente debe ser mayor que 0 % y hasta 15 % (${v} % no es válido).`,
-                                      },
-                                    }),
-                                  );
-                                  return;
+                                  if (
+                                    avisarDiametroInvalido(
+                                      `La pendiente debe ser mayor que 0 % y hasta 15 % (${v} % no es válido).`,
+                                      'Pendiente fuera de rango',
+                                    )
+                                  )
+                                    return;
                                 }
                                 writePendienteToDrawing(tKey, 'll', v, plans);
                                 updTramoLL(tKey, 'sPercent', v);

@@ -7,6 +7,8 @@ import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { usePlans } from '../context/PlansContext';
 import {
   writeDiametroToDrawing,
+  writeMaterialToDrawing,
+  clearDiametroToDrawing,
   writeContadorDiamToDrawing,
   writeBajantePropToDrawing,
 } from '../utils/writeDiameterToDrawing';
@@ -24,6 +26,7 @@ import {
 import { renouardByType } from '../utils/gasUtils';
 import { compareTramosPisoDesc } from '../utils/componentHelpers';
 import { GAS_DATOS_DEFAULT } from '../utils/gasRows';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
 type GasAccMap = Record<string, Record<string, number>>;
 interface GasRamalRaw extends RawElement {
@@ -71,13 +74,15 @@ const ACC_KEYS = [
   'te_ramal',
   'valvula_bola',
 ];
-// Notas descriptivas por columna del diseño de gas (tooltip en el encabezado).
+// Notas descriptivas por columna del diseño de gas (tooltip en el encabezado). Material y
+// diámetro son columnas separadas con desplegables propios (orig. usuario).
 const GasDesign_TIPS = [
   'Tramo de la red de gas según el dibujo.',
   'Punto de inicio del tramo.',
   'Punto donde termina el tramo.',
-  'Material y diámetro nominal del tramo.',
-  'Diámetro interior del tubo (mm).',
+  'Material de la tubería: define el diámetro interior y el coeficiente K. Se escribe al dibujo.',
+  'Diámetro nominal del tramo según el material elegido (validado con accesorios y tramos conectados).',
+  'Diámetro interior del tubo (mm), según material y diámetro.',
   'Coeficiente K del material para el cálculo.',
   'Longitud desarrollada del tramo (m).',
 ];
@@ -86,17 +91,26 @@ const GasDesign_COLS = [
   'Tramo',
   'Inicio',
   'Fin',
-  'Material y Diámetro',
+  'Material',
+  'Diámetro',
   'Diámetro interno (mm)',
   'Coeficiente K',
   'Longitud (m)',
 ];
-const GasDesign_colW = ['10%', '9%', '9%', '18%', '10%', '8%', '12%'];
+const GasDesign_colW = ['9%', '8%', '8%', '15%', '11%', '10%', '8%', '12%'];
 
 function lookupDn(mat: string, dn: string) {
   const normDn = normalizeDnLabel(dn);
   const match = ALL_DN.find((x) => x.mat === mat && (x.dn === dn || x.dn === normDn));
   return match || null;
+}
+
+/** Los writes al trazo esperan la clave canónica "id-planId" (parten por '-', igual que
+ *  writeDiametroToDrawing); la tabla usa "planId:id" (tramoKey) como clave de estado.
+ *  Sin conversión, writeMaterial/writeDiametro/clear no hallan el ramal: no-op silencioso. */
+function writeKeyDe(tramoId: string): string {
+  const i = tramoId.indexOf(':');
+  return i > 0 ? `${tramoId.slice(i + 1)}-${tramoId.slice(0, i)}` : tramoId;
 }
 
 function GasDesign({ pagina = 1 }: { pagina?: number }) {
@@ -284,45 +298,49 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   const handleDiamChange = (tramoId: string, mat: string, dn: string) => {
     const opt = lookupDn(mat, dn);
     if (opt) {
-      const res = writeDiametroToDrawing(tramoId, 'gas', dn, plans);
+      const res = writeDiametroToDrawing(writeKeyDe(tramoId), 'gas', dn, plans);
       if (!res.ok && res.reason === 'accessory-larger') {
-        window.dispatchEvent(
-          new CustomEvent('civilflow_diametro_validation', {
-            detail: {
-              title: 'Diámetro no permitido',
-              message: `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
-            },
-          }),
-        );
-        return;
+        if (
+          avisarDiametroInvalido(
+            `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+          )
+        )
+          return;
       }
       if (!res.ok && (res as unknown as { reason?: string }).reason === 'parent-smaller') {
-        window.dispatchEvent(
-          new CustomEvent('civilflow_diametro_validation', {
-            detail: {
-              title: 'Diámetro no permitido',
-              message: `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
-            },
-          }),
-        );
-        return;
+        if (
+          avisarDiametroInvalido(
+            `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
+          )
+        )
+          return;
       }
       if (!res.ok && (res as unknown as { reason?: string }).reason === 'child-larger') {
-        window.dispatchEvent(
-          new CustomEvent('civilflow_diametro_validation', {
-            detail: {
-              title: 'Diámetro no permitido',
-              message: `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
-            },
-          }),
-        );
-        return;
+        if (
+          avisarDiametroInvalido(
+            `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
+          )
+        )
+          return;
       }
     }
     setDiamMat((prev) => ({ ...prev, [tramoId]: mat }));
     setDiamDn((prev) => ({ ...prev, [tramoId]: dn }));
     setDiamInt((prev) => ({ ...prev, [tramoId]: opt ? opt.d : 0 }));
     setDiamK((prev) => ({ ...prev, [tramoId]: opt ? opt.K : 0 }));
+  };
+
+  /** Cambio SOLO de material: persiste y, si el diámetro actual no existe en el nuevo
+   *  material, limpia el trazo (clearDiametroToDrawing) y el estado — el usuario
+   *  re-selecciona en el desplegable de diámetro. */
+  const handleMatChange = (tramoId: string, mat: string) => {
+    writeMaterialToDrawing(writeKeyDe(tramoId), 'gas', mat, plans);
+    setDiamMat((prev) => ({ ...prev, [tramoId]: mat }));
+    const dn = diamDn[tramoId] || '';
+    if (dn && !lookupDn(mat, dn)) {
+      clearDiametroToDrawing(writeKeyDe(tramoId), 'gas', plans);
+      handleDiamChange(tramoId, mat, '');
+    }
   };
 
   const getAcc = (tramoId: string) => (gasAcc[tramoId] || {}) as Record<string, number>;
@@ -547,31 +565,43 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                         {t.fin || '—'}
                       </td>
                       <td className="c" style={{ padding: '0 1px' }}>
+                        {/* Material y diámetro separados: cada uno con su desplegable. */}
+                        <select
+                          aria-label="Material del tramo"
+                          value={mat}
+                          disabled={!edit}
+                          onChange={(e) => handleMatChange(tramoKey(t), e.target.value)}
+                          style={{ ...SD, width: '100%', fontSize: 10.5 }}
+                        >
+                          <option value="">—</option>
+                          {[...new Set(ALL_DN.map((r) => r.mat))]
+                            .sort((a, b) => a.localeCompare(b))
+                            .map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
+                        </select>
+                      </td>
+                      <td className="c" style={{ padding: '0 1px' }}>
                         <select
                           aria-label="Diámetro diseño"
-                          value={mat ? `${mat}|${dn}` : ''}
-                          disabled={!edit}
+                          value={dn}
+                          disabled={!edit || !mat}
                           onChange={(e) => {
-                            const val = e.target.value;
-                            if (!val) {
-                              handleDiamChange(tramoKey(t), '', '');
+                            const v = e.target.value;
+                            if (!v) {
+                              handleDiamChange(tramoKey(t), mat, '');
                               return;
                             }
-                            const sep = val.lastIndexOf('|');
-                            handleDiamChange(
-                              tramoKey(t),
-                              val.substring(0, sep),
-                              val.substring(sep + 1),
-                            );
+                            handleDiamChange(tramoKey(t), mat, v);
                           }}
                           style={{ ...SD, width: '100%', fontSize: 10.5 }}
                         >
                           <option value="">—</option>
-                          {ALL_DN.sort(
-                            (a, b) => a.mat.localeCompare(b.mat) || a.dn.localeCompare(b.dn),
-                          ).map((r) => (
-                            <option key={`${r.mat}|${r.dn}`} value={`${r.mat}|${r.dn}`}>
-                              {r.mat} D= {r.dn}
+                          {ALL_DN.filter((r) => r.mat === mat).map((r) => (
+                            <option key={r.dn} value={r.dn}>
+                              {r.dn}
                             </option>
                           ))}
                         </select>

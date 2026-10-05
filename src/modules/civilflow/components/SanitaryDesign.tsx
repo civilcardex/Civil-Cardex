@@ -1,4 +1,5 @@
-import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -20,6 +21,7 @@ import {
 } from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
 const SanitaryDesign_S1: React.CSSProperties = {
   fontFamily: 'var(--mono)',
@@ -59,25 +61,6 @@ const TH_GRUPO = {
   padding: '1px 2px',
   borderBottom: 'none',
 } as const;
-
-/** Mide el alto real de la fila 1 del thead y lo publica como --thead2-top en la tabla:
- *  el sticky de la fila 2 (tables.css, default 27px) queda EXACTO — con paddings de 1px la
- *  fila 1 mide ~16px y el 27px hardcodeado abría un hueco banda entre grupo y subcolumnas. */
-function useStickyThead2Offset() {
-  const ref = useRef<HTMLTableElement | null>(null);
-  useEffect(() => {
-    const table = ref.current;
-    const tr1 = table?.querySelector('thead tr:first-child');
-    if (!table || !tr1) return;
-    const apply = () =>
-      table.style.setProperty('--thead2-top', `${tr1.getBoundingClientRect().height}px`);
-    apply();
-    const ro = new ResizeObserver(apply);
-    ro.observe(tr1);
-    return () => ro.disconnect();
-  }, []);
-  return ref;
-}
 
 export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
@@ -124,15 +107,7 @@ export default function DisenosSanitarios() {
               localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '{}',
             );
             if ((counts[key]?.['san'] || 0) > 0) {
-              window.dispatchEvent(
-                new CustomEvent('civilflow_diametro_validation', {
-                  detail: {
-                    title: 'Diámetro no permitido',
-                    message: SAN_INODORO_MIN_MSG,
-                  },
-                }),
-              );
-              return;
+              if (avisarDiametroInvalido(SAN_INODORO_MIN_MSG)) return;
             }
           } catch (_e) {
             void _e;
@@ -155,30 +130,19 @@ export default function DisenosSanitarios() {
           const childKeys = keys.flatMap((k) => fullChildrenMap[k] || []);
           const feeder = sanMaxFeederDiam(childKeys, findTramo);
           if (feeder && newPulg < feeder.pulg) {
-            window.dispatchEvent(
-              new CustomEvent('civilflow_diametro_validation', {
-                detail: {
-                  title: 'Diámetro no permitido',
-                  message: sanFeederMinMsg(feeder.label, feeder.pulg),
-                },
-              }),
-            );
-            return;
+            if (avisarDiametroInvalido(sanFeederMinMsg(feeder.label, feeder.pulg))) return;
           }
           // Subida libre: el alimentador puede superar al receptor — el motor propaga el
           // mayor aguas abajo automáticamente (sin alerta, orig. usuario).
         }
         const res = writeDiametroToDrawing(tramoId, 'san', opt.label, plans);
         if (!res.ok && res.reason === 'accessory-larger') {
-          window.dispatchEvent(
-            new CustomEvent('civilflow_diametro_validation', {
-              detail: {
-                title: 'Diámetro no permitido',
-                message: `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
-              },
-            }),
-          );
-          return;
+          if (
+            avisarDiametroInvalido(
+              `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+            )
+          )
+            return;
         }
         updTramoSan(tramoId, 'diamDisPulg', newPulg);
 

@@ -13,6 +13,7 @@ import { usePlans } from '../context/PlansContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater';
+import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus } from '../utils/componentHelpers';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
@@ -693,15 +694,12 @@ export default function ChequeoBajantesLluvias() {
                               tramosLl,
                             );
                             if (maxRamal > 0 && opt.pulg < maxRamal) {
-                              window.dispatchEvent(
-                                new CustomEvent('civilflow_diametro_validation', {
-                                  detail: {
-                                    title: 'Diámetro no permitido',
-                                    message: `El diámetro del bajante no puede ser menor al de los ramales conectados (máximo ${maxRamal}"). Sube primero el diámetro de los ramales o selecciona un bajante mayor.`,
-                                  },
-                                }),
-                              );
-                              return;
+                              if (
+                                avisarDiametroInvalido(
+                                  `El diámetro del bajante no puede ser menor al de los ramales conectados (máximo ${maxRamal}"). Sube primero el diámetro de los ramales o selecciona un bajante mayor.`,
+                                )
+                              )
+                                return;
                             }
                           }
                           // Bidireccional (orig. usuario): escribe el dNominal del bajante en el

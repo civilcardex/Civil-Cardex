@@ -102,6 +102,7 @@ function CalculoUD() {
                     className="col-h"
                     rowSpan={2}
                     style={{ minWidth: 90, textAlign: 'center' }}
+                    title="Identificador del tramo con su nivel (ej. RAC1-P1 · S1 = sótano · C = cubierta)"
                   >
                     Ramal/Bajante
                   </th>
@@ -109,15 +110,8 @@ function CalculoUD() {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 52, textAlign: 'center' }}
-                  >
-                    Nivel
-                  </th>
-                  <th
-                    scope="col"
-                    className="col-h"
-                    rowSpan={2}
                     style={{ minWidth: 60, textAlign: 'center' }}
+                    title="Punto de inicio del tramo (nudo o bajante de origen)."
                   >
                     Inicio
                   </th>
@@ -126,6 +120,7 @@ function CalculoUD() {
                     className="col-h"
                     rowSpan={2}
                     style={{ minWidth: 60, textAlign: 'center' }}
+                    title="Punto donde termina el tramo (nudo o bajante de destino)."
                   >
                     Fin
                   </th>
@@ -134,6 +129,7 @@ function CalculoUD() {
                     className="col-h san"
                     colSpan={mergedBase.length}
                     style={{ textAlign: 'center' }}
+                    title="Conteo de aparatos por tipo del tramo y sus tributarios (UD por aparato debajo)."
                   >
                     Aparatos
                   </th>
@@ -142,6 +138,7 @@ function CalculoUD() {
                     className="col-h ok"
                     rowSpan={2}
                     style={{ minWidth: 90, textAlign: 'center' }}
+                    title="Suma de unidades de descarga del tramo: aparatos × UD, acumulando sus tributarios."
                   >
                     Unidades de descarga totales
                   </th>
@@ -151,6 +148,7 @@ function CalculoUD() {
                     <th
                       key={d.id}
                       className="col-h san"
+                      title={`${d.nombre}: ${d.ud} UD por aparato (NTC 1500).`}
                       style={{ minWidth: 52, fontSize: 12, textAlign: 'center' }}
                     >
                       {d.nombre}
@@ -164,7 +162,7 @@ function CalculoUD() {
                 {displayTramos.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4 + mergedBase.length + 1}
+                      colSpan={3 + mergedBase.length + 1}
                       style={{
                         padding: '24px 0',
                         textAlign: 'center',
@@ -206,19 +204,13 @@ function CalculoUD() {
                     return (
                       <tr key={tKey}>
                         <td className="c">
-                          <span className="sigla" style={{ fontSize: 12, fontWeight: 600 }}>
-                            {t.id}
-                          </span>
-                        </td>
-                        <td className="c">
                           <span
-                            style={{
-                              fontSize: 12,
-                              fontFamily: 'var(--mono)',
-                              color: 'var(--txt2)',
-                            }}
+                            className="sigla"
+                            style={{ fontSize: 12, fontWeight: 600 }}
+                            title={`Tramo ${t.id} — nivel ${pisoCorto(t.piso)}`}
                           >
-                            {pisoCorto(t.piso)}
+                            {t.id}
+                            {t.piso != null ? `-${pisoCorto(t.piso)}` : ''}
                           </span>
                         </td>
                         <td className="c">
@@ -282,7 +274,6 @@ function CalculoUD() {
                   >
                     ∑
                   </td>
-                  <td style={{ borderTop: '2px solid var(--line)' }}></td>
                   <td style={{ borderTop: '2px solid var(--line)' }}></td>
                   <td style={{ borderTop: '2px solid var(--line)' }}></td>
                   {totales.map((d) => {

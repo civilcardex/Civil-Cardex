@@ -775,3 +775,74 @@ export function writeBajantePropToDrawing(
     }
   }
 }
+
+/** Escribe el MATERIAL de un ramal en los trazos (caché + BD). Sin validaciones ni
+ *  propagaciones: el material no afecta a otros tramos; K y diámetro interior se derivan
+ *  en la tabla vía lookupDn. Los diámetros de subida/bajada de material los maneja la tabla. */
+export function writeMaterialToDrawing(
+  ramalKey: string,
+  net: string,
+  newMat: string,
+  plans: SyncPlanInput[],
+): void {
+  if (!ramalKey || !net || !plans) return;
+  const parts = ramalKey.split('-');
+  const ramalId = parts[0];
+  const planId = parts[1];
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    if (planId && String(plan.id) !== String(planId)) continue;
+    const key = TRAZOS_PREFIX + String(plan.id);
+    const data = loadFromStorage<LocalDrawingData | null>(key, null);
+    if (!data) continue;
+    let changed = false;
+    for (const r of data.ramales || []) {
+      if (r.id !== ramalId || r.net !== net) continue;
+      if ((r.material || '') !== newMat) {
+        r.material = newMat;
+        changed = true;
+      }
+      break;
+    }
+    if (changed) {
+      data.ts = Date.now();
+      saveToStorage(key, data);
+      saveTrazosToDB(String(plan.id), data);
+    }
+  }
+}
+
+/** Limpia el diámetro del ramal en los trazos (caché + BD). Espejo de
+ *  writeMaterialToDrawing: se usa cuando el dn actual no existe en el material
+ *  nuevo y la tabla espera re-selección — el trazo no debe quedar con el dn viejo. */
+export function clearDiametroToDrawing(
+  ramalKey: string,
+  net: string,
+  plans: SyncPlanInput[],
+): void {
+  if (!ramalKey || !net || !plans) return;
+  const parts = ramalKey.split('-');
+  const ramalId = parts[0];
+  const planId = parts[1];
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    if (planId && String(plan.id) !== String(planId)) continue;
+    const key = TRAZOS_PREFIX + String(plan.id);
+    const data = loadFromStorage<LocalDrawingData | null>(key, null);
+    if (!data) continue;
+    let changed = false;
+    for (const r of data.ramales || []) {
+      if (r.id !== ramalId || r.net !== net) continue;
+      if (r.diametro) {
+        r.diametro = '';
+        changed = true;
+      }
+      break;
+    }
+    if (changed) {
+      data.ts = Date.now();
+      saveToStorage(key, data);
+      saveTrazosToDB(String(plan.id), data);
+    }
+  }
+}
