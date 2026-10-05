@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AyudaContexto } from './helpContext';
 import { GUIA, iconoDeGrupo, type GuiaGrupo } from './helpGuide';
+import { tutorialDe, type Tutorial } from './helpTutoriales';
 
 // Panel de ayuda IN-PLACE (orig. usuario: el botón AYUDA de la navbar NO redirige a otra
 // página): modal con portal — mismo patrón que ModalProtocolo (backdrop, Escape, foco
@@ -115,6 +116,54 @@ function FilaItem({ it }: { it: { nombre: string; desc: string } }): React.JSX.E
   );
 }
 
+/** Reproductor del tutorial de la sección (mapa TUTORIALES en helpTutoriales.ts).
+ *  Embebido YouTube-nocookie/Vimeo — frame-src ya los permite (index.html + vercel.json). */
+function VideoTutorial({ t }: { t: Tutorial }) {
+  // Saneo antes de interpolar en la URL del iframe: solo [A-Za-z0-9_-] de 6-20 caracteres.
+  const idSeguro = (id?: string) => (id && /^[\w-]{6,20}$/.test(id) ? id : null);
+  const yt = idSeguro(t.yt);
+  const vimeo = idSeguro(t.vimeo);
+  const src = yt
+    ? `https://www.youtube-nocookie.com/embed/${yt}`
+    : vimeo
+      ? `https://player.vimeo.com/video/${vimeo}`
+      : null;
+  if (!src) return null;
+  return (
+    <div style={{ marginTop: 10, padding: '10px 14px 14px', borderTop: '1px solid var(--line)' }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+          color: 'var(--txt3)',
+          fontFamily: 'Geist, monospace',
+          marginBottom: 8,
+        }}
+      >
+        Video tutorial{t.titulo ? ` · ${t.titulo}` : ''}
+      </div>
+      {/* eslint-disable-next-line jsx-a11y/iframe-has-title -- title dinámico abajo */}
+      <iframe
+        src={src}
+        title={t.titulo || 'Video tutorial de la sección'}
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        style={{
+          width: '100%',
+          aspectRatio: '16 / 9',
+          border: '1px solid var(--line)',
+          borderRadius: 6,
+          background: 'var(--bg2)',
+          display: 'block',
+        }}
+      />
+    </div>
+  );
+}
+
 function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -162,6 +211,7 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
   const guia: GuiaGrupo[] = esIso
     ? [1, 2, 3, 4, 5].flatMap((sub) => GUIA[`cf:iso:${sub}`] || [])
     : GUIA[ctx.key] || [];
+  const tutorial = tutorialDe(ctx.key);
 
   return (
     // Backdrop con cierre por click-fuera: patrón estándar de modal (cierre por Escape ya
@@ -378,6 +428,7 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
               Aún no hay contenido de ayuda para esta pestaña.
             </div>
           )}
+          {tutorial && <VideoTutorial t={tutorial} />}
         </div>
 
         <div

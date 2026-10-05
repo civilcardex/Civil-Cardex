@@ -99,6 +99,152 @@ export function iconoDeGrupo(titulo: string): string {
   return 'help';
 }
 
+/** Criterios de diseño NTC 3631 (3ª actualización) — ventilación de recintos con gas.
+ *  Compartidos por las guías de la red Gas y de la subred Rejillas (cf:redes:gas / cf:redes:rejillas). */
+const CRITERIOS_3631: GuiaGrupo[] = [
+  {
+    titulo: 'Tipos de artefacto (A/B/C)',
+    items: [
+      {
+        nombre: 'Tipo A',
+        desc: 'Tiraje natural: toma el aire de combustión del propio recinto y evacúa por conducto. Sí computa al requerimiento de ventilación.',
+      },
+      {
+        nombre: 'Tipo B',
+        desc: 'Tiraje natural con toma de aire del exterior por conducto de dilución; computa al requerimiento salvo que la norma del fabricante indique lo contrario.',
+      },
+      {
+        nombre: 'Tipo C',
+        desc: 'Sellados (balanceados): toman y descargan al exterior por concentrico. NO computan al volumen requerido (num. 4.1.1).',
+      },
+    ],
+  },
+  {
+    titulo: 'Clasificación del recinto',
+    items: [
+      {
+        nombre: 'Volumen requerido (Vreq)',
+        desc: 'Vreq = 3,4 m³ por kW instalado, sin contar artefactos Tipo C (num. 4.1.1). V del recinto = área en planta × altura libre.',
+      },
+      {
+        nombre: 'Con volumen suficiente',
+        desc: 'V ≥ Vreq: el recinto aporta el aire de combustión por sí mismo; la ventilación puede resolverse al interior o al exterior.',
+      },
+      {
+        nombre: 'Volumen insuficiente / confinado',
+        desc: 'V < Vreq: el déficit debe resolverse con aberturas al exterior (directa, vertical u horizontal) o comunicación con un espacio suficiente.',
+      },
+    ],
+  },
+  {
+    titulo: 'Mono espacio (Anexo B)',
+    items: [
+      {
+        nombre: 'Definición',
+        desc: 'Un solo ambiente sin divisiones rígidas: los separadores son muebles o divisiones livianas y el aire circula libremente.',
+      },
+      {
+        nombre: 'Potencia máxima',
+        desc: 'Pmax = área × altura / 3,4 (kW). Si la potencia instalada (sin Tipo C) ≤ Pmax, el mono espacio cumple sin ventilación adicional.',
+      },
+    ],
+  },
+  {
+    titulo: 'Soluciones de ventilación',
+    items: [
+      {
+        nombre: 'Método 1 — aberturas al exterior',
+        desc: 'Área libre por coeficiente cm²/kW según el artefacto (6/11/22/44) aplicado a la potencia; mínimo 645 cm² para interiores del mismo piso.',
+      },
+      {
+        nombre: 'Método 2 — conductos a neutro',
+        desc: 'Área = mayor entre 11 cm²/kW y la suma de los conectores de evacuación (π·D²/4). PROHIBIDO para GLP.',
+      },
+      {
+        nombre: 'Combinación (num. 4.3)',
+        desc: 'Parte al interior y parte al exterior: el área exterior se reduce por el factor 1 − Vdisp/Vreq del espacio comunicado.',
+      },
+      {
+        nombre: 'Estanco',
+        desc: 'Recinto con solo artefactos Tipo C: no requiere aberturas de ventilación para combustión.',
+      },
+    ],
+  },
+  {
+    titulo: 'Ubicación de las aberturas',
+    items: [
+      {
+        nombre: 'Abertura superior',
+        desc: 'A ≥ 1,80 m del piso terminado o a ≤ 0,30 m del techo (la que aplique al método).',
+      },
+      {
+        nombre: 'Abertura inferior',
+        desc: 'A ≤ 0,30 m del piso terminado; junto al artefacto más alto cuando sea posible.',
+      },
+      {
+        nombre: 'Dimensiones mínimas',
+        desc: 'Lado menor ≥ 8 cm en toda abertura; rejillas con malla de abertura ≥ 6,3 mm que no se obstruyan.',
+      },
+      {
+        nombre: 'Comunicación interior',
+        desc: 'Entre recinto y espacio comunicado la abertura debe ser permanente y de área libre suficiente (sin puertas que la cierren).',
+      },
+    ],
+  },
+  {
+    titulo: 'Tipo de gas del proyecto',
+    items: [
+      {
+        nombre: 'Natural',
+        desc: 'Más liviano que el aire: admite los Métodos 1 y 2 y ventilación por conductos a neutro.',
+      },
+      {
+        nombre: 'GLP',
+        desc: 'Más denso que el aire: SOLO Método 1 (aberturas bajas al exterior); nunca conductos a neutro. Sin artefactos en sótanos (num. 3.2, 4.2.1).',
+      },
+    ],
+  },
+  {
+    titulo: 'Rejillas del catálogo',
+    items: [
+      {
+        nombre: 'Área efectiva',
+        desc: 'Cada referencia comercial declara su área libre efectiva (lamas ~23–46% del hueco; colmenas hasta ~75%). La sugerencia elige la ref. cuyo área cubra la requerida.',
+      },
+      {
+        nombre: 'Selección',
+        desc: 'La tabla sugiere superior/única e inferior por separado; puedes cambiar de fabricante en Catálogo Maestro y la sugerencia se filtra a esa marca.',
+      },
+    ],
+  },
+  {
+    titulo: 'Restricciones',
+    items: [
+      {
+        nombre: 'Sótanos y servobodegas',
+        desc: 'Sin ventilación al exterior no admiten artefactos a GLP (num. 3.2, 4.2.1 d); la tabla lo marca como alerta crítica.',
+      },
+      {
+        nombre: 'Recintos adjuntos',
+        desc: 'El volumen/potencia del espacio adjunto solo computa si la comunicación es por abertura interior permanente (num. 4.2.2: separaciones 2,5 cm lados/atrás y 16 cm al frente para Método 2).',
+      },
+    ],
+  },
+  {
+    titulo: 'Cómo llenar "Solución"',
+    items: [
+      {
+        nombre: 'Desplegable de solución',
+        desc: 'Elige la estrategia REAL del proyecto: exterior directa / vertical / horizontal, interior, combinación o estanco. La tabla verifica con esa solución.',
+      },
+      {
+        nombre: 'Resultado',
+        desc: 'La columna "Solución aplicada" muestra lo que el cálculo resolvió con tu elección; las alertas avisan si no cumple la NTC.',
+      },
+    ],
+  },
+];
+
 export const GUIA: GUIA_TYPE = {
   // ─────────────────────────── CIVIL FLOW ───────────────────────────
   'cf:info': [
@@ -564,6 +710,7 @@ export const GUIA: GUIA_TYPE = {
         },
       ],
     },
+    // ── Guía POR RED (la navbar recibe cf:redes:<red> según la red activa) ──────────
     {
       titulo: 'Equipos',
       items: [
@@ -574,6 +721,189 @@ export const GUIA: GUIA_TYPE = {
         {
           nombre: 'Equipo de presión',
           desc: 'Datos de entrada, cálculo hidráulico y potencia, diámetros y cisterna del equipo de presión constante.',
+        },
+      ],
+    },
+  ],
+
+  // Criterios de diseño NTC 3631 (3ª actualización) — compartidos por las guías de gas y rejillas.
+  'cf:redes:san': [
+    {
+      titulo: 'Sanitaria',
+      items: [
+        {
+          nombre: 'Cálculo de unidades de descarga',
+          desc: 'Conteo de aparatos por piso y UD acumuladas por bajante (tabla NTC 1500).',
+        },
+        {
+          nombre: 'Diseño sanitario',
+          desc: 'Tramos con UD propia/de otros/acumulada, caudal, diámetro calculado vs propuesto (editable), tirante, Froude, velocidad y fuerza tractiva ≥ 0,15.',
+        },
+        {
+          nombre: 'Bajantes y ventilación',
+          desc: 'Por bajante: pisos, UD, fracción de llenado, capacidad % y velocidad terminal; bloque de ventilación con longitudes editables.',
+        },
+        {
+          nombre: 'Resumen accesorios',
+          desc: 'Totales de codos, tees y demás accesorios agrupados por diámetro para presupuestar.',
+        },
+      ],
+    },
+  ],
+
+  'cf:redes:ll': [
+    {
+      titulo: 'Aguas lluvias',
+      items: [
+        {
+          nombre: 'Diseño lluvias',
+          desc: 'Tramos con caudal acumulado por método racional, Manning y verificación de capacidad y Froude.',
+        },
+        {
+          nombre: 'Chequeo bajantes',
+          desc: 'Q de diseño vs capacidad Wyly-Eaton (razón de llenado y Manning del material), en % — ver Normatividad.',
+        },
+        {
+          nombre: 'Chequeo canales',
+          desc: 'Capacidad del canal de cubierta (vertedero + canal rectangular) con área, pendiente y base/altura editables.',
+        },
+      ],
+    },
+  ],
+
+  'cf:redes:af': [
+    {
+      titulo: 'Agua fría',
+      items: [
+        {
+          nombre: 'Cálculo de unidades de consumo',
+          desc: 'UC por aparato y piso; base del caudal de diseño por tramo (curva K).',
+        },
+        {
+          nombre: 'Diseño de red (tabla grande)',
+          desc: 'UC propia/otros/caudal, K, diámetro estimado vs propuesto (editable), velocidad y pérdidas por fricción y presión. Los chips "Otros Ramales" saltan a los tramos conectados.',
+        },
+        {
+          nombre: 'Acometida',
+          desc: 'Presión y diámetro de acometida + contador, con la presión garantizada o el tanque definidos en Información general.',
+        },
+        {
+          nombre: 'Resumen accesorios',
+          desc: 'Codos, tees y válvulas de la red de agua fría por diámetro.',
+        },
+      ],
+    },
+  ],
+
+  'cf:redes:ac': [
+    {
+      titulo: 'Agua caliente',
+      items: [
+        {
+          nombre: 'Cálculo de unidades de consumo',
+          desc: 'UC por aparato y piso para el caudal de diseño de la red de agua caliente.',
+        },
+        {
+          nombre: 'Diseño de red',
+          desc: 'Tabla de tramos con diámetro editable, velocidades y pérdidas; hereda la presión del calentador seleccionado.',
+        },
+        {
+          nombre: 'Selección calentador',
+          desc: 'Propone el calentador según el consumo de la red y hereda su presión.',
+        },
+        {
+          nombre: 'Resumen accesorios',
+          desc: 'Codos, tees y válvulas de la red de agua caliente por diámetro.',
+        },
+      ],
+    },
+  ],
+
+  'cf:redes:gas': [
+    {
+      titulo: 'Gas',
+      items: [
+        {
+          nombre: 'Datos generales',
+          desc: 'Altitud, presión atmosférica, temperatura, presión mínima del operador y densidad relativa de la ciudad de diseño (Editar para modificar).',
+        },
+        {
+          nombre: 'Cálculo de unidades de consumo',
+          desc: 'Unidades de consumo por aparato para el caudal de diseño de la red de gas.',
+        },
+        {
+          nombre: 'Diseño de red + Chequeo',
+          desc: 'Tabla de tramos con material y diámetro por Renouard (NTC 3728), diámetro interno, K y longitud; incluye el chequeo de la red y alimenta la memoria.',
+        },
+        {
+          nombre: 'Rejillas de ventilación',
+          desc: 'Página de la subred Rejillas: tipologías por sector y alzado de muro (ver los criterios NTC 3631 más abajo).',
+        },
+        {
+          nombre: 'Resumen accesorios por diámetro',
+          desc: 'Codos, tees y válvulas de la red de gas resumidos por diámetro nominal.',
+        },
+      ],
+    },
+    ...CRITERIOS_3631,
+  ],
+
+  'cf:redes:rejillas': [
+    {
+      titulo: 'Rejillas de ventilación (NTC 3631)',
+      items: [
+        {
+          nombre: 'Tabla Tipologías',
+          desc: 'Una fila por sector (área dibujada con Gas activa): recinto, gasodomésticos con unidades/kW/tipo, verificación, solución y rejillas sugeridas del catálogo.',
+        },
+        {
+          nombre: 'Alzado de muro',
+          desc: 'Esquema a escala del muro del sector: aberturas superior e inferior en su posición normativa con la rejilla sugerida y área libre rotulada.',
+        },
+        {
+          nombre: 'Captura desde el visor',
+          desc: 'Dibuja un Área con la pestaña Gas activa; en el panel derecho nómbrala, define la altura y asigna gasodomésticos — la tabla se llena sola.',
+        },
+        {
+          nombre: 'Catálogo Maestro',
+          desc: 'Página de rejillas comerciales (Silplas, Grival, Laminaire, Koolair, TROX): las referencias alimentan las sugerencias de la tabla.',
+        },
+      ],
+    },
+    ...CRITERIOS_3631,
+  ],
+
+  'cf:redes:bom': [
+    {
+      titulo: 'Bomba aguas residuales',
+      items: [
+        {
+          nombre: 'Cálculo y selección',
+          desc: 'Caudal de bombeo (reserva 25%), alturas y TDH, selección de bomba y dimensionamiento de cámara con ampliación.',
+        },
+      ],
+    },
+  ],
+
+  'cf:redes:ep': [
+    {
+      titulo: 'Equipo de presión',
+      items: [
+        {
+          nombre: 'Datos de entrada y diseño',
+          desc: 'Caudales, pérdidas, presiones y cotas; cálculo hidráulico, potencia y verificación de diámetros del equipo de presión constante.',
+        },
+      ],
+    },
+  ],
+
+  'cf:redes:rci': [
+    {
+      titulo: 'Red contra incendio',
+      items: [
+        {
+          nombre: 'Pestaña en construcción',
+          desc: 'El diseño de la red contra incendio aún no está montado: este espacio queda reservado. El visor 3D del cuarto de bombas vive en Isometría.',
         },
       ],
     },
