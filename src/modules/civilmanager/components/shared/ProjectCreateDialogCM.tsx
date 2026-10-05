@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createCmProyecto } from '../../services/cmProjectsService';
 import { devError } from '../../../../utils/devError';
 import { estaActiva } from '../../../../lib/subscriptions/subscriptionsService';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions';
+import SuscripcionInactivaModal, {
+  codigoProyecto,
+} from '../../../../components/shared/SuscripcionInactivaModal';
 
 interface Props {
   open: boolean;
@@ -26,15 +29,7 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
     if (!trimmed || creating) return;
     setCreating(true);
     try {
-      const now = new Date();
-      const codigo =
-        'CM-' +
-        now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') +
-        '-' +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0');
+      const codigo = codigoProyecto('CM');
       const proyecto = await createCmProyecto(codigo, trimmed);
       if (!proyecto) {
         devError('Error creando proyecto CM');
@@ -59,87 +54,7 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
   // acceso_modulo(). Bloquea solo si VITE y el flag de BD están encendidos;
   // mientras cargan se deja pasar.
   if (subsBloqueando && !subsLoading && !subs.some((r) => r.modulo === 'manage' && estaActiva(r))) {
-    return (
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(0,0,0,0.6)',
-        }}
-      >
-        <div
-          style={{
-            background: 'var(--surface-container, #1e1e24)',
-            border: '1px solid var(--outline-variant, #3a3a44)',
-            borderRadius: 8,
-            padding: 24,
-            minWidth: 360,
-            maxWidth: 420,
-            boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-          }}
-        >
-          <h3
-            style={{
-              fontSize: 15,
-              fontWeight: 700,
-              color: 'var(--on-surface, #e2e2e8)',
-              margin: '0 0 4px',
-            }}
-          >
-            Suscripción CivilManager inactiva
-          </h3>
-          <p
-            style={{
-              fontSize: 12,
-              color: 'var(--on-surface-variant, #9ba8aa)',
-              margin: '0 0 16px',
-            }}
-          >
-            Tu suscripción de CivilManager está vencida o no existe. Adquiere o renueva el plan para
-            crear proyectos.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '6px 14px',
-                fontSize: 12,
-                fontWeight: 600,
-                background: 'transparent',
-                border: '1px solid var(--outline-variant, #3a3a44)',
-                borderRadius: 4,
-                color: 'var(--on-surface, #e2e2e8)',
-                cursor: 'pointer',
-              }}
-            >
-              Cerrar
-            </button>
-            <Link
-              to="/pricing"
-              onClick={onClose}
-              style={{
-                padding: '6px 14px',
-                fontSize: 12,
-                fontWeight: 600,
-                background: 'var(--primary, #4D8FF7)',
-                border: 'none',
-                borderRadius: 4,
-                color: 'var(--on-primary, #fff)',
-                textDecoration: 'none',
-                display: 'inline-block',
-              }}
-            >
-              Ver planes
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return <SuscripcionInactivaModal modulo="CivilManager" onClose={onClose} />;
   }
 
   return (

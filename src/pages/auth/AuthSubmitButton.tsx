@@ -15,6 +15,7 @@ export default function AuthSubmitButton({
     <button
       type="submit"
       disabled={busy}
+      aria-busy={busy}
       className="w-full h-12 font-bold text-[11px] tracking-widest uppercase transition-all"
       style={{
         background: '#00dce5',
