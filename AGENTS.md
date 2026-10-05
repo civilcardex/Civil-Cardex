@@ -2562,3 +2562,26 @@ tsc 0 · lint 0 err 0 warn · vitest 962/962 · build ✓ · graphify ✓.
 - **2 des-exports** (0 consumidores, tsc lo valida): `moduloVenta`, `puestosDe` (catalog.ts). **3 des-exports REVERTIDOS**: los tests SÍ importaban `hasNumericPlanSuffix`/`isOrphanKey`/`reanclarClavesDesdeTrazosLocales` (drawingSyncGc.test/reanchorAparatos.test) — restaurados; lección: el barrido de export keywords debe grep-incluir __tests__ en cada símbolo (el auditor dijo que no, tsc dijo que sí).
 - **No cortado**: lemon.ts (scaffolding), CompanyPreviewPage (dev-only), divergencia rejillasGasodSync/RejillasVentilacion (por diseño), paridad lemon/catalog, migraciones empresa (loop-driven).
 - Neto: ~47L · 0 deps. Gates: tsc 0 · lint 0 · vitest 962/962 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-03 (ronda 16: verificación hostil fixes r15 + fixes C-1..I-5, 3 agentes)
+
+### Auditoría (2 exploradores "intenta romperlos") → 20 fichas; fixes ejecutados
+- **C-1 CRÍTICO**: switch de proyecto por URL (deep-link 5dd42eb) destruía el workspace ANTES de validar (loadProyectoData null → defaults + puntero fantasma) y el rollback in situ dejaba workspace vacío con sync vivo → autosave podía pisar el proyecto anterior. Fix: load+validar ANTES de destruir, `switchPendiente` evita montar el workspace durante el switch, rollback = recarga al proyecto previo (los providers re-nacen). Espejo CM: validación del id contra fetchCmProyectos antes de mover puntero.
+- **C-2 CRÍTICO**: `activos` (mis_accesos) sin consumidor — RequireModule/ModuleSelectDialog gateaban con `rows` (RLS owner-only). Fix: `activos.has(modulo) || rows.some(...)` en RequireModule; dialog lista asientos ("Activo" sin fecha propia).
+- **C-3 CRÍTICO (parcial)**: `cf_aparatos_usuario` sin `empresa_lectura` en policy + sin sellado. Migración `20261005000004_aparatos_empresa_y_sello.sql` (policies select/insert/update/delete con empresa_lectura/escritura + trigger fail-closed en la tabla). ⚠️ RESIDUAL: el trigger no puede re-sellar (sin claves de proyecto) y `save_aparatos_usuario` RPC sigue sellando al llamador → edits del MIEMBRO siguen aterrizando bajo su uuid; falta variante del RPC con owner explícito o guard empresa_escritura en el RPC (documentado en header de la migración). Para el DUEÑO funciona (era el caso principal).
+- **I-1**: `gasod` fuera del merge del blob (push espurio pre-hidratación borraba BD) → flag `hidratado` (`prev?.gasod ?? {}` antes de la primera hidratación; marcada también cuando BD no trae gasod, si no el primer dispositivo nunca sincroniza) + pid guard al agendar. **I-2**: `signOut().catch(()=>{})` en updatePassword (fallo de red ≠ "no se pudo actualizar"). **I-3**: `clearDiametroToDrawing` + **HALLAZGO del agente**: GasDesign pasaba `tramoKey` "planId:id" (dos puntos) a writes que parsean "id-planId" → TODOS los writes material/dn de la tabla gas eran no-ops silenciosos desde b7076dd; helper `writeKeyDe()` los arregla (validaciones accessory-larger activan por primera vez). **I-4**: DEMO rickroll solo en DEV (`import.meta.env.DEV`), null fuera; `idSeguro` sanea IDs de video para el iframe. **I-5**: observación kW=0 en rejillasCalc (caveat: RejillasVentilacion oculta alertas en estado 'vacio' — surface pendiente, WIP ajeno). Menores: cap puestos por TOTAL (99, negociado≥25), `aria-busy`, canonical remove/restore en usePageMeta, fail-closed anon en sello, gate per-fragmento en cf_areas, `to authenticated` en policies re-creadas (desde pg_policies.roles).
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 963/963 (160 files) · build ✓ · graphify ✓.
+
+### Aplicar usuario (SQL Editor, orden)
+`20261005000001_cf_areas_altura_m.sql` (re-si no) → `20261005000002_hardening` → `20261005000003_mis_accesos` → `20261005000004_aparatos_empresa_y_sello` → `20261005000000_empresa_escritura` (re-run, idempotente, restaura guards si la versión vieja de cf_areas pisó).
+
+## Session Summary — 2026-10-03 (ronda 16.2: ponytail #5 — ~188L fuera)
+
+- **Dispatch diametro_validation**: helper `avisarDiametroInvalido` (diametroValidation.ts — la sesión paralela lo había creado ya; verificado shape contra el listener) consumido por 16/17 sitios en 7 archivos; 1 sitio a mano (relé genérico PdfViewer:585). ~20L esta pasada; ~90L acumuladas con la conversión previa de la paralela.
+- **SuscripcionInactivaModal**: componente YA existía con 0 consumidores — conectados ProjectCreateDialog (−86L) y ProjectCreateDialogCM (−86L); `codigoProyecto('CF'|'CM')` dentro. DOM idéntico.
+- **PUESTOS_TOPE_AUTOMATICO consumido** en PricingPage (`totalPuestos > PUESTOS_TOPE` — semántica idéntica; los "25" renderizados intactos; cap del stepper = const local `PUESTOS_CAP_STEPPER = 99`, semántica distinta).
+- **SKIP**: `SuscripcionRow.periodo` sin lectores de fila PERO escrito en test fixture + CompanyPreviewPage → quitarlo rompería tsc; quedó.
+- **cm_save_error**: 4ª ronda huérfano (WIP ajeno — sin visto bueno).
+- Neto: ~188L · 0 deps. Gates: tsc 0 · lint 0 · vitest 963/963 · build ✓.
