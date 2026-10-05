@@ -28,14 +28,17 @@ function SpinnerVerificacion() {
 }
 
 export default function RequireModule({ modulo, children }: Props) {
-  const { rows, loading, bloqueando, decidido } = useSuscripciones();
+  const { rows, activos, loading, bloqueando, decidido } = useSuscripciones();
 
   // flag de BD sin resolver (null): spinner ANTES del check de !bloqueando,
   // que con flag null es false y montaría el contenido para luego redirigir.
   if (!decidido) return <SpinnerVerificacion />;
   if (!bloqueando) return <>{children}</>;
   if (loading) return <SpinnerVerificacion />;
-  const activo = rows.some((r) => r.modulo === modulo && estaActiva(r));
+  // Asiento de empresa: `activos` lo trae el RPC mis_accesos con fecha_fin evaluada
+  // server-side (el miembro no ve la fila del titular); las filas propias se
+  // re-evalúan aquí por render para bloquear en vivo al vencer.
+  const activo = activos.has(modulo) || rows.some((r) => r.modulo === modulo && estaActiva(r));
   if (!activo) return <Navigate to={`/pricing?modulo=${modulo}`} replace />;
   return <>{children}</>;
 }

@@ -28,6 +28,9 @@ import {
 } from '../lib/subscriptions/subscriptionsService';
 import { useSuscripciones } from '../hooks/useSubscriptions';
 
+/** Cap del stepper "+" por tarjeta: anti-spam de clics; distinto al tope automático (por pedido total → CTA negociado). */
+const PUESTOS_CAP_STEPPER = 99;
+
 const plans = [
   {
     id: 'basico',
@@ -267,7 +270,7 @@ function PricingSuscripciones() {
     modo === 'empresarial'
       ? [...seleccionEfectiva].reduce((s2, id) => s2 + (puestos[id] ?? 1), 0)
       : 0;
-  const negociado = modo === 'empresarial' && totalPuestos >= 25;
+  const negociado = modo === 'empresarial' && totalPuestos > PUESTOS_TOPE_AUTOMATICO;
   const dtoVolumen = modo === 'empresarial' ? descuentoPorPuestos(totalPuestos) : null;
   const descPct = seleccionEfectiva.size
     ? Math.round(descuentoAplicado([...seleccionEfectiva], periodo) * 100)
@@ -813,7 +816,8 @@ function ModuleCard({
             aria-label={`Más puestos de ${modulo.nombre}`}
             onClick={(e) => {
               e.stopPropagation();
-              onPuestos(Math.min(PUESTOS_TOPE_AUTOMATICO, puesto + 1));
+              // Cap por pedido TOTAL (no por módulo): 25+ puestos totales = negociado, lo decide el CTA; puestosDe sanea al leer.
+              onPuestos(Math.min(PUESTOS_CAP_STEPPER, puesto + 1));
             }}
             className="pr-cta"
             style={{

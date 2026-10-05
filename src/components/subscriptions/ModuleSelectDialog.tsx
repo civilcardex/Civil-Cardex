@@ -26,16 +26,18 @@ const DIALOG_STYLE: CSSProperties = {
 };
 
 export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
-  const { rows, loading } = useSuscripciones();
+  const { rows, activos, loading } = useSuscripciones();
   const [elegido, setElegido] = useState<ModuloId | null>(null);
 
-  const disponibles: ModuloVenta[] = CATALOGO.filter((m) =>
-    rows.some((r) => r.modulo === m.id && estaActiva(r)),
+  // Asientos de empresa incluidos: `activos` (RPC mis_accesos) trae módulos vigentes
+  // por asiento que no tienen fila propia visible para el miembro.
+  const disponibles: ModuloVenta[] = CATALOGO.filter(
+    (m) => activos.has(m.id) || rows.some((r) => r.modulo === m.id && estaActiva(r)),
   );
 
   // Reset al (re)abrir o al llegar datos, y con UN solo módulo comprado va
   // preseleccionado — patrón de ajuste de estado durante render (react-hooks).
-  const estadoKey = `${open}|${loading}|${rows.length}`;
+  const estadoKey = `${open}|${loading}|${rows.length}|${activos.size}`;
   const [prevKey, setPrevKey] = useState(estadoKey);
   if (estadoKey !== prevKey) {
     setPrevKey(estadoKey);
@@ -142,9 +144,11 @@ export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
                         {m.nombre}
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--on-surface-variant, #9ba8aa)' }}>
+                        {/* Solo las filas propias tienen fecha (fecha_fin); los asientos
+                            de empresa no exponen la vigencia del titular. */}
                         {vig
                           ? `Activo hasta ${new Date(vig.fecha_fin).toLocaleDateString('es-CO')}`
-                          : ''}
+                          : 'Activo'}
                       </span>
                     </span>
                   </label>
