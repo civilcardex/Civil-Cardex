@@ -35,8 +35,12 @@ function WorkAreaCivilManagerPage() {
     'Presupuestos de obra civil: catálogos, análisis de precios unitarios (APU) y presupuestos con AIU.',
   );
   const { proyectoId } = useParams<{ proyectoId?: string }>();
-  const activeId = !proyectoId ? localStorage.getItem('cm_proyecto_activo_id') : null;
-  const [switching, setSwitching] = useState(false);
+  const idActivo = localStorage.getItem('cm_proyecto_activo_id');
+  const activeId = !proyectoId ? idActivo : null;
+  // Switch pendiente evaluado EN RENDER: la URL ya apunta a otro proyecto — nunca montar
+  // el workspace del proyecto viejo, aunque el efecto aún no haya arrancado.
+  const switchPendiente = proyectoId != null && proyectoId !== idActivo;
+  const [switching, setSwitching] = useState(switchPendiente);
   const switchingRef = useRef(false);
 
   useEffect(() => {
@@ -46,24 +50,36 @@ function WorkAreaCivilManagerPage() {
     void (async () => {
       // Fuera del cuerpo síncrono del efecto (regla set-state-in-effect).
       await Promise.resolve();
+      // Puntero ANTES del switch: lo único que permite hacer rollback.
+      const idAnterior = localStorage.getItem('cm_proyecto_activo_id');
       setSwitching(true);
-      let nombre = '';
       try {
         const rows = await fetchCmProyectos();
-        nombre = rows.find((r) => r.id === proyectoId)?.nombre || '';
+        // Validar ANTES de mover el puntero: RLS filtra proyectos ajenos o sin acceso —
+        // un id ausente de rows (o fetch fallido, devuelve []) no debe robar el activo.
+        if (!rows.some((r) => r.id === proyectoId)) {
+          throw new Error('proyecto-no-encontrado-o-sin-acceso');
+        }
+        const nombre = rows.find((r) => r.id === proyectoId)?.nombre || '';
+        localStorage.setItem('cm_proyecto_activo_id', proyectoId);
+        localStorage.setItem('cm_proyecto_activo_nombre', nombre);
+        window.location.replace(`/civilmanagerareatrabajo/${proyectoId}`);
       } catch (e) {
-        devError('nombre de proyecto CM desde URL:', e);
+        devError('abrir proyecto CM desde URL:', e);
+        // Rollback: recarga completa — el workspace del proyecto previo solo existe
+        // en storage tras restaurar el puntero; los providers se re-nacen con la recarga.
+        if (idAnterior != null) localStorage.setItem('cm_proyecto_activo_id', idAnterior);
+        window.location.replace(
+          idAnterior != null ? `/civilmanagerareatrabajo/${idAnterior}` : '/perfil',
+        );
       }
-      localStorage.setItem('cm_proyecto_activo_id', proyectoId);
-      localStorage.setItem('cm_proyecto_activo_nombre', nombre);
-      window.location.replace(`/civilmanagerareatrabajo/${proyectoId}`);
     })();
   }, [proyectoId, switching]);
 
   if (!proyectoId && activeId) {
     return <Navigate to={`/civilmanagerareatrabajo/${activeId}`} replace />;
   }
-  if (switching) {
+  if (switchPendiente || switching) {
     return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
   }
   return (

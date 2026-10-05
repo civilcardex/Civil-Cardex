@@ -48,7 +48,10 @@ function WorkAreaCivilFlowPage() {
   const activeId = wantsId != null ? null : getActiveProyectoId();
   const projectCtx = useContext(ProjectContext);
   const plansCtx = useContext(PlansContext);
-  const [switching, setSwitching] = useState(false);
+  // Switch pendiente evaluado EN RENDER: la URL ya apunta a otro proyecto — nunca montar
+  // el workspace del proyecto viejo, aunque el efecto aún no haya arrancado.
+  const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
+  const [switching, setSwitching] = useState(switchPendiente);
   const switchingRef = useRef(false);
 
   useEffect(() => {
@@ -66,12 +69,15 @@ function WorkAreaCivilFlowPage() {
         // efectos debounced de guardado — sin pausa vaciarían el proyecto en la nube.
         projectCtx?.pauseCloudSync();
         plansCtx?.pauseCloudSync();
+        // Cargar ANTES de destruir: si el proyecto no existe o no es accesible, el
+        // workspace actual debe quedar intacto (el catch recarga al proyecto previo).
+        const data = await loadProyectoData(wantsId);
+        if (!data) throw new Error('proyecto-no-encontrado-o-sin-acceso');
         clearLocalWorkspace();
         await clearAllPDFs();
         plansCtx?.resetPlans();
         projectCtx?.resetToDefaults();
         localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(wantsId));
-        const data = await loadProyectoData(wantsId);
         // Escritura vía saveToStorage (aplica el 2º prefijo civilflow_ que leen los
         // providers al montar — mismo contrato de hand-off documentado en ProfilePage).
         if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
@@ -90,14 +96,14 @@ function WorkAreaCivilFlowPage() {
         window.location.replace(`/civilflowareatrabajo/${wantsId}`);
       } catch (e) {
         devError('abrir proyecto desde URL:', e);
-        // Rollback: el switch fracasó — restaurar el proyecto activo anterior y re-activar
-        // el guardado en la nube; sin esto el usuario edita en un workspace vacío que
-        // jamás sube a BD (sync pausado) y el puntero activo quedó movido.
+        // Rollback: recarga completa — el workspace del proyecto previo ya no existe en
+        // memoria (la destrucción pudo correr antes del fallo); los providers se re-nacen
+        // con la recarga, un resume in situ dejaría un workspace vacío sin sync.
         if (idAnterior != null) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(idAnterior));
-        projectCtx?.resumeCloudSync();
-        plansCtx?.resumeCloudSync();
-        switchingRef.current = false;
-        setSwitching(false);
+        window.location.replace(
+          idAnterior != null ? `/civilflowareatrabajo/${idAnterior}` : '/perfil',
+        );
+        return;
       }
     })();
     // El volcado corre una sola vez por id entrante; switchingRef evita re-entradas.
@@ -107,7 +113,7 @@ function WorkAreaCivilFlowPage() {
   if (wantsId == null && activeId) {
     return <Navigate to={`/civilflowareatrabajo/${activeId}`} replace />;
   }
-  if (switching) {
+  if (switchPendiente || switching) {
     return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
   }
   return (
