@@ -177,6 +177,12 @@ export function calcular(inp: RejSectorInput): RejResultado {
     .filter((a) => a.clase === 'C')
     .reduce((s, a) => s + (+a.kw || 0) * (+a.cant || 0), 0);
   r.PC = PC;
+  // Artefactos declarados (cant > 0) cuyo grupo no-C suma P = 0: sin kW definido no hay
+  // requerimiento de ventilación — observación (no crítica) pidiendo la potencia.
+  if (P <= 0 && inp.artefactos.some((a) => a.clase !== 'C' && (+a.cant || 0) > 0))
+    r.alertas.push({
+      t: 'Defina la potencia (kW) de los gasodomésticos: sin ella no hay requerimiento de ventilación.',
+    });
   const s = SOL[inp.sol] || SOL['ext-dir'];
   const Padj = s.adj ? +inp.padj || 0 : 0;
   const Ptot = P + Padj;
@@ -427,7 +433,7 @@ const fmt = (x: number, d = 1) =>
 export function memoriaRecinto(res: RejResultado, idx?: number): string {
   const e = res.entrada;
   const L: string[] = [];
-  L.push(`${idx !== undefined ? idx + 1 + '. ' : ''}${e.nombre}`);
+  void idx; // el encabezado (nombre/apto/zona) lo pone la UI — la memoria solo calcula
   L.push(
     `Área en planta ${fmt(e.areaM2, 2)} m², altura libre ${fmt(e.altoM, 2)} m → V = ${fmt(res.V, 2)} m³`,
   );
