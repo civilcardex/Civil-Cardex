@@ -4,7 +4,25 @@ import { pisoCorto } from '../../constants';
 import { fmt } from '../../utils/formatUtils';
 import { hunterK, computeDesignRow } from './rowPhysics';
 import { OtrosRamalesChips } from './otherRamalesChips';
-import { LazyNumInput } from './lazyNumInput';
+import { LazyDecimalInput } from '../shared/LazyDecimalInput';
+
+/** Estilo compacto del input de presión (misma pinta del LazyNumInput que reemplaza). */
+const PRESION_INP: React.CSSProperties = {
+  width: 44,
+  textAlign: 'center',
+  padding: 0,
+  fontSize: 9,
+};
+
+/** Commit numérico del input perezoso: '' → undefined (borra el dato); parse inválido → sin cambio. */
+const numCommit =
+  (onSave: (v: number | undefined) => void) =>
+  (s: string): void => {
+    const t = s.trim();
+    if (t === '') return onSave(undefined);
+    const n = parseFloat(t);
+    if (!Number.isNaN(n)) onSave(n);
+  };
 
 const WaterNetworkDesign_S2: React.CSSProperties = {
   width: '100%',
@@ -151,19 +169,25 @@ export function DesignTableRow({
       <td className="c td-mono">{calc.hfPct != null ? fmt(calc.hfPct, 2) : '—'}</td>
       <td className="c td-mono-b">{calc.hfM != null ? fmt(calc.hfM, 2) : '—'}</td>
       <td className="c" style={{ padding: '0 1px' }}>
-        <LazyNumInput
-          label="Presión inicial"
-          val={fmt(Pin, 2)}
+        <LazyDecimalInput
+          ariaLabel="Presión inicial"
+          value={fmt(Pin, 2)}
           disabled={!edit}
-          onSave={(v) => setPresIni(ownKey, v)}
+          commitOnEnter
+          className="ni"
+          style={PRESION_INP}
+          onCommit={numCommit((v) => setPresIni(ownKey, v))}
         />
       </td>
       <td className="c" style={{ padding: '0 1px' }}>
-        <LazyNumInput
-          label="Presión final"
-          val={fmt(Pfin, 2)}
+        <LazyDecimalInput
+          ariaLabel="Presión final"
+          value={fmt(Pfin, 2)}
           disabled={!edit}
-          onSave={(v) => setPresFin(ownKey, v)}
+          commitOnEnter
+          className="ni"
+          style={PRESION_INP}
+          onCommit={numCommit((v) => setPresFin(ownKey, v))}
         />
       </td>
     </tr>

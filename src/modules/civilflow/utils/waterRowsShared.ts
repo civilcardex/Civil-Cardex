@@ -48,5 +48,7 @@ export const isAC2 = (t: Tramo) => {
 export const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax]),
 );
+// Alias legacy: dibujos guardados antes de renombrar 'Hor:' → 'HorG:' conservan ini='HOR'.
+if (APARATO_PMAX_BY_CODE.HORG != null) APARATO_PMAX_BY_CODE.HOR = APARATO_PMAX_BY_CODE.HORG;
 /** Factor de pérdida de presión atribuible al calentador (0.9). */
 export const HEATER_LOSS_FACTOR = 0.9;
