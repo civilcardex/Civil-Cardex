@@ -70,7 +70,7 @@ function RciViewerInner({ onReintentar }: { onReintentar: () => void }): React.J
   useEffect(() => {
     selRef.current = selectedId;
     frameRef.current = (api) => {
-      dibujarEtiquetasRci(api, lblRef.current, selRef.current);
+      dibujarEtiquetasRci(api, lblRef.current, selRef.current, true);
     };
     // Cambio de selección → repintar un par de frames (render bajo demanda).
     const api = apiRef.current;
