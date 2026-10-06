@@ -33,13 +33,13 @@ export const DESCUENTO_BASE: Record<Periodo, number> = { mensual: 0, semestral: 
 
 export const DESCUENTO_POR_MODULO = 0.1;
 
-export const DESCUENTO_POR_PUESTOS: { min: number; max: number; pct: number }[] = [
+const DESCUENTO_POR_PUESTOS: { min: number; max: number; pct: number }[] = [
   { min: 2, max: 4, pct: 0.1 },
   { min: 5, max: 9, pct: 0.15 },
   { min: 10, max: 24, pct: 0.2 },
 ];
 
-export const PUESTOS_TOPE_AUTOMATICO = 24;
+const PUESTOS_TOPE_AUTOMATICO = 24;
 
 /** Puestos licenciados del módulo `id`: sanea el valor del cliente
  *  (ausente, no finito o <1 → 1, el mínimo vendible; decimales → piso). */
@@ -57,20 +57,36 @@ export function descuentoPorPuestos(totalPuestos: number): number | null {
   return tramo ? tramo.pct : 0;
 }
 
+/** Precios vigentes de un módulo leídos de app_precios (la verdad en BD). Ausente o
+ *  incompleto en un campo = ese periodo cae al literal de CATALOGO (fallback bootstrap). */
+export interface PreciosBd {
+  mensual: number;
+  semestral: number;
+  anual: number;
+}
+
 export function calcularTotalCentavos(
   modulos: ModuloId[],
   periodo: Periodo,
   puestos?: Record<string, number>,
+  preciosBd?: Partial<Record<ModuloId, PreciosBd>>,
 ): number {
   const unicos = [...new Set(modulos)];
   const bruto = unicos.reduce((s, id) => {
     const m = CATALOGO[id];
+    const pb = preciosBd?.[id];
     const lista =
       periodo === 'anual'
-        ? m.precioAnualCentavos
+        ? pb && pb.anual > 0
+          ? pb.anual
+          : m.precioAnualCentavos
         : periodo === 'semestral'
-          ? m.precioSemestralCentavos
-          : m.precioMensualCentavos;
+          ? pb && pb.semestral > 0
+            ? pb.semestral
+            : m.precioSemestralCentavos
+          : pb && pb.mensual > 0
+            ? pb.mensual
+            : m.precioMensualCentavos;
     return s + lista * puestosDe(puestos, id);
   }, 0);
   const n = unicos.length;

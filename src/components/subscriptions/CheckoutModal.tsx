@@ -7,6 +7,7 @@
  * modal avisa que los pagos aún no están disponibles (sin error crudo).
  */
 import { useEffect, useRef, useState } from 'react';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import type { ModuloId, Periodo, PuestosPorModulo } from '../../lib/subscriptions/catalog';
 import { edgePagoNoDesplegada } from '../../lib/subscriptions/subscriptionsService';
@@ -47,14 +48,27 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
       // Edges Lemon pendientes de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falten,
       // el guard evita el error crudo del relay ("Function not found" / 404).
       setError(true);
-      setMensaje(
-        edgePagoNoDesplegada(err)
-          ? 'Los pagos en línea aún no están disponibles. Inténtalo más tarde.'
-          : data?.error === 'pasarela_no_configurada' ||
-              data?.error === 'suscripciones_deshabilitadas'
-            ? 'La pasarela de pago no está configurada aún.'
-            : 'No se pudo iniciar el pago. Intenta de nuevo en unos minutos.',
-      );
+      if (edgePagoNoDesplegada(err)) {
+        setMensaje('Los pagos en línea aún no están disponibles. Inténtalo más tarde.');
+      } else {
+        // Con respuesta ≠2xx supabase-js devuelve data=null: el body del error vive en
+        // err.context (FunctionsHttpError) — de ahí salen los mensajes específicos.
+        let especifico = '';
+        if (err instanceof FunctionsHttpError) {
+          try {
+            const body = (await err.context.json()) as { error?: string };
+            if (body?.error === 'suscripciones_deshabilitadas') {
+              especifico = 'Las suscripciones no están activadas aún.';
+            }
+          } catch {
+            // body no-JSON (proxy/HTML): mensaje genérico
+          }
+        }
+        setMensaje(
+          especifico ||
+            'La pasarela de pago no está configurada aún o rechazó la compra. Inténtalo más tarde.',
+        );
+      }
     })();
   }, [open, modulos, periodo, puestos]);
 
