@@ -286,17 +286,12 @@ export const MATERIALES_CUBIERTA_LL: MaterialCubiertaLL[] = [
   { nombre: 'Paja / palma', abrev: 'Paja/palma', C: 0.6 },
 ];
 
-/** Coeficiente de escorrentía C por material de cubierta; null si el material no está. */
+/** Coeficiente de escorrentía C por material de cubierta; null si el material no está
+ *  (requisito absoluto: sin material elegido el cálculo de lluvias no dispara — C=0/Q=0). */
 export function cDeCubierta(nombre: string): number | null {
   if (!nombre) return null;
   const hit = MATERIALES_CUBIERTA_LL.find((m) => m.nombre === nombre);
   return hit ? hit.C : null;
-}
-
-/** C efectivo para cálculo: derivado del material; fallback 1.0 (criterio conservador NTC
- *  1500 — y el comportamiento que el app tenía para filas sin material elegido). */
-export function cEfectivoCubierta(nombre: string | undefined): number {
-  return cDeCubierta(nombre ?? '') ?? 1;
 }
 
 export interface MaterialCanalLL {
