@@ -6,11 +6,21 @@ import { CrudFooter } from '../shared/CrudFooter';
 import { NumInput } from '../shared/NumInput';
 import { askConfirm } from '../shared/ConfirmDialog';
 import { ActionIcon } from '../shared/icons';
-import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
+import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import { DimEnLectura, EditableSection, TableHeader, useEditable } from '../shared/EditLock';
 import type { Cuadrilla, CuadrillaIntegrante } from '../types';
 
+/** Provider propio + cuerpo en hijo: useEditable en este body resolvería el provider
+ *  del padre (siempre true), no el de esta pestaña. */
 export function CuadrillasTab() {
+  return (
+    <EditableSection dim={false}>
+      <CuadrillasCuerpo />
+    </EditableSection>
+  );
+}
+
+function CuadrillasCuerpo() {
   const { state, patch, cargosCalc, esHora } = useCivilManager();
   const editable = useEditable();
   const [selIdx, setSelIdx] = useState<number | null>(state.cuadrillas.length ? 0 : null);
@@ -83,173 +93,179 @@ export function CuadrillasTab() {
     : null;
 
   return (
-    <EditableSection dim={false}>
-      <div style={{ display: 'flex', gap: 12, height: '100%', alignItems: 'flex-start' }}>
-        {/* Sidebar izquierda: altura = contenido (sin scroll propio — orig. usuario). */}
-        <XlWrap style={{ alignSelf: 'flex-start' }}>
-          <TableHeader title="Cuadrillas" icon="cuadrillas_tabla" />
-          <DimEnLectura>
-            <XlScroll style={{ maxHeight: 'none' }}>
-              <table>
-                <thead>
+    <div style={{ display: 'flex', gap: 12, height: '100%', alignItems: 'flex-start' }}>
+      {/* Sidebar izquierda: altura = contenido (sin scroll propio — orig. usuario). */}
+      <XlWrap style={{ alignSelf: 'flex-start' }}>
+        <TableHeader title="Cuadrillas" icon="cuadrillas_tabla" />
+        <DimEnLectura>
+          <XlScroll style={{ maxHeight: 'none' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th title="Código único de la cuadrilla (CU-xxx), generado automáticamente.">
+                    Código
+                  </th>
+                  <th title="Nombre de la cuadrilla.">Descripción</th>
+                  <th title="Cuántos cargos componen la cuadrilla.">Integrantes</th>
+                  <th aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
                   <tr>
-                    <th>#</th>
-                    <th title="Código único de la cuadrilla (CU-xxx), generado automáticamente.">
-                      Código
-                    </th>
-                    <th title="Nombre de la cuadrilla.">Descripción</th>
-                    <th title="Cuántos cargos componen la cuadrilla.">Integrantes</th>
-                    <th>Acciones</th>
+                    <td colSpan={5} className="cm-empty-row">
+                      Sin cuadrillas
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="cm-empty-row">
-                        Sin cuadrillas
-                      </td>
-                    </tr>
-                  )}
-                  {filtered.map((c, i) => (
-                    <tr
-                      key={c.id}
-                      onClick={() => setSelIdx(i)}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setSelIdx(i);
-                        }
-                      }}
-                      style={{
-                        cursor: 'pointer',
-                        background: selIdx === i ? 'rgba(37,99,235,.12)' : undefined,
-                      }}
-                    >
-                      <XlRowNum n={i + 1} />
-                      <td>{c.codigo}</td>
-                      <td>{c.descripcion}</td>
-                      <td>{c.integrantes.length}</td>
-                      <XlAct onEdit={() => setSelIdx(i)} onDelete={() => delCuadrilla(c.id)} />
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </XlScroll>
-          </DimEnLectura>
-          <CrudFooter
-            onAdd={addCuadrilla}
-            addLabel="Nueva Cuadrilla"
-            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-            countLabel="Total:"
-            count={filtered.length}
-          />
-        </XlWrap>
+                )}
+                {filtered.map((c, i) => (
+                  <tr
+                    key={c.id}
+                    onClick={() => setSelIdx(i)}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelIdx(i);
+                      }
+                    }}
+                    style={{
+                      cursor: 'pointer',
+                      background: selIdx === i ? 'rgba(37,99,235,.12)' : undefined,
+                    }}
+                  >
+                    <XlRowNum n={i + 1} />
+                    <td>{c.codigo}</td>
+                    <td>{c.descripcion}</td>
+                    <td>{c.integrantes.length}</td>
+                    {/* Solo eliminar: seleccionar ya es clic en la fila (orig. usuario). */}
+                    <td className="cm-col-act">
+                      <button
+                        type="button"
+                        className="cm-btn-icon"
+                        onClick={() => delCuadrilla(c.id)}
+                        aria-label="Eliminar cuadrilla"
+                        disabled={!editable}
+                      >
+                        <ActionIcon name="delete" label="Eliminar cuadrilla" color="var(--err)" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </XlScroll>
+        </DimEnLectura>
+        <CrudFooter
+          onAdd={addCuadrilla}
+          addLabel="Nueva Cuadrilla"
+          search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+          countLabel="Total:"
+          count={filtered.length}
+        />
+      </XlWrap>
 
-        {sel && (
-          <XlWrap style={{ flex: 1 }}>
-            <TableHeader title="Integrantes de la cuadrilla" icon="integrantes_cuadrilla" />
-            <fieldset
-              disabled={!editable}
-              style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}
-            >
-              <DimEnLectura>
-                <div
-                  style={{
-                    padding: '6px 10px',
-                    display: 'flex',
-                    gap: 8,
-                    alignItems: 'center',
-                    borderBottom: '1px solid var(--line)',
-                  }}
-                >
-                  <input
-                    className="cm-ni"
-                    style={{ maxWidth: 240 }}
-                    value={sel.descripcion}
-                    onChange={(e) => updSel({ descripcion: e.target.value })}
-                    aria-label="Nombre de la cuadrilla"
-                  />
-                  <span className="cm-flex-1" />
-                  <span style={{ fontSize: 11, color: 'var(--txt2)' }}>
-                    Costo/día: <b>{fmtMoneda(cost?.costoDia ?? 0)}</b> · Costo/hora:{' '}
-                    <b>{fmtMoneda(cost?.costoHora ?? 0)}</b>
-                  </span>
-                </div>
-                <XlScroll>
-                  <table>
-                    <thead>
+      {sel && (
+        <XlWrap style={{ flex: 1 }}>
+          <TableHeader title="Integrantes de la cuadrilla" icon="integrantes_cuadrilla" />
+          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+            <DimEnLectura>
+              <div
+                style={{
+                  padding: '6px 10px',
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--line)',
+                }}
+              >
+                <input
+                  className="cm-ni"
+                  style={{ maxWidth: 240 }}
+                  value={sel.descripcion}
+                  onChange={(e) => updSel({ descripcion: e.target.value })}
+                  aria-label="Nombre de la cuadrilla"
+                />
+                <span className="cm-flex-1" />
+                <span style={{ fontSize: 11, color: 'var(--txt2)' }}>
+                  Costo/día: <b>{fmtMoneda(cost?.costoDia ?? 0)}</b> · Costo/hora:{' '}
+                  <b>{fmtMoneda(cost?.costoHora ?? 0)}</b>
+                </span>
+              </div>
+              <XlScroll>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th title="Rol del integrante; su costo/hora viene del catálogo de colaboradores.">
+                        Cargo
+                      </th>
+                      <th title="Número de personas de ese cargo en la cuadrilla.">Cantidad</th>
+                      <th aria-label="Acciones" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sel.integrantes.length === 0 && (
                       <tr>
-                        <th>#</th>
-                        <th title="Rol del integrante; su costo/hora viene del catálogo de colaboradores.">
-                          Cargo
-                        </th>
-                        <th title="Número de personas de ese cargo en la cuadrilla.">Cantidad</th>
-                        <th>Acciones</th>
+                        <td colSpan={4} className="cm-empty-row">
+                          Sin integrantes
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {sel.integrantes.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="cm-empty-row">
-                            Sin integrantes
-                          </td>
-                        </tr>
-                      )}
-                      {sel.integrantes.map((int, i) => (
-                        <tr key={int.id}>
-                          <XlRowNum n={i + 1} />
-                          <td>
-                            <select
-                              className="cm-sel"
-                              value={int.cargo_id}
-                              onChange={(e) => updIntegrante(i, 'cargo_id', e.target.value)}
-                              aria-label="Cargo"
-                            >
-                              {cargosCalc.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.descripcion}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <NumInput
-                              value={int.cantidad}
-                              decimals={2}
-                              onChange={(v) => updIntegrante(i, 'cantidad', v)}
+                    )}
+                    {sel.integrantes.map((int, i) => (
+                      <tr key={int.id}>
+                        <XlRowNum n={i + 1} />
+                        <td>
+                          <select
+                            className="cm-sel"
+                            value={int.cargo_id}
+                            onChange={(e) => updIntegrante(i, 'cargo_id', e.target.value)}
+                            aria-label="Cargo"
+                          >
+                            {cargosCalc.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.descripcion}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td>
+                          <NumInput
+                            value={int.cantidad}
+                            decimals={2}
+                            onChange={(v) => updIntegrante(i, 'cantidad', v)}
+                          />
+                        </td>
+                        <td className="cm-col-act">
+                          <button
+                            type="button"
+                            className="cm-btn-icon"
+                            onClick={() => delIntegrante(i)}
+                            aria-label="Eliminar integrante"
+                          >
+                            <ActionIcon
+                              name="delete"
+                              label="Eliminar integrante"
+                              color="var(--err)"
                             />
-                          </td>
-                          <td className="cm-col-act">
-                            <button
-                              type="button"
-                              className="cm-btn-icon"
-                              onClick={() => delIntegrante(i)}
-                              aria-label="Eliminar integrante"
-                            >
-                              <ActionIcon
-                                name="delete"
-                                label="Eliminar integrante"
-                                color="var(--err)"
-                              />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </XlScroll>
-              </DimEnLectura>
-              <CrudFooter
-                onAdd={addIntegrante}
-                addLabel="Agregar Integrante"
-                countLabel="Integrantes:"
-                count={sel.integrantes.length}
-              />
-            </fieldset>
-          </XlWrap>
-        )}
-      </div>
-    </EditableSection>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </XlScroll>
+            </DimEnLectura>
+            <CrudFooter
+              onAdd={addIntegrante}
+              addLabel="Agregar Integrante"
+              countLabel="Integrantes:"
+              count={sel.integrantes.length}
+            />
+          </fieldset>
+        </XlWrap>
+      )}
+    </div>
   );
 }

@@ -54,7 +54,7 @@ export function ApuSeccionEquipo({ apu, onChange }: Props) {
               <th>Rendimiento</th>
               <th>Costo/Hora</th>
               <th>Subtotal</th>
-              <th>Acciones</th>
+              <th aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

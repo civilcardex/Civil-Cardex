@@ -56,7 +56,7 @@ export function ApuSeccionMO({ apu, onChange }: Props) {
               <th>Rendimiento</th>
               <th>Jornal</th>
               <th>Subtotal</th>
-              <th>Acciones</th>
+              <th aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

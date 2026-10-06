@@ -59,7 +59,7 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
               <th>Tarifa</th>
               <th>Distancia (km)</th>
               <th>Subtotal</th>
-              <th>Acciones</th>
+              <th aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

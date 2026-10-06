@@ -255,7 +255,7 @@
 }
 
 .cm-modal-box {
-  width: 420px;
+  width: 580px;
   max-width: 90vw;
   background: var(--bg2);
   border: 1px solid var(--line);
@@ -264,15 +264,15 @@
 }
 
 .cm-modal-wide {
-  width: 700px;
+  width: 920px;
 }
 
 .cm-modal-head {
-  padding: 8px 14px;
+  padding: 12px 18px;
   background: var(--bg3);
   border-bottom: 1px solid var(--line);
   border-radius: var(--r) var(--r) 0 0;
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--txt2);
   letter-spacing: 0.5px;
@@ -285,10 +285,10 @@
 }
 
 .cm-modal-body {
-  padding: 16px 14px;
-  font-size: 12px;
+  padding: 20px 18px;
+  font-size: 14px;
   color: var(--txt);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .cm-modal-scroll {
@@ -297,11 +297,16 @@
 }
 
 .cm-modal-actions {
-  padding: 10px 14px;
+  padding: 14px 18px;
   border-top: 1px solid var(--line);
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.cm-modal-actions .cm-btn {
+  font-size: 13px;
+  padding: 8px 18px;
 }
 
 .cm-tbl {

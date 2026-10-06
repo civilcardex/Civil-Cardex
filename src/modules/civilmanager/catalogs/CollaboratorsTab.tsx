@@ -94,7 +94,7 @@ export function ColaboradoresTab() {
                   <th title="Costo día ÷ horas laboradas por día según el país activo.">
                     Costo Total Hora
                   </th>
-                  <th>Acciones</th>
+                  <th aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -141,10 +141,7 @@ export function ColaboradoresTab() {
                       <td>{fmtMoneda(calc?.valorBasico ?? 0)}</td>
                       <td>{fmtMoneda(calc?.costo_total_dia ?? 0)}</td>
                       <td>{fmtMoneda(calc?.costo_total_hora ?? 0)}</td>
-                      <XlAct
-                        onEdit={() => setEditIdx(editing ? null : i)}
-                        onDelete={() => del(i)}
-                      />
+                      <XlAct onDelete={() => del(i)} />
                     </tr>
                   );
                 })}

@@ -99,7 +99,7 @@ export function ApuCatalog() {
                   <th title="Costo directo calculado: mano de obra + equipo + insumos + transporte.">
                     Costo Unitario
                   </th>
-                  <th>Acciones</th>
+                  <th aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -132,7 +132,7 @@ export function ApuCatalog() {
                     <td>{a.categoria}</td>
                     <td>{a.unidad}</td>
                     <td>{fmtMoneda(apuCalcMap.get(a.id)?.totalDirecto ?? 0)}</td>
-                    <XlAct onEdit={() => setSelId(a.id)} onDelete={() => delApu(a.id)} />
+                    <XlAct onDelete={() => delApu(a.id)} />
                   </tr>
                 ))}
               </tbody>

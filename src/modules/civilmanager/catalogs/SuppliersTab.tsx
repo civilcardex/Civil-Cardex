@@ -98,7 +98,7 @@ export function ProveedoresTab() {
                   <th title="Persona de contacto del proveedor.">Contacto</th>
                   <th title="Teléfono principal de contacto.">Teléfono</th>
                   <th title="Ciudad de origen; afecta tiempos y costos de transporte.">Ciudad</th>
-                  <th>Acciones</th>
+                  <th aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -176,10 +176,7 @@ export function ProveedoresTab() {
                           p.ciudad
                         )}
                       </td>
-                      <XlAct
-                        onEdit={() => setEditIdx(editing ? null : i)}
-                        onDelete={() => del(i)}
-                      />
+                      <XlAct onDelete={() => del(i)} />
                     </tr>
                   );
                 })}

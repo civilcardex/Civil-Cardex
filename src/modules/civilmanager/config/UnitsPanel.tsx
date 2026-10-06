@@ -56,7 +56,7 @@ export function UnidadesPanel() {
                 <th title="Símbolo corto de la unidad (m2, kg, und…).">Abreviatura</th>
                 <th title="Nombre completo de la unidad de medida.">Descripción</th>
                 <th title="Clase de unidad (longitud, área, volumen…).">Tipo</th>
-                <th>Acciones</th>
+                <th aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>
@@ -114,7 +114,7 @@ export function UnidadesPanel() {
                         u.tipo
                       )}
                     </td>
-                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
+                    <XlAct onDelete={() => del(i)} />
                   </tr>
                 );
               })}

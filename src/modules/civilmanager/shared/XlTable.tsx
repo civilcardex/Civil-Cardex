@@ -23,24 +23,15 @@ export const XlRowNum = memo(function XlRowNum({ n }: { n: number }) {
 });
 
 interface XlActProps {
-  onEdit: () => void;
   onDelete: () => void;
 }
 
-/** Celda de acciones por fila; deshabilitada fuera del modo edición de la pestaña. */
-export const XlAct = memo(function XlAct({ onEdit, onDelete }: XlActProps) {
+/** Celda de acciones por fila (solo eliminar — editar es por tabla con EDITAR, orig.
+ *  usuario); deshabilitada fuera del modo edición de la pestaña. */
+export const XlAct = memo(function XlAct({ onDelete }: XlActProps) {
   const editable = useEditable();
   return (
     <td className="cm-col-act">
-      <button
-        type="button"
-        className="cm-btn-icon"
-        onClick={onEdit}
-        aria-label="Editar"
-        disabled={!editable}
-      >
-        <ActionIcon name="edit" label="Editar" />
-      </button>
       <button
         type="button"
         className="cm-btn-icon"

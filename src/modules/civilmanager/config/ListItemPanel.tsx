@@ -81,7 +81,7 @@ export function ListaItemPanel({
                 <th title="Código único del ítem de la lista, generado automáticamente.">Código</th>
                 <th>{labelHeader}</th>
                 <th title="Detalle del ítem; la columna anterior es su nombre.">Descripción</th>
-                <th>Acciones</th>
+                <th aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>
@@ -124,7 +124,7 @@ export function ListaItemPanel({
                         </span>
                       )}
                     </td>
-                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
+                    <XlAct onDelete={() => del(i)} />
                   </tr>
                 );
               })}

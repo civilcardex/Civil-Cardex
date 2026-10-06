@@ -72,7 +72,7 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
                 <th title="Porcentaje que se suma al jornal; el subtotal de cada tipo aparece al pie.">
                   Factor %
                 </th>
-                <th>Acciones</th>
+                <th aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>
@@ -114,7 +114,7 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
                         </span>
                       )}
                     </td>
-                    <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
+                    <XlAct onDelete={() => del(i)} />
                   </tr>
                 );
               })}

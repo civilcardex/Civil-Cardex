@@ -69,7 +69,7 @@ export function ApuSeccionInsumos({ apu, onChange }: Props) {
               <th>Desperdicio %</th>
               <th>Costo Unit.</th>
               <th>Subtotal</th>
-              <th>Acciones</th>
+              <th aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

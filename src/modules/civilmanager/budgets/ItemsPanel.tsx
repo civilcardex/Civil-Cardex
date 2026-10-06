@@ -75,7 +75,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                     Vr. Unitario
                   </th>
                   <th title="Cantidad × valor unitario.">Vr. Total</th>
-                  <th>Acciones</th>
+                  <th aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

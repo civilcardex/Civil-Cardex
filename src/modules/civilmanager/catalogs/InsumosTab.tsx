@@ -117,7 +117,7 @@ export function InsumosTab() {
                   <th title="Fecha de la última cotización; se resalta cuando está desactualizada.">
                     Cotizado
                   </th>
-                  <th>Acciones</th>
+                  <th aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -223,10 +223,7 @@ export function InsumosTab() {
                       <td style={{ color: old ? 'var(--warn)' : undefined }}>
                         {fmtDate(x.fecha_cotizacion)}
                       </td>
-                      <XlAct
-                        onEdit={() => setEditIdx(editing ? null : i)}
-                        onDelete={() => del(i)}
-                      />
+                      <XlAct onDelete={() => del(i)} />
                     </tr>
                   );
                 })}

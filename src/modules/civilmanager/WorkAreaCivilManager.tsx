@@ -4,6 +4,7 @@ import { CivilManagerProvider, useCivilManager } from './context';
 import { ConfirmDialog } from './shared/ConfirmDialog';
 import { Toast } from './shared/Toast';
 import { NavIcon, type NavIconName } from './shared/icons';
+import { EditableSection } from './shared/EditLock';
 
 import { ColaboradoresTab } from './catalogs/CollaboratorsTab';
 import { CuadrillasTab } from './catalogs/CuadrillasTab';
@@ -113,15 +114,25 @@ function CivilManagerShell() {
         </nav>
       )}
 
+      {/* Contenedor del ciclo de pestañas. NOTA: cada pestaña se auto-envuelve en su
+          PROPIO EditableSection y ese provider (el más cercano) es el que gobierna su
+          useEditable — este wrapper del shell es contenedor/estética. key por pestaña
+          remonta y resetea el estado EDITAR/LISTO. dim={false}: la opacidad la maneja
+          cada tabla con DimEnLectura.
+          ⚠️ Si algún useEditable() futuro vive FUERA del provider de una pestaña,
+          resolverá editing=false SIN botón EDITAR que lo libere — el shell no pinta
+          toggle. */}
       <div className="cm-main">
-        {mainSection === 'catalogos' && catalogoTab === 'configuracion' && <ConfigTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'colaboradores' && <ColaboradoresTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'cuadrillas' && <CuadrillasTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'equipos' && <EquiposTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'insumos' && <InsumosTab />}
-        {mainSection === 'catalogos' && catalogoTab === 'proveedores' && <ProveedoresTab />}
-        {mainSection === 'apus' && <ApuCatalog />}
-        {mainSection === 'presupuestos' && <PresupuestosTab />}
+        <EditableSection key={mainSection + ':' + catalogoTab} dim={false}>
+          {mainSection === 'catalogos' && catalogoTab === 'configuracion' && <ConfigTab />}
+          {mainSection === 'catalogos' && catalogoTab === 'colaboradores' && <ColaboradoresTab />}
+          {mainSection === 'catalogos' && catalogoTab === 'cuadrillas' && <CuadrillasTab />}
+          {mainSection === 'catalogos' && catalogoTab === 'equipos' && <EquiposTab />}
+          {mainSection === 'catalogos' && catalogoTab === 'insumos' && <InsumosTab />}
+          {mainSection === 'catalogos' && catalogoTab === 'proveedores' && <ProveedoresTab />}
+          {mainSection === 'apus' && <ApuCatalog />}
+          {mainSection === 'presupuestos' && <PresupuestosTab />}
+        </EditableSection>
       </div>
     </div>
   );

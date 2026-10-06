@@ -9,6 +9,10 @@ export function PerfilPaisPanel() {
   const { state, patch } = useCivilManager();
   const editable = useEditable();
   const items = state.config_listas.perfiles_pais;
+  // Vista alfabética; conserva el índice real para upd(i) sobre el estado sin ordenar.
+  const vista = items
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => a.p.nombre.localeCompare(b.p.nombre, 'es'));
 
   function upd(i: number, k: keyof PerfilPais, v: string | number) {
     const n = [...items];
@@ -30,11 +34,11 @@ export function PerfilPaisPanel() {
                   <th title="Nombre del país.">País</th>
                   <th title="Moneda oficial para mostrar valores.">Moneda</th>
                   <th title="Salario mínimo mensual legal vigente.">SMMLV</th>
-                  <th title="Auxilio de transporte legal mensual.">Aux. Transporte</th>
+                  <th title="Auxilio de transporte legal mensual.">Auxilio transporte</th>
                   <th title="Días laborales por mes; divide el salario en jornales.">Días/mes</th>
                   <th title="Horas laborales por mes; base del costo hora.">Horas/mes</th>
                   <th title="Si el salario se define por mes o por hora (jornal).">
-                    Unidad Salario
+                    Unidad salario
                   </th>
                   <th title="País en uso; Usar cambia salario, moneda y jornadas de todo el módulo.">
                     Activo
@@ -42,14 +46,16 @@ export function PerfilPaisPanel() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((p, i) => {
+                {vista.map(({ p, i }, d) => {
                   const activo = p.codigo === state.config.pais;
                   return (
                     <tr
                       key={p.codigo}
                       style={{ background: activo ? 'rgba(37,99,235,.1)' : undefined }}
                     >
-                      <XlRowNum n={i + 1} />
+                      {/* # consecutivo en la VISTA (alfabética); el índice real (i) es solo
+                          para upd() sobre el estado sin ordenar. */}
+                      <XlRowNum n={d + 1} />
                       <td>{p.codigo}</td>
                       <td>{p.nombre}</td>
                       <td>{p.moneda}</td>
@@ -83,12 +89,18 @@ export function PerfilPaisPanel() {
                           onChange={(v) => upd(i, 'horas_mes', v)}
                         />
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <select
                           className="cm-sel"
                           aria-label="Unidad"
                           value={p.unidad}
                           onChange={(e) => upd(i, 'unidad', e.target.value)}
+                          style={{
+                            width: 'auto',
+                            margin: '0 auto',
+                            textAlign: 'center',
+                            textAlignLast: 'center',
+                          }}
                         >
                           <option value="mes">Mes</option>
                           <option value="hora">Hora</option>
