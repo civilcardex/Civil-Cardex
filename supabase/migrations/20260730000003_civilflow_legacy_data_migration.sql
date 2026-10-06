@@ -3,7 +3,23 @@
 -- Solo aplica si se copiaron proyectos/proyecto_data/plano_trazos del
 -- proyecto viejo (qgldfvqnlzehttebtlbo) a tablas de staging
 -- legacy_proyectos/legacy_proyecto_data/legacy_plano_trazos en ESTA base.
+--
+-- GUARD (runner de preview): si las tablas de staging no existen (o el esquema
+-- ya fue renombrado a cf_*), la migración ONE-TIME se OMITE con notice — en
+-- producción ya corrió; en un branch limpio no aplica. Idempotente.
 -- =========================================================================
+
+do $$
+begin
+  if not exists (select 1 from information_schema.tables
+                 where table_schema = 'public' and table_name = 'legacy_proyectos')
+     or exists (select 1 from information_schema.tables
+                where table_schema = 'public' and table_name = 'cf_proyectos') then
+    raise notice '0730000003: omitida (staging legacy ausente o esquema ya cf_*)';
+    return;
+  end if;
+end
+$$;
 
 begin;
 
