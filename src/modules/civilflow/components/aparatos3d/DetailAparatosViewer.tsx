@@ -61,6 +61,9 @@ export default function DetalleAparatosViewer(): React.JSX.Element {
       });
       const grupo = api.grupos.get(comp.modelKey);
       if (!grupo) return;
+      // Carrera de montaje (StrictMode/HMR): el grupo pudo quedar en una escena anterior
+      // que nadie renderiza. add() re-parenta a la escena viva (idempotente).
+      if (grupo.parent !== api.scene) api.scene.add(grupo);
       grupo.visible = true;
       api.grupoActivo = grupo;
       const THREE = api.THREE;

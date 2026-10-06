@@ -47,13 +47,38 @@ export function useGlbCatalogo(
               disposeGrupo(api.THREE, gltf.scene);
               return true;
             }
+            // Carrera de montaje (StrictMode/HMR): el api vivo del ref puede ser OTRO
+            // distinto al capturado al inicio — un grupo agregado a la escena capturada
+            // queda en una escena que nadie renderiza ("no se ve ningún aparato").
+            // Trabajar SIEMPRE con el api vivo del ref.
+            const apiVivo = apiRef.current ?? api;
             const grupo = gltf.scene;
             grupo.traverse((obj) => {
               const mesh = obj as import('three').Mesh;
-              if (mesh.isMesh) {
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-              }
+              if (!mesh.isMesh) return;
+              mesh.castShadow = true;
+              mesh.receiveShadow = true;
+              // Look del parser a mano del HTML de referencia: los GLB usan la extensión
+              // LEGACY KHR_materials_pbrSpecularGlossiness (sin texturas, color plano en
+              // diffuseFactor). Three moderno ya no la soporta: el loader genera un
+              // MeshStandardMaterial con map fantasma sin imagen que NO rasteriza (verificado
+              // en navegador: Standard 0 px, Basic/Phong sí). Recrear como Phong con el color
+              // diffuse que el loader SÍ copió a .color — shading difuso+especular ≈ r128.
+              // CRÍTICO: con UN solo material asignar el material DIRECTO, no un array —
+              // una geometría sin groups + material array dibuja CERO triángulos.
+              const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+              const nuevos = mats.map((m) => {
+                const std = m as import('three').MeshStandardMaterial;
+                if (!std || !std.isMeshStandardMaterial) return m;
+                return new api.THREE.MeshPhongMaterial({
+                  color: std.color.clone(),
+                  vertexColors: std.vertexColors,
+                  side: api.THREE.DoubleSide,
+                  specular: new api.THREE.Color(0x333333),
+                  shininess: 30,
+                });
+              });
+              mesh.material = nuevos.length === 1 ? nuevos[0] : nuevos;
             });
             // Fix pulgadas→metros del original: modelos gigantes → escala 0.0254.
             const box = new THREE.Box3().setFromObject(grupo);
@@ -61,8 +86,10 @@ export function useGlbCatalogo(
             const maxDim = Math.max(size.x, size.y, size.z);
             if (maxDim > 5) grupo.scale.setScalar(0.0254);
             grupo.visible = false;
-            api.scene.add(grupo);
-            api.grupos.set(modelKey, grupo);
+            // add() re-parenta: si el grupo quedó en otra escena por la carrera, esto lo
+            // re-ancla a la escena viva (idempotente).
+            apiVivo.scene.add(grupo);
+            apiVivo.grupos.set(modelKey, grupo);
             assembly.expandByObject(grupo);
             return true;
           } catch (e) {
@@ -74,12 +101,23 @@ export function useGlbCatalogo(
       );
       if (cancelled) return;
 
+      // Re-anclar TODOS los grupos a la escena viva por si el api cambió a mitad de la
+      // carga (el add de arriba usó el vivo de entonces; el ref puede haber cambiado
+      // otra vez). Idempotente y barato (12 adds como máximo).
+      const final = apiRef.current;
+      if (final) {
+        final.grupos.forEach((g) => {
+          if (g.parent !== final.scene) final.scene.add(g);
+        });
+      }
+      const apiFinal = final ?? api;
+
       const mc = assembly.getCenter(new THREE.Vector3());
       const mr = assembly.getSize(new THREE.Vector3()).length() / 2 || 5;
-      colocarRigLuz(api, mc, mr);
-      const { pos, tgt } = poseIso(api, assembly);
-      api.defPos = pos;
-      api.defTgt = tgt;
+      colocarRigLuz(apiFinal, mc, mr);
+      const { pos, tgt } = poseIso(apiFinal, assembly);
+      apiFinal.defPos = pos;
+      apiFinal.defTgt = tgt;
       cbRef.current.onProgress(100);
       cbRef.current.onReady();
     })();
