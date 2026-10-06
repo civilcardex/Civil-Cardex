@@ -4,7 +4,7 @@ import { canalOBBDe, puntoEnCanalOBB } from '../lib/PlanoEngine/canalAssociation
 import type { PlanItem } from '../context/PlansContext';
 import { diametroManning } from './calcSanitaryCore';
 import { chequeoBajanteLluvia } from './calcRainwater';
-import { cEfectivoCubierta } from '../constants/engineeringDataMaterials';
+import { cDeCubierta } from '../constants/engineeringDataMaterials';
 import { calcHydraulicCheck } from './hydraulicCheck';
 import { compareTramosPisoDesc } from './componentHelpers';
 import { DIAM_OPTIONS } from '../constants';
@@ -222,15 +222,19 @@ export function buildLlBajanteAssociations(
   return ramalToBajantes;
 }
 
-/** Q (LPS) de UN bajante de aguas lluvias — ÚNICA precedencia para panel y tablas:
- *  caudal manual del dibujo > override manual con Área TOTAL (Parcial + Otras)/I/C > área
- *  del dibujo > fallback del área del piso. Antes: 4 fórmulas distintas (panel, computeLlQMap,
- *  chequeo bajantes, export) discrepaban para el mismo elemento. */
+/** Q (LPS) de UN bajante de aguas lluvias — precedencia del PANEL y del tramo bajante
+ *  (ownQ de computeLlQMap): caudal manual del dibujo > override manual con Área TOTAL
+ *  (Parcial + Otras)/I/C > área del dibujo > fallback del piso. El tramo COLECTOR y el
+ *  chequeo de bajantes/canal derivan la Parcial con areaParcialBajanteLl (dibujo > manual). */
 export function qBajanteLl(
   bajante: { id?: string; code?: string; area_m2?: number; caudal?: number },
   manual?: BajanteLl | null,
   areaPisoFallback = 0,
 ): number {
+  // Requisito ABSOLUTO del material de cubierta (decisión del usuario): sin material elegido
+  // no hay Q — ni con caudal manual del dibujo ni con override de áreas (antes C=1 implícito).
+  const C = cDeCubierta(manual?.materialCubierta ?? '');
+  if (!C) return 0;
   if (bajante.caudal != null && bajante.caudal > 0) return bajante.caudal;
   if (manual) {
     const areaParcial = manual.areaParcial ?? bajante.area_m2 ?? 0;
@@ -239,13 +243,51 @@ export function qBajanteLl(
       return chequeoBajanteLluvia({
         areaAcumulada: areaTotal,
         intensidad: manual.intensidad ?? 100,
-        coeficienteC: cEfectivoCubierta(manual.materialCubierta),
+        coeficienteC: C,
       }).Q;
     }
   }
   const area = bajante.area_m2 || areaPisoFallback || 0;
   if (area <= 0) return 0;
-  return chequeoBajanteLluvia({ areaAcumulada: area, intensidad: 100, coeficienteC: 1 }).Q;
+  return chequeoBajanteLluvia({ areaAcumulada: area, intensidad: 100, coeficienteC: C }).Q;
+}
+
+/** Área parcial (m²) de UN bajante ll — fórmula compartida (tabla de bajantes, memoria y
+ *  canal REQ: el canal suma EXACTAMENTE las parciales de sus bajantes asociados):
+ *  área dibujada > área del glifo > override manual (areaParcial) > 0. */
+export function areaParcialBajanteLl(
+  areaDibujo: number | undefined,
+  areaGlifo: number | undefined,
+  manual?: { areaParcial?: number } | null,
+): number {
+  return areaDibujo || areaGlifo || manual?.areaParcial || 0;
+}
+
+/** Material de cubierta COMÚN de los bajantes asociados a un canal: solo si todos comparten
+ *  el mismo material no vacío; mezclados/ninguno → '' (placeholder; sin material no hay C). */
+export function materialComun(materiales: Array<string | undefined>): string {
+  const primero = materiales[0];
+  if (!primero) return '';
+  return materiales.every((m) => m === primero) ? primero : '';
+}
+
+/** Σ del área "Otras" (m²) de los overrides de los bajantes asociados a un canal
+ *  (fila ausente/undefined → 0). El canal muestra SIEMPRE esta Σ real vía context. */
+export function sumaOtrasAsociados(overrides: Array<{ areaOtras?: number } | undefined>): number {
+  return overrides.reduce((s, o) => s + (o?.areaOtras ?? 0), 0);
+}
+
+/** Reparte un total de "Área Otras" del canal entre sus N bajantes asociados de forma
+ *  que Σ(escrito) == total (residuo al primero; centavos de m² para evitar flotantes).
+ *  Re-editar el mismo total es idempotente. Bajante compartido por 2 canales: la última
+ *  escritura gana (caso borde aceptado). */
+export function repartirOtrasCanal(total: number, n: number): number[] {
+  if (n <= 0) return [];
+  const base = Math.floor((total * 100) / n) / 100; // centavos de m² para evitar flotantes
+  const vals = Array.from({ length: n }, () => base);
+  const residuo = Math.round((total - base * n) * 100) / 100;
+  vals[0] = Math.round((vals[0] + residuo) * 100) / 100;
+  return vals;
 }
 
 // Caudal (LPS) que llega a cada tramo — escorrentía propia para un bajante, escorrentía del área
@@ -280,11 +322,13 @@ export function computeLlQMap(
   const ownQMap: Record<string, number> = {};
   for (const t of tramosLl) {
     if (!t._key) continue;
-    // Mismo cálculo que el panel (qBajanteLl): una sola precedencia.
+    // Mismo cálculo que el panel (qBajanteLl): una sola precedencia. El caudal manual del
+    // dibujo (t.qLps) también queda gated por el material del override (requisito absoluto).
     const manual = bajantesLl.find(
       (b) => b.bajante === t.id || b.bajante === t.code || b.id === t.id || b.id === t.code,
     );
-    const ownQ = qBajanteLl(t, manual) || t.qLps || 0;
+    const conMaterial = !!cDeCubierta(manual?.materialCubierta ?? '');
+    const ownQ = qBajanteLl(t, manual) || (conMaterial ? t.qLps || 0 : 0);
     ownQMap[t._key] = ownQ;
   }
 
@@ -299,29 +343,36 @@ export function computeLlQMap(
         const bajante = bajantesLl.find((b) => b.bajante === code || b.id === code);
         const trBaj = tramosLl.find((tb) => tb.code === code || tb.id === code);
 
-        // Área TOTAL (orig. usuario) = Parcial + Otras: la parcial del dibujo (override manual
-        // del bajante primero, total del piso como fallback) más las Otras editables.
-        const areaTotal =
-          (bajante?.areaParcial || areaAcumMap[String(trBaj?.piso)] || 0) +
-          (bajante?.areaOtras ?? 0);
+        // Área TOTAL (orig. usuario) = Parcial + Otras. Parcial con la MISMA fórmula
+        // compartida del chequeo de bajantes y del canal (areaParcialBajanteLl: área
+        // dibujada del tramo bajante > override manual) — antes: manual primero, y el Q
+        // del mismo bajante divergía entre "Diseño de red" y "Chequeo bajantes". El total
+        // del piso queda como ÚLTIMO fallback (sin dibujo ni override).
+        const areaParcial =
+          areaParcialBajanteLl(trBaj?.area_m2, undefined, bajante) ||
+          areaAcumMap[String(trBaj?.piso)] ||
+          0;
+        const areaTotal = areaParcial + (bajante?.areaOtras ?? 0);
 
         if (bajante) {
+          // C SOLO del material de cubierta (requisito absoluto): sin material → C=0 → sin Q.
           const Q = chequeoBajanteLluvia({
             areaAcumulada: areaTotal,
             intensidad: bajante.intensidad ?? 100,
-            coeficienteC: cEfectivoCubierta(bajante.materialCubierta),
-          }).Q;
-          total += Q;
-        } else if (trBaj) {
-          const Q = chequeoBajanteLluvia({
-            areaAcumulada: areaTotal,
-            intensidad: 100,
-            coeficienteC: 1,
+            coeficienteC: cDeCubierta(bajante.materialCubierta ?? '') ?? 0,
           }).Q;
           total += Q;
         }
+        // (fallback trBaj con C=1 retirado — requisito absoluto del material: sin fila de
+        // override no hay material conocido y el bajante no aporta Q.)
       }
-      if (total === 0 && t.qLps) {
+      // Caudal manual del ramal (dibujo) también gated: sin material en NINGÚN bajante
+      // asociado no hay Q (decisión del usuario).
+      const algunMaterial = associatedCodes.some((code) => {
+        const b = bajantesLl.find((x) => x.bajante === code || x.id === code);
+        return !!cDeCubierta(b?.materialCubierta ?? '');
+      });
+      if (total === 0 && t.qLps && algunMaterial) {
         total = t.qLps;
       }
     } else {
@@ -441,8 +492,10 @@ export function computeLlRows(
       sVal,
       DcalcPulg,
       DdisPulg,
-      // Chequeo de diámetro (como red sanitaria): D diseño >= D calculado.
-      chequeoD: DdisPulg > 0 && DcalcPulg > 0 ? (DdisPulg >= DcalcPulg ? 'Ok' : 'No cumple') : '—',
+      // Chequeo de diámetro (como red sanitaria): D diseño >= D calculado; REQ: incompleto
+      // (sin D diseño o sin D calculado) = 'No cumple' — fuera el '—'.
+      chequeoD:
+        DdisPulg > 0 && DcalcPulg > 0 ? (DdisPulg >= DcalcPulg ? 'Ok' : 'No cumple') : 'No cumple',
       DintMm,
       Qo,
       Vo,

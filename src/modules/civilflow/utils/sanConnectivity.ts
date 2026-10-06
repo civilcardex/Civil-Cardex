@@ -195,8 +195,14 @@ export function buildSanConnectivity(
       // historia (conversiones ramal↔tributario, splits, borrados) — reintentar por el OTRO
       // extremo antes de dar el tramo por huérfano. Sin esto su UD no llegaba al receptor ni
       // propagaba aguas abajo (orig. usuario: T2RS7 vacía pese a llegarle T10RS7 y T4RS7).
+      // El re-intento corre por el extremo ORIGEN: un bajante ahí es una SALIDA (el bajante
+      // alimenta al ramal, no al revés) — conectarlo registraba el ramal como "hijo" del
+      // bajante y duplicaba sus UD en la fila del bajante (el espejo de salidas ya copia el
+      // agregado a la clave del ramal; orig. usuario: "un lavamanos extra").
       if (connections.length === 0) {
-        connections = checkEndpoint(r._tribReversed ? pEnd : pStart);
+        connections = checkEndpoint(r._tribReversed ? pEnd : pStart).filter(
+          (c) => c.type !== 'bajante',
+        );
       }
 
       for (const connection of connections) {

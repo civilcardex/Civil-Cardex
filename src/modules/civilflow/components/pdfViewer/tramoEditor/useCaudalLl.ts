@@ -4,7 +4,7 @@ import { loadFromStorage } from '../../../services/storageService';
 import { RainwaterContext } from '../../../context/RainwaterContext';
 import { buildLlBajanteAssociations } from '../../../utils/rainwaterRows';
 import { chequeoBajanteLluvia } from '../../../utils/calcRainwater';
-import { cEfectivoCubierta } from '../../../constants/engineeringDataMaterials';
+import { cDeCubierta } from '../../../constants/engineeringDataMaterials';
 import type { DrawingData } from '../../../utils/drawingSync';
 
 /** Forma mínima de un override manual de bajante ll (BajanteLL de RainwaterContext). */
@@ -93,21 +93,25 @@ function caudalLlDe(
   for (const m of overrides) manualByCode.set(m.bajante || m.id, m);
 
   const qDe = (b: { id?: string; code?: string; area_m2?: number; caudal?: number }): number => {
-    if (b.caudal != null && b.caudal > 0) return b.caudal;
     // Overrides manuales de la tabla (Área Otras / intensidad) vía RainwaterContext — el
     // visor lo monta (ViewerPage); sin provider (tests), cae al cálculo del dibujo.
     const manual = manualByCode.get(b.code || b.id || '');
+    // Requisito absoluto del material (igual que qBajanteLl en las tablas): sin material de
+    // cubierta elegido no hay Q — ni el caudal manual del dibujo ni el área disparan.
+    const C = cDeCubierta(manual?.materialCubierta ?? '');
+    if (!C) return 0;
+    if (b.caudal != null && b.caudal > 0) return b.caudal;
     if (manual && ((manual.areaAcumulada ?? 0) > 0 || (manual.areaParcial ?? 0) > 0)) {
       return chequeoBajanteLluvia({
         areaAcumulada: manual.areaAcumulada || manual.areaParcial || 0,
         intensidad: manual.intensidad ?? 100,
-        coeficienteC: cEfectivoCubierta(manual.materialCubierta),
+        coeficienteC: C,
       }).Q;
     }
     return chequeoBajanteLluvia({
       areaAcumulada: b.area_m2 || 0,
       intensidad: 100,
-      coeficienteC: 1,
+      coeficienteC: C,
     }).Q;
   };
 

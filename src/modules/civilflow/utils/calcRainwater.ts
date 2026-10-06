@@ -75,14 +75,10 @@ export function chequeoBajanteLluvia({
       : 0;
   const Qcap = Math.round(capacidad(diamPropuesto) * 100) / 100;
   const cociente = Qcap > 0 ? Q / Qcap : 0;
+  // REQ (chequeo incompleto = No cumple): sin Q calculado o sin D propuesto ya no hay
+  // '—'/'Sin diseño' — la fila queda roja hasta completar los insumos del chequeo.
   const chequeo =
-    dCalc > 0 && diamPropuesto > 0
-      ? dCalc <= diamPropuesto
-        ? 'Ok'
-        : 'No cumple'
-      : dCalc > 0
-        ? 'Sin diseño'
-        : '—';
+    dCalc > 0 && diamPropuesto > 0 ? (dCalc <= diamPropuesto ? 'Ok' : 'No cumple') : 'No cumple';
   return { Q, dCalc, Qcap, cociente, chequeo };
 }
 
@@ -140,7 +136,9 @@ export function chequeoCanalLluvia({
     areaAcumulada > 0 && intensidad > 0 && coeficienteC > 0
       ? Math.round(((aEfectiva * intensidad * coeficienteC) / 3600) * 100) / 100
       : 0;
-  const n = manning || 0.009;
+  // REQ usuario: sin manning (material de canal sin asignar) NO hay fallback (antes 0.009):
+  // Qmax/yn/velocidad quedan 0 por sus guards y el chequeo no se emite (chequeo vacío).
+  const n = manning;
   const S = (pendiente || 0) / 100;
   const b_m = b / 100;
   const h_m = h / 100;
@@ -163,8 +161,11 @@ export function chequeoCanalLluvia({
   }
   const velocidad =
     Qreal > 0 && b_m > 0 && yn > 0 ? Math.round((Qreal / 1000 / (b_m * yn)) * 100) / 100 : 0;
+  // REQ (chequeo incompleto = No cumple): sin Qreal (p. ej. falta material → C=0) o sin
+  // sección (b/h/pendiente) la fila queda 'No cumple' — fuera '—'/'Sin sección'.
+  // Excepción REQ usuario: sin manning el chequeo NO se emite (vacío = sin chequeo).
   const chequeo =
-    Qmax > 0 && Qreal > 0 ? (Qreal <= Qmax ? 'Ok' : 'No cumple') : Qreal > 0 ? 'Sin sección' : '—';
+    n <= 0 ? '' : Qmax > 0 && Qreal > 0 ? (Qreal <= Qmax ? 'Ok' : 'No cumple') : 'No cumple';
   const totalStr = b > 0 || h > 0 ? `${b}x${h + (bordeLibreCm || 0)}` : '—';
   return {
     aEfectiva: Math.round(aEfectiva * 100) / 100,
@@ -204,8 +205,10 @@ export function chequeoEmbocaduraLluvia({
   diamPulg?: number;
   hUtilM?: number;
 }): EmbocaduraResult {
+  // REQ (chequeo incompleto = No cumple): faltan insumos → 'No cumple'; se CONSERVA
+  // 'Revisar bajante' solo para el caso específico Q>0 sin bajantes/D asociados.
   if (Qreal <= 0 || numBajantes <= 0 || diamPulg <= 0) {
-    return { QporBajante: 0, Hreq: 0, chequeo: Qreal > 0 ? 'Revisar bajante' : '—' };
+    return { QporBajante: 0, Hreq: 0, chequeo: Qreal > 0 ? 'Revisar bajante' : 'No cumple' };
   }
   const Qb = Qreal / numBajantes;
   const D_m = diamPulg * PULG_A_M;
@@ -213,7 +216,7 @@ export function chequeoEmbocaduraLluvia({
   const Hvert = Math.pow(Qm3 / (CW_VERTEDERO * Math.PI * D_m), 2 / 3);
   const Horif = Math.pow(Qm3 / (CD_ORIFICIO * Math.PI * ((D_m * D_m) / 4)), 2) / (2 * G_M_S2);
   const Hreq = Math.max(Hvert, Horif);
-  const chequeo = hUtilM > 0 ? (Hreq <= hUtilM ? 'Ok' : 'No cumple') : 'Sin sección';
+  const chequeo = hUtilM > 0 ? (Hreq <= hUtilM ? 'Ok' : 'No cumple') : 'No cumple';
   return {
     QporBajante: Math.round(Qb * 100) / 100,
     Hreq: Math.round(Hreq * 1e6) / 1e6,

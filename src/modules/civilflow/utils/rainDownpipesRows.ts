@@ -4,7 +4,8 @@ import type { BajanteLL } from '../context/RainwaterContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { chequeoBajanteLluvia } from './calcRainwater';
-import { cEfectivoCubierta } from '../constants/engineeringDataMaterials';
+import { cDeCubierta } from '../constants/engineeringDataMaterials';
+import { areaParcialBajanteLl } from './rainwaterRows';
 import type { DrawingData } from './drawingSync';
 import type { MemoriaTable } from './exportMemoryFinal';
 
@@ -15,7 +16,7 @@ interface Row {
   areaOtras: number;
   areaAcum: number;
   intensidad: number;
-  /** C derivado del material de cubierta (fallback 1.0, criterio NTC 1500). */
+  /** C derivado del material de cubierta; 0 sin material (requisito absoluto — Q=0). */
   coeficienteC: number;
   materialCubierta: string;
   R: string;
@@ -62,8 +63,9 @@ export function computeRainDownpipesTable(
     const manual = manualMap.get(code) || manualMap.get(d.id);
     if (manual) usedManual.add(manual.bajante || manual.id);
     const areaDib = areaDibujoMap[code] || areaDibujoMap[d.id] || 0;
-    // Parcial = dibujo; Otras editable (default 0); TOTAL = Parcial + Otras (orig. usuario).
-    const areaParcial = areaDib || d.area_m2 || manual?.areaParcial || 0;
+    // Parcial = dibujo (fórmula compartida con la tabla y el canal); Otras editable
+    // (default 0); TOTAL = Parcial + Otras (orig. usuario).
+    const areaParcial = areaParcialBajanteLl(areaDib, d.area_m2, manual);
     const areaOtras = manual?.areaOtras ?? 0;
     const areaAcum = areaParcial + areaOtras;
     const rVal = d.bajR != null ? (Math.abs(d.bajR - 0.25) < 0.001 ? '1/4' : '7/24') : '7/24';
@@ -74,7 +76,8 @@ export function computeRainDownpipesTable(
       areaOtras,
       areaAcum,
       intensidad: manual?.intensidad ?? 100,
-      coeficienteC: cEfectivoCubierta(manual?.materialCubierta),
+      // Requisito absoluto del material: sin material → C=0 → Q=0 (igual que la tabla).
+      coeficienteC: cDeCubierta(manual?.materialCubierta ?? '') ?? 0,
       materialCubierta: manual?.materialCubierta ?? '',
       R: rVal,
       manning: manual?.manning || 0.009,
@@ -87,7 +90,7 @@ export function computeRainDownpipesTable(
     if (usedManual.has(key)) continue;
     const bajDib = drawingBajantes.find((d) => d.code === m.bajante || d.id === m.bajante);
     const areaDib = areaDibujoMap[m.bajante] || 0;
-    const areaParcial = areaDib || bajDib?.area_m2 || m.areaParcial || 0;
+    const areaParcial = areaParcialBajanteLl(areaDib, bajDib?.area_m2, m);
     const areaOtras = m.areaOtras ?? 0;
     const areaAcum = areaParcial + areaOtras;
     rows.push({
@@ -97,7 +100,8 @@ export function computeRainDownpipesTable(
       areaOtras,
       areaAcum,
       intensidad: m.intensidad ?? 100,
-      coeficienteC: cEfectivoCubierta(m.materialCubierta),
+      // Requisito absoluto del material: sin material → C=0 → Q=0 (igual que la tabla).
+      coeficienteC: cDeCubierta(m.materialCubierta ?? '') ?? 0,
       materialCubierta: m.materialCubierta ?? '',
       R: m.R,
       manning: m.manning || 0.009,

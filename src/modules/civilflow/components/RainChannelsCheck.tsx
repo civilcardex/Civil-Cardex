@@ -1,5 +1,6 @@
 import React from 'react';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import ChipList from './shared/ChipList';
 import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_BAN } from '../constants';
@@ -20,7 +21,8 @@ import {
   cDeCubierta,
   nDeCanal,
 } from '../constants/engineeringDataMaterials';
-import { trunc2 } from '../utils/formatUtils';
+import { fmt } from '../utils/formatUtils';
+import { repartirOtrasCanal } from '../utils/rainwaterRows';
 import type { DrawingData } from '../utils/drawingSync';
 
 // Encabezados compactos (orig. usuario: sin scroll horizontal): wrap a 2-3 líneas.
@@ -83,11 +85,11 @@ const CanalDimField = React.memo(function CanalDimField({
     field === 'areaOtras'
       ? editing
         ? text
-        : String(value ?? 0)
+        : fmt(value ?? 0, 2)
       : editing
         ? text
         : value > 0
-          ? String(value)
+          ? fmt(value, 2)
           : '';
   return (
     <input
@@ -135,14 +137,32 @@ const CanalDimField = React.memo(function CanalDimField({
 
 export default function ChequeoCanalesLluvias() {
   const [edit, setEdit] = React.useState(false);
-  const { canalesLl, updCanalLL, updCanalSector, conRecolectora, canalBajantes } = useRainwater();
+  const tablaRef = useStickyThead2Offset();
+  const { canalesLl, updCanalLL, updCanalSector, conRecolectora, canalBajantes, updBajanteLL } =
+    useRainwater();
   const { plans } = usePlans();
+  // ── Canal = Σ bajantes asociados (REQ: fuente única = overrides de los BAJANTES) ──
+  // Con bajantes asociados, las celdas Parcial/Otras/Material cubierta muestran el valor
+  // DERIVADO del context (canalesLlAuto ya lo calcula con areaParcialBajanteLl) y al editar
+  // se escribe updBajanteLL en CADA asociado — así la tabla de bajantes y esta leen el mismo
+  // override y sincronizan en vivo. Sin asociados → override propio del canal (como hoy).
+  const asociadosDe = (drawId?: string): string[] => (drawId ? canalBajantes[drawId] || [] : []);
+  const codigoDeChip = (chip: string): string => chip.split('-')[0];
   // Escritura bidireccional con el dibujo (ítem 7 usuario): b/h/longitud/pendiente de filas
   // fromCanal van al glifo (writeCanalDimsToDrawing = manda el dibujo); área/intensidad van
   // al override por sector (updCanalSector); filas manuales usan updCanalLL como siempre.
   const onCanalField = (id: string, field: string, val: number) => {
     const row = canalesLl.find((c) => c.id === id);
     if (!row) return;
+    // REQ canal = Σ bajantes: "Otras" con asociados REPARTE el total tecleado entre ellos
+    // (repartirOtrasCanal: Σ(escrito) == total, residuo al primero). Escribir el MISMO valor
+    // a cada uno inflaba N× (5 → mostraba 15 → 45...). La celda muestra la Σ real vía context.
+    if (field === 'areaOtras' && asociadosDe(row.drawId).length > 0) {
+      const asociados = asociadosDe(row.drawId);
+      const vals = repartirOtrasCanal(val, asociados.length);
+      asociados.forEach((chip, i) => updBajanteLL(codigoDeChip(chip), 'areaOtras', vals[i] ?? 0));
+      return;
+    }
     if (row.fromCanal && row.drawId != null && row.drawPlanId != null) {
       if (field === 'b' || field === 'h' || field === 'longitud' || field === 'pendiente') {
         if (field === 'pendiente' && (val <= 0 || val > 15)) {
@@ -175,9 +195,17 @@ export default function ChequeoCanalesLluvias() {
 
   // Campos de TEXTO (materiales): mismo routing que onCanalField — override por sector en
   // filas fromCanal, estado en manuales. Los materiales viven en el override, no en el glifo.
+  // REQ canal = Σ bajantes: "Material cubierta" con asociados escribe en TODOS los bajantes
+  // asociados (la celda muestra el material común derivado; mezclados → '' placeholder).
   const onCanalStrField = (id: string, field: string, val: string) => {
     const row = canalesLl.find((c) => c.id === id);
     if (!row) return;
+    if (field === 'materialCubierta' && asociadosDe(row.drawId).length > 0) {
+      for (const chip of asociadosDe(row.drawId)) {
+        updBajanteLL(codigoDeChip(chip), 'materialCubierta', val);
+      }
+      return;
+    }
     if (row.fromCanal && row.sector) {
       updCanalSector(row.sector, field, val);
       return;
@@ -192,16 +220,9 @@ export default function ChequeoCanalesLluvias() {
   // abajo lee storage crudo — sin tick, cambiar D de un bajante en el visor dejaba las
   // columnas "D baj."/"Lámina" con el valor viejo hasta remontar.
   const [diamTick, setDiamTick] = React.useState(0);
-  // Re-escaneo del storage cuando el dibujo sincroniza (el D baj. del colgroup se lee crudo).
-  React.useEffect(() => {
-    const h = () => setDiamTick((n) => n + 1);
-    window.addEventListener('storage', h);
-    window.addEventListener('civilflow_san_sync_changed', h as EventListener);
-    return () => {
-      window.removeEventListener('storage', h);
-      window.removeEventListener('civilflow_san_sync_changed', h as EventListener);
-    };
-  }, []);
+  // Re-escaneo del storage cuando el dibujo sincroniza (el D baj. del colgroup se lee crudo):
+  // MISMO trío de eventos que RainwaterContext (antes había un 2º listener duplicado sin el
+  // evento de hidro — solo el primero de los dos disparaba dos veces por cambio).
   React.useEffect(() => {
     const bump = () => setDiamTick((n) => n + 1);
     window.addEventListener('storage', bump);
@@ -241,7 +262,8 @@ export default function ChequeoCanalesLluvias() {
       }
     }
     return map;
-    void diamTick; // dependencia intencional: fuerza el re-escaneo del storage (no se lee directo)
+    // 'diamTick' en deps es intencional: fuerza el re-escaneo del storage (no se lee directo).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, diamTick]);
 
   return (
@@ -272,6 +294,7 @@ export default function ChequeoCanalesLluvias() {
       ) : (
         <div style={{ padding: '12px' }}>
           <table
+            ref={tablaRef}
             className="tbl"
             style={{
               fontSize: 10,
@@ -455,7 +478,7 @@ export default function ChequeoCanalesLluvias() {
                   cubierta
                 </th>
                 <th
-                  title="Coeficiente de escorrentía del material; sin material se usa C = 1,0."
+                  title="Coeficiente de escorrentía del material; sin material elegido el cálculo no se realiza (Q = 0)."
                   scope="col"
                   className="col-h ll"
                   style={thL}
@@ -648,27 +671,47 @@ export default function ChequeoCanalesLluvias() {
                 </tr>
               ) : (
                 canalesLl.map((c) => {
-                  // C y n derivados de los materiales (hoja 2); fallback al manual sin material.
-                  const Cder = cDeCubierta(c.materialCubierta ?? '') ?? c.coeficienteC ?? 0;
-                  const nder = nDeCanal(c.materialCanal ?? '') ?? c.manning ?? 0;
-                  const { Qreal, Qmax, yn, velocidad, chequeo, totalStr, aEfectiva } =
-                    chequeoCanalLluvia({
-                      ...c,
-                      coeficienteC: Cder,
-                      manning: nder,
-                      muroVertical: c.muroVertical ?? 0,
-                      bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
-                    });
+                  // REQ material absoluto: C SOLO del material de cubierta del catálogo —
+                  // sin material → 0 → Q=0 y chequeo 'No cumple' (SIN fallback al override
+                  // manual coeficienteC ni al 0.0278 de fila nueva). Con bajantes asociados,
+                  // c.materialCubierta ya llega DERIVADO del context (fuente única bajantes).
+                  const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+                  // REQ usuario: sin material de canal NO hay manning (ni fallback al override
+                  // manual ni al persistido) y la fila no calcula ni chequea nada — solo
+                  // inputs (n '—', Qreal/Qmax/yn/velocidad/total '—', chequeos vacíos).
+                  const matCanal = c.materialCanal ?? '';
+                  const nder = nDeCanal(matCanal);
+                  const calc =
+                    matCanal && nder != null
+                      ? chequeoCanalLluvia({
+                          ...c,
+                          coeficienteC: Cder,
+                          manning: nder,
+                          muroVertical: c.muroVertical ?? 0,
+                          bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
+                        })
+                      : null;
+                  const { Qreal, Qmax, yn, velocidad, chequeo, totalStr, aEfectiva } = calc ?? {
+                    aEfectiva: 0,
+                    Qreal: 0,
+                    Qmax: 0,
+                    yn: 0,
+                    velocidad: 0,
+                    chequeo: '',
+                    totalStr: '',
+                  };
                   // Embocadura (hoja 2 AE/AG; Z/AB/AC/AD rojas quedan internas): N° = bajantes
                   // asociados del canal, D = el menor propuesto (conservador).
                   const items = c.drawId ? canalBajantes[c.drawId] || [] : [];
                   const ds = items.map((ch) => diamPulgPorChip[ch] || 0).filter((x) => x > 0);
-                  const emb = chequeoEmbocaduraLluvia({
-                    Qreal,
-                    numBajantes: items.length,
-                    diamPulg: ds.length ? Math.min(...ds) : 0,
-                    hUtilM: (c.h || 0) / 100,
-                  });
+                  const emb = calc
+                    ? chequeoEmbocaduraLluvia({
+                        Qreal,
+                        numBajantes: items.length,
+                        diamPulg: ds.length ? Math.min(...ds) : 0,
+                        hUtilM: (c.h || 0) / 100,
+                      })
+                    : { Hreq: 0, chequeo: '' };
                   return (
                     <tr key={c.id}>
                       <td className="c">
@@ -691,12 +734,17 @@ export default function ChequeoCanalesLluvias() {
                         })()}
                       </td>
                       <td className="c">
+                        {/* Parcial (REQ canal = Σ bajantes): con asociados llega DERIVADO del
+                          context = Σ areaParcialBajanteLl de cada bajante (misma fórmula que
+                          la tabla de bajantes); sin asociados → fallbacks propios del canal. */}
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
                           {c.areaParcial ? Number(c.areaParcial).toFixed(2) : '—'}
                         </span>
                       </td>
                       <td className="c">
-                        {/* Otras (orig. usuario): editable, default 0 — nunca vacía. */}
+                        {/* Otras (orig. usuario): editable, default 0 — nunca vacía. REQ:
+                          con asociados muestra el Σ derivado de los overrides de los bajantes
+                          y al editar escribe updBajanteLL en cada uno (fuente única). */}
                         <CanalDimField
                           id={c.id}
                           field="areaOtras"
@@ -733,7 +781,10 @@ export default function ChequeoCanalesLluvias() {
                         </span>
                       </td>
                       <td className="c">
-                        {/* Material de cubierta (hoja 2 col. G): abreviatura + hover completo. */}
+                        {/* Material de cubierta (hoja 2 col. G): abreviatura + hover completo.
+                          REQ canal = Σ bajantes: con asociados muestra el material COMÚN
+                          derivado de los bajantes ('' si mezclados) y al escoger escribe
+                          materialCubierta a TODOS los asociados (fuente única). */}
                         <select
                           value={c.materialCubierta ?? ''}
                           aria-label="Material de cubierta"
@@ -789,7 +840,7 @@ export default function ChequeoCanalesLluvias() {
                         className="c"
                         style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10 }}
                       >
-                        {Qreal > 0 ? trunc2(Qreal) : '—'}
+                        {Qreal > 0 ? fmt(Qreal, 2) : '—'}
                       </td>
                       <td className="c">
                         {/* Material del canal (hoja 2 col. J): n derivado del catálogo. */}
@@ -823,12 +874,12 @@ export default function ChequeoCanalesLluvias() {
                         </select>
                       </td>
                       <td className="c">
-                        {/* n derivado del material de canal; fallback al manual sin material. */}
+                        {/* n SOLO del material de canal (REQ: sin material → vacío, sin fallback). */}
                         <span
                           title={c.materialCanal || undefined}
                           style={{ fontFamily: 'var(--mono)', fontSize: 10 }}
                         >
-                          {nder > 0 ? nder.toFixed(3) : '—'}
+                          {nder != null && nder > 0 ? nder.toFixed(3) : '—'}
                         </span>
                       </td>
                       <td className="c">
@@ -882,17 +933,17 @@ export default function ChequeoCanalesLluvias() {
                         className="c"
                         style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 10 }}
                       >
-                        {Qmax > 0 ? trunc2(Qmax) : '—'}
+                        {Qmax > 0 ? fmt(Qmax, 2) : '—'}
                       </td>
                       <td className="c">
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
-                          {Qmax > 0 && Qreal > 0 ? `${((Qreal / Qmax) * 100).toFixed(1)}%` : '—'}
+                          {Qmax > 0 && Qreal > 0 ? `${((Qreal / Qmax) * 100).toFixed(2)}%` : '—'}
                         </span>
                       </td>
                       <td className="c">
                         {/* Tirante normal (hoja 2 col. V): iteración de punto fijo en calc. */}
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
-                          {yn > 0 ? yn.toFixed(4) : '—'}
+                          {yn > 0 ? yn.toFixed(2) : '—'}
                         </span>
                       </td>
                       <td className="c">
@@ -910,7 +961,7 @@ export default function ChequeoCanalesLluvias() {
                       <td className="c">
                         {/* Lámina requerida H = max(vertedero, orificio) (hoja 2 col. AE). */}
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
-                          {emb.Hreq > 0 ? emb.Hreq.toFixed(4) : '—'}
+                          {emb.Hreq > 0 ? emb.Hreq.toFixed(2) : '—'}
                         </span>
                       </td>
                       <td className="c" style={{ fontSize: 10 }}>

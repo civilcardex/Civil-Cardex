@@ -26,8 +26,7 @@ import { computeAccesoriosTable } from '../../utils/sanFittingsRows';
 import { computeAccesoriosPorRamalTable } from '../../utils/fittingsByRamalRows';
 import { computeRainDownpipesTable } from '../../utils/rainDownpipesRows';
 import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../../utils/calcRainwater';
-import { nDeCanal } from '../../constants/engineeringDataMaterials';
-import { cEfectivoCubierta } from '../../constants/engineeringDataMaterials';
+import { nDeCanal, cDeCubierta } from '../../constants/engineeringDataMaterials';
 import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows';
 import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows';
 import { getPdfjs } from '../../utils/lazyPdfjs';
@@ -465,13 +464,16 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       'Chequeo',
     ];
     const rows = canalesLl.map((c) => {
+      // C efectivo SOLO del material de cubierta (requisito absoluto, igual que la pantalla):
+      // sin material → 0 → Q=0 y chequeo 'No cumple' (sin fallback al override manual).
+      const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+      // REQ usuario: n SOLO del material del canal — sin material → 0 → sin cálculo ni
+      // chequeo (chequeo vacío en el calc; sin fallback al manning persistido).
+      const nderPdf = nDeCanal(c.materialCanal ?? '');
       const { Qreal, Qmax, chequeo, totalStr } = chequeoCanalLluvia({
         ...c,
-        // C efectivo: material del catálogo con fallback al comportamiento anterior.
-        coeficienteC: cEfectivoCubierta(c.materialCubierta),
-        // n derivado del material del CANAL (misma fuente que ChequeoCanales) — con
-        // material definido, el manning persistido viejo (0.009) divergía de la pantalla.
-        manning: nDeCanal(c.materialCanal ?? '') ?? c.manning,
+        coeficienteC: Cder,
+        manning: nderPdf ?? 0,
         muroVertical: c.muroVertical ?? 0,
         bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
       });
@@ -481,9 +483,9 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         c.areaOtras ?? 0,
         c.areaAcumulada || '—',
         c.intensidad || '—',
-        c.coeficienteC || '—',
+        Cder > 0 ? Cder : '—',
         Qreal > 0 ? Qreal.toFixed(2) : '—',
-        c.manning || '—',
+        nderPdf != null ? nderPdf.toFixed(3) : '—',
         c.pendiente,
         c.b,
         c.h,

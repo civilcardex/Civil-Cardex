@@ -2,11 +2,13 @@ import { useMemo } from 'react';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext';
 import { useTramos } from '../context/TramosContext';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
 import {
   buildLlBajanteAssociations,
   computeCanalBajanteRamalKeys,
   maxRamalPulgDeBajante,
+  areaParcialBajanteLl,
 } from '../utils/rainwaterRows';
 import ChipList from './shared/ChipList';
 import { usePlans } from '../context/PlansContext';
@@ -18,7 +20,7 @@ import { renderStatus } from '../utils/componentHelpers';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
 import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDataMaterials';
-import { trunc2 } from '../utils/formatUtils';
+import { fmt } from '../utils/formatUtils';
 import React from 'react';
 import type { DrawingData } from '../utils/drawingSync';
 
@@ -85,7 +87,7 @@ const OtrasField = React.memo(function OtrasField({
 }) {
   const [text, setText] = React.useState('');
   const [editing, setEditing] = React.useState(false);
-  const display = editing ? text : String(value ?? 0);
+  const display = editing ? text : fmt(value ?? 0, 2);
   return (
     <input
       type="text"
@@ -97,7 +99,7 @@ const OtrasField = React.memo(function OtrasField({
       onFocus={() => {
         setEditing(true);
         // Al enfocar un 0 el campo arranca vacío: no hay que "quitar el 0" a mano.
-        setText(value > 0 ? String(value) : '');
+        setText(value > 0 ? fmt(value, 2) : '');
       }}
       onChange={(e) => {
         setText(e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, ''));
@@ -118,6 +120,7 @@ const OtrasField = React.memo(function OtrasField({
 
 export default function ChequeoBajantesLluvias() {
   const [edit, setEdit] = React.useState(false);
+  const tablaRef = useStickyThead2Offset();
   const { bajantesLl, updBajanteLL } = useRainwater();
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
@@ -250,9 +253,9 @@ export default function ChequeoBajantesLluvias() {
       const manual = manualMap.get(code) || manualMap.get(d.id);
       if (manual) usedManual.add(manual.bajante || manual.id);
       const areaDib = areaDibujoMap[code] || areaDibujoMap[d.id] || 0;
-      // Parcial = área asociada al bajante en el dibujo; Otras = editable (default 0);
-      // TOTAL = Parcial + Otras alimenta el caudal (orig. usuario).
-      const areaParcial = areaDib || d.area_m2 || manual?.areaParcial || 0;
+      // Parcial = área asociada al bajante en el dibujo (fórmula compartida con el canal);
+      // Otras = editable (default 0); TOTAL = Parcial + Otras alimenta el caudal.
+      const areaParcial = areaParcialBajanteLl(areaDib, d.area_m2, manual);
       const areaOtras = manual?.areaOtras ?? 0;
       const areaAcum = areaParcial + areaOtras;
       const rVal = d.bajR != null ? (Math.abs(d.bajR - 0.25) < 0.001 ? '1/4' : '7/24') : '7/24';
@@ -281,7 +284,8 @@ export default function ChequeoBajantesLluvias() {
       if (usedManual.has(key)) continue;
       const bajDib = drawingBajantes.find((d) => d.code === m.bajante || d.id === m.bajante);
       const areaDib = areaDibujoMap[m.bajante] || 0;
-      const areaParcial = areaDib || bajDib?.area_m2 || m.areaParcial || 0;
+      // Fórmula compartida con la tabla de dibujo y el canal (areaParcialBajanteLl).
+      const areaParcial = areaParcialBajanteLl(areaDib, bajDib?.area_m2, m);
       const areaOtras = m.areaOtras ?? 0;
       const areaAcum = areaParcial + areaOtras;
       out.push({
@@ -325,6 +329,7 @@ export default function ChequeoBajantesLluvias() {
       </div>
       <div style={{ padding: '16px' }}>
         <table
+          ref={tablaRef}
           className="tbl"
           style={{
             fontSize: 11,
@@ -456,7 +461,7 @@ export default function ChequeoBajantesLluvias() {
                 cubierta
               </th>
               <th
-                title="Coeficiente de escorrentía del material; sin material se usa C = 1,0 (conservador)."
+                title="Coeficiente de escorrentía del material; sin material elegido el cálculo no se realiza (Q = 0)."
                 scope="col"
                 className="col-h ll"
                 style={thC}
@@ -586,7 +591,7 @@ export default function ChequeoBajantesLluvias() {
                     </td>
                     <td className="c">
                       <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
-                        {row.areaParcial > 0 ? trunc2(row.areaParcial) : '—'}
+                        {row.areaParcial > 0 ? fmt(row.areaParcial, 2) : '—'}
                       </span>
                     </td>
                     <td className="c">
@@ -607,7 +612,7 @@ export default function ChequeoBajantesLluvias() {
                           fontWeight: 600,
                         }}
                       >
-                        {row.areaAcum > 0 ? trunc2(row.areaAcum) : '—'}
+                        {row.areaAcum > 0 ? fmt(row.areaAcum, 2) : '—'}
                       </span>
                     </td>
                     <td className="c">
@@ -657,7 +662,7 @@ export default function ChequeoBajantesLluvias() {
                       className="c"
                       style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 11 }}
                     >
-                      {Q > 0 ? trunc2(Q) : '—'}
+                      {Q > 0 ? fmt(Q, 2) : '—'}
                     </td>
                     <td className="c">
                       {/* Llenado r: fijo en el Excel (col. H) — solo lectura, sin desplegable. */}
@@ -676,7 +681,7 @@ export default function ChequeoBajantesLluvias() {
                       className="c"
                       style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11 }}
                     >
-                      {diamCalc > 0 ? trunc2(diamCalc) : '—'}
+                      {diamCalc > 0 ? fmt(diamCalc, 2) : '—'}
                     </td>
                     <td className="c">
                       <select
@@ -736,10 +741,10 @@ export default function ChequeoBajantesLluvias() {
                       className="c"
                       style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11 }}
                     >
-                      {Qcap > 0 ? trunc2(Qcap) : '—'}
+                      {Qcap > 0 ? fmt(Qcap, 2) : '—'}
                     </td>
                     <td className="c" style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
-                      {cociente > 0 ? `${(cociente * 100).toFixed(1)}%` : '—'}
+                      {cociente > 0 ? `${(cociente * 100).toFixed(2)}%` : '—'}
                     </td>
                     <td className="c" style={{ fontSize: 11 }}>
                       {renderStatus(chequeo)}

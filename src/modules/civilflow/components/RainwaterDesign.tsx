@@ -9,6 +9,7 @@ import { pisoCorto, DIAM_OPTIONS, DIAM_OPTIONS_LL } from '../constants';
 import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
+import { fmt } from '../utils/formatUtils';
 import { useRainwater } from '../context/RainwaterContext';
 import {
   buildLlBajanteAssociations,
@@ -230,7 +231,7 @@ export default function DisenoLluvias() {
                     <small>(%)</small>
                   </th>
                   <th
-                    title="Diámetro del tramo: calculado, propuesto y su interior."
+                    title='Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
@@ -238,7 +239,7 @@ export default function DisenoLluvias() {
                       textAlign: 'center',
                       fontSize: 10,
                       padding: '2px 3px',
-                      borderBottom: 'none',
+                      borderBottom: '2px solid var(--line)',
                     }}
                   >
                     Diámetro
@@ -363,7 +364,7 @@ export default function DisenoLluvias() {
                       textAlign: 'center',
                       fontSize: 10,
                       padding: '2px 3px',
-                      borderBottom: 'none',
+                      borderBottom: '2px solid var(--line)',
                     }}
                   >
                     Fuerza Tractiva
@@ -533,11 +534,11 @@ export default function DisenoLluvias() {
                               type="text"
                               inputMode="decimal"
                               aria-label="Pendiente (%)"
-                              value={editingPend[tKey] ?? (sVal > 0 ? String(sVal) : '')}
+                              value={editingPend[tKey] ?? (sVal > 0 ? fmt(sVal, 2) : '')}
                               placeholder="—"
                               onFocus={() => {
                                 if (editingPend[tKey] === undefined && sVal > 0) {
-                                  setEditingPend((prev) => ({ ...prev, [tKey]: String(sVal) }));
+                                  setEditingPend((prev) => ({ ...prev, [tKey]: fmt(sVal, 2) }));
                                 }
                               }}
                               onChange={(e) => {
@@ -580,7 +581,7 @@ export default function DisenoLluvias() {
                             />
                           ) : (
                             <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5 }}>
-                              {sVal > 0 ? sVal : '—'}
+                              {sVal > 0 ? fmt(sVal, 2) : '—'}
                             </span>
                           )}
                         </td>
@@ -609,7 +610,7 @@ export default function DisenoLluvias() {
                           </select>
                         </td>
                         <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
-                          {DintMm > 0 ? DintMm : '—'}
+                          {DintMm > 0 ? fmt(DintMm, 2) : '—'}
                         </td>
                         <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
                           {renderStatus(chequeoD)}

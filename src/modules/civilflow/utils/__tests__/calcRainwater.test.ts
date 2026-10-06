@@ -36,7 +36,8 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
     });
     expect(Q).toBe(0);
     expect(dCalc).toBe(0);
-    expect(chequeo).toBe('—');
+    // REQ: chequeo incompleto = 'No cumple' (antes '—').
+    expect(chequeo).toBe('No cumple');
   });
 
   it('Q=0 con intensidad=0', () => {
@@ -73,7 +74,7 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
     expect(chequeo).toBe('No cumple');
   });
 
-  it('Sin diseño con área pero sin D propuesto', () => {
+  it('No cumple con área pero sin D propuesto (REQ: fuera "Sin diseño")', () => {
     const { chequeo } = chequeoBajanteLluvia({
       areaAcumulada: 100,
       intensidad: 100,
@@ -82,7 +83,7 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
       manning: 0.009,
       diamPropuesto: 0,
     });
-    expect(chequeo).toBe('Sin diseño');
+    expect(chequeo).toBe('No cumple');
   });
 
   it('R desconocido usa Rv=0 → dCalc=0 y Qcap=0', () => {
@@ -168,10 +169,25 @@ describe('chequeoCanalLluvia (hoja 2 Canales)', () => {
     });
     expect(Qreal).toBe(0);
     expect(Qmax).toBeGreaterThan(0);
-    expect(chequeo).toBe('—');
+    // REQ: chequeo incompleto = 'No cumple' (antes '—').
+    expect(chequeo).toBe('No cumple');
   });
 
-  it('Qmax=0 con b=0', () => {
+  it('Qreal=0 con coeficienteC=0 (sin material — requisito absoluto)', () => {
+    const { Qreal, chequeo } = chequeoCanalLluvia({
+      areaAcumulada: 100,
+      intensidad: 100,
+      coeficienteC: 0,
+      manning: 0.009,
+      pendiente: 2,
+      b: 30,
+      h: 20,
+    });
+    expect(Qreal).toBe(0);
+    expect(chequeo).toBe('No cumple');
+  });
+
+  it('Qmax=0 con b=0 (REQ: fuera "Sin sección")', () => {
     const { Qmax, chequeo } = chequeoCanalLluvia({
       areaAcumulada: 100,
       intensidad: 100,
@@ -182,7 +198,7 @@ describe('chequeoCanalLluvia (hoja 2 Canales)', () => {
       h: 20,
     });
     expect(Qmax).toBe(0);
-    expect(chequeo).toBe('Sin sección');
+    expect(chequeo).toBe('No cumple');
   });
 
   it('No cumple cuando Qreal > Qmax', () => {
@@ -226,8 +242,8 @@ describe('chequeoCanalLluvia (hoja 2 Canales)', () => {
     expect(totalStr).toBe('—');
   });
 
-  it('manning default 0.009 cuando llega 0', () => {
-    const { Qmax } = chequeoCanalLluvia({
+  it('sin manning (material canal sin asignar): sin cálculo ni chequeo (REQ 2026-10-06)', () => {
+    const { Qmax, yn, velocidad, chequeo } = chequeoCanalLluvia({
       areaAcumulada: 100,
       intensidad: 100,
       coeficienteC: 0.8,
@@ -236,7 +252,10 @@ describe('chequeoCanalLluvia (hoja 2 Canales)', () => {
       b: 30,
       h: 20,
     });
-    expect(Qmax).toBeGreaterThan(0);
+    expect(Qmax).toBe(0);
+    expect(yn).toBe(0);
+    expect(velocidad).toBe(0);
+    expect(chequeo).toBe('');
   });
 });
 
@@ -276,6 +295,26 @@ describe('chequeoEmbocaduraLluvia (hoja 2 AE/AG)', () => {
       numBajantes: 1,
       diamPulg: 2,
       hUtilM: 0.05,
+    });
+    expect(chequeo).toBe('No cumple');
+  });
+
+  it('No cumple con Qreal=0 (REQ: fuera "—")', () => {
+    const { chequeo } = chequeoEmbocaduraLluvia({
+      Qreal: 0,
+      numBajantes: 1,
+      diamPulg: 4,
+      hUtilM: 0.2,
+    });
+    expect(chequeo).toBe('No cumple');
+  });
+
+  it('No cumple sin altura útil (REQ: fuera "Sin sección")', () => {
+    const { chequeo } = chequeoEmbocaduraLluvia({
+      Qreal: 4,
+      numBajantes: 1,
+      diamPulg: 4,
+      hUtilM: 0,
     });
     expect(chequeo).toBe('No cumple');
   });
