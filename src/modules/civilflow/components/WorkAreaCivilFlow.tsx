@@ -108,6 +108,13 @@ function CivilFlowInner() {
         const proyectos = await fetchProyectosOrThrow();
         if (ignore) return;
         const activo = getActiveProyectoId();
+        // Purga del id legacy (numérico pre-conversión o basura): getActiveProyectoId es PURA
+        // (se llama desde render) y devuelve null sin mutar storage — el saneamiento vive
+        // aquí, dentro del efecto. Clave vacía se conserva (mismo contrato que antes).
+        const rawActivo = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+        if (rawActivo != null && rawActivo.trim() !== '' && activo == null) {
+          localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
+        }
         const activoVivo = activo != null && proyectos.some((p) => String(p.id) === String(activo));
         if (activoVivo) {
           setProyectoResuelto(true);

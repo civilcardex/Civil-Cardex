@@ -1,5 +1,6 @@
 import React from 'react';
 import { fmt } from '../utils/formatUtils';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import {
   SupplyConnection_S1,
@@ -45,6 +46,7 @@ function Acometida({
   acoContIx,
   setAcoContIx,
 }: AcometidaProps) {
+  const tablaRef = useStickyThead2Offset();
   return (
     <section className="card">
       <div className="card-h">
@@ -81,6 +83,7 @@ function Acometida({
 
             {/* Tramos Table */}
             <table
+              ref={tablaRef}
               className="tbl"
               style={{ fontSize: 10, width: '100%', tableLayout: 'fixed', borderBottom: 'none' }}
             >
@@ -413,7 +416,7 @@ function Acometida({
                       color: f1.V > 2500 ? 'var(--err)' : 'var(--txt2)',
                     }}
                   >
-                    {fmt(f1.V, 1)}
+                    {fmt(f1.V, 2)}
                   </td>
                   <td
                     className="c"
@@ -424,7 +427,7 @@ function Acometida({
                       color: f2.V > 2500 ? 'var(--err)' : 'var(--txt2)',
                     }}
                   >
-                    {fmt(f2.V, 1)}
+                    {fmt(f2.V, 2)}
                   </td>
                   <td className="c" style={TD_PARAM_UNIT}>
                     mm/s

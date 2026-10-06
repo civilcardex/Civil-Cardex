@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { useTramos } from '../context/TramosContext';
 import { useProyecto } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
@@ -51,6 +52,7 @@ function WaterNetworkDesign({
   hideAcometida,
 }: WaterNetworkDesignProps) {
   const [edit, setEdit] = useState(false);
+  const tablaRef = useStickyThead2Offset();
   const { tramosAf, tramosAc, updTramoAf, updTramoAc } = useTramos();
   const { proy } = useProyecto();
   const { plans } = usePlans();
@@ -445,7 +447,11 @@ function WaterNetworkDesign({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-top" style={{ padding: '6px' }}>
             <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-              <table className="tbl" style={{ fontSize: 10.5, tableLayout: 'auto', width: '100%' }}>
+              <table
+                ref={tablaRef}
+                className="tbl"
+                style={{ fontSize: 10.5, tableLayout: 'auto', width: '100%' }}
+              >
                 <caption style={WaterNetworkDesign_S1}>{`Diseño de red ${title}`}</caption>
 
                 <DesignTableHeader cssClass={cssClass} />

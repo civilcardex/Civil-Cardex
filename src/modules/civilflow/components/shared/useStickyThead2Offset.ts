@@ -9,12 +9,21 @@ export function useStickyThead2Offset() {
   useEffect(() => {
     const table = ref.current;
     const tr1 = table?.querySelector('thead tr:first-child');
+    // Banda 2 = primer th de la fila 2 SIN rowSpan (los rowSpan=2 abarcan bandas 2+3 y
+    // su rect mide ambas) — existe siempre que haya una fila 3 de subcolumnas.
+    const banda2 = table?.querySelector<HTMLTableCellElement>(
+      'thead tr:nth-child(2) th:not([rowspan])',
+    );
     if (!table || !tr1) return;
-    const apply = () =>
+    const apply = () => {
       table.style.setProperty('--thead2-top', `${tr1.getBoundingClientRect().height}px`);
+      if (banda2)
+        table.style.setProperty('--thead3-top', `${banda2.getBoundingClientRect().height}px`);
+    };
     apply();
     const ro = new ResizeObserver(apply);
     ro.observe(tr1);
+    if (banda2) ro.observe(banda2);
     return () => ro.disconnect();
   }, []);
   return ref;

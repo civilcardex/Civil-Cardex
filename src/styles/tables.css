@@ -54,6 +54,13 @@
   top: var(--thead2-top, 27px);
 }
 
+/* Tercera fila de headers (thead de 3 <tr>, ej. bajantes): se apila sobre las dos
+   previas. --thead3-top lo mide useStickyThead2Offset con el alto de la banda 2
+   (primer th sin rowSpan de la fila 2). */
+.tbl thead tr:nth-child(3) th {
+  top: calc(var(--thead2-top, 27px) + var(--thead3-top, 27px));
+}
+
 .tbl tr:hover td {
   background: rgba(255, 255, 255, 0.01);
 }

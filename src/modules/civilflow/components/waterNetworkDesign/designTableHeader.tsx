@@ -38,7 +38,12 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           colSpan={3}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
+          style={{
+            textAlign: 'center',
+            padding: '2px 1px',
+            fontSize: 10.5,
+            borderBottom: '2px solid var(--line)',
+          }}
         >
           Unidades Consumo
         </th>
@@ -72,7 +77,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           (lps)
         </th>
         <th
-          title="Diámetro que sugiere el cálculo para el caudal."
+          title='Diámetro que sugiere el cálculo para el caudal. Unidad: pulgadas (").'
           scope="col"
           className="col-h"
           rowSpan={2}
@@ -82,11 +87,16 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           <br /> estimado
         </th>
         <th
-          title="Diámetro propuesto y su interior (mm)."
+          title='Diámetro propuesto y su interior. Unidad: pulgadas ("); interior en mm.'
           scope="col"
           className="col-h ok"
           colSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
+          style={{
+            textAlign: 'center',
+            padding: '2px 1px',
+            fontSize: 10.5,
+            borderBottom: '2px solid var(--line)',
+          }}
         >
           Diámetro
         </th>
@@ -101,7 +111,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           <br />C
         </th>
         <th
-          title="Velocidad del agua en el tramo (m/s)."
+          title="Velocidad del agua en el tramo (mm/s). Cumple entre 500 y 2500 mm/s (0,5–2,5 m/s)."
           scope="col"
           className="col-h"
           rowSpan={2}
@@ -115,7 +125,12 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className="col-h"
           colSpan={4}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
+          style={{
+            textAlign: 'center',
+            padding: '2px 1px',
+            fontSize: 10.5,
+            borderBottom: '2px solid var(--line)',
+          }}
         >
           Longitud (m)
         </th>
@@ -130,6 +145,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
             fontSize: 10.5,
             whiteSpace: 'nowrap',
             minWidth: 56,
+            borderBottom: '2px solid var(--line)',
           }}
         >
           Pérdidas
@@ -143,7 +159,12 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           scope="col"
           className={`col-h ${cssClass}`}
           colSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
+          style={{
+            textAlign: 'center',
+            padding: '2px 1px',
+            fontSize: 10.5,
+            borderBottom: '2px solid var(--line)',
+          }}
         >
           Presión
         </th>
@@ -174,7 +195,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           Total
         </th>
         <th
-          title="Diámetro comercial propuesto — editable."
+          title='Diámetro comercial propuesto — editable. Unidad: pulgadas (").'
           scope="col"
           className="col-h ok"
           style={{ textAlign: 'center', padding: '0 1px', fontSize: 10.5 }}

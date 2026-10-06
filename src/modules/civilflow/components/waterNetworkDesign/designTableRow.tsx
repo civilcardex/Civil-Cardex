@@ -127,7 +127,7 @@ export function DesignTableRow({
         </select>
       </td>
       <td className="c td-mono">{calc.internoMm > 0 ? fmt(calc.internoMm, 2) : '—'}</td>
-      <td className="c td-mono">{calc.cHW}</td>
+      <td className="c td-mono">{fmt(calc.cHW, 2)}</td>
       <td
         className="c"
         style={{

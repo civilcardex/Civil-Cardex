@@ -20,6 +20,7 @@ import {
   sanFeederMinMsg,
 } from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
+import { fmt } from '../utils/formatUtils';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
@@ -59,7 +60,8 @@ const TH_GRUPO = {
   textAlign: 'center',
   fontSize: 11.5,
   padding: '1px 2px',
-  borderBottom: 'none',
+  // Línea propia bajo el grupo: separa el título de sus subcolumnas (ped. usuario).
+  borderBottom: '2px solid var(--line)',
 } as const;
 
 export default function DisenosSanitarios() {
@@ -353,7 +355,7 @@ export default function DisenosSanitarios() {
                     <small>(%)</small>
                   </th>
                   <th
-                    title="Diámetro del tramo: calculado, propuesto y su interior."
+                    title='Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
@@ -759,13 +761,16 @@ export default function DisenosSanitarios() {
                                   editingPend[tKey] !== undefined
                                     ? editingPend[tKey]
                                     : sVal > 0
-                                      ? String(sVal)
+                                      ? fmt(sVal, 2)
                                       : ''
                                 }
                                 placeholder="—"
                                 onFocus={() => {
                                   if (editingPend[tKey] === undefined && sVal > 0) {
-                                    setEditingPend((prev) => ({ ...prev, [tKey]: String(sVal) }));
+                                    setEditingPend((prev) => ({
+                                      ...prev,
+                                      [tKey]: fmt(sVal, 2),
+                                    }));
                                   }
                                 }}
                                 onChange={(e) => {
@@ -798,7 +803,7 @@ export default function DisenosSanitarios() {
                                 }}
                               />
                             ) : sVal > 0 ? (
-                              sVal
+                              fmt(sVal, 2)
                             ) : (
                               '—'
                             )}
@@ -832,7 +837,7 @@ export default function DisenosSanitarios() {
                             </select>
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            {DdisPulg > 0 && DintMm > 0 ? DintMm : '--'}
+                            {DdisPulg > 0 && DintMm > 0 ? fmt(DintMm, 2) : '--'}
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
                             {DdisPulg > 0

@@ -1,5 +1,6 @@
 import { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
 import { usePisos } from '../context/ProjectContext';
@@ -12,6 +13,7 @@ import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
+import { fmt } from '../utils/formatUtils';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
@@ -207,6 +209,7 @@ const DownpipesTable_S1: React.CSSProperties = {
 
 const BajantesTable = memo(function BajantesTable_() {
   const [edit, setEdit] = useState(false);
+  const tablaRef = useStickyThead2Offset();
   const { tramosSan, updTramoSan } = useTramos();
   const { aps, udBase } = useApparatus();
   const { pisos } = usePisos();
@@ -299,6 +302,7 @@ const BajantesTable = memo(function BajantesTable_() {
       </div>
       <div style={{ padding: '12px' }}>
         <table
+          ref={tablaRef}
           className="tbl"
           style={{ fontSize: 9.5, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}
         >
@@ -1100,7 +1104,7 @@ const BajantesTable = memo(function BajantesTable_() {
                       className="c"
                       style={{ fontFamily: 'var(--mono)', fontSize: 9.5, padding: '1px 1px' }}
                     >
-                      {res.usoQmax > 0 ? `${(res.usoQmax * 100).toFixed(1)}%` : '—'}
+                      {res.usoQmax > 0 ? `${(res.usoQmax * 100).toFixed(2)}%` : '—'}
                     </td>
                     <td className="c" style={{ fontSize: 9.5, padding: '1px 1px' }}>
                       {Vt > 0 ? Vt.toFixed(2) : '—'}
@@ -1132,7 +1136,13 @@ const BajantesTable = memo(function BajantesTable_() {
                         aria-label="Longitud del bajante (m)"
                         style={DownpipesTable_S1}
                         disabled={!edit}
-                        value={t.bajLong != null ? String(t.bajLong) : ''}
+                        value={
+                          t.bajLong != null
+                            ? !edit
+                              ? fmt(Number(t.bajLong), 2)
+                              : String(t.bajLong)
+                            : ''
+                        }
                         placeholder="—"
                         onChange={(e) => {
                           const raw = e.target.value.replace(/,/g, '.');

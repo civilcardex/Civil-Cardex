@@ -62,7 +62,9 @@ export default function PressureEquipmentDesign() {
         color="var(--ep)"
         labels={pages.map((p) => p.t)}
       />
-      <div style={{ flex: 1, padding: 6, overflow: 'hidden', display: 'flex' }}>
+      {/* overflow auto (antes hidden): habilita el sticky de thead si las tablas crecen
+          (hidden crea scroll container sin scroll y mata position:sticky — Req 7). */}
+      <div style={{ flex: 1, padding: 6, overflow: 'auto', display: 'flex' }}>
         {pages[pagina - 1].c}
       </div>
     </div>

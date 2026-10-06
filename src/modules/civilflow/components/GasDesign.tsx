@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { LE_K, pisoCorto, GAS_DN_LABELS } from '../constants';
 import { GAS, CAT_GAS } from '../constants/engineeringDataGas';
-import { normalizeDnLabel } from '../utils/formatUtils';
+import { fmt, normalizeDnLabel } from '../utils/formatUtils';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { usePlans } from '../context/PlansContext';
 import {
@@ -115,6 +116,7 @@ function writeKeyDe(tramoId: string): string {
 
 function GasDesign({ pagina = 1 }: { pagina?: number }) {
   const [edit, setEdit] = useState(false);
+  const tablaRef = useStickyThead2Offset();
   const datosGeneralesInit = loadFromStorage(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const [alt, setAlt] = useState(datosGeneralesInit.alt);
   const [patm, setPatm] = useState(datosGeneralesInit.patm);
@@ -624,7 +626,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                           color: kVal ? 'var(--txt)' : 'var(--txt3)',
                         }}
                       >
-                        {kVal || '—'}
+                        {kVal ? fmt(kVal, 2) : '—'}
                       </td>
                       <td className="c" style={{ ...TD, padding: '1px 2px' }}>
                         {t.longitud > 0 ? t.longitud.toFixed(2) : '—'}
@@ -766,7 +768,6 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
             display: 'flex',
             flexDirection: 'column',
             minWidth: 0,
-            overflow: 'hidden',
             ...(gasTramos.length === 0 ? {} : { flex: 1 }),
           }}
         >
@@ -784,8 +785,9 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
             </h3>
             <span className="card-s">{gasTramos.length} tramos</span>
           </div>
-          <div style={{ padding: 6, overflow: 'auto' }}>
+          <div style={{ padding: 6 }}>
             <table
+              ref={tablaRef}
               className="tbl"
               style={{
                 fontSize: 10.5,
@@ -814,7 +816,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                     Longitud (m)
                   </th>
                   <th
-                    title="Diámetro interior del tubo (mm)."
+                    title='Diámetro interior del tubo (mm); el diámetro nominal es en pulgadas (").'
                     scope="col"
                     style={{ ...TH }}
                     rowSpan={2}
@@ -1055,7 +1057,15 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       className="fu"
       style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}
     >
-      <div style={{ padding: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div
+        style={{
+          padding: 6,
+          overflow: 'auto',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {pagina === 1 ? page1 : pagina === 2 ? page2 : page3}
       </div>
     </div>

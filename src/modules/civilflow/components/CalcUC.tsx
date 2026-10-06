@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
@@ -24,6 +25,7 @@ const txt2 = '#94a3b8';
 const txt = '#e2e8f0';
 
 function CalculoUC({ tipo }: CalculoUCProps) {
+  const tablaRef = useStickyThead2Offset();
   const { tramosAf, tramosAc } = useTramos();
   const { aps } = useApparatus();
   const TIPO_CFG = {
@@ -107,7 +109,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            <table className="tbl" style={{ minWidth: 800 }}>
+            <table ref={tablaRef} className="tbl" style={{ minWidth: 800 }}>
               <caption style={CalculoUC_S1}>{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>
@@ -142,8 +144,12 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className={`col-h ${clsHeader}`}
                     colSpan={AP.length}
-                    style={{ textAlign: 'center', padding: '4px' }}
-                    title={`Conteo de aparatos por tipo del tramo (unidades de consumo por aparato).`}
+                    style={{
+                      textAlign: 'center',
+                      padding: '4px',
+                      borderBottom: '2px solid var(--line)',
+                    }}
+                    title="Conteo de aparatos por tipo del tramo (unidades de consumo por aparato)."
                   >
                     Aparatos
                   </th>
@@ -152,7 +158,11 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       scope="col"
                       className="col-h ok"
                       colSpan={2}
-                      style={{ textAlign: 'center', padding: '4px' }}
+                      style={{
+                        textAlign: 'center',
+                        padding: '4px',
+                        borderBottom: '2px solid var(--line)',
+                      }}
                       title="Parcial = Σ aparatos × UC del tramo; Total = acumulado con los tramos aguas arriba."
                     >
                       Unidades de consumo
