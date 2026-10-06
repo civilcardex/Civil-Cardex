@@ -2673,6 +2673,10 @@ tsc 0 · lint 0 err 0 warn · vitest 969/969 (160 files; +6 lluvias) · build �
 ### Gates
 tsc 0 · lint 0 err 0 warn · vitest **978/978** (160 files; +9 lluvias) · build ✓ · graphify ✓.
 
+### Fix iluminación visor aparatos 3D (2026-10-06, 6 iteraciones — paridad total con r128)
+Estado final en disco (`useAparatos3DScene.ts` + `useGlbCatalog.ts`): `ColorManagement.enabled = false` (restaurado a `true` en cleanup) + `PCFSoftShadowMap` + LinearToneMapping exposure **1.0** + luces ×π con el r100 de intensidades del HTML (ambient 0.4π, key 1.6π FIJA en 8,16,10, fill 0.5π FIJA en -10,5,-6, rim 0.4π, top 0.25π — `colocarRigLuz` ya NO mueve key/fill, solo frustum de sombra/planos de cámara al radio del modelo) + `shadow.camera` = defaults del HTML (caja ±5, near 0.5, far 500) + `normalBias = 0.02*mr` (mata el acné de caras curvas sin despegar la sombra) + materiales **MeshStandardMaterial PBR** ({color: baseColor, metalness, roughness, DoubleSide}) — réplica del path del HTML, que ignora la extensión SpecGloss y usa pbrMetallicRoughness. Historial: raw+Phong (oscuro) → ×π+Phong (saturado: Phong no divide π) → raw+Standard (oscuro ×π) → **×π+Standard+CM off = brillo de la referencia** (Standard divide π; el pipeline sin CM trata los colores tal cual como r128). La pareja luz/material es obligatoria — no revertir una mitad sin re-escalar la otra. Recrear material explícito sin `map` evita el Standard fantasma del loader (0 px). Pendiente: verificación visual del usuario (recarga dura — HMR no re-instancia el engine 3D).
+
+
 ## Session Summary — 2026-10-06 (ronda 19: ponytail #6 — el más lean)
 
 - `KW_DEFAULT` fuera (kW ahora del catálogo CAT_GAS desde r17 — residuo de la purga kwById).
@@ -2681,3 +2685,42 @@ tsc 0 · lint 0 err 0 warn · vitest **978/978** (160 files; +9 lluvias) · buil
 - Seeds `coeficienteC: 0.0278` → `0` (8 sitios en RainwaterContext + rainwaterOverridesService): tras el gating de material absoluto el valor jamás llega a cálculo/render (tablas recalculan C con cDeCubierta). Columna `coeficiente_c` en BD se conserva.
 - NO-CUT: lemon.ts (scaffolding), migrar-storage-uuid.mjs (ops one-shot — anotar en AGENTS.md y borrar tras confirmar ejecución), kwById (purga progresiva), CompanyPreviewPage (dev-only).
 - Neto: ~3L muertas + 8 seeds neutralizados + 2 simplificaciones. 0 deps. Gates: tsc 0 · lint 0 · vitest 978/978 · build ✓.
+
+## Session Note — 2026-10-06 (edge functions Lemon Squeezy escritas)
+
+- `supabase/functions/` ahora tiene las 3 LS: `crear-checkout` (JWT caller → gate suscripciones_habilitadas → precio SIEMPRE server-side con _shared/lemon.ts; ≥25 puestos = venta_manual; anti-spam intenciones_recientes ≥5/h → fila app_pagos 'pendiente' con puestos saneados → checkout hosteado LS custom_price + checkout_data.custom {referencia, user_id} → { checkoutUrl, referencia }), `verificar-pago` ({referencia} → estado de la fila PROPIA — defensa IDOR; la verdad de activación es el webhook), `ls-webhook` (firma HMAC-SHA256 del RAW body con LS_WEBHOOK_KEY, timing-safe; order_created → valida monto ≥ acordado → activar_suscripciones(referencia, identifier); order_refunded reconocido sin acción; 200 salvo firma/fatal para no loopear reintentos).
+- Nuevo `supabase/functions/_shared/pago_utils.ts` (clientes supabase caller/admin, secrets LS_API_KEY/LS_STORE/LS_WEBHOOK_KEY/SITE_URL, json(), hmacHex + comparacionConstante). lemon.ts SIN tocar (paridad vigila). config.toml: [functions.ls-webhook] verify_jwt = false ACTIVADO (valida firma propia).
+- Deploy pendiente de cuenta LS: `supabase secrets set LS_API_KEY=… LS_STORE=… LS_WEBHOOK_KEY=… SITE_URL=https://civilcardex.com` → `supabase functions deploy crear-checkout verificar-pago ls-webhook` → webhook en panel LS apuntando a `<SUPABASE_URL>/functions/v1/ls-webhook` (evento order_created).
+- Las 3 Wompi del dashboard (crear-intencion-pago/wompi-verify/wompi-webhook, del 24-sep, código NO en repo, nadie las llama) → eliminarlas del dashboard (superficie pública sin auditoría).
+
+## Session Note — 2026-10-06 (hardening edges LS + rejillas tras auditoría hostil)
+
+19 hallazgos arreglados (3 críticos). Migración nueva `20261006000000_pago_edge_hardening.sql` (APLICAR EN SQL EDITOR): (1) `grant execute on suscripciones_habilitadas() to service_role` — la revoca de 20260924000001 lo había dejado sin EXECUTE y crear-checkout devolvía SIEMPRE 400 "deshabilitadas" con el error del RPC tragado; (2) RPC `registrar_intencion_pago(uid, referencia, modulos, periodo, monto, puestos)` — advisory lock por usuario + cap 5/h + insert en UNA transacción (el check-then-insert en TS tenía TOCTOI).
+
+Edges LS: preflight OPTIONS + CORS headers en toda respuesta (json() de pago_utils; functions.invoke manda Authorization/apikey ⇒ sin esto el navegador moría en el preflight); crear-checkout lee precios de `app_precios` (verdad en BD, lemon.ts queda como fallback si la fila falta/≤0 — calzarTotalCentavos con 4º param `preciosBd`); gate con error del RPC chequeado (500, no falso 400); fila 'pendiente' se ELIMINA si LS falla (el check de estado no tiene 'fallida' y la huérfana contaba contra el cap anti-spam del usuario); ls-webhook: guard LS_WEBHOOK_KEY ANTES de hmacHex (importKey con clave vacía = DataError 500 feo), monto FAIL-CLOSED (total ausente/no-numérico NO activa — antes lo saltaba) + `test_mode === true` ignorado; verificar-pago OPTIONS. `intenciones_recientes` quedó sin callers en edges (RPC viva en BD, la usaban las Wompi).
+
+Rejillas: `rejillasGasodSync` — '{}' del loader NO es fuente de overrides (dispositivo fresco pisaba `cf_proyecto_general.rejillas.overrides` con `{}` borrando BD); `hidratado` → `hidratadoPid` (scope por proyecto: el push del proyecto nuevo ya no re-envía gasod ajeno); el fill de hidratación dispara `CustomEvent('aparatos-clear', {detail:{origen:'hidratacion'}})` y sync + tab lo filtran (el evento programático marcaba editadoRef → la hidratación de BD abortaba siempre). `RejillasVentilacion` — key en `React.Fragment` raíz del map de filas (el key en el `<tr>` interno reconciliaba por índice); borrado de subfila SOLO desde las celdas Aparato/UN/P/Tipo con `window.confirm` y reseteado al apagar edición (antes: fila entera borraba sin confirmar y sobrevivía a edit=false); slots "— etc —" ya no muestran cant=1/tipo A; comentarios del layout viejo corregidos.
+
+Otros: CheckoutModal lee el body de error de `FunctionsHttpError` (data=null en ≠2xx — las ramas data?.error eran código muerto); `APARATO_PMAX_BY_CODE.HOR` alias de `.HORG` (dibujos previos al rename 'Hor:'→'HorG:' conservan ini='HOR'); `coloresGlb` exige diffuseFactor.length>=3 (factor truncado → NaN → negro; cae a gris neutro); comentario de limitación en el flag global ColorManagement (aparatos3d).
+
+Gates: tsc 0 · lint 0 · vitest 978/978 (160 files) · build ✓ · graphify ✓. Pendiente usuario: correr la migración + deploy edges (secrets LS antes).
+
+## Session Note — 2026-10-06 (ponytail #7: ~225 l fuera)
+
+9 cortes aplicados: `scripts/migrar-storage-uuid.mjs` BORRADO (one-shot ya ejecutado; vive en git eb95390); `memoriaRecinto` + su test + helpers huérfanos (`s`, `fmt` de rejillasCalc) fuera (0 callers fuera del test); `lazyNumInput.tsx` fundido en `LazyDecimalInput` (designTableRow usa adaptador local `numCommit` de 6 l: ''→undefined, parse inválido→sin cambio); 2 copias privadas de `proyectoIdActivo()` → `getActiveProyectoId()` (además gana validación UUID); `quitarAparato` inline en `quitarColumna`; saneo de puestos en crear-checkout → `puestosDe` (adiós drift); `errorDeBody` y `pasarelaConfigurada` inline (1 call site c/u); des-exports sin segundo consumidor (pago_utils SUPABASE_URL/ANON_KEY/SERVICE_KEY, cameraViews animateTo/activarPersp, Grupo3D, lemon DESCUENTO_POR_PUESTOS/PUESTOS_TOPE_AUTOMATICO — el parity test lee lemon como TEXTO, regex intactos).
+
+NO-CUT re-confirmado: triplicación cameraViews/viewsRci/viewsEpc (~150 l) es fork deliberado documentado — el genérico acoplaría los 3 visores 3D. RPC `intenciones_recientes` huérfana en BD → drop cuando se eliminen las 3 Wompi del dashboard.
+
+Gates: tsc 0 · lint 0 · vitest 977/977 (160 files, −1 por test de memoriaRecinto) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (des-monolitización ronda 3: 3 archivos grandes divididos)
+
+Auditoría de los 20 archivos más grandes → 3 veredictos VALE (ejecutados), 5 NO VALE (documentados abajo). Patrón mecánico ya conocido: movimiento verbatim + hub re-export, cero cambios de lógica, tests/consumidores intactos.
+
+- **bajanteAssociation.ts (1443 → hub 19L)**: `bajanteAssocShared.ts` (tipos + isAligned/readBajanteLink/nptOfPlan/resolveLinkRoles/collectSourceAgg/upstreamRamalIdsForBajante/estamparAsocsClearedTs/GEO_TOL*, 378L) · `bajanteAssociationClear.ts` (461L) · `bajanteAssociationApply.ts` (508L, importa clear del archivo de clear — dependencia real) · `bajanteAssociationHeal.ts` (136L). El hub re-exporta la superficie pública — los 6+ tests de assoc siguen importando de `'../bajanteAssociation'`.
+- **RejillasVentilacion.tsx (1647 → hub 268L)**: carpeta `components/rejillasVentilacion/` — `rejillasStorage.ts` (overrides + GAS_KEY + purga kwById, 45L) · `rejillasShared.ts` (num/RejFila/helpers de columna/estilos TD..THG/CAT_GAS_BY_ID/ALIAS, 213L) · `useRejillasData.ts` (299L) · `TablaTipologias.tsx` (662L) · `AlertasResumen.tsx` (52L) · `AlzadoMuro.tsx` (140L). Default export preservado (redesTab hace lazy import — cero cambios afuera).
+- **DownpipesTable.tsx (1346 → 1180L)**: solo el corte chico — `utils/ventStackCalc.ts` (calculateVentStack + ventBajPulg + tipos + DIAM_BAN/BAN_SAN/VENT, 172L de física pura Wyly-Eaton). La tabla JSX monolítica NO se tocó (sin subcomponentes: cortarla inventaría props).
+
+**NO VALE (re-evaluado, NO tocar sin motivo nuevo)**: PlanoEngine.ts (fachada de ~35 módulos, decisión 2026-08-19 vigente) · PdfViewer.tsx (1459: ya dividido, ~25 hermanos; el residual es cableado con clausuras de 8-15 deps — extraer inventaría interfaces) · sanFittingsRows.ts (88% es UNA función de 1188L acoplada por closures — split = rediseño del pipeline) · FixturesPanel.tsx (ya dividido en fixturesStorage + fixtures/; lo restante son efectos sobre engineRef, zona de más regresiones) · helpGuide.tsx (datos inertes — dividir solo traslada el tamaño).
+
+Gates por split: tsc 0 · lint 0 · vitest 977/977 (160 files) · build ✓ · graphify ✓.
