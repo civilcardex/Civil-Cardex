@@ -48,7 +48,7 @@ interface CanalOverrideRow {
  * cuando aún no hay filas. Los ids efímeros (BLL-n/CLL-n) se regeneran porque dependen del
  * largo de la lista; la clave estable es bajante/sector.
  */
-export async function loadRainwaterOverrides(proyectoId: number): Promise<RainwaterOverrides> {
+export async function loadRainwaterOverrides(proyectoId: string): Promise<RainwaterOverrides> {
   try {
     const [bajantesRes, canalesRes] = await Promise.all([
       // select('*'): tolerante a esquemas de BD sin migrar — si una columna (p. ej. R) aún no
@@ -76,7 +76,7 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
         areaOtras: r.area_otras ?? 0,
         areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
         intensidad: r.intensidad ?? 100,
-        coeficienteC: r.coeficiente_c ?? 0.0278,
+        coeficienteC: r.coeficiente_c ?? 0,
         materialCubierta: r.material_cubierta ?? '',
         R: r.R ?? '',
         manning: r.manning ?? 0,
@@ -90,7 +90,7 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
       areaOtras: r.area_otras ?? 0,
       areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
       intensidad: r.intensidad ?? 100,
-      coeficienteC: r.coeficiente_c ?? 0.0278,
+      coeficienteC: r.coeficiente_c ?? 0,
       materialCubierta: r.material_cubierta ?? '',
       materialCanal: r.material_canal ?? '',
       muroVertical: r.muro_vertical ?? 0,
@@ -114,7 +114,7 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
  * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveRainwaterOverrides(
-  proyectoId: number,
+  proyectoId: string,
   bajantes: BajanteLL[],
   canales: CanalLL[],
 ): Promise<void> {
@@ -135,7 +135,7 @@ export async function saveRainwaterOverrides(
         area_otras: b.areaOtras ?? 0,
         area_acumulada: b.areaAcumulada ?? 0,
         intensidad: b.intensidad ?? 100,
-        coeficiente_c: b.coeficienteC ?? 0.0278,
+        coeficiente_c: b.coeficienteC ?? 0,
         material_cubierta: b.materialCubierta ?? '',
         R: b.R ?? '',
         manning: b.manning ?? 0,
@@ -150,7 +150,7 @@ export async function saveRainwaterOverrides(
         area_otras: c.areaOtras ?? 0,
         area_acumulada: c.areaAcumulada ?? 0,
         intensidad: c.intensidad ?? 100,
-        coeficiente_c: c.coeficienteC ?? 0.0278,
+        coeficiente_c: c.coeficienteC ?? 0,
         material_cubierta: c.materialCubierta ?? '',
         material_canal: c.materialCanal ?? '',
         muro_vertical: c.muroVertical ?? 0,

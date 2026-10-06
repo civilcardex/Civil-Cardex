@@ -423,12 +423,6 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     );
     if (cfgRes.error) {
       devError('upsert cm_config:', cfgRes.error);
-      // Señal para UI (devError es no-op en prod): parámetros de proyecto sin respaldo.
-      try {
-        window.dispatchEvent(new CustomEvent('cm_save_error', { detail: { table: 'cm_config' } }));
-      } catch {
-        /* ignore */
-      }
     }
   } catch (e) {
     devError('saveToSupabase:', e);

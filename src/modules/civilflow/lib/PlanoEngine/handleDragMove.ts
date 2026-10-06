@@ -75,8 +75,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         const a = engine.areas.find((ar) => ar.id === id);
         if (a) {
           a.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
-          if (a.labelX != null) a.labelX += dx;
-          if (a.labelY != null) a.labelY += dy;
+          // Etiqueta ABSOLUTA desde los originales (mismo patrón que la rama ramal):
+          // `+= dx` acumulaba el delta TOTAL en cada mousemove y la etiqueta salía
+          // disparada fuera del canvas (orig. usuario: "desaparece del todo").
+          if (orig.origLabelX != null) a.labelX = orig.origLabelX + dx;
+          if (orig.origLabelY != null) a.labelY = orig.origLabelY + dy;
         }
       } else if (orig.type === 'dim') {
         // COTA del grupo: trasladar extremos (origPts = [p1, p2]) + etiqueta si fue arrastrada.

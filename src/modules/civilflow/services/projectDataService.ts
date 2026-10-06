@@ -183,7 +183,7 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
  * transacción atómica). Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveProyectoCoreData(
-  proyectoId: number,
+  proyectoId: string,
   core: ProyectoCoreData,
 ): Promise<boolean> {
   try {
@@ -251,7 +251,7 @@ export async function saveProyectoCoreData(
  * de los datos del proyecto. Lo usa el toggle "Redes activas"/"Equipos activos", que es
  * independiente del guardado principal del proyecto.
  */
-export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<boolean> {
+export async function saveRedesActivas(proyectoId: string, redes: string[]): Promise<boolean> {
   try {
     const {
       data: { user },
@@ -280,7 +280,7 @@ export async function saveRedesActivas(proyectoId: number, redes: string[]): Pro
  * Carga los datos generales de diseño de gas (gas_datos_proyecto, 1:1 con el proyecto).
  * Devuelve null cuando la fila no existe aún — el llamador decide si usar defaults.
  */
-export async function loadGasDatos(proyectoId: number): Promise<GasDatosGenerales | null> {
+export async function loadGasDatos(proyectoId: string): Promise<GasDatosGenerales | null> {
   try {
     const { data, error } = await supabase
       .from(CF_TABLES.gasDatos)
@@ -310,7 +310,7 @@ export async function loadGasDatos(proyectoId: number): Promise<GasDatosGenerale
  * saveRedesActivas, no toca otras tablas. Lo usa GasDesign (debounced) como fuente de
  * verdad; localStorage queda como caché en vivo.
  */
-export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales): Promise<boolean> {
+export async function saveGasDatos(proyectoId: string, datos: GasDatosGenerales): Promise<boolean> {
   try {
     const {
       data: { user },
@@ -346,7 +346,7 @@ export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales)
  * pdfStorageService) vía RPC SECURITY DEFINER.
  */
 export async function saveProyectoPlansMeta(
-  proyectoId: number,
+  proyectoId: string,
   plansMeta: PlanMeta[],
 ): Promise<boolean> {
   try {
@@ -390,7 +390,7 @@ export async function saveProyectoPlansMeta(
  * RPC get_proyecto_data (proyecto_general + pisos + materiales + profundidades +
  * criterios + metadatos de planos), en lugar de 6 selects secuenciales a tablas.
  */
-export async function loadProyectoData(proyectoId: number): Promise<ProyectoDataRow | null> {
+export async function loadProyectoData(proyectoId: string): Promise<ProyectoDataRow | null> {
   try {
     const {
       data: { user },
@@ -450,7 +450,7 @@ export async function loadProyectoData(proyectoId: number): Promise<ProyectoData
 /** Escribe UN campo whitelisteado de cf_proyecto_general vía RPC SECURITY DEFINER — el
  *  upsert directo chocaba con el revoke de 20260813000003 (permission denied silencioso). */
 async function saveCampoProyectoGeneral(
-  proyectoId: number,
+  proyectoId: string,
   campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
   value: string,
 ): Promise<void> {
@@ -473,17 +473,17 @@ async function saveCampoProyectoGeneral(
   }
 }
 
-export async function saveAfAlimentacion(proyectoId: number, value: string): Promise<void> {
+export async function saveAfAlimentacion(proyectoId: string, value: string): Promise<void> {
   return saveCampoProyectoGeneral(proyectoId, 'af_alimentacion', value);
 }
 
-export async function saveTanqueNpt(proyectoId: number, value: string): Promise<void> {
+export async function saveTanqueNpt(proyectoId: string, value: string): Promise<void> {
   return saveCampoProyectoGeneral(proyectoId, 'tanque_npt', value);
 }
 
 /** Lee UNA columna whitelisteada de cf_proyecto_general por proyecto (null si no hay fila). */
 async function loadCampoProyectoGeneral<T>(
-  proyectoId: number,
+  proyectoId: string,
   campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
 ): Promise<T | null> {
   try {
@@ -503,29 +503,29 @@ async function loadCampoProyectoGeneral<T>(
   }
 }
 
-export async function loadAfAlimentacion(proyectoId: number): Promise<string | null> {
+export async function loadAfAlimentacion(proyectoId: string): Promise<string | null> {
   return loadCampoProyectoGeneral<string>(proyectoId, 'af_alimentacion');
 }
 
-export async function loadTanqueNpt(proyectoId: number): Promise<string | null> {
+export async function loadTanqueNpt(proyectoId: string): Promise<string | null> {
   return loadCampoProyectoGeneral<string>(proyectoId, 'tanque_npt');
 }
 
 /** Blob de rejillas NTC 3631 (overrides + tipo de gas) → cf_proyecto_general.rejillas.
  *  El RPC whitelistó 'rejillas' con cast ::jsonb (migración 20261002000000). */
-export async function saveRejillasProyecto(proyectoId: number, blob: unknown): Promise<void> {
+export async function saveRejillasProyecto(proyectoId: string, blob: unknown): Promise<void> {
   return saveCampoProyectoGeneral(proyectoId, 'rejillas', JSON.stringify(blob ?? {}));
 }
 
 /** Lee el blob de rejillas del proyecto (null si no hay fila o aún no se guardó). */
-export async function loadRejillasProyecto(proyectoId: number): Promise<unknown> {
+export async function loadRejillasProyecto(proyectoId: string): Promise<unknown> {
   return loadCampoProyectoGeneral<unknown>(proyectoId, 'rejillas');
 }
 
-export async function savePresionGarantizada(proyectoId: number, value: string): Promise<void> {
+export async function savePresionGarantizada(proyectoId: string, value: string): Promise<void> {
   return saveCampoProyectoGeneral(proyectoId, 'presion_garantizada', value);
 }
 
-export async function loadPresionGarantizada(proyectoId: number): Promise<string | null> {
+export async function loadPresionGarantizada(proyectoId: string): Promise<string | null> {
   return loadCampoProyectoGeneral<string>(proyectoId, 'presion_garantizada');
 }

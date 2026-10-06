@@ -101,7 +101,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
                     Estado
                   </th>
                   <th title="Cantidad de ítems del presupuesto.">Ítems</th>
-                  <th>Acciones</th>
+                  <th aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -151,7 +151,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
                       </select>
                     </td>
                     <td>{pres.items.length}</td>
-                    <XlAct onEdit={() => onSelect(pres.id)} onDelete={() => eliminar(pres.id)} />
+                    <XlAct onDelete={() => eliminar(pres.id)} />
                   </tr>
                 ))}
               </tbody>

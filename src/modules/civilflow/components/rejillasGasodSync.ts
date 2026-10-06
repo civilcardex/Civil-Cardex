@@ -27,9 +27,9 @@ function leerGasod(): Record<string, Record<string, number>> {
   return out;
 }
 
-function proyectoIdActivo(): number {
-  const n = Number(localStorage.getItem(ACTIVE_PROYECTO_ID_KEY));
-  return Number.isFinite(n) && n > 0 ? n : 0;
+function proyectoIdActivo(): string {
+  const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+  return raw && raw.trim() ? raw.trim() : '';
 }
 
 let pushTimer: number | null = null;

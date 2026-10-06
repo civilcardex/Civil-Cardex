@@ -1,10 +1,11 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import WorkArea from '../components/WorkAreaCivilFlow';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { devError } from '../../../utils/devError';
 import { ProjectContext, PROY_DEFAULTS, type Proyecto } from '../context/ProjectContext';
 import { PlansContext } from '../context/PlansContext';
+import { fetchProyectos } from '../services/projectsService';
 import { loadProyectoData } from '../services/projectDataService';
 import { clearLocalWorkspace } from '../services/workspaceReset';
 import { clearAllPDFs } from '../services/idbStorage';
@@ -33,19 +34,53 @@ const CARGANDO_STYLE: React.CSSProperties = {
   fontSize: 13,
 };
 
-/** Ruta /civilflowareatrabajo/:proyectoId? — el id en la URL es deep-linkable (compartir,
- *  refrescar, back/forward). Sin id → redirect al activo. Con id distinto al activo →
- *  cambio de proyecto con el MISMO volcado de storage que ProfilePage + remontaje completo
- *  (window.location.replace): los contextos no están keyeados por proyecto y un remount
- *  suave dejaría estado del proyecto anterior en memoria (autosave cruzado). */
+/** Enlace legacy (id no-uuid): aviso centrado SIN workspace montado — abrir el activo
+ *  en silencio haría dibujar al usuario en el proyecto equivocado. */
+const ENLACE_LEGACY_STYLE: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 12,
+  height: '100%',
+  padding: 24,
+  textAlign: 'center',
+};
+
+const ENLACE_LEGACY_AVISO_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  padding: '10px 16px',
+  background: 'rgba(180, 83, 9, 0.15)',
+  border: '1px solid rgba(217, 119, 6, 0.4)',
+  borderRadius: 6,
+  color: '#fbbf24',
+  fontSize: 13,
+  fontFamily: 'var(--body)',
+};
+
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Ruta /civilflowareatrabajo/:proyectoId? — deep-link con el id uuid del proyecto
+ *  (cf_proyectos.id, paridad cm_proyectos). Sin id → redirect al uuid del activo. Con id
+ *  distinto al activo → cambio de proyecto con el MISMO volcado de storage que ProfilePage +
+ *  remontaje completo (window.location.replace): los contextos no están keyeados por proyecto
+ *  y un remount suave dejaría estado del anterior en memoria (autosave cruzado). */
 function WorkAreaCivilFlowPage() {
   usePageMeta(
     'Área de trabajo',
     'Área de trabajo de CivilCardex. Diseño de redes hidráulicas, sanitarias, gas, aguas lluvias y equipos a presión.',
   );
   const { proyectoId } = useParams<{ proyectoId?: string }>();
-  const wantsId = proyectoId && /^\d+$/.test(proyectoId) ? Number(proyectoId) : null;
-  const activeId = wantsId != null ? null : getActiveProyectoId();
+  const navigate = useNavigate();
+  // wantsId crudo (parámetro tal cual llega): distingue "sin parámetro" de "parámetro
+  // presente pero no-uuid" (id numérico legacy o basura).
+  const wantsCrudo = proyectoId ?? null;
+  const wantsId = wantsCrudo && ES_UUID.test(wantsCrudo) ? wantsCrudo : null;
+  // Enlace con id no-uuid: el lookup num→uuid es imposible (la columna legacy_num fue
+  // dropeada) — banner en vez de abrir el proyecto ACTIVO en silencio (el usuario dibujaría
+  // creyendo estar en el proyecto del enlace viejo).
+  const enlaceLegacy = wantsCrudo != null && wantsId == null;
   const projectCtx = useContext(ProjectContext);
   const plansCtx = useContext(PlansContext);
   // Switch pendiente evaluado EN RENDER: la URL ya apunta a otro proyecto — nunca montar
@@ -53,6 +88,34 @@ function WorkAreaCivilFlowPage() {
   const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
   const [switching, setSwitching] = useState(switchPendiente);
   const switchingRef = useRef(false);
+
+  // SOLO sin parámetro: redirect al uuid del proyecto activo. Con parámetro presente NO se
+  // redirige nunca al activo (uuid → switch de abajo; no-uuid → banner de enlace legacy):
+  // redirigir abriría el proyecto equivocado sin aviso. Sin datos accesibles la página queda
+  // funcional sin redirect (URL limpia es cosmética).
+  // navigate SPA y NO window.location.replace: los botones internos (cerrar visor,
+  // crear proyecto) llegan aquí con navigate('/civilflowareatrabajo') — un replace
+  // recargaba TODO el navegador en pleno trabajo (recarga "de la nada"). El workspace
+  // ya está vivo con el proyecto activo; solo se corrige la URL.
+  useEffect(() => {
+    if (proyectoId != null) return;
+    const activeId = getActiveProyectoId();
+    if (!activeId) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const rows = await fetchProyectos();
+        if (!alive) return;
+        const found = rows.find((r) => r.id === activeId);
+        if (found) navigate(`/civilflowareatrabajo/${found.id}`, { replace: true });
+      } catch {
+        /* cosmético: sin redirect */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [proyectoId, navigate]);
 
   useEffect(() => {
     if (wantsId == null || switchingRef.current) return;
@@ -77,7 +140,7 @@ function WorkAreaCivilFlowPage() {
         await clearAllPDFs();
         plansCtx?.resetPlans();
         projectCtx?.resetToDefaults();
-        localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(wantsId));
+        localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, wantsId);
         // Escritura vía saveToStorage (aplica el 2º prefijo civilflow_ que leen los
         // providers al montar — mismo contrato de hand-off documentado en ProfilePage).
         if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
@@ -99,10 +162,9 @@ function WorkAreaCivilFlowPage() {
         // Rollback: recarga completa — el workspace del proyecto previo ya no existe en
         // memoria (la destrucción pudo correr antes del fallo); los providers se re-nacen
         // con la recarga, un resume in situ dejaría un workspace vacío sin sync.
-        if (idAnterior != null) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(idAnterior));
-        window.location.replace(
-          idAnterior != null ? `/civilflowareatrabajo/${idAnterior}` : '/perfil',
-        );
+        if (idAnterior) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, idAnterior);
+        // Ruta limpia: el redirect al uuid del activo lo hace el efecto de entrada.
+        window.location.replace(idAnterior ? '/civilflowareatrabajo' : '/perfil');
         return;
       }
     })();
@@ -110,9 +172,22 @@ function WorkAreaCivilFlowPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsId]);
 
-  if (wantsId == null && activeId) {
-    return <Navigate to={`/civilflowareatrabajo/${activeId}`} replace />;
+  // Enlace con id no-uuid (numérico legacy): banner + link al perfil, SIN montar workspace.
+  if (enlaceLegacy) {
+    return (
+      <main className="h-full" style={ENLACE_LEGACY_STYLE}>
+        <h1 style={WorkAreaCivilFlowPage_S1}>Área de trabajo</h1>
+        <div role="alert" style={ENLACE_LEGACY_AVISO_STYLE}>
+          Este enlace corresponde a una versión antigua del proyecto — ábrelo desde tu lista de
+          proyectos.
+        </div>
+        <Link to="/perfil" style={{ color: 'var(--acc, #4d8ff7)', fontSize: 13, fontWeight: 600 }}>
+          Ir a mis proyectos
+        </Link>
+      </main>
+    );
   }
+
   if (switchPendiente || switching) {
     return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
   }

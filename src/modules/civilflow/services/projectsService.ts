@@ -4,11 +4,17 @@ import { CF_TABLES } from '../constants/tableNames';
 import { emitBdSaveError } from './storageService';
 
 export interface ProyectoRow {
-  id: number;
+  /** Identificador uuid (cf_proyectos.id) — paridad cm_proyectos; usa para deep-links. */
+  id: string;
   user_id: string;
   codigo: string;
   nombre: string;
   created_at?: string;
+}
+
+/** Mapea la fila cruda de BD a la forma del cliente (id uuid). */
+function rowToProyecto(raw: Record<string, unknown>): ProyectoRow {
+  return { ...(raw as unknown as ProyectoRow), id: String(raw.id) };
 }
 
 /** Variante estricta para flujos que deben distinguir "sin proyectos" de "fallo de red/BD":
@@ -24,7 +30,7 @@ export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return (data as ProyectoRow[]) || [];
+  return ((data as unknown as Record<string, unknown>[]) || []).map(rowToProyecto);
 }
 
 /**
@@ -56,7 +62,7 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
       return [];
     }
 
-    return (data as ProyectoRow[]) || [];
+    return ((data as unknown as Record<string, unknown>[]) || []).map(rowToProyecto);
   } catch (e) {
     devError('proyectosService fetch exception:', e);
     return [];
@@ -96,7 +102,7 @@ export async function createProyecto(
       return { ok: false, msg: error.message };
     }
 
-    return { ok: true, row: data as unknown as ProyectoRow };
+    return { ok: true, row: rowToProyecto(data as unknown as Record<string, unknown>) };
   } catch (e) {
     devError('proyectosService create exception:', e);
     return { ok: false, msg: 'error_red' };
@@ -110,7 +116,7 @@ export async function createProyecto(
  * @param nombre - Nuevo nombre mostrado.
  * @returns True si la actualización funcionó, false si no.
  */
-export async function updateProyectoNombre(id: number, nombre: string): Promise<boolean> {
+export async function updateProyectoNombre(id: string, nombre: string): Promise<boolean> {
   try {
     const {
       data: { user },
@@ -140,7 +146,7 @@ export async function updateProyectoNombre(id: number, nombre: string): Promise<
  * @param id - Clave primaria del proyecto.
  * @returns True si la eliminación funcionó, false si no.
  */
-export async function deleteProyecto(id: number): Promise<boolean> {
+export async function deleteProyecto(id: string): Promise<boolean> {
   try {
     const {
       data: { user },

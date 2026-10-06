@@ -48,7 +48,7 @@ interface BombaDatosRow {
  * Carga los datos de la bomba sumergible (bomba_datos_proyecto, 1:1 con el proyecto).
  * Devuelve null cuando la fila no existe aún — el llamador decide usar defaults.
  */
-export async function loadBombaDatos(proyectoId: number): Promise<BombaData | null> {
+export async function loadBombaDatos(proyectoId: string): Promise<BombaData | null> {
   try {
     const { data, error } = await supabase
       .from(CF_TABLES.bombaDatos)
@@ -95,7 +95,7 @@ export async function loadBombaDatos(proyectoId: number): Promise<BombaData | nu
  * 'civilflow_memoria_bomba_data' queda como caché en vivo para la memoria final. Ver
  * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
-export async function saveBombaDatos(proyectoId: number, b: BombaData): Promise<void> {
+export async function saveBombaDatos(proyectoId: string, b: BombaData): Promise<void> {
   try {
     const {
       data: { user },

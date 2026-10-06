@@ -110,7 +110,7 @@ describe('tumba anti-vacío en saveTrazosToDB', () => {
     // clave cruda (getActiveProyectoId lee el raw y hace Number)
     (globalThis as unknown as { localStorage: Storage }).localStorage.setItem(
       'civilflow_active_proyecto_id',
-      '111',
+      '11111111-1111-4111-8111-111111111111',
     );
     setLS('civilflow_trazos_501', { ramales: [{ id: 'R1' }] });
     await saveTrazosToDB('501', { ramales: [{ id: 'R1' }], bajantes: [], ts: Date.now() });
@@ -123,7 +123,7 @@ describe('tumba anti-vacío en saveTrazosToDB', () => {
   it('borrado legítimo converge: caché ya sin contenido → el push vacío pasa', async () => {
     (globalThis as unknown as { localStorage: Storage }).localStorage.setItem(
       'civilflow_active_proyecto_id',
-      '111',
+      '11111111-1111-4111-8111-111111111111',
     );
     setLS('civilflow_trazos_501', { origen: 1 }); // sin colecciones: no es contenido
     await saveTrazosToDB('501', { ramales: [], bajantes: [], ts: Date.now() });
@@ -165,7 +165,7 @@ describe('escritores de asociación sobre piso SIN caché local', () => {
 
 describe('prefetch: fetch de BD ANTES de migrar', () => {
   it('piso sin caché recupera sus trazos de la BD y la migración no los borra', async () => {
-    setLS('civilflow_active_proyecto_id', '111');
+    setLS('civilflow_active_proyecto_id', '11111111-1111-4111-8111-111111111111');
     mockRpc.mockImplementation(async (name: string) =>
       name === 'get_plano_data'
         ? {

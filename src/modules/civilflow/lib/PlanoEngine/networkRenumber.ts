@@ -489,7 +489,10 @@ export function _renumberAreas(engine: IPlanoEngineCore): void {
   });
   porRed.forEach((arr) => {
     arr.forEach((a, i) => {
-      a.label = 'AREA' + (i + 1);
+      // Solo compactar labels AUTO (AREA n): pisar labels personalizados del usuario
+      // (sector de rejillas: "COCINA", "TERRAZA"…) borraba su nombre al borrar un área
+      // (orig. usuario: "se renombran todas las otras áreas").
+      if (/^AREA\d+$/.test(a.label || '')) a.label = 'AREA' + (i + 1);
     });
   });
 }

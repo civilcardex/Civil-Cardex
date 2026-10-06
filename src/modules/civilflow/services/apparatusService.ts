@@ -54,6 +54,7 @@ async function ownerProyectoActivo(): Promise<string | null> {
     const { data, error } = await supabase
       .from(CF_TABLES.proyectos)
       .select('user_id')
+      // Tras el rename cf_proyectos (id=uuid), la PK numérica es proyecto_num.
       .eq('id', pid)
       .maybeSingle();
     if (error) {

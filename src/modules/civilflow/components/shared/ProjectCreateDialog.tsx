@@ -60,7 +60,8 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
       clearLocalWorkspace();
       await clearAllPDFs();
       // Marca este proyecto como activo para que trazos/plans/proyecto_data queden acotados a él
-      localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proyecto.id));
+      // La maquinaria interna (RPCs, claves) sigue numerada: proyecto_num.
+      localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, proyecto.id);
       // Los providers de contexto no están montados en la ruta de perfil (CivilFlowProviders está
       // acotado al área de trabajo), así que setP de abajo no hace nada ahí. Persiste el nombre
       // directamente — ProyectoProvider lo restaura desde esta clave al montarse, y el área de

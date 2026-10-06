@@ -37,8 +37,11 @@ async function runPrefetch(
     // fabricaba `{assocLayout:2, ts}` y el RPC destructivo lo pisaba en BD ANTES de que el
     // fetch de abajo pudiera restaurarlo — borrado total del piso. Con cachés ya descargadas,
     // esta pasada única encuentra ambos extremos de cada asociación.
+    // Plano-fantasma con id uuid (estado contaminado de sesión): cf_planos.id es bigint —
+    // filtrar del prefetch/migración (orig. usuario: 42883/22P02 en cada arranque).
+    const planes = plans.filter((p) => /^\d+$/.test(String(p.id)));
     const migrateAll = () => {
-      for (const p of plans) {
+      for (const p of planes) {
         if (p.nivel == null) continue;
         try {
           migrateAssocLayoutOnLoad(String(p.id), pisoLbl(p.nivel as number));
@@ -47,7 +50,7 @@ async function runPrefetch(
         }
       }
     };
-    const missing = plans.filter((p) => loadFromStorage(TRAZOS_PREFIX + p.id, null) == null);
+    const missing = planes.filter((p) => loadFromStorage(TRAZOS_PREFIX + p.id, null) == null);
     await Promise.all(
       missing.map(async (p) => {
         const data = await loadTrazosFromDB(String(p.id));

@@ -3,11 +3,12 @@ import { devError } from '../../../utils/devError';
 
 const BUCKET = 'plan_pdfs';
 
-function objectPath(userId: string, proyectoId: number, planId: number): string {
+/** Ruta del objeto: userId/proyectoId(uuid)/planId.pdf. */
+function objectPath(userId: string, proyectoId: string, planId: number): string {
   return `${userId}/${proyectoId}/${planId}.pdf`;
 }
 
-export async function uploadPlanPDF(proyectoId: number, planId: number, file: File): Promise<void> {
+export async function uploadPlanPDF(proyectoId: string, planId: number, file: File): Promise<void> {
   try {
     const {
       data: { user },
@@ -27,7 +28,7 @@ export async function uploadPlanPDF(proyectoId: number, planId: number, file: Fi
 }
 
 export async function downloadPlanPDF(
-  proyectoId: number,
+  proyectoId: string,
   planId: number,
   name: string,
 ): Promise<File | null> {
@@ -63,7 +64,7 @@ export async function deletePlanMeta(planId: number): Promise<void> {
   }
 }
 
-export async function deletePlanPDF(proyectoId: number, planId: number): Promise<void> {
+export async function deletePlanPDF(proyectoId: string, planId: number): Promise<void> {
   try {
     const {
       data: { user },

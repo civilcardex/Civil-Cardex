@@ -104,9 +104,16 @@ import type {
 } from '../lib/PlanoEngine/PlanoState';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 
-export function getActiveProyectoId(): number | null {
+/** Id numérico pre-conversión (p. ej. "42"): curado en vez de propagar un 22P02
+ *  a loadProyectoData — el proyecto se re-abre desde la lista. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Id activo (uuid) o null. Los ids legacy pre-conversión (numéricos) devuelven null
+ *  PERO no se purgan aquí — la purga vive en efecto (ver uso en WorkAreaCivilFlow). */
+export function getActiveProyectoId(): string | null {
   const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-  return raw ? Number(raw) : null;
+  const id = raw && raw.trim() ? raw.trim() : null;
+  return id && UUID_RE.test(id) ? id : null;
 }
 
 export type PlanTrazos = Partial<PlanoWorkData>;
@@ -602,6 +609,12 @@ export function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
 
 async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
+    // Los ids de plano son numéricos (Date.now*1000+rand). Un uuid aquí es un plano fantasma
+    // (estado de sesión contaminado): bloquear antes del RPC — el RPC espera bigint.
+    if (!/^\d+$/.test(planoId)) {
+      devError('storageService saveTrazosToDB: planoId no numérico descartado', planoId);
+      return;
+    }
     // Tumba anti-vacío (antes del check de sesión: abort barato): el RPC borra y re-inserta
     // TODAS las colecciones del piso. Un payload sin contenido (engine a medio hidratar,
     // guardado en la ventana de cambio de piso, escritor cross-floor sobre caché ausente...)

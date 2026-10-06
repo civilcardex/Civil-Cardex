@@ -77,7 +77,7 @@ const FIELD_MAP: Record<keyof EPData, keyof EpDatosRow> = {
  * Carga los datos del equipo de presión (ep_datos_proyecto, 1:1 con el proyecto).
  * Devuelve null cuando la fila no existe aún — el llamador decide usar defaults.
  */
-export async function loadEpDatos(proyectoId: number): Promise<EPData | null> {
+export async function loadEpDatos(proyectoId: string): Promise<EPData | null> {
   try {
     const { data, error } = await supabase
       .from(CF_TABLES.epDatos)
@@ -137,7 +137,7 @@ export async function loadEpDatos(proyectoId: number): Promise<EPData | null> {
  * ('ep') queda como caché en vivo. Ver
  * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
-export async function saveEpDatos(proyectoId: number, ep: EPData): Promise<void> {
+export async function saveEpDatos(proyectoId: string, ep: EPData): Promise<void> {
   try {
     const {
       data: { user },
