@@ -2585,3 +2585,99 @@ tsc 0 · lint 0 err 0 warn · vitest 963/963 (160 files) · build ✓ · graphif
 - **SKIP**: `SuscripcionRow.periodo` sin lectores de fila PERO escrito en test fixture + CompanyPreviewPage → quitarlo rompería tsc; quedó.
 - **cm_save_error**: 4ª ronda huérfano (WIP ajeno — sin visto bueno).
 - Neto: ~188L · 0 deps. Gates: tsc 0 · lint 0 · vitest 963/963 · build ✓.
+
+## Session Summary — 2026-10-05 (ronda 17: uuid conversion audit → fixes)
+
+### Contexto: la sesión paralela convirtió cf_proyectos bigint→uuid (serie 20261005000002-07 + 08-11 de limpieza). Auditoría (3 exploradores) halló 4 críticos; fixes aplicados inline.
+
+### COLISIÓN DE MIGRACIONES — resolución final
+La paralela sigue escribiendo SU cadena (02-07 conversión + 08-11 limpieza: drop_mig_backup, rpc_uuid_reparacion, apoyo_migrar_storage, drop_legacy_num). Mis 5 migraciones movidas a rango libre: `20261005000020_hardening` · `21_mis_accesos` · `22_aparatos_empresa_y_sello` · `23_dedupe_policies` · `24_idx_asignado_por`. Cero prefijos duplicados. Convención: la paralela es dueña de 02-11; las mías nacen desde 20.
+
+### Migración NUEVA `20261005000025_reparacion_trigger_y_pk.sql` (3 huecos que su cadena NO cubre)
+1. **Trigger cf_sellar_owner_contenido**: los replaces de 05000007/05000009 buscan '{proyecto_id}')::bigint' CON llaves (patrón de save_plano_data) — el cuerpo real usa (v_row->>'proyecto_id')::bigint sin llaves → cast quedó bigint → 22P02 en cada escritura de las 19 tablas. Fix: regexp_replace $r$((v_row|new)->>'proyecto_id'\s*)::bigint$r$ + verificación dura (prosrc ~ 'proyecto_id.{0,4}::bigint' → abort).
+2. **save_plano_data(+impl)**: declare `proy_id bigint` sin convertir → 42804 en primer autosave. Fix: replace a 'proy_id uuid' (loop con filter prosrc).
+3. **PK de cf_proyectos**: al dropear legacy_num (05000011) se fue la PK heredada → tabla sin primary key. Fix: DO que detecta PK actual y `add primary key (id)` si id no es PK.
+
+### Cliente
+- **I-3**: `getActiveProyectoId` cura ids pre-conversión (no-uuid → removeItem + null; "42" ya no propaga 22P02). Tests trazosHardening actualizados a uuid activo (15/15).
+- F-1: botón eliminar cuadrilla con `disabled={!editable}` (regresión de lectura). F-2: comentario del shell CM corregido (cada pestaña gobierna su useEditable). F-3: Contacto Técnico con mailto + nav aria-label. F-7a: modal de logout con role=dialog/aria-modal/Escape/foco inicial.
+- **Obsoletos (la paralela los resolvió en su deploy)**: F-5/F-6 (legacy_num ya fuera del cliente).
+
+### Deuda viva (documentada, no ejecutada)
+- I-5 residual: `save_aparatos_usuario` sella al llamador → edits del MIEMBRO en aparatos se pierden al recargar (necesita RPC con owner explícito).
+- F-7b: ProyectoCard con button anidado en role="button" (requiere cirugía de layout en archivo de la paralela).
+- uuid_pk aún declara header optimista ("id=uuid PK") — el 05000025 lo hace verdad; NO aplicar 05000012 sin 05000025 después.
+- Deploy: cliente ya tolera uuid; aplicar migraciones 02→07→08→09→10→11→25 en SQL Editor.
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 963/963 · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (save_plano_data 22P02: uuid del PROYECTO contra ::bigint)
+
+- **Causa raíz** del `invalid input syntax for type bigint: "48292e31-…"` en `save_plano_data`: el uuid NO es el plano (cf_planos.id sigue bigint y el cliente manda `Number(planoId)`) — es el PROYECTO convertido a uuid el 2026-10-05 viajando en `p_data.header.proyecto_id` contra el cuerpo vivo `proy_id := (p_data #>> '{header,proyecto_id}')::bigint`. Rompe TODO guardado de trazos desde la conversión.
+- **Fix server**: `20261006000000_save_plano_data_proy_uuid.sql` — ⚠️ PENDIENTE DE APLICAR EN SQL EDITOR. Cierra dos huecos de una vez (idempotente, corre igual con 00000009 aplicada o no): (1) 00000009 convertía el cast pero dejaba `proy_id bigint;` declarado → 42846 al asignar; (2) si 00000009 no se aplicó, el cast ::bigint sigue vivo → 22P02. Patrón de la casa: leer cuerpo vivo, replace quirúrgico con verificación dura (aborta sin pisar), misma firma (grants sobreviven), SELECT final de comprobante + `notify pgrst`.
+- **Cliente (WIP ya en árbol)**: `getActiveProyectoId()` devuelve string y valida uuid (los proyectos ahora son uuid; un id numérico en la clave es legado → se cura y el proyecto se re-abre desde la lista). Guarda defensiva en `doSaveTrazosToDB` (planoId no numérico → descartado antes del RPC) y filtro `/^\d+$/` en `prefetchTrazos` — los planos fantasma con id uuid no tocan BD.
+- Gates: tsc 0 · lint 0 err · vitest 963/963 (160 files) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (consolidado de BD en 2 archivos)
+
+- `supabase/consolidado/{01_civilflow,02_civilmanager}.sql` + README: estado FINAL de las 95 migraciones condensado "desde cero" (pedido usuario, para legibilidad futura). 01 = base común (perfiles/app_*/helpers/storage) + flow; 02 = cm_* (requiere 01).
+- Reconstrucción a mano (sin Docker/psql local): estado final post-conversión uuid (cf_proyectos.id uuid, cf_planos.id bigint client-minted), impls finales con guards empresa + cast ::uuid, policies finales (propietario_leer con empresa_lectura, sello trg_sellar_owner en 19+1 tablas), precios USD en app_precios.
+- Cobertura verificada por script: tablas 100% (viejas renombradas excluidas), funciones 100% de las vivas (excluidas las que el historial dropeó: get_proyecto_data_ep_bomba, get_proyectos_para_migrar_storage; los cm_*_set_updated_at van en DO-loop dinámico). README documenta diferencias cosméticas (nombres de índices).
+- NO aplicar sobre la BD viva: son create-table limpios de referencia; migrations/ sigue siendo la historia aplicada.
+
+## Session Summary — 2026-10-06 (8 requisitos de tablas de diseño: lluvias + rejillas + catálogo gas + sticky)
+
+### Req 1-3 · Lluvias (agente A)
+- **Req 1 material absoluto**: sin materialCubierta → C=0, sin cálculo (ni caudal manual). Fuera el fallback `cEfectivoCubierta ?? 1` (eliminada la función, 0 consumidores) en rainwaterRows (qBajanteLl, computeLlQMap), RainChannelsCheck (Cder sin fallback al 0.0278) y consistencia en rainDownpipesRows/infTab/useCaudalLl. RainDownpipesCheck ya estaba.
+- **Req 2 canal = Σ bajantes asociados**: `canalAlimInfo` nuevo en RainwaterContext (por bajante alimentador: código override + área dibujada); canal con asociados deriva Parcial=Σ, Otras=Σ overrides, Material=común o ''; ediciones de Otras/Material en el canal hacen fan-out `updBajanteLL` a todos los asociados → sincronía en vivo entre Chequeo canales y Chequeo bajantes. Función compartida `areaParcialBajanteLl` (misma fórmula en 3 superficies). Sin asociados → comportamiento previo.
+- **Req 3 chequeo incompleto = 'No cumple'**: chequeoBajanteLluvia, chequeoCanalLluvia, chequeoEmbocaduraLluvia y chequeoD del Diseño de red — fuera '—'/'Sin diseño'/'Sin sección'. 'Revisar bajante' conservado (Q>0 sin bajantes). Tests calcRainwater/llCaudal actualizados + 6 nuevos.
+
+### Req 4-6 · Rejillas + catálogo gas (agente B)
+- **Req 4**: est4 display 'EST4' en CAT_GAS.s, APARATOS_DEF.sigla y GasCalcUC.ABREV (est2 intacto).
+- **Req 5**: fuera columna Piso (input incluido; f.piso interno sigue para sótanos/memoria/alzado); celda Sector 2 líneas (input editable + nivel gris debajo); nueva columna **"Volumen del recinto (m³)"** = res.V antes de Volumen Requerido (colSpan Verificación 2→3); headers "Total pot"/"Pot (kW)" → **"P (kW)"**.
+- **Req 6**: CAT_GAS enriquecida (kw/qglp/kwglp por aparato, valores NTC 3728 de la imagen del usuario; **srp/srg en null con TODO** — esperando tabla completa). Catálogo DesignParameters: Consumo gas natural (m³/h) · Potencia (kW) · Consumo GLP (m³/h) · Potencia GLP (kW) (null → '—'). Rejillas: kw del aparato = catálogo según `gas` (glp→kwglp), input Pot eliminado, kwById deprecado (dato viejo en disco ignorado).
+
+### Req 7 · Sticky headers (agente C)
+Hook `useStickyThead2Offset` + ref añadidos a: WaterNetworkDesign (AF/AC), SupplyConnection, DownpipesTable (thead de 3 filas → nuevo `--thead3-top` corrige fila 3 que tapaba), RainDownpipesCheck, RainChannelsCheck, GasCalcUC, GasDesign Chequeo, RejillasVentilacion (clase tbl + hook). GasDesign: wrapper `overflow:hidden`→auto+minHeight 0 (scrollport real) + 2 contenedores inertes eliminados. EP: wrapper hidden→auto. **Caveat Rejillas**: su wrapper `overflowX:auto` es scroll container vertical inerte que aún bloquea el sticky contra la tarjeta — clase+hook ya instalados, funciona al quitar ese wrapper (decisión de layout del usuario, verificación en navegador pendiente).
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest 969/969 (160 files; +6 lluvias) · build ✓ · graphify ✓.
+
+### Verificación manual (recarga dura)
+1. Lluvias sin material: C vacío, sin cálculo, chequeos NO CUMPLE. Con material: calcula.
+2. Canal con bajantes asociados: editar Otras/Material en cualquier tabla → se refleja en la otra.
+3. Rejillas: sector 2 líneas con nivel, sin Piso, P (kW) automático según gas, Volumen del recinto.
+4. Catálogo gas: 6 columnas. SRP/SRG completados con la tabla definitiva del usuario (SRP 5.59/0.22/13.93 · SRG 8.38/0.32/20.90) y `hor_m.qglp` corregido 0.33→0.32 (imagen final difiere de la primera).
+5. Sticky: scrollear cada tabla de diseño → títulos fijos (Rejillas pendiente por el wrapper de scroll horizontal).
+
+## Session Summary — 2026-10-06 (ronda 18.1: fixes sobre verificación hostil — 21 fichas)
+
+### Rejillas (agente 1)
+- **C-1 CRÍTICO**: 4 ids del selector (`sec_g/sec_p/sauna/turco`) no existían en CAT_GAS (`srg/srp/bs/bt`) → kw=0 permanente + estado 'vacio' TRAGABA las alertas (AlertasResumen gate). Fix: `ALIAS_CAT_GAS` (lookup alias) + AlertasResumen renderiza `res.alertas` incondicional (en 'vacio' solo hay elementos si el cálculo los pusheó).
+- **I-5**: `purgarKwById` en AMBOS caminos de carga de overrides (localStorage + blob BD) — potencias personalizadas deprecadas dejan de viajar al push (rejillasGasodSync leía el disco ya purgado; verificado).
+
+### Lluvias (agente 2)
+- **I-1**: `repartirOtrasCanal(total, n)` — reparto en centavos de m² con residuo al primero; re-edición idempotente. JSDoc documenta bajante compartido por 2 canales (última escritura gana).
+- **I-7**: `computeLlQMap` rama ramal-colector ahora usa `areaParcialBajanteLl(trBaj.area_m2, …)` — el Q ya no diverge entre Diseño de red y Chequeo (área dibujada primero; piso = último recurso, documentado).
+- **M-3**: efecto duplicado + `void diamTick` muertos fuera. **M-4**: `materialComun`/`sumaOtrasAsociados` extraídas a funciones puras + 9 tests nuevos (uniforme/mezclado/vacíos, reparto con residuo, idempotencia, regresión I-7). **M-5**: JSDoc "Intensidad intencionalmente a nivel canal".
+
+### Cliente uuid + UI (agente 3)
+- **I-3**: `getActiveProyectoId` PURA (sin removeItem; valida uuid) — la purga del id legacy vive en el efecto de auto-activación de WorkAreaCivilFlow. **I-4**: `ProyectoCard.blocked` (apertura/borrado concurrentes bloqueados; guardas internas en openProyecto/openCmProyecto). **I-2**: deep-link numérico legacy → banner `role="alert"` + link a /perfil, SIN montar workspace ni redirigir al activo (const derivado por render: la ruta es `:proyectoId?` opcional). **F-7b**: botón eliminar de ProyectoCard hermano absoluto (fuera del role=button; stopPropagation fuera). **M-6**: `#` por posición de vista alfabética. **M-9**: `detalleUd` O(n²·m)→O(n·m) con Map memos. **M-7**: script storage con paginación (límite 100 truncaba), error real en fallo de listado, mensaje apunta a 000011, header inexistente fuera. **M-10**: advertencia del invariant EditableSection en el shell CM.
+
+### Deuda viva restante de la ronda
+- I-6: ventana de deploy cliente-uuid ↔ script storage/migraciones (gate de arranque o fallback de lectura por proyecto_num — operación, no código).
+- I-5 residual: `save_aparatos_usuario` sigue sellando al llamador (RPC con owner explícito pendiente).
+- M-8: RPC de apoyo `get_proyectos_para_migrar_storage` sin revoke (se dropea en 00000011 — inofensivo si ya aplicado).
+
+### Gates
+tsc 0 · lint 0 err 0 warn · vitest **978/978** (160 files; +9 lluvias) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-06 (ronda 19: ponytail #6 — el más lean)
+
+- `KW_DEFAULT` fuera (kW ahora del catálogo CAT_GAS desde r17 — residuo de la purga kwById).
+- `cm_save_error` dispatch fuera (5ª ronda huérfano; visto bueno del usuario en "arregla todos").
+- `GRUPOS_GASOD` → type union puro (`'estufa' | 'calent' | 'otros'`) — el const solo derivaba el type (alternativa al des-export que reintroducía warning eslint).
+- Seeds `coeficienteC: 0.0278` → `0` (8 sitios en RainwaterContext + rainwaterOverridesService): tras el gating de material absoluto el valor jamás llega a cálculo/render (tablas recalculan C con cDeCubierta). Columna `coeficiente_c` en BD se conserva.
+- NO-CUT: lemon.ts (scaffolding), migrar-storage-uuid.mjs (ops one-shot — anotar en AGENTS.md y borrar tras confirmar ejecución), kwById (purga progresiva), CompanyPreviewPage (dev-only).
+- Neto: ~3L muertas + 8 seeds neutralizados + 2 simplificaciones. 0 deps. Gates: tsc 0 · lint 0 · vitest 978/978 · build ✓.
