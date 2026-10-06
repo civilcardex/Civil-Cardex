@@ -26,12 +26,16 @@ import { loadProyectoData } from '../../modules/civilflow/services/projectDataSe
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService';
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset';
-import { saveToStorage } from '../../modules/civilflow/services/storageService';
+import {
+  getActiveProyectoId,
+  saveToStorage,
+} from '../../modules/civilflow/services/storageService';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialog';
 import type { ModuloId } from '../../lib/subscriptions/catalog';
 import { useSuscripciones } from '../../hooks/useSubscriptions';
+import SiteFooter from '../../components/landing/SiteFooter';
 import { estaActiva } from '../../lib/subscriptions/subscriptionsService';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames';
 import {
@@ -53,6 +57,129 @@ const campos = [
 function diasParaVencer(fechasFin: string[]): number {
   const min = Math.min(...fechasFin.map((f) => new Date(f).getTime()));
   return Math.floor((min - Date.now()) / 86400000);
+}
+
+/** Iniciales para el avatar del header (2 palabras máx). */
+function inicialesDe(nombre: string): string {
+  return (
+    nombre
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() || '')
+      .join('') || '??'
+  );
+}
+
+/** Fecha corta es-CO para la tarjeta (dd mmm aa). */
+function fechaCorta(iso: string | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: '2-digit' });
+}
+
+/** Tarjeta de proyecto (grid del perfil): badge de módulo + Empresa, código, nombre, fecha,
+ *  papelera al hover (desktop) y flecha de apertura. Un solo componente para CF y CM.
+ *  El botón eliminar es HERMANO del div role="button" (envueltos en un relative): un
+ *  interactivo anidado dentro de otro es HTML/AT inválido. */
+function ProyectoCard({
+  badge,
+  badgeColor,
+  empresa,
+  codigo,
+  nombre,
+  fecha,
+  opening,
+  blocked,
+  onOpen,
+  onDelete,
+}: {
+  badge: string;
+  badgeColor: string;
+  empresa: boolean;
+  codigo: string;
+  nombre: string;
+  fecha?: string;
+  opening: boolean;
+  /** true si OTRA card está abriendo: atenúa y bloquea acciones (evita aperturas/borrados
+   *  concurrentes que intercalan el hand-off de storage entre dos proyectos). */
+  blocked: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const inactivo = opening || blocked;
+  return (
+    <div className="relative group">
+      <div
+        className="border border-outline-variant bg-surface-container-low hover:bg-surface-container transition-colors p-4 cursor-pointer"
+        role="button"
+        tabIndex={inactivo ? -1 : 0}
+        aria-label={`Abrir proyecto ${nombre}`}
+        aria-disabled={inactivo}
+        onClick={() => {
+          if (inactivo) return;
+          onOpen();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (inactivo) return;
+            onOpen();
+          }
+        }}
+        style={{ opacity: opening ? 0.5 : 1 }}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 border"
+            style={{ borderColor: badgeColor, color: badgeColor, fontFamily: 'Geist, monospace' }}
+          >
+            {badge}
+          </span>
+          {empresa && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 border"
+              style={{ borderColor: '#52f2a5', color: '#52f2a5', fontFamily: 'Geist, monospace' }}
+            >
+              Empresa
+            </span>
+          )}
+          <span className="ml-auto mr-6 text-[11px] text-on-surface-variant font-mono">
+            {fechaCorta(fecha)}
+          </span>
+        </div>
+        <div className="text-[13px] font-bold font-mono text-on-surface">{codigo}</div>
+        <p className="text-[12px] text-on-surface-variant truncate mt-0.5 pr-6">
+          {opening ? 'Abriendo proyecto...' : nombre}
+        </p>
+        <span
+          aria-hidden
+          className="absolute bottom-3 right-3 material-symbols-outlined text-on-surface-variant text-lg opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          arrow_forward
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (inactivo) return;
+          onDelete();
+        }}
+        aria-label={`Eliminar proyecto ${codigo}`}
+        title="Eliminar proyecto"
+        disabled={inactivo}
+        className="absolute top-[14px] right-[14px] shrink-0 material-symbols-outlined text-[18px] opacity-60 group-hover:opacity-100 transition-opacity"
+        style={{
+          cursor: inactivo ? 'default' : 'pointer',
+          color: 'var(--error, #ff4444)',
+        }}
+      >
+        delete
+      </button>
+    </div>
+  );
 }
 
 function ProfilePage() {
@@ -81,9 +208,10 @@ function ProfilePage() {
     rows: subsRows,
   } = useSuscripciones();
   const [moduloElegido, setModuloElegido] = useState<ModuloId | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [cmDeleteConfirm, setCmDeleteConfirm] = useState<string | null>(null);
-  const [openingId, setOpeningId] = useState<number | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [cmOpeningId, setCmOpeningId] = useState<string | null>(null);
   const userIdRef = useRef<string | null>(null);
 
@@ -92,7 +220,9 @@ function ProfilePage() {
   const plansCtx = useContext(PlansContext);
 
   async function openProyecto(proy: ProyectoRow) {
-    if (openingId != null) return;
+    // Guard de apertura concurrente (CF o CM): dos openProyecto intercalan el hand-off
+    // de storage y dejan mezcla de dos proyectos; respaldo del disabled por blocked.
+    if (openingId != null || cmOpeningId != null) return;
     setOpeningId(proy.id);
     try {
       // Local workspace always starts blank before loading the selected project —
@@ -108,7 +238,7 @@ function ProfilePage() {
       await clearAllPDFs();
       plansCtx?.resetPlans();
       projectCtx?.resetToDefaults();
-      localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proy.id));
+      localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, proy.id);
 
       const data = await loadProyectoData(proy.id);
 
@@ -146,7 +276,8 @@ function ProfilePage() {
       // faltantes lazy por piso.
       if (plansMeta.length > 0) saveToStorage(PLANS_META_KEY, plansMeta);
 
-      navigate('/civilflowareatrabajo');
+      // Deep-link tipo CM por slug uuid (fallback numérico si la migración aún no corre).
+      navigate(`/civilflowareatrabajo/${proy.id}`);
 
       void (async () => {
         const resolved = await Promise.all(
@@ -290,12 +421,20 @@ function ProfilePage() {
     if (e.key === 'Escape') handleEditCancel();
   }
 
-  async function handleDeleteProject(id: number) {
+  async function handleDeleteProject(id: string) {
+    if (!id) {
+      window.alert('No se pudo identificar el proyecto.');
+      return;
+    }
     const ok = await deleteProyecto(id);
     if (ok) {
       setProyectos((prev) => prev.filter((p) => p.id !== id));
+      // Si el proyecto borrado era el ACTIVO, limpiar el puntero: si no, el área de trabajo
+      // seguía autoguardando sobre un proyecto inexistente (404/no_autorizado en cada sync).
+      if (getActiveProyectoId() === id) localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
     } else {
       devError('Error eliminando proyecto');
+      window.alert('No se pudo eliminar el proyecto (fallo del servidor o de conexión).');
     }
     setDeleteConfirm(null);
   }
@@ -311,7 +450,8 @@ function ProfilePage() {
   }
 
   async function openCmProyecto(proy: CmProyectoRow) {
-    if (cmOpeningId != null) return;
+    // Guard de apertura concurrente (CF o CM): respaldo del disabled por blocked.
+    if (cmOpeningId != null || openingId != null) return;
     setCmOpeningId(proy.id);
     try {
       localStorage.setItem('cm_proyecto_activo_id', proy.id);
@@ -363,596 +503,569 @@ function ProfilePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
-      {/* Con suscripciones activas, "Nuevo proyecto" pregunta primero por el módulo
+    <div className="flex flex-col flex-1 min-h-screen">
+      <div className="space-y-6 max-w-[1200px] mx-auto w-full px-4 lg:px-6 flex-1">
+        <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
+        {/* Con suscripciones activas, "Nuevo proyecto" pregunta primero por el módulo
           comprado; el flujo interno de cada módulo sigue intacto. */}
-      <ModuleSelectDialog
-        open={showModSel}
-        onClose={() => setShowModSel(false)}
-        onPick={(m) => {
-          setShowModSel(false);
-          setModuloElegido(m);
-        }}
-      />
-      <ProjectCreateDialog
-        open={showCreate || moduloElegido === 'flow'}
-        onClose={() => {
-          setShowCreate(false);
-          if (moduloElegido === 'flow') setModuloElegido(null);
-        }}
-      />
-      <ProjectCreateDialogCM
-        open={moduloElegido === 'manage'}
-        onClose={() => setModuloElegido(null)}
-      />
-      {deleteConfirm != null && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
+        <ModuleSelectDialog
+          open={showModSel}
+          onClose={() => setShowModSel(false)}
+          onPick={(m) => {
+            setShowModSel(false);
+            setModuloElegido(m);
           }}
-        >
+        />
+        <ProjectCreateDialog
+          open={showCreate || moduloElegido === 'flow'}
+          onClose={() => {
+            setShowCreate(false);
+            if (moduloElegido === 'flow') setModuloElegido(null);
+          }}
+        />
+        <ProjectCreateDialogCM
+          open={moduloElegido === 'manage'}
+          onClose={() => setModuloElegido(null)}
+        />
+        {deleteConfirm != null && (
           <div
             style={{
-              background: 'var(--surface-container, #1e1e24)',
-              border: '1px solid var(--outline-variant, #3a3a44)',
-              borderRadius: 8,
-              padding: 24,
-              minWidth: 360,
-              maxWidth: 420,
-              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.6)',
             }}
           >
-            <h3
+            <div
               style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: 'var(--on-surface, #e2e2e8)',
-                margin: '0 0 4px',
+                background: 'var(--surface-container, #1e1e24)',
+                border: '1px solid var(--outline-variant, #3a3a44)',
+                borderRadius: 8,
+                padding: 24,
+                minWidth: 360,
+                maxWidth: 420,
+                boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
               }}
             >
-              Eliminar Proyecto
-            </h3>
-            <p
-              style={{
-                fontSize: 12,
-                color: 'var(--on-surface-variant, #9ba8aa)',
-                margin: '0 0 16px',
-              }}
-            >
-              ¿Estás seguro de eliminar este proyecto? Esta acción no se puede deshacer.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
+              <h3
                 style={{
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: 'transparent',
-                  border: '1px solid var(--outline-variant, #3a3a44)',
-                  borderRadius: 4,
+                  fontSize: 15,
+                  fontWeight: 700,
                   color: 'var(--on-surface, #e2e2e8)',
-                  cursor: 'pointer',
+                  margin: '0 0 4px',
                 }}
               >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteProject(deleteConfirm)}
+                Eliminar Proyecto
+              </h3>
+              <p
                 style={{
-                  padding: '6px 14px',
                   fontSize: 12,
-                  fontWeight: 600,
-                  background: 'var(--error, #ff4444)',
-                  border: 'none',
-                  borderRadius: 4,
-                  color: '#fff',
-                  cursor: 'pointer',
+                  color: 'var(--on-surface-variant, #9ba8aa)',
+                  margin: '0 0 16px',
                 }}
               >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {cmDeleteConfirm != null && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--surface-container, #1e1e24)',
-              border: '1px solid var(--outline-variant, #3a3a44)',
-              borderRadius: 8,
-              padding: 24,
-              minWidth: 360,
-              maxWidth: 420,
-              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: 'var(--on-surface, #e2e2e8)',
-                margin: '0 0 4px',
-              }}
-            >
-              Eliminar Proyecto CM
-            </h3>
-            <p
-              style={{
-                fontSize: 12,
-                color: 'var(--on-surface-variant, #9ba8aa)',
-                margin: '0 0 16px',
-              }}
-            >
-              ¿Estás seguro de eliminar este proyecto de Civil Manager? Esta acción no se puede
-              deshacer.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setCmDeleteConfirm(null)}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: 'transparent',
-                  border: '1px solid var(--outline-variant, #3a3a44)',
-                  borderRadius: 4,
-                  color: 'var(--on-surface, #e2e2e8)',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteCmProyecto(cmDeleteConfirm)}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: 'var(--error, #ff4444)',
-                  border: 'none',
-                  borderRadius: 4,
-                  color: '#fff',
-                  cursor: 'pointer',
-                }}
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      <header className="border border-outline-variant bg-surface-container p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-headline-md font-bold text-on-surface">
-              {nombreCompleto || 'Sin nombre'}
-            </h1>
-            <p className="text-body-md text-on-surface-variant mt-1">
-              {perfil.profesion || 'Profesión no definida'}
-            </p>
-            {perfil.matricula && (
-              <div className="flex items-center gap-2 mt-3">
-                <span className="px-2 py-1 text-[11px] font-bold tracking-wider uppercase bg-secondary text-on-secondary-container border border-outline-variant">
-                  {perfil.matricula}
-                </span>
-              </div>
-            )}
-          </div>
-          {chipVencimiento && (
-            <button
-              type="button"
-              onClick={() => navigate('/pricing')}
-              aria-label={
-                chipVencimiento.tipo === 'rojo'
-                  ? 'Suscripción vencida: ver planes'
-                  : `${chipVencimiento.texto}: ver planes`
-              }
-              className="shrink-0 px-2.5 py-1 rounded-md uppercase text-[10px] tracking-[0.08em] font-bold cursor-pointer transition-all hover:brightness-110"
-              style={{
-                fontFamily: 'Geist, monospace',
-                color: chipVencimiento.tipo === 'rojo' ? '#fecdd3' : '#fde68a',
-                background:
-                  chipVencimiento.tipo === 'rojo'
-                    ? 'rgba(244,63,94,0.16)'
-                    : 'rgba(245,158,11,0.16)',
-                border: `1px solid ${chipVencimiento.tipo === 'rojo' ? '#f43f5e' : '#f59e0b'}`,
-              }}
-            >
-              {chipVencimiento.texto}
-            </button>
-          )}
-        </div>
-      </header>
-
-      <section
-        aria-labelledby="info-personal-heading"
-        className="border border-outline-variant bg-surface-container p-6"
-      >
-        <h2
-          id="info-personal-heading"
-          className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant mb-4"
-        >
-          Información Personal
-        </h2>
-        <ul
-          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-          style={{ listStyle: 'none', margin: 0, padding: 0 }}
-        >
-          <li className="border-l-2 border-primary pl-3 py-2">
-            <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
-              Correo Electrónico
-            </span>
-            <span className="text-[13px] text-on-surface font-medium">{user?.email || '—'}</span>
-          </li>
-          {campos.map(({ key, label }) => (
-            <li key={key} className="border-l-2 border-primary pl-3 py-2 group">
-              <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
-                {label}
-              </span>
-              {editField === key ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editValue}
-                    aria-label={label}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onKeyDown={(e) => handleEditKeyDown(e, key)}
-                    // autoFocus intencional: al entrar en modo edición inline el foco debe caer en
-                    // el input editado, no quedarse en el botón que lo abrió.
-                    // eslint-disable-next-line jsx-a11y/no-autofocus
-                    autoFocus
-                    className="flex-1 h-8 px-2 border text-sm bg-surface-container-low text-on-surface focus:outline-none"
-                    style={{ borderColor: 'var(--primary)', fontFamily: 'var(--mono)' }}
-                  />
-                  <button
-                    type="button"
-                    aria-label="Guardar"
-                    onClick={() => handleEditSave(key)}
-                    disabled={saving === key}
-                    className="h-8 w-8 flex items-center justify-center bg-primary text-on-primary text-sm"
-                  >
-                    ✓
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Cancelar edición"
-                    onClick={handleEditCancel}
-                    className="h-8 w-8 flex items-center justify-center border border-outline-variant text-on-surface-variant text-sm hover:text-error"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
+                ¿Estás seguro de eliminar este proyecto? Esta acción no se puede deshacer.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                 <button
                   type="button"
-                  className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors bg-transparent border-0 p-0 text-left font-inherit w-full"
-                  onClick={() => handleEditStart(key)}
+                  onClick={() => setDeleteConfirm(null)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: 'transparent',
+                    border: '1px solid var(--outline-variant, #3a3a44)',
+                    borderRadius: 4,
+                    color: 'var(--on-surface, #e2e2e8)',
+                    cursor: 'pointer',
+                  }}
                 >
-                  <span className="text-[13px] text-on-surface font-medium">
-                    {(perfil as Record<string, string>)[key] || (
-                      <span className="text-on-surface-variant italic opacity-50">
-                        Click para editar
-                      </span>
-                    )}
-                  </span>
-                  <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">
-                    edit
-                  </span>
+                  Cancelar
                 </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section
-        aria-labelledby="proyectos-heading"
-        className="border border-outline-variant bg-surface-container"
-      >
-        <button
-          type="button"
-          onClick={() => setProyectosOpen((prev) => !prev)}
-          aria-expanded={proyectosOpen}
-          className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-xl">folder_open</span>
-            <div>
-              <h2
-                id="proyectos-heading"
-                className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant"
-              >
-                Proyectos
-              </h2>
-              <span className="text-[13px] text-on-surface font-medium">
-                {proyectos.length + cmProyectos.length} proyectos
-              </span>
-            </div>
-          </div>
-          <span
-            className={`material-symbols-outlined text-on-surface-variant transition-transform ${proyectosOpen ? 'rotate-180' : ''}`}
-          >
-            expand_more
-          </span>
-        </button>
-
-        {proyectosOpen && (
-          <div className="border-t border-outline-variant">
-            <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
-              <button
-                type="button"
-                className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
-                onClick={() => {
-                  // 1 módulo activo → directo al modal de nombre; 0 o 2+ → selector
-                  // (0 muestra el aviso de pricing dentro del selector).
-                  if (!subsBloqueando) setShowCreate(true);
-                  else if (modulosActivosUser.size === 1)
-                    setModuloElegido([...modulosActivosUser][0]);
-                  else setShowModSel(true);
-                }}
-              >
-                <span className="material-symbols-outlined text-lg">add_circle</span>
-                Nuevo proyecto
-              </button>
-              {user &&
-                subsRows.some(
-                  (r) => r.user_id === user.id && (r.puestos ?? 1) > 1 && estaActiva(r),
-                ) && (
-                  <Link
-                    to="/empresa"
-                    className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-lg">group</span>
-                    Gestionar equipo
-                  </Link>
-                )}
-            </div>
-
-            {proyLoading ? (
-              <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
-                Cargando proyectos...
-              </div>
-            ) : proyectos.length + cmProyectos.length === 0 ? (
-              <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
-                Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
-              </div>
-            ) : (
-              <>
-                <div className="px-6 py-2 flex gap-2 border-b border-outline-variant bg-surface-container-low">
-                  {(['todos', 'cf', 'cm'] as const).map((mod) => (
-                    <button
-                      key={mod}
-                      type="button"
-                      onClick={() => setFiltroModulo(mod)}
-                      style={{
-                        padding: '4px 10px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        borderRadius: 4,
-                        border: '1px solid var(--outline-variant, #3a3a44)',
-                        background:
-                          filtroModulo === mod ? 'var(--primary, #4D8FF7)' : 'transparent',
-                        color:
-                          filtroModulo === mod
-                            ? 'var(--on-primary, #fff)'
-                            : 'var(--on-surface-variant, #9ba8aa)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {mod === 'todos' ? 'Todos' : mod === 'cf' ? 'CivilFlow' : 'Civil Manager'}
-                    </button>
-                  ))}
-                </div>
-                <ul
-                  className="divide-y divide-outline-variant"
-                  style={{ listStyle: 'none', margin: 0, padding: 0 }}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteProject(deleteConfirm)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: 'var(--error, #ff4444)',
+                    border: 'none',
+                    borderRadius: 4,
+                    color: '#fff',
+                    cursor: 'pointer',
+                  }}
                 >
-                  {(filtroModulo === 'todos' || filtroModulo === 'cf') &&
-                    proyectos.map((proy) => (
-                      <li
-                        key={`cf-${proy.id}`}
-                        className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors"
-                      >
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.5 border"
-                          style={{
-                            borderColor: 'var(--primary)',
-                            color: 'var(--primary)',
-                            fontFamily: 'Geist, monospace',
-                          }}
-                        >
-                          CF
-                        </span>
-                        {user && proy.user_id !== user.id && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 border"
-                            style={{
-                              borderColor: '#52f2a5',
-                              color: '#52f2a5',
-                              fontFamily: 'Geist, monospace',
-                            }}
-                          >
-                            Empresa
-                          </span>
-                        )}
-                        <div
-                          className="flex-1 min-w-0 cursor-pointer"
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`Abrir proyecto ${proy.nombre}`}
-                          onClick={() => openProyecto(proy)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              openProyecto(proy);
-                            }
-                          }}
-                          style={{ opacity: openingId != null && openingId !== proy.id ? 0.5 : 1 }}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[13px] font-bold font-mono text-on-surface">
-                              {proy.codigo}
-                            </span>
-                          </div>
-                          <p className="text-[12px] text-on-surface-variant truncate">
-                            {openingId === proy.id ? 'Abriendo proyecto...' : proy.nombre}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm(proy.id);
-                          }}
-                          aria-label="Eliminar proyecto"
-                          disabled={openingId != null}
-                          style={{
-                            background: 'none',
-                            border: '1px solid var(--outline-variant, #3a3a44)',
-                            borderRadius: 4,
-                            padding: '4px 8px',
-                            cursor: openingId != null ? 'default' : 'pointer',
-                            color: 'var(--text-error, #ff4444)',
-                            fontSize: 11,
-                          }}
-                        >
-                          Eliminar
-                        </button>
-                        <span
-                          className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer"
-                          aria-hidden="true"
-                          onClick={() => openProyecto(proy)}
-                        >
-                          arrow_forward
-                        </span>
-                      </li>
-                    ))}
-                  {(filtroModulo === 'todos' || filtroModulo === 'cm') &&
-                    cmProyectos.map((proy) => (
-                      <li
-                        key={`cm-${proy.id}`}
-                        className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors"
-                      >
-                        <span
-                          className="text-[10px] font-bold px-1.5 py-0.5 border"
-                          style={{
-                            borderColor: '#cca043',
-                            color: '#cca043',
-                            fontFamily: 'Geist, monospace',
-                          }}
-                        >
-                          CM
-                        </span>
-                        {user && proy.user_id !== user.id && (
-                          <span
-                            className="text-[10px] font-bold px-1.5 py-0.5 border"
-                            style={{
-                              borderColor: '#52f2a5',
-                              color: '#52f2a5',
-                              fontFamily: 'Geist, monospace',
-                            }}
-                          >
-                            Empresa
-                          </span>
-                        )}
-                        <div
-                          className="flex-1 min-w-0 cursor-pointer"
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`Abrir proyecto ${proy.nombre}`}
-                          onClick={() => openCmProyecto(proy)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              openCmProyecto(proy);
-                            }
-                          }}
-                          style={{
-                            opacity: cmOpeningId != null && cmOpeningId !== proy.id ? 0.5 : 1,
-                          }}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[13px] font-bold font-mono text-on-surface">
-                              {proy.codigo}
-                            </span>
-                          </div>
-                          <p className="text-[12px] text-on-surface-variant truncate">
-                            {cmOpeningId === proy.id ? 'Abriendo proyecto...' : proy.nombre}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCmDeleteConfirm(proy.id);
-                          }}
-                          aria-label="Eliminar proyecto"
-                          disabled={cmOpeningId != null}
-                          style={{
-                            background: 'none',
-                            border: '1px solid var(--outline-variant, #3a3a44)',
-                            borderRadius: 4,
-                            padding: '4px 8px',
-                            cursor: cmOpeningId != null ? 'default' : 'pointer',
-                            color: 'var(--text-error, #ff4444)',
-                            fontSize: 11,
-                          }}
-                        >
-                          Eliminar
-                        </button>
-                        <span
-                          className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer"
-                          aria-hidden="true"
-                          onClick={() => openCmProyecto(proy)}
-                        >
-                          arrow_forward
-                        </span>
-                      </li>
-                    ))}
-                </ul>
-              </>
-            )}
+                  Eliminar
+                </button>
+              </div>
+            </div>
           </div>
         )}
-      </section>
+        {cmDeleteConfirm != null && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.6)',
+            }}
+          >
+            <div
+              style={{
+                background: 'var(--surface-container, #1e1e24)',
+                border: '1px solid var(--outline-variant, #3a3a44)',
+                borderRadius: 8,
+                padding: 24,
+                minWidth: 360,
+                maxWidth: 420,
+                boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: 'var(--on-surface, #e2e2e8)',
+                  margin: '0 0 4px',
+                }}
+              >
+                Eliminar Proyecto CM
+              </h3>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: 'var(--on-surface-variant, #9ba8aa)',
+                  margin: '0 0 16px',
+                }}
+              >
+                ¿Estás seguro de eliminar este proyecto de Civil Manager? Esta acción no se puede
+                deshacer.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setCmDeleteConfirm(null)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: 'transparent',
+                    border: '1px solid var(--outline-variant, #3a3a44)',
+                    borderRadius: 4,
+                    color: 'var(--on-surface, #e2e2e8)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCmProyecto(cmDeleteConfirm)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    background: 'var(--error, #ff4444)',
+                    border: 'none',
+                    borderRadius: 4,
+                    color: '#fff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <header className="border border-outline-variant bg-surface-container p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div
+                aria-hidden
+                className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-lg font-black select-none"
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary, #4D8FF7), #7c5cf0)',
+                  color: '#fff',
+                  fontFamily: 'Geist, monospace',
+                }}
+              >
+                {inicialesDe(nombreCompleto || 'CC')}
+              </div>
+              <div>
+                <h1 className="text-headline-md font-bold text-on-surface">
+                  {nombreCompleto || 'Sin nombre'}
+                </h1>
+                <p className="text-body-md text-on-surface-variant mt-1">
+                  {perfil.profesion || 'Profesión no definida'}
+                </p>
+                {perfil.matricula && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="px-2 py-1 text-[11px] font-bold tracking-wider uppercase bg-secondary text-on-secondary-container border border-outline-variant">
+                      {perfil.matricula}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            {chipVencimiento && (
+              <button
+                type="button"
+                onClick={() => navigate('/pricing')}
+                aria-label={
+                  chipVencimiento.tipo === 'rojo'
+                    ? 'Suscripción vencida: ver planes'
+                    : `${chipVencimiento.texto}: ver planes`
+                }
+                className="shrink-0 px-2.5 py-1 rounded-md uppercase text-[10px] tracking-[0.08em] font-bold cursor-pointer transition-all hover:brightness-110"
+                style={{
+                  fontFamily: 'Geist, monospace',
+                  color: chipVencimiento.tipo === 'rojo' ? '#fecdd3' : '#fde68a',
+                  background:
+                    chipVencimiento.tipo === 'rojo'
+                      ? 'rgba(244,63,94,0.16)'
+                      : 'rgba(245,158,11,0.16)',
+                  border: `1px solid ${chipVencimiento.tipo === 'rojo' ? '#f43f5e' : '#f59e0b'}`,
+                }}
+              >
+                {chipVencimiento.texto}
+              </button>
+            )}
+          </div>
+        </header>
 
-      <div className="border border-outline-variant bg-surface-container p-6 flex justify-end">
-        <button
-          type="button"
-          onClick={async () => {
-            if (!supabase) return;
-            await supabase.auth.signOut();
-            navigate('/');
+        <div className="grid gap-6 lg:grid-cols-[minmax(300px,340px)_1fr] items-start">
+          <section
+            aria-labelledby="info-personal-heading"
+            className="border border-outline-variant bg-surface-container p-6"
+          >
+            <h2
+              id="info-personal-heading"
+              className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant mb-4"
+            >
+              Información Personal
+            </h2>
+            <ul
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+              style={{ listStyle: 'none', margin: 0, padding: 0 }}
+            >
+              <li className="border-l-2 border-primary pl-3 py-2">
+                <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
+                  Correo Electrónico
+                </span>
+                <span className="text-[13px] text-on-surface font-medium">
+                  {user?.email || '—'}
+                </span>
+              </li>
+              {campos.map(({ key, label }) => (
+                <li key={key} className="border-l-2 border-primary pl-3 py-2 group">
+                  <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
+                    {label}
+                  </span>
+                  {editField === key ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editValue}
+                        aria-label={label}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => handleEditKeyDown(e, key)}
+                        // autoFocus intencional: al entrar en modo edición inline el foco debe caer en
+                        // el input editado, no quedarse en el botón que lo abrió.
+                        // eslint-disable-next-line jsx-a11y/no-autofocus
+                        autoFocus
+                        className="flex-1 h-8 px-2 border text-sm bg-surface-container-low text-on-surface focus:outline-none"
+                        style={{ borderColor: 'var(--primary)', fontFamily: 'var(--mono)' }}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Guardar"
+                        onClick={() => handleEditSave(key)}
+                        disabled={saving === key}
+                        className="h-8 w-8 flex items-center justify-center bg-primary text-on-primary text-sm"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Cancelar edición"
+                        onClick={handleEditCancel}
+                        className="h-8 w-8 flex items-center justify-center border border-outline-variant text-on-surface-variant text-sm hover:text-error"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors bg-transparent border-0 p-0 text-left font-inherit w-full"
+                      onClick={() => handleEditStart(key)}
+                    >
+                      <span className="text-[13px] text-on-surface font-medium">
+                        {(perfil as Record<string, string>)[key] || (
+                          <span className="text-on-surface-variant italic opacity-50">
+                            Click para editar
+                          </span>
+                        )}
+                      </span>
+                      <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">
+                        edit
+                      </span>
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section
+            aria-labelledby="proyectos-heading"
+            className="border border-outline-variant bg-surface-container"
+          >
+            <button
+              type="button"
+              onClick={() => setProyectosOpen((prev) => !prev)}
+              aria-expanded={proyectosOpen}
+              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary text-xl">folder_open</span>
+                <div>
+                  <h2
+                    id="proyectos-heading"
+                    className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant"
+                  >
+                    Proyectos
+                  </h2>
+                  <span className="text-[13px] text-on-surface font-medium">
+                    {proyectos.length + cmProyectos.length} proyectos
+                  </span>
+                </div>
+              </div>
+              <span
+                className={`material-symbols-outlined text-on-surface-variant transition-transform ${proyectosOpen ? 'rotate-180' : ''}`}
+              >
+                expand_more
+              </span>
+            </button>
+
+            {proyectosOpen && (
+              <div className="border-t border-outline-variant">
+                <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
+                    onClick={() => {
+                      // 1 módulo activo → directo al modal de nombre; 0 o 2+ → selector
+                      // (0 muestra el aviso de pricing dentro del selector).
+                      if (!subsBloqueando) setShowCreate(true);
+                      else if (modulosActivosUser.size === 1)
+                        setModuloElegido([...modulosActivosUser][0]);
+                      else setShowModSel(true);
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-lg">add_circle</span>
+                    Nuevo proyecto
+                  </button>
+                  {user &&
+                    subsRows.some(
+                      (r) => r.user_id === user.id && (r.puestos ?? 1) > 1 && estaActiva(r),
+                    ) && (
+                      <Link
+                        to="/empresa"
+                        className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-lg">group</span>
+                        Gestionar equipo
+                      </Link>
+                    )}
+                </div>
+
+                {proyLoading ? (
+                  <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
+                    Cargando proyectos...
+                  </div>
+                ) : proyectos.length + cmProyectos.length === 0 ? (
+                  <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
+                    Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
+                  </div>
+                ) : (
+                  <>
+                    <div className="px-6 py-2 flex gap-2 border-b border-outline-variant bg-surface-container-low">
+                      {(['todos', 'cf', 'cm'] as const).map((mod) => (
+                        <button
+                          key={mod}
+                          type="button"
+                          onClick={() => setFiltroModulo(mod)}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            borderRadius: 4,
+                            border: '1px solid var(--outline-variant, #3a3a44)',
+                            background:
+                              filtroModulo === mod ? 'var(--primary, #4D8FF7)' : 'transparent',
+                            color:
+                              filtroModulo === mod
+                                ? 'var(--on-primary, #fff)'
+                                : 'var(--on-surface-variant, #9ba8aa)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {(mod === 'todos'
+                            ? 'Todos'
+                            : mod === 'cf'
+                              ? 'CivilFlow'
+                              : 'Civil Manager'
+                          ).toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid gap-3 p-4 sm:grid-cols-2 2xl:grid-cols-3">
+                      {(filtroModulo === 'todos' || filtroModulo === 'cf') &&
+                        proyectos.map((proy) => (
+                          <ProyectoCard
+                            key={`cf-${proy.id}`}
+                            badge="CF"
+                            badgeColor="var(--primary)"
+                            empresa={!!user && proy.user_id !== user.id}
+                            codigo={proy.codigo}
+                            nombre={proy.nombre}
+                            fecha={proy.created_at}
+                            opening={openingId === proy.id}
+                            blocked={openingId != null || cmOpeningId != null}
+                            onOpen={() => openProyecto(proy)}
+                            onDelete={() => setDeleteConfirm(proy.id)}
+                          />
+                        ))}
+                      {(filtroModulo === 'todos' || filtroModulo === 'cm') &&
+                        cmProyectos.map((proy) => (
+                          <ProyectoCard
+                            key={`cm-${proy.id}`}
+                            badge="CM"
+                            badgeColor="#cca043"
+                            empresa={!!user && proy.user_id !== user.id}
+                            codigo={proy.codigo}
+                            nombre={proy.nombre}
+                            fecha={proy.created_at}
+                            opening={cmOpeningId === proy.id}
+                            blocked={openingId != null || cmOpeningId != null}
+                            onOpen={() => openCmProyecto(proy)}
+                            onDelete={() => setCmDeleteConfirm(proy.id)}
+                          />
+                        ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setConfirmLogout(true)}
+            className="px-5 py-2 text-xs font-bold tracking-widest uppercase border border-error text-error hover:bg-error hover:text-on-error transition-all"
+            style={{ fontFamily: 'Geist, monospace' }}
+          >
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+
+      {confirmLogout && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)',
           }}
-          className="px-5 py-2 text-xs font-bold tracking-widest uppercase border border-error text-error hover:bg-error hover:text-on-error transition-all"
-          style={{ fontFamily: 'Geist, monospace' }}
         >
-          Cerrar Sesión
-        </button>
+          <div
+            style={{
+              background: 'var(--surface-container, #1e1e24)',
+              border: '1px solid var(--outline-variant, #3a3a44)',
+              borderRadius: 8,
+              padding: 24,
+              minWidth: 340,
+              maxWidth: 420,
+              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: 'var(--on-surface, #e2e2e8)',
+                margin: '0 0 6px',
+              }}
+            >
+              Cerrar sesión
+            </h3>
+            <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', margin: 0 }}>
+              ¿Salir de tu cuenta? Tus proyectos quedan guardados.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+              <button
+                type="button"
+                onClick={() => setConfirmLogout(false)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'transparent',
+                  border: '1px solid var(--outline-variant, #3a3a44)',
+                  borderRadius: 4,
+                  color: 'var(--on-surface, #e2e2e8)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setConfirmLogout(false);
+                  if (!supabase) return;
+                  // Logout manual = recordar siempre la próxima (la marca solo vive si el
+                  // usuario desmarcó "Recordarme" al entrar y NO pasó por este botón).
+                  localStorage.removeItem('civilflow_no_recordar');
+                  await supabase.auth.signOut();
+                  navigate('/');
+                }}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'var(--error, #ff4444)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-auto">
+        <SiteFooter />
       </div>
     </div>
   );

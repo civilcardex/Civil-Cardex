@@ -52,8 +52,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initAuth();
 
+    // "Recordarme" del login (LoginPage): DESMARCADO deja la marca `civilflow_no_recordar`
+    // y al cerrar la pestaña/navegador se cierra la sesión (best-effort: el navegador no da
+    // una señal de cierre confiable; pagehide + visibilitychange la emulan). MARCADO (default)
+    // = la sesión persiste en localStorage como siempre.
+    const cerrarSiNoRecordar = () => {
+      try {
+        if (localStorage.getItem('civilflow_no_recordar') === '1') void supabase.auth.signOut();
+      } catch {
+        /* storage bloqueado: ignorar */
+      }
+    };
+    // Solo pagehide: NO usar visibilitychange (cambiar de pestaña dispararía el cierre).
+    window.addEventListener('pagehide', cerrarSiNoRecordar);
+
     return () => {
       subscription?.unsubscribe();
+      window.removeEventListener('pagehide', cerrarSiNoRecordar);
     };
   }, []);
 

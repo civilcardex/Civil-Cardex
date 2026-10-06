@@ -29,6 +29,8 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
+  // Recordarme: DESMARCADO = la sesión se cierra al cerrar el navegador (ver AuthContext).
+  const [recordarme, setRecordarme] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -44,6 +46,8 @@ function LoginPage() {
     setLoading(true);
 
     try {
+      if (recordarme) localStorage.removeItem('civilflow_no_recordar');
+      else localStorage.setItem('civilflow_no_recordar', '1');
       await signIn(email, password);
       // Volver al destino que pidió login (ModulePage pasa state.from) — default /perfil.
       const from = (location as { state?: { from?: string } }).state?.from ?? '/perfil';
@@ -147,9 +151,14 @@ function LoginPage() {
               </fieldset>
 
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label
+                  className="flex items-center gap-2 cursor-pointer"
+                  title="Desmarcado: la sesión termina al cerrar el navegador"
+                >
                   <input
                     type="checkbox"
+                    checked={recordarme}
+                    onChange={(e) => setRecordarme(e.target.checked)}
                     className="w-4 h-4 border accent-[#00dce5]"
                     style={{ borderColor: '#3a494a', background: '#0a0e14' }}
                   />

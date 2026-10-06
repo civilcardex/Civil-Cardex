@@ -80,7 +80,7 @@ function RegisterPage() {
           telefono: form.telefono,
         },
       });
-      navigate('/profile');
+      navigate('/perfil');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al crear la cuenta';
       setError(message);
