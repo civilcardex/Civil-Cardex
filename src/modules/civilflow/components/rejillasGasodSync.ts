@@ -1,6 +1,5 @@
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { getActiveProyectoId, loadFromStorage, saveToStorage } from '../services/storageService';
 import { loadRejillasProyecto, saveRejillasProyecto } from '../services/projectDataService';
-import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
 
@@ -27,14 +26,11 @@ function leerGasod(): Record<string, Record<string, number>> {
   return out;
 }
 
-function proyectoIdActivo(): string {
-  const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-  return raw && raw.trim() ? raw.trim() : '';
-}
-
 let pushTimer: number | null = null;
-/** true tras la primera hidratación completada: el disco ya contiene (o BD no tenía) las claves gas_AR. */
-let hidratado = false;
+/** Pid de la última hidratación completada: el disco ya contiene (o BD no tenía) las
+ *  claves gas_AR DE ESE proyecto. Al cambiar de proyecto vuelve a "no hidratado" — sin
+ *  esto el push del proyecto nuevo re-enviaría el gasod (local, mezclado) de otro. */
+let hidratadoPid = '';
 
 /** Push del blob rejillas. Merge, no overwrite: overrides y gas SOLO se envían si el
  *  disco local los tiene; si no, se conservan los del blob en BD (el panel cerrado no
@@ -42,9 +38,11 @@ let hidratado = false;
  *  gasod igual, pero solo cuenta como fuente tras la primera hidratación (`hidratado`). */
 async function pushBlobAhora(): Promise<void> {
   pushTimer = null;
-  const pid = proyectoIdActivo();
+  const pid = getActiveProyectoId();
   if (!pid) return;
-  const ovrDisk = loadFromStorage<Record<string, unknown> | null>(OVERRIDES_KEY, null);
+  // '{}' del loader NO es fuente (un dispositivo fresco lo pisaría sobre BD): sin
+  // claves en disco mandan los overrides del blob — igual criterio que el gasod.
+  const ovrDisk = loadFromStorage<Record<string, unknown> | null>(OVERRIDES_KEY, null) ?? {};
   const gasDisk = loadFromStorage<'natural' | 'glp' | null>(GAS_KEY, null);
   const prev = (await loadRejillasProyecto(pid).catch(() => null)) as {
     overrides?: Record<string, unknown>;
@@ -52,30 +50,34 @@ async function pushBlobAhora(): Promise<void> {
     gasod?: Record<string, Record<string, number>>;
   } | null;
   void saveRejillasProyecto(pid, {
-    overrides: ovrDisk ?? prev?.overrides ?? {},
+    overrides: Object.keys(ovrDisk).length ? ovrDisk : (prev?.overrides ?? {}),
     gas: gasDisk ?? prev?.gas ?? 'natural',
-    // Antes de la primera hidratación el disco no es fuente confiable (dispositivo
-    // fresco: le faltan las claves gas_AR de BD) — se re-envía el gasod de BD intacto.
-    gasod: hidratado ? leerGasod() : (prev?.gasod ?? {}),
+    // Antes de la primera hidratación DEL PROYECTO ACTIVO el disco no es fuente
+    // confiable (dispositivo fresco: le faltan las claves gas_AR de BD) — se
+    // re-envía el gasod de BD intacto.
+    gasod: hidratadoPid === pid ? leerGasod() : (prev?.gasod ?? {}),
     ts: Date.now(),
   }).catch((e) => devError('rejillasGasodSync push:', e));
 }
 
 let started = false;
-/** Timestamp (Date.now) del último 'aparatos-clear' local: la frescura de hidratarRejillasGasod. */
+/** Timestamp (Date.now) del último 'aparatos-clear' LOCAL (del usuario): la frescura de hidratarRejillasGasod. */
 let ultimoCambioLocal = 0;
 export function startRejillasGasodSync(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
-  window.addEventListener('aparatos-clear', () => {
+  window.addEventListener('aparatos-clear', (e) => {
+    // El fill de hidratación dispara el evento programáticamente: NO es edición del
+    // usuario — no marca frescura ni agenda push (empujaría estado default sobre BD).
+    if ((e as CustomEvent).detail?.origen === 'hidratacion') return;
     ultimoCambioLocal = Date.now();
     // Pid capturado AL AGENDAR: si el proyecto activo cambió durante el debounce, el
     // push disparado escribiría el blob del proyecto viejo sobre el nuevo (mismo
     // guard del pushBd de RejillasVentilación).
-    const pidAgendado = proyectoIdActivo();
+    const pidAgendado = getActiveProyectoId();
     if (pushTimer !== null) window.clearTimeout(pushTimer);
     pushTimer = window.setTimeout(() => {
-      if (proyectoIdActivo() === pidAgendado) void pushBlobAhora();
+      if (getActiveProyectoId() === pidAgendado) void pushBlobAhora();
     }, PUSH_DEBOUNCE_MS);
   });
 }
@@ -85,7 +87,7 @@ export function startRejillasGasodSync(): void {
  *  blob puede ser previo al borrado — se aborta para no resucitar conteos. */
 export async function hidratarRejillasGasod(): Promise<void> {
   try {
-    const pid = proyectoIdActivo();
+    const pid = getActiveProyectoId();
     if (!pid) return;
     const cambioAlIniciar = ultimoCambioLocal;
     const blob = (await loadRejillasProyecto(pid)) as {
@@ -95,7 +97,7 @@ export async function hidratarRejillasGasod(): Promise<void> {
     if (!blob?.gasod || typeof blob.gasod !== 'object') {
       // BD sin gasod: el fill terminó sin nada que completar — el disco local ya es
       // fuente confiable para el push (sin esto el primer dispositivo nunca sincronizaría).
-      hidratado = true;
+      hidratadoPid = pid;
       return;
     }
     const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
@@ -108,10 +110,15 @@ export async function hidratarRejillasGasod(): Promise<void> {
     }
     // ANTES del dispatch: el 'aparatos-clear' de abajo agenda un push que debe ver
     // el disco ya completado (si no, re-enviaría el gasod de BD y anularía el fill).
-    hidratado = true;
+    hidratadoPid = pid;
     if (changed) {
       saveToStorage(APARATOS_BY_TRAMO_KEY, disk);
-      window.dispatchEvent(new Event('aparatos-clear'));
+      // detail.origen = 'hidratacion': el fill es PROGRAMÁTICO — los listeners que
+      // distinguen usuario de máquina (editadoRef del tab, Frescura del push) NO deben
+      // tratarlo como edición ni agenda push con estado default (pisaba la hidratación).
+      window.dispatchEvent(
+        new CustomEvent('aparatos-clear', { detail: { origen: 'hidratacion' } }),
+      );
     }
   } catch (e) {
     devError('rejillasGasodSync hidratar:', e);

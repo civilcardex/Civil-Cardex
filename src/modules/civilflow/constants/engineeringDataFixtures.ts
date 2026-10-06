@@ -183,7 +183,7 @@ export const APARATOS_DEF = [
   },
   {
     id: 'hor_g',
-    sigla: 'Hor:',
+    sigla: 'HorG:',
     nombre: 'Horno grande',
     grupo: 'g',
     uc_af: 0,

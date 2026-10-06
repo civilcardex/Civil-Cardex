@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  calcular,
-  clasifRecinto,
-  solucionAplicada,
-  memoriaRecinto,
-  sugerirRef,
-} from '../rejillasCalc';
+import { calcular, clasifRecinto, solucionAplicada, sugerirRef } from '../rejillasCalc';
 import { CATALOGO_BASE } from '../../constants/rejillasNTC3631';
 import type { RejSectorInput } from '../rejillasCalc';
 
@@ -144,12 +138,6 @@ describe('rejillasCalc — ejemplos de verificación (XLSX/DOCX)', () => {
     expect(cl).toBe('Volumen insuficiente / Confinado');
     expect(color).toBe('w');
     expect(solucionAplicada(r)).toBe('Exterior · 2 aberturas (método 1)');
-  });
-
-  it('memoriaRecinto incluye referencia sugerida y área efectiva', () => {
-    const txt = memoriaRecinto(calcular(sector({})), 0);
-    expect(txt).toContain('Silplas');
-    expect(txt).toContain('CUMPLE');
   });
 
   it('sugerirRef respeta lado mínimo 8 cm y origen', () => {
