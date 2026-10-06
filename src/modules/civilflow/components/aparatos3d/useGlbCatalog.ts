@@ -6,6 +6,33 @@ import { devError } from '../../../../utils/devError';
 import { cargarModelosSecuencial, disposeGrupo, sleep } from '../shared/sequentialLoad';
 import { cargarGlbBuffer } from '../shared/glbCache';
 
+type Rgb = [number, number, number];
+
+/** Extrae name → diffuseFactor (RGB) del chunk JSON del GLB. Los colores reales de estos
+ *  modelos SketchUp viven SOLO en la extensión legacy KHR_materials_pbrSpecularGlossiness
+ *  (muchos materiales no tienen pbrMetallicRoughness.baseColorFactor), que el loader
+ *  moderno ya no soporta — es el mismo dato que leía el parser del HTML de referencia. */
+function coloresGlb(buf: ArrayBuffer): Map<string, Rgb> {
+  const jsonLen = new DataView(buf).getUint32(12, true);
+  const gltf = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jsonLen))) as {
+    materials?: {
+      name?: string;
+      extensions?: {
+        KHR_materials_pbrSpecularGlossiness?: { diffuseFactor?: number[] };
+      };
+    }[];
+  };
+  const mapa = new Map<string, Rgb>();
+  for (const m of gltf.materials ?? []) {
+    const dif = m.extensions?.KHR_materials_pbrSpecularGlossiness?.diffuseFactor;
+    // Factor corrupto (<3 componentes) cae al gris neutro, igual que la ausencia —
+    // indexar dif[0..2] con ! sobre un array corto daría Color(undefined) → NaN → negro.
+    if (m.name && dif && dif.length >= 3) mapa.set(m.name, [dif[0]!, dif[1]!, dif[2]!]);
+    else if (m.name) mapa.set(m.name, [0.667, 0.667, 0.667]);
+  }
+  return mapa;
+}
+
 /** Carga SECUENCIAL de los 12 GLB del catálogo (150 ms entre modelos, como el original, para
  *  no congelar la UI), con progreso 20→95 %; al terminar arma el rig del ensamble completo y
  *  calcula la pose ISO por defecto (reset ⟳). Los grupos quedan ocultos hasta seleccionar. */
@@ -41,6 +68,7 @@ export function useGlbCatalogo(
             // Caché module-level + parse en memoria: re-entrar no re-descarga el GLB.
             const buf = await cargarGlbBuffer(glbUrl(modelKey));
             const gltf = await loader.parseAsync(buf, '');
+            const colores = coloresGlb(buf);
             // Desmonte a mitad de carga: la escena ya se disposeó — liberar el grupo
             // parseado o queda huérfano en memoria (igual que hace rci).
             if (cancelled) {
@@ -58,24 +86,20 @@ export function useGlbCatalogo(
               if (!mesh.isMesh) return;
               mesh.castShadow = true;
               mesh.receiveShadow = true;
-              // Look del parser a mano del HTML de referencia: los GLB usan la extensión
-              // LEGACY KHR_materials_pbrSpecularGlossiness (sin texturas, color plano en
-              // diffuseFactor). Three moderno ya no la soporta: el loader genera un
-              // MeshStandardMaterial con map fantasma sin imagen que NO rasteriza (verificado
-              // en navegador: Standard 0 px, Basic/Phong sí). Recrear como Phong con el color
-              // diffuse que el loader SÍ copió a .color — shading difuso+especular ≈ r128.
+              // Material receta del HTML de referencia: color = diffuseFactor del GLB
+              // (vía coloresGlb; fallback 0xaaaaaa si el material no lo trae), metalness/
+              // roughness 0.5 de pbrMetallicRoughness, DoubleSide. Recrear SIN map: el
+              // Standard del loader trae el map fantasma del spec-gloss que no rasteriza.
               // CRÍTICO: con UN solo material asignar el material DIRECTO, no un array —
               // una geometría sin groups + material array dibuja CERO triángulos.
               const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
               const nuevos = mats.map((m) => {
-                const std = m as import('three').MeshStandardMaterial;
-                if (!std || !std.isMeshStandardMaterial) return m;
-                return new api.THREE.MeshPhongMaterial({
-                  color: std.color.clone(),
-                  vertexColors: std.vertexColors,
+                const dif = colores.get(m.name);
+                return new api.THREE.MeshStandardMaterial({
+                  color: dif ? new api.THREE.Color(dif[0], dif[1], dif[2]) : 0xaaaaaa,
+                  metalness: 0.5,
+                  roughness: 0.5,
                   side: api.THREE.DoubleSide,
-                  specular: new api.THREE.Color(0x333333),
-                  shininess: 30,
                 });
               });
               mesh.material = nuevos.length === 1 ? nuevos[0] : nuevos;

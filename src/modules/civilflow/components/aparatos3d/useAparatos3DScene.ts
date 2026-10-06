@@ -6,7 +6,7 @@ import { FOV_3D } from '../shared/config3d';
 import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controls3d';
 
 export type Three = typeof THREE_NS;
-export type Grupo3D = THREE_NS.Group;
+type Grupo3D = THREE_NS.Group;
 
 /** API imperativa de la escena — vive en un ref; los handlers de UI la leen directo. */
 export interface Aparatos3DApi {
@@ -55,12 +55,21 @@ export function useAparatos3DScene(
     let cancelled = false;
     let detachAntiAutoscroll: (() => void) | null = null;
     let raf = 0;
+    // Referencia al namespace three para el restore del pipeline en el cleanup.
+    let threeNS: typeof THREE_NS | null = null;
     const ro = new ResizeObserver(() => apiRef.current?.ajustar?.());
 
     (async () => {
       const THREE = await import('three');
       const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
       if (cancelled) return;
+      threeNS = THREE;
+
+      // Pipeline r128 del HTML de referencia: sin color management (los colores del
+      // material se tratan tal cual y sRGB se aplica solo al final) y unidades legacy
+      // de luz (×π — r155+ partió entre π). Restore SÍNCRONO en el cleanup con la
+      // misma referencia THREE (sin race del import async).
+      THREE.ColorManagement.enabled = false;
 
       const renderer = new THREE.WebGLRenderer({
         canvas,
@@ -69,9 +78,10 @@ export function useAparatos3DScene(
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFShadowMap;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.LinearToneMapping;
+      // Paridad exacta con el HTML de referencia (exposure 1.00 allí).
       renderer.toneMappingExposure = 1.0;
 
       const scene = new THREE.Scene();
@@ -82,14 +92,20 @@ export function useAparatos3DScene(
       camP.position.set(8, 4, 10);
       const camO = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.001, 1000);
 
-      const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-      const keyLight = new THREE.DirectionalLight(0xffffff, 1.6);
+      // Intensidades del HTML ×π (unidades legacy r128; el original: 0.4/1.6/0.5/0.4/0.25)
+      // y posiciones FIJAS de key/fill — el original NUNCA movió el rig por modelo
+      // (key 8,16,10 · fill -10,5,-6 · rim 2,-3,-12 · top 0,20,2).
+      const LEG = Math.PI;
+      const ambient = new THREE.AmbientLight(0xffffff, 0.4 * LEG);
+      const keyLight = new THREE.DirectionalLight(0xffffff, 1.6 * LEG);
+      keyLight.position.set(8, 16, 10);
       keyLight.castShadow = true;
       keyLight.shadow.mapSize.set(2048, 2048);
-      const fillLight = new THREE.DirectionalLight(0x88aaff, 0.5);
-      const rimLight = new THREE.DirectionalLight(0xffffff, 0.4);
+      const fillLight = new THREE.DirectionalLight(0x88aaff, 0.5 * LEG);
+      fillLight.position.set(-10, 5, -6);
+      const rimLight = new THREE.DirectionalLight(0xffffff, 0.4 * LEG);
       rimLight.position.set(2, -3, -12);
-      const topLight = new THREE.DirectionalLight(0xffffff, 0.25);
+      const topLight = new THREE.DirectionalLight(0xffffff, 0.25 * LEG);
       topLight.position.set(0, 20, 2);
       scene.add(ambient, keyLight, fillLight, rimLight, topLight);
 
@@ -170,6 +186,10 @@ export function useAparatos3DScene(
         api.renderer.dispose();
         apiRef.current = null;
       }
+      // Limitación conocida: ColorManagement es un flag GLOBAL del singleton three — si
+      // dos visores 3D llegaran a convivir montados, el desmonte de este re-activaría CM
+      // bajo los pies del otro. Hoy cada visor vive en su ruta (montaje exclusivo).
+      if (threeNS) threeNS.ColorManagement.enabled = true;
     };
     // Montaje único de la escena (el api es imperativo; Strict Mode remonta y re-crea limpio).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -183,16 +203,20 @@ export function useAparatos3DScene(
 export function colocarRigLuz(api: Aparatos3DApi, mc: THREE_NS.Vector3, mr: number): void {
   api.mc.copy(mc);
   api.mr = mr;
-  api.keyLight.position.set(mc.x + 1.5 * mr, mc.y + 3 * mr, mc.z + 1.5 * mr);
+  // Key/Fill FIJAS como el HTML (8,16,10 / -10,5,-6): moverlas por modelo cambiaba el
+  // ángulo de sombra de cada aparato (sombras "diferentes" vs la referencia).
+  // Solo se ajusta el frustum de sombra y los planos de cámara al radio del modelo.
   const sc = api.keyLight.shadow.camera;
-  sc.left = -2 * mr;
-  sc.right = 2 * mr;
-  sc.top = 2 * mr;
-  sc.bottom = -2 * mr;
-  sc.near = 0.1;
-  sc.far = 20 * mr;
+  sc.left = -5;
+  sc.right = 5;
+  sc.top = 5;
+  sc.bottom = -5;
+  sc.near = 0.5;
+  sc.far = 500;
   sc.updateProjectionMatrix();
-  api.fillLight.position.set(mc.x - 1.5 * mr, mc.y + mr, mc.z - 1.5 * mr);
+  // normalBias: mata el shadow acne (rayas/ondas en caras curvas del GLB) sin
+  // despegar la sombra.
+  api.keyLight.shadow.normalBias = 0.02 * mr;
   api.camP.near = mr * 0.001;
   api.camP.far = mr * 200;
   api.camP.updateProjectionMatrix();

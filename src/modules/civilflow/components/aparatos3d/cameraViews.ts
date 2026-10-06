@@ -31,7 +31,7 @@ function distIso(api: Aparatos3DApi, box: THREE_NS.Box3): number {
 }
 
 /** Interpola cámara persp + target del controls hacia la pose dada (ease-out cúbico 700 ms). */
-export function animateTo(
+function animateTo(
   api: Aparatos3DApi,
   toPos: THREE_NS.Vector3,
   toTgt: THREE_NS.Vector3,
@@ -54,7 +54,7 @@ export function animateTo(
 }
 
 /** Vuelve a la cámara persp (las vistas ISO/animadas la usan). */
-export function activarPersp(api: Aparatos3DApi): void {
+function activarPersp(api: Aparatos3DApi): void {
   api.orthoOn = false;
   api.controls.object = api.camP;
 }
