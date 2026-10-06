@@ -6,6 +6,7 @@ import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys'
 import { GAS_APPARATUS, renouardByType } from '../utils/gasUtils';
 import { pisoCorto } from '../constants';
 import { TH, TD } from '../styles/sharedTableStyles';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import type { DrawingData } from '../utils/drawingSync';
 const GasCalcUC_S1: React.CSSProperties = {
   position: 'absolute',
@@ -31,7 +32,7 @@ const GasCalcUC_S2: React.CSSProperties = {
 };
 
 const ABREV = {
-  est4: 'EST-4Q',
+  est4: 'EST4',
   est2: 'EST-2Q',
   hor_g: 'HOR-G',
   hor_m: 'HOR-M',
@@ -49,6 +50,7 @@ const ABREV = {
 
 function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRel: string }) {
   const { plans } = usePlans();
+  const tablaRef = useStickyThead2Offset();
 
   const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
     const aparatos: Record<string, Record<string, number>> = loadFromStorage(
@@ -161,7 +163,12 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
         </th>
         <th
           scope="col"
-          style={{ ...TH, textAlign: 'center', fontSize: 11 }}
+          style={{
+            ...TH,
+            textAlign: 'center',
+            fontSize: 11,
+            borderBottom: '2px solid var(--line)',
+          }}
           colSpan={GAS_APPARATUS.length}
           title="Conteo de aparatos por tipo en el tramo (con su factor qg de gas debajo)."
         >
@@ -265,7 +272,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 10px' }}>
-          <table className="tbl" style={{ width: '100%' }}>
+          <table ref={tablaRef} className="tbl" style={{ width: '100%' }}>
             <caption style={GasCalcUC_S2}>Cálculo de unidades de consumo gas</caption>
             {tableHeader}
             <tbody>

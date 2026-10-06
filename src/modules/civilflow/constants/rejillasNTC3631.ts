@@ -55,17 +55,14 @@ export const SOL: Record<
 };
 
 /** Grupos de gasodomésticos de la tabla (columnas Estufa/Calent./Otros). */
-export const GRUPOS_GASOD = ['estufa', 'calent', 'otros'] as const;
-export type GrupoGasod = (typeof GRUPOS_GASOD)[number];
+/** Grupos de gasodomésticos de la tabla (columnas Estufa/Calent./Otros). */
+export type GrupoGasod = 'estufa' | 'calent' | 'otros';
 /** Tipo de artefacto NTC 3631 por defecto de cada grupo (A suma, B suma con ducto, C estanco). */
 export const TIPO_DEFAULT: Record<GrupoGasod, 'A' | 'B' | 'C'> = {
   estufa: 'A',
   calent: 'B',
   otros: 'A',
 };
-/** kW por defecto de cada grupo. */
-export const KW_DEFAULT: Record<GrupoGasod, number> = { estufa: 8, calent: 21, otros: 6.5 };
-
 /** Referencia comercial de rejilla. aef = área efectiva libre (cm², ficha del fabricante);
  *  w×h = abertura útil en cm. aef 0/undefined = sin dato → no se sugiere (num. 5). */
 export interface RejRef {

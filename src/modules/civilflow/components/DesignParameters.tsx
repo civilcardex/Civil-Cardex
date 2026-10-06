@@ -111,6 +111,9 @@ const DesignParameters_S3: React.CSSProperties = {
   background: 'transparent',
 };
 
+/** Valor numérico del catálogo NTC 3728: null (dato pendiente) se muestra como guion. */
+const fmtNTC = (x: number | null) => (x == null ? '—' : x.toFixed(2));
+
 interface RedMat {
   id: string;
   lbl: string;
@@ -656,8 +659,8 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               NTC 3728 · m³/hr
             </span>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
-            <table className="tbl" style={{ fontSize: 12 }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+            <table className="tbl" style={{ fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
                   <th
@@ -670,31 +673,78 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                   <th
                     title="Sigla con la que se identifica el aparato."
                     scope="col"
-                    style={{ width: 88, padding: '4px 6px' }}
+                    style={{ width: 58, padding: '4px 6px' }}
                   >
                     Sigla
                   </th>
                   <th
-                    title="Tipo de control del aparato."
-                    scope="col"
-                    style={{ width: 60, padding: '4px 6px' }}
-                  >
-                    Tipo de Control
-                  </th>
-                  <th
-                    title="Consumo de gas por hora (m³/h)."
+                    title="Consumo de gas natural por hora (m³/h) — tabla gas natural NTC 3728."
                     scope="col"
                     className="c"
-                    style={{ width: 90, padding: '4px 6px' }}
+                    style={{ width: 106, padding: '4px 6px', whiteSpace: 'normal' }}
                   >
-                    Consumo m³/hr
+                    Consumo gas
+                    <br />
+                    natural (m³/h)
+                  </th>
+                  <th
+                    title="Potencia según la tabla de gas natural (kW)."
+                    scope="col"
+                    className="c"
+                    style={{ width: 94, padding: '4px 6px', whiteSpace: 'normal' }}
+                  >
+                    Potencia gas
+                    <br />
+                    natural (kW)
+                  </th>
+                  <th
+                    title="Consumo de GLP por hora (m³/h) — tabla GLP NTC 3728."
+                    scope="col"
+                    className="c"
+                    style={{ width: 76, padding: '4px 6px', whiteSpace: 'normal' }}
+                  >
+                    Consumo
+                    <br />
+                    GLP (m³/h)
+                  </th>
+                  <th
+                    title="Potencia según la tabla GLP (kW)."
+                    scope="col"
+                    className="c"
+                    style={{ width: 76, padding: '4px 6px', whiteSpace: 'normal' }}
+                  >
+                    Potencia
+                    <br />
+                    GLP (kW)
+                  </th>
+                  <th
+                    title="Tipo de control del aparato."
+                    scope="col"
+                    style={{ width: 68, padding: '4px 6px', whiteSpace: 'normal' }}
+                  >
+                    Tipo de
+                    <br />
+                    control
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {CAT_GAS.map((g, ix) => (
                   <tr key={g.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)' }}>
-                    <td style={{ padding: '3px 8px', fontWeight: 500 }}>{g.n}</td>
+                    <td style={{ padding: '3px 8px', fontWeight: 500 }}>
+                      <span
+                        title={g.n}
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {g.n}
+                      </span>
+                    </td>
                     <td style={{ padding: '3px 6px' }}>
                       <span
                         style={{
@@ -708,8 +758,17 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                         {g.s.toUpperCase()}
                       </span>
                     </td>
-                    <td style={{ padding: '3px 6px', fontSize: 12, color: 'var(--txt2)' }}>
-                      Llave
+                    <td
+                      style={{
+                        textAlign: 'center',
+                        padding: '3px 6px',
+                        fontFamily: 'var(--mono)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: 'var(--txt)',
+                      }}
+                    >
+                      {fmtNTC(g.q)}
                     </td>
                     <td
                       style={{
@@ -721,7 +780,34 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                         color: 'var(--txt)',
                       }}
                     >
-                      {g.q.toFixed(2)}
+                      {fmtNTC(g.kw)}
+                    </td>
+                    <td
+                      style={{
+                        textAlign: 'center',
+                        padding: '3px 6px',
+                        fontFamily: 'var(--mono)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: 'var(--txt)',
+                      }}
+                    >
+                      {fmtNTC(g.qglp)}
+                    </td>
+                    <td
+                      style={{
+                        textAlign: 'center',
+                        padding: '3px 6px',
+                        fontFamily: 'var(--mono)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: 'var(--txt)',
+                      }}
+                    >
+                      {fmtNTC(g.kwglp)}
+                    </td>
+                    <td style={{ padding: '3px 6px', fontSize: 12, color: 'var(--txt2)' }}>
+                      Llave
                     </td>
                   </tr>
                 ))}

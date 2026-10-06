@@ -18,10 +18,13 @@ import {
   type RejResultado,
 } from '../utils/rejillasCalc';
 import EditButton from './shared/EditButton';
+import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
+import { fmt } from '../utils/formatUtils';
 import { stableStringify } from './fixturesStorage';
 import { devError } from '../../../utils/devError';
 import { pisoLbl } from '../constants/helpers';
 import { APARATOS_DEF } from '../constants/engineeringDataFixtures';
+import { CAT_GAS } from '../constants/engineeringDataGas';
 
 // Módulo Rejillas de ventilación (NTC 3631, 3ª actualización) — tabla Tipologías por sector.
 // Los sectores SOLO nacen de áreas dibujadas en el visor con la pestaña Gas activa (sin
@@ -32,6 +35,18 @@ import { APARATOS_DEF } from '../constants/engineeringDataFixtures';
 
 const OVERRIDES_KEY = 'rejillas_overrides_v1';
 const GAS_KEY = 'rejillas_gas';
+
+/** Índice id→entrada del catálogo NTC 3728: la potencia de cada aparato es fija (no editable). */
+const CAT_GAS_BY_ID = new Map(CAT_GAS.map((c) => [c.id, c]));
+
+/** Alias de ids de APARATOS_DEF → ids de CAT_GAS (históricos: el catálogo llama
+ *  distinto a las secadoras, sauna y baño turco). */
+const ALIAS_CAT_GAS: Record<string, string> = {
+  sec_g: 'srg',
+  sec_p: 'srp',
+  sauna: 'bs',
+  turco: 'bt',
+};
 
 /** Override editable por sector (lo que no viene del dibujo ni del catálogo). */
 interface RejOverride {
@@ -44,18 +59,38 @@ interface RejOverride {
   vadj?: number;
   padj?: number;
   aconec?: number;
-  /** Columnas de aparato: kW y Tipo por id, y slots vacíos extra (＋ del título). */
+  /** Deprecado: kw ahora viene del catálogo (queda solo por dato viejo en disco; se ignora). */
   kwById?: Record<string, number>;
   tipoById?: Record<string, 'A' | 'B' | 'C'>;
   slotsExtra?: number;
 }
 type OverridesMap = Record<string, RejOverride>;
 
-const loadOverrides = (): OverridesMap => loadFromStorage<OverridesMap>(OVERRIDES_KEY, {});
+/** Purga progresiva de kwById en un mapa de overrides (dato viejo en disco; se ignora):
+ *  borra la clave de cada override que la traiga con entradas. true = purgó algo. */
+function purgarKwById(ovr: OverridesMap): boolean {
+  let cambio = false;
+  for (const ov of Object.values(ovr)) {
+    if (ov && typeof ov === 'object' && ov.kwById && Object.keys(ov.kwById).length) {
+      delete ov.kwById;
+      cambio = true;
+    }
+  }
+  return cambio;
+}
+
+const loadOverrides = (): OverridesMap => {
+  const ovr = loadFromStorage<OverridesMap>(OVERRIDES_KEY, {});
+  // Purga kwById al cargar Y persiste: sin guardar, el push de rejillasGasodSync (lee el
+  // disco tal cual) re-enviaría el dato deprecado al blob BD en cada sync.
+  if (purgarKwById(ovr)) saveOverrides(ovr);
+  return ovr;
+};
 const saveOverrides = (o: OverridesMap) => saveToStorage(OVERRIDES_KEY, o);
 
-const num = (x: number | undefined | null, d = 1) =>
-  (+(x ?? 0) || 0).toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d });
+// Formato numérico de la tabla: punto decimal y 2 decimales (redondeado), igual que el resto
+// de las tablas de diseño (antes: toLocaleString es-CO con coma).
+const num = (x: number | undefined | null, d = 2) => fmt(+(x ?? 0) || 0, d);
 
 /** Fila de la tabla Tipologías: sector del dibujo + overrides + columnas de aparato. */
 interface RejFila {
@@ -77,8 +112,8 @@ interface RejFila {
   aparatos: Array<{
     id: string;
     cant: number;
-    /** kW editable — undefined = vacío (sin preset; el usuario pone la potencia real). */
-    kw: number | undefined;
+    /** kW fijo del catálogo NTC 3728 según el tipo de gas del proyecto (no editable). */
+    kw: number;
     tipo: 'A' | 'B' | 'C';
     clave: string;
     vacio: boolean;
@@ -204,7 +239,7 @@ function useRejillasData() {
   // así que sin esto se pierden al recargar desde BD (orig. usuario).
   const bdTimer = useRef<number | null>(null);
   /** Push agendado y aún no disparado (el cleanup del montaje lo guarda con flush). */
-  const bdPendiente = useRef<{ pid: number; ovr: OverridesMap; g: 'natural' | 'glp' } | null>(null);
+  const bdPendiente = useRef<{ pid: string; ovr: OverridesMap; g: 'natural' | 'glp' } | null>(null);
   /** ts del último push/hidratación aceptado: un blob BD más viejo no gana sobre lo local. */
   const tsRef = useRef<number>(0);
   /** true = el usuario ya editó en esta instancia: la hidratación no pisa nada. */
@@ -217,10 +252,9 @@ function useRejillasData() {
   useEffect(() => {
     gasRef.current = gas;
   }, [gas]);
-  const proyectoIdActivo = (): number => {
+  const proyectoIdActivo = (): string => {
     const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    const n = Number(raw);
-    return Number.isFinite(n) && n > 0 ? n : 0;
+    return raw && raw.trim() ? raw.trim() : '';
   };
   /** Claves gas_* del mapa de aparatos (gasodomésticos por sector/área). */
   const leerGasod = (): Record<string, Record<string, number>> => {
@@ -249,6 +283,8 @@ function useRejillasData() {
       // Frescura: un blob más viejo que el último push/hidratación local no gana.
       if (typeof b.ts === 'number' && b.ts < tsRef.current) return;
       if (b.overrides && typeof b.overrides === 'object' && Object.keys(b.overrides).length) {
+        // Purga kwById del blob (potencias personalizadas deprecadas — el catálogo manda).
+        purgarKwById(b.overrides);
         setOverrides(b.overrides);
         saveOverrides(b.overrides);
       }
@@ -368,19 +404,23 @@ function useRejillasData() {
         const aparatos = [
           ...Object.keys(counts)
             .filter((id) => (counts[id] || 0) > 0)
-            .map((id) => ({
-              id,
-              cant: counts[id] || 1,
-              // kW SIN preset: arranca vacío y el usuario pone la potencia real (orig. usuario).
-              kw: ov.kwById?.[id],
-              tipo: ov.tipoById?.[id] ?? TIPO_DEFAULT[grupoDe(id) || 'otros'],
-              clave: key,
-              vacio: false,
-            })),
+            .map((id) => {
+              // La potencia ya NO es editable: la fija el catálogo NTC 3728 según el tipo
+              // de gas del proyecto (tabla GLP o gas natural); id sin entrada → 0 kW.
+              const c = CAT_GAS_BY_ID.get(ALIAS_CAT_GAS[id] ?? id);
+              return {
+                id,
+                cant: counts[id] || 1,
+                kw: c ? (gas === 'glp' ? (c.kwglp ?? c.kw ?? 0) : (c.kw ?? 0)) : 0,
+                tipo: ov.tipoById?.[id] ?? TIPO_DEFAULT[grupoDe(id) || 'otros'],
+                clave: key,
+                vacio: false,
+              };
+            }),
           ...Array.from({ length: ov.slotsExtra || 0 }, () => ({
             id: '',
             cant: 1,
-            kw: undefined,
+            kw: 0,
             tipo: TIPO_DEFAULT.otros as 'A' | 'B' | 'C',
             clave: key,
             vacio: true,
@@ -406,7 +446,7 @@ function useRejillasData() {
       }
     }
     return out;
-  }, [plans, overrides, tick]);
+  }, [plans, overrides, tick, gas]);
 
   const resultados = useMemo(
     () =>
@@ -423,7 +463,7 @@ function useRejillasData() {
               return {
                 tipo: g === 'estufa' ? 'Estufa' : g === 'calent' ? 'Calentador' : 'Otros',
                 clase: a.tipo,
-                kw: a.kw ?? 0, // vacío = no aporta potencia al requerimiento
+                kw: a.kw, // fija el catálogo NTC 3728 (0 = sin entrada, no aporta)
                 cant: a.id ? a.cant : 0,
               };
             })
@@ -464,8 +504,22 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
   const { filas, resultados, gas, setOv, overrides, cambiarGas } = useRejillasData();
   const [selIdx, setSelIdx] = useState(0);
   const [edit, setEdit] = useState(false);
+  // Modal del alzado de muro del sector seleccionado (reemplaza la página propia).
+  const [alzadoAbierto, setAlzadoAbierto] = useState(false);
   const hayM2 = resultados.some((r) => r.metodoAplicado === '2');
   const sel = Math.min(selIdx, filas.length - 1);
+  const selFila = filas.length ? filas[Math.max(sel, 0)] : undefined;
+  const selRes = filas.length ? resultados[Math.max(sel, 0)] : undefined;
+
+  // Escape cierra el modal (listener a nivel documento, patrón HelpPanel).
+  useEffect(() => {
+    if (!alzadoAbierto) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setAlzadoAbierto(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [alzadoAbierto]);
 
   return (
     <>
@@ -543,6 +597,29 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
           >
             {filas.length} {filas.length === 1 ? 'sector' : 'sectores'}
           </span>
+          {filas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAlzadoAbierto(true)}
+              title={`Esquema a escala del muro del sector «${selFila?.sector ?? ''}»`}
+              style={{
+                fontSize: 11,
+                fontFamily: 'var(--mono)',
+                padding: '3px 10px',
+                background: 'var(--bg3)',
+                color: 'var(--acc2)',
+                border: '1px solid var(--line)',
+                borderRadius: 4,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                maxWidth: 380,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              Ver alzado de muro de «{selFila?.sector ?? ''}»
+            </button>
+          )}
           <div style={{ marginLeft: 'auto' }}>
             <EditButton edit={edit} setEdit={setEdit} />
           </div>
@@ -585,6 +662,90 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
           )}
         </div>
       </section>
+      {alzadoAbierto && selRes && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAlzadoAbierto(false);
+          }}
+          role="presentation"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,.6)',
+            padding: 20,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Alzado de muro de «${selFila?.sector ?? ''}»`}
+            style={{
+              background: 'var(--bg2)',
+              border: '1px solid var(--line)',
+              borderRadius: 8,
+              width: 'min(640px, 100%)',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 12px 30px rgba(0,0,0,.5)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '10px 14px',
+                borderBottom: '1px solid var(--line)',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--txt)' }}>
+                Alzado de muro de «{selFila?.sector ?? ''}»
+              </h3>
+              <span style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
+                Apto {selFila?.apto} · {selFila?.piso}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAlzadoAbierto(false)}
+                aria-label="Cerrar alzado de muro"
+                style={{
+                  marginLeft: 'auto',
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  borderRadius: 4,
+                  color: 'var(--txt2)',
+                  cursor: 'pointer',
+                  padding: '2px 8px',
+                  fontSize: 13,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            {/* Grid center: centra el SVG horizontal Y verticalmente en el modal. */}
+            <div style={{ padding: 12, display: 'grid', placeItems: 'center', minHeight: 280 }}>
+              {selRes.estado === 'vacio' ? (
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: 'var(--txt2)',
+                    padding: '14px 0',
+                    textAlign: 'center',
+                  }}
+                >
+                  Este sector no tiene gasodomésticos con potencia: sin aberturas que esquematizar.
+                </div>
+              ) : (
+                <AlzadoMuro res={selRes} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 });
@@ -658,6 +819,7 @@ function TablaTipologias({
   onOv: (key: string, patch: RejOverride) => void;
   overrides: OverridesMap;
 }) {
+  const tablaRef = useStickyThead2Offset();
   // Encabezado de 2 filas como la tabla de referencia: grupos arriba, subcolumnas abajo.
   // Los aparatos viven en UNA columna (tarjetas apiladas) — sin columnas dinámicas.
   // Sub-campo apilado: etiqueta mini + control.
@@ -665,19 +827,16 @@ function TablaTipologias({
     // Solo scroll horizontal aquí: el scroll VERTICAL es el del contenido de la tarjeta
     // (un solo scroller — el tope propio de la tabla daba doble scroll, orig. usuario).
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+      <table ref={tablaRef} className="tbl" style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
             <th rowSpan={2} style={TH}>
               #
             </th>
-            <th rowSpan={2} style={TH}>
+            <th rowSpan={2} style={{ ...TH, width: 90, minWidth: 90 }}>
               Apto
             </th>
-            <th rowSpan={2} style={TH}>
-              Piso
-            </th>
-            <th style={THG} colSpan={4}>
+            <th style={THG} colSpan={5}>
               Recinto
             </th>
             <th style={{ ...THG }} colSpan={2}>
@@ -731,7 +890,7 @@ function TablaTipologias({
             <th style={THS} title="Área en planta del sector (m²) — del polígono dibujado">
               Área
             </th>
-            <th style={THS} title="Altura libre del sector (m)">
+            <th style={{ ...THS, width: 74, minWidth: 74 }} title="Altura libre del sector (m)">
               Alto
             </th>
             <th
@@ -740,11 +899,17 @@ function TablaTipologias({
             >
               Mono Espacio
             </th>
-            <th style={THS} title="Gasodomésticos asignados al sector — el ＋ añade otro">
+            <th style={THS} title="Volumen del recinto (m³) = Área × Alto">
+              Volumen del recinto (m³)
+            </th>
+            <th
+              style={{ ...THS, width: 190, minWidth: 190 }}
+              title="Gasodomésticos asignados al sector — el ＋ añade otro"
+            >
               Aparatos
             </th>
             <th style={THS} title="Suma de UN × P sin artefactos Tipo C (kW)">
-              Total pot
+              Total P (kW)
             </th>
             <th style={THS} title="Volumen requerido (m³) = 3,4 m³ por kW, sin Tipo C (num. 4.1.1)">
               Volumen Requerido
@@ -757,21 +922,21 @@ function TablaTipologias({
             </th>
             <th
               style={THS}
-              title="Volumen (m³) del espacio adjunto comunicado por aberturas interiores (solo Interior/Combinación)"
+              title="Volumen Recinto Adjunto (m³): espacio comunicado por aberturas interiores (solo Interior/Combinación)"
             >
-              Volumen Recinto Adjunto m³
+              VRA (m³)
             </th>
             <th
               style={THS}
-              title="Potencia (kW) de los gasodomésticos del espacio adjunto (sin Tipo C)"
+              title="Potencia Recinto Adjunto (kW): gasodomésticos del espacio adjunto (sin Tipo C)"
             >
-              Potencia Recinto Adjunto kW
+              PRA (kW)
             </th>
             <th
               style={THS}
-              title="Suma de las áreas de sección de los conectores de evacuación en cm², π·D²/4 (solo Método 2)"
+              title="Área Conectores de Evacuación (cm²): suma de secciones π·D²/4 (solo Método 2)"
             >
-              Área Conectores Evacuación cm²
+              ACE (cm²)
             </th>
             <th style={THS} title="Solución que resulta del cálculo">
               Solución aplicada
@@ -858,23 +1023,29 @@ function TablaTipologias({
                     style={INP}
                   />
                 </td>
-                <td style={TD}>
-                  <input
-                    aria-label={`Piso sector ${i + 1}`}
-                    value={f.piso}
-                    readOnly={!edit}
-                    onChange={(e) => onOv(f.areaId, { piso: e.target.value })}
-                    style={INP}
-                  />
-                </td>
+                {/* Sector en 2 líneas: input editable arriba, nivel (no editable) abajo. */}
                 <td style={{ ...TD, overflow: 'hidden' }}>
-                  <input
-                    aria-label={`Nombre del sector ${i + 1}`}
-                    value={f.sector}
-                    readOnly={!edit}
-                    onChange={(e) => onOv(f.areaId, { sector: e.target.value })}
-                    style={INP}
-                  />
+                  <div style={{ display: 'grid', gap: 1 }}>
+                    <input
+                      aria-label={`Nombre del sector ${i + 1}`}
+                      value={f.sector}
+                      readOnly={!edit}
+                      onChange={(e) => onOv(f.areaId, { sector: e.target.value })}
+                      style={INP}
+                    />
+                    <span
+                      title="Nivel del plano donde está dibujado el sector (alimenta la restricción de sótanos)."
+                      style={{
+                        fontSize: 9.5,
+                        fontFamily: 'var(--mono)',
+                        color: 'var(--txt3)',
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {f.piso}
+                    </span>
+                  </div>
                 </td>
                 <td style={TD}>{num(f.areaM2, 2)}</td>
                 <td style={TD}>
@@ -902,6 +1073,11 @@ function TablaTipologias({
                     <option value="si">Sí</option>
                   </select>
                 </td>
+                <td style={TD}>
+                  {f.mono || res.modo === 'estanco' || res.estado === 'vacio'
+                    ? 'N.A.'
+                    : num(res.V, 1)}
+                </td>
                 {/* UNA columna "Aparatos": cada gasodoméstico es una tarjeta apilada (el ＋
                     agrega otra tarjeta) — el ancho de la tabla no crece con el número de
                     aparatos (ped. usuario). */}
@@ -919,150 +1095,155 @@ function TablaTipologias({
                           padding: 4,
                         }}
                       >
-                        <select
-                          aria-label={`Gasodoméstico col ${ci + 1} sector ${i + 1}`}
-                          title="Gasodoméstico de esta columna (— etc — libera el slot). Suma su potencia al sector."
-                          value={ap.id}
-                          disabled={!edit}
-                          onChange={(e) => onAparatoCol(f, ci, e.target.value, onOv)}
-                          style={{
-                            ...SEL,
-                            background: 'var(--bg3)',
-                            border: '1px solid var(--line)',
-                            borderRadius: 3,
-                          }}
-                        >
-                          <option value="">— etc —</option>
-                          {APARATOS_DEF.filter(
-                            (a) =>
-                              a.grupo === 'g' &&
-                              // Sin opción fantasma: ids ya usados por OTRAS columnas de esta fila.
-                              !f.aparatos.some((o) => o !== ap && o.id === a.id),
-                          ).map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.nombre}
-                            </option>
-                          ))}
-                        </select>
-                        {/* Subcolumnas en fila (label arriba, control abajo) — ancho de la
-                          celda intacto, altura de fila compacta (ped. usuario). */}
+                        {/* Sub-fila 1: selector (sigla + tooltip) + "UN:" inline con el campo
+                            (sin label arriba → tarjeta más baja). */}
                         <div
-                          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}
-                        >
-                          <div
-                            title="Cantidad de unidades de este aparato en el sector."
-                            style={{ display: 'grid', gap: 1, justifyItems: 'center' }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 9,
-                                color: 'var(--txt3)',
-                                fontFamily: 'var(--mono)',
-                              }}
-                            >
-                              Unidades
-                            </span>
-                            <input
-                              aria-label={`UN col ${ci + 1} sector ${i + 1}`}
-                              className="no-spin"
-                              type="number"
-                              min="0"
-                              value={ap.cant}
-                              readOnly={!edit || ap.vacio}
-                              onChange={(e) =>
-                                setCantCol(f, ci, Math.max(0, parseInt(e.target.value) || 0))
-                              }
-                              style={{ ...INP, fontSize: 12 }}
-                            />
-                          </div>
-                          <div
-                            title="Potencia nominal en kW del aparato (alimenta el requerimiento de ventilación NTC 3631)."
-                            style={{ display: 'grid', gap: 1, justifyItems: 'center' }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 9,
-                                color: 'var(--txt3)',
-                                fontFamily: 'var(--mono)',
-                              }}
-                            >
-                              Pot (kW)
-                            </span>
-                            <input
-                              aria-label={`P kW col ${ci + 1} sector ${i + 1}`}
-                              className="no-spin"
-                              type="number"
-                              step="0.1"
-                              placeholder="—"
-                              value={ap.kw ?? ''}
-                              readOnly={!edit || ap.vacio}
-                              onChange={(e) => {
-                                if (!ap.id) return;
-                                const v = parseFloat(e.target.value);
-                                const prev = { ...(overrides[f.areaId]?.kwById || {}) };
-                                if (Number.isFinite(v)) prev[ap.id] = Math.max(0, v);
-                                else delete prev[ap.id]; // campo limpio = sin potencia (no 0 fijo)
-                                onOv(f.areaId, { kwById: prev });
-                              }}
-                              style={{ ...INP, fontSize: 12 }}
-                            />
-                          </div>
-                          <div
-                            title="Tipo de recinto A/B/C (NTC 3631): define el coeficiente cm²/kW de las aberturas."
-                            style={{ display: 'grid', gap: 1, justifyItems: 'center' }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 9,
-                                color: 'var(--txt3)',
-                                fontFamily: 'var(--mono)',
-                              }}
-                            >
-                              Tipo
-                            </span>
-                            <select
-                              aria-label={`Tipo col ${ci + 1} sector ${i + 1}`}
-                              value={ap.tipo}
-                              disabled={!edit || ap.vacio}
-                              onChange={(e) =>
-                                onOv(f.areaId, {
-                                  tipoById: {
-                                    ...(overrides[f.areaId]?.tipoById || {}),
-                                    ...(ap.id
-                                      ? { [ap.id]: e.target.value as 'A' | 'B' | 'C' }
-                                      : {}),
-                                  },
-                                })
-                              }
-                              style={{ ...SEL, fontSize: 12 }}
-                            >
-                              <option value="A">A</option>
-                              <option value="B">B</option>
-                              <option value="C">C</option>
-                            </select>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          aria-label={`Eliminar la columna de aparato ${ci + 1}`}
-                          title="− Eliminar esta columna (resta todo lo del aparato)"
-                          disabled={!edit}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            quitarColumna(f, ci, onOv);
-                          }}
                           style={{
-                            border: '1px solid var(--line)',
-                            borderRadius: 4,
-                            background: 'var(--bg3)',
-                            color: edit ? '#E7786B' : 'var(--txt3)',
-                            cursor: edit ? 'pointer' : 'default',
-                            fontSize: 11,
-                            padding: '2px 0',
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(0, 1fr) auto 30px',
+                            gap: 4,
+                            alignItems: 'center',
                           }}
                         >
-                          −
-                        </button>
+                          <select
+                            aria-label={`Gasodoméstico col ${ci + 1} sector ${i + 1}`}
+                            title={
+                              APARATOS_DEF.find((a) => a.id === ap.id)?.nombre ||
+                              'Gasodoméstico de esta columna (— etc — libera el slot). Suma su potencia al sector.'
+                            }
+                            value={ap.id}
+                            disabled={!edit}
+                            onChange={(e) => onAparatoCol(f, ci, e.target.value, onOv)}
+                            style={{
+                              ...SEL,
+                              minWidth: 0,
+                              width: '100%',
+                              background: 'var(--bg3)',
+                              border: '1px solid var(--line)',
+                              borderRadius: 3,
+                            }}
+                          >
+                            <option value="">— etc —</option>
+                            {APARATOS_DEF.filter(
+                              (a) =>
+                                a.grupo === 'g' &&
+                                // Sin opción fantasma: ids ya usados por OTRAS columnas de esta fila.
+                                !f.aparatos.some((o) => o !== ap && o.id === a.id),
+                            ).map((a) => (
+                              <option key={a.id} value={a.id} title={a.nombre}>
+                                {a.sigla.replace(/:$/, '')}
+                              </option>
+                            ))}
+                          </select>
+                          <span
+                            title="Cantidad de unidades de este aparato en el sector."
+                            style={{
+                              fontSize: 10,
+                              color: 'var(--txt3)',
+                              fontFamily: 'var(--mono)',
+                            }}
+                          >
+                            UN:
+                          </span>
+                          <input
+                            aria-label={`UN col ${ci + 1} sector ${i + 1}`}
+                            className="no-spin"
+                            type="number"
+                            min="0"
+                            value={ap.cant}
+                            readOnly={!edit || ap.vacio}
+                            onChange={(e) =>
+                              setCantCol(f, ci, Math.max(0, parseInt(e.target.value) || 0))
+                            }
+                            style={{ ...INP, fontSize: 12, width: 30, minWidth: 0 }}
+                          />
+                        </div>
+                        {/* Sub-fila 2: labels arriba (P/Tipo/—) y controles abajo — grid 3×2
+                            para que el − comparte la altura exacta de P y Tipo. P es SOLO
+                            lectura (la fija el catálogo): texto plano, sin look de input. */}
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) 24px',
+                            gap: '1px 4px',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 9,
+                              color: 'var(--txt3)',
+                              fontFamily: 'var(--mono)',
+                              textAlign: 'center',
+                            }}
+                          >
+                            P (kW)
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              color: 'var(--txt3)',
+                              fontFamily: 'var(--mono)',
+                              textAlign: 'center',
+                            }}
+                          >
+                            Tipo
+                          </span>
+                          <span aria-hidden="true" />
+                          <span
+                            title="Potencia nominal en kW del aparato — la fija el catálogo NTC 3728 según el tipo de gas del proyecto (alimenta el requerimiento de ventilación)."
+                            style={{
+                              fontFamily: 'var(--mono)',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: 'var(--txt)',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {num(ap.kw, 2)}
+                          </span>
+                          <select
+                            aria-label={`Tipo col ${ci + 1} sector ${i + 1}`}
+                            title="Tipo de recinto A/B/C (NTC 3631): define el coeficiente cm²/kW de las aberturas."
+                            value={ap.tipo}
+                            disabled={!edit || ap.vacio}
+                            onChange={(e) =>
+                              onOv(f.areaId, {
+                                tipoById: {
+                                  ...(overrides[f.areaId]?.tipoById || {}),
+                                  ...(ap.id ? { [ap.id]: e.target.value as 'A' | 'B' | 'C' } : {}),
+                                },
+                              })
+                            }
+                            style={{ ...SEL, fontSize: 12, minWidth: 0, width: '100%' }}
+                          >
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                          </select>
+                          <button
+                            type="button"
+                            aria-label={`Eliminar la columna de aparato ${ci + 1}`}
+                            title="− Eliminar esta columna (resta todo lo del aparato)"
+                            disabled={!edit}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              quitarColumna(f, ci, onOv);
+                            }}
+                            style={{
+                              height: '100%',
+                              border: '1px solid var(--line)',
+                              borderRadius: 4,
+                              background: 'var(--bg3)',
+                              color: edit ? '#E7786B' : 'var(--txt3)',
+                              cursor: edit ? 'pointer' : 'default',
+                              fontSize: 12,
+                              padding: '1px 0',
+                            }}
+                          >
+                            −
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1211,21 +1392,21 @@ function AlertasResumen({
   if (!f || !res) return null;
   return (
     <div style={{ marginTop: 10 }}>
-      {res.estado === 'vacio'
-        ? null
-        : res.alertas.map((a, i) => (
-            <div
-              key={i}
-              style={{
-                fontSize: 12,
-                padding: '5px 8px',
-                borderTop: '1px solid var(--line)',
-                color: a.e ? '#E7786B' : '#E3A24F',
-              }}
-            >
-              {a.e ? 'Crítica' : 'Observación'}: {a.t}
-            </div>
-          ))}
+      {/* Alertas SIEMPRE visibles: en estado 'vacio' solo las hay si el cálculo las
+          pusheó (potencia sin definir, sótanos) y tragárselas ocultaba el motivo del kW = 0. */}
+      {res.alertas.map((a, i) => (
+        <div
+          key={i}
+          style={{
+            fontSize: 12,
+            padding: '5px 8px',
+            borderTop: '1px solid var(--line)',
+            color: a.e ? '#E7786B' : '#E3A24F',
+          }}
+        >
+          {a.e ? 'Crítica' : 'Observación'}: {a.t}
+        </div>
+      ))}
       {gas === 'glp' && (
         <div style={{ fontSize: 11, color: 'var(--txt3)', marginTop: 6 }}>
           GLP (gas más denso que el aire): solo Método 1; sin artefactos en sótanos (3.2, 4.2.1).
@@ -1375,83 +1556,5 @@ function AlzadoMuro({ res }: { res: RejResultado }) {
     </svg>
   );
 }
-
-/** Página "Alzado de muro": desplegable de sector (apto · piso · sector) + esquema a escala. */
-export const RejillasAlzadoPage = React.memo(function RejillasAlzadoPage() {
-  const { filas, resultados } = useRejillasData();
-  const [idx, setIdx] = useState(0);
-  // Auto-selección: si el sector apuntado no tiene potencia, salta al primero que sí
-  // (el desplegable no debe abrirse "vacío" cuando hay sectores calculables).
-  const primeroConDatos = filas.findIndex((_, j) => resultados[j]?.estado !== 'vacio');
-  const i = Math.min(Math.max(idx, 0), Math.max(filas.length - 1, 0));
-  const efectivo = resultados[i]?.estado === 'vacio' && primeroConDatos >= 0 ? primeroConDatos : i;
-  const res = filas.length ? resultados[efectivo] : undefined;
-  return (
-    <section className="card" aria-label="Alzado de muro · Rejillas de ventilación">
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '10px 12px',
-          borderBottom: '1px solid var(--line)',
-        }}
-      >
-        <img
-          src="/iconos_civilflow/diseno_redes/gas/rejilla_ventilacion.webp"
-          alt=""
-          width={24}
-          height={24}
-          style={{ width: 24, height: 24, objectFit: 'contain' }}
-          loading="lazy"
-        />
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--txt)' }}>
-          Alzado de muro
-        </h3>
-        {filas.length > 0 && (
-          <select
-            value={efectivo}
-            aria-label="Seleccionar sector para el alzado"
-            onChange={(e) => setIdx(Number(e.target.value))}
-            style={{
-              marginLeft: 'auto',
-              fontSize: 12,
-              padding: '4px 8px',
-              background: 'var(--bg3)',
-              color: 'var(--txt)',
-              border: '1px solid var(--line)',
-              borderRadius: 4,
-              maxWidth: 320,
-            }}
-          >
-            {filas.map((f, j) => (
-              <option key={f.key} value={j}>
-                Apto {f.apto} · {f.piso} · {f.sector}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-      <div style={{ padding: '12px' }}>
-        {filas.length === 0 || !res ? (
-          <div
-            style={{ fontSize: 13, color: 'var(--txt2)', padding: '14px 0', textAlign: 'center' }}
-          >
-            Sin sectores: dibuja en el visor un <strong>Área</strong> con la pestaña{' '}
-            <strong>Gas</strong> activa y la subred Rejillas de ventilación encendida.
-          </div>
-        ) : res.estado === 'vacio' ? (
-          <div
-            style={{ fontSize: 13, color: 'var(--txt2)', padding: '14px 0', textAlign: 'center' }}
-          >
-            Este sector no tiene gasodomésticos con potencia: sin aberturas que esquematizar.
-          </div>
-        ) : (
-          <AlzadoMuro res={res} />
-        )}
-      </div>
-    </section>
-  );
-});
 
 export default REJILLAS;
