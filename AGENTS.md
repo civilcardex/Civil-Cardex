@@ -2724,3 +2724,132 @@ Auditoría de los 20 archivos más grandes → 3 veredictos VALE (ejecutados), 5
 **NO VALE (re-evaluado, NO tocar sin motivo nuevo)**: PlanoEngine.ts (fachada de ~35 módulos, decisión 2026-08-19 vigente) · PdfViewer.tsx (1459: ya dividido, ~25 hermanos; el residual es cableado con clausuras de 8-15 deps — extraer inventaría interfaces) · sanFittingsRows.ts (88% es UNA función de 1188L acoplada por closures — split = rediseño del pipeline) · FixturesPanel.tsx (ya dividido en fixturesStorage + fixtures/; lo restante son efectos sobre engineRef, zona de más regresiones) · helpGuide.tsx (datos inertes — dividir solo traslada el tamaño).
 
 Gates por split: tsc 0 · lint 0 · vitest 977/977 (160 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-07 (auditoría Gas/AF/AC + tabla Chequeo gas + Excel KML)
+
+### Fuente de verdad: `C:\CivilCardex\Calculo red de Gas KML 2025.xlsx`
+- **La app YA era fiel al Excel** en lo que el plan quería "corregir": ΔP usa 23200 (no 48620 del estándar UNE — el Excel manda), cadena de presión arranca en pmin 17 (NO en "presión de regulador"), velocidad con pAtm. Esos 3 cambios se DESCARTARON por Fase 1.
+- Criterio Renouard de `gasUtils.renouardByType` = fórmula AA del Excel EXACTA (2 tipos mayores /2 + resto 100%; 1 tipo /2). Diferencia real: el Excel redondea factores a 2 dec y Qdiseño = max(ROUND(Q·f·f·f,2), 2.7) → `factoresGas`/`qDisenoGas` en gasUtils, usados por gasRows + GasDesign + GasCalcUC.
+- Aparato nuevo: `calp` Caldera pequeña 1.76 m³/h (Excel O21), en APARATOS_DEF + CAT_GAS (GLP null = pendiente).
+
+### Tabla "Chequeo red de gas" (GasDesign page3)
+- Encabezado roto: cuerpo itera ACC_KEYS (9) pero el th declaraba colSpan=5 → las últimas columnas sin título. Ahora colSpan={ACC_KEYS.length} + 4 th nuevos (codos sube/baja) + th Tapón soldado (teeTapon ahora en ACC_KEYS y LE_K=1·D).
+- Columnas nuevas (del Excel): Total Q de Consumo, Por Altitud, Por Temperatura, Por Densidad Relativa, Q de diseño >2.70, **ΔP acum (mbar)**. Fila vacía colSpan 10+ACC_KEYS. Memoria infTab espeja (21 columnas).
+- Chequeo NTC 3728 ahora: V≤10 Y **ΔP acumulada ≤ 9.81 mbar** (antes solo velocidad). Con cadena desde 17, pFin≥17 no tiene sentido (siempre <17); el límite de pérdida ES el chequeo.
+
+### AF/AC (bug real crítico)
+- **Acometida reportaba pérdidas 10×**: `acometidaCalc.calcFila` y snapshot `waterRowsAcometida` dividían hfPct/100 (hfPct es m/km → /1000 como rowPhysics). Test `acometidaCalc.test.ts` fijado contra Hazen-Williams SI independiente (3/4" @1m/s → 0.58 m/10m). Hallazgo derivado: **calcFila sin guard V/dInt>0 daba NaN** con diámetro sin resolver — arreglado.
+- Rótulos "%" → "‰" (Pérdidas por fricción) en SupplyConnection, infTab y header de tabla diseño.
+- **Chequeo P por aparato** (nuevo): `chequeoPresionAparato` en waterRowsShared (pmin/pmax del catálogo NTC 1500 vs presión en el extremo del aparato) → columna "Chequeo P" en tabla AF/AC (24 columnas) + `presionOk` persistida TAMBIÉN para AC (antes solo AF) + okAC de InfTab incluye presión.
+- **Acometida real**: `pResidual` era tautología (f1.Pfin−f2.Pfin ≡ hf2) → ahora es f2.Pfin; `okPresion` = pResidual ≥ acoPResMin (nuevo campo editable, default 3 mca); input "Le del medidor" visible (acoLeMed ya se sumaba a L1 pero no tenía UI).
+
+### Limpieza
+- C1 GasCalcUC fusionaba tramos del mismo id entre pisos (clave sin planId) → clave (ramal, plano).
+- C2 gas_accesorios sin planId (colisión pisos): MIGRACIÓN COMPLETA DIFERIDA (toca renumber/history/purge del motor) — se arregló el bug inmediato: doble-bump al sincronizar accesorios cuando el ramal id existe en varios planos (delta ×N sobre clave única → ahora 1 vez).
+- C4 PEAD alias a filas PE al PE (lookupDn en gasRows y GasDesign). C5 unidad "kPa" en densidad relativa → ''. C6 docs ΔP Pa→mbar + NTC3728.tsx alineado a la forma implementada. C7 (cobre 130 vs 140) FALSO POSITIVO — el catálogo citaba fila de sistema Gas (usa K, no Hazen). C9 Ldesvio: useWaterNetworkGraph ahora filtra isLdesvioRamalId como waterRowsCore. C10 Hunter dedup: 4 copias inline (waterRowsCore ×2+K, useWaterNetworkGraph, WaterNetworkDesign, waterRowsAcometida) → hunterK/hunterQ de rowPhysics; quedan las variantes SIN K (fallback Qaco, heater, Bomba — fórmula distinta a propósito).
+
+### Tests nuevos (spec de cálculo)
+- `gasUtils.test.ts` (11): Renouard criterio Excel (5.81 caso piscina+jacuzzi+sauna, empates), factores redondeados, qDiseno 6.44/piso 2.7.
+- `acometidaCalc.test.ts` (4): V, hfM vs HW SI, Pfin, NaN-guard.
+- `waterPhysics.test.ts` (9): hunterK/hunterQ (1.379/4.522), computeDesignRow (V≈1000, hfM≈0.58).
+
+### Gates
+tsc 0 · vitest **1001/1001** (163 files) · lint ✓ · vite build ✓.
+
+## Session Note — 2026-10-06 (auditoría post-splits: 8 hallazgos arreglados)
+
+3 IMPORTANTE + 5 MENOR de la auditoría hostil sobre los splits + fixes previos:
+
+- **A-1 coma decimal (regresión del swap LazyNumInput→LazyDecimalInput)**: el filtro `[^0-9.]` eliminaba la coma del teclado es-locale → "2,5" comiteaba 25 (presión ×10 en Pin/Pfin de la tabla de agua). Fix: `replace(/,/g,'.')` ANTES del filtro en handleChange. (La mitad temida no existía: `fmt` ya es toFixed con punto — el valor inicial no se trunca.)
+- **A-2 webhook total string**: fail-closed rechazaba `total:"4500"` con 200 → LS no reintenta jamás → pago cobrado sin activar. Fix: coerción `typeof raw==='string' ? Number(raw) : raw` ANTES del fail-closed (basura sigue rechazada).
+- **A-3 confirm de borrado en controles**: el click en select Aparato / input UN / select Tipo burbujeaba al `<td onClick={borrarEsta}>` → confirm al querer editar en modo borrado. Fix: `tragaClick` (stopPropagation gated por enModoBorrado) en los 3 controles.
+- **A-4 cancelarPago fire-and-forget**: `void delete` podía morir congelado el isolate → fila comía el cap anti-spam. Fix: async + await en los 3 call sites de error.
+- **A-5 lectura de blob fallida ≠ vacía**: `.catch(()=>null)` igualaba error con "sin blob" → push podía escribir gasod:{} sobre BD. Fix: try/abort — sin estado previo confiable no hay push.
+- **A-6 commit fantasma en blur**: LazyDecimalInput comiteaba SIEMPRE en blur (foco+blur sin teclear escribía presIniEdit redondeado, piniando el tramo y su subtree). Fix: comitear solo si `val !== value` (isDirty solo en handleChange). Afecta a los 4 consumidores — estrictamente mejor.
+- **A-7/A-8 higiene**: comentario "verbatim" de TablaTipologias corregido (viajó con el rediseño de subfilas pre-commiteado); docstring de apply movido de Clear a Apply; separadores de sección muertos fuera; header: "Estado" con rowSpan=2 (24 columnas completas); StoredBajanteDesp sigue exportado en shared (Clear/Apply lo consumen — el hallazgo de sobre-exportación era falso para la familia, correcto que no esté en el hub).
+
+Split 1 (bajanteAssociation) y Split 3 (ventStackCalc) verificados byte-idénticos por diff normalizado; DAG sin ciclos; los 9 símbolos públicos consumidos por 16 importadores intactos. Gates: tsc 0 · lint 0 · vitest 1001/1001 (163 files) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (ponytail #8: 5 hallazgos menores)
+
+- **EOL churn**: defaults.ts/NTC3728.tsx fueron reescritas LF por la sesión paralela (HEAD es CRLF) — diff de 296L para 2L reales. Restaurado CRLF: diff vuelve a 1 línea por archivo. (REGLA: estos 2 archivos son CRLF en HEAD; un editor con LF los ensucia.)
+- **RejillasBlob** exportado desde projectDataService (tipado real de save/load); fuera los 3 casts inline (pushBlobAhora, hidratar, useRejillasData). Queda UN cast legítimo: estrechar `blob.overrides` a OverridesMap en el hook (dato de BD).
+- **FilaParamNum + FilaComparativaInline** (SupplyConnection): las 4 filas de parámetro (AC-01 Pini, Le medidor, Hf max ≤, P residual ≥) deduplicadas — 2 formas: fila simple editable y contenido comparativo in-celda.
+- **sanitizarInputDecimal** (parseDecimal.ts): la cadena `replace(/,/g,'.')+replace(/[^0-9.]/g,'')` repetida en 5 handlers → helper; LazyDecimalInput la usa + su colapso multi-punto local. (Sitios con cadenas DISTINTAS — DownpipesTable/SanitaryDesign/RainwaterDesign sin filtro [^0-9.] — NO se tocaron.)
+- **chequeoPresionAparato**: fallback unificado a pRed en el effect de WaterNetworkDesign (antes ??0 vs pRed en la fila — riesgo de divergencia); la doble computación (persistir vs pintar) queda, es pura y barata.
+- Nota de proceso: un marcador de reemplazo erróneo tocó brevemente 4 archivos; revertido en el mismo minuto y verificado con tsc (los swaps reales se reaplicaron con cadenas exactas).
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 (163 files) · build ✓ · graphify ✓. Neto: ~45L + diff limpio.
+
+## Session Summary — 2026-10-07 (des-monolitización Fase 1-2 parcial + retoques UI gas/san)
+
+### Splits verbatim (hub re-export, gates por archivo)
+- **sanFittingsRows.ts (1348→hub 5L)**: `sanFittingsCatalog.ts` (constes/sets/compactYeeDiam/ramalHasManualCodoAt/computeBushingCounts) + `sanAccesoriosTable.ts` (computeAccesoriosTable).
+- **bombaAssociation.ts (911→hub 9L)**: 5 hermanos — `bombaQueries.ts` (rows de selección), `bombaDesvio.ts` (asociar/sincronizar/limpiar/desasociar/quitar + type PlanoEngine/BombaRow/CrossFloorGhost), `bombaHerencia.ts` (mapUd/propagar), `bombaEquipos.ts` (EquipoBomba/udsDeMapa/equipos), `bombaAsocLive.ts` (aggBajanteAsociado). Dirección: desvio/equipos/live→herencia, sin ciclos.
+- **networkSanitary.ts (911→hub 4L)**: `sanAccessoriesCalc.ts` (calcSanitaryAccessories + HidroTramoEntry) + `hydroAccessoriesCalc.ts` (calcHydroAccessories).
+- **writeDiameterToDrawing.ts (848→hub 6L)**: `drawingWrites/` — `diametros.ts` (findContador/writeDiametro/Contador/Aco + punterosBajante + interface LocalDrawingData), `otros.ts` (Pendiente/NSalidas/CanalDims), `props.ts` (Batch/BajanteProp/Material/Clear + espejoEnCurso).
+- **BombaARDesign.tsx (948→~730)**: calcs puros → `bombaARCalcs.ts` (BombaInputs/INPUTS_DEFAULT/MAT_POR_TIPO/cHazenDe exportado/calcsDe); componente re-exporta para su test.
+- **useIsometryRender.ts (1024)**: helpers → `isoDrawUtils.ts` (IsoPt/shadeHex/hexA/isoAxisVecs/drawIsoCuboid exportados; ISO_SCALE desde geometry).
+- **ProfilePage.tsx (1074→~960)**: `ProyectoCard.tsx` + `profileHelpers.ts` (fechaCorta).
+
+### Diferido con justificación
+- **FixturesPanel.tsx (1853)** y **infTab.tsx (1108)**: los useMemo/29 hooks cierran sobre ~15 vars del componente — extraer exige rediseñar firmas (no verbatim) sin tests directos. Sesión dedicada con datos reales.
+- **Fase 3 (PlanoState/PdfViewer/PlanoEngine)**: no iniciada (condicionada a que F2 saliera limpia; F2 quedó parcial).
+- NO dividir: handleDragMove/finishRamal (algoritmos+tests), rejillasNTC3631 (data), renderAccessorySymbols.
+
+### Retoques UI de la sesión (gas/san)
+Chequeo gas → página propia (4) sin Dint/Long + títulos en 2 líneas; ΔP acum columna; datos generales: patm=fórmula Excel (101.325·(1−alt/44330)^5.256) no editable, estilos sanitaria, Factores de corrección card aparte 2×2; Cálculo UC: anchos a Aparatos, siglas grandes, tamaños de celda ~12.5-13.5; sanitaria: anchos (K 3%, Yc/Yn/Froude/Ymax 5%, Flujo/YnvsYc/Tramo 6%), fuente 10.5, th padding 7px; caldera pequeña eliminada; selects de diseño gas centrados; header AF/AC "Cheque presión" a nivel grupo.
+
+### Nota operativa
+La OTRA sesión trabajó en paralelo sobre creations/, tramoEditor/, services/storage/ y drawingCreations.ts — durante la sesión hubo errores tsc transitorios de SUS archivos (filtrados en los gates). Suite completa: 1001/1001 al cierre de Fase 1; correr de nuevo cuando ella termine.
+
+## Session Note — 2026-10-06 (des-monolitización ronda 4: 5 splits más)
+
+Re-evaluación del top-20 tras la ronda 3 → 5 splits verbatim + hub re-export ejecutados:
+
+- **bajanteMenu.tsx (1226 → hub 67L)**: `drawingElementContextMenu/{directionSelector,diameterSelector,bombaSections}.tsx` (346/657/195). CajaBomba/AsociarBomba ahora exportadas desde bombaSections (BajanteMenu las importa). Único consumidor externo (index.tsx) intacto.
+- **drawingCreations.ts (1112 → hub)**: `lib/PlanoEngine/creations/{cajaBajante,montantes,canales,redPublica,bomba}.ts`. BAJANTE/MONTANTE/CAJA_NETS viven en cajaBajante; montantes importa MONTANTE_NETS de allí (hoja a hoja, sin ciclos). `canalEjeTs` privado viaja con canales. 10 tests + 5 importadores cubiertos por el hub.
+- **tramoEditor/variants.tsx (1041 → hub 41L)**: `{canalEditors,headerFields,editorSections}.tsx` (221/402/418). El hub conserva los wrappers triviales Contador/Calentador + re-exporta los 9 componentes que index.tsx consumía de './variants' (contrato intacto).
+- **storageService.ts (984 → hub 14L)**: `services/storage/{localStorage,planoRowMappers,trazosDb}.ts` (132/408/480). `quotaFailedKeys` y `trazosSaveQueue` viajan dentro de su hoja; mappers exportados los consume trazosDb; `SupabaseRow` exportado tipo. 16+ consumidores + 8 tests intactos vía hub.
+- **PricingPage.tsx (1030 → 683L)**: `pricingData.ts` (plans, FAQ/Product JSON-LD, BADGE_STYLE, BENEFICIOS, LOGO, PUESTOS_CAP_STEPPER — 166L) + `ModuleCard.tsx` (196L). El closure-monolito de PricingSuscripciones se queda (sin seams).
+
+NO VALE confirmado en la re-evaluación (no tocar): GasDesign, PlanosTab, infTab, ProfilePage, PlanoConfigurator, useIsometryRender, RainChannelsCheck, handleDragMove — 85-97% un solo componente/función con closures.
+
+Lección del split B: al mover bloques con JSDoc adyacente, el corte puede dejar un docstring SIN CERRAR (`/**` abierto) que se traga la firma siguiente — tsc lo delata como "has no exported member" con sugerencia del hermano. Verificar cierres de comentario en las fronteras.
+
+Durante el split B la suite marcó 1 rojo (phaseE): era WIP de la sesión paralela (`utils/drawingWrites/props.ts` nuevo, `espejoEnCurso` sin cablear) — convergió a verde al cierre, sin relación con el split.
+
+Gates finales: tsc 0 · lint 0 · vitest 1001/1001 (163 files) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (des-monolitización ronda 5 — archivos NO tomados por la sesión paralela)
+
+La sesión paralela está dividiendo su propio set (sanFittingsRows, bombaAssociation, networkSanitary, writeDiameterToDrawing/drawingWrites, BombaARDesign, useIsometryRender, FixturesPanel, ProfilePage, infTab, PlanoState, PdfViewer, PlanoEngine). Esta ronda cubrió los 4 restantes con seams mecánicos:
+
+- **exportMemoryFinal.ts (786 → hub 12L)**: `memoriaExportShared.ts` (tipos + fileBase/REDES_ORDEN/dropAllZeroColumns, 87L) · `memoriaExcel.ts` (200L) · `memoriaDocx.ts` (327L) · `memoriaPdf.ts` (199L). Bloques por formato sin estado compartido — el más limpio de la ronda. 10 importadores intactos vía hub.
+- **lineTool.ts (818 → hub)**: `annotationTools.ts` (handleDim/Text/Area + dimSnapEnd) + `drawingMouseHandlers.ts` (move + doubleClick; doubleClick USA dimSnapEnd y finishArea → imports cruzados entre hojas). `handleLineDown` (monolito con closures) SE QUEDA. Único importador (PlanoEngineDrawing) intacto.
+- **junctionAutoSplit.ts (844 → hub 626L)**: `tribPadreNormalize.ts` (normalizeTribPadresAt/healedPadreId/normalizeTribPadresAtPoint, 109L) · `healTribPadres.ts` (93L) · `ramalAngleChecks.ts` (puntoEnCaja/checkRamalAnglesExcludingConnections, 98L). `autoSplitJunctionAndSumFlow` (monolito de ingeniería) SE QUEDA. 480 tests de motor en verde.
+- **drawingSync.ts (802 → hub 20L)**: `drawingSyncTypes.ts` (125L, interfaces + las 4 internas exportadas) · `drawingSyncBuilders.ts` (256L) · `drawingSyncGc.ts` (358L — **TODO el estado mutable co-localizado**: `_loadedLive`, `freshTrazosPlans`, `orphanSuspects` + las 9 funciones GC) · `drawingSyncIo.ts` (105L; usa reanclar + performGarbageCollection del Gc). 7 tests de GC/sync en verde.
+
+NO VALE (evaluado y cerrado): `sanAccesoriosTable.ts` (1202) y `sanAccessoriesCalc.ts` (811) — cada uno UNA función de ~800-1190L con closures compartidas; además su importador vive en el scope de la sesión paralela (colisión).
+
+**Lección dura de esta ronda (iterador de imports)**: reconstruir hojas desde `git show HEAD:` con números de línea del WORKING TREE corrompe las fronteras cuando el archivo estaba sucio vs HEAD (junctionAutoSplit: HEAD ≠ working). Regla: extraer bloques por NOMBRE de función (regex sobre el original), nunca por número de línea, si el archivo tiene diff sin commitear. Y los iteradores automáticos de imports se auto-sabotean en ciclos (quitan un nombre que otra pasada necesita) — converger a mano leyendo el uso real por archivo.
+
+Gates finales: tsc 0 · lint 0 · vitest 1001/1001 (163 files) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (auditoría post-splits ronda 4/5: 0 críticos, 12 menores de docs arreglados)
+
+2 exploradores hostiles sobre los 9 splits de las rondas 4-5: **0 CRÍTICOS, 0 IMPORTANTES**. Estado mutable único (cero copias de _loadedLive/quotaFailedKeys/trazosSaveQueue/canalEjeTs), DAG sin ciclos en las 9 familias, cero bypass de hubs, superficie pública completa (drawingSync 3 tipos+9 funciones exactos para ~35 consumidores; storageService 13/13; drawingCreations 17/17), cuerpos verbatim (pricingData hash-idéntico), mocks de tests sin regresión. Todo lo hallado = rotación de documentación en fronteras de corte:
+
+- F-1 import colgado al final del hub junctionAutoSplit → al tope. F-2 imports muertos con prefijo `_` en 6 archivos (invisibles para noUnusedLocals) → purgados con filtro de uso real. F-3 **ToolType único**: vive en lineTool, PlanoEngineDrawing re-exporta el tipo, PlanoEngine borra su copia de 17 líneas y re-exporta (consumidores como PdfViewer intactos). F-4 doc clonado de canJoinTributario ×3 → JSDoc real por función. F-5/F-9/F-10 docs rotados entre hermanos (lineTool family, bajanteMenu family, creations ×4) → cada bloque junto a su función. F-6/F-8/F-11 comentarios-cola/truncados/banners huérfanos → fuera. F-7 eslint-disable inefectivo + ref stale "línea 395" → limpios. F-12 plans/FAQ_JSONLD/PRODUCT_JSONLD con Object.freeze (superficie; datos de marketing compartidos por 2 módulos).
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 (163 files) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (ponytail #9: 3 dedups ejecutables, 4 hallazgos falsos retirados)
+
+Ejecutados: `pointInPoly` de labelDeclutter → import de HitTester (ray-casting idéntico); `sameNetGroup` de mouseDownDrags → import de drawingAngles; `MENU_CHECK_ROW_STYLE` = byte-idéntico a `CHECK_ROW_STYLE` de tramoEditor/context → re-export aliasado (import de hermano a hermano, sin ciclo).
+
+Retirados tras verificación (el barrido se equivocó): `fileBase` SÍ tiene consumidores (memoriaExcel/Docx); los re-exports del hub drawingSync SÍ tienen consumidor (drawingSyncGc.test.ts importa del hub); la primera cita de MENU_CHECK_ROW_STYLE era de otro estilo — comparando los bloques reales sí eran idénticos y el corte procedió.
+
+Report-only (sesión paralela toca esos archivos): copia del núcleo Hunter en bajanteVentRows vs ventStackCalc (~30L); HidroDataEntry ×3; lookupDn GasDesign/gasRows. Lean: 0 deps muertas, 26/26 claves storage-keys usadas, sin .bak/.tmp.
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 · build ✓ · graphify ✓. Neto: ~25L.
