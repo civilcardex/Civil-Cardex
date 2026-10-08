@@ -7,13 +7,17 @@ import {
   uniqRamalId,
 } from './PlanoState';
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
-import { esCaja } from './bajanteRules';
-import { _firstSegmentAngle, angleAtHalfLength, checkRamalAngles } from './drawingAngles';
+import { angleAtHalfLength } from './drawingAngles';
 import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection';
 import { ramalFlowDirectionCheck } from './drawingFlow';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
-import { _statusMsg, calculateRamalLength } from './ramalMeasure';
+import { calculateRamalLength } from './ramalMeasure';
 import { _midpoint, maxDiametroLabel, bumpBajanteToMaxRamal } from './drawingUtils';
+import {
+  normalizeTribPadresAt,
+  healedPadreId,
+  normalizeTribPadresAtPoint,
+} from './tribPadreNormalize';
 
 // Cuando el extremo de un ramal recién terminado (o arrastrado) cae a mitad del cuerpo de un
 // ramal EXISTENTE — una tee T/Y de verdad, no una unión extremo-con-extremo — se divide ese
@@ -35,11 +39,6 @@ export function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal):
   if (target.tipo !== 'tributario') return false;
   return true;
 }
-
-/** Invierte la dirección de flujo de un ramal existente EN EL SITIO — misma operación que el
- *  botón "Invertir dirección de flujo" del menú contextual, para redes donde la flecha se
- *  deriva del orden de los puntos (san/ll/vent). NO sirve para af/ac/gas (su dirección real
- *  es un flag aparte). Aplicarla dos veces restaura el estado original. */
 
 /** Divide el ramal existente cuando el extremo de `incoming` cae a mitad de su cuerpo, acumulando
  *  caudal/diámetro en el downstream. @returns true si la conexión fue BLOQUEADA por la regla
@@ -479,7 +478,6 @@ export function autoSplitJunctionAndSumFlow(
 
 /** 3.3/6: detecta una yee SIMPLE cerca de (px,py). Auto-snap deshabilitado por UX
  *  (usuario usa línea guía para yee doble); se mantiene exportada por si se reactiva. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 /** Detecta una yee simple cerca del extremo que se está dibujando: una unión de 3 vías formada por empalme sobre el cuerpo de otro ramal, sin marca de tee. */
 export function detectYeeSimpleNear(
   engine: IPlanoEngineCore,
@@ -616,229 +614,10 @@ export function detectTributaryPadre(
   return best ? best.id : null;
 }
 
-/** ¿El punto cae dentro del cuadro exterior (100×100cm a escala) de una caja de la red?
- *  Test a escala real vía `cmToPlanePx` — NO depende de `_circ` (que solo existe tras
- *  renderizar). Las llegadas a caja no se validan por ángulo (orig. usuario): el ángulo del
- *  segmento de conexión lo dicta la caja, no la cuadrícula. */
-export function puntoEnCaja(
-  engine: Pick<IPlanoEngineCore, 'bajantes' | 'cmToPlanePx'>,
-  ep: number[],
-  net: string,
-): boolean {
-  // Cuadrado axis-aligned (la caja nunca rota) + margen de snap. Fallback sin el helper
-  // (mocks viejos de tests) ≈ semilado a escala por defecto.
-  const half = typeof engine.cmToPlanePx === 'function' ? engine.cmToPlanePx(100) / 2 + 2.0 : 40;
-  for (const b of engine.bajantes) {
-    if (b.net !== net || !esCaja(b)) continue;
-    if (b.x == null || b.y == null) continue;
-    if (Math.abs(ep[0] - b.x) <= half && Math.abs(ep[1] - b.y) <= half) return true;
-  }
-  return false;
-}
-
-/** Bug #7: valida los ángulos de un ramal EXCLUYENDO los segmentos de conexión — un extremo que
- *  pega a otro ramal existente (o a un bajante) tiene el ángulo dictado por la geometría del
- *  ramal existente, no por la cuadrícula de 45°/90°. Devuelve true si los segmentos libres son
- *  válidos. Usado por finishRamal y handleDragUp. */
-export function checkRamalAnglesExcludingConnections(
-  engine: IPlanoEngineCore,
-  r: PlanoRamal,
-): boolean {
-  if (!r.pts || r.pts.length < 2) return true;
-  const TOL = 0.5;
-  const pointOnSeg = (p: number[], a: number[], b: number[]) => {
-    const dx = b[0] - a[0],
-      dy = b[1] - a[1];
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq < 0.0001) return Math.hypot(p[0] - a[0], p[1] - a[1]) < TOL;
-    const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
-    if (t < 0.02 || t > 0.98) return false;
-    const px = a[0] + t * dx,
-      py = a[1] + t * dy;
-    return Math.hypot(p[0] - px, p[1] - py) < TOL;
-  };
-  const touchesAny = (ep: number[]): boolean => {
-    // Llegada a caja: exenta siempre (test a escala, sin depender de `_circ`).
-    if (puntoEnCaja(engine, ep, r.net)) return true;
-    for (const o of engine.ramales) {
-      if (o.id === r.id || !o.pts || o.pts.length < 2) continue;
-      const sameGroup =
-        o.net === r.net ||
-        ((o.net === 'san' || o.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
-      if (!sameGroup) continue;
-      if (
-        o.pts.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) ||
-        o.pts.some((_, i) => i < o.pts!.length - 1 && pointOnSeg(ep, o.pts![i], o.pts![i + 1]))
-      )
-        return true;
-    }
-    for (const b of engine.bajantes) {
-      if (b.net !== r.net || esCaja(b)) continue;
-      if (Math.hypot(b.x - ep[0], b.y - ep[1]) < 8 / (engine.zoom || 1)) return true;
-    }
-    return false;
-  };
-  const lastIdx = r.pts.length - 1;
-  const startConnects = r.pts.length >= 2 && touchesAny(r.pts[0]);
-  const endConnects = r.pts.length >= 2 && touchesAny(r.pts[lastIdx]);
-  let ptsToCheck: number[][] = r.pts;
-  if (startConnects && endConnects) ptsToCheck = r.pts.slice(1, lastIdx);
-  else if (endConnects) ptsToCheck = r.pts.slice(0, lastIdx);
-  else if (startConnects) ptsToCheck = r.pts.slice(1);
-  if (ptsToCheck.length < 2) return true;
-  return checkRamalAngles(ptsToCheck, r.net, r.tipo, engine.snapMode);
-}
-
-/** Todos los tributarios con extremo en `ep` (mismo grupo de red) adoptan `trunkId` como padre
- *  y etiqueta T{n}{labelDelTronco} (orig. usuario: 3 tributarios llegando a RS2, solo uno con
- *  RS2 en su etiqueta — los trib-trib intermedios arrastraban el padre equivocado). */
-function normalizeTribPadresAt(
-  engine: IPlanoEngineCore,
-  ep: number[],
-  trunkId: string,
-  sameNetGroup: (a: string, b: string) => boolean,
-  TOL: number,
-): void {
-  const trunk = engine.ramales.find((r) => r.id === trunkId);
-  if (!trunk) return;
-  const trunkLbl = trunk.label || trunk.id;
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario' || !r.pts?.length) continue;
-    if (!sameNetGroup(r.net, trunk.net)) continue;
-    if (!r.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) continue;
-    r.padre = trunkId;
-    const root = rootTributarioLabel(engine.ramales, trunkId) || trunkLbl;
-    if (!r.label || !r.label.endsWith(root)) {
-      r.label = `T${allocTributaryNumber(engine, root)}${root}`;
-    }
-    relabelTribChain(engine.ramales, r.id, (suffix) => allocTributaryNumber(engine, suffix));
-  }
-}
-
-// Auto-sanado de dibujos viejos: el label T{n}RS2 es la señal visible para el usuario — si el
-// `padre` persistido apunta a OTRA raíz (RS1, stale de antes de estas reglas), se confía en el
-// label y se re-ancla el padre al ramal raíz que nombra. Sin esto, la regla "todos comparten el
-// padre del primer tributario" copiaba el padre podrido a toda la unión nueva.
-function healedPadreId(
-  ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
-  tribId: string,
-): string | null {
-  const r = ramales.find((x) => x.id === tribId);
-  if (!r || r.tipo !== 'tributario') return null;
-  const m = /^T\d+(.+)$/.exec(r.label || '');
-  if (!m) return r.padre;
-  const rootLbl = m[1];
-  const root = ramales.find(
-    (x) => x.tipo !== 'tributario' && (x.label === rootLbl || x.id === rootLbl),
-  );
-  if (!root) return r.padre;
-  // ¿El padre actual ya resuelve a esa misma raíz? Nada que sanear.
-  let cur: string | null = r.padre;
-  let guard = 0;
-  while (cur && guard++ < 20) {
-    const p = ramales.find((x) => x.id === cur);
-    if (!p) break;
-    if (p.tipo !== 'tributario') return p.id === root.id ? r.padre : root.id;
-    cur = p.padre;
-  }
-  return root.id;
-}
-
-// Regla del usuario (trib-trib): TODOS los tributarios que tocan el punto de unión comparten
-// el padre del primer tributario (el existing) — incluido el tramo autocreado por el split
-// (downstream) y las cadenas de cada uno, que se re-etiquetan con esa raíz. Cubre cualquier
-// dirección de la unión y cualquier estado legacy de los padres previos.
-function normalizeTribPadresAtPoint(
-  engine: IPlanoEngineCore,
-  ep: number[],
-  targetPadreId: string,
-  net: string,
-  sameNetGroup: (a: string, b: string) => boolean,
-  TOL: number,
-): void {
-  if (!targetPadreId) return;
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario' || !r.pts?.length) continue;
-    if (!sameNetGroup(r.net, net)) continue;
-    if (!r.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) continue;
-    // SIN guard de "padre ya correcto": aunque el padre no cambie, el LABEL puede estar stale
-    // (T2RS1 con padre RS2) — relabelTribChain re-etiqueta a la raíz de la cadena.
-    r.padre = targetPadreId;
-    relabelTribChain(engine.ramales, r.id, (suffix) => allocTributaryNumber(engine, suffix));
-  }
-}
-
-// Sanado GLOBAL de padres (corre en cada _markDirty). Dos pasadas conservadoras:
-//   1) cadena rota (padre null o id inexistente) → se ancla a la raíz que nombra el label;
-//   2) piezas autocreadas (mergesFrom) heredan el padre del upstream que continúan y su label
-//      se alinea a esa raíz.
-// Deliberadamente NO hay una pasada "el padre manda" ni árbitro geométrico: en piezas legacy el
-// padre puede estar stale y el label es la única pista (re-etiquetar por padre las destruía en
-// cascada — T1RS2 → T1RS1 —, y el punto de unión es ambiguo geométricamente: toca ambos troncos).
-// El label stale de un entrante se corrige en su propia unión (normalize sin guard + línea 395).
-export function healTribPadres(engine: IPlanoEngineCore): void {
-  // 1) Cadenas rotas: el label sugiere la raíz correcta.
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
-    if (r.padre != null && engine.ramales.some((x) => x.id === r.padre)) continue;
-    const m = /^T\d+(.+)$/.exec(r.label || '');
-    const root =
-      m &&
-      engine.ramales.find((x) => x.tipo !== 'tributario' && (x.label === m[1] || x.id === m[1]));
-    if (root) r.padre = root.id;
-  }
-  // 1b) Piezas de LÍNEA GUÍA (_sinAccMedInterior): sus dobleces no llevan glifos — limpia
-  // accMed persistido por versiones anteriores al flag.
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario') continue;
-    if (!(r as unknown as { _sinAccMedInterior?: boolean })._sinAccMedInterior) continue;
-    if (r.accMed && Object.keys(r.accMed).length > 0) r.accMed = {};
-  }
-  // 2) Autocreados (mergesFrom): heredan el padre del upstream que continúan y su label se
-  //    alinea a esa raíz.
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
-    const mf = (r as unknown as { mergesFrom?: string[] }).mergesFrom;
-    if (!mf || !mf.length) continue;
-    const upstream = engine.ramales.find((x) => x.id === mf[0]);
-    if (!upstream || upstream.tipo !== 'tributario') continue;
-    const upRoot = rootTributarioLabel(engine.ramales, upstream.id);
-    if (!upRoot) continue;
-    if (r.padre !== upstream.padre) r.padre = upstream.padre;
-    const rootLbl = rootTributarioLabel(engine.ramales, r.id);
-    if (rootLbl && !(r.label || '').endsWith(rootLbl)) {
-      r.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
-    }
-  }
-  // 3) Cadena INTACTA manda sobre el label: un tributario cuyo padre sube limpio a un tronco
-  //    se re-etiqueta con la raíz de esa cadena y el consecutivo siguiente (T1RS1 con padre
-  //    RS2 → T3RS2, pedido usuario). Las piezas con cadena rota ya fueron ancladas en (1).
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
-    const rootLbl = rootTributarioLabel(engine.ramales, r.id);
-    if (rootLbl && !(r.label || '').endsWith(rootLbl)) {
-      r.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
-    }
-  }
-  // 4) Renumerar SIN HUECOS (pedido usuario: "se está saltando la etiqueta de T2RS#"): los
-  //    relabels intermedios queman consecutivos. Por raíz, ordenar por el número actual del
-  //    label y reasignar T1..Tn seguidos. Idempotente: con la serie ya seguida no cambia nada.
-  const groups = new Map<string, Array<{ r: PlanoRamal; n: number }>>();
-  for (const r of engine.ramales) {
-    if (r.tipo !== 'tributario' || !r.pts || r.pts.length < 2) continue;
-    const rootLbl = rootTributarioLabel(engine.ramales, r.id);
-    if (!rootLbl) continue;
-    const m = /^T(\d+)/.exec(r.label || '');
-    const arr = groups.get(rootLbl) || [];
-    arr.push({ r, n: m ? parseInt(m[1], 10) : 9999 });
-    groups.set(rootLbl, arr);
-  }
-  for (const [rootLbl, arr] of groups) {
-    if (arr.length <= 1) continue;
-    arr.sort((x, y) => x.n - y.n);
-    arr.forEach((item, i) => {
-      const want = `T${i + 1}${rootLbl}`;
-      if (item.r.label !== want) item.r.label = want;
-    });
-  }
-}
+export { puntoEnCaja, checkRamalAnglesExcludingConnections } from './ramalAngleChecks';
+export {
+  normalizeTribPadresAt,
+  healedPadreId,
+  normalizeTribPadresAtPoint,
+} from './tribPadreNormalize';
+export { healTribPadres } from './healTribPadres';
