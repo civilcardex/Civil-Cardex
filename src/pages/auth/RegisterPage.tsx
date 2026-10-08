@@ -25,6 +25,15 @@ const REGISTER_JSONLD = {
   url: 'https://civilcardex.com/register',
 };
 
+// Política "recommended" de Supabase (minúscula/mayúscula/dígito/símbolo): sin una de
+// cada la BD la rechaza como débil. Mismo orden en el checklist visual del formulario.
+const REGLAS_PWD: { rx: RegExp; label: string }[] = [
+  { rx: /[a-z]/, label: 'Letra minúscula' },
+  { rx: /[A-Z]/, label: 'Letra mayúscula' },
+  { rx: /\d/, label: 'Número' },
+  { rx: /[^A-Za-z0-9]/, label: 'Símbolo' },
+];
+
 function RegisterPage() {
   const [form, setForm] = useState({
     nombre: '',
@@ -51,6 +60,16 @@ function RegisterPage() {
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [field]: e.target.value });
 
+  // Estado de cada regla sobre la contraseña tecleada (re-cálculo barato por render).
+  const MIN_PWD = 8;
+  const pwdCumple = REGLAS_PWD.map((r) => r.rx.test(form.password));
+  const pwdCoinciden = form.confirm.length > 0 && form.password === form.confirm;
+  const checksPwd = [
+    ...REGLAS_PWD.map((r, i) => ({ ok: pwdCumple[i]!, label: r.label })),
+    { ok: form.password.length >= MIN_PWD, label: `Mínimo ${MIN_PWD} caracteres` },
+    { ok: pwdCoinciden, label: 'Contraseñas coinciden' },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -63,8 +82,13 @@ function RegisterPage() {
       setError('Las contraseñas no coinciden');
       return;
     }
-    if (form.password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    if (form.password.length < MIN_PWD) {
+      setError(`La contraseña debe tener al menos ${MIN_PWD} caracteres`);
+      return;
+    }
+    const faltantes = REGLAS_PWD.filter((_, i) => !pwdCumple[i]).map((r) => r.label.toLowerCase());
+    if (faltantes.length > 0) {
+      setError(`La contraseña debe incluir: ${faltantes.join(', ')}`);
       return;
     }
 
@@ -200,7 +224,7 @@ function RegisterPage() {
                       onChange={handleChange('password')}
                       autoComplete="new-password"
                       required
-                      minLength={6}
+                      minLength={MIN_PWD}
                     />
                     <button
                       type="button"
@@ -220,12 +244,12 @@ function RegisterPage() {
                   </div>
                   <div style={{ position: 'relative' }}>
                     <FormField
-                      label="CONFIRMAR"
+                      label="CONFIRMAR CONTRASEÑA"
                       type={showConfirm ? 'text' : 'password'}
                       value={form.confirm}
                       onChange={handleChange('confirm')}
                       required
-                      minLength={6}
+                      minLength={MIN_PWD}
                     />
                     <button
                       type="button"
@@ -243,6 +267,24 @@ function RegisterPage() {
                       {showConfirm ? '⬡' : '👁'}
                     </button>
                   </div>
+                </div>
+
+                {/* Checklist en vivo de la política de contraseñas: cada regla se pinta
+                    verde al cumplirse mientras el usuario teclea. */}
+                <div
+                  className="grid grid-cols-2 gap-x-3 gap-y-1"
+                  style={{ gridColumn: '1 / -1', marginTop: 2 }}
+                  aria-live="polite"
+                >
+                  {checksPwd.map((c) => (
+                    <span
+                      key={c.label}
+                      className="text-[11px] leading-tight flex items-center gap-1"
+                      style={{ color: c.ok ? '#2ff801' : '#5f7482' }}
+                    >
+                      {c.ok ? '✓' : '○'} {c.label}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="flex items-start gap-2 pt-1">
