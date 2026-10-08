@@ -84,6 +84,7 @@ export {
   handleDrawingMouseMove,
   handleDoubleClick,
 } from './lineTool';
+export type { ToolType } from './lineTool';
 
 export {
   snapGuidePoint,

@@ -163,16 +163,8 @@ export const MENU_ACTION_BTN_STYLE: React.CSSProperties = {
   textAlign: 'center',
   fontWeight: 600,
 };
-export const MENU_CHECK_ROW_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  cursor: 'pointer',
-  fontSize: 12,
-  color: '#b9caca',
-  fontFamily: "'Geist',monospace",
-  minWidth: 0,
-};
+// ponytail: mismo estilo de fila-checkbox que tramoEditor — una sola definición.
+export { CHECK_ROW_STYLE as MENU_CHECK_ROW_STYLE } from '../tramoEditor/context';
 export const MENU_PANEL_STYLE: React.CSSProperties = {
   position: 'absolute',
   zIndex: 101,

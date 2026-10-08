@@ -1,3 +1,4 @@
+import { sameNetGroup } from './drawingAngles';
 import type { IPlanoEngineCore, PlanoElement, PlanoRamal } from './PlanoState';
 import { isBajante, isRamal, isDimension, ensureActiveNet } from './PlanoState';
 import {
@@ -9,10 +10,6 @@ import {
 } from './HitTester';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 import { _captureBajDragBackup } from './mouseDownHits';
-
-function sameNetGroup(a: string, b: string): boolean {
-  return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
-}
 
 // BFS sobre extremos compartidos, transitivo — partiendo del ramal que se arrastra, encuentra
 // todo ramal alcanzable por una cadena de extremos que se tocan (o tributario-de-un-ramal-

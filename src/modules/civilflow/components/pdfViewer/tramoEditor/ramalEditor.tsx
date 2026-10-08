@@ -20,6 +20,7 @@ import {
   ramalHasCodoReventilado,
 } from './context';
 import { CaudalField } from './caudalField';
+import { sanitizarInputDecimal } from '../../../utils/parseDecimal';
 
 /** Editor del ramal seleccionado: material, diámetro, pendiente, desnivel vertical y número
  *  de descargas en simultáneo. */
@@ -447,7 +448,7 @@ export function RamalEditor({
                 value={pendInput}
                 aria-label="Pendiente (%)"
                 onChange={(e) => {
-                  const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+                  const raw = sanitizarInputDecimal(e.target.value);
                   setPendInput(raw);
                 }}
                 onKeyDown={(e) => {

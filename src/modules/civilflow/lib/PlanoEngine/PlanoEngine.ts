@@ -66,6 +66,8 @@ import {
   setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing';
+import type { ToolType } from './PlanoEngineDrawing';
+export type { ToolType };
 import {
   snapAngle as snapAngleLib,
   toCvs as toCvsLib,
@@ -120,24 +122,6 @@ import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitT
 
 export { NETS };
 
-export type ToolType =
-  | 'sel'
-  | 'line'
-  | 'dim'
-  | 'text'
-  | 'baj'
-  | 'mon'
-  | 'pan'
-  | 'area'
-  | 'erase'
-  | 'segdel'
-  | 'delm'
-  | 'red_pub'
-  | 'cont'
-  | 'calent'
-  | 'canal'
-  | 'caja'
-  | 'guide';
 export type TramoType = 'ramal' | 'tributario';
 
 interface Point {

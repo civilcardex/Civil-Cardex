@@ -11,6 +11,7 @@ import {
   moverAsociacionCanal,
   normalizarCanal,
 } from '../../../lib/PlanoEngine/canalAssociation';
+import { sanitizarInputDecimal } from '../../../utils/parseDecimal';
 
 export function AreaMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -97,7 +98,7 @@ function CanalDimInput({
         setText(display);
       }}
       onChange={(e) => {
-        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        const raw = sanitizarInputDecimal(e.target.value);
         setText(raw);
       }}
       onKeyDown={(e) => {

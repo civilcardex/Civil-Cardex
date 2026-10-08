@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore } from './PlanoState';
-import { rotatedRectCorners } from './HitTester';
+import { pointInPoly, rotatedRectCorners } from './HitTester';
 
 // Auto-orden de etiquetas: separa las etiquetas de ramal que nunca se movieron a mano
 // cuando sus cajas colisionan entre sí o con trazos. Las etiquetas manuales (labelMoved)
@@ -120,18 +120,6 @@ function boxFree(
     }
   }
   return true;
-}
-
-function pointInPoly(x: number, y: number, poly: Array<{ x: number; y: number }>): boolean {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const xi = poly[i]!.x;
-    const yi = poly[i]!.y;
-    const xj = poly[j]!.x;
-    const yj = poly[j]!.y;
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
 }
 
 function segIntersectsSeg(

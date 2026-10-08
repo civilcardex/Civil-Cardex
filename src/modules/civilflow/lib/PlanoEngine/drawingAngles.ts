@@ -4,7 +4,7 @@ import type { IPlanoEngineCore } from './PlanoState';
 // Sanitaria y ventilación comparten uniones como una sola subred — el mismo helper que usa el
 // arrastre en cascada, elevado aquí para que todo camino de detección pueda revisar contra
 // ambas al buscar si un accesorio ya quedó resuelto.
-function sameNetGroup(a: string, b: string): boolean {
+export function sameNetGroup(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
