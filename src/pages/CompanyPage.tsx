@@ -59,22 +59,30 @@ const BTN_FANTASMA: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Exportado solo para el preview de desarrollo (/empresa-preview), que pasa soloLectura
- *  para NO disparar RPCs reales de escritura (asignar_puesto tocaría datos de verdad). */
+/** Exportado solo para el preview de desarrollo (/empresa-preview), que pasa mock (miembros
+ *  falsos, sin RPCs) + soloLectura para NO disparar RPCs reales (asignar_puesto tocaría
+ *  datos de verdad). */
 export function PanelSuscripcion({
   sus,
   soloLectura = false,
+  mock,
 }: {
   sus: SuscripcionRow;
   soloLectura?: boolean;
+  mock?: { miembros: Miembro[] };
 }) {
-  const [miembros, setMiembros] = useState<Miembro[] | null>(null);
+  const [miembros, setMiembros] = useState<Miembro[] | null>(mock?.miembros ?? null);
   const [email, setEmail] = useState('');
   const [aviso, setAviso] = useState('');
   const [avisoOk, setAvisoOk] = useState(false);
   const [ocupado, setOcupado] = useState(false);
 
   const refetch = useCallback(async () => {
+    // Mock del preview: corta antes de tocar Supabase.
+    if (mock) {
+      setMiembros(mock.miembros);
+      return;
+    }
     const { data, error } = await supabase.rpc('mis_miembros', { p_suscripcion_id: sus.id });
     if (error) {
       devError('mis_miembros:', error.message);
@@ -82,11 +90,12 @@ export function PanelSuscripcion({
       return;
     }
     setMiembros(((data as Miembro[]) ?? []) as Miembro[]);
-  }, [sus.id]);
+  }, [sus.id, mock]);
 
   // Carga inicial con bandera ignore (patrón ProfilePage) — evita setState síncrono
   // en el effect (react-hooks/set-state-in-effect).
   useEffect(() => {
+    if (mock) return; // el estado ya nace con los miembros falsos (ver useState de abajo)
     let ignore = false;
     async function cargar() {
       const { data, error } = await supabase.rpc('mis_miembros', { p_suscripcion_id: sus.id });
@@ -102,7 +111,7 @@ export function PanelSuscripcion({
     return () => {
       ignore = true;
     };
-  }, [sus.id]);
+  }, [sus.id, mock]);
 
   async function asignar() {
     const correo = email.trim();
@@ -128,6 +137,7 @@ export function PanelSuscripcion({
   }
 
   async function quitar(userId: string) {
+    if (mock) return; // preview: sin RPC real
     const { error } = await supabase.rpc('quitar_puesto', {
       p_suscripcion_id: sus.id,
       p_user_id: userId,
@@ -141,6 +151,7 @@ export function PanelSuscripcion({
   }
 
   async function toggleEditar(m: Miembro) {
+    if (mock) return; // preview: sin RPC real
     const { error } = await supabase.rpc('cambiar_permiso_miembro', {
       p_suscripcion_id: sus.id,
       p_user_id: m.user_id,
@@ -253,13 +264,20 @@ export function PanelSuscripcion({
                       type="checkbox"
                       checked={m.puede_editar}
                       onChange={() => void toggleEditar(m)}
+                      disabled={soloLectura}
                       aria-label={`Puede editar — ${m.email}`}
                     />
                     {m.puede_editar ? 'Editor' : 'Solo lectura'}
                   </label>
                 </td>
                 <td style={{ padding: '8px', textAlign: 'right' }}>
-                  <button type="button" onClick={() => void quitar(m.user_id)} style={BTN_FANTASMA}>
+                  <button
+                    type="button"
+                    onClick={() => void quitar(m.user_id)}
+                    disabled={soloLectura}
+                    title={soloLectura ? 'Solo lectura — preview' : undefined}
+                    style={BTN_FANTASMA}
+                  >
                     Quitar
                   </button>
                 </td>

@@ -1,53 +1,23 @@
 /**
  * SOLO DESARROLLO — preview de /empresa con datos falsos (borrar con el route).
- * Renderiza PanelSuscripcion con dos suscripciones mock y mockea la RPC
- * mis_miembros SOLO mientras el preview está montado (cleanup restaura el rpc real).
+ * Renderiza PanelSuscripcion con dos suscripciones mock y los miembros viajan por el
+ * prop `mock` (sin tocar Supabase: ni mis_miembros ni RPCs de escritura).
  */
-import { useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PanelSuscripcion } from './CompanyPage';
 import type { SuscripcionRow } from '../lib/subscriptions/subscriptionsService';
 
-// Mock local de mis_miembros: el objeto de supabase es module-scoped en su propio
-// módulo, así que parcheamos la lectura SOLO durante el montaje del preview
-// (parche module-scope persistía tras desmontar y envenenaba /empresa real).
-type RpcArgs = { p_suscripcion_id: number };
-const MIEMBROS_FALSOS: Record<
-  number,
-  { user_id: string; email: string; puede_editar: boolean; asignado_en: string }[]
-> = {
-  1: [
-    {
-      user_id: 'u1',
-      email: 'ana@constructora.com',
-      puede_editar: true,
-      asignado_en: new Date().toISOString(),
-    },
-    {
-      user_id: 'u2',
-      email: 'luis@constructora.com',
-      puede_editar: false,
-      asignado_en: new Date().toISOString(),
-    },
-    {
-      user_id: 'u3',
-      email: 'maria@constructora.com',
-      puede_editar: true,
-      asignado_en: new Date().toISOString(),
-    },
-  ],
-  2: [
-    {
-      user_id: 'u4',
-      email: 'jefe@obra.com',
-      puede_editar: true,
-      asignado_en: new Date().toISOString(),
-    },
-  ],
-};
+const MIEMBROS_FLOW = [
+  { user_id: 'u1', email: 'ana@constructora.com', puede_editar: true, asignado_en: '' },
+  { user_id: 'u2', email: 'luis@constructora.com', puede_editar: false, asignado_en: '' },
+  { user_id: 'u3', email: 'maria@constructora.com', puede_editar: true, asignado_en: '' },
+];
 
-const SUS_FALSAS: SuscripcionRow[] = [
+const MIEMBROS_MANAGE = [
+  { user_id: 'u4', email: 'jefe@obra.com', puede_editar: true, asignado_en: '' },
+];
+
+const SUS_FALSAS: (SuscripcionRow & { mock: { miembros: typeof MIEMBROS_FLOW } })[] = [
   {
     id: 1,
     modulo: 'flow',
@@ -56,6 +26,7 @@ const SUS_FALSAS: SuscripcionRow[] = [
     fecha_fin: new Date(Date.now() + 86400000 * 300).toISOString(),
     puestos: 5,
     user_id: 'yo',
+    mock: { miembros: MIEMBROS_FLOW },
   },
   {
     id: 2,
@@ -65,32 +36,12 @@ const SUS_FALSAS: SuscripcionRow[] = [
     fecha_fin: new Date(Date.now() + 86400000 * 120).toISOString(),
     puestos: 2,
     user_id: 'yo',
+    mock: { miembros: MIEMBROS_MANAGE },
   },
 ];
 
 export default function CompanyPreviewPage() {
   usePageMeta('Equipo (preview)', 'Preview de la página de empresa con datos de prueba.');
-  // Parche con restauración: captura el rpc original al montar y lo devuelve al
-  // desmontar — compatible con StrictMode (monta/desmonta/monta) porque cada
-  // ciclo re-captura el valor ya restaurado.
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supa = supabase as any;
-    const rpcOriginal: unknown = supa.rpc;
-    supa.rpc = (fn: string, args?: RpcArgs) => {
-      if (fn === 'mis_miembros') {
-        return Promise.resolve({
-          data: MIEMBROS_FALSOS[args?.p_suscripcion_id ?? 0] ?? [],
-          error: null,
-        });
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return (rpcOriginal as any).call(supabase, fn, args);
-    };
-    return () => {
-      supa.rpc = rpcOriginal;
-    };
-  }, []);
   return (
     <div className="container mx-auto px-6 py-10" style={{ maxWidth: 860 }}>
       <div
@@ -111,8 +62,8 @@ export default function CompanyPreviewPage() {
         registrada) y define quién puede editar los proyectos de la empresa.
       </p>
       <div style={{ display: 'grid', gap: 16 }}>
-        {SUS_FALSAS.map((sus) => (
-          <PanelSuscripcion key={sus.id} sus={sus} soloLectura />
+        {SUS_FALSAS.map(({ mock, ...sus }) => (
+          <PanelSuscripcion key={sus.id} sus={sus} soloLectura mock={mock} />
         ))}
       </div>
     </div>
