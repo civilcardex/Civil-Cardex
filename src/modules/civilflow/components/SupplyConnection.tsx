@@ -17,6 +17,92 @@ import {
   LazyNum,
 } from './supplyConnectionParts';
 
+/** Fila simple de parámetro editable: etiqueta + LazyNum + unidad (mca/m). */
+function FilaParamNum(props: {
+  label: string;
+  ariaLabel: string;
+  value: number;
+  onChange: (v: number) => void;
+  unidad: string;
+  width?: number;
+}) {
+  const { label, ariaLabel, value, onChange, unidad, width = 60 } = props;
+  return (
+    <tr>
+      <td style={{ fontWeight: 600, padding: '3px 4px', textAlign: 'left' }}>{label}</td>
+      <td style={{ textAlign: 'right', padding: '2px 4px' }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            justifyContent: 'flex-end',
+            width: '100%',
+          }}
+        >
+          <LazyNum
+            ariaLabel={ariaLabel}
+            value={value}
+            onChange={onChange}
+            className="ni"
+            style={{
+              width: `${width}px`,
+              textAlign: 'center',
+              fontSize: 12,
+              fontWeight: 700,
+              padding: '2px 4px',
+            }}
+          />
+          <span style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
+            {unidad}
+          </span>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+/** Contenido comparativo (dentro de la celda): valor calculado vs cota editable (≤/≥). */
+function FilaComparativaInline(props: {
+  valor: number;
+  cumple: boolean;
+  op: string;
+  ariaLabel: string;
+  value: number;
+  onChange: (v: number) => void;
+  unidad: string;
+}) {
+  const { valor, cumple, op, ariaLabel, value, onChange, unidad } = props;
+  return (
+    <>
+      <span
+        style={{
+          fontFamily: 'var(--mono)',
+          fontWeight: 700,
+          color: cumple ? 'var(--succ)' : 'var(--err)',
+        }}
+      >
+        {fmt(valor)}
+      </span>
+      <span style={{ fontSize: 12, color: 'var(--txt3)' }}>{op}</span>
+      <LazyNum
+        ariaLabel={ariaLabel}
+        value={value}
+        onChange={onChange}
+        className="ni"
+        style={{
+          width: '44px',
+          textAlign: 'center',
+          fontSize: 12,
+          fontWeight: 700,
+          padding: '2px',
+        }}
+      />
+      <span style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>{unidad}</span>
+    </>
+  );
+}
+
 function Acometida({
   Qaco,
   contadorSel,
@@ -33,6 +119,10 @@ function Acometida({
   setAcoPini,
   acoHfMax,
   setAcoHfMax,
+  acoPResMin,
+  setAcoPResMin,
+  acoLeMed,
+  setAcoLeMed,
   cHW1,
   cHW2,
   f1,
@@ -446,7 +536,7 @@ function Acometida({
                   </td>
                 </tr>
                 <tr>
-                  <td style={TD_PARAM_LABEL}>Pérdidas por fricción (%)</td>
+                  <td style={TD_PARAM_LABEL}>Pérdidas por fricción (‰)</td>
                   <td className="c" style={TD_PARAM_VALUE}>
                     {fmt(f1.hfPct)}
                   </td>
@@ -582,41 +672,13 @@ function Acometida({
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td style={{ fontWeight: 600, padding: '3px 4px', textAlign: 'left' }}>
-                    AC-01 Presión Inicial
-                  </td>
-                  <td style={{ textAlign: 'right', padding: '2px 4px' }}>
-                    <div
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        justifyContent: 'flex-end',
-                        width: '100%',
-                      }}
-                    >
-                      <LazyNum
-                        ariaLabel="AC-01 Presión Inicial"
-                        value={acoPini}
-                        onChange={(v: number) => setAcoPini(v)}
-                        className="ni"
-                        style={{
-                          width: '60px',
-                          textAlign: 'center',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: '2px 4px',
-                        }}
-                      />
-                      <span
-                        style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}
-                      >
-                        mca
-                      </span>
-                    </div>
-                  </td>
-                </tr>
+                <FilaParamNum
+                  label="AC-01 Presión Inicial"
+                  ariaLabel="AC-01 Presión Inicial"
+                  value={acoPini}
+                  onChange={(v: number) => setAcoPini(v)}
+                  unidad="mca"
+                />
                 <tr>
                   <td style={{ fontWeight: 600, padding: '3px 4px', textAlign: 'left' }}>
                     AC-01 Presión Final
@@ -679,34 +741,15 @@ function Acometida({
                         width: '100%',
                       }}
                     >
-                      <span
-                        style={{
-                          fontFamily: 'var(--mono)',
-                          fontWeight: 700,
-                          color: hfContador <= acoHfMax ? 'var(--succ)' : 'var(--err)',
-                        }}
-                      >
-                        {fmt(hfContador)}
-                      </span>
-                      <span style={{ fontSize: 12, color: 'var(--txt3)' }}>&le;</span>
-                      <LazyNum
+                      <FilaComparativaInline
+                        valor={hfContador}
+                        cumple={hfContador <= acoHfMax}
+                        op="≤"
                         ariaLabel="Hf max permitida contador"
                         value={acoHfMax}
                         onChange={(v: number) => setAcoHfMax(v)}
-                        className="ni"
-                        style={{
-                          width: '44px',
-                          textAlign: 'center',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: '2px',
-                        }}
+                        unidad="mca"
                       />
-                      <span
-                        style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}
-                      >
-                        mca
-                      </span>
                     </div>
                   </td>
                 </tr>
@@ -748,6 +791,14 @@ function Acometida({
                   </td>
                 </tr>
 
+                <FilaParamNum
+                  label="Le del medidor (AC-01)"
+                  ariaLabel="Longitud equivalente del medidor"
+                  value={acoLeMed}
+                  onChange={(v: number) => setAcoLeMed(v)}
+                  unidad="m"
+                />
+
                 <tr>
                   <td style={{ fontWeight: 600, padding: '3px 4px', textAlign: 'left' }}>
                     Presión residual final
@@ -762,6 +813,32 @@ function Acometida({
                     }}
                   >
                     {fmt(pResidual)} <span style={{ fontSize: 9, color: 'var(--txt3)' }}>mca</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600, padding: '3px 4px', textAlign: 'left' }}>
+                    Presión residual &ge; Mínima
+                  </td>
+                  <td style={{ textAlign: 'right', padding: '2px 4px' }}>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        justifyContent: 'flex-end',
+                        width: '100%',
+                      }}
+                    >
+                      <FilaComparativaInline
+                        valor={pResidual}
+                        cumple={pResidual >= acoPResMin}
+                        op="≥"
+                        ariaLabel="Presión residual mínima"
+                        value={acoPResMin}
+                        onChange={(v: number) => setAcoPResMin(v)}
+                        unidad="mca"
+                      />
+                    </div>
                   </td>
                 </tr>
                 <tr>

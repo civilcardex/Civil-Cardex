@@ -14,6 +14,7 @@ import {
 } from '../utils/writeDiameterToDrawing';
 
 import { isAf, isAC1 } from '../utils/waterNetworkRows';
+import { chequeoPresionAparato } from '../utils/waterRowsShared';
 import { fracAscii } from '../utils/formatUtils';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
@@ -190,6 +191,8 @@ function WaterNetworkDesign({
   const [acoPini, setAcoPini] = useState(20.0);
   const [acoLeMed, setAcoLeMed] = useState(0);
   const [acoHfMax, setAcoHfMax] = useState(5.0);
+  // Presión residual mínima exigida al final de la acometida (montante) — NTC 1500.
+  const [acoPResMin, setAcoPResMin] = useState(3.0);
 
   const handleContDiamChange = React.useCallback(
     (dNom: string) => {
@@ -233,18 +236,9 @@ function WaterNetworkDesign({
   const Qaco = useMemo(() => {
     if (tr2) {
       const ownKey = tr2._key || tr2.id;
-      const total = componentTotalMap[ownKey] || 0;
-      const nDesc = tr2.nSalidas || 0;
-      const K =
-        nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-      if (total > 0 && K > 0) {
-        return (
-          Math.round(
-            K *
-              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
-              1000,
-          ) / 1000
-        );
+      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
+      if (qTr2 > 0) {
+        return qTr2;
       }
     }
     return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
@@ -277,8 +271,8 @@ function WaterNetworkDesign({
     Qaco > 0 && contadorSel.q > 0
       ? Math.round(10 * Math.pow(Qaco / contadorSel.q, 2) * 100) / 100
       : 0;
-  const pResidual = +(f1.Pfin - f2.Pfin).toFixed(2);
-  const okPresion = f1.Pfin > f2.Pfin;
+  const pResidual = f2.Pfin;
+  const okPresion = f2.Pfin >= acoPResMin;
 
   // AC no tiene acometida propia — se alimenta del calentador de agua, que a su vez se alimenta
   // de AF. Leer la presión resuelta de AF en ese nodo calentador compartido (persistida abajo)
@@ -367,6 +361,20 @@ function WaterNetworkDesign({
       const velCumple = c.Vmms > 0 ? c.Vmms >= 500 && c.Vmms <= 2500 : true;
       if (t.velCumple !== velCumple) updTramo(ownKey, 'velCumple', velCumple);
       if (isAf(networkType) && t.presionOk !== okPresion) updTramo(ownKey, 'presionOk', okPresion);
+      if (!isAf(networkType)) {
+        // AC: presionOk = chequeo de presión del aparato conectado (sin aparato o sin
+        // presión resuelta → chequeo vacío → true, no penaliza la insignia).
+        const resuelto = pressureByKey[ownKey];
+        // Mismo fallback que DesignTableRow (pRed, no 0): una sola semántica de chequeo.
+        const chkP = chequeoPresionAparato(
+          t.ini,
+          t.fin,
+          resuelto?.Pin ?? pRed,
+          resuelto?.Pfin ?? pRed,
+        );
+        const presionOk = chkP !== 'NO';
+        if (t.presionOk !== presionOk) updTramo(ownKey, 'presionOk', presionOk);
+      }
       if (t.qLps !== Qprob) updTramo(ownKey, 'qLps', Qprob);
     }
   }, [
@@ -380,7 +388,9 @@ function WaterNetworkDesign({
     lookupFn,
     okPresion,
     networkType,
+    pressureByKey,
     updTramo,
+    pRed,
   ]);
 
   const acometidaEl = isAf(networkType) && !hideAcometida && (
@@ -403,6 +413,8 @@ function WaterNetworkDesign({
       setAcoLeMed={setAcoLeMed}
       acoHfMax={acoHfMax}
       setAcoHfMax={setAcoHfMax}
+      acoPResMin={acoPResMin}
+      setAcoPResMin={setAcoPResMin}
       f1={f1}
       f2={f2}
       hfContador={hfContador}
@@ -459,7 +471,7 @@ function WaterNetworkDesign({
                   {tramosOrden.length === 0 && (
                     <tr>
                       <td
-                        colSpan={22}
+                        colSpan={23}
                         style={{
                           padding: '24px 0',
                           textAlign: 'center',

@@ -1,4 +1,5 @@
 import type { Tramo } from '../context/tramosReducer';
+import { hunterQ } from '../components/waterNetworkDesign/rowPhysics';
 import type { PlanItem } from '../context/PlansContext';
 import { AF_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
 import { calcUCparcial } from './componentHelpers';
@@ -267,18 +268,9 @@ export function computeAcometidaSummary(
   const Qaco = (() => {
     if (tr2) {
       const ownKey = tr2._key || tr2.id;
-      const total = componentTotalMap[ownKey] || 0;
-      const nDesc = tr2.nSalidas || 0;
-      const K =
-        nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-      if (total > 0 && K > 0) {
-        return (
-          Math.round(
-            K *
-              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
-              1000,
-          ) / 1000
-        );
+      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
+      if (qTr2 > 0) {
+        return qTr2;
       }
     }
     return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
@@ -299,11 +291,14 @@ export function computeAcometidaSummary(
         ? Math.round(((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt)) * 10) / 10
         : 0;
     const Lt = (h || 0) + (v || 0) + (le || 0);
+    // Misma física que rowPhysics/acometidaCalc: hfPct en m/km → metros = ·Lt/1000, con guard.
     const hfPct =
-      Math.round(
-        ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
-      ) / 100;
-    const hfM = Math.round((hfPct / 100) * Lt * 100) / 100;
+      V > 0 && dInt > 0
+        ? Math.round(
+            ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
+          ) / 100
+        : 0;
+    const hfM = Lt > 0 && hfPct > 0 ? Math.round((hfPct / 1000) * Lt * 100) / 100 : 0;
     const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
     return { dInt, V, Lt, hfPct, hfM, Pfin };
   };
@@ -344,8 +339,10 @@ export function computeAcometidaSummary(
       ? Math.round(10 * Math.pow(Qaco / contadorSel.q, 2) * 100) / 100
       : 0;
   const acoHfMax = 5.0;
-  const pResidual = +(f1.Pfin - f2.Pfin).toFixed(2);
-  const okPresion = f1.Pfin > f2.Pfin;
+  // Presión residual real = la que queda al final de la acometida (montante); debe superar
+  // la mínima requerida (default 3 mca, NTC 1500 vía tables.tsx; editable en el panel vivo).
+  const pResidual = f2.Pfin;
+  const okPresion = pResidual >= 3;
 
   const diamPropuesto1 =
     DIAM_OPTS.find((o) => o.nominal === resolvedRedContDiam)?.label || resolvedRedContDiam || '';

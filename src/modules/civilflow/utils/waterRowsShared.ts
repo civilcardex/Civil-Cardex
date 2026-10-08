@@ -48,7 +48,38 @@ export const isAC2 = (t: Tramo) => {
 export const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax]),
 );
+/** Presión mínima por sigla de aparato (misma transformación que PMAX). */
+export const APARATO_PMIN_BY_CODE: Record<string, number> = Object.fromEntries(
+  APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmin]),
+);
 // Alias legacy: dibujos guardados antes de renombrar 'Hor:' → 'HorG:' conservan ini='HOR'.
 if (APARATO_PMAX_BY_CODE.HORG != null) APARATO_PMAX_BY_CODE.HOR = APARATO_PMAX_BY_CODE.HORG;
+if (APARATO_PMIN_BY_CODE.HORG != null) APARATO_PMIN_BY_CODE.HOR = APARATO_PMIN_BY_CODE.HORG;
+
+/** Chequeo de presión en el aparato conectado al tramo: la presión disponible en el extremo
+ *  donde vive el aparato (fin → Pfin, si no ini → Pin) debe caer entre pmin y pmax del
+ *  catálogo NTC 1500. Sin aparato conectado o sin presión resuelta → '' (sin chequeo). */
+export function chequeoPresionAparato(
+  ini: Tramo['ini'],
+  fin: Tramo['fin'],
+  Pin: number,
+  Pfin: number,
+): 'O.K.' | 'NO' | '' {
+  const chequeoEn = (code: string, p: number): 'O.K.' | 'NO' | '' => {
+    const pmin = APARATO_PMIN_BY_CODE[code];
+    const pmax = APARATO_PMAX_BY_CODE[code];
+    if (pmin == null || pmax == null || !(p > 0)) return '';
+    return p >= pmin && p <= pmax ? 'O.K.' : 'NO';
+  };
+  if (typeof fin === 'string' && fin) {
+    const r = chequeoEn(fin.trim().toUpperCase(), Pfin);
+    if (r) return r;
+  }
+  if (typeof ini === 'string' && ini) {
+    const r = chequeoEn(ini.trim().toUpperCase(), Pin);
+    if (r) return r;
+  }
+  return '';
+}
 /** Factor de pérdida de presión atribuible al calentador (0.9). */
 export const HEATER_LOSS_FACTOR = 0.9;

@@ -161,7 +161,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     });
   const okAF =
     tramosAf.length > 0 && tramosAf.every((t) => t.velCumple !== false && t.presionOk !== false);
-  const okAC = tramosAc.length > 0 && tramosAc.every((t) => t.velCumple !== false);
+  const okAC =
+    tramosAc.length > 0 && tramosAc.every((t) => t.velCumple !== false && t.presionOk !== false);
   const hasSan = redesActivas.some((r) => r.id === 'san');
   const hasLl = redesActivas.some((r) => r.id === 'll');
   const hasAf = redesActivas.some((r) => r.id === 'af');
@@ -652,7 +653,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         ['Diámetro interior', fmtAco(d.dInt1), fmtAco(d.dInt2), 'mm'],
         ['Velocidad', fmtAco(d.V1), fmtAco(d.V2), 'mm/s'],
         ['Longitud total', fmtAco(d.Lt1), fmtAco(d.Lt2), 'm'],
-        ['Pérdidas por fricción (%)', fmtAco(d.hfPct1), fmtAco(d.hfPct2), '%'],
+        ['Pérdidas por fricción (‰)', fmtAco(d.hfPct1), fmtAco(d.hfPct2), '‰'],
         ['Pérdidas por fricción (m)', fmtAco(d.hfM1), fmtAco(d.hfM2), 'mca'],
         ['Coeficiente C', String(d.cHW1), String(d.cHW2), '—'],
         ['Diámetro del contador', d.diamContador || '—', '', 'pulg'],
@@ -803,8 +804,14 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         'D int (mm)',
         'K',
         'Long (m)',
+        'Q consumo (m³/h)',
+        'F. altitud',
+        'F. temperatura',
+        'F. densidad rel.',
+        'Q diseño (m³/h)',
         'Le (m)',
         'ΔP (mbar)',
+        'ΔP acum (mbar)',
         'Vel (m/s)',
         'Pres. ini (mbar)',
         'Pres. fin (mbar)',
@@ -820,8 +827,14 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         r.dInt > 0 ? r.dInt.toFixed(2) : '—',
         r.K > 0 ? String(r.K) : '—',
         r.longitud > 0 ? r.longitud.toFixed(2) : '—',
+        r.qConsumo.toFixed(2),
+        r.fAlt.toFixed(2),
+        r.fTemp.toFixed(2),
+        r.fDens.toFixed(2),
+        r.qDiseno.toFixed(2),
         r.le.toFixed(2),
         r.dP.toFixed(2),
+        r.dPAcum.toFixed(2),
         r.vel.toFixed(2),
         r.pIni.toFixed(2),
         r.pFin.toFixed(2),

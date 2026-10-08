@@ -29,11 +29,15 @@ export function calcFila(
       ? Math.round(((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt)) * 10) / 10
       : 0;
   const Lt = (h || 0) + (v || 0) + (le || 0);
+  // Misma física que rowPhysics (tabla de diseño): hfPct está en m/km → metros = ·Lt/1000.
+  // Con guard V/dInt>0: 0^1.852/0^1.167 = NaN sin él (diámetro sin resolver).
   const hfPct =
-    Math.round(
-      ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
-    ) / 100;
-  const hfM = Math.round((hfPct / 100) * Lt * 100) / 100;
+    V > 0 && dInt > 0
+      ? Math.round(
+          ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
+        ) / 100
+      : 0;
+  const hfM = Lt > 0 && hfPct > 0 ? Math.round((hfPct / 1000) * Lt * 100) / 100 : 0;
   const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
   return { dInt, V, Lt, hfPct, hfM, Pfin };
 }

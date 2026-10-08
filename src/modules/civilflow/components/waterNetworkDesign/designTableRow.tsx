@@ -3,6 +3,7 @@ import type { Tramo } from '../../context/tramosReducer';
 import { pisoCorto } from '../../constants';
 import { fmt } from '../../utils/formatUtils';
 import { hunterK, computeDesignRow } from './rowPhysics';
+import { chequeoPresionAparato } from '../../utils/waterRowsShared';
 import { OtrosRamalesChips } from './otherRamalesChips';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput';
 
@@ -38,10 +39,10 @@ const WaterNetworkDesign_S2: React.CSSProperties = {
 };
 
 // Una fila de la tabla de diseño de red: calcula su propia física (caudal de Hunter, diámetro
-// efectivo, velocidades y pérdidas vía computeDesignRow) y renderiza las 23 columnas, incluyendo
+// efectivo, velocidades y pérdidas vía computeDesignRow) y renderiza las 24 columnas, incluyendo
 // el selector de diámetro y las presiones editables cuando la tabla está en modo edición.
 /** Una fila de la tabla de diseño de red: calcula su propia física (caudal de Hunter,
- *  diámetro efectivo, velocidad y pérdidas) y renderiza las 23 columnas, con el selector de
+ *  diámetro efectivo, velocidad y pérdidas) y renderiza las 24 columnas, con el selector de
  *  diámetro y las presiones editables en modo edición. */
 export function DesignTableRow({
   t,
@@ -100,6 +101,8 @@ export function DesignTableRow({
   });
   const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
   const vCumple = calc.Vmms >= 500 && calc.Vmms <= 2500;
+  // Chequeo de presión en el aparato conectado (NTC 1500: pmin ≤ P ≤ pmax en el extremo).
+  const chkP = chequeoPresionAparato(t.ini, t.fin, Pin, Pfin);
   return (
     <tr>
       <td className="c" style={{ padding: '0 1px' }}>
@@ -189,6 +192,21 @@ export function DesignTableRow({
           style={PRESION_INP}
           onCommit={numCommit((v) => setPresFin(ownKey, v))}
         />
+      </td>
+      <td
+        className="c td-mono-b"
+        style={{
+          padding: '0 1px',
+          fontSize: 10.5,
+          background:
+            chkP === 'O.K.'
+              ? 'rgba(34,197,94,.25)'
+              : chkP === 'NO'
+                ? 'rgba(239,68,68,.25)'
+                : 'transparent',
+        }}
+      >
+        {chkP || '—'}
       </td>
     </tr>
   );

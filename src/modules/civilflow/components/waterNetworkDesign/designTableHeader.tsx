@@ -1,6 +1,6 @@
-// Encabezado estático de la tabla de diseño (2 filas × 23 columnas, con celdas combinadas).
+// Encabezado estático de la tabla de diseño (2 filas × 24 columnas, con celdas combinadas).
 // No tiene lógica: solo depende de la clase de color de la red activa (af/ac).
-/** Encabezado estático de la tabla de diseño de red: dos filas y 23 columnas con celdas
+/** Encabezado estático de la tabla de diseño de red: dos filas y 24 columnas con celdas
  *  combinadas. No tiene lógica; solo la clase de color de la red activa. */
 export function DesignTableHeader({ cssClass }: { cssClass: string }) {
   return (
@@ -168,6 +168,17 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
         >
           Presión
         </th>
+        <th
+          title="Chequeo de presión en el aparato conectado al tramo: la presión disponible debe caer entre la mínima y la máxima del aparato (NTC 1500)."
+          scope="col"
+          className={`col-h ${cssClass}`}
+          rowSpan={2}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10.5 }}
+        >
+          Chequeo
+          <br />
+          presión
+        </th>
       </tr>
       <tr>
         <th
@@ -243,12 +254,12 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           Total
         </th>
         <th
-          title="Pérdida de carga porcentual del tramo."
+          title="Pérdida de carga del tramo en ‰ (m por kilómetro de tubería)."
           scope="col"
           className="col-h"
           style={{ textAlign: 'center', padding: '0 1px', fontSize: 10.5 }}
         >
-          %
+          ‰
         </th>
         <th
           title="Pérdida de carga en metros de columna de agua."

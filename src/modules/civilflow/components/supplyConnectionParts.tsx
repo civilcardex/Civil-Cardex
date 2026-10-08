@@ -78,6 +78,9 @@ export interface AcometidaProps {
   setAcoPini: (p: number) => void;
   acoHfMax: number;
   setAcoHfMax: (v: number) => void;
+  /** Presión residual mínima exigida al final de la acometida (mca). */
+  acoPResMin: number;
+  setAcoPResMin: (v: number) => void;
   acoLeMed: number;
   setAcoLeMed: (le: number) => void;
   cHW1: number;
