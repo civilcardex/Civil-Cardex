@@ -9,6 +9,7 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
+import { hunterK, hunterQ } from '../components/waterNetworkDesign/rowPhysics';
 import { resolveJunctionEntrant } from './flowDirection';
 
 import {
@@ -418,16 +419,7 @@ export function computeWaterNetworkRows(
   for (const t of tramos) {
     const key = t._key || t.id;
     const nDesc = t.nSalidas || 0;
-    const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-    const total = componentTotalMap[key] || 0;
-    qpropMap[key] =
-      total > 0 && K > 0
-        ? Math.round(
-            K *
-              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
-              1000,
-          ) / 1000
-        : 0;
+    qpropMap[key] = hunterQ(componentTotalMap[key] || 0, nDesc);
   }
 
   const nodeParentOf: Record<string, string> = {};
@@ -507,18 +499,9 @@ export function computeWaterNetworkRows(
   const Qaco = (() => {
     if (tr2) {
       const ownKey = tr2._key || tr2.id;
-      const total = componentTotalMap[ownKey] || 0;
-      const nDesc = tr2.nSalidas || 0;
-      const K =
-        nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-      if (total > 0 && K > 0) {
-        return (
-          Math.round(
-            K *
-              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
-              1000,
-          ) / 1000
-        );
+      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
+      if (qTr2 > 0) {
+        return qTr2;
       }
     }
     return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
@@ -645,7 +628,7 @@ export function computeWaterNetworkRows(
     const total = componentTotalMap[ownKey] || 0;
     const isTr2Row = t === tr2;
     const nDesc = t.nSalidas || 0;
-    const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+    const K = hunterK(nDesc);
     const Qprob = isTr2Row ? Qaco : qpropMap[ownKey] || 0;
     const raizQ = Qprob > 0 ? Math.round(Math.sqrt(Qprob) * 100) / 100 : 0;
     const disPulg = t.diamDisPulg || 0;

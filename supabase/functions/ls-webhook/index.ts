@@ -86,10 +86,13 @@ Deno.serve(async (req: Request) => {
   }
 
   // 5 · Monto pagado = monto acordado (total en centavos). FAIL-CLOSED: sin total
-  //     numérico válido NO se activa (antes, un total ausente saltaba el chequeo).
-  const totalPagado = attrs.total;
+  //     numérico válido NO se activa. Coerción previa: un string numérico ("4500")
+  //     se acepta — rechazarlo devolvía 200 y LS no reintenta jamás (pago bueno
+  //     quedaba cobrado sin activarse, auditoría A-2).
+  const rawTotal: unknown = attrs.total;
+  const totalPagado = typeof rawTotal === 'string' ? Number(rawTotal) : rawTotal;
   if (typeof totalPagado !== 'number' || !Number.isFinite(totalPagado)) {
-    console.error('ls-webhook: order_created sin total numérico:', referencia);
+    console.error('ls-webhook: order_created sin total numérico:', referencia, typeof rawTotal);
     return json({ ok: true });
   }
   if (totalPagado < Number(pago.monto_centavos)) {

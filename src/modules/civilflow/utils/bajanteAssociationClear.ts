@@ -453,9 +453,3 @@ export function clearBajanteAssociation(
   // resurrección desde cachés stale de otros dispositivos.
   estamparAsocsClearedTs(Array.from(new Set([sourcePlanId, targetPlanId])));
 }
-
-// Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
-// siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
-// visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
-// crea el ramal de desvío Ldesvio (en el piso del source) solo cuando los dos no están ya
-// alineados.

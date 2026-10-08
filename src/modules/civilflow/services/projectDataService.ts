@@ -513,13 +513,21 @@ export async function loadTanqueNpt(proyectoId: string): Promise<string | null> 
 
 /** Blob de rejillas NTC 3631 (overrides + tipo de gas) → cf_proyecto_general.rejillas.
  *  El RPC whitelistó 'rejillas' con cast ::jsonb (migración 20261002000000). */
-export async function saveRejillasProyecto(proyectoId: string, blob: unknown): Promise<void> {
+/** Blob persistido del tab Rejillas (cf_proyecto_general.rejillas, jsonb). */
+export interface RejillasBlob {
+  overrides?: Record<string, unknown>;
+  gas?: 'natural' | 'glp';
+  gasod?: Record<string, Record<string, number>>;
+  ts?: number;
+}
+
+export async function saveRejillasProyecto(proyectoId: string, blob: RejillasBlob): Promise<void> {
   return saveCampoProyectoGeneral(proyectoId, 'rejillas', JSON.stringify(blob ?? {}));
 }
 
 /** Lee el blob de rejillas del proyecto (null si no hay fila o aún no se guardó). */
-export async function loadRejillasProyecto(proyectoId: string): Promise<unknown> {
-  return loadCampoProyectoGeneral<unknown>(proyectoId, 'rejillas');
+export async function loadRejillasProyecto(proyectoId: string): Promise<RejillasBlob | null> {
+  return loadCampoProyectoGeneral<RejillasBlob | null>(proyectoId, 'rejillas');
 }
 
 export async function savePresionGarantizada(proyectoId: string, value: string): Promise<void> {

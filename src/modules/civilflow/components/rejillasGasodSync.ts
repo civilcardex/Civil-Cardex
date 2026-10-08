@@ -1,5 +1,9 @@
 import { getActiveProyectoId, loadFromStorage, saveToStorage } from '../services/storageService';
-import { loadRejillasProyecto, saveRejillasProyecto } from '../services/projectDataService';
+import {
+  loadRejillasProyecto,
+  saveRejillasProyecto,
+  type RejillasBlob,
+} from '../services/projectDataService';
 import { APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
 
@@ -44,11 +48,15 @@ async function pushBlobAhora(): Promise<void> {
   // claves en disco mandan los overrides del blob — igual criterio que el gasod.
   const ovrDisk = loadFromStorage<Record<string, unknown> | null>(OVERRIDES_KEY, null) ?? {};
   const gasDisk = loadFromStorage<'natural' | 'glp' | null>(GAS_KEY, null);
-  const prev = (await loadRejillasProyecto(pid).catch(() => null)) as {
-    overrides?: Record<string, unknown>;
-    gas?: 'natural' | 'glp';
-    gasod?: Record<string, Record<string, number>>;
-  } | null;
+  // Error de lectura ≠ blob vacío: sin estado previo confiable NO se pisa BD
+  // (blob corrupto → el push escribiría gasod:{} sobre lo existente).
+  let prev: RejillasBlob | null = null;
+  try {
+    prev = await loadRejillasProyecto(pid);
+  } catch (e) {
+    devError('rejillasGasodSync push: lectura del blob falló, push abortado:', e);
+    return;
+  }
   void saveRejillasProyecto(pid, {
     overrides: Object.keys(ovrDisk).length ? ovrDisk : (prev?.overrides ?? {}),
     gas: gasDisk ?? prev?.gas ?? 'natural',
@@ -90,9 +98,7 @@ export async function hidratarRejillasGasod(): Promise<void> {
     const pid = getActiveProyectoId();
     if (!pid) return;
     const cambioAlIniciar = ultimoCambioLocal;
-    const blob = (await loadRejillasProyecto(pid)) as {
-      gasod?: Record<string, Record<string, number>>;
-    } | null;
+    const blob = await loadRejillasProyecto(pid);
     if (ultimoCambioLocal !== cambioAlIniciar) return;
     if (!blob?.gasod || typeof blob.gasod !== 'object') {
       // BD sin gasod: el fill terminó sin nada que completar — el disco local ya es

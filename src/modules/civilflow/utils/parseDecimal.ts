@@ -10,6 +10,12 @@ export function parseDecimalInput(val: string): number | null {
   return !isNaN(v) && raw !== '' ? v : null;
 }
 
+/** Sanitiza texto de input a dígitos + punto: coma → punto (teclado es-locale) y fuera
+ *  de todo lo demás. La cadena exacta se repetía en 6+ handlers onChange. */
+export function sanitizarInputDecimal(texto: string): string {
+  return texto.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+}
+
 /**
  * Convierte un string a entero aceptando coma como separador decimal. Devuelve null si la
  * entrada está vacía o no es un casi-entero.

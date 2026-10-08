@@ -67,6 +67,7 @@ export const LE_K = {
   codos_90_rl_baja: 20,
   te_linea: 20,
   te_ramal: 20,
+  teeTapon: 1,
   valvula_bola: 8,
 };
 export const DEFAULT_PENDIENTE_PCT = 2.0;

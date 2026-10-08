@@ -261,6 +261,4 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
   );
 });
 
-// ── Tabla Tipologías ─────────────────────────────────────────────────────────
-
 export default REJILLAS;

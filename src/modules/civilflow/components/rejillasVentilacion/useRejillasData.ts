@@ -63,19 +63,16 @@ export function useRejillasData() {
     void loadRejillasProyecto(pid).then((blob) => {
       // Lo local manda si el usuario ya editó (hidratación no pisa la primera edición).
       if (ignore || editadoRef.current || !blob || typeof blob !== 'object') return;
-      const b = blob as {
-        overrides?: OverridesMap;
-        gas?: 'natural' | 'glp';
-        gasod?: Record<string, Record<string, number>>;
-        ts?: number;
-      };
+      const b = blob;
       // Frescura: un blob más viejo que el último push/hidratación local no gana.
       if (typeof b.ts === 'number' && b.ts < tsRef.current) return;
       if (b.overrides && typeof b.overrides === 'object' && Object.keys(b.overrides).length) {
         // Purga kwById del blob (potencias personalizadas deprecadas — el catálogo manda).
-        purgarKwById(b.overrides);
-        setOverrides(b.overrides);
-        saveOverrides(b.overrides);
+        // Único cast restante: estrechar el dato de BD a OverridesMap (confía pero valida).
+        const ovr = b.overrides as OverridesMap;
+        purgarKwById(ovr);
+        setOverrides(ovr);
+        saveOverrides(ovr);
       }
       if (b.gas === 'natural' || b.gas === 'glp') {
         setGas(b.gas);

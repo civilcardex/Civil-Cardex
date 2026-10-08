@@ -129,9 +129,10 @@ Deno.serve(async (req: Request) => {
   let checkoutUrl = '';
   // Sin checkout no hay acuerdo posible: la fila pendiente se elimina (el check de
   // estado de app_pagos no tiene 'fallida', y dejarla contaba contra el cap anti-spam
-  // del usuario por fallos de la pasarela que no le pertenecen).
-  const cancelarPago = (): void => {
-    void admin.from('app_pagos').delete().eq('referencia', referencia);
+  // del usuario por fallos de la pasarela que no le pertenecen). Con await: el runtime
+  // puede congelar el isolate al devolver la Response y matar un delete en vuelo.
+  const cancelarPago = async (): Promise<void> => {
+    await admin.from('app_pagos').delete().eq('referencia', referencia);
   };
   try {
     const resp = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
@@ -167,17 +168,17 @@ Deno.serve(async (req: Request) => {
     const data = await resp.json();
     if (!resp.ok) {
       console.error('crear-checkout: LS', resp.status, JSON.stringify(data).slice(0, 400));
-      cancelarPago();
+      await cancelarPago();
       return json({ error: 'pasarela_no_configurada' }, 502);
     }
     checkoutUrl = data?.data?.attributes?.url ?? '';
   } catch (e) {
     console.error('crear-checkout: fetch LS:', e instanceof Error ? e.message : e);
-    cancelarPago();
+    await cancelarPago();
     return json({ error: 'pasarela_no_configurada' }, 502);
   }
   if (!checkoutUrl) {
-    cancelarPago();
+    await cancelarPago();
     return json({ error: 'pasarela_no_configurada' }, 502);
   }
 

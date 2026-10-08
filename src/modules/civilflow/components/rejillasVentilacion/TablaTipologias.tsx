@@ -1,5 +1,6 @@
 // TablaTipologias: la tabla de 24 columnas por sector (aparatos en subfilas, modo borrado
-// por celda con confirmación). Extraída verbatim del hub.
+// por celda con confirmación). Extraída del hub — incluye el rediseño de subfilas y los
+// fixes de borrado de la ronda 2026-10-06 (no es movimiento verbatim puro).
 import React, { useState } from 'react';
 import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
 import { SOL } from '../../constants/rejillasNTC3631';
@@ -187,6 +188,9 @@ export function TablaTipologias({
             <th style={THG} colSpan={3}>
               Rejillas sugeridas
             </th>
+            <th rowSpan={2} style={TH}>
+              Estado
+            </th>
           </tr>
           <tr>
             <th style={THS} title="Nombre del sector (etiqueta del área dibujada)">
@@ -339,6 +343,11 @@ export function TablaTipologias({
                 quitarColumna(f, ci, onOv);
                 setBorrandoSub(false);
               };
+              // Los controles tragan el click en modo borrado: editar no debe costar
+              // un confirm (el click burbujeaba al <td onClick={borrarEsta}>).
+              const tragaClick = (e: React.MouseEvent) => {
+                if (enModoBorrado) e.stopPropagation();
+              };
               const tdBorra = (
                 extra: React.CSSProperties,
               ): React.HTMLAttributes<HTMLTableCellElement> & { style: React.CSSProperties } => ({
@@ -354,6 +363,7 @@ export function TablaTipologias({
                 <>
                   <td {...tdBorra({})}>
                     <select
+                      onClick={tragaClick}
                       aria-label={`Gasodoméstico subfila ${ci + 1} sector ${i + 1}`}
                       title={
                         APARATOS_DEF.find((a) => a.id === ap?.id)?.nombre ||
@@ -384,6 +394,7 @@ export function TablaTipologias({
                   <td {...tdBorra({})}>
                     {edit && ap && !ap.vacio ? (
                       <input
+                        onClick={tragaClick}
                         aria-label={`UN subfila ${ci + 1} sector ${i + 1}`}
                         className="no-spin"
                         type="number"
@@ -416,6 +427,7 @@ export function TablaTipologias({
                   <td {...tdBorra({})}>
                     {edit && ap && !ap.vacio ? (
                       <select
+                        onClick={tragaClick}
                         aria-label={`Tipo subfila ${ci + 1} sector ${i + 1}`}
                         title="Tipo de recinto A/B/C (NTC 3631): define el coeficiente cm²/kW de las aberturas."
                         value={ap.tipo}
@@ -790,5 +802,3 @@ export function TablaTipologias({
     </div>
   );
 }
-
-// ── Alertas del sector seleccionado + notas generales ───────────────────────

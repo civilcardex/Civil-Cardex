@@ -1,4 +1,9 @@
 import { clearBajanteAssociation } from './bajanteAssociationClear';
+// Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
+// siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
+// visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
+// crea el ramal de desvío Ldesvio (en el piso del source) solo cuando los dos no están ya
+// alineados.
 import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
 import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync';
 import type { SyncPlanInput } from './drawingSync';

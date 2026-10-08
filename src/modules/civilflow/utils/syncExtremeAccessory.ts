@@ -270,6 +270,12 @@ export function syncExtremeAccessoryToHidroData(
 ): void {
   if (oldVal === newVal) return;
 
+  // gas_accesorios usa clave SIN planId (un solo contador por ramal): si el mismo id existe
+  // en varios pisos, el loop aplicaría el delta N veces sobre la misma clave. El bump de gas
+  // se aplica UNA sola vez; el hidro conserva su sync por piso (su clave sí lleva planId).
+  let gasBumpOld = false;
+  let gasBumpNew = false;
+
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     const found = findRamalInPlan(plan, ramalId);
@@ -279,14 +285,20 @@ export function syncExtremeAccessoryToHidroData(
 
     if (isSyncableAcc(oldVal)) {
       if (isGas) {
-        bumpGasAccesorio(ramalId, oldVal, -1);
+        if (!gasBumpOld) {
+          bumpGasAccesorio(ramalId, oldVal, -1);
+          gasBumpOld = true;
+        }
       } else {
         bumpHidroAccesorio(found.net, oldVal, -1, ramalId, found.planId);
       }
     }
     if (isSyncableAcc(newVal)) {
       if (isGas) {
-        bumpGasAccesorio(ramalId, newVal, +1);
+        if (!gasBumpNew) {
+          bumpGasAccesorio(ramalId, newVal, +1);
+          gasBumpNew = true;
+        }
       } else {
         bumpHidroAccesorio(found.net, newVal, +1, ramalId, found.planId);
       }

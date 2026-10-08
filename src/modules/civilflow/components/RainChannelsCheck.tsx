@@ -24,6 +24,7 @@ import {
 import { fmt } from '../utils/formatUtils';
 import { repartirOtrasCanal } from '../utils/rainwaterRows';
 import type { DrawingData } from '../utils/drawingSync';
+import { sanitizarInputDecimal } from '../utils/parseDecimal';
 
 // Encabezados compactos (orig. usuario: sin scroll horizontal): wrap a 2-3 líneas.
 const thL: React.CSSProperties = {
@@ -106,7 +107,7 @@ const CanalDimField = React.memo(function CanalDimField({
         setText(vaciar ? '' : display);
       }}
       onChange={(e) => {
-        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        const raw = sanitizarInputDecimal(e.target.value);
         setText(raw);
       }}
       onKeyDown={(e) => {

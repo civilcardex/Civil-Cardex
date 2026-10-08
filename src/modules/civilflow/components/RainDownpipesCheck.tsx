@@ -23,6 +23,7 @@ import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDat
 import { fmt } from '../utils/formatUtils';
 import React from 'react';
 import type { DrawingData } from '../utils/drawingSync';
+import { sanitizarInputDecimal } from '../utils/parseDecimal';
 
 interface Row {
   key: string;
@@ -102,7 +103,7 @@ const OtrasField = React.memo(function OtrasField({
         setText(value > 0 ? fmt(value, 2) : '');
       }}
       onChange={(e) => {
-        setText(e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, ''));
+        setText(sanitizarInputDecimal(e.target.value));
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur();
