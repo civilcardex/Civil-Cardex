@@ -217,7 +217,7 @@ const formulas = {
           </p>
           {fx(
             <>
-              ΔP = 23200 · L · q<sup>1.82</sup> · DR<sup>0.82</sup> / D<sub>i</sub>
+              ΔP (mbar) = 23200 · L · q<sup>1.82</sup> · DR<sup>0.82</sup> / D<sub>i</sub>
               <sup>4.82</sup>
               <br />V = (354 · q · 101.325) / (D<sub>i</sub>² · P)
             </>,

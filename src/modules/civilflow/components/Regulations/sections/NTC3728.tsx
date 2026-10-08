@@ -1,11 +1,9 @@
-import {
-  NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES,
-} from "../regulationsData";
-import { subHeadingStyle as h4 } from "../shared";
+import { NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES } from '../regulationsData';
+import { subHeadingStyle as h4 } from '../shared';
 
 export function NTC3728() {
   return (
-    <div className="card-b" style={{ padding: "18px" }}>
+    <div className="card-b" style={{ padding: '18px' }}>
       <h3 style={h4}>3.1 Presiones de diseño (§4)</h3>
       <table className="tbl" style={{ fontSize: 12 }}>
         <caption className="visually-hidden">Presiones de diseño NTC 3728</caption>
@@ -28,9 +26,11 @@ export function NTC3728() {
       </table>
 
       <h3 style={h4}>3.2 Ecuación de Renouard (§6.2)</h3>
-      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: '10px 14px', color: 'var(--txt)' }}>
         <span>∑</span>
-        <span><b>ΔP = 48620 × K × L × Q¹·⁸² / (P_at × Di⁴·⁸²)</b></span>
+        <span>
+          <b>ΔP (mbar) = 23200 × L × Q¹·⁸² × DR⁰·⁸² / Di⁴·⁸²</b>
+        </span>
       </div>
 
       <h3 style={h4}>Velocidad máxima: V ≤ 10 m/s</h3>
@@ -53,7 +53,10 @@ export function NTC3728() {
           ))}
         </tbody>
       </table>
-      <div className="ib info" style={{ fontSize: 13, padding: "8px 12px", marginTop: 6, color: "var(--txt)" }}>
+      <div
+        className="ib info"
+        style={{ fontSize: 13, padding: '8px 12px', marginTop: 6, color: 'var(--txt)' }}
+      >
         <span>ℹ</span>
         <span>Q_diseño = Q_instalado × fs</span>
       </div>

@@ -24,7 +24,7 @@ import {
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
 } from '../constants/storage-keys';
-import { renouardByType } from '../utils/gasUtils';
+import { renouardByType, factoresGas, qDisenoGas } from '../utils/gasUtils';
 import { compareTramosPisoDesc } from '../utils/componentHelpers';
 import { GAS_DATOS_DEFAULT } from '../utils/gasRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
@@ -73,6 +73,7 @@ const ACC_KEYS = [
   'codos_90_rl_baja',
   'te_linea',
   'te_ramal',
+  'teeTapon',
   'valvula_bola',
 ];
 // Notas descriptivas por columna del diseño de gas (tooltip en el encabezado). Material y
@@ -102,7 +103,9 @@ const GasDesign_colW = ['9%', '8%', '8%', '15%', '11%', '10%', '8%', '12%'];
 
 function lookupDn(mat: string, dn: string) {
   const normDn = normalizeDnLabel(dn);
-  const match = ALL_DN.find((x) => x.mat === mat && (x.dn === dn || x.dn === normDn));
+  // PEAD = polietileno de alta densidad: mismas filas que PE al PE (igual que gasRows).
+  const matEff = mat === 'PEAD' ? 'PE al PE' : mat;
+  const match = ALL_DN.find((x) => x.mat === matEff && (x.dn === dn || x.dn === normDn));
   return match || null;
 }
 
@@ -119,7 +122,12 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   const tablaRef = useStickyThead2Offset();
   const datosGeneralesInit = loadFromStorage(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const [alt, setAlt] = useState(datosGeneralesInit.alt);
-  const [patm, setPatm] = useState(datosGeneralesInit.patm);
+  // Presión atmosférica CALCULADA desde la altitud (Excel F11: 101.325*(1-alt/44330)^5.256,
+  // 2 decimales) — no es un campo editable.
+  const patm = useMemo(
+    () => String(Math.round(101.325 * Math.pow(1 - (Number(alt) || 0) / 44330, 5.256) * 100) / 100),
+    [alt],
+  );
   const [temp, setTemp] = useState(datosGeneralesInit.temp);
   const [pmin, setPmin] = useState(datosGeneralesInit.pmin);
   const [densRel, setDensRel] = useState(datosGeneralesInit.densRel);
@@ -138,7 +146,6 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     void loadGasDatos(proyectoId).then((d) => {
       if (cancelled || !d) return;
       setAlt(d.alt);
-      setPatm(d.patm);
       setTemp(d.temp);
       setPmin(d.pmin);
       setDensRel(d.densRel);
@@ -349,18 +356,14 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
 
   const checkRows = useMemo(() => {
     const pMin = Number(pmin) || 17;
-    const pAtm = Number(patm) || 101.325;
-    const T = Number(temp) || 23;
-    const DR = Number(densRel) || 0.67;
-    const fAlt = 101.325 / pAtm;
-    const fTemp = Math.sqrt(288 / (273 + T));
-    const fDens = Math.sqrt(0.67 / DR);
+    const { pAtm, DR, fAlt, fTemp, fDens } = factoresGas({ patm, temp, densRel });
     const aparatos: Record<string, Record<string, number>> = loadFromStorage(
       APARATOS_BY_TRAMO_KEY,
       {},
     );
     const result = [];
     let pAcum = pMin;
+    let dPAcum = 0;
     for (const t of gasTramos) {
       const dInt = diamInt[tramoKey(t)] || 0;
 
@@ -372,7 +375,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       const appCounts: Record<string, number> =
         aparatos[`gas_${t.id}${appPid}`] || aparatos[`gas_${t.id}`] || {};
       const qRenouard = renouardByType(appCounts);
-      const qDiseno = Math.max(qRenouard * fAlt * fTemp * fDens, 2.7);
+      const qDiseno = qDisenoGas(qRenouard, { pAtm, DR, fAlt, fTemp, fDens });
       const dP =
         dInt > 0
           ? ((23200 * (le + (t.longitud || 0)) * Math.pow(qDiseno, 1.82)) / Math.pow(dInt, 4.82)) *
@@ -382,8 +385,25 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       const pIni = pAcum;
       const pFin = pAcum - dP;
       pAcum = pFin;
-      const ok = vel > 0 && vel <= 10 && dP > 0 ? 'O.K.' : dP > 0 ? 'NO' : '—';
-      result.push({ id: t.id, le, dP, vel, pIni, pFin, chequeo: ok });
+      dPAcum += dP;
+      // Chequeo NTC 3728: V ≤ 10 m/s y pérdida acumulada ≤ 9.81 mbar (mismo criterio de gasRows).
+      const ok =
+        vel > 0 && vel <= 10 && dP > 0 ? (dPAcum <= 9.81 ? 'O.K.' : 'NO') : dP > 0 ? 'NO' : '—';
+      result.push({
+        id: t.id,
+        le,
+        qConsumo: qRenouard,
+        fAlt,
+        fTemp,
+        fDens,
+        qDiseno,
+        dP,
+        dPAcum,
+        vel,
+        pIni,
+        pFin,
+        chequeo: ok,
+      });
     }
     return result;
   }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
@@ -391,106 +411,196 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   const COLS = GasDesign_COLS;
   const colW = GasDesign_colW;
 
-  const page1 = (
-    <>
-      <section className="card" style={{ flexShrink: 0, alignSelf: 'center' }}>
-        <div className="card-h" style={{ padding: '6px 12px' }}>
-          <h3 className="card-t">
-            <img
-              src="/iconos_civilflow/diseno_redes/gas/datos_generales_red_gas.webp"
-              alt="Datos generales red de gas"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Datos generales
-          </h3>
-          <EditButton edit={edit} setEdit={setEdit} />
-        </div>
+  const page1 = (() => {
+    const fGas = factoresGas({ patm, temp, densRel });
+    const qGlobal = checkRows.reduce((acc, r) => acc + r.qConsumo, 0);
+    // Estilo sanitaria: texto plano hasta activar EDITAR (mono, sin borde de input).
+    const TXT_VAL: React.CSSProperties = {
+      fontFamily: 'var(--mono)',
+      fontWeight: 600,
+      fontSize: 13,
+      textAlign: 'right',
+      display: 'block',
+      width: 100,
+      padding: '5px 8px',
+    };
+    const filas: {
+      lbl: string;
+      val: string;
+      setVal?: (v: string) => void;
+      uni: string;
+    }[] = [
+      { lbl: 'Altitud de la ciudad del proyecto', val: alt, setVal: setAlt, uni: 'msnm' },
+      { lbl: 'Presión atmosférica de la ciudad de diseño', val: patm, uni: 'kPa' },
+      { lbl: 'Temperatura promedio de la ciudad', val: temp, setVal: setTemp, uni: '°C' },
+      { lbl: 'Presión mínima de la red según operador', val: pmin, setVal: setPmin, uni: 'mbar' },
+      { lbl: 'Densidad relativa del gas a utilizar', val: densRel, setVal: setDensRel, uni: '' },
+    ];
+    const factores: [string, React.ReactNode][] = [
+      [
+        'Altitud',
+        <>
+          f<sub>alt</sub> = 101.325 / {fGas.pAtm.toFixed(2)} ={' '}
+          <b style={{ color: 'var(--gas)' }}>{fGas.fAlt.toFixed(2)}</b>
+        </>,
+      ],
+      [
+        'Temperatura',
+        <>
+          f<sub>temp</sub> = &radic;(288 / (273 + {Number(temp) || 23})) ={' '}
+          <b style={{ color: 'var(--gas)' }}>{fGas.fTemp.toFixed(2)}</b>
+        </>,
+      ],
+      [
+        'Densidad relativa',
+        <>
+          f<sub>dens</sub> = &radic;(0.67 / {fGas.DR.toFixed(2)}) ={' '}
+          <b style={{ color: 'var(--gas)' }}>{fGas.fDens.toFixed(2)}</b>
+        </>,
+      ],
+      [
+        'Caudal de diseño',
+        <>
+          Q<sub>d</sub> = max(&Sigma;Q&middot;f, 2.7) ={' '}
+          <b style={{ color: 'var(--gas)' }}>{qDisenoGas(qGlobal, fGas).toFixed(2)} m&sup3;/h</b>
+        </>,
+      ],
+    ];
+    return (
+      <>
+        {/* ancho común: ambas cards estiran al ancho del contenido más ancho */}
         <div
           style={{
-            padding: '8px 12px',
-            display: 'flex',
+            display: 'inline-flex',
             flexDirection: 'column',
-            alignItems: 'center',
+            alignItems: 'stretch',
+            gap: 10,
+            alignSelf: 'center',
+            maxWidth: '100%',
           }}
         >
-          <table className="tbl" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-            <caption style={SR_ONLY}>Datos generales</caption>
-            <tbody>
-              {[
-                ['Altitud de la ciudad del proyecto', alt, setAlt, 'msnm'],
-                ['Presión atmosférica de la ciudad de diseño', patm, setPatm, 'kPa'],
-                ['Temperatura promedio de la ciudad', temp, setTemp, '°C'],
-                ['Presión mínima de la red según operador', pmin, setPmin, 'mbar'],
-                ['Densidad relativa del gas a utilizar', densRel, setDensRel, 'kPa'],
-              ].map((row, i, arr) => {
-                const [lbl, val, setVal, uni] = row as [
-                  string,
-                  string,
-                  (v: string) => void,
-                  string,
-                ];
-                return (
-                  <tr key={i}>
-                    <td
-                      style={{
-                        padding: '6px 10px',
-                        fontWeight: 600,
-                        color: 'var(--txt)',
-                        fontSize: 13,
-                        borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
-                        borderRight: '1px solid var(--line)',
-                      }}
-                    >
-                      {lbl}
-                    </td>
-                    <td
-                      style={{
-                        padding: '6px 10px',
-                        borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
-                        borderRight: '1px solid var(--line)',
-                      }}
-                    >
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        aria-label={lbl}
-                        value={val}
-                        disabled={!edit}
-                        onChange={(e) => setVal(e.target.value)}
+          <section className="card" style={{ flexShrink: 0 }}>
+            <div className="card-h" style={{ padding: '6px 12px' }}>
+              <h3 className="card-t">
+                <img
+                  src="/iconos_civilflow/diseno_redes/gas/datos_generales_red_gas.webp"
+                  alt="Datos generales red de gas"
+                  width={24}
+                  height={24}
+                  style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+                  loading="lazy"
+                />
+                Datos generales
+              </h3>
+              <EditButton edit={edit} setEdit={setEdit} />
+            </div>
+            <div
+              style={{
+                padding: '8px 12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+              }}
+            >
+              <table className="tbl" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+                <caption style={SR_ONLY}>Datos generales</caption>
+                <tbody>
+                  {filas.map((row, i, arr) => (
+                    <tr key={row.lbl}>
+                      <td
                         style={{
-                          ...SI,
-                          textAlign: 'right',
+                          padding: '6px 10px',
+                          fontWeight: 600,
+                          color: 'var(--txt)',
                           fontSize: 13,
-                          padding: '5px 8px',
-                          width: 100,
+                          borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
+                          borderRight: '1px solid var(--line)',
                         }}
-                      />
-                    </td>
-                    <td
-                      style={{
-                        padding: '6px 10px',
-                        color: 'var(--txt2)',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
-                      }}
-                    >
-                      {uni}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      >
+                        {row.lbl}
+                      </td>
+                      <td
+                        style={{
+                          padding: '6px 10px',
+                          borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
+                          borderRight: '1px solid var(--line)',
+                        }}
+                      >
+                        {row.setVal && edit ? (
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            aria-label={row.lbl}
+                            value={row.val}
+                            onChange={(e) => row.setVal!(e.target.value)}
+                            style={{
+                              ...SI,
+                              textAlign: 'right',
+                              fontSize: 13,
+                              padding: '5px 8px',
+                              width: 100,
+                            }}
+                          />
+                        ) : (
+                          <span style={TXT_VAL}>{row.val}</span>
+                        )}
+                      </td>
+                      <td
+                        style={{
+                          padding: '6px 10px',
+                          color: 'var(--txt2)',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          borderBottom: i < arr.length - 1 ? '1px solid var(--line)' : 'none',
+                        }}
+                      >
+                        {row.uni}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section className="card" style={{ flexShrink: 0 }}>
+            <div className="card-h" style={{ padding: '6px 12px' }}>
+              <h3 className="card-t">
+                <img
+                  src="/iconos_civilflow/diseno_redes/general/calculo_perdidas_de_carga.webp"
+                  alt="Factores de corrección"
+                  width={20}
+                  height={20}
+                  style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 4 }}
+                  loading="lazy"
+                />
+                Factores de correcci&oacute;n
+              </h3>
+            </div>
+            <div style={{ padding: '10px 16px' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '12px 32px',
+                }}
+              >
+                {factores.map(([lbl, node]) => (
+                  <div key={lbl} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span style={{ color: 'var(--txt3)', fontSize: 13 }}>{lbl}</span>
+                    <span style={{ fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 15.5 }}>
+                      {node}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
-      </section>
-    </>
-  );
+      </>
+    );
+  })();
 
-  const page2 = <GasCalcUC patm={patm} temp={temp} densRel={densRel} />;
+  const page2 = <GasCalcUC />;
 
   const page3 = (
     <>
@@ -549,8 +659,8 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                 {gasTramos.map((t) => {
                   const mat = diamMat[tramoKey(t)] || '';
                   const dn = diamDn[tramoKey(t)] || '';
-                  const dInt = diamInt[tramoKey(t)] || 0;
                   const kVal = diamK[tramoKey(t)] || 0;
+                  const dInt = diamInt[tramoKey(t)] || 0;
                   return (
                     <tr key={tramoKey(t)}>
                       <td className="c" style={{ padding: '0 1px' }}>
@@ -573,7 +683,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                           value={mat}
                           disabled={!edit}
                           onChange={(e) => handleMatChange(tramoKey(t), e.target.value)}
-                          style={{ ...SD, width: '100%', fontSize: 10.5 }}
+                          style={{ ...SD, width: '100%', fontSize: 10.5, textAlign: 'center' }}
                         >
                           <option value="">—</option>
                           {[...new Set(ALL_DN.map((r) => r.mat))]
@@ -598,7 +708,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                             }
                             handleDiamChange(tramoKey(t), mat, v);
                           }}
-                          style={{ ...SD, width: '100%', fontSize: 10.5 }}
+                          style={{ ...SD, width: '100%', fontSize: 10.5, textAlign: 'center' }}
                         >
                           <option value="">—</option>
                           {ALL_DN.filter((r) => r.mat === mat).map((r) => (
@@ -762,6 +872,13 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
             </div>
           </section>
         )}
+      </div>
+    </>
+  );
+
+  const pageChequeo = (
+    <>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}>
         <section
           className="card"
           style={{
@@ -808,28 +925,60 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                     Tramo
                   </th>
                   <th
-                    title="Longitud desarrollada del tramo (m)."
+                    title="Consumo total del tramo por criterio Renouard (los dos tipos de mayor consumo al 50 % + el resto al 100 %), en m³/h."
                     scope="col"
-                    style={{ ...TH }}
+                    style={TH}
                     rowSpan={2}
                   >
-                    Longitud (m)
+                    Total Q de
+                    <br />
+                    consumo (m³/h)
                   </th>
                   <th
-                    title='Diámetro interior del tubo (mm); el diámetro nominal es en pulgadas (").'
+                    title="Factor de corrección por altitud: 101.325 / presión atmosférica de la ciudad."
                     scope="col"
-                    style={{ ...TH }}
+                    style={TH}
                     rowSpan={2}
                   >
-                    Diámetro
+                    Por
                     <br />
-                    interno (mm)
+                    altitud
+                  </th>
+                  <th
+                    title="Factor de corrección por temperatura: √(288 / (273 + T °C))."
+                    scope="col"
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    Por
+                    <br />
+                    temperatura
+                  </th>
+                  <th
+                    title="Factor de corrección por densidad relativa del gas: √(0.67 / densidad relativa)."
+                    scope="col"
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    Por densidad
+                    <br />
+                    relativa
+                  </th>
+                  <th
+                    title="Q de diseño (m³/h): consumo corregido por los tres factores; no baja de 2.70 m³/h."
+                    scope="col"
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    Q de diseño
+                    <br />
+                    (m³/hr) &gt; 2.70
                   </th>
                   <th
                     title="Accesorios instalados en el tramo (cantidad por tipo)."
                     scope="col"
                     style={{ ...TH, borderBottom: '2px solid var(--line)' }}
-                    colSpan={5}
+                    colSpan={ACC_KEYS.length}
                   >
                     Accesorios
                   </th>
@@ -839,7 +988,9 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                     style={{ ...TH, borderLeft: '2px solid var(--line)' }}
                     rowSpan={2}
                   >
-                    Longitud equivalente (m)
+                    Longitud
+                    <br />
+                    equivalente (m)
                   </th>
                   <th
                     title="Pérdida de presión del tramo (mbar)."
@@ -850,12 +1001,24 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                     {'Δ'}P (mbar)
                   </th>
                   <th
+                    title="Pérdida de presión acumulada desde el inicio de la red (mbar). NTC 3728: máximo 9.81 mbar."
+                    scope="col"
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    {'Δ'}P acum
+                    <br />
+                    (mbar)
+                  </th>
+                  <th
                     title="Velocidad del gas en el tramo (m/s)."
                     scope="col"
                     style={{ ...TH }}
                     rowSpan={2}
                   >
-                    Velocidad (m/s)
+                    Velocidad
+                    <br />
+                    (m/s)
                   </th>
                   <th
                     title="Presión disponible al inicio y al final del tramo (mbar)."
@@ -871,7 +1034,9 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                     style={{ ...TH }}
                     rowSpan={2}
                   >
-                    V {'≤'} 10 m/s
+                    V {'≤'} 10
+                    <br />
+                    m/s
                   </th>
                 </tr>
                 <tr>
@@ -880,45 +1045,100 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
-                    Codos 90{'°'} std
+                    Codos 90{'°'}
+                    <br />
+                    std
+                  </th>
+                  <th
+                    title="Codos de 90° estándar con cambio de nivel hacia arriba en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
+                    Codos 90{'°'}
+                    <br />
+                    std sube
+                  </th>
+                  <th
+                    title="Codos de 90° estándar con cambio de nivel hacia abajo en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
+                    Codos 90{'°'}
+                    <br />
+                    std baja
                   </th>
                   <th
                     title="Codos de 90° de radio largo en el tramo."
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
-                    Codos 90{'°'} rl
+                    Codos 90{'°'}
+                    <br />
+                    rl
+                  </th>
+                  <th
+                    title="Codos de 90° de radio largo con cambio de nivel hacia arriba en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
+                    Codos 90{'°'}
+                    <br />
+                    rl sube
+                  </th>
+                  <th
+                    title="Codos de 90° de radio largo con cambio de nivel hacia abajo en el tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
+                    Codos 90{'°'}
+                    <br />
+                    rl baja
                   </th>
                   <th
                     title="Tes con el flujo en línea recta."
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
-                    Te en l&iacute;nea (flujo recto)
+                    Te en l&iacute;nea
+                    <br />
+                    (flujo recto)
                   </th>
                   <th
                     title="Tes con el flujo desviado al ramal."
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
-                    Te ramal (flujo desviado)
+                    Te ramal
+                    <br />
+                    (flujo desviado)
+                  </th>
+                  <th
+                    title="Tapones soldados que cierran el extremo del tramo."
+                    scope="col"
+                    style={{ ...TH, fontSize: 10.5 }}
+                  >
+                    Tapón
+                    <br />
+                    soldado
                   </th>
                   <th
                     title="Válvulas de bola (1/4 de vuelta) en el tramo."
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
-                    Válvula de bola (1/4 de vuelta)
+                    Válvula de bola
+                    <br />
+                    (1/4 de vuelta)
                   </th>
                   <th
-                    title="Longitud acumulada desde el inicio del tramo."
+                    title="Presión disponible al inicio del tramo (mbar)."
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
                     Inicio
                   </th>
                   <th
-                    title="Longitud acumulada hasta el fin del tramo."
+                    title="Presión disponible al final del tramo (mbar)."
                     scope="col"
                     style={{ ...TH, fontSize: 10.5 }}
                   >
@@ -929,13 +1149,12 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
               <tbody>
                 {gasTramos.length === 0 && (
                   <tr>
-                    <td colSpan={14} style={EMPTY_ROW}>
+                    <td colSpan={13 + ACC_KEYS.length} style={EMPTY_ROW}>
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                     </td>
                   </tr>
                 )}
                 {gasTramos.map((t) => {
-                  const dInt = diamInt[tramoKey(t)] || 0;
                   const chk = checkRows.find((r) => r.id === t.id);
                   const le = chk ? chk.le : 0;
                   const dP = chk ? chk.dP : 0;
@@ -951,20 +1170,21 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                           {t.id}
                         </span>
                       </td>
-                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10.5 }}>
-                        {t.longitud > 0 ? t.longitud.toFixed(2) : '—'}
-                      </td>
-                      <td
-                        className="c"
-                        style={{
-                          ...TD,
-                          padding: '1px 1px',
-                          fontSize: 10.5,
-                          color: dInt ? 'var(--txt)' : 'var(--txt3)',
-                        }}
-                      >
-                        {dInt ? dInt.toFixed(2) : '—'}
-                      </td>
+                      {(['qConsumo', 'fAlt', 'fTemp', 'fDens', 'qDiseno'] as const).map((k) => (
+                        <td
+                          key={k}
+                          className="c"
+                          style={{
+                            ...TD,
+                            padding: '1px 1px',
+                            fontSize: 10.5,
+                            fontWeight: k === 'qDiseno' ? 600 : undefined,
+                            color: (chk?.[k] ?? 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
+                          }}
+                        >
+                          {(chk?.[k] ?? 0) > 0 ? (chk![k] as number).toFixed(2) : '—'}
+                        </td>
+                      ))}
                       {ACC_KEYS.map((k) => (
                         <td
                           key={k}
@@ -1010,6 +1230,18 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                         }}
                       >
                         {dP.toFixed(2)}
+                      </td>
+                      <td
+                        className="c"
+                        style={{
+                          ...TD,
+                          padding: '1px 1px',
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          color: (chk?.dPAcum ?? 0) > 9.81 ? 'var(--err, #F04545)' : 'var(--txt)',
+                        }}
+                      >
+                        {(chk?.dPAcum ?? 0).toFixed(2)}
                       </td>
                       <td
                         className="c"
@@ -1066,7 +1298,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
           flexDirection: 'column',
         }}
       >
-        {pagina === 1 ? page1 : pagina === 2 ? page2 : page3}
+        {pagina === 1 ? page1 : pagina === 2 ? page2 : pagina === 3 ? page3 : pageChequeo}
       </div>
     </div>
   );

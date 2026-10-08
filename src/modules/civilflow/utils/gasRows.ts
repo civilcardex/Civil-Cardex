@@ -9,7 +9,7 @@ import {
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
 } from '../constants/storage-keys';
-import { renouardByType } from './gasUtils';
+import { renouardByType, factoresGas, qDisenoGas } from './gasUtils';
 import { compareTramosPisoDesc } from './componentHelpers';
 import type { DrawingData, RawElement } from './drawingSync';
 
@@ -26,6 +26,7 @@ const ACC_KEYS = [
   'codos_90_rl_baja',
   'te_linea',
   'te_ramal',
+  'teeTapon',
   'valvula_bola',
 ];
 
@@ -57,7 +58,10 @@ function allDn() {
 }
 function lookupDn(mat: string, dn: string) {
   const normDn = normalizeDnLabel(dn);
-  return allDn().find((x) => x.mat === mat && (x.dn === dn || x.dn === normDn)) || null;
+  // PEAD = polietileno de alta densidad: mismas filas que PE al PE (el catálogo de
+  // materiales lo ofrece pero la tabla GAS no trae filas propias).
+  const matEff = mat === 'PEAD' ? 'PE al PE' : mat;
+  return allDn().find((x) => x.mat === matEff && (x.dn === dn || x.dn === normDn)) || null;
 }
 
 export interface GasRow {
@@ -71,7 +75,13 @@ export interface GasRow {
   K: number;
   longitud: number;
   le: number;
+  qConsumo: number;
+  fAlt: number;
+  fTemp: number;
+  fDens: number;
+  qDiseno: number;
   dP: number;
+  dPAcum: number;
   vel: number;
   pIni: number;
   pFin: number;
@@ -81,12 +91,7 @@ export interface GasRow {
 export function computeGasRows(plans: PlanItem[]): GasRow[] {
   const datos = loadFromStorage<GasDatosGenerales>(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const pMin = Number(datos.pmin) || 17;
-  const pAtm = Number(datos.patm) || 101.325;
-  const T = Number(datos.temp) || 23;
-  const DR = Number(datos.densRel) || 0.67;
-  const fAlt = 101.325 / pAtm;
-  const fTemp = Math.sqrt(288 / (273 + T));
-  const fDens = Math.sqrt(0.67 / DR);
+  const { pAtm, DR, fAlt, fTemp, fDens } = factoresGas(datos);
 
   const gasTramos: {
     id: string;
@@ -126,6 +131,7 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
 
   const result: GasRow[] = [];
   let pAcum = pMin;
+  let dPAcum = 0;
   for (const t of gasTramos) {
     const opt = lookupDn(t.material, t.diametro);
     const dInt = opt ? opt.d : 0;
@@ -139,7 +145,7 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
     const appPid = t.planId ? `_${String(t.planId)}` : '';
     const appCounts = aparatos[`gas_${t.id}${appPid}`] || aparatos[`gas_${t.id}`] || {};
     const qRenouard = renouardByType(appCounts);
-    const qDiseno = Math.max(qRenouard * fAlt * fTemp * fDens, 2.7);
+    const qDiseno = qDisenoGas(qRenouard, { pAtm, DR, fAlt, fTemp, fDens });
     const dP =
       dInt > 0
         ? ((23200 * (le + t.longitud) * Math.pow(qDiseno, 1.82)) / Math.pow(dInt, 4.82)) *
@@ -149,7 +155,12 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
     const pIni = pAcum;
     const pFin = pAcum - dP;
     pAcum = pFin;
-    const ok = vel > 0 && vel <= 10 && dP > 0 ? 'O.K.' : dP > 0 ? 'NO' : '—';
+    dPAcum += dP;
+    // Chequeo NTC 3728: V ≤ 10 m/s y pérdida acumulada ≤ 9.81 mbar (presupuesto desde
+    // la presión del operador; CRIT0 en defaults.ts). La presión de inicio ya es la
+    // mínima garantizada (17 mbar), así que el límite de pérdida ES el chequeo.
+    const ok =
+      vel > 0 && vel <= 10 && dP > 0 ? (dPAcum <= 9.81 ? 'O.K.' : 'NO') : dP > 0 ? 'NO' : '—';
     result.push({
       id: t.id,
       piso: t.piso,
@@ -161,7 +172,13 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
       K,
       longitud: t.longitud,
       le,
+      qConsumo: qRenouard,
+      fAlt,
+      fTemp,
+      fDens,
+      qDiseno,
       dP,
+      dPAcum,
       vel,
       pIni,
       pFin,

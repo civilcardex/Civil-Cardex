@@ -25,7 +25,7 @@ const gas = {
             <span className="text-on-surface-variant">Donde:</span>
           </div>
           {donde([
-            [<>&Delta;P</>, 'pérdida de presión del tramo (Pa)'],
+            [<>&Delta;P</>, 'pérdida de presión del tramo (mbar)'],
             ['L', 'longitud equivalente del tramo (m)'],
             ['q', 'caudal de diseño del tramo (m³/h)'],
             ['DR', 'densidad relativa del gas (natural ≈ 0.6, GLP ≈ 1.5)'],

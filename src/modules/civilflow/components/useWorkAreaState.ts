@@ -195,11 +195,11 @@ export function useWorkAreaState() {
   const [gasPage, setGasPage] = useState<number>(1);
   const [rciPage, setRciPage] = useState<number>(1);
 
-  // Re-clamp: al apagar la subred 'rejillas', el total de gas baja a 6→4 y una página
+  // Re-clamp: al apagar la subred 'rejillas', el total de gas baja (7→5) y una página
   // 5/6 quedaba fuera de rango (PageNav pintaba "6 de 4"). Encender 'rejillas' NO mueve
   // la página — el render condicional ya redirige la 4 a RejillasVentilacion.
   useEffect(() => {
-    if (!redes.has('rejillas') && gasPage > 4) setGasPage(4);
+    if (!redes.has('rejillas') && gasPage > 5) setGasPage(5);
   }, [redes, gasPage, setGasPage]);
 
   const [netColors, setNetColors] = useState<Record<string, string>>(() => {
