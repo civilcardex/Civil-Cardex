@@ -2988,3 +2988,26 @@ Gates: tsc 0 · lint 0 · vitest 1001/1001 (+1 unhandled rejection reEnraizar.ts
 ## Session Note — 2026-10-08 (nudo → nodo en toda la UI)
 
 Terminología: "nudo" → "nodo" en todos los strings visibles — msgs del chequeo de redes de presión (Nodo sin alimentación / Nodo con N entradas), ids de tipo de incidencia ('nodo-sin-entrada'/'nodo-dos-entradas'), ExtremoTipo 'NODO', tooltips de CalcUC/GasCalcUC/FixtureUnitCalc y comentarios del WIP. Cero ocurrencias de "nudo" en src. (El nombre de archivo nudos.ts se deja — renombrar es churn sin beneficio.)
+
+## Session Note — 2026-10-08 (chequeo redes de presión simplificado + bloqueo al dibujar)
+
+Ped. usuario: las verificaciones de nudos/huérfanos/extremo-libre bloqueaban la experiencia de dibujo. `chequearRed` (nudos.ts) queda en SOLO 2: sale-de-aparato/entra-a-fuente + ciclo no declarado (con exención de malla por plan). El conflicto de 2 alimentaciones lo sigue resolviendo el auto-corrección de sentido (reglas 1-4) al soltar el tramo. Helpers internos preservados (entradasSalidas/extremoLejanoTipo/clustersDe los usa resolverConflictoSentido y el DFS del ciclo); cargarMallas/guardarMallas/mallasKey restaurados (los cortó el truncado del bloque extremo-libre — verificar cierres de bloque al recortar por marcadores).
+
+NUEVO `validarTrazoPresion(engine, ram)` (nudos.ts): valida el tramo NUEVO de redes de presión ANTES de dejarlo: sale-de-aparato, entra-a-fuente, ciclo no declarado → motivo o null. `finishRamal` lo llama tras `ramales.push(r)` (patrón pop existente): si hay motivo → `triggerAlert('Trazo no válido', motivo)` + `pop()` + return — el trazo NO queda dibujado.
+
+Nota: `chequearPresionGlobal` (_markDirty, modal por hash) sigue apuntando a `chequearRed` simplificada — menos ruido en pleno dibujo.
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 (0 unhandled) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-08 (resumen por red v3: chips de TODAS las tablas + semáforo=chips)
+
+Reporte usuario (BAN1-C 'No cumple' y canal sin verificar mostraban OK; AGUA CALIENTE 'Revisar' sin chips): infTab reconstruido desde HEAD (la ronda anterior había cortado el bloque en mitad de la palabra 'stretch' — recorte por marcadores sobre archivo sucio) + delta quirúrgico:
+
+- **`fallosDeTabla(tbl)`**: parser genérico de MemoriaTable — filas donde una columna /chequeo/i dice 'No cumple' → chips. Conectado a las 3 tablas que el resumen ignoraba: `bajVentSanTable` (BAN1-C → chip en SANITARIA), `llBajTable` (BAN1-C → chip `BAN1-C` con nivel resuelto vía pisoDeBajLl), `llCanalTable`.
+- **fallosBajLl SIN filtro de área** — la tabla marca 'No cumple' también en bajantes de cubierta sin área acumulada.
+- **Canal sin verificar**: materiales sin elegir (C=0 o n=null) → chip `CN1-C (sin verificar)` + estado ✗ — ya no aparece OK sin chequear.
+- **AF/AC: semáforo y chips juzgan el MISMO conjunto** (tramosAfJ/AcJ sin tributarios) — si dice Revisar, los chips aparecen. Estado `◌ Sin calcular` cuando la red no tiene ramales.
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 · build ✓ · graphify ✓.
+
+LECCIÓN DE PROCESO (2ª vez): recortar bloques por marcadores de comentario sobre archivos con diff sin commitear parte líneas a mitad de palabra ('st|retch', docstrings abiertos que tragaron firmas) — SIEMPRE reconstruir desde `git show HEAD:` con anclas por nombre y aplicar el delta scripted; y los heredocs bash grandes con unicode fallan aleatoriamente: escribir el script con Write y ejecutarlo.
