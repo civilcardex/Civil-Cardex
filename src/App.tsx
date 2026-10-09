@@ -3,7 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './layouts/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { AppProviders } from './context/AppProviders';
+import { AuthProvider } from './context/AuthContext';
+import { GlobalAlertDialogProvider } from './modules/civilflow/components/GlobalAlertDialogProvider';
 import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders';
 import PageTransition from './components/landing/PageTransition';
 
@@ -46,272 +47,277 @@ const ModulePage = React.lazy(() => import('./pages/ModulePage'));
 
 function App() {
   return (
-    <AppProviders>
-      <a
-        href="#app-content"
-        className="skip-link"
-        style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
-        onFocus={(e) => {
-          e.currentTarget.style.left = '16px';
-          e.currentTarget.style.top = '16px';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.left = '-9999px';
-        }}
-      >
-        Saltar al contenido principal
-      </a>
-      <div
-        id="app-content"
-        className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col"
-      >
-        <PageTransition>
-          {(displayLocation) => (
-            <Routes location={displayLocation}>
-              {/* Rutas públicas ligeras */}
-              <Route
-                path="/"
-                element={
-                  <ErrorBoundary>
-                    <LandingPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/login"
-                element={
-                  <ErrorBoundary>
-                    <LoginPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/register"
-                element={
-                  <ErrorBoundary>
-                    <RegisterPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/restablecer"
-                element={
-                  <ErrorBoundary>
-                    <ResetPasswordPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/terminos"
-                element={
-                  <ErrorBoundary>
-                    <TermsPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/privacidad"
-                element={
-                  <ErrorBoundary>
-                    <PrivacyPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/pricing"
-                element={
-                  <ErrorBoundary>
-                    <PricingPage />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/visor"
-                element={
-                  <ErrorBoundary>
-                    <CivilFlowProviders>
-                      <Suspense fallback={<Fallback />}>
-                        <ViewerPage />
-                      </Suspense>
-                    </CivilFlowProviders>
-                  </ErrorBoundary>
-                }
-              />
-
-              {/* Rutas lazy públicas */}
-              <Route
-                path="/docs"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <DocsPage />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilflow"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="flow" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilstructure"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="structure" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilterrain"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="terrain" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilbim"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="bim" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilmanager"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="manage" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilmep"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="mep" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/civilroads"
-                element={
-                  <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ModulePage moduleId="roads" />
-                    </Suspense>
-                  </ErrorBoundary>
-                }
-              />
-
-              {/* Redirects */}
-              <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
-              <Route path="/dashboard" element={<Navigate to="/civilflowareatrabajo" replace />} />
-
-              {/* Rutas protegidas */}
-              <Route element={<ProtectedRoute />}>
-                <Route element={<Layout />}>
-                  <Route
-                    path="/civilflowareatrabajo/:proyectoId?"
-                    element={
-                      <RequireModule modulo="flow">
-                        <ErrorBoundary>
-                          <CivilFlowProviders>
-                            <Suspense fallback={<Fallback />}>
-                              <WorkAreaCivilFlowPage />
-                            </Suspense>
-                          </CivilFlowProviders>
-                        </ErrorBoundary>
-                      </RequireModule>
-                    }
-                  />
-                  <Route
-                    path="/civilmanagerareatrabajo/:proyectoId?"
-                    element={
-                      <RequireModule modulo="manage">
-                        <ErrorBoundary>
-                          <Suspense fallback={<Fallback />}>
-                            <WorkAreaCivilManagerPage />
-                          </Suspense>
-                        </ErrorBoundary>
-                      </RequireModule>
-                    }
-                  />
-                  <Route
-                    path="/perfil"
-                    element={
-                      <ErrorBoundary>
-                        <Suspense fallback={<Fallback />}>
-                          <ProfilePage />
-                        </Suspense>
-                      </ErrorBoundary>
-                    }
-                  />
-                  <Route
-                    path="/empresa"
-                    element={
-                      <ErrorBoundary>
-                        <Suspense fallback={<Fallback />}>
-                          <CompanyPage />
-                        </Suspense>
-                      </ErrorBoundary>
-                    }
-                  />
-                  <Route
-                    path="/catalogomaestro"
-                    element={
-                      <ErrorBoundary>
-                        <Suspense fallback={<Fallback />}>
-                          <CatalogoMaestroPage />
-                        </Suspense>
-                      </ErrorBoundary>
-                    }
-                  />
-                </Route>
-              </Route>
-
-              {/* SOLO DESARROLLO: preview de /empresa con datos falsos (borrar) — fuera del bundle de prod la ruta cae al 404 */}
-              {import.meta.env.DEV && (
+    <AuthProvider>
+      <GlobalAlertDialogProvider>
+        <a
+          href="#app-content"
+          className="skip-link"
+          style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
+          onFocus={(e) => {
+            e.currentTarget.style.left = '16px';
+            e.currentTarget.style.top = '16px';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.left = '-9999px';
+          }}
+        >
+          Saltar al contenido principal
+        </a>
+        <div
+          id="app-content"
+          className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col"
+        >
+          <PageTransition>
+            {(displayLocation) => (
+              <Routes location={displayLocation}>
+                {/* Rutas públicas ligeras */}
                 <Route
-                  path="/empresa-preview"
+                  path="/"
                   element={
-                    <Suspense fallback={<Fallback />}>
-                      <CompanyPreviewPage />
-                    </Suspense>
+                    <ErrorBoundary>
+                      <LandingPage />
+                    </ErrorBoundary>
                   }
                 />
-              )}
+                <Route
+                  path="/login"
+                  element={
+                    <ErrorBoundary>
+                      <LoginPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/register"
+                  element={
+                    <ErrorBoundary>
+                      <RegisterPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/restablecer"
+                  element={
+                    <ErrorBoundary>
+                      <ResetPasswordPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/terminos"
+                  element={
+                    <ErrorBoundary>
+                      <TermsPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/privacidad"
+                  element={
+                    <ErrorBoundary>
+                      <PrivacyPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/pricing"
+                  element={
+                    <ErrorBoundary>
+                      <PricingPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/visor"
+                  element={
+                    <ErrorBoundary>
+                      <CivilFlowProviders>
+                        <Suspense fallback={<Fallback />}>
+                          <ViewerPage />
+                        </Suspense>
+                      </CivilFlowProviders>
+                    </ErrorBoundary>
+                  }
+                />
 
-              {/* 404 catch-all */}
-              <Route
-                path="*"
-                element={
-                  <ErrorBoundary>
-                    <NotFound />
-                  </ErrorBoundary>
-                }
-              />
-            </Routes>
-          )}
-        </PageTransition>
-      </div>
-    </AppProviders>
+                {/* Rutas lazy públicas */}
+                <Route
+                  path="/docs"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <DocsPage />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilflow"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="flow" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilstructure"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="structure" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilterrain"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="terrain" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilbim"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="bim" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilmanager"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="manage" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilmep"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="mep" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/civilroads"
+                  element={
+                    <ErrorBoundary>
+                      <Suspense fallback={<Fallback />}>
+                        <ModulePage moduleId="roads" />
+                      </Suspense>
+                    </ErrorBoundary>
+                  }
+                />
+
+                {/* Redirects */}
+                <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
+                <Route
+                  path="/dashboard"
+                  element={<Navigate to="/civilflowareatrabajo" replace />}
+                />
+
+                {/* Rutas protegidas */}
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<Layout />}>
+                    <Route
+                      path="/civilflowareatrabajo/:proyectoId?"
+                      element={
+                        <RequireModule modulo="flow">
+                          <ErrorBoundary>
+                            <CivilFlowProviders>
+                              <Suspense fallback={<Fallback />}>
+                                <WorkAreaCivilFlowPage />
+                              </Suspense>
+                            </CivilFlowProviders>
+                          </ErrorBoundary>
+                        </RequireModule>
+                      }
+                    />
+                    <Route
+                      path="/civilmanagerareatrabajo/:proyectoId?"
+                      element={
+                        <RequireModule modulo="manage">
+                          <ErrorBoundary>
+                            <Suspense fallback={<Fallback />}>
+                              <WorkAreaCivilManagerPage />
+                            </Suspense>
+                          </ErrorBoundary>
+                        </RequireModule>
+                      }
+                    />
+                    <Route
+                      path="/perfil"
+                      element={
+                        <ErrorBoundary>
+                          <Suspense fallback={<Fallback />}>
+                            <ProfilePage />
+                          </Suspense>
+                        </ErrorBoundary>
+                      }
+                    />
+                    <Route
+                      path="/empresa"
+                      element={
+                        <ErrorBoundary>
+                          <Suspense fallback={<Fallback />}>
+                            <CompanyPage />
+                          </Suspense>
+                        </ErrorBoundary>
+                      }
+                    />
+                    <Route
+                      path="/catalogomaestro"
+                      element={
+                        <ErrorBoundary>
+                          <Suspense fallback={<Fallback />}>
+                            <CatalogoMaestroPage />
+                          </Suspense>
+                        </ErrorBoundary>
+                      }
+                    />
+                  </Route>
+                </Route>
+
+                {/* SOLO DESARROLLO: preview de /empresa con datos falsos (borrar) — fuera del bundle de prod la ruta cae al 404 */}
+                {import.meta.env.DEV && (
+                  <Route
+                    path="/empresa-preview"
+                    element={
+                      <Suspense fallback={<Fallback />}>
+                        <CompanyPreviewPage />
+                      </Suspense>
+                    }
+                  />
+                )}
+
+                {/* 404 catch-all */}
+                <Route
+                  path="*"
+                  element={
+                    <ErrorBoundary>
+                      <NotFound />
+                    </ErrorBoundary>
+                  }
+                />
+              </Routes>
+            )}
+          </PageTransition>
+        </div>
+      </GlobalAlertDialogProvider>
+    </AuthProvider>
   );
 }
 

@@ -9,9 +9,9 @@ import { setAyudaContext } from '../../../../components/help/helpContext';
 // del cuarto de bombas) y Equipo de presión constante (solo el esquema 3D — el diseño EP queda
 // en Redes). Estado local de sub-pestaña (variante PressureEquipmentDesign).
 
-const Aparatos3D = React.lazy(() => import('../aparatos3d'));
-const RciCuartoBombasViewer = React.lazy(() => import('../rci3d'));
-const Epc3D = React.lazy(() => import('../epc3d'));
+const Aparatos3D = React.lazy(() => import('../aparatos3d/DetailAparatosViewer'));
+const RciCuartoBombasViewer = React.lazy(() => import('../rci3d/RciViewer'));
+const Epc3D = React.lazy(() => import('../epc3d/EpcViewer'));
 const RciRed3D = React.lazy(() => import('../rci-red3d/RciRedViewer'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;

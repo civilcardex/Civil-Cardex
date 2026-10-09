@@ -93,23 +93,10 @@ export const PROY_DEFAULTS: Proyecto = {
   pendienteSan: 0.02,
 };
 
-function cloneMats(): Record<string, MaterialItem[]> {
-  return Object.fromEntries(
-    Object.entries(MATS_DEFAULT).map(([k, v]) => [k, v.map((item) => ({ ...item }))]),
-  );
-}
-
-function cloneProfs(): ProfItem[] {
-  return PROFS_DEFAULT.map((p) => ({ ...p }));
-}
-
-function cloneCrits(): CritItem[] {
-  return CRIT0.map((c) => ({ ...c }));
-}
-
-const MATS_CLONED = cloneMats();
-const PROFS_CLONED = cloneProfs();
-const CRITS_CLONED = cloneCrits();
+// ponytail: structuredClone en vez de 3 clonadores manuales (ya se usa en PlanoHistory).
+const MATS_CLONED: Record<string, MaterialItem[]> = structuredClone(MATS_DEFAULT);
+const PROFS_CLONED: ProfItem[] = structuredClone(PROFS_DEFAULT);
+const CRITS_CLONED: CritItem[] = structuredClone(CRIT0);
 
 // Proyectos guardados antes del renombre ciudad/pais aún tienen las claves viejas 'mun'/'dep' — se
 // mapean una sola vez al cargar para que los proyectos existentes no parezcan perder ciudad/país.
@@ -122,8 +109,6 @@ function recoverProyecto(saved: unknown): Proyecto {
     pais: s.pais ?? s.dep ?? PROY_DEFAULTS.pais,
   };
 }
-
-export { cloneMats, cloneProfs, cloneCrits };
 
 /** Estado agregado del proyecto: pisos, proyecto, materiales, profundidades y criterios reunidos en un solo valor de contexto para que el área de trabajo no dependa de cada sub-contexto por separado. */
 interface ProjectContextValue {
@@ -181,9 +166,9 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
   const resetToDefaults = useCallback(() => {
     setPisos([]);
     setProy({ ...PROY_DEFAULTS });
-    setMats(cloneMats());
-    setProfs(cloneProfs());
-    setCrits(cloneCrits());
+    setMats(structuredClone(MATS_DEFAULT));
+    setProfs(structuredClone(PROFS_DEFAULT));
+    setCrits(structuredClone(CRIT0));
   }, [setPisos, setProy, setMats, setProfs, setCrits]);
 
   // Respaldo en la nube con debounce de todo lo que pertenece al proyecto, salvo trazos y

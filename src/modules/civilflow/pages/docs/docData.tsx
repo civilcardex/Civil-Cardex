@@ -1,1 +1,0 @@
-export { docData } from './data';

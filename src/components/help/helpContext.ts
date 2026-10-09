@@ -33,7 +33,7 @@ export function setAyudaContext(next: AyudaContexto | null): void {
   emit();
 }
 
-export function getAyudaContext(): AyudaContexto | null {
+function getAyudaContext(): AyudaContexto | null {
   return ctx;
 }
 

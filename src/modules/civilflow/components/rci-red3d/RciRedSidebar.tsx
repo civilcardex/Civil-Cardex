@@ -1,5 +1,7 @@
-import { COMPONENTS, COMP_DESC, RCI_MONO } from './rciRedDataHelpers';
+import { COMPONENTS, COMP_DESC } from './rciRedData';
+import { RCI_MONO } from '../rci3d/rci3dData';
 import { NotaDisenoRci } from '../rci3d/RciSidebar';
+import { NormaTxt } from '../shared/standardsLinks';
 
 // Sidebar izquierdo del visor "Red contra incendio" — clon de RciSidebar con los 14
 // componentes de la RED (port del HTML). Mismo patrón: desplegable + descripción + nota.
@@ -97,7 +99,7 @@ export default function RciRedSidebar({ selectedId, onSelect }: Props): React.JS
           <div style={{ color: '#c9d1d9' }}>{selDesc.body}</div>
           <div style={{ marginTop: 6, color: '#8b949e', fontSize: '0.70rem' }}>
             <span style={{ fontWeight: 600 }}>Referencia normativa: </span>
-            {selDesc.norm}
+            <NormaTxt texto={selDesc.norm} />
           </div>
         </div>
       )}

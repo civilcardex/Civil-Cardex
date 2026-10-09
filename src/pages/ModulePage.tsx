@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import ModulePageLayout from '../components/ModulePageLayout';
+import FlowHero from '../modules/civilflow/components/modulePage/FlowHero';
+import StructureHero from '../components/modulePage/StructureHero';
+import TerrainHero from '../components/modulePage/TerrainHero';
+import BimHero from '../components/modulePage/BimHero';
+import ManageHero from '../components/modulePage/ManageHero';
+import MepHero from '../components/modulePage/MepHero';
+import RoadsHero from '../components/modulePage/RoadsHero';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { MODULES_DATA } from './moduleData';
-import { HERO_BY_LAYOUT } from '../components/modulePage/heroByLayout';
 import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog';
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +30,21 @@ const ModulePage_S1: React.CSSProperties = {
 interface ModulePageProps {
   moduleId: 'flow' | 'structure' | 'terrain' | 'bim' | 'manage' | 'mep' | 'roads';
 }
+
+interface HeroProps {
+  cfg: NonNullable<(typeof MODULES_DATA)[keyof typeof MODULES_DATA]>;
+  onCtaClick?: () => void;
+}
+
+const HERO_BY_LAYOUT: Record<string, ComponentType<HeroProps>> = {
+  flow: FlowHero,
+  structure: StructureHero,
+  terrain: TerrainHero,
+  bim: BimHero,
+  manage: ManageHero,
+  mep: MepHero,
+  roads: RoadsHero,
+};
 
 export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];

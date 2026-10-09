@@ -20,10 +20,6 @@ const GasDesign = lazy(() => import('../GasDesign'));
 const RejillasVentilacion = lazy(() => import('../RejillasVentilacion'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
-// RCI en construcción (orig. usuario: pestaña vacía) — para restaurar descomentar el bloque
-// del render y estos imports:
-// const RciCuartoBombasViewer = lazy(() => import('../rci3d'));
-// const RciCuartoBombasReferencia = lazy(() => import('../RciRoomBombasReference'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
@@ -98,7 +94,6 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
     setAcPage,
     gasPage,
     setGasPage,
-    // rciPage/setRciPage sin uso mientras la pestaña RCI está vacía (red en construcción).
     tramosAf,
     tramosAc,
   } = state;
@@ -288,7 +283,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           )}
           {afPage === 4 && (
             <Suspense fallback={FALLBACK}>
-              <AccesoriosTable tramos={tramosAf} />
+              <AccesoriosTable tramos={tramosAf} red="af" />
             </Suspense>
           )}
           {afPage === 5 && (
@@ -345,7 +340,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           )}
           {acPage === 4 && (
             <Suspense fallback={FALLBACK}>
-              <AccesoriosTable tramos={tramosAc} />
+              <AccesoriosTable tramos={tramosAc} red="ac" />
             </Suspense>
           )}
           {acPage === 5 && (
@@ -409,73 +404,6 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           )}
         </div>
       )}
-      {/* RCI en construcción (orig. usuario: "en esta pestaña no debe aparecer nada por
-          ahora") — pestaña vacía. Bloque completo para restaurar cuando salga:
-          <PageNav page={rciPage} setPage={setRciPage} total={2} color="var(--rci)"
-            labels={['Cuarto de bombas', 'Cuarto de bombas opcional']} />
-          {rciPage === 1 && <Suspense fallback={FALLBACK}><RciCuartoBombasViewer /></Suspense>}
-          {rciPage === 2 && <Suspense fallback={FALLBACK}><RciCuartoBombasReferencia /></Suspense>}
-          (import lazy del viewer: const RciCuartoBombasViewer = lazy(() => import('../rci3d'));) */}
-      {redActiva === 'rci' && redes.has('rci') && (
-        <div
-          className="fu"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        />
-      )}
-      {redesActivas
-        .filter(
-          (r) =>
-            r.id !== 'san' &&
-            r.id !== 'll' &&
-            r.id !== 'af' &&
-            r.id !== 'ac' &&
-            r.id !== 'bom' &&
-            r.id !== 'ep' &&
-            r.id !== 'gas' &&
-            r.id !== 'rci',
-        )
-        .map(
-          (r) =>
-            redActiva === r.id &&
-            redes.has(r.id) && (
-              <div
-                key={r.id}
-                className="fu"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 16,
-                  flex: 1,
-                  minHeight: 250,
-                }}
-              >
-                <div style={{ fontSize: 48, opacity: 0.5 }}>&#x1F6A7;</div>
-                <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--txt2)' }}>{r.lbl}</div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--txt3)',
-                    textAlign: 'center',
-                    maxWidth: 380,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  El módulo de <strong>{r.lbl}</strong> está en desarrollo.
-                  <br />
-                  Pronto estará disponible para uso en CivilFlow.
-                </div>
-              </div>
-            ),
-        )}
     </div>
   );
 }

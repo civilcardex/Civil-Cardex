@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import Navbar from '../../../components/Navbar';
-import { docData } from './docs/docData';
+import { docData } from './docs/data';
 import SectionAccordion from './docs/SectionAccordion';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 
