@@ -6,7 +6,7 @@ import {
   computeOrigenesCompartidos,
   stampCalibracion,
   type CalibrationData,
-} from '../planosTabCalibration';
+} from '../PlanosTab';
 
 // Módulo puro de calibración de PlanosTab: derivación meta→calData (antes duplicada entre
 // initializer y efecto), globalCal, orígenes compartidos y el stamp sobre el doc (re-base
