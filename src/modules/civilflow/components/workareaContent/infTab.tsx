@@ -831,10 +831,31 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     const corto = raw.length > 10 ? `${raw.slice(0, 4)}…` : raw;
     return `${corto}-${pisoCorto(Number(piso ?? 0))}`;
   };
+  /** Fallos leídos de una MemoriaTable: filas donde una columna /chequeo/i dice 'No cumple'. */
+  const fallosDeTabla = (tbl: MemoriaTable | null): string[] => {
+    if (!tbl) return [];
+    const idxCh: number[] = [];
+    tbl.headers.forEach((h, i) => {
+      if (/chequeo/i.test(String(h))) idxCh.push(i);
+    });
+    if (idxCh.length === 0) return [];
+    const out: string[] = [];
+    for (const row of tbl.rows) {
+      if (idxCh.some((i) => /^no cumple$/i.test(String(row[i] ?? '').trim()))) {
+        out.push(String(row[0] ?? '—'));
+      }
+    }
+    return out;
+  };
   // SAN: rango (v/yD/qQ0) + chequeos de la tabla (velocidad, tiro Yn, fuerza tractiva). Sin tributarios.
   const fallosSan = [
     ...conDatosSan.filter(noTrib).filter((t) => !enRangoSanLl(t)),
     ...(sanRowsCalc ?? []).filter(filaFalla).map((r) => ({ id: r.id, piso: r.piso })),
+  ];
+  /** Chips SAN = fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent. */
+  const fallosSanLabs = [
+    ...fallosSan.map((t) => etiq(t.id, t.piso)),
+    ...fallosDeTabla(bajVentSanTable),
   ];
   const okSAN = conDatosSan.length > 0 && fallosSan.length === 0;
   // LL: rango + chequeos de tabla + bajantes + canales. Sin tributarios.
@@ -845,22 +866,22 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const okLL =
     (conDatosLl.length > 0 || bajantesLl.length > 0 || (canalesLl?.length ?? 0) > 0) &&
     fallosLl.length === 0;
+  // Semáforo y chips juzgan el MISMO conjunto (solo ramales — sin tributarios): si dice
+  // 'Revisar', los chips de fallo aparecen al lado (ped. usuario).
+  const tramosAfJ = tramosAf.filter(noTrib);
+  const tramosAcJ = tramosAc.filter(noTrib);
   const okAF =
-    tramosAf.length > 0 && tramosAf.every((t) => t.velCumple !== false && t.presionOk !== false);
+    tramosAfJ.length > 0 && tramosAfJ.every((t) => t.velCumple !== false && t.presionOk !== false);
   const okAC =
-    tramosAc.length > 0 && tramosAc.every((t) => t.velCumple !== false && t.presionOk !== false);
-  const fallosAf = tramosAf.filter(
-    (t) => noTrib(t) && (t.velCumple === false || t.presionOk === false),
+    tramosAcJ.length > 0 && tramosAcJ.every((t) => t.velCumple !== false && t.presionOk !== false);
+  const fallosAf = tramosAfJ.filter((t) => t.velCumple === false || t.presionOk === false);
+  const fallosAc = tramosAcJ.filter((t) => t.velCumple === false || t.presionOk === false);
+  // SIN filtro de área: la tabla marca 'No cumple' también en bajantes de cubierta sin área
+  // (BAN1-C) — el resumen refleja exactamente lo que la tabla muestra.
+  const fallosBajLl = bajantesLl.filter(
+    (b) =>
+      chequeoBajanteLluvia({ ...b, areaAcumulada: b.areaAcumulada || 0 }).chequeo === 'No cumple',
   );
-  const fallosAc = tramosAc.filter(
-    (t) => noTrib(t) && (t.velCumple === false || t.presionOk === false),
-  );
-  const fallosBajLl = bajantesLl
-    .filter((b) => (b.areaAcumulada ?? 0) > 0)
-    .filter(
-      (b) =>
-        chequeoBajanteLluvia({ ...b, areaAcumulada: b.areaAcumulada || 0 }).chequeo === 'No cumple',
-    );
   // Nivel de cada bajante ll desde sus tramos esBajante (BajanteLl no trae piso).
   const pisoDeBajLl = new Map(
     tramosLl.filter((t) => t.esBajante).map((t) => [String(t.id), t.piso]),
@@ -886,6 +907,19 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         (p) => String(p.id) === String((c as { planId?: unknown }).planId),
       )?.nivel;
       return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))}`;
+    });
+  // Canal SIN verificación hecha (materiales sin elegir): la tabla no chequea, pero no es OK.
+  const fallosCanalSinVerificar = (canalesLl ?? [])
+    .filter((c) => {
+      const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+      const nd = nDeCanal(c.materialCanal ?? '');
+      return Cder <= 0 || nd == null;
+    })
+    .map((c) => {
+      const piso = plans.find(
+        (p) => String(p.id) === String((c as { planId?: unknown }).planId),
+      )?.nivel;
+      return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))} (sin verificar)`;
     });
   // AF: acometida (computeAcometidaSummary estadoOk) — la tabla la marca, el resumen la lista.
   const acometidaOk = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF)?.estadoOk !== false;
@@ -914,40 +948,59 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       ],
     ];
     const labs = (fs: { id: unknown; piso?: number }[]) => fs.map((t) => etiq(t.id, t.piso));
-    // Red con tramos dibujados pero SIN calcular (nunca abrió su tabla): neutro, no fallo.
-    const estadoSan = conDatosSan.length === 0 ? '◌ Sin calcular' : okSAN ? '✓ OK' : '✗ Revisar';
-    const estadoLl =
-      conDatosLl.length === 0 && bajantesLl.length === 0 && (canalesLl?.length ?? 0) === 0
+    // SAN: fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent.
+    const fallosSanLabs2 = [
+      ...fallosSan.map((t) => etiq(t.id, t.piso)),
+      ...fallosDeTabla(bajVentSanTable),
+    ];
+    const estadoSan = fallosSanLabs2.length
+      ? '✗ Revisar'
+      : conDatosSan.length > 0
+        ? '✓ OK'
+        : '◌ Sin calcular';
+    const fallosCanalSinVerificar = (canalesLl ?? [])
+      .filter((c) => {
+        const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+        const nd = nDeCanal(c.materialCanal ?? '');
+        return Cder <= 0 || nd == null;
+      })
+      .map((c) => {
+        const piso = plans.find(
+          (p) => String(p.id) === String((c as { planId?: unknown }).planId),
+        )?.nivel;
+        return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))} (sin verificar)`;
+      });
+    const fallosLlLabs2 = [
+      ...fallosLl.map((t) => etiq(t.id, t.piso)),
+      ...fallosBajLl.map((b) =>
+        etiq(b.bajante || b.id, pisoDeBajLl.get(String(b.bajante || b.id))),
+      ),
+      ...fallosCanalLl,
+      ...fallosDeTabla(llBajTable),
+      ...fallosCanalSinVerificar,
+    ];
+    const estadoLl = fallosLlLabs2.length
+      ? '✗ Revisar'
+      : conDatosLl.length === 0 && bajantesLl.length === 0 && (canalesLl?.length ?? 0) === 0
         ? '◌ Sin calcular'
-        : okLL && fallosBajLl.length === 0 && fallosCanalLl.length === 0
-          ? '✓ OK'
-          : '✗ Revisar';
+        : '✓ OK';
     const fallosDe = (ok: boolean, labs2: string[]): string[] => (ok ? [] : labs2);
-    if (hasSan)
-      rows.push(['SANITARIA', estadoSan, estadoSan === '✗ Revisar' ? labs(fallosSan) : []]);
+    if (hasSan) rows.push(['SANITARIA', estadoSan, fallosSanLabs2]);
     if (hasLl)
-      rows.push([
-        'AGUAS LLUVIAS',
-        estadoLl,
-        estadoLl === '✗ Revisar'
-          ? [
-              ...labs(fallosLl),
-              ...fallosBajLl.map((b) =>
-                etiq(b.bajante || b.id, pisoDeBajLl.get(String(b.bajante || b.id))),
-              ),
-              ...fallosCanalLl,
-            ]
-          : [],
-      ]);
+      rows.push(['AGUAS LLUVIAS', estadoLl, estadoLl === '✗ Revisar' ? fallosLlLabs2 : []]);
     const fallosAfLabs = [...labs(fallosAf), ...(acometidaOk ? [] : ['ACOMETIDA'])];
     if (hasAf)
       rows.push([
         'AGUA FRÍA',
-        tramosAf.length === 0 ? '◌ Sin calcular' : okAF && acometidaOk ? '✓ OK' : '✗ Revisar',
+        tramosAfJ.length === 0 ? '◌ Sin calcular' : okAF && acometidaOk ? '✓ OK' : '✗ Revisar',
         fallosDe(okAF && acometidaOk, fallosAfLabs),
       ]);
     if (hasAc)
-      rows.push(['AGUA CALIENTE', okAC ? '✓ OK' : '✗ Revisar', fallosDe(okAC, labs(fallosAc))]);
+      rows.push([
+        'AGUA CALIENTE',
+        tramosAcJ.length === 0 ? '◌ Sin calcular' : okAC ? '✓ OK' : '✗ Revisar',
+        fallosDe(okAC, labs(fallosAc)),
+      ]);
     if (hasGas)
       rows.push([
         'GAS',
@@ -987,6 +1040,13 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     fallosAc,
     fallosBajLl,
     fallosCanalLl,
+    fallosDeTabla,
+    fallosSanLabs,
+    fallosCanalSinVerificar,
+    tramosAfJ,
+    tramosAcJ,
+    bajVentSanTable,
+    llBajTable,
     conDatosSan.length,
     conDatosLl.length,
     bajantesLl,
