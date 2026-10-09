@@ -25,17 +25,11 @@ export const TEES_ACC_MED = new Set([
 // Tees de las redes hidro que calcHydroAccessories arrastra a hidroData desde accMed/extremos —
 // en la tabla se cuentan SOLO desde los marcadores del dibujo (con nomenclatura de tres brazos),
 // así que esta ruta se excluye en AF/AC/gas para no duplicarlas.
-export const HYDRO_TEE_IDS = new Set([
-  'teeDirecto',
-  'teeReduccion',
-  'teeLado',
-  'teeSube',
-  'teeBaja',
-  'teeTapon',
-  'teeLlaveTerminal',
-  'te_linea',
-  'te_ramal',
-]);
+// Tees de las redes hidro que calcHydroAccessories arrastra a hidroData desde accMed/extremos —
+// en la tabla se cuentan SOLO desde los marcadores del dibujo (con nomenclatura de tres brazos),
+// así que esta ruta se excluye en AF/AC/gas para no duplicarlas.
+// ponytail: mismos ids que TEES_ACC_MED hoy — alias, una sola fuente.
+export const HYDRO_TEE_IDS = TEES_ACC_MED;
 
 // Codons de 90° puestos a MITAD de ramal (accMed, sobre un quiebre del trazo). En AF/AC/LL el
 // glifo no se dibuja (el arco del quiebre ya es el codo) pero la pieza SÍ se compra — el resumen
@@ -54,13 +48,10 @@ export const ACC_MED_CODOS = new Set([
 // sola columna "Codo medio 90°": el sube/baja solo describe cómo se instala (hacia arriba o hacia
 // abajo), no cambia la pieza, y rc/rm/rl son el mismo codo de 90° en el plano. San conserva sus
 // filas de catálogo.
-export const CODO_90_IDS = new Set([
-  'codo90rc',
-  'codo90rm',
-  'codo90rl',
-  'codo90rmSube',
-  'codo90rmBaja',
-]);
+// Todos los codos de 90° (variantes corto/medio/largo + sube/baja). En AF/AC/LL se resumen en UNA
+// columna "Codo medio 90°"; para el cálculo son el MISMO grupo de ids que ACC_MED_CODOS.
+// ponytail: alias — una sola fuente.
+export const CODO_90_IDS = ACC_MED_CODOS;
 
 export const CODO_MEDIO_90 = {
   id: 'codoMedio90',

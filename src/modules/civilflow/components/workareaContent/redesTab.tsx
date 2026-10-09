@@ -380,30 +380,29 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={gasPage}
             setPage={setGasPage}
-            total={redes.has('rejillas') ? 6 : 5}
+            total={redes.has('rejillas') ? 5 : 4}
             color="var(--gas)"
             labels={[
               'Datos generales',
               'Cálculo de unidades de consumo',
               'Diseño de red',
-              'Chequeo de red',
               ...(redes.has('rejillas')
                 ? ['Rejillas de ventilación', 'Resumen accesorios por diámetro']
                 : ['Resumen accesorios por diámetro']),
             ]}
             onPageHover={prefetchHeavy}
           />
-          {gasPage <= 4 && (
+          {gasPage <= 3 && (
             <Suspense fallback={FALLBACK}>
               <GasDesign pagina={gasPage} />
             </Suspense>
           )}
-          {gasPage === 5 && redes.has('rejillas') && (
+          {gasPage === 4 && redes.has('rejillas') && (
             <Suspense fallback={FALLBACK}>
               <RejillasVentilacion />
             </Suspense>
           )}
-          {(gasPage === 6 || (gasPage >= 5 && !redes.has('rejillas'))) && (
+          {(gasPage === 5 || (gasPage >= 4 && !redes.has('rejillas'))) && (
             <Suspense fallback={FALLBACK}>
               <AccesoriosDiamPage net="gas" />
             </Suspense>
