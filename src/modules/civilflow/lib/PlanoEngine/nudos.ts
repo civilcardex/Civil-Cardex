@@ -1,3 +1,4 @@
+import { devError } from '../../../../utils/devError';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 
@@ -150,24 +151,6 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
 
   const clusters = clustersDe(ramales, tol);
 
-  // ── Nodos: entradas ≠ 1 (solo clusters de unión, ≥2 extremos de ramales distintos) ──
-  for (const c of clusters) {
-    const distintos = new Set(c.ids);
-    if (distintos.size < 2) continue;
-    const { ent } = entradasSalidas(engine, net, c.pt, tol);
-    if (ent === 1) continue;
-    const nombres = [...distintos].join(', ');
-    inc.push({
-      nivel: 'error',
-      tipo: ent === 0 ? 'nodo-sin-entrada' : 'nodo-dos-entradas',
-      ramalId: c.ids[0] || '',
-      msg:
-        ent === 0
-          ? `Nodo sin alimentación (${nombres}): ninguna tubería entra al punto.`
-          : `Nodo con ${ent} entradas (${nombres}): dos alimentaciones convergen — invierte el tramo mal sentido.`,
-    });
-  }
-
   // ── Sale de aparato / entra a fuente ──
   for (const r of ramales) {
     const origen = r._tribReversed
@@ -253,78 +236,6 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
     }
   }
 
-  // ── Huérfanos: BFS desde fuentes ──
-  const alcanza = new Set<string>();
-  const cola: string[] = [];
-  for (const r of ramales) {
-    const ini = String(r.ini || '');
-    const fin = String(r.fin || '');
-    // Un aparato en el ORIGEN lógico también siembra la BFS: una red AF/AC puede nacer de un
-    // calentador/tanque dibujado como aparato de cabeza (no todo origen es un contador).
-    const aparatoOrigen = r._tribReversed ? r.aparatoFin : r.aparatoInicio;
-    const srcIni =
-      esFuenteCode(ini) ||
-      fuenteEnPt(engine, net, r.pts![0] as number[], 1) ||
-      (!r._tribReversed && !!aparatoOrigen);
-    const srcFin =
-      esFuenteCode(fin) ||
-      fuenteEnPt(engine, net, r.pts![r.pts!.length - 1] as number[], 1) ||
-      (r._tribReversed && !!aparatoOrigen);
-    if (srcIni || srcFin) {
-      alcanza.add(r.id);
-      cola.push(r.id);
-    }
-  }
-  const vecino = (r: PlanoRamal): string[] => {
-    const out: string[] = [];
-    for (const e of [r.pts![0] as number[], r.pts![r.pts!.length - 1] as number[]]) {
-      for (const r2 of ramales) {
-        if (r2.id === r.id) continue;
-        for (const e2 of [r2.pts![0] as number[], r2.pts![r2.pts!.length - 1] as number[]]) {
-          if (Math.hypot(e[0] - e2[0], e[1] - e2[1]) <= tol) out.push(r2.id);
-        }
-      }
-    }
-    return out;
-  };
-  while (cola.length) {
-    const id = cola.shift()!;
-    const r = ramales.find((x) => x.id === id);
-    if (!r) continue;
-    for (const nb of vecino(r)) {
-      if (!alcanza.has(nb)) {
-        alcanza.add(nb);
-        cola.push(nb);
-      }
-    }
-  }
-  for (const r of ramales) {
-    if (!alcanza.has(r.id)) {
-      inc.push({
-        nivel: 'error',
-        tipo: 'huerfano',
-        ramalId: r.id,
-        msg: `${r.id}: tramo huérfano — sin camino hasta ninguna fuente.`,
-      });
-    }
-  }
-
-  // ── Extremo libre (advertencia) ──
-  for (const c of clusters) {
-    if (c.ids.length > 1) continue;
-    const r = ramales.find((x) => x.id === c.ids[0]);
-    if (!r) continue;
-    const tipoA = extremoLejanoTipo(engine, r, c.pt, tol);
-    if (tipoA === 'LIBRE') {
-      inc.push({
-        nivel: 'adv',
-        tipo: 'extremo-libre',
-        ramalId: r.id,
-        msg: `${r.id}: extremo libre — falta aparato, fuente o conexión.`,
-      });
-    }
-  }
-
   return inc;
 }
 
@@ -332,12 +243,7 @@ function ralesId(ramales: PlanoRamal[], i: number): string {
   return ramales[i]?.id || '';
 }
 
-/** Clave de storage de mallas declaradas por planId. */
-export function mallasKey(planId: string | number | null): string {
-  return `civilflow_mallas_${planId ?? 'x'}`;
-}
-
-/** Carga las redes declaradas malla/recirculación de un plan. */
+/** Lee las redes declaradas (malla) de un plan. */
 export function cargarMallas(planId: string | number | null): Set<string> {
   try {
     const raw = localStorage.getItem(mallasKey(planId));
@@ -351,7 +257,75 @@ export function cargarMallas(planId: string | number | null): Set<string> {
 export function guardarMallas(planId: string | number | null, redes: Set<string>): void {
   try {
     localStorage.setItem(mallasKey(planId), JSON.stringify([...redes]));
-  } catch {
-    /* storage bloqueado: ignorar */
+  } catch (e) {
+    devError('guardarMallas:', e);
   }
+}
+
+/** Clave de storage de mallas declaradas por planId. */
+export function mallasKey(planId: string | number | null): string {
+  return `civilflow_mallas_${planId ?? 'x'}`;
+}
+
+/** Valida el trazo NUEVO de una red de presión ANTES de dejarlo dibujado (finishRamal).
+ *  Devuelve el motivo de rechazo o null si pasa. Verifica SOLO:
+ *  1) sale-de-aparato: el flujo arranca en un aparato (debe entrar a él);
+ *  2) entra-a-fuente: termina en contador/fuente (de ahí sale el fluido);
+ *  3) ciclo: cierra un lazo y la red no tiene malla declarada.
+ *  El ramal DEBE estar ya agregado a engine.ramales (el caller lo retira si hay motivo). */
+export function validarTrazoPresion(engine: IPlanoEngineCore, ram: PlanoRamal): string | null {
+  if (!REDES_PRESION.has(ram.net || '')) return null;
+
+  // 1) dirección vs aparato/fuente en este tramo
+  const aparatoOrigen = ram._tribReversed ? ram.aparatoFin : ram.aparatoInicio;
+  if (aparatoOrigen) {
+    return `${ram.id}: el tramo SALE de un aparato (${aparatoOrigen}) — debe entrar a él.`;
+  }
+  const destinoLogico = ram._tribReversed ? String(ram.ini || '') : String(ram.fin || '');
+  const ptDestino = ram._tribReversed
+    ? (ram.pts![0] as number[])
+    : (ram.pts![ram.pts!.length - 1] as number[]);
+  if (esFuenteCode(destinoLogico) || fuenteEnPt(engine, ram.net || '', ptDestino, 1)) {
+    return `${ram.id}: el tramo ENTRA a una fuente — de ahí sale el fluido, no hacia ahí.`;
+  }
+
+  // 2) ciclo no declarado (DFS sobre clusters, igual que chequearRed)
+  const ramales = ramalesDe(engine, ram.net || '');
+  const clusters = clustersDe(ramales, 0.5);
+  const mallas = (engine as { mallasDeclaradas?: Set<string> }).mallasDeclaradas;
+  if (!(mallas?.has(ram.net || '') ?? false)) {
+    const idxDe = (pt: number[]): number =>
+      clusters.findIndex((c) => Math.hypot(c.pt[0] - pt[0], c.pt[1] - pt[1]) <= 0.5);
+    const aristas: { a: number; b: number; id: string }[] = [];
+    ramales.forEach((r) => {
+      const a = idxDe(r.pts![0] as number[]);
+      const b = idxDe(r.pts![r.pts!.length - 1] as number[]);
+      if (a >= 0 && b >= 0 && a !== b) aristas.push({ a, b, id: r.id });
+    });
+    const adj: number[][] = clusters.map(() => []);
+    aristas.forEach((ar, i) => {
+      adj[ar.a].push(i);
+      adj[ar.b].push(i);
+    });
+    const visit = new Array(clusters.length).fill(false);
+    const parentEdge = new Array(clusters.length).fill(-1);
+    let ciclo: string | null = null;
+    const dfs = (u: number): void => {
+      visit[u] = true;
+      for (const ei of adj[u]) {
+        const v = aristas[ei].a === u ? aristas[ei].b : aristas[ei].a;
+        if (!visit[v]) {
+          parentEdge[v] = ei;
+          dfs(v);
+        } else if (parentEdge[u] !== ei && !ciclo) {
+          ciclo = aristas[ei].id;
+        }
+      }
+    };
+    for (let c = 0; c < clusters.length && !ciclo; c++) if (!visit[c]) dfs(c);
+    if (ciclo) {
+      return `Ciclo en la red (tramo ${ciclo} cierra el lazo). Si es intencional, decláralo como malla/recirculación en el menú del tramo.`;
+    }
+  }
+  return null;
 }

@@ -1,3 +1,4 @@
+import { validarTrazoPresion } from './nudos';
 import {
   NETS,
   allocNetNumber,
@@ -565,6 +566,18 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   }
 
   engine.ramales.push(r);
+  // Redes de presión (af/ac/gas/rci): las 3 verificaciones vivas BLOQUEAN el dibujo —
+  // si el tramo viola (sale de aparato / entra a fuente / ciclo no declarado), se alerta
+  // y NO queda dibujado (patrón pop de los checks de ángulo/cruce de abajo).
+  const motivoPresion = validarTrazoPresion(engine, r);
+  if (motivoPresion) {
+    engine.triggerAlert('Trazo no válido', motivoPresion);
+    engine.ramales.pop();
+    engine.activeRamal = null;
+    engine._markDirty();
+    engine.render();
+    return;
+  }
   // Bug #7: el segmento de CONEXIÓN (extremo que pega a otro ramal existente o a un bajante)
   // tiene el ángulo dictado por la geometría del ramal existente, no por la cuadrícula — no se
   // valida. Validar solo los segmentos libres (los que no tocan nada).
