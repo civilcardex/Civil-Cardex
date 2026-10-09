@@ -24,6 +24,10 @@ const LevelsCard_pisoLi: React.CSSProperties = {
   border: '1px solid var(--line)',
   borderRadius: 'var(--r)',
   marginBottom: 2,
+  // Altura fija de fila: garantiza que el input NPT quede en la misma línea vertical
+  // en todas las filas (antes la altura variaba con el contenido).
+  height: 26,
+  boxSizing: 'border-box',
 };
 
 const LevelsCard = React.memo(function LevelsCard({
@@ -119,7 +123,12 @@ const LevelsCard = React.memo(function LevelsCard({
                             ? 'piso-tag sot'
                             : 'piso-tag'
                       }
-                      style={{ fontSize: 11, padding: '2px 5px', minWidth: 48 }}
+                      style={{
+                        fontSize: 11,
+                        padding: '2px 4px',
+                        width: 56,
+                        boxSizing: 'border-box',
+                      }}
                     >
                       {pisoLbl(p.n)}
                     </span>
@@ -132,9 +141,17 @@ const LevelsCard = React.memo(function LevelsCard({
                       className="npt-in"
                       aria-label={`NPT para ${pisoLbl(p.n)}`}
                       style={{
+                        // Estilo ÚNICO (mismo width/padding/height) para que los inputs
+                        // queden alineados verticalmente entre filas — el inline pisa
+                        // .npt-in, así que aquí se fija todo explícito.
                         fontSize: 12,
+                        fontFamily: 'var(--mono)',
+                        textAlign: 'right',
                         width: 52,
-                        padding: '2px 4px',
+                        height: 20,
+                        lineHeight: '20px',
+                        padding: '0 5px',
+                        boxSizing: 'border-box',
                         opacity: isEditing ? 1 : 0.7,
                       }}
                       onChange={(e) => {
