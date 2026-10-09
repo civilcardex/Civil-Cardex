@@ -127,7 +127,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     className="col-h"
                     rowSpan={2}
                     style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
-                    title="Punto de inicio del tramo (nudo o bajante de origen)."
+                    title="Punto de inicio del tramo (nodo o bajante de origen)."
                   >
                     Inicio
                   </th>
@@ -136,7 +136,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     className="col-h"
                     rowSpan={2}
                     style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
-                    title="Punto donde termina el tramo (nudo o bajante de destino)."
+                    title="Punto donde termina el tramo (nodo o bajante de destino)."
                   >
                     Fin
                   </th>

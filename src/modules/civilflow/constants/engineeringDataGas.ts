@@ -151,4 +151,7 @@ export const CAT_GAS: CatGasItem[] = [
     kwglp: 13.93,
   },
   { id: 'srg', n: 'Secadora de ropa grande', s: 'SRG', q: 0.81, kw: 8.38, qglp: 0.32, kwglp: 20.9 },
+
+  // Caldera pequeña — tabla del usuario: consumo 1.76, potencia 18.22 kW, GLP 0.71 / 45.41 kW.
+  { id: 'calp', n: 'Caldera pequeña', s: 'CALP', q: 1.76, kw: 18.22, qglp: 0.71, kwglp: 45.41 },
 ];
