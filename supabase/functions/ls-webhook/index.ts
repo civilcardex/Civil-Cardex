@@ -90,7 +90,8 @@ Deno.serve(async (req: Request) => {
   //     se acepta — rechazarlo devolvía 200 y LS no reintenta jamás (pago bueno
   //     quedaba cobrado sin activarse, auditoría A-2).
   const rawTotal: unknown = attrs.total;
-  const totalPagado = typeof rawTotal === 'string' ? Number(rawTotal) : rawTotal;
+  // String numérico se acepta con coma de miles fuera ("4,500" → 4500); basura sigue fallando.
+  const totalPagado = typeof rawTotal === 'string' ? Number(rawTotal.replace(/,/g, '')) : rawTotal;
   if (typeof totalPagado !== 'number' || !Number.isFinite(totalPagado)) {
     console.error('ls-webhook: order_created sin total numérico:', referencia, typeof rawTotal);
     return json({ ok: true });
