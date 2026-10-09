@@ -36,8 +36,8 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
     });
     expect(Q).toBe(0);
     expect(dCalc).toBe(0);
-    // REQ: chequeo incompleto = 'No cumple' (antes '—').
-    expect(chequeo).toBe('No cumple');
+    // Sin caudal no hay fallo: Dprop elegido y Q=0 → dCalc 0 ≤ Dprop → 'Ok'.
+    expect(chequeo).toBe('Ok');
   });
 
   it('Q=0 con intensidad=0', () => {
@@ -74,7 +74,7 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
     expect(chequeo).toBe('No cumple');
   });
 
-  it('No cumple con área pero sin D propuesto (REQ: fuera "Sin diseño")', () => {
+  it('Sin D propuesto NO juzga (falso positivo: usuario aún no eligió diámetro)', () => {
     const { chequeo } = chequeoBajanteLluvia({
       areaAcumulada: 100,
       intensidad: 100,
@@ -83,7 +83,7 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
       manning: 0.009,
       diamPropuesto: 0,
     });
-    expect(chequeo).toBe('No cumple');
+    expect(chequeo).toBe('');
   });
 
   it('R desconocido usa Rv=0 → dCalc=0 y Qcap=0', () => {

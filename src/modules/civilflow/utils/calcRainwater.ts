@@ -75,10 +75,10 @@ export function chequeoBajanteLluvia({
       : 0;
   const Qcap = Math.round(capacidad(diamPropuesto) * 100) / 100;
   const cociente = Qcap > 0 ? Q / Qcap : 0;
-  // REQ (chequeo incompleto = No cumple): sin Q calculado o sin D propuesto ya no hay
-  // '—'/'Sin diseño' — la fila queda roja hasta completar los insumos del chequeo.
-  const chequeo =
-    dCalc > 0 && diamPropuesto > 0 ? (dCalc <= diamPropuesto ? 'Ok' : 'No cumple') : 'No cumple';
+  // Sin D propuesto NO se juzga (falso positivo: el usuario aún no eligió diámetro y la
+  // fila/informes la marcaban roja estando todo bien). Incompleto CON D propuesto → 'No
+  // cumple' (REQ vigente): faltan insumos de cálculo pero ya hay decisión que verificar.
+  const chequeo = diamPropuesto > 0 ? (dCalc <= diamPropuesto ? 'Ok' : 'No cumple') : '';
   return { Q, dCalc, Qcap, cociente, chequeo };
 }
 

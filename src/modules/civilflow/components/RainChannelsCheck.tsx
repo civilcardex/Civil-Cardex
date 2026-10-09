@@ -489,24 +489,20 @@ export default function ChequeoCanalesLluvias() {
                   escorr.
                 </th>
                 <th
-                  title="Intensidad de lluvia de diseño (mm/h)."
+                  title="Intensidad de lluvia de diseño (mm/h). Unidad: mm/h."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Intensidad
-                  <br />
-                  <small>mm/h</small>
                 </th>
                 <th
-                  title="Caudal real que llega al canal (L/s)."
+                  title="Caudal real que llega al canal (L/s). Unidad: L/s."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Q real
-                  <br />
-                  <small>LPS</small>
                 </th>
                 <th
                   title="Material del canal: define la rugosidad n. Visite el catálogo maestro para más información."
@@ -527,64 +523,52 @@ export default function ChequeoCanalesLluvias() {
                   Manning
                 </th>
                 <th
-                  title="Pendiente longitudinal del canal (%) — manda el dibujo."
+                  title="Pendiente longitudinal del canal (%) — manda el dibujo. Unidad: porcentaje (%)."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Pend.
-                  <br />
-                  <small>%</small>
                 </th>
                 <th
-                  title="Ancho de la base del canal (cm) — editable, escribe al dibujo."
+                  title="Ancho de la base del canal (cm) — editable, escribe al dibujo. Unidad: cm."
                   scope="col"
                   className="col-h ok"
                   style={thOk}
                 >
                   Base
-                  <br />
-                  <small>cm</small>
                 </th>
                 <th
-                  title="Altura útil del canal (cm) — editable, escribe al dibujo."
+                  title="Altura útil del canal (cm) — editable, escribe al dibujo. Unidad: cm."
                   scope="col"
                   className="col-h ok"
                   style={thOk}
                 >
                   Altura
-                  <br />
-                  <small>cm</small>
                 </th>
                 <th
-                  title="Borde libre sobre el tirante (cm) — editable, default 10."
+                  title="Borde libre sobre el tirante (cm) — editable, default 10. Unidad: cm."
                   scope="col"
                   className="col-h ok"
                   style={thOk}
                 >
                   Borde
-                  <br />
-                  <small>cm</small>
                 </th>
                 <th
-                  title="Sección total = base más altura más borde libre."
+                  title="Sección total = base más altura más borde libre. Unidad: cm."
                   scope="col"
                   className="col-h ok"
                   style={thOk}
                 >
                   Total
-                  <br />
-                  <small>cm</small>
                 </th>
                 <th
-                  title="Capacidad máxima de la sección (L/s)."
+                  title="Capacidad máxima de la sección (L/s). Unidad: L/s."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Q máx
-                  <br />
-                  <small>LPS</small>
                 </th>
                 <th
                   title="Uso de la capacidad del canal: debe ser ≤ 100%."
@@ -596,44 +580,36 @@ export default function ChequeoCanalesLluvias() {
                   <br />Q máx
                 </th>
                 <th
-                  title="Profundidad del agua en el canal (m)."
+                  title="Profundidad del agua en el canal (m). Unidad: m."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Tirante
-                  <br />
-                  <small>m</small>
                 </th>
                 <th
-                  title="Velocidad del agua en el canal (m/s)."
+                  title="Velocidad del agua en el canal (m/s). Unidad: m/s."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Vel.
-                  <br />
-                  <small>m/s</small>
                 </th>
                 <th
-                  title="Menor diámetro propuesto de los bajantes asociados (pulg)."
+                  title="Menor diámetro propuesto de los bajantes asociados (pulg). Unidad: pulg."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   D baj.
-                  <br />
-                  <small>pulg</small>
                 </th>
                 <th
-                  title="Altura de lámina de agua requerida en la embocadura (m)."
+                  title="Altura de lámina de agua requerida en la embocadura (m). Unidad: m."
                   scope="col"
                   className="col-h ll"
                   style={thL}
                 >
                   Lámina
-                  <br />
-                  <small>m</small>
                 </th>
                 <th
                   title="O.K. si el canal tiene capacidad para el caudal real."
