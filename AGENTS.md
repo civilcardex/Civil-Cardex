@@ -2853,3 +2853,138 @@ Retirados tras verificación (el barrido se equivocó): `fileBase` SÍ tiene con
 Report-only (sesión paralela toca esos archivos): copia del núcleo Hunter en bajanteVentRows vs ventStackCalc (~30L); HidroDataEntry ×3; lookupDn GasDesign/gasRows. Lean: 0 deps muertas, 26/26 claves storage-keys usadas, sin .bak/.tmp.
 
 Gates: tsc 0 · lint 0 · vitest 1001/1001 · build ✓ · graphify ✓. Neto: ~25L.
+
+## Session Summary — 2026-10-08 (lote 7 ítems: normativa por país + visor + tablas)
+
+### 1. Normativa por país (normasPais.ts)
+- `constants/normasPais.ts`: perfil de 17 países (CO base + PE/EC/CL/BO/AR con datos propios + Centroamérica y resto como ref. heredando CO). Estructura: af{vMin,vMax,pMin,pMax}, san{vMin,vMax,ydMax,ftMin}, gas{dpMax,vMax}, norma{af,san,ll,gas,rci}, ref?. Fuentes citadas en el propio archivo.
+- `ProjectIdCard`: País ahora es DESPLEGABLE (NORMAS_PAIS); guarda proy.pais.
+- Chequeos usan `perfilDe(proy.pais)`: hydraulicCheck (límites opcionales lim), WaterNetworkDesign (velCumple mm/s + prop velLim a DesignTableRow), infTab (okSAN/okLL + fallos). SanitaryDesign/RainwaterDesign montaron useProyecto y pasan lim.
+- PENDIENTE fase 2: Regulations filtrado por país; crítica de textos en todos los tooltips; CRIT0 regeneración.
+
+### 2. Planos borrosos (PdfViewerEngineInit)
+- Causa: fondo PDF rasterizado solo al cambiar el estado React `scale` (entero ≥1); el `scale()` por CSS del pdfWrap (PlanoEngine.ts:1103) estiraba el bitmap.
+- Fix: renderPage acepta `{bgOnly, extraScale}` — bitmap a sc×extra (cap 3) con CSS al tamaño base + imageSmoothingQuality high en el fondo (false queda en trazos). MutationObserver sobre pdfWrap.style: cuando el zoom se estabiliza (Δ>0.08, debounce 160 ms) re-rasteriza solo el fondo.
+
+### 3. Codo sube/baja en cuerpo (presión)
+- `midRamalAccessorySelector`: las opciones codoSube/codoBaja/codo90rmSube/codo90rmBaja ya NO se ofrecen en el cuerpo (antes se ofrecían y alertaban). La polaridad solo vive en extremos.
+
+### 4. Destino de bajantes
+- `DownpipesTable`: etiqueta corta `${targetRamal}-${piso}` (ej. BAN1-P1), sin prefijo 'Bajante: '/'Ramal: '.
+
+### 5. Canales asociados (Chequeo bajantes lluvias)
+- `RainDownpipesCheck`: columna "Canales asociados" — inverso de canalBajantes (RainwaterContext) con ChipList igual que Bajantes asociados.
+
+### 6. Informes con ubicación de fallos
+- `infTab`: chips `${id}-${piso} no cumple` bajo el semáforo (SAN/LL por rangos del país, AF/AC por velCumple/presionOk, bajantes LL por chequeoBajanteLluvia). Cap 24.
+
+### 7. Caldera pequeña
+- Icono `APARATO_IMG.calp` → caldera_pequena.webp.
+
+### LevelsCard (alineación definitiva)
+- CAUSA RAÍZ: tag de piso con inline minWidth 48 que pisaba el CSS → ancho variable según texto → input NPT arrancaba en X distinta por fila. Fix: tag width fijo 56 + fila height 26 + input 20/line-height 20.
+
+### Gates
+tsc 0 (filtrando la otra sesión) · vitest 1001/1001 · lint 0 err (3 warn exhaustive-deps de proy.pais en memos Qaco/af, benignos) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-08 (docx fase 2: re-enraizamiento + chequeo global + mallas)
+
+### Implementado (redes af/ac/gas/rci)
+- **nudos.ts**: `entradasSalidas` (entran/salen con dirección efectiva `_tribReversed`, cuerpo atraviesa cuenta doble), `extremoLejanoTipo` (APARATO/FUENTE/NUDO/LIBRE — fuentes: bajantes red_publica/contador/calentador/montante/bomba + códigos RP/CNT/CALENT/BOMAN), `chequearRed` → incidencias (nudo entradas≠1, sale-de-aparato/entra-a-fuente, ciclo DFS sobre clusters, huérfano BFS desde fuentes, extremo libre adv).
+- **reEnraizar.ts**: `invertirTramo` (af/ac/gas/rci → toggle `_tribReversed`; san/ll → flipRamalFlow), `reEnraizarDesde` (camina aguas arriba invirtiendo hasta hoja/fuente; guarda tope/ciclo), `conflictoDosEntradas` + `resolverConflictoSentido` (reglas 1-4 del docx; regla 5 → conservador: invierte el NUEVO + alerta explicando la alternativa manual — el modal de 2 opciones quedó fuera por alcance). Undo agrupado pause/resume.
+- **Gancho autoSplit** (tras crear downstream): si 2 entradas → reglas. **Gancho _markDirty** (tras calcHydroAccessories): `chequearPresionGlobal()` — chequea cada red de presión presente y alerta por `triggerAlert` SOLO si el hash de incidencias de esa red cambió; primera pasada tras cargar plano = silenciosa.
+- **Mallas declaradas**: `engine.mallasDeclaradas` (Set por plan, storage `civilflow_mallas_<planId>` vía cargarMallas/guardarMallas en nudos.ts; carga en PdfViewerEngineInit/usePlanoLoadSwitch). Menú de ramal af/ac/gas/rci: toggle "Declarar malla / recirculación". Declarada → exenta del chequeo de ciclo.
+- IPlanoEngineCore: + pauseHistory?/resumeHistory?/mallasDeclaradas?.
+
+### Pendiente
+- Tests dedicados reEnraizar/nudos (matriz del docx) — cubierto indirectamente por suite general.
+- Modal de 2 opciones para regla 5 (hoy conservador).
+- Panel de incidencias con clic-para-centrar.
+
+### Gates
+tsc 0 (filtrando la otra sesión) · vitest 1001/1001 · lint 0 err · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (programa de splits CERRADO — 3ª re-evaluación del top-30)
+
+Veredicto: NO hay más splits que valgan hoy. (1) Los 7 archivos grandes sin dividir (FixturesPanel, PdfViewer, PlanoEngine, infTab, ProfilePage, PlanoState, BombaARDesign) están EN VUELO por la sesión paralela — no tocar hasta que termine y commitee. (2) Los 2 nuevos evaluables salen NO VALE: ramalMenu.tsx (816L, ~0% extraíble, todo closures — lo mecánico ya salió a ramalMenuHelpers) y PdfViewerToolbar.tsx (769L, solo 22% extraíble y quedaría en ~600L). (3) El resto es NO-CUT documentado o ya dividido (rondas 3-5: bajanteAssociation, RejillasVentilacion, exportMemoryFinal, lineTool, junctionAutoSplit, drawingSync, storageService, PricingPage, bajanteMenu, drawingCreations, variants + los previos).
+
+PARA UNA RONDA FUTURA (cuando la sesión paralela cierre): evaluar handleDragUp.ts (741L), copyDrawingFromPlan.ts (716L), waterRowsCore.ts (713L) — únicos >500L sin clasificar — con el patrón verbatim+hub. REGLAS del patrón ya probado: mover declaraciones top-level verbatim, hub re-exporta, estado mutable co-localizado en su hoja, extraer por NOMBRE de función nunca por línea si hay diff sin commitear, un split → gates → siguiente.
+
+Gates del cierre: sin cambios de código. tsc 0 · lint 0 · vitest 1001/1001 · build ✓ (vigentes de la pasada).
+
+## Session Note — 2026-10-06 (auditoría splits paralelos + features: mis 7 arreglados, informe para la otra sesión)
+
+AUDITADO: los 4 splits commiteados por la sesión paralela (sanFittingsRows, networkSanitary, writeDiameterToDrawing, bombaAssociation) = verbatim verificado, 0 críticos; y las features recientes (password checklist, company preview, chips, decimal comma, webhook, nudos/reEnraizar WIP).
+
+ARREGLADO (mío):
+- I-2: las 9 líneas de comentario del parseo de diámetros (`diametroInicio/Fin` = valor COMPLETO del dropdown; bug histórico del mm-inflado) restauradas sobre `inchPartOf` en drawingWrites/diametros.ts desde git.
+- M-1/M-2: JSDoc de `calcHydroAccessories` y de `mapUdBombaDesdeTrazos` (con el racional del blindaje anti-bucle) movidas de los EOF de sus hermanos a sus funciones.
+- M-3: comentario de reentrancia del espejo junto a `espejoEnCurso` en props.ts; separado del JSDoc ajeno.
+- M-4: cabecera de diseño de bombaAssociation (campo `bombaEnId` dedicado) restaurada como cabecera de bombaDesvio.ts.
+- P-8-bis: ls-webhook coacciona strings con coma de miles ("4,500"→4500); basura sigue fail-closed.
+- P-13: diálogo de borrado de subfila con Escape (keydown en overlay) y foco inicial en Cancelar vía ref+effect (jsx-a11y veta autoFocus).
+
+INFORME PARA LA SESIÓN PARALELA (su WIP, no tocado): P-1 qGlobal gas doble-contado (GasDesign:460/509 — usar acumulado de raíz) · P-2 red AF con fuente-aparato = toda huérfana (nudos.ts BFS sin semilla aparato) · P-3 modal de incidencias compite con auto-fix async de la tee (chequear tras resolver) · P-4 mallasDeclaradas solo localStorage → persistir con trazado · P-5 password: premisa dashboard inverificable + leaked-password rebota en inglés (mapear error de signUp) · P-6 reEnraizar "Se revirtió" sin snapshot · P-7 `|| pMin` traga presión 0 (GasDesign:440, gasRows) · P-10 zoom re-raster skip silencioso/canvas 6× · P-11 infTab semáforo vs detalle divergen · P-12 normsPais infraestructura sin conectar · P-14 país select migración callada · + unhandled rejection ACTIVO en su test: `reEnraizar.ts:129 engine.pauseHistory is not a function` (mock sin esa función).
+
+LECCIONES: I-1 los commits 3356706/ef53196 no compilan (hojas en commit posterior) — próximos splits: hojas y consumidores en el MISMO commit; documentar rango roto. P-15: el "CRLF restored" de defaults.ts era reformateo prettier completo — verificar con `--ignore-cr-at-eol` antes de atribuir.
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 (+1 unhandled rejection del WIP paralelo, no mío) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-06 (ponytail #10: 5 dedups ejecutados, correcciones al barrido)
+
+- HidroDataEntry: eran ×5 definiciones (no ×3) pero NO todas iguales — 3 idénticas (fixturesStorage/deleteCascade/drawingSyncTypes: accesorios+Lh+nSalidas) consolidadas en utils/drawingSyncTypes (import+re-export en deleteCascade y fixturesStorage; deleteYeePreserve intacto). Las 2 variantes OPCIONALES (sanFittingsCatalog.HidroEntry, buildTramos.HidroEntry) son contratos distintos — se quedan.
+- sanFittingsCatalog: HYDRO_TEE_IDS y CODO_90_IDS ahora son ALIAS de TEES_ACC_MED/ACC_MED_CODOS (mismos ids hoy; ambos comentarios de intención conservados — documentan rutas distintas que pueden divergir). CUIDADO al fusionar sets: el alias debe ir DESPUÉS de la declaración fuente.
+- filaId ×3 (civilmanager/apu) → apu/filaId.ts compartida.
+- exportPlanos.fileBase → inline sanitizeFileName. BUSHING_TOL des-exportado + JSDoc movido a computeBushingCounts.
+
+Report-only [paralela] RELEVANTE (drift numérico real, no solo LOC): calculateVentStack ×2 con FÓRMULAS DISTINTAS — bajanteVentRows.ts usa la copia vieja (1.754 hardcode) que alimenta la MEMORIA de infTab, mientras DownpipesTable usa la Wyly-Eaton buena de ventStackCalc. La memoria y la tabla discrepan en números. También: lookupDn ×2, origenDe ×2 (reEnraizar/gasNetwork), distPuntoSegmento reinventa distToSegment, 5 des-exports huérfanos (limpiarArtefactosDesvioBomba, HidroTramoEntry, sincronizarDesvioBomba en test-only, punterosBajante+WriteDiametroResult en hub).
+
+El unhandled rejection de la suite (`reEnraizar.ts:129 pauseHistory is not a function`) sigue — WIP paralelo.
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 · build ✓ · graphify ✓. Neto: ~35L.
+
+## Session Note — 2026-10-06 (ronda 6: 2 splits + 3 NO-VALE definitivos)
+
+4ª re-evaluación. Ejecutados:
+- **PlanoEngineSelection.ts (777 → hub 419)**: `PlanoEngineSelectionEdit.ts` (387L) — grupo de EDICIÓN (updateSelected/updateElementById/guardDiametroNodo[ahora export]/bumpConnectedBajantes/pushBajanteDiameterToRamales/rotateLabelSnap/resetLabel). Hub conserva selectAt (monolito 336L)/selectById/getSelected + re-exporta el grupo. 8 importadores + 6 tests vía hub. Ciclo hub↔Edit legítimo (Edit usa getSelected del hub en runtime, ESM live binding).
+- **drawingFlow.ts (755 → 455)**: `flowChecks.ts` (401L) — grupo de CHECKS (ramalFlowDirectionCheck/flowDirectionOkAt/ventFlowsIntoJunction/ventSanAngleOk/codoPolarityOk/flowVecAt/flowEndsAt/flowStartsAt/pointOnRamalSegment/sameNetGroupNet). Hub conserva diámetros san (diametroCambioPermitido/san*/propagarSanDiametroAguasAbajo), extremos (ramalExtremoOcupado/extremoEntrelazado/aparatoEnExtremoInvalido), flipRamalFlow. reEnraizar.ts (WIP paralela) importa por la ruta del hub → intacto.
+
+NO-VALE DEFINITIVO (4ª evaluación, cerrado): copyDrawingFromPlan.ts (22% extraíble, ~20 locales acopladas — refactor prohibido), waterRowsCore.ts (6%, cálculo hidráulico sin tests), handleDragUp.ts (dispatcher: partir por ramas cruza el estándar verbatim; su hermano handleDragMove es NO-CUT — coherencia). Bajo el corte sin clasificar: EPVerificationPage 749, equipmentRows 693, deleteSelected 686 (ya hub), PlanCropPanel 671, IsometryGeneral 648, FlowHero 645, RciRoomBombasReference 635, ModulePage 625, mouseDownHits 616, drawingAngles 613...
+
+Lección reforzada: los iteradores automáticos de imports OSCILAN (quitan un nombre que otra pasada necesita — 15 errores no convergían). Solo 2 salidas fiables: (a) header escrito A MANO desde el análisis de uso real (comentarios fuera para no contar menciones de JSDoc), (b) reconstrucción desde git HEAD solo si el archivo estaba LIMPIO vs HEAD (verificar `git diff HEAD --stat` ANTES). Los docstrings cortados en frontera tragaron firmas 2 veces esta ronda (selectAt en ambos lados del split) — verificar `/**` balanceado tras cada write.
+
+Suite: 1001/1001 (+1 unhandled rejection persistente de reEnraizar.ts:129 — WIP paralela). Gates: tsc 0 · lint 0 · build ✓ · graphify ✓. Neto: hub 419+455, hojas 387+401.
+
+## Session Note — 2026-10-08 (resumen por red agrega TODAS las verificaciones de sus tablas)
+
+Panel "Resumen del proyecto" (infTab): cada red activa muestra ✓ OK / ◌ Sin calcular / ✗ Revisar + chips `id-Pn` de DÓNDE corregir. Sin tributarios en ningún listado (ped. usuario).
+
+- **Hoisting de filas crudas** (fuente única tabla+resumen): `sanRowsCalc` (computeSanRows), `llRowsCalc` (computeLlRows), `gasRowsCalc` (computeGasRows) como memos propios; sanTable/llTable/gasTable consumen el memo (sin duplicar connectivity-build).
+- **SAN**: rango (v/yD/qQ0) + chequeos de tabla `chequeoV/chequeoYn/chequeoFT === 'NO CUMPLE'` (filaFalla helper; '—' = sin datos, no fallo). **LL**: ídem + `chequeoD` vía LlRow.filaFalla + bajantes (nivel resuelto desde tramosLl esBajante — BajanteLl no trae piso) + canales (misma fórmula de la tabla: C de materialCubierta, n de materialCanal; sin material = sin chequeo, chip `sector-Pn`). **AF**: tramos + acometida (`computeAcometidaSummary().estadoOk === false` → chip `ACOMETIDA`). **GAS (fila nueva)**: filas `chequeo === 'NO'` → `id-Pn`; "Sin calcular" si 0 filas. **EQUIPO PRESIÓN (fila nueva)**: nuevo `epAlertas()` exportado de equipmentRows (HMT>Pmax, potencia comercial < requerida, HMT sin datos) — física extraída a `epBase(ep)` compartida por computeEpTables y epAlertas (una sola fuente, sin drift).
+- Estados: `◌ Sin calcular` (sin datos de esa red), `✓ OK`, `✗ Revisar` + chips. `hasCheckedNet` ahora incluye gas/ep; `allOk` (gate de descargas) también los exige.
+- Render de chips existente sin cambios (recorta a 14).
+
+Lección de proceso: heredocs bash con contenido grande/unicode fallan aleatoriamente — escribir el script a archivo con Write y ejecutarlo.
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 (+1 unhandled rejection reEnraizar.ts:129 = WIP paralela) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-08 (fix unhandled rejection de la suite)
+
+`reEnraizar.ts` (WIP de nudos/re-enraizamiento gas, sin commitear — NO era "sesión paralela", era working tree propio): `engine.pauseHistory!()` / `resumeHistory!()` → `?.()` — la interfaz `IPlanoEngineCore` los declara OPCIONALES (PlanoState.ts:666) y el mock del test no los implementa (la clase real sí, PlanoEngine.ts:1036). TypeError volaba como unhandled rejection en vitest aunque los 1001 tests pasaban. Suite ahora limpia: 0 errores, 1001/1001. Pendiente del WIP: P-6 (mensaje "Se revirtió" sin snapshot real) y P-1..P-5/P-7 del informe anterior.
+
+## Session Note — 2026-10-08 (ponytail #11: dedups [paralela] ejecutados con visto bueno)
+
+- **calculateVentStack ÚNICO** (drift numérico resuelto): bajanteVentRows usa la Wyly-Eaton de ventStackCalc — la memoria de infTab y DownpipesTable ahora calculan LO MISMO. La copia vieja (1.754 hardcode) borrada (~55L). IMPORTANTE: los números de la memoria de ventilación de infTab CAMBIAN (antes salían con la fórmula vieja) — es la corrección, no un regression.
+- lookupDn → exportada desde gasRows (allDn() cacheado); GasDesign usa la compartida (su ALL_DN local queda para los selects). origenDe → compartida en lib/shared/geometry (versión defensiva de gasNetwork; reEnraizar la importa). distPuntoSegmento (gasNetwork) → distToSegment de shared/geometry (con adaptación a arrays).
+- Des-exports: limpiarArtefactosDesvioBomba → privada en bombaDesvio (fuera del hub); punterosBajante + WriteDiametroResult fuera del hub writeDiameterToDrawing. FALSO POSITIVO del sweep: HidroTramoEntry SÍ tiene consumidor (hydroAccessoriesCalc) — se queda.
+- Suite: 1001/1001, 0 unhandled (reEnraizar?.() fix previo). Gates: tsc 0 · lint 0 · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-08 (P-1 y P-2 del WIP gas arreglados)
+
+- **P-2 (nudos.ts BFS huérfanos)**: un aparato en el ORIGEN lógico del tramo (`_tribReversed ? aparatoFin : aparatoInicio`) ahora también SIEMBRA la BFS — una red AF/AC puede nacer de un calentador/tanque dibujado como aparato de cabeza (coherente con extremoLejanoTipo, que ya trataba APARATO como término válido). Antes: toda la red salía "huérfana".
+- **P-1 (GasDesign qGlobal)**: era `Σ checkRows.qConsumo` — doble conteo (el tronco ya carga la demanda de sus hojas en los acumulados). Ahora: Renouard sobre TODA la carga instalada (merge de los aparatos propios de cada tramo, cada aparato contado una vez) — correcto además por la no-linealidad de Renouard (renouard(total) ≠ Σ renouard(parciales)). Clave correcta: `gasAcc[t.id]` (misma indexación que checkRows).
+- Nota: la línea 'Caudal de diseño' de la cabecera de GasDesign CAMBIA de valor (antes inflado 2-3× con redes ramificadas) — corrección.
+
+## Session Note — 2026-10-08 (nudo → nodo en toda la UI)
+
+Terminología: "nudo" → "nodo" en todos los strings visibles — msgs del chequeo de redes de presión (Nodo sin alimentación / Nodo con N entradas), ids de tipo de incidencia ('nodo-sin-entrada'/'nodo-dos-entradas'), ExtremoTipo 'NODO', tooltips de CalcUC/GasCalcUC/FixtureUnitCalc y comentarios del WIP. Cero ocurrencias de "nudo" en src. (El nombre de archivo nudos.ts se deja — renombrar es churn sin beneficio.)
