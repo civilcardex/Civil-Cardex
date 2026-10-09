@@ -223,6 +223,28 @@ export function pushBajanteDiameterToRamales(
   return true;
 }
 
+/** Campos para alternar una asociación MANUAL (checkbox menú/panel, orig. usuario):
+ *  recibeDeIds/alimentaIds simétricos + libro `asocManual` que exime de la poda stale
+ *  (podarReferenciasStaleDeBajantes). Se mezcla en la misma llamada a updateElementById. */
+export function camposAsocManual(
+  b: PlanoBajante,
+  ramalId: string,
+  activar: boolean,
+): Record<string, unknown> {
+  const manual = new Set(b.asocManual || []);
+  const recibe = new Set(b.recibeDeIds || []);
+  const alimenta = new Set(b.alimentaIds || []);
+  if (activar) {
+    manual.add(ramalId);
+    recibe.add(ramalId);
+  } else {
+    manual.delete(ramalId);
+    recibe.delete(ramalId);
+    alimenta.delete(ramalId);
+  }
+  return { recibeDeIds: [...recibe], alimentaIds: [...alimenta], asocManual: [...manual] };
+}
+
 export function updateElementById(
   engine: IPlanoEngineCore,
   id: string,
@@ -317,8 +339,14 @@ export function updateElementById(
     }
   }
   // Ítem 6/8: propagar el elemento mutado al snapshot de selección (panel derecho / menú
-  // contextual) — única fuente de verdad, sin requerir re-selección.
-  if (el) engine._emitSelect(el);
+  // contextual) — única fuente de verdad, sin requerir re-selección. SOLO si el editado ES el
+  // seleccionado: al editar OTRO elemento desde un menú (asociar bajante/montante desde el
+  // menú del ramal, canalId desde el menú del canal), el emit robaba la selección — el menú
+  // cambiaba de elemento y el checkbox quedaba rancio (orig. usuario).
+  if (el) {
+    const sel = getSelected(engine);
+    if (sel && sel.id === el.id) engine._emitSelect(el);
+  }
   engine.render();
   engine._markDirty();
 }

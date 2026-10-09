@@ -3011,3 +3011,120 @@ Reporte usuario (BAN1-C 'No cumple' y canal sin verificar mostraban OK; AGUA CAL
 Gates: tsc 0 · lint 0 · vitest 1001/1001 · build ✓ · graphify ✓.
 
 LECCIÓN DE PROCESO (2ª vez): recortar bloques por marcadores de comentario sobre archivos con diff sin commitear parte líneas a mitad de palabra ('st|retch', docstrings abiertos que tragaron firmas) — SIEMPRE reconstruir desde `git show HEAD:` con anclas por nombre y aplicar el delta scripted; y los heredocs bash grandes con unicode fallan aleatoriamente: escribir el script con Write y ejecutarlo.
+
+## Session Note — 2026-10-08 (chips con nivel correcto: BAN1-P2 / BAN1-C, no 'BAN1 BAN1')
+
+`fallosDeTabla(tbl, sufijoDe?)`: sufijo opcional por fila → chip `id-nivel`. Tabla bajantes aguas negras/vent: sufijo = columna Nivel (row[1] = fmtPiso del propio bajante) → `BAN1-P2`, `BAN1-C`. Canal sin verificar: sector ya trae el nivel (`CNL1-C`) → chip `CNL1-C (sin verificar)`, sin piso inventado (antes caía a P0 porque CanalLL no tiene planId).
+
+## Session Note — 2026-10-08 (chequeo bajantes ll: solo con D calculado)
+
+`chequeoBajanteLluvia` (calcRainwater.ts): el chequeo SOLO se emite cuando hay D CALCULADO (`dCalc > 0`) y D propuesto — antes, D propuesto elegido + insumos faltantes (material cubierta '—' → C=0 → Q=0 → dCalc=0) daba 'Ok' verde sin calcular nada (BALL1-C, ped. usuario). Ahora: '' (sin chequeo) → tabla muestra vacío y el resumen por red no lo cuenta como OK ni como fallo. Test `calcRainwater.test.ts` actualizado a la regla nueva (Q=0 sin material = sin chequeo, no 'Ok').
+
+Gates: tsc 0 · lint 0 · vitest 1001/1001 · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-08 (chips con nivel, 2ª corrección)
+
+Chips seguían sin nivel: el items memo de infTab usaba `fallosDeTabla(bajVentSanTable)` SIN el sufijo (la versión con sufijo existía solo en la copia fuera del memo) y el canal sin verificar caía a P0 (CanalLL sin planId). Ahora: bajVent con sufijo = columna Nivel (row[1] = fmtPiso del bajante) → `BAN1-P2`/`BAN1-C`; canal sin verificar = `CNL1-C (sin verificar)` con nivel = `c.piso ?? cubierta (n=99)`.
+
+## Session Summary — 2026-10-08 (lote tablas lluvias/acometida + canales↔bajantes/ramales)
+
+### Tablas
+- DownpipesTable: Q/Qmáx fuera (colSpan 8→7, vacía 24→23); Vel. Aire → "Velocidad/aire" 2 filas.
+- RainwaterDesign: subíndices Qo/Vo/QQo/Yc/Yn/Ymax/Yn vs Yc como sanitaria; Chequeo velocidad y V. real en 2 filas.
+- RainDownpipesCheck: Diam calc./prop./Q cap. → nombres completos 2 filas; Canales asociados 2 filas; anchos (Chequeo 84, Material 96-100, Coef 72, Total 72); tableLayout auto + overflowX.
+- RainChannelsCheck: Sección Total y A efectiva SIEMPRE calculadas (b/altura/borde del dibujo, sin esperar material); D baj. → "Diámetro/baj." 2 filas; Intensidad entero.
+- WaterNetworkDesign/AF: Número de descargas 2 filas (min 44→K gana); Caudal/Vel. sin unidad en título; Coef C max 56, Pérdidas min 64, ‰ a 12.5.
+- designTableHeader ahora recibe `pais` (tooltip Vel cita rango por país).
+- SupplyConnection (Acometida): Edición POR TABLA (edit1/2/3, EditButton por sección); sin editar celdas = texto plano (LazyNumE / estiloPlano); AC-01 y AC-02 Diámetro Propuesto = desplegables gated (props onTr1DiamChange/onTr2DiamChange → handleDiamChange del tramo).
+
+### Canales ↔ bajantes/ramales (ll)
+- RainwaterContext: expone `canalAlimIds` (drawId → `planId|idBaj` de alimentadores — ids internos, sin chips).
+- RainDownpipesCheck: "Canales asociados" leía por chip+`cg_` id → SIEMPRE vacío; ahora lookup exacto `planId|id`.
+- FixturesPanel: red ll ahora MUESTRA panel de asociaciones: bajante → Canales asociados (single, escribe `b.canalId`) + Ramales asociados (multi, escribe `bajante.recibeDeIds` push id ramal) + Q = C·I·A/3600 visible; ramal ll → Canales asociados (escribe `r.esCanalId`).
+- Menús contextuales: bajanteMenu ll y ramalMenu ll ganan sección "Canales asociados" (nuevo canalesAsociados.tsx compartido).
+
+### Gates
+tsc 0 (filtrando la otra sesión) · vitest 1001/1001 · lint 0 err · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (isometría: normas por país + links oficiales revisados)
+
+### Links normativos (standardsLinks.tsx)
+- Los 12 URLs existentes verificados HTTP 200 (ninguno muerto). DÉBILES corregidos: RETIE y Decreto 0926/2010 apuntaban a la homepage de MinEnergía (su normograma está caído) → ahora la página oficial del reglamento. **ENRE: www.enre.gob.ar sirve un certificado TLS INVÁLIDO (visible en navegador) → www.enre.gov.ar.**
+- Añadidos por país (todos 200): RNE IS.010/OS.050/A.130 (gob.pe/Vivienda), NTP (INACAL), NEC Cap.16 (mit.gob.ec — la gestión NEC migró de MIDUVI a MIT), NTE INEN 2295 (gob.ec regulaciones), OGUC 4.1.5/4.4 (BCN LeyChile idNorma=8201), SISS, NCh (INN), NB (IBNORCA), ENARGAS (enargas.gob.ar — argentina.gob.ar/enargas da 404), COVENIN (SENCAMER), INTN. Universales: NFPA/UL/FM/ISO/IEC/ASTM/ASME. RENISDA y NTE INEN 1108 SIN link (sin fuente oficial verificada desde esta red — quedan texto plano, sin inventar).
+- `normaUrl` ahora resuelve FAMILIAS: «UL 199»→UL, «IEC 61800-5-1:2022»→IEC, y cualquier «NTC nnnn» cae a búsqueda exacta ICONTEC.
+- Nuevo `NormaTxt`: linkifica los tokens de norma dentro de un texto (regex de familias/literales) — usado en «Referencia normativa» de los 4 sidebars 3D (antes texto plano).
+
+### Notas de isometría por país
+- `shared/notaNormativaIso.tsx` (nuevo): `usePerfilIso()` = perfilDe(proy.pais) (requiere ProjectProvider; los 4 visores lo están).
+- RciSidebar `NotaDisenoRci` (compartida con RciRedSidebar), AparatosSidebar y EpcSidebar: país CO → texto histórico intacto; otro país → la adaptación nacional cita la norma del proyecto (NFPA 20/13 quedan como internacionales): PE → RNE (rci: A.130), EC → NEC/INEN, CL → OGUC/SISS/NCh, BO → RENISDA/NB, AR → ENRE/ENARGAS, ref → cita "(ref. …)" del perfil.
+- Tests `standardsLinks.test.ts` (7): resolución exacta/edición/familia/NTC dinámica, ENRE gov.ar, RETIE página real, desconocida → undefined.
+
+### Gates
+tsc 0 · vitest 1008/1008 (164 files) · lint 0 err · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 2: asociaciones ll bidireccionales + montantes af/ac + acometida gated)
+
+### 1. Accesorios por ramal AF/AC sin sube/baja
+- AccessoriesTable: prop `red` ('af'/'ac') — oculta columnas codo/tee sube-baja y FUSIONA sus conteos en la base (codo90rmSube/Baja→codo90rm; teeSube/Baja→teeLado), mismo criterio del panel/menú. redesTab pasa red="af"/red="ac".
+
+### 2. Canales asociados en Chequeo bajantes (causa del vacío: doble desalineación)
+- RainwaterContext: las asociaciones MANUALES (b.canalId y r.esCanalId con bajante resoluble por extremo ≤2px) ahora SIEMBRAN el set de alimentadores de cada canal — se suman a la derivación geométrica en canalBajantes/canalAlimIds/canalAlimInfo/área.
+- RainDownpipesCheck: canalDeBaj invertía canalBajantes (claveada por CHIP "BALL1-P2") pero la fila buscaba con `planId|id` → SIEMPRE vacío. Ahora invierte canalAlimIds (claves exactas `planId|idBaj`; tramo id == id crudo del bajante, buildTramos:473).
+
+### 3-4. Estilo unificado de las secciones de asociación (cajas)
+- canalesAsociados.tsx (menú): filas con caja (#1e2024, radius 3, accentColor #F5A623) iguales a "Ramales asociados"; etiquetas de sección con MENU_SECTION_LABEL_ROW_STYLE.
+- FixturesPanel (panel ll): `fila` con la misma caja/acentos; mensaje vacío incluye canal.
+
+### 5. Montantes asociados (af/ac) — nuevo
+- canalesAsociados.tsx: `MontantesAsociadosSection` (menú) — mismo funcionamiento que "Bajantes asociados" de san: checkbox refleja ambas direcciones (recibeDeIds/alimentaIds del montante) y el desmarque limpia la que esté. Cableada en ramalMenu para af/ac.
+- FixturesPanel: `secMontantes` (fragmento sobre el panel de aparatos) para tramos af/ac seleccionados — mismas filas con caja.
+
+### 6. Asociación canal↔bajante BIDIRECCIONAL
+- Data ya era single-source (b.canalId). Falta UI del lado canal: CanalMenu gana "Bajantes asociados" (checkboxes, escribe b.canalId) y el panel ll gana la rama esCanalSel (BAJANTES ASOCIADOS). Desde cualquier lado se ve/marca igual.
+- CanalesAsociadosRamalSection estaba HUÉRFANA (sin caller) — cableada en ramalMenu para ll.
+
+### 7. Acometida: 5 campos que no reaccionaban al EDITAR
+- AC-01 Horizontal (LazyNum→LazyNumE edit1) · Hasta de AC-02 nombre montante (input crudo→gated, off=span plano) · Diámetro del contador (select gated edit2, off=texto plano) · Pérdidas en contador ≤ máx y Presión residual ≥ mínima (FilaComparativaInline sin disabled→disabled={!edit3}).
+
+### Gates
+tsc 0 · vitest 1008/1008 (164) · lint 0 err (tocado) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 3: estilo único de asociaciones + checkboxes vivos)
+
+### Estilo compartido (canalesAsociados.tsx = fuente única)
+- Exporta `ASSOC_ROW_STYLE` (= MENU_CHECK_ROW_STYLE + caja #1e2024/padding 4px 6px), `ASSOC_CHECKBOX_STYLE` (ámbar), `ASSOC_LABEL_STYLE` y `refrescarMenu`. Usado por TODAS las secciones: bajantes/cajas (ramalMenu), canales baj/ramal, montantes, ramales-de-montante (menú), y panel (fila ll + secMontantes). Antes cada sección tenía su propia copia con font/padding distintos (1ra captura).
+
+### Checkboxes vivos (causa del "no pasa nada / se cierra / no deschequea")
+- Menú: las secciones cerraban el menú (setContextMenuState(null)) o NO refrescaban → checkbox controlado rancio. Ahora todas: escriben al motor → render+markDirty → `refrescarMenu` (clona estado, NO cierra). Además las secciones RE-LEEN el elemento vivo del motor en cada render (`eng.bajantes/ramales.find(id)`) — el checkbox refleja cambios hechos desde el otro lado (bidireccional real).
+- Panel: los toggles ll + af/ac ahora `setSelElement?.({ ...selElement } as never)` para forzar re-render (el checkbox controlado no se actualizaba solo).
+- San "Bajantes asociados": mismo refresco → desmarcar YA borra recibeDeIds/alimentaIds (+descargaEnId/ini-fin cleanup que ya existía) y la línea punteada verde desaparece (el render la deriva de esos campos).
+
+### Montante af/ac: "Ramales asociados" (la inversa)
+- `RamalesAsociadosMontSection` (nueva, canalesAsociados.tsx): listando ramales de la red, checkbox ambas direcciones. Menú: bajanteMenu cuando tipo==='montante' && af/ac. Panel: secMontantes ahora bifurca — tramo seleccionado → MONTANTES ASOCIADOS; montante seleccionado → RAMALES ASOCIADOS.
+
+### Color del target del panel
+- BALL1-C (etiqueta del elemento en "Asociaciones aguas lluvias" y en secMontantes) usa el color de la RED (NETS col), no var(--acc) — igual que las tarjetas de elementos de red.
+
+### Gates
+tsc 0 · vitest 1008/1008 · lint 0 err (tocado) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 4: anatomía exacta de las secciones de asociación)
+- Las 4 secciones standalone del menú (Canales baj/ramal, Montantes asociados, Ramales de montante) usan la anatomía EXACTA de "Ramales asociados" de bajantes sanitarios (bajanteConnectionPanel): contenedor borderTop (ASSOC_SECTION_STYLE) + label uppercase + GRID 2 col con borde y scroll (ASSOC_GRID_STYLE = MENU_GRID_2COL_STYLE) + celdas MENU_CHECK_LABEL_STYLE con span break-word + vacío ASSOC_EMPTY_STYLE ("Sin …" gris azul, span 2). Antes: filas sueltas sin contenedor/grid — el look plano de la captura del usuario.
+- ASSOC_ROW_STYLE queda para las CELDAS dentro de grids ya bordeados (ramalMenu bajantes/cajas) y para el panel derecho.
+- Gates: tsc 0 · vitest 1008/1008 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 5: CAUSA RAÍZ de los checkboxes muertos)
+
+### Bug A — robo de selección en updateElementById
+- `updateElementById` terminaba con `_emitSelect(el)` INCONDICIONAL: al editar OTRO elemento desde el menú del seleccionado (asociar bajante/montante desde el menú del ramal, canalId desde el canal), el emit propagaba el EDITADO como nueva selección → PdfViewer sincronizaba `contextMenuState.element` → el menú CAMBIABA de contenido y el checkbox quedaba rancio (parecía "no hace nada"/"se cierra"). FIX: emit gated por `getSelected(engine).id === el.id` (comportamiento intacto al editar el propio seleccionado; la otra copia en updateSelected línea ~109 no cambia).
+
+### Bug B — podarReferenciasStaleDeBajantes comía las asociaciones manuales
+- Corre en cada `_markDirty` y SOLO conserva recibeDeIds/alimentaIds con respaldo geométrico (`fin/ini === code` + toque ≤0.5). Una asociación hecha por checkbox SIN geometría se podaba AL INSTANTE → "no se chequea ni se puede deschequear" y para montantes "no pasa nada" (nada persistía).
+- FIX: nuevo campo `PlanoBajante.asocManual?: string[]` — la poda respeta esos ids. Helper `camposAsocManual(b, ramalId, activar)` (PlanoEngineSelectionEdit) escribe recibeDeIds/alimentaIds simétricos + el libro en UNA llamada updateElementById.
+- Cableado en TODOS los toggles manuales: MontantesAsociadosSection, RamalesAsociadosMontSection, Bajantes asociados san (ramalMenu), Cajas asociadas (ramalMenu, check y uncheck), panel secMontantes (af/ac ambos lados) y toggleRamalBaj del panel ll. Desmarcar quita del libro → la poda vuelve a gobernar (arrastrar fuera/borrar trazo sí limpia).
+
+### Tests
+- `selectNoSteal.test.ts` (4, motor real): editar otro elemento no roba selección ni emite; editar el propio seleccionado SÍ emite; asociación manual sobrevive a la poda; sin libro manual + sin geometría se poda (comportamiento original intacto).
+
+### Gates
+tsc 0 · vitest 1012/1012 (165) · lint 0 err · build ✓ · graphify ✓.

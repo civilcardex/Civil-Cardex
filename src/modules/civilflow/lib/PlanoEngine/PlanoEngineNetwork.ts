@@ -247,8 +247,11 @@ export function podarReferenciasStaleDeBajantes(engine: IPlanoEngineCore): void 
   for (const b of engine.bajantes) {
     if (b.tipo === 'canal') continue;
     const code = b.code || b.id;
+    // Asociaciones A MANO (checkbox menú/panel): sin respaldo geométrico — la poda no las toca.
+    const manual = new Set(b.asocManual || []);
     if (b.recibeDeIds?.length) {
       b.recibeDeIds = b.recibeDeIds.filter((rid) => {
+        if (manual.has(rid)) return true;
         const r = engine.ramales.find((rr) => rr.id === rid);
         // Ramal de canal: asociación EXPLÍCITA escrita por moverAsociacionCanal (no usa
         // fin ni toque geométrico) — la poda no la toca.
@@ -258,6 +261,7 @@ export function podarReferenciasStaleDeBajantes(engine: IPlanoEngineCore): void 
     }
     if (b.alimentaIds?.length) {
       b.alimentaIds = b.alimentaIds.filter((rid) => {
+        if (manual.has(rid)) return true;
         const r = engine.ramales.find((rr) => rr.id === rid);
         if (r && (r as unknown as { esCanalId?: string }).esCanalId) return true;
         return !!r && r.ini === code && toca(r, 0, b);

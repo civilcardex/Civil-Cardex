@@ -1,10 +1,11 @@
 import { COMPONENTS, COMP_DESC, RCI_MONO } from './rci3dData';
-import { NormaLink } from '../shared/standardsLinks';
+import { NormaLink, NormaTxt } from '../shared/standardsLinks';
+import { usePerfilIso } from '../shared/notaNormativaIso';
 
 // Sidebar izquierdo del visor 3D RCI — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción del seleccionado debajo y nota normativa fija
 // abajo-izquierda. Geist + mismos tamaños/colores.
-// Links de la nota: cada norma a SU fuente oficial via NORMA_URLS (verificados 2026-09-30).
+// Links de la nota: cada norma a SU fuente oficial via NORMA_URLS (verificados 2026-10-09).
 // La lista colectiva «NFPA 20/13/14/22/25/72» queda plana (familia, sin objetivo único).
 
 interface Props {
@@ -13,8 +14,24 @@ interface Props {
 }
 
 /** Nota de diseño normativa con links — compartida por RciSidebar y RciRedSidebar (mismo
- *  texto/links; ambos visores RCI). */
+ *  texto/links; ambos visores RCI). NFPA 20 es internacional; la adaptación nacional (NSR-10
+ *  Título J en Colombia) sigue al país del proyecto (orig. usuario). */
 export function NotaDisenoRci() {
+  const perfil = usePerfilIso();
+  if (perfil.id !== 'CO') {
+    return (
+      <>
+        <strong style={{ color: '#BF4E14' }}>Nota de diseño:</strong> El presente detalle es una
+        representación técnica de referencia elaborada con base en la norma internacional{' '}
+        <NormaLink nombre="NFPA 20">NFPA 20:2025</NormaLink> y su adaptación para {perfil.nombre}:{' '}
+        <NormaTxt texto={perfil.norma.rci} />. Las descripciones provienen de la revisión de la base
+        normativa internacional (NFPA 20/13/14/22/25/72 con sus numerales). Es responsabilidad del
+        diseñador revisar y hacer los ajustes según la respectiva norma vigente. El presente esquema
+        y sus descripciones NO sustituyen las normas oficiales; su propósito es servir de guía para
+        robustecer las descripciones del visor CIVILCARDEX.
+      </>
+    );
+  }
   return (
     <>
       <strong style={{ color: '#BF4E14' }}>Nota de diseño:</strong> El presente detalle es una
@@ -125,7 +142,7 @@ export default function RciSidebar({ selectedId, onSelect }: Props): React.JSX.E
           <div style={{ color: '#c9d1d9' }}>{selDesc.body}</div>
           <div style={{ marginTop: 6, color: '#8b949e', fontSize: '0.70rem' }}>
             <span style={{ fontWeight: 600 }}>Referencia normativa: </span>
-            {selDesc.norm}
+            <NormaTxt texto={selDesc.norm} />
           </div>
         </div>
       )}

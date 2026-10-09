@@ -1,6 +1,7 @@
 import { COMPONENTES, COMP_DESC } from './epc3dData';
 import { MONO_3D } from '../shared/config3d';
-import { NormaLink } from '../shared/standardsLinks';
+import { NormaLink, NormaTxt } from '../shared/standardsLinks';
+import { usePerfilIso } from '../shared/notaNormativaIso';
 
 // Sidebar izquierdo del visor 3D del EPC — mismo patrón que AparatosSidebar (orig. usuario):
 // desplegable "Componente:" arriba, descripción debajo y nota normativa fija abajo.
@@ -21,6 +22,7 @@ function cuerpoDe(body: string): string {
 export default function EpcSidebar({ selectedId, onSelect }: Props): React.JSX.Element {
   const desc = selectedId != null ? COMP_DESC[String(selectedId)] : undefined;
   const comp = selectedId != null ? COMPONENTES.find((c) => c.id === selectedId) : undefined;
+  const perfil = usePerfilIso();
 
   return (
     <div
@@ -93,7 +95,7 @@ export default function EpcSidebar({ selectedId, onSelect }: Props): React.JSX.E
           {desc.norm && (
             <div style={{ marginTop: 6, color: '#8b949e', fontSize: '0.70rem' }}>
               <span style={{ fontWeight: 600 }}>Referencia normativa: </span>
-              {desc.norm}
+              <NormaTxt texto={desc.norm} />
             </div>
           )}
         </div>
@@ -114,17 +116,25 @@ export default function EpcSidebar({ selectedId, onSelect }: Props): React.JSX.E
       >
         <p style={{ margin: 0 }}>
           <strong style={{ color: '#BF4E14' }}>⚠ Nota: </strong>
-          El presente detalle es una representación técnica de referencia elaborada con base en las
-          normas <NormaLink nombre="RAS 2000">RAS 2000</NormaLink> /{' '}
-          <NormaLink nombre="NTC 1500">NTC 1500</NormaLink> y{' '}
-          <NormaLink nombre="RETIE">RETIE</NormaLink> /{' '}
-          <NormaLink nombre="NTC 1500">NTC 1500</NormaLink> vigentes a la fecha de publicación. Los
-          criterios de diseño, dimensionamiento hidráulico, selección y ubicación de los equipos
-          deben ser verificados y ajustados por un ingeniero competente conforme a las ediciones
-          vigentes de cada norma en el momento de la ejecución del proyecto, así como a los
-          catálogos de los respectivos fabricantes. CIVILCARDEX no asume responsabilidad por
-          aplicaciones que no hayan sido validadas por el profesional responsable de la obra. Se
-          deben aplicar normas y criterios de cada país.
+          El presente detalle es una representación técnica de referencia elaborada con base en{' '}
+          {perfil.id === 'CO' ? (
+            <>
+              las normas <NormaLink nombre="RAS 2000">RAS 2000</NormaLink> /{' '}
+              <NormaLink nombre="NTC 1500">NTC 1500</NormaLink> y{' '}
+              <NormaLink nombre="RETIE">RETIE</NormaLink> /{' '}
+              <NormaLink nombre="NTC 1500">NTC 1500</NormaLink>
+            </>
+          ) : (
+            <>
+              la normativa de {perfil.nombre}: <NormaTxt texto={perfil.norma.san} />
+            </>
+          )}{' '}
+          vigentes a la fecha de publicación. Los criterios de diseño, dimensionamiento hidráulico,
+          selección y ubicación de los equipos deben ser verificados y ajustados por un ingeniero
+          competente conforme a las ediciones vigentes de cada norma en el momento de la ejecución
+          del proyecto, así como a los catálogos de los respectivos fabricantes. CIVILCARDEX no
+          asume responsabilidad por aplicaciones que no hayan sido validadas por el profesional
+          responsable de la obra. Se deben aplicar normas y criterios de cada país.
         </p>
         <p style={{ margin: '8px 0 0' }}>
           <strong style={{ color: '#BF4E14' }}>🔥 Nota: </strong>

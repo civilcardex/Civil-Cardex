@@ -455,6 +455,10 @@ export interface PlanoBajante {
   dNominal: string;
   recibeDeIds: string[];
   alimentaIds: string[];
+  /** Ramales asociados A MANO (checkbox menú/panel, orig. usuario): la poda de stale NO los
+   *  toca aunque no haya respaldo geométrico (fin/ini + toque ≤0.5). Desmarcar quita de aquí
+   *  y de recibeDeIds/alimentaIds. */
+  asocManual?: string[];
   descargaEnId: string | null;
   /** Bomba: id de la caja que la originó (una bomba por caja). */
   cajaOrigenId?: string | null;
