@@ -337,6 +337,19 @@ export const APARATOS_DEF = [
     qgas: 1.35,
     norma: 'NTC 3728 T1',
   },
+  {
+    id: 'calp',
+    sigla: 'CalP:',
+    nombre: 'Caldera pequeña',
+    grupo: 'g',
+    uc_af: 0,
+    uc_ac: 0,
+    ud: 0,
+    pmin: 17,
+    pmax: 25,
+    qgas: 1.76,
+    norma: 'NTC 3728 T1',
+  },
 ];
 
 export const AF_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'nev'];
@@ -368,6 +381,7 @@ export const APARATO_IMG = {
   pisc: '/iconos_civilflow/aparatos/calentador_piscina.webp',
   sauna: '/iconos_civilflow/aparatos/sauna.webp',
   turco: '/iconos_civilflow/aparatos/turco.webp',
+  calp: '/iconos_civilflow/aparatos/caldera_pequena.webp',
 };
 
 export const CAT_APS = [

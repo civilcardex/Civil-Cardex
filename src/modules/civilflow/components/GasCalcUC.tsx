@@ -32,7 +32,7 @@ const GasCalcUC_S2: React.CSSProperties = {
 };
 
 const ABREV = {
-  est4: 'EST4',
+  est4: 'EST-4Q',
   est2: 'EST-2Q',
   hor_g: 'HOR-G',
   hor_m: 'HOR-M',
@@ -46,6 +46,7 @@ const ABREV = {
   pisc: 'C-PSC',
   sauna: 'SAU',
   turco: 'TUR',
+  calp: 'CAL-P',
 };
 
 function GasCalcUC() {
@@ -120,7 +121,13 @@ function GasCalcUC() {
     return { tramos, totalByAp, tramoTotals, tramoAppCounts };
   }, [plans]);
 
-  const globalTotal = useMemo(() => tramoTotals.reduce((s, q) => s + q, 0), [tramoTotals]);
+  // Sumatoria = consumo INSTALADO real (Σ n×qgas). El /2 de Renouard es criterio de
+  // SIMULTANEIDAD para el Q de diseño de cada tramo — la sumatoria no lo aplica (ped. usuario).
+  const globalTotal = useMemo(() => {
+    let raw = 0;
+    for (const ap of GAS_APPARATUS) raw += (totalByAp[ap.id] || 0) * (ap.qgas || 0);
+    return Math.round(raw * 100) / 100;
+  }, [totalByAp]);
 
   const totalAppCount = useMemo(() => {
     let s = 0;
@@ -144,7 +151,7 @@ function GasCalcUC() {
           scope="col"
           style={{ ...TH, fontSize: 11 }}
           rowSpan={2}
-          title="Punto de inicio del tramo (nudo o bajante de origen)."
+          title="Punto de inicio del tramo (nodo o bajante de origen)."
         >
           Inicio
         </th>
@@ -152,7 +159,7 @@ function GasCalcUC() {
           scope="col"
           style={{ ...TH, fontSize: 11 }}
           rowSpan={2}
-          title="Punto donde termina el tramo (nudo o bajante de destino)."
+          title="Punto donde termina el tramo (nodo o bajante de destino)."
         >
           Fin
         </th>
