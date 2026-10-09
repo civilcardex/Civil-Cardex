@@ -1836,7 +1836,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           merge={AFAC_CODO_MERGE}
         />
       )}
-      {isGas && (
+      {isGas && !rejillasArea && (
         <AccesoriosSection
           targetId={targetId}
           curHidro={{ accesorios: gasAccMap }}

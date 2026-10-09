@@ -55,7 +55,12 @@ export function MidRamalAccessorySelector({
   // tubería allí) — en el cuerpo debe ir mediante 'teeLlaveTerminal' (un tee con la pierna
   // libre tapada), por eso se excluye la válvula pelada de este selector de cuerpo aunque
   // getAccessoryOptions la incluya para el editor de extremos.
-  const options = getAccessoryOptions(element.net).filter((o) => o.value !== 'llaveTerminal');
+  // Cuerpo de ramal de presión (ped. usuario): SIN codos sube/baja — la polaridad solo
+  // tiene sentido en extremos (el flujo pasa de largo en el cuerpo). Ni se ofrecen.
+  const SUBE_BAJA = new Set(['codoSube', 'codoBaja', 'codo90rmSube', 'codo90rmBaja']);
+  const options = getAccessoryOptions(element.net).filter(
+    (o) => o.value !== 'llaveTerminal' && !SUBE_BAJA.has(o.value),
+  );
   if (options.length === 0) return null;
 
   // Si ya existe un vértice accMed (casi) exactamente en el punto clicado, se edita ese

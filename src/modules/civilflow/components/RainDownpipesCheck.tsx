@@ -46,14 +46,20 @@ interface Row {
   drawPlanId?: string;
   nivel: string;
   asociadosSup: string[];
+  canalesAsoc: string[];
   ramalesAsoc: string[];
 }
 // Encabezados compactos (orig. usuario: la tabla sin scroll horizontal): wrap a 2-3 líneas.
 const thC: React.CSSProperties = {
   fontSize: 9.5,
   textAlign: 'center',
-  padding: '2px 2px',
+  padding: '2px 3px',
   whiteSpace: 'normal',
+  // Ancho mínimo por celda de encabezado: sin él, con 18 columnas las palabras parten
+  // a la mitad ('MATERIA-L', 'Q CAR.') — ped. usuario estética.
+  minWidth: 52,
+  hyphens: 'auto',
+  overflowWrap: 'anywhere',
 };
 const thCg: React.CSSProperties = { ...thC, fontWeight: 700, letterSpacing: 0.3 };
 
@@ -122,7 +128,17 @@ const OtrasField = React.memo(function OtrasField({
 export default function ChequeoBajantesLluvias() {
   const [edit, setEdit] = React.useState(false);
   const tablaRef = useStickyThead2Offset();
-  const { bajantesLl, updBajanteLL } = useRainwater();
+  const { bajantesLl, updBajanteLL, canalesLl, canalBajantes } = useRainwater();
+  // Bajante chip ("BAN1-P1") → etiqueta del canal que lo recibe (inverso de canalBajantes).
+  const canalDeBaj = useMemo(() => {
+    const inv = new Map<string, string>();
+    for (const c of canalesLl) {
+      for (const chip of canalBajantes[c.id] || []) {
+        if (!inv.has(chip)) inv.set(chip, c.sector || c.id);
+      }
+    }
+    return inv;
+  }, [canalesLl, canalBajantes]);
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
 
@@ -267,6 +283,9 @@ export default function ChequeoBajantesLluvias() {
         drawPlanId: String(d.planId ?? ''),
         nivel: pisoCorto(d.piso),
         asociadosSup: uppersByBajante[`${d.planId}|${d.id}`] ?? [],
+        canalesAsoc: canalDeBaj.get(`${code}-${pisoCorto(d.piso)}`)
+          ? [canalDeBaj.get(`${code}-${pisoCorto(d.piso)}`)!]
+          : [],
         ramalesAsoc: ramalesByBajante[`${d.id}-${d.planId}`] ?? [],
         areaParcial,
         areaOtras,
@@ -294,6 +313,7 @@ export default function ChequeoBajantesLluvias() {
         bajante: m.bajante || m.id,
         nivel: '—',
         asociadosSup: [],
+        canalesAsoc: [],
         ramalesAsoc: [],
         areaParcial,
         areaOtras,
@@ -308,7 +328,7 @@ export default function ChequeoBajantesLluvias() {
     }
 
     return out;
-  }, [drawingBajantes, bajantesLl, areaDibujoMap, uppersByBajante, ramalesByBajante]);
+  }, [drawingBajantes, bajantesLl, areaDibujoMap, uppersByBajante, ramalesByBajante, canalDeBaj]);
 
   return (
     <section className="card">
@@ -328,13 +348,15 @@ export default function ChequeoBajantesLluvias() {
           <EditButton edit={edit} setEdit={setEdit} />
         </div>
       </div>
-      <div style={{ padding: '16px' }}>
+      <div style={{ padding: '16px', overflowX: 'auto' }}>
         <table
           ref={tablaRef}
           className="tbl"
           style={{
             fontSize: 11,
-            tableLayout: 'fixed',
+            // AUTO (no fixed): con 18 columnas el fixed las aplastaba y partía palabras;
+            // los minWidth de los th mandan y la tarjeta da scroll horizontal.
+            tableLayout: 'auto',
             width: '100%',
             borderCollapse: 'collapse',
           }}
@@ -379,6 +401,15 @@ export default function ChequeoBajantesLluvias() {
                 Bajantes asociados
               </th>
               <th
+                title="Canal recolector que recibe este bajante (según el dibujo)."
+                scope="col"
+                className="col-h ll"
+                rowSpan={2}
+                style={thC}
+              >
+                Canales asociados
+              </th>
+              <th
                 title="Ramales de la red de lluvias que drenan a este bajante."
                 scope="col"
                 className="col-h ll"
@@ -415,15 +446,13 @@ export default function ChequeoBajantesLluvias() {
                 CAPACIDAD DEL TUBO (Wyly-Eaton)
               </th>
               <th
-                title="Estado del chequeo de diámetros."
+                title="Estado del chequeo de diámetros. Unidad: Dcalc ≤ Dprop."
                 scope="col"
                 className="col-h ll"
                 rowSpan={2}
-                style={thC}
+                style={{ ...thC, width: 110, minWidth: 110, maxWidth: 140 }}
               >
                 Chequeo
-                <br />
-                <small>Dcalc ≤ Dprop</small>
               </th>
             </tr>
             <tr>
@@ -472,24 +501,20 @@ export default function ChequeoBajantesLluvias() {
                 escorrentía
               </th>
               <th
-                title="Intensidad de lluvia de diseño (mm/h)."
+                title="Intensidad de lluvia de diseño (mm/h). Unidad: mm/h."
                 scope="col"
                 className="col-h ll"
                 style={thC}
               >
                 Intensidad
-                <br />
-                <small>mm/h</small>
               </th>
               <th
-                title="Caudal de diseño del bajante (L/s) por método racional."
+                title="Caudal de diseño del bajante (L/s) por método racional. Unidad: L/s."
                 scope="col"
                 className="col-h ll"
                 style={thC}
               >
                 Caudal
-                <br />
-                <small>LPS</small>
               </th>
               <th
                 title="Fracción de la sección del tubo ocupada por el agua (flujo anular)."
@@ -508,34 +533,28 @@ export default function ChequeoBajantesLluvias() {
                 Manning
               </th>
               <th
-                title="Diámetro que exige el caudal de diseño (pulg)."
+                title="Diámetro que exige el caudal de diseño (pulg). Unidad: pulg."
                 scope="col"
                 className="col-h ok"
                 style={thC}
               >
                 Diam calc.
-                <br />
-                <small>pulg</small>
               </th>
               <th
-                title="Diámetro comercial propuesto (pulg) — no menor al mayor ramal conectado."
+                title="Diámetro comercial propuesto (pulg) — no menor al mayor ramal conectado. Unidad: pulg."
                 scope="col"
                 className="col-h ok"
                 style={thC}
               >
                 Diam prop.
-                <br />
-                <small>pulg</small>
               </th>
               <th
-                title="Capacidad del diámetro propuesto (L/s)."
+                title="Capacidad del diámetro propuesto (L/s). Unidad: L/s."
                 scope="col"
                 className="col-h ll"
                 style={thC}
               >
                 Q cap.
-                <br />
-                <small>LPS</small>
               </th>
               <th
                 title="Qué tan lleno trabaja el tubo: relación entre el caudal de diseño y la capacidad del diámetro propuesto; debe quedar por debajo del 100%."
@@ -586,6 +605,9 @@ export default function ChequeoBajantesLluvias() {
                     </td>
                     <td className="c">
                       <ChipList items={row.asociadosSup} />
+                    </td>
+                    <td className="c">
+                      <ChipList items={row.canalesAsoc} />
                     </td>
                     <td className="c">
                       <ChipList items={row.ramalesAsoc} />

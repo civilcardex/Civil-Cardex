@@ -1,7 +1,7 @@
 // TablaTipologias: la tabla de 24 columnas por sector (aparatos en subfilas, modo borrado
 // por celda con confirmación). Extraída del hub — incluye el rediseño de subfilas y los
 // fixes de borrado de la ronda 2026-10-06 (no es movimiento verbatim puro).
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
 import { SOL } from '../../constants/rejillasNTC3631';
 import { clasifRecinto, solucionAplicada } from '../../utils/rejillasCalc';
@@ -46,6 +46,15 @@ export function TablaTipologias({
   // Modo "eliminar aparato": activado con el − del header (solo edición); el clic se hace
   // sobre las celdas de la subfila (Aparato/UN/P/Tipo), con confirmación (ped. usuario).
   const [borrandoSub, setBorrandoSub] = useState(false);
+  // Confirmación de borrado de aparato (dialog propio, sin confirm nativo).
+  const [confirmDel, setConfirmDel] = useState<{ f: (typeof filas)[number]; ci: number } | null>(
+    null,
+  );
+  /** Foco inicial del diálogo de borrado (a11y: sin autofocus JSX — el linter lo veta). */
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirmDel) cancelarRef.current?.focus();
+  }, [confirmDel]);
   // El modo borrado es hijo de la edición: apagar EditButton lo cancela — sin esto los
   // onClick de fila seguían vivos y borraban gasodomésticos con la edición deshabilitada.
   // Ajuste de estado durante render (patrón del modal de checkout): resetear al togglear.
@@ -208,8 +217,8 @@ export function TablaTipologias({
             >
               Mono Espacio
             </th>
-            <th style={THS} title="Volumen del recinto (m³) = Área × Alto">
-              Volumen del recinto (m³)
+            <th style={THS} title="Volumen del recinto, en m³ = Área × Alto">
+              Volumen del recinto
             </th>
             <th
               style={{ ...THS, minWidth: 120 }}
@@ -222,9 +231,9 @@ export function TablaTipologias({
             </th>
             <th
               style={THS}
-              title="Potencia nominal en kW — la fija el catálogo NTC 3728 según el tipo de gas"
+              title="Potencia nominal, en kW — la fija el catálogo NTC 3728 según el tipo de gas"
             >
-              P (kW)
+              P
             </th>
             <th
               style={THS}
@@ -232,8 +241,8 @@ export function TablaTipologias({
             >
               Tipo
             </th>
-            <th style={THS} title="Suma de UN × P sin artefactos Tipo C (kW)">
-              Total P (kW)
+            <th style={THS} title="Suma de UN × P sin artefactos Tipo C, en kW">
+              Total P
             </th>
             <th style={THS} title="Volumen requerido (m³) = 3,4 m³ por kW, sin Tipo C (num. 4.1.1)">
               Volumen Requerido
@@ -248,19 +257,19 @@ export function TablaTipologias({
               style={THS}
               title="Volumen Recinto Adjunto (m³): espacio comunicado por aberturas interiores (solo Interior/Combinación)"
             >
-              VRA (m³)
+              VRA
             </th>
             <th
               style={THS}
               title="Potencia Recinto Adjunto (kW): gasodomésticos del espacio adjunto (sin Tipo C)"
             >
-              PRA (kW)
+              PRA
             </th>
             <th
               style={THS}
               title="Área Conectores de Evacuación (cm²): suma de secciones π·D²/4 (solo Método 2)"
             >
-              ACE (cm²)
+              ACE
             </th>
             <th style={THS} title="Solución que resulta del cálculo">
               Solución aplicada
@@ -317,7 +326,7 @@ export function TablaTipologias({
             const nW = res.alertas.length - nE;
             const est =
               res.estado === 'vacio'
-                ? 'Sin datos'
+                ? ''
                 : nE
                   ? `${nE} crítica${nE > 1 ? 's' : ''}`
                   : nW
@@ -339,9 +348,8 @@ export function TablaTipologias({
               const borrarEsta = (e: React.MouseEvent) => {
                 if (!enModoBorrado) return;
                 e.stopPropagation();
-                if (!window.confirm('¿Eliminar este aparato del sector?')) return;
-                quitarColumna(f, ci, onOv);
-                setBorrandoSub(false);
+                // Dialog de la app en vez del confirm nativo del navegador (ped. usuario).
+                setConfirmDel({ f, ci });
               };
               // Los controles tragan el click en modo borrado: editar no debe costar
               // un confirm (el click burbujeaba al <td onClick={borrarEsta}>).
@@ -575,9 +583,11 @@ export function TablaTipologias({
                     rowSpan={nSub}
                     style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
                   >
-                    {f.mono || res.modo === 'estanco' || res.estado === 'vacio'
-                      ? 'N.A.'
-                      : num(res.V, 1)}
+                    {res.estado === 'vacio'
+                      ? ''
+                      : f.mono || res.modo === 'estanco'
+                        ? 'N.A.'
+                        : num(res.V, 1)}
                   </td>
                   {/* Sin aparatos: sin subfila — una celda — hasta que el ＋ agregue una. */}
                   {f.aparatos.length === 0 ? (
@@ -595,15 +605,17 @@ export function TablaTipologias({
                       fontWeight: 700,
                     }}
                   >
-                    {num(res.P)}
+                    {res.estado === 'vacio' ? '' : num(res.P)}
                   </td>
                   <td
                     rowSpan={nSub}
                     style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
                   >
-                    {f.mono || res.modo === 'estanco' || res.estado === 'vacio'
-                      ? 'N.A.'
-                      : num(res.Vreq, 1)}
+                    {res.estado === 'vacio'
+                      ? ''
+                      : f.mono || res.modo === 'estanco'
+                        ? 'N.A.'
+                        : num(res.Vreq, 1)}
                   </td>
                   <td
                     rowSpan={nSub}
@@ -663,7 +675,7 @@ export function TablaTipologias({
                         style={INP}
                       />
                     ) : (
-                      'N.A.'
+                      ''
                     )}
                   </td>
                   <td
@@ -683,7 +695,7 @@ export function TablaTipologias({
                         style={INP}
                       />
                     ) : (
-                      'N.A.'
+                      ''
                     )}
                   </td>
                   <td
@@ -702,7 +714,7 @@ export function TablaTipologias({
                         style={INP}
                       />
                     ) : (
-                      'N.A.'
+                      ''
                     )}
                   </td>
                   <td
@@ -721,13 +733,13 @@ export function TablaTipologias({
                     rowSpan={nSub}
                     style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
                   >
-                    {hayAb ? num(res.aberturas[0].libre, 0) : 'N.A.'}
+                    {hayAb ? num(res.aberturas[0].libre, 0) : ''}
                   </td>
                   <td
                     rowSpan={nSub}
                     style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
                   >
-                    {hayAb ? (res.coef ?? '—') : 'N.A.'}
+                    {hayAb ? (res.coef ?? '—') : ''}
                   </td>
                   <td
                     rowSpan={nSub}
@@ -764,7 +776,7 @@ export function TablaTipologias({
                     rowSpan={nSub}
                     style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
                   >
-                    {ef !== null ? num(ef, 0) : 'N.A.'}
+                    {ef !== null ? num(ef, 0) : ''}
                   </td>
                   <td
                     rowSpan={nSub}
@@ -799,6 +811,85 @@ export function TablaTipologias({
           })}
         </tbody>
       </table>
+      {confirmDel && (
+        <div
+          role="presentation"
+          onClick={() => setConfirmDel(null)}
+          onKeyDown={(e) => e.key === 'Escape' && setConfirmDel(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 90,
+            background: 'rgba(0,0,0,.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* stopPropagation del fondo: clic dentro no cierra (a11y: dialog no interactivo) */}
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-label="Eliminar aparato"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg2, #171a1f)',
+              border: '1px solid var(--line)',
+              borderRadius: 10,
+              padding: '18px 20px',
+              maxWidth: 340,
+              width: '90%',
+              boxShadow: '0 12px 40px rgba(0,0,0,.5)',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Eliminar aparato</div>
+            <div style={{ fontSize: 12.5, color: 'var(--txt2)', marginBottom: 14 }}>
+              ¿Eliminar este aparato del sector{' '}
+              <b style={{ color: 'var(--txt)' }}>{confirmDel.f.sector}</b>? Se borra su subfila, la
+              cantidad y deja de sumar potencia.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                ref={cancelarRef}
+                onClick={() => setConfirmDel(null)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  background: 'transparent',
+                  border: '1px solid var(--line)',
+                  borderRadius: 6,
+                  color: 'var(--txt)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  quitarColumna(confirmDel.f, confirmDel.ci, onOv);
+                  setConfirmDel(null);
+                  setBorrandoSub(false);
+                }}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  background: '#F04545',
+                  border: 'none',
+                  borderRadius: 6,
+                  color: '#fff',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

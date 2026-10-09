@@ -302,6 +302,8 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 2,
+                        // Misma atenuación que las demás filas cuando EDITAR está apagado.
+                        opacity: isEditing ? 1 : 0.5,
                       }}
                     >
                       <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt2)' }}>
@@ -330,16 +332,15 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                 padding: isEditing ? '3px 6px' : '3px 7px',
                                 // Sin EDITAR: texto plano como las demás pestañas de redes
                                 // activas; el "cajón" seleccionable solo aparece al editar.
-                                background: isEditing ? 'var(--bg3)' : 'transparent',
-                                border: isEditing
-                                  ? `1px solid ${oOn ? 'var(--acc)' : 'var(--line)'}`
-                                  : '1px solid transparent',
+                                background: 'var(--bg3)',
+                                border: `1px solid ${oOn && isEditing ? 'var(--acc)' : 'var(--line)'}`,
                                 borderRadius: 'var(--r)',
                                 width: '100%',
                                 font: 'inherit',
                                 color: 'inherit',
                                 textAlign: 'left',
                                 cursor: isEditing ? 'pointer' : 'default',
+                                opacity: isEditing ? 1 : 0.5,
                               }}
                             >
                               <img

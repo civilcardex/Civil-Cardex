@@ -228,15 +228,13 @@ const BajantesTable = memo(function BajantesTable_() {
                 <br />
               </th>
               <th
-                title="Caudal de diseño por unidades de descarga (L/s)."
+                title="Caudal de diseño por unidades de descarga (L/s). Unidad: L/s."
                 scope="col"
                 className="col-h san"
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Caudal
-                <br />
-                <small>(LPS)</small>
               </th>
               <th
                 title="Rugosidad del material de la bajante."
@@ -267,17 +265,13 @@ const BajantesTable = memo(function BajantesTable_() {
                 Chequeo
               </th>
               <th
-                title="Capacidad máxima del diámetro propuesto (L/s)."
+                title="Capacidad máxima del diámetro propuesto (L/s). Unidad: L/s."
                 scope="col"
                 className="col-h ok"
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
-                Caudal
-                <br />
-                máximo
-                <br />
-                <small>(LPS)</small>
+                Caudal <br /> máximo
               </th>
               <th
                 title="Uso de la capacidad del bajante: debe ser ≤ 100%."
@@ -289,17 +283,13 @@ const BajantesTable = memo(function BajantesTable_() {
                 Q/Qmáx
               </th>
               <th
-                title="Velocidad terminal del flujo en el tubo (m/s)."
+                title="Velocidad terminal del flujo en el tubo (m/s). Unidad: m/s."
                 scope="col"
                 className="col-h ok"
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
-                Velocidad
-                <br />
-                terminal
-                <br />
-                <small>(m/s)</small>
+                Velocidad <br /> terminal
               </th>
               <th
                 title="Longitud terminal: calculada y la mínima recomendada (m)."
@@ -313,17 +303,13 @@ const BajantesTable = memo(function BajantesTable_() {
                 terminal
               </th>
               <th
-                title="Velocidad del aire en el núcleo de la ventilación (m/s)."
+                title="Velocidad del aire en el núcleo de la ventilación (m/s). Unidad: m/s."
                 scope="col"
                 className="col-h ven"
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
-                Vel.
-                <br />
-                Aire
-                <br />
-                <small>(m/s)</small>
+                Vel. <br /> Aire
               </th>
               <th
                 title="Fricción usada para el cálculo de la ventilación."
@@ -337,30 +323,22 @@ const BajantesTable = memo(function BajantesTable_() {
                 (ƒ)
               </th>
               <th
-                title="Caudal de aire que transporta la ventilación (L/s)."
+                title="Caudal de aire que transporta la ventilación (L/s). Unidad: L/s."
                 scope="col"
                 className="col-h ven"
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
-                Caudal
-                <br />
-                Aire
-                <br />
-                <small>(LPS)</small>
+                Caudal <br /> Aire
               </th>
               <th
-                title="Longitud desarrollada de la ventilación (m) — editable."
+                title="Longitud desarrollada de la ventilación (m) — editable. Unidad: m."
                 scope="col"
                 className="col-h ven"
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
-                Longitud
-                <br />
-                Bajante
-                <br />
-                <small>(m)</small>
+                Longitud <br /> Bajante
               </th>
               <th
                 title="Diámetro de ventilación: calculado, propuesto y su chequeo."
@@ -408,64 +386,52 @@ const BajantesTable = memo(function BajantesTable_() {
                 Acumulada
               </th>
               <th
-                title="Diámetro que exige el caudal de diseño (pulg)."
+                title="Diámetro que exige el caudal de diseño (pulg). Unidad: ″."
                 scope="col"
                 className="col-h ok"
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Calculado
-                <br />
-                <small>(″)</small>
               </th>
               <th
-                title="Diámetro comercial propuesto (pulg)."
+                title="Diámetro comercial propuesto (pulg). Unidad: ″."
                 scope="col"
                 className="col-h ok"
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Propuesto
-                <br />
-                <small>(″)</small>
               </th>
               <th
-                title="Longitud terminal calculada con la velocidad (m)."
+                title="Longitud terminal calculada con la velocidad (m). Unidad: m."
                 scope="col"
                 className="col-h ok"
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Calculada
-                <br />
-                <small>(m)</small>
               </th>
               <th
-                title="Longitud terminal mínima recomendada (m)."
+                title="Longitud terminal mínima recomendada (m). Unidad: m."
                 scope="col"
                 className="col-h ok"
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Mínima
-                <br />
-                <small>(m)</small>
               </th>
               <th
-                title="Diámetro de ventilación que exige el caudal de aire (pulg)."
+                title="Diámetro de ventilación que exige el caudal de aire (pulg). Unidad: ″."
                 scope="col"
                 className="col-h ven"
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Calculado
-                <br />
-                <small>(″)</small>
               </th>
               <th
-                title="Diámetro comercial de ventilación propuesto (pulg)."
+                title="Diámetro comercial de ventilación propuesto (pulg). Unidad: ″."
                 scope="col"
                 className="col-h ven"
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
                 Propuesto
-                <br />
-                <small>(″)</small>
               </th>
               <th
                 title="Estado del chequeo de la ventilación."
@@ -524,11 +490,9 @@ const BajantesTable = memo(function BajantesTable_() {
                   if (targetPlan && targetPlan.nivel != null) {
                     targetPiso = targetPlan.nivel.toString();
                     const targetPisoVal = fmtPiso(targetPiso, pisos);
-                    const isTgtBajante = targetRamal.startsWith('B') || targetRamal.startsWith('M');
-                    const prefix = isTgtBajante ? 'Bajante: ' : 'Ramal: ';
-                    destinoVal = targetRamal
-                      ? `${prefix}${targetPisoVal}-${targetRamal}`
-                      : targetPisoVal;
+                    // Etiqueta corta ramal-piso (ej. BAN1-P1), mismo estilo que los
+                    // ramales recibidos (ped. usuario: sin prefijo 'Bajante: '/'Ramal: ').
+                    destinoVal = targetRamal ? `${targetRamal}-${targetPisoVal}` : targetPisoVal;
                   } else {
                     destinoVal = targetRamal || '—';
                   }
