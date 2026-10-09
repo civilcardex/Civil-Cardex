@@ -1,21 +1,245 @@
 import React from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import { LazyDecimalInput } from './shared/LazyDecimalInput';
+import EditButton from './shared/EditButton';
 import { fmt } from '../utils/formatUtils';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
-import {
-  SupplyConnection_S1,
-  SupplyConnection_S2,
-  type AcometidaProps,
-  SECTION_COL,
-  SECTION_HDR,
-  SECTION_H4,
-  TH_CENTER,
-  TD_PARAM_LABEL,
-  TD_PARAM_VALUE,
-  TD_PARAM_UNIT,
-  SCROLL_INNER,
-  LazyNum,
-} from './supplyConnectionParts';
+/** Caption visualmente oculto de la tabla de acometida. */
+export const SupplyConnection_S1: React.CSSProperties = {
+  fontFamily: 'monospace',
+  fontSize: 9,
+  lineHeight: 1.4,
+  color: 'var(--txt2)',
+  background: 'var(--bg3)',
+  padding: '8px',
+  borderRadius: '4px',
+  border: '1px solid var(--line)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+};
+/** Estilo del selector de diámetro de la acometida. */
+export const SupplyConnection_S2: React.CSSProperties = {
+  width: '100%',
+  padding: '3px 4px',
+  border: '1px solid #3a494a',
+  borderRadius: 3,
+  background: '#1e2024',
+  color: '#e2e2e8',
+  fontSize: 11,
+  fontFamily: "'Geist',monospace",
+  cursor: 'pointer',
+  textAlign: 'center',
+  textAlignLast: 'center',
+};
+
+/** Resultado físico de una fila de acometida: diámetro interno, velocidad, longitudes, pérdidas y presión final. */
+export interface FilaResult {
+  dInt: number;
+  V: number;
+  Lt: number;
+  hfPct: number;
+  hfM: number;
+  Pfin: number;
+}
+
+/** Longitudes de un tramo de acometida: horizontal, vertical y equivalente de accesorios. */
+export interface LData {
+  h: number;
+  v: number;
+  le: number;
+}
+
+/** Selección de contador del catálogo para la acometida. */
+export interface ContadorSel {
+  dn?: string;
+  q?: number;
+}
+
+/** Opción de diámetro: pulgadas, nombre nominal, etiqueta y diámetro interno. */
+export interface DiamOpt {
+  pulg: number;
+  label: string;
+  dInt: number;
+  nominal?: string;
+}
+
+/** Props del panel Acometida: valores y setters del formulario, filas resueltas y validaciones de presión. */
+export interface AcometidaProps {
+  Qaco: number;
+  /** Edición POR TABLA (ped. usuario): cada sección tiene su EDITAR/LISTO. */
+  edit1: boolean;
+  setEdit1: Dispatch<SetStateAction<boolean>>;
+  edit2: boolean;
+  setEdit2: Dispatch<SetStateAction<boolean>>;
+  edit3: boolean;
+  setEdit3: Dispatch<SetStateAction<boolean>>;
+  contadorSel: ContadorSel;
+  acoContIx: number;
+  setAcoContIx: (ix: number) => void;
+  acoMonName: string;
+  setAcoMonName: (name: string) => void;
+  acoRedContDiam: string;
+  acoContMonDiam: string;
+  acoL1: LData;
+  setAcoL1: (fn: (s: LData) => LData) => void;
+  acoL2: LData;
+  setAcoL2: (fn: (s: LData) => LData) => void;
+  acoPini: number;
+  setAcoPini: (p: number) => void;
+  acoHfMax: number;
+  setAcoHfMax: (v: number) => void;
+  /** Presión residual mínima exigida al final de la acometida (mca). */
+  acoPResMin: number;
+  setAcoPResMin: (v: number) => void;
+  acoLeMed: number;
+  setAcoLeMed: (le: number) => void;
+  cHW1: number;
+  cHW2: number;
+  f1: FilaResult;
+  f2: FilaResult;
+  hfContador: number;
+  pResidual: number;
+  okPresion: boolean;
+  AF_DIAM_OPTS: DiamOpt[];
+  isTr1Drawn?: boolean;
+  /** Escribe el diámetro propuesto del tramo AC-01 dibujado (mismo camino que la tabla). */
+  onTr1DiamChange?: (nominal: string) => void;
+  /** Igual para el tramo AC-02 (contador→montante). */
+  onTr2DiamChange?: (nominal: string) => void;
+  isTr2Drawn?: boolean;
+  onContDiamChange?: (val: string) => void;
+}
+
+/** Contenedor de una sección de la tabla de acometida. */
+export const SECTION_COL: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--r)',
+  overflow: 'hidden',
+  background: 'var(--bg)',
+};
+/** Encabezado de sección de la tabla de acometida. */
+export const SECTION_HDR: React.CSSProperties = {
+  padding: '8px 12px',
+  borderBottom: '1px solid var(--line)',
+  background: 'var(--bg2)',
+};
+/** Título de sección de la tabla de acometida. */
+export const SECTION_H4: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: 'var(--txt)',
+  margin: 0,
+  textTransform: 'uppercase',
+  letterSpacing: 0.5,
+};
+/** Celda de encabezado centrada de la tabla de acometida. */
+export const TH_CENTER: React.CSSProperties = { textAlign: 'center', padding: '2px 6px' };
+/** Celda de nombre de parámetro de la tabla de acometida. */
+export const TD_PARAM_LABEL: React.CSSProperties = {
+  padding: '2px 8px',
+  textAlign: 'left',
+  fontWeight: 600,
+};
+/** Celda de valor de parámetro de la tabla de acometida. */
+export const TD_PARAM_VALUE: React.CSSProperties = {
+  textAlign: 'center',
+  color: 'var(--txt2)',
+  fontWeight: 600,
+  padding: '1px 2px',
+};
+/** Celda de unidad de parámetro de la tabla de acometida. */
+export const TD_PARAM_UNIT: React.CSSProperties = {
+  textAlign: 'center',
+  color: 'var(--txt3)',
+  padding: '1px 2px',
+};
+/** Contenedor desplazable interior de la sección. */
+export const SCROLL_INNER: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '16px',
+  alignItems: 'stretch',
+  paddingBottom: '16px',
+};
+
+/** Input numérico perezoso: solo avisa el cambio al salir del campo (blur/Enter), para no pelear con el valor formateado mientras se escribe. */
+export function LazyNum({
+  value,
+  onChange,
+  ariaLabel,
+  style,
+  className,
+  disabled = false,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  ariaLabel?: string;
+  style?: React.CSSProperties;
+  className?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <LazyDecimalInput
+      value={value?.toString() ?? ''}
+      onCommit={(raw) => {
+        const p = parseFloat(raw);
+        onChange(Number.isFinite(p) ? p : 0);
+      }}
+      ariaLabel={ariaLabel}
+      style={style}
+      className={className}
+      disabled={disabled}
+    />
+  );
+}
+
+/** Ped. usuario: sin EDITAR la celda es texto plano (sin borde ni fondo). */
+const estiloPlano: React.CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  fontWeight: 600,
+};
+
+/** LazyNum con estilo por estado (ped. usuario): apagado = texto plano mono, encendido = input. */
+function LazyNumE({
+  edit,
+  value,
+  onChange,
+  ariaLabel,
+  style,
+  className,
+}: {
+  edit: boolean;
+  value: number;
+  onChange: (v: number) => void;
+  ariaLabel?: string;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
+  const estilo = edit
+    ? style
+    : {
+        ...style,
+        border: 'none',
+        background: 'transparent',
+        fontWeight: 600,
+        color: 'var(--txt)',
+      };
+  return (
+    <LazyNum
+      value={value}
+      onChange={onChange}
+      ariaLabel={ariaLabel}
+      style={estilo}
+      className={className}
+      disabled={!edit}
+    />
+  );
+}
 
 /** Fila simple de parámetro editable: etiqueta + LazyNum + unidad (mca/m). */
 function FilaParamNum(props: {
@@ -24,9 +248,9 @@ function FilaParamNum(props: {
   value: number;
   onChange: (v: number) => void;
   unidad: string;
-  width?: number;
+  disabled?: boolean;
 }) {
-  const { label, ariaLabel, value, onChange, unidad, width = 60 } = props;
+  const { label, ariaLabel, value, onChange, unidad, disabled = false } = props;
   return (
     <tr>
       <td style={{ fontWeight: 600, padding: '3px 4px', textAlign: 'left' }}>{label}</td>
@@ -41,17 +265,12 @@ function FilaParamNum(props: {
           }}
         >
           <LazyNum
+            disabled={disabled}
+            style={disabled ? estiloPlano : undefined}
             ariaLabel={ariaLabel}
             value={value}
             onChange={onChange}
             className="ni"
-            style={{
-              width: `${width}px`,
-              textAlign: 'center',
-              fontSize: 12,
-              fontWeight: 700,
-              padding: '2px 4px',
-            }}
           />
           <span style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
             {unidad}
@@ -71,8 +290,9 @@ function FilaComparativaInline(props: {
   value: number;
   onChange: (v: number) => void;
   unidad: string;
+  disabled?: boolean;
 }) {
-  const { valor, cumple, op, ariaLabel, value, onChange, unidad } = props;
+  const { valor, cumple, op, ariaLabel, value, onChange, unidad, disabled = false } = props;
   return (
     <>
       <span
@@ -86,17 +306,22 @@ function FilaComparativaInline(props: {
       </span>
       <span style={{ fontSize: 12, color: 'var(--txt3)' }}>{op}</span>
       <LazyNum
+        disabled={disabled}
+        style={
+          disabled
+            ? estiloPlano
+            : {
+                width: '44px',
+                textAlign: 'center',
+                fontSize: 12,
+                fontWeight: 700,
+                padding: '2px',
+              }
+        }
         ariaLabel={ariaLabel}
         value={value}
         onChange={onChange}
         className="ni"
-        style={{
-          width: '44px',
-          textAlign: 'center',
-          fontSize: 12,
-          fontWeight: 700,
-          padding: '2px',
-        }}
       />
       <span style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>{unidad}</span>
     </>
@@ -104,6 +329,12 @@ function FilaComparativaInline(props: {
 }
 
 function Acometida({
+  edit1,
+  setEdit1,
+  edit2 = false,
+  setEdit2,
+  edit3 = false,
+  setEdit3,
   Qaco,
   contadorSel,
   hfContador,
@@ -131,7 +362,9 @@ function Acometida({
   okPresion,
   AF_DIAM_OPTS,
   isTr1Drawn = false,
-  isTr2Drawn = false,
+  onTr1DiamChange,
+  isTr2Drawn,
+  onTr2DiamChange,
   onContDiamChange,
   acoContIx,
   setAcoContIx,
@@ -158,6 +391,9 @@ function Acometida({
           <div style={{ ...SECTION_COL, flex: '16 1 440px' }}>
             <div className="card-h" style={SECTION_HDR}>
               <h4 style={SECTION_H4}>1. Flujo Hidráulico y Tramos</h4>
+              <div style={{ marginLeft: 'auto' }}>
+                <EditButton edit={edit1} setEdit={setEdit1} />
+              </div>
             </div>
 
             <div style={{ padding: '12px', borderBottom: '1px solid var(--line)' }}>
@@ -270,7 +506,8 @@ function Acometida({
                     Contador
                   </td>
                   <td className="c" style={{ padding: '1px' }}>
-                    <LazyNum
+                    <LazyNumE
+                      edit={edit1}
                       ariaLabel="Longitud horizontal ACOM-01"
                       value={acoL1.h}
                       onChange={(v: number) => setAcoL1((s) => ({ ...s, h: v }))}
@@ -286,7 +523,8 @@ function Acometida({
                         {fmt(acoL1.le, 2)}
                       </span>
                     ) : (
-                      <LazyNum
+                      <LazyNumE
+                        edit={edit1}
                         ariaLabel="Longitud equivalente ACOM-01"
                         value={acoL1.le}
                         onChange={(v: number) => setAcoL1((s) => ({ ...s, le: v }))}
@@ -301,18 +539,25 @@ function Acometida({
                   >
                     {Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : '—'}
                   </td>
-                  <td
-                    className="c"
-                    style={{
-                      padding: '2px 4px',
-                      fontFamily: 'var(--mono)',
-                      fontSize: 10,
-                      color: 'var(--txt2)',
-                    }}
-                  >
-                    {AF_DIAM_OPTS.find((o) => o.nominal === acoRedContDiam)?.label ||
-                      acoRedContDiam ||
-                      '—'}
+                  <td className="c" style={{ padding: '1px 2px' }}>
+                    {isTr1Drawn ? (
+                      <select
+                        aria-label="Diámetro propuesto AC-01"
+                        value={acoRedContDiam || ''}
+                        disabled={!edit1}
+                        onChange={(e) => onTr1DiamChange?.(e.target.value)}
+                        style={{ width: '100%', fontSize: 10, textAlign: 'center' }}
+                      >
+                        <option value="">—</option>
+                        {AF_DIAM_OPTS.map((o) => (
+                          <option key={o.nominal} value={o.nominal}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span style={{ color: 'var(--txt3)' }}>—</span>
+                    )}
                   </td>
                 </tr>
                 {/* ACOM-02 */}
@@ -343,7 +588,7 @@ function Acometida({
                       >
                         {acoMonName || '—'}
                       </span>
-                    ) : (
+                    ) : edit1 ? (
                       <input
                         aria-label="Nombre montante"
                         value={acoMonName}
@@ -352,6 +597,17 @@ function Acometida({
                         style={{ fontSize: 10, padding: '2px' }}
                         placeholder="Mont..."
                       />
+                    ) : (
+                      <span
+                        style={{
+                          fontFamily: 'var(--mono)',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: 'var(--txt)',
+                        }}
+                      >
+                        {acoMonName || '—'}
+                      </span>
                     )}
                   </td>
                   <td
@@ -365,7 +621,8 @@ function Acometida({
                         {fmt(acoL2.h, 2)}
                       </span>
                     ) : (
-                      <LazyNum
+                      <LazyNumE
+                        edit={edit1}
                         ariaLabel="Longitud horizontal ACOM-02"
                         value={acoL2.h}
                         onChange={(v: number) => setAcoL2((s) => ({ ...s, h: v }))}
@@ -385,7 +642,8 @@ function Acometida({
                         {fmt(acoL2.le, 2)}
                       </span>
                     ) : (
-                      <LazyNum
+                      <LazyNumE
+                        edit={edit1}
                         ariaLabel="Longitud equivalente ACOM-02"
                         value={acoL2.le}
                         onChange={(v: number) => setAcoL2((s) => ({ ...s, le: v }))}
@@ -405,19 +663,25 @@ function Acometida({
                   >
                     {Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : '—'}
                   </td>
-                  <td
-                    className="c"
-                    style={{
-                      padding: '2px 4px',
-                      fontFamily: 'var(--mono)',
-                      fontSize: 10,
-                      color: 'var(--txt2)',
-                      borderBottom: '1px solid var(--line)',
-                    }}
-                  >
-                    {AF_DIAM_OPTS.find((o) => o.nominal === acoContMonDiam)?.label ||
-                      acoContMonDiam ||
-                      '—'}
+                  <td className="c" style={{ padding: '1px 2px' }}>
+                    {isTr2Drawn ? (
+                      <select
+                        aria-label="Diámetro propuesto AC-02"
+                        value={acoContMonDiam || ''}
+                        disabled={!edit1}
+                        onChange={(e) => onTr2DiamChange?.(e.target.value)}
+                        style={{ width: '100%', fontSize: 10, textAlign: 'center' }}
+                      >
+                        <option value="">—</option>
+                        {AF_DIAM_OPTS.map((o) => (
+                          <option key={o.nominal} value={o.nominal}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span style={{ color: 'var(--txt3)' }}>—</span>
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -428,6 +692,9 @@ function Acometida({
           <div style={{ ...SECTION_COL, flex: '8 1 240px' }}>
             <div className="card-h" style={SECTION_HDR}>
               <h4 style={SECTION_H4}>2. Resumen de Parámetros</h4>
+              <div style={{ marginLeft: 'auto' }}>
+                <EditButton edit={edit2} setEdit={setEdit2} />
+              </div>
             </div>
 
             <table
@@ -593,6 +860,7 @@ function Acometida({
                     <select
                       value={acoContIx}
                       aria-label="Diámetro del contador"
+                      disabled={!edit2}
                       onChange={(e) => {
                         const i = parseInt(e.target.value);
                         setAcoContIx(i);
@@ -600,7 +868,17 @@ function Acometida({
                           onContDiamChange(`${CONTADORES_CAT[i].dn}"`);
                         }
                       }}
-                      style={SupplyConnection_S2}
+                      style={
+                        edit2
+                          ? SupplyConnection_S2
+                          : {
+                              ...SupplyConnection_S2,
+                              border: 'none',
+                              background: 'transparent',
+                              fontWeight: 600,
+                              cursor: 'default',
+                            }
+                      }
                     >
                       {CONTADORES_CAT.map((c, i) => (
                         <option key={i} value={i}>
@@ -645,6 +923,9 @@ function Acometida({
           <div style={{ ...SECTION_COL, flex: '8 1 240px' }}>
             <div className="card-h" style={SECTION_HDR}>
               <h4 style={SECTION_H4}>3. Verificación</h4>
+              <div style={{ marginLeft: 'auto' }}>
+                <EditButton edit={edit3} setEdit={setEdit3} />
+              </div>
             </div>
 
             <table
@@ -673,6 +954,7 @@ function Acometida({
               </thead>
               <tbody>
                 <FilaParamNum
+                  disabled={!edit3}
                   label="AC-01 Presión Inicial"
                   ariaLabel="AC-01 Presión Inicial"
                   value={acoPini}
@@ -742,6 +1024,7 @@ function Acometida({
                       }}
                     >
                       <FilaComparativaInline
+                        disabled={!edit3}
                         valor={hfContador}
                         cumple={hfContador <= acoHfMax}
                         op="≤"
@@ -792,6 +1075,7 @@ function Acometida({
                 </tr>
 
                 <FilaParamNum
+                  disabled={!edit3}
                   label="Le del medidor (AC-01)"
                   ariaLabel="Longitud equivalente del medidor"
                   value={acoLeMed}
@@ -830,6 +1114,7 @@ function Acometida({
                       }}
                     >
                       <FilaComparativaInline
+                        disabled={!edit3}
                         valor={pResidual}
                         cumple={pResidual >= acoPResMin}
                         op="≥"
