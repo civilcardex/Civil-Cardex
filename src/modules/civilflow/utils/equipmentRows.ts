@@ -349,10 +349,9 @@ export function computeBombaTables(): MemoriaTable[] {
 // páginas de pantalla) — misma idea que Bomba AR arriba: cada card/tabla de cada página,
 // replicada desde los mismos campos `ep` crudos y las mismas fórmulas que calculan las pantallas
 // en vivo, en vez de un resumen aplanado.
-export function computeEpTables(): MemoriaTable[] {
-  const ep = loadFromStorage<EPData | null>('ep', null);
-  if (!ep) return [];
-
+/** Física de presión/potencia EP compartida: computeEpTables y el resumen por red de infTab
+ *  leen de aquí (una sola fuente — sin drift de fórmulas). */
+function epBase(ep: EPData) {
   const qac = dec(ep.qac),
     qasc = dec(ep.qasc);
   const hfac = dec(ep.hfac),
@@ -393,29 +392,6 @@ export function computeEpTables(): MemoriaTable[] {
   const Pins_hp = Pfreno_hp * fs;
   const Pins_kw = (Pfreno_hp * 745.7 * fs) / 1000;
 
-  const ramalCol = (qLps: number, vDiseno: number) => {
-    const Qm3s = qLps / 1000;
-    const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
-    const diamCalcMm = diamCalcM * 1000;
-    const entry = selectDN(qLps, vDiseno);
-    return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
-  };
-  const rSucColector = ramalCol(Qd, vsuc);
-  const rImpColector = ramalCol(Qd, vimp);
-  const rSucBomba = ramalCol(Qb, vsuc);
-  const rImpBomba = ramalCol(Qb, vimp);
-
-  const fmtMm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-  const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
-  const fmtHp = (v: number) => (v > 0 ? v.toFixed(3) : '—');
-  const fmtBar = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
-  const fmtLps = (v: number) => (v > 0 ? v.toFixed(3) : '—');
-  const fmtM3h = (v: number) => (v > 0 ? v.toFixed(2) : '—');
-  const fmtGpm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-  const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
-  const fmtL = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-  const fmtW = (v: number) => (v > 0 ? v.toFixed(0) : '—');
-
   let autoNema = NEMA_HP[NEMA_HP.length - 1];
   for (const h of NEMA_HP) {
     if (h >= Pins_hp) {
@@ -443,6 +419,134 @@ export function computeEpTables(): MemoriaTable[] {
   const hfOk = Hf >= 0;
   const pminOk = pmin > 0;
   const predOk = pred > 0;
+
+  return {
+    qac,
+    qasc,
+    hfac,
+    hfacs,
+    hfotros,
+    pred,
+    pmin,
+    pmax,
+    zbomba,
+    ztop,
+    zcis,
+    hfcis,
+    nt,
+    nr,
+    etab,
+    etam,
+    fs,
+    ciclos,
+    alfa,
+    vsuc,
+    vimp,
+    isRed,
+    ntot,
+    Qd,
+    Qm3h,
+    Qgpm,
+    Qb,
+    Hg,
+    HfCrit,
+    Hf,
+    HMT,
+    Phid,
+    Pfreno_w,
+    Pfreno_hp,
+    Pins_hp,
+    Pins_kw,
+    autoNema,
+    nemaSel,
+    margenPct,
+    pComercialOk,
+    Pon,
+    Poff,
+    PN2,
+    Pon_bar,
+    Poff_bar,
+    PN2_bar,
+    Vu,
+    Vt,
+    hmtOk,
+    alertaPmax,
+    hgOk,
+    hfOk,
+    pminOk,
+    predOk,
+  };
+}
+
+export function computeEpTables(): MemoriaTable[] {
+  const ep = loadFromStorage<EPData | null>('ep', null);
+  if (!ep) return [];
+
+  const {
+    pred,
+    pmin,
+    pmax,
+    zbomba,
+    ztop,
+    nt,
+    nr,
+    ciclos,
+    vsuc,
+    vimp,
+    isRed,
+    ntot,
+    Qd,
+    Qm3h,
+    Qgpm,
+    Qb,
+    Hg,
+    HfCrit,
+    Hf,
+    HMT,
+    Phid,
+    Pfreno_w,
+    Pfreno_hp,
+    Pins_hp,
+    Pins_kw,
+    nemaSel,
+    margenPct,
+    pComercialOk,
+    Pon,
+    Poff,
+    Pon_bar,
+    Poff_bar,
+    PN2_bar,
+    Vu,
+    Vt,
+    hmtOk,
+    alertaPmax,
+    hgOk,
+    hfOk,
+    pminOk,
+    predOk,
+  } = epBase(ep);
+  const ramalCol = (qLps: number, vDiseno: number) => {
+    const Qm3s = qLps / 1000;
+    const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
+    const diamCalcMm = diamCalcM * 1000;
+    const entry = selectDN(qLps, vDiseno);
+    return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
+  };
+  const rSucColector = ramalCol(Qd, vsuc);
+  const rImpColector = ramalCol(Qd, vimp);
+  const rSucBomba = ramalCol(Qb, vsuc);
+  const rImpBomba = ramalCol(Qb, vimp);
+
+  const fmtMm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
+  const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+  const fmtHp = (v: number) => (v > 0 ? v.toFixed(3) : '—');
+  const fmtBar = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
+  const fmtLps = (v: number) => (v > 0 ? v.toFixed(3) : '—');
+  const fmtM3h = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+  const fmtGpm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
+  const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
+  const fmtL = (v: number) => (v > 0 ? v.toFixed(1) : '—');
+  const fmtW = (v: number) => (v > 0 ? v.toFixed(0) : '—');
 
   const resolveDiam = (userDN: number, v: number) => {
     if (userDN > 0) {
@@ -690,4 +794,15 @@ export function computeEpTables(): MemoriaTable[] {
     diametrosNominales,
     especTecnica,
   ];
+}
+
+/** Alertas EP para el resumen por red de infTab (misma física que computeEpTables). */
+export function epAlertas(): string[] | null {
+  const ep = loadFromStorage<EPData | null>('ep', null);
+  if (!ep) return null;
+  const c = epBase(ep);
+  const fallos: string[] = [];
+  if (!c.hmtOk) fallos.push(c.HMT <= 0 ? 'HMT sin datos' : 'HMT > Pmax del sistema');
+  if (!c.pComercialOk) fallos.push('Potencia comercial < potencia requerida');
+  return fallos;
 }

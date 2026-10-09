@@ -94,8 +94,6 @@ export function writeNSalidasToDrawing(
   if (isHydro) writeHydroDrawingSync(plans);
 }
 
-// Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.
-
 /** Escribe dims de un CANAL (base/altura/longitud/pendiente) al doc de su piso + BD, con
  *  normalizarCanal (base-corta) en el mismo write — la tabla de chequeo escribe por aquí
  *  (ítem 7 usuario: manda el dibujo). Un solo load+save por plano + sync san (ll ∈ san). */

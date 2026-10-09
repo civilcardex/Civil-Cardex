@@ -2,6 +2,11 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import type { HidroTramoEntry } from './sanAccessoriesCalc';
 
+/**
+ * Cuenta los accesorios a mitad de ramal y de extremo en las redes de agua (AF, AC, LL) y
+ * los escribe en el storage de hidráulica para que la tabla "Accesorios por ramal" se
+ * complete correctamente. Generaliza el conteo sanitario para aceptar cualquier accesorio.
+ */
 export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;

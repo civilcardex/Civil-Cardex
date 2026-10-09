@@ -13,11 +13,9 @@ import {
 import { _firstSegmentAngle } from './drawingAngles';
 
 /** Entrada del storage de hidráulica: conteo de accesorios, longitud horizontal y salidas de un ramal. */
-export interface HidroDataEntry {
-  accesorios: Record<string, number>;
-  Lh: number;
-  nSalidas: number;
-}
+// ponytail: misma forma que drawingSyncTypes.HidroDataEntry — una sola definición.
+import type { HidroDataEntry } from '../../utils/drawingSyncTypes';
+export type { HidroDataEntry };
 
 // La barra lateral de Aparatos (FixturesPanel.tsx/AccesoriosSection) lleva su propio conteo de
 // cada glifo de tee como "accesorio" asignado al ramal huésped (HYDRO_DATA_STORAGE_KEY, llave

@@ -3,82 +3,15 @@ import type { PlanItem } from '../context/PlansContext';
 import type { UDBase } from './componentHelpers';
 import { calcUDparcial } from './componentHelpers';
 import { buildBajanteGraph } from './buildBajanteGraph';
-import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
-import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore';
+import { manning_SAN } from './calcSanitaryCore';
+import { calculateVentStack } from './ventStackCalc';
 import { parseDescargaEnId } from './parseDescargaEnId';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData } from './drawingSync';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 import { fmtPiso } from '../constants';
-
-function calculateVentStack(params: {
-  UD_acum: number;
-  r: number;
-  n: number;
-  bajDprop: number;
-  bajLong: number;
-  bajFDarcy: number;
-  ventDprop: number;
-}) {
-  const { UD_acum, r, bajDprop, bajLong, bajFDarcy, ventDprop } = params;
-  const Q = caudalHunterLPS(UD_acum, 1);
-
-  const DcalcPulg = Q > 0 ? Math.pow(Q / (1.754 * Math.pow(r, 5 / 3)), 3 / 8) : 0;
-  const DcalcMm = DcalcPulg * 25.4;
-
-  const Dprop =
-    bajDprop > 0
-      ? DIAM_BAN.find((d) => Number(d.pulg) === Number(bajDprop))
-      : DcalcMm > 0
-        ? DIAM_BAN_SAN.find((d) => d.mm > DcalcMm) || DIAM_BAN_SAN[DIAM_BAN_SAN.length - 1]
-        : null;
-  const DpropPulg = Dprop ? Dprop.pulg : 0;
-
-  const chequeoDiam =
-    DcalcPulg > 0 && DpropPulg > 0 ? (DcalcPulg <= DpropPulg ? 'Ok' : 'No cumple') : '—';
-
-  const QmaxBajante = DpropPulg > 0 ? 1.754 * Math.pow(r, 5 / 3) * Math.pow(DpropPulg, 8 / 3) : 0;
-  const Vt =
-    DpropPulg > 0 && Q > 0 ? Math.round(2.76 * Math.pow(Q / DpropPulg, 0.4) * 100) / 100 : 0;
-  const Lt_calc = Vt > 0 ? 0.17 * Vt * Vt : 0;
-  const Lt_min = DpropPulg > 0 ? Math.max(Lt_calc, (10 * DpropPulg * 2.54) / 100) : 0;
-
-  const V_aire = Vt;
-  const Q_aire =
-    DpropPulg > 0
-      ? 1000 * V_aire * (1 - r) * (Math.PI / 4) * Math.pow((DpropPulg * 2.54) / 100, 2)
-      : 0;
-  const fDarcy = bajFDarcy;
-
-  const D_vent_calc_pulg =
-    bajLong > 0 && Q_aire > 0 ? Math.pow((bajLong * fDarcy * Q_aire * Q_aire) / 3.25, 1 / 5) : 0;
-  const D_vent_calc_mm = D_vent_calc_pulg * 25.4;
-
-  const DventProp =
-    ventDprop > 0
-      ? DIAM_VENT.find((d) => Number(d.pulg) === Number(ventDprop))
-      : D_vent_calc_mm > 0
-        ? DIAM_VENT.find((d) => d.mm > D_vent_calc_mm) || DIAM_VENT[DIAM_VENT.length - 1]
-        : null;
-  const DventPropPulg = DventProp ? DventProp.pulg : 0;
-
-  return {
-    Q_Ls: parseFloat(Q.toFixed(4)),
-    Dcalc_pulg: parseFloat(DcalcPulg.toFixed(2)),
-    Dprop_pulg: DpropPulg,
-    chequeoDiam,
-    QmaxBajante: parseFloat(QmaxBajante.toFixed(2)),
-    Vt: parseFloat(Vt.toFixed(2)),
-    Lt_calc: parseFloat(Lt_calc.toFixed(2)),
-    Lt_min: parseFloat(Lt_min.toFixed(2)),
-    V_aire: parseFloat(V_aire.toFixed(2)),
-    Q_aire_Ls: parseFloat(Q_aire.toFixed(2)),
-    D_vent_calc_pulg: parseFloat(D_vent_calc_pulg.toFixed(2)),
-    D_vent_prop_pulg: DventPropPulg,
-  };
-}
 
 /** Mayor diámetro san (pulg) entre los ramales conectados a un bajante (recibeDeIds), según los
  *  ramales persistidos del plano — la misma regla que sigue el motor al asociar/cambiar

@@ -5,9 +5,7 @@ export {
   writeDiametroToDrawing,
   writeContadorDiamToDrawing,
   writeAcoDiamToDrawing,
-  punterosBajante,
 } from './drawingWrites/diametros';
-export type { WriteDiametroResult } from './drawingWrites/diametros';
 export {
   writePendienteToDrawing,
   writeNSalidasToDrawing,

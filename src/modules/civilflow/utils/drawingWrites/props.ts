@@ -10,6 +10,7 @@ import { punterosBajante } from './diametros';
  *  writeDiametroToDrawing por cada ramal conectado (N parses del doc completo + N RPCs por
  *  UNA interacción de la tabla). Sin espejo ni validación de accesorios — los ramales vent
  *  conectados heredan el diámetro del bajante y su validación vive en el caller. */
+// Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.
 let espejoEnCurso = false;
 
 interface LocalDrawingData {

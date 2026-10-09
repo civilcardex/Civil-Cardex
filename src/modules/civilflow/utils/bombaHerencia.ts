@@ -9,6 +9,16 @@ import { collectSourceAgg } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
 
+/** Mapa por aparato de las UDs de una bomba (= las UDs de su CAJA asociada): cierre transitivo
+ *  completo vía `collectSourceAgg` — la MISMA verdad que el agregado del visor y la herencia
+ *  entre pisos (clave propia + recibeDeIds + tributarios + fuentes mergesFrom + cadenas
+ *  geométricas; espejos/LDs/otras redes fuera), sin necesitar el motor. Así la bomba "toma
+ *  bien" las UDs aunque sus ramales lleguen en cadena o el piso no esté cargado.
+ *  Blindaje anti-bucle (la suma infinita reportada): los ESPEJOS jamás son fuente — si un
+ *  ramal de salida quedó listado en `recibeDeIds`, su clave ya contiene el agregado y volver
+ *  a sumarla la haría crecer en cada pasada. La clave espejo de la bomba solo vale como
+ *  última instancia, DESPUÉS del cierre (sumarla antes re-fusionaba su propio valor anterior:
+ *  4→8→12…). */
 export function mapUdBombaDesdeTrazos(
   pumpPlanId: string,
   pumpId: string,

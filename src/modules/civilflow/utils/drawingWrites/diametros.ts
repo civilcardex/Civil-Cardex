@@ -20,6 +20,15 @@ interface LocalDrawingData {
   [key: string]: unknown;
 }
 
+// diametroInicio/diametroFin se guardan como el VALOR COMPLETO de la opción del dropdown de
+// diámetro, p. ej. `1-1/2" — 42.7 mm` — todo lo demás que los lee (ExtremeAccessoryEditor.tsx,
+// DrawingElementContextMenu.tsx) recorta primero hasta la parte en pulgadas antes del `"`. Sin
+// eso, el manejo propio de guion-em de diamPulgFromLabel entra en acción y lee la cifra en *mm*
+// después del guion como si fueran pulgadas (42.7 en vez de 1.5) — un número salvajemente
+// inflado que hacía que cada chequeo real contra él fuera o imposiblemente estricto o un falso
+// negativo dependiendo del lado de la comparación donde cayera. Esto era por qué la validación
+// nunca se disparaba visiblemente: `newIn` (un valor real en pulgadas) se comparaba contra
+// `accMax` calculado de milímetros.
 const inchPartOf = (d: string): string => {
   const q = d.indexOf('"');
   return q > 0 ? d.slice(0, q) : d;

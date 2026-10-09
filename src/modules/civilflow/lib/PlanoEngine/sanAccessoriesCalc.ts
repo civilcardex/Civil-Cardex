@@ -803,9 +803,3 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     }
   }
 }
-
-/**
- * Cuenta los accesorios a mitad de ramal y de extremo en las redes de agua (AF, AC, LL) y
- * los escribe en el storage de hidráulica para que la tabla "Accesorios por ramal" se
- * complete correctamente. Generaliza el conteo sanitario para aceptar cualquier accesorio.
- */

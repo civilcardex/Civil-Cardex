@@ -1,3 +1,8 @@
+// Asociación bomba→bajante (orig. usuario): campo dedicado `bombaEnId` en el BAJANTE — los
+// campos clásicos descargaEnId/origenId dispararían la herencia hacia ABAJO, invertida para
+// una bomba. La herencia hacia ARRIBA la ejecuta el efecto de FixturesPanel (clave de la
+// bomba → libro ucAplicado del bajante → ramales del piso superior). Compartido entre el menú
+// contextual y el panel derecho.
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   TRAZOS_PLAN_PREFIX,
@@ -241,7 +246,7 @@ export function sincronizarDesvioBomba(
 /** Quita anillo de la bomba, ramal LD_ (piso de la bomba), fantasma del piso superior y la
  *  clave de aparatos del Ldesvio. Idempotente. El LD se identifica con el id del BAJANTE
  *  (LD_<bajId> — mismo espacio de ids que bajante↔bajante: un bajante solo se enlaza a uno). */
-export function limpiarArtefactosDesvioBomba(
+function limpiarArtefactosDesvioBomba(
   eng: PlanoEngine,
   baj: { id: string; net?: string },
   bajPlanId: string,
@@ -419,14 +424,3 @@ export function quitarBomba(
   window.dispatchEvent(new Event('storage'));
   eng.render?.();
 }
-
-/** Mapa por aparato de las UDs de una bomba (= las UDs de su CAJA asociada): cierre transitivo
- *  completo vía `collectSourceAgg` — la MISMA verdad que el agregado del visor y la herencia
- *  entre pisos (clave propia + recibeDeIds + tributarios + fuentes mergesFrom + cadenas
- *  geométricas; espejos/LDs/otras redes fuera), sin necesitar el motor. Así la bomba "toma
- *  bien" las UDs aunque sus ramales lleguen en cadena o el piso no esté cargado.
- *  Blindaje anti-bucle (la suma infinita reportada): los ESPEJOS jamás son fuente — si un
- *  ramal de salida quedó listado en `recibeDeIds`, su clave ya contiene el agregado y volver
- *  a sumarla la haría crecer en cada pasada. La clave espejo de la bomba solo vale como
- *  última instancia, DESPUÉS del cierre (sumarla antes re-fusionaba su propio valor anterior:
- *  4→8→12…). */

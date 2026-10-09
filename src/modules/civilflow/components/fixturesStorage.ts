@@ -18,11 +18,9 @@ export const UNIDAD = {
 const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
 
 export type CountsMap = Record<string, Record<string, number>>;
-export interface HidroDataEntry {
-  accesorios: Record<string, number>;
-  Lh: number;
-  nSalidas: number;
-}
+// ponytail: misma forma que utils/drawingSyncTypes.HidroDataEntry — una sola definición.
+import type { HidroDataEntry } from '../utils/drawingSyncTypes';
+export type { HidroDataEntry };
 export type HidroDataMap = Record<string, HidroDataEntry>;
 export type GasAccMap = Record<string, Record<string, number>>;
 

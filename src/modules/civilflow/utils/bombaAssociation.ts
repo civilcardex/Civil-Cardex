@@ -5,7 +5,6 @@ export type { BombaRow, BajanteSuperiorRow } from './bombaQueries';
 export {
   asociarBomba,
   sincronizarDesvioBomba,
-  limpiarArtefactosDesvioBomba,
   desasociarBombaEnTrazos,
   quitarBomba,
 } from './bombaDesvio';

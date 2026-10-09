@@ -7,10 +7,6 @@ import type { Piso } from '../lib/shared/projectTypes';
 import { pisoLbl } from '../constants';
 import { sanitizeFileName } from './formatUtils';
 
-function fileBase(name: string): string {
-  return sanitizeFileName(name);
-}
-
 // Factor de sobremuestreo para el raster de exportación. La página PDF en sí se mantiene
 // dimensionada a escala-1 de pdfjs (ver w/h abajo — las coordenadas de elementos persistidas
 // están ancladas a eso, siempre la escala activa la primera vez que el dibujo de un plano carga
@@ -119,5 +115,5 @@ export async function downloadPlanosPdf(plans: PlanItem[], pisos: Piso[]): Promi
   }
 
   if (!doc) throw new Error('No se pudo generar ningún plano.');
-  doc.save(`${fileBase('Planos de red')}.pdf`);
+  doc.save(`${sanitizeFileName('Planos de red')}.pdf`);
 }
