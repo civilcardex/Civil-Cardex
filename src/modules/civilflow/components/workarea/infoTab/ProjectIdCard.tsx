@@ -1,5 +1,6 @@
 import React from 'react';
 import { USOS } from '../../../constants';
+import { NORMAS_PAIS } from '../../../constants/normasPais';
 import EditButton from '../../shared/EditButton';
 import { devError } from '../../../../../utils/devError';
 import { getActiveProyectoId } from '../../../services/storageService';
@@ -96,13 +97,20 @@ const ProjectIdCard = React.memo(function ProjectIdCard({
           <label htmlFor="proj-pais" style={{ fontSize: 12 }}>
             País
           </label>
-          <input
+          <select
             id="proj-pais"
             disabled={!isEditing}
-            value={proy.pais}
+            value={NORMAS_PAIS.some((p) => p.nombre === proy.pais) ? proy.pais : ''}
             onChange={(e) => setP('pais', e.target.value)}
             style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }}
-          />
+          >
+            <option value="">—</option>
+            {NORMAS_PAIS.map((p) => (
+              <option key={p.id} value={p.nombre}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="f" style={{ marginBottom: 0 }}>
           <label htmlFor="proj-uso" style={{ fontSize: 12 }}>

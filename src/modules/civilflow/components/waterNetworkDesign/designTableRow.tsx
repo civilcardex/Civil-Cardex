@@ -64,6 +64,7 @@ export function DesignTableRow({
   setPresFin,
   pRed,
   pressureByKey,
+  velLim,
 }: {
   t: Tramo;
   tr2: Tramo | null;
@@ -84,6 +85,8 @@ export function DesignTableRow({
   setPresFin: (tramoId: string, v: number | undefined) => void;
   pRed: number;
   pressureByKey: Record<string, { Pin: number; Pfin: number }>;
+  /** Límites de velocidad del país (mm/s) — normasPais. */
+  velLim?: [number, number];
 }) {
   const ownKey = t._key || t.id;
   const isTr2 = t === tr2;
@@ -100,7 +103,7 @@ export function DesignTableRow({
     lookupFn,
   });
   const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
-  const vCumple = calc.Vmms >= 500 && calc.Vmms <= 2500;
+  const vCumple = calc.Vmms >= (velLim?.[0] ?? 500) && calc.Vmms <= (velLim?.[1] ?? 2500);
   // Chequeo de presión en el aparato conectado (NTC 1500: pmin ≤ P ≤ pmax en el extremo).
   const chkP = chequeoPresionAparato(t.ini, t.fin, Pin, Pfin);
   return (

@@ -20,16 +20,22 @@ import {
 import { computeWaterNetworkRows, computeAcometidaSummary } from '../../utils/waterNetworkRows';
 import { computeBombaTables, computeEpTables } from '../../utils/equipmentRows';
 import { computeGasRows } from '../../utils/gasRows';
+import { epAlertas } from '../../utils/equipmentRows';
 import { computeUcTable } from '../../utils/ucRows';
 import { computeBajanteVentTable } from '../../utils/bajanteVentRows';
 import { computeAccesoriosTable } from '../../utils/sanFittingsRows';
 import { computeAccesoriosPorRamalTable } from '../../utils/fittingsByRamalRows';
 import { computeRainDownpipesTable } from '../../utils/rainDownpipesRows';
-import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../../utils/calcRainwater';
+import {
+  chequeoCanalLluvia,
+  BORDE_LIBRE_CANAL_CM,
+  chequeoBajanteLluvia,
+} from '../../utils/calcRainwater';
 import { nDeCanal, cDeCubierta } from '../../constants/engineeringDataMaterials';
 import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows';
 import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows';
 import { getPdfjs } from '../../utils/lazyPdfjs';
+import { perfilDe } from '../../constants/normasPais';
 import { downloadPlanosPdf } from '../../utils/exportPlanos';
 import type { useWorkAreaState } from '../useWorkAreaState';
 
@@ -143,26 +149,6 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     confirmedPlanos,
   } = state;
   const { bajantesLl, canalesLl, conRecolectora } = useRainwater();
-  const okSAN =
-    tramosSan.length > 0 &&
-    tramosSan.every((t) => {
-      const v = t.v_real || 0;
-      const y = t.yD || 0;
-      const q = t.qQ0 || 0;
-      return v >= 0.45 && v <= 4.0 && y <= 0.75 && q <= 1.0;
-    });
-  const okLL =
-    tramosLl.length > 0 &&
-    tramosLl.every((t) => {
-      const v = t.v_real || 0;
-      const y = t.yD || 0;
-      const q = t.qQ0 || 0;
-      return v >= 0.45 && v <= 4.0 && y <= 0.75 && q <= 1.0;
-    });
-  const okAF =
-    tramosAf.length > 0 && tramosAf.every((t) => t.velCumple !== false && t.presionOk !== false);
-  const okAC =
-    tramosAc.length > 0 && tramosAc.every((t) => t.velCumple !== false && t.presionOk !== false);
   const hasSan = redesActivas.some((r) => r.id === 'san');
   const hasLl = redesActivas.some((r) => r.id === 'll');
   const hasAf = redesActivas.some((r) => r.id === 'af');
@@ -170,36 +156,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const hasGas = redesActivas.some((r) => r.id === 'gas');
   const hasBom = redesActivas.some((r) => r.id === 'bom');
   const hasEp = redesActivas.some((r) => r.id === 'ep');
-  const hasCheckedNet = hasSan || hasLl || hasAf || hasAc;
-  const allOk =
-    hasCheckedNet && (!hasSan || okSAN) && (!hasLl || okLL) && (!hasAf || okAF) && (!hasAc || okAC);
-  const items = useMemo<[string, string][]>(() => {
-    const rows: [string, string][] = [
-      ['PROYECTO', proy.nombre],
-      ['DIRECCIÓN', proy.dir || '—'],
-      ['USO', proy.uso],
-      ['REDES', redesActivas.map((r) => r.lbl).join(' · ')],
-      [
-        'NIVELES',
-        pisos
-          .toSorted((a, b) => a.n - b.n)
-          .map((p) => pisoLbl(p.n))
-          .join(' · '),
-      ],
-    ];
-    if (hasSan) rows.push(['SANITARIA', okSAN ? '✓ OK' : '✗ Revisar']);
-    if (hasLl) rows.push(['AGUAS LLUVIAS', okLL ? '✓ OK' : '✗ Revisar']);
-    if (hasAf) rows.push(['AGUA FRÍA', okAF ? '✓ OK' : '✗ Revisar']);
-    if (hasAc) rows.push(['AGUA CALIENTE', okAC ? '✓ OK' : '✗ Revisar']);
-    return rows;
-  }, [proy, redesActivas, pisos, okSAN, okLL, okAF, okAC, hasSan, hasLl, hasAf, hasAc]);
-
-  const estadoLabel = !hasCheckedNet
-    ? '—'
-    : allOk
-      ? '✓ Listo para descargar'
-      : '✗ Revisar redes con errores';
-  const estadoColor = !hasCheckedNet ? 'var(--txt3)' : allOk ? 'var(--ok)' : 'var(--err)';
+  // Rangos por país (normasPais) — identificación del proyecto.
+  const perfil = perfilDe(proy.pais);
 
   const f2 = (n: number) => (n > 0 ? n.toFixed(2) : '—');
 
@@ -249,7 +207,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     return computeResumenTuberiasTable('ac', plans);
   }, [hasAc, plans]);
 
-  const sanTable = useMemo<MemoriaTable | null>(() => {
+  /** Filas crudas del diseño sanitario (compartidas: tabla + resumen por red). */
+  const sanRowsCalc = useMemo(() => {
     if (!hasSan) return null;
     const mergedBase = sanMergedBase;
     const displayTramos = tramosSan.filter((t) => t.tipo === 'ramal' && !t.esBajante);
@@ -258,13 +217,12 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       plans,
       mergedBase,
     );
-    const rows = computeSanRows(
-      displayTramos,
-      componentTotalMap,
-      mergedBase,
-      tramosSan,
-      fullChildrenMap,
-    );
+    return computeSanRows(displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap);
+  }, [hasSan, tramosSan, plans, sanMergedBase]);
+
+  const sanTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasSan) return null;
+    const rows = sanRowsCalc ?? [];
     return {
       title: 'Diseño de red sanitaria',
       headerGroups: [
@@ -350,7 +308,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   }, [hasSan, tramosSan, plans, sanMergedBase]);
 
   // ── LL ──
-  const llTable = useMemo<MemoriaTable | null>(() => {
+  /** Filas crudas del diseño de aguas lluvias (compartidas: tabla + resumen por red). */
+  const llRowsCalc = useMemo(() => {
     if (!hasLl) return null;
     const tribIds = getTributarioIds(tramosLl);
     const displayTramos = tramosLl.filter(
@@ -358,7 +317,12 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     );
     const associations = buildLlBajanteAssociations(tramosLl, plans);
     const qMap = computeLlQMap(tramosLl, plans, bajantesLl, associations);
-    const rows = computeLlRows(displayTramos, qMap, associations);
+    return computeLlRows(displayTramos, qMap, associations);
+  }, [hasLl, tramosLl, plans, bajantesLl]);
+
+  const llTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasLl) return null;
+    const rows = llRowsCalc ?? [];
     return {
       title: 'Diseño de red aguas lluvias',
       headerGroups: [
@@ -788,9 +752,12 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   }, [hasAc, tramosAc, tramosAf, plans, proy.p_red]);
 
   // ── GAS (calculado en fresco desde los datos de dibujo/accesorios persistidos — sin depender de haber visitado esa pantalla) ──
+  /** Filas del diseño de gas (compartidas: tabla + resumen por red). */
+  const gasRowsCalc = useMemo(() => (hasGas ? computeGasRows(plans) : []), [hasGas, plans]);
+
   const gasTable = useMemo<MemoriaTable | null>(() => {
     if (!hasGas) return null;
-    const rows = computeGasRows(plans);
+    const rows = gasRowsCalc;
     if (rows.length === 0) return null;
     return {
       title: 'Diseño de red de gas',
@@ -843,6 +810,199 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     };
   }, [hasGas, plans]);
 
+  const enRangoSanLl = (t: { v_real?: number; yD?: number; qQ0?: number }): boolean => {
+    const v = t.v_real || 0;
+    return (
+      v >= perfil.san.vMin &&
+      v <= perfil.san.vMax &&
+      (t.yD || 0) <= perfil.san.ydMax &&
+      (t.qQ0 || 0) <= 1.0
+    );
+  };
+  const conDatosSan = tramosSan.filter((t) => (t.v_real || 0) > 0);
+  const conDatosLl = tramosLl.filter((t) => (t.v_real || 0) > 0);
+  const noTrib = (t: { tipo?: string }) => t.tipo !== 'tributario';
+  /** Fallo de tabla: fila cuya verificación dice 'NO CUMPLE' (las '—' son filas sin datos, no fallos). */
+  const filaFalla = (r: { chequeoV: string; chequeoYn: string; chequeoFT: string }): boolean =>
+    r.chequeoV === 'NO CUMPLE' || r.chequeoYn === 'NO CUMPLE' || r.chequeoFT === 'NO CUMPLE';
+  // Ubicación de fallos (ped. usuario): etiqueta `${id}-${piso}` de cada elemento que incumple.
+  const etiq = (id: unknown, piso: number | undefined): string => {
+    const raw = String(id ?? '?');
+    const corto = raw.length > 10 ? `${raw.slice(0, 4)}…` : raw;
+    return `${corto}-${pisoCorto(Number(piso ?? 0))}`;
+  };
+  // SAN: rango (v/yD/qQ0) + chequeos de la tabla (velocidad, tiro Yn, fuerza tractiva). Sin tributarios.
+  const fallosSan = [
+    ...conDatosSan.filter(noTrib).filter((t) => !enRangoSanLl(t)),
+    ...(sanRowsCalc ?? []).filter(filaFalla).map((r) => ({ id: r.id, piso: r.piso })),
+  ];
+  const okSAN = conDatosSan.length > 0 && fallosSan.length === 0;
+  // LL: rango + chequeos de tabla + bajantes + canales. Sin tributarios.
+  const fallosLl = [
+    ...conDatosLl.filter(noTrib).filter((t) => !enRangoSanLl(t)),
+    ...(llRowsCalc ?? []).filter(filaFalla).map((r) => ({ id: r.id, piso: r.piso })),
+  ];
+  const okLL =
+    (conDatosLl.length > 0 || bajantesLl.length > 0 || (canalesLl?.length ?? 0) > 0) &&
+    fallosLl.length === 0;
+  const okAF =
+    tramosAf.length > 0 && tramosAf.every((t) => t.velCumple !== false && t.presionOk !== false);
+  const okAC =
+    tramosAc.length > 0 && tramosAc.every((t) => t.velCumple !== false && t.presionOk !== false);
+  const fallosAf = tramosAf.filter(
+    (t) => noTrib(t) && (t.velCumple === false || t.presionOk === false),
+  );
+  const fallosAc = tramosAc.filter(
+    (t) => noTrib(t) && (t.velCumple === false || t.presionOk === false),
+  );
+  const fallosBajLl = bajantesLl
+    .filter((b) => (b.areaAcumulada ?? 0) > 0)
+    .filter(
+      (b) =>
+        chequeoBajanteLluvia({ ...b, areaAcumulada: b.areaAcumulada || 0 }).chequeo === 'No cumple',
+    );
+  // Nivel de cada bajante ll desde sus tramos esBajante (BajanteLl no trae piso).
+  const pisoDeBajLl = new Map(
+    tramosLl.filter((t) => t.esBajante).map((t) => [String(t.id), t.piso]),
+  );
+  // Canales: misma fórmula de la tabla (C del material, n del material — sin material no hay chequeo).
+  const fallosCanalLl = (canalesLl ?? [])
+    .filter((c) => {
+      const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+      const nd = nDeCanal(c.materialCanal ?? '');
+      if (Cder <= 0 || nd == null) return false;
+      return (
+        chequeoCanalLluvia({
+          ...c,
+          coeficienteC: Cder,
+          manning: nd,
+          muroVertical: c.muroVertical ?? 0,
+          bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
+        }).chequeo === 'No cumple'
+      );
+    })
+    .map((c) => {
+      const piso = plans.find(
+        (p) => String(p.id) === String((c as { planId?: unknown }).planId),
+      )?.nivel;
+      return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))}`;
+    });
+  // AF: acometida (computeAcometidaSummary estadoOk) — la tabla la marca, el resumen la lista.
+  const acometidaOk = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF)?.estadoOk !== false;
+  const fallosGas = (gasRowsCalc ?? []).filter((r) => r.chequeo === 'NO');
+  const hasCheckedNet = hasSan || hasLl || hasAf || hasAc || hasGas || hasEp;
+  const allOk =
+    hasCheckedNet &&
+    (!hasSan || okSAN) &&
+    (!hasLl || okLL) &&
+    (!hasAf || okAF) &&
+    (!hasAc || okAC) &&
+    (!hasGas || fallosGas.length === 0) &&
+    (!hasEp || (epAlertas() ?? []).length === 0);
+  const items = useMemo<[string, string, string[]?][]>(() => {
+    const rows: [string, string, string[]?][] = [
+      ['PROYECTO', proy.nombre],
+      ['DIRECCIÓN', proy.dir || '—'],
+      ['USO', proy.uso],
+      ['REDES', redesActivas.map((r) => r.lbl).join(' · ')],
+      [
+        'NIVELES',
+        pisos
+          .toSorted((a, b) => a.n - b.n)
+          .map((p) => pisoLbl(p.n))
+          .join(' · '),
+      ],
+    ];
+    const labs = (fs: { id: unknown; piso?: number }[]) => fs.map((t) => etiq(t.id, t.piso));
+    // Red con tramos dibujados pero SIN calcular (nunca abrió su tabla): neutro, no fallo.
+    const estadoSan = conDatosSan.length === 0 ? '◌ Sin calcular' : okSAN ? '✓ OK' : '✗ Revisar';
+    const estadoLl =
+      conDatosLl.length === 0 && bajantesLl.length === 0 && (canalesLl?.length ?? 0) === 0
+        ? '◌ Sin calcular'
+        : okLL && fallosBajLl.length === 0 && fallosCanalLl.length === 0
+          ? '✓ OK'
+          : '✗ Revisar';
+    const fallosDe = (ok: boolean, labs2: string[]): string[] => (ok ? [] : labs2);
+    if (hasSan)
+      rows.push(['SANITARIA', estadoSan, estadoSan === '✗ Revisar' ? labs(fallosSan) : []]);
+    if (hasLl)
+      rows.push([
+        'AGUAS LLUVIAS',
+        estadoLl,
+        estadoLl === '✗ Revisar'
+          ? [
+              ...labs(fallosLl),
+              ...fallosBajLl.map((b) =>
+                etiq(b.bajante || b.id, pisoDeBajLl.get(String(b.bajante || b.id))),
+              ),
+              ...fallosCanalLl,
+            ]
+          : [],
+      ]);
+    const fallosAfLabs = [...labs(fallosAf), ...(acometidaOk ? [] : ['ACOMETIDA'])];
+    if (hasAf)
+      rows.push([
+        'AGUA FRÍA',
+        tramosAf.length === 0 ? '◌ Sin calcular' : okAF && acometidaOk ? '✓ OK' : '✗ Revisar',
+        fallosDe(okAF && acometidaOk, fallosAfLabs),
+      ]);
+    if (hasAc)
+      rows.push(['AGUA CALIENTE', okAC ? '✓ OK' : '✗ Revisar', fallosDe(okAC, labs(fallosAc))]);
+    if (hasGas)
+      rows.push([
+        'GAS',
+        (gasRowsCalc ?? []).length === 0
+          ? '◌ Sin calcular'
+          : fallosGas.length === 0
+            ? '✓ OK'
+            : '✗ Revisar',
+        fallosGas.map((r) => etiq(r.id, r.piso)),
+      ]);
+    if (hasEp) {
+      const alertasEp = epAlertas();
+      rows.push([
+        'EQUIPO PRESIÓN',
+        alertasEp === null ? '◌ Sin calcular' : alertasEp.length === 0 ? '✓ OK' : '✗ Revisar',
+        alertasEp ?? [],
+      ]);
+    }
+    return rows;
+  }, [
+    proy,
+    redesActivas,
+    pisos,
+    okSAN,
+    okLL,
+    okAF,
+    okAC,
+    hasSan,
+    hasLl,
+    hasAf,
+    hasAc,
+    hasGas,
+    hasEp,
+    fallosSan,
+    fallosLl,
+    fallosAf,
+    fallosAc,
+    fallosBajLl,
+    fallosCanalLl,
+    conDatosSan.length,
+    conDatosLl.length,
+    bajantesLl,
+    canalesLl,
+    sanRowsCalc,
+    llRowsCalc,
+    gasRowsCalc,
+    acometidaOk,
+  ]);
+  const estadoLabel = !hasCheckedNet
+    ? '—'
+    : allOk
+      ? '✓ Listo para descargar'
+      : '✗ Revisar redes con errores';
+  const estadoColor = !hasCheckedNet ? 'var(--txt3)' : allOk ? 'var(--ok)' : 'var(--err)';
+
   // ── BOMBA / EP ── computeBombaTables/computeEpTables (equiposRows.ts) reconstruyen cada tabla
   // desde todas las páginas de la pantalla en fresco al momento de descargar — mismo patrón de
   // "sin dependencia de visitar pantallas, sin useMemo obsoleto" que buildAcometidaTables de
@@ -874,7 +1034,11 @@ export function InfTab({ state }: { state: WorkAreaState }) {
           'No hay tablas para generar. Asegúrate de que las redes tengan datos dibujados.',
         );
       }
-      const data: MemoriaData = { proyNombre: proy.nombre, rows: items.slice(0, 5), tables };
+      const data: MemoriaData = {
+        proyNombre: proy.nombre,
+        rows: items.slice(0, 5).map(([k, v]) => [k, v] as [string, string]),
+        tables,
+      };
       if (memoriaFmt === 'xlsx') await generateMemoriaExcel(data);
       else if (memoriaFmt === 'pdf') await generateMemoriaPdf(data);
       else await generateMemoriaDocx(data);
@@ -928,7 +1092,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         </div>
         <div className="card-b">
           <dl style={{ margin: 0 }}>
-            {items.map(([k, v]) => (
+            {items.map(([k, v, fallos]) => (
               <div key={k} style={SUMMARY_ROW_STYLE}>
                 <dt
                   style={{
@@ -956,6 +1120,29 @@ export function InfTab({ state }: { state: WorkAreaState }) {
                 >
                   {v}
                 </dd>
+                {fallos && fallos.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginLeft: 8 }}>
+                    {fallos.slice(0, 14).map((e, i) => (
+                      <span
+                        key={`${e}-${i}`}
+                        title={`${e} no cumple — revíselo en su tabla de diseño`}
+                        style={{
+                          fontSize: 10.5,
+                          fontFamily: 'var(--mono)',
+                          fontWeight: 600,
+                          padding: '2px 7px',
+                          borderRadius: 5,
+                          background: 'rgba(239,68,68,.12)',
+                          border: '1px solid rgba(239,68,68,.45)',
+                          color: 'var(--err)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {e}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </dl>
@@ -997,6 +1184,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
             {estadoLabel}
           </span>
         </div>
+
         <div
           className="card-b"
           style={{ display: 'flex', flexDirection: 'column', padding: '4px 10px' }}

@@ -129,6 +129,16 @@ const gas = {
         />
       ),
     },
+    {
+      title: 'Rangos por país',
+      body: (
+        <p style={{ fontSize: 13, color: 'var(--txt2)' }}>
+          El chequeo (V m&aacute;x y &Delta;P acumulada) usa los rangos del pa&iacute;s seleccionado
+          en IDENTIFICACI&Oacute;N DEL PROYECTO. Tabla completa de pa&iacute;ses en la
+          secci&oacute;n <b>Normativa por pa&iacute;s</b> de esta documentaci&oacute;n.
+        </p>
+      ),
+    },
   ],
 };
 

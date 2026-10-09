@@ -199,7 +199,7 @@ export function useWorkAreaState() {
   // 5/6 quedaba fuera de rango (PageNav pintaba "6 de 4"). Encender 'rejillas' NO mueve
   // la página — el render condicional ya redirige la 4 a RejillasVentilacion.
   useEffect(() => {
-    if (!redes.has('rejillas') && gasPage > 5) setGasPage(5);
+    if (!redes.has('rejillas') && gasPage > 4) setGasPage(4);
   }, [redes, gasPage, setGasPage]);
 
   const [netColors, setNetColors] = useState<Record<string, string>>(() => {

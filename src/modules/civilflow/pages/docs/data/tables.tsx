@@ -32,9 +32,10 @@ const tablas = {
           rows={[
             ['Pendiente min (2–6")', '≥ 2% (20 mm/m)', 'NTC 1500 8.4.1'],
             ['Pendiente min (8"+ )', '≥ 0.5% (5 mm/m)', 'NTC 1500 8.4.1'],
-            ['Velocidad mínima', '≥ 0.60 m/s', 'NTC 1500'],
-            ['Velocidad máxima', '≤ 5.00 m/s', 'NTC 1500'],
-            ['Fuerza tractiva min', '≥ 0.10 kg/m²', 'NTC 1500'],
+            ['Velocidad mínima', '≥ 0.45 m/s', 'RAS/NTC 1500 (ajustable por país)'],
+            ['Velocidad máxima', '≤ 4.00 m/s', 'RAS/NTC 1500 (ajustable por país)'],
+            ['Llenado máx (y/D)', '≤ 0.75', 'RAS/NTC 1500'],
+            ['Fuerza tractiva min', '≥ 0.15 kg/m²', 'RAS 2000'],
             ['Relleno sobre tubería', '≥ 0.30 m', 'NTC 1500'],
           ]}
         />
@@ -46,8 +47,8 @@ const tablas = {
         <Tabla
           head={['Parámetro', 'Condición', 'Ref.']}
           rows={[
+            ['Velocidad recomendada', '0.50–2.50 m/s', 'NTC 1500 (ajustable por país)'],
             ['Velocidad máxima (rec.)', '≤ 3.00 m/s', 'RAS 2000'],
-            ['Velocidad máxima abs.', '≤ 5.00 m/s', 'RAS 2000'],
             ['Presión estática máx', '≤ 50 m.c.a.', 'NTC 1500'],
             ['Presión dinámica mín', '≥ 3.00 m.c.a.', 'NTC 1500'],
           ]}

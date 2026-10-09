@@ -15,6 +15,7 @@ import {
 
 import { isAf, isAC1 } from '../utils/waterNetworkRows';
 import { chequeoPresionAparato } from '../utils/waterRowsShared';
+import { perfilDe } from '../constants/normasPais';
 import { fracAscii } from '../utils/formatUtils';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
@@ -358,7 +359,9 @@ function WaterNetworkDesign({
         diamIntMap,
         lookupFn,
       });
-      const velCumple = c.Vmms > 0 ? c.Vmms >= 500 && c.Vmms <= 2500 : true;
+      const vMinMms = perfilDe(proy.pais).af.vMin * 1000;
+      const vMaxMms = perfilDe(proy.pais).af.vMax * 1000;
+      const velCumple = c.Vmms > 0 ? c.Vmms >= vMinMms && c.Vmms <= vMaxMms : true;
       if (t.velCumple !== velCumple) updTramo(ownKey, 'velCumple', velCumple);
       if (isAf(networkType) && t.presionOk !== okPresion) updTramo(ownKey, 'presionOk', okPresion);
       if (!isAf(networkType)) {
@@ -388,6 +391,7 @@ function WaterNetworkDesign({
     lookupFn,
     okPresion,
     networkType,
+    proy.pais,
     pressureByKey,
     updTramo,
     pRed,
@@ -466,7 +470,7 @@ function WaterNetworkDesign({
               >
                 <caption style={WaterNetworkDesign_S1}>{`Diseño de red ${title}`}</caption>
 
-                <DesignTableHeader cssClass={cssClass} />
+                <DesignTableHeader cssClass={cssClass} pais={proy.pais} />
                 <tbody>
                   {tramosOrden.length === 0 && (
                     <tr>
@@ -505,6 +509,10 @@ function WaterNetworkDesign({
                       setPresFin={setPresFin}
                       pRed={pRed}
                       pressureByKey={pressureByKey}
+                      velLim={[
+                        perfilDe(proy.pais).af.vMin * 1000,
+                        perfilDe(proy.pais).af.vMax * 1000,
+                      ]}
                     />
                   ))}
                 </tbody>

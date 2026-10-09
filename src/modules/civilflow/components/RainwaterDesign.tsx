@@ -9,6 +9,8 @@ import { pisoCorto, DIAM_OPTIONS, DIAM_OPTIONS_LL } from '../constants';
 import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
+import { perfilDe } from '../constants/normasPais';
+import { useProyecto } from '../context/ProjectContext';
 import { fmt } from '../utils/formatUtils';
 import { useRainwater } from '../context/RainwaterContext';
 import {
@@ -40,6 +42,7 @@ const RainwaterDesign_S3: React.CSSProperties = {
 const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '2px 3px' } as const;
 
 export default function DisenoLluvias() {
+  const { proy } = useProyecto();
   const [edit, setEdit] = useState(false);
   const tablaRef = useStickyThead2Offset();
   // Borrador del input de pendiente por tramo (commit en blur — mismo patrón que SanitaryDesign).
@@ -109,7 +112,7 @@ export default function DisenoLluvias() {
         yD = 0,
         qQ0 = 0;
       if (Q > 0 && S != null && S > 0 && n > 0 && DintMm > 0) {
-        const hc = calcHydraulicCheck({ Q, S, n, DintMm });
+        const hc = calcHydraulicCheck({ Q, S, n, DintMm, lim: perfilDe(proy.pais).san });
         v_real = hc.Vreal;
         yD = Math.round((Math.max(hc.Yc, hc.Yn) / DintMm) * 1000) / 1000;
         qQ0 = hc.qqo;
@@ -200,15 +203,13 @@ export default function DisenoLluvias() {
                     asociados
                   </th>
                   <th
-                    title="Caudal de diseño acumulado del tramo (L/s)."
+                    title="Caudal de diseño acumulado del tramo (L/s). Unidad: L/s."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Caudal
-                    <br />
-                    <small>(LPS)</small>
                   </th>
                   <th
                     title="Rugosidad n del material de la tubería."
@@ -220,18 +221,18 @@ export default function DisenoLluvias() {
                     Manning
                   </th>
                   <th
-                    title="Pendiente del tramo (%) — manda el dibujo."
+                    title="Pendiente del tramo (%) — manda el dibujo. Unidad: porcentaje (%)."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Pendiente
-                    <br />
-                    <small>(%)</small>
                   </th>
                   <th
-                    title='Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
+                    title={
+                      'Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
+                    }
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
@@ -245,26 +246,22 @@ export default function DisenoLluvias() {
                     Diámetro
                   </th>
                   <th
-                    title="Capacidad máxima del diámetro propuesto (L/s)."
+                    title="Capacidad máxima del diámetro propuesto (L/s). Unidad: L/s."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Qo
-                    <br />
-                    <small>(LPS)</small>
                   </th>
                   <th
-                    title="Velocidad de salida/capacidad asociada al diámetro (m/s)."
+                    title="Velocidad de salida/capacidad asociada al diámetro (m/s). Unidad: m/s."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Vo
-                    <br />
-                    <small>(m/s)</small>
                   </th>
                   <th
                     title="Uso de la capacidad: debe ser ≤ 100%."
@@ -276,15 +273,13 @@ export default function DisenoLluvias() {
                     Q/Qo
                   </th>
                   <th
-                    title="Velocidad real del flujo con el diámetro propuesto (m/s)."
+                    title="Velocidad real del flujo con el diámetro propuesto (m/s). Unidad: m/s."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     V. real
-                    <br />
-                    <small>(m/s)</small>
                   </th>
                   <th
                     title="O.K. si la velocidad está dentro del rango permitido."
@@ -296,26 +291,22 @@ export default function DisenoLluvias() {
                     Chequeo velocidad
                   </th>
                   <th
-                    title="Tirante crítico del flujo (mm)."
+                    title="Tirante crítico del flujo (mm). Unidad: mm."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Yc
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
-                    title="Tirante normal del flujo (mm)."
+                    title="Tirante normal del flujo (mm). Unidad: mm."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Yn
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
                     title="Número de Froude del flujo (subcrítico si es menor a 1)."
@@ -336,15 +327,13 @@ export default function DisenoLluvias() {
                     Flujo
                   </th>
                   <th
-                    title="Altura máxima admisible del tirante (mm)."
+                    title="Altura máxima admisible del tirante (mm). Unidad: mm."
                     scope="col"
                     className="col-h ll"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Ymax
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
                     title="Comparación del tirante normal contra el crítico."
@@ -372,34 +361,28 @@ export default function DisenoLluvias() {
                 </tr>
                 <tr>
                   <th
-                    title="Diámetro calculado con el caudal y la pendiente (pulg)."
+                    title='Diámetro calculado con el caudal y la pendiente (pulg). Unidad: pulgadas (").'
                     scope="col"
                     className="col-h ok"
                     style={TH_HDR}
                   >
                     Calculado
-                    <br />
-                    <small>(")</small>
                   </th>
                   <th
-                    title="Diámetro comercial propuesto (pulg) — editable."
+                    title='Diámetro comercial propuesto (pulg) — editable. Unidad: pulgadas (").'
                     scope="col"
                     className="col-h ok"
                     style={TH_HDR}
                   >
                     Diseño
-                    <br />
-                    <small>(")</small>
                   </th>
                   <th
-                    title="Diámetro interior del tubo propuesto (mm)."
+                    title="Diámetro interior del tubo propuesto (mm). Unidad: mm."
                     scope="col"
                     className="col-h ok"
                     style={TH_HDR}
                   >
                     Interior
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
                     title="O.K. si el diámetro propuesto cubre el calculado."
@@ -410,14 +393,12 @@ export default function DisenoLluvias() {
                     Chequeo
                   </th>
                   <th
-                    title="Fuerza tractiva real del flujo (kg/m²)."
+                    title="Fuerza tractiva real del flujo (kg/m²). Unidad: kg/m²."
                     scope="col"
                     className="col-h ven"
                     style={TH_HDR}
                   >
                     Real
-                    <br />
-                    <small>(kg/m²)</small>
                   </th>
                   <th
                     title="La fuerza tractiva debe superar 0,15 kg/m² (autolimpieza)."

@@ -32,16 +32,17 @@ const MODULOS: { label: string; nota: string; cats: string[] }[] = [
     label: 'Civil Flow',
     nota: 'Diseño hidrosanitario',
     cats: [
+      'manual',
       'hidraulica',
       'sanitarias',
       'lluvias',
       'agua_fria',
       'agua_caliente',
       'gas',
+      'normas_pais',
       'equipos',
       'tablas',
       'formulas',
-      'manual',
     ],
   },
   {

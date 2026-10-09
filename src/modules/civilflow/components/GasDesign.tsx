@@ -3,9 +3,10 @@ import EditButton from './shared/EditButton';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { LE_K, pisoCorto, GAS_DN_LABELS } from '../constants';
 import { GAS, CAT_GAS } from '../constants/engineeringDataGas';
-import { fmt, normalizeDnLabel } from '../utils/formatUtils';
+import { fmt } from '../utils/formatUtils';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { usePlans } from '../context/PlansContext';
+import { useProyecto } from '../context/ProjectContext';
 import {
   writeDiametroToDrawing,
   writeMaterialToDrawing,
@@ -25,8 +26,10 @@ import {
   GAS_DATOS_KEY,
 } from '../constants/storage-keys';
 import { renouardByType, factoresGas, qDisenoGas } from '../utils/gasUtils';
+import { mapaPadresGas, acumuladosGas, claveGas } from '../utils/gasNetwork';
 import { compareTramosPisoDesc } from '../utils/componentHelpers';
-import { GAS_DATOS_DEFAULT } from '../utils/gasRows';
+import { gasTxt } from '../constants/normasPais';
+import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
 type GasAccMap = Record<string, Record<string, number>>;
@@ -76,6 +79,9 @@ const ACC_KEYS = [
   'teeTapon',
   'valvula_bola',
 ];
+// Columnas MOSTRADAS en la tabla (ped. usuario): las variantes sube/baja y el tapón
+// cuentan en Le pero no aparecen como columnas.
+const ACC_COLS = ['codos_90_std', 'codos_90_rl', 'te_linea', 'te_ramal', 'valvula_bola'];
 // Notas descriptivas por columna del diseño de gas (tooltip en el encabezado). Material y
 // diámetro son columnas separadas con desplegables propios (orig. usuario).
 const GasDesign_TIPS = [
@@ -95,19 +101,10 @@ const GasDesign_COLS = [
   'Fin',
   'Material',
   'Diámetro',
-  'Diámetro interno (mm)',
-  'Coeficiente K',
-  'Longitud (m)',
+  'Diámetro\ninterno',
+  'Coeficiente\nK',
+  'Longitud',
 ];
-const GasDesign_colW = ['9%', '8%', '8%', '15%', '11%', '10%', '8%', '12%'];
-
-function lookupDn(mat: string, dn: string) {
-  const normDn = normalizeDnLabel(dn);
-  // PEAD = polietileno de alta densidad: mismas filas que PE al PE (igual que gasRows).
-  const matEff = mat === 'PEAD' ? 'PE al PE' : mat;
-  const match = ALL_DN.find((x) => x.mat === matEff && (x.dn === dn || x.dn === normDn));
-  return match || null;
-}
 
 /** Los writes al trazo esperan la clave canónica "id-planId" (parten por '-', igual que
  *  writeDiametroToDrawing); la tabla usa "planId:id" (tramoKey) como clave de estado.
@@ -132,6 +129,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   const [pmin, setPmin] = useState(datosGeneralesInit.pmin);
   const [densRel, setDensRel] = useState(datosGeneralesInit.densRel);
   const { plans } = usePlans();
+  const { proy } = useProyecto();
 
   useEffect(() => {
     saveToStorage(GAS_DATOS_KEY, { alt, patm, temp, pmin, densRel });
@@ -234,6 +232,9 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
           ini: r.ini || '',
           fin: r.fin || '',
           longitud: r.totalL || r.Lh || 0,
+          tipo: r.tipo,
+          pts: r.pts || [],
+          _tribReversed: r._tribReversed,
         });
       }
     }
@@ -361,20 +362,59 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       APARATOS_BY_TRAMO_KEY,
       {},
     );
+    // Árbol de red + aparatos acumulados (docx flujo de nudos): el tronco lleva la
+    // demanda de toda su red descendente; presión y ΔP acumulada POR RAMA.
+    const tramosNeto = gasTramos.map((t) => ({
+      id: t.id,
+      planId: t.planId,
+      pts: t.pts,
+      _tribReversed: t._tribReversed,
+    }));
+    const esTribDe = new Map<string, boolean>(
+      gasTramos.map((t) => [claveGas(t.planId, t.id), t.tipo === 'tributario'] as const),
+    );
+    const padres = mapaPadresGas(
+      tramosNeto,
+      (t) => esTribDe.get(claveGas(t.planId, t.id)) === true,
+    );
+    const prof = new Map<string, number>();
+    const depth = (k: string, g = 0): number => {
+      if (prof.has(k)) return prof.get(k)!;
+      if (g > gasTramos.length) return 0;
+      const pa = padres.get(k);
+      const d = pa ? depth(pa, g + 1) + 1 : 0;
+      prof.set(k, d);
+      return d;
+    };
+    for (const t of gasTramos) depth(claveGas(t.planId, t.id));
+    const orden = [...gasTramos].sort(
+      (a, b) =>
+        (prof.get(claveGas(a.planId, a.id)) ?? 0) - (prof.get(claveGas(b.planId, b.id)) ?? 0),
+    );
+    const acumulados = acumuladosGas(
+      tramosNeto,
+      padres,
+      new Map(
+        gasTramos.map((t) => {
+          const appPid = t.planId ? `_${String(t.planId)}` : '';
+          return [
+            claveGas(t.planId, t.id),
+            aparatos[`gas_${t.id}${appPid}`] || aparatos[`gas_${t.id}`] || {},
+          ] as const;
+        }),
+      ),
+    );
     const result = [];
-    let pAcum = pMin;
-    let dPAcum = 0;
-    for (const t of gasTramos) {
+    const pFinPorClave = new Map<string, number>();
+    const dPAcumPorClave = new Map<string, number>();
+    for (const t of orden) {
       const dInt = diamInt[tramoKey(t)] || 0;
 
       const acc: Record<string, number> = gasAcc[t.id] || {};
       let sumLe = 0;
       for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
       const le = dInt > 0 ? (dInt * sumLe) / 1000 : 0;
-      const appPid = t.planId ? `_${String(t.planId)}` : '';
-      const appCounts: Record<string, number> =
-        aparatos[`gas_${t.id}${appPid}`] || aparatos[`gas_${t.id}`] || {};
-      const qRenouard = renouardByType(appCounts);
+      const qRenouard = renouardByType(acumulados.get(claveGas(t.planId, t.id)) || {});
       const qDiseno = qDisenoGas(qRenouard, { pAtm, DR, fAlt, fTemp, fDens });
       const dP =
         dInt > 0
@@ -382,10 +422,13 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
             Math.pow(DR, 0.82)
           : 0;
       const vel = dInt > 0 ? (354 * qDiseno * 101.325) / (dInt * dInt) / pAtm : 0;
-      const pIni = pAcum;
-      const pFin = pAcum - dP;
-      pAcum = pFin;
-      dPAcum += dP;
+      const clave = claveGas(t.planId, t.id);
+      const padre = padres.get(clave);
+      const pIni = (padre && pFinPorClave.get(padre)) || pMin;
+      const pFin = pIni - dP;
+      pFinPorClave.set(clave, pFin);
+      const dPAcum = (padre ? (dPAcumPorClave.get(padre) ?? 0) : 0) + dP;
+      dPAcumPorClave.set(clave, dPAcum);
       // Chequeo NTC 3728: V ≤ 10 m/s y pérdida acumulada ≤ 9.81 mbar (mismo criterio de gasRows).
       const ok =
         vel > 0 && vel <= 10 && dP > 0 ? (dPAcum <= 9.81 ? 'O.K.' : 'NO') : dP > 0 ? 'NO' : '—';
@@ -409,11 +452,20 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
 
   const COLS = GasDesign_COLS;
-  const colW = GasDesign_colW;
 
   const page1 = (() => {
     const fGas = factoresGas({ patm, temp, densRel });
-    const qGlobal = checkRows.reduce((acc, r) => acc + r.qConsumo, 0);
+    // Q de diseño global = Renouard sobre TODA la carga instalada (cada aparato contado UNA vez).
+    // Sumar los qConsumo de las filas doble-contaba: el tronco ya carga la demanda de sus hojas
+    // (acumulados del árbol). Con 2 aparatos en hojas distintas daba 2× el caudal.
+    const totalAparatos: Record<string, number> = {};
+    for (const t of gasTramos) {
+      const propios = gasAcc[t.id] || {};
+      for (const [ap, n] of Object.entries(propios)) {
+        totalAparatos[ap] = (totalAparatos[ap] || 0) + (Number(n) || 0);
+      }
+    }
+    const qGlobal = renouardByType(totalAparatos);
     // Estilo sanitaria: texto plano hasta activar EDITAR (mono, sin borde de input).
     const TXT_VAL: React.CSSProperties = {
       fontFamily: 'var(--mono)',
@@ -625,6 +677,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
           </div>
           <div style={{ padding: 6 }}>
             <table
+              ref={tablaRef}
               className="tbl"
               style={{
                 fontSize: 10.5,
@@ -634,29 +687,155 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
               }}
             >
               <caption style={SR_ONLY}>Diseño de red</caption>
-              <colgroup>
-                {colW.map((w, i) => (
-                  <col key={i} style={{ width: w }} />
-                ))}
-              </colgroup>
               <thead>
                 <tr>
                   {COLS.map((c, i) => (
-                    <th scope="col" key={i} title={GasDesign_TIPS[i]} style={TH}>
+                    <th
+                      scope="col"
+                      key={i}
+                      title={GasDesign_TIPS[i]}
+                      style={{ ...TH, whiteSpace: 'pre-line' }}
+                      rowSpan={2}
+                    >
                       {c}
                     </th>
                   ))}
+                  <th
+                    scope="col"
+                    title="Factores de corrección por condiciones de la ciudad y del gas (celdas AB/AC/AD del método Renouard)."
+                    style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                    colSpan={3}
+                  >
+                    Correcciones por
+                  </th>
+                  <th
+                    scope="col"
+                    style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                    colSpan={2}
+                  >
+                    Consumo
+                  </th>
+                  <th
+                    scope="col"
+                    title="Accesorios instalados en el tramo (cantidad por tipo)."
+                    style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                    colSpan={ACC_COLS.length}
+                  >
+                    Accesorios
+                  </th>
+                  <th
+                    scope="col"
+                    title="Suma de longitudes equivalentes de los accesorios (m)."
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    Longitud
+                    <br />
+                    equivalente
+                  </th>
+                  <th
+                    scope="col"
+                    title="Pérdida de presión del tramo (mbar)."
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    {'Δ'}P
+                  </th>
+                  <th
+                    scope="col"
+                    title={`Pérdida de presión acumulada desde el inicio de la red, en mbar. Límite: ${gasTxt(proy.pais)}.`}
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    {'Δ'}P
+                    <br />
+                    acum
+                  </th>
+                  <th
+                    scope="col"
+                    title="Velocidad del gas en el tramo (m/s)."
+                    style={TH}
+                    rowSpan={2}
+                  >
+                    Velocidad
+                  </th>
+                  <th
+                    scope="col"
+                    title="Presión disponible al inicio y al final del tramo (mbar)."
+                    style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                    colSpan={2}
+                  >
+                    Presión
+                  </th>
+                  <th scope="col" title={`O.K. según ${gasTxt(proy.pais)}.`} style={TH} rowSpan={2}>
+                    Chequeo
+                  </th>
+                </tr>
+                <tr>
+                  <th
+                    scope="col"
+                    title="Factor por altitud: 101.325 / presión atmosférica."
+                    style={TH}
+                  >
+                    Altitud
+                  </th>
+                  <th scope="col" title="Factor por temperatura: √(288 / (273 + T °C))." style={TH}>
+                    Temperatura
+                  </th>
+                  <th
+                    scope="col"
+                    title="Factor por densidad relativa del gas: √(0.67 / DR)."
+                    style={TH}
+                  >
+                    Densidad
+                    <br />
+                    relativa
+                  </th>
+                  <th
+                    scope="col"
+                    title="Consumo total del tramo por criterio Renouard (m³/h)."
+                    style={TH}
+                  >
+                    Total Q
+                    <br />
+                    consumo
+                  </th>
+                  <th
+                    scope="col"
+                    title="Q de diseño en m³/h: consumo corregido por los tres factores (m³/hr > 2.70 — el piso aplica a cualquier tramo)."
+                    style={TH}
+                  >
+                    Q de diseño
+                  </th>
+                  {[
+                    'Codos 90° std',
+                    'Codos 90° rl',
+                    'Te en línea',
+                    'Te ramal',
+                    'Válvula de bola',
+                  ].map((lbl) => (
+                    <th key={lbl} scope="col" style={{ ...TH, fontSize: 10 }}>
+                      {lbl}
+                    </th>
+                  ))}
+                  <th scope="col" title="Presión al inicio del tramo (mbar)." style={TH}>
+                    Inicio
+                  </th>
+                  <th scope="col" title="Presión al final del tramo (mbar)." style={TH}>
+                    Fin
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {gasTramos.length === 0 && (
                   <tr>
-                    <td colSpan={COLS.length} style={EMPTY_ROW}>
+                    <td colSpan={8 + 2 + 3 + ACC_COLS.length + 7} style={EMPTY_ROW}>
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                     </td>
                   </tr>
                 )}
                 {gasTramos.map((t) => {
+                  const chk = checkRows.find((r) => r.id === t.id);
                   const mat = diamMat[tramoKey(t)] || '';
                   const dn = diamDn[tramoKey(t)] || '';
                   const kVal = diamK[tramoKey(t)] || 0;
@@ -673,7 +852,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                       <td className="c" style={{ ...TD, padding: '1px 2px' }}>
                         {t.ini || '—'}
                       </td>
-                      <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                      <td className="c" style={{ ...TD, padding: '1px 2px', minWidth: 78 }}>
                         {t.fin || '—'}
                       </td>
                       <td className="c" style={{ padding: '0 1px' }}>
@@ -683,7 +862,13 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                           value={mat}
                           disabled={!edit}
                           onChange={(e) => handleMatChange(tramoKey(t), e.target.value)}
-                          style={{ ...SD, width: '100%', fontSize: 10.5, textAlign: 'center' }}
+                          style={{
+                            ...SD,
+                            width: '100%',
+                            maxWidth: 104,
+                            fontSize: 10.5,
+                            textAlign: 'center',
+                          }}
                         >
                           <option value="">—</option>
                           {[...new Set(ALL_DN.map((r) => r.mat))]
@@ -740,6 +925,84 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                       </td>
                       <td className="c" style={{ ...TD, padding: '1px 2px' }}>
                         {t.longitud > 0 ? t.longitud.toFixed(2) : '—'}
+                      </td>
+                      {(['qConsumo', 'fAlt', 'fTemp', 'fDens', 'qDiseno'] as const).map((k) => (
+                        <td
+                          key={k}
+                          className="c"
+                          style={{
+                            ...TD,
+                            padding: '1px 2px',
+                            fontWeight: k === 'qDiseno' ? 600 : undefined,
+                            color: (chk?.[k] ?? 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
+                          }}
+                        >
+                          {(chk?.[k] ?? 0) > 0 ? (chk![k] as number).toFixed(2) : '—'}
+                        </td>
+                      ))}
+                      {ACC_COLS.map((k) => (
+                        <td key={k} className="c" style={{ padding: '1px 2px' }}>
+                          <span
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                              fontFamily: 'var(--mono)',
+                              color: (getAcc(t.id)[k] || 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
+                            }}
+                          >
+                            {getAcc(t.id)[k] || 0}
+                          </span>
+                        </td>
+                      ))}
+                      <td
+                        className="c"
+                        style={{
+                          ...TD,
+                          padding: '1px 2px',
+                          fontWeight: 600,
+                          borderLeft: '2px solid var(--line)',
+                        }}
+                      >
+                        {(chk?.le ?? 0).toFixed(2)}
+                      </td>
+                      <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                        {(chk?.dP ?? 0).toFixed(2)}
+                      </td>
+                      <td
+                        className="c"
+                        style={{
+                          ...TD,
+                          padding: '1px 2px',
+                          fontWeight: 600,
+                          color: (chk?.dPAcum ?? 0) > 9.81 ? 'var(--err, #F04545)' : 'var(--txt)',
+                        }}
+                      >
+                        {(chk?.dPAcum ?? 0).toFixed(2)}
+                      </td>
+                      <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                        {(chk?.vel ?? 0).toFixed(2)}
+                      </td>
+                      <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                        {(chk?.pIni ?? 0).toFixed(2)}
+                      </td>
+                      <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                        {(chk?.pFin ?? 0).toFixed(2)}
+                      </td>
+                      <td
+                        className="c"
+                        style={{
+                          padding: '1px 2px',
+                          fontWeight: 700,
+                          fontSize: 10.5,
+                          color:
+                            chk?.chequeo === 'O.K.'
+                              ? 'var(--succ, #5DBB83)'
+                              : chk?.chequeo === 'NO'
+                                ? 'var(--err, #F04545)'
+                                : 'var(--txt3)',
+                        }}
+                      >
+                        {chk?.chequeo ?? '—'}
                       </td>
                     </tr>
                   );
@@ -876,414 +1139,6 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     </>
   );
 
-  const pageChequeo = (
-    <>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}>
-        <section
-          className="card"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            minWidth: 0,
-            ...(gasTramos.length === 0 ? {} : { flex: 1 }),
-          }}
-        >
-          <div className="card-h" style={{ justifyContent: 'space-between' }}>
-            <h3 className="card-t">
-              <img
-                src="/iconos_civilflow/diseno_redes/gas/chequeo_red_gas.webp"
-                alt="Chequeo red de gas"
-                width={20}
-                height={20}
-                style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 4 }}
-                loading="lazy"
-              />
-              Chequeo red de gas
-            </h3>
-            <span className="card-s">{gasTramos.length} tramos</span>
-          </div>
-          <div style={{ padding: 6 }}>
-            <table
-              ref={tablaRef}
-              className="tbl"
-              style={{
-                fontSize: 10.5,
-                tableLayout: 'auto',
-                width: '100%',
-                borderCollapse: 'collapse',
-              }}
-            >
-              <caption style={SR_ONLY}>Chequeo red de gas</caption>
-              <thead>
-                <tr>
-                  <th
-                    title="Tramo chequeado de la red de gas."
-                    scope="col"
-                    style={{ ...TH }}
-                    rowSpan={2}
-                  >
-                    Tramo
-                  </th>
-                  <th
-                    title="Consumo total del tramo por criterio Renouard (los dos tipos de mayor consumo al 50 % + el resto al 100 %), en m³/h."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    Total Q de
-                    <br />
-                    consumo (m³/h)
-                  </th>
-                  <th
-                    title="Factor de corrección por altitud: 101.325 / presión atmosférica de la ciudad."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    Por
-                    <br />
-                    altitud
-                  </th>
-                  <th
-                    title="Factor de corrección por temperatura: √(288 / (273 + T °C))."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    Por
-                    <br />
-                    temperatura
-                  </th>
-                  <th
-                    title="Factor de corrección por densidad relativa del gas: √(0.67 / densidad relativa)."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    Por densidad
-                    <br />
-                    relativa
-                  </th>
-                  <th
-                    title="Q de diseño (m³/h): consumo corregido por los tres factores; no baja de 2.70 m³/h."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    Q de diseño
-                    <br />
-                    (m³/hr) &gt; 2.70
-                  </th>
-                  <th
-                    title="Accesorios instalados en el tramo (cantidad por tipo)."
-                    scope="col"
-                    style={{ ...TH, borderBottom: '2px solid var(--line)' }}
-                    colSpan={ACC_KEYS.length}
-                  >
-                    Accesorios
-                  </th>
-                  <th
-                    title="Suma de longitudes equivalentes de los accesorios (m)."
-                    scope="col"
-                    style={{ ...TH, borderLeft: '2px solid var(--line)' }}
-                    rowSpan={2}
-                  >
-                    Longitud
-                    <br />
-                    equivalente (m)
-                  </th>
-                  <th
-                    title="Pérdida de presión del tramo (mbar)."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    {'Δ'}P (mbar)
-                  </th>
-                  <th
-                    title="Pérdida de presión acumulada desde el inicio de la red (mbar). NTC 3728: máximo 9.81 mbar."
-                    scope="col"
-                    style={TH}
-                    rowSpan={2}
-                  >
-                    {'Δ'}P acum
-                    <br />
-                    (mbar)
-                  </th>
-                  <th
-                    title="Velocidad del gas en el tramo (m/s)."
-                    scope="col"
-                    style={{ ...TH }}
-                    rowSpan={2}
-                  >
-                    Velocidad
-                    <br />
-                    (m/s)
-                  </th>
-                  <th
-                    title="Presión disponible al inicio y al final del tramo (mbar)."
-                    scope="col"
-                    style={{ ...TH, borderBottom: '2px solid var(--line)' }}
-                    colSpan={2}
-                  >
-                    Presión (mbar)
-                  </th>
-                  <th
-                    title="O.K. si la velocidad del gas no supera 10 m/s."
-                    scope="col"
-                    style={{ ...TH }}
-                    rowSpan={2}
-                  >
-                    V {'≤'} 10
-                    <br />
-                    m/s
-                  </th>
-                </tr>
-                <tr>
-                  <th
-                    title="Codos de 90° estándar en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Codos 90{'°'}
-                    <br />
-                    std
-                  </th>
-                  <th
-                    title="Codos de 90° estándar con cambio de nivel hacia arriba en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Codos 90{'°'}
-                    <br />
-                    std sube
-                  </th>
-                  <th
-                    title="Codos de 90° estándar con cambio de nivel hacia abajo en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Codos 90{'°'}
-                    <br />
-                    std baja
-                  </th>
-                  <th
-                    title="Codos de 90° de radio largo en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Codos 90{'°'}
-                    <br />
-                    rl
-                  </th>
-                  <th
-                    title="Codos de 90° de radio largo con cambio de nivel hacia arriba en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Codos 90{'°'}
-                    <br />
-                    rl sube
-                  </th>
-                  <th
-                    title="Codos de 90° de radio largo con cambio de nivel hacia abajo en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Codos 90{'°'}
-                    <br />
-                    rl baja
-                  </th>
-                  <th
-                    title="Tes con el flujo en línea recta."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Te en l&iacute;nea
-                    <br />
-                    (flujo recto)
-                  </th>
-                  <th
-                    title="Tes con el flujo desviado al ramal."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Te ramal
-                    <br />
-                    (flujo desviado)
-                  </th>
-                  <th
-                    title="Tapones soldados que cierran el extremo del tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Tapón
-                    <br />
-                    soldado
-                  </th>
-                  <th
-                    title="Válvulas de bola (1/4 de vuelta) en el tramo."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Válvula de bola
-                    <br />
-                    (1/4 de vuelta)
-                  </th>
-                  <th
-                    title="Presión disponible al inicio del tramo (mbar)."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Inicio
-                  </th>
-                  <th
-                    title="Presión disponible al final del tramo (mbar)."
-                    scope="col"
-                    style={{ ...TH, fontSize: 10.5 }}
-                  >
-                    Fin
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {gasTramos.length === 0 && (
-                  <tr>
-                    <td colSpan={13 + ACC_KEYS.length} style={EMPTY_ROW}>
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
-                )}
-                {gasTramos.map((t) => {
-                  const chk = checkRows.find((r) => r.id === t.id);
-                  const le = chk ? chk.le : 0;
-                  const dP = chk ? chk.dP : 0;
-                  const vel = chk ? chk.vel : 0;
-                  const pIni = chk ? chk.pIni : 0;
-                  const pFin = chk ? chk.pFin : 0;
-                  const ok = chk ? chk.chequeo : '—';
-                  const acc = getAcc(t.id);
-                  return (
-                    <tr key={tramoKey(t)}>
-                      <td className="c" style={{ padding: '0 1px' }}>
-                        <span className="sigla" style={{ fontSize: 10.5, padding: '1px 1px' }}>
-                          {t.id}
-                        </span>
-                      </td>
-                      {(['qConsumo', 'fAlt', 'fTemp', 'fDens', 'qDiseno'] as const).map((k) => (
-                        <td
-                          key={k}
-                          className="c"
-                          style={{
-                            ...TD,
-                            padding: '1px 1px',
-                            fontSize: 10.5,
-                            fontWeight: k === 'qDiseno' ? 600 : undefined,
-                            color: (chk?.[k] ?? 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
-                          }}
-                        >
-                          {(chk?.[k] ?? 0) > 0 ? (chk![k] as number).toFixed(2) : '—'}
-                        </td>
-                      ))}
-                      {ACC_KEYS.map((k) => (
-                        <td
-                          key={k}
-                          className="c"
-                          style={{
-                            padding: '1px 1px',
-                            textAlign: 'center',
-                            verticalAlign: 'middle',
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontSize: 10.5,
-                              fontWeight: 600,
-                              fontFamily: 'var(--mono)',
-                              color: (acc[k] || 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
-                            }}
-                          >
-                            {acc[k] || 0}
-                          </span>
-                        </td>
-                      ))}
-                      <td
-                        className="c"
-                        style={{
-                          ...TD,
-                          padding: '1px 1px',
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          borderLeft: '2px solid var(--line)',
-                        }}
-                      >
-                        {le.toFixed(2)}
-                      </td>
-                      <td
-                        className="c"
-                        style={{
-                          ...TD,
-                          padding: '1px 1px',
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          color: dP > 0 ? 'var(--txt)' : 'var(--txt3)',
-                        }}
-                      >
-                        {dP.toFixed(2)}
-                      </td>
-                      <td
-                        className="c"
-                        style={{
-                          ...TD,
-                          padding: '1px 1px',
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          color: (chk?.dPAcum ?? 0) > 9.81 ? 'var(--err, #F04545)' : 'var(--txt)',
-                        }}
-                      >
-                        {(chk?.dPAcum ?? 0).toFixed(2)}
-                      </td>
-                      <td
-                        className="c"
-                        style={{
-                          ...TD,
-                          padding: '1px 1px',
-                          fontSize: 10.5,
-                          color: vel > 0 ? 'var(--txt)' : 'var(--txt3)',
-                        }}
-                      >
-                        {vel.toFixed(2)}
-                      </td>
-                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10.5 }}>
-                        {pIni.toFixed(2)}
-                      </td>
-                      <td className="c" style={{ ...TD, padding: '1px 1px', fontSize: 10.5 }}>
-                        {pFin.toFixed(2)}
-                      </td>
-                      <td className="c" style={{ padding: '1px 1px' }}>
-                        <span
-                          style={{
-                            fontSize: 10.5,
-                            fontWeight: 700,
-                            fontFamily: 'var(--mono)',
-                            color:
-                              ok === 'O.K.' ? '#22c55e' : ok === 'NO' ? '#ef5350' : 'var(--txt3)',
-                          }}
-                        >
-                          {ok}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    </>
-  );
-
   return (
     <div
       className="fu"
@@ -1298,7 +1153,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
           flexDirection: 'column',
         }}
       >
-        {pagina === 1 ? page1 : pagina === 2 ? page2 : pagina === 3 ? page3 : pageChequeo}
+        {pagina === 1 ? page1 : pagina === 2 ? page2 : page3}
       </div>
     </div>
   );

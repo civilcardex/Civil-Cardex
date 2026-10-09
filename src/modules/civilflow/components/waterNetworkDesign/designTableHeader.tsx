@@ -1,8 +1,9 @@
+import { rangoAfTxt } from '../../constants/normasPais';
 // Encabezado estático de la tabla de diseño (2 filas × 24 columnas, con celdas combinadas).
 // No tiene lógica: solo depende de la clase de color de la red activa (af/ac).
 /** Encabezado estático de la tabla de diseño de red: dos filas y 24 columnas con celdas
  *  combinadas. No tiene lógica; solo la clase de color de la red activa. */
-export function DesignTableHeader({ cssClass }: { cssClass: string }) {
+export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?: string }) {
   return (
     <thead>
       <tr>
@@ -111,7 +112,7 @@ export function DesignTableHeader({ cssClass }: { cssClass: string }) {
           <br />C
         </th>
         <th
-          title="Velocidad del agua en el tramo (mm/s). Cumple entre 500 y 2500 mm/s (0,5–2,5 m/s)."
+          title={`Velocidad del agua en el tramo (mm/s). Cumple entre ${pais ? rangoAfTxt(pais) : '0,50–2,50 m/s (NTC 1500 / RAS 2000)'}.`}
           scope="col"
           className="col-h"
           rowSpan={2}

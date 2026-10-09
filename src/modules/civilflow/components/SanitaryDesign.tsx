@@ -20,6 +20,8 @@ import {
   sanFeederMinMsg,
 } from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
+import { perfilDe, rangoSanTxt, ftTxt } from '../constants/normasPais';
+import { useProyecto } from '../context/ProjectContext';
 import { fmt } from '../utils/formatUtils';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
@@ -65,6 +67,7 @@ const TH_GRUPO = {
 } as const;
 
 export default function DisenosSanitarios() {
+  const { proy } = useProyecto();
   const [edit, setEdit] = useState(false);
   const tablaRef = useStickyThead2Offset();
   const [editingPend, setEditingPend] = useState<Record<string, string>>({});
@@ -224,7 +227,7 @@ export default function DisenosSanitarios() {
         yD = 0,
         qQ0 = 0;
       if (Q != null && Q > 0 && S != null && S > 0 && n > 0 && DintMm > 0) {
-        const hc = calcHydraulicCheck({ Q, S, n, DintMm });
+        const hc = calcHydraulicCheck({ Q, S, n, DintMm, lim: perfilDe(proy.pais).san });
         v_real = hc.Vreal;
         yD = Math.round((Math.max(hc.Yc, hc.Yn) / DintMm) * 1000) / 1000;
         qQ0 = hc.qqo;
@@ -323,15 +326,13 @@ export default function DisenosSanitarios() {
                     K
                   </th>
                   <th
-                    title="Caudal de diseño del tramo (L/s)."
+                    title="Caudal de diseño del tramo (L/s). Unidad: L/s."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Caudal
-                    <br />
-                    <small>(LPS)</small>
                   </th>
                   <th
                     title="Rugosidad n del material de la tubería."
@@ -341,21 +342,20 @@ export default function DisenosSanitarios() {
                     style={TH_HDR}
                   >
                     Manning
-                    <br />
                   </th>
                   <th
-                    title="Pendiente de diseño del tramo (%) — manda el dibujo."
+                    title="Pendiente de diseño del tramo (%) — manda el dibujo. Unidad: porcentaje (%)."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Pendiente
-                    <br />
-                    <small>(%)</small>
                   </th>
                   <th
-                    title='Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
+                    title={
+                      'Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
+                    }
                     scope="col"
                     className="col-h ok"
                     colSpan={4}
@@ -364,26 +364,22 @@ export default function DisenosSanitarios() {
                     Diámetro
                   </th>
                   <th
-                    title="Capacidad máxima del diámetro propuesto (L/s)."
+                    title="Capacidad máxima del diámetro propuesto (L/s). Unidad: L/s."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={{ ...TH_HDR, width: '4.5%' }}
                   >
                     Q<sub>o</sub>
-                    <br />
-                    <small>(LPS)</small>
                   </th>
                   <th
-                    title="Velocidad de salida/capacidad asociada al diámetro (m/s)."
+                    title="Velocidad de salida/capacidad asociada al diámetro (m/s). Unidad: m/s."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={{ ...TH_HDR, width: '4.5%' }}
                   >
                     V<sub>o</sub>
-                    <br />
-                    <small>(m/s)</small>
                   </th>
                   <th
                     title="Uso de la capacidad: debe ser ≤ 100%."
@@ -395,18 +391,16 @@ export default function DisenosSanitarios() {
                     Q/Q<sub>o</sub>
                   </th>
                   <th
-                    title="Velocidad real del flujo con el diámetro propuesto (m/s)."
+                    title="Velocidad real del flujo con el diámetro propuesto (m/s). Unidad: m/s."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={TH_HDR}
                   >
                     Velocidad real
-                    <br />
-                    <small>(m/s)</small>
                   </th>
                   <th
-                    title="O.K. si la velocidad está dentro del rango permitido."
+                    title={`O.K. si la velocidad está dentro del rango permitido: ${rangoSanTxt(proy.pais)}.`}
                     scope="col"
                     className="col-h"
                     rowSpan={2}
@@ -415,26 +409,22 @@ export default function DisenosSanitarios() {
                     Chequeo velocidad
                   </th>
                   <th
-                    title="Tirante crítico del flujo (mm)."
+                    title="Tirante crítico del flujo (mm). Unidad: mm."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={{ ...TH_HDR, width: '5%' }}
                   >
                     Y<sub>c</sub>
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
-                    title="Tirante normal del flujo (mm)."
+                    title="Tirante normal del flujo (mm). Unidad: mm."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={{ ...TH_HDR, width: '5%' }}
                   >
                     Y<sub>n</sub>
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
                     title="Número de Froude del flujo (subcrítico si es menor a 1)."
@@ -455,15 +445,13 @@ export default function DisenosSanitarios() {
                     Flujo
                   </th>
                   <th
-                    title="Altura máxima admisible del tirante (mm)."
+                    title="Altura máxima admisible del tirante (mm). Unidad: mm."
                     scope="col"
                     className="col-h"
                     rowSpan={2}
                     style={{ ...TH_HDR, width: '5%' }}
                   >
                     Y<sub>max</sub>
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
                     title="Comparación del tirante normal contra el crítico."
@@ -510,34 +498,28 @@ export default function DisenosSanitarios() {
                     Total
                   </th>
                   <th
-                    title="Diámetro calculado con el caudal y la pendiente (pulg)."
+                    title='Diámetro calculado con el caudal y la pendiente (pulg). Unidad: pulgadas (").'
                     scope="col"
                     className="col-h ok"
                     style={TH_SUB}
                   >
                     Calculado
-                    <br />
-                    <small>(")</small>
                   </th>
                   <th
-                    title="Diámetro comercial propuesto (pulg) — editable."
+                    title='Diámetro comercial propuesto (pulg) — editable. Unidad: pulgadas (").'
                     scope="col"
                     className="col-h ok"
                     style={TH_SUB}
                   >
                     Diseño
-                    <br />
-                    <small>(")</small>
                   </th>
                   <th
-                    title="Diámetro interior del tubo propuesto (mm)."
+                    title="Diámetro interior del tubo propuesto (mm). Unidad: mm."
                     scope="col"
                     className="col-h ok"
                     style={TH_SUB}
                   >
                     Interior
-                    <br />
-                    <small>(mm)</small>
                   </th>
                   <th
                     title="O.K. si el diámetro propuesto cubre el calculado."
@@ -548,17 +530,15 @@ export default function DisenosSanitarios() {
                     Chequeo
                   </th>
                   <th
-                    title="Fuerza tractiva real del flujo (kg/m²)."
+                    title="Fuerza tractiva real del flujo (kg/m²). Unidad: kg/m²."
                     scope="col"
                     className="col-h ven"
                     style={TH_SUB}
                   >
                     Real
-                    <br />
-                    <small>(kg/m²)</small>
                   </th>
                   <th
-                    title="La fuerza tractiva debe superar 0,15 kg/m² (autolimpieza)."
+                    title={`La fuerza tractiva debe superar ${ftTxt(proy.pais)} (autolimpieza).`}
                     scope="col"
                     className="col-h ven"
                     style={TH_SUB}
