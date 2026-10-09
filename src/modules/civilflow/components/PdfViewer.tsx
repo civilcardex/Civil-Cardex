@@ -20,7 +20,7 @@ import {
   setSyncLoadedLiveIds,
 } from '../utils/drawingSync';
 import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage, type PlanTrazos } from '../services/storageService';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
@@ -28,11 +28,10 @@ import {
   ACTIVE_NETS_KEY,
   PDF_HIDDEN_NETS_KEY,
   PDF_LOCKED_NETS_KEY,
+  TRAZOS_PREFIX,
 } from '../constants/storage-keys';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
 
-import { useViewerResponsive } from './pdfViewer/useViewerResponsive';
-import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome';
 import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistTrazos';
 import { sleep } from './shared/sequentialLoad';
 import PdfCanvas from './pdfViewer/PdfCanvas';
@@ -49,7 +48,6 @@ import BajanteAsociacion from './pdfViewer/BajanteAssociation';
 import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements';
 import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
 import AparatosPanel from './FixturesPanel';
-import { validateBeforeClose } from './pdfViewer/closeValidation';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos';
 import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs';
@@ -57,8 +55,12 @@ import { useNetColorsInit } from './pdfViewer/useNetColorsInit';
 import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility';
 import { useFloorRamales } from './pdfViewer/useFloorRamales';
 import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
-import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
+import { distToPolyline } from '../lib/shared/geometry';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+import { devError } from '../../../utils/devError';
+import { cargarMallas } from '../lib/PlanoEngine/nudos';
+import { useIsMobile, useMediaQuery } from '../../../hooks/useMediaQuery';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -113,6 +115,616 @@ type ProbedElement = PlanoElement & {
   diametro?: string;
   pendiente?: number;
 };
+
+// Validación de cierre del visor: se ejecuta al pulsar "Cerrar dibujo" en la barra de redes.
+// Bloquea el cierre (con alerta) mientras haya ramales sin UC/UD, elementos sin diámetro o
+// bajantes con diámetro inferior al del ramal conectado. Devuelve true si el dibujo puede
+// guardarse y cerrarse, false si se levantó alguna alerta.
+type RevisarRamalInput = {
+  net?: string;
+  id?: string;
+  label?: string;
+  tipo?: string;
+  uc?: number;
+  aparatoInicio?: string;
+  aparatoFin?: string;
+  accesorioInicio?: string;
+  accesorioFin?: string;
+  fixtures?: Record<string, number>;
+  pts?: number[][];
+  ini?: string;
+  _tribReversed?: boolean;
+  mergesFrom?: unknown;
+};
+
+type BajanteAIndexar = {
+  net?: string;
+  id?: string;
+  code?: string;
+  alimentaIds?: string[];
+  ucAplicado?: Record<string, unknown>;
+};
+
+/** Validación de cierre del visor: alerta si hay ramales sin UC/UD, elementos sin diámetro o
+ *  bajantes con diámetro menor al del ramal conectado. Devuelve true si el dibujo puede
+ *  guardarse y cerrarse. */
+export function validateBeforeClose(
+  eng: PlanoEngine,
+  planos: PlanItem[] | undefined,
+  onAlert: (title: string, msg: string) => void,
+): boolean {
+  // Ítem 10: antes de validar diámetros, todo ramal/tributario debe tener UC/UD o un
+  // aparato/accesorio en sus extremos — un ramal sin carga aguas abajo produce una fila
+  // vacía en las tablas de diseño. El UC/UD real se asigna en las tablas de diseño vía
+  // los conteos de aparatos (fixtures en APARATOS_BY_TRAMO_KEY, clave
+  // `${net}_${id}_${planId}`), no en el campo `uc` del motor (que nace en 0) — se lee
+  // ese mapa para no marcar ramales que ya tienen UC asignado. Exclusiones confirmadas:
+  // red vent (no lleva UC), los Ldesvio de bajante (auto LD_*) y los stubs automáticos
+  // de tapón. Los tramos auto-creados por splits (mergesFrom) SÍ se validan: son la
+  // continuación aguas abajo que acumula el UC de la cadena.
+  const planId = eng._loadedPlanId;
+  const aparatosMap = loadFromStorage<Record<string, Record<string, number>>>(
+    APARATOS_BY_TRAMO_KEY,
+    {},
+  );
+  // Ítem 10: las exclusiones confirmadas son vent, Ldesvio automáticos (LD_*) y stubs de
+  // tapón — más las uniones tee en extremos (la tee conecta ramas que cargan su propio
+  // UC/UD). Los tramos auto-creados por splits (mergesFrom) NO se excluyen: acumulan el
+  // UC de la cadena y deben aparecer si nadie les asignó aparatos. Lo demás — un extremo
+  // con codo, un tributario sin derivación visible, etc. — SÍ se lista si no tiene UC/UD.
+  const TEE_END_IDS = new Set([
+    'teeDirecto',
+    'teeReduccion',
+    'teeLado',
+    'teeSube',
+    'teeBaja',
+    'teeTapon',
+    'teeLlaveTerminal',
+    'te_linea',
+    'te_ramal',
+  ]);
+  const sinUc: { label: string; r: RevisarRamalInput; planFor: number | string | null }[] = [];
+  // Tramos CON carga propia (uc/aparatos/fixtures/mapa): alimentadores potenciales del grafo.
+  const conUd: { r: RevisarRamalInput; planFor: number | string | null }[] = [];
+  const revisados = new Set<string>();
+  // Espejos de salida y herencia (orig. usuario): un ramal/tributario SIN carga propia pero
+  // que NACE de un bajante/caja (alimentaIds o ini = código) o figura en un libro de herencia
+  // (ucAplicado) tiene sus UDs autoasignadas y su panel es de solo lectura — exigirle UD
+  // propia bloquearía un cierre que el usuario no puede resolver. Pasan la validación.
+  const salidasConDuenio = new Set<string>();
+  const codigosBajante = new Set<string>();
+  const conLibroHerencia = new Set<string>();
+  const indexarBajantes = (bajantes: BajanteAIndexar[] | undefined) => {
+    for (const b of bajantes || []) {
+      if (!b || !b.id) continue;
+      codigosBajante.add(`${b.net}_${b.code || b.id}`);
+      for (const rid of b.alimentaIds || []) salidasConDuenio.add(`${b.net}_${rid}`);
+      for (const k of Object.keys(b.ucAplicado || {})) conLibroHerencia.add(`${b.net}_${k}`);
+    }
+  };
+  indexarBajantes(eng.bajantes);
+  /** @returns true si el tramo queda CUBIERTO (con carga o no evaluable) — false si se flaggeó. */
+  const revisarRamal = (r: RevisarRamalInput, planFor: number | string | null): boolean => {
+    if (!r.net || !r.id) return true;
+    // Los tramos auto-creados por suma de flujo (mergesFrom, continuación de una
+    // bifurcación) ya llevan las UC/UD acumuladas según la dirección de flujo — no
+    // deben disparar la alerta de pendientes.
+    if (r.mergesFrom) return true;
+    // La clave de dedupe INCLUYE el plan: el mismo id de ramal puede existir en
+    // varios planos confirmados (pisos replicados), y uno con fixtures en un plano no
+    // exime al mismo id en otro — sin el plan, el primer barrido marcaba "revisado" al
+    // resto y la lista de UC/UD pendientes quedaba incompleta.
+    const clave = `${r.net}_${r.id}_${planFor ?? 'engine'}`;
+    if (revisados.has(clave)) return true;
+    revisados.add(clave);
+    if (r.net === 'vent') return true;
+    // Aguas lluvias (orig. usuario): SIN chequeo de UC/UD — sus tramos no llevan unidades de
+    // descarga. En ll el cierre valida solo diámetros.
+    if (r.net === 'll') return true;
+    if (r.id.startsWith('LD_')) return true;
+    if (r.accesorioFin === 'tapon' || r.accesorioInicio === 'tapon') return true;
+    const tipo = r.tipo || 'ramal';
+    if (tipo !== 'ramal' && tipo !== 'tributario') return true;
+    if ((r.uc || 0) > 0) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    if (r.aparatoInicio || r.aparatoFin) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    // Aparatos persistidos EN el elemento (PlanoRamal.fixtures — writeDiameterToDrawing/sync los
+    // escriben): es carga asignada, igual que el mapa — sin esto, convertir ramal↔tributario
+    // (o cualquier edición que recree el tramo) disparaba "UC/UD pendientes" con aparatos vivos
+    // (orig. usuario).
+    if (r.fixtures && Object.values(r.fixtures).some((v) => Number(v) > 0)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    if (TEE_END_IDS.has(r.accesorioInicio || '') || TEE_END_IDS.has(r.accesorioFin || ''))
+      return true;
+    {
+      // Cobertura por id Y por etiqueta: datos históricos podem keyear aparatos con la
+      // etiqueta visible (T2RS7) mientras el id del engine es un uniq — sin esto el aviso
+      // disparaba con aparatos visibles en el panel (orig. usuario).
+      const prefixes = [`${r.net}_${r.id}`];
+      if (r.label && r.label !== r.id) prefixes.push(`${r.net}_${r.label}`);
+      const hasFixtures = Object.keys(aparatosMap).some(
+        (k) =>
+          prefixes.some((prefix) => k === prefix || k.startsWith(prefix + '_')) &&
+          Object.keys(aparatosMap[k]).length > 0,
+      );
+      if (hasFixtures) {
+        conUd.push({ r, planFor });
+        return true;
+      }
+    }
+    // Salida con dueño (espejo) o herencia por libro: UD autoasignada, panel solo lectura.
+    if (salidasConDuenio.has(`${r.net}_${r.id}`)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    if (r.ini && codigosBajante.has(`${r.net}_${r.ini}`)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    if (conLibroHerencia.has(`${r.net}_${r.id}`)) {
+      conUd.push({ r, planFor });
+      return true;
+    }
+    sinUc.push({ label: r.label || r.id, r, planFor });
+    return false;
+  };
+  // El nivel CARGADO es la autoridad para su net_id Y su ETIQUETA: los pisos replicados
+  // guardan copias con ids uniq DISTINTOS pero la misma etiqueta (T3 en P1 y T3 en P2) — si el
+  // T3 visible está cubierto, la copia sin aparatos de otro plano no dispara la alerta: el
+  // usuario ve sus UDs asignadas y el aviso era un falso positivo por piso (orig. usuario:
+  // T3 con 2 UD recibía el aviso tras borrar un segmento del brazo de la doble).
+  const engineCovered = new Set<string>();
+  const engineCoveredLabels = new Set<string>();
+  for (const r of eng.ramales) {
+    if (revisarRamal(r, planId)) {
+      engineCovered.add(`${r.net}_${r.id}`);
+      if (r.label) engineCoveredLabels.add(`${r.net}_${r.label}`);
+    }
+  }
+  // El engine solo ve el NIVEL cargado — un nivel sin los planos confirmados restantes
+  // dejaba la lista incompleta (ramales de otros planos sin UC/UD no salían). Se barren
+  // los trazos guardados de cada plano confirmado con el mismo criterio, deduplicando
+  // por red+id (el plano actual ya quedó cubierto por el engine).
+  // Caché de parseo por cierre: el barrido UC/UD y el global de diámetros comparten una
+  // única lectura/parseo por piso (el JSON de un plano se parseaba dos veces).
+  const cacheTrazos = new Map<string, PlanTrazos | null>();
+  const trazosDe = (id: string | number): PlanTrazos | null => {
+    const key = String(id);
+    if (!cacheTrazos.has(key)) cacheTrazos.set(key, leerTrazos(id));
+    return cacheTrazos.get(key) ?? null;
+  };
+  for (const plan of (planos || []).filter((p) => p.status === 'confirmed')) {
+    const data = trazosDe(plan.id);
+    if (!data) continue;
+    // El dueño de una salida vive en el mismo piso: indexar sus bajantes antes de revisar.
+    indexarBajantes((data.bajantes || []) as BajanteAIndexar[]);
+    for (const r of (data.ramales || []) as RevisarRamalInput[]) {
+      if (engineCovered.has(`${r.net}_${r.id}`)) continue;
+      if (r.label && engineCoveredLabels.has(`${r.net}_${r.label}`)) continue;
+      const antes = sinUc.length;
+      if (!revisarRamal(r, plan.id)) {
+        sinUc[antes].label += ` (${plan.name || 'Plano ' + plan.id})`;
+      }
+    }
+  }
+  // Alineado con las tablas: un tramo sin carga PROPIA pero que RECIBE la descarga de otro
+  // tramo CON UD no produce fila vacía (su UD llega por el grafo) — no se avisa. Sin esto,
+  // receptores con UD visible agregada disparaban el aviso (orig. usuario). Dos refinamientos
+  // del mismo reporte ("tramos con UD autosumada por flujo salían en la alerta"):
+  // (1) la recepción se detecta por CUALQUIER extremo del alimentador — un ramal dibujado
+  //     "al revés" descarga por pts[0] y el chequeo direccional (dest = último punto) nunca
+  //     lo veía;
+  // (2) cierre TRANSITIVO hasta punto fijo — en la cadena T(con aparatos)→RS1→RS2, RS1
+  //     recibe de T y RS2 recibe de RS1; el pase único dejaba a RS2 marcado.
+  const receptos = [...sinUc];
+  const cargados = [...conUd];
+  const extremoToca = (o: RevisarRamalInput, rPts: number[][]): boolean => {
+    const oPts = o.pts;
+    if (!oPts || oPts.length < 2) return false;
+    return distToPolyline(oPts[0], rPts) < 2.0 || distToPolyline(oPts[oPts.length - 1], rPts) < 2.0;
+  };
+  let propagado = true;
+  while (propagado) {
+    propagado = false;
+    for (let i = receptos.length - 1; i >= 0; i--) {
+      const { r, planFor } = receptos[i];
+      const rPts = r.pts;
+      if (!rPts || rPts.length < 2) continue;
+      const alimentado = cargados.some(
+        ({ r: o }) => o.net === r.net && o.id !== r.id && extremoToca(o, rPts),
+      );
+      if (alimentado) {
+        // El receptor queda cubierto y a su vez alimenta a los suyos en la próxima pasada.
+        cargados.push({ r, planFor });
+        receptos.splice(i, 1);
+        propagado = true;
+      }
+    }
+  }
+  const vivos = receptos;
+  if (vivos.length > 0) {
+    // Lista COMPLETA — recortarla a 8 ocultaba elementos pendientes (reporte: "la
+    // alerta no muestra todos los elementos con UC/UD pendientes").
+    const lista = vivos.map((e) => e.label).join(', ');
+    onAlert(
+      'UC/UD pendientes',
+      `${vivos.length} ramal(es) sin UC/UD asignado: ${lista}. Asigna unidades de descarga o aparatos antes de cerrar el dibujo.`,
+    );
+    return false;
+  }
+  // Todo elemento de tubería debe llevar diámetro antes de poder cerrar el dibujo — un
+  // ramal/tributario con diametro vacío (o una bajante/montante sin dNominal)
+  // produciría una tabla de diseño/memoria rota. Bloquear el cierre y listar los
+  // elementos faltantes en lugar de guardar silenciosamente un dibujo incompleto.
+  const { sinDiam, inferior } = revisarDiametros(eng.ramales, eng.bajantes);
+  if (sinDiam.length > 0) {
+    onAlert(
+      'Diámetros pendientes',
+      `${sinDiam.length} elemento(s) sin diámetro asignado: ${formatLista(sinDiam)}. Asigna los diámetros antes de cerrar el dibujo.`,
+    );
+    return false;
+  }
+  if (inferior.length > 0) {
+    onAlert(
+      'Diámetro no permitido',
+      `Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${formatLista(inferior)}. Ajusta los diámetros antes de cerrar el dibujo.`,
+    );
+    return false;
+  }
+  // Validación GLOBAL (orig. usuario): los pisos NO cargados también deben cumplir antes de
+  // cerrar. Con el prefetch global de trazos cada plano confirmado tiene caché local en este
+  // punto; sin ella, el piso se salta (comportamiento anterior: se podía cerrar igual).
+  for (const plan of (planos || []).filter(
+    (p) => p.status === 'confirmed' && String(p.id) !== String(planId ?? ''),
+  )) {
+    const data = trazosDe(plan.id);
+    if (!data) continue;
+    const piso = plan.nivel != null ? `${pisoLbl(Number(plan.nivel))}: ` : '';
+    const otro = revisarDiametros(
+      (data.ramales || []) as DiamRamales,
+      (data.bajantes || []) as DiamBajantes,
+    );
+    if (otro.sinDiam.length > 0) {
+      onAlert(
+        'Diámetros pendientes',
+        `${piso}${otro.sinDiam.length} elemento(s) sin diámetro asignado: ${formatLista(otro.sinDiam)}. Asigna los diámetros antes de cerrar el dibujo.`,
+      );
+      return false;
+    }
+    if (otro.inferior.length > 0) {
+      onAlert(
+        'Diámetro no permitido',
+        `${piso}Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${formatLista(otro.inferior)}. Ajusta los diámetros antes de cerrar el dibujo.`,
+      );
+      return false;
+    }
+  }
+  return true;
+}
+
+type DiamRamales = Array<{
+  id?: string;
+  label?: string;
+  diametro?: string;
+  esCanalId?: string | null;
+}>;
+type DiamBajantes = Array<{
+  id?: string;
+  code?: string;
+  tipo?: string;
+  dNominal?: string;
+  recibeDeIds?: string[];
+}>;
+
+/** Lista recortada a 8 elementos con sufijo "y N más" — mismo formato en piso local y global. */
+function formatLista(items: string[]): string {
+  return `${items.slice(0, 8).join(', ')}${items.length > 8 ? ` y ${items.length - 8} más` : ''}`;
+}
+
+/** Lee la caché local de trazos de un piso (acepta JSON en crudo); null si no hay o está rota. */
+function leerTrazos(id: string | number): PlanTrazos | null {
+  const raw = loadFromStorage<PlanTrazos | string | null>(TRAZOS_PREFIX + String(id), null);
+  if (!raw) return null;
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw) as PlanTrazos;
+  } catch {
+    return null;
+  }
+}
+
+/** Revisión de diámetros de un conjunto de trazos: elementos sin diámetro y bajantes/montantes
+ *  con diámetro inferior al del ramal conectado. Los Ldesvio (LD_) se excluyen de "sin
+ *  diámetro": espejan el dNominal de su bajante y lo duplicarían en la alerta. Los ramales de
+ *  canal (esCanalId) también: su diámetro espeja al bajante asociado — sin asociado aún no hay
+ *  diámetro que revisar. */
+function revisarDiametros(ramales: DiamRamales, bajantes: DiamBajantes) {
+  const sinDiam = [
+    ...ramales
+      .filter((r) => !r.diametro && !r.id?.startsWith('LD_') && !r.esCanalId)
+      .map((r) => r.label || r.id || ''),
+    ...bajantes
+      .filter((b) => (b.tipo === 'bajante' || b.tipo === 'montante') && !b.dNominal)
+      .map((b) => b.code || b.id || ''),
+  ].filter(Boolean);
+  const inferior: string[] = [];
+  for (const b of bajantes) {
+    if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
+    if (!b.dNominal) continue;
+    const bIn = diamPulgFromLabel(String(b.dNominal).replace(/-/g, ' '));
+    if (bIn <= 0) continue;
+    for (const rid of b.recibeDeIds || []) {
+      const ram = ramales.find((r) => r.id === rid);
+      if (!ram || !ram.diametro) continue;
+      const ramIn = diamPulgFromLabel(String(ram.diametro).replace(/-/g, ' '));
+      if (ramIn > 0 && ramIn > bIn) {
+        inferior.push(`${b.code || b.id} (${ram.label || ram.id} ${ram.diametro})`);
+        break;
+      }
+    }
+  }
+  return { sinDiam, inferior };
+}
+
+interface UsePlanoLoadSwitchParams {
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
+  engineReady: boolean;
+  currentId: number | undefined;
+  currentIdRef: React.RefObject<string | number | null | undefined>;
+  loadTrazosForPlan: (eng: PlanoEngine, resolvedId: string | number) => Promise<boolean>;
+  syncDrawings: () => void;
+  autoSaveTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
+  loadingPlanRef: React.MutableRefObject<boolean>;
+  activeNetRef: React.RefObject<string>;
+  activeNetworksRef: React.RefObject<Set<string>>;
+  setActiveNet: React.Dispatch<React.SetStateAction<string>>;
+  setScaleM: React.Dispatch<React.SetStateAction<string>>;
+}
+
+/** Guardado y carga al cambiar de plano: persiste el trabajo pendiente del plano anterior y
+ *  carga los trazos del entrante, o resetea el motor si el plano no tiene nada guardado. */
+function usePlanoLoadSwitch({
+  engineRef,
+  engineReady,
+  currentId,
+  currentIdRef,
+  loadTrazosForPlan,
+  syncDrawings,
+  autoSaveTimerRef,
+  loadingPlanRef,
+  activeNetRef,
+  activeNetworksRef,
+  setActiveNet,
+  setScaleM,
+}: UsePlanoLoadSwitchParams): void {
+  useEffect(() => {
+    if (!engineRef.current || !engineReady) return;
+    const eng = engineRef.current;
+    const prevId = eng._loadedPlanId;
+    if (prevId && prevId !== currentId) {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+      if (!loadingPlanRef.current && eng._dirty) {
+        const work = eng.saveWork();
+        work.ts = Date.now();
+        saveToStorage(`trazos_${prevId}`, work);
+        eng._dirty = false;
+      }
+    }
+    const resolvedId = currentIdRef.current || currentId || '';
+    if (!resolvedId) {
+      loadingPlanRef.current = false;
+      return;
+    }
+    const finCarga = (): void => {
+      loadingPlanRef.current = false;
+      try {
+        window.dispatchEvent(new Event('civilflow_plan_loaded'));
+      } catch {
+        /* ignore */
+      }
+    };
+    eng._loadedPlanId = resolvedId;
+    eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
+    loadingPlanRef.current = true;
+    (async () => {
+      try {
+        const loaded = await loadTrazosForPlan(eng, resolvedId);
+        const currentRefId = currentIdRef.current || 'work';
+        if (resolvedId !== currentRefId) {
+          finCarga();
+          return;
+        }
+        if (loaded) {
+          const fallbackNet =
+            activeNetworksRef.current &&
+            activeNetworksRef.current.size > 0 &&
+            !activeNetworksRef.current.has('af')
+              ? Array.from(activeNetworksRef.current)[0]
+              : activeNetRef.current || 'af';
+          const loadedNet = eng.activeNet || fallbackNet;
+          const sm = eng.scaleM;
+          setActiveNet(loadedNet);
+          if (sm != null) setScaleM(String(sm));
+          requestAnimationFrame(() => {
+            finCarga();
+            if (engineRef.current) engineRef.current.render();
+          });
+        } else if (currentId) {
+          eng.ramales = [];
+          eng.bajantes = [];
+          eng.areas = [];
+          eng.dims = [];
+          eng.textAnnots = [];
+          eng.selId = null;
+          eng.activeRamal = null;
+          eng.activeArea = null;
+          eng.setActiveNet(activeNetRef.current);
+          eng.render();
+          finCarga();
+        }
+      } catch (e) {
+        devError('[LOAD] error', e);
+        finCarga();
+      }
+    })();
+    syncDrawings();
+  }, [
+    currentId,
+    engineReady,
+    loadTrazosForPlan,
+    syncDrawings,
+    autoSaveTimerRef,
+    engineRef,
+    currentIdRef,
+    loadingPlanRef,
+    activeNetRef,
+    activeNetworksRef,
+    setActiveNet,
+    setScaleM,
+  ]);
+}
+
+// Chrome móvil del visor: banner "modo consulta", nombre del plano y cluster de zoom táctil
+// (⤢ ajustar / + / −). Solo se monta bajo los breakpoints que corresponden — cero lógica de
+// dibujo; el zoom delega en el engine via onZoomStep.
+
+interface ViewerMobileChromeProps {
+  isMobile: boolean;
+  isNarrow: boolean;
+  currentFile: File | null;
+  onFit: () => void;
+  onZoomStep: (factor: number) => void;
+}
+
+const BOTON_ZOOM_STYLE = {
+  width: 44,
+  height: 44,
+  borderRadius: '50%',
+  border: '1px solid #3a494a',
+  background: 'rgba(14,20,28,0.92)',
+  color: '#e2e2e8',
+  fontSize: 22,
+  lineHeight: 1,
+  cursor: 'pointer',
+} as const;
+
+/** Banner + nombre de plano (solo móvil) y botones flotantes de zoom (móvil y tablet). */
+function ViewerMobileChrome({
+  isMobile,
+  isNarrow,
+  currentFile,
+  onFit,
+  onZoomStep,
+}: ViewerMobileChromeProps): React.JSX.Element | null {
+  if (!isMobile && !isNarrow) return null;
+  return (
+    <>
+      {isMobile && (
+        <div
+          role="status"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            padding: '6px 12px',
+            background: 'rgba(14,20,28,0.92)',
+            borderBottom: '1px solid #3a494a',
+            color: '#849495',
+            fontSize: 11,
+            fontFamily: 'var(--body)',
+          }}
+        >
+          Modo consulta — el dibujo requiere tablet o PC.
+        </div>
+      )}
+      {isMobile && currentFile && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 30,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            textAlign: 'center',
+            color: '#849495',
+            fontSize: 10,
+            fontFamily: 'var(--body)',
+            pointerEvents: 'none',
+            padding: '0 12px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {currentFile.name}
+        </div>
+      )}
+      {/* Zoom táctil: también en tablet (768-1023), donde no hay botones de la toolbar de
+          escritorio a mano y el pinch es el único zoom alternativo. */}
+      {isNarrow && (
+        <div
+          style={{
+            position: 'absolute',
+            right: 12,
+            bottom: 18,
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          {[
+            { label: '⤢', aria: 'Ajustar a pantalla', run: onFit },
+            { label: '+', aria: 'Acercar', run: () => onZoomStep(1.2) },
+            { label: '−', aria: 'Alejar', run: () => onZoomStep(1 / 1.2) },
+          ].map((z) => (
+            <button
+              key={z.label}
+              type="button"
+              aria-label={z.aria}
+              onClick={z.run}
+              style={BOTON_ZOOM_STYLE}
+            >
+              {z.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+// Estado responsive del visor en UN solo lugar: móvil <768 (modo consulta: sin toolbar de
+// dibujo), angosto <1024 (colapsar sidebars SOLO al cruzar el breakpoint — un listener crudo
+// de resize re-cerraba los paneles en cada resize, p. ej. el teclado del SO en tablet pisaba
+// la re-expansión manual). Dentro de la franja el usuario puede re-abrir.
+
+/** Estado de sidebars colapsadas + flags isMobile/isNarrow del visor. */
+function useViewerResponsive() {
+  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
+  const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
+  const isMobile = useIsMobile();
+  const isNarrow = useMediaQuery('(max-width: 1023px)');
+  useEffect(() => {
+    if (isNarrow) {
+      setLeftCollapsed(true);
+      setRightCollapsed(true);
+    }
+  }, [isNarrow]);
+  return { isMobile, isNarrow, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed };
+}
 
 interface PdfViewerProps {
   files: Array<{ id: number; file: File }>;
