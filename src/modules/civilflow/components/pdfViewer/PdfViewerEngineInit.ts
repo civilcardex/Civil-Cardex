@@ -5,6 +5,7 @@ import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
+import { cargarMallas } from '../../lib/PlanoEngine/nudos';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -123,7 +124,16 @@ export function usePdfViewerEngine({
   ]);
 
   const renderPage = useCallback(
-    async (pageNum: number, sc: number, mountCheck: number) => {
+    async (
+      pageNum: number,
+      sc: number,
+      mountCheck: number,
+      opts: { bgOnly?: boolean; extraScale?: number } = {},
+    ) => {
+      // extraScale > 1: rasteriza el fondo a mayor densidad (zoom en vivo) SIN tocar el
+      // drawCanvas ni el engine — el bitmap sube de resolución y el scale() por CSS del
+      // pdfWrap deja de estirar píxeles (planos borrosos, ped. usuario).
+      const extra = Math.max(1, Math.min(opts.extraScale ?? 1, 3));
       if (renderingRef.current) return;
       const pdf = pdfDocRef.current;
       const pdfCanvas = pdfCanvasRef.current;
@@ -151,15 +161,20 @@ export function usePdfViewerEngine({
         const page = await pdf.getPage(pageNum);
         if (mountCheck && mountCheck !== mountId.current) return;
         const viewport = page.getViewport({ scale: sc });
-        pdfCanvas.width = Math.floor(viewport.width * dpr);
-        pdfCanvas.height = Math.floor(viewport.height * dpr);
+        // Bitmap a densidad extra (o dpr, lo que dé más); CSS SIEMPRE al tamaño base.
+        const hi = extra > 1 ? page.getViewport({ scale: sc * extra }) : null;
+        pdfCanvas.width = Math.floor((hi ?? viewport).width * dpr);
+        pdfCanvas.height = Math.floor((hi ?? viewport).height * dpr);
         pdfCanvas.style.width = viewport.width + 'px';
         pdfCanvas.style.height = viewport.height + 'px';
         const ctx = pdfCanvas.getContext('2d')!;
-        ctx!.imageSmoothingEnabled = false;
+        // Fondo del plano: suavizado de alta calidad (texto/líneas finas); el FALSE queda
+        // para la capa de trazos (crisp).
+        ctx!.imageSmoothingEnabled = true;
+        ctx!.imageSmoothingQuality = 'high';
         ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx!.clearRect(0, 0, viewport.width, viewport.height);
-        const task = page.render({ canvas: pdfCanvas, viewport });
+        ctx!.clearRect(0, 0, (hi ?? viewport).width, (hi ?? viewport).height);
+        const task = page.render({ canvas: pdfCanvas, viewport: hi ?? viewport });
         renderTaskRef.current = task;
         try {
           await task.promise;
@@ -171,6 +186,11 @@ export function usePdfViewerEngine({
           throw rerr;
         }
         renderTaskRef.current = null;
+
+        if (opts.bgOnly) {
+          renderingRef.current = false;
+          return;
+        }
 
         const drawCanvas = drawCanvasRef.current;
         if (drawCanvas) {
@@ -241,13 +261,34 @@ export function usePdfViewerEngine({
     const currentIdAtInit = currentIdRef.current;
     if (engineRef.current) engineRef.current.destroy();
     const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
+    // Planos borrosos (ped. usuario): el fondo se rasteriza a escala fija y el scale() por
+    // CSS lo estira. Observando el transform del pdfWrap, cuando el zoom se estabiliza
+    // re-rasterizamos SOLO el fondo a esa densidad (bgOnly, debounced).
+    let zoomRaf = 0;
+    let lastZoomRaster = 1;
+    const zoomObserver = new MutationObserver(() => {
+      const wrap = pdfCanvasRef.current?.parentElement;
+      if (!wrap) return;
+      const m = /scale\(([\d.]+)\)/.exec(wrap.style.transform || '');
+      if (!m) return;
+      const zoom = parseFloat(m[1] ?? '1');
+      if (Math.abs(zoom - lastZoomRaster) < 0.08) return;
+      window.clearTimeout(zoomRaf);
+      zoomRaf = window.setTimeout(() => {
+        lastZoomRaster = zoom;
+        void renderPage(1, scaleRef.current, mountId.current, { bgOnly: true, extraScale: zoom });
+      }, 160);
+    });
     const eng = new PlanoEngine(cw, pdfWrap!, canv);
+    if (pdfWrap)
+      zoomObserver.observe(pdfWrap, { attributeFilter: ['style'], attributeOldValue: false });
     engineRef.current = eng;
     // Diagnóstico: instancia accesible desde la consola para depurar conteos/trazos
     // (window.__cfEngine.ramales.map(r=>[r.id,r.label,r.tipo])).
     (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
+    eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
     eng.onSelect((el) => callbacksRef.current.onSelect(el));
     eng.onStatus((msg) => callbacksRef.current.onStatus(msg));
     eng.onDelete((ids) => callbacksRef.current.onDelete(ids));
@@ -315,6 +356,12 @@ export function usePdfViewerEngine({
         eng.destroy();
       } catch (e) {
         devError('[CLEANUP] destroy error', e);
+      }
+      try {
+        zoomObserver.disconnect();
+        window.clearTimeout(zoomRaf);
+      } catch {
+        /* ignore */
       }
       engineRef.current = null;
       try {

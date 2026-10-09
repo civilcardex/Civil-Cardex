@@ -28,6 +28,7 @@ import {
 } from './ramalMenuHelpers';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel';
 import { ElementCodeEditor } from './elementEditor';
+import { guardarMallas } from '../../../lib/PlanoEngine/nudos';
 
 export function RamalMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -443,6 +444,34 @@ export function RamalMenu() {
             style={MENU_ACTION_BTN_STYLE}
           >
             ⇄ Invertir dirección del flujo
+          </button>
+        )}
+        {['af', 'ac', 'gas', 'rci'].includes(ramalEl.net || '') && (
+          <button
+            type="button"
+            onClick={() => {
+              const net = ramalEl.net || '';
+              const mallas = engineRef.current?.mallasDeclaradas ?? new Set<string>();
+              const ya = mallas.has(net);
+              if (ya) mallas.delete(net);
+              else mallas.add(net);
+              if (engineRef.current) {
+                engineRef.current.mallasDeclaradas = mallas;
+                guardarMallas(engineRef.current._loadedPlanId, mallas);
+              }
+              engineRef.current?.triggerAlert(
+                ya ? 'Malla retirada' : 'Malla declarada',
+                ya
+                  ? `La red ${net.toUpperCase()} vuelve a chequearse como red ramificada.`
+                  : `La red ${net.toUpperCase()} quedó exenta del chequeo de ciclos (malla/recirculación intencional).`,
+              );
+              ctx.setContextMenuState(null);
+            }}
+            style={MENU_ACTION_BTN_STYLE}
+          >
+            {engineRef.current?.mallasDeclaradas?.has(ramalEl.net || '')
+              ? '↺ Quitar declaración de malla'
+              : '◉ Declarar malla / recirculación'}
           </button>
         )}
         {ramalHasInterconnections(engineRef.current, ramalEl) &&

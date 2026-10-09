@@ -9,6 +9,8 @@ import {
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
 import { angleAtHalfLength } from './drawingAngles';
 import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection';
+import { REDES_PRESION } from './nudos';
+import { conflictoDosEntradas, resolverConflictoSentido } from './reEnraizar';
 import { ramalFlowDirectionCheck } from './drawingFlow';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
 import { calculateRamalLength } from './ramalMeasure';
@@ -470,6 +472,23 @@ export function autoSplitJunctionAndSumFlow(
           if (bumped) b.dNominal = bumped;
         }
       }
+      // ── Re-enraizamiento automático (docx fase 2, reglas 1-5) ──
+      // Si el entrante quedó ENTRANDO a la tee (2 entradas), corrige el sentido solo:
+      // invertir el nuevo / re-enraizar el existente. Undo agrupado, aviso no bloqueante.
+      if (
+        REDES_PRESION.has(incoming.net || '') &&
+        conflictoDosEntradas(engine, ep, incoming, incoming.net || '')
+      ) {
+        void resolverConflictoSentido(engine, ep, incoming, existing, async () => {
+          // Regla 5 (sin datos para decidir): conservador — invertir el tramo nuevo.
+          engine.triggerAlert(
+            'Sentido del tramo nuevo',
+            'El tramo entró a la tee sin poder determinar el sentido. Se invirtió el NUEVO; si era al revés, usa "Invertir dirección" en el menú del tramo.',
+          );
+          return 'nuevo';
+        });
+      }
+
       break;
     }
   }

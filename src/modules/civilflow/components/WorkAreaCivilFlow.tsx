@@ -123,7 +123,9 @@ function CivilFlowInner() {
         if (activo != null) localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
         if (proyectos.length === 1) {
           localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proyectos[0].id));
-          window.location.reload();
+          // SPA: CivilFlowProviders re-monta los providers con la key de generación —
+          // sin reload del navegador (recarga "de la nada", ped. usuario).
+          window.dispatchEvent(new Event('civilflow_proyecto_activo'));
           return;
         }
         setProyectoResuelto(false);

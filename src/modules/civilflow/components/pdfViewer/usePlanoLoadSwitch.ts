@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { saveToStorage } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import { cargarMallas } from '../../lib/PlanoEngine/nudos';
 
 interface UsePlanoLoadSwitchParams {
   engineRef: React.MutableRefObject<PlanoEngine | null>;
@@ -68,6 +69,7 @@ export function usePlanoLoadSwitch({
       }
     };
     eng._loadedPlanId = resolvedId;
+    eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
     loadingPlanRef.current = true;
     (async () => {
       try {

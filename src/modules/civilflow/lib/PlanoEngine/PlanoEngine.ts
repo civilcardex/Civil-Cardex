@@ -17,6 +17,7 @@ import type {
   MultiDragOrigData,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
+import { chequearRed, REDES_PRESION } from './nudos';
 import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
 import { renderGuideLines, renderGuideGhost } from './renderers/renderGuideLines';
@@ -278,6 +279,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _touchMoveHandler?: (e: TouchEvent) => void;
   private _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | number | null;
+  /** Redes declaradas malla/recirculación por el usuario (exentas del chequeo de ciclo). */
+  mallasDeclaradas: Set<string> = new Set();
+  /** Resolver del modal de opciones de sentido (re-enraizamiento, docx regla 5). */
+  private _onOpcionesCb:
+    | ((title: string, msg: string, opciones: string[]) => Promise<number>)
+    | null = null;
   planId?: string | number;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;
@@ -527,6 +534,40 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._onAlertCb) this._onAlertCb(title, msg);
   }
 
+  /** Registra el modal de opciones (re-enraizamiento). Devuelve el ÍNDICE elegido, o -1. */
+  onOpciones(cb: (title: string, msg: string, opciones: string[]) => Promise<number>): void {
+    this._onOpcionesCb = cb;
+  }
+
+  /** Modal de opciones: resuelve cuando el usuario elige (o -1 si cancela). */
+  triggerOpciones(title: string, msg: string, opciones: string[]): Promise<number> {
+    if (this._onOpcionesCb) return this._onOpcionesCb(title, msg, opciones);
+    return Promise.resolve(-1);
+  }
+
+  /** Último hash de incidencias por red — anti-spam del modal (solo alerta si cambió). */
+  private _chequeoHash: Record<string, string> = {};
+
+  /** Chequeo global de nudos (docx fase 2) para af/ac/gas/rci — corre en cada _markDirty
+   *  y alerta por modal SOLO cuando el conjunto de incidencias de una red cambió. */
+  private chequearPresionGlobal(): void {
+    const nets = new Set<string>();
+    for (const r of this.ramales) if (REDES_PRESION.has(r.net || '')) nets.add(r.net);
+    for (const net of nets) {
+      const incs = chequearRed(this, net);
+      const errores = incs.filter((i) => i.nivel === 'error');
+      const hash = errores.map((i) => `${i.tipo}:${i.ramalId}`).join('|');
+      const antes = this._chequeoHash[net];
+      if (antes === hash) continue;
+      this._chequeoHash[net] = hash;
+      // Primera pasada tras CARGAR un plano existente: silenciosa (no molestar al abrir).
+      if (antes === undefined) continue;
+      if (!hash) continue; // quedó limpio: sin alerta
+      const lista = errores.map((i, ix) => `${ix + 1}. ${i.msg}`).join('\n');
+      this.triggerAlert(`Red ${net.toUpperCase()} — ${errores.length} incidencia(s)`, lista);
+    }
+  }
+
   triggerAccesorioModal(data: {
     ramalId: string;
     angleDeg: number;
@@ -662,6 +703,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
     try {
       calcHydroAccessories(this);
+      this.chequearPresionGlobal();
     } catch (e) {
       devError('PlanoEngine _markDirty calcHydro:', e);
     }

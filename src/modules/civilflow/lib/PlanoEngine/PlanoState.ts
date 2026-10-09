@@ -662,6 +662,11 @@ export type MultiDragOrigData = Record<
  *  coordenadas, el snapping, el renderizado, los helpers de selección/arrastre y los slots
  *  transitorios de interacción. */
 export interface IPlanoEngineCore {
+  /** Pausa/reanuda el historial para agrupar mutaciones en UN snapshot (patrón FixturesPanel). */
+  pauseHistory?: () => void;
+  resumeHistory?: () => void;
+  /** Redes declaradas malla/recirculación (exentas del chequeo de ciclo). */
+  mallasDeclaradas?: Set<string>;
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];
   areas: PlanoArea[];
