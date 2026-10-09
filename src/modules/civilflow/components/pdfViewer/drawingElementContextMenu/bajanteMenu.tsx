@@ -4,6 +4,7 @@ import { BajanteConnectionPanel } from './bajanteConnectionPanel';
 import { BajanteDirectionSelector } from './directionSelector';
 import { BajanteDiameterSelector } from './diameterSelector';
 import { CajaBombaSection, AsociarBombaSection } from './bombaSections';
+import { CanalesAsociadosBajSection, RamalesAsociadosMontSection } from './canalesAsociados';
 
 /** Menú contextual de bajante/montante: ensambla dirección, diámetro y secciones de caja/bomba. */
 /** Menú contextual de un bajante/montante: compone el selector de dirección, el de diámetro y
@@ -50,6 +51,13 @@ export function BajanteMenu() {
       )}
       {bajEl.tipo === 'bajante' && ctx.activeNet === 'san' && (
         <AsociarBombaSection ctx={ctx} bajEl={bajEl} />
+      )}
+      {bajEl.tipo === 'bajante' && ctx.activeNet === 'll' && (
+        <CanalesAsociadosBajSection ctx={ctx} bajEl={bajEl} />
+      )}
+      {/* Montante af/ac: la inversa — gestiona sus ramales asociados desde el montante. */}
+      {bajEl.tipo === 'montante' && (ctx.activeNet === 'af' || ctx.activeNet === 'ac') && (
+        <RamalesAsociadosMontSection ctx={ctx} montante={bajEl} />
       )}
       {isSanOrLl && (
         <BajanteConnectionPanel

@@ -27,9 +27,38 @@ const AccessoriesTable_S5: React.CSSProperties = {
 
 const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter((a) => a.id !== 'llaveTerminal');
 
-const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tramo[] }) {
+// AF/AC sin sube/baja (orig. usuario, mismo criterio del panel/menú): esas columnas se ocultan
+// y sus conteos se FUSIONAN en la columna base (codo 90° sube/baja → Codo medio 90°;
+// tee sube/baja → Tee paso lado). San/ll conservan sus columnas propias.
+const MERGE_SUBE_BAJA: Record<string, string> = {
+  codo90rmSube: 'codo90rm',
+  codo90rmBaja: 'codo90rm',
+  teeSube: 'teeLado',
+  teeBaja: 'teeLado',
+};
+
+const AccesoriosTable = memo(function AccesoriosTable({
+  tramos,
+  red,
+}: {
+  tramos: Tramo[];
+  red?: 'af' | 'ac';
+}) {
   const cMono = "'Courier New',Courier,monospace";
   const filtered = tramos.filter((t) => t.tipo !== 'tributario');
+  const fusionar = red === 'af' || red === 'ac';
+  const cols = fusionar
+    ? ACCESORIOS_COLS.filter((a) => !(a.id in MERGE_SUBE_BAJA))
+    : ACCESORIOS_COLS;
+  const valor = (t: Tramo, id: string): number => {
+    let v = t.accesorios?.[id] || 0;
+    if (fusionar) {
+      for (const [de, a] of Object.entries(MERGE_SUBE_BAJA)) {
+        if (a === id) v += t.accesorios?.[de] || 0;
+      }
+    }
+    return v;
+  };
   return (
     <section className="card">
       <div className="card-h">
@@ -56,7 +85,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tram
               <th scope="col" className="col-h" style={AccessoriesTable_S1}>
                 Tramo
               </th>
-              {ACCESORIOS_COLS.map((a) => (
+              {cols.map((a) => (
                 <th
                   scope="col"
                   key={a.id}
@@ -92,8 +121,8 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tram
                   <td className="c" style={AccessoriesTable_S3}>
                     {lbl}
                   </td>
-                  {ACCESORIOS_COLS.map((a) => {
-                    const v = t.accesorios?.[a.id] || 0;
+                  {cols.map((a) => {
+                    const v = valor(t, a.id);
                     return (
                       <td
                         key={a.id}
@@ -120,7 +149,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tram
               <tr>
                 <td
                   className="c"
-                  colSpan={1 + ACCESORIOS_COLS.length}
+                  colSpan={1 + cols.length}
                   style={{
                     fontSize: 9,
                     color: 'var(--txt3)',

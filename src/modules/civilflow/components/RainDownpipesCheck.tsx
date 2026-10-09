@@ -128,17 +128,19 @@ const OtrasField = React.memo(function OtrasField({
 export default function ChequeoBajantesLluvias() {
   const [edit, setEdit] = React.useState(false);
   const tablaRef = useStickyThead2Offset();
-  const { bajantesLl, updBajanteLL, canalesLl, canalBajantes } = useRainwater();
-  // Bajante chip ("BAN1-P1") → etiqueta del canal que lo recibe (inverso de canalBajantes).
+  const { bajantesLl, updBajanteLL, canalesLl, canalAlimIds } = useRainwater();
+  // Bajante (`planId|id`) → etiqueta del canal que lo recibe. canalAlimIds trae claves
+  // exactas `planId|idBaj` (geométricas + manuales); el inverso alimenta la columna.
   const canalDeBaj = useMemo(() => {
     const inv = new Map<string, string>();
     for (const c of canalesLl) {
-      for (const chip of canalBajantes[c.id] || []) {
-        if (!inv.has(chip)) inv.set(chip, c.sector || c.id);
+      if (!c.drawId) continue;
+      for (const combo of canalAlimIds[c.drawId] || []) {
+        if (!inv.has(combo)) inv.set(combo, c.sector || c.id);
       }
     }
     return inv;
-  }, [canalesLl, canalBajantes]);
+  }, [canalesLl, canalAlimIds]);
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
 
@@ -283,8 +285,8 @@ export default function ChequeoBajantesLluvias() {
         drawPlanId: String(d.planId ?? ''),
         nivel: pisoCorto(d.piso),
         asociadosSup: uppersByBajante[`${d.planId}|${d.id}`] ?? [],
-        canalesAsoc: canalDeBaj.get(`${code}-${pisoCorto(d.piso)}`)
-          ? [canalDeBaj.get(`${code}-${pisoCorto(d.piso)}`)!]
+        canalesAsoc: canalDeBaj.get(`${d.planId}|${d.id}`)
+          ? [canalDeBaj.get(`${d.planId}|${d.id}`)!]
           : [],
         ramalesAsoc: ramalesByBajante[`${d.id}-${d.planId}`] ?? [],
         areaParcial,
@@ -368,9 +370,9 @@ export default function ChequeoBajantesLluvias() {
             <col style={{ width: 46 }} />
             <col style={{ width: 46 }} />
             <col style={{ width: 46 }} />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 52 }} />
+            <col style={{ width: 72 }} />
+            <col style={{ width: 100 }} />
+            <col style={{ width: 72 }} />
             <col style={{ width: 54 }} />
             <col style={{ width: 46 }} />
             <col style={{ width: 46 }} />
@@ -407,7 +409,9 @@ export default function ChequeoBajantesLluvias() {
                 rowSpan={2}
                 style={thC}
               >
-                Canales asociados
+                Canales
+                <br />
+                asociados
               </th>
               <th
                 title="Ramales de la red de lluvias que drenan a este bajante."
@@ -450,7 +454,7 @@ export default function ChequeoBajantesLluvias() {
                 scope="col"
                 className="col-h ll"
                 rowSpan={2}
-                style={{ ...thC, width: 110, minWidth: 110, maxWidth: 140 }}
+                style={{ ...thC, width: 84, minWidth: 84, maxWidth: 100 }}
               >
                 Chequeo
               </th>
@@ -484,7 +488,7 @@ export default function ChequeoBajantesLluvias() {
                 title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
                 scope="col"
                 className="col-h ll"
-                style={thC}
+                style={{ ...thC, minWidth: 96 }}
               >
                 Material
                 <br />
@@ -496,7 +500,7 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 style={thC}
               >
-                Coef.
+                Coeficiente
                 <br />
                 escorrentía
               </th>
@@ -538,7 +542,9 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ok"
                 style={thC}
               >
-                Diam calc.
+                Diámetro
+                <br />
+                calculado
               </th>
               <th
                 title="Diámetro comercial propuesto (pulg) — no menor al mayor ramal conectado. Unidad: pulg."
@@ -546,7 +552,9 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ok"
                 style={thC}
               >
-                Diam prop.
+                Diámetro
+                <br />
+                propuesto
               </th>
               <th
                 title="Capacidad del diámetro propuesto (L/s). Unidad: L/s."
@@ -554,7 +562,9 @@ export default function ChequeoBajantesLluvias() {
                 className="col-h ll"
                 style={thC}
               >
-                Q cap.
+                Q
+                <br />
+                capacidad
               </th>
               <th
                 title="Qué tan lleno trabaja el tubo: relación entre el caudal de diseño y la capacidad del diámetro propuesto; debe quedar por debajo del 100%."

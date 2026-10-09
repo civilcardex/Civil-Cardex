@@ -53,9 +53,16 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
+          style={{
+            textAlign: 'center',
+            padding: '2px 1px',
+            fontSize: 10.5,
+            minWidth: 44,
+          }}
         >
-          No. de descargas
+          Número
+          <br />
+          de descargas
         </th>
         <th
           title="Coeficiente de simultaneidad K aplicado al cálculo."
@@ -74,8 +81,6 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
           style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
         >
           Caudal
-          <br />
-          (lps)
         </th>
         <th
           title='Diámetro que sugiere el cálculo para el caudal. Unidad: pulgadas (").'
@@ -106,7 +111,13 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
           scope="col"
           className="col-h"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
+          style={{
+            textAlign: 'center',
+            padding: '2px 1px',
+            fontSize: 10.5,
+            minWidth: 40,
+            maxWidth: 56,
+          }}
         >
           Coeficiente
           <br />C
@@ -118,8 +129,7 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
           rowSpan={2}
           style={{ textAlign: 'center', padding: '2px 1px', fontSize: 10.5 }}
         >
-          Vel. <br />
-          (mm/s)
+          Vel.
         </th>
         <th
           title="Longitudes del tramo y equivalencias de accesorios (m)."
@@ -145,7 +155,7 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
             padding: '2px 1px',
             fontSize: 10.5,
             whiteSpace: 'nowrap',
-            minWidth: 56,
+            minWidth: 64,
             borderBottom: '2px solid var(--line)',
           }}
         >
@@ -258,7 +268,7 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
           title="Pérdida de carga del tramo en ‰ (m por kilómetro de tubería)."
           scope="col"
           className="col-h"
-          style={{ textAlign: 'center', padding: '0 1px', fontSize: 10.5 }}
+          style={{ textAlign: 'center', padding: '0 1px', fontSize: 12.5 }}
         >
           ‰
         </th>

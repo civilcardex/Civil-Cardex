@@ -20,6 +20,14 @@ import {
   MENU_SELECT_STYLE,
 } from './context';
 import { moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
+import {
+  ASSOC_CHECKBOX_STYLE,
+  ASSOC_ROW_STYLE,
+  CanalesAsociadosRamalSection,
+  MontantesAsociadosSection,
+  refrescarMenu,
+} from './canalesAsociados';
 import { MidRamalAccessorySelector } from './midRamalAccessorySelector';
 import {
   pointOnRamalBody,
@@ -671,7 +679,7 @@ export function RamalMenu() {
                 const isAlimenta = (b.alimentaIds || []).includes(currentId);
                 const isAssociated = isRecibe || isAlimenta;
                 return (
-                  <label key={b.id} style={MENU_CHECK_ROW_STYLE}>
+                  <label key={b.id} style={ASSOC_ROW_STYLE}>
                     <input
                       type="checkbox"
                       checked={isAssociated}
@@ -686,17 +694,11 @@ export function RamalMenu() {
                             return;
                           }
                         }
-                        const recibidos = b.recibeDeIds || [];
-                        const newRecibe = e.target.checked
-                          ? [...recibidos, currentId]
-                          : recibidos.filter((id: string) => id !== currentId);
-                        const newAlimenta = e.target.checked
-                          ? b.alimentaIds || []
-                          : (b.alimentaIds || []).filter((id: string) => id !== currentId);
-                        const extraFields: Record<string, unknown> = {
-                          recibeDeIds: newRecibe,
-                          alimentaIds: newAlimenta,
-                        };
+                        const extraFields: Record<string, unknown> = camposAsocManual(
+                          b,
+                          currentId,
+                          e.target.checked,
+                        );
                         if (e.target.checked) {
                           extraFields.descargaEnId = currentId;
                         } else if (
@@ -722,8 +724,9 @@ export function RamalMenu() {
                         } else if (selElement?.id === b.id) {
                           setSelElement({ ...selElement, ...extraFields });
                         }
+                        refrescarMenu(ctx.setContextMenuState);
                       }}
-                      style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+                      style={ASSOC_CHECKBOX_STYLE}
                     />
                     <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                       {bajanteLabel(b, engineRef.current?.nivelActual?.label)}
@@ -774,7 +777,7 @@ export function RamalMenu() {
                 const isAlimenta = (c.alimentaIds || []).includes(currentId);
                 const isAssociated = isRecibe || isAlimenta;
                 return (
-                  <label key={c.id} style={MENU_CHECK_ROW_STYLE}>
+                  <label key={c.id} style={ASSOC_ROW_STYLE}>
                     <input
                       type="checkbox"
                       checked={isAssociated}
@@ -792,9 +795,10 @@ export function RamalMenu() {
                         }
                         const code = c.code || c.id;
                         if (e.target.checked) {
-                          // Marcar = asociar como LLEGADA (nueva asociación).
+                          // Marcar = asociar como LLEGADA (nueva asociación, manual: la poda
+                          // de stale no la toca).
                           const updates: Record<string, unknown> = {
-                            recibeDeIds: [...(c.recibeDeIds || []), currentId],
+                            ...camposAsocManual(c, currentId, true),
                           };
                           engineRef.current?.updateElementById(c.id, updates);
                           engineRef.current?.updateElementById(ramalEl.id, { fin: code });
@@ -803,14 +807,11 @@ export function RamalMenu() {
                           }
                         } else {
                           // Desmarcar = quitar la relación que tenga: llegada y/o salida.
-                          const updates: Record<string, unknown> = {
-                            recibeDeIds: (c.recibeDeIds || []).filter(
-                              (id: string) => id !== currentId,
-                            ),
-                            alimentaIds: (c.alimentaIds || []).filter(
-                              (id: string) => id !== currentId,
-                            ),
-                          };
+                          const updates: Record<string, unknown> = camposAsocManual(
+                            c,
+                            currentId,
+                            false,
+                          );
                           engineRef.current?.updateElementById(c.id, updates);
                           const ramalUpdates: Record<string, unknown> = {};
                           if (ramalEl.fin === code) ramalUpdates.fin = '';
@@ -827,8 +828,9 @@ export function RamalMenu() {
                         }
                         engineRef.current?.render();
                         engineRef.current?._markDirty();
+                        refrescarMenu(ctx.setContextMenuState);
                       }}
-                      style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+                      style={ASSOC_CHECKBOX_STYLE}
                     />
                     <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                       {bajanteLabel(c, engineRef.current?.nivelActual?.label)}
@@ -839,6 +841,10 @@ export function RamalMenu() {
             })()}
           </div>
         </div>
+      )}
+      {ctx.activeNet === 'll' && <CanalesAsociadosRamalSection ctx={ctx} ramal={ramalEl} />}
+      {(ctx.activeNet === 'af' || ctx.activeNet === 'ac') && (
+        <MontantesAsociadosSection ctx={ctx} ramal={ramalEl} />
       )}
     </>
   );

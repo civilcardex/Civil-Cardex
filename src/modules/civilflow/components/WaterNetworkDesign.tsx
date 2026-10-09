@@ -397,8 +397,24 @@ function WaterNetworkDesign({
     pRed,
   ]);
 
+  // Edición POR TABLA de la acometida (ped. usuario): cada sección, su EDITAR/LISTO.
+  const [edit1, setEdit1] = useState(false);
+  const [edit2, setEdit2] = useState(false);
+  const [edit3, setEdit3] = useState(false);
   const acometidaEl = isAf(networkType) && !hideAcometida && (
     <Acometida
+      edit1={edit1}
+      setEdit1={setEdit1}
+      edit2={edit2}
+      setEdit2={setEdit2}
+      edit3={edit3}
+      setEdit3={setEdit3}
+      onTr1DiamChange={(nominal) => {
+        if (tr1) handleDiamChange(tr1._key || tr1.id, nominal);
+      }}
+      onTr2DiamChange={(nominal) => {
+        if (tr2) handleDiamChange(tr2._key || tr2.id, nominal);
+      }}
       Qaco={Qaco}
       contadorSel={contadorSel}
       acoContIx={acoContIx}

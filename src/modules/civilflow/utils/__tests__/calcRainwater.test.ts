@@ -36,8 +36,9 @@ describe('chequeoBajanteLluvia (hoja 1 Bajantes)', () => {
     });
     expect(Q).toBe(0);
     expect(dCalc).toBe(0);
-    // Sin caudal no hay fallo: Dprop elegido y Q=0 → dCalc 0 ≤ Dprop → 'Ok'.
-    expect(chequeo).toBe('Ok');
+    // Sin caudal (material sin elegir → C=0) no hay D calculado → SIN chequeo (REQ usuario:
+    // el chequeo no debe decir 'Ok' si el diámetro calculado aún no se pudo calcular).
+    expect(chequeo).toBe('');
   });
 
   it('Q=0 con intensidad=0', () => {

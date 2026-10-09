@@ -89,9 +89,13 @@ const CanalDimField = React.memo(function CanalDimField({
         : fmt(value ?? 0, 2)
       : editing
         ? text
-        : value > 0
-          ? fmt(value, 2)
-          : '';
+        : field === 'intensidad'
+          ? value > 0
+            ? String(Math.round(value))
+            : ''
+          : value > 0
+            ? fmt(value, 2)
+            : '';
   return (
     <input
       type="text"
@@ -601,7 +605,9 @@ export default function ChequeoCanalesLluvias() {
                   className="col-h ll"
                   style={thL}
                 >
-                  D baj.
+                  Diámetro
+                  <br />
+                  baj.
                 </th>
                 <th
                   title="Altura de lámina de agua requerida en la embocadura (m). Unidad: m."
@@ -668,15 +674,22 @@ export default function ChequeoCanalesLluvias() {
                           bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
                         })
                       : null;
-                  const { Qreal, Qmax, yn, velocidad, chequeo, totalStr, aEfectiva } = calc ?? {
-                    aEfectiva: 0,
+                  const { Qreal, Qmax, yn, velocidad, chequeo } = calc ?? {
                     Qreal: 0,
                     Qmax: 0,
                     yn: 0,
                     velocidad: 0,
                     chequeo: '',
-                    totalStr: '',
                   };
+                  // Sección total y A efectiva SIEMPRE visibles: son composición de
+                  // base/altura/borde (del dibujo o defaults) — no dependen del cálculo
+                  // hidráulico ni del material del canal (ped. usuario).
+                  const bH = c.b || 0;
+                  const totalStr =
+                    bH > 0 || (c.h || 0) > 0
+                      ? `${bH}x${(c.h || 0) + (c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM)}`
+                      : '—';
+                  const aEfectivaSiempre = (c.areaAcumulada || 0) + 0.5 * (c.muroVertical || 0);
                   // Embocadura (hoja 2 AE/AG; Z/AB/AC/AD rojas quedan internas): N° = bajantes
                   // asociados del canal, D = el menor propuesto (conservador).
                   const items = c.drawId ? canalBajantes[c.drawId] || [] : [];
@@ -754,7 +767,7 @@ export default function ChequeoCanalesLluvias() {
                       <td className="c">
                         {/* A efectiva = A acumulada + 0.5·muro (hoja 2 col. E). */}
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10 }}>
-                          {aEfectiva > 0 ? Number(aEfectiva).toFixed(2) : '—'}
+                          {Number(aEfectivaSiempre).toFixed(2)}
                         </span>
                       </td>
                       <td className="c">

@@ -831,8 +831,12 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     const corto = raw.length > 10 ? `${raw.slice(0, 4)}…` : raw;
     return `${corto}-${pisoCorto(Number(piso ?? 0))}`;
   };
-  /** Fallos leídos de una MemoriaTable: filas donde una columna /chequeo/i dice 'No cumple'. */
-  const fallosDeTabla = (tbl: MemoriaTable | null): string[] => {
+  /** Fallos leídos de una MemoriaTable: filas donde una columna /chequeo/i dice 'No cumple'.
+   *  sufijoDe: nivel del elemento (ej. row[1]='P2' en bajantes aguas negras) → chip `BAN1-P2`. */
+  const fallosDeTabla = (
+    tbl: MemoriaTable | null,
+    sufijoDe?: (row: unknown[]) => string,
+  ): string[] => {
     if (!tbl) return [];
     const idxCh: number[] = [];
     tbl.headers.forEach((h, i) => {
@@ -842,7 +846,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     const out: string[] = [];
     for (const row of tbl.rows) {
       if (idxCh.some((i) => /^no cumple$/i.test(String(row[i] ?? '').trim()))) {
-        out.push(String(row[0] ?? '—'));
+        const suf = sufijoDe?.(row) ?? '';
+        out.push(suf ? `${String(row[0] ?? '—')}-${suf}` : String(row[0] ?? '—'));
       }
     }
     return out;
@@ -855,7 +860,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   /** Chips SAN = fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent. */
   const fallosSanLabs = [
     ...fallosSan.map((t) => etiq(t.id, t.piso)),
-    ...fallosDeTabla(bajVentSanTable),
+    ...fallosDeTabla(bajVentSanTable, (row) => (row[1] && row[1] !== '—' ? String(row[1]) : '')),
   ];
   const okSAN = conDatosSan.length > 0 && fallosSan.length === 0;
   // LL: rango + chequeos de tabla + bajantes + canales. Sin tributarios.
@@ -916,10 +921,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       return Cder <= 0 || nd == null;
     })
     .map((c) => {
-      const piso = plans.find(
-        (p) => String(p.id) === String((c as { planId?: unknown }).planId),
-      )?.nivel;
-      return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))} (sin verificar)`;
+      const nivelCubierta = pisos.find((p) => p.n === 99)?.n ?? 99;
+      return `${c.sector || 'Canal'}-${pisoCorto(Number(c.piso ?? nivelCubierta))} (sin verificar)`;
     });
   // AF: acometida (computeAcometidaSummary estadoOk) — la tabla la marca, el resumen la lista.
   const acometidaOk = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF)?.estadoOk !== false;
@@ -951,13 +954,15 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     // SAN: fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent.
     const fallosSanLabs2 = [
       ...fallosSan.map((t) => etiq(t.id, t.piso)),
-      ...fallosDeTabla(bajVentSanTable),
+      // Columna Nivel (row[1], fmtPiso del propio bajante): chips BAN1-P2 / BAN1-C.
+      ...fallosDeTabla(bajVentSanTable, (row) => (row[1] && row[1] !== '—' ? String(row[1]) : '')),
     ];
     const estadoSan = fallosSanLabs2.length
       ? '✗ Revisar'
       : conDatosSan.length > 0
         ? '✓ OK'
         : '◌ Sin calcular';
+    const nivelCubierta = pisos.find((p) => p.n === 99)?.n ?? 99;
     const fallosCanalSinVerificar = (canalesLl ?? [])
       .filter((c) => {
         const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
@@ -965,10 +970,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         return Cder <= 0 || nd == null;
       })
       .map((c) => {
-        const piso = plans.find(
-          (p) => String(p.id) === String((c as { planId?: unknown }).planId),
-        )?.nivel;
-        return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))} (sin verificar)`;
+        // El canal es de CUBIERTA por definición: nivel = c.piso (glifo) o el piso cubierta.
+        return `${c.sector || 'Canal'}-${pisoCorto(Number(c.piso ?? nivelCubierta))} (sin verificar)`;
       });
     const fallosLlLabs2 = [
       ...fallosLl.map((t) => etiq(t.id, t.piso)),

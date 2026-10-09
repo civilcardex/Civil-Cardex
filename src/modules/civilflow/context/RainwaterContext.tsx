@@ -91,6 +91,7 @@ interface RainwaterContextValue {
   updCanalSector: (sector: string, field: string, val: string | number) => void;
   /** Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1". */
   canalBajantes: Record<string, string[]>;
+  canalAlimIds: Record<string, string[]>;
   conRecolectora: boolean;
   setConRecolectora: (v: boolean) => void;
 }
@@ -250,119 +251,151 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   // de storage por plano — los glifos de canal no pasan por TramosContext/buildTramos.ts (esa
   // tubería solo modela ramales/bajantes con semántica sanitaria/bajante), así que se leen
   // directo aquí, igual que `areas` arriba.
-  const { areaAcumMap, drawnCanalGlyphs, canalAreaMap, canalBajantes, canalAlimInfo } =
-    useMemo(() => {
-      const canalAreaMap: Record<string, number> = {};
-      // Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1".
-      const canalBajantes: Record<string, string[]> = {};
-      // Insumo por bajante para el canal (REQ canal = Σ bajantes): código (clave del override
-      // en bajantesLl) + área dibujada — la fila del canal deriva SU Parcial/Otras/Material de
-      // estos con la MISMA fórmula de la tabla de bajantes (areaParcialBajanteLl).
-      const canalAlimInfo: Record<string, Array<{ code: string; areaDib: number }>> = {};
-      const map: Record<string, number> = {};
-      const glyphs: (RawElement & { piso: string; planId: string | number })[] = [];
-      for (const plan of plans || []) {
-        if (plan.nivel == null) continue;
-        const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
-          TRAZOS_PREFIX + plan.id,
-          null,
-        );
-        if (!raw) continue;
-        let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
-        if (typeof raw === 'string') {
-          try {
-            data = JSON.parse(raw);
-          } catch {
-            continue;
-          }
-        }
-        const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
-        map[String(plan.nivel)] = totalArea;
-        for (const b of data.bajantes || []) {
-          if (b.tipo === 'canal' && b.net === 'll')
-            glyphs.push({ ...b, piso: String(plan.nivel), planId: plan.id });
-        }
-        // Área de cada canal = Σ áreas de los bajantes que le descargan (orig. usuario): un
-        // ramal ll con un extremo dentro del OBB del canal trae el área de SU bajante
-        // (el otro extremo a ≤2 px del glifo). OBB válido en diagonal (canalMarco).
-        const canales = (data.bajantes || []).filter(
-          (
-            b,
-          ): b is RawElement & {
-            base?: number;
-            longitud?: number;
-            angulo?: number;
-            x?: number;
-            y?: number;
-          } => b.tipo === 'canal' && b.net === 'll',
-        );
-        const bajLl = (data.bajantes || []).filter(
-          (b): b is RawElement & { area_m2?: number; x?: number; y?: number } =>
-            b.net === 'll' && b.tipo === 'bajante',
-        );
-        const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
-        const etiquetaBaj = (idB: string): string => {
-          const bb = bajLl.find((x) => String(x.id) === idB);
-          const sector = String(bb?.code || bb?.id || idB).split('-')[0];
-          return `${sector}-${pisoCorto(Number(plan.nivel))}`;
-        };
-        for (const c of canales) {
-          if (c.x == null || c.y == null) continue;
-          const obb = canalOBBDe(pxPerCm, c);
-          const enCanal = (pt: number[]): boolean => puntoEnCanalOBB(obb, pt[0], pt[1], 4);
-          // SET de bajantes alimentadores (un bajante con VARIOS ramales al canal cuenta UNA vez).
-          const alimentadores = new Set<string>();
-          for (const r of data.ramales || []) {
-            if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
-            // Cualquier DIRECCIÓN: un extremo dentro del canal y el OTRO sobre el glifo del
-            // bajante (el ramal puede salir del canal o llegar a él — esCanalId marca salida).
-            const pS = r.pts[0];
-            const pE = r.pts[r.pts.length - 1];
-            const pBaj = enCanal(pS) ? pE : enCanal(pE) ? pS : null;
-            if (!pBaj) continue;
-            for (const b of bajLl) {
-              if (b.x == null || b.y == null) continue;
-              if (Math.hypot(pBaj[0] - b.x, pBaj[1] - b.y) < 2) {
-                alimentadores.add(String(b.id));
-                break;
-              }
-            }
-          }
-          // Bajante dibujado directamente sobre el canal (sin ramal): también alimentador.
-          // Distancia al OBB (no al centro) — en un canal largo el centro queda lejos.
-          for (const b of bajLl) {
-            if (b.x == null || b.y == null) continue;
-            if (distPuntoACanalOBB(obb, b.x, b.y) < 2) alimentadores.add(String(b.id));
-          }
-          canalBajantes[String(c.id)] = [...alimentadores].map(etiquetaBaj).sort();
-          // Insumo por bajante asociado (código SIN piso = clave del override + área dibujada).
-          canalAlimInfo[String(c.id)] = [...alimentadores]
-            .map((idB) => {
-              const b = bajLl.find((x) => String(x.id) === idB);
-              return {
-                code: String(b?.code || b?.id || idB).split('-')[0],
-                areaDib: b?.area_m2 || 0,
-              };
-            })
-            .sort((a, b) => a.code.localeCompare(b.code));
-          // Área = Σ una sola vez por bajante alimentador.
-          let area = 0;
-          for (const idB of alimentadores) {
-            const b = bajLl.find((x) => String(x.id) === idB);
-            area += b?.area_m2 || 0;
-          }
-          if (area > 0) canalAreaMap[String(c.id)] = area;
+  const {
+    areaAcumMap,
+    drawnCanalGlyphs,
+    canalAreaMap,
+    canalBajantes,
+    canalAlimIds,
+    canalAlimInfo,
+  } = useMemo(() => {
+    const canalAreaMap: Record<string, number> = {};
+    // Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1".
+    const canalBajantes: Record<string, string[]> = {};
+    const canalAlimIds: Record<string, string[]> = {};
+    // Insumo por bajante para el canal (REQ canal = Σ bajantes): código (clave del override
+    // en bajantesLl) + área dibujada — la fila del canal deriva SU Parcial/Otras/Material de
+    // estos con la MISMA fórmula de la tabla de bajantes (areaParcialBajanteLl).
+    const canalAlimInfo: Record<string, Array<{ code: string; areaDib: number }>> = {};
+    const map: Record<string, number> = {};
+    const glyphs: (RawElement & { piso: string; planId: string | number })[] = [];
+    for (const plan of plans || []) {
+      if (plan.nivel == null) continue;
+      const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
+        TRAZOS_PREFIX + plan.id,
+        null,
+      );
+      if (!raw) continue;
+      let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
+      if (typeof raw === 'string') {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          continue;
         }
       }
-      return {
-        areaAcumMap: map,
-        drawnCanalGlyphs: glyphs,
-        canalAreaMap,
-        canalBajantes,
-        canalAlimInfo,
+      const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
+      map[String(plan.nivel)] = totalArea;
+      for (const b of data.bajantes || []) {
+        if (b.tipo === 'canal' && b.net === 'll')
+          glyphs.push({ ...b, piso: String(plan.nivel), planId: plan.id });
+      }
+      // Área de cada canal = Σ áreas de los bajantes que le descargan (orig. usuario): un
+      // ramal ll con un extremo dentro del OBB del canal trae el área de SU bajante
+      // (el otro extremo a ≤2 px del glifo). OBB válido en diagonal (canalMarco).
+      const canales = (data.bajantes || []).filter(
+        (
+          b,
+        ): b is RawElement & {
+          base?: number;
+          longitud?: number;
+          angulo?: number;
+          x?: number;
+          y?: number;
+        } => b.tipo === 'canal' && b.net === 'll',
+      );
+      const bajLl = (data.bajantes || []).filter(
+        (b): b is RawElement & { area_m2?: number; x?: number; y?: number } =>
+          b.net === 'll' && b.tipo === 'bajante',
+      );
+      // Asociaciones MANUALES (checkboxes panel/menú, ped. usuario): bajante→canal (canalId)
+      // y ramal→canal (esCanalId, con bajante resoluble por extremo). Se SUMAN a la
+      // derivación geométrica para que la columna "Canales asociados" del chequeo y los
+      // chips del canal reflejen también lo asociado a mano.
+      const manuales: Record<string, Set<string>> = {};
+      const manualDe = (idCanal: string): Set<string> =>
+        (manuales[String(idCanal)] ||= new Set<string>());
+      for (const b of bajLl) {
+        const rawB = b as RawElement & { canalId?: string | null };
+        if (rawB.canalId) manualDe(rawB.canalId).add(String(b.id));
+      }
+      for (const r of data.ramales || []) {
+        const rawR = r as RawElement & { esCanalId?: string | null };
+        if (!rawR.esCanalId || !r.pts || r.pts.length < 2) continue;
+        for (const b of bajLl) {
+          if (b.x == null || b.y == null) continue;
+          if (r.pts.some((p) => Math.hypot(p[0] - (b.x as number), p[1] - (b.y as number)) < 2)) {
+            manualDe(rawR.esCanalId).add(String(b.id));
+            break;
+          }
+        }
+      }
+      const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
+      const etiquetaBaj = (idB: string): string => {
+        const bb = bajLl.find((x) => String(x.id) === idB);
+        const sector = String(bb?.code || bb?.id || idB).split('-')[0];
+        return `${sector}-${pisoCorto(Number(plan.nivel))}`;
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [plans, trazosTick]);
+      for (const c of canales) {
+        if (c.x == null || c.y == null) continue;
+        const obb = canalOBBDe(pxPerCm, c);
+        const enCanal = (pt: number[]): boolean => puntoEnCanalOBB(obb, pt[0], pt[1], 4);
+        // SET de bajantes alimentadores (un bajante con VARIOS ramales al canal cuenta UNA vez).
+        // Semilla = asociaciones manuales; la geometría agrega las dibujadas.
+        const alimentadores = new Set<string>(manuales[String(c.id)] || []);
+        for (const r of data.ramales || []) {
+          if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
+          // Cualquier DIRECCIÓN: un extremo dentro del canal y el OTRO sobre el glifo del
+          // bajante (el ramal puede salir del canal o llegar a él — esCanalId marca salida).
+          const pS = r.pts[0];
+          const pE = r.pts[r.pts.length - 1];
+          const pBaj = enCanal(pS) ? pE : enCanal(pE) ? pS : null;
+          if (!pBaj) continue;
+          for (const b of bajLl) {
+            if (b.x == null || b.y == null) continue;
+            if (Math.hypot(pBaj[0] - b.x, pBaj[1] - b.y) < 2) {
+              alimentadores.add(String(b.id));
+              break;
+            }
+          }
+        }
+        // Bajante dibujado directamente sobre el canal (sin ramal): también alimentador.
+        // Distancia al OBB (no al centro) — en un canal largo el centro queda lejos.
+        for (const b of bajLl) {
+          if (b.x == null || b.y == null) continue;
+          if (distPuntoACanalOBB(obb, b.x, b.y) < 2) alimentadores.add(String(b.id));
+        }
+        canalBajantes[String(c.id)] = [...alimentadores].map(etiquetaBaj).sort();
+        canalAlimIds[String(c.id)] = [...alimentadores].map((idB) => `${String(plan.id)}|${idB}`);
+        // Insumo por bajante asociado (código SIN piso = clave del override + área dibujada).
+        canalAlimInfo[String(c.id)] = [...alimentadores]
+          .map((idB) => {
+            const b = bajLl.find((x) => String(x.id) === idB);
+            return {
+              code: String(b?.code || b?.id || idB).split('-')[0],
+              areaDib: b?.area_m2 || 0,
+            };
+          })
+          .sort((a, b) => a.code.localeCompare(b.code));
+        // Área = Σ una sola vez por bajante alimentador.
+        let area = 0;
+        for (const idB of alimentadores) {
+          const b = bajLl.find((x) => String(x.id) === idB);
+          area += b?.area_m2 || 0;
+        }
+        if (area > 0) canalAreaMap[String(c.id)] = area;
+      }
+    }
+    return {
+      areaAcumMap: map,
+      drawnCanalGlyphs: glyphs,
+      canalAreaMap,
+      canalBajantes,
+      canalAlimIds,
+      canalAlimInfo,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, trazosTick]);
 
   const canalesLlAuto = useMemo(() => {
     const manualMap = new Map<string, CanalLL>();
@@ -505,10 +538,11 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       updCanalLL,
       updCanalSector,
       canalBajantes,
+      canalAlimIds,
       conRecolectora,
       setConRecolectora,
     }),
-    [bajantesLl, canalesLlAuto, canalBajantes, conRecolectora],
+    [bajantesLl, canalesLlAuto, canalBajantes, canalAlimIds, conRecolectora],
   );
 
   return <RainwaterContext.Provider value={value}>{children}</RainwaterContext.Provider>;

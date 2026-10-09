@@ -105,6 +105,12 @@ const FixturesPanel_S3: React.CSSProperties = {
 };
 
 import type { ProbedElement } from './pdfViewer/tramoEditor/context';
+import { useRainwater } from '../context/RainwaterContext';
+import {
+  ASSOC_CHECKBOX_STYLE,
+  ASSOC_ROW_STYLE,
+} from './pdfViewer/drawingElementContextMenu/canalesAsociados';
+import { camposAsocManual } from '../lib/PlanoEngine/PlanoEngineSelectionEdit';
 
 /** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
  *  JSON contra el valor en disco. Con deleteEmpty, un next vacío ELIMINA la clave (borrar UDs
@@ -331,6 +337,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   const isAfAc = netId === 'af' || netId === 'ac';
   const visible = isHidro || isGas;
 
+  const { bajantesLl } = useRainwater();
   const unitKey = useMemo(() => unitFor(netId), [netId]);
   const unidadLbl = unitKey ? (UNIDAD as Record<string, string>)[unitKey] : '';
 
@@ -1651,6 +1658,249 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (target) decAccGas(target);
   };
 
+  // AGUAS LLUVIAS (ped. usuario): el panel no cuantifica aparatos, pero SÍ muestra
+  // secciones de asociación (canales/ramales) cuando hay un bajante o ramal seleccionado.
+  if (netId === 'll') {
+    const esBaj = selElement?.tipo === 'bajante' || selElement?.id?.startsWith('BALL');
+    const esCanalSel = selElement?.tipo === 'canal';
+    const esRamal = !!selElement?.pts && !esBaj;
+    if (!esBaj && !esRamal && !esCanalSel) {
+      return (
+        <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+          <div
+            style={{
+              fontFamily: "'Geist',monospace",
+              fontSize: 12,
+              color: 'var(--txt3)',
+              marginBottom: 6,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            }}
+          >
+            Asociaciones
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--txt2)',
+              fontFamily: "'Geist',monospace",
+              padding: '4px 0',
+            }}
+          >
+            Selecciona un bajante, canal o ramal de aguas lluvias.
+          </div>
+        </div>
+      );
+    }
+    const targetIdLl = selElement?.id || '';
+    const canales =
+      engineRef?.current?.bajantes.filter((b) => b.tipo === 'canal' && b.net === 'll') || [];
+    const ramalesLl =
+      engineRef?.current?.ramales.filter(
+        (r) => r.net === 'll' && r.tipo !== 'tributario' && r.id !== targetIdLl,
+      ) || [];
+    const bajObj = esBaj
+      ? engineRef?.current?.bajantes.find((b) => b.id === targetIdLl)
+      : undefined;
+    if (esBaj && !bajObj) {
+      return (
+        <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+          <div style={{ fontSize: 12, color: 'var(--txt3)', fontFamily: "'Geist',monospace" }}>
+            Bajante no encontrado en el motor.
+          </div>
+        </div>
+      );
+    }
+    const accentNet = NETS.find((n) => n.id === netId)?.col || '#2563EB';
+    const canalActual = bajObj?.canalId || '';
+    const Qq = (() => {
+      // Q = C·I·A/3600 con los insumos del override del bajante (misma fórmula del chequeo).
+      const bll = bajantesLl.find(
+        (x) => x.bajante === (bajObj?.code || targetIdLl) || x.id === targetIdLl,
+      );
+      if (!bll || (bll.areaAcumulada ?? 0) <= 0) return 0;
+      return (
+        Math.round(
+          (((bll.coeficienteC || 0) * (bll.intensidad || 0) * bll.areaAcumulada) / 3600) * 100,
+        ) / 100
+      );
+    })();
+    const toggleCanalBaj = (canalId: string): void => {
+      const eng = engineRef?.current;
+      const baj = bajObj;
+      if (!eng || !baj) return;
+      eng.updateElementById(baj.id, { canalId: canalActual === canalId ? null : canalId });
+      eng.render();
+      eng._markDirty();
+      if (selElement) setSelElement?.({ ...selElement } as never);
+    };
+    const toggleRamalBaj = (rid: string): void => {
+      const eng = engineRef?.current;
+      const baj = bajObj;
+      if (!eng || !baj) return;
+      const r = eng.ramales.find((x) => x.id === rid);
+      if (!r) return;
+      const ya = (baj.recibeDeIds || []).includes(rid);
+      eng.updateElementById(baj.id, camposAsocManual(baj, rid, !ya));
+      eng.render();
+      eng._markDirty();
+      if (selElement) setSelElement?.({ ...selElement } as never);
+    };
+    const toggleCanalRamal = (canalId: string): void => {
+      const eng = engineRef?.current;
+      if (!eng) return;
+      const r = eng.ramales.find((x) => x.id === targetIdLl);
+      if (!r) return;
+      const ya = r.esCanalId === canalId;
+      eng.updateElementById(targetIdLl, { esCanalId: ya ? null : canalId });
+      eng.render();
+      eng._markDirty();
+      if (selElement) setSelElement?.({ ...selElement } as never);
+    };
+    const fila = (
+      checked: boolean,
+      label: string,
+      onToggle: () => void,
+      key: string,
+    ): React.ReactNode => (
+      <label key={key} style={{ ...ASSOC_ROW_STYLE, marginBottom: 2 }}>
+        <input type="checkbox" checked={checked} onChange={onToggle} style={ASSOC_CHECKBOX_STYLE} />
+        {label}
+      </label>
+    );
+    return (
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: 'var(--txt3)',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Asociaciones aguas lluvias
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: accentNet,
+            fontFamily: "'Geist',monospace",
+            fontWeight: 700,
+            marginBottom: 8,
+          }}
+        >
+          {targetLbl}
+        </div>
+        {esBaj && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', marginBottom: 3 }}>
+              CANALES ASOCIADOS
+            </div>
+            {canales.length === 0 && (
+              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
+                Sin canales dibujados en este piso.
+              </div>
+            )}
+            {canales.map((c) =>
+              fila(canalActual === c.id, c.code || c.id, () => toggleCanalBaj(c.id), c.id),
+            )}
+            <div
+              style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', margin: '8px 0 3px' }}
+            >
+              RAMALES ASOCIADOS
+            </div>
+            {ramalesLl.length === 0 && (
+              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
+                Sin ramales de lluvias dibujados.
+              </div>
+            )}
+            {ramalesLl.map((r) =>
+              fila(
+                (bajObj?.recibeDeIds || []).includes(r.id),
+                r.id,
+                () => toggleRamalBaj(r.id),
+                'r_' + r.id,
+              ),
+            )}
+            {esBaj && bajObj && Qq > 0 && (
+              <div
+                style={{
+                  fontSize: 12,
+                  fontFamily: 'var(--mono)',
+                  color: 'var(--txt2)',
+                  marginTop: 8,
+                }}
+              >
+                Q = <b style={{ color: 'var(--acc)' }}>{Qq.toFixed(2)}</b> L/s
+              </div>
+            )}
+          </>
+        )}
+        {esRamal && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', marginBottom: 3 }}>
+              CANALES ASOCIADOS
+            </div>
+            {canales.length === 0 && (
+              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
+                Sin canales dibujados en este piso.
+              </div>
+            )}
+            {canales.map((c) => {
+              const r = engineRef?.current?.ramales.find((x) => x.id === targetIdLl);
+              return fila(
+                r?.esCanalId === c.id,
+                c.code || c.id,
+                () => toggleCanalRamal(c.id),
+                c.id,
+              );
+            })}
+          </>
+        )}
+        {esCanalSel && (
+          <>
+            {/* BIDIRECCIONAL (orig. usuario): la asociación vive en b.canalId — desde el canal
+                se ven y editan los mismos bajantes que marcaron desde el lado del bajante. */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', marginBottom: 3 }}>
+              BAJANTES ASOCIADOS
+            </div>
+            {(() => {
+              const bajantesLlSel =
+                engineRef?.current?.bajantes.filter(
+                  (b) => b.net === 'll' && b.tipo === 'bajante',
+                ) || [];
+              if (bajantesLlSel.length === 0)
+                return (
+                  <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
+                    Sin bajantes de lluvias dibujados.
+                  </div>
+                );
+              return bajantesLlSel.map((b) =>
+                fila(
+                  b.canalId === targetIdLl,
+                  b.code || b.id,
+                  () => {
+                    const eng = engineRef?.current;
+                    if (!eng) return;
+                    eng.updateElementById(b.id, {
+                      canalId: b.canalId === targetIdLl ? null : targetIdLl,
+                    });
+                    eng.render();
+                    eng._markDirty();
+                    if (selElement) setSelElement?.({ ...selElement } as never);
+                  },
+                  'b_' + b.id,
+                ),
+              );
+            })()}
+          </>
+        )}
+      </div>
+    );
+  }
+
   if (!visible) {
     return (
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
@@ -1684,6 +1934,112 @@ const AparatosPanel = memo(function AparatosPanel_({
   const netObj = NETS.find((n) => n.id === netId);
   const accent = netObj?.col || '#2563EB';
 
+  // ASOCIACIONES af/ac (orig. usuario): tramo → MONTANTES ASOCIADOS; montante → RAMALES
+  // ASOCIADOS (la inversa). Mismo bidireccionalismo (recibeDeIds/alimentaIds), mismo estilo
+  // de fila con caja que las secciones del menú contextual.
+  const secMontantes = (() => {
+    if (!(netId === 'af' || netId === 'ac')) return null;
+    const eng = engineRef.current;
+    if (!eng || !targetId) return null;
+    const esMontanteSel = selElement?.tipo === 'montante';
+    const esRamalSel = !!selElement?.pts && !esMontanteSel;
+    if (!esMontanteSel && !esRamalSel) return null;
+
+    const refrescar = (): void => {
+      if (selElement) setSelElement?.({ ...selElement } as never);
+    };
+    const toggleBaj = (bajId: string, ramalId: string): void => {
+      const vivo = eng.bajantes.find((x) => x.id === bajId);
+      if (!vivo) return;
+      const ya =
+        (vivo.recibeDeIds || []).includes(ramalId) || (vivo.alimentaIds || []).includes(ramalId);
+      eng.updateElementById(bajId, camposAsocManual(vivo, ramalId, !ya));
+      eng.render();
+      eng._markDirty();
+      refrescar();
+    };
+
+    const filas = esMontanteSel
+      ? eng.ramales
+          .filter((r) => r.net === netId && r.tipo !== 'tributario')
+          .map((r) => ({ id: r.id, label: r.label || r.id }))
+      : eng.bajantes
+          .filter((b) => b.net === netId && b.tipo === 'montante')
+          .map((m) => ({ id: m.id, label: m.code || m.id }));
+    if (filas.length === 0) return null;
+    const titulo = esMontanteSel ? 'RAMALES ASOCIADOS' : 'MONTANTES ASOCIADOS';
+
+    return (
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: 'var(--txt3)',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Asociaciones
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: accent,
+            fontFamily: "'Geist',monospace",
+            fontWeight: 700,
+            marginBottom: 8,
+          }}
+        >
+          {targetLbl}
+        </div>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#849495',
+            marginBottom: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          {titulo}
+        </div>
+        {filas.map((f) => {
+          const activo = esMontanteSel
+            ? (() => {
+                const vivo = eng.bajantes.find((x) => x.id === targetId);
+                return (
+                  (vivo?.recibeDeIds || []).includes(f.id) ||
+                  (vivo?.alimentaIds || []).includes(f.id)
+                );
+              })()
+            : (() => {
+                const vivo = eng.bajantes.find((x) => x.id === f.id);
+                return (
+                  (vivo?.recibeDeIds || []).includes(targetId) ||
+                  (vivo?.alimentaIds || []).includes(targetId)
+                );
+              })();
+          return (
+            <label key={f.id} style={{ ...ASSOC_ROW_STYLE, marginBottom: 2 }}>
+              <input
+                type="checkbox"
+                checked={activo}
+                onChange={() =>
+                  toggleBaj(esMontanteSel ? targetId : f.id, esMontanteSel ? f.id : targetId)
+                }
+                style={ASSOC_CHECKBOX_STYLE}
+              />
+              {f.label}
+            </label>
+          );
+        })}
+      </div>
+    );
+  })();
+
   const headerLbl = isGas ? ' Aparatos' : ' Aparatos';
   const isActive = !!targetId;
   const containerStyle = {
@@ -1694,160 +2050,171 @@ const AparatosPanel = memo(function AparatosPanel_({
   };
 
   return (
-    <div ref={containerRef} style={containerStyle}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        style={FixturesPanel_S1}
-      >
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}
+    <>
+      {secMontantes}
+      <div ref={containerRef} style={containerStyle}>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          style={FixturesPanel_S1}
         >
-          <span
+          <div
             style={{
-              display: 'inline-block',
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: isActive ? accent : 'transparent',
-              border: isActive ? 'none' : '1px solid #3a494a',
-              flexShrink: 0,
-              boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
-            }}
-          />
-          <span style={FixturesPanel_S2}>{headerLbl}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: accent,
-              fontFamily: "'Geist',monospace",
-              background: 'rgba(37,99,235,.1)',
-              border: `1px solid ${accent}55`,
-              borderRadius: 3,
-              padding: '1px 7px',
-              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              minWidth: 0,
+              overflow: 'hidden',
             }}
           >
-            {totalStr} {unidadLbl}
-          </span>
-          <span
-            style={{
-              fontSize: 12,
-              color: 'var(--txt2)',
-              fontFamily: "'Geist',monospace",
-              flexShrink: 0,
-            }}
+            <span
+              style={{
+                display: 'inline-block',
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: isActive ? accent : 'transparent',
+                border: isActive ? 'none' : '1px solid #3a494a',
+                flexShrink: 0,
+                boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
+              }}
+            />
+            <span style={FixturesPanel_S2}>{headerLbl}</span>
+          </div>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}
           >
-            {open ? '▾' : '▸'}
-          </span>
-        </div>
-      </button>
-
-      {open && (
-        <div style={{ padding: '0 10px 10px' }}>
-          {targetId ? (
-            <div style={FixturesPanel_S3}>
-              <span>
-                Asignado a <span style={{ color: accent, fontWeight: 700 }}>{targetLbl}</span>
-              </span>
-            </div>
-          ) : (
-            <div
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: accent,
+                fontFamily: "'Geist',monospace",
+                background: 'rgba(37,99,235,.1)',
+                border: `1px solid ${accent}55`,
+                borderRadius: 3,
+                padding: '1px 7px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {totalStr} {unidadLbl}
+            </span>
+            <span
               style={{
                 fontSize: 12,
                 color: 'var(--txt2)',
                 fontFamily: "'Geist',monospace",
-                textAlign: 'center',
-                marginBottom: 6,
-                padding: '2px 0',
+                flexShrink: 0,
               }}
             >
-              {rejillasArea
-                ? 'Selecciona un área de sector en el dibujo'
-                : isGas
-                  ? 'Selecciona un tramo de gas'
-                  : 'Selecciona un ramal/bajante en el dibujo'}
-            </div>
-          )}
+              {open ? '▾' : '▸'}
+            </span>
+          </div>
+        </button>
 
-          <div
-            style={{
-              opacity: targetId ? 1 : 0.45,
-              pointerEvents: targetId ? 'auto' : 'none',
-              transition: 'opacity .25s',
-              filter: targetId ? 'none' : 'grayscale(.6)',
-            }}
-          >
-            {selElement?.tipo === 'contador' ? (
+        {open && (
+          <div style={{ padding: '0 10px 10px' }}>
+            {targetId ? (
+              <div style={FixturesPanel_S3}>
+                <span>
+                  Asignado a <span style={{ color: accent, fontWeight: 700 }}>{targetLbl}</span>
+                </span>
+              </div>
+            ) : (
               <div
                 style={{
                   fontSize: 12,
-                  color: 'var(--txt3)',
-                  padding: '24px 0',
+                  color: 'var(--txt2)',
+                  fontFamily: "'Geist',monospace",
                   textAlign: 'center',
+                  marginBottom: 6,
+                  padding: '2px 0',
                 }}
               >
-                La sección de aparatos no aplica para el contador.
+                {rejillasArea
+                  ? 'Selecciona un área de sector en el dibujo'
+                  : isGas
+                    ? 'Selecciona un tramo de gas'
+                    : 'Selecciona un ramal/bajante en el dibujo'}
               </div>
-            ) : (
-              <>
-                <FixtureGrid
-                  items={items}
-                  currentMap={currentMap}
-                  unitKey={unitKey}
-                  unidadLbl={unidadLbl}
-                  inc={inc}
-                  dec={dec}
-                  targetId={targetId}
-                  accent={accent}
-                  disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys && ownTotal <= 0}
-                />
-
-                {items.length === 0 && (
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--txt3)',
-                      padding: '24px 0',
-                      textAlign: 'center',
-                    }}
-                  >
-                    No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
-                  </div>
-                )}
-              </>
             )}
-          </div>
-        </div>
-      )}
 
-      {isAfAc && selElement?.tipo !== 'calentador' && (
-        <AccesoriosSection
-          targetId={targetId}
-          curHidro={curHidro}
-          incAcc={accCodoInc}
-          decAcc={accCodoDec}
-          accent={accent}
-          items={afAcAccItems}
-          merge={AFAC_CODO_MERGE}
-        />
-      )}
-      {isGas && !rejillasArea && (
-        <AccesoriosSection
-          targetId={targetId}
-          curHidro={{ accesorios: gasAccMap }}
-          incAcc={incAccGas}
-          decAcc={gasCodoDec}
-          accent={accent}
-          items={gasAccItems}
-          merge={GAS_CODO_MERGE}
-        />
-      )}
-    </div>
+            <div
+              style={{
+                opacity: targetId ? 1 : 0.45,
+                pointerEvents: targetId ? 'auto' : 'none',
+                transition: 'opacity .25s',
+                filter: targetId ? 'none' : 'grayscale(.6)',
+              }}
+            >
+              {selElement?.tipo === 'contador' ? (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--txt3)',
+                    padding: '24px 0',
+                    textAlign: 'center',
+                  }}
+                >
+                  La sección de aparatos no aplica para el contador.
+                </div>
+              ) : (
+                <>
+                  <FixtureGrid
+                    items={items}
+                    currentMap={currentMap}
+                    unitKey={unitKey}
+                    unidadLbl={unidadLbl}
+                    inc={inc}
+                    dec={dec}
+                    targetId={targetId}
+                    accent={accent}
+                    disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys && ownTotal <= 0}
+                  />
+
+                  {items.length === 0 && (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--txt3)',
+                        padding: '24px 0',
+                        textAlign: 'center',
+                      }}
+                    >
+                      No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isAfAc && selElement?.tipo !== 'calentador' && (
+          <AccesoriosSection
+            targetId={targetId}
+            curHidro={curHidro}
+            incAcc={accCodoInc}
+            decAcc={accCodoDec}
+            accent={accent}
+            items={afAcAccItems}
+            merge={AFAC_CODO_MERGE}
+          />
+        )}
+        {isGas && !rejillasArea && (
+          <AccesoriosSection
+            targetId={targetId}
+            curHidro={{ accesorios: gasAccMap }}
+            incAcc={incAccGas}
+            decAcc={gasCodoDec}
+            accent={accent}
+            items={gasAccItems}
+            merge={GAS_CODO_MERGE}
+          />
+        )}
+      </div>
+    </>
   );
 });
 export default AparatosPanel;

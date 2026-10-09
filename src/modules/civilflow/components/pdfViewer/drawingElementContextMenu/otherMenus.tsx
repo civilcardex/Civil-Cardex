@@ -5,6 +5,7 @@ import {
   MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context';
+import { ASSOC_CHECKBOX_STYLE, ASSOC_ROW_STYLE } from './canalesAsociados';
 import { ElementCodeEditor } from './elementEditor';
 import {
   ramalesDelCanal,
@@ -168,6 +169,42 @@ export function CanalMenu() {
           />
         </div>
       ))}
+      {/* BIDIRECCIONAL (orig. usuario): la asociación canal↔bajante vive en b.canalId —
+          desde el canal se ven y marcan los mismos bajantes que desde el lado del bajante. */}
+      <div style={{ padding: '0 8px 8px' }}>
+        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bajantes asociados</div>
+        {(() => {
+          const bajantesLlDir = (engine?.bajantes || []).filter(
+            (b) => b.net === 'll' && b.tipo === 'bajante',
+          );
+          if (bajantesLlDir.length === 0)
+            return (
+              <div style={{ ...MENU_SELECT_STYLE, border: 'none', color: 'var(--txt3)' }}>
+                Sin bajantes de lluvias dibujados.
+              </div>
+            );
+          return bajantesLlDir.map((b) => (
+            <label key={b.id} style={ASSOC_ROW_STYLE}>
+              <input
+                type="checkbox"
+                style={ASSOC_CHECKBOX_STYLE}
+                checked={b.canalId === canal.id}
+                onChange={() => {
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  eng.updateElementById(b.id, {
+                    canalId: b.canalId === canal.id ? null : canal.id,
+                  });
+                  eng.render();
+                  eng._markDirty();
+                  setContextMenuState((prev) => (prev ? { ...prev } : null));
+                }}
+              />
+              {b.code || b.id}
+            </label>
+          ));
+        })()}
+      </div>
       <div style={{ padding: '0 8px 8px' }}>
         <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales del canal</div>
         {canalRamales.length === 0 && (

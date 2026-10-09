@@ -157,7 +157,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 title="Chequeo de capacidad del bajante de aguas negras."
                 scope="col"
                 className="col-h ok"
-                colSpan={8}
+                colSpan={7}
                 style={{ textAlign: 'center', padding: '1px 2px', fontSize: 9.5 }}
               >
                 BAJANTES
@@ -274,15 +274,6 @@ const BajantesTable = memo(function BajantesTable_() {
                 Caudal <br /> máximo
               </th>
               <th
-                title="Uso de la capacidad del bajante: debe ser ≤ 100%."
-                scope="col"
-                className="col-h ok"
-                rowSpan={2}
-                style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
-              >
-                Q/Qmáx
-              </th>
-              <th
                 title="Velocidad terminal del flujo en el tubo (m/s). Unidad: m/s."
                 scope="col"
                 className="col-h ok"
@@ -309,7 +300,9 @@ const BajantesTable = memo(function BajantesTable_() {
                 rowSpan={2}
                 style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9.5 }}
               >
-                Vel. <br /> Aire
+                Velocidad
+                <br />
+                aire
               </th>
               <th
                 title="Fricción usada para el cálculo de la ventilación."
@@ -452,7 +445,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 return (
                   <tr>
                     <td
-                      colSpan={24}
+                      colSpan={23}
                       style={{
                         textAlign: 'center',
                         color: 'var(--txt3)',
@@ -896,12 +889,6 @@ const BajantesTable = memo(function BajantesTable_() {
                       style={{ fontFamily: 'var(--mono)', fontSize: 9.5, padding: '1px 1px' }}
                     >
                       {QmaxB > 0 ? QmaxB.toFixed(2) : '—'}
-                    </td>
-                    <td
-                      className="c"
-                      style={{ fontFamily: 'var(--mono)', fontSize: 9.5, padding: '1px 1px' }}
-                    >
-                      {res.usoQmax > 0 ? `${(res.usoQmax * 100).toFixed(2)}%` : '—'}
                     </td>
                     <td className="c" style={{ fontSize: 9.5, padding: '1px 1px' }}>
                       {Vt > 0 ? Vt.toFixed(2) : '—'}

@@ -252,7 +252,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Qo
+                    Q<sub>o</sub>
                   </th>
                   <th
                     title="Velocidad de salida/capacidad asociada al diámetro (m/s). Unidad: m/s."
@@ -261,7 +261,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Vo
+                    V<sub>o</sub>
                   </th>
                   <th
                     title="Uso de la capacidad: debe ser ≤ 100%."
@@ -270,7 +270,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Q/Qo
+                    Q/Q<sub>o</sub>
                   </th>
                   <th
                     title="Velocidad real del flujo con el diámetro propuesto (m/s). Unidad: m/s."
@@ -279,7 +279,9 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    V. real
+                    Velocidad
+                    <br />
+                    real
                   </th>
                   <th
                     title="O.K. si la velocidad está dentro del rango permitido."
@@ -288,7 +290,9 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Chequeo velocidad
+                    Chequeo
+                    <br />
+                    velocidad
                   </th>
                   <th
                     title="Tirante crítico del flujo (mm). Unidad: mm."
@@ -297,7 +301,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Yc
+                    Y<sub>c</sub>
                   </th>
                   <th
                     title="Tirante normal del flujo (mm). Unidad: mm."
@@ -306,7 +310,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Yn
+                    Y<sub>n</sub>
                   </th>
                   <th
                     title="Número de Froude del flujo (subcrítico si es menor a 1)."
@@ -333,7 +337,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Ymax
+                    Y<sub>max</sub>
                   </th>
                   <th
                     title="Comparación del tirante normal contra el crítico."
@@ -342,7 +346,7 @@ export default function DisenoLluvias() {
                     rowSpan={2}
                     style={TH_HDR}
                   >
-                    Yn vs Yc
+                    Y<sub>n</sub> vs Y<sub>c</sub>
                   </th>
                   <th
                     title="Esfuerzo de arrastre sobre el tubo; debe superar el mínimo de autolimpieza."
