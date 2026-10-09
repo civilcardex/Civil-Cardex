@@ -313,6 +313,8 @@ export function TablaTipologias({
           )}
           {filas.map((f, i) => {
             const res = resultados[i];
+            // Hidratación async: filas puede adelantar a resultados → sin guard crashea el render.
+            if (!res) return null;
             const [cl, ccol] = clasifRecinto(res);
             const insuficiente =
               !f.mono && res.estado !== 'vacio' && res.modo !== 'estanco' && res.V < res.Vreq;

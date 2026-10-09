@@ -30,17 +30,17 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
   const { plans } = usePlans();
   const [tick, setTick] = useState(0);
 
+  // Sin polling: los eventos ya avisan de cada cambio real de trazos. El setInterval
+  // de 3s re-computaba la tabla eternamente aunque nada cambiara (ponytail).
   useEffect(() => {
     const handler = () => setTick((t) => t + 1);
     window.addEventListener('storage', handler);
     window.addEventListener('civilflow_san_sync_changed', handler);
     window.addEventListener('civilflow_hidro_sync_changed', handler);
-    const iv = setInterval(handler, 3000);
     return () => {
       window.removeEventListener('storage', handler);
       window.removeEventListener('civilflow_san_sync_changed', handler);
       window.removeEventListener('civilflow_hidro_sync_changed', handler);
-      clearInterval(iv);
     };
   }, []);
 
