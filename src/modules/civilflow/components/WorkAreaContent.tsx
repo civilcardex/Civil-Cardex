@@ -32,7 +32,7 @@ interface WorkAreaContentProps {
 }
 
 export default function WorkAreaContent({ state }: WorkAreaContentProps) {
-  const { tab, redes } = state;
+  const { tab, redes, redesRestoreDone, redesActivas } = state;
 
   return (
     <RainwaterProvider>
@@ -56,7 +56,12 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
           </Suspense>
         </section>
       )}
-      {tab === 'redes' && state.redesActivas.length > 0 && (
+      {tab === 'redes' && !redesRestoreDone && (
+        <div role="status" style={{ padding: 24, color: 'var(--txt2)', fontSize: 13 }}>
+          Cargando redes…
+        </div>
+      )}
+      {tab === 'redes' && redesRestoreDone && redesActivas.length > 0 && (
         <section
           aria-label="Diseño de red"
           style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}

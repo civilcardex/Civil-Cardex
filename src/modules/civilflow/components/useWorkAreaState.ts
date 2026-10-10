@@ -61,13 +61,50 @@ function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject
   return [val, set, ref];
 }
 
+const UI_TAB_KEY = 'civilflow_ui_tab';
+const UI_RED_KEY = 'civilflow_ui_red';
+const UI_PAGES_KEY = 'civilflow_ui_pages';
+
+/** Lee UI persistida sin romper fuera del navegador (tests/SSR). */
+function leerUI(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Persiste UI sin romper fuera del navegador. */
+function guardarUI(key: string, val: string): void {
+  try {
+    sessionStorage.setItem(key, val);
+  } catch {
+    /* sin almacenamiento: la pestaña solo vive en memoria */
+  }
+}
+
+/** Páginas por red guardadas como un solo JSON. */
+function leerPaginas(): Record<string, number> {
+  try {
+    const raw = sessionStorage.getItem(UI_PAGES_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, number>;
+  } catch {
+    /* cae a defaults */
+  }
+  return {};
+}
+
 export function useWorkAreaState() {
   const tramosCtx = useTramos();
   const projectCtx = useProject();
   const apparatusCtx = useApparatus();
   const plansCtx = usePlans();
 
-  const [tab, setTab] = useState<string>('info');
+  // La pestaña/red/páginas sobreviven a remontajes del subtree (el rebote a 'info' en el
+  // primer ingreso a redes era un remount con estado efímero, no una recarga real).
+  const paginasInit = useMemo(() => leerPaginas(), []);
+  const [tab, setTab] = useState<string>(() => leerUI(UI_TAB_KEY) || 'info');
+  useEffect(() => guardarUI(UI_TAB_KEY, tab), [tab]);
 
   // Ayuda contextual (orig. usuario): reporta módulo + pestaña activa a la navbar. La sub-pestaña
   // de isometría la reporta IsometriaTab (hijo, reporta más específico): el padre la OMITE y al
@@ -173,7 +210,8 @@ export function useWorkAreaState() {
     return () => flushRedes();
   }, [flushRedes]);
 
-  const [redActiva, setRedActiva] = useState<string>('san');
+  const [redActiva, setRedActiva] = useState<string>(() => leerUI(UI_RED_KEY) || 'san');
+  useEffect(() => guardarUI(UI_RED_KEY, redActiva), [redActiva]);
 
   // Ayuda contextual por RED (orig. usuario): en Diseño de redes el panel muestra SOLO la
   // ayuda de la red/equipo activo (cf:redes:<red>).
@@ -188,12 +226,29 @@ export function useWorkAreaState() {
     });
     return () => setAyudaContext(null);
   }, [tab, redActiva]);
-  const [sanPage, setSanPage] = useState<number>(1);
-  const [llPage, setLlPage] = useState<number>(1);
-  const [afPage, setAfPage] = useState<number>(1);
-  const [acPage, setAcPage] = useState<number>(1);
-  const [gasPage, setGasPage] = useState<number>(1);
-  const [rciPage, setRciPage] = useState<number>(1);
+  const pag = (red: string): number => {
+    const v = paginasInit[red];
+    return Number.isInteger(v) && (v as number) >= 1 ? (v as number) : 1;
+  };
+  const [sanPage, setSanPage] = useState<number>(() => pag('san'));
+  const [llPage, setLlPage] = useState<number>(() => pag('ll'));
+  const [afPage, setAfPage] = useState<number>(() => pag('af'));
+  const [acPage, setAcPage] = useState<number>(() => pag('ac'));
+  const [gasPage, setGasPage] = useState<number>(() => pag('gas'));
+  const [rciPage, setRciPage] = useState<number>(() => pag('rci'));
+  useEffect(() => {
+    guardarUI(
+      UI_PAGES_KEY,
+      JSON.stringify({
+        san: sanPage,
+        ll: llPage,
+        af: afPage,
+        ac: acPage,
+        gas: gasPage,
+        rci: rciPage,
+      }),
+    );
+  }, [sanPage, llPage, afPage, acPage, gasPage, rciPage]);
 
   // Re-clamp: al apagar la subred 'rejillas', el total de gas baja (7→5) y una página
   // 5/6 quedaba fuera de rango (PageNav pintaba "6 de 4"). Encender 'rejillas' NO mueve
@@ -532,6 +587,7 @@ export function useWorkAreaState() {
     setTab,
     redes,
     setRedes,
+    redesRestoreDone,
     redesActivas,
     redActiva,
     setRedActiva,

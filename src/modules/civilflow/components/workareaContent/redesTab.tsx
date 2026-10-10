@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import PageNav from '../PageNav';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicData';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
@@ -21,7 +21,19 @@ const RejillasVentilacion = lazy(() => import('../RejillasVentilacion'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
 
-const FALLBACK = <div style={{ minHeight: 400 }} />;
+const FALLBACK = (
+  <div role="status" style={{ minHeight: 400, padding: 24, color: 'var(--txt2)', fontSize: 13 }}>
+    Cargando diseño…
+  </div>
+);
+
+/** Precalienta los chunks de la primera página de cada red (el primer ingreso por sesión
+ *  descargaba el chunk en frío y el fallback vacío parecía una recarga). */
+export function prefetchRedesInicial(): void {
+  prefetchSan(1);
+  prefetchLl(1);
+  prefetchAfAc(1);
+}
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -98,6 +110,12 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
     tramosAc,
   } = state;
 
+  // La red restaurada de sesión puede estar apagada: corrige una vez al montar.
+  useEffect(() => {
+    if (!redes.has(redActiva) && redesActivas.length > 0) setRedActiva(redesActivas[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
       className="fu"
@@ -113,7 +131,15 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             key={r.id}
             onClick={() => setRedActiva(r.id)}
             onMouseEnter={() => {
-              if (r.id === 'bom' || r.id === 'ep' || r.id === 'gas') prefetchHeavy();
+              if (r.id === 'san') prefetchSan(1);
+              else if (r.id === 'll') prefetchLl(1);
+              else if (r.id === 'af' || r.id === 'ac') prefetchAfAc(1);
+              else if (r.id === 'bom' || r.id === 'ep' || r.id === 'gas') prefetchHeavy();
+            }}
+            onFocus={() => {
+              if (r.id === 'san') prefetchSan(1);
+              else if (r.id === 'll') prefetchLl(1);
+              else if (r.id === 'af' || r.id === 'ac') prefetchAfAc(1);
             }}
             aria-pressed={redActiva === r.id}
             aria-label={r.lbl}

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { NAV_TABS } from '../constants';
+import { getActiveProyectoId } from '../services/storageService';
 
 interface WorkAreaSidebarProps {
   tab: string;
@@ -17,13 +18,21 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
               type="button"
               className={`ntab ${t.id === 'visor' ? '' : tab === t.id ? 'on' : ''}`}
               onClick={() => {
-                if (t.id === 'visor') navigate('/visor');
-                else setTab(t.id);
+                if (t.id === 'visor') {
+                  const pid = getActiveProyectoId();
+                  navigate(pid ? `/visor/${pid}` : '/visor');
+                } else setTab(t.id);
               }}
               onMouseEnter={() => {
                 if (t.id === 'datos') import('./DesignParameters');
                 else if (t.id === 'crit') import('./Regulations/Regulations');
                 else if (t.id === 'iso') import('./workarea/IsometryTab');
+                else if (t.id === 'redes')
+                  import('./workareaContent/redesTab').then((m) => m.prefetchRedesInicial());
+              }}
+              onFocus={() => {
+                if (t.id === 'redes')
+                  import('./workareaContent/redesTab').then((m) => m.prefetchRedesInicial());
               }}
               style={t.id === 'redes' ? { flex: '0 0 auto', padding: '12px 28px' } : {}}
             >
