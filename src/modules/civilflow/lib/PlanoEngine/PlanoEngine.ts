@@ -115,6 +115,7 @@ import {
   podarReferenciasStaleDeBajantes,
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
+import { sellarAsociacionesCanalBajante } from './canalAssociation';
 import { fixVentCodoToTee } from './ventCodoTeeFix';
 import { healTribPadres } from './junctionAutoSplit';
 import { PlanoHistory } from './PlanoHistory';
@@ -675,6 +676,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
       // Poda de referencias stale (después del auto-detect: fin/ini ya saneados) — un trazo
       // recortado/borrado deja de figurar en recibeDeIds/alimentaIds de la caja/bajante.
       podarReferenciasStaleDeBajantes(this);
+      // Sello automático canal↔bajante por ramal (solo suma campos explícitos para que
+      // menús/paneles lo muestren; nunca lanza).
+      sellarAsociacionesCanalBajante(this);
     } catch (e) {
       devError('PlanoEngine _markDirty autoDetect:', e);
     }
@@ -1110,6 +1114,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       );
       autoDetectRamalConnections(this);
       podarReferenciasStaleDeBajantes(this);
+      sellarAsociacionesCanalBajante(this);
       ensureRpCntRamal(this);
       if (this._history) {
         this._history.saveSnapshot();

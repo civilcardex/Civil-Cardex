@@ -536,6 +536,47 @@ export function ramalesDelCanal(engine: IPlanoEngineCore, canalId: string): Plan
   return engine.ramales.filter((r) => r.esCanalId === canalId);
 }
 
+/** Sello automático canal↔bajante por ramal (orig. usuario): un ramal ll con un extremo
+ *  dentro del OBB del canal y el otro sobre un bajante ll registra la asociación en los
+ *  campos explícitos (b.canalId; esCanalId si nace del canal) para que menús y paneles la
+ *  muestren sin marcar a mano. Solo SUMA (nunca limpia ni pisa un valor manual distinto:
+ *  quitarla es mover el trazo), mismo criterio geométrico que las tablas (≤2). Corre tras
+ *  autoDetect+poda en _markDirty/carga; nunca lanza (escala inválida = no-op). */
+export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
+  let pxPerCm = 0;
+  try {
+    pxPerCm = pxPerCmDe(engine);
+  } catch {
+    return;
+  }
+  const canales = (engine.bajantes || []).filter((b) => b.tipo === 'canal' && b.net === 'll');
+  if (canales.length === 0) return;
+  const bajantes = (engine.bajantes || []).filter((b) => b.net === 'll' && b.tipo === 'bajante');
+  if (bajantes.length === 0) return;
+  for (const c of canales) {
+    if (c.x == null || c.y == null) continue;
+    const obb = canalOBBDe(pxPerCm, c);
+    const enCanal = (pt: number[]): boolean => puntoEnCanalOBB(obb, pt[0], pt[1], 4);
+    for (const r of engine.ramales || []) {
+      if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
+      const pS = r.pts[0];
+      const pE = r.pts[r.pts.length - 1];
+      const naceDelCanal = enCanal(pS);
+      if (!naceDelCanal && !enCanal(pE)) continue;
+      const pBaj = naceDelCanal ? pE : pS;
+      const b = bajantes.find(
+        (bb) =>
+          bb.x != null &&
+          bb.y != null &&
+          Math.hypot(pBaj[0] - (bb.x as number), pBaj[1] - (bb.y as number)) < 2,
+      );
+      if (!b) continue;
+      if (!b.canalId) b.canalId = c.id;
+      if (naceDelCanal && !r.esCanalId) r.esCanalId = c.id;
+    }
+  }
+}
+
 /** Asociación EXPLÍCITA ramal-de-canal → bajante (panel derecho / menú contextual): mueve la
  *  membresía en recibeDeIds de los bajantes ll y refleja fin. null = desasociar. Cualquier
  *  llegada previa dibujada a otro bajante se reemplaza. */
