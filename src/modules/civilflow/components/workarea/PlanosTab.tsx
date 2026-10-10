@@ -5,6 +5,7 @@ import {
   loadTrazosFromDB,
   loadFromStorage,
   saveToStorage,
+  getActiveProyectoId,
 } from '../../services/storageService';
 import {
   TRAZOS_PREFIX,
@@ -382,7 +383,8 @@ function PlanosTab({ state }: PlanosTabProps) {
         // ignorar
       }
     }
-    navigate('/visor');
+    const pid = getActiveProyectoId();
+    navigate(pid ? `/visor/${pid}` : '/visor');
   };
 
   // Modo calibración: PlanoConfigurator a ancho completo con botón volver
@@ -661,7 +663,8 @@ function PlanosTab({ state }: PlanosTabProps) {
                         // ignorar
                       }
                     }
-                    navigate('/visor');
+                    const pid = getActiveProyectoId();
+                    navigate(pid ? `/visor/${pid}` : '/visor');
                   }}
                   style={PlanosTab_S4}
                 >

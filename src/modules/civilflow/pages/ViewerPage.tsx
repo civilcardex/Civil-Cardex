@@ -1,20 +1,51 @@
-import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useContext,
+  useSyncExternalStore,
+} from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../../../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
 import { RainwaterProvider } from '../context/RainwaterContext';
-import { usePlans } from '../context/PlansContext';
-import { useProject } from '../context/ProjectContext';
+import { PlansContext, usePlans } from '../context/PlansContext';
+import {
+  ProjectContext,
+  PROY_DEFAULTS,
+  useProject,
+  type Proyecto,
+} from '../context/ProjectContext';
 import { usePageMeta } from '../../../hooks/usePageMeta';
-import { loadFromStorage } from '../services/storageService';
+import { devError } from '../../../utils/devError';
+import { fetchProyectos } from '../services/projectsService';
+import { loadProyectoData } from '../services/projectDataService';
+import { clearLocalWorkspace } from '../services/workspaceReset';
+import { clearAllPDFs } from '../services/idbStorage';
+import { getActiveProyectoId, saveToStorage, loadFromStorage } from '../services/storageService';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos';
 import {
   ACTIVE_NETS_KEY,
+  ACTIVE_PROYECTO_ID_KEY,
   NETS_CHANGED_EVENT,
+  PLANS_META_KEY,
   VISOR_ACTIVE_PLAN_ID_KEY,
   VISOR_ACTIVE_INDEX_KEY,
 } from '../constants/storage-keys';
 import { setAyudaContext } from '../../../components/help/helpContext';
+import type { Piso, PlanMeta } from '../lib/shared/projectTypes';
+
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const CARGANDO_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: '100%',
+  color: 'var(--txt2)',
+  fontSize: 13,
+};
 
 // Module-level store for PDF ready state (useSyncExternalStore pattern).
 // Arranca en `false` para que el overlay de carga pinte en el primer render cuando ya
@@ -168,6 +199,79 @@ export default function ViewerPage() {
   const dropdownNavRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
 
+  // Ruteo /visor/:proyectoId? (igual que el área de trabajo): sin parámetro se redirige al
+  // uuid activo (cosmético, SPA); con id distinto se cambia de proyecto con reload completo.
+  const { proyectoId } = useParams<{ proyectoId?: string }>();
+  const wantsCrudo = proyectoId ?? null;
+  const wantsId = wantsCrudo && ES_UUID.test(wantsCrudo) ? wantsCrudo : null;
+  const enlaceLegacy = wantsCrudo != null && wantsId == null;
+  const projectCtx = useContext(ProjectContext);
+  const plansCtx = useContext(PlansContext);
+  const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
+  const [switching, setSwitching] = useState(switchPendiente);
+  const switchingRef = useRef(false);
+
+  useEffect(() => {
+    if (proyectoId != null) return;
+    const activeId = getActiveProyectoId();
+    if (!activeId) return;
+    let alive = true;
+    void (async () => {
+      try {
+        const rows = await fetchProyectos();
+        if (!alive) return;
+        const found = rows.find((r) => r.id === activeId);
+        if (found) navigate(`/visor/${found.id}`, { replace: true });
+      } catch {
+        /* cosmético: sin redirect */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [proyectoId, navigate]);
+
+  useEffect(() => {
+    if (wantsId == null || switchingRef.current) return;
+    if (wantsId === getActiveProyectoId()) return;
+    switchingRef.current = true;
+    void (async () => {
+      await Promise.resolve();
+      const idAnterior = getActiveProyectoId();
+      setSwitching(true);
+      try {
+        projectCtx?.pauseCloudSync();
+        plansCtx?.pauseCloudSync();
+        const data = await loadProyectoData(wantsId);
+        if (!data) throw new Error('proyecto-no-encontrado-o-sin-acceso');
+        clearLocalWorkspace();
+        await clearAllPDFs();
+        plansCtx?.resetPlans();
+        projectCtx?.resetToDefaults();
+        localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, wantsId);
+        if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
+        const proyToSave =
+          data?.proy && Object.keys(data.proy).length
+            ? ({ ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) } as Proyecto)
+            : PROY_DEFAULTS;
+        saveToStorage('civilflow_proy', proyToSave);
+        if (data?.mats && Object.keys(data.mats).length) saveToStorage('civilflow_mats', data.mats);
+        if (data?.profs && data.profs.length) saveToStorage('civilflow_profs', data.profs);
+        if (data?.crits && data.crits.length) saveToStorage('civilflow_crits', data.crits);
+        if (data?.redesActivas && data.redesActivas.length)
+          saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
+        if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
+        window.location.replace(`/visor/${wantsId}`);
+      } catch (e) {
+        devError('abrir proyecto desde URL (visor):', e);
+        if (idAnterior) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, idAnterior);
+        window.location.replace(idAnterior ? '/visor' : '/perfil');
+        return;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsId]);
+
   useEffect(() => {
     if (!dropdownOpen) return;
     const onDocMouseDown = (e: MouseEvent) => {
@@ -301,6 +405,47 @@ export default function ViewerPage() {
       return () => clearTimeout(t);
     }
   }, [plans.length, hasFilesReady]);
+
+  // Enlace con id no-uuid (numérico legacy): banner + link al perfil, SIN montar visor.
+  if (enlaceLegacy) {
+    return (
+      <main
+        className="h-full"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
+          height: '100%',
+          padding: 24,
+          textAlign: 'center',
+        }}
+      >
+        <div
+          role="alert"
+          style={{
+            padding: '10px 16px',
+            background: 'rgba(180, 83, 9, 0.15)',
+            border: '1px solid rgba(217, 119, 6, 0.4)',
+            borderRadius: 6,
+            color: '#fbbf24',
+            fontSize: 13,
+          }}
+        >
+          Este enlace corresponde a una versión antigua del proyecto — ábrelo desde tu lista de
+          proyectos.
+        </div>
+        <Link to="/perfil" style={{ color: 'var(--acc, #4d8ff7)', fontSize: 13, fontWeight: 600 }}>
+          Ir a mis proyectos
+        </Link>
+      </main>
+    );
+  }
+
+  if (switchPendiente || switching) {
+    return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>

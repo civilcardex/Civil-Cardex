@@ -128,7 +128,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/visor"
+                  path="/visor/:proyectoId?"
                   element={
                     <ErrorBoundary>
                       <CivilFlowProviders>
