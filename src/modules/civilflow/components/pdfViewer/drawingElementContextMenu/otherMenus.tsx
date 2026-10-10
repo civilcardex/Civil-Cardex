@@ -5,7 +5,7 @@ import {
   MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context';
-import { ASSOC_CHECKBOX_STYLE, ASSOC_ROW_STYLE } from './canalesAsociados';
+import { ASSOC_CHECKBOX_STYLE, ASSOC_ROW_STYLE, MaterialesCanalSection } from './canalesAsociados';
 import { ElementCodeEditor } from './elementEditor';
 import {
   ramalesDelCanal,
@@ -117,7 +117,7 @@ function CanalDimInput({
 }
 
 export function CanalMenu() {
-  const { element, engineRef, selElement, setSelElement, setContextMenuState } =
+  const { element, engineRef, selElement, setSelElement, setContextMenuState, activeNet } =
     useDrawingElementContextMenu();
   const canal = element as PlanoBajante;
   const engine = engineRef.current;
@@ -169,6 +169,10 @@ export function CanalMenu() {
           />
         </div>
       ))}
+      <MaterialesCanalSection
+        ctx={{ engineRef, activeNet, setContextMenuState }}
+        canalId={canal.id}
+      />
       {/* BIDIRECCIONAL (orig. usuario): la asociación canal↔bajante vive en b.canalId —
           desde el canal se ven y marcan los mismos bajantes que desde el lado del bajante. */}
       <div style={{ padding: '0 8px 8px' }}>

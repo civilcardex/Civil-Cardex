@@ -1,4 +1,7 @@
 import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
+import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials';
+import { useMaterialesLl } from '../../../context/RainwaterContext';
+import { usePlans } from '../../../context/PlansContext';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
@@ -35,6 +38,16 @@ export function BajanteEditor({
 }) {
   // Caudal calculado (mismo qMap que Diseño de red lluvias) para bajantes ll.
   const caudalLl = useCaudalLl(selElement, activeNet, engineRef.current?._loadedPlanId);
+  // Material de cubierta (misma fuente que Chequeo bajantes ll).
+  const matLl = useMaterialesLl();
+  const { plans: planesLl } = usePlans();
+  const nivelLl = planesLl?.find(
+    (p) => String(p.id) === String(engineRef.current?._loadedPlanId ?? ''),
+  )?.nivel;
+  const chipLl =
+    selElement.net === 'll' && nivelLl != null
+      ? matLl?.chipDeBajante(selElement.code || selElement.id, nivelLl)
+      : null;
   // H (m) solo en montantes AF/AC/gas (orig. usuario) — el resto de redes no lo usa.
   const mostrarH = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
   const mostrarArea = (engineRef.current?.areas || []).some((a) => a.net === selElement.net);
@@ -87,7 +100,14 @@ export function BajanteEditor({
                 >
                   Caudal (LPS)
                 </div>
-                <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+                <div
+                  style={{
+                    ...READONLY_CENTER_STYLE,
+                    display: 'flex',
+                    alignItems: 'center',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
                   {caudalLl != null ? caudalLl.toFixed(2) : '—'}
                 </div>
               </div>
@@ -357,8 +377,38 @@ export function BajanteEditor({
             </div>
           )}
         </div>
-        {/* Fila 2: Llenado | Área en montantes; Área | Caudal en ll, Área sola en san/vent. */}
-        {mostrarArea && (
+        {/* Material de cubierta (ll): arriba de Área/Caudal, misma fuente que la tabla. */}
+        {selElement.net === 'll' && chipLl && (
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#9BA8AA',
+                fontFamily: "'Geist',monospace",
+                marginBottom: 2,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              Material de cubierta
+            </div>
+            <select
+              value={matLl?.materialDeBajante(chipLl) ?? ''}
+              aria-label="Material de cubierta del bajante"
+              onChange={(e) => matLl?.setMaterialBajante(chipLl, e.target.value)}
+              style={SELECT_STYLE}
+            >
+              <option value="">—</option>
+              {MATERIALES_CUBIERTA_LL.map((m) => (
+                <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                  {m.abrev}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {/* Fila 2: Llenado | Área en montantes; Área sola en san/vent (ll va abajo con Caudal). */}
+        {mostrarArea && selElement.net !== 'll' && (
           <div style={{ display: 'flex', gap: 8 }}>
             {mostrarH && (
               <div style={{ flex: 1 }}>
@@ -428,8 +478,41 @@ export function BajanteEditor({
           </div>
         )}
         {selElement.net === 'll' && !mostrarH && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            <div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {mostrarArea && (
+              <div style={{ flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: '#9BA8AA',
+                    fontFamily: "'Geist',monospace",
+                    marginBottom: 2,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  Área
+                </div>
+                <select
+                  value={selElement.area_m2 ? String(selElement.area_m2) : ''}
+                  aria-label="Área"
+                  onChange={(e) => {
+                    handleUpdateSel('area_m2', parseFloat(e.target.value) || 0);
+                  }}
+                  style={SELECT_STYLE}
+                >
+                  <option value="">— Sin área —</option>
+                  {(engineRef.current?.areas || [])
+                    .filter((a) => a.net === selElement.net)
+                    .map((a) => (
+                      <option key={a.id} value={a.areaM2}>
+                        {a.label} · {a.areaM2} m²
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
                   fontSize: 12,
@@ -438,11 +521,19 @@ export function BajanteEditor({
                   marginBottom: 2,
                   textTransform: 'uppercase',
                   letterSpacing: 1,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 Caudal (LPS)
               </div>
-              <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+              <div
+                style={{
+                  ...READONLY_CENTER_STYLE,
+                  display: 'flex',
+                  alignItems: 'center',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {caudalLl != null ? caudalLl.toFixed(2) : '—'}
               </div>
             </div>
@@ -462,7 +553,14 @@ export function BajanteEditor({
             >
               Caudal (LPS)
             </div>
-            <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+            <div
+              style={{
+                ...READONLY_CENTER_STYLE,
+                display: 'flex',
+                alignItems: 'center',
+                whiteSpace: 'nowrap',
+              }}
+            >
               {caudalLl != null ? caudalLl.toFixed(2) : '—'}
             </div>
           </div>

@@ -143,8 +143,15 @@ const CanalDimField = React.memo(function CanalDimField({
 export default function ChequeoCanalesLluvias() {
   const [edit, setEdit] = React.useState(false);
   const tablaRef = useStickyThead2Offset();
-  const { canalesLl, updCanalLL, updCanalSector, conRecolectora, canalBajantes, updBajanteLL } =
-    useRainwater();
+  const {
+    canalesLl,
+    updCanalLL,
+    updCanalSector,
+    conRecolectora,
+    canalBajantes,
+    updBajanteLL,
+    setMaterialCanal,
+  } = useRainwater();
   const { plans } = usePlans();
   // ── Canal = Σ bajantes asociados (REQ: fuente única = overrides de los BAJANTES) ──
   // Con bajantes asociados, las celdas Parcial/Otras/Material cubierta muestran el valor
@@ -198,24 +205,14 @@ export default function ChequeoCanalesLluvias() {
     updCanalLL(id, field, val);
   };
 
-  // Campos de TEXTO (materiales): mismo routing que onCanalField — override por sector en
-  // filas fromCanal, estado en manuales. Los materiales viven en el override, no en el glifo.
-  // REQ canal = Σ bajantes: "Material cubierta" con asociados escribe en TODOS los bajantes
-  // asociados (la celda muestra el material común derivado; mezclados → '' placeholder).
-  const onCanalStrField = (id: string, field: string, val: string) => {
-    const row = canalesLl.find((c) => c.id === id);
-    if (!row) return;
-    if (field === 'materialCubierta' && asociadosDe(row.drawId).length > 0) {
-      for (const chip of asociadosDe(row.drawId)) {
-        updBajanteLL(codigoDeChip(chip), 'materialCubierta', val);
-      }
-      return;
-    }
-    if (row.fromCanal && row.sector) {
-      updCanalSector(row.sector, field, val);
-      return;
-    }
-    updCanalLL(id, field, val);
+  // Campos de TEXTO (materiales): routing único del contexto (setMaterialCanal — la
+  // misma que usan panel y menú). Los materiales viven en el override, no en el glifo.
+  const onCanalStrField = (
+    id: string,
+    field: 'materialCubierta' | 'materialCanal',
+    val: string,
+  ) => {
+    setMaterialCanal(id, field, val);
   };
 
   // D propuesto por CHIP de bajante asociado ("BALL1-P1"): el chequeo de embocadura usa el

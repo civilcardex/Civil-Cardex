@@ -1,10 +1,16 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
+import { useMaterialesLl } from '../../../context/RainwaterContext';
+import {
+  MATERIALES_CANAL_LL,
+  MATERIALES_CUBIERTA_LL,
+} from '../../../constants/engineeringDataMaterials';
 import {
   MENU_CHECK_LABEL_STYLE,
   MENU_CHECK_ROW_STYLE,
   MENU_GRID_2COL_STYLE,
+  MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
   type ContextMenuState,
 } from './context';
@@ -155,6 +161,90 @@ export function CanalesAsociadosRamalSection({
           </label>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Desplegable "Material de cubierta" del bajante ll — MISMA fuente que Chequeo
+ *  bajantes (si alimenta un canal, este lo deriva y quedan iguales). Null-safe: sin
+ *  provider o sin nivel del plano no se muestra. */
+export function MaterialCubiertaBajSection({
+  ctx,
+  bajEl,
+  planNivel,
+}: {
+  ctx: CtxMin;
+  bajEl: { id: string; code?: string };
+  planNivel: unknown;
+}) {
+  const mat = useMaterialesLl();
+  if (!mat || planNivel == null) return null;
+  const chip = mat.chipDeBajante(bajEl.code || bajEl.id, planNivel);
+  return (
+    <div style={ASSOC_SECTION_STYLE}>
+      <div style={ASSOC_LABEL_STYLE}>Material de cubierta</div>
+      <select
+        aria-label="Material de cubierta del bajante"
+        value={mat.materialDeBajante(chip)}
+        onChange={(e) => {
+          mat.setMaterialBajante(chip, e.target.value);
+          refrescarMenu(ctx.setContextMenuState);
+        }}
+        style={MENU_SELECT_STYLE}
+      >
+        <option value="">—</option>
+        {MATERIALES_CUBIERTA_LL.map((m) => (
+          <option key={m.nombre} value={m.nombre} title={m.nombre}>
+            {m.abrev}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** Desplegables de materiales del canal ll — MISMA fuente que Chequeo canales: la
+ *  cubierta con asociados hace fan-out a los bajantes; el de canal va al override. */
+export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId: string }) {
+  const mat = useMaterialesLl();
+  if (!mat) return null;
+  const row = mat.canalDe(canalId);
+  if (!row) return null;
+  const sel = (
+    label: string,
+    field: 'materialCubierta' | 'materialCanal',
+    opts: { nombre: string; abrev: string }[],
+    val: string,
+  ) => (
+    <div key={field} style={{ paddingTop: 4 }}>
+      <div style={ASSOC_LABEL_STYLE}>{label}</div>
+      <select
+        aria-label={label}
+        value={val}
+        onChange={(e) => {
+          mat.setMaterialCanal(canalId, field, e.target.value);
+          refrescarMenu(ctx.setContextMenuState);
+        }}
+        style={MENU_SELECT_STYLE}
+      >
+        <option value="">—</option>
+        {opts.map((m) => (
+          <option key={m.nombre} value={m.nombre} title={m.nombre}>
+            {m.abrev}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+  return (
+    <div style={ASSOC_SECTION_STYLE}>
+      {sel(
+        'Material de cubierta',
+        'materialCubierta',
+        MATERIALES_CUBIERTA_LL,
+        row.materialCubierta ?? '',
+      )}
+      {sel('Material del canal', 'materialCanal', MATERIALES_CANAL_LL, row.materialCanal ?? '')}
     </div>
   );
 }

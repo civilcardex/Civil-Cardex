@@ -3,6 +3,7 @@ import {
   useMemo,
   useEffect,
   useRef,
+  useCallback,
   createContext,
   useContext,
   type ReactNode,
@@ -14,9 +15,9 @@ import {
   puntoEnCanalOBB,
   distPuntoACanalOBB,
 } from '../lib/PlanoEngine/canalAssociation';
-import { pisoCorto } from '../constants';
-import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
-import { loadFromStorage, getActiveProyectoId } from '../services/storageService';
+import { pisoCorto, pisoCortoLoose } from '../constants/helpers';
+import { TRAZOS_PREFIX, ACTIVE_NETS_KEY, LL_OVERRIDES_MIRROR_KEY } from '../constants/storage-keys';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import {
   loadRainwaterOverrides,
   saveRainwaterOverrides,
@@ -89,6 +90,8 @@ interface RainwaterContextValue {
   delCanalLL: (id: string) => void;
   updCanalLL: (id: string, field: string, val: string | number) => void;
   updCanalSector: (sector: string, field: string, val: string | number) => void;
+  /** Routing único de materiales de canal (tablas + panel + menú). `ref` = drawId u id. */
+  setMaterialCanal: (ref: string, field: 'materialCubierta' | 'materialCanal', mat: string) => void;
   /** Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1". */
   canalBajantes: Record<string, string[]>;
   canalAlimIds: Record<string, string[]>;
@@ -100,13 +103,53 @@ interface RainwaterContextValue {
  *  p. ej. useCaudalLl del visor, que debe funcionar también sin RainwaterProvider. */
 export const RainwaterContext = createContext<RainwaterContextValue | null>(null);
 
+interface OverridesMirror {
+  proyectoId?: string | null;
+  bajantes?: BajanteLL[];
+  canales?: CanalLL[];
+}
+
+/** Lee el espejo local del proyecto activo (puente entre instancias del provider). */
+function leerEspejo(): OverridesMirror | null {
+  const pid = getActiveProyectoId();
+  if (!pid) return null;
+  const m = loadFromStorage<OverridesMirror | null>(LL_OVERRIDES_MIRROR_KEY, null);
+  if (!m || m.proyectoId !== pid) return null;
+  return m;
+}
+
+/** Unión por clave estable (local manda, BD solo aporta ausentes): evita que una carga
+ *  de BD anterior al último flush pise ediciones recién hechas en otra instancia. */
+function unirOverrides<T extends { id: string }>(
+  locales: T[],
+  clave: (t: T) => string,
+  remotos: T[],
+): T[] {
+  if (locales.length === 0) return remotos;
+  if (remotos.length === 0) return locales;
+  const vistas = new Set(locales.map(clave));
+  return [...locales, ...remotos.filter((r) => !vistas.has(clave(r)))];
+}
+
 /** Provee los cálculos de drenaje pluvial: bajantes LL, canales LL, toggle de recolectora. Se auto-puebla desde los datos del dibujo. */
 export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const { plans } = usePlans();
 
-  const [bajantesLl, setBajantesLl] = useState<BajanteLL[]>([]);
+  const [bajantesLl, setBajantesLl] = useState<BajanteLL[]>(() => leerEspejo()?.bajantes ?? []);
 
-  const [canalesLl, setCanalesLl] = useState<CanalLL[]>([]);
+  const [canalesLl, setCanalesLl] = useState<CanalLL[]>(() => leerEspejo()?.canales ?? []);
+
+  // Espejo local sincrónico en cada cambio: el roundtrip por BD (debounce + race al
+  // navegar) perdía ediciones del visor antes de que las tablas las leyeran.
+  useEffect(() => {
+    const pid = getActiveProyectoId();
+    if (!pid) return;
+    saveToStorage(LL_OVERRIDES_MIRROR_KEY, {
+      proyectoId: pid,
+      bajantes: bajantesLl,
+      canales: canalesLl,
+    });
+  }, [bajantesLl, canalesLl]);
 
   // Persistencia de overrides manuales (gap 5): se restauran desde la BD al montar y se
   // sincronizan debounced (600 ms). Lo autocalculado sigue derivándose del dibujo; estas
@@ -118,8 +161,10 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     let cancelled = false;
     void loadRainwaterOverrides(proyectoId).then((overrides) => {
       if (cancelled) return;
-      if (overrides.bajantes.length > 0) setBajantesLl(overrides.bajantes);
-      if (overrides.canales.length > 0) setCanalesLl(overrides.canales);
+      // Unión (local manda): una carga de BD anterior al último flush no pisa ediciones
+      // recién hechas en otra instancia del provider (visor→tablas).
+      setBajantesLl((prev) => unirOverrides(prev, (t) => t.bajante || t.id, overrides.bajantes));
+      setCanalesLl((prev) => unirOverrides(prev, (t) => t.sector || t.id, overrides.canales));
     });
     return () => {
       cancelled = true;
@@ -128,12 +173,20 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     };
   }, []);
 
+  // Snapshot fresco + bandera para el flush de desmonte (los closures nacen viejos).
+  const pendientesRef = useRef({ bajantesLl, canalesLl });
+  const sucioRef = useRef(false);
+  useEffect(() => {
+    pendientesRef.current = { bajantesLl, canalesLl };
+  }, [bajantesLl, canalesLl]);
   useEffect(() => {
     const proyectoId = getActiveProyectoId();
     if (!proyectoId) return;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    sucioRef.current = true;
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;
+      sucioRef.current = false;
       void saveRainwaterOverrides(proyectoId, bajantesLl, canalesLl);
     }, 600);
     return () => {
@@ -141,6 +194,21 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       saveTimerRef.current = null;
     };
   }, [bajantesLl, canalesLl]);
+  // Flush SOLO al desmontar (cambio visor→tablas): antes el timer se cancelaba y la edición
+  // del dibujo nunca llegaba a BD — la tabla (provider nuevo, lee BD) no la mostraba.
+  // Efecto con [] para no disparar en cada edición (mataría el debounce).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(
+    () => () => {
+      if (!sucioRef.current) return;
+      sucioRef.current = false;
+      const proyectoId = getActiveProyectoId();
+      if (!proyectoId) return;
+      const p = pendientesRef.current;
+      void saveRainwaterOverrides(proyectoId, p.bajantesLl, p.canalesLl);
+    },
+    [],
+  );
 
   const [conRecolectora, setConRecolectora] = useState<boolean>(() => {
     try {
@@ -526,6 +594,38 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       );
     });
 
+  // Ref fresca para setMaterialCanal: es plain-const fuera del memo de value, así que sin
+  // esto leería canalesLlAuto/canalBajantes del primer render (fan-out ciego = la regresión
+  // "el material no se refleja": con asociados vacíos caía al override del canal y la fila,
+  // que deriva de los bajantes, nunca cambiaba).
+  const datosRef = useRef({ canalesLlAuto, canalBajantes });
+  useEffect(() => {
+    datosRef.current = { canalesLlAuto, canalBajantes };
+  }, [canalesLlAuto, canalBajantes]);
+  /** Routing único de materiales de canal (tablas + panel + menú): con asociados, la
+   *  cubierta hace fan-out a los bajantes (la fila deriva el común y ambos quedan con el
+   *  mismo material); sin ellos, override propio/sector. `ref` = drawId del glifo o id. */
+  const setMaterialCanal = useCallback(
+    (ref: string, field: 'materialCubierta' | 'materialCanal', mat: string): void => {
+      const { canalesLlAuto, canalBajantes } = datosRef.current;
+      const row = canalesLlAuto.find((c) => c.drawId === ref || c.id === ref);
+      if (!row) return;
+      if (field === 'materialCubierta' && row.drawId) {
+        const asoc = canalBajantes[row.drawId] || [];
+        if (asoc.length > 0) {
+          for (const chip of asoc) updBajanteLL(chip.split('-')[0], 'materialCubierta', mat);
+          return;
+        }
+      }
+      if (row.fromCanal && row.sector) {
+        updCanalSector(row.sector, field, mat);
+        return;
+      }
+      updCanalLL(row.id, field, mat);
+    },
+    [],
+  );
+
   const value = useMemo(
     () => ({
       bajantesLl,
@@ -537,12 +637,13 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       delCanalLL,
       updCanalLL,
       updCanalSector,
+      setMaterialCanal,
       canalBajantes,
       canalAlimIds,
       conRecolectora,
       setConRecolectora,
     }),
-    [bajantesLl, canalesLlAuto, canalBajantes, canalAlimIds, conRecolectora],
+    [bajantesLl, canalesLlAuto, canalBajantes, canalAlimIds, conRecolectora, setMaterialCanal],
   );
 
   return <RainwaterContext.Provider value={value}>{children}</RainwaterContext.Provider>;
@@ -553,4 +654,52 @@ export function useRainwater() {
   const ctx = useContext(RainwaterContext);
   if (!ctx) throw new Error('useRainwater must be used within RainwaterProvider');
   return ctx;
+}
+
+/** Desplegables de material ll para panel derecho y menú contextual — MISMA fuente y
+ *  routing que las tablas Chequeo bajantes/canales (bidireccional en vivo).
+ *  Null-safe (como useCaudalLl): sin provider devuelve null y la UI oculta los
+ *  desplegables en vez de romper. */
+export function useMaterialesLl() {
+  const ctx = useContext(RainwaterContext);
+  return useMemo(() => {
+    if (!ctx) return null;
+    /** Chip "BALL1-P1" del bajante (etiqueta visible, como las tablas). */
+    const chipDeBajante = (codeBase: string, nivel: unknown): string =>
+      `${String(codeBase).split('-')[0]}-${pisoCortoLoose(nivel)}`;
+    /** Clave del override: CÓDIGO BASE sin piso — las tablas, el caudal y el canal leen
+     *  por code/id base. Con fallback a huérfanas con sufijo (formato viejo del panel). */
+    const claveDe = (chip: string): string => chip.split('-')[0];
+    const huerfanaDe = (base: string): string | null => {
+      const h = ctx.bajantesLl.find(
+        (m) => m.bajante != null && m.bajante !== base && m.bajante.startsWith(`${base}-`),
+      );
+      return h ? h.id : null;
+    };
+    const materialDeBajante = (chip: string): string => {
+      const base = claveDe(chip);
+      const propia = ctx.bajantesLl.find(
+        (m) => m.id === base || m.bajante === base,
+      )?.materialCubierta;
+      if (propia != null) return propia;
+      const hId = huerfanaDe(base);
+      if (hId) return ctx.bajantesLl.find((m) => m.id === hId)?.materialCubierta ?? '';
+      return '';
+    };
+    const setMaterialBajante = (chip: string, mat: string): void => {
+      const base = claveDe(chip);
+      const huerfana = huerfanaDe(base);
+      if (huerfana) ctx.delBajanteLL(huerfana);
+      ctx.updBajanteLL(base, 'materialCubierta', mat);
+    };
+    const canalDe = (drawId: string): CanalLL | undefined =>
+      ctx.canalesLl.find((c) => c.drawId === drawId);
+    return {
+      chipDeBajante,
+      materialDeBajante,
+      setMaterialBajante,
+      canalDe,
+      setMaterialCanal: ctx.setMaterialCanal,
+    };
+  }, [ctx]);
 }

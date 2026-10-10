@@ -8,7 +8,11 @@ import {
   moverAsociacionCanal,
   normalizarCanal,
 } from '../../../lib/PlanoEngine/canalAssociation';
-import { RainwaterContext } from '../../../context/RainwaterContext';
+import { RainwaterContext, useMaterialesLl } from '../../../context/RainwaterContext';
+import {
+  MATERIALES_CANAL_LL,
+  MATERIALES_CUBIERTA_LL,
+} from '../../../constants/engineeringDataMaterials';
 
 function CanalNumField({
   label,
@@ -56,6 +60,7 @@ export function CanalTramoEditor() {
   // Intensidad vive en los overrides del RainwaterContext (no en el glifo) — acceso
   // null-safe: el panel también corre en árboles sin provider (tests).
   const rw = useContext(RainwaterContext);
+  const matLl = useMaterialesLl();
   // Refresco local tras cambiar una asociación ramal→bajante (vive en los bajantes, no en el
   // canal seleccionado — sin esto el panel mostraría el desplegable viejo hasta re-seleccionar).
   const [, setAssocTick] = useState(0);
@@ -117,6 +122,52 @@ export function CanalTramoEditor() {
       </div>
 
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        {/* Materiales (misma fuente que Chequeo canales): arriba de Base|Altura. */}
+        {(() => {
+          const row = matLl?.canalDe(selElement.id);
+          if (!matLl || !row) return null;
+          const sel = (
+            label: string,
+            field: 'materialCubierta' | 'materialCanal',
+            opts: { nombre: string; abrev: string }[],
+            val: string,
+          ) => (
+            <div key={field}>
+              <div style={fieldLabel}>{label}</div>
+              <select
+                aria-label={label}
+                value={val}
+                onChange={(e) => matLl.setMaterialCanal(selElement.id, field, e.target.value)}
+                style={SELECT_STYLE}
+              >
+                <option value="">—</option>
+                {opts.map((m) => (
+                  <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                    {m.abrev}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+          return (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              {sel(
+                'Material cubierta',
+                'materialCubierta',
+                MATERIALES_CUBIERTA_LL,
+                row.materialCubierta ?? '',
+              )}
+              {sel('Material canal', 'materialCanal', MATERIALES_CANAL_LL, row.materialCanal ?? '')}
+            </div>
+          );
+        })()}
         {/* 2 filas × 2 columnas (pedido usuario): Base|Altura arriba, Longitud|Pendiente abajo. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
           <div>

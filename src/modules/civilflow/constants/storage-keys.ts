@@ -29,6 +29,9 @@ export const ACTIVE_PROYECTO_ID_KEY = 'civilflow_active_proyecto_id';
 
 export const OPEN_TAB_KEY = 'openTab';
 
+/** Espejo local de overrides ll (puente visor→tablas entre instancias del provider). */
+export const LL_OVERRIDES_MIRROR_KEY = 'll_overrides_mirror';
+
 export const NETS_CHANGED_EVENT = 'civilflow_nets_changed';
 export const PDF_HIDDEN_NETS_KEY = 'pdf_hidden_nets';
 export const PDF_LOCKED_NETS_KEY = 'pdf_locked_nets';

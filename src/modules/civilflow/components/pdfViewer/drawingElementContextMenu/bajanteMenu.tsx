@@ -4,7 +4,11 @@ import { BajanteConnectionPanel } from './bajanteConnectionPanel';
 import { BajanteDirectionSelector } from './directionSelector';
 import { BajanteDiameterSelector } from './diameterSelector';
 import { CajaBombaSection, AsociarBombaSection } from './bombaSections';
-import { CanalesAsociadosBajSection, RamalesAsociadosMontSection } from './canalesAsociados';
+import {
+  CanalesAsociadosBajSection,
+  MaterialCubiertaBajSection,
+  RamalesAsociadosMontSection,
+} from './canalesAsociados';
 
 /** Menú contextual de bajante/montante: ensambla dirección, diámetro y secciones de caja/bomba. */
 /** Menú contextual de un bajante/montante: compone el selector de dirección, el de diámetro y
@@ -16,6 +20,9 @@ export function BajanteMenu() {
   const isGhostClick = contextMenuState.isGhostClick || false;
   const isSanOrLl = !isGhostClick && ['san', 'll'].includes(ctx.activeNet);
   const esCajaMenu = bajEl.tipo === 'caja_san' || bajEl.tipo === 'caja_ll';
+  const planNivelLl = ctx.planosCtx?.plans.find(
+    (p) => String(p.id) === String(ctx.engineRef.current?._loadedPlanId ?? ''),
+  )?.nivel;
 
   return (
     <>
@@ -53,7 +60,10 @@ export function BajanteMenu() {
         <AsociarBombaSection ctx={ctx} bajEl={bajEl} />
       )}
       {bajEl.tipo === 'bajante' && ctx.activeNet === 'll' && (
-        <CanalesAsociadosBajSection ctx={ctx} bajEl={bajEl} />
+        <>
+          <MaterialCubiertaBajSection ctx={ctx} bajEl={bajEl} planNivel={planNivelLl} />
+          <CanalesAsociadosBajSection ctx={ctx} bajEl={bajEl} />
+        </>
       )}
       {/* Montante af/ac: la inversa — gestiona sus ramales asociados desde el montante. */}
       {bajEl.tipo === 'montante' && (ctx.activeNet === 'af' || ctx.activeNet === 'ac') && (
