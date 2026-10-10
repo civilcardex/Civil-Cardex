@@ -3,7 +3,8 @@ import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/s
 import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from '../drawingSync';
 import { diamPulgFromLabel } from '../diamPulgFromLabel';
-import { punterosBajante } from './diametros';
+import { punterosBajante, validarDiametroEntrePisos } from './diametros';
+import { avisarDiametroInvalido } from '../diametroValidation';
 
 /** Mismo write de diámetro para VARIOS ramales con UN solo load+save del doc por plano
  *  afectado + UN RPC por plano: el select "D ventilación propuesto" llamaba
@@ -66,20 +67,32 @@ export function writeDiametroToDrawingBatch(
  *  engine vivo de OTRA ventana — si el visor tiene el piso abierto en otra pestaña, su
  *  autosave (saveWork completo, sin comparación de ts) puede pisar esta escritura; en una
  *  sola ventana lo salva el desmonte mutuo visor↔tablas. */
+/** Devuelve false si la escritura se bloqueó (regla entre pisos) y el caller no debe
+ *  avanzar optimista; true si se escribió (o no había nada que validar). */
 export function writeBajantePropToDrawing(
   bajanteKey: string,
   net: string,
   prop: string,
   val: unknown,
   plans: SyncPlanInput[],
-) {
-  if (!bajanteKey || !net || !plans) return;
+): boolean {
+  if (!bajanteKey || !net || !plans) return false;
   const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
   const parts = bajanteKey.split('-');
   const bajanteId = parts[0];
   const planId = parts[1];
+
+  // Regla entre pisos: el inferior no puede quedar con menor diámetro que el superior.
+  // Se valida ANTES de escribir (alerta modal + no se permite); el espejo (igual) pasa.
+  if (prop === 'dNominal' && typeof val === 'string' && val && planId && !espejoEnCurso) {
+    const v = validarDiametroEntrePisos(String(planId), bajanteId, val);
+    if (!v.ok) {
+      avisarDiametroInvalido(v.mensaje, v.titulo);
+      return false;
+    }
+  }
 
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
@@ -152,6 +165,7 @@ export function writeBajantePropToDrawing(
       }
     }
   }
+  return true;
 }
 
 /** Escribe el MATERIAL de un ramal en los trazos (caché + BD). Sin validaciones ni

@@ -21,6 +21,8 @@ import {
   type AssocEndpoint,
 } from '../../../utils/bajanteAssociation';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import { validarDiametroEntrePisos } from '../../../utils/drawingWrites/diametros';
+import { avisarDiametroInvalido } from '../../../utils/diametroValidation';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante, PlanoElement } from '../../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../../context/PlansContext';
@@ -436,6 +438,19 @@ export function BajanteDiameterSelector({
                         }
                       }
                     }
+                    // Regla entre pisos: el inferior no puede quedar con menor diámetro.
+                    if (val && engineRef.current) {
+                      const pid = String(engineRef.current._loadedPlanId ?? '');
+                      const v = validarDiametroEntrePisos(pid, element.id, val);
+                      if (!v.ok) {
+                        avisarDiametroInvalido(v.mensaje, v.titulo);
+                        e.target.value = element.dNominal || '';
+                        setContextMenuState((prev) =>
+                          prev ? { ...prev, element: { ...prev.element } } : null,
+                        );
+                        return;
+                      }
+                    }
                     const fields = { dNominal: val };
                     engineRef.current?.updateElementById(element.id, fields);
                     const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
@@ -613,6 +628,19 @@ export function BajanteDiameterSelector({
                           return;
                         }
                       }
+                    }
+                  }
+                  // Regla entre pisos: el inferior no puede quedar con menor diámetro.
+                  if (val && engineRef.current) {
+                    const pid = String(engineRef.current._loadedPlanId ?? '');
+                    const v = validarDiametroEntrePisos(pid, element.id, val);
+                    if (!v.ok) {
+                      avisarDiametroInvalido(v.mensaje, v.titulo);
+                      e.target.value = element.dNominal || '';
+                      setContextMenuState((prev) =>
+                        prev ? { ...prev, element: { ...prev.element } } : null,
+                      );
+                      return;
                     }
                   }
                   const fields = { dNominal: val };

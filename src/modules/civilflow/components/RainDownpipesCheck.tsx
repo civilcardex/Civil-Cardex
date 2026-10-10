@@ -743,13 +743,17 @@ export default function ChequeoBajantesLluvias() {
                           // Bidireccional (orig. usuario): escribe el dNominal del bajante en el
                           // dibujo (engine vivo o storage) y refleja el pulg en el tramo.
                           if (row.drawId && opt) {
-                            writeBajantePropToDrawing(
-                              `${row.drawId}-${row.drawPlanId}`,
-                              'll',
-                              'dNominal',
-                              nom,
-                              plans,
-                            );
+                            // Regla entre pisos: si se bloquea, no avanzar optimista.
+                            if (
+                              writeBajantePropToDrawing(
+                                `${row.drawId}-${row.drawPlanId}`,
+                                'll',
+                                'dNominal',
+                                nom,
+                                plans,
+                              ) === false
+                            )
+                              return;
                             updTramoLL(`${row.drawId}-${row.drawPlanId}`, 'diamDisPulg', opt.pulg);
                           }
                         }}

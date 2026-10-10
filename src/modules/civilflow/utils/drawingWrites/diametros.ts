@@ -480,3 +480,50 @@ export function punterosBajante(
   const b = raw?.bajantes?.find((x) => x.id === bajanteId);
   return { descargaEnId: b?.descargaEnId, origenId: b?.origenId };
 }
+
+/** Regla entre pisos (orig. usuario): el bajante del piso INFERIOR no puede tener menor
+ *  diámetro que el del SUPERIOR. Valida un nuevo dNominal ANTES de escribirlo.
+ *  Roles por puntero: con `origenId` el editado es el INFERIOR (recibe de arriba);
+ *  con `descargaEnId` es el SUPERIOR (entrega abajo). Sin punteros, sin contraparte o
+ *  sin diámetros comparables → ok. El espejo (valor igual en ambos) siempre pasa. */
+export function validarDiametroEntrePisos(
+  planId: string,
+  bajanteId: string,
+  nuevoDiamLabel: string,
+): { ok: true } | { ok: false; titulo: string; mensaje: string } {
+  const nuevo = diamPulgFromLabel(nuevoDiamLabel.replace(/-/g, ' '));
+  if (!(nuevo > 0)) return { ok: true };
+  const { descargaEnId, origenId } = punterosBajante(planId, bajanteId);
+  const roles: Array<{ ptr: string; soyInferior: boolean }> = [];
+  if (origenId && origenId.includes('|')) roles.push({ ptr: origenId, soyInferior: true });
+  if (descargaEnId && descargaEnId.includes('|'))
+    roles.push({ ptr: descargaEnId, soyInferior: false });
+  for (const { ptr, soyInferior } of roles) {
+    const pipe = ptr.indexOf('|');
+    const pPlan = ptr.slice(0, pipe);
+    const pId = ptr.slice(pipe + 1);
+    if (!pId) continue;
+    const rawP = loadFromStorage<{
+      bajantes?: { id: string; dNominal?: unknown }[];
+    } | null>(TRAZOS_PREFIX + pPlan, null);
+    const pareja = rawP?.bajantes?.find((x) => x.id === pId);
+    const parLabel = typeof pareja?.dNominal === 'string' ? pareja.dNominal : '';
+    const par = parLabel ? diamPulgFromLabel(parLabel.replace(/-/g, ' ')) : 0;
+    if (!(par > 0)) continue;
+    if (soyInferior && nuevo < par) {
+      return {
+        ok: false,
+        titulo: 'Diámetro menor que el superior',
+        mensaje: `El bajante ${bajanteId} (piso inferior) quedaría en ${nuevoDiamLabel} menor que el superior ${pId} (${parLabel}). El inferior no puede tener menor diámetro.`,
+      };
+    }
+    if (!soyInferior && nuevo > par) {
+      return {
+        ok: false,
+        titulo: 'Diámetro mayor que el inferior',
+        mensaje: `El bajante ${bajanteId} (piso superior) quedaría en ${nuevoDiamLabel} mayor que el inferior ${pId} (${parLabel}). El inferior no puede tener menor diámetro.`,
+      };
+    }
+  }
+  return { ok: true };
+}
