@@ -3,6 +3,7 @@ import Card from '../shared/Card';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton';
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from './calculations';
+import { entradaPor } from '../../utils/diamLookup';
 import { LazyInp, Param, type EPData } from './EPShared';
 import { calcularCisterna } from './epCalcs';
 import { SI } from '../../styles/sharedTableStyles';
@@ -149,7 +150,7 @@ export default function EPVerificationPage({
   const sucDiam = (() => {
     const userDN = dec(ep.dnsuc);
     if (userDN > 0) {
-      const entry = PVC_SCH40.find((t) => t.dn === userDN);
+      const entry = entradaPor(PVC_SCH40, 'dn', userDN);
       if (entry) {
         const A = (Math.PI * Math.pow(entry.dInt / 1000, 2)) / 4;
         return { dn: entry.dn, Vreal: Qd > 0 ? Qd / 1000 / A : 0 };
@@ -161,7 +162,7 @@ export default function EPVerificationPage({
   const impDiam = (() => {
     const userDN = dec(ep.dnimp);
     if (userDN > 0) {
-      const entry = PVC_SCH40.find((t) => t.dn === userDN);
+      const entry = entradaPor(PVC_SCH40, 'dn', userDN);
       if (entry) {
         const A = (Math.PI * Math.pow(entry.dInt / 1000, 2)) / 4;
         return { dn: entry.dn, Vreal: Qd > 0 ? Qd / 1000 / A : 0 };

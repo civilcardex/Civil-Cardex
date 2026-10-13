@@ -1,4 +1,5 @@
 import { useCivilManager } from '../context';
+import { loadJspdf, loadXlsx } from '../../../utils/exportLoaders';
 import { calcItemValue, calcResumenPresupuesto, esCapituloFinal, fmt, fmtMoneda } from '../calc';
 import { showToast } from '../shared/Toast';
 import { ActionIcon } from '../shared/icons';
@@ -25,7 +26,7 @@ export function EntregablesPanel({ pres }: Props) {
   const { state, apuCalcMap } = useCivilManager();
 
   async function exportExcelPresupuesto() {
-    const XLSX = await import('xlsx-js-style');
+    const XLSX = await loadXlsx();
     const rows = buildItemRows(pres.items, apuCalcMap, pres.aiu_override, state.config);
     const resumen = calcResumenPresupuesto(pres.items, apuCalcMap, pres.aiu_override, state.config);
     const ws = XLSX.utils.aoa_to_sheet([
@@ -50,7 +51,7 @@ export function EntregablesPanel({ pres }: Props) {
   }
 
   async function exportExcelPrecios() {
-    const XLSX = await import('xlsx-js-style');
+    const XLSX = await loadXlsx();
     const rows = state.apus.map((a) => {
       const c = apuCalcMap.get(a.id);
       return [a.codigo, a.nombre, a.unidad, c?.totalDirecto ?? 0];
@@ -69,8 +70,7 @@ export function EntregablesPanel({ pres }: Props) {
   }
 
   async function exportPdfFicha() {
-    const { jsPDF } = await import('jspdf');
-    const autoTable = (await import('jspdf-autotable')).default;
+    const { jsPDF, autoTable } = await loadJspdf();
     const doc = new jsPDF({ orientation: 'landscape', format: 'letter' });
     const resumen = calcResumenPresupuesto(pres.items, apuCalcMap, pres.aiu_override, state.config);
     doc.setFontSize(13);

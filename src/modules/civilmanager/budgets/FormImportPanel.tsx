@@ -3,6 +3,7 @@ import { parseCantidad } from '../excelImport';
 import { showToast } from '../shared/Toast';
 import { DimEnLectura, TableHeader, useEditable } from '../shared/EditLock';
 import { autoDetectarFilaInicio, detectarFilaCapitulo, type ColumnMapping } from './formImport';
+import { loadXlsx } from '../../../utils/exportLoaders';
 import type { Presupuesto, PresupuestoItem } from '../types';
 
 interface Props {
@@ -34,7 +35,7 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
       e.target.value = '';
       return;
     }
-    const XLSX = await import('xlsx-js-style');
+    const XLSX = await loadXlsx();
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];

@@ -1,5 +1,6 @@
 // Generador PDF (jspdf + autotable) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
 import { type MemoriaTable, type MemoriaData, fileBase, REDES_ORDEN } from './memoriaExportShared';
+import { loadJspdf } from '../../../utils/exportLoaders';
 function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
   if (!table.headerGroups) return [table.headers.map((h) => ({ content: h }))];
   const row1: Record<string, unknown>[] = [];
@@ -21,8 +22,7 @@ function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
 const PDF_NAVY: [number, number, number] = [40, 60, 90];
 
 export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
-  const { jsPDF } = await import('jspdf');
-  const autoTable = (await import('jspdf-autotable')).default;
+  const { jsPDF, autoTable } = await loadJspdf();
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();

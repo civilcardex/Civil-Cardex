@@ -1,9 +1,24 @@
 import { useRef, useState } from 'react';
 import { parseNum } from './calc';
 import { showToast } from './shared/Toast';
+import { loadXlsx } from '../../utils/exportLoaders';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const MONTHS_MAP: Record<string, number> = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, sep: 8, set: 9, oct: 10, nov: 11, dic: 12 };
+const MONTHS_MAP: Record<string, number> = {
+  ene: 0,
+  feb: 1,
+  mar: 2,
+  abr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  sep: 8,
+  set: 9,
+  oct: 10,
+  nov: 11,
+  dic: 12,
+};
 
 /** Formatea una fecha en múltiples formatos posibles (ISO, dd/mm/yyyy, serial Excel) a "dd-mes-yy". */
 export function fmtDate(v: unknown): string {
@@ -101,13 +116,33 @@ export interface UseExcelImportExportOptions<T extends { codigo?: string }> {
   colWidths?: { wch: number }[];
   mapRow: (item: T) => (string | number)[];
   parseRow: (row: (string | number)[]) => (string | number)[];
-  buildItem: (row: (string | number)[], existingIdx: number, existing: T[], nextCode: () => string) => T;
+  buildItem: (
+    row: (string | number)[],
+    existingIdx: number,
+    existing: T[],
+    nextCode: () => string,
+  ) => T;
   matchKey?: keyof T;
 }
 
 /** Import/export genérico contra Excel (xlsx-js-style), reutilizado por todos los catálogos. */
-export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExcelImportExportOptions<T>) {
-  const { items, onImport, prefix, title, sheetName, filename, headers, colWidths, mapRow, parseRow, buildItem, matchKey = 'codigo' as keyof T } = opts;
+export function useExcelImportExport<T extends { codigo?: string }>(
+  opts: UseExcelImportExportOptions<T>,
+) {
+  const {
+    items,
+    onImport,
+    prefix,
+    title,
+    sheetName,
+    filename,
+    headers,
+    colWidths,
+    mapRow,
+    parseRow,
+    buildItem,
+    matchKey = 'codigo' as keyof T,
+  } = opts;
   const [previewModal, setPreviewModal] = useState<ExcelPreview | null>(null);
   const [importData, setImportData] = useState<(string | number)[][] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -119,7 +154,7 @@ export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExc
 
   const doExport = async () => {
     if (!previewModal || previewModal.type !== 'export') return;
-    const XLSX = await import('xlsx-js-style');
+    const XLSX = await loadXlsx();
     const ws = XLSX.utils.aoa_to_sheet([[title], previewModal.headers, ...previewModal.rows]);
     if (colWidths) ws['!cols'] = colWidths;
     const wb = XLSX.utils.book_new();
@@ -138,15 +173,21 @@ export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExc
       return;
     }
     const reader = new FileReader();
-    reader.onload = async ev => {
+    reader.onload = async (ev) => {
       try {
-        const XLSX = await import('xlsx-js-style');
+        const XLSX = await loadXlsx();
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: 'array' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json<(string | number)[]>(ws, { header: 1, defval: '', blankrows: false });
+        const json = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
+          header: 1,
+          defval: '',
+          blankrows: false,
+        });
         if (json.length < 2) {
-          showToast('Archivo vacío o sin datos (requiere encabezado + 1 fila mínimo)', { type: 'err' });
+          showToast('Archivo vacío o sin datos (requiere encabezado + 1 fila mínimo)', {
+            type: 'err',
+          });
           setPreviewModal(null);
           e.target.value = '';
           return;
@@ -157,9 +198,17 @@ export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExc
           const row = json[i];
           let matches = 0;
           for (let h = 0; h < headers.length; h++) {
-            if (String(row[h] ?? '').trim().toLowerCase() === headers[h].toLowerCase()) matches++;
+            if (
+              String(row[h] ?? '')
+                .trim()
+                .toLowerCase() === headers[h].toLowerCase()
+            )
+              matches++;
           }
-          if (matches >= threshold) { headerRow = i; break; }
+          if (matches >= threshold) {
+            headerRow = i;
+            break;
+          }
         }
         if (headerRow < 0) {
           showToast('No se encontraron encabezados en el archivo', { type: 'err' });
@@ -168,7 +217,7 @@ export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExc
           return;
         }
         const rows = json.slice(headerRow + 1).map(parseRow);
-        const validRows = rows.filter(r => r?.[0] && String(r[0]).trim());
+        const validRows = rows.filter((r) => r?.[0] && String(r[0]).trim());
         if (validRows.length === 0) {
           showToast('No se encontraron filas con datos válidos', { type: 'err' });
           setPreviewModal(null);
@@ -176,17 +225,26 @@ export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExc
           return;
         }
         if (validRows.length < rows.length) {
-          showToast(`${rows.length - validRows.length} filas vacías omitidas`, { type: 'ok', dur: 2500 });
+          showToast(`${rows.length - validRows.length} filas vacías omitidas`, {
+            type: 'ok',
+            dur: 2500,
+          });
         }
         setImportData(validRows);
         setPreviewModal({ type: 'import', headers, rows: validRows });
       } catch (err) {
-        showToast('Error leyendo archivo Excel: ' + (err instanceof Error ? err.message : String(err)), { type: 'err' });
+        showToast(
+          'Error leyendo archivo Excel: ' + (err instanceof Error ? err.message : String(err)),
+          { type: 'err' },
+        );
         setPreviewModal(null);
       }
       e.target.value = '';
     };
-    reader.onerror = () => { showToast('Error leyendo el archivo', { type: 'err' }); e.target.value = ''; };
+    reader.onerror = () => {
+      showToast('Error leyendo el archivo', { type: 'err' });
+      e.target.value = '';
+    };
     reader.readAsArrayBuffer(file);
   };
 
@@ -203,20 +261,55 @@ export function useExcelImportExport<T extends { codigo?: string }>(opts: UseExc
     for (const r of importData) {
       const keyVal = String(r[0] ?? '').trim();
       if (!keyVal) continue;
-      const idx = existing.findIndex(it => String(it[matchKey] ?? '').toLowerCase() === keyVal.toLowerCase());
-      const built = buildItem(r, idx, existing, () => prefix + '-' + String(++nextNum).padStart(3, '0'));
-      if (idx >= 0) { existing[idx] = { ...existing[idx], ...built }; updated++; }
-      else { existing.push(built); created++; }
+      const idx = existing.findIndex(
+        (it) => String(it[matchKey] ?? '').toLowerCase() === keyVal.toLowerCase(),
+      );
+      const built = buildItem(
+        r,
+        idx,
+        existing,
+        () => prefix + '-' + String(++nextNum).padStart(3, '0'),
+      );
+      if (idx >= 0) {
+        existing[idx] = { ...existing[idx], ...built };
+        updated++;
+      } else {
+        existing.push(built);
+        created++;
+      }
     }
     onImport(existing);
     setImportData(null);
     setPreviewModal(null);
-    showToast(`${importData.length} registros importados (${created} nuevos, ${updated} actualizados)`, { type: 'ok', dur: 3500 });
+    showToast(
+      `${importData.length} registros importados (${created} nuevos, ${updated} actualizados)`,
+      { type: 'ok', dur: 3500 },
+    );
   };
 
-  const doImportCancel = () => { setImportData(null); setPreviewModal(null); };
+  const doImportCancel = () => {
+    setImportData(null);
+    setPreviewModal(null);
+  };
   const triggerImport = () => fileRef.current?.click();
-  const fileInputEl = <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={doImportSelect} aria-hidden="true" />;
+  const fileInputEl = (
+    <input
+      ref={fileRef}
+      type="file"
+      accept=".xlsx,.xls"
+      style={{ display: 'none' }}
+      onChange={doImportSelect}
+      aria-hidden="true"
+    />
+  );
 
-  return { previewModal, fileInputEl, triggerImport, exportExcel, doExport, doImport, doImportCancel };
+  return {
+    previewModal,
+    fileInputEl,
+    triggerImport,
+    exportExcel,
+    doExport,
+    doImport,
+    doImportCancel,
+  };
 }

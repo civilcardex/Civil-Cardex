@@ -1,5 +1,6 @@
 // Generador Excel (xlsx) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
 import { type MemoriaTable, type MemoriaData, fileBase, REDES_ORDEN } from './memoriaExportShared';
+import { loadXlsx } from '../../../utils/exportLoaders';
 interface XlsxCellStyle {
   font?: { bold?: boolean; sz?: number; color?: { rgb: string }; italic?: boolean };
   fill?: { fgColor: { rgb: string } };
@@ -132,7 +133,7 @@ function computeXlsxColWidths(tables: MemoriaTable[], maxCols: number): number[]
 }
 
 export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
-  const XLSX = await import('xlsx-js-style');
+  const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
 
   const resumenAoa: (string | number)[][] = [
