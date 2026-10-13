@@ -1,4 +1,5 @@
 import { clearBajanteAssociation } from './bajanteAssociationClear';
+import { propagarAparatosPresion } from './aparatosPresion';
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
 // siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
 // visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
@@ -470,6 +471,10 @@ export function applyBajanteAssociation(
         const liveSync: Record<string, unknown> = { ucAplicado, ucAplicadoHidro };
         if (totalUc > 0) liveSync.ucAcum = totalUc;
         eng.updateElementById(target.id, liveSync);
+        // La carga nueva del montante (ucAplicado) se propaga a los ramales que nacen de él
+        // (af/ac, orig. usuario).
+        const netAsoc = String(source.net || '');
+        if (netAsoc === 'af' || netAsoc === 'ac') propagarAparatosPresion(netAsoc as 'af' | 'ac');
       }
       if (totalUc > 0) {
         writeBajantePropToDrawing(

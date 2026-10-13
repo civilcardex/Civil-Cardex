@@ -20,6 +20,8 @@ import {
 } from '../utils/drawingSync';
 import type { DrawingData } from '../utils/drawingSync';
 import FixtureGrid from './fixtures/FixtureGrid';
+import { SecMontantes } from './fixtures/SecMontantes';
+import { SecHeredados } from './fixtures/SecHeredados';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/devError';
@@ -111,6 +113,8 @@ import {
   ASSOC_ROW_STYLE,
 } from './pdfViewer/drawingElementContextMenu/canalesAsociados';
 import { camposAsocManual } from '../lib/PlanoEngine/PlanoEngineSelectionEdit';
+import { propagarAparatosPresion } from '../utils/aparatosPresion';
+import { vetarSelloCanal, levantarVetoSelloCanal } from '../lib/PlanoEngine/canalAssociation';
 
 /** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
  *  JSON contra el valor en disco. Con deleteEmpty, un next vacío ELIMINA la clave (borrar UDs
@@ -403,6 +407,11 @@ const AparatosPanel = memo(function AparatosPanel_({
     [selElement, rejillasArea],
   );
   const targetId = target?.id || null;
+  // Clave GAS_ACC compuesta por plano (los ids REPITEN entre pisos): sin esto, RS1 en P1 y P2
+  // sumaban accesorios en la MISMA entrada y ΔP inflada en ambas (auditoría F-3).
+  const gasTargetKey = target
+    ? `gas_${target.id}_${(target as { planId?: string | number }).planId ?? 'x'}`
+    : null;
   // Etiqueta COMPLETA con sufijo de piso (p. ej. "RS1-P1"/"BAN2-P1") — la misma del canvas
   // (orig. usuario pt. 2). Ramales llevan el piso ACTUAL; bajantes/cajas/bomba/montantes su
   // pisoBase. Reactiva: selElement se re-deriva en cada dirty del engine.
@@ -1383,6 +1392,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (eng) {
       eng._markDirty();
     }
+    if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
     // Consistencia entre superficies (orig. usuario): el menú contextual re-deriva su tarjeta
     // de estos eventos (el panel derecho ya reacciona vía setCounts).
     try {
@@ -1498,6 +1508,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (engEnd) {
       engEnd._markDirty();
     }
+    if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
     // Consistencia entre superficies (ver inc).
     try {
       window.dispatchEvent(new CustomEvent('aparatos-clear'));
@@ -1562,47 +1573,47 @@ const AparatosPanel = memo(function AparatosPanel_({
   }, [gasAcc, targetId]);
 
   const incAccGas = (accId: string) => {
-    if (!targetId) return;
+    if (!gasTargetKey) return;
     try {
       const disk = loadGasAcc();
-      const cur = { ...(disk[targetId] || {}) };
+      const cur = { ...(disk[gasTargetKey] || {}) };
       cur[accId] = (cur[accId] || 0) + 1;
-      const next = { ...disk, [targetId]: cur };
+      const next = { ...disk, [gasTargetKey]: cur };
       saveGasAcc(next);
       setGasAcc(next);
     } catch (_e) {
       void _e;
       setGasAcc((prev) => {
-        const cur = { ...(prev[targetId] || {}) };
+        const cur = { ...(prev[gasTargetKey] || {}) };
         cur[accId] = (cur[accId] || 0) + 1;
-        return { ...prev, [targetId]: cur };
+        return { ...prev, [gasTargetKey]: cur };
       });
     }
   };
 
   const decAccGas = (accId: string) => {
-    if (!targetId) return;
+    if (!gasTargetKey) return;
     try {
       const disk = loadGasAcc();
-      const cur = { ...(disk[targetId] || {}) };
+      const cur = { ...(disk[gasTargetKey] || {}) };
       const v = (cur[accId] || 0) - 1;
       if (v <= 0) delete cur[accId];
       else cur[accId] = v;
       const next = { ...disk };
-      if (Object.keys(cur).length === 0) delete next[targetId];
-      else next[targetId] = cur;
+      if (Object.keys(cur).length === 0) delete next[gasTargetKey];
+      else next[gasTargetKey] = cur;
       saveGasAcc(next);
       setGasAcc(next);
     } catch (_e) {
       void _e;
       setGasAcc((prev) => {
-        const cur = { ...(prev[targetId] || {}) };
+        const cur = { ...(prev[gasTargetKey] || {}) };
         const v = (cur[accId] || 0) - 1;
         if (v <= 0) delete cur[accId];
         else cur[accId] = v;
         const next = { ...prev };
-        if (Object.keys(cur).length === 0) delete next[targetId];
-        else next[targetId] = cur;
+        if (Object.keys(cur).length === 0) delete next[gasTargetKey];
+        else next[gasTargetKey] = cur;
         return next;
       });
     }
@@ -1729,7 +1740,11 @@ const AparatosPanel = memo(function AparatosPanel_({
       const eng = engineRef?.current;
       const baj = bajObj;
       if (!eng || !baj) return;
-      eng.updateElementById(baj.id, { canalId: canalActual === canalId ? null : canalId });
+      const desmarcando = canalActual === canalId;
+      const pid = String(engineRef?.current?._loadedPlanId ?? '');
+      if (desmarcando) vetarSelloCanal(pid, 'baj', baj.id, canalId);
+      else levantarVetoSelloCanal(pid, 'baj', baj.id, canalId);
+      eng.updateElementById(baj.id, { canalId: desmarcando ? null : canalId });
       eng.render();
       eng._markDirty();
       if (selElement) setSelElement?.({ ...selElement } as never);
@@ -1752,6 +1767,9 @@ const AparatosPanel = memo(function AparatosPanel_({
       const r = eng.ramales.find((x) => x.id === targetIdLl);
       if (!r) return;
       const ya = r.esCanalId === canalId;
+      const pid = String(engineRef?.current?._loadedPlanId ?? '');
+      if (ya) vetarSelloCanal(pid, 'ram', targetIdLl, canalId);
+      else levantarVetoSelloCanal(pid, 'ram', targetIdLl, canalId);
       eng.updateElementById(targetIdLl, { esCanalId: ya ? null : canalId });
       eng.render();
       eng._markDirty();
@@ -1884,8 +1902,12 @@ const AparatosPanel = memo(function AparatosPanel_({
                   () => {
                     const eng = engineRef?.current;
                     if (!eng) return;
+                    const desmarcando = b.canalId === targetIdLl;
+                    const pid = String(engineRef?.current?._loadedPlanId ?? '');
+                    if (desmarcando) vetarSelloCanal(pid, 'baj', b.id, targetIdLl);
+                    else levantarVetoSelloCanal(pid, 'baj', b.id, targetIdLl);
                     eng.updateElementById(b.id, {
-                      canalId: b.canalId === targetIdLl ? null : targetIdLl,
+                      canalId: desmarcando ? null : targetIdLl,
                     });
                     eng.render();
                     eng._markDirty();
@@ -1934,112 +1956,6 @@ const AparatosPanel = memo(function AparatosPanel_({
   const netObj = NETS.find((n) => n.id === netId);
   const accent = netObj?.col || '#2563EB';
 
-  // ASOCIACIONES af/ac (orig. usuario): tramo → MONTANTES ASOCIADOS; montante → RAMALES
-  // ASOCIADOS (la inversa). Mismo bidireccionalismo (recibeDeIds/alimentaIds), mismo estilo
-  // de fila con caja que las secciones del menú contextual.
-  const secMontantes = (() => {
-    if (!(netId === 'af' || netId === 'ac')) return null;
-    const eng = engineRef.current;
-    if (!eng || !targetId) return null;
-    const esMontanteSel = selElement?.tipo === 'montante';
-    const esRamalSel = !!selElement?.pts && !esMontanteSel;
-    if (!esMontanteSel && !esRamalSel) return null;
-
-    const refrescar = (): void => {
-      if (selElement) setSelElement?.({ ...selElement } as never);
-    };
-    const toggleBaj = (bajId: string, ramalId: string): void => {
-      const vivo = eng.bajantes.find((x) => x.id === bajId);
-      if (!vivo) return;
-      const ya =
-        (vivo.recibeDeIds || []).includes(ramalId) || (vivo.alimentaIds || []).includes(ramalId);
-      eng.updateElementById(bajId, camposAsocManual(vivo, ramalId, !ya));
-      eng.render();
-      eng._markDirty();
-      refrescar();
-    };
-
-    const filas = esMontanteSel
-      ? eng.ramales
-          .filter((r) => r.net === netId && r.tipo !== 'tributario')
-          .map((r) => ({ id: r.id, label: r.label || r.id }))
-      : eng.bajantes
-          .filter((b) => b.net === netId && b.tipo === 'montante')
-          .map((m) => ({ id: m.id, label: m.code || m.id }));
-    if (filas.length === 0) return null;
-    const titulo = esMontanteSel ? 'RAMALES ASOCIADOS' : 'MONTANTES ASOCIADOS';
-
-    return (
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: 'var(--txt3)',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Asociaciones
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: accent,
-            fontFamily: "'Geist',monospace",
-            fontWeight: 700,
-            marginBottom: 8,
-          }}
-        >
-          {targetLbl}
-        </div>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#849495',
-            marginBottom: 4,
-            textTransform: 'uppercase',
-            letterSpacing: 0.5,
-          }}
-        >
-          {titulo}
-        </div>
-        {filas.map((f) => {
-          const activo = esMontanteSel
-            ? (() => {
-                const vivo = eng.bajantes.find((x) => x.id === targetId);
-                return (
-                  (vivo?.recibeDeIds || []).includes(f.id) ||
-                  (vivo?.alimentaIds || []).includes(f.id)
-                );
-              })()
-            : (() => {
-                const vivo = eng.bajantes.find((x) => x.id === f.id);
-                return (
-                  (vivo?.recibeDeIds || []).includes(targetId) ||
-                  (vivo?.alimentaIds || []).includes(targetId)
-                );
-              })();
-          return (
-            <label key={f.id} style={{ ...ASSOC_ROW_STYLE, marginBottom: 2 }}>
-              <input
-                type="checkbox"
-                checked={activo}
-                onChange={() =>
-                  toggleBaj(esMontanteSel ? targetId : f.id, esMontanteSel ? f.id : targetId)
-                }
-                style={ASSOC_CHECKBOX_STYLE}
-              />
-              {f.label}
-            </label>
-          );
-        })}
-      </div>
-    );
-  })();
-
   const headerLbl = isGas ? ' Aparatos' : ' Aparatos';
   const isActive = !!targetId;
   const containerStyle = {
@@ -2051,7 +1967,16 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   return (
     <>
-      {secMontantes}
+      <SecHeredados netId={netId} storageKey={storageKey} selElement={selElement} />
+      <SecMontantes
+        netId={netId}
+        engineRef={engineRef}
+        targetId={targetId}
+        targetLbl={targetLbl}
+        accent={accent}
+        selElement={selElement}
+        setSelElement={setSelElement}
+      />
       <div ref={containerRef} style={containerStyle}>
         <button
           type="button"

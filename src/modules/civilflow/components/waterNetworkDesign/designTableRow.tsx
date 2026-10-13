@@ -4,7 +4,7 @@ import { pisoCorto } from '../../constants';
 import { fmt } from '../../utils/formatUtils';
 import { hunterK, computeDesignRow } from './rowPhysics';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared';
-import { OtrosRamalesChips } from './otherRamalesChips';
+import { leerHeredadosPresion } from '../../utils/aparatosPresion';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput';
 
 /** Estilo compacto del input de presión (misma pinta del LazyNumInput que reemplaza). */
@@ -14,6 +14,59 @@ const PRESION_INP: React.CSSProperties = {
   padding: 0,
   fontSize: 9,
 };
+
+/** Chips de la columna "Otros Ramales": los tramos conectados al de la fila, cada uno con su
+ *  UC total en el tooltip. Sin conexiones muestra un guion. */
+function OtrosRamalesChips({
+  connectedKeys,
+  tramos,
+  displayTotalMap,
+  colorVar,
+}: {
+  connectedKeys: string[];
+  tramos: Tramo[];
+  displayTotalMap: Record<string, number>;
+  colorVar: string;
+}) {
+  return connectedKeys.length === 0 ? (
+    <span style={{ fontSize: 9, color: 'var(--txt3)' }}>—</span>
+  ) : (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      {connectedKeys.map((childKey) => {
+        const parts = childKey.split('-');
+        const rId = parts[0];
+        const childTramo = tramos.find((tr) => (tr._key || tr.id) === childKey);
+        const childOwnKey = childTramo?._key || childTramo?.id || childKey;
+        const childTotalUd = displayTotalMap[childOwnKey] || 0;
+        return (
+          <span
+            key={childKey}
+            title={`${rId} (${childTotalUd.toFixed(2)} UC)`}
+            style={{
+              fontSize: 9,
+              padding: '1px 1px',
+              border: `1px solid ${colorVar}`,
+              borderRadius: 3,
+              color: colorVar,
+              fontFamily: 'var(--mono)',
+              lineHeight: 1.3,
+            }}
+          >
+            {rId}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 /** Commit numérico del input perezoso: '' → undefined (borra el dato); parse inválido → sin cambio. */
 const numCommit =
@@ -89,6 +142,12 @@ export function DesignTableRow({
   velLim?: [number, number];
 }) {
   const ownKey = t._key || t.id;
+  // Herencia de aparatos af/ac (libro aparatos_heredados_v1): tooltip en la celda propia.
+  const hered = leerHeredadosPresion(t._aparatosKey || '');
+  const heredTxt = Object.entries(hered)
+    .filter(([, v]) => v > 0)
+    .map(([k, v]) => `${k}×${v}`)
+    .join(', ');
   const isTr2 = t === tr2;
   const total = displayTotalMap[ownKey] || 0;
   const nDesc = t.nSalidas || 0;
@@ -120,7 +179,12 @@ export function DesignTableRow({
       <td className="c td-mono" style={{ padding: '0 1px', fontSize: 10.5 }}>
         {t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}
       </td>
-      <td className="c td-mono">{fmt(propia, 2)}</td>
+      <td
+        className="c td-mono"
+        title={heredTxt ? `Heredados aguas arriba: ${heredTxt}` : undefined}
+      >
+        {fmt(propia, 2)}
+      </td>
       <td className="c" style={{ padding: '1px 2px', minWidth: 60, maxWidth: 120 }}>
         <OtrosRamalesChips
           connectedKeys={conexionesDisplay[ownKey] || []}

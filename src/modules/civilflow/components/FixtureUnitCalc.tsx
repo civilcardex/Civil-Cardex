@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
+import EmptyRow from './shared/EmptyRow';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { usePlans } from '../context/PlansContext';
@@ -219,19 +220,7 @@ function CalculoUD() {
               </thead>
               <tbody>
                 {displayTramos.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={3 + mergedBase.length + 1}
-                      style={{
-                        padding: '24px 0',
-                        textAlign: 'center',
-                        color: 'var(--txt3)',
-                        fontSize: 12,
-                      }}
-                    >
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
+                  <EmptyRow colSpan={3 + mergedBase.length + 1} fontSize={12} />
                 ) : (
                   displayTramos.map((t) => {
                     const tKey = t._key || `${t.id}-${t.piso}`;

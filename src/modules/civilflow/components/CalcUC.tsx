@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
+import EmptyRow from './shared/EmptyRow';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
-import { calcUCparcial, calcUCacumulado } from '../utils/componentHelpers';
+import { calcUCparcial } from '../utils/componentHelpers';
+import { leerHeredadosPresion } from '../utils/aparatosPresion';
 const CalculoUC_S1: React.CSSProperties = {
   position: 'absolute',
   width: '1px',
@@ -19,6 +21,8 @@ const CalculoUC_S1: React.CSSProperties = {
 interface CalculoUCProps {
   tipo: 'af' | 'ac';
 }
+
+import { useState, useEffect } from 'react';
 
 const monof = "'Courier New',Courier,monospace";
 const txt2 = '#94a3b8';
@@ -67,22 +71,39 @@ function CalculoUC({ tipo }: CalculoUCProps) {
       .filter((x): x is NonNullable<typeof x> => x != null);
   }, [ucIds, aps, field, apField]);
 
+  // Herencia de aparatos af/ac (libro aparatos_heredados_v1): se re-lee con cada evento
+  // 'storage' (los escritores la despachan al propagar).
+  const [, setHeredTick] = useState(0);
+  useEffect(() => {
+    const h = () => setHeredTick((x) => x + 1);
+    window.addEventListener('storage', h);
+    return () => window.removeEventListener('storage', h);
+  }, []);
+  const heredMap = useMemo(() => {
+    const m: Record<string, Record<string, number>> = {};
+    for (const t of tramos) {
+      if (t._aparatosKey) m[t.id] = leerHeredadosPresion(t._aparatosKey);
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tramos, setHeredTick]);
+
   const totales = useMemo(() => {
     return AP.map((d) => ({
       id: d.id,
       nombre: d.nombre,
       uc: d[field],
-      cant: tramos.reduce((s, t) => s + (t.fixtures?.[d.id] || 0), 0),
+      cant: tramos.reduce(
+        (s, t) => s + (t.fixtures?.[d.id] || 0) + ((heredMap[t.id] || {})[d.id] || 0),
+        0,
+      ),
     }));
-  }, [AP, tramos, field]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [AP, tramos, field, heredMap]);
 
   const totalUC = useMemo(() => {
     return totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0);
   }, [totales]);
-
-  const acumMap = useMemo(() => {
-    return showTotal ? calcUCacumulado(tramos, AP, field) : {};
-  }, [showTotal, tramos, AP, field]);
 
   const sortedTramos = useMemo(() => {
     return tramos
@@ -236,23 +257,22 @@ function CalculoUC({ tipo }: CalculoUCProps) {
               </thead>
               <tbody>
                 {tramos.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={showTotal ? 3 + AP.length + 2 + 2 : 3 + AP.length + 3}
-                      style={{
-                        padding: '24px 0',
-                        textAlign: 'center',
-                        color: 'var(--txt3)',
-                        fontSize: 12,
-                      }}
-                    >
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
+                  <EmptyRow
+                    colSpan={showTotal ? 3 + AP.length + 2 + 2 : 3 + AP.length + 3}
+                    fontSize={12}
+                  />
                 ) : (
                   sortedTramos.map((t, i) => {
                     const parcial = calcUCparcial(t, AP, field);
-                    const acum = showTotal ? acumMap[t.id] || 0 : 0;
+                    const hered = heredMap[t.id] || {};
+                    // Total REAL (orig. usuario): propios + heredados aguas arriba.
+                    const acum = showTotal
+                      ? parcial +
+                        AP.reduce(
+                          (s2, d2) => s2 + (hered[d2.id] || 0) * (Number(d2[field]) || 0),
+                          0,
+                        )
+                      : 0;
                     const vLh = t.totalL || t.Lh || 0;
                     const vNS = t.nSalidas ?? 0;
                     return (
@@ -294,7 +314,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                             : t.fin || '\u2014'}
                         </td>
                         {AP.map((d) => {
-                          const v = t.fixtures?.[d.id] || 0;
+                          const h = hered[d.id] || 0;
+                          const v = (t.fixtures?.[d.id] || 0) + h;
                           return (
                             <td key={d.id} className="c" style={{ padding: '2px 3px' }}>
                               <span
@@ -303,8 +324,14 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                                   fontFamily: monof,
                                   color: d._disabled ? txt2 : txt,
                                 }}
+                                title={
+                                  h > 0 ? `${v} = ${v - h} propios + ${h} heredados` : undefined
+                                }
                               >
                                 {v}
+                                {h > 0 && (
+                                  <span style={{ color: txt2, fontSize: 10 }}> (+{h})</span>
+                                )}
                               </span>
                             </td>
                           );

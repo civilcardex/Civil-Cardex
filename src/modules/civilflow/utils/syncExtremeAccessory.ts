@@ -1,4 +1,5 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { propagarAparatosPresion } from './aparatosPresion';
 import {
   HYDRO_DATA_STORAGE_KEY,
   TRAZOS_PREFIX,
@@ -105,6 +106,11 @@ export function bumpHidroAccesorio(
 /** Incrementa/decrementa el conteo de aparato (p. ej. 'sif') en APARATOS_BY_TRAMO_KEY.
  *  Exportada para los selectores de accesorio de extremo: asignar el sifón desde el extremo
  *  del ramal debe sumar el aparato igual que desde el cuerpo (orig. usuario). */
+/** Tras escribir conteos af/ac: propaga herencia aguas abajo (idempotente). */
+function dispararPropagacion(netId: string): void {
+  if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
+}
+
 export function bumpAparatoCount(
   netId: string,
   ramalId: string,
@@ -128,6 +134,7 @@ export function bumpAparatoCount(
     all[storeKey] = cur;
   }
   saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+  dispararPropagacion(netId);
 }
 
 /** Asigna UN aparato san/ll al ramal (reemplaza el anterior: máximo 1 por ramal) y
@@ -151,6 +158,7 @@ export function setSingleAparatoCount(
   if (Object.keys(cur).length === 0) delete all[storeKey];
   else all[storeKey] = cur;
   saveToStorage(APARATOS_BY_TRAMO_KEY, all);
+  dispararPropagacion(netId);
 }
 
 export function syncExtremeAparatoToCounts(
@@ -187,6 +195,7 @@ export function moveAparatoCount(
 ): void {
   bumpAparatoCount(netId, fromId, planId, appId, -1);
   bumpAparatoCount(netId, toId, planId, appId, +1);
+  dispararPropagacion(netId);
   try {
     window.dispatchEvent(new CustomEvent('aparatos-clear'));
   } catch {
@@ -218,6 +227,7 @@ export function moveAllAparatoCounts(
   delete copy[fromKey];
   copy[toKey] = dst;
   saveToStorage(APARATOS_BY_TRAMO_KEY, copy);
+  dispararPropagacion(netId);
   try {
     window.dispatchEvent(new CustomEvent('aparatos-clear'));
   } catch {
