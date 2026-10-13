@@ -449,7 +449,7 @@ export async function loadProyectoData(proyectoId: string): Promise<ProyectoData
 
 /** Escribe UN campo whitelisteado de cf_proyecto_general vía RPC SECURITY DEFINER — el
  *  upsert directo chocaba con el revoke de 20260813000003 (permission denied silencioso). */
-async function saveCampoProyectoGeneral(
+export async function saveCampoProyectoGeneral(
   proyectoId: string,
   campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
   value: string,
@@ -473,16 +473,8 @@ async function saveCampoProyectoGeneral(
   }
 }
 
-export async function saveAfAlimentacion(proyectoId: string, value: string): Promise<void> {
-  return saveCampoProyectoGeneral(proyectoId, 'af_alimentacion', value);
-}
-
-export async function saveTanqueNpt(proyectoId: string, value: string): Promise<void> {
-  return saveCampoProyectoGeneral(proyectoId, 'tanque_npt', value);
-}
-
 /** Lee UNA columna whitelisteada de cf_proyecto_general por proyecto (null si no hay fila). */
-async function loadCampoProyectoGeneral<T>(
+export async function loadCampoProyectoGeneral<T>(
   proyectoId: string,
   campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
 ): Promise<T | null> {
@@ -503,14 +495,6 @@ async function loadCampoProyectoGeneral<T>(
   }
 }
 
-export async function loadAfAlimentacion(proyectoId: string): Promise<string | null> {
-  return loadCampoProyectoGeneral<string>(proyectoId, 'af_alimentacion');
-}
-
-export async function loadTanqueNpt(proyectoId: string): Promise<string | null> {
-  return loadCampoProyectoGeneral<string>(proyectoId, 'tanque_npt');
-}
-
 /** Blob de rejillas NTC 3631 (overrides + tipo de gas) → cf_proyecto_general.rejillas.
  *  El RPC whitelistó 'rejillas' con cast ::jsonb (migración 20261002000000). */
 /** Blob persistido del tab Rejillas (cf_proyecto_general.rejillas, jsonb). */
@@ -528,12 +512,4 @@ export async function saveRejillasProyecto(proyectoId: string, blob: RejillasBlo
 /** Lee el blob de rejillas del proyecto (null si no hay fila o aún no se guardó). */
 export async function loadRejillasProyecto(proyectoId: string): Promise<RejillasBlob | null> {
   return loadCampoProyectoGeneral<RejillasBlob | null>(proyectoId, 'rejillas');
-}
-
-export async function savePresionGarantizada(proyectoId: string, value: string): Promise<void> {
-  return saveCampoProyectoGeneral(proyectoId, 'presion_garantizada', value);
-}
-
-export async function loadPresionGarantizada(proyectoId: string): Promise<string | null> {
-  return loadCampoProyectoGeneral<string>(proyectoId, 'presion_garantizada');
 }

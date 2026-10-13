@@ -35,15 +35,14 @@ export function NavIcon({ name, size = 18, alt }: NavIconProps) {
 interface ActionIconProps {
   name: string;
   label: string;
-  className?: string;
   color?: string;
 }
 
 /** Ícono de acción genérico (editar/borrar/agregar/etc.) vía Material Symbols. */
-export function ActionIcon({ name, label, className, color }: ActionIconProps) {
+export function ActionIcon({ name, label, color }: ActionIconProps) {
   return (
     <span
-      className={`material-symbols-outlined ${className ?? ''}`}
+      className="material-symbols-outlined"
       style={{ fontSize: 16, color }}
       role="img"
       aria-label={label}

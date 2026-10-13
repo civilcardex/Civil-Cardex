@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ActionIcon } from './icons';
+// ponytail: onClearAll/clearLabel/children salieron — 0 callers en 8 sitios verificados.
 import { useEditable } from './EditLock';
 
 interface ExcelHandle {
@@ -11,27 +12,21 @@ interface ExcelHandle {
 interface Props {
   onAdd?: () => void;
   addLabel?: string;
-  onClearAll?: () => void;
-  clearLabel?: string;
   excel?: ExcelHandle;
   exportLabel?: string;
   search?: { value: string; onChange: (v: string) => void; placeholder?: string };
   countLabel: string;
   count: number;
-  children?: ReactNode;
 }
 
 export function CrudFooter({
   onAdd,
   addLabel,
-  onClearAll,
-  clearLabel,
   excel,
   exportLabel,
   search,
   countLabel,
   count,
-  children,
 }: Props) {
   const editable = useEditable();
   return (
@@ -39,11 +34,6 @@ export function CrudFooter({
       {onAdd && editable && (
         <button type="button" className="cm-btn cm-btn-ok" onClick={onAdd}>
           <ActionIcon name="add" label="" /> {addLabel}
-        </button>
-      )}
-      {onClearAll && editable && (
-        <button type="button" className="cm-btn cm-btn-err" onClick={onClearAll}>
-          <ActionIcon name="delete" label="" /> {clearLabel}
         </button>
       )}
       {excel && editable && excel.fileInputEl}
@@ -57,7 +47,6 @@ export function CrudFooter({
           <ActionIcon name="download" label="" /> {exportLabel ?? 'Exportar'}
         </button>
       )}
-      {children}
       {search && (
         <input
           className="cm-ni cm-search"

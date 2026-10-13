@@ -14,6 +14,7 @@ import {
   MATERIALES_CANAL_LL,
   MATERIALES_CUBIERTA_LL,
 } from '../../../constants/engineeringDataMaterials';
+import { sectorDe } from '../../../utils/formatUtils';
 
 function CanalNumField({
   label,
@@ -206,11 +207,11 @@ export function CanalTramoEditor() {
               label="Intensidad (mm/h)"
               value={
                 rw?.canalesLl.find(
-                  (c) => (c.sector || c.id) === (selElement.code || selElement.id).split('-')[0],
+                  (c) => (c.sector || c.id) === sectorDe(selElement.code || selElement.id),
                 )?.intensidad ?? 100
               }
               onCommit={(v) => {
-                const sector = (selElement.code || selElement.id).split('-')[0];
+                const sector = sectorDe(selElement.code || selElement.id);
                 // Bidireccional con la tabla de chequeo (orig. usuario): mismo override por
                 // sector; default 100 si viene vacío.
                 if (sector) rw?.updCanalSector(sector, 'intensidad', v || 100);

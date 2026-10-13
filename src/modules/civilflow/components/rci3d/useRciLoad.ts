@@ -5,6 +5,7 @@ import { CHEQUE_GROUPS, GLB_POSITIONS, MODELO_KEYS, glbUrl } from './rci3dData';
 import { devError } from '../../../../utils/devError';
 import { cargarModelosSecuencial, disposeGrupo, sleep } from '../shared/sequentialLoad';
 import { cargarGlbBuffer } from '../shared/glbCache';
+import { aspectDe } from '../shared/controls3d';
 
 // Carga secuencial de las 13 piezas GLB (port del loadModel del HTML) sobre el núcleo común
 // de los visores 3D (shared/cargaSecuencial): progreso 20→95 %, pausa entre modelos, y al
@@ -52,10 +53,7 @@ function finalizarCarga(api: Rci3DApi): void {
   api.fillLight.position.set(api.mc.x - api.mr * 1.5, api.mc.y + api.mr, api.mc.z - api.mr * 1.5);
 
   const fovR = (api.camP.fov * Math.PI) / 180;
-  const aspect = Math.max(
-    0.1,
-    api.renderer.domElement.clientWidth / Math.max(1, api.renderer.domElement.clientHeight),
-  );
+  const aspect = aspectDe(api.renderer.domElement);
   const dist =
     Math.max(
       api.bbox.y / 2 / Math.tan(fovR / 2),

@@ -8,26 +8,48 @@ interface FormFieldProps {
   placeholder?: string;
   required?: boolean;
   minLength?: number;
-  maxLength?: number;
   autoComplete?: string;
 }
 
-function FormField({ label, type = 'text', value, onChange, placeholder, required, minLength, maxLength, autoComplete }: FormFieldProps) {
+function FormField({
+  label,
+  type = 'text',
+  value,
+  onChange,
+  placeholder,
+  required,
+  minLength,
+  autoComplete,
+}: FormFieldProps) {
   const fieldId = useId();
   return (
     <div>
-      <label htmlFor={fieldId} className="block text-[10px] font-bold tracking-widest uppercase mb-1.5"
-        style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace' }}>{label}</label>
-      <input id={fieldId} type={type} value={value} onChange={onChange}
+      <label
+        htmlFor={fieldId}
+        className="block text-[10px] font-bold tracking-widest uppercase mb-1.5"
+        style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace' }}
+      >
+        {label}
+      </label>
+      <input
+        id={fieldId}
+        type={type}
+        value={value}
+        onChange={onChange}
         className="w-full h-10 px-3 border text-sm focus-visible:outline-2 focus-visible:outline-[#00dce5] transition-colors"
-        style={{ background: '#0a0e14', borderColor: '#3a494a', color: '#e2e2e8', fontFamily: 'Geist, monospace' }}
-        onFocus={(e) => e.target.style.borderColor = '#00dce5'}
-        onBlur={(e) => e.target.style.borderColor = '#3a494a'}
+        style={{
+          background: '#0a0e14',
+          borderColor: '#3a494a',
+          color: '#e2e2e8',
+          fontFamily: 'Geist, monospace',
+        }}
+        onFocus={(e) => (e.target.style.borderColor = '#00dce5')}
+        onBlur={(e) => (e.target.style.borderColor = '#3a494a')}
         placeholder={placeholder}
         required={required}
         minLength={minLength}
-        maxLength={maxLength}
-        autoComplete={autoComplete} />
+        autoComplete={autoComplete}
+      />
     </div>
   );
 }

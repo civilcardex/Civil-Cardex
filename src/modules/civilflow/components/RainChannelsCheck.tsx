@@ -21,7 +21,7 @@ import {
   cDeCubierta,
   nDeCanal,
 } from '../constants/engineeringDataMaterials';
-import { fmt } from '../utils/formatUtils';
+import { fmt, sectorDe } from '../utils/formatUtils';
 import { entradaPor } from '../utils/diamLookup';
 import { repartirOtrasCanal } from '../utils/rainwaterRows';
 import type { DrawingData } from '../utils/drawingSync';
@@ -97,6 +97,18 @@ const CanalDimField = React.memo(function CanalDimField({
           : value > 0
             ? fmt(value, 2)
             : '';
+  // Patrón sanitaria (orig. usuario): con EDITAR apagado la celda es TEXTO PLANO (sin
+  // borde ni fondo); al activar toma el estilo de input.
+  if (disabled) {
+    return (
+      <span
+        style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600 }}
+        title={CANAL_FIELD_LABELS[field]}
+      >
+        {display === '' ? '—' : display}
+      </span>
+    );
+  }
   return (
     <input
       type="text"
@@ -104,7 +116,6 @@ const CanalDimField = React.memo(function CanalDimField({
       value={display}
       placeholder="0"
       aria-label={CANAL_FIELD_LABELS[field]}
-      disabled={disabled}
       onFocus={() => {
         setEditing(true);
         // Otras en 0 arranca VACÍA al enfocar (orig. usuario: no había que "quitar el 0").
@@ -160,7 +171,6 @@ export default function ChequeoCanalesLluvias() {
   // se escribe updBajanteLL en CADA asociado — así la tabla de bajantes y esta leen el mismo
   // override y sincronizan en vivo. Sin asociados → override propio del canal (como hoy).
   const asociadosDe = (drawId?: string): string[] => (drawId ? canalBajantes[drawId] || [] : []);
-  const codigoDeChip = (chip: string): string => chip.split('-')[0];
   // Escritura bidireccional con el dibujo (ítem 7 usuario): b/h/longitud/pendiente de filas
   // fromCanal van al glifo (writeCanalDimsToDrawing = manda el dibujo); área/intensidad van
   // al override por sector (updCanalSector); filas manuales usan updCanalLL como siempre.
@@ -173,7 +183,7 @@ export default function ChequeoCanalesLluvias() {
     if (field === 'areaOtras' && asociadosDe(row.drawId).length > 0) {
       const asociados = asociadosDe(row.drawId);
       const vals = repartirOtrasCanal(val, asociados.length);
-      asociados.forEach((chip, i) => updBajanteLL(codigoDeChip(chip), 'areaOtras', vals[i] ?? 0));
+      asociados.forEach((chip, i) => updBajanteLL(sectorDe(chip), 'areaOtras', vals[i] ?? 0));
       return;
     }
     if (row.fromCanal && row.drawId != null && row.drawPlanId != null) {
@@ -764,36 +774,45 @@ export default function ChequeoCanalesLluvias() {
                           REQ canal = Σ bajantes: con asociados muestra el material COMÚN
                           derivado de los bajantes ('' si mezclados) y al escoger escribe
                           materialCubierta a TODOS los asociados (fuente única). */}
-                        <select
-                          value={c.materialCubierta ?? ''}
-                          aria-label="Material de cubierta"
-                          title={c.materialCubierta || 'Material de cubierta'}
-                          disabled={!edit}
-                          onChange={(e) =>
-                            setMaterialCanal(c.id, 'materialCubierta', e.target.value)
-                          }
-                          style={{
-                            textAlign: 'center',
-                            fontSize: 10,
-                            opacity: edit ? 1 : 0.6,
-                            padding: '2px 2px',
-                            width: '100%',
-                            minWidth: 0,
-                            fontFamily: 'var(--mono)',
-                            background: 'var(--bg2)',
-                            border: '1px solid var(--line)',
-                            borderRadius: 2,
-                            color: 'var(--txt)',
-                            cursor: edit ? 'pointer' : 'default',
-                          }}
-                        >
-                          <option value="">—</option>
-                          {MATERIALES_CUBIERTA_LL.map((m) => (
-                            <option key={m.nombre} value={m.nombre} title={m.nombre}>
-                              {m.abrev}
-                            </option>
-                          ))}
-                        </select>
+                        {edit ? (
+                          <select
+                            value={c.materialCubierta ?? ''}
+                            aria-label="Material de cubierta"
+                            title={c.materialCubierta || 'Material de cubierta'}
+                            onChange={(e) =>
+                              setMaterialCanal(c.id, 'materialCubierta', e.target.value)
+                            }
+                            style={{
+                              textAlign: 'center',
+                              fontSize: 10,
+                              padding: '2px 2px',
+                              width: '100%',
+                              minWidth: 0,
+                              fontFamily: 'var(--mono)',
+                              background: 'var(--bg2)',
+                              border: '1px solid var(--line)',
+                              borderRadius: 2,
+                              color: 'var(--txt)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <option value="">—</option>
+                            {MATERIALES_CUBIERTA_LL.map((m) => (
+                              <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                                {m.abrev}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            title={c.materialCubierta || undefined}
+                            style={{ fontFamily: 'var(--mono)', fontSize: 10 }}
+                          >
+                            {MATERIALES_CUBIERTA_LL.find(
+                              (m) => m.nombre === (c.materialCubierta ?? ''),
+                            )?.abrev || '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="c">
                         {/* C derivado del material de cubierta (hoja 2, criterio por material). */}
@@ -823,34 +842,44 @@ export default function ChequeoCanalesLluvias() {
                       </td>
                       <td className="c">
                         {/* Material del canal (hoja 2 col. J): n derivado del catálogo. */}
-                        <select
-                          value={c.materialCanal ?? ''}
-                          aria-label="Material del canal"
-                          title={c.materialCanal || 'Material del canal'}
-                          disabled={!edit}
-                          onChange={(e) => setMaterialCanal(c.id, 'materialCanal', e.target.value)}
-                          style={{
-                            textAlign: 'center',
-                            fontSize: 10,
-                            opacity: edit ? 1 : 0.6,
-                            padding: '2px 2px',
-                            width: '100%',
-                            minWidth: 0,
-                            fontFamily: 'var(--mono)',
-                            background: 'var(--bg2)',
-                            border: '1px solid var(--line)',
-                            borderRadius: 2,
-                            color: 'var(--txt)',
-                            cursor: edit ? 'pointer' : 'default',
-                          }}
-                        >
-                          <option value="">—</option>
-                          {MATERIALES_CANAL_LL.map((m) => (
-                            <option key={m.nombre} value={m.nombre} title={m.nombre}>
-                              {m.abrev}
-                            </option>
-                          ))}
-                        </select>
+                        {edit ? (
+                          <select
+                            value={c.materialCanal ?? ''}
+                            aria-label="Material del canal"
+                            title={c.materialCanal || 'Material del canal'}
+                            onChange={(e) =>
+                              setMaterialCanal(c.id, 'materialCanal', e.target.value)
+                            }
+                            style={{
+                              textAlign: 'center',
+                              fontSize: 10,
+                              padding: '2px 2px',
+                              width: '100%',
+                              minWidth: 0,
+                              fontFamily: 'var(--mono)',
+                              background: 'var(--bg2)',
+                              border: '1px solid var(--line)',
+                              borderRadius: 2,
+                              color: 'var(--txt)',
+                              cursor: edit ? 'pointer' : 'default',
+                            }}
+                          >
+                            <option value="">—</option>
+                            {MATERIALES_CANAL_LL.map((m) => (
+                              <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                                {m.abrev}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            title={c.materialCanal || undefined}
+                            style={{ fontFamily: 'var(--mono)', fontSize: 10 }}
+                          >
+                            {MATERIALES_CANAL_LL.find((m) => m.nombre === (c.materialCanal ?? ''))
+                              ?.abrev || '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="c">
                         {/* n SOLO del material de canal (REQ: sin material → vacío, sin fallback). */}

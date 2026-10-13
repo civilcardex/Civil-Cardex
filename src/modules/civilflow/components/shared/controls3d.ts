@@ -20,3 +20,9 @@ export function attachAntiAutoscroll(canvas: HTMLCanvasElement): () => void {
   canvas.addEventListener('mousedown', anti);
   return () => canvas.removeEventListener('mousedown', anti);
 }
+
+/** Aspect del canvas con guardas (alto 0 y ratio mínimo): el bloque de 4 líneas se repetía
+ *  en los 3 visores 3D. */
+export function aspectDe(el: { clientWidth: number; clientHeight: number }): number {
+  return Math.max(0.1, el.clientWidth / Math.max(1, el.clientHeight));
+}

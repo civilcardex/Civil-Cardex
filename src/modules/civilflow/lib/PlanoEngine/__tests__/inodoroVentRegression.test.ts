@@ -197,7 +197,7 @@ describe('inodoro RS4 + ventilación: regresión de borrado', () => {
     expect(appOk(eng)).toBe(true);
 
     // Paso 5: guardar y recargar
-    const work = JSON.parse(JSON.stringify(eng.saveWork()));
+    const work = structuredClone(eng.saveWork());
     const eng2 = makeEngine();
     eng2.loadWork(JSON.stringify(work));
     eng2._markDirty();
@@ -259,7 +259,7 @@ describe('inodoro RS4 + ventilación: regresión de borrado', () => {
     expect(appOk(eng)).toBe(true);
 
     // Recarga: el campo y el conteo viajan juntos
-    const work = JSON.parse(JSON.stringify(eng.saveWork()));
+    const work = structuredClone(eng.saveWork());
     const eng2 = makeEngine();
     eng2.loadWork(JSON.stringify(work));
     eng2._markDirty();

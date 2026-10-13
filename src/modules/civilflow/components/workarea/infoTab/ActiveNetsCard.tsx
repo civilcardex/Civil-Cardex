@@ -63,12 +63,11 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     const pid = getActiveProyectoId();
     if (!pid) return;
     void (async () => {
-      const { loadAfAlimentacion, loadTanqueNpt, loadPresionGarantizada } =
-        await import('../../../services/projectDataService');
+      const { loadCampoProyectoGeneral } = await import('../../../services/projectDataService');
       const [afDb, nptDb, presDb] = await Promise.all([
-        loadAfAlimentacion(pid),
-        loadTanqueNpt(pid),
-        loadPresionGarantizada(pid),
+        loadCampoProyectoGeneral<string>(pid, 'af_alimentacion'),
+        loadCampoProyectoGeneral<string>(pid, 'tanque_npt'),
+        loadCampoProyectoGeneral<string>(pid, 'presion_garantizada'),
       ]);
       if (afDb && (afDb === 'ep' || afDb === 'tanque' || afDb === 'red')) {
         setAfAlim(afDb as AfAlim);
@@ -92,7 +91,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     const pid = getActiveProyectoId();
     if (pid)
       void import('../../../services/projectDataService').then(
-        ({ saveAfAlimentacion }) => void saveAfAlimentacion(pid, v),
+        ({ saveCampoProyectoGeneral }) => void saveCampoProyectoGeneral(pid, 'af_alimentacion', v),
       );
     const n = new Set(redes);
     if (v === 'ep') n.add('ep');
@@ -410,9 +409,9 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                     const v = e.currentTarget.value;
                                     const pid = getActiveProyectoId();
                                     if (pid) {
-                                      const { saveTanqueNpt } =
+                                      const { saveCampoProyectoGeneral } =
                                         await import('../../../services/projectDataService');
-                                      void saveTanqueNpt(pid, v);
+                                      void saveCampoProyectoGeneral(pid, 'tanque_npt', v);
                                     }
                                   }}
                                   placeholder="0.00"
@@ -460,9 +459,9 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                     const v = e.currentTarget.value;
                                     const pid = getActiveProyectoId();
                                     if (pid) {
-                                      const { savePresionGarantizada } =
+                                      const { saveCampoProyectoGeneral } =
                                         await import('../../../services/projectDataService');
-                                      void savePresionGarantizada(pid, v);
+                                      void saveCampoProyectoGeneral(pid, 'presion_garantizada', v);
                                     }
                                   }}
                                   placeholder="0.00"

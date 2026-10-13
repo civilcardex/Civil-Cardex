@@ -12,7 +12,7 @@ import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
-import { fmt } from '../utils/formatUtils';
+import { fmt, planIdDeKey } from '../utils/formatUtils';
 import { entradaPor } from '../utils/diamLookup';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
@@ -503,7 +503,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   rVal != null ? (Math.abs(rVal - 7 / 24) < 0.001 ? '7/24' : '1/4') : null;
 
                 const propiasUD = calcUDparcial(t, mergedBase);
-                const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
+                const planIdStr = t.planId || planIdDeKey(t._key);
 
                 let targetPiso = '';
                 let destinoVal = '—';
@@ -681,7 +681,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 // memoria de bajantes (bajanteVentRows).
                 const maxSanConectDiam = maxSanRamalDiamPulg(
                   t.recibeDeIds,
-                  t.planId || (t._key ? t._key.split('-')[1] : ''),
+                  t.planId || planIdDeKey(t._key),
                   storageByPlan,
                 );
 

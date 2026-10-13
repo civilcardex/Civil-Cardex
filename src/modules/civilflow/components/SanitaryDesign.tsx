@@ -20,9 +20,10 @@ import {
   sanFeederMinMsg,
 } from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
+import { parseBajanteKey } from '../utils/drawingWrites/diametros';
 import { perfilDe, rangoSanTxt, ftTxt } from '../constants/normasPais';
 import { useProyecto } from '../context/ProjectContext';
-import { fmt } from '../utils/formatUtils';
+import { fmt, sectorDe } from '../utils/formatUtils';
 import EmptyRow from './shared/EmptyRow';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
@@ -99,8 +100,7 @@ export default function DisenosSanitarios() {
       if (opt) {
         // Ítem 6/7/8: regla central (inodoro → 4" mínimo). Bloqueo directo en UI sin esperar al write.
         if (newPulg > 0 && !sanDiamAllowedForApparatus(newPulg, INODORO_APP_ID)) {
-          const ramalId = tramoId.split('-')[0];
-          const planId = tramoId.split('-')[1] || '';
+          const [ramalId, planId] = parseBajanteKey(tramoId);
           const key = `san_${ramalId}_${planId}`;
           try {
             const counts = JSON.parse(
@@ -608,7 +608,7 @@ export default function DisenosSanitarios() {
                                 }}
                               >
                                 {connectedKeys.map((childKey) => {
-                                  const rId = keyToLabel.get(childKey) || childKey.split('-')[0];
+                                  const rId = keyToLabel.get(childKey) || sectorDe(childKey);
                                   const childTotalUd = componentTotalMap[childKey] ?? 0;
                                   return (
                                     <span

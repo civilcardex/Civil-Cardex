@@ -10,6 +10,7 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { _midpoint } from './PlanoEngineDrawing';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { pointToSegmentDist } from './HitTester';
+import { sectorDe } from '../../utils/formatUtils';
 
 /** Validación de diámetros de ventilación al editar un elemento: bloquea los cambios que rompan los límites de la red vent. */
 export function checkVentDiameterLimits(
@@ -190,7 +191,7 @@ function resolveVentSanTarget(engine: IPlanoEngineCore, ventB: PlanoBajante): st
     const tgt = parts[parts.length - 1];
     if (!tgt) return null;
     // Coincidencia exacta id/code, o base sin sufijo de piso ("BAN1-P2" → "BAN1").
-    const base = tgt.split('-')[0];
+    const base = sectorDe(tgt);
     return (
       sanBajs.find((b) => b.id === tgt || b.code === tgt || b.id === base || b.code === base) ||
       null

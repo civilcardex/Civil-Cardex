@@ -1,24 +1,13 @@
+// ponytail: solo las tablas con acceso directo vía supabase.from — el resto del
+// dominio viaja por RPCs (save/get_proyecto_data, save_plano_data). Las 14 keys sin
+// lectores (redes, pisos, materiales…) salieron el 2026-10-13 (grep 0 usos).
 export const CF_TABLES = {
   perfiles: 'cf_perfiles',
   proyectos: 'cf_proyectos',
-  redes: 'cf_redes',
-  pisos: 'cf_pisos',
   proyectoGeneral: 'cf_proyecto_general',
-  materiales: 'cf_materiales_proyecto',
-  profundidades: 'cf_profundidades_proyecto',
-  criterios: 'cf_criterios_proyecto',
   aparatosUdBase: 'cf_aparatos_ud_base_global',
   aparatosCatalogo: 'cf_aparatos_catalogo_global',
   aparatosUsuario: 'cf_aparatos_usuario',
-  planos: 'cf_planos',
-  planosRamales: 'cf_planos_ramales',
-  planosBajantes: 'cf_planos_bajantes',
-  bajanteConexiones: 'cf_bajante_conexiones',
-  planosAreas: 'cf_planos_areas',
-  planosDimensiones: 'cf_planos_dimensiones',
-  planosAnotaciones: 'cf_planos_anotaciones_texto',
-  planosLineasGuia: 'cf_planos_lineas_guia',
-  planosFantasmas: 'cf_planos_fantasmas_entrepisos',
   gasDatos: 'cf_gas_datos_proyecto',
   epDatos: 'cf_ep_datos_proyecto',
   bombaDatos: 'cf_bomba_datos_proyecto',

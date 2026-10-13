@@ -12,6 +12,7 @@ import { loadFromStorage } from '../services/storageService';
 import type { DrawingData } from './drawingSync';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 import { fmtPiso } from '../constants';
+import { planIdDeKey } from './formatUtils';
 
 /** Mayor diámetro san (pulg) entre los ramales conectados a un bajante (recibeDeIds), según los
  *  ramales persistidos del plano — la misma regla que sigue el motor al asociar/cambiar
@@ -149,7 +150,7 @@ export function computeBajanteVentTable(
   const rows = banTramos.map((t) => {
     const rVal = t.bajR;
     const rStr = rVal != null ? (Math.abs(rVal - 7 / 24) < 0.001 ? '7/24' : '1/4') : null;
-    const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
+    const planIdStr = t.planId || planIdDeKey(t._key);
 
     let targetPiso = '';
     let destinoVal = '—';
@@ -223,7 +224,7 @@ export function computeBajanteVentTable(
       // Por defecto el bajante toma el mayor diámetro de sus ramales conectados
       // (misma regla compartida que la tabla en pantalla).
       if (!resolvedSanDprop) {
-        const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
+        const planIdStr = t.planId || planIdDeKey(t._key);
         resolvedSanDprop = maxSanRamalDiamPulg(t.recibeDeIds, planIdStr, storageByPlan);
       }
     } else {

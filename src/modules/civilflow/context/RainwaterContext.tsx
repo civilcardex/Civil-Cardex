@@ -35,6 +35,7 @@ import {
 } from '../services/rainwaterOverridesService';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 import { areaParcialBajanteLl, materialComun, sumaOtrasAsociados } from '../utils/rainwaterRows';
+import { sectorDe } from '../utils/formatUtils';
 
 interface AreaRaw {
   areaM2?: number;
@@ -421,7 +422,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
       const etiquetaBaj = (idB: string): string => {
         const bb = bajLl.find((x) => String(x.id) === idB);
-        const sector = String(bb?.code || bb?.id || idB).split('-')[0];
+        const sector = sectorDe(String(bb?.code || bb?.id || idB));
         return `${sector}-${pisoCorto(Number(plan.nivel))}`;
       };
       for (const c of canales) {
@@ -460,7 +461,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
           .map((idB) => {
             const b = bajLl.find((x) => String(x.id) === idB);
             return {
-              code: String(b?.code || b?.id || idB).split('-')[0],
+              code: sectorDe(String(b?.code || b?.id || idB)),
               areaDib: b?.area_m2 || 0,
             };
           })
@@ -496,7 +497,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
 
     for (const glyph of drawnCanalGlyphs) {
       // Solo el nombre base ("CNL1" de "CNL1-P1") — el piso va en su propia columna.
-      const sector = (glyph.code || glyph.id).split('-')[0];
+      const sector = sectorDe(glyph.code || glyph.id);
       const manual = manualMap.get(sector);
       if (manual) usedManual.add(manual.sector || manual.id);
       // ── Canal = Σ bajantes asociados (REQ: fuente única = overrides de los BAJANTES) ──
@@ -702,7 +703,7 @@ export function useMaterialesLl() {
     if (!ctx) return null;
     /** Chip "BALL1-P1" del bajante (etiqueta visible, como las tablas). */
     const chipDeBajante = (codeBase: string, nivel: unknown): string =>
-      `${String(codeBase).split('-')[0]}-${pisoCortoLoose(nivel)}`;
+      `${sectorDe(String(codeBase))}-${pisoCortoLoose(nivel)}`;
     /** Clave del override: CÓDIGO BASE sin piso — las tablas, el caudal y el canal leen
      *  por code/id base. Con fallback a huérfanas con sufijo (formato viejo del panel). */
     const claveDe = (chip: string): string => baseDeChip(chip);

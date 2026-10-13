@@ -1,6 +1,7 @@
 import type * as THREE_NS from 'three';
 import type { Rci3DApi } from './useRci3DScene';
 import { RCI_FOV } from './rci3dData';
+import { aspectDe } from '../shared/controls3d';
 
 // FORK DELIBERADO de aparatos3d/vistasCamara (mismo esqueleto, otro pipeline/encuadre): no
 // fusionar sin revisar ambos visores — el genérico acoplaría los 3 módulos 3D (ponytail).
@@ -45,10 +46,7 @@ export function animateTo(
 
 /** Distancia ISO del original: max(alto/2·tan, ancho/2·tan/aspect, MR/tan)·1.05. */
 function distIso(api: Rci3DApi): number {
-  const aspect = Math.max(
-    0.1,
-    api.renderer.domElement.clientWidth / Math.max(1, api.renderer.domElement.clientHeight),
-  );
+  const aspect = aspectDe(api.renderer.domElement);
   return (
     Math.max(
       api.bbox.y / 2 / TAN_HALF_FOV,
@@ -65,10 +63,7 @@ function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.V
   api.orthoOn = true;
 
   const box = new THREE.Box3().setFromObject(api.assembly);
-  const aspect = Math.max(
-    0.1,
-    api.renderer.domElement.clientWidth / Math.max(1, api.renderer.domElement.clientHeight),
-  );
+  const aspect = aspectDe(api.renderer.domElement);
 
   const tgt = new THREE.Vector3();
   box.getCenter(tgt);

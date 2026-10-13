@@ -43,21 +43,6 @@ const CO: PerfNormas = {
   },
 };
 
-/** Base de referencia (criterios regionales) para países sin norma nacional verificada. */
-export const REF = (nombre: string, id: string, nota: string): PerfNormas => ({
-  ...CO,
-  id,
-  nombre,
-  ref: true,
-  norma: {
-    af: `${nota} (ref. NTC 1500)`,
-    san: `${nota} (ref. RAS/NTC 1500)`,
-    ll: `${nota} (ref. RAS/NTC 1500)`,
-    gas: `${nota} (ref. NTC 3728)`,
-    rci: `${nota} (ref. NFPA 13)`,
-  },
-});
-
 export const NORMAS_PAIS: PerfNormas[] = [
   CO,
   {
@@ -196,14 +181,6 @@ export function perfilDe(pais: string | undefined): PerfNormas {
   const n = (pais || '').trim().toLowerCase();
   if (!n) return CO;
   return NORMAS_PAIS.find((p) => p.nombre.toLowerCase() === n || p.id.toLowerCase() === n) ?? CO;
-}
-
-/** Cita normativa de una red según el país del proyecto. */
-export function normaDe(
-  pais: string | undefined,
-  net: 'af' | 'san' | 'll' | 'gas' | 'rci',
-): string {
-  return perfilDe(pais).norma[net];
 }
 
 /** Rango de velocidad AF/AC formateado con la cita normativa del país — para tooltips. */

@@ -1,5 +1,6 @@
 import type * as THREE_NS from 'three';
 import type { Aparatos3DApi } from './useAparatos3DScene';
+import { aspectDe } from '../shared/controls3d';
 
 // Vistas de cámara — port fiel del original: ISO vuelve a persp interpolada (700 ms, ease-out
 // cúbico); FRENTE/LATERAL/PLANTA encuadran la orto sobre el modelo activo con margen 8 %.
@@ -20,10 +21,7 @@ function cajaActiva(api: Aparatos3DApi): THREE_NS.Box3 {
 /** Distancia de encuadre ISO del original: max(alto/2·tan, ancho/2·tan/aspect, mr/tan)·1.2. */
 function distIso(api: Aparatos3DApi, box: THREE_NS.Box3): number {
   const size = box.getSize(new api.THREE.Vector3());
-  const aspect = Math.max(
-    0.1,
-    api.renderer.domElement.clientWidth / Math.max(1, api.renderer.domElement.clientHeight),
-  );
+  const aspect = aspectDe(api.renderer.domElement);
   const dH = size.y / 2 / TAN_HALF_FOV;
   const dW = size.x / 2 / (TAN_HALF_FOV * aspect);
   const dR = api.mr / TAN_HALF_FOV;
@@ -83,10 +81,7 @@ function encuadreOrto(
   }
   halfW *= 1.08;
   halfH *= 1.08;
-  const aspect = Math.max(
-    0.1,
-    api.renderer.domElement.clientWidth / Math.max(1, api.renderer.domElement.clientHeight),
-  );
+  const aspect = aspectDe(api.renderer.domElement);
   if (halfW / halfH < aspect) halfW = halfH * aspect;
   else halfH = halfW / aspect;
   return { halfW, halfH, radius: size.length() / 2 || api.mr };

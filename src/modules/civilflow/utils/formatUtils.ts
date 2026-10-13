@@ -210,3 +210,16 @@ export function normalizeDnLabel(dn: string): string {
   out = out.replace(/(\d+) (\d+\/\d+)/, '$1-$2');
   return out;
 }
+
+/** Primer segmento de una clave compuesta ("SECTOR-resto" → "SECTOR"). */
+export function sectorDe(chip: string): string {
+  return chip.split('-')[0];
+}
+
+/** Último segmento de una clave compuesta ("id-con-guiones-planId" → "planId").
+ *  Con lastIndexOf: `split('-')[1]` truncaba ids con guion (AC-01-X-P1). */
+export function planIdDeKey(key: string | undefined): string {
+  if (!key) return '';
+  const sep = key.lastIndexOf('-');
+  return sep <= 0 ? '' : key.slice(sep + 1);
+}

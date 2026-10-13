@@ -21,20 +21,15 @@ export interface Tutorial {
   vimeo?: string;
 }
 
-export const TUTORIALES: Record<string, Tutorial> = {
-  // 'cf:visor': { titulo: '…', yt: '…' },
-};
-
 /** DEMO solo en desarrollo (ped. usuario: "video cualquiera en todas las secciones, es para
  *  ver cómo se ve") — import.meta.env.DEV es false en el build de producción, así que nunca
- *  llega a prod. Al cargar videos reales: borrar DEMO y quitar el `|| DEMO` del resolvedor. */
+ *  llega a prod. Al cargar videos reales: crear el mapa TUTORIALES (ver doc arriba) y
+ *  resolver exacto → prefijo → DEMO. */
 const DEMO: Tutorial | null = import.meta.env.DEV
   ? { titulo: 'Video de prueba', yt: 'dQw4w9WgXcQ' }
   : null;
 
-/** Tutorial de una clave de ayuda: exacto o por prefijo (último segmento fuera). */
-export function tutorialDe(key: string): Tutorial | null {
-  if (TUTORIALES[key]) return TUTORIALES[key];
-  const corto = key.split(':').slice(0, -1).join(':');
-  return (corto && TUTORIALES[corto]) || DEMO;
+/** Tutorial de una clave de ayuda (hoy siempre el DEMO en dev, null en prod). */
+export function tutorialDe(_key: string): Tutorial | null {
+  return DEMO;
 }
