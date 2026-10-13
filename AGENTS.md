@@ -3190,3 +3190,136 @@ Gates: tsc 0 · lint 0 · vitest 1031/1031 (168 files) · build ✓ · graphify 
 - elementEditor.tsx: diámetro y pendiente en fila 50-50 (ambos flex:1). PendienteRamalInput ahora (a) re-sincroniza su valor cuando el elemento del menú cambia (edición desde panel/tablas con el menú abierto se refleja), (b) al commit actualiza menú (setContextMenuState) + selElement (panel derecho) EN VIVO — sin deseleccionar/reseleccionar; mismo patrón que el commit de diámetro.
 - formatUSD → "US$25.00" (prefijo inequívoco, test actualizado); literales de marketing "US$19"/"US$49".
 - Gates: tsc 0 (filtrando paralela) · vitest ok · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 8: dirección en la unión de la propagación af/ac)
+- Regla usuario: el aparato de una rama (RAF2) solo baja a las SALIDAS de la unión (RAF3, cola en J) — nunca a las entradas (RAF1, cabeza en J). Matriz de 4 topologías (aparatosPresionDireccion.test.ts) con montante en J + contador en el extremo: cases con flecha INTO J ya no reciben (el motor usa cola/cabeza por _tribReversed); el caso "colada en J sin flag" = su propio flujo (salida) y recibe, documentado.
+- Filtro de ANCESTROS (cierre ups) aplicado SOLO al aporte de hermanos: un hermano que además es ancestro ya llegó por ups — sumar su base sería doble conteo. El filtro en aristas ups ERA el bug (borraba el upstream legítimo) — detectado por la matriz.
+- Auto-limpieza: FixturesPanel ejecuta propagarAparatosPresion al montar (af/ac) — el delta retira libros rancios sin esperar un clic.
+- formatUSD → "US$25.00"; marketing "US$19/US$49" (test 9/9).
+- Gates: tsc 0 (filtrando paralela) · vitest 1035/1035 (169) · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 9: panel read-only con herencia + totales = carga propagada)
+- **Panel derecho opaco/no editable para tramos con herencia (RAF3)**: `esPropagado` = libro aparatos_heredados_v1 no vacío (solo af/ac) → FixtureGrid disabled (opacity .5) + gates inc/dec con alerta "Unidades propagadas — edítalas en el tramo de origen".
+- **UD propia/total y Otros ramales reconciliados con la propagación**: las claves ya traen la CARGA (propia + heredada) escrita por propagarAparatosPresion → componentTotalMap (waterRowsCore + useWaterNetworkGraph) = lectura DIRECTA de calcUCparcial; se retiró computeDirectedTotals + overrides de merge (duplicaban lo propagado). mergeBranches sigue para conectividad/etiquetas. propiaMap = carga − heredada-UC (libro). qprob/hunterQ y presión encadenada leen la carga ✓. Otros ramales chips = carga ✓.
+- CalcUC: Parcial = UD propia (carga − heredada), Total = carga; celdas propia con "(+N)" heredados.
+- WaterNetworkDesign ejecuta propagarAparatosPresion(networkType) al montar (asegura claves=carga antes de leer; idempotente).
+- Gates: tsc 0 (filtrando paralela) · vitest 1035/1035 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 10: desplegables del menú leen del motor vivo)
+- midRamalAccessorySelector (af/ac/gas): "Seleccionar Aparato" + tarjeta de asignados leen del RAMAL VIVO del engine (snapshot del menú = rancio si el aparato se asignó desde el panel derecho). Prefiere el extremo clicado; cae al otro extremo (mismatch fieldApp vs extremo del panel = "Ninguno" con tarjeta llena).
+- bajanteConnectionPanel: select de accesorio (currentAcc) y de diámetro de accesorio (currentDiam) idem — ramalVivo con fallback al snapshot.
+- san/ll ya leía conteos vivos; ElementCodeEditor diámetro ya leía vivo.
+- Gates: tsc 0 (filtrando paralela) · vitest 1035/1035 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 11: Nº descargas editable + patrón sanitaria en todas las tablas)
+- **Nº de descargas AF/AC editable + bidireccional**: DesignTableRow recibe plans/updTramo/net; celda con patrón sanitaria (input en modo edición) → updTramo('nSalidas') + writeNSalidasToDrawing(ownKey, net, v, plans) (ya soportaba HYDRO_FAMILIES: escribe trazo + BD + tramo_hidro_data_v3; buildTramos re-lee r.nSalidas). Min 1.
+- **Patrón sanitaria (EDITAR/LISTO: off = texto plano mono, on = input) en todas las tablas**:
+  - Diseño AF/AC: celda Nº descargas (nueva), Diámetro diseño (select ↔ span con label), Pin/Pfin (LazyDecimalInput ↔ span).
+  - Chequeo canales: CanalDimField (todas sus celdas: b/h/pendiente/longitud/areaOtras/intensidad/muro/borde) + selects Material cubierta y Material canal (select ↔ span abrev).
+  - Chequeo bajantes ll: OtrasField + Material cubierta + Diámetro propuesto (select ↔ span; legacy 1.5" visible en modo edición).
+  - Acometida ya estaba (LazyNumE/estiloPlano); sanitaria es la referencia.
+- Gates: tsc 0 (filtrando paralela) · vitest 1035/1035 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 12: fuga RAF1 = libro rancio + lock honesto)
+- Matriz con la topología EXACTA del usuario (montante a J + contador a la izq + rama en ambas direcciones + RAF1 [J..izq] con/sin flag): 8/8 — el algoritmo actual NUNCA lleva el aparato de RAF2 a RAF1. La fuga observada = libro aparatos_heredados_v1 RANCIO de la sesión anterior a las reglas de dirección (la propagación solo re-corria al montar el panel o al escribir aparatos).
+- Fix: FixturesPanel re-ejecuta propagarAparatosPresion en CADA cambio de selección (efecto [netId, targetId], colocado tras esPropagado) — el delta limpia RAF1 al instante, dispara 'storage' y esPropagado se evalúa honesto (el "se desbloquea al asignar desde el menú" era exactamente este mecanismo funcionando solo por la escritura del menú).
+- Gates: tsc 0 (filtrando paralela) · vitest 1035/1035 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 13: propagación por GENEALOGÍA del split — fuga RAF1 muerta)
+- CAUSA DEFINITIVA de "el aparato de RAF2 se autoasigna a RAF1": la regla "hermanos de la unión" geométrica — cuando la pieza RAF1 estaba almacenada con su cola en J (dibujada J→izq o tras splits), la regla la trataba como salida y le inyectaba la base de RAF2. La geometría es ambigua; la VERDAD es la genealogía del split.
+- Núcleo reescrito (aparatosPresion.ts): aristas = a) montante/bajante por recibeDeIds/alimentaIds explícitos o distancia ≤2 en la cola (o r.ini=código); b) GENEALOGÍA mergesFrom gateada por geometría (S debe seguir tocando la cola de r — si r se invirtió, la genealogía vieja no aplica) con SEMÁNTICA POR POSICIÓN: mergesFrom[0]=anfitrión aporta su CARGA (línea que continúa), mergesFrom[1+]=entrantes aportan solo su BASE (aparatos que la rama sirve) — sumar la carga del entrante duplicaba lo que ya llega por el anfitrión (inodoro×2); c) fallback cabeza→cola SOLO si r no tiene mergesFrom (uniones sin split). Regla de hermanos ELIMINADA.
+- Tests reescritos (se dañaron con un bug de script propio s2-and-s; reescritura limpia): propagarAparatosPresion.test.ts (5) + aparatosPresionDireccion.test.ts (8: 4 matriz + 4 topología exacta de la imagen con montante a J y contador a la izq). RAF3 = inodoro(montante vía RAF1 anfitrión) + lavamanos(base entrante RAF2); RAF1 jamás recibe; RAF2 = inodoro+lavamanos (cabeza→cola en la unión); delta/idempotencia/inversión/ciclo acotado.
+- Gates: tsc 0 (filtrando paralela) · vitest 1039/1039 (169) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 14: propagación por genealogía + diagnóstico [CF-PROP])
+- La regla "hermanos geométricos" era la fuga (piezas con cola en J la recibían aunque su flujo entrara). Núcleo reescrito a VERDAD DEL MOTOR: montantes por recibeDe/alimenta/distancia; GENEALOGÍA mergesFrom gateada por geometría con semántica [anfitrión→carga, entrantes→base]; fallback cabeza→cola solo sin mergesFrom. 13 tests (matriz + topología exacta de la imagen) verdes.
+- Si el usuario aún ve fuga a RAF1: consola DEV imprime [CF-PROP] con el grafo completo (id, cola/cabeza, rev, mergesFrom, ups, upsBase, monte, base, heredado) tras cada propagación — pegarlo para ver el dato real del motor (la fuga restante solo puede venir de mergesFrom de RAF1 reescrito por deleteRemerge o del libro ucAplicado del montante).
+- Gates: tsc 0 · vitest 1039/1039 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 15: propagación async — regresión de menús contextuales)
+- Regresión: la propagación corria SÍNCRONA en el efecto de selección ([netId, targetId]) — el clic derecho selecciona → efecto → cálculo+escritura+evento 'storage' en el ciclo del click → los menús contextuales dejaron de abrirse. FIX: debounce 250 ms con setTimeout + try/catch (devError) — el menú abre primero; la propagación aterriza después y refresca vía evento.
+- Diagnóstico [CF-PROP] (devLog, solo DEV): tras cada propagación vuelca el grafo completo por ramal (cola/cabeza, rev, mergesFrom, ups, upsBase, monte, base, heredado) — pendiente que el usuario lo pegue si la fuga a RAF1 persiste.
+- Gates: tsc 0 · vitest 1039/1039 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 16: evento siempre + verificación con volcado real)
+- Volcado [CF-PROP] del usuario confirma motor LIMPIO: RAF1 base={} heredado={} (no recibe), RAF2 base={san:1}, RAF3 heredado={san:1}. La propagación por genealogía es correcta en su dibujo.
+- INO×2 fantasma en el panel de RAF1 = ESTADO RANCIO: la propagación solo despachaba 'storage' si dirty — la corrida que limpió RAF1 despachó, pero cualquier corrida limpia posterior dejaba un estado React previo pintado sin refresco. FIX: despachar el evento SIEMPRE tras cada corrida (idempotente, barato).
+- Nota de datos: el delta pudo borrar asignaciones manuales viejas de RAF1 cubiertas por el libro contaminado de versiones anteriores — reasignar a mano si faltan (el libro actual ya no se contamina, verificado en tests).
+- Gates: tsc 0 · vitest 1039/1039 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 17: CAUSA del INO×2 en RAF1 = merge-sum del panel)
+- El ×2 no era propagación (volcado [CF-PROP] ya limpio: RAF1 base={} heredado={}) — era el DISPLAY del panel: currentMap sumaba las patas de la unión (mergeKeys, regla del modelo viejo "la pata muestra la UC combinada") SOBRE claves que ya traen la carga propagada → RAF1 = RAF2(1) + RAF3(1) = ×2 sin nada propio.
+- FIX: af/ac muestran counts[storageKey] TAL CUAL (la clave ES la carga); merge-sum sigue solo para gas (sin propagación). Gates inc/dec por mergeKeys también quedan solo-gas (af/ac usan esPropagado).
+- Gates: tsc 0 · vitest 1039/1039 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 18: "Otros ramales" = genealogía según flujo)
+- Columna "Otros ramales" de Diseño AF/AC redefinida (orig. usuario): la continuación del empalme (target por resolveJunctionEntrant, fresco por render — un invertir cambia el listado) lista SUS fuentes (entrantes por carga + co-salidas por base; RAF3 → RAF1+RAF2); las filas fuente y los tramos sin empalme muestran nada. displayMap ya no lee adyacencia geométrica (getConnectedNeighbors eliminado — duplicaba fuentes que la propagación ya integró; era el mismo vector del INO×2). mergeBranches/calculoMap siguen para adj/totales/presión.
+- Gates: tsc 0 · vitest 1039/1039 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 19: propagación en ARAÑA de ramales)
+- La propagación solo seguía mergesFrom/head→tail — una araña (línea partida en varios tramos + ramales en cada unión + tributarios colgantes) no subía la carga entre uniones (RAF4/tributario no llegaba a RAF3).
+- Núcleo reescrito a CLÚSTERES de extremos (union-find, tol 0.5): cada unión con 2+ extremos → ENTRANTE (cabeza en el punto) aporta su CARGA a todas las SALIDAS (cola en el punto); cada SALIDA aporta su BASE a las demás salidas; una pieza ENTRANTE jamás recibe de esa unión. TRIBUTARIOS: calcTrib (recursivo con memo, SOLO contribución de hijos — el plegado se auto-duplicaba si incluía la base propia, bug detectado por lavamanos×2) se PLEGA a la base del padre → sube por la araña. mergesFrom edges retirados (los clústeres los subsumen).
+- Escritura: reutiliza la base PLEGADA (recalcularla desde disco perdía los aparatos de tributarios — RAF4 sin su tina).
+- [CF-PROP] dump ahora imprime `entradas` (tipo:origen de cada arista recibida).
+- Tests: matriz 8 + araña (RAF1→J1 con RAF4+TIRAF4; RAF3→J2 con RAF2; RAF3B continuación): RAF3={tina}, RAF3B={tina,lavamanos}, RAF4={tina}, entrantes jamás.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 20: CalcUC = columnas/sumatoria sanitaria + Otros ramales = entrantes)
+- CalcUC AF/AC: primera columna "Ramal/Montante"; AC gana columna UC TOTALES (showTotal true — Parcial = UD propia, Total = carga con tributarios-plega + propagados). Sumatoria idéntica a san: tributarios cuentan como propios (calcTrib pliega su base a la clave del padre), propios + propagados (heredado en la clave).
+- "Otros ramales" (Diseño AF/AC): SOLO los ENTRANTES del empalme cuyo aparato carga la fila (mergesFrom[1..] + entrantes geométricos) — el anfitrión NUNCA se lista (su carga viene de detrás). Ejemplo usuario: RAF3 → RAF2 únicamente; RAF1/RAF2 → ninguno. displayMap ya no usa adyacencia ni co-salidas.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 21: Σ vertical CalcUC sin doble conteo)
+- El pie (Σ) de Cálculo UC AF/AC contaba propia + heredado por fila → los aparatos propagados se repetían en cada tramo que los transporta (×2 entre tramos). FIX: la Σ vertical cuenta cada aparato UNA vez — su UD PROPIA (fixtures − heredado del libro), en el tramo que lo sirve; igual que sanitaria. Las filas siguen mostrando propia (+N heredados) y Total = carga.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 22: CalcUC sin columnas extra)
+- CalcUC AF/AC: eliminadas las columnas "Longitud (m)" y "No de descargas simultáneas" (th+td+vars vLh/vNS; colSpan de fila vacía ajustada) — quedan solo Ramal/Montante, Inicio, Fin, grupo de aparatos de la red, Parcial y UC Totales (ambas redes).
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 23: anclaje del listado Otros ramales a la continuación)
+- El listado "Otros ramales" quedó anclado a targetKeyFull (el ACUMULADOR por resolveJunctionEntrant = el ENTRANTE que llega de detrás, p.ej. RAF1 desde el medidor) → la fila de RAF1 mostraba [RAF3][RAF2] invertido. FIX: anclar a la CONTINUACIÓN (la pieza auto-split cuyo tail está en el empalme, r.id) — su fila lista entrantes cuyo aparato carga: RAF3 → [RAF2]; RAF1/RAF2 → ninguno. Excluye a sí misma, al target y al anfitrión.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 24: heredMap de CalcUC congelado)
+- El pie seguía duplicando: el memo heredMap tenía en deps el SETTER de estado (estable) en vez del valor del tick — se computaba una vez al montar y el "(−heredado)" del pie/filas nunca refrescaba (NI en la primera pasada si el libro cambió después). FIX: deps [tramos, heredTick].
+- Nota datos: el aparato de RAF2 quedó con id 'san' (unidad genérica) — visible en [CF-PROP]; si quiere el id de lavamanos correcto, reasignar desde el menú contextual.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 25: sin bloque "N UC" en el pie de CalcUC)
+- CalcUC AF/AC: eliminadas del tfoot las celdas "{totalUC} UC" (rama showTotal colSpan2 y rama else) + su memo totalUC — el pie queda solo con la Σ por aparato.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 26: Otros ramales = participantes del empalme)
+- "Otros ramales" de la continuación = TODOS los participantes del empalme menos ella (entrantes + co-salidas): RAF3 → [RAF1, RAF2]; las filas participantes muestran "—". El acumulador (target) y la propia fila quedan fuera.
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 27: _aparatosKey en los Tramos — la Σ volvió a duplicar)
+- CAUSA de la Σ doble persistente: buildTramos usaba apKey para LEER los fixtures pero NUNCA copiaba `_aparatosKey` al Tramo → heredMap de CalcUC saltaba todos los tramos (if t._aparatosKey) → la Σ no restaba el heredado (RAF2 +1 y RAF3 +1 = 2). FIX: `_aparatosKey: apKey` añadido a los 5 constructores de tramo (af/ac, stub calentador, san sync, bajante sync).
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 28: Otros ramales incluye al anfitrión/target)
+- "Otros ramales" de la continuación = TODOS los participantes del empalme (anfitrión/target + entrantes + co-salidas) menos ella misma: RAF3 → [RAF1, RAF2]. El target (resolveJunctionEntrant) ya no se excluye del listado (era la fuga de RAF1).
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 29: celdas CalcUC muestran el conteo servido)
+- Celdas de aparatos de CalcUC AF/AC como sanitaria: muestran el conteo servido directo (propios + propagados según la conexión, de la clave) SIN resta ni "(+N)" — la Σ vertical sigue contando cada aparato una vez (UD propia = fixtures − heredado).
+- Gates: tsc 0 · vitest 1040/1040 · build ✓.
+
+## ESTADO ACTUAL propagación AF/AC (consolidado auditoría 2026-10-13 — lee esto, no las rondas 8-29)
+- Modelo: clústeres geométricos de extremos por plano (tolerancia 0.5) + plegado de tributarios por `padre` + DFS con corte + doble libro (`aparatos_heredados_v1` her + `aparatos_heredados_trib_v1` fold). `mergesFrom` se IGNORA a propósito (solo geometría + `padre`).
+- Invariantes: manual = actual − libroHer − libroTrib (foto inmutable, idempotente); Σ CalcUC excluye tributarios (el padre ya trae su carga); `ownTotal` del panel = carga − libro; `heredMap` llaveado por `_aparatosKey ?? _key ?? id`; "Otros ramales" = participantes del empalme + fallback geométrico sin split.
+- Decisiones conscientes: dispatch 'storage' SIEMPRE (cura estado rancio del panel; consumidores con debounce/firma); flush síncrono al cambiar de selección; tribs con padre fuera de clústeres (sin doble vía).
+- Stale histórico (no borrar, solo referencia): rondas 13-14 describen genealogía retirada en ronda 19; línea SecHeredados (ronda ~9) fue eliminado — su reemplazo es `leerHeredadosPresion` inline.
+
+## Session Summary — 2026-10-13 (auditoría 19 hallazgos → fixes)
+- Núcleo `aparatosPresion.ts`: foto inmutable + fold bottom-up hijos-primero (no-idempotencia y orden muertos); partición por pid en clústeres/montantes/carga/keys (cross-piso muerto); cargaBaj por clave exacta + fallback legacy `_P` (doble suma muerta); tribs con padre fuera de clústeres; aristas 'base' con guarda de alcanzabilidad por carga + índice por destino; `mergesFrom` fuera del interface (comentario honesto); dispatch también en early-return.
+- CalcUC: `heredMap` por `_aparatosKey ?? _key ?? id`, filas `key=` estable, Σ excluye tributarios.
+- FixturesPanel: `ownTotal` = carga − libro (tramo con solo heredado acepta su primer manual); "−" con solo-heredado avisa en vez de vaciar; grid sin gate `esPropagado`; flush síncrono al cambiar de selección (carrera 250ms muerta).
+- WaterNetworkDesign: listener 'storage' con guarda de firma anti-loop (diseño ya no congela pre-propagación).
+- drawingWrites: `parseBajanteKey` (lastIndexOf) movido a `diametros.ts` y usado en los 5 writes; `writeNSalidasToDrawing` con devError si no toca doc.
+- Menús: `ramalVivoDelPlanoCargado` choke point (12 sitios; invariante single-plan documentado).
+- Display: fallback geométrico (union-find 0.5) para uniones sin split en "Otros ramales"; comentarios stale de líneas corregidos.
+- Tests: +5 (plegado idempotente 3×, trib-trib anidado adverso, cross-piso P1/P2, trib-en-vértice, oráculo RB).
+- Deps: `npm audit` 0 vulns; majors pendientes (eslint 10, tailwind 4, vitest 5, pdfjs 6, TS 7) NO tocados — rama aparte.
+- Gates: tsc 0 · lint 0 err 1 warn (GasDesign de sesión paralela) · vitest 1044/1044 (169 files) · build ✓.
