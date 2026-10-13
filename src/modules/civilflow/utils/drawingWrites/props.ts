@@ -3,7 +3,7 @@ import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/s
 import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from '../drawingSync';
 import { diamPulgFromLabel } from '../diamPulgFromLabel';
-import { punterosBajante, validarDiametroEntrePisos } from './diametros';
+import { punterosBajante, validarDiametroEntrePisos, parseBajanteKey } from './diametros';
 import { avisarDiametroInvalido } from '../diametroValidation';
 
 /** Mismo write de diámetro para VARIOS ramales con UN solo load+save del doc por plano
@@ -60,15 +60,6 @@ export function writeDiametroToDrawingBatch(
   } catch {
     /* sync best-effort (vent ∈ SAN_FAMILIES) */
   }
-}
-
-/** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones).
- *  @param key - clave compuesta.
- *  @returns par [id, planId] (planId '' si no hay guion). */
-export function parseBajanteKey(key: string): [string, string] {
-  const sep = key.lastIndexOf('-');
-  if (sep <= 0) return [key, ''];
-  return [key.slice(0, sep), key.slice(sep + 1)];
 }
 
 /** Escribe una propiedad de bajante (Llenado, D propuesto…) al doc de trazos del piso + BD,
@@ -187,9 +178,7 @@ export function writeMaterialToDrawing(
   plans: SyncPlanInput[],
 ): void {
   if (!ramalKey || !net || !plans) return;
-  const parts = ramalKey.split('-');
-  const ramalId = parts[0];
-  const planId = parts[1];
+  const [ramalId, planId] = parseBajanteKey(ramalKey);
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     if (planId && String(plan.id) !== String(planId)) continue;
@@ -222,9 +211,7 @@ export function clearDiametroToDrawing(
   plans: SyncPlanInput[],
 ): void {
   if (!ramalKey || !net || !plans) return;
-  const parts = ramalKey.split('-');
-  const ramalId = parts[0];
-  const planId = parts[1];
+  const [ramalId, planId] = parseBajanteKey(ramalKey);
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     if (planId && String(plan.id) !== String(planId)) continue;

@@ -4,6 +4,8 @@ import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/sto
 import type { SyncPlanInput, RawElement } from '../drawingSync';
 import { normalizarCanal } from '../../lib/PlanoEngine/canalAssociation';
 import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoords';
+import { parseBajanteKey } from './diametros';
+import { devError } from '../../../../utils/devError';
 
 /** Escribe la pendiente (%) de un ramal ll al doc de trazos del piso + BD (y sync san —
  *  'll' ∈ SAN_FAMILIES). El caller valida el rango físico; aquí solo persistencia dual. */
@@ -22,9 +24,7 @@ export function writePendienteToDrawing(
 ): void {
   if (!ramalKey || !net || !plans) return;
   const isSan = SAN_FAMILIES.has(net);
-  const parts = ramalKey.split('-');
-  const ramalId = parts[0];
-  const planId = parts[1];
+  const [ramalId, planId] = parseBajanteKey(ramalKey);
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     if (planId && String(plan.id) !== String(planId)) continue;
@@ -57,12 +57,15 @@ export function writeNSalidasToDrawing(
   if (!ramalKey || !net || !plans) return;
   const isSan = SAN_FAMILIES.has(net);
   const isHydro = HYDRO_FAMILIES.has(net);
-  const parts = ramalKey.split('-');
-  const ramalId = parts[0];
-  const planId = parts[1];
+  const [ramalId, planId] = parseBajanteKey(ramalKey);
+  // Surfacing (auditoría #10): el caller (tabla) ya aplicó `updTramo` en contexto — si aquí
+  // no se toca ningún doc, ambas fuentes divergen en silencio. Se reporta en DEV.
+  let planesVistos = 0;
+  let ramalVisto = false;
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     if (planId && String(plan.id) !== String(planId)) continue;
+    planesVistos++;
     const key = TRAZOS_PREFIX + plan.id;
     const raw = loadFromStorage<LocalDrawingData | null>(key, null);
     if (!raw) continue;
@@ -72,6 +75,7 @@ export function writeNSalidasToDrawing(
       if (r.id === ramalId && r.net === net) {
         r.nSalidas = newVal;
         changed = true;
+        ramalVisto = true;
       }
     }
     // también actualizar hidroData nSalidas si existe
@@ -89,6 +93,11 @@ export function writeNSalidasToDrawing(
         saveToStorage('tramo_hidro_data_v3', hidro);
       }
     }
+  }
+  if (planesVistos === 0) {
+    devError(`[writeNSalidasToDrawing] sin doc confirmado para ${ramalKey}`);
+  } else if (!ramalVisto) {
+    devError(`[writeNSalidasToDrawing] ramal ${ramalId}/${net} ausente en el doc`);
   }
   if (isSan) writeSanDrawingSync(plans);
   if (isHydro) writeHydroDrawingSync(plans);

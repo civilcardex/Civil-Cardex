@@ -19,6 +19,7 @@ import {
 } from '../../../utils/syncExtremeAccessory';
 import type { PlanItem } from '../../../context/PlansContext';
 import { MENU_SELECT_STYLE, MENU_SECTION_LABEL_ROW_STYLE, type ContextMenuState } from './context';
+import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers';
 
 /** Selector de accesorio a mitad de un ramal (clic sobre el cuerpo): valida polaridad de codos,
  *  yees y conflictos de diámetro antes de escribir el accesorio en el vértice del tramo. */
@@ -93,7 +94,7 @@ export function MidRamalAccessorySelector({
               e.target.blur();
               const eng = engineRef.current;
               if (!eng) return;
-              const fresh = eng.ramales.find((r) => r.id === element.id);
+              const fresh = ramalVivoDelPlanoCargado(eng, element.id);
               if (!fresh) return;
 
               if (
@@ -271,7 +272,15 @@ export function MidRamalAccessorySelector({
           // LDesvio: el desplegable SIEMPRE vacío (orig. usuario) — sus UDs son la herencia
           // del fantasma/bajante superior, no un aparato asignado al tramo.
           if (element.id?.startsWith('LD_')) currentApp = '';
-          else if (element.net === 'san' || element.net === 'll') {
+          else if (element.net === 'af' || element.net === 'ac' || element.net === 'gas') {
+            // af/ac/gas: leer del MOTOR VIVO (orig. usuario) — el snapshot del menú llega
+            // rancio si el aparato se asignó desde el panel derecho. Prefiere el extremo
+            // clicado; cae al otro si el asignado vive allí.
+            const vivo = ramalVivoDelPlanoCargado(engineRef.current, element.id);
+            const appI = String(vivo?.aparatoInicio || '');
+            const appF = String(vivo?.aparatoFin || '');
+            currentApp = (fieldApp === 'aparatoInicio' ? appI || appF : appF || appI) || '';
+          } else if (element.net === 'san' || element.net === 'll') {
             // Para sanitaria/lluvias el aparato del cuerpo se guarda en el conteo de fixtures (sidebar),
             // no en aparatoInicio/Fin; mostrar el que tenga conteo >0 para este ramal.
             try {
@@ -302,8 +311,11 @@ export function MidRamalAccessorySelector({
                 return [];
               }
             }
-            const f0 = String(element.aparatoInicio || '');
-            const f1 = String(element.aparatoFin || '');
+            // Vivo (orig. usuario): mismo criterio que el desplegable — el snapshot llega
+            // rancio si el aparato se asignó desde el panel derecho.
+            const vivoAsig = ramalVivoDelPlanoCargado(engineRef.current, element.id);
+            const f0 = String(vivoAsig?.aparatoInicio ?? (element.aparatoInicio || ''));
+            const f1 = String(vivoAsig?.aparatoFin ?? (element.aparatoFin || ''));
             return Array.from(new Set([f0, f1].filter(Boolean))).map((id) => ({ id, n: 1 }));
           })();
           // removedId: el aparato que la TARJETA muestra — Quitar debe eliminar exactamente
@@ -311,7 +323,7 @@ export function MidRamalAccessorySelector({
           const applyAparato = (val: string) => {
             const eng = engineRef.current;
             if (!eng) return;
-            const fresh = eng.ramales.find((r) => r.id === element.id);
+            const fresh = ramalVivoDelPlanoCargado(eng, element.id);
             if (!fresh || !fresh.pts || fresh.pts.length < 2) return;
             // Item 1 (regla global): un extremo está OCUPADO si está entrelazado con
             // la red (otro ramal/bajante/tee). Los glifos de codo/sifón NO cuentan como
@@ -502,8 +514,7 @@ export function MidRamalAccessorySelector({
                 fresh.fixtures = undefined;
                 // Refresco desde el motor vivo (no del snapshot): el menú muestra el estado
                 // real aunque el prop element llegara stale.
-                const liveAfter =
-                  engineRef.current?.ramales.find((r) => r.id === element.id) || null;
+                const liveAfter = ramalVivoDelPlanoCargado(engineRef.current, element.id) || null;
                 if (selElement?.id === element.id)
                   setSelElement({ ...((liveAfter ?? selElement) as PlanoRamal), ...updates });
                 setContextMenuState((prev) =>
@@ -598,8 +609,7 @@ export function MidRamalAccessorySelector({
               fresh.fixtures = undefined;
               // Refresco desde el motor vivo (no del snapshot): garantiza que el menú
               // muestre "sin asignar" aunque el prop element llegara stale.
-              const liveAfter2 =
-                engineRef.current?.ramales.find((r) => r.id === element.id) || null;
+              const liveAfter2 = ramalVivoDelPlanoCargado(engineRef.current, element.id) || null;
               setContextMenuState((prev) =>
                 prev
                   ? {

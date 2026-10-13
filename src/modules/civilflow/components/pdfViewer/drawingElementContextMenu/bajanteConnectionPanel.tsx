@@ -22,6 +22,7 @@ import {
 import type { PlanItem } from '../../../context/PlansContext';
 import { MENU_SELECT_STYLE, MENU_ACTION_BTN_STYLE, type ContextMenuState } from './context';
 import { RamalesAsociadosGrid } from './bajanteConnectionSections';
+import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers';
 
 /** Panel del menú contextual para bajantes y extremos de ramal: ramales asociados (Y doble),
  *  creación de bajante/montante en el extremo y editor del accesorio de extremo con sus
@@ -205,7 +206,10 @@ export function BajanteConnectionPanel({
                     ? 'aparatoInicio'
                     : 'aparatoFin';
 
-                  const currentAcc = ramalEl[fieldAcc] || '';
+                  // Vivo (orig. usuario): el snapshot puede llegar rancio tras asignar
+                  // desde el panel derecho con el menú abierto.
+                  const ramalVivoAcc = ramalVivoDelPlanoCargado(engineRef.current, ramalEl.id);
+                  const currentAcc = ramalVivoAcc?.[fieldAcc] || ramalEl[fieldAcc] || '';
 
                   const accOptions = getAccessoryOptions(ramalEl.net);
 
@@ -306,8 +310,9 @@ export function BajanteConnectionPanel({
                                   val === 'codo90rmBaja') &&
                                 engineRef.current
                               ) {
-                                const live = engineRef.current.ramales.find(
-                                  (r) => r.id === ramalEl.id,
+                                const live = ramalVivoDelPlanoCargado(
+                                  engineRef.current,
+                                  ramalEl.id,
                                 );
                                 const target = live || ramalEl;
                                 const isVentTee2 =
@@ -402,8 +407,9 @@ export function BajanteConnectionPanel({
                                 // Nº de glifos sifón vivos TRAS la escritura — el auto-sif es
                                 // SET (idempotente): el bump ciego acumulaba sifones fantasma
                                 // al re-seleccionar (orig. usuario).
-                                const ramalVivo = engineRef.current?.ramales.find(
-                                  (r) => r.id === ramalEl.id,
+                                const ramalVivo = ramalVivoDelPlanoCargado(
+                                  engineRef.current,
+                                  ramalEl.id,
                                 );
                                 syncExtremeAccessoryToHidroData(
                                   ramalEl.id,
@@ -417,8 +423,9 @@ export function BajanteConnectionPanel({
                                 // Sin planes confirmados el sync no corre — el conteo 'sif'
                                 // se fija directo por glifos vivos (SET, nunca bump ciego).
                                 const planId = engineRef.current?._loadedPlanId ?? '';
-                                const ramalVivo = engineRef.current?.ramales.find(
-                                  (r) => r.id === ramalEl.id,
+                                const ramalVivo = ramalVivoDelPlanoCargado(
+                                  engineRef.current,
+                                  ramalEl.id,
                                 );
                                 setAparatoCountValue(
                                   'san',
@@ -453,8 +460,14 @@ export function BajanteConnectionPanel({
                             DIAM_BY_MAT[matShort] ||
                             [];
                           if (diamList.length === 0) return null;
+                          const ramalVivoDiam = ramalVivoDelPlanoCargado(
+                            engineRef.current,
+                            ramalEl.id,
+                          );
                           const currentDiam =
+                            matchDiamOption(diamList, ramalVivoDiam?.[fieldDiam]) ||
                             matchDiamOption(diamList, ramalEl[fieldDiam]) ||
+                            matchDiamOption(diamList, ramalVivoDiam?.diametro) ||
                             matchDiamOption(diamList, ramalEl.diametro) ||
                             '';
                           return (
@@ -483,8 +496,9 @@ export function BajanteConnectionPanel({
                                     // Leer el diámetro del ramal fresco del engine — el snapshot
                                     // ramalEl puede estar stale si el ramal se editó desde
                                     // TramoEditor mientras el menú estaba abierto.
-                                    const fresh = engineRef.current?.ramales.find(
-                                      (x) => x.id === ramalEl.id,
+                                    const fresh = ramalVivoDelPlanoCargado(
+                                      engineRef.current,
+                                      ramalEl.id,
                                     );
                                     const ramalDiam = fresh?.diametro || ramalEl.diametro;
                                     if (

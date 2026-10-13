@@ -21,7 +21,6 @@ import {
 import type { DrawingData } from '../utils/drawingSync';
 import FixtureGrid from './fixtures/FixtureGrid';
 import { SecMontantes } from './fixtures/SecMontantes';
-import { SecHeredados } from './fixtures/SecHeredados';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/devError';
@@ -113,7 +112,7 @@ import {
   ASSOC_ROW_STYLE,
 } from './pdfViewer/drawingElementContextMenu/canalesAsociados';
 import { camposAsocManual } from '../lib/PlanoEngine/PlanoEngineSelectionEdit';
-import { propagarAparatosPresion } from '../utils/aparatosPresion';
+import { propagarAparatosPresion, leerHeredadosPresion } from '../utils/aparatosPresion';
 import { vetarSelloCanal, levantarVetoSelloCanal } from '../lib/PlanoEngine/canalAssociation';
 
 /** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
@@ -132,7 +131,7 @@ function syncMirrorKey(
     }
     return false;
   }
-  if (JSON.stringify(disk[key] || {}) === JSON.stringify(next)) return false;
+  if (stableStringify(disk[key] || {}) === stableStringify(next)) return false;
   disk[key] = { ...next };
   return true;
 }
@@ -159,6 +158,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   const { tramosSan } = useTramos();
   const { aps } = useApparatus();
   const [counts, setCounts] = useState<CountsMap>(loadAll);
+
   const [hidroData, setHidroData] = useState<HidroDataMap>(loadHidroData);
   const [gasAcc, setGasAcc] = useState<GasAccMap>(loadGasAcc);
   // Señal de fin de carga de un piso (usePlanoLoadSwitch dispara 'civilflow_plan_loaded'): el
@@ -435,7 +435,42 @@ const AparatosPanel = memo(function AparatosPanel_({
       ? `${netId}_${targetId}_${planId}`
       : `${netId}_${targetId}`
     : null;
+  // Tramo con herencia propagada (RAF3, orig. usuario): sus UDs las trae aguas arriba — el
+  // panel se vuelve SOLO LECTURA (opaco); la edición es en los ramales/montante fuente.
+  const esPropagado =
+    !!storageKey &&
+    (netId === 'af' || netId === 'ac') &&
+    Object.values(leerHeredadosPresion(storageKey)).some((v: number) => v > 0);
 
+  // Auto-limpieza (orig. usuario): la propagación es idempotente — re-correrla aplica el
+  // delta y retira herencias que la dirección de flujo ya no justifica. Corre AL MONTAR y en
+  // cada cambio de selección, pero ASÍNCRONA (debounce 250 ms): el clic derecho selecciona y
+  // abre el menú SIN esperar el cálculo — correrlo síncrono en el ciclo de selección rompía
+  // la apertura de los menús contextuales (regresión 2026-10-09). Errores atrapados: nunca
+  // deben tumbar el panel.
+  useEffect(() => {
+    if (!(netId === 'af' || netId === 'ac')) return;
+    const t = window.setTimeout(() => {
+      try {
+        propagarAparatosPresion(netId);
+      } catch (e) {
+        devError('[CF-PROP] error en propagación:', e);
+      }
+    }, 250);
+    // Al cambiar de selección NO se cancela en silencio (auditoría #5: la geometría del
+    // tramo anterior quedaba sin propagar hasta re-seleccionarlo): se vacía lo pendiente
+    // de forma síncrona — a estas alturas el menú ya abrió y la corrida es solo math de
+    // storage, el mismo costo que el autosave que ya corre en este ciclo.
+    return () => {
+      window.clearTimeout(t);
+      try {
+        propagarAparatosPresion(netId);
+      } catch (e) {
+        devError('[CF-PROP] error en propagación (flush):', e);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [netId, targetId]);
   useEffect(() => {
     if (targetId && targetId !== lastTargetRef.current) {
       lastTargetRef.current = targetId;
@@ -826,6 +861,10 @@ const AparatosPanel = memo(function AparatosPanel_({
       }
     }
     const own = counts[storageKey] || {};
+    // af/ac (orig. usuario): la clave YA trae la carga propagada (propia + heredada) —
+    // sumar las patas de la unión encima duplicaba (RAF1 mostraba RAF2+RAF3 = ×2). El
+    // merge-sum sigue vigente para gas (sin propagación).
+    if (netId === 'af' || netId === 'ac') return own;
     if (!mergeKeys) return own;
     const merged: Record<string, number> = { ...own };
     for (const k of mergeKeys) {
@@ -865,12 +904,23 @@ const AparatosPanel = memo(function AparatosPanel_({
     return s;
   }, [items, currentMap, unitKey, storageKey]);
 
-  // Total de unidades MANUALES propias de este tramo (sin sumas combinadas de fuentes) — el
-  // cap del ítem 6 (máximo 1 aparato) aplica solo sobre lo que el usuario asigna aquí.
+  // Total de unidades MANUALES propias de este tramo: carga de la clave MENOS el libro
+  // de herencia (auditoría #4 — antes sumaba la carga completa y un tramo con solo
+  // heredado bloqueaba su primer manual). El cap del ítem 6 aplica solo sobre lo propio.
   const ownTotal = useMemo(() => {
     if (!storageKey) return 0;
-    return Object.values(counts[storageKey] || {}).reduce((s, v) => s + v, 0);
+    const libro = storageKey ? leerHeredadosPresion(storageKey) : {};
+    return Object.entries(counts[storageKey] || {}).reduce(
+      (s, [k, v]) => s + Math.max(0, v - (libro[k] || 0)),
+      0,
+    );
   }, [counts, storageKey]);
+  /** ¿El aparato ya vive como manual propio (no solo heredado)? */
+  const esPropio = (apId: string): boolean => {
+    if (!storageKey) return false;
+    const libro = leerHeredadosPresion(storageKey);
+    return (counts[storageKey]?.[apId] || 0) - (libro[apId] || 0) > 0;
+  };
 
   const totalStr = useMemo(() => {
     if (Number.isInteger(total)) return String(total);
@@ -1208,11 +1258,11 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (rejillasArea) {
       // Área de sector (rejillas): conteos LIBRES por gasodoméstico — sin límite de 1 aparato
       // ni merge de uniones; el glifo del ramal no existe (live undefined) y no se toca.
-    } else if (mergeKeys) {
-      // Pata única de una unión (AF/AC/gas, orig. usuario) o ramal con tributarios (san/ll):
-      // sus UDs son el total combinado — no asignables manualmente. El botón queda habilitado
-      // cuando hay aparato propio → sin alerta era click muerto (orig. auditoría).
-      const esAgua = netId === 'af' || netId === 'ac' || netId === 'gas';
+    } else if (mergeKeys && netId !== 'af' && netId !== 'ac') {
+      // Pata única de una unión (gas, orig. usuario) o ramal con tributarios (san/ll): sus
+      // UDs son el total combinado — no asignables manualmente. af/ac usan esPropagado (la
+      // clave ya trae la carga propagada; las patas fuente sí admiten asignación manual).
+      const esAgua = netId === 'gas';
       engineRef.current?.triggerAlert(
         esAgua ? 'Unión de ramales' : 'Ramal con tributarios',
         esAgua
@@ -1412,9 +1462,19 @@ const AparatosPanel = memo(function AparatosPanel_({
     )
       return; // solo lectura
     if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
+    // Con herencia propagada solo se puede quitar lo PROPIO (auditoría #4): si el
+    // aparato vive únicamente como heredado, el "−" no toca nada (antes vaciaba la clave
+    // o borraba el símbolo del dibujo).
+    if (esPropagado && !esPropio(apId)) {
+      engineRef.current?.triggerAlert(
+        'Unidades propagadas',
+        'Las unidades de este ramal vienen de la propagación aguas arriba (montante/ramales fuente). Edítalas en el tramo de origen: aquí son de solo lectura.',
+      );
+      return;
+    }
     // AF/AC/gas: pata única de una unión (mergeKeys) — sus UDs son la suma combinada, no
     // asignables (mismo gate que inc; orig. usuario). Área de rejillas: conteos libres.
-    if (!rejillasArea && mergeKeys && (netId === 'af' || netId === 'ac' || netId === 'gas')) return;
+    if (!rejillasArea && mergeKeys && netId === 'gas') return;
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
     // El campo del ramal solo se limpia cuando el conteo PROPIO tenía el aparato (vBefore === 0,
@@ -1967,7 +2027,6 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   return (
     <>
-      <SecHeredados netId={netId} storageKey={storageKey} selElement={selElement} />
       <SecMontantes
         netId={netId}
         engineRef={engineRef}

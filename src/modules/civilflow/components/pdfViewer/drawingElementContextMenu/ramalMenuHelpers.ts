@@ -3,6 +3,22 @@ import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import { rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
 import { extremoEntrelazado } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 
+/**
+ * Ramal vivo del engine por id. Choke point documentado (auditoría #15): el engine solo
+ * contiene el piso CARGADO, así que buscar por id pelado es seguro HOY. Si el engine
+ * alguna vez aloja varios planos (prefetch multi-plan), este es el único sitio que debe
+ * pasar a llavear por (id, planId).
+ * @param eng - engine vivo (o null).
+ * @param id - id del ramal.
+ * @returns el ramal vivo o undefined.
+ */
+export function ramalVivoDelPlanoCargado(
+  eng: PlanoEngine | null | undefined,
+  id: string,
+): PlanoRamal | undefined {
+  return eng?.ramales.find((r) => r.id === id);
+}
+
 // ¿El punto p cae sobre el CUERPO (mitad de segmento) de pts? Excluye extremos (t<0.02/0.98),
 // que se validan por coincidencia de vértice aparte.
 /** ¿El punto cae sobre el CUERPO (mitad de segmento) de la polilínea? Excluye los extremos,

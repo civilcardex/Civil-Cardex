@@ -8,6 +8,16 @@ import {
 } from '../../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from '../drawingSync';
 import { diamPulgFromLabel } from '../diamPulgFromLabel';
+
+/** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones,
+ *  ej. stubs `AC-01-X-P1` — `split('-')` los truncaba en silencio).
+ *  @param key - clave compuesta.
+ *  @returns par [id, planId] (planId '' si no hay guion). */
+export function parseBajanteKey(key: string): [string, string] {
+  const sep = key.lastIndexOf('-');
+  if (sep <= 0) return [key, ''];
+  return [key.slice(0, sep), key.slice(sep + 1)];
+}
 import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/drawingUtils';
 import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitaryDiamCompat';
 import { followBajanteToMaxRamal } from '../../lib/PlanoEngine/PlanoEngineDrawing';
@@ -105,9 +115,7 @@ export function writeDiametroToDrawing(
   const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
-  const parts = ramalKey.split('-');
-  const ramalId = parts[0];
-  const planId = parts[1];
+  const [ramalId, planId] = parseBajanteKey(ramalKey);
 
   // Validación: el diámetro de un ramal no puede bajar del diámetro mayor de cualquier accesorio
   // adjunto a él. Espejo del chequeo inverso en ExtremeAccessoryEditor.tsx:110-117 — sin esto,

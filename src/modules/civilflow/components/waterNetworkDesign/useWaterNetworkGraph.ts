@@ -6,7 +6,6 @@ import { calcUCparcial } from '../../utils/componentHelpers';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { loadFromStorage } from '../../services/storageService';
 import { distToPolyline } from '../../lib/shared/geometry';
-import { computeDirectedTotals } from '../../lib/shared/connectionGraph';
 import type { DrawingData, RawElement } from '../../utils/drawingSync';
 import { isLdesvioRamalId } from '../../utils/associateBajanteAcrossFloors';
 import { hunterQ } from './rowPhysics';
@@ -64,6 +63,7 @@ export function useWaterNetworkGraph({
     // filtra a la rama con la que empate por desempate. Por eso el conjunto real de "ramas en
     // este empalme" se descubre por coordenada, no solo leyendo mergesFrom.
     const mergeBranches: Record<string, string[]> = {};
+    const otrosDisplay: Record<string, string[]> = {};
     // Cada extremo de ramal, etiquetado con su plano — se usa abajo para hallar empalmes PLANOS
     // (sin mergesFrom) donde 3+ ramales coinciden en una coordenada por dibujo extremo-a-extremo
     // común (un tronco que se divide en ramas). `checkEndpoint` abajo solo enlaza cada extremo a
@@ -121,6 +121,14 @@ export function useWaterNetworkGraph({
         const branchIds = [aId, r.id, bId].filter((id) => id !== targetId);
         const targetKeyFull = `${targetId}-${plan.id}`;
         const branchSet = new Set<string>(branchIds.map((id) => `${id}-${plan.id}`));
+        // "Otros ramales" de la continuación (orig. usuario): TODOS los participantes del
+        // empalme según el flujo excepto ella misma — RAF3 lista a RAF1 (el anfitrión que
+        // la alimenta) y a RAF2 (la rama cuyo aparato carga), incluido el target.
+        const continuacionKey = `${r.id}-${plan.id}`;
+        const otros = Array.from(
+          new Set<string>([`${aId}-${plan.id}`, `${bId}-${plan.id}`, ...branchSet]),
+        ).filter((k: string) => k !== continuacionKey);
+        if (otros.length) otrosDisplay[continuacionKey] = otros;
         for (const other of ramales) {
           if (other.id === r.id || other.id === aId || !other.pts || other.pts.length < 2) continue;
           const otherKey = `${other.id}-${plan.id}`;
@@ -139,6 +147,48 @@ export function useWaterNetworkGraph({
           branchSet.add(otherKey);
         }
         mergeBranches[targetKeyFull] = Array.from(branchSet);
+      }
+      // Fallback geométrico (auditoría #9): uniones dibujadas extremo-con-extremo SIN split
+      // (sin `mergesFrom`) nunca entraban al loop de arriba y la columna quedaba vacía aunque
+      // la propagación (clústeres del motor) sí las entiende. Misma tolerancia del motor
+      // (0.5px, splits exactos) y mismo plano por construcción. No pisa lo resuelto por flujo.
+      {
+        const pts: Array<{ key: string; p: number[] }> = [];
+        for (const r of ramales) {
+          if (!r.pts || r.pts.length < 2) continue;
+          const k = `${r.id}-${plan.id}`;
+          pts.push({ key: k, p: r.pts[0] });
+          pts.push({ key: k, p: r.pts[r.pts.length - 1] });
+        }
+        const padre = pts.map((_, i) => i);
+        const hallar = (i: number): number => {
+          const p = padre[i];
+          if (p === undefined || p === i) return i;
+          const r = hallar(p);
+          padre[i] = r;
+          return r;
+        };
+        for (let i = 0; i < pts.length; i++) {
+          for (let j = i + 1; j < pts.length; j++) {
+            if (Math.hypot(pts[i].p[0] - pts[j].p[0], pts[i].p[1] - pts[j].p[1]) <= 0.5) {
+              padre[hallar(i)] = hallar(j);
+            }
+          }
+        }
+        const grupos = new Map<number, number[]>();
+        pts.forEach((_, i) => {
+          const r = hallar(i);
+          if (!grupos.has(r)) grupos.set(r, []);
+          grupos.get(r)!.push(i);
+        });
+        for (const grupo of grupos.values()) {
+          const claves = [...new Set(grupo.map((g) => pts[g].key))];
+          if (claves.length < 2) continue;
+          if (claves.some((k) => otrosDisplay[k])) continue; // el flujo ya resolvió
+          for (const k of claves) {
+            otrosDisplay[k] = claves.filter((c) => c !== k);
+          }
+        }
       }
       for (const b of bajantes) {
         if (b.x == null || b.y == null) continue;
@@ -328,65 +378,16 @@ export function useWaterNetworkGraph({
       }
     }
 
-    // Helper: BFS para obtener vecinos directos (excluye startKey y se detiene en cualquier ramal principal)
-    const getConnectedNeighbors = (startKey: string): string[] => {
-      const results = new Set<string>();
-      const visited = new Set<string>();
-      const queue = [startKey];
-      visited.add(startKey);
-
-      while (queue.length > 0) {
-        const node = queue.shift()!;
-        if (node !== startKey) {
-          const tr = tramos.find((x) => (x._key || x.id) === node);
-          const isMainRamal = tr && tr.tipo !== 'tributario' && !tr.esBajante;
-          if (isMainRamal) {
-            results.add(node);
-            continue; // Detener recorrido en este ramal principal
-          }
-        }
-        for (const neighbor of adj[node] || []) {
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor);
-            queue.push(neighbor);
-          }
-        }
-      }
-
-      return Array.from(results);
-    };
-
+    // "Otros ramales" = TODOS los participantes del empalme menos la propia fila
+    // (anfitrión + entrantes + co-salidas, ronda 28; el fallback geométrico aporta las
+    // uniones sin split con el mismo criterio).
     const displayMap: Record<string, string[]> = {};
-    for (const t of tramos) {
-      const key = t._key || t.id;
-      if (t.tipo !== 'tributario' && !t.esBajante) {
-        displayMap[key] = getConnectedNeighbors(key);
-      }
-    }
-    // Las aristas de las ramas fusionadas se cortaron de `adj` arriba para que el BFS de árbol
-    // dirigido no contara dos veces la UC del ramal fusionado por la vía general — pero eso
-    // también ocultó los ramales fuente de "Otros Ramales" aquí, ya que esto lee ese mismo `adj`
-    // cortado. Reagregarlos explícitamente: el ramal fusionado debe mostrar los ramales de los
-    // que fue creado. Misma exclusión tributario/bajante que toda otra vía hacia displayMap
-    // (chequeo isMainRamal de getConnectedNeighbors) — una fuente de fusión mal etiquetada como
-    // tributario (ver el guard de existing.tipo en autoSplitJunctionAndSumFlow) tampoco debe
-    // colarse en esta columna.
-    for (const [mergedKey, branches] of Object.entries(mergeBranches)) {
-      if (!displayMap[mergedKey]) continue;
-      for (const k of branches) {
-        const tr = tramos.find((x) => (x._key || x.id) === k);
-        if (tr && (tr.tipo === 'tributario' || tr.esBajante)) continue;
-        if (!displayMap[mergedKey].includes(k)) displayMap[mergedKey].push(k);
-      }
-    }
-    // La fila "Otros Ramales" de una fuente de fusión debe mostrar NADA — ni su co-fuente, ni
-    // siquiera el ramal auto-creado al que alimenta (esa asociación ya se ve desde la OTRA
-    // dirección: la fila del propio ramal auto-creado lista ambas fuentes, vía el ciclo de
-    // arriba). Solo la fila del ramal auto-creado debe mostrar asociación para esta fusión.
-    for (const branches of Object.values(mergeBranches)) {
-      for (const b of branches) {
-        if (displayMap[b]) displayMap[b] = [];
-      }
+    for (const [k, list] of Object.entries(otrosDisplay)) {
+      const visibles = list.filter((key) => {
+        const tr = tramos.find((x) => (x._key || x.id) === key);
+        return tr && tr.tipo !== 'tributario' && !tr.esBajante;
+      });
+      if (visibles.length) displayMap[k] = visibles;
     }
     // Dirigir la misma adyacencia desde la fuente de presión de la red hacia afuera, para que el
     // Pinicial de cada tramo pueda encadenarse desde el Pfinal de su tramo aguas arriba real en
@@ -419,54 +420,12 @@ export function useWaterNetworkGraph({
     // Enraizado en la fuente real de suministro, no en todo el componente conectado no dirigido
     // — una rama que alimenta un aparato solo debe mostrar SU total acumulado, no la demanda de
     // todo el edificio solo por ser hidráulicamente parte de la misma red (ver connectionGraph.ts).
-    const componentTotalMap = computeDirectedTotals(
-      tramos,
-      (t) => t._key || t.id,
-      adj,
-      (t) => calcUCparcial(t, AP, 'uc'),
-      rootKey,
-    );
-    // El entrante ahora puede ser el propio ramal auto-creado (cuando su dirección de flujo quedó
-    // invertida respecto a `existing`) — y ese ramal puede llevar SUS propios aparatos directos,
-    // no solo los totales de las ramas fusionadas. Guardar el total pre-override (propio, basado
-    // en árbol) de cada objetivo ANTES de que el ciclo de abajo lo sobreescriba, para que el
-    // override pueda SUMAR las ramas en vez de reemplazarlo — si no, un aparato asignado
-    // directamente al ramal entrante desaparecía en silencio de su propio total mostrado.
-    const ownTotalMap: Record<string, number> = {};
-    for (const [key] of Object.entries(mergeBranches)) {
-      if (componentTotalMap[key] !== undefined) ownTotalMap[key] = componentTotalMap[key];
-    }
-    // Una cadena de fusiones (R1+R2→R5, luego R5+R3→R6) necesita que el override propio de R5 se
-    // resuelva antes de que R6 lo lea como fuente — Object.entries() no garantiza procesar las
-    // fuentes antes que sus consumidores, así que una sola pasada podría leer un valor aún sin
-    // override (sigue basado en árbol, incorrecto) para una fuente que a su vez es una fusión.
-    // Iterar hasta un punto fijo en lugar de una sola pasada.
-    const mergeEntries = Object.entries(mergeBranches);
-    for (let pass = 0; pass <= mergeEntries.length; pass++) {
-      let changedAny = false;
-      for (const [key, branches] of mergeEntries) {
-        if (componentTotalMap[key] === undefined) continue;
-        const next =
-          (ownTotalMap[key] || 0) +
-          branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
-        if (next !== componentTotalMap[key]) {
-          componentTotalMap[key] = next;
-          changedAny = true;
-        }
-      }
-      if (!changedAny) break;
-    }
-    // Regla de UDs en nodos AF/AC/gas (orig. usuario): las patas no-minoritarias quedan con su
-    // UC/UD PROPIO aunque sean a su vez destino de otro merge (p. ej. un tributario que aterriza
-    // en una salida: su UD NO se suma a ella) — antes el skip por `mergeBranches[branchId]`
-    // dejaba al ramal con la suma del sub-merge.
-    const allBranchIds = new Set<string>();
-    for (const branches of Object.values(mergeBranches)) {
-      for (const b of branches) allBranchIds.add(b);
-    }
-    for (const branchId of allBranchIds) {
-      const t = tramos.find((x) => (x._key || x.id) === branchId);
-      if (t) componentTotalMap[branchId] = calcUCparcial(t, AP, 'uc');
+    // CARGA PROPAGADA (orig. usuario): ver waterRowsCore — las claves ya traen la carga
+    // (propia + heredada); el total del tramo es directo, sin acumulación de subárbol ni
+    // overrides de merge (duplicarían lo que la propagación ya escribió).
+    const componentTotalMap: Record<string, number> = {};
+    for (const t of tramos) {
+      componentTotalMap[t._key || t.id] = calcUCparcial(t, AP, 'uc');
     }
     const nodeParentOf: Record<string, string> = {};
     if (rootKey) {
@@ -496,10 +455,9 @@ export function useWaterNetworkGraph({
       if (cur) tramoParentOf[key] = cur;
     }
 
-    // Flujo probable (curva de Hunter, K·f(UC)) por tramo — para un ramal auto-creado en empalme
-    // T/Y, `total` ya lee componentTotalMap[key], sobreescrito arriba (línea 353-356) con la suma
-    // de la UC de las dos ramas fusionadas. Así la fórmula aquí corre sobre el total UC combinado
-    // correcto para todo tramo, fusionado o no — no se necesita override aparte.
+    // Flujo probable (curva de Hunter, K·f(UC)) por tramo — `total` lee
+    // componentTotalMap[key], que es lectura directa de la clave (carga ya propagada).
+    // Así la fórmula corre sobre el total UC correcto para todo tramo, fusionado o no.
     const qpropMap: Record<string, number> = {};
     for (const t of tramos) {
       const key = t._key || t.id;

@@ -251,6 +251,7 @@ export function buildTramos(
         tipo: r.tipo || 'ramal',
         esBajante: false,
         fixtures: fixturesMap,
+        _aparatosKey: apKey,
         accesorios: extra.accesorios || {},
         Lh: extra.Lh || 0,
         Lv: family === 'ac' && (isAC1 || isAC2) ? 0 : dzLvert,
@@ -293,6 +294,7 @@ export function buildTramos(
             _net: 'af',
             tipo: 'ramal',
             esBajante: false,
+            _aparatosKey: apKey,
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0,
@@ -335,6 +337,7 @@ export function buildTramos(
             _net: 'ac',
             tipo: 'ramal',
             esBajante: false,
+            _aparatosKey: apKey,
             fixtures: { ...(aparatos[calAfKey] || {}), ...(aparatos[apKey] || {}) },
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0,
@@ -409,6 +412,7 @@ export function loadSanLlTramos() {
         _nivelLabel: fmtNivel(r.piso || nivel),
         _net: r._net || r.net || '',
         tipo: r.tipo || 'ramal',
+        _aparatosKey: apKey,
         fixtures:
           (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] ||
           {},
@@ -476,6 +480,7 @@ export function loadSanLlTramos() {
         _nivelLabel: fmtNivel(b.piso || nivel),
         _net: b._net || b.net || '',
         tipo: 'bajante',
+        _aparatosKey: apKey,
         fixtures:
           (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] ||
           {},

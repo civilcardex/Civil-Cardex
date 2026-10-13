@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Propagación PERSISTENTE de aparatos af/ac (orig. usuario): RAF3 = asociación del montante
 // (vía RAF1) + aparato propio de RAF2 — escrita en las claves con libro + delta.
+// Aristas (verdad del motor): montante/bajante por recibeDe/alimenta o distancia, y
+// GENEALOGÍA DE SPLIT (mergesFrom) gateada por geometría. Sin regla de hermanos geométrica
+// (esa llevaba el aparato de la rama hacia la pieza upstream).
 
 const mockStorage: Record<string, string> = {};
 
@@ -31,8 +34,8 @@ import { propagarAparatosPresion, leerHeredadosPresion } from '../aparatosPresio
 const AF_KEY = 'aparatos_by_tramo_v2';
 
 /** Escenario de la imagen: MON1 carga ucAplicado {inodoro:1}; RAF1 nace de MON1 y llega con
- *  su cabeza a la unión J=[100,0]; RAF2 nace en J con aparato propio (lavamanos); RAF3 parte
- *  de J hacia la derecha. */
+ *  su cabeza a la unión J=[100,0]; RAF2 nace en J con aparato propio (lavamanos); RAF3 es la
+ *  continuación (mergesFrom del split real). */
 function seedEscenario(): void {
   saveToStorage('trazos_P1', {
     ramales: [
@@ -59,6 +62,8 @@ function seedEscenario(): void {
           [100, 0],
           [200, 0],
         ],
+        // Genealogía del split real (junctionAutoSplit: [anfitrión, entrante]).
+        mergesFrom: ['RAF1', 'RAF2'],
       },
     ],
     bajantes: [
@@ -87,15 +92,12 @@ describe('propagarAparatosPresion', () => {
     seedEscenario();
     propagarAparatosPresion('af');
     const disk = diskDe();
-    // RAF3 hereda inodoro (montante vía RAF1) + lavamanos (hermano RAF2).
     expect(disk['af_RAF3_P1']).toEqual({ inodoro: 1, lavamanos: 1 });
-    // RAF1 hereda el montante.
     expect(disk['af_RAF1_P1']).toEqual({ inodoro: 1 });
     // RAF2 también recibe lo que llega a la unión (inodoro) + lo propio.
     expect(disk['af_RAF2_P1']).toEqual({ inodoro: 1, lavamanos: 1 });
-    expect(leerHeredadosPresion('af_RAF2_P1')).toEqual({ inodoro: 1 });
-    // Libro = exactamente lo aplicado por herencia.
     expect(leerHeredadosPresion('af_RAF3_P1')).toEqual({ inodoro: 1, lavamanos: 1 });
+    expect(leerHeredadosPresion('af_RAF2_P1')).toEqual({ inodoro: 1 });
   });
 
   it('es idempotente: re-correr no duplica', () => {
@@ -117,9 +119,8 @@ describe('propagarAparatosPresion', () => {
     expect(leerHeredadosPresion('af_RAF3_P1')).toEqual({ inodoro: 1 });
   });
 
-  it('_tribReversed invierte el sentido: quien fluye hacia la unión es el upstream', () => {
+  it('_tribReversed invalida la genealogía vieja gateada por geometría', () => {
     seedEscenario();
-    // RAF3 invertida: su cola pasa a [200,0]; RAF1 ya no llega a su cola.
     const trazos = loadFromStorage<{ ramales: Array<Record<string, unknown>> } | null>(
       'trazos_P1',
       null,
@@ -130,7 +131,8 @@ describe('propagarAparatosPresion', () => {
     );
     saveToStorage('trazos_P1', trazos);
     propagarAparatosPresion('af');
-    // La herencia previa se retira (delta): RAF3 queda solo con lo que llega a su NUEVA cola.
+    // RAF3 invertida: su cola quedó en [200,0] — la genealogía [RAF1,RAF2] ya no la toca
+    // (S ya no sigue tocando la cola de RAF3) y el delta limpia.
     expect(diskDe()['af_RAF3_P1']).toBeUndefined();
     expect(leerHeredadosPresion('af_RAF3_P1')).toEqual({});
   });
@@ -161,8 +163,115 @@ describe('propagarAparatosPresion', () => {
     disk['af_RA_P1'] = { lavaplatos: 1 };
     saveToStorage(AF_KEY, disk);
     expect(() => propagarAparatosPresion('af')).not.toThrow();
-    // Ciclo acotado (determinista): cada uno carga la base del otro UNA vez, sin inflar.
+    // Ciclo acotado (determinista): el corte en pila hace que RB cargue la BASE de RA una
+    // sola vez — sin inflación. RB pinneado también (oráculo completo, auditoría #12).
     expect(diskDe()['af_RA_P1']).toEqual({ lavaplatos: 2 });
+    expect(diskDe()['af_RB_P1']).toEqual({ lavaplatos: 1 });
     expect(leerHeredadosPresion('af_RA_P1')).toEqual({ lavaplatos: 1 });
+    expect(leerHeredadosPresion('af_RB_P1')).toEqual({ lavaplatos: 1 });
+  });
+
+  it('plegado de tributarios es idempotente a 3 corridas (auditoría #1)', () => {
+    saveToStorage('trazos_P1', {
+      ramales: [
+        {
+          id: 'RAF4',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [100, -80],
+          ],
+        },
+        {
+          id: 'TIRAF4',
+          net: 'af',
+          tipo: 'tributario',
+          padre: 'RAF4',
+          pts: [
+            [80, -40],
+            [100, -40],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk = diskDe();
+    disk['af_TIRAF4_P1'] = { tina: 1 };
+    saveToStorage(AF_KEY, disk);
+    propagarAparatosPresion('af');
+    propagarAparatosPresion('af');
+    propagarAparatosPresion('af');
+    const d = diskDe();
+    // La tina vive en su clave Y plegada una sola vez en el padre — sin crecimiento.
+    expect(d['af_TIRAF4_P1']).toEqual({ tina: 1 });
+    expect(d['af_RAF4_P1']).toEqual({ tina: 1 });
+  });
+
+  it('tributarios anidados T2→T1→R no duplican nietos ni dependen del orden (auditoría #7)', () => {
+    // Orden de inserción adverso: T1 (padre intermedio) ANTES que R en el array.
+    saveToStorage('trazos_P1', {
+      ramales: [
+        {
+          id: 'T1',
+          net: 'af',
+          tipo: 'tributario',
+          padre: 'R',
+          pts: [
+            [50, 0],
+            [60, 0],
+          ],
+        },
+        {
+          id: 'R',
+          net: 'af',
+          pts: [
+            [60, 0],
+            [120, 0],
+          ],
+        },
+        {
+          id: 'T2',
+          net: 'af',
+          tipo: 'tributario',
+          padre: 'T1',
+          pts: [
+            [40, 0],
+            [50, 0],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk = diskDe();
+    disk['af_T2_P1'] = { ducha: 1 };
+    saveToStorage(AF_KEY, disk);
+    propagarAparatosPresion('af');
+    propagarAparatosPresion('af');
+    const d = diskDe();
+    expect(d['af_T2_P1']).toEqual({ ducha: 1 });
+    expect(d['af_T1_P1']).toEqual({ ducha: 1 });
+    expect(d['af_R_P1']).toEqual({ ducha: 1 });
+  });
+
+  it('no hay herencia cross-piso: mismo id y mismas coordenadas en P1/P2 (auditoría #2)', () => {
+    const ramal = {
+      id: 'RAF1',
+      net: 'af',
+      pts: [
+        [0, 0],
+        [100, 0],
+      ],
+    };
+    saveToStorage('trazos_P1', { ramales: [ramal], bajantes: [] });
+    saveToStorage('trazos_P2', { ramales: [{ ...ramal }], bajantes: [] });
+    const disk = diskDe();
+    disk['af_RAF1_P1'] = { ducha: 1 };
+    saveToStorage(AF_KEY, disk);
+    propagarAparatosPresion('af');
+    propagarAparatosPresion('af');
+    const d = diskDe();
+    expect(d['af_RAF1_P1']).toEqual({ ducha: 1 });
+    // P2 comparte id y px exactos (copia bit-exacta): debe quedar limpio.
+    expect(d['af_RAF1_P2']).toBeUndefined();
   });
 });

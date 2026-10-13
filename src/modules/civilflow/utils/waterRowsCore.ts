@@ -3,13 +3,13 @@ import type { PlanItem } from '../context/PlansContext';
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
 import { calcUCparcial, compareTramosPisoDesc } from './componentHelpers';
 import { calcLeAcces } from './fittingsUtils';
-import { computeDirectedTotals } from '../lib/shared/connectionGraph';
 import { distToPolyline } from '../lib/shared/geometry';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { hunterK, hunterQ } from '../components/waterNetworkDesign/rowPhysics';
+import { leerHeredadosPresion } from './aparatosPresion';
 import { resolveJunctionEntrant } from './flowDirection';
 
 import {
@@ -363,58 +363,17 @@ export function computeWaterNetworkRows(
   // completa — ver connectionGraph.ts. Una rama que alimenta un fixture debe mostrar solo SU
   // total acumulado propio, no la demanda de todo el edificio solo porque hidráulicamente sea
   // parte de la misma red.
-  const componentTotalMap = computeDirectedTotals(
-    tramos,
-    (t) => t._key || t.id,
-    adj,
-    (t) => calcUCparcial(t, AP, 'uc'),
-    rootKey,
-  );
-  // El entrante ahora puede ser el ramal auto-creado mismo (cuando su propia dirección de flujo
-  // se invirtió respecto a `existing`) — y ese ramal puede cargar SUS PROPIOS fixtures directo,
-  // no solo los totales de las ramas mergeadas. Hacer snapshot del total pre-override (propio,
-  // basado en árbol) de cada destino ANTES de que el loop de abajo lo sobreescriba, para que el
-  // override pueda SUMAR las ramas encima en vez de reemplazarlo — si no, un fixture asignado
-  // directo al ramal entrante desaparecía silenciosamente de su total mostrado.
-  const ownTotalMap: Record<string, number> = {};
-  for (const [key] of Object.entries(mergeBranches)) {
-    if (componentTotalMap[key] !== undefined) ownTotalMap[key] = componentTotalMap[key];
+  // CARGA PROPAGADA (orig. usuario): las claves de aparatos ya traen la carga acumulada
+  // escrita por propagarAparatosPresion (propia + heredada aguas arriba). El total del tramo
+  // es SU carga directamente — acumular el subárbol encima duplicaría lo que ya viene en la
+  // clave. mergeBranches queda para conectividad/etiquetas, ya no reescribe totales.
+  const componentTotalMap: Record<string, number> = {};
+  for (const t of tramos) {
+    componentTotalMap[t._key || t.id] = calcUCparcial(t, AP, 'uc');
   }
-  // Una cadena de merges (R1+R2→R5, luego R5+R3→R6) necesita que el override propio de R5 se
-  // resuelva antes de que R6 lo lea como fuente — Object.entries() no garantiza procesar fuentes
-  // antes que sus consumidores, así que un pase único podría leer un valor aún-no-overrideado
-  // (todavía basado en árbol, equivocado) para una fuente que es ella misma un merge. Iterar a
-  // un punto fijo en vez de un pase único.
-  const mergeEntries = Object.entries(mergeBranches);
-  for (let pass = 0; pass <= mergeEntries.length; pass++) {
-    let changedAny = false;
-    for (const [key, branches] of mergeEntries) {
-      if (componentTotalMap[key] === undefined) continue;
-      const next =
-        (ownTotalMap[key] || 0) + branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
-      if (next !== componentTotalMap[key]) {
-        componentTotalMap[key] = next;
-        changedAny = true;
-      }
-    }
-    if (!changedAny) break;
-  }
-  // Regla de UDs en nodos AF/AC/gas (orig. usuario): las DOS patas no-minoritarias (salidas o
-  // entradas, según el nodo) quedan con su UC/UD PROPIO, aunque la pata sea a su vez el destino
-  // de OTRO merge (p. ej. un tributario que aterriza en una salida: su UD NO se suma a ella) —
-  // antes el skip por `mergeBranches[branchId]` dejaba al ramal con la suma del sub-merge.
-  const allBranchIds = new Set<string>();
-  for (const branches of Object.values(mergeBranches)) {
-    for (const b of branches) allBranchIds.add(b);
-  }
-  for (const branchId of allBranchIds) {
-    const t = tramos.find((x) => (x._key || x.id) === branchId);
-    if (t) componentTotalMap[branchId] = calcUCparcial(t, AP, 'uc');
-  }
-  // Flujo probable (curva de Hunter, K·f(UC)) por tramo — para un ramal auto-creado en una unión
-  // T/Y, `total` ya lee componentTotalMap[key], que se overrideó arriba (líneas 234-237) a la
-  // suma del UC de las dos ramas en merge. Así que la fórmula de aquí corre sobre el total UC
-  // correctamente combinado de cada tramo, mergeado o no — no hace falta override aparte.
+  // Flujo probable (curva de Hunter, K·f(UC)) por tramo — `total` lee
+  // componentTotalMap[key], lectura directa de la clave (carga ya propagada). La fórmula
+  // corre sobre el total UC correcto de cada tramo, mergeado o no.
   const qpropMap: Record<string, number> = {};
   for (const t of tramos) {
     const key = t._key || t.id;
@@ -447,9 +406,13 @@ export function computeWaterNetworkRows(
     if (cur) tramoParentOf[key] = cur;
   }
 
+  // UD PROPIA = carga de la clave − heredada del libro (lo manual/fuente del tramo).
   const propiaMap: Record<string, number> = {};
   for (const t of tramos) {
-    propiaMap[t._key || t.id] = calcUCparcial(t, AP, 'uc');
+    const hered = t._aparatosKey ? leerHeredadosPresion(t._aparatosKey) : {};
+    let hUc = 0;
+    for (const d of AP) hUc += (hered[d.id] || 0) * (Number(d.uc) || 0);
+    propiaMap[t._key || t.id] = Math.max(0, calcUCparcial(t, AP, 'uc') - hUc);
   }
 
   const pRed = parseFloat(pRedStr) || 20;

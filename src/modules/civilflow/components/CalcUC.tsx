@@ -53,7 +53,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
       clsHeader: 'ac',
       icon: '/iconos_civilflow/diseno_redes/hidraulica/RAC_Calculo_UC.webp',
       title: 'agua caliente',
-      showTotal: false,
+      // UC TOTALES también en AC (orig. usuario): mismas columnas y sumatoria que AF/san.
+      showTotal: true,
     },
   } as const;
   const { tramos, ucIds, field, apField, colorVar, clsHeader, icon, title, showTotal } =
@@ -73,37 +74,42 @@ function CalculoUC({ tipo }: CalculoUCProps) {
 
   // Herencia de aparatos af/ac (libro aparatos_heredados_v1): se re-lee con cada evento
   // 'storage' (los escritores la despachan al propagar).
-  const [, setHeredTick] = useState(0);
+  const [heredTick, setHeredTick] = useState(0);
   useEffect(() => {
     const h = () => setHeredTick((x) => x + 1);
     window.addEventListener('storage', h);
     return () => window.removeEventListener('storage', h);
   }, []);
+  // Llaveada por clave de conteos (`_aparatosKey ?? _key ?? id`): el id se repite
+  // entre pisos y el libro es por clave compuesta (auditoría #3).
+  const heredKeyOf = (t: { id: string; _aparatosKey?: string; _key?: string }): string =>
+    t._aparatosKey ?? t._key ?? t.id;
   const heredMap = useMemo(() => {
     const m: Record<string, Record<string, number>> = {};
     for (const t of tramos) {
-      if (t._aparatosKey) m[t.id] = leerHeredadosPresion(t._aparatosKey);
+      if (t._aparatosKey) m[heredKeyOf(t)] = leerHeredadosPresion(t._aparatosKey);
     }
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tramos, setHeredTick]);
+  }, [tramos, heredTick]);
 
   const totales = useMemo(() => {
     return AP.map((d) => ({
       id: d.id,
       nombre: d.nombre,
       uc: d[field],
-      cant: tramos.reduce(
-        (s, t) => s + (t.fixtures?.[d.id] || 0) + ((heredMap[t.id] || {})[d.id] || 0),
-        0,
-      ),
+      // Σ vertical (orig. usuario): cada aparato cuenta UNA vez — en el tramo que lo sirve
+      // (UD propia). Los propagados (heredado) ya están en las claves de quien los sirve.
+      cant: tramos.reduce((s, t) => {
+        // Propia = clave − heredado; los tributarios NO suman: su carga ya vive plegada
+        // en la clave del padre (auditoría #6 — antes el pie duplicaba cada aparato en trib).
+        if (t.tipo === 'tributario') return s;
+        const hered = heredMap[heredKeyOf(t)] || {};
+        return s + Math.max(0, (t.fixtures?.[d.id] || 0) - (hered[d.id] || 0));
+      }, 0),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [AP, tramos, field, heredMap]);
-
-  const totalUC = useMemo(() => {
-    return totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0);
-  }, [totales]);
 
   const sortedTramos = useMemo(() => {
     return tramos
@@ -141,7 +147,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     style={{ minWidth: 84, textAlign: 'center' }}
                     title="Identificador del tramo con su nivel (ej. RAC1-P1 · S1 = sótano · C = cubierta)"
                   >
-                    Tramo
+                    Ramal/Montante
                   </th>
                   <th
                     scope="col"
@@ -199,30 +205,6 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       Parcial
                     </th>
                   )}
-                  {showTotal && (
-                    <th
-                      scope="col"
-                      className="col-h"
-                      rowSpan={2}
-                      style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
-                      title="Longitud desarrollada del tramo (m)."
-                    >
-                      Longitud (m)
-                    </th>
-                  )}
-                  {showTotal && (
-                    <th
-                      scope="col"
-                      className="col-h"
-                      rowSpan={2}
-                      style={{ minWidth: 52, textAlign: 'center', padding: '4px' }}
-                      title="Número de descargas simultáneas del tramo (Hunter)."
-                    >
-                      No de descarga
-                      <br />
-                      Simultáneas
-                    </th>
-                  )}
                 </tr>
                 <tr>
                   {AP.map((d) => (
@@ -258,25 +240,21 @@ function CalculoUC({ tipo }: CalculoUCProps) {
               <tbody>
                 {tramos.length === 0 ? (
                   <EmptyRow
-                    colSpan={showTotal ? 3 + AP.length + 2 + 2 : 3 + AP.length + 3}
+                    colSpan={showTotal ? 3 + AP.length + 2 : 3 + AP.length + 1}
                     fontSize={12}
                   />
                 ) : (
-                  sortedTramos.map((t, i) => {
-                    const parcial = calcUCparcial(t, AP, field);
-                    const hered = heredMap[t.id] || {};
-                    // Total REAL (orig. usuario): propios + heredados aguas arriba.
-                    const acum = showTotal
-                      ? parcial +
-                        AP.reduce(
-                          (s2, d2) => s2 + (hered[d2.id] || 0) * (Number(d2[field]) || 0),
-                          0,
-                        )
-                      : 0;
-                    const vLh = t.totalL || t.Lh || 0;
-                    const vNS = t.nSalidas ?? 0;
+                  sortedTramos.map((t) => {
+                    const hered = heredMap[heredKeyOf(t)] || {};
+                    const hUc = AP.reduce(
+                      (s2, d2) => s2 + (hered[d2.id] || 0) * (Number(d2[field]) || 0),
+                      0,
+                    );
+                    // Parcial = UD PROPIA (la clave ya trae la carga propagada); Total = carga.
+                    const parcial = Math.max(0, calcUCparcial(t, AP, field) - hUc);
+                    const acum = showTotal ? calcUCparcial(t, AP, field) : 0;
                     return (
-                      <tr key={i}>
+                      <tr key={heredKeyOf(t)}>
                         <td className="c">
                           <span
                             className="sigla"
@@ -314,8 +292,9 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                             : t.fin || '\u2014'}
                         </td>
                         {AP.map((d) => {
-                          const h = hered[d.id] || 0;
-                          const v = (t.fixtures?.[d.id] || 0) + h;
+                          // Como sanitaria: la fila MUESTRA el conteo servido (propios +
+                          // propagados según la conexión); la Σ vertical cuenta una vez.
+                          const v = t.fixtures?.[d.id] || 0;
                           return (
                             <td key={d.id} className="c" style={{ padding: '2px 3px' }}>
                               <span
@@ -324,14 +303,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                                   fontFamily: monof,
                                   color: d._disabled ? txt2 : txt,
                                 }}
-                                title={
-                                  h > 0 ? `${v} = ${v - h} propios + ${h} heredados` : undefined
-                                }
                               >
                                 {v}
-                                {h > 0 && (
-                                  <span style={{ color: txt2, fontSize: 10 }}> (+{h})</span>
-                                )}
                               </span>
                             </td>
                           );
@@ -353,20 +326,6 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                             }}
                           >
                             {acum}
-                          </td>
-                        )}
-                        {showTotal && (
-                          <td className="c" style={{ padding: '2px 4px' }}>
-                            <span style={{ fontFamily: monof, fontSize: 12, color: txt2 }}>
-                              {vLh > 0 ? vLh.toFixed(2) : '\u2014'}
-                            </span>
-                          </td>
-                        )}
-                        {showTotal && (
-                          <td className="c" style={{ padding: '2px 4px' }}>
-                            <span style={{ fontFamily: monof, fontSize: 12, color: txt2 }}>
-                              {vNS > 0 ? vNS : '\u2014'}
-                            </span>
                           </td>
                         )}
                       </tr>
@@ -420,36 +379,6 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       </td>
                     );
                   })}
-                  {showTotal ? (
-                    <td
-                      colSpan={2}
-                      className="c"
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: colorVar,
-                        fontFamily: monof,
-                        textAlign: 'center',
-                        borderTop: '2px solid var(--line)',
-                      }}
-                    >
-                      {totalUC} UC
-                    </td>
-                  ) : (
-                    <td
-                      className="c"
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: txt,
-                        fontFamily: monof,
-                        textAlign: 'center',
-                        borderTop: '2px solid var(--line)',
-                      }}
-                    >
-                      {totalUC} UC
-                    </td>
-                  )}
                   {showTotal && (
                     <td colSpan={2} style={{ borderTop: '2px solid var(--line)' }}></td>
                   )}

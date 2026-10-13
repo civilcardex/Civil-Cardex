@@ -6,6 +6,9 @@ import { hunterK, computeDesignRow } from './rowPhysics';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared';
 import { leerHeredadosPresion } from '../../utils/aparatosPresion';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput';
+import { writeNSalidasToDrawing } from '../../utils/drawingWrites/otros';
+import type { PlanItem } from '../../context/PlansContext';
+import { useState } from 'react';
 
 /** Estilo compacto del input de presión (misma pinta del LazyNumInput que reemplaza). */
 const PRESION_INP: React.CSSProperties = {
@@ -112,6 +115,9 @@ export function DesignTableRow({
   diamIntMap,
   lookupFn,
   edit,
+  plans,
+  updTramo,
+  net,
   handleDiamChange,
   setPresIni,
   setPresFin,
@@ -140,6 +146,10 @@ export function DesignTableRow({
   pressureByKey: Record<string, { Pin: number; Pfin: number }>;
   /** Límites de velocidad del país (mm/s) — normasPais. */
   velLim?: [number, number];
+  /** Planes + updTramo + red: Nº de descargas editable y bidireccional con el dibujo. */
+  plans: PlanItem[];
+  updTramo: (id: string, field: string, val: string | number | boolean) => void;
+  net: 'af' | 'ac';
 }) {
   const ownKey = t._key || t.id;
   // Herencia de aparatos af/ac (libro aparatos_heredados_v1): tooltip en la celda propia.
@@ -162,6 +172,9 @@ export function DesignTableRow({
     lookupFn,
   });
   const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
+  // Nº de descargas EDITABLE y BIDIRECCIONAL con el dibujo (patrón sanitaria: input en modo
+  // edición, commit → updTramo + writeNSalidasToDrawing; el buildTramos lo re-lee del trazo).
+  const [editNs, setEditNs] = useState<string | null>(null);
   const vCumple = calc.Vmms >= (velLim?.[0] ?? 500) && calc.Vmms <= (velLim?.[1] ?? 2500);
   // Chequeo de presión en el aparato conectado (NTC 1500: pmin ≤ P ≤ pmax en el extremo).
   const chkP = chequeoPresionAparato(t.ini, t.fin, Pin, Pfin);
@@ -194,25 +207,69 @@ export function DesignTableRow({
         />
       </td>
       <td className="c td-mono-b">{fmt(total, 2)}</td>
-      <td className="c td-mono">{nDesc > 0 ? nDesc : '—'}</td>
+      <td className="c" style={{ padding: '1px 2px' }}>
+        {edit ? (
+          <input
+            type="text"
+            inputMode="numeric"
+            value={editNs !== null ? editNs : nDesc > 0 ? String(nDesc) : ''}
+            placeholder="—"
+            aria-label="Número de descargas"
+            onChange={(e) => setEditNs(e.target.value.replace(/[^0-9]/g, ''))}
+            onBlur={() => {
+              const raw = editNs !== null ? editNs : '';
+              const v = parseInt(raw, 10);
+              setEditNs(null);
+              if (!Number.isFinite(v) || v < 1) return;
+              updTramo(ownKey, 'nSalidas', v);
+              writeNSalidasToDrawing(ownKey, net, v, plans);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+            style={{
+              width: 52,
+              textAlign: 'center',
+              border: '1px solid #3a494a',
+              borderRadius: 3,
+              background: '#1e2024',
+              color: '#e2e2e8',
+              fontSize: 10.5,
+              fontFamily: 'var(--mono)',
+              padding: '2px 4px',
+            }}
+          />
+        ) : nDesc > 0 ? (
+          <span className="td-mono" style={{ fontFamily: 'var(--mono)' }}>
+            {nDesc}
+          </span>
+        ) : (
+          '—'
+        )}
+      </td>
       <td className="c td-mono-b">{K > 0 ? fmt(K, 2) : '—'}</td>
       <td className="c td-mono-b">{Qprob > 0 ? fmt(Qprob, 3) : '—'}</td>
       <td className="c td-mono">{raizQ > 0 ? fmt(raizQ, 2) : '—'}</td>
       <td className="c" style={{ padding: '0 1px' }}>
-        <select
-          aria-label="Diámetro diseño"
-          value={calc.matchedOpt?.nominal || ''}
-          disabled={!edit}
-          onChange={(e) => handleDiamChange(ownKey, e.target.value)}
-          style={WaterNetworkDesign_S2}
-        >
-          <option value="">—</option>
-          {diamOpts.map((o) => (
-            <option key={o.nominal} value={o.nominal}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        {edit ? (
+          <select
+            aria-label="Diámetro diseño"
+            value={calc.matchedOpt?.nominal || ''}
+            onChange={(e) => handleDiamChange(ownKey, e.target.value)}
+            style={WaterNetworkDesign_S2}
+          >
+            <option value="">—</option>
+            {diamOpts.map((o) => (
+              <option key={o.nominal} value={o.nominal}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 10.5 }}>
+            {calc.matchedOpt?.label || '—'}
+          </span>
+        )}
       </td>
       <td className="c td-mono">{calc.internoMm > 0 ? fmt(calc.internoMm, 2) : '—'}</td>
       <td className="c td-mono">{fmt(calc.cHW, 2)}</td>
@@ -239,26 +296,36 @@ export function DesignTableRow({
       <td className="c td-mono">{calc.hfPct != null ? fmt(calc.hfPct, 2) : '—'}</td>
       <td className="c td-mono-b">{calc.hfM != null ? fmt(calc.hfM, 2) : '—'}</td>
       <td className="c" style={{ padding: '0 1px' }}>
-        <LazyDecimalInput
-          ariaLabel="Presión inicial"
-          value={fmt(Pin, 2)}
-          disabled={!edit}
-          commitOnEnter
-          className="ni"
-          style={PRESION_INP}
-          onCommit={numCommit((v) => setPresIni(ownKey, v))}
-        />
+        {edit ? (
+          <LazyDecimalInput
+            ariaLabel="Presión inicial"
+            value={fmt(Pin, 2)}
+            commitOnEnter
+            className="ni"
+            style={PRESION_INP}
+            onCommit={numCommit((v) => setPresIni(ownKey, v))}
+          />
+        ) : (
+          <span className="td-mono" style={{ fontFamily: 'var(--mono)' }}>
+            {fmt(Pin, 2)}
+          </span>
+        )}
       </td>
       <td className="c" style={{ padding: '0 1px' }}>
-        <LazyDecimalInput
-          ariaLabel="Presión final"
-          value={fmt(Pfin, 2)}
-          disabled={!edit}
-          commitOnEnter
-          className="ni"
-          style={PRESION_INP}
-          onCommit={numCommit((v) => setPresFin(ownKey, v))}
-        />
+        {edit ? (
+          <LazyDecimalInput
+            ariaLabel="Presión final"
+            value={fmt(Pfin, 2)}
+            commitOnEnter
+            className="ni"
+            style={PRESION_INP}
+            onCommit={numCommit((v) => setPresFin(ownKey, v))}
+          />
+        ) : (
+          <span className="td-mono" style={{ fontFamily: 'var(--mono)' }}>
+            {fmt(Pfin, 2)}
+          </span>
+        )}
       </td>
       <td
         className="c td-mono-b"

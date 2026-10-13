@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import EditButton from './shared/EditButton';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow';
@@ -14,14 +14,16 @@ import {
   findContadorBajante,
 } from '../utils/writeDiameterToDrawing';
 
-import { isAf, isAC1 } from '../utils/waterNetworkRows';
+import { isAf, isAC1, isAC2, isContador } from '../utils/waterNetworkRows';
+import { calcLeAcces } from '../utils/fittingsUtils';
 import { chequeoPresionAparato } from '../utils/waterRowsShared';
 import { perfilDe } from '../constants/normasPais';
 import { fracAscii } from '../utils/formatUtils';
+import { propagarAparatosPresion } from '../utils/aparatosPresion';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';
-import { useAcometidaParams, calcFila } from './waterNetworkDesign/acometidaCalc';
+import { calcFila } from './waterNetworkDesign/acometidaCalc';
 import { resolvePressures } from './waterNetworkDesign/pressureResolver';
 import { hunterQ, computeDesignRow } from './waterNetworkDesign/rowPhysics';
 import { DesignTableHeader } from './waterNetworkDesign/designTableHeader';
@@ -61,6 +63,53 @@ function WaterNetworkDesign({
   const { plans } = usePlans();
 
   const tramos = isAf(networkType) ? tramosAf : tramosAc;
+  // Asegura claves = carga (propia + heredada) antes de leer totales; idempotente. El
+  // listener re-corre cuando otra superficie escribe conteos (auditoría #5: la primera
+  // pintura pre-propagación mostraba solo-propios y quedaba congelada hasta remontar).
+  // Guarda anti-loop: la propagación despacha 'storage' siempre (aunque no cambie nada);
+  // solo se re-corre si la firma del disco cambió desde la última corrida.
+  const firmaRef = useRef('');
+  const [propTick, setPropTick] = useState(0);
+  useEffect(() => {
+    const correr = (): void => {
+      let firma = '';
+      try {
+        firma = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
+      } catch {
+        return;
+      }
+      if (firma === firmaRef.current && firmaRef.current !== '') return;
+      firmaRef.current = firma;
+      propagarAparatosPresion(networkType);
+      try {
+        firmaRef.current = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
+      } catch {
+        /* ignorar */
+      }
+    };
+    correr();
+    const h = (): void => setPropTick((x) => x + 1);
+    window.addEventListener('storage', h);
+    return () => window.removeEventListener('storage', h);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [networkType]);
+  useEffect(() => {
+    if (propTick === 0) return;
+    let firma = '';
+    try {
+      firma = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
+    } catch {
+      return;
+    }
+    if (firma === firmaRef.current) return;
+    firmaRef.current = firma;
+    propagarAparatosPresion(networkType);
+    try {
+      firmaRef.current = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
+    } catch {
+      /* ignorar */
+    }
+  }, [propTick, networkType]);
   const updTramo = isAf(networkType) ? updTramoAf : updTramoAc;
 
   const ucIds = isAf(networkType) ? AF_UC_IDS : AC_UC_IDS;
@@ -203,24 +252,66 @@ function WaterNetworkDesign({
     [plans, networkType],
   );
 
-  const {
-    tr1,
-    tr2,
-    resolvedMonName,
-    resolvedContMonDiam,
-    resolvedRedContDiam,
-    resolvedL1,
-    resolvedL2,
-  } = useAcometidaParams({
-    networkType,
-    tramos,
-    acoMonName,
-    diamNomMap,
-    diamTable,
-    acoContMonDiam,
-    acoL1,
-    acoL2,
-  });
+  // Tramos reales dibujados (tr1 red→contador, tr2 contador→montante) con fallback a
+  // manuales; antes en useAcometidaParams de un solo uso — inline aquí (ponytail).
+  const tr1 = useMemo(
+    () => (isAf(networkType) ? (tramos.find((t) => isAC1(t)) ?? null) : null),
+    [tramos, networkType],
+  );
+  const tr2 = useMemo(
+    () => (isAf(networkType) ? (tramos.find((t) => isAC2(t)) ?? null) : null),
+    [tramos, networkType],
+  );
+  const resolvedMonName = useMemo(() => {
+    if (tr2) {
+      const iniStr = typeof tr2.ini === 'string' ? tr2.ini : '';
+      const finStr = typeof tr2.fin === 'string' ? tr2.fin : '';
+      if (isContador(iniStr)) return finStr || acoMonName;
+      if (isContador(finStr)) return iniStr || acoMonName;
+      return iniStr || finStr || acoMonName;
+    }
+    return acoMonName;
+  }, [tr2, acoMonName]);
+  const resolvedContMonDiam = useMemo(() => {
+    if (tr2) {
+      const ownKey = tr2._key || tr2.id;
+      if (diamNomMap[ownKey]) return diamNomMap[ownKey];
+      if (tr2.diametroOriginal) {
+        const match = diamTable.find((o) => tr2.diametroOriginal?.startsWith(o.nominal));
+        if (match) return match.nominal;
+      }
+      const match = diamTable.find((o) => Math.abs(o.pulg - (tr2.diamDisPulg ?? 0)) < 0.01);
+      if (match) return match.nominal;
+    }
+    const fallbackPulg = acoContMonDiam || 0.75;
+    const match = diamTable.find((o) => Math.abs(o.pulg - fallbackPulg) < 0.01);
+    return match ? match.nominal : '3/4" RDE 11';
+  }, [tr2, diamNomMap, acoContMonDiam, diamTable]);
+  const resolvedRedContDiam = resolvedContMonDiam;
+  const resolvedL1 = useMemo(() => {
+    if (tr1) {
+      const opt = resolvedRedContDiam
+        ? diamTable.find((d) => d.nominal === resolvedRedContDiam)
+        : null;
+      const realPulg = opt ? opt.pulg : tr1.diamDisPulg || 0;
+      const cHW = matHazenC(tr1.material || '') ?? 150;
+      const le = calcLeAcces(tr1.accesorios ?? {}, realPulg, cHW);
+      return { h: tr1.totalL || tr1.Lh || 0, v: 0.0, le };
+    }
+    return acoL1;
+  }, [tr1, acoL1, resolvedRedContDiam, diamTable]);
+  const resolvedL2 = useMemo(() => {
+    if (tr2) {
+      const opt = resolvedContMonDiam
+        ? diamTable.find((d) => d.nominal === resolvedContMonDiam)
+        : null;
+      const realPulg = opt ? opt.pulg : tr2.diamDisPulg || 0;
+      const cHW = matHazenC(tr2.material || '') ?? 150;
+      const le = calcLeAcces(tr2.accesorios ?? {}, realPulg, cHW);
+      return { h: tr2.totalL || tr2.Lh || 0, v: 0.0, le };
+    }
+    return acoL2;
+  }, [tr2, acoL2, resolvedContMonDiam, diamTable]);
   const isTr1Drawn = !!tr1;
   const isTr2Drawn = !!tr2;
 
@@ -516,6 +607,9 @@ function WaterNetworkDesign({
                         perfilDe(proy.pais).af.vMin * 1000,
                         perfilDe(proy.pais).af.vMax * 1000,
                       ]}
+                      plans={plans}
+                      updTramo={updTramo}
+                      net={networkType}
                     />
                   ))}
                 </tbody>
