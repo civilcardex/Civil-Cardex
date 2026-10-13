@@ -24,15 +24,19 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
                 } else setTab(t.id);
               }}
               onMouseEnter={() => {
-                if (t.id === 'datos') import('./DesignParameters');
-                else if (t.id === 'crit') import('./Regulations/Regulations');
-                else if (t.id === 'iso') import('./workarea/IsometryTab');
+                if (t.id === 'datos') import('./DesignParameters').catch(() => {});
+                else if (t.id === 'crit') import('./Regulations/Regulations').catch(() => {});
+                else if (t.id === 'iso') import('./workarea/IsometryTab').catch(() => {});
                 else if (t.id === 'redes')
-                  import('./workareaContent/redesTab').then((m) => m.prefetchRedesInicial());
+                  import('./workareaContent/redesTab')
+                    .then((m) => m.prefetchRedesInicial())
+                    .catch(() => {});
               }}
               onFocus={() => {
                 if (t.id === 'redes')
-                  import('./workareaContent/redesTab').then((m) => m.prefetchRedesInicial());
+                  import('./workareaContent/redesTab')
+                    .then((m) => m.prefetchRedesInicial())
+                    .catch(() => {});
               }}
               style={t.id === 'redes' ? { flex: '0 0 auto', padding: '12px 28px' } : {}}
             >

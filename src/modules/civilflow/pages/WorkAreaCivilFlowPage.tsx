@@ -88,6 +88,15 @@ function WorkAreaCivilFlowPage() {
   const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
   const [switching, setSwitching] = useState(switchPendiente);
   const switchingRef = useRef(false);
+  // Un segundo switch en la misma sesión quedaba bloqueado (ref sin reset): al asentarse
+  // la URL se permite de nuevo (setState idéntico no re-renderiza, no cascada).
+  useEffect(() => {
+    if (wantsId == null || wantsId === getActiveProyectoId()) {
+      switchingRef.current = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSwitching(false);
+    }
+  }, [wantsId]);
 
   // SOLO sin parámetro: redirect al uuid del proyecto activo. Con parámetro presente NO se
   // redirige nunca al activo (uuid → switch de abajo; no-uuid → banner de enlace legacy):
@@ -189,7 +198,11 @@ function WorkAreaCivilFlowPage() {
   }
 
   if (switchPendiente || switching) {
-    return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
+    return (
+      <div role="status" style={CARGANDO_STYLE}>
+        Abriendo proyecto…
+      </div>
+    );
   }
   return (
     <main className="h-full">

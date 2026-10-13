@@ -70,6 +70,11 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
           <RedesTab state={state} />
         </section>
       )}
+      {tab === 'redes' && redesRestoreDone && redesActivas.length === 0 && (
+        <div role="status" style={{ padding: 24, color: 'var(--txt2)', fontSize: 13 }}>
+          Sin redes activas: actívalas en Información del proyecto para diseñar.
+        </div>
+      )}
       {tab === 'datos' && (
         <section
           aria-label="Parámetros de diseño"

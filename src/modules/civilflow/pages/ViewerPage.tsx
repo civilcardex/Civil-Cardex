@@ -210,6 +210,15 @@ export default function ViewerPage() {
   const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
   const [switching, setSwitching] = useState(switchPendiente);
   const switchingRef = useRef(false);
+  // Un segundo switch en la misma sesión quedaba bloqueado (ref sin reset): al asentarse
+  // la URL se permite de nuevo (setState idéntico no re-renderiza, no cascada).
+  useEffect(() => {
+    if (wantsId == null || wantsId === getActiveProyectoId()) {
+      switchingRef.current = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSwitching(false);
+    }
+  }, [wantsId]);
 
   useEffect(() => {
     if (proyectoId != null) return;
@@ -444,7 +453,11 @@ export default function ViewerPage() {
   }
 
   if (switchPendiente || switching) {
-    return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
+    return (
+      <div role="status" style={CARGANDO_STYLE}>
+        Abriendo proyecto…
+      </div>
+    );
   }
 
   return (
