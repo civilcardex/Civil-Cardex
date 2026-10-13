@@ -96,6 +96,14 @@ const OtrasField = React.memo(function OtrasField({
   const [text, setText] = React.useState('');
   const [editing, setEditing] = React.useState(false);
   const display = editing ? text : fmt(value ?? 0, 2);
+  // Patrón sanitaria (orig. usuario): EDITAR apagado = TEXTO PLANO.
+  if (disabled) {
+    return (
+      <span style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600 }}>
+        {fmt(value ?? 0, 2)}
+      </span>
+    );
+  }
   return (
     <input
       type="text"
@@ -652,30 +660,39 @@ export default function ChequeoBajantesLluvias() {
                     <td className="c">
                       {/* Material de cubierta (port hoja 1): abreviatura en la opción con
                       title del nombre completo (hover). Persiste como override. */}
-                      <select
-                        value={row.materialCubierta}
-                        aria-label="Material de cubierta"
-                        title={row.materialCubierta || 'Material de cubierta'}
-                        disabled={!edit}
-                        onChange={(e) => {
-                          if (row.bajante) {
-                            updBajanteLL(row.bajante, 'materialCubierta', e.target.value);
-                          }
-                        }}
-                        style={{
-                          ...RainDownpipesCheck_S1,
-                          width: '100%',
-                          opacity: edit ? 1 : 0.6,
-                          cursor: edit ? 'pointer' : 'default',
-                        }}
-                      >
-                        <option value="">—</option>
-                        {MATERIALES_CUBIERTA_LL.map((m) => (
-                          <option key={m.nombre} value={m.nombre} title={m.nombre}>
-                            {m.abrev}
-                          </option>
-                        ))}
-                      </select>
+                      {edit ? (
+                        <select
+                          value={row.materialCubierta}
+                          aria-label="Material de cubierta"
+                          title={row.materialCubierta || 'Material de cubierta'}
+                          onChange={(e) => {
+                            if (row.bajante) {
+                              updBajanteLL(row.bajante, 'materialCubierta', e.target.value);
+                            }
+                          }}
+                          style={{
+                            ...RainDownpipesCheck_S1,
+                            width: '100%',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="">—</option>
+                          {MATERIALES_CUBIERTA_LL.map((m) => (
+                            <option key={m.nombre} value={m.nombre} title={m.nombre}>
+                              {m.abrev}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span
+                          title={row.materialCubierta || undefined}
+                          style={{ fontFamily: 'var(--mono)', fontSize: 11 }}
+                        >
+                          {MATERIALES_CUBIERTA_LL.find(
+                            (m) => m.nombre === (row.materialCubierta ?? ''),
+                          )?.abrev || '—'}
+                        </span>
+                      )}
                     </td>
                     <td className="c">
                       {/* C derivado del material (hoja 1, criterio "por material"). */}
@@ -718,62 +735,73 @@ export default function ChequeoBajantesLluvias() {
                       {diamCalc > 0 ? fmt(diamCalc, 2) : '—'}
                     </td>
                     <td className="c">
-                      <select
-                        value={entradaPor(DIAM_BAN, 'pulg', row.diamPropuesto)?.nom ?? ''}
-                        aria-label="Diámetro propuesto"
-                        disabled={!edit}
-                        onChange={(e) => {
-                          const nom = e.target.value;
-                          const opt = entradaPor(DIAM_BAN, 'nom', nom);
-                          // Regla ll: el bajante no puede quedar menor que sus ramales conectados.
-                          if (opt && row.drawId) {
-                            const maxRamal = maxRamalPulgDeBajante(
-                              row.drawId,
-                              String(row.drawPlanId ?? ''),
-                              tramosLl,
-                            );
-                            if (maxRamal > 0 && opt.pulg < maxRamal) {
-                              if (
-                                avisarDiametroInvalido(
-                                  `El diámetro del bajante no puede ser menor al de los ramales conectados (máximo ${maxRamal}"). Sube primero el diámetro de los ramales o selecciona un bajante mayor.`,
+                      {edit ? (
+                        <select
+                          value={entradaPor(DIAM_BAN, 'pulg', row.diamPropuesto)?.nom ?? ''}
+                          aria-label="Diámetro propuesto"
+                          onChange={(e) => {
+                            const nom = e.target.value;
+                            const opt = entradaPor(DIAM_BAN, 'nom', nom);
+                            // Regla ll: el bajante no puede quedar menor que sus ramales conectados.
+                            if (opt && row.drawId) {
+                              const maxRamal = maxRamalPulgDeBajante(
+                                row.drawId,
+                                String(row.drawPlanId ?? ''),
+                                tramosLl,
+                              );
+                              if (maxRamal > 0 && opt.pulg < maxRamal) {
+                                if (
+                                  avisarDiametroInvalido(
+                                    `El diámetro del bajante no puede ser menor al de los ramales conectados (máximo ${maxRamal}"). Sube primero el diámetro de los ramales o selecciona un bajante mayor.`,
+                                  )
                                 )
+                                  return;
+                              }
+                            }
+                            // Bidireccional (orig. usuario): escribe el dNominal del bajante en el
+                            // dibujo (engine vivo o storage) y refleja el pulg en el tramo.
+                            if (row.drawId && opt) {
+                              // Regla entre pisos: si se bloquea, no avanzar optimista.
+                              if (
+                                writeBajantePropToDrawing(
+                                  `${row.drawId}-${row.drawPlanId}`,
+                                  'll',
+                                  'dNominal',
+                                  nom,
+                                  plans,
+                                ) === false
                               )
                                 return;
-                            }
-                          }
-                          // Bidireccional (orig. usuario): escribe el dNominal del bajante en el
-                          // dibujo (engine vivo o storage) y refleja el pulg en el tramo.
-                          if (row.drawId && opt) {
-                            // Regla entre pisos: si se bloquea, no avanzar optimista.
-                            if (
-                              writeBajantePropToDrawing(
+                              updTramoLL(
                                 `${row.drawId}-${row.drawPlanId}`,
-                                'll',
-                                'dNominal',
-                                nom,
-                                plans,
-                              ) === false
-                            )
-                              return;
-                            updTramoLL(`${row.drawId}-${row.drawPlanId}`, 'diamDisPulg', opt.pulg);
-                          }
-                        }}
-                        style={{
-                          ...RainDownpipesCheck_S1,
-                          opacity: edit ? 1 : 0.6,
-                          cursor: edit ? 'pointer' : 'default',
-                        }}
-                      >
-                        <option value="">—</option>
-                        {/* Legacy: bajantes ll de 1.5" (excluida del catálogo) persisten —
+                                'diamDisPulg',
+                                opt.pulg,
+                              );
+                            }
+                          }}
+                          style={{
+                            ...RainDownpipesCheck_S1,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="">—</option>
+                          {/* Legacy: bajantes ll de 1.5" (excluida del catálogo) persisten —
                             sin esta option el select renderiza vacío y un click la borra. */}
-                        {row.diamPropuesto === 1.5 && <option value="1-1/2">1-1/2"</option>}
-                        {DIAM_BAN_LL.map((d) => (
-                          <option key={d.pulg} value={d.nom}>
-                            {d.nom}
-                          </option>
-                        ))}
-                      </select>
+                          {row.diamPropuesto === 1.5 && <option value="1-1/2">1-1/2"</option>}
+                          {DIAM_BAN_LL.map((d) => (
+                            <option key={d.pulg} value={d.nom}>
+                              {d.nom}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 11 }}>
+                          {row.diamPropuesto > 0
+                            ? (entradaPor(DIAM_BAN, 'pulg', row.diamPropuesto)?.nom ??
+                              `${row.diamPropuesto}"`)
+                            : '—'}
+                        </span>
+                      )}
                     </td>
                     <td
                       className="c"
