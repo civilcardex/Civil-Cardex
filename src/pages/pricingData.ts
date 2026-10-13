@@ -28,7 +28,7 @@ export const plans = Object.freeze([
   {
     id: 'profesional',
     nombre: 'Profesional',
-    precio: '$19',
+    precio: 'US$19',
     periodo: '/mes',
     desc: 'Para ingenieros civiles independientes y firmas pequeñas.',
     color: '#00f5ff',
@@ -51,7 +51,7 @@ export const plans = Object.freeze([
   {
     id: 'empresarial',
     nombre: 'Empresarial',
-    precio: '$49',
+    precio: 'US$49',
     periodo: '/mes',
     desc: 'Para firmas de ingeniería y constructoras con múltiples proyectos.',
     color: '#A855F7',

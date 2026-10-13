@@ -122,16 +122,17 @@ export function calcularTotalCentavos(
   return Math.round(bruto * (1 - descuentoAplicado(unicos, periodo)) * (1 - dtoVolumen));
 }
 
-/** Centavos USD → "$25.00" / "$42.50". */
+/** Centavos USD → "US$25.00" / "US$42.50". Prefijo US$ (y no "$" solo) para que en países
+ *  con peso (CO, MX, AR…) el símbolo de cobro se lea inequívocamente como DÓLAR. */
 export function formatUSD(centavos: number): string {
   try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(centavos / 100);
+    return `US$${new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(centavos / 100)}`;
   } catch (e) {
     devError('formatUSD:', e);
-    return `$${(centavos / 100).toFixed(2)}`;
+    return `US$${(centavos / 100).toFixed(2)}`;
   }
 }
 

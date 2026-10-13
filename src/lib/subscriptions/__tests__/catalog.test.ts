@@ -48,8 +48,8 @@ describe('calcularTotalCentavos (USD)', () => {
     expect(descuentoAplicado(['flow', 'manage'], 'anual')).toBeLessThanOrEqual(1);
   });
 
-  it('formatUSD muestra dólares con decimales', () => {
-    expect(formatUSD(2500)).toBe('$25.00');
-    expect(formatUSD(13500)).toBe('$135.00');
+  it('formatUSD muestra dólares con decimales (prefijo US$ inequívoco)', () => {
+    expect(formatUSD(2500)).toBe('US$25.00');
+    expect(formatUSD(13500)).toBe('US$135.00');
   });
 });
