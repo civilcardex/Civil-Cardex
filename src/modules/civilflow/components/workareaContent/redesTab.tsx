@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, lazy } from 'react';
 import PageNav from '../PageNav';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicData';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
@@ -63,31 +63,44 @@ const NET_BTN_STYLE: React.CSSProperties = {
   justifyContent: 'center',
 } as const;
 
+/** Chunks ya pedidos (hover+focus+PageNav disparan el mismo gesto varias veces). */
+const chunksPedidos = new Set<string>();
+/** Pide un chunk sin romper si falla (404 tras deploy) y sin duplicar el gesto.
+ *  @param clave - id del chunk para dedupe.
+ *  @param pedir - import dinámico del chunk.
+ *  @returns void. */
+function pedirChunk(clave: string, pedir: () => Promise<unknown>): void {
+  if (chunksPedidos.has(clave)) return;
+  chunksPedidos.add(clave);
+  pedir().catch(() => {
+    chunksPedidos.delete(clave);
+  });
+}
 const prefetchSan = (p: number) => {
-  if (p === 1) import('../FixtureUnitCalc');
-  else if (p === 2) import('../SanitaryDesign');
-  else if (p === 3) import('../DownpipesTable');
-  else if (p === 4) import('../FittingsDiamPage');
+  if (p === 1) pedirChunk('san1', () => import('../FixtureUnitCalc'));
+  else if (p === 2) pedirChunk('san2', () => import('../SanitaryDesign'));
+  else if (p === 3) pedirChunk('san3', () => import('../DownpipesTable'));
+  else if (p === 4) pedirChunk('san4', () => import('../FittingsDiamPage'));
 };
 const prefetchLl = (p: number) => {
-  if (p === 1) import('../RainwaterDesign');
-  else if (p === 2) import('../RainDownpipesCheck');
-  else if (p === 3) import('../RainChannelsCheck');
-  else if (p === 4) import('../FittingsDiamPage');
+  if (p === 1) pedirChunk('ll1', () => import('../RainwaterDesign'));
+  else if (p === 2) pedirChunk('ll2', () => import('../RainDownpipesCheck'));
+  else if (p === 3) pedirChunk('ll3', () => import('../RainChannelsCheck'));
+  else if (p === 4) pedirChunk('ll4', () => import('../FittingsDiamPage'));
 };
 const prefetchAfAc = (p: number) => {
-  if (p === 1) import('../CalcUC');
-  else if (p === 2) import('../WaterNetworkDesign');
-  else if (p === 3) import('../../pages/AcometidaPage');
-  else if (p === 4) import('../AccessoriesTable');
-  else if (p === 5) import('../FittingsDiamPage');
+  if (p === 1) pedirChunk('af1', () => import('../CalcUC'));
+  else if (p === 2) pedirChunk('af2', () => import('../WaterNetworkDesign'));
+  else if (p === 3) pedirChunk('af3', () => import('../../pages/AcometidaPage'));
+  else if (p === 4) pedirChunk('af4', () => import('../AccessoriesTable'));
+  else if (p === 5) pedirChunk('af5', () => import('../FittingsDiamPage'));
 };
 const prefetchHeavy = () => {
-  import('../BombaARDesign');
-  import('../PressureEquipmentDesign');
-  import('../GasDesign');
-  import('../DesignParameters');
-  import('../Regulations/Regulations');
+  pedirChunk('bom', () => import('../BombaARDesign'));
+  pedirChunk('ep', () => import('../PressureEquipmentDesign'));
+  pedirChunk('gas', () => import('../GasDesign'));
+  pedirChunk('datos', () => import('../DesignParameters'));
+  pedirChunk('crit', () => import('../Regulations/Regulations'));
 };
 
 export function RedesTab({ state }: { state: WorkAreaState }) {
@@ -109,12 +122,6 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
     tramosAf,
     tramosAc,
   } = state;
-
-  // La red restaurada de sesión puede estar apagada: corrige una vez al montar.
-  useEffect(() => {
-    if (!redes.has(redActiva) && redesActivas.length > 0) setRedActiva(redesActivas[0].id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div

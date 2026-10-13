@@ -370,7 +370,7 @@ export function usePdfViewerEngine({
         /* owner ya desmontado */
       }
     };
-  }, [cwRef, currentIdRef, drawCanvasRef, engineRef, loadingPlanRef, pdfCanvasRef]);
+  }, [cwRef, currentIdRef, drawCanvasRef, engineRef, loadingPlanRef, pdfCanvasRef, renderPage]);
 
   useEffect(() => {
     if (!currentFile) return;

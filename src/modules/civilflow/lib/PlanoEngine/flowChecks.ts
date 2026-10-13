@@ -2,7 +2,6 @@
 // Extraídos verbatim de drawingFlow (des-monolitización 2026-10-06, ronda 6).
 import type { PlanoRamal } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
-import { pointToSegmentDist } from './HitTester';
 import { esCaja } from './bajanteRules';
 
 export function flowVecAt(
@@ -71,90 +70,6 @@ export function flowStartsAt(
  *  extremo-con-extremo como empalmes sobre el cuerpo del otro ramal (un tributario nace
  *  sobre el cuerpo del padre, y un yee une el extremo al cuerpo sin dividirlo) — revisar
  *  solo extremos los dejaba pasar como "libres". */
-export function ramalExtremoOcupado(
-  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
-  ramal: { id: string; net?: string },
-  epPt: number[],
-): boolean {
-  const TOL = 0.5;
-  for (const other of ramales) {
-    if (other.id === ramal.id || other.net !== ramal.net) continue;
-    const pts = other.pts;
-    if (!pts || pts.length < 2) continue;
-    if (Math.hypot(pts[0][0] - epPt[0], pts[0][1] - epPt[1]) < TOL) return true;
-    if (Math.hypot(pts[pts.length - 1][0] - epPt[0], pts[pts.length - 1][1] - epPt[1]) < TOL)
-      return true;
-    for (let i = 0; i < pts.length - 1; i++) {
-      if (
-        pointToSegmentDist(epPt[0], epPt[1], pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) <
-        TOL
-      )
-        return true;
-    }
-  }
-  return false;
-}
-
-/** ¿El extremo `epPt` del ramal está ENTRELAZADO con la red? — extremo/cuerpo de OTRO ramal del
- *  mismo net, o una bajante/montante del mismo net montada en ese punto (incluyendo la
- *  posición DESPLAZADA del bajante: el extremo del ramal se ancla donde el bajante se DIBUJA). */
-export function extremoEntrelazado(
-  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
-  bajantes: Array<{
-    net?: string;
-    x: number;
-    y: number;
-    desplazamientos?: Record<string, { dx?: number; dy?: number }>;
-  }>,
-  ramal: { id: string; net?: string },
-  epPt: number[],
-): boolean {
-  const TOL = 0.5;
-  if (ramalExtremoOcupado(ramales, ramal, epPt)) return true;
-  for (const b of bajantes) {
-    if (b.net !== ramal.net) continue;
-    if (Math.hypot(b.x - epPt[0], b.y - epPt[1]) < TOL) return true;
-    for (const d of Object.values(b.desplazamientos || {})) {
-      if (Math.hypot(b.x + (d.dx || 0) - epPt[0], b.y + (d.dy || 0) - epPt[1]) < TOL) return true;
-    }
-  }
-  return false;
-}
-
-/** ¿El ramal (af/ac/gas) tiene un aparato en un extremo INVÁLIDO? — extremo conectado a la red
- *  (T/Y/bajante) o flujo en contra del extremo aparatado. Reutilizado por el bloqueo al
- *  asignar, el bloqueo al invertir dirección y el barrido de estados persistidos. */
-export function aparatoEnExtremoInvalido(
-  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
-  bajantes: Array<{
-    net?: string;
-    x: number;
-    y: number;
-    desplazamientos?: Record<string, { dx?: number; dy?: number }>;
-  }>,
-  r: {
-    id: string;
-    net?: string;
-    pts?: number[][];
-    _tribReversed?: boolean;
-    aparatoInicio?: string;
-    aparatoFin?: string;
-  },
-): boolean {
-  if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') return false;
-  const pts = r.pts;
-  if (!pts || pts.length < 2) return false;
-  const bad = (pt: number[], app: string | undefined) =>
-    Boolean(app) &&
-    (extremoEntrelazado(ramales, bajantes, r, pt) ||
-      !flowEndsAt({ pts, _tribReversed: r._tribReversed }, pt, 0.5));
-  return bad(pts[0], r.aparatoInicio) || bad(pts[pts.length - 1], r.aparatoFin);
-}
-
-/** ¿La polaridad del codo de montante (sube/baja) es coherente con el flujo del ramal en P?
- *  El codo sube solo puede ENTREGAR flujo (el flujo SALE de P hacia el codo) y el codo baja
- *  solo puede RECIBIR (el flujo LLEGA a P desde el codo). En el cuerpo del ramal, donde el
- *  flujo solo pasa de largo, ninguno de los dos es válido. */
 export function codoPolarityOk(
   ramal: { pts: number[][]; _tribReversed?: boolean },
   pt: number[],

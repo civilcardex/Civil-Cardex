@@ -64,6 +64,8 @@ function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject
 const UI_TAB_KEY = 'civilflow_ui_tab';
 const UI_RED_KEY = 'civilflow_ui_red';
 const UI_PAGES_KEY = 'civilflow_ui_pages';
+/** Total de páginas por red (misma cuenta que los PageNav de RedesTab). */
+const MAX_PAGINA: Record<string, number> = { san: 4, ll: 4, af: 5, ac: 5, gas: 5, rci: 1 };
 
 /** Lee UI persistida sin romper fuera del navegador (tests/SSR). */
 function leerUI(key: string): string | null {
@@ -103,7 +105,10 @@ export function useWorkAreaState() {
   // La pestaña/red/páginas sobreviven a remontajes del subtree (el rebote a 'info' en el
   // primer ingreso a redes era un remount con estado efímero, no una recarga real).
   const paginasInit = useMemo(() => leerPaginas(), []);
-  const [tab, setTab] = useState<string>(() => leerUI(UI_TAB_KEY) || 'info');
+  const [tab, setTab] = useState<string>(() => {
+    const t = leerUI(UI_TAB_KEY);
+    return t && NAV_TABS.some((x) => x.id === t) ? t : 'info';
+  });
   useEffect(() => guardarUI(UI_TAB_KEY, tab), [tab]);
 
   // Ayuda contextual (orig. usuario): reporta módulo + pestaña activa a la navbar. La sub-pestaña
@@ -124,7 +129,8 @@ export function useWorkAreaState() {
   useEffect(() => {
     const openTab = sessionStorage.getItem(OPEN_TAB_KEY);
     if (openTab) {
-      setTab(openTab);
+      // Solo pestañas reales: un valor stale dejaba el área en blanco.
+      if (NAV_TABS.some((t) => t.id === openTab)) setTab(openTab);
       sessionStorage.removeItem(OPEN_TAB_KEY);
     }
   }, []);
@@ -213,6 +219,14 @@ export function useWorkAreaState() {
   const [redActiva, setRedActiva] = useState<string>(() => leerUI(UI_RED_KEY) || 'san');
   useEffect(() => guardarUI(UI_RED_KEY, redActiva), [redActiva]);
 
+  // La red restaurada puede no estar disponible (apagada o valor viejo como 'vent'):
+  // corrige cada vez que cambia el set, no solo al montar (el restore de BD llega después).
+  useEffect(() => {
+    if (!redesRestoreDone) return;
+    const ids = redesActivas.map((r) => r.id);
+    if (!ids.includes(redActiva) && ids.length > 0) setRedActiva(ids[0]);
+  }, [redes, redesRestoreDone, redActiva, redesActivas]);
+
   // Ayuda contextual por RED (orig. usuario): en Diseño de redes el panel muestra SOLO la
   // ayuda de la red/equipo activo (cf:redes:<red>).
   useEffect(() => {
@@ -226,9 +240,13 @@ export function useWorkAreaState() {
     });
     return () => setAyudaContext(null);
   }, [tab, redActiva]);
+  /** Página restaurada acotada al total de la red (un 9 de 4 dejaba el PageNav roto).
+   *  @param red - id de red.
+   *  @returns página válida entre 1 y el total. */
   const pag = (red: string): number => {
+    const max = MAX_PAGINA[red] ?? 1;
     const v = paginasInit[red];
-    return Number.isInteger(v) && (v as number) >= 1 ? (v as number) : 1;
+    return Number.isInteger(v) && (v as number) >= 1 ? Math.min(v as number, max) : 1;
   };
   const [sanPage, setSanPage] = useState<number>(() => pag('san'));
   const [llPage, setLlPage] = useState<number>(() => pag('ll'));
