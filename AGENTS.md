@@ -3128,3 +3128,65 @@ tsc 0 · vitest 1008/1008 · lint 0 err (tocado) · build ✓ · graphify ✓.
 
 ### Gates
 tsc 0 · vitest 1012/1012 (165) · lint 0 err · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-08 (auditoría ronda gas/resumen: 18 hallazgos arreglados)
+
+3 críticos + 7 importantes + 8 menores (2 exploradores). WIP gas (nudos/reEnraizar/gasNetwork/GasDesign — reconocimiento: NO es "sesión paralela", es working tree propio):
+
+- **F-1 (crít)**: FUENTE_TIPOS global → FUENTES_POR_RED (gas: solo contador/red_publica — el calentador gas es SUMIDERO; antes el tramo final hacia el calentador se bloqueaba como "entra a fuente"). esFuenteEnRed(net, tipo).
+- **F-2 (crít)**: qGlobal de GasDesign leía gasAcc (ACCESORIOS) donde renouardByType espera aparatos → siempre 2.7 m³/h. Ahora lee APARATOS_BY_TRAMO_KEY clave gas_id_planId.
+- **F-3**: gasAcc unificado a claves compuestas `gas_id_planId` (escritor FixturesPanel inc/decAccGas con gasTargetKey; lectores GasDesign getAcc(t)/gasRows con fallback al formato viejo; GC valida ambas claves). Sin esto, RS1 en P1 y P2 sumaban accesorios en la misma entrada.
+- **F-4**: allOk gate ÚNICO derivado de los mismos labs del resumen (+acometidaOk; EP 'Sin calcular' bloquea). Antes habilitaba descargas con bajantes 'No cumple'.
+- **F-5**: ciclo de 1 tramo (a===b) ahora se detecta (antes: descartado como auto-arista). Falta conocido: lazos que cierran a mitad de cuerpo sin split siguen invisibles (grafo grueso = subgrafo, solo falsos negativos).
+- **F-6**: reEnraizarDesde ahora DESHACE las inversiones al abortar (ciclo/hoja/tope) y loguea — "Se revirtió" por fin dice la verdad.
+- **F-7** pIni falsy-zero (padre pFin=0 rebota a pMin) en GasDesign + gasRows → `padre ? (get ?? pMin) : pMin`. **F-8** _chequeoHash limpia redes ausentes. **F-9** validarTrazoPresion tol 0.5. **F-10** finishRamal conexiones usa REDES_PRESION (incluye rci). **F-11** voids/vars muertas fuera, JSDoc en esFuenteCode/ramalesDe/ramalIdEn (ex ralesId).
+
+Resumen por red (useInfTables — OJO: el bloque de estado vive ahí desde el split):
+- **R-1**: filaFalla incluye chequeoD de lluvias ('No cumple' con Q/Dcalc/Ddis > 0) — antes visible en pantalla pero invisible en resumen y memoria.
+- **R-2**: fallosBajLl mismos insumos que la tabla (C derivado de materialCubierta vía cDeCubierta) — antes usaba el campo guardado (0) y era código muerto.
+- **R-3**: fallosBajSinVerificar — bajante LL sin material → chip `BALL1-C (sin verificar)` (paralelo al canal; antes "✓ OK" jamás verificado).
+- **R-5**: pisoDeBajLl key por CODE visible (la tabla usa row[0]=code) — antes lookup por id interno daba P0.
+- **R-7**: fallosBajLl fuera de los labs (la tabla llBaj los cubre) — sin chips duplicados.
+
+LECCIÓN (3ª vez): recortar bloques por marcadores sobre archivos con diff sucio CORTA LÍNEAS a mitad de palabra ('st|retch' — el cut borró 40 líneas del return). Recuperación: restaurar tail del return desde el destructuring de infTab (lista tables.* exacta). Iteradores automáticos de imports: solo confiables con anclas verificadas línea a línea.
+
+Gates: tsc 0 · lint 0 · vitest 1026/1026 (167 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 6: pendiente en menú + botones primero + propagación aparatos af/ac PERSISTENTE + aviso fantasmas)
+
+### 1. Pendiente % en menú contextual (san/ll/vent)
+- elementEditor.tsx: campo "Pendiente %" AL LADO del select de diámetro (fila flex). Commit blur/Enter vía updateElementById({pendiente}); rango 0 < v ≤ 15 (alerta y conserva). Input local PendienteRamalInput.
+
+### 2. Botones de acción primero
+- ramalMenu: reordenado — tope = ⇄ Invertir (ambas variantes) + ◉ Declarar malla (bloque único), luego Convertir tributario en ramal / Convertir en tributario de… / + Crear montante / + Agregar calentador / + Tapón-Llave. Resto igual (el panel de conexión con "+ Crear bajante/montante" quedó pegado debajo de los botones).
+- bajanteMenu: "+ Crear bomba" hoistado al tope (BotonCrearBomba + cajaSinBomba exportados de bombaSections.tsx; la sección lo reusa).
+
+### 3. Propagación de aparatos af/ac — PERSISTENTE
+- Núcleo: `utils/aparatosPresion.ts` — `propagarAparatosPresion(net)` escanea trazos de todos los planos, grafo por flujo (cola/cabeza con `_tribReversed`), raíces = bajantes/montantes con carga (clave propia + libro ucAplicado del piso inferior), regla usuario: en una unión el ramal de salida hereda entrantes (por cabeza) + HERMANOS de la misma unión (aportan su BASE, sin inflación mutua). DFS topológico con corte de ciclo (en ciclo cada uno carga la base del otro una vez). Escritura DELTA idempotente en `aparatos_by_tramo_v2` con libro `aparatos_heredados_v1` (qué se aplicó por clave — los manuales nunca se tocan; ceros se limpian). `leerHeredadosPresion(key)` para UI.
+- Ganchos (af/ac solamente): bumpAparatoCount, setSingleAparatoCount, moveAparatoCount, moveAllAparatoCounts (syncExtremeAccessory), inc/dec de FixturesPanel, y al final de bajanteAssociationApply (la carga nueva del montante baja a sus ramales).
+- Superficies: CalcUC (celdas propio+heredado "(+N)" con tooltip, columna Total REAL — antes muerta: recibeDe nunca se llenaba; totales del pie con heredados; re-lee en evento storage), designTableRow (tooltip "Heredados aguas arriba: id×n" en la celda propia), FixturesPanel (bloque read-only "HEREDADOS (AGUAS ARRIBA)" — SecHeredados.tsx, junto a SecMontantes).
+- Tests: propagarAparatosPresion.test.ts (5): escenario imagen (RAF3 = inodoro del montante vía RAF1 + lavamanos propio de RAF2, RAF2 también hereda del nudo), idempotencia, delta al quitar aparato arriba, _tribReversed invierte, ciclo acotado.
+
+### 4. Aviso fantasma falso
+- CopyFromPlanPanel.origenConFantasmas: detectaba `direccion === 'sube'` (los MONTANTES siempre son 'sube') → modal sin fantasmas reales. Ahora `b.isFantasma === true` (marcador real de render/borrado).
+
+### Nota sesión paralela
+- La otra sesión extrajo SecMontantes → components/fixtures/SecMontantes.tsx (misma semántica) y dejó errores transitorios en useInfTables.ts y flowChecks.ts; bombaEquipos.ts perdió el `export` de udsDeMapa (hub bombaAssociation lo re-exporta) — restaurado para desbloquear el build.
+
+### Gates
+tsc 0 (filtrando sesión paralela) · vitest 1031/1031 (168) · lint 0 err (tocado) · build ✓ · graphify ✓.
+
+## Session Note — 2026-10-08 (auditoría general 18/18 + ponytail #12 parcial)
+
+General (3 crít + 7 imp + 8 men): TODOS arreglados — F-1 FUENTES_POR_RED, F-2 qGlobal aparatos reales, F-3 gasAcc compuesto, F-4 gate único, F-5 ciclo 1-tramo, F-6 revert real, F-7 pIni, F-8 hash, F-9 tol, F-10 rci, F-11 limpieza, R-1..R-8 resumen. Ver notas anteriores.
+
+Ponytail #12 ejecutados: flowChecks -84L (3 funcs shadoweadas por drawingFlow); drawingSyncGc limpiarStore helper (GC aparatos/hidro dedup, devuelve backup); udsDeMapa des-exportado; GasDesign getAcc compuesto ya deduplica el loop de aparatos. Diferidos [paralela]: inc/decAccGas bumpAccGas (FixturesPanel en vuelo), sanFittingsCatalog comentarios (solo si se toca). Diferidos por riesgo: afTable/acTable dedup (~70L — memos grandes estables, el archivo acaba de recuperarse de una corrupción), nudos DFS dedup (~35L — las 2 copias divergieron: chequearRed agrega incidencias, validarTrazoPresion retorna motivo).
+
+OJO: qGlobal de GasDesign CORRIGIÓ el drift de P-1 pero usa gasAcc (accesorios) → tras F-3 las claves son compuestas: verificar que la card muestre el caudal esperado en recarga dura. Lección (3ª): heredocs bash con unicode/por comillas rompen a mitad — script por Write+ejecutar; y el "return muerto" del sweep #12-item4 era FALSO: los campos del return de useInfTables SÍ se consumen internamente (perfil/aps/tramos* en memos) — verificar consumo interno antes de declarar muerto un campo de return de hook.
+
+Gates: tsc 0 · lint 0 · vitest 1031/1031 (168 files) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-09 (ronda 7: diámetro/pendiente 50-50 + commits en vivo)
+- elementEditor.tsx: diámetro y pendiente en fila 50-50 (ambos flex:1). PendienteRamalInput ahora (a) re-sincroniza su valor cuando el elemento del menú cambia (edición desde panel/tablas con el menú abierto se refleja), (b) al commit actualiza menú (setContextMenuState) + selElement (panel derecho) EN VIVO — sin deseleccionar/reseleccionar; mismo patrón que el commit de diámetro.
+- formatUSD → "US$25.00" (prefijo inequívoco, test actualizado); literales de marketing "US$19"/"US$49".
+- Gates: tsc 0 (filtrando paralela) · vitest ok · build ✓.
