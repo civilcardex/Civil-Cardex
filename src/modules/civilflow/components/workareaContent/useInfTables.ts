@@ -967,16 +967,23 @@ export function useInfTables(state: WorkAreaState) {
     }
     return rows;
   }, [
-    fallosSanLabs,
     proy,
     redesActivas,
     pisos,
     okAF,
     okAC,
+    hasSan,
+    hasLl,
+    hasAf,
+    hasAc,
+    hasGas,
+    hasEp,
     fallosSan,
     fallosLl,
     fallosAf,
     fallosAc,
+    fallosBajLl,
+    fallosCanalLl,
     fallosGas,
     pisoDeBajLl,
     fallosDeTabla,
@@ -986,6 +993,8 @@ export function useInfTables(state: WorkAreaState) {
     llBajTable,
     conDatosSan.length,
     conDatosLl.length,
+    bajantesLl,
+    canalesLl,
     gasRowsCalc,
     acometidaOk,
   ]);

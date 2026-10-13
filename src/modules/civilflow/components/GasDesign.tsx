@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import EditButton from './shared/EditButton';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { LE_K, pisoCorto, GAS_DN_LABELS } from '../constants';
@@ -348,8 +348,11 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   };
 
   // Clave compuesta por plano (los ids REPITEN entre pisos); fallback lectura al formato viejo.
-  const getAcc = (t: { id: string; planId?: string | number }): Record<string, number> =>
-    (gasAcc[`gas_${t.id}_${t.planId}`] || gasAcc[t.id] || {}) as Record<string, number>;
+  const getAcc = useCallback(
+    (t: { id: string; planId?: string | number }): Record<string, number> =>
+      (gasAcc[`gas_${t.id}_${t.planId}`] || gasAcc[t.id] || {}) as Record<string, number>,
+    [gasAcc],
+  );
 
   const checkRows = useMemo(() => {
     const pMin = Number(pmin) || 17;
@@ -446,7 +449,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       });
     }
     return result;
-  }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
+  }, [gasTramos, diamInt, getAcc, pmin, temp, densRel, patm]);
 
   const COLS = GasDesign_COLS;
 
