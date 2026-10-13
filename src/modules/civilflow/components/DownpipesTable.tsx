@@ -13,6 +13,7 @@ import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
 import { fmt } from '../utils/formatUtils';
+import { entradaPor } from '../utils/diamLookup';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
 import { buildSanConnectivity } from '../utils/sanitaryRows';
@@ -75,6 +76,37 @@ const BajantesTable = memo(function BajantesTable_() {
     return cache;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, syncTick]);
+
+  /** Respaldo geométrico memoizado por bajante (orig. usuario: todos los del dibujo):
+   *  ramales san del mismo plano cuyo extremo toca el bajante (≤0.5, criterio de la poda),
+   *  aunque recibeDeIds no los registre. Mapa y no cálculo por fila: evita O(B×R) por render. */
+  const geoAsocByBaj = useMemo(() => {
+    const mapa: Record<string, string[]> = {};
+    for (const t of tramosSan) {
+      if (!t.esBajante || t.net === 'vent' || t._net === 'vent') continue;
+      const rawDoc = storageByPlan[String(t.planId ?? '')];
+      const rawBaj = rawDoc?.bajantes?.find((b) => b.id === t.id);
+      const bx = Number(rawBaj?.x);
+      const by = Number(rawBaj?.y);
+      if (rawDoc == null || !Number.isFinite(bx) || !Number.isFinite(by)) continue;
+      const ids: string[] = [];
+      for (const r of rawDoc.ramales || []) {
+        if (r.net !== 'san' || r.id.startsWith('LD_')) continue;
+        const pts = r.pts || [];
+        if (pts.length === 0) continue;
+        const head = pts[0];
+        const tail = pts[pts.length - 1];
+        if (
+          Math.hypot(head[0] - bx, head[1] - by) <= 0.5 ||
+          Math.hypot(tail[0] - bx, tail[1] - by) <= 0.5
+        )
+          ids.push(r.id);
+      }
+      if (ids.length) mapa[`${t.id}-${String(t.planId ?? '')}`] = ids;
+    }
+    return mapa;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tramosSan, storageByPlan]);
 
   // Keep buildBajanteGraph only for vent mapping + components (UD now from sanitaryRows)
   const [, ventToSanMap, ventRamalDiamMap, components] = useMemo(
@@ -499,29 +531,9 @@ const BajantesTable = memo(function BajantesTable_() {
                       (x) => x.id === rid && String(x.planId ?? '') === String(t.planId ?? ''),
                     ),
                 );
-                // Respaldo geométrico (orig. usuario: todos los del dibujo): ramales san del
-                // mismo plano cuyo extremo toca el bajante (≤0.5, criterio de la poda del
-                // motor), aunque recibeDeIds no los registre (fin a otro código, etc.).
-                const rawDoc = storageByPlan[String(t.planId ?? '')];
-                const rawBaj = rawDoc?.bajantes?.find((b) => b.id === t.id);
-                const bx = Number(rawBaj?.x);
-                const by = Number(rawBaj?.y);
-                const geoIds: string[] =
-                  rawDoc != null && Number.isFinite(bx) && Number.isFinite(by)
-                    ? (rawDoc.ramales || [])
-                        .filter((r) => {
-                          if (r.net !== 'san' || r.id.startsWith('LD_')) return false;
-                          const pts = r.pts || [];
-                          if (pts.length === 0) return false;
-                          const head = pts[0];
-                          const tail = pts[pts.length - 1];
-                          return (
-                            Math.hypot(head[0] - bx, head[1] - by) <= 0.5 ||
-                            Math.hypot(tail[0] - bx, tail[1] - by) <= 0.5
-                          );
-                        })
-                        .map((r) => r.id)
-                    : [];
+                // Respaldo geométrico memoizado (ver geoAsocByBaj): ramales san del mismo
+                // plano cuyo extremo toca el bajante, aunque recibeDeIds no los registre.
+                const geoIds: string[] = geoAsocByBaj[`${t.id}-${String(t.planId ?? '')}`] || [];
                 const todosIds = [
                   ...ramalesIds,
                   ...geoIds.filter((id) => !ramalesIds.includes(id)),
@@ -860,7 +872,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         disabled={!edit}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
-                          const matched = DIAM_BAN.find((d) => d.pulg === val);
+                          const matched = entradaPor(DIAM_BAN, 'pulg', val);
                           let nom = matched ? matched.nom : '';
                           if (val > 0 && maxSanConectDiam > 0 && val < maxSanConectDiam) {
                             avisarDiametroInvalido(
@@ -1032,7 +1044,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         disabled={!edit}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
-                          const matched = DIAM_VENT.find((d) => d.pulg === val);
+                          const matched = entradaPor(DIAM_VENT, 'pulg', val);
                           let nom = matched ? matched.nom : '';
                           if (val > 0 && ventRamalDiamPulg > 0 && val < ventRamalDiamPulg) {
                             avisarDiametroInvalido(
@@ -1046,7 +1058,12 @@ const BajantesTable = memo(function BajantesTable_() {
                             // TODOS los bajantes de ventilación conectados al mismo
                             // bajante sanitario (no solo uno).
                             for (const vk of ventBajKeys.length ? ventBajKeys : [ventBajKey]) {
-                              writeBajantePropToDrawing(vk, 'vent', 'dNominal', nom, plans);
+                              // Bloqueado (regla entre pisos) = no avanzar optimista.
+                              if (
+                                writeBajantePropToDrawing(vk, 'vent', 'dNominal', nom, plans) ===
+                                false
+                              )
+                                continue;
                               // #6: immediate local state for real-time chequeo
                               updTramoSan(vk, 'bajDprop', nom ? val : 0);
                             }

@@ -8,6 +8,7 @@ import {
 } from '../../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from '../drawingSync';
 import { diamPulgFromLabel } from '../diamPulgFromLabel';
+import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/drawingUtils';
 import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitaryDiamCompat';
 import { followBajanteToMaxRamal } from '../../lib/PlanoEngine/PlanoEngineDrawing';
 import { recomputeDownstreamDiameters } from '../../lib/PlanoEngine/drawingUtils';
@@ -29,10 +30,6 @@ interface LocalDrawingData {
 // negativo dependiendo del lado de la comparación donde cayera. Esto era por qué la validación
 // nunca se disparaba visiblemente: `newIn` (un valor real en pulgadas) se comparaba contra
 // `accMax` calculado de milímetros.
-const inchPartOf = (d: string): string => {
-  const q = d.indexOf('"');
-  return q > 0 ? d.slice(0, q) : d;
-};
 
 // Mayor diámetro equivalente en pulgadas de cualquier accesorio extremo en este ramal
 // (accesorioInicio / accesorioFin). Los marcadores accMed* de mitad de ramal no llevan su propio
@@ -485,15 +482,20 @@ export function punterosBajante(
  *  diámetro que el del SUPERIOR. Valida un nuevo dNominal ANTES de escribirlo.
  *  Roles por puntero: con `origenId` el editado es el INFERIOR (recibe de arriba);
  *  con `descargaEnId` es el SUPERIOR (entrega abajo). Sin punteros, sin contraparte o
- *  sin diámetros comparables → ok. El espejo (valor igual en ambos) siempre pasa. */
+ *  sin diámetros comparables → ok. El espejo (valor igual en ambos) siempre pasa.
+ *  @param punterosVivos - punteros del motor vivo (más frescos que el autosave 1.5s).
+ *  @returns ok o el mensaje para la alerta modal. */
 export function validarDiametroEntrePisos(
   planId: string,
   bajanteId: string,
   nuevoDiamLabel: string,
+  punterosVivos?: { descargaEnId?: string | null; origenId?: string | null },
 ): { ok: true } | { ok: false; titulo: string; mensaje: string } {
   const nuevo = diamPulgFromLabel(nuevoDiamLabel.replace(/-/g, ' '));
   if (!(nuevo > 0)) return { ok: true };
-  const { descargaEnId, origenId } = punterosBajante(planId, bajanteId);
+  const guardados = punterosBajante(planId, bajanteId);
+  const descargaEnId = punterosVivos?.descargaEnId ?? guardados.descargaEnId;
+  const origenId = punterosVivos?.origenId ?? guardados.origenId;
   const roles: Array<{ ptr: string; soyInferior: boolean }> = [];
   if (origenId && origenId.includes('|')) roles.push({ ptr: origenId, soyInferior: true });
   if (descargaEnId && descargaEnId.includes('|'))

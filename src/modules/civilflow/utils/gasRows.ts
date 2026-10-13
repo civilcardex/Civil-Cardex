@@ -179,7 +179,8 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
     const K = opt ? opt.K : 0;
     const dn = opt ? opt.dn : t.diametro;
 
-    const acc = gasAcc[t.id] || {};
+    // Clave compuesta por plano (ids repiten entre pisos); fallback lectura al formato viejo.
+    const acc = gasAcc[`gas_${t.id}_${t.planId}`] || gasAcc[t.id] || {};
     let sumLe = 0;
     for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
     const le = dInt > 0 ? (dInt * sumLe) / 1000 : 0;
@@ -195,7 +196,7 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
     const clave = claveGas(t.planId, t.id);
     const padre = padres.get(clave);
     // Presión por TOPOLOGÍA (docx): nace del padre; la raíz, de la presión del operador.
-    const pIni = (padre && pFinPorClave.get(padre)) || pMin;
+    const pIni = padre ? (pFinPorClave.get(padre) ?? pMin) : pMin;
     const pFin = pIni - dP;
     pFinPorClave.set(clave, pFin);
     const dPAcum = (padre ? (dPAcumPorClave.get(padre) ?? 0) : 0) + dP;

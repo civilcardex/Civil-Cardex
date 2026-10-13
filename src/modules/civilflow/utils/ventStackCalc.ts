@@ -4,6 +4,7 @@
 import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
 import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
+import { entradaPor } from './diamLookup';
 
 export interface BajanteVentilacionParams {
   bajante?: string;
@@ -85,7 +86,7 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
 
   const Dprop =
     bajDprop > 0
-      ? DIAM_BAN.find((d) => Number(d.pulg) === Number(bajDprop))
+      ? entradaPor(DIAM_BAN, 'pulg', Number(bajDprop))
       : DcalcMm > 0
         ? DIAM_BAN_SAN.find((d) => d.mm > DcalcMm) || DIAM_BAN_SAN[DIAM_BAN_SAN.length - 1]
         : null;
@@ -125,7 +126,7 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
 
   const DventProp =
     ventDprop > 0
-      ? DIAM_VENT.find((d) => Number(d.pulg) === Number(ventDprop))
+      ? entradaPor(DIAM_VENT, 'pulg', Number(ventDprop))
       : D_vent_calc_mm > 0
         ? DIAM_VENT.find((d) => d.mm > D_vent_calc_mm) || DIAM_VENT[DIAM_VENT.length - 1]
         : null;

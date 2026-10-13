@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { it, expect, beforeEach } from 'vitest';
 import { copyDrawingFromPlan } from '../../../utils/copyDrawingFromPlan';
-import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoState';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
 // Observación: qué labels llegan al piso destino al copiar bajante+ramal+tributario.
 
@@ -92,27 +92,4 @@ it('piso destino con BAN1 y RS1 ya existentes: copia toma BAN2 + RS2 y el tribut
   const trib = eng.ramales.find((r) => r.tipo === 'tributario') as PlanoRamal | undefined;
   expect(trib?.label).toBe('T1RS2');
   expect(trib?.padre).toBe('RS2');
-});
-
-describe('copia', () => {
-  it('observar labels tras copiar a piso 2', () => {
-    const eng = makeEngine();
-    const res = copyDrawingFromPlan(eng as never, '2', '1', [
-      { netId: 'san', tipos: new Set(['ramal', 'tributario', 'bajante']) },
-    ]);
-    console.log(
-      'COPIA:',
-      JSON.stringify({
-        ramales: eng.ramales.map((r: PlanoRamal) => ({
-          id: r.id,
-          label: r.label,
-          ini: r.ini,
-          padre: r.padre,
-        })),
-        bajantes: eng.bajantes.map((b: PlanoBajante) => ({ id: b.id, code: b.code })),
-        res,
-      }),
-    );
-    expect(true).toBe(true);
-  });
 });

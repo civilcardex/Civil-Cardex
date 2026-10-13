@@ -4,6 +4,7 @@ import { dec } from './parseDecimal';
 import type { EPData } from '../components/ep/EPShared';
 import { PVC_SCH40, NEMA_HP, selectDN } from '../components/ep/calculations';
 import { AGUA_DENSIDAD, GRAVEDAD } from './calcSanitaryCore';
+import { entradaPor } from './diamLookup';
 
 // Espeja el objeto que BombaARDesign.tsx persiste vía saveToStorage('civilflow_memoria_bomba_data').
 interface BombaMemoriaData {
@@ -550,7 +551,7 @@ export function computeEpTables(): MemoriaTable[] {
 
   const resolveDiam = (userDN: number, v: number) => {
     if (userDN > 0) {
-      const entry = PVC_SCH40.find((t) => t.dn === userDN);
+      const entry = entradaPor(PVC_SCH40, 'dn', userDN);
       if (entry) {
         const A = (Math.PI * Math.pow(entry.dInt / 1000, 2)) / 4;
         return { dn: entry.dn, Vreal: Qd > 0 ? Qd / 1000 / A : 0 };

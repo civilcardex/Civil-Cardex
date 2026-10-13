@@ -22,6 +22,7 @@ import {
   nDeCanal,
 } from '../constants/engineeringDataMaterials';
 import { fmt } from '../utils/formatUtils';
+import { entradaPor } from '../utils/diamLookup';
 import { repartirOtrasCanal } from '../utils/rainwaterRows';
 import type { DrawingData } from '../utils/drawingSync';
 import { sanitizarInputDecimal } from '../utils/parseDecimal';
@@ -205,15 +206,8 @@ export default function ChequeoCanalesLluvias() {
     updCanalLL(id, field, val);
   };
 
-  // Campos de TEXTO (materiales): routing único del contexto (setMaterialCanal — la
+  // Materiales: routing único del contexto (setMaterialCanal directo — la
   // misma que usan panel y menú). Los materiales viven en el override, no en el glifo.
-  const onCanalStrField = (
-    id: string,
-    field: 'materialCubierta' | 'materialCanal',
-    val: string,
-  ) => {
-    setMaterialCanal(id, field, val);
-  };
 
   // D propuesto por CHIP de bajante asociado ("BALL1-P1"): el chequeo de embocadura usa el
   // D menor de los asociados (conservador) y el N° de chips como N° de bajantes (port hoja 2
@@ -257,9 +251,7 @@ export default function ChequeoCanalesLluvias() {
         // El dibujo guarda el diámetro como etiqueta nominal ('4"'); tramos guardan pulg.
         const rawPulg = (b as { diamDisPulg?: number }).diamDisPulg;
         const pulg =
-          rawPulg && rawPulg > 0
-            ? rawPulg
-            : (DIAM_BAN.find((d) => d.nom === b.dNominal)?.pulg ?? 0);
+          rawPulg && rawPulg > 0 ? rawPulg : (entradaPor(DIAM_BAN, 'nom', b.dNominal)?.pulg ?? 0);
         if (pulg > 0) map[chip] = pulg;
       }
     }
@@ -778,7 +770,7 @@ export default function ChequeoCanalesLluvias() {
                           title={c.materialCubierta || 'Material de cubierta'}
                           disabled={!edit}
                           onChange={(e) =>
-                            onCanalStrField(c.id, 'materialCubierta', e.target.value)
+                            setMaterialCanal(c.id, 'materialCubierta', e.target.value)
                           }
                           style={{
                             textAlign: 'center',
@@ -836,7 +828,7 @@ export default function ChequeoCanalesLluvias() {
                           aria-label="Material del canal"
                           title={c.materialCanal || 'Material del canal'}
                           disabled={!edit}
-                          onChange={(e) => onCanalStrField(c.id, 'materialCanal', e.target.value)}
+                          onChange={(e) => setMaterialCanal(c.id, 'materialCanal', e.target.value)}
                           style={{
                             textAlign: 'center',
                             fontSize: 10,

@@ -1,3 +1,4 @@
+import { devError } from '../../../../utils/devError';
 import { origenDe } from '../shared/geometry';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { flipRamalFlow } from './drawingFlow';
@@ -33,15 +34,25 @@ function tocaComo(r: PlanoRamal, pt: number[], tol = 0.5): 'entra' | 'sale' | nu
 }
 
 /** Camina aguas arriba invirtiendo (docx "algoritmo de re-enraizamiento"). Devuelve los
- *  ids invertidos o null si aborta (dos fuentes / ciclo / tope). */
+ *  ids invertidos, o null si ABORTA (dos fuentes / ciclo / tope) — en abort DESHACE las
+ *  inversiones tocadas antes de retornar: la red queda como estaba (contrato real). */
 export function reEnraizarDesde(engine: IPlanoEngineCore, idInicial: string): string[] | null {
   const net = engine.ramales.find((r) => r.id === idInicial)?.net || '';
   const invertidos: string[] = [];
   let cur = idInicial;
   const vistos = new Set<string>([cur]);
+  const abortar = (motivo: string): null => {
+    // Deshacer TODAS las inversiones tocadas: la red queda como antes del re-enraizamiento.
+    for (const id of invertidos) {
+      const r = engine.ramales.find((x) => x.id === id);
+      if (r) invertirTramo(r);
+    }
+    devError(`reEnraizarDesde abortó (${motivo}) — se revirtieron ${invertidos.length} tramos`);
+    return null;
+  };
   while (invertidos.length <= engine.ramales.length) {
     const r = engine.ramales.find((x) => x.id === cur);
-    if (!r) return null;
+    if (!r) return abortar('id inexistente');
     invertirTramo(r);
     invertidos.push(cur);
     // Extremo lejano (tras invertir, el origen quedó donde antes estaba el destino).
@@ -64,11 +75,12 @@ export function reEnraizarDesde(engine: IPlanoEngineCore, idInicial: string): st
       }
       if (nxt) break;
     }
-    if (!nxt || vistos.has(nxt)) return invertidos; // hoja o ciclo: fin
+    if (!nxt) return abortar('hoja sin alimentación');
+    if (vistos.has(nxt)) return abortar('ciclo');
     vistos.add(nxt);
     cur = nxt;
   }
-  return invertidos.length ? invertidos : null;
+  return abortar('tope de iteraciones');
 }
 
 export interface ResolucionSentido {

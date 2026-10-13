@@ -153,12 +153,6 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
 
   // ── Sale de aparato / entra a fuente ──
   for (const r of ramales) {
-    const origen = r._tribReversed
-      ? (r.pts![r.pts!.length - 1] as number[])
-      : (r.pts![0] as number[]);
-    const destino = r._tribReversed
-      ? (r.pts![0] as number[])
-      : (r.pts![r.pts!.length - 1] as number[]);
     const aparatoOrigen = r._tribReversed ? r.aparatoFin : r.aparatoInicio;
     if (aparatoOrigen) {
       inc.push({
@@ -168,8 +162,11 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
         msg: `${r.id}: el tramo SALE de un aparato (${aparatoOrigen}) — debe entrar a él.`,
       });
     }
+    const destinoLogico = r._tribReversed
+      ? (r.pts![0] as number[])
+      : (r.pts![r.pts!.length - 1] as number[]);
     if (
-      fuenteEnPt(engine, net, destino, 1) ||
+      fuenteEnPt(engine, net, destinoLogico, 0.5) ||
       esFuenteCode(r._tribReversed ? String(r.ini || '') : String(r.fin || ''))
     ) {
       inc.push({
@@ -179,8 +176,6 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
         msg: `${r.id}: el tramo ENTRA a una fuente — de donde el agua debe salir, no llegar.`,
       });
     }
-    void origen;
-    void destino;
   }
 
   // ── Ciclo no declarado: DFS sobre clusters (arista = ramal que une 2 clusters) ──

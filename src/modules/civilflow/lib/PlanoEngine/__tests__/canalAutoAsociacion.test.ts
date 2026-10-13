@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { finishRamal } from '../finishRamal';
+import { vetarSelloCanal, leerEstadoSello } from '../canalAssociation';
 import PlanoEngineCtor from '../PlanoEngine';
 import type PlanoEngine from '../PlanoEngine';
 
@@ -137,5 +138,73 @@ describe('sello automático canal↔bajante por ramal', () => {
       [75, 300],
     ]);
     expect(eng.bajantes.find((b) => b.id === 'BALL1')?.canalId).toBe('CNL9');
+  });
+
+  it('desmarcar+veta no re-sella', () => {
+    const pid = 'veto-baj';
+    try {
+      localStorage.removeItem('civilflow_sello_canal_' + pid);
+    } catch {
+      // sin storage = no-op
+    }
+    const eng = makeEngine();
+    eng._loadedPlanId = pid;
+    seed(eng);
+    draw(eng, [
+      [75, 19],
+      [75, 300],
+    ]);
+    expect(eng.bajantes.find((b) => b.id === 'BALL1')?.canalId).toBe('CNL1-P1');
+    vetarSelloCanal(pid, 'baj', 'BALL1', 'CNL1-P1');
+    eng.updateElementById('BALL1', { canalId: null });
+    eng._markDirty();
+    expect(eng.bajantes.find((b) => b.id === 'BALL1')?.canalId ?? null).toBeNull();
+  });
+
+  it('mover el ramal fuera limpia el auto-stamp', () => {
+    const pid = 'move-ram';
+    try {
+      localStorage.removeItem('civilflow_sello_canal_' + pid);
+    } catch {
+      // sin storage = no-op
+    }
+    const eng = makeEngine();
+    eng._loadedPlanId = pid;
+    seed(eng);
+    const r = draw(eng, [
+      [75, 19],
+      [75, 300],
+    ]);
+    expect(eng.bajantes.find((b) => b.id === 'BALL1')?.canalId).toBe('CNL1-P1');
+    const vivo = eng.ramales.find((x) => x.id === r.id);
+    if (vivo)
+      vivo.pts = [
+        [400, 300],
+        [500, 300],
+      ];
+    eng._markDirty();
+    expect(eng.bajantes.find((b) => b.id === 'BALL1')?.canalId ?? null).toBeNull();
+    expect(leerEstadoSello(pid).autoBaj).toHaveLength(0);
+  });
+
+  it('valor manual distinto intacto (no se pisa ni se registra)', () => {
+    const pid = 'manual-dist';
+    try {
+      localStorage.removeItem('civilflow_sello_canal_' + pid);
+    } catch {
+      // sin storage = no-op
+    }
+    const eng = makeEngine();
+    eng._loadedPlanId = pid;
+    seed(eng);
+    const baj = eng.bajantes.find((b) => b.id === 'BALL1');
+    if (baj) baj.canalId = 'CNL9';
+    draw(eng, [
+      [75, 19],
+      [75, 300],
+    ]);
+    eng._markDirty();
+    expect(eng.bajantes.find((b) => b.id === 'BALL1')?.canalId).toBe('CNL9');
+    expect(leerEstadoSello(pid).autoBaj).not.toContain('BALL1|CNL1-P1');
   });
 });

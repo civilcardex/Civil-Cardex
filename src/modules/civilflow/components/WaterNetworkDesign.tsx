@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import EditButton from './shared/EditButton';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
+import EmptyRow from './shared/EmptyRow';
 import { useTramos } from '../context/TramosContext';
 import { useProyecto } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
@@ -488,21 +489,7 @@ function WaterNetworkDesign({
 
                 <DesignTableHeader cssClass={cssClass} pais={proy.pais} />
                 <tbody>
-                  {tramosOrden.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={23}
-                        style={{
-                          padding: '24px 0',
-                          textAlign: 'center',
-                          color: 'var(--txt3)',
-                          fontSize: 10.5,
-                        }}
-                      >
-                        No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                      </td>
-                    </tr>
-                  )}
+                  {tramosOrden.length === 0 && <EmptyRow colSpan={23} fontSize={10.5} />}
                   {tramosOrden.map((t) => (
                     <DesignTableRow
                       key={t._key || t.id}

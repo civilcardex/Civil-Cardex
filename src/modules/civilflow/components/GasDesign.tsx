@@ -4,6 +4,7 @@ import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { LE_K, pisoCorto, GAS_DN_LABELS } from '../constants';
 import { GAS, CAT_GAS } from '../constants/engineeringDataGas';
 import { fmt } from '../utils/formatUtils';
+import EmptyRow from './shared/EmptyRow';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { usePlans } from '../context/PlansContext';
 import { useProyecto } from '../context/ProjectContext';
@@ -54,13 +55,6 @@ const SR_ONLY = {
   clip: 'rect(0,0,0,0)',
   whiteSpace: 'nowrap',
   border: 0,
-} as const;
-const EMPTY_ROW = {
-  padding: '24px 0',
-  textAlign: 'center',
-  color: 'var(--txt3)',
-  fontSize: 10.5,
-  border: 'none',
 } as const;
 GAS.forEach((g) => {
   g.rows.forEach((r) => {
@@ -353,7 +347,9 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     }
   };
 
-  const getAcc = (tramoId: string) => (gasAcc[tramoId] || {}) as Record<string, number>;
+  // Clave compuesta por plano (los ids REPITEN entre pisos); fallback lectura al formato viejo.
+  const getAcc = (t: { id: string; planId?: string | number }): Record<string, number> =>
+    (gasAcc[`gas_${t.id}_${t.planId}`] || gasAcc[t.id] || {}) as Record<string, number>;
 
   const checkRows = useMemo(() => {
     const pMin = Number(pmin) || 17;
@@ -410,7 +406,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     for (const t of orden) {
       const dInt = diamInt[tramoKey(t)] || 0;
 
-      const acc: Record<string, number> = gasAcc[t.id] || {};
+      const acc = getAcc(t);
       let sumLe = 0;
       for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
       const le = dInt > 0 ? (dInt * sumLe) / 1000 : 0;
@@ -424,7 +420,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       const vel = dInt > 0 ? (354 * qDiseno * 101.325) / (dInt * dInt) / pAtm : 0;
       const clave = claveGas(t.planId, t.id);
       const padre = padres.get(clave);
-      const pIni = (padre && pFinPorClave.get(padre)) || pMin;
+      const pIni = padre ? (pFinPorClave.get(padre) ?? pMin) : pMin;
       const pFin = pIni - dP;
       pFinPorClave.set(clave, pFin);
       const dPAcum = (padre ? (dPAcumPorClave.get(padre) ?? 0) : 0) + dP;
@@ -434,6 +430,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
         vel > 0 && vel <= 10 && dP > 0 ? (dPAcum <= 9.81 ? 'O.K.' : 'NO') : dP > 0 ? 'NO' : '—';
       result.push({
         id: t.id,
+        tramoKey: tramoKey(t),
         le,
         qConsumo: qRenouard,
         fAlt,
@@ -458,9 +455,16 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     // Q de diseño global = Renouard sobre TODA la carga instalada (cada aparato contado UNA vez).
     // Sumar los qConsumo de las filas doble-contaba: el tronco ya carga la demanda de sus hojas
     // (acumulados del árbol). Con 2 aparatos en hojas distintas daba 2× el caudal.
+    // Aparatos REALES (APARATOS_BY_TRAMO_KEY, clave gas_id_planId) — NO gasAcc (que guarda
+    // ACCESORIOS: renouardByType filtraba por GAS_APPARATUS y devolvía 0 → '2.7' fijo, F-2).
+    const aparatosRed = loadFromStorage<Record<string, Record<string, number>>>(
+      APARATOS_BY_TRAMO_KEY,
+      {},
+    );
     const totalAparatos: Record<string, number> = {};
     for (const t of gasTramos) {
-      const propios = gasAcc[t.id] || {};
+      const appPid = t.planId ? `_${String(t.planId)}` : '';
+      const propios = aparatosRed[`gas_${t.id}${appPid}`] || aparatosRed[`gas_${t.id}`] || {};
       for (const [ap, n] of Object.entries(propios)) {
         totalAparatos[ap] = (totalAparatos[ap] || 0) + (Number(n) || 0);
       }
@@ -828,14 +832,10 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
               </thead>
               <tbody>
                 {gasTramos.length === 0 && (
-                  <tr>
-                    <td colSpan={8 + 2 + 3 + ACC_COLS.length + 7} style={EMPTY_ROW}>
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
+                  <EmptyRow colSpan={8 + 2 + 3 + ACC_COLS.length + 7} fontSize={10.5} />
                 )}
                 {gasTramos.map((t) => {
-                  const chk = checkRows.find((r) => r.id === t.id);
+                  const chk = checkRows.find((r) => r.tramoKey === tramoKey(t));
                   const mat = diamMat[tramoKey(t)] || '';
                   const dn = diamDn[tramoKey(t)] || '';
                   const kVal = diamK[tramoKey(t)] || 0;
@@ -947,10 +947,13 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
                               fontSize: 10.5,
                               fontWeight: 600,
                               fontFamily: 'var(--mono)',
-                              color: (getAcc(t.id)[k] || 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
+                              color:
+                                (getAcc({ id: t.id, planId: t.planId })[k] || 0) > 0
+                                  ? 'var(--txt)'
+                                  : 'var(--txt3)',
                             }}
                           >
-                            {getAcc(t.id)[k] || 0}
+                            {getAcc({ id: t.id, planId: t.planId })[k] || 0}
                           </span>
                         </td>
                       ))}

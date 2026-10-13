@@ -253,6 +253,7 @@ export function performGarbageCollection(plans: SyncPlanInput[]) {
         validKeys.add(fixtureStoreKey(r.net, r.id, String(plan.id)));
         if (r.net === 'gas') {
           validGasRamales.add(r.id);
+          if (r.planId) validGasRamales.add(`gas_${r.id}_${r.planId}`);
         }
       }
     }
@@ -284,50 +285,34 @@ export function performGarbageCollection(plans: SyncPlanInput[]) {
     }
   }
 
-  // 1. Clean APARATOS_BY_TRAMO_KEY
-  const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
-  const bakDeletedAparatos: Record<string, unknown> = {};
-  let aparatosChanged = false;
-  for (const key of Object.keys(rawAparatos)) {
-    if (isLoadedLiveKey(key)) {
-      orphanSuspects.delete(key);
-      continue;
+  /** GC de un store de conteos: borra claves huérfanas (con backup). Devuelve el backup
+   *  de lo borrado ({} si nada cambió) — el caller decide si persistir y loguear. */
+  const limpiarStore = (
+    storageKey: string,
+    guardExtra?: (key: string) => boolean,
+  ): Record<string, unknown> => {
+    const raw = loadFromStorage<Record<string, unknown>>(storageKey, {});
+    const bakDeleted: Record<string, unknown> = {};
+    for (const key of Object.keys(raw)) {
+      if (isLoadedLiveKey(key)) {
+        orphanSuspects.delete(key);
+        continue;
+      }
+      if (guardExtra && guardExtra(key)) continue;
+      if (!canDeleteKey(key)) continue;
+      if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
+      bakDeleted[key] = raw[key];
+      delete raw[key];
     }
-    if (areaSinPruebaDeOrfandad(key, plansSinAreas)) {
-      continue;
-    }
-    if (!canDeleteKey(key)) {
-      continue;
-    }
-    if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
-    bakDeletedAparatos[key] = rawAparatos[key];
-    delete rawAparatos[key];
-    aparatosChanged = true;
-  }
-  if (aparatosChanged) {
-    saveToStorage(APARATOS_BY_TRAMO_KEY, rawAparatos);
-  }
+    if (Object.keys(bakDeleted).length > 0) saveToStorage(storageKey, raw);
+    return bakDeleted;
+  };
 
-  // 2. Clean HYDRO_DATA_STORAGE_KEY
-  const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
-  const bakDeletedHidro: Record<string, unknown> = {};
-  let hidroChanged = false;
-  for (const key of Object.keys(rawHidro)) {
-    if (isLoadedLiveKey(key)) {
-      orphanSuspects.delete(key);
-      continue;
-    }
-    if (!canDeleteKey(key)) {
-      continue;
-    }
-    if (!shouldDeleteOrphan(key, isOrphanKey(key, validKeys))) continue;
-    bakDeletedHidro[key] = rawHidro[key];
-    delete rawHidro[key];
-    hidroChanged = true;
-  }
-  if (hidroChanged) {
-    saveToStorage(HYDRO_DATA_STORAGE_KEY, rawHidro);
-  }
+  // 1+2. Clean APARATOS/HYDRO (guard extra en aparatos: áreas sin prueba de orfandad)
+  const bakDeletedAparatos = limpiarStore(APARATOS_BY_TRAMO_KEY, (key) =>
+    areaSinPruebaDeOrfandad(key, plansSinAreas),
+  );
+  const bakDeletedHidro = limpiarStore(HYDRO_DATA_STORAGE_KEY);
 
   // 3. Clean GAS_ACC_KEY (claves sin sufijo de plan: sin atribución, criterio anterior)
   const rawGas = loadFromStorage<Record<string, unknown>>(GAS_ACC_KEY, {});
@@ -343,7 +328,11 @@ export function performGarbageCollection(plans: SyncPlanInput[]) {
   if (gasChanged) {
     saveToStorage(GAS_ACC_KEY, rawGas);
   }
-  if (aparatosChanged || hidroChanged || gasChanged) {
+  if (
+    Object.keys(bakDeletedAparatos).length > 0 ||
+    Object.keys(bakDeletedHidro).length > 0 ||
+    gasChanged
+  ) {
     // Backup de la última tanda borrada (sin log: la consola spameaba en cada sync — orig. usuario).
     saveToStorage(GC_BAK_KEY, {
       ts: Date.now(),

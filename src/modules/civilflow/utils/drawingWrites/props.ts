@@ -62,6 +62,15 @@ export function writeDiametroToDrawingBatch(
   }
 }
 
+/** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones).
+ *  @param key - clave compuesta.
+ *  @returns par [id, planId] (planId '' si no hay guion). */
+export function parseBajanteKey(key: string): [string, string] {
+  const sep = key.lastIndexOf('-');
+  if (sep <= 0) return [key, ''];
+  return [key.slice(0, sep), key.slice(sep + 1)];
+}
+
 /** Escribe una propiedad de bajante (Llenado, D propuesto…) al doc de trazos del piso + BD,
  *  y ESPEJA dNominal al bajante asociado del otro piso. LÍMITE (documentado): NO toca un
  *  engine vivo de OTRA ventana — si el visor tiene el piso abierto en otra pestaña, su
@@ -80,9 +89,7 @@ export function writeBajantePropToDrawing(
   const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
-  const parts = bajanteKey.split('-');
-  const bajanteId = parts[0];
-  const planId = parts[1];
+  const [bajanteId, planId] = parseBajanteKey(bajanteKey);
 
   // Regla entre pisos: el inferior no puede quedar con menor diámetro que el superior.
   // Se valida ANTES de escribir (alerta modal + no se permite); el espejo (igual) pasa.
@@ -94,6 +101,7 @@ export function writeBajantePropToDrawing(
     }
   }
 
+  let escrito = false;
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     if (planId && String(plan.id) !== String(planId)) continue;
@@ -114,6 +122,7 @@ export function writeBajantePropToDrawing(
       data.ts = Date.now();
       saveToStorage(key, data);
       saveTrazosToDB(String(plan.id), data);
+      escrito = true;
     }
   }
 
@@ -165,7 +174,7 @@ export function writeBajantePropToDrawing(
       }
     }
   }
-  return true;
+  return escrito;
 }
 
 /** Escribe el MATERIAL de un ramal en los trazos (caché + BD). Sin validaciones ni

@@ -23,6 +23,7 @@ import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { perfilDe, rangoSanTxt, ftTxt } from '../constants/normasPais';
 import { useProyecto } from '../context/ProjectContext';
 import { fmt } from '../utils/formatUtils';
+import EmptyRow from './shared/EmptyRow';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
@@ -47,12 +48,6 @@ const SR_ONLY = {
   clip: 'rect(0,0,0,0)',
   whiteSpace: 'nowrap',
   border: 0,
-} as const;
-const EMPTY_ROW = {
-  padding: '24px 0',
-  textAlign: 'center',
-  color: 'var(--txt3)',
-  fontSize: 10.5,
 } as const;
 const TH_HDR = { fontSize: 10.5, textAlign: 'center', padding: '1px 7px' } as const;
 const TH_SUB = { fontSize: 10.5, textAlign: 'center', padding: '1px 7px' } as const;
@@ -236,7 +231,7 @@ export default function DisenosSanitarios() {
       if (t.yD !== yD) updTramoSan(idKey, 'yD', yD);
       if (t.qQ0 !== qQ0) updTramoSan(idKey, 'qQ0', qQ0);
     }
-  }, [displayTramos, componentTotalMap, updTramoSan]);
+  }, [displayTramos, componentTotalMap, updTramoSan, proy.pais]);
 
   const totales = useMemo(
     () =>
@@ -549,11 +544,7 @@ export default function DisenosSanitarios() {
               </thead>
               <tbody>
                 {displayTramos.length === 0 ? (
-                  <tr>
-                    <td colSpan={25} style={EMPTY_ROW}>
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
+                  <EmptyRow colSpan={25} fontSize={10.5} />
                 ) : (
                   (() => {
                     return sanRows.map((row) => {

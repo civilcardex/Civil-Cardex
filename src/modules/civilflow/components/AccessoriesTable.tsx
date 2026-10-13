@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO, pisoCorto } from '../constants';
+import EmptyRow from './shared/EmptyRow';
 import type { Tramo } from '../context/tramosReducer';
 const AccessoriesTable_S1: React.CSSProperties = {
   width: 76,
@@ -145,22 +146,7 @@ const AccesoriosTable = memo(function AccesoriosTable({
                 </tr>
               );
             })}
-            {filtered.length === 0 && (
-              <tr>
-                <td
-                  className="c"
-                  colSpan={1 + cols.length}
-                  style={{
-                    fontSize: 9,
-                    color: 'var(--txt3)',
-                    padding: '24px 0',
-                    textAlign: 'center',
-                  }}
-                >
-                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                </td>
-              </tr>
-            )}
+            {filtered.length === 0 && <EmptyRow colSpan={1 + cols.length} fontSize={9} />}
           </tbody>
         </table>
       </div>

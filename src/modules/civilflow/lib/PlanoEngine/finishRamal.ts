@@ -1,4 +1,4 @@
-import { validarTrazoPresion } from './nudos';
+import { REDES_PRESION, validarTrazoPresion } from './nudos';
 import {
   NETS,
   allocNetNumber,
@@ -535,7 +535,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       engine.render();
       return;
     }
-  } else if (r.net === 'af' || r.net === 'ac' || r.net === 'gas') {
+  } else if (REDES_PRESION.has(r.net)) {
     const TOL = 0.5;
     // r todavía no está en engine.ramales, así que se incluye explícitamente junto al array vivo.
     const candidates = [r, ...engine.ramales];

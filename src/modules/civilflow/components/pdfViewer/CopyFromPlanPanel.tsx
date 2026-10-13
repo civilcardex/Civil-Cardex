@@ -177,12 +177,14 @@ function CopyFromPlanPanel_({
     return d as SrcPlanData;
   }, [srcPlanId]);
 
-  // ¿El piso origen tiene bajantes FANTASMA? (orig. usuario) = direccion 'sube' (los
-  // autocreados por la asociación cuando dos bajantes no están alineados).
+  // ¿El piso origen tiene bajantes FANTASMA entre pisos? Marcador real = `isFantasma`
+  // (el mismo de render/selección/borrado). Antes se detectaba con direccion 'sube' — los
+  // montantes SIEMPRE fluyen 'sube' (la asociación entre pisos lo fuerza) y cualquier
+  // bajante puede fluir hacia arriba → el modal salía sin haber fantasmas (orig. usuario).
   const origenConFantasmas = useMemo(() => {
     const d = srcPlanData;
     if (!d) return false;
-    return (d.bajantes || []).some((b) => b.direccion === 'sube');
+    return (d.bajantes || []).some((b) => b.isFantasma === true);
   }, [srcPlanData]);
 
   const availableNets = useMemo(() => {

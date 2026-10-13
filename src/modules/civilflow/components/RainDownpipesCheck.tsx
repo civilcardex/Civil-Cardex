@@ -21,6 +21,7 @@ import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
 import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDataMaterials';
 import { fmt } from '../utils/formatUtils';
+import { entradaPor } from '../utils/diamLookup';
 import React from 'react';
 import type { DrawingData } from '../utils/drawingSync';
 import { sanitizarInputDecimal } from '../utils/parseDecimal';
@@ -718,12 +719,12 @@ export default function ChequeoBajantesLluvias() {
                     </td>
                     <td className="c">
                       <select
-                        value={DIAM_BAN.find((d) => d.pulg === row.diamPropuesto)?.nom ?? ''}
+                        value={entradaPor(DIAM_BAN, 'pulg', row.diamPropuesto)?.nom ?? ''}
                         aria-label="Diámetro propuesto"
                         disabled={!edit}
                         onChange={(e) => {
                           const nom = e.target.value;
-                          const opt = DIAM_BAN.find((d) => d.nom === nom);
+                          const opt = entradaPor(DIAM_BAN, 'nom', nom);
                           // Regla ll: el bajante no puede quedar menor que sus ramales conectados.
                           if (opt && row.drawId) {
                             const maxRamal = maxRamalPulgDeBajante(

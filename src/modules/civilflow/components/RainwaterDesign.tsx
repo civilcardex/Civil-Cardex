@@ -2,6 +2,7 @@ import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import ChipList from './shared/ChipList';
 import EditButton from './shared/EditButton';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
+import EmptyRow from './shared/EmptyRow';
 import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
@@ -121,7 +122,7 @@ export default function DisenoLluvias() {
       if (t.yD !== yD) updTramoLL(t._key, 'yD', yD);
       if (t.qQ0 !== qQ0) updTramoLL(t._key, 'qQ0', qQ0);
     }
-  }, [displayTramos, qMap, updTramoLL]);
+  }, [displayTramos, qMap, updTramoLL, proy.pais]);
 
   // Piso de cada bajante (por code/id) para etiquetar los chips "Bajantes asociados" (BAN1-P1).
   const pisoByBajCode = useMemo(() => {
@@ -416,19 +417,7 @@ export default function DisenoLluvias() {
               </thead>
               <tbody>
                 {displayTramos.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={24}
-                      style={{
-                        padding: '24px 0',
-                        textAlign: 'center',
-                        color: 'var(--txt3)',
-                        fontSize: 11.5,
-                      }}
-                    >
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
+                  <EmptyRow colSpan={24} fontSize={11.5} />
                 ) : (
                   llRows.map((row) => {
                     const {
