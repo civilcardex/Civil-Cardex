@@ -11,6 +11,8 @@ import {
   ramalesDelCanal,
   moverAsociacionCanal,
   normalizarCanal,
+  vetarSelloCanal,
+  levantarVetoSelloCanal,
 } from '../../../lib/PlanoEngine/canalAssociation';
 import { sanitizarInputDecimal } from '../../../utils/parseDecimal';
 
@@ -196,8 +198,12 @@ export function CanalMenu() {
                 onChange={() => {
                   const eng = engineRef.current;
                   if (!eng) return;
+                  const desmarcando = b.canalId === canal.id;
+                  const pid = String(engineRef.current?._loadedPlanId ?? '');
+                  if (desmarcando) vetarSelloCanal(pid, 'baj', b.id, canal.id);
+                  else levantarVetoSelloCanal(pid, 'baj', b.id, canal.id);
                   eng.updateElementById(b.id, {
-                    canalId: b.canalId === canal.id ? null : canal.id,
+                    canalId: desmarcando ? null : canal.id,
                   });
                   eng.render();
                   eng._markDirty();

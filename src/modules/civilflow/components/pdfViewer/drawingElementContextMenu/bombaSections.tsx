@@ -33,19 +33,7 @@ export function CajaBombaSection({
     return (
       <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
         <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bomba</div>
-        <button
-          type="button"
-          style={MENU_ACTION_BTN_STYLE}
-          onClick={() => {
-            if (!eng) return;
-            handleCreateBomba(eng, caja);
-            ctx.setContextMenuState((prev) =>
-              prev ? { ...prev, element: { ...prev.element } } : null,
-            );
-          }}
-        >
-          + Crear bomba
-        </button>
+        <BotonCrearBomba ctx={ctx} caja={caja} />
       </div>
     );
   }
@@ -187,4 +175,39 @@ export function AsociarBombaSection({
       })}
     </div>
   );
+}
+
+/** Botón "+ Crear bomba" — extraído para poder hoistearlo al tope del BajanteMenu. */
+export function BotonCrearBomba({
+  ctx,
+  caja,
+}: {
+  ctx: ReturnType<typeof useDrawingElementContextMenu>;
+  caja: PlanoBajante;
+}) {
+  const eng = ctx.engineRef.current;
+  return (
+    <button
+      type="button"
+      style={MENU_ACTION_BTN_STYLE}
+      onClick={() => {
+        if (!eng) return;
+        handleCreateBomba(eng, caja);
+        ctx.setContextMenuState((prev) =>
+          prev ? { ...prev, element: { ...prev.element } } : null,
+        );
+      }}
+    >
+      + Crear bomba
+    </button>
+  );
+}
+
+/** ¿La caja muestra el modo "crear bomba" (aún no tiene una)? Para el hoist del menú. */
+export function cajaSinBomba(
+  ctx: ReturnType<typeof useDrawingElementContextMenu>,
+  caja: PlanoBajante,
+): boolean {
+  const eng = ctx.engineRef.current;
+  return !eng?.bajantes.some((b) => b.tipo === 'bomba' && b.cajaOrigenId === caja.id);
 }

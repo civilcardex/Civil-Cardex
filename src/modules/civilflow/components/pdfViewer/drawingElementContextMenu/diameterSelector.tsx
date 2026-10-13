@@ -33,6 +33,29 @@ import {
   type LowerFloorRamales,
 } from './context';
 
+/** Bloquea el gesto si viola la regla entre pisos (alerta modal + revierte el select).
+ *  @param pid - plano del bajante.
+ *  @param el - bajante vivo del motor (punteros más frescos que el storage).
+ *  @param e - evento del select (para revertir el valor visible).
+ *  @param refrescar - fuerza re-render del menú.
+ *  @returns true si bloqueó. */
+function bloquearDiametroEntrePisos(
+  pid: string,
+  el: { id: string; dNominal?: string; descargaEnId?: string | null; origenId?: string | null },
+  e: { target: { value: string } },
+  refrescar: () => void,
+): boolean {
+  const v = validarDiametroEntrePisos(pid, el.id, e.target.value, {
+    descargaEnId: el.descargaEnId,
+    origenId: el.origenId,
+  });
+  if (v.ok) return false;
+  avisarDiametroInvalido(v.mensaje, v.titulo);
+  e.target.value = el.dNominal || '';
+  refrescar();
+  return true;
+}
+
 /** Selectores del bajante: destino (piso inferior), diámetro con validación contra los ramales
  *  conectados, origen (piso superior), llenado (R) y área servida. */
 export function BajanteDiameterSelector({
@@ -439,20 +462,32 @@ export function BajanteDiameterSelector({
                       }
                     }
                     // Regla entre pisos: el inferior no puede quedar con menor diámetro.
-                    if (val && engineRef.current) {
-                      const pid = String(engineRef.current._loadedPlanId ?? '');
-                      const v = validarDiametroEntrePisos(pid, element.id, val);
-                      if (!v.ok) {
-                        avisarDiametroInvalido(v.mensaje, v.titulo);
-                        e.target.value = element.dNominal || '';
-                        setContextMenuState((prev) =>
-                          prev ? { ...prev, element: { ...prev.element } } : null,
-                        );
-                        return;
-                      }
-                    }
+                    if (
+                      val &&
+                      engineRef.current &&
+                      bloquearDiametroEntrePisos(
+                        String(engineRef.current._loadedPlanId ?? ''),
+                        element,
+                        e,
+                        () =>
+                          setContextMenuState((prev) =>
+                            prev ? { ...prev, element: { ...prev.element } } : null,
+                          ),
+                      )
+                    )
+                      return;
                     const fields = { dNominal: val };
                     engineRef.current?.updateElementById(element.id, fields);
+                    // Espejo entre pisos (tablas↔dibujo no divergen): persiste y espeja.
+                    if (val && engineRef.current) {
+                      writeBajantePropToDrawing(
+                        `${element.id}-${String(engineRef.current._loadedPlanId ?? '')}`,
+                        element.net || 'san',
+                        'dNominal',
+                        val,
+                        planosCtx.plans,
+                      );
+                    }
                     const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
                     if (fresh) {
                       setContextMenuState((prev) =>
@@ -631,20 +666,32 @@ export function BajanteDiameterSelector({
                     }
                   }
                   // Regla entre pisos: el inferior no puede quedar con menor diámetro.
-                  if (val && engineRef.current) {
-                    const pid = String(engineRef.current._loadedPlanId ?? '');
-                    const v = validarDiametroEntrePisos(pid, element.id, val);
-                    if (!v.ok) {
-                      avisarDiametroInvalido(v.mensaje, v.titulo);
-                      e.target.value = element.dNominal || '';
-                      setContextMenuState((prev) =>
-                        prev ? { ...prev, element: { ...prev.element } } : null,
-                      );
-                      return;
-                    }
-                  }
+                  if (
+                    val &&
+                    engineRef.current &&
+                    bloquearDiametroEntrePisos(
+                      String(engineRef.current._loadedPlanId ?? ''),
+                      element,
+                      e,
+                      () =>
+                        setContextMenuState((prev) =>
+                          prev ? { ...prev, element: { ...prev.element } } : null,
+                        ),
+                    )
+                  )
+                    return;
                   const fields = { dNominal: val };
                   engineRef.current?.updateElementById(element.id, fields);
+                  // Espejo entre pisos (tablas↔dibujo no divergen): persiste y espeja.
+                  if (val && engineRef.current) {
+                    writeBajantePropToDrawing(
+                      `${element.id}-${String(engineRef.current._loadedPlanId ?? '')}`,
+                      element.net || 'san',
+                      'dNominal',
+                      val,
+                      planosCtx.plans,
+                    );
+                  }
                   const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
                   if (fresh) {
                     setContextMenuState((prev) =>

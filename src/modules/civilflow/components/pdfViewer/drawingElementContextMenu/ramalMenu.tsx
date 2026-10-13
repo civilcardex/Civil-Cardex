@@ -199,203 +199,6 @@ export function RamalMenu() {
   };
   return (
     <>
-      {ramalEl.esCanalId && (
-        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramal de canal</div>
-          <div style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--mono)' }}>
-            Canal:{' '}
-            {engineRef.current?.bajantes.find((c) => c.id === ramalEl.esCanalId)?.code ||
-              ramalEl.esCanalId}
-          </div>
-          <select
-            value={
-              (engineRef.current?.bajantes || []).find((b) => b.recibeDeIds?.includes(ramalEl.id))
-                ?.id || ''
-            }
-            aria-label="Bajante asociado"
-            onChange={(e) => {
-              const eng = engineRef.current;
-              if (!eng) return;
-              moverAsociacionCanal(eng, ramalEl.id, e.target.value || null);
-              ctx.setContextMenuState((prev) => (prev ? { ...prev } : null));
-              engineRef.current?.render();
-            }}
-            style={MENU_SELECT_STYLE}
-          >
-            <option value="">— Sin bajante —</option>
-            {(engineRef.current?.bajantes || [])
-              .filter((b) => b.net === 'll' && b.tipo === 'bajante')
-              .map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.code || b.id}
-                </option>
-              ))}
-          </select>
-        </div>
-      )}
-      {ramalEl.tipo === 'tributario' && (
-        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-          <button type="button" onClick={convertToRamal} style={MENU_ACTION_BTN_STYLE}>
-            Convertir tributario en ramal
-          </button>
-        </div>
-      )}
-      {ramalEl.tipo !== 'tributario' && tribCandidates.length > 0 && (
-        <div
-          style={{
-            padding: '4px 8px',
-            borderTop: '1px solid #3a494a',
-            marginTop: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setTribConvOpen((o) => !o)}
-            aria-expanded={tribConvOpen}
-            style={{ ...MENU_ACTION_BTN_STYLE, whiteSpace: 'normal', lineHeight: 1.3 }}
-          >
-            {tribConvOpen ? '▾' : '▸'} Convertir en tributario de...
-          </button>
-          {tribConvOpen && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={MENU_SECTION_LABEL_ROW_STYLE}>
-                Elegir ramal padre (tocado por este ramal):
-              </div>
-              {tribCandidates.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => convertToTributario(c.id)}
-                  style={{ ...MENU_ACTION_BTN_STYLE, textAlign: 'left' }}
-                >
-                  {ramalLabel(c, ctx.engineRef.current?.nivelActual?.label)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      {contextMenuState.midRamalHit &&
-        !contextMenuState.ramalEndpoint &&
-        !['san', 'll'].includes(ramalEl.net) &&
-        getAccessoryOptions(ramalEl.net).length > 0 && (
-          <MidRamalAccessorySelector
-            element={ramalEl}
-            midRamalHit={contextMenuState.midRamalHit}
-            engineRef={ctx.engineRef}
-            selElement={ctx.selElement}
-            setSelElement={ctx.setSelElement}
-            setContextMenuState={ctx.setContextMenuState}
-            planosCtx={ctx.planosCtx}
-          />
-        )}
-      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && ramalEl.net === 'san' && (
-        <MidRamalAccessorySelector
-          element={ramalEl}
-          midRamalHit={contextMenuState.midRamalHit}
-          engineRef={ctx.engineRef}
-          selElement={ctx.selElement}
-          setSelElement={ctx.setSelElement}
-          setContextMenuState={ctx.setContextMenuState}
-          planosCtx={ctx.planosCtx}
-        />
-      )}
-      {contextMenuState.midRamalHit &&
-        !contextMenuState.ramalEndpoint &&
-        ['af', 'ac'].includes(ramalEl.net) &&
-        !isOccupiedTee && (
-          <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-            <button
-              type="button"
-              onClick={() => {
-                const eng = engineRef.current;
-                const hit = contextMenuState.midRamalHit;
-                if (!eng || !hit) return;
-                eng.createMontanteMidBody(ramalEl.id, hit.x, hit.y, hit.segmentIdx);
-                ctx.setContextMenuState(null);
-              }}
-              style={MENU_ACTION_BTN_STYLE}
-            >
-              + Crear montante (auto-tee)
-            </button>
-          </div>
-        )}
-      {contextMenuState.ramalEndpoint && ramalEl.net === 'af' && !isOccupiedTee && (
-        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-          <button
-            type="button"
-            onClick={() => {
-              const eng = engineRef.current;
-              const ep = contextMenuState.ramalEndpoint;
-              if (!eng || !ep) return;
-              eng.createCalentadorMidBody(ramalEl.id, ep.x, ep.y, ep.idx);
-              ctx.setContextMenuState(null);
-            }}
-            style={MENU_ACTION_BTN_STYLE}
-          >
-            + Agregar calentador
-          </button>
-        </div>
-      )}
-      {contextMenuState.midRamalHit &&
-        !contextMenuState.ramalEndpoint &&
-        ['af', 'ac'].includes(ramalEl.net) &&
-        isExistingTee && (
-          <div
-            style={{
-              padding: '4px 8px',
-              borderTop: '1px solid #3a494a',
-              marginTop: 4,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-            }}
-          >
-            <div style={MENU_SECTION_LABEL_ROW_STYLE}>Segmento libre de la tee</div>
-            {(['tapon', 'llaveTerminal'] as const).map((accId) => (
-              <button
-                type="button"
-                key={accId}
-                onClick={() => {
-                  const eng = engineRef.current;
-                  if (!eng) return;
-                  eng.createTeeCapStub(ramalEl.id, existingTeeIdx, accId);
-                  ctx.setContextMenuState(null);
-                }}
-                style={MENU_ACTION_BTN_STYLE}
-              >
-                + {accId === 'tapon' ? 'Tapón de limpieza' : 'Llave Terminal'}
-              </button>
-            ))}
-          </div>
-        )}
-      {contextMenuState.ramalEndpoint && (
-        <BajanteConnectionPanel
-          element={ramalEl}
-          isGhostClick={contextMenuState.isGhostClick || false}
-          ramalEndpoint={contextMenuState.ramalEndpoint}
-          engineRef={ctx.engineRef}
-          selElement={ctx.selElement}
-          setSelElement={ctx.setSelElement}
-          setContextMenuState={ctx.setContextMenuState}
-          activeNet={ctx.activeNet}
-          planosCtx={ctx.planosCtx}
-        />
-      )}
-      <ElementCodeEditor
-        element={element}
-        engineRef={ctx.engineRef}
-        selElement={ctx.selElement}
-        setSelElement={ctx.setSelElement}
-        setContextMenuState={ctx.setContextMenuState}
-        mats={ctx.mats}
-        activeNet={ctx.activeNet}
-        setDiamSel={ctx.setDiamSel}
-        planosCtx={ctx.planosCtx}
-      />
       <div
         style={{
           padding: '4px 8px',
@@ -531,6 +334,203 @@ export function RamalMenu() {
             </button>
           )}
       </div>
+      {ramalEl.tipo === 'tributario' && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <button type="button" onClick={convertToRamal} style={MENU_ACTION_BTN_STYLE}>
+            Convertir tributario en ramal
+          </button>
+        </div>
+      )}
+      {ramalEl.tipo !== 'tributario' && tribCandidates.length > 0 && (
+        <div
+          style={{
+            padding: '4px 8px',
+            borderTop: '1px solid #3a494a',
+            marginTop: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setTribConvOpen((o) => !o)}
+            aria-expanded={tribConvOpen}
+            style={{ ...MENU_ACTION_BTN_STYLE, whiteSpace: 'normal', lineHeight: 1.3 }}
+          >
+            {tribConvOpen ? '▾' : '▸'} Convertir en tributario de...
+          </button>
+          {tribConvOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div style={MENU_SECTION_LABEL_ROW_STYLE}>
+                Elegir ramal padre (tocado por este ramal):
+              </div>
+              {tribCandidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => convertToTributario(c.id)}
+                  style={{ ...MENU_ACTION_BTN_STYLE, textAlign: 'left' }}
+                >
+                  {ramalLabel(c, ctx.engineRef.current?.nivelActual?.label)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {contextMenuState.midRamalHit &&
+        !contextMenuState.ramalEndpoint &&
+        ['af', 'ac'].includes(ramalEl.net) &&
+        !isOccupiedTee && (
+          <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={() => {
+                const eng = engineRef.current;
+                const hit = contextMenuState.midRamalHit;
+                if (!eng || !hit) return;
+                eng.createMontanteMidBody(ramalEl.id, hit.x, hit.y, hit.segmentIdx);
+                ctx.setContextMenuState(null);
+              }}
+              style={MENU_ACTION_BTN_STYLE}
+            >
+              + Crear montante (auto-tee)
+            </button>
+          </div>
+        )}
+      {contextMenuState.ramalEndpoint && ramalEl.net === 'af' && !isOccupiedTee && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => {
+              const eng = engineRef.current;
+              const ep = contextMenuState.ramalEndpoint;
+              if (!eng || !ep) return;
+              eng.createCalentadorMidBody(ramalEl.id, ep.x, ep.y, ep.idx);
+              ctx.setContextMenuState(null);
+            }}
+            style={MENU_ACTION_BTN_STYLE}
+          >
+            + Agregar calentador
+          </button>
+        </div>
+      )}
+      {contextMenuState.midRamalHit &&
+        !contextMenuState.ramalEndpoint &&
+        ['af', 'ac'].includes(ramalEl.net) &&
+        isExistingTee && (
+          <div
+            style={{
+              padding: '4px 8px',
+              borderTop: '1px solid #3a494a',
+              marginTop: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            <div style={MENU_SECTION_LABEL_ROW_STYLE}>Segmento libre de la tee</div>
+            {(['tapon', 'llaveTerminal'] as const).map((accId) => (
+              <button
+                type="button"
+                key={accId}
+                onClick={() => {
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  eng.createTeeCapStub(ramalEl.id, existingTeeIdx, accId);
+                  ctx.setContextMenuState(null);
+                }}
+                style={MENU_ACTION_BTN_STYLE}
+              >
+                + {accId === 'tapon' ? 'Tapón de limpieza' : 'Llave Terminal'}
+              </button>
+            ))}
+          </div>
+        )}
+      {ramalEl.esCanalId && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramal de canal</div>
+          <div style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--mono)' }}>
+            Canal:{' '}
+            {engineRef.current?.bajantes.find((c) => c.id === ramalEl.esCanalId)?.code ||
+              ramalEl.esCanalId}
+          </div>
+          <select
+            value={
+              (engineRef.current?.bajantes || []).find((b) => b.recibeDeIds?.includes(ramalEl.id))
+                ?.id || ''
+            }
+            aria-label="Bajante asociado"
+            onChange={(e) => {
+              const eng = engineRef.current;
+              if (!eng) return;
+              moverAsociacionCanal(eng, ramalEl.id, e.target.value || null);
+              ctx.setContextMenuState((prev) => (prev ? { ...prev } : null));
+              engineRef.current?.render();
+            }}
+            style={MENU_SELECT_STYLE}
+          >
+            <option value="">— Sin bajante —</option>
+            {(engineRef.current?.bajantes || [])
+              .filter((b) => b.net === 'll' && b.tipo === 'bajante')
+              .map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code || b.id}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+      {contextMenuState.midRamalHit &&
+        !contextMenuState.ramalEndpoint &&
+        !['san', 'll'].includes(ramalEl.net) &&
+        getAccessoryOptions(ramalEl.net).length > 0 && (
+          <MidRamalAccessorySelector
+            element={ramalEl}
+            midRamalHit={contextMenuState.midRamalHit}
+            engineRef={ctx.engineRef}
+            selElement={ctx.selElement}
+            setSelElement={ctx.setSelElement}
+            setContextMenuState={ctx.setContextMenuState}
+            planosCtx={ctx.planosCtx}
+          />
+        )}
+      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && ramalEl.net === 'san' && (
+        <MidRamalAccessorySelector
+          element={ramalEl}
+          midRamalHit={contextMenuState.midRamalHit}
+          engineRef={ctx.engineRef}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
+          planosCtx={ctx.planosCtx}
+        />
+      )}
+      {contextMenuState.ramalEndpoint && (
+        <BajanteConnectionPanel
+          element={ramalEl}
+          isGhostClick={contextMenuState.isGhostClick || false}
+          ramalEndpoint={contextMenuState.ramalEndpoint}
+          engineRef={ctx.engineRef}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
+          activeNet={ctx.activeNet}
+          planosCtx={ctx.planosCtx}
+        />
+      )}
+      <ElementCodeEditor
+        element={element}
+        engineRef={ctx.engineRef}
+        selElement={ctx.selElement}
+        setSelElement={ctx.setSelElement}
+        setContextMenuState={ctx.setContextMenuState}
+        mats={ctx.mats}
+        activeNet={ctx.activeNet}
+        setDiamSel={ctx.setDiamSel}
+        planosCtx={ctx.planosCtx}
+      />
       <div
         style={{
           padding: '4px 8px',

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { matFullName, DIAM_BY_MAT, GAS_DN_LABELS } from '../../../constants';
 import { GAS, CAT_GAS } from '../../../constants/engineeringDataGas';
@@ -174,103 +175,123 @@ export function ElementCodeEditor({
             </div>
           </>
         )}
-        <div style={MENU_SECTION_LABEL_STYLE}>Diámetro de ramal/tributario</div>
-        <div style={{ padding: '0 8px 8px' }}>
-          <select
-            value={
-              engineRef.current?.ramales.find((r) => r.id === ramalEl.id)?.diametro ??
-              ramalEl.diametro ??
-              ''
-            }
-            aria-label="Diámetro de ramal/tributario"
-            onChange={(e) => {
-              const val = e.target.value;
-              if (engineRef.current) {
-                // Ítem 7/8: regla central inodoro → 4" mínimo, misma que TramoEditor (única fuente)
-                if (
-                  ramalEl.net === 'san' &&
-                  val &&
-                  !sanDiamLabelAllowedForApparatus(val, INODORO_APP_ID)
-                ) {
-                  const checkId = ramalEl.id;
-                  const planId =
-                    (engineRef.current as unknown as { _loadedPlanId?: string })?._loadedPlanId ??
-                    '';
-                  const key = `san_${checkId}_${planId || ''}`;
-                  try {
-                    const counts = JSON.parse(
-                      localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '{}',
-                    );
-                    if ((counts[key]?.['san'] || 0) > 0) {
-                      engineRef.current.triggerAlert('Diámetro no permitido', SAN_INODORO_MIN_MSG);
-                      return;
-                    }
-                  } catch (_e) {
-                    void _e;
-                  }
-                }
-                // Invariante única: ramal.diam >= accesorio.diam, impuesta aquí del lado del
-                // RAMAL (no en los selectores de accesorio, que dejan elegir cualquier
-                // diámetro libremente) — un ramal nunca puede reducirse por debajo del
-                // diámetro del accesorio que ya tiene conectado.
-                const inchFrom = (d: string) => {
-                  const q = d.indexOf('"');
-                  return q > 0 ? d.slice(0, q) : d;
-                };
-                // Leer datos frescos del engine — el snapshot ramalEl puede estar stale
-                // si el usuario cambió el diámetro desde TramoEditor mientras el menú estaba abierto.
-                const fresh = engineRef.current?.ramales.find((x) => x.id === ramalEl.id);
-                const liveAccDiamI =
-                  (fresh?.diametroInicio as string) || ramalEl.diametroInicio || '';
-                const liveAccDiamF = (fresh?.diametroFin as string) || ramalEl.diametroFin || '';
-                const accDiamNum = Math.max(
-                  liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0,
-                  liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0,
-                );
-                if (val && accDiamNum > 0 && diamPulgFromLabel(inchFrom(val)) < accDiamNum) {
-                  const accINum = liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0;
-                  const accFNum = liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0;
-                  const blockEnd = accINum >= accFNum ? 'INICIO' : 'FIN';
-                  const blockDiam = accINum >= accFNum ? liveAccDiamI : liveAccDiamF;
-                  engineRef.current.triggerAlert(
-                    'Diámetro no permitido',
-                    `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
-                  );
-                  return;
-                }
-                // NO sobrescribir diametroInicio/Fin: el accesorio conserva su propio diámetro
-                // (la invariante permite accesorios más angostos que el ramal). Forzarlos al
-                // diámetro del ramal hacía que el siguiente cambio de diámetro alertara siempre:
-                // el accesorio quedaba con el valor anterior del ramal y bloqueaba cualquier
-                // reducción posterior, aunque el accesorio real fuera menor.
-                const updates = { diametro: val };
-                engineRef.current.updateElementById(ramalEl.id, updates);
-                setContextMenuState((prev) =>
-                  prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
-                );
-                if (selElement?.id === ramalEl.id) {
-                  setSelElement({ ...selElement, ...updates });
-                }
-                if (activeNet === ramalEl.net) {
-                  setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
-                }
-                // Ítems 5+6: la propagación aguas abajo (mergesFrom + receptores
-                // geométricos) la hace updateElementById vía recomputeDownstreamDiameters —
-                // un solo snapshot para toda la operación.
-                engineRef.current.render();
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, padding: '0 8px 8px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...MENU_SECTION_LABEL_STYLE, padding: 0 }}>
+              Diámetro de ramal/tributario
+            </div>
+            <select
+              style={{ ...MENU_SELECT_STYLE, width: '100%' }}
+              value={
+                engineRef.current?.ramales.find((r) => r.id === ramalEl.id)?.diametro ??
+                ramalEl.diametro ??
+                ''
               }
-            }}
-            style={MENU_SELECT_STYLE}
-          >
-            <option value="">— Sin diámetro —</option>
-            {diamList.map((d) => {
-              return (
-                <option key={d.n} value={d.n}>
-                  {normalizeDnLabel(d.n)}
-                </option>
-              );
-            })}
-          </select>
+              aria-label="Diámetro de ramal/tributario"
+              onChange={(e) => {
+                const val = e.target.value;
+                if (engineRef.current) {
+                  // Ítem 7/8: regla central inodoro → 4" mínimo, misma que TramoEditor (única fuente)
+                  if (
+                    ramalEl.net === 'san' &&
+                    val &&
+                    !sanDiamLabelAllowedForApparatus(val, INODORO_APP_ID)
+                  ) {
+                    const checkId = ramalEl.id;
+                    const planId =
+                      (engineRef.current as unknown as { _loadedPlanId?: string })?._loadedPlanId ??
+                      '';
+                    const key = `san_${checkId}_${planId || ''}`;
+                    try {
+                      const counts = JSON.parse(
+                        localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '{}',
+                      );
+                      if ((counts[key]?.['san'] || 0) > 0) {
+                        engineRef.current.triggerAlert(
+                          'Diámetro no permitido',
+                          SAN_INODORO_MIN_MSG,
+                        );
+                        return;
+                      }
+                    } catch (_e) {
+                      void _e;
+                    }
+                  }
+                  // Invariante única: ramal.diam >= accesorio.diam, impuesta aquí del lado del
+                  // RAMAL (no en los selectores de accesorio, que dejan elegir cualquier
+                  // diámetro libremente) — un ramal nunca puede reducirse por debajo del
+                  // diámetro del accesorio que ya tiene conectado.
+                  const inchFrom = (d: string) => {
+                    const q = d.indexOf('"');
+                    return q > 0 ? d.slice(0, q) : d;
+                  };
+                  // Leer datos frescos del engine — el snapshot ramalEl puede estar stale
+                  // si el usuario cambió el diámetro desde TramoEditor mientras el menú estaba abierto.
+                  const fresh = engineRef.current?.ramales.find((x) => x.id === ramalEl.id);
+                  const liveAccDiamI =
+                    (fresh?.diametroInicio as string) || ramalEl.diametroInicio || '';
+                  const liveAccDiamF = (fresh?.diametroFin as string) || ramalEl.diametroFin || '';
+                  const accDiamNum = Math.max(
+                    liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0,
+                    liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0,
+                  );
+                  if (val && accDiamNum > 0 && diamPulgFromLabel(inchFrom(val)) < accDiamNum) {
+                    const accINum = liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0;
+                    const accFNum = liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0;
+                    const blockEnd = accINum >= accFNum ? 'INICIO' : 'FIN';
+                    const blockDiam = accINum >= accFNum ? liveAccDiamI : liveAccDiamF;
+                    engineRef.current.triggerAlert(
+                      'Diámetro no permitido',
+                      `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+                    );
+                    return;
+                  }
+                  // NO sobrescribir diametroInicio/Fin: el accesorio conserva su propio diámetro
+                  // (la invariante permite accesorios más angostos que el ramal). Forzarlos al
+                  // diámetro del ramal hacía que el siguiente cambio de diámetro alertara siempre:
+                  // el accesorio quedaba con el valor anterior del ramal y bloqueaba cualquier
+                  // reducción posterior, aunque el accesorio real fuera menor.
+                  const updates = { diametro: val };
+                  engineRef.current.updateElementById(ramalEl.id, updates);
+                  setContextMenuState((prev) =>
+                    prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+                  );
+                  if (selElement?.id === ramalEl.id) {
+                    setSelElement({ ...selElement, ...updates });
+                  }
+                  if (activeNet === ramalEl.net) {
+                    setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
+                  }
+                  // Ítems 5+6: la propagación aguas abajo (mergesFrom + receptores
+                  // geométricos) la hace updateElementById vía recomputeDownstreamDiameters —
+                  // un solo snapshot para toda la operación.
+                  engineRef.current.render();
+                }
+              }}
+            >
+              <option value="">— Sin diámetro —</option>
+              {diamList.map((d) => {
+                return (
+                  <option key={d.n} value={d.n}>
+                    {normalizeDnLabel(d.n)}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          {/* Pendiente (orig. usuario): al lado del diámetro 50-50 — solo redes por gravedad. */}
+          {['san', 'll', 'vent'].includes(ramalEl.net) && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ ...MENU_SECTION_LABEL_STYLE, padding: 0 }}>Pendiente %</div>
+              <PendienteRamalInput
+                ramalEl={ramalEl}
+                engineRef={engineRef}
+                selElement={selElement}
+                setSelElement={setSelElement}
+                setContextMenuState={setContextMenuState}
+              />
+            </div>
+          )}
         </div>
       </>
     );
@@ -415,4 +436,76 @@ export function ElementCodeEditor({
   }
 
   return null;
+}
+
+/** Input de pendiente del ramal (san/ll/vent, orig. usuario): commit en blur/Enter, rango
+ *  físico 0 < v ≤ 15 (mismo criterio del canal) — fuera de rango alerta y conserva. */
+function PendienteRamalInput({
+  ramalEl,
+  engineRef,
+  selElement,
+  setSelElement,
+  setContextMenuState,
+}: {
+  ramalEl: PlanoRamal;
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
+}) {
+  const leePend = (): string => {
+    const vivo = engineRef.current?.ramales.find((x) => x.id === ramalEl.id);
+    const p = vivo?.pendiente ?? ramalEl.pendiente ?? 0;
+    return p > 0 ? String(p) : '';
+  };
+  const [val, setVal] = useState<string>(leePend);
+  // En vivo (orig. usuario): si el valor cambia desde otro lado (panel/tablas) con el menú
+  // abierto, el input lo refleja — el elemento del menú se re-sincroniza por identidad.
+  useEffect(() => {
+    setVal(leePend);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ramalEl]);
+  const commit = (): void => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const t = val.trim().replace(',', '.');
+    if (t === '') return;
+    const v = parseFloat(t);
+    if (!Number.isFinite(v) || v <= 0 || v > 15) {
+      eng.triggerAlert(
+        'Pendiente no permitida',
+        'La pendiente debe ser mayor que 0% y hasta 15%. Se conserva el valor anterior.',
+      );
+      setVal(leePend());
+      return;
+    }
+    const updates = { pendiente: v };
+    eng.updateElementById(ramalEl.id, updates);
+    // En vivo (orig. usuario): panel derecho y menú ven el cambio SIN re-seleccionar.
+    setContextMenuState((prev) =>
+      prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+    );
+    if (selElement?.id === ramalEl.id) {
+      setSelElement({ ...selElement, ...updates });
+    }
+    eng.render();
+    eng._markDirty();
+  };
+  return (
+    <input
+      value={val}
+      aria-label="Pendiente del ramal"
+      inputMode="decimal"
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      style={{ ...MENU_SELECT_STYLE, textAlign: 'center', padding: '3px 4px' }}
+      placeholder="—"
+    />
+  );
 }

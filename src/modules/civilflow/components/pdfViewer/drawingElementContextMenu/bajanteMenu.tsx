@@ -3,7 +3,12 @@ import { useDrawingElementContextMenu } from './context';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel';
 import { BajanteDirectionSelector } from './directionSelector';
 import { BajanteDiameterSelector } from './diameterSelector';
-import { CajaBombaSection, AsociarBombaSection } from './bombaSections';
+import {
+  BotonCrearBomba,
+  CajaBombaSection,
+  AsociarBombaSection,
+  cajaSinBomba,
+} from './bombaSections';
 import {
   CanalesAsociadosBajSection,
   MaterialCubiertaBajSection,
@@ -26,6 +31,12 @@ export function BajanteMenu() {
 
   return (
     <>
+      {/* Botones de acción primero (orig. usuario): crear bomba al tope del menú de caja. */}
+      {esCajaMenu && !isGhostClick && cajaSinBomba(ctx, bajEl) && (
+        <div style={{ padding: '4px 8px' }}>
+          <BotonCrearBomba ctx={ctx} caja={bajEl} />
+        </div>
+      )}
       {esCajaMenu && !isGhostClick && <CajaBombaSection ctx={ctx} caja={bajEl} />}
       {/* CAJA (orig. usuario): menú mínimo — solo bomba (crear/checkbox/info) y ramales
           asociados. Sin dirección ni diámetro (la caja no tiene propiedades hidráulicas). */}

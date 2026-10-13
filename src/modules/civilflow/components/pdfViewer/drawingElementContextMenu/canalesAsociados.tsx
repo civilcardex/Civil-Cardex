@@ -1,6 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
+import { vetarSelloCanal, levantarVetoSelloCanal } from '../../../lib/PlanoEngine/canalAssociation';
 import { useMaterialesLl } from '../../../context/RainwaterContext';
 import {
   MATERIALES_CANAL_LL,
@@ -79,6 +80,22 @@ const CELL_SPAN_STYLE: React.CSSProperties = {
 export const refrescarMenu = (set: Dispatch<SetStateAction<ContextMenuState | null>>): void =>
   set((prev) => (prev ? { ...prev } : null));
 
+/**
+ * Opciones de material (misma fuente, value=nombre/title/abrev).
+ * Unifica los selects de cubierta y canal.
+ */
+export function OpcionesMaterial({ opts }: { opts: { nombre: string; abrev: string }[] }) {
+  return (
+    <>
+      {opts.map((m) => (
+        <option key={m.nombre} value={m.nombre} title={m.nombre}>
+          {m.abrev}
+        </option>
+      ))}
+    </>
+  );
+}
+
 /** Sección "Canales asociados" — bajante ll (single-select, escribe canalId). Re-lee el canal
  *  actual del MOTOR en cada render para que el checkbox refleje cambios hechos desde el
  *  canal u otro lado (bidireccional). */
@@ -107,8 +124,12 @@ export function CanalesAsociadosBajSection({
               onChange={() => {
                 const e2 = ctx.engineRef.current;
                 if (!e2) return;
+                const desmarcando = actual === c.id;
+                const pid = String(ctx.engineRef.current?._loadedPlanId ?? '');
+                if (desmarcando) vetarSelloCanal(pid, 'baj', bajEl.id, c.id);
+                else levantarVetoSelloCanal(pid, 'baj', bajEl.id, c.id);
                 e2.updateElementById(bajEl.id, {
-                  canalId: actual === c.id ? null : c.id,
+                  canalId: desmarcando ? null : c.id,
                 });
                 e2.render();
                 e2._markDirty();
@@ -149,8 +170,12 @@ export function CanalesAsociadosRamalSection({
               onChange={() => {
                 const e2 = ctx.engineRef.current;
                 if (!e2) return;
+                const desmarcando = actual === c.id;
+                const pid = String(ctx.engineRef.current?._loadedPlanId ?? '');
+                if (desmarcando) vetarSelloCanal(pid, 'ram', ramal.id, c.id);
+                else levantarVetoSelloCanal(pid, 'ram', ramal.id, c.id);
                 e2.updateElementById(ramal.id, {
-                  esCanalId: actual === c.id ? null : c.id,
+                  esCanalId: desmarcando ? null : c.id,
                 });
                 e2.render();
                 e2._markDirty();
@@ -193,11 +218,7 @@ export function MaterialCubiertaBajSection({
         style={MENU_SELECT_STYLE}
       >
         <option value="">—</option>
-        {MATERIALES_CUBIERTA_LL.map((m) => (
-          <option key={m.nombre} value={m.nombre} title={m.nombre}>
-            {m.abrev}
-          </option>
-        ))}
+        <OpcionesMaterial opts={MATERIALES_CUBIERTA_LL} />
       </select>
     </div>
   );
@@ -210,6 +231,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
   if (!mat) return null;
   const row = mat.canalDe(canalId);
   if (!row) return null;
+  /** Select de material del canal (cubierta o canal). */
   const sel = (
     label: string,
     field: 'materialCubierta' | 'materialCanal',
@@ -228,11 +250,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
         style={MENU_SELECT_STYLE}
       >
         <option value="">—</option>
-        {opts.map((m) => (
-          <option key={m.nombre} value={m.nombre} title={m.nombre}>
-            {m.abrev}
-          </option>
-        ))}
+        <OpcionesMaterial opts={opts} />
       </select>
     </div>
   );

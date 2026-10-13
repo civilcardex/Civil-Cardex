@@ -9,6 +9,7 @@ import {
   normalizarCanal,
 } from '../../../lib/PlanoEngine/canalAssociation';
 import { RainwaterContext, useMaterialesLl } from '../../../context/RainwaterContext';
+import { OpcionesMaterial } from '../drawingElementContextMenu/canalesAsociados';
 import {
   MATERIALES_CANAL_LL,
   MATERIALES_CUBIERTA_LL,
@@ -126,6 +127,7 @@ export function CanalTramoEditor() {
         {(() => {
           const row = matLl?.canalDe(selElement.id);
           if (!matLl || !row) return null;
+          /** Fila de desplegable de material (cubierta o canal) con el mismo routing. */
           const sel = (
             label: string,
             field: 'materialCubierta' | 'materialCanal',
@@ -141,11 +143,7 @@ export function CanalTramoEditor() {
                 style={SELECT_STYLE}
               >
                 <option value="">—</option>
-                {opts.map((m) => (
-                  <option key={m.nombre} value={m.nombre} title={m.nombre}>
-                    {m.abrev}
-                  </option>
-                ))}
+                <OpcionesMaterial opts={opts} />
               </select>
             </div>
           );

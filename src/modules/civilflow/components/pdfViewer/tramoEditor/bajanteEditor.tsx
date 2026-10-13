@@ -1,10 +1,12 @@
 import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
 import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials';
 import { useMaterialesLl } from '../../../context/RainwaterContext';
+import { OpcionesMaterial } from '../drawingElementContextMenu/canalesAsociados';
 import { usePlans } from '../../../context/PlansContext';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import { entradaPor } from '../../../utils/diamLookup';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
 import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
@@ -314,7 +316,7 @@ export function BajanteEditor({
               onChange={(e) => {
                 const val = e.target.value;
                 if (selElement.net === 'vent') {
-                  const opt = DIAM_VENT.find((d) => d.nom === val);
+                  const opt = entradaPor(DIAM_VENT, 'nom', val);
                   if (opt && opt.pulg > 2) {
                     engineRef.current?.triggerAlert(
                       'Diámetro no permitido',
@@ -399,11 +401,7 @@ export function BajanteEditor({
               style={SELECT_STYLE}
             >
               <option value="">—</option>
-              {MATERIALES_CUBIERTA_LL.map((m) => (
-                <option key={m.nombre} value={m.nombre} title={m.nombre}>
-                  {m.abrev}
-                </option>
-              ))}
+              <OpcionesMaterial opts={MATERIALES_CUBIERTA_LL} />
             </select>
           </div>
         )}
