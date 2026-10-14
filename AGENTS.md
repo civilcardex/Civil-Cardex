@@ -3323,3 +3323,232 @@ Gates: tsc 0 · lint 0 · vitest 1031/1031 (168 files) · build ✓ · graphify 
 - Tests: +5 (plegado idempotente 3×, trib-trib anidado adverso, cross-piso P1/P2, trib-en-vértice, oráculo RB).
 - Deps: `npm audit` 0 vulns; majors pendientes (eslint 10, tailwind 4, vitest 5, pdfjs 6, TS 7) NO tocados — rama aparte.
 - Gates: tsc 0 · lint 0 err 1 warn (GasDesign de sesión paralela) · vitest 1044/1044 (169 files) · build ✓.
+
+## Session Summary — 2026-10-14 (fuentes no bloquean + continuación lateral + sweep en borrado)
+- **FUENTE_TIPOS exportado** (`nudos.ts`): red_publica/contador/calentador/montante/bomba. Ninguna fuente bloquea extremo (`extremumOccupied`, `aparatoEnExtremoInvalido` con exención por extremo, `inc` af/ac+san, `hasBajante`) — un trazo SÍ puede llegar a una fuente y alojar aparato (RAF1).
+- **Sweep "aparato no permitido"**: ventana de supresión 2s tras borrar + limpieza del dedupe por ids borrados (renumerado no hereda supresión). Asignación inválida ya estaba bloqueada en panel y menú (sin símbolo ni conteo).
+- **Continuación en propagación**: entrante→solo continuaciones (colineal ≥0.9 o mergesFrom al entrante; fallback a todas); base solo hacia continuaciones (lateral→principal sí, entre/hacia laterales no). RAF3 acumula RAF1+RAF2; ramas solo lo propio. `mergesFrom` devuelto al interface solo como pista.
+- Tests: +1 topología imagen (RAF1/RAF2 propios, RAF3 ambos).
+- Gates: tsc 0 · lint 0/0 · vitest 1046/1046 (169) · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 30: montantes af/ac — panel habilitado + montante direccional + fila en CalcUC)
+- inc() FixturesPanel: regla de extremos relajada para ramales alimentados — un extremo ocupado + otro libre → asigna en el LIBRE aunque el flujo no termine ahí (preferencia al extremo libre con flujo); solo ambos-ocupados bloquea. RAF1 (cabeza en la unión) ahora admite aparato y este baja a RAF3 por el clúster.
+- upMonte DIRECCIONAL: el montante alimenta SOLO si el ramal SALE de él (dist ≤2 en la COLA, r.ini=código, o alimentaIds lo lista). Si el ramal ENTRA (cabeza ≤2, r.fin=código, recibeDeIds), no recibe la carga del montante — aparatos locales con cap de 1 manual. Carga del montante = clave propia + ucAplicado (asociación entre pisos — replica la lógica de bajantes/ramales sanitarios).
+- Montantes af/ac como filas esBajante en buildTramos (fixtures = su clave de conteos, donde la asociación escribe el agregado; _aparatosKey incluida) y CalcUC AF/AC los incluye (con UC Totales en ambas redes). La Σ no duplica: lo heredado por los ramales se resta (UD propia queda en el montante).
+- NOTA: la sesión paralela REESCRIBIÓ aparatosPresion.ts (partición por plano, doble libro heredados/trib, dos fases, alcanzabilidad) — la regla direccional se aplicó sobre esa versión. Los tests previos siguen verdes.
+- Tests: montante direccional (sale→alimenta+propaga; entra→no alimenta).
+- Gates: tsc 0 · vitest 1045/1045 (169) · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 31: el montante no bloquea el extremo del ramal)
+- "No está habilitado" el panel de RAF1: el MONTANTE en su extremo libre contaba como ocupado en extremoEntrelazado (y luego disparaba hasBajante) → "Extremos ocupados"/bloqueo. FIX (panel, ambos bloques inc): los montantes quedan EXCLUIDOS de la ocupación de extremos y del guard hasBajante en af/ac — son el punto de suministro (sus aparatos entran por propagación upMonte); la asignación cae en el extremo libre.
+- Gates: tsc 0 · vitest 1045/1045 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 32: regla entra-a-fuente retirada)
+- nudos.ts: retirada la verificación 'entra-a-fuente' en chequearRed (incidencia global) y validarTrazoPresion (rechazo al dibujar) — orig. usuario: un montante SÍ puede recibir un trazo (la alimentación llega a él). 'sale-de-aparato' y ciclo-no-declarado siguen. fuenteEnPt/esFuenteCode quedan (extremoLejanoTipo los usa).
+- Gates: tsc 0 · vitest 1045/1045 · build ✓.
+
+## Session Summary — 2026-10-09 (ronda 33: grid de aparatos af/ac sin candado de unión)
+- "Sigue bloqueado": los BOTONES del grid estaban DESHABILITADOS por la expresión mergeKeys && ownTotal<=0 (regla vieja "la pata única muestra la UC combinada") — RAF1 en la unión tenía mergeKeys y 0 propios → click muerto. FIX: el candado mergeKeys queda SOLO para gas (sin propagación); af/ac desbloqueados por flujo/nodo (esPropagado sigue para receptores).
+- Gates: tsc 0 · vitest 1045/1045 · build ✓.
+
+## Session Summary — 2026-10-14 (ronda 2: extremo inválido innasignable + borrador sin alerta + receptor bloqueado en vivo)
+- **inc() = misma regla del sweep**: el extremo vale si está LIBRE y el flujo termina en él (o es FUENTE, misma exención `tocaFuente` de `aparatoEnExtremoInvalido`). Ningún extremo válido → alerta SIN símbolo ni conteo — una asignación nueva jamás nace inválida, el sweep no tiene nada que flaguear. Revierte la relajación de ronda 30 ("libre aunque el flujo no termine ahí") que el sweep flaggeaba después (imágenes RAF1/RAF2).
+- **Borrador sin alerta**: `handleEraseDown`/`eraseRamalAt`/`deleteSegmentAt` abren la ventana anti-alerta vía `engine._emitDelete([])` (recortar/partir/borrar genera estados transitorios que el sweep flaggeaba; los paths deleteSelected ya lo hacían).
+- **Receptor bloqueado EN VIVO**: `FixtureGrid disabled` incluye `esPropagado` — RAF3 (con heredados) se ve opaco/bloqueado al instante (antes solo el guard de inc/dec lo rechazaba con alerta). RAF1/RAF2 (solo propios) siguen habilitados; RAF3 acumula ambos sin que se compartan entre sí (tests "imagen 2026-10-14" ya lo cubren en ambas orientaciones de RAF2).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1046/1046 (169) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 3: tablas UC unificadas al formato sanitario + montante ligado al ramal)
+- **CalcUC af/ac = anatomía de FixtureUnitCalc**: una sola columna rowSpan2 "Unidades de consumo totales" (valor = carga calcUCparcial; tooltip "Propia/Heredada UC" en la celda — adiós Parcial|Total); tfoot con subtotal por aparato siempre visible + celda final "{totalUC} UC". `showTotal` eliminado de TIPO_CFG.
+- **GasCalcUC**: primera columna "Tramo" → "Ramal/Montante" (Total + Q se conservan — decisión del usuario). Sanitaria queda como plantilla; ll/vent sin página UC (sin aparatos) — fuera de alcance.
+- **Montante ligado al ramal conectado**: (1) `bumpConnectedBajantes` ahora mira `recibeDeIds + alimentaIds` (el montante sigue al ramal en ambos sentidos de asociación explícita; antes solo recibeDeIds + geométrico 2.0). (2) `pushBajanteDiameterToRamales` extendido a montantes af/ac/gas (gate era solo san/ll): montante < máx ramal conectado → triggerAlert + `return false` (updateElementById/updateSelected abortan — modal y no permite, mismo patrón de bajantes/ramales sanitarios); cambio permitido empuja el diámetro nuevo a los ramales menores + recomputeDownstreamDiameters. Mensaje dice "montante"/"bajante" según tipo. Un bajante af/ac (no montante) sigue SIN arrastrar ramales (regresión "otras redes no se tocan" verde).
+- **BajanteDiameterSelector** (menú contextual): montante valida contra recibe+alimenta con mensaje "montante" y revert del select (espejo de la regla preexistente en bajanteEditor af/ac).
+- Tests: `montanteDiametro.test.ts` (4): rechazo modal, subida arrastra ramal, ramal-vía-alimentaIds arrastra montante, regresión gate san.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1050/1050 (170) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 4: montante sigue al ramal EN TIEMPO REAL desde la tabla)
+- Causa del "no cambia en tiempo real": `writeDiametroToDrawing` (diametros.ts, la ruta de las tablas de diseño) tenía SU PROPIO loop de seguimiento que solo miraba `recibeDeIds` — sin `alimentaIds` ni caída geométrica. El motor (canvas/panel) sí seguía al montante; la tabla no.
+- **`bumpConnectedBajantes` generalizada a función pura** `(ramales, bajantes, lvlLabel, ramId, oldD, newD)` — una sola implementación compartida por motor (updateSelected/updateElementById pasan engine.ramales/bajantes/nivelActual.label) y tabla (writeDiametroToDrawing pasa los arrays de storage, lvlLabel '' → geométrica con posición cruda). `changed` en la tabla por before/after de dNominal. El loop recibeDeIds-only eliminado (import followBajanteToMaxRamal fuera).
+- Sin filtro de red en la tabla (igual que el motor siempre): asociaciones explícitas cross-net (vents en recibeDeIds de san) siguen el mismo rule.
+- Tests +2 (writeDiameterBajante.test.ts): montante vía alimentaIds y vía geométrico al editar el ramal DESDE LA TABLA. Total montante/diámetros: 27 verdes.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1052/1052 (170) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 5: regla salida/entrada de presión retirada + convergencia al mayor)
+- **Alerta "El diámetro de salida no puede ser mayor que el de entrada" RETIRADA** (orig. usuario): `diametroCambioPermitido` eliminada; `guardDiametroNodo` queda SOLO para sanitaria (sanDiametroPermitido). El bloque duplicado en `writeDiametroToDrawing` (diametros.ts, ~160 líneas parent/child con fallback geométrico) borrado; `WriteDiametroResult` limpio (solo 'accessory-larger' + parentDiam fuera). WaterNetworkDesign y GasDesign sin las ramas parent-smaller/child-larger.
+- **Convergencia al mayor en nodos de presión (af/ac/gas/rci)**: nueva `convergirDiametroNodoPresion(ramales, ramalId)` (drawingFlow) — al cambiar el diámetro de un tramo, todo vecino conectado de la unión (extremo-extremo, T en mi cuerpo, mi extremo en su cuerpo) con diámetro menor SUBE a ese valor; NUNCA baja (el tramo editado conserva el valor del usuario, espejo de sanitaria). Corre en updateSelected + updateElementById (antes de bumpConnectedBajantes, así el montante ve el máximo convergido) y en writeDiametroToDrawing (dentro del before/after de ramales). San/ll excluidos (REDES_PRESION gate dentro de la función).
+- Tests: `nodoPresionDiametro.test.ts` (4: sube vecino, baja sin alerta ni arrastre, T-en-cuerpo, san excluido) + 2 de tabla en writeDiameterBajante.test.ts.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1058/1058 (171) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 6: revisión de diámetros bajante/montante en TIEMPO REAL)
+- La revisión "bajante(s)/montante(s) con diámetro inferior al del ramal conectado" (antes SOLO al cerrar el dibujo) ahora corre en el sweep de `onDirtyHandler` (PdfViewer) — se dispara automáticamente en cuanto la situación existe. Reutiliza `revisarDiametros` (misma función de cierre, cero lógica nueva); dedupe por entrada (`diamBajoAlertedRef`): una alerta por bajante/montante hasta corregirse, rehabilitación automática al arreglar, una modal por pasada (break) y respeta la ventana de supresión post-borrado. `loadingPlanRef` evita alertas al cargar.
+- Nota: los escritores normales ya auto-sube el bajante/montante (bump/follow/push de rondas previas) — el sweep caza estados que escapan por vías residuales o dibujos persistidos viejos.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1058/1058 (171) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 7: informes 2 columnas + selección de redes en PDF de planos)
+- **infTab en grid 2 columnas / 1 fila**: "Resumen del proyecto" (izquierda) y "Descargas" (derecha) lado a lado (`gridTemplateColumns: repeat(2, minmax(0,1fr))`, alignItems start); el maxWidth:460 de Descargas retirado.
+- **Planos de red con selección de redes**: fila de checkboxes con las redes ACTIVAS del proyecto (`state.redes`, etiquetas de REDES en uiConfig) bajo el chip "Planos de red" — todas marcadas por defecto. Las desmarcadas viajan como `ocultarNets` a `downloadPlanosPdf` → `renderPlanoComposite` asigna `eng._hiddenNets` (el MISMO mecanismo del toggle de visibilidad del visor — renderers ya lo respetan) y los elementos de esas redes no se dibujan en el PDF exportado. Estado = set de EXCLUIDAS (sin sync: redes nuevas nacen incluidas).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1058/1058 (171) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 8: opciones del PDF de planos — equipos fuera, subredes gated)
+- La lista de checkboxes "Redes en el PDF" filtra: EQUIPOS_NETS (bom/ep) fuera — no son redes de tubería; SUBRED_DE { vent→san, recolectora→ll, rejillas→gas } — una subred solo se ofrece si su red padre está activa en el proyecto (catálogo uiConfig: "Subred sanitaria/aguas lluvias/gas"). rci queda (red independiente).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1058/1058 · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 9: convergencia DIRECCIONAL + montante se cura solo)
+- **Convergencia al mayor solo AGUAS ABAJO** (orig. usuario: subir RAF2 subía también a RAF1): `convergirDiametroNodoPresion` ahora es direccional con la MISMA semántica que la propagación de aparatos — sube el vecino cuyo ORIGEN de flujo recibe mi DESTINO de flujo (continuación extremo-extremo o T nacida de mi cuerpo). Aguas arriba y ramas hermanas (entrantes paralelas) jamás. Respeta `_tribReversed`.
+- **Sweep de diámetros cura en vez de alertar**: bajante/montante con dNominal < ramal conectado (ids o geométrico 2.0) se SUBE solo al mayor ramal conectado en el sweep de onDirty (la alerta de la imagen 2 muere). La alerta "Diámetro no permitido" queda SOLO para el cambio MANUAL del montante por debajo (pushBajanteDiameterToRamales intacto). isFantasma excluido. Sin dedupe (no alerta, muta directo; persiste con el snapshot del dirty).
+- Tests +4 direccionales (imagen RAF2→solo RAF3; _tribReversed no sube; T; san fuera). Nota: fallo mío transitorio — myDest invertido (destino = pts[last] sin flag) — corregido con el mismo criterio de aparatoEnExtremoInvalido.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1068/1068 (172) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 10: auditoría general 8/8 arreglados — F-1..F-4 + M-1..M-4)
+Auditoría (3 exploradores en paralelo + barrida propia sobre los 82 archivos del diff): sin críticos; 5 IMPORTANTE + 8 MENOR. Ejecutados los 8 que no requerían decisión de diseño (F-5 bom/ep-PDF y M-5/M-6 doctrina de montantes presión quedan para el autor; M-7/M-8 documentados en la ficha).
+
+- **F-1** (`aparatosPresion.ts`): la regla 3b direccional silenciaba la herencia del montante cuando el ramal estaba asociado por CHECKBOX manual (`camposAsocManual` escribe `recibeDeIds` sin dirección → `entraAlMonte=true` → veto). Fix: `asocManual` (añadido a `RawBaj`) exime del veto — hereda como el comportamiento previo.
+- **F-2** (`drawingWrites/diametros.ts`): `bumpConnectedBajantes(..., '', ...)` rompía el seguimiento geométrico de bajantes DESPLAZADOS (anillos entrepisos: `desplazamientos` se keyea con `pisoLbl(n)`). Fix: `lvlLabel = plan.nivel != null ? pisoLbl(Number(plan.nivel)) : ''` — el MISMO label que el engine (`PdfViewer.syncEngine` construye `nivelActual.label = pisoLbl(n)`).
+- **F-3** (`drawingFlow.aparatoEnExtremoInvalido`): `tocaFuente` comparaba contra la posición CRUDA de la fuente — fuente desplazada (anillo) + extremo que entrelaza = falso "Aparato no permitido". Fix: param opcional `lvl` que resuelve `desplazamientos[lvl]`; los 6 call sites (PdfViewer sweep + ramalMenu ×2 + index.tsx ×3) pasan `eng.nivelActual?.label`.
+- **F-4** (`useInfTables.ts`): el gate `allOk` perdió el requisito "red con datos" — SAN/LL activas sin calcular daban '✓ Listo para descargar' mientras la fila decía '◌ Sin calcular'. Fix: `(!hasSan || conDatosSan.length > 0)` y `(!hasLl || conDatosLl + bajantesLl + canalesLl > 0)` — gate y semáforo juzgan lo mismo.
+- **M-1** (`useInfTables.fallosBajLl`): quitado el filtro `areaAcumulada > 0` (redundante: Q=0 → chequeo '') y comentario que lo contradecía; añadido `manning: b.manning || 0.009` — mismos insumos que `rainDownpipesRows`.
+- **M-2** (`useInfTables.ts`): `fallosBajLl`/`fallosCanalLl`/`fallosSanLabs` memoizados (el memo de `items` recomputaba cada render por arrays frescos en deps) y dedupe: los chips "sin verificar" (canal y bajante) viven UNA vez fuera del memo — `canalSinVerificarHay`/`bajSinVerificarHay` derivan de ellos (antes 2 copias del predicado).
+- **M-3** (`keys.renombrarIdEnClave`): reescrito — el id es TODO entre familia y plan (≥3 segs → último = plan, medio unido; 2 segs → sin plan). El `indexOf`-por-segmento antiguo no renombraba ids con `_` (MAF1_af). CUIDADO: el sufijo NO es siempre numérico (`san_RS3_planA` legacy de los tests) — la 1ª versión del fix exigía `/^\d+$/` y rompió `renumberKeepsFixtures` (2 rojos, detectados por vitest).
+- **M-4** (`PdfViewer.onDeleteHandler`): early-return con `ids.length === 0` tras abrir la ventana anti-alerta — un clic del borrador en vacío ya no emite `aparatos-clear` ni re-sincroniza (el fan-out abortaba hidrataciones de rejillas en vuelo).
+- Tests +2 asserts en `keys.test.ts` (id con `_`, legado sin plan).
+
+### Pendiente de la auditoría (decisión del autor, NO arreglados)
+- **F-5** bom/ep siempre en el PDF de planos (`infTab.tsx`): ¿sembrar `netsExcluidasPdf` con `EQUIPOS_NETS` o es correcto que no se ofrezcan como toggle?
+- **M-5** montantes presión: `pushBajanteDiameterToRamales` empuja también aguas arriba (contra la doctrina direccional del mismo diff) y `esMontePresion` omite `rci`.
+- **M-6** `aparatosPresion` clúster multi-entrante: `contGlobal` vs fallback por carga pueden divergir.
+- **M-8** `closeValidation`: espejos `salidasConDuenio`/`conLibroHerencia` sin plan en la clave (contaminación entrepisos posible; matizado por `engineCoveredLabels` intencional).
+
+### Gates
+tsc 0 · lint 0 errores 0 warnings · vitest **1068/1068** (172 archivos) · build ✓ 5.5s · graphify ✓.
+
+## Session Summary — 2026-10-14 (ponytail #13: 3 hallazgos, neto −42L)
+- **shrink tween 3D**: `animateTo` triplicado (aparatos3d/cameraViews, epc3d/viewsEpc, rci3d/viewsRci — 0 consumidores externos) → `animarCamaraHacia` en `shared/controls3d.ts` (api estructural `{camP, controls, cancelAnim, framesPendientes?}`). El FORK DELIBERADO de viewsRci se respeta: solo el tween (15L idénticas) se compartió; encuadres/vistas siguen forkeados. Persp se activa en cada call site antes de llamar (epc incondicional, aparatos/rci con guard `orthoOn` — semántica exacta preservada).
+- **shrink BajanteRaw**: 6 definiciones (2 exportadas idénticas + 4 privadas) → 1 canónica en `drawingSyncTypes.ts` junto a `RawElement`, ahora con `desplazamientos?` (campo real de buildBajanteGraph). sanConnectivity/waterRowsShared re-exportan (cadenas waterNetworkRows/sanitaryRows/waterRowsCore/waterRowsAcometida intactas).
+- **delete gasKey + GasKey** (keys.ts): 0 consumidores (solo mención textual). La fila del glosario documentaba el formato EQUIVOCADO (`gas_RS1_2` es formato de conteos; la clave de red gas interna es `plan:id`) — corregida a `plantilla plan:id` / `2:RS1`.
+- **Falso positivo evitado**: `docx` en package.json parecía muerto (0 imports estáticos) pero vive vía `import('docx')` dinámico en `memoriaDocx.ts`.
+- Gates: tsc 0 · lint 0 · vitest 1068/1068 (172) · build ✓ 7.8s · graphify ✓. Neto −42L (61+/103−).
+
+## Session Summary — 2026-10-14 (convergencia: hermana lateral de la T ya no sube)
+- **Reporte usuario (imagen RAF1/RAF2/RAF3/MAF1)**: subir RAF1 cambiaba también RAF2 — la regla "origen en mi destino = downstream" no distinguía la continuación colineal (RAF3) de la hermana lateral nacida en la misma unión (RAF2 perpendicular bajando de la T).
+- **Regla general** (`convergirDiametroNodoPresion`, drawingFlow.ts): candidatos con origen en mi destino de flujo — con UNO solo converge (salida inequívoca, aunque doble en ángulo: ronda 9 intacta); con VARIOS solo sube la continuación de mi LÍNEA (colinealidad llegada/salida ≥0.9, mismo umbral ~25° de `esContinuacion` en aparatosPresion, o `mergesFrom` me lista como anfitrión). Nacido estricto de MI cuerpo sigue subiendo siempre (T alimentada por mí). Nunca baja (sin cambios).
+- **Generalizado**: todos los caminos pasan por esta función — canvas/panel vía `updateElementById`/`updateSelected` (PlanoEngineSelectionEdit:101/317) y tablas vía `writeDiametroToDrawing` (diametros.ts:201); el montante conectado ve el valor convergido por `bumpConnectedBajantes` que corre después en ambos.
+- Tests +2 en `nodoPresionDiametro.test.ts` (imagen usuario: RAF1↑ → RAF3↑/RAF2 intacta; downstream autocreado con mergesFrom converge aunque doble 90°). Suite 8/8 en el archivo, 1070/1070 total.
+- Gates: tsc 0 · lint 0 · vitest 1070/1070 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (fix: "redes ok pero no deja descargar")
+- **Causa**: el gate `allOk` (useInfTables) evaluaba los términos de lluvias (`fallosLl/fallosBajLl/fallosCanalLl/canalSinVerificarHay/bajSinVerificarHay`) SIN gate de `hasLl`. `bajantesLl/canalesLl` vienen del espejo del RainwaterContext que persiste en localStorage aunque el proyecto no tenga la red activa → dato stale ponía el gate en rojo con todas las filas visibles en verde (proyecto sin ll: filas SAN ✓/AF ✓/EP ◌, badge "✗ Revisar", botones `disabled={!allOk}`).
+- **Fix**: los 5 términos ll bajo `(!hasLl || …)` — el gate ahora juzga exactamente lo que las filas muestran (una red inactiva no puede bloquear). Comentario en el código con la causa.
+- Nota relacionada: con ll ACTIVA y espejo stale de otro proyecto, la fila AGUAS LLUVIAS sí muestra los chips — visible, aceptable.
+- Gates: tsc 0 · lint 0 · vitest 1070/1070 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (pantalla de carga GLOBAL al entrar al proyecto)
+- **Reporte usuario**: al ingresar al proyecto las tablas de diseño a veces nacen vacías y se llenan después — la cadena es asíncrona (PlansContext restaura → `prefetchAllTrazos` re-escribe blobs de sync → eventos → TramosContext recarga con debounce 100ms) y el workarea NO tenía pantalla de carga (solo el visor).
+- **`TramosContext.recargar(): Promise<void>`** (nuevo): los `load()` de los 2 efectos extraídos a `cargarSanLl`/`cargarAfAc` (useCallback estables); efectos reusan (debounce por eventos intacto). El dispatch de useReducer es sincrónico — la promesa simplifica al gate.
+- **`hooks/useProyectoCargado.ts`** (nuevo): gate de espera `restoreDone && cloudRestoreDone` → `prefetchAllTrazos(plans)` → `recargar()` → `listo`. Fallback de 10 s — la entrada NUNCA queda bloqueada. Consumen la página del workarea y ViewerPage.
+- **`components/shared/CargandoProyecto.tsx`** (nuevo): pantalla única `role="status"` + `.sp` + texto ("Cargando proyecto…" / "Abriendo proyecto…" / "Cargando planos y redes…"). Reemplaza CARGANDO_STYLE duplicado en ambas páginas.
+- **WorkAreaCivilFlowPage**: `if (!cargaLista) return <CargandoProyecto />` antes de montar el workspace — las tablas nacen con datos. El switch de proyecto conserva su flujo (el `window.location.replace` re-nace la página y el gate pasa rápido con cachés).
+- **ViewerPage**: overlay grande ahora renderiza `<CargandoProyecto>` y su condición es `!listo || pdfPendiente` (datos globales + render del PDF). Copia redundante del overlay eliminada; fallback 10 s del PDF intacto; `prefetchAllTrazos` propio se conserva (re-prefetch cuando cambian los plans a mitad de sesión).
+- **No tocado**: spinner de `PdfCanvas` (PDF binario), overlay de isometría (rasteriza planos).
+- Gates: tsc 0 · lint 0 · vitest 1070/1070 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (nudo/nudos → nodo/nodos en todo src)
+- **Archivo renombrado**: `lib/PlanoEngine/nudos.ts` → `nodos.ts` (git mv, WIP sin commitear conservado) + 9 imports actualizados (PlanoEngine, drawingFlow, finishRamal, junctionAutoSplit, reEnraizar, PdfViewer, PdfViewerEngineInit, FixturesPanel, ramalMenu, ramalMenuHelpers).
+- **Textos**: GasDesign ("docx flujo de nodos"), JSDoc de PlanoEngine ("Chequeo global de nodos"), glosario (`'Nudo / nodo de unión'` → `'Nodo de unión'`).
+- **Intencionalmente intacto**: "número **desnudo**" en diamPulgFromLabel.ts:68 (otra palabra). AGENTS.md histórico no se reescribe.
+- Gates: tsc 0 · lint 0 · vitest 1070/1070 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (M-5b: push del montante solo aguas abajo)
+- **Reporte usuario confirmado**: editar el montante a mano empujaba el diámetro a TODOS los ramales conectados — incluidos los de `recibeDeIds` (llegan al montante = aguas arriba). Inconsistente con la doctrina "aguas arriba jamás" de `convergirDiametroNodoPresion`.
+- **Fix** (`pushBajanteDiameterToRamales`, PlanoEngineSelectionEdit.ts): en montantes af/ac/gas el push SOLO arrastra `alimentaIds` (nacen en el montante); `recibeDeIds` conservan su diámetro. **Guard sin cambio** (bidireccional): el montante sigue sin poder quedar por debajo de NINGÚN conectado (alerta). **san/ll sin cambio** (arrastre bidireccional = doctrina sanitaria). La cadena sigue: cada ramal empujado propaga aguas abajo (`recomputeDownstreamDiameters`).
+- Test +1 (`montanteDiametro.test.ts`): montante recibeDeIds:[RAF1] + alimentaIds:[RAF3]; subir a 3" → RAF3 sube, RAF1 queda. 5/5 en el archivo.
+- Pendiente M-5(a): `esMontePresion` omite `rci` (teórico: sin montantes rci en UI).
+- Gates: tsc 0 · lint 0 · vitest 1071/1071 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (chequeos frescos en Informes + gate de equipos)
+- **Reporte usuario**: para ver el chequeo en Informes tocaba entrar a Diseño de redes primero — `velCumple`/`presionOk` se escriben en los tramos SOLO desde el efecto de WaterNetworkDesign cuando la página está abierta (en memoria, no persistido).
+- **Persistido + velocidad en frío (opción elegida — la extracción de la cadena de acometida quedó descartada: archivo no-tocar)**:
+  - `WaterNetworkDesign` persiste sus chequeos a `CHEQUEOS_PRESION_KEY` (`chequeos_presion_v1`): `{af: {keyTramo: {velCumple, presionOk, qLps}}, ac: {...}}` — mismo efecto de persistencia, ahora también al store.
+  - `useInfTables`: `presionOk` se hidrata del store; **`velCumple` se RECALCULA en frío** con `computeDesignRow` usando `qLps` persistido (flujo — independiente del diámetro) + diámetro ACTUAL del tramo (opts de `DIAMETROS_AF/AC` + `lookupInterno/AC`, mismos que usa la página). Sin dato (vel o pres) → chip `id-piso (sin verificar)` + fila ✗ Revisar + allOk false.
+  - **Invalidación honesta**: `writeDiametroToDrawing` borra el mapa de la red (af o ac) del store al cambiar un diámetro — la convergencia arrastra vecinos, y sin re-visitar Diseño no hay presionOk honesto.
+- **Equipos**: `bombaAlertas()` nuevo (hoy: presencia de memoria calculada — las tablas Bomba AR son volcado sin filas cumple/no cumple; null no bloquea). `epAlertas` ampliada con los marcadores ✗ de la tabla (desnivel, pérdidas críticas, pmin, pred en modo red). allOk suma `(!hasBom || …)`; el resumen gana fila **BOMBA AR** (✓/✗/◌ + chips) y `hasCheckedNet` incluye `hasBom`.
+- **Memo estabilidad**: `tramosAfJ/AcJ`, `cheqAf/Ac` memoizados (identidades estables → el memo de `items` vive); el store de chequeos se lee plano por render (lectura barata, siempre fresco).
+- Gates: tsc 0 · lint 0 · vitest 1071/1071 (172) · build ✓ · graphify ✓.
+- Verificación manual: Informes sin pasar por Diseño → AF/AC con chequeo real (tras una visita histórica a Diseño); cambiar diámetro AF desde la tabla → fila "sin verificar" hasta re-visitar.
+
+## Session Summary — 2026-10-14 (M-6: fallback del clúster mixto → línea principal)
+- **Fix** (`aparatosPresion.ts`, propagador de aparatos af/ac): entrante SIN continuación propia → si `contGlobal` no está vacío (otros entrantes del clúster sí tienen continuación), su carga sale por la línea principal (`conts = [...contGlobal]`) — la lateral jamás recibe del entrante (doctrina 3a que el fallback clásico contradecía). Fallback a TODAS las salidas solo cuando NADIE tiene continuación (caso clásico, tests existentes intactos). El filtro de aristas base (`!contGlobal.has(s2)`) queda como estaba — ya no choca con la vía de carga.
+- **Lección de test**: mi primer escenario tenía RAF2 llegando al norte y la lateral "saliendo al sur" — MISMA dirección (0,1) → colineales → RAF4 ERA continuación legítima de RAF2 y el propagador hizo lo correcto (debug con scratch que imprime el disk lo destapó). Lateral real = 45° (dot≈0.71 < 0.9 con ambos entrantes).
+- Test +1 (`propagarAparatosPresion.test.ts`): clúster RAF1(oeste→T, inodoro) + RAF2(sur→T, lavamanos) + RAF3(T→este colineal) + RAF4(T→45°) → RAF3 hereda inodoro+lavamanos; RAF4 nada. 21/21 en el archivo.
+- Gates: tsc 0 · lint 0 · vitest 1072/1072 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 2: velocidad/caudal 100% frescos en Informes, sin Diseño)
+- **Reporte usuario**: el persistido no bastaba — entraba a Informes y los chequeos no estaban hasta visitar Diseño (el store solo tiene data DESPUÉS de una visita; y los aparatos cambian desde el panel sin pasar por la página → qLps persistido stale).
+- **Fix**: `useInfTables` ahora monta `useWaterNetworkGraph` para af Y ac (el hook de conectividad de la página de diseño, reutilizable tal cual) y **calcula su propio qLps** con `hunterQ(componentTotalMap, nSalidas)` — el tramo tr2 (isAC2) usa el Qaco de la red (hunterQ sobre su total, igual que la página). `computeDesignRow` re-juzga la velocidad con ese caudal fresco + diámetro actual del tramo. El store `chequeos_presion_v1` queda SOLO para `presionOk` (cadena de acometida — vive en la página) y como red de seguridad del caudal.
+- Resultado: Informes SIN visitar Diseño → velocidad ✓ fresca siempre; presión = último chequeo persistido (tras UNA visita histórica a Diseño) o chip "(sin verificar)" si jamás se visitó.
+- Gates: tsc 0 · lint 0 · vitest 1072/1072 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 3: EL fix real — gate sanitaria/lluvias por filas frescas)
+- **La captura lo destapó**: el proyecto del usuario es SOLO SANITARIA — todo el trabajo AF/AC anterior no tocaba su dolor. `conDatosSan = tramosSan.filter(t => t.v_real > 0)` leía el flag `v_real` que escribe **SanitaryDesign** (igual que RainwaterDesign para ll) solo con la página abierta → "◌ Sin calcular" + gate en Revisar hasta visitar Diseño.
+- **Fix**: el gate san/ll se rebasea a las FILAS que Informes YA calcula fresco — `sanRowsCalc`/`llRowsCalc` (computeSanRows/computeLlRows ya traen el checkpoint hidráulico completo: Vreal, Yn, qqo, chequeos). `conDatosSan/Ll` = filas con `Vreal > 0`; el rango (v/Yn/D, q/Q0) se juzga con `filaEnRangoSanLl` sobre la fila (Yn/DintMm sustituye al flag yD). Las filas ya excluyen tributarios y bajantes. `enRangoSanLl` por-flags ELIMINADO — useInfTables ya no lee `v_real` en ninguna parte.
+- Cadena resultante: entrar al proyecto (gate global: prefetch+recargar) → tramos llenos → filas hidráulicas frescas → resumen y gate correctos SIN visitar Diseño de redes. Cero dependencia de páginas para san/ll/velocidad AF/AC; solo `presionOk` (acometida) sigue persistido de la página.
+- Gates: tsc 0 · lint 0 · vitest 1072/1072 (172) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (Oleada 1 completa + Oleada 2 + FixturesPanel movimientos 1-2)
+Des-monolitización por oleadas (plan consolidado aprobado). Un movimiento → gates completos → siguiente.
+
+### Oleada 1 — 6/6 ✓
+1. **FixturesPanel → drawingSyncGc + fixturesStorage**: `podarGasAccPorPlanos(planos)` (poda de accesorios gas por planos confirmados; devuelve `{idsVivos, porDisco}` — el updater en memoria del panel queda verbatim) + helpers puros `hidroDeClave/totalDeUnidades/ownTotalDe` en fixturesStorage (memos curHidro/total/ownTotal).
+2. **deleteSelected → deleteHelpers.ts**: `reassignTributariosToHermano` + `renumberCanales` verbatim.
+3. **junctionAutoSplit → junctionDetectors.ts**: `canJoinTributario` + `detectYeeSimpleNear` + `detectTributaryPadre` + re-export en el hub.
+4. **renderRamales → teeUtils.ts**: `pickTeeBranchDir` (re-export para su test).
+5. **SanitaryDesign → sanDiamChange.ts**: `aplicarCambioDiametroSan(tramoId, newPulg, ctx)` (ctx de 4: tramosSan/fullChildrenMap/plans/updTramoSan) + **3 pines nuevos con escritura real** (BFS arrastra SOLO al downstream RS0; hijo mayor bloquea bajada; inodoro no baja de 4"). Lección: mi primer fixture tenía el BFS al revés (RS1 no tiene downstream) — el test lo destapó.
+6. **PlanoEngine → PlanoState**: TramoType/Point/ElementItem/callback types movidos + re-export (la clase intacta).
+
+### Oleada 2 — veredictos (regla: corte solo firma ≤4 params)
+- **CUT**: `deleteRemergeInternals.ts` (healMergedVertices/mergeCollinearPairs/distToPolylineBody, ~200L).
+- **NO-VALE (documentados)**: handleDragUp (cortes limpios ~60L; dragFlowCheck/tryRotate ≥5 params), mouseDownHits (ya es hoja; exports = costuras), lineTool (handlers = API), deleteYeePreserve (corte ~95L trocea la unidad yee-doble), drawingAngles (geometría pura cohesiva), useWorkAreaState (47 hooks entrelazados), EPVerificationPage/RainwaterDesign (page-state sin salida ≤4), WaterNetworkDesign (única costura = cadena acometida, no-tocar), ramalMenu/index (JSX monolito — prerrequisito harness UI, fuera de alcance).
+
+### Rediseño FixturesPanel — 2/5 movimientos ✓
+1. ✓ **useFixtureAccMutations** (`fixtures/useFixtureAccMutations.ts`): incAcc/decAcc/incAccGas/decAccGas disk-first; lógica pura extraída a `mutarHidroAcc/mutarGasAcc` (pinnable sin harness). +3 pines con stores reales (−1 a cero borra la clave gas; claves vecinas sobreviven).
+2. ✓ **LlAssociationsPanel** (`fixtures/LlAssociationsPanel.tsx`): bloque temprano-return ll de AparatosPanel verbatim (canales/ramales/bajantes + vetos de sello + Q lluvias); targetLbl derivado localmente (bajanteLabel/ramalLabel). Pin = cobertura motor-real existente (canalAutoAsociacion.test.ts cubre vetar/levantar/canalId).
+3. **PENDIENTE** `useFixtureMutations` (FixtureMutationCtx ~20 campos): `inc` son 238L con closures sobre storageKey/target/esEspejoBajante/rejillasArea/mergeKeys/netId/counts/currentMap/engineRef... — pines ANTES de mover: asignar/quitar con motor real verificando glifo+clave+libro+evento+orden updateElementById→render→_markDirty→evento. NO se forzó: el contexto de la sesión llegó al límite y mover sin pines viola la regla del plan.
+4. **PENDIENTE** `useFixtureMirrors` (effects espejo; pin de idempotencia: doble corrida = mismo disco).
+5. **PENDIENTE** `useFixtureTarget` (currentMap por rama: asociado/bomba/salida/LD/af-ac/gas).
+
+### Duplicación resuelta
+`components/fixtures/usePruneGasAcc.ts` (hook sin consumidores, rutas rotas) fue BORRADO — la poda de gasAcc vive solo en `podarGasAccPorPlanos` (drawingSyncGc), cableada en FixturesPanel.
+
+### Gates finales
+tsc 0 · lint 0 · vitest **1078/1078** (174 archivos) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (auditoría del trabajo fresco: 2+1 hallazgos arreglados in situ)
+Auditoría hostil sobre los cambios del día (motor/utils + auto-revisión de los 3 puntos delicados). 0 críticos.
+
+- **IMPORTANTE (auto) — `filaEnRangoSanLl` usaba `r.Yn`** donde la página calcula `yD = max(Yc, Yn)/D`: en flujo supercrítico (Yc>Yn) el chequeo rebasado a filas era MÁS LAXO que el de la página. Fix: `Math.max(r.Yc, r.Yn)`.
+- **IMPORTANTE — `convergirDiametroNodoPresion` (gap oIn=0)**: el conteo de candidatos `enDestino` filtraba `oIn>0` ANTES de contar — "continuación colineal SIN diámetro + lateral diametrada" veía un único elegible → modo estricto desactivado → la LATERAL subía sin chequeo de continuación (dependía del estado transitorio del tercer tramo). Fix: conteo TOPOlÓGICO (`oIn0 >= newIn` excluye; oIn=0 cuenta). +1 pin exacto de ese caso (la lateral conserva 1/2"; el vecino sin diámetro no recibe push — oIn<=0 salta).
+- **IMPORTANTE — `epAlertas`: `hfOk = Hf >= 0` era siempre true** (dec()→0 ante vacío): el check "pérdidas críticas sin dato" (mío, de la ampliación) era código muerto, con mensaje equivocado encima. Fix: `hfOk = max(hfac, hfacs) > 0` — "con dato" = al menos una pérdida crítica > 0; la tabla hereda el marcador ✗ real.
+- **MENOR×2 arreglados**: `sanDiamChange` BFS `findTramo` con fallback `${id}-${piso}` divergente → alineado a `${id}-${planId}`; docstring duplicado en junctionDetectors + comentarios huérfanos de cola en deleteRemerge limpiados.
+- **Falsa alarma descartada**: `civilflow_memoria_bomba_data` — prefijo consistente en escritor (BombaARDesign) y lectores (equipmentRows) → misma clave física.
+- Verificado limpio por el explorador: los 6 movimientos/rename sin referencias rotas ni duplicados; fallback contGlobal no introduce ciclos (solo quita aristas); pushBajanteDiameterToRamales sin callers que asumieran bidireccionalidad.
+- Gates: tsc 0 · lint 0 · vitest **1079/1079** (174) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ponytail #14: 1 hallazgo, árbol magro)
+- **delete**: `fixtures/fixtureTotals.ts` (48L, huérfano de la sesión paralela — duplicaba hidroDeClave/totalDeUnidades/ownTotalDe de fixturesStorage). Salvado `esPropioDe` a fixturesStorage y cableado al `esPropio` inline del panel (misma lógica, dedup real).
+- Escaneos sin hallazgos: 0 huérfanos restantes (los 3 "index.ts" son barrels con consumidores), 0 exports muertos en los 13 símbolos nuevos de hoy, 0 console.log, 0 restos de mojibake nudos.
+- Gates: tsc 0 · lint 0 · vitest 1079/1079 (174) · build ✓ · graphify ✓.
+
+### FixturesPanel movimiento 3 ✓ (misma sesión, pines PRIMERO cumplido)
+- **`fixtures/useFixtureMutations.ts`**: `FixtureMutationCtx` (15 campos, objeto — no 20 params sueltos) + `mutarInc/mutarDec` como funciones de MÓDULO (verbatim de inc/dec) + `useFixtureMutations(ctx)` adaptador.
+- **Pines ANTES de rewirear** (`useFixtureMutations.test.ts`, 6 con motor-spy + storage real): orden update→render→dirty→evento con spies; espejo guard total; mergeKeys gas alerta; dec heredada (counts de estado ≠ disco) alerta y sin tocar glifo; dec propio a cero limpia aparatoFin+fixtures+clave; límite 1 aparato. **Hallazgo de los pines**: en SAN el panel NO escribe `aparatoFin` — escribe diámetro central (inodoro→4") + accesorio codo sube; `aparatoFin` es de af/ac/gas (los primeros 3 asserts míos asumían lo contrario y el motor real los corrigió).
+- **Rewire**: panel destruye `{inc, dec}` con el ctx; FixturesPanel 2215→1500L acumulado. Imports movidos limpiados (DIAM_BY_MAT/FUENTE_TIPOS/matchDiamOption/diamPulgFromLabel/sanDiamAllowedForApparatus/bumpHidroAccesorio/extremoEntrelazado/flowEndsAt/flowTailEnd ya solo en el módulo nuevo).
+- Gates: tsc 0 · lint 0 · vitest 1085/1085 (175) · build ✓.
+
+### Movimientos 4-5 — MAPA de extracción (pendientes, siguiente pasada)
+- **Mov 4 `useFixtureMirrors`**: 3 effects — sanado sifones (FixturesPanel ~163-201), propagación debounced (~416-439), espejos/libros cross-floor (~875-1135, deps exactos: counts, hidroData, storageKey, targetId, target?.tipo, planId, plans, netId, agregadoBajante, exitsDeBajante, engineRef, loadingPlanRef, planLoadedTick). Extraer cuerpo del grande a `correrEspejos(args)` exportada; PIN: doble corrida = mismo disco (claves+libros) con motor real (bajante alimentaIds + trazos ucAplicado). Imports del cuerpo: mapUdBombaDesdeTrazos, InheritPool*, agregadoBajante, splitPtr, syncMirrorKey, aggParaEspejoSalida, libroHeredado, propagarHerenciaBomba, ldesvioIdFor, collectSourceAgg, loadFromStorage/TRAZOS_PREFIX/saveToStorage/saveTrazosToDB, loadAll/saveAll/loadHidroData/saveHidroData, emit*.
+- **Mov 5 `useFixtureTarget`**: `currentMap` (~733-790, ramas asociado/bomba/salida/LD/af-ac/gas) como hook ctx-objeto; pines por rama (asociado→aggBajanteAsociado, LD espeja grupo, af-ac counts directos, sin target {}).
+
+### FixturesPanel movimientos 4-5 ✓ (misma sesión — cierre del rediseño)
+- **Mov 4 `useFixtureMirrors`** (`fixtures/useFixtureMirrors.ts`): los 3 effects de espejo/herencia verbatim → `correrSanadoSifones` / `correrPropagacion` (devuelve cleanup — el effect original lo registraba en React) / `correrEspejos`, + `useFixtureMirrors(args)` con los MISMOS deps explícitos. `EspejosArgs` (14 campos-objeto): las closures `agregadoBajante`/`exitsDeBajante` del panel viajan en args. **Pin de idempotencia**: doble `correrEspejos` = mismo disco bit a bit + sanado de sifones idempotente. Cuerpos extraídos desde `git show HEAD:` (los effects no se tocaron hoy) tras 4 fallos de anclas de línea — lección re-aprendida: anclas por CONTENIDO único, nunca por offset fijo.
+- **Mov 5 `useFixtureTarget`** (`fixtures/useFixtureTarget.ts`): `currentMapDe(a)` verbatim (ramas: asociado cross-floor/bomba → fuente única, salida espejo → agregado del dueño, LDesvio → espeja grupo vía origenId, af/ac clave ya propagada, gas unión suma patas) + `useFixtureTarget` con los mismos deps del useMemo.
+- **FixturesPanel: 2215 → 1069L** (−52%). Movimientos 1-5 completos. Contexto del panel: handlers de conteos/acc (mov 1+3), panel LL (mov 2), espejos/herencia (mov 4), mapa visible (mov 5) — todo en `components/fixtures/`.
+- **Lección de reubicación**: el hook único de espejos se insertó DENTRO del useCallback de agregadoBajante (el ancla `  );` matcheó un cierre anidado) — lint rules-of-hooks lo cazó; reubicado tras el cierre real de agregadoBajante (input más tardío que usa).
+- Gates: tsc 0 · lint 0 · vitest **1091/1091** (177) · build ✓ · graphify ✓.
