@@ -16,6 +16,7 @@ import {
   GAS_ACC_KEY,
 } from '../../constants/storage-keys';
 import { loadFromStorage, saveToStorage, removeFromStorage } from '../../services/storageService';
+import { emitAparatosClear, EV_STORAGE } from '../../utils/fixtureEvents';
 
 const MAX_UNDO_STACK = 50;
 
@@ -58,9 +59,9 @@ function writeCounts(counts: Record<string, string | null>): void {
       if (v === null || v === undefined) removeFromStorage(k);
       else saveToStorage(k, JSON.parse(v));
     }
-    window.dispatchEvent(new Event('storage'));
-    // Refresco directo del panel de aparatos (además del evento 'storage').
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    window.dispatchEvent(new Event(EV_STORAGE));
+    // Refresco directo del panel de aparatos (además del evento EV_STORAGE).
+    emitAparatosClear();
   } catch {
     /* ignore */
   }

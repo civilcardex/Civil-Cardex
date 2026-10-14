@@ -5,7 +5,7 @@ import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-import { cargarMallas } from '../../lib/PlanoEngine/nudos';
+import { cargarMallas } from '../../lib/PlanoEngine/nodos';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;

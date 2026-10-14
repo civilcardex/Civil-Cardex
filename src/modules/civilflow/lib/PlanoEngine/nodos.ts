@@ -20,7 +20,7 @@ export const REDES_PRESION = new Set(['af', 'ac', 'gas', 'rci']);
 
 /** Tipos de bajante que actúan como FUENTE (docx: medidor, calentador, tanque, equipo o
  *  llegada de montante — la llegada de montante a cada piso se trata como fuente). */
-const FUENTE_TIPOS = new Set(['red_publica', 'contador', 'calentador', 'montante', 'bomba']);
+export const FUENTE_TIPOS = new Set(['red_publica', 'contador', 'calentador', 'montante', 'bomba']);
 
 /** Prefijos de código de fuente (para ramales cuyo extremo lleva la sigla escrita). */
 const FUENTE_PFX = ['RP', 'CNT', 'cntAF', 'CALENT', 'BOMAN'];
@@ -162,20 +162,8 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
         msg: `${r.id}: el tramo SALE de un aparato (${aparatoOrigen}) — debe entrar a él.`,
       });
     }
-    const destinoLogico = r._tribReversed
-      ? (r.pts![0] as number[])
-      : (r.pts![r.pts!.length - 1] as number[]);
-    if (
-      fuenteEnPt(engine, net, destinoLogico, 0.5) ||
-      esFuenteCode(r._tribReversed ? String(r.ini || '') : String(r.fin || ''))
-    ) {
-      inc.push({
-        nivel: 'error',
-        tipo: 'entra-a-fuente',
-        ramalId: r.id,
-        msg: `${r.id}: el tramo ENTRA a una fuente — de donde el agua debe salir, no llegar.`,
-      });
-    }
+    // 'entra-a-fuente' retirada (orig. usuario): un montante SÍ puede recibir un trazo
+    // (la alimentación llega a él); no es incidencia.
   }
 
   // ── Ciclo no declarado: DFS sobre clusters (arista = ramal que une 2 clusters) ──
@@ -265,8 +253,8 @@ export function mallasKey(planId: string | number | null): string {
 /** Valida el trazo NUEVO de una red de presión ANTES de dejarlo dibujado (finishRamal).
  *  Devuelve el motivo de rechazo o null si pasa. Verifica SOLO:
  *  1) sale-de-aparato: el flujo arranca en un aparato (debe entrar a él);
- *  2) entra-a-fuente: termina en contador/fuente (de ahí sale el fluido);
- *  3) ciclo: cierra un lazo y la red no tiene malla declarada.
+ *  2) ciclo: cierra un lazo y la red no tiene malla declarada.
+ *  (entra-a-fuente retirada: un montante/fuente SÍ puede recibir un trazo.)
  *  El ramal DEBE estar ya agregado a engine.ramales (el caller lo retira si hay motivo). */
 export function validarTrazoPresion(engine: IPlanoEngineCore, ram: PlanoRamal): string | null {
   if (!REDES_PRESION.has(ram.net || '')) return null;
@@ -276,13 +264,7 @@ export function validarTrazoPresion(engine: IPlanoEngineCore, ram: PlanoRamal): 
   if (aparatoOrigen) {
     return `${ram.id}: el tramo SALE de un aparato (${aparatoOrigen}) — debe entrar a él.`;
   }
-  const destinoLogico = ram._tribReversed ? String(ram.ini || '') : String(ram.fin || '');
-  const ptDestino = ram._tribReversed
-    ? (ram.pts![0] as number[])
-    : (ram.pts![ram.pts!.length - 1] as number[]);
-  if (esFuenteCode(destinoLogico) || fuenteEnPt(engine, ram.net || '', ptDestino, 1)) {
-    return `${ram.id}: el tramo ENTRA a una fuente — de ahí sale el fluido, no hacia ahí.`;
-  }
+  // 'entra-a-fuente' retirada (orig. usuario): un montante SÍ puede recibir un trazo.
 
   // 2) ciclo no declarado (DFS sobre clusters, igual que chequearRed)
   const ramales = ramalesDe(engine, ram.net || '');

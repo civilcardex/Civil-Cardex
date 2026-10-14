@@ -916,3 +916,29 @@ export interface IPlanoEngineCore {
     isTee?: boolean;
   }): void;
 }
+
+// ── Tipos de la clase PlanoEngine movidos aquí (Oleada 1.6 — la clase no se divide) ──
+export type TramoType = 'ramal' | 'tributario';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export type SelectCallback = (el: Record<string, unknown> | null) => void;
+export type StatusCallback = (msg: string) => void;
+export type UpdateCallback = (data: unknown) => void;
+export type DirtyCallback = () => void;
+
+export interface ElementItem {
+  type: string;
+  id: string;
+  label: string;
+  totalL: number;
+  segs: number;
+  piso: string;
+  tipo: string;
+  padre?: string | null;
+  pendiente?: number;
+  diametro?: string;
+}

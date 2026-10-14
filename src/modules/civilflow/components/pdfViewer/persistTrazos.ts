@@ -8,6 +8,7 @@ import { markPlanTrazosFresh } from '../../utils/drawingSync';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { devError } from '../../../../utils/devError';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { splitCount } from '../../utils/keys';
 
 /** Guarda el trabajo del engine bajo `id` con ts fresco; a BD solo si el id es real (no 'work',
  *  el doc de trabajo sin plano). Sincronía total con el storage local. */
@@ -91,11 +92,15 @@ export function persistTrazosSnapshot(
  *  cargado (isPlanKeyFor, filtro del caller): borrar RS4 en un piso no debe vaciar las UDs del
  *  mismo id en los demás. Tampoco se borra si un ramal renumerado ocupó ese id (RS2→RS1). */
 export function claveDeBorrado(k: string, ids: string[], currentIds: Set<string>): boolean {
-  const segs = k.split('_');
-  let idInKey = segs[1] ?? '';
-  // Claves de Ldesvio (san_LD_BAN2_17): el id real es compuesto (LD_BAN2) — con segs[1]='LD'
-  // estas claves jamás se limpiaban en esta ruta (quedaban solo para la cascada del engine).
-  if (idInKey === 'LD') idInKey = `LD_${segs[2] ?? ''}`;
+  // splitCount resuelve el id compuesto (LD_BAN2) y el label de tributario (T1RS4) sin
+  // casos especiales; el fallback cubre el legado sin sufijo numérico.
+  const [, parsedId] = splitCount(k);
+  let idInKey = parsedId;
+  if (!idInKey) {
+    const segs = k.split('_');
+    idInKey = segs[1] ?? '';
+    if (idInKey === 'LD') idInKey = `LD_${segs[2] ?? ''}`;
+  }
   for (const id of ids) {
     const isExact = idInKey === id;
     const isTributaryOfDeleted = idInKey.startsWith('T') && idInKey.endsWith(id);

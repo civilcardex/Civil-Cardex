@@ -12,6 +12,8 @@ import { clearAllPDFs } from '../services/idbStorage';
 import { getActiveProyectoId, saveToStorage } from '../services/storageService';
 import { ACTIVE_PROYECTO_ID_KEY, ACTIVE_NETS_KEY, PLANS_META_KEY } from '../constants/storage-keys';
 import type { Piso, PlanMeta } from '../lib/shared/projectTypes';
+import { useProyectoCargado } from '../hooks/useProyectoCargado';
+import { CargandoProyecto } from '../components/shared/CargandoProyecto';
 
 const WorkAreaCivilFlowPage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -23,15 +25,6 @@ const WorkAreaCivilFlowPage_S1: React.CSSProperties = {
   clip: 'rect(0,0,0,0)',
   whiteSpace: 'nowrap',
   border: 0,
-};
-
-const CARGANDO_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  height: '100%',
-  color: 'var(--txt2)',
-  fontSize: 13,
 };
 
 /** Enlace legacy (id no-uuid): aviso centrado SIN workspace montado — abrir el activo
@@ -83,6 +76,9 @@ function WorkAreaCivilFlowPage() {
   const enlaceLegacy = wantsCrudo != null && wantsId == null;
   const projectCtx = useContext(ProjectContext);
   const plansCtx = useContext(PlansContext);
+  // Gate de carga global: no se monta el workspace hasta que planos + trazos + sync + tramos
+  // estén listos (las tablas de diseño nacen con datos). Con tope de 10 s — nunca bloquea.
+  const { listo: cargaLista } = useProyectoCargado();
   // Switch pendiente evaluado EN RENDER: la URL ya apunta a otro proyecto — nunca montar
   // el workspace del proyecto viejo, aunque el efecto aún no haya arrancado.
   const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
@@ -198,11 +194,10 @@ function WorkAreaCivilFlowPage() {
   }
 
   if (switchPendiente || switching) {
-    return (
-      <div role="status" style={CARGANDO_STYLE}>
-        Abriendo proyecto…
-      </div>
-    );
+    return <CargandoProyecto texto="Abriendo proyecto…" />;
+  }
+  if (!cargaLista) {
+    return <CargandoProyecto />;
   }
   return (
     <main className="h-full">

@@ -4,35 +4,33 @@ import { distToPolyline } from '../shared/geometry';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { ramalContinuesPast } from './drawingUtils';
 import { sanFeederMinMsg } from '../../utils/sanitaryDiamCompat';
+import { FUENTE_TIPOS, REDES_PRESION } from './nodos';
 
-// Validación de diámetros en nodos de redes de presión (salida ≤ entrada), sobre el estado VIVO
-// del motor. Corre en updateElementById para que CUALQUIER camino que escriba `diametro`
-// (menú contextual del canvas, editores, etc.) quede validado — no solo las tablas de diseño.
-// La entrada llega al ORIGEN de flujo del ramal y las salidas salen de su DESTINO (con
-// _tribReversed); cada salida se revisa de forma independiente contra la entrada más restrictiva.
-export function diametroCambioPermitido(
+// Redes de presión (af/ac/gas/rci): SIN bloqueo salida/entrada (orig. usuario: regla y
+// alerta retiradas). Los trazos conectados suben automáticamente al MAYOR diámetro SOLO en
+// el sentido del flujo (el mismo sentido en que se propagan los aparatos, orig. usuario):
+// sube el vecino cuyo ORIGEN de flujo recibe mi DESTINO de flujo (continuación extremo-
+// extremo o T que nace de mi cuerpo). Aguas arriba y ramas hermanas jamás. Nunca baja: el
+// tramo editado conserva el valor del usuario (espejo de sanitaria). @returns true si subió
+// algún vecino.
+export function convergirDiametroNodoPresion(
   ramales: Array<{
     id: string;
     net?: string;
     pts?: number[][];
-    _tribReversed?: boolean;
     diametro?: string;
+    _tribReversed?: boolean;
+    mergesFrom?: string[];
   }>,
   ramalId: string,
-  newLabel: string,
-): { ok: boolean; msg?: string } {
+): boolean {
   const r = ramales.find((x) => x.id === ramalId);
-  if (!r || !r.pts || r.pts.length < 2) return { ok: true };
-  const newIn = newLabel ? diamPulgFromLabel(newLabel) : 0;
-  if (newIn <= 0) return { ok: true };
+  if (!r || !r.pts || r.pts.length < 2) return false;
+  if (!REDES_PRESION.has(r.net || '')) return false;
+  const newIn = r.diametro ? diamPulgFromLabel(r.diametro) : 0;
+  if (newIn <= 0) return false;
   const TOL = 2.0;
-  const myOrigin = r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
-  const myDest = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
-  const touches = (pts: number[][], pt: number[]): 'endpoint' | 'body' | null => {
-    const p0 = pts[0];
-    const p1 = pts[pts.length - 1];
-    if (Math.hypot(p0[0] - pt[0], p0[1] - pt[1]) < TOL) return 'endpoint';
-    if (Math.hypot(p1[0] - pt[0], p1[1] - pt[1]) < TOL) return 'endpoint';
+  const ptEnCuerpo = (pts: number[][], pt: number[]): boolean => {
     for (let i = 0; i < pts.length - 1; i++) {
       const ax = pts[i][0],
         ay = pts[i][1],
@@ -44,51 +42,57 @@ export function diametroCambioPermitido(
       if (len2 < 1e-9) continue;
       const t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / len2;
       if (t <= 0 || t >= 1) continue;
-      if (Math.hypot(pt[0] - (ax + t * dx), pt[1] - (ay + t * dy)) < TOL) return 'body';
+      if (Math.hypot(pt[0] - (ax + t * dx), pt[1] - (ay + t * dy)) < TOL) return true;
     }
-    return null;
+    return false;
   };
-  let maxParent = 0;
-  let parentLbl = '';
-  let maxChild = 0;
-  let childLbl = '';
+  const rRev = !!r._tribReversed;
+  const myDest = rRev ? r.pts[0] : r.pts[r.pts.length - 1];
+  // Dirección de LLEGADA a mi destino (dirEnt de propagarAparatosPresion).
+  const prev = rRev ? r.pts[1] : r.pts[r.pts.length - 2];
+  const lEnt = Math.hypot(myDest[0] - prev[0], myDest[1] - prev[1]);
+  const dEnt = lEnt < 1e-9 ? null : [(myDest[0] - prev[0]) / lEnt, (myDest[1] - prev[1]) / lEnt];
+  // Candidatos con origen en MI destino: con UNO solo es la salida inequívoca del flujo y
+  // converge (continuación extremo-extremo, aunque doble en ángulo); con VARIOS la unión
+  // reparte — solo la continuación de mi LÍNEA sube (colinealidad llegada/salida ≥0.9,
+  // umbral ~25° de esContinuacion en aparatosPresion, o mergesFrom me lista como anfitrión).
+  // Las hermanas laterales nacidas en la misma unión (T perpendicular, imagen usuario
+  // 2026-10-14: RAF2 baja de la T) NO son continuación y conservan su diámetro — la
+  // convergencia va solo en el sentido en que se propagan los aparatos.
+  // Conteo TOPOOLÓGICO (vecinos con origen en mi destino cuyo diámetro podría subir):
+  // un vecino SIN diámetro (oIn=0) también cuenta — si se excluye, la unión "continuación
+  // sin diámetro + lateral diametrada" ve un único candidato y la lateral sube sin el
+  // chequeo de continuación (dependería del estado transitorio del tercer tramo).
+  const enDestino = ramales.filter((o) => {
+    if (o.id === ramalId || o.net !== r.net || !o.pts || o.pts.length < 2) return false;
+    const oIn0 = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
+    if (oIn0 >= newIn) return false;
+    const oo = o._tribReversed ? o.pts[o.pts.length - 1] : o.pts[0];
+    return Math.hypot(oo[0] - myDest[0], oo[1] - myDest[1]) < TOL;
+  });
+  const exigirContinuacion = enDestino.length > 1;
+  let changed = false;
   for (const o of ramales) {
     if (o.id === ramalId || o.net !== r.net || !o.pts || o.pts.length < 2) continue;
-    const oRev = !!o._tribReversed;
-    const oOrigin = oRev ? o.pts[o.pts.length - 1] : o.pts[0];
-    const oDest = oRev ? o.pts[0] : o.pts[o.pts.length - 1];
+    const oPts = o.pts;
     const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
-    if (oIn <= 0) continue;
-    // Entrada: el destino de flujo del otro cae en mi origen (o su cuerpo pasa por mi origen)
-    const feedsMe =
-      Math.hypot(oDest[0] - myOrigin[0], oDest[1] - myOrigin[1]) < TOL ||
-      touches(o.pts, myOrigin) === 'body';
-    // Salida: el origen de flujo del otro cae en mi destino o sobre mi cuerpo (unión T)
-    const iFeedIt =
-      Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL ||
-      touches(r.pts, oOrigin) === 'body';
-    if (feedsMe && oIn > maxParent) {
-      maxParent = oIn;
-      parentLbl = o.diametro || '';
+    if (oIn <= 0 || oIn >= newIn) continue;
+    const oOrigin = o._tribReversed ? oPts[oPts.length - 1] : oPts[0];
+    const enMiDestino = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
+    const naceDeMiCuerpo = ptEnCuerpo(r.pts, oOrigin);
+    if (!enMiDestino && !naceDeMiCuerpo) continue;
+    if (enMiDestino && exigirContinuacion) {
+      const ob = o._tribReversed ? oPts[oPts.length - 2] : oPts[1];
+      const lSal = Math.hypot(ob[0] - oOrigin[0], ob[1] - oOrigin[1]);
+      const dSal = lSal < 1e-9 ? null : [(ob[0] - oOrigin[0]) / lSal, (ob[1] - oOrigin[1]) / lSal];
+      const colineal = dEnt != null && dSal != null && dEnt[0] * dSal[0] + dEnt[1] * dSal[1] >= 0.9;
+      const viaMerge = (o.mergesFrom || []).includes(ramalId);
+      if (!colineal && !viaMerge) continue;
     }
-    if (iFeedIt && oIn > maxChild) {
-      maxChild = oIn;
-      childLbl = o.diametro || '';
-    }
+    o.diametro = r.diametro;
+    changed = true;
   }
-  if (maxParent > 0 && newIn > maxParent) {
-    return {
-      ok: false,
-      msg: `El diámetro de salida no puede ser mayor que el de entrada (${parentLbl}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
-    };
-  }
-  if (maxChild > 0 && newIn < maxChild) {
-    return {
-      ok: false,
-      msg: `El diámetro de entrada no puede ser menor que el de salida (${childLbl}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
-    };
-  }
-  return { ok: true };
+  return changed;
 }
 
 // Red sanitaria: el receptor no puede quedar con menor diámetro que el mayor ramal que le
@@ -254,12 +258,17 @@ export function extremoEntrelazado(
 }
 
 /** ¿El ramal (af/ac/gas) tiene un aparato en un extremo INVÁLIDO? — extremo conectado a la red
- *  (T/Y/bajante) o flujo en contra del extremo aparatado. Reutilizado por el bloqueo al
- *  asignar, el bloqueo al invertir dirección y el barrido de estados persistidos. */
+ *  (T/Y/bajante NO fuente) o flujo en contra del extremo aparatado, salvo extremo en FUENTE
+ *  (montante/red/contador/calentador/bomba: punto de suministro, orig. usuario — un trazo SÍ
+ *  puede llegar a él y alojar aparato). Reutilizado por el bloqueo al asignar, el bloqueo al
+ *  invertir dirección y el barrido de estados persistidos.
+ *  @param lvl - label de nivel (engine.nivelActual?.label): resuelve desplazamientos[lvl] de
+ *  las fuentes; sin él una fuente desplazada (anillo) no matchea y dispara falso inválido. */
 export function aparatoEnExtremoInvalido(
   ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   bajantes: Array<{
     net?: string;
+    tipo?: string;
     x: number;
     y: number;
     desplazamientos?: Record<string, { dx?: number; dy?: number }>;
@@ -272,13 +281,22 @@ export function aparatoEnExtremoInvalido(
     aparatoInicio?: string;
     aparatoFin?: string;
   },
+  lvl?: string,
 ): boolean {
   if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') return false;
   const pts = r.pts;
   if (!pts || pts.length < 2) return false;
+  const sinFuentes = (bajantes || []).filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
+  const tocaFuente = (pt: number[]): boolean =>
+    (bajantes || []).some((b) => {
+      if (!FUENTE_TIPOS.has(b.tipo || '') || b.net !== r.net) return false;
+      const d = (lvl && b.desplazamientos?.[lvl]) || {};
+      return Math.hypot((b.x ?? 0) + (d.dx || 0) - pt[0], (b.y ?? 0) + (d.dy || 0) - pt[1]) < 0.5;
+    });
   const bad = (pt: number[], app: string | undefined) =>
     Boolean(app) &&
-    (extremoEntrelazado(ramales, bajantes, r, pt) ||
+    !tocaFuente(pt) &&
+    (extremoEntrelazado(ramales, sinFuentes, r, pt) ||
       !flowEndsAt({ pts, _tribReversed: r._tribReversed }, pt, 0.5));
   return bad(pts[0], r.aparatoInicio) || bad(pts[pts.length - 1], r.aparatoFin);
 }

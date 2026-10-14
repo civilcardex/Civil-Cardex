@@ -6,6 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { NETS, type PlanoNet } from '../../lib/PlanoEngine/PlanoState';
 import { ACTIVE_NETS_KEY, NETS_CHANGED_EVENT } from '../../constants/storage-keys';
 import { loadFromStorage } from '../../services/storageService';
+import { EV_STORAGE } from '../../utils/fixtureEvents';
 
 /** Redes visibles en el visor: combina la prop de redes activas con el caché de localStorage
  *  (refrescado por eventos) y expone las pestañas finales y si la red recolectora está activa. */
@@ -30,10 +31,10 @@ export function useActiveNetsVisibility(activeNetworks: Set<string>) {
       }
     };
     window.addEventListener(NETS_CHANGED_EVENT, refresh);
-    window.addEventListener('storage', refresh);
+    window.addEventListener(EV_STORAGE, refresh);
     return () => {
       window.removeEventListener(NETS_CHANGED_EVENT, refresh);
-      window.removeEventListener('storage', refresh);
+      window.removeEventListener(EV_STORAGE, refresh);
     };
   }, []);
 

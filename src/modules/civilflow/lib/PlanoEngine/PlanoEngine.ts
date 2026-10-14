@@ -17,7 +17,7 @@ import type {
   MultiDragOrigData,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
-import { chequearRed, REDES_PRESION } from './nudos';
+import { chequearRed, REDES_PRESION } from './nodos';
 import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
 import { renderGuideLines, renderGuideGhost } from './renderers/renderGuideLines';
@@ -124,30 +124,16 @@ import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitT
 
 export { NETS };
 
-export type TramoType = 'ramal' | 'tributario';
-
-interface Point {
-  x: number;
-  y: number;
-}
-
-type SelectCallback = (el: Record<string, unknown> | null) => void;
-type StatusCallback = (msg: string) => void;
-type UpdateCallback = (data: unknown) => void;
-type DirtyCallback = () => void;
-
-export interface ElementItem {
-  type: string;
-  id: string;
-  label: string;
-  totalL: number;
-  segs: number;
-  piso: string;
-  tipo: string;
-  padre?: string | null;
-  pendiente?: number;
-  diametro?: string;
-}
+export type { TramoType, Point, ElementItem } from './PlanoState';
+import type {
+  TramoType,
+  Point,
+  ElementItem,
+  SelectCallback,
+  StatusCallback,
+  UpdateCallback,
+  DirtyCallback,
+} from './PlanoState';
 
 /**
  * Motor CAD central para el dibujo de planos de ingeniería civil.
@@ -549,7 +535,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Último hash de incidencias por red — anti-spam del modal (solo alerta si cambió). */
   private _chequeoHash: Record<string, string> = {};
 
-  /** Chequeo global de nudos (docx fase 2) para af/ac/gas/rci — corre en cada _markDirty
+  /** Chequeo global de nodos (docx fase 2) para af/ac/gas/rci — corre en cada _markDirty
    *  y alerta por modal SOLO cuando el conjunto de incidencias de una red cambió. */
   private chequearPresionGlobal(): void {
     const nets = new Set<string>();

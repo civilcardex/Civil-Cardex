@@ -2,7 +2,7 @@ import { devError } from '../../../../utils/devError';
 import { origenDe } from '../shared/geometry';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { flipRamalFlow } from './drawingFlow';
-import { entradasSalidas, extremoLejanoTipo, REDES_PRESION } from './nudos';
+import { entradasSalidas, extremoLejanoTipo, REDES_PRESION } from './nodos';
 
 /** Re-enraizamiento automático (docx fase 2, ítem 2): cuando un tramo nuevo queda
  *  ENTRANDO a una tee donde ya había alimentación, corrige los sentidos del dibujo

@@ -18,6 +18,7 @@ import { restaurarAsociacionesDesdeLocal } from '../../utils/crossFloorStorage';
 import { origenDePlan } from '../../utils/crossFloorStorage';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents';
 
 interface UseTrazosLoaderParams {
   activeNetRef: React.RefObject<string>;
@@ -118,9 +119,9 @@ export function useTrazosLoader({
             // La caché de trazos recién sobreescrita (saveToStorage no dispara eventos) puede
             // traer ramales nuevos creados en otro dispositivo — sin notificar, los tramos/UC ya
             // montados se quedan sin ellos hasta una edición manual o recarga completa.
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-            window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
+            window.dispatchEvent(new Event(EV_STORAGE));
+            emitSanSync();
+            emitHidroSync();
           } else if (localTs > dbTs && localData) {
             saveTrazosToDB(String(resolvedId), localData);
           }
@@ -185,7 +186,7 @@ export function useTrazosLoader({
               saveTrazosLocales(resolvedId, work as unknown as Record<string, unknown>);
               void saveTrazosToDB(String(resolvedId), work);
             }
-            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event(EV_STORAGE));
           } catch (e) {
             devError('[LOAD] re-base escala global:', e);
           }

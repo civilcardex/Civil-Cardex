@@ -1,4 +1,4 @@
-import { REDES_PRESION, validarTrazoPresion } from './nudos';
+import { REDES_PRESION, validarTrazoPresion } from './nodos';
 import {
   NETS,
   allocNetNumber,

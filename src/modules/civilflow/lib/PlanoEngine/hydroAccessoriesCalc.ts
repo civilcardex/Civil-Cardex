@@ -1,6 +1,7 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import type { HidroTramoEntry } from './sanAccessoriesCalc';
+import { EV_STORAGE } from '../../utils/fixtureEvents';
 
 /**
  * Cuenta los accesorios a mitad de ramal y de extremo en las redes de agua (AF, AC, LL) y
@@ -101,7 +102,7 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   if (changed) {
     saveToStorage(storageKey, hidroData);
     try {
-      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event(EV_STORAGE));
     } catch {
       /* ignorar */
     }

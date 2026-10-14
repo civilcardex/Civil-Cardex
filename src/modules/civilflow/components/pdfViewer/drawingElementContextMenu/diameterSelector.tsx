@@ -21,6 +21,8 @@ import {
   type AssocEndpoint,
 } from '../../../utils/bajanteAssociation';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import { splitPtr } from '../../../utils/keys';
+import { DIAMETROS_AF, DIAMETROS_AC } from '../../../constants/hydraulicData';
 import { validarDiametroEntrePisos } from '../../../utils/drawingWrites/diametros';
 import { avisarDiametroInvalido } from '../../../utils/diametroValidation';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
@@ -54,6 +56,24 @@ function bloquearDiametroEntrePisos(
   e.target.value = el.dNominal || '';
   refrescar();
   return true;
+}
+
+/** Opciones de diámetro: montantes af/ac ofrecen las mismas que los ramales (orig.
+ *  usuario); el resto usa las listas de bajantes por red. */
+export function opcionesDiametroElemento(el: {
+  tipo?: string;
+  net?: string;
+}): Array<{ pulg: number; nom: string }> {
+  if (el.tipo === 'montante' && (el.net === 'af' || el.net === 'ac')) {
+    return (el.net === 'af' ? DIAMETROS_AF : DIAMETROS_AC).map((d) => ({
+      pulg: d.pulg,
+      nom: d.nominal,
+    }));
+  }
+  if (el.net === 'vent') return DIAM_VENT;
+  if (el.net === 'san') return DIAM_BAN_SAN;
+  if (el.net === 'll') return DIAM_BAN_LL;
+  return DIAM_BAN;
 }
 
 /** Selectores del bajante: destino (piso inferior), diámetro con validación contra los ramales
@@ -162,7 +182,7 @@ export function BajanteDiameterSelector({
 
     if (!v) {
       if (prevOrigen) {
-        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        const [prevPlanId, prevBajId] = splitPtr(prevOrigen, '');
         if (prevPlanId && prevBajId)
           clearBajanteAssociation(
             eng,
@@ -187,7 +207,7 @@ export function BajanteDiameterSelector({
       return;
     }
 
-    const [originPlanId, originBajanteId] = v.split('|');
+    const [originPlanId, originBajanteId] = splitPtr(v, '');
     const originBaj = upperFloorGroup?.bajantes.find((b) => b.id === originBajanteId);
     if (!originBaj || originBaj.x == null || originBaj.y == null) {
       const originPlan = planosCtx.plans.find((pl) => String(pl.id) === originPlanId);
@@ -216,7 +236,7 @@ export function BajanteDiameterSelector({
 
     const commit = () => {
       if (prevOrigen) {
-        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        const [prevPlanId, prevBajId] = splitPtr(prevOrigen, '');
         if (prevPlanId && prevBajId)
           clearBajanteAssociation(
             eng,
@@ -309,7 +329,7 @@ export function BajanteDiameterSelector({
                     return;
                   }
 
-                  const [targetPlanId, targetBajanteId] = v.split('|');
+                  const [targetPlanId, targetBajanteId] = splitPtr(v, '');
                   const targetGroup = lowerFloorsRamales.find(
                     (g) => String(g.planId) === targetPlanId,
                   );
@@ -436,19 +456,26 @@ export function BajanteDiameterSelector({
                   if (isGhostClick) {
                     updateGhostField('dNominal', val);
                   } else {
-                    // Validación: el diámetro del bajante no puede ser menor que el de los
-                    // ramales conectados
-                    if (val && element.recibeDeIds?.length && engineRef.current) {
+                    // Validación: el diámetro del bajante/montante no puede ser menor que el
+                    // de los ramales conectados. El montante mira AMBOS sentidos (recibe y
+                    // alimenta — espejo de la regla de bajanteEditor af/ac).
+                    const esMonte = element.tipo === 'montante';
+                    const ramalesConectados = [
+                      ...(element.recibeDeIds || []),
+                      ...(esMonte ? element.alimentaIds || [] : []),
+                    ];
+                    const sustDiam = esMonte ? 'montante' : 'bajante';
+                    if (val && ramalesConectados.length && engineRef.current) {
                       const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
                       if (bajIn > 0) {
-                        for (const rid of element.recibeDeIds) {
+                        for (const rid of ramalesConectados) {
                           const ram = engineRef.current.ramales.find((r) => r.id === rid);
                           if (!ram || !ram.diametro) continue;
                           const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
                           if (ramIn > 0 && ramIn > bajIn) {
                             engineRef.current?.triggerAlert(
                               'Diámetro no permitido',
-                              `Diámetro del bajante no puede ser menor al del ramal conectado (${ram.diametro})`,
+                              `Diámetro del ${sustDiam} no puede ser menor al del ramal conectado (${ram.diametro})`,
                             );
                             e.target.value = element.dNominal || '';
                             // Select controlado: sin re-render, el DOM seguía mostrando el
@@ -502,15 +529,8 @@ export function BajanteDiameterSelector({
                 style={MENU_SELECT_STYLE}
               >
                 <option value="">—</option>
-                {(element.net === 'vent'
-                  ? DIAM_VENT
-                  : element.net === 'san'
-                    ? DIAM_BAN_SAN
-                    : element.net === 'll'
-                      ? DIAM_BAN_LL
-                      : DIAM_BAN
-                ).map((d) => (
-                  <option key={d.pulg} value={d.nom}>
+                {opcionesDiametroElemento(element).map((d) => (
+                  <option key={`${d.pulg}-${d.nom}`} value={d.nom}>
                     {normalizeDnLabel(d.nom)}
                   </option>
                 ))}
@@ -707,15 +727,8 @@ export function BajanteDiameterSelector({
             style={MENU_SELECT_STYLE}
           >
             <option value="">—</option>
-            {(element.net === 'vent'
-              ? DIAM_VENT
-              : element.net === 'san'
-                ? DIAM_BAN_SAN
-                : element.net === 'll'
-                  ? DIAM_BAN_LL
-                  : DIAM_BAN
-            ).map((d) => (
-              <option key={d.pulg} value={d.nom}>
+            {opcionesDiametroElemento(element).map((d) => (
+              <option key={`${d.pulg}-${d.nom}`} value={d.nom}>
                 {normalizeDnLabel(d.nom)}
               </option>
             ))}

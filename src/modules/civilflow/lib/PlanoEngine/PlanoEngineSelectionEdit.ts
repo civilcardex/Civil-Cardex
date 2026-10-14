@@ -4,7 +4,7 @@ import { getSelected } from './PlanoEngineSelection';
 import { _midpoint, bumpBajanteToMaxRamal, followBajanteToMaxRamal } from './PlanoEngineDrawing';
 import { recomputeDownstreamDiameters } from './drawingUtils';
 import {
-  diametroCambioPermitido,
+  convergirDiametroNodoPresion,
   propagarSanDiametroAguasAbajo,
   sanDiametroPermitido,
 } from './drawingFlow';
@@ -97,7 +97,16 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
     syncVentBajanteDiameters(engine, el, fields);
     // El cambio de diámetro por el panel (TramoEditor) también arrastra al bajante.
     if (fields.diametro !== undefined && (el as PlanoRamal).pts && el.id) {
-      bumpConnectedBajantes(engine, el.id, prevRamDiam, String(fields.diametro ?? ''));
+      // Presión: los vecinos de la conexión suben al mayor (sin bloqueo — orig. usuario).
+      convergirDiametroNodoPresion(engine.ramales, el.id);
+      bumpConnectedBajantes(
+        engine.ramales,
+        engine.bajantes,
+        engine.nivelActual?.label ?? '',
+        el.id,
+        prevRamDiam,
+        String(fields.diametro ?? ''),
+      );
       // Ítems 5+6: igual que updateElementById — receptor = max(alimentadores); san propaga.
       if ((el as PlanoRamal).net === 'san')
         propagarSanDiametroAguasAbajo(engine.ramales, el.id, engine.bajantes);
@@ -114,11 +123,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
   engine._markDirty();
 }
 
-// Validación de diámetros en nodos de presión (salida ≤ entrada) a nivel motor: intercepta
-// CUALQUIER escritura de `diametro` sobre un ramal af/ac/gas (menú contextual, TramoEditor,
-// editores) y bloquea con alerta la configuración inválida — sin reasignación automática.
-// Sanitaria usa la regla inversa en AMBAS direcciones (receptor ≥ alimentador y alimentador ≤
-// receptor) vía sanDiametroPermitido.
+// Validación de diámetros a nivel motor: SOLO sanitaria (receptor ≥ alimentador, ambas
+// direcciones, vía sanDiametroPermitido). Redes de presión af/ac/gas/rci SIN bloqueo
+// (orig. usuario: la regla salida/entrada y su alerta se retiraron) — la convergencia al
+// MAYOR en la conexión corre en los bloques de escritura vía convergirDiametroNodoPresion.
 
 export function guardDiametroNodo(
   engine: IPlanoEngineCore,
@@ -127,12 +135,8 @@ export function guardDiametroNodo(
 ): boolean {
   if (fields.diametro === undefined) return true;
   const ram = el as PlanoRamal;
-  if (!ram.pts || (ram.net !== 'af' && ram.net !== 'ac' && ram.net !== 'gas' && ram.net !== 'san'))
-    return true;
-  const res =
-    ram.net === 'san'
-      ? sanDiametroPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''))
-      : diametroCambioPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''));
+  if (!ram.pts || ram.net !== 'san') return true;
+  const res = sanDiametroPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''));
   if (!res.ok) {
     engine.triggerAlert('Diámetro no permitido', res.msg || '');
     return false;
@@ -146,23 +150,34 @@ export function guardDiametroNodo(
  *  (menú o panel) arrastra al bajante conectado. @param engine Motor con ramales y bajantes vivos. */
 
 export function bumpConnectedBajantes(
-  engine: IPlanoEngineCore,
+  ramales: Array<{ id: string; pts?: number[][]; diametro?: string }>,
+  bajantes: Array<{
+    tipo?: string;
+    dNominal?: string;
+    recibeDeIds?: string[];
+    alimentaIds?: string[];
+    x?: number;
+    y?: number;
+    desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+  }>,
+  lvlLabel: string,
   ramId: string,
   oldRamD: string,
   newRamD: string,
 ): void {
-  const changedRam = engine.ramales.find((r) => r.id === ramId);
+  const changedRam = ramales.find((r) => r.id === ramId);
   if (!changedRam?.pts) return;
-  const lvlLabel = engine.nivelActual?.label ?? '';
-  for (const b of engine.bajantes) {
+  for (const b of bajantes) {
     if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
-    const assocRamIds = b.recibeDeIds || [];
+    // Ambos sentidos de la asociación explícita: el bajante recibe (recibeDeIds) y el
+    // montante alimenta (alimentaIds) — el diámetro sigue al ramal conectado en ambos.
+    const assocRamIds = [...(b.recibeDeIds || []), ...(b.alimentaIds || [])];
     // ¿conectado a este ramal? (explícito por recibeDeIds o geométrico)
     let isConnected = assocRamIds.includes(ramId);
     if (!isConnected) {
       const disp = b.desplazamientos?.[lvlLabel] || {};
-      const bx = b.x + (disp.dx || 0);
-      const by = b.y + (disp.dy || 0);
+      const bx = (b.x ?? 0) + (disp.dx || 0);
+      const by = (b.y ?? 0) + (disp.dy || 0);
       const head = changedRam.pts[changedRam.pts.length - 1];
       const tail = changedRam.pts[0];
       if (
@@ -173,7 +188,7 @@ export function bumpConnectedBajantes(
     }
     if (!isConnected) continue;
     const followed = followBajanteToMaxRamal(
-      engine.ramales,
+      ramales,
       assocRamIds,
       b.dNominal || '',
       ramId,
@@ -184,12 +199,13 @@ export function bumpConnectedBajantes(
   }
 }
 
-/** Sincronía bajante↔ramal san/ll al EDITAR el dNominal del bajante/montante (orig. usuario,
- *  como las otras redes): el bajante nunca queda por debajo de sus ramales asociados
- *  (bloquea con alerta — primero debe bajarse el ramal), y al subir arrastra a los ramales
- *  con diámetro explícito menor (los vacíos no se tocan: nacen vacíos por doctrina). Los
- *  ramales empujados propagan aguas abajo como una edición propia. Escribe directo en el
- *  motor (sin snapshots); el llamador asigna el dNominal. @returns false si se bloqueó. */
+/** Sincronía bajante/montante↔ramal al EDITAR el dNominal (orig. usuario, como las otras
+ *  redes): nunca queda por debajo de sus ramales asociados (bloquea con alerta — primero
+ *  debe bajarse el ramal), y al subir arrastra a los ramales con diámetro explícito menor
+ *  (los vacíos no se tocan: nacen vacíos por doctrina). Aplica a san/ll (bajante y montante)
+ *  y a montantes af/ac/gas. Los ramales empujados propagan aguas abajo como una edición
+ *  propia. Escribe directo en el motor (sin snapshots); el llamador asigna el dNominal.
+ *  @returns false si se bloqueó. */
 
 export function pushBajanteDiameterToRamales(
   engine: IPlanoEngineCore,
@@ -197,8 +213,13 @@ export function pushBajanteDiameterToRamales(
   newDNominal: string,
 ): boolean {
   const baj = engine.bajantes.find((b) => b.id === bajId);
-  if (!baj || (baj.net !== 'san' && baj.net !== 'll')) return true;
-  if (baj.tipo !== 'bajante' && baj.tipo !== 'montante') return true;
+  if (!baj || (baj.tipo !== 'bajante' && baj.tipo !== 'montante')) return true;
+  // san/ll siempre; af/ac/gas SOLO montantes (orig. usuario: el montante nunca queda por
+  // debajo del ramal conectado — misma verificación que bajantes/ramales sanitarios).
+  const esFamiliaSan = baj.net === 'san' || baj.net === 'll';
+  const esMontePresion =
+    (baj.net === 'af' || baj.net === 'ac' || baj.net === 'gas') && baj.tipo === 'montante';
+  if (!esFamiliaSan && !esMontePresion) return true;
   const newIn = diamPulgFromLabel(newDNominal || '');
   if (!(newIn > 0)) return true;
   const ramales = [...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]
@@ -207,13 +228,24 @@ export function pushBajanteDiameterToRamales(
   const maxRam = ramales.reduce((m, r) => Math.max(m, diamPulgFromLabel(r.diametro || '')), 0);
   if (maxRam > newIn) {
     const top = ramales.find((r) => diamPulgFromLabel(r.diametro || '') === maxRam);
+    const sust = baj.tipo === 'montante' ? 'montante' : 'bajante';
     engine.triggerAlert(
       'Diámetro no permitido',
-      `El diámetro del bajante (${newDNominal}) no puede ser inferior al del ramal conectado (${top?.label || top?.id} ${top?.diametro}). Cambia primero el diámetro del ramal.`,
+      `El diámetro del ${sust} (${newDNominal}) no puede ser inferior al del ramal conectado (${top?.label || top?.id} ${top?.diametro}). Cambia primero el diámetro del ramal.`,
     );
     return false;
   }
-  for (const rr of ramales) {
+  // Doctrina "aguas arriba jamás" (misma de convergirDiametroNodoPresion): en presión el
+  // push SOLO arrastra los ramales que el montante ALIMENTA (alimentaIds — nacen en él).
+  // Los de recibeDeIds LLEGAN al montante (aguas arriba) y conservan su diámetro; el guard
+  // de arriba sí mira ambas direcciones (el montante nunca queda por debajo de NINGÚN
+  // conectado). san/ll sin cambio: el arrastre bidireccional es doctrina sanitaria.
+  const alimentados = esMontePresion
+    ? baj.alimentaIds || []
+    : [...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])];
+  for (const id of alimentados) {
+    const rr = engine.ramales.find((x) => x.id === id);
+    if (!rr || !rr.diametro) continue;
     if (diamPulgFromLabel(rr.diametro || '') < newIn) {
       rr.diametro = newDNominal;
       if (rr.net === 'san') propagarSanDiametroAguasAbajo(engine.ramales, rr.id, engine.bajantes);
@@ -291,7 +323,16 @@ export function updateElementById(
     // recalcular el floor del bajante = max de todos los ramales asociados — nunca
     // queda por debajo. Si el bajante no tenía diámetro, se le asigna este.
     if (fields.diametro !== undefined && (el as PlanoRamal).pts) {
-      bumpConnectedBajantes(engine, id, prevRamDiam, String(fields.diametro ?? ''));
+      // Presión: los vecinos de la conexión suben al mayor (sin bloqueo — orig. usuario).
+      convergirDiametroNodoPresion(engine.ramales, id);
+      bumpConnectedBajantes(
+        engine.ramales,
+        engine.bajantes,
+        engine.nivelActual?.label ?? '',
+        id,
+        prevRamDiam,
+        String(fields.diametro ?? ''),
+      );
     }
     // Al ASOCIAR ramales a un bajante/montante (recibeDeIds), su diámetro sube al mayor de
     // los asociados — nunca queda por debajo (misma regla que al crear el bajante y que el

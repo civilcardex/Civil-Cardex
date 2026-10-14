@@ -11,10 +11,12 @@ import {
   HYDRO_DATA_STORAGE_KEY,
 } from '../../constants/storage-keys';
 import { _firstSegmentAngle } from './drawingAngles';
+import { splitPtr } from '../../utils/keys';
 
 /** Entrada del storage de hidráulica: conteo de accesorios, longitud horizontal y salidas de un ramal. */
 // ponytail: misma forma que drawingSyncTypes.HidroDataEntry — una sola definición.
 import type { HidroDataEntry } from '../../utils/drawingSyncTypes';
+import { emitAparatosClear } from '../../utils/fixtureEvents';
 export type { HidroDataEntry };
 
 // La barra lateral de Aparatos (FixturesPanel.tsx/AccesoriosSection) lleva su propio conteo de
@@ -88,7 +90,7 @@ export function purgarEstadoRamalesBorrados(engine: IPlanoEngineCore, ids: Itera
     saveToStorage(APARATOS_BY_TRAMO_KEY, aparatos);
     saveToStorage(HYDRO_DATA_STORAGE_KEY, hidro);
     try {
-      window.dispatchEvent(new Event('aparatos-clear'));
+      emitAparatosClear();
     } catch {
       /* sin window (tests) */
     }
@@ -115,9 +117,7 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
   const thisPlanId = String(engine._loadedPlanId ?? '');
 
   if (deleted.descargaEnId) {
-    const [targetPlanId, targetBajanteId] = deleted.descargaEnId.includes('|')
-      ? deleted.descargaEnId.split('|')
-      : [thisPlanId, deleted.descargaEnId];
+    const [targetPlanId, targetBajanteId] = splitPtr(deleted.descargaEnId, thisPlanId);
     if (targetPlanId && targetBajanteId) {
       removeCrossFloorGhost(targetPlanId, thisPlanId, deleted.id);
       removeCrossFloorLdesvioRamal(thisPlanId, deleted.id);
@@ -171,9 +171,7 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
   }
 
   if (deleted.origenId) {
-    const [originPlanId, originBajanteId] = deleted.origenId.includes('|')
-      ? deleted.origenId.split('|')
-      : [thisPlanId, deleted.origenId];
+    const [originPlanId, originBajanteId] = splitPtr(deleted.origenId, thisPlanId);
     if (originPlanId && originBajanteId) {
       removeCrossFloorGhost(thisPlanId, originPlanId, originBajanteId);
       removeCrossFloorLdesvioRamal(originPlanId, originBajanteId);

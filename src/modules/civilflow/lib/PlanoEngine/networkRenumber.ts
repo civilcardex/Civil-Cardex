@@ -13,25 +13,9 @@ import {
   renameBajanteAcrossFloorReferences,
 } from '../../utils/associateBajanteAcrossFloors';
 
-/** Sufijo de plano de una clave `${net}_${id}_${planId}` — solo dígitos finales, o null. */
-export function keyPlanSuffixOf(key: string): string | null {
-  const i = key.lastIndexOf('_');
-  if (i <= 0) return null;
-  const tail = key.slice(i + 1);
-  return /^\d+$/.test(tail) ? tail : null;
-}
-
-/**
- * ¿Pertenece esta clave de conteos al plano dado? Las claves llevan el plano como sufijo
- * (`${net}_${id}_${planId}`). Sin este filtro, renumerar el piso cargado borraba o
- * renombraba claves de OTROS pisos (las UDs "amanecían vacías" tras trabajar en otro piso).
- * Claves sin sufijo numérico (legado) o sin plano conocido se procesan como antes.
- */
-export function isPlanKeyFor(key: string, planId: string | number | null | undefined): boolean {
-  if (planId == null) return true;
-  const sfx = keyPlanSuffixOf(key);
-  return sfx == null || sfx === String(planId);
-}
+import { keyPlanSuffixOf, isPlanKeyFor, renombrarIdEnClave } from '../../utils/keys';
+import { EV_STORAGE } from '../../utils/fixtureEvents';
+export { keyPlanSuffixOf, isPlanKeyFor };
 
 export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find((n) => n.id === netId);
@@ -104,22 +88,8 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
             // `san_RS4_<otroPlano>` ni `san_T1RS4_<otroPlano>` (los labels de tributario se
             // repiten por piso).
             if (!isPlanKeyFor(k, ownPlan)) continue;
-            const segs = k.split('_');
-            let newK: string | null = null;
-            let isTributarySuffix = false;
-            const idx = segs.indexOf(oldId);
-            if (idx >= 0) {
-              segs[idx] = newId;
-              newK = segs.join('_');
-            } else if (segs.length >= 2 && segs[1].startsWith('T') && segs[1].endsWith(oldId)) {
-              // Tributario: T{n}{oldId} -> T{n}{newId}
-              const m = segs[1].match(/^T(\d+)(.+)$/);
-              if (m && m[2] === oldId) {
-                segs[1] = `T${m[1]}${newId}`;
-                newK = segs.join('_');
-                isTributarySuffix = true;
-              }
-            }
+            const newK = renombrarIdEnClave(k, oldId, newId);
+            const isTributarySuffix = newK != null && !k.split('_').includes(oldId);
             if (newK) {
               // Si la clave destino ya existe (colisión), FUSIONAR sumando conteos
               if (
@@ -237,7 +207,7 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   for (const n of used) if (n > maxN) maxN = n;
   engine._netCounts[netId].ramal = maxN;
   try {
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(EV_STORAGE));
   } catch {
     /* ignore */
   }
@@ -460,7 +430,7 @@ export function renameRamalId(
   // migrada: las UD del ramal convertido se reseteaban (orig. usuario). Mismo patrón que
   // _renumberRamales.
   try {
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(EV_STORAGE));
   } catch {
     /* ignore */
   }

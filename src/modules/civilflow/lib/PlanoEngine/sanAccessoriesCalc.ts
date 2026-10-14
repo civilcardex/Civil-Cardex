@@ -2,6 +2,7 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { ANGLE_EPS } from './drawingAngles';
 import { assignCodoAfterBranchDelete } from './deleteJunctionCleanup';
+import { EV_STORAGE } from '../../utils/fixtureEvents';
 
 export interface HidroTramoEntry {
   accesorios: Record<string, number>;
@@ -797,7 +798,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   if (changed) {
     saveToStorage(storageKey, hidroData);
     try {
-      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event(EV_STORAGE));
     } catch {
       /* ignorar */
     }

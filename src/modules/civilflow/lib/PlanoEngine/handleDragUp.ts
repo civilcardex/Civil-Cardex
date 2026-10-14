@@ -1,6 +1,7 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
+import { splitPtr } from '../../utils/keys';
 import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles';
 import {
   autoSplitJunctionAndSumFlow,
@@ -447,7 +448,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     // desde posiciones vivas — pero sí el inicio de su Ldesvio y su anillo, que viven en el
     // piso INFERIOR (no cargado): escritura directa a storage.
     if (b && b.descargaEnId) {
-      const [targetPlanId, targetBajanteId] = b.descargaEnId.split('|');
+      const [targetPlanId, targetBajanteId] = splitPtr(b.descargaEnId, '');
       if (targetPlanId && targetBajanteId) {
         updateCrossFloorLdesvioStartPoint(targetPlanId, b.id, b.x, b.y);
         updateCrossFloorDesplazamientoAnchor(
@@ -464,7 +465,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     // Ldesvio y el anillo viven aquí (arrays vivos — el arrastre ya los siguió) y el
     // ghost-marcador del piso superior se re-ancla a las nuevas coords vía storage.
     if (b && b.origenId) {
-      const [originPlanId, originBajanteId] = b.origenId.split('|');
+      const [originPlanId, originBajanteId] = splitPtr(b.origenId, '');
       if (originPlanId && originBajanteId) {
         const ldId = ldesvioIdFor(originBajanteId);
         const ld = engine.ramales.find((r) => r.id === ldId);

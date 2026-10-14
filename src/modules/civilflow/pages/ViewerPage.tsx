@@ -35,17 +35,11 @@ import {
 } from '../constants/storage-keys';
 import { setAyudaContext } from '../../../components/help/helpContext';
 import type { Piso, PlanMeta } from '../lib/shared/projectTypes';
+import { EV_STORAGE } from '../utils/fixtureEvents';
+import { CargandoProyecto } from '../components/shared/CargandoProyecto';
+import { useProyectoCargado } from '../hooks/useProyectoCargado';
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const CARGANDO_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  height: '100%',
-  color: 'var(--txt2)',
-  fontSize: 13,
-};
 
 // Module-level store for PDF ready state (useSyncExternalStore pattern).
 // Arranca en `false` para que el overlay de carga pinte en el primer render cuando ya
@@ -187,10 +181,10 @@ export default function ViewerPage() {
         // ignorar
       }
     };
-    window.addEventListener('storage', resync);
+    window.addEventListener(EV_STORAGE, resync);
     window.addEventListener(NETS_CHANGED_EVENT, resync);
     return () => {
-      window.removeEventListener('storage', resync);
+      window.removeEventListener(EV_STORAGE, resync);
       window.removeEventListener(NETS_CHANGED_EVENT, resync);
     };
   }, []);
@@ -371,10 +365,12 @@ export default function ViewerPage() {
     setDropdownOpen(false);
   }, []);
 
+  // Datos globales: gate compartido con el workarea (planos+trazos+sync+tramos).
+  const { listo } = useProyectoCargado();
   const hasFilesReady = files.length > 0 && files.every((f) => !!f.file);
 
   // --- Loading overlay via useSyncExternalStore (avoids refs-in-render + setState-in-effect) ---
-  const isDrawingLoading = useSyncExternalStore(
+  const pdfPendiente = useSyncExternalStore(
     (cb) => {
       pdfReadyStore.listeners.add(cb);
       return () => pdfReadyStore.listeners.delete(cb);
@@ -391,6 +387,7 @@ export default function ViewerPage() {
       return false;
     },
   );
+  const isDrawingLoading = !listo || pdfPendiente;
   const handlePdfReady = useCallback(() => {
     if (!pdfReadyStore.ready) {
       pdfReadyStore.ready = true;
@@ -453,11 +450,7 @@ export default function ViewerPage() {
   }
 
   if (switchPendiente || switching) {
-    return (
-      <div role="status" style={CARGANDO_STYLE}>
-        Abriendo proyecto…
-      </div>
-    );
+    return <CargandoProyecto texto="Abriendo proyecto…" />;
   }
 
   return (
@@ -479,30 +472,7 @@ export default function ViewerPage() {
           transition: 'opacity 0.15s ease',
         }}
       >
-        <div
-          style={{
-            width: 48,
-            height: 48,
-            border: '3px solid #1e293b',
-            borderTopColor: '#00dce5',
-            borderRadius: '50%',
-            animation: 'spin 0.9s linear infinite',
-          }}
-        />
-        <div
-          style={{
-            fontFamily: 'Geist, monospace',
-            fontSize: 13,
-            color: '#e2e2e8',
-            letterSpacing: 1,
-          }}
-        >
-          Cargando planos y redes...
-        </div>
-        <div style={{ fontFamily: 'Geist, monospace', fontSize: 11, color: '#64748b' }}>
-          Preparando dibujo de redes
-        </div>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <CargandoProyecto texto="Cargando planos y redes…" />
       </div>
       <input
         ref={fileRef}
@@ -639,7 +609,10 @@ export default function ViewerPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => navigate('/civilflowareatrabajo')}
+                    onClick={() => {
+                      const pid = getActiveProyectoId();
+                      navigate(pid ? `/civilflowareatrabajo/${pid}` : '/civilflowareatrabajo');
+                    }}
                     style={ViewerPage_S6}
                   >
                     📐 Planos
@@ -680,47 +653,6 @@ export default function ViewerPage() {
             onReady={handlePdfReady}
           />
         </RainwaterProvider>
-        {isDrawingLoading && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: '#0a0e14',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-              zIndex: 9999,
-              pointerEvents: 'auto',
-            }}
-          >
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                border: '3px solid #1e293b',
-                borderTopColor: '#00dce5',
-                borderRadius: '50%',
-                animation: 'spin 0.9s linear infinite',
-              }}
-            />
-            <div
-              style={{
-                fontFamily: 'Geist, monospace',
-                fontSize: 13,
-                color: '#e2e2e8',
-                letterSpacing: 1,
-              }}
-            >
-              Cargando planos y redes...
-            </div>
-            <div style={{ fontFamily: 'Geist, monospace', fontSize: 11, color: '#64748b' }}>
-              Preparando dibujo de redes
-            </div>
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          </div>
-        )}
       </main>
     </div>
   );

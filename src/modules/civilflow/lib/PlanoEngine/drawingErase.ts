@@ -17,6 +17,9 @@ import { _midpoint } from './drawingUtils';
 
 /** Elimina el extremo del ramal más cercano al clic; los vértices intermedios no se pueden eliminar (solo con el borrador). */
 export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
+  // Ventana anti-alerta del sweep de aparatos (orig. usuario: borrar no debe alertar
+  // "Aparato no permitido" por estados transitorios). [] = solo abre la ventana, sin ids.
+  engine._emitDelete([]);
   const plane = engine.toPlane(cx, cy);
   const HIT_DIST = 10 / engine.zoom;
   let bestR: PlanoRamal | null = null,
@@ -91,6 +94,9 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
  *  lo borra o recorta un segmento de extremo de ramal. @param engine Instancia del motor.
  *  @param cx Coordenada X de canvas. @param cy Coordenada Y de canvas. */
 export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
+  // Ventana anti-alerta del sweep de aparatos: recortar/partir/borrar con el borrador genera
+  // estados transitorios que el sweep flagueaba (orig. usuario). [] = solo abre la ventana.
+  engine._emitDelete([]);
   engine.selectAt(cx, cy);
   const selId = engine.selId;
   const sel = engine.getSelected();
@@ -218,6 +224,8 @@ export function eraseRamalAt(
   cx: number,
   cy: number,
 ): void {
+  // Path del teclado (Supr sobre ramal seleccionado): mismo anti-alerta que el borrador.
+  engine._emitDelete([]);
   const plane = engine.toPlane(cx, cy);
   const HIT_DIST = 10 / engine.zoom;
 
