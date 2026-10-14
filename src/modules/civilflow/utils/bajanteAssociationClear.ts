@@ -1,4 +1,5 @@
 import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
+import { splitPtr } from './keys';
 import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync';
 import type { SyncPlanInput } from './drawingSync';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
@@ -20,6 +21,7 @@ import {
   GEO_TOL_BAJANTE,
 } from './bajanteAssocShared';
 import type { StoredBajanteDesp, InheritPoolRamal, InheritPoolBajante } from './bajanteAssocShared';
+import { emitAparatosClear, emitSanSync, EV_STORAGE } from '../utils/fixtureEvents';
 
 export function clearBajanteAssociation(
   eng: IPlanoEngineCore,
@@ -29,7 +31,7 @@ export function clearBajanteAssociation(
   oldLinkValue: string,
   plans: SyncPlanInput[],
 ): void {
-  const [targetPlanId, targetBajanteId] = oldLinkValue.split('|');
+  const [targetPlanId, targetBajanteId] = splitPtr(oldLinkValue, '');
   if (!targetPlanId || !targetBajanteId) return;
   const loadedPlanId = String(eng._loadedPlanId ?? '');
   const reverseValue = `${sourcePlanId}|${sourceBajanteId}`;
@@ -312,9 +314,9 @@ export function clearBajanteAssociation(
             ucAplicadoHidro: undefined,
           });
       }
-      window.dispatchEvent(new CustomEvent('aparatos-clear'));
-      window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-      window.dispatchEvent(new Event('storage'));
+      emitAparatosClear();
+      emitSanSync();
+      window.dispatchEvent(new Event(EV_STORAGE));
       eng._markDirty?.();
       eng.render?.();
       return;
@@ -440,9 +442,9 @@ export function clearBajanteAssociation(
     } catch {
       /* sync best-effort */
     }
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
-    window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-    window.dispatchEvent(new Event('storage'));
+    emitAparatosClear();
+    emitSanSync();
+    window.dispatchEvent(new Event(EV_STORAGE));
     eng._markDirty?.();
     eng.render?.();
   } catch {

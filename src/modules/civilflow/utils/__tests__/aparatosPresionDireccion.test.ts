@@ -258,6 +258,53 @@ describe('tributario aterrizado en vértice: plegado una sola vez, sin arista ex
   });
 });
 
+describe('imagen 2026-10-14: RAF3 acumula RAF1+RAF2; ramas solo lo propio', () => {
+  it('lateral no recibe del entrante ni de la continuación', () => {
+    saveToStorage('trazos_P1', {
+      ramales: [
+        // RAF1 horizontal entra a J=[100,0] con inodoro propio.
+        {
+          id: 'RAF1',
+          net: 'af',
+          pts: [
+            [0, 0],
+            [100, 0],
+          ],
+        },
+        // RAF3 continúa recto desde J.
+        {
+          id: 'RAF3',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [200, 0],
+          ],
+        },
+        // RAF2 lateral: nace en J hacia abajo con lavamanos propio.
+        {
+          id: 'RAF2',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [100, 80],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk0 = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+    disk0['af_RAF1_P1'] = { inodoro: 1 };
+    disk0['af_RAF2_P1'] = { lavamanos: 1 };
+    saveToStorage(AF_KEY, disk0);
+    propagarAparatosPresion('af');
+    propagarAparatosPresion('af');
+    const disk = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+    expect(disk['af_RAF1_P1']).toEqual({ inodoro: 1 });
+    expect(disk['af_RAF2_P1']).toEqual({ lavamanos: 1 });
+    expect(disk['af_RAF3_P1']).toEqual({ inodoro: 1, lavamanos: 1 });
+  });
+});
+
 describe('topología EXACTA de la imagen del usuario', () => {
   const imagen: Caso[] = [
     {

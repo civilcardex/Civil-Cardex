@@ -1,4 +1,5 @@
 import { clearBajanteAssociation } from './bajanteAssociationClear';
+import { splitPtr } from './keys';
 import { propagarAparatosPresion } from './aparatosPresion';
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
 // siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
@@ -36,6 +37,7 @@ import {
   GEO_TOL_BAJANTE,
 } from './bajanteAssocShared';
 import type { AssocEndpoint, InheritPoolRamal, InheritPoolBajante } from './bajanteAssocShared';
+import { emitAparatosClear, emitSanSync, EV_STORAGE } from '../utils/fixtureEvents';
 
 export function applyBajanteAssociation(
   eng: IPlanoEngineCore,
@@ -72,7 +74,7 @@ export function applyBajanteAssociation(
       );
     const curTgt = readBajanteLink(eng, target.planId, target.id);
     if (curTgt.origenId && curTgt.origenId !== reverseValue) {
-      const [opPlan, opId] = curTgt.origenId.split('|');
+      const [opPlan, opId] = splitPtr(curTgt.origenId, '');
       if (opPlan && opId)
         clearBajanteAssociation(
           eng,
@@ -487,8 +489,8 @@ export function applyBajanteAssociation(
       }
       if (aposDirty || hydroDirty) {
         try {
-          window.dispatchEvent(new CustomEvent('aparatos-clear'));
-          window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
+          emitAparatosClear();
+          emitSanSync();
         } catch {
           /* ignore */
         }
@@ -505,9 +507,9 @@ export function applyBajanteAssociation(
   try {
     writeSanDrawingSync(plans);
     writeHydroDrawingSync(plans);
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
-    window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-    window.dispatchEvent(new Event('storage'));
+    emitAparatosClear();
+    emitSanSync();
+    window.dispatchEvent(new Event(EV_STORAGE));
   } catch {
     /* ignore */
   }

@@ -1,4 +1,5 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { EV_STORAGE } from '../utils/fixtureEvents';
 
 // Propagación PERSISTENTE de aparatos en redes de presión (af/ac, orig. usuario): los aparatos
 // "fluyen" con el agua — cada ramal RECIBE ESCRITO en su clave de conteos lo que hereda de
@@ -26,10 +27,11 @@ interface RawRam {
   _tribReversed?: boolean;
   ini?: string;
   fin?: string;
-  /** Tributario: id del ramal padre en cuyo cuerpo desagua (su carga sube al padre).
-   *  NOTA: `mergesFrom` (genealogía del split) se ignora aquí a propósito — la unión la
-   *  deciden los clústeres geométricos + `padre`, que es lo que los tests pinnean. */
+  /** Tributario: id del ramal padre en cuyo cuerpo desagua (su carga sube al padre). */
   padre?: string | null;
+  /** Genealogía del split ([anfitrión, entrante]): SOLO se usa como pista de continuación
+   *  (el downstream autocreado continúa la línea del anfitrión aunque doble en ángulo). */
+  mergesFrom?: string[];
 }
 
 interface RawBaj {
@@ -42,6 +44,8 @@ interface RawBaj {
   ucAplicado?: Record<string, Cnt>;
   recibeDeIds?: string[];
   alimentaIds?: string[];
+  /** Ramales asociados a mano (checkbox de la tabla): no declara dirección de flujo. */
+  asocManual?: string[];
 }
 
 /** Suma dos mapas de conteos. */
@@ -115,7 +119,7 @@ function alcanzaPorCarga(adj: Map<string, Set<string>>, origen: string, destino:
  */
 function despacharStorage(): void {
   try {
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(EV_STORAGE));
   } catch {
     /* ignorar */
   }
@@ -135,7 +139,7 @@ function cabezaDe(r: RawRam): number[] | null {
 
 /**
  * Corre la propagación completa de una red de presión (af/ac) sobre todos los planos con
- * trazos en storage. Idempotente: solo escribe si algo cambió y despacha 'storage' para
+ * trazos en storage. Idempotente: solo escribe si algo cambió y despacha EV_STORAGE para
  * refrescar tablas/panel. Nunca lanza (los callers la corren en efectos/debounce).
  * @param net - red de presión a propagar ('af' o 'ac').
  */
@@ -189,10 +193,12 @@ export function propagarAparatosPresion(net: 'af' | 'ac'): void {
   // 3) Aristas por CLÚSTERES de extremos (araña de ramales, orig. usuario), SIEMPRE
   //    dentro del mismo plano. Cada punto donde terminan/tocan 2+ trazos es una unión;
   //    ENTRANTE = cabeza en el punto (alimenta), SALIDA = cola en el punto (recibe):
-  //      a) cada ENTRANTE aporta su CARGA a todas las SALIDAS;
-  //      b) cada SALIDA aporta su BASE (aparatos propios) a las demás SALIDAS, salvo que
-  //         ya le llegue su carga por esa vía (alcanzabilidad aguas arriba: sin doble conteo
-  //         ni flujo invertido);
+  //      a) cada ENTRANTE aporta su CARGA solo a sus CONTINUACIONES (salida colineal con su
+  //         llegada, o downstream autocreado con mergesFrom al entrante; sin continuación
+  //         identificable, a todas — una rama lateral jamás recibe del entrante);
+  //      b) cada SALIDA aporta su BASE solo a CONTINUACIONES (la rama lateral alimenta la
+  //         línea principal; entre laterales o hacia laterales no hay aporte), salvo que ya
+  //         le llegue su carga por esa vía (alcanzabilidad: sin doble conteo ni inversión);
   //    una pieza que es ENTRANTE en la unión jamás recibe de ella (dirección de flujo).
   //    Los TRIBUTARIOS con padre conocido no clusterizan: su carga sube por plegado (#14).
   interface Arista {
@@ -215,14 +221,43 @@ export function propagarAparatosPresion(net: 'af' | 'ac'): void {
       aristaViva.add(k);
       aristas.push({ from, to, tipo });
     };
-    const extremos: Array<{ key: string; pid: string; fin: 'cola' | 'cabeza'; p: number[] }> = [];
+    const ramalPorKey = new Map(ramales.map((r) => [r.key, r]));
+    const dirSal = (r: (typeof ramales)[number]): number[] | null => {
+      // Dirección de SALIDA en la cola: hacia el segundo vértice en sentido de flujo.
+      const pts = r.pts;
+      if (!pts || pts.length < 2) return null;
+      const a = r._tribReversed ? pts[pts.length - 1] : pts[0];
+      const b = r._tribReversed ? pts[pts.length - 2] : pts[1];
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const l = Math.hypot(dx, dy);
+      return l < 1e-9 ? null : [dx / l, dy / l];
+    };
+    const dirEnt = (r: (typeof ramales)[number]): number[] | null => {
+      // Dirección de LLEGADA en la cabeza: desde el vértice previo en sentido de flujo.
+      const pts = r.pts;
+      if (!pts || pts.length < 2) return null;
+      const a = r._tribReversed ? pts[1] : pts[pts.length - 2];
+      const b = r._tribReversed ? pts[0] : pts[pts.length - 1];
+      const dx = b[0] - a[0];
+      const dy = b[1] - a[1];
+      const l = Math.hypot(dx, dy);
+      return l < 1e-9 ? null : [dx / l, dy / l];
+    };
+    const extremos: Array<{
+      key: string;
+      pid: string;
+      fin: 'cola' | 'cabeza';
+      p: number[];
+      dir: number[] | null;
+    }> = [];
     for (const r of ramales) {
       // Tributario con padre conocido en SU plano: fuera de los clústeres (plegado §4).
       if (r.tipo === 'tributario' && r.padre && idsPorPlano.get(r.pid)?.has(r.padre)) continue;
       const c = colaDe(r);
       const h = cabezaDe(r);
-      if (c) extremos.push({ key: r.key, pid: r.pid, fin: 'cola', p: c });
-      if (h) extremos.push({ key: r.key, pid: r.pid, fin: 'cabeza', p: h });
+      if (c) extremos.push({ key: r.key, pid: r.pid, fin: 'cola', p: c, dir: dirSal(r) });
+      if (h) extremos.push({ key: r.key, pid: r.pid, fin: 'cabeza', p: h, dir: dirEnt(r) });
     }
     // Clústeres por unión-find con tolerancia 0.5 (los splits comparten coordenada
     // exacta), particionados por plano.
@@ -254,24 +289,55 @@ export function propagarAparatosPresion(net: 'af' | 'ac'): void {
       clusters.get(raiz)!.push(i);
     });
     const cargaAdj = new Map<string, Set<string>>();
+    // ¿La salida `s` continúa la línea del entrante `e`? Colinealidad llegada/salida
+    // (~25°) o downstream autocreado con mergesFrom al entrante.
+    const esContinuacion = (eIdx: number, sIdx: number): boolean => {
+      const de = extremos[eIdx].dir;
+      const ds = extremos[sIdx].dir;
+      if (de && ds && de[0] * ds[0] + de[1] * ds[1] >= 0.9) return true;
+      const sRam = ramalPorKey.get(extremos[sIdx].key);
+      const eRam = ramalPorKey.get(extremos[eIdx].key);
+      if (sRam?.mergesFrom && eRam && sRam.mergesFrom.includes(eRam.id)) return true;
+      return false;
+    };
     for (const idxs of clusters.values()) {
       if (idxs.length < 2) continue;
-      const entrantes = idxs
-        .filter((i) => extremos[i].fin === 'cabeza')
-        .map((i) => extremos[i].key);
-      const salidas = idxs.filter((i) => extremos[i].fin === 'cola').map((i) => extremos[i].key);
+      const idxEnt = idxs.filter((i) => extremos[i].fin === 'cabeza');
+      const idxSal = idxs.filter((i) => extremos[i].fin === 'cola');
+      const entrantes = idxEnt.map((i) => extremos[i].key);
+      const salidas = idxSal.map((i) => extremos[i].key);
       const entSet = new Set(entrantes);
-      for (const e of entrantes) {
-        if (!cargaAdj.has(e)) cargaAdj.set(e, new Set());
-        for (const s2 of salidas) {
-          if (entSet.has(s2)) continue;
-          addArista(e, s2, 'carga');
-          cargaAdj.get(e)!.add(s2);
+      const contGlobal = new Set<string>();
+      for (const e of idxEnt) {
+        for (const s of idxSal) {
+          if (entSet.has(extremos[s].key)) continue;
+          if (esContinuacion(e, s)) contGlobal.add(extremos[s].key);
+        }
+      }
+      for (const e of idxEnt) {
+        const ek = extremos[e].key;
+        if (!cargaAdj.has(ek)) cargaAdj.set(ek, new Set());
+        let conts = idxSal
+          .filter((s) => !entSet.has(extremos[s].key) && esContinuacion(e, s))
+          .map((s) => extremos[s].key);
+        // Sin continuación PROPIA: si el clúster tiene continuaciones de OTROS entrantes
+        // (contGlobal), la carga sale por la línea principal — una lateral jamás recibe del
+        // entrante (doctrina 3a; el reparto clásico a TODAS las salidas solo aplica cuando
+        // NADIE tiene continuación, y el filtro de aristas base deja de chocar con la carga).
+        if (conts.length === 0) {
+          conts = contGlobal.size > 0 ? [...contGlobal] : salidas.filter((s2) => !entSet.has(s2));
+        }
+        for (const s2 of conts) {
+          addArista(ek, s2, 'carga');
+          cargaAdj.get(ek)!.add(s2);
         }
       }
       for (const s1 of salidas) {
         for (const s2 of salidas) {
           if (s1 === s2 || entSet.has(s2)) continue;
+          // Solo hacia continuaciones (la lateral alimenta la principal; entre laterales
+          // o hacia laterales no hay aporte). Sin continuación identificable: clásico.
+          if (contGlobal.size > 0 && !contGlobal.has(s2)) continue;
           // Sin doble conteo ni inversión: si ya hay camino de carga entre ambas en
           // cualquier sentido, la base sobra (llega por la vía de carga).
           if (alcanzaPorCarga(cargaAdj, s1, s2) || alcanzaPorCarga(cargaAdj, s2, s1)) continue;
@@ -287,19 +353,29 @@ export function propagarAparatosPresion(net: 'af' | 'ac'): void {
     aristasPorDestino.get(a.to)!.push(a);
   }
 
-  // 3b) Montantes/bajantes que alimentan cada ramal (MISMO plano): distancia en cola,
-  //     r.ini = código, o recibeDeIds/alimentaIds explícitos.
+  // 3b) Montantes/bajantes que alimentan cada ramal (MISMO plano) — DIRECCIONAL (orig.
+  //     usuario): SOLO si el ramal SALE del montante (contacto en la COLA del ramal,
+  //     r.ini = código, o alimentaIds lo lista). Si el ramal ENTRA (contacto en la CABEZA,
+  //     r.fin = código, recibeDeIds lo lista), NO recibe la carga del montante — sus
+  //     aparatos quedan locales, con el cap de 1 manual.
   const upMonte = new Map<string, Cnt>();
   for (const r of ramales) {
     const cola = colaDe(r);
+    const cabeza = cabezaDe(r);
     const monte: Cnt = {};
     for (const b of bajes) {
       if (b.pid !== r.pid) continue;
       const code = b.code || b.id;
       const q = { x: b.x ?? 0, y: b.y ?? 0 };
-      const porRef = (b.recibeDeIds || []).includes(r.id) || (b.alimentaIds || []).includes(r.id);
-      const porDist = cola ? Math.hypot(cola[0] - q.x, cola[1] - q.y) <= 2 : false;
-      if (porRef || porDist || (r.ini && r.ini === code)) {
+      const dist = (p: number[] | null): boolean => !!p && Math.hypot(p[0] - q.x, p[1] - q.y) <= 2;
+      const saleDelMonte =
+        dist(cola) || (r.ini && r.ini === code) || (b.alimentaIds || []).includes(r.id);
+      const entraAlMonte =
+        dist(cabeza) || (r.fin && r.fin === code) || (b.recibeDeIds || []).includes(r.id);
+      // La asociación manual del checkbox (SecMontantes/canalesAsociados escribe recibeDeIds
+      // sin dirección): hereda como el comportamiento previo, sin el veto de la regla 3b.
+      const esAsocManual = (b.asocManual || []).includes(r.id);
+      if (esAsocManual || (saleDelMonte && !entraAlMonte)) {
         const c = cargaBaj.get(`${b.id}|${b.pid}`);
         if (c && !cntVacio(c)) {
           for (const [k, v] of Object.entries(c)) monte[k] = (monte[k] || 0) + v;

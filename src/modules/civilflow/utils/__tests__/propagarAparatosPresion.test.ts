@@ -88,6 +88,61 @@ function diskDe(): Record<string, Record<string, number>> {
 }
 
 describe('propagarAparatosPresion', () => {
+  it('clúster mixto: la lateral NO recibe la carga del entrante perpendicular', () => {
+    // T con 2 entrantes y 2 salidas: RAF1 (oeste→T, inodoro) y RAF2 (sur→T, lavamanos)
+    // llegan a la unión; RAF3 continúa colineal a RAF1 (principal) y RAF4 sale a 45°
+    // (NO es continuación de nadie: dot≈0.71 < 0.9 con ambos entrantes).
+    // RAF2 sin continuación propia → su carga sale por la línea principal (contGlobal):
+    // RAF3 hereda inodoro+lavamanos; RAF4 (lateral) no recibe por ninguna vía.
+    saveToStorage('trazos_P1', {
+      ramales: [
+        {
+          id: 'RAF1',
+          net: 'af',
+          pts: [
+            [0, 0],
+            [100, 0],
+          ],
+        },
+        {
+          id: 'RAF2',
+          net: 'af',
+          pts: [
+            [100, -80],
+            [100, 0],
+          ],
+        },
+        {
+          id: 'RAF3',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [200, 0],
+          ],
+        },
+        {
+          id: 'RAF4',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [170, 70],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+    disk['af_RAF1_P1'] = { inodoro: 1 };
+    disk['af_RAF2_P1'] = { lavamanos: 1 };
+    saveToStorage(AF_KEY, disk);
+    propagarAparatosPresion('af');
+    const despues = diskDe();
+    expect(despues['af_RAF3_P1']).toEqual({ inodoro: 1, lavamanos: 1 });
+    expect(despues['af_RAF4_P1']).toBeUndefined();
+    expect(despues['af_RAF1_P1']).toEqual({ inodoro: 1 });
+    expect(despues['af_RAF2_P1']).toEqual({ lavamanos: 1 });
+  });
+
   it('RAF3 = carga del montante (vía RAF1) + aparato propio de RAF2, escrito con libro', () => {
     seedEscenario();
     propagarAparatosPresion('af');
@@ -135,6 +190,105 @@ describe('propagarAparatosPresion', () => {
     // (S ya no sigue tocando la cola de RAF3) y el delta limpia.
     expect(diskDe()['af_RAF3_P1']).toBeUndefined();
     expect(leerHeredadosPresion('af_RAF3_P1')).toEqual({});
+  });
+
+  it('montante direccional: alimenta al ramal que SALE de él, no al que ENTRA', () => {
+    // Variante A: RAF1 nace del montante (cola en MON1, alimentaIds) → recibe su carga
+    // (inodoro del ucAplicado) y la baja a RAF3 (mergesFrom).
+    saveToStorage('trazos_P1', {
+      ramales: [
+        {
+          id: 'RAF1',
+          net: 'af',
+          pts: [
+            [100, -100],
+            [100, 0],
+          ],
+          ini: 'MON1',
+        },
+        {
+          id: 'RAF2',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [100, 80],
+          ],
+        },
+        {
+          id: 'RAF3',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [200, 0],
+          ],
+          mergesFrom: ['RAF1', 'RAF2'],
+        },
+      ],
+      bajantes: [
+        {
+          id: 'MON1',
+          code: 'MON1',
+          net: 'af',
+          tipo: 'montante',
+          x: 100,
+          y: -100,
+          alimentaIds: ['RAF1'],
+          ucAplicado: { af_MON1_P1: { inodoro: 1 } },
+        },
+      ],
+    });
+    propagarAparatosPresion('af');
+    expect(diskDe()['af_RAF1_P1']).toEqual({ inodoro: 1 });
+    // RAF3 hereda la carga del montante vía RAF1 (sin otros aparatos en este escenario).
+    expect(diskDe()['af_RAF3_P1']).toEqual({ inodoro: 1 });
+
+    // Variante B: RAF1 ENTRA al montante (cabeza en MON1, recibeDeIds + fin=code) — el
+    // montante NO alimenta (sus aparatos se quedan en él); el ramal queda vacío.
+    saveToStorage('trazos_P1', {
+      ramales: [
+        {
+          id: 'RAF1',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [100, -100],
+          ],
+          fin: 'MON1',
+        },
+        {
+          id: 'RAF2',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [100, 80],
+          ],
+        },
+        {
+          id: 'RAF3',
+          net: 'af',
+          pts: [
+            [100, 0],
+            [200, 0],
+          ],
+          mergesFrom: ['RAF1', 'RAF2'],
+        },
+      ],
+      bajantes: [
+        {
+          id: 'MON1',
+          code: 'MON1',
+          net: 'af',
+          tipo: 'montante',
+          x: 100,
+          y: -100,
+          recibeDeIds: ['RAF1'],
+          ucAplicado: { af_MON1_P1: { inodoro: 1 } },
+        },
+      ],
+    });
+    propagarAparatosPresion('af');
+    expect(diskDe()['af_RAF1_P1']).toBeUndefined();
+    expect(diskDe()['af_RAF3_P1']).toBeUndefined();
   });
 
   it('ciclo: termina acotado sin colgar ni duplicar', () => {

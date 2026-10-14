@@ -5,9 +5,11 @@ import {
   HYDRO_FAMILIES,
   SAN_FAMILIES,
   APARATOS_BY_TRAMO_KEY,
+  CHEQUEOS_PRESION_KEY,
 } from '../../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from '../drawingSync';
 import { diamPulgFromLabel } from '../diamPulgFromLabel';
+import { pisoLbl } from '../../constants/helpers';
 
 /** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones,
  *  ej. stubs `AC-01-X-P1` — `split('-')` los truncaba en silencio).
@@ -20,9 +22,12 @@ export function parseBajanteKey(key: string): [string, string] {
 }
 import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/drawingUtils';
 import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitaryDiamCompat';
-import { followBajanteToMaxRamal } from '../../lib/PlanoEngine/PlanoEngineDrawing';
+import { bumpConnectedBajantes } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit';
 import { recomputeDownstreamDiameters } from '../../lib/PlanoEngine/drawingUtils';
-import { propagarSanDiametroAguasAbajo } from '../../lib/PlanoEngine/drawingFlow';
+import {
+  convergirDiametroNodoPresion,
+  propagarSanDiametroAguasAbajo,
+} from '../../lib/PlanoEngine/drawingFlow';
 
 interface LocalDrawingData {
   ts?: number;
@@ -95,14 +100,14 @@ export function findContadorBajante(
 
 // Tipo de resultado para que el caller de la tabla de diseño (GasDesign, WaterNetworkDesign,
 // etc.) pueda mostrar el AlertDialog de la app en vez de un rechazo silencioso cuando el cambio
-// viola una restricción.
+// viola una restricción. La única vigente: accesorio más ancho que el tubo (el bloqueo
+// salida/entrada de redes de presión se retiró — los vecinos convergen al mayor).
 export interface WriteDiametroResult {
   ok: boolean;
-  reason?: 'accessory-larger' | 'parent-smaller' | 'child-larger';
+  reason?: 'accessory-larger';
   accessoryDiam?: string;
   accessoryEnd?: 'INICIO' | 'FIN';
   attemptedDiam?: string;
-  parentDiam?: string;
 }
 
 export function writeDiametroToDrawing(
@@ -176,169 +181,6 @@ export function writeDiametroToDrawing(
             };
             continue;
           }
-          // Validación diámetro de salida ≤ entrada (ítem 10): solo redes de presión af/ac/gas.
-          // Los extremos de entrada/salida se resuelven según la DIRECCIÓN REAL DEL FLUJO del
-          // ramal (_tribReversed): la entrada llega al ORIGEN de flujo y las salidas salen del
-          // DESTINO. Con varias salidas simultáneas, cada una se valida de forma independiente
-          // contra la misma entrada (se toma la más restrictiva).
-          const myPts = r.pts;
-          if (
-            newIn > 0 &&
-            (net === 'af' || net === 'ac' || net === 'gas') &&
-            myPts &&
-            myPts.length >= 2
-          ) {
-            const iAmRev = r._tribReversed;
-            const myOrigin = iAmRev ? myPts[myPts.length - 1] : myPts[0];
-            const myDest = iAmRev ? myPts[0] : myPts[myPts.length - 1];
-            const TOL = 2.0;
-            const touchesPt = (oPts: number[][], pt: number[]): 'endpoint' | 'body' | null => {
-              const p0 = oPts[0];
-              const p1 = oPts[oPts.length - 1];
-              if (Math.hypot(p0[0] - pt[0], p0[1] - pt[1]) < TOL) return 'endpoint';
-              if (Math.hypot(p1[0] - pt[0], p1[1] - pt[1]) < TOL) return 'endpoint';
-              for (let si = 0; si < oPts.length - 1; si++) {
-                const ax = oPts[si][0],
-                  ay = oPts[si][1],
-                  bx = oPts[si + 1][0],
-                  by = oPts[si + 1][1];
-                const dx = bx - ax,
-                  dy = by - ay,
-                  len2 = dx * dx + dy * dy;
-                if (len2 < 1e-9) continue;
-                const t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / len2;
-                if (t <= 0 || t >= 1) continue;
-                const px = ax + t * dx,
-                  py = ay + t * dy;
-                if (Math.hypot(pt[0] - px, pt[1] - py) < TOL) return 'body';
-              }
-              return null;
-            };
-            // ENTRADA: el tramo aguas arriba cuyo destino de flujo cae en MI origen
-            let maxParentIn = 0;
-            let maxParentLabel = '';
-            // SALIDAS: cada tramo aguas abajo cuyo origen cae en MI destino — se revisan TODOS
-            let maxChildOut = 0;
-            let maxChildLabel = '';
-            for (const other of data.ramales || []) {
-              if (other.id === r.id) continue;
-              if (other.net !== net) continue;
-              const oPts = other.pts;
-              if (!oPts || oPts.length < 2) continue;
-              const oRev = other._tribReversed || other.trib_reversed;
-              const oOrigin = oRev ? oPts[oPts.length - 1] : oPts[0];
-              const oDest = oRev ? oPts[0] : oPts[oPts.length - 1];
-              const feedsMe =
-                touchesPt(oPts, myOrigin) !== null &&
-                Math.hypot(oDest[0] - myOrigin[0], oDest[1] - myOrigin[1]) < TOL;
-              const bodyFeedsMe = touchesPt(oPts, myOrigin) === 'body';
-              const iFeedIt = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
-              const oDiamLabel = other.diametro || '';
-              const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
-              if ((feedsMe || bodyFeedsMe) && oIn > maxParentIn) {
-                maxParentIn = oIn;
-                maxParentLabel = oDiamLabel;
-              }
-              // Salida: origen del hijo cae en mi destino o sobre mi cuerpo (T)
-              let childOnMyBody = false;
-              if (!iFeedIt) {
-                for (let si = 0; si < myPts.length - 1; si++) {
-                  const ax = myPts[si][0],
-                    ay = myPts[si][1],
-                    bx = myPts[si + 1][0],
-                    by = myPts[si + 1][1];
-                  const dx = bx - ax,
-                    dy = by - ay,
-                    len2 = dx * dx + dy * dy;
-                  if (len2 < 1e-9) continue;
-                  const t = ((oOrigin[0] - ax) * dx + (oOrigin[1] - ay) * dy) / len2;
-                  if (t <= 0 || t >= 1) continue;
-                  const px = ax + t * dx,
-                    py = ay + t * dy;
-                  if (Math.hypot(oOrigin[0] - px, oOrigin[1] - py) < TOL) {
-                    childOnMyBody = true;
-                    break;
-                  }
-                }
-              }
-              if ((iFeedIt || childOnMyBody) && oIn > maxChildOut) {
-                maxChildOut = oIn;
-                maxChildLabel = oDiamLabel;
-              }
-            }
-            // Fallback sin dirección de flujo (por si _tribReversed no está seteado o la geometría es ambigua):
-            // cualquier ramal que toque mi origen/destino cuenta, para no dejar escapar la validación.
-            if (maxParentIn === 0) {
-              for (const other of data.ramales || []) {
-                if (other.id === r.id) continue;
-                if (other.net !== net) continue;
-                const oPts = other.pts;
-                if (!oPts || oPts.length < 2) continue;
-                if (touchesPt(oPts, myOrigin) === null) continue;
-                const oDiamLabel = other.diametro || '';
-                const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
-                if (oIn > maxParentIn) {
-                  maxParentIn = oIn;
-                  maxParentLabel = oDiamLabel;
-                }
-              }
-            }
-            if (maxChildOut === 0) {
-              for (const other of data.ramales || []) {
-                if (other.id === r.id) continue;
-                if (other.net !== net) continue;
-                const oPts = other.pts;
-                if (!oPts || oPts.length < 2) continue;
-                const oOrigin = (oPts as number[][])[0];
-                let touches = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
-                if (!touches) {
-                  for (let si = 0; si < myPts.length - 1; si++) {
-                    const ax = myPts[si][0],
-                      ay = myPts[si][1],
-                      bx = myPts[si + 1][0],
-                      by = myPts[si + 1][1];
-                    const dx = bx - ax,
-                      dy = by - ay,
-                      len2 = dx * dx + dy * dy;
-                    if (len2 < 1e-9) continue;
-                    const t = ((oOrigin[0] - ax) * dx + (oOrigin[1] - ay) * dy) / len2;
-                    if (t <= 0 || t >= 1) continue;
-                    const px = ax + t * dx,
-                      py = ay + t * dy;
-                    if (Math.hypot(oOrigin[0] - px, oOrigin[1] - py) < TOL) {
-                      touches = true;
-                      break;
-                    }
-                  }
-                }
-                if (!touches) continue;
-                const oDiamLabel = other.diametro || '';
-                const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
-                if (oIn > maxChildOut) {
-                  maxChildOut = oIn;
-                  maxChildLabel = oDiamLabel;
-                }
-              }
-            }
-            if (maxParentIn > 0 && newIn > maxParentIn) {
-              blockedReason = {
-                ok: false,
-                reason: 'parent-smaller',
-                parentDiam: maxParentLabel,
-                attemptedDiam: newDiamLabel,
-              };
-              continue;
-            }
-            if (maxChildOut > 0 && newIn < maxChildOut) {
-              blockedReason = {
-                ok: false,
-                reason: 'child-larger',
-                parentDiam: maxChildLabel,
-                attemptedDiam: newDiamLabel,
-              };
-              continue;
-            }
-          }
         }
         const oldDiamLabel = r.diametro || '';
         r.diametro = newDiamLabel;
@@ -358,29 +200,44 @@ export function writeDiametroToDrawing(
               (data.bajantes || []) as Array<{ recibeDeIds?: string[]; alimentaIds?: string[] }>,
             );
           } else {
+            // Presión: los vecinos de la conexión suben al mayor (sin bloqueo — orig.
+            // usuario, espejo del motor).
+            convergirDiametroNodoPresion(
+              data.ramales as unknown as Parameters<typeof convergirDiametroNodoPresion>[0],
+              r.id,
+            );
             recomputeDownstreamDiameters(data.ramales, r.id);
           }
           const after = (data.ramales || []).map((x) => `${x.id}=${x.diametro || ''}`).join('|');
           if (after !== before) changed = true;
-        }
-        // El bajante sigue al mayor diámetro de sus ramales en ambas direcciones: si seguía
-        // al máximo anterior adopta el nuevo (suba o baje); un oversize explícito mayor se
-        // conserva salvo que el nuevo máximo lo supere. Misma regla que en canvas.
-        for (const b of data.bajantes || []) {
-          if (b.net !== net || !(b.recibeDeIds || []).includes(r.id)) continue;
-          const followed = followBajanteToMaxRamal(
-            data.ramales || [],
-            b.recibeDeIds,
-            b.dNominal || '',
-            r.id,
-            oldDiamLabel,
-            newDiamLabel,
-          );
-          if (followed) {
-            b.dNominal = followed;
-            changed = true;
+          // Chequeos persistidos (Informes): diámetro de presión cambiado → presionOk/vel
+          // stale en ESTA red y en sus vecinos (la convergencia arrastra) → invalidar todo
+          // el mapa de la red; Informes muestra "(sin verificar)" hasta re-visitar Diseño.
+          if (after !== before && (net === 'af' || net === 'ac')) {
+            const prevCheq = loadFromStorage<Record<string, unknown>>(CHEQUEOS_PRESION_KEY, {});
+            if (prevCheq[net]) {
+              delete prevCheq[net];
+              saveToStorage(CHEQUEOS_PRESION_KEY, prevCheq);
+            }
           }
         }
+        // El bajante/montante sigue al mayor diámetro de sus ramales en ambas direcciones.
+        // MISMA regla que el motor (bumpConnectedBajantes compartido): asociación explícita
+        // recibeDeIds + alimentaIds o geométrica. Antes esta ruta solo miraba recibeDeIds y
+        // el montante no seguía al ramal al editar el diámetro desde la tabla (orig. usuario:
+        // debe ser en tiempo real). El label de nivel resuelve desplazamientos[lvl] — sin él
+        // la geométrica compara contra la posición cruda y falla con anillos entrepisos.
+        const bajBefore = (data.bajantes || []).map((b) => `${b.id}=${b.dNominal || ''}`).join('|');
+        bumpConnectedBajantes(
+          data.ramales || [],
+          data.bajantes || [],
+          plan.nivel != null ? pisoLbl(Number(plan.nivel)) : '',
+          r.id,
+          oldDiamLabel,
+          newDiamLabel,
+        );
+        const bajAfter = (data.bajantes || []).map((b) => `${b.id}=${b.dNominal || ''}`).join('|');
+        if (bajAfter !== bajBefore) changed = true;
         // VENT (orig. usuario): el diámetro del ramal de ventilación es BIDIRECCIONAL con la
         // tabla "Bajantes de aguas negras y ventilación" — espejar al BREV conectado
         // (dNominal + diamPulg; la tabla lee diamPulg como "D vent propuesto").
