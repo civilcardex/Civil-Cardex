@@ -18,6 +18,7 @@ import { chequeoBajanteLluvia } from '../utils/calcRainwater';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus } from '../utils/componentHelpers';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
+import { splitTramo } from '../utils/keys';
 import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
 import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDataMaterials';
 import { fmt } from '../utils/formatUtils';
@@ -235,11 +236,9 @@ export default function ChequeoBajantesLluvias() {
   const ramalesByBajante = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
-      // lastIndexOf: el id del ramal puede contener '-' (patrón AC-01-<id> en otras redes) —
-      // split('-') rompería el par id|plan en la primera aparición.
-      const sep = ramalKey.lastIndexOf('-');
-      const ramalId = sep > 0 ? ramalKey.slice(0, sep) : ramalKey;
-      const planId = sep > 0 ? ramalKey.slice(sep + 1) : '';
+      // El id del ramal puede contener '-' (patrón AC-01-<id>): splitTramo corta por el
+      // ÚLTIMO guion (antes inline con lastIndexOf aquí mismo).
+      const [ramalId, planId] = splitTramo(ramalKey);
       // Piso del ramal (de su plano) → etiqueta "RS1-P1" en el chip.
       const nivel = plans?.find((pl) => String(pl.id) === planId)?.nivel;
       const label = nivel != null ? `${ramalId}-${pisoCorto(nivel)}` : ramalId;

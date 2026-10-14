@@ -26,6 +26,7 @@ import { entradaPor } from '../utils/diamLookup';
 import { repartirOtrasCanal } from '../utils/rainwaterRows';
 import type { DrawingData } from '../utils/drawingSync';
 import { sanitizarInputDecimal } from '../utils/parseDecimal';
+import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
 
 // Encabezados compactos (orig. usuario: sin scroll horizontal): wrap a 2-3 líneas.
 const thL: React.CSSProperties = {
@@ -231,13 +232,13 @@ export default function ChequeoCanalesLluvias() {
   // evento de hidro — solo el primero de los dos disparaba dos veces por cambio).
   React.useEffect(() => {
     const bump = () => setDiamTick((n) => n + 1);
-    window.addEventListener('storage', bump);
-    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
-    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    window.addEventListener(EV_STORAGE, bump);
+    window.addEventListener(EV_SAN_SYNC, bump as EventListener);
+    window.addEventListener(EV_HIDRO_SYNC, bump as EventListener);
     return () => {
-      window.removeEventListener('storage', bump);
-      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
-      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+      window.removeEventListener(EV_STORAGE, bump);
+      window.removeEventListener(EV_SAN_SYNC, bump as EventListener);
+      window.removeEventListener(EV_HIDRO_SYNC, bump as EventListener);
     };
   }, []);
   const diamPulgPorChip = React.useMemo(() => {

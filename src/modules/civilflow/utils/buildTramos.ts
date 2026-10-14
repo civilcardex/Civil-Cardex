@@ -2,6 +2,7 @@ import { readSanDrawingSync, readHydroDrawingSync } from './drawingSync';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { parseDescargaEnId } from './parseDescargaEnId';
+import { countKey } from './keys';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
 import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from '../services/storageService';
 import { pisoLbl, pisoCorto } from '../constants';
@@ -224,7 +225,7 @@ export function buildTramos(
       // Re-mapear la clave de un ramal isAC1 a la del contador aquí hacía leer silenciosamente
       // cualquier dato perdido bajo `af_${cntId}_${planId}` en vez de sus fixtures asignados
       // (UD fantasma).
-      const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
+      const apKey = r._aparatosKey || countKey(family, r.id, planId);
       // Un stub de calentador persistido (AC-01-{calId}, escrito por saveTrazosToDB para que los
       // fixtures del bajante CALENTn sobrevivan) lee su propia clave `ac_AC-01-<calId>_<planId>`
       // del sync, pero el espejo de FixturesPanel pone los conteos bajo `ac_<calId>_<planId>` —
@@ -233,8 +234,8 @@ export function buildTramos(
       if (family === 'ac' && r.id.startsWith('AC-01-')) {
         const calId = r.id.slice('AC-01-'.length);
         fixturesMap = {
-          ...(aparatos[`af_${calId}_${planId}`] || {}),
-          ...(aparatos[`ac_${calId}_${planId}`] || {}),
+          ...(aparatos[countKey('af', calId, planId)] || {}),
+          ...(aparatos[countKey('ac', calId, planId)] || {}),
           ...fixturesMap,
         };
       }
@@ -271,6 +272,50 @@ export function buildTramos(
       });
     }
 
+    // Montantes af/ac como filas esBajante (orig. usuario): aparecen en Cálculo UC con
+    // todos sus aparatos asociados — la asociación entre pisos escribe el agregado en su
+    // clave de conteos (apos en bajanteAssociationApply).
+    if (family === 'af' || family === 'ac') {
+      for (const b of drawingBajantes) {
+        if (b.tipo !== 'montante') continue;
+        const apKey =
+          (b as unknown as { _aparatosKey?: string })._aparatosKey ||
+          countKey(family, b.id, planId);
+        // Espejo display (réplica sanitaria): propios + ramales asociados por ini/fin
+        // (mains, no tributarios — su carga ya vive plegada en el padre). La Σ vertical
+        // usa `fixtures` (propios), así el espejo nunca duplica.
+        const propios = aparatos[apKey] || {};
+        const codigos = new Set([b.code || '', b.id]);
+        const agg: Record<string, number> = { ...propios };
+        for (const t of incoming) {
+          if (t.tipo === 'tributario' || t.esBajante) continue;
+          const toca =
+            (typeof t.ini === 'string' && codigos.has(t.ini)) ||
+            (typeof t.fin === 'string' && codigos.has(t.fin));
+          if (!toca) continue;
+          for (const [k, v] of Object.entries(t.fixtures || {})) agg[k] = (agg[k] || 0) + v;
+        }
+        incoming.push({
+          fixturesAgg: agg,
+          _key: `${b.id}-${planId}`,
+          id: b.id,
+          label:
+            (b as unknown as { label?: string }).label ||
+            (b as unknown as { code?: string }).code ||
+            b.id,
+          piso: nivel,
+          planId: String(planId),
+          _net: family,
+          tipo: 'montante',
+          esBajante: true,
+          _aparatosKey: apKey,
+          fixtures: aparatos[apKey] || {},
+          recibeDe: [],
+          descripcion: '',
+        } as unknown as Tramo);
+      }
+    }
+
     if (family === 'af') {
       const contadores = drawingBajantes.filter(
         (b) => b.tipo === 'contador' && (b.net === 'af' || !b.net),
@@ -282,7 +327,7 @@ export function buildTramos(
         );
         if (!hasAC1) {
           const rId = `AC-01-${cntId}`;
-          const apKey = `af_${cntId}_${planId}`;
+          const apKey = countKey('af', cntId, planId);
           const extra = hidroData[apKey] || {};
           const pisoCnt =
             typeof cnt.piso === 'number' ? cnt.piso : parseInt(String(cnt.pisoBase || nivel));
@@ -402,7 +447,7 @@ export function loadSanLlTramos() {
       // diámetro espeja al bajante asociado. Excluido de las tablas (como el conector
       // automático que reemplaza); su codo 90° baja sí cuenta vía accesorioInicio.
       if (r.esCanalId) continue;
-      const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
+      const apKey = r._aparatosKey || countKey(r._net || 'san', r.id, planId);
       const hd = hidroData[apKey] || {};
       const tramo: Tramo = {
         _key: `${r.id}-${planId}`,
@@ -458,7 +503,7 @@ export function loadSanLlTramos() {
       // drawnCanalGlyphs directo de storage) — excluirlos aquí evita que aparezcan como
       // bajantes en la tabla de chequeo de bajantes de aguas lluvias.
       if (b.tipo === 'canal') continue;
-      const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
+      const apKey = b._aparatosKey || countKey(b._net || 'san', b.id, planId);
       const hd = hidroData[apKey] || {};
 
       let ventData = venMap.get(b.id);

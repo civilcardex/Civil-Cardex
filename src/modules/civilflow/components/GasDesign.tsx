@@ -311,22 +311,8 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
         )
           return;
       }
-      if (!res.ok && (res as unknown as { reason?: string }).reason === 'parent-smaller') {
-        if (
-          avisarDiametroInvalido(
-            `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
-          )
-        )
-          return;
-      }
-      if (!res.ok && (res as unknown as { reason?: string }).reason === 'child-larger') {
-        if (
-          avisarDiametroInvalido(
-            `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
-          )
-        )
-          return;
-      }
+      // Redes de presión: sin bloqueo salida/entrada (retirado — orig. usuario); la tabla
+      // converge los vecinos al mayor vía writeDiametroToDrawing.
     }
     setDiamMat((prev) => ({ ...prev, [tramoId]: mat }));
     setDiamDn((prev) => ({ ...prev, [tramoId]: dn }));
@@ -361,7 +347,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       APARATOS_BY_TRAMO_KEY,
       {},
     );
-    // Árbol de red + aparatos acumulados (docx flujo de nudos): el tronco lleva la
+    // Árbol de red + aparatos acumulados (docx flujo de nodos): el tronco lleva la
     // demanda de toda su red descendente; presión y ΔP acumulada POR RAMA.
     const tramosNeto = gasTramos.map((t) => ({
       id: t.id,
