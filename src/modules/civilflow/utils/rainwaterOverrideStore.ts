@@ -1,4 +1,5 @@
 import { LL_OVERRIDES_MIRROR_KEY } from '../constants/storage-keys';
+import { sectorDe } from './formatUtils';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import type { BajanteLL, CanalLL } from '../context/RainwaterContext';
 
@@ -23,7 +24,7 @@ export function claveCanal(t: { id: string; sector?: string }): string {
 
 /** Base de un chip "CODE-PISO" (BALL11-P1 → BALL11, nunca caza BALL1). */
 export function baseDeChip(chip: string): string {
-  return chip.split('-')[0];
+  return sectorDe(chip);
 }
 
 /** Agrega una clave a las tumbas (sin duplicados). */

@@ -1,4 +1,5 @@
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import type { BajanteRaw } from './drawingSyncTypes';
 import { loadFromStorage } from '../services/storageService';
 import { pisoLbl } from '../constants';
 import { distToPolyline } from '../lib/shared/geometry';
@@ -13,11 +14,6 @@ interface PlanEntry {
 }
 interface RamalRaw extends RawElement {
   diamPulg?: number;
-}
-interface BajanteRaw extends RawElement {
-  x?: number;
-  y?: number;
-  desplazamientos?: Record<string, { dx?: number; dy?: number }>;
 }
 
 /**

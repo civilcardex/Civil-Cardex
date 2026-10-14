@@ -7,6 +7,7 @@ import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { manning_SAN } from './calcSanitaryCore';
 import { calculateVentStack } from './ventStackCalc';
 import { parseDescargaEnId } from './parseDescargaEnId';
+import { splitPtr, splitTramo } from './keys';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData } from './drawingSync';
@@ -94,9 +95,7 @@ export function computeBajanteVentTable(
   const getBajanteTotalUD = (bKey: string, visited = new Set<string>()): number => {
     if (visited.has(bKey)) return 0;
     visited.add(bKey);
-    const parts = bKey.split('-');
-    const bId = parts[0];
-    const planId = parts[1];
+    const [bId, planId] = splitTramo(bKey);
     const planData = storageByPlan[planId];
     const bObj = planData?.bajantes?.find((b) => b.id === bId);
     const tr = tramosSan.find((x) => x._key === bKey);
@@ -105,9 +104,7 @@ export function computeBajanteVentTable(
     for (const otherB of tramosSan) {
       if (!otherB.esBajante || otherB._key === bKey) continue;
       if (otherB.descargaEnId) {
-        const oParts = otherB.descargaEnId.split('|');
-        const oPlanId = oParts[0];
-        const oTgtId = oParts[1];
+        const [oPlanId, oTgtId] = splitPtr(otherB.descargaEnId, '');
         const matches =
           String(oPlanId) === String(planId) &&
           (oTgtId === bId || (bObj && bObj.code && oTgtId === bObj.code));

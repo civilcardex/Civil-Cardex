@@ -9,6 +9,7 @@ import Tbl from './shared/Tbl';
 import Card from './shared/Card';
 import { APS_STORAGE_KEY } from '../constants/storage-keys';
 import { cHazenDe, calcsDe, INPUTS_DEFAULT, type BombaInputs } from './bombaARCalcs';
+import { EV_APARATOS_CLEAR, EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
 
 export { calcsDe, INPUTS_DEFAULT } from './bombaARCalcs';
 export type { BombaInputs } from './bombaARCalcs';
@@ -124,15 +125,15 @@ function BombaARDesign() {
   const [refreshTick, setRefreshTick] = useState(0);
   useEffect(() => {
     const bump = () => setRefreshTick((n) => n + 1);
-    window.addEventListener('storage', bump);
-    window.addEventListener('aparatos-clear', bump as EventListener);
-    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
-    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    window.addEventListener(EV_STORAGE, bump);
+    window.addEventListener(EV_APARATOS_CLEAR, bump as EventListener);
+    window.addEventListener(EV_SAN_SYNC, bump as EventListener);
+    window.addEventListener(EV_HIDRO_SYNC, bump as EventListener);
     return () => {
-      window.removeEventListener('storage', bump);
-      window.removeEventListener('aparatos-clear', bump as EventListener);
-      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
-      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+      window.removeEventListener(EV_STORAGE, bump);
+      window.removeEventListener(EV_APARATOS_CLEAR, bump as EventListener);
+      window.removeEventListener(EV_SAN_SYNC, bump as EventListener);
+      window.removeEventListener(EV_HIDRO_SYNC, bump as EventListener);
     };
   }, []);
   void refreshTick;

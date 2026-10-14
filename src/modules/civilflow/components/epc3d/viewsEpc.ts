@@ -1,33 +1,10 @@
-import type * as THREE_NS from 'three';
 import type { Epc3DApi } from './useEpc3DScene';
+import { animarCamaraHacia } from '../shared/controls3d';
 
 // Vistas de cámara — port del HTML original: ISO vuelve a la pose fija manual (validada a mano),
 // FRENTE/LATERAL/PLANTA encuadran la orto sobre el refBox (cubo fijo r=3.12 centrado en el ISO).
 
 export type VistaKey = 'iso' | 'front' | 'side' | 'top';
-
-/** Interpola cámara persp + target del controls hacia la pose dada (ease-out cúbico 700 ms). */
-export function animateTo(
-  api: Epc3DApi,
-  toPos: THREE_NS.Vector3,
-  toTgt: THREE_NS.Vector3,
-  dur = 700,
-): void {
-  if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
-  activarPersp(api);
-  const fromPos = api.camP.position.clone();
-  const fromTgt = api.controls.target.clone();
-  const t0 = performance.now();
-  const step = (): void => {
-    const t = Math.min(1, (performance.now() - t0) / dur);
-    const e = 1 - Math.pow(1 - t, 3);
-    api.camP.position.lerpVectors(fromPos, toPos, e);
-    api.controls.target.lerpVectors(fromTgt, toTgt, e);
-    if (t < 1) api.cancelAnim = requestAnimationFrame(step);
-    else api.cancelAnim = null;
-  };
-  api.cancelAnim = requestAnimationFrame(step);
-}
 
 /** Vuelve a la cámara persp (las vistas ISO/animadas la usan). */
 export function activarPersp(api: Epc3DApi): void {
@@ -102,6 +79,7 @@ export function vistaOrtoEpc(
 
 /** Vista ISO: pose fija manual del original (defPos/defTgt, calculadas al terminar la carga). */
 export function vistaIsoEpc(api: Epc3DApi, marcarBoton?: (k: VistaKey) => void): void {
-  animateTo(api, api.defPos.clone(), api.defTgt.clone());
+  activarPersp(api);
+  animarCamaraHacia(api, api.defPos.clone(), api.defTgt.clone());
   marcarBoton?.('iso');
 }

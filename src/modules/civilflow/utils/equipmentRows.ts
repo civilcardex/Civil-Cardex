@@ -417,7 +417,9 @@ function epBase(ep: EPData) {
   const hmtOk = HMT > 0 && HMT < pmax;
   const alertaPmax = HMT > pmax && pmax > 0;
   const hgOk = Hg > 0;
-  const hfOk = Hf >= 0;
+  // Hf >= 0 era siempre true (dec() devuelve 0 ante vacío → check muerto): "con dato" =
+  // al menos UNA pérdida crítica del fabricante > 0 (hfac o hfacs).
+  const hfOk = Math.max(dec(ep.hfac), dec(ep.hfacs)) > 0;
   const pminOk = pmin > 0;
   const predOk = pred > 0;
 
@@ -805,5 +807,21 @@ export function epAlertas(): string[] | null {
   const fallos: string[] = [];
   if (!c.hmtOk) fallos.push(c.HMT <= 0 ? 'HMT sin datos' : 'HMT > Pmax del sistema');
   if (!c.pComercialOk) fallos.push('Potencia comercial < potencia requerida');
+  // Mismos marcadores ✗ de la tabla "altura manométrica total" (validación completa
+  // pedida por el usuario: el gate juzga TODO lo que la tabla marca, no solo 2 filas).
+  if (!c.hgOk) fallos.push('Desnivel geométrico sin dato');
+  if (!c.hfOk) fallos.push('Pérdidas de carga críticas sin dato');
+  if (!c.pminOk) fallos.push('Presión del punto crítico sin dato');
+  if (c.isRed && !c.predOk) fallos.push('Presión disponible de acometida sin dato');
   return fallos;
+}
+
+/** Chequeo de las tablas Bomba AR: hoy son volcado de datos (sin filas cumple/no cumple),
+ *  así que el único estado es con/sin memoria calculada. null = sin datos (no bloquea el
+ *  gate — mismo contrato que epAlertas); [] = datos presentes. Lista lista para sumar
+ *  verificaciones si la tabla de bombas las gana. */
+export function bombaAlertas(): string[] | null {
+  const data = loadFromStorage<unknown>('civilflow_memoria_bomba_data', null);
+  if (!data) return null;
+  return [];
 }

@@ -1,4 +1,4 @@
-import type { MOUSE } from 'three';
+import type { MOUSE, Vector3 } from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 // Controles de mouse UNIFICADOS de los 3 visores 3D (aparatos/epc/rci) — decisión usuario
@@ -25,4 +25,38 @@ export function attachAntiAutoscroll(canvas: HTMLCanvasElement): () => void {
  *  en los 3 visores 3D. */
 export function aspectDe(el: { clientWidth: number; clientHeight: number }): number {
   return Math.max(0.1, el.clientWidth / Math.max(1, el.clientHeight));
+}
+
+/** Api mínima del tween compartido: los 3 visores 3D la satisfacen estructuralmente. */
+interface CamTweenApi {
+  camP: { position: Vector3 };
+  controls: { target: Vector3 };
+  cancelAnim: number | null;
+  /** Render bajo demanda (rci3d): si existe, se repinta mientras dura la animación. */
+  framesPendientes?: number;
+}
+
+/** Interpola cámara persp + target hacia la pose dada (ease-out cúbico). El tween es común
+ *  a los 3 visores; el encuadre/vistas sigue forkeado (viewsRci) y cada visor activa su
+ *  persp ANTES de llamar. */
+export function animarCamaraHacia(
+  api: CamTweenApi,
+  toPos: Vector3,
+  toTgt: Vector3,
+  dur = 700,
+): void {
+  if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
+  const fromPos = api.camP.position.clone();
+  const fromTgt = api.controls.target.clone();
+  const t0 = performance.now();
+  const step = (): void => {
+    const t = Math.min(1, (performance.now() - t0) / dur);
+    const e = 1 - Math.pow(1 - t, 3);
+    api.camP.position.lerpVectors(fromPos, toPos, e);
+    api.controls.target.lerpVectors(fromTgt, toTgt, e);
+    if (api.framesPendientes != null) api.framesPendientes = 2;
+    if (t < 1) api.cancelAnim = requestAnimationFrame(step);
+    else api.cancelAnim = null;
+  };
+  api.cancelAnim = requestAnimationFrame(step);
 }

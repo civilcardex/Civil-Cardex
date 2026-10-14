@@ -18,6 +18,8 @@ import {
 } from './localStorage';
 import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes';
 import type { SupabaseRow } from './planoRowMappers';
+import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents';
+import { countKey } from '../../utils/keys';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -179,7 +181,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     // dato del piso llegaba a la BD.
     const ramales = dedupPorId(
       ((d.ramales ?? []) as PlanoRamal[]).map((r) => {
-        const apKey = `${r.net}_${r.id}_${planoId}`;
+        const apKey = countKey(r.net, r.id, planoId);
         const fixtures = aparatosMap[apKey];
         const hydroEntry = hidroMap[apKey];
         const hydroAcc =
@@ -430,7 +432,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     const mergedGas = { ...existingGas };
     for (const b of bajantes as PlanoBajante[]) {
       if (!b.fixtures || Object.keys(b.fixtures).length === 0) continue;
-      const apKey = `${b.net}_${b.id}_${planoId}`;
+      const apKey = countKey(b.net, b.id, planoId);
       if (!mergedAparatos[apKey]) {
         mergedAparatos[apKey] = b.fixtures;
         aparatosChanged = true;
@@ -440,11 +442,8 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       // Los stubs sintéticos de calentador (AC-01-{calId}, persistidos por saveTrazosToDB
       // para que los fixtures de la bajante CALENTn sobrevivan) deben volver bajo la clave que
       // el builder de stubs/FixturesPanel realmente leen: `ac_<calId>_<planoId>` — no
-      // `ac_AC-01-<calId>_<planoId>`.
-      const apKey =
-        r.id.startsWith('AC-01-') && r.net === 'ac'
-          ? `ac_${r.id.slice('AC-01-'.length)}_${planoId}`
-          : `${r.net}_${r.id}_${planoId}`;
+      // `ac_AC-01-<calId>_<planoId>` (regla en countKey).
+      const apKey = countKey(r.net, r.id, planoId);
       if (r.fixtures && Object.keys(r.fixtures).length > 0 && !mergedAparatos[apKey]) {
         mergedAparatos[apKey] = r.fixtures;
         aparatosChanged = true;
@@ -470,12 +469,12 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     // Los mapas recién fusionados se escriben con saveToStorage (que no dispara eventos) — si la
     // app ya montó sus tramos/UC leyendo un mapa vacío o viejo (dispositivo con caché limpia o
     // desactualizada), las tablas de diseño quedan con los conteos en cero hasta que algo vuelva
-    // a disparar 'storage'/sync. Se notifica aquí mismo para reconstruirlos con los datos de la
+    // a disparar EV_STORAGE/sync. Se notifica aquí mismo para reconstruirlos con los datos de la
     // BD sin esperar a una edición manual. Mismo patrón de eventos que networkSanitary.ts.
     if (aparatosChanged || hidroChanged || gasChanged) {
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-      window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
+      window.dispatchEvent(new Event(EV_STORAGE));
+      emitSanSync();
+      emitHidroSync();
     }
     return work;
   } catch (e) {

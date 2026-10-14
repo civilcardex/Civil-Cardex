@@ -1,4 +1,5 @@
 import React from 'react';
+import { splitPtr } from '../../utils/keys';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
 import {
   applyBajanteAssociation,
@@ -120,7 +121,7 @@ export default function BajanteAsociacion({
       return;
     }
 
-    const [targetPlanId, targetBajanteId] = v.split('|');
+    const [targetPlanId, targetBajanteId] = splitPtr(v, '');
     const targetGroup = lowerFloorsRamales.find((g) => String(g.planId) === targetPlanId);
     const targetBaj = targetGroup?.bajantes.find((b) => b.id === targetBajanteId);
     if (!targetBaj || targetBaj.x == null || targetBaj.y == null) return;
@@ -190,7 +191,7 @@ export default function BajanteAsociacion({
 
     if (!v) {
       if (prevOrigen) {
-        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        const [prevPlanId, prevBajId] = splitPtr(prevOrigen, '');
         if (prevPlanId && prevBajId)
           clearBajanteAssociation(
             eng,
@@ -214,7 +215,7 @@ export default function BajanteAsociacion({
       return;
     }
 
-    const [originPlanId, originBajanteId] = v.split('|');
+    const [originPlanId, originBajanteId] = splitPtr(v, '');
     const originBaj = upperFloorGroup?.bajantes.find((b) => b.id === originBajanteId);
     if (!originBaj || originBaj.x == null || originBaj.y == null) {
       // Antes se retornaba en silencio: el desplegable parecía aceptar la selección (origenId se
@@ -242,7 +243,7 @@ export default function BajanteAsociacion({
 
     const commit = () => {
       if (prevOrigen) {
-        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        const [prevPlanId, prevBajId] = splitPtr(prevOrigen, '');
         if (prevPlanId && prevBajId)
           clearBajanteAssociation(
             eng,

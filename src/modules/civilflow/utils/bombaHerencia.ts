@@ -1,4 +1,5 @@
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
+import { splitPtr } from './keys';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
@@ -104,7 +105,7 @@ export function propagarHerenciaBomba(
   for (const baj of eng.bajantes) {
     if (baj.net !== netId || baj.tipo !== 'bajante') continue;
     if (!baj.bombaEnId?.includes('|')) continue;
-    const [pPlan, pId] = baj.bombaEnId.split('|');
+    const [pPlan, pId] = splitPtr(baj.bombaEnId, '');
     // SIEMPRE desde los trazos del piso de la bomba: la clave espejo en `disk` puede estar
     // vacía/vieja si ese piso no está cargado (orig. usuario: herencia salía 0 UD). Con el
     // piso cargado se suma el pool vivo (los trazos en disco van por detrás del motor).

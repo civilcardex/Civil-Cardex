@@ -1,4 +1,5 @@
 import type { Tramo } from '../context/tramosReducer';
+import type { BajanteRaw } from './drawingSyncTypes';
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords';
 import { canalOBBDe, puntoEnCanalOBB } from '../lib/PlanoEngine/canalAssociation';
 import type { PlanItem } from '../context/PlansContext';
@@ -13,10 +14,6 @@ import { loadFromStorage } from '../services/storageService';
 import { distToPolyline } from '../lib/shared/geometry';
 import type { DrawingData, RawElement } from './drawingSync';
 
-interface BajanteRaw extends RawElement {
-  x?: number;
-  y?: number;
-}
 interface AreaRaw {
   areaM2?: number;
 }

@@ -54,6 +54,14 @@ export interface RawElement {
   [key: string]: unknown;
 }
 
+/** Bajante cruda leída del storage, con posición en planta (única definición — antes
+ *  había 6 copias: 2 exportadas idénticas + 4 privadas). */
+export interface BajanteRaw extends RawElement {
+  x?: number;
+  y?: number;
+  desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+}
+
 /** Estructura de datos de dibujo sincronizado guardada en las claves sync de localStorage. */
 export interface DrawingData {
   planes?: Record<string, unknown>;

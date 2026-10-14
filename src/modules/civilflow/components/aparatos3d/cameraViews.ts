@@ -1,6 +1,6 @@
 import type * as THREE_NS from 'three';
 import type { Aparatos3DApi } from './useAparatos3DScene';
-import { aspectDe } from '../shared/controls3d';
+import { animarCamaraHacia, aspectDe } from '../shared/controls3d';
 
 // Vistas de cámara — port fiel del original: ISO vuelve a persp interpolada (700 ms, ease-out
 // cúbico); FRENTE/LATERAL/PLANTA encuadran la orto sobre el modelo activo con margen 8 %.
@@ -26,29 +26,6 @@ function distIso(api: Aparatos3DApi, box: THREE_NS.Box3): number {
   const dW = size.x / 2 / (TAN_HALF_FOV * aspect);
   const dR = api.mr / TAN_HALF_FOV;
   return Math.max(dH, dW, dR) * 1.2;
-}
-
-/** Interpola cámara persp + target del controls hacia la pose dada (ease-out cúbico 700 ms). */
-function animateTo(
-  api: Aparatos3DApi,
-  toPos: THREE_NS.Vector3,
-  toTgt: THREE_NS.Vector3,
-  dur = 700,
-): void {
-  if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
-  if (api.orthoOn) activarPersp(api);
-  const fromPos = api.camP.position.clone();
-  const fromTgt = api.controls.target.clone();
-  const t0 = performance.now();
-  const step = (): void => {
-    const t = Math.min(1, (performance.now() - t0) / dur);
-    const e = 1 - Math.pow(1 - t, 3);
-    api.camP.position.lerpVectors(fromPos, toPos, e);
-    api.controls.target.lerpVectors(fromTgt, toTgt, e);
-    if (t < 1) api.cancelAnim = requestAnimationFrame(step);
-    else api.cancelAnim = null;
-  };
-  api.cancelAnim = requestAnimationFrame(step);
 }
 
 /** Vuelve a la cámara persp (las vistas ISO/animadas la usan). */
@@ -139,7 +116,8 @@ export function poseIso(
 export function vistaIso(api: Aparatos3DApi, marcarBoton?: (k: VistaKey) => void): void {
   api.reencuadreOrto = null;
   const { pos, tgt } = poseIso(api, cajaActiva(api));
-  animateTo(api, pos, tgt);
+  if (api.orthoOn) activarPersp(api);
+  animarCamaraHacia(api, pos, tgt);
   marcarBoton?.('iso');
 }
 
@@ -149,6 +127,7 @@ export function resetVista(api: Aparatos3DApi, marcarBoton?: (k: VistaKey) => vo
     vistaIso(api, marcarBoton);
     return;
   }
-  animateTo(api, api.defPos.clone(), api.defTgt.clone());
+  if (api.orthoOn) activarPersp(api);
+  animarCamaraHacia(api, api.defPos.clone(), api.defTgt.clone());
   marcarBoton?.('iso');
 }

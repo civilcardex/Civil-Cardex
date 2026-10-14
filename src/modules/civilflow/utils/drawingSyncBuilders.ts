@@ -236,19 +236,4 @@ export function buildNonPrefixedSyncData(
   return out;
 }
 
-export const hasNumericPlanSuffix = (key: string): boolean => {
-  const lastUnderscore = key.lastIndexOf('_');
-  return lastUnderscore > 0 && /^\d+$/.test(key.slice(lastUnderscore + 1));
-};
-
-// Una clave aparato/hidro es huérfana solo si el ramal/bajante NO existe en NINGÚN plano
-// legible: se conserva si algún key válido coincide exactamente (clave `net_id_planId` con su
-// plan) o comparte el prefijo del elemento (`net_id`, o el mismo `net_id` en otro plan — un
-// plan puede tener trazos locales desactualizados y re-sincronizarse después desde la BD).
-export const isOrphanKey = (key: string, validKeys: Set<string>): boolean => {
-  const base = hasNumericPlanSuffix(key) ? key.slice(0, key.lastIndexOf('_')) : key;
-  for (const vk of validKeys) {
-    if (vk === key || vk.startsWith(base + '_')) return false;
-  }
-  return true;
-};
+export { hasNumericPlanSuffix, isOrphanKey } from './keys';

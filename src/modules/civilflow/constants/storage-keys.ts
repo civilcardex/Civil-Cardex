@@ -33,5 +33,10 @@ export const OPEN_TAB_KEY = 'openTab';
 export const LL_OVERRIDES_MIRROR_KEY = 'll_overrides_mirror_';
 
 export const NETS_CHANGED_EVENT = 'civilflow_nets_changed';
+/** Chequeos persistidos de las redes de presión (af/ac) que escribe la página de diseño:
+ *  `{af: {keyTramo: {velCumple, presionOk, qLps}}, ac: {...}}` — Informes los lee sin
+ *  visitar la página (gate global). Se invalida por red cuando un diámetro cambia desde
+ *  las tablas (writeDiametroToDrawing). */
+export const CHEQUEOS_PRESION_KEY = 'chequeos_presion_v1';
 export const PDF_HIDDEN_NETS_KEY = 'pdf_hidden_nets';
 export const PDF_LOCKED_NETS_KEY = 'pdf_locked_nets';

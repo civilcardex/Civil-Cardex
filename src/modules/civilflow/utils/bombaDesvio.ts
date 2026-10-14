@@ -4,6 +4,7 @@
 // bomba → libro ucAplicado del bajante → ramales del piso superior). Compartido entre el menú
 // contextual y el panel derecho.
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
+import { splitPtr } from './keys';
 import {
   TRAZOS_PLAN_PREFIX,
   TRAZOS_PREFIX,
@@ -30,6 +31,7 @@ import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 import type { PlanItem } from '../context/PlansContext';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from './bombaHerencia';
 import type { BombaRow } from './bombaQueries';
+import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents';
 
 export function asociarBomba(
   eng: PlanoEngine,
@@ -64,8 +66,8 @@ export function asociarBomba(
   } catch {
     /* best-effort */
   }
-  window.dispatchEvent(new CustomEvent('aparatos-clear'));
-  window.dispatchEvent(new Event('storage'));
+  emitAparatosClear();
+  window.dispatchEvent(new Event(EV_STORAGE));
   // Redibujo INMEDIATO del canvas: el fantasma/LD/anillo viven en storage+engine y sin esto
   // solo aparecían cuando otra acción re-renderizaba (orig. usuario: "no pasa nada… y se
   // demoran").
@@ -376,8 +378,8 @@ export function desasociarBombaEnTrazos(bombaId: string, bombaPlanId: string): v
     saveTrazosToDB(pid, raw);
   }
   try {
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
-    window.dispatchEvent(new Event('storage'));
+    emitAparatosClear();
+    window.dispatchEvent(new Event(EV_STORAGE));
   } catch {
     /* sin window (tests) */
   }
@@ -394,7 +396,7 @@ export function quitarBomba(
   bajPlanId: string = currentPlanId,
 ): void {
   if (!baj.bombaEnId) return;
-  const [prevPlan, prevId] = baj.bombaEnId.split('|');
+  const [prevPlan, prevId] = splitPtr(baj.bombaEnId, '');
   if (prevPlan && prevId) {
     limpiarArtefactosDesvioBomba(eng, baj, bajPlanId, { planId: prevPlan, id: prevId });
   }
@@ -420,7 +422,7 @@ export function quitarBomba(
   delete disk[`${baj.net || 'san'}_${baj.id}_${currentPlanId}`];
   saveToStorage(APARATOS_BY_TRAMO_KEY, disk);
   eng.updateElementById(baj.id, { bombaEnId: null, ucAplicado: undefined, ucAcum: 0 });
-  window.dispatchEvent(new CustomEvent('aparatos-clear'));
-  window.dispatchEvent(new Event('storage'));
+  emitAparatosClear();
+  window.dispatchEvent(new Event(EV_STORAGE));
   eng.render?.();
 }

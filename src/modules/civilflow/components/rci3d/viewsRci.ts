@@ -1,7 +1,7 @@
 import type * as THREE_NS from 'three';
 import type { Rci3DApi } from './useRci3DScene';
 import { RCI_FOV } from './rci3dData';
-import { aspectDe } from '../shared/controls3d';
+import { animarCamaraHacia, aspectDe } from '../shared/controls3d';
 
 // FORK DELIBERADO de aparatos3d/vistasCamara (mismo esqueleto, otro pipeline/encuadre): no
 // fusionar sin revisar ambos visores — el genérico acoplaría los 3 módulos 3D (ponytail).
@@ -17,31 +17,6 @@ const TAN_HALF_FOV = Math.tan((RCI_FOV / 2) * (Math.PI / 180));
 export function activarPersp(api: Rci3DApi): void {
   api.orthoOn = false;
   api.controls.object = api.camP;
-}
-
-/** Interpola cámara persp + target del controls hacia la pose dada (ease-out cúbico 700 ms). */
-export function animateTo(
-  api: Rci3DApi,
-  toPos: THREE_NS.Vector3,
-  toTgt: THREE_NS.Vector3,
-  dur = 700,
-): void {
-  if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
-  if (api.orthoOn) activarPersp(api);
-  const fromPos = api.camP.position.clone();
-  const fromTgt = api.controls.target.clone();
-  const t0 = performance.now();
-  const step = (): void => {
-    const t = Math.min(1, (performance.now() - t0) / dur);
-    const e = 1 - Math.pow(1 - t, 3);
-    api.camP.position.lerpVectors(fromPos, toPos, e);
-    api.controls.target.lerpVectors(fromTgt, toTgt, e);
-    // Render bajo demanda: la animación exige repintar mientras dura.
-    api.framesPendientes = 2;
-    if (t < 1) api.cancelAnim = requestAnimationFrame(step);
-    else api.cancelAnim = null;
-  };
-  api.cancelAnim = requestAnimationFrame(step);
 }
 
 /** Distancia ISO del original: max(alto/2·tan, ancho/2·tan/aspect, MR/tan)·1.05. */
@@ -132,7 +107,7 @@ export function vistaIso(api: Rci3DApi): void {
   activarPersp(api);
   const dir = new THREE.Vector3(1, 1, 1).normalize();
   const dist = distIso(api);
-  animateTo(api, api.mc.clone().addScaledVector(dir, dist), api.mc.clone());
+  animarCamaraHacia(api, api.mc.clone().addScaledVector(dir, dist), api.mc.clone());
 }
 
 /** Reset (⟳): vuelve a la pose ISO por defecto calculada al terminar la carga. */
@@ -141,5 +116,6 @@ export function resetVista(api: Rci3DApi): void {
     vistaIso(api);
     return;
   }
-  animateTo(api, api.defPos.clone(), api.defTgt.clone());
+  if (api.orthoOn) activarPersp(api);
+  animarCamaraHacia(api, api.defPos.clone(), api.defTgt.clone());
 }

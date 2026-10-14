@@ -8,6 +8,7 @@ import { NETS, uniqRamalId } from '../lib/PlanoEngine/PlanoState';
 import { isLdesvioRamalId } from './crossFloorStorage';
 import { direccionSegura } from '../lib/PlanoEngine/directionRules';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
+import { emitAparatosClear, emitSanSync, emitHidroSync } from '../utils/fixtureEvents';
 
 export interface CopySourceSelection {
   netId: string;
@@ -705,9 +706,9 @@ export function copyDrawingFromPlan(
   engine.render();
 
   try {
-    window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
-    window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    emitHidroSync();
+    emitSanSync();
+    emitAparatosClear();
   } catch {
     // Ignorar errores de evento
   }

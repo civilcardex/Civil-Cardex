@@ -10,6 +10,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync, markPlanTrazosFresh } from 
 import type { SyncPlanInput } from './drawingSync';
 import { pisoLbl } from '../constants';
 import { devError } from '../../../utils/devError';
+import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents';
 
 // Single-flight: WorkArea, ViewerPage e Isometria disparan el prefetch al montar sobre el
 // mismo estado. Sin esto, dos ejecuciones concurrentes intercalan read-modify-write de
@@ -73,7 +74,7 @@ async function runPrefetch(
     try {
       if (healHerenciaInvertida(plans)) {
         try {
-          window.dispatchEvent(new CustomEvent('aparatos-clear'));
+          emitAparatosClear();
         } catch {
           /* ignore */
         }
@@ -82,12 +83,12 @@ async function runPrefetch(
       /* sanador best-effort */
     }
     // Re-escribir las claves de sync con TODAS las cachés presentes: write* ya dispara los
-    // eventos que hacen que TramosContext reconstruya las tablas. El 'storage' extra refresca
+    // eventos que hacen que TramosContext reconstruya las tablas. El EV_STORAGE extra refresca
     // paneles que escuchan cambios crudos de localStorage.
     writeSanDrawingSync(plans);
     writeHydroDrawingSync(plans);
     try {
-      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event(EV_STORAGE));
     } catch {
       /* ignore */
     }

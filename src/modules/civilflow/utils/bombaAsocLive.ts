@@ -1,4 +1,5 @@
 import { loadFromStorage } from '../services/storageService';
+import { splitPtr } from './keys';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { collectSourceAgg } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
@@ -49,7 +50,7 @@ export function aggBajanteAsociado(opts: {
 
   // 1) Enlace a BOMBA: UDs leídas directo de los trazos del piso de la bomba (su caja + tramos).
   if (liveBaj.bombaEnId?.includes('|')) {
-    const [pPlan, pId] = liveBaj.bombaEnId.split('|');
+    const [pPlan, pId] = splitPtr(liveBaj.bombaEnId, '');
     try {
       const heredado = mapUdBombaDesdeTrazos(pPlan, pId, netId, poolVivoDe(pPlan));
       if (Object.keys(heredado).length) return heredado;
@@ -88,7 +89,7 @@ export function aggBajanteAsociado(opts: {
   //    propagación) — la lectura local sumaba heredado + UD propias del piso (16 vs 12).
   if (liveBaj.origenId?.includes('|')) {
     try {
-      const [oPlan, oBaj] = liveBaj.origenId.split('|');
+      const [oPlan, oBaj] = splitPtr(liveBaj.origenId, '');
       const rawOrigen = loadFromStorage<{
         ramales?: unknown[];
         bajantes?: unknown[];

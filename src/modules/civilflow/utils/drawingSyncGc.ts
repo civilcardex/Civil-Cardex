@@ -9,6 +9,7 @@ import {
 } from '../constants/storage-keys';
 import type { RawElement, SyncPlanInput, TraceData } from './drawingSyncTypes';
 import { hasNumericPlanSuffix, isOrphanKey } from './drawingSyncBuilders';
+import { loadGasAcc, saveGasAcc, type GasAccMap } from '../components/fixturesStorage';
 // Recolección de basura de claves de conteos: TODO el estado mutable del sync vive aquí
 // (co-localizado — partirlo entre hermanos lo rompe). Extraído verbatim de drawingSync.
 
@@ -54,12 +55,7 @@ function canDeleteKey(key: string): boolean {
   return freshTrazosPlans.has(suffix);
 }
 
-/** Clave de store para un elemento en un piso (misma regla que loadTrazosFromDB: los
- *  stubs sintéticos AC-01-<calId> vuelven bajo `ac_<calId>_<plan>`). */
-function fixtureStoreKey(net: string, id: string, planId: string | number): string {
-  if (id.startsWith('AC-01-') && net === 'ac') return `ac_${id.slice('AC-01-'.length)}_${planId}`;
-  return `${net}_${id}_${planId}`;
-}
+import { countKey as fixtureStoreKey } from './keys';
 
 interface FixtureCarrier {
   id?: unknown;
@@ -341,4 +337,37 @@ export function performGarbageCollection(plans: SyncPlanInput[]) {
       gas: bakDeletedGas,
     });
   }
+}
+
+/** Poda de accesorios gas (panel FixturesPanel): las claves cuyo ramal gas ya no existe en
+ *  NINGÚN plano confirmado salen del disco (con guardado) y del mapa vivo. Devuelve los ids
+ *  vivos para la poda del estado del panel y el mapa de disco SOLO si cambió (null = disco
+ *  intacto — el caller poda únicamente su estado en memoria). */
+export function podarGasAccPorPlanos(planos: readonly SyncPlanInput[]): {
+  idsVivos: Set<string>;
+  porDisco: GasAccMap | null;
+} {
+  const idsVivos = new Set<string>();
+  for (const plano of planos) {
+    if (!plano || plano.status !== 'confirmed') continue;
+    try {
+      const data = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + String(plano.id), null);
+      if (!data) continue;
+      for (const r of data.ramales || []) {
+        if (r.net === 'gas' && r.tipo !== 'tributario') idsVivos.add(String(r.id));
+      }
+    } catch {
+      // ignorar
+    }
+  }
+  const pruned = loadGasAcc();
+  const prunedNext: GasAccMap = {};
+  for (const id of idsVivos) {
+    if (pruned[id]) prunedNext[id] = pruned[id];
+  }
+  if (Object.keys(prunedNext).length !== Object.keys(pruned).length) {
+    saveGasAcc(prunedNext);
+    return { idsVivos, porDisco: prunedNext };
+  }
+  return { idsVivos, porDisco: null };
 }

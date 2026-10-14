@@ -1,12 +1,7 @@
 import type { Tramo } from '../context/tramosReducer';
-import type { RawElement } from './drawingSync';
 import { APARATOS_DEF } from '../constants';
 
-/** Bajante crudo leído del storage, con posición en planta. */
-export interface BajanteRaw extends RawElement {
-  x?: number;
-  y?: number;
-}
+export type { BajanteRaw } from './drawingSyncTypes';
 
 /** ¿La red es agua fría (af)? */
 export const isAf = (t: string) => t === 'af';

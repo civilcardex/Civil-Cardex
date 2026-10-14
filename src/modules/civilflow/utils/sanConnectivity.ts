@@ -1,4 +1,5 @@
 import type { Tramo } from '../context/tramosReducer';
+import type { BajanteRaw } from './drawingSyncTypes';
 import type { PlanItem } from '../context/PlansContext';
 import { calcUDparcial } from './componentHelpers';
 import { distToPolyline } from '../lib/shared/geometry';
@@ -9,10 +10,7 @@ import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 
 /** Bajante crudo leído del storage, con posición en planta para enlazar pisos. */
-export interface BajanteRaw extends RawElement {
-  x?: number;
-  y?: number;
-}
+export type { BajanteRaw } from './drawingSyncTypes';
 
 /** Base de aparatos fusionada por tramo (conteos por código), entrada de las tablas sanitarias. */
 export interface MergedApBase {

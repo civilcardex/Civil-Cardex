@@ -4,6 +4,7 @@
  * inferior. Layout nuevo (2): fantasma + Ldesvio en el INFERIOR, marcadores en el superior.
  */
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { splitPtr } from './keys';
 import { TRAZOS_PLAN_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 import {
@@ -35,7 +36,7 @@ function reanclarAnillosLayout2(data: LocalGhostDrawingData, pid: string): boole
     // el superior), pero el LD_<id> derivado de un down-pointer no existe — ese no se toca.
     const puntero = b.origenId || b.descargaEnId;
     if (!puntero || !puntero.includes('|')) continue;
-    const [upperPlanId, upperId] = puntero.split('|');
+    const [upperPlanId, upperId] = splitPtr(puntero, '');
     if (!upperPlanId || !upperId || upperPlanId === pid) continue;
     const upper = loadData(upperPlanId).bajantes?.find((x) => x.id === upperId);
     if (!upper || upper.x == null || upper.y == null) continue;
@@ -280,7 +281,7 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
   // anillo). Mover el LD y el anillo al piso del destino; el ghost-marcador ya vive aquí.
   for (const b of data.bajantes || []) {
     if (!b.descargaEnId || !b.descargaEnId.includes('|')) continue;
-    const [lowerPlanId, lowerBajanteId] = b.descargaEnId.split('|');
+    const [lowerPlanId, lowerBajanteId] = splitPtr(b.descargaEnId, '');
     if (!lowerPlanId || !lowerBajanteId || lowerPlanId === pid) continue;
     const ldId = ldesvioIdFor(b.id);
     const ld = (data.ramales || []).find((r) => r.id === ldId);

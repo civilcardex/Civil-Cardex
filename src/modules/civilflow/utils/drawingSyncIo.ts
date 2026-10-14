@@ -11,6 +11,7 @@ import {
 import type { SyncPlanInput, SyncDataResult } from './drawingSyncTypes';
 import { buildPrefixedSyncData, buildNonPrefixedSyncData } from './drawingSyncBuilders';
 import { performGarbageCollection, reanclarClavesDesdeTrazosLocales } from './drawingSyncGc';
+import { emitSanSync, emitHidroSync } from '../utils/fixtureEvents';
 // buildSyncData + write/read de hidro y san (entrada/salida del blob de trazos).
 // Extraído verbatim de drawingSync.
 
@@ -46,7 +47,7 @@ export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
   try {
     const data = buildSyncData(plans, HYDRO_FAMILIES, 'h', HYDRO_SYNC_KEY);
     saveToStorage(HYDRO_SYNC_KEY, data);
-    window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed', { detail: data }));
+    emitHidroSync(data);
     return data;
   } catch (e) {
     devError('writeHydroDrawingSync error:', e);
@@ -83,7 +84,7 @@ export function writeSanDrawingSync(plans: SyncPlanInput[]) {
   try {
     const data = buildSyncData(plans, SAN_FAMILIES, '', SAN_SYNC_KEY);
     saveToStorage(SAN_SYNC_KEY, data);
-    window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed', { detail: data }));
+    emitSanSync(data);
     return data;
   } catch (e) {
     devError('writeSanDrawingSync error:', e);

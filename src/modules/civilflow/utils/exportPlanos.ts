@@ -24,6 +24,7 @@ const RENDER_SCALE = 3;
 async function renderPlanoComposite(
   plan: PlanItem,
   pisos: Piso[],
+  ocultarNets?: Set<string>,
 ): Promise<{ dataUrl: string; w: number; h: number } | null> {
   const pdfjsLib = await getPdfjs();
   const buf = await plan.file.arrayBuffer();
@@ -69,6 +70,9 @@ async function renderPlanoComposite(
 
     const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
     if (raw) eng.loadWork(typeof raw === 'string' ? raw : JSON.stringify(raw));
+    // Selección de redes del usuario (informes → planos de red): lo mismo que el toggle de
+    // visibilidad del visor — los renderers ya respetan _hiddenNets.
+    if (ocultarNets && ocultarNets.size > 0) eng._hiddenNets = new Set(ocultarNets);
     eng.zoom = 1;
     eng.offX = 0;
     eng.offY = 0;
@@ -92,7 +96,11 @@ async function renderPlanoComposite(
   }
 }
 
-export async function downloadPlanosPdf(plans: PlanItem[], pisos: Piso[]): Promise<void> {
+export async function downloadPlanosPdf(
+  plans: PlanItem[],
+  pisos: Piso[],
+  ocultarNets?: Set<string>,
+): Promise<void> {
   const confirmed = plans
     .filter((p) => p.status === 'confirmed')
     .toSorted((a, b) => (b.nivel ?? 0) - (a.nivel ?? 0));
@@ -102,7 +110,7 @@ export async function downloadPlanosPdf(plans: PlanItem[], pisos: Piso[]): Promi
   let doc: InstanceType<typeof jsPDF> | null = null;
 
   for (const plan of confirmed) {
-    const composite = await renderPlanoComposite(plan, pisos);
+    const composite = await renderPlanoComposite(plan, pisos, ocultarNets);
     if (!composite) continue;
     const { dataUrl, w, h } = composite;
     const orientation = w >= h ? 'landscape' : 'portrait';

@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from 'react';
 import { NETS } from '../../../lib/PlanoEngine/PlanoState';
 import { loadPlanCrop } from '../../../utils/planCrop';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
+import { splitPtr } from '../../../utils/keys';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from './geometry';
 import type { IsoCanvas, IsoSegment } from './useIsometryInteraction';
 import type { PlanItem } from '../../../context/PlansContext';
@@ -596,7 +597,7 @@ export function useIsometriaRender({
         // (alineados: unión vertical continua en el mismo x,y; desalineados: dos columnas y el
         // desvío lo cubre el ramal LD_ del piso de la bomba, que ya se dibuja como ramal).
         if (b.bombaEnId?.includes('|') && !b._isCrossFloorGhost) {
-          const [pPlan, pId] = b.bombaEnId.split('|');
+          const [pPlan, pId] = splitPtr(b.bombaEnId, '');
           targetBajante =
             netData.bajantes.find(
               (bb) => !bb._isCrossFloorGhost && bb.id === pId && String(bb.planId) === pPlan,

@@ -12,7 +12,9 @@
  * sobreescriben igual en la próxima carga — trasladarlos es inocuo.
  */
 import { devError } from '../../../utils/devError';
+import { splitPtr } from './keys';
 import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
+import { EV_STORAGE } from './fixtureEvents';
 import {
   loadData,
   saveData,
@@ -82,7 +84,7 @@ export function sanearAsociacionesTrasRecalibrar(
           descargaEnId?: string | null;
         }): 1 | -1 | 0 => {
           const puntero = portador.origenId || portador.descargaEnId || '';
-          const planPtr = puntero.includes('|') ? puntero.split('|')[0] : '';
+          const planPtr = splitPtr(puntero, '')[0];
           if (!planPtr) return 0;
           if (docId === pid && planPtr !== pid) return 1;
           if (docId !== pid && planPtr === pid) return -1;
@@ -130,5 +132,5 @@ export function sanearAsociacionesTrasRecalibrar(
   }
   // Un visor vivo sobre cualquiera de los pisos tocados debe recargar de storage (el autosave
   // de 1.5 s pisaría escrituras storage-only con su copia en memoria).
-  if (tocado && typeof window !== 'undefined') window.dispatchEvent(new Event('storage'));
+  if (tocado && typeof window !== 'undefined') window.dispatchEvent(new Event(EV_STORAGE));
 }
