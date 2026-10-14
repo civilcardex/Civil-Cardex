@@ -1,5 +1,6 @@
 // Secciones de editor: bajante (con panel de bomba) y ramal. Extraídas verbatim de variants.
 import { bajanteLabel } from '../../../utils/accessoryAbbreviations';
+import { splitPtr } from '../../../utils/keys';
 import ExtremeAccessoryEditor from '../ExtremeAccessoryEditor';
 import type { PlanoBajante, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules';
@@ -240,8 +241,10 @@ export function RamalEditorSection() {
                   const esLd = String(selElement.id || '').startsWith('LD_');
                   const esSuAsociado =
                     esLd &&
-                    String((b as unknown as { origenId?: string }).origenId || '').split('|')[1] ===
-                      String(selElement.id).slice(3);
+                    splitPtr(
+                      String((b as unknown as { origenId?: string }).origenId || ''),
+                      '',
+                    )[1] === String(selElement.id).slice(3);
                   const isAssoc = isRecibe || isAlimenta || esSuAsociado;
                   return (
                     <label key={b.id} style={CHECK_ROW_STYLE}>

@@ -1,4 +1,5 @@
 import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
+import { opcionesDiametroElemento } from '../drawingElementContextMenu/diameterSelector';
 import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials';
 import { useMaterialesLl } from '../../../context/RainwaterContext';
 import { OpcionesMaterial } from '../drawingElementContextMenu/canalesAsociados';
@@ -325,23 +326,73 @@ export function BajanteEditor({
                     return;
                   }
                 }
+                // Regla montante≥ramal (orig. usuario, espejo de la san/ll): el montante
+                // nunca queda con menor diámetro que sus ramales conectados — alerta modal
+                // y no se permite (se revierte al valor previo).
+                if (
+                  val &&
+                  selElement.tipo === 'montante' &&
+                  (selElement.net === 'af' || selElement.net === 'ac') &&
+                  engineRef.current
+                ) {
+                  const monIn = diamPulgFromLabel(val.replace(/-/g, ' '));
+                  if (monIn > 0) {
+                    const idsRamales = [
+                      ...(selElement.recibeDeIds ?? []),
+                      ...(selElement.alimentaIds ?? []),
+                    ];
+                    for (const rid of idsRamales) {
+                      const ram = engineRef.current.ramales.find((r) => r.id === rid);
+                      if (!ram || !ram.diametro) continue;
+                      const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
+                      if (ramIn > 0 && ramIn > monIn) {
+                        engineRef.current.triggerAlert(
+                          'Diámetro no permitido',
+                          `Diámetro del montante no puede ser menor al del ramal conectado (${ram.diametro})`,
+                        );
+                        e.target.value =
+                          selElement.dNominal !== undefined &&
+                          selElement.dNominal !== '0' &&
+                          selElement.dNominal !== ''
+                            ? selElement.dNominal
+                            : '';
+                        return;
+                      }
+                    }
+                  }
+                }
                 handleUpdateSel('dNominal', val);
               }}
               style={SELECT_STYLE}
             >
               <option value="">—</option>
-              {(selElement.net === 'vent'
-                ? DIAM_VENT
-                : selElement.net === 'san'
-                  ? DIAM_BAN_SAN
-                  : selElement.net === 'll'
-                    ? DIAM_BAN_LL
-                    : DIAM_BAN
-              ).map((d) => (
-                <option key={d.pulg} value={d.nom}>
-                  {normalizeDnLabel(d.nom)}
-                </option>
-              ))}
+              {(() => {
+                // El valor legacy (formato viejo) se conserva visible para no perder el
+                // dato ya guardado.
+                const lista = opcionesDiametroElemento(selElement);
+                const cur =
+                  selElement.dNominal !== undefined &&
+                  selElement.dNominal !== '0' &&
+                  selElement.dNominal !== ''
+                    ? selElement.dNominal
+                    : '';
+                const sinCur =
+                  cur !== '' && !lista.some((d) => d.nom === cur) ? (
+                    <option key="cur" value={cur}>
+                      {normalizeDnLabel(cur)}
+                    </option>
+                  ) : null;
+                return (
+                  <>
+                    {sinCur}
+                    {lista.map((d) => (
+                      <option key={`${d.pulg}-${d.nom}`} value={d.nom}>
+                        {normalizeDnLabel(d.nom)}
+                      </option>
+                    ))}
+                  </>
+                );
+              })()}
             </select>
           </div>
           {!mostrarH && (

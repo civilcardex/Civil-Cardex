@@ -20,6 +20,7 @@ import {
 import type { PlanItem } from '../../../context/PlansContext';
 import { MENU_SELECT_STYLE, MENU_SECTION_LABEL_ROW_STYLE, type ContextMenuState } from './context';
 import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers';
+import { emitAparatosClear, EV_APARATOS_CLEAR, EV_STORAGE } from '../../../utils/fixtureEvents';
 
 /** Selector de accesorio a mitad de un ramal (clic sobre el cuerpo): valida polaridad de codos,
  *  yees y conflictos de diámetro antes de escribir el accesorio en el vértice del tramo. */
@@ -45,11 +46,11 @@ export function MidRamalAccessorySelector({
   const [, setMenuTick] = useState(0);
   useEffect(() => {
     const bump = (): void => setMenuTick((n) => n + 1);
-    window.addEventListener('aparatos-clear', bump);
-    window.addEventListener('storage', bump);
+    window.addEventListener(EV_APARATOS_CLEAR, bump);
+    window.addEventListener(EV_STORAGE, bump);
     return () => {
-      window.removeEventListener('aparatos-clear', bump);
-      window.removeEventListener('storage', bump);
+      window.removeEventListener(EV_APARATOS_CLEAR, bump);
+      window.removeEventListener(EV_STORAGE, bump);
     };
   }, []);
   // La 'llaveTerminal' simple solo tiene sentido en un extremo real del ramal (termina la
@@ -218,8 +219,7 @@ export function MidRamalAccessorySelector({
                 // a este evento (o a sus propias llamadas inc/dec), así que sin despacharlo aquí
                 // el conteo se actualiza en disco pero el panel sigue mostrando el número
                 // obsoleto hasta que algo más lo dispare.
-                if (typeof window !== 'undefined')
-                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                if (typeof window !== 'undefined') emitAparatosClear();
               }
               eng.resumeHistory();
               eng.render();
@@ -480,8 +480,7 @@ export function MidRamalAccessorySelector({
                   const hadAccBefore = !!fresh[fieldAcc];
                   if (!hadAccBefore)
                     bumpHidroAccesorio('san', 'codo90rmSube', 1, element.id, planId);
-                  if (typeof window !== 'undefined')
-                    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                  if (typeof window !== 'undefined') emitAparatosClear();
                 }
                 // Ítem 1: un snapshot para toda la asignación (geometría + conteos).
                 eng.resumeHistory();
@@ -538,8 +537,7 @@ export function MidRamalAccessorySelector({
                     if (cnt > 0) bumpAparatoCount('san', element.id, planId, k, -cnt);
                   }
                 }
-                if (typeof window !== 'undefined')
-                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                if (typeof window !== 'undefined') emitAparatosClear();
                 // Ítem 1: un snapshot para toda la desasignación (geometría + conteos).
                 eng.resumeHistory();
                 eng._markDirty();
@@ -637,8 +635,7 @@ export function MidRamalAccessorySelector({
                   if (cnt > 0) bumpAparatoCount(element.net, element.id, pid, k, -cnt);
                 }
               }
-              if (typeof window !== 'undefined')
-                window.dispatchEvent(new CustomEvent('aparatos-clear'));
+              if (typeof window !== 'undefined') emitAparatosClear();
               eng.resumeHistory();
               eng._markDirty();
               return;
@@ -660,8 +657,7 @@ export function MidRamalAccessorySelector({
               const pid = eng._loadedPlanId ?? '';
               if (oldApp) bumpAparatoCount(element.net, element.id, pid, oldApp, -1);
               if (val) bumpAparatoCount(element.net, element.id, pid, val || '', +1);
-              if (typeof window !== 'undefined')
-                window.dispatchEvent(new CustomEvent('aparatos-clear'));
+              if (typeof window !== 'undefined') emitAparatosClear();
             }
             eng.resumeHistory();
             eng._markDirty();

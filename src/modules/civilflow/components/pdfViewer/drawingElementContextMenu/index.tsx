@@ -112,7 +112,10 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
       // Ítem 2 (rev 5): con aparato asignado, el toggle deja el aparato en contra del flujo o
       // en un extremo conectado — se deshace y alerta. Se evalúa PRIMERO que la validación de
       // conexión sin salida.
-      if (fresh && aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], fresh)) {
+      if (
+        fresh &&
+        aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], fresh, eng.nivelActual?.label)
+      ) {
         eng.updateElementById(ramal.id, { _tribReversed: !val });
         props.setContextMenuState(null);
         eng.triggerAlert(
@@ -196,8 +199,8 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     // en contra del flujo o en un extremo conectado, se deshacen AMBOS toggles y alerta.
     // Se evalúa PRIMERO que la validación de conexión sin salida.
     if (
-      aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], aFresh) ||
-      aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], target)
+      aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], aFresh, eng.nivelActual?.label) ||
+      aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], target, eng.nivelActual?.label)
     ) {
       aFresh._tribReversed = !aFresh._tribReversed;
       target._tribReversed = !target._tribReversed;

@@ -36,7 +36,7 @@ import {
 } from './ramalMenuHelpers';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel';
 import { ElementCodeEditor } from './elementEditor';
-import { guardarMallas } from '../../../lib/PlanoEngine/nudos';
+import { guardarMallas } from '../../../lib/PlanoEngine/nodos';
 
 export function RamalMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -230,7 +230,9 @@ export function RamalMenu() {
               // Ítem 2 (rev 5): con aparato asignado, el flip puede dejarlo en un extremo
               // conectado a la red o en contra del flujo — se deshace (involución) y alerta.
               // Se evalúa PRIMERO que la validación de dirección de flujo.
-              if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r)) {
+              if (
+                aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r, eng.nivelActual?.label)
+              ) {
                 flipRamalFlow(r);
                 ctx.setContextMenuState(null);
                 eng.triggerAlert(
@@ -302,7 +304,14 @@ export function RamalMenu() {
                 // en un extremo inválido (conectado a la red o en contra del flujo), se alerta
                 // ANTES de abrir el modal de cambio de dirección de flujo.
                 const sim = { ...ramalEl, _tribReversed: !ramalEl._tribReversed };
-                if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], sim)) {
+                if (
+                  aparatoEnExtremoInvalido(
+                    eng.ramales,
+                    eng.bajantes || [],
+                    sim,
+                    eng.nivelActual?.label,
+                  )
+                ) {
                   ctx.setContextMenuState(null);
                   eng.triggerAlert(
                     'Aparato en extremo inválido',

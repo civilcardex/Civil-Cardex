@@ -2,6 +2,7 @@ import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import { rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
 import { extremoEntrelazado } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
+import { FUENTE_TIPOS } from '../../../lib/PlanoEngine/nodos';
 
 /**
  * Ramal vivo del engine por id. Choke point documentado (auditoría #15): el engine solo
@@ -110,15 +111,17 @@ export function flowTailEnd(endsAtStart: boolean, endsAtEnd: boolean): 0 | 1 | -
 
 // ¿El extremo `epPt` del ramal está ENTRELAZADO con la red (otro ramal del mismo net o una
 // bajante/montante del mismo net en ese punto)? Cubre la unión en T por montante.
-/** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante/montante de la
- *  misma red en ese punto)? Cubre la unión en T por montante. */
+/** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante NO fuente de
+ *  la misma red en ese punto)? Las FUENTES nunca bloquean (orig. usuario). Cubre la unión
+ *  en T por montante. */
 export function extremumOccupied(
   eng: PlanoEngine | null,
   ramal: PlanoRamal,
   epPt: number[],
 ): boolean {
   if (!eng) return false;
-  return extremoEntrelazado(eng.ramales, eng.bajantes || [], ramal, epPt);
+  const sinFuentes = (eng.bajantes || []).filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
+  return extremoEntrelazado(eng.ramales, sinFuentes, ramal, epPt);
 }
 
 const CONV_TOL = 0.5;

@@ -15,6 +15,7 @@ import {
   levantarVetoSelloCanal,
 } from '../../../lib/PlanoEngine/canalAssociation';
 import { sanitizarInputDecimal } from '../../../utils/parseDecimal';
+import { EV_STORAGE } from '../../../utils/fixtureEvents';
 
 export function AreaMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -145,7 +146,7 @@ export function CanalMenu() {
       }
       eng.render();
     }
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(EV_STORAGE));
     setContextMenuState((prev) =>
       prev ? { ...prev, element: { ...prev.element, [field]: v } } : null,
     );

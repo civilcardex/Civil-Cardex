@@ -15,6 +15,7 @@ import {
   MATERIALES_CUBIERTA_LL,
 } from '../../../constants/engineeringDataMaterials';
 import { sectorDe } from '../../../utils/formatUtils';
+import { EV_STORAGE } from '../../../utils/fixtureEvents';
 
 function CanalNumField({
   label,
@@ -104,7 +105,7 @@ export function CanalTramoEditor() {
       }
     }
     eng?.render();
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(EV_STORAGE));
   };
   return (
     <>
