@@ -207,3 +207,79 @@ export function idsSalidasDeBajante(
   }
   return out;
 }
+
+/** Ramales que SALEN de un bajante (por id): delega en idsSalidasDeBajante con el zoom del
+ *  motor. Casa natural del helper que el panel envolvía en useCallback solo por engineRef. */
+export function salidasDeBajante(
+  eng: { bajantes: BajanteLikeSalida[]; ramales: RamalLikeSalida[]; zoom: number } | null,
+  bajId: string,
+): Set<string> {
+  const baj = eng?.bajantes.find((b) => b.id === bajId);
+  if (!eng || !baj) return new Set<string>();
+  return idsSalidasDeBajante(baj, eng.ramales, eng.zoom || 1);
+}
+
+/** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
+ *  JSON contra el valor en disco. Con deleteEmpty, un next vacío ELIMINA la clave (borrar UDs
+ *  heredadas) en vez de dejar un espejo {} que reinsertaba basura vieja. */
+export function syncMirrorKey(
+  disk: Record<string, Record<string, number>>,
+  key: string,
+  next: Record<string, number>,
+  deleteEmpty: boolean,
+): boolean {
+  if (!Object.keys(next).length) {
+    if (deleteEmpty && disk[key]) {
+      delete disk[key];
+      return true;
+    }
+    return false;
+  }
+  if (stableStringify(disk[key] || {}) === stableStringify(next)) return false;
+  disk[key] = { ...next };
+  return true;
+}
+
+import { leerHeredadosPresion } from '../utils/aparatosPresion';
+
+/** curHidro del panel: entrada de hidráulicos de la clave (o vacía) — antes memo inline. */
+export function hidroDeClave(hidroData: HidroDataMap, storageKey: string | null): HidroDataEntry {
+  if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
+  return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+}
+
+/** Σ unidades del tramo (Σ conteo × unidad del aparato) — antes memo `total` inline. */
+export function totalDeUnidades(
+  items: readonly { id: string; [campo: string]: unknown }[],
+  currentMap: Record<string, number> | undefined,
+  unitKey: string | null,
+  storageKey: string | null,
+): number {
+  if (!storageKey) return 0;
+  let s = 0;
+  for (const ap of items) {
+    const u = (unitKey ? (ap[unitKey] as number | undefined) : undefined) || 0;
+    s += (currentMap?.[ap.id] || 0) * u;
+  }
+  return s;
+}
+
+/** Unidades MANUALES propias de este tramo: carga de la clave MENOS el libro de herencia
+ *  (auditoría #4 — antes sumaba la carga completa y un tramo con solo heredado bloqueaba su
+ *  primer manual). El cap del ítem 6 aplica solo sobre lo propio. Antes memo `ownTotal`. */
+export function ownTotalDe(counts: CountsMap, storageKey: string | null): number {
+  if (!storageKey) return 0;
+  const libro = leerHeredadosPresion(storageKey);
+  return Object.entries(counts[storageKey] || {}).reduce(
+    (s, [k, v]) => s + Math.max(0, v - (libro[k] || 0)),
+    0,
+  );
+}
+
+/** ¿El aparato ya vive como manual propio (no solo heredado)? — antes inline `esPropio`
+ *  en FixturesPanel y `esPropioDe` en el huérfano fixtureTotals.ts (dedup). */
+export function esPropioDe(counts: CountsMap, storageKey: string | null, apId: string): boolean {
+  if (!storageKey) return false;
+  const libro = leerHeredadosPresion(storageKey);
+  return (counts[storageKey]?.[apId] || 0) - (libro[apId] || 0) > 0;
+}

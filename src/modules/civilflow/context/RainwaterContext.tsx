@@ -36,6 +36,7 @@ import {
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 import { areaParcialBajanteLl, materialComun, sumaOtrasAsociados } from '../utils/rainwaterRows';
 import { sectorDe } from '../utils/formatUtils';
+import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
 
 interface AreaRaw {
   areaM2?: number;
@@ -237,13 +238,13 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const [trazosTick, setTrazosTick] = useState(0);
   useEffect(() => {
     const bump = () => setTrazosTick((n) => n + 1);
-    window.addEventListener('storage', bump);
-    window.addEventListener('civilflow_san_sync_changed', bump as EventListener);
-    window.addEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+    window.addEventListener(EV_STORAGE, bump);
+    window.addEventListener(EV_SAN_SYNC, bump as EventListener);
+    window.addEventListener(EV_HIDRO_SYNC, bump as EventListener);
     return () => {
-      window.removeEventListener('storage', bump);
-      window.removeEventListener('civilflow_san_sync_changed', bump as EventListener);
-      window.removeEventListener('civilflow_hidro_sync_changed', bump as EventListener);
+      window.removeEventListener(EV_STORAGE, bump);
+      window.removeEventListener(EV_SAN_SYNC, bump as EventListener);
+      window.removeEventListener(EV_HIDRO_SYNC, bump as EventListener);
     };
   }, []);
   // Remap de sectores cuando el motor renumera canales (borrar uno cierra huecos CNL):

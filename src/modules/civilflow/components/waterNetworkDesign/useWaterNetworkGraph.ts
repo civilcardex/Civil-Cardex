@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { BajanteRaw } from '../../utils/drawingSyncTypes';
 import type { Tramo } from '../../context/tramosReducer';
 import type { PlanItem } from '../../context/PlansContext';
 import { APARATOS_DEF } from '../../constants';
@@ -11,11 +12,6 @@ import { isLdesvioRamalId } from '../../utils/associateBajanteAcrossFloors';
 import { hunterQ } from './rowPhysics';
 import { resolveJunctionEntrant } from '../../utils/flowDirection';
 import { isAC2 } from '../../utils/waterNetworkRows';
-
-interface BajanteRaw extends RawElement {
-  x?: number;
-  y?: number;
-}
 
 // Grafo de conectividad de la red leído de TODOS los planos dibujados: enlaces ramal→bajante y
 // ramal→ramal por cercanía de extremos, puentes de montantes entre pisos, poda de ciclos y

@@ -8,6 +8,7 @@ import {
 } from '../constants/storage-keys';
 import type { SyncPlanInput } from './drawingSync';
 import { writeHydroDrawingSync } from './drawingSync';
+import { emitAparatosClear } from '../utils/fixtureEvents';
 
 interface LocalDrawingData {
   ts?: number;
@@ -179,7 +180,7 @@ export function syncExtremeAparatoToCounts(
   }
   if (touched) {
     try {
-      window.dispatchEvent(new CustomEvent('aparatos-clear'));
+      emitAparatosClear();
     } catch {
       /* ignore */
     }
@@ -197,7 +198,7 @@ export function moveAparatoCount(
   bumpAparatoCount(netId, toId, planId, appId, +1);
   dispararPropagacion(netId);
   try {
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    emitAparatosClear();
   } catch {
     /* ignore */
   }
@@ -229,7 +230,7 @@ export function moveAllAparatoCounts(
   saveToStorage(APARATOS_BY_TRAMO_KEY, copy);
   dispararPropagacion(netId);
   try {
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    emitAparatosClear();
   } catch {
     /* ignore */
   }
@@ -326,6 +327,6 @@ export function syncExtremeAccessoryToHidroData(
     writeHydroDrawingSync(plans);
   }
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    emitAparatosClear();
   }
 }

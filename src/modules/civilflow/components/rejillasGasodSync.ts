@@ -6,10 +6,11 @@ import {
 } from '../services/projectDataService';
 import { APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
+import { emitAparatosClear, EV_APARATOS_CLEAR } from '../utils/fixtureEvents';
 
 /** Sincronía BD de los conteos de gasodomésticos de áreas rejillas (claves gas_AR…), VIVA
  *  aunque la tabla de Rejillas esté cerrada:
- *  - startRejillasGasodSync(): cada 'aparatos-clear' (panel del visor, tabla, GC) re-empuja
+ *  - startRejillasGasodSync(): cada EV_APARATOS_CLEAR (panel del visor, tabla, GC) re-empuja
  *    el blob con lo que hay en disco — sin esto borrar/asignar desde el PANEL dejaba el
  *    blob viejo y la hidratación resucitaba lo borrado.
  *  - hidratarRejillasGasod(): fill-missing del blob al disco — sin esto el panel derecho
@@ -69,12 +70,12 @@ async function pushBlobAhora(): Promise<void> {
 }
 
 let started = false;
-/** Timestamp (Date.now) del último 'aparatos-clear' LOCAL (del usuario): la frescura de hidratarRejillasGasod. */
+/** Timestamp (Date.now) del último EV_APARATOS_CLEAR LOCAL (del usuario): la frescura de hidratarRejillasGasod. */
 let ultimoCambioLocal = 0;
 export function startRejillasGasodSync(): void {
   if (started || typeof window === 'undefined') return;
   started = true;
-  window.addEventListener('aparatos-clear', (e) => {
+  window.addEventListener(EV_APARATOS_CLEAR, (e) => {
     // El fill de hidratación dispara el evento programáticamente: NO es edición del
     // usuario — no marca frescura ni agenda push (empujaría estado default sobre BD).
     if ((e as CustomEvent).detail?.origen === 'hidratacion') return;
@@ -91,7 +92,7 @@ export function startRejillasGasodSync(): void {
 }
 
 /** Fill-missing del blob BD → disco (solo claves ausentes; nunca pisa lo local).
- *  Guard de frescura: si hubo edición local ('aparatos-clear') durante el fetch, el
+ *  Guard de frescura: si hubo edición local (EV_APARATOS_CLEAR) durante el fetch, el
  *  blob puede ser previo al borrado — se aborta para no resucitar conteos. */
 export async function hidratarRejillasGasod(): Promise<void> {
   try {
@@ -114,7 +115,7 @@ export async function hidratarRejillasGasod(): Promise<void> {
         changed = true;
       }
     }
-    // ANTES del dispatch: el 'aparatos-clear' de abajo agenda un push que debe ver
+    // ANTES del dispatch: el EV_APARATOS_CLEAR de abajo agenda un push que debe ver
     // el disco ya completado (si no, re-enviaría el gasod de BD y anularía el fill).
     hidratadoPid = pid;
     if (changed) {
@@ -122,9 +123,7 @@ export async function hidratarRejillasGasod(): Promise<void> {
       // detail.origen = 'hidratacion': el fill es PROGRAMÁTICO — los listeners que
       // distinguen usuario de máquina (editadoRef del tab, Frescura del push) NO deben
       // tratarlo como edición ni agenda push con estado default (pisaba la hidratación).
-      window.dispatchEvent(
-        new CustomEvent('aparatos-clear', { detail: { origen: 'hidratacion' } }),
-      );
+      emitAparatosClear({ origen: 'hidratacion' });
     }
   } catch (e) {
     devError('rejillasGasodSync hidratar:', e);

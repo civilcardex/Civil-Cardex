@@ -4,6 +4,7 @@ import { loadFromStorage } from '../../../services/storageService';
 import { RainwaterContext } from '../../../context/RainwaterContext';
 import { buildLlBajanteAssociations } from '../../../utils/rainwaterRows';
 import { chequeoBajanteLluvia } from '../../../utils/calcRainwater';
+import { splitPtr } from '../../../utils/keys';
 import { cDeCubierta } from '../../../constants/engineeringDataMaterials';
 import type { DrawingData } from '../../../utils/drawingSync';
 
@@ -124,7 +125,7 @@ function caudalLlDe(
       | undefined;
     const o = b?.origenId || '';
     if (!o.includes('|')) return 0;
-    const [op, oid] = o.split('|');
+    const [op, oid] = splitPtr(o, '');
     const k = `${op}|${oid}`;
     if (seen.has(k)) return 0;
     seen.add(k);

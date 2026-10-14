@@ -7,6 +7,7 @@ import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { fmt } from '../../utils/formatUtils';
 import type { RejOverride } from './rejillasStorage';
+import { emitAparatosClear } from '../../utils/fixtureEvents';
 
 /** Índice id→entrada del catálogo NTC 3728: la potencia de cada aparato es fija (no editable). */
 export const CAT_GAS_BY_ID = new Map(CAT_GAS.map((c) => [c.id, c]));
@@ -83,7 +84,7 @@ export function onAparatoCol(
     if (Object.keys(cur).length === 0) delete next[col.clave];
     else next[col.clave] = cur;
     saveToStorage(APARATOS_BY_TRAMO_KEY, next);
-    window.dispatchEvent(new Event('aparatos-clear'));
+    emitAparatosClear();
   } catch (e) {
     devError('RejillasVentilacion.onAparatoCol:', e);
   }
@@ -99,7 +100,7 @@ export function setCantCol(f: RejFila, colIdx: number, cant: number): void {
     if (cant === 0) delete cur[col.id];
     else cur[col.id] = cant;
     saveToStorage(APARATOS_BY_TRAMO_KEY, { ...disk, [col.clave]: cur });
-    window.dispatchEvent(new Event('aparatos-clear'));
+    emitAparatosClear();
   } catch (e) {
     devError('RejillasVentilacion.setCantCol:', e);
   }
@@ -139,7 +140,7 @@ export function quitarColumna(
     if (Object.keys(cur).length === 0) delete next[clave];
     else next[clave] = cur;
     saveToStorage(APARATOS_BY_TRAMO_KEY, next);
-    window.dispatchEvent(new Event('aparatos-clear'));
+    emitAparatosClear();
   } catch (e) {
     devError('RejillasVentilacion.quitarColumna:', e);
   }

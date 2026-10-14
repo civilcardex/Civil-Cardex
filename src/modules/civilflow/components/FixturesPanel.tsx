@@ -1,16 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  APARATOS_DEF,
-  UD_BASE_INIT,
-  ACCESORIOS_HIDRO,
-  GAS_ACCESORIOS,
-  DIAM_BY_MAT,
-} from '../constants';
+import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
-import { matchDiamOption } from '../utils/diamOptionMatch';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
-import { sanDiamAllowedForApparatus } from '../utils/sanitaryDiamCompat';
-import { bumpHidroAccesorio } from '../utils/syncExtremeAccessory';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import {
@@ -24,15 +14,12 @@ import { SecMontantes } from './fixtures/SecMontantes';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/devError';
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
 import {
   UNIDAD,
   loadAll,
-  saveAll,
   loadHidroData,
-  saveHidroData,
   loadGasAcc,
-  saveGasAcc,
   unitFor,
   esAplicable,
   isCountableTarget,
@@ -40,27 +27,20 @@ import {
   type HidroDataMap,
   type GasAccMap,
   type SelectableTarget,
-  idsSalidasDeBajante,
-  libroHeredado,
-  aggParaEspejoSalida,
   stableStringify,
+  salidasDeBajante,
 } from './fixturesStorage';
+import { hidroDeClave, totalDeUnidades, ownTotalDe, esPropioDe } from './fixturesStorage';
+import { podarGasAccPorPlanos } from '../utils/drawingSyncGc';
+import { useFixtureAccMutations } from './fixtures/useFixtureAccMutations';
+import { useFixtureMirrors } from './fixtures/useFixtureMirrors';
+import { useFixtureMutations } from './fixtures/useFixtureMutations';
+import { useFixtureTarget } from './fixtures/useFixtureTarget';
+import { LlAssociationsPanel } from './fixtures/LlAssociationsPanel';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
+import { countKey } from '../utils/keys';
 import { bajanteLabel, ramalLabel } from '../utils/accessoryAbbreviations';
-import {
-  aggBajanteAsociado,
-  mapUdBombaDesdeTrazos,
-  propagarHerenciaBomba,
-  type AsocLiveBaj,
-} from '../utils/bombaAssociation';
-import {
-  collectSourceAgg,
-  type InheritPoolBajante,
-  type InheritPoolRamal,
-} from '../utils/bajanteAssociation';
-import { ldesvioIdFor } from '../utils/associateBajanteAcrossFloors';
-import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
-import { flowTailEnd } from './pdfViewer/drawingElementContextMenu/ramalMenuHelpers';
+
 import { distToPolyline } from '../lib/shared/geometry';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 import { useTramos } from '../context/TramosContext';
@@ -107,34 +87,14 @@ const FixturesPanel_S3: React.CSSProperties = {
 
 import type { ProbedElement } from './pdfViewer/tramoEditor/context';
 import { useRainwater } from '../context/RainwaterContext';
+import { leerHeredadosPresion } from '../utils/aparatosPresion';
 import {
-  ASSOC_CHECKBOX_STYLE,
-  ASSOC_ROW_STYLE,
-} from './pdfViewer/drawingElementContextMenu/canalesAsociados';
-import { camposAsocManual } from '../lib/PlanoEngine/PlanoEngineSelectionEdit';
-import { propagarAparatosPresion, leerHeredadosPresion } from '../utils/aparatosPresion';
-import { vetarSelloCanal, levantarVetoSelloCanal } from '../lib/PlanoEngine/canalAssociation';
-
-/** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
- *  JSON contra el valor en disco. Con deleteEmpty, un next vacío ELIMINA la clave (borrar UDs
- *  heredadas) en vez de dejar un espejo {} que reinsertaba basura vieja. */
-function syncMirrorKey(
-  disk: Record<string, Record<string, number>>,
-  key: string,
-  next: Record<string, number>,
-  deleteEmpty: boolean,
-): boolean {
-  if (!Object.keys(next).length) {
-    if (deleteEmpty && disk[key]) {
-      delete disk[key];
-      return true;
-    }
-    return false;
-  }
-  if (stableStringify(disk[key] || {}) === stableStringify(next)) return false;
-  disk[key] = { ...next };
-  return true;
-}
+  EV_APARATOS_CLEAR,
+  EV_SAN_SYNC,
+  EV_HIDRO_SYNC,
+  EV_PLAN_LOADED,
+  EV_STORAGE,
+} from '../utils/fixtureEvents';
 
 const AparatosPanel = memo(function AparatosPanel_({
   activeNet,
@@ -161,90 +121,35 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const [hidroData, setHidroData] = useState<HidroDataMap>(loadHidroData);
   const [gasAcc, setGasAcc] = useState<GasAccMap>(loadGasAcc);
-  // Señal de fin de carga de un piso (usePlanoLoadSwitch dispara 'civilflow_plan_loaded'): el
+  // Señal de fin de carga de un piso (usePlanoLoadSwitch dispara EV_PLAN_LOADED): el
   // efecto de espejos/herencia se SALTA mientras carga (anti-carrera) y con este tick vuelve a
   // correr justo después — sin él, la herencia bomba→bajante no se reescribía al abrir el piso
   // y el bajante quedaba con el valor viejo (orig. usuario).
   const [planLoadedTick, setPlanLoadedTick] = useState(0);
   useEffect(() => {
     const h = (): void => setPlanLoadedTick((t) => t + 1);
-    window.addEventListener('civilflow_plan_loaded', h);
-    return () => window.removeEventListener('civilflow_plan_loaded', h);
+    window.addEventListener(EV_PLAN_LOADED, h);
+    return () => window.removeEventListener(EV_PLAN_LOADED, h);
   }, []);
   // Sanado de sifones fantasma (orig. usuario: "crea un sifón de más"): el conteo 'sif' se
   // acumulaba sin guard en caminos viejos (re-selección del accesorio en el dropdown, pisado
   // del glifo al asignar otro aparato). Se reconcilia con los glifos vivos del piso cargado
   // al abrir/cargar — el contador nunca puede diferir de los glifos dibujados.
-  useEffect(() => {
-    const eng = engineRef.current;
-    if (!eng || loadingPlanRef?.current) return;
-    const pid = String(eng._loadedPlanId ?? '');
-    if (!pid) return;
-    const all = loadAll();
-    let dirty = false;
-    for (const r of eng.ramales) {
-      if (r.net !== 'san' && r.net !== 'll') continue;
-      const key = `${r.net}_${r.id}_${pid}`;
-      let glifos = 0;
-      if (r.accesorioInicio === 'sifon') glifos++;
-      if (r.accesorioFin === 'sifon') glifos++;
-      if (r.accMed)
-        for (const v of Object.values(r.accMed as unknown as Record<string, string>))
-          if (v === 'sifon') glifos++;
-      const contado = all[key]?.['sif'] || 0;
-      if (contado === glifos) continue;
-      const cur = { ...(all[key] || {}) };
-      if (glifos > 0) cur.sif = glifos;
-      else delete cur.sif;
-      if (Object.keys(cur).length) all[key] = cur;
-      else delete all[key];
-      dirty = true;
-    }
-    if (dirty) {
-      saveAll(all);
-      setCounts(all);
-      try {
-        window.dispatchEvent(new CustomEvent('aparatos-clear'));
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [planLoadedTick, engineRef, loadingPlanRef]);
   const [open, setOpen] = useState(true);
   const [pulse, setPulse] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastTargetRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const existingIds = new Set<string>();
-    for (const plano of plans) {
-      if (!plano || plano.status !== 'confirmed') continue;
-      try {
-        const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
-        if (!data) continue;
-        for (const r of data.ramales || []) {
-          if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
-        }
-      } catch {
-        // ignorar
-      }
-    }
-    const pruned = loadGasAcc();
-    let prunedChanged = false;
-    const prunedNext: GasAccMap = {};
-    for (const id of existingIds) {
-      if (pruned[id]) prunedNext[id] = pruned[id];
-    }
-    if (Object.keys(prunedNext).length !== Object.keys(pruned).length) prunedChanged = true;
-    if (prunedChanged) {
-      saveGasAcc(prunedNext);
-      setGasAcc(prunedNext);
+    const { idsVivos, porDisco } = podarGasAccPorPlanos(plans);
+    if (porDisco) {
+      setGasAcc(porDisco);
       return;
     }
     setGasAcc((prev) => {
       let changed = false;
       const next: GasAccMap = {};
-      for (const id of existingIds) {
+      for (const id of idsVivos) {
         if (prev[id]) next[id] = prev[id];
       }
       if (Object.keys(next).length !== Object.keys(prev).length) changed = true;
@@ -279,15 +184,15 @@ const AparatosPanel = memo(function AparatosPanel_({
         return stableStringify(prev) === stableStringify(next) ? prev : next;
       });
     };
-    window.addEventListener('storage', reloadAll);
-    window.addEventListener('aparatos-clear', reloadAll);
-    window.addEventListener('civilflow_san_sync_changed', reloadAll);
-    window.addEventListener('civilflow_hidro_sync_changed', reloadAll);
+    window.addEventListener(EV_STORAGE, reloadAll);
+    window.addEventListener(EV_APARATOS_CLEAR, reloadAll);
+    window.addEventListener(EV_SAN_SYNC, reloadAll);
+    window.addEventListener(EV_HIDRO_SYNC, reloadAll);
     return () => {
-      window.removeEventListener('storage', reloadAll);
-      window.removeEventListener('aparatos-clear', reloadAll);
-      window.removeEventListener('civilflow_san_sync_changed', reloadAll);
-      window.removeEventListener('civilflow_hidro_sync_changed', reloadAll);
+      window.removeEventListener(EV_STORAGE, reloadAll);
+      window.removeEventListener(EV_APARATOS_CLEAR, reloadAll);
+      window.removeEventListener(EV_SAN_SYNC, reloadAll);
+      window.removeEventListener(EV_HIDRO_SYNC, reloadAll);
     };
   }, []);
 
@@ -448,29 +353,6 @@ const AparatosPanel = memo(function AparatosPanel_({
   // abre el menú SIN esperar el cálculo — correrlo síncrono en el ciclo de selección rompía
   // la apertura de los menús contextuales (regresión 2026-10-09). Errores atrapados: nunca
   // deben tumbar el panel.
-  useEffect(() => {
-    if (!(netId === 'af' || netId === 'ac')) return;
-    const t = window.setTimeout(() => {
-      try {
-        propagarAparatosPresion(netId);
-      } catch (e) {
-        devError('[CF-PROP] error en propagación:', e);
-      }
-    }, 250);
-    // Al cambiar de selección NO se cancela en silencio (auditoría #5: la geometría del
-    // tramo anterior quedaba sin propagar hasta re-seleccionarlo): se vacía lo pendiente
-    // de forma síncrona — a estas alturas el menú ya abrió y la corrida es solo math de
-    // storage, el mismo costo que el autosave que ya corre en este ciclo.
-    return () => {
-      window.clearTimeout(t);
-      try {
-        propagarAparatosPresion(netId);
-      } catch (e) {
-        devError('[CF-PROP] error en propagación (flush):', e);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [netId, targetId]);
   useEffect(() => {
     if (targetId && targetId !== lastTargetRef.current) {
       lastTargetRef.current = targetId;
@@ -671,16 +553,10 @@ const AparatosPanel = memo(function AparatosPanel_({
   })();
 
   // Ramales que SALEN de un bajante: la COLA de la flecha de flujo queda del lado del bajante
-  // (criterio del usuario). Geométrico sobre pts (misma convención de flowVecAt: flujo de
-  // pts[0] al último, invertido si _tribReversed) con alimentaIds como respaldo para trazos
-  // viejos; si la cabeza cae en el bajante, DRENA en él y no es salida.
+  // (criterio del usuario). Vive en fixturesStorage (salidasDeBajante); el wrapper conserva la
+  // firma que usan agregadoBajante/currentMap/esEspejoBajante.
   const exitsDeBajante = useCallback(
-    (bajId: string): Set<string> => {
-      const eng = engineRef.current;
-      const baj = eng?.bajantes.find((b) => b.id === bajId);
-      if (!eng || !baj) return new Set<string>();
-      return idsSalidasDeBajante(baj, eng.ramales, eng.zoom || 1);
-    },
+    (bajId: string): Set<string> => salidasDeBajante(engineRef.current, bajId),
     [engineRef],
   );
 
@@ -692,7 +568,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   const agregadoBajante = useCallback(
     (bajId: string): Record<string, number> => {
       const agg: Record<string, number> = {};
-      const ownKey = planId ? `${netId}_${bajId}_${planId}` : `${netId}_${bajId}`;
+      const ownKey = planId ? countKey(netId, bajId, planId) : `${netId}_${bajId}`;
       for (const [k, v] of Object.entries(counts[ownKey] || {}))
         agg[k] = (agg[k] || 0) + (v as number);
       const exits = exitsDeBajante(bajId);
@@ -771,156 +647,52 @@ const AparatosPanel = memo(function AparatosPanel_({
     [counts, netId, planId, sanConnectivity, tramosPiso, exitsDeBajante, engineRef],
   );
 
-  const currentMap = useMemo(() => {
-    if (!storageKey) return {};
-    // Bajante ASOCIADO desde arriba (origenId): muestra las UDs del GRUPO — la clave del
-    // Ldesvio las mantiene la propagación en vivo desde el piso superior.
-    // origenId leído del ENGINE VIVO (selElement puede quedar stale tras updateElementById).
-    const liveBaj = engineRef.current?.bajantes.find((b) => b.id === targetId);
-    const origen =
-      liveBaj?.origenId ??
-      liveBaj?.bombaEnId ??
-      (selElement as { origenId?: string; bombaEnId?: string } | null)?.origenId ??
-      (selElement as { bombaEnId?: string } | null)?.bombaEnId;
-    // FUENTE ÚNICA del bajante asociado (orig. usuario: original/fantasma/Ldesvio muestran
-    // SIEMPRE las UD del grupo — 12, nunca 16): bomba → libro → árbol real del origen.
-    if (isBajanteSan && targetId && origen?.includes('|')) {
-      const asoc = aggBajanteAsociado({
-        targetId,
-        netId,
-        planId: String(planId ?? ''),
-        liveBaj,
-        plans,
-        counts,
-        hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
-        engine: engineRef.current,
-      });
-      if (asoc) return asoc;
-    }
-    const propio = isBajanteSan && targetId ? agregadoBajante(targetId) : null;
-    if (propio) return propio;
-    // Espejo de SALIDA de un bajante/caja: mostrar EXACTAMENTE el agregado del elemento dueño
-    // — nunca la clave propia del ramal ni sus mergeKeys (cualquier copia vieja en esas claves
-    // mostraba los aparatos de los trazos de entrada DUPLICADOS en la salida, orig. usuario).
-    if (
-      targetId &&
-      (netId === 'san' || netId === 'll') &&
-      !targetId.startsWith('LD_') &&
-      !targetId.startsWith('B')
-    ) {
-      const engM = engineRef.current;
-      const owner = engM?.bajantes.find(
-        (b) => b.net === netId && exitsDeBajante(b.id).has(targetId),
-      );
-      if (owner) {
-        // Salida de un bajante ASOCIADO: misma fuente única (la suma cruda del árbol daba 16).
-        if (owner.origenId?.includes('|') || owner.bombaEnId?.includes('|')) {
-          const asoc = aggBajanteAsociado({
-            targetId: owner.id,
-            netId,
-            planId: String(planId ?? ''),
-            liveBaj: owner,
-            plans,
-            counts,
-            hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
-            engine: engineRef.current,
-          });
-          if (asoc) return asoc;
-        }
-        return agregadoBajante(owner.id);
-      }
-    }
-    // LDesvio: espeja el GRUPO de la asociación (la clave espejo `san_LD_X_plan` puede quedar
-    // stale de escrituras viejas). El grupo se resuelve por el bajante asociado local cuyo
-    // `origenId` referencia al titular del LD (`LD_<upperId>`).
-    if (targetId?.startsWith('LD_') && (netId === 'san' || netId === 'll')) {
-      const upperId = targetId.slice(3);
-      const engL = engineRef.current;
-      let lower = engL?.bajantes.find(
-        (b) => (b as { origenId?: string }).origenId?.split('|')[1] === upperId,
-      ) as unknown as AsocLiveBaj | undefined;
-      if (!lower) {
-        const rawLoc = loadFromStorage<{ bajantes?: AsocLiveBaj[] } | null>(
-          TRAZOS_PREFIX + String(planId ?? ''),
-          null,
-        );
-        lower = rawLoc?.bajantes?.find((b) => b.origenId?.split('|')[1] === upperId);
-      }
-      if (lower) {
-        const asoc = aggBajanteAsociado({
-          targetId: lower.id || targetId,
-          netId: (lower as { net?: string }).net || netId,
-          planId: String(planId ?? ''),
-          liveBaj: lower,
-          plans,
-          counts,
-          hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
-          engine: engineRef.current,
-        });
-        if (asoc) return asoc;
-      }
-    }
-    const own = counts[storageKey] || {};
-    // af/ac (orig. usuario): la clave YA trae la carga propagada (propia + heredada) —
-    // sumar las patas de la unión encima duplicaba (RAF1 mostraba RAF2+RAF3 = ×2). El
-    // merge-sum sigue vigente para gas (sin propagación).
-    if (netId === 'af' || netId === 'ac') return own;
-    if (!mergeKeys) return own;
-    const merged: Record<string, number> = { ...own };
-    for (const k of mergeKeys) {
-      for (const [apId, v] of Object.entries(counts[k] || {})) {
-        merged[apId] = (merged[apId] || 0) + v;
-      }
-    }
-    return merged;
-  }, [
+  // Cluster de espejos/herencia (rediseño): sanado de sifones + propagación + espejos
+  // cross-floor — ver fixtures/useFixtureMirrors.ts.
+  useFixtureMirrors({
+    engineRef,
+    loadingPlanRef,
+    netId,
+    planId,
+    plans,
+    planLoadedTick,
+    targetId,
     counts,
+    setCounts,
     hidroData,
+    setHidroData,
+    agregadoBajante,
+    exitsDeBajante,
+  });
+
+  const currentMap = useFixtureTarget({
+    netId,
     storageKey,
+    targetId,
     mergeKeys,
     isBajanteSan,
-    targetId,
     planId,
     selElement,
-    agregadoBajante,
-    engineRef,
-    exitsDeBajante,
-    netId,
+    counts,
+    hidroData,
     plans,
-  ]);
+    engineRef,
+    agregadoBajante,
+    exitsDeBajante,
+  });
 
-  const curHidro = useMemo(() => {
-    if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
-    return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-  }, [hidroData, storageKey]);
+  const curHidro = useMemo(() => hidroDeClave(hidroData, storageKey), [hidroData, storageKey]);
 
-  const total = useMemo(() => {
-    if (!storageKey) return 0;
-    let s = 0;
-    for (const ap of items) {
-      const u = (unitKey ? ap[unitKey] : undefined) || 0;
-      s += (currentMap[ap.id] || 0) * u;
-    }
-    return s;
-  }, [items, currentMap, unitKey, storageKey]);
+  const total = useMemo(
+    () => totalDeUnidades(items, currentMap, unitKey, storageKey),
+    [items, currentMap, unitKey, storageKey],
+  );
 
   // Total de unidades MANUALES propias de este tramo: carga de la clave MENOS el libro
   // de herencia (auditoría #4 — antes sumaba la carga completa y un tramo con solo
   // heredado bloqueaba su primer manual). El cap del ítem 6 aplica solo sobre lo propio.
-  const ownTotal = useMemo(() => {
-    if (!storageKey) return 0;
-    const libro = storageKey ? leerHeredadosPresion(storageKey) : {};
-    return Object.entries(counts[storageKey] || {}).reduce(
-      (s, [k, v]) => s + Math.max(0, v - (libro[k] || 0)),
-      0,
-    );
-  }, [counts, storageKey]);
-  /** ¿El aparato ya vive como manual propio (no solo heredado)? */
-  const esPropio = (apId: string): boolean => {
-    if (!storageKey) return false;
-    const libro = leerHeredadosPresion(storageKey);
-    return (counts[storageKey]?.[apId] || 0) - (libro[apId] || 0) > 0;
-  };
+  const ownTotal = useMemo(() => ownTotalDe(counts, storageKey), [counts, storageKey]);
+  const esPropio = (apId: string): boolean => esPropioDe(counts, storageKey, apId);
 
   const totalStr = useMemo(() => {
     if (Number.isInteger(total)) return String(total);
@@ -933,282 +705,6 @@ const AparatosPanel = memo(function AparatosPanel_({
   // del bajante (agregadoBajante, compartido con currentMap). Recorre TODOS los bajantes de
   // la red activa en cada cambio de conteos o selección: editar un ramal que drena en BAN1
   // actualiza su ramal de salida al momento, sin depender de qué tramo está seleccionado.
-  useEffect(() => {
-    const eng = engineRef.current;
-    if (!eng) return;
-    // Carrera de cambio de piso (orig. usuario): `_loadedPlanId` ya apunta al piso entrante
-    // pero `eng.bajantes` aún es el piso anterior — escribir aquí estampaba claves/libros con
-    // el sufijo de piso equivocado.
-    if (loadingPlanRef?.current) return;
-    const disk = loadAll();
-    const hdisk = loadHidroData();
-    const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
-    let dirty = false;
-    let hdirty = false;
-    // Libros de herencia cross-floor por bajante (misma lectura que el display del panel:
-    // TRAZOS del piso cargado) — el espejo de salidas copia lo que el bajante MUESTRA.
-    let trazBooks = new Map<string, Record<string, Record<string, number>>>();
-    try {
-      const t = loadFromStorage<{
-        bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
-      } | null>(TRAZOS_PREFIX + planId, null);
-      for (const b of t?.bajantes || []) if (b.ucAplicado) trazBooks.set(b.id, b.ucAplicado);
-    } catch {
-      trazBooks = new Map();
-    }
-    for (const baj of eng.bajantes) {
-      if (baj.net !== netId) continue;
-      // MONTANTES (orig. usuario): NO espejan sus ramales — son la inversa de un bajante (los
-      // alimentan, no los reciben); sus ramales mantienen UDs propias asignables.
-      if (baj.tipo === 'montante') continue;
-      // BOMBA (orig. usuario): punto de transferencia — su clave SIEMPRE espeja el agregado
-      // de su caja de origen (recalculado por conectividad; nunca genera UDs propias). SIN
-      // `continue`: la bomba también puede sostener un enlace cross-floor (descargaEnId →
-      // bajante superior), que se procesa más abajo en esta misma iteración.
-      if (baj.tipo === 'bomba' && baj.cajaOrigenId) {
-        // Misma fuente que BombaARDesign: trazos del piso de la caja (con fallback al agregado
-        // vivo) — la clave de la bomba SIEMPRE termina valiendo lo mismo en ambos lados.
-        // La bomba vive en el piso cargado: se suma el pool vivo (los trazos en disco van
-        // por detrás del motor y el espejo divergía del mapa de la página).
-        const desdeTrazos = mapUdBombaDesdeTrazos(String(planId), baj.id, netId, {
-          bajantes: eng.bajantes as unknown as InheritPoolBajante[],
-          ramales: eng.ramales as unknown as InheritPoolRamal[],
-        });
-        const aggBomba = Object.keys(desdeTrazos).length
-          ? desdeTrazos
-          : agregadoBajante(baj.cajaOrigenId);
-        // Sin agregado (caja vacía o red aún en construcción): NO sobrescribir la clave con
-        // {} — el espejo vacío borraba UDs legítimas (orig. usuario).
-        if (!Object.keys(aggBomba).length) continue;
-        if (syncMirrorKey(disk, pkey(baj.id), aggBomba, false)) dirty = true;
-      } else {
-        // Bajante asociado a BOMBA (orig. usuario): sus salidas espejan las UDs DE LA BOMBA
-        // (misma lectura que el panel del bajante) — NO el agregado del árbol, que puede no
-        // contener las ramales heredadas y dejaba la salida en 0 aunque el bajante mostrara
-        // el total (caso RS7/BAN2). Con pool vivo si la bomba es de este piso.
-        let agg = agregadoBajante(baj.id);
-        if (baj.bombaEnId?.includes('|')) {
-          const [pp, pi] = baj.bombaEnId.split('|');
-          const engMismoPiso =
-            String(eng._loadedPlanId ?? '') === pp
-              ? {
-                  bajantes: eng.bajantes as unknown as InheritPoolBajante[],
-                  ramales: eng.ramales as unknown as InheritPoolRamal[],
-                }
-              : null;
-          agg = mapUdBombaDesdeTrazos(pp, pi, netId, engMismoPiso);
-        } else if (baj.origenId?.includes('|')) {
-          // Asociación cross-floor: el panel del bajante muestra el LIBRO heredado, no el
-          // árbol — el espejo copia lo mismo o la salida queda en 0 con el bajante lleno
-          // (orig. usuario: bajante con 2 UDs, ramal de salida sin nada).
-          const espejo = aggParaEspejoSalida(
-            agg,
-            libroHeredado({ ucAplicado: trazBooks.get(baj.id) }),
-          );
-          if (!espejo) continue;
-          agg = espejo;
-        }
-        if (!Object.keys(agg).length) continue;
-        for (const rid of exitsDeBajante(baj.id)) {
-          const rk = pkey(rid);
-          // REEMPLAZO (antes fusión): el ramal de salida es un ESPEJO de solo lectura del
-          // elemento (inc/dec bloqueados) — conservar valores viejos en su clave mantenía
-          // viva cualquier inflación pasada y la re-mostraba para siempre. El reemplazo la
-          // sana al agregado exacto en el próximo pase (orig. usuario: caja AN duplicaba UDs).
-          if (syncMirrorKey(disk, rk, agg, false)) dirty = true;
-        }
-      }
-    }
-    // Propagación EN VIVO hacia el piso de abajo: la clave del Ldesvio y los ramales destino
-    // reciben el agregado COMPLETO del bajante superior — la misma verdad única que usa el
-    // apply (collectSourceAgg: cierre transitivo, sin topes), no el parcial de antes.
-    // Solo escribe el extremo SUPERIOR del enlace (guard por npt): el inferior nunca
-    // re-empuja hacia arriba (eso envenenaba la herencia al cambiar de asociado). Con npt
-    // desconocido se conserva el comportamiento previo (titular = descargaEnId).
-    // Cubre san y ll aunque el panel esté en la otra red (el cambio pudo venir del menú).
-    // BOMBA → BAJANTE del piso superior (orig. usuario): la clave de la bomba (= agregado de
-    // su caja, espejado arriba) hereda a los ramales del bajante (recibe+alimenta) vía libro
-    // `ucAplicado` — MISMA mecánica de delta que la herencia hacia abajo, pero hacia ARRIBA.
-    // Campo dedicado `bombaEnId`: descargaEnId/origenId dispararían la herencia invertida.
-    // Una sola implementación (ver `propagarHerenciaBomba`): también la usa `asociarBomba`
-    // para propagar sincrónicamente al marcar.
-    if (propagarHerenciaBomba(eng, planId, netId, disk)) dirty = true;
-    const loadedPid = planId != null ? String(planId) : '';
-    // npt = NIVEL del plano (PlanItem.nivel). ANTES leía `p.npt` — campo que NO existe en
-    // PlanItem → guard siempre nulo → "desconocido = procesar" dejaba al piso INFERIOR
-    // escribir el enlace invertido: sumaba sus UD locales a la herencia y envenenaba el piso
-    // superior (orig. usuario: 12 UD abajo → 16 al reentrar; trinquete que nunca baja).
-    // Ahora, sin nivel conocido NO se procesa (el efecto re-corre cuando `plans` llega — ya
-    // está en sus deps).
-    const nptOf = (pid: string): number | null => {
-      const n = plans.find((x) => String(x.id) === pid)?.nivel;
-      return typeof n === 'number' && Number.isFinite(n) ? n : null;
-    };
-    const loadedNpt = loadedPid ? nptOf(loadedPid) : null;
-    // MONTANTES entre pisos (orig. usuario): mismas asociaciones que bajantes — la propagación
-    // viva cubre TODAS las redes con elementos asociables (el cuerpo filtra por baj.net).
-    for (const propNet of ['san', 'll', 'af', 'ac', 'gas', 'vent']) {
-      for (const baj of eng.bajantes) {
-        if (baj.net !== propNet) continue;
-        const links: { ldPlan: string; lowerBajId: string; upperBajId: string }[] = [];
-        if (baj.descargaEnId?.includes('|')) {
-          const [q, qBaj] = baj.descargaEnId.split('|');
-          const nq = q ? nptOf(q) : null;
-          // Titular = bajante SUPERIOR con descargaEnId al piso de abajo: escribe solo si de
-          // verdad está por encima del destino.
-          if (q && qBaj && loadedNpt != null && nq != null && loadedNpt > nq)
-            links.push({ ldPlan: q, lowerBajId: qBaj, upperBajId: baj.id });
-        }
-        if (baj.origenId?.includes('|')) {
-          const [r, rBaj] = baj.origenId.split('|');
-          const nr = r ? nptOf(r) : null;
-          // Titular origenId = bajante INFERIOR (el apply se lo pone al destino): procesar
-          // aquí propagaría inferior→superior (el veneno del trinquete). Solo se permite el
-          // empate de nivel (misma regla del apply).
-          if (r && rBaj && loadedNpt != null && nr != null && loadedNpt === nr)
-            links.push({ ldPlan: r, lowerBajId: rBaj, upperBajId: baj.id });
-        }
-        for (const link of links) {
-          const { ldPlan: ldPlanId, lowerBajId, upperBajId } = link;
-          const srcAgg = collectSourceAgg({
-            net: propNet,
-            planId: loadedPid,
-            bajId: upperBajId,
-            liveBaj: eng.bajantes.find((b) => b.id === upperBajId) ?? null,
-            liveRamales: (eng.ramales ?? []) as unknown as InheritPoolRamal[],
-            storedBaj: null,
-            storedRamales: null,
-            counts: disk,
-            hidro: hdisk as unknown as Record<string, { accesorios?: Record<string, number> }>,
-          });
-          const liveAgg = srcAgg.agg;
-          const liveHydro = srcAgg.hydroAgg;
-          // Sin agregado (el GC o claves stale vaciaron las claves del origen) NO se propaga:
-          // escribía libro vacío y restaba a 0 las UDs heredadas del destino (mismo guard que
-          // las ramas gemelas de espejos de salida).
-          if (Object.keys(liveAgg).length === 0) continue;
-          const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
-          if (syncMirrorKey(disk, lk, liveAgg, true)) dirty = true;
-          const tgt = loadFromStorage<{
-            bajantes?: Array<{
-              id: string;
-              ucAcum?: number;
-              recibeDeIds?: string[];
-              alimentaIds?: string[];
-              ucAplicado?: Record<string, Record<string, number>>;
-              ucAplicadoHidro?: Record<string, Record<string, number>>;
-            }>;
-          } | null>(TRAZOS_PREFIX + ldPlanId, null);
-          const tBaj = tgt?.bajantes?.find((x) => x.id === lowerBajId);
-          const tgtRamalIds = [...(tBaj?.recibeDeIds || []), ...(tBaj?.alimentaIds || [])];
-          const ownKey = `${propNet}_${lowerBajId}_${ldPlanId}`;
-          const own = disk[ownKey] || {};
-          const aplicadoPrev = tBaj?.ucAplicado || {};
-          const aplicadoHidroPrev = tBaj?.ucAplicadoHidro || {};
-          let tgtChanged = false;
-          const ucAplicadoNuevo: Record<string, Record<string, number>> = {};
-          const ucAplicadoHidroNuevo: Record<string, Record<string, number>> = {};
-          for (const rid of tgtRamalIds) {
-            const tk = `${propNet}_${rid}_${ldPlanId}`;
-            const esAlimenta = (tBaj?.alimentaIds || []).includes(rid);
-            const extra = esAlimenta ? { ...liveAgg, ...own } : liveAgg;
-            const cur = disk[tk] || {};
-            const prevAp = aplicadoPrev[tk] || {};
-            const result: Record<string, number> = {};
-            const keys = new Set([...Object.keys(cur), ...Object.keys(extra)]);
-            for (const k of keys) {
-              const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
-              if (nv > 0) result[k] = nv;
-            }
-            if (syncMirrorKey(disk, tk, result, true)) tgtChanged = true;
-            ucAplicadoNuevo[tk] = { ...extra };
-            if (liveHydro) {
-              const prevH = aplicadoHidroPrev[tk] || {};
-              const hcur = hdisk[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-              const acc: Record<string, number> = {};
-              for (const k of new Set([
-                ...Object.keys(hcur.accesorios || {}),
-                ...Object.keys(liveHydro),
-              ])) {
-                const nv =
-                  Math.max(0, ((hcur.accesorios || {})[k] || 0) - (prevH[k] || 0)) +
-                  (liveHydro[k] || 0);
-                if (nv > 0) acc[k] = nv;
-              }
-              if (JSON.stringify(hcur.accesorios || {}) !== JSON.stringify(acc)) {
-                hdisk[tk] = { ...hcur, accesorios: acc };
-                hdirty = true;
-              }
-              ucAplicadoHidroNuevo[tk] = { ...liveHydro };
-            }
-          }
-          const totalUc = Object.values(liveAgg).reduce((s, v) => s + (v as number), 0);
-          if (tBaj && (tBaj.ucAcum ?? 0) !== totalUc) {
-            tBaj.ucAcum = totalUc;
-            tgtChanged = true;
-          }
-          // El libro cubre también la clave del Ldesvio (el mismo agregado): sin esta entrada,
-          // la desasociación no sabría qué restar de ella y sus UDs quedarían colgadas.
-          ucAplicadoNuevo[lk] = { ...liveAgg };
-          if (tBaj && JSON.stringify(tBaj.ucAplicado || {}) !== JSON.stringify(ucAplicadoNuevo)) {
-            tBaj.ucAplicado = ucAplicadoNuevo;
-            tgtChanged = true;
-          }
-          if (liveHydro) {
-            ucAplicadoHidroNuevo[lk] = { ...liveHydro };
-            if (
-              JSON.stringify(tBaj?.ucAplicadoHidro || {}) !==
-                JSON.stringify(ucAplicadoHidroNuevo) &&
-              tBaj
-            ) {
-              tBaj.ucAplicadoHidro = ucAplicadoHidroNuevo;
-              tgtChanged = true;
-            }
-          } else if (tBaj && Object.keys(aplicadoHidroPrev).length) {
-            tBaj.ucAplicadoHidro = {};
-            tgtChanged = true;
-          }
-          if (tgtChanged) {
-            saveToStorage(TRAZOS_PREFIX + ldPlanId, tgt);
-            saveTrazosToDB(ldPlanId, tgt);
-            dirty = true;
-          }
-        }
-      }
-    }
-    if (dirty) {
-      saveAll(disk);
-      setCounts(disk);
-      // Tablas y paneles que leen claves (InfTab, diseño, validación) deben reconstruirse al
-      // momento — sin estos eventos el bajante asociado a bomba quedaba con el valor viejo
-      // hasta tocar algo a mano (orig. usuario, problema de sincronización 2).
-      try {
-        window.dispatchEvent(new CustomEvent('aparatos-clear'));
-        window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-        window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
-      } catch {
-        /* sin window (tests) */
-      }
-    }
-    if (hdirty) {
-      saveHidroData(hdisk);
-      setHidroData(hdisk);
-    }
-  }, [
-    counts,
-    hidroData,
-    storageKey,
-    targetId,
-    target?.tipo,
-    planId,
-    plans,
-    netId,
-    agregadoBajante,
-    exitsDeBajante,
-    engineRef,
-    loadingPlanRef,
-    planLoadedTick,
-  ]);
 
   // Ramal de salida de un bajante (espejo): sus UDs las manda el bajante — panel en modo
   // opaco/solo lectura, igual que el panel de bajante. Sin chequeo de target.tipo: el elemento
@@ -1245,439 +741,41 @@ const AparatosPanel = memo(function AparatosPanel_({
     return false;
   }, [targetId, netId, selElement, exitsDeBajante, engineRef]);
 
-  const inc = (apId: string) => {
-    if (!storageKey) return;
-    if (
-      target?.tipo === 'bajante' ||
-      target?.tipo === 'caja_san' ||
-      target?.tipo === 'caja_ll' ||
-      target?.tipo === 'bomba'
-    )
-      return; // bajante/caja/bomba: panel de solo lectura
-    if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
-    if (rejillasArea) {
-      // Área de sector (rejillas): conteos LIBRES por gasodoméstico — sin límite de 1 aparato
-      // ni merge de uniones; el glifo del ramal no existe (live undefined) y no se toca.
-    } else if (mergeKeys && netId !== 'af' && netId !== 'ac') {
-      // Pata única de una unión (gas, orig. usuario) o ramal con tributarios (san/ll): sus
-      // UDs son el total combinado — no asignables manualmente. af/ac usan esPropagado (la
-      // clave ya trae la carga propagada; las patas fuente sí admiten asignación manual).
-      const esAgua = netId === 'gas';
-      engineRef.current?.triggerAlert(
-        esAgua ? 'Unión de ramales' : 'Ramal con tributarios',
-        esAgua
-          ? 'Las unidades de este ramal son la SUMA de las patas de la unión: asigna aparatos en las otras dos patas, que sí admiten asignación manual.'
-          : 'Las unidades de este ramal vienen de sus tributarios. Asigna aparatos en los ramales/tributarios que alimentan este punto.',
-      );
-      return;
-    }
-    // Ítem 6: máximo UN aparato por ramal-tributario (manual). Para cambiar el aparato:
-    // Quitar (−) y asignar el nuevo — o usar el menú contextual, que hace el switch directo.
-    if (ownTotal >= 1 && netId !== 'll' && !rejillasArea) {
-      engineRef.current?.triggerAlert(
-        'Máximo 1 aparato por ramal-tributario',
-        'Un ramal/tributario admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal o tributario desde el cuerpo de este.',
-      );
-      return;
-    }
-    // Ítem 2/3 (rev 4): el aparato SOLO va en el extremo LIBRE hacia el que apunta el flujo del
-    // ramal — el glifo del codo (af/ac) y el símbolo del aparato se derivan de
-    // aparatoInicio/Fin, y no deben aparecer en conexiones de T/Y. Si el extremo de entrega
-    // está ocupado o el flujo va en contra del libre, bloqueado con alerta. Solo la primera
-    // unidad escribe el campo; si ya hay un aparato (del menú contextual), solo suma el conteo.
-    const eng = engineRef.current;
-    const live = eng?.ramales.find((r) => r.id === targetId);
-    const firstUnit = !(counts[storageKey] || {})[apId];
-    // Una asignación = UN snapshot: pausa durante TODAS las mutaciones + escritura a disco.
-    // try/finally garantiza el resume aunque algo lance — una pausa huérfana dejaba el
-    // historial mudo y el Ctrl+Z sin efecto sobre los aparatos recién asignados.
-    if (eng) eng.pauseHistory();
-    try {
-      if (
-        eng &&
-        live &&
-        live.pts &&
-        live.pts.length >= 2 &&
-        (live.net === 'af' || live.net === 'ac' || live.net === 'gas')
-      ) {
-        const head = live.pts[live.pts.length - 1];
-        const tail = live.pts[0];
-        // Item 1 (regla global): ocupado = entrelazado con la red. Los glifos de
-        // codo/sifón no cuentan (el aparato los reemplaza). Ambos ocupados → sin
-        // símbolo, CON alerta (el silencio se percibía como "clic que no hace nada" y
-        // obligaba a asignar dos veces).
-        const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
-        const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
-        const headOk = !headOcc && flowEndsAt(live, head, 0.5);
-        const tailOk = !tailOcc && flowEndsAt(live, tail, 0.5);
-        if (headOcc && tailOcc) {
-          eng.triggerAlert(
-            'Extremos ocupados',
-            'Ambos extremos del ramal están conectados a la red. Libera una punta o invierte la dirección del ramal antes de asignar el aparato.',
-          );
-          return;
-        }
-        if (!headOk && !tailOk) {
-          eng.triggerAlert(
-            'Aparato no permitido',
-            'El flujo del ramal apunta a la conexión (va en contra del extremo libre): el aparato solo se dibuja en el extremo libre hacia el que apunta el flujo. Invierte la dirección del ramal antes de asignar el aparato.',
-          );
-          return;
-        }
-        const endPt = headOk ? head : tail;
-        const field: 'aparatoInicio' | 'aparatoFin' =
-          endPt === head ? 'aparatoFin' : 'aparatoInicio';
-        const accField = field === 'aparatoInicio' ? 'accesorioInicio' : 'accesorioFin';
-        const hasBajante = (eng.bajantes || []).some(
-          (b) =>
-            Math.abs(b.x - endPt[0]) < 0.5 && Math.abs(b.y - endPt[1]) < 0.5 && b.net === live.net,
-        );
-        if (live[accField] || hasBajante) {
-          eng.triggerAlert(
-            'Extremo ocupado',
-            'El extremo libre del ramal ya tiene accesorio o bajante. Elimínalo antes de asignar el aparato desde la sidebar.',
-          );
-          return;
-        }
-        if (firstUnit && !live.aparatoInicio && !live.aparatoFin) {
-          eng.updateElementById(live.id, { [field]: apId });
-          eng.render();
-        }
-      }
-      if (eng && live && live.net === 'san' && firstUnit) {
-        // Ítem 6/7/8: regla central (inodoro → 4" mínimo; otros → relleno 2" si vacío)
-        const isInodoro = apId === 'san';
-        const targetDiamForAcc = isInodoro ? '4"' : '2"';
-        const curDiamPulg = live.diametro ? diamPulgFromLabel(live.diametro) : 0;
-        // Detect previous aparato for switch diam perception
-        let prevAparatoFix: string | null = null;
-        try {
-          const prevCountsFix = loadAll();
-          const prevMapFix = prevCountsFix[storageKey] || {};
-          const foundFix = Object.keys(prevMapFix).find(
-            (k) => k !== apId && (prevMapFix[k] || 0) > 0,
-          );
-          if (foundFix) prevAparatoFix = foundFix;
-        } catch (_e) {
-          void _e;
-        }
-        const needsDiam =
-          (isInodoro && (curDiamPulg < 4 || !sanDiamAllowedForApparatus(curDiamPulg, apId))) ||
-          (!isInodoro && (!live.diametro || prevAparatoFix === 'san'));
-        if (needsDiam) {
-          eng.updateElementById(live.id, { diametro: targetDiamForAcc });
-          // Sincronizar el snapshot de React para que el dropdown del panel derecho refleje el cambio.
-          if (selElement?.id === live.id)
-            setSelElement?.({
-              ...selElement,
-              diametro: targetDiamForAcc,
-            } as unknown as ProbedElement);
-        }
-        const head = live.pts[live.pts.length - 1];
-        const tail = live.pts[0];
-        const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
-        const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
-        // Item 1 (regla global): ambos extremos ocupados → no crear símbolo, sin
-        // alerta. La selección de targetField abajo ya cubre accesorios y conexiones.
-        let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
-        let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
-        // Trazo aislado (orig. usuario): el codo sube va del lado de la COLA de la
-        // flecha de flujo (el sube entrega). Cola en pts[0] = el flujo termina en head.
-        const endHead = flowEndsAt(live, head, 0.5);
-        const endTail = flowEndsAt(live, tail, 0.5);
-        const tailEnd = flowTailEnd(endTail, endHead);
-        if (!headOcc && !tailOcc && tailEnd === 0 && !live.accesorioInicio) {
-          targetField = 'accesorioInicio';
-          targetDiamField = 'diametroInicio';
-        } else if (!headOcc && !live.accesorioFin) {
-          targetField = 'accesorioFin';
-          targetDiamField = 'diametroFin';
-        } else if (!tailOcc && !live.accesorioInicio) {
-          targetField = 'accesorioInicio';
-          targetDiamField = 'diametroInicio';
-        }
-        if (targetField && targetDiamField) {
-          // Sifón (aparato 'sif') dibuja el glifo de sifón (accesorio 'sifon'), no el codo 90°.
-          // El conteo de accesorios sigue sumando un codo 90° por sifón (requisito orig. #3).
-          const isSif = apId === 'sif';
-          const accType = isSif ? 'sifon' : 'codo90rmSube';
-          const updates: Record<string, unknown> = { [targetField]: accType };
-          const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
-          // sifón siempre 2" (fix bug 3"), inodoro 4", resto hereda o 2"
-          const diamValRaw = isSif
-            ? '2"'
-            : isInodoro
-              ? '4"'
-              : live.diametro
-                ? matchDiamOption(diamListSan, live.diametro)
-                : '2"';
-          const diamVal = matchDiamOption(diamListSan, diamValRaw);
-          if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
-          eng.updateElementById(live.id, updates);
-          eng.render();
-          const planId = eng._loadedPlanId ?? '';
-          if (isSif) bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
-          else bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
-        }
-      }
-      // Ítem 1: persistencia síncrona a disco ANTES del snapshot final — el useEffect que
-      // guarda es asíncrono y el snapshot debe incluir los conteos nuevos (si no, redo
-      // restauraría geometría nueva con conteos viejos). Disco-primero evita stale closures.
-      try {
-        const disk = loadAll();
-        const curD = { ...(disk[storageKey] || {}) };
-        const nextDisk = { ...disk, [storageKey]: { ...curD, [apId]: (curD[apId] || 0) + 1 } };
-        saveAll(nextDisk);
-        setCounts(nextDisk);
-      } catch (_e) {
-        void _e;
-        setCounts((prev) => {
-          const cur = prev[storageKey] || {};
-          return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
-        });
-      }
-    } finally {
-      if (eng) eng.resumeHistory();
-    }
-    if (eng) {
-      eng._markDirty();
-    }
-    if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
-    // Consistencia entre superficies (orig. usuario): el menú contextual re-deriva su tarjeta
-    // de estos eventos (el panel derecho ya reacciona vía setCounts).
-    try {
-      window.dispatchEvent(new CustomEvent('aparatos-clear'));
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const dec = (apId: string) => {
-    if (!storageKey) return;
-    if (
-      target?.tipo === 'bajante' ||
-      target?.tipo === 'caja_san' ||
-      target?.tipo === 'caja_ll' ||
-      target?.tipo === 'bomba'
-    )
-      return; // solo lectura
-    if (esEspejoBajante) return; // espejo de bajante: UDs las manda el bajante
-    // Con herencia propagada solo se puede quitar lo PROPIO (auditoría #4): si el
-    // aparato vive únicamente como heredado, el "−" no toca nada (antes vaciaba la clave
-    // o borraba el símbolo del dibujo).
-    if (esPropagado && !esPropio(apId)) {
-      engineRef.current?.triggerAlert(
-        'Unidades propagadas',
-        'Las unidades de este ramal vienen de la propagación aguas arriba (montante/ramales fuente). Edítalas en el tramo de origen: aquí son de solo lectura.',
-      );
-      return;
-    }
-    // AF/AC/gas: pata única de una unión (mergeKeys) — sus UDs son la suma combinada, no
-    // asignables (mismo gate que inc; orig. usuario). Área de rejillas: conteos libres.
-    if (!rejillasArea && mergeKeys && netId === 'gas') return;
-    const curBefore = { ...(counts[storageKey] || {}) };
-    const vBefore = (curBefore[apId] || 0) - 1;
-    // El campo del ramal solo se limpia cuando el conteo PROPIO tenía el aparato (vBefore === 0,
-    // decremento legítimo del último). Con conteo propio ya en 0 (el panel puede mostrar 1 por
-    // UDs heredadas/combinadas de una asociación entre pisos), un clic en "-" no debe borrar el
-    // símbolo del dibujo — solo vacía la clave, sin tocar aparatoInicio/Fin (orig. usuario:
-    // inodoro de RS4 desaparecía al descontar UDs heredadas).
-    const teniaPropio = (curBefore[apId] || 0) > 0;
-    // Una desasignación = UN snapshot: pausa + try/finally (mismo razonamiento que inc).
-    const engDec = engineRef.current;
-    if (engDec) engDec.pauseHistory();
-    try {
-      if (vBefore <= 0 && teniaPropio && targetId) {
-        const eng = engineRef.current;
-        const live = eng?.ramales.find((r) => r.id === targetId);
-        if (eng && live) {
-          if (live.aparatoInicio === apId || live.aparatoFin === apId) {
-            const updates: Record<string, unknown> = {};
-            if (live.aparatoInicio === apId) updates.aparatoInicio = null;
-            if (live.aparatoFin === apId) updates.aparatoFin = null;
-            eng.updateElementById(targetId, updates);
-            eng.render();
-            eng._markDirty();
-          }
-          // La copia `fixtures` del ramal se escribió al CARGAR y nada la actualiza al quitar:
-          // invalidarla (el re-ancla del sync leería la copia del trazo y resucitaría el conteo
-          // recién borrado — orig. usuario "-" sin efecto tras reentrar).
-          live.fixtures = undefined;
-          // Sanitaria: al quitar el último aparato, también quitar el accesorio del extremo libre
-          // (codo 90° sube o sifón) — orig. usuario #5: quitar el sifón desde el panel debe quitar
-          // su símbolo en el dibujo.
-          if (live.net === 'san') {
-            const totalAfter = Object.entries(counts[storageKey] || {}).reduce(
-              (s, [k, v]) => s + (k === apId ? Math.max(0, v - 1) : v),
-              0,
-            );
-            if (totalAfter === 0) {
-              const accIni = live.accesorioInicio;
-              const accFin = live.accesorioFin;
-              const hasAccIni = accIni === 'codo90rmSube' || accIni === 'sifon';
-              const hasAccFin = accFin === 'codo90rmSube' || accFin === 'sifon';
-              if (hasAccIni || hasAccFin) {
-                const updates: Record<string, unknown> = {};
-                if (hasAccIni) {
-                  updates.accesorioInicio = '';
-                  updates.diametroInicio = '';
-                }
-                if (hasAccFin) {
-                  updates.accesorioFin = '';
-                  updates.diametroFin = '';
-                }
-                eng.updateElementById(targetId, updates);
-                eng.render();
-                const planId = eng._loadedPlanId ?? '';
-                if (hasAccIni || hasAccFin) {
-                  bumpHidroAccesorio('san', 'codo90rmSube', -1, targetId, planId);
-                }
-              }
-            }
-          }
-        }
-      }
-      // Ítem 1: disco-primero (ver inc) + un snapshot final con todo persistido.
-      try {
-        const disk = loadAll();
-        const curD = { ...(disk[storageKey] || {}) };
-        const v = (curD[apId] || 0) - 1;
-        if (v <= 0) delete curD[apId];
-        else curD[apId] = v;
-        const nextDisk = { ...disk };
-        if (Object.keys(curD).length === 0) delete nextDisk[storageKey];
-        else nextDisk[storageKey] = curD;
-        saveAll(nextDisk);
-        setCounts(nextDisk);
-      } catch (_e) {
-        void _e;
-        setCounts((prev) => {
-          const cur = { ...(prev[storageKey] || {}) };
-          const v = (cur[apId] || 0) - 1;
-          if (v <= 0) delete cur[apId];
-          else cur[apId] = v;
-          const next = { ...prev, [storageKey]: cur };
-          if (Object.keys(cur).length === 0) delete next[storageKey];
-          return next;
-        });
-      }
-    } finally {
-      if (engDec) engDec.resumeHistory();
-    }
-    const engEnd = engineRef.current;
-    if (engEnd) {
-      engEnd._markDirty();
-    }
-    if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
-    // Consistencia entre superficies (ver inc).
-    try {
-      window.dispatchEvent(new CustomEvent('aparatos-clear'));
-    } catch {
-      /* ignore */
-    }
-  };
+  // Mutaciones de aparatos (movidas a fixtures/useFixtureMutations.ts — Oleada rediseño):
+  // el ctx viaja como objeto; mutarInc/mutarDec son pinnables sin harness de React.
+  const { inc, dec } = useFixtureMutations({
+    netId,
+    storageKey,
+    targetId,
+    target,
+    mergeKeys,
+    esEspejoBajante,
+    esPropagado,
+    rejillasArea,
+    ownTotal,
+    counts,
+    setCounts,
+    engineRef,
+    selElement,
+    setSelElement,
+    esPropio,
+  });
 
   // Escritura directa (write-through): cada handler guarda en disco al mutar. El antiguo
   // efecto de re-guardado ciego (`saveAll(counts)` ante cualquier cambio) pisaba escrituras
   // externas del menú contextual con estado React viejo entre el save y el reload del evento
   // → el primer clic "no hacía nada" de forma intermitente. Ya no existe ese efecto.
-  const incAcc = (accId: string) => {
-    if (!storageKey) return;
-    try {
-      const disk = loadHidroData();
-      const cur = { ...(disk[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
-      const acc = { ...(cur.accesorios || {}) };
-      acc[accId] = (acc[accId] || 0) + 1;
-      const next = { ...disk, [storageKey]: { ...cur, accesorios: acc } };
-      saveHidroData(next);
-      setHidroData(next);
-    } catch (_e) {
-      void _e;
-      setHidroData((prev) => {
-        const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
-        const acc = { ...(cur.accesorios || {}) };
-        acc[accId] = (acc[accId] || 0) + 1;
-        return { ...prev, [storageKey]: { ...cur, accesorios: acc } };
-      });
-    }
-  };
-
-  const decAcc = (accId: string) => {
-    if (!storageKey) return;
-    try {
-      const disk = loadHidroData();
-      const cur = { ...(disk[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
-      const acc = { ...(cur.accesorios || {}) };
-      const v = (acc[accId] || 0) - 1;
-      if (v <= 0) delete acc[accId];
-      else acc[accId] = v;
-      const next = { ...disk, [storageKey]: { ...cur, accesorios: acc } };
-      saveHidroData(next);
-      setHidroData(next);
-    } catch (_e) {
-      void _e;
-      setHidroData((prev) => {
-        const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
-        const acc = { ...(cur.accesorios || {}) };
-        const v = (acc[accId] || 0) - 1;
-        if (v <= 0) delete acc[accId];
-        else acc[accId] = v;
-        return { ...prev, [storageKey]: { ...cur, accesorios: acc } };
-      });
-    }
-  };
-
   const gasAccMap = useMemo(() => {
     if (!targetId) return {};
     return gasAcc[targetId] || {};
   }, [gasAcc, targetId]);
 
-  const incAccGas = (accId: string) => {
-    if (!gasTargetKey) return;
-    try {
-      const disk = loadGasAcc();
-      const cur = { ...(disk[gasTargetKey] || {}) };
-      cur[accId] = (cur[accId] || 0) + 1;
-      const next = { ...disk, [gasTargetKey]: cur };
-      saveGasAcc(next);
-      setGasAcc(next);
-    } catch (_e) {
-      void _e;
-      setGasAcc((prev) => {
-        const cur = { ...(prev[gasTargetKey] || {}) };
-        cur[accId] = (cur[accId] || 0) + 1;
-        return { ...prev, [gasTargetKey]: cur };
-      });
-    }
-  };
-
-  const decAccGas = (accId: string) => {
-    if (!gasTargetKey) return;
-    try {
-      const disk = loadGasAcc();
-      const cur = { ...(disk[gasTargetKey] || {}) };
-      const v = (cur[accId] || 0) - 1;
-      if (v <= 0) delete cur[accId];
-      else cur[accId] = v;
-      const next = { ...disk };
-      if (Object.keys(cur).length === 0) delete next[gasTargetKey];
-      else next[gasTargetKey] = cur;
-      saveGasAcc(next);
-      setGasAcc(next);
-    } catch (_e) {
-      void _e;
-      setGasAcc((prev) => {
-        const cur = { ...(prev[gasTargetKey] || {}) };
-        const v = (cur[accId] || 0) - 1;
-        if (v <= 0) delete cur[accId];
-        else cur[accId] = v;
-        const next = { ...prev };
-        if (Object.keys(cur).length === 0) delete next[gasTargetKey];
-        else next[gasTargetKey] = cur;
-        return next;
-      });
-    }
-  };
+  const { incAcc, decAcc, incAccGas, decAccGas } = useFixtureAccMutations({
+    storageKey,
+    gasTargetKey,
+    setHidroData,
+    setGasAcc,
+  });
 
   // Ítem: las orientaciones del codo 90° medio se fusionan en UNA sola fila de la sidebar —
   // el contador suma medio + sube + baja, independiente de la orientación pedida. La fila
@@ -1729,260 +827,18 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (target) decAccGas(target);
   };
 
-  // AGUAS LLUVIAS (ped. usuario): el panel no cuantifica aparatos, pero SÍ muestra
-  // secciones de asociación (canales/ramales) cuando hay un bajante o ramal seleccionado.
+  // AGUAS LLUVIAS (rediseño): panel propio — ver fixtures/LlAssociationsPanel.tsx.
   if (netId === 'll') {
-    const esBaj = selElement?.tipo === 'bajante' || selElement?.id?.startsWith('BALL');
-    const esCanalSel = selElement?.tipo === 'canal';
-    const esRamal = !!selElement?.pts && !esBaj;
-    if (!esBaj && !esRamal && !esCanalSel) {
-      return (
-        <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-          <div
-            style={{
-              fontFamily: "'Geist',monospace",
-              fontSize: 12,
-              color: 'var(--txt3)',
-              marginBottom: 6,
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            }}
-          >
-            Asociaciones
-          </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: 'var(--txt2)',
-              fontFamily: "'Geist',monospace",
-              padding: '4px 0',
-            }}
-          >
-            Selecciona un bajante, canal o ramal de aguas lluvias.
-          </div>
-        </div>
-      );
-    }
-    const targetIdLl = selElement?.id || '';
-    const canales =
-      engineRef?.current?.bajantes.filter((b) => b.tipo === 'canal' && b.net === 'll') || [];
-    const ramalesLl =
-      engineRef?.current?.ramales.filter(
-        (r) => r.net === 'll' && r.tipo !== 'tributario' && r.id !== targetIdLl,
-      ) || [];
-    const bajObj = esBaj
-      ? engineRef?.current?.bajantes.find((b) => b.id === targetIdLl)
-      : undefined;
-    if (esBaj && !bajObj) {
-      return (
-        <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-          <div style={{ fontSize: 12, color: 'var(--txt3)', fontFamily: "'Geist',monospace" }}>
-            Bajante no encontrado en el motor.
-          </div>
-        </div>
-      );
-    }
-    const accentNet = NETS.find((n) => n.id === netId)?.col || '#2563EB';
-    const canalActual = bajObj?.canalId || '';
-    const Qq = (() => {
-      // Q = C·I·A/3600 con los insumos del override del bajante (misma fórmula del chequeo).
-      const bll = bajantesLl.find(
-        (x) => x.bajante === (bajObj?.code || targetIdLl) || x.id === targetIdLl,
-      );
-      if (!bll || (bll.areaAcumulada ?? 0) <= 0) return 0;
-      return (
-        Math.round(
-          (((bll.coeficienteC || 0) * (bll.intensidad || 0) * bll.areaAcumulada) / 3600) * 100,
-        ) / 100
-      );
-    })();
-    const toggleCanalBaj = (canalId: string): void => {
-      const eng = engineRef?.current;
-      const baj = bajObj;
-      if (!eng || !baj) return;
-      const desmarcando = canalActual === canalId;
-      const pid = String(engineRef?.current?._loadedPlanId ?? '');
-      if (desmarcando) vetarSelloCanal(pid, 'baj', baj.id, canalId);
-      else levantarVetoSelloCanal(pid, 'baj', baj.id, canalId);
-      eng.updateElementById(baj.id, { canalId: desmarcando ? null : canalId });
-      eng.render();
-      eng._markDirty();
-      if (selElement) setSelElement?.({ ...selElement } as never);
-    };
-    const toggleRamalBaj = (rid: string): void => {
-      const eng = engineRef?.current;
-      const baj = bajObj;
-      if (!eng || !baj) return;
-      const r = eng.ramales.find((x) => x.id === rid);
-      if (!r) return;
-      const ya = (baj.recibeDeIds || []).includes(rid);
-      eng.updateElementById(baj.id, camposAsocManual(baj, rid, !ya));
-      eng.render();
-      eng._markDirty();
-      if (selElement) setSelElement?.({ ...selElement } as never);
-    };
-    const toggleCanalRamal = (canalId: string): void => {
-      const eng = engineRef?.current;
-      if (!eng) return;
-      const r = eng.ramales.find((x) => x.id === targetIdLl);
-      if (!r) return;
-      const ya = r.esCanalId === canalId;
-      const pid = String(engineRef?.current?._loadedPlanId ?? '');
-      if (ya) vetarSelloCanal(pid, 'ram', targetIdLl, canalId);
-      else levantarVetoSelloCanal(pid, 'ram', targetIdLl, canalId);
-      eng.updateElementById(targetIdLl, { esCanalId: ya ? null : canalId });
-      eng.render();
-      eng._markDirty();
-      if (selElement) setSelElement?.({ ...selElement } as never);
-    };
-    const fila = (
-      checked: boolean,
-      label: string,
-      onToggle: () => void,
-      key: string,
-    ): React.ReactNode => (
-      <label key={key} style={{ ...ASSOC_ROW_STYLE, marginBottom: 2 }}>
-        <input type="checkbox" checked={checked} onChange={onToggle} style={ASSOC_CHECKBOX_STYLE} />
-        {label}
-      </label>
-    );
     return (
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: 'var(--txt3)',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Asociaciones aguas lluvias
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: accentNet,
-            fontFamily: "'Geist',monospace",
-            fontWeight: 700,
-            marginBottom: 8,
-          }}
-        >
-          {targetLbl}
-        </div>
-        {esBaj && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', marginBottom: 3 }}>
-              CANALES ASOCIADOS
-            </div>
-            {canales.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
-                Sin canales dibujados en este piso.
-              </div>
-            )}
-            {canales.map((c) =>
-              fila(canalActual === c.id, c.code || c.id, () => toggleCanalBaj(c.id), c.id),
-            )}
-            <div
-              style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', margin: '8px 0 3px' }}
-            >
-              RAMALES ASOCIADOS
-            </div>
-            {ramalesLl.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
-                Sin ramales de lluvias dibujados.
-              </div>
-            )}
-            {ramalesLl.map((r) =>
-              fila(
-                (bajObj?.recibeDeIds || []).includes(r.id),
-                r.id,
-                () => toggleRamalBaj(r.id),
-                'r_' + r.id,
-              ),
-            )}
-            {esBaj && bajObj && Qq > 0 && (
-              <div
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'var(--mono)',
-                  color: 'var(--txt2)',
-                  marginTop: 8,
-                }}
-              >
-                Q = <b style={{ color: 'var(--acc)' }}>{Qq.toFixed(2)}</b> L/s
-              </div>
-            )}
-          </>
-        )}
-        {esRamal && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', marginBottom: 3 }}>
-              CANALES ASOCIADOS
-            </div>
-            {canales.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
-                Sin canales dibujados en este piso.
-              </div>
-            )}
-            {canales.map((c) => {
-              const r = engineRef?.current?.ramales.find((x) => x.id === targetIdLl);
-              return fila(
-                r?.esCanalId === c.id,
-                c.code || c.id,
-                () => toggleCanalRamal(c.id),
-                c.id,
-              );
-            })}
-          </>
-        )}
-        {esCanalSel && (
-          <>
-            {/* BIDIRECCIONAL (orig. usuario): la asociación vive en b.canalId — desde el canal
-                se ven y editan los mismos bajantes que marcaron desde el lado del bajante. */}
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt2)', marginBottom: 3 }}>
-              BAJANTES ASOCIADOS
-            </div>
-            {(() => {
-              const bajantesLlSel =
-                engineRef?.current?.bajantes.filter(
-                  (b) => b.net === 'll' && b.tipo === 'bajante',
-                ) || [];
-              if (bajantesLlSel.length === 0)
-                return (
-                  <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '2px 0 6px' }}>
-                    Sin bajantes de lluvias dibujados.
-                  </div>
-                );
-              return bajantesLlSel.map((b) =>
-                fila(
-                  b.canalId === targetIdLl,
-                  b.code || b.id,
-                  () => {
-                    const eng = engineRef?.current;
-                    if (!eng) return;
-                    const desmarcando = b.canalId === targetIdLl;
-                    const pid = String(engineRef?.current?._loadedPlanId ?? '');
-                    if (desmarcando) vetarSelloCanal(pid, 'baj', b.id, targetIdLl);
-                    else levantarVetoSelloCanal(pid, 'baj', b.id, targetIdLl);
-                    eng.updateElementById(b.id, {
-                      canalId: desmarcando ? null : targetIdLl,
-                    });
-                    eng.render();
-                    eng._markDirty();
-                    if (selElement) setSelElement?.({ ...selElement } as never);
-                  },
-                  'b_' + b.id,
-                ),
-              );
-            })()}
-          </>
-        )}
-      </div>
+      <LlAssociationsPanel
+        netId={netId}
+        selElement={selElement}
+        setSelElement={setSelElement}
+        engineRef={engineRef}
+        bajantesLl={bajantesLl}
+      />
     );
   }
-
   if (!visible) {
     return (
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
@@ -2154,7 +1010,11 @@ const AparatosPanel = memo(function AparatosPanel_({
                     dec={dec}
                     targetId={targetId}
                     accent={accent}
-                    disabled={isBajanteSan || esEspejoBajante ? true : !!mergeKeys && ownTotal <= 0}
+                    disabled={
+                      isBajanteSan || esEspejoBajante || esPropagado
+                        ? true
+                        : !!mergeKeys && netId === 'gas' && ownTotal <= 0
+                    }
                   />
 
                   {items.length === 0 && (

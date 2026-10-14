@@ -16,6 +16,14 @@ import { ALIAS_CAT_GAS, CAT_GAS_BY_ID, grupoDe } from './rejillasShared';
 import type { RejFila } from './rejillasShared';
 import { GAS_KEY, loadOverrides, purgarKwById, saveOverrides } from './rejillasStorage';
 import type { OverridesMap, RejOverride } from './rejillasStorage';
+import {
+  emitAparatosClear,
+  EV_APARATOS_CLEAR,
+  EV_SAN_SYNC,
+  EV_HIDRO_SYNC,
+  EV_PLAN_LOADED,
+  EV_STORAGE,
+} from '../../utils/fixtureEvents';
 
 export function useRejillasData() {
   const { plans } = usePlans();
@@ -104,9 +112,7 @@ export function useRejillasData() {
           saveToStorage(APARATOS_BY_TRAMO_KEY, disk);
           // detail.origen = 'hidratacion': fill PROGRAMÁTICO — pushGasod no debe marcar
           // editadoRef ni agendar push (el guard de más abajo lo filtra).
-          window.dispatchEvent(
-            new CustomEvent('aparatos-clear', { detail: { origen: 'hidratacion' } }),
-          );
+          emitAparatosClear({ origen: 'hidratacion' });
         }
       }
     });
@@ -149,7 +155,7 @@ export function useRejillasData() {
   useEffect(() => {
     const bump = () => setTick((t) => t + 1);
     // Los conteos de gasodomésticos cambian FUERA de este hook (FixturesPanel:
-    // write-through + evento 'aparatos-clear'): cada cambio reagenda el push al blob de BD.
+    // write-through + evento EV_APARATOS_CLEAR): cada cambio reagenda el push al blob de BD.
     const pushGasod = (e: Event) => {
       // El fill de hidratación (sync o este hook) dispara el evento programáticamente:
       // NO es edición del usuario — marcar editadoRef aquí abortaba la hidratación de
@@ -159,18 +165,18 @@ export function useRejillasData() {
       pushBd(ovRef.current, gasRef.current);
     };
     const evs = [
-      'storage',
-      'aparatos-clear',
-      'civilflow_san_sync_changed',
-      'civilflow_hidro_sync_changed',
+      EV_STORAGE,
+      EV_APARATOS_CLEAR,
+      EV_SAN_SYNC,
+      EV_HIDRO_SYNC,
       'civilflow_nets_changed',
-      'civilflow_plan_loaded',
+      EV_PLAN_LOADED,
     ] as const;
     evs.forEach((e) => window.addEventListener(e, bump));
-    window.addEventListener('aparatos-clear', pushGasod);
+    window.addEventListener(EV_APARATOS_CLEAR, pushGasod);
     return () => {
       evs.forEach((e) => window.removeEventListener(e, bump));
-      window.removeEventListener('aparatos-clear', pushGasod);
+      window.removeEventListener(EV_APARATOS_CLEAR, pushGasod);
     };
   }, [pushBd]);
 
