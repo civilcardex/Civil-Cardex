@@ -12,7 +12,7 @@ import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
 import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
-import { fmt, planIdDeKey } from '../utils/formatUtils';
+import { fmt, planIdDeKey, sectorDe } from '../utils/formatUtils';
 import { entradaPor } from '../utils/diamLookup';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
@@ -20,6 +20,7 @@ import { buildSanConnectivity } from '../utils/sanitaryRows';
 import { APARATOS_DEF, SAN_UC_IDS } from '../constants';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 import { ventBajPulg, calculateVentStack } from '../utils/ventStackCalc';
+import { EV_SAN_SYNC } from '../utils/fixtureEvents';
 import {
   writeBajantePropToDrawing,
   writeDiametroToDrawing,
@@ -53,8 +54,8 @@ const BajantesTable = memo(function BajantesTable_() {
   const [syncTick, setSyncTick] = useState(0);
   useEffect(() => {
     const h = () => setSyncTick((v) => v + 1);
-    window.addEventListener('civilflow_san_sync_changed', h);
-    return () => window.removeEventListener('civilflow_san_sync_changed', h);
+    window.addEventListener(EV_SAN_SYNC, h);
+    return () => window.removeEventListener(EV_SAN_SYNC, h);
   }, []);
 
   const storageByPlan = useMemo(() => {
@@ -624,9 +625,8 @@ const BajantesTable = memo(function BajantesTable_() {
                   if (!vKey) return 0;
                   const fromMap = ventRamalDiamMap[vKey];
                   if (fromMap && fromMap > 0) return fromMap;
-                  const parts = vKey.split('-');
-                  const vrId = parts[0];
-                  const vPlanId = parts.slice(1).join('-');
+                  const vrId = sectorDe(vKey);
+                  const vPlanId = planIdDeKey(vKey);
                   const raw = storageByPlan[vPlanId];
                   if (!raw) return 0;
                   for (const vr of (raw.ramales || []) as RamalWithDiam[]) {
@@ -657,9 +657,8 @@ const BajantesTable = memo(function BajantesTable_() {
                   let maxVPulg = 0;
                   for (const vk of ventBajKeys) {
                     if (!ventBajKey) ventBajKey = vk;
-                    const vp = vk.split('-');
-                    const vId = vp[0];
-                    const vPlan = vp.slice(1).join('-');
+                    const vId = sectorDe(vk);
+                    const vPlan = planIdDeKey(vk);
                     const doc = storageByPlan[vPlan];
                     const vb = (doc?.bajantes || []).find(
                       (x) => x.id === vId && (x.net === 'vent' || x._net === 'vent'),
@@ -1074,9 +1073,8 @@ const BajantesTable = memo(function BajantesTable_() {
                             // (antes: writeDiametroToDrawing por ramal = N parses + N RPCs).
                             const ventRamalKeys: string[] = [];
                             for (const vk of ventBajKeys.length ? ventBajKeys : [ventBajKey]) {
-                              const vp = vk.split('-');
-                              const vId = vp[0];
-                              const vPlan = vp.slice(1).join('-');
+                              const vId = sectorDe(vk);
+                              const vPlan = planIdDeKey(vk);
                               const vdoc = storageByPlan[vPlan];
                               if (!vdoc) continue;
                               const vBaj = (vdoc.bajantes || []).find((x) => x.id === vId);

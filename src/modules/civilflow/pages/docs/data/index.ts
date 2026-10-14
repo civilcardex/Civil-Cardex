@@ -8,6 +8,7 @@ import equipos from './equipment';
 import tablas from './tables';
 import formulas from './formulas';
 import manual from './manual';
+import glosario from './glosario';
 import manager from './manager';
 import normas_pais from './normasPais';
 
@@ -22,6 +23,7 @@ export const docData = {
   tablas,
   formulas,
   manual,
+  glosario,
   manager,
   normas_pais,
 };

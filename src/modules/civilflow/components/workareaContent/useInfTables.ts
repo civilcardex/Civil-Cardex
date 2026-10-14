@@ -1,9 +1,21 @@
 import { useCallback, useMemo } from 'react';
 import type { MemoriaTable } from '../../utils/exportMemoryFinal';
-import { pisoLbl, pisoCorto, SAN_UC_IDS, APARATOS_DEF } from '../../constants';
+import {
+  pisoLbl,
+  pisoCorto,
+  SAN_UC_IDS,
+  AF_UC_IDS,
+  AC_UC_IDS,
+  APARATOS_DEF,
+} from '../../constants';
+import { isAC2 } from '../../utils/waterRowsShared';
 import { useRainwater } from '../../context/RainwaterContext';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicData';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
+import { computeDesignRow, hunterQ } from '../waterNetworkDesign/rowPhysics';
+import { useWaterNetworkGraph } from '../waterNetworkDesign/useWaterNetworkGraph';
+import { loadFromStorage } from '../../services/storageService';
+import { CHEQUEOS_PRESION_KEY } from '../../constants/storage-keys';
 import { buildSanConnectivity, computeSanRows, computeUdTable } from '../../utils/sanitaryRows';
 import {
   buildLlBajanteAssociations,
@@ -14,7 +26,7 @@ import {
 import { computeWaterNetworkRows, computeAcometidaSummary } from '../../utils/waterNetworkRows';
 import { computeBombaTables, computeEpTables } from '../../utils/equipmentRows';
 import { computeGasRows } from '../../utils/gasRows';
-import { epAlertas } from '../../utils/equipmentRows';
+import { epAlertas, bombaAlertas } from '../../utils/equipmentRows';
 import { computeUcTable } from '../../utils/ucRows';
 import { computeBajanteVentTable } from '../../utils/bajanteVentRows';
 import { computeAccesoriosTable } from '../../utils/sanFittingsRows';
@@ -29,6 +41,7 @@ import { nDeCanal, cDeCubierta } from '../../constants/engineeringDataMaterials'
 import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows';
 import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows';
 import { perfilDe } from '../../constants/normasPais';
+import type { Tramo } from '../../context/tramosReducer';
 import type { useWorkAreaState } from '../useWorkAreaState';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -709,20 +722,24 @@ export function useInfTables(state: WorkAreaState) {
     };
   }, [hasGas, gasRowsCalc]);
 
-  const enRangoSanLl = useCallback(
-    (t: { v_real?: number; yD?: number; qQ0?: number }): boolean => {
-      const v = t.v_real || 0;
-      return (
-        v >= perfil.san.vMin &&
-        v <= perfil.san.vMax &&
-        (t.yD || 0) <= perfil.san.ydMax &&
-        (t.qQ0 || 0) <= 1.0
-      );
-    },
+  /** Checkpoint hidráulico de una FILA ya calculada (computeSanRows/computeLlRows): misma
+   *  regla de rango que se aplicaba a los flags v_real/yD/qQ0 que escribía la página de
+   *  diseño — pero estas filas se computan AQUÍ en fresco, sin visitar Diseño de redes. */
+  const filaEnRangoSanLl = useCallback(
+    (r: { Vreal: number; Yc: number; Yn: number; DintMm: number; qqo: number }): boolean =>
+      r.Vreal >= perfil.san.vMin &&
+      r.Vreal <= perfil.san.vMax &&
+      r.DintMm > 0 &&
+      // yD de la página = max(Yc, Yn)/D (el tiro de DISEÑO manda en flujo supercrítico) —
+      // usar solo Yn era más laxo exactamente donde importa.
+      Math.max(r.Yc, r.Yn) / r.DintMm <= perfil.san.ydMax &&
+      r.qqo <= 1.0,
     [perfil],
   );
-  const conDatosSan = tramosSan.filter((t) => (t.v_real || 0) > 0);
-  const conDatosLl = tramosLl.filter((t) => (t.v_real || 0) > 0);
+  // Filas CON dato hidráulico (Vreal>0 ⇒ hubo Q, pendiente, Manning y diámetro): los flags
+  // v_real de la página ya no intervienen en el gate ni en el semáforo.
+  const conDatosSan = (sanRowsCalc ?? []).filter((r) => r.Vreal > 0);
+  const conDatosLl = (llRowsCalc ?? []).filter((r) => r.Vreal > 0);
   const noTrib = useCallback((t: { tipo?: string }) => t.tipo !== 'tributario', []);
   /** Fallo de tabla: fila cuya verificación dice 'NO CUMPLE' (las '—' son filas sin datos, no fallos). */
   const filaFalla = useCallback(
@@ -772,51 +789,153 @@ export function useInfTables(state: WorkAreaState) {
     },
     [],
   );
-  // SAN: rango (v/yD/qQ0) + chequeos de la tabla (velocidad, tiro Yn, fuerza tractiva). Sin tributarios.
+  // SAN: rango (V/Yn/D, q/Q0) + chequeos de la tabla (velocidad, tiro Yn, fuerza tractiva).
+  // Las filas de computeSanRows ya excluyen tributarios y bajantes.
   const fallosSan = useMemo(
     () => [
-      ...conDatosSan.filter(noTrib).filter((t) => !enRangoSanLl(t)),
+      ...conDatosSan.filter((r) => !filaEnRangoSanLl(r)).map((r) => ({ id: r.id, piso: r.piso })),
       ...(sanRowsCalc ?? []).filter(filaFalla).map((r) => ({ id: r.id, piso: r.piso })),
     ],
-    [conDatosSan, sanRowsCalc, enRangoSanLl, noTrib, filaFalla],
+    [conDatosSan, sanRowsCalc, filaEnRangoSanLl, filaFalla],
   );
-  /** Chips SAN = fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent. */
-  const fallosSanLabs = [
-    ...fallosSan.map((t) => etiq(t.id, t.piso)),
-    ...fallosDeTabla(bajVentSanTable, (row) => (row[1] && row[1] !== '—' ? String(row[1]) : '')),
-  ];
-  // LL: rango + chequeos de tabla + bajantes + canales. Sin tributarios.
+  /** Chips SAN = fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent.
+   *  Memoizado: insumo del gate allOk Y de la fila SAN del resumen (una sola fuente). */
+  const fallosSanLabs = useMemo(
+    () => [
+      ...fallosSan.map((t) => etiq(t.id, t.piso)),
+      ...fallosDeTabla(bajVentSanTable, (row) => (row[1] && row[1] !== '—' ? String(row[1]) : '')),
+    ],
+    [fallosSan, fallosDeTabla, bajVentSanTable],
+  );
+  // LL: rango + chequeos de tabla + bajantes + canales. Filas ya sin tributarios/bajantes.
   const fallosLl = useMemo(
     () => [
-      ...conDatosLl.filter(noTrib).filter((t) => !enRangoSanLl(t)),
+      ...conDatosLl.filter((r) => !filaEnRangoSanLl(r)).map((r) => ({ id: r.id, piso: r.piso })),
       ...(llRowsCalc ?? []).filter(filaFalla).map((r) => ({ id: r.id, piso: r.piso })),
     ],
-    [conDatosLl, llRowsCalc, enRangoSanLl, noTrib, filaFalla],
+    [conDatosLl, llRowsCalc, filaEnRangoSanLl, filaFalla],
   );
   // Semáforo y chips juzgan el MISMO conjunto (solo ramales — sin tributarios): si dice
   // 'Revisar', los chips de fallo aparecen al lado (ped. usuario).
-  const tramosAfJ = tramosAf.filter(noTrib);
-  const tramosAcJ = tramosAc.filter(noTrib);
+  const tramosAfJ = useMemo(() => tramosAf.filter(noTrib), [tramosAf, noTrib]);
+  const tramosAcJ = useMemo(() => tramosAc.filter(noTrib), [tramosAc, noTrib]);
+  // Chequeos de presión SIN depender de visitar Diseño de redes: la página persiste sus
+  // resultados en CHEQUEOS_PRESION_KEY; Informes hidrata de ahí y RECALCULA la velocidad
+  // en frío (qLps persistido es flujo — no depende del diámetro — y el diámetro efectivo
+  // sale del tramo actual). presionOk = último chequeo persistido (cadena de acometida).
+  const chequeosPresion = loadFromStorage<
+    Record<string, Record<string, { velCumple?: boolean; presionOk?: boolean; qLps?: number }>>
+  >(CHEQUEOS_PRESION_KEY, {});
+  const afOpts = useMemo(
+    () => DIAMETROS_AF.map((d) => ({ pulg: d.pulg, nominal: d.nominal, dInt: d.dInt })),
+    [],
+  );
+  const acOpts = useMemo(
+    () => DIAMETROS_AC.map((d) => ({ pulg: d.pulg, nominal: d.nominal, dInt: d.dInt })),
+    [],
+  );
+  // Grafo de conectividad AF/AC en frío: Informes calcula su PROPIO qLps (hunterQ sobre los
+  // UC acumulados) — la velocidad no depende de haber visitado Diseño de redes, ni del store
+  // (los aparatos cambian desde el panel sin pasar por la página).
+  const graphAf = useWaterNetworkGraph({
+    plans,
+    tramos: tramosAf,
+    networkType: 'af',
+    ucIds: AF_UC_IDS,
+    ucField: 'uc_af',
+  });
+  const graphAc = useWaterNetworkGraph({
+    plans,
+    tramos: tramosAc,
+    networkType: 'ac',
+    ucIds: AC_UC_IDS,
+    ucField: 'uc_ac',
+  });
+  const tr2Af = useMemo(() => tramosAf.find((t) => isAC2(t)) ?? null, [tramosAf]);
+  const qacoAf = useMemo(() => {
+    if (tr2Af) {
+      const key = tr2Af._key || tr2Af.id;
+      const q = hunterQ(graphAf.componentTotalMap[key] || 0, tr2Af.nSalidas || 0);
+      if (q > 0) return q;
+    }
+    return 0;
+  }, [tr2Af, graphAf.componentTotalMap]);
+  /** Velocidad (recalculada con el diámetro actual) y presión (persistida) de un tramo de
+   *  presión. null = sin dato → chip "(sin verificar)" y gate en Revisar. */
+  const chequeoDe = useCallback(
+    (t: Tramo, net: 'af' | 'ac'): { vel: boolean | null; pres: boolean | null } => {
+      const key = t._key || t.id;
+      const stored = chequeosPresion[net]?.[key];
+      // Caudal fresco del grafo (tr2 usa el Qaco de la red); el store solo como red de
+      // seguridad si el grafo no alcanza a calcularlo.
+      const totalAcum = (net === 'af' ? graphAf : graphAc).componentTotalMap[key] || 0;
+      const qFresco =
+        net === 'af' && tr2Af && (tr2Af._key || tr2Af.id) === key
+          ? qacoAf
+          : hunterQ(totalAcum, t.nSalidas || 0);
+      const qLps = qFresco > 0 ? qFresco : (stored?.qLps ?? t.qLps ?? 0);
+      let vel: boolean | null = null;
+      if (qLps > 0) {
+        const c = computeDesignRow(t, {
+          qprob: qLps,
+          diamOpts: net === 'af' ? afOpts : acOpts,
+          diamNomMap: {},
+          diamIntMap: {},
+          lookupFn: (net === 'af' ? lookupInterno : lookupInternoAC) as (pulg: number) => number,
+        });
+        const vMinMms = perfil.af.vMin * 1000;
+        const vMaxMms = perfil.af.vMax * 1000;
+        vel = c.Vmms > 0 ? c.Vmms >= vMinMms && c.Vmms <= vMaxMms : null;
+      }
+      const pres =
+        typeof stored?.presionOk === 'boolean'
+          ? stored.presionOk
+          : typeof t.presionOk === 'boolean'
+            ? t.presionOk
+            : null;
+      return { vel, pres };
+    },
+    [chequeosPresion, afOpts, acOpts, perfil, graphAf, graphAc, tr2Af, qacoAf],
+  );
+  const estadoPresionDe = useCallback(
+    (tramos: typeof tramosAfJ, net: 'af' | 'ac') => {
+      const conFallos: typeof tramos = [];
+      const sinVerificar: typeof tramos = [];
+      for (const t of tramos) {
+        const c = chequeoDe(t, net);
+        if (c.vel === false || c.pres === false) conFallos.push(t);
+        else if (c.vel === null || c.pres === null) sinVerificar.push(t);
+      }
+      return { conFallos, sinVerificar };
+    },
+    [chequeoDe],
+  );
+  const cheqAf = useMemo(() => estadoPresionDe(tramosAfJ, 'af'), [estadoPresionDe, tramosAfJ]);
+  const cheqAc = useMemo(() => estadoPresionDe(tramosAcJ, 'ac'), [estadoPresionDe, tramosAcJ]);
+  const sinVerificarAf = cheqAf.sinVerificar;
+  const sinVerificarAc = cheqAc.sinVerificar;
   const okAF =
-    tramosAfJ.length > 0 && tramosAfJ.every((t) => t.velCumple !== false && t.presionOk !== false);
+    tramosAfJ.length > 0 && cheqAf.conFallos.length === 0 && cheqAf.sinVerificar.length === 0;
   const okAC =
-    tramosAcJ.length > 0 && tramosAcJ.every((t) => t.velCumple !== false && t.presionOk !== false);
-  const fallosAf = tramosAfJ.filter((t) => t.velCumple === false || t.presionOk === false);
-  const fallosAc = tramosAcJ.filter((t) => t.velCumple === false || t.presionOk === false);
-  // SIN filtro de área: la tabla marca 'No cumple' también en bajantes de cubierta sin área
-  // (BAN1-C) — el resumen refleja exactamente lo que la tabla muestra.
-  // Mismos insumos que la tabla (C derivado del material): sin esto el resumen juzga con
-  // otra fórmula que la MemoriaTable que exporta (auditoría R-2).
-  const fallosBajLl = bajantesLl
-    .filter((b) => (b.areaAcumulada ?? 0) > 0)
-    .filter(
-      (b) =>
-        chequeoBajanteLluvia({
-          ...b,
-          areaAcumulada: b.areaAcumulada || 0,
-          coeficienteC: cDeCubierta(b.materialCubierta ?? '') ?? 0,
-        }).chequeo === 'No cumple',
-    );
+    tramosAcJ.length > 0 && cheqAc.conFallos.length === 0 && cheqAc.sinVerificar.length === 0;
+  const fallosAf = cheqAf.conFallos;
+  const fallosAc = cheqAc.conFallos;
+  // Mismos insumos que la MemoriaTable (rainDownpipesRows): C derivado del material y
+  // manning con default 0.009 — sin esto el resumen juzga con otra fórmula que la tabla.
+  // Sin filtro de área: con área 0 el chequeo ya sale '' (Q=0 → dCalc=0), el filtro sobra.
+  const fallosBajLl = useMemo(
+    () =>
+      bajantesLl.filter(
+        (b) =>
+          chequeoBajanteLluvia({
+            ...b,
+            areaAcumulada: b.areaAcumulada || 0,
+            coeficienteC: cDeCubierta(b.materialCubierta ?? '') ?? 0,
+            manning: b.manning || 0.009,
+          }).chequeo === 'No cumple',
+      ),
+    [bajantesLl],
+  );
   // Nivel de cada bajante ll desde sus tramos esBajante (BajanteLl no trae piso).
   // Key por CODE visible (la tabla usa row[0]=code): ids internos de dibujo no matchean.
   const pisoDeBajLl = useMemo(
@@ -824,52 +943,91 @@ export function useInfTables(state: WorkAreaState) {
     [tramosLl],
   );
   // Canales: misma fórmula de la tabla (C del material, n del material — sin material no hay chequeo).
-  const fallosCanalLl = (canalesLl ?? [])
-    .filter((c) => {
-      const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
-      const nd = nDeCanal(c.materialCanal ?? '');
-      if (Cder <= 0 || nd == null) return false;
-      return (
-        chequeoCanalLluvia({
-          ...c,
-          coeficienteC: Cder,
-          manning: nd,
-          muroVertical: c.muroVertical ?? 0,
-          bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
-        }).chequeo === 'No cumple'
-      );
-    })
-    .map((c) => {
-      const piso = plans.find(
-        (p) => String(p.id) === String((c as { planId?: unknown }).planId),
-      )?.nivel;
-      return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))}`;
-    });
+  const fallosCanalLl = useMemo(
+    () =>
+      (canalesLl ?? [])
+        .filter((c) => {
+          const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+          const nd = nDeCanal(c.materialCanal ?? '');
+          if (Cder <= 0 || nd == null) return false;
+          return (
+            chequeoCanalLluvia({
+              ...c,
+              coeficienteC: Cder,
+              manning: nd,
+              muroVertical: c.muroVertical ?? 0,
+              bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
+            }).chequeo === 'No cumple'
+          );
+        })
+        .map((c) => {
+          const piso = plans.find(
+            (p) => String(p.id) === String((c as { planId?: unknown }).planId),
+          )?.nivel;
+          return `${c.sector || 'Canal'}-${pisoCorto(Number(piso ?? 0))}`;
+        }),
+    [canalesLl, plans],
+  );
   // AF: acometida (computeAcometidaSummary estadoOk) — la tabla la marca, el resumen la lista.
   const acometidaOk = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF)?.estadoOk !== false;
   const fallosGas = (gasRowsCalc ?? []).filter((r) => r.chequeo === 'NO');
-  const hasCheckedNet = hasSan || hasLl || hasAf || hasAc || hasGas || hasEp;
+  // Bomba AR: hoy sin filas cumple/no cumple — gate por presencia de memoria calculada.
+  const alertasBomba = useMemo(() => (hasBom ? bombaAlertas() : null), [hasBom]);
+  const hasCheckedNet = hasSan || hasLl || hasAf || hasAc || hasGas || hasEp || hasBom;
   // Gate ÚNICO: derivado de los mismos labs que alimentan el resumen (auditoría F-4).
-  // Sin verificar (materiales sin elegir): la tabla no chequea, pero no es OK (auditoría F-4).
-  const canalSinVerificarHay = (canalesLl ?? []).some((c) => {
-    const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
-    const nd = nDeCanal(c.materialCanal ?? '');
-    return Cder <= 0 || nd == null;
-  });
-  const bajSinVerificarHay = bajantesLl.some((b) => !b.materialCubierta);
+  // Sin verificar (materiales sin elegir): la tabla no chequea, pero no es OK. Los chips se
+  // calculan UNA vez — son insumo del gate Y de la lista del resumen (antes vivían 2 veces).
+  const nivelCubierta = pisos.find((p) => p.n === 99)?.n ?? 99;
+  const fallosCanalSinVerificar = useMemo(
+    () =>
+      (canalesLl ?? [])
+        .filter((c) => {
+          const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
+          const nd = nDeCanal(c.materialCanal ?? '');
+          return Cder <= 0 || nd == null;
+        })
+        .map((c) => {
+          // El canal es de CUBIERTA por definición: nivel = c.piso (glifo) o el piso cubierta.
+          return `${c.sector || 'Canal'}-${pisoCorto(Number(c.piso ?? nivelCubierta))} (sin verificar)`;
+        }),
+    [canalesLl, nivelCubierta],
+  );
+  // Bajante LL SIN material elegido: la tabla no lo chequea, pero no es OK (paralelo al canal).
+  const fallosBajSinVerificar = useMemo(
+    () =>
+      bajantesLl
+        .filter((b) => !b.materialCubierta)
+        .map((b) => {
+          const code = String(b.bajante || b.id);
+          const pid = pisoDeBajLl.get(code);
+          return `${code}${pid != null ? '-' + pisoCorto(Number(pid)) : ''} (sin verificar)`;
+        }),
+    [bajantesLl, pisoDeBajLl],
+  );
+  const canalSinVerificarHay = fallosCanalSinVerificar.length > 0;
+  const bajSinVerificarHay = fallosBajSinVerificar.length > 0;
+  // Sin calcular ≠ OK: una red activa sin elementos calculados bloquea la descarga igual que
+  // un fallo (mismos umbrales que producen '◌ Sin calcular' en las filas del resumen).
   const allOk =
     hasCheckedNet &&
+    (!hasSan || conDatosSan.length > 0) &&
     fallosSanLabs.length === 0 &&
-    fallosLl.length === 0 &&
-    fallosBajLl.length === 0 &&
-    fallosCanalLl.length === 0 &&
-    !canalSinVerificarHay &&
-    !bajSinVerificarHay &&
+    // Términos de lluvias TODOS bajo hasLl: bajantesLl/canalesLl vienen del espejo del
+    // RainwaterContext (persiste en localStorage aunque el proyecto no tenga la red activa)
+    // — sin el gate, datos stale de otra red bloqueaban la descarga con todas las filas
+    // visibles en verde (reporte: "redes ok pero no deja descargar").
+    (!hasLl || conDatosLl.length + bajantesLl.length + (canalesLl?.length ?? 0) > 0) &&
+    (!hasLl || fallosLl.length === 0) &&
+    (!hasLl || fallosBajLl.length === 0) &&
+    (!hasLl || fallosCanalLl.length === 0) &&
+    (!hasLl || !canalSinVerificarHay) &&
+    (!hasLl || !bajSinVerificarHay) &&
     (!hasAf || okAF) &&
     acometidaOk &&
     (!hasAc || okAC) &&
     (!hasGas || fallosGas.length === 0) &&
-    (!hasEp || (epAlertas() ?? []).length === 0);
+    (!hasEp || (epAlertas() ?? []).length === 0) &&
+    (!hasBom || alertasBomba === null || alertasBomba.length === 0);
   const items = useMemo<[string, string, string[]?][]>(() => {
     const rows: [string, string, string[]?][] = [
       ['PROYECTO', proy.nombre],
@@ -885,36 +1043,12 @@ export function useInfTables(state: WorkAreaState) {
       ],
     ];
     const labs = (fs: { id: unknown; piso?: number }[]) => fs.map((t) => etiq(t.id, t.piso));
-    // SAN: fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent.
-    const fallosSanLabs2 = [
-      ...fallosSan.map((t) => etiq(t.id, t.piso)),
-      // Columna Nivel (row[1], fmtPiso del propio bajante): chips BAN1-P2 / BAN1-C.
-      ...fallosDeTabla(bajVentSanTable, (row) => (row[1] && row[1] !== '—' ? String(row[1]) : '')),
-    ];
-    const estadoSan = fallosSanLabs2.length
+    // SAN: chips memoizados (fallos de tramos + filas 'No cumple' de la tabla de bajantes).
+    const estadoSan = fallosSanLabs.length
       ? '✗ Revisar'
       : conDatosSan.length > 0
         ? '✓ OK'
         : '◌ Sin calcular';
-    const nivelCubierta = pisos.find((p) => p.n === 99)?.n ?? 99;
-    const fallosCanalSinVerificar = (canalesLl ?? [])
-      .filter((c) => {
-        const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
-        const nd = nDeCanal(c.materialCanal ?? '');
-        return Cder <= 0 || nd == null;
-      })
-      .map((c) => {
-        // El canal es de CUBIERTA por definición: nivel = c.piso (glifo) o el piso cubierta.
-        return `${c.sector || 'Canal'}-${pisoCorto(Number(c.piso ?? nivelCubierta))} (sin verificar)`;
-      });
-    // Bajante LL SIN material elegido: la tabla no lo chequea, pero no es OK (paralelo al canal).
-    const fallosBajSinVerificar = bajantesLl
-      .filter((b) => !b.materialCubierta)
-      .map((b) => {
-        const code = String(b.bajante || b.id);
-        const pid = pisoDeBajLl.get(code);
-        return `${code}${pid != null ? '-' + pisoCorto(Number(pid)) : ''} (sin verificar)`;
-      });
     const fallosLlLabs2 = [
       ...fallosLl.map((t) => etiq(t.id, t.piso)),
       ...fallosBajLl.map((b) =>
@@ -931,21 +1065,28 @@ export function useInfTables(state: WorkAreaState) {
         ? '◌ Sin calcular'
         : '✓ OK';
     const fallosDe = (ok: boolean, labs2: string[]): string[] => (ok ? [] : labs2);
-    if (hasSan) rows.push(['SANITARIA', estadoSan, fallosSanLabs2]);
+    if (hasSan) rows.push(['SANITARIA', estadoSan, fallosSanLabs]);
     if (hasLl)
       rows.push(['AGUAS LLUVIAS', estadoLl, estadoLl === '✗ Revisar' ? fallosLlLabs2 : []]);
-    const fallosAfLabs = [...labs(fallosAf), ...(acometidaOk ? [] : ['ACOMETIDA'])];
+    const sinVerificarLabs = (ts: typeof tramosAfJ) =>
+      ts.map((t) => `${etiq(t.id, t.piso)} (sin verificar)`);
+    const fallosAfLabs = [
+      ...labs(fallosAf),
+      ...sinVerificarLabs(sinVerificarAf),
+      ...(acometidaOk ? [] : ['ACOMETIDA']),
+    ];
     if (hasAf)
       rows.push([
         'AGUA FRÍA',
         tramosAfJ.length === 0 ? '◌ Sin calcular' : okAF && acometidaOk ? '✓ OK' : '✗ Revisar',
         fallosDe(okAF && acometidaOk, fallosAfLabs),
       ]);
+    const fallosAcLabs = [...labs(fallosAc), ...sinVerificarLabs(sinVerificarAc)];
     if (hasAc)
       rows.push([
         'AGUA CALIENTE',
         tramosAcJ.length === 0 ? '◌ Sin calcular' : okAC ? '✓ OK' : '✗ Revisar',
-        fallosDe(okAC, labs(fallosAc)),
+        fallosDe(okAC, fallosAcLabs),
       ]);
     if (hasGas)
       rows.push([
@@ -965,6 +1106,12 @@ export function useInfTables(state: WorkAreaState) {
         alertasEp ?? [],
       ]);
     }
+    if (hasBom)
+      rows.push([
+        'BOMBA AR',
+        alertasBomba === null ? '◌ Sin calcular' : alertasBomba.length === 0 ? '✓ OK' : '✗ Revisar',
+        alertasBomba ?? [],
+      ]);
     return rows;
   }, [
     proy,
@@ -978,18 +1125,19 @@ export function useInfTables(state: WorkAreaState) {
     hasAc,
     hasGas,
     hasEp,
-    fallosSan,
+    fallosSanLabs,
     fallosLl,
     fallosAf,
     fallosAc,
     fallosBajLl,
     fallosCanalLl,
+    fallosCanalSinVerificar,
+    fallosBajSinVerificar,
     fallosGas,
     pisoDeBajLl,
     fallosDeTabla,
     tramosAfJ,
     tramosAcJ,
-    bajVentSanTable,
     llBajTable,
     conDatosSan.length,
     conDatosLl.length,
@@ -997,6 +1145,10 @@ export function useInfTables(state: WorkAreaState) {
     canalesLl,
     gasRowsCalc,
     acometidaOk,
+    hasBom,
+    alertasBomba,
+    sinVerificarAf,
+    sinVerificarAc,
   ]);
   const estadoLabel = !hasCheckedNet
     ? '—'

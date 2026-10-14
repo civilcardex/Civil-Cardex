@@ -33,6 +33,7 @@ const MODULOS: { label: string; nota: string; cats: string[] }[] = [
     nota: 'Diseño hidrosanitario',
     cats: [
       'manual',
+      'glosario',
       'hidraulica',
       'sanitarias',
       'lluvias',

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   generateMemoriaExcel,
   generateMemoriaDocx,
@@ -10,6 +10,7 @@ import { getPdfjs } from '../../utils/lazyPdfjs';
 import { downloadPlanosPdf } from '../../utils/exportPlanos';
 import type { useWorkAreaState } from '../useWorkAreaState';
 import { useInfTables } from './useInfTables';
+import { REDES } from '../../constants/uiConfig';
 
 const ANEXO_PDF_URL = '/docs/detalle-instalacion-aparatos-hsg.pdf';
 // Altura, en puntos PDF (espacio de página, independiente de la escala de renderizado), del
@@ -62,6 +63,11 @@ async function downloadAnexoPdf(): Promise<void> {
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
+// Opciones del PDF de planos (orig. usuario): equipos (bom/ep) NO son redes de tubería; una
+// SUBRED solo se ofrece si su red padre está activa (vent→san, recolectora→ll, rejillas→gas).
+const EQUIPOS_NETS = new Set(['bom', 'ep']);
+const SUBRED_DE: Record<string, string> = { vent: 'san', recolectora: 'll', rejillas: 'gas' };
+
 const SUMMARY_ROW_STYLE: React.CSSProperties = {
   display: 'flex',
   gap: 12,
@@ -107,6 +113,16 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const [memoriaBusy, setMemoriaBusy] = useState(false);
   const [anexoBusy, setAnexoBusy] = useState(false);
   const [planosBusy, setPlanosBusy] = useState(false);
+  // Redes EXCLUIDAS del PDF de planos (orig. usuario): la lista ofrecida son las redes ACTIVAS
+  // del proyecto; set vacío = todas incluidas.
+  const [netsExcluidasPdf, setNetsExcluidasPdf] = useState<Set<string>>(() => new Set());
+  const redesOpcionesPdf = useMemo(
+    () =>
+      [...state.redes].filter(
+        (n) => !EQUIPOS_NETS.has(n) && (!SUBRED_DE[n] || state.redes.has(SUBRED_DE[n])),
+      ),
+    [state.redes],
+  );
   const tables = useInfTables(state);
   const proy = tables.proy;
   const plans = tables.plans;
@@ -193,7 +209,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const handleDescargarPlanos = async () => {
     setPlanosBusy(true);
     try {
-      await downloadPlanosPdf(plans, pisos);
+      await downloadPlanosPdf(plans, pisos, netsExcluidasPdf);
     } catch (e) {
       alert(`Error descargando planos: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     } finally {
@@ -206,220 +222,285 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       className="fu"
       style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}
     >
-      <section className="card">
-        <div className="card-h">
-          <h2 className="card-t">
-            <img
-              src="/Informes.webp"
-              alt="Informes"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Resumen del proyecto
-          </h2>
-        </div>
-        <div className="card-b">
-          <dl style={{ margin: 0 }}>
-            {items.map(([k, v, fallos]) => (
-              <div key={k} style={SUMMARY_ROW_STYLE}>
-                <dt
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--txt3)',
-                    minWidth: 130,
-                    flexShrink: 0,
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                  }}
-                >
-                  {k}
-                </dt>
-                <dd
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 500,
-                    margin: 0,
-                    color: String(v).includes('✗')
-                      ? 'var(--err)'
-                      : String(v).includes('✓')
-                        ? 'var(--ok)'
-                        : 'var(--txt)',
-                  }}
-                >
-                  {v}
-                </dd>
-                {fallos && fallos.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginLeft: 8 }}>
-                    {fallos.slice(0, 14).map((e, i) => (
-                      <span
-                        key={`${e}-${i}`}
-                        title={`${e} no cumple — revíselo en su tabla de diseño`}
-                        style={{
-                          fontSize: 10.5,
-                          fontFamily: 'var(--mono)',
-                          fontWeight: 600,
-                          padding: '2px 7px',
-                          borderRadius: 5,
-                          background: 'rgba(239,68,68,.12)',
-                          border: '1px solid rgba(239,68,68,.45)',
-                          color: 'var(--err)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {e}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </dl>
-        </div>
-      </section>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: 12,
+          alignItems: 'start',
+        }}
+      >
+        <section className="card">
+          <div className="card-h">
+            <h2 className="card-t">
+              <img
+                src="/Informes.webp"
+                alt="Informes"
+                width={24}
+                height={24}
+                style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+                loading="lazy"
+              />
+              Resumen del proyecto
+            </h2>
+          </div>
+          <div className="card-b">
+            <dl style={{ margin: 0 }}>
+              {items.map(([k, v, fallos]) => (
+                <div key={k} style={SUMMARY_ROW_STYLE}>
+                  <dt
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--txt3)',
+                      minWidth: 130,
+                      flexShrink: 0,
+                      textTransform: 'uppercase',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {k}
+                  </dt>
+                  <dd
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 500,
+                      margin: 0,
+                      color: String(v).includes('✗')
+                        ? 'var(--err)'
+                        : String(v).includes('✓')
+                          ? 'var(--ok)'
+                          : 'var(--txt)',
+                    }}
+                  >
+                    {v}
+                  </dd>
+                  {fallos && fallos.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginLeft: 8 }}>
+                      {fallos.slice(0, 14).map((e, i) => (
+                        <span
+                          key={`${e}-${i}`}
+                          title={`${e} no cumple — revíselo en su tabla de diseño`}
+                          style={{
+                            fontSize: 10.5,
+                            fontFamily: 'var(--mono)',
+                            fontWeight: 600,
+                            padding: '2px 7px',
+                            borderRadius: 5,
+                            background: 'rgba(239,68,68,.12)',
+                            border: '1px solid rgba(239,68,68,.45)',
+                            color: 'var(--err)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {e}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </dl>
+          </div>
+        </section>
 
-      <section className="card" style={{ maxWidth: 460, width: '100%' }}>
-        <div className="card-h">
-          <h2 className="card-t">
-            <img
-              src="/iconos_civilflow/descargas.webp"
-              alt="Descargas"
-              width={20}
-              height={20}
-              style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Descargas
-          </h2>
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '2px 8px',
-              borderRadius: 999,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 0.2,
-              background: !hasCheckedNet
-                ? 'var(--bg2)'
-                : allOk
-                  ? 'rgba(34,197,94,.15)'
-                  : 'rgba(239,68,68,.15)',
-              color: estadoColor,
-              border: `1px solid ${!hasCheckedNet ? 'var(--line)' : allOk ? 'var(--ok)' : 'var(--err)'}`,
-            }}
-          >
-            {estadoLabel}
-          </span>
-        </div>
-
-        <div
-          className="card-b"
-          style={{ display: 'flex', flexDirection: 'column', padding: '4px 10px' }}
-        >
-          <div style={DL_CHIP_STYLE}>
-            <img
-              src="/iconos_civilflow/memorias_finales.webp"
-              alt=""
-              width={20}
-              height={20}
-              style={{ width: 20, height: 20, flexShrink: 0 }}
-              loading="lazy"
-            />
-            <span style={DL_LABEL_STYLE}>Memorias finales</span>
-            <div
+        <section className="card">
+          <div className="card-h">
+            <h2 className="card-t">
+              <img
+                src="/iconos_civilflow/descargas.webp"
+                alt="Descargas"
+                width={20}
+                height={20}
+                style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 4 }}
+                loading="lazy"
+              />
+              Descargas
+            </h2>
+            <span
               style={{
-                display: 'flex',
-                alignItems: 'stretch',
-                borderRadius: 'var(--r)',
-                overflow: 'hidden',
-                border: '1px solid var(--line)',
-                opacity: allOk ? 1 : 0.5,
-                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '2px 8px',
+                borderRadius: 999,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 0.2,
+                background: !hasCheckedNet
+                  ? 'var(--bg2)'
+                  : allOk
+                    ? 'rgba(34,197,94,.15)'
+                    : 'rgba(239,68,68,.15)',
+                color: estadoColor,
+                border: `1px solid ${!hasCheckedNet ? 'var(--line)' : allOk ? 'var(--ok)' : 'var(--err)'}`,
               }}
             >
-              <select
-                aria-label="Formato de descarga"
-                disabled={!allOk || memoriaBusy}
-                value={memoriaFmt}
-                onChange={(e) => setMemoriaFmt(e.target.value as 'xlsx' | 'docx' | 'pdf')}
+              {estadoLabel}
+            </span>
+          </div>
+
+          <div
+            className="card-b"
+            style={{ display: 'flex', flexDirection: 'column', padding: '4px 10px' }}
+          >
+            <div style={DL_CHIP_STYLE}>
+              <img
+                src="/iconos_civilflow/memorias_finales.webp"
+                alt=""
+                width={20}
+                height={20}
+                style={{ width: 20, height: 20, flexShrink: 0 }}
+                loading="lazy"
+              />
+              <span style={DL_LABEL_STYLE}>Memorias finales</span>
+              <div
                 style={{
-                  padding: '6px 6px 6px 10px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  border: 'none',
-                  borderRight: '1px solid var(--line)',
-                  background: 'var(--bg2)',
-                  color: 'var(--txt)',
-                  cursor: allOk ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'stretch',
+                  borderRadius: 'var(--r)',
+                  overflow: 'hidden',
+                  border: '1px solid var(--line)',
+                  opacity: allOk ? 1 : 0.5,
+                  flexShrink: 0,
                 }}
               >
-                <option value="xlsx">Excel</option>
-                <option value="docx">Word</option>
-                <option value="pdf">PDF</option>
-              </select>
+                <select
+                  aria-label="Formato de descarga"
+                  disabled={!allOk || memoriaBusy}
+                  value={memoriaFmt}
+                  onChange={(e) => setMemoriaFmt(e.target.value as 'xlsx' | 'docx' | 'pdf')}
+                  style={{
+                    padding: '6px 6px 6px 10px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: 'none',
+                    borderRight: '1px solid var(--line)',
+                    background: 'var(--bg2)',
+                    color: 'var(--txt)',
+                    cursor: allOk ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  <option value="xlsx">Excel</option>
+                  <option value="docx">Word</option>
+                  <option value="pdf">PDF</option>
+                </select>
+                <button
+                  type="button"
+                  disabled={!allOk || memoriaBusy}
+                  onClick={handleDescargarMemoria}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: allOk ? 'pointer' : 'not-allowed',
+                    background: allOk ? 'var(--acc)' : 'var(--bg2)',
+                    color: allOk ? '#0f1115' : 'var(--txt3)',
+                  }}
+                >
+                  {memoriaBusy ? 'Generando…' : 'Descargar'}
+                </button>
+              </div>
+            </div>
+
+            <div style={DL_CHIP_STYLE}>
+              <img
+                src="/iconos_civilflow/detalle_aparatos.webp"
+                alt=""
+                width={20}
+                height={20}
+                style={{ width: 20, height: 20, flexShrink: 0 }}
+                loading="lazy"
+              />
+              <span style={DL_LABEL_STYLE}>Anexo — Detalle aparatos</span>
               <button
                 type="button"
-                disabled={!allOk || memoriaBusy}
-                onClick={handleDescargarMemoria}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: allOk ? 'pointer' : 'not-allowed',
-                  background: allOk ? 'var(--acc)' : 'var(--bg2)',
-                  color: allOk ? '#0f1115' : 'var(--txt3)',
-                }}
+                disabled={anexoBusy}
+                onClick={handleDescargarAnexo}
+                style={DL_BTN_STYLE}
               >
-                {memoriaBusy ? 'Generando…' : 'Descargar'}
+                {anexoBusy ? 'Descargando…' : 'Descargar'}
               </button>
             </div>
-          </div>
 
-          <div style={DL_CHIP_STYLE}>
-            <img
-              src="/iconos_civilflow/detalle_aparatos.webp"
-              alt=""
-              width={20}
-              height={20}
-              style={{ width: 20, height: 20, flexShrink: 0 }}
-              loading="lazy"
-            />
-            <span style={DL_LABEL_STYLE}>Anexo — Detalle aparatos</span>
-            <button
-              type="button"
-              disabled={anexoBusy}
-              onClick={handleDescargarAnexo}
-              style={DL_BTN_STYLE}
-            >
-              {anexoBusy ? 'Descargando…' : 'Descargar'}
-            </button>
-          </div>
+            <div style={DL_CHIP_STYLE}>
+              <img
+                src="/iconos_civilflow/planos_red.webp"
+                alt=""
+                width={20}
+                height={20}
+                style={{ width: 20, height: 20, flexShrink: 0 }}
+                loading="lazy"
+              />
+              <span style={DL_LABEL_STYLE}>Planos de red</span>
+              <button
+                type="button"
+                disabled={planosBusy || confirmedPlanos.length === 0}
+                onClick={handleDescargarPlanos}
+                style={{ ...DL_BTN_STYLE, opacity: confirmedPlanos.length === 0 ? 0.5 : 1 }}
+              >
+                {planosBusy ? 'Generando…' : 'Descargar'}
+              </button>
+            </div>
 
-          <div style={DL_CHIP_STYLE}>
-            <img
-              src="/iconos_civilflow/planos_red.webp"
-              alt=""
-              width={20}
-              height={20}
-              style={{ width: 20, height: 20, flexShrink: 0 }}
-              loading="lazy"
-            />
-            <span style={DL_LABEL_STYLE}>Planos de red</span>
-            <button
-              type="button"
-              disabled={planosBusy || confirmedPlanos.length === 0}
-              onClick={handleDescargarPlanos}
-              style={{ ...DL_BTN_STYLE, opacity: confirmedPlanos.length === 0 ? 0.5 : 1 }}
-            >
-              {planosBusy ? 'Generando…' : 'Descargar'}
-            </button>
+            {redesOpcionesPdf.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '4px 12px',
+                  padding: '8px 2px 2px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: 'var(--txt3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  Redes en el PDF:
+                </span>
+                {redesOpcionesPdf.map((net) => {
+                  const checked = !netsExcluidasPdf.has(net);
+                  return (
+                    <label
+                      key={net}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontSize: 12.5,
+                        cursor: 'pointer',
+                        color: checked ? 'var(--txt)' : 'var(--txt3)',
+                        userSelect: 'none',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          setNetsExcluidasPdf((prev) => {
+                            const nx = new Set(prev);
+                            if (nx.has(net)) nx.delete(net);
+                            else nx.add(net);
+                            return nx;
+                          })
+                        }
+                        style={{ accentColor: 'var(--acc)', cursor: 'pointer' }}
+                      />
+                      {REDES.find((r) => r.id === net)?.lbl || net}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

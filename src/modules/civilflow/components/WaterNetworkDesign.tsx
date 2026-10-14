@@ -28,6 +28,9 @@ import { resolvePressures } from './waterNetworkDesign/pressureResolver';
 import { hunterQ, computeDesignRow } from './waterNetworkDesign/rowPhysics';
 import { DesignTableHeader } from './waterNetworkDesign/designTableHeader';
 import { DesignTableRow } from './waterNetworkDesign/designTableRow';
+import { EV_STORAGE } from '../utils/fixtureEvents';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { CHEQUEOS_PRESION_KEY } from '../constants/storage-keys';
 
 const WaterNetworkDesign_S1: React.CSSProperties = {
   position: 'absolute',
@@ -66,7 +69,7 @@ function WaterNetworkDesign({
   // Asegura claves = carga (propia + heredada) antes de leer totales; idempotente. El
   // listener re-corre cuando otra superficie escribe conteos (auditoría #5: la primera
   // pintura pre-propagación mostraba solo-propios y quedaba congelada hasta remontar).
-  // Guarda anti-loop: la propagación despacha 'storage' siempre (aunque no cambie nada);
+  // Guarda anti-loop: la propagación despacha EV_STORAGE siempre (aunque no cambie nada);
   // solo se re-corre si la firma del disco cambió desde la última corrida.
   const firmaRef = useRef('');
   const [propTick, setPropTick] = useState(0);
@@ -89,8 +92,8 @@ function WaterNetworkDesign({
     };
     correr();
     const h = (): void => setPropTick((x) => x + 1);
-    window.addEventListener('storage', h);
-    return () => window.removeEventListener('storage', h);
+    window.addEventListener(EV_STORAGE, h);
+    return () => window.removeEventListener(EV_STORAGE, h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [networkType]);
   useEffect(() => {
@@ -150,22 +153,8 @@ function WaterNetworkDesign({
       )
         return;
     }
-    if (!res.ok && (res as unknown as { reason?: string }).reason === 'parent-smaller') {
-      if (
-        avisarDiametroInvalido(
-          `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
-        )
-      )
-        return;
-    }
-    if (!res.ok && (res as unknown as { reason?: string }).reason === 'child-larger') {
-      if (
-        avisarDiametroInvalido(
-          `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
-        )
-      )
-        return;
-    }
+    // Redes de presión: sin bloqueo salida/entrada (retirado — orig. usuario); la tabla
+    // converge los vecinos al mayor vía writeDiametroToDrawing.
     updTramo(tramoId, 'diamDisPulg', pulg);
     setDiamIntMap((prev) => ({ ...prev, [tramoId]: opt.dInt }));
     setDiamNomMap((prev) => ({ ...prev, [tramoId]: opt.nominal }));
@@ -439,6 +428,9 @@ function WaterNetworkDesign({
   // Persistir el checkpoint de velocidad (y, para AF, el de presión de acometida) en cada Tramo
   // para que InfTab muestre una insignia real OK/Revisar en lugar de nada.
   useEffect(() => {
+    // Chequeos del pase actual → store plano que Informes lee SIN visitar esta página
+    // (gate global de informes; writeDiametroToDrawing lo invalida por red al editar).
+    const chequeos: Record<string, { velCumple: boolean; presionOk: boolean; qLps: number }> = {};
     for (const t of tramosOrden) {
       const ownKey = t._key || t.id;
       const isTr2 = t === tr2;
@@ -455,8 +447,11 @@ function WaterNetworkDesign({
       const vMaxMms = perfilDe(proy.pais).af.vMax * 1000;
       const velCumple = c.Vmms > 0 ? c.Vmms >= vMinMms && c.Vmms <= vMaxMms : true;
       if (t.velCumple !== velCumple) updTramo(ownKey, 'velCumple', velCumple);
-      if (isAf(networkType) && t.presionOk !== okPresion) updTramo(ownKey, 'presionOk', okPresion);
-      if (!isAf(networkType)) {
+      let presionOkT: boolean;
+      if (isAf(networkType)) {
+        presionOkT = okPresion;
+        if (t.presionOk !== okPresion) updTramo(ownKey, 'presionOk', okPresion);
+      } else {
         // AC: presionOk = chequeo de presión del aparato conectado (sin aparato o sin
         // presión resuelta → chequeo vacío → true, no penaliza la insignia).
         const resuelto = pressureByKey[ownKey];
@@ -467,11 +462,14 @@ function WaterNetworkDesign({
           resuelto?.Pin ?? pRed,
           resuelto?.Pfin ?? pRed,
         );
-        const presionOk = chkP !== 'NO';
-        if (t.presionOk !== presionOk) updTramo(ownKey, 'presionOk', presionOk);
+        presionOkT = chkP !== 'NO';
+        if (t.presionOk !== presionOkT) updTramo(ownKey, 'presionOk', presionOkT);
       }
       if (t.qLps !== Qprob) updTramo(ownKey, 'qLps', Qprob);
+      chequeos[ownKey] = { velCumple, presionOk: presionOkT, qLps: Qprob };
     }
+    const prevChequeos = loadFromStorage<Record<string, typeof chequeos>>(CHEQUEOS_PRESION_KEY, {});
+    saveToStorage(CHEQUEOS_PRESION_KEY, { ...prevChequeos, [networkType]: chequeos });
   }, [
     tramosOrden,
     tr2,

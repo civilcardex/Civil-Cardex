@@ -145,7 +145,7 @@ function GasCalcUC() {
           rowSpan={2}
           title="Identificador del tramo con su nivel (ej. RG1-P1 · S1 = sótano · C = cubierta)"
         >
-          Tramo
+          Ramal/Montante
         </th>
         <th
           scope="col"

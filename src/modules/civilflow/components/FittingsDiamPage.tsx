@@ -5,6 +5,7 @@ import { computeAccesoriosTable } from '../utils/sanFittingsRows';
 import { fmtPulg, fracAscii } from '../utils/formatUtils';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { SAN_ACCESORIOS, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
+import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
 
 const TH: React.CSSProperties = {
   fontSize: 11,
@@ -34,13 +35,13 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
   // de 3s re-computaba la tabla eternamente aunque nada cambiara (ponytail).
   useEffect(() => {
     const handler = () => setTick((t) => t + 1);
-    window.addEventListener('storage', handler);
-    window.addEventListener('civilflow_san_sync_changed', handler);
-    window.addEventListener('civilflow_hidro_sync_changed', handler);
+    window.addEventListener(EV_STORAGE, handler);
+    window.addEventListener(EV_SAN_SYNC, handler);
+    window.addEventListener(EV_HIDRO_SYNC, handler);
     return () => {
-      window.removeEventListener('storage', handler);
-      window.removeEventListener('civilflow_san_sync_changed', handler);
-      window.removeEventListener('civilflow_hidro_sync_changed', handler);
+      window.removeEventListener(EV_STORAGE, handler);
+      window.removeEventListener(EV_SAN_SYNC, handler);
+      window.removeEventListener(EV_HIDRO_SYNC, handler);
     };
   }, []);
 

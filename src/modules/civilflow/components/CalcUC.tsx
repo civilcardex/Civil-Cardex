@@ -23,6 +23,7 @@ interface CalculoUCProps {
 }
 
 import { useState, useEffect } from 'react';
+import { EV_STORAGE } from '../utils/fixtureEvents';
 
 const monof = "'Courier New',Courier,monospace";
 const txt2 = '#94a3b8';
@@ -42,7 +43,6 @@ function CalculoUC({ tipo }: CalculoUCProps) {
       clsHeader: 'af',
       icon: '/iconos_civilflow/diseno_redes/hidraulica/RAF_Calculo_UC.webp',
       title: 'agua fr\u00EDa',
-      showTotal: true,
     },
     ac: {
       tramos: tramosAc,
@@ -53,12 +53,9 @@ function CalculoUC({ tipo }: CalculoUCProps) {
       clsHeader: 'ac',
       icon: '/iconos_civilflow/diseno_redes/hidraulica/RAC_Calculo_UC.webp',
       title: 'agua caliente',
-      // UC TOTALES también en AC (orig. usuario): mismas columnas y sumatoria que AF/san.
-      showTotal: true,
     },
   } as const;
-  const { tramos, ucIds, field, apField, colorVar, clsHeader, icon, title, showTotal } =
-    TIPO_CFG[tipo];
+  const { tramos, ucIds, field, apField, colorVar, clsHeader, icon, title } = TIPO_CFG[tipo];
 
   const AP = useMemo(() => {
     return ucIds
@@ -73,12 +70,12 @@ function CalculoUC({ tipo }: CalculoUCProps) {
   }, [ucIds, aps, field, apField]);
 
   // Herencia de aparatos af/ac (libro aparatos_heredados_v1): se re-lee con cada evento
-  // 'storage' (los escritores la despachan al propagar).
+  // EV_STORAGE (los escritores la despachan al propagar).
   const [heredTick, setHeredTick] = useState(0);
   useEffect(() => {
     const h = () => setHeredTick((x) => x + 1);
-    window.addEventListener('storage', h);
-    return () => window.removeEventListener('storage', h);
+    window.addEventListener(EV_STORAGE, h);
+    return () => window.removeEventListener(EV_STORAGE, h);
   }, []);
   // Llaveada por clave de conteos (`_aparatosKey ?? _key ?? id`): el id se repite
   // entre pisos y el libro es por clave compuesta (auditoría #3).
@@ -111,9 +108,15 @@ function CalculoUC({ tipo }: CalculoUCProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [AP, tramos, field, heredMap]);
 
+  // Celda final de la Σ (como sanitaria): Σ aparatos × UC contados una vez.
+  const totalUC = useMemo(
+    () => totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0),
+    [totales],
+  );
+
   const sortedTramos = useMemo(() => {
     return tramos
-      .filter((t) => t.tipo !== 'tributario' && !t.esBajante)
+      .filter((t) => t.tipo !== 'tributario' && (!t.esBajante || t.tipo === 'montante'))
       .toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
   }, [tramos]);
 
@@ -180,31 +183,15 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                   >
                     Aparatos
                   </th>
-                  {showTotal ? (
-                    <th
-                      scope="col"
-                      className="col-h ok"
-                      colSpan={2}
-                      style={{
-                        textAlign: 'center',
-                        padding: '4px',
-                        borderBottom: '2px solid var(--line)',
-                      }}
-                      title="Parcial = Σ aparatos × UC del tramo; Total = acumulado con los tramos aguas arriba."
-                    >
-                      Unidades de consumo
-                    </th>
-                  ) : (
-                    <th
-                      scope="col"
-                      className="col-h ok"
-                      rowSpan={2}
-                      style={{ minWidth: 52, textAlign: 'center', padding: '4px' }}
-                      title="Suma de unidades de consumo del tramo (aparatos × UC)."
-                    >
-                      Parcial
-                    </th>
-                  )}
+                  <th
+                    scope="col"
+                    className="col-h ok"
+                    rowSpan={2}
+                    style={{ minWidth: 90, textAlign: 'center', padding: '4px' }}
+                    title="Suma de unidades de consumo del tramo: aparatos × UC (la carga ya incluye lo propagado)."
+                  >
+                    Unidades de consumo totales
+                  </th>
                 </tr>
                 <tr>
                   {AP.map((d) => (
@@ -225,24 +212,11 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       <span style={{ fontSize: 12, fontWeight: 400 }}>{d[field]} UC</span>
                     </th>
                   ))}
-                  {showTotal && (
-                    <>
-                      <th scope="col" className="col-h ok" style={{ textAlign: 'center' }}>
-                        Parcial
-                      </th>
-                      <th scope="col" className="col-h ok" style={{ textAlign: 'center' }}>
-                        Total
-                      </th>
-                    </>
-                  )}
                 </tr>
               </thead>
               <tbody>
                 {tramos.length === 0 ? (
-                  <EmptyRow
-                    colSpan={showTotal ? 3 + AP.length + 2 : 3 + AP.length + 1}
-                    fontSize={12}
-                  />
+                  <EmptyRow colSpan={3 + AP.length + 1} fontSize={12} />
                 ) : (
                   sortedTramos.map((t) => {
                     const hered = heredMap[heredKeyOf(t)] || {};
@@ -250,9 +224,13 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       (s2, d2) => s2 + (hered[d2.id] || 0) * (Number(d2[field]) || 0),
                       0,
                     );
-                    // Parcial = UD PROPIA (la clave ya trae la carga propagada); Total = carga.
-                    const parcial = Math.max(0, calcUCparcial(t, AP, field) - hUc);
-                    const acum = showTotal ? calcUCparcial(t, AP, field) : 0;
+                    // Montante: muestra el espejo (propios + asociados); la Σ usa propios.
+                    const tDisp =
+                      t.fixturesAgg !== undefined ? { ...t, fixtures: t.fixturesAgg } : t;
+                    // Celda única (como sanitaria): valor = carga; el desglose propio/heredado
+                    // queda en el tooltip. Parcial = UD PROPIA (la clave ya trae la propagada).
+                    const parcial = Math.max(0, calcUCparcial(tDisp, AP, field) - hUc);
+                    const acum = calcUCparcial(tDisp, AP, field);
                     return (
                       <tr key={heredKeyOf(t)}>
                         <td className="c">
@@ -261,7 +239,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                             style={{ fontSize: 12 }}
                             title={`Tramo ${t.id} — nivel ${pisoCorto(t.piso)}`}
                           >
-                            {t.id}
+                            {t.label || t.id}
                             {t.piso != null ? `-${pisoCorto(t.piso)}` : ''}
                           </span>
                         </td>
@@ -293,8 +271,9 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                         </td>
                         {AP.map((d) => {
                           // Como sanitaria: la fila MUESTRA el conteo servido (propios +
-                          // propagados según la conexión); la Σ vertical cuenta una vez.
-                          const v = t.fixtures?.[d.id] || 0;
+                          // propagados según la conexión; el montante, su espejo); la Σ
+                          // vertical cuenta una vez.
+                          const v = (t.fixturesAgg ?? t.fixtures)?.[d.id] || 0;
                           return (
                             <td key={d.id} className="c" style={{ padding: '2px 3px' }}>
                               <span
@@ -311,23 +290,16 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                         })}
                         <td
                           className="c"
-                          style={{ fontFamily: monof, fontWeight: 700, color: txt, fontSize: 13 }}
+                          title={`Propia: ${parcial} · Heredada: ${hUc} UC`}
+                          style={{
+                            fontFamily: monof,
+                            fontWeight: 700,
+                            color: colorVar,
+                            fontSize: 14,
+                          }}
                         >
-                          {parcial}
+                          {acum}
                         </td>
-                        {showTotal && (
-                          <td
-                            className="c"
-                            style={{
-                              fontFamily: monof,
-                              fontWeight: 700,
-                              color: colorVar,
-                              fontSize: 14,
-                            }}
-                          >
-                            {acum}
-                          </td>
-                        )}
                       </tr>
                     );
                   })
@@ -370,18 +342,26 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                             {d.cant}
                           </span>
                           <span style={{ color: txt2, fontSize: 12 }}>&times; {d.uc} UC</span>
-                          {showTotal && (
-                            <span style={{ fontWeight: 700, color: colorVar, fontSize: 12 }}>
-                              {subtotal}
-                            </span>
-                          )}
+                          <span style={{ fontWeight: 700, color: colorVar, fontSize: 12 }}>
+                            {subtotal}
+                          </span>
                         </div>
                       </td>
                     );
                   })}
-                  {showTotal && (
-                    <td colSpan={2} style={{ borderTop: '2px solid var(--line)' }}></td>
-                  )}
+                  <td
+                    className="c"
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: txt,
+                      fontFamily: monof,
+                      textAlign: 'center',
+                      borderTop: '2px solid var(--line)',
+                    }}
+                  >
+                    {totalUC} UC
+                  </td>
                 </tr>
               </tfoot>
             </table>

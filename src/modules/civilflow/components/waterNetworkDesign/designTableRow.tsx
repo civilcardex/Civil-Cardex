@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import { pisoCorto } from '../../constants';
-import { fmt } from '../../utils/formatUtils';
+import { fmt, sectorDe } from '../../utils/formatUtils';
 import { hunterK, computeDesignRow } from './rowPhysics';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared';
 import { leerHeredadosPresion } from '../../utils/aparatosPresion';
@@ -44,8 +44,7 @@ function OtrosRamalesChips({
       }}
     >
       {connectedKeys.map((childKey) => {
-        const parts = childKey.split('-');
-        const rId = parts[0];
+        const rId = sectorDe(childKey);
         const childTramo = tramos.find((tr) => (tr._key || tr.id) === childKey);
         const childOwnKey = childTramo?._key || childTramo?.id || childKey;
         const childTotalUd = displayTotalMap[childOwnKey] || 0;
