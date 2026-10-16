@@ -7,6 +7,8 @@ import {
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import {
   APARATOS_BY_TRAMO_KEY,
+  APARATOS_HEREDADOS_KEY,
+  APARATOS_HEREDADOS_TRIB_KEY,
   GAS_ACC_KEY,
   HYDRO_DATA_STORAGE_KEY,
 } from '../../constants/storage-keys';
@@ -76,6 +78,17 @@ export function purgarEstadoRamalesBorrados(engine: IPlanoEngineCore, ids: Itera
     {},
   );
   const hidro = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+  // Libros de la propagación (misma llave `net_id_pid` que el disco): sin purgarlos, un id
+  // reutilizado heredaría la herencia ajena y fase A anularía su manual (pérdida silenciosa
+  // tras Limpiar + redibujar).
+  const libroHer = loadFromStorage<Record<string, Record<string, number>>>(
+    APARATOS_HEREDADOS_KEY,
+    {},
+  );
+  const libroTrib = loadFromStorage<Record<string, Record<string, number>>>(
+    APARATOS_HEREDADOS_TRIB_KEY,
+    {},
+  );
   let changed = false;
   for (const key of Object.keys(aparatos)) {
     if (claveDelBorrado(key)) {
@@ -86,6 +99,22 @@ export function purgarEstadoRamalesBorrados(engine: IPlanoEngineCore, ids: Itera
   for (const key of Object.keys(hidro)) {
     if (claveDelBorrado(key)) {
       delete hidro[key];
+      changed = true;
+    }
+  }
+  for (const [store, mapa] of [
+    [APARATOS_HEREDADOS_KEY, libroHer],
+    [APARATOS_HEREDADOS_TRIB_KEY, libroTrib],
+  ] as const) {
+    let toco = false;
+    for (const key of Object.keys(mapa)) {
+      if (claveDelBorrado(key)) {
+        delete mapa[key];
+        toco = true;
+      }
+    }
+    if (toco) {
+      saveToStorage(store, mapa);
       changed = true;
     }
   }

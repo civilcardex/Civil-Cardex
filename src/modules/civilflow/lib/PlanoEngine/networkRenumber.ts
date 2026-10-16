@@ -3,6 +3,9 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import {
   APARATOS_BY_TRAMO_KEY,
+  APARATOS_HEREDADOS_KEY,
+  APARATOS_HEREDADOS_TRIB_KEY,
+  APARATOS_RESIDUO_BAK_KEY,
   HYDRO_DATA_STORAGE_KEY,
   GAS_ACC_KEY,
 } from '../../constants/storage-keys';
@@ -17,6 +20,10 @@ import { keyPlanSuffixOf, isPlanKeyFor, renombrarIdEnClave } from '../../utils/k
 import { EV_STORAGE } from '../../utils/fixtureEvents';
 export { keyPlanSuffixOf, isPlanKeyFor };
 
+/** Renumera los ramales y tributarios de una red para que no queden huecos (RAF1, RAF3, RAF4 →
+ *  RAF1, RAF2, RAF3) y arrastra las claves de unidades de consumo (UD) de cada uno, para que los
+ *  conteos no se queden en el id viejo.
+ *  Ej: tras borrar RAF2, el RAF3 pasa a llamarse RAF2 sin perder sus aparatos. */
 export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find((n) => n.id === netId);
   if (!net) return;
@@ -71,6 +78,12 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   };
   cleanOrphans('aparatos_by_tramo_v2');
   cleanOrphans('tramo_hidro_data_v3');
+  // Los libros de la propagación viajan con el disco: sin esto, renumerar dejaba sus
+  // claves huérfanas y lo propagado se volvía "manual" (fase A sin memoria) — la Σ
+  // explotaba (orig. usuario: ducha/tina ×4 con filas en 1).
+  cleanOrphans(APARATOS_HEREDADOS_KEY);
+  cleanOrphans(APARATOS_HEREDADOS_TRIB_KEY);
+  cleanOrphans(APARATOS_RESIDUO_BAK_KEY);
 
   ramalesNet.forEach((r) => {
     let n = 1;
@@ -155,6 +168,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
       migrateKeys('tramo_hidro_data_v3');
       // También migrar GAS y otros hidro que usan id directo
       migrateKeys('gas_accesorios');
+      // Libros de propagación (misma fusión por suma que el resto del bloque).
+      migrateKeys(APARATOS_HEREDADOS_KEY);
+      migrateKeys(APARATOS_HEREDADOS_TRIB_KEY);
     }
     r.id = newId;
     r.label = newId;
@@ -213,6 +229,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   }
 }
 
+/** Renumera los bajantes de una red sin huecos (BAN1, BAN3 → BAN1, BAN2) y actualiza las
+ *  referencias que apuntan a ellos, incluidas las de otros pisos y las del menú de asociación.
+ *  Ej: al borrar un bajante, los siguientes suben un número y siguen enlazados. */
 export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find((n) => n.id === netId);
   const pfx = net ? net.bmPfx : 'BAJ';
@@ -269,6 +288,9 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
   });
 }
 
+/** Renumera los montantes de todas las redes (AF/AC), cada una por separado con su propio
+ *  consecutivo, y mueve también sus claves de unidades de consumo (UD).
+ *  Ej: dos montantes MAF1 y MAF3 pasan a MAF1 y MAF2. */
 export function _renumberMontantes(engine: IPlanoEngineCore): void {
   const nets = Array.from(
     new Set(engine.bajantes.filter((b) => b.tipo === 'montante').map((b) => b.net || 'af')),
@@ -365,6 +387,29 @@ export function renameRamalId(
       } catch (e) {
         devError('PlanoEngine:', e);
       }
+      // Libros de la propagación (mapas aparato→n como aparatos): misma migración
+      // mover-o-MAX — sin esto lo propagado se volvía "manual" tras convertir (Σ ×N).
+      for (const bk of [APARATOS_HEREDADOS_KEY, APARATOS_HEREDADOS_TRIB_KEY]) {
+        try {
+          const bl = (loadFromStorage(bk, {}) as Record<string, Record<string, number>>) || {};
+          const fromB = `${net}_${oldId}_${planId}`;
+          const toB = `${net}_${newId}_${planId}`;
+          if (bl[fromB] !== undefined && fromB !== toB) {
+            if (bl[toB] === undefined) {
+              bl[toB] = bl[fromB];
+            } else {
+              const out = { ...bl[toB] };
+              for (const [k, v] of Object.entries(bl[fromB]))
+                out[k] = Math.max(Number(out[k]) || 0, Number(v) || 0);
+              bl[toB] = out;
+            }
+            delete bl[fromB];
+            saveToStorage(bk, bl);
+          }
+        } catch (e) {
+          devError('PlanoEngine:', e);
+        }
+      }
       // Hidro guarda { accesorios, Lh, nSalidas }: fusionar accesorios por suma y conservar
       // escalares del destino si existen.
       try {
@@ -434,6 +479,8 @@ export function renameRamalId(
   }
 }
 
+/** Renumera las áreas de cada red (A1, A3 → A1, A2) según su orden en el dibujo, que es el orden en
+ *  que las ve el usuario al recorrer la tubería. */
 export function _renumberAreas(engine: IPlanoEngineCore): void {
   engine.areas.sort((a, b) => {
     const na =
