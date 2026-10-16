@@ -1,6 +1,13 @@
 export const TRAZOS_PREFIX = 'trazos_';
 export const GAS_ACC_KEY = 'gas_accesorios';
 export const APARATOS_BY_TRAMO_KEY = 'aparatos_by_tramo_v2';
+/** Libro de herencia de uniones/montantes de la propagación af/ac/gas (qué heredó cada clave). */
+export const APARATOS_HEREDADOS_KEY = 'aparatos_heredados_v1';
+/** Libro de plegado de tributarios de la propagación (qué plegó cada clave). */
+export const APARATOS_HEREDADOS_TRIB_KEY = 'aparatos_heredados_trib_v1';
+/** Respaldo de conteos limpiados por fase A sin campo de aparato (recuperación manual desde
+ *  DevTools: copiar el valor a `aparatos_by_tramo_v2` si una limpieza fue ilegítima). */
+export const APARATOS_RESIDUO_BAK_KEY = 'aparatos_residuo_bak_v1';
 export const GAS_DATOS_KEY = 'gas_datos_generales';
 export const HYDRO_DATA_STORAGE_KEY = 'tramo_hidro_data_v3';
 export const HYDRO_SYNC_KEY = 'dibujo_hidro_v1';

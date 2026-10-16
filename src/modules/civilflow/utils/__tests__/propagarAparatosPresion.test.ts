@@ -49,6 +49,7 @@ function seedEscenario(): void {
       },
       {
         id: 'RAF2',
+        aparatoFin: 'lavamanos',
         net: 'af',
         pts: [
           [100, 0],
@@ -98,6 +99,7 @@ describe('propagarAparatosPresion', () => {
       ramales: [
         {
           id: 'RAF1',
+          aparatoFin: 'inodoro',
           net: 'af',
           pts: [
             [0, 0],
@@ -106,6 +108,7 @@ describe('propagarAparatosPresion', () => {
         },
         {
           id: 'RAF2',
+          aparatoFin: 'lavamanos',
           net: 'af',
           pts: [
             [100, -80],
@@ -302,6 +305,7 @@ describe('propagarAparatosPresion', () => {
         {
           id: 'RA',
           net: 'af',
+          aparatoFin: 'lavaplatos',
           pts: [
             [0, 0],
             [50, 0],
@@ -392,6 +396,7 @@ describe('propagarAparatosPresion', () => {
         },
         {
           id: 'T2',
+          aparatoFin: 'ducha',
           net: 'af',
           tipo: 'tributario',
           padre: 'T1',
@@ -417,6 +422,7 @@ describe('propagarAparatosPresion', () => {
   it('no hay herencia cross-piso: mismo id y mismas coordenadas en P1/P2 (auditoría #2)', () => {
     const ramal = {
       id: 'RAF1',
+      aparatoFin: 'ducha',
       net: 'af',
       pts: [
         [0, 0],

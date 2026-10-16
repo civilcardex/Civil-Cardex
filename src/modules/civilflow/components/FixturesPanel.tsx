@@ -126,6 +126,9 @@ const AparatosPanel = memo(function AparatosPanel_({
   // correr justo después — sin él, la herencia bomba→bajante no se reescribía al abrir el piso
   // y el bajante quedaba con el valor viejo (orig. usuario).
   const [planLoadedTick, setPlanLoadedTick] = useState(0);
+  // Tick de libros de propagación (heredados/fold se leen directo en render): se bumpnea
+  // tras cada corrida aunque los conteos no cambien, para no pintar rancio.
+  const [librosTick, setLibrosTick] = useState(0);
   useEffect(() => {
     const h = (): void => setPlanLoadedTick((t) => t + 1);
     window.addEventListener(EV_PLAN_LOADED, h);
@@ -345,10 +348,14 @@ const AparatosPanel = memo(function AparatosPanel_({
   // Solo-lectura por HEREDADOS (orig. usuario: RAC5 que recibe la carga de RAC1/T1RAC5
   // debe aparecer bloqueado — cualquier pieza con unidades heredadas es de solo lectura;
   // la asignación va en las piezas alimentadoras puras, sin heredados).
-  const esPropagado =
-    !!storageKey &&
-    (netId === 'af' || netId === 'ac') &&
-    Object.values(leerHeredadosPresion(storageKey)).some((v: number) => v > 0);
+  const esPropagado = useMemo(
+    () =>
+      !!storageKey &&
+      (netId === 'af' || netId === 'ac') &&
+      Object.values(leerHeredadosPresion(storageKey)).some((v: number) => v > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- librosTick fuerza relectura del libro tras propagar
+    [storageKey, netId, librosTick],
+  );
 
   // Auto-limpieza (orig. usuario): la propagación es idempotente — re-correrla aplica el
   // delta y retira herencias que la dirección de flujo ya no justifica. Corre AL MONTAR y en
@@ -666,6 +673,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     setHidroData,
     agregadoBajante,
     exitsDeBajante,
+    onLibrosChange: () => setLibrosTick((t) => t + 1),
   });
 
   const currentMap = useFixtureTarget({

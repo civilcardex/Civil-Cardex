@@ -43,7 +43,7 @@ function run(c: Caso): Record<string, Record<string, number>> {
   saveToStorage('trazos_P1', {
     ramales: [
       { id: 'RAF1', net: 'af', pts: c.raf1, _tribReversed: c.rev1 },
-      { id: 'RAF2', net: 'af', pts: c.raf2 },
+      { id: 'RAF2', net: 'af', pts: c.raf2, aparatoFin: 'ducha' },
       // Genealogía del split real: la continuación carga anfitrión + entrante.
       {
         id: 'RAF3',
@@ -188,6 +188,7 @@ describe('araña de ramales (imagen 2026-10-09: RAF4 + tributario → RAF3)', ()
         {
           id: 'RAF2',
           net: 'af',
+          aparatoFin: 'lavamanos',
           pts: [
             [150, 0],
             [150, 80],
@@ -274,6 +275,7 @@ describe('imagen 2026-10-14: RAF3 acumula RAF1+RAF2; ramas solo lo propio', () =
         {
           id: 'RAF1',
           net: 'af',
+          aparatoFin: 'inodoro',
           pts: [
             [0, 0],
             [100, 0],
@@ -292,6 +294,7 @@ describe('imagen 2026-10-14: RAF3 acumula RAF1+RAF2; ramas solo lo propio', () =
         {
           id: 'RAF2',
           net: 'af',
+          aparatoFin: 'lavamanos',
           pts: [
             [100, 0],
             [100, 80],
@@ -389,6 +392,7 @@ describe('down-trib receptor: T1RAC4 recibe RAC2+T1RAC2, RAC4 vacío (imagen 2)'
         },
         {
           id: 'RAC2',
+          aparatoFin: 'ducha',
           net: 'af',
           pts: [
             [140, 0],
@@ -463,6 +467,7 @@ describe('down-trib receptor: T1RAC6 recibe RAC6 + T1RAC7 (imagen 1)', () => {
         // RAC7 entra por la derecha; T1RAC7 sube de él (plegado normal).
         {
           id: 'RAC7',
+          aparatoFin: 'lavav',
           net: 'af',
           pts: [
             [180, 0],
@@ -492,6 +497,7 @@ describe('down-trib receptor: T1RAC6 recibe RAC6 + T1RAC7 (imagen 1)', () => {
         // RAC6: continúa a la izquierda; T1RAC6 baja en su cola (down-trib receptor).
         {
           id: 'RAC6',
+          aparatoFin: 'tina',
           net: 'af',
           pts: [
             [60, 0],
@@ -526,7 +532,8 @@ describe('down-trib receptor: T1RAC6 recibe RAC6 + T1RAC7 (imagen 1)', () => {
     propagarAparatosPresion('af');
     const disk = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
     expect(disk['af_T1RAC6_P1']).toEqual({ tina: 1, lavav: 1, ducha: 1 });
-    expect(disk['af_RAC6_P1']).toBeUndefined();
+    // RAC6 conserva su propia tina (patrón tributario: consumidas conservan lo propio).
+    expect(disk['af_RAC6_P1']).toEqual({ tina: 1 });
     expect(disk['af_RAC7_P1']).toEqual({ lavav: 1, ducha: 1 });
     expect(disk['af_T1RAC7_P1']).toEqual({ ducha: 1 });
   });
@@ -547,6 +554,7 @@ describe('down-trib receptor en GAS (misma topología, red gas)', () => {
         },
         {
           id: 'RG2',
+          aparatoFin: 'hor_g',
           net: 'gas',
           pts: [
             [140, 0],
@@ -728,6 +736,7 @@ describe('bajada ramal receptora: RAC3 recibe RAC4+RAC2+T1RAC2', () => {
         },
         {
           id: 'RAC2',
+          aparatoFin: 'lavamanos',
           net: 'ac',
           pts: [
             [150, 0],
@@ -746,6 +755,7 @@ describe('bajada ramal receptora: RAC3 recibe RAC4+RAC2+T1RAC2', () => {
         // RAC4: horizontal con aparato propio — se CONSUME en la bajada.
         {
           id: 'RAC4',
+          aparatoFin: 'lavav',
           net: 'ac',
           pts: [
             [60, 0],
@@ -793,6 +803,7 @@ describe('bajada dibujada de abajo hacia arriba (geometría, no fin)', () => {
         },
         {
           id: 'RAC2',
+          aparatoFin: 'lavamanos',
           net: 'ac',
           pts: [
             [150, 0],
@@ -810,6 +821,7 @@ describe('bajada dibujada de abajo hacia arriba (geometría, no fin)', () => {
         },
         {
           id: 'RAC4',
+          aparatoFin: 'lavav',
           net: 'ac',
           pts: [
             [60, 0],

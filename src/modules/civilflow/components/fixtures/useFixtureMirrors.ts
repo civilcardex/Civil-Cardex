@@ -9,6 +9,7 @@ import {
   saveHidroData,
   libroHeredado,
   aggParaEspejoSalida,
+  stableStringify,
   syncMirrorKey,
 } from '../fixturesStorage';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
@@ -41,6 +42,9 @@ export interface EspejosArgs {
   setHidroData: Dispatch<SetStateAction<HidroDataMap>>;
   agregadoBajante: (bajId: string) => Record<string, number>;
   exitsDeBajante: (bajId: string) => Set<string>;
+  /** Tick para lecturas directas de libros en render (heredados/fold): se bumpnea tras cada
+   *  propagación aunque los conteos no cambien, para que el panel no quede rancio. */
+  onLibrosChange?: () => void;
 }
 
 /** (1) Sanado de sifones fantasma: reconcilia el conteo 'sif' con los glifos vivos del piso. */
@@ -83,16 +87,43 @@ export function correrSanadoSifones(a: EspejosArgs): void {
 
 /** Propaga los aparatos por la red de af (Agua Fria)/ac (Agua Caliente) cuando cambia la
  *  selección: espera 250 ms para no recalcular a cada clic, y al cambiar de tramo hace
- *  el cálculo al instante (sin eso, el tramo anterior quedaba sin propagar). */
+ *  el cálculo al instante (sin eso, el tramo anterior quedaba sin propagar). Tras cada
+ *  corrida refresca el estado del panel DIRECTO (sin depender del round-trip del evento:
+ *  el bail por igualdad del reload y el timing del debounce dejaban el panel rancio hasta
+ *  reseleccionar, orig. usuario caso RAC2-P2). */
 export function correrPropagacion(a: EspejosArgs): () => void {
-  const { netId } = a;
+  const { netId, setCounts, setHidroData, onLibrosChange } = a;
   if (!esRedAparatosPresion(netId)) return () => {};
+  // Refresco explícito post-corrida: re-lee lo que la propagación acaba de escribir para
+  // que el panel pinte fresco en este mismo ciclo (orig. usuario: solo reseleccionando se
+  // veían bien los aparatos). Conteos con bail anti-loop (objeto nuevo solo si cambió el
+  // contenido); los libros se refrescan vía tick dedicado porque se leen directo en render.
+  const refrescarPanel = (): void => {
+    try {
+      const next = loadAll();
+      setCounts((prev) => (stableStringify(prev) === stableStringify(next) ? prev : next));
+    } catch {
+      /* sin storage (tests) */
+    }
+    try {
+      const nextH = loadHidroData();
+      setHidroData((prev) => (stableStringify(prev) === stableStringify(nextH) ? prev : nextH));
+    } catch {
+      /* sin storage (tests) */
+    }
+    try {
+      onLibrosChange?.();
+    } catch {
+      /* sin panel (tests) */
+    }
+  };
   const t = window.setTimeout(() => {
     try {
       propagarAparatosPresion(netId);
     } catch (e) {
       devError('[CF-PROP] error en propagación:', e);
     }
+    refrescarPanel();
   }, 250);
   // Al cambiar de selección NO se cancela en silencio (auditoría #5): se vacía lo pendiente
   // de forma síncrona — a estas alturas el menú ya abrió y la corrida es solo math de
@@ -104,6 +135,7 @@ export function correrPropagacion(a: EspejosArgs): () => void {
     } catch (e) {
       devError('[CF-PROP] error en propagación (flush):', e);
     }
+    refrescarPanel();
   };
 }
 

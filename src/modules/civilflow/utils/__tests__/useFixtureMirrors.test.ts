@@ -32,9 +32,10 @@ vi.stubGlobal('window', {
   clearTimeout: () => {},
 });
 
-import { saveToStorage } from '../../services/storageService';
+import { saveToStorage, loadFromStorage } from '../../services/storageService';
 import {
   correrEspejos,
+  correrPropagacion,
   correrSanadoSifones,
   type EspejosArgs,
 } from '../../components/fixtures/useFixtureMirrors';
@@ -97,6 +98,63 @@ describe('correrEspejos (pin idempotencia movimiento 4)', () => {
     expect(loadAll()[`san_RS1_${PLAN}`]).toEqual({ inodoro: 1 });
     correrEspejos(a);
     expect(JSON.stringify(loadAll())).toBe(despues1);
+  });
+
+  it('correrPropagacion refresca el estado del panel tras la corrida (orig. usuario RAC2-P2: sin reseleccionar)', () => {
+    // RAC1 alimenta a RAC2 (cabeza→cola en [100,0]); la ducha propia de RAC1 debe llegar
+    // a la clave de RAC2 Y al estado del panel en el mismo ciclo (el stub de window corre
+    // el debounce al instante, igual que los 250 ms en navegador).
+    saveToStorage('trazos_P1', {
+      ramales: [
+        {
+          id: 'RAC1',
+          net: 'ac',
+          aparatoFin: 'ducha',
+          pts: [
+            [0, 0],
+            [100, 0],
+          ],
+        },
+        {
+          id: 'RAC2',
+          net: 'ac',
+          pts: [
+            [100, 0],
+            [100, 80],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk0 =
+      loadFromStorage<Record<string, Record<string, number>>>('aparatos_by_tramo_v2', {}) || {};
+    disk0['ac_RAC1_P1'] = { ducha: 1 };
+    saveToStorage('aparatos_by_tramo_v2', disk0);
+    let estado: Record<string, Record<string, number>> = {};
+    const setCounts = ((v: unknown) => {
+      // El refresh usa updater con bail anti-loop: se resuelve contra el estado previo.
+      estado =
+        typeof v === 'function'
+          ? (
+              v as (
+                p: Record<string, Record<string, number>>,
+              ) => Record<string, Record<string, number>>
+            )(estado)
+          : (v as Record<string, Record<string, number>>);
+    }) as EspejosArgs['setCounts'];
+    const ticks: number[] = [];
+    const a = {
+      ...baseArgs({}),
+      netId: 'ac',
+      setCounts,
+      onLibrosChange: () => ticks.push(1),
+    };
+    correrPropagacion(a);
+    const disk =
+      loadFromStorage<Record<string, Record<string, number>>>('aparatos_by_tramo_v2', {}) || {};
+    expect(disk['ac_RAC2_P1']).toEqual({ ducha: 1 });
+    expect(estado['ac_RAC2_P1']).toEqual({ ducha: 1 });
+    expect(ticks.length).toBeGreaterThan(0);
   });
 
   it('sanado de sifones: reconcilia el conteo con los glifos y es idempotente', () => {

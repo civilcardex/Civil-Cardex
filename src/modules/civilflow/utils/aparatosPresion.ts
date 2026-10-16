@@ -1,6 +1,12 @@
 ﻿import { loadFromStorage, saveToStorage } from '../services/storageService';
 import { EV_STORAGE } from '../utils/fixtureEvents';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import {
+  APARATOS_HEREDADOS_KEY,
+  APARATOS_HEREDADOS_TRIB_KEY,
+  APARATOS_RESIDUO_BAK_KEY,
+  TRAZOS_PREFIX,
+} from '../constants/storage-keys';
+import { devError } from '../../../utils/devError';
 
 // Propagación PERSISTENTE de aparatos en redes de presión (af/ac, orig. usuario): los aparatos
 // "fluyen" con el agua — cada ramal RECIBE ESCRITO en su clave de conteos lo que hereda de
@@ -14,8 +20,8 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys';
 // arriba baja solo abajo, sin re-sumarse nunca.
 
 const APARATOS_KEY = 'aparatos_by_tramo_v2';
-const HEREDADOS_KEY = 'aparatos_heredados_v1';
-const HEREDADOS_TRIB_KEY = 'aparatos_heredados_trib_v1';
+const HEREDADOS_KEY = APARATOS_HEREDADOS_KEY;
+const HEREDADOS_TRIB_KEY = APARATOS_HEREDADOS_TRIB_KEY;
 /** Bajadas ya marcadas como receptoras de su unión (persistente: siguen siéndolo aunque su clave se llene). */
 const BAJADAS_RECEPTORAS_KEY = 'bajadas_receptoras_v1';
 
@@ -134,7 +140,10 @@ function cabezaDe(r: RawRam): number[] | null {
   return r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
 }
 
-/** Reparte los aparatos de las redes af (Agua Fria)/ac (Agua Caliente)/gas (Gas): cada ramal RECIBE ESCRITO en su clave lo que hereda de aguas arriba (montante, uniones donde entra la tubería). Ej: RAF3 = inodoro del montante vía RAF1 + lavamanos de RAF2. Se puede correr mil veces: el resultado es el mismo. */
+/** Reparte los aparatos de las redes af (Agua Fría)/ac (Agua Caliente)/gas (Gas): cada ramal
+ *  ESCRIBE en su clave lo que hereda de aguas arriba (el montante, las uniones donde entra la
+ *  tubería). Ej: RAF3 queda con el inodoro que le baja por RAF1 + el lavamanos propio de RAF2.
+ *  Se puede correr mil veces: el resultado es el mismo. */
 export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   const disk = loadFromStorage<Record<string, Cnt>>(APARATOS_KEY, {}) || {};
   const libros = loadFromStorage<Record<string, Cnt>>(HEREDADOS_KEY, {}) || {};
@@ -219,6 +228,9 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
     { padreKey: string; conn: number[]; finConn: 'cola' | 'cabeza' }
   >();
   const padresDeDown = new Set<string>();
+  /** Down-tribs receptores: su BASE en el DFS es SOLO su manual (el fold invertido ya vive
+   *  dentro del manual — contarlo también duplicaría cada corrida). */
+  const bajadasDown = new Set<string>();
   /** Tributarios de CADENA (uno conectado en la punta de otro): bajan en cascada — NO suben al padre (eso contaría dos veces). */
   const cadenaTrib = new Set<string>();
   /** Pieza horizontal "consumida" por una BAJADA: su carga propia se traslada a la bajada y su clave queda vacía (la bajada recibe TODO). */
@@ -594,10 +606,6 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
           if (receptores.some((r) => extremos[r].key === sk)) continue;
           const rk = extremos[receptores[0]].key;
           transferencias.set(sk, rk);
-          // El campo aparatoInicio/Fin del trazo consumido re-siembra su clave a cada rato
-          // (sync de símbolo) — vaciarlo para que la pieza quede vacía de verdad (orig.
-          // usuario: RAC4 seguía mostrando aparatos tras la transferencia).
-          limpiarAparatosDeTrazo(sk);
         }
         // Marcar las bajadas receptoras (persistente — BAJADAS_RECEPTORAS_KEY, POR CLAVE).
         let marcadas = false;
@@ -708,6 +716,32 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
     ])) {
       crudo[k] = Math.max(0, (cur[k] || 0) - (prev[k] || 0) - (prevTrib[k] || 0));
     }
+    // SIN campo aparatoInicio/Fin NO hay aparato propio (orig. usuario dump 2026-10-15:
+    // RAC2/RAC4/RAC5 arrastraban conteos fantasma de doctrinas viejas sin campo — el campo
+    // que escribe la asignación es la única verdad de lo propio; el resto se limpia).
+    // Los espejos de salida (cross-floor) tampoco tienen campo y tampoco son manual: caen
+    // aquí de forma correcta. Solo se respalda lo que realmente se borra para recuperar
+    // (ver APARATOS_RESIDUO_BAK_KEY: si la limpieza fue ilegítima, copiar su valor de vuelta
+    // a `aparatos_by_tramo_v2` restaura los conteos).
+    if (!r.aparatoInicio && !r.aparatoFin) {
+      // Mecanismo, no residuo: el down-trib y las consumidas/padres reciben carga por
+      // transferencia — su "crudo" reaparece cada corrida por diseño; respaldarlo/loguearlo
+      // spamearía el backup y la consola en cada propagación estable.
+      const esMecanismo =
+        downTrib.has(r.key) || transferencias.has(r.key) || padresDeDown.has(r.key);
+      if (!cntVacio(crudo) && !esMecanismo) {
+        try {
+          const bak = loadFromStorage<Record<string, Cnt>>(APARATOS_RESIDUO_BAK_KEY, {}) || {};
+          bak[r.key] = { ...(bak[r.key] || {}), ...crudo };
+          saveToStorage(APARATOS_RESIDUO_BAK_KEY, bak);
+        } catch {
+          /* sin respaldo (tests sin storage real) */
+        }
+        devError('[CF-PROP] residuo sin campo limpiado:', r.key, JSON.stringify(crudo));
+      }
+      manualCrudoDe.set(r.key, {});
+      continue;
+    }
     manualCrudoDe.set(r.key, cntVacio(crudo) ? {} : crudo);
   }
   // NOTA poda-por-crudo retirada: el manual del receptor incluye lo transferido de
@@ -757,11 +791,15 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   }
   const manualDe = new Map<string, Cnt>(); // manual verdadero (sin plegado)
   const foldDe = new Map<string, Cnt>(); // plegado recibido de tributarios
+  // Fold invertido de cada down-trib (padre + consumidas de su unión): el libro del down
+  // debe registrar EXACTO lo que su disco suma (si no, fase A diverge +consumida/corrida).
+  const foldNDe = new Map<string, Cnt>();
   for (const key of ordenHojasPrimero) {
     let fold: Cnt = {};
     for (const h of hijosDe.get(key) || []) {
-      // Consumida transferida a esta clave: su carga llega por el manual (receptor loop
-      // abajo) — plegarla también la duplicaría (orig. test bajada-RAC3: lavav ×2).
+      // Consumida transferida a esta clave: su carga llega por el DFS como heredado del
+      // receptor (ver calcDe) — plegarla aquí también la duplicaría en Σ y la escondería
+      // del libro `her` que lee el panel (orig. test bajada-RAC3: lavav ×2).
       if (transferencias.get(h) === key) continue;
       fold = sumaCnt(fold, sumaCnt(manualDe.get(h) || {}, foldDe.get(h) || {}));
     }
@@ -770,20 +808,21 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
     const dn = downTrib.get(key);
     if (dn) {
       // Down-trib: TRANSFERENCIA — todo lo que cuelga de él (su padre y las piezas
-      // consumidas en la unión) pasa a su clave y queda VACÍO (orig. usuario imágenes
-      // T1RAC4/T1RAC6). Los hijos ya se procesaron antes (post-orden) con su carga intacta.
+      // consumidas en la unión) pasa a su clave por el fold invertido (con libro
+      // librosTrib — idempotente). Los hijos CONSERVAN lo propio (patrón tributario).
+      let foldN: Cnt = {};
+      for (const h of hijosDe.get(key) || []) {
+        foldN = sumaCnt(foldN, sumaCnt(manualDe.get(h) || {}, foldDe.get(h) || {}));
+      }
+      manualDe.set(key, sumaCnt(manualCrudoDe.get(key) || {}, foldN));
+      foldNDe.set(key, foldN);
+      bajadasDown.add(key);
+      // Persistente: sin esto el down-trib aislado (sin clúster ≥2) perdía su marca al
+      // recargar y la doctrina se auto-cancelaba en la corrida 2.
       if (!bajadasLibro[key]) {
         bajadasLibro[key] = 1;
         saveToStorage(BAJADAS_RECEPTORAS_KEY, bajadasLibro);
       }
-      let foldN: Cnt = {};
-      for (const h of hijosDe.get(key) || []) {
-        // Sin skip de transferidas aquí: la rama down-trib no pasa por el loop receptor
-        // (continue arriba) y el padre SOLO le llega por este fold invertido.
-        foldN = sumaCnt(foldN, sumaCnt(manualDe.get(h) || {}, foldDe.get(h) || {}));
-      }
-      manualDe.set(key, sumaCnt(manualCrudoDe.get(key) || {}, foldN));
-      for (const h of hijosDe.get(key) || []) manualDe.set(h, {});
       continue;
     }
     const manual: Cnt = {};
@@ -798,30 +837,63 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
 
   // 5) DFS topológico con corte de ciclo: un ramal en pila (ciclo) aporta solo su base.
   //    Las aristas 'carga' aportan el total; las 'base', solo la base (sin inflación).
+  //    Doctrina mostrador (orig. usuario: lo propagado por tributarios cuenta en propia):
+  //    la parte que llega por arista DESDE un tributario se registra en el libro TRIB
+  //    (plegado, visible como propia), no en el HER (heredada) — el tributario es parte del
+  //    subsistema del tramo, no un aguas-arriba ajeno. Lo heredado-ajeno que el trib a su
+  //    vez transporta sí va al HER (honesto: no nació ahí).
   const totalDe = new Map<string, Cnt>(); // carga que transporta (base + heredado)
   const heredadoDe = new Map<string, Cnt>();
+  const tribFoldDe = new Map<string, Cnt>(); // own trib por arista directa (libro TRIB)
   const estado = new Map<string, 0 | 1 | 2>(); // 0 nuevo · 1 en pila · 2 resuelto
-  const baseDe = (key: string): Cnt => sumaCnt(manualDe.get(key) || {}, foldDe.get(key) || {});
+  const baseDe = (key: string): Cnt =>
+    sumaCnt(sumaCnt(manualDe.get(key) || {}, foldDe.get(key) || {}), tribFoldDe.get(key) || {});
+  // Lo propio-real de una fuente trib (sin lo heredado-ajeno que transporta): crudo más
+  // lo trib-recibido. NO manualDe: el down-trib absorbe el fold invertido en su manual y
+  // hay que pelarlo (si no, duplica corrida a corrida lo del padre); lo trib-recibido
+  // (tina de T5 en T1) sí viaja porque el receptor lo muestra como propio.
+  const ownTribDe = (key: string): Cnt =>
+    sumaCnt(
+      sumaCnt(manualCrudoDe.get(key) || {}, foldDe.get(key) || {}),
+      tribFoldDe.get(key) || {},
+    );
   const calcDe = (key: string): Cnt => {
     const r = porKey.get(key);
     if (!r) return {};
     const st = estado.get(r.key) ?? 0;
     if (st === 2) return totalDe.get(r.key) || {};
-    if (st === 1) return baseDe(r.key); // ciclo: corta con la base
+    if (st === 1) return bajadasDown.has(r.key) ? manualDe.get(r.key) || {} : baseDe(r.key); // ciclo
     estado.set(r.key, 1);
     let h: Cnt = { ...(upMonte.get(r.key) || {}) };
+    let hTrib: Cnt = {};
     for (const a of aristasPorDestino.get(r.key) || []) {
-      h = a.tipo === 'carga' ? sumaCnt(h, calcDe(a.from)) : sumaCnt(h, baseDe(a.from));
+      const fromTrib = (porKey.get(a.from)?.tipo || '') === 'tributario';
+      if (!fromTrib) {
+        h = a.tipo === 'carga' ? sumaCnt(h, calcDe(a.from)) : sumaCnt(h, baseDe(a.from));
+        continue;
+      }
+      // calcDe primero: puebla heredadoDe/tribFoldDe del trib (orden-independiente;
+      // en ciclo el corte aporta solo su base, misma semántica que ramales).
+      calcDe(a.from);
+      h = sumaCnt(h, heredadoDe.get(a.from) || {});
+      hTrib = sumaCnt(hTrib, ownTribDe(a.from));
     }
     // Consumidas transferidas a esta bajada (orig. usuario RAC4/RAC3): su base cuenta como
     // heredado del receptor — ellas CONSERVAN lo propio en su clave (asignar en RAC4 se ve
-    // en su panel) y la fase A lo resta del crudo en cada corrida (sin acumulación).
-    for (const [consumida, receptor] of transferencias) {
-      if (receptor === r.key) h = sumaCnt(h, baseDe(consumida));
+    // en su panel) y el panel/Σ las descuentan vía el libro `her`. El down-trib ya la trae
+    // por su fold invertido (foldN): sumarla aquí también la duplicaría (tina ×2).
+    if (!downTrib.has(r.key)) {
+      for (const [consumida, receptor] of transferencias) {
+        if (receptor === r.key) h = sumaCnt(h, baseDe(consumida));
+      }
     }
+    // Down-trib: el fold invertido ya vive DENTRO de su manual — la base es solo manual
+    // (contar el foldDe también duplicaba la transferencia en cada corrida).
+    const base = bajadasDown.has(r.key) ? manualDe.get(r.key) || {} : baseDe(r.key);
     estado.set(r.key, 2);
     heredadoDe.set(r.key, h);
-    const tot = sumaCnt(baseDe(r.key), h);
+    tribFoldDe.set(r.key, hTrib);
+    const tot = sumaCnt(sumaCnt(base, h), hTrib);
     totalDe.set(r.key, tot);
     return tot;
   };
@@ -829,14 +901,28 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
 
   // 6) Delta idempotente por clave + libros nuevos. Solo escribe si algo cambió: en estado
   //    estable actual = manual + fold + her y los libros coinciden → cero escrituras.
+  //    El fold del libro fusiona plegado + aristas-trib (ambos cuentan como propia).
   let dirty = false;
   for (const r of ramales) {
     const her = limpiar(heredadoDe.get(r.key) || {});
-    const fold = limpiar(foldDe.get(r.key) || {});
+    // Down-trib: su libro registra el fold invertido (lo mismo que su disco suma) — con el
+    // foldDe general (que excluye consumidas) fase A divergía +consumida/corrida.
+    const foldRecibido = bajadasDown.has(r.key)
+      ? foldNDe.get(r.key) || {}
+      : foldDe.get(r.key) || {};
+    const fold = limpiar(sumaCnt(foldRecibido, tribFoldDe.get(r.key) || {}));
     const prev = libros[r.key] || {};
     const prevFold = librosTrib[r.key] || {};
     const cur = disk[r.key] || {};
-    const base = sumaCnt(manualDe.get(r.key) || {}, fold);
+    // Down-trib: el fold invertido ya vive dentro de su manual — la base del escritor es
+    // manual MÁS lo trib-recibido por arista directa (sin él, la cascada que baja por un
+    // down-trib se escribía al libro pero jamás al disco, orig. test cascada T2RAC3).
+    // Contar ADEMÁS el foldDe duplicaba la transferencia (tina ×2) — ese sí queda fuera.
+    // Límite conocido: trib que A LA VEZ es hijo plegado y trae arista al mismo down-padre
+    // contaría doble (0 casos en la suite; el diag herTrib lo delataría).
+    const base = bajadasDown.has(r.key)
+      ? sumaCnt(manualDe.get(r.key) || {}, tribFoldDe.get(r.key) || {})
+      : sumaCnt(manualDe.get(r.key) || {}, fold);
     const nuevo = limpiar(sumaCnt(base, her));
     if (!cntIgual(prev, her)) {
       if (cntVacio(her)) delete libros[r.key];
@@ -873,35 +959,12 @@ export function esRedAparatosPresion(net: string): net is 'af' | 'ac' | 'gas' {
   return net === 'af' || net === 'ac' || net === 'gas';
 }
 
-/** Vacía el símbolo de aparato del trazo de una clave consumida (si no, el dibujo vuelve a sembrar esos aparatos). */
-function limpiarAparatosDeTrazo(key: string): void {
-  const i1 = key.lastIndexOf('_');
-  const pid = key.slice(i1 + 1);
-  const i2 = key.lastIndexOf('_', i1 - 1);
-  const id = key.slice(i2 + 1, i1);
-  if (!pid || !id) return;
-  const raw = loadFromStorage<unknown>(`${TRAZOS_PREFIX}${pid}`, null);
-  if (!raw) return;
-  let d = raw as {
-    ramales?: Array<{ id: string; aparatoInicio?: string; aparatoFin?: string }>;
-  };
-  if (typeof d === 'string') {
-    try {
-      d = JSON.parse(d);
-    } catch {
-      return;
-    }
-  }
-  if (!d || !d.ramales) return;
-  const r = d.ramales.find((x) => x.id === id);
-  if (!r) return;
-  if ((r.aparatoInicio ?? '') === '' && (r.aparatoFin ?? '') === '') return;
-  r.aparatoInicio = '';
-  r.aparatoFin = '';
-  saveToStorage(`${TRAZOS_PREFIX}${pid}`, d);
-}
-
-/** ¿La clave es un RECEPTOR (bajada o trib marcado)? Solo esas se bloquean en el panel: un ramal que simplemente pasa carga sigue permitiendo asignar. */
+/**
+ * ¿La clave es un RECEPTOR (bajada o trib marcado)? Hoy sin lectores en el panel
+ * (el bloqueo usa heredados no vacíos) — se conserva como API para el criterio por libro.
+ * @param key - clave `net_id_pid` del tramo.
+ * @returns true si el libro `bajadas_receptoras_v1` la marca.
+ */
 export function esReceptorPropagacion(key: string): boolean {
   const libro = loadFromStorage<Record<string, number>>(BAJADAS_RECEPTORAS_KEY, {}) || {};
   return !!libro[key];
@@ -911,4 +974,45 @@ export function esReceptorPropagacion(key: string): boolean {
 export function leerHeredadosPresion(key: string): Cnt {
   const libros = loadFromStorage<Record<string, Cnt>>(HEREDADOS_KEY, {}) || {};
   return libros[key] || {};
+}
+
+/**
+ * Plegado que recibió el tramo de sus tributarios (libro aparatos_heredados_trib_v1). Ej: RAC2 con T1RAC5 plegado -> {lavamanos: 1}.
+ * @param key - clave `net_id_pid` del tramo.
+ * @returns mapa aparato->unidades plegadas.
+ */
+export function leerFoldTribPresion(key: string): Cnt {
+  const libros = loadFromStorage<Record<string, Cnt>>(HEREDADOS_TRIB_KEY, {}) || {};
+  return libros[key] || {};
+}
+
+/**
+ * Lee los dos libros de la propagación de UNA vez (una sola parseada por store): leerlos
+ * por tramo serían N parseadas por render. Ej: con 200 tramos evita 400 JSON.parse.
+ * @returns par de mapas (heredados, plegado) tal cual viven en storage.
+ */
+export function leerLibrosPresion(): {
+  her: Record<string, Cnt>;
+  fold: Record<string, Cnt>;
+} {
+  return {
+    her: loadFromStorage<Record<string, Cnt>>(HEREDADOS_KEY, {}) || {},
+    fold: loadFromStorage<Record<string, Cnt>>(HEREDADOS_TRIB_KEY, {}) || {},
+  };
+}
+
+/**
+ * UC (Unidades de Consumo) propias del tramo: lo que sirve él mismo, sin herencia de uniones ni plegado de tributarios. Ej: RAC5 con carga {lavamanos: 1} heredada -> propia {}.
+ * @param carga - conteo de la clave (propio + heredado + plegado).
+ * @param her - libro aparatos_heredados_v1 (herencia de uniones y montantes).
+ * @param fold - libro aparatos_heredados_trib_v1 (plegado de tributarios).
+ * @returns mapa aparato->unidades propias (nunca negativo).
+ */
+export function udPropiaDe(carga: Cnt, her: Cnt, fold: Cnt): Cnt {
+  const out: Cnt = {};
+  for (const k of new Set([...Object.keys(carga), ...Object.keys(her), ...Object.keys(fold)])) {
+    const v = (carga[k] || 0) - (her[k] || 0) - (fold[k] || 0);
+    if (v > 0) out[k] = v;
+  }
+  return out;
 }
