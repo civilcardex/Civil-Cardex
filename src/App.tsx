@@ -26,6 +26,8 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
+import CookiesPage from './pages/CookiesPage';
+import CookieBanner from './components/CookieBanner';
 import PricingPage from './pages/PricingPage';
 import RequireModule from './components/subscriptions/RequireModule';
 
@@ -116,6 +118,14 @@ function App() {
                   element={
                     <ErrorBoundary>
                       <PrivacyPage />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/cookies"
+                  element={
+                    <ErrorBoundary>
+                      <CookiesPage />
                     </ErrorBoundary>
                   }
                 />
@@ -316,6 +326,8 @@ function App() {
             )}
           </PageTransition>
         </div>
+        {/* Consentimiento de cookies: visible en toda la app hasta decidir. */}
+        <CookieBanner />
       </GlobalAlertDialogProvider>
     </AuthProvider>
   );
