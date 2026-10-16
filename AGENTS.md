@@ -11,6 +11,18 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
+## JSDoc standard (corto + ejemplo + ameno)
+- 1-3 lines: WHAT it does (plain words, no jargon) + WHY it matters + one concrete example. Numbers carry units/range. `@param/@returns` only on pure utils. Delete obvious JSDoc (getters, one-line predicates like `esCaja`). Comments only — never change logic in a JSDoc pass.
+- Tone: friendly to a NEW programmer. Name the domain idea in simple words before the technical term. Ej: "Reparte la carga de aparatos (quién alimenta a quién) entre ramales de agua fría" beats "Propaga carga por aristas".
+- Template: `/** Suma UC (Unidades de Consumo, o sea cuántos aparatos sirve) de un tramo af (Agua Fría). Ej: RAF1 con 2 lavamanos -> 4 UC. */`
+- Sigla rule (no exceptions): every acronym expanded in parentheses on first use per block, even if long.
+
+### Sigla glossary (expand inline per block)
+- Redes: `af` (Agua Fria), `ac` (Agua Caliente), `san` (Sanitaria), `ll` (Lluvias), `gas` (Gas), `vent` (Ventilacion), `rci` (Red Contra Incendio), `ep` (Equipo de Presion), `bom` (Bomba).
+- Carga: `UC (Unidades de Consumo)`, `UD (Unidades de Desague)`, `Q (Caudal)`, `Hunter (metodo de probabilidad de uso simultaneo)`, `Manning (formula de flujo en tuberia)`, `Froude (numero adimensional de regimen)`, `Wyly-Eaton (formula de ventilacion sanitaria)`, `Renouard (formula de perdida en gas)`.
+- Normas: `NTC (Norma Tecnica Colombiana)`, `RAS (Reglamento de Agua y Saneamiento)`, `NSR (Norma Sismo Resistente)`.
+- Motor CAD: `XFG (fantasma entrepisos)`, `LD_ (ramal desvio entrepisos)`, `scaleM (escala metros por pixel)`, `mergesFrom (genealogia del split: anfitrion + entrantes)`, `recibeDeIds/alimentaIds (ramales que llegan/salen del bajante)`, `_tribReversed (flag de flujo invertido en tributario)`, `npt (nivel de piso topografico)`, `NETS (catalogo de redes del motor)`.
+
 ## Suscripciones por módulo (IMPLEMENTADAS PERO DESHABILITADAS)
 
 Suscripción por módulo (solo `flow` y `manage` en catálogo) con **Lemon Squeezy** y **vencimiento manual** (se paga 1 mes / 6 meses / 1 año por adelantado; `app_suscripciones.fecha_fin > now()` es la única verdad, no hay cron ni cobro automático). Precios LISTA por módulo en centavos USD: mensual 2500 ($25.00), semestral 15000 ($150.00 = 6× mensual), anual 30000 ($300.00 = 12×). Descuentos: base por periodo (mensual 0% / semestral 10% / anual 15%) + 10% acumulativo por módulo adicional (2 módulos anual = −25% → $450). La VERDAD de precios es `app_precios` en BD (RPC `obtener_catalogo` los sirve al cliente vía `sincronizarPreciosBd` — cambiar precio = UPDATE en SQL Editor, sin deploy); los literales de `catalog.ts` y `_shared/lemon.ts` son fallback y el test de paridad vigila que no diverjan.
@@ -3552,3 +3564,82 @@ Auditoría hostil sobre los cambios del día (motor/utils + auto-revisión de lo
 - **FixturesPanel: 2215 → 1069L** (−52%). Movimientos 1-5 completos. Contexto del panel: handlers de conteos/acc (mov 1+3), panel LL (mov 2), espejos/herencia (mov 4), mapa visible (mov 5) — todo en `components/fixtures/`.
 - **Lección de reubicación**: el hook único de espejos se insertó DENTRO del useCallback de agregadoBajante (el ancla `  );` matcheó un cierre anidado) — lint rules-of-hooks lo cazó; reubicado tras el cierre real de agregadoBajante (input más tardío que usa).
 - Gates: tsc 0 · lint 0 · vitest **1091/1091** (177) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 10: cubierta celeste + colores sin flash + cookies)
+- **Toggle "Incluir cubierta"** (FloorGeneratorCard): celeste FIJO #38bdf8 — desligado de var(--ll) (cambiar el color de lluvias ya no lo cambia).
+- **Colores de red sin flash** (orig. usuario: al reingresar se veían los predeterminados y luego los del usuario): bootstrap SÍNCRONO en main.tsx ANTES del primer render — lee `civilflow_net_<id>` (lista de ids inline, sin importar el motor al bundle de entrada) y aplica las variables CSS. NETS[].col lo sincroniza useNetColorsInit al montar el visor; perfiles.net_colors (BD) sigue ganando si difiere vía loadNetColors.
+- **Cookies**: CookieBanner (fijo, aceptar/rechazar, clave `civilflow_cookie_consent`, rechazar no desactiva nada — no hay cookies de rastreo; Vercel Analytics cookieless) montado global en App; página /cookies (estilo PrivacyPage, placeholders [CORCHETES] editables); enlazada desde el banner.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177 — sesión paralela sumó tests) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 11: spinner 1ª vez + hiddenNets al cargar + menú de extremos)
+- **Overlay "Cargando planos y redes…" SOLO primera carga** (orig. usuario: salía en cada cambio de piso): `pdfReadyStore.everReady` — tras el primer onPdfReady de la sesión, los cambios de activeIndex re-renderizan en vivo SIN overlay (trazos prefetchados). `plans.length===0` y `!hasFilesReady` conservan overlay.
+- **hiddenNets restauradas al motor**: efecto `[engineReady]` en PdfViewer aplica `setNetHidden(id,true)` para el set persistido — antes el estado del botón sobrevivía al reload pero el motor las mostraba.
+- **Menú de extremos con editor de aparatos** (orig. usuario, todas las redes): RamalMenu monta `ExtremeAccessoryEditor` (aparatoInicio/Fin + accesorios de extremo) cuando `ramalEndpoint` — antes ese editor solo existía en el panel derecho y el extremo abría solo el panel de conexión. El hit-test de extremos ya existía (radio 12px).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 12: banner no vuelve + red oculta hermética + aparatos en extremos)
+- **Banner de cookies no reaparece** (orig. usuario): la clave estaba en `civilflow_cookie_consent` y workspaceReset BORRA todas las civilflow_* → renombrada a `cardex_cookie_consent` (banner + mención en /cookies). Una vez clickado, nunca vuelve.
+- **Red oculta = no seleccionable ni dibujable** (orig. usuario): (a) guard en `_onDownHandler` — herramientas de creación con la red activa oculta → alerta "Red oculta" y no se dibuja (tool 'sel' pasa); (b) hits filtrados por `_hiddenNets` en hitTestRightClick (fantasmas, contador, bajantes, ramales, canales), selectAt (labels, accMed) y _tryBajanteHit (etiqueta, símbolo, canal).
+- **Menú de extremo = selector de APARATOS, no el editor de panel** (corrección orig. usuario): quitado ExtremeAccessoryEditor de RamalMenu (metía desplegables de accesorio inicio/fin que no iban). RamalMenu abre MidRamalAccessorySelector también con `ramalEndpoint` (hit sintetizado en la punta → preferencia de extremo correcta); dentro del selector, la sección "Accesorio en cuerpo del ramal" SOLO en clics de cuerpo (`clicEnExtremo` = punto a <0.5 de alguna punta) — en extremo solo aparatos.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 13: sub-pestañas de alimentación AF con color de red)
+- ActiveNetsCard: el selector "¿Cómo se alimenta la red?" (Equipo de presión/Tanque alto/Red) usaba var(--acc) azul fijo en el borde de la tarjeta seleccionada y el puntito radio — ahora usa `currentColor` (el color de la red AF, personalizable y vivo con netColors). Texto seleccionado sigue blanco.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 14: preferencias de visor sobreviven al cambio de proyecto)
+- Causa raíz del "no persiste el estado del botón" (redes ocultas): `clearLocalWorkspace()` (ViewerPage al abrir proyecto + WorkAreaCivilFlowPage al cambiar) borra TODAS las civilflow_* — se llevaba `civilflow_pdf_hidden_nets`, `civilflow_pdf_locked_nets` y la caché `civilflow_net_*`. FIX: `workspaceReset.ts` ahora EXCLUYE esos prefijos (preferencias de dispositivo, no datos del proyecto). El efecto `[engineReady]` que aplica hiddenNets al motor estaba correcto — el storage era lo que moría.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 15: zoom sin tirones — render coalescido)
+- **Causa del tirón al hacer zoom**: `zoomAnclado` (planoCamera.ts) llamaba `cam.render()` — el render SÍNCRONO completo del motor — en CADA evento de rueda/pinch (trackpads: 60-120 ev/seg, sin coalescer). FIX: si la cámara expone `scheduleRender` (el motor CAD), se agrupa a un cuadro por rAF (el mismo camino del resto de mutaciones). Llamadores sin scheduleRender siguen con render directo (contrato intacto). Afecta rueda, pinch y botones +/-.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 16: menú de ramal — botones primero, desplegables después)
+- RamalMenu reordenado (orig. usuario "primero botones"): Invertir/Malla → Convertir tributario → +Crear montante → +Agregar calentador → Segmento libre de la tee → **BajanteConnectionPanel (acciones, subido desde el final)** → desplegables al final: bajante de canal asociado → Seleccionar Aparato/Accesorio en cuerpo → etiqueta/diámetro (ElementCodeEditor).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 17: aviso de red oculta al SELECCIONAR + texto limpio)
+- El aviso "Red oculta" ahora dispara al SELECCIONAR la red oculta en la barra (handleSelectNet — modal), no al intentar dibujar. Texto: "Sanitaria está oculta. Muéstrala en la barra de redes para dibujar en ella." (sin "La red de", nombre en su caso propio de NETS.name). El guard de dibujo del motor queda como mensaje de ESTADO (sin modal doble).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1091/1091 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 18: doctrina down-trib — el trib vertical hacia abajo RECIBE)
+- **Causa** (imágenes T1RAC6 y T1RAC4): el plegado subía la carga del trib vertical AL PADRE horizontal, y el clúster le daba la carga del entrante a la continuación colineal horizontal — RAC4/RAC6 acumulaban lo ajeno y el trib bajado quedaba vacío.
+- **Doctrina nueva UNIVERSAL** (`aparatosPresion.ts`): un tributario cuya geometría sale VERTICAL HACIA ABAJO de su unión (dy > 1 y domina sobre |dx| respecto al punto de conexión con el padre) es la CONTINUACIÓN RECEPTORA: (1) participa como SALIDA en el clúster y TODO el carga de los entrantes baja SOLO por él (las salidas horizontales no reciben carga ni base — override del contGlobal); (2) TRANSFERENCIA en vez de plegado: la carga propia del padre pasa a la clave del trib y el padre queda VACÍO; (3) sus hijos trib normales pliegan normal. Sustituye el plegado-arriba de auditoría #14 para esta geometría (test #14 actualizado a la nueva expectativa). Tributarios hacia ARRIBA (T1RAC2/T1RAC7) siguen plegando al padre — su carga viaja por el tronco y baja por el down-trib.
+- Tests: +2 con las topologías EXACTAS de las imágenes (T1RAC4 = ducha+tina+lavamanos, RAC4 vacío, RAC2 conserva; T1RAC6 = tina+lavav+ducha, RAC6 vacío, RAC7 conserva), idempotentes a 3 corridas. Nota de depuración: los seeds deben modelar el disco REAL (la clave del tributario mantiene su propio aparato por el sync del campo aparatoInicio/Fin) — un seed con el plegado viejo en el disco del padre produce expectativas falsas.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1093/1093 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 19: doctrina down-trib/propagación extendida a GAS)
+- `propagarAparatosPresion` acepta 'gas' y nuevo helper `esRedAparatosPresion(net)` (af/ac/gas) — gates actualizados en useFixtureMirrors (correrPropagación), useFixtureMutations (inc/dec), syncExtremeAccessory y bajanteAssociationApply. El código down-trib/clústeres ya era net-agnóstico. WaterNetworkDesign queda af/ac (sus tablas). Test gas: T1RG4 = hor_g de RG2 + est4 propio; RG4 vacío.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1094/1094 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 20: cascada trib-trib + etiqueta sobre otro trazo)
+- **Cascada trib-trib** (orig. usuario T1RAC3→T4RAC3→T2RAC3 con T5RAC3/T3RAC3): los tributarios de CADENA (sin aparato en el extremo de conexión con el padre — los laterales #14 siguen plegando) participan en los clústeres con ambos extremos; en una unión con ≥2 tributarios la carga baja por GRAVEDAD con aristas SOLO entre eslabones consecutivos (orden por profundidad del extremo lejano; empate: la pieza cuya unión es su cola va después) — cada pieza acumula lo de arriba sin dobles. Contacto trib-sobre-CUERPO-de-trib (T3RAC3 en T2RAC3): extremo virtual del anfitrión. Down-trib conserva sus 2 extremos (conn como salida, lejano como entrante) para alimentar la cadena.
+- **Etiqueta sobre otro trazo** (orig. usuario: la etiqueta de T4RAC3 sobre el vertical de T2RAC3 no se movía): el filtro lblBodyOwner cedía el arrastre al dueño del cuerpo — ahora si el clic cae DENTRO del _labelBox de un ramal, esa etiqueta GANA (blanco deliberado); el dueño del cuerpo solo arbitra el fallback por cercanía 12px.
+- Lección de seeds: los tests deben modelar el disco REAL — la asignación escribe el campo aparatoInicio/Fin EN el trazo y el sync mantiene la clave del tributario; un trib con campo en el extremo de conexión = lateral #14 (plega arriba), sin él o en el extremo lejano = cadena/down-trib.
+- Tests: +1 cadena completa (5 piezas, 3 corridas idempotentes). Auditoría #1/#7 y araña re-seedeados con el campo real.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1095/1095 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 21: bajada-RAMAL receptora — RAC3 recibe todo)
+- **Generalización de la doctrina bajada** (orig. usuario imagen RAC3/RAC4/RAC2/T1RAC2 — la bajada era un RAMAL, no tributario): en una unión, cualquier salida VERTICAL ESTRICTA hacia abajo (dir y > 0.9; una diagonal 45° es lateral) SIN carga propia es la RECEPTORA preferente: los entrantes le entregan TODO (las horizontales no reciben) y las salidas horizontales se CONSUMEN (transferencia de su carga propia a la clave de la bajada, que queda vacía). Con aparatos propios es lateral de fixture (doctrina vieja intacta — tests Casos J→abajo verdes).
+- **Marcador persistente** `bajadas_receptoras_v1`: sin él la doctrina se auto-cancelaba (la bajada llena deja de estar "vacía" y el carga volvía a la horizontal en la corrida siguiente). Marcadas en la 1ª corrida, guardadas en storage.
+- Tests: +1 bajada-ramal (RAC3 = lavamanos+tina+lavav; RAC4 vacío; RAC2 conserva lo propio + la carga de T1RAC2 que pasa). Variante A del montante NO alimentaba ya (recibeDeIds) — expectativas restauradas a las originales; Variante alimentaIds + "quitar el aparato" actualizados a la doctrina bajada (RAF2 recibe, RAF3 vacía).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1096/1096 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 22: bloqueo del panel solo receptores + campo de consumidas)
+- **Panel bloqueado SOLO para receptores marcados** (orig. usuario: RAC2 con carga de paso tenía el panel cerrado): `esPropagado` ahora exige `esReceptorPropagacion(key)` (libro `bajadas_receptoras_v1` — bajadas + down-tribs marcados al disparar). Un entrante/consumida con heredados de paso sigue ASIGNABLE.
+- **Campo de consumidas limpiado**: el campo aparatoInicio/Fin del trazo consumido re-sembraba su clave (sync de símbolo) — RAC4 seguía mostrando aparatos tras la transferencia. `limpiarAparatosDeTrazo(consumida)` vacía el campo en el storage de trazos al consumir. Down-tribs receptores también se marcan en el libro (bloqueo de panel ✓).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1096/1096 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 23: bajada GEOMÉTRICA + marcador por clave)
+- **Causa del "sigue mal"** (RAC4 acumulando, RAC3 habilitada): (a) la bajada dibujada DE ABAJO HACIA ARRIBA queda clasificada ENTRANTE (su cabeza toca la unión) y la detección por dir/fin jamás la veía — la detección ahora es GEOMÉTRICA: pieza cuyo extremo LEJANO queda por debajo del punto de unión (dy > 1 y domina sobre |dx|), igual que downTrib; el fin es irrelevante. (b) El marcador del libro se escribía con el ÍNDICE del extremo ("5") en vez de la clave — jamás persistía y la doctrina se deshacía en la corrida 2. Marcado por clave ✓.
+- La recepción por clúster ahora cubre entrantes Y salidas como alimentadores de la bajada (la bajada clasificada entrante no se auto-alimenta). Test nuevo: bajada invertida (RAC3 = lavamanos+lavav; RAC4 vacío; RAC2 conserva lo propio), idempotente 3×.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1097/1097 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 24: asignación en consumidas visible + acumulación muerta)
+- **Asignar aparato en una consumida (RAC4) YA no desaparece**: patrón tributario — la consumida CONSERVA lo propio en su clave (se ve en SU panel) y el receptor la acumula vía `calcDe` (la base de las consumidas transferidas cuenta como HEREDADO del receptor). La doble vía (sumar en el manual DEL receptor + skip en el fold, restaurada por la sesión paralela) acumulaba +1 por corrida (lavav ×3) — queda UNA sola vía: el DFS. `manual` vuelve a const.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1097/1097 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-14 (ronda 25: bloqueo de panel por heredados, criterio final)
+- **Criterio FINAL del bloqueo del panel de aparatos af/ac (orig. usuario: RAC5 que recibe la carga de RAC1/T1RAC5 debe aparecer bloqueado)**: `esPropagado` = heredados NO vacíos (criterio original restaurado) — cualquier pieza con unidades heredadas (receptora bajada, pieza de paso, eslabón de cascada) es SOLO LECTURA; la asignación va en las piezas alimentadoras puras (sin heredados). El filtro por libro de receptores de la ronda 22 desbloqueaba de más. `esReceptorPropagacion` queda exportado (sin uso en el panel; el libro sigue marcando receptores para el bloqueo de panel de la bajada vía heredados).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1097/1097 (177) · lint 0 · build ✓ · graphify ✓.
