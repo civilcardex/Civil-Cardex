@@ -12,7 +12,11 @@ import type React from 'react';
 //  - Por país: RNE (gob.pe/Vivienda), NEC (mit.gob.ec — la gestión NEC migró de MIDUVI a MIT),
 //    OGUC (BCN LeyChile idNorma=8201), SISS/INN (Chile), IBNORCA (Bolivia), ENRE (¡ojo!: el
 //    dominio www.enre.gob.ar sirve un certificado TLS INVÁLIDO — se usa www.enre.gov.ar),
-//    ENARGAS, SENCAMER (COVENIN Venezuela), INTN (Paraguay), INACAL (NTP Perú).
+//    ENARGAS (incl. NAG-200), SENCAMER (COVENIN Venezuela), INTN (Paraguay), INACAL (NTP Perú).
+//  - Fase A0: RIDAA (Dto.50 vía SISS — idNorma BCN pendiente), NCh 2485/691 (INN tienda, sin
+//    PDF público), DS 66/2007 gas-CL (BCN idNorma=263058 + mod. DS 13/2026), SEC, CONAGUA
+//    (MAPAS), NOM (DOF portada), RENISDA (vía IBNORCA). NCh 4 NO es gas (es electricidad) —
+//    no se linkifica como norma de gas.
 //  - Universales: UL, FM Approvals, ISO, IEC, ASTM, ASME. RENISDA/NTE INEN 1108 sin página
 //    oficial verificada → quedan como texto plano.
 
@@ -81,7 +85,20 @@ export const NORMA_URLS: Record<string, string> = {
   ISO: 'https://www.iso.org',
   IEC: 'https://webstore.iec.ch',
   ASTM: 'https://www.astm.org',
-  ASME: 'https://www.asme.org/codes-standards',
+  ASME: 'https://www.asme.org/codes-and-standards',
+  // Por país (Fase A0): claves que citan los perfiles de normasPais.ts.
+  //  - CL gas: DS 66/2007 (NO NCh 4 — esa es electricidad); idNorma BCN verificado 2026-10.
+  //  - MX: CONAGUA (MAPAS) + DOF para NOM (sin deep-link estable: va a la portada oficial).
+  //  - NCh de pago (INN): van a la tienda, no a PDF — no existe link público por norma.
+  RIDAA: 'https://www.siss.gob.cl',
+  'NCh 2485': 'https://www.inn.cl',
+  'NCh 691': 'https://www.inn.cl',
+  'DS 66/2007': 'https://www.bcn.cl/leychile/navegar?idNorma=263058',
+  SEC: 'https://www.sec.cl',
+  CONAGUA: 'https://www.gob.mx/conagua',
+  NOM: 'https://www.dof.gob.mx',
+  'NAG-200': 'https://www.enargas.gob.ar',
+  RENISDA: 'https://www.ibnorca.org',
 };
 
 /** Resuelve el URL de una norma tolerando sufijos de edición («NTC (Norma Tecnica Colombiana) 1500:2023» → «NTC (Norma Tecnica Colombiana)
@@ -120,6 +137,10 @@ const NORMA_TOKEN_SRC = [
   'NEC(?: ?Cap\\.? ?\\d+)?',
   'ENRE(?: 1055/13)?',
   'ENARGAS',
+  'NAG ?-?\\d+',
+  'DS ?\\d+/\\d+',
+  'RIDAA',
+  'CONAGUA',
   'SISS',
   'RENISDA',
   'COVENIN',

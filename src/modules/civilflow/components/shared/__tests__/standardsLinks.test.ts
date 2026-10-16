@@ -45,6 +45,9 @@ describe('normaUrl', () => {
 
   it('norma desconocida → undefined (texto plano, sin link roto)', () => {
     expect(normaUrl('XXX 123')).toBeUndefined();
-    expect(normaUrl('RENISDA')).toBeUndefined();
+  });
+
+  it('RENISDA → IBNORCA (Fase A0: Bolivia con fuente oficial)', () => {
+    expect(normaUrl('RENISDA')).toBe('https://www.ibnorca.org');
   });
 });
