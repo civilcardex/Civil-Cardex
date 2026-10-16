@@ -49,7 +49,7 @@ const MODULOS_HERO = [
     color: '#7f8c8d',
     path: '/civilstructure',
     desc: 'Diseño estructural y análisis de elementos como puentes, losas y marcos. Cálculo de cargas y resistencia.',
-    cats: ['Análisis FEM', 'Diseño de elementos', 'Cálculo de cargas', 'Normativas NTC'],
+    cats: ['Análisis FEM', 'Diseño de elementos', 'Cálculo de cargas', 'Normativa por país'],
   },
   {
     id: 'terrain',
@@ -102,23 +102,23 @@ const MOD_SUB = {
 const PILLARS = [
   {
     icon: 'water_drop',
-    title: 'Redes',
-    sub: 'Agua fría · Agua caliente · Sanitaria · Aguas lluvias · Gas · Contra incendio',
+    title: 'Redes e\ninstalaciones',
+    sub: 'Agua potable · Saneamiento · Gas · Contra incendio · Más disciplinas en camino',
   },
   {
     icon: 'request_quote',
     title: 'PRESUPUESTOS\nY APU',
-    sub: 'Mano de obra · Insumos · Equipo · Transporte',
+    sub: 'Mano de obra · Insumos · Equipo · Precios por país',
   },
   {
     icon: 'verified',
     title: 'VERIFICACIÓN\nNORMATIVA',
-    sub: 'NTC 1500 · RAS 2000 · NTC 3728 · NFPA 13',
+    sub: 'Normativa del país del proyecto + estándares internacionales',
   },
   {
     icon: 'description',
     title: 'MEMORIAS DE\nCÁLCULO',
-    sub: 'Exportables con datos del proyecto y normas',
+    sub: 'Exportables, trazables a la norma y al dato del proyecto',
   },
 ];
 
@@ -454,32 +454,32 @@ function LandingPage() {
               {
                 icon: 'design_services',
                 title: 'DISEÑO SOBRE PLANOS',
-                desc: 'Cargue planos en PDF o imagen y trace ramales, bajantes, áreas y anotaciones por nivel. Autosave y visualización isométrica mientras diseña.',
+                desc: 'Cargue planos en PDF o imagen y trace los elementos de diseño por nivel. Autosave y visualización isométrica mientras diseña.',
               },
               {
                 icon: 'speed',
                 title: 'CÁLCULO EN TIEMPO REAL',
-                desc: 'Unidades de consumo y descarga, caudales, pérdidas de carga y verificación de ΔP de gas NTC 3728 con retroalimentación instantánea.',
+                desc: 'Caudales, pérdidas de carga y chequeos con retroalimentación instantánea, contra la normativa vigente del país del proyecto.',
               },
               {
                 icon: 'request_quote',
                 title: 'PRESUPUESTOS Y APU',
-                desc: 'Análisis de precios unitarios con mano de obra, insumos, equipo y transporte, catálogos integrados y perfil país configurado.',
+                desc: 'Análisis de precios unitarios con mano de obra, insumos, equipo y transporte, catálogos integrados y precios de referencia por país.',
               },
               {
                 icon: 'verified',
                 title: 'VERIFICACIÓN NORMATIVA',
-                desc: 'Cumplimiento automático contra las normas técnicas colombianas e internacionales vigentes para cada red y disciplina. Reducción de errores humanos al mínimo.',
+                desc: 'Cumplimiento automático contra la normativa del país del proyecto y estándares internacionales para cada red y disciplina. Reducción de errores humanos al mínimo.',
               },
               {
                 icon: 'description',
                 title: 'MEMORIAS EXPORTABLES',
-                desc: 'Generación de la memoria de cálculo completa con datos del proyecto, materiales, aparatos, cubierta, gas y validación normativa en un clic.',
+                desc: 'Generación de la memoria de cálculo completa con datos del proyecto, materiales y validación normativa citada en un clic.',
               },
               {
                 icon: 'hub',
                 title: 'COBERTURA INTEGRAL',
-                desc: 'Hidrosanitario, estructuras, terreno, BIM, MEP y vías bajo una misma plataforma, con datos compartidos entre módulos y disciplinas de la ingeniería civil.',
+                desc: 'Redes, estructuras, terreno, vías y coordinación BIM bajo una misma plataforma, con datos compartidos entre módulos y disciplinas de la ingeniería civil.',
               },
             ].map((f, index) => (
               <FadeIn key={f.icon} delay={index * 100} className="h-full">
