@@ -26,10 +26,8 @@ interface ResolvePressuresInputs {
 //   2. Un tramo que comienza en un aparato arranca del Pmax de ese aparato.
 //   3. Los demás heredan el Pfinal de su tramo aguas arriba (tramoParentOf).
 //   4. Los overrides manuales de Pin/Pfin ganan sobre lo calculado; los huérfanos caen a pRed.
-/** Propagación de presión por el árbol de la red: la raíz arranca de su fuente real, un tramo
- *  que nace en un aparato arranca del Pmax de ese aparato, los demás heredan el Pfinal del
- *  padre, y los overrides manuales ganan sobre lo calculado. Resuelto de forma recursiva con
- *  guarda de ciclos. */
+/** Propagación de presión por el árbol de la red: la raíz arranca de su fuente real, un tramo que nace en un aparato arranca del Pmax de ese aparato, los demás
+ * heredan el Pfinal del padre, y los overrides manuales ganan sobre lo calculado. */
 export function resolvePressures(inputs: ResolvePressuresInputs) {
   const keyOf = (t: Tramo) => t._key || t.id;
   const byKey = new Map(inputs.tramosOrden.map((t) => [keyOf(t), t]));

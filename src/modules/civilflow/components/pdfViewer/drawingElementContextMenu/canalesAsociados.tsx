@@ -16,9 +16,8 @@ import {
   type ContextMenuState,
 } from './context';
 
-/** Secciones de asociación del menú contextual y del panel derecho — estilos COMPARTIDOS
- *  (orig. usuario: bajantes/cajas/canales/montantes/ramales deben verse idénticos) y lógica
- *  de toggle bidireccional. El menú NO se cierra al marcar: se refresca in place. */
+/** Secciones de asociación del menú contextual y del panel derecho — estilos COMPARTIDOS (orig. usuario:
+ * bajantes/cajas/canales/montantes/ramales deben verse idénticos) y lógica de toggle bidireccional. */
 
 interface CtxMin {
   engineRef: MutableRefObject<PlanoEngine | null>;
@@ -26,10 +25,8 @@ interface CtxMin {
   setContextMenuState: Dispatch<SetStateAction<ContextMenuState | null>>;
 }
 
-/** Etiqueta de sección igual a las demás del menú contextual (uppercase, gris). */
 export const ASSOC_LABEL_STYLE = MENU_SECTION_LABEL_ROW_STYLE;
 
-/** Fila de asociación — la MISMA en todas las secciones (criterio "Bajantes asociados" san). */
 export const ASSOC_ROW_STYLE: React.CSSProperties = {
   ...MENU_CHECK_ROW_STYLE,
   padding: '4px 6px',
@@ -38,7 +35,6 @@ export const ASSOC_ROW_STYLE: React.CSSProperties = {
   borderRadius: 3,
 };
 
-/** Contenedor de sección — el MISMO de "Ramales asociados"/"Bajantes asociados" (borderTop). */
 export const ASSOC_SECTION_STYLE: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -48,13 +44,10 @@ export const ASSOC_SECTION_STYLE: React.CSSProperties = {
   marginTop: 4,
 };
 
-/** Grid 2 col con borde — el contenedor de filas de las secciones del menú. */
 export const ASSOC_GRID_STYLE = MENU_GRID_2COL_STYLE;
 
-/** Celda de fila dentro del grid (sin caja propia — la caja es el grid). */
 export const ASSOC_CELL_STYLE = MENU_CHECK_LABEL_STYLE;
 
-/** Texto de sección vacía (idéntico al de "Ramales asociados"). */
 export const ASSOC_EMPTY_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#6b8cae',
@@ -62,14 +55,12 @@ export const ASSOC_EMPTY_STYLE: React.CSSProperties = {
   gridColumn: 'span 2',
 };
 
-/** Checkbox de asociación (ámbar como el resto del menú). */
 export const ASSOC_CHECKBOX_STYLE: React.CSSProperties = {
   accentColor: '#F5A623',
   margin: 0,
   flexShrink: 0,
 };
 
-/** Span del label de la celda (igual que en bajanteConnectionPanel). */
 const CELL_SPAN_STYLE: React.CSSProperties = {
   flex: 1,
   whiteSpace: 'normal',
@@ -80,10 +71,7 @@ const CELL_SPAN_STYLE: React.CSSProperties = {
 export const refrescarMenu = (set: Dispatch<SetStateAction<ContextMenuState | null>>): void =>
   set((prev) => (prev ? { ...prev } : null));
 
-/**
- * Opciones de material (misma fuente, value=nombre/title/abrev).
- * Unifica los selects de cubierta y canal.
- */
+/** Opciones de material (misma fuente, value=nombre/title/abrev). Unifica los selects de cubierta y canal. */
 export function OpcionesMaterial({ opts }: { opts: { nombre: string; abrev: string }[] }) {
   return (
     <>
@@ -96,9 +84,8 @@ export function OpcionesMaterial({ opts }: { opts: { nombre: string; abrev: stri
   );
 }
 
-/** Sección "Canales asociados" — bajante ll (single-select, escribe canalId). Re-lee el canal
- *  actual del MOTOR en cada render para que el checkbox refleje cambios hechos desde el
- *  canal u otro lado (bidireccional). */
+/** Sección "Canales asociados" — bajante ll (Lluvias) (single-select, escribe canalId).
+ * Re-lee el canal actual del MOTOR en cada render para que el checkbox refleje cambios hechos desde el canal u otro lado (bidireccional). */
 export function CanalesAsociadosBajSection({
   ctx,
   bajEl,
@@ -144,7 +131,7 @@ export function CanalesAsociadosBajSection({
   );
 }
 
-/** Sección "Canales asociados" — ramal ll (toggle, escribe esCanalId). Mismo re-lee del motor. */
+/** Sección "Canales asociados" — ramal ll (Lluvias) (toggle, escribe esCanalId). Mismo re-lee del motor. */
 export function CanalesAsociadosRamalSection({
   ctx,
   ramal,
@@ -190,9 +177,7 @@ export function CanalesAsociadosRamalSection({
   );
 }
 
-/** Desplegable "Material de cubierta" del bajante ll — MISMA fuente que Chequeo
- *  bajantes (si alimenta un canal, este lo deriva y quedan iguales). Null-safe: sin
- *  provider o sin nivel del plano no se muestra. */
+/** Desplegable "Material de cubierta" del bajante ll (Lluvias) — MISMA fuente que Chequeo bajantes (si alimenta un canal, este lo deriva y quedan iguales). */
 export function MaterialCubiertaBajSection({
   ctx,
   bajEl,
@@ -224,8 +209,7 @@ export function MaterialCubiertaBajSection({
   );
 }
 
-/** Desplegables de materiales del canal ll — MISMA fuente que Chequeo canales: la
- *  cubierta con asociados hace fan-out a los bajantes; el de canal va al override. */
+/** Desplegables de materiales del canal ll (Lluvias) — MISMA fuente que Chequeo canales: la cubierta con asociados hace fan-out a los bajantes; el de canal va al override. */
 export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId: string }) {
   const mat = useMaterialesLl();
   if (!mat) return null;
@@ -267,9 +251,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
   );
 }
 
-/** Sección "Montantes asociados" — tramo af/ac (orig. usuario): mismo funcionamiento que
- *  "Bajantes asociados" de sanitaria pero con montantes. El checkbox refleja ambas direcciones
- *  (recibeDeIds/alimentaIds del montante) y el desmarque limpia la que esté. */
+/** Sección "Montantes asociados" — tramo af (Agua Fria)/ac (Agua Caliente) (orig. usuario): mismo funcionamiento que "Bajantes asociados" de sanitaria pero con montantes. */
 export function MontantesAsociadosSection({
   ctx,
   ramal,
@@ -313,8 +295,7 @@ export function MontantesAsociadosSection({
   );
 }
 
-/** Sección "Ramales asociados" — MONTANTE af/ac (orig. usuario): la inversa de la anterior,
- *  para gestionar la asociación desde el montante. Mismo bidireccionalismo y estilo. */
+/** Sección "Ramales asociados" — MONTANTE af (Agua Fria)/ac (Agua Caliente) (orig. usuario): la inversa de la anterior, para gestionar la asociación desde el montante. */
 export function RamalesAsociadosMontSection({
   ctx,
   montante,

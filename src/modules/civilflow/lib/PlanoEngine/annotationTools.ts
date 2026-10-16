@@ -5,9 +5,8 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { _statusMsg } from './ramalMeasure';
 import { finishArea } from './drawingUtils';
 
-/** Maneja un clic con la herramienta de cota activa: fija el punto inicial en el primer clic y
- *  crea la línea de cota en el segundo. @param engine Instancia del motor. @param px Coordenada
- *  X de plano. @param py Coordenada Y de plano. */
+/** Herramienta de cotas (las medidas que se ponen sobre el plano): el primer clic marca el inicio
+ *  y el segundo cierra la medida con su línea y su largo. */
 export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (engine.snapMode) {
@@ -43,9 +42,7 @@ export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number):
   }
 }
 
-/** Coloca una anotación de texto en las coordenadas de plano dadas, pidiendo el contenido al
- *  usuario. @param engine Instancia del motor. @param px Coordenada X de plano. @param py
- *  Coordenada Y de plano. */
+/** Pone una nota de texto en el punto donde hiciste clic (te pregunta qué quieres escribir). */
 export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (engine._onRequestTextCb) {
     engine._onRequestTextCb(px, py, (t: string) => {
@@ -90,9 +87,8 @@ export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number)
   engine._markDirty();
 }
 
-/** Maneja un clic con la herramienta de área activa: empieza un polígono nuevo o agrega un
- *  vértice; cierra cuando está cerca del punto inicial. @param engine Instancia del motor.
- *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Herramienta de áreas: cada clic agrega una esquina al polígono, y se cierra al volver al
+ *  punto inicial (queda la superficie pintada). */
 export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (!engine.activeArea) {
@@ -118,8 +114,9 @@ export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number)
   engine.render();
 }
 
-/** PUNTO 3: snap del extremo de cota — MISMA regla que el clic (ángulo + elemento existente).
- *  Reutilizada por el preview en mousemove para que lo que se ve sea lo que se aterriza. */
+/** Ajuste del extremo de la cota: la MISMA regla del clic (ángulo legal + pegarse a elementos
+ *  existentes). También la usa la vista previa mientras mueves el mouse, para que lo que se ve
+ *  sea exactamente lo que aterriza al soltar. */
 export function dimSnapEnd(
   engine: IPlanoEngineCore,
   start: { x: number; y: number },

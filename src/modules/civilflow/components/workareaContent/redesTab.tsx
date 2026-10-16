@@ -65,10 +65,8 @@ const NET_BTN_STYLE: React.CSSProperties = {
 
 /** Chunks ya pedidos (hover+focus+PageNav disparan el mismo gesto varias veces). */
 const chunksPedidos = new Set<string>();
-/** Pide un chunk sin romper si falla (404 tras deploy) y sin duplicar el gesto.
- *  @param clave - id del chunk para dedupe.
- *  @param pedir - import dinámico del chunk.
- *  @returns void. */
+/** Pide un chunk sin romper si falla (404 justo tras un deploy) y sin repetir el pedido.
+ *  `clave` identifica el chunk para no pedirlo dos veces; `pedir` es el import dinámico. */
 function pedirChunk(clave: string, pedir: () => Promise<unknown>): void {
   if (chunksPedidos.has(clave)) return;
   chunksPedidos.add(clave);

@@ -15,9 +15,9 @@ import {
   RamalesAsociadosMontSection,
 } from './canalesAsociados';
 
-/** Menú contextual de bajante/montante: ensambla dirección, diámetro y secciones de caja/bomba. */
-/** Menú contextual de un bajante/montante: compone el selector de dirección, el de diámetro y
- *  destino, y el panel de conexiones para redes sanitarias y de lluvias. */
+/** Menú contextual del bajante/montante elegido: arma el selector de dirección, el de diámetro
+ *  y destino, y el panel de conexiones para redes sanitarias y de lluvias (en cajas agrega
+ *  las secciones de bomba). */
 export function BajanteMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element } = ctx;

@@ -28,9 +28,7 @@ interface UseTrazosLoaderParams {
   escalaGlobalRef: React.RefObject<number | null>;
 }
 
-/** Carga los trazos de un plano resolviendo local-vs-BD por marca de tiempo (gana el más
- *  reciente) y notifica los cambios para que las tablas montadas se actualicen. Devuelve true
- *  si el motor terminó con contenido cargado. */
+/** Carga los trazos de un plano resolviendo local-vs-BD por marca de tiempo (gana el más reciente) y notifica los cambios para que las tablas montadas se actualicen. */
 export function useTrazosLoader({
   activeNetRef,
   setActiveNet,

@@ -4,7 +4,9 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import { rootTributarioLabel, allocTributaryNumber, relabelTribChain } from './PlanoState';
 
-/** Re-etiqueta los tributarios del punto a la raíz del padre del primero (el label T{n}{raíz} es la verdad). */
+/** En una unión, todos los ramalitos (tributarios) se renombran para colgar de la MISMA raíz: el
+ *  nombre T{n}{raíz} es la verdad (T2RS1 = el ramalito nº 2 de RS1), no la cadena de padres, que
+ *  puede quedar vieja. */
 export function normalizeTribPadresAt(
   engine: IPlanoEngineCore,
   ep: number[],

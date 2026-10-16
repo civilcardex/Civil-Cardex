@@ -17,9 +17,7 @@ import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents';
 // documentos completos (migración) y pueden persistir estado medio aplicado.
 let inflight: Promise<void> | null = null;
 
-/** Nunca rechaza (best-effort — un fallo de red/BD no debe romper al llamador) y corre UNA sola
- *  vez aunque varios componentes lo pidan a la vez: los concurrentes reciben la promesa en
- *  vuelo; tras terminar, una llamada nueva vuelve a correr (toma planes que hayan aparecido). */
+/** Prefetch best-effort single-flight (nunca rechaza; concurrentes comparten la promesa en vuelo). */
 export function prefetchAllTrazos(
   plans: Array<SyncPlanInput & { nivel: string | number | null }>,
 ): Promise<void> {

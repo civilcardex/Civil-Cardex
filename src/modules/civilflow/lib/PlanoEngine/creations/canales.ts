@@ -33,14 +33,11 @@ import {
 // agrega su sufijo de piso solo al renderizar, porque un bajante puede abarcar pisos), el piso
 // queda incrustado en el code/id aquí al crearlo — un canal vive en un solo piso.
 
-/** Timestamp del clic que fijó _canalEje (module-scope: los campos _canal* viven en
- *  PlanoState/PlanoEngine, fuera del alcance de este cambio) — detecta el doble-clic. */
+/** Reloj del clic que fijó el eje del canal (guarda aquí, no en el motor, para no tocar más
+ *  campos): con él se detecta el doble clic y no se crean canales por accidente. */
 let canalEjeTs = 0;
-/** Maneja un clic con la herramienta de canal activa: el 1er clic fija el inicio del eje, el
- *  2º fija su extremo (siempre modo eje, también horizontal/vertical — orig. usuario) y el
- *  3er clic define el ancho (commitCanalAncho). Exclusivo de la red de aguas lluvias (ll).
- *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y
- *  de plano. */
+/** Dibuja un canal de lluvias (ll) en 3 clics: 1º dónde arranca, 2º hasta dónde llega el eje,
+ *  3º qué tan ancho es. Solo funciona con la red de lluvias activa. */
 export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!engine.activeNetworks || !engine.activeNetworks.has('recolectora')) {
     engine._emitStatus('Canal no disponible — activa la red canal recolectora');
@@ -86,10 +83,8 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
   engine.render();
 }
 
-/** Commitea la fase de ancho del canal en diagonal (3er clic o Enter): ancho = distancia
- *  perpendicular del punto al eje. Un punto que proyecta más allá del extremo del eje lo
- *  alarga (geometriaCanalAncho). @param engine Instancia del motor. @param px/py Punto de
- *  plano que define el ancho. */
+/** Cierra el canal con el ancho perpendicular al eje: si el 3er clic se pasa de largo, el canal
+ *  se alarga; si queda demasiado estrecho, se estira al mínimo útil (20 cm). */
 export function commitCanalAncho(engine: IPlanoEngineCore, px: number, py: number): void {
   const eje = engine._canalEje;
   engine._canalEje = null;
@@ -130,9 +125,8 @@ export function commitCanalAncho(engine: IPlanoEngineCore, px: number, py: numbe
   });
 }
 
-/** Crea el glifo de canal con geometría ya normalizada (base-corta): allocator único,
- *  etiqueta bajo el AABB, selección y snapshot. @param engine Instancia del motor.
- *  @param geo Marco en cm/grados + sentido de flujo. */
+/** Crea el dibujo del canal ya normalizado (el ancho en el lado corto, la etiqueta bajo el marco)
+ *  y lo deja como UN solo paso del deshacer. */
 function crearCanalGlifo(
   engine: IPlanoEngineCore,
   geo: {

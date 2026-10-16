@@ -24,9 +24,8 @@ import { MENU_SELECT_STYLE, MENU_ACTION_BTN_STYLE, type ContextMenuState } from 
 import { RamalesAsociadosGrid } from './bajanteConnectionSections';
 import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers';
 
-/** Panel del menú contextual para bajantes y extremos de ramal: ramales asociados (Y doble),
- *  creación de bajante/montante en el extremo y editor del accesorio de extremo con sus
- *  validaciones de polaridad y diámetro. */
+/** Panel del menú contextual para bajantes y extremos de ramal: ramales asociados (Y doble), creación de bajante/montante en el extremo y editor del
+ * accesorio de extremo con sus validaciones de polaridad y diámetro. */
 export function BajanteConnectionPanel({
   element,
   isGhostClick = false,

@@ -130,8 +130,8 @@ function tryRotateToValidAngle(
   return checkRamalAnglesExcludingConnections(engine, { ...ram, pts });
 }
 
-/** Cruce segmento-rectángulo (Liang-Barsky) en coordenadas de canvas — usado por el marquee
- *  de multiselección para decidir si un trazo (ramal/guía/cota) toca el recuadro. */
+/** ¿Este trazo pasa por dentro del recuadro de selección? (método Liang-Barsky, en coordenadas de
+ *  pantalla). Lo usa el marquee para decidir si una tubería, guía o cota queda seleccionada. */
 function segIntersectsRect(
   p1: { x: number; y: number },
   p2: { x: number; y: number },

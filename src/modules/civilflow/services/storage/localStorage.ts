@@ -33,10 +33,7 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
  * Emite `civilflow_local_quota` / `civilflow_local_quota_ok` en window para la franja de UI.
  */
 const quotaFailedKeys = new Set<string>();
-/** Guarda un doc de trazos en caché preservando la marca `assocLayout` del doc PREVIO:
- *  la marca vive en el DOC (serializeWork no la lleva), y perderla re-arma la migración
- *  completa en la próxima apertura (pasadas 1+2 + push destructivo redundante). Todos los
- *  escritores de caché de trazos deben pasar por aquí, no por saveToStorage crudo. */
+/** Guarda el dibujo en caché sin perder la marca de asociación entre pisos. Sin ella, al reabrir se repite la migración completa. Ej: pasa siempre por aquí, no por saveToStorage. */
 export function saveTrazosLocales(planId: string | number, doc: Record<string, unknown>): void {
   try {
     const previo = loadFromStorage<{ assocLayout?: number } | null>(

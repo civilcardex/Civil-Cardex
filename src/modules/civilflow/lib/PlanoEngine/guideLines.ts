@@ -2,9 +2,8 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { ANGLE_EPS, _firstSegmentAngle } from './drawingAngles';
 import { _statusMsg } from './ramalMeasure';
 
-/** Aplica el snap a un punto de la línea guía (click o preview): ángulo sobre la cuadrícula de
- *  la red activa (desde el punto anterior de la guía) + pegada a elementos existentes. Sin snap
- *  (snapMode off) devuelve el punto crudo. */
+/** Al trazar una línea guía, cada clic se pega a los ángulos legales y a extremos de tuberías
+ *  cercanas (el mismo imán del ramal). Si apagaste el snap, el punto queda donde hiciste clic. */
 export function snapGuidePoint(
   engine: IPlanoEngineCore,
   fromPt: { x: number; y: number } | null,
@@ -19,13 +18,10 @@ export function snapGuidePoint(
   return p;
 }
 
-/** Corrección LOCAL de conexión (ítems 3/4/7 del pedido): si el segmento [prevPt→newPt] de una
- *  línea guía pasa cerca del EXTREMO de un ramal con un ángulo relativo fuera de los permitidos
- *  por la red de ESE ramal (45/90/135° san/ll/vent; 90° af/ac/gas), corrige únicamente este
- *  segmento: rota la dirección al candidato permitido más cercano conservando el lado (signo del
- *  producto cruz) y desliza el extremo hasta el cruce exacto con la línea del ramal — prevPt
- *  (vértice anterior) queda intacto, así que los segmentos ya dibujados de la misma guía nunca
- *  se mueven. Devuelve newPt sin cambios si no hay conexión cercana o el ángulo ya cumple. */
+/** Si el último trazo de la guía llega torcido a un ramal, lo endereza SOLO a él: gira alrededor
+ *  del vértice anterior hasta el ángulo legal de la red (45° en san (Sanitaria), ll (Lluvias) y
+ *  vent (Ventilación); 90° en af (Agua Fría) y ac (Agua Caliente)). Los trazos ya dibujados de la
+ *  misma guía quedan intactos. */
 export function snapGuideSegmentToRamal(
   engine: IPlanoEngineCore,
   prevPt: { x: number; y: number },
@@ -90,10 +86,8 @@ export function snapGuideSegmentToRamal(
   return newPt;
 }
 
-/** Maneja un clic con la herramienta de línea guía: el primer clic inicia el trazo y cada
- *  clic siguiente agrega un segmento desde el último vértice (ítem 2: L, U, multisegmento).
- *  Clicar sobre el último vértice (doble-click natural), Esc o cambiar de herramienta
- *  commitea la guía con todos sus segmentos. Cada vértice pasa por el snap cuando está activo. */
+/** Cada clic agrega un tramo más a la guía (hacen falta al menos 2 vértices); doble clic o
+ *  Enter/Esc la termina y la deja fija en el plano. */
 export function handleGuideDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!engine._guideStart || !engine._guidePts) {
     const p = snapGuidePoint(engine, null, px, py);
@@ -158,8 +152,8 @@ export function commitOpenGuide(engine: IPlanoEngineCore): void {
   engine._markDirty();
 }
 
-/** ¿El punto (plano) cae sobre el cuerpo de la guía (cualquier segmento)? Puerta de
- *  selección/arrastre para guías multisegmento (una sola _labelBox no cubre una L/U). */
+/** ¿El clic cayó sobre alguna parte de la guía (no solo su etiqueta)? Permite seleccionar y
+ *  arrastrar guías con forma de L o U. */
 export function guideBodyHit(
   engine: IPlanoEngineCore,
   guide: { pts: [number, number][] },
@@ -180,10 +174,8 @@ export function guideBodyHit(
   return false;
 }
 
-/** Snap del cruce guía-ramal al EXTREMO del ramal: si el cruce cae cerca de un extremo (dentro
- *  del radio de snap de conexión), se ajusta al extremo exacto — un tributario creado desde una
- *  guía que "cruza el extremo" conecta EN el extremo (codo 90°) en vez de dividir el ramal a
- *  1-2px de él (lo que creaba un stub invisible y un símbolo de tee en vez del codo). */
+/** Acomoda el cruce guía-ramal al extremo exacto del ramal: sin esto quedan pedazos de 1-2 px que
+ *  no se ven pero rompen la conexión al convertir la guía. */
 export function snapGuideCrossingToEndpoint(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -204,8 +196,8 @@ export function snapGuideCrossingToEndpoint(
   return bestPt ?? pt;
 }
 
-/** Puntos de conexión entre una línea guía (todos sus segmentos, ítem 2) y los extremos de
- *  los ramales (contacto directo o cruce en T), sin duplicados por proximidad. */
+/** Lista los puntos donde la guía toca una tubería: de punta a punta, atravesando su extremo (T) o
+ *  cruzando su cuerpo. Sin repetir el mismo punto dos veces. */
 export function guideRamalJunctions(
   ramales: Array<{ id: string; pts?: number[][] }>,
   guide: { pts: [number, number][] },
@@ -277,8 +269,9 @@ function segSegIntersection(
   return [a[0] + t * r1x, a[1] + t * r1y];
 }
 
-/** ¿La guía ATRAVIESA el extremo de un ramal (cruce en T)? Habilita "Crear tributarios a partir
- *  de línea guía". Devuelve el cruce más cercano al primer extremo de la guía, o null. */
+/** ¿La guía atraviesa el extremo de un ramal formando una T? Si sí, se habilita "Crear
+ *  tributarios a partir de línea guía". Devuelve el cruce más cercano al inicio de la guía, o
+ *  null si no hay ninguno. */
 export function findGuideTCrossing(
   ramales: Array<{ id: string; pts?: number[][] }>,
   guide: { pts: [number, number][] },

@@ -21,7 +21,7 @@ import {
   type BajanteRaw,
 } from './waterRowsShared';
 
-/** Fila de la tabla de diseño de red: UC propia y total, caudal, diámetros, longitudes, pérdidas y presiones. */
+/** Fila de diseño (UC (Unidades de Consumo) propia/total, Q (Caudal), diámetros, pérdidas y presiones). */
 export interface WnRow {
   id: string;
   ini: string;
@@ -52,7 +52,7 @@ export interface WnRow {
 // estado vivo del componente (diámetros pendientes de guardar, ediciones manuales de presión) y,
 // aquí, como función pura que usa solo lo ya persistido en los objetos Tramo, para que la
 // exportación de memorias nunca dependa de que el usuario haya abierto esa pantalla primero.
-/** Filas completas de la tabla de diseño de una red af/ac: grafo dirigido desde la fuente, fusiones de empalme y fórmulas de Hunter/Hazen. Es la versión snapshot del cálculo en vivo de la tabla. */
+/** Filas de diseño af (Agua Fria)/ac (Agua Caliente) (Hunter (metodo de probabilidad de uso simultaneo)/Hazen; snapshot para memorias). */
 export function computeWaterNetworkRows(
   networkType: 'af' | 'ac',
   tramosOwn: Tramo[],
@@ -653,7 +653,7 @@ export function computeWaterNetworkRows(
 // (isAC2 primero, luego cualquier tramo que toque un código CALENTn) para que el número coincida
 // exactamente con el total de la tabla de diseño en el nodo del calentador. udTotal es 0 cuando
 // aún no existe tramo de calentador.
-/** Demanda UC real de la red AC alimentada por un calentador: el mismo total que muestra la tabla de diseño en el nodo del calentador. */
+/** Demanda UC (Unidades de Consumo) de la red ac (Agua Caliente) tras el calentador (igual que la tabla). */
 export function computeHeaterNetworkTotal(
   tramosAc: Tramo[],
   plans: PlanItem[],

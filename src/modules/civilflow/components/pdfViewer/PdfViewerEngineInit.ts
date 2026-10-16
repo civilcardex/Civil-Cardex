@@ -133,7 +133,10 @@ export function usePdfViewerEngine({
       // extraScale > 1: rasteriza el fondo a mayor densidad (zoom en vivo) SIN tocar el
       // drawCanvas ni el engine — el bitmap sube de resolución y el scale() por CSS del
       // pdfWrap deja de estirar píxeles (planos borrosos, ped. usuario).
-      const extra = Math.max(1, Math.min(opts.extraScale ?? 1, 3));
+      // ponytail: densidad total = extra*dpr, tope ~2 — el re-raster es el tirón
+      // al soltar la rueda; 3x pedía el doble de píxeles por un detalle invisible.
+      const dprCap = Math.max(1, 2 / (window.devicePixelRatio || 1));
+      const extra = Math.max(1, Math.min(opts.extraScale ?? 1, 2, dprCap));
       if (renderingRef.current) return;
       const pdf = pdfDocRef.current;
       const pdfCanvas = pdfCanvasRef.current;
@@ -266,18 +269,48 @@ export function usePdfViewerEngine({
     // re-rasterizamos SOLO el fondo a esa densidad (bgOnly, debounced).
     let zoomRaf = 0;
     let lastZoomRaster = 1;
-    const zoomObserver = new MutationObserver(() => {
-      const wrap = pdfCanvasRef.current?.parentElement;
-      if (!wrap) return;
-      const m = /scale\(([\d.]+)\)/.exec(wrap.style.transform || '');
-      if (!m) return;
-      const zoom = parseFloat(m[1] ?? '1');
-      if (Math.abs(zoom - lastZoomRaster) < 0.08) return;
+    // Throttle del re-raster: cada disparo bloquea 30-60ms (pdfjs + upload). Sin throttle,
+    // cada pausa del gesto = hitch. Máx 1 cada 1.5s + uno final al estabilizar.
+    let lastBgAt = 0;
+    const BG_MIN_GAP = 1500;
+    const scheduleBg = (delay: number) => {
       window.clearTimeout(zoomRaf);
       zoomRaf = window.setTimeout(() => {
-        lastZoomRaster = zoom;
-        void renderPage(1, scaleRef.current, mountId.current, { bgOnly: true, extraScale: zoom });
-      }, 160);
+        const wait = BG_MIN_GAP - (Date.now() - lastBgAt);
+        if (wait > 0) {
+          scheduleBg(wait);
+          return;
+        }
+        lastBgAt = Date.now();
+        const z = lastZoomRaster;
+        void renderPage(1, scaleRef.current, mountId.current, {
+          bgOnly: true,
+          extraScale: z,
+        }).then(() => {
+          // renderPage descarta si había otro render en vuelo: si el zoom se movió
+          // mientras tanto, reintenta una vez (si no, el fondo queda rancio).
+          if (lastZoomRaster !== z) scheduleBg(600);
+        });
+      }, delay);
+    };
+    const zoomObserver = new MutationObserver(() => {
+      // Fuente de verdad = engine.zoom, no el string del transform (acopla a su formato).
+      const live = engineRef.current?.zoom;
+      const zoom =
+        typeof live === 'number' && Number.isFinite(live)
+          ? live
+          : (() => {
+              const wrap = pdfCanvasRef.current?.parentElement;
+              if (!wrap) return NaN;
+              const m = /scale\(([\d.]+)\)/.exec(wrap.style.transform || '');
+              return m ? parseFloat(m[1] ?? '1') : NaN;
+            })();
+      if (!Number.isFinite(zoom)) return;
+      // Umbral 0.15 (no 0): el zoom fino acumulado por debajo queda con el bitmap viejo
+      // (ligeramente borroso) hasta superar el umbral — precio consciente del throttle.
+      if (Math.abs(zoom - lastZoomRaster) < 0.15) return;
+      lastZoomRaster = zoom;
+      scheduleBg(600);
     });
     const eng = new PlanoEngine(cw, pdfWrap!, canv);
     if (pdfWrap)

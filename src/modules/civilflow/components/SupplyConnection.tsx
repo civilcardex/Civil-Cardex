@@ -5,7 +5,7 @@ import EditButton from './shared/EditButton';
 import { fmt } from '../utils/formatUtils';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
-/** Caption visualmente oculto de la tabla de acometida. */
+
 export const SupplyConnection_S1: React.CSSProperties = {
   fontFamily: 'monospace',
   fontSize: 9,
@@ -19,7 +19,7 @@ export const SupplyConnection_S1: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
 };
-/** Estilo del selector de diámetro de la acometida. */
+
 export const SupplyConnection_S2: React.CSSProperties = {
   width: '100%',
   padding: '3px 4px',
@@ -51,13 +51,11 @@ export interface LData {
   le: number;
 }
 
-/** Selección de contador del catálogo para la acometida. */
 export interface ContadorSel {
   dn?: string;
   q?: number;
 }
 
-/** Opción de diámetro: pulgadas, nombre nominal, etiqueta y diámetro interno. */
 export interface DiamOpt {
   pulg: number;
   label: string;
@@ -65,10 +63,9 @@ export interface DiamOpt {
   nominal?: string;
 }
 
-/** Props del panel Acometida: valores y setters del formulario, filas resueltas y validaciones de presión. */
 export interface AcometidaProps {
   Qaco: number;
-  /** Edición POR TABLA (ped. usuario): cada sección tiene su EDITAR/LISTO. */
+  /** Edición por sección (pedido del cliente): cada bloque tiene su propio botón EDITAR/LISTO. */
   edit1: boolean;
   setEdit1: Dispatch<SetStateAction<boolean>>;
   edit2: boolean;
@@ -90,7 +87,7 @@ export interface AcometidaProps {
   setAcoPini: (p: number) => void;
   acoHfMax: number;
   setAcoHfMax: (v: number) => void;
-  /** Presión residual mínima exigida al final de la acometida (mca). */
+  /** Presión mínima que debe quedar al final de la acometida, en mca (metros de columna de agua). */
   acoPResMin: number;
   setAcoPResMin: (v: number) => void;
   acoLeMed: number;
@@ -104,15 +101,14 @@ export interface AcometidaProps {
   okPresion: boolean;
   AF_DIAM_OPTS: DiamOpt[];
   isTr1Drawn?: boolean;
-  /** Escribe el diámetro propuesto del tramo AC-01 dibujado (mismo camino que la tabla). */
+  /** Escribe el diámetro propuesto del tramo AC (Agua Caliente)-01 del dibujo (mismo camino que la tabla). */
   onTr1DiamChange?: (nominal: string) => void;
-  /** Igual para el tramo AC-02 (contador→montante). */
+  /** Igual para el tramo AC (Agua Caliente)-02 (va del contador al montante). */
   onTr2DiamChange?: (nominal: string) => void;
   isTr2Drawn?: boolean;
   onContDiamChange?: (val: string) => void;
 }
 
-/** Contenedor de una sección de la tabla de acometida. */
 export const SECTION_COL: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -121,13 +117,13 @@ export const SECTION_COL: React.CSSProperties = {
   overflow: 'hidden',
   background: 'var(--bg)',
 };
-/** Encabezado de sección de la tabla de acometida. */
+
 export const SECTION_HDR: React.CSSProperties = {
   padding: '8px 12px',
   borderBottom: '1px solid var(--line)',
   background: 'var(--bg2)',
 };
-/** Título de sección de la tabla de acometida. */
+
 export const SECTION_H4: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
@@ -136,28 +132,28 @@ export const SECTION_H4: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: 0.5,
 };
-/** Celda de encabezado centrada de la tabla de acometida. */
+
 export const TH_CENTER: React.CSSProperties = { textAlign: 'center', padding: '2px 6px' };
-/** Celda de nombre de parámetro de la tabla de acometida. */
+
 export const TD_PARAM_LABEL: React.CSSProperties = {
   padding: '2px 8px',
   textAlign: 'left',
   fontWeight: 600,
 };
-/** Celda de valor de parámetro de la tabla de acometida. */
+
 export const TD_PARAM_VALUE: React.CSSProperties = {
   textAlign: 'center',
   color: 'var(--txt2)',
   fontWeight: 600,
   padding: '1px 2px',
 };
-/** Celda de unidad de parámetro de la tabla de acometida. */
+
 export const TD_PARAM_UNIT: React.CSSProperties = {
   textAlign: 'center',
   color: 'var(--txt3)',
   padding: '1px 2px',
 };
-/** Contenedor desplazable interior de la sección. */
+
 export const SCROLL_INNER: React.CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',

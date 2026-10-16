@@ -13,7 +13,8 @@ import {
 import { _firstSegmentAngle } from './drawingAngles';
 import { splitPtr } from '../../utils/keys';
 
-/** Entrada del storage de hidráulica: conteo de accesorios, longitud horizontal y salidas de un ramal. */
+/** Una ficha del almacén de hidráulica de un ramal: cuántos accesorios de cada tipo lleva, su
+ *  largo horizontal y cuántas salidas tiene. */
 // ponytail: misma forma que drawingSyncTypes.HidroDataEntry — una sola definición.
 import type { HidroDataEntry } from '../../utils/drawingSyncTypes';
 import { emitAparatosClear } from '../../utils/fixtureEvents';
@@ -24,7 +25,8 @@ export type { HidroDataEntry };
 // `${net}_${ramalId}_${planId}`) — limpiar el campo del glifo en el objeto del ramal no toca ese
 // conteo, así que la barra seguía mostrando la tee como asignada después de que el símbolo
 // desapareciera visualmente. Se decrementa a la par.
-/** Decrementa en el storage de conteos el accesorio de una tee borrada del dibujo, para que la barra de aparatos no siga mostrándola como asignada. */
+/** Le baja 1 al contador del accesorio de una T que se borró del dibujo, para que la barra de
+ *  aparatos deje de mostrarla como asignada. */
 export function decrementAccesorioCount(
   engine: IPlanoEngineCore,
   hostR: { id: string; net: string },
@@ -52,7 +54,8 @@ export function decrementAccesorioCount(
 // numérico son legado y se tratan como del piso, igual que en networkRenumber).
 // Correr DESPUÉS de remerge/mergeTribPair/mergeTouchingRemnant: esos MUEVEN los conteos al
 // sobreviviente (deleteRemerge) — purgar antes destruiría conteos que deben migrar.
-/** Elimina del storage los conteos de aparatos, accesorios hidro y gas asociados a los ids borrados. */
+/** Borra del almacén las claves de aparatos y de hidráulica/gas (Gas) de los elementos que se
+ *  eliminaron del piso (si quedaran, los paneles mostrarían datos de cosas que ya no existen). */
 export function purgarEstadoRamalesBorrados(engine: IPlanoEngineCore, ids: Iterable<string>): void {
   const idSet = new Set(ids);
   if (idSet.size === 0) return;
@@ -111,7 +114,8 @@ export function purgarEstadoRamalesBorrados(engine: IPlanoEngineCore, ids: Itera
 // continúa allá — borrar el símbolo de un lado y dejar el otro (apuntando a un id que ya no
 // existe) no tiene sentido, así que borrar cualquiera de los dos extremos borra también el otro,
 // dondequiera que viva su piso. Aplica tanto a bajante como a montante.
-/** Al borrar un montante, limpia en cascada las asociaciones de descarga u origen entre pisos que apuntaban a él. */
+/** Al borrar un montante, limpia en cascada los enlaces entre pisos (quién descarga en quién, de
+ *  dónde viene) que apuntaban a él. */
 export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: PlanoBajante): void {
   if (deleted.tipo !== 'montante' && deleted.tipo !== 'bajante') return;
   const thisPlanId = String(engine._loadedPlanId ?? '');
@@ -229,7 +233,8 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
 }
 
 // Dirección (normalizada) hacia el interior desde el extremo compartido sharedPt.
-/** Dirección normalizada hacia el interior de la polilínea desde el extremo compartido dado. */
+/** Hacia dónde apunta "el interior" de la figura desde el extremo compartido (vector unitario):
+ *  es el lado por donde hay que recortar al borrar una rama. */
 export function dirAt(r: { pts: number[][] }, sharedPt: number[]): [number, number] | null {
   const len = r.pts.length;
   let other: number[];

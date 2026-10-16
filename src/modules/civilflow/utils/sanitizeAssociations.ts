@@ -1,16 +1,4 @@
-/**
- * Saneo de asociaciones entre pisos tras una RECALIBRACIÓN del origen de una lámina. El stamp
- * de calibración (PlanosTab.handleSaveConfig) mueve `origen` pero NO la geometría: todo
- * artefacto que codifique la posición del bajante del otro piso queda expresado en el frame
- * viejo. Como la traducción entre frames es una TRASLACIÓN pura (aFrameDe), el correcto es
- * una traslación por Δ = origen_nuevo − origen_viejo — sin releer el doc del partner:
- *   - Anillo (dx/dy) y LD pts[0] del piso INFERIOR: apuntan al superior traducido →
- *     si P es el inferior: += Δ; si P es el superior (anillo vive en el doc del partner): −= Δ.
- *   - Ghost (mirror del inferior en frame del superior): si P es el host: += Δ;
- *     si P es el inferior espejado en otro host: −= Δ.
- * Los anillos legacy (layout 1) que la migración reconstruye desde posiciones crudas se
- * sobreescriben igual en la próxima carga — trasladarlos es inocuo.
- */
+/** Saneo entrepisos tras recalibrar: traslada anillos/LD_ (ramal desvio entrepisos)/fantasmas por Δ de origen. */
 import { devError } from '../../../utils/devError';
 import { splitPtr } from './keys';
 import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
@@ -34,9 +22,7 @@ interface DespRing {
   Ldesvio?: string;
 }
 
-/** Recalibró el origen del plan `planId` de `prevOrigen` al actual: traslada anillos, inicios
- *  de Ldesvio y ghosts de TODA asociación que cruce ese plan (en ambos roles). Storage-only,
- *  best-effort (try/catch por piso). Sin Δ (primera calibración u origen igual) es no-op. */
+/** Traslada anillos, LD_ (ramal desvio entrepisos) y fantasmas que crucen el plan recalibrado (no-op sin Δ). */
 export function sanearAsociacionesTrasRecalibrar(
   planId: string | number,
   prevOrigen: PuntoPx | null,

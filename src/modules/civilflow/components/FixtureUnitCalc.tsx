@@ -18,8 +18,8 @@ const FixtureUnitCalc_S1: React.CSSProperties = {
   border: 0,
 };
 
-/** Descendientes transitivos de una clave de tramo en fullChildrenMap (DFS iterativo;
- *  visited evita ciclos en grafos con co-sumideros). */
+/** Todos los tramos que cuelgan de una clave (hijos, nietos…), recorridos uno por uno con
+ *  una pila; la lista de visitados corta los ciclos cuando dos tramos comparten destino. */
 function descendientesDe(fullChildrenMap: Record<string, string[]>, start: string): string[] {
   const visited = new Set<string>([start]);
   const stack = [...(fullChildrenMap[start] || [])];

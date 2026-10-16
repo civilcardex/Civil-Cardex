@@ -102,7 +102,8 @@ function junctionArmsAt(
   return { bajanteTouching, hasCollinearWithHost, hasNonCollinear, hasNonCollinearPair };
 }
 
-/** Limpia el marcador de tee del ramal en el punto cuando, tras un borrado, la unión ya no es una tee real. */
+/** Cuando, tras borrar algo, el punto ya no junta 3 tramos, le quita la marca de T (tee) al ramal:
+ *  si el glifo sigue puesto, el dibujo miente sobre lo que hay ahí. */
 export function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   for (const hostR of engine.ramales) {
@@ -196,9 +197,8 @@ function endpointArmsAt(engine: IPlanoEngineCore, pt: number[]): { d: number[]; 
   return arms;
 }
 
-/** Asigna el codo de plano (45°/90° según ángulo) a la esquina en L que queda en `pt`
- *  después de un borrado o recorte. Sin efecto si el punto tiene bajante, no forma una L
- *  (1 o ≥3 brazos, o brazos colineales) o ya tiene accesorio el sobreviviente elegido. */
+/** Deja el codo dibujado (arco + tapas) en la esquina viva del punto, a 45° o 90° según el ángulo
+ *  que quedó. */
 export function assignCodoAfterBranchDelete(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   if (engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL)) return;
@@ -267,7 +267,7 @@ function junctionHadTeeMarker(engine: IPlanoEngineCore, pt: number[]): boolean {
 // Elimina TODO marcador de tee (accesorioInicio/Fin + accMed) en un punto dado, y decrementa su
 // conteo. Usado cuando un punto deja de ser una unión de tee (al borrar un brazo o al fusionar
 // dos mitades colineales de un split).
-/** Quita los marcadores de tee a mitad de ramal (accMed) en el punto dado. */
+/** Quita las marcas de T (accMed) que estaban a mitad de una tubería en ese punto. */
 export function scrubAccMedTeeAt(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   for (const r of engine.ramales) {
@@ -308,7 +308,8 @@ export function scrubAccMedTeeAt(engine: IPlanoEngineCore, pt: number[]): void {
 // Legado de uniones de línea guía (código viejo persistió codo90rm en el ramal): al borrar el
 // tributario que formaba la esquina, se anula el codo de plano anclado en el punto para que no
 // quede ni el arco ni el disco "C90" de respaldo.
-/** Quita los codos de plano (90°/45°) que quedaron colgando en el punto tras borrar el tributario que los formó. */
+/** Borra los codos de plano (90°/45°) que quedaron colgando en el punto después de borrar el
+ *  ramalito que los formaba: sin su rama, el símbolo no tiene sentido. */
 export function scrubPlanCodoAt(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   for (const r of engine.ramales) {
@@ -363,8 +364,9 @@ function deletedRamalHadTeeAt(deleted: PlanoRamal, pt: number[]): boolean {
   return false;
 }
 
-/** Tras borrar un ramal, decide qué hacer con la unión que dejó: asignar un codo si queda
- *  una esquina viva, o limpiar los marcadores residuales si el punto quedó muerto o recto. */
+/** Tras borrar una tubería, decide qué hacer con la unión que quedó: si sigue siendo una esquina
+ *  viva (dos tramos en L) le pone el codo; si el punto quedó muerto o recto, limpia los símbolos
+ *  residuales. */
 export function cleanupJunctionsAfterRamalDelete(
   engine: IPlanoEngineCore,
   deleted: PlanoRamal,

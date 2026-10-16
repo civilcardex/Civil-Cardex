@@ -8,7 +8,7 @@ const FRAC: Record<number, string> = Object.fromEntries(
 );
 
 /**
- * Formatea un valor a un número fijo de decimales, devolviendo "—" para null/NaN.
+ * Formatea un número para las tablas (p. ej. 3.1416 con 2 decimales → '3.14'); si no hay dato muestra "—".
  * @param v - Valor a formatear.
  * @param d - Número de decimales (default 2).
  * @returns String formateado o "—".
@@ -17,8 +17,8 @@ export const fmt = (v: unknown, d = 2) =>
   v == null || Number.isNaN(Number(v)) ? '—' : Number(v).toFixed(d);
 
 /**
- * Trunca (SIN redondear) a 2 decimales y devuelve string — para PRESENTACIÓN en tablas.
- * La precisión interna de los cálculos no se toca (orig. usuario: 5.6789 → '5.67').
+ * Trunca (SIN redondear) a 2 decimales para las tablas (5.6789 → '5.67'); la precisión
+ * interna de los cálculos no se toca.
  * @param v - Valor a truncar.
  * @returns String truncado a 2 decimales o "—" ante null/NaN.
  */
@@ -29,16 +29,15 @@ export const trunc2 = (v: unknown): string => {
 };
 
 /**
- * Sanitiza un nombre para usarlo como nombre de archivo: solo letras, dígitos,
- * espacios, guiones y guiones bajos.
+ * Deja un nombre listo para usarlo como nombre de archivo (solo letras, dígitos,
+ * espacios, guiones y guiones bajos; sin acentos ni símbolos raros).
  */
 export function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
 }
 
 /**
- * Formatea un valor en pulgadas decimales como string de pulgadas fraccionarias (p. ej.
- * 1.5 → "1 ½"").
+ * Pasa pulgadas decimales a la notación comercial de plomería (1.5 → '1-1/2"').
  * @param v - Valor en pulgadas decimales.
  * @returns String en pulgadas fraccionarias o "—" si ≤0.
  */
@@ -54,9 +53,7 @@ const FRAC_ASCII: Record<string, string> = {
   '⅝': '5/8',
   '⅞': '7/8',
 };
-/** Convierte fracciones unicode (½…⅞) a notación ASCII comercial: '½'→'1/2',
- *  '1 ½'→'1-1/2'. Idempotente sobre strings ya ASCII (no-op). Compañero de fmtPulg,
- *  que produce la notación con guion. */
+/** Unicode a ASCII comercial ('½'→'1/2', '1 ½'→'1-1/2'; no-op si ya es ASCII). */
 export function fracAscii(s: string): string {
   return s.replace(/(\d)?\s*[\u00a0]?([½⅓⅔¼¾⅛⅜⅝⅞])/g, (_m, ent: string | undefined, f: string) =>
     ent ? `${ent}-${FRAC_ASCII[f] ?? f}` : (FRAC_ASCII[f] ?? f),
@@ -73,24 +70,7 @@ export function fmtPulg(v: number): string {
   return `${v.toFixed(2)}"`;
 }
 
-const FRAC_MAP: Record<string, string> = {
-  '⅜': '3/8',
-  '½': '1/2',
-  '⅔': '2/3',
-  '⅓': '1/3',
-  '¼': '1/4',
-  '¾': '3/4',
-  '⅛': '1/8',
-  '⅝': '5/8',
-  '⅞': '7/8',
-};
-
-/**
- * Repara textos viejos dañados por doble codificación (mojibake): "A con sombrero" (Â/â),
- * guiones y símbolos raros que se ven mal en etiquetas, menús, tablas y exports, tanto en
- * el código como en datos guardados por versiones anteriores. El texto que ya está limpio
- * queda idéntico; solo se reparan las secuencias dañadas.
- */
+/** Repara texto que se guardó doble-codificado (los símbolos raros tipo "â€"" o "Â½" vuelven a — y ½); lo que está limpio queda igual. */
 // Bytes 0x80-0x9F que CP1252 define (el resto coincide con Latin-1 / es indefinido).
 const CP1252_CHAR: Record<number, string> = {
   0x80: '€',
@@ -196,19 +176,14 @@ export function sanitizeMojibake(s: string): string {
 }
 
 /**
- * Normaliza una etiqueta de diámetro reemplazando los caracteres Unicode de fracción por
- * equivalentes ASCII (p. ej. "1½" → "1-1/2").
+ * Normaliza la etiqueta de un diámetro a ASCII comercial ("1½" → '1-1/2"'): repara texto
+ * viejo mal codificado y quita los caracteres Unicode de fracción.
  * @param dn - String de etiqueta de diámetro cruda.
  * @returns Etiqueta normalizada.
  */
 export function normalizeDnLabel(dn: string): string {
-  let out = sanitizeMojibake(dn);
-  for (const [uni, ascii] of Object.entries(FRAC_MAP)) {
-    out = out.replace(new RegExp(`(\\d)(${uni})`, 'g'), `$1-${ascii}`);
-    out = out.split(uni).join(ascii);
-  }
-  out = out.replace(/(\d+) (\d+\/\d+)/, '$1-$2');
-  return out;
+  // fracAscii cubre los 3 casos unicode; el guion en mixtos ya-ASCII ('1 1/2') se conserva.
+  return fracAscii(sanitizeMojibake(dn)).replace(/(\d+) (\d+\/\d+)/, '$1-$2');
 }
 
 /** Primer segmento de una clave compuesta ("SECTOR-resto" → "SECTOR"). */

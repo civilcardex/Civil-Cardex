@@ -1,6 +1,6 @@
 import { origenDe, distToSegment } from '../lib/shared/geometry';
 
-/** Ramales gas crudos para el árbol de red (id, piso y geometría). */
+/** Tramo de gas (Gas) tal como está guardado: id, a qué piso pertenece y su geometría. */
 export interface GasTramoNeto {
   id: string;
   planId: string | number;
@@ -14,13 +14,12 @@ export interface GasTramoNeto {
 // (drawingAngles usa 0.5 unidades).
 const TOL = 0.5;
 
-/** Clave única de tramo: los ids de ramal se repiten entre pisos. */
+/** Identificador único de tramo ("piso:id"): los ids de ramal se repiten entre pisos. Ej: '2:RS1'. */
 export function claveGas(planId: string | number, id: string): string {
   return `${planId}:${id}`;
 }
 
-/** Padre de cada tramo: el ramal donde cae su ORIGEN (extremo de entrada). Preferencia por
- *  troncos (no tributarios) cuando el origen toca más de uno. Devuelve clave→clave. */
+/** Árbol del gas: dice de qué ramal "cuelga" cada tramo (por dónde le entra el gas). Si el origen toca varios, se prefieren los troncos y no los tributarios. */
 export function mapaPadresGas(
   tramos: GasTramoNeto[],
   esTributario?: (t: GasTramoNeto) => boolean,
@@ -62,8 +61,7 @@ export function mapaPadresGas(
   return padres;
 }
 
-/** Conteos de aparatos ACUMULADOS por tramo: propios + los de toda su red descendente
- *  (docx "sentido de flujo": el tronco lleva la demanda de todo lo que alimenta). */
+/** Consumo ACUMULADO de cada tramo: lo suyo más todo lo que alimenta aguas abajo (el tronco lleva la demanda de la red entera que cuelga de él). */
 export function acumuladosGas(
   tramos: GasTramoNeto[],
   padres: Map<string, string>,

@@ -7,8 +7,7 @@ import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoords';
 import { parseBajanteKey } from './diametros';
 import { devError } from '../../../../utils/devError';
 
-/** Escribe la pendiente (%) de un ramal ll al doc de trazos del piso + BD (y sync san —
- *  'll' ∈ SAN_FAMILIES). El caller valida el rango físico; aquí solo persistencia dual. */
+/** Doc de dibujo local (ramales + bajantes con ts) para los writes de este módulo. */
 interface LocalDrawingData {
   ts?: number;
   ramales?: RawElement[];
@@ -16,6 +15,7 @@ interface LocalDrawingData {
   [key: string]: unknown;
 }
 
+/** Escribe pendiente (%) de un ramal ll (Lluvias) al doc + BD (el caller valida el rango). */
 export function writePendienteToDrawing(
   ramalKey: string,
   net: string,
@@ -103,9 +103,7 @@ export function writeNSalidasToDrawing(
   if (isHydro) writeHydroDrawingSync(plans);
 }
 
-/** Escribe dims de un CANAL (base/altura/longitud/pendiente) al doc de su piso + BD, con
- *  normalizarCanal (base-corta) en el mismo write — la tabla de chequeo escribe por aquí
- *  (ítem 7 usuario: manda el dibujo). Un solo load+save por plano + sync san (ll ∈ san). */
+/** Escribe dims del canal ll (Lluvias) al doc + BD (con normalizarCanal en el mismo write). */
 export function writeCanalDimsToDrawing(
   drawId: string,
   planId: string | number,

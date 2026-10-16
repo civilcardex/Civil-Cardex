@@ -62,20 +62,14 @@ export interface AssocEndpoint {
   net: string;
   dNominal: string;
   code: string;
-  /** plan.nivel — el índice ordinal del piso, usado para etiquetas de piso y comparación de elevación. */
+  /** plan.nivel: el número ordinal del piso (0 = suelo, 1 = primer piso…), usado para las etiquetas y para saber qué piso queda arriba de cuál. */
   nivelN: number;
   npt: number;
-  /** Tipo del elemento (bajante/montante) — los montantes siempre fluyen 'sube', la asociación
-   *  no les debe estampar la dirección calculada de bajantes. Opcional: los callers viejos no
-   *  lo pasan y se asume bajante. */
+  /** Tipo del elemento (los montantes siempre apuntan 'sube'; los bajantes no calculan dirección). */
   tipo?: string;
 }
 
-/** ¿Los dos extremos de asociación caen en el MISMO punto físico? Compara origen-relativo
- *  (px − origen de calibración de cada lámina; misma resta que la isometría) con tolerancia
- *  0.5 plane-px. Unidades: px de lámina. Con origen en UNA sola lámina (o en ninguna) cae al
- *  crudo legacy (hojas asumidas alineadas) — deliberado: datos viejos sin calibrar no deben
- *  romper asociaciones existentes. */
+/** ¿Dos extremos caen en el MISMO punto del edificio? Se compara restando el origen de calibración de cada lámina (si no, hojas corridas darían falsos positivos); tolerancia 0.5 px de plano. */
 export function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   // Alineación FÍSICA (misma regla 0.5 px): px crudos de láminas distintas NO significan el
   // mismo punto del edificio cuando las hojas están corridas — se compara origen-relativo
@@ -90,8 +84,7 @@ export function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   return Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
 }
 
-/** Variante exportada de isAligned (mismo contrato): puentebote para consumers fuera del
- *  módulo que necesitan testear alineación sin duplicar la resta origen-relativa. */
+/** Igual que isAligned pero exportada para pruebas (misma comparación origen-relativa, sin duplicarla). */
 export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   return isAligned(a, b);
 }
@@ -142,7 +135,7 @@ export function flowHeadOf(r: InheritPoolRamal): number[] | null {
   return r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
 }
 
-/** Cierre transitivo de ramales que drenan a un bajante (solo ids, sin conteos). */
+/** Todos los ramales que terminan drenando en este bajante, siguiendo la cadena completa (tributarios, uniones y mergesFrom incluidos) — solo sus ids, sin conteos. */
 export function upstreamRamalIdsForBajante(args: {
   net: string;
   bajId: string;
@@ -219,7 +212,7 @@ export function upstreamRamalIdsForBajante(args: {
   return out;
 }
 
-/** Agregado heredable de un bajante: el mismo cierre para asociar y para el vivo. */
+/** Todo lo que un bajante "se trae" de aguas arriba (su clave + ramales conectados + tributarios + splits): ÚNICA fuente, la usan igual la asociación entre pisos y el panel en vivo. */
 export function collectSourceAgg(args: {
   net: string;
   planId: string;
@@ -274,7 +267,7 @@ export function collectSourceAgg(args: {
   return { agg, hydroAgg, ramalIds };
 }
 
-/** Punteros de asociación de un bajante (vivo primero, storage después). */
+/** Con qué bajantes de OTROS pisos está enlazado este (descargaEnId/origenId): primero se mira el motor vivo, y si ese piso no está abierto, lo guardado. */
 export function readBajanteLink(
   eng: IPlanoEngineCore,
   planId: string,
@@ -356,12 +349,7 @@ export function resolveLinkRoles(
 // Scope EXACTO por enlace (roles upper/lower): los barridos amplios por id borraban el LD, el
 // anillo y las claves de OTRO enlace cruzado que comparte id de bajante en otro piso
 // (BAN1-P1↔BAN2-P2 + BAN1-P2↔BAN2-P1: LD_BAN1 vive en el piso 1 para el segundo enlace).
-/** Marca de desasociación (auditoría ronda 8 F-2): al desasociar se estampa `asocsClearedTs`
- *  en el doc de trazos de AMBOS pisos. La restauración anti-loss (restaurarAsociacionesDesdeLocal)
- *  solo fusiona piezas de cachés con `ts >= asocsClearedTs` — la caché vieja de un TERCER
- *  dispositivo deja de resucitar LD_/anillos/ghosts que la desasociación legítima borró en
- *  origen+BD. Sin marca (nunca se desasoció): la restauración corre — blind-spot layout-2
- *  (BD sin artefactos por guardado fallido) sigue cubierto. */
+/** Deja constancia en AMBOS pisos de que se desasoció (así una cop vieja guardada en el navegador no "resucita" el LD_ (ramal desvio entrepisos) que se acaba de borrar). */
 export function estamparAsocsClearedTs(planIds: string[]): void {
   const ts = Date.now();
   for (const pid of planIds) {

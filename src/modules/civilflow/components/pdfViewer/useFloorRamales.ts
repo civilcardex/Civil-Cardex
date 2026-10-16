@@ -39,9 +39,8 @@ const isRiser = (b: PlanoBajante) =>
   b.tipo !== 'canal' &&
   !esCaja(b);
 
-/** Asociaciones entre pisos del bajante/montante seleccionado: el ÚNICO piso
- *  inmediatamente inferior (selector Destino) y el piso inmediatamente superior
- *  (selector Origen), leyendo del motor vivo, localStorage y BD con fallback por piso. */
+/** Asociaciones entre pisos del bajante/montante seleccionado: el ÚNICO piso inmediatamente inferior (selector Destino) y el piso inmediatamente superior
+ * (selector Origen), leyendo del motor vivo, localStorage y BD con fallback por piso. */
 export function useFloorRamales({
   selElement,
   selectedNivel,

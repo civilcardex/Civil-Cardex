@@ -10,7 +10,8 @@ import {
 
 const HIDRO_VACIA = { accesorios: {}, Lh: 0, nSalidas: 0 };
 
-/** Σ/−1 de un accesorio hidráulico sobre el mapa (pura — pinnable con store real). */
+/** Suma o resta 1 a un accesorio hidráulico (codos, tees) sobre el mapa (función pura:
+ *  se prueba con un store de mentiras). */
 export function mutarHidroAcc(
   map: HidroDataMap,
   storageKey: string,
@@ -29,7 +30,8 @@ export function mutarHidroAcc(
   return { ...map, [storageKey]: { ...cur, accesorios: acc } };
 }
 
-/** Σ/−1 de un accesorio gas sobre el mapa (pura): la clave sin unidades SE BORRA. */
+/** Suma o resta 1 a un accesorio de gas (Gas) sobre el mapa (pura): si el accesorio
+ *  queda en cero, su clave se borra para no dejar basura. */
 export function mutarGasAcc(
   map: GasAccMap,
   gasTargetKey: string,
@@ -50,10 +52,9 @@ export function mutarGasAcc(
   return next;
 }
 
-/** Mutaciones de accesorios hidráulicos y gas del panel (rediseño FixturesPanel): disk-first
- *  con fallback al estado cuando el storage no está disponible. Los handlers incAcc/decAcc/
- *  incAccGas/decAccGas de FixturesPanel movidos aquí — la lógica pura vive en mutarHidroAcc/
- *  mutarGasAcc (pinnable con stores reales sin harness de React). */
+/** Suma/resta de accesorios hidráulicos y de gas (Gas) del panel: escribe primero en
+ *  disco (lo que sobrevive a la recarga) y usa el estado de React solo si el disco no
+ *  está disponible. */
 export function useFixtureAccMutations(args: {
   storageKey: string | null;
   gasTargetKey: string | null;

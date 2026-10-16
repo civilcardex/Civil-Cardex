@@ -1,6 +1,4 @@
-/** Choke point único del bus de fixtures: nombres + emit/subscribe con transporte DOM.
- *  Cero cambio de semántica (mismo evento, mismo timing, mismo detail) — el futuro swap a
- *  invalidate() explícito se hace solo aquí, sin tocar los ~25 consumidores. */
+/** Bus de fixtures (nombres + emit/subscribe DOM; el swap futuro se hace solo aquí). */
 // ponytail: el transporte sigue siendo DOM a propósito — EV_STORAGE es nativo del navegador y
 // rejillasGasodSync depende del timing/detail de EV_APARATOS_CLEAR; cambiar el transporte
 // cambiaría comportamiento. Este módulo centraliza los nombres para que el swap sea de 1 archivo.

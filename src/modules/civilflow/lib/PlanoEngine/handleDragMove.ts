@@ -14,16 +14,13 @@ import { puedeConectarRamalABajante } from './bajanteRules';
 import { bumpBajanteToMaxRamal, _calcPolyArea } from './drawingUtils';
 import { normalizarCanal, pxPerCmDe } from './canalAssociation';
 
-/**
- * Construye un índice por id de los ramales del motor. Los handlers de arrastre corren por frame
- * (cada movimiento de mouse) y hacían lookups O(n) repetidos por frame; con el índice los
- * lookups pasan a O(1) sin cambiar la semántica (mismo match por id, undefined si no existe).
- */
+/** Buscador rápido por id de tuberías (durante un arrastre se consulta muchas veces por cuadro;
+ *  recorrer la lista cada vez se sentía lento). */
 function indexRamales(engine: IPlanoEngineCore): Map<string, PlanoRamal> {
   return new Map(engine.ramales.map((r) => [r.id, r]));
 }
 
-/** Índice por id de los bajantes del motor — mismo propósito que indexRamales. */
+/** Buscador rápido por id de las tuberías verticales — misma idea que indexRamales. */
 function indexBajantes(engine: IPlanoEngineCore): Map<string, PlanoBajante> {
   return new Map(engine.bajantes.map((b) => [b.id, b]));
 }

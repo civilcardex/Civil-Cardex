@@ -46,6 +46,7 @@ export function _tryBajanteHit(
   let bestDist = Infinity;
   let bestIsGhost = false;
   for (const b of engine.bajantes) {
+    if (engine._hiddenNets.has(b.net)) continue;
     if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
     const lx = b.labelX ?? b.x;
     const ly = b.labelY ?? b.y + 20;
@@ -83,6 +84,7 @@ export function _tryBajanteHit(
       let symBest: { b: (typeof engine.bajantes)[0]; d: number } | null = null;
       for (const b of engine.bajantes) {
         if (b.tipo === 'canal') continue;
+        if (engine._hiddenNets.has(b.net)) continue;
         if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
         const circ = b._circ;
         if (!circ) continue;
@@ -156,6 +158,7 @@ export function _tryBajanteHit(
       }
       for (const b of engine.bajantes) {
         if (b.tipo !== 'canal') continue;
+        if (engine._hiddenNets.has(b.net)) continue;
         if (canalRectHitDistance(b, x, y, 4 * engine.zoom) === Infinity) continue;
         if (ensureActiveNet(engine, b.net)) return true;
         if (b.id !== sel?.id) {

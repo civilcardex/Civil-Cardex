@@ -65,6 +65,13 @@ export function MidRamalAccessorySelector({
   );
   if (options.length === 0) return null;
 
+  // Clic sobre un EXTREMO (orig. usuario): el punto coincide con una punta del trazo — el
+  // menú de extremo ofrece SOLO aparatos; el accesorio de cuerpo (y su vértice accMed) es
+  // de clics a mitad del trazo.
+  const clicEnExtremo =
+    element.pts?.some((pt) => Math.hypot(pt[0] - midRamalHit.x, pt[1] - midRamalHit.y) < 0.5) ??
+    false;
+
   // Si ya existe un vértice accMed (casi) exactamente en el punto clicado, se edita ese
   // en lugar de insertar un vértice nuevo.
   const accMed = element.accMed || {};
@@ -82,7 +89,7 @@ export function MidRamalAccessorySelector({
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-      {element.net !== 'san' && (
+      {element.net !== 'san' && !clicEnExtremo && (
         <>
           <div style={MENU_SECTION_LABEL_ROW_STYLE}>Accesorio en cuerpo del ramal</div>
           <select

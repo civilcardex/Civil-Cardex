@@ -36,13 +36,7 @@ export function buildSyncData(
     : buildNonPrefixedSyncData(plans, families);
 }
 
-/**
- * Construye y persiste los datos de sync de dibujo hidráulico (af/ac) a partir de los datos de
- * trazo del plano. Corre la recolección de basura de claves aparato/hydro/gas huérfanas antes
- * de sincronizar.
- * @param plans - Array de descriptores de plano.
- * @returns El SyncDataResult construido o null ante error.
- */
+/** Sync hidro af (Agua Fria)/ac (Agua Caliente) a storage (con GC de huérfanas antes). */
 export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
   try {
     const data = buildSyncData(plans, HYDRO_FAMILIES, 'h', HYDRO_SYNC_KEY);
@@ -55,10 +49,7 @@ export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
   }
 }
 
-/**
- * Lee los datos de sync de dibujo hidráulico (af/ac) persistidos de localStorage.
- * @returns Datos de sync con planes, aparatosByTramo, hidroData, updatedAt.
- */
+/** Lee el sync hidro af (Agua Fria)/ac (Agua Caliente) persistido. */
 export function readHydroDrawingSync() {
   return loadFromStorage(HYDRO_SYNC_KEY, {
     planes: {},
@@ -73,13 +64,7 @@ export function readHydroDrawingSync() {
   };
 }
 
-/**
- * Construye y persiste los datos de sync de dibujo sanitario (san/ll/vent) a partir de los datos
- * de trazo del plano. Corre la recolección de basura de claves aparato/hydro/gas huérfanas antes
- * de sincronizar.
- * @param plans - Array de descriptores de plano.
- * @returns El SyncDataResult construido o null ante error.
- */
+/** Sync sanitario san (Sanitaria)/ll (Lluvias)/vent (Ventilacion) a storage (con GC antes). */
 export function writeSanDrawingSync(plans: SyncPlanInput[]) {
   try {
     const data = buildSyncData(plans, SAN_FAMILIES, '', SAN_SYNC_KEY);
@@ -92,10 +77,7 @@ export function writeSanDrawingSync(plans: SyncPlanInput[]) {
   }
 }
 
-/**
- * Lee los datos de sync de dibujo sanitario (san/ll/vent) persistidos de localStorage.
- * @returns Datos de sync con planes, aparatosByTramo, updatedAt.
- */
+/** Lee el sync sanitario san (Sanitaria)/ll (Lluvias)/vent (Ventilacion) persistido. */
 export function readSanDrawingSync() {
   return loadFromStorage(SAN_SYNC_KEY, { planes: {}, aparatosByTramo: {}, updatedAt: 0 }) as {
     planes: Record<string, unknown>;

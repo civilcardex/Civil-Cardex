@@ -1,8 +1,8 @@
 import type { IPlanoEngineCore } from './PlanoState';
 
-/** Rectángulo orientado del canal en px de plano: origen + dims locales + ángulo. El eje
- *  local X es SIEMPRE el lado largo (longitud); el Y, el corto (base). Con angulo 0 es el
- *  AABB de siempre. */
+/** Caja inclinada de un canal recolector de lluvias (ll): dónde arranca, cuánto mide de largo
+ *  (longitud) y de ancho (base), en pixels de plano, y su inclinación. Sirve para responder
+ *  "¿este punto cae dentro del canal?" aunque el canal esté torcido. */
 export interface CanalOBB {
   x: number;
   y: number;
@@ -11,10 +11,9 @@ export interface CanalOBB {
   angRad: number;
 }
 
-/** Marco efectivo del canal: con `angulo` lo respeta; sin él (legacy) reconstruye el
- *  marco desde `_canalFlowDir` (izquierda→180, arriba→-90, abajo→90, resto→0) o, sin
- *  flowDir, desde la forma (base>longitud→90). En todos los casos el rectángulo mundo es
- *  el AABB clásico. Una sola verdad para motor y tablas. */
+/** Calcula la caja (OBB) de un canal a partir de sus datos: si ya guarda ángulo lo respeta; si es
+ *  de una versión vieja, lo reconstruye. Es LA medida única que usan motor y tablas de lluvias
+ *  (si cada uno calculara distinto, el mismo canal daría resultados distintos). */
 export function canalMarco(
   pxPerCm: number,
   c: {
@@ -48,7 +47,9 @@ export function canalOBBDe(
   return canalMarco(pxPerCm, c);
 }
 
-/** Lleva un punto mundo al marco local del canal (origen + rotación inversa). */
+/** Pasa un punto del plano al "mundo del canal": como si el canal fuera horizontal desde su
+ *  origen, midiendo a lo largo (lx) y a lo ancho (ly). Es la base de todos los tests de
+ *  dentro/fuera. */
 export function canalToLocal(obb: CanalOBB, px: number, py: number): { lx: number; ly: number } {
   const dx = px - obb.x;
   const dy = py - obb.y;
@@ -57,14 +58,16 @@ export function canalToLocal(obb: CanalOBB, px: number, py: number): { lx: numbe
   return { lx: dx * c + dy * s, ly: -dx * s + dy * c };
 }
 
-/** Lleva un punto del marco local al mundo (origen + rotación). */
+/** Devuelve al plano real un punto que estaba en el "mundo del canal" (la inversa de
+ *  canalToLocal). */
 export function canalToWorld(obb: CanalOBB, lx: number, ly: number): { x: number; y: number } {
   const c = Math.cos(obb.angRad);
   const s = Math.sin(obb.angRad);
   return { x: obb.x + lx * c - ly * s, y: obb.y + lx * s + ly * c };
 }
 
-/** ¿El punto mundo cae dentro del OBB (pad en px de plano)? */
+/** ¿Este punto cae dentro del canal (con un margen pad, en pixels de plano)? Es lo que decide si
+ *  un ramal de lluvias toca el canal. */
 export function puntoEnCanalOBB(obb: CanalOBB, px: number, py: number, pad = 0): boolean {
   const { lx, ly } = canalToLocal(obb, px, py);
   return lx >= -pad && lx <= obb.w + pad && ly >= -pad && ly <= obb.h + pad;
@@ -78,7 +81,7 @@ export function distPuntoACanalOBB(obb: CanalOBB, px: number, py: number): numbe
   return Math.hypot(dx, dy);
 }
 
-/** Las 4 esquinas mundo del OBB, en orden (0,0)-(w,0)-(w,h)-(0,h) del marco local. */
+/** Las 4 esquinas del canal llevadas al plano real (para dibujarlo o hacerle hit-test). */
 export function esquinasCanalOBB(obb: CanalOBB): Array<{ x: number; y: number }> {
   return [
     canalToWorld(obb, 0, 0),
@@ -103,18 +106,16 @@ export function canalOBBEngine(
   return canalMarco(engine.cmToPlanePx(1), canal);
 }
 
-/** px de plano por cm según el engine — única fuente, derivada de cmToPlanePx (sin el
- *  toFixed de pxToM, que a 1 px redondeaba y desviaba ~1.8%: el re-ancla de normalizarCanal
- *  quedaba descuadrado respecto del render). Falla fuerte si la escala no es positiva. */
+/** Cuántos pixels de plano mide 1 cm real (sale de la escala scaleM del proyecto). Lanza error si
+ *  la escala es inválida: sin este número todo el módulo de canales mediría cualquier cosa. */
 export function pxPerCmDe(engine: { cmToPlanePx(cm: number): number }): number {
   const v = engine.cmToPlanePx(1);
   if (!(v > 0)) throw new Error('escala_invalida');
   return v;
 }
 
-/** Normaliza base=LADO CORTO y longitud=LADO LARGO (ítem 5 usuario). Si el marco queda
- *  con h>w, rota -90° y re-ancla el origen (o' = o + R·(0,h)) para que el rectángulo
- *  mundo NO se mueva. Devuelve true si tocó algo. */
+/** Deja el ancho (base) siempre en el lado CORTO y el largo en el lado largo: si el canal quedó
+ *  "atravesado" (más ancho que largo), lo gira -90° para que las fórmulas de lluvias cuadren. */
 export function normalizarCanal(
   pxPerCm: number,
   c: { x: number; y: number; longitud?: number; base?: number; angulo?: number },
@@ -145,14 +146,16 @@ export function norm180(deg: number): number {
   return m - 180;
 }
 
-/** Fase 1 del canal (el 2º clic fija el eje): longitud/ángulo del eje + extremo ya ajustado. */
+/** Un canal se dibuja en 3 clics: 1º el origen, 2º marca el eje (largo y dirección), 3º el ancho.
+ *  Esto es lo que queda de la fase 1 (el largo en cm y el ángulo del eje). */
 export interface TrazoCanalEje {
   longitudCm: number;
   angulo: number;
   p2: { x: number; y: number };
 }
 
-/** Geometría de un canal desde 2 puntos del plano. */
+/** Traduce los 2 primeros clics del canal a largo (cm) y ángulo, con imán a horizontal/vertical si
+ *  el usuario traza cerca (±15°): así los canales quedan rectos aunque el pulso tiemble. */
 export function geometriaCanalDesdePuntos(
   s: { x: number; y: number },
   p: { x: number; y: number },
@@ -186,7 +189,8 @@ export function geometriaCanalDesdePuntos(
   return { longitudCm, angulo: norm180(axDeg), p2 };
 }
 
-/** Geometría del canal comprometida (fase de ancho, 3er clic). */
+/** El canal completo, ya con su ancho (3er clic): origen, ancho, largo, ángulo y hacia dónde
+ *  fluye el agua (para la flechita). */
 export interface TrazoCanal {
   x: number;
   y: number;
@@ -237,10 +241,12 @@ export function geometriaCanalAncho(
   };
 }
 
-/** Ancho mínimo útil del canal en cm. */
+/** Un canal más angosto que 20 cm no es realista: se rechaza el trazo. */
 export const CANAL_ANCHO_MIN_CM = 20;
 
-/** Guardarraíl del ancho compartido por ghost y commit. */
+/** Si el 3er clic cae casi sobre el eje (menos de 20 cm y menos de 6 px), empuja el ancho al
+ *  mínimo. La vista previa y el canal final usan LA MISMA regla, así que lo que se ve al dibujar
+ *  es exactamente lo que queda. */
 export function puntoAnchoMinimo(
   eje: { x1: number; y1: number; x2: number; y2: number },
   p: { x: number; y: number },
@@ -263,7 +269,8 @@ export function puntoAnchoMinimo(
   return { x: fx + nx * minPx, y: fy + ny * minPx };
 }
 
-/** Sanado de carga para canales legacy. */
+/** Arregla al cargar los canales guardados por versiones viejas (sin ángulo): deduce el ángulo
+ *  real y reordena ancho/largo para que el rectángulo mire hacia donde debe. */
 export function sanearCanalLegacy(
   pxPerCm: number,
   c: {
@@ -306,7 +313,9 @@ export function sanearCanalLegacy(
   return true;
 }
 
-/** Re-deriva `esCanalId` faltante. */
+/** Si un ramal de lluvias (ll) toca la boca de un canal pero perdió su marca esCanalId, la
+ *  reconstruye: así sigue contándose como ramal de canal y no como uno más de diseño.
+ *  @returns cuántos ramales se repararon. */
 export function sanearEsCanalIdFaltante(
   pxPerCm: number,
   ramales: Array<{

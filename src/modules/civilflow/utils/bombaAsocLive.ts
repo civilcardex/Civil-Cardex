@@ -16,11 +16,7 @@ export interface AsocLiveBaj {
   ucAplicado?: Record<string, Record<string, number>>;
 }
 
-/** FUENTE ÚNICA de verdad para el panel del bajante ASOCIADO (orig. usuario: original/fantasma/
- *  Ldesvio/salida deben mostrar SIEMPRE las UD del grupo — 12, no 16). Orden: (1) enlace a
- *  bomba → mapUdBombaDesdeTrazos; (2) libro `ucAplicado`; (3) árbol REAL del bajante origen vía
- *  collectSourceAgg sobre el trazos del piso origen. null = el elemento no es asociado (el
- *  caller cae a su ruta normal). */
+/** Panel del bajante asociado: devuelve sus UD (Unidades de Desague) reales (bomba → libro → árbol origen). */
 export function aggBajanteAsociado(opts: {
   targetId: string;
   netId: string;

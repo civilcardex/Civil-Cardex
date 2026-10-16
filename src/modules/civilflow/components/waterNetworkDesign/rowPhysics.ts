@@ -5,12 +5,13 @@ import { calcLeAcces } from '../../utils/fittingsUtils';
 // Fórmula de Hunter (caudal probable): K depende del número de descargas y el caudal es
 // K·f(UC totales), con el cambio de fórmula en 240 UC. Misma operación (y mismos redondeos)
 // que se aplicaba inline en la tabla, el efecto de memoria y el de velocidad.
-/** Coeficiente K de la fórmula de Hunter según el número de descargas simultáneas. */
+/** Coeficiente K de la fórmula de Hunter (metodo de probabilidad de uso simultaneo) según el número de descargas simultáneas. */
 export function hunterK(nDesc: number): number {
   return nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
 }
 
-/** Caudal probable de Hunter (L/s aprox.): K·f(UC totales), con cambio de fórmula a partir de 240 UC. */
+/** Caudal probable de Hunter (metodo de probabilidad de uso simultaneo) (L/s aprox.): K·f(UC (Unidades de Consumo) totales), con
+ * cambio de fórmula a partir de 240 UC (Unidades de Consumo). */
 export function hunterQ(total: number, nDesc: number): number {
   const K = hunterK(nDesc);
   return total > 0 && K > 0
@@ -35,9 +36,8 @@ export interface DesignRowCalcParams {
 // diámetro original dibujado → diámetro diseñado), velocidad, longitudes (horizontal + vertical
 // + equivalente de accesorios) y pérdida por fricción Hazen-Williams. Es la única copia del
 // cálculo: la usan la tabla, el guardado de memoria y los checkpoints de velocidad.
-/** Física de una fila de la tabla de diseño: diámetro efectivo (override manual → original
- *  dibujado → diseñado), velocidad, longitudes y pérdida por fricción Hazen-Williams. Es la
- *  única copia del cálculo: la usan la tabla, la memoria y los checkpoints de velocidad. */
+/** Física de una fila de la tabla de diseño: diámetro efectivo (override manual → original dibujado → diseñado), velocidad, longitudes y pérdida por fricción Hazen-Williams.
+ * Es la única copia del cálculo: la usan la tabla, la memoria y los checkpoints de velocidad. */
 export function computeDesignRow(t: Tramo, p: DesignRowCalcParams) {
   const ownKey = t._key || t.id;
   const disPulg = t.diamDisPulg || 0;

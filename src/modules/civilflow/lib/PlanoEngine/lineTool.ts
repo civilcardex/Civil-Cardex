@@ -35,8 +35,7 @@ function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
 }
 
-/** Fija la herramienta de dibujo activa, terminando primero el ramal/área en curso si se cambia.
- *  @param engine Instancia del motor. @param t Identificador de herramienta. */
+/** Cambia la herramienta activa (si había una tubería o un área a medias, se cierran solos). */
 export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   if (engine.activeRamal && engine.activeRamal.pts.length >= 2 && t !== 'line') finishRamal(engine);
   else if (engine.activeRamal && t !== 'line') cancelRamal(engine);
@@ -54,9 +53,8 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   engine._emitStatus(_statusMsg(engine));
 }
 
-/** Maneja un clic con la herramienta de línea activa: empieza un ramal nuevo, continúa uno
- *  existente o agrega un segmento con validación de ángulo/intersección. @param engine Instancia
- *  del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Cada clic agrega un tramo más a la tubería que estás dibujando, rechazando ángulos que la red
+ *  no permita (tolerancia 0.5°). */
 export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (!engine.activeRamal) {

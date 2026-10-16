@@ -10,11 +10,8 @@ import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../../context/PlansContext';
 import { MENU_CHECK_ROW_STYLE, MENU_SECTION_LABEL_ROW_STYLE } from './context';
 
-/** Lista de checkboxes "Asociar bajantes del piso superior" DESDE LA BOMBA (orig. usuario):
- *  bajantes de la red de la bomba en el piso inmediatamente superior; marcado = ese bajante
- *  tiene bombaEnId apuntando aquí. Toggle → asociarBomba/quitarBomba con el MISMO aviso de
- *  desalineación de la asociación entre pisos. Compartida entre el menú contextual y el panel
- *  derecho de la bomba. */
+/** Lista de checkboxes "Asociar bajantes del piso superior" DESDE LA BOMBA (orig. usuario): bajantes de la red de la bomba en el piso
+ * inmediatamente superior; marcado = ese bajante tiene bombaEnId apuntando aquí. */
 export function BombaAsociarBajantesSection({
   engineRef,
   plans,

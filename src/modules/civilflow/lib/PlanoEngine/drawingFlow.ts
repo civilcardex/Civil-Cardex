@@ -158,10 +158,8 @@ export function sanReceptorDiametroPermitido(
   return { ok: true };
 }
 
-/** Invariante sanitario: el receptor no baja por debajo del mayor alimentador. La SUBIDA del
- *  alimentador por encima del receptor está permitida — se propaga automáticamente aguas
- *  abajo (propagarSanDiametroAguasAbajo) en vez de bloquearse (orig. usuario: no debe saltar
- *  alerta al cambiar el diámetro desde los tributarios que llegan). */
+/** Regla de diámetros en sanitarias: una tubería que RECIBE nunca puede quedar más angosta que
+ *  la más ancha que le entrega (si subiste una alimentadora, el receptor sube con ella). */
 export function sanDiametroPermitido(
   ramales: Parameters<typeof sanReceptorDiametroPermitido>[0],
   ramalId: string,
@@ -203,10 +201,8 @@ export function flipRamalFlow(ram: PlanoRamal): void {
 
 // ————— Helpers compartidos de dirección de flujo (ítems 2, 5, 12, 13) —————
 
-/** Vector de flujo (px, sin normalizar) del ramal en el punto dado — dirección del segmento
- *  más cercano al punto, con la convención de renderRamales.ts (fluye de pts[0] hacia el último
- *  punto, invertido si _tribReversed). @returns null si el punto cae fuera del ramal por más de
- *  tol. */
+/** ¿Este extremo ya está ocupado por otra tubería de la misma red (de punta a punta o apoyado
+ *  sobre su cuerpo)? Sirve para no enganchar dos trazos al mismo hueco. */
 export function ramalExtremoOcupado(
   ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   ramal: { id: string; net?: string },
@@ -231,9 +227,8 @@ export function ramalExtremoOcupado(
   return false;
 }
 
-/** ¿El extremo `epPt` del ramal está ENTRELAZADO con la red? — extremo/cuerpo de OTRO ramal del
- *  mismo net, o una bajante/montante del mismo net montada en ese punto (incluyendo la
- *  posición DESPLAZADA del bajante: el extremo del ramal se ancla donde el bajante se DIBUJA). */
+/** ¿La punta de la tubería quedó enganchada a otra tubería o a una tubería vertical de la misma
+ *  red? También cuenta si el elemento está desplazado de su piso (anillos entre pisos). */
 export function extremoEntrelazado(
   ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   bajantes: Array<{
@@ -257,13 +252,10 @@ export function extremoEntrelazado(
   return false;
 }
 
-/** ¿El ramal (af/ac/gas) tiene un aparato en un extremo INVÁLIDO? — extremo conectado a la red
- *  (T/Y/bajante NO fuente) o flujo en contra del extremo aparatado, salvo extremo en FUENTE
- *  (montante/red/contador/calentador/bomba: punto de suministro, orig. usuario — un trazo SÍ
- *  puede llegar a él y alojar aparato). Reutilizado por el bloqueo al asignar, el bloqueo al
- *  invertir dirección y el barrido de estados persistidos.
- *  @param lvl - label de nivel (engine.nivelActual?.label): resuelve desplazamientos[lvl] de
- *  las fuentes; sin él una fuente desplazada (anillo) no matchea y dispara falso inválido. */
+/** ¿El aparato (inodoro, lavamanos...) quedó en un extremo donde no puede estar? En af (Agua
+ *  Fría), ac (Agua Caliente) y gas (Gas) el aparato va donde TERMINA el flujo, no a mitad del
+ *  cuerpo ni del lado de entrada.
+ *  @param lvl etiqueta de nivel (P1, S1...) para resolver desplazados (anillos entre pisos). */
 export function aparatoEnExtremoInvalido(
   ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   bajantes: Array<{
@@ -301,11 +293,8 @@ export function aparatoEnExtremoInvalido(
   return bad(pts[0], r.aparatoInicio) || bad(pts[pts.length - 1], r.aparatoFin);
 }
 
-/** ¿La polaridad del codo de montante (sube/baja) es coherente con el flujo del ramal en P?
- *  El codo sube solo puede ENTREGAR flujo (el flujo SALE de P hacia el codo) y el codo baja
- *  solo puede RECIBIR (el flujo LLEGA a P desde el codo). En el cuerpo del ramal, donde el
- *  flujo solo pasa de largo, ninguno de los dos es válido. */
-
+/** Un codo que SUBE (codo90rmSube) solo puede estar donde el flujo ARRANCA (entrega); uno que
+ *  BAJA (codo90rmBaja) donde TERMINA (recibe). A mitad del cuerpo no vale ninguno. */
 import { flowEndsAt } from './flowChecks';
 export {
   flowVecAt,

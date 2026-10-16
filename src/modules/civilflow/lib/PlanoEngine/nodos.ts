@@ -2,10 +2,13 @@ import { devError } from '../../../../utils/devError';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 
-/** Chequeo global de redes de presión (docx "Lógica de sentido de flujo en nodos",
- *  fase 2): clasifica nodos (entradas/salidas), extremos (aparato/fuente/nodo/libre),
- *  ciclos y huérfanos. Se ejecuta en cada _markDirty para af/ac/gas/rci. */
+/** Revisión de las tuberías a presión (el agua empuja, no cae sola): af (Agua Fría), ac (Agua
+ *  Caliente), gas (Gas) y rci (Red Contra Incendio). Cada tramo debe tener por dónde le LLEGA
+ *  el agua y por dónde SALE; aquí se detecta lo que quedó mal conectado. */
 
+/** Qué hay en el extremo de un ramal: APARATO (llega a un inodoro, un lavamanos...), FUENTE
+ *  (medidor, calentador, equipo de presión), NODO (se une a otros ramales) o LIBRE (la punta no
+ *  conecta con nada). */
 export type ExtremoTipo = 'APARATO' | 'FUENTE' | 'NODO' | 'LIBRE';
 
 export interface Incidencia {
@@ -15,14 +18,16 @@ export interface Incidencia {
   msg: string;
 }
 
-/** Redes de presión sujetas al chequeo de nodos. */
+/** Las redes que se revisan con estas reglas (todas trabajan a presión). */
 export const REDES_PRESION = new Set(['af', 'ac', 'gas', 'rci']);
 
-/** Tipos de bajante que actúan como FUENTE (docx: medidor, calentador, tanque, equipo o
- *  llegada de montante — la llegada de montante a cada piso se trata como fuente). */
+/** Los elementos que hacen de "llegada del servicio" (fuente): el medidor, el calentador, el
+ *  equipo de presión o la bajada de un montante del piso de arriba. La red arranca en uno de
+ *  estos y sin ellos un extremo suelto es sospechoso. */
 export const FUENTE_TIPOS = new Set(['red_publica', 'contador', 'calentador', 'montante', 'bomba']);
 
-/** Prefijos de código de fuente (para ramales cuyo extremo lleva la sigla escrita). */
+/** A veces la fuente no es un elemento del plano sino una anotación en el extremo del ramal
+ *  (ini/fin = 'CNTAF-1', 'CALENT...'): estas siglas también delatan una fuente. */
 const FUENTE_PFX = ['RP', 'CNT', 'cntAF', 'CALENT', 'BOMAN'];
 
 function esFuenteCode(code: string | undefined): boolean {
@@ -41,7 +46,7 @@ function ramalesDe(engine: IPlanoEngineCore, net: string): PlanoRamal[] {
   return engine.ramales.filter((r) => r.net === net && r.pts && r.pts.length >= 2);
 }
 
-/** ¿Hay una FUENTE (bajante de tipo fuente o código fuente) en el punto? */
+/** ¿Toca este punto una fuente (medidor, calentador, montante, bomba)? Tol en pixels de plano. */
 export function fuenteEnPt(engine: IPlanoEngineCore, net: string, pt: number[], tol = 1): boolean {
   for (const b of engine.bajantes) {
     if (!FUENTE_TIPOS.has(b.tipo || '')) continue;
@@ -51,7 +56,9 @@ export function fuenteEnPt(engine: IPlanoEngineCore, net: string, pt: number[], 
   return false;
 }
 
-/** Entradas y salidas de flujo en un punto (docx: clasificar entran/salen). */
+/** Cuenta, en una unión, cuántos ramales ENTREGAN agua y cuántos se la llevan. Un ramal que solo
+ *  pasa de largo por el punto suma una entrada Y una salida. Respeta _tribReversed (ramal dibujado
+ *  al revés de su flujo real). */
 export function entradasSalidas(
   engine: IPlanoEngineCore,
   net: string,
@@ -94,7 +101,7 @@ export function entradasSalidas(
   return { ent, sal, total: ent + sal };
 }
 
-/** Clasifica el EXTREMO lejano de un ramal (docx: APARATO/FUENTE/NODO/LIBRE). */
+/** Clasifica el extremo de un ramal según lo que haya ahí (APARATO / FUENTE / NODO / LIBRE). */
 export function extremoLejanoTipo(
   engine: IPlanoEngineCore,
   ram: PlanoRamal,
@@ -130,7 +137,8 @@ export function extremoLejanoTipo(
   return 'LIBRE';
 }
 
-/** Puntos de unión y extremos de la red (clusters ≤ tol). */
+/** Junta en grupos los extremos de ramales que caen en el mismo sitio (≤ tol px): cada grupo es
+ *  una unión de la red (el "nodo" donde se juntan las tuberías). */
 function clustersDe(ramales: PlanoRamal[], tol = 0.5): { pt: number[]; ids: string[] }[] {
   const out: { pt: number[]; ids: string[] }[] = [];
   for (const r of ramales) {
@@ -143,7 +151,9 @@ function clustersDe(ramales: PlanoRamal[], tol = 0.5): { pt: number[]; ids: stri
   return out;
 }
 
-/** Chequeo global de una red de presión. Devuelve incidencias (docx tabla de fase 2). */
+/** Revisa TODA una red a presión y devuelve la lista de problemas encontrados: tramos que SALEN
+ *  de un aparato (el agua debe entrar en él) y lazos cerrados que el usuario no declaró como
+ *  malla/recirculación. */
 export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): Incidencia[] {
   const ramales = ramalesDe(engine, net);
   const inc: Incidencia[] = [];
@@ -226,7 +236,8 @@ function ralesId(ramales: PlanoRamal[], i: number): string {
   return ramales[i]?.id || '';
 }
 
-/** Lee las redes declaradas (malla) de un plan. */
+/** Lee qué redes marcó el usuario como malla/recirculación en este piso (guarda en el
+ *  navegador, por plano). */
 export function cargarMallas(planId: string | number | null): Set<string> {
   try {
     const raw = localStorage.getItem(mallasKey(planId));
@@ -250,12 +261,8 @@ export function mallasKey(planId: string | number | null): string {
   return `civilflow_mallas_${planId ?? 'x'}`;
 }
 
-/** Valida el trazo NUEVO de una red de presión ANTES de dejarlo dibujado (finishRamal).
- *  Devuelve el motivo de rechazo o null si pasa. Verifica SOLO:
- *  1) sale-de-aparato: el flujo arranca en un aparato (debe entrar a él);
- *  2) ciclo: cierra un lazo y la red no tiene malla declarada.
- *  (entra-a-fuente retirada: un montante/fuente SÍ puede recibir un trazo.)
- *  El ramal DEBE estar ya agregado a engine.ramales (el caller lo retira si hay motivo). */
+/** Antes de dejar un trazo nuevo en el plano, lo rechaza si sale de un aparato o si cierra un
+ *  lazo sin declarar. Devuelve el motivo (null = el trazo es válido y se puede quedar). */
 export function validarTrazoPresion(engine: IPlanoEngineCore, ram: PlanoRamal): string | null {
   if (!REDES_PRESION.has(ram.net || '')) return null;
 

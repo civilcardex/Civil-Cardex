@@ -14,13 +14,13 @@ import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
 
 export type { Tramo, TramosState };
 
-/** API de gestión del estado de tramos — provee listas de tramos por red (san, af, ac, ll) y actualizadores de campo por red. */
+/** Guarda los tramos dibujados por red para que las tablas lean lo mismo. Ej: san (Sanitaria)/af (Agua Fria)/ac (Agua Caliente)/ll (Lluvias) + sus actualizadores. */
 interface TramosContextValue {
   tramosSan: Tramo[];
   tramosAf: Tramo[];
   tramosAc: Tramo[];
   tramosLl: Tramo[];
-  /** Recarga ambos grupos desde los blobs de sync y resuelve tras el dispatch (gate global). */
+  /** Recarga las dos listas desde lo guardado y avisa cuándo terminó (la pantalla de carga lo espera). */
   recargar: () => Promise<void>;
   updTramoSan: (id: string, field: string, val: string | number | boolean) => void;
   updTramoAf: (id: string, field: string, val: string | number | boolean) => void;
@@ -30,7 +30,7 @@ interface TramosContextValue {
 
 const TramosContext = createContext<TramosContextValue | null>(null);
 
-/** Envuelve a los hijos con estado de tramos basado en useReducer, cargando tramos san/ll y af/ac desde localStorage al montar. Reacciona a los eventos `civilflow_*_sync_changed` y `storage` para recargar datos sucios. */
+/** Provee tramos (useReducer): carga local al montar y recarga ante eventos de sync/storage. */
 export function TramosProvider({ children }: { children?: ReactNode }) {
   const [state, dispatch] = useReducer(tramosReducer, {
     tramosSan: [],
@@ -148,8 +148,8 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
     };
   }, [cargarAfAc]);
 
-  /** Recarga ambos grupos desde los blobs de sync: la llama el gate global tras el prefetch
-   *  de trazos. El dispatch de useReducer aplica sincrónico — la promesa simplifica al hook. */
+  /** Recarga las dos listas desde lo guardado. La llama la pantalla de carga cuando ya
+   *  bajó todo de la nube; la promesa es solo para poder esperarla (el cambio es al instante). */
   const recargar = useCallback((): Promise<void> => {
     cargarSanLl();
     cargarAfAc();
@@ -207,7 +207,7 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
   return <TramosContext.Provider value={value}>{children}</TramosContext.Provider>;
 }
 
-/** Hook consumidor de TramosContext — devuelve {tramosSan, tramosAf, tramosAc, tramosLl, updTramoSan, updTramoAf, updTramoAc, updTramoLL}. Lanza error si se usa fuera de TramosProvider. */
+/** Lee los tramos por red. Falla fuera de TramosProvider. */
 export function useTramos() {
   const ctx = useContext(TramosContext);
   if (!ctx) throw new Error('useTramos must be used within TramosProvider');

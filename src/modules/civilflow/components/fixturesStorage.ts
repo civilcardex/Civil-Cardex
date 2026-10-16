@@ -140,11 +140,8 @@ export function stableStringify(m: unknown): string {
     return sorted;
   });
 }
-/** Reduce el libro de herencia cross-floor (`ucAplicado`) a UN mapa por aparato: el MÁXIMO de
- *  cada entrada. El libro guarda una entrada por clave destino (+ la del Ldesvio) y todas
- *  contienen el MISMO agregado aplicado — sumarlas mostraba 2×/3× la herencia (12 → 24). Es
- *  exactamente lo que muestra el panel del bajante asociado (rama A de currentMap) y lo que
- *  espeja la salida. Vacío si no hay libro. */
+/** Reduce el libro de herencia cross-floor (`ucAplicado`) a UN mapa por aparato: el MÁXIMO de cada entrada.
+ * El libro guarda una entrada por clave destino (+ la del Ldesvio (ramal desvio entrepisos)) y todas contienen el MISMO agregado aplicado — sumarlas mostraba 2×/3× la herencia (12 → 24). */
 export function libroHeredado(baj: {
   ucAplicado?: Record<string, Record<string, number>>;
 }): Record<string, number> {
@@ -154,10 +151,8 @@ export function libroHeredado(baj: {
   return out;
 }
 
-/** Valor a espejar en los ramales de SALIDA de un bajante: EXACTAMENTE lo que muestra su
- *  panel — libro de herencia si lo hay (bajante asociado entre pisos), si no el agregado
- *  del árbol. null = nada que copiar (vacío). Antes el espejo usaba solo el árbol y la
- *  salida quedaba en 0 con el bajante lleno por herencia (orig. usuario). */
+/** Valor a espejar en los ramales de SALIDA de un bajante: EXACTAMENTE lo que muestra su panel — libro de herencia si lo hay (bajante asociado entre
+ * pisos), si no el agregado del árbol. null = nada que copiar (vacío). */
 export function aggParaEspejoSalida(
   treeAgg: Record<string, number>,
   libro: Record<string, number>,
@@ -166,12 +161,8 @@ export function aggParaEspejoSalida(
   return Object.keys(agg).length ? { ...agg } : null;
 }
 
-/** Ids de los ramales que SALEN (nacen) del bajante/caja dado. Salida = extremo de nacimiento
- *  en el elemento y el otro extremo lejos, o referencia explícita (alimentaIds / r.ini = código).
- *  La referencia explícita manda: un ramal de salida con `_tribReversed` invertía la geometría
- *  cola/cabeza y dejaba de detectarse — el agregado del bajante volvía a caminar su subárbol y
- *  re-fusionaba las UDs en su propia clave de salida (crecían en cada pasada, orig. usuario:
- *  "la caja AN duplica las UDs del ramal de salida"). */
+/** Ids de los ramales que SALEN (nacen) del bajante/caja dado.
+ * La referencia explícita manda: un ramal de salida con `_tribReversed (flag de flujo invertido en tributario)` invertía la geometría cola/cabeza y dejaba de detectarse — el agregado del bajante volvía a caminar su subárbol y re-fusionaba las UDs (Unidades de Desague) en su propia clave de salida (crecían en cada pasada, orig. usuario: "la caja AN duplica las UDs (Unidades de Desague) del ramal de salida"). */
 export function idsSalidasDeBajante(
   baj: BajanteLikeSalida,
   ramales: RamalLikeSalida[],
@@ -219,9 +210,7 @@ export function salidasDeBajante(
   return idsSalidasDeBajante(baj, eng.ramales, eng.zoom || 1);
 }
 
-/** Espeja `next` sobre la clave (reemplazo, no fusión) y @returns si cambió — comparación
- *  JSON contra el valor en disco. Con deleteEmpty, un next vacío ELIMINA la clave (borrar UDs
- *  heredadas) en vez de dejar un espejo {} que reinsertaba basura vieja. */
+/** Espeja `next` sobre la clave (reemplazo, no fusión) y devuelve si cambió — comparación JSON contra el valor en disco. */
 export function syncMirrorKey(
   disk: Record<string, Record<string, number>>,
   key: string,
@@ -242,13 +231,13 @@ export function syncMirrorKey(
 
 import { leerHeredadosPresion } from '../utils/aparatosPresion';
 
-/** curHidro del panel: entrada de hidráulicos de la clave (o vacía) — antes memo inline. */
+/** Accesorios hidráulicos (codos, tees) guardados del tramo; entrada vacía si no tiene. */
 export function hidroDeClave(hidroData: HidroDataMap, storageKey: string | null): HidroDataEntry {
   if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
   return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
 }
 
-/** Σ unidades del tramo (Σ conteo × unidad del aparato) — antes memo `total` inline. */
+/** Total de UD (Unidades de Desague) del tramo: suma de cada aparato (cuántos hay × las UD que gasta cada uno). */
 export function totalDeUnidades(
   items: readonly { id: string; [campo: string]: unknown }[],
   currentMap: Record<string, number> | undefined,
@@ -264,9 +253,9 @@ export function totalDeUnidades(
   return s;
 }
 
-/** Unidades MANUALES propias de este tramo: carga de la clave MENOS el libro de herencia
- *  (auditoría #4 — antes sumaba la carga completa y un tramo con solo heredado bloqueaba su
- *  primer manual). El cap del ítem 6 aplica solo sobre lo propio. Antes memo `ownTotal`. */
+/** Unidades MANUALES propias de este tramo: la carga de la clave MENOS lo heredado por
+ *  propagación (antes se sumaba la carga completa y un tramo con solo heredado no
+ *  podía recibir su primer aparato manual). */
 export function ownTotalDe(counts: CountsMap, storageKey: string | null): number {
   if (!storageKey) return 0;
   const libro = leerHeredadosPresion(storageKey);
@@ -276,8 +265,7 @@ export function ownTotalDe(counts: CountsMap, storageKey: string | null): number
   );
 }
 
-/** ¿El aparato ya vive como manual propio (no solo heredado)? — antes inline `esPropio`
- *  en FixturesPanel y `esPropioDe` en el huérfano fixtureTotals.ts (dedup). */
+/** ¿El aparato lo asignó el usuario acá (y no es solo una copia heredada de la propagación)? */
 export function esPropioDe(counts: CountsMap, storageKey: string | null, apId: string): boolean {
   if (!storageKey) return false;
   const libro = leerHeredadosPresion(storageKey);

@@ -1,10 +1,8 @@
 import type { Point } from './planoCoords';
 
 export type { Point };
-/**
- * Cámara del motor CAD: zoom absoluto anclado a un punto del canvas (la MISMA matemática que
- * repetían doZoom / zoomStep / rueda / pinch — ahora un solo lugar). Clamp 0.05–6.
- */
+/** Acercar/alejar la vista SIN perder el punto donde está el mouse: la rueda, el pellizco y los
+ *  botones usan esta misma matemática (zoom entre 0.05 y 6). */
 
 export interface CamaraConRender {
   zoom: number;
@@ -13,13 +11,15 @@ export interface CamaraConRender {
   render(): void;
 }
 
-/** Aplica el zoom absoluto `nzRaw` (clampeado) manteniendo el punto (mx,my) del canvas fijo
- *  en pantalla. No-op si el zoom ya es igual tras el clamp. */
+/** Aplica el zoom anclado: si el motor puede agrupar renders, se pinta UNA sola vez por cuadro (en
+ *  vez de una por evento de rueda). */
 export function zoomAnclado(cam: CamaraConRender, nzRaw: number, mx: number, my: number): void {
   const nz = Math.max(0.05, Math.min(6, nzRaw));
   if (nz === cam.zoom) return;
   cam.offX = mx - (mx - cam.offX) * (nz / cam.zoom);
   cam.offY = my - (my - cam.offY) * (nz / cam.zoom);
   cam.zoom = nz;
-  cam.render();
+  const c = cam as CamaraConRender & { scheduleRender?: () => void };
+  if (typeof c.scheduleRender === 'function') c.scheduleRender();
+  else cam.render();
 }

@@ -15,8 +15,11 @@ import {
   MATERIALES_CUBIERTA_LL,
 } from '../../../constants/engineeringDataMaterials';
 import { sectorDe } from '../../../utils/formatUtils';
+import { LazyDecimalInput } from '../../shared/LazyDecimalInput';
+import { dec } from '../../../utils/parseDecimal';
 import { EV_STORAGE } from '../../../utils/fixtureEvents';
 
+/** Campo numérico del canal sobre LazyDecimalInput (misma edición perezosa + coma es-locale; 0 se muestra vacío). */
 function CanalNumField({
   label,
   value,
@@ -26,33 +29,13 @@ function CanalNumField({
   value: number;
   onCommit: (v: number) => void;
 }) {
-  const [text, setText] = useState('');
-  const [editing, setEditing] = useState(false);
-  const display = editing ? text : value > 0 ? String(value) : '';
   return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={display}
+    <LazyDecimalInput
+      value={value > 0 ? String(value) : ''}
+      onCommit={(s) => onCommit(dec(s))}
+      ariaLabel={label}
       placeholder="0"
-      aria-label={label}
-      onFocus={() => {
-        setEditing(true);
-        setText(display);
-      }}
-      onChange={(e) => {
-        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-        setText(raw);
-      }}
-      onKeyDown={(e) => {
-        // Enter commitea el cambio (mismo comportamiento que el resto de campos numéricos)
-        if (e.key === 'Enter') e.currentTarget.blur();
-      }}
-      onBlur={() => {
-        setEditing(false);
-        const v = parseFloat(text) || 0;
-        onCommit(text === '' ? 0 : v);
-      }}
+      commitOnEnter
       style={INPUT_CENTER_STYLE}
     />
   );

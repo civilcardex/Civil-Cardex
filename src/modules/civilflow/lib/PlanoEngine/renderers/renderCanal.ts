@@ -13,7 +13,8 @@ import {
   puntoAnchoMinimo,
 } from '../canalAssociation';
 
-/** Rectángulo del canal recolectora en planta, con las flechas de flujo hacia cada bajante asociado. */
+/** Pinta el canal recolectora visto desde arriba (su caja alargada) con una flechita por cada
+ *  bajante al que le entrega el agua. */
 export function renderCanalGlyph(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
@@ -221,7 +222,7 @@ export function renderCanalGlyph(
 // vista previa punteada que renderGuideGhost/renderDimGhost, más una lectura de dimensiones en
 // cm en vivo (también mostrada en la barra de estado vía _statusMsg) para que el usuario vea el
 // tamaño exacto antes de comprometer el segundo clic.
-/** Versión fantasma del canal mientras se dibuja o arrastra. */
+/** La vista previa punteada del canal mientras todavía lo estás dibujando o estirando. */
 export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (engine.tool !== 'canal') return;
   // Fase de ancho (diagonal, 3er clic): eje fijo + ancho vivo del cursor — WYSIWYG del commit.
@@ -308,9 +309,5 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.restore();
 }
 
-/**
- * Render principal de bajantes/montantes/contadores/calentadores/canales.
- * Dibuja símbolo, etiqueta con leader y hitbox; filtra por red oculta y estado ghost.
- * @param ctx - Contexto 2D del canvas.
- * @param engine - Motor con colecciones y escalas.
- */
+/** Dibuja las tuberías verticales y los canales (símbolo, etiqueta y zona de clic); las redes
+ *  ocultas no se pintan. */

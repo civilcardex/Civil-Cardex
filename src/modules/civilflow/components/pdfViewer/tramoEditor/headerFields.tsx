@@ -44,9 +44,8 @@ export function BajanteHeaderFields() {
   );
 }
 
-/** Sección del módulo Rejillas de ventilación (NTC 3631) para áreas de sector dibujadas con
- *  la pestaña Gas: la Etiqueta del área es el nombre del Sector y aquí se define su altura
- *  libre (m) — ambos alimentan las columnas Sector/Área/Alto de la tabla Tipologías. */
+/** Sección del módulo Rejillas de ventilación (NTC (Norma Tecnica Colombiana) 3631) para áreas de sector dibujadas con la pestaña Gas (Gas): la Etiqueta del área es el nombre del Sector y
+ * aquí se define su altura libre (m) — ambos alimentan las columnas Sector/Área/Alto de la tabla Tipologías. */
 export function RejillasSectorFields() {
   const { selElement: rawSelElement, engineRef } = useTramoEditorContext();
   if (!rawSelElement) return null;

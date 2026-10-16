@@ -35,9 +35,8 @@ type BajanteAIndexar = {
   ucAplicado?: Record<string, unknown>;
 };
 
-/** Validación de cierre del visor: alerta si hay ramales sin UC/UD, elementos sin diámetro o
- *  bajantes con diámetro menor al del ramal conectado. Devuelve true si el dibujo puede
- *  guardarse y cerrarse. */
+/** Validación de cierre del visor: alerta si hay ramales sin UC (Unidades de Consumo)/UD (Unidades de Desague), elementos sin diámetro
+ * o bajantes con diámetro menor al del ramal conectado. */
 export function validateBeforeClose(
   eng: PlanoEngine,
   planos: PlanItem[] | undefined,
@@ -93,7 +92,7 @@ export function validateBeforeClose(
     }
   };
   indexarBajantes(eng.bajantes);
-  /** @returns true si el tramo queda CUBIERTO (con carga o no evaluable) — false si se flaggeó. */
+  /** true = el tramo queda cubierto (tiene carga o no se puede evaluar); false = quedó marcado como pendiente. */
   const revisarRamal = (r: RevisarRamalInput, planFor: number | string | null): boolean => {
     if (!r.net || !r.id) return true;
     // Los tramos auto-creados por suma de flujo (mergesFrom, continuación de una
@@ -330,11 +329,7 @@ function leerTrazos(id: string | number): PlanTrazos | null {
   }
 }
 
-/** Revisión de diámetros de un conjunto de trazos: elementos sin diámetro y bajantes/montantes
- *  con diámetro inferior al del ramal conectado. Los Ldesvio (LD_) se excluyen de "sin
- *  diámetro": espejan el dNominal de su bajante y lo duplicarían en la alerta. Los ramales de
- *  canal (esCanalId) también: su diámetro espeja al bajante asociado — sin asociado aún no hay
- *  diámetro que revisar. */
+/** Revisión de diámetros de un conjunto de trazos: elementos sin diámetro y bajantes/montantes con diámetro inferior al del ramal conectado. */
 function revisarDiametros(ramales: DiamRamales, bajantes: DiamBajantes) {
   const sinDiam = [
     ...ramales

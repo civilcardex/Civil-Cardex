@@ -28,7 +28,7 @@ interface UdBaseGlobalRow {
   nombre: string;
   ud: number;
 }
-/** aparatos_catalogo_global usa `id` como PK (no client_id, como las tablas proyecto-scoped). */
+/** El catálogo global de aparatos se identifica con `id` (clave primaria, el número único de la fila); las tablas ligadas a un proyecto usan `client_id`. */
 interface CatalogoGlobalRow {
   id: string;
   s: string | null;
@@ -44,9 +44,11 @@ interface CatalogoGlobalRow {
   blk_ud: boolean;
 }
 
-/** Owner (user_id) del proyecto activo: en proyectos de empresa el catálogo de aparatos
- *  pertenece al dueño del proyecto, no al miembro que lo abre. null si no hay proyecto
- *  activo, la fila no es visible (RLS) o falla la consulta — el llamador cae a user.id. */
+/** Dueño (user_id) del proyecto activo: en proyectos de empresa el catálogo de aparatos
+ *  es del dueño, no del miembro que lo abre — así todos editan la misma lista. null si
+ *  no hay proyecto activo, la fila no es visible por las reglas de seguridad por fila
+ *  (RLS = Row Level Security, permisos de Postgres fila por fila) o falla la consulta —
+ *  el llamador cae a user.id. */
 async function ownerProyectoActivo(): Promise<string | null> {
   const pid = getActiveProyectoId();
   if (!pid) return null;
@@ -68,12 +70,7 @@ async function ownerProyectoActivo(): Promise<string | null> {
   }
 }
 
-/**
- * Carga el catálogo de aparatos del usuario: filas propias de aparatos_usuario si existen,
- * o el catálogo base (aparatos_catalogo_global) cuando el usuario aún no tiene filas.
- * udBase viene de aparatos_ud_base_global. Ante fallo devuelve null (el llamador mantiene
- * sus constantes/fallbacks locales).
- */
+/** Trae tu catálogo de aparatos (los tuyos si ya los guardaste, si no el base). Sin fila usa los valores de fábrica. Ej: UD (Unidades de Desague) base + tus aparatos. */
 export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null> {
   try {
     const {
@@ -182,12 +179,7 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
   }
 }
 
-/**
- * Persiste el snapshot completo del catálogo del usuario (borra-e-inserta por usuario vía RPC
- * SECURITY DEFINER, misma semántica de snapshot que saveProyectoCoreData). Fire-and-forget
- * desde la UI; el catálogo base se copia a filas propias en cuanto el usuario lo modifica. Ver
- * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- */
+/** Guarda tu catálogo entero de un golpe (borra e inserta). La UI lo llama sin esperar. Ej: editas un inodoro y queda en tus filas propias. */
 export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
   try {
     const {

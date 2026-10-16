@@ -9,17 +9,17 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 
-/** Bajante crudo leído del storage, con posición en planta para enlazar pisos. */
+/** Bajante (tubo vertical) tal cual está guardado, con su posición en el plano para poder enlazarlo entre pisos. */
 export type { BajanteRaw } from './drawingSyncTypes';
 
-/** Base de aparatos fusionada por tramo (conteos por código), entrada de las tablas sanitarias. */
+/** Lo que aporta cada tramo sanitario (sus aparatos con su UD (Unidades de Desague)) ya fusionado de todas sus claves; es la entrada de las tablas sanitarias. */
 export interface MergedApBase {
   id: string;
   nombre: string;
   ud: number;
 }
 
-/** Grafo de conectividad sanitario: vecinos por tramo, aparatos fusionados y trazos por plano. */
+/** Mapa de quién descarga en quién (con vecinos, aparatos por tramo y la geometría de cada piso) — la misma para la tabla en pantalla y para la memoria de cálculo. */
 export interface SanConnectivity {
   orientedConexiones: Record<string, string[]>;
   displayMap: Record<string, string[]>;
@@ -27,14 +27,7 @@ export interface SanConnectivity {
   fullChildrenMap: Record<string, string[]>;
 }
 
-/**
- * Construye el grafo de conectividad sanitaria (qué tramo descarga en cuál) para acumular totales UD.
- * Fuente única usada por tabla en pantalla y exportación de memorias — garantiza mismos números.
- * @param tramosSan - Tramos de red sanitaria ya mapeados.
- * @param plans - Planos confirmados con `nivel` para leer trazos crudos.
- * @param mergedBase - Bases de aparatos para resolver desempates de co-sumideros.
- * @returns Mapas orientados, de display y totales por componente.
- */
+/** Arma el "quién le tira a quién" de la red san (Sanitaria) para poder sumar las UD (Unidades de Desague) de cada tramo con todas las de sus tributarios. */
 export function buildSanConnectivity(
   tramosSan: Tramo[],
   plans: PlanItem[],

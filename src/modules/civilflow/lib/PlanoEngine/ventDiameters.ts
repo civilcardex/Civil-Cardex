@@ -12,7 +12,8 @@ import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { pointToSegmentDist } from './HitTester';
 import { sectorDe } from '../../utils/formatUtils';
 
-/** Validación de diámetros de ventilación al editar un elemento: bloquea los cambios que rompan los límites de la red vent. */
+/** Frena los cambios de diámetro en ventilación (vent) que se salgan de los límites de la norma
+ *  (tol 2.0 px): false = no se permite el cambio. */
 export function checkVentDiameterLimits(
   engine: IPlanoEngineCore,
   el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | PlanoDimension | PlanoGuideLine,
@@ -135,7 +136,8 @@ export function checkVentDiameterLimits(
 // Cuando un vent bajante cambia de dNominal, los demás vents que comparten el
 // mismo san bajante destino toman ese mismo diámetro. Esto garantiza estado
 // consistente: todos los vents de un mismo san tienen el mismo diámetro.
-/** Sincroniza el diámetro del bajante de ventilación con el ramal conectado según la dirección del flujo. */
+/** Todos los ventiladores de una misma tubería sanitaria deben tener el MISMO diámetro: cuando
+ *  cambia uno, los demás copian el nuevo (así el resumen no queda con medidas contradictorias). */
 export function syncVentBajanteDiameters(
   engine: IPlanoEngineCore,
   el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | PlanoDimension | PlanoGuideLine,

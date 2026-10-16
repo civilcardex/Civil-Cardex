@@ -27,8 +27,7 @@ export function renouardByType(counts: Record<string, number>) {
 // debe salir en las columnas "Por Altitud / Por Temperatura / Por Densidad Relativa".
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
-/** Factores de corrección por altitud, temperatura y densidad relativa (redondeados a
- *  2 decimales, como el Excel), junto con pAtm/DR numéricos para el resto de fórmulas. */
+/** Factores que corrigen el consumo de gas (Gas) por la altitud, la temperatura y la densidad del sitio; se redondean a 2 decimales igual que la hoja de cálculo. */
 export function factoresGas(datos: { patm: string; temp: string; densRel: string }) {
   const pAtm = Number(datos.patm) || 101.325;
   const T = Number(datos.temp) || 23;
@@ -42,8 +41,7 @@ export function factoresGas(datos: { patm: string; temp: string; densRel: string
   };
 }
 
-/** Q de diseño (celda AE del Excel): máximo entre el consumo corregido (redondeado a
- *  2 decimales tras aplicar los factores) y el piso de 2.7 m³/h. */
+/** Caudal de diseño del tramo de gas (m³/h): el consumo corregido por los factores, y nunca menos de 2.7 (el piso que exige la norma). */
 export function qDisenoGas(qRenouard: number, f: ReturnType<typeof factoresGas>): number {
   return Math.max(round2(qRenouard * f.fAlt * f.fTemp * f.fDens), 2.7);
 }

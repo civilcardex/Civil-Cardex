@@ -1,8 +1,5 @@
-/**
- * Persistencia del snapshot del engine (visor → caché local + BD). Núcleo compartido por el
- * autosave debounced (usePdfAutoSave.performSave) y el onDirty del engine — antes la secuencia
- * estaba duplicada en ambos lados y podía divergir (ts, LAST_TRAZOS_ID, sync a BD).
- */
+/** Persistencia del snapshot del engine (visor → caché local + BD).
+ * Núcleo compartido por el autosave debounced (usePdfAutoSave.performSave) y el onDirty del engine — antes la secuencia estaba duplicada en ambos lados y podía divergir (ts, LAST_TRAZOS_ID, sync a BD). */
 import { saveTrazosToDB, loadFromStorage, saveTrazosLocales } from '../../services/storageService';
 import { markPlanTrazosFresh } from '../../utils/drawingSync';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
@@ -88,9 +85,8 @@ export function persistTrazosSnapshot(
   }
 }
 
-/** ¿La clave de conteos `k` corresponde a un elemento borrado? Solo se tocan claves del piso
- *  cargado (isPlanKeyFor, filtro del caller): borrar RS4 en un piso no debe vaciar las UDs del
- *  mismo id en los demás. Tampoco se borra si un ramal renumerado ocupó ese id (RS2→RS1). */
+/** ¿La clave de conteos `k` corresponde a un elemento borrado?
+ * Solo se tocan claves del piso cargado (isPlanKeyFor, filtro del caller): borrar RS4 en un piso no debe vaciar las UDs (Unidades de Desague) del mismo id en los demás. */
 export function claveDeBorrado(k: string, ids: string[], currentIds: Set<string>): boolean {
   // splitCount resuelve el id compuesto (LD_BAN2) y el label de tributario (T1RS4) sin
   // casos especiales; el fallback cubre el legado sin sufijo numérico.

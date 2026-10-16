@@ -1,6 +1,7 @@
 import { memo, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { pisoLbl } from '../../constants';
+import { OPEN_TAB_KEY } from '../../constants/storage-keys';
 import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 const PdfCanvas_S1: React.CSSProperties = {
@@ -244,7 +245,7 @@ function PdfCanvas({
               <button
                 type="button"
                 onClick={() => {
-                  sessionStorage.setItem('openTab', 'planos');
+                  sessionStorage.setItem(OPEN_TAB_KEY, 'planos');
                   navigate('/civilflowareatrabajo');
                 }}
                 style={PdfCanvas_S4}
@@ -313,7 +314,7 @@ function PdfCanvas({
               <button
                 type="button"
                 onClick={() => {
-                  sessionStorage.setItem('openTab', 'planos');
+                  sessionStorage.setItem(OPEN_TAB_KEY, 'planos');
                   navigate('/civilflowareatrabajo');
                 }}
                 style={PdfCanvas_S8}

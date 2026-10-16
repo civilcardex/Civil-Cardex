@@ -82,16 +82,12 @@ interface HidroEntry {
   nSalidas?: number;
 }
 
-/**
- * Construye objetos de tramo para una familia dada (af/ac) a partir de los planos de dibujo,
- * los datos hidro y los conteos de aparatos. Auto-detecta conexiones de contador/calentador en
- * los extremos de ramal y genera ramales de relleno AC-01.
- * @param family - Familia de red: 'af' o 'ac'.
- * @param planes - Planos de dibujo claveados por `family_level`.
- * @param hidroData - Datos de accesorios hidro claveados por `family_elementId_planId`.
- * @param aparatos - Conteos de aparatos claveados por clave de aparatos.
- * @returns Array de objetos Tramo para la familia.
- */
+/** Convierte el dibujo en tramos de af (Agua Fria)/ac (Agua Caliente), detectando solo si hay contador o calentador en los extremos (lo demás lo calculan las tablas).
+ *  @param family - familia ('af' o 'ac').
+ *  @param planes - planos por `family_level`.
+ *  @param hidroData - accesorios hidro por clave.
+ *  @param aparatos - conteos por clave.
+ *  @returns tramos de la familia. */
 export function buildTramos(
   family: string,
   planes: Record<string, DrawingPlane>,
@@ -406,11 +402,7 @@ export function buildTramos(
   return incoming;
 }
 
-/**
- * Carga los tramos sanitarios y de aguas lluvias (san/ll) desde los datos de sync de dibujo.
- * Separa en arrays sanIncoming (saneamiento) y llIncoming (aguas lluvias).
- * @returns Objeto con arrays `sanIncoming` y `llIncoming` de objetos Tramo.
- */
+/** Lee los tramos de san (Sanitaria) y ll (Lluvias) del dibujo sincronizado (separa lo que descarga de lo que se junta). */
 export function loadSanLlTramos() {
   const sync = readSanDrawingSync();
   const planes = sync.planes as unknown as Record<string, DrawingPlane>;
@@ -560,11 +552,7 @@ export function loadSanLlTramos() {
   return { sanIncoming, llIncoming };
 }
 
-/**
- * Carga los tramos de agua fría (af) y agua caliente (ac) desde los datos de sync de dibujo
- * hidro. Delega en {@link buildTramos} para cada familia.
- * @returns Objeto con arrays `afIncoming` y `acIncoming` de objetos Tramo.
- */
+/** Lee los tramos de af (Agua Fria)/ac (Agua Caliente) con sus accesorios hidráulicos (usa buildTramos). */
 export function loadAfAcTramos() {
   const sync = readHydroDrawingSync();
   const planes = sync.planes as unknown as Record<string, DrawingPlane>;

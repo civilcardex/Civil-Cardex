@@ -18,7 +18,9 @@ export interface BombaData {
   bCam: string;
   lCam: string;
   npsh: string;
-  /** PVC-PR | Acero galvanizado | Acero al carbón — define C Hazen-Williams (Catálogo Maestro). */
+  /** Material de la tubería de impulsión: PVC-PR | Acero galvanizado | Acero al carbón.
+   *  De él sale el coeficiente de fricción C de Hazen-Williams (qué tan fácil resbala
+   *  el agua por el tubo), tomado del Catálogo Maestro. */
   tipoTuberia: string;
   /** Inputs POR BOMBA (mapa código→valores) para los cálculos horizontales. */
   bombas: Record<string, Record<string, string>>;
@@ -89,12 +91,7 @@ export async function loadBombaDatos(proyectoId: string): Promise<BombaData | nu
   }
 }
 
-/**
- * Upsert parcial de bomba_datos_proyecto vía RPC SECURITY DEFINER (1:1 con el proyecto, no
- * toca otras tablas). Lo usa BombaARDesign (debounced) como fuente de verdad; el snapshot de
- * 'civilflow_memoria_bomba_data' queda como caché en vivo para la memoria final. Ver
- * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- */
+/** Guarda lo de la bomba sumergible en la BD (una fila por proyecto). La página lo manda con retardo y la memoria lo relee vivo. Ej: altura y potencia. */
 export async function saveBombaDatos(proyectoId: string, b: BombaData): Promise<void> {
   try {
     const {

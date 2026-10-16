@@ -2,12 +2,8 @@ import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { geometriaCanalDesdePuntos, geometriaCanalAncho, norm180 } from './canalAssociation';
 
-/**
- * El texto de la barra de estado del visor según la herramienta activa — el mensaje que dice
- * qué está haciendo el usuario ahora mismo ("Ramal", "Cota", "Bajante", ...) y, mientras dibuja
- * una línea o un área, cuántos puntos lleva y su longitud. Vive en este archivo para que tanto
- * PlanoEngineDrawing como drawingCreations puedan usarlo sin importarse entre sí.
- */
+/** Lo que dice la barra de estado según la herramienta activa y lo que llevas dibujado: cuántos
+ *  puntos y cuántos metros lleva la tubería en curso (o el ancho del canal, etc.). */
 export function _statusMsg(engine: IPlanoEngineCore): string {
   const names: Record<string, string> = {
     sel: 'Seleccionar elemento',
@@ -56,13 +52,8 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
   return m;
 }
 
-/**
- * Mide la longitud real de un ramal en metros (lo que el usuario ve en la tabla de longitudes).
- *
- * Recorre todos los segmentos punto a punto y suma sus distancias. Si el trazo "retrocede"
- * sobre sí mismo (el usuario dibujó un tramo de ida y vuelta encima), esos segmentos repetidos
- * se ignoran para no contar dos veces la misma tubería.
- */
+/** Suma la longitud real en metros de un trazo, sin contar dos veces los pedazos que se solapan
+ *  (3 decimales). */
 export function calculateRamalLength(pts: number[][], engine: IPlanoEngineCore): number {
   let len = 0;
   const segments: Array<[number, number, number, number]> = [];

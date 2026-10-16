@@ -12,6 +12,7 @@ import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { perfilDe, rangoSanTxt, ftTxt } from '../constants/normasPais';
 import { useProyecto } from '../context/ProjectContext';
 import { fmt, sectorDe } from '../utils/formatUtils';
+import { dec } from '../utils/parseDecimal';
 import EmptyRow from './shared/EmptyRow';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 import { aplicarCambioDiametroSan } from './sanDiamChange';
@@ -658,7 +659,7 @@ export default function DisenosSanitarios() {
                                     editingPend[tKey] !== undefined
                                       ? editingPend[tKey]
                                       : e.target.value;
-                                  const v = parseFloat(String(raw).replace(/,/g, '.')) || 0;
+                                  const v = dec(String(raw));
                                   setEditingPend((prev) => {
                                     const n = { ...prev };
                                     delete n[tKey];

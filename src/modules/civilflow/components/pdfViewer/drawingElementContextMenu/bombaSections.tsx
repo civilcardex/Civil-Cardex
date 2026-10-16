@@ -18,8 +18,8 @@ import {
   MENU_CHECK_ROW_STYLE,
 } from './context';
 
-/** Sección BOMBA para cajas AN/LL: "Crear bomba" (una por caja) o, si ya existe,
- *  "Bomba asociada" con nomenclatura, nivel, caja de origen, UDs y bajante asociado. */
+/** Sección BOMBA para cajas AN/LL (Lluvias): "Crear bomba" (una por caja) o, si ya existe, "Bomba asociada" con nomenclatura, nivel, caja
+ * de origen, UDs (Unidades de Desague) y bajante asociado. */
 export function CajaBombaSection({
   ctx,
   caja,
@@ -99,10 +99,8 @@ export function CajaBombaSection({
   );
 }
 
-/** Sección "Asociar bomba del piso inferior": CHECKBOX con las bombas del piso
- *  inmediatamente inferior (orig. usuario) — marcada refleja la asociación vía `bombaEnId`;
- *  al marcar, el bajante recibe las MISMAS UDs de la bomba (herencia hacia arriba del efecto
- *  de FixturesPanel) y la dirección pasa a SUBE. */
+/** Sección "Asociar bomba del piso inferior": CHECKBOX con las bombas del piso inmediatamente inferior (orig. usuario) — marcada refleja la asociación vía `bombaEnId`; al marcar, el bajante recibe las
+ * MISMAS UDs (Unidades de Desague) de la bomba (herencia hacia arriba del efecto de FixturesPanel) y la dirección pasa a SUBE. */
 export function AsociarBombaSection({
   ctx,
   bajEl,

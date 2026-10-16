@@ -42,7 +42,7 @@ export interface PlanItem {
   calGlobal?: boolean | null;
   definedScale?: number | null;
 }
-/** API de gestión del estado de planos — lista de planos, estado de error y operaciones CRUD (add, remove, update, confirm, reset, restore). */
+/** Lista de planos (un plano = un piso con su PDF) + las acciones para manejarla: agregar, quitar, editar, confirmar, vaciar y restaurar. */
 interface PlansContextValue {
   plans: PlanItem[];
   error: string | null;
@@ -57,10 +57,7 @@ interface PlansContextValue {
   restoreDone: boolean;
   /** Restauración desde la nube terminada — hasta entonces un `plans` vacío puede ser transitorio. */
   cloudRestoreDone: boolean;
-  /** Suspende el efecto de guardado en la nube con debounce. Ver ProjectContext.pauseCloudSync
-   * — aplica el mismo razonamiento: quien resetea `plans` y luego lo restaura de forma
-   * asíncrona desde Supabase debe pausar primero o la lista vacía del reset se guarda
-   * (borrando cada fila de planos) antes de que corra la restauración. */
+  /** Pausa el guardado nube antes de reset+restaurar: sin pausa, el reset vacío se guarda y borra las filas. */
   pauseCloudSync: () => void;
   resumeCloudSync: () => void;
 }
@@ -82,7 +79,7 @@ function persistMeta(plans: (PlanItem | PlanMeta)[]) {
   }
 }
 
-/** Envuelve a los hijos con el estado de planos: restaura los PDFs desde IndexedDB al montar y persiste la metadata en localStorage + respaldo en la nube. Debouncea los guardados en la nube (1200ms) una vez terminada la restauración. */
+/** Provee planos: restaura PDFs de IndexedDB al montar; persiste meta local + nube (debounce 1200ms). */
 export function PlansProvider({ children }: { children?: ReactNode }) {
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -449,7 +446,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   return <PlansContext.Provider value={value}>{children}</PlansContext.Provider>;
 }
 
-/** Hook consumidor de PlansContext — devuelve {plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans}. Lanza error si se usa fuera de PlansProvider. */
+/** Lee el estado de planos. Falla fuera de PlansProvider. */
 export function usePlans() {
   const ctx = useContext(PlansContext);
   if (!ctx) throw new Error('usePlans must be used within PlansProvider');

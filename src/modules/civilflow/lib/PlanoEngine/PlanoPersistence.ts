@@ -31,14 +31,9 @@ export interface PlanoWorkData {
   crossFloorGhosts?: unknown[];
 }
 
-/** Re-escala TODA la geometría de un documento de trazos de su scaleM actual a `toScale`
- *  preservando posiciones físicas. Los puntos ABSOLUTOS se escalan alrededor de `ancla` (el
- *  origen de calibración del piso: en el mundo origen-relativo "misma posición física" es
- *  `px − origen` constante; anclar en (0,0) — legacy sin calibrar — movía el punto físico
- *  (1−f)·origen px y rompía la alineación de asociaciones). Los valores RELATIVOS (deltas de
- *  anillos, offsets de etiquetas de texto) escalan puros: anclarlos los desplazaría. Las
- *  magnitudes reales (totalL, areaM2, L de cotas) NO se tocan. Idempotente: con la escala ya
- *  igualada no muta. */
+/** Cambia la escala del documento (scaleM, la escala metros por pixel) y reescala TODO el dibujo
+ *  para que los elementos queden en el mismo punto FÍSICO del edificio: si cambias de 1:100 a
+ *  1:50, una columna que estaba a 3 m sigue a 3 m. Opcionalmente ancla el giro a un punto. */
 export function rebasarEscalaTrazos(
   data: PlanoWorkData,
   toScale: number,
@@ -120,11 +115,9 @@ export function rebasarEscalaTrazos(
   data.scaleM = toScale;
 }
 
-/** Dedup por id (queda la ÚLTIMA aparición): datos de sesiones con bugs viejos traen el mismo
- *  bajante/ramal dos veces en un piso — el RPC lo rechaza entero ("ON CONFLICT DO UPDATE
- *  cannot affect row a second time", 500) y React se queja de keys duplicadas; además las dos
- *  copias se pelean escribiendo la herencia en cada pasada (bucle de setState). Con `merge`,
- *  en colisión la base es la última copia pasada por la función. */
+/** Deja UNO por id (si el mismo elemento quedó duplicado, gana la última copia; tener dos rompe
+ *  el guardado con un error 500 del RPC). `merge` combina los campos que la última copia perdió.
+ *  @param lista elementos; @param merge combina colisión; @returns lista limpia. */
 export function dedupPorId<T>(lista: T[], merge?: (base: T, previa: T) => T): T[] {
   const pos = new Map<string, number>();
   const out: T[] = [];
@@ -157,15 +150,12 @@ const CAMPOS_ASOC = [
   'ghostData',
 ] as const;
 
-/** Solo desplazamientos/ghostData nacen {} (anillo nuevo): el vacío cuenta como ausente y el
- *  anillo de la copia previa sobrevive. Los ARRAYS vacíos en recibeDeIds/alimentaIds son el
- *  estado POST-BORRADO legítimo — rellenarlos desde la copia stale resucitaría asociaciones
- *  desasociadas (auditoría ronda 7 R-5). */
+/** Solo el anillo de desplazamientos vacío cuenta como "no puesto" (recibeDeIds (ramales que
+ *  llegan) vacío SÍ es un borrado real del usuario). */
 const CAMPOS_OBJETO_VACIO = new Set(['desplazamientos', 'ghostData']);
 
-/** Merge para bajantes en el dedup: base = copia más reciente; los campos de asociación
- *  ausentes en la base se rellenan desde la copia previa. Un objeto VACÍO cuenta como
- *  ausente SOLO en desplazamientos/ghostData (ver CAMPOS_OBJETO_VACIO). */
+/** Junta dos copias del mismo bajante: manda la más nueva, pero se recuperan de la anterior los
+ *  campos de asociación entre pisos que la nueva perdió (así un enlace no se borra "solo"). */
 export function mergeBajanteDedup<T>(base: T, previa: T): T {
   const b = base as Record<string, unknown>;
   const p = previa as Record<string, unknown> | null;

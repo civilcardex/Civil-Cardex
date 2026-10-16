@@ -45,14 +45,15 @@ export interface BajanteLL {
   id: string;
   bajante: string;
   areaParcial: number;
-  /** Área Otras (orig. usuario): editable desde la tabla, default 0. */
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable desde la tabla, por defecto 0. */
   areaOtras: number;
-  /** Área TOTAL = areaParcial + areaOtras — alimenta el caudal real. */
+  /** Área TOTAL = areaParcial + areaOtras — de ella sale el caudal real (Q, o sea cuántos litros por segundo escurren). */
   areaAcumulada: number;
   intensidad: number;
   coeficienteC: number;
-  /** Material de cubierta (nombre completo en MATERIALES_CUBIERTA_LL): C derivado del
-   *  catálogo de escorrentía. Sin material → fallback al coeficienteC manual. */
+  /** Material de cubierta (nombre completo en MATERIALES_CUBIERTA_LL): de él sale C, el
+   *  coeficiente de escorrentía (cuánta lluvia llega al tubo y cuánta se absorbe en el
+   *  techo), según el catálogo. Sin material se usa el coeficienteC manual. */
   materialCubierta?: string;
   R: string;
   manning: number;
@@ -62,9 +63,9 @@ export interface CanalLL {
   id: string;
   sector: string;
   areaParcial: number;
-  /** Área Otras (orig. usuario): editable desde la tabla, default 0. */
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable desde la tabla, por defecto 0. */
   areaOtras: number;
-  /** Área TOTAL = areaParcial + areaOtras — alimenta el caudal real. */
+  /** Área TOTAL = areaParcial + areaOtras — de ella sale el caudal real (Q, o sea cuántos litros por segundo escurren). */
   areaAcumulada: number;
   intensidad: number;
   coeficienteC: number;
@@ -74,9 +75,10 @@ export interface CanalLL {
   h: number;
   /** Largo horizontal del canal (cm), solo para glifos dibujados (fromCanal). */
   longitud?: number;
-  /** plan.nivel del piso del canal — solo glifos dibujados (para la columna Nivel). */
+  /** Nivel (el piso) del canal — solo glifos dibujados (fromCanal); alimenta la columna Nivel. */
   piso?: number;
-  /** Material de cubierta (C derivado) y de canal (n derivado) — port hoja "2. Canales". */
+  /** Material de cubierta (de él sale C, el coeficiente de escorrentía) y de canal (sale
+   *  n, el coeficiente de Manning, qué tan rugoso es el canal) — hoja "2. Canales". */
   materialCubierta?: string;
   materialCanal?: string;
   /** Área de muro vertical que descarga sobre el canal (m²) — A efectiva = A + 0.5·muro. */
@@ -88,9 +90,9 @@ export interface CanalLL {
   drawId?: string;
   /** Id del plano del glifo — solo fromCanal (el write necesita el piso exacto). */
   drawPlanId?: string | number;
-  /** Es true cuando b/h/longitud/pendiente provienen de un glifo de canal dibujado
-   *  (tipo:'canal' en la red 'll') — la tabla los muestra editables y escribe de vuelta al
-   *  dibujo (writeCanalDimsToDrawing), que sigue siendo la fuente de verdad (ítem 7). */
+  /** Es true cuando b/h/longitud/pendiente provienen de un canal dibujado (glifo) en la
+   *  red 'll' — la tabla los muestra editables y escribe de vuelta al dibujo
+   *  (writeCanalDimsToDrawing), que sigue siendo la fuente de verdad. */
   fromCanal?: boolean;
 }
 interface RainwaterContextValue {
@@ -103,20 +105,20 @@ interface RainwaterContextValue {
   delCanalLL: (id: string) => void;
   updCanalLL: (id: string, field: string, val: string | number) => void;
   updCanalSector: (sector: string, field: string, val: string | number) => void;
-  /** Routing único de materiales de canal (tablas + panel + menú). `ref` = drawId u id. */
+  /** Cambio único de material de canal: lo llaman tablas, panel derecho y menú contextual
+   *  y todos escriben por el mismo camino. `ref` = drawId del glifo o id de la fila. */
   setMaterialCanal: (ref: string, field: 'materialCubierta' | 'materialCanal', mat: string) => void;
-  /** Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1". */
+  /** Bajantes asociados a cada canal (pedido del cliente): id de canal → chips "BAN1-P1". */
   canalBajantes: Record<string, string[]>;
   canalAlimIds: Record<string, string[]>;
   conRecolectora: boolean;
   setConRecolectora: (v: boolean) => void;
 }
 
-/** Exportado para lecturas null-safe (useContext directo) desde árboles sin provider —
- *  p. ej. useCaudalLl del visor, que debe funcionar también sin RainwaterProvider. */
+/** Contexto exportado para poder leerlo sin proveedor y sin romper (ej: el visor usa useCaudalLl). */
 export const RainwaterContext = createContext<RainwaterContextValue | null>(null);
 
-/** Provee los cálculos de drenaje pluvial: bajantes LL, canales LL, toggle de recolectora. Se auto-puebla desde los datos del dibujo. */
+/** Provee el cálculo pluvial (ll (Lluvias)): bajantes + canales; se auto-puebla del dibujo. */
 export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const { plans } = usePlans();
 
@@ -295,10 +297,10 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     });
     setCanalesLl((p) => p.map((t) => (t.id === id ? { ...t, [field]: val } : t)));
   };
-  /** Upsert de override por SECTOR (ítem 7 usuario): las filas fromCanal no viven en el
-   *  state (se sintetizan del dibujo), así que editarles área/intensidad creaba un no-op
-   *  silencioso. Crea la fila manual mínima (solo sector + campo) — el merge de
-   *  canalesLlAuto la consume y rellena el resto desde el glifo. */
+  /** Crea o edita la edición manual de un SECTOR (pedido del cliente): las filas de canal
+   *  dibujado no existen en la lista (se arman del dibujo al vuelo), así que editarles
+   *  área o intensidad no hacía nada y nadie se enteraba. Acá se crea la fila mínima
+   *  (sector + campo) — el merge de canalesLlAuto la toma y rellena el resto desde el glifo. */
   const updCanalSector = (sector: string, field: string, val: string | number) => {
     setTumbas((prev) => {
       let n = quitarTumba(prev, sector);
@@ -640,9 +642,9 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   useEffect(() => {
     datosRef.current = { canalesLlAuto, canalBajantes };
   }, [canalesLlAuto, canalBajantes]);
-  /** Routing único de materiales de canal (tablas + panel + menú): con asociados, la
-   *  cubierta hace fan-out a los bajantes (la fila deriva el común y ambos quedan con el
-   *  mismo material); sin ellos, override propio/sector. `ref` = drawId del glifo o id. */
+  /** Cambio único de material de canal (tablas + panel + menú): si el canal tiene bajantes
+   *  asociados, el material de cubierta se reparte a todos (la fila muestra el común y
+   *  todos quedan iguales); si no, se guarda propio del canal. `ref` = drawId o id. */
   const setMaterialCanal = useCallback(
     (ref: string, field: 'materialCubierta' | 'materialCanal', mat: string): void => {
       const { canalesLlAuto, canalBajantes } = datosRef.current;
@@ -687,17 +689,17 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   return <RainwaterContext.Provider value={value}>{children}</RainwaterContext.Provider>;
 }
 
-/** Hook para acceder a los datos de cálculo de agua pluvial. @returns {RainwaterContextValue} */
+/** Lee los datos de cálculo de agua pluvial (ll). Falla fuera del provider. */
 export function useRainwater() {
   const ctx = useContext(RainwaterContext);
   if (!ctx) throw new Error('useRainwater must be used within RainwaterProvider');
   return ctx;
 }
 
-/** Desplegables de material ll para panel derecho y menú contextual — MISMA fuente y
- *  routing que las tablas Chequeo bajantes/canales (bidireccional en vivo).
- *  Null-safe (como useCaudalLl): sin provider devuelve null y la UI oculta los
- *  desplegables en vez de romper. */
+/** Desplegables de material de lluvias (ll) para el panel derecho y el menú contextual:
+ *  misma fuente y mismo camino de escritura que las tablas Chequeo (lo que cambies aquí
+ *  se ve allá y al revés). Funciona también sin proveedor: devuelve null y la UI oculta
+ *  los desplegables en vez de romper. */
 export function useMaterialesLl() {
   const ctx = useContext(RainwaterContext);
   return useMemo(() => {

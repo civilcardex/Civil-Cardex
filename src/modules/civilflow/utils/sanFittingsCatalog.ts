@@ -1,4 +1,4 @@
-import { diamPulgFromLabel } from './diamPulgFromLabel';
+﻿import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { distToSegment } from '../lib/shared/geometry';
 
 export interface HidroEntry {
@@ -61,12 +61,7 @@ export const CODO_MEDIO_90 = {
   cat: 'Codos',
 };
 
-/**
- * Conteo real de bushings (reducciones): cada conexión de un ramal MENOR contra un elemento
- * MAYOR (ramal de más diámetro o bajante/montante) es una reducción. Solo usa geometría y
- * diámetros, por lo que es fácil de probar. Los bajantes se chequean primero porque la
- * conexión ramal→montante es el caso más común y evita doble conteo.
- */
+/** Tolerancia (0.5 px de plano) para considerar que un ramal está tocando un elemento: los busshings (cambios de diámetro) solo cuentan cuando el contacto es real. */
 export const BUSHING_TOL = 0.5;
 
 // Compacta los brazos de una yee con igual diámetro a un solo valor, en orden de
@@ -107,6 +102,7 @@ export function ramalHasManualCodoAt(
   return false;
 }
 
+/** Cuenta los bushings (piezas que unen un tubo menor con uno mayor) que hacen falta en cada conexión ramal↔elemento, comparando la geometría y los diámetros. */
 export function computeBushingCounts(
   minors: Array<{ id: string; diametro: string; pts: number[][] }>,
   majors: Array<{ id: string; diametro: string; pts: number[][] }>,

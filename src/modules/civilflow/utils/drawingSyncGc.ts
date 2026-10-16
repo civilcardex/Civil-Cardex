@@ -21,7 +21,7 @@ let _loadedLive: { planId: string; ids: Set<string>; ts: number } | null = null;
 // borra; el próximo sync (ya con autosave dentro) los re-evalúa con datos reales.
 const GC_GRACE_MS = 4000;
 
-/** Registra los ids/códigos vivos del engine del piso cargado para el guard del GC. */
+/** Apunta qué elementos están vivos en el piso abierto: el limpiador de basura (GC) no toca sus claves aunque la caché vaya atrasada. */
 export function setSyncLoadedLiveIds(planId: string | number | null, ids: string[]): void {
   _loadedLive =
     planId == null ? null : { planId: String(planId), ids: new Set(ids), ts: Date.now() };
@@ -33,18 +33,16 @@ export function setSyncLoadedLiveIds(planId: string | number | null, ids: string
 // borra nada de ese piso — ese era el borrado de UDs del piso 2 (orig. usuario).
 const freshTrazosPlans = new Set<string>();
 
-/** Marca la caché de trazos de un piso como escrita por esta sesión (fresca para el GC). */
+/** Marca que la copia guardada de un piso la escribió ESTA sesión (para el limpiador de basura eso la hace confiable). */
 export function markPlanTrazosFresh(planId: string | number | null | undefined): void {
   if (planId == null || planId === 'work') return;
   freshTrazosPlans.add(String(planId));
 }
 
-/** Respaldo de lo último borrado por el GC (una sola entrada, se sobrescribe). */
+/** Respaldo de lo último que borró el limpiador de basura (una sola entrada; si algo desapareció, se puede recuperar de aquí). */
 const GC_BAK_KEY = 'gc_bak_ultimo';
 
-/** ¿Puede el GC borrar esta clave? Solo pisos elegibles: el cargado (fuera de la ventana de
- *  gracia) o uno fresco de esta sesión. Las claves legado sin sufijo numérico conservan el
- *  criterio anterior. */
+/** ¿Se puede borrar esta clave? Solo si el piso cargado ya lleva un rato guardado (gracia) o lo escribió esta sesión; las claves legacy sin número de piso siempre valen. */
 function canDeleteKey(key: string): boolean {
   if (!hasNumericPlanSuffix(key)) return true;
   const suffix = key.slice(key.lastIndexOf('_') + 1);
@@ -65,10 +63,7 @@ interface FixtureCarrier {
   gasAcc?: Record<string, number>;
 }
 
-/** Re-ancla claves AUSENTES de aparatos/hidro/gas desde los fixtures de los trazos LOCALES
- *  (misma fusión que loadTrazosFromDB hace con la BD). Cubre el caso en que el store perdió
- *  claves pero los trazos aún traen sus fixtures (orig. usuario piso 2: símbolos intactos,
- *  conteos en 0). Solo rellena ausentes — jamás pisa. @returns claves restauradas. */
+/** Recupera desde los planos guardados las claves de aparatos que falten (nunca pisa las que ya existen). */
 export function reanclarClavesDesdeTrazosLocales(plans: SyncPlanInput[]): number {
   if (!Array.isArray(plans) || plans.length === 0) return 0;
   const mergedAparatos = loadFromStorage<Record<string, Record<string, number>>>(
@@ -182,12 +177,7 @@ function isLoadedLiveKey(key: string): boolean {
   return _loadedLive.ids.has(id);
 }
 
-/** Huérfanos vistos en esta sesión con ts del PRIMER avistamiento: el borrado exige ver la
- *  clave huérfana ≥GC_ORPHAN_MIN_MS. Motivo: writeSan y writeHydro corren GC en el MISMO
- *  round — con un Set, dos pasadas seguidas la borraban al instante si el área salía de
- *  validKeys, y la hidratación BD la resucitaba con valores viejos (ping-pong — orig. usuario:
- *  "aparece un momento y se borra" / "se resetean a los anteriores"). El tiempo real entre
- *  rounds de sync es lo que decide, no el número de pasadas. @returns true si ya se puede borrar. */
+/** Huérfano con fecha del primer avistamiento: solo se borra si lleva ≥1500 ms apareciendo (así no se pelean dos rondas entre sí). */
 const GC_ORPHAN_MIN_MS = 1500;
 const orphanSuspects = new Map<string, number>();
 function shouldDeleteOrphan(key: string, stillOrphan: boolean): boolean {
@@ -207,9 +197,7 @@ function shouldDeleteOrphan(key: string, stillOrphan: boolean): boolean {
   return false;
 }
 
-/** Clave `gas_AR…_<plan>` de un plan cuya caché de trazos NO trae campo `areas`: sin la lista
- *  no se puede PROBAR la orfandad (la pérdida puede ser de la caché — fila BD sin net vía
- *  rowToArea, escritor que suelte áreas —, no del área). No borrar. */
+/** Clave de aparato gas (Gas) de un área cuando la lista de áreas no está en caché: no se puede probar que sea basura, así que no se borra. */
 function areaSinPruebaDeOrfandad(key: string, sinAreas: Set<string>): boolean {
   const m = /^gas_(AR\d+)_(\d+)$/.exec(key);
   return !!m && sinAreas.has(m[2]);
@@ -339,10 +327,7 @@ export function performGarbageCollection(plans: SyncPlanInput[]) {
   }
 }
 
-/** Poda de accesorios gas (panel FixturesPanel): las claves cuyo ramal gas ya no existe en
- *  NINGÚN plano confirmado salen del disco (con guardado) y del mapa vivo. Devuelve los ids
- *  vivos para la poda del estado del panel y el mapa de disco SOLO si cambió (null = disco
- *  intacto — el caller poda únicamente su estado en memoria). */
+/** Poda los accesorios gas (Gas) de ramales que ya no existen (en disco y en vivo). */
 export function podarGasAccPorPlanos(planos: readonly SyncPlanInput[]): {
   idsVivos: Set<string>;
   porDisco: GasAccMap | null;

@@ -31,19 +31,19 @@ interface Row {
   key: string;
   bajante: string;
   areaParcial: number;
-  /** Área Otras (orig. usuario): editable, default 0. */
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable, por defecto 0. */
   areaOtras: number;
-  /** TOTAL = areaParcial + areaOtras — alimenta el caudal. */
+  /** TOTAL = areaParcial + areaOtras — de ella sale el caudal (Q) del bajante. */
   areaAcum: number;
   intensidad: number;
-  /** Coef. de escorrentía derivado del material de cubierta (port hoja 1); 0 sin material. */
+  /** C, el coeficiente de escorrentía (cuánta lluvia llega al tubo), que sale del material de la cubierta (hoja 1 del cuaderno); 0 si no hay material elegido. */
   coeficienteC: number;
   /** Material de cubierta (nombre completo en MATERIALES_CUBIERTA_LL). */
   materialCubierta: string;
   R: string;
   manning: number;
   diamPropuesto: number;
-  /** Bajante del dibujo (fila d_): escritura bidireccional de Llenado al trazado. */
+  /** Bajante dibujado en el plano: lo que escribas en Llenado se guarda también en el trazo (y al revés). */
   drawId?: string;
   drawPlanId?: string;
   nivel: string;
@@ -91,7 +91,7 @@ const OtrasField = React.memo(function OtrasField({
   bajante: string;
   value: number;
   onCommit: (bajante: string, v: number) => void;
-  /** Edición gated por el botón EDITAR de la tabla. */
+  /** Edición habilitada solo con el botón EDITAR de la tabla (en LISTO es solo lectura). */
   disabled?: boolean;
 }) {
   const [text, setText] = React.useState('');

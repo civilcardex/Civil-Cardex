@@ -449,7 +449,7 @@ function PdfViewer_({
       writeHydroDrawingSync(plansRef.current);
     } catch {}
   }, []);
-  const [scale, setScale] = useState(1);
+  const [scale] = useState(1);
   // Estado responsive del visor centralizado (umbrales 768/1024 + colapso al cruzar 1024).
   const { isMobile, isNarrow, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed } =
     useViewerResponsive();
@@ -959,7 +959,7 @@ function PdfViewer_({
       if (sel && sel.net !== activeNet) {
         eng.selId = null;
         eng._emitSelect(null);
-        eng.render();
+        eng.scheduleRender();
       }
     }
   }, [activeNet]);
@@ -1059,10 +1059,10 @@ function PdfViewer_({
     eng.zoom = sc;
     eng.offX = (eng.pageW * (1 - sc)) / 2;
     eng.offY = (cw.clientHeight - eng.pageH * sc) / 2;
-    eng.render();
-    const newScale = Math.max(1, Math.ceil(sc));
-    if (newScale !== scale) setScale(newScale);
-  }, [engineRef, cwRef, scale, setScale]);
+    eng.scheduleRender();
+    // ponytail: sin setScale(ceil) — el observer bgOnly re-rasteriza a la densidad del
+    // zoom ajustado; el setScale disparaba un renderPage COMPLETO (bg+draw+reload) duplicado.
+  }, [engineRef, cwRef]);
 
   const { handleClear, handleClearGuides, handleSave, handleSnapToggle, handleGridToggle } =
     useViewerToolbarActions({
@@ -1099,6 +1099,33 @@ function PdfViewer_({
       if (engineRef.current) engineRef.current.setNetHidden(id, next.has(id));
     },
     [hiddenNets, setHiddenNets, engineRef],
+  );
+  // Restaurar visibilidad al (re)cargar el visor (orig. usuario: tras recargar la página la
+  // red reaparecía pero el botón seguía en "oculta" — el set solo se aplicaba desde el
+  // toggle). engineReady gatea: el motor no existe en el primer render.
+  useEffect(() => {
+    if (!engineReady) return;
+    const eng = engineRef.current;
+    if (!eng) return;
+    for (const id of hiddenNets) eng.setNetHidden(id, true);
+    // hiddenNets deliberadamente fuera: el estado inicial ya trae lo persistido.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engineReady]);
+
+  // Seleccionar red en la barra (orig. usuario): si la red está OCULTA, el aviso sale
+  // EN CUANTO se selecciona — no al intentar dibujar.
+  const handleSelectNet = useCallback(
+    (id: string) => {
+      setActiveNet(id);
+      if (hiddenNets.has(id)) {
+        const nombre = finalVisibleNets.find((n) => n.id === id)?.name || id;
+        engineRef.current?.triggerAlert(
+          'Red oculta',
+          `${nombre} está oculta. Muéstrala en la barra de redes para dibujar en ella.`,
+        );
+      }
+    },
+    [hiddenNets, finalVisibleNets, engineRef],
   );
 
   const handleToggleLocked = useCallback(
@@ -1212,7 +1239,7 @@ function PdfViewer_({
   useEffect(() => {
     if (selElement?.id === prevSelIdForRender.current) return;
     prevSelIdForRender.current = selElement?.id;
-    engineRef.current?.render();
+    engineRef.current?.scheduleRender();
   }, [selElement?.id]);
   const prevSelForDrawn = useRef(selElement);
   const prevActiveForDrawn = useRef(activeNet);
@@ -1304,7 +1331,7 @@ function PdfViewer_({
         activeNet={activeNet}
         hiddenNets={hiddenNets}
         lockedNets={lockedNets}
-        onSelectNet={setActiveNet}
+        onSelectNet={handleSelectNet}
         onToggleHidden={handleToggleHidden}
         onToggleLocked={handleToggleLocked}
         scaleText={scaleText}
@@ -1373,7 +1400,7 @@ function PdfViewer_({
             const eng = engineRef.current;
             if (eng) {
               eng.lineWidthScale = v;
-              eng.render();
+              eng.scheduleRender();
               eng._markDirty();
             }
           }}

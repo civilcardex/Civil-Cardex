@@ -2,9 +2,8 @@ import { useCallback, useState } from 'react';
 import type React from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
-/** Estado de los dos modales del visor (confirmación genérica + accesorio en unión).
- *  Movido verbatim desde PdfViewer: los setters viajan al ConfirmDialog/AccesorioModal y el
- *  trigger al menú contextual vía props. */
+/** Estado de los dos modales del visor: el de confirmación genérica (borrar, limpiar) y
+ *  el de accesorio en unión. Sus funciones de abrir/cerrar viajan a los componentes por props. */
 export type ConfirmState = {
   isOpen: boolean;
   title: string;

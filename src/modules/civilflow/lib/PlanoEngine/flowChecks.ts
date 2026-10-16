@@ -4,6 +4,8 @@ import type { PlanoRamal } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { esCaja } from './bajanteRules';
 
+/** La dirección (vector) en la que corre el agua de este ramal justo en el punto más cercano a
+ *  pt. null = el punto no está sobre el trazo (tol en px de plano). */
 export function flowVecAt(
   ram: { pts: number[][]; _tribReversed?: boolean },
   pt: number[],
@@ -33,8 +35,8 @@ export function flowVecAt(
   return ram._tribReversed ? [-best[0], -best[1]] : best;
 }
 
-/** ¿El flujo del ramal TERMINA en el punto P (P es el extremo aguas abajo de la dirección de
- *  flujo)? */
+/** ¿En este punto TERMINA el recorrido del agua (es el extremo de descarga del ramal)? Ojo: un
+ *  ramal dibujado al revés (_tribReversed) descarga por su inicio, no por su final. */
 export function flowEndsAt(
   ram: { pts: number[][]; _tribReversed?: boolean },
   pt: number[],
@@ -50,7 +52,8 @@ export function flowEndsAt(
   return atLogicalHead;
 }
 
-/** ¿El flujo del ramal COMIENZA en el punto P (P es el extremo aguas arriba)? */
+/** ¿En este punto ARRANCA el recorrido del agua (extremo aguas arriba del ramal)? También
+ *  respeta _tribReversed. */
 export function flowStartsAt(
   ram: { pts: number[][]; _tribReversed?: boolean },
   pt: number[],
@@ -66,10 +69,9 @@ export function flowStartsAt(
   return atLogicalTail;
 }
 
-/** ¿El extremo `epPt` del ramal está ocupado por OTRO ramal de la misma red? Detecta tanto
- *  extremo-con-extremo como empalmes sobre el cuerpo del otro ramal (un tributario nace
- *  sobre el cuerpo del padre, y un yee une el extremo al cuerpo sin dividirlo) — revisar
- *  solo extremos los dejaba pasar como "libres". */
+/** ¿El codo de "sube"/"baja" quedó en el extremo correcto? Un codo que SUBE (codo90rmSube) solo
+ *  puede ir donde el flujo arranca; uno que BAJA donde termina. Otros accesorios pasan sin
+ *  revisión. */
 export function codoPolarityOk(
   ramal: { pts: number[][]; _tribReversed?: boolean },
   pt: number[],
@@ -83,9 +85,8 @@ export function codoPolarityOk(
   return flowEndsAt(ramal, pt, tol);
 }
 
-/** ¿El flujo del ramal de ventilación LLEGA a una unión con sanitaria (codo reventilado)? En
- *  la unión reventilado el flujo del vent debe ALEJARSE de la unión (san→vent); que llegue a
- *  ella es una violación. */
+/** ¿La tubería de ventilación (vent) está vaciando DENTRO de la unión sanitaria (san)? Está mal:
+ *  la ventilación debe SALIR de la unión, no entrar en ella. */
 export function ventFlowsIntoJunction(
   vent: { net?: string; pts: number[][]; _tribReversed?: boolean },
   pt: number[],
@@ -95,9 +96,8 @@ export function ventFlowsIntoJunction(
   return flowEndsAt(vent, pt, tol);
 }
 
-/** ¿El flujo del candidato en `ep` coincide con el del ramal que toca (dot >= 0)? Regla
- *  san/ll/vent: el ramal que se conecta fluye en el mismo sentido que el ramal principal.
- *  Perpendicular (T 90°) se permite (dot 0); solo contraflujo (dot <0) se bloquea. */
+/** ¿Los dos ramales apuntan al mismo lado en la unión? Si uno va en contra del otro
+ *  (contraflujo), no se pueden conectar así. */
 export function flowDirectionOkAt(
   incoming: { pts: number[][]; _tribReversed?: boolean },
   other: { pts: number[][]; _tribReversed?: boolean },
@@ -155,10 +155,10 @@ export function ventSanAngleOk(
   return angleDeg <= 0.5 || Math.abs(angleDeg - 45) <= 0.5 || Math.abs(angleDeg - 90) <= 0.5;
 }
 
-/** Chequeo de dirección de flujo para san/ll/vent: cada extremo del ramal que toca otro
- *  ramal del mismo grupo debe fluir en el mismo sentido que él; y un ramal vent que toca
- *  san (codo reventilado) debe alejarse de la unión. @returns mensaje de violación o null
- *  si todo cumple. */
+/** Revisa que las tuberías que drenan por gravedad — san (Sanitaria), ll (Lluvias) y vent
+ *  (Ventilación) — se conecten con el flujo en el sentido correcto: el agua debe LLEGAR a la
+ *  unión, no salir de ella en contra.
+ *  @returns el mensaje de error, o null si todo quedó bien. */
 export function ramalFlowDirectionCheck(
   engine: IPlanoEngineCore,
   ram: PlanoRamal,
@@ -305,12 +305,4 @@ export function ramalFlowDirectionCheck(
   return null;
 }
 
-/** Tras cambiar el diámetro de un trazo san, propaga aguas abajo AL MAYOR (regla del usuario):
- *  en cada conexión, el receptor (ramal O tributario — trib→trib y ramal→trib propagan) se
- *  ajusta al mayor entre su diámetro y el de TODOS los alimentadores que llegan a él, y la
- *  cadena sigue por cualquier largo. Solo asigna cuando TODOS los llegadores del receptor ya
- *  tienen diámetro; nunca baja un diámetro (bajar el receptor manualmente lo bloquea la
- *  alerta de sanReceptorDiametroPermitido vía guardDiametroNodo). Converge por conjunto de
- *  procesados incluso con ciclos. `bajantes` (opcional) permite excluir pares CO-SUMIDERO:
- *  dos ramales que descargan (o nacen) en el MISMO bajante son laterales paralelos, no
- *  continuación uno del otro — subir uno no debe subir el otro. */
+/** Propaga el diametro san (Sanitaria) aguas abajo al mayor (nunca baja, tol 2.0 px). */

@@ -279,9 +279,7 @@ export function writeDiametroToDrawing(
   return { ok: true };
 }
 
-/** Objetivo explícito: fila (planId+bajanteId) que el usuario editó. Sin él se conserva el
- *  comportamiento legado (primer contador encontrado), que con ≥2 contadores escribía en el
- *  equivocado. */
+/** Fila editada explícita (planId+bajanteId): sin ella caía al primer contador (mal piso con 2+). */
 export function writeContadorDiamToDrawing(
   val: string,
   plans: SyncPlanInput[],
@@ -343,13 +341,7 @@ export function punterosBajante(
   return { descargaEnId: b?.descargaEnId, origenId: b?.origenId };
 }
 
-/** Regla entre pisos (orig. usuario): el bajante del piso INFERIOR no puede tener menor
- *  diámetro que el del SUPERIOR. Valida un nuevo dNominal ANTES de escribirlo.
- *  Roles por puntero: con `origenId` el editado es el INFERIOR (recibe de arriba);
- *  con `descargaEnId` es el SUPERIOR (entrega abajo). Sin punteros, sin contraparte o
- *  sin diámetros comparables → ok. El espejo (valor igual en ambos) siempre pasa.
- *  @param punterosVivos - punteros del motor vivo (más frescos que el autosave 1.5s).
- *  @returns ok o el mensaje para la alerta modal. */
+/** Valida dNominal nuevo entre pisos (el inferior nunca menor que el superior; espejo siempre pasa). */
 export function validarDiametroEntrePisos(
   planId: string,
   bajanteId: string,

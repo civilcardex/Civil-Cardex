@@ -16,7 +16,7 @@ interface Row {
   areaOtras: number;
   areaAcum: number;
   intensidad: number;
-  /** C derivado del material de cubierta; 0 sin material (requisito absoluto — Q=0). */
+  /** C del material de cubierta (0 sin material: Q (Caudal) = 0 absoluto). */
   coeficienteC: number;
   materialCubierta: string;
   R: string;

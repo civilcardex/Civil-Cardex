@@ -1,7 +1,8 @@
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState';
 import { canalOBBEngine, canalToLocal, canalToWorld, puntoEnCanalOBB } from './canalGeometry';
 
-/** ¿El clic cayó dentro del rectángulo del canal? Devuelve 1 si sí, Infinity si no. */
+/** ¿El clic cayó dentro del rectángulo del canal? Devuelve 1 (distancia mínima, "sí, lo tocaste")
+ *  o Infinity si cayó fuera. */
 export function canalRectHitDistance(b: PlanoBajante, x: number, y: number, padPx = 0): number {
   const box = b._canalBox;
   if (!box) return Infinity;

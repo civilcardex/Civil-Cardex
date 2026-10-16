@@ -35,12 +35,8 @@ import {
   type LowerFloorRamales,
 } from './context';
 
-/** Bloquea el gesto si viola la regla entre pisos (alerta modal + revierte el select).
- *  @param pid - plano del bajante.
- *  @param el - bajante vivo del motor (punteros más frescos que el storage).
- *  @param e - evento del select (para revertir el valor visible).
- *  @param refrescar - fuerza re-render del menú.
- *  @returns true si bloqueó. */
+/** Bloquea el gesto si viola la regla entre pisos (alerta modal + revierte el select). plano del bajante. bajante vivo del motor (punteros más frescos que el
+ * storage). evento del select (para revertir el valor visible). fuerza re-render del menú. */
 function bloquearDiametroEntrePisos(
   pid: string,
   el: { id: string; dNominal?: string; descargaEnId?: string | null; origenId?: string | null },
@@ -58,8 +54,7 @@ function bloquearDiametroEntrePisos(
   return true;
 }
 
-/** Opciones de diámetro: montantes af/ac ofrecen las mismas que los ramales (orig.
- *  usuario); el resto usa las listas de bajantes por red. */
+/** Opciones de diámetro: montantes af (Agua Fria)/ac (Agua Caliente) ofrecen las mismas que los ramales (orig. usuario); el resto usa las listas de bajantes por red. */
 export function opcionesDiametroElemento(el: {
   tipo?: string;
   net?: string;

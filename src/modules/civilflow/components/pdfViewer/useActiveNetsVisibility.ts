@@ -8,8 +8,9 @@ import { ACTIVE_NETS_KEY, NETS_CHANGED_EVENT } from '../../constants/storage-key
 import { loadFromStorage } from '../../services/storageService';
 import { EV_STORAGE } from '../../utils/fixtureEvents';
 
-/** Redes visibles en el visor: combina la prop de redes activas con el caché de localStorage
- *  (refrescado por eventos) y expone las pestañas finales y si la red recolectora está activa. */
+/** Redes visibles en el visor: combina las redes activas del proyecto con lo guardado en
+ *  localStorage (que se refresca por eventos) y devuelve la lista final de pestañas más
+ *  el estado de la red recolectora (sus glifos se dibujan bajo la pestaña 'll'). */
 export function useActiveNetsVisibility(activeNetworks: Set<string>) {
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try {

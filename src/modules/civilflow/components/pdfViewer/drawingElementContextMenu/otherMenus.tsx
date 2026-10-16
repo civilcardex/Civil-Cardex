@@ -14,7 +14,7 @@ import {
   vetarSelloCanal,
   levantarVetoSelloCanal,
 } from '../../../lib/PlanoEngine/canalAssociation';
-import { sanitizarInputDecimal } from '../../../utils/parseDecimal';
+import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal';
 import { EV_STORAGE } from '../../../utils/fixtureEvents';
 
 export function AreaMenu() {
@@ -111,7 +111,7 @@ function CanalDimInput({
       }}
       onBlur={() => {
         setEditing(false);
-        const v = parseFloat(text) || 0;
+        const v = dec(text);
         onCommit(text === '' ? 0 : v);
       }}
       style={MENU_SELECT_STYLE}

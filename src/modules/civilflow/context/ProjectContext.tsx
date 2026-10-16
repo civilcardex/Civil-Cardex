@@ -110,7 +110,7 @@ function recoverProyecto(saved: unknown): Proyecto {
   };
 }
 
-/** Estado agregado del proyecto: pisos, proyecto, materiales, profundidades y criterios reunidos en un solo valor de contexto para que el área de trabajo no dependa de cada sub-contexto por separado. */
+/** Estado agregado del proyecto (pisos/materiales/profundidades/criterios) en un solo contexto. */
 interface ProjectContextValue {
   pisos: Piso[];
   proy: Proyecto;
@@ -125,16 +125,14 @@ interface ProjectContextValue {
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
   setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
   resetToDefaults: () => void;
-  /** Suspende el guardado en la nube con debounce. Quien resetee el estado y lo repueble
-   * desde la BD debe llamar esto ANTES de resetear y `resumeCloudSync` al terminar — si no,
-   * el estado vacío del reset se escribiría en la nube y borraría los datos reales. */
+  /** Pausa el guardado nube antes de reset+repoblado: sin pausa, el vacío del reset borra la BD. */
   pauseCloudSync: () => void;
   resumeCloudSync: () => void;
 }
 
 export const ProjectContext = createContext<ProjectContextValue | null>(null);
 
-/** Provider raíz del estado de proyecto (pisos, proyecto, materiales, profundidades, criterios). */
+/** Provee el estado de proyecto (pisos/materiales/profundidades/criterios). */
 export function ProjectProvider({ children }: { children?: ReactNode }) {
   const [pisos, setPisos] = usePersistedState<Piso[]>('civilflow_pisos', []);
   const [proy, setProy] = usePersistedState<Proyecto>(
@@ -345,14 +343,14 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 
-/** Hook para leer/escribir el estado agregado del proyecto. @returns {ProjectContextValue} */
+/** Lee/escribe el estado agregado del proyecto. Falla fuera del provider. */
 export function useProject() {
   const ctx = useContext(ProjectContext);
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
 
-/** Compat: sub-selectores del estado agregado (reemplazan los contextos individuales). */
+/** Atajos para usar solo una parte del estado (pisos, materiales…): existen para no reescribir todo el código cuando los contextos separados se juntaron en uno. */
 export const usePisos = () => {
   const { pisos, setPisos } = useProject();
   return { pisos, setPisos };

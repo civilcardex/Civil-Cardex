@@ -54,10 +54,9 @@ export interface DrawingElementContextMenuContextValue {
   /** Abre el modal "Cambio de dirección de flujo" y CIERRA el menú contextual (el modal vive
    *  portaleado a body, fuera del menú — el plano queda visible y el modal movible). */
   openUcMove: (state: UcMoveModalState) => void;
-  /** Doble inversión de dirección con posible traslado de UC — vive en el raíz porque el modal
-   *  puede confirmarse con el menú ya cerrado. */
+  /** Doble inversión de dirección con posible traslado de UC (Unidades de Consumo) — vive en el raíz porque el modal puede confirmarse con el menú ya cerrado. */
   doInvert: (ramal: PlanoRamal, targetId: string | null) => void;
-  /** Lee las UC asignadas de un ramal (para decidir si el modal de reasignación es necesario). */
+  /** Lee las UC (Unidades de Consumo) asignadas de un ramal (para decidir si el modal de reasignación es necesario). */
   readUcInfo: (ramal: PlanoRamal) => { planId: string | number | null; total: number };
 }
 

@@ -4,8 +4,8 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import { NETS } from '../../lib/PlanoEngine/PlanoState';
 import type { ProbedElement } from './tramoEditor/context';
 
-/** Acciones de la toolbar del visor (limpiar red/guías, guardar, snap, grilla).
- *  Cuerpos verbatim desde PdfViewer; solo reciben lo que ya usaban del scope. */
+/** Acciones de la barra del visor: limpiar la red, borrar las líneas guía, guardar,
+ *  activar el snap y mostrar la cuadrícula. */
 export function useViewerToolbarActions(args: {
   engineRef: React.RefObject<PlanoEngine | null>;
   activeNet: string;

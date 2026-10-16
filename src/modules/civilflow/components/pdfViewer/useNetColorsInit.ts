@@ -7,8 +7,9 @@ import { NETS } from '../../lib/PlanoEngine/PlanoState';
 import { NET_COLOR_PREFIX } from '../../constants/storage-keys';
 import { loadNetColors, applyNetColors } from '../../services/netColorsService';
 
-/** Restaura al montar los colores personalizados por red: primero el override de localStorage
- *  y después la BD (perfiles.net_colors), que gana por resolver después. */
+/** Restaura al montar los colores personalizados por red: primero lo guardado en el
+ *  navegador (localStorage) y después la BD (perfiles.net_colors), que tiene la última
+ *  palabra porque puede llegar después del montaje. */
 export function useNetColorsInit(): void {
   useEffect(() => {
     for (const net of NETS) {

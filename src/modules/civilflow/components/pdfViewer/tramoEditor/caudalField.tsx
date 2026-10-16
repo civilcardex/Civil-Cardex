@@ -7,7 +7,7 @@ export function CaudalField({
   value,
 }: {
   selElement: PlanoRamal | null;
-  /** Caudal calculado (ll) — prioridad sobre el campo manual del ramal. */
+  /** Caudal calculado (ll (Lluvias)) — prioridad sobre el campo manual del ramal. */
   value?: number | null;
 }) {
   const extVal = value != null ? value : selElement?.caudal;

@@ -6,9 +6,7 @@ export interface ContextMenuHitResult {
   element: PlanoElement;
   isGhostClick: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
-  /** El clic cayó sobre el cuerpo del ramal (no cerca de un vértice existente). segmentIdx/x/y
-   *  describen dónde habría que insertar un vértice nuevo (entre pts[segmentIdx] y
-   *  pts[segmentIdx+1]) si el usuario asigna un accesorio a mitad de ramal ahí. */
+  /** Cuerpo del ramal bajo el clic (punto de insercion entre 2 vertices, tol 12 px). */
   midRamalHit?: { segmentIdx: number; x: number; y: number } | null;
   clientX: number;
   clientY: number;
@@ -27,6 +25,7 @@ export function hitTestRightClick(
   // bajante real sin desplazamiento
   const fg = engine.getBajantesFantasma();
   for (const b of fg) {
+    if (engine._hiddenNets.has(b.net)) continue;
     if (b._ghost) {
       const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
       // Si el fantasma no está desplazado de su padre (misma posición), saltar la detección de
@@ -44,9 +43,10 @@ export function hitTestRightClick(
   }
 
   // Revisar Contador (caja + flecha) ANTES que ramales — ambos deben ser clicables sin
-  // interferirse
+  // interferirse. Redes ocultas: sus elementos no se seleccionan (orig. usuario).
   for (const b of engine.bajantes) {
     if (b.tipo === 'contador') {
+      if (engine._hiddenNets.has(b.net)) continue;
       const c = engine.toCvs(b.x, b.y);
       const hitR = Math.max(22 * zoom, 10 * zoom + 8);
       // Área de la caja
@@ -70,6 +70,7 @@ export function hitTestRightClick(
   // el clic derecho sobre el bajante abre el menú del bajante, no el del canal.
   for (const b of engine.bajantes) {
     if (b.tipo === 'canal') continue;
+    if (engine._hiddenNets.has(b.net)) continue;
     const c = engine.toCvs(b.x, b.y);
     const hitOnCircle =
       Math.hypot(x - c.x, y - c.y) <= (b._circ?.r || Math.max(8 * zoom, 10 * zoom));
@@ -89,8 +90,9 @@ export function hitTestRightClick(
     (px, py) => engine.toCvs(px, py),
     engine.mm2cvs(3),
   );
-  // Revisar ramales
+  // Revisar ramales (las redes OCULTAS no se seleccionan — orig. usuario)
   for (const r of engine.ramales) {
+    if (engine._hiddenNets.has(r.net)) continue;
     let hitOnRamal = false;
     let ramalEndpoint: { idx: number; x: number; y: number } | null = null;
     let midRamalHit: { segmentIdx: number; x: number; y: number } | null = null;
@@ -165,6 +167,7 @@ export function hitTestRightClick(
   // sobre un ramal que cruza su rectángulo debe abrir el menú del RAMAL, no el del canal.
   for (const b of engine.bajantes) {
     if (b.tipo !== 'canal') continue;
+    if (engine._hiddenNets.has(b.net)) continue;
     if (canalRectHitDistance(b, x, y, 4 * zoom) < Infinity) {
       return { element: b, isGhostClick: false, clientX, clientY };
     }

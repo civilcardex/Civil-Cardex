@@ -37,16 +37,12 @@ interface HydraulicParams {
   DintMm: number;
 }
 
-/**
- * Corre un chequeo hidráulico sanitario completo sobre un tramo de tubería: flujo y
- * velocidad a tubo lleno, tirantes crítico y normal, número de Froude y fuerza tractiva,
- * con banderas de pasa/falla contra las restricciones de diseño.
- * @param params.Q - Caudal de diseño (L/s).
- * @param params.S - Pendiente de tubería (m/m).
- * @param params.n - Coeficiente de rugosidad de Manning.
- * @param params.DintMm - Diámetro interno de tubería (mm).
- * @returns HydraulicResult con todos los valores calculados y chequeos pasa/falla.
- */
+/** Chequeo san (Sanitaria) completo del tramo (Qo/Vo, Yc/Yn, Froude (numero adimensional de regimen), tractiva + banderas).
+ *  @param params.Q - Q (Caudal) de diseño (L/s).
+ *  @param params.S - pendiente (m/m).
+ *  @param params.n - rugosidad Manning (formula de flujo en tuberia).
+ *  @param params.DintMm - diámetro interno (mm).
+ *  @returns resultado con valores y chequeos pasa/falla. */
 export function calcHydraulicCheck({
   Q,
   S,

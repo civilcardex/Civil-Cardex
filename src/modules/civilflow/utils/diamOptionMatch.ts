@@ -1,9 +1,4 @@
-/**
- * Resuelve un diámetro crudo (como se guarda en el ramal: `1-1/2"`, `1/2" RDE 9`, o el valor
- * completo `1-1/2" — 42.7 mm`) al valor canónico de la opción correspondiente de DIAM_BY_MAT.
- * Sin este ajuste, el diámetro heredado del ramal no coincidía con ninguna opción del
- * selector y se veía en blanco.
- */
+/** Diámetro crudo del ramal a su opción canónica (sin esto el selector quedaba en blanco). */
 export function matchDiamOption(
   diamList: Array<{ n: string }>,
   raw: string | undefined | null,

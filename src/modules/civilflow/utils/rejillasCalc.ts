@@ -19,14 +19,14 @@ export interface RejSectorInput {
   areaM2: number;
   altoM: number;
   mono: boolean;
-  /** Nombre del piso (para la restricción de sótanos 3.2). */
+  /** Nombre del piso: la NTC (Norma Tecnica Colombiana) 3631 prohíbe artefactos de gas bajo el primer sótano. */
   piso?: string;
   artefactos: RejArtefacto[];
-  /** Clave de SOL (Tipo de Ventilación). */
+  /** Clave del tipo de solución de ventilación elegida (SOL). */
   sol: string;
   vadj: number;
   padj: number;
-  /** Suma de áreas de conectores de evacuación cm² (π·D²/4, solo Método 2). */
+  /** Área total de los conectores de evacuación (cm²), π·D²/4 por cada uno (solo cuenta en el Método 2). */
   aconec: number;
   gas: 'natural' | 'glp';
   catalogo?: RejRef[];
@@ -51,7 +51,7 @@ interface RejAbertura {
 }
 
 interface RejAlerta {
-  /** true = crítica; sin e = observación. */
+  /** true = alerta crítica (no cumple); sin e = solo una observación. */
   e?: boolean;
   t: string;
 }
@@ -81,7 +81,7 @@ export interface RejResultado {
   titulo?: string;
 }
 
-/** Normaliza grados — no usado hoy; placeholder para futuras comprobaciones geométricas. */
+/** Rejilla candidata: referencia del catálogo, medidas y área libre que aporta en total. */
 
 interface Sugerencia {
   c: RejRef;
@@ -92,7 +92,7 @@ interface Sugerencia {
   tot: number;
 }
 
-/** Sugiere referencia aproximando por arriba: menos unidades y luego menos sobrante. */
+/** Elige la rejilla más pequeña que cubre el área pedida (aproxima por arriba: primero menos unidades, luego menos sobrante). */
 export function sugerirRef(
   libre: number,
   hMax: number,
@@ -122,7 +122,7 @@ export function sugerirRef(
   return ops[0] || null;
 }
 
-/** Medida comercial de respaldo (área bruta con 60 % estimado). */
+/** Medida comercial de respaldo cuando el catálogo no tiene nada (se asume 60 % de área libre sobre la bruta). */
 function elegirRejilla(
   areaBruta: number,
   hMax: number,
@@ -136,8 +136,7 @@ function elegirRejilla(
   return { w: Math.max(h, Math.ceil(areaBruta / h / 5) * 5), h, comercial: false };
 }
 
-/** Restricción de sótanos (3.2): ningún artefacto por debajo del primer sótano; con GLP,
- *  tampoco en el primer sótano. Heurística por nombre del piso (SS2/Sótano 2/…). */
+/** Prohíbe artefactos de gas bajo el 2.º sótano (3.2 de la NTC (Norma Tecnica Colombiana) 3631); con GLP tampoco en el 1.º. Se detecta por el nombre del piso (SS2/Sótano 2/…). */
 function alertaSotano(piso: string | undefined, glp: boolean, alertas: RejAlerta[]): void {
   const p = (piso || '').toLowerCase().replace(/ó|ò|ô/g, 'o');
   if (/ss\s*[2-9]\d*|sotano\s*[2-9]\d*|subsuelo\s*[2-9]\d*/.test(p)) {
@@ -153,7 +152,7 @@ function alertaSotano(piso: string | undefined, glp: boolean, alertas: RejAlerta
   }
 }
 
-/** Motor por sector. Port fiel del calcular() del prototipo (HTML v15 / XLSX). */
+/** Corazón del cálculo de rejillas de UN sector (cocina, baño…): decide qué tipo de ventilación toca y qué rejillas necesita. Es el mismo cálculo del prototipo en Excel. */
 export function calcular(inp: RejSectorInput): RejResultado {
   const r: RejResultado = {
     entrada: inp,
@@ -397,7 +396,7 @@ export function calcular(inp: RejSectorInput): RejResultado {
   return r;
 }
 
-/** Clasificación NTC 3631 del recinto por sí solo (columna Chequeo Volumen). */
+/** Cómo queda clasificado el recinto según la NTC (Norma Tecnica Colombiana) 3631 (columna "Chequeo Volumen": ¿el aire del local alcanza o hay que ventilar?). */
 export function clasifRecinto(res: RejResultado): [string, 'i' | 'ok' | 'e' | 'w'] {
   if (res.estado === 'vacio') return ['—', 'i'];
   if (res.modo === 'estanco') return ['Solo Tipo C', 'ok'];
@@ -407,7 +406,7 @@ export function clasifRecinto(res: RejResultado): [string, 'i' | 'ok' | 'e' | 'w
     : ['Volumen insuficiente / Confinado', 'w'];
 }
 
-/** Solución de ventilación que resulta del cálculo (columna Solución aplicada). */
+/** Texto de la columna "Solución aplicada": qué tipo de ventilación terminó usando el sector. */
 export function solucionAplicada(res: RejResultado): string {
   const s = SOL[res.entrada.sol] || SOL['ext-dir'];
   if (res.estado === 'vacio') return '—';

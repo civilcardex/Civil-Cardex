@@ -10,16 +10,7 @@ import { collectSourceAgg } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
 
-/** Mapa por aparato de las UDs de una bomba (= las UDs de su CAJA asociada): cierre transitivo
- *  completo vía `collectSourceAgg` — la MISMA verdad que el agregado del visor y la herencia
- *  entre pisos (clave propia + recibeDeIds + tributarios + fuentes mergesFrom + cadenas
- *  geométricas; espejos/LDs/otras redes fuera), sin necesitar el motor. Así la bomba "toma
- *  bien" las UDs aunque sus ramales lleguen en cadena o el piso no esté cargado.
- *  Blindaje anti-bucle (la suma infinita reportada): los ESPEJOS jamás son fuente — si un
- *  ramal de salida quedó listado en `recibeDeIds`, su clave ya contiene el agregado y volver
- *  a sumarla la haría crecer en cada pasada. La clave espejo de la bomba solo vale como
- *  última instancia, DESPUÉS del cierre (sumarla antes re-fusionaba su propio valor anterior:
- *  4→8→12…). */
+/** UD (Unidades de Desague) de una bomba (= las de su caja): cierre vía recibeDeIds/alimentaIds (ramales que llegan/salen del bajante) sin motor. */
 export function mapUdBombaDesdeTrazos(
   pumpPlanId: string,
   pumpId: string,
@@ -84,15 +75,7 @@ export function mapUdBombaDesdeTrazos(
   return out;
 }
 
-/** Herencia bomba→bajante del piso superior: la clave de la bomba (= UDs de su caja,
- *  espejadas) se replica con delta exacto (libro `ucAplicado`: nuevo = actual − aplicado +
- *  agregado) en los ramales del bajante (recibe+alimenta) + `ucAcum` — la MISMA mecánica de
- *  delta que la herencia hacia abajo, pero hacia ARRIBA. Campo dedicado `bombaEnId`:
- *  descargaEnId/origenId dispararían la herencia invertida.
- *  Extraído del efecto de FixturesPanel para usarlo también al asociar (ver `asociarBomba`):
- *  una sola implementación. Muta `disk`; el caller guarda y dispara eventos. Todas las
- *  escrituras (motor, trazos, libro) son condicionales a cambio real — si no, el `setCounts`
- *  posterior re-dispararía el efecto en bucle. @returns true si cambió `disk`. */
+/** Hereda UD (Unidades de Desague) de la bomba al bajante superior (delta exacto con libro, hacia arriba). */
 export function propagarHerenciaBomba(
   eng: IPlanoEngineCore,
   planId: string | number | null | undefined,

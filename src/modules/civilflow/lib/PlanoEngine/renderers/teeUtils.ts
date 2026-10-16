@@ -1,13 +1,9 @@
-/** Elección de lado de rama para glifos tee — extraída de renderRamales (Oleada 1). */
+/** Cómo decidir hacia qué lado dibuja la ramita de una T — separado de renderRamales. */
 import type { IPlanoEngineCore } from '../PlanoState';
 import { pointToSegmentDist } from '../HitTester';
 
-/**
- * Elige el lado de rama (perpendicular) para un glifo teeReduccion/teeLado en una unión.
- * El brazo de la tee debe apuntar hacia el ramal que realmente cruza o se ramifica, no
- * ciegamente hacia arriba de la pantalla: se busca el segmento cercano más perpendicular
- * a la dirección del ramal en el punto. Sin cruce, se usa la convención clásica.
- */
+/** Hacia qué lado sale la ramita de la T: apunta al ramal REAL que se cruza en la unión (dentro
+ *  de 0.5 px); si no hay cruce, usa el cálculo clásico. */
 export function pickTeeBranchDir(
   engine: IPlanoEngineCore,
   ownId: string,

@@ -5,7 +5,8 @@ import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
 import { esCaja } from './bajanteRules';
 import { checkRamalAngles } from './drawingAngles';
 
-/** ¿El punto cae dentro del cuadro exterior (100×100cm a escala) de una caja de la red? Test a escala real vía cmToPlanePx. */
+/** ¿Este punto cayó dentro del cuadro exterior (100×100 cm a escala real) de una caja de la red?
+ *  Sirve para que conectarse a una caja no dispare la alarma de ángulos. */
 export function puntoEnCaja(
   engine: Pick<IPlanoEngineCore, 'bajantes' | 'cmToPlanePx'>,
   ep: number[],
@@ -22,10 +23,9 @@ export function puntoEnCaja(
   return false;
 }
 
-/** Bug #7: valida los ángulos de un ramal EXCLUYENDO los segmentos de conexión — un extremo que
- *  pega a otro ramal existente (o a un bajante) tiene el ángulo dictado por la geometría del
- *  ramal existente, no por la cuadrícula de 45°/90°. Devuelve true si los segmentos libres son
- *  válidos. Usado por finishRamal y handleDragUp. */
+/** Revisa los dobleces del ramal IGNORANDO las puntas que están conectadas a algo (dentro de
+ *  0.5 px): si la punta toca otra tubería, el ángulo de llegada lo decide la conexión, no la
+ *  regla de 45°/90°. */
 export function checkRamalAnglesExcludingConnections(
   engine: IPlanoEngineCore,
   r: PlanoRamal,

@@ -25,7 +25,7 @@ import { fmt, sectorDe } from '../utils/formatUtils';
 import { entradaPor } from '../utils/diamLookup';
 import { repartirOtrasCanal } from '../utils/rainwaterRows';
 import type { DrawingData } from '../utils/drawingSync';
-import { sanitizarInputDecimal } from '../utils/parseDecimal';
+import { dec, sanitizarInputDecimal } from '../utils/parseDecimal';
 import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
 
 // Encabezados compactos (orig. usuario: sin scroll horizontal): wrap a 2-3 líneas.
@@ -78,7 +78,7 @@ const CanalDimField = React.memo(function CanalDimField({
     | 'bordeLibreCm';
   value: number;
   onChange: (id: string, field: string, val: number) => void;
-  /** Edición gated por el botón EDITAR de la tabla. */
+  /** Edición habilitada solo con el botón EDITAR de la tabla (en LISTO es solo lectura). */
   disabled?: boolean;
 }) {
   const [text, setText] = React.useState('');
@@ -134,7 +134,7 @@ const CanalDimField = React.memo(function CanalDimField({
       onBlur={() => {
         setEditing(false);
         // Dimensión física (b/h/longitud/pendiente): negativo = basura de tipeo, no dato.
-        const v = Math.max(0, parseFloat(text) || 0);
+        const v = Math.max(0, dec(text));
         onChange(id, field, text === '' ? 0 : v);
       }}
       style={{

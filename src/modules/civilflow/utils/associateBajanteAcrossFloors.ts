@@ -1,10 +1,4 @@
-/**
- * Gestión de bajantes/montantes entre pisos (ghosts, Ldesvíos, asociaciones cross-floor).
- * Fachada del módulo: re-exporta el núcleo de E/S (`crossFloorStorage`) y agrega los
- * actualizadores que opera el engine (arrastres, renombres). Cada bajante físico es un tubo
- * continuo; en cada plano vive un ghost que referencia origen↔destino y un ramal Ldesvío para
- * el desplazamiento en planta. La migración/barrido del layout vive en `assocLayoutMigration`.
- */
+/** Fachada entrepisos (XFG (fantasma entrepisos)/LD_ (ramal desvio entrepisos)): re-exporta E/S + actualizadores del engine. */
 import {
   loadData,
   saveData,

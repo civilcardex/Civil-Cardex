@@ -78,9 +78,9 @@ const BajantesTable = memo(function BajantesTable_() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, syncTick]);
 
-  /** Respaldo geométrico memoizado por bajante (orig. usuario: todos los del dibujo):
-   *  ramales san del mismo plano cuyo extremo toca el bajante (≤0.5, criterio de la poda),
-   *  aunque recibeDeIds no los registre. Mapa y no cálculo por fila: evita O(B×R) por render. */
+  /** Respaldo geométrico por bajante (pedido del cliente: valen todos los del dibujo):
+   *  ramales san (Sanitaria) del mismo plano cuyo extremo toca el bajante (≤0.5, la misma
+   *  tolerancia de la poda), aunque recibeDeIds (ramales que llegan al bajante) no los registre. */
   const geoAsocByBaj = useMemo(() => {
     const mapa: Record<string, string[]> = {};
     for (const t of tramosSan) {

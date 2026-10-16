@@ -8,8 +8,8 @@ import { _statusMsg } from '../ramalMeasure';
 // de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
-/** Crea un símbolo de red pública (acometida) nuevo en las coordenadas dadas. @param engine
- *  Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Dibuja el símbolo de la llegada de la red pública (la acometida, de donde entra el agua al
+ *  edificio) en el punto donde hiciste clic. */
 export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);
@@ -54,12 +54,8 @@ export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: n
   engine._markDirty();
 }
 
-/** Crea un contador (medidor) en las coordenadas dadas y lo conecta automáticamente a la
- *  red pública más cercana con un ramal, si existe alguna. @param engine Núcleo del motor.
- *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
-/** Crea un contador (medidor) en las coordenadas dadas y lo conecta automáticamente a la
- *  red pública más cercana con un ramal, si existe alguna. @param engine Núcleo del motor.
- *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Pone el medidor (contador) y lo engancha a la acometida que tenga al lado. Solo existe en af
+ *  (Agua Fría) y gas (Gas): en las demás redes no hay nada que medir. */
 export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
   // Guard de red (defensa en profundidad — el atajo/botón ya filtran): un contador insertado
   // en san/ll/vent contaminaba las tablas hidráulicas con CNTAF fantasma.

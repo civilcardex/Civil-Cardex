@@ -163,15 +163,18 @@ describe('propagarAparatosPresion', () => {
     expect(diskDe()['af_RAF3_P1']).toEqual({ inodoro: 1, lavamanos: 1 });
   });
 
-  it('quitar el aparato de RAF2 baja el delta en RAF3 y limpia el libro', () => {
+  it('quitar el aparato de RAF2: la bajada RAF2 se vuelve receptora del inodoro (doctrina bajada)', () => {
     seedEscenario();
     propagarAparatosPresion('af');
     const disk = diskDe();
     disk['af_RAF2_P1'] = {};
     saveToStorage(AF_KEY, disk);
     propagarAparatosPresion('af');
-    expect(diskDe()['af_RAF3_P1']).toEqual({ inodoro: 1 });
-    expect(leerHeredadosPresion('af_RAF3_P1')).toEqual({ inodoro: 1 });
+    // Doctrina bajada (2026-10-14): RAF2 vertical hacia abajo y sin carga propia recibe el
+    // inodoro del montante; RAF3 (horizontal) queda vacía.
+    expect(diskDe()['af_RAF2_P1']).toEqual({ inodoro: 1 });
+    expect(diskDe()['af_RAF3_P1']).toBeUndefined();
+    expect(leerHeredadosPresion('af_RAF2_P1')).toEqual({ inodoro: 1 });
   });
 
   it('_tribReversed invalida la genealogía vieja gateada por geometría', () => {
@@ -239,8 +242,10 @@ describe('propagarAparatosPresion', () => {
     });
     propagarAparatosPresion('af');
     expect(diskDe()['af_RAF1_P1']).toEqual({ inodoro: 1 });
-    // RAF3 hereda la carga del montante vía RAF1 (sin otros aparatos en este escenario).
-    expect(diskDe()['af_RAF3_P1']).toEqual({ inodoro: 1 });
+    // Doctrina bajada (2026-10-14): RAF2 (vertical hacia abajo, sin carga propia) es la
+    // continuación receptora — el inodoro pasa por RAF1 y termina en RAF2; RAF3 vacía.
+    expect(diskDe()['af_RAF2_P1']).toEqual({ inodoro: 1 });
+    expect(diskDe()['af_RAF3_P1']).toBeUndefined();
 
     // Variante B: RAF1 ENTRA al montante (cabeza en MON1, recibeDeIds + fin=code) — el
     // montante NO alimenta (sus aparatos se quedan en él); el ramal queda vacío.
@@ -341,6 +346,8 @@ describe('propagarAparatosPresion', () => {
           net: 'af',
           tipo: 'tributario',
           padre: 'RAF4',
+          // Campo real de la asignación: aparato en el extremo de conexión (lateral #14).
+          aparatoFin: 'tina',
           pts: [
             [80, -40],
             [100, -40],

@@ -59,9 +59,8 @@ export function BajanteEditorSection() {
   );
 }
 
-/** Panel derecho — "Asociar bomba del piso inferior": mismos checkboxes que el menú
- *  contextual (solo bombas del piso INMEDIATAMENTE inferior); al marcar, el bajante recibe
- *  las MISMAS UDs de la bomba (herencia hacia arriba vía `bombaEnId` + libro ucAplicado). */
+/** Panel derecho — "Asociar bomba del piso inferior": mismos checkboxes que el menú contextual (solo bombas del piso INMEDIATAMENTE inferior); al marcar, el bajante recibe las
+ * MISMAS UDs (Unidades de Desague) de la bomba (herencia hacia arriba vía `bombaEnId` + libro ucAplicado). */
 function AsociarBombaPanel({
   selElement,
   engineRef,

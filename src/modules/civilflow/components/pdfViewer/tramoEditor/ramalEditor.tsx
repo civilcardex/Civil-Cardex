@@ -20,7 +20,7 @@ import {
   ramalHasCodoReventilado,
 } from './context';
 import { CaudalField } from './caudalField';
-import { sanitizarInputDecimal } from '../../../utils/parseDecimal';
+import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal';
 
 /** Editor del ramal seleccionado: material, diámetro, pendiente, desnivel vertical y número
  *  de descargas en simultáneo. */
@@ -455,7 +455,7 @@ export function RamalEditor({
                   if (e.key === 'Enter') e.currentTarget.blur();
                 }}
                 onBlur={(e) => {
-                  const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;
+                  const v = dec(e.target.value);
                   setPendInput(v > 0 ? String(v) : '');
                   setPendSel((prev) => ({ ...prev, [activeNet]: v }));
                   if (engineRef.current && selElement) {

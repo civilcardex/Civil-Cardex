@@ -35,7 +35,7 @@ const AYUDA_INTROS: Record<string, string> = {
   crit: 'Normativa aplicada al proyecto y verificaciones de cumplimiento.',
 };
 
-/** Red activa → intro del panel de ayuda (orig. usuario: ayuda solo de la red activa). */
+/** Red activa → texto de introducción del panel de ayuda (pedido del cliente: la ayuda muestra solo la red activa). */
 const AYUDA_REDES_INTROS: Record<string, string> = {
   san: 'Cálculo de UD, diseño de tramos, bajantes y ventilación de la red sanitaria.',
   ll: 'Método racional, diseño de lluvias, chequeo de bajantes (Wyly-Eaton) y canales.',
@@ -240,9 +240,8 @@ export function useWorkAreaState() {
     });
     return () => setAyudaContext(null);
   }, [tab, redActiva]);
-  /** Página restaurada acotada al total de la red (un 9 de 4 dejaba el PageNav roto).
-   *  @param red - id de red.
-   *  @returns página válida entre 1 y el total. */
+  /** Página guardada ajustada al total de la red (si guardaste la 9 y la red tiene 4, vuelve
+   *  a la 4 — si no, el navegador de páginas apunta a una que no existe). */
   const pag = (red: string): number => {
     const max = MAX_PAGINA[red] ?? 1;
     const v = paginasInit[red];

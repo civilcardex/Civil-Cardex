@@ -131,12 +131,7 @@ export async function loadEpDatos(proyectoId: string): Promise<EPData | null> {
   }
 }
 
-/**
- * Upsert parcial de ep_datos_proyecto vía RPC SECURITY DEFINER (1:1 con el proyecto, no toca
- * otras tablas). Lo usa PressureEquipmentDesign (debounced) como fuente de verdad; localStorage
- * ('ep') queda como caché en vivo. Ver
- * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- */
+/** Guarda lo del equipo a presión en la BD (una fila por proyecto, sin tocar lo demás). Lo usa la página de diseño con debounce. Ej: ep (Equipo de Presion) con caché viva en localStorage. */
 export async function saveEpDatos(proyectoId: string, ep: EPData): Promise<void> {
   try {
     const {

@@ -4,43 +4,41 @@
 // parámetros): 0.0630902 L/s→gpm, Wyly-Eaton K=27.8 (gpm,pulg), n ref=0.009, r=7/24,
 // fracción muro vertical=0.5, Cw vertedero=1.7, Cd orificio=0.6, g=9.81 m/s², 0.0254 m/pulg.
 
-/** Conversión L/s → gpm (factor fijado en las fórmulas del Excel). */
+/** Convierte L/s a gpm (galones por minuto, unidad con la que calcula el Excel de lluvias). */
 const LPS_A_GPM = 0.0630902;
-/** Coeficiente Wyly-Eaton K (gpm, pulg) — tubería lisa. */
+/** Coeficiente K de Wyly-Eaton (formula de ventilacion sanitaria): constante que dimensiona el bajante de lluvias según el llenado permitido. */
 const WYLY_K = 27.8;
-/** n de referencia del coeficiente K (ajuste proporcional a 1/n como Manning). */
+/** Rugosidad de referencia del K (ajuste a 1/n como Manning (formula de flujo en tuberia)): adapta la fórmula al material real del tubo. */
 const WYLY_N_REF = 0.009;
-/** Fracción de área de muro vertical que se suma a la cubierta. */
+/** Fracción del área del muro vertical que también llueve sobre la cubierta (0.5 = la mitad). */
 const FRACCION_MURO = 0.5;
-/** Cw vertedero circular (m^0.5/s) — embocadura perimetral. */
+/** Cw del vertedero circular (m^0.5/s): cuánta agua salta del borde de la cubierta al canal. */
 const CW_VERTEDERO = 1.7;
-/** Cd orificio (embocadura de arista viva). */
+/** Cd de orificio de arista viva: cuánta agua pasa por el hueco canal→bajante. */
 const CD_ORIFICIO = 0.6;
 const G_M_S2 = 9.81;
 const PULG_A_M = 0.0254;
 
 export interface ChequeoBajanteResult {
-  /** Q de diseño (L/s) = C·I·A/3600. */
+  /** Q (Caudal) de diseño (L/s): C·I·A/3600 — agua que cae (C coeficiente de escorrentía, I intensidad de lluvia, A área). */
   Q: number;
-  /** Diámetro calculado Wyly-Eaton (pulg). */
+  /** Diámetro calculado por Wyly-Eaton (formula de ventilacion sanitaria) (pulg): el que la lluvia exige. */
   dCalc: number;
-  /** Capacidad del D propuesto (L/s). */
+  /** Capacidad del diámetro propuesto (L/s): cuánto puede llevar ese tubo. */
   Qcap: number;
-  /** Q / Qcap (fracción; la UI lo muestra como %). */
+  /** Q (Caudal)/Qcap (fracción; la UI lo muestra como %): 1.0 = el tubo va justo. */
   cociente: number;
   chequeo: string;
 }
 
-/**
- * Chequeo de bajante de aguas lluvias (hoja "1. Bajantes"): método racional Q = C·I·A/3600 y
- * Wyly-Eaton Q[gpm] = 27.8·(0.009/n)·r^(5/3)·D[pulg]^(8/3).
- * @param params.areaAcumulada - Área aportante total (m²).
- * @param params.intensidad - Intensidad de lluvia (mm/h).
- * @param params.coeficienteC - Coeficiente de escorrentía (de la tabla del catálogo por material de cubierta).
- * @param params.R - String de razón de llenado ('1/4', '7/24' o vacío).
- * @param params.manning - Manning n del material de la bajante.
- * @param params.diamPropuesto - Diámetro propuesto (pulg).
- */
+/** Chequeo de bajante ll (Lluvias): compara la lluvia que cae (método racional C·I·A) con lo que puede llevar el diámetro propuesto (Wyly-Eaton (formula de ventilacion sanitaria)).
+ *  Ej: 100 m², 100 mm/h, C 0.8 -> 2.22 L/s -> exige ~2.4".
+ *  @param params.areaAcumulada - Área aportante total (m²).
+ *  @param params.intensidad - Intensidad de lluvia (mm/h).
+ *  @param params.coeficienteC - Coeficiente de escorrentía (por material de cubierta).
+ *  @param params.R - Razón de llenado ('1/4', '7/24' o vacío).
+ *  @param params.manning - Manning (formula de flujo en tuberia) n del material (adimensional).
+ *  @param params.diamPropuesto - Diámetro propuesto (pulg). */
 export function chequeoBajanteLluvia({
   areaAcumulada = 0,
   intensidad = 0,
@@ -86,32 +84,29 @@ export function chequeoBajanteLluvia({
 
 // Borde libre (freeboard): en el Excel es columna de entrada editable por fila — default
 // 10 cm (antes era fijo en todo el app; orig. usuario lo hizo editable tipo hoja 2).
-/** Borde libre por defecto del canal de cubierta (cm). */
+/** Borde libre por defecto del canal de cubierta (cm): altura de seguridad que se deja sin agua antes de desbordar. */
 export const BORDE_LIBRE_CANAL_CM = 10;
 
 export interface ChequeoCanalResult {
-  /** Área efectiva (m²) = A acumulada + 0.5·muro vertical. */
+  /** Área efectiva (m²): cubierta + la mitad del muro vertical que también le llueve encima. */
   aEfectiva: number;
-  /** Q real (L/s) = C·I·Aef/3600. */
+  /** Q (Caudal) real que llega al canal (L/s) = C·I·Aef/3600. */
   Qreal: number;
-  /** Capacidad Manning de la sección útil (L/s). */
+  /** Capacidad Manning (formula de flujo en tuberia) de la sección útil (L/s): cuánto lleva el canal. */
   Qmax: number;
-  /** Tirante normal (m), iteración de punto fijo (5 pasadas, como el Excel AJ:AP). */
+  /** Tirante normal (m): altura del agua dentro del canal, por iteración (5 pasadas, como el Excel AJ:AP). */
   yn: number;
-  /** Velocidad del flujo (m/s) = Q/(b·yn). */
+  /** Velocidad del flujo dentro del canal (m/s) = Q/(b·yn). */
   velocidad: number;
   chequeo: string;
   /** Texto "b × (h+borde)" de la sección total. */
   totalStr: string;
 }
 
-/**
- * Chequeo de canal de cubierta (hoja "2. Canales", sin las columnas rojas): Q = C·I·Aef/3600 y
- * Qmáx = 1000/n·A·R^(2/3)·√S con A = b·h y R = b·h/(b+2h) internos (columnas rojas Q/R/S del
- * Excel). El tirante normal itera yn_{k+1} = (Qn/√S)^0.6·(b+2·yn_k)^0.4/b (5 pasadas).
- * @param params.muroVertical - Área de muro vertical que descarga sobre el canal (m²).
- * @param params.bordeLibreCm - Borde libre editable de la fila (cm).
- */
+/** Chequeo de canal de cubierta: ¿el canal de concreto lleva la lluvia (método racional + Manning (formula de flujo en tuberia)) sin desbordarse?
+ *  Ej: 200 m², 100 mm/h, C 0.8, canal 20x15 cm a 1 % -> Qreal 4.44 L/s vs capacidad muy superior -> 'Ok'.
+ *  @param params.muroVertical - Área de muro vertical que descarga al canal (m²).
+ *  @param params.bordeLibreCm - Borde libre editable de la fila (cm). */
 export function chequeoCanalLluvia({
   areaAcumulada = 0,
   muroVertical = 0,
@@ -181,21 +176,18 @@ export function chequeoCanalLluvia({
 }
 
 export interface EmbocaduraResult {
-  /** Q que llega a cada bajante (L/s) = Qreal / N bajantes. */
+  /** Q (Caudal) que le toca a cada bajante (L/s) = Qreal / N bajantes. */
   QporBajante: number;
-  /** Altura de lámina requerida (m) = max(H vertedero, H orificio). */
+  /** Altura de lámina requerida encima del bajante (m) = max(H vertedero, H orificio). */
   Hreq: number;
   chequeo: string;
 }
 
-/**
- * Embocadura canal → bajante (hoja "2. Canales" AE/AG; las rojas Z/AB/AC/AD quedan internas).
- * H vertedero = [Q(m³/s)/(1.7·π·D_m)]^(2/3); H orificio = [Q/(0.6·π·D_m²/4)]²/(2g); H = mayor.
- * El N° de bajantes sale de los asociados del canal y D del menor propuesto (conservador).
- * @param params.numBajantes - N° de bajantes asociados al canal.
- * @param params.diamPulg - D propuesto de la bajante (pulg) — el menor de los asociados.
- * @param params.hUtilM - Altura útil del canal (m) para el chequeo H ≤ h.
- */
+/** Chequeo de la embocadura (boca) canal→bajante: ¿el agua que salta del canal cabe por el bajante sin represarse atrás?
+ *  Ej: 3 bajantes de 4" con Qreal 20 L/s -> 6.67 L/s por bajante.
+ *  @param params.numBajantes - N° de bajantes asociados al canal.
+ *  @param params.diamPulg - D propuesto menor de los asociados (pulg, conservador).
+ *  @param params.hUtilM - Altura útil del canal (m) para el chequeo H ≤ h. */
 export function chequeoEmbocaduraLluvia({
   Qreal = 0,
   numBajantes = 0,

@@ -11,9 +11,8 @@ import {
 } from '../../lib/PlanoEngine/PlanoEngineDrawing';
 import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventCodoTeeFix';
 
-/** Coloca un accesorio del modal sobre un ramal: localiza la unión por posición, valida sifón
- *  y codos, y limpia accesorios conflictivos en el mismo punto. Devuelve el ramal mutado, o null
- *  si una validación bloqueó la colocación (se levantó alerta). */
+/** Coloca un accesorio del modal sobre un ramal: localiza la unión por posición, valida sifón y codos, y limpia accesorios conflictivos en el mismo punto.
+ * Devuelve el ramal mutado, o null si una validación bloqueó la colocación (se levantó alerta). */
 export function applyAccesorioPlacement(
   eng: PlanoEngine,
   ramalId: string,

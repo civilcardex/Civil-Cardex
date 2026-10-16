@@ -13,9 +13,8 @@ import {
 import { camposAsocManual } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit';
 import { bajanteLabel, ramalLabel } from '../../utils/accessoryAbbreviations';
 
-/** Panel de asociaciones aguas lluvias (canales/ramales/bajantes) — bloque de retorno
- *  temprano de AparatosPanel movido verbatim (rediseño FixturesPanel). Cada toggle toca el
- *  motor (updateElementById), aplica el veto de sello del canal y refresca la selección. */
+/** Panel de asociaciones de aguas lluvias (ll): canales, ramales y bajantes. Cada casilla
+ *  escribe en el motor, respeta el veto de sello del canal y refresca la selección. */
 export function LlAssociationsPanel(args: {
   netId: string;
   selElement: SelectableTarget | null;

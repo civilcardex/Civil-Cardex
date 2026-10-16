@@ -17,9 +17,8 @@ import { isAC2 } from '../../utils/waterNetworkRows';
 // ramal→ramal por cercanía de extremos, puentes de montantes entre pisos, poda de ciclos y
 // fusiones de empalmes. Devuelve los totales dirigidos por tramo, el mapa de padres, la raíz de
 // presión y el caudal probable por tramo. Es el insumo de toda la tabla de diseño.
-/** Grafo de conectividad de la red leído de todos los planos dibujados: enlaces por cercanía
- *  de extremos, puentes de montantes entre pisos, poda de ciclos y fusiones de empalmes.
- *  Devuelve los totales dirigidos, el mapa de padres, la raíz de presión y el caudal por tramo. */
+/** Grafo de conectividad de la red leído de todos los planos dibujados: enlaces por cercanía de extremos, puentes de montantes
+ * entre pisos, poda de ciclos y fusiones de empalmes. */
 export function useWaterNetworkGraph({
   plans,
   tramos,

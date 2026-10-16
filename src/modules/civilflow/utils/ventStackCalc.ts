@@ -50,10 +50,7 @@ export interface BajanteVentilacionResult {
   cumple: boolean;
 }
 
-/** Diámetro en pulgadas de un bajante de ventilación leído del doc crudo de storage.
- *  Prefiere `diamPulg` (sincronizado por el autosave); si falta, parsea `dNominal` con
- *  diamPulgFromLabel (fracciones unicode, mixtos '1-1/2'/'1 1/2' y sufijos '— mm' incluidos
- *  — el parser ad-hoc anterior daba 0.5 para '1-1/2"' y eliminaba el ½, ronda 8 F-1). */
+/** Pulgadas del bajante vent (Ventilacion) (diamPulg vivo, si no parsea dNominal). */
 export function ventBajPulg(b: { diamPulg?: unknown; dNominal?: unknown }): number {
   const n = Number(b.diamPulg);
   if (Number.isFinite(n) && n > 0) return n;

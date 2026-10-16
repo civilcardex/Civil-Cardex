@@ -18,9 +18,9 @@ import { calculateRamalLength } from './ramalMeasure';
 // etiqueta recalculada. Si en cambio se borra una de las dos mitades (A o D), solo se limpia la
 // referencia mergesFrom muerta de la sobreviviente. Las cadenas (D dividido de nuevo después)
 // se reescriben para apuntar de D.id → A.id.
-/** Si el borrado separó dos mitades de un tramo unidas por mergesFrom, las vuelve a fusionar
- *  en un solo ramal: revierte el UC sumado y recalcula la etiqueta. Borrar una de las mitades
- *  a mano solo limpia la referencia muerta. */
+/** Vuelve a unir las dos mitades de una tubería que había sido partida (mergeFrom guarda la
+ *  genealogía del split) y le resta al ramal la UC (Unidades de Consumo) que la división le había
+ *  sumado. */
 export function remergeSplitRamales(
   engine: IPlanoEngineCore,
   deletedId: string,
@@ -146,11 +146,8 @@ export function remergeSplitRamales(
   mergeCollinearPairs(engine);
 }
 
-/** Orig. usuario (yee doble desarmada): tras borrar brazos, dos ramales que quedan TOCÁNDOSE
- *  en un punto donde HABÍA un brazo borrado (grado 2, sin bajante ni otro ramal) se funden en
- *  UN solo ramal conservando el vértice — aunque NO sean colineales (esquina RS1|RS2 del trazo
- *  restante). Solo san/ll. `deletedPts` = todos los puntos de los ramales borrados en esta
- *  operación: la fusión solo ocurre en el sitio del borrado, nunca en uniones ajenas. */
+/** Pega en una sola pieza los pedazos que quedan tocándose donde se borró una rama (solo en san
+ *  (Sanitaria) y ll (Lluvias), donde los empalmes se funden). */
 export function mergeTouchingRemnant(engine: IPlanoEngineCore, deletedPts: number[][]): void {
   const TOL = 0.5;
   const atDeleted = (p: number[]): boolean =>
@@ -273,12 +270,8 @@ export function mergeTouchingRemnant(engine: IPlanoEngineCore, deletedPts: numbe
 
 // Funde ramales colineales que se tocan extremo-a-extremo sin ramificación en el punto.
 
-/** Tras borrar un tributario que llegaba a un vértice, DOS tributarios pueden quedar tocándose
- *  extremo-a-extremo en ese punto (esquina) — la estela de un split antiguo con piezas nunca
- *  re-unidas. Si en el punto SOLO están esos dos (sin ramal, bajante ni tercer brazo), se
- *  fusionan en un solo tributario: geometría concatenada, refs (padre/recibeDeIds/mergesFrom)
- *  migradas y contadores de aparatos/hidro combinados por MAX (orig. usuario: borrar T1RS2
- *  debía dejar UN tributario, no la esquina T2RS1|T3RS1). */
+/** Junta en una sola la esquina de dos ramalitos que se quedaron huérfanos (hereda el padre y la
+ *  genealogía del split, mergesFrom). */
 export function mergeTribPairAt(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   if (engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL)) return;

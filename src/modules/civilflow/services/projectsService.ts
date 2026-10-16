@@ -4,7 +4,7 @@ import { CF_TABLES } from '../constants/tableNames';
 import { emitBdSaveError } from './storageService';
 
 export interface ProyectoRow {
-  /** Identificador uuid (cf_proyectos.id) — paridad cm_proyectos; usa para deep-links. */
+  /** Identificador único universal (uuid) del proyecto (cf_proyectos.id); mismo formato que cm_proyectos, para deep-links. */
   id: string;
   user_id: string;
   codigo: string;

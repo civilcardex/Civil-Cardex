@@ -1,28 +1,26 @@
-/** Aceleración gravitacional (m/s²). */
+/** Aceleración de la gravedad (m/s²): la usa Froude (numero adimensional de regimen) para saber si el flujo va tranquilo o de torrente. */
 export const GRAVEDAD: number = 9.80665;
-/** Densidad del agua (kg/m³). */
+/** Densidad del agua (kg/m³): convierte altura de agua en presión sobre la tubería. */
 export const AGUA_DENSIDAD: number = 1000;
-/** Coeficiente de rugosidad de Manning para PVC sanitario. */
+/** Rugosidad Manning (formula de flujo en tuberia) del PVC san (Sanitaria): cuánto frena la pared al agua (adimensional, 0.009). */
 export const manning_SAN: number = 0.009;
 
 // ─── Factor de simultaneidad (Hunter modificado) ───
-/**
- * Factor de simultaneidad de Hunter modificado.
- * @param numSalidas - Número de salidas de aparatos.
- * @returns Factor en rango (0, 1] usando 1/√(n-1).
- */
+/** Factor Hunter (metodo de probabilidad de uso simultaneo) modificado: cuánto se reduce el caudal porque no todos los aparatos descargan a la vez (1/√(n-1), rango (0,1]).
+ *  Ej: 10 salidas -> 1/3 = 0.33.
+ *  @param numSalidas - N° de salidas de aparatos.
+ *  @returns factor de simultaneidad. */
 export function factorSimultaneidad(numSalidas: number): number {
   if (numSalidas <= 1) return 1;
   return 1 / Math.sqrt(numSalidas - 1);
 }
 
 // ─── Caudal de Hunter (Rodriguez Diaz) ───
-/**
- * Caudal de Hunter (método Rodríguez Díaz), en L/s.
- * @param UD - Unidades de descarga totales.
- * @param K - Coeficiente de simultaneidad.
- * @returns Caudal de diseño en L/s.
- */
+/** Q (Caudal) Hunter (metodo de probabilidad de uso simultaneo) en L/s: cuánta agua residual se junta si varios aparatos descargan a la vez (Rodríguez Díaz).
+ *  Ej: 40 UD (Unidades de Desague) con K=0.3 -> ~0.44 L/s.
+ *  @param UD - UD (Unidades de Desague) totales.
+ *  @param K - coeficiente de simultaneidad.
+ *  @returns Q (Caudal) de diseño en L/s. */
 export function caudalHunterLPS(UD: number, K: number): number {
   let Q;
   if (UD < 240) {
@@ -34,13 +32,12 @@ export function caudalHunterLPS(UD: number, K: number): number {
 }
 
 // ─── Caudal a tubo lleno (Manning) ───
-/**
- * Descarga a tubo lleno vía la ecuación de Manning.
- * @param D_m - Diámetro interno de tubería (m).
- * @param n - Coeficiente de rugosidad de Manning.
- * @param S - Pendiente de tubería (m/m).
- * @returns Caudal a tubo lleno (m³/s), o 0 si las entradas son inválidas.
- */
+/** Q (Caudal) a tubo lleno por Manning (formula de flujo en tuberia): cuánta agua cabe si la tubería san (Sanitaria) corre completamente llena (m³/s, 0 si inválido).
+ *  Ej: PVC de 4" a 1 % de pendiente -> ~7.8 L/s.
+ *  @param D_m - diámetro interno (m).
+ *  @param n - rugosidad Manning (formula de flujo en tuberia).
+ *  @param S - pendiente (m/m).
+ *  @returns Q (Caudal) a tubo lleno en m³/s. */
 export function caudalTuboLleno(D_m: number, n: number, S: number): number {
   if (D_m <= 0 || S <= 0) return 0;
   const A = (Math.PI * D_m * D_m) / 4;
@@ -49,13 +46,12 @@ export function caudalTuboLleno(D_m: number, n: number, S: number): number {
 }
 
 // ─── Velocidad a tubo lleno ───
-/**
- * Velocidad a tubo lleno vía la ecuación de Manning.
- * @param D_m - Diámetro interno de tubería (m).
- * @param n - Coeficiente de rugosidad de Manning.
- * @param S - Pendiente de tubería (m/m).
- * @returns Velocidad a tubo lleno (m/s), o 0 si las entradas son inválidas.
- */
+/** Velocidad a tubo lleno por Manning (formula de flujo en tuberia): a qué velocidad viaja el agua si la tubería va llena (m/s, 0 si inválido).
+ *  Ej: PVC san (Sanitaria) de 2" a 5 % de pendiente -> ~1.35 m/s.
+ *  @param D_m - diámetro interno (m).
+ *  @param n - rugosidad Manning (formula de flujo en tuberia).
+ *  @param S - pendiente (m/m).
+ *  @returns velocidad a tubo lleno en m/s. */
 export function velocidadTuboLleno(D_m: number, n: number, S: number): number {
   if (D_m <= 0 || S <= 0) return 0;
   const Rh = D_m / 4;
@@ -63,12 +59,10 @@ export function velocidadTuboLleno(D_m: number, n: number, S: number): number {
 }
 
 // ─── Relacion Q/Qo y V/Vo (tablas de Leon/Estopin) ───
-/**
- * Razones hidráulicas de flujo parcial (tablas de León/Estopiñán).
- * @param q_Qo - Razón de descarga real a descarga a tubo lleno.
- * @returns Objeto con razón de velocidad v_V0, razón de tirante h_D, ángulo alpha y razón de
- * radio hidráulico Rh_D.
- */
+/** Razones de flujo parcial Q (Caudal)/Qo (tablas de León/Estopiñán): sirven para calcular qué tan llena viaja la tubería cuando el caudal real es MENOR que el de tubo lleno.
+ *  Ej: q/Qo = 0.3 -> la tubería va ~43 % llena.
+ *  @param q_Qo - razón Q (Caudal)/Qo (0.01-0.999).
+ *  @returns razones v_V0, h_D, alpha y Rh_D. */
 export function relacionesHidraulicas(q_Qo: number): {
   q_Qo: number;
   v_V0: number;
@@ -104,12 +98,11 @@ export function relacionesHidraulicas(q_Qo: number): {
 }
 
 // ─── Numero de Froude ───
-/**
- * Número de Froude para flujo en canal abierto / tubería parcialmente llena.
- * @param V - Velocidad del flujo (m/s).
- * @param DH - Tirante hidráulico (m).
- * @returns Número de Froude adimensional; Infinity si DH ≤ 0.
- */
+/** Froude (numero adimensional de regimen) de flujo parcial: compara la velocidad del agua con la de sus propias olas y dice si el flujo es tranquilo o de torrente.
+ *  Ej: 2 m/s con 0.1 m de tirante -> ~2 (supercrítico).
+ *  @param V - velocidad del flujo (m/s).
+ *  @param DH - tirante hidráulico (m).
+ *  @returns número Froude (numero adimensional de regimen). */
 export function numeroFroude(V: number, DH: number): number {
   if (DH <= 0) return Infinity;
   return V / Math.sqrt(GRAVEDAD * DH);
@@ -117,7 +110,8 @@ export function numeroFroude(V: number, DH: number): number {
 
 // ─── Fuerza tractiva ───
 /**
- * Fuerza tractiva (esfuerzo cortante) en kg/m².
+ * Fuerza tractiva (esfuerzo cortante) en kg/m²: cuánto "jala" el agua las paredes de la tubería san (Sanitaria); si es muy baja, los sólidos se estancan en vez de arrastrarse.
+ * Ej: radio hidráulico 0.03 m a 1 % de pendiente -> 0.3 kg/m².
  * @param Rh - Radio hidráulico (m).
  * @param S - Pendiente de tubería (m/m).
  * @returns Fuerza tractiva en kg/m², o 0 si las entradas son inválidas.
@@ -128,11 +122,10 @@ export function fuerzaTractiva(Rh: number, S: number): number {
 }
 
 // ─── Tipo de regimen ───
-/**
- * Clasifica el régimen de flujo según el número de Froude.
- * @param Fr - Número de Froude.
- * @returns 'Subcrítico', 'Crítico' o 'Supercrítico'.
- */
+/** Régimen del flujo por Froude (numero adimensional de regimen): Subcrítico (<0.9, tranquilo), Crítico (≤1.1) o Supercrítico (torrente).
+ *  Ej: Froude 1.5 -> 'Supercrítico'.
+ *  @param Fr - Froude (numero adimensional de regimen).
+ *  @returns régimen del flujo. */
 export function tipoRegimen(Fr: number): string {
   if (Fr < 0.9) return 'Subcrítico';
   if (Fr <= 1.1) return 'Crítico';
@@ -140,13 +133,12 @@ export function tipoRegimen(Fr: number): string {
 }
 
 // ─── Diámetro calculado por Manning ───
-/**
- * Diámetro teórico de tubería a partir de la ecuación de Manning (tubo lleno, sección circular).
- * @param Q_m3s - Caudal de diseño (m³/s).
- * @param n - Coeficiente de rugosidad de Manning.
- * @param S - Pendiente de tubería (m/m).
- * @returns Diámetro requerido (m), o 0 si las entradas son inválidas.
- */
+/** Diámetro por Manning (formula de flujo en tuberia): el diámetro mínimo para que la tubería san (Sanitaria) lleve el caudal con esa pendiente (m, 0 si inválido).
+ *  Ej: 3 L/s a 1 % con PVC -> ~0.071 m (2 3/4").
+ *  @param Q_m3s - Q (Caudal) de diseño (m³/s).
+ *  @param n - rugosidad Manning (formula de flujo en tuberia).
+ *  @param S - pendiente (m/m).
+ *  @returns diámetro requerido en m. */
 export function diametroManning(Q_m3s: number, n: number, S: number): number {
   if (S <= 0 || Q_m3s <= 0 || n <= 0) return 0;
   return Math.pow((Q_m3s * n) / (0.312 * Math.sqrt(S)), 3 / 8);

@@ -1,7 +1,8 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import { canalOBBDe, puntoEnCanalOBB, pxPerCmDe } from './canalGeometry';
 
-/** Estado del sello canal↔bajante por plano: auto-stamps y vetos. */
+/** Memoria del enlace canal↔bajante de cada piso: qué ramales ya quedaron sellados como
+ *  ramal-de-canal y qué pares quedan vetados (para no marcar dos veces lo mismo). */
 export interface SelloCanalEstado {
   autoBaj: string[];
   vetoBaj: string[];
@@ -89,11 +90,14 @@ export function levantarVetoSelloCanal(
   }
 }
 
-/** Tolerancias del puente canal↔bajante (px de plano). */
+/** Cuánto puede sobrar (en pixeles de plano) para que un ramal siga contando como conectado al
+ *  canal o al bajante: 4 px al canal, 2 px al bajante. */
 export const CANAL_PUENTE_PAD = 4;
 export const BAJANTE_PUENTE_TOL = 2;
 
-/** Sello automático canal↔bajante por ramal. Corre tras autoDetect+poda; nunca lanza. */
+/** Marca solo, al cargar el plano, los ramales que conectan un canal con un bajante de lluvias
+ *  (ll). Corre después de detectar conexiones y podar las viejas; si algo falla, se ignora en
+ *  silencio (nunca rompe la carga). */
 export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
   try {
     let pxPerCm = 0;

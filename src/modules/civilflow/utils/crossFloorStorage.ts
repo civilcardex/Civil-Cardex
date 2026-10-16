@@ -1,9 +1,4 @@
-/**
- * Núcleo de E/S del almacenamiento de trazos entre pisos: tipos compartidos, lectura/escritura
- * cruda del JSON por piso y helpers de ghosts/Ldesvio. Punto del grafo SIN dependencias hacia
- * los consumidores (associateBajanteAcrossFloors y assocLayoutMigration importan solo desde
- * aquí) — existe para que no haya ciclos de importación entre módulos hermanos.
- */
+/** E/S de trazos entrepisos por piso (XFG (fantasma entrepisos)/LD_ (ramal desvio entrepisos) sin ciclos de import). */
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { devError } from '../../../utils/devError';
 import { PLANS_META_KEY, TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
@@ -12,11 +7,7 @@ import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 
 export type { CrossFloorGhost };
 
-/** ¿Existe la caché local del piso? Los escritores de este módulo hacen load→mutar→save SIN
- *  merge: si la caché no existe, guardar fabricaría un documento casi vacío que el RPC
- *  destructivo (save_plano_data borra y re-inserta TODAS las colecciones) persistiría en BD —
- *  borrado del piso (orig. usuario: "todo se borró excepto un piso"). Sin caché no se escribe:
- *  el prefetch/visor descarga el piso de BD primero y el flujo se reintenta con datos reales. */
+/** ¿Hay copia guardada de este piso en el navegador? Si NO la hay no se escribe nada: el guardado es destructivo y borraría el piso entero. */
 export function hasCachedPlan(planId: string | number): boolean {
   try {
     return localStorage.getItem(TRAZOS_PLAN_PREFIX + String(planId)) != null;
@@ -25,8 +16,7 @@ export function hasCachedPlan(planId: string | number): boolean {
   }
 }
 
-/** Origen de calibración de la lámina desde su doc de trazos. ÚNICA vía interna: consumir
- *  origenDePlan (meta primero). Se mantiene exportado porque la isometría y tests lo siembran. */
+/** Origen de calibración guardado DENTRO del dibujo del piso (vía vieja; hoy se prefiere origenDePlan, que mira primero los metadatos). */
 export function origenDeTrazos(planId: string): { x_px: number; y_px: number } | null {
   try {
     const raw = loadFromStorage<{ origen?: { x_px?: number; y_px?: number } | null } | null>(
@@ -42,11 +32,7 @@ export function origenDeTrazos(planId: string): { x_px: number; y_px: number } |
   }
 }
 
-/** Origen de calibración — UNA sola fuente para todo el módulo: el META de plans
- *  (PLANS_META_KEY, que viaja a BD y se restaura en otros dispositivos), con el doc de trazos
- *  como fallback legacy (tests y dibujos viejos). Antes se leía SOLO el doc y el primer
- *  autosave lo borraba (serializeWork no serializa origen): las asociaciones caían al frame
- *  crudo en silencio y se mezclaban frames (auditoría 2026-09-22 F-1/F-7). */
+/** Punto físico que se marcó como origen al calibrar la lámina de este piso: gracias a él se compara el mismo punto del edificio entre pisos aunque las láminas estén corridas. */
 export function origenDePlan(planId: string): { x_px: number; y_px: number } | null {
   try {
     const meta = loadFromStorage<
@@ -61,10 +47,7 @@ export function origenDePlan(planId: string): { x_px: number; y_px: number } | n
   return origenDeTrazos(planId);
 }
 
-/** Traduce un punto del frame de lámina `fromPlanId` al frame de `toPlanId` por el delta de
- *  orígenes de calibración: las láminas del mismo AutoCAD no comparten posición absoluta y el
- *  MISMO punto físico cae en px distintos por hoja. Sin origen en alguna de las dos devuelve el
- *  punto intacto (fallback legacy). */
+/** Convierte un punto del "mundo" de un piso al de otro (restando el origen de cada uno); si algún piso no tiene origen marcado, lo devuelve igual. */
 export function aFrameDe(
   pt: { x: number; y: number },
   fromPlanId: string,
@@ -124,22 +107,19 @@ export interface LocalGhostDrawingData {
   bajantes?: StoredBajante[];
 }
 
-/** Lee el JSON crudo de trazos de un piso (vacío si no existe) — uso interno y de la migración. */
+/** Lee el dibujo guardado de un piso (lo que se ve en el canvas: ramales, bajantes, fantasmas…). Devuelve vacío si el piso no tiene nada guardado. */
 export function loadData(planId: string | number): LocalGhostDrawingData {
   const raw = loadFromStorage<LocalGhostDrawingData | null>(TRAZOS_PREFIX + planId, null);
   return raw || {};
 }
-/** Escribe el JSON crudo de trazos de un piso (localStorage + BD) — uso interno y de la migración. */
+/** Guarda el dibujo de un piso en el navegador Y en la base de datos. */
 export function saveData(planId: string | number, data: LocalGhostDrawingData): void {
   data.ts = Date.now();
   saveToStorage(TRAZOS_PREFIX + planId, data);
   saveTrazosToDB(String(planId), data);
 }
 
-/** Restauración de asociación entre pisos en la carga: copia al doc GANADOR (BD) las piezas de
- *  asociación (fantasmas XFG, ramales LD_, anillo+ghostData del bajante) que la caché local
- *  perdedora sí tiene. Genérico sobre el doc ganador (PlanTrazos / LocalGhostDrawingData).
- *  Devuelve true si añadió algo (el caller re-sube el doc saneado). */
+/** Si la copia de la nube llegó sin las piezas de asociación, las recupera de la copia local (los XFG (fantasma entrepisos), LD_ (ramal desvio entrepisos) y anillos que sí están guardados). */
 export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown, db: T): boolean {
   if (typeof local === 'string') {
     try {
@@ -151,8 +131,7 @@ export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown
   if (!local || typeof local !== 'object') return false;
   const l = local as LocalGhostDrawingData & { ts?: number };
   const d = db as {
-    /** Marca de desasociación (estamparAsocsClearedTs): corta la resurrección desde
-     *  cachés stale de otros dispositivos — ver JSDoc del estamper. */
+    /** Fecha en que se desasoció (corta la recuperación desde copias viejas). */
     asocsClearedTs?: number;
     crossFloorGhosts?: Array<{ id: string }>;
     ramales?: Array<{ id: string }>;

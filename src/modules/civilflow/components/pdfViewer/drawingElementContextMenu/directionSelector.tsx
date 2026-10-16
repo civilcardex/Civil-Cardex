@@ -14,9 +14,8 @@ import {
   type ContextMenuState,
 } from './context';
 
-/** Selector de dirección de flujo del bajante/montante (Sube/Baja/Continua) con validaciones
- *  de coherencia contra los ramales conectados, y botón para activar o quitar el desplazamiento
- *  fantasma. */
+/** Selector de dirección de flujo del bajante/montante (Sube/Baja/Continua) con validaciones de coherencia contra los ramales conectados,
+ * y botón para activar o quitar el desplazamiento fantasma. */
 export function BajanteDirectionSelector({
   element,
   isGhostClick = false,

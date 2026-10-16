@@ -35,8 +35,8 @@ import {
 import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './canalAssociation';
 
-/** Termina el ramal activo: valida ángulos, crea el PlanoRamal, auto-divide uniones y asocia
- *  con bajantes. @param engine Instancia del motor. */
+/** Cierra la tubería que venías dibujando: revisa que sea válida, la crea, parte las uniones en T
+ *  que toque y la engancha a los bajantes cercanos. */
 export function finishRamal(engine: IPlanoEngineCore): void {
   engine._yeeFlashKey = null;
   if (!engine.activeRamal || engine.activeRamal.pts.length < 1) return;
@@ -807,7 +807,8 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   }
 }
 
-/** ¿El ángulo de cruce entre el ramal nuevo y los existentes es válido para la red? Bloquea con alerta los cruces no recomendados (san/ll solo 45°, af/ac sin uniones de 45°). */
+/** Revisa que el trazo nuevo no atraviese otra tubería: en san (Sanitaria) y ll (Lluvias) solo se
+ *  permite tocar a 45° (un cruce de frente no es una conexión válida). */
 export function checkCrossRamalAngle(
   engine: IPlanoEngineCore,
   pA: number[],

@@ -1,11 +1,6 @@
-/**
- * Tipos de dominio del módulo civilflow compartidos entre contexts, servicios y componentes.
- * Viven en su propio archivo SIN imports (solo tipos primitivos) para romper los ciclos de
- * import que se formaban cuando Piso vivía en useWorkAreaState y PlanMeta en PlansContext —
- * proyectoDataService y los contexts de proyecto los importaban de ida y vuelta.
- */
+/** Tipos de dominio civilflow sin imports (rompe ciclos entre contexts y servicios). */
 
-/** Piso de un proyecto (nivel con su cota y tipo). */
+/** Piso del proyecto (nivel con npt (nivel de piso topografico) y tipo). */
 export interface Piso {
   id: string | number;
   n: number;

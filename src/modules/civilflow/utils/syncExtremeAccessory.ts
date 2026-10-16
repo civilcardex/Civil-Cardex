@@ -1,5 +1,5 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
-import { propagarAparatosPresion } from './aparatosPresion';
+import { esRedAparatosPresion, propagarAparatosPresion } from './aparatosPresion';
 import {
   HYDRO_DATA_STORAGE_KEY,
   TRAZOS_PREFIX,
@@ -104,14 +104,12 @@ export function bumpHidroAccesorio(
   }
 }
 
-/** Incrementa/decrementa el conteo de aparato (p. ej. 'sif') en APARATOS_BY_TRAMO_KEY.
- *  Exportada para los selectores de accesorio de extremo: asignar el sifón desde el extremo
- *  del ramal debe sumar el aparato igual que desde el cuerpo (orig. usuario). */
-/** Tras escribir conteos af/ac: propaga herencia aguas abajo (idempotente). */
+/** Tras escribir conteos af (Agua Fria)/ac (Agua Caliente): propaga herencia aguas abajo (idempotente). */
 function dispararPropagacion(netId: string): void {
-  if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
+  if (esRedAparatosPresion(netId)) propagarAparatosPresion(netId);
 }
 
+/** Suma/resta un aparato al conteo del ramal (extremo y cuerpo suman igual). */
 export function bumpAparatoCount(
   netId: string,
   ramalId: string,
@@ -138,10 +136,7 @@ export function bumpAparatoCount(
   dispararPropagacion(netId);
 }
 
-/** Asigna UN aparato san/ll al ramal (reemplaza el anterior: máximo 1 por ramal) y
- *  descuenta el primero que haya. Escritura directa al storage por clave de plano — NO depende
- *  de contextos async (el menú cerraba sin asignar cuando planosCtx aún cargaba y el primer
- *  clic "no hacía nada"). Devuelve false si no había nada que descontar. */
+/** Un aparato san (Sanitaria)/ll (Lluvias) por ramal (reemplaza el anterior; directo a storage). */
 export function setSingleAparatoCount(
   netId: string,
   ramalId: string,
@@ -204,10 +199,7 @@ export function moveAparatoCount(
   }
 }
 
-/** Mueve el registro COMPLETO de aparatos (todas las UC) de un ramal a otro en un solo
- *  load/save, sumando sobre lo que el destino ya tuviera. Usado al invertir la dirección de
- *  flujo de un ramal conectado: el usuario elige a qué ramal de la conexión se le cargan las
- *  unidades de consumo del ramal invertido. */
+/** Mueve todas las UC (Unidades de Consumo) de un ramal a otro (reparte al invertir flujo). */
 export function moveAllAparatoCounts(
   netId: string,
   fromId: string,
@@ -236,9 +228,7 @@ export function moveAllAparatoCounts(
   }
 }
 
-/** Fija el conteo de un aparato a un valor exacto (SET, no bump) — el auto-sif debe ser
- *  idempotente: el bump ciego acumulaba sifones fantasma al re-seleccionar el accesorio
- *  (orig. usuario: "sigue creando un sifón de más"). */
+/** Fija el conteo a un valor exacto (SET idempotente: sin sifones fantasma al re-seleccionar). */
 export function setAparatoCountValue(
   netId: string,
   ramalId: string,

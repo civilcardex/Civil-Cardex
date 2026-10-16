@@ -28,14 +28,7 @@ export {
   resetLabel,
 } from './PlanoEngineSelectionEdit';
 
-/**
- * Resuelve selección por punto (canvas coords). Prioridad: anotaciones texto > etiqueta bajante >
- * cuerpo ramal > bajante > canal (detrás de ramales) > área. Actualiza `selId`/`multiSel` y emite evento.
- * @param engine - Núcleo del motor con colecciones y estado de selección.
- * @param cx - X en canvas.
- * @param cy - Y en canvas.
- * @param isMultiSelectModifier - Si true, alterna en `multiSel` en vez de reemplazar.
- */
+/** Selecciona por punto en canvas (texto, etiqueta, ramal, bajante, canal y area). */
 export function selectAt(
   engine: IPlanoEngineCore,
   cx: number,
@@ -228,6 +221,7 @@ export function selectAt(
   // (bug: clicar la etiqueta de una rama tee AF cerca de la unión seleccionaba el ll que
   // cruzaba la unión y cambiaba la red activa a aguas lluvias).
   for (const r of engine.ramales) {
+    if (engine._hiddenNets.has(r.net)) continue;
     if (r._labelBox && pointInLabelBox(cx, cy, r._labelBox)) {
       if (-50 < minD) {
         minD = -50;
@@ -237,6 +231,7 @@ export function selectAt(
     }
   }
   for (const r of engine.ramales) {
+    if (engine._hiddenNets.has(r.net)) continue;
     const accMedHitIdx = findAccMedVertexHit(
       r.pts,
       r.accMed,

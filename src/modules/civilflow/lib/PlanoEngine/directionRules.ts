@@ -3,11 +3,9 @@
 // porque el flujo no tiene a dónde continuar. Validación de MODELO: se aplica en creación,
 // menú, panel, asociación, copia y carga — no solo en la UI.
 
-/**
- * ¿Hay un piso por DEBAJO del bajante? El npt es ELEVACIÓN: el último nivel inferior (sótano,
- * visto de arriba hacia abajo) es el de MENOR npt del proyecto. 'baja' exige un piso con npt
- * aún menor. Sin niveles conocidos no bloquea (comportamiento previo).
- */
+/** ¿Puede este bajante marcar "baja"? Solo si hay un piso MÁS ABAJO (npt (nivel de piso
+ *  topográfico) menor que el suyo); en el sótano más profundo no, porque el agua no tendría a
+ *  dónde seguir. */
 export function direccionBajaPermitida(
   engine: {
     nptLevels?: Array<{ npt?: number }> | unknown[];
@@ -25,10 +23,8 @@ export function direccionBajaPermitida(
   return nptBaj > minNpt + 0.001;
 }
 
-/**
- * Dirección efectiva para escribir: 'baja' prohibida en el último nivel inferior se coerces a
- * 'continua' (orig. usuario pt. 9 — dirección válida alternativa). Otra dirección pasa igual.
- */
+/** Si alguien puso "baja" donde no hay piso debajo, lo baja a "continua" (así el dibujo nunca
+ *  promete un flujo imposible). */
 export function direccionSegura(
   engine: {
     nptLevels?: Array<{ npt?: number }> | unknown[];

@@ -12,12 +12,14 @@ interface BajanteOverrideRow {
   id_cliente: string;
   bajante: string;
   area_parcial: number | null;
-  /** Área Otras (orig. usuario): editable, default 0. */
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable, por defecto 0. */
   area_otras: number | null;
   area_acumulada: number | null;
   intensidad: number | null;
   coeficiente_c: number | null;
-  /** Material de cubierta (nombre completo del catálogo ll) — C derivado. */
+  /** Techo que escurre al bajante, o sea de qué material está (zinc, teja…). Ej: catálogo
+   *  de ll (Lluvias); de ahí sale C, el coeficiente de escorrentía (cuánta lluvia llega
+   *  al tubo y cuánta se absorbe en el techo). */
   material_cubierta: string | null;
   R: string | null;
   manning: number | null;
@@ -27,12 +29,14 @@ interface CanalOverrideRow {
   id_cliente: string;
   sector: string;
   area_parcial: number | null;
-  /** Área Otras (orig. usuario): editable, default 0. */
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable, por defecto 0. */
   area_otras: number | null;
   area_acumulada: number | null;
   intensidad: number | null;
   coeficiente_c: number | null;
-  /** Port hoja "2. Canales": materiales (C y n derivados), muro vertical y borde libre. */
+  /** Port hoja "2. Canales" del cuaderno: materiales (de ellos salen C = coeficiente de
+   *  escorrentía y n = coeficiente de Manning, qué tan rugoso es el canal), muro vertical
+   *  y borde libre. */
   material_cubierta: string | null;
   material_canal: string | null;
   muro_vertical: number | null;
@@ -107,12 +111,7 @@ export async function loadRainwaterOverrides(proyectoId: string): Promise<Rainwa
   }
 }
 
-/**
- * Guarda el snapshot de overrides manuales de lluvias vía RPC seguro (borra e inserta por
- * tabla). Solo persisten las filas con clave estable (bajante o sector definido); las filas
- * en blanco recién creadas son efímeras y no sobreviven a la recarga. Ver
- * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- */
+/** Guarda tus ediciones manuales de lluvias en la BD (una foto por tabla). Solo viajan filas con bajante o sector; las vacías se pierden al recargar. Ej: BLL-1 con área. */
 export async function saveRainwaterOverrides(
   proyectoId: string,
   bajantes: BajanteLL[],

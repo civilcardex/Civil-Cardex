@@ -144,10 +144,8 @@ export function guardDiametroNodo(
   return true;
 }
 
-/** Piso del bajante = máximo de sus ramales asociados: sigue al cambio en ambas direcciones
- *  (si seguía al máximo anterior adopta el nuevo; un oversize explícito mayor se conserva).
- *  Se aplica en updateElementById Y updateSelected: cambiar el diámetro por cualquier editor
- *  (menú o panel) arrastra al bajante conectado. @param engine Motor con ramales y bajantes vivos. */
+/** Cuando cambias el diámetro de un ramal, ajusta los bajantes/montantes que le llegan: se quedan
+ *  con el tubo más ancho conectado y nunca bajan de eso (dentro de 2 px de tolerancia). */
 
 export function bumpConnectedBajantes(
   ramales: Array<{ id: string; pts?: number[][]; diametro?: string }>,
@@ -199,13 +197,9 @@ export function bumpConnectedBajantes(
   }
 }
 
-/** Sincronía bajante/montante↔ramal al EDITAR el dNominal (orig. usuario, como las otras
- *  redes): nunca queda por debajo de sus ramales asociados (bloquea con alerta — primero
- *  debe bajarse el ramal), y al subir arrastra a los ramales con diámetro explícito menor
- *  (los vacíos no se tocan: nacen vacíos por doctrina). Aplica a san/ll (bajante y montante)
- *  y a montantes af/ac/gas. Los ramales empujados propagan aguas abajo como una edición
- *  propia. Escribe directo en el motor (sin snapshots); el llamador asigna el dNominal.
- *  @returns false si se bloqueó. */
+/** Revisa la tubería vertical antes de cambiarle el diámetro: no puede quedar MÁS ANGOSTA que los
+ *  ramales que le llegan (en san (Sanitaria), ll (Lluvias) y en montantes de af (Agua Fría), ac
+ *  (Agua Caliente) y gas (Gas)). false = el cambio no se permite. */
 
 export function pushBajanteDiameterToRamales(
   engine: IPlanoEngineCore,
@@ -255,9 +249,9 @@ export function pushBajanteDiameterToRamales(
   return true;
 }
 
-/** Campos para alternar una asociación MANUAL (checkbox menú/panel, orig. usuario):
- *  recibeDeIds/alimentaIds simétricos + libro `asocManual` que exime de la poda stale
- *  (podarReferenciasStaleDeBajantes). Se mezcla en la misma llamada a updateElementById. */
+/** Prepara los campos del enlace manual por casilla: recibeDeIds (los ramales que LLEGAN al
+ *  bajante) y alimentaIds (los que SALEN de él).
+ *  @param b bajante; @param ramalId ramal; @param activar asocia o quita; @returns campos a escribir. */
 export function camposAsocManual(
   b: PlanoBajante,
   ramalId: string,

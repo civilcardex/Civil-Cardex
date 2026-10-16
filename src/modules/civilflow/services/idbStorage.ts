@@ -11,11 +11,7 @@ interface PDFRecord {
   data: ArrayBuffer;
 }
 
-/**
- * Guarda un archivo PDF en IndexedDB con clave numérica por id.
- * @param id - Identificador numérico del plano.
- * @param file - Objeto File PDF a persistir.
- */
+/** Guarda el PDF del plano en IndexedDB (bodega local del navegador) para no pedirlo otra vez. Ej: subes el plano del P1 y al reabrirlo carga sin esperar la nube. */
 export async function storePDF(id: number, file: File): Promise<void> {
   try {
     const data = await file.arrayBuffer();
@@ -28,12 +24,7 @@ export async function storePDF(id: number, file: File): Promise<void> {
   }
 }
 
-/**
- * Carga un archivo PDF de IndexedDB por id. Devuelve un objeto File con el nombre original
- * y el MIME type.
- * @param id - Identificador numérico del plano.
- * @returns Objeto File o null si no existe.
- */
+/** Devuelve el PDF guardado del plano (null si nunca se subió). */
 export async function loadPDF(id: number): Promise<File | null> {
   try {
     const db = await openIdb(DB_NAME, DB_VERSION, STORE_NAME, 'id');
@@ -48,9 +39,7 @@ export async function loadPDF(id: number): Promise<File | null> {
   }
 }
 
-/**
- * Elimina todos los registros PDF del store de IndexedDB.
- */
+/** Vacía la bodega local de PDFs (se usa al crear un proyecto nuevo, que arranca limpio). */
 export async function clearAllPDFs(): Promise<void> {
   try {
     const db = await openIdb(DB_NAME, DB_VERSION, STORE_NAME, 'id');
@@ -60,10 +49,7 @@ export async function clearAllPDFs(): Promise<void> {
   }
 }
 
-/**
- * Elimina un registro PDF individual de IndexedDB por id.
- * @param id - Identificador numérico del plano.
- */
+/** Borra de la bodega local el PDF de un plano eliminado. */
 export async function deletePDF(id: number): Promise<void> {
   try {
     const db = await openIdb(DB_NAME, DB_VERSION, STORE_NAME, 'id');

@@ -3,11 +3,7 @@ export interface Point {
   y: number;
 }
 
-/**
- * Matemática de coordenadas y snap de ángulo del motor CAD, como funciones puras sobre el
- * fragmento de cámara/escala que usan (zoom/offX/offY/scaleM/definedScaleM). La clase
- * PlanoEngine conserva métodos delegadores de una línea — la firma pública no cambia.
- */
+/** Utilidades de coordenadas: convertir entre píxeles del plano, píxeles de pantalla y metros reales, y pegar ángulos. scaleM (escala metros reales por píxel del plano) viaja en cada llamada. Ej: a escala 0.05, 100 px del plano son 0.13 m. */
 
 export interface Camara {
   zoom: number;
@@ -15,17 +11,17 @@ export interface Camara {
   offY: number;
 }
 
-/** px de plano → px de canvas (cámara: zoom + pan). */
+/** Pasa un punto del plano a la pantalla aplicando zoom y desplazamiento (pan) de la cámara. Ej: zoom 2 y sin pan, el punto (10,20) se pinta en (20,40). */
 export function toCvs(cam: Camara, px: number, py: number): Point {
   return { x: px * cam.zoom + cam.offX, y: py * cam.zoom + cam.offY };
 }
 
-/** px de canvas → px de plano (inversa). */
+/** Inversa de toCvs: pasa un punto de pantalla a coordenadas del plano. Úsala para saber en qué punto del dibujo se hizo clic. Ej: con zoom 2, un clic en (20,40) es el punto (10,20) del plano. */
 export function toPlane(cam: Camara, cx: number, cy: number): Point {
   return { x: (cx - cam.offX) / cam.zoom, y: (cy - cam.offY) / cam.zoom };
 }
 
-/** px de plano → metros reales con la escala del plano. */
+/** Convierte una medida tomada en píxeles del plano a metros reales del edificio. Ej: 100 px con scaleM 0.05 = 0.13 m. */
 export function pxToM(scaleM: number, px: number): number {
   return +((px / 96) * 2.54 * scaleM).toFixed(3);
 }
@@ -35,9 +31,8 @@ export function mm2cvs(mm: number, zoom: number): number {
   return ((mm * 96) / 25.4) * zoom;
 }
 
-/** Inversa de pxToM: longitud REAL en cm → px de coordenada de plano (independiente de
- *  zoom/pan). El rectángulo de base/altura de un canal escala con la escala real igual que
- *  totalL de un ramal. */
+/** Inversa de pxToM: cm reales a px de plano (independe de zoom/pan).
+ *  @param scaleM (escala metros por pixel) del plano; @param cm longitud en cm; @returns px de plano. */
 export function cmToPlanePx(scaleM: number, cm: number): number {
   return ((cm / 100) * 96) / (2.54 * (scaleM || 0.5));
 }
@@ -47,9 +42,8 @@ export function cmToCanvasPx(p: { scaleM: number; zoom: number }, cm: number): n
   return cmToPlanePx(p.scaleM, cm) * p.zoom;
 }
 
-/** mm REALES del edificio → px de canvas, respetando la escala definida (o la del doc) y con
- *  piso mínimo de 1 mm de papel: en escalas arquitectónicas comunes estos símbolos deben caber
- *  en una pared de ~15 cm (≈3 mm de papel a 1:50) — un piso generoso los haría imprecisos. */
+/** mm del edificio a px de canvas (piso 1 mm papel, cabe en pared 15 cm a 1:50).
+ *  @param p escalas y zoom; @param realRadiusMm radio en mm; @returns px de canvas. */
 export function realMmToCanvasPx(
   p: { definedScaleM: number; scaleM: number; zoom: number },
   realRadiusMm: number,
@@ -60,15 +54,16 @@ export function realMmToCanvasPx(
   return mm2cvs(Math.max(MIN_PAPER_MM, paperMm), p.zoom);
 }
 
-/** Escala de las etiquetas del plano: 0.5/escala definida, acotada a [0.1, 3]. */
+/** Qué tan grandes se ven los textos de las etiquetas: si el plano está a escala chica, las letras
+ *  crecen para que sigan leyéndose. Siempre entre 0.1 y 3. */
 export function labelScaleM(p: { definedScaleM: number; scaleM: number }): number {
   const defScale = p.definedScaleM || p.scaleM;
   return Math.max(0.1, Math.min(3.0, 0.5 / defScale));
 }
 
-/** Pega el extremo (x1,y1) a la orientación permitida de la red: tributarios de af/ac caen en
- *  cuadrícula de 90° (ver checkRamalAngles); todo lo demás (incl. san/ll) en la más laxa de
- *  45° — pegar a 45° nunca produce un ángulo inválido. Conserva la distancia al origen. */
+/** Imán de ángulos del trazo: solo se dibuja a 45°/90° (y los ramalitos de af (Agua Fría) y ac
+ *  (Agua Caliente) a 90° justos), para que las tuberías queden rectas o en escuadra.
+ *  @param x0 coord X del origen; @param net red activa; @returns punto pegado al ángulo legal. */
 export function snapAngle(
   x0: number,
   y0: number,

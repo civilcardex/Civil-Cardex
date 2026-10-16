@@ -14,7 +14,7 @@ import {
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { emitAparatosClear } from '../../utils/fixtureEvents';
-import { propagarAparatosPresion } from '../../utils/aparatosPresion';
+import { esRedAparatosPresion, propagarAparatosPresion } from '../../utils/aparatosPresion';
 import { devError } from '../../../../utils/devError';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../../utils/bombaAssociation';
 import { ldesvioIdFor } from '../../utils/associateBajanteAcrossFloors';
@@ -24,13 +24,14 @@ import {
   type InheritPoolRamal,
 } from '../../utils/bajanteAssociation';
 
-/** Args del cluster de espejos (objeto — el panel pasa sus closures tal cual). */
+/** Datos que necesita el grupo de efectos de espejos (viajan en un objeto: el panel pasa sus funciones tal cual). */
 export interface EspejosArgs {
   engineRef: MutableRefObject<PlanoEngine | null>;
   loadingPlanRef?: MutableRefObject<boolean> | null;
   netId: string;
   planId?: string | number;
-  /** Planos del proyecto (nivel = npt para el guard de dirección cross-floor). */
+  /** Planos del proyecto: el `nivel` de cada uno es el npt (nivel de piso topografico)
+   *  que dice si la herencia de UDs baja o sube de piso. */
   plans: Array<{ id: string | number; nivel?: number | null; status?: string }>;
   planLoadedTick: number;
   targetId: string | null;
@@ -80,12 +81,12 @@ export function correrSanadoSifones(a: EspejosArgs): void {
   }
 }
 
-/** (2) Propagación af/ac al seleccionar: debounce 250 ms + flush síncrono al cambiar de
- *  selección/desmontar (auditoría #5 — la geometría del tramo anterior quedaba sin propagar).
- *  Devuelve el cleanup (el effect original lo registraba en React). */
+/** Propaga los aparatos por la red de af (Agua Fria)/ac (Agua Caliente) cuando cambia la
+ *  selección: espera 250 ms para no recalcular a cada clic, y al cambiar de tramo hace
+ *  el cálculo al instante (sin eso, el tramo anterior quedaba sin propagar). */
 export function correrPropagacion(a: EspejosArgs): () => void {
   const { netId } = a;
-  if (!(netId === 'af' || netId === 'ac')) return () => {};
+  if (!esRedAparatosPresion(netId)) return () => {};
   const t = window.setTimeout(() => {
     try {
       propagarAparatosPresion(netId);
@@ -106,7 +107,8 @@ export function correrPropagacion(a: EspejosArgs): () => void {
   };
 }
 
-/** (3) Espejos de salidas + herencia cross-floor + bomba — el grande (movido verbatim). */
+/** (3) Espejos de salidas + herencia entre pisos + bomba: el efecto grande, mantiene las
+ *  claves espejo al día cada vez que algo cambia. */
 export function correrEspejos(a: EspejosArgs): void {
   const {
     engineRef,
@@ -380,7 +382,7 @@ export function correrEspejos(a: EspejosArgs): void {
   }
 }
 
-/** Cluster único de efectos de espejos (mismos deps explícitos que los effects originales). */
+/** Grupo de efectos de espejos del panel (se disparan con los mismos datos que los efectos originales). */
 export function useFixtureMirrors(a: EspejosArgs): void {
   const {
     engineRef,

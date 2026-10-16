@@ -2,7 +2,8 @@ import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
 import type { CrossFloorGhost } from '../../../utils/associateBajanteAcrossFloors';
 
-/** Dirección con mayúscula inicial para mostrar: sube/baja/continua. */
+/** La dirección del bajante con la primera letra en mayúscula, para mostrarla: Sube / Baja /
+ *  Continua. */
 export const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
 // Una reventilación (bajante de la red vent) se identifica como "REV[N] [diámetro]" en la línea
@@ -10,7 +11,8 @@ export const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', con
 // "REVENTILACIÓN" por pedido explícito. El consecutivo N se toma del número del código/id de la
 // reventilación (BREV{n}), que _renumberBajantes ya asigna de forma independiente por red y
 // renumera sin huecos ni duplicados al crear/borrar.
-/** Líneas de etiqueta de una reventilación: código REV[n] en la línea grande y la dirección sola en la pequeña. */
+/** Las dos líneas del cartelito de una tubería de ventilación (REV): arriba su código (REV1...) y
+ *  abajo, más chico, hacia dónde corre. */
 export function ventLabelLines(
   codeStr: string,
   diamStr: string,
@@ -22,7 +24,8 @@ export function ventLabelLines(
   return { line1, dirText: dirWord };
 }
 
-/** Etiqueta estándar de un bajante/montante (código + dirección) con su caja rotada y anclada al símbolo. */
+/** El cartelito normal de un bajante o montante: su código (BAN1, MAF2...) y la dirección, con su
+ *  cajita girada para leerse a lo largo de la tubería y anclada al símbolo. */
 export function renderBajanteLabel(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
@@ -188,7 +191,7 @@ function getLabelIntersection(
 // red en vez de esta forma vectorial en arrowCol (rojo para bajante, azul para montante), así
 // que nunca se veía de verdad como su padre pese a que tamaño/opacidad ya coincidían. El caller
 // ya debe haber traducido ctx al origen local del símbolo (0,0) y rotado como se necesite.
-/** Glifo de flecha de dirección junto a la etiqueta del bajante, según sube/baja/continua. */
+/** La flechita junto al cartelito que indica si el agua sube, baja o sigue derecha. */
 export function drawDireccionSymbol(
   ctx: CanvasRenderingContext2D,
   tipo: string,

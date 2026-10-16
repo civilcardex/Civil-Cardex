@@ -14,10 +14,8 @@ interface UseKeyboardShortcutsParams {
   engineRef: React.MutableRefObject<PlanoEngine | null>;
 }
 
-/** Atajos de teclado del visor: r ramal principal, t tributario, c texto, h grilla, g snap y
- *  Suprimir borra la selección fantasma (el borrado del resto de elementos lo maneja el propio
- *  engine en su keydown). Los valores se leen vía ref para que el listener registrado una sola
- *  vez siempre vea el estado actual. */
+/** Atajos de teclado del visor: r ramal principal, t tributario, c texto, h grilla, g snap y Suprimir borra la selección fantasma (el borrado del resto de elementos lo maneja el propio engine en su keydown).
+ * Los valores se leen vía ref para que el listener registrado una sola vez siempre vea el estado actual. */
 export function useKeyboardShortcuts({
   setSnapOn,
   setTool,

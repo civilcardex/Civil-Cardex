@@ -245,9 +245,7 @@ export function sincronizarDesvioBomba(
   }
 }
 
-/** Quita anillo de la bomba, ramal LD_ (piso de la bomba), fantasma del piso superior y la
- *  clave de aparatos del Ldesvio. Idempotente. El LD se identifica con el id del BAJANTE
- *  (LD_<bajId> — mismo espacio de ids que bajante↔bajante: un bajante solo se enlaza a uno). */
+/** Limpia anillo, LD_ (ramal desvio entrepisos), fantasma superior y clave LD del desvío (idempotente). */
 function limpiarArtefactosDesvioBomba(
   eng: PlanoEngine,
   baj: { id: string; net?: string },
@@ -331,9 +329,7 @@ function limpiarArtefactosDesvioBomba(
   }
 }
 
-/** PUNTO (orig. usuario): al BORRAR la bomba se desasocia de cualquier bajante que la
- *  referencie (bombaEnId), en cualquier piso — storage-side (el bajante suele vivir en otro
- *  piso): resta el libro de UDs, limpia claves espejo y los artefactos del desvío. */
+/** Al borrar la bomba desasocia al bajante que la referencia (resta libro y limpia artefactos). */
 export function desasociarBombaEnTrazos(bombaId: string, bombaPlanId: string): void {
   if (!bombaId) return;
   const sufijo = '|' + bombaId;
@@ -385,9 +381,7 @@ export function desasociarBombaEnTrazos(bombaId: string, bombaPlanId: string): v
   }
 }
 
-/** Quita la asociación de bomba: limpia el campo, los artefactos del desvío (anillo, Ldesvio,
- *  fantasma, clave LD) y RESTA el libro aplicado de las claves. `bajPlanId`: piso del bajante
- *  si se conoce (desasociar desde el piso de la bomba); por defecto el piso cargado. */
+/** Quita la asociación de bomba (campo, artefactos y libro aplicado de UD (Unidades de Desague)). */
 export function quitarBomba(
   eng: PlanoEngine,
   baj: PlanoBajante,

@@ -10,10 +10,8 @@ import { codoPolarityOk, maxDiametroLabel } from '../PlanoEngineDrawing';
 // de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
-/** Crea un montante (tubería vertical) nuevo en las coordenadas dadas, auto-asociándolo con
- *  extremos de ramal cercanos, colocando accesorios de codo y renumerando montantes.
- *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y de
- *  plano. */
+/** Crea un montante (la tubería vertical que SUBE entre pisos: MAF, MAC, MG...) donde hiciste clic
+ *  y lo engancha a las tuberías cercanas, marcando el codo por donde entrega el agua. */
 export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!MONTANTE_NETS.includes(engine.activeNet)) {
     engine._emitStatus('Montante no disponible para esta red');
@@ -147,10 +145,8 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
 // de tee acompañante ahí — un montante siempre implica una tee. Lo inverso nunca debe pasar:
 // colocar una tee manualmente (ver accessoryOptions.ts / MidRamalAccessorySelector) jamás crea
 // un montante — se mantiene como camino de escritura separado a propósito.
-/** Crea un montante sobre el cuerpo de un ramal AF/AC (no un extremo), dividiendo el ramal en
- *  el punto clicado y colocando un accesorio de tee. @param engine Instancia del motor.
- *  @param ramalId El ramal que se divide. @param x Coordenada X de plano. @param y Coordenada Y
- *  de plano. @param segmentIdx Índice del segmento donde ocurre la división. */
+/** Pone un montante justo en el medio de una tubería de af (Agua Frío) o ac (Agua Caliente),
+ *  partiéndola con una T. */
 export function handleCreateMontanteMidBody(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -238,10 +234,8 @@ export function handleCreateMontanteMidBody(
 // y continúa por el vértice de división; la conexión ac/af es implícita vía el id CALENTn (la
 // misma convención que buildTramos.ts usa para construir el ramal sintético AC-01-{calId} desde
 // cualquier bajante de calentador).
-/** Crea un calentador sobre el cuerpo de un ramal AF (no un extremo), dividiendo el ramal en el
- *  punto clicado. El bajante se crea con red 'ac'. @param engine Instancia del motor.
- *  @param ramalId El ramal que se divide. @param x Coordenada X de plano. @param y Coordenada Y
- *  de plano. @param segmentIdx Índice del segmento donde ocurre la división. */
+/** Inserta un calentador en una tubería de af (Agua Frío): se corta el tramo y de ahí nace la
+ *  tubería de ac (Agua Caliente) que reparte el agua ya calentada. */
 export function handleCreateCalentadorMidBody(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -325,10 +319,8 @@ function pushCalentadorBajante(engine: IPlanoEngineCore, x: number, y: number): 
 // dirección libre (perpendicular) propia de la tee, tapado con el accesorio elegido en su
 // extremo lejano — el glifo del accesorio necesita un extremo de ramal real donde renderizarse,
 // porque no existe tal cosa como "un tapón sin tubería".
-/** Crea un ramal corto tapado con un tapón o llaveTerminal en la dirección de rama libre
- *  (perpendicular) de una tee. @param engine Instancia del motor. @param ramalId El ramal padre
- *  que contiene la tee. @param accMedIdx Índice del vértice accMed. @param accId Id del
- *  accesorio: 'tapon' o 'llaveTerminal'. */
+/** Deja un tapón en la punta libre de una T: crea un pedacito de tubería de 300 mm con el tapón,
+ *  porque el glifo necesita un extremo real donde dibujarse. */
 export function handleCreateTeeCapStub(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -413,8 +405,8 @@ export function handleCreateTeeCapStub(
   engine._markDirty();
 }
 
-/** Crea un símbolo de calentador (agua caliente) nuevo en las coordenadas dadas. @param engine
- *  Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Crea un calentador en ac (Agua Caliente) o gas (Gas). En af (Agua Frío) no existe: el agua
+ *  fría se calienta DENTRO del equipo. */
 export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
   // El calentador es solo ac/gas. Guardia defensiva: ningún otro camino (arrastre, script, UI
   // vieja) puede crear uno en af ahora que el botón/atajo de af de la barra ya no existen.

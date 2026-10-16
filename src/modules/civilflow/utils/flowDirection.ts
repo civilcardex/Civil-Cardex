@@ -1,17 +1,12 @@
 import type { PlanoRamal } from '../lib/PlanoEngine/PlanoState';
 
-/**
- * En una división de mitad de cuerpo AF/AC/gas, decide cuál de los tres ramales muestra el
- * total UC combinado: el que discrepa en dirección de flujo de los otros dos (siempre hay
- * uno, porque la unión necesita al menos una salida). Si no se puede resolver (unión
- * degenerada), cae al id de `existing` para que los llamadores tengan un default sensato.
- * @param jc - Coordenadas del punto de unión.
- * @param existing - El ramal pre-división (mitad aguas arriba tras la truncación).
- * @param downstream - El ramal auto-creado que continúa más allá de `jc`.
- * @param incoming - El ramal cuyo extremo aterrizó en el cuerpo de `existing`, si es resoluble.
- * @param tol - Tolerancia de distancia para "el origen/destino de este ramal está en jc".
- * @returns El id del ramal que debería mostrar el total combinado.
- */
+/** Ramal que muestra el total UC (Unidades de Consumo) en un split af (Agua Fria)/ac (Agua Caliente)/gas (Gas) (el que discrepa en flujo).
+ *  @param jc - punto de unión.
+ *  @param existing - ramal pre-división.
+ *  @param downstream - ramal autocreado que continúa.
+ *  @param incoming - ramal que aterrizó en el cuerpo.
+ *  @param tol - tolerancia en px (default 2.0).
+ *  @returns id del ramal que muestra el total. */
 export function resolveJunctionEntrant(
   jc: number[],
   existing: { id: string; pts?: number[][]; _tribReversed?: boolean },
@@ -85,17 +80,12 @@ export function junctionHasOutgoingFlow(
   return hasOutgoing;
 }
 
-/**
- * Regla de unión AF/AC/gas cuando un TRIBUTARIO participa. Su dirección es fija (fluye desde
- * la unión hacia el aparato), así que las dos mitades del ramal partido deben repartir una
- * entrada y una salida entre sí; si el usuario invirtió solo una, se rompe el reparto y la
- * regla general no lo detecta — aquí se exige exactamente una entrada cuando hay tributario.
- * @param ramales - Ramales a considerar (mismo net que `net`).
- * @param net - Red a validar ('af' | 'ac' | 'gas').
- * @param pt - Punto de la unión.
- * @param tol - Tolerancia de distancia para "este extremo cae en pt".
- * @returns true si la unión respeta la regla (o no aplica).
- */
+/** Regla de unión con tributario en af (Agua Fria)/ac (Agua Caliente)/gas (Gas) (exige una entrada exacta).
+ *  @param ramales - ramales del mismo net.
+ *  @param net - red a validar ('af' | 'ac' | 'gas').
+ *  @param pt - punto de la unión.
+ *  @param tol - tolerancia en px.
+ *  @returns true si respeta la regla (o no aplica). */
 export function directNeighborRamales(
   ramales: Pick<PlanoRamal, 'id' | 'net' | 'pts'>[],
   ramal: Pick<PlanoRamal, 'id' | 'net' | 'pts'>,

@@ -2,10 +2,12 @@ import React from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import { pisoCorto } from '../../constants';
 import { fmt, sectorDe } from '../../utils/formatUtils';
+import { parseDecimalInput } from '../../utils/parseDecimal';
 import { hunterK, computeDesignRow } from './rowPhysics';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared';
 import { leerHeredadosPresion } from '../../utils/aparatosPresion';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput';
+import ChipList from '../shared/ChipList';
 import { writeNSalidasToDrawing } from '../../utils/drawingWrites/otros';
 import type { PlanItem } from '../../context/PlansContext';
 import { useState } from 'react';
@@ -18,8 +20,7 @@ const PRESION_INP: React.CSSProperties = {
   fontSize: 9,
 };
 
-/** Chips de la columna "Otros Ramales": los tramos conectados al de la fila, cada uno con su
- *  UC total en el tooltip. Sin conexiones muestra un guion. */
+/** Chips de la columna "Otros Ramales": los tramos conectados al de la fila, cada uno con su UC (Unidades de Consumo) total en el tooltip. Sin conexiones muestra un guion. */
 function OtrosRamalesChips({
   connectedKeys,
   tramos,
@@ -31,53 +32,30 @@ function OtrosRamalesChips({
   displayTotalMap: Record<string, number>;
   colorVar: string;
 }) {
-  return connectedKeys.length === 0 ? (
-    <span style={{ fontSize: 9, color: 'var(--txt3)' }}>—</span>
-  ) : (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 2,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      {connectedKeys.map((childKey) => {
+  return (
+    <ChipList
+      items={connectedKeys.map((childKey) => {
         const rId = sectorDe(childKey);
         const childTramo = tramos.find((tr) => (tr._key || tr.id) === childKey);
         const childOwnKey = childTramo?._key || childTramo?.id || childKey;
         const childTotalUd = displayTotalMap[childOwnKey] || 0;
-        return (
-          <span
-            key={childKey}
-            title={`${rId} (${childTotalUd.toFixed(2)} UC)`}
-            style={{
-              fontSize: 9,
-              padding: '1px 1px',
-              border: `1px solid ${colorVar}`,
-              borderRadius: 3,
-              color: colorVar,
-              fontFamily: 'var(--mono)',
-              lineHeight: 1.3,
-            }}
-          >
-            {rId}
-          </span>
-        );
+        return { key: childKey, label: rId, title: `${rId} (${childTotalUd.toFixed(2)} UC)` };
       })}
-    </div>
+      colorVar={colorVar}
+      fontSize={9}
+      pad="1px 1px"
+    />
   );
 }
 
-/** Commit numérico del input perezoso: '' → undefined (borra el dato); parse inválido → sin cambio. */
+/** Commit numérico del input perezoso: '' → undefined (borra el dato); parse inválido → sin cambio (acepta coma es-locale). */
 const numCommit =
   (onSave: (v: number | undefined) => void) =>
   (s: string): void => {
     const t = s.trim();
     if (t === '') return onSave(undefined);
-    const n = parseFloat(t);
-    if (!Number.isNaN(n)) onSave(n);
+    const n = parseDecimalInput(t);
+    if (n != null) onSave(n);
   };
 
 const WaterNetworkDesign_S2: React.CSSProperties = {
@@ -96,9 +74,8 @@ const WaterNetworkDesign_S2: React.CSSProperties = {
 // Una fila de la tabla de diseño de red: calcula su propia física (caudal de Hunter, diámetro
 // efectivo, velocidades y pérdidas vía computeDesignRow) y renderiza las 24 columnas, incluyendo
 // el selector de diámetro y las presiones editables cuando la tabla está en modo edición.
-/** Una fila de la tabla de diseño de red: calcula su propia física (caudal de Hunter,
- *  diámetro efectivo, velocidad y pérdidas) y renderiza las 24 columnas, con el selector de
- *  diámetro y las presiones editables en modo edición. */
+/** Una fila de la tabla de diseño de red: calcula su propia física (caudal de Hunter (metodo de probabilidad de uso simultaneo), diámetro efectivo, velocidad y pérdidas) y
+ * renderiza las 24 columnas, con el selector de diámetro y las presiones editables en modo edición. */
 export function DesignTableRow({
   t,
   tr2,

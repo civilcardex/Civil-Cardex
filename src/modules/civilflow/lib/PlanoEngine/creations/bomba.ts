@@ -8,9 +8,8 @@ import { pisoCorto } from '../../../constants';
 // de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
-/** Crea la BOMBA asociada a una caja (AN/LL): círculo punteado a la derecha del símbolo,
- *  código BOMAN-<nivel> único, vinculada permanentemente por `cajaOrigenId` — una bomba por
- *  caja (orig. usuario). Un snapshot de historial por creación. */
+/** Crea la bomba que saca el agua de una caja de registro (san (Sanitaria) o ll (Lluvias)); se
+ *  dibuja a la derecha de la caja y cada caja tiene como máximo una. */
 export function handleCreateBomba(engine: IPlanoEngineCore, caja: PlanoBajante): void {
   if (caja.tipo !== 'caja_san' && caja.tipo !== 'caja_ll') return;
   // Una bomba por CAJA (por piso puede haber varias — cálculos por bomba, orig. usuario).

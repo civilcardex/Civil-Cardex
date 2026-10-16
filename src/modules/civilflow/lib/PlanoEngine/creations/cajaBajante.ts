@@ -17,9 +17,8 @@ export const MONTANTE_NETS = ['gas', 'ac', 'af'];
 // Cajas de recolección (cuadrado con cuadrado interior): CAN en sanitaria, CALL en lluvias.
 export const CAJA_NETS = ['san', 'll'];
 
-/** Crea una Caja de aguas negras (san) o de aguas lluvias (ll) en el punto del clic — un solo
- *  clic la coloca (como contador). Es un nodo real de conexión: los trazos terminados sobre
- *  ella se asocian vía finishRamal→recibeDeIds (máximo 1 ramal por caja, ver bajanteRules). */
+/** Dibuja una caja de registro (donde se juntan varias tuberías antes de bajar) en san (Sanitaria)
+ *  o ll (Lluvias); es un punto de unión real, no un simple símbolo. */
 export function handleCajaDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!CAJA_NETS.includes(engine.activeNet)) return;
   if (engine.snapMode) {
@@ -69,9 +68,8 @@ export function handleCajaDown(engine: IPlanoEngineCore, px: number, py: number)
   engine._markDirty();
 }
 
-/** Crea un bajante nuevo en las coordenadas dadas, auto-asociándolo con extremos de ramal
- *  cercanos y auto-rellenando sus campos ini/fin. @param engine Instancia del motor.
- *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
+/** Dibuja un bajante (la tubería vertical que recoge y baja entre pisos: BAN, BALL...) y lo
+ *  engancha a las tuberías cercanas, anotando en cada ramal de dónde sale y a dónde llega. */
 export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!BAJANTE_NETS.includes(engine.activeNet)) {
     engine._emitStatus('Bajante no disponible para esta red');

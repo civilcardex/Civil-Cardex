@@ -4,15 +4,7 @@ import { rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
 import { extremoEntrelazado } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { FUENTE_TIPOS } from '../../../lib/PlanoEngine/nodos';
 
-/**
- * Ramal vivo del engine por id. Choke point documentado (auditoría #15): el engine solo
- * contiene el piso CARGADO, así que buscar por id pelado es seguro HOY. Si el engine
- * alguna vez aloja varios planos (prefetch multi-plan), este es el único sitio que debe
- * pasar a llavear por (id, planId).
- * @param eng - engine vivo (o null).
- * @param id - id del ramal.
- * @returns el ramal vivo o undefined.
- */
+/** Ramal vivo del engine por id. Choke point documentado (auditoría #15): el engine solo contiene el piso CARGADO, así que buscar por id pelado es seguro HOY. */
 export function ramalVivoDelPlanoCargado(
   eng: PlanoEngine | null | undefined,
   id: string,
@@ -111,9 +103,7 @@ export function flowTailEnd(endsAtStart: boolean, endsAtEnd: boolean): 0 | 1 | -
 
 // ¿El extremo `epPt` del ramal está ENTRELAZADO con la red (otro ramal del mismo net o una
 // bajante/montante del mismo net en ese punto)? Cubre la unión en T por montante.
-/** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante NO fuente de
- *  la misma red en ese punto)? Las FUENTES nunca bloquean (orig. usuario). Cubre la unión
- *  en T por montante. */
+/** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante NO fuente de la misma red en ese punto)? Las FUENTES nunca bloquean (orig. usuario). */
 export function extremumOccupied(
   eng: PlanoEngine | null,
   ramal: PlanoRamal,

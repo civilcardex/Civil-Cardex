@@ -16,8 +16,7 @@ export interface BombaRow {
   net: string;
 }
 
-/** Bombas (tipo 'bomba') del piso INMEDIATAMENTE inferior al actual — única fuente de opciones
- *  para asociar (orig. usuario). "Inmediato" = el mayor `nivel` que sea menor al actual. */
+/** Bombas del piso inferior inmediato (mayor nivel menor al actual) para asociar. */
 export function bombsImmediateLowerFloor(plans: PlanItem[], currentPlanId: string): BombaRow[] {
   const current = plans.find((pl) => String(pl.id) === currentPlanId);
   if (!current || typeof current.nivel !== 'number') return [];
@@ -74,9 +73,7 @@ export interface BajanteSuperiorRow {
   bombaEnId: string | null;
 }
 
-/** Bajantes (tipo 'bajante') del piso INMEDIATAMENTE SUPERIOR al actual — opciones para
- *  asociar DESDE la bomba (orig. usuario). Inverso de `bombsImmediateLowerFloor`: el menor
- *  `nivel` que sea mayor al actual. */
+/** Bajantes del piso superior inmediato (menor nivel mayor al actual) para asociar desde la bomba. */
 export function bajantesImmediateUpperFloor(
   plans: PlanItem[],
   currentPlanId: string,
@@ -125,7 +122,4 @@ export function bajantesImmediateUpperFloor(
   return out;
 }
 
-/** Asocia la bomba al bajante: `bombaEnId` en el bajante + direccion 'sube' automática.
- *  La herencia de UDs la ejecuta el efecto en vivo de FixturesPanel. `bajPlanId`: piso del
- *  bajante (necesario al asociar DESDE el piso de la bomba, donde currentPlanId es el piso de
- *  la bomba y el bajante vive arriba). */
+/** Asocia la bomba al bajante (direccion 'sube' automática; la herencia de UD (Unidades de Desague) corre en vivo). */

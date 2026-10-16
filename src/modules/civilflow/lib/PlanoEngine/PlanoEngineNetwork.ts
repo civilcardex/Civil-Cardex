@@ -227,12 +227,9 @@ export function findCodoReventiladoLinks(
   return links;
 }
 
-/** Poda referencias stale en bajantes/cajas/montantes: un trazo recortado, arrastrado fuera o
- *  borrado deja de figurar en sus recibeDeIds/alimentaIds. La verdad es autoDetectRamalConnections
- *  (fin/ini del ramal ya sanados al correr esto): solo sobrevive la asociación cuyo extremo SIGUE
- *  tocando el elemento con el mismo criterio geométrico (≤0.5). Canal fuera: su asociación vive
- *  en esCanalId (canalAssociation). Corre tras el auto-detect en cada _markDirty (orig. usuario:
- *  borrar un trazo dejaba a la caja "recordando" la asociación — Bajante completo fantasma). */
+/** Limpia los enlaces que ya no son reales: si la tubería se movió o se borró, el bajante deja de
+ *  contar ese ramal en recibeDeIds (los que le llegan) y alimentaIds (los que salen) — dentro de
+ *  0.5 px. Sin esto, el bajante "recordaría" trazos que ya no conectan. */
 export function podarReferenciasStaleDeBajantes(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
   const posDe = (b: PlanoBajante): { x: number; y: number } => {
@@ -395,9 +392,8 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   }
 }
 
-/**
- * Auto-detect contador → red pública connection. Creates linking ramales.
- */
+/** Conecta el medidor (contador) con la llegada de la red pública que tenga al lado: si no existe
+ *  el pedacito de tubería que los une, lo crea. */
 export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
   const nets = ['af', 'ac'];
   for (const netId of nets) {

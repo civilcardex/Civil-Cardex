@@ -12,7 +12,7 @@ import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { sanDiamAllowedForApparatus } from '../../utils/sanitaryDiamCompat';
 import { DIAM_BY_MAT } from '../../constants';
 import { bumpHidroAccesorio } from '../../utils/syncExtremeAccessory';
-import { propagarAparatosPresion } from '../../utils/aparatosPresion';
+import { esRedAparatosPresion, propagarAparatosPresion } from '../../utils/aparatosPresion';
 import { emitAparatosClear } from '../../utils/fixtureEvents';
 
 /** Todo lo que inc/dec leen del panel — el ctx viaja como OBJETO (rediseño FixturesPanel). */
@@ -20,9 +20,10 @@ export interface FixtureMutationCtx {
   netId: string;
   storageKey: string | null;
   targetId: string | null;
-  /** Target clasificado del panel (rama af-ac/san/ll/gas/rejillas). */
+  /** Target clasificado del panel (rama af (Agua Fria)-ac (Agua Caliente)/san (Sanitaria)/ll (Lluvias)/gas (Gas)/rejillas). */
   target: SelectableTarget | null;
-  /** Unión de ramales / ramal con tributarios: UDs combinadas, no asignables. */
+  /** Unión de ramales o ramal con tributarios: sus UDs (Unidades de Desague) están
+   *  combinadas y por eso el panel no deja asignar aparatos acá. */
   mergeKeys: unknown;
   esEspejoBajante: boolean;
   esPropagado: boolean;
@@ -36,10 +37,10 @@ export interface FixtureMutationCtx {
   esPropio: (apId: string) => boolean;
 }
 
-/** `inc` del panel (movido verbatim — rediseño FixturesPanel): guards de solo-lectura/espejo/
- *  unión, límite 1 aparato, colocación del glifo en el extremo libre (o fuente), regla central
- *  sanitaria (inodoro→4"/codo sube/sifón) y persistencia disco-primero con snapshot único
- *  (pause/resume de historial) + propagación af/ac + evento de consistencia. */
+/** Suma un aparato al tramo elegido (el botón "+" del panel): respeta los candados
+ *  (solo lectura, espejo, unión), permite un solo aparato y dibuja el glifo en el
+ *  extremo libre. Escribe primero en disco para no perderlo si la página se recarga,
+ *  y propaga el cambio por la red de af (Agua Fria)/ac (Agua Caliente). */
 export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
   const {
     storageKey,
@@ -275,7 +276,7 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
   if (eng) {
     eng._markDirty();
   }
-  if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
+  if (esRedAparatosPresion(netId)) propagarAparatosPresion(netId);
   // Consistencia entre superficies (orig. usuario): el menú contextual re-deriva su tarjeta
   // de estos eventos (el panel derecho ya reacciona vía setCounts).
   try {
@@ -285,9 +286,9 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
   }
 }
 
-/** `dec` del panel (movido verbatim): guards de solo-lectura/espejo/propagado (quitar solo lo
- *  PROPIO), limpieza del glifo y del accesorio sanitario al llegar a cero, disco-primero con
- *  snapshot único + propagación af/ac + evento de consistencia. */
+/** Quita un aparato del tramo (el botón "-" del panel): solo baja lo PROPIO, y al llegar
+ *  a cero borra el glifo del dibujo y el accesorio sanitario. Escribe en disco primero,
+ *  propaga por af (Agua Fria)/ac (Agua Caliente) y avisa a las demás pantallas. */
 export function mutarDec(ctx: FixtureMutationCtx, apId: string): void {
   const {
     storageKey,
@@ -418,7 +419,7 @@ export function mutarDec(ctx: FixtureMutationCtx, apId: string): void {
   if (engEnd) {
     engEnd._markDirty();
   }
-  if (netId === 'af' || netId === 'ac') propagarAparatosPresion(netId);
+  if (esRedAparatosPresion(netId)) propagarAparatosPresion(netId);
   // Consistencia entre superficies (ver inc).
   try {
     emitAparatosClear();

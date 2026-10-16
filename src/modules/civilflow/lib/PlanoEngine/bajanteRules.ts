@@ -15,29 +15,24 @@ export interface ConexionBajanteCheck {
 // (recibeDeIds = llegan, alimentaIds = nacen ahí).
 const MAX_BAJANTE = 2;
 
-/** ¿El elemento es una caja (aguas negras/lluvias)? */
 export function esCaja(b: Pick<PlanoBajante, 'tipo'>): boolean {
   return b.tipo === 'caja_san' || b.tipo === 'caja_ll';
 }
 
-/** Ids asociados al bajante por ambos sentidos, sin duplicados. */
 export function asociadosDeBajante(baj: PlanoBajante): Set<string> {
   return new Set([...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]);
 }
 
-/** ¿El bajante (NO caja) ya agotó sus 2 asociaciones? Las cajas aceptan entradas ilimitadas.
- *  Usado por el snap: enganchar un trazo nuevo a un bajante lleno solo produce la alerta
- *  "Bajante completo" sin conexión real (orig. usuario). */
+/** ¿La tubería vertical ya tiene sus 2 conexiones llenas (máximo 2 ramales)? Las cajas no tienen
+ *  tope: les pueden llegar todos los ramales que quepan. */
 export function bajanteLleno(baj: PlanoBajante): boolean {
   if (esCaja(baj)) return false;
   return asociadosDeBajante(baj).size >= MAX_BAJANTE;
 }
 
-/** ¿Puede `ramal` asociarse a `baj` en la dirección dada? Valida misma red, reglas por tipo
- *  y topes:
- *  - Bajante: solo ramales (ni llegan ni salen tributarios), máximo 2 asociaciones en total.
- *  - Caja (orig. usuario): ENTRADAS ilimitadas de ramales y tributarios (sin restricción);
- *    SALIDA máximo UNA y SOLO de tipo ramal — un tributario que intenta salir se rechaza. */
+/** La única puerta de entrada para asociar un ramal a un bajante o caja: revisa que sean de la
+ *  misma red y que se respeten los topes (2 entradas en bajante, 1 sola salida y solo de ramales;
+ *  las cajas aceptan muchas entradas). */
 export function puedeConectarRamalABajante(
   baj: PlanoBajante,
   ramal: { id: string; net?: string; tipo?: string; esCanalId?: string | null },

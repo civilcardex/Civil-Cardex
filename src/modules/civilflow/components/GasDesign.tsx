@@ -100,9 +100,9 @@ const GasDesign_COLS = [
   'Longitud',
 ];
 
-/** Los writes al trazo esperan la clave canónica "id-planId" (parten por '-', igual que
- *  writeDiametroToDrawing); la tabla usa "planId:id" (tramoKey) como clave de estado.
- *  Sin conversión, writeMaterial/writeDiametro/clear no hallan el ramal: no-op silencioso. */
+/** Convierte la clave de estado de la tabla ("planId:id") al formato que esperan los writes
+ *  al trazo ("id-planId", igual que writeDiametroToDrawing). Sin esta conversión,
+ *  writeMaterial/writeDiametro/clear no encuentran el ramal y no escriben nada. */
 function writeKeyDe(tramoId: string): string {
   const i = tramoId.indexOf(':');
   return i > 0 ? `${tramoId.slice(i + 1)}-${tramoId.slice(0, i)}` : tramoId;
@@ -320,9 +320,8 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     setDiamK((prev) => ({ ...prev, [tramoId]: opt ? opt.K : 0 }));
   };
 
-  /** Cambio SOLO de material: persiste y, si el diámetro actual no existe en el nuevo
-   *  material, limpia el trazo (clearDiametroToDrawing) y el estado — el usuario
-   *  re-selecciona en el desplegable de diámetro. */
+  /** Cambio SOLO de material: persiste y, si el diámetro actual no existe en el nuevo material, limpia el trazo (clearDiametroToDrawing) y el
+   * estado — el usuario re-selecciona en el desplegable de diámetro. */
   const handleMatChange = (tramoId: string, mat: string) => {
     writeMaterialToDrawing(writeKeyDe(tramoId), 'gas', mat, plans);
     setDiamMat((prev) => ({ ...prev, [tramoId]: mat }));

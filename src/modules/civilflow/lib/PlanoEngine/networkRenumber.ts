@@ -293,10 +293,8 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
   }
 }
 
-/** Renombra el id de un ramal migrando TODAS sus referencias (convertir tributario en
- *  ramal: el T1788... pasa a RS8 y las tablas deben mostrar el nuevo id). Cubre motor (padre,
- *  mergesFrom, ini/fin, recibeDeIds, descargaEnId, selId) y storage del plano cargado
- *  (aparatos + hidro). No hace nada si el id ya es el nuevo. */
+/** Cambia el nombre de una tubería y arregla todas las referencias para que nada quede colgando:
+ *  la genealogía del split (mergesFrom) y las listas de ramales que llegan (recibeDeIds). */
 export function renameRamalId(
   engine: IPlanoEngineCore,
   oldId: string,

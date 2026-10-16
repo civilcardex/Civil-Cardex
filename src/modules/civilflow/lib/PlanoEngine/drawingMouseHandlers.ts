@@ -6,9 +6,7 @@ import { commitOpenGuide } from './guideLines';
 import { finishArea } from './drawingUtils';
 import { dimSnapEnd } from './annotationTools';
 
-/** Pide un render al mover el mouse cuando hay un dibujo activo (ramal, cota o área) en curso.
- *  @param engine Instancia del motor. @param x Coordenada X de canvas. @param y Coordenada Y de
- *  canvas. */
+/** Repinta el preview del trazo en curso al mover el mouse (ramal, cota o area). */
 export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: number): void {
   if (
     engine.activeRamal ||
@@ -33,7 +31,7 @@ export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: n
   }
 }
 
-/** Termina el ramal o área activos al hacer doble clic. @param engine Instancia del motor. */
+/** Cierra el ramal o area en curso con doble clic (guia y canal con su regla propia). */
 export function handleDoubleClick(engine: IPlanoEngineCore): void {
   if (engine.tool === 'line' && engine.activeRamal && engine.activeRamal.pts.length >= 2) {
     finishRamal(engine);

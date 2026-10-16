@@ -13,6 +13,7 @@ import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { perfilDe } from '../constants/normasPais';
 import { useProyecto } from '../context/ProjectContext';
 import { fmt } from '../utils/formatUtils';
+import { dec } from '../utils/parseDecimal';
 import { useRainwater } from '../context/RainwaterContext';
 import {
   buildLlBajanteAssociations,
@@ -528,7 +529,7 @@ export default function DisenoLluvias() {
                                     ? editingPend[tKey]
                                     : e.target.value;
                                 // Coma o punto como separador decimal.
-                                const v = parseFloat(String(raw).replace(/,/g, '.')) || 0;
+                                const v = dec(String(raw));
                                 setEditingPend((prev) => {
                                   const n = { ...prev };
                                   delete n[tKey];

@@ -119,7 +119,6 @@ import { sellarAsociacionesCanalBajante } from './canalAssociation';
 import { fixVentCodoToTee } from './ventCodoTeeFix';
 import { healTribPadres } from './junctionAutoSplit';
 import { PlanoHistory } from './PlanoHistory';
-import { PlanoNetworkModel } from './PlanoNetworkModel';
 import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting';
 
 export { NETS };
@@ -135,12 +134,9 @@ import type {
   DirtyCallback,
 } from './PlanoState';
 
-/**
- * Motor CAD central para el dibujo de planos de ingeniería civil.
- * Gestiona zoom/pan, el estado de la herramienta, los arrays de elementos (ramales, bajantes,
- * áreas, cotas, textos), el snap, las capas por red, el historial de deshacer/rehacer y el
- * pipeline de renderizado del canvas.
- */
+/** Motor CAD del plano: sobre el PDF de fondo dibuja ramales, bajantes, cotas, textos y áreas por
+ *  red (af (Agua Fría), san (Sanitaria), ll (Lluvias)...). Aquí viven el zoom, las herramientas de
+ *  dibujo y el deshacer/rehacer de cada cambio. */
 export default class PlanoEngine implements IPlanoEngineCore {
   cw: HTMLElement;
   pdfWrap: HTMLElement | null;
@@ -165,9 +161,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   ramales!: PlanoRamal[];
   dims!: PlanoDimension[];
   textAnnots!: PlanoTextAnnotation[];
-  private _networkModel = new PlanoNetworkModel();
+  private _bajantes: PlanoBajante[] = [];
   get bajantes(): PlanoBajante[] {
-    return this._networkModel.bajantes;
+    return this._bajantes;
   }
   set bajantes(v: PlanoBajante[]) {
     // Saneo legacy (orig. usuario): el bug de auto-conexión trataba el canal como bajante y
@@ -182,7 +178,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         b.alimentaIds = [];
       }
     }
-    this._networkModel.bajantes = v;
+    this._bajantes = v;
   }
   crossFloorGhosts!: CrossFloorGhost[];
   guideLines!: PlanoGuideLine[];
@@ -266,9 +262,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _touchMoveHandler?: (e: TouchEvent) => void;
   private _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | number | null;
-  /** Redes declaradas malla/recirculación por el usuario (exentas del chequeo de ciclo). */
+  /** Mallas/recirculaciones que el usuario marcó a mano (exentas del chequeo de ciclo). */
   mallasDeclaradas: Set<string> = new Set();
-  /** Resolver del modal de opciones de sentido (re-enraizamiento, docx regla 5). */
+  /** Puente al modal "¿qué sentido tiene esta tubería?" del re-enraizamiento (regla 5 del memo). */
   private _onOpcionesCb:
     | ((title: string, msg: string, opciones: string[]) => Promise<number>)
     | null = null;
@@ -344,11 +340,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _needsRender = false;
   private _rafId: number | null = null;
 
-  /**
-   * @param cw - Elemento contenedor (el wrapper del viewport).
-   * @param pdfWrap - Elemento wrapper del canvas de PDF (fondo PDF).
-   * @param canv - Elemento canvas de dibujo.
-   */
+  /** Deja listo (zoom, posición y tamaño) el lienzo donde se va a dibujar. */
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     this.cw = cw;
     this.pdfWrap = pdfWrap;
@@ -463,12 +455,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _pinchDist0: number | null = null;
   /** Zoom del engine al iniciar el pinch: base para escalar por razón de distancias. */
   private _pinchZoom0 = 1;
+  /** Rueda acumulada por cuadro: suma de deltaY normalizado a px (orig. tirón zoom). */
+  private _wheelAccum = 0;
+  /** Id del rAF pendiente del flush de rueda; 0 = sin flush programado. */
+  private _wheelRaf = 0;
+  /** Ancla del último evento de rueda (coords canvas); el flush usa la más reciente. */
+  private _wheelMX = 0;
+  private _wheelMY = 0;
+  /** Rect del canvas cacheado por cuadro: getBoundingClientRect fuerza layout. */
+  private _rectCache: { rect: DOMRect; t: number } | null = null;
 
-  /** Registra el callback de cambios de selección de elemento. */
   onSelect(cb: SelectCallback): void {
     this._onSelectCb = cb;
   }
-  /** Registra el callback de mensajes de la barra de estado. */
   onStatus(cb: StatusCallback): void {
     this._onStatusCb = cb;
   }
@@ -490,11 +489,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onUpdate(cb: UpdateCallback): void {
     this._onUpdateCb = cb;
   }
-  /** Registra el callback de estado sucio (trabajo modificado). */
   onDirty(cb: DirtyCallback): void {
     this._onDirtyCb = cb;
   }
-  /** Registra el callback de eventos de borrado de elementos. */
   onDelete(cb: (ids: string[]) => void): void {
     this._onDeleteCb = cb;
   }
@@ -521,7 +518,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._onAlertCb) this._onAlertCb(title, msg);
   }
 
-  /** Registra el modal de opciones (re-enraizamiento). Devuelve el ÍNDICE elegido, o -1. */
+  /** Conecta el modal de opciones del re-enraizamiento: devuelve el número de opción elegida por
+   *  el usuario, o -1 si cancela. */
   onOpciones(cb: (title: string, msg: string, opciones: string[]) => Promise<number>): void {
     this._onOpcionesCb = cb;
   }
@@ -535,8 +533,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Último hash de incidencias por red — anti-spam del modal (solo alerta si cambió). */
   private _chequeoHash: Record<string, string> = {};
 
-  /** Chequeo global de nodos (docx fase 2) para af/ac/gas/rci — corre en cada _markDirty
-   *  y alerta por modal SOLO cuando el conjunto de incidencias de una red cambió. */
+  /** Revisa las tuberías a presión — af (Agua Fría), ac (Agua Caliente), gas (Gas) y rci (Red Contra
+   *  Incendio): cada tramo debe tener por dónde le llega el agua y por dónde sale. Avisa UNA vez por
+   *  problema nuevo (el hash evita el mismo modal en cada clic). */
   private chequearPresionGlobal(): void {
     const nets = new Set<string>();
     for (const r of this.ramales) if (REDES_PRESION.has(r.net || '')) nets.add(r.net);
@@ -570,6 +569,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._rafId !== null) {
       cancelAnimationFrame(this._rafId);
       this._rafId = null;
+    }
+    if (this._wheelRaf) {
+      cancelAnimationFrame(this._wheelRaf);
+      this._wheelRaf = 0;
+      this._wheelAccum = 0;
     }
     this._teardownCanvasEvents();
   }
@@ -651,7 +655,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   /** Marca el trabajo como sucio: recalcula conexiones de red y accesorios, guarda un snapshot
-   *  de historial y dispara el callback onDirty. */
+   *  de historial y dispara el callback onDirty (que es quien guarda a disco/BD). */
   _markDirty(): void {
     this._dirty = true;
     // ponytail: los cálculos de red/contadores NO deben romper el guardado. El callback
@@ -817,9 +821,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _getPos(e: MouseEvent | TouchEvent): Point {
-    const r = this.canv.getBoundingClientRect();
+    const r = this._cachedRect();
     const t = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
     return { x: t.clientX - r.left, y: t.clientY - r.top };
+  }
+
+  /** Rect del canvas con caché de 32ms: rueda/pinch/mousemove lo piden 60-120/s. */
+  _cachedRect(): DOMRect {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const c = this._rectCache;
+    if (c && now - c.t < 32) return c.rect;
+    const rect = this.canv.getBoundingClientRect();
+    this._rectCache = { rect, t: now };
+    return rect;
   }
 
   private _setupCanvasEvents(): void {
@@ -876,12 +890,15 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return _calcPolyArea(this, pts);
   }
 
-  /** @param t - Herramienta a activar (sel, line, dim, text, baj, mon, pan, area, erase, etc). */
+  /** Cambia la herramienta activa: 'sel' seleccionar, 'line' trazar tubería, 'dim' cotas, 'text'
+   *  textos, 'baj'/'mon' bajantes y montantes, 'area' zonas, 'erase' borrador. */
   setTool(t: ToolType): void {
     _setTool(this, t);
   }
-  /** @param id - Id de red a fijar como activa (af, ac, san, vent, ll, gas). Dispara el callback
-   *  de cambio de red activa. */
+  /** Cambia la red con la que se dibuja: lo que traces sale con su color y su prefijo de etiqueta
+   *  (af (Agua Fría) → RAF, ac (Agua Caliente) → RAC, san (Sanitaria) → RS, vent (Ventilación) →
+   *  REV, ll (Lluvias) → RALL, gas (Gas) → RG). Ej: pasar a 'san' hace que el próximo ramal se
+   *  llame RS3. */
   setActiveNet(id: string): void {
     if (this.activeNet !== id) {
       this.activeNet = id;
@@ -893,10 +910,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setTipoTramo(t: TramoType): void {
     this.tipoTramo = t;
   }
-  /** @param v - Activar/desactivar el snap de ángulos. Si hay un trazo en curso, se cancela:
-   *  los segmentos dibujados a mano alzada con snap OFF no cumplen la cuadrícula de ángulos, así
-   *  que reactivar el snap a mitad de trazo dejaría el trazo bloqueado por la validación de
-   *  ángulos. */
+  /** Snap = el imán que obliga a los trazos a salir a 45°/90°. Apagarlo permite ángulos libres
+   *  (si hay un trazo a medias se cancela). */
   setSnap(v: boolean): void {
     if (this.snapMode !== v && this.activeRamal) this.cancelRamal();
     this.snapMode = v;
@@ -920,7 +935,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _setRamalDefaults(this, d);
   }
 
-  /** @param v - Factor de escala (p.ej. 1 para 1:100, 0.5 para 1:50). Acepta string o número. */
+  /** Fija la escala del plano (scaleM, la escala metros por pixel): 1 = 1:100, 0.5 = 1:50;
+   *  acepta texto o número. Es la que convierte longitudes de pantalla a metros reales. */
   setScaleM(v: string | number): void {
     _setScaleM(this, v);
   }
@@ -935,8 +951,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _setNetLocked(this, netId, locked);
   }
 
-  /** @param netId - Id de red. Devuelve la lista plana de elementos (ramales, bajantes, áreas)
-   *  de esa red. */
+  /** Lista plana de todo lo dibujado de una red (ramales/tributarios, bajantes y áreas): la usan
+   *  las tablas de diseño y los informes. */
   getElementsByNet(netId: string): ElementItem[] {
     return _getElementsByNet(this, netId);
   }
@@ -982,22 +998,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _deleteSelected(this, ids, opts);
   }
 
-  /**
-   * Lógica de borrado/recorte usada por la herramienta borrador — expuesta públicamente para
-   * que el manejador de teclado pueda enrutar Supr/Delete por la misma regla "recortar el
-   * segmento de extremo si lo hay, si no borrar el elemento completo" en vez de siempre llamar
-   * a deleteSelected.
-   */
+  /** Borrado del borrador por la misma regla recortar-extremo o borrar todo. */
   handleEraseDown(x: number, y: number): void {
     handleEraseDown(this, x, y);
   }
 
-  /**
-   * La misma regla de recortar-o-borrar aplicada directamente a un ramal ya seleccionado — la
-   * usa el manejador de teclado, que ya tiene `sel` y no puede ejecutar handleEraseDown (volvería
-   * a correr selectAt contra el cursor y perdería la selección cuando el cursor se hubiera
-   * alejado del ramal).
-   */
+  /** Recorta o borra el ramal ya seleccionado (via del teclado, sin reseleccionar). */
   eraseRamalAt(r: unknown, x: number, y: number): void {
     eraseRamalAt(this, r as Parameters<typeof eraseRamalAt>[1], x, y);
   }
@@ -1014,19 +1020,21 @@ export default class PlanoEngine implements IPlanoEngineCore {
   finishArea(): void {
     _finishArea(this);
   }
-  /** Deshace el último snapshot de historial. */
+  /** Ctrl+Z: devuelve el dibujo a como estaba antes del último cambio. */
   undoLast(): void {
     this._history.undoLast();
   }
-  /** Rehace el último snapshot deshecho. */
+  /** Ctrl+Y: vuelve a aplicar lo que se acabó de deshacer. */
   redoLast(): void {
     this._history.redoLast();
   }
-  /** Pausa el historial (operación compuesta: una acción = un snapshot). */
+  /** Silencia el historial para que una operación larga (p.ej. asignar varios aparatos) cuente
+   *  como UN solo deshacer. */
   pauseHistory(): void {
     this._history.pause();
   }
-  /** Reanuda el historial tras una operación compuesta. */
+  /** Reanuda el historial (siempre emparejado con pauseHistory: una pausa sin reanudar deja el
+   *  deshacer mudo). */
   resumeHistory(): void {
     this._history.resume();
   }
@@ -1067,8 +1075,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return serializeWork(this);
   }
 
-  /** Deserializa y aplica un objeto de trabajo previamente guardado. @param json - String JSON o
-   *  objeto parseado. */
+  /** Aplica un trabajo guardado (texto JSON u objeto) al motor. */
   loadWork(json: string | object): void {
     try {
       const d = (typeof json === 'string'
@@ -1123,19 +1130,26 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.render();
   }
 
-  /** Redibujo completo: limpia el canvas, reposiciona el wrapper del PDF y renderiza todas las
-   *  capas (cuadrícula, cotas, textos, áreas, ramales, cruces, bajantes, fantasmas, elementos
-   *  activos). */
+  /** Último transform aplicado al wrapper: re-escribirlo cada cuadro dispara al
+   *  MutationObserver del fondo (re-raster) aunque el zoom no cambió. */
+  private _lastTransform = '';
+  /** Repinta el canvas con todas las capas (cotas, ramales, bajantes y activos). */
   render(): void {
     const ctx = this.ctx;
     const w = this.canv.width,
       h = this.canv.height;
+    // ponytail: canvas sin tamaño (montaje/viewport oculto) — pintar es trabajo tirado.
+    if (w === 0 || h === 0) return;
     ctx.clearRect(0, 0, w, h);
 
     if (this.pdfWrap) {
-      this.pdfWrap.style.transform = `translate(${this.offX}px,${this.offY}px) scale(${this.zoom})`;
-      this.pdfWrap.style.transformOrigin = '0 0';
-      this.pdfWrap.style.willChange = 'transform';
+      const t = `translate(${this.offX}px,${this.offY}px) scale(${this.zoom})`;
+      if (t !== this._lastTransform) {
+        this._lastTransform = t;
+        this.pdfWrap.style.transform = t;
+        this.pdfWrap.style.transformOrigin = '0 0';
+        this.pdfWrap.style.willChange = 'transform';
+      }
     }
 
     if (this.gridMode) renderGrid(ctx, this);
@@ -1225,6 +1239,18 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
     if (this._lockedNets.has(this.activeNet)) return;
 
+    // Red OCULTA (orig. usuario): no se puede dibujar en ella — los trazos nacerían
+    // invisibles. El aviso MODAL ya salió al SELECCIONAR la red (handleSelectNet en el
+    // visor); aquí solo estado, sin duplicar la modal. Selección también: los hits de
+    // redes ocultas se filtran en los hit-tests.
+    if (this.tool !== 'sel' && this._hiddenNets.has(this.activeNet)) {
+      const netObj = NETS.find((n) => n.id === this.activeNet);
+      this._emitStatus(
+        `${netObj ? netObj.name : this.activeNet} está oculta — muéstrala en la barra de redes para dibujar en ella.`,
+      );
+      return;
+    }
+
     if (this.activeNetworks && !this.activeNetworks.has(this.activeNet)) {
       const netObj = NETS.find((n) => n.id === this.activeNet);
       const netName = netObj ? netObj.name : this.activeNet;
@@ -1295,7 +1321,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (e instanceof TouchEvent && e.touches.length >= 2) {
       const [a, b] = [e.touches[0], e.touches[1]];
       const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const rect = this.canv.getBoundingClientRect();
+      const rect = this._cachedRect();
       const mx = (a.clientX + b.clientX) / 2 - rect.left;
       const my = (a.clientY + b.clientY) / 2 - rect.top;
       if (this._pinchDist0 == null) {
@@ -1371,11 +1397,25 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _onWheelHandler(e: WheelEvent): void {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.08 : +0.08;
-    const rect = this.canv.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    zoomAnclado(this, this.zoom + delta, mx, my);
+    // Normaliza deltaMode: 0 = px, 1 = líneas (~16px), 2 = páginas (~800px).
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 800 : 1;
+    const norm = e.deltaY * unit;
+    if (!Number.isFinite(norm) || norm === 0) return;
+    const rect = this._cachedRect();
+    this._wheelMX = e.clientX - rect.left;
+    this._wheelMY = e.clientY - rect.top;
+    // Acumula y aplica UNA vez por cuadro: 60-120 ev/s → 1 zoom (sin tirón).
+    this._wheelAccum += norm;
+    if (this._wheelRaf) return;
+    this._wheelRaf = requestAnimationFrame(() => {
+      this._wheelRaf = 0;
+      // Tope ±120 por cuadro (~13% de salto máx): un fling que llenaba el ±400 viejo
+      // aplicaba 38% de golpe y se veía como tirón aunque la CPU fuera libre.
+      const accum = Math.max(-120, Math.min(120, this._wheelAccum));
+      this._wheelAccum = 0;
+      if (accum === 0) return;
+      zoomAnclado(this, this.zoom * Math.exp(-accum * 0.0012), this._wheelMX, this._wheelMY);
+    });
   }
 
   _onKeyDownHandler(e: KeyboardEvent): void {

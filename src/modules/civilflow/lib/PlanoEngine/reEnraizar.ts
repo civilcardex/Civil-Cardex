@@ -4,17 +4,21 @@ import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { flipRamalFlow } from './drawingFlow';
 import { entradasSalidas, extremoLejanoTipo, REDES_PRESION } from './nodos';
 
-/** Re-enraizamiento automático (docx fase 2, ítem 2): cuando un tramo nuevo queda
- *  ENTRANDO a una tee donde ya había alimentación, corrige los sentidos del dibujo
- *  con las reglas 1-5 y agrupa todo en un solo Ctrl+Z. */
+/** Re-enraizado de sentido: cuando un ramal nuevo llega a una unión que ya tenía dueño, el
+ *  sentido de la tubería vieja puede quedar al revés — aquí se corrige (todo dentro de UN solo
+ *  Ctrl+Z). */
 
-/** ¿La red usa _tribReversed como inversión real? af/ac/gas/rci/vent SÍ; san/ll usan
- *  flip geométrico (flipRamalFlow). */
+/** Las tuberías a presión (af (Agua Fría), ac (Agua Caliente), gas (Gas), rci (Red Contra
+ *  Incendio) y vent (Ventilación)) no se redibujan al invertir el flujo: solo prenden el flag
+ *  _tribReversed (flag de flujo invertido en tributario). Las que drenan por gravedad (san
+ *  (Sanitaria), ll (Lluvias)) sí voltean sus puntos.
+ *  @param net red; @returns true si usa el flag. */
 function usaFlag(net: string): boolean {
   return net !== 'san' && net !== 'll';
 }
 
-/** Invierte el sentido de flujo de un tramo (la inversión REAL de su red). */
+/** Le da la vuelta al flujo de un tramo: en redes a presión solo prende/apaga _tribReversed; en
+ *  sanitarias y lluvias invierte los puntos de verdad. */
 export function invertirTramo(ram: PlanoRamal): void {
   if (usaFlag(ram.net || '')) ram._tribReversed = !ram._tribReversed;
   else flipRamalFlow(ram);
@@ -24,7 +28,7 @@ function destinoDe(r: PlanoRamal): number[] {
   return r._tribReversed ? (r.pts![0] as number[]) : (r.pts![r.pts!.length - 1] as number[]);
 }
 
-/** ¿Entradas/salidas del tramo respecto a un punto (extremo en el punto)? */
+/** En este punto, ¿el tramo ENTREGA agua o se la lleva? null = el tramo no toca el punto. */
 function tocaComo(r: PlanoRamal, pt: number[], tol = 0.5): 'entra' | 'sale' | null {
   const dO = Math.hypot(origenDe(r)[0] - pt[0], origenDe(r)[1] - pt[1]);
   const dD = Math.hypot(destinoDe(r)[0] - pt[0], destinoDe(r)[1] - pt[1]);
@@ -33,9 +37,9 @@ function tocaComo(r: PlanoRamal, pt: number[], tol = 0.5): 'entra' | 'sale' | nu
   return null;
 }
 
-/** Camina aguas arriba invirtiendo (docx "algoritmo de re-enraizamiento"). Devuelve los
- *  ids invertidos, o null si ABORTA (dos fuentes / ciclo / tope) — en abort DESHACE las
- *  inversiones tocadas antes de retornar: la red queda como estaba (contrato real). */
+/** Camina hacia atrás desde un tramo volteando el sentido de cada tubería hasta llegar a la
+ *  fuente (el medidor, el calentador, el equipo...). Si aborta (ciclo, dos fuentes o tope),
+ *  DESHACE todo lo volteado: el dibujo queda como estaba. */
 export function reEnraizarDesde(engine: IPlanoEngineCore, idInicial: string): string[] | null {
   const net = engine.ramales.find((r) => r.id === idInicial)?.net || '';
   const invertidos: string[] = [];
@@ -88,7 +92,8 @@ export interface ResolucionSentido {
   invertidos: string[];
 }
 
-/** ¿El tramo entrante QUEDA ENTRANDO a la tee (conflicto de 2 entradas)? */
+/** ¿El ramal nuevo llega ENTREGANDO agua a una unión que ya tenía su entrada? Ese es el choque de
+ *  2 entradas que hay que resolver. */
 export function conflictoDosEntradas(
   engine: IPlanoEngineCore,
   ep: number[],
@@ -103,8 +108,9 @@ export function conflictoDosEntradas(
   return ent > 1;
 }
 
-/** Reglas 1-5 del docx para resolver el conflicto. `farDe` clasifica el extremo lejano.
- *  Devuelve la acción ejecutada (o 'preguntar' si aplica la regla 5). */
+/** Resuelve el choque de 2 entradas con las reglas del memo: gana el que llega a un aparato o
+ *  viene de una fuente. Si ninguna aplica (regla 5), le pregunta al usuario.
+ *  @returns la acción ejecutada, o null si se canceló. */
 export function resolverConflictoSentido(
   engine: IPlanoEngineCore,
   ep: number[],

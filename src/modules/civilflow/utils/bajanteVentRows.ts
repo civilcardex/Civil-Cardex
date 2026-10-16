@@ -15,9 +15,7 @@ import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 import { fmtPiso } from '../constants';
 import { planIdDeKey } from './formatUtils';
 
-/** Mayor diámetro san (pulg) entre los ramales conectados a un bajante (recibeDeIds), según los
- *  ramales persistidos del plano — la misma regla que sigue el motor al asociar/cambiar
- *  diámetros. Compartido por la tabla en pantalla (DownpipesTable) y la memoria (aquí). */
+/** Mayor diámetro san (Sanitaria) (pulg) entre ramales del recibeDeIds/alimentaIds (ramales que llegan/salen del bajante). */
 export function maxSanRamalDiamPulg(
   recibeDeIds: string[] | undefined,
   planId: string | number | undefined,

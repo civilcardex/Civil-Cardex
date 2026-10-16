@@ -52,11 +52,7 @@ const or = (v: string | number | undefined | null): string =>
   v === '' || v == null ? '—' : String(v);
 const f2 = (n: number): string => (Number.isFinite(n) ? n.toFixed(2) : '—');
 
-/**
- * Genera tablas de memoria para Bomba AR. Replica 1:1 las 4 páginas de BombaARDesign
- * desde `civilflow_memoria_bomba_data` para que la exportación tenga mismo detalle que la pantalla.
- * @returns Tablas de memoria o vacío si no hay datos.
- */
+/** Tablas de memoria Bomba AR (réplica 1:1 de las 4 páginas para la exportación). */
 export function computeBombaTables(): MemoriaTable[] {
   const data = loadFromStorage<BombaMemoriaData | null>('civilflow_memoria_bomba_data', null);
   if (!data) return [];
@@ -350,8 +346,7 @@ export function computeBombaTables(): MemoriaTable[] {
 // páginas de pantalla) — misma idea que Bomba AR arriba: cada card/tabla de cada página,
 // replicada desde los mismos campos `ep` crudos y las mismas fórmulas que calculan las pantallas
 // en vivo, en vez de un resumen aplanado.
-/** Física de presión/potencia EP compartida: computeEpTables y el resumen por red de infTab
- *  leen de aquí (una sola fuente — sin drift de fórmulas). */
+/** Física ep (Equipo de Presion) compartida (computeEpTables y resumen leen lo mismo, sin drift). */
 function epBase(ep: EPData) {
   const qac = dec(ep.qac),
     qasc = dec(ep.qasc);
@@ -799,7 +794,7 @@ export function computeEpTables(): MemoriaTable[] {
   ];
 }
 
-/** Alertas EP para el resumen por red de infTab (misma física que computeEpTables). */
+/** Alertas ep (Equipo de Presion) del resumen (misma física que computeEpTables). */
 export function epAlertas(): string[] | null {
   const ep = loadFromStorage<EPData | null>('ep', null);
   if (!ep) return null;
@@ -816,10 +811,7 @@ export function epAlertas(): string[] | null {
   return fallos;
 }
 
-/** Chequeo de las tablas Bomba AR: hoy son volcado de datos (sin filas cumple/no cumple),
- *  así que el único estado es con/sin memoria calculada. null = sin datos (no bloquea el
- *  gate — mismo contrato que epAlertas); [] = datos presentes. Lista lista para sumar
- *  verificaciones si la tabla de bombas las gana. */
+/** Chequeo Bomba AR (volcado sin filas cumple/no cumple: null sin datos, [] con datos). */
 export function bombaAlertas(): string[] | null {
   const data = loadFromStorage<unknown>('civilflow_memoria_bomba_data', null);
   if (!data) return null;

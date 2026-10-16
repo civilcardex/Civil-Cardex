@@ -26,7 +26,7 @@ import {
 interface TramoEditorProps {
   selElement: PlanoElement | null;
   activeNet: string;
-  /** Subred Rejillas de ventilación activa (áreas de sector NTC 3631). */
+  /** Subred Rejillas de ventilación activa (áreas de sector NTC (Norma Tecnica Colombiana) 3631). */
   rejillasActive?: boolean;
   engineRef: RefObject<PlanoEngine | null>;
   diamSel: Record<string, string>;

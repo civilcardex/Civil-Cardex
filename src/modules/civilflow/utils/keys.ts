@@ -1,26 +1,22 @@
-/** Claves compuestas del módulo (track C): un solo lugar para construir y partir.
- *  Hoja pura, cero dependencias. Reglas:
- *  - construir SIEMPRE con los constructores; partir SIEMPRE con los parseadores;
- *  - `lastIndexOf`, nunca `split` (los ids traen `-` y `_`: AC-01-X-P1, MAF1_af);
- *  - el legado sin sufijo/plano se conserva legible (dibu jos viejos deben cargar igual).
- */
+/** Claves compuestas del módulo: se construyen con las funciones de aquí y se parten con los parseadores (siempre cortando por el ÚLTIMO separador, porque los ids pueden traer guiones). */
 
-/** Familias de red con conteos por tramo. */
+/** Familias de red que guardan conteos de aparatos: san (Sanitaria), ll (Lluvias), vent (Ventilacion), af (Agua Fria), ac (Agua Caliente), gas (Gas). */
 export type Fam = 'san' | 'll' | 'vent' | 'af' | 'ac' | 'gas';
 
 /** PlanId normalizado a string en el borde (los planos son bigint en BD, string en keys). */
 export type PlanId = string;
 
-/** `${fam}_${id}_${plan}` — stores de conteos (aparatos/hidro/gas). */
+/** `${fam}_${id}_${plan}` — clave con la que se guardan los conteos (aparatos/hidro/gas). Ej: san_RS1_2. */
 export type CountKey = `${Fam}_${string}_${PlanId}`;
-/** `${id}-${plan}` — `_key` de Tramo. */
+/** `${id}-${plan}` — la que identifica cada tramo en las tablas. Ej: RS1-2. */
 export type TramoKey = `${string}-${PlanId}`;
-/** `${plan}|${id}` — punteros entrepisos (descargaEnId/origenId/bombaEnId...). */
+/** `${plan}|${id}` — punteros entrepisos (descargaEnId/origenId/bombaEnId...). Ej: 2|BAN1. */
 export type Ptr = `${PlanId}|${string}`;
 
 /**
- * Clave de store para un elemento en un piso (misma regla que loadTrazosFromDB: los
- * stubs sintéticos AC-01-<calId> vuelven bajo `ac_<calId>_<plan>`).
+ * Clave de conteos de un elemento en su piso. Misma regla que loadTrazosFromDB: los stubs
+ * sintéticos AC-01-<calId> vuelven bajo `ac_<calId>_<plan>`.
+ * Ej: ('san', 'RS1', 2) → 'san_RS1_2'.
  * @param net - familia de red.
  * @param id - id del elemento.
  * @param planId - plano dueño.
@@ -32,7 +28,8 @@ export function countKey(net: string, id: string, planId: string | number): stri
 }
 
 /**
- * Puntero entrepisos `plan|id`.
+ * Puntero entrepisos `plan|id` (así un bajante de un piso apunta al del otro).
+ * Ej: ptr(2, 'BAN1') → '2|BAN1'.
  * @param planId - plano dueño.
  * @param id - id del elemento.
  * @returns puntero.
@@ -42,8 +39,9 @@ export function ptr(planId: string | number, id: string): string {
 }
 
 /**
- * Parte `fam_id_plan` en [fam, id, plan|null]. El id puede traer `_` (MAF1_af):
+ * Parte `fam_id_plan` en [familia, id, plan o null]. El id puede traer `_` (MAF1_af):
  * se corta por el ÚLTIMO guion bajo y el plan debe ser numérico.
+ * Ej: 'san_RS1_2' → ['san', 'RS1', '2'].
  * @param key - clave a partir.
  * @returns tupla [familia, id, planId o null si legado/sin sufijo].
  */
@@ -61,6 +59,7 @@ export function splitCount(key: string): [string, string, string | null] {
 /**
  * Parte `id-planId` en [id, plan]. El id puede traer guiones (AC-01-X-P1):
  * se corta por el ÚLTIMO guion.
+ * Ej: 'AC-01-X-P1' → ['AC-01-X', 'P1'].
  * @param key - clave a partir.
  * @returns tupla [id, planId] (planId '' si no hay guion).
  */
@@ -70,15 +69,10 @@ export function splitTramo(key: string): [string, string] {
   return [key.slice(0, sep), key.slice(sep + 1)];
 }
 
-/**
- * Parte un puntero `plan|id` en [plan, id]. Acepta `null`/number como el viejo
- * `?.split('|')` (los punteros legacy y los selects con `''` pasan por aquí).
- * Legacy sin `|` (descargaEnId pelado): devuelve [fallbackPlanId, valor intacto].
- * Los sitios con guarda `includes('|')` nunca tocan el fallback (equivalencia exacta).
- * @param p - puntero a partir.
- * @param fallbackPlanId - plan a usar si no hay `|`.
- * @returns tupla [plan, id] (strings; '' si ausente).
- */
+/** Parte un puntero `plan|id` en [plan, id]; el formato legacy sin `|` cae al plan dado.
+ *  @param p - puntero a partir.
+ *  @param fallbackPlanId - plan si no hay `|`.
+ *  @returns tupla [plan, id]. */
 export function splitPtr(
   p: string | number | null | undefined,
   fallbackPlanId: string | number | null,
@@ -101,14 +95,10 @@ export function keyPlanSuffixOf(key: string): string | null {
   return /^\d+$/.test(tail) ? tail : null;
 }
 
-/**
- * ¿Pertenece esta clave de conteos al plano dado? Sin este filtro, renumerar el piso
- * cargado borraba o renombraba claves de OTROS pisos (cada piso numera RS1..RSn).
- * Claves sin sufijo numérico (legado) o sin plano conocido se procesan como antes.
- * @param key - clave de conteos.
- * @param planId - plano en cuestión (null = todo vale).
- * @returns true si la clave es de ese plano o sin sufijo.
- */
+/** ¿La clave de conteos es de ESTE plano? Sin este filtro el renumero tocaba claves de otros pisos (RS1 del piso 1 y RS1 del piso 2 son distintas).
+ *  @param key - clave de conteos.
+ *  @param planId - plano en cuestión (null = todo vale).
+ *  @returns true si es de ese plano o sin sufijo. */
 export function isPlanKeyFor(key: string, planId: string | number | null | undefined): boolean {
   if (planId == null) return true;
   const sfx = keyPlanSuffixOf(key);
@@ -116,7 +106,7 @@ export function isPlanKeyFor(key: string, planId: string | number | null | undef
 }
 
 /**
- * ¿La clave termina en sufijo numérico de plano?
+ * ¿El último segmento tras `_` es un número de plano? (así se distingue 'san_RS1_2' del legado sin piso)
  * @param key - clave a inspeccionar.
  * @returns true si el último segmento tras `_` son dígitos.
  */
@@ -126,8 +116,8 @@ export const hasNumericPlanSuffix = (key: string): boolean => {
 };
 
 /**
- * Una clave aparato/hidro es huérfana solo si el ramal/bajante NO existe en NINGÚN plano
- * legible: se conserva si algún key válido coincide exactamente o comparte prefijo.
+ * ¿Sobró una clave cuyo ramal/bajante ya no existe en NINGÚN plano? Solo entonces se borra
+ * (basura): si alguna clave viva coincide exacta o comparte prefijo, se conserva.
  * @param key - clave candidata.
  * @param validKeys - claves vivas conocidas.
  * @returns true si huérfana.
@@ -140,18 +130,11 @@ export const isOrphanKey = (key: string, validKeys: Set<string>): boolean => {
   return true;
 };
 
-/**
- * Renombra un id de ramal dentro de una clave `fam_id_plan` (renumerado por piso).
- * El id es TODO lo que hay entre la familia y el plan: puede traer `_` (MAF1_af) — el
- * indexOf-por-segmento antiguo no lo encontraba y la clave quedaba sin renombrar. Con ≥3
- * segmentos el ÚLTIMO es el plan (numérico o no: `san_RS3_planA` de los tests legacy);
- * con 2 no hay plan. Cubre el label de tributario `T{n}{id}` (el scope por plano lo decide
- * el caller con isPlanKeyFor ANTES de llamar).
- * @param key - clave original.
- * @param oldId - id a reemplazar.
- * @param newId - id nuevo.
- * @returns clave renombrada o null si el id no aparece.
- */
+/** Renombra id dentro de `fam_id_plan` (el id admite `_` y label `T{n}{id}`).
+ *  @param key - clave original.
+ *  @param oldId - id a reemplazar.
+ *  @param newId - id nuevo.
+ *  @returns clave renombrada o null si el id no aparece. */
 export function renombrarIdEnClave(key: string, oldId: string, newId: string): string | null {
   const segs = key.split('_');
   if (segs.length < 2) return null;

@@ -46,11 +46,7 @@ function loadAps() {
   return APS_DEFAULT.map((a) => ({ ...a }));
 }
 
-/**
- * Provee el catálogo de aparatos sanitarios (base UD + ítems personalizados).
- * Arranca con el caché local para no parpadear y lo actualiza con la BD al montar.
- * Solo guarda a la BD (con retardo) cuando el usuario realmente editó algo.
- */
+/** Entrega la lista de aparatos (el catálogo que usan las tablas). Arranca del caché local para no parpadear y trae la BD al montar. Ej: base UD (Unidades de Desague) + tus ítems propios. */
 export function ApparatusProvider({ children }: { children?: ReactNode }) {
   const [udBase, setUdBase] = useState<UdBaseItem[]>([...UD_BASE_INIT]);
 
@@ -109,7 +105,7 @@ export function ApparatusProvider({ children }: { children?: ReactNode }) {
   return <ApparatusContext.Provider value={value}>{children}</ApparatusContext.Provider>;
 }
 
-/** Hook para acceder al catálogo de aparatos. @returns {ApparatusContextValue} */
+/** Lee el catálogo de aparatos. Falla fuera del provider. */
 export function useApparatus() {
   const ctx = useContext(ApparatusContext);
   if (!ctx) throw new Error('useApparatus must be used within ApparatusProvider');

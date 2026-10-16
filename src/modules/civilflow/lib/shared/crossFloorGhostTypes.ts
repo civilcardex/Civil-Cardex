@@ -1,8 +1,4 @@
-/**
- * Tipos compartidos de geometría y de "fantasma" entre pisos. Viven en un archivo propio
- * sin imports (solo tipos simples) para que los módulos que los necesitan no tengan que
- * importarse entre sí — eso rompía ciclos de import.
- */
+/** Tipos de geometría y fantasma entrepisos (XFG (fantasma entrepisos)) sin imports: rompe ciclos entre módulos. */
 
 /** Caja de un texto dibujado en el plano, con sus esquinas ya calculadas — la usa el motor para
  *  saber dónde está cada etiqueta (de ramal, bajante o fantasma) y detectar clics sobre ella. */
@@ -32,12 +28,7 @@ export interface CrossFloorGhost {
   y: number;
   dNominal: string;
   direccion: 'sube' | 'baja';
-  /**
-   * Dirección del bajante PADRE (el del piso superior). El fantasma apunta al revés (representa
-   * el punto donde el padre "aterriza" en este piso), pero la etiqueta que se dibuja sobre el
-   * fantasma debe mostrar la dirección real del padre para que quien mire el plano sepa hacia
-   * dónde va el flujo en el piso de arriba — no la dirección sintética del marcador.
-   */
+  /** Dirección del bajante padre (piso superior): la etiqueta del fantasma muestra la real, no la sintética. */
   parentDireccion?: 'sube' | 'baja';
   piso: string;
   sourcePlanId: string;

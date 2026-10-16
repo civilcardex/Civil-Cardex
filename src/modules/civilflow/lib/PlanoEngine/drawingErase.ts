@@ -15,7 +15,8 @@ import { _firstSegmentAngle, angleAtHalfLength } from './drawingAngles';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure';
 import { _midpoint } from './drawingUtils';
 
-/** Elimina el extremo del ramal más cercano al clic; los vértices intermedios no se pueden eliminar (solo con el borrador). */
+/** Borra la punta de la tubería más cercana a donde hiciste clic. Los dobleces del medio no se
+ *  borran con esto: para eso está el borrador. */
 export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
   // Ventana anti-alerta del sweep de aparatos (orig. usuario: borrar no debe alertar
   // "Aparato no permitido" por estados transitorios). [] = solo abre la ventana, sin ids.
@@ -90,9 +91,8 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
   engine._markDirty();
 }
 
-/** Maneja un clic con la herramienta de borrar activa: selecciona el elemento bajo el cursor y
- *  lo borra o recorta un segmento de extremo de ramal. @param engine Instancia del motor.
- *  @param cx Coordenada X de canvas. @param cy Coordenada Y de canvas. */
+/** La herramienta borrador: un clic sobre cualquier elemento lo borra; si es una tubería, le
+ *  recorta la punta más cercana (no toda entera). */
 export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   // Ventana anti-alerta del sweep de aparatos: recortar/partir/borrar con el borrador genera
   // estados transitorios que el sweep flagueaba (orig. usuario). [] = solo abre la ventana.
@@ -141,13 +141,10 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
 }
 
 /**
- * Aplica la regla de "recortar-o-borrar" del borrador a un ramal ya seleccionado, sin
- * volver a pasar por selectAt — la usa el manejador de teclado, que ya tiene la selección
- * y la posición del cursor, y no debe perderla. Misma lógica que el borrador con clic.
+ * Recorta o borra el ramal ya seleccionado (via del teclado, sin reseleccionar).
  */
-/** Parte un ramal en dos eliminando el segmento `segIdx` (el clic del borrador): la parte
- *  inicial se queda en `r` y se crea un ramal nuevo con la parte final. Los accesorios del
- *  punto de corte se reubican al extremo del tramo que les corresponde. */
+/** Parte la tubería en dos por el punto donde hiciste clic (los accesorios se reparten entre las
+ *  dos mitades). */
 function splitRamalAtSegment(engine: IPlanoEngineCore, r: PlanoRamal, segIdx: number): void {
   const downstreamPts = r.pts.slice(segIdx + 1);
   if (downstreamPts.length < 2) return;
@@ -217,7 +214,8 @@ function splitRamalAtSegment(engine: IPlanoEngineCore, r: PlanoRamal, segIdx: nu
   engine.ramales.push(downstream);
 }
 
-/** Borrador sobre un ramal ya seleccionado: recorta desde el segmento clicado, o borra el ramal completo si tiene un solo segmento. */
+/** Borrador sobre una tubería ya seleccionada: recorta desde el punto donde hiciste clic, o la
+ *  borra completa si solo tiene un tramo. */
 export function eraseRamalAt(
   engine: IPlanoEngineCore,
   r: PlanoRamal,

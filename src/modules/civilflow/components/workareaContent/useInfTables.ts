@@ -664,7 +664,7 @@ export function useInfTables(state: WorkAreaState) {
   }, [hasAc, tramosAc, tramosAf, plans, proy.p_red]);
 
   // ── GAS (calculado en fresco desde los datos de dibujo/accesorios persistidos — sin depender de haber visitado esa pantalla) ──
-  /** Filas del diseño de gas (compartidas: tabla + resumen por red). */
+  /** Filas del diseño de gas (Gas) (compartidas: tabla + resumen por red). */
   const gasRowsCalc = useMemo(() => (hasGas ? computeGasRows(plans) : []), [hasGas, plans]);
 
   const gasTable = useMemo<MemoriaTable | null>(() => {
@@ -722,9 +722,10 @@ export function useInfTables(state: WorkAreaState) {
     };
   }, [hasGas, gasRowsCalc]);
 
-  /** Checkpoint hidráulico de una FILA ya calculada (computeSanRows/computeLlRows): misma
-   *  regla de rango que se aplicaba a los flags v_real/yD/qQ0 que escribía la página de
-   *  diseño — pero estas filas se computan AQUÍ en fresco, sin visitar Diseño de redes. */
+  /** Revisa si una fila ya calculada cumple los rangos (velocidad, tirante, caudal lleno):
+   *  la misma regla de rangos del país, aplicada AQUÍ en fresco sobre las filas de
+   *  computeSanRows/computeLlRows — antes dependía de banderas que solo escribía la
+   *  página de Diseño de redes. */
   const filaEnRangoSanLl = useCallback(
     (r: { Vreal: number; Yc: number; Yn: number; DintMm: number; qqo: number }): boolean =>
       r.Vreal >= perfil.san.vMin &&
@@ -798,8 +799,9 @@ export function useInfTables(state: WorkAreaState) {
     ],
     [conDatosSan, sanRowsCalc, filaEnRangoSanLl, filaFalla],
   );
-  /** Chips SAN = fallos de tramos + filas 'No cumple' de la tabla de bajantes aguas negras/vent.
-   *  Memoizado: insumo del gate allOk Y de la fila SAN del resumen (una sola fuente). */
+  /** Chips SAN (Sanitaria) = fallos de tramos + filas 'No cumple' de la tabla de bajantes
+   *  aguas negras/vent (Ventilacion). Se calcula una vez y lo usan tanto el candado de
+   *  descargas (allOk) como la fila SAN del resumen. */
   const fallosSanLabs = useMemo(
     () => [
       ...fallosSan.map((t) => etiq(t.id, t.piso)),
@@ -860,8 +862,9 @@ export function useInfTables(state: WorkAreaState) {
     }
     return 0;
   }, [tr2Af, graphAf.componentTotalMap]);
-  /** Velocidad (recalculada con el diámetro actual) y presión (persistida) de un tramo de
-   *  presión. null = sin dato → chip "(sin verificar)" y gate en Revisar. */
+  /** Velocidad (recalculada con el diámetro actual) y presión (guardada del último cálculo)
+   *  de un tramo de presión (af/ac). null = sin dato → chip "(sin verificar)" y la fila
+   *  queda en Revisar. */
   const chequeoDe = useCallback(
     (t: Tramo, net: 'af' | 'ac'): { vel: boolean | null; pres: boolean | null } => {
       const key = t._key || t.id;

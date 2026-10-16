@@ -403,6 +403,32 @@ export function handleSelectDown(
 
   // Clic sobre el CUERPO (interior del trazo) de un ramal: ese dueño es el target real — el
   // arrastre de etiqueta de OTRO ramal cuya caja quedó encima por casualidad debe ceder.
+  // EXCEPCIÓN (orig. usuario: la etiqueta de T4RAC3 sobre el trazo vertical de T2RAC3 no se
+  // podía mover): si el clic cae DENTRO del _labelBox de un ramal, esa etiqueta GANA aunque
+  // el punto toque el cuerpo de otro trazo — la caja es un blanco deliberado. El filtro del
+  // dueño del cuerpo solo arbitra el fallback por cercanía (12px).
+  let boxHit: { r: (typeof engine.ramales)[number]; dist: number } | null = null;
+  for (const r of engine.ramales) {
+    // Red oculta = no seleccionable (misma regla de los hit-tests): sin este filtro la
+    // etiqueta de un ramal oculto se podía seleccionar y arrastrar.
+    if (engine._hiddenNets.has(r.net)) continue;
+    // Caja con centro no finito (label sin labelX/Y): el punto-en-caja daría falsos y el
+    // arrastre nacería con offsets NaN — se salta como si no hubiera caja.
+    if (!r._labelBox || !Number.isFinite(r.labelX) || !Number.isFinite(r.labelY)) continue;
+    if (!pointInLabelBox(x, y, r._labelBox)) continue;
+    const lPos0 = engine.toCvs(r.labelX, r.labelY);
+    const d0 = Math.hypot(x - lPos0.x, y - lPos0.y);
+    if (!boxHit || d0 < boxHit.dist) boxHit = { r, dist: d0 };
+  }
+  if (boxHit) {
+    if (ensureActiveNet(engine, boxHit.r.net)) return;
+    engine.selId = boxHit.r.id;
+    const lPosB = engine.toCvs(boxHit.r.labelX, boxHit.r.labelY);
+    engine.lblDrag = { id: boxHit.r.id, offX: x - lPosB.x, offY: y - lPosB.y };
+    engine._emitSelect(boxHit.r);
+    engine.render();
+    return;
+  }
   const lblBodyOwner = pointOnAnyBodySegment(
     engine.ramales,
     x,

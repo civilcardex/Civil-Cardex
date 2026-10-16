@@ -6,11 +6,7 @@ import { diamPulgFromLabel } from '../diamPulgFromLabel';
 import { punterosBajante, validarDiametroEntrePisos, parseBajanteKey } from './diametros';
 import { avisarDiametroInvalido } from '../diametroValidation';
 
-/** Mismo write de diámetro para VARIOS ramales con UN solo load+save del doc por plano
- *  afectado + UN RPC por plano: el select "D ventilación propuesto" llamaba
- *  writeDiametroToDrawing por cada ramal conectado (N parses del doc completo + N RPCs por
- *  UNA interacción de la tabla). Sin espejo ni validación de accesorios — los ramales vent
- *  conectados heredan el diámetro del bajante y su validación vive en el caller. */
+/** Diámetro a varios ramales con un solo load+save por plano (ruta batch del D vent propuesto). */
 // Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.
 let espejoEnCurso = false;
 
@@ -62,13 +58,7 @@ export function writeDiametroToDrawingBatch(
   }
 }
 
-/** Escribe una propiedad de bajante (Llenado, D propuesto…) al doc de trazos del piso + BD,
- *  y ESPEJA dNominal al bajante asociado del otro piso. LÍMITE (documentado): NO toca un
- *  engine vivo de OTRA ventana — si el visor tiene el piso abierto en otra pestaña, su
- *  autosave (saveWork completo, sin comparación de ts) puede pisar esta escritura; en una
- *  sola ventana lo salva el desmonte mutuo visor↔tablas. */
-/** Devuelve false si la escritura se bloqueó (regla entre pisos) y el caller no debe
- *  avanzar optimista; true si se escribió (o no había nada que validar). */
+/** Escribe prop del bajante al doc + BD y espeja dNominal al asociado del otro piso (false si bloqueó). */
 export function writeBajantePropToDrawing(
   bajanteKey: string,
   net: string,
@@ -168,9 +158,7 @@ export function writeBajantePropToDrawing(
   return escrito;
 }
 
-/** Escribe el MATERIAL de un ramal en los trazos (caché + BD). Sin validaciones ni
- *  propagaciones: el material no afecta a otros tramos; K y diámetro interior se derivan
- *  en la tabla vía lookupDn. Los diámetros de subida/bajada de material los maneja la tabla. */
+/** Escribe material del ramal al doc + BD (K y diámetro interior se derivan en la tabla). */
 export function writeMaterialToDrawing(
   ramalKey: string,
   net: string,
@@ -202,9 +190,7 @@ export function writeMaterialToDrawing(
   }
 }
 
-/** Limpia el diámetro del ramal en los trazos (caché + BD). Espejo de
- *  writeMaterialToDrawing: se usa cuando el dn actual no existe en el material
- *  nuevo y la tabla espera re-selección — el trazo no debe quedar con el dn viejo. */
+/** Limpia el diámetro del ramal (fuerza re-selección cuando el dn no existe en el material nuevo). */
 export function clearDiametroToDrawing(
   ramalKey: string,
   net: string,

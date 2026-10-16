@@ -12,7 +12,7 @@ export interface TargetArgs {
   netId: string;
   storageKey: string | null;
   targetId: string | null;
-  /** Claves de la unión (pata única): su suma es el total visible. */
+  /** Cuando el tramo es una unión de varios ramales, el panel muestra la suma de estas claves. */
   mergeKeys: Iterable<string> | null;
   isBajanteSan: boolean;
   planId?: string | number;
@@ -25,10 +25,11 @@ export interface TargetArgs {
   exitsDeBajante: (bajId: string) => Set<string>;
 }
 
-/** Mapa VISIBLE de unidades del tramo seleccionado (currentMap de AparatosPanel, movido
- *  verbatim — rediseño FixturesPanel). Ramas: bajante asociado a otro piso/bomba (fuente
- *  única = agregado del grupo), salida espejo de un bajante, LDesvio (espeja el grupo),
- *  af/ac (clave ya propagada) y gas con unión (suma de patas). */
+/** Mapa de unidades que SE VE en el panel del tramo elegido. Según el caso toma la
+ *  fuente correcta: bajante asociado a otro piso o bomba (lo que muestra el grupo),
+ *  salida espejo de un bajante, LDesvio (ramal desvio entrepisos) (copia del grupo),
+ *  af (Agua Fria)/ac (Agua Caliente) (la clave ya trae lo propagado) o gas (Gas) con
+ *  unión (suma de las patas). */
 export function currentMapDe(a: TargetArgs): Record<string, number> {
   const {
     storageKey,

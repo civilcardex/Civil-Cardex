@@ -14,7 +14,9 @@ import { devError } from '../../../../utils/devError';
 // Excepción yee doble: los ramales del brazo principal de una yee doble se borran individualmente
 // (el símbolo persiste), no como cluster — ver isYeeDobleInvolved.
 // ponytail: transitive closure — chain A-D1-D2 shares same logical ramal, deleting any half deletes whole cluster
-/** Conjunto completo de mitades del mismo ramal lógico (cierre transitivo de mergesFrom): borrar una mitad borra toda la división. Las yees dobles se excluyen. */
+/** Si borras UNA mitad de una tubería que fue partida al llegarle otra, se lleva TODA la división:
+ *  las dos mitades + la rama que la partió, unidas por mergesFrom (genealogía del split:
+ *  anfitrión + entrantes). Las yees dobles quedan fuera (sus brazos se borran de a uno). */
 export function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
   if (isYeeDobleInvolved(engine, ramalId)) return [];
   // divisor deletion must not expand (merge path)
@@ -91,9 +93,9 @@ function isYeeDobleInvolved(engine: IPlanoEngineCore, ramalId: string): boolean 
   return false;
 }
 
-/** Eje del tronco de una yee doble EN UN PUNTO: busca entre los brazos sobrevivientes un par
- *  OPUESTO (colineal antiparalelo, dot < −0.9) — el tronco pasante o partido en piezas que se
- *  encuentran ahí. Devuelve el vector del primer brazo del par, o null si no hay tronco vivo. */
+/** La dirección de la tubería principal (tronco) que pasa por el punto: busca el par de brazos
+ *  que salen en direcciones OPUESTAS (uno es la continuación del otro).
+ *  @param survivors brazos vivos; @param p punto; @returns eje o null. */
 function trunkAxisAt(survivors: PlanoRamal[], p: number[]): { x: number; y: number } | null {
   const vecs: number[][] = [];
   for (const sr of survivors) {
@@ -149,9 +151,9 @@ function trunkAxisAt(survivors: PlanoRamal[], p: number[]): { x: number; y: numb
   return null;
 }
 
-/** Preserva el símbolo de yee doble cuando se borra un brazo del TRONCO: el accesorio persiste
- *  y el tronco conserva su continuidad. Los LATERALES (tributario o ramal) no preservan nada:
- *  borrar uno deja la yee viva (tronco + otro lateral) sin tapón ni re-anclaje (orig. usuario). */
+/** Al borrar un brazo de una yee doble (dos uniones T encadenadas), decide si el hueco debe
+ *  quedar TAPADO: si lo borrado era la tubería principal, el extremo abierto se tapa; si era un
+ *  ramalito lateral, la yee sigue viva y no se tapa nada. */
 export function preserveYeeDobleAt(
   engine: IPlanoEngineCore,
   deleted: PlanoRamal,
@@ -437,11 +439,9 @@ function minDistToPts(p: number[], pts: number[][]): number {
   return d;
 }
 
-/** Tapón en el punto `pt` del brazo principal `host`: extremo libre → accesorioInicio/Fin;
- *  vértice intermedio → accMed{idx}. El punto de yee puede caer a MITAD de un segmento del
- *  tronco (la unión la detecta el lateral que toca el cuerpo) — ahí se inserta un vértice en
- *  `pt` y se ancla el accMed a él (reindexando los accMed posteriores). Diámetro = el del
- *  brazo principal (host.diametro) y conteo +1 en hidroData. No pisa un accesorio ya presente. */
+/** Tapa el hueco que dejó el brazo borrado: marca el accesorio 'tapon' en el extremo (o en el
+ *  vértice) de la tubería que sigue, con el diámetro del anfitrión, y suma 1 al resumen de
+ *  accesorios (hidro). */
 export function placeTaponOnHost(engine: IPlanoEngineCore, host: PlanoRamal, pt: number[]): void {
   if (!host.pts || host.pts.length < 2) return;
   let bestIdx = 0;
@@ -515,7 +515,8 @@ export function placeTaponOnHost(engine: IPlanoEngineCore, host: PlanoRamal, pt:
   }
 }
 
-/** ¿El ramal borrado era parte de una yee doble? Por bandera propia o por coincidencia de posición con los brazos de otra. */
+/** ¿El ramal que se borró era parte de una yee doble? Se sabe por su propia marca (yeeDobleAt)
+ *  o porque su trazo pasa justo por donde estaban los brazos de otra yee. */
 export function isDeletedYeeDoblePart(engine: IPlanoEngineCore, deleted: PlanoRamal): boolean {
   if (deleted.yeeDobleAt && deleted.yeeDobleAt.length === 2) return true;
   const pts = deleted.pts || [];

@@ -26,7 +26,8 @@ export interface Tramo {
   recibeDeIds?: string[];
   descargaEnId?: string | null;
   fixtures: Record<string, number>;
-  /** Espejo display para montantes: propios + ramales asociados (la Σ usa `fixtures`). */
+  /** Copia para MOSTRAR en montantes (la columna que sube y baja por el edificio): sus
+   *  aparatos + los de los ramales que le llegan. La suma oficial (Σ) usa `fixtures`. */
   fixturesAgg?: Record<string, number>;
   accesorios?: Record<string, number>;
   ini?: string | { x: number; y: number } | null;

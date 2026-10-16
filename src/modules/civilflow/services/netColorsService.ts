@@ -58,7 +58,7 @@ export function loadNetColors(): Promise<Record<string, string>> {
   return loaded;
 }
 
-/** Aplica un mapa de colores a las variables CSS y a NETS[].col (lo que lee el motor). */
+/** Pinta cada red con tu color (tuberías y menús cambian al instante). Ej: NETS (catalogo de redes del motor) lee el col del mapa. */
 export function applyNetColors(colors: Record<string, string>): void {
   for (const [id, c] of Object.entries(colors)) {
     document.documentElement.style.setProperty('--' + id, c);

@@ -1,5 +1,5 @@
-/** Helpers de borrado extraídos de deleteSelected (Oleada 1): reasignación de tributarios
- *  al ramal hermano y renumeración compacta de canales. Movidos verbatim. */
+/** Ayudantes del borrado, separados de deleteSelected: pasar los ramalitos huérfanos al ramal
+ *  hermano y renumerar los canales para que no queden huecos. Movidos tal cual. */
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { allocTributaryNumber } from './PlanoState';
 
@@ -95,12 +95,8 @@ export function reassignTributariosToHermano(
   }
 }
 
-/**
- * Compacta CNL1..N tras borrar (ítem 6 usuario): id==code en canales, en orden de
- * creación, conservando el sufijo de piso de cada uno. Remapea las referencias vivas de
- * OTROS canales (esCanalId de sus ramales, canalId de sus bajantes) — las del canal
- * borrado ya cayeron en cascada en el mismo borrado.
- */
+/** Después de borrar un canal, corre la numeración (CNL1, CNL2...) para que no queden saltos; el
+ *  id del canal queda igual a su código y avisa del cambio a quien escuche. */
 export function renumberCanales(engine: IPlanoEngineCore): void {
   const idMap = new Map<string, string>();
   let n = 0;

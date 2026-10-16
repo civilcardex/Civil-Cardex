@@ -8,10 +8,7 @@ import {
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 import { _midpoint } from './PlanoEngineDrawing';
 
-/**
- * Borrado con cascada: elimina selección, limpia ghosts/Ldesvíos entre pisos,
- * recalcula longitudes y renumera. Usado por `PlanoEngine.deleteSelected()`.
- */
+/** Borra la seleccion con cascada (limpia fantasmas y renumera las redes tocadas). */
 
 import { cascadeMontanteAssociation, purgarEstadoRamalesBorrados } from './deleteCascade';
 import { desasociarBombaEnTrazos } from '../../utils/bombaAssociation';

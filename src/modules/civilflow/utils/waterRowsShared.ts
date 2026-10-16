@@ -3,16 +3,12 @@ import { APARATOS_DEF } from '../constants';
 
 export type { BajanteRaw } from './drawingSyncTypes';
 
-/** ¿La red es agua fría (af)? */
 export const isAf = (t: string) => t === 'af';
-/** ¿El código corresponde a un contador (CNT/cntAF)? */
 export const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
 
-/**
- * Clasifica si un tramo es AC tipo 1 (ramal que alimenta contador o viene de RP).
- * @param t - Tramo con `ini`/`fin` (códigos de origen/destino).
- * @returns true si es AC1.
- */
+/** Tramo de ac (Agua Caliente) "lado frío": va de la red pública al contador (y de ahí no pasa todavía por el calentador).
+ *  @param t - tramo con `ini`/`fin`.
+ *  @returns true si es AC1. */
 export const isAC1 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
@@ -22,12 +18,9 @@ export const isAC1 = (t: Tramo) => {
   return false;
 };
 
-/**
- * Clasifica si un tramo es AC tipo 2 (ramal que sale de contador o descarga en montante/bajante).
- * Complemento de `isAC1` para separar redes AC en tablas.
- * @param t - Tramo con `ini`/`fin`.
- * @returns true si es AC2.
- */
+/** Tramo de ac (Agua Caliente) "lado caliente": sale del contador hacia el montante/bajante (ya lleva agua calentada).
+ *  @param t - tramo con `ini`/`fin`.
+ *  @returns true si es AC2. */
 export const isAC2 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
@@ -39,11 +32,11 @@ export const isAC2 = (t: Tramo) => {
 
 // Misma transformación sigla → código que aplica PlanoEngineNetwork.ts al escribir la
 // abreviatura de un fixture en el ini/fin de un ramal: "Duc:" -> "DUC".
-/** Presión máxima por sigla de aparato (misma transformación de sigla que aplica el motor al dibujar). */
+/** Presión máxima (m.c.a.) que soporta cada aparato, indexada por su sigla ("LAV" → lavamanos); usa la misma sigla que dibuja el motor. */
 export const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax]),
 );
-/** Presión mínima por sigla de aparato (misma transformación que PMAX). */
+/** Presión mínima (m.c.a.) que necesita cada aparato para funcionar bien, por sigla. */
 export const APARATO_PMIN_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmin]),
 );
@@ -51,9 +44,7 @@ export const APARATO_PMIN_BY_CODE: Record<string, number> = Object.fromEntries(
 if (APARATO_PMAX_BY_CODE.HORG != null) APARATO_PMAX_BY_CODE.HOR = APARATO_PMAX_BY_CODE.HORG;
 if (APARATO_PMIN_BY_CODE.HORG != null) APARATO_PMIN_BY_CODE.HOR = APARATO_PMIN_BY_CODE.HORG;
 
-/** Chequeo de presión en el aparato conectado al tramo: la presión disponible en el extremo
- *  donde vive el aparato (fin → Pfin, si no ini → Pin) debe caer entre pmin y pmax del
- *  catálogo NTC 1500. Sin aparato conectado o sin presión resuelta → '' (sin chequeo). */
+/** ¿La presión en el aparato está dentro del rango pmin–pmax del catálogo NTC (Norma Tecnica Colombiana) 1500? Devuelve '' si no hay aparato o presión. */
 export function chequeoPresionAparato(
   ini: Tramo['ini'],
   fin: Tramo['fin'],
@@ -76,5 +67,5 @@ export function chequeoPresionAparato(
   }
   return '';
 }
-/** Factor de pérdida de presión atribuible al calentador (0.9). */
+/** Cuánta presión se "come" el calentador cuando la red de ac (Agua Caliente) lo usa (0.9 = se pierde el 10 %). */
 export const HEATER_LOSS_FACTOR = 0.9;

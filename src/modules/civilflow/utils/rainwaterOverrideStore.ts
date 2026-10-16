@@ -3,7 +3,7 @@ import { sectorDe } from './formatUtils';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import type { BajanteLL, CanalLL } from '../context/RainwaterContext';
 
-/** Espejo local de overrides ll (puente entre instancias del provider). */
+/** Espejo local de overrides ll (Lluvias) (puente entre instancias del provider). */
 export interface OverridesMirror {
   proyectoId?: string | null;
   bajantes?: BajanteLL[];

@@ -3,11 +3,8 @@ import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import type { HidroTramoEntry } from './sanAccessoriesCalc';
 import { EV_STORAGE } from '../../utils/fixtureEvents';
 
-/**
- * Cuenta los accesorios a mitad de ramal y de extremo en las redes de agua (AF, AC, LL) y
- * los escribe en el storage de hidráulica para que la tabla "Accesorios por ramal" se
- * complete correctamente. Generaliza el conteo sanitario para aceptar cualquier accesorio.
- */
+/** Cuenta los accesorios (codos, tees, tapones...) que necesita cada tubería de af (Agua Fría),
+ *  ac (Agua Caliente) y ll (Lluvias) y los deja anotados para las tablas de diseño. */
 export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;

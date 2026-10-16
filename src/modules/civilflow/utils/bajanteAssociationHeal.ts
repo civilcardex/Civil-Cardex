@@ -14,14 +14,7 @@ interface HealBajante {
   ucAplicadoHidro?: Record<string, Record<string, number>>;
 }
 
-/** Sanador del trinquete de herencia invertida (orig. usuario: 12 UD abajo → 16 al reentrar).
- *  Mientras el guard de dirección de la propagación en vivo estuvo muerto (leía `p.npt`, campo
- *  inexistente), el efecto con el piso INFERIOR cargado trató al bajante inferior como fuente:
- *  sumó sus UD locales a la herencia y escribió el resultado en el piso SUPERIOR (claves de
- *  ramales + libro falso + espejo LD falso). Revierte EXACTO restando el libro (misma resta que
- *  clearBajanteAssociation), borra el libro y sus espejos LD. Libro falso = titular SIN
- *  `origenId` y SIN `bombaEnId` (no recibe de nadie), u `origenId` a plan CONOCIDO estrictamente
- *  abajo; origen desconocido o empate → legítimo, no se toca. Storage-only, idempotente. */
+/** Revierte herencia invertida (UD (Unidades de Desague) sumada al piso equivocado): resta el libro falso. */
 export function healHerenciaInvertida(
   plans: Array<{ id: string | number; nivel: number | string | null }>,
 ): boolean {

@@ -495,9 +495,7 @@ export async function loadCampoProyectoGeneral<T>(
   }
 }
 
-/** Blob de rejillas NTC 3631 (overrides + tipo de gas) → cf_proyecto_general.rejillas.
- *  El RPC whitelistó 'rejillas' con cast ::jsonb (migración 20261002000000). */
-/** Blob persistido del tab Rejillas (cf_proyecto_general.rejillas, jsonb). */
+/** Guarda lo de rejillas (huecos de ventilación) del proyecto en la BD. Ej: NTC (Norma Tecnica Colombiana) 3631 + gas (Gas) natural/glp en un solo blob. */
 export interface RejillasBlob {
   overrides?: Record<string, unknown>;
   gas?: 'natural' | 'glp';

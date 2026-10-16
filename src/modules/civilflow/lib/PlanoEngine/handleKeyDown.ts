@@ -1,15 +1,11 @@
-/**
- * Despachador de atajos de teclado del visor (cuerpo de _onKeyDownHandler). El foco manda:
- * INPUT/SELECT/TEXTAREA conservan el undo nativo del texto; Ctrl+Z/Y y Ctrl+S se tratan ANTES
- * del guard de foco (un <select> no edita texto y el undo debe llegar siempre).
- */
+/** Atajos de teclado del visor. Regla: si el foco está en un campo de texto, las teclas son del
+ *  campo; Ctrl+Z/Y (deshacer/rehacer) funcionan siempre, incluso con el foco en un desplegable. */
 import type { IPlanoEngineCore } from './PlanoState';
 import { commitOpenGuide, eraseRamalAt } from './PlanoEngineDrawing';
 import { commitCanalAncho } from './drawingCreations';
 
-/** Procesa un keydown del canvas: herramientas (S/J/L/D/U/B/M/A/E/X/K/espacio), Enter/Esc
- *  (terminar/cancelar trazo, área o guía) y borrado (Supr/Backspace con eraseRamalAt para
- *  ramales). Los preventDefault y el orden de ramas se copian tal cual del hub. */
+/** Lo que hace cada tecla sobre el dibujo: cambiar de herramienta, terminar o cancelar el trazo
+ *  en curso (Enter/Esc) y borrar lo seleccionado (Supr/Backspace). */
 export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void {
   const tag = (e.target as HTMLElement).tagName;
   const k = e.key.toLowerCase();

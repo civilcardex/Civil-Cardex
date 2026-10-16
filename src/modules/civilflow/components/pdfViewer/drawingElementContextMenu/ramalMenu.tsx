@@ -457,6 +457,21 @@ export function RamalMenu() {
             ))}
           </div>
         )}
+      {/* Orig. usuario "primero botones": el panel de conexión (acciones) va con los demás
+          botones; los desplegables (canal, aparatos/accesorios, etiqueta) quedan al final. */}
+      {contextMenuState.ramalEndpoint && (
+        <BajanteConnectionPanel
+          element={ramalEl}
+          isGhostClick={contextMenuState.isGhostClick || false}
+          ramalEndpoint={contextMenuState.ramalEndpoint}
+          engineRef={ctx.engineRef}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
+          activeNet={ctx.activeNet}
+          planosCtx={ctx.planosCtx}
+        />
+      )}
       {ramalEl.esCanalId && (
         <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
           <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramal de canal</div>
@@ -491,44 +506,51 @@ export function RamalMenu() {
           </select>
         </div>
       )}
-      {contextMenuState.midRamalHit &&
-        !contextMenuState.ramalEndpoint &&
-        !['san', 'll'].includes(ramalEl.net) &&
-        getAccessoryOptions(ramalEl.net).length > 0 && (
-          <MidRamalAccessorySelector
-            element={ramalEl}
-            midRamalHit={contextMenuState.midRamalHit}
-            engineRef={ctx.engineRef}
-            selElement={ctx.selElement}
-            setSelElement={ctx.setSelElement}
-            setContextMenuState={ctx.setContextMenuState}
-            planosCtx={ctx.planosCtx}
-          />
-        )}
-      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && ramalEl.net === 'san' && (
-        <MidRamalAccessorySelector
-          element={ramalEl}
-          midRamalHit={contextMenuState.midRamalHit}
-          engineRef={ctx.engineRef}
-          selElement={ctx.selElement}
-          setSelElement={ctx.setSelElement}
-          setContextMenuState={ctx.setContextMenuState}
-          planosCtx={ctx.planosCtx}
-        />
-      )}
-      {contextMenuState.ramalEndpoint && (
-        <BajanteConnectionPanel
-          element={ramalEl}
-          isGhostClick={contextMenuState.isGhostClick || false}
-          ramalEndpoint={contextMenuState.ramalEndpoint}
-          engineRef={ctx.engineRef}
-          selElement={ctx.selElement}
-          setSelElement={ctx.setSelElement}
-          setContextMenuState={ctx.setContextMenuState}
-          activeNet={ctx.activeNet}
-          planosCtx={ctx.planosCtx}
-        />
-      )}
+      {/* Aparatos/accesorios del trazo — también al clicar un EXTREMO (orig. usuario): con
+          extremo se sintetiza el hit en esa punta para que la preferencia de extremo del
+          selector apunte ahí. */}
+      {(() => {
+        const hit =
+          contextMenuState.midRamalHit ||
+          (contextMenuState.ramalEndpoint
+            ? {
+                segmentIdx:
+                  contextMenuState.ramalEndpoint.idx === 0
+                    ? 0
+                    : contextMenuState.ramalEndpoint.idx - 1,
+                x: contextMenuState.ramalEndpoint.x,
+                y: contextMenuState.ramalEndpoint.y,
+              }
+            : null);
+        if (!hit) return null;
+        if (!['san', 'll'].includes(ramalEl.net) && getAccessoryOptions(ramalEl.net).length > 0) {
+          return (
+            <MidRamalAccessorySelector
+              element={ramalEl}
+              midRamalHit={hit}
+              engineRef={ctx.engineRef}
+              selElement={ctx.selElement}
+              setSelElement={ctx.setSelElement}
+              setContextMenuState={ctx.setContextMenuState}
+              planosCtx={ctx.planosCtx}
+            />
+          );
+        }
+        if (ramalEl.net === 'san') {
+          return (
+            <MidRamalAccessorySelector
+              element={ramalEl}
+              midRamalHit={hit}
+              engineRef={ctx.engineRef}
+              selElement={ctx.selElement}
+              setSelElement={ctx.setSelElement}
+              setContextMenuState={ctx.setContextMenuState}
+              planosCtx={ctx.planosCtx}
+            />
+          );
+        }
+        return null;
+      })()}
       <ElementCodeEditor
         element={element}
         engineRef={ctx.engineRef}

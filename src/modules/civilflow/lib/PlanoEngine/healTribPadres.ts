@@ -4,7 +4,9 @@
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
 import { rootTributarioLabel, allocTributaryNumber } from './PlanoState';
 
-/** Sanado global (cada _markDirty): cadenas rotas se anclan con el label como pista; mergesFrom hereda; renumeración sin huecos por raíz. */
+/** Pone en orden los ramalitos (tributarios) cada vez que cambia el dibujo: si el apunta a un
+ *  padre que ya no existe, lo re-ancla; y renumerar T1, T2... sin huecos. Las piezas creadas al
+ *  partir una tubería (mergesFrom) heredan el padre correcto solas. */
 export function healTribPadres(engine: IPlanoEngineCore): void {
   // 1) Cadenas rotas: el label sugiere la raíz correcta.
   for (const r of engine.ramales) {

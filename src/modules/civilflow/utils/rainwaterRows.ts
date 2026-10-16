@@ -21,7 +21,7 @@ export interface BajanteLl {
   bajante?: string;
   id?: string;
   areaAcumulada?: number;
-  /** Área Otras (orig. usuario): editable, default 0 — Total = Parcial + Otras. */
+  /** Área de "Otras" superficies (m²) que también le llueven encima al bajante, editable a mano; arranca en 0. */
   areaOtras?: number;
   areaParcial?: number;
   intensidad?: number;
@@ -78,8 +78,7 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
   return keys;
 }
 
-/** Regla ll: diámetro del bajante >= diámetro de sus ramales conectados directos (recibeDeIds).
- *  Devuelve el máximo pulg de esos ramales (0 si no hay ninguno con diámetro). */
+/** Mayor diámetro (en pulgadas) entre los ramales conectados al bajante (los de recibeDeIds/alimentaIds (ramales que llegan/salen del bajante)) en aguas lluvias (ll (Lluvias)). */
 export function maxRamalPulgDeBajante(
   bajanteId: string,
   planId: string,
@@ -219,10 +218,7 @@ export function buildLlBajanteAssociations(
   return ramalToBajantes;
 }
 
-/** Q (LPS) de UN bajante de aguas lluvias — precedencia del PANEL y del tramo bajante
- *  (ownQ de computeLlQMap): caudal manual del dibujo > override manual con Área TOTAL
- *  (Parcial + Otras)/I/C > área del dibujo > fallback del piso. El tramo COLECTOR y el
- *  chequeo de bajantes/canal derivan la Parcial con areaParcialBajanteLl (dibujo > manual). */
+/** Caudal (Q (Caudal), L/s) de un bajante de lluvias (ll (Lluvias)): manda el valor escrito a mano; si no, el cálculo con el área; sin material de cubierta elegido da 0 (no se inventa). */
 export function qBajanteLl(
   bajante: { id?: string; code?: string; area_m2?: number; caudal?: number },
   manual?: BajanteLl | null,
@@ -249,9 +245,7 @@ export function qBajanteLl(
   return chequeoBajanteLluvia({ areaAcumulada: area, intensidad: 100, coeficienteC: C }).Q;
 }
 
-/** Área parcial (m²) de UN bajante ll — fórmula compartida (tabla de bajantes, memoria y
- *  canal REQ: el canal suma EXACTAMENTE las parciales de sus bajantes asociados):
- *  área dibujada > área del glifo > override manual (areaParcial) > 0. */
+/** Área que aporta un bajante de lluvias (ll (Lluvias)) (m²): la del dibujo; si no, la del glifo; si no, la escrita a mano. */
 export function areaParcialBajanteLl(
   areaDibujo: number | undefined,
   areaGlifo: number | undefined,
@@ -260,24 +254,19 @@ export function areaParcialBajanteLl(
   return areaDibujo || areaGlifo || manual?.areaParcial || 0;
 }
 
-/** Material de cubierta COMÚN de los bajantes asociados a un canal: solo si todos comparten
- *  el mismo material no vacío; mezclados/ninguno → '' (placeholder; sin material no hay C). */
+/** Material de cubierta que comparten TODOS los bajantes que alimentan a un canal: si mezclan materiales (o ninguno lo tiene) devuelve '' — sin material no hay coeficiente de escorrentía y el cálculo no arranca. */
 export function materialComun(materiales: Array<string | undefined>): string {
   const primero = materiales[0];
   if (!primero) return '';
   return materiales.every((m) => m === primero) ? primero : '';
 }
 
-/** Σ del área "Otras" (m²) de los overrides de los bajantes asociados a un canal
- *  (fila ausente/undefined → 0). El canal muestra SIEMPRE esta Σ real vía context. */
+/** Suma del área "Otras" (m²) de los bajantes que alimentan a un canal (los que no tengan nada cuentan 0). */
 export function sumaOtrasAsociados(overrides: Array<{ areaOtras?: number } | undefined>): number {
   return overrides.reduce((s, o) => s + (o?.areaOtras ?? 0), 0);
 }
 
-/** Reparte un total de "Área Otras" del canal entre sus N bajantes asociados de forma
- *  que Σ(escrito) == total (residuo al primero; centavos de m² para evitar flotantes).
- *  Re-editar el mismo total es idempotente. Bajante compartido por 2 canales: la última
- *  escritura gana (caso borde aceptado). */
+/** Reparte el "Área Otras" del canal entre los N bajantes que lo alimentan (en centavos de m² para que la suma sea exacta; se puede repetir sin duplicar). */
 export function repartirOtrasCanal(total: number, n: number): number[] {
   if (n <= 0) return [];
   const base = Math.floor((total * 100) / n) / 100; // centavos de m² para evitar flotantes

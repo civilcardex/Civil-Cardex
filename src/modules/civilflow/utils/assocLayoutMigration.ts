@@ -1,8 +1,4 @@
-/**
- * Migración y barrido del layout de asociación entre pisos (marca `assocLayout`).
- * Layout viejo: anillo (desplazamientos) + Ldesvio en el piso SUPERIOR, marcadores en el
- * inferior. Layout nuevo (2): fantasma + Ldesvio en el INFERIOR, marcadores en el superior.
- */
+/** Migra y barre la asociación entrepisos (marca assocLayout): layout 2 = fantasma + LD_ (ramal desvio entrepisos) abajo. */
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import { splitPtr } from './keys';
 import { TRAZOS_PLAN_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
@@ -23,11 +19,7 @@ import {
   type LocalGhostDrawingData,
 } from './crossFloorStorage';
 
-/** Re-ancla los ANILLOS layout-2 (dx/dy) a la posición ACTUAL del bajante superior traducida
- *  con aFrameDe (el puntero `origenId`/`descargaEnId` del portador da el partner `plan|id`) y
- *  el inicio del Ldesvio asociado. Red de seguridad para orígenes recalibrados en otro
- *  dispositivo, que no pasaron por sanearAsociacionesTrasRecalibrar local.
- *  @returns true si cambió algo. */
+/** Re-ancla anillos layout-2 al bajante superior actual (red tras recalibrar en otro dispositivo). */
 function reanclarAnillosLayout2(data: LocalGhostDrawingData, pid: string): boolean {
   let dirty = false;
   for (const b of data.bajantes ?? []) {
@@ -91,10 +83,7 @@ function reanclarAnillosLayout2(data: LocalGhostDrawingData, pid: string): boole
   return dirty;
 }
 
-/** Re-ancla los ghost-marcadores (layout 2) a la posición espejo ACTUAL del bajante origen
- *  expresada en el frame de ESTE piso. Mantiene el invariante `ghost.xy = aFrameDe(origen.xy)`:
- *  recalibrar un origen cambia la traducción entre frames y el ghost persistido queda en px del
- *  frame viejo — la próxima apertura lo re-ancla. @returns true si cambió algo. */
+/** Re-ancla fantasmas layout-2 al espejo actual del origen (sana recalibraciones de otro dispositivo). */
 function reanclarGhostsLayout2(data: LocalGhostDrawingData, pid: string): boolean {
   let dirty = false;
   for (const g of data.crossFloorGhosts || []) {
@@ -122,8 +111,7 @@ export function markAssocLayout(planId: string | number): void {
   saveData(planId, data);
 }
 
-/** Migración automática al layout nuevo: reconstruye anillos, Ldesvios y ghost-marcadores en
- *  los pisos correctos. Idempotente — un piso con la marca `assocLayout: 2` no se re-procesa. */
+/** Migra al layout 2 (anillos, LD_ (ramal desvio entrepisos) y fantasmas en sus pisos; idempotente). */
 export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: string): void {
   const pid = String(planId);
   // Re-anclaje de ghosts layout-2 (frame cambió por recalibración): ANTES del guard barato,
@@ -379,9 +367,7 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
   if (touched) markAssocLayout(pid);
 }
 
-/** Al migrar/mover un Ldesvio de piso, su clave de aparatos (UDs) cambia de sufijo de plan —
- *  se re-acomoda tomando el MÁXIMO por aparato (la clave espeja un agregado; sumar duplicaría
- *  si el destino ya tenía valores de una re-ejecución a medias). */
+/** Mueve la clave de aparatos del LD_ (ramal desvio entrepisos) al plan destino (UD (Unidades de Desague) por máximo, sin duplicar). */
 function moveLdesvioAparatosKey(
   net: string,
   upperBajanteId: string,
@@ -402,12 +388,7 @@ function moveLdesvioAparatosKey(
   saveToStorage(APARATOS_BY_TRAMO_KEY, map);
 }
 
-/** Barrido global (layout nuevo): elimina los ramales LD_ que viven en un piso distinto al del
- *  bajante que porta su anillo — remanentes del layout viejo. */
-/** Sanea labels de Ldesvio duplicados, vacíos o chocados con un ramal real (creados cuando
- *  `nextRamalLabel` no veía labels de LD): los re-etiqueta al siguiente consecutivo libre de
- *  su red. Solo cambia lo impreso — el id (`LD_...`) y sus claves de conteos no se tocan.
- *  Idempotente: sin duplicados no hace nada. @returns true si cambió algo. */
+/** Sanea labels de LD_ (ramal desvio entrepisos) duplicados o chocados (solo cambia lo impreso). */
 export function healLdesvioLabels(data: LocalGhostDrawingData): boolean {
   const ramales = data.ramales || [];
   if (!ramales.some((r) => isLdesvioRamalId(r.id))) return false;
@@ -435,6 +416,7 @@ export function healLdesvioLabels(data: LocalGhostDrawingData): boolean {
   return changed;
 }
 
+/** Barrido global: borra LD_ (ramal desvio entrepisos) que viven en piso distinto al de su anillo. */
 export function sweepMisplacedLdesvios(): void {
   const plans: Array<{ pid: string; data: LocalGhostDrawingData }> = [];
   for (let i = 0; i < localStorage.length; i++) {

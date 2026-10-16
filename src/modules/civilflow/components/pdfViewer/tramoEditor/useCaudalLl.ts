@@ -8,7 +8,7 @@ import { splitPtr } from '../../../utils/keys';
 import { cDeCubierta } from '../../../constants/engineeringDataMaterials';
 import type { DrawingData } from '../../../utils/drawingSync';
 
-/** Forma mínima de un override manual de bajante ll (BajanteLL de RainwaterContext). */
+/** Forma mínima de un override manual de bajante ll (Lluvias) (BajanteLL de RainwaterContext). */
 interface BajanteLLManual {
   id: string;
   bajante: string;
@@ -20,11 +20,10 @@ interface BajanteLLManual {
   materialCubierta?: string;
 }
 
-/** Caudal (LPS) del ramal/bajante de aguas lluvias seleccionado en el panel del visor.
- *  Réplica del cálculo de la tabla Diseño de red lluvias: aporte de bajantes de TODOS los pisos
- *  (misma BFS de asociación, planes desde el meta), caudal manual del dibujo como precedencia y
- *  overrides manuales (Área Otras/intensidad/coef) del RainwaterContext cuando hay provider
- *  (el visor lo monta en ViewerPage; sin provider — tests — cae al cálculo del dibujo). */
+/** Caudal (Q, en litros por segundo) del ramal/bajante de lluvias (ll) elegido en el panel:
+ *  misma fórmula que la tabla Diseño de red (suma el aporte de bajantes de TODOS los pisos,
+ *  y el caudal manual del dibujo manda si existe), con los overrides manuales (Área Otras,
+ *  intensidad, coeficiente) del RainwaterContext cuando el visor lo monta. */
 export function useCaudalLl(
   selElement: { id?: string; tipo?: string } | null,
   activeNet: string,

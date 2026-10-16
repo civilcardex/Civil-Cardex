@@ -55,14 +55,7 @@ export function bajanteLabel(
   return piso ? `${code}-${piso}` : code;
 }
 
-/**
- * Etiqueta de visualización de ramal con el sufijo del piso actual (p. ej. "RS1-P1") — coincide
- * con la etiqueta dibujada en canvas por renderRamales, que siempre añade el sufijo del PISO
- * ACTUAL (un ramal no tiene pisoBase propio, a diferencia de un bajante).
- * @param r - Objeto tipo ramal con label, id opcionales.
- * @param nivelLabel - Etiqueta del piso actual para el sufijo.
- * @returns Etiqueta formateada como "RS1-P1" o id pelado.
- */
+/** Etiqueta del ramal con sufijo del piso actual (p. ej. "RS1-P1", igual que el canvas). */
 export function ramalLabel(
   r: { label?: string; id?: string } | null | undefined,
   nivelLabel?: string,

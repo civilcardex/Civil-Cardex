@@ -6,7 +6,8 @@ import { distToPolyline } from '../shared/geometry';
 import { esCaja, puedeConectarRamalABajante } from './bajanteRules';
 import { angleAtHalfLength } from './drawingAngles';
 
-/** Siguiente etiqueta automática para la red activa (R{n}, o T{n}{padre} si se está dibujando un tributario). */
+/** Nombre del próximo pedazo de tubería: RAF1, RAF2...; si estás dibujando un ramal que cuelga de
+ *  otro (tributario) se llama T1RS1 = primer ramal que cuelga de RS1. */
 export function _nextLabel(engine: IPlanoEngineCore): string {
   const net = NETS.find((n) => n.id === engine.activeNet);
   const pfx = net ? net.lbl : 'R';
@@ -26,7 +27,8 @@ export function _nextLabel(engine: IPlanoEngineCore): string {
 // correcto después. Las flechas de dirección de flujo (renderRamales.ts, derivadas en vivo de
 // pts[0] vs pts[último]) se voltean solas como resultado — no hace falta un campo de dirección
 // aparte.
-/** Invierte un ramal en el sitio: revierte el orden de los puntos e intercambia los datos por extremo (accesorios, diámetros, ini/fin). Las flechas de flujo se voltean solas. */
+/** Le da la vuelta a un ramal en su sitio: invierte el orden de sus puntos y cambia lo del inicio
+ *  por lo del final (accesorios, diámetros). Las flechas de flujo se voltean solas. */
 export function reverseRamalEndpoints(ramal: PlanoRamal): void {
   const tmpAcc = ramal.accesorioInicio;
   ramal.accesorioInicio = ramal.accesorioFin;
@@ -43,7 +45,8 @@ export function reverseRamalEndpoints(ramal: PlanoRamal): void {
   ramal.pts.reverse();
 }
 
-/** Punto medio de la polilínea por longitud recorrida (no el vértice central). */
+/** El punto que queda a la mitad del RECORRIDO de la tubería (no el vértice del medio de la
+ *  lista: importa para poner etiquetas centradas en el tubo). */
 export function _midpoint(pts: number[][]): [number, number] {
   let totalLen = 0;
   const segLens: number[] = [];
@@ -101,8 +104,11 @@ export function maxDiametroLabel(a: string, b: string): string {
   return vb > va ? b : a;
 }
 
-/** dNominal resultante al asociar ramales a un bajante/montante: el mayor entre el actual y
- *  los asociados (solo sube, nunca baja). @returns nuevo dNominal, o null si no cambia. */
+/** Diámetro (dNominal) que debe quedar en un bajante/montante al conectársele ramales: se queda
+ *  con el MÁS ANCHO y nunca baja (el agua necesita al menos el hueco del tubo más grueso que le
+ *  llega). null = no hace falta cambiar nada.
+ *  @param recibeDeIds ids de los ramales (los que le llegan) que le entran;
+ *  @returns nuevo dNominal o null. */
 export function bumpBajanteToMaxRamal(
   ramales: Array<{ id: string; diametro?: string }>,
   recibeDeIds: string[] | undefined,
@@ -117,10 +123,10 @@ export function bumpBajanteToMaxRamal(
   return null;
 }
 
-/** dNominal resultante al CAMBIAR el diámetro de un ramal: el bajante sigue al máximo de sus
- *  asociados en ambas direcciones — si seguía al máximo anterior (o estaba vacío), adopta el
- *  nuevo; un oversize explícito mayor se conserva salvo que el nuevo máximo lo supere.
- *  @returns nuevo dNominal, o null si no cambia. */
+/** Cuando cambias el diámetro de UN ramal, el bajante se acomoda al nuevo máximo de sus
+ *  conectados: si ya venía siguiendo al máximo, adopta el nuevo; si lo habías puesto más ancho a
+ *  mano (oversize), se conserva. null = no hace falta cambiar.
+ *  @returns nuevo dNominal o null. */
 export function followBajanteToMaxRamal(
   ramales: Array<{ id: string; diametro?: string }>,
   recibeDeIds: string[] | undefined,
@@ -146,7 +152,7 @@ export function followBajanteToMaxRamal(
   return null;
 }
 
-/** Cancela el dibujo del ramal activo sin persistir. @param engine Instancia del motor. */
+/** Descarta el ramal en curso sin guardar nada. */
 export function cancelRamal(engine: IPlanoEngineCore): void {
   engine._yeeFlashKey = null;
   engine.activeRamal = null;
@@ -155,15 +161,14 @@ export function cancelRamal(engine: IPlanoEngineCore): void {
   engine._markDirty();
 }
 
-/** Cancela el dibujo del área activa sin persistir. @param engine Instancia del motor. */
+/** Descarta el area en curso sin guardar nada. */
 export function cancelArea(engine: IPlanoEngineCore): void {
   engine.activeArea = null;
   engine._emitStatus(_statusMsg(engine));
   engine.render();
 }
 
-/** Termina el polígono del área activa, calculando su área en m² y agregándola al plano.
- *  @param engine Instancia del motor. */
+/** Cierra el poligono del area y guarda su superficie en m2 (min 3 vertices). */
 export function finishArea(engine: IPlanoEngineCore): void {
   if (!engine.activeArea || engine.activeArea.pts.length < 3) {
     engine.activeArea = null;
@@ -196,8 +201,8 @@ export function finishArea(engine: IPlanoEngineCore): void {
   engine._markDirty();
 }
 
-/** Fija la escala de dibujo (metros por píxel) y recalcula las longitudes de todos los ramales.
- *  @param engine Instancia del motor. @param v Valor de escala como string o número. */
+/** Cambia la escala del plano (scaleM (escala metros por pixel): cuántos metros mide cada pixel)
+ *  y vuelve a medir la longitud de cada tubería en metros. */
 export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.scaleM = parseFloat(String(v)) || 0.5;
   engine.ramales.forEach((r) => {
@@ -212,9 +217,7 @@ export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.render();
 }
 
-/** Fija la escala de referencia definida por el usuario (p.ej. desde una dimensión conocida del
- *  PDF) sin recalcular longitudes. @param engine Instancia del motor. @param v Valor de escala
- *  como string o número. */
+/** Fija la escala de referencia sin tocar las longitudes ya calculadas. */
 export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.definedScaleM = parseFloat(String(v)) || 0;
   engine.render();
@@ -226,9 +229,7 @@ export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): 
 // hace en su herencia) y el path tabla→dibujo. Mutación directa sin snapshots por nodo: el
 // caller emite UN snapshot para toda la operación. @param ramales Red actual (motor o
 // storage). @param _changedId Reservado (origen del cambio; el recálculo es global).
-/** Extremo de descarga de un ramal según su dirección de flujo: san/ll/vent drenan hacia
- *  la unión; el resto fluye pts[0]→pts[último]. Misma convención que el recálculo de
- *  receptores de abajo; la usa también la herencia direccional de finishRamal. */
+/** Extremo de descarga segun flujo (san (Sanitaria), ll (Lluvias) y vent (Ventilacion) drenan a la union). */
 export function ramalDischargeEnd(r: {
   net?: string;
   pts?: number[][];
@@ -239,10 +240,7 @@ export function ramalDischargeEnd(r: {
   return r.pts[r.pts.length - 1];
 }
 
-/** ¿R continúa aguas abajo del punto Q (en su dirección de flujo)? Sin esto, un tributario
- *  que descarga justo en el extremo FINAL de un tramo lo marcaría como receptor, o una
- *  descarga que sigue de largo por su propia línea se leería como alimentación a una rama
- *  que en realidad entrega. */
+/** Avisa si el ramal sigue aguas abajo del punto (tol 2.0 px, evita falsos receptores). */
 export function ramalContinuesPast(
   r: {
     net?: string;

@@ -1,8 +1,10 @@
 import type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 export type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 
-/** Definiciones de las redes que dibuja el motor (color, prefijo de etiqueta, tipo de bajante, icono).
- *  Para los nombres/iconos que se muestran en la interfaz, usar uiConfig.REDES en su lugar. */
+/** Catálogo de redes que el motor sabe dibujar (NETS): cada una con su color, el prefijo de sus
+ *  etiquetas (af (Agua Fría) -> RAF1, san (Sanitaria) -> RS1) y el tipo de tubería vertical que
+ *  usa (montante el que SUBE, bajante el que BAJA). Para los nombres/iconos que se muestran en la
+ *  interfaz, usar uiConfig.REDES en su lugar. */
 export const NETS = [
   {
     id: 'af',
@@ -146,23 +148,16 @@ export interface CanvasBox {
   h: number;
 }
 
-/** ¿Está activa esta red? — Consulta el conjunto de redes activas del motor; si no hay conjunto
- *  definido, todas las redes se consideran activas.
- *  @param engine Instancia del motor
- *  @param netId Id de la red a consultar
- *  @returns true si la red está activa (o si no existe un conjunto de activas) */
+/** Dice si una red (af = Agua Fría, san = Sanitaria, ll = Lluvias...) está activa en el proyecto.
+ *  Si el usuario no definió conjunto, todas valen. Ej: proyecto con solo sanitarias →
+ *  checkActiveNet(engine, 'af') es false. */
 export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
   const activeNets = engine.activeNetworks as Set<string> | undefined;
   return activeNets ? activeNets.has(netId) : true;
 }
 
-/**
- * Avisa al caller que debe abortar si `netId` está inactiva (le muestra una alerta al usuario).
- * Si la red está habilitada pero no es la activa, cambia automáticamente a ella.
- * @param engine Instancia del motor
- * @param netId Id de la red destino
- * @returns true si el caller debe abortar; false si puede continuar con seguridad
- */
+/** Cambia a la red si el proyecto la tiene activa; si no, avisa al usuario y aborta (true = no
+ *  seguir). Ej: ensureActiveNet(engine, 'gas') en un proyecto sin gas → alerta "Red inactiva". */
 export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
   if (netId === engine.activeNet) return false;
   if (!checkActiveNet(engine, netId)) {
@@ -196,17 +191,15 @@ export function allocNetNumber(
   return n;
 }
 
-/** ID único de ramal/tributario: `Date.now()` + sufijo aleatorio. El sufijo evita que dos
- *  objetos creados en el mismo milisegundo (p. ej. las dos mitades de un tramo partido)
- *  compartan id — eso hacía que borrar o seleccionar por id afectara a los dos. */
+/** Id unico de ramal (milisegundo mas azar, evita choques en splits).
+ *  @returns id nuevo. */
 export function uniqRamalId(): string {
   return 'T' + Date.now() + Math.random().toString(36).slice(2, 7);
 }
 
-/** Número del siguiente tributario para un sufijo dado (`T{n}{sufijo}`): el primer número
- *  libre desde 1. La numeración es POR PADRE — cada ramal padre empieza sus tributarios en
- *  T1 (T1RS1, T1RS2, ...). El contador global de la red ya no se usa para asignar, solo
- *  queda como máximo histórico para persistencia. */
+/** Siguiente numero libre T{n} del padre (numeracion por padre desde 1: los ramales que cuelgan de
+ *  RS1 se llaman T1RS1, T2RS1...). Ej: con T1RS1 ocupado devuelve 2.
+ *  @param suffix etiqueta del ramal raíz (p.ej. 'RS1'); @returns numero libre. */
 export function allocTributaryNumber(
   target: { ramales: Array<{ label?: string }> },
   suffix: string,
@@ -217,10 +210,9 @@ export function allocTributaryNumber(
   return n;
 }
 
-/** Primer id/etiqueta libre `${pfx}{n}` para convertir un tributario en ramal. `excludeId` es
- *  el propio elemento en conversión: su id/label NO bloquea la numeración — al ir y volver
- *  (RS2→T1RS2→ramal) el número RS2 quedó libre y se recupera (antes el id heredado empujaba a
- *  RS3 y "seguía contando desde el ramal previo", orig. usuario). */
+/** Primer id libre pfx{n} para volver un tributario a ramal (ignora el propio que se convierte).
+ *  Ej: pfx 'RS' con RS1 y RS2 tomados -> 'RS3'.
+ *  @param pfx prefijo de la red ('RS', 'RAF'...); @returns id libre. */
 export function nextFreeRamalId(
   ramales: Array<{ id: string; label?: string }>,
   pfx: string,
@@ -233,10 +225,8 @@ export function nextFreeRamalId(
   return `${pfx}${n}`;
 }
 
-/** Re-etiqueta la cadena de tributarios bajo `id` (incluido él) con la raíz ACTUAL de su
- *  cadena de padres (rootTributarioLabel). T2RS1 con padre RS2 debe llamarse T{n}RS2 — los
- *  trib-trib intermedios arrastraban la raíz vieja en la etiqueta (orig. usuario). Recursivo
- *  sobre los hijos (padre === id), con guard de profundidad. */
+/** Re-etiqueta en cascada un tributario y todo lo que cuelga de él, para que su etiqueta nombre
+ *  al ramal raíz actual (máx 20 niveles de fondo, para no loopear con datos corruptos). */
 export function relabelTribChain(
   ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
   id: string,
@@ -272,10 +262,10 @@ export function relabelTribChain(
   }
 }
 
-/** Etiqueta del ramal RAÍZ de una cadena de tributarios (el primer no-tributario subiendo
- *  por la cadena de `padre`). Un tributario de un tributario se numera contra el raíz con
- *  consecutivo global de ese raíz — sale T5RS1, no T1T1RS1 — y compite con los tributarios
- *  directos del raíz, así que nunca colisiona. */
+/** Etiqueta del ramal raíz de un tributario (el primer no-tributario subiendo por `padre`, sin
+ *  mergesFrom (genealogía del split: anfitrión + entrantes)). Sirve para que T2RS1 sepa a qué
+ *  tronco pertenece.
+ *  @param ramalId id del tributario; @returns etiqueta del raíz ('' si no existe). */
 export function rootTributarioLabel(
   ramales: Array<{
     id: string;
@@ -314,12 +304,9 @@ export function rootTributarioLabel(
   return cur ? cur.label || cur.id || '' : '';
 }
 
-/** Ventilación y sanitaria se "enganchan" entre sí mientras se DIBUJA (el cursor se pega a la
- *  otra red) — pero NO deben usarse para auto-conectar o mover juntas: eso queda estrictamente
- *  dentro de la misma red.
- *  @param a Id de la primera red
- *  @param b Id de la segunda red
- *  @returns true si las dos redes se enganchan durante el snap del cursor */
+/** Dice si dos redes se "pegan" al dibujar: la misma siempre, y sanitarias con ventilación se
+ *  imánan entre sí (los codos reventilados unen ambas).
+ *  @param a primera red; @param b segunda red; @returns true si se pegan. */
 export function netsSnapLinked(a: string, b: string): boolean {
   return a === b || (a === 'vent' && b === 'san') || (a === 'san' && b === 'vent');
 }
@@ -455,26 +442,19 @@ export interface PlanoBajante {
   dNominal: string;
   recibeDeIds: string[];
   alimentaIds: string[];
-  /** Ramales asociados A MANO (checkbox menú/panel, orig. usuario): la poda de stale NO los
-   *  toca aunque no haya respaldo geométrico (fin/ini + toque ≤0.5). Desmarcar quita de aquí
-   *  y de recibeDeIds/alimentaIds. */
+  /** Manuales por checkbox (la poda los respeta sin respaldo geometrico). */
   asocManual?: string[];
   descargaEnId: string | null;
   /** Bomba: id de la caja que la originó (una bomba por caja). */
   cajaOrigenId?: string | null;
-  /** UDs por aparato que viajan a la BD (claves net_id_plan de bajantes/bombas/cajas). */
+  /** UD (Unidades de Desague) por aparato que viajan a la BD del piso. */
   fixtures?: Record<string, number>;
   /** BAJANTE ligado a una bomba de piso inferior: "<planId>|<bombaId>". Campo dedicado —
    *  descargaEnId/origenId dispararían la herencia hacia ABAJO (invertida para bombas). */
   bombaEnId?: string | null;
-  /** Puntero inverso: `${originPlanId}|${originBajanteId}` del bajante del piso superior que
-   * DESCARGA en este — lo fija el selector "Origen". Es solo una ayuda de visualización/búsqueda;
-   * el enlace real vive en el `descargaEnId` del origen (guardado en el storage de su piso). */
+  /** Origen visto desde el destino (solo ayuda visual; el enlace vive arriba). */
   origenId?: string | null;
-  /** Libro de herencia de aparatos/UDs por piso destino (asociación entre pisos):
-   * clave `${net}_${rid}_${planId}` → mapa heredado del piso superior. La propagación en
-   * vivo y la (re)asociación restan la herencia anterior y aplican la nueva (delta), sin
-   * borrar asignaciones manuales del piso destino y sin duplicar al reprocesar. */
+  /** Herencia UD (Unidades de Desague) por destino (resta la previa y aplica la nueva). */
   ucAplicado?: Record<string, Record<string, number>>;
   /** Libro gemelo de `ucAplicado` para los accesorios hidro heredados (misma clave). */
   ucAplicadoHidro?: Record<string, Record<string, number>>;
@@ -513,43 +493,27 @@ export interface PlanoBajante {
   diametro?: string;
   acoDiam?: string;
   capacidad?: string;
-  /** Factor de simultaneidad del calentador (%), guardado desde la pantalla de selección del
-   * calentador para que el "caudal ajustado" sobreviva al recargar y siga al usuario entre
-   * dispositivos. */
+  /** Simultaneidad del calentador en % (sobrevive recarga y cambio de equipo). */
   factorSim?: number;
-  /** Sección transversal del canal recolectora (solo red 'll'), en cm, para la tabla de
-   * chequeo hidráulico. x/y es el ORIGEN del marco local del canal (una esquina del
-   * rectángulo orientado, no necesariamente la superior-izquierda): en planta, base es
-   * SIEMPRE el lado corto (ancho de la sección) y longitud el lado largo (eje del canal);
-   * altura es la profundidad, visible solo en isometría. `angulo` (grados, 0 = eje hacia
-   * +X) orienta el marco; sin él se asume eje-alineado (legacy). */
+  /** Seccion del canal ll (Lluvias) en cm (origen del marco, base corta y altura a iso). */
   base?: number;
   altura?: number;
   /** Tamaño del lado LARGO del canal en planta (cm) — el eje que recorre el canal. */
   longitud?: number;
-  /** Ángulo del eje largo del canal en grados (0 = hacia +X del plano). Permite canales en
-   * diagonal con la misma UX de 2 clics (orig. usuario). Ausente = 0 (legacy eje-alineado;
-   * el sanado de carga convierte los verticales legacy a base-corta + angulo 90). */
+  /** Eje largo del canal en grados (0 es +X; ausente es 0 legacy). */
   angulo?: number;
-  /** Caja del canal en píxeles de canvas (AABB del rectángulo orientado), calculada al
-   * renderizar — broadphase de clic/manijas. El hit preciso usa el OBB
-   * (canalAssociation), no esta caja. */
+  /** Caja del canal en px (AABB del marco; el hit fino usa el OBB). */
   _canalBox?: { x: number; y: number; w: number; h: number };
-  /** Dirección del flujo del canal recolectora, igual a la dirección en que el usuario lo
-   * arrastró al dibujarlo (esquina 1 → esquina 2), como la dirección dibujada de un ramal. Se
-   * fija al crearlo en handleCanalDown; alimenta la flecha de flujo centrada del canal. */
+  /** Flujo del canal segun arrastre (esquina 1 a 2, pinta la flecha centrada). */
   _canalFlowDir?: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
-  /** Solo en bajantes de lluvia ("ll"): id del canal cuyo rectángulo lo contiene ahora.
-   * Se fija o limpia automáticamente al crear o arrastrar el bajante — siempre queda DENTRO
-   * del canal al que está asociado. Alimenta las flechas de flujo del canal. */
+  /** Canal ll (Lluvias) que contiene al bajante (se fija al crear o arrastrar). */
   canalId?: string | null;
-  /** Asociación manual de un canal (tipo:'canal') con un bajante de lluvia que está FUERA de su
-   *  rectángulo — se elige desde el menú contextual del canal y se dibuja una línea de conexión
-   *  simple (tubería) entre ambos. Un bajante DENTRO del canal no usa esto: entra por canalId. */
+  /** Canal manual fuera de su rectangulo (linea simple entre ambos, sin canalId). */
   bajanteExternoId?: string | null;
 }
 
-/** Área poligonal dibujada en el plano (p.ej. techos, zonas de drenaje, sectores de gas). */
+/** Zona pintada en el plano (techo de un apartamento, área de drenaje, sector de gas (Gas)) con su
+ *  superficie en metros cuadrados; alimenta los cálculos de caudal. */
 export interface PlanoArea {
   id: string;
   pts: number[][];
@@ -568,7 +532,7 @@ export interface PlanoArea {
   _polyBox?: CanvasBox;
 }
 
-/** Cota lineal (medida) entre dos puntos del plano. */
+/** Cota lineal: una medida (en metros) entre dos puntos del plano, con su etiqueta. */
 export interface PlanoDimension {
   id: string;
   x1: number;
@@ -597,10 +561,8 @@ export interface PlanoTextAnnotation {
   _box?: CanvasBox;
 }
 
-/** Línea de construcción/referencia dibujada libremente sobre el plano — NO es un ramal real:
- *  queda excluida de todo cálculo hidráulico, tabla y exportación. Es solo una ayuda de trazo
- *  que el usuario puede rotar en pasos de 45°/90° y convertir después en un ramal real de la red
- *  para la que fue dibujada. */
+/** Línea guía: trazo a mano alzada para marcar por dónde pasará la tubería; no cuenta en los
+ *  cálculos ni sale en los informes (después se convierte en ramal). */
 export interface PlanoGuideLine {
   id: string;
   net: string;
@@ -608,7 +570,8 @@ export interface PlanoGuideLine {
   _labelBox?: LabelBoxCorners;
 }
 
-/** Nivel de un edificio — etiqueta, cota NPT e índice ordinal. */
+/** Nivel del edificio: su nombre visible (P1, S1, Cubierta) y su cota de referencia npt (nivel de
+ *  piso topográfico, o sea la altura sobre/bajo el suelo en metros). */
 export interface PlanoLevel {
   label?: string;
   npt?: number;
@@ -662,14 +625,15 @@ export type MultiDragOrigData = Record<
   }
 >;
 
-/** Contrato público del motor de dibujo PlanoEngine. Expone el estado, las transformaciones de
- *  coordenadas, el snapping, el renderizado, los helpers de selección/arrastre y los slots
- *  transitorios de interacción. */
+/** Todo lo que el motor de dibujo sabe de un momento a otro: qué hay en el plano (ramales,
+ *  bajantes, áreas...), cómo se ve (zoom, escala scaleM (escala metros por pixel), red activa) y
+ *  qué gesto está en curso (arrastre, cota a medias...). Es la "foto" que leen los handlers. */
 export interface IPlanoEngineCore {
-  /** Pausa/reanuda el historial para agrupar mutaciones en UN snapshot (patrón FixturesPanel). */
+  /** Silencia el historial para que muchos cambios seguidos cuenten como UN solo Ctrl+Z. */
   pauseHistory?: () => void;
+  /** Vuelve a activar el historial tras pausarlo (debe llamarse junto a pauseHistory). */
   resumeHistory?: () => void;
-  /** Redes declaradas malla/recirculación (exentas del chequeo de ciclo). */
+  /** Mallas/recirculaciones que el usuario marcó a mano: el chequeo de lazos no las reclama. */
   mallasDeclaradas?: Set<string>;
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];

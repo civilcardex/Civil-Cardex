@@ -4,7 +4,9 @@ import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { MONTANTE_NETS } from '../drawingCreations';
 import { DIR_MAP, ventLabelLines, renderBajanteLabel, drawDireccionSymbol } from './bajanteLabels';
 
-/** Dibuja los bajantes fantasma del piso cargado (desplazados o de dirección) en estilo punteado con su etiqueta. */
+/** Pinta las tuberías verticales "fantasma" de este piso (las que aparecen corridas o con otra
+ *  dirección) con línea punteada y su etiqueta, para que se vea que son la misma tubería vista
+ *  desde otro nivel. */
 export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const fg = engine.getBajantesFantasma();
   fg.forEach((b) => {
@@ -187,7 +189,8 @@ function toShortPiso(label: string): string {
   return label;
 }
 
-/** Dibuja los fantasmas entre pisos: bajantes de otros niveles que descargan o se alimentan en el actual, con su línea conectora. */
+/** Marca en este piso las tuberías verticales de OTROS niveles que conectan con él (bajan o suben
+ *  desde aquí), con una línea que une los dos puntos. */
 export function renderCrossFloorGhosts(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,

@@ -22,7 +22,7 @@ const UD_POR_APARATO: Record<string, number> = Object.fromEntries(
   ]),
 );
 
-/** Suma UD de un mapa por aparato (conteo × valor UD, con override de valores custom). */
+/** Suma UD (Unidades de Desague) de un mapa (conteo × valor UD, con override de customs). */
 export function udsDeMapa(
   mapa: Record<string, number>,
   udOverride?: Record<string, number>,
@@ -33,9 +33,7 @@ export function udsDeMapa(
   );
 }
 
-/** Tabla de equipos de bomba: TODAS las bombas (tipo 'bomba') de todos los pisos con caché
- *  local, con sus UDs (mapUdBombaDesdeTrazos × valor UD). Usada por BombaARDesign (page 5 +
- *  udTot). `udOverride`: valores UD custom del usuario (misma tabla del panel). */
+/** Equipos de bomba de todos los pisos con sus UD (Unidades de Desague) (para BombaARDesign y udTot). */
 export function equiposBombaDesdeTrazos(udOverride?: Record<string, number>): EquipoBomba[] {
   const out: EquipoBomba[] = [];
   try {

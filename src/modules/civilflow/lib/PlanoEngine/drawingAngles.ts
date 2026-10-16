@@ -32,10 +32,11 @@ function internalAngleOk(internalAngle: number, net: string): boolean {
   );
 }
 
-/** Valida que todos los ángulos de los segmentos y los giros internos de un ramal cumplan las
- *  reglas de su red (45° o 90° según el caso). @returns true si es válido.
- *  @param snapOn si el snap de ángulo está activo; con snap apagado, las redes de presión
- *  (ac/af/gas) no se validan (el modal de ángulo solo aplica al dibujar con snap). */
+/** ¿El trazo quedó con dobleces legales? Cada red permite ciertos ángulos: san (Sanitaria) y ll
+ *  (Lluvias) solo recto o giro de 45°; gas (Gas) y los ramalitos de af (Agua Fría)/ac (Agua
+ *  Caliente) a 90°. Tolerancia ±0.5° (el imán del snap ya deja los ángulos casi exactos).
+ *  @returns true si cumple y se puede quedar en el plano.
+ *  @param snapOn snap activo; sin snap no valida af (Agua Fria), ac (Agua Caliente), gas (Gas). */
 export function checkRamalAngles(
   pts: number[][],
   net: string,
@@ -104,8 +105,8 @@ export function checkRamalAngles(
   return true;
 }
 
-/** Punto de cruce estricto entre dos segmentos (a1-a2, b1-b2), o null si no se cruzan
- *  por el interior (se excluyen los toques por un extremo). */
+/** El punto donde dos tramos de tubería se CRUZAN de verdad (no donde apenas se tocan en una
+ *  punta). null = no se cruzan. */
 export function segmentIntersectionPoint(
   a1: number[],
   a2: number[],
@@ -131,14 +132,15 @@ export function segmentIntersectionPoint(
   return [ix, iy];
 }
 
-/** ¿Se cruzan dos segmentos (a1-a2, b1-b2)? Excluye los casos donde solo se tocan por un
- *  extremo. @returns true si se cruzan estrictamente por el interior. */
+/** ¿Estos dos trazos se atraviesan? Sirve para prohibir que un ramal cruce a otro (en san/ll un
+ *  ramal no puede pasar por encima de otro).
+ *  @returns true si se cruzan estrictamente por el interior. */
 export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
   return segmentIntersectionPoint(a1, a2, b1, b2) !== null;
 }
 
-/** Devuelve el ángulo (en grados, -90..90) del primer segmento de una lista de puntos — sirve
- *  para orientar la etiqueta del ramal. */
+/** La inclinación del primer tramo del ramal (entre -90° y 90°): con ella se gira la etiqueta
+ *  para que quede a lo largo de la tubería. */
 export function _firstSegmentAngle(pts: number[][]): number {
   if (pts.length < 2) return 0;
   const dx = pts[1][0] - pts[0][0];
@@ -219,8 +221,9 @@ export function segmentAtPosition(
   return { idx, dx: pts[idx + 1][0] - pts[idx][0], dy: pts[idx + 1][1] - pts[idx][1] };
 }
 
-/** Pega el cursor a los puntos de proyección de 45° sobre los segmentos de otro ramal (para
- *  conectar tributarios al padre). @returns el punto pegado o null. */
+/** Cuando dibujas un ramalito que cuelga de otro (tributario), el cursor se pega a los puntos del
+ *  ramal principal desde donde puede salir a 45°.
+ *  @returns el punto de enganche o null si no hay ninguno cerca. */
 export function snapTributaryToPadre45Deg(
   cursorX: number,
   cursorY: number,
@@ -275,8 +278,9 @@ export function snapTributaryToPadre45Deg(
 // ramal en (aproximadamente) el mismo punto — a diferencia del chequeo de vértice interno
 // (puntos consecutivos del MISMO ramal), esto cubre dos ramales dibujados por separado que se
 // unen extremo con extremo, o un arrastre que alinea el extremo de un ramal con el de otro.
-/** Detecta cuándo el extremo de un ramal se encuentra con el extremo de otro ramal dibujado por
- *  separado, formando una unión de codo. @returns ángulo y id del otro ramal, o null. */
+/** Dos tuberías dibujadas por separado se tocan punta con punta y forman un codo: ¿a qué ángulo
+ *  queda (45° o 90°) y con qué ramal? Es lo que dispara el modal para elegir el accesorio.
+ *  @returns ángulo e id del otro ramal, o null. */
 export function detectJunctionAccesorio(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -329,8 +333,9 @@ export interface AccesorioTrigger {
 // una unión puede crearse de cualquiera de las dos formas (dos ramales unidos al dibujar, o
 // arrastrando uno hasta otro). Se salta una unión que ya tiene accesorio/aparato resuelto para
 // no molestar en cada arrastre posterior una vez que el usuario ya respondió.
-/** Determina si un ramal necesita el modal de selección de accesorio (tee/codo/yee) en alguno de
- *  sus extremos o vértices interiores sin resolver. @returns info del disparador o null. */
+/** ¿Hay que preguntar qué accesorio (tee/codo/yee) lleva alguna unión de este ramal? Solo
+ *  pregunta si la unión quedó sin resolver, para no molestar en cada arrastre.
+ *  @returns info del disparador o null. */
 export function detectAccesorioTrigger(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -556,9 +561,9 @@ export function codoNivelPermitidoEn(
 // extremos) cae el punto de la unión — ese es sin ambigüedad "el ramal al que se le hace la
 // tee" — y si los tres segmentos se encuentran exactamente extremo con extremo (ningún cuerpo
 // es el "pasante"), cae a cualquier otro ramal que comparta el punto.
-/** ¿Este punto forma una unión tee? — al menos 3 segmentos de ramales existentes se encuentran
- *  aquí, y sobre el cuerpo de cuál ramal cae la unión. @returns bandera isTee y el id del ramal
- *  pasante. */
+/** ¿En este punto se juntan 3 o más tramos de tubería (una T)? Devuelve también sobre qué ramal
+ *  cae la unión: la tee se le asigna al trazo que pasa de largo, nunca al recién creado.
+ *  @returns bandera isTee y el id del ramal pasante. */
 export function isTeeAtEndpoint(
   ep: number[],
   engine: IPlanoEngineCore,

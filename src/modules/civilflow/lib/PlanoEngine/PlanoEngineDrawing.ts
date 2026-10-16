@@ -67,7 +67,6 @@ export {
 export {
   canJoinTributario,
   autoSplitJunctionAndSumFlow,
-  detectYeeSimpleNear,
   detectTributaryPadre,
   checkRamalAnglesExcludingConnections,
   puntoEnCaja,

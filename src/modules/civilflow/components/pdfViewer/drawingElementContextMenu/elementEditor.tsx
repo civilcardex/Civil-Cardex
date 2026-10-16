@@ -438,8 +438,8 @@ export function ElementCodeEditor({
   return null;
 }
 
-/** Input de pendiente del ramal (san/ll/vent, orig. usuario): commit en blur/Enter, rango
- *  físico 0 < v ≤ 15 (mismo criterio del canal) — fuera de rango alerta y conserva. */
+/** Input de pendiente del ramal (san (Sanitaria)/ll (Lluvias)/vent (Ventilacion), orig. usuario): commit en blur/Enter, rango físico 0 < v ≤ 15
+ * (mismo criterio del canal) — fuera de rango alerta y conserva. */
 function PendienteRamalInput({
   ramalEl,
   engineRef,

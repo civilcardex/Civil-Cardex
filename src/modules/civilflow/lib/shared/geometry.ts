@@ -16,8 +16,7 @@ export function distToPolyline(p: number[], pts: number[][]): number {
   return minDist;
 }
 
-/** Origen de flujo de un trazo: último punto si invirtió sentido (tributario re-encauzado),
- *  primero en caso contrario. Defensivo con trazos sin pts. Compartido gasNetwork/reEnraizar. */
+/** Origen de flujo del trazo (primera/última pts según _tribReversed (flag de flujo invertido en tributario)). */
 export function origenDe(r: { pts?: number[][] | null; _tribReversed?: boolean }): number[] {
   const pts = r.pts || [];
   if (pts.length < 2) return [];

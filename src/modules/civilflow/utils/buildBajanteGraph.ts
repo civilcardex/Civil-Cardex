@@ -16,16 +16,11 @@ interface RamalRaw extends RawElement {
   diamPulg?: number;
 }
 
-/**
- * Construye el grafo de ventilación a partir de los planos dibujados: detecta conexiones
- * ramal-a-bajante y ramal-a-ramal por cercanía de extremos, añade los enlaces de sección
- * vertical de bajante y resuelve los destinos de descarga. Orienta cada componente desde
- * la raíz de menor puntaje (piso, bajante primero).
- * @param plans - Entradas de plano con id y nivel.
- * @param tramosSan - Objetos de tramo sanitario.
- * @param udBase - Definiciones de base UD para el cálculo de UD por elemento.
- * @returns Tupla de [orientedConexiones, vMap, ventRamalDiamMap, components].
- */
+/** Grafo de vent (Ventilacion) desde planos (conexiones por cercanía + UD (Unidades de Desague) por elemento).
+ *  @param plans - planos con id y nivel.
+ *  @param tramosSan - tramos san (Sanitaria).
+ *  @param udBase - bases UD.
+ *  @returns [conexiones, vMap, ventRamalDiamMap, components]. */
 export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase: UDBase[]) {
   const map: Record<string, string[]> = {};
   const vMap: Record<string, string[]> = {};

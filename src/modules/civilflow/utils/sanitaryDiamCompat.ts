@@ -5,13 +5,10 @@ import { diamPulgFromLabel } from './diamPulgFromLabel';
 // legacyEditors, ramalMenu y writeDiameterToDrawing — cada copia podía desincronizarse y dejar
 // que un camino permitiera un diámetro que otro bloqueaba. Aquí es LA única fuente.
 
-/** Identificador del inodoro en los contadores de aparatos (APARATOS_BY_TRAMO_KEY: `san`). */
+/** Id del inodoro en conteos san (Sanitaria) (`san`). */
 export const INODORO_APP_ID = 'san';
 
-/** Diámetro mínimo (pulgadas) que admite un aparato sanitario asignado al ramal.
- *  Solo el inodoro tiene restricción estricta (4" — no puede trabajar con menos); el resto de
- *  aparatos y la ausencia de aparato no restringen el diámetro (el "2\" default" de otros es un
- *  relleno al asignar, no un mínimo bloqueante). */
+/** Mínimo (pulg) por aparato san (Sanitaria) (solo inodoro exige 4"; resto sin mínimo). */
 export function sanMinDiamPulgForApparatus(aparatoId: string | undefined | null): number {
   if (aparatoId === INODORO_APP_ID) return 4;
   return 0;

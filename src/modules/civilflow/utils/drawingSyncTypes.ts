@@ -48,7 +48,7 @@ export interface RawElement {
   esCanalId?: string | null;
   labelX?: number;
   labelY?: number;
-  /** Flag de inversión de dirección para redes pts-driven (dos nombres según la vía de guardado). */
+  /** Inversión de flujo (_tribReversed (flag de flujo invertido en tributario), doble nombre por vía de guardado). */
   _tribReversed?: boolean;
   trib_reversed?: boolean;
   [key: string]: unknown;

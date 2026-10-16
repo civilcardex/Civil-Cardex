@@ -36,11 +36,9 @@ import {
 // guardias de dibujo para que una unión del mismo padre nunca se bloquee y una de padre
 // distinto siempre alerte.
 
-/** Divide el ramal existente cuando el extremo de `incoming` cae a mitad de su cuerpo, acumulando
- *  caudal/diámetro en el downstream. @returns true si la conexión fue BLOQUEADA por la regla
- *  "los ramales no se conectan a tributarios" (ya alertó al usuario): el caller debe revertir el
- *  arrastre o retirar el ramal. Antes esto viajaba en una bandera de instancia que las rutas de
- *  drag/guía nunca consumían — el siguiente ramal válido terminaba borrado por la bandera residual. */
+/** Cuando una tubería nueva aterriza en el MEDIO de otra, la parte en dos: la pieza de aguas abajo
+ *  se queda con el caudal y el diámetro acumulados (así los cálculos no pierden lo que venía de
+ *  atrás). */
 export function autoSplitJunctionAndSumFlow(
   engine: IPlanoEngineCore,
   incoming: PlanoRamal,
@@ -489,7 +487,7 @@ export function autoSplitJunctionAndSumFlow(
   return false;
 }
 
-export { canJoinTributario, detectYeeSimpleNear, detectTributaryPadre } from './junctionDetectors';
+export { canJoinTributario, detectTributaryPadre } from './junctionDetectors';
 export { puntoEnCaja, checkRamalAnglesExcludingConnections } from './ramalAngleChecks';
 export {
   normalizeTribPadresAt,

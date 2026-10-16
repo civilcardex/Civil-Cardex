@@ -342,6 +342,9 @@ const AparatosPanel = memo(function AparatosPanel_({
     : null;
   // Tramo con herencia propagada (RAF3, orig. usuario): sus UDs las trae aguas arriba — el
   // panel se vuelve SOLO LECTURA (opaco); la edición es en los ramales/montante fuente.
+  // Solo-lectura por HEREDADOS (orig. usuario: RAC5 que recibe la carga de RAC1/T1RAC5
+  // debe aparecer bloqueado — cualquier pieza con unidades heredadas es de solo lectura;
+  // la asignación va en las piezas alimentadoras puras, sin heredados).
   const esPropagado =
     !!storageKey &&
     (netId === 'af' || netId === 'ac') &&

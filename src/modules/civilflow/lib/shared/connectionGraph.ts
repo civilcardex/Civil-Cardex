@@ -1,13 +1,9 @@
-/**
- * Suma el valor "parcial" de cada tramo sobre su componente conexa (vía `adj`) y devuelve
- * un mapa de clave de tramo a ese total de componente. Sirve para mostrar, por tramo, la
- * demanda acumulada (UC/UD) de todo lo conectado hidráulicamente a él.
- * @param tramos - Array de objetos tramo.
- * @param getKey - Extrae una clave única de un tramo.
- * @param adj - Mapa de adyacencia no dirigida (clave → claves vecinas).
- * @param getPartial - Extrae el valor parcial de un tramo.
- * @returns Mapa de clave de tramo → total de la componente.
- */
+/** Suma el parcial de cada tramo sobre su componente conexa (UC (Unidades de Consumo)/UD (Unidades de Desague) acumulada por tramo).
+ *  @param tramos - tramos a agrupar.
+ *  @param getKey - clave única por tramo.
+ *  @param adj - adyacencia no dirigida.
+ *  @param getPartial - valor parcial por tramo.
+ *  @returns mapa clave → total de su componente. */
 export function computeComponentTotals<T>(
   tramos: T[],
   getKey: (t: T) => string | undefined,
@@ -52,18 +48,13 @@ export function computeComponentTotals<T>(
   return componentTotalMap;
 }
 
-/**
- * Como computeComponentTotals, pero DIRIGIDO desde la fuente de suministro (`rootKey`, el
- * contador o calentador): el total de cada nodo es su propio parcial más el de todo lo que
- * está debajo de él en el árbol; el total combinado solo lo muestra el nodo donde las ramas
- * confluyen. Si no hay raíz identificable, recurre al cálculo no dirigido.
- * @param tramos - Array de objetos tramo.
- * @param getKey - Extrae una clave única de un tramo.
- * @param adj - Mapa de adyacencia no dirigida (clave → claves vecinas).
- * @param getPartial - Extrae el valor parcial de un tramo.
- * @param rootKey - Clave del nodo raíz (contador/calentador); recurre a totales no dirigidos si es null/inexistente.
- * @returns Mapa de clave de tramo → total dirigido acumulado.
- */
+/** Total dirigido desde la fuente (contador/calentador): cada nodo suma su parcial + lo que cuelga debajo.
+ *  @param tramos - tramos a acumular.
+ *  @param getKey - clave única por tramo.
+ *  @param adj - adyacencia no dirigida.
+ *  @param getPartial - valor parcial por tramo.
+ *  @param rootKey - raíz (sin raíz válida cae al no dirigido).
+ *  @returns mapa clave → total dirigido acumulado. */
 export function computeDirectedTotals<T>(
   tramos: T[],
   getKey: (t: T) => string | undefined,

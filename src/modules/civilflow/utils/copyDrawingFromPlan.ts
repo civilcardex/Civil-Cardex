@@ -15,10 +15,7 @@ export interface CopySourceSelection {
   tipos: Set<string>;
 }
 
-/** Alineación de láminas entre pisos: el origen de calibración de cada plano (mismo punto
- *  físico del AutoCAD marcado en cada lámina). Con láminas desalineadas, el MISMO punto
- *  físico cae en px distintos por piso — la copia traslada la geometría por el delta de
- *  orígenes para que la posición relativa a los elementos del PDF se preserve. */
+/** Alineación de láminas (origen de calibración por plano: mismo punto físico del AutoCAD). */
 export interface CopyAlineacion {
   origenSrc?: { x_px: number; y_px: number } | null;
   origenDst?: { x_px: number; y_px: number } | null;
@@ -112,8 +109,7 @@ function copyStoreKeys(
   if (gC) saveToStorage(GAS_ACC_KEY, gas);
 }
 
-/** Modo "solo fantasmas": las copias reales se retiraron DESPUÉS de sembrar sus claves de
- *  conteos — borrar las claves destino de esos ids para no dejar UDs huérfanas contando. */
+/** Borra claves de conteos de copias retiradas en modo solo-fantasmas (UD (Unidades de Desague) huérfanas). */
 function purgarClavesDeCopias(
   pairs: Array<{ oldId: string; newId: string }>,
   netId: string,
@@ -143,20 +139,7 @@ function purgarClavesDeCopias(
   }
 }
 
-/**
- * Copia elementos filtrados por red/tipo de un plano origen a uno destino, renumerando ids.
- * Copia TODO (geometría + diámetros, materiales, accesorios, aparatos, fixtures y conteos
- * remapeados a los ids nuevos). Filtra redes ocultas y tipos no seleccionados.
- * FANTASMA (definición usuario): el MISMO bajante copiado en su posición DESPLAZADA
- * (x+dx, y+dy del anillo de asociación) — según `opciones.fantasmas` se copian solo los
- * originales, solo los desplazados o ambos.
- * @param engine - Motor destino (se usa para renumerar y persistir).
- * @param targetPlanId - Id del plano destino.
- * @param sourcePlanId - Id del plano origen.
- * @param selections - Redes y tipos a copiar.
- * @param opciones - Modo fantasma (default 'ambos').
- * @returns Conteo copiado (lo que queda en el destino) y redes omitidas.
- */
+/** Copia elementos entre pisos (renumera ids; fantasmas = bajantes desplazados x+dx, y+dy del anillo). */
 export interface CopyOpciones {
   fantasmas?: 'fantasmas' | 'originales' | 'ambos';
 }

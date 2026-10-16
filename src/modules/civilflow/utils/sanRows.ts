@@ -5,7 +5,7 @@ import { calcHydraulicCheck } from './hydraulicCheck';
 import { DIAM_OPTIONS_SAN } from '../constants';
 import { type MergedApBase } from './sanConnectivity';
 
-/** Fila del chequeo de diseño sanitario: UD, caudales Hunter, diámetros, longitudes y resultado del chequeo hidráulico. */
+/** Fila san (Sanitaria) (UD (Unidades de Desague), Q (Caudal) Hunter (metodo de probabilidad de uso simultaneo) y chequeo hidráulico). */
 export interface SanRow {
   tKey: string;
   id: string;

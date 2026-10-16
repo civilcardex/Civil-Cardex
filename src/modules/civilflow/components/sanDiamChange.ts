@@ -12,18 +12,19 @@ import {
 import { parseBajanteKey } from '../utils/drawingWrites/diametros';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
-/** Dependencias del cambio de diámetro sanitario (antes closures de SanitaryDesign). */
+/** Datos que necesita el cambio de diámetro sanitario (antes vivían dentro de SanitaryDesign). */
 export interface SanDiamChangeCtx {
   tramosSan: Tramo[];
-  /** parent(downstream) → children(upstream) — el BFS reverse camina hacia aguas abajo. */
+  /** Mapa `padre → hijos`: el PADRE es el ramal de aguas abajo (el que recibe) y los HIJOS
+   *  los que le entregan. El recorrido de propagación camina por esta cadena. */
   fullChildrenMap: Record<string, string[]> | null;
   plans: PlanItem[];
   updTramoSan: (id: string, field: string, val: string | number | boolean) => void;
 }
 
-/** Cambio de diámetro sanitario desde la tabla (handleDiamChange de SanitaryDesign, movido
- *  verbatim Oleada 1): bloqueo por inodoro mínimo, invariante contra el mayor hijo que me
- *  descarga, escritura al dibujo y BFS de propagación del mayor aguas abajo. */
+/** Cambia el diámetro de un tramo sanitario desde la tabla: respeta el mínimo del inodoro,
+ *  no baja por debajo del mayor hijo que le descarga, escribe el cambio en el dibujo y
+ *  propaga el mayor valor aguas abajo. */
 export function aplicarCambioDiametroSan(
   tramoId: string,
   newPulg: number,
