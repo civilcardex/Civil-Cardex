@@ -17,6 +17,46 @@ import { isAC2 } from '../../utils/waterNetworkRows';
 // ramal→ramal por cercanía de extremos, puentes de montantes entre pisos, poda de ciclos y
 // fusiones de empalmes. Devuelve los totales dirigidos por tramo, el mapa de padres, la raíz de
 // presión y el caudal probable por tramo. Es el insumo de toda la tabla de diseño.
+/**
+ * Participantes del empalme de un ramal: quienes tocan su punto de unión (empalme) hoy, excepto
+ * él mismo. La genealogía mergesFrom (genealogía del split) queda stale tras re-splits y listaba
+ * al anfitrión ancestral aunque ya no toque el empalme (orig. usuario caso RAC3-P2: [RAC1][RAC2]
+ * con RAC1 a 250px). Ej: RAC3 con RAC2 y RAC4 tocando su unión -> ['RAC2-P1','RAC4-P1'].
+ * @param ramales - ramales del plano con geometría.
+ * @param rId - id del ramal continuación.
+ * @param planId - id del plano.
+ * @param tol - tolerancia en px (misma del motor para uniones).
+ * @returns claves `id-planId` de quienes tocan la unión.
+ */
+/**
+ * ¿Toca algún extremo del ramal el punto dado? Predicado único de cercanía a empalmes
+ * (una sola tolerancia: si diverge aquí, la columna Otros y el merge discrepan).
+ * @param o - ramal candidato con geometría.
+ * @param jc - punto del empalme.
+ * @param tol - tolerancia en px.
+ * @returns true si un extremo cae dentro de la tolerancia.
+ */
+export function tocaEmpalme(o: { pts?: number[][] }, jc: number[], tol: number): boolean {
+  if (!o.pts || o.pts.length < 2) return false;
+  const s = o.pts[0];
+  const e = o.pts[o.pts.length - 1];
+  return (
+    Math.hypot(s[0] - jc[0], s[1] - jc[1]) < tol || Math.hypot(e[0] - jc[0], e[1] - jc[1]) < tol
+  );
+}
+export function otrosPorToque(
+  ramales: Array<{ id: string; pts?: number[][] }>,
+  rId: string,
+  planId: string | number,
+  tol = 2.0,
+): string[] {
+  const r = ramales.find((x) => x.id === rId);
+  if (!r?.pts || r.pts.length === 0) return [];
+  const jc = r.pts[0];
+  return ramales
+    .filter((o) => o.id !== rId && tocaEmpalme(o, jc, tol))
+    .map((o) => `${o.id}-${planId}`);
+}
 /** Grafo de conectividad de la red leído de todos los planos dibujados: enlaces por cercanía de extremos, puentes de montantes
  * entre pisos, poda de ciclos y fusiones de empalmes. */
 export function useWaterNetworkGraph({
@@ -116,24 +156,11 @@ export function useWaterNetworkGraph({
         const branchIds = [aId, r.id, bId].filter((id) => id !== targetId);
         const targetKeyFull = `${targetId}-${plan.id}`;
         const branchSet = new Set<string>(branchIds.map((id) => `${id}-${plan.id}`));
-        // "Otros ramales" de la continuación (orig. usuario): TODOS los participantes del
-        // empalme según el flujo excepto ella misma — RAF3 lista a RAF1 (el anfitrión que
-        // la alimenta) y a RAF2 (la rama cuyo aparato carga), incluido el target.
-        const continuacionKey = `${r.id}-${plan.id}`;
-        const otros = Array.from(
-          new Set<string>([`${aId}-${plan.id}`, `${bId}-${plan.id}`, ...branchSet]),
-        ).filter((k: string) => k !== continuacionKey);
-        if (otros.length) otrosDisplay[continuacionKey] = otros;
         for (const other of ramales) {
           if (other.id === r.id || other.id === aId || !other.pts || other.pts.length < 2) continue;
           const otherKey = `${other.id}-${plan.id}`;
           if (branchSet.has(otherKey)) continue;
-          const oStart = other.pts[0],
-            oEnd = other.pts[other.pts.length - 1];
-          const touchesJc =
-            Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < TOL_MERGE ||
-            Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < TOL_MERGE;
-          if (!touchesJc) continue;
+          if (!tocaEmpalme(other, jc, TOL_MERGE)) continue;
           const otherEnters = entersAt(
             { pts: other.pts, _tribReversed: Boolean(other._tribReversed) },
             jc,
@@ -141,6 +168,11 @@ export function useWaterNetworkGraph({
           if (!otherEnters) continue;
           branchSet.add(otherKey);
         }
+        // "Otros ramales" de la continuación (orig. usuario caso RAC3-P2): quienes TOCAN el
+        // empalme hoy, excepto ella misma — ver otrosPorToque.
+        const continuacionKey = `${r.id}-${plan.id}`;
+        const otros = otrosPorToque(ramales, r.id, plan.id, TOL_MERGE);
+        if (otros.length) otrosDisplay[continuacionKey] = otros;
         mergeBranches[targetKeyFull] = Array.from(branchSet);
       }
       // Fallback geométrico (auditoría #9): uniones dibujadas extremo-con-extremo SIN split

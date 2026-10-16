@@ -5,7 +5,7 @@ import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
 import { calcUCparcial } from '../utils/componentHelpers';
-import { leerHeredadosPresion } from '../utils/aparatosPresion';
+import { leerLibrosPresion, udPropiaDe } from '../utils/aparatosPresion';
 const CalculoUC_S1: React.CSSProperties = {
   position: 'absolute',
   width: '1px',
@@ -25,7 +25,7 @@ interface CalculoUCProps {
 import { useState, useEffect } from 'react';
 import { EV_STORAGE } from '../utils/fixtureEvents';
 
-const monof = "'Courier New',Courier,monospace";
+const monof = 'var(--mono)';
 const txt2 = '#94a3b8';
 const txt = '#e2e8f0';
 
@@ -81,12 +81,18 @@ function CalculoUC({ tipo }: CalculoUCProps) {
   // entre pisos y el libro es por clave compuesta (auditoría #3).
   const heredKeyOf = (t: { id: string; _aparatosKey?: string; _key?: string }): string =>
     t._aparatosKey ?? t._key ?? t.id;
-  const heredMap = useMemo(() => {
-    const m: Record<string, Record<string, number>> = {};
+  // Heredado + plegado por tramo con UNA sola lectura por store (antes: un JSON.parse
+  // completo por tramo y por libro). Mismo tick: ambos libros los escribe la propagación.
+  const { heredMap, foldMap } = useMemo(() => {
+    const { her, fold } = leerLibrosPresion();
+    const hm: Record<string, Record<string, number>> = {};
+    const fm: Record<string, Record<string, number>> = {};
     for (const t of tramos) {
-      if (t._aparatosKey) m[heredKeyOf(t)] = leerHeredadosPresion(t._aparatosKey);
+      if (!t._aparatosKey) continue;
+      hm[heredKeyOf(t)] = her[t._aparatosKey] || {};
+      fm[heredKeyOf(t)] = fold[t._aparatosKey] || {};
     }
-    return m;
+    return { heredMap: hm, foldMap: fm };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tramos, heredTick]);
 
@@ -96,17 +102,17 @@ function CalculoUC({ tipo }: CalculoUCProps) {
       nombre: d.nombre,
       uc: d[field],
       // Σ vertical (orig. usuario): cada aparato cuenta UNA vez — en el tramo que lo sirve
-      // (UD propia). Los propagados (heredado) ya están en las claves de quien los sirve.
+      // (UD propia = clave − heredado − plegado). Los tributarios SÍ suman lo suyo: el de
+      // plegado lateral ya vive en el padre (se descuenta vía fold) y el de cadena/cascada
+      // solo viaja por arista (sin él la Σ daba 0 con filas llenas, caso RAC5/RAC6-P2).
       cant: tramos.reduce((s, t) => {
-        // Propia = clave − heredado; los tributarios NO suman: su carga ya vive plegada
-        // en la clave del padre (auditoría #6 — antes el pie duplicaba cada aparato en trib).
-        if (t.tipo === 'tributario') return s;
-        const hered = heredMap[heredKeyOf(t)] || {};
-        return s + Math.max(0, (t.fixtures?.[d.id] || 0) - (hered[d.id] || 0));
+        const k = heredKeyOf(t);
+        const propia = udPropiaDe(t.fixtures || {}, heredMap[k] || {}, foldMap[k] || {});
+        return s + (propia[d.id] || 0);
       }, 0),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [AP, tramos, field, heredMap]);
+  }, [AP, tramos, field, heredMap, foldMap]);
 
   // Celda final de la Σ (como sanitaria): Σ aparatos × UC contados una vez.
   const totalUC = useMemo(

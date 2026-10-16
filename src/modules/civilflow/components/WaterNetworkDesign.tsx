@@ -19,7 +19,7 @@ import { calcLeAcces } from '../utils/fittingsUtils';
 import { chequeoPresionAparato } from '../utils/waterRowsShared';
 import { perfilDe } from '../constants/normasPais';
 import { fracAscii } from '../utils/formatUtils';
-import { propagarAparatosPresion } from '../utils/aparatosPresion';
+import { leerHeredadosPresion, propagarAparatosPresion } from '../utils/aparatosPresion';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';
@@ -190,11 +190,16 @@ function WaterNetworkDesign({
   // alias nombrado porque los puntos de llamada de abajo ya leen `displayTotalMap`.
   const displayTotalMap = componentTotalMap;
 
+  // UD propia = carga − heredada del libro: lo nacido en el tramo más lo plegado por
+  // sus tributarios (orig. usuario: lo propagado por tributarios cuenta en propia).
   const propiaMap = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of tramos) {
       const key = t._key || t.id;
-      m[key] = calcUCparcial(t, AP, 'uc');
+      const hered = t._aparatosKey ? leerHeredadosPresion(t._aparatosKey) : {};
+      let hUc = 0;
+      for (const d of AP) hUc += (hered[d.id] || 0) * (Number(d.uc) || 0);
+      m[key] = Math.max(0, calcUCparcial(t, AP, 'uc') - hUc);
     }
     return m;
   }, [tramos, AP]);
@@ -306,9 +311,12 @@ function WaterNetworkDesign({
 
   const contadorSel = CONTADORES_CAT[acoContIx] || CONTADORES_CAT[0];
 
+  // Solo filas no-tributarias: el tributario no tiene fila y su carga ya vive plegada
+  // en la propia del padre (sumarlo duplicaría).
   const ucTotal = useMemo(() => {
     let s = 0;
     for (const t of tramos) {
+      if (t.tipo === 'tributario') continue;
       const key = t._key || t.id;
       s += propiaMap[key] || 0;
     }

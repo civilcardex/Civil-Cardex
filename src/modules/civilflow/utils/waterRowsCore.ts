@@ -406,7 +406,10 @@ export function computeWaterNetworkRows(
     if (cur) tramoParentOf[key] = cur;
   }
 
-  // UD PROPIA = carga de la clave − heredada del libro (lo manual/fuente del tramo).
+  // UD PROPIA = carga de la clave − heredada del libro: lo nacido en el tramo más lo
+  // plegado por sus tributarios (orig. usuario: lo propagado por tributarios cuenta en
+  // propia). El plegado vive DENTRO de la carga y fuera del libro her, así que queda
+  // incluido sin sumarlo aparte.
   const propiaMap: Record<string, number> = {};
   for (const t of tramos) {
     const hered = t._aparatosKey ? leerHeredadosPresion(t._aparatosKey) : {};
@@ -456,8 +459,13 @@ export function computeWaterNetworkRows(
     return acoL1Default;
   })();
 
+  // Solo filas no-tributarias: el tributario no tiene fila y su carga ya vive plegada
+  // en la propia del padre (sumarlo duplicaría).
   let ucTotal = 0;
-  for (const t of tramos) ucTotal += propiaMap[t._key || t.id] || 0;
+  for (const t of tramos) {
+    if (t.tipo === 'tributario') continue;
+    ucTotal += propiaMap[t._key || t.id] || 0;
+  }
 
   const Qaco = (() => {
     if (tr2) {
