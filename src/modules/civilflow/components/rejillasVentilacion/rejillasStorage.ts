@@ -1,6 +1,7 @@
 // Estado persistente del tab Rejillas: overrides por sector (lo editable sobre el dibujo)
 // y tipo de gas del proyecto. La purga de kwById (deprecado) corre al cargar.
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
 
 const OVERRIDES_KEY = 'rejillas_overrides_v1';
 export const GAS_KEY = 'rejillas_gas';
@@ -43,3 +44,15 @@ export const loadOverrides = (): OverridesMap => {
   return ovr;
 };
 export const saveOverrides = (o: OverridesMap) => saveToStorage(OVERRIDES_KEY, o);
+
+/** Claves gas_AR… del mapa de aparatos con contenido (gasodomésticos por sector/área).
+ *  Solo áreas: las de ramal ya las persiste saveToSupabase y duplicarlas resucitaba
+ *  conteos borrados al hidratar desde BD. */
+export function leerGasod(): Record<string, Record<string, number>> {
+  const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
+  const out: Record<string, Record<string, number>> = {};
+  for (const [k, v] of Object.entries(disk)) {
+    if (/^gas_AR/.test(k) && v && Object.keys(v).length) out[k] = v;
+  }
+  return out;
+}

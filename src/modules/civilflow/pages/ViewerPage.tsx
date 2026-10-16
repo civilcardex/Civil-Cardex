@@ -46,7 +46,14 @@ const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // hay planos cacheados; si arrancara en `true`, el primer render muestra el visor vacío
 // (getSnapshot cae al check 3) y solo tras el useEffect que resetea `ready=false` aparece
 // el overlay — flash "visor vacío → carga → planos".
-const pdfReadyStore = { ready: false, listeners: new Set<() => void>() };
+const pdfReadyStore = {
+  ready: false,
+  // Orig. usuario: el overlay "Cargando planos y redes…" solo corresponde a la PRIMERA
+  // carga de la sesión — los cambios de piso re-renderizan en vivo (trazos prefetchados),
+  // sin tapar el visor de nuevo.
+  everReady: false,
+  listeners: new Set<() => void>(),
+};
 
 const ViewerPage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -381,16 +388,20 @@ export default function ViewerPage() {
       if (plans.length === 0) {
         return !(restoreDone && cloudRestoreDone);
       }
-      // Con planos pero archivos aún no listos o PDF no renderizado → carga.
-      if (!hasFilesReady || !ready) return true;
+      // Con planos pero archivos aún no listos → carga.
+      if (!hasFilesReady) return true;
+      // Primera sesión sin render aún → carga. Cambios de piso posteriores: render en vivo
+      // SIN overlay (everReady) — el spinner no vuelve a tapar el visor.
+      if (!ready && !pdfReadyStore.everReady) return true;
       // Planos listos y PDF renderizado → visor.
       return false;
     },
   );
   const isDrawingLoading = !listo || pdfPendiente;
   const handlePdfReady = useCallback(() => {
-    if (!pdfReadyStore.ready) {
+    if (!pdfReadyStore.ready || !pdfReadyStore.everReady) {
       pdfReadyStore.ready = true;
+      pdfReadyStore.everReady = true;
       pdfReadyStore.listeners.forEach((l) => l());
     }
   }, []);
@@ -401,6 +412,18 @@ export default function ViewerPage() {
       pdfReadyStore.listeners.forEach((l) => l());
     }
   }, [activeIndex, plans.length, hasFilesReady]);
+  // Cambio de proyecto (misma sesión, login distinto o deep-link): everReady es de SESIÓN
+  // y taparía el overlay de la carga real del proyecto nuevo — se resetea con el id activo.
+  const proyectoActivo = wantsId ?? getActiveProyectoId();
+  const proyectoPrevio = useRef(proyectoActivo);
+  useEffect(() => {
+    if (proyectoPrevio.current !== proyectoActivo) {
+      proyectoPrevio.current = proyectoActivo;
+      pdfReadyStore.everReady = false;
+      pdfReadyStore.ready = false;
+      pdfReadyStore.listeners.forEach((l) => l());
+    }
+  }, [proyectoActivo]);
   // Fallback: si onReady nunca llega, no bloquear para siempre.
   useEffect(() => {
     if (plans.length > 0 && hasFilesReady) {

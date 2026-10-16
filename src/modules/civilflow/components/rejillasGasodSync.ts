@@ -6,41 +6,23 @@ import {
 } from '../services/projectDataService';
 import { APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
+import { leerGasod } from './rejillasVentilacion/rejillasStorage';
 import { emitAparatosClear, EV_APARATOS_CLEAR } from '../utils/fixtureEvents';
 
-/** Sincronía BD de los conteos de gasodomésticos de áreas rejillas (claves gas_AR…), VIVA
- *  aunque la tabla de Rejillas esté cerrada:
- *  - startRejillasGasodSync(): cada EV_APARATOS_CLEAR (panel del visor, tabla, GC) re-empuja
- *    el blob con lo que hay en disco — sin esto borrar/asignar desde el PANEL dejaba el
- *    blob viejo y la hidratación resucitaba lo borrado.
- *  - hidratarRejillasGasod(): fill-missing del blob al disco — sin esto el panel derecho
- *    arrancaba vacío hasta que el usuario entrara a la tabla (única hidratación existente).
- *  Idempotente y seguro fuera de sesión (sin proyecto activo no-op). */
+/** Sincronía BD de los conteos de gasodomésticos de áreas rejillas (claves gas_AR…), VIVA aunque la tabla de Rejillas esté cerrada: - startRejillasGasodSync(): cada EV_APARATOS_CLEAR (panel del visor, tabla, GC) re-empuja el blob con lo que hay en disco — sin esto borrar/asignar desde el PANEL dejaba el
+ * blob viejo y la hidratación resucitaba lo borrado. - hidratarRejillasGasod(): fill-missing del blob al disco — sin esto el panel derecho arrancaba vacío hasta que el usuario entrara a la tabla (única hidratación existente). */
 
 const OVERRIDES_KEY = 'rejillas_overrides_v1';
 const GAS_KEY = 'rejillas_gas';
 const PUSH_DEBOUNCE_MS = 800;
 
-/** Claves gas_AR… del mapa de aparatos con contenido (los gasodomésticos por sector). */
-function leerGasod(): Record<string, Record<string, number>> {
-  const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
-  const out: Record<string, Record<string, number>> = {};
-  for (const [k, v] of Object.entries(disk)) {
-    if (/^gas_AR/.test(k) && v && Object.keys(v).length) out[k] = v;
-  }
-  return out;
-}
-
 let pushTimer: number | null = null;
-/** Pid de la última hidratación completada: el disco ya contiene (o BD no tenía) las
- *  claves gas_AR DE ESE proyecto. Al cambiar de proyecto vuelve a "no hidratado" — sin
- *  esto el push del proyecto nuevo re-enviaría el gasod (local, mezclado) de otro. */
+/** Pid de la última hidratación completada: el disco ya contiene (o BD no tenía) las claves gas_AR DE ESE proyecto.
+ * Al cambiar de proyecto vuelve a "no hidratado" — sin esto el push del proyecto nuevo re-enviaría el gasod (local, mezclado) de otro. */
 let hidratadoPid = '';
 
-/** Push del blob rejillas. Merge, no overwrite: overrides y gas SOLO se envían si el
- *  disco local los tiene; si no, se conservan los del blob en BD (el panel cerrado no
- *  puede reconstruirlos — pisarlos con defaults los borraba entre dispositivos).
- *  gasod igual, pero solo cuenta como fuente tras la primera hidratación (`hidratado`). */
+/** Push del blob rejillas.
+ * Merge, no overwrite: overrides y gas (Gas) SOLO se envían si el disco local los tiene; si no, se conservan los del blob en BD (el panel cerrado no puede reconstruirlos — pisarlos con defaults los borraba entre dispositivos). gasod igual, pero solo cuenta como fuente tras la primera hidratación (`hidratado`). */
 async function pushBlobAhora(): Promise<void> {
   pushTimer = null;
   const pid = getActiveProyectoId();
@@ -91,9 +73,7 @@ export function startRejillasGasodSync(): void {
   });
 }
 
-/** Fill-missing del blob BD → disco (solo claves ausentes; nunca pisa lo local).
- *  Guard de frescura: si hubo edición local (EV_APARATOS_CLEAR) durante el fetch, el
- *  blob puede ser previo al borrado — se aborta para no resucitar conteos. */
+/** Fill-missing del blob BD → disco (solo claves ausentes; nunca pisa lo local). */
 export async function hidratarRejillasGasod(): Promise<void> {
   try {
     const pid = getActiveProyectoId();

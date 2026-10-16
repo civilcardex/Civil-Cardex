@@ -14,7 +14,7 @@ import type { RejArtefacto } from '../../utils/rejillasCalc';
 import { stableStringify } from '../fixturesStorage';
 import { ALIAS_CAT_GAS, CAT_GAS_BY_ID, grupoDe } from './rejillasShared';
 import type { RejFila } from './rejillasShared';
-import { GAS_KEY, loadOverrides, purgarKwById, saveOverrides } from './rejillasStorage';
+import { GAS_KEY, leerGasod, loadOverrides, purgarKwById, saveOverrides } from './rejillasStorage';
 import type { OverridesMap, RejOverride } from './rejillasStorage';
 import {
   emitAparatosClear,
@@ -53,17 +53,6 @@ export function useRejillasData() {
   useEffect(() => {
     gasRef.current = gas;
   }, [gas]);
-  /** Claves gas_* del mapa de aparatos (gasodomésticos por sector/área). */
-  const leerGasod = (): Record<string, Record<string, number>> => {
-    const disk = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
-    const out: Record<string, Record<string, number>> = {};
-    for (const [k, v] of Object.entries(disk)) {
-      // Solo claves de ÁREA (gas_AR…): las de ramal ya las persiste saveToSupabase y
-      // duplicarlas aquí resucitaba conteos borrados al hidratar desde BD.
-      if (/^gas_AR/.test(k) && v && Object.keys(v).length) out[k] = v;
-    }
-    return out;
-  };
   useEffect(() => {
     const pid = getActiveProyectoId();
     if (!pid) return;
@@ -289,7 +278,7 @@ export function useRejillasData() {
     pushBd(next, gas);
   };
 
-  /** Cambia el tipo de gas: estado + caché local + blob BD (un solo camino). */
+  /** Cambia el tipo de gas (Gas): estado + caché local + blob BD (un solo camino). */
   const cambiarGas = (v: 'natural' | 'glp') => {
     setGas(v);
     saveToStorage(GAS_KEY, v);

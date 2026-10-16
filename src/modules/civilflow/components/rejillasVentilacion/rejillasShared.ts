@@ -9,7 +9,7 @@ import { fmt } from '../../utils/formatUtils';
 import type { RejOverride } from './rejillasStorage';
 import { emitAparatosClear } from '../../utils/fixtureEvents';
 
-/** Índice id→entrada del catálogo NTC 3728: la potencia de cada aparato es fija (no editable). */
+/** Índice id→entrada del catálogo NTC (Norma Tecnica Colombiana) 3728: la potencia de cada aparato es fija (no editable). */
 export const CAT_GAS_BY_ID = new Map(CAT_GAS.map((c) => [c.id, c]));
 
 /** Alias de ids de APARATOS_DEF → ids de CAT_GAS (históricos: el catálogo llama
@@ -44,7 +44,7 @@ export interface RejFila {
   aparatos: Array<{
     id: string;
     cant: number;
-    /** kW fijo del catálogo NTC 3728 según el tipo de gas del proyecto (no editable). */
+    /** kW fijo del catálogo NTC (Norma Tecnica Colombiana) 3728 según el tipo de gas (Gas) del proyecto (no editable). */
     kw: number;
     tipo: 'A' | 'B' | 'C';
     clave: string;
@@ -106,9 +106,8 @@ export function setCantCol(f: RejFila, colIdx: number, cant: number): void {
   }
 }
 
-/** Elimina una columna de aparato: libera el slot si estaba vacío; si es un gasodoméstico,
- *  lo quita SOLO en la clave de origen del sector (el sweep del plano entero borraba la
- *  misma columna en otros sectores: pérdida silenciosa). */
+/** Elimina una columna de aparato: libera el slot si estaba vacío; si es un gasodoméstico, lo quita SOLO en la clave de origen del sector (el sweep del
+ * plano entero borraba la misma columna en otros sectores: pérdida silenciosa). */
 export function quitarColumna(
   f: RejFila,
   colIdx: number,
@@ -176,7 +175,7 @@ export const TH: React.CSSProperties = {
   whiteSpace: 'normal',
   lineHeight: 1.15,
 };
-/** Sub-título bajo un grupo (fila 2 del encabezado). */
+
 export const THS: React.CSSProperties = { ...TH, fontSize: 11 };
 /** Campo editable con el MISMO estilo que las demás tablas de diseño (bg2 + borde line +
  *  radius 2, texto centrado). .no-spin (index.css) oculta las flechas de los number. */

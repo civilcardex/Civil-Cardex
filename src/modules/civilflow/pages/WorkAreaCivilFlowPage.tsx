@@ -27,8 +27,9 @@ const WorkAreaCivilFlowPage_S1: React.CSSProperties = {
   border: 0,
 };
 
-/** Enlace legacy (id no-uuid): aviso centrado SIN workspace montado — abrir el activo
- *  en silencio haría dibujar al usuario en el proyecto equivocado. */
+/** Enlace legacy (id sin formato uuid, de antes del cambio a identificadores universales):
+ *  aviso centrado SIN workspace montado — abrir el activo en silencio haría que el usuario
+ *  dibuje en el proyecto equivocado. */
 const ENLACE_LEGACY_STYLE: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -54,11 +55,7 @@ const ENLACE_LEGACY_AVISO_STYLE: React.CSSProperties = {
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Ruta /civilflowareatrabajo/:proyectoId? — deep-link con el id uuid del proyecto
- *  (cf_proyectos.id, paridad cm_proyectos). Sin id → redirect al uuid del activo. Con id
- *  distinto al activo → cambio de proyecto con el MISMO volcado de storage que ProfilePage +
- *  remontaje completo (window.location.replace): los contextos no están keyeados por proyecto
- *  y un remount suave dejaría estado del anterior en memoria (autosave cruzado). */
+/** Abre el proyecto del enlace (/civilflowareatrabajo/:id) o el activo si no hay id. Si el id cambió, recarga todo para no mezclar dibujos entre proyectos. Ej: uuid del activo. */
 function WorkAreaCivilFlowPage() {
   usePageMeta(
     'Área de trabajo',
