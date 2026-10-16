@@ -1,16 +1,15 @@
 import { pointToSegmentDist } from './HitTester';
 import type { IPlanoEngineCore } from './PlanoState';
 
-// Sanitaria y ventilación comparten uniones como una sola subred — el mismo helper que usa el
-// arrastre en cascada, elevado aquí para que todo camino de detección pueda revisar contra
-// ambas al buscar si un accesorio ya quedó resuelto.
+/** ¿Son estas dos redes la misma a la hora de buscar uniones? La sanitaria y la ventilación cuentan
+ *  como una sola: comparten nodos y un codo en una unión afecta a las dos.
+ *  Ej: sameNetGroup('san','vent') es true; ('san','ll') es false. */
 export function sameNetGroup(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
-// Tolerancia única para validación angular: el snap (PlanoEngine.ts) ya produce ángulos de
-// 45°/90° exactos con snapMode activo, así que los cheques estrictos solo necesitan absorber
-// error de punto flotante, no tolerar dibujo libre. ±0.5°.
+/** Margen en grados para no rechazar un ángulo por decimales: el ajuste a 45°/90° del dibujo ya
+ *  sale exacto, así que ±0.5° solo absorbe error de coma flotante, no dibujo libre. */
 export const ANGLE_EPS = 0.5;
 
 // ¿El giro interno (180 - turnAngle) es uno de los valores permitidos para la red?
@@ -151,6 +150,8 @@ export function _firstSegmentAngle(pts: number[][]): number {
   return Math.round(angle);
 }
 
+/** Ángulo del tramo que cae en la MITAD del recorrido de la tubería, en grados y redondeado.
+ *  Ej: en una L de 2 m + 1 m devuelve 0°, porque la mitad cae dentro del primer tramo. */
 export function angleAtHalfLength(pts: number[][]): number {
   if (pts.length < 2) return 0;
   let total = 0;
@@ -200,6 +201,8 @@ function segmentIndexAtPosition(pts: number[][], x: number, y: number): number {
   return bestIdx;
 }
 
+/** Ángulo del tramo más cercano a un punto dado, en grados y redondeado. Ej: para saber hacia
+ *  dónde corre la tubería que pasa bajo el cursor. */
 export function angleAtPosition(pts: number[][], x: number, y: number): number {
   if (pts.length < 2) return 0;
   const idx = segmentIndexAtPosition(pts, x, y);
@@ -211,6 +214,8 @@ export function angleAtPosition(pts: number[][], x: number, y: number): number {
   return Math.round(angle);
 }
 
+/** Qué tramo de la tubería está más cerca de un punto, con su dirección ya en unidades del plano;
+ *  null si el trazo tiene menos de dos puntos. Ej: orienta lo que se dibuja desde ese punto. */
 export function segmentAtPosition(
   pts: number[][],
   x: number,
@@ -319,6 +324,9 @@ export function detectJunctionAccesorio(
   return null;
 }
 
+/** Una unión que todavía necesita que el usuario diga qué accesorio lleva (tee, codo o yee), con
+ *  el punto exacto donde pasó y si quedó en T.
+ *  Ej: al terminar RAF1 sobre el cuerpo de RAF2, salta el modal con estos datos. */
 export interface AccesorioTrigger {
   ramalId: string;
   angleDeg: number;
@@ -540,10 +548,9 @@ export function detectAccesorioTrigger(
   return null;
 }
 
-// Los codos de cambio de nivel (sube/baja) solo existen entre el CUERPO de un ramal y sus
-// EXTREMOS — nunca en intersecciones entre ramales (tees): ahí la unión se resuelve con sus
-// propios accesorios (tee/yee) y un codo de nivel no tiene sentido físico. Este guard centraliza
-// esa regla para todos los caminos que asignan codoSube/codoBaja/codo90rmSube/codo90rmBaja.
+/** ¿Se puede poner aquí un codo de cambio de nivel (sube/baja)? En las uniones en T no: allí el
+ *  accesorio es la propia tee y un codo de nivel no tendría sentido físico.
+ *  Ej: donde se juntan tres tramos, la respuesta es false. */
 export function codoNivelPermitidoEn(
   engine: IPlanoEngineCore,
   ramalId: string,

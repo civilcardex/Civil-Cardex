@@ -97,6 +97,10 @@ function restoreSnapshot(e: IPlanoEngineCore, snap: HistorySnapshot): void {
   e._netCounts = structuredClone(snap._netCounts);
 }
 
+/** El "deshacer" del visor (Ctrl+Z / Ctrl+Y). Toma una foto del dibujo antes de cada cambio y
+ *  vuelve a esa foto cuando el usuario deshace; con la foto también reviven las cantidades de
+ *  aparatos y accesorios, que no viven en el dibujo sino en el almacenamiento del navegador.
+ *  Ej: asignar un inodoro y pulsar Ctrl+Z quita el símbolo y su cantidad. */
 export class PlanoHistory {
   private _engine: IPlanoEngineCore;
   private _undoStack: HistorySnapshot[] = [];
@@ -106,7 +110,7 @@ export class PlanoHistory {
   // revierten, cambios multi-paso) — una acción de usuario = un snapshot, sin pasos muertos.
   // Contador (pausas anidables) + marca de tiempo: si una excepción deja la pausa huérfana
   // (resume nunca corre), el historial quedaba MUDO para siempre y el Ctrl+Z "no hacía nada"
-  // con los aparatos recién asignados — saveSnapshot se auto-rearma tras 1s de pausa.
+  // con los aparatos recién asignados — saveSnapshot se auto-rearme tras 1s de pausa.
   private _pauseCount = 0;
   private _pausedAt = 0;
 
@@ -114,15 +118,21 @@ export class PlanoHistory {
     this._engine = engine;
   }
 
+  /** Agrupa varios cambios en un solo paso de deshacer: mientras esté pausado no se guarda ninguna
+   *  foto. Úsala en operaciones que escriben y luego revierten (validaciones, cambios en varios
+   *  pasos) para que el usuario no tenga que deshacer paso por paso. */
   pause(): void {
     this._pauseCount++;
     this._pausedAt = Date.now();
   }
 
+  /** Cierra la pausa abierta por {@link pause} y deja volver a guardar fotos. */
   resume(): void {
     if (this._pauseCount > 0) this._pauseCount--;
   }
 
+  /** Guarda la foto actual para poder deshacer hasta aquí. No hace nada si el estado es idéntico
+   *  al de la última foto: así un Ctrl+Z nunca se gasta en un cambio que no cambió nada. */
   saveSnapshot(): void {
     if (this._isRestoring) return;
     if (this._pauseCount > 0) {
@@ -141,6 +151,9 @@ export class PlanoHistory {
     if (this._undoStack.length > MAX_UNDO_STACK) this._undoStack.shift();
   }
 
+  /** Deshace lo último. Si hay una tubería o un área a medio dibujar, solo borra su último punto;
+   *  si no, vuelve a la foto anterior y además limpia la selección.
+   *  Ej: tras asignar un inodoro, un Ctrl+Z quita el símbolo y la cantidad. */
   undoLast(): void {
     const e = this._engine;
 
@@ -194,6 +207,8 @@ export class PlanoHistory {
     }
   }
 
+  /** Rehace lo que se acaba de deshacer. Se vacía solo en cuanto el usuario hace un cambio nuevo:
+   *  ahí ya no tiene sentido "rehacer" lo que quedó en el pasado. */
   redoLast(): void {
     const e = this._engine;
     if (this._redoStack.length === 0) return;
@@ -217,6 +232,8 @@ export class PlanoHistory {
     if (e._onDirtyCb) e._onDirtyCb();
   }
 
+  /** Borra todo el dibujo (el botón Limpiar) y deja el historial con una sola foto: a partir de ahí
+   *  ya no se puede deshacer el borrado. */
   clearAll(): void {
     const e = this._engine;
     e.ramales = [];

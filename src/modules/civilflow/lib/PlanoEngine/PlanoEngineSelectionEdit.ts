@@ -16,6 +16,10 @@ import { checkVentDiameterLimits, syncVentBajanteDiameters } from './ventDiamete
 // de nodo, propagación a bajantes conectados y snaps de etiqueta. Extraído verbatim de
 // PlanoEngineSelection (des-monolitización 2026-10-06).
 
+/** Aplica unos cambios al elemento seleccionado (diámetro, material, etiqueta…): valida lo que la
+ *  red no permite, escribe, repinta y avisa a la interfaz.
+ *  Ej: al cambiar el diámetro de un ramal, este es el camino que también se lo pasa al bajante
+ *  conectado si el nuevo valor es mayor. */
 export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, unknown>): void {
   const el = getSelected(engine);
   // LDESVIO de bomba (orig. usuario): su diámetro no puede superar el del bajante asociado
@@ -128,6 +132,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
 // (orig. usuario: la regla salida/entrada y su alerta se retiraron) — la convergencia al
 // MAYOR en la conexión corre en los bloques de escritura vía convergirDiametroNodoPresion.
 
+/** Revisa que un cambio de diámetro respete la red y devuelve true si se puede escribir. Se usa
+ *  sobre todo en sanitaria (Red Contra Incendio aparte): si el tramo quedó por debajo del que
+ *  alimenta, se avisa y se bloquea el cambio.
+ *  Ej: un inodoro no puede quedarse en 2" si su tramo de feeding es de 4". */
 export function guardDiametroNodo(
   engine: IPlanoEngineCore,
   el: { pts?: number[][]; net?: string; id?: string },
@@ -271,6 +279,9 @@ export function camposAsocManual(
   return { recibeDeIds: [...recibe], alimentaIds: [...alimenta], asocManual: [...manual] };
 }
 
+/** Aplica unos cambios a un elemento por su id, aunque no esté seleccionado (el menú y las tablas
+ *  de diseño entran por aquí). No roba la selección si el elemento editado es otro.
+ *  Ej: cambiar el diámetro de BAN1 desde la tabla de aguas negras. */
 export function updateElementById(
   engine: IPlanoEngineCore,
   id: string,
@@ -386,6 +397,9 @@ export function updateElementById(
   engine._markDirty();
 }
 
+/** Gira la etiqueta del elemento seleccionado al ángulo de regla más cercano (0°, 45° o 90°) y la
+ *  deja marcada como movida a mano, para que el des-tapado automático ya no la mueva.
+ *  Ej: una etiqueta a 40° se deja en 45°. */
 export function rotateLabelSnap(engine: IPlanoEngineCore): void {
   const el = getSelected(engine);
   if (!el) return;
@@ -412,6 +426,9 @@ export function rotateLabelSnap(engine: IPlanoEngineCore): void {
   engine._markDirty();
 }
 
+/** Devuelve la etiqueta del elemento seleccionado a su posición automática (la que el motor
+ *  calcula al lado del símbolo) y le quita la marca de movida a mano.
+ *  Ej: el botón "Restablecer etiqueta" del menú. */
 export function resetLabel(engine: IPlanoEngineCore): void {
   const el = getSelected(engine);
   if (!el) return;

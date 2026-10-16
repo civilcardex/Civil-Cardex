@@ -1,9 +1,11 @@
+/** Vocabulario de medidas del motor: la misma distancia se puede contar en tres unidades (papel del
+ *  PDF, píxeles del plano y metros reales del edificio) y aquí se traduce entre ellas.
+ *  Ej: a escala 0.05 (0.05 m de edificio por píxel de plano), 100 px del plano son 0.13 m reales. */
+
 export interface Point {
   x: number;
   y: number;
 }
-
-/** Utilidades de coordenadas: convertir entre píxeles del plano, píxeles de pantalla y metros reales, y pegar ángulos. scaleM (escala metros reales por píxel del plano) viaja en cada llamada. Ej: a escala 0.05, 100 px del plano son 0.13 m. */
 
 export interface Camara {
   zoom: number;
@@ -11,39 +13,45 @@ export interface Camara {
   offY: number;
 }
 
-/** Pasa un punto del plano a la pantalla aplicando zoom y desplazamiento (pan) de la cámara. Ej: zoom 2 y sin pan, el punto (10,20) se pinta en (20,40). */
+/** Pone un punto del plano en la pantalla: le aplica el zoom y el desplazamiento (pan) de la
+ *  cámara. Ej: con zoom 2 y sin pan, el punto (10,20) del plano se pinta en (20,40). */
 export function toCvs(cam: Camara, px: number, py: number): Point {
   return { x: px * cam.zoom + cam.offX, y: py * cam.zoom + cam.offY };
 }
 
-/** Inversa de toCvs: pasa un punto de pantalla a coordenadas del plano. Úsala para saber en qué punto del dibujo se hizo clic. Ej: con zoom 2, un clic en (20,40) es el punto (10,20) del plano. */
+/** Al revés de {@link toCvs}: traduce un clic de la pantalla al punto del dibujo donde cayó.
+ *  Ej: con zoom 2, un clic en (20,40) es el punto (10,20) del plano. */
 export function toPlane(cam: Camara, cx: number, cy: number): Point {
   return { x: (cx - cam.offX) / cam.zoom, y: (cy - cam.offY) / cam.zoom };
 }
 
-/** Convierte una medida tomada en píxeles del plano a metros reales del edificio. Ej: 100 px con scaleM 0.05 = 0.13 m. */
+/** Convierte una longitud medida en píxeles del plano a metros reales del edificio.
+ *  Ej: 100 px a escala 0.05 dan 0.13 m. */
 export function pxToM(scaleM: number, px: number): number {
   return +((px / 96) * 2.54 * scaleM).toFixed(3);
 }
 
-/** mm de papel → px de canvas (a la escala de la hoja). */
+/** Pasa milímetros de papel (la medida tal como viene en la lámina PDF) a píxeles de pantalla:
+ *  el papel son 96 píxeles por pulgada. Ej: un codo de 15 mm a zoom 1 ocupa ~57 px de pantalla. */
 export function mm2cvs(mm: number, zoom: number): number {
   return ((mm * 96) / 25.4) * zoom;
 }
 
-/** Inversa de pxToM: cm reales a px de plano (independe de zoom/pan).
- *  @param scaleM (escala metros por pixel) del plano; @param cm longitud en cm; @returns px de plano. */
+/** Pasa centímetros reales del edificio a píxeles del plano, la dirección inversa de {@link pxToM}.
+ *  Ej: 100 cm a escala 0.05 ocupan 756 px del plano. */
 export function cmToPlanePx(scaleM: number, cm: number): number {
   return ((cm / 100) * 96) / (2.54 * (scaleM || 0.5));
 }
 
-/** cmToPlanePx aplicado a la transformación actual — solo render; nunca guardar geometría. */
+/** Como {@link cmToPlanePx} pero ya en píxeles de pantalla. Úsala solo para pintar: lo que se guarda
+ *  del dibujo va en píxeles del plano, para que no dependa del zoom con el que se vio. */
 export function cmToCanvasPx(p: { scaleM: number; zoom: number }, cm: number): number {
   return cmToPlanePx(p.scaleM, cm) * p.zoom;
 }
 
-/** mm del edificio a px de canvas (piso 1 mm papel, cabe en pared 15 cm a 1:50).
- *  @param p escalas y zoom; @param realRadiusMm radio en mm; @returns px de canvas. */
+/** Pinta un objeto de tamaño REAL (una tubería de 15 cm) con el tamaño que le toca en la hoja. Si
+ *  saldría diminuto (plano muy alejado), se dibuja al menos con 1 mm de papel para que no
+ *  desaparezca. Ej: 15 cm reales a escala 0.05 son 3 mm de papel. */
 export function realMmToCanvasPx(
   p: { definedScaleM: number; scaleM: number; zoom: number },
   realRadiusMm: number,
@@ -54,16 +62,16 @@ export function realMmToCanvasPx(
   return mm2cvs(Math.max(MIN_PAPER_MM, paperMm), p.zoom);
 }
 
-/** Qué tan grandes se ven los textos de las etiquetas: si el plano está a escala chica, las letras
- *  crecen para que sigan leyéndose. Siempre entre 0.1 y 3. */
+/** Cuánto se agranda el texto de las etiquetas: en planos muy alejados las letras crecen para que se
+ *  sigan leyendo. Siempre entre 0.1 y 3. Ej: a escala 0.01 se dibujan 3 veces más grandes. */
 export function labelScaleM(p: { definedScaleM: number; scaleM: number }): number {
   const defScale = p.definedScaleM || p.scaleM;
   return Math.max(0.1, Math.min(3.0, 0.5 / defScale));
 }
 
-/** Imán de ángulos del trazo: solo se dibuja a 45°/90° (y los ramalitos de af (Agua Fría) y ac
- *  (Agua Caliente) a 90° justos), para que las tuberías queden rectas o en escuadra.
- *  @param x0 coord X del origen; @param net red activa; @returns punto pegado al ángulo legal. */
+/** Corrige el último punto del trazo para que el tramo salga a un ángulo de regla: 45° o 90° (los
+ *  ramalitos de af (Agua Fría) y ac (Agua Caliente), solo a 90°), y el remate a escuadra.
+ *  Ej: un ramal dibujado a 43° se ajusta a 45° — la punta se mueve, la longitud no cambia. */
 export function snapAngle(
   x0: number,
   y0: number,

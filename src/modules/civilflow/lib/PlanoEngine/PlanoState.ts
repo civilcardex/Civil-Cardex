@@ -129,6 +129,8 @@ export const NETS = [
   },
 ];
 
+/** Una red de tubería del catálogo (af, ac, san, ll, gas, vent, rci…): su código, el color con que
+ *  se dibuja, sus nombres para los botones y el tipo de aparato que cuenta. */
 export interface PlanoNet {
   id: string;
   lbl: string;
@@ -141,6 +143,8 @@ export interface PlanoNet {
   name: string;
 }
 
+/** Un rectángulo en píxeles de pantalla, con su esquina superior izquierda: sirve para medir
+ *  cuerpos de tubería, cajas de etiqueta y textos (el PDF de fondo ya es una imagen). */
 export interface CanvasBox {
   x: number;
   y: number;
@@ -172,6 +176,8 @@ export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolea
   return false;
 }
 
+/** Puesta a cero de la numeración de cada red: todos los contadores a cero. Se llama al abrir un
+ *  plano y al pulsar Limpiar. */
 export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCounts> }): void {
   target._netCounts = {};
   NETS.forEach((n) => {
@@ -179,6 +185,9 @@ export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCount
   });
 }
 
+/** Siguiente número libre de ramal o tributario en una red (el 1, 2, 3… que ve el usuario).
+ *  `isTaken` evita repetir un número que ya existe aunque el contador se haya desfasado.
+ *  Ej: tras dibujar RAF1 y RAF2, el siguiente ramal de af (Agua Fría) es 3. */
 export function allocNetNumber(
   target: { _netCounts: Record<string, PlanoNetCounts> },
   netId: string,
@@ -578,6 +587,8 @@ export interface PlanoLevel {
   n?: string | number;
 }
 
+/** Cuántos ramales y tributarios se han numerado en cada red, para seguir la cuenta sin releer el
+ *  plano. Ej: af lleva 3 ramales → el siguiente será RAF4. */
 export interface PlanoNetCounts {
   ramal: number;
   tributario: number;
@@ -592,6 +603,8 @@ export type PlanoElement =
   | PlanoDimension
   | PlanoGuideLine;
 
+/** La tubería que se está dibujando ahora mismo, todavía sin confirmar: sus puntos y la longitud
+ *  que lleva. Mientras exista, un clic añade un punto y Enter la guarda como ramal. */
 export interface PlanoActiveRamal {
   id?: string;
   net: string;
@@ -601,17 +614,24 @@ export interface PlanoActiveRamal {
   totalL: number;
 }
 
+/** El área que se está delimitando ahora, todavía sin cerrar (los puntos y el color con que se
+ *  pintará al confirmar). */
 export interface PlanoActiveArea {
   pts: number[][];
   color: string;
 }
 
+/** Lo que se le pone a una tubería nueva cuando el usuario no elige nada: el material, el diámetro
+ *  y la pendiente que heredan las siguientes. */
 export interface PlanoRamalDefaults {
   material: string;
   diametro: string;
   pendiente: number;
 }
 
+/** Foto de la posición original de cada elemento de un arrastre en grupo: sin ella, mover un
+ *  conjunto a la vez deformaría las tuberías. Ej: se guardan los puntos de cada ramal al empezar
+ *  el arrastre y se comparan en cada movimiento para saber cuánto se han desplazado. */
 export type MultiDragOrigData = Record<
   string,
   {
@@ -882,8 +902,12 @@ export interface IPlanoEngineCore {
 }
 
 // ── Tipos de la clase PlanoEngine movidos aquí (Oleada 1.6 — la clase no se divide) ──
+
+/** Los dos tipos de tubería que se dibujan a mano: un ramal principal o un tributario (la
+ *  ramalito que cuelga de otro y desemboca en él). */
 export type TramoType = 'ramal' | 'tributario';
 
+/** Un punto suelto, con sus dos coordenadas. */
 export interface Point {
   x: number;
   y: number;
@@ -892,8 +916,11 @@ export interface Point {
 export type SelectCallback = (el: Record<string, unknown> | null) => void;
 export type StatusCallback = (msg: string) => void;
 export type UpdateCallback = (data: unknown) => void;
+/** Avisa que el dibujo cambió y hay que guardarlo. */
 export type DirtyCallback = () => void;
 
+/** Una fila de las tablas de diseño (agua, sanitaria, lluvias, gas): lo que la tabla necesita del
+ *  elemento, no el elemento entero. Ej: RAF1 | desde el contador | hasta BAN1 | 12.4 m. */
 export interface ElementItem {
   type: string;
   id: string;

@@ -10,6 +10,8 @@ export {
 } from './networkRenumber';
 export { calcSanitaryAccessories, calcHydroAccessories } from './networkSanitary';
 
+/** Todas las tuberías, bajantes, areas y anotaciones de UNA red, en el formato que consumen las
+ *  tablas de diseño (Identificador, longitud, nº de tramos, material, diámetro…). */
 export function getElementsByNet(
   engine: IPlanoEngineCore,
   netId: string,
@@ -71,18 +73,25 @@ export function getElementsByNet(
   return items;
 }
 
+/** Muestra u oculta una red (el "ojo" de la barra de redes): es una capa de visibilidad, no borra
+ *  nada — las tuberías siguen guardadas y vuelven a aparecer al quitar el ojo. */
 export function setNetHidden(engine: IPlanoEngineCore, netId: string, hidden: boolean): void {
   if (hidden) engine._hiddenNets.add(netId);
   else engine._hiddenNets.delete(netId);
   engine.render();
 }
 
+/** Pone o quita el candado de una red: bloquea el dibujo pero deja el plano legible.
+ *  Ej: la red de gas se puede ver sin poder modificarla mientras se revisa la sanitaria. */
 export function setNetLocked(engine: IPlanoEngineCore, netId: string, locked: boolean): void {
   if (locked) engine._lockedNets.add(netId);
   else engine._lockedNets.delete(netId);
   engine.render();
 }
 
+/** Borra TODO lo de una red: tuberías, bajantes, áreas, anotaciones, cotas y los fantasmas entre
+ *  pisos que cuelgan de sus bajantes. También limpia las unidades de consumo (UD) de cada trazo,
+ *  porque si no un id reutilizado nacería con el conteo del trazo viejo. */
 export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   // Purga conteos de TODOS los ramales/bajantes de la red antes de soltarlos — mismo motivo
   // que el borrado individual: el id puede reutilizarse y el trazo nuevo nacería con UDs viejas.
@@ -122,6 +131,9 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine._markDirty();
 }
 
+/** Define de qué tubería cuelga el próximo tributario que se dibuje (solo tiene efecto con la
+ *  herramienta Tributario activa). Ej: con RAF1 elegido, el tributario que tracemos se numerará
+ *  T1 y desembocará en RAF1. */
 export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string | null): void {
   if (engine.tipoTramo !== 'tributario') return;
   // Ítem 10: el padre puede ser un ramal principal o un tributario existente (tributario
@@ -136,12 +148,16 @@ export function getPadreTributario(engine: IPlanoEngineCore): PlanoRamal | null 
   return (engine.ramales.find((r) => r.id === engine.padreTributario) as PlanoRamal) || null;
 }
 
+/** Lista de tuberías a las que se puede colgar un tributario: todas las de la red activa,
+ *  principales y tributarios, para permitir tributarios anidados (uno que cuelga de otro). */
 export function getRamalesPadre(engine: IPlanoEngineCore): PlanoRamal[] {
   // Ítem 10: candidatos a padre = TODOS los ramales de la red activa (principales y
   // tributarios), para permitir tributarios anidados.
   return engine.ramales.filter((r) => r.net === engine.activeNet) as unknown as PlanoRamal[];
 }
 
+/** Fija qué material, diámetro y pendiente decadrá la próxima tubería que se dibuje, para no
+ *  tener que repetirlos en cada ramal nuevo. */
 export function setRamalDefaults(
   engine: IPlanoEngineCore,
   d: Partial<{ material: string; diametro: string; pendiente: number }> | null,
@@ -153,6 +169,9 @@ export function setRamalDefaults(
   };
 }
 
+/** Qué bajantes se ven como FANTASMA en el piso abierto: los de otro piso que atraviesan esta
+ *  altura, dibujados punteados para saber por dónde pasa la tubería sin salir a dibujarla.
+ *  Ej: viendo el sótano, se ve punteado el BAN2 del primer piso que pasa por allí. */
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter((b) => {
@@ -190,11 +209,9 @@ import { ACC_ABBR } from '../../utils/accessoryAbbreviations';
 import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
 import { purgarEstadoRamalesBorrados } from './deleteCascade';
 
-// Una unión de codo reventilado es el extremo de un ramal 'vent' coincidiendo con un punto de
-// un ramal 'san' (ver el umbral de 0.5 unidades que también usa el renderizador para dibujar el
-// símbolo). Toda otra sincronización de puntos coincidentes de este motor (handleDragMove.ts) es
-// solo dentro de la misma red — sin esto, arrastrar cualquiera de los dos lados de esta unión
-// entre redes la despegaría.
+/** Empareja los dos lados de un codo reventilado: la punta de un ramal de vent (Ventilación)
+ *  apoyada sobre un punto de un ramal de san (Sanitaria). Mover cualquiera de los dos lados
+ *  arrastra al otro, porque es la misma unión. */
 export function findCodoReventiladoLinks(
   engine: IPlanoEngineCore,
   ramal: PlanoRamal,
@@ -267,6 +284,9 @@ export function podarReferenciasStaleDeBajantes(engine: IPlanoEngineCore): void 
   }
 }
 
+/** Reconecta las tuberías a los bajantes por geometría: si la punta de RAF1 cae donde está BAN1,
+ *  quedan unidos. Corre en cada cambio del dibujo y descarta lo que ya no se toca.
+ *  Ej: tras arrastrar una tubería hasta un bajante, ambos quedan unidos sin marcarlo a mano. */
 export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
   const ACC_LABELS = ACC_ABBR;

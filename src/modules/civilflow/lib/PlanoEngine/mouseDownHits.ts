@@ -15,10 +15,9 @@ import {
 } from './canalAssociation';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 
-// Toma una foto de la posición del bajante y de todo ramal que toca (recibeDeIds, descargaEnId
-// y su propio conector fantasma Ldesvio) antes de que empiece un bajDrag, para que handleDragUp
-// pueda validar los ángulos resultantes igual que ptDrag/ramalDrag ya hacen — y revertir +
-// alertar si son inválidos.
+/** Foto de seguridad antes de arrastrar un bajante: guarda dónde estaba y los trazos de las
+ *  tuberías que él mueve (las que le llegan, la que descarga y su conector de desvío LD_).
+ *  Ej: al soltar un bajante que quedó torcido, esta foto es lo que permite volver atrás. */
 export function _captureBajDragBackup(engine: IPlanoEngineCore, b: PlanoBajante): void {
   engine._bajDragBackupXY = { x: b.x, y: b.y, labelX: b.labelX, labelY: b.labelY };
   const assocIds = [...(b.recibeDeIds || [])];
@@ -34,6 +33,10 @@ export function _captureBajDragBackup(engine: IPlanoEngineCore, b: PlanoBajante)
   engine._bajDragBackupPts = backup;
 }
 
+/** Intenta agarrar con este clic un bajante, montante, contador, calentador, canal o fantasma
+ *  entre pisos; devuelve true si lo agarró y deja el arrastre preparado. El orden importa: primero
+ *  la etiqueta, luego el símbolo, luego el fantasma y por último el cuerpo del canal.
+ *  Ej: un clic sobre "BAN1" arrastra el bajante; un clic sobre su símbolo lo selecciona. */
 export function _tryBajanteHit(
   engine: IPlanoEngineCore,
   x: number,
@@ -189,11 +192,9 @@ export function _tryBajanteHit(
   return false;
 }
 
-// Redimensionado por manija de esquina del rectángulo de un canal seleccionado. Debe correr
-// ANTES del chequeo genérico de círculo-de-símbolo de _tryBajanteHit (que de otro modo trataría
-// cualquier clic dentro del círculo delimitador — incluido uno justo en una esquina — como un
-// movimiento de cuerpo completo vía bajDrag), para que agarrar una esquina redimensione en vez
-// de mover todo el rectángulo.
+/** Coge una esquina del rectángulo del canal ya seleccionado para redimensionarlo. Corre antes del
+ *  chequeo de símbolo porque si no, esa esquina caería dentro del círculo y movería el canal entero.
+ *  Ej: arrastrar la esquina inferior derecha ensancha el canal. */
 export function _tryCanalResizeHit(
   engine: IPlanoEngineCore,
   x: number,
@@ -227,6 +228,10 @@ export function _tryCanalResizeHit(
   return true;
 }
 
+/** Intenta agarrar un extremo (la punta) de una tubería. Cuando el acierto es dudoso —la
+ *  etiqueta de otro ramal encima, o dos tramos que convergen en el mismo punto— cede el clic y
+ *  deja que selectAt decida cuál era. Ej: un clic a 5 px de la punta de RAF1 la estira; el mismo
+ *  clic sobre el cuerpo la solo selecciona. */
 export function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
   // Un clic sobre la ETIQUETA de un ramal es su target explícito — nunca debe robarlo el
   // extremo cercano de otro ramal (bug: la etiqueta de una rama tee AF cerca de la unión
@@ -431,9 +436,9 @@ export function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: num
   return true;
 }
 
-// Ítem 7: ¿el clic cae sobre un EXTREMO (pts[0]/pts[último]) de un ramal multi-seleccionado?
-// En ese caso el arrastre de grupo NO debe robar el clic — el extremo sigue remodelando ese
-// ramal individualmente (mismo criterio que _tryRamalEndpointHit: 15px).
+/** ¿El clic cayó sobre la punta de algo que ya estaba en la selección múltiple? Entonces el
+ *  arrastre del grupo NO debe quedarse con el clic: esa punta sigue remodelando su elemento.
+ *  Ej: con cinco ramales seleccionados, clicar en la punta de uno estira solo ese. */
 export function _tryMultiSelEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
   if (engine.multiSel.length === 0) return false;
   for (const id of engine.multiSel) {
@@ -447,6 +452,9 @@ export function _tryMultiSelEndpointHit(engine: IPlanoEngineCore, x: number, y: 
   return false;
 }
 
+/** Coge uno de los elementos ya seleccionados para arrastrar el grupo entero desde su sitio
+ *  original; Ctrl+clic sobre un miembro lo saca del grupo. Ej: seleccionar tres ramales y arrastrar
+ *  cualquiera de ellos los mueve a los tres, sin doblar ninguno. */
 export function _tryMultiSelDrag(
   engine: IPlanoEngineCore,
   x: number,

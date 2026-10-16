@@ -1,11 +1,13 @@
+/** Des-tapa las etiquetas: cuando dos textos se montan uno sobre otro, una espiral busca el hueco
+ *  libre más cercano al sitio por defecto. Solo mueve las etiquetas que el usuario NO arrastró a
+ *  mano (labelMoved) — esas se quedan y además cuentan como obstáculo.
+ *  Ej: RAF1 y RAF2 pegados al mismo punto: RAF1 se queda donde pudo y RAF2 busca el primer hueco,
+ *  unida a su trazo por una línea guía. Todo en píxeles de pantalla (como _labelBox); quien llama
+ *  devuelve el centro elegido a coordenadas del plano para guardarlo en labelX/labelY. */
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointInPoly, rotatedRectCorners } from './HitTester';
 
-// Auto-orden de etiquetas: separa las etiquetas de ramal que nunca se movieron a mano
-// cuando sus cajas colisionan entre sí o con trazos. Las etiquetas manuales (labelMoved)
-// nunca se mueven y actúan como obstáculos fijos. Todo en px de canvas (mismo espacio que
-// _labelBox); el caller convierte el centro elegido de vuelta a plano para labelX/labelY.
-
+/** Una etiqueta ya colocada, con el rectángulo que ocupa en pantalla. */
 export interface DeclutterBox {
   id: string;
   minX: number;
@@ -14,6 +16,8 @@ export interface DeclutterBox {
   maxY: number;
 }
 
+/** Un tramo de tubería visto como segmento entre dos puntos de pantalla: también es obstáculo,
+ *  porque una etiqueta encima de la tubería queda tapada. */
 export interface DeclutterSeg {
   id: string;
   x1: number;
@@ -22,6 +26,7 @@ export interface DeclutterSeg {
   y2: number;
 }
 
+/** La foto de obstáculos de una pasada de dibujo: qué cajas están ocupadas y qué tramos hay. */
 export interface DeclutterFrame {
   placed: DeclutterBox[];
   segs: DeclutterSeg[];
@@ -156,9 +161,9 @@ function segHitsPoly(
   return false;
 }
 
-// Busca un centro libre para la caja (w×h, ángulo) empezando en el centro por defecto.
-// Devuelve null si el sitio por defecto ya está libre o si no hay sitio en la espiral
-// (en ambos casos el caller conserva la posición actual).
+/** Busca dónde poner una etiqueta de w×h sin tapar nada. Devuelve el centro libre más cercano al
+ *  que le tocaba, o null si el sitio por defecto ya estaba libre (null = "déjala donde está").
+ *  Ej: una etiqueta pegada a su propia tubería se desplaza al primer hueco de la espiral. */
 export function findFreeLabelCenter(
   selfId: string,
   boxW: number,
@@ -188,10 +193,10 @@ export function findFreeLabelCenter(
   return null;
 }
 
-// Foto de obstáculos del frame: cajas manuales ya calculadas (frame anterior o este) +
-// cajas de sifón + etiquetas de bajantes/áreas, y todos los segmentos de ramal visibles.
-// Las cajas de etiquetas auto de ESTE frame las agrega el caller (renderRamales) a
-// frame.placed a medida que dibuja, para que las siguientes las eviten.
+/** Toma la foto de obstáculos antes de pintar: etiquetas movidas a mano, etiquetas de sifón, de
+ *  bajantes y de áreas, los textos del plano ("TERRAZA COMPACTIDA") y todos los tramos de ramal
+ *  visibles; las redes ocultas no cuentan. Quien llama mete aquí las etiquetas que va pintando, para
+ *  que las siguientes las esquiven. */
 export function beginDeclutterFrame(engine: IPlanoEngineCore): DeclutterFrame {
   const placed: DeclutterBox[] = [];
   const push = (

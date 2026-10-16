@@ -1,3 +1,6 @@
+/** ¿Cayó el clic dentro de este polígono? Traza una línea horizontal desde el clic y cuenta
+ *  cuántas veces corta el contorno: un número impar de cortes significa "dentro".
+ *  Ej: el rectángulo de un área dibujada devuelve true; un punto fuera, false. */
 export function pointInPoly(px: number, py: number, cvsPts: { x: number; y: number }[]) {
   let inside = false;
   for (let i = 0, j = cvsPts.length - 1; i < cvsPts.length; j = i++) {
@@ -12,6 +15,9 @@ export function pointInPoly(px: number, py: number, cvsPts: { x: number; y: numb
   return inside;
 }
 
+/** ¿Cayó el clic sobre esta etiqueta? Una tubería a 45° arrastra su texto y la caja queda girada,
+ *  así que no sirve el rectángulo recto: el clic se rota el ángulo contrario y se compara como si
+ *  la etiqueta estuviera nivelada. */
 export function pointInLabelBox(
   px: number,
   py: number,
@@ -34,6 +40,9 @@ export function pointInLabelBox(
   return Math.abs(lx) <= box.w / 2 && Math.abs(ly) <= box.h / 2;
 }
 
+/** Distancia más corta del clic al tramo que va de (x1,y1) a (x2,y2). La proyección del clic se
+ *  recorta al tramo: si el clic cae "más allá" de un extremo, devuelve la distancia hasta ese
+ *  extremo y no hasta la recta que se prolongaría en la misma dirección. */
 export function pointToSegmentDist(
   px: number,
   py: number,
@@ -51,11 +60,10 @@ export function pointToSegmentDist(
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
-// Los íconos de accesorios dibujados en el cuerpo de un ramal (tee, válvula, etc.) no están
-// sobre la línea de la tubería: se dibujan un poco a un lado para que se distingan. Por eso el
-// área de clic del ícono es más grande que el vértice en sí — un clic sobre el ícono visible
-// puede caer lejos del vértice y aun así debe contar. Esta función chequea la cercanía al
-// vértice con un radio que también cubre el ícono, y devuelve qué vértice se acertó (o null).
+/** ¿Cayó el clic sobre un accesorio dibujado en el cuerpo de un ramal (tee, válvula…)? Devuelve
+ *  el índice del vértice donde está, o null si no hay ninguno. El radio de acierto es mayor que el
+ *  vértice porque el ícono se dibuja a un lado de la tubería: el clic cae sobre el ícono, no
+ *  sobre la línea. */
 export function findAccMedVertexHit(
   pts: number[][],
   accMed: Record<string, string> | undefined | null,
@@ -77,12 +85,10 @@ export function findAccMedVertexHit(
   return null;
 }
 
-// ¿Está el clic sobre el CUERPO (interior del trazo, no los extremos) de algún ramal? Devuelve
-// el id del ramal cuyo cuerpo se acertó (o null). Sirve para que un clic sobre una rama de tee
-// no lo robe el extremo cercano de OTRO ramal (p.ej. un host o un ramal ll que cruzó por
-// casualidad): si el clic cae en el interior del trazo de la rama, la selección/arrastre de
-// extremos ajenos debe ceder. t ∈ (0.05, 0.95) excluye los extremos — ahí el clic es arrastre de
-// vértice/unión, no cuerpo.
+/** ¿Cayó el clic sobre el CUERPO de algún ramal (la parte intermedia, no los extremos)? Devuelve
+ *  el id del ramal acertado, o null. Sirve para que un clic sobre una rama de tee no lo robe el
+ *  extremo de otro ramal que pasa cerca: si el clic está en el interior del trazo, la selección
+ *  de extremos ajenos tiene que ceder. */
 export function pointOnAnyBodySegment(
   ramales: { id?: string; pts?: number[][] }[],
   cx: number,
@@ -123,6 +129,9 @@ export function pointOnAnyBodySegment(
   return bestId;
 }
 
+/** Pega el punto al tramo más cercano y devuelve esa posición (null si el más cercano queda más
+ *  lejos que threshold). Ej: al soltar una línea guía a 6 px de un ramal, salta al punto exacto
+ *  del ramal para que la unión quede limpia en vez de cruzando al lado. */
 export function snapToSegment(x: number, y: number, pts: number[][], threshold: number = Infinity) {
   let best: { x: number; y: number } | null = null;
   let minD = Infinity;
@@ -145,6 +154,9 @@ export function snapToSegment(x: number, y: number, pts: number[][], threshold: 
   return best;
 }
 
+/** Las 4 esquinas de una caja girada `angle` radianes, más el rectángulo que la envuelve;
+ *  `margin` la ensancha por fuera. Ej: una etiqueta de una tubería a 45° o una caja de aguas
+ *  negras (CAN) girada se prueban con esto. */
 export function rotatedRectCorners(
   cx: number,
   cy: number,
@@ -172,6 +184,10 @@ export function rotatedRectCorners(
   };
 }
 
+/** Distancia del clic al ramal tal como se VE, no como está guardado: los codos se dibujan
+ *  redondeados con un arco, así que cerca de una esquina hay que medir hasta ese arco y no hasta
+ *  el vértice, o el clic parecería más lejos de la tubería de lo que está.
+ *  Ej: un clic justo sobre un codo a 90° devuelve ~0 gracias al arco. */
 export function distanceToRamal(
   cx: number,
   cy: number,
