@@ -1,12 +1,7 @@
-/**
- * Hook de suscripciones: fetch inicial + refetch ante el evento de pago
- * aprobado. `activos` se memoiza por filas; para el gating estricto de rutas
- * usar RequireModule, que re-evalúa la fecha en cada render.
- * `bloqueando` = VITE_SUSCRIPCIONES && flag BD: la UI nueva la decide VITE,
- * el bloqueo real lo decide la BD (flag OFF → nunca bloquea el cliente).
- * `decidido` = false mientras el flag de BD está sin resolver (null): evita el
- * flash de contenido protegido en RequireModule (montar y luego redirigir).
- */
+/** Hook de suscripciones: lee las filas al entrar y las recarga cuando llega el evento
+ *  de pago aprobado. `activos` son los módulos que el usuario puede usar HOY; para el
+ *  candado estricto de rutas está RequireModule, que revisa la fecha de vencimiento
+ *  en cada render. */
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {

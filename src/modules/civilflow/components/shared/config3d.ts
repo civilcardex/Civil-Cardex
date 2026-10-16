@@ -1,5 +1,5 @@
-/** Config compartida de los visores 3D (aparatos/epc/rci) — una sola fuente: desincronizar
- *  tipografía o FOV entre visores rompe encuadres y consistencia visual en silencio. */
+/** Config compartida de los visores 3D (aparatos/epc/rci (Red Contra Incendio)) — una sola fuente: desincronizar tipografía o FOV entre
+ * visores rompe encuadres y consistencia visual en silencio. */
 
 /** Fuente monoespaciada de overlays/etiquetas/botones de los visores 3D. */
 export const MONO_3D = "'Geist', monospace";

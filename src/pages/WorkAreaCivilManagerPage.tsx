@@ -26,9 +26,7 @@ const CARGANDO_STYLE: React.CSSProperties = {
   fontSize: 13,
 };
 
-/** Ruta /civilmanagerareatrabajo/:proyectoId? — deep-link por proyecto (espejo de la ruta
- *  de flow). Sin id → redirect al activo. Con id distinto → actualizar las 2 claves CM y
- *  reload completo: WorkAreaCivilManager lee storage al montar y no está keyeado por id. */
+/** Ruta /civilmanagerareatrabajo/:proyectoId? — deep-link por proyecto (espejo de la ruta de flow). Sin id → redirect al activo. */
 function WorkAreaCivilManagerPage() {
   usePageMeta(
     'Área de trabajo CivilManager',

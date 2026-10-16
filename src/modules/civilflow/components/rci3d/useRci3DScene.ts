@@ -8,7 +8,7 @@ import { devError } from '../../../../utils/devError';
 
 export type Three = typeof THREE_NS;
 
-/** API imperativa de la escena RCI — vive en un ref; UI y carga la leen directo. */
+/** API imperativa de la escena RCI (Red Contra Incendio) — vive en un ref; UI y carga la leen directo. */
 export interface Rci3DApi {
   THREE: Three;
   scene: THREE_NS.Scene;
@@ -37,9 +37,7 @@ export interface Rci3DApi {
   ajustar?: () => void;
   /** Repinta las sombras una vez (autoUpdate=false: escena estática). */
   marcarSombras?: () => void;
-  /** RENDER BAJO DEMANDA (orig. usuario: "está lento"): frames restantes a renderizar. El
-   *  loop solo pinta cuando OrbitControls reporta movimiento, hay animación de vista o este
-   *  contador > 0 — idle = GPU en cero. */
+  /** RENDER BAJO DEMANDA (pedido del cliente: "está lento"): cuántos cuadros faltan dibujar (0 = quieto). */
   framesPendientes: number;
   /** Lupa prendida: el loop repinta continuo (el círculo sigue al cursor sin mover la cámara). */
   lupaOn?: boolean;
@@ -47,10 +45,7 @@ export interface Rci3DApi {
 
 export type Rci3DApiRef = React.MutableRefObject<Rci3DApi | null>;
 
-/** Monta renderer + escena + cámaras + rig de 4 luces + OrbitControls con el look del HTML
- *  original (fondo 0x0d1117 + fog, sombras PCFSoft 2048², sRGB + LinearToneMapping). El color
- *  management moderno se desactiva para reproducir el pipeline de three r128 (vertex colors
- *  lineales + salida sRGB, sin conversión de entrada). Limpieza completa al desmontar. */
+/** Monta renderer + escena + cámaras + rig de 4 luces + OrbitControls con el look del HTML original (fondo 0x0d1117 + fog, sombras PCFSoft 2048², sRGB + LinearToneMapping). */
 export function useRci3DScene(
   wrapRef: React.RefObject<HTMLDivElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,

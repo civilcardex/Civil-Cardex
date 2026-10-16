@@ -13,9 +13,8 @@ interface Props {
   onSelect: (id: number | null) => void;
 }
 
-/** Nota de diseño normativa con links — compartida por RciSidebar y RciRedSidebar (mismo
- *  texto/links; ambos visores RCI). NFPA 20 es internacional; la adaptación nacional (NSR-10
- *  Título J en Colombia) sigue al país del proyecto (orig. usuario). */
+/** Nota de diseño normativa con links — compartida por RciSidebar y RciRedSidebar (mismo texto/links; ambos visores RCI (Red Contra Incendio)).
+ * NFPA 20 es internacional; la adaptación nacional (NSR (Norma Sismo Resistente)-10, Norma Sismo Resistente, Título J en Colombia) sigue al país del proyecto (pedido del cliente). */
 export function NotaDisenoRci() {
   const perfil = usePerfilIso();
   if (perfil.id !== 'CO') {
@@ -50,7 +49,7 @@ export function NotaDisenoRci() {
   );
 }
 
-/** Nombres en castellano correcto (orig. usuario): solo la PRIMERA letra de la PRIMERA
+/** Nombres en castellano correcto (pedido del cliente): solo la PRIMERA letra de la PRIMERA
  *  palabra en mayúscula — "Bomba Principal 4x4" → "Bomba principal 4x4". */
 function nombreLegible(name: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();

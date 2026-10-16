@@ -1,8 +1,7 @@
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
-/** Dispose de geometría/material de un grupo three ya parseado que ya no se usará (desmonte a
- *  mitad de carga: la escena vieja se disposeó y el grupo quedaría huérfano en memoria).
- *  THREE llega por parámetro para que el kernel no dependa del paquete three. */
+/** Dispose de geometría/material de un grupo three ya parseado que ya no se usará (desmonte a mitad de carga: la escena vieja se disposeó y el grupo quedaría huérfano en memoria).
+ * THREE llega por parámetro para que el kernel no dependa del paquete three. */
 export function disposeGrupo(
   THREE: { Mesh: new (...args: never[]) => unknown },
   grupo: { traverse(cb: (obj: unknown) => void): void },
@@ -19,12 +18,8 @@ export function disposeGrupo(
   });
 }
 
-/** Núcleo común de los 3 visores 3D (aparatos/epc/rci): recorre las claves con progreso
- *  20→95 % y pausa entre modelos para no congelar la UI (pausaMs, default 150; 0 en
- *  re-entradas con los GLB ya en caché — el pacing es decorativo, no protege nada).
- *  cargarPieza loguea sus propios errores y devuelve false si la pieza falló; abort() corta
- *  el recorrido (desmonte). El finish/encuadre de cada visor queda afuera. Devuelve cuántas
- *  piezas fallaron. */
+/** Núcleo común de los 3 visores 3D (aparatos/epc/rci (Red Contra Incendio)): recorre las claves con progreso 20→95 % y pausa entre modelos para no congelar la UI (pausaMs, default 150; 0 en re-entradas con los GLB ya en caché — el
+ * pacing es decorativo, no protege nada). cargarPieza loguea sus propios errores y devuelve false si la pieza falló; abort() corta el recorrido (desmonte). */
 export async function cargarModelosSecuencial(
   claves: readonly string[],
   onProgress: (pct: number, texto: string) => void,

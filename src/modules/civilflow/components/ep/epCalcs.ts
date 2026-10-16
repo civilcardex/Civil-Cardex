@@ -6,7 +6,7 @@ import { dec } from '../../utils/parseDecimal';
 // cisterna — SIN descuento de Pred, a diferencia del modo RED), NPSHd (patm − pv − |z_cis| −
 // hf_cis) vs NPSHr + 0.5 m de margen normativo (RAS 2000).
 
-/** Forma mínima de EPData que los cálculos cisterna leen (todo string, convención EP). */
+/** Forma mínima de EPData que los cálculos cisterna leen (todo string, convención EP (Equipo de Presion)). */
 export interface EpCisternaIn {
   modo: 'red' | 'cisterna';
   ztop: string;

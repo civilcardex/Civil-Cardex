@@ -6,11 +6,7 @@ const TD_CLS = 'px-3 py-1.5 border border-outline-variant text-on-surface whites
 const TH_CLS =
   'text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap';
 
-/** Tabla compacta de la documentación: reemplaza el wrapper + <td>/<th> repetidos
- *  generando el MISMO DOM actual (div.overflow-x-auto > table > tbody con fila de <th>).
- *  Las celdas aceptan ReactNode para enlaces (NormaLink) o sub/sup; el texto plano
- *  alimenta la búsqueda de DocsPage (nodeText). `foot` es contenido hermano de la
- *  <table> DENTRO del wrapper (nota al pie que scrollea junto con la tabla). */
+/** Dibuja una tabla chica de la ayuda con el mismo aspecto de siempre. Acepta texto o enlaces y alimenta el buscador. Ej: head + rows + foot opcional. */
 export function Tabla({
   head,
   rows,
@@ -47,8 +43,9 @@ export function Tabla({
   );
 }
 
-/** Caja de fórmula destacada; `contenido` acepta texto plano o JSX (sub/sup/br/entidades).
- *  `compacto=true` para las cajas sin my-2/leading-relaxed. */
+/** Caja de fórmula destacada (fondo oscuro, letra mono). `contenido` acepta texto plano
+ *  o JSX (sub/sup/br/entidades); `compacto=true` la hace más ajustada para usarla
+ *  dentro de listas o tablas, sin los márgenes de la caja normal. */
 export function fx(contenido: ReactNode, compacto = false): JSX.Element {
   return (
     <div

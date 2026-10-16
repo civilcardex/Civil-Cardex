@@ -79,7 +79,6 @@ function getMaterial(THREE: Three, r?: number, g?: number, b?: number): any {
 }
 
 export interface GLBParseResult {
-  /** Group con la jerarquía de nodos del GLB. */
   group: InstanceType<Three['Group']>;
 }
 

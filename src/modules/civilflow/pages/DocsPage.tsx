@@ -4,8 +4,8 @@ import { docData } from './docs/data';
 import SectionAccordion from './docs/SectionAccordion';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 
-/** Extrae texto plano de un nodo React — búsqueda honesta sin JSON.stringify (pasa por las
- *  props.children de los elementos, como el hack anterior, pero sin contaminar con clases). */
+/** Saca el texto plano de un bloque de la doc para poder buscarlo: baja por los hijos de
+ *  cada pieza de React y junta solo letras y números (sin clases ni etiquetas). */
 function nodeText(n: unknown): string {
   if (n == null || typeof n === 'boolean') return '';
   if (typeof n === 'string' || typeof n === 'number') return String(n);
@@ -24,7 +24,7 @@ const domId = (key: string): string =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-');
 
-/** Agrupación de categorías por módulo (orig. usuario: la doc se navega por módulo).
+/** Agrupación de categorías por módulo (pedido del cliente: la doc se navega por módulo).
  *  Las claves SON las de docData (data/index.ts) — aunque el archivo fuente se llame
  *  hydraulics.tsx etc., la clave exportada sigue en español. */
 const MODULOS: { label: string; nota: string; cats: string[] }[] = [

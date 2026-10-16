@@ -36,9 +36,8 @@ type EstadoRecovery =
   | { tipo: 'recovery' }
   | { tipo: 'invalido'; razon: string };
 
-/** Clasifica el fragment de la URL (implicit flow) sin timer: hash con `error` = link
- *  vencido/usado; `type=recovery` = sesión en camino (esperar loading); sin hash =
- *  llegada normal al formulario de pedir correo. */
+/** Clasifica el fragment de la URL (implicit flow) sin timer: hash con `error` = link vencido/usado; `type=recovery` = sesión en camino (esperar
+ * loading); sin hash = llegada normal al formulario de pedir correo. */
 function clasificarRecovery(): EstadoRecovery {
   const h = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   if (h.get('error')) {
@@ -50,9 +49,8 @@ function clasificarRecovery(): EstadoRecovery {
   return h.get('type') === 'recovery' ? { tipo: 'recovery' } : { tipo: 'sin-link' };
 }
 
-/** Restablecimiento de contraseña, doble modo en una página: sin sesión = solicitar el
- *  correo de recuperación; con sesión (el link del correo vuelve con sesión recovery y el
- *  cliente la detecta en la URL) = formulario de nueva contraseña. */
+/** Restablecimiento de contraseña, doble modo en una página: sin sesión = solicitar el correo de recuperación; con sesión (el link del correo vuelve con sesión
+ * recovery y el cliente la detecta en la URL) = formulario de nueva contraseña. */
 function ResetPasswordPage() {
   const { user, loading, resetPassword, updatePassword } = useAuth();
   const navigate = useNavigate();

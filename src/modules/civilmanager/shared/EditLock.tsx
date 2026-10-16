@@ -1,24 +1,13 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
-/**
- * Modo edición por pestaña: false = solo lectura, true = editable.
- * El default `true` mantiene el comportamiento actual en superficies sin provider.
- *
- * Reglas del patrón (todas las superficies editables deben cumplirlas):
- * 1. useCrudTable se autoblinda: sus mutadores (add/del/setEditIdx) nunca confían
- *    en el call-site para respetar el modo edición.
- * 2. El fieldset disabled es red de seguridad obligatoria en todo panel con inputs
- *    siempre visibles (fieldset disabled solo afecta controles de formulario).
- */
+/** Modo edición por pestaña: false = solo lectura, true = editable. */
 interface EditCtxVal {
   editing: boolean;
   setEditing: (v: boolean) => void;
 }
 const EditLockCtx = createContext<EditCtxVal | null>(null);
 
-/** Provider del modo edición de una pestaña. dim: opaca el contenido en solo lectura.
- *  El botón EDITAR/LISTO lo pinta cada tabla (TableHeader → EditToggleBtn) — sin barra
- *  general fuera de las tablas (orig. usuario). */
+/** Provider del modo edición de una pestaña. dim: opaca el contenido en solo lectura. */
 export function EditableSection({ children, dim = true }: { children: ReactNode; dim?: boolean }) {
   const [editing, setEditing] = useState(false);
   return (
@@ -32,7 +21,6 @@ export function EditableSection({ children, dim = true }: { children: ReactNode;
   );
 }
 
-/** true si la pestaña actual está en modo edición. */
 export function useEditable(): boolean {
   return useContext(EditLockCtx)?.editing ?? true;
 }

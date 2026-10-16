@@ -1,7 +1,7 @@
 import type * as THREE_NS from 'three';
 import type { Rci3DApi } from './useRci3DScene';
 import { RCI_FOV } from './rci3dData';
-import { animarCamaraHacia, aspectDe } from '../shared/controls3d';
+import { animarCamaraHacia, aspectDe, proyeccionEsquinas } from '../shared/controls3d';
 
 // FORK DELIBERADO de aparatos3d/vistasCamara (mismo esqueleto, otro pipeline/encuadre): no
 // fusionar sin revisar ambos visores — el genérico acoplaría los 3 módulos 3D (ponytail).
@@ -47,24 +47,14 @@ function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.V
   const right = new THREE.Vector3().crossVectors(fwd, upVec).normalize();
   const realUp = new THREE.Vector3().crossVectors(right, fwd).normalize();
 
-  const corners: THREE_NS.Vector3[] = [];
-  for (const sx of [box.min.x, box.max.x])
-    for (const sy of [box.min.y, box.max.y])
-      for (const sz of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(sx, sy, sz));
-
-  let minR = 1e9;
-  let maxR = -1e9;
-  let minU = 1e9;
-  let maxU = -1e9;
-  for (const c of corners) {
-    const v = c.clone().sub(tgt);
-    const r = v.dot(right);
-    const u = v.dot(realUp);
-    if (r < minR) minR = r;
-    if (r > maxR) maxR = r;
-    if (u < minU) minU = u;
-    if (u > maxU) maxU = u;
-  }
+  const { minR, maxR, minU, maxU } = proyeccionEsquinas(
+    (x, y, z) => new THREE.Vector3(x, y, z),
+    box.min,
+    box.max,
+    tgt,
+    right,
+    realUp,
+  );
 
   let halfW = Math.max(Math.abs(minR), Math.abs(maxR)) * 1.15;
   let halfH = Math.max(Math.abs(minU), Math.abs(maxU)) * 1.15;

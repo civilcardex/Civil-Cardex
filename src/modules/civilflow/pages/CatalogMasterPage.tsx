@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GAS } from '../constants/engineeringDataGas';
+import { OPEN_TAB_KEY } from '../constants/storage-keys';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData';
 import SectionCard from './catalog/SectionCard';
 import {
@@ -111,7 +112,7 @@ export default function CatalogMasterPage() {
             type="button"
             className="td-mono"
             onClick={() => {
-              sessionStorage.setItem('openTab', 'datos');
+              sessionStorage.setItem(OPEN_TAB_KEY, 'datos');
               navigate('/civilflowareatrabajo');
             }}
             style={CatalogMasterPage_S1}

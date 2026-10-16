@@ -249,9 +249,8 @@ function PricingSuscripciones() {
     if (q && CATALOGO.some((m) => m.id === q)) return new Set([q as ModuloId]);
     return null;
   }, [location.search]);
-  /** ?modulo= siembra la selección SOLO hasta que el usuario interactúa: tras el
-   *  primer toggle la elección es del usuario y el override del URL debe morir,
-   *  si no total/checkbox/modal leen conjuntos distintos. */
+  /** ?modulo= siembra la selección SOLO hasta que el usuario interactúa: tras el primer toggle la elección es del usuario y el override del URL
+   * debe morir, si no total/checkbox/modal leen conjuntos distintos. */
   const seleccionEfectiva = !ignoraUrl && seleccionMemo ? seleccionMemo : seleccion;
   const [checkoutAbierto, setCheckoutAbierto] = useState(false);
   // Puestos por modulo (empresarial): 1 = individual. Tope automatico 24; 25+ negociado.

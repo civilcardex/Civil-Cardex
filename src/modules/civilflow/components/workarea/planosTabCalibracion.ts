@@ -96,11 +96,8 @@ export interface ConfigCalibracion {
   definedScale: number;
 }
 
-/** Estampa la calibración sobre UN doc de trazos (mutación pura, sin IO): origen, factores,
- *  escala exacta y — si el doc reclamaba OTRA escala — re-base de su geometría anclado al
- *  propio origen del stamp. Siembra ts si no tenía (el árbitro de carga trataba un doc sin ts
- *  como localTs=0 y cualquier fila BD lo pisaba). Los errores del re-base se tragan a propósito
- *  (devError): el stamp de escala cae al valor nuevo y la calibración nunca se pierde. */
+/** Estampa la calibración sobre UN doc de trazos (mutación pura, sin IO): origen, factores, escala exacta y — si el doc reclamaba OTRA escala
+ * — re-base de su geometría anclado al propio origen del stamp. */
 export function stampCalibracion(config: ConfigCalibracion, doc: Record<string, unknown>): void {
   doc.origen = config.origen;
   const escalaPrev = typeof doc.scaleM === 'number' ? doc.scaleM : null;

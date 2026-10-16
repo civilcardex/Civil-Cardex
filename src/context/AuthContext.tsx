@@ -7,7 +7,7 @@ interface User {
   user_metadata?: Record<string, string>;
 }
 
-/** Auth state API — current user, loading flag, and signIn/signUp methods backed by Supabase auth. */
+/** Estado de sesión (Supabase auth): usuario actual + signIn/signUp. Ej: `const { user } = useAuth()`. */
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -20,7 +20,8 @@ interface AuthContextType {
     password: string,
     options?: { data?: Record<string, string> },
   ) => Promise<Awaited<ReturnType<typeof supabase.auth.signUp>>['data']>;
-  /** Envía el correo de restablecimiento; el link vuelve a /restablecer con sesión recovery. */
+  /** Envía el correo de restablecimiento; el link vuelve a /restablecer con una sesión
+   *  recovery (sesión especial de un solo uso que solo sirve para cambiar la contraseña). */
   resetPassword: (email: string) => Promise<void>;
   /** Cambia la contraseña del usuario con sesión activa (flujo recovery) y CIERRA la sesión:
    *  la sesión de recovery nace de un link de un solo uso y no debe sobrevivir al cambio —
@@ -30,7 +31,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/** Wraps children with Supabase auth state — fetches current user on mount, listens to auth state changes, exposes user/loading/signIn/signUp via context. */
+/** Provee la sesión a la app: lee el usuario al montar y escucha cambios de auth. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-/** Consumer hook for AuthContext — returns {user, loading, signIn, signUp}. Throws if used outside AuthProvider. */
+/** Lee la sesión (user/loading/signIn/signUp). Ej: `const { user } = useAuth()`. Falla fuera de AuthProvider. */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error('useAuth must be used within AuthProvider');

@@ -1,8 +1,4 @@
-/**
- * SOLO DESARROLLO — preview de /empresa con datos falsos (borrar con el route).
- * Renderiza PanelSuscripcion con dos suscripciones mock y los miembros viajan por el
- * prop `mock` (sin tocar Supabase: ni mis_miembros ni RPCs de escritura).
- */
+/** SOLO DESARROLLO — preview de /empresa con datos falsos (borrar con el route). */
 import { usePageMeta } from '../hooks/usePageMeta';
 import { PanelSuscripcion } from './CompanyPage';
 import type { SuscripcionRow } from '../lib/subscriptions/subscriptionsService';

@@ -1,8 +1,4 @@
-/**
- * Lectura de suscripciones del usuario (RLS: solo sus filas) + verificación
- * de vigencia. La verdad es fecha_fin: estaActiva la compara contra el reloj
- * actual, así que una suscripción vence en vivo sin refetch.
- */
+/** Suscripciones del usuario (la base de datos solo le devuelve las suyas). La app confía en la fecha de vencimiento (fecha_fin), no en promesas: si venció, se bloquea al toque. */
 import { supabase } from '../supabase';
 import type { ModuloId } from './catalog';
 import { devError } from '../../utils/devError';
@@ -24,7 +20,7 @@ export function dispararRefetchSuscripciones(): void {
   window.dispatchEvent(new Event(EV_SUSCRIPCIONES));
 }
 
-/** Trae las suscripciones del usuario; [] si no hay sesión o falla la lectura. */
+/** Trae las suscripciones guardadas del usuario; si no hay sesión o falla la lectura devuelve [] (la app se comporta como sin suscripción). */
 export async function fetchSuscripciones(): Promise<SuscripcionRow[]> {
   try {
     const { data, error } = await supabase
@@ -41,7 +37,7 @@ export async function fetchSuscripciones(): Promise<SuscripcionRow[]> {
   }
 }
 
-/** Vigente: estado activa y fecha_fin estrictamente futura. */
+/** ¿La suscripción sigue al día? Debe estar marcada como activa y su fecha de fin tiene que ser futura. Ej: fecha_fin '2026-11-01' con hoy 2026-10-14 → true. */
 export function estaActiva(
   s: Pick<SuscripcionRow, 'estado' | 'fecha_fin'>,
   ahora: Date = new Date(),
@@ -50,10 +46,7 @@ export function estaActiva(
   return new Date(s.fecha_fin).getTime() > ahora.getTime();
 }
 
-/** Módulos con acceso VIGENTE del usuario: propias por RLS + asientos de empresa.
- *  El RPC mis_accesos une app_suscripciones y app_suscripciones_miembros server-side
- *  (la policy owner-only de app_suscripciones no ve los asientos). Devuelve [] si el
- *  RPC aún no existe en BD (feature no desplegada) — fail-open como el resto. */
+/** Módulos a los que puede entrar: los comprados por él + los asientos que le dieron como miembro del equipo de una empresa. Si la función de BD no existe todavía, devuelve []. */
 export async function fetchModulosConAcceso(): Promise<ModuloId[]> {
   try {
     const { data, error } = await supabase.rpc('mis_accesos');
@@ -64,7 +57,7 @@ export async function fetchModulosConAcceso(): Promise<ModuloId[]> {
   }
 }
 
-/** Set de módulos con suscripción vigente. */
+/** Lista rápida de módulos con suscripción al día (sin repetidos). */
 export function modulosActivos(rows: SuscripcionRow[], ahora: Date = new Date()): Set<ModuloId> {
   const activos = new Set<ModuloId>();
   for (const r of rows) {
@@ -73,11 +66,7 @@ export function modulosActivos(rows: SuscripcionRow[], ahora: Date = new Date())
   return activos;
 }
 
-/**
- * Detecta el fallo "edge function de pagos inexistente" (crear-checkout / verificar-pago
- * aún sin deploy — ACTIVACIÓN paso 3 en AGENTS.md): el relay responde 404 ("Function
- * not found") y supabase-js lo entrega en el mensaje y/o el status del error.
- */
+/** Detecta que la pasarela de pagos no está desplegada (error 404): la app lo usa para avisar "pagos aún no disponibles" en vez de mostrar un error crudo. */
 export function edgePagoNoDesplegada(err: unknown): boolean {
   const e = err as { message?: string; status?: number; context?: { status?: number } } | null;
   const status = e?.status ?? e?.context?.status;
@@ -86,10 +75,7 @@ export function edgePagoNoDesplegada(err: unknown): boolean {
 
 let promiseHabilitadas: Promise<boolean> | null = null;
 
-/** Flag global de la BD (app_config → RPC suscripciones_habilitadas). Cache por
- *  sesión: un solo RPC aunque many instancias del hook lo pidan. Error → false:
- *  sin confirmación de la BD el cliente NUNCA bloquea (el candado real es server-side).
- *  El false por error NO se cachea: el próximo fetch reintenta. */
+/** Interruptor maestro guardado en la BD (función suscripciones_habilitadas): mientras esté en off, la app funciona como siempre y nadie se bloquea. Si la lectura falla devuelve false SIN guardarlo (se reintenta). */
 export function suscripcionesHabilitadas(): Promise<boolean> {
   promiseHabilitadas ??= (async () => {
     try {

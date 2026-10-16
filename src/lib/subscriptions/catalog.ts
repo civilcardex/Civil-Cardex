@@ -1,9 +1,4 @@
-/**
- * Catálogo de venta por módulo + cálculo de totales con descuentos.
- * Única fuente de precios del cliente; el servidor mantiene una COPIA en
- * supabase/functions/_shared/lemon.ts (test de paridad vigila el sync) y la
- * VERDAD está en app_precios (BD — sincronizarPreciosBd pisa estos literales).
- */
+/** Precios y descuentos de venta por módulo. AVISO: estos números son solo el respaldo — el precio real vive en la tabla app_precios (BD) y se baja con sincronizarPreciosBd; cambiarlo en SQL no necesita deploy. */
 import { devError } from '../../utils/devError';
 
 export type ModuloId = 'flow' | 'manage';
@@ -44,23 +39,23 @@ export const CATALOGO: ModuloVenta[] = [
   },
 ];
 
-/** Descuento BASE por periodo — aplica desde el PRIMER módulo. */
+/** Descuento por pagar de una vez: 10 % a los 6 meses, 15 % al año (desde el primer módulo). */
 export const DESCUENTO_BASE: Record<Periodo, number> = { mensual: 0, semestral: 0.1, anual: 0.15 };
 
-/** Extra acumulativo por cada módulo adicional (n−1): 2 módulos → +10%, 3 → +20%… */
+/** 10 % extra por cada módulo adicional al primero (2 módulos → +10 %, 3 → +20 %…). */
 export const DESCUENTO_POR_MODULO = 0.1;
 
-/** Tramos de descuento por VOLUMEN (puestos totales de la compra). 25+ = negociado directo. */
+/** Descuento por comprar VARIOS puestos (asientos) a la vez. Desde 25 puestos no se vende online: se contactan con CivilCardex. */
 export const DESCUENTO_POR_PUESTOS: { min: number; max: number; pct: number }[] = [
   { min: 2, max: 4, pct: 0.1 },
   { min: 5, max: 9, pct: 0.15 },
   { min: 10, max: 24, pct: 0.2 },
 ];
 
-/** Por encima de este total de puestos el precio se negocia directo (CTA Contáctenos). */
+/** A partir de estos puestos el precio se negocia con la empresa (la UI ofrece contactar a ventas). */
 export const PUESTOS_TOPE_AUTOMATICO = 24;
 
-/** Puestos por módulo en el carrito (lo que falta vale 1). */
+/** Cuántos puestos (asientos de equipo) se pidieron por módulo; lo que no se llena vale 1. */
 export type PuestosPorModulo = Partial<Record<ModuloId, number>>;
 
 /** Puestos efectivos de un módulo (mínimo 1). */
@@ -69,7 +64,7 @@ function puestosDe(puestos: PuestosPorModulo | undefined, id: ModuloId): number 
   return typeof n === 'number' && Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
-/** 1→0% · 2-4→10% · 5-9→15% · 10-24→20% · 25+→null (negociado directo con CivilCardex). */
+/** Descuento por volumen según los puestos TOTALES de la compra: 1 → 0 % · 2-4 → 10 % · 5-9 → 15 % · 10-24 → 20 % · 25+ → null (se habla con ventas). */
 export function descuentoPorPuestos(totalPuestos: number): number | null {
   if (!Number.isFinite(totalPuestos) || totalPuestos < 1) return 0;
   if (totalPuestos >= 25) return null;
@@ -80,13 +75,12 @@ export function descuentoPorPuestos(totalPuestos: number): number | null {
 /** Interruptor global del sistema de suscripciones. OFF = app como siempre. */
 export const SUSCRIPCIONES_ACTIVAS = import.meta.env.VITE_SUSCRIPCIONES === 'true';
 
-/** Busca un módulo del catálogo. Devuelve null (NO un fallback silencioso) si el id no
- *  existe — un typo aquí cobraba/mostraba otro módulo. */
+/** Busca un módulo en el catálogo. Devuelve null a propósito si el id no existe (antes un error de tipeo cobraba/mostraba otro módulo sin avisar). */
 function moduloVenta(id: ModuloId): ModuloVenta | null {
   return CATALOGO.find((x) => x.id === id) ?? null;
 }
 
-/** Precio de un módulo para el periodo elegido. */
+/** Cuánto cuesta el módulo en el periodo elegido (en centavos de dólar). */
 export function precioDePeriodo(m: ModuloVenta, p: Periodo): number {
   return p === 'anual'
     ? m.precioAnualCentavos
@@ -95,14 +89,14 @@ export function precioDePeriodo(m: ModuloVenta, p: Periodo): number {
       : m.precioMensualCentavos;
 }
 
-/** Fracción descontada: base del periodo + 10% por cada módulo adicional (tope 100%). */
+/** Descuento total en fracción: el del periodo + 10 % por cada módulo extra (nunca más del 100 %). */
 export function descuentoAplicado(modulos: ModuloId[], periodo: Periodo): number {
   const n = new Set(modulos).size;
   return Math.min(1, DESCUENTO_BASE[periodo] + Math.max(0, n - 1) * DESCUENTO_POR_MODULO);
 }
 
-/** Total en centavos: Σ(precio×puestos) × (1 − dto base/acumulativo) × (1 − dto por volumen).
- *  Deduplica módulos. Sin puestos = 1 por módulo (compatible con llamadas viejas). */
+/** Total a cobrar en centavos: Σ(precio×puestos) × (1 − descuento por periodo/módulos) × (1 − descuento por puestos).
+ *  Sin puestos se cobra 1 por módulo (compatible con los llamados viejos). */
 export function calcularTotalCentavos(
   modulos: ModuloId[],
   periodo: Periodo,
@@ -122,8 +116,7 @@ export function calcularTotalCentavos(
   return Math.round(bruto * (1 - descuentoAplicado(unicos, periodo)) * (1 - dtoVolumen));
 }
 
-/** Centavos USD → "US$25.00" / "US$42.50". Prefijo US$ (y no "$" solo) para que en países
- *  con peso (CO, MX, AR…) el símbolo de cobro se lea inequívocamente como DÓLAR. */
+/** Centavos de USD a texto: "US$25.00". Lleva el prefijo US$ a propósito — en países con peso (CO, MX, AR…) cobrar con "$" suelto se lee como la moneda local. */
 export function formatUSD(centavos: number): string {
   try {
     return `US$${new Intl.NumberFormat('en-US', {
@@ -138,10 +131,7 @@ export function formatUSD(centavos: number): string {
 
 import { supabase } from '../supabase';
 
-/** FUENTE ÚNICA de precios (deuda #4): pisa los literales de CATALOGO con app_precios (BD).
- *  El servidor cobra con la MISMA tabla — sin deploy, cambiar precio = UPDATE en SQL Editor.
- *  Fallback silencioso si la migración no está aplicada (RPC 404): literales siguen viviendo.
- *  Llamar una vez al montar el sistema de suscripciones (useSuscripciones). */
+/** Baja los precios reales desde la tabla app_precios (BD) y pisa estos literales, así el precio se cambia con un UPDATE en SQL sin tocar código. Se llama una vez al abrir la app. */
 export async function sincronizarPreciosBd(): Promise<void> {
   try {
     const { data, error } = await supabase.rpc('obtener_catalogo');

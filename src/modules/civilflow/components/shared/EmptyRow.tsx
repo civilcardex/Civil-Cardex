@@ -1,8 +1,5 @@
-/** Fila vacía de tabla ("No hay tramos...") — un solo lugar para el texto y el estilo.
- *  @param colSpan - columnas que abarca la celda.
- *  @param fontSize - tamaño de letra (9 en tablas densas, 12 en el resto).
- *  @returns fila `tr` lista para `tbody`.
- */
+/** Fila "no hay datos todavía" de las tablas: texto y estilo en un solo lugar.
+ *  `colSpan` = columnas que ocupa la celda; `fontSize` = letra (9 en tablas densas, 12 el resto). */
 export default function EmptyRow({
   colSpan,
   fontSize = 12,

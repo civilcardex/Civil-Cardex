@@ -1,8 +1,18 @@
-/** Celda de elementos asociados como chips — el mismo estilo en Diseño de red aguas lluvias
- *  y en las tablas de chequeo (borde/color de la red ll, mono, wrap centrado). */
-export default function ChipList({ items }: { items: string[] }) {
+/** Celda de elementos asociados como chips (borde/color de red, mono, wrap centrado).
+ *  items acepta texto o {label, title} para tooltip. */
+export default function ChipList({
+  items,
+  colorVar = 'var(--ll)',
+  fontSize = 11,
+  pad = '2px 3px',
+}: {
+  items: Array<string | { key?: string; label: string; title?: string }>;
+  colorVar?: string;
+  fontSize?: number;
+  pad?: string;
+}) {
   if (items.length === 0) {
-    return <span style={{ fontSize: 11, color: 'var(--txt3)' }}>—</span>;
+    return <span style={{ fontSize, color: 'var(--txt3)' }}>—</span>;
   }
   return (
     <div
@@ -14,22 +24,28 @@ export default function ChipList({ items }: { items: string[] }) {
         alignItems: 'center',
       }}
     >
-      {items.map((it) => (
-        <span
-          key={it}
-          style={{
-            fontSize: 11,
-            padding: '2px 3px',
-            border: '1px solid var(--ll)',
-            borderRadius: 3,
-            color: 'var(--ll)',
-            fontFamily: 'var(--mono)',
-            lineHeight: 1.3,
-          }}
-        >
-          {it}
-        </span>
-      ))}
+      {items.map((it) => {
+        const label = typeof it === 'string' ? it : it.label;
+        const title = typeof it === 'string' ? undefined : it.title;
+        const key = typeof it === 'string' ? it : (it.key ?? it.label);
+        return (
+          <span
+            key={key}
+            title={title}
+            style={{
+              fontSize,
+              padding: pad,
+              border: `1px solid ${colorVar}`,
+              borderRadius: 3,
+              color: colorVar,
+              fontFamily: 'var(--mono)',
+              lineHeight: 1.3,
+            }}
+          >
+            {label}
+          </span>
+        );
+      })}
     </div>
   );
 }

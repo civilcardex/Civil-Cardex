@@ -1,8 +1,5 @@
-/**
- * Diálogo "¿en qué módulo desea crear el proyecto?": lista SOLO los módulos
- * comprados y vigentes del usuario. Con 0 activos ofrece ir a /pricing; con
- * exactamente 1 entra directo (sin paso de selección).
- */
+/** Diálogo "¿en qué módulo desea crear el proyecto?": lista SOLO los módulos comprados y vigentes del usuario.
+ * Con 0 activos ofrece ir a /pricing; con exactamente 1 entra directo (sin paso de selección). */
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { CATALOGO, type ModuloId, type ModuloVenta } from '../../lib/subscriptions/catalog';

@@ -129,10 +129,8 @@ export interface ApuCalculado {
   costo_unitario: number;
 }
 
-/**
- * Columnas del formulario Excel del cliente: qué columna de la hoja corresponde a cada dato.
- * Los valores son índices de columna (0 = primera) o null si esa columna no se usó.
- */
+/** Columnas del formulario Excel del cliente: qué columna de la hoja corresponde a cada dato.
+ * Los valores son índices de columna (0 = primera) o null si esa columna no se usó. */
 export interface MapeoFormulario {
   fila_inicio: number;
   col_item: number | null;
@@ -149,10 +147,8 @@ export interface MapeoFormulario {
 /** Un mapeo de columnas guardado en la lista de favoritos, para reutilizarlo en otros formularios. */
 export type MapeoFormularioGuardado = MapeoFormulario & { id: string };
 
-/**
- * Copia del formulario Excel original del cliente, guardada dentro del presupuesto.
- * Si el archivo pesa más de 4 MB no se adjunta (archivo_b64 queda null) y solo se guarda su mapeo.
- */
+/** Copia del formulario Excel original del cliente, guardada dentro del presupuesto.
+ * Si el archivo pesa más de 4 MB no se adjunta (archivo_b64 queda null) y solo se guarda su mapeo. */
 export interface FormularioOriginal {
   archivo_b64: string | null;
   archivo_adjunto: boolean;

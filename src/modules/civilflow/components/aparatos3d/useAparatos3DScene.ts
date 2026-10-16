@@ -37,10 +37,8 @@ export interface Aparatos3DApi {
 
 export type Aparatos3DApiRef = React.MutableRefObject<Aparatos3DApi | null>;
 
-/** Monta renderer + escena + cámaras (persp/orto) + rig de 4 luces + OrbitControls sobre el
- *  canvas, con el mismo look del HTML original: fondo 0x0d1117 con fog, sombras suaves 2048²,
- *  sRGB + LinearToneMapping, luces key/fill reposicionables por modelo (setRig). Limpieza
- *  completa al desmontar (Strict Mode monta dos veces). */
+/** Monta renderer + escena + cámaras (persp/orto) + rig de 4 luces + OrbitControls sobre el canvas, con el mismo look del HTML original: fondo 0x0d1117 con fog, sombras
+ * suaves 2048², sRGB + LinearToneMapping, luces key/fill reposicionables por modelo (setRig). */
 export function useAparatos3DScene(
   wrapRef: React.RefObject<HTMLDivElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,

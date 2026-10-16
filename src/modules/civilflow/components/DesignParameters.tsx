@@ -111,7 +111,7 @@ const DesignParameters_S3: React.CSSProperties = {
   background: 'transparent',
 };
 
-/** Valor numérico del catálogo NTC 3728: null (dato pendiente) se muestra como guion. */
+/** Valor numérico del catálogo NTC (Norma Tecnica Colombiana) 3728: null (dato pendiente) se muestra como guion. */
 const fmtNTC = (x: number | null) => (x == null ? '—' : x.toFixed(2));
 
 interface RedMat {

@@ -139,7 +139,6 @@ export const BADGE_STYLE = {
 // Página de compra por módulo (SUSCRIPCIONES_ACTIVAS = true).
 // ---------------------------------------------------------------------------
 
-/** Beneficios por módulo (estáticos — CATALOGO solo trae descripción corta). */
 export const BENEFICIOS: Record<ModuloId, string[]> = {
   flow: [
     'Dibujo de redes sobre el plano PDF calibrado',
@@ -157,7 +156,6 @@ export const BENEFICIOS: Record<ModuloId, string[]> = {
   ],
 };
 
-/** Logo por módulo (mismos assets del landing). */
 export const LOGO: Record<ModuloId, string> = {
   flow: '/logos/civilFlowlogo.webp',
   manage: '/logos/civilManagelogo.webp',

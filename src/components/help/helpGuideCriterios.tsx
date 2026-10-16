@@ -1,6 +1,5 @@
 import type { GuiaGrupo } from './helpGuideTypes';
-/** Criterios de diseño NTC 3631 (3ª actualización) — ventilación de recintos con gas.
- *  Compartidos por las guías de la red Gas y de la subred Rejillas (cf:redes:gas / cf:redes:rejillas). */
+/** Criterios de diseño NTC (Norma Tecnica Colombiana) 3631 (3ª actualización) — ventilación de recintos con gas (Gas). */
 export const CRITERIOS_3631: GuiaGrupo[] = [
   {
     titulo: 'Tipos de artefacto (A/B/C)',

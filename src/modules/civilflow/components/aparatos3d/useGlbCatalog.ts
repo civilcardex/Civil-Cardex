@@ -8,10 +8,8 @@ import { cargarGlbBuffer } from '../shared/glbCache';
 
 type Rgb = [number, number, number];
 
-/** Extrae name → diffuseFactor (RGB) del chunk JSON del GLB. Los colores reales de estos
- *  modelos SketchUp viven SOLO en la extensión legacy KHR_materials_pbrSpecularGlossiness
- *  (muchos materiales no tienen pbrMetallicRoughness.baseColorFactor), que el loader
- *  moderno ya no soporta — es el mismo dato que leía el parser del HTML de referencia. */
+/** Extrae name → diffuseFactor (RGB) del chunk JSON del GLB.
+ * Los colores reales de estos modelos SketchUp viven SOLO en la extensión legacy KHR_materials_pbrSpecularGlossiness (muchos materiales no tienen pbrMetallicRoughness.baseColorFactor), que el loader moderno ya no soporta — es el mismo dato que leía el parser del HTML de referencia. */
 function coloresGlb(buf: ArrayBuffer): Map<string, Rgb> {
   const jsonLen = new DataView(buf).getUint32(12, true);
   const gltf = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jsonLen))) as {
@@ -33,9 +31,8 @@ function coloresGlb(buf: ArrayBuffer): Map<string, Rgb> {
   return mapa;
 }
 
-/** Carga SECUENCIAL de los 12 GLB del catálogo (150 ms entre modelos, como el original, para
- *  no congelar la UI), con progreso 20→95 %; al terminar arma el rig del ensamble completo y
- *  calcula la pose ISO por defecto (reset ⟳). Los grupos quedan ocultos hasta seleccionar. */
+/** Carga SECUENCIAL de los 12 GLB del catálogo (150 ms entre modelos, como el original, para no congelar la UI), con progreso 20→95 %; al terminar arma
+ * el rig del ensamble completo y calcula la pose ISO por defecto (reset ⟳). */
 export function useGlbCatalogo(
   apiRef: Aparatos3DApiRef,
   opts: { onProgress: (pct: number) => void; onReady: () => void },

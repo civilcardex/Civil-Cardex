@@ -1,11 +1,4 @@
-/**
- * Checkout Lemon Squeezy: pide la URL de checkout a la edge function
- * `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP).
- * Al volver desde la pasarela (/pricing?ref=X), PricingPage llama
- * `verificar-pago` y refresca. Las funciones se escriben cuando exista la
- * cuenta LS (checklist en AGENTS.md); sin deploy, el guard detecta el 404 y el
- * modal avisa que los pagos aún no están disponibles (sin error crudo).
- */
+/** Checkout Lemon Squeezy: pide la URL de checkout a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). */
 import { useEffect, useRef, useState } from 'react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';

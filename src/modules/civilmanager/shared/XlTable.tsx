@@ -26,8 +26,8 @@ interface XlActProps {
   onDelete: () => void;
 }
 
-/** Celda de acciones por fila (solo eliminar — editar es por tabla con EDITAR, orig.
- *  usuario); deshabilitada fuera del modo edición de la pestaña. */
+/** Celda de acciones por fila (solo eliminar — editar es por tabla con EDITAR, pedido del
+ *  cliente); deshabilitada fuera del modo edición de la pestaña. */
 export const XlAct = memo(function XlAct({ onDelete }: XlActProps) {
   const editable = useEditable();
   return (

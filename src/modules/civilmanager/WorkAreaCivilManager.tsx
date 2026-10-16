@@ -40,7 +40,7 @@ const CATALOGO_TABS: { id: CatalogoTab; label: string; icon: NavIconName }[] = [
   { id: 'proveedores', label: 'Proveedores', icon: 'proveedores' },
 ];
 
-/** Intro de la ayuda contextual por sección (orig. usuario). */
+/** Intro de la ayuda contextual por sección (pedido del cliente). */
 const AYUDA_INTROS_CM: Record<MainSection, string> = {
   catalogos:
     'Bases de datos del proyecto: colaboradores, cuadrillas, equipos, insumos y proveedores que alimentan los análisis de precios.',

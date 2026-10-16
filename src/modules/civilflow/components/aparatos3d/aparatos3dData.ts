@@ -1,8 +1,4 @@
-/**
- * Datos del catálogo "Detalle Aparatos" — transcripción LITERAL del HTML original
- * (DETALLE_APARATOS_v2, petición explícita del usuario: los aparatos tal cual, sin cambios).
- * Los modelos GLB viven en public/models/aparatos/*.glb (byte-exactos del adjunto).
- */
+/** Datos del catálogo "Detalle Aparatos" — transcripción LITERAL del HTML original (DETALLE_APARATOS_v2, petición explícita del usuario: los aparatos tal cual, sin cambios). */
 
 export interface Aparato3D {
   id: number;

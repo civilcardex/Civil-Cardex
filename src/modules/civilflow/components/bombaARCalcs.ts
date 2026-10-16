@@ -19,7 +19,7 @@ export interface BombaInputs {
   tipoTuberia: string;
 }
 
-/** Semilla de la UI (exportada: el test de regresión necesita la forma completa). */
+/** Valores con los que arranca el formulario de cada bomba. Exportada porque el test de regresión compara la forma completa. */
 export const INPUTS_DEFAULT: BombaInputs = {
   sal: '',
   hz: '',
@@ -43,7 +43,7 @@ const MAT_POR_TIPO: Record<string, string> = {
   'Acero al carbón': 'A.C.',
 };
 
-/** C de Hazen-Williams: Catálogo Maestro según tipo de tubería — solo lectura. */
+/** Coeficiente de fricción C de Hazen-Williams (qué tan resbaladiza es la tubería: más alto = menos pérdida), del Catálogo Maestro según el tipo de tubo. Solo lectura. */
 export function cHazenDe(tipoTuberia: string): number {
   return matHazenC(MAT_POR_TIPO[tipoTuberia] ?? 'PVC-PR') ?? 150;
 }

@@ -49,12 +49,7 @@ interface AlertState {
 
 const CLOSED: AlertState = { isOpen: false, title: '', message: '' };
 
-/**
- * Monta un único AlertDialog en la raíz de la app y muestra las alertas que llegan por
- * eventos de ventana (por ejemplo, validaciones disparadas desde otras rutas). Sin él,
- * esas alertas se perderían en silencio cuando el visor no está en pantalla. El modal
- * de "Cambio de dirección de flujo" es la única excepción: no difumina el plano.
- */
+/** Monta un único AlertDialog en la raíz de la app y muestra las alertas que llegan por eventos de ventana (por ejemplo, validaciones disparadas desde otras rutas). */
 export function GlobalAlertDialogProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AlertState>(CLOSED);
   const dialogRef = useRef<HTMLDialogElement>(null);

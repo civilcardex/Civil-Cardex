@@ -19,9 +19,8 @@ export type IsoBajante = PlanoBajante & {
   targetBajanteId?: string;
 };
 
-/** Unidades iso por metro mundial — el espacio de proyección es uniforme a esta escala
- *  (getIsoCoords y getZPix multiplican los metros por este valor), de modo que una dimensión de
- *  1 m abarca ISO_SCALE unidades iso. */
+/** Unidades iso por metro mundial — el espacio de proyección es uniforme a esta escala (getIsoCoords y getZPix multiplican los metros por este
+ * valor), de modo que una dimensión de 1 m abarca ISO_SCALE unidades iso. */
 export const ISO_SCALE = 150;
 
 function project(

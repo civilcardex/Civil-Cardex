@@ -23,8 +23,7 @@ interface EstadoCache {
 const estado: EstadoCache = { entradas: new Map(), bytes: 0, maxBytes: MAX_BYTES_DEFAULT };
 
 /** Suelta las entradas más viejas (orden de inserción del Map = LRU) hasta bajar del tope.
- *  Nunca toca la URL que acaba de resolver (recién usada) ni pendings (size 0: su .then
- *  sumaría bytes de un buffer sin dueño — drift del contador). */
+ * Nunca toca la URL que acaba de resolver (recién usada) ni pendings (size 0: su .then sumaría bytes de un buffer sin dueño — drift del contador). */
 function desalojar(excepto: string): void {
   for (const [k, e] of estado.entradas) {
     if (estado.bytes <= estado.maxBytes) break;

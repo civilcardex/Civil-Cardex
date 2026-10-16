@@ -20,9 +20,8 @@ export function hexA(col: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-/** Vectores unitarios ortográficos en espacio de pantalla para los ejes del mundo en un punto iso
- *  dado — cada paso equivale a UN METRO MUNDIAL (ISO_SCALE unidades iso), de modo que el código
- *  que lo invoca puede dimensionar elementos directamente en metros. */
+/** Vectores unitarios ortográficos en espacio de pantalla para los ejes del mundo en un punto iso dado — cada paso equivale a UN METRO MUNDIAL (ISO_SCALE unidades iso),
+ * de modo que el código que lo invoca puede dimensionar elementos directamente en metros. */
 export function isoAxisVecs(
   proj: (x: number, y: number, z: number) => IsoPt,
   bx: number,
@@ -40,11 +39,8 @@ export function isoAxisVecs(
   };
 }
 
-/**
- * Dibuja un cuboide isométrico SÓLIDO (las 6 caras, ordenadas por profundidad de pintado) con su
- * base centrada en (bx, by, z), huella w x d y altura h — dimensiones en metros mundiales. Se usa
- * para los equipos calentador/contador, para que se lean como equipos 3D cerrados.
- */
+/** Dibuja un cuboide isométrico SÓLIDO (las 6 caras, ordenadas por profundidad de pintado) con su base centrada en (bx, by, z),
+ * huella w x d y altura h — dimensiones en metros mundiales. */
 export function drawIsoCuboid(
   ctx: CanvasRenderingContext2D,
   proj: (x: number, y: number, z: number) => IsoPt,

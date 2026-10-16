@@ -3,6 +3,7 @@ import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { parseGLBRed } from './rciRedParser';
 import { cargarGlbBuffer } from '../shared/glbCache';
+import { aspectDe, proyeccionEsquinas } from '../shared/controls3d';
 import type { VistaKey } from '../rci3d/viewsRci';
 
 // Mini visor de detalle (port del HTML Isometrico_RCI_Open_Code_v19 §1378-1621): segunda
@@ -18,7 +19,6 @@ export const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
   { key: 'top', label: 'PLANTA' },
 ];
 
-/** Botón de vista del estilo del HTML (.btn-view). */
 export const btnVista = (active: boolean): React.CSSProperties => ({
   background: active ? '#0d1f3c' : '#161b22',
   border: `1px solid ${active ? '#1f6feb' : '#30363d'}`,
@@ -286,29 +286,20 @@ export default function MiniVisorRed({ titulo, detalle, onCerrar }: Props): Reac
     // ×1.15 con aspect-fit; near/far ±mr·10; cámara retrocedida radius·5.
     const box = a.refBox;
     const wrap = wrapRef.current;
-    const aspect = Math.max(0.1, (wrap?.clientWidth || 1) / Math.max(1, wrap?.clientHeight || 1));
+    const aspect = wrap ? aspectDe(wrap) : 1;
     const tgt = new THREE.Vector3();
     box.getCenter(tgt);
     const fwd = posVec.clone().negate().normalize();
     const right = new THREE.Vector3().crossVectors(fwd, upVec).normalize();
     const realUp = new THREE.Vector3().crossVectors(right, fwd).normalize();
-    const corners: THREE_NS.Vector3[] = [];
-    for (const sx of [box.min.x, box.max.x])
-      for (const sy of [box.min.y, box.max.y])
-        for (const sz of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(sx, sy, sz));
-    let minR = 1e9;
-    let maxR = -1e9;
-    let minU = 1e9;
-    let maxU = -1e9;
-    for (const c of corners) {
-      const v = c.clone().sub(tgt);
-      const r = v.dot(right);
-      const u = v.dot(realUp);
-      if (r < minR) minR = r;
-      if (r > maxR) maxR = r;
-      if (u < minU) minU = u;
-      if (u > maxU) maxU = u;
-    }
+    const { minR, maxR, minU, maxU } = proyeccionEsquinas(
+      (x, y, z) => new THREE.Vector3(x, y, z),
+      box.min,
+      box.max,
+      tgt,
+      right,
+      realUp,
+    );
     let hw = Math.max(Math.abs(minR), Math.abs(maxR)) * 1.15;
     let hh = Math.max(Math.abs(minU), Math.abs(maxU)) * 1.15;
     if (hw / hh > aspect) hh = hw / aspect;

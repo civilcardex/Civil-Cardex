@@ -14,7 +14,7 @@ interface Props {
 }
 
 /** Texto descriptivo SIN el nombre del aparato (todo hasta el primer ":") y con mayúscula
- *  inicial (orig. usuario). */
+ *  inicial (pedido del cliente). */
 function cuerpoDe(body: string): string {
   const sinTitulo = body.slice(body.indexOf(':') + 1).trim();
   return sinTitulo.charAt(0).toUpperCase() + sinTitulo.slice(1);

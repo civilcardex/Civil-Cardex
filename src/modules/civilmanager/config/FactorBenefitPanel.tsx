@@ -37,7 +37,7 @@ interface TipoProps {
   del: (i: number) => void;
 }
 
-/** Una tabla por tipo — cada una con SU propio estado de edición (no global, orig. usuario). */
+/** Una tabla por tipo — cada una con SU propio estado de edición (no global, pedido del cliente). */
 function FactorTipoTabla(props: TipoProps) {
   return (
     <EditableSection dim={false}>

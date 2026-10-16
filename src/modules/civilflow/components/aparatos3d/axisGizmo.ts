@@ -11,7 +11,7 @@ const EJES: Array<{ label: string; dx: number; dy: number; dz: number }> = [
   { label: 'Z', dx: 0, dy: 0, dz: 1 },
 ];
 
-/** Dibuja el gizmo de ejes sobre el canvas 2D (80×80) según la cámara activa. */
+/** Dibuja el trompo de ejes X/Y/Z (el cuadrito de 80×80) orientado según la cámara. */
 export function dibujarGizmoEjes(canvas: HTMLCanvasElement | null, camera: THREE_NS.Camera): void {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');

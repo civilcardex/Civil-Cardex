@@ -40,7 +40,7 @@ interface UseCrudTableOptions<T extends { id: string; codigo?: string }> {
   excelConfig?: Omit<UseExcelImportExportOptions<T>, 'items' | 'onImport' | 'prefix'>;
 }
 
-/** CRUD genérico para catálogos: edición inline, búsqueda, borrado con confirmación, import/export opcional. */
+/** CRUD (crear, editar, borrar y listar) genérico para catálogos: edición inline, búsqueda, borrado con confirmación, import/export opcional. */
 export function useCrudTable<T extends { id: string; codigo?: string }>({
   items,
   onChange,

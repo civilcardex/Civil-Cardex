@@ -8,6 +8,7 @@ export interface LazyDecimalInputProps {
   disabled?: boolean;
   style?: React.CSSProperties;
   className?: string;
+  placeholder?: string;
   onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
   selectOnFocus?: boolean;
   commitOnEnter?: boolean;
@@ -20,6 +21,7 @@ export function LazyDecimalInput({
   disabled,
   style,
   className,
+  placeholder,
   onFocus,
   selectOnFocus,
   commitOnEnter,
@@ -64,6 +66,7 @@ export function LazyDecimalInput({
       inputMode="decimal"
       aria-label={ariaLabel}
       className={className}
+      placeholder={placeholder}
       value={val}
       onChange={handleChange}
       onFocus={handleFocus}

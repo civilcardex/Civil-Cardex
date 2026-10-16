@@ -169,9 +169,8 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
   const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
-  /** Trap de foco + restauración: `aria-modal="true"` promete fondo inerte, así que Tab
-   *  cicla solo por los focusables del panel (shift+Tab invertido) y al desmontar el
-   *  foco vuelve al elemento que abrió el diálogo en lugar de caer a <body>. */
+  /** Trap de foco + restauración: `aria-modal="true"` promete fondo inerte, así que Tab cicla solo por los focusables del panel (shift+Tab invertido) y al
+   * desmontar el foco vuelve al elemento que abrió el diálogo en lugar de caer a <body>. */
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();

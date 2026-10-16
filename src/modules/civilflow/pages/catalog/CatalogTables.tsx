@@ -437,7 +437,7 @@ export function EscorrentiaCubiertaTable() {
   );
 }
 
-/** Coeficiente de Manning n por material de canal de cubierta (aguas lluvias) — sin referencia. */
+/** Rugosidad que frena el agua (mientras más áspero, más lento). Ej: Manning (formula de flujo en tuberia) n por material de canal, sin referencia. */
 export function ManningCanalesLlTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>

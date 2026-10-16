@@ -1,9 +1,5 @@
-/**
- * /empresa — administración de puestos de los planes empresariales del usuario:
- * por cada suscripción propia con puestos > 1: miembros (email, puede-editar, quitar),
- * asignación por correo (solo usuarios registrados) y CTA para ampliar puestos.
- * El candado real vive en BD (app_suscripciones_miembros + policies/RPCs).
- */
+/** /empresa — administración de puestos de los planes empresariales del usuario: por cada suscripción propia con puestos > 1: miembros (email, puede-editar,
+ * quitar), asignación por correo (solo usuarios registrados) y CTA para ampliar puestos. */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -59,9 +55,8 @@ const BTN_FANTASMA: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Exportado solo para el preview de desarrollo (/empresa-preview), que pasa mock (miembros
- *  falsos, sin RPCs) + soloLectura para NO disparar RPCs reales (asignar_puesto tocaría
- *  datos de verdad). */
+/** Exportado solo para el preview de desarrollo (/empresa-preview), que pasa mock (miembros falsos, sin RPCs) + soloLectura para NO
+ * disparar RPCs reales (asignar_puesto tocaría datos de verdad). */
 export function PanelSuscripcion({
   sus,
   soloLectura = false,

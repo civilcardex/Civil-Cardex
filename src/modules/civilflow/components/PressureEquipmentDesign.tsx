@@ -13,10 +13,8 @@ import { loadEpDatos, saveEpDatos } from '../services/epService';
 // "Equipo de presión constante" de Isometría (components/epc3d/). Página "Cisterna" solo
 // existe con modo = cisterna (orig. usuario); con succión de red el nav muestra 3 páginas.
 
-/** Estado EP sincronizado con la BD (ep_datos_proyecto, 1:1 con el proyecto) — compartido por
- *  el diseño EP en Redes y el esquema solo-lectura en la sub-pestaña de Isometría, para que
- *  ambos vean/editen el MISMO dato. Hidratación al montar (gana sobre caché localStorage) y
- *  persistencia debounced (1200 ms) que no corre hasta terminar la hidratación. */
+/** Estado EP (Equipo de Presion) sincronizado con la BD (ep_datos_proyecto, 1:1 con el proyecto) — compartido por el diseño EP (Equipo de Presion) en Redes y el esquema
+ * solo-lectura en la sub-pestaña de Isometría, para que ambos vean/editen el MISMO dato. */
 function useEpSincronizado(): {
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;

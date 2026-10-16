@@ -19,7 +19,7 @@ function r2(v: number): number {
   return Math.round(v * 100) / 100;
 }
 
-/** Parses locale-aware numeric input; always returns a finite number (never a string). */
+/** Interpreta números con formato local (1.500,00 o 1,500.00) y siempre devuelve finito. Ej: "1.500" -> 1500. */
 export function parseNum(v: unknown): number {
   let s = String(v ?? '');
   // Formato europeo inequívoco "1.234,56" (punto=millares + coma=decimal): quitar los puntos
@@ -124,11 +124,8 @@ export function calcCuadrillaCost(
   };
 }
 
-/**
- * Motor de precios unitarios (APU). A diferencia del prototipo original, `herr`
- * (herramienta menor) SÍ se incluye en totalDirecto/costo_unitario — en el prototipo
- * se calculaba y mostraba en pantalla pero no se sumaba al costo real usado en presupuestos.
- */
+/** Motor de precios unitarios (APU).
+ * A diferencia del prototipo original, `herr` (herramienta menor) SÍ se incluye en totalDirecto/costo_unitario — en el prototipo se calculaba y mostraba en pantalla pero no se sumaba al costo real usado en presupuestos. */
 export function calcAPU(
   a: Apu,
   cargosCalc: CargoCalculado[],

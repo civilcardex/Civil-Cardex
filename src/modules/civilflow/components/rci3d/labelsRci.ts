@@ -19,9 +19,8 @@ interface EtiquetaEstado {
 
 const estado: EtiquetaEstado = { ctx: null, occCache: {}, frameCnt: 0, raycaster: null };
 
-/** Invalida el estado cacheado (ctx del canvas, caché de oclusión, raycaster). Obligatorio al
- *  desmontar el visor: el canvas 2D se destruye con él y un ctx viejo haría que el repintado
- *  vaya a un canvas desconectado (etiquetas invisibles en el siguiente montaje). */
+/** Invalida el estado cacheado (ctx del canvas, caché de oclusión, raycaster).
+ * Obligatorio al desmontar el visor: el canvas 2D se destruye con él y un ctx viejo haría que el repintado vaya a un canvas desconectado (etiquetas invisibles en el siguiente montaje). */
 export function resetEtiquetasRci(): void {
   estado.ctx = null;
   estado.occCache = {};

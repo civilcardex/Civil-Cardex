@@ -7,10 +7,8 @@ function fechaCorta(iso: string | undefined): string {
     : d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
-/** Tarjeta de proyecto (grid del perfil): badge de módulo + Empresa, código, nombre, fecha,
- *  papelera al hover (desktop) y flecha de apertura. Un solo componente para CF y CM.
- *  El botón eliminar es HERMANO del div role="button" (envueltos en un relative): un
- *  interactivo anidado dentro de otro es HTML/AT inválido. */
+/** Tarjeta de proyecto (grid del perfil): badge de módulo + Empresa, código, nombre, fecha, papelera al hover (desktop) y flecha de apertura.
+ * Un solo componente para CF y CM. */
 export function ProyectoCard({
   badge,
   badgeColor,

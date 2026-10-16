@@ -1,12 +1,14 @@
 import type * as THREE_NS from 'three';
 import type { Aparatos3DApi } from './useAparatos3DScene';
 import { animarCamaraHacia, aspectDe } from '../shared/controls3d';
+import { FOV_3D } from '../shared/config3d';
 
 // Vistas de cámara — port fiel del original: ISO vuelve a persp interpolada (700 ms, ease-out
 // cúbico); FRENTE/LATERAL/PLANTA encuadran la orto sobre el modelo activo con margen 8 %.
 
 export type VistaKey = 'iso' | 'front' | 'side' | 'top';
-const TAN_HALF_FOV = Math.tan((50 / 2) * (Math.PI / 180)); // fov 50°
+// Derivado del canon (antes literal 50: divergía en silencio si FOV_3D cambiaba).
+const TAN_HALF_FOV = Math.tan((FOV_3D / 2) * (Math.PI / 180));
 
 /** Box3 del grupo activo (o del ensamble si no hay selección). */
 function cajaActiva(api: Aparatos3DApi): THREE_NS.Box3 {

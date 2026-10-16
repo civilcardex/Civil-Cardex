@@ -1,8 +1,6 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
 
-/** Carga perezosa de jsPDF + autotable (chunks separados, una sola descarga).
- *  @returns constructor jsPDF y plugin autoTable.
- */
+/** Carga perezosa de jsPDF + autotable en chunks separados (una sola descarga). */
 export async function loadJspdf(): Promise<{
   jsPDF: typeof JsPDFType;
   autoTable: (doc: unknown, opts: unknown) => void;
@@ -12,9 +10,7 @@ export async function loadJspdf(): Promise<{
   return { jsPDF, autoTable: autoTable as (doc: unknown, opts: unknown) => void };
 }
 
-/** Carga perezosa de xlsx-js-style (chunk separado, una sola descarga).
- *  @returns módulo XLSX tipado.
- */
+/** Carga perezosa de xlsx-js-style en chunk separado (una sola descarga). */
 export async function loadXlsx(): Promise<typeof import('xlsx-js-style')> {
   return import('xlsx-js-style');
 }

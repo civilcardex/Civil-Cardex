@@ -84,9 +84,8 @@ export const NORMA_URLS: Record<string, string> = {
   ASME: 'https://www.asme.org/codes-standards',
 };
 
-/** Resuelve el URL de una norma tolerando sufijos de edición («NTC 1500:2023» → «NTC 1500»)
- *  y familias («UL 199» → UL, «IEC 61800-5-1:2022» → IEC). Cualquier «NTC nnnn» cae a la
- *  búsqueda exacta de ICONTEC. Devuelve undefined si no hay fuente (texto plano). */
+/** Resuelve el URL de una norma tolerando sufijos de edición («NTC (Norma Tecnica Colombiana) 1500:2023» → «NTC (Norma Tecnica Colombiana)
+ * 1500») y familias («UL 199» → UL, «IEC 61800-5-1:2022» → IEC). */
 export function normaUrl(nombre: string): string | undefined {
   const limpio = nombre.trim().replace(/\s+/g, ' ');
   if (NORMA_URLS[limpio]) return NORMA_URLS[limpio];
@@ -128,9 +127,8 @@ const NORMA_TOKEN_SRC = [
   'ASME(?: BPVC)?',
 ].join('|');
 
-/** Texto con las normas citadas LINKIFICADAS a su fuente oficial (NormaLink). Se usa en la
- *  línea «Referencia normativa» de los visores 3D: los tokens reconocidos quedan como anclas
- *  y el resto del texto intacto. */
+/** Texto con las normas citadas LINKIFICADAS a su fuente oficial (NormaLink).
+ * Se usa en la línea «Referencia normativa» de los visores 3D: los tokens reconocidos quedan como anclas y el resto del texto intacto. */
 export function NormaTxt({ texto }: { texto: string }) {
   const partes = texto.split(new RegExp(`(${NORMA_TOKEN_SRC})`, 'g'));
   return (

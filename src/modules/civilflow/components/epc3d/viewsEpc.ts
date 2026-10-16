@@ -1,5 +1,5 @@
 import type { Epc3DApi } from './useEpc3DScene';
-import { animarCamaraHacia } from '../shared/controls3d';
+import { animarCamaraHacia, aspectDe, proyeccionEsquinas } from '../shared/controls3d';
 
 // Vistas de cámara — port del HTML original: ISO vuelve a la pose fija manual (validada a mano),
 // FRENTE/LATERAL/PLANTA encuadran la orto sobre el refBox (cubo fijo r=3.12 centrado en el ISO).
@@ -33,26 +33,17 @@ export function vistaOrtoEpc(
   const realUp = new THREE.Vector3().crossVectors(right, fwd).normalize();
 
   // Proyectar las 8 esquinas sobre los ejes right/up de la vista (relativas al centro)
-  let minR = 1e9;
-  let maxR = -1e9;
-  let minU = 1e9;
-  let maxU = -1e9;
-  for (const sx of [box.min.x, box.max.x])
-    for (const sy of [box.min.y, box.max.y])
-      for (const sz of [box.min.z, box.max.z]) {
-        const v = new THREE.Vector3(sx, sy, sz).sub(tgt);
-        const r = v.dot(right);
-        const u = v.dot(realUp);
-        if (r < minR) minR = r;
-        if (r > maxR) maxR = r;
-        if (u < minU) minU = u;
-        if (u > maxU) maxU = u;
-      }
+  const { minR, maxR, minU, maxU } = proyeccionEsquinas(
+    (x, y, z) => new THREE.Vector3(x, y, z),
+    box.min,
+    box.max,
+    tgt,
+    right,
+    realUp,
+  );
 
   // Frustum simétrico con margen 15 %, corregido por aspect del canvas
-  const canvW = api.renderer.domElement.clientWidth || 1;
-  const canvH = api.renderer.domElement.clientHeight || 1;
-  const aspect = canvW / canvH;
+  const aspect = aspectDe(api.renderer.domElement);
   let halfW = Math.max(Math.abs(minR), Math.abs(maxR)) * 1.15;
   let halfH = Math.max(Math.abs(minU), Math.abs(maxU)) * 1.15;
   if (halfW / halfH > aspect) halfH = halfW / aspect;

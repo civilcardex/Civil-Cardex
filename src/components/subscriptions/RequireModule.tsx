@@ -1,10 +1,4 @@
-/**
- * Guard de ruta por módulo: sin suscripción vigente redirige a /pricing.
- * No-op mientras VITE_SUSCRIPCIONES o el flag de BD (suscripciones_activas)
- * estén apagados — la BD decide el bloqueo, VITE solo la UI. La vigencia se
- * evalúa con la fecha actual en cada render: al vencer en medio de sesión, el
- * módulo se bloquea sin refetch.
- */
+/** Guard de ruta por módulo: sin suscripción vigente redirige a /pricing. */
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
 import type { ModuloId } from '../../lib/subscriptions/catalog';
