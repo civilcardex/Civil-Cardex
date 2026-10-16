@@ -121,30 +121,16 @@ export const DIAM_BAN = [
 
 export const DIAM_OPTIONS = DIAM_BAN.map((d) => ({ pulg: d.pulg, label: d.nom, mm: d.mm }));
 
-// Bajantes sanitarios: se excluye 1-1/2" (orig. usuario #6) — los bajantes san no ofrecen esa
-// opción de diámetro. El resto de redes (af/ac/vent) conservan DIAM_BAN completo.
-export const DIAM_BAN_SAN = DIAM_BAN.filter((d) => d.pulg !== 1.5);
-
-// Bajantes/colectores de lluvias (ll): sin 1-1/2" en todo lado (pedido usuario).
-// ponytail: deriva de DIAM_BAN para no duplicar la lista. Los lookups de valores ya
-// guardados siguen usando DIAM_BAN/DIAM_OPTIONS completos (legacy resuelve igual).
-export const DIAM_BAN_LL = DIAM_BAN.filter((d) => d.pulg !== 1.5);
-
-// Colectores/ramales sanitarios: sin 1-1/2" en toda la red san (pedido usuario).
-// ponytail: deriva de DIAM_BAN_SAN para no duplicar la lista.
-export const DIAM_OPTIONS_SAN = DIAM_BAN_SAN.map((d) => ({
-  pulg: d.pulg,
-  label: d.nom,
-  mm: d.mm,
-}));
-
-// Colectores/ramales de lluvias (ll): sin 1-1/2" en los desplegables (pedido usuario).
-// ponytail: deriva de DIAM_BAN_LL para no duplicar la lista.
-export const DIAM_OPTIONS_LL = DIAM_BAN_LL.map((d) => ({
-  pulg: d.pulg,
-  label: d.nom,
-  mm: d.mm,
-}));
+// Sin 1-1/2": bajantes san (orig. usuario #6), bajantes/colectores ll y colectores/ramales
+// san+ll (pedidos usuario). Una sola lista base: antes había 2 filtros + 2 mapas idénticos
+// byte a byte con 4 nombres distintos.
+const DIAM_SIN_112 = DIAM_BAN.filter((d) => d.pulg !== 1.5);
+const opcionesDe = (base: typeof DIAM_BAN) =>
+  base.map((d) => ({ pulg: d.pulg, label: d.nom, mm: d.mm }));
+export const DIAM_BAN_SAN = DIAM_SIN_112;
+export const DIAM_BAN_LL = DIAM_SIN_112;
+export const DIAM_OPTIONS_SAN = opcionesDe(DIAM_SIN_112);
+export const DIAM_OPTIONS_LL = opcionesDe(DIAM_SIN_112);
 
 export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r) => ({
   pulg: diamPulgFromLabel(r.dn),
