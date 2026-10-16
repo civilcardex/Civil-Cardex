@@ -252,15 +252,8 @@ returns jsonb language sql stable security definer set search_path = public as $
   from public.app_precios;
 $$;
 
--- Anti-spam de intenciones de pago: pagos pendientes del usuario en la última hora.
-create or replace function public.intenciones_recientes(p_uid uuid)
-returns bigint language sql stable security definer set search_path = public as $$
-  select count(*)
-  from public.app_pagos
-  where user_id = p_uid
-    and estado = 'pendiente'
-    and created_at > now() - interval '1 hour';
-$$;
+-- intenciones_recientes(uuid): DROPEADA en 20261015000000 (huérfana Wompi, 0 callers;
+-- el anti-spam vive en registrar_intencion_pago). Se deja el hueco a propósito.
 
 -- Activa suscripciones desde un pago aprobado. Idempotente (verify del pago y webhook
 -- de Lemon Squeezy pueden llegar en cualquier orden): FOR UPDATE + early-return si ya
