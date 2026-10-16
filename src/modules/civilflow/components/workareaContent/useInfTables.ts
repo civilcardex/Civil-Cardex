@@ -485,7 +485,7 @@ export function useInfTables(state: WorkAreaState) {
   // sin aparatos todavía) y debe leerse como 0, no como dato faltante.
   function buildAcometidaTables(): MemoriaTable[] {
     if (!hasAf) return [];
-    const d = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF);
+    const d = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF, proy.pais);
     if (!d) return [];
     const fmtAco = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : '—');
     const tramosTable: MemoriaTable = {
@@ -665,7 +665,10 @@ export function useInfTables(state: WorkAreaState) {
 
   // ── GAS (calculado en fresco desde los datos de dibujo/accesorios persistidos — sin depender de haber visitado esa pantalla) ──
   /** Filas del diseño de gas (Gas) (compartidas: tabla + resumen por red). */
-  const gasRowsCalc = useMemo(() => (hasGas ? computeGasRows(plans) : []), [hasGas, plans]);
+  const gasRowsCalc = useMemo(
+    () => (hasGas ? computeGasRows(plans, proy.pais) : []),
+    [hasGas, plans, proy.pais],
+  );
 
   const gasTable = useMemo<MemoriaTable | null>(() => {
     if (!hasGas) return null;
@@ -972,7 +975,8 @@ export function useInfTables(state: WorkAreaState) {
     [canalesLl, plans],
   );
   // AF: acometida (computeAcometidaSummary estadoOk) — la tabla la marca, el resumen la lista.
-  const acometidaOk = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF)?.estadoOk !== false;
+  const acometidaOk =
+    computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF, proy.pais)?.estadoOk !== false;
   const fallosGas = (gasRowsCalc ?? []).filter((r) => r.chequeo === 'NO');
   // Bomba AR: hoy sin filas cumple/no cumple — gate por presencia de memoria calculada.
   const alertasBomba = useMemo(() => (hasBom ? bombaAlertas() : null), [hasBom]);
@@ -1166,7 +1170,10 @@ export function useInfTables(state: WorkAreaState) {
   // arriba, y una tabla por tarjeta en vez de un resumen único aplanado (coincide con lo que las
   // pantallas reales BombaARDesign/EPInputPage/EPVerificationPage muestran en sus páginas).
   const buildBombaTables = (): MemoriaTable[] => (hasBom ? computeBombaTables() : []);
-  const buildEpTables = (): MemoriaTable[] => (hasEp ? computeEpTables() : []);
+  const buildEpTables = useCallback(
+    (): MemoriaTable[] => (hasEp ? computeEpTables(proy.pais) : []),
+    [hasEp, proy.pais],
+  );
 
   return {
     proy,

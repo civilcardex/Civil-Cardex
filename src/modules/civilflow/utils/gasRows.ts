@@ -11,6 +11,7 @@ import {
 } from '../constants/storage-keys';
 import { renouardByType, factoresGas, qDisenoGas } from './gasUtils';
 import { mapaPadresGas, acumuladosGas, claveGas, type GasTramoNeto } from './gasNetwork';
+import { perfilDe } from '../constants/normasPais';
 import type { DrawingData, RawElement } from './drawingSync';
 
 interface GasRamalRaw extends RawElement {
@@ -88,7 +89,7 @@ export interface GasRow {
   chequeo: string;
 }
 
-export function computeGasRows(plans: PlanItem[]): GasRow[] {
+export function computeGasRows(plans: PlanItem[], pais?: string): GasRow[] {
   const datos = loadFromStorage<GasDatosGenerales>(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const pMin = Number(datos.pmin) || 17;
   const { pAtm, DR, fAlt, fTemp, fDens } = factoresGas(datos);
@@ -201,11 +202,16 @@ export function computeGasRows(plans: PlanItem[]): GasRow[] {
     pFinPorClave.set(clave, pFin);
     const dPAcum = (padre ? (dPAcumPorClave.get(padre) ?? 0) : 0) + dP;
     dPAcumPorClave.set(clave, dPAcum);
-    // Chequeo NTC 3728: V ≤ 10 m/s y pérdida acumulada ≤ 9.81 mbar (presupuesto desde
-    // la presión del operador; CRIT0 en defaults.ts). La presión de inicio ya es la
-    // mínima garantizada (17 mbar), así que el límite de pérdida ES el chequeo.
+    // Chequeo del país: V ≤ vMax y pérdida acumulada ≤ dpMax (antes literales NTC 3728).
+    const limGas = perfilDe(pais).gas;
     const ok =
-      vel > 0 && vel <= 10 && dP > 0 ? (dPAcum <= 9.81 ? 'O.K.' : 'NO') : dP > 0 ? 'NO' : '—';
+      vel > 0 && vel <= limGas.vMax && dP > 0
+        ? dPAcum <= limGas.dpMax
+          ? 'O.K.'
+          : 'NO'
+        : dP > 0
+          ? 'NO'
+          : '—';
     result.push({
       id: t.id,
       piso: t.piso,

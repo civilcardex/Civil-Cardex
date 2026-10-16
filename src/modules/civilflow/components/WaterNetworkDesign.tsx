@@ -236,8 +236,17 @@ function WaterNetworkDesign({
   const [acoPini, setAcoPini] = useState(20.0);
   const [acoLeMed, setAcoLeMed] = useState(0);
   const [acoHfMax, setAcoHfMax] = useState(5.0);
-  // Presión residual mínima exigida al final de la acometida (montante) — NTC 1500.
-  const [acoPResMin, setAcoPResMin] = useState(3.0);
+  // Presión residual mínima exigida al final de la acometida (montante): la del aparato más
+  // desfavorable del país (pMinAparato) — editable por el usuario.
+  const [acoPResMin, setAcoPResMin] = useState(() => perfilDe(proy?.pais).af.pMinAparato);
+  // Al cambiar de país se retoma el mínimo normativo (no se pisan ediciones manuales del mismo país).
+  const paisVisto = useRef(proy?.pais);
+  useEffect(() => {
+    if (paisVisto.current !== proy?.pais) {
+      paisVisto.current = proy?.pais;
+      setAcoPResMin(perfilDe(proy?.pais).af.pMinAparato);
+    }
+  }, [proy?.pais]);
 
   const handleContDiamChange = React.useCallback(
     (dNom: string) => {
@@ -616,6 +625,7 @@ function WaterNetworkDesign({
                       plans={plans}
                       updTramo={updTramo}
                       net={networkType}
+                      pais={proy.pais}
                     />
                   ))}
                 </tbody>

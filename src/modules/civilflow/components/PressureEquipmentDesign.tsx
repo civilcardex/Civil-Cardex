@@ -4,6 +4,8 @@ import EPInputPage from './ep/EPInputPage';
 import EPVerificationPage from './ep/EPVerificationPage';
 import EPCisternaPage from './ep/EPCisternaPage';
 import { usePersistedState } from '../../../hooks/usePersistedState';
+import { useProyecto } from '../context/ProjectContext';
+import { perfilDe } from '../constants/normasPais';
 import type { EPData } from './ep/EPShared';
 import { EP_DEFAULTS } from './ep/EPShared';
 import { getActiveProyectoId } from '../services/storageService';
@@ -19,6 +21,7 @@ function useEpSincronizado(): {
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
 } {
+  const { proy } = useProyecto();
   const [ep, setEP] = usePersistedState<EPData>('ep', EP_DEFAULTS, (saved) => ({
     ...EP_DEFAULTS,
     ...(saved as Partial<EPData>),
@@ -32,12 +35,22 @@ function useEpSincronizado(): {
     void loadEpDatos(proyectoId).then((d) => {
       if (cancelled) return;
       if (d) setEP({ ...EP_DEFAULTS, ...d });
+      else {
+        // Proyecto nuevo sin datos: pmin/pmax del país (pMinRed/pMax del perfil).
+        // Solo si siguen en el default — nunca se pisa lo que el usuario ya editó.
+        const perfil = perfilDe(proy?.pais);
+        setEP((prev) => ({
+          ...prev,
+          pmin: prev.pmin === EP_DEFAULTS.pmin ? String(perfil.af.pMinRed) : prev.pmin,
+          pmax: prev.pmax === EP_DEFAULTS.pmax ? String(perfil.af.pMax) : prev.pmax,
+        }));
+      }
       hydratedRef.current = true;
     });
     return () => {
       cancelled = true;
     };
-  }, [setEP]);
+  }, [setEP, proy?.pais]);
 
   const saveTimerRef = useRef<number | null>(null);
   useEffect(() => {

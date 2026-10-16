@@ -5,6 +5,7 @@ import { fmt, sectorDe } from '../../utils/formatUtils';
 import { parseDecimalInput } from '../../utils/parseDecimal';
 import { hunterK, computeDesignRow } from './rowPhysics';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared';
+import { perfilDe } from '../../constants/normasPais';
 import { leerHeredadosPresion } from '../../utils/aparatosPresion';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput';
 import ChipList from '../shared/ChipList';
@@ -100,6 +101,7 @@ export function DesignTableRow({
   pRed,
   pressureByKey,
   velLim,
+  pais,
 }: {
   t: Tramo;
   tr2: Tramo | null;
@@ -126,6 +128,8 @@ export function DesignTableRow({
   plans: PlanItem[];
   updTramo: (id: string, field: string, val: string | number | boolean) => void;
   net: 'af' | 'ac';
+  /** País del proyecto: el chequeo por aparato usa el catálogo NTC hasta que haya catálogo por país. */
+  pais?: string;
 }) {
   const ownKey = t._key || t.id;
   // Herencia de aparatos af/ac (libro aparatos_heredados_v1): tooltip en la celda propia.
@@ -152,8 +156,12 @@ export function DesignTableRow({
   // edición, commit → updTramo + writeNSalidasToDrawing; el buildTramos lo re-lee del trazo).
   const [editNs, setEditNs] = useState<string | null>(null);
   const vCumple = calc.Vmms >= (velLim?.[0] ?? 500) && calc.Vmms <= (velLim?.[1] ?? 2500);
-  // Chequeo de presión en el aparato conectado (NTC 1500: pmin ≤ P ≤ pmax en el extremo).
+  // Chequeo de presión en el aparato conectado (catálogo NTC 1500: pmin ≤ P ≤ pmax en el
+  // extremo). Sin catálogo por país todavía: si el país es referencia, el tooltip lo dice.
   const chkP = chequeoPresionAparato(t.ini, t.fin, Pin, Pfin);
+  const chkPCita = perfilDe(pais).ref
+    ? 'Catálogo NTC 1500 (ref. — sin catálogo nacional verificado)'
+    : 'Catálogo NTC 1500';
   return (
     <tr>
       <td className="c" style={{ padding: '0 1px' }}>
@@ -305,6 +313,7 @@ export function DesignTableRow({
       </td>
       <td
         className="c td-mono-b"
+        title={`Presión del aparato dentro de su rango: ${chkPCita}.`}
         style={{
           padding: '0 1px',
           fontSize: 10.5,

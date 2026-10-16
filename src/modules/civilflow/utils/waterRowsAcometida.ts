@@ -13,6 +13,7 @@ import { findContadorBajante } from './writeDiameterToDrawing';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { distToPolyline } from '../lib/shared/geometry';
 import { isContador, isAC1, isAC2, type BajanteRaw } from './waterRowsShared';
+import { perfilDe } from '../constants/normasPais';
 
 /** Resumen de la acometida: tramos red→contador y contador→montante, con presiones y validez. */
 export interface AcometidaSummary {
@@ -82,6 +83,7 @@ export function computeAcometidaSummary(
   tramosAf: Tramo[],
   plans: PlanItem[],
   diamTable: Array<{ pulg: number; nominal: string; label?: string; dInt: number }>,
+  pais?: string,
 ): AcometidaSummary | null {
   const networkType = 'af';
   const DIAM_OPTS = diamTable.map((d) => ({
@@ -340,9 +342,9 @@ export function computeAcometidaSummary(
       : 0;
   const acoHfMax = 5.0;
   // Presión residual real = la que queda al final de la acometida (montante); debe superar
-  // la mínima requerida (default 3 mca, NTC 1500 vía tables.tsx; editable en el panel vivo).
+  // la mínima del aparato más desfavorable del país (pMinAparato).
   const pResidual = f2.Pfin;
-  const okPresion = pResidual >= 3;
+  const okPresion = pResidual >= perfilDe(pais).af.pMinAparato;
 
   const diamPropuesto1 =
     DIAM_OPTS.find((o) => o.nominal === resolvedRedContDiam)?.label || resolvedRedContDiam || '';

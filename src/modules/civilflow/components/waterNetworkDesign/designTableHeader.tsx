@@ -123,7 +123,7 @@ export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?:
           <br />C
         </th>
         <th
-          title={`Velocidad del agua en el tramo (mm/s). Cumple entre ${pais ? rangoAfTxt(pais) : '0,50–2,50 m/s (NTC 1500 / RAS 2000)'}.`}
+          title={`Velocidad del agua en el tramo (mm/s). Cumple entre ${rangoAfTxt(pais)}.`}
           scope="col"
           className="col-h"
           rowSpan={2}

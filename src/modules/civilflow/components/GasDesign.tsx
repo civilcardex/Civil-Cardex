@@ -29,7 +29,7 @@ import {
 import { renouardByType, factoresGas, qDisenoGas } from '../utils/gasUtils';
 import { mapaPadresGas, acumuladosGas, claveGas } from '../utils/gasNetwork';
 import { compareTramosPisoDesc } from '../utils/componentHelpers';
-import { gasTxt } from '../constants/normasPais';
+import { gasTxt, perfilDe } from '../constants/normasPais';
 import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 
@@ -413,9 +413,16 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       pFinPorClave.set(clave, pFin);
       const dPAcum = (padre ? (dPAcumPorClave.get(padre) ?? 0) : 0) + dP;
       dPAcumPorClave.set(clave, dPAcum);
-      // Chequeo NTC 3728: V ≤ 10 m/s y pérdida acumulada ≤ 9.81 mbar (mismo criterio de gasRows).
+      // Chequeo del país: V ≤ vMax y pérdida acumulada ≤ dpMax (antes literales NTC 3728).
+      const limGas = perfilDe(proy.pais).gas;
       const ok =
-        vel > 0 && vel <= 10 && dP > 0 ? (dPAcum <= 9.81 ? 'O.K.' : 'NO') : dP > 0 ? 'NO' : '—';
+        vel > 0 && vel <= limGas.vMax && dP > 0
+          ? dPAcum <= limGas.dpMax
+            ? 'O.K.'
+            : 'NO'
+          : dP > 0
+            ? 'NO'
+            : '—';
       result.push({
         id: t.id,
         tramoKey: tramoKey(t),
@@ -434,7 +441,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       });
     }
     return result;
-  }, [gasTramos, diamInt, getAcc, pmin, temp, densRel, patm]);
+  }, [gasTramos, diamInt, getAcc, pmin, temp, densRel, patm, proy.pais]);
 
   const COLS = GasDesign_COLS;
 

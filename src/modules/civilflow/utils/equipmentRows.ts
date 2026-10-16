@@ -5,6 +5,7 @@ import type { EPData } from '../components/ep/EPShared';
 import { PVC_SCH40, NEMA_HP, selectDN } from '../components/ep/calculations';
 import { AGUA_DENSIDAD, GRAVEDAD } from './calcSanitaryCore';
 import { entradaPor } from './diamLookup';
+import { perfilDe } from '../constants/normasPais';
 
 // Espeja el objeto que BombaARDesign.tsx persiste vía saveToStorage('civilflow_memoria_bomba_data').
 interface BombaMemoriaData {
@@ -476,9 +477,10 @@ function epBase(ep: EPData) {
   };
 }
 
-export function computeEpTables(): MemoriaTable[] {
+export function computeEpTables(pais?: string): MemoriaTable[] {
   const ep = loadFromStorage<EPData | null>('ep', null);
   if (!ep) return [];
+  const perfil = perfilDe(pais);
 
   const {
     pred,
@@ -585,8 +587,8 @@ export function computeEpTables(): MemoriaTable[] {
       ...(isRed
         ? [['Presión acometida (red pública en entrega)', or(ep.pred), 'm.c.a.', 'Medida en campo']]
         : []),
-      ['Presión mínima punto crítico', or(ep.pmin), 'm.c.a.', 'NTC 1500 Tab.3'],
-      ['Presión máxima sistema', or(ep.pmax), 'm.c.a.', 'NSR-10 H.4.2 — límite 500 kPa'],
+      ['Presión mínima punto crítico', or(ep.pmin), 'm.c.a.', perfil.refPmin],
+      ['Presión máxima sistema', or(ep.pmax), 'm.c.a.', perfil.refPmax],
       ['Cota bomba', or(ep.zbomba), 'm', 'Nivel de instalación del equipo'],
       ['Cota punto más desfavorable', or(ep.ztop), 'm', 'Levantamiento topográfico o planos'],
     ],
