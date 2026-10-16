@@ -203,7 +203,8 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
                   width: 28,
                   height: 15,
                   borderRadius: 8,
-                  background: props.conCubierta ? 'var(--ll)' : 'var(--line)',
+                  // Celeste fijo del toggle (orig. usuario): NO ligado al color de la red ll.
+                  background: props.conCubierta ? '#38bdf8' : 'var(--line)',
                   position: 'relative',
                   transition: 'background .2s',
                   flexShrink: 0,

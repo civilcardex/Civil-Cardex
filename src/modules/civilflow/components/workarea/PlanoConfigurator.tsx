@@ -47,8 +47,8 @@ interface PlanoConfiguratorProps {
   plans: PlanItem[];
   planNivel: number | null;
   onUpdateNivel: (planId: number, nivel: number | null) => void;
-  /** True cuando NINGÚN plan del proyecto tiene origen + scaleM guardados — el modal de
-   *  calibración muestra entonces un aviso de "primera calibración del proyecto". */
+  /** True cuando NINGÚN plan del proyecto tiene origen + scaleM (escala metros por pixel) guardados — el modal de calibración muestra
+   * entonces un aviso de "primera calibración del proyecto". */
   esPrimeraCalibracion: boolean;
 }
 

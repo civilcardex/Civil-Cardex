@@ -332,7 +332,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                 // Sin EDITAR: texto plano como las demás pestañas de redes
                                 // activas; el "cajón" seleccionable solo aparece al editar.
                                 background: 'var(--bg3)',
-                                border: `1px solid ${oOn && isEditing ? 'var(--acc)' : 'var(--line)'}`,
+                                border: `1px solid ${oOn && isEditing ? currentColor : 'var(--line)'}`,
                                 borderRadius: 'var(--r)',
                                 width: '100%',
                                 font: 'inherit',
@@ -371,8 +371,8 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                   height: 10,
                                   borderRadius: '50%',
                                   flexShrink: 0,
-                                  background: oOn ? 'var(--acc)' : 'transparent',
-                                  border: `1.5px solid ${oOn ? 'var(--acc)' : 'var(--txt3)'}`,
+                                  background: oOn ? currentColor : 'transparent',
+                                  border: `1.5px solid ${oOn ? currentColor : 'var(--txt3)'}`,
                                 }}
                               />
                             </button>

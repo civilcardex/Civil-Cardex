@@ -7,10 +7,7 @@ import { prefetchAllTrazos } from '../utils/prefetchTrazos';
  *  nunca queda bloqueada más de 10 s — mismo tope que el fallback del visor. */
 const TOPE_ESPERA_MS = 10000;
 
-/** Gate de carga GLOBAL del proyecto: `listo` cuando (1) los planos están restaurados
- *  (local IndexedDB + nube), (2) `prefetchAllTrazos` terminó — bajó los trazos que faltaban
- *  y re-escribió los blobs de sync — y (3) TramosContext recargó, así las tablas de diseño
- *  nacen con datos en el primer render. Lo consumen WorkAreaCivilFlowPage y ViewerPage. */
+/** Espera a que el proyecto esté listo antes de mostrar tablas (planos + trazos + tramos). Si la nube se cuelga, entra igual a los 10 s. Ej: WorkArea y Visor lo usan. */
 export function useProyectoCargado(): { listo: boolean } {
   const { plans, restoreDone, cloudRestoreDone } = usePlans();
   const { recargar } = useTramos();
