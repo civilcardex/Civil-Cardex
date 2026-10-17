@@ -473,7 +473,9 @@ export default function ViewerPage() {
   }
 
   if (switchPendiente || switching) {
-    return <CargandoProyecto texto="Abriendo proyecto…" />;
+    // MISMO texto que el overlay de abajo: una sola pantalla de carga percibida (orig.
+    // usuario: dos pantallas de carga consecutivas al abrir el visor).
+    return <CargandoProyecto texto="Cargando planos y redes…" />;
   }
 
   return (

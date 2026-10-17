@@ -8,6 +8,10 @@ export const APARATOS_HEREDADOS_TRIB_KEY = 'aparatos_heredados_trib_v1';
 /** Respaldo de conteos limpiados por fase A sin campo de aparato (recuperación manual desde
  *  DevTools: copiar el valor a `aparatos_by_tramo_v2` si una limpieza fue ilegítima). */
 export const APARATOS_RESIDUO_BAK_KEY = 'aparatos_residuo_bak_v1';
+/** Marcadores de bajadas receptoras de la propagación (persistente — la bajada sigue
+ *  siendo receptora aunque su disco se llene). Libro COMPARTIDO entre redes af/ac/gas:
+ *  las claves llevan prefijo de red y la poda es per-net. */
+export const BAJADAS_RECEPTORAS_KEY = 'bajadas_receptoras_v1';
 export const GAS_DATOS_KEY = 'gas_datos_generales';
 export const HYDRO_DATA_STORAGE_KEY = 'tramo_hidro_data_v3';
 export const HYDRO_SYNC_KEY = 'dibujo_hidro_v1';

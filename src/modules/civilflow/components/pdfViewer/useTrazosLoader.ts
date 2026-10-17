@@ -140,7 +140,22 @@ export function useTrazosLoader({
       // Compara el scaleM DEL DOCUMENTO (capturado tras loadWork) — el engine vivo puede
       // venir pisado por el estado React durante el await de BD (bug: elementos corridos).
       const escalaGlobal = escalaGlobalRef.current;
-      if (escalaGlobal && docScale && Math.abs(docScale - escalaGlobal) > 1e-9) {
+      // SOLO pisos calibrados por el usuario (origen en su entrada de plans_meta): su doc
+      // trae una escala hecha a mano que debe unificarse a la global. Un piso SIN
+      // calibración con el set estándar (0.5/0.75/1/…) ya está en su escala de verdad —
+      // re-basarlo con la global de OTRO piso lo desplazaba todo y el autosave persistía
+      // el desplazamiento (orig. usuario: trazos corridos al reingresar, 2026-10-15).
+      let pisoCalibrado = false;
+      try {
+        const meta = loadFromStorage<
+          Array<{ id: number; origen?: { x_px: number; y_px: number } | null }>
+        >('plans_meta', []);
+        pisoCalibrado = !!meta.find((m) => String(m.id) === String(resolvedId) && m.origen);
+      } catch {
+        /* sin meta accesible: mantener comportamiento previo */
+        pisoCalibrado = true;
+      }
+      if (escalaGlobal && docScale && pisoCalibrado && Math.abs(docScale - escalaGlobal) > 1e-9) {
         // Meta legacy REDONDEADO (0.4723 → 47 → 0.47): el re-base movería TODA la geometría
         // ~0.5 % una vez por piso legacy. Self-heal: el doc (exacto) corrige al meta y no se
         // tocan trazos. Divergencias reales (calibraciones manuales) superan el 0.6 %.

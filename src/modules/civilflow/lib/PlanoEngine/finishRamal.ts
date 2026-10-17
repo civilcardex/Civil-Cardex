@@ -551,16 +551,14 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         return;
       }
     }
+    // 'Conexión sin entrada' RETIRADA del dibujo (orig. usuario: aparatos con flechas hacia
+    // sus extremos = ninguna pieza ENTRA a la T, y el dibujo se rechazaba entero). Queda
+    // 'Conexión sin salida' (unión sin NINGUNA salida = inválida de verdad).
     for (const ep of [r.pts[0], r.pts[r.pts.length - 1]]) {
       if (!junctionHasIncomingFlow(candidates, r.net, ep, TOL)) {
-        engine.triggerAlert(
-          'Conexión sin entrada',
-          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
+        engine._emitStatus(
+          'T sin ramal entrante — revisa las direcciones de flujo de los aparatos.',
         );
-        engine.activeRamal = null;
-        engine._markDirty();
-        engine.render();
-        return;
       }
     }
   }

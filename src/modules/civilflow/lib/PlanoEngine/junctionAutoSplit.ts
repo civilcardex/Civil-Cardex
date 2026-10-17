@@ -181,15 +181,18 @@ export function autoSplitJunctionAndSumFlow(
           'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
         );
         continue;
-      } else if (
+      }
+      // 'Conexión sin entrada' RETIRADA del split (orig. usuario: aparatos con flechas
+      // hacia sus extremos = ninguna pieza ENTRA a la T, y bloquear el split impedía
+      // propagar hacia el rack). La unión se forma igual; la coherencia hidráulica queda
+      // como aviso de estado, sin bloquear.
+      if (
         (incoming.net === 'af' || incoming.net === 'ac' || incoming.net === 'gas') &&
         !junctionHasIncomingFlow(engine.ramales, incoming.net, ep, TOL)
       ) {
-        engine.triggerAlert(
-          'Conexión sin entrada',
-          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
+        engine._emitStatus(
+          'T sin ramal entrante — revisa las direcciones de flujo de los aparatos.',
         );
-        continue;
       }
       // Un tributario que llega a una unión T/Y a mitad de cuerpo de un ramal distinto a su
       // padre seleccionado es exactamente el mismo caso de "ramal equivocado" que handleLineDown

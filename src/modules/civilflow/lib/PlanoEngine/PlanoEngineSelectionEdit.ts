@@ -219,8 +219,11 @@ export function pushBajanteDiameterToRamales(
   // san/ll siempre; af/ac/gas SOLO montantes (orig. usuario: el montante nunca queda por
   // debajo del ramal conectado — misma verificación que bajantes/ramales sanitarios).
   const esFamiliaSan = baj.net === 'san' || baj.net === 'll';
+  // REDES_PRESION completa (af/ac/gas/rci): un montante rci sin sincronía quedaba por
+  // debajo de su ramal sin aviso (auditoría M-5a).
   const esMontePresion =
-    (baj.net === 'af' || baj.net === 'ac' || baj.net === 'gas') && baj.tipo === 'montante';
+    (baj.net === 'af' || baj.net === 'ac' || baj.net === 'gas' || baj.net === 'rci') &&
+    baj.tipo === 'montante';
   if (!esFamiliaSan && !esMontePresion) return true;
   const newIn = diamPulgFromLabel(newDNominal || '');
   if (!(newIn > 0)) return true;

@@ -311,7 +311,7 @@ export function RamalEditorSection() {
                         style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
                       />
                       <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                        {bajanteLabel(b, engineRef.current?.nivelActual?.label)}
+                        {b.code || b.id}
                       </span>
                     </label>
                   );

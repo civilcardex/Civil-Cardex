@@ -349,4 +349,77 @@ describe('convergencia de diámetro en nodos de presión', () => {
     // RAF2 colineal también sube (continuación geométrica); RAF2 perpendicular no existiría
     // aquí — la verificación de la lateral es el test anterior.
   });
+  it('cascada multi-hop: subir el primero sube TODA la cadena lineal', () => {
+    const eng = makeEngine([
+      R(
+        'RAF1',
+        [
+          [0, 0],
+          [40, 0],
+        ],
+        '1"',
+      ),
+      R(
+        'RAF4',
+        [
+          [40, 0],
+          [80, 0],
+        ],
+        '3/4"',
+      ),
+      R(
+        'RAF3',
+        [
+          [80, 0],
+          [120, 0],
+        ],
+        '1/2"',
+      ),
+    ]);
+    eng.selId = 'RAF1';
+    updateSelected(eng, { diametro: '1-1/4"' });
+    expect(eng.ramales.find((r) => r.id === 'RAF4')!.diametro).toBe('1-1/4"');
+    expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('1-1/4"');
+  });
+
+  it('lateral perpendicular de un salto intermedio conserva su diámetro', () => {
+    const eng = makeEngine([
+      R(
+        'RAF1',
+        [
+          [0, 0],
+          [40, 0],
+        ],
+        '1"',
+      ),
+      R(
+        'RAF4',
+        [
+          [40, 0],
+          [80, 0],
+        ],
+        '3/4"',
+      ),
+      R(
+        'RAF3',
+        [
+          [80, 0],
+          [120, 0],
+        ],
+        '1/2"',
+      ),
+      R(
+        'RAF2',
+        [
+          [80, 0],
+          [80, 60],
+        ],
+        '1/2"',
+      ),
+    ]);
+    eng.selId = 'RAF1';
+    updateSelected(eng, { diametro: '1-1/4"' });
+    expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('1-1/4"');
+    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('1/2"');
+  });
 });

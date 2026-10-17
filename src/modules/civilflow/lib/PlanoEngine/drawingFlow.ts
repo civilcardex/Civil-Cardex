@@ -46,12 +46,6 @@ export function convergirDiametroNodoPresion(
     }
     return false;
   };
-  const rRev = !!r._tribReversed;
-  const myDest = rRev ? r.pts[0] : r.pts[r.pts.length - 1];
-  // Dirección de LLEGADA a mi destino (dirEnt de propagarAparatosPresion).
-  const prev = rRev ? r.pts[1] : r.pts[r.pts.length - 2];
-  const lEnt = Math.hypot(myDest[0] - prev[0], myDest[1] - prev[1]);
-  const dEnt = lEnt < 1e-9 ? null : [(myDest[0] - prev[0]) / lEnt, (myDest[1] - prev[1]) / lEnt];
   // Candidatos con origen en MI destino: con UNO solo es la salida inequívoca del flujo y
   // converge (continuación extremo-extremo, aunque doble en ángulo); con VARIOS la unión
   // reparte — solo la continuación de mi LÍNEA sube (colinealidad llegada/salida ≥0.9,
@@ -63,34 +57,62 @@ export function convergirDiametroNodoPresion(
   // un vecino SIN diámetro (oIn=0) también cuenta — si se excluye, la unión "continuación
   // sin diámetro + lateral diametrada" ve un único candidato y la lateral sube sin el
   // chequeo de continuación (dependería del estado transitorio del tercer tramo).
-  const enDestino = ramales.filter((o) => {
-    if (o.id === ramalId || o.net !== r.net || !o.pts || o.pts.length < 2) return false;
-    const oIn0 = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
-    if (oIn0 >= newIn) return false;
-    const oo = o._tribReversed ? o.pts[o.pts.length - 1] : o.pts[0];
-    return Math.hypot(oo[0] - myDest[0], oo[1] - myDest[1]) < TOL;
-  });
-  const exigirContinuacion = enDestino.length > 1;
+
   let changed = false;
-  for (const o of ramales) {
-    if (o.id === ramalId || o.net !== r.net || !o.pts || o.pts.length < 2) continue;
-    const oPts = o.pts;
-    const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
-    if (oIn <= 0 || oIn >= newIn) continue;
-    const oOrigin = o._tribReversed ? oPts[oPts.length - 1] : oPts[0];
-    const enMiDestino = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
-    const naceDeMiCuerpo = ptEnCuerpo(r.pts, oOrigin);
-    if (!enMiDestino && !naceDeMiCuerpo) continue;
-    if (enMiDestino && exigirContinuacion) {
-      const ob = o._tribReversed ? oPts[oPts.length - 2] : oPts[1];
-      const lSal = Math.hypot(ob[0] - oOrigin[0], ob[1] - oOrigin[1]);
-      const dSal = lSal < 1e-9 ? null : [(ob[0] - oOrigin[0]) / lSal, (ob[1] - oOrigin[1]) / lSal];
-      const colineal = dEnt != null && dSal != null && dEnt[0] * dSal[0] + dEnt[1] * dSal[1] >= 0.9;
-      const viaMerge = (o.mergesFrom || []).includes(ramalId);
-      if (!colineal && !viaMerge) continue;
+  // BFS en cascada (orig. usuario araña 2026-10-15: la convergencia era de UN salto y una
+  // cadena RAC1→RAC4→RAC3 quedaba parcial): cada vecino que SUBE encola su propio
+  // downstream con la misma regla — hasta punto fijo. Por salto se preservan: jamás baja,
+  // hermanas perpendiculares no reciben, y en unión con varias salidas solo sube la
+  // continuación colineal/mergesFrom.
+  const pendientes: string[] = [ramalId];
+  const procesados = new Set<string>();
+  const diámetroSemilla = r.diametro || '';
+  while (pendientes.length > 0) {
+    const semillaId = pendientes.shift() as string;
+    if (procesados.has(semillaId)) continue;
+    procesados.add(semillaId);
+    const semilla = ramales.find((x) => x.id === semillaId);
+    if (!semilla || !semilla.pts || semilla.pts.length < 2) continue;
+    const sRev = !!semilla._tribReversed;
+    const sDest = sRev ? semilla.pts[0] : semilla.pts[semilla.pts.length - 1];
+    const sPrev = sRev ? semilla.pts[1] : semilla.pts[semilla.pts.length - 2];
+    const lEnt = Math.hypot(sDest[0] - sPrev[0], sDest[1] - sPrev[1]);
+    const dEnt = lEnt < 1e-9 ? null : [(sDest[0] - sPrev[0]) / lEnt, (sDest[1] - sPrev[1]) / lEnt];
+    const nuevoD = semillaId === ramalId ? diámetroSemilla : semilla.diametro || '';
+    const nuevoIn = diamPulgFromLabel(nuevoD);
+    if (!(nuevoIn > 0)) continue;
+    const enDestinoS = ramales.filter((o) => {
+      if (o.id === semillaId || o.net !== semilla.net || !o.pts || o.pts.length < 2) return false;
+      const oIn0 = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
+      if (oIn0 >= nuevoIn) return false;
+      const oo = o._tribReversed ? o.pts[o.pts.length - 1] : o.pts[0];
+      return Math.hypot(oo[0] - sDest[0], oo[1] - sDest[1]) < TOL;
+    });
+    const exigirS = enDestinoS.length > 1;
+    for (const o of ramales) {
+      if (o.id === semillaId || o.net !== semilla.net || !o.pts || o.pts.length < 2) continue;
+      if (procesados.has(o.id)) continue;
+      const oPts = o.pts;
+      const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
+      if (oIn <= 0 || oIn >= nuevoIn) continue;
+      const oOrigin = o._tribReversed ? oPts[oPts.length - 1] : oPts[0];
+      const enMiDestino = Math.hypot(oOrigin[0] - sDest[0], oOrigin[1] - sDest[1]) < TOL;
+      const naceDeMiCuerpo = ptEnCuerpo(semilla.pts, oOrigin);
+      if (!enMiDestino && !naceDeMiCuerpo) continue;
+      if (enMiDestino && exigirS) {
+        const ob = o._tribReversed ? oPts[oPts.length - 2] : oPts[1];
+        const lSal = Math.hypot(ob[0] - oOrigin[0], ob[1] - oOrigin[1]);
+        const dSal =
+          lSal < 1e-9 ? null : [(ob[0] - oOrigin[0]) / lSal, (ob[1] - oOrigin[1]) / lSal];
+        const colineal =
+          dEnt != null && dSal != null && dEnt[0] * dSal[0] + dEnt[1] * dSal[1] >= 0.9;
+        const viaMerge = (o.mergesFrom || []).includes(semillaId);
+        if (!colineal && !viaMerge) continue;
+      }
+      o.diametro = nuevoD;
+      changed = true;
+      if (!procesados.has(o.id)) pendientes.push(o.id);
     }
-    o.diametro = r.diametro;
-    changed = true;
   }
   return changed;
 }

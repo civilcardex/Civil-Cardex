@@ -89,6 +89,9 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     dNominal: defDNominal,
     recibeDeIds: assocRamales,
     alimentaIds: [],
+    // Auto-asociado estable: sin asocManual la poda/autodetección desmarcaba los
+    // checkboxes al siguiente _markDirty (orig. usuario: crear montante en extremo).
+    asocManual: [...assocRamales],
     descargaEnId: null,
     ucAcum: 0,
     ucExtra: 0,
@@ -202,6 +205,7 @@ export function handleCreateMontanteMidBody(
     dNominal: r.diametro || '',
     recibeDeIds: [r.id],
     alimentaIds: [],
+    asocManual: [r.id],
     descargaEnId: null,
     ucAcum: 0,
     ucExtra: 0,

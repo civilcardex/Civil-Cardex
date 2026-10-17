@@ -142,16 +142,11 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
             junctionHasIncomingFlow(eng.ramales, ramal.net, ep),
           )
         : true;
+      // Coherencia hidráulica SEPARADA de la decisión (orig. usuario: las flechas de los
+      // aparatos apuntan a sus extremos y el flip no debe bloquearse por eso) — aviso de
+      // estado, el flip SE APLICA.
       if (!okIncoming && ['af', 'ac', 'gas'].includes(ramal.net)) {
-        eng.updateElementById(ramal.id, { _tribReversed: !val });
-        props.setContextMenuState(null);
-        eng.triggerAlert(
-          'Conexión sin entrada',
-          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
-        );
-        eng.render();
-        eng.resumeHistory();
-        return;
+        eng._emitStatus('T sin ramal entrante — revisa las direcciones de flujo.');
       }
       if (props.selElement?.id === ramal.id) {
         props.setSelElement({ ...props.selElement, _tribReversed: val });
@@ -229,16 +224,9 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
       target.pts[0],
       target.pts[target.pts.length - 1],
     ].every((ep) => junctionHasIncomingFlow(eng.ramales, target.net, ep));
+    // Mismo criterio: coherencia hidráulica como aviso — la conversión SE APLICA.
     if (!okIncomingBoth && ['af', 'ac', 'gas'].includes(target.net)) {
-      aFresh._tribReversed = !aFresh._tribReversed;
-      target._tribReversed = !target._tribReversed;
-      props.setContextMenuState(null);
-      eng.triggerAlert(
-        'Conexión sin entrada',
-        'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
-      );
-      eng.render();
-      return;
+      eng._emitStatus('T sin ramal entrante — revisa las direcciones de flujo.');
     }
     if (props.selElement?.id === aFresh.id) {
       props.setSelElement({ ...props.selElement, _tribReversed: aFresh._tribReversed });

@@ -6,6 +6,7 @@ import {
   APARATOS_HEREDADOS_KEY,
   APARATOS_HEREDADOS_TRIB_KEY,
   APARATOS_RESIDUO_BAK_KEY,
+  BAJADAS_RECEPTORAS_KEY,
   HYDRO_DATA_STORAGE_KEY,
   GAS_ACC_KEY,
 } from '../../constants/storage-keys';
@@ -84,6 +85,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   cleanOrphans(APARATOS_HEREDADOS_KEY);
   cleanOrphans(APARATOS_HEREDADOS_TRIB_KEY);
   cleanOrphans(APARATOS_RESIDUO_BAK_KEY);
+  // Libro de bajadas receptoras: mismas claves `${net}_${id}_${pid}` (valores numéricos) —
+  // sin esto la marca de bajada quedaba huérfana tras el renumerado y la poda la tiraba.
+  cleanOrphans(BAJADAS_RECEPTORAS_KEY);
 
   ramalesNet.forEach((r) => {
     let n = 1;
@@ -409,6 +413,20 @@ export function renameRamalId(
         } catch (e) {
           devError('PlanoEngine:', e);
         }
+      }
+      // Libro de bajadas receptoras: valores NUMÉRICOS (1) — mover la marca tal cual,
+      // conservando el destino si ya estaba marcado (mover-o-dejar, no MAX de objetos).
+      try {
+        const bl = (loadFromStorage(BAJADAS_RECEPTORAS_KEY, {}) as Record<string, number>) || {};
+        const fromB = `${net}_${oldId}_${planId}`;
+        const toB = `${net}_${newId}_${planId}`;
+        if (bl[fromB] !== undefined && fromB !== toB) {
+          if (bl[toB] === undefined) bl[toB] = bl[fromB];
+          delete bl[fromB];
+          saveToStorage(BAJADAS_RECEPTORAS_KEY, bl);
+        }
+      } catch (e) {
+        devError('PlanoEngine:', e);
       }
       // Hidro guarda { accesorios, Lh, nSalidas }: fusionar accesorios por suma y conservar
       // escalares del destino si existen.

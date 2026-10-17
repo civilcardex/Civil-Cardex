@@ -511,6 +511,19 @@ function PdfViewer_({
   // para el re-base de pisos que calibraron a mano — incidente cotas distintas por piso).
   const escalaGlobalRef = useRef<number | null>(null);
   useEffect(() => {
+    // Fuente ESTABLE: plans_meta en storage (su orden no cambia entre sesiones). El array
+    // `planos` se reconstruye distinto según local/nube y el "primer calGlobal" cambiaba
+    // de piso entre sesiones → el re-base movía toda la geometría (orig. usuario 2026-10-15).
+    try {
+      const meta = loadFromStorage<
+        Array<{ id: number; scale: number; calGlobal?: boolean | null; origen?: unknown }>
+      >('plans_meta', []);
+      const g = meta.find((m) => m.calGlobal === true && m.origen && m.scale);
+      escalaGlobalRef.current = g ? g.scale / 100 : null;
+      return;
+    } catch {
+      /* sin storage: fallback al array */
+    }
     const g = planos.find((p) => p.calGlobal === true && p.origen && p.scale);
     escalaGlobalRef.current = g ? g.scale / 100 : null;
   }, [planos]);
@@ -588,7 +601,20 @@ function PdfViewer_({
       const plano = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
       // Solo pisos SIN calibración: el set estándar pisaba el scaleM calibrado que vino en
       // los trazos (y el autosave lo persistía pisado — normalización de copias corrupta).
-      if (plano && plano.scale && !plano.origen) {
+      // MISMA FUENTE que el gate del re-base (orig. usuario trazos corridos/más cortos):
+      // si plans_meta tiene origen para ESTE piso (calibrado), el scaleM del doc es su
+      // verdad — pisarlo emparejaba scaleM con pts de otro espacio y la siguiente carga
+      // re-basaba (encogiendo) en cada reingreso.
+      let calibrado = false;
+      try {
+        const meta = loadFromStorage<
+          Array<{ id: number; origen?: { x_px: number; y_px: number } | null }>
+        >('plans_meta', []);
+        calibrado = !!meta.find((m) => plano && String(m.id) === String(plano.id) && m.origen);
+      } catch {
+        /* sin meta: comportamiento previo */
+      }
+      if (plano && plano.scale && !plano.origen && !calibrado) {
         const derived = String(plano.scale / 100);
         if (['0.5', '0.75', '1', '1.25', '2'].includes(derived)) {
           setScaleM(derived);

@@ -136,7 +136,14 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
   // af/ac (orig. usuario: 1ª selección tras reingresar mostraba el storage rancio del
   // arranque): leer VIVO de storage — la propagación async ya escribió el estado bueno
   // antes de que el usuario volviera a seleccionar. El merge-sum sigue vigente para gas.
-  if (netId === 'af' || netId === 'ac') return loadAll()[storageKey] || {};
+  // El panel muestra la CARGA TOTAL de la pieza (propio + heredado + plegado — lo que
+  // transporta): es lo que el usuario espera ver al seleccionar un receptor ("RAC4 con el
+  // tin de T1RAC4 y el lvm de RAC1"). El bloqueo de edición lo da esPropagado (heredados
+  // no vacíos), no la resta — restar aquí mostraba receptores en CEROS y parecía que la
+  // propagación no llegaba (orig. usuario 2026-10-17).
+  if (netId === 'af' || netId === 'ac') {
+    return loadAll()[storageKey] || {};
+  }
   const own = counts[storageKey] || {};
   if (!mergeKeys) return own;
   const merged: Record<string, number> = { ...own };
