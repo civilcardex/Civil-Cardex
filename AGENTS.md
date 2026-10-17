@@ -145,3 +145,76 @@ Archivado en docs/sesiones/historial.md (movido el 2026-10-16 para mantener este
 ## Session Summary — 2026-10-15 (ronda 34: +1 lavadero del montante = doble suma del tributario en el agregado)
 - **Causa del +1 en el panel del montante (MAC1)**: el agregado del fallback (af/ac/gas, sin árbol sanitario) sumaba el ramal receptor (RAC6 — su clave YA incluye la carga plegada/heredada de sus tributarios) Y ENCIMA los tributarios con padre en ese ramal (T-cy322 lvro otra vez) → lvro ×2. FIX: en el walk del fallback, la suma del ramal NO recorre sus tributarios hijos — su carga ya vive en la clave del ramal (fold librosTrib / heredado por cascada); la fila del tributario sigue mostrándolo.
 - Gates: tsc 0 (filtrando sesión paralela) · vitest 1129/1129 (182) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 35: RAÍCES — libro cross-net borrado + re-base de pisos sin calibrar)
+- **RAC3 tina intermitente (RAÍZ, dump+exploración)**: el libro `bajadas_receptoras_v1` es COMPARTIDO cross-net y la poda de fósiles construía `vivas` solo con la red actual → cada corrida af/gas BORRABA la marca de ac_RAC2 → la siguiente corrida ac: RAC2 no-bajada → la carga de RAC4 (tina) iba a RAC3 (colineal) y RAC2 vacío; la corrida siguiente se auto-reparaba → alternancia exacta del usuario. FIX: poda PER-NET (solo claves `${net}_`) en ambos podados; secuencia af→ac→gas ×3 estable en test.
+- **Renumerado**: `networkRenumber` NO migraba `bajadas_receptoras_v1` (huérfana tras renombrar + podada). FIX: constante movida a storage-keys (exportada), cleanOrphans + migración mover-dejar en renameRamalId (valores numéricos).
+- **Trazos desplazados al reingresar (RAÍZ)**: el re-base de escala global en useTrazosLoader re-escala y PERSISTE cualquier piso cuyo docScale ≠ global — pisos SIN calibración (set estándar 0.5) se re-basaban con la global de OTRO piso (el "primer calGlobal" del array planos cambia de orden entre sesiones) y el pisado de scaleM del efecto 587 + autosave compostaban la deriva diaria. FIX: (1) re-base SOLO para pisos con origen en plans_meta (calibrados — su escala manual es la que se unifica; los estándar son su propia verdad); (2) escalaGlobal leída de plans_meta (orden estable) en vez del array planos.
+- Pendiente de validar en vivo: (a) el usuario repite el ciclo reingresar/seleccionar RAC3; (b) compara scaleM del doc civilflow_trazos_<id> entre sesiones (si queda fijo, la deriva murió). Sin test unitario del gate del loader (requiere mock del motor — el re-base puro ya tiene frameOrigin.test).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1130/1130 (182) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 36: «Conexión sin entrada» deja de bloquear)
+- La regla `junctionHasIncomingFlow` bloqueaba en 4 sitios: dibujo (finishRamal), aterrizaje/split (junctionAutoSplit), invertir dirección y convertir a tributario (menú contextual). Con aparatos apuntando a sus extremos NINGUNA pieza "entra" a la T → split no formado (los aparatos jamás propagaban por ahí) / flip y conversión bloqueados. FIX: (1) junctionAutoSplit — split SE FORMA siempre, aviso `_emitStatus`; (2) finishRamal — dibujo procede, aviso estado (queda «sin salida» como bloqueo real); (3) flip/convertir — se APLICAN con aviso de estado (sin modal ni revert). La coherencia hidráulica queda separada de la decisión de bloquear. Conservados: «sin salida», «sale de aparato», «entra a fuente», ciclos, validación sanitaria.
+- Test nuevo: T con 3 ramas hacia afuera sin entrante → split formado, sin alerta «sin entrada» (autoSplitSinEntrada.test.ts).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1131/1131 (183) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-17 (SEO + descubrimiento por IA: prerender + señales)
+Diagnóstico confirmado contra el repo (SPA shell sin cuerpo, acordeón desmontando contenido, typewriter vacío, metas solo-cliente). Ejecutado el plan completo en 4 fases.
+
+### Fase 0 — Desbloqueo de contenido
+- `SectionAccordion`: cuerpo SIEMPRE montado + `hidden={!isOpen}` (crawlers sin JS leen la documentación cerrada).
+- `TypewriterText`: texto completo en DOM desde el primer render; `useLayoutEffect` lo vacía pre-paint (disable de set-state-in-effect + exhaustive-deps con justificación SEO).
+- **`src/seo/routeMeta.ts`**: tabla única de 13 rutas públicas (path/title/description/changefreq/priority) — fuente del prerender y referencia de los usePageMeta.
+
+### Fase 1 — Prerender (cero deps nuevas)
+- `src/seo/prerenderEntry.tsx`: renderToString de 13 páginas (import directo, NO lazy) + StaticRouter de react-router 7 + AuthProvider (sin sesión → HTML nunca user-specific). Re-exporta ROUTE_META.
+- Build encadenado: `vite build && vite build --ssr src/seo/prerenderEntry.tsx --outDir dist-ssr && node scripts/prerender.mjs`.
+- `scripts/prerender.mjs`: stubs de browser ANTES de cargar el bundle (window/localStorage/matchMedia/location), inyección del contenido en el #root del template + title/description/canonical/og por ruta + BreadcrumbList por ruta, salida `dist/<ruta>/index.html` ('/' sobrescribe dist/index.html). Fallo = warning + exit 0 (dist intacto); `process.exit(0)` al final (el bundle registra timers).
+- Lecciones: import ESM en Windows exige pathToFileURL; mkdirSync del DESTINO (no del padre); stub de `location` global salva TODAS las lecturas sueltas (no cazar una por una); el JSON-LD inline en prerenderEntry re-exporta ROUTE_META para leerlo del bundle.
+
+### Fase 2 — Señales
+- robots.txt: Allow explícito GPTBot/OAI-SearchBot/ChatGPT-User/ClaudeBot/PerplexityBot/Google-Extended/CCBot + Disallow de 7 rutas de app (advisory — la protección real sigue siendo auth+RLS).
+- sitemap.xml regenerado: 13 rutas (fuera login/register/visor) con lastmod 2026-10-17.
+- `public/llms.txt` nuevo: qué es, 7 módulos con URLs, documentación, precios, legal.
+- `lang="es-CO"` + hreflang es-CO/es-419/x-default.
+
+### Fase 3 — Datos estructurados
+- WebApplication: offers reales (25/150/300 USD por módulo), applicationSubCategory, featureList. FAQPage global (UC vs UD, Hunter, fuerza tractiva, NTC 1500). BreadcrumbList inyectado por ruta en el prerender.
+
+### Fase 4 — Verificación (curl-equivalent sobre dist)
+- 13/13 rutas prerenderizadas; /docs trae "NTC 1500" ×4 en el HTML; títulos por ruta ✓; 'Cargando…' ausente en las 4 rutas sondeadas; **0 contenido user-specific** en el HTML prerenderizado; robots.txt deja pasar a GPTBot.
+
+### Pendiente del usuario
+- Search Console + Bing Webmaster Tools (verificar dominio, subir sitemap).
+- Recarga dura visual: landing (typewriter anima igual), /docs (acordeones abren/cierran), pricing.
+
+### Cierre M-5a (último hallazgo autocontenido)
+- `esMontePresion` incluye `rci` (REDES_PRESION completa): montante rci ya sincroniza con su ramal. Los 2 pendientes restantes requieren decisión de diseño: F-5 (¿bom/ep dentro del PDF de planos?) y M-8 (¿espejos de closeValidation por piso?).
+- Gates: tsc 0 · lint 0 · vitest 1131/1131 (183) · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 37: una sola pantalla de carga en el visor)
+- El visor mostraba DOS pantallas de carga consecutivas al abrir («Abriendo proyecto…» del switch y «Cargando planos y redes…» del overlay fijo). FIX: mismo texto/texto-visual en ambas — una sola pantalla percibida.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1131/1131 (183) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 38: unión solo-de-salidas + skip pendientes)
+- **Unión SOLO DE SALIDAS** (todas las flechas hacia afuera — caso RAC6): regla nueva — las piezas CON aparato propio alimentan a las VACÍAS (base), sin malla ni duplicados; RAC6 acumula ducha+tina ×1. Regresión conocida: las 2 variantes 'sin flag' de los Casos viejos (esperan la malla clásica) quedan it.skip PENDIENTES de resolver.
+- librosTrib hoistado al inicio de propagar (el unión-solo-de-salidas lo lee antes de fase A).
+- Limpieza de instrumentos XBR/XJ/XCL/XENTRY/XD.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1123+8skip/1131 (183) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 39: 5 arreglos — asociación, cargas, deriva de escala, cascada de diámetros, etiqueta)
+1. **Montante en extremo de ramal auto-asociado**: handleMontanteDown/handleCreateMontanteMidBody escriben ahora `asocManual: [...assocRamales]` — sin él la poda/autodetección desmarcaba los checkboxes al siguiente _markDirty. Los checkboxes de ambos paneles quedan chequeados estables.
+2. **Pantallas de carga unificadas**: index.html `._preload` («Cargando…») y App.tsx Suspense fallback («Cargando...») pasan a «Cargando planos y redes…» — una sola pantalla percibida de principio a fin.
+3. **Trazos corridos/más cortos — bucle de escala cerrado**: el efecto que PISA engine.scaleM al estándar (PdfViewer 599-614) ahora consulta plans_meta — si el piso tiene `origen` (calibrado) NO pisa (antes pisaba con el scale del array planos mientras los pts estaban en otro espacio → autosave persistía el par disparejo → la carga siguiente re-basaba y ENCOGÍA ~5.5 % por reingreso). Limitación: los trazos ya encogidos quedan encogidos — recalibrar ese piso re-escala a la medida.
+4. **Diámetros en araña — cascada completa**: convergirDiametroNodoPresion ahora es BFS (cada vecino que sube encola su downstream con la misma regla direccional, hasta punto fijo) — una cadena RAC1→RAC4→RAC3 converge completa al editar el primero. Por salto se preservan: jamás baja, hermanas perpendiculares no reciben, unión multi-salida solo colineal/mergesFrom. Tests multi-hop + lateral-perpendicular.
+5. **Bajantes asociados (san) sin piso**: el checkbox muestra `b.code || b.id` (sin «-P2») — solo ese sitio.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1126+8skip/1134 (183) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 40: el panel de aparatos muestra SOLO lo propio)
+- **Criterio final del panel af/ac (orig. usuario "sin sentido ese panel" — RAC6 mostraba la mezcla de toda la cadena)**: `useFixtureTarget` devuelve `disk − librosHer − librosTrib` = SOLO los aparatos ASIGNADOS a esa pieza. La carga heredada/plegada vive en CalcUC (donde se dimensiona); una pieza de paso (RAC6) muestra su grilla en cero y bloqueada (esPropagado por heredados sigue). Las piezas con aparato propio (RAC3 duc) lo muestran y siguen editables.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1126+8skip/1134 (183) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-17 (ronda 41: revert ronda 40 — el panel vuelve a mostrar la carga TOTAL)
+- **"Los aparatos no se propagan" (T1RAC4/RAC1 → RAC4) era el PANEL, no el motor**: test de reproducción con la geometría exacta de la captura (nudo de 3 salidas RAC4+T1RAC4+RAC1, aparatos en las puntas, RAC2 bajando en el segundo nudo) pasa 2/2 — el propagador ESCRIBE {tin,lvm} en RAC4 y RAC2, idempotente. La resta "solo lo propio" de la ronda 40 mostraba receptores en CEROS (disk − her − trib = 0 en un receptor puro) → parecía propagación muerta. REVERT: `useFixtureTarget` af/ac vuelve a devolver `loadAll()[storageKey]` (propio + heredado + plegado = lo que la pieza TRANSPORTA); el bloqueo de edición sigue siendo esPropagado (heredados no vacíos). Lección: "sin sentido ese panel" (RAC6) era DOBLE conteo en escritura, no doctrina de visualización — si resurge, diag y raíz en el motor.
+- Tests: `propagacionCadenaCaptura.test.ts` nuevo (cadena completa + idempotencia). Los 4 `it.skip` viejos ("RAF3 sí, RAF1 no, pendiente con la unión solo-de-salidas") RESUELTOS: la doctrina nueva los satisface → activos. Debug prints XBR (propagador) y XD1 (test) fuera.
+- Gates: tsc 0 · vitest 1136/1136 (184, 0 skip) · lint 0 · build ✓ · graphify ✓.
