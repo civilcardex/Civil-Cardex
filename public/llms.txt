@@ -1,0 +1,29 @@
+# Civil Cardex
+
+> Plataforma de ingeniería civil en la web para el diseño y cálculo de redes hidrosanitarias, estructuras, terreno, BIM, gestión de obra, MEP y vías, con verificación normativa automática (normas colombianas NTC, RAS e internacionales IPC/UPC, ASCE, NFPA) y exportación de memorias de cálculo.
+
+Civil Cardex es una aplicación web por módulos dirigida a ingenieros civiles, diseñadores hidrosanitarios, consultores y constructores de América Latina. Funciona directamente en el navegador sobre planos PDF reales.
+
+## Módulos
+
+- [Civil Flow](https://civilcardex.com/civilflow): diseño y cálculo de redes hidrosanitarias (agua fría, agua caliente, sanitaria, lluvias, gas, contra incendio) con método Hunter, Renouard, Manning y verificación NTC 1500 / IPC / UPC / NFPA.
+- [Estructuras](https://civilcardex.com/civilstructure): diseño y verificación de elementos estructurales.
+- [Terreno](https://civilcardex.com/civilterrain): análisis y movimiento de tierras.
+- [BIM](https://civilcardex.com/civilbim): coordinación BIM.
+- [Civil Manager](https://civilcardex.com/civilmanager): gestión y administración de proyectos de obra.
+- [MEP](https://civilcardex.com/civilmep): mecánica, eléctrica y plomería.
+- [Vías](https://civilcardex.com/civilroads): diseño geométrico vial.
+
+## Documentación
+
+- [Documentación completa](https://civilcardex.com/docs): normas NTC 1500, RAS 2000, NTC 3728; tutoriales de diseño hidrosanitario y estructural.
+
+## Precios
+
+- Suscripción por módulo: 25 USD/mes, 150 USD/6 meses o 300 USD/año, con descuentos acumulativos por módulos adicionales. Detalles en [Precios](https://civilcardex.com/pricing).
+
+## Legal
+
+- [Términos y Condiciones](https://civilcardex.com/terminos)
+- [Política de Privacidad](https://civilcardex.com/privacidad)
+- [Política de Cookies](https://civilcardex.com/cookies)

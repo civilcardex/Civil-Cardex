@@ -84,14 +84,15 @@ export default function SectionAccordion({
           {isOpen ? 'expand_less' : 'expand_more'}
         </span>
       </button>
-      {isOpen && (
-        <div
-          id={domContentId}
-          className="px-4 pb-4 pt-1 border-t border-outline-variant animate-fade-in docs-body"
-        >
-          {section.body}
-        </div>
-      )}
+      {/* Cuerpo SIEMPRE montado (SEO: crawlers sin JS leen la documentación cerrada);
+          oculto con display:none en vez de desmontarse. */}
+      <div
+        id={domContentId}
+        className={`px-4 pb-4 pt-1 border-t border-outline-variant docs-body ${isOpen ? 'animate-fade-in' : 'hidden'}`}
+        hidden={!isOpen}
+      >
+        {section.body}
+      </div>
     </div>
   );
 }

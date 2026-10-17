@@ -57,7 +57,8 @@ function DocsPage() {
   // Deep-link (orig. usuario): /docs#categoria abre esa categoría directamente (lazy init, sin
   // efecto ni setState-en-render).
   const [activeCat, setActiveCat] = useState(() => {
-    const h = window.location.hash.replace('#', '');
+    // Prerender (node) no tiene window: sin hash, cae a la categoría por defecto.
+    const h = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '';
     return Object.keys(docData).includes(h) ? h : 'hidraulica';
   });
   const [search, setSearch] = useState('');

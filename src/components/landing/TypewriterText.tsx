@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useLayoutEffect } from 'react';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 interface Props {
@@ -12,8 +13,19 @@ export default function TypewriterText({ text, delay = 800, className, style }: 
   const prefersReducedMotion = usePrefersReducedMotion();
   // usePrefersReducedMotion is already accurate on the first render (its own lazy useState
   // init), so the reduced-motion case can be seeded here instead of set in an effect.
-  const [displayedText, setDisplayedText] = useState(() => prefersReducedMotion ? text : '');
+  // SEO: el HTML servido (prerender) trae el TEXTO COMPLETO — crawlers sin JS lo leen.
+  // En cliente, useLayoutEffect lo vacía ANTES del primer paint y la animación teclea
+  // desde cero (el usuario nunca ve el texto completo salvo reduced-motion).
+  const [displayedText, setDisplayedText] = useState(text);
   const [showCursor, setShowCursor] = useState(false);
+
+  useLayoutEffect(() => {
+    if (prefersReducedMotion) return;
+    // Vaciado pre-paint: tras el mount (texto ya en el HTML) y antes del paint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- necesario por diseño SEO
+    setDisplayedText('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- vaciado ÚNICO de montaje
+  }, [prefersReducedMotion]);
 
   useEffect(() => {
     if (prefersReducedMotion) return;
@@ -42,13 +54,15 @@ export default function TypewriterText({ text, delay = 800, className, style }: 
   return (
     <p className={className} style={style}>
       {displayedText}
-      <span 
-        style={{ 
+      <span
+        style={{
           opacity: showCursor && !prefersReducedMotion ? 1 : 0,
           transition: 'opacity 0.2s',
-          animation: showCursor ? 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none'
+          animation: showCursor ? 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
         }}
-      >|</span>
+      >
+        |
+      </span>
     </p>
   );
 }

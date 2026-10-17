@@ -15,7 +15,7 @@ const Fallback = () => (
     aria-live="polite"
     style={{ color: 'var(--on-surface)' }}
   >
-    Cargando...
+    Cargando planos y redes...
   </div>
 );
 

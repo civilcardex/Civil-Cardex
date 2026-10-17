@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-CO">
   <head>
     <title>Civil Cardex | Ingeniería Civil, Hidrosanitario y BIM</title>
     <meta charset="UTF-8" />
@@ -18,7 +18,8 @@
     <meta property="og:image:alt" content="Civil Cardex — plataforma de ingeniería civil para diseño hidrosanitario, estructural, vías, BIM y gestión de proyectos." />
     <meta property="og:site_name" content="Civil Cardex" />
     <meta property="og:locale" content="es_CO" />
-    <link rel="alternate" hreflang="es" href="https://civilcardex.com" />
+    <link rel="alternate" hreflang="es-CO" href="https://civilcardex.com" />
+    <link rel="alternate" hreflang="es-419" href="https://civilcardex.com" />
     <link rel="alternate" hreflang="x-default" href="https://civilcardex.com" />
 
     <!-- Twitter Card -->
@@ -83,12 +84,56 @@
     "@type": "Organization",
     "name": "Civil Cardex"
   },
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
-  }
+  "applicationSubCategory": "Civil Engineering Software",
+  "featureList": "Diseño hidrosanitario (agua fría, caliente, sanitaria, lluvias, gas, contra incendio), Estructuras, Terreno, BIM, Gestión de proyecto (Civil Manager), MEP, Vías, Verificación normativa automática (NTC, RAS, IPC/UPC, ASCE, NFPA), Memorias de cálculo exportables",
+  "offers": [
+    { "@type": "Offer", "name": "Módulo mensual", "price": "25.00", "priceCurrency": "USD", "description": "Un módulo, pago mensual" },
+    { "@type": "Offer", "name": "Módulo semestral", "price": "150.00", "priceCurrency": "USD", "description": "Un módulo, 6 meses" },
+    { "@type": "Offer", "name": "Módulo anual", "price": "300.00", "priceCurrency": "USD", "description": "Un módulo, 12 meses" }
+  ]
 }
+    </script>
+
+    <!-- JSON-LD Structured Data: FAQPage (preguntas reales del dominio — lo que la IA cita) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Cuál es la diferencia entre UC (Unidades de Consumo) y UD (Unidades de Desagüe)?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "UC (Unidades de Consumo) mide la carga de aparatos en redes de agua fría y caliente según el método Hunter de probabilidad de uso simultáneo. UD (Unidades de Desagüe) mide la carga de aparatos en redes sanitarias de gravedad. Civil Cardex calcula ambas automáticamente por tramo y las propaga por la red."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Cómo se aplica el método Hunter en el diseño de redes hidrosanitarias?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "El método Hunter estima el caudal probable de diseño sumando las Unidades de Consumo del tramo y aplicando un coeficiente K de simultaneidad según el número de descargas (K = 1/√(n−1) para n>1). Civil Cardex acumula las UC de cada tramo aguas abajo y calcula el caudal probable con el cambio de fórmula a partir de 240 UC, como exige la práctica para edificios de media y alta demanda."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Qué es la fuerza tractiva mínima en redes sanitarias?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "La fuerza tractiva es la tensión que el flujo ejerce sobre el fondo de la tubería y determina su capacidad de autolimpieza. Las normas exigen un mínimo (típicamente 1.0-1.5 Pa según la norma aplicable) para que los sólidos no sedimenten. Civil Cardex verifica fuerza tractiva en cada tramo de sanitaria y lluvias junto con velocidad y relación de llenado y/D."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Qué exige la norma NTC 1500 para el diseño de instalaciones hidrosanitarias?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "La NTC 1500 (actualizada con NTC 1500-2) regula instalaciones de suministro de agua y drenaje en edificios: diámetros mínimos por aparato, velocidades y presiones máximas, ventilación y el uso del método Hunter para caudales de diseño. Civil Cardex aplica sus criterios automáticamente al verificar cada tramo dibujado."
+          }
+        }
+      ]
+    }
     </script>
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -133,7 +178,7 @@
     </style>
   </head>
   <body>
-    <div id="root"><h1 class="sr-only">Civil Cardex — Plataforma de ingeniería civil</h1><div class="_preload"><img src="/logos/civilCardexlogo-v2.webp" alt="Civil Cardex" width="48" height="48" /><p>Cargando…</p></div></div>
+    <div id="root"><h1 class="sr-only">Civil Cardex — Plataforma de ingeniería civil</h1><div class="_preload"><img src="/logos/civilCardexlogo-v2.webp" alt="Civil Cardex" width="48" height="48" /><p>Cargando planos y redes…</p></div></div>
     <noscript>
       <div style="padding: 2rem; font-family: system-ui, sans-serif; text-align: center; background: #111317; color: #e2e2e8; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
         <div>
