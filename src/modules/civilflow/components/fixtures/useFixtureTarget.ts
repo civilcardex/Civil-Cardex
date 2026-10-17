@@ -2,6 +2,7 @@ import type { MutableRefObject } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { CountsMap, HidroDataMap, SelectableTarget } from '../fixturesStorage';
 import { loadFromStorage } from '../../services/storageService';
+import { loadAll } from '../fixturesStorage';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { splitPtr } from '../../utils/keys';
 import { aggBajanteAsociado, type AsocLiveBaj } from '../../utils/bombaAssociation';
@@ -132,11 +133,11 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
       if (asoc) return asoc;
     }
   }
+  // af/ac (orig. usuario: 1ª selección tras reingresar mostraba el storage rancio del
+  // arranque): leer VIVO de storage — la propagación async ya escribió el estado bueno
+  // antes de que el usuario volviera a seleccionar. El merge-sum sigue vigente para gas.
+  if (netId === 'af' || netId === 'ac') return loadAll()[storageKey] || {};
   const own = counts[storageKey] || {};
-  // af/ac (orig. usuario): la clave YA trae la carga propagada (propia + heredada) —
-  // sumar las patas de la unión encima duplicaba (RAF1 mostraba RAF2+RAF3 = ×2). El
-  // merge-sum sigue vigente para gas (sin propagación).
-  if (netId === 'af' || netId === 'ac') return own;
   if (!mergeKeys) return own;
   const merged: Record<string, number> = { ...own };
   for (const k of mergeKeys) {

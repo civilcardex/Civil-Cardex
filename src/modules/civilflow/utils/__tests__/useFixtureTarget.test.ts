@@ -56,7 +56,16 @@ describe('currentMapDe (pines movimiento 5)', () => {
     expect(currentMapDe(base({ storageKey: null }))).toEqual({});
   });
 
-  it('af: la clave YA trae la carga propagada → own sin merges', () => {
+  it('af: la clave YA trae la carga propagada → own sin merges (lee storage vivo)', () => {
+    // La lectura es VIVA de storage (orig. usuario: 1ª selección tras reingresar mostraba
+    // el arranque rancio) — sembrar el disco antes de medir.
+    localStorage.setItem(
+      'civilflow_aparatos_by_tramo_v2',
+      JSON.stringify({
+        [`af_RAF1_${PLAN}`]: { inodoro: 1 },
+        [`af_RAF2_${PLAN}`]: { lavamanos: 2 },
+      }),
+    );
     const a = base({
       counts: {
         [`af_RAF1_${PLAN}`]: { inodoro: 1 },

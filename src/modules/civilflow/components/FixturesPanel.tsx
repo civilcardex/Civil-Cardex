@@ -646,9 +646,9 @@ const AparatosPanel = memo(function AparatosPanel_({
           if (seen.has(rid)) return;
           seen.add(rid);
           sumCounts(planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
-          for (const trib of eng?.ramales || [])
-            if (trib.tipo === 'tributario' && (trib.net ?? netId) === netId && trib.padre === rid)
-              sum(trib.id);
+          // af/ac/gas (orig. usuario MAC1 +1 lavarropas): la carga de los tributarios ya
+          // vive DENTRO de la clave del ramal (pliegue librosTrib / heredado por cascada) —
+          // sumar el tributario encima lo duplica. Su fila propia sigue mostrándolo.
         };
         for (const rid of baj?.recibeDeIds || []) sum(rid);
       }

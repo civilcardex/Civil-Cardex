@@ -57,6 +57,8 @@ interface RawBaj {
   alimentaIds?: string[];
   /** Asociación hecha a mano por checkbox (no declara dirección de flujo: no se poda por geometría). */
   asocManual?: string[];
+  /** Trazo del montante (bajada entre pisos): para contacto geométrico con su alimentador. */
+  pts?: number[][];
 }
 
 const sumaCnt = (a: Cnt, b: Cnt): Cnt => {
@@ -144,10 +146,18 @@ function cabezaDe(r: RawRam): number[] | null {
  *  ESCRIBE en su clave lo que hereda de aguas arriba (el montante, las uniones donde entra la
  *  tubería). Ej: RAF3 queda con el inodoro que le baja por RAF1 + el lavamanos propio de RAF2.
  *  Se puede correr mil veces: el resultado es el mismo. */
+/** Diagnóstico de la última propagación (orig. usuario: pega este JSON para depurar el
+ *  storage real — piezas, libros, bajadas, transferencias y aristas). */
+let ultimaDiag: unknown = null;
+export function diagUltimaPropagacion(): unknown {
+  return ultimaDiag;
+}
+
 export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   const disk = loadFromStorage<Record<string, Cnt>>(APARATOS_KEY, {}) || {};
   const libros = loadFromStorage<Record<string, Cnt>>(HEREDADOS_KEY, {}) || {};
   const bajadasLibro = loadFromStorage<Record<string, number>>(BAJADAS_RECEPTORAS_KEY, {}) || {};
+  const diag: Record<string, unknown> = { net };
 
   // 1) Recolectar ramales + bajantes de la red en TODOS los planos con trazos. Cada
   //    pieza viaja con su pid: los ids se repiten entre pisos y NADA puede llavearse por
@@ -175,6 +185,21 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
     for (const b of d.bajantes || []) {
       if (b.net === net) bajes.push({ ...b, pid });
     }
+    diag.piezas = ramales.map((r) => ({
+      id: r.id,
+      key: r.key,
+      tipo: r.tipo || '',
+      padre: r.padre || '',
+      rev: !!r._tribReversed,
+      ini: r.ini || '',
+      fin: r.fin || '',
+      apI: r.aparatoInicio || '',
+      apF: r.aparatoFin || '',
+      pts: r.pts || [],
+      disk: disk[r.key] || {},
+      her: libros[r.key] || {},
+    }));
+    diag.bajLibro = { ...bajadasLibro };
   }
   if (ramales.length === 0) {
     // Sin piezas de la red: todo marcador de bajada es fósil (tramos borrados) — fuera.
@@ -899,6 +924,74 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   };
   for (const r of ramales) calcDe(r.key);
 
+  // 5bis) Refresco de ucAplicado de montantes que RECIBEN (orig. usuario "+1 lavadero en
+  //  MAC1"): su carga = la suma de los ramales que le llegan (recibeDeIds o contacto
+  //  geométrico en su cabeza) — ANTES quedaba congelada en la asociación y se ponía rancia
+  //  cuando la cadena cambiaba. Los montantes FUENTE (alimentaIds) no se tocan: su
+  //  ucAplicado es la carga que ENTREGA al piso, no la que recibe.
+  {
+    const cambios = new Map<string, Map<string, Cnt>>();
+    const macLog: string[] = [];
+    for (const b of bajes) {
+      if (b.tipo !== 'montante') continue;
+      if (!(b.recibeDeIds || []).length) continue;
+      const en = new Map<string, number[]>();
+      if (b.pts && b.pts.length >= 2) en.set(`${b.pts[0][0]}|${b.pts[0][1]}`, b.pts[0]);
+      let uc: Cnt = {};
+      const vistos = new Set<string>();
+      const alimenta = (p: number[] | undefined): void => {
+        if (!p) return;
+        for (const r of ramales) {
+          if (r.pid !== b.pid || vistos.has(r.key) || !r.pts || r.pts.length < 2) continue;
+          const toca =
+            Math.hypot(r.pts[0][0] - p[0], r.pts[0][1] - p[1]) < 2 ||
+            Math.hypot(r.pts[r.pts.length - 1][0] - p[0], r.pts[r.pts.length - 1][1] - p[1]) < 2;
+          if (!toca) continue;
+          vistos.add(r.key);
+          uc = sumaCnt(uc, totalDe.get(r.key) || {});
+        }
+      };
+      const rids = b.recibeDeIds || [];
+      for (const rid of rids) {
+        const r = ramales.find((x) => x.pid === b.pid && x.id === rid);
+        if (r) {
+          vistos.add(r.key);
+          uc = sumaCnt(uc, totalDe.get(r.key) || {});
+        }
+      }
+      for (const p of en.values()) alimenta(p);
+      // Forma anidada por clave (la que escriben la asociación y lee upMonte).
+      const ucNido = { [`${net}_${b.id}_${b.pid}`]: uc };
+      const antes = JSON.stringify((b.ucAplicado || {})[`${net}_${b.id}_${b.pid}`] || {});
+      if (JSON.stringify(uc) === antes) continue;
+      macLog.push(b.code + ' ← ' + JSON.stringify(uc) + ' (antes ' + antes + ')');
+      b.ucAplicado = ucNido;
+      if (!cambios.has(b.pid)) cambios.set(b.pid, new Map());
+      cambios.get(b.pid)!.set(b.id, uc);
+    }
+    diag.macRefresh = macLog;
+    for (const [pid, monts] of cambios) {
+      const raw = loadFromStorage<unknown>(`${TRAZOS_PREFIX}${pid}`, null);
+      if (!raw) continue;
+      let d = raw as {
+        bajantes?: Array<{ id: string; ucAplicado?: Record<string, Cnt> }>;
+      };
+      if (typeof d === 'string') {
+        try {
+          d = JSON.parse(d);
+        } catch {
+          continue;
+        }
+      }
+      if (!d || !d.bajantes) continue;
+      for (const b of d.bajantes) {
+        const uc = monts.get(b.id);
+        if (uc) b.ucAplicado = { [`${net}_${b.id}_${pid}`]: uc };
+      }
+      saveToStorage(`${TRAZOS_PREFIX}${pid}`, d);
+    }
+  }
+
   // 6) Delta idempotente por clave + libros nuevos. Solo escribe si algo cambió: en estado
   //    estable actual = manual + fold + her y los libros coinciden → cero escrituras.
   //    El fold del libro fusiona plegado + aristas-trib (ambos cuentan como propia).
@@ -952,6 +1045,24 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   // los consumidores re-lean con debounce y el cálculo es barato. No revertir sin resolver
   // antes el estado rancio del panel (hallazgo #5).
   despacharStorage();
+  diag.diskFinal = disk;
+  diag.libros = libros;
+  diag.librosTrib = librosTrib;
+  diag.transferencias = [...transferencias.entries()];
+  diag.aristas = aristas.map((a) => a.tipo + ':' + a.from + '→' + a.to);
+  diag.bajadas = [...bajadasDown];
+  // Bajantes AL FINAL: el ucAplicado refrescado por 5bis ya está aplicado.
+  diag.bajantes = bajes.map((b) => ({
+    id: b.id,
+    code: b.code || b.id,
+    tipo: b.tipo || '',
+    x: b.x ?? 0,
+    y: b.y ?? 0,
+    alimentaIds: b.alimentaIds || [],
+    recibeDeIds: b.recibeDeIds || [],
+    ucAplicado: b.ucAplicado || {},
+  }));
+  ultimaDiag = diag;
 }
 
 /** ¿La red es de presión y por tanto propaga aparatos? Sí para agua fría, caliente y gas (af (Agua Fria)/ac (Agua Caliente)/gas (Gas)). */

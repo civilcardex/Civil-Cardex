@@ -12,10 +12,33 @@ import {
   stableStringify,
   syncMirrorKey,
 } from '../fixturesStorage';
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
+import {
+  loadFromStorage,
+  saveToStorage,
+  saveTrazosToDB,
+  loadPlanTrazos,
+} from '../../services/storageService';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { emitAparatosClear } from '../../utils/fixtureEvents';
-import { esRedAparatosPresion, propagarAparatosPresion } from '../../utils/aparatosPresion';
+import {
+  diagUltimaPropagacion,
+  esRedAparatosPresion,
+  propagarAparatosPresion,
+} from '../../utils/aparatosPresion';
+
+// Diagnóstico (orig. usuario): __cfDiag('ac') en consola corre la propagación y devuelve el
+// análisis completo (piezas, libros, bajadas, transferencias, aristas, bajantes+ucAplicado).
+declare global {
+  interface Window {
+    __cfDiag?: (net: 'af' | 'ac' | 'gas') => unknown;
+  }
+}
+if (typeof window !== 'undefined') {
+  window.__cfDiag = (net) => {
+    propagarAparatosPresion(net);
+    return diagUltimaPropagacion();
+  };
+}
 import { devError } from '../../../../utils/devError';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../../utils/bombaAssociation';
 import { ldesvioIdFor } from '../../utils/associateBajanteAcrossFloors';
@@ -92,8 +115,13 @@ export function correrSanadoSifones(a: EspejosArgs): void {
  *  el bail por igualdad del reload y el timing del debounce dejaban el panel rancio hasta
  *  reseleccionar, orig. usuario caso RAC2-P2). */
 export function correrPropagacion(a: EspejosArgs): () => void {
-  const { netId, setCounts, setHidroData, onLibrosChange } = a;
-  if (!esRedAparatosPresion(netId)) return () => {};
+  const { netId, setCounts, setHidroData, onLibrosChange, engineRef } = a;
+  // TODAS las redes de presión en cada corrida (orig. usuario: al montar corría solo la
+  // red activa — la de 'ac' corría 250ms DESPUÉS del primer clic y el panel mostraba el
+  // residuo viejo de la red transitoria).
+  const redes = esRedAparatosPresion(netId)
+    ? [netId, ...['af', 'ac', 'gas'].filter((n) => n !== netId)]
+    : ['af', 'ac', 'gas'];
   // Refresco explícito post-corrida: re-lee lo que la propagación acaba de escribir para
   // que el panel pinte fresco en este mismo ciclo (orig. usuario: solo reseleccionando se
   // veían bien los aparatos). Conteos con bail anti-loop (objeto nuevo solo si cambió el
@@ -117,12 +145,38 @@ export function correrPropagacion(a: EspejosArgs): () => void {
       /* sin panel (tests) */
     }
   };
-  const t = window.setTimeout(() => {
-    try {
-      propagarAparatosPresion(netId);
-    } catch (e) {
-      devError('[CF-PROP] error en propagación:', e);
+  const correr = (): void => {
+    for (const n of redes) {
+      try {
+        propagarAparatosPresion(n as 'af' | 'ac' | 'gas');
+      } catch (e) {
+        devError('[CF-PROP] error en propagación:', e);
+      }
     }
+    // El ucAplicado refrescado vive en storage — el MOTOR lo traía rancio de la asociación
+    // (orig. usuario MAC1: +1 lavadero en el panel derecho hasta recargar). Espejo directo.
+    const eng = engineRef.current;
+    if (eng) {
+      const pid = String(
+        (eng as unknown as { _loadedPlanId?: string | number })._loadedPlanId ?? '',
+      );
+      for (const b of eng.bajantes || []) {
+        if (b.tipo !== 'montante') continue;
+        try {
+          const trazos = loadPlanTrazos(pid) as {
+            bajantes?: Array<{ id?: string; ucAplicado?: Record<string, Record<string, number>> }>;
+          } | null;
+          if (!trazos || !trazos.bajantes) continue;
+          const mon = trazos.bajantes.find((x) => x.id === b.id);
+          if (mon && mon.ucAplicado) b.ucAplicado = mon.ucAplicado;
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  };
+  const t = window.setTimeout(() => {
+    correr();
     refrescarPanel();
   }, 250);
   // Al cambiar de selección NO se cancela en silencio (auditoría #5): se vacía lo pendiente
@@ -130,11 +184,7 @@ export function correrPropagacion(a: EspejosArgs): () => void {
   // storage, el mismo costo que el autosave que ya corre en este ciclo.
   return () => {
     window.clearTimeout(t);
-    try {
-      propagarAparatosPresion(netId);
-    } catch (e) {
-      devError('[CF-PROP] error en propagación (flush):', e);
-    }
+    correr();
     refrescarPanel();
   };
 }

@@ -19,7 +19,7 @@ import { calcLeAcces } from '../utils/fittingsUtils';
 import { chequeoPresionAparato } from '../utils/waterRowsShared';
 import { perfilDe } from '../constants/normasPais';
 import { fracAscii } from '../utils/formatUtils';
-import { leerHeredadosPresion, propagarAparatosPresion } from '../utils/aparatosPresion';
+import { leerLibrosPresion, propagarAparatosPresion } from '../utils/aparatosPresion';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';
@@ -90,9 +90,12 @@ function WaterNetworkDesign({
         /* ignorar */
       }
     };
-    correr();
+    // El listener se registra ANTES de la corrida inicial: la propagación despacha
+    // EV_STORAGE, y sin listener en ese instante nadie invalida los memos que leen los
+    // libros de herencia (el montaje quedaba con el libro viejo).
     const h = (): void => setPropTick((x) => x + 1);
     window.addEventListener(EV_STORAGE, h);
+    correr();
     return () => window.removeEventListener(EV_STORAGE, h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [networkType]);
@@ -190,19 +193,40 @@ function WaterNetworkDesign({
   // alias nombrado porque los puntos de llamada de abajo ya leen `displayTotalMap`.
   const displayTotalMap = componentTotalMap;
 
+  // Libros de propagación (heredados/fold) leídos con UNA sola parseada por store: antes
+  // eran N (una por tramo). Depende de propTick porque la propagación escribe desde el
+  // efecto de arriba — sin esto, el primer render tras reingresar queda con el libro viejo
+  // (el montante suma un aparato de más y cada tramo muestra el del vecino) hasta que una
+  // selección cambia la identidad de `tramos` y el memo se recalcula por casualidad.
+  const librosProp = useMemo(() => {
+    const { her, fold } = leerLibrosPresion();
+    const hm: Record<string, Record<string, number>> = {};
+    const fm: Record<string, Record<string, number>> = {};
+    for (const t of tramos) {
+      if (!t._aparatosKey) continue;
+      const k = t._aparatosKey;
+      const own = t._key || t.id;
+      hm[own] = her[k] || {};
+      fm[own] = fold[k] || {};
+    }
+    return { hm, fm };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tramos, propTick]);
+
   // UD propia = carga − heredada del libro: lo nacido en el tramo más lo plegado por
   // sus tributarios (orig. usuario: lo propagado por tributarios cuenta en propia).
+  // El plegado vive DENTRO de la carga, así que no se resta aparte.
   const propiaMap = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of tramos) {
       const key = t._key || t.id;
-      const hered = t._aparatosKey ? leerHeredadosPresion(t._aparatosKey) : {};
+      const hered = librosProp.hm[key] || {};
       let hUc = 0;
       for (const d of AP) hUc += (hered[d.id] || 0) * (Number(d.uc) || 0);
       m[key] = Math.max(0, calcUCparcial(t, AP, 'uc') - hUc);
     }
     return m;
-  }, [tramos, AP]);
+  }, [tramos, AP, librosProp]);
 
   const pRed = parseFloat(proy.p_red) || 20;
 
