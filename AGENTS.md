@@ -116,3 +116,32 @@ These policies prevent unauthorized access or tampering with drawing data belong
 ## Historial de sesiones
 
 Archivado en docs/sesiones/historial.md (movido el 2026-10-16 para mantener este archivo magro como guía viva).
+
+## Session Summary — 2026-10-15 (ronda 29: diag extendido con bajantes+ucAplicado)
+- __cfDiag re-instalado (la sesión paralela lo había retirado): ahora incluye BAJANTES (code, tipo, pos, alimentaIds/recibeDeIds, **ucAplicado**) — para el +1 lavadero del montante de la araña (MAC1) se necesita su ucAplicado, no venía en el dump anterior. Síntoma 2 (RAC3 stale en 1ª selección) probablemente ya muerto con la limpieza de residuo (observado en build anterior).
+- Gates: tsc 0 · vitest 1129/1129 (182 — sesión paralela sumó) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 30: ucAplicado de montantes receptores se REFRESCA)
+- **Causa del "+1 lavadero" del montante (MAC1)**: el ucAplicado se escribía UNA vez al asociar y quedaba CONGELADO — la cadena cambió de doctrina mil veces y él siguió con la foto vieja. FIX: `propagarAparatosPresion` (5bis) REFRESCA el ucAplicado de montantes con recibeDeIds = suma de los totales de los ramales que le llegan (explícito recibeDeIds + contacto geométrico de su cabeza, tol 2). Montantes FUENTE (alimentaIds) intactos (su ucAplicado es lo que ENTREGAN). Forma anidada por clave ({ clave: {aparato:n} } — la que escribe la asociación y lee upMonte). Escritura storage-side por plano (los totales vienen del DFS fresco). Idempotente (cntIgual contra el nido propio).
+- RawBaj: +pts opcional; ucAplicado tipado Record<string, Cnt>.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1129/1129 (182) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 31: dump real VERIFICADO — storage exacto; MAC1 en observación)
+- Dump __cfDiag del usuario VERIFICADO contra doctrina: TODAS las piezas exactas (RAC4 solo heredado del trib TIN — residuo limpiado; RAC3 solo su ducha + consumida; RAC2 bajada = carga RAC4 + ducha transferida de RAC3; RAC5 = carga RAC2 + lvm de su trib; RAC6 = todo + lvro propio). Marcador de RAC2 en el libro ✓. transferencias RAC3→RAC2 ✓.
+- Pendiente: MAC1 ucAplicado salía {} en el diag (snapshot temprano) — diag ahora fotografía bajantes AL FINAL (tras 5bis) + diag.macRefresh (log de refrescos: código ← nuevo (antes viejo)). El panel del montante lee el objeto del MOTOR — el storage-write de 5bis no lo actualiza en vivo (se corrige al recargar/cambiar piso).
+- Esperando: 2º dump del usuario + tabla esperada (RAC3/RAC4/RAC2/MAC1) para cerrar la doctrina del montante.
+- Gates: tsc 0 · vitest 1097/1097 (177) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 32: panel af/ac lee storage VIVO — stale de 1ª selección muerto)
+- **Causa del "1ª selección tras reingresar muestra rancio, reselección lo arregla"**: `useFixtureTarget` leía `counts[storageKey]` del SNAPSHOT React del montaje — el storage que la propagación async escribió antes del primer render no se veía hasta que un evento tocara el estado. FIX: para af/ac `currentMap` lee VIVO `loadAll()[storageKey]` (post-propagación siempre ✓). El estado `counts` sigue para gas/merge-sums y para las ediciones +/−.
+- Diag __cfDiag: bajantes se fotografían AL FINAL (ucAplicado ya refrescado por 5bis) + diag.macRefresh (log de refrescos).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1129/1129 (182) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 33: transitorios del panel derecho muertos)
+- **RAC3 tina transitoria (1ª selección tras reingresar)**: al montar la propagación corría SOLO la red activa ('af' por defecto) — la de 'ac' corría 250ms DESPUÉS del primer clic y el panel mostraba el residuo viejo de la red no corrida. FIX: `correrPropagacion` propaga TODAS las redes de presión (activa primero, luego las demás) en debounce y flush.
+- **MAC1 +1 lavadero en el panel derecho**: el panel lee ucAplicado del OBJETO del motor (rancio de la asociación — el refresco storage de 5bis no lo tocaba en vivo). FIX: tras cada corrida, espejo ucAplicado de los montantes del motor desde el trazos recién escrito (loadPlanTrazos por pid).
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1129/1129 (182) · lint 0 · build ✓ · graphify ✓.
+
+## Session Summary — 2026-10-15 (ronda 34: +1 lavadero del montante = doble suma del tributario en el agregado)
+- **Causa del +1 en el panel del montante (MAC1)**: el agregado del fallback (af/ac/gas, sin árbol sanitario) sumaba el ramal receptor (RAC6 — su clave YA incluye la carga plegada/heredada de sus tributarios) Y ENCIMA los tributarios con padre en ese ramal (T-cy322 lvro otra vez) → lvro ×2. FIX: en el walk del fallback, la suma del ramal NO recorre sus tributarios hijos — su carga ya vive en la clave del ramal (fold librosTrib / heredado por cascada); la fila del tributario sigue mostrándolo.
+- Gates: tsc 0 (filtrando sesión paralela) · vitest 1129/1129 (182) · lint 0 · build ✓ · graphify ✓.
