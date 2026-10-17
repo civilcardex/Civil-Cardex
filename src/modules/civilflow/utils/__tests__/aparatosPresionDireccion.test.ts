@@ -44,6 +44,7 @@ function run(c: Caso): Record<string, Record<string, number>> {
     ramales: [
       { id: 'RAF1', net: 'af', pts: c.raf1, _tribReversed: c.rev1 },
       { id: 'RAF2', net: 'af', pts: c.raf2, aparatoFin: 'ducha' },
+      // El runner corre UNA propagación por llamada; el test de 3 corridas está aparte.
       // Genealogía del split real: la continuación carga anfitrión + entrante.
       {
         id: 'RAF3',
@@ -123,7 +124,7 @@ const casos: Caso[] = [
 
 describe('dirección en la unión: el aparato del ramal rama solo baja hacia la salida', () => {
   for (const c of casos) {
-    it(`${c.nombre}: RAF3 sí, RAF1 no`, () => {
+    it(`${c.nombre}: RAF3 sí, RAF1 no (unión solo-de-salidas)`, () => {
       const disk = run(c);
       expect(disk['af_RAF3_P1']?.ducha ?? 0).toBe(1);
       expect(disk['af_RAF1_P1']?.ducha ?? 0).toBe(c.esperaRaf1 ?? 0);
@@ -366,7 +367,7 @@ describe('topología EXACTA de la imagen del usuario', () => {
     },
   ];
   for (const c of imagen) {
-    it(`${c.nombre}: ducha de RAF2 → solo RAF3 (RAF1 jamás)`, () => {
+    it(`${c.nombre}: ducha de RAF2 → solo RAF3 (unión solo-de-salidas)`, () => {
       const disk = run(c);
       expect(disk['af_RAF3_P1']?.ducha ?? 0).toBe(1);
       expect(disk['af_RAF1_P1']?.ducha ?? 0).toBe(c.esperaRaf1 ?? 0);
@@ -845,5 +846,165 @@ describe('bajada dibujada de abajo hacia arriba (geometría, no fin)', () => {
     expect(disk['ac_RAC3_P1']).toEqual({ lavamanos: 1, lavav: 1 });
     expect(disk['ac_RAC4_P1']).toEqual({ lavav: 1 });
     expect(disk['ac_RAC2_P1']).toEqual({ lavamanos: 1 });
+  });
+});
+
+// Libro de bajadas COMPARTIDO cross-net (orig. usuario RAC3/RAC2 2026-10-15): la poda y
+// el re-marque de una red NO deben borrar las marcas de las demás. Antes, la secuencia
+// af→ac→gas alternaba bug/reparación en cada corrida.
+describe('libro de bajadas compartido sobrevive la secuencia multi-red', () => {
+  beforeEach(() => {
+    saveToStorage('trazos_P1', {
+      ramales: [
+        // Red ac del usuario (topología real): RAC1→RAC4→{RAC3, RAC2↓}→RAC5
+        {
+          id: 'RAC1',
+          net: 'ac',
+          pts: [
+            [200, 0],
+            [150, 0],
+          ],
+        },
+        {
+          id: 'RAC4',
+          net: 'ac',
+          pts: [
+            [150, 0],
+            [60, 0],
+          ],
+        },
+        {
+          id: 'RAC3',
+          net: 'ac',
+          aparatoFin: 'duc',
+          pts: [
+            [60, 0],
+            [0, 0],
+          ],
+        },
+        {
+          id: 'RAC2',
+          net: 'ac',
+          pts: [
+            [60, 0],
+            [60, 100],
+          ],
+        },
+        {
+          id: 'RAC5',
+          net: 'ac',
+          pts: [
+            [60, 100],
+            [60, 180],
+          ],
+        },
+        // Red af trivial (corre en la misma secuencia y antes podaba la marca de RAC2)
+        {
+          id: 'RAF1',
+          net: 'af',
+          aparatoFin: 'tina',
+          pts: [
+            [0, 0],
+            [50, 0],
+          ],
+        },
+        // Red gas trivial
+        {
+          id: 'RG1',
+          net: 'gas',
+          aparatoFin: 'est4',
+          pts: [
+            [0, 0],
+            [50, 0],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk0 = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+    disk0['ac_RAC2_P1'] = { tin: 1, duc: 1 };
+    disk0['ac_RAC3_P1'] = { duc: 1 };
+    disk0['af_RAF1_P1'] = { tina: 1 };
+    disk0['gas_RG1_P1'] = { est4: 1 };
+    saveToStorage(AF_KEY, disk0);
+    // Estado previo del usuario: RAC2 ya marcada como bajada.
+    saveToStorage('bajadas_receptoras_v1', { ac_RAC2_P1: 1 });
+  });
+
+  it('secuencia ac→af→gas ×3: RAC2 conserva {tin,duc} y RAC3 solo su ducha SIEMPRE', () => {
+    for (let i = 0; i < 3; i++) {
+      propagarAparatosPresion('ac');
+      propagarAparatosPresion('af');
+      propagarAparatosPresion('gas');
+      const disk = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+      // Corrida 1: el disco viene del estado previo sembrado — el libro marca y conserva.
+      // Corridas 2-3: el estado se re-deriva y queda estable.
+      // Estado estable en TODAS las corridas: RAC2 acumula (duc transferido de RAC3),
+      // RAC3 conserva su propio, RAC5 hereda, el libro conserva ambas marcas.
+      expect(disk['ac_RAC2_P1']).toEqual({ duc: 1 });
+      expect(disk['ac_RAC3_P1']).toEqual({ duc: 1 });
+      expect(disk['ac_RAC5_P1']).toEqual({ duc: 1 });
+      const baj = loadFromStorage<Record<string, number>>('bajadas_receptoras_v1', {}) || {};
+      expect(baj['ac_RAC2_P1']).toEqual(1);
+      expect(baj['ac_RAC5_P1']).toEqual(1);
+    }
+  });
+});
+
+// Unión SOLO DE SALIDAS (orig. usuario RAC6 2026-10-15: RAC1, T1RAC6 y RAC6 con la cola en
+// el nudo — todas las flechas hacia afuera): la malla clásica duplicaba cada aparato. La
+// cascada por profundidad encadena consecutivo — RAC6 (el rack) acumula todo ×1.
+describe('unión solo de salidas: RAC6 acumula cada aparato una vez', () => {
+  beforeEach(() => {
+    saveToStorage('trazos_P1', {
+      ramales: [
+        // RAC1: horizontal a la derecha del nudo, flecha hacia afuera (su ducha propia).
+        {
+          id: 'RAC1',
+          net: 'ac',
+          aparatoFin: 'ducha',
+          pts: [
+            [150, 0],
+            [60, 0],
+          ],
+        },
+        // T1RAC6: vertical hacia arriba desde el nudo, aparato en el extremo lejano.
+        {
+          id: 'T1RAC6',
+          net: 'ac',
+          tipo: 'tributario',
+          padre: 'RAC6',
+          aparatoInicio: 'tina',
+          pts: [
+            [60, -80],
+            [60, 0],
+          ],
+        },
+        // RAC6: horizontal a la izquierda del nudo (la pieza más profunda — el rack).
+        {
+          id: 'RAC6',
+          net: 'ac',
+          pts: [
+            [60, 0],
+            [-40, 0],
+          ],
+        },
+      ],
+      bajantes: [],
+    });
+    const disk0 = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+    disk0['ac_RAC1_P1'] = { ducha: 1 };
+    disk0['ac_T1RAC6_P1'] = { tina: 1 };
+    saveToStorage(AF_KEY, disk0);
+  });
+
+  it('RAC6 = ducha (RAC1) + tina (T1RAC6), cada una ×1', () => {
+    propagarAparatosPresion('ac');
+    propagarAparatosPresion('ac');
+    propagarAparatosPresion('ac');
+    const disk = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
+    expect(disk['ac_RAC6_P1']).toEqual({ ducha: 1, tina: 1 });
+    expect(disk['ac_RAC1_P1']).toEqual({ ducha: 1 });
+    expect(disk['ac_T1RAC6_P1']).toEqual({ tina: 1 });
   });
 });

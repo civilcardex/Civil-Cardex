@@ -5,6 +5,7 @@ import {
   APARATOS_HEREDADOS_TRIB_KEY,
   APARATOS_RESIDUO_BAK_KEY,
   TRAZOS_PREFIX,
+  BAJADAS_RECEPTORAS_KEY,
 } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
 
@@ -23,7 +24,6 @@ const APARATOS_KEY = 'aparatos_by_tramo_v2';
 const HEREDADOS_KEY = APARATOS_HEREDADOS_KEY;
 const HEREDADOS_TRIB_KEY = APARATOS_HEREDADOS_TRIB_KEY;
 /** Bajadas ya marcadas como receptoras de su unión (persistente: siguen siéndolo aunque su clave se llene). */
-const BAJADAS_RECEPTORAS_KEY = 'bajadas_receptoras_v1';
 
 type Cnt = Record<string, number>;
 
@@ -157,6 +157,7 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   const disk = loadFromStorage<Record<string, Cnt>>(APARATOS_KEY, {}) || {};
   const libros = loadFromStorage<Record<string, Cnt>>(HEREDADOS_KEY, {}) || {};
   const bajadasLibro = loadFromStorage<Record<string, number>>(BAJADAS_RECEPTORAS_KEY, {}) || {};
+  const librosTrib = loadFromStorage<Record<string, Cnt>>(APARATOS_HEREDADOS_TRIB_KEY, {}) || {};
   const diag: Record<string, unknown> = { net };
 
   // 1) Recolectar ramales + bajantes de la red en TODOS los planos con trazos. Cada
@@ -202,18 +203,26 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
     diag.bajLibro = { ...bajadasLibro };
   }
   if (ramales.length === 0) {
-    // Sin piezas de la red: todo marcador de bajada es fósil (tramos borrados) — fuera.
-    if (Object.keys(bajadasLibro).length > 0) saveToStorage(BAJADAS_RECEPTORAS_KEY, {});
+    // Sin piezas de la red: marcadores de ESTA red son fósiles (tramos borrados) — fuera.
+    // Las otras redes conservan sus marcas (libro compartido cross-net: podarlo alternaba
+    // bug/reparación en la 1ª selección tras reingresar — orig. usuario RAC3/RAC2).
+    const fosiles = Object.keys(bajadasLibro).filter((k) => k.startsWith(`${net}_`));
+    if (fosiles.length > 0) {
+      for (const k of fosiles) delete bajadasLibro[k];
+      saveToStorage(BAJADAS_RECEPTORAS_KEY, bajadasLibro);
+    }
     despacharStorage();
     return;
   }
-  // Poda de marcadores fósiles (claves sin pieza viva: tramo borrado o redibujado con
-  // otro id). Sin poda el receptor muerto seguía marcado para siempre.
+  const vivas = new Set(ramales.map((r) => r.key));
+  // Poda de marcadores fósiles SOLO de la red actual. El libro es COMPARTIDO entre redes
+  // — podar con `vivas` de una sola red borraba las marcas de las demás y la doctrina de
+  // bajadas alternaba bug/reparación en cada secuencia (orig. usuario RAC3/RAC2).
   {
-    const vivas = new Set(ramales.map((r) => r.key));
+    const prefijo = `${net}_`;
     let podadas = false;
     for (const k of Object.keys(bajadasLibro)) {
-      if (!vivas.has(k)) {
+      if (k.startsWith(prefijo) && !vivas.has(k)) {
         delete bajadasLibro[k];
         podadas = true;
       }
@@ -644,6 +653,36 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
         if (marcadas) saveToStorage(BAJADAS_RECEPTORAS_KEY, bajadasLibro);
         continue;
       }
+      // Unión SOLO DE SALIDAS (orig. usuario RAC6: todas las flechas hacia afuera): la
+      // malla clásica duplicaba cada aparato (cada par se alcanzaba por carga Y base).
+      // Doctrina: las piezas CON aparato propio alimentan a las VACÍAS — cada aparato
+      // baja ×1 y las que tienen no reciben copias (estable entre corridas).
+      if (idxEnt.length === 0 && salidas.length >= 2) {
+        const manualDePieza = (k: string): Cnt => {
+          const cur = disk[k] || {};
+          const prev = libros[k] || {};
+          const prevTrib = librosTrib[k] || {};
+          const out: Cnt = {};
+          for (const kk of new Set([
+            ...Object.keys(cur),
+            ...Object.keys(prev),
+            ...Object.keys(prevTrib),
+          ])) {
+            out[kk] = Math.max(0, (cur[kk] || 0) - (prev[kk] || 0) - (prevTrib[kk] || 0));
+          }
+          return out;
+        };
+        const conCarga = salidas.filter((k) => !cntVacio(manualDePieza(k)));
+        const vacias = salidas.filter((k) => !conCarga.includes(k));
+        for (const s of conCarga) {
+          if (!cargaAdj.has(s)) cargaAdj.set(s, new Set());
+          for (const v of vacias) {
+            addArista(s, v, 'base');
+            cargaAdj.get(s)!.add(v);
+          }
+        }
+        continue;
+      }
       const contGlobal = new Set<string>();
       for (const e of idxEnt) {
         for (const s of idxSal) {
@@ -727,7 +766,6 @@ export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   //    Fase A: manual crudo = actual − libroHer − libroTrib.
   //    Fase B (hijos antes que padres): foldRecibido[K] = Σ hijos (manual + foldRecibido);
   //    manual[K] = manualCrudo[K] − foldRecibido[K]. TIRAF-n → RAF-n → salidas de la unión.
-  const librosTrib = loadFromStorage<Record<string, Cnt>>(HEREDADOS_TRIB_KEY, {}) || {};
   const manualCrudoDe = new Map<string, Cnt>();
   for (const r of ramales) {
     const cur = disk[r.key] || {};
