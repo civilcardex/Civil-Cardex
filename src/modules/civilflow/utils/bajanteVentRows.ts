@@ -1,4 +1,5 @@
 import type { Tramo } from '../context/tramosReducer';
+import { leerDocDePlan } from './readPlanDrawing';
 import type { PlanItem } from '../context/PlansContext';
 import type { UDBase } from './componentHelpers';
 import { calcUDparcial } from './componentHelpers';
@@ -8,13 +9,10 @@ import { manning_SAN } from './calcSanitaryCore';
 import { calculateVentStack } from './ventStackCalc';
 import { parseDescargaEnId } from './parseDescargaEnId';
 import { splitPtr, splitTramo } from './keys';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
-import { loadFromStorage } from '../services/storageService';
 import type { DrawingData } from './drawingSync';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal';
 import { fmtPiso } from '../constants';
 import { planIdDeKey } from './formatUtils';
-
 /** Mayor diámetro san (Sanitaria) (pulg) entre ramales del recibeDeIds/alimentaIds (ramales que llegan/salen del bajante). */
 export function maxSanRamalDiamPulg(
   recibeDeIds: string[] | undefined,
@@ -43,7 +41,6 @@ export function maxSanRamalDiamPulg(
   }
   return maxD;
 }
-
 export function computeBajanteVentTable(
   tramosSan: Tramo[],
   plans: PlanItem[],
@@ -52,10 +49,9 @@ export function computeBajanteVentTable(
 ): MemoriaTable | null {
   const banTramos = tramosSan.filter((t) => t.esBajante && t.net !== 'vent' && t._net !== 'vent');
   if (banTramos.length === 0) return null;
-
   const storageByPlan: Record<string, DrawingData> = {};
   for (const p of plans || []) {
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + p.id, null);
+    const raw = leerDocDePlan<DrawingData | string | null>(p.id);
     if (raw) {
       let d: DrawingData = raw as DrawingData;
       if (typeof raw === 'string') {
@@ -68,15 +64,12 @@ export function computeBajanteVentTable(
       storageByPlan[String(p.id)] = d;
     }
   }
-
   const [conexiones, ventToSanMap, , components] = buildBajanteGraph(plans, tramosSan, udBase);
-
   const tramoById: Record<string, Tramo> = {};
   for (const tr of tramosSan) {
     const k = tr._key || `${tr.id}-${tr.planId}`;
     if (k) tramoById[k] = tr;
   }
-
   const getDescendantsUD = (tKey: string, visited = new Set<string>()): number => {
     if (visited.has(tKey)) return 0;
     visited.add(tKey);
@@ -89,7 +82,6 @@ export function computeBajanteVentTable(
     }
     return sum;
   };
-
   const getBajanteTotalUD = (bKey: string, visited = new Set<string>()): number => {
     if (visited.has(bKey)) return 0;
     visited.add(bKey);
@@ -112,7 +104,6 @@ export function computeBajanteVentTable(
     }
     return sum;
   };
-
   const headers = [
     'No.',
     'Origen',
@@ -141,12 +132,10 @@ export function computeBajanteVentTable(
     { label: 'Bajantes aguas negras', span: 7 },
     { label: 'Tubería de ventilación', span: 6 },
   ];
-
   const rows = banTramos.map((t) => {
     const rVal = t.bajR;
     const rStr = rVal != null ? (Math.abs(rVal - 7 / 24) < 0.001 ? '7/24' : '1/4') : null;
     const planIdStr = t.planId || planIdDeKey(t._key);
-
     let targetPiso = '';
     let destinoVal = '—';
     if (t.descargaEnId) {
@@ -164,34 +153,28 @@ export function computeBajanteVentTable(
         destinoVal = targetRamal || '—';
       }
     }
-
     const ramalesIds = (t.recibeDeIds || []).filter(
       // Solo ramales del MISMO piso del bajante: el id debe existir en el doc de ese piso.
       (rid) => !!storageByPlan[planIdStr]?.ramales?.some((r) => r.id === rid),
     );
     const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
-
     let totalUD = getBajanteTotalUD(t._key || `${t.id}-${planIdStr}`);
-
     const isVentTramo = t._net === 'vent' || t.net === 'vent';
     if (isVentTramo) {
       const sanKeys = ventToSanMap[t._key || `${t.id}-${planIdStr}`] || [];
       totalUD = 0;
       for (const sk of sanKeys) totalUD += getBajanteTotalUD(sk);
     }
-
     const origenVal = fmtPiso(t.piso?.toString() || '', pisos);
     const tKey = t._key || `${t.id}-${planIdStr}`;
     const tComp = components.find((c) => c.includes(tKey)) || [tKey];
     const isVent = t.net === 'vent' || t._net === 'vent';
-
     const ventBajKeys: string[] = [];
     for (const [vKey, sanKeys] of Object.entries(ventToSanMap || {})) {
       if (sanKeys.some((sk) => tComp.includes(sk))) {
         if (!ventBajKeys.includes(vKey)) ventBajKeys.push(vKey);
       }
     }
-
     const sanBajKeys: string[] = [];
     if (isVent) {
       const sanKeys = ventToSanMap[tKey] || [];
@@ -212,7 +195,6 @@ export function computeBajanteVentTable(
         }
       }
     }
-
     let resolvedSanDprop = 0;
     if (!isVent) {
       resolvedSanDprop = t.bajDprop || 0;
@@ -231,7 +213,6 @@ export function computeBajanteVentTable(
         }
       }
     }
-
     let resolvedVentDprop = 0;
     if (isVent) {
       resolvedVentDprop = t.bajDprop || 0;
@@ -250,7 +231,6 @@ export function computeBajanteVentTable(
       }
       resolvedVentDprop = maxVentPulg > 0 ? maxVentPulg : t.ventDprop || 0;
     }
-
     const res = calculateVentStack({
       UD_acum: totalUD,
       r: t.bajR ?? 7 / 24,
@@ -260,9 +240,7 @@ export function computeBajanteVentTable(
       bajFDarcy: t.bajFDarcy || 0.025,
       ventDprop: resolvedVentDprop || 0,
     });
-
     const n = t.nmaning || manning_SAN;
-
     return [
       t.code || t.id,
       origenVal,
@@ -287,6 +265,5 @@ export function computeBajanteVentTable(
       res.D_vent_prop_pulg > 0 ? res.D_vent_prop_pulg + '"' : '—',
     ];
   });
-
   return { title: 'Bajantes de aguas negras y ventilación', headerGroups, headers, rows };
 }

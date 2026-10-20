@@ -1,4 +1,5 @@
-import { memo, useMemo, useCallback, useState, useEffect } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
+import { leerDocDePlan } from '../utils/readPlanDrawing';
 import EditButton from './shared/EditButton';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { useTramos } from '../context/TramosContext';
@@ -6,31 +7,22 @@ import type { Tramo } from '../context/tramosReducer';
 import { usePisos } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
-import { loadFromStorage } from '../services/storageService';
-import { maxSanRamalDiamPulg } from '../utils/bajanteVentRows';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
-import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
-import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT, pisoCorto } from '../constants';
+import { calculaFilaBajante } from '../utils/bajanteRowModel';
+import { renderStatus } from '../utils/componentHelpers';
+import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
 import { fmt, planIdDeKey, sectorDe } from '../utils/formatUtils';
 import { entradaPor } from '../utils/diamLookup';
-import { parseDescargaEnId } from '../utils/parseDescargaEnId';
 import { buildBajanteGraph } from '../utils/buildBajanteGraph';
 import { buildSanConnectivity } from '../utils/sanitaryRows';
 import { APARATOS_DEF, SAN_UC_IDS } from '../constants';
-import type { DrawingData, RawElement } from '../utils/drawingSync';
-import { ventBajPulg, calculateVentStack } from '../utils/ventStackCalc';
+import type { DrawingData } from '../utils/drawingSync';
 import { EV_SAN_SYNC } from '../utils/fixtureEvents';
 import {
   writeBajantePropToDrawing,
   writeDiametroToDrawing,
   writeDiametroToDrawingBatch,
 } from '../utils/writeDiameterToDrawing';
-
-interface RamalWithDiam extends RawElement {
-  diamPulg?: number;
-}
-
 const DownpipesTable_S1: React.CSSProperties = {
   width: 40,
   padding: 2,
@@ -41,7 +33,6 @@ const DownpipesTable_S1: React.CSSProperties = {
   border: '1px solid var(--line)',
   color: 'var(--txt)',
 };
-
 const BajantesTable = memo(function BajantesTable_() {
   const [edit, setEdit] = useState(false);
   const tablaRef = useStickyThead2Offset();
@@ -49,7 +40,6 @@ const BajantesTable = memo(function BajantesTable_() {
   const { aps, udBase } = useApparatus();
   const { pisos } = usePisos();
   const { plans } = usePlans();
-
   // ponytail: tick forces storageByPlan refresh after writeBajantePropToDrawing sync event
   const [syncTick, setSyncTick] = useState(0);
   useEffect(() => {
@@ -57,11 +47,10 @@ const BajantesTable = memo(function BajantesTable_() {
     window.addEventListener(EV_SAN_SYNC, h);
     return () => window.removeEventListener(EV_SAN_SYNC, h);
   }, []);
-
   const storageByPlan = useMemo(() => {
     const cache: Record<string, DrawingData> = {};
     for (const p of plans || []) {
-      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + p.id, null);
+      const raw = leerDocDePlan<DrawingData | string | null>(p.id);
       if (raw) {
         let d: DrawingData = raw as DrawingData;
         if (typeof raw === 'string') {
@@ -77,7 +66,6 @@ const BajantesTable = memo(function BajantesTable_() {
     return cache;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, syncTick]);
-
   /** Respaldo geométrico por bajante (pedido del cliente: valen todos los del dibujo):
    *  ramales san (Sanitaria) del mismo plano cuyo extremo toca el bajante (≤0.5, la misma
    *  tolerancia de la poda), aunque recibeDeIds (ramales que llegan al bajante) no los registre. */
@@ -108,13 +96,11 @@ const BajantesTable = memo(function BajantesTable_() {
     return mapa;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tramosSan, storageByPlan]);
-
   // Keep buildBajanteGraph only for vent mapping + components (UD now from sanitaryRows)
   const [, ventToSanMap, ventRamalDiamMap, components] = useMemo(
     () => buildBajanteGraph(plans, tramosSan, udBase),
     [plans, tramosSan, udBase],
   );
-
   // #5: Unidades de descarga from drawing same source as SanitaryDesign (componentTotalMap)
   const mergedBase = useMemo(() => {
     const defMap = new Map(APARATOS_DEF.map((d) => [d.id, d]));
@@ -124,29 +110,54 @@ const BajantesTable = memo(function BajantesTable_() {
       return { id, nombre: def?.nombre || id, ud: fromAps?.ud ?? def?.ud ?? 0 };
     });
   }, [aps]);
-
   const { componentTotalMap } = useMemo(
     () => buildSanConnectivity(tramosSan, plans, mergedBase),
     [plans, tramosSan, mergedBase],
   );
-
-  const getBajanteTotalUD = useCallback(
-    (bKey: string): number => {
-      if (!bKey) return 0;
-      // primary key is _key (id-planId). Fallback to id-planId split variants
-      if (componentTotalMap[bKey] !== undefined) return componentTotalMap[bKey];
-      // try alternate planId resolution via tramosSan
-      const tr = tramosSan.find((x) => x._key === bKey);
-      if (tr?.planId) {
-        const alt = `${tr.id}-${tr.planId}`;
-        if (componentTotalMap[alt] !== undefined) return componentTotalMap[alt];
-      }
-      // last fallback: sum propias if no connectivity entry
-      return componentTotalMap[bKey] ?? 0;
-    },
-    [componentTotalMap, tramosSan],
-  );
-
+  // Contexto de cálculo de cada fila (índices ya construidos: sin búsquedas lineales
+  // por fila en el render).
+  const ctxBajante = useMemo(() => {
+    const tramoPorClave = new Map<string, Tramo>();
+    const tramoPorClaveExacta = new Map<string, Tramo>();
+    for (const tr of tramosSan) {
+      const k = tr._key || `${tr.id}-${tr.planId}`;
+      if (k) tramoPorClave.set(k, tr);
+      if (tr._key) tramoPorClaveExacta.set(tr._key, tr);
+    }
+    const udPorBajante = new Map<string, number>();
+    for (const [k, v] of Object.entries(componentTotalMap)) udPorBajante.set(k, v);
+    for (const tr of tramosSan) {
+      const k = tr._key;
+      if (!k || udPorBajante.has(k) || !tr.planId) continue;
+      const alt = `${tr.id}-${tr.planId}`;
+      if (componentTotalMap[alt] !== undefined) udPorBajante.set(k, componentTotalMap[alt]);
+    }
+    return {
+      tramosSan,
+      plans,
+      pisos,
+      tramoPorClave,
+      tramoPorClaveExacta,
+      storageByPlan,
+      components,
+      ventToSanMap,
+      ventRamalDiamMap,
+      geoAsocByBaj,
+      udPorBajante,
+      udBase: mergedBase,
+    };
+  }, [
+    tramosSan,
+    plans,
+    pisos,
+    storageByPlan,
+    components,
+    ventToSanMap,
+    ventRamalDiamMap,
+    geoAsocByBaj,
+    componentTotalMap,
+    mergedBase,
+  ]);
   return (
     <section className="card">
       <div className="card-h">
@@ -491,234 +502,47 @@ const BajantesTable = memo(function BajantesTable_() {
                     </td>
                   </tr>
                 );
-
               const tramoById: Record<string, Tramo> = {};
               for (const tr of tramosSan) {
                 const k = tr._key || `${tr.id}-${tr.planId}`;
                 if (k) tramoById[k] = tr;
               }
-
               return banTramos.map((t) => {
-                const rVal = t.bajR;
-                const rStr =
-                  rVal != null ? (Math.abs(rVal - 7 / 24) < 0.001 ? '7/24' : '1/4') : null;
-
-                const propiasUD = calcUDparcial(t, mergedBase);
+                const fila = calculaFilaBajante(t, ctxBajante);
+                const {
+                  rStr,
+                  origenVal,
+                  destinoVal,
+                  propiasUD,
+                  totalUD,
+                  n,
+                  Q,
+                  DcalcPulg,
+                  chequeo,
+                  QmaxB,
+                  Vt,
+                  Ltcalc,
+                  Ltmin,
+                  fDarcy,
+                  Vair,
+                  Qair,
+                  DventCalcPulg,
+                  DventPropPulg,
+                  maxSanConectDiam,
+                  sanDiamWarn,
+                  resolvedSanDprop,
+                  sanBajKey,
+                  resolvedVentDprop,
+                  ventBajKey,
+                  ventBajKeys,
+                  ventRamalDiamPulg,
+                  ventDiamWarn,
+                  clave: tKey,
+                  chequeoVent,
+                } = fila;
                 const planIdStr = t.planId || planIdDeKey(t._key);
-
-                let targetPiso = '';
-                let destinoVal = '—';
-                if (t.descargaEnId) {
-                  const parts = parseDescargaEnId(t.descargaEnId, '');
-                  const dPlanId = parts[0];
-                  const targetRamal = parts[1] || '';
-                  const targetPlan = plans?.find((p) => String(p.id) === String(dPlanId));
-                  if (targetPlan && targetPlan.nivel != null) {
-                    targetPiso = targetPlan.nivel.toString();
-                    const targetPisoVal = fmtPiso(targetPiso, pisos);
-                    // Etiqueta corta ramal-piso (ej. BAN1-P1), mismo estilo que los
-                    // ramales recibidos (ped. usuario: sin prefijo 'Bajante: '/'Ramal: ').
-                    destinoVal = targetRamal ? `${targetRamal}-${targetPisoVal}` : targetPisoVal;
-                  } else {
-                    destinoVal = targetRamal || '—';
-                  }
-                }
-
-                const ramalesIds = (t.recibeDeIds || []).filter(
-                  // Solo ramales del MISMO piso del bajante (orig. usuario): el id debe
-                  // existir entre los tramos san de ese piso.
-                  (rid) =>
-                    !!tramosSan.find(
-                      (x) => x.id === rid && String(x.planId ?? '') === String(t.planId ?? ''),
-                    ),
-                );
-                // Respaldo geométrico memoizado (ver geoAsocByBaj): ramales san del mismo
-                // plano cuyo extremo toca el bajante, aunque recibeDeIds no los registre.
-                const geoIds: string[] = geoAsocByBaj[`${t.id}-${String(t.planId ?? '')}`] || [];
-                const todosIds = [
-                  ...ramalesIds,
-                  ...geoIds.filter((id) => !ramalesIds.includes(id)),
-                ];
                 const ramalesAsocVal =
-                  todosIds.length > 0
-                    ? todosIds.map((rid) => `${rid}-${pisoCorto(t.piso)}`).join(', ')
-                    : '—';
-
-                let totalUD = getBajanteTotalUD(t._key || `${t.id}-${planIdStr}`);
-                let ramalesUD = totalUD - propiasUD;
-
-                if (t._net === 'vent' || t.net === 'vent') {
-                  const sanKeys = ventToSanMap[t._key || `${t.id}-${planIdStr}`] || [];
-                  totalUD = 0;
-                  for (const sk of sanKeys) {
-                    totalUD += getBajanteTotalUD(sk);
-                  }
-                  ramalesUD = totalUD;
-                }
-
-                const n = t.nmaning || 0.009;
-                const origenVal = fmtPiso(t.piso?.toString() || '', pisos);
-                const pisosRange = targetPiso ? `${t.piso}-${targetPiso}` : `${t.piso}-${t.piso}`;
-
-                const tKey = t._key || `${t.id}-${planIdStr}`;
-                const tComp = components.find((c) => c.includes(tKey)) || [tKey];
-
-                const isVent = t.net === 'vent' || t._net === 'vent';
-
-                // Buscar claves de Bajante de Ventilación asociadas (desde vMap)
-                const ventBajKeys: string[] = [];
-                for (const [vKey, sanKeys] of Object.entries(ventToSanMap || {})) {
-                  if (sanKeys.some((sk) => tComp.includes(sk))) {
-                    if (!ventBajKeys.includes(vKey)) ventBajKeys.push(vKey);
-                  }
-                }
-
-                // Buscar claves de Bajante Sanitario asociadas
-                const sanBajKeys: string[] = [];
-                if (isVent) {
-                  const sanKeys = ventToSanMap[tKey] || [];
-                  for (const sk of sanKeys) {
-                    const comp = components.find((c) => c.includes(sk)) || [sk];
-                    for (const k of comp) {
-                      const x = tramoById[k];
-                      if (x && x.esBajante && x.net !== 'vent' && x._net !== 'vent') {
-                        if (!sanBajKeys.includes(k)) sanBajKeys.push(k);
-                      }
-                    }
-                  }
-                } else {
-                  for (const k of tComp) {
-                    const x = tramoById[k];
-                    if (x && x.esBajante && x.net !== 'vent' && x._net !== 'vent') {
-                      if (!sanBajKeys.includes(k)) sanBajKeys.push(k);
-                    }
-                  }
-                }
-
-                // 1. Resolver el diámetro propuesto sanitario
-                let resolvedSanDprop = 0;
-                let sanBajKey = '';
-                if (!isVent) {
-                  resolvedSanDprop = t.bajDprop || 0;
-                  sanBajKey = tKey;
-                } else {
-                  for (const sk of sanBajKeys) {
-                    const st = tramosSan.find((x) => x._key === sk);
-                    if (st) {
-                      resolvedSanDprop = st.bajDprop || 0;
-                      sanBajKey = sk;
-                      break;
-                    }
-                  }
-                }
-                const ventRamalDiamPulg = (() => {
-                  let vKey = t.ventRamalKey;
-                  if (!vKey) {
-                    for (const vk of ventBajKeys) {
-                      const vt = tramosSan.find((x) => x._key === vk);
-                      if (vt && vt.ventRamalKey) {
-                        vKey = vt.ventRamalKey;
-                        break;
-                      }
-                    }
-                  }
-                  if (!vKey) return 0;
-                  const fromMap = ventRamalDiamMap[vKey];
-                  if (fromMap && fromMap > 0) return fromMap;
-                  const vrId = sectorDe(vKey);
-                  const vPlanId = planIdDeKey(vKey);
-                  const raw = storageByPlan[vPlanId];
-                  if (!raw) return 0;
-                  for (const vr of (raw.ramales || []) as RamalWithDiam[]) {
-                    if (vr.id === vrId && (vr._net === 'vent' || vr.net === 'vent')) {
-                      return (
-                        vr.diamPulg ||
-                        (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0)
-                      );
-                    }
-                  }
-                  return 0;
-                })();
-
-                // 2. Resolver el diámetro propuesto de ventilación — el MAYOR del D vent
-                // propuesto de los bajantes de ventilación conectados (Item 2: mismo
-                // diámetro para todos); si no hay, el del propio BAN (ventDprop) y como
-                // última opción el del ramal de ventilación conectado (BREV), que antes
-                // quedaba como vacío (orig. usuario).
-                let resolvedVentDprop = 0;
-                let ventBajKey = '';
-                if (isVent) {
-                  resolvedVentDprop = t.bajDprop || 0;
-                  ventBajKey = tKey;
-                } else {
-                  // Los tramos vent NO existen en tramosSan (buildTramos los salta) — leer
-                  // el BREV directamente del storage: diamPulg (sincronizado por el
-                  // autosave) o parse del dNominal.
-                  let maxVPulg = 0;
-                  for (const vk of ventBajKeys) {
-                    if (!ventBajKey) ventBajKey = vk;
-                    const vId = sectorDe(vk);
-                    const vPlan = planIdDeKey(vk);
-                    const doc = storageByPlan[vPlan];
-                    const vb = (doc?.bajantes || []).find(
-                      (x) => x.id === vId && (x.net === 'vent' || x._net === 'vent'),
-                    );
-                    if (!vb) continue;
-                    const vPulg = ventBajPulg(vb);
-                    if (vPulg > maxVPulg) maxVPulg = vPulg;
-                  }
-                  resolvedVentDprop =
-                    maxVPulg > 0 ? maxVPulg : t.ventDprop || 0 || ventRamalDiamPulg || 0;
-                }
-
-                const ventDiamWarn =
-                  ventRamalDiamPulg > 0 &&
-                  resolvedVentDprop > 0 &&
-                  resolvedVentDprop < ventRamalDiamPulg;
-
-                // Mayor diámetro san de los ramales conectados — helper compartido con la
-                // memoria de bajantes (bajanteVentRows).
-                const maxSanConectDiam = maxSanRamalDiamPulg(
-                  t.recibeDeIds,
-                  t.planId || planIdDeKey(t._key),
-                  storageByPlan,
-                );
-
-                const sanDiamWarn =
-                  maxSanConectDiam > 0 &&
-                  resolvedSanDprop > 0 &&
-                  resolvedSanDprop < maxSanConectDiam;
-
-                // Por defecto el bajante toma el mayor diámetro de sus ramales conectados.
-                const effSanDprop = resolvedSanDprop > 0 ? resolvedSanDprop : maxSanConectDiam;
-
-                const res = calculateVentStack({
-                  bajante: t.id,
-                  pisos: pisosRange,
-                  UD_propias: propiasUD,
-                  UD_otros: ramalesUD,
-                  UD_acum: totalUD,
-                  r: t.bajR,
-                  n: t.nmaning || 0.009,
-                  bajDprop: effSanDprop || 0,
-                  bajLong: t.bajLong || 3,
-                  bajFDarcy: t.bajFDarcy || 0.025,
-                  ventDprop: resolvedVentDprop || 0,
-                });
-
-                const Q = res.Q_Ls;
-                const DcalcPulg = res.Dcalc_pulg;
-                const chequeo = res.chequeoDiam;
-                const QmaxB = res.QmaxBajante;
-                const Vt = res.Vt;
-                const Ltcalc = res.Lt_calc;
-                const Ltmin = res.Lt_min;
-                const fDarcy = t.bajFDarcy ?? 0;
-                const Vair = res.V_aire;
-                const Qair = res.Q_aire_Ls;
-                const DventCalcPulg = res.D_vent_calc_pulg;
-                const DventPropPulg = res.D_vent_prop_pulg;
-
+                  fila.ramalesAsoc.length > 0 ? fila.ramalesAsoc.join(', ') : '—';
                 return (
                   <tr key={t._key || `${t.id}-${t.piso}`}>
                     <td className="c">
@@ -1162,7 +986,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         minWidth: 60,
                       }}
                     >
-                      {renderStatus(res.chequeoVent)}
+                      {renderStatus(chequeoVent)}
                     </td>
                   </tr>
                 );

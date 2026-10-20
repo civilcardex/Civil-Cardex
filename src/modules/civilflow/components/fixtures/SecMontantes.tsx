@@ -7,6 +7,29 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { SelectableTarget } from '../fixturesStorage';
 import type { ProbedElement } from '../pdfViewer/tramoEditor/context';
 
+/**
+ * ¿El ramal es el Ldesvio (LD_<idSuperior>) del enlace entre pisos de este bajante/montante?
+ * El LD llega por su `fin` (el código del bajante) y el anillo del fantasma lo referencia
+ * (desplazamientos[nivel].Ldesvio). Se usa para marcarlo como asociado aunque la lista de
+ * `recibeDeIds` no lo tenga (fantasma y original).
+ */
+function esLdesvioDeEsteMontante(
+  baj:
+    | {
+        id: string;
+        code?: string;
+        desplazamientos?: Record<string, { Ldesvio?: string | null }>;
+      }
+    | undefined,
+  ramalId: string,
+  nivelLabel: string | undefined,
+): boolean {
+  if (!baj || !ramalId) return false;
+  const desp = nivelLabel ? baj.desplazamientos?.[nivelLabel] : undefined;
+  if (desp?.Ldesvio && desp.Ldesvio === ramalId) return true;
+  return false;
+}
+
 // ASOCIACIONES af/ac (orig. usuario): tramo → MONTANTES ASOCIADOS; montante → RAMALES
 // ASOCIADOS (la inversa). Extraído verbatim de FixturesPanel (IIFE secMontantes) — misma
 // semántica, mismos estilos que las secciones del menú contextual.
@@ -40,8 +63,12 @@ export function SecMontantes({
   const toggleBaj = (bajId: string, ramalId: string): void => {
     const vivo = eng.bajantes.find((x) => x.id === bajId);
     if (!vivo) return;
+    // Mismo criterio que el render de la fila: marcado por Ldesvio → el primer clic
+    // DESASOCIA (si `ya` solo mirara listas, el clic sobre un checkbox marcado asociaba).
     const ya =
-      (vivo.recibeDeIds || []).includes(ramalId) || (vivo.alimentaIds || []).includes(ramalId);
+      (vivo.recibeDeIds || []).includes(ramalId) ||
+      (vivo.alimentaIds || []).includes(ramalId) ||
+      esLdesvioDeEsteMontante(vivo, ramalId, eng.nivelActual?.label);
     eng.updateElementById(bajId, camposAsocManual(vivo, ramalId, !ya));
     eng.render();
     eng._markDirty();
@@ -99,16 +126,24 @@ export function SecMontantes({
         const activo = esMontanteSel
           ? (() => {
               const vivo = eng.bajantes.find((x) => x.id === targetId);
-              return (
-                (vivo?.recibeDeIds || []).includes(f.id) || (vivo?.alimentaIds || []).includes(f.id)
-              );
+              if (
+                (vivo?.recibeDeIds || []).includes(f.id) ||
+                (vivo?.alimentaIds || []).includes(f.id)
+              )
+                return true;
+              // El Ldesvio (LD_<idSuperior>) es el ramal del ENLACE entre pisos: llega al
+              // montante por su `fin` y el anillo del fantasma lo referencia. Debe salir
+              // MARCADO como asociado aunque el lista no lo tenga (fantasma y original).
+              return esLdesvioDeEsteMontante(vivo, f.id, eng.nivelActual?.label);
             })()
           : (() => {
               const vivo = eng.bajantes.find((x) => x.id === f.id);
-              return (
+              if (
                 (vivo?.recibeDeIds || []).includes(targetId) ||
                 (vivo?.alimentaIds || []).includes(targetId)
-              );
+              )
+                return true;
+              return esLdesvioDeEsteMontante(vivo, targetId, eng.nivelActual?.label);
             })();
         return (
           <label key={f.id} style={{ ...ASSOC_ROW_STYLE, marginBottom: 2 }}>

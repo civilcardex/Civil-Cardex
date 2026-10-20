@@ -85,7 +85,6 @@ function ctxDe(engine: unknown, overrides: Partial<FixtureMutationCtx> = {}): Fi
   return {
     netId: 'san',
     storageKey: KEY,
-    targetId: 'RAF1',
     target: { id: 'RAF1', tipo: 'ramal' } as FixtureMutationCtx['target'],
     mergeKeys: null,
     esEspejoBajante: false,

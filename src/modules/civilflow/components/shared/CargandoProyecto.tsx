@@ -5,8 +5,11 @@ const CARGANDO_STYLE: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: 10,
-  height: '100%',
-  minHeight: 120,
+  // Pantalla PROPIA a área completa: el Suspense fallback vive en contenedores min-h-screen
+  // sin altura fija — con height:'100%' colapsaba a minHeight:120 y el spinner quedaba ARRIBA.
+  position: 'fixed',
+  inset: 0,
+  zIndex: 9999,
   color: 'var(--txt2)',
   fontSize: 13,
 };

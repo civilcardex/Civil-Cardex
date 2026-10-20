@@ -1,5 +1,17 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
+﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { itemsDelPanel } from './fixtures/panelItems';
+import { calcularMergeKeys } from './fixtures/mergeKeys';
+import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import { useRainwater } from '../context/RainwaterContext';
+import { leerHeredadosPresion, leerFoldTribPresion } from '../utils/propagation';
+import {
+  EV_APARATOS_CLEAR,
+  EV_SAN_SYNC,
+  EV_HIDRO_SYNC,
+  EV_PLAN_LOADED,
+  EV_STORAGE,
+} from '../utils/fixtureEvents';
+import { ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -21,7 +33,6 @@ import {
   loadHidroData,
   loadGasAcc,
   unitFor,
-  esAplicable,
   isCountableTarget,
   type CountsMap,
   type HidroDataMap,
@@ -36,20 +47,8 @@ import { useFixtureAccMutations } from './fixtures/useFixtureAccMutations';
 import { useFixtureMirrors } from './fixtures/useFixtureMirrors';
 import { useFixtureMutations } from './fixtures/useFixtureMutations';
 import { useFixtureTarget } from './fixtures/useFixtureTarget';
-import { LlAssociationsPanel } from './fixtures/LlAssociationsPanel';
-import { resolveJunctionEntrant } from '../utils/flowDirection';
-import { countKey } from '../utils/keys';
-import { bajanteLabel, ramalLabel } from '../utils/accessoryAbbreviations';
+import { agregarCargaDeBajante } from './fixtures/bajanteAggregate';
 
-import { distToPolyline } from '../lib/shared/geometry';
-import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
-import { useTramos } from '../context/TramosContext';
-import { buildSanConnectivity } from '../utils/sanitaryRows';
-
-const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
-const GAS_ID = 'gas';
-
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
 const FixturesPanel_S1: React.CSSProperties = {
   width: '100%',
   display: 'flex',
@@ -85,16 +84,15 @@ const FixturesPanel_S3: React.CSSProperties = {
   padding: '0 2px',
 };
 
-import type { ProbedElement } from './pdfViewer/tramoEditor/context';
-import { useRainwater } from '../context/RainwaterContext';
-import { leerHeredadosPresion } from '../utils/aparatosPresion';
-import {
-  EV_APARATOS_CLEAR,
-  EV_SAN_SYNC,
-  EV_HIDRO_SYNC,
-  EV_PLAN_LOADED,
-  EV_STORAGE,
-} from '../utils/fixtureEvents';
+const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
+const GAS_ID = 'gas';
+import { LlAssociationsPanel } from './fixtures/LlAssociationsPanel';
+import { bajanteLabel, ramalLabel } from '../utils/accessoryAbbreviations';
+
+import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
+import { useTramos } from '../context/TramosContext';
+import { buildSanConnectivity } from '../utils/sanitaryRows';
+import type { ProbedElement } from './pdfViewer/drawingElementContextMenu/context';
 
 const AparatosPanel = memo(function AparatosPanel_({
   activeNet,
@@ -253,28 +251,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   const unitKey = useMemo(() => unitFor(netId), [netId]);
   const unidadLbl = unitKey ? (UNIDAD as Record<string, string>)[unitKey] : '';
 
-  const items = useMemo(() => {
-    if (!unitKey) return [];
-    const filtered = APARATOS_DEF.filter((ap) => esAplicable(ap, netId, unitKey));
-    const APS_FIELD: Record<string, 'ud' | 'ucaf' | 'ucac'> = {
-      ud: 'ud',
-      uc_af: 'ucaf',
-      uc_ac: 'ucac',
-    };
-    const apsField = APS_FIELD[unitKey || ''] || null;
-    let result = filtered;
-    if (apsField && unitKey) {
-      result = filtered.map((ap) => {
-        const fromAps = aps.find((p) => p.id === ap.id);
-        return fromAps ? { ...ap, [unitKey]: fromAps[apsField] || ap[unitKey] } : ap;
-      });
-    }
-    if (unitKey === 'ud') {
-      const order = UD_BASE_INIT.map((d) => d.id);
-      return result.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-    }
-    return result.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
-  }, [netId, unitKey, aps]);
+  const items = useMemo(() => itemsDelPanel(netId, unitKey, aps as never), [netId, unitKey, aps]);
 
   // Bajantes y CAJAS (AN/LL) muestran el agregado de UDs de sus trazos de entrada.
   // Elemento "agregable" en el panel: bajantes/cajas/bomba en redes de bajante + MONTANTES
@@ -343,19 +320,6 @@ const AparatosPanel = memo(function AparatosPanel_({
       ? `${netId}_${targetId}_${planId}`
       : `${netId}_${targetId}`
     : null;
-  // Tramo con herencia propagada (RAF3, orig. usuario): sus UDs las trae aguas arriba — el
-  // panel se vuelve SOLO LECTURA (opaco); la edición es en los ramales/montante fuente.
-  // Solo-lectura por HEREDADOS (orig. usuario: RAC5 que recibe la carga de RAC1/T1RAC5
-  // debe aparecer bloqueado — cualquier pieza con unidades heredadas es de solo lectura;
-  // la asignación va en las piezas alimentadoras puras, sin heredados).
-  const esPropagado = useMemo(
-    () =>
-      !!storageKey &&
-      (netId === 'af' || netId === 'ac') &&
-      Object.values(leerHeredadosPresion(storageKey)).some((v: number) => v > 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- librosTick fuerza relectura del libro tras propagar
-    [storageKey, netId, librosTick],
-  );
 
   // Auto-limpieza (orig. usuario): la propagación es idempotente — re-correrla aplica el
   // delta y retira herencias que la dirección de flujo ya no justifica. Corre AL MONTAR y en
@@ -418,149 +382,19 @@ const AparatosPanel = memo(function AparatosPanel_({
   // usuario no se quede mirando ceros/parciales en un tramo que visiblemente los lleva todos.
   // Se recalcula plano en cada render (no useMemo) porque depende de allRamalesForPlan, que a su
   // vez se re-lee fresco en cada render.
-  const mergeKeys = (() => {
-    if (!target?.id || !netId) return null;
-    const keyFor = (id: string) => (planId ? `${netId}_${id}_${planId}` : `${netId}_${id}`);
-    // Unir AMBAS fuentes de verdad de flujo: mergesFrom (auto-split) + geometría
-    // (extremo-a-extremo). RS3 suele ser extremo-a-extremo (sin mergesFrom) pero RS5 es
-    // auto-split (con mergesFrom); el subárbol completo de RS3 debe incluir ambos.
-    // Antes solo se usaba mergesFrom y RS3 dibujado a mano quedaba en 0 ("muestra de menos").
-    const mergeSiblingPairs = new Set<string>();
-    for (const r of allRamalesForPlan) {
-      if (r.mergesFrom) mergeSiblingPairs.add(r.mergesFrom.toSorted().join('|'));
-    }
-    const geomKeysForSan = (): string[] => {
-      if (netId !== 'san' || !target?.id) return [];
-      const visited = new Set<string>([target.id]);
-      const keys: string[] = [];
-      const collect = (id: string) => {
-        const t = allRamalesForPlan.find((r) => r.id === id);
-        if (!t || !t.pts || t.pts.length < 2) return;
-        const tDownstream = t._tribReversed ? t.pts[0] : t.pts[t.pts.length - 1];
-        for (const f of allRamalesForPlan) {
-          if (f.id === id || f.net !== netId || visited.has(f.id)) continue;
-          if (!f.pts || f.pts.length < 2) continue;
-          if (f.tipo === 'bajante' || f.tipo === 'montante') continue;
-          if (mergeSiblingPairs.has([f.id, t.id].sort().join('|'))) continue;
-          // Dos ramales que desembocan en el mismo bajante no se consideran que drenan entre sí
-          const fFinCheck = (f as unknown as { fin?: string }).fin || '';
-          const tFinCheck = (t as unknown as { fin?: string }).fin || '';
-          if (tFinCheck && fFinCheck && tFinCheck === fFinCheck) {
-            const isBajanteFin = (fid: string) => {
-              if (
-                /^B[A-Z]+/.test(fid) ||
-                fid.startsWith('BAN') ||
-                fid.startsWith('BALL') ||
-                fid.startsWith('BREV')
-              )
-                return true;
-              // fallback: buscar en bajantes reales
-              if (engineRef.current?.bajantes?.some((b) => b.code === fid || b.id === fid))
-                return true;
-              return false;
-            };
-            if (isBajanteFin(tFinCheck)) continue;
-          }
-          const fEnd = f._tribReversed ? f.pts[0] : f.pts[f.pts.length - 1];
-          if (distToPolyline(fEnd, t.pts) >= 2.0) continue;
-          // Si ambos terminan en el mismo bajante geométricamente, no agregar
-          if (engineRef.current?.bajantes) {
-            const bajAtTDown = engineRef.current.bajantes.find(
-              (b) => Math.hypot(b.x - tDownstream[0], b.y - tDownstream[1]) < 2.0,
-            );
-            const bajAtFEnd = engineRef.current.bajantes.find(
-              (b) => Math.hypot(b.x - fEnd[0], b.y - fEnd[1]) < 2.0,
-            );
-            if (bajAtTDown && bajAtFEnd && bajAtTDown.id === bajAtFEnd.id) continue;
-          }
-          const touchesTDownstream =
-            Math.hypot(fEnd[0] - tDownstream[0], fEnd[1] - tDownstream[1]) < 2.0;
-          if (touchesTDownstream) {
-            const tFin = (t as unknown as { fin?: string }).fin || '';
-            if (!tFin) continue;
-            const finIsRamalAtPt = allRamalesForPlan.some(
-              (o) =>
-                (o.id === tFin || (o as unknown as { label?: string }).label === tFin) &&
-                o.pts &&
-                o.pts.length >= 2 &&
-                distToPolyline(fEnd, o.pts) < 2.0,
-            );
-            if (finIsRamalAtPt) continue;
-          }
-          visited.add(f.id);
-          keys.push(keyFor(f.id));
-          collect(f.id);
-        }
-      };
-      collect(target.id);
-      return keys;
-    };
-    // Si target es el ramal auto-creado, su propio mergesFrom es el par de fuentes; si no,
-    // hallar el ramal auto-creado que lista a target como una de sus dos fuentes.
-    const isAutoCreated = !!target.mergesFrom;
-    const hostR = isAutoCreated
-      ? target
-      : allRamalesForPlan.find((r) => r.net === netId && r.mergesFrom?.includes(target.id!));
-    if (!hostR?.mergesFrom) {
-      const g = geomKeysForSan();
-      return g.length > 0 ? g : null;
-    }
-    const [aId, bId] = hostR.mergesFrom;
-    if (!aId || !bId) return null;
-    // `hostR.mergesFrom` es siempre [existing.id, incoming.id] por construcción
-    // (PlanoEngineDrawing.ts, autoSplitJunctionAndSumFlow). Cuál de los tres ramales de este
-    // empalme (existing, hostR=downstream, incoming) MUESTRA el total combinado se decide solo por
-    // la dirección actual del flujo — no está fijo a "existing" ni al "auto-creado":
-    // junctionHasOutgoingFlow ya garantiza al menos uno de los tres flujos FUERA del empalme, así
-    // que con tres ramales la división es siempre 2-vs-1, y el único disidente (el que discrepa de
-    // los otros dos) es el entrante. Coincide con waterNetworkRows.ts / WaterNetworkDesign.tsx.
-    if (!hostR.id || !hostR.pts || hostR.pts.length === 0) return null;
-    // Para la sidebar de aparatos mostrar el combinado en CUALQUIERA de los participantes
-    // (auto o fuente), no solo en el entrante — el usuario espera ver en RS3 (auto) el total
-    // RS5+RS2 (+ RS1,RS4 transitivos), igual que la tabla TOTAL. Antes solo el entrante
-    // (tributario) veía el combinado y RS3 quedaba en 0 ("muestra de menos").
-    const targetIsInMerge = hostR.mergesFrom.includes(target.id!);
-    if (!targetIsInMerge && hostR.id !== target.id) return null;
-    const jc = hostR.pts[0];
-    const existingObj = allRamalesForPlan.find((r) => r.id === aId);
-    const incomingObj = allRamalesForPlan.find((r) => r.id === bId);
-    // `resolveJunctionEntrant` = la pata MINORITARIA por rol de flujo del empalme: 2 salidas +
-    // 1 entrada → la ENTRADA; 2 entradas + 1 salida → la SALIDA (orig. usuario AF/AC/gas).
-    const entrantId = existingObj
-      ? resolveJunctionEntrant(
-          jc,
-          existingObj,
-          { id: hostR.id, pts: hostR.pts, _tribReversed: Boolean(hostR._tribReversed) },
-          incomingObj,
-        )
-      : aId;
-    // AF/AC/gas (orig. usuario): SOLO la pata única muestra el combinado y es de solo lectura;
-    // las otras dos patas muestran sus UDs propias y quedan asignables manualmente. San/ll
-    // conserva el comportamiento anterior (combinado en cualquiera de los participantes).
-    const esRedAgua = netId === 'af' || netId === 'ac' || netId === 'gas';
-    if (esRedAgua ? entrantId !== target.id : hostR.id !== target.id && entrantId !== target.id)
-      return null;
-    // TRANSITIVIDAD: un ramal auto-creado puede ser a su vez fuente de un empalme aguas arriba
-    // (cadena RS1+T1RS1→RS2, RS2+T2RS2→RS3). Las fuentes directas de RS3 incluyen a RS2, que
-    // es también un merge point sin aparatos propios — sus conteos viven en RS1/T1RS1. Sumar
-    // solo un nivel dejaba el panel de RS3 con los aparatos del tributario directo pero sin la
-    // cadena acumulada (la tabla de diseño sí muestra el total transitivo). Recolectar todo el
-    // subárbol aguas arriba (cada ramal aparece una sola vez).
-    const seen = new Set<string>();
-    const allKeys: string[] = [];
-    const collect = (id: string) => {
-      if (seen.has(id)) return;
-      seen.add(id);
-      if (id !== target.id) allKeys.push(keyFor(id));
-      const r = allRamalesForPlan.find((x) => x.id === id);
-      if (r?.mergesFrom) for (const src of r.mergesFrom) collect(src);
-    };
-    collect(hostR.id);
-    // Unión con geom para robustez (cubre extremo-a-extremo donde mergesFrom no registra un
-    // alimentador pero geométricamente sí existe).
-    const geomExtra = geomKeysForSan().filter((k) => !allKeys.includes(k));
-    return geomExtra.length > 0 ? [...allKeys, ...geomExtra] : allKeys;
-  })();
+  const mergeKeys = useMemo(
+    () =>
+      target?.id && netId
+        ? calcularMergeKeys({
+            target: target as never,
+            netId,
+            planId,
+            allRamalesForPlan: allRamalesForPlan as never,
+            bajantes: (engineRef.current?.bajantes ?? []) as never,
+          })
+        : null,
+    [target, netId, planId, allRamalesForPlan, engineRef],
+  );
 
   // Ramales que SALEN de un bajante: la COLA de la flecha de flujo queda del lado del bajante
   // (criterio del usuario). Vive en fixturesStorage (salidasDeBajante); el wrapper conserva la
@@ -570,90 +404,80 @@ const AparatosPanel = memo(function AparatosPanel_({
     [engineRef],
   );
 
+  // Tramo con herencia propagada (RAF3, orig. usuario): sus UDs las trae aguas arriba — el
+  // panel se vuelve SOLO LECTURA (opaco); la edición es en los ramales/montante fuente.
+  // Criterio POR RED (orig. usuario: igual en todas): presión (af/ac/gas) lee los DOS libros
+  // del propagador — heredados (uniones/montante) y plegado de TRIBUTARIOS (el padre es
+  // receptor de lo que sus tributarios conectados traen); san/ll son receptores si (a) su
+  // clave aparece como DESTINO en el libro ucAplicado de algún bajante del piso, (b) son
+  // SALIDA de un bajante (el espejo reescribe su clave completa), o (c) tienen TRIBUTARIOS
+  // conectados que traen aparatos (DFS por `padre` — el plegado sanitario sube al ramal).
+  const esPropagado = useMemo(() => {
+    if (!storageKey || !targetId) return false;
+    if (netId === 'af' || netId === 'ac' || netId === 'gas') {
+      const her = leerHeredadosPresion(storageKey);
+      const fold = leerFoldTribPresion(storageKey);
+      return (
+        Object.values(her).some((v: number) => v > 0) ||
+        Object.values(fold).some((v: number) => v > 0)
+      );
+    }
+    if (netId === 'san' || netId === 'll') {
+      try {
+        const d = loadFromStorage<{
+          bajantes?: Array<{ ucAplicado?: Record<string, Record<string, number>> }>;
+        } | null>(TRAZOS_PREFIX + String(planId ?? ''), null);
+        for (const b of d?.bajantes || []) {
+          const e = (b.ucAplicado || {})[storageKey];
+          if (e && Object.keys(e).some((k) => (e[k] || 0) > 0)) return true;
+        }
+      } catch {
+        /* sin storage: no bloquear */
+      }
+      const eng = engineRef.current;
+      if (eng) {
+        // (b) Salida de un bajante: el espejo reescribe su clave en cada pase.
+        for (const b of eng.bajantes || []) {
+          if (b.net !== netId) continue;
+          if (exitsDeBajante(b.id).has(targetId)) return true;
+        }
+        // (c) Tributarios conectados: cualquier descendiente por `padre` con aparatos propios
+        // bloquea — su carga sube al ramal por plegado (el ramal no es fuente).
+        const vistas = new Set<string>([targetId]);
+        const cola: string[] = [targetId];
+        while (cola.length > 0) {
+          const actual = cola.pop() as string;
+          for (const r of eng.ramales || []) {
+            if (r.net !== netId || r.padre !== actual || vistas.has(r.id)) continue;
+            vistas.add(r.id);
+            const m = counts[`${netId}_${r.id}_${planId}`] || {};
+            if (Object.values(m).some((v: number) => v > 0)) return true;
+            cola.push(r.id);
+          }
+        }
+      }
+    }
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- librosTick fuerza relectura del libro tras propagar
+  }, [storageKey, netId, planId, librosTick, targetId, engineRef, exitsDeBajante, counts]);
+
   // Agregado de UDs del bajante: clave propia + UDs de todos sus descendientes en el árbol
   // sanitario (ramales y tributarios que drenan en él, transitivo), excepto los ramales de
   // SALIDA (espejos) con su subárbol — jamás son fuente, para evitar el eco espejo→agregado
   // →espejo. Compartido entre el display (currentMap) y la asignación automática (efecto):
   // el número del panel del bajante y el copiado al ramal siempre coinciden.
   const agregadoBajante = useCallback(
-    (bajId: string): Record<string, number> => {
-      const agg: Record<string, number> = {};
-      const ownKey = planId ? countKey(netId, bajId, planId) : `${netId}_${bajId}`;
-      for (const [k, v] of Object.entries(counts[ownKey] || {}))
-        agg[k] = (agg[k] || 0) + (v as number);
-      const exits = exitsDeBajante(bajId);
-      // Suma el storageKey de un tramo; sin counts propios usa sus fixtures directos.
-      const sumCounts = (ck: string, fixtures?: Record<string, number>) => {
-        const m = counts[ck] || {};
-        if (Object.keys(m).length > 0) {
-          for (const [k, v] of Object.entries(m)) agg[k] = (agg[k] || 0) + (v as number);
-        } else if (fixtures) {
-          for (const [k, v] of Object.entries(fixtures)) agg[k] = (agg[k] || 0) + (v as number);
-        }
-      };
-      const visited = new Set<string>();
-      const walkKey = (tKey: string) => {
-        if (visited.has(tKey)) return;
-        visited.add(tKey);
-        const ct = tramosPiso.find((x) => x._key === tKey);
-        if (!ct) return;
-        if (!ct.esBajante) {
-          // Espejo (salida): no suma NI recorre su subárbol. Doble guard: referencia
-          // explícita (alimentaIds / ini = código) ADEMÁS del set geométrico — una salida
-          // que la geometría no detecta (ramal corto junto a una caja) no puede volver al
-          // walk, o su clave (que ya contiene el agregado) crecería en cada pasada.
-          const bajRef = engineRef.current?.bajantes.find((b) => b.id === bajId);
-          if (
-            exits.has(ct.id) ||
-            (bajRef &&
-              ((bajRef.alimentaIds || []).includes(ct.id) || ct.ini === (bajRef.code || bajRef.id)))
-          )
-            return;
-          // Cada tramo aporta con SU propia clave (su planId): los hijos pueden ser de otro
-          // piso (enlace de asociación entre pisos) y sus UDs viven bajo el plan de origen.
-          if (ct.tipo === 'ramal' || ct.tipo === 'tributario')
-            sumCounts(
-              planId ? `${netId}_${ct.id}_${planId}` : `${netId}_${ct.id}`,
-              ct.fixtures as Record<string, number> | undefined,
-            );
-        }
-        for (const child of sanConnectivity?.fullChildrenMap[tKey] || []) walkKey(child);
-      };
-      const bajT = tramosPiso.find((t) => t.esBajante && t.id === bajId);
-      // El árbol sanitario solo existe en san/ll — para montantes/suministro (af/ac/gas) o sin
-      // conectividad, el agregado va por el FALLBACK (recibeDeIds + tributarios por padre): es
-      // donde viven los ramales que el montante alimenta. Con `bajT` pero conectividad null el
-      // walk sumaba CERO (orig. usuario: "no aparecen las uds del ramal conectado").
-      if (sanConnectivity && bajT?._key) {
-        for (const child of sanConnectivity?.fullChildrenMap[bajT._key] || []) walkKey(child);
-      } else {
-        // Fallback sin árbol sanitario: ramales asociados (recibeDeIds) + cadenas de
-        // tributarios colgantes. `seen` incluye las salidas EXPLÍCITAS (alimentaIds), no solo
-        // las geométricas: sin engine (o con geometría ambigua) una salida con la clave ya
-        // espejada volvería al walk y re-fusionaría el agregado en su propia clave en cada
-        // pasada (misma familia que el dup de caja AN / suma infinita de bomba).
-        // MONTANTES (orig. usuario): sus ramales nacen EN él (la dirección de flujo los hace
-        // parecer "salidas") pero son sus ALIMENTADOS — se suman, jamás se excluyen.
-        const eng = engineRef.current;
-        const baj = eng?.bajantes.find((b) => b.id === bajId);
-        const esMontante = baj?.tipo === 'montante';
-        const seen = new Set<string>([
-          bajId,
-          ...(esMontante ? [] : exits),
-          ...(baj?.alimentaIds || []),
-        ]);
-        const sum = (rid: string) => {
-          if (seen.has(rid)) return;
-          seen.add(rid);
-          sumCounts(planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
-          // af/ac/gas (orig. usuario MAC1 +1 lavarropas): la carga de los tributarios ya
-          // vive DENTRO de la clave del ramal (pliegue librosTrib / heredado por cascada) —
-          // sumar el tributario encima lo duplica. Su fila propia sigue mostrándolo.
-        };
-        for (const rid of baj?.recibeDeIds || []) sum(rid);
-      }
-      return agg;
-    },
+    (bajId: string): Record<string, number> =>
+      agregarCargaDeBajante({
+        bajId,
+        counts,
+        netId,
+        planId,
+        sanConnectivity,
+        tramosPiso: tramosPiso as never,
+        exits: exitsDeBajante(bajId),
+        engineRef: engineRef as never,
+      }),
     [counts, netId, planId, sanConnectivity, tramosPiso, exitsDeBajante, engineRef],
   );
 
@@ -678,6 +502,7 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const currentMap = useFixtureTarget({
     netId,
+    librosTick,
     storageKey,
     targetId,
     mergeKeys,
@@ -757,7 +582,6 @@ const AparatosPanel = memo(function AparatosPanel_({
   const { inc, dec } = useFixtureMutations({
     netId,
     storageKey,
-    targetId,
     target,
     mergeKeys,
     esEspejoBajante,
@@ -883,7 +707,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   const netObj = NETS.find((n) => n.id === netId);
   const accent = netObj?.col || '#2563EB';
 
-  const headerLbl = isGas ? ' Aparatos' : ' Aparatos';
+  const headerLbl = ' Aparatos';
   const isActive = !!targetId;
   const containerStyle = {
     borderBottom: '1px solid #3a494a',
@@ -993,7 +817,7 @@ const AparatosPanel = memo(function AparatosPanel_({
 
             <div
               style={{
-                opacity: targetId ? 1 : 0.45,
+                opacity: !targetId ? 0.45 : esPropagado ? 0.55 : 1,
                 pointerEvents: targetId ? 'auto' : 'none',
                 transition: 'opacity .25s',
                 filter: targetId ? 'none' : 'grayscale(.6)',

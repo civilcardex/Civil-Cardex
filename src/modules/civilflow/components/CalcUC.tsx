@@ -5,7 +5,7 @@ import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
 import { calcUCparcial } from '../utils/componentHelpers';
-import { leerLibrosPresion, udPropiaDe } from '../utils/aparatosPresion';
+import { leerLibrosPresion, udPropiaDe } from '../utils/propagation';
 const CalculoUC_S1: React.CSSProperties = {
   position: 'absolute',
   width: '1px',

@@ -24,6 +24,7 @@ import {
 import { markAssocLayout } from './assocLayoutMigration';
 import { aFrameDe } from './crossFloorStorage';
 import { setBajanteDesplazamientoInStorage } from './bajanteAssociation';
+import { registrarLdesvioComoAsociado } from './bajanteAssocShared';
 import { pisoCorto } from '../constants';
 import { pisoLbl } from '../constants';
 import type { PlanoBajante } from '../lib/PlanoEngine/PlanoState';
@@ -194,6 +195,15 @@ export function sincronizarDesvioBomba(
     baj.dNominal || '',
     row.nivelN,
   );
+  // El LD llega a la bajante: queda como RAMAL ASOCIADO de ella (estado real → "Ramal
+  // asociado" marcado en el panel y en el menú contextual, orig. usuario).
+  registrarLdesvioComoAsociado({
+    planId: row.planId,
+    bajanteId: baj.id,
+    bajanteCode: (baj as { code?: string }).code || baj.id,
+    ldId,
+    eng: eng ?? null,
+  });
   try {
     const rawLd = loadFromStorage<{
       ramales?: Array<{ id: string; label?: string; _sinEtiqueta?: boolean }>;
@@ -202,6 +212,7 @@ export function sincronizarDesvioBomba(
     // Direccion SIEMPRE bomba→bajante: pts en ese orden y sin inversión.
     if (rawLd && ldRaw) {
       ldRaw._sinEtiqueta = false;
+      (rawLd as { ts?: number }).ts = Date.now();
       saveToStorage(TRAZOS_PREFIX + row.planId, rawLd);
     }
   } catch {
@@ -284,6 +295,7 @@ function limpiarArtefactosDesvioBomba(
     if (quitarDeDesp(desp, gd)) {
       bombaRaw.desplazamientos = desp;
       bombaRaw.ghostData = gd;
+      (raw as { ts?: number }).ts = Date.now();
       saveToStorage(TRAZOS_PREFIX + row.planId, raw);
       saveTrazosToDB(row.planId, raw);
     }
@@ -370,6 +382,7 @@ export function desasociarBombaEnTrazos(bombaId: string, bombaPlanId: string): v
     saveToStorage(APARATOS_BY_TRAMO_KEY, disk);
     // Soltar el puntero en el trazo del bajante.
     baj.bombaEnId = null;
+    (raw as { ts?: number }).ts = Date.now();
     saveToStorage(TRAZOS_PREFIX + pid, raw);
     saveTrazosToDB(pid, raw);
   }

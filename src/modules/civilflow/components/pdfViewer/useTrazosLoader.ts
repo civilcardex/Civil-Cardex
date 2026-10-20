@@ -3,6 +3,7 @@
 // (eventos de sync) para que las tablas montadas recojan los cambios. Devuelve true si el
 // motor terminó con contenido cargado.
 import { useCallback } from 'react';
+import { leerPlansMeta, planCalibrado } from '../../utils/plansMeta';
 import {
   loadFromStorage,
   saveToStorage,
@@ -147,10 +148,7 @@ export function useTrazosLoader({
       // el desplazamiento (orig. usuario: trazos corridos al reingresar, 2026-10-15).
       let pisoCalibrado = false;
       try {
-        const meta = loadFromStorage<
-          Array<{ id: number; origen?: { x_px: number; y_px: number } | null }>
-        >('plans_meta', []);
-        pisoCalibrado = !!meta.find((m) => String(m.id) === String(resolvedId) && m.origen);
+        pisoCalibrado = planCalibrado(leerPlansMeta(), resolvedId);
       } catch {
         /* sin meta accesible: mantener comportamiento previo */
         pisoCalibrado = true;
@@ -163,9 +161,7 @@ export function useTrazosLoader({
           escalaGlobalRef.current = docScale;
           setScaleM(String(docScale));
           try {
-            const meta = loadFromStorage<
-              Array<{ id: number; scale: number; calGlobal?: boolean | null }>
-            >('plans_meta', []);
+            const meta = leerPlansMeta();
             const holder = meta.find(
               (m) =>
                 m.calGlobal === true &&

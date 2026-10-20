@@ -332,6 +332,11 @@ supabase.auth.onAuthStateChange?.(() => {
   _cachedUserPromise = null;
 });
 
+/** Añade un enlace a una lista sin repetirlo (recibeDeIds / alimentaIds). */
+function agregaEnlace(lista: string[], id: string): void {
+  if (id && !lista.includes(id)) lista.push(id);
+}
+
 export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {
     const user = await cachedSupabaseUser();
@@ -386,8 +391,11 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     for (const c of conexiones) {
       const origen = byClientId.get(c.origen_client_id);
       if (!origen) continue;
-      if (c.tipo === 'recibe') origen.recibeDeIds.push(c.destino_client_id);
-      else if (c.tipo === 'alimenta') origen.alimentaIds.push(c.destino_client_id);
+      // Unión sin repetir: los enlaces bajante→bajante llegan por `bajante_conexiones` y los
+      // ids de RAMAL por `asoc_links` (columna que el RPC sí guarda completa). Un mismo id
+      // puede estar en las dos fuentes → una sola vez.
+      if (c.tipo === 'recibe') agregaEnlace(origen.recibeDeIds, c.destino_client_id);
+      else if (c.tipo === 'alimenta') agregaEnlace(origen.alimentaIds, c.destino_client_id);
       else if (c.tipo === 'descarga') origen.descargaEnId = c.destino_client_id;
     }
 

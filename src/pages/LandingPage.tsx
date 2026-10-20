@@ -168,7 +168,11 @@ function FadeIn({
 
 function LandingPage() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const [heroReady, setHeroReady] = useState(false);
+  // SEO: en prerender nace listo (el HTML trae el hero, no el skeleton). En cliente,
+  // skeleton 250 ms → hero como siempre (el flag __CIVILCARDEX_PRERENDER__ solo existe en node).
+  const [heroReady, setHeroReady] = useState(
+    () => !!(globalThis as { __CIVILCARDEX_PRERENDER__?: boolean }).__CIVILCARDEX_PRERENDER__,
+  );
   const heroRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
   usePageMeta(

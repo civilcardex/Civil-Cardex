@@ -4,7 +4,6 @@ import type { CountsMap, HidroDataMap, SelectableTarget } from '../fixturesStora
 import { loadFromStorage } from '../../services/storageService';
 import { loadAll } from '../fixturesStorage';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
-import { splitPtr } from '../../utils/keys';
 import { aggBajanteAsociado, type AsocLiveBaj } from '../../utils/bombaAssociation';
 import { useMemo } from 'react';
 
@@ -24,6 +23,10 @@ export interface TargetArgs {
   engineRef: MutableRefObject<PlanoEngine | null>;
   agregadoBajante: (bajId: string) => Record<string, number>;
   exitsDeBajante: (bajId: string) => Set<string>;
+  /** Tick de los libros de herencia (heredados/fold): sin él, un cambio SOLO de libros
+   *  (la asociación entre pisos) no rehacía el mapa y el panel se quedaba rancio hasta
+   *  que se seleccionaba el elemento (el memo solo se rehace al cambiar la selección). */
+  librosTick?: number;
 }
 
 /** Mapa de unidades que SE VE en el panel del tramo elegido. Según el caso toma la
@@ -51,7 +54,13 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
   // Bajante ASOCIADO desde arriba (origenId): muestra las UDs del GRUPO — la clave del
   // Ldesvio las mantiene la propagación en vivo desde el piso superior.
   // origenId leído del ENGINE VIVO (selElement puede quedar stale tras updateElementById).
-  const liveBaj = engineRef.current?.bajantes.find((b) => b.id === targetId);
+  // El motor puede tener VARIOS bajantes con el MISMO id (los de otros pisos que atraviesan
+  // esta altura viven en el mismo array, con su pisoBase): si el primero que find() encuentra
+  // es la proyección del piso de arriba, el panel leía SU libro rancio en vez del real
+  // (orig. usuario MAC1-P1: 15.5 con el real en 4.5) — se prefiere el del piso abierto.
+  const nivelLbl = engineRef.current?.nivelActual?.label ?? '';
+  const mismosId = engineRef.current?.bajantes.filter((b) => b.id === targetId) ?? [];
+  const liveBaj = mismosId.find((b) => (b.pisoBase ?? '') === nivelLbl) ?? mismosId[0];
   const origen =
     liveBaj?.origenId ??
     liveBaj?.bombaEnId ??
@@ -103,21 +112,25 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
       return agregadoBajante(owner.id);
     }
   }
-  // LDesvio: espeja el GRUPO de la asociación (la clave espejo `san_LD_X_plan` puede quedar
-  // stale de escrituras viejas). El grupo se resuelve por el bajante asociado local cuyo
-  // `origenId` referencia al titular del LD (`LD_<upperId>`).
-  if (targetId?.startsWith('LD_') && (netId === 'san' || netId === 'll')) {
+  // LDesvio: espeja el GRUPO de la asociación (la clave espejo `net_LD_X_plan` puede quedar
+  // stale de escrituras viejas) — en TODAS las redes (mismo camino de los bajantes san: la
+  // clave espejo de af/ac era la única fuente y una clave rancia mostraba el Ldesvio en 0).
+  // El grupo se resuelve por el bajante asociado local cuyo `origenId` referencia al titular
+  // del LD (`LD_<upperId>`).
+  if (targetId?.startsWith('LD_')) {
     const upperId = targetId.slice(3);
     const engL = engineRef.current;
+    // splitPtr sin '|' devuelve el string completo en [1] — matchearía en falso un
+    // origenId pelado; el original (split('|')[1]) solo matcheaba punteros cross-floor.
     let lower = engL?.bajantes.find(
-      (b) => splitPtr((b as { origenId?: string }).origenId ?? '', '')[1] === upperId,
+      (b) => ((b as { origenId?: string }).origenId ?? '').split('|')[1] === upperId,
     ) as unknown as AsocLiveBaj | undefined;
     if (!lower) {
       const rawLoc = loadFromStorage<{ bajantes?: AsocLiveBaj[] } | null>(
         TRAZOS_PREFIX + String(planId ?? ''),
         null,
       );
-      lower = rawLoc?.bajantes?.find((b) => splitPtr(b.origenId ?? '', '')[1] === upperId);
+      lower = rawLoc?.bajantes?.find((b) => (b.origenId ?? '').split('|')[1] === upperId);
     }
     if (lower) {
       const asoc = aggBajanteAsociado({
@@ -171,6 +184,7 @@ export function useFixtureTarget(a: TargetArgs): Record<string, number> {
     exitsDeBajante,
     netId,
     plans,
+    librosTick,
   } = a;
   return useMemo(
     () => currentMapDe(a),
@@ -189,6 +203,7 @@ export function useFixtureTarget(a: TargetArgs): Record<string, number> {
       exitsDeBajante,
       netId,
       plans,
+      librosTick,
     ],
   );
 }

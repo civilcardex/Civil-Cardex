@@ -190,10 +190,10 @@ function WorkAreaCivilFlowPage() {
     );
   }
 
-  if (switchPendiente || switching) {
-    return <CargandoProyecto texto="Abriendo proyecto…" />;
-  }
-  if (!cargaLista) {
+  // Una sola pantalla percibida al abrir/cambiar proyecto: el Suspense del chunk y estos dos
+  // gates usan el mismo texto (antes encadenaban "Cargando planos y redes…" → "Abriendo
+  // proyecto…" → "Cargando proyecto…").
+  if (switchPendiente || switching || !cargaLista) {
     return <CargandoProyecto />;
   }
   return (

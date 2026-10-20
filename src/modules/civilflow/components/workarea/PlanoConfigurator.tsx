@@ -1,29 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { pisoLbl } from '../../constants';
 import ModalProtocolo from './ModalProtocol';
 import ModalPrimeraCalibracion from './ModalFirstCalibration';
 import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 import { usePlanFileLoader } from './usePlanFileLoader';
-import {
-  TOAST_BG,
-  PlanoConfigurator_S1,
-  PlanoConfigurator_S2,
-  PlanoConfigurator_S3,
-  PlanoConfigurator_S4,
-  PlanoConfigurator_S5,
-  PlanoConfigurator_S6,
-  PlanoConfigurator_S7,
-  PlanoConfigurator_S8,
-  PlanoConfigurator_S9,
-  PlanoConfigurator_S10,
-  PlanoConfigurator_S11,
-  PlanoConfigurator_bannerBase,
-  PlanoConfigurator_stepHeader,
-  PlanoConfigurator_origenBtn,
-  PlanoConfigurator_trazarBtn,
-} from './PlanoConfigurator.styles';
+import { TOAST_BG, PlanoConfigurator_S1, PlanoConfigurator_S2 } from './PlanoConfigurator.styles';
 import { useCalibration } from './useCalibration';
+import { dibujaOverlayCalibracion } from './calibrationOverlay';
+import { PanelCalibracion } from './CalibrationPanel';
 
 interface PlanoConfiguratorProps {
   planFile: File;
@@ -179,6 +163,7 @@ function PlanoConfiguratorBase({
   }, [autoOrigen, origen, setModoCalX, setModoCalY, setModoOrigen]);
 
   // Render del overlay
+  // Render del overlay: solo pinta; el dibujo vive en calibracionOverlay.ts.
   React.useEffect(() => {
     const canv = canvRef.current;
     if (!canv || !imgLoaded || !pageWRef.current || !pageHRef.current) return;
@@ -190,185 +175,24 @@ function PlanoConfiguratorBase({
     const ctx = canv.getContext('2d')!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canv.width, canv.height);
-
-    if (origen) {
-      const { x_px, y_px } = origen;
-      ctx.save();
-      // Ejes punteados (gris, sobre todo el lienzo en coordenadas de plano)
-      ctx.strokeStyle = 'rgba(170,175,185,0.4)';
-      ctx.lineWidth = 0.7;
-      ctx.setLineDash([6, 10]);
-      ctx.beginPath();
-      ctx.moveTo(0, y_px);
-      ctx.lineTo(pageWRef.current, y_px);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x_px, 0);
-      ctx.lineTo(x_px, pageHRef.current);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      // Marcador de cruz sólido (naranja, tamaño en coordenadas de plano, escala con el zoom)
-      const sz = 14;
-      ctx.strokeStyle = '#F5A623';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#F5A623';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.moveTo(x_px - sz, y_px);
-      ctx.lineTo(x_px + sz, y_px);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x_px, y_px - sz);
-      ctx.lineTo(x_px, y_px + sz);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      // Etiqueta (0,0) con fondo
-      ctx.font = '700 11px monospace';
-      const labelW = ctx.measureText('(0,0)').width + 10;
-      const labelH = 18;
-      ctx.fillStyle = 'rgba(17,19,23,0.85)';
-      ctx.beginPath();
-      ctx.roundRect(x_px + 8, y_px - labelH - 4, labelW, labelH, 4);
-      ctx.fill();
-      ctx.fillStyle = '#F5A623';
-      ctx.fillText('(0,0)', x_px + 13, y_px - 6);
-      ctx.restore();
-    }
-
-    if (calStart) {
-      const csColor = modoCalX ? '#4D8FF7' : '#0ECC7A';
-      ctx.strokeStyle = csColor;
-      ctx.lineWidth = 1.5;
-      const cs = 5;
-      ctx.beginPath();
-      ctx.moveTo(calStart.x_px - cs, calStart.y_px);
-      ctx.lineTo(calStart.x_px + cs, calStart.y_px);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(calStart.x_px, calStart.y_px - cs);
-      ctx.lineTo(calStart.x_px, calStart.y_px + cs);
-      ctx.stroke();
-    }
-
-    if (calPreview && calStart) {
-      const color = modoCalX ? '#4D8FF7' : '#0ECC7A';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([5, 4]);
-      ctx.beginPath();
-      ctx.moveTo(calStart.x_px, calStart.y_px);
-      ctx.lineTo(calPreview.x, calPreview.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      const dx = modoCalX ? calPreview.x - calStart.x_px : 0;
-      const dy = modoCalY ? calPreview.y - calStart.y_px : 0;
-      const distPx = Math.hypot(dx, dy);
-      const internalDistCm = (distPx / 96) * 2.54;
-      const displayDistCm = (distPx / (isPdf ? 72 : 96)) * 2.54;
-
-      const baseFactor = modoCalX ? factorY || scaleM || preScaleM : factorX || scaleM || preScaleM;
-      const isFirstCalib = !baseFactor;
-      const refVal = modoCalX ? parseFloat(lenX) : parseFloat(lenY);
-
-      let txt = '';
-      let refTxt = '';
-
-      if (isFirstCalib) {
-        txt = `${displayDistCm.toFixed(2)} cm`;
-      } else {
-        txt = `${(internalDistCm * baseFactor).toFixed(2)} m`;
-        if (!isNaN(refVal) && refVal > 0) {
-          refTxt = `→ ref: ${refVal.toFixed(2)} m`;
-        }
-      }
-
-      ctx.font = '600 11px monospace';
-      ctx.fillStyle = color;
-      const tx =
-        calPreview.x + (calPreview.x > calStart.x_px ? 8 : -8 - ctx.measureText(txt).width);
-      const ty = calPreview.y + (calPreview.y > calStart.y_px ? 18 : -4);
-      ctx.fillText(txt, tx, ty);
-
-      if (refTxt) {
-        ctx.font = '600 10px monospace';
-        ctx.fillStyle = color + 'aa';
-        const refTx =
-          calPreview.x + (calPreview.x > calStart.x_px ? 8 : -8 - ctx.measureText(refTxt).width);
-        ctx.fillText(refTxt, refTx, ty + 14);
-      }
-
-      if (modoCalX || modoCalY) {
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([2, 3]);
-        ctx.beginPath();
-        ctx.moveTo(calPreview.x, calPreview.y - 10);
-        ctx.lineTo(calPreview.x, calPreview.y + 10);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
-        const ps = 5;
-        ctx.beginPath();
-        ctx.moveTo(calPreview.x - ps, calPreview.y);
-        ctx.lineTo(calPreview.x + ps, calPreview.y);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(calPreview.x, calPreview.y - ps);
-        ctx.lineTo(calPreview.x, calPreview.y + ps);
-        ctx.stroke();
-      }
-    }
-
-    const showCrosshair = (modoOrigen || modoCalX || modoCalY) && !calStart && cursorPos;
-    if (showCrosshair) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(0,220,229,0.4)';
-      ctx.lineWidth = 0.5;
-      ctx.setLineDash([4, 6]);
-      ctx.beginPath();
-      ctx.moveTo(0, cursorPos.y);
-      ctx.lineTo(pageWRef.current, cursorPos.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cursorPos.x, 0);
-      ctx.lineTo(cursorPos.x, pageHRef.current);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.strokeStyle = 'rgba(0,220,229,0.9)';
-      ctx.lineWidth = 1.5;
-      const xs = 6;
-      ctx.beginPath();
-      ctx.moveTo(cursorPos.x - xs, cursorPos.y);
-      ctx.lineTo(cursorPos.x + xs, cursorPos.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cursorPos.x, cursorPos.y - xs);
-      ctx.lineTo(cursorPos.x, cursorPos.y + xs);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    if (modoOrigen || modoCalX || modoCalY) {
-      let txt = '';
-      if (modoOrigen) txt = '📍 Clic en la intersección de ejes';
-      else if (modoCalX && !calStart) txt = 'Clic en el primer extremo de la línea horizontal';
-      else if (modoCalX && calStart) txt = 'Clic en el segundo extremo de la línea X';
-      else if (modoCalY && !calStart) txt = 'Clic en el primer extremo de la línea vertical';
-      else if (modoCalY && calStart) txt = 'Clic en el segundo extremo de la línea Y';
-      if (txt) {
-        ctx.font = '600 12px monospace';
-        const m = ctx.measureText(txt);
-        const pw = m.width + 20;
-        const ph = 24;
-        ctx.fillStyle = 'rgba(17,19,23,0.85)';
-        ctx.beginPath();
-        ctx.roundRect(12, 12, pw, ph, 6);
-        ctx.fill();
-        ctx.fillStyle = '#e2e2e8';
-        ctx.fillText(txt, 22, 30);
-      }
-    }
+    dibujaOverlayCalibracion(ctx, {
+      origen,
+      calStart,
+      calPreview,
+      modoOrigen,
+      modoCalX,
+      modoCalY,
+      cursorPos,
+      pageW: pageWRef.current,
+      pageH: pageHRef.current,
+      scaleM,
+      factorX,
+      factorY,
+      lenX,
+      lenY,
+      preScaleM,
+      isPdf,
+    });
     // La etiqueta "→ ref: X m" del texto de arriba se calcula con factorX/factorY/lenX/lenY/
     // isPdf/preScaleM — sin incluirlos en deps, teclear la longitud sin mover el cursor no
     // repintaba la anotación (orig. auditoría).
@@ -501,8 +325,6 @@ function PlanoConfiguratorBase({
     if (panning) return 'grabbing';
     return 'grab';
   };
-
-  const tieneOrigen = origen !== null;
 
   const guardarConfig = () => {
     if (planNivel === null || planNivel === undefined) {
@@ -708,369 +530,66 @@ function PlanoConfiguratorBase({
         </div>
 
         {/* Derecha: panel de configuración - compacto */}
-        <div
-          style={{
-            width: 230,
-            flexShrink: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            borderLeft: '1px solid var(--line)',
-            background: 'var(--bg)',
-            overflowY: 'auto',
+        <PanelCalibracion
+          cal={{
+            origen,
+            modoOrigen,
+            modoCalX,
+            modoCalY,
+            lenX,
+            lenY,
+            factorX,
+            factorY,
+            scaleM,
+            definedScale,
+            preScaleM,
           }}
-        >
-          {/* Banner de cabecera - cambia de color cuando la calibración del piso está completa */}
-          {(() => {
-            const pisoCompletado =
-              planNivel !== null &&
-              tieneOrigen &&
-              (scaleM !== null || preScaleM !== null) &&
-              hasSaved;
-            return (
-              <div
-                style={{
-                  ...PlanoConfigurator_bannerBase,
-                  background: pisoCompletado ? 'rgba(14,204,122,0.15)' : 'rgba(245,158,11,0.08)',
-                  color: pisoCompletado ? 'var(--ok)' : '#F5A623',
-                  border: `1px solid ${pisoCompletado ? 'var(--ok)' : 'rgba(245,158,11,0.2)'}`,
-                }}
-              >
-                {pisoCompletado ? '✓ Calibración Completada' : '⚠ Calibración Pendiente'}
-              </div>
-            );
-          })()}
-
-          {/* Paso 1: Nivel */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div
-              style={{
-                ...PlanoConfigurator_stepHeader,
-                color: planNivel !== null ? 'var(--ok)' : 'var(--txt3)',
-              }}
-            >
-              <span>1. Asignar nivel</span>
-              {planNivel !== null && <span style={{ color: 'var(--ok)' }}>✓</span>}
-            </div>
-            <select
-              value={planNivel ?? ''}
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                onUpdateNivel(planId, v);
-                setHasSaved(false);
-              }}
-              aria-label="Seleccionar nivel de plano"
-              style={PlanoConfigurator_S3}
-            >
-              <option value="">— Nivel —</option>
-              {pisos
-                .toSorted((a, b) => b.n - a.n)
-                .map((s) => {
-                  const ocupado = plans.some(
-                    (x) => x.id !== planId && x.status === 'confirmed' && x.nivel === s.n,
-                  );
-                  return (
-                    <option key={s.id} value={s.n} disabled={ocupado}>
-                      {pisoLbl(s.n)} ({s.npt} m){ocupado ? ' (ocupado)' : ''}
-                    </option>
-                  );
-                })}
-            </select>
-
-            {/* Escala - definida y calibrada lado a lado */}
-            <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: definedScale ? 'var(--ok)' : 'var(--txt3)',
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    marginBottom: 4,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Escala definida
-                </div>
-                <select
-                  value={definedScale ? Math.round(definedScale * 100) : ''}
-                  onChange={(e) => {
-                    const val = e.target.value ? Number(e.target.value) : null;
-                    if (val) {
-                      const dScale = val / 100;
-                      setDefinedScale(dScale);
-                      setPreScaleM(dScale * (96 / (isPdf ? 72 : 96)));
-                      setHasSaved(false);
-                    } else {
-                      setDefinedScale(null);
-                      setPreScaleM(null);
-                      setHasSaved(false);
-                    }
-                  }}
-                  aria-label="Seleccionar escala definida del plano"
-                  style={PlanoConfigurator_S4}
-                >
-                  <option value="">— Escala —</option>
-                  {(() => {
-                    const PREDEF = [50, 75, 100, 125, 150, 200, 250, 500];
-                    const calVal = definedScale ? Math.round(definedScale * 100) : 0;
-                    const hasCal = calVal > 0 && !PREDEF.includes(calVal);
-                    const opts = hasCal ? [...PREDEF, calVal].sort((a, b) => a - b) : PREDEF;
-                    return opts.map((v) => (
-                      <option key={v} value={v}>
-                        1:{v}
-                      </option>
-                    ));
-                  })()}
-                </select>
-              </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: scaleM ? 'var(--ok)' : 'var(--txt3)',
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    marginBottom: 4,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Escala calibrada
-                </div>
-                {scaleM ? (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: 'var(--acc)',
-                      fontFamily: 'monospace',
-                      padding: '5px 0',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    1:{Math.round(scaleM * 100)}
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: 'var(--txt4)',
-                      padding: '5px 0',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    — Sin calibrar
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Paso 2: Origen */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div
-              style={{
-                ...PlanoConfigurator_stepHeader,
-                color: tieneOrigen ? 'var(--ok)' : 'var(--txt3)',
-              }}
-            >
-              <span>2. Definir origen</span>
-              {tieneOrigen && <span style={{ color: 'var(--ok)' }}>✓</span>}
-            </div>
-            <button
-              type="button"
-              onClick={activarModoOrigen}
-              style={{
-                ...PlanoConfigurator_origenBtn,
-                background: modoOrigen ? 'rgba(245,166,35,0.15)' : 'var(--bg3)',
-                border: `1.5px solid ${modoOrigen ? '#F5A623' : 'var(--line)'}`,
-                color: modoOrigen ? '#F5A623' : 'var(--txt2)',
-              }}
-            >
-              📍 Definir origen en plano
-            </button>
-            {origen && (
-              <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace' }}>
-                  ✓ ({origen.x_px.toFixed(0)}, {origen.y_px.toFixed(0)}) px
-                </span>
-                <button
-                  type="button"
-                  aria-label="Quitar origen"
-                  onClick={() => {
-                    setOrigen(null);
-                    setHasSaved(false);
-                  }}
-                  style={PlanoConfigurator_S5}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Pasos 3 y 4: Calibrar X e Y */}
-          <div
-            style={{
-              padding: '8px 10px',
-              borderBottom: '1px solid var(--line)',
-              display: 'flex',
-              gap: 8,
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  ...PlanoConfigurator_stepHeader,
-                  color: factorX !== null ? 'var(--ok)' : 'var(--txt3)',
-                }}
-              >
-                <span>3. Cal X</span>
-                {factorX !== null && <span style={{ color: 'var(--ok)' }}>✓</span>}
-              </div>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="(m)"
-                  value={lenX}
-                  onChange={(e) => setLenX(e.target.value.replace(/,/g, '.'))}
-                  aria-label="Longitud del eje X (m)"
-                  disabled={modoCalX}
-                  style={PlanoConfigurator_S6}
-                />
-                <button
-                  type="button"
-                  onClick={activarModoCalX}
-                  style={{
-                    ...PlanoConfigurator_trazarBtn,
-                    background: modoCalX ? 'rgba(77,143,247,0.15)' : 'var(--bg3)',
-                    border: `1.5px solid ${modoCalX ? '#4D8FF7' : 'var(--line)'}`,
-                    color: modoCalX ? '#4D8FF7' : 'var(--txt2)',
-                  }}
-                >
-                  {modoCalX ? 'Cancelar' : 'Trazar'}
-                </button>
-              </div>
-              {factorX && (
-                <div style={PlanoConfigurator_S7}>
-                  ✓ {factorX.toFixed(4)}
-                  <button
-                    type="button"
-                    aria-label="Quitar factor X"
-                    onClick={() => {
-                      setFactorX(null);
-                      setLenX('');
-                      if (factorY) {
-                        setScaleM(factorY);
-                        setDefinedScale(factorY);
-                      } else {
-                        setScaleM(null);
-                        setDefinedScale(null);
-                      }
-                      setHasSaved(false);
-                    }}
-                    style={PlanoConfigurator_S8}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  ...PlanoConfigurator_stepHeader,
-                  color: factorY !== null ? 'var(--ok)' : 'var(--txt3)',
-                }}
-              >
-                <span>4. Cal Y</span>
-                {factorY !== null && <span style={{ color: 'var(--ok)' }}>✓</span>}
-              </div>
-              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="(m)"
-                  value={lenY}
-                  onChange={(e) => setLenY(e.target.value.replace(/,/g, '.'))}
-                  aria-label="Longitud del eje Y (m)"
-                  disabled={modoCalY}
-                  style={PlanoConfigurator_S9}
-                />
-                <button
-                  type="button"
-                  onClick={activarModoCalY}
-                  style={{
-                    ...PlanoConfigurator_trazarBtn,
-                    background: modoCalY ? 'rgba(14,204,122,0.15)' : 'var(--bg3)',
-                    border: `1.5px solid ${modoCalY ? '#0ECC7A' : 'var(--line)'}`,
-                    color: modoCalY ? '#0ECC7A' : 'var(--txt2)',
-                  }}
-                >
-                  {modoCalY ? 'Cancelar' : 'Trazar'}
-                </button>
-              </div>
-              {factorY && (
-                <div style={PlanoConfigurator_S10}>
-                  ✓ {factorY.toFixed(4)}
-                  <button
-                    type="button"
-                    aria-label="Quitar factor Y"
-                    onClick={() => {
-                      setFactorY(null);
-                      setLenY('');
-                      if (factorX) {
-                        setScaleM(factorX);
-                        setDefinedScale(factorX);
-                      } else {
-                        setScaleM(null);
-                        setDefinedScale(null);
-                      }
-                      setHasSaved(false);
-                    }}
-                    style={PlanoConfigurator_S11}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Acciones */}
-          <div
-            style={{
-              padding: '8px 10px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              borderBottom: '1px solid var(--line)',
-            }}
-          >
-            <button
-              type="button"
-              onClick={guardarConfig}
-              style={{
-                width: '100%',
-                padding: '6px 8px',
-                background: saved ? 'rgba(14,204,122,0.15)' : 'var(--acc)',
-                border: saved ? '1.5px solid #0ECC7A' : 'none',
-                borderRadius: 'var(--r)',
-                color: saved ? '#0ECC7A' : '#fff',
-                cursor: 'pointer',
-                fontSize: 11,
-                fontWeight: 600,
-                transition: 'background-color .15s, border-color .15s, color .15s',
-              }}
-            >
-              {saved ? '✓ Configuración guardada' : '💾 Guardar configuración'}
-            </button>
-          </div>
-        </div>
+          planNivel={planNivel}
+          planId={planId}
+          pisos={pisos}
+          plans={plans}
+          isPdf={isPdf}
+          saved={saved}
+          hasSaved={hasSaved}
+          onUpdateNivel={onUpdateNivel}
+          onSetDefinedScale={setDefinedScale}
+          onSetPreScale={setPreScaleM}
+          onActivarOrigen={activarModoOrigen}
+          onQuitarOrigen={() => {
+            setOrigen(null);
+            setHasSaved(false);
+          }}
+          onSetLenX={setLenX}
+          onSetLenY={setLenY}
+          onActivarCalX={activarModoCalX}
+          onActivarCalY={activarModoCalY}
+          onQuitarFactorX={() => {
+            setFactorX(null);
+            setLenX('');
+            if (factorY) {
+              setScaleM(factorY);
+              setDefinedScale(factorY);
+            } else {
+              setScaleM(null);
+              setDefinedScale(null);
+            }
+            setHasSaved(false);
+          }}
+          onQuitarFactorY={() => {
+            setFactorY(null);
+            setLenY('');
+            if (factorX) {
+              setScaleM(factorX);
+              setDefinedScale(factorX);
+            } else {
+              setScaleM(null);
+              setDefinedScale(null);
+            }
+            setHasSaved(false);
+          }}
+          onGuardar={guardarConfig}
+          onMarcarModificado={() => setHasSaved(false)}
+        />
       </div>
     </div>
   );

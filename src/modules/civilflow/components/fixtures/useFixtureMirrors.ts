@@ -1,75 +1,142 @@
-import { useEffect } from 'react';
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
-import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import type { CountsMap, HidroDataMap } from '../fixturesStorage';
-import {
-  loadAll,
-  saveAll,
-  loadHidroData,
-  saveHidroData,
-  libroHeredado,
-  aggParaEspejoSalida,
-  stableStringify,
-  syncMirrorKey,
-} from '../fixturesStorage';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-  loadPlanTrazos,
-} from '../../services/storageService';
+﻿import type { EspejosArgs } from './fixtureMirrorsTypes';
+export type { EspejosArgs } from './fixtureMirrorsTypes';
+import { correrEspejos } from './fixtureMirrors';
+export { correrEspejos };
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
-import { emitAparatosClear } from '../../utils/fixtureEvents';
+import { collectSourceAgg, trazaDeUltimoGrupo } from '../../utils/bajanteAssociation';
+import { devError } from '../../../../utils/devError';
 import {
   diagUltimaPropagacion,
   esRedAparatosPresion,
   propagarAparatosPresion,
-} from '../../utils/aparatosPresion';
+} from '../../utils/propagation';
+import { emitAparatosClear } from '../../utils/fixtureEvents';
+import { leerPlansMeta } from '../../utils/plansMeta';
+import { loadAll, loadHidroData, saveAll, stableStringify } from '../fixturesStorage';
+import { loadPlanTrazos } from '../../services/storageService';
+import { useEffect } from 'react';
 
 // Diagnóstico (orig. usuario): __cfDiag('ac') en consola corre la propagación y devuelve el
 // análisis completo (piezas, libros, bajadas, transferencias, aristas, bajantes+ucAplicado).
+// __cfScale() vuelca por piso origen/calibración/scaleM/ts — para cazar si la deriva de
+// trazos (corridos/más cortos tras recargar) reaparece: compara DOS dumps entre sesiones;
+// scaleM u origen que cambian solos = piso afectado.
 declare global {
   interface Window {
     __cfDiag?: (net: 'af' | 'ac' | 'gas') => unknown;
+    __cfScale?: () => unknown;
   }
 }
 if (typeof window !== 'undefined') {
   window.__cfDiag = (net) => {
     propagarAparatosPresion(net);
-    return diagUltimaPropagacion();
+    const diag = diagUltimaPropagacion() as Record<string, unknown>;
+    // Sección ASOC (montantes entre pisos): por cada montante con origenId — puntero, libro
+    // en storage, grupo que llega del superior y disco propio. Con ESTO se ve en cuál eslabón
+    // muere la herencia sin adivinar (orig. usuario MAC1: panel mezclando propio + heredado).
+    try {
+      const counts = loadAll();
+      const asoc: Record<string, unknown> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(`civilflow_${TRAZOS_PREFIX}`)) continue;
+        const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
+        let d: {
+          bajantes?: Array<Record<string, unknown>>;
+          ramales?: Array<Record<string, unknown>>;
+        };
+        try {
+          d = JSON.parse(localStorage.getItem(k) || '{}');
+        } catch {
+          continue;
+        }
+        for (const b of d.bajantes || []) {
+          if (b.tipo !== 'montante' || !b.origenId) continue;
+          const [upPlan, upBaj] = String(b.origenId).split('|');
+          let grupo: Record<string, number> | null = null;
+          let detalle: unknown = null;
+          try {
+            const upRaw = JSON.parse(
+              localStorage.getItem(`civilflow_${TRAZOS_PREFIX}${upPlan}`) || 'null',
+            ) as { bajantes?: never[]; ramales?: never[] } | null;
+            const upB = upRaw?.bajantes?.find((x) => (x as { id?: string }).id === upBaj);
+            if (upB) {
+              grupo = collectSourceAgg({
+                net,
+                planId: String(upPlan),
+                bajId: String(upBaj),
+                liveBaj: null,
+                liveRamales: null,
+                storedBaj: upB as never,
+                storedRamales: (upRaw?.ramales ?? null) as never,
+                counts,
+                hidro: {} as never,
+              }).agg;
+              detalle = trazaDeUltimoGrupo();
+            }
+          } catch {
+            /* sin caché del piso superior */
+          }
+          asoc[`${String(b.code || b.id)}@${pid}`] = {
+            tipo: b.tipo,
+            origenId: b.origenId,
+            libroStorage: b.ucAplicado ?? null,
+            grupoDelSuperior: grupo,
+            // De dónde salió CADA pieza del grupo (clave propia, cierre, servi, libro) —
+            // con esto un dump nombra la rama exacta sin adivinar.
+            grupoDetalle: detalle,
+            disk: counts[`${net}_${String(b.id)}_${pid}`] ?? null,
+            anillo: Object.keys((b.desplazamientos as Record<string, unknown>) || {}),
+          };
+        }
+      }
+      diag.asoc = asoc;
+    } catch {
+      /* diag best-effort */
+    }
+    // Impreso en consola como texto: seleccionar la línea [CF-DIAG] y copiar (Ctrl+C) — más
+    // fácil que copiar objetos anidados (orig. usuario: el JSON del clipboard no llegó).
+    // La versión va impresa EN el dump: si no dice v54, el tab corre un bundle viejo y los
+    // arreglos recientes no están cargados (fue la causa de varias rondas de "sigue igual").
+    // eslint-disable-next-line no-console -- herramienta de diagnóstico solicitada por el usuario
+    console.log('[CF-DIAG v58] ' + JSON.stringify({ v: 'v58', ...diag }));
+    return { v: 'v58', ...diag };
+  };
+  window.__cfScale = () => {
+    try {
+      const meta = leerPlansMeta();
+      const global = meta.find((m) => m.calGlobal === true && m.origen && m.scale);
+      const pisos: Record<string, unknown> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(`civilflow_${TRAZOS_PREFIX}`)) continue;
+        const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
+        try {
+          const d = JSON.parse(localStorage.getItem(k) || '{}') as {
+            scaleM?: number;
+            ts?: number;
+            ramales?: Array<{ pts?: number[][] }>;
+            bajantes?: unknown[];
+          };
+          pisos[pid] = {
+            scaleM: d.scaleM ?? null,
+            ts: d.ts ?? null,
+            nRam: (d.ramales || []).length,
+            nBaj: (d.bajantes || []).length,
+            primerPt: d.ramales?.[0]?.pts?.[0] ?? null,
+            metaOrigen: meta.find((m) => String(m.id) === String(pid))?.origen ?? null,
+          };
+        } catch {
+          pisos[pid] = { parseError: true };
+        }
+      }
+      return { escalaGlobal: global?.scale ? global.scale / 100 : null, meta, pisos };
+    } catch (e) {
+      return { error: String(e) };
+    }
   };
 }
-import { devError } from '../../../../utils/devError';
-import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../../utils/bombaAssociation';
-import { ldesvioIdFor } from '../../utils/associateBajanteAcrossFloors';
-import {
-  collectSourceAgg,
-  type InheritPoolBajante,
-  type InheritPoolRamal,
-} from '../../utils/bajanteAssociation';
-
 /** Datos que necesita el grupo de efectos de espejos (viajan en un objeto: el panel pasa sus funciones tal cual). */
-export interface EspejosArgs {
-  engineRef: MutableRefObject<PlanoEngine | null>;
-  loadingPlanRef?: MutableRefObject<boolean> | null;
-  netId: string;
-  planId?: string | number;
-  /** Planos del proyecto: el `nivel` de cada uno es el npt (nivel de piso topografico)
-   *  que dice si la herencia de UDs baja o sube de piso. */
-  plans: Array<{ id: string | number; nivel?: number | null; status?: string }>;
-  planLoadedTick: number;
-  targetId: string | null;
-  counts: CountsMap;
-  setCounts: Dispatch<SetStateAction<CountsMap>>;
-  hidroData: HidroDataMap;
-  setHidroData: Dispatch<SetStateAction<HidroDataMap>>;
-  agregadoBajante: (bajId: string) => Record<string, number>;
-  exitsDeBajante: (bajId: string) => Set<string>;
-  /** Tick para lecturas directas de libros en render (heredados/fold): se bumpnea tras cada
-   *  propagación aunque los conteos no cambien, para que el panel no quede rancio. */
-  onLibrosChange?: () => void;
-}
-
 /** (1) Sanado de sifones fantasma: reconcilia el conteo 'sif' con los glifos vivos del piso. */
 export function correrSanadoSifones(a: EspejosArgs): void {
   const { engineRef, loadingPlanRef, setCounts } = a;
@@ -107,7 +174,6 @@ export function correrSanadoSifones(a: EspejosArgs): void {
     }
   }
 }
-
 /** Propaga los aparatos por la red de af (Agua Fria)/ac (Agua Caliente) cuando cambia la
  *  selección: espera 250 ms para no recalcular a cada clic, y al cambiar de tramo hace
  *  el cálculo al instante (sin eso, el tramo anterior quedaba sin propagar). Tras cada
@@ -188,283 +254,8 @@ export function correrPropagacion(a: EspejosArgs): () => void {
     refrescarPanel();
   };
 }
-
 /** (3) Espejos de salidas + herencia entre pisos + bomba: el efecto grande, mantiene las
  *  claves espejo al día cada vez que algo cambia. */
-export function correrEspejos(a: EspejosArgs): void {
-  const {
-    engineRef,
-    loadingPlanRef,
-    netId,
-    planId,
-    plans,
-    setCounts,
-    setHidroData,
-    agregadoBajante,
-    exitsDeBajante,
-  } = a;
-  const eng = engineRef.current;
-  if (!eng) return;
-  // Carrera de cambio de piso (orig. usuario): `_loadedPlanId` ya apunta al piso entrante
-  // pero `eng.bajantes` aún es el piso anterior — escribir aquí estampaba claves/libros con
-  // el sufijo de piso equivocado.
-  if (loadingPlanRef?.current) return;
-  const disk = loadAll();
-  const hdisk = loadHidroData();
-  const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
-  let dirty = false;
-  let hdirty = false;
-  // Libros de herencia cross-floor por bajante (misma lectura que el display del panel:
-  // TRAZOS del piso cargado) — el espejo de salidas copia lo que el bajante MUESTRA.
-  let trazBooks = new Map<string, Record<string, Record<string, number>>>();
-  try {
-    const t = loadFromStorage<{
-      bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
-    } | null>(TRAZOS_PREFIX + planId, null);
-    for (const b of t?.bajantes || []) if (b.ucAplicado) trazBooks.set(b.id, b.ucAplicado);
-  } catch {
-    trazBooks = new Map();
-  }
-  for (const baj of eng.bajantes) {
-    if (baj.net !== netId) continue;
-    // MONTANTES (orig. usuario): NO espejan sus ramales — son la inversa de un bajante (los
-    // alimentan, no los reciben); sus ramales mantienen UDs propias asignables.
-    if (baj.tipo === 'montante') continue;
-    // BOMBA (orig. usuario): punto de transferencia — su clave SIEMPRE espeja el agregado
-    // de su caja de origen (recalculado por conectividad; nunca genera UDs propias). SIN
-    // `continue`: la bomba también puede sostener un enlace cross-floor (descargaEnId →
-    // bajante superior), que se procesa más abajo en esta misma iteración.
-    if (baj.tipo === 'bomba' && baj.cajaOrigenId) {
-      // Misma fuente que BombaARDesign: trazos del piso de la caja (con fallback al agregado
-      // vivo) — la clave de la bomba SIEMPRE termina valiendo lo mismo en ambos lados.
-      // La bomba vive en el piso cargado: se suma el pool vivo (los trazos en disco van
-      // por detrás del motor y el espejo divergía del mapa de la página).
-      const desdeTrazos = mapUdBombaDesdeTrazos(String(planId), baj.id, netId, {
-        bajantes: eng.bajantes as unknown as InheritPoolBajante[],
-        ramales: eng.ramales as unknown as InheritPoolRamal[],
-      });
-      const aggBomba = Object.keys(desdeTrazos).length
-        ? desdeTrazos
-        : agregadoBajante(baj.cajaOrigenId);
-      // Sin agregado (caja vacía o red aún en construcción): NO sobrescribir la clave con
-      // {} — el espejo vacío borraba UDs legítimas (orig. usuario).
-      if (!Object.keys(aggBomba).length) continue;
-      if (syncMirrorKey(disk, pkey(baj.id), aggBomba, false)) dirty = true;
-    } else {
-      // Bajante asociado a BOMBA (orig. usuario): sus salidas espejan las UDs DE LA BOMBA
-      // (misma lectura que el panel del bajante) — NO el agregado del árbol, que puede no
-      // contener las ramales heredadas y dejaba la salida en 0 aunque el bajante mostrara
-      // el total (caso RS7/BAN2). Con pool vivo si la bomba es de este piso.
-      let agg = agregadoBajante(baj.id);
-      if (baj.bombaEnId?.includes('|')) {
-        const [pp, pi] = baj.bombaEnId.split('|');
-        const engMismoPiso =
-          String(eng._loadedPlanId ?? '') === pp
-            ? {
-                bajantes: eng.bajantes as unknown as InheritPoolBajante[],
-                ramales: eng.ramales as unknown as InheritPoolRamal[],
-              }
-            : null;
-        agg = mapUdBombaDesdeTrazos(pp, pi, netId, engMismoPiso);
-      } else if (baj.origenId?.includes('|')) {
-        // Asociación cross-floor: el panel del bajante muestra el LIBRO heredado, no el
-        // árbol — el espejo copia lo mismo o la salida queda en 0 con el bajante lleno
-        // (orig. usuario: bajante con 2 UDs, ramal de salida sin nada).
-        const espejo = aggParaEspejoSalida(
-          agg,
-          libroHeredado({ ucAplicado: trazBooks.get(baj.id) }),
-        );
-        if (!espejo) continue;
-        agg = espejo;
-      }
-      if (!Object.keys(agg).length) continue;
-      for (const rid of exitsDeBajante(baj.id)) {
-        const rk = pkey(rid);
-        // REEMPLAZO (antes fusión): el ramal de salida es un ESPEJO de solo lectura del
-        // elemento (inc/dec bloqueados) — conservar valores viejos en su clave mantenía
-        // viva cualquier inflación pasada y la re-mostraba para siempre. El reemplazo la
-        // sana al agregado exacto en el próximo pase (orig. usuario: caja AN duplicaba UDs).
-        if (syncMirrorKey(disk, rk, agg, false)) dirty = true;
-      }
-    }
-  }
-  // Propagación EN VIVO hacia el piso de abajo: la clave del Ldesvio y los ramales destino
-  // reciben el agregado COMPLETO del bajante superior — la misma verdad única que usa el
-  // apply (collectSourceAgg: cierre transitivo, sin topes), no el parcial de antes.
-  // Solo escribe el extremo SUPERIOR del enlace (guard por npt): el inferior nunca
-  // re-empuja hacia arriba (eso envenenaba la herencia al cambiar de asociado). Con npt
-  // desconocido se conserva el comportamiento previo (titular = descargaEnId).
-  // Cubre san y ll aunque el panel esté en la otra red (el cambio pudo venir del menú).
-  // BOMBA → BAJANTE del piso superior (orig. usuario): la clave de la bomba (= agregado de
-  // su caja, espejado arriba) hereda a los ramales del bajante (recibe+alimenta) vía libro
-  // `ucAplicado` — MISMA mecánica de delta que la herencia hacia abajo, pero hacia ARRIBA.
-  // Campo dedicado `bombaEnId`: descargaEnId/origenId dispararían la herencia invertida.
-  // Una sola implementación (ver `propagarHerenciaBomba`): también la usa `asociarBomba`
-  // para propagar sincrónicamente al marcar.
-  if (propagarHerenciaBomba(eng, planId, netId, disk)) dirty = true;
-  const loadedPid = planId != null ? String(planId) : '';
-  // npt = NIVEL del plano (PlanItem.nivel). ANTES leía `p.npt` — campo que NO existe en
-  // PlanItem → guard siempre nulo → "desconocido = procesar" dejaba al piso INFERIOR
-  // escribir el enlace invertido: sumaba sus UD locales a la herencia y envenenaba el piso
-  // superior (orig. usuario: 12 UD abajo → 16 al reentrar; trinquete que nunca baja).
-  // Ahora, sin nivel conocido NO se procesa (el efecto re-corre cuando `plans` llega — ya
-  // está en sus deps).
-  const nptOf = (pid: string): number | null => {
-    const n = plans.find((x) => String(x.id) === pid)?.nivel;
-    return typeof n === 'number' && Number.isFinite(n) ? n : null;
-  };
-  const loadedNpt = loadedPid ? nptOf(loadedPid) : null;
-  // MONTANTES entre pisos (orig. usuario): mismas asociaciones que bajantes — la propagación
-  // viva cubre TODAS las redes con elementos asociables (el cuerpo filtra por baj.net).
-  for (const propNet of ['san', 'll', 'af', 'ac', 'gas', 'vent']) {
-    for (const baj of eng.bajantes) {
-      if (baj.net !== propNet) continue;
-      const links: { ldPlan: string; lowerBajId: string; upperBajId: string }[] = [];
-      if (baj.descargaEnId?.includes('|')) {
-        const [q, qBaj] = baj.descargaEnId.split('|');
-        const nq = q ? nptOf(q) : null;
-        // Titular = bajante SUPERIOR con descargaEnId al piso de abajo: escribe solo si de
-        // verdad está por encima del destino.
-        if (q && qBaj && loadedNpt != null && nq != null && loadedNpt > nq)
-          links.push({ ldPlan: q, lowerBajId: qBaj, upperBajId: baj.id });
-      }
-      if (baj.origenId?.includes('|')) {
-        const [r, rBaj] = baj.origenId.split('|');
-        const nr = r ? nptOf(r) : null;
-        // Titular origenId = bajante INFERIOR (el apply se lo pone al destino): procesar
-        // aquí propagaría inferior→superior (el veneno del trinquete). Solo se permite el
-        // empate de nivel (misma regla del apply).
-        if (r && rBaj && loadedNpt != null && nr != null && loadedNpt === nr)
-          links.push({ ldPlan: r, lowerBajId: rBaj, upperBajId: baj.id });
-      }
-      for (const link of links) {
-        const { ldPlan: ldPlanId, lowerBajId, upperBajId } = link;
-        const srcAgg = collectSourceAgg({
-          net: propNet,
-          planId: loadedPid,
-          bajId: upperBajId,
-          liveBaj: eng.bajantes.find((b) => b.id === upperBajId) ?? null,
-          liveRamales: (eng.ramales ?? []) as unknown as InheritPoolRamal[],
-          storedBaj: null,
-          storedRamales: null,
-          counts: disk,
-          hidro: hdisk as unknown as Record<string, { accesorios?: Record<string, number> }>,
-        });
-        const liveAgg = srcAgg.agg;
-        const liveHydro = srcAgg.hydroAgg;
-        // Sin agregado (el GC o claves stale vaciaron las claves del origen) NO se propaga:
-        // escribía libro vacío y restaba a 0 las UDs heredadas del destino (mismo guard que
-        // las ramas gemelas de espejos de salida).
-        if (Object.keys(liveAgg).length === 0) continue;
-        const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
-        if (syncMirrorKey(disk, lk, liveAgg, true)) dirty = true;
-        const tgt = loadFromStorage<{
-          bajantes?: Array<{
-            id: string;
-            ucAcum?: number;
-            recibeDeIds?: string[];
-            alimentaIds?: string[];
-            ucAplicado?: Record<string, Record<string, number>>;
-            ucAplicadoHidro?: Record<string, Record<string, number>>;
-          }>;
-        } | null>(TRAZOS_PREFIX + ldPlanId, null);
-        const tBaj = tgt?.bajantes?.find((x) => x.id === lowerBajId);
-        const tgtRamalIds = [...(tBaj?.recibeDeIds || []), ...(tBaj?.alimentaIds || [])];
-        const ownKey = `${propNet}_${lowerBajId}_${ldPlanId}`;
-        const own = disk[ownKey] || {};
-        const aplicadoPrev = tBaj?.ucAplicado || {};
-        const aplicadoHidroPrev = tBaj?.ucAplicadoHidro || {};
-        let tgtChanged = false;
-        const ucAplicadoNuevo: Record<string, Record<string, number>> = {};
-        const ucAplicadoHidroNuevo: Record<string, Record<string, number>> = {};
-        for (const rid of tgtRamalIds) {
-          const tk = `${propNet}_${rid}_${ldPlanId}`;
-          const esAlimenta = (tBaj?.alimentaIds || []).includes(rid);
-          const extra = esAlimenta ? { ...liveAgg, ...own } : liveAgg;
-          const cur = disk[tk] || {};
-          const prevAp = aplicadoPrev[tk] || {};
-          const result: Record<string, number> = {};
-          const keys = new Set([...Object.keys(cur), ...Object.keys(extra)]);
-          for (const k of keys) {
-            const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
-            if (nv > 0) result[k] = nv;
-          }
-          if (syncMirrorKey(disk, tk, result, true)) tgtChanged = true;
-          ucAplicadoNuevo[tk] = { ...extra };
-          if (liveHydro) {
-            const prevH = aplicadoHidroPrev[tk] || {};
-            const hcur = hdisk[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-            const acc: Record<string, number> = {};
-            for (const k of new Set([
-              ...Object.keys(hcur.accesorios || {}),
-              ...Object.keys(liveHydro),
-            ])) {
-              const nv =
-                Math.max(0, ((hcur.accesorios || {})[k] || 0) - (prevH[k] || 0)) +
-                (liveHydro[k] || 0);
-              if (nv > 0) acc[k] = nv;
-            }
-            if (JSON.stringify(hcur.accesorios || {}) !== JSON.stringify(acc)) {
-              hdisk[tk] = { ...hcur, accesorios: acc };
-              hdirty = true;
-            }
-            ucAplicadoHidroNuevo[tk] = { ...liveHydro };
-          }
-        }
-        const totalUc = Object.values(liveAgg).reduce((s, v) => s + (v as number), 0);
-        if (tBaj && (tBaj.ucAcum ?? 0) !== totalUc) {
-          tBaj.ucAcum = totalUc;
-          tgtChanged = true;
-        }
-        // El libro cubre también la clave del Ldesvio (el mismo agregado): sin esta entrada,
-        // la desasociación no sabría qué restar de ella y sus UDs quedarían colgadas.
-        ucAplicadoNuevo[lk] = { ...liveAgg };
-        if (tBaj && JSON.stringify(tBaj.ucAplicado || {}) !== JSON.stringify(ucAplicadoNuevo)) {
-          tBaj.ucAplicado = ucAplicadoNuevo;
-          tgtChanged = true;
-        }
-        if (liveHydro) {
-          ucAplicadoHidroNuevo[lk] = { ...liveHydro };
-          if (
-            JSON.stringify(tBaj?.ucAplicadoHidro || {}) !== JSON.stringify(ucAplicadoHidroNuevo) &&
-            tBaj
-          ) {
-            tBaj.ucAplicadoHidro = ucAplicadoHidroNuevo;
-            tgtChanged = true;
-          }
-        } else if (tBaj && Object.keys(aplicadoHidroPrev).length) {
-          tBaj.ucAplicadoHidro = {};
-          tgtChanged = true;
-        }
-        if (tgtChanged) {
-          saveToStorage(TRAZOS_PREFIX + ldPlanId, tgt);
-          saveTrazosToDB(ldPlanId, tgt);
-          dirty = true;
-        }
-      }
-    }
-  }
-  if (dirty) {
-    saveAll(disk);
-    setCounts(disk);
-    // Tablas y paneles que leen claves (InfTab, diseño, validación) deben reconstruirse al
-    // momento — sin estos eventos el bajante asociado a bomba quedaba con el valor viejo
-    // hasta tocar algo a mano (orig. usuario, problema de sincronización 2).
-    try {
-      window.dispatchEvent(new CustomEvent('aparatos-clear'));
-      window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-      window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
-    } catch {
-      /* sin window (tests) */
-    }
-  }
-  if (hdirty) {
-    saveHidroData(hdisk);
-    setHidroData(hdisk);
-  }
-}
-
-/** Grupo de efectos de espejos del panel (se disparan con los mismos datos que los efectos originales). */
 export function useFixtureMirrors(a: EspejosArgs): void {
   const {
     engineRef,

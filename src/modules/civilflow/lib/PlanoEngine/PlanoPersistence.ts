@@ -146,6 +146,7 @@ const CAMPOS_ASOC = [
   'bombaEnId',
   'recibeDeIds',
   'alimentaIds',
+  'asocManual',
   'desplazamientos',
   'ghostData',
 ] as const;

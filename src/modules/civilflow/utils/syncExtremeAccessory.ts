@@ -1,5 +1,5 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
-import { esRedAparatosPresion, propagarAparatosPresion } from './aparatosPresion';
+import { esRedAparatosPresion, propagarAparatosPresion } from './propagation';
 import {
   HYDRO_DATA_STORAGE_KEY,
   TRAZOS_PREFIX,

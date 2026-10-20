@@ -27,6 +27,19 @@ export function renouardByType(counts: Record<string, number>) {
 // debe salir en las columnas "Por Altitud / Por Temperatura / Por Densidad Relativa".
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
+/**
+ * Presión atmosférica (kPa) que corresponde a una altitud (msnm).
+ *
+ * Ej: en Bogotá (2640 msnm) da 74.5 kPa — menos aire arriba, así el gas trabaja con menos
+ * presión y necesita más caudal para la misma entrega.
+ * @param alt - altitud de la ciudad en metros sobre el nivel del mar.
+ * @returns la presión atmosférica en kPa, con 2 decimales.
+ */
+export function patmDeAltitud(alt: string | number): string {
+  const m = Number(alt) || 0;
+  return String(Math.round(101.325 * Math.pow(1 - m / 44330, 5.256) * 100) / 100);
+}
+
 /** Factores que corrigen el consumo de gas (Gas) por la altitud, la temperatura y la densidad del sitio; se redondean a 2 decimales igual que la hoja de cálculo. */
 export function factoresGas(datos: { patm: string; temp: string; densRel: string }) {
   const pAtm = Number(datos.patm) || 101.325;

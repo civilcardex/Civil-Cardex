@@ -1,5 +1,11 @@
 /* eslint-disable no-empty */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
+import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
+import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome';
+import { useViewerResponsive } from './pdfViewer/useViewerResponsive';
+import { leerPlansMeta, planCalibrado } from '../utils/plansMeta';
+import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamera';
+import { bboxDelDibujo } from './pdfViewer/drawingBBox';
 import { useNavigate } from 'react-router-dom';
 import PlanoEngine, {
   type ElementItem,
@@ -59,10 +65,7 @@ import { useFloorRamales } from './pdfViewer/useFloorRamales';
 import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
-import { devError } from '../../../utils/devError';
-import { cargarMallas } from '../lib/PlanoEngine/nodos';
-import { useIsMobile, useMediaQuery } from '../../../hooks/useMediaQuery';
-import { emitAparatosClear, emitPlanLoaded, EV_STORAGE } from '../utils/fixtureEvents';
+import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -118,261 +121,10 @@ type ProbedElement = PlanoElement & {
   pendiente?: number;
 };
 
-interface UsePlanoLoadSwitchParams {
-  engineRef: React.MutableRefObject<PlanoEngine | null>;
-  engineReady: boolean;
-  currentId: number | undefined;
-  currentIdRef: React.RefObject<string | number | null | undefined>;
-  loadTrazosForPlan: (eng: PlanoEngine, resolvedId: string | number) => Promise<boolean>;
-  syncDrawings: () => void;
-  autoSaveTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
-  loadingPlanRef: React.MutableRefObject<boolean>;
-  activeNetRef: React.RefObject<string>;
-  activeNetworksRef: React.RefObject<Set<string>>;
-  setActiveNet: React.Dispatch<React.SetStateAction<string>>;
-  setScaleM: React.Dispatch<React.SetStateAction<string>>;
-}
-
-/** Guardado y carga al cambiar de plano: persiste el trabajo pendiente del plano anterior y
- *  carga los trazos del entrante, o resetea el motor si el plano no tiene nada guardado. */
-function usePlanoLoadSwitch({
-  engineRef,
-  engineReady,
-  currentId,
-  currentIdRef,
-  loadTrazosForPlan,
-  syncDrawings,
-  autoSaveTimerRef,
-  loadingPlanRef,
-  activeNetRef,
-  activeNetworksRef,
-  setActiveNet,
-  setScaleM,
-}: UsePlanoLoadSwitchParams): void {
-  useEffect(() => {
-    if (!engineRef.current || !engineReady) return;
-    const eng = engineRef.current;
-    const prevId = eng._loadedPlanId;
-    if (prevId && prevId !== currentId) {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = null;
-      }
-      if (!loadingPlanRef.current && eng._dirty) {
-        const work = eng.saveWork();
-        work.ts = Date.now();
-        saveToStorage(`trazos_${prevId}`, work);
-        eng._dirty = false;
-      }
-    }
-    const resolvedId = currentIdRef.current || currentId || '';
-    if (!resolvedId) {
-      loadingPlanRef.current = false;
-      return;
-    }
-    const finCarga = (): void => {
-      loadingPlanRef.current = false;
-      try {
-        emitPlanLoaded();
-      } catch {
-        /* ignore */
-      }
-    };
-    eng._loadedPlanId = resolvedId;
-    eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
-    loadingPlanRef.current = true;
-    (async () => {
-      try {
-        const loaded = await loadTrazosForPlan(eng, resolvedId);
-        const currentRefId = currentIdRef.current || 'work';
-        if (resolvedId !== currentRefId) {
-          finCarga();
-          return;
-        }
-        if (loaded) {
-          const fallbackNet =
-            activeNetworksRef.current &&
-            activeNetworksRef.current.size > 0 &&
-            !activeNetworksRef.current.has('af')
-              ? Array.from(activeNetworksRef.current)[0]
-              : activeNetRef.current || 'af';
-          const loadedNet = eng.activeNet || fallbackNet;
-          const sm = eng.scaleM;
-          setActiveNet(loadedNet);
-          if (sm != null) setScaleM(String(sm));
-          requestAnimationFrame(() => {
-            finCarga();
-            if (engineRef.current) engineRef.current.render();
-          });
-        } else if (currentId) {
-          eng.ramales = [];
-          eng.bajantes = [];
-          eng.areas = [];
-          eng.dims = [];
-          eng.textAnnots = [];
-          eng.selId = null;
-          eng.activeRamal = null;
-          eng.activeArea = null;
-          eng.setActiveNet(activeNetRef.current);
-          eng.render();
-          finCarga();
-        }
-      } catch (e) {
-        devError('[LOAD] error', e);
-        finCarga();
-      }
-    })();
-    syncDrawings();
-  }, [
-    currentId,
-    engineReady,
-    loadTrazosForPlan,
-    syncDrawings,
-    autoSaveTimerRef,
-    engineRef,
-    currentIdRef,
-    loadingPlanRef,
-    activeNetRef,
-    activeNetworksRef,
-    setActiveNet,
-    setScaleM,
-  ]);
-}
-
-// Chrome móvil del visor: banner "modo consulta", nombre del plano y cluster de zoom táctil
-// (⤢ ajustar / + / −). Solo se monta bajo los breakpoints que corresponden — cero lógica de
-// dibujo; el zoom delega en el engine via onZoomStep.
-
-interface ViewerMobileChromeProps {
-  isMobile: boolean;
-  isNarrow: boolean;
-  currentFile: File | null;
-  onFit: () => void;
-  onZoomStep: (factor: number) => void;
-}
-
-const BOTON_ZOOM_STYLE = {
-  width: 44,
-  height: 44,
-  borderRadius: '50%',
-  border: '1px solid #3a494a',
-  background: 'rgba(14,20,28,0.92)',
-  color: '#e2e2e8',
-  fontSize: 22,
-  lineHeight: 1,
-  cursor: 'pointer',
-} as const;
-
-/** Banner + nombre de plano (solo móvil) y botones flotantes de zoom (móvil y tablet). */
-function ViewerMobileChrome({
-  isMobile,
-  isNarrow,
-  currentFile,
-  onFit,
-  onZoomStep,
-}: ViewerMobileChromeProps): React.JSX.Element | null {
-  if (!isMobile && !isNarrow) return null;
-  return (
-    <>
-      {isMobile && (
-        <div
-          role="status"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            padding: '6px 12px',
-            background: 'rgba(14,20,28,0.92)',
-            borderBottom: '1px solid #3a494a',
-            color: '#849495',
-            fontSize: 11,
-            fontFamily: 'var(--body)',
-          }}
-        >
-          Modo consulta — el dibujo requiere tablet o PC.
-        </div>
-      )}
-      {isMobile && currentFile && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 30,
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            textAlign: 'center',
-            color: '#849495',
-            fontSize: 10,
-            fontFamily: 'var(--body)',
-            pointerEvents: 'none',
-            padding: '0 12px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {currentFile.name}
-        </div>
-      )}
-      {/* Zoom táctil: también en tablet (768-1023), donde no hay botones de la toolbar de
-          escritorio a mano y el pinch es el único zoom alternativo. */}
-      {isNarrow && (
-        <div
-          style={{
-            position: 'absolute',
-            right: 12,
-            bottom: 18,
-            zIndex: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}
-        >
-          {[
-            { label: '⤢', aria: 'Ajustar a pantalla', run: onFit },
-            { label: '+', aria: 'Acercar', run: () => onZoomStep(1.2) },
-            { label: '−', aria: 'Alejar', run: () => onZoomStep(1 / 1.2) },
-          ].map((z) => (
-            <button
-              key={z.label}
-              type="button"
-              aria-label={z.aria}
-              onClick={z.run}
-              style={BOTON_ZOOM_STYLE}
-            >
-              {z.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-// Estado responsive del visor en UN solo lugar: móvil <768 (modo consulta: sin toolbar de
-// dibujo), angosto <1024 (colapsar sidebars SOLO al cruzar el breakpoint — un listener crudo
-// de resize re-cerraba los paneles en cada resize, p. ej. el teclado del SO en tablet pisaba
-// la re-expansión manual). Dentro de la franja el usuario puede re-abrir.
-
-/** Estado de sidebars colapsadas + flags isMobile/isNarrow del visor. */
-function useViewerResponsive() {
-  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
-  const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
-  const isMobile = useIsMobile();
-  const isNarrow = useMediaQuery('(max-width: 1023px)');
-  useEffect(() => {
-    if (isNarrow) {
-      setLeftCollapsed(true);
-      setRightCollapsed(true);
-    }
-  }, [isNarrow]);
-  return { isMobile, isNarrow, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed };
-}
-
 interface PdfViewerProps {
   files: Array<{ id: number; file: File }>;
+  /** Avisa a la página si el visor ya pintó (lámina + trazos + cámara en sitio). */
+  onLoadingChange?: (loading: boolean) => void;
   activeIndex: number;
   onSelectPlan: (idx: number) => void;
   onAddPlan: () => void;
@@ -422,6 +174,7 @@ function PdfViewer_({
   planos = [],
   activeNetworks,
   onReady,
+  onLoadingChange,
 }: PdfViewerProps) {
   const navigate = useNavigate();
   const { mats } = useProject();
@@ -480,6 +233,12 @@ function PdfViewer_({
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // El overlay de página espera a este aviso: el spinner vive hasta que el visor pintó de verdad.
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  onLoadingChangeRef.current = onLoadingChange;
+  useEffect(() => {
+    onLoadingChangeRef.current?.(loading);
+  }, [loading]);
   const { tool, setTool, tipoTramo, setTipoTramo, snapOn, setSnapOn, gridOn, setGridOn } =
     useSessionVisorPrefs();
   const [activeNet, setActiveNet] = useState(() => {
@@ -515,9 +274,7 @@ function PdfViewer_({
     // `planos` se reconstruye distinto según local/nube y el "primer calGlobal" cambiaba
     // de piso entre sesiones → el re-base movía toda la geometría (orig. usuario 2026-10-15).
     try {
-      const meta = loadFromStorage<
-        Array<{ id: number; scale: number; calGlobal?: boolean | null; origen?: unknown }>
-      >('plans_meta', []);
+      const meta = leerPlansMeta();
       const g = meta.find((m) => m.calGlobal === true && m.origen && m.scale);
       escalaGlobalRef.current = g ? g.scale / 100 : null;
       return;
@@ -607,10 +364,8 @@ function PdfViewer_({
       // re-basaba (encogiendo) en cada reingreso.
       let calibrado = false;
       try {
-        const meta = loadFromStorage<
-          Array<{ id: number; origen?: { x_px: number; y_px: number } | null }>
-        >('plans_meta', []);
-        calibrado = !!meta.find((m) => plano && String(m.id) === String(plano.id) && m.origen);
+        const meta = leerPlansMeta();
+        calibrado = plano ? planCalibrado(meta, plano.id) : false;
       } catch {
         /* sin meta: comportamiento previo */
       }
@@ -1078,13 +833,18 @@ function PdfViewer_({
     const eng = engineRef.current;
     const cw = cwRef.current;
     if (!eng || !cw || !eng.pageW || !eng.pageH) return;
-    const pad = 16;
-    const availW = cw.clientWidth - pad * 2;
-    const availH = cw.clientHeight - pad * 2;
-    const sc = Math.min(availW / eng.pageW, availH / eng.pageH);
-    eng.zoom = sc;
-    eng.offX = (eng.pageW * (1 - sc)) / 2;
-    eng.offY = (cw.clientHeight - eng.pageH * sc) / 2;
+    // Encuadre sobre el DIBUJO (lo que el usuario trazó): recorta el fondo negro de la lámina.
+    // Sin dibujo (piso vacío) cae a la hoja completa.
+    const enc = encuadrarDibujo({
+      visW: cw.clientWidth,
+      visH: cw.clientHeight,
+      pageW: eng.pageW,
+      pageH: eng.pageH,
+      bbox: bboxDelDibujo(eng),
+    });
+    eng.zoom = enc.zoom;
+    eng.offX = enc.offX;
+    eng.offY = enc.offY;
     eng.scheduleRender();
     // ponytail: sin setScale(ceil) — el observer bgOnly re-rasteriza a la densidad del
     // zoom ajustado; el setScale disparaba un renderPage COMPLETO (bg+draw+reload) duplicado.

@@ -1,23 +1,26 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './layouts/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { GlobalAlertDialogProvider } from './modules/civilflow/components/GlobalAlertDialogProvider';
 import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders';
+import { CargandoProyecto } from './modules/civilflow/components/shared/CargandoProyecto';
 import PageTransition from './components/landing/PageTransition';
 
-const Fallback = () => (
-  <div
-    className="flex items-center justify-center min-h-screen"
-    role="status"
-    aria-live="polite"
-    style={{ color: 'var(--on-surface)' }}
-  >
-    Cargando planos y redes...
-  </div>
-);
+// Una sola pantalla de carga en toda la app: el Suspense y el gate de datos usan la MISMA pieza
+// (CargandoProyecto), así abrir un proyecto no encadena dos pantallas distintas. El texto nombra
+// lo que se está abriendo —el visor carga el PDF (planos y redes), el resto un proyecto— y lo
+// elige la ruta para que el fallback de React y el preload de index.html digan lo mismo.
+const Fallback = () => {
+  const { pathname } = useLocation();
+  return pathname.startsWith('/visor') ? (
+    <CargandoProyecto texto="Cargando planos y redes…" />
+  ) : (
+    <CargandoProyecto />
+  );
+};
 
 // Rutas ligeras - import estatico
 import LandingPage from './pages/LandingPage';

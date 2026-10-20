@@ -293,12 +293,16 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
 }
 
 /** Renumera los montantes de todas las redes (AF/AC), cada una por separado con su propio
- *  consecutivo, y mueve también sus claves de unidades de consumo (UD).
- *  Ej: dos montantes MAF1 y MAF3 pasan a MAF1 y MAF2. */
+ *  consecutivo, y MUEVE todo lo que cuelga del id: extremos de ramal (ini/fin por código),
+ *  punteros entre pisos (origenId/descargaEnId `plan|id`), ramal LDesvio, anillos, fantasmas
+ *  XFG (motor + pisos vecinos vía renameBajanteAcrossFloorReferences) y las claves de UDs
+ *  del piso cargado. Ej: dos montantes MAC1 y MAC3 pasan a MAC1 y MAC2 sin perder ni una
+ *  referencia (antes el renombre dejaba punteros y aparatos huérfanos — orig. usuario). */
 export function _renumberMontantes(engine: IPlanoEngineCore): void {
   const nets = Array.from(
     new Set(engine.bajantes.filter((b) => b.tipo === 'montante').map((b) => b.net || 'af')),
   );
+  const thisPlanId = String(engine._loadedPlanId ?? '');
   for (const netId of nets) {
     const netDef = NETS.find((n) => n.id === netId);
     const pfx =
@@ -312,10 +316,91 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
       return na - nb;
     });
     montantes.forEach((b, i) => {
-      const idx = i + 1;
-      b.id = `${pfx}${idx}_${netId}`;
-      b.code = `${pfx}${idx}`;
+      const oldId = b.id;
+      const newId = `${pfx}${i + 1}_${netId}`;
+      const oldCode = b.code || '';
+      const newCode = `${pfx}${i + 1}`;
+      if (oldId === newId && oldCode === newCode) return;
+      b.id = newId;
+      b.code = newCode;
+      const oldLd = ldesvioIdFor(oldId);
+      const newLd = ldesvioIdFor(newId);
+      // Motor: extremos de ramal (la creación escribe el CÓDIGO en ini/fin; también por id
+      // por si el doc viene de una era sin sufijo de red) y punteros de asociación.
+      for (const r of engine.ramales) {
+        if (r.net !== netId) continue;
+        if (r.id === oldLd) r.id = newLd;
+        if (oldCode && r.ini === oldCode) r.ini = newCode;
+        if (oldCode && r.fin === oldCode) r.fin = newCode;
+        if (r.ini === oldId) r.ini = newId;
+        if (r.fin === oldId) r.fin = newId;
+      }
+      const ptrViejo = `${thisPlanId}|${oldId}`;
+      const ptrNuevo = `${thisPlanId}|${newId}`;
+      for (const other of engine.bajantes) {
+        if (other.descargaEnId === ptrViejo) other.descargaEnId = ptrNuevo;
+        if (other.origenId === ptrViejo) other.origenId = ptrNuevo;
+      }
+      if (b.desplazamientos) {
+        for (const lvlKey of Object.keys(b.desplazamientos)) {
+          if (b.desplazamientos[lvlKey]?.Ldesvio === oldLd) {
+            b.desplazamientos[lvlKey] = { ...b.desplazamientos[lvlKey], Ldesvio: newLd };
+          }
+        }
+      }
+      for (const g of engine.crossFloorGhosts) {
+        if (g.sourcePlanId === thisPlanId && g.sourceBajanteId === oldId) {
+          g.sourceBajanteId = newId;
+          g.id = `XFG_${newId}_${thisPlanId}`;
+        }
+        if (g.targetBajanteId === oldId) g.targetBajanteId = newId;
+      }
+      // Pisos vecinos: LD/punteros/fantasmas en sus storage (no están en memoria).
+      renameBajanteAcrossFloorReferences(thisPlanId, oldId, newId);
+      // Claves de UDs del piso cargado siguen al renombre (aparatos asignados al montante y
+      // la clave del LDesvio): sin esto el renombrado perdía sus aparatos y el id reutilizado
+      // nacía con la carga del borrado.
+      try {
+        const aparatos = loadFromStorage<Record<string, Record<string, number>>>(
+          APARATOS_BY_TRAMO_KEY,
+          {},
+        );
+        const hidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
+        const sujeto = (k: string): string | null => {
+          const pre = `${netId}_`;
+          if (k.startsWith(`${pre}${oldId}_`))
+            return k.replace(`${pre}${oldId}_`, `${pre}${newId}_`);
+          if (k.startsWith(`${pre}LD_${oldId}_`))
+            return k.replace(`${pre}LD_${oldId}_`, `${pre}LD_${newId}_`);
+          return null;
+        };
+        let toco = false;
+        for (const store of [aparatos, hidro] as Array<Record<string, unknown>>) {
+          for (const k of Object.keys(store)) {
+            // Solo claves del piso cargado: renumerar MAF2 en A no debe mover
+            // `af_MAF1_<planB>` (mismo patrón que _renumberRamales arriba).
+            if (!isPlanKeyFor(k, thisPlanId)) continue;
+            const nk = sujeto(k);
+            if (nk && !store[nk]) {
+              store[nk] = store[k];
+              delete store[k];
+              toco = true;
+            }
+          }
+        }
+        if (toco) {
+          saveToStorage(APARATOS_BY_TRAMO_KEY, aparatos);
+          saveToStorage(HYDRO_DATA_STORAGE_KEY, hidro);
+        }
+      } catch (e) {
+        devError('[RENUMBER] claves de montante:', e);
+      }
     });
+  }
+  try {
+    window.dispatchEvent(new Event(EV_STORAGE));
+  } catch {
+    /* ignore */
   }
 }
 

@@ -125,7 +125,9 @@ function readDrawingAll(plans: PlanItem[], netIds: string[]) {
         recibeDeIds: [],
         alimentaIds: [],
         descargaEnId: `${g.sourcePlanId}|${g.sourceBajanteId}`,
-        ucAcum: 0,
+        // Carga heredada del enlace (la misma que muestran el montante de destino y el
+        // Ldesvio): el fantasma la muestra, pero NO cuenta para ningún total de la isometría.
+        ucAcum: g.ucAcum ?? 0,
         ucExtra: 0,
         area_m2: 0,
         desplazamientos: {},

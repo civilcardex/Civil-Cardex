@@ -178,6 +178,15 @@ export function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     copiado_de_plan: b.copiadoDePlan ?? null,
     copiado_de_id: b.copiadoDeId ?? null,
     bajante_externo_id: b.bajanteExternoId ?? null,
+    // Enlaces del bajante con las demás piezas del plano (ramales y bajantes). Las columnas
+    // recibe_de_ids/alimenta_ids del RPC solo guardan enlaces BAJANTE→BAJANTE (se resuelven
+    // contra el mapa de bajantes del plano), así que los ids de RAMAL —la asociación manual
+    // de un montante con su ramal— se perdían en el viaje a BD. Este jsonb los lleva completos.
+    asoc_links: {
+      recibe: b.recibeDeIds ?? [],
+      alimenta: b.alimentaIds ?? [],
+      manual: b.asocManual ?? [],
+    },
     canal_id: b.canalId ?? null,
     descarga_en_id: b.descargaEnId ?? null,
     origen_id: b.origenId ?? null,
@@ -193,6 +202,15 @@ export function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
 }
 
 export function rowToBajante(row: SupabaseRow): PlanoBajante {
+  // Enlaces guardados en BD (asoc_links): los ids de ramal que el RPC no puede guardar.
+  const links = (row.asoc_links ?? {}) as {
+    recibe?: string[];
+    alimenta?: string[];
+    manual?: string[];
+  };
+  const recibe = Array.isArray(links.recibe) ? links.recibe : [];
+  const alimenta = Array.isArray(links.alimenta) ? links.alimenta : [];
+  const manual = Array.isArray(links.manual) ? links.manual : [];
   return {
     id: g(row, 'client_id', ''),
     net: g(row, 'net', ''),
@@ -206,8 +224,9 @@ export function rowToBajante(row: SupabaseRow): PlanoBajante {
     nptCima: g(row, 'npt_cima', 0),
     hVert: g(row, 'h_vert', 0),
     dNominal: g(row, 'd_nominal', ''),
-    recibeDeIds: [],
-    alimentaIds: [],
+    recibeDeIds: [...recibe],
+    alimentaIds: [...alimenta],
+    asocManual: [...manual],
     descargaEnId: g(row, 'descarga_en_id', null),
     origenId: g(row, 'origen_id', undefined),
     cajaOrigenId: g(row, 'caja_origen_id', undefined),

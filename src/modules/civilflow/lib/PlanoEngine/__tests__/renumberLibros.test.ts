@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { _renumberRamales, renameRamalId } from '../networkRenumber';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
-import { leerHeredadosPresion, propagarAparatosPresion } from '../../../utils/aparatosPresion';
+import { leerHeredadosPresion, propagarAparatosPresion } from '../../../utils/propagation';
 import { sigma } from '../../../utils/__tests__/sigmaHelper';
 
 // Renumerar/renombrar migraba el disco (aparatos_by_tramo_v2) pero dejaba huérfanos los

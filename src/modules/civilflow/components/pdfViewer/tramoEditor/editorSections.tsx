@@ -4,6 +4,7 @@ import { splitPtr } from '../../../utils/keys';
 import ExtremeAccessoryEditor from '../ExtremeAccessoryEditor';
 import type { PlanoBajante, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
 import {
   asociarBomba,
   quitarBomba,
@@ -193,6 +194,89 @@ export function RamalEditorSection() {
           plans={plans}
         />
       )}
+      {selElement?.pts &&
+        (engineRef.current?.bajantes?.length ?? 0) > 0 &&
+        ['af', 'ac', 'gas'].includes(activeNet) && (
+          <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#9BA8AA',
+                fontFamily: "'Geist',monospace",
+                marginBottom: 4,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              Montantes asociados
+            </div>
+            <div style={CHECK_GRID_STYLE}>
+              {(() => {
+                // Estado REAL: se lee del motor vivo (no de la copia de la selección) y el
+                // marcado sale de las listas del montante — el mismo estado que muestra el
+                // menú contextual (misma sección, misma fuente).
+                const eng = engineRef.current;
+                if (!eng) return null;
+                const montantes = eng.bajantes.filter(
+                  (b) => b.net === activeNet && b.tipo === 'montante',
+                );
+                if (montantes.length === 0)
+                  return (
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: '#8AB4D6',
+                        fontFamily: "'Geist',monospace",
+                        padding: '4px',
+                        gridColumn: 'span 2',
+                      }}
+                    >
+                      Sin montantes en esta red
+                    </div>
+                  );
+                return montantes.map((m) => {
+                  const vivo = eng.bajantes.find((x) => x.id === m.id) || m;
+                  const activo =
+                    (vivo.recibeDeIds || []).includes(selElement.id) ||
+                    (vivo.alimentaIds || []).includes(selElement.id);
+                  return (
+                    <label key={m.id} style={CHECK_ROW_STYLE}>
+                      <input
+                        type="checkbox"
+                        checked={activo}
+                        onChange={(e) => {
+                          const e2 = engineRef.current;
+                          if (!e2) return;
+                          const v = e2.bajantes.find((x) => x.id === m.id);
+                          if (!v) return;
+                          e2.updateElementById(
+                            m.id,
+                            camposAsocManual(v as never, selElement.id, e.target.checked),
+                          );
+                          e2.render();
+                          e2._markDirty();
+                          const fresh = e2.bajantes.find((x) => x.id === selElement.id);
+                          if (fresh) setSelElement({ ...fresh } as never);
+                        }}
+                        style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+                      />
+                      <span
+                        style={{
+                          flex: 1,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {m.code || m.id}
+                      </span>
+                    </label>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
       {selElement?.pts &&
         (engineRef.current?.bajantes?.length ?? 0) > 0 &&
         ['san', 'll'].includes(activeNet) && (

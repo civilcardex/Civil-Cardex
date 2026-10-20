@@ -6,6 +6,7 @@ import { OpcionesMaterial } from '../drawingElementContextMenu/canalesAsociados'
 import { usePlans } from '../../../context/PlansContext';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { entradaPor } from '../../../utils/diamLookup';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
@@ -688,7 +689,7 @@ export function BajanteEditor({
             })}
           </div>
         </div>
-        {selElement.net === 'san' && (
+        {['san', 'll', 'af', 'ac', 'gas'].includes(selElement.net || '') && (
           <div style={{ width: '100%' }}>
             <div
               style={{
@@ -705,7 +706,7 @@ export function BajanteEditor({
             <div style={CHECK_GRID_STYLE}>
               {(() => {
                 const bajRamales = (engineRef.current?.ramales || []).filter(
-                  (r) => r.net === 'san' && r.tipo !== 'tributario',
+                  (r) => r.net === selElement.net && r.tipo !== 'tributario',
                 );
                 if (bajRamales.length === 0)
                   return (
@@ -762,18 +763,25 @@ export function BajanteEditor({
                             }
                           }
                         }
-                        const newRecibe = e.target.checked
-                          ? [...recibidos, r.id]
-                          : recibidos.filter((id: string) => id !== r.id);
-                        // Desmarcar una salida también la saca de alimentaIds y limpia
-                        // ini/fin si apuntan a este bajante (si no, seguiría marcado).
-                        const newAlimenta = e.target.checked
-                          ? alimentan
-                          : alimentan.filter((id: string) => id !== r.id);
-                        engineRef.current?.updateElementById(selElement.id, {
-                          recibeDeIds: newRecibe,
-                          alimentaIds: newAlimenta,
-                        });
+                        // Estado REAL: se escribe sobre el bajante VIVO del motor (no la copia
+                        // de la selección) y con `camposAsocManual` → recibeDeIds + asocManual
+                        // (la asociación a mano no se poda por geometría). El menú contextual
+                        // usa la MISMA función → los dos sitios muestran el mismo estado.
+                        const vivo = engineRef.current?.bajantes.find(
+                          (bb) => bb.id === selElement.id,
+                        );
+                        const campos = vivo
+                          ? camposAsocManual(vivo as never, r.id, e.target.checked)
+                          : {
+                              recibeDeIds: e.target.checked
+                                ? [...recibidos, r.id]
+                                : recibidos.filter((id: string) => id !== r.id),
+                              alimentaIds: e.target.checked
+                                ? alimentan
+                                : alimentan.filter((id: string) => id !== r.id),
+                              asocManual: selElement.asocManual || [],
+                            };
+                        engineRef.current?.updateElementById(selElement.id, campos);
                         if (!e.target.checked) {
                           const ramalUpdates: Record<string, unknown> = {};
                           if (r.ini === bajCode) ramalUpdates.ini = '';

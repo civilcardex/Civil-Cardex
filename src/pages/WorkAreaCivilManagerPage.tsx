@@ -4,6 +4,7 @@ import WorkAreaCivilManager from '../modules/civilmanager/WorkAreaCivilManager';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { devError } from '../utils/devError';
 import { fetchCmProyectos } from '../modules/civilmanager/services/cmProjectsService';
+import { CargandoProyecto } from '../modules/civilflow/components/shared/CargandoProyecto';
 
 const WorkAreaCivilManagerPage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -17,14 +18,7 @@ const WorkAreaCivilManagerPage_S1: React.CSSProperties = {
   border: 0,
 };
 
-const CARGANDO_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  height: '100%',
-  color: 'var(--txt2)',
-  fontSize: 13,
-};
+// Reutilizada por <CargandoProyecto> (el loader compartido de la app).
 
 /** Ruta /civilmanagerareatrabajo/:proyectoId? — deep-link por proyecto (espejo de la ruta de flow). Sin id → redirect al activo. */
 function WorkAreaCivilManagerPage() {
@@ -77,8 +71,9 @@ function WorkAreaCivilManagerPage() {
   if (!proyectoId && activeId) {
     return <Navigate to={`/civilmanagerareatrabajo/${activeId}`} replace />;
   }
+  // Misma pantalla que el resto de la app (CargandoProyecto) para no encadenar dos al abrir.
   if (switchPendiente || switching) {
-    return <div style={CARGANDO_STYLE}>Abriendo proyecto…</div>;
+    return <CargandoProyecto />;
   }
   return (
     <div className="h-full">

@@ -119,24 +119,6 @@ export const LANDING_STYLES = `
           background-clip: text;
           animation: shimmer 6s linear infinite;
         }
-        /* Mobile: el shimmer (repaint de background-clip:text en cada frame) parpadea con el
-           main thread saturado por el hero (canvas, aurora, backdrop-filters) — color sólido. */
-        @media (max-width: 767px) {
-          .core-shimmer {
-            animation: none;
-            background: none;
-            -webkit-background-clip: initial;
-            background-clip: initial;
-            color: #e8c84a;
-          }
-          .civsilver {
-            animation: none;
-            background: none;
-            -webkit-background-clip: initial;
-            background-clip: initial;
-            color: #dce3ea;
-          }
-        }
 
         /* Skeleton */
         @keyframes skeletonPulse {

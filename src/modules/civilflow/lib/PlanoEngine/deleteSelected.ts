@@ -7,6 +7,67 @@ import {
 } from '../../utils/associateBajanteAcrossFloors';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 import { _midpoint } from './PlanoEngineDrawing';
+import { TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
+
+/** Desasocia los dos extremos de un enlace entre pisos: el de ARRIBA pierde su `descargaEnId`
+ *  (apuntaba al de abajo) y el de ABAJO pierde su `origenId` (apuntaba al de arriba). Solo se
+ *  toca el puntero que apunta AL OTRO extremo — en una cadena de tres pisos el montante del
+ *  medio conserva su enlace con el piso de más abajo. Se limpia en el storage de cada piso y
+ *  en el motor vivo (lo que pinta el desplegable de origen). */
+function limpiarPunterosDeEnlace(
+  engine: IPlanoEngineCore,
+  arriba: { planId: string; id: string },
+  abajo: { planId: string; id: string },
+): void {
+  const punteroArriba = `${abajo.planId}|${abajo.id}`;
+  const punteroAbajo = `${arriba.planId}|${arriba.id}`;
+  // Storage de cada piso.
+  for (const [planId, id, prop, puntero] of [
+    [arriba.planId, arriba.id, 'descargaEnId', punteroArriba],
+    [abajo.planId, abajo.id, 'origenId', punteroAbajo],
+  ] as Array<[string, string, 'descargaEnId' | 'origenId', string]>) {
+    try {
+      const key = TRAZOS_PREFIX + planId;
+      const raw = loadFromStorage<{ bajantes?: Array<Record<string, unknown>> } | null>(key, null);
+      const b = raw?.bajantes?.find((x) => x.id === id);
+      if (!b || b[prop] !== puntero) continue;
+      b[prop] = null;
+      saveToStorage(key, raw);
+      saveTrazosToDB(planId, raw);
+    } catch {
+      /* best-effort */
+    }
+  }
+  // Motor vivo (el elemento seleccionado: el desplegable de origen).
+  for (const [planId, id, prop, puntero] of [
+    [arriba.planId, arriba.id, 'descargaEnId', punteroArriba],
+    [abajo.planId, abajo.id, 'origenId', punteroAbajo],
+  ] as Array<[string, string, 'descargaEnId' | 'origenId', string]>) {
+    if (String(engine._loadedPlanId ?? '') !== planId) continue;
+    const el = engine.bajantes.find((x) => x.id === id) as
+      | (Record<string, unknown> & { id: string })
+      | undefined;
+    if (!el || el[prop] !== puntero) continue;
+    engine.updateElementById(el.id, { [prop]: null });
+  }
+}
+
+/** Desasocia un bajante/montante de su enlace entre pisos: limpia el puntero del OTRO extremo
+ *  (el que queda en el piso vecino) para que su desplegable de origen vuelva a "Sin origen".
+ *  Works con el puntero que tenga (origenId = el de arriba; descargaEnId = el de abajo). */
+function desasociarPorBajante(engine: IPlanoEngineCore, baj: PlanoBajante): void {
+  const planId = String(engine._loadedPlanId ?? '');
+  const arriba = splitPtr(baj.origenId ?? '', '');
+  if (arriba[0] && arriba[1]) {
+    limpiarPunterosDeEnlace(engine, { planId: arriba[0], id: arriba[1] }, { planId, id: baj.id });
+    return;
+  }
+  const abajo = splitPtr(baj.descargaEnId ?? '', '');
+  if (abajo[0] && abajo[1]) {
+    limpiarPunterosDeEnlace(engine, { planId, id: baj.id }, { planId: abajo[0], id: abajo[1] });
+  }
+}
 
 /** Borra la seleccion con cascada (limpia fantasmas y renumera las redes tocadas). */
 
@@ -102,6 +163,27 @@ export function deleteSelected(
                 // Borrar también el fantasma punteado del piso inferior
                 if (isLdesvioRamalId(deleted.id)) {
                   removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
+                  // El Ldesvio ERA el carrier del enlace entre pisos: al borrarlo, el enlace se
+                  // desasocia y el original vuelve a mostrar "sin origen" (antes el puntero
+                  // sobrevivia y el desplegable seguía apuntando a un origen fantasma).
+                  // El extremo de ARRIBA es el que guarda la descargaEnId; el de abajo, el
+                  // origenId (este `b`).
+                  const arriba = splitPtr(b.origenId ?? '', '');
+                  if (arriba[0] && arriba[1]) {
+                    limpiarPunterosDeEnlace(
+                      engine,
+                      { planId: arriba[0], id: arriba[1] },
+                      { planId: String(engine._loadedPlanId ?? ''), id: b.id },
+                    );
+                    clearBajanteAssociation(
+                      engine,
+                      arriba[0],
+                      arriba[1],
+                      b.net,
+                      `${String(engine._loadedPlanId ?? '')}|${b.id}`,
+                      [],
+                    );
+                  }
                 }
               }
             }
@@ -146,6 +228,10 @@ export function deleteSelected(
           }
           delete deleted.desplazamientos[lvl];
           if (deleted.ghostData) delete deleted.ghostData[lvl];
+          // Borrar el FANTASMA (el anillo del bajante de otro piso) tumba el enlace: el
+          // bajante original debe volver a mostrar "Sin origen" (orig. usuario). El puntero
+          // del otro extremo (origenId/descargaEnId) se anula en los dos pisos.
+          desasociarPorBajante(engine, deleted);
         } else {
           // Limpia los ramales Ldesvio y los desplazamientos fantasma
           if (deleted.desplazamientos) {
@@ -202,13 +288,21 @@ export function deleteSelected(
         // también arregla el estado vivo del motor. `plans` no está disponible a nivel de motor:
         // el origenId null del destino aterriza en storage por el flujo normal de guardado
         // sucio, y la caché de dibujo sincronizada se reconstruye en el próximo syncDrawings.
+        // El fantasma vive en el piso del extremo SUPERIOR (g.targetBajanteId) y su puntero
+        // `descargaEnId` apunta al de abajo (g.sourceBajanteId): pasar los extremos al revés
+        // dejaba el origenId vivo y el desplegable de origen seguía con valor (orig. usuario).
         clearBajanteAssociation(
           engine,
-          g.sourcePlanId,
-          g.sourceBajanteId,
+          String(engine._loadedPlanId ?? ''),
+          String(g.targetBajanteId ?? ''),
           g.net,
-          `${String(engine._loadedPlanId ?? '')}|${g.targetBajanteId}`,
+          `${g.sourcePlanId}|${g.sourceBajanteId}`,
           [],
+        );
+        limpiarPunterosDeEnlace(
+          engine,
+          { planId: String(engine._loadedPlanId ?? ''), id: String(g.targetBajanteId ?? '') },
+          { planId: String(g.sourcePlanId), id: String(g.sourceBajanteId) },
         );
         engine.crossFloorGhosts = engine.crossFloorGhosts.filter((x) => x.id !== id);
         engine.selectedGhostId = null;
@@ -357,6 +451,25 @@ export function deleteSelected(
             if (b.ghostData) delete b.ghostData[lvlKey];
             if (isLdesvioRamalId(deletedId)) {
               removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
+              // Mismo desenlace que el borrado en conjunto: el Ldesvio ERA el carrier del
+              // enlace entre pisos — sin esto el origenId del original sobrevivía y su
+              // desplegable de origen seguía apuntando a un origen fantasma (orig. usuario).
+              const arriba = splitPtr(b.origenId ?? '', '');
+              if (arriba[0] && arriba[1]) {
+                limpiarPunterosDeEnlace(
+                  engine,
+                  { planId: arriba[0], id: arriba[1] },
+                  { planId: String(engine._loadedPlanId ?? ''), id: b.id },
+                );
+                clearBajanteAssociation(
+                  engine,
+                  arriba[0],
+                  arriba[1],
+                  b.net,
+                  `${String(engine._loadedPlanId ?? '')}|${b.id}`,
+                  [],
+                );
+              }
             }
           }
         }
@@ -409,6 +522,9 @@ export function deleteSelected(
       }
       delete deleted.desplazamientos[lvl];
       if (deleted.ghostData) delete deleted.ghostData[lvl];
+      // Borrar el anillo del fantasma tumba el enlace: el original del otro piso debe
+      // volver a "Sin origen" (espejo exacto de la ruta de borrado en conjunto).
+      desasociarPorBajante(engine, deleted);
       engine.selId = null;
       engine._isGhostSel = false;
       engine._emitSelect(null);
@@ -471,11 +587,14 @@ export function deleteSelected(
     if (deleted.tipo === 'bomba')
       desasociarBombaEnTrazos(deletedId, String(engine._loadedPlanId ?? ''));
     if (deleted.tipo === 'bajante') {
-      void deleted.net;
+      // Renumera TAMBIÉN el borrado individual (orig. usuario: "no se dispara tan pronto
+      // borro") — el camino en conjunto ya lo hacía y el individual dejaba el hueco.
+      engine._renumberBajantes(deleted.net);
     } else if (deleted.tipo === 'montante') {
       // Un montante a mitad de cuerpo siempre escribió un marcador de tee (accMed) en su ramal
       // huésped al crearse — borrarlo sin esto dejaba ese glifo/conteo para siempre.
       cleanupTeeMarkersAt(engine, [deleted.x, deleted.y]);
+      engine._renumberMontantes();
     } else if (deleted.tipo === 'red_publica') {
       const rps = engine.bajantes.filter((b) => b.tipo === 'red_publica');
       rps.forEach((b, i) => {

@@ -1,6 +1,7 @@
-/** Migra y barre la asociación entrepisos (marca assocLayout): layout 2 = fantasma + LD_ (ramal desvio entrepisos) abajo. */
+﻿/** Migra y barre la asociación entrepisos (marca assocLayout): layout 2 = fantasma + LD_ (ramal desvio entrepisos) abajo. */
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import { splitPtr } from './keys';
+import { registrarLdesvioComoAsociado } from './bajanteAssocShared';
 import { TRAZOS_PLAN_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 import {
@@ -236,6 +237,15 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
         Number(oldLd.piso) || 0,
       );
       moveLdesvioAparatosKey(oldLd.net, upperId, String(upperPlanId), pid);
+      // El LD llega al elemento ORIGINAL de este piso: queda como ramal asociado (recibeDeIds
+      // + asocManual + fin) → "Ramal asociado" marcado en el panel y en el menú contextual,
+      // con el estado REAL guardado (orig. usuario).
+      registrarLdesvioComoAsociado({
+        planId: pid,
+        bajanteId: lower.id,
+        bajanteCode: lower.code || lower.id,
+        ldId,
+      });
       // Re-sincronizar el espejo local: las escrituras de arriba fueron load+save fresco y el
       // saveData(pid, data) de la SIGUIENTE iteración pisa con el array en memoria stale.
       data.ramales = loadData(pid).ramales;
@@ -326,6 +336,14 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
         Number(ld.piso) || 0,
       );
       moveLdesvioAparatosKey(ld.net, b.id, pid, String(lowerPlanId));
+      // El LD llega al elemento ORIGINAL del piso inferior: ramal asociado (estado real) —
+      // "Ramal asociado" marcado en el panel y en el menú contextual (orig. usuario).
+      registrarLdesvioComoAsociado({
+        planId: lowerPlanId,
+        bajanteId: lower.id,
+        bajanteCode: lower.code || lower.id,
+        ldId,
+      });
       data.ramales = (data.ramales || []).filter((r) => r.id !== ldId);
     }
     // 3. Ghost-marcador: debe vivir AQUÍ (superior) referenciando al inferior; quitar cualquier

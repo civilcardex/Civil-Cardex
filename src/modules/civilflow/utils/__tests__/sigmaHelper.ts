@@ -1,5 +1,5 @@
 import { loadFromStorage } from '../../services/storageService';
-import { leerFoldTribPresion, leerHeredadosPresion, udPropiaDe } from '../aparatosPresion';
+import { leerFoldTribPresion, leerHeredadosPresion, udPropiaDe } from '../propagation';
 
 /** Σ de un aparato contando propia triple (clave − heredado − plegado) sobre filas dadas.
  *  Ej: ducha en RAC1 con herencia en RAC2 suma 1 aunque ambas claves la muestren. */

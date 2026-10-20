@@ -4,7 +4,7 @@ import {
   removeCrossFloorLdesvioRamal,
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
-import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import {
   APARATOS_BY_TRAMO_KEY,
   APARATOS_HEREDADOS_KEY,
@@ -194,6 +194,9 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
             }
             if (changed) {
               saveToStorage(key, raw);
+              // Sin push a BD la recarga resucita el puntero desde el servidor (el borrado
+              // del montante se sincronizó, la limpieza del vecino no).
+              saveTrazosToDB(targetPlanId, raw);
             }
           }
         } catch {
@@ -251,6 +254,7 @@ export function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: Pl
             }
             if (changed) {
               saveToStorage(key, raw);
+              saveTrazosToDB(originPlanId, raw);
             }
           }
         } catch {

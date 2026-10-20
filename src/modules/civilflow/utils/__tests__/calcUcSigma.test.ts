@@ -27,7 +27,7 @@ vi.stubGlobal('localStorage', {
 vi.stubGlobal('window', { dispatchEvent: () => {} });
 
 import { saveToStorage, loadFromStorage } from '../../services/storageService';
-import { esReceptorPropagacion, propagarAparatosPresion, udPropiaDe } from '../aparatosPresion';
+import { esReceptorPropagacion, propagarAparatosPresion, udPropiaDe } from '../propagation';
 import { sigma } from './sigmaHelper';
 
 const AC_KEY = 'aparatos_by_tramo_v2';

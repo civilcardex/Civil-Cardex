@@ -1,11 +1,20 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getPdfjs } from '../../utils/lazyPdfjs';
+import { encuadrarDibujo } from '../../lib/PlanoEngine/planoCamera';
+import { bboxDelDibujo } from './drawingBBox';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import { cargarMallas } from '../../lib/PlanoEngine/nodos';
+import {
+  escalaDeDoc,
+  filaRender,
+  guardarPaginaDeDoc,
+  paginaDeDoc,
+  type RenderReq,
+} from '../../utils/planScale';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -75,6 +84,24 @@ export function usePdfViewerEngine({
   const mountId = useRef(0);
   const renderTaskRef = useRef<RenderTask | null>(null);
   const renderingRef = useRef(false);
+  // Re-raster pedido mientras había uno en vuelo (F2): se ENCOLA y se ejecuta al cerrar el
+  // actual — antes el guard lo descartaba y la lámina se quedaba en la escala vieja.
+  const renderPendingRef = useRef<RenderReq | null>(null);
+  // El drenaje de la cola invoca renderPage SIN autorreferenciarlo (el compilador no
+  // preserva la memoización de un useCallback que se llama a sí mismo).
+  const renderPageRef =
+    useRef<
+      (
+        pageNum: number,
+        sc: number,
+        mountCheck: number,
+        opts?: { bgOnly?: boolean; extraScale?: number },
+      ) => Promise<void> | null
+    >(null);
+  // Última escala/página con la que se rasterizó el fondo (dump __cfCam: comparar contra
+  // la escala del doc — distintas = lámina y dibujo en escalas distintas).
+  const lastRenderScRef = useRef<number | null>(null);
+  const lastPageBaseWRef = useRef<number | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const pdfRenderedRef = useRef(false);
   const internalLoadingPlanRef = useRef(false);
@@ -137,7 +164,11 @@ export function usePdfViewerEngine({
       // al soltar la rueda; 3x pedía el doble de píxeles por un detalle invisible.
       const dprCap = Math.max(1, 2 / (window.devicePixelRatio || 1));
       const extra = Math.max(1, Math.min(opts.extraScale ?? 1, 2, dprCap));
-      if (renderingRef.current) return;
+      // En vuelo: ENCOLAR (no descartar) — el último pedido gana y corre al cerrar este.
+      const req: RenderReq = { pageNum, sc, opts };
+      const fila = filaRender(renderingRef.current, renderPendingRef.current, req);
+      renderPendingRef.current = fila.pendiente;
+      if (!fila.arranca) return;
       const pdf = pdfDocRef.current;
       const pdfCanvas = pdfCanvasRef.current;
       if (!pdf || !pdfCanvas) return;
@@ -164,6 +195,16 @@ export function usePdfViewerEngine({
         const page = await pdf.getPage(pageNum);
         if (mountCheck && mountCheck !== mountId.current) return;
         const viewport = page.getViewport({ scale: sc });
+        lastRenderScRef.current = sc;
+        lastPageBaseWRef.current = viewport.width / sc;
+        // Tamaño de la LÁMINA a escala 1 (el del archivo PDF): se guarda para que la próxima
+        // apertura dimensione el lienzo ANTES de que llegue el PDF (sin el "salto" del
+        // contenedor ni el "recuadro" que recortaba el trazo). A escala 1 → no caduca cuando
+        // el doc se re-basea a la escala global del proyecto.
+        if (!opts.bgOnly) {
+          const planId = currentIdRef.current || engineRef.current?._loadedPlanId || null;
+          guardarPaginaDeDoc(planId, viewport.width / sc, viewport.height / sc);
+        }
         // Bitmap a densidad extra (o dpr, lo que dé más); CSS SIEMPRE al tamaño base.
         const hi = extra > 1 ? page.getViewport({ scale: sc * extra }) : null;
         pdfCanvas.width = Math.floor((hi ?? viewport).width * dpr);
@@ -242,6 +283,13 @@ export function usePdfViewerEngine({
         setError(String(err));
       } finally {
         renderingRef.current = false;
+        // Drenar la cola (F2): el re-raster que llegó en vuelo corre ahora, ya libre.
+        const pend = renderPendingRef.current;
+        const rp = renderPageRef.current;
+        if (pend && rp) {
+          renderPendingRef.current = null;
+          void rp(pend.pageNum, pend.sc, mountId.current, pend.opts);
+        }
       }
     },
     [
@@ -256,6 +304,9 @@ export function usePdfViewerEngine({
       drawCanvasRef,
     ],
   );
+  useEffect(() => {
+    renderPageRef.current = renderPage;
+  }, [renderPage]);
 
   useEffect(() => {
     if (!cwRef.current || !drawCanvasRef.current) return;
@@ -319,6 +370,24 @@ export function usePdfViewerEngine({
     // Diagnóstico: instancia accesible desde la consola para depurar conteos/trazos
     // (window.__cfEngine.ramales.map(r=>[r.id,r.label,r.tipo])).
     (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
+    // Dump __cfCam (patrón __cfDiag/__cfScale): verifica que la LÁMINA y el dibujo comparten
+    // escala. escalaRender === escalaDoc y pageW === pageW_esperado (px de lámina base ×
+    // escalaDoc) = fondo y geometría alineados; distintos = la hoja quedó en otra escala.
+    (window as unknown as { __cfCam?: () => unknown }).__cfCam = () => {
+      const escalaDoc = escalaDeDoc(currentIdRef.current);
+      const escalaRender = lastRenderScRef.current;
+      const baseW = lastPageBaseWRef.current;
+      return {
+        escalaDoc,
+        escalaRender,
+        pageW_base_px: baseW,
+        pageW_esperado: baseW != null && escalaDoc ? baseW * escalaDoc : null,
+        pageW_dibujado: escalaRender != null && baseW != null ? baseW * escalaRender : null,
+        zoom: eng.zoom,
+        offX: eng.offX,
+        offY: eng.offY,
+      };
+    };
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
     eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
@@ -357,8 +426,56 @@ export function usePdfViewerEngine({
             }
           })();
           if (saved) {
-            eng2.loadWork(typeof saved === 'string' ? saved : (saved as object));
-            eng2.render();
+            // La escala del DOC antes del primer paint: los elementos nacen en su espacio
+            // real y no se ven desplazados mientras "se acomodan" (el loader del PDF
+            // confirma la misma escala al terminar; orig. usuario).
+            const es = escalaDeDoc(initId);
+            // Tamaño FINAL de la lámina (persistido a escala 1 → se aplica con la escala del
+            // doc): el lienzo de dibujo y el contenedor quedan con la medida buena desde el
+            // primer paint. Sin él, el dibujo se pintaría en un espacio provisional
+            // (recortado) y el contenedor se re-centraría al llegar el PDF (el "salto" y el
+            // "recuadro" del visor, orig. usuario).
+            const pg = es ? paginaDeDoc(initId, es) : null;
+            if (es && pg) {
+              eng2.scaleM = es;
+              eng2.loadWork(typeof saved === 'string' ? saved : (saved as object));
+              const pdfCanvas = pdfCanvasRef.current;
+              if (pdfCanvas) {
+                pdfCanvas.style.width = pg.w + 'px';
+                pdfCanvas.style.height = pg.h + 'px';
+              }
+              eng2.setPageSize(pg.w, pg.h);
+              eng2.resizeCanvas(pg.w, pg.h);
+              // Cámara calibrada bajo OTRA rasterización (pre-fix, lámina a 0.5): con la
+              // lámina a su tamaño real los bordes caen fuera del viewport y el overflow del
+              // contenedor los RECORTA (el "recuadro"). Re-encuadre síncrono ANTES del
+              // primer paint — mismo cálculo que "Ajustar" (solo zoom/offX/offY; la
+              // geometría y la escala no se tocan).
+              if (Math.abs(es - scaleRef.current) > 1e-6) {
+                const cw = cwRef.current;
+                if (cw && eng2.pageW && eng2.pageH) {
+                  // Mismo encuadre que el bot\u00f3n "Ajustar": encaja el DIBUJO (no la l\u00e1mina)
+                  // para que se vea solo el plano, sin el fondo negro.
+                  const encuadre = encuadrarDibujo({
+                    visW: cw.clientWidth,
+                    visH: cw.clientHeight,
+                    pageW: eng2.pageW,
+                    pageH: eng2.pageH,
+                    bbox: bboxDelDibujo(eng2),
+                  });
+                  eng2.zoom = encuadre.zoom;
+                  eng2.offX = encuadre.offX;
+                  eng2.offY = encuadre.offY;
+                }
+              }
+              eng2.render();
+              // El estado React = la escala del doc: si no, syncEngine pisa el motor con el
+              // default ('0.5') y las longitudes quedan calculadas en la escala equivocada.
+              const sm = eng2.scaleM;
+              if (sm != null) setScaleM(String(sm));
+            }
+            // Sin lámina conocida NO se pinta nada aquí: el loader (que corre con el PDF en
+            // mano) carga el doc y lo dibuja ya en su sitio definitivo.
           }
         }
       }
@@ -403,10 +520,27 @@ export function usePdfViewerEngine({
         /* owner ya desmontado */
       }
     };
-  }, [cwRef, currentIdRef, drawCanvasRef, engineRef, loadingPlanRef, pdfCanvasRef, renderPage]);
+  }, [
+    cwRef,
+    currentIdRef,
+    drawCanvasRef,
+    engineRef,
+    loadingPlanRef,
+    pdfCanvasRef,
+    renderPage,
+    setScaleM,
+  ]);
 
   useEffect(() => {
-    if (!currentFile) return;
+    // Sin lámina que cargar el loading DEBE bajar (C-1): si se quedara en true,
+    // onLoadingChange mantenía el overlay z-9999 bloqueando el visor en proyectos sin planos.
+    if (!currentFile) {
+      setLoading(false);
+      return;
+    }
+    // Overlay desde el MISMO ciclo de montaje: si se levantara en reader.onload (async),
+    // el pre-paint local del motor alcanzaba a verse desplazado un instante (el tirón).
+    setLoading(true);
     mountId.current += 1;
     const thisMount = mountId.current;
     const reader = new FileReader();
@@ -421,8 +555,18 @@ export function usePdfViewerEngine({
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
         if (thisMount !== mountId.current) return;
         pdfDocRef.current = pdf;
-        setLoading(false);
-        await renderPage(1, scaleRef.current, thisMount);
+        // F1: la lámina se rasteriza con la ESCALA DEL DOC (no con el default del estado —
+        // el loader pone engine.scaleM = docScale DENTRO de este render; rasterizar antes
+        // con 0.5 dejaba fondo y dibujo en escalas distintas toda la sesión).
+        await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount);
+        // El spinner cubre el PRIMER PAINT COMPLETO + un asentamiento breve: cualquier frame
+        // de ajuste (cámara/redes asentándose) queda dentro de la carga, nunca a la vista
+        // (orig. usuario: prefiere pantalla de carga un poco más larga al acomodarse).
+        if (thisMount === mountId.current) {
+          window.setTimeout(() => {
+            if (thisMount === mountId.current) setLoading(false);
+          }, 600);
+        }
       } catch (err) {
         if (thisMount === mountId.current) {
           devError('Error cargando PDF:', err);

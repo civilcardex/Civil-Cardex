@@ -874,7 +874,8 @@ export function RamalMenu() {
         </div>
       )}
       {ctx.activeNet === 'll' && <CanalesAsociadosRamalSection ctx={ctx} ramal={ramalEl} />}
-      {(ctx.activeNet === 'af' || ctx.activeNet === 'ac') && (
+      {/* gas incluido: la herencia entre pisos de montantes lo trata como presión (af/ac/gas). */}
+      {(ctx.activeNet === 'af' || ctx.activeNet === 'ac' || ctx.activeNet === 'gas') && (
         <MontantesAsociadosSection ctx={ctx} ramal={ramalEl} />
       )}
     </>

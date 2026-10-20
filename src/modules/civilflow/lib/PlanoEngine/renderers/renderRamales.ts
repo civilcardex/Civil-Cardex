@@ -21,6 +21,12 @@ export { pickTeeBranchDir };
 // el siguiente pase la dibuja síncronamente desde el cache.
 const aparatoImgCache = new Map<string, HTMLImageElement | null>();
 
+// A qué distancia del punto medio una etiqueta automática se considera "desterrada" (en cajas
+// de etiqueta, no en px: así el umbral escala con el tamaño del texto). El des-tapado puede
+// alejarla hasta ~6.6 cajas (12 anillos × 0.55), y ninguna colocación legítima —creación,
+// arrastre o edición— pasa de ~1 caja. 4 queda entre ambas: coge lo desterrado y no toca lo vivo.
+const FAR_LABEL_BOXES = 4;
+
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
@@ -305,6 +311,22 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // Auto-orden: la etiqueta nunca movida a mano busca un sitio libre (espiral) si su caja
       // choca con otras etiquetas o trazos; la líder de abajo sigue sola al nuevo sitio.
       if (!r.labelMoved && r.pts.length >= 2) {
+        // Autocuración: en una etiqueta automática labelX/labelY ES el punto medio del trazo
+        // (así la pone finishRamal y lo reencasilla cada arrastre o edición del panel). Si aparece
+        // a kilómetros de su punto medio, no lo puso el usuario: lo dejó un des-tapado de un
+        // render anterior que se guardó (y se persistió en label_x). Como ese sitio equivocado
+        // pasaba a ser el "por defecto" del frame siguiente —y allí estaba libre—, la etiqueta ya
+        // no volvía nunca. Se reencasilla en el punto medio.
+        const [mx, my] = _midpoint(r.pts);
+        const midC = engine.toCvs(mx, my);
+        if (Math.hypot(lc.x - midC.x, lc.y - midC.y) > boxW * FAR_LABEL_BOXES) {
+          r.labelX = mx;
+          r.labelY = my;
+          drawX = midC.x;
+          drawY = midC.y;
+          adjCx = drawX + gapOffX;
+          adjCy = drawY + gapOffY;
+        }
         const spot = findFreeLabelCenter(
           r.id,
           boxW,
@@ -316,9 +338,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           declutter.segs,
         );
         if (spot) {
-          const p = engine.toPlane(spot.x - gapOffX, spot.y - gapOffY);
-          r.labelX = p.x;
-          r.labelY = p.y;
+          // El sitio elegido es SOLO de este render: no se guarda en labelX/labelY. Antes sí se
+          // escribía, y el frame siguiente lo tomaba como "por defecto" —ya libre, porque las
+          // demás etiquetas seguían en su sitio— así que cada des-tapado empujaba la etiqueta un
+          // poco más lejos (ratchet de hasta 12 anillos de la espiral, ~400 px) y el destino
+          // quedaba persistido. Orig. usuario: etiquetas muy alejadas de su ramal al reingresar
+          // al visor. La líder de abajo mantiene la lectura mientras el hueco siga ocupado.
           drawX = spot.x - gapOffX;
           drawY = spot.y - gapOffY;
           adjCx = spot.x;

@@ -1,7 +1,7 @@
 import type { PlanItem } from '../context/PlansContext';
-import { LE_K } from '../constants';
 import { GAS } from '../constants/engineeringDataGas';
 import { normalizeDnLabel } from './formatUtils';
+import { calculaFilasGas, accesoriosDeTramo, propiosDeTramo } from './gasCalcRows';
 import { loadFromStorage } from '../services/storageService';
 import {
   TRAZOS_PREFIX,
@@ -9,27 +9,13 @@ import {
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
 } from '../constants/storage-keys';
-import { renouardByType, factoresGas, qDisenoGas } from './gasUtils';
-import { mapaPadresGas, acumuladosGas, claveGas, type GasTramoNeto } from './gasNetwork';
-import { perfilDe } from '../constants/normasPais';
+import { factoresGas } from './gasUtils';
+import { claveGas } from './gasNetwork';
 import type { DrawingData, RawElement } from './drawingSync';
 
 interface GasRamalRaw extends RawElement {
   Lh?: number;
 }
-
-const ACC_KEYS = [
-  'codos_90_std',
-  'codos_90_std_sube',
-  'codos_90_std_baja',
-  'codos_90_rl',
-  'codos_90_rl_sube',
-  'codos_90_rl_baja',
-  'te_linea',
-  'te_ramal',
-  'teeTapon',
-  'valvula_bola',
-];
 
 export interface GasDatosGenerales {
   alt: string;
@@ -63,6 +49,14 @@ export function lookupDn(mat: string, dn: string) {
   // materiales lo ofrece pero la tabla GAS no trae filas propias).
   const matEff = mat === 'PEAD' ? 'PE al PE' : mat;
   return allDn().find((x) => x.mat === matEff && (x.dn === dn || x.dn === normDn)) || null;
+}
+
+/**
+ * Catálogo completo de diámetros por material (material, K, DN y diámetro interior).
+ * Lo usan los desplegables de la pantalla de diseño de gas.
+ */
+export function listaDn(): Array<{ mat: string; K: number; dn: string; d: number }> {
+  return allDn();
 }
 
 export interface GasRow {
@@ -134,107 +128,61 @@ export function computeGasRows(plans: PlanItem[], pais?: string): GasRow[] {
     APARATOS_BY_TRAMO_KEY,
     {},
   );
-  // Orden topológico (padres antes que hijos) + árbol: presión por rama y aparatos
-  // acumulados de la red descendente (docx "sentido de flujo", brecha #11/#12).
-  const tramosNeto: GasTramoNeto[] = gasTramos.map((t) => ({
-    id: t.id,
-    planId: t.planId,
-    pts: (t as GasTramoNeto).pts,
-    _tribReversed: (t as GasTramoNeto)._tribReversed,
-  }));
-  const esTribDe = new Map<string, boolean>();
-  for (const t of gasTramos)
-    esTribDe.set(claveGas(t.planId, t.id), (t as { esTrib?: boolean }).esTrib === true);
-  const padres = mapaPadresGas(tramosNeto, (t) => esTribDe.get(claveGas(t.planId, t.id)) === true);
-  const prof = new Map<string, number>();
-  const depth = (k: string, g = 0): number => {
-    if (prof.has(k)) return prof.get(k)!;
-    if (g > gasTramos.length) return 0;
-    const pa = padres.get(k);
-    const d = pa ? depth(pa, g + 1) + 1 : 0;
-    prof.set(k, d);
-    return d;
-  };
-  for (const t of gasTramos) depth(claveGas(t.planId, t.id));
-  gasTramos.sort(
-    (a, b) =>
-      (prof.get(claveGas(a.planId, a.id)) ?? 0) - (prof.get(claveGas(b.planId, b.id)) ?? 0) ||
-      b.piso - a.piso,
-  );
+
+  // Consumo acumulado por tramo: el tronco lleva la demanda de toda su red descendente.
   const propios = new Map<string, Record<string, number>>();
   for (const t of gasTramos) {
-    const appPid = t.planId ? `_${String(t.planId)}` : '';
-    propios.set(
-      claveGas(t.planId, t.id),
-      aparatos[`gas_${t.id}${appPid}`] || aparatos[`gas_${t.id}`] || {},
-    );
+    propios.set(claveGas(t.planId, t.id), propiosDeTramo(aparatos, { id: t.id, planId: t.planId }));
   }
-  const acumulados = acumuladosGas(tramosNeto, padres, propios);
 
-  const result: GasRow[] = [];
-  const pFinPorClave = new Map<string, number>();
-  const dPAcumPorClave = new Map<string, number>();
-  for (const t of gasTramos) {
+  const porClave = new Map(gasTramos.map((t) => [claveGas(t.planId, t.id), t]));
+  // El cálculo vive en gasCalcRows.ts (compartido con la pantalla de diseño de gas).
+  // Las filas salen en el orden del recorrido (raíz primero, luego por piso descendente).
+  return calculaFilasGas({
+    tramos: gasTramos.map((t) => ({
+      id: t.id,
+      planId: t.planId,
+      piso: t.piso,
+      longitud: t.longitud,
+      esTrib: t.esTrib === true,
+      pts: t.pts,
+      _tribReversed: t._tribReversed,
+    })),
+    dIntDe: (t) => {
+      const src = porClave.get(claveGas(t.planId, t.id))!;
+      const opt = lookupDn(src.material, src.diametro);
+      return opt ? opt.d : 0;
+    },
+    accDe: (t) => accesoriosDeTramo(gasAcc, { id: t.id, planId: t.planId }),
+    propios,
+    pMin,
+    factores: { pAtm, DR, fAlt, fTemp, fDens },
+    pais,
+  }).map((f) => {
+    const t = porClave.get(f.clave)!;
     const opt = lookupDn(t.material, t.diametro);
-    const dInt = opt ? opt.d : 0;
-    const K = opt ? opt.K : 0;
-    const dn = opt ? opt.dn : t.diametro;
-
-    // Clave compuesta por plano (ids repiten entre pisos); fallback lectura al formato viejo.
-    const acc = gasAcc[`gas_${t.id}_${t.planId}`] || gasAcc[t.id] || {};
-    let sumLe = 0;
-    for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
-    const le = dInt > 0 ? (dInt * sumLe) / 1000 : 0;
-    const appCounts = acumulados.get(claveGas(t.planId, t.id)) || {};
-    const qRenouard = renouardByType(appCounts);
-    const qDiseno = qDisenoGas(qRenouard, { pAtm, DR, fAlt, fTemp, fDens });
-    const dP =
-      dInt > 0
-        ? ((23200 * (le + t.longitud) * Math.pow(qDiseno, 1.82)) / Math.pow(dInt, 4.82)) *
-          Math.pow(DR, 0.82)
-        : 0;
-    const vel = dInt > 0 ? (354 * qDiseno * 101.325) / (dInt * dInt) / pAtm : 0;
-    const clave = claveGas(t.planId, t.id);
-    const padre = padres.get(clave);
-    // Presión por TOPOLOGÍA (docx): nace del padre; la raíz, de la presión del operador.
-    const pIni = padre ? (pFinPorClave.get(padre) ?? pMin) : pMin;
-    const pFin = pIni - dP;
-    pFinPorClave.set(clave, pFin);
-    const dPAcum = (padre ? (dPAcumPorClave.get(padre) ?? 0) : 0) + dP;
-    dPAcumPorClave.set(clave, dPAcum);
-    // Chequeo del país: V ≤ vMax y pérdida acumulada ≤ dpMax (antes literales NTC 3728).
-    const limGas = perfilDe(pais).gas;
-    const ok =
-      vel > 0 && vel <= limGas.vMax && dP > 0
-        ? dPAcum <= limGas.dpMax
-          ? 'O.K.'
-          : 'NO'
-        : dP > 0
-          ? 'NO'
-          : '—';
-    result.push({
+    return {
       id: t.id,
       piso: t.piso,
       ini: t.ini,
       fin: t.fin,
       material: t.material,
-      dn,
-      dInt,
-      K,
+      dn: opt ? opt.dn : t.diametro,
+      dInt: opt ? opt.d : 0,
+      K: opt ? opt.K : 0,
       longitud: t.longitud,
-      le,
-      qConsumo: qRenouard,
-      fAlt,
-      fTemp,
-      fDens,
-      qDiseno,
-      dP,
-      dPAcum,
-      vel,
-      pIni,
-      pFin,
-      chequeo: ok,
-    });
-  }
-  return result;
+      le: f.le,
+      qConsumo: f.qConsumo,
+      fAlt: f.fAlt,
+      fTemp: f.fTemp,
+      fDens: f.fDens,
+      qDiseno: f.qDiseno,
+      dP: f.dP,
+      dPAcum: f.dPAcum,
+      vel: f.vel,
+      pIni: f.pIni,
+      pFin: f.pFin,
+      chequeo: f.chequeo,
+    };
+  });
 }

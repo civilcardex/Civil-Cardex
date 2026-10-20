@@ -161,6 +161,7 @@ export function propagarHerenciaBomba(
     const tBj = trazosBaj?.bajantes?.find((x) => x.id === baj.id);
     if (tBj && JSON.stringify(tBj.ucAplicado || {}) !== JSON.stringify(ucNuevo)) {
       tBj.ucAplicado = ucNuevo;
+      (trazosBaj as { ts?: number }).ts = Date.now();
       saveToStorage(TRAZOS_PREFIX + pid, trazosBaj);
       saveTrazosToDB(String(pid), trazosBaj);
     }

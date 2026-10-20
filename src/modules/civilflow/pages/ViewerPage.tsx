@@ -48,9 +48,10 @@ const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // el overlay — flash "visor vacío → carga → planos".
 const pdfReadyStore = {
   ready: false,
-  // Orig. usuario: el overlay "Cargando planos y redes…" solo corresponde a la PRIMERA
-  // carga de la sesión — los cambios de piso re-renderizan en vivo (trazos prefetchados),
-  // sin tapar el visor de nuevo.
+  // El overlay de carga solo corresponde a la PRIMERA carga de la sesión — los cambios de
+  // piso re-renderizan en vivo (trazos prefetchados), sin tapar el visor de nuevo. El cambio
+  // de proyecto también lo tapa (isDrawingLoading), con el texto que nombra el visor: "Cargando
+  // planos y redes…" — el mismo que pone el fallback de la ruta y el preload de index.html.
   everReady: false,
   listeners: new Set<() => void>(),
 };
@@ -397,7 +398,22 @@ export default function ViewerPage() {
       return false;
     },
   );
-  const isDrawingLoading = !listo || pdfPendiente;
+  // El overlay cubre también el cambio de proyecto (antes había una pantalla aparte al
+  // principio y el overlay después: dos pantallas de carga seguidas al abrir el visor).
+  // Con el overlay siempre encima no existe el hueco entre "dejó de cargar" y "hay contenido":
+  // debajo ya está el visor del proyecto nuevo, listo para verse.
+  // + visorLoading: el PRIMER paint del visor (lamina a escala del doc + trazos + camara).
+  // Sin el, el overlay moria antes y se veian los elementos cargar (pdf, redes).
+  const [visorLoading, setVisorLoading] = useState(true);
+  // Piso minimo de la pantalla de carga: que nunca parpadee en proyectos que cargan rapido
+  // (orig. usuario: mejor un instante mas de carga que ver el acomodarse).
+  const [minHoldCarga, setMinHoldCarga] = useState(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => setMinHoldCarga(false), 900);
+    return () => window.clearTimeout(t);
+  }, []);
+  const isDrawingLoading =
+    !listo || pdfPendiente || switchPendiente || switching || visorLoading || minHoldCarga;
   const handlePdfReady = useCallback(() => {
     if (!pdfReadyStore.ready || !pdfReadyStore.everReady) {
       pdfReadyStore.ready = true;
@@ -470,12 +486,6 @@ export default function ViewerPage() {
         </Link>
       </main>
     );
-  }
-
-  if (switchPendiente || switching) {
-    // MISMO texto que el overlay de abajo: una sola pantalla de carga percibida (orig.
-    // usuario: dos pantallas de carga consecutivas al abrir el visor).
-    return <CargandoProyecto texto="Cargando planos y redes…" />;
   }
 
   return (
@@ -676,6 +686,7 @@ export default function ViewerPage() {
             pisos={pisos}
             activeNetworks={activeNetworks}
             onReady={handlePdfReady}
+            onLoadingChange={setVisorLoading}
           />
         </RainwaterProvider>
       </main>

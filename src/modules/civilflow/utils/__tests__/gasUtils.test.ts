@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renouardByType, factoresGas, qDisenoGas } from '../gasUtils';
+import { renouardByType, factoresGas, qDisenoGas, patmDeAltitud } from '../gasUtils';
 
 // Spec: criterio de simultaneidad y factores del Excel "Calculo red de Gas KML 2025"
 // (hoja "Red de Gas": AA = criterio Renouard de tipos, AB/AC/AD factores redondeados
@@ -50,5 +50,22 @@ describe('qDisenoGas — celda AE del Excel (producto redondeado + piso 2.7)', (
 
   it('consumo bajo → piso de 2.7 m³/h (fila 1 del Excel: 2.70)', () => {
     expect(qDisenoGas(1.215, f)).toBe(2.7);
+  });
+});
+
+describe('patmDeAltitud — la presión atmosférica sale de la altura (Excel F11)', () => {
+  it('a nivel del mar es 101.33 kPa (el valor de referencia)', () => {
+    expect(patmDeAltitud(0)).toBe('101.33');
+  });
+
+  it('más altura → menos presión (el aire pesa menos arriba)', () => {
+    const baja = Number(patmDeAltitud(0));
+    const alta = Number(patmDeAltitud(2640));
+    expect(alta).toBeLessThan(baja);
+  });
+
+  it('texto vacío o inválido → nivel del mar (no NaN)', () => {
+    expect(patmDeAltitud('')).toBe('101.33');
+    expect(patmDeAltitud('abc')).toBe('101.33');
   });
 });

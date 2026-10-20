@@ -6,6 +6,7 @@ export {
   areEndpointsAligned,
   upstreamRamalIdsForBajante,
   collectSourceAgg,
+  trazaDeUltimoGrupo,
   estamparAsocsClearedTs,
 } from './bajanteAssocShared';
 export { clearBajanteAssociation } from './bajanteAssociationClear';

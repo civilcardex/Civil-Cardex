@@ -80,7 +80,7 @@ import {
   realMmToCanvasPx as realMmToCanvasPxLib,
   labelScaleM as labelScaleMLib,
 } from './planoCoords';
-import { zoomAnclado } from './planoCamera';
+import { zoomAnclado, tamanoLienzoDibujo } from './planoCamera';
 import { handleKeyDown } from './handleKeyDown';
 import {
   selectAt as _selectAt,
@@ -938,7 +938,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Fija la escala del plano (scaleM, la escala metros por pixel): 1 = 1:100, 0.5 = 1:50;
    *  acepta texto o número. Es la que convierte longitudes de pantalla a metros reales. */
   setScaleM(v: string | number): void {
+    const prev = this.scaleM;
     _setScaleM(this, v);
+    // La hoja mide en px de la escala ACTUAL: al cambiar la escala (re-base del doc a la
+    // escala global, calibración) la medida de la lámina cambia con ella. Sin esto, el
+    // lienzo queda con la medida vieja y el trazo se recorta en el borde de la hoja
+    // ("recuadro", orig. usuario) hasta que el re-raster del fondo lo alcance.
+    if (this.pageW && this.pageH && prev > 0 && Math.abs(this.scaleM - prev) > 1e-9) {
+      const f = this.scaleM / prev;
+      this.setPageSize(this.pageW * f, this.pageH * f);
+    }
   }
   setDefinedScaleM(v: string | number): void {
     _setDefinedScaleM(this, v);
@@ -1133,13 +1142,40 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Último transform aplicado al wrapper: re-escribirlo cada cuadro dispara al
    *  MutationObserver del fondo (re-raster) aunque el zoom no cambió. */
   private _lastTransform = '';
+  /** Reajusta el lienzo de DIBUJO para que cubra el ÁREA VISIBLE, no solo la caja de la hoja.
+   *  Con zoom > 1 el fondo se sale de la hoja (lo recorta el contenedor) pero el lienzo de
+   *  dibujo medía lo mismo que la hoja → el trazo se cortaba en el borde de la hoja: un
+   *  "recuadro" que partía la geometría (laterales y superiores recortados, orig. usuario).
+   *  Aquí el lienzo cubre la hoja×zoom y el viewport: el trazo se recorta JUSTO donde se
+   *  recorta el fondo. */
+  ensureCanvasSize(): void {
+    const t = tamanoLienzoDibujo({
+      visW: this.cw?.clientWidth || 0,
+      visH: this.cw?.clientHeight || 0,
+      pageW: this.pageW,
+      pageH: this.pageH,
+      zoom: this.zoom,
+    });
+    if (t.w === this._canvasW && t.h === this._canvasH) return;
+    this._canvasW = t.w;
+    this._canvasH = t.h;
+    this.resizeCanvas(t.w, t.h);
+  }
+  private _canvasW = 0;
+  private _canvasH = 0;
+
   /** Repinta el canvas con todas las capas (cotas, ramales, bajantes y activos). */
   render(): void {
+    this.ensureCanvasSize();
     const ctx = this.ctx;
     const w = this.canv.width,
       h = this.canv.height;
     // ponytail: canvas sin tamaño (montaje/viewport oculto) — pintar es trabajo tirado.
     if (w === 0 || h === 0) return;
+    // Sin LÁMINA conocida el contenedor todavía no tiene su tamaño final: pintar el trazo
+    // ahí lo deja en un recuadro provisional y el dibujo salta al llegar el PDF (orig.
+    // usuario). El motor espera a que la lámina marque la medida buena.
+    if (!this.pageW || !this.pageH) return;
     ctx.clearRect(0, 0, w, h);
 
     if (this.pdfWrap) {

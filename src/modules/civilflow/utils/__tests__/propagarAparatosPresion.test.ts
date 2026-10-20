@@ -29,7 +29,7 @@ vi.stubGlobal('localStorage', {
 vi.stubGlobal('window', { dispatchEvent: () => {} });
 
 import { saveToStorage, loadFromStorage } from '../../services/storageService';
-import { propagarAparatosPresion, leerHeredadosPresion } from '../aparatosPresion';
+import { propagarAparatosPresion, leerHeredadosPresion } from '../propagation';
 
 const AF_KEY = 'aparatos_by_tramo_v2';
 
@@ -75,12 +75,14 @@ function seedEscenario(): void {
         tipo: 'montante',
         x: 100,
         y: -100,
-        ucAplicado: { af_MON1_P1: { inodoro: 1 } },
       },
     ],
   });
   const disk = loadFromStorage<Record<string, Record<string, number>>>(AF_KEY, {}) || {};
   disk['af_RAF2_P1'] = { lavamanos: 1 };
+  // Carga del montante FUENTE: vive en su CLAVE DE DISCO (su ucAplicado es libro de
+  // herencia de receptores — en una fuente puro sería legado huérfano y se purga).
+  disk['af_MON1_P1'] = { inodoro: 1 };
   saveToStorage(AF_KEY, disk);
 }
 

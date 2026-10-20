@@ -6,7 +6,7 @@ import { parseDecimalInput } from '../../utils/parseDecimal';
 import { hunterK, computeDesignRow } from './rowPhysics';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared';
 import { perfilDe } from '../../constants/normasPais';
-import { leerHeredadosPresion } from '../../utils/aparatosPresion';
+import { leerHeredadosPresion } from '../../utils/propagation';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput';
 import ChipList from '../shared/ChipList';
 import { writeNSalidasToDrawing } from '../../utils/drawingWrites/otros';

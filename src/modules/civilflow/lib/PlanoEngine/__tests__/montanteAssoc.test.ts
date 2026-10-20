@@ -81,7 +81,7 @@ const plans = [
 describe('montantes asociados entre pisos', () => {
   beforeEach(seedMontantes);
 
-  it('desalineados: LD + anillo + fantasma como bajantes, y direccion SIEMPRE sube', () => {
+  it('desalineados: LD + anillo + fantasma como bajantes, y dirección como los bajantes', () => {
     const eng = makeEngine('2');
     applyBajanteAssociation(
       eng,
@@ -102,9 +102,11 @@ describe('montantes asociados entre pisos', () => {
     expect(Object.values(desp).some((d) => d.Ldesvio === 'LD_MON2_af')).toBe(true);
     // Fantasma en el piso superior.
     expect(upper.crossFloorGhosts?.some((g) => g.targetBajanteId === 'MON2_af')).toBe(true);
-    // AMBOS extremos 'sube' — aunque el destino esté abajo (montante nunca 'baja').
-    expect(upper.bajantes?.find((b) => b.id === 'MON2_af')?.direccion).toBe('sube');
-    expect(lower.bajantes?.find((b) => b.id === 'MON1_af')?.direccion).toBe('sube');
+    // DIRECCIÓN: la misma lógica de los bajantes (orig. usuario): el extremo de arriba 'baja'
+    // (el agua baja por la tubería) y el de abajo también. Antes los montantes quedaban
+    // forzados a 'sube'.
+    expect(upper.bajantes?.find((b) => b.id === 'MON2_af')?.direccion).toBe('baja');
+    expect(lower.bajantes?.find((b) => b.id === 'MON1_af')?.direccion).toBe('baja');
     // Punteros de la asociación.
     expect(upper.bajantes?.find((b) => b.id === 'MON2_af')?.descargaEnId).toBe('1|MON1_af');
     expect(lower.bajantes?.find((b) => b.id === 'MON1_af')?.origenId).toBe('2|MON2_af');

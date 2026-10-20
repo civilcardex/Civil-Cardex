@@ -1,5 +1,6 @@
-import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
+﻿import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
 import { splitPtr } from './keys';
+import { aplicarEnDocDePlan } from './writePlanDoc';
 import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync';
 import type { SyncPlanInput } from './drawingSync';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
@@ -18,10 +19,33 @@ import {
   resolveLinkRoles,
   readBajanteLink,
   estamparAsocsClearedTs,
+  desasociarLdesvioDeBajante,
   GEO_TOL_BAJANTE,
 } from './bajanteAssocShared';
 import type { StoredBajanteDesp, InheritPoolRamal, InheritPoolBajante } from './bajanteAssocShared';
 import { emitAparatosClear, emitSanSync, EV_STORAGE } from '../utils/fixtureEvents';
+
+/** Anula un puntero de asociación (origenId / descargaEnId) del doc del piso: si el piso está
+ *  abierto se toca su estado VIVO (nunca se pisa lo dibujado hace un momento); si está cerrado,
+ *  se lee del storage y se escribe. */
+function limpiarPunteroEnStorage(
+  eng: IPlanoEngineCore | null,
+  planId: string,
+  bajanteId: string,
+  prop: 'origenId' | 'descargaEnId',
+): void {
+  try {
+    aplicarEnDocDePlan(eng, planId, (doc) => {
+      const b = (doc.bajantes || []).find((x) => (x as { id?: string }).id === bajanteId) as
+        | Record<string, unknown>
+        | undefined;
+      if (!b || b[prop] == null) return;
+      b[prop] = null;
+    });
+  } catch {
+    /* best-effort: la desasociación sigue valiendo en el motor */
+  }
+}
 
 export function clearBajanteAssociation(
   eng: IPlanoEngineCore,
@@ -50,6 +74,66 @@ export function clearBajanteAssociation(
     removeCrossFloorLdesvioRamal(roles.lowerPlanId, roles.upperId);
     removeCrossFloorLdesvioRamal(roles.upperPlanId, roles.upperId);
     removeCrossFloorGhost(roles.upperPlanId, roles.lowerPlanId, roles.lowerId);
+    // El LD era un RAMAL ASOCIADO del elemento destino (registro real): al morir el enlace,
+    // sale también de sus listas — si se queda, los espejos le escriben la carga del bajante
+    // y aparece una clave fantasma de UDs (orig. usuario).
+    desasociarLdesvioDeBajante({
+      planId: roles.lowerPlanId,
+      bajanteId: roles.lowerId,
+      ldId: exactLd,
+      eng,
+    });
+    if (loadedPlanId === roles.lowerPlanId) {
+      const vivo = eng.bajantes.find((x) => x.id === roles.lowerId) as
+        | (Record<string, unknown> & { id: string })
+        | undefined;
+      if (vivo) {
+        const recibe = ((vivo.recibeDeIds as string[] | undefined) || []).filter(
+          (id) => id !== exactLd,
+        );
+        const manual = ((vivo.asocManual as string[] | undefined) || []).filter(
+          (id) => id !== exactLd,
+        );
+        eng.updateElementById(vivo.id, { recibeDeIds: recibe, asocManual: manual });
+      }
+    }
+    // El ANILLO del fantasma (desplazamientos/ghostData del bajante destino — el montante
+    // fantasma dibujado en el piso inferior) muere con el enlace: sin esto quedaba el
+    // fantasma flotando aunque el Ldesvio y el marcador XFG ya no existieran
+    // (orig. usuario: al desasociar "solo se borra el Ldesvio").
+    const sinAnillo = (b: Record<string, unknown>): boolean => {
+      const desp = b.desplazamientos as Record<string, { Ldesvio?: string }> | undefined;
+      if (!desp) return false;
+      let toco = false;
+      for (const lvl of Object.keys(desp)) {
+        if (desp[lvl]?.Ldesvio === exactLd) {
+          delete desp[lvl];
+          if (b.ghostData) delete (b.ghostData as Record<string, unknown>)[lvl];
+          toco = true;
+        }
+      }
+      return toco;
+    };
+    try {
+      aplicarEnDocDePlan(eng, roles.lowerPlanId, (doc) => {
+        const bAnillo = (doc.bajantes || []).find(
+          (x) => (x as { id?: string }).id === roles.lowerId,
+        ) as Record<string, unknown> | undefined;
+        // El helper persiste (estado vivo si el piso está abierto, storage si está cerrado).
+        if (bAnillo) sinAnillo(bAnillo);
+      });
+    } catch {
+      /* best-effort */
+    }
+    const vivoAnillo = eng.bajantes.find((x) => x.id === roles.lowerId) as
+      | (Record<string, unknown> & { id: string })
+      | undefined;
+    if (vivoAnillo && sinAnillo(vivoAnillo)) {
+      eng.updateElementById(vivoAnillo.id, {
+        desplazamientos: vivoAnillo.desplazamientos,
+        ghostData: vivoAnillo.ghostData,
+      });
+    }
   } else {
     // Último recurso (sin ghost ni npts): barrido amplio legacy.
     removeCrossFloorGhost(targetPlanId, sourcePlanId, sourceBajanteId);
@@ -81,6 +165,12 @@ export function clearBajanteAssociation(
       plans,
     );
   }
+  // Los punteros también directo al storage de cada piso: `writeBajantePropToDrawing` solo
+  // recorre los planes CONFIRMADOS que le pasan, y desde el motor no hay lista de planes —
+  // sin esta pasada el origenId del piso vecino sobrevivía y el desplegable de origen seguía
+  // apuntando a un enlace ya deshecho (orig. usuario: al borrar el fantasma, "sin origen").
+  limpiarPunteroEnStorage(eng, targetPlanId, targetBajanteId, 'origenId');
+  limpiarPunteroEnStorage(eng, sourcePlanId, sourceBajanteId, 'descargaEnId');
 
   // Fantasma en el motor vivo: el piso abierto lo renderiza (punteada + cuarto de círculo)
   // aunque el storage ya se limpió — antes solo se filtraba si el cargado era el TARGET, y
@@ -114,30 +204,23 @@ export function clearBajanteAssociation(
   // Anillo (desplazamientos) que referencia el LD exacto — en el bajante inferior (nuevo) o
   // en el superior (legado): buscar por id exacto, nunca por familia de ids.
   const limpiarDespExacto = (planId: string) => {
-    const raw = loadFromStorage<{ bajantes?: StoredBajanteDesp[] } | null>(
-      TRAZOS_PREFIX + planId,
-      null,
-    );
-    if (!raw?.bajantes || !exactLd) return;
-    let changed = false;
-    for (const b of raw.bajantes) {
-      if (!b.desplazamientos) continue;
-      const desp = { ...b.desplazamientos };
-      const gd = b.ghostData ? { ...b.ghostData } : undefined;
-      for (const lvl of Object.keys(desp)) {
-        if (desp[lvl]?.Ldesvio === exactLd) {
-          delete desp[lvl];
-          if (gd) delete gd[lvl];
-          changed = true;
+    if (!exactLd) return;
+    aplicarEnDocDePlan(eng, planId, (doc) => {
+      for (const raw of doc.bajantes || []) {
+        const b = raw as StoredBajanteDesp & { id?: string };
+        if (!b.desplazamientos) continue;
+        const desp = { ...b.desplazamientos };
+        const gd = b.ghostData ? { ...b.ghostData } : undefined;
+        for (const lvl of Object.keys(desp)) {
+          if (desp[lvl]?.Ldesvio === exactLd) {
+            delete desp[lvl];
+            if (gd) delete gd[lvl];
+          }
         }
+        b.desplazamientos = desp;
+        if (gd) b.ghostData = gd;
       }
-      b.desplazamientos = desp;
-      if (gd) b.ghostData = gd;
-    }
-    if (changed) {
-      saveToStorage(TRAZOS_PREFIX + planId, raw);
-      saveTrazosToDB(planId, raw);
-    }
+    });
   };
   const ringPlans = roles
     ? [roles.lowerPlanId, roles.upperPlanId]
@@ -191,6 +274,7 @@ export function clearBajanteAssociation(
             if (gd) b.ghostData = gd;
           }
           if (changed) {
+            (raw as { ts?: number }).ts = Date.now();
             saveToStorage(TRAZOS_PREFIX + pid, raw);
             saveTrazosToDB(pid, raw);
           }
@@ -295,7 +379,10 @@ export function clearBajanteAssociation(
       // Sin snapshot del trazos destino (caché ausente, libro venía del motor vivo) no hay
       // nada que revertir en disco: escribir null fabricaba una caché muerta y el push vacío
       // a BD borraba el piso. Solo se re-escribe un documento existente.
-      if (tgtTrazosSnap) {
+      if (tgtTrazosSnap && String(loadedPlanId ?? '') !== String(targetPlanId)) {
+        // Si el plano destino está ABIERTO, el motor es la verdad (y su autosave persiste):
+        // reescribir el snapshot (un doc VIEJO) encima machacaría lo dibujado después.
+        (tgtTrazosSnap as { ts?: number }).ts = Date.now();
         saveToStorage(TRAZOS_PREFIX + targetPlanId, tgtTrazosSnap);
         saveTrazosToDB(targetPlanId, tgtTrazosSnap);
       }
@@ -419,18 +506,12 @@ export function clearBajanteAssociation(
     saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
     // ucAcum del bajante destino vuelve a 0 — escritura directa al storage del piso destino
     // (no depende del parámetro plans, que llega vacío en algunos caminos de borrado).
-    const tgtTrazos = loadFromStorage<{ bajantes?: { id: string; ucAcum?: number }[] } | null>(
-      TRAZOS_PREFIX + targetPlanId,
-      null,
-    );
-    if (tgtTrazos?.bajantes) {
-      const tb = tgtTrazos.bajantes.find((x) => x.id === targetBajanteId);
-      if (tb && tb.ucAcum) {
-        tb.ucAcum = 0;
-        saveToStorage(TRAZOS_PREFIX + targetPlanId, tgtTrazos);
-        saveTrazosToDB(targetPlanId, tgtTrazos);
-      }
-    }
+    aplicarEnDocDePlan(eng, targetPlanId, (doc) => {
+      const tb = (doc.bajantes || []).find((x) => (x as { id?: string }).id === targetBajanteId) as
+        | { id: string; ucAcum?: number }
+        | undefined;
+      if (tb && tb.ucAcum) tb.ucAcum = 0;
+    });
     if (loadedPlanId === targetPlanId) {
       const t = eng.bajantes.find((x) => x.id === targetBajanteId);
       if (t) eng.updateElementById(t.id, { ucAcum: 0 });

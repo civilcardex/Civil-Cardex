@@ -207,6 +207,11 @@ export function buildNonPrefixedSyncData(
           _net: b.net,
           recibeDeIds: b.recibeDeIds || [],
           descargaEnId: b.descargaEnId || null,
+          // Enlace con el piso de arriba y el libro de herencia que deja: sin ellos, la fila
+          // del montante en Cálculo UC no sabe que es el destino de una asociación entre pisos
+          // (y muestra 0 en vez de los UC heredados).
+          origenId: b.origenId || null,
+          ucAplicado: b.ucAplicado,
           area_m2: b.area_m2 || 0,
           pisoBase: b.pisoBase || '',
           pisoCima: b.pisoCima || '',

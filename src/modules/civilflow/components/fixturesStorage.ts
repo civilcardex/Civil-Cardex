@@ -229,7 +229,7 @@ export function syncMirrorKey(
   return true;
 }
 
-import { leerHeredadosPresion } from '../utils/aparatosPresion';
+import { leerHeredadosPresion } from '../utils/propagation';
 
 /** Accesorios hidráulicos (codos, tees) guardados del tramo; entrada vacía si no tiene. */
 export function hidroDeClave(hidroData: HidroDataMap, storageKey: string | null): HidroDataEntry {

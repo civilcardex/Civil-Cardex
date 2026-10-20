@@ -9,6 +9,22 @@ import { pisoLbl, pisoCorto } from '../constants';
 // ponytail: loadPlanTrazos kept for lazy write-back only — read path uses plane.bajantes/ramales directly to avoid second JSON.parse per plane
 import type { Tramo } from '../context/tramosReducer';
 
+/** Aparatos heredados de un montante: el libro de herencia que la asociación entre pisos
+ *  deja en el montante de destino (`ucAplicado`). Se toma el MÁXimo por aparato (no la suma):
+ *  el libro tiene una entrada por pieza que recibió la carga (el Ldesvio y los ramales del
+ *  destino) y todas llevan la MISMA — sumarlas las contaría varias veces.
+ *  Ej: un montante con 2 inodoros y 1 lavamanos heredados de arriba -> { ino: 2, lvm: 1 }. */
+export function heredadoDeMontante(b: {
+  origenId?: string | null;
+  descargaEnId?: string | null;
+  ucAplicado?: Record<string, Record<string, number>>;
+}): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const m of Object.values(b.ucAplicado || {}))
+    for (const [k, v] of Object.entries(m)) out[k] = Math.max(out[k] || 0, Number(v) || 0);
+  return out;
+}
+
 interface DrawingRamal {
   id: string;
   label?: string;
@@ -65,6 +81,10 @@ interface DrawingBajante {
   ventDprop?: number;
   maning?: number;
   descargaEnId?: string | null;
+  /** Enlace con otro piso: el montante es el destino de una asociación entre pisos. */
+  origenId?: string | null;
+  /** Libro de herencia (lo que el piso de arriba dejó aplicado en este montante). */
+  ucAplicado?: Record<string, Record<string, number>>;
   _aparatosKey?: string;
 }
 
@@ -269,8 +289,7 @@ export function buildTramos(
     }
 
     // Montantes af/ac como filas esBajante (orig. usuario): aparecen en Cálculo UC con
-    // todos sus aparatos asociados — la asociación entre pisos escribe el agregado en su
-    // clave de conteos (apos en bajanteAssociationApply).
+    // todos sus aparatos asociados.
     if (family === 'af' || family === 'ac') {
       for (const b of drawingBajantes) {
         if (b.tipo !== 'montante') continue;
@@ -282,14 +301,26 @@ export function buildTramos(
         // usa `fixtures` (propios), así el espejo nunca duplica.
         const propios = aparatos[apKey] || {};
         const codigos = new Set([b.code || '', b.id]);
+        // Montante ASOCIADO a otro piso: el LIBRO de herencia es la única fuente (misma
+        // doctrina del espejo sanitario: libro si lo hay, si no el agregado del árbol).
+        // Sumar además los ramales que lo tocan cuenta DOS veces la misma carga — el ramo
+        // que lo alimenta ya la trae — y el montante de destino quedaba con el doble de UC
+        // (orig. usuario: el montante debe quedar con los MISMOS aparatos que el de arriba).
+        const libro = b.origenId || b.descargaEnId ? heredadoDeMontante(b) : {};
         const agg: Record<string, number> = { ...propios };
         for (const t of incoming) {
+          if (Object.keys(libro).length) break;
           if (t.tipo === 'tributario' || t.esBajante) continue;
           const toca =
             (typeof t.ini === 'string' && codigos.has(t.ini)) ||
             (typeof t.fin === 'string' && codigos.has(t.fin));
           if (!toca) continue;
           for (const [k, v] of Object.entries(t.fixtures || {})) agg[k] = (agg[k] || 0) + v;
+        }
+        // El libro manda: son los aparatos que el piso de arriba dejó en este montante.
+        if (Object.keys(libro).length) {
+          for (const k of Object.keys(agg)) delete agg[k];
+          Object.assign(agg, libro);
         }
         incoming.push({
           fixturesAgg: agg,

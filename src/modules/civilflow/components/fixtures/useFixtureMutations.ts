@@ -12,14 +12,13 @@ import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { sanDiamAllowedForApparatus } from '../../utils/sanitaryDiamCompat';
 import { DIAM_BY_MAT } from '../../constants';
 import { bumpHidroAccesorio } from '../../utils/syncExtremeAccessory';
-import { esRedAparatosPresion, propagarAparatosPresion } from '../../utils/aparatosPresion';
+import { esRedAparatosPresion, propagarAparatosPresion } from '../../utils/propagation';
 import { emitAparatosClear } from '../../utils/fixtureEvents';
 
 /** Todo lo que inc/dec leen del panel — el ctx viaja como OBJETO (rediseño FixturesPanel). */
 export interface FixtureMutationCtx {
   netId: string;
   storageKey: string | null;
-  targetId: string | null;
   /** Target clasificado del panel (rama af (Agua Fria)-ac (Agua Caliente)/san (Sanitaria)/ll (Lluvias)/gas (Gas)/rejillas). */
   target: SelectableTarget | null;
   /** Unión de ramales o ramal con tributarios: sus UDs (Unidades de Desague) están

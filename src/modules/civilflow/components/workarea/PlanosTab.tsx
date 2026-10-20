@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+﻿import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { pisoOcupadoPor } from '../../utils/isLevelTaken';
 import { useNavigate } from 'react-router-dom';
 import {
   saveTrazosToDB,
@@ -25,20 +26,14 @@ import {
   PlanosTab_S5,
   PlanosTab_S6,
   PlanosTab_S7,
-  PlanosTab_S8,
-  PlanosTab_S9,
-  PlanosTab_S10,
-  PlanosTab_S11,
-  PlanosTab_S12,
-  PlanosTab_S13,
-  PlanosTab_S14,
   PlanosTab_reqBtnBase,
-  PlanosTab_pendingLi,
-  PlanosTab_verBtn,
 } from './PlanosTab.styles';
 import type { useWorkAreaState } from '../useWorkAreaState';
 import ModalProtocolo from './ModalProtocol';
 import { PlanCropPanel } from './PlanCropPanel';
+import { ModalNivelPiso, ModalOrigenPlan } from './planosTab/PlanModals';
+import { ListaPendientes } from './planosTab/PendingPlansList';
+import { ListaCargados } from './planosTab/LoadedPlansList';
 import { devError } from '../../../../utils/devError';
 import type { CalibrationData } from './planosTabCalibracion';
 import {
@@ -102,8 +97,7 @@ function PlanosTab({ state }: PlanosTabProps) {
   });
 
   // 1a: la calibración se deriva de los planes vivos. Al borrar planos se purga el calData
-  // huérfano (y la caché global en window._planosConfig cuando no queda ningún plano) para
-  // que el modal de primera calibración reaparezca si se borran todos los planos.
+  // huérfano para que el modal de primera calibración reaparezca si se borran todos los planos.
   // TAMBIÉN SIEMBRA: el initializer de calData corre una sola vez y en un remount plans
   // suele llegar vacío (restauración async de PlansContext) — sin siembra, globalCal quedaba
   // null para siempre y "Asignar piso" desaparecía tras cerrar y reabrir (bug 2026-09-22).
@@ -112,10 +106,6 @@ function PlanosTab({ state }: PlanosTabProps) {
       const { next, changed } = seedCalData(prev, plans);
       return changed ? next : prev;
     });
-    if (plans.length === 0) {
-      const win = window as unknown as { _planosConfig?: Record<string, unknown> };
-      win._planosConfig = {};
-    }
   }, [plans]);
 
   const isCalibrated = useCallback(
@@ -184,18 +174,6 @@ function PlanosTab({ state }: PlanosTabProps) {
     // Frame ANTERIOR del plan (meta/doc): el saneador lo necesita ANTES de estampar el nuevo.
     const prevOrigen = origenDePlan(String(config.planId));
     setCalData((prev) => ({ ...prev, [config.planId]: config }));
-    const win = window as unknown as { _planosConfig?: Record<string, unknown> };
-    if (!win._planosConfig) win._planosConfig = {};
-    const key = `${selectedPlan?.name || 'plan'}_${config.planId}`;
-    win._planosConfig[key] = {
-      nombre: selectedPlan?.name || '',
-      origen: config.origen,
-      scaleM: config.scaleM,
-      factorX: config.factorX,
-      factorY: config.factorY,
-      calGlobal: config.calGlobal,
-      fecha: new Date().toLocaleString('es-CO'),
-    };
     updatePlan(config.planId, {
       // Escala EXACTA en el meta (×100, sin redondear): el meta alimenta escalaGlobalRef
       // (PdfViewer) y la siembra de calData — redondearlo a entero (0.4723 → 47 → 0.47) hacía
@@ -317,11 +295,10 @@ function PlanosTab({ state }: PlanosTabProps) {
               type="button"
               onClick={() => {
                 if (
-                  plans.some(
-                    (x) =>
-                      x.id !== selectedPlan.id &&
-                      x.status === 'confirmed' &&
-                      x.nivel === selectedPlan.nivel,
+                  pisoOcupadoPor(
+                    plans.filter((x) => x.status === 'confirmed'),
+                    selectedPlan.nivel ?? 0,
+                    selectedPlan.id,
                   )
                 ) {
                   alert('Este nivel ya tiene un plano asociado.');
@@ -661,545 +638,69 @@ function PlanosTab({ state }: PlanosTabProps) {
           </button>
         </div>
 
-        <div
-          style={{
-            flex: '1 1 50%',
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            borderBottom: '1px solid var(--line)',
+        <ListaPendientes
+          planos={pendingPlanos}
+          selectedPlanId={selectedPlanId}
+          isCalibrated={(id) => !!isCalibrated(id)}
+          hayCalibracionGlobal={!!globalCal}
+          arrastrando={planDrag}
+          onSoltarArchivos={addPlans}
+          onArrastrar={setPlanDrag}
+          onSelect={(id) => {
+            setSelectedPlanId(id);
+            setCalibrating(false);
           }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setPlanDrag(true);
+          onAsignarPiso={setNivelPickerPlanId}
+          onCalibrar={(id) => {
+            setSelectedPlanId(id);
+            setAutoOrigen(false);
+            setCalibrating(true);
           }}
-          onDragLeave={() => setPlanDrag(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setPlanDrag(false);
-            const fl = e.dataTransfer?.files;
-            if (fl && fl.length > 0) addPlans(fl);
+          onConfirmar={(id) => {
+            const nivel = plans.find((x) => x.id === id)?.nivel ?? null;
+            if (
+              nivel !== null &&
+              plans.some((x) => x.id !== id && x.status === 'confirmed' && x.nivel === nivel)
+            ) {
+              alert('Este nivel ya tiene un plano asociado.');
+              return;
+            }
+            confirmPlan(id);
           }}
-        >
-          <div style={PlanosTab_S8}>
-            <img
-              src="/iconos_civilflow/carga_planos/pendientes.webp"
-              alt="Pendientes"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle' }}
-              loading="lazy"
-            />
-            Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
-          </div>
-          {pendingPlanos.length === 0 ? (
-            <button
-              type="button"
-              style={PlanosTab_S9}
-              aria-label="Subir planos"
-              onClick={() => fileRef.current?.click()}
-            >
-              {planDrag ? (
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#00dce5' }}>
-                  &#x1F4D0; SOLTAR PARA SUBIR
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 24, opacity: 0.3 }}>&#x1F4D0;</div>
-                  <span>Arrastra PDFs aquí o haz clic para subir varios planos</span>
-                </>
-              )}
-            </button>
-          ) : (
-            <ul style={PlanosTab_S10}>
-              {pendingPlanos.map((p) => {
-                const calOk = isCalibrated(p.id);
-                const isSelected = selectedPlanId === p.id;
-                return (
-                  <li
-                    key={p.id}
-                    style={{
-                      ...PlanosTab_pendingLi,
-                      border: isSelected
-                        ? '1px solid rgba(0, 220, 229, 0.35)'
-                        : '1px solid var(--line)',
-                      background: isSelected ? 'rgba(0, 220, 229, 0.03)' : 'transparent',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: 'var(--txt)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          flex: 1,
-                        }}
-                        title={p.name}
-                      >
-                        {p.name}
-                      </span>
-                      {p.nivel !== null && (
-                        <span
-                          style={{
-                            fontSize: 12,
-                            padding: '1px 5px',
-                            background: 'var(--bg3)',
-                            borderRadius: 'var(--r)',
-                            color: 'var(--txt3)',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {pisoLbl(p.nivel)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
-                    >
-                      <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        {calOk ? (
-                          <span
-                            style={{
-                              color: 'var(--ok)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 12 }}>●</span> Calibrado
-                            </span>
-                            {p.definedScale ? (
-                              <span style={{ color: 'var(--txt3)' }}>
-                                Diseño 1:{Math.round(p.definedScale * 100)}
-                              </span>
-                            ) : null}
-                            <span style={{ color: 'var(--txt2)' }}>
-                              | Calibrada 1:{Math.round((p.scale / 100) * 100)}
-                            </span>
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              color: '#F5A623',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 2,
-                            }}
-                          >
-                            <span style={{ fontSize: 12 }}>●</span> Sin calibrar
-                          </span>
-                        )}
-                      </div>
-
-                      {calOk && p.nivel !== null && p.nivel !== undefined && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (
-                              plans.some(
-                                (x) =>
-                                  x.id !== p.id && x.status === 'confirmed' && x.nivel === p.nivel,
-                              )
-                            ) {
-                              alert('Este nivel ya tiene un plano asociado.');
-                              return;
-                            }
-                            confirmPlan(p.id);
-                          }}
-                          style={PlanosTab_S11}
-                        >
-                          CONFIRMAR
-                        </button>
-                      )}
-                    </div>
-
-                    <div
-                      style={{ display: 'flex', flexDirection: 'row', gap: 3, flexWrap: 'wrap' }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedPlanId(p.id);
-                          setCalibrating(false);
-                        }}
-                        style={{
-                          ...PlanosTab_verBtn,
-                          background:
-                            isSelected && !calibrating ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)',
-                          color: isSelected && !calibrating ? '#00dce5' : 'var(--txt2)',
-                        }}
-                        title="Vista previa"
-                      >
-                        VER
-                      </button>
-
-                      {globalCal ? (
-                        <button
-                          type="button"
-                          onClick={() => setNivelPickerPlanId(p.id)}
-                          style={{
-                            ...PlanosTab_verBtn,
-                            background: 'rgba(14,204,122,0.1)',
-                            color: '#0ECC7A',
-                            borderColor: 'rgba(14,204,122,0.3)',
-                          }}
-                          title="Asignar piso al plano"
-                        >
-                          ASIGNAR PISO
-                        </button>
-                      ) : (
-                        // 1b: sin calibración global todavía, el primer plano debe calibrarse
-                        // antes que nada: se ofrece CALIBRAR directo en la fila.
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedPlanId(p.id);
-                            setAutoOrigen(false);
-                            setCalibrating(true);
-                          }}
-                          style={{
-                            ...PlanosTab_verBtn,
-                            background: 'rgba(0,220,229,0.08)',
-                            color: '#00dce5',
-                            borderColor: 'rgba(0,220,229,0.3)',
-                          }}
-                          title="Calibrar el plano (primera calibración del proyecto)"
-                        >
-                          CALIBRAR
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          removePlan(p.id);
-                          if (selectedPlanId === p.id) {
-                            setSelectedPlanId(null);
-                          }
-                        }}
-                        style={PlanosTab_S12}
-                        title="Eliminar plano"
-                      >
-                        ELIMINAR
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        <div
-          style={{
-            flex: '1 1 50%',
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+          onEliminar={(id) => {
+            removePlan(id);
+            if (selectedPlanId === id) setSelectedPlanId(null);
           }}
-        >
-          <div style={PlanosTab_S13}>
-            <img
-              src="/iconos_civilflow/carga_planos/cargados.webp"
-              alt="Cargados"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle' }}
-              loading="lazy"
-            />
-            Cargados {confirmedPlanos.length > 0 && `(${confirmedPlanos.length})`}
-          </div>
-          {confirmedPlanos.length === 0 ? (
-            <div
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <div
-                style={{
-                  padding: '24px 0',
-                  textAlign: 'center',
-                  color: 'var(--txt3)',
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ fontSize: 24, marginBottom: 4 }}>{'\u{1F4CB}'}</div>
-                Aún no hay planos cargados
-              </div>
-            </div>
-          ) : (
-            <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }}>
-              {confirmedPlanos.map((p) => (
-                <li
-                  key={p.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 10px',
-                    borderBottom: '1px solid var(--line)',
-                    background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent',
-                    transition: 'background .1s',
-                  }}
-                >
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 500,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {p.name}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: 'var(--txt3)',
-                        display: 'flex',
-                        gap: 5,
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      {p.nivel !== null && <span>{pisoLbl(p.nivel)}</span>}
-                      {p.origen && origenesCompartidos.has(`${p.origen.x_px}|${p.origen.y_px}`) && (
-                        <span
-                          style={{ color: '#F5A623', fontSize: 11, fontWeight: 600 }}
-                          title="Esta lámina comparte el origen px con otra: si las hojas no están exactamente alineadas, re-marque el origen (CALIBRAR) en el mismo punto físico del AutoCAD para que copias e isometría queden verticales entre pisos."
-                        >
-                          ⚠ Origen compartido
-                        </span>
-                      )}
-                      {p.scale ? (
-                        <>
-                          <span style={{ color: 'var(--line)' }}>|</span>
-                          {p.definedScale ? (
-                            <span>Diseño 1:{Math.round(p.definedScale * 100)}</span>
-                          ) : null}
-                          {p.definedScale ? <span style={{ color: 'var(--line)' }}>|</span> : null}
-                          <span style={{ color: 'var(--txt2)' }}>
-                            Calibrada 1:{Math.round(p.scale)}
-                          </span>
-                        </>
-                      ) : null}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedPlanId(p.id);
-                      setAutoOrigen(false);
-                      setCalibrating(true);
-                    }}
-                    style={{ ...PlanosTab_verBtn, flexShrink: 0 }}
-                    title="Re-marcar origen / recalibrar esta lámina"
-                  >
-                    CALIBRAR
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPlanId(p.id)}
-                    style={{
-                      ...PlanosTab_verBtn,
-                      background:
-                        selectedPlanId === p.id ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)',
-                      color: selectedPlanId === p.id ? '#00dce5' : 'var(--txt2)',
-                      flexShrink: 0,
-                    }}
-                    title="Vista previa"
-                  >
-                    VER
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removePlan(p.id)}
-                    style={PlanosTab_S14}
-                    title="Eliminar"
-                  >
-                    ELIMINAR
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+          onAbrirArchivos={() => fileRef.current?.click()}
+        />
+
+        <ListaCargados
+          planos={confirmedPlanos}
+          selectedPlanId={selectedPlanId}
+          origenesCompartidos={origenesCompartidos}
+          onSelect={(id) => setSelectedPlanId(id)}
+          onCalibrar={(id) => {
+            setSelectedPlanId(id);
+            setAutoOrigen(false);
+            setCalibrating(true);
+          }}
+          onEliminar={(id) => removePlan(id)}
+        />
       </div>
 
-      {nivelPickerPlanId !== null && (
-        // Backdrop con cierre por click-fuera: patrón estándar de modal.
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.5)',
-          }}
-          onClick={() => setNivelPickerPlanId(null)}
-        >
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-          <div
-            style={{
-              background: 'var(--bg2)',
-              border: '1px solid var(--line)',
-              borderRadius: 'var(--r)',
-              padding: 16,
-              minWidth: 220,
-              maxWidth: 300,
-              boxShadow: '0 8px 32px rgba(0,0,0,.4)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--txt)' }}>
-              Asignar piso al plano
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {pisos
-                .filter(
-                  (s) =>
-                    !plans.some(
-                      (x) =>
-                        x.id !== nivelPickerPlanId && x.status === 'confirmed' && x.nivel === s.n,
-                    ),
-                )
-                .map((s) => (
-                  <button
-                    key={s.n}
-                    type="button"
-                    onClick={() => handleAsignarPiso(nivelPickerPlanId, s.n)}
-                    style={{
-                      padding: '6px 10px',
-                      borderRadius: 'var(--r)',
-                      border: '1px solid var(--line)',
-                      background: 'var(--bg3)',
-                      color: 'var(--txt)',
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      textAlign: 'left',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(14,204,122,0.12)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'var(--bg3)';
-                    }}
-                  >
-                    {pisoLbl(s.n)}
-                  </button>
-                ))}
-              {pisos.filter(
-                (s) =>
-                  !plans.some(
-                    (x) =>
-                      x.id !== nivelPickerPlanId && x.status === 'confirmed' && x.nivel === s.n,
-                  ),
-              ).length === 0 && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--txt4)',
-                    padding: '8px 0',
-                    textAlign: 'center',
-                  }}
-                >
-                  Todos los pisos ya tienen un plano asociado
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setNivelPickerPlanId(null)}
-              style={{
-                marginTop: 10,
-                width: '100%',
-                padding: '5px 0',
-                borderRadius: 'var(--r)',
-                border: '1px solid var(--line)',
-                background: 'transparent',
-                color: 'var(--txt3)',
-                cursor: 'pointer',
-                fontSize: 12,
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
-      {origenModalPlanId !== null && (
-        // Modal de flujo: "esta lámina necesita SU propio origen". Al confirmar, el
-        // configurador abre directo en modo marcado de origen (autoOrigen).
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.5)',
-          }}
-          onClick={() => setOrigenModalPlanId(null)}
-        >
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-          <div
-            role="dialog"
-            aria-label="Definir origen de la lámina"
-            style={{
-              background: 'var(--bg2)',
-              border: '1px solid var(--line)',
-              borderRadius: 'var(--r)',
-              padding: 16,
-              minWidth: 260,
-              maxWidth: 360,
-              boxShadow: '0 8px 32px rgba(0,0,0,.4)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--txt)' }}>
-              📍 Define el origen de este plano
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--txt2)', lineHeight: 1.5 }}>
-              Piso asignado a <b>{plans.find((p) => p.id === origenModalPlanId)?.name}</b>. La
-              escala del proyecto ya está aplicada, pero a cada plano se le debe definir su propio
-              origen.
-            </div>
-            <button
-              type="button"
-              onClick={() => abrirConfiguradorOrigen(origenModalPlanId)}
-              style={{
-                marginTop: 12,
-                width: '100%',
-                padding: '7px 0',
-                borderRadius: 'var(--r)',
-                border: '1px solid rgba(14,204,122,0.3)',
-                background: 'rgba(14,204,122,0.1)',
-                color: '#0ECC7A',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              📍 Marcar origen
-            </button>
-          </div>
-        </div>
-      )}
+      <ModalNivelPiso
+        plans={plans}
+        pisos={pisos}
+        planId={nivelPickerPlanId}
+        onSelect={handleAsignarPiso}
+        onClose={() => setNivelPickerPlanId(null)}
+      />
+      <ModalOrigenPlan
+        planId={origenModalPlanId}
+        planNombre={plans.find((p) => p.id === origenModalPlanId)?.name || ''}
+        onConfirmar={abrirConfiguradorOrigen}
+        onClose={() => setOrigenModalPlanId(null)}
+      />
     </div>
   );
 }

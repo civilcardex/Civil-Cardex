@@ -212,7 +212,9 @@ export function _trySelBajanteDrag(
 
   if (ensureActiveNet(engine, sel.net)) return true;
   if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
-    const lPos = engine.toCvs(sel.labelX, sel.labelY);
+    // Centro pintado (caja) y no labelX/labelY: el des-tapado ya no guarda el sitio elegido, así
+    // que la etiqueta puede estar desplazada en pantalla y tomarla no debe saltar al ancla.
+    const lPos = { x: sel._labelBox.cx, y: sel._labelBox.cy };
     engine._lblDragIsParent = true;
     engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
     return true;

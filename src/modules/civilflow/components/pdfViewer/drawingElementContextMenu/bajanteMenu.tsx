@@ -76,10 +76,13 @@ export function BajanteMenu() {
           <CanalesAsociadosBajSection ctx={ctx} bajEl={bajEl} />
         </>
       )}
-      {/* Montante af/ac: la inversa — gestiona sus ramales asociados desde el montante. */}
-      {bajEl.tipo === 'montante' && (ctx.activeNet === 'af' || ctx.activeNet === 'ac') && (
-        <RamalesAsociadosMontSection ctx={ctx} montante={bajEl} />
-      )}
+      {/* Montante af/ac/gas: la inversa — gestiona sus ramales asociados desde el montante.
+          gas incluido: el motor (apply/espejos/herencia) lo trata como red de presión igual que
+          af (Agua Fria)/ac (Agua Caliente); el menú quedó atrás. */}
+      {bajEl.tipo === 'montante' &&
+        (ctx.activeNet === 'af' || ctx.activeNet === 'ac' || ctx.activeNet === 'gas') && (
+          <RamalesAsociadosMontSection ctx={ctx} montante={bajEl} />
+        )}
       {isSanOrLl && (
         <BajanteConnectionPanel
           element={bajEl}

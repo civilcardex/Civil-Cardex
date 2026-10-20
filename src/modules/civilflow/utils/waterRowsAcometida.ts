@@ -1,12 +1,12 @@
-import type { Tramo } from '../context/tramosReducer';
+﻿import type { Tramo } from '../context/tramosReducer';
+import { leerDocDePlan } from './readPlanDrawing';
+import { diamFractionValue } from './diamFractionValue';
 import { hunterQ } from '../components/waterNetworkDesign/rowPhysics';
 import type { PlanItem } from '../context/PlansContext';
 import { AF_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
 import { calcUCparcial } from './componentHelpers';
 import { calcLeAcces } from './fittingsUtils';
 import { computeComponentTotals } from '../lib/shared/connectionGraph';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
-import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { findContadorBajante } from './writeDiameterToDrawing';
@@ -14,7 +14,6 @@ import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { distToPolyline } from '../lib/shared/geometry';
 import { isContador, isAC1, isAC2, type BajanteRaw } from './waterRowsShared';
 import { perfilDe } from '../constants/normasPais';
-
 /** Resumen de la acometida: tramos red→contador y contador→montante, con presiones y validez. */
 export interface AcometidaSummary {
   tr1: {
@@ -59,19 +58,6 @@ export interface AcometidaSummary {
   pResidual: number;
   estadoOk: boolean;
 }
-
-function diamFractionValue(valStr: string): number {
-  if (!valStr) return 0;
-  if (valStr.includes('1/2')) return 0.5;
-  if (valStr.includes('3/4')) return 0.75;
-  if (valStr.includes('1 1/4')) return 1.25;
-  if (valStr.includes('1 1/2')) return 1.5;
-  const match = valStr.match(/(\d+)\/(\d+)/);
-  if (match) return parseInt(match[1]) / parseInt(match[2]);
-  const num = parseFloat(valStr.replace(/[^0-9.]/g, ''));
-  return isNaN(num) ? 0 : num;
-}
-
 // Espeja el cálculo del panel Acometida propio de WaterNetworkDesign.tsx (mismo grafo de
 // conectividad que computeWaterNetworkRows de arriba, misma fórmula calcFila, mismos defaults de
 // respaldo para el caso no-dibujado) como función pura — para que, como computeWaterNetworkRows,
@@ -96,20 +82,18 @@ export function computeAcometidaSummary(
     const a = APARATOS_DEF.find((x) => x.id === id);
     return a ? { id: a.id, uc: a.uc_af } : null;
   }).filter((x): x is { id: string; uc: number } => x !== null);
-
   const tramos = tramosAf;
   const tr1 = tramos.find(isAC1);
   const tr2 = tramos.find(isAC2);
   // Sin retorno temprano cuando ninguno está dibujado — el panel propio de SupplyConnection.tsx
   // tampoco se oculta nunca; solo cae a sus valores default de AC-01/AC-02 (los mismos defaults
   // usados abajo), así que la exportación debe mostrar lo mismo que vería la pantalla viva.
-
   // ── Grafo de conectividad (igual que computeWaterNetworkRows) — solo se necesita para Qaco vía el total de componente de tr2 ──
   const calculoMap: Record<string, string[]> = {};
   const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
+    const raw = leerDocDePlan<DrawingData | string | null>(plan.id);
     if (!raw) continue;
     let data: DrawingData = raw as DrawingData;
     if (typeof raw === 'string') {
@@ -213,7 +197,6 @@ export function computeAcometidaSummary(
     adj,
     (t) => calcUCparcial(t, AP, 'uc'),
   );
-
   // ── Resolución específica de acometida (espeja las props de SupplyConnection.tsx exactamente) ──
   const resolvedMonName = (() => {
     if (tr2) {
@@ -238,7 +221,6 @@ export function computeAcometidaSummary(
     return match ? match.nominal : '3/4" RDE 11';
   })();
   const resolvedRedContDiam = resolvedContMonDiam;
-
   const resolvedL1 = (() => {
     if (tr1) {
       const opt = resolvedRedContDiam
@@ -263,10 +245,8 @@ export function computeAcometidaSummary(
     }
     return { h: 7.54, v: 0, le: 0 };
   })();
-
   let ucTotal = 0;
   for (const t of tramos) ucTotal += calcUCparcial(t, AP, 'uc');
-
   const Qaco = (() => {
     if (tr2) {
       const ownKey = tr2._key || tr2.id;
@@ -277,7 +257,6 @@ export function computeAcometidaSummary(
     }
     return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
   })();
-
   const calcFila = (
     nominal: string,
     h: number,
@@ -304,7 +283,6 @@ export function computeAcometidaSummary(
     const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
     return { dInt, V, Lt, hfPct, hfM, Pfin };
   };
-
   const cHW1 = matHazenC(tr1?.material || '') ?? 150;
   const cHW2 = matHazenC(tr2?.material || '') ?? 150;
   const acoPini = 20.0;
@@ -326,7 +304,6 @@ export function computeAcometidaSummary(
     f1.Pfin,
     cHW2,
   );
-
   // ── Selección de contador: dinámica desde el diámetro de un bajante, espejando WaterNetworkDesign.tsx ──
   let acoContIx = 2;
   const found = findContadorBajante(plans, networkType);
@@ -345,7 +322,6 @@ export function computeAcometidaSummary(
   // la mínima del aparato más desfavorable del país (pMinAparato).
   const pResidual = f2.Pfin;
   const okPresion = pResidual >= perfilDe(pais).af.pMinAparato;
-
   const diamPropuesto1 =
     DIAM_OPTS.find((o) => o.nominal === resolvedRedContDiam)?.label || resolvedRedContDiam || '';
   const diamPropuesto2 =
@@ -354,7 +330,6 @@ export function computeAcometidaSummary(
   const dValCont = diamFractionValue(contadorSel.dn || '0');
   const diamDiff = dValAco - dValCont;
   const diamConformeOk = diamDiff <= 0.5;
-
   return {
     tr1: {
       desde: 'Red Pública',

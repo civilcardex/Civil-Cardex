@@ -7,6 +7,32 @@ import { DIR_MAP, ventLabelLines, renderBajanteLabel, drawDireccionSymbol } from
 /** Pinta las tuberías verticales "fantasma" de este piso (las que aparecen corridas o con otra
  *  dirección) con línea punteada y su etiqueta, para que se vea que son la misma tubería vista
  *  desde otro nivel. */
+/**
+ * Direcci\u00f3n en la que la etiqueta del fantasma se separa de la del original.
+ *
+ * El fantasma es el ANILLO del bajante de otro piso: se dibuja donde est\u00e1 el padre, as\u00ed que
+ * su etiqueta cae encima de la del original (el propio c\u00f3digo lo describe: "solo duplica la
+ * etiqueta"). Aqu\u00ed se calcula la direcci\u00f3n para alejarla: si el original tiene etiqueta,
+ * se va en sentido contrario (hacia el lado libre del anillo); si no, al lado (como antes).
+ * @returns el vector unitario del offset.
+ */
+export function direccionDeEtiquetaGhost(
+  original: { labelX?: number; labelY?: number } | undefined,
+  gx: number,
+  gy: number,
+): { x: number; y: number } {
+  const lx = original?.labelX;
+  const ly = original?.labelY;
+  if (typeof lx !== 'number' || typeof ly !== 'number') return { x: 1, y: 0 };
+  // Del centro del anillo hacia el lado libre: el vector va de la etiqueta del ORIGINAL hacia
+  // el anillo (seguirlo = alejarse de la etiqueta).
+  const dx = gx - lx;
+  const dy = gy - ly;
+  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return { x: 1, y: 0 };
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: dx / len, y: dy / len };
+}
+
 export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const fg = engine.getBajantesFantasma();
   fg.forEach((b) => {
@@ -27,8 +53,17 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const r = engine.realMmToCanvasPx(20) * 0.6;
     b._ghost = { x: c.x, y: c.y, r };
 
-    // La etiqueta del fantasma siempre horizontal
+    // La etiqueta del fantasma: siempre horizontal (la del padre tambi\u00e9n) y SIEMPRE
+    // separada de la del original, que puede estar en el mismo punto (el fantasma es el
+    // anillo del bajante de otro piso, dibujado donde est\u00e1 el padre: sin apartarla, las
+    // dos etiquetas se pisan una encima de otra).
     const ghostAngle = 0;
+    // Direcci\u00f3n del offset: la etiqueta del fantasma se va AWAY de la del original
+    // (hacia el lado libre del anillo). Si el original no tiene etiqueta o est\u00e1 en otro
+    // sitio, al lado (como antes).
+    const dir = direccionDeEtiquetaGhost(b, gx, gy);
+    const ghostAngleX = dir.x;
+    const ghostAngleY = dir.y;
 
     // Círculo del fantasma: mismo tamaño, color y opacidad completa que el círculo propio del
     // padre (por pedido explícito — el fantasma debe verse exactamente como su padre, tamaño e
@@ -115,8 +150,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
         ghostOffY = (gd.labelY - gy) * engine.zoom;
       } else {
         const distPx = engine.mm2cvs(15);
-        ghostOffX = distPx * Math.cos(ghostAngle);
-        ghostOffY = distPx * Math.sin(ghostAngle);
+        ghostOffX = distPx * ghostAngleX;
+        ghostOffY = distPx * ghostAngleY;
       }
       const offDx = ghostOffX;
       const offDy = ghostOffY;
@@ -273,6 +308,8 @@ export function renderCrossFloorGhosts(
     // antes de que existiera este campo.
     const dirWord = DIR_MAP[g.parentDireccion ?? g.direccion ?? ''] || '';
     let dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+    // Sin conteo de UC (orig. usuario): el marcador es solo referencia del enlace — la carga
+    // heredada se lee en el montante de destino y en el Ldesvio, no en el XFG.
     if (g.net === 'vent') {
       const v = ventLabelLines(line1, diamStr, dirWord);
       line1 = v.line1;

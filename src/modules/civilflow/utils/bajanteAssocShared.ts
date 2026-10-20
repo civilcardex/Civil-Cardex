@@ -1,4 +1,5 @@
-import type { SyncPlanInput } from './drawingSync';
+﻿import type { SyncPlanInput } from './drawingSync';
+import { aplicarEnDocDePlan, type MotorDoc } from './writePlanDoc';
 import {
   isLdesvioRamalId,
   hasCachedPlan,
@@ -9,8 +10,13 @@ import {
 import { origenDePlan } from './crossFloorStorage';
 import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import {
+  TRAZOS_PREFIX,
+  APARATOS_HEREDADOS_KEY,
+  APARATOS_HEREDADOS_TRIB_KEY,
+} from '../constants/storage-keys';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
+import { bajanteEntregaSuCargaAlRamal } from './propagation/counting';
 export interface StoredBajanteDesp {
   id: string;
   desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
@@ -105,21 +111,44 @@ export interface InheritPoolRamal {
   _tribReversed?: boolean;
   mergesFrom?: [string, string] | string[];
   fixtures?: Record<string, number>;
+  /** Código del elemento del que ARRANCA el ramal (si el ramal nace en él, es su salida). */
+  ini?: string;
   [k: string]: unknown;
 }
 
 export interface InheritPoolBajante {
   id: string;
+  tipo?: string;
+  /** Código visible del bajante (el que guardan los ramales en `ini`). */
+  code?: string;
+  /** Ramales asociados a mano (checkbox): el bajante les ENTREGA su carga (no le traen). */
+  asocManual?: string[];
   recibeDeIds?: string[];
   alimentaIds?: string[];
   x?: number;
   y?: number;
+  /** Puntero de asociación entre pisos (apunta ARRIBA): marca al portador como RECEPTOR. */
+  origenId?: string | null;
+  /** Puntero a bomba: también receptor (herencia invertida). */
+  bombaEnId?: string | null;
+  /** Libro de herencia: lo que el piso de arriba dejó aplicado en este bajante (asociación
+   *  entre pisos). Es la carga HEREDADA — el árbol local puede no traerla (el Ldesvio queda
+   *  fuera del árbol por diseño) y sin ella una cadena de tres pisos pierde la carga. */
+  ucAplicado?: Record<string, Record<string, number>>;
 }
 
 export interface CollectedAgg {
   agg: Record<string, number>;
   hydroAgg: Record<string, number> | null;
   ramalIds: string[];
+}
+
+// Traza del último grupo calculado (diagnóstico __cfDiag → asoc[].grupoDetalle): dice de
+// dónde salió CADA pieza del grupo — clave propia, cierre de ramales, ramales servidos y
+// qué libro se mezcló. Con esto un dump nombra la rama exacta sin adivinar.
+let trazaUltimoGrupo: Record<string, unknown> | null = null;
+export function trazaDeUltimoGrupo(): Record<string, unknown> | null {
+  return trazaUltimoGrupo;
 }
 
 export const GEO_TOL_UPSTREAM = 0.6;
@@ -135,19 +164,126 @@ export function flowHeadOf(r: InheritPoolRamal): number[] | null {
   return r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
 }
 
+/** Registra el desvío en L (LD) como RAMAL ASOCIADO del bajante/montante al que LLEGA (el
+ *  original del piso destino): lo añade a `recibeDeIds` + `asocManual` (la asociación a mano
+ *  no se poda por geometría) y marca el `fin` del LD con el código del bajante. Con esto el
+ *  "Ramal asociado" aparece MARCADO en el panel derecho y en el menú contextual, y el estado
+ *  es REAL (guardado en el doc), no un dibujito del menú (orig. usuario). */
+export function registrarLdesvioComoAsociado(args: {
+  planId: string | number;
+  bajanteId: string;
+  bajanteCode: string;
+  ldId: string;
+  eng?: MotorDoc | null;
+}): void {
+  const { planId, bajanteId, bajanteCode, ldId, eng } = args;
+  if (!bajanteId || !ldId) return;
+  aplicarEnDocDePlan(eng ?? null, planId, (doc) => {
+    for (const raw of doc.bajantes || []) {
+      const b = raw as { id: string; recibeDeIds?: string[]; asocManual?: string[] };
+      if (b.id !== bajanteId) continue;
+      const recibe = new Set(b.recibeDeIds || []);
+      const manual = new Set(b.asocManual || []);
+      if (!recibe.has(ldId)) recibe.add(ldId);
+      if (!manual.has(ldId)) manual.add(ldId);
+      b.recibeDeIds = [...recibe];
+      b.asocManual = [...manual];
+    }
+    for (const raw of doc.ramales || []) {
+      const r = raw as { id: string; fin?: string };
+      if (r.id !== ldId) continue;
+      r.fin = bajanteCode;
+    }
+  });
+}
+
+/** Quita el desvío en L (LD) de la asociación del bajante (muere con el enlace): lo saca de
+ *  `recibeDeIds` + `asocManual`. Sin esto, el LD muerto quedaba en la lista y los espejos le
+ *  escribían la carga del bajante (una clave fantasma que el usuario veía como UDs
+ *  residuales, orig. usuario). */
+export function desasociarLdesvioDeBajante(args: {
+  planId: string | number;
+  bajanteId: string;
+  ldId: string;
+  eng?: MotorDoc | null;
+}): void {
+  const { planId, bajanteId, ldId, eng } = args;
+  if (!bajanteId || !ldId) return;
+  aplicarEnDocDePlan(eng ?? null, planId, (doc) => {
+    for (const raw of doc.bajantes || []) {
+      const b = raw as { id: string; recibeDeIds?: string[]; asocManual?: string[] };
+      if (b.id !== bajanteId) continue;
+      const recibe = b.recibeDeIds || [];
+      const manual = b.asocManual || [];
+      b.recibeDeIds = recibe.filter((id) => id !== ldId);
+      b.asocManual = manual.filter((id) => id !== ldId);
+    }
+  });
+}
+
+/** Ramales a los que el bajante/montante ENTREGA su carga (fase 3b, upMonte). Mismos criterios
+ *  que la entrega — una sola fuente de verdad ({@link bajanteEntregaSuCargaAlRamal}).
+ *  Lo que el bajante alimenta NO le trae nada: su carga ya va en su disco → sumarla al
+ *  grupo la cuenta dos veces. */
+export function idsServidosPorBajante(args: {
+  bajCode: string;
+  asocManual?: string[];
+  alimentasIds?: string[];
+  pool: InheritPoolRamal[];
+  x?: number;
+  y?: number;
+}): Set<string> {
+  const servidos = new Set<string>();
+  for (const r of args.pool) {
+    if (
+      bajanteEntregaSuCargaAlRamal({
+        ramalId: r.id,
+        ramalIni: typeof r.ini === 'string' ? r.ini : undefined,
+        ramalFin: typeof r.fin === 'string' ? r.fin : undefined,
+        cola: flowTailOf(r),
+        cabeza: flowHeadOf(r),
+        bajCode: args.bajCode,
+        bajX: args.x,
+        bajY: args.y,
+        alimentaIds: args.alimentasIds,
+        asocManual: args.asocManual,
+      })
+    )
+      servidos.add(r.id);
+  }
+  return servidos;
+}
+
 /** Todos los ramales que terminan drenando en este bajante, siguiendo la cadena completa (tributarios, uniones y mergesFrom incluidos) — solo sus ids, sin conteos. */
 export function upstreamRamalIdsForBajante(args: {
   net: string;
   bajId: string;
+  bajCode?: string;
+  asocManual?: string[];
   bajX?: number;
   bajY?: number;
   recibeDeIds: string[];
   alimentaIds: string[];
   pool: InheritPoolRamal[];
 }): string[] {
-  const { net, bajX, bajY, recibeDeIds, alimentaIds, pool } = args;
+  const { net, bajCode, asocManual, bajX, bajY, recibeDeIds, alimentaIds, pool } = args;
   const byId = new Map(pool.map((r) => [r.id, r]));
-  const excluded = new Set(alimentaIds);
+  const esPresion = net !== 'san' && net !== 'll';
+  // Excluidos del cierre: lo que el bajante ALIMENTA (no le trae nada: su carga ya va en su
+  // disco → sumarla la contaba dos veces, orig. usuario: 3 UC + 3 UC del ramal = 6) y sus
+  // espejos. En san/ll la clave del ramal ES la carga que drena: no se excluye nada.
+  const excluded = new Set<string>(alimentaIds);
+  if (esPresion) {
+    for (const id of idsServidosPorBajante({
+      bajCode: bajCode || '',
+      asocManual,
+      alimentasIds: alimentaIds,
+      pool,
+      x: bajX,
+      y: bajY,
+    }))
+      excluded.add(id);
+  }
   const netOk = (r: InheritPoolRamal | undefined): r is InheritPoolRamal =>
     !!r && (r.net ?? net) === net && !isLdesvioRamalId(r.id);
   const queue: string[] = [...recibeDeIds];
@@ -230,18 +366,66 @@ export function collectSourceAgg(args: {
   const live = args.liveBaj ?? args.storedBaj;
   const pool =
     args.liveRamales && args.liveRamales.length ? args.liveRamales : args.storedRamales || [];
-  const ramalIds = upstreamRamalIdsForBajante({
-    net,
-    bajId,
-    bajX: live?.x,
-    bajY: live?.y,
-    recibeDeIds: live?.recibeDeIds || [],
-    alimentaIds: live?.alimentaIds || [],
-    pool,
-  });
+  const esMonte = live?.tipo === 'montante' || args.storedBaj?.tipo === 'montante';
+  // MONTANTES de presión (af/ac/gas): el ramal que el montante ALIMENTA ya lleva la carga del
+  // montante en su disco (upMonte se la entregó) — sumarle la clave COMPLETA cuenta esa carga
+  // DOS veces (3 UC del montante + 3 UC del ramal = 6: el grupo que bajaba triplicado). Esos
+  // ramales quedan FUERA del cierre (no son fuentes) y aportan solo lo PROPIO (rama `servi`).
+  const esPresion = net !== 'san' && net !== 'll';
+  let serviIds: string[] = [];
+  // MONTANTE de presión = la MISMA verdad que su panel: clave propia + ramales listados en
+  // recibeDeIds (walk PLANO — nada de cierre geométrico). El dump v54 lo cerró: el cierre
+  // geométrico recogía ramales del superior con discos inflados de eras viejas que el panel
+  // NO suma (14.5 abajo con 4.5 arriba). Los servidos (los que ÉL alimenta) aportan solo su
+  // propio, con la resta de entrega.
+  const servi = (() => {
+    if (!(esMonte && esPresion)) return new Set<string>();
+    const base = idsServidosPorBajante({
+      bajCode: live?.code || args.storedBaj?.code || bajId,
+      asocManual: live?.asocManual || args.storedBaj?.asocManual,
+      alimentasIds: [...(live?.alimentaIds || args.storedBaj?.alimentaIds || [])],
+      pool,
+      x: live?.x ?? args.storedBaj?.x,
+      y: live?.y ?? args.storedBaj?.y,
+    });
+    for (const id of live?.alimentaIds || args.storedBaj?.alimentaIds || []) base.delete(id);
+    return base;
+  })();
+  serviIds = [...servi];
+  const ramalIds =
+    esMonte && esPresion
+      ? [...new Set([...(live?.recibeDeIds || []), ...(args.storedBaj?.recibeDeIds || [])])]
+      : upstreamRamalIdsForBajante({
+          net,
+          bajId,
+          bajCode: live?.code || args.storedBaj?.code || bajId,
+          asocManual: live?.asocManual || args.storedBaj?.asocManual,
+          bajX: live?.x,
+          bajY: live?.y,
+          recibeDeIds: live?.recibeDeIds || [],
+          alimentaIds: live?.alimentaIds || [],
+          pool,
+        });
   const byId = new Map(pool.map((r) => [r.id, r]));
   const agg: Record<string, number> = {};
   let hydroAgg: Record<string, number> | null = null;
+  // Piezas de la traza (se rellenan a lo largo de la función).
+  let trazaLibroMezclado: Record<string, unknown> | null = null;
+  // Libros de herencia (separan lo PROPIO de cada clave servida de lo que el montante le
+  // entregó por upMonte): cargados una vez — misma resta de fase A del propagador.
+  let hered: Record<string, Record<string, number>> = {};
+  let heredTrib: Record<string, Record<string, number>> = {};
+  if (esMonte && esPresion) {
+    try {
+      hered = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_HEREDADOS_KEY, {});
+      heredTrib = loadFromStorage<Record<string, Record<string, number>>>(
+        APARATOS_HEREDADOS_TRIB_KEY,
+        {},
+      );
+    } catch {
+      /* sin storage (tests) */
+    }
+  }
   const sumKey = (rid: string) => {
     const sk = `${net}_${rid}_${planId}`;
     const m = counts[sk];
@@ -251,7 +435,26 @@ export function collectSourceAgg(args: {
         : byId.get(rid)?.fixtures && Object.keys(byId.get(rid)!.fixtures!).length
           ? (byId.get(rid)!.fixtures as Record<string, number>)
           : undefined;
-    if (fuente) for (const [k, v] of Object.entries(fuente)) agg[k] = (agg[k] || 0) + (v as number);
+    if (fuente) {
+      // Ramales que ENTRAN al bajante. En montantes de presión, si el ramal también es
+      // SERVIDO (lo que él alimenta), solo cuenta lo PROPIO (disco − heredados − trib: lo
+      // que el montante le entregó ya viaja en su clave propia — regla del panel). Sin
+      // libro de heredados, la clave completa (el panel tampoco puede separar).
+      const her = esMonte && esPresion && servi.has(rid) ? hered[sk] : undefined;
+      if (her && Object.keys(her).length) {
+        const trib = heredTrib[sk] || {};
+        for (const [k, v] of Object.entries(fuente)) {
+          const propio = Math.max(0, (Number(v) || 0) - (her[k] || 0) - (trib[k] || 0));
+          if (propio > 0) agg[k] = (agg[k] || 0) + propio;
+        }
+      } else {
+        // Cierre = ramales que ENTRAN al bajante: su libro de heredados es carga de uniones
+        // aguas arriba (legítima, viaja con él — test "un ramal de aguas arriba conserva su
+        // heredado (unión)"). NO se resta aquí; la resta de entrega del montante va solo en
+        // la rama servi (ramales que ÉL alimenta).
+        for (const [k, v] of Object.entries(fuente)) agg[k] = (agg[k] || 0) + (v as number);
+      }
+    }
     const h = hidro[sk];
     if (h?.accesorios && Object.keys(h.accesorios).length) {
       if (!hydroAgg) hydroAgg = {};
@@ -264,7 +467,109 @@ export function collectSourceAgg(args: {
   const own = counts[ownKey];
   if (own) for (const [k, v] of Object.entries(own)) agg[k] = (agg[k] || 0) + (v as number);
   for (const rid of ramalIds) sumKey(rid);
+  // MONTANTES (af/ac/gas): ramales SERVIDOS que NO están en recibeDeIds (los que el montante
+  // alimenta sin que la lista los traiga) aportan solo lo PROPIO (disco − heredados − trib;
+  // sin libro, máximo por aparato — conservador). Los de recibeDeIds ya entraron por sumKey.
+  if (esMonte && esPresion) {
+    const serviAgg: Record<string, number> = {};
+    let todosConLibro = true;
+    for (const rid of servi) {
+      if (ramalIds.includes(rid)) continue; // ya entró por recibeDeIds
+      const sk = `${net}_${rid}_${planId}`;
+      const m = counts[sk];
+      if (!m || !Object.keys(m).length) continue;
+      const her = hered[sk];
+      const trib = heredTrib[sk] || {};
+      if (her && Object.keys(her).length) {
+        for (const [k, v] of Object.entries(m)) {
+          const propio = Math.max(0, (Number(v) || 0) - (her[k] || 0) - (trib[k] || 0));
+          if (propio > 0) serviAgg[k] = (serviAgg[k] || 0) + propio;
+        }
+      } else {
+        todosConLibro = false;
+        for (const [k, v] of Object.entries(m))
+          serviAgg[k] = Math.max(serviAgg[k] || 0, Number(v) || 0);
+      }
+    }
+    if (Object.keys(serviAgg).length) {
+      for (const [k, v] of Object.entries(serviAgg)) {
+        agg[k] = todosConLibro ? (agg[k] || 0) + v : Math.max(agg[k] || 0, v);
+      }
+    }
+  }
+  // Libro de herencia (asociación entre pisos): la carga que el piso de ARRIBA dejó en este
+  // bajante. Se mezcla con MÁXIMO por aparato, no sumando: el árbol local puede traer ya esa
+  // misma carga (el ramal que la recibió) y sumarla la contaría DOS veces. Con MÁXIMO:
+  //  - piso con ramales: árbol = 3, libro = 3 -> 3 (no 6).
+  //  - piso intermedio SIN ramales (cadena de 3 pisos): el Ldesvio queda FUERA del árbol por
+  //    diseño, así que el árbol = 0 y el libro = 3 -> 3 (la cadena no pierde la carga).
+  // El motor vivo y el storage se mezclan con MÁXIMO: el vivo puede venir stale (autosave con
+  // retardo) y el storage puede no estar yet.
+  // SOLO RECEPTORES (orig. usuario MAC1: 15.5 rancio): un montante FUENTE puro (sin
+  // origenId/bombaEnId ni recibeDeIds) con libro de una era anterior envenenaba el grupo que
+  // baja — con máximo, el libro rancio (15.5) le ganaba al árbol fresco (4.5). El libro del
+  // propio bajante solo representa herencia legítima cuando ÉL recibe de alguien.
+  const esReceptorDeAlguien = !!(
+    live?.recibeDeIds?.length ||
+    args.storedBaj?.recibeDeIds?.length ||
+    live?.origenId ||
+    args.storedBaj?.origenId ||
+    live?.bombaEnId ||
+    args.storedBaj?.bombaEnId
+  );
+  if (esReceptorDeAlguien) {
+    // Forma anidada de 5bis ({clave_propia: totales}): la carga que el montante RECIBE de
+    // sus alimentadores — se mezcla siempre (los alimentadores pueden no estar en el cierre
+    // por listas stale; con máximo jamás infla).
+    const propia = live?.ucAplicado?.[ownKey] ?? args.storedBaj?.ucAplicado?.[ownKey];
+    if (propia)
+      for (const [k, v] of Object.entries(propia)) agg[k] = Math.max(agg[k] || 0, Number(v) || 0);
+    // Libro ramal-claveado (el grupo escrito por apply/espejos): SOLO para ESLABONES de
+    // cadena — montantes que SON receptores entre pisos (origenId/bombaEnId) con el árbol
+    // vacío (la cadena 3→2→1 depende de él). UNA FUENTE (sin origenId/bomba) jamás mezcla
+    // libro: su árbol vacío significa que no tiene carga, y su libro ramal-claveado es
+    // residuo de una asociación antigua (con roles invertidos) que nadie re-escribe —
+    // mezclarlo re-inyectaba el rancio en cada pase (orig. usuario: 15.5 abajo con el
+    // panel de arriba sin aparatos que justifiquen ese grupo).
+    const esEslabon = !!(
+      live?.origenId ||
+      args.storedBaj?.origenId ||
+      live?.bombaEnId ||
+      args.storedBaj?.bombaEnId
+    );
+    if (!Object.keys(agg).length && esEslabon) {
+      const libro = libroHeredadoDe(live?.ucAplicado);
+      for (const [k, v] of Object.entries(libroHeredadoDe(args.storedBaj?.ucAplicado)))
+        libro[k] = Math.max(libro[k] || 0, v);
+      for (const [k, v] of Object.entries(libro)) agg[k] = Math.max(agg[k] || 0, v);
+      trazaLibroMezclado = { entrada: 'passthrough-eslabon', libro };
+    } else {
+      trazaLibroMezclado = null;
+    }
+    if (propia) trazaLibroMezclado = { ...(trazaLibroMezclado || {}), propia5bis: propia };
+  }
+  trazaUltimoGrupo = {
+    ownKey,
+    ownValor: own || null,
+    cierreRamales: ramalIds,
+    serviMontante: esMonte ? serviIds : null,
+    treePiezas: Object.keys(agg).length,
+    agg,
+    esReceptor: esReceptorDeAlguien,
+    libro: trazaLibroMezclado,
+  };
   return { agg, hydroAgg, ramalIds };
+}
+
+/** Suma del libro de herencia por aparato, tomando el MÁXIMO de cada entrada (el libro tiene
+ *  una entrada por pieza que recibió la carga y todas llevan la misma). */
+function libroHeredadoDe(
+  libro: Record<string, Record<string, number>> | undefined,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const m of Object.values(libro || {}))
+    for (const [k, v] of Object.entries(m)) out[k] = Math.max(out[k] || 0, Number(v) || 0);
+  return out;
 }
 
 /** Con qué bajantes de OTROS pisos está enlazado este (descargaEnId/origenId): primero se mira el motor vivo, y si ese piso no está abierto, lo guardado. */

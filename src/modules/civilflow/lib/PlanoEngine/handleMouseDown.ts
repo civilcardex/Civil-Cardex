@@ -416,14 +416,17 @@ export function handleSelectDown(
     // arrastre nacería con offsets NaN — se salta como si no hubiera caja.
     if (!r._labelBox || !Number.isFinite(r.labelX) || !Number.isFinite(r.labelY)) continue;
     if (!pointInLabelBox(x, y, r._labelBox)) continue;
-    const lPos0 = engine.toCvs(r.labelX, r.labelY);
+    // Distancia al CENTRO PINTADO (la caja), no a labelX/labelY: con el des-tapado el sitio
+    // elegido ya no se guarda, así que la etiqueta puede estar desplazada en pantalla.
+    const lPos0 = { x: r._labelBox.cx, y: r._labelBox.cy };
     const d0 = Math.hypot(x - lPos0.x, y - lPos0.y);
     if (!boxHit || d0 < boxHit.dist) boxHit = { r, dist: d0 };
   }
   if (boxHit) {
     if (ensureActiveNet(engine, boxHit.r.net)) return;
     engine.selId = boxHit.r.id;
-    const lPosB = engine.toCvs(boxHit.r.labelX, boxHit.r.labelY);
+    const bx = boxHit.r._labelBox!;
+    const lPosB = { x: bx.cx, y: bx.cy };
     engine.lblDrag = { id: boxHit.r.id, offX: x - lPosB.x, offY: y - lPosB.y };
     engine._emitSelect(boxHit.r);
     engine.render();
@@ -444,7 +447,11 @@ export function handleSelectDown(
     if (inBox || nearPoint) {
       if (ensureActiveNet(engine, r.net)) return;
       engine.selId = r.id;
-      engine.lblDrag = { id: r.id, offX: x - lPos.x, offY: y - lPos.y };
+      // El arrastre nace del centro PINTADO: tomar una etiqueta que el des-tapado desplazó en
+      // pantalla no puede saltar el cursor al punto medio del trazo (nearPoint sigue midiendo
+      // contra labelX/labelY, que es el ancla real de la etiqueta).
+      const lbl0 = r._labelBox ? { x: r._labelBox.cx, y: r._labelBox.cy } : lPos;
+      engine.lblDrag = { id: r.id, offX: x - lbl0.x, offY: y - lbl0.y };
       engine._emitSelect(r);
       engine.render();
       return;

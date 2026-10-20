@@ -29,7 +29,7 @@ vi.stubGlobal('localStorage', {
 vi.stubGlobal('window', { dispatchEvent: () => {} });
 
 import { saveToStorage, loadFromStorage } from '../../services/storageService';
-import { propagarAparatosPresion } from '../aparatosPresion';
+import { propagarAparatosPresion } from '../propagation';
 
 const AP_KEY = 'aparatos_by_tramo_v2';
 const PID = 'P2';

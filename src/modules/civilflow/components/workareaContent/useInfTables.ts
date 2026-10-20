@@ -1,45 +1,28 @@
-import { useCallback, useMemo } from 'react';
+﻿import { useCallback, useMemo } from 'react';
+import { useSanTables } from './useSanTables';
+import { useLlTables } from './useLlTables';
+import { useAfTables } from './useAfTables';
+import { useAcTables } from './useAcTables';
 import type { MemoriaTable } from '../../utils/exportMemoryFinal';
-import {
-  pisoLbl,
-  pisoCorto,
-  SAN_UC_IDS,
-  AF_UC_IDS,
-  AC_UC_IDS,
-  APARATOS_DEF,
-} from '../../constants';
+import { pisoLbl, pisoCorto, AF_UC_IDS, AC_UC_IDS } from '../../constants';
 import { isAC2 } from '../../utils/waterRowsShared';
 import { useRainwater } from '../../context/RainwaterContext';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicData';
-import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
 import { computeDesignRow, hunterQ } from '../waterNetworkDesign/rowPhysics';
 import { useWaterNetworkGraph } from '../waterNetworkDesign/useWaterNetworkGraph';
 import { loadFromStorage } from '../../services/storageService';
 import { CHEQUEOS_PRESION_KEY } from '../../constants/storage-keys';
-import { buildSanConnectivity, computeSanRows, computeUdTable } from '../../utils/sanitaryRows';
-import {
-  buildLlBajanteAssociations,
-  computeLlQMap,
-  computeLlRows,
-  getTributarioIds,
-} from '../../utils/rainwaterRows';
-import { computeWaterNetworkRows, computeAcometidaSummary } from '../../utils/waterNetworkRows';
+import { computeAcometidaSummary } from '../../utils/waterNetworkRows';
+import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils';
 import { computeBombaTables, computeEpTables } from '../../utils/equipmentRows';
 import { computeGasRows } from '../../utils/gasRows';
 import { epAlertas, bombaAlertas } from '../../utils/equipmentRows';
-import { computeUcTable } from '../../utils/ucRows';
-import { computeBajanteVentTable } from '../../utils/bajanteVentRows';
-import { computeAccesoriosTable } from '../../utils/sanFittingsRows';
-import { computeAccesoriosPorRamalTable } from '../../utils/fittingsByRamalRows';
-import { computeRainDownpipesTable } from '../../utils/rainDownpipesRows';
 import {
   chequeoCanalLluvia,
   BORDE_LIBRE_CANAL_CM,
   chequeoBajanteLluvia,
 } from '../../utils/calcRainwater';
 import { nDeCanal, cDeCubierta } from '../../constants/engineeringDataMaterials';
-import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows';
-import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows';
 import { perfilDe } from '../../constants/normasPais';
 import type { Tramo } from '../../context/tramosReducer';
 import type { useWorkAreaState } from '../useWorkAreaState';
@@ -74,597 +57,45 @@ export function useInfTables(state: WorkAreaState) {
   const f2 = (n: number) => (n > 0 ? n.toFixed(2) : '—');
 
   // ── SAN ──
-  const sanMergedBase = useMemo(
-    () =>
-      SAN_UC_IDS.map((id) => {
-        const fromAps = aps.find((p) => p.id === id);
-        const def = APARATOS_DEF.find((d) => d.id === id);
-        return { id, nombre: def?.nombre || id, ud: fromAps?.ud ?? def?.ud ?? 0 };
-      }),
-    [aps],
-  );
+  // Las tablas de cada red viven en su propio hook (useSanTables/useLlTables/useAfTables/
+  // useAcTables): este hook las compone con las de gas y la lista final.
+  const san = useSanTables({
+    pisos,
+    plans,
+    tramosSan,
+    aps,
+    udBase,
+    hasSan,
+    hasLl,
+    hasAf,
+    hasAc,
+  });
+  const {
+    sanMergedBase,
+    ucSanTable,
+    bajVentSanTable,
+    sanAccTable,
+    tuberiasSanTable,
+    tuberiasLlTable,
+    tuberiasAfTable,
+    tuberiasAcTable,
+    sanRowsCalc,
+    sanTable,
+  } = san;
+  const ll = useLlTables({
+    plans,
+    tramosLl,
+    bajantesLl,
+    canalesLl,
+    conRecolectora,
+    hasLl,
+  });
+  const { llRowsCalc, llTable, llBajTable, llCanalTable } = ll;
+  const af = useAfTables({ proy, plans, tramosAf, aps, hasAf });
+  const { buildAcometidaTables, ucAfTable, accAfTable, accAfDiamTable, afTable } = af;
+  const ac = useAcTables({ proy, plans, tramosAf, tramosAc, aps, hasAc });
+  const { ucAcTable, heaterTables, accAcTable, accAcDiamTable, acTable } = ac;
 
-  const ucSanTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasSan) return null;
-    return computeUdTable(tramosSan, plans, sanMergedBase);
-  }, [hasSan, tramosSan, plans, sanMergedBase]);
-
-  const bajVentSanTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasSan) return null;
-    return computeBajanteVentTable(tramosSan, plans, udBase, pisos);
-  }, [hasSan, tramosSan, plans, udBase, pisos]);
-
-  const sanAccTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasSan) return null;
-    return computeAccesoriosTable('san', tramosSan, plans);
-  }, [hasSan, tramosSan, plans]);
-
-  const tuberiasSanTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasSan) return null;
-    return computeResumenTuberiasTable('san', plans);
-  }, [hasSan, plans]);
-
-  const tuberiasLlTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasLl) return null;
-    return computeResumenTuberiasTable('ll', plans);
-  }, [hasLl, plans]);
-
-  const tuberiasAfTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAf) return null;
-    return computeResumenTuberiasTable('af', plans);
-  }, [hasAf, plans]);
-
-  const tuberiasAcTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAc) return null;
-    return computeResumenTuberiasTable('ac', plans);
-  }, [hasAc, plans]);
-
-  /** Filas crudas del diseño sanitario (compartidas: tabla + resumen por red). */
-  const sanRowsCalc = useMemo(() => {
-    if (!hasSan) return null;
-    const mergedBase = sanMergedBase;
-    const displayTramos = tramosSan.filter((t) => t.tipo === 'ramal' && !t.esBajante);
-    const { componentTotalMap, fullChildrenMap } = buildSanConnectivity(
-      tramosSan,
-      plans,
-      mergedBase,
-    );
-    return computeSanRows(displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap);
-  }, [hasSan, tramosSan, plans, sanMergedBase]);
-
-  const sanTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasSan) return null;
-    const rows = sanRowsCalc ?? [];
-    return {
-      title: 'Diseño de red sanitaria',
-      headerGroups: [
-        'Tramo',
-        'Nivel',
-        { label: 'Unidades de descarga', span: 3 },
-        'No. Descargas',
-        'K',
-        'Caudal (LPS)',
-        'Manning',
-        'Pendiente (%)',
-        { label: 'Diámetro', span: 3 },
-        'Qo (LPS)',
-        'Vo (m/s)',
-        'Q/Qo',
-        'Velocidad real (m/s)',
-        'Chequeo velocidad',
-        'Yc (mm)',
-        'Yn (mm)',
-        'Froude',
-        'Flujo',
-        'Ymax (mm)',
-        'Yn vs Yc',
-        { label: 'Fuerza Tractiva', span: 2 },
-      ],
-      headers: [
-        'Tramo',
-        'Nivel',
-        'Propia',
-        'Otros',
-        'Total',
-        'No. Descargas',
-        'K',
-        'Caudal (LPS)',
-        'Manning',
-        'Pendiente (%)',
-        'Calculado (")',
-        'Diseño (")',
-        'Interior (mm)',
-        'Qo (LPS)',
-        'Vo (m/s)',
-        'Q/Qo',
-        'Velocidad real (m/s)',
-        'Chequeo velocidad',
-        'Yc (mm)',
-        'Yn (mm)',
-        'Froude',
-        'Flujo',
-        'Ymax (mm)',
-        'Yn vs Yc',
-        'Real (kg/m²)',
-        '>0.15',
-      ],
-      rows: rows.map((r) => [
-        r.id,
-        pisoCorto(r.piso),
-        r.udPropias,
-        Math.max(0, r.udAcum - r.udPropias),
-        r.udAcum,
-        r.nSalidas || '—',
-        r.K != null ? r.K.toFixed(2) : '—',
-        r.Q != null && r.Q > 0 ? r.Q.toFixed(2) : '—',
-        r.n > 0 ? r.n.toFixed(3) : '—',
-        r.sVal > 0 ? r.sVal : '—',
-        r.DcalcPulg > 0 ? r.DcalcPulg.toFixed(2) : '—',
-        r.DdisPulg > 0 ? r.DdisPulg : '—',
-        r.DintMm > 0 ? r.DintMm : '—',
-        f2(r.Qo),
-        f2(r.Vo),
-        f2(r.qqo),
-        f2(r.Vreal),
-        r.chequeoV,
-        f2(r.Yc),
-        f2(r.Yn),
-        f2(r.Froude),
-        r.tipoFlujo,
-        f2(r.Ymax),
-        r.chequeoYn,
-        f2(r.fuerzaTractiva),
-        r.chequeoFT,
-      ]),
-    };
-  }, [hasSan, sanRowsCalc]);
-
-  // ── LL ──
-  /** Filas crudas del diseño de aguas lluvias (compartidas: tabla + resumen por red). */
-  const llRowsCalc = useMemo(() => {
-    if (!hasLl) return null;
-    const tribIds = getTributarioIds(tramosLl);
-    const displayTramos = tramosLl.filter(
-      (t) => t._key != null && !t.esBajante && !tribIds.has(t._key) && !tribIds.has(t.id),
-    );
-    const associations = buildLlBajanteAssociations(tramosLl, plans);
-    const qMap = computeLlQMap(tramosLl, plans, bajantesLl, associations);
-    return computeLlRows(displayTramos, qMap, associations);
-  }, [hasLl, tramosLl, plans, bajantesLl]);
-
-  const llTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasLl) return null;
-    const rows = llRowsCalc ?? [];
-    return {
-      title: 'Diseño de red aguas lluvias',
-      headerGroups: [
-        'Tramo',
-        'Nivel',
-        'Inicio',
-        'Fin',
-        'Bajantes asociados',
-        'Caudal (LPS)',
-        'Manning',
-        'Pendiente (%)',
-        { label: 'Diámetro', span: 3 },
-        'Qo (LPS)',
-        'Vo (m/s)',
-        'Q/Qo',
-        'V. real (m/s)',
-        'Chequeo velocidad',
-        'Yc (mm)',
-        'Yn (mm)',
-        'Froude',
-        'Flujo',
-        'Ymax (mm)',
-        'Yn vs Yc',
-        { label: 'Fuerza Tractiva', span: 2 },
-      ],
-      headers: [
-        'Tramo',
-        'Nivel',
-        'Inicio',
-        'Fin',
-        'Bajantes asociados',
-        'Caudal (LPS)',
-        'Manning',
-        'Pendiente (%)',
-        'Calculado (")',
-        'Diseño (")',
-        'Interior (mm)',
-        'Qo (LPS)',
-        'Vo (m/s)',
-        'Q/Qo',
-        'V. real (m/s)',
-        'Chequeo velocidad',
-        'Yc (mm)',
-        'Yn (mm)',
-        'Froude',
-        'Flujo',
-        'Ymax (mm)',
-        'Yn vs Yc',
-        'Real (kg/m²)',
-        '>0.15',
-      ],
-      rows: rows.map((r) => [
-        r.id,
-        r.piso ? pisoCorto(r.piso) : '—',
-        r.desde || '—',
-        r.hasta || '—',
-        r.bajantesAsociadas.join(', ') || '—',
-        r.Q > 0 ? r.Q.toFixed(2) : '—',
-        r.n > 0 ? r.n.toFixed(3) : '—',
-        r.sVal > 0 ? r.sVal : '—',
-        r.DcalcPulg > 0 ? r.DcalcPulg.toFixed(2) : '—',
-        r.DdisPulg > 0 ? r.DdisPulg : '—',
-        r.DintMm > 0 ? r.DintMm : '—',
-        f2(r.Qo),
-        f2(r.Vo),
-        f2(r.qqo),
-        f2(r.Vreal),
-        r.chequeoV,
-        f2(r.Yc),
-        f2(r.Yn),
-        f2(r.Froude),
-        r.tipoFlujo,
-        f2(r.Ymax),
-        r.chequeoYn,
-        f2(r.fuerzaTractiva),
-        r.chequeoFT,
-      ]),
-    };
-  }, [hasLl, llRowsCalc]);
-
-  const llBajTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasLl) return null;
-    return computeRainDownpipesTable(tramosLl, plans, bajantesLl);
-  }, [hasLl, tramosLl, plans, bajantesLl]);
-
-  const llCanalTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasLl || !conRecolectora || canalesLl.length === 0) return null;
-    const headers = [
-      'Ramal',
-      'Área parcial (m²)',
-      'Otras (m²)',
-      'Área total (m²)',
-      'Intensidad (mm/hr)',
-      'Coef. escorrentía',
-      'Caudal real (LPS)',
-      'Manning',
-      'Pendiente (%)',
-      'Base (cm)',
-      'Altura (cm)',
-      'Longitud (cm)',
-      'Borde libre (cm)',
-      'Total (cm)',
-      'Caudal máximo (LPS)',
-      'Chequeo',
-    ];
-    const rows = canalesLl.map((c) => {
-      // C efectivo SOLO del material de cubierta (requisito absoluto, igual que la pantalla):
-      // sin material → 0 → Q=0 y chequeo 'No cumple' (sin fallback al override manual).
-      const Cder = cDeCubierta(c.materialCubierta ?? '') ?? 0;
-      // REQ usuario: n SOLO del material del canal — sin material → 0 → sin cálculo ni
-      // chequeo (chequeo vacío en el calc; sin fallback al manning persistido).
-      const nderPdf = nDeCanal(c.materialCanal ?? '');
-      const { Qreal, Qmax, chequeo, totalStr } = chequeoCanalLluvia({
-        ...c,
-        coeficienteC: Cder,
-        manning: nderPdf ?? 0,
-        muroVertical: c.muroVertical ?? 0,
-        bordeLibreCm: c.bordeLibreCm ?? BORDE_LIBRE_CANAL_CM,
-      });
-      return [
-        c.sector || '—',
-        c.areaParcial || '—',
-        c.areaOtras ?? 0,
-        c.areaAcumulada || '—',
-        c.intensidad || '—',
-        Cder > 0 ? Cder : '—',
-        Qreal > 0 ? Qreal.toFixed(2) : '—',
-        nderPdf != null ? nderPdf.toFixed(3) : '—',
-        c.pendiente,
-        c.b,
-        c.h,
-        c.longitud ?? '—',
-        10,
-        totalStr,
-        Qmax > 0 ? Qmax.toFixed(2) : '—',
-        chequeo,
-      ];
-    });
-    return { title: 'Chequeo capacidad canal recolectora cubierta aguas lluvias', headers, rows };
-  }, [hasLl, conRecolectora, canalesLl]);
-
-  // ── AF (calculado en fresco — sin depender de haber visitado esa pantalla) ──
-  const ucAfTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAf) return null;
-    return computeUcTable('af', tramosAf, aps);
-  }, [hasAf, tramosAf, aps]);
-
-  const accAfTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAf) return null;
-    return computeAccesoriosPorRamalTable(tramosAf, 'Accesorios por ramal — agua fría');
-  }, [hasAf, tramosAf]);
-
-  const accAfDiamTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAf) return null;
-    return computeAccesoriosTable('af', tramosAf, plans);
-  }, [hasAf, tramosAf, plans]);
-
-  const afTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAf) return null;
-    const rows = computeWaterNetworkRows(
-      'af',
-      tramosAf,
-      tramosAf,
-      plans,
-      proy.p_red,
-      DIAMETROS_AF,
-      lookupInterno as (pulg: number) => number,
-    );
-    if (rows.length === 0) return null;
-    return {
-      title: 'Diseño de red agua fría',
-      headerGroups: [
-        'Tramo',
-        'Inicio',
-        'Final',
-        'Piso',
-        { label: 'Unidades Consumo', span: 3 },
-        'No. de descargas',
-        'K',
-        'Caudal (lps)',
-        'Diámetro estimado',
-        { label: 'Diámetro', span: 2 },
-        'Coeficiente C',
-        'Vel. (mm/s)',
-        { label: 'Longitud (m)', span: 4 },
-        { label: 'Pérdidas por fricción', span: 2 },
-        { label: 'Presión', span: 2 },
-      ],
-      headers: [
-        'Tramo',
-        'Inicio',
-        'Final',
-        'Piso',
-        'Propia',
-        'Otros Ramales',
-        'Total',
-        'No. de descargas',
-        'K',
-        'Caudal (lps)',
-        'Diámetro estimado',
-        'Diseño',
-        'Interno',
-        'Coeficiente C',
-        'Vel. (mm/s)',
-        'Horizontal',
-        'Vertical',
-        'Eq. Accesorios',
-        'Total',
-        '%',
-        'm',
-        'Inicial',
-        'Final',
-      ],
-      rows: rows.map((r) => [
-        r.id,
-        r.ini,
-        r.fin,
-        pisoCorto(r.piso),
-        f2(r.udPropia),
-        f2(Math.max(0, r.udTotal - r.udPropia)),
-        f2(r.udTotal),
-        r.nDesc > 0 ? String(r.nDesc) : '—',
-        r.K > 0 ? r.K.toFixed(2) : '—',
-        r.Qprob > 0 ? r.Qprob.toFixed(3) : '—',
-        f2(r.diamEst),
-        r.diamDis,
-        f2(r.dInt),
-        String(r.cHW),
-        f2(r.Vmms),
-        f2(r.Lh),
-        f2(r.Lv),
-        f2(r.Le),
-        f2(r.Lt),
-        f2(r.hfPct),
-        f2(r.hfM),
-        f2(r.Pin),
-        f2(r.Pfin),
-      ]),
-    };
-  }, [hasAf, tramosAf, plans, proy.p_red]);
-
-  // ── Acometida (solo AF) — computeAcometidaSummary recalcula todo desde tramosAf + plans, con el
-  // mismo patrón de "cálculo en fresco" que afTable/ucAfTable de arriba, así (a diferencia de una
-  // versión anterior que leía un valor que WaterNetworkDesign.tsx solo persistía al abrirlo) la
-  // exportación nunca depende de que el usuario haya visitado antes esa pantalla específica.
-  // Las filas de Acometida usan su propio formateador (no el f2 compartido) porque f2 trata el 0
-  // como "sin datos" e imprime '—' — pero aquí el 0 es un valor calculado legítimo (p. ej. Qaco
-  // sin aparatos todavía) y debe leerse como 0, no como dato faltante.
-  function buildAcometidaTables(): MemoriaTable[] {
-    if (!hasAf) return [];
-    const d = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF, proy.pais);
-    if (!d) return [];
-    const fmtAco = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : '—');
-    const tramosTable: MemoriaTable = {
-      title: 'Tramos',
-      headers: [
-        'Tramo',
-        'Desde',
-        'Hasta',
-        'Horizontal (m)',
-        'Eq. Accesorios (m)',
-        'Diámetro estimado',
-        'Diámetro propuesto',
-      ],
-      rows: [
-        [
-          'AC-01',
-          d.tr1.desde,
-          d.tr1.hasta,
-          fmtAco(d.tr1.h),
-          fmtAco(d.tr1.le),
-          fmtAco(d.tr1.diamEstimado),
-          d.tr1.diamPropuesto || '—',
-        ],
-        [
-          'AC-02',
-          d.tr2.desde,
-          d.tr2.hasta,
-          fmtAco(d.tr2.h),
-          fmtAco(d.tr2.le),
-          fmtAco(d.tr2.diamEstimado),
-          d.tr2.diamPropuesto || '—',
-        ],
-      ],
-    };
-    const parametrosTable: MemoriaTable = {
-      title: 'Resumen de parámetros',
-      side: true,
-      headers: ['Parámetro', 'AC-01', 'AC-02', 'Unidad'],
-      rows: [
-        ['Caudal (Q)', fmtAco(d.Qaco), fmtAco(d.Qaco), 'l/s'],
-        ['Diámetro interior', fmtAco(d.dInt1), fmtAco(d.dInt2), 'mm'],
-        ['Velocidad', fmtAco(d.V1), fmtAco(d.V2), 'mm/s'],
-        ['Longitud total', fmtAco(d.Lt1), fmtAco(d.Lt2), 'm'],
-        ['Pérdidas por fricción (‰)', fmtAco(d.hfPct1), fmtAco(d.hfPct2), '‰'],
-        ['Pérdidas por fricción (m)', fmtAco(d.hfM1), fmtAco(d.hfM2), 'mca'],
-        ['Coeficiente C', String(d.cHW1), String(d.cHW2), '—'],
-        ['Diámetro del contador', d.diamContador || '—', '', 'pulg'],
-        ['Caudal nominal (Qn)', fmtAco(d.Qn), '', 'L/s'],
-      ],
-    };
-    const verificacionTable: MemoriaTable = {
-      title: 'Verificación',
-      headers: ['Parámetro', 'Valor'],
-      rows: [
-        ['AC-01 Presión inicial (mca)', fmtAco(d.p1Ini)],
-        ['AC-01 Presión final (mca)', fmtAco(d.p1Fin)],
-        ['AC-02 Presión inicial (mca)', fmtAco(d.p2Ini)],
-        ['AC-02 Presión final (mca)', fmtAco(d.p2Fin)],
-        ['Pérdidas en contador (mca)', fmtAco(d.hfContador)],
-        ['Pérdidas máximas permitidas (mca)', fmtAco(d.hfMax)],
-        ['Chequeo pérdidas contador', d.hfContador <= d.hfMax ? 'O.K.' : 'NO CUMPLE'],
-        [
-          'Diámetro acometida vs contador',
-          d.diamConformeOk ? 'Conforme' : `No conforme (+${fmtAco(d.diamDiff)}")`,
-        ],
-        ['Presión residual final (mca)', fmtAco(d.pResidual)],
-        ['ESTADO GENERAL', d.estadoOk ? 'O.K.' : 'NO CUMPLE'],
-      ],
-    };
-    return [tramosTable, parametrosTable, verificacionTable];
-  }
-
-  // ── AC (calculado en fresco; además se alimenta del pFin propio persistido por AF en el nodo calentador) ──
-  const ucAcTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAc) return null;
-    return computeUcTable('ac', tramosAc, aps);
-  }, [hasAc, tramosAc, aps]);
-
-  const heaterTables = useMemo<MemoriaTable[]>(() => {
-    if (!hasAc) return [];
-    return computeHeaterSelectionTables(tramosAc, plans);
-  }, [hasAc, tramosAc, plans]);
-
-  const accAcTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAc) return null;
-    return computeAccesoriosPorRamalTable(tramosAc, 'Accesorios por ramal — agua caliente');
-  }, [hasAc, tramosAc]);
-
-  const accAcDiamTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAc) return null;
-    return computeAccesoriosTable('ac', tramosAc, plans);
-  }, [hasAc, tramosAc, plans]);
-
-  const acTable = useMemo<MemoriaTable | null>(() => {
-    if (!hasAc) return null;
-    const rows = computeWaterNetworkRows(
-      'ac',
-      tramosAc,
-      tramosAf,
-      plans,
-      proy.p_red,
-      DIAMETROS_AC,
-      lookupInternoAC as (pulg: number) => number,
-    );
-    if (rows.length === 0) return null;
-    return {
-      title: 'Diseño de red agua caliente',
-      headerGroups: [
-        'Tramo',
-        'Inicio',
-        'Final',
-        'Piso',
-        { label: 'Unidades Consumo', span: 3 },
-        'No. de descargas',
-        'K',
-        'Caudal (lps)',
-        'Diámetro estimado',
-        { label: 'Diámetro', span: 2 },
-        'Coeficiente C',
-        'Vel. (mm/s)',
-        { label: 'Longitud (m)', span: 4 },
-        { label: 'Pérdidas por fricción', span: 2 },
-        { label: 'Presión', span: 2 },
-      ],
-      headers: [
-        'Tramo',
-        'Inicio',
-        'Final',
-        'Piso',
-        'Propia',
-        'Otros Ramales',
-        'Total',
-        'No. de descargas',
-        'K',
-        'Caudal (lps)',
-        'Diámetro estimado',
-        'Diseño',
-        'Interno',
-        'Coeficiente C',
-        'Vel. (mm/s)',
-        'Horizontal',
-        'Vertical',
-        'Eq. Accesorios',
-        'Total',
-        '%',
-        'm',
-        'Inicial',
-        'Final',
-      ],
-      rows: rows.map((r) => [
-        r.id,
-        r.ini,
-        r.fin,
-        pisoCorto(r.piso),
-        f2(r.udPropia),
-        f2(Math.max(0, r.udTotal - r.udPropia)),
-        f2(r.udTotal),
-        r.nDesc > 0 ? String(r.nDesc) : '—',
-        r.K > 0 ? r.K.toFixed(2) : '—',
-        r.Qprob > 0 ? r.Qprob.toFixed(3) : '—',
-        f2(r.diamEst),
-        r.diamDis,
-        f2(r.dInt),
-        String(r.cHW),
-        f2(r.Vmms),
-        f2(r.Lh),
-        f2(r.Lv),
-        f2(r.Le),
-        f2(r.Lt),
-        f2(r.hfPct),
-        f2(r.hfM),
-        f2(r.Pin),
-        f2(r.Pfin),
-      ]),
-    };
-  }, [hasAc, tramosAc, tramosAf, plans, proy.p_red]);
-
-  // ── GAS (calculado en fresco desde los datos de dibujo/accesorios persistidos — sin depender de haber visitado esa pantalla) ──
-  /** Filas del diseño de gas (Gas) (compartidas: tabla + resumen por red). */
   const gasRowsCalc = useMemo(
     () => (hasGas ? computeGasRows(plans, proy.pais) : []),
     [hasGas, plans, proy.pais],
@@ -795,6 +226,7 @@ export function useInfTables(state: WorkAreaState) {
   );
   // SAN: rango (V/Yn/D, q/Q0) + chequeos de la tabla (velocidad, tiro Yn, fuerza tractiva).
   // Las filas de computeSanRows ya excluyen tributarios y bajantes.
+
   const fallosSan = useMemo(
     () => [
       ...conDatosSan.filter((r) => !filaEnRangoSanLl(r)).map((r) => ({ id: r.id, piso: r.piso })),
@@ -1035,6 +467,7 @@ export function useInfTables(state: WorkAreaState) {
     (!hasGas || fallosGas.length === 0) &&
     (!hasEp || (epAlertas() ?? []).length === 0) &&
     (!hasBom || alertasBomba === null || alertasBomba.length === 0);
+
   const items = useMemo<[string, string, string[]?][]>(() => {
     const rows: [string, string, string[]?][] = [
       ['PROYECTO', proy.nombre],

@@ -9,7 +9,7 @@ export {
   handleCreateCalentadorMidBody,
   handleCreateTeeCapStub,
   handleCalentadorDown,
-} from './creations/montantes';
+} from './creations/montantes.ts';
 export { handleCanalDown, commitCanalAncho } from './creations/canales';
 export { handleRedPublicaDown, handleContadorDown } from './creations/redPublica';
 export { handleCreateBomba } from './creations/bomba';

@@ -19,7 +19,7 @@ import { calcLeAcces } from '../utils/fittingsUtils';
 import { chequeoPresionAparato } from '../utils/waterRowsShared';
 import { perfilDe } from '../constants/normasPais';
 import { fracAscii } from '../utils/formatUtils';
-import { leerLibrosPresion, propagarAparatosPresion } from '../utils/aparatosPresion';
+import { leerLibrosPresion, propagarAparatosPresion } from '../utils/propagation';
 import { avisarDiametroInvalido } from '../utils/diametroValidation';
 import Acometida from './SupplyConnection';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph';

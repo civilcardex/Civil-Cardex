@@ -9,7 +9,7 @@ import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { hunterK, hunterQ } from '../components/waterNetworkDesign/rowPhysics';
-import { leerHeredadosPresion } from './aparatosPresion';
+import { leerHeredadosPresion } from './propagation';
 import { resolveJunctionEntrant } from './flowDirection';
 
 import {

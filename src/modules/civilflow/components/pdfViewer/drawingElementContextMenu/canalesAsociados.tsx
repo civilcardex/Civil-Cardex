@@ -251,7 +251,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
   );
 }
 
-/** Sección "Montantes asociados" — tramo af (Agua Fria)/ac (Agua Caliente) (orig. usuario): mismo funcionamiento que "Bajantes asociados" de sanitaria pero con montantes. */
+/** Sección "Montantes asociados" — ramales de presión af (Agua Fria)/ac (Agua Caliente)/gas (Gas) (orig. usuario): mismo funcionamiento que "Bajantes asociados" de sanitaria pero con montantes. */
 export function MontantesAsociadosSection({
   ctx,
   ramal,
@@ -295,7 +295,7 @@ export function MontantesAsociadosSection({
   );
 }
 
-/** Sección "Ramales asociados" — MONTANTE af (Agua Fria)/ac (Agua Caliente) (orig. usuario): la inversa de la anterior, para gestionar la asociación desde el montante. */
+/** Sección "Ramales asociados" — MONTANTE af (Agua Fria)/ac (Agua Caliente)/gas (Gas) (orig. usuario): la inversa de la anterior, para gestionar la asociación desde el montante. */
 export function RamalesAsociadosMontSection({
   ctx,
   montante,

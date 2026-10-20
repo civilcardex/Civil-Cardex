@@ -1,6 +1,6 @@
 import { clearBajanteAssociation } from './bajanteAssociationClear';
 import { splitPtr } from './keys';
-import { esRedAparatosPresion, propagarAparatosPresion } from './aparatosPresion';
+import { esRedAparatosPresion, propagarAparatosPresion } from './propagation';
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
 // siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
 // visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
@@ -9,13 +9,15 @@ import { esRedAparatosPresion, propagarAparatosPresion } from './aparatosPresion
 import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
 import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync';
 import type { SyncPlanInput } from './drawingSync';
-import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
+import type { IPlanoEngineCore, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 import {
   writeCrossFloorGhost,
   createCrossFloorLdesvioRamal,
   buildLdesvioRamal,
   ldesvioIdFor,
   nextRamalLabel,
+  loadData,
+  saveData,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
 import { aFrameDe } from './crossFloorStorage';
@@ -34,10 +36,53 @@ import {
   readBajanteLink,
   setBajanteDesplazamientoInStorage,
   collectSourceAgg,
+  registrarLdesvioComoAsociado,
   GEO_TOL_BAJANTE,
 } from './bajanteAssocShared';
 import type { AssocEndpoint, InheritPoolRamal, InheritPoolBajante } from './bajanteAssocShared';
 import { emitAparatosClear, emitSanSync, EV_STORAGE } from '../utils/fixtureEvents';
+
+/** Estampa la carga heredada en el fantasma (XFG) del enlace: el marcador guarda y muestra
+ *  los UC que bajan por él (NO participa en cálculos - sigue siendo un marcador). Se escribe
+ *  en el storage del piso del fantasma y en el motor vivo si ese piso está cargado. */
+function estamparCargaEnFantasma(
+  eng: IPlanoEngineCore,
+  ghostPlanId: string,
+  sourcePlanId: string,
+  sourceBajanteId: string,
+  carga: Record<string, number>,
+): void {
+  const total = Object.values(carga).reduce((s, v) => s + (Number(v) || 0), 0);
+  // Motor vivo (el piso del fantasma cargado): el label se repinta al instante.
+  const vivo = (eng.crossFloorGhosts || []).find(
+    (g) => g.sourcePlanId === sourcePlanId && g.sourceBajanteId === sourceBajanteId,
+  );
+  if (vivo) {
+    vivo.aparatos = { ...carga };
+    vivo.ucAcum = total;
+  }
+  try {
+    const data = loadData(ghostPlanId);
+    const g = (data.crossFloorGhosts || []).find(
+      (x) => x.sourcePlanId === sourcePlanId && x.sourceBajanteId === sourceBajanteId,
+    );
+    if (!g) return;
+    g.aparatos = { ...carga };
+    g.ucAcum = total;
+    saveData(ghostPlanId, data);
+  } catch (e) {
+    devError('[ASSOC] carga del fantasma:', e);
+  }
+}
+
+/** Bajante vivo por id prefiriendo el del PISO ABIERTO: el motor tiene los bajantes de otros
+ *  pisos que atraviesan esta altura (proyecciones con pisoBase ajeno y el MISMO id tras un
+ *  renombre) — un find() plano podía traer la proyección con libro rancio (orig. usuario). */
+function bajanteLocalDe(eng: IPlanoEngineCore, id: string): PlanoBajante | undefined {
+  const nivelLbl = eng.nivelActual?.label ?? '';
+  const mismos = eng.bajantes.filter((b) => b.id === id);
+  return mismos.find((b) => (b.pisoBase ?? '') === nivelLbl) ?? mismos[0];
+}
 
 export function applyBajanteAssociation(
   eng: IPlanoEngineCore,
@@ -49,11 +94,12 @@ export function applyBajanteAssociation(
   const linkValue = `${target.planId}|${target.id}`;
   const reverseValue = `${source.planId}|${source.id}`;
   const targetIsBelow = target.npt < source.npt;
-  // MONTANTES (orig. usuario): siempre fluyen 'sube' — la asociación no les estampa la
-  // dirección calculada de bajantes ('baja' les voltearía el glifo).
-  const sonMontantes = source.tipo === 'montante' && target.tipo === 'montante';
-  const sourceDireccion: 'sube' | 'baja' = sonMontantes ? 'sube' : targetIsBelow ? 'baja' : 'sube';
-  const ghostDireccion: 'sube' | 'baja' = sonMontantes ? 'sube' : targetIsBelow ? 'sube' : 'baja';
+  // Dirección del flujo: la MISMA lógica para bajantes y montantes (orig. usuario): el
+  // extremo de ARRIBA marca 'baja' (el agua baja por la tubería) y el fantasma marca 'sube'
+  // (la flecha del enlace señala lo que entra por arriba). Antes los montantes quedaban
+  // forzados a 'sube' y su glifo no cuadraba con el del bajante equivalente.
+  const sourceDireccion: 'sube' | 'baja' = targetIsBelow ? 'baja' : 'sube';
+  const ghostDireccion: 'sube' | 'baja' = targetIsBelow ? 'sube' : 'baja';
   const aligned = isAligned(source, target);
 
   // Enlaces en conflicto: si el destino ya colgaba de OTRO origen, o el origen descargaba
@@ -118,9 +164,7 @@ export function applyBajanteAssociation(
     // PUNTO 9: el original inferior recibe 'baja' — salvo que sea el último nivel (sin piso
     // debajo), en cuyo caso se coerces a 'continua' (dirección válida alternativa).
     'direccion',
-    sonMontantes
-      ? sourceDireccion
-      : (direccionSegura(eng, { nptBase: target.npt }, sourceDireccion) ?? sourceDireccion),
+    direccionSegura(eng, { nptBase: target.npt }, sourceDireccion) ?? sourceDireccion,
     plans,
   );
   if (loadedPlanId === source.planId) {
@@ -129,9 +173,7 @@ export function applyBajanteAssociation(
   if (loadedPlanId === target.planId) {
     eng.updateElementById(target.id, {
       origenId: reverseValue,
-      direccion: sonMontantes
-        ? sourceDireccion
-        : (direccionSegura(eng, { nptBase: target.npt }, sourceDireccion) ?? sourceDireccion),
+      direccion: direccionSegura(eng, { nptBase: target.npt }, sourceDireccion) ?? sourceDireccion,
     });
   }
 
@@ -183,7 +225,7 @@ export function applyBajanteAssociation(
       plans,
     );
     if (loadedPlanId === lower.planId) {
-      const liveLower = eng.bajantes.find((b) => b.id === lower.id);
+      const liveLower = bajanteLocalDe(eng, lower.id);
       if (liveLower) liveLower.dNominal = upper.dNominal;
     }
   }
@@ -204,7 +246,7 @@ export function applyBajanteAssociation(
     if (loadedPlanId === lower.planId) {
       const lvl = eng.nivelActual?.label ?? '';
       if (lvl) {
-        const lowBaj = eng.bajantes.find((b) => b.id === lower.id);
+        const lowBaj = bajanteLocalDe(eng, lower.id);
         if (lowBaj) {
           const desp = { ...(lowBaj.desplazamientos || {}) };
           desp[lvl] = {
@@ -269,6 +311,33 @@ export function applyBajanteAssociation(
       );
       eng.ramales = [...eng.ramales.filter((r) => r.id !== ldId), ramal as never];
     }
+    // El LD es un RAMAL ASOCIADO del elemento al que llega (el original): queda registrado en
+    // `recibeDeIds` + `asocManual` y con `fin` = su código → "Ramal asociado" sale MARCADO en
+    // el panel derecho y en el menú contextual, y el estado es el REAL (no visual) — también
+    // para los MONTANTES (misma lógica de asociación) (orig. usuario).
+    const lowCode = lower.code || lower.id;
+    registrarLdesvioComoAsociado({
+      planId: lower.planId,
+      bajanteId: lower.id,
+      bajanteCode: lowCode,
+      ldId,
+      eng,
+    });
+    if (loadedPlanId === lower.planId) {
+      const liveLow = bajanteLocalDe(eng, lower.id);
+      if (liveLow) {
+        const recibe = new Set(liveLow.recibeDeIds || []);
+        const manual = new Set(liveLow.asocManual || []);
+        recibe.add(ldId);
+        manual.add(ldId);
+        eng.updateElementById(lower.id, {
+          recibeDeIds: [...recibe],
+          asocManual: [...manual],
+        });
+      }
+      const liveLd = eng.ramales.find((r) => r.id === ldId);
+      if (liveLd && liveLd.fin !== lowCode) eng.updateElementById(ldId, { fin: lowCode });
+    }
   }
 
   // Herencia UD: el piso inferior (fantasma/Ldesvio/original) recibe el agregado COMPLETO
@@ -287,10 +356,7 @@ export function applyBajanteAssociation(
       net: source.net,
       planId: source.planId,
       bajId: source.id,
-      liveBaj:
-        loadedPlanId === source.planId
-          ? (eng.bajantes.find((b) => b.id === source.id) ?? null)
-          : null,
+      liveBaj: loadedPlanId === source.planId ? (bajanteLocalDe(eng, source.id) ?? null) : null,
       liveRamales:
         loadedPlanId === source.planId ? (eng.ramales as unknown as InheritPoolRamal[]) : null,
       storedBaj: srcRaw?.bajantes?.find((b) => b.id === source.id) ?? null,
@@ -309,6 +375,13 @@ export function applyBajanteAssociation(
     if (Object.keys(agg).length || hydroAgg) {
       let aposDirty = false;
       let hydroDirty = false;
+      // El FANTASMA (marcador del enlace en el piso de arriba) lleva la misma carga que
+      // viaja por el Ldesvio: el usuario quiere ver los mismos UC en las tres piezas
+      // (montante de destino, Ldesvio y fantasma). El fantasma no entra en ningún cálculo
+      // (sigue siendo un marcador) — solo guarda y muestra la carga.
+      if (Object.keys(agg).length) {
+        estamparCargaEnFantasma(eng, upper.planId, lower.planId, lower.id, agg);
+      }
       if (!aligned) {
         // El Ldesvio vive en el PISO INFERIOR (layout nuevo) — su clave de aparatos también.
         const ldKey = `${source.net}_${ldId}_${lower.planId}`;
@@ -337,7 +410,7 @@ export function applyBajanteAssociation(
       const tgtBaj = tgtRaw?.bajantes?.find((b) => b.id === target.id);
       // Mismo criterio vivo-sobre-storage para el bajante destino.
       const liveTgtBaj =
-        loadedPlanId === target.planId ? eng.bajantes.find((b) => b.id === target.id) : undefined;
+        loadedPlanId === target.planId ? bajanteLocalDe(eng, target.id) : undefined;
       const effTgtBaj = liveTgtBaj ?? tgtBaj;
       // Ramales que LLEGAN (recibeDeIds) y los que SALEN del bajante destino (alimentaIds,
       // orig. usuario: los ramales que salen del bajante también reciben las UDs). Sin topes:
@@ -377,7 +450,11 @@ export function applyBajanteAssociation(
       for (const rid of tgtRamalIds) {
         const tk = `${target.net}_${rid}_${target.planId}`;
         const esAlimenta = (effTgtBaj?.alimentaIds || []).includes(rid);
-        const extra = esAlimenta ? { ...agg, ...own } : agg;
+        // PRESIÓN (af/ac/gas): las entradas del libro son SOLO el grupo del superior — lo
+        // propio del montante destino NO es herencia (baja a sus ramales por el upMonte) y
+        // si se mezclaba aquí, el panel del asociado (máximo del libro) mostraba propio +
+        // heredado juntos (orig. usuario: 16.5 en vez de los 4.5 heredados).
+        const extra = esAlimenta && !esRedAparatosPresion(target.net) ? { ...agg, ...own } : agg;
         const prevAp = prevBook[tk] || {};
         const cur = apos[tk] || {};
         const result: Record<string, number> = {};
@@ -385,10 +462,18 @@ export function applyBajanteAssociation(
           const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
           if (nv > 0) result[k] = nv;
         }
-        if (JSON.stringify(cur) !== JSON.stringify(result)) {
-          if (Object.keys(result).length) apos[tk] = result;
-          else delete apos[tk];
-          aposDirty = true;
+        // PRESIÓN (af/ac/gas): la carga heredada viaja por UN SOLO camino — el Ldesvio (el
+        // carrier) → el montante de destino (su libro) → los ramales que él alimenta (el
+        // propagador se los entrega con el upMonte). Escribirla además en el disco de cada
+        // ramal del destino la multiplicaba (Ldesvio + N ramales = la misma carga repetida:
+        // 4 piezas x 3 UC = 12 UC en vez de 3 — orig. usuario). La book's delta se sigue
+        // registering igual (para que la desasociación reste lo que se aplicó).
+        if (!esRedAparatosPresion(target.net)) {
+          if (JSON.stringify(cur) !== JSON.stringify(result)) {
+            if (Object.keys(result).length) apos[tk] = result;
+            else delete apos[tk];
+            aposDirty = true;
+          }
         }
         ucAplicado[tk] = { ...extra };
         if (hydroAgg) {
@@ -459,6 +544,9 @@ export function applyBajanteAssociation(
           tb.ucAplicado = ucAplicado;
           if (Object.keys(ucAplicadoHidro).length) tb.ucAplicadoHidro = ucAplicadoHidro;
           else delete tb.ucAplicadoHidro;
+          // ts fresco: el doc cambió y debe quedar como el más nuevo (el árbitro de carga
+          // deja ganar a la BD si su ts es mayor → la asociación se perdía al recargar).
+          (tgtSave as { ts?: number }).ts = Date.now();
           saveToStorage(TRAZOS_PREFIX + target.planId, tgtSave);
           saveTrazosToDB(target.planId, tgtSave);
         }

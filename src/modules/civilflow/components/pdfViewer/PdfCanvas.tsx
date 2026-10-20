@@ -13,7 +13,10 @@ const PdfCanvas_S1: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(17,19,23,0.8)',
+  // OPACO: mientras carga el primer paint, no se adivinan los elementos en su posición
+  // provisional (el salto del visor, orig. usuario prefiere pantalla de carga al acomodarse).
+  background: '#111317',
+  zIndex: 5,
 };
 const PdfCanvas_S2: React.CSSProperties = {
   position: 'absolute',
@@ -163,8 +166,12 @@ function PdfCanvas({
       style={{
         flex: 1,
         overflow: 'hidden',
+        // Anclado ARRIBA-IZQUIERDA (no centrado): el centrado flex re-ubica el contenedor en
+        // cada cambio de tamaño del canvas (raster inicial → tamaño real → re-rasters) y se
+        // VEIA como el "reacomodo" del plano aunque la cámara no se moviera. Con anclaje
+        // fijo el origen del canvas es estable y el encuadre lo maneja solo la cámara.
         display: 'flex',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'flex-start',
         background: '#111317',
         position: 'relative',
@@ -193,12 +200,18 @@ function PdfCanvas({
             cursor: tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair',
           }}
         />
-        {loading && currentFile && (
-          <div style={PdfCanvas_S1}>
-            <div className="sp" />
-          </div>
-        )}
       </div>
+
+      {/* Pantalla de carga del visor: CAPA PROPIA del área completa (no del contenedor del
+        canvas — si el lienzo aún no tiene tamaño guardado, el contenedor es una caja chica
+        de 300×150 y el estado provisional se veía ALREDEDOR). Opaca hasta el primer paint
+        completo: lámina a escala del doc + trazos + cámara (orig. usuario prefiere la
+        pantalla de carga a ver los elementos acomodarse). */}
+      {loading && currentFile && !error && (
+        <div style={{ ...PdfCanvas_S1, zIndex: 30 }}>
+          <div className="sp" />
+        </div>
+      )}
 
       {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
       {(!currentFile || selectedNivel === null || selectedNivel === undefined) &&
