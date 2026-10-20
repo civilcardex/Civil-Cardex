@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr src/seo/prerenderEntry.tsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "build": "vite build && vite build --ssr src/seo/prerenderEntry.tsx --outDir dist-ssr",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -15,8 +15,9 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
-    "check": "tsc --noEmit && vitest run && vite build",
-    "prepare": "simple-git-hooks"
+    "check": "tsc --noEmit && vitest run && npm run build",
+    "prepare": "simple-git-hooks",
+    "postbuild": "node scripts/prerender.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
@@ -43,6 +44,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "jsdom": "^26.1.0",
     "lint-staged": "^16.4.0",
     "postcss": "^8.5.14",
     "postcss-import": "^16.1.1",

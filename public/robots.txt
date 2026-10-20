@@ -1,6 +1,14 @@
 # Crawlers de búsqueda
 User-agent: *
 Allow: /
+Disallow: /visor
+Disallow: /dashboard
+Disallow: /perfil
+Disallow: /empresa
+Disallow: /catalogomaestro
+Disallow: /civilflowareatrabajo
+Disallow: /civilmanagerareatrabajo
+Disallow: /restablecer
 
 # Crawlers de IA (descubrimiento por LLM — explícito por convención)
 User-agent: GPTBot
@@ -17,14 +25,5 @@ User-agent: Google-Extended
 Allow: /
 User-agent: CCBot
 Allow: /
-
-# Rutas de aplicación (datos de usuario; nada público que rastrear)
-Disallow: /visor
-Disallow: /dashboard
-Disallow: /perfil
-Disallow: /empresa
-Disallow: /catalogomaestro
-Disallow: /civilflowareatrabajo
-Disallow: /civilmanagerareatrabajo
 
 Sitemap: https://civilcardex.com/sitemap.xml

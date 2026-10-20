@@ -178,7 +178,15 @@
     </style>
   </head>
   <body>
-    <div id="root"><h1 class="sr-only">Civil Cardex — Plataforma de ingeniería civil</h1><div class="_preload"><img src="/logos/civilCardexlogo-v2.webp" alt="Civil Cardex" width="48" height="48" /><p>Cargando planos y redes…</p></div></div>
+    <div id="root"><h1 class="sr-only">Civil Cardex — Plataforma de ingeniería civil</h1><div class="_preload"><img src="/logos/civilCardexlogo-v2.webp" alt="Civil Cardex" width="48" height="48" /><p id="_preloadMsg">Cargando proyecto…</p></div></div>
+    <script>
+      // El visor abre el PDF (planos y redes); el resto de la app, un proyecto. Se ajusta antes
+      // del primer paint para que esta pantalla y la de React digan lo MISMO (una sola, sin
+      // cambio de texto al hidratar).
+      if (location.pathname.indexOf('/visor') === 0) {
+        document.getElementById('_preloadMsg').textContent = 'Cargando planos y redes…';
+      }
+    </script>
     <noscript>
       <div style="padding: 2rem; font-family: system-ui, sans-serif; text-align: center; background: #111317; color: #e2e2e8; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
         <div>
