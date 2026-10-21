@@ -491,3 +491,53 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
   graphify (7970 nodos, 18240 aristas) · commit 35861b6, working tree limpio.
 - **Pendiente del usuario**: push del commit 35861b6 (641 renombres — revisar en el PR que no se
   rompió nada), + las acciones de SEO (Search Console + Bing Webmaster Tools).
+
+## Session Summary — 2026-10-21 (auditoría de codebase completo + ejecución del plan)
+
+Code review del codebase entero (44 hallazgos, 9 categorías) y ejecución de los bloques A-I. 9 commits: `74c48a8`..`36e46aa`. Informe completo en `C:\Users\ASUS\Downloads\code-review-civilcardex-2026-10-21.md`.
+
+### Lo que estaba roto (3 CRÍTICO, la misma familia)
+**Los ids de bajante/montante SOLO son únicos por piso** (`pisoBase`). El motor guarda el bajante real del piso abierto y la PROYECCIÓN del piso vecino con el MISMO id, y cuatro sitios trataban el id como global:
+- `dedupPorId` (guardado) conservaba la ÚLTIMA copia → el autosave escribía la geometría del fantasma y `saveTrazosToDB` subía ese error a Supabase. Ahora `dedupPorClave` con clave `id|pisoBase`.
+- `find` plano en `updateElementById`, `pushBajanteDiameterToRamales`, el panel (`bajanteAgregado`, `useAparatoObjetivo`) y `eliminaSelected` mutaban/leian/borraban la proyección. Ahora el resolvedor compartido `bajanteLocalDe` (utils/bajanteLocal.ts) que prefiere el piso abierto.
+- `_renumberMontantes` no fusionaba la clave de UD si el destino ya existía (el montante nuevo conservaba su clave vieja y la del borrado quedaba huérfana).
+- Dos criterios de numeración ('BAN9-P1' → 9 vs → 1) creaban ids duplicados. Ahora `numDeBajante` canónico.
+- El sanador de herencia invertida borraba el libro PROPIO de un receptor legítimo (restaba el conteo del usuario y lo subía a la BD sin reversa). Ahora preserva la clave propia, deja copia de seguridad (`..._bak`) y usa `saveTrazosLocales` (conserva `assocLayout`).
+
+### La cadena de pérdida silenciosa
+- `devError` es no-op en PRODUCCIÓN → todo catch que solo lo llama traga el fallo. Ahora los servicios que guardan LANZAN y un helper (`guardaConReintento`) reintenta con backoff y avisa por un canal global (el proveedor de alertas de la raíz ya lo escucha; antes solo lo oía el visor, así que en el workarea un guardado fallido se perdía en silencio).
+- `initAuth` sin try/finally: un fallo de `getUser()` dejaba `loading=true` para siempre → pantalla en BLANCO en toda ruta protegida. Ahora try/catch/finally + ErrorBoundary RAÍZ.
+- Apertura de proyecto: se borraba el workspace ANTES de cargar. Si la carga fallaba, el workarea abría VACÍO y el usuario redibujaba encima. Ahora carga primero (`loadProyectoDataConError` distingue "no hay datos" de "falló") y no navega si falló.
+
+### Seguridad
+- CSP: `script-src` pasó de `'unsafe-inline' 'unsafe-eval'` a `'wasm-unsafe-eval'` (los scripts de arranque se movieron a `public/scripts/*.js`; el dev server relaja la CSP vía `vite.config.js`).
+- `xlsx-js-style` (SheetJS 0.18.5, CVE-2023-30533 + CVE-2024-22363) → SheetJS OFICIAL 0.20.3 como alias npm (`npm:xlsx-republish@0.20.3`: la URL de cdn.sheetjs.com rompía `npm install` con npm 10).
+- `pdfjs-dist` 5.4.296 → 6.4.299: la línea 5.6.83..6.2.107 tenía un advisory HIGH de ejecución arbitraria de JS al abrir un PDF malicioso.
+- Logout: `clearLocalWorkspace()` (el dibujo completo quedaba legible en el navegador del equipo compartido).
+- Ganchos de diagnóstico (`__cfDiag`, `__cfScale`, `__cfEngine`, `__cfCam`): solo en DEV.
+- Migración `20261021000000`: candado `acceso_modulo` en `save_proyecto_general_campo` y en las 9 tablas hijas de CM (APLICAR EN SQL EDITOR antes de encender `suscripciones_activas`).
+
+### Rendimiento y guard
+- `dibujaRamales`: los filtros de red estaban DENTRO del bucle de ramales (O(n²) por frame) y la comprobación del codo reventilado recorría todos los puntos (O(ramales·puntos)). Ahora: índice por celda + índices por frame.
+- `redRenumera`: 5 blobs × N ramales = 200 `JSON.parse` del blob completo por clic. Ahora se leen una vez.
+- 20 servicios: `auth.getUser()` (ida a la red) antes de cada RPC → `getSession()` (0 round-trips).
+- G8: las exclusiones documentadas NUNCA se aplicaban (el regex exigía un punto inicial contra `name.text`). Con Set por nombre: **596 → 542 focos**, 48 → 43 archivos (baseline regenerado).
+- `CICLOS_CONOCIDOS` del guard G3 tenía 18 nombres que ya no existían (letra muerta) → lista vacía y documentada.
+
+### Higiene
+- Carpeta `components/fixtures/` → `components/aparatos/` (en inglés "fixture" = dato de prueba; aquí es producción). Símbolo `useInfTables` → `useInfTablas`.
+- Barrido de 184 referencias a nombres de archivo viejos en comentarios (mapa sacado del commit de renombre; 0 imports tocados).
+- `.eslintrc.cjs`: 4 rutas renombradas inexistentes + `AparatosPanel.tsx` (905 L) fuera de la zona de exención.
+- 273 exports públicos sin JSDoc quedan pendientes (empezar por `PlanoEstado.ts` 39, `bajanteAsocCompartido.ts` 22, `crossPisoAlmacenamiento.ts` 21).
+
+### LECCIÓN (encarnada otra vez)
+Editar archivos de este repo con **node**, nunca con `perl`/`sed`/`Set-Content` de PowerShell 5.1: escribe en la codepage local y rompe el UTF-8 (el build falla con "stream did not contain valid UTF-8") y deja caracteres U+FFFD silenciosos. Detector: `new TextDecoder('utf-8',{fatal:true}).decode(fs.readFileSync(f))` en node.
+
+### Pendiente del usuario
+1. **Aplicar `supabase/migrations/20261021000000_candado_suscripcion_campos_y_cm.sql`** en el SQL Editor (antes de encender `suscripciones_activas`).
+2. Migración a Tailwind 4 (fix del advisory high restante) — PR aparte con verificación visual.
+3. Despinear `vitest` a 4.1.11+ cuando se actualice npm a 11 (npm 10.9.2 no puede resolver ese peer-set).
+4. Monolitos: `PdfViewer.tsx` (1428 L), `PlanoMotor.ts` (1397 L), `dibujaRamales.ts` (1154 L, función de 1040 L), `BajantesTabla.tsx` (1001 L) — divisiones propuestas en el informe.
+5. JSDoc: 273 exports públicos.
+
+Gates: tsc 0 · vitest 1369/1369 (226 archivos) · lint 0 · build + prerender 13/13 · npm audit 17 → 9 (los 9 son DoS de herramientas de build, sin ruta en el bundle).
