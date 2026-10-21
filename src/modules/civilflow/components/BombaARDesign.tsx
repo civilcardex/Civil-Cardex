@@ -1,15 +1,24 @@
 import { useState, useEffect, useRef } from 'react';
-import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
-import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
+import {
+  loadFromStorage,
+  saveToStorage,
+  getActiveProyectoId,
+} from '../services/almacenamientoServicio.ts';
+import { loadBombaDatos, saveBombaDatos } from '../services/bombaServicio.ts';
 import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
-import PageNav from './PageNav';
-import EditButton from './shared/EditButton';
-import { SI } from '../styles/sharedTableStyles';
+import PageNav from './PaginaNavegacion.tsx';
+import EditButton from './shared/EditaBoton.tsx';
+import { SI } from '../styles/compartidoTablaEstilos.ts';
 import Tbl from './shared/Tbl';
-import Card from './shared/Card';
-import { APS_STORAGE_KEY } from '../constants/storage-keys';
+import Card from './shared/Tarjeta.tsx';
+import { APS_STORAGE_KEY } from '../constants/almacenamientoClaves.ts';
 import { cHazenDe, calcsDe, INPUTS_DEFAULT, type BombaInputs } from './bombaARCalcs';
-import { EV_APARATOS_CLEAR, EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents';
+import {
+  EV_APARATOS_CLEAR,
+  EV_SAN_SYNC,
+  EV_HIDRO_SYNC,
+  EV_STORAGE,
+} from '../utils/aparatoEventos.ts';
 
 export { calcsDe, INPUTS_DEFAULT } from './bombaARCalcs';
 export type { BombaInputs } from './bombaARCalcs';

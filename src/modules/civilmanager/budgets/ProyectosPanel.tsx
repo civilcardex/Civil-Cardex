@@ -1,0 +1,170 @@
+import { useCivilManager } from '../contexto.tsx';
+import { flattenPresupuestos, getTipoProyecto } from '../calculo.ts';
+import { genCodeFor } from '../codigoGenerico.ts';
+import { askConfirm } from '../shared/ConfirmDialogo.tsx';
+import { CrudFooter } from '../shared/CrudPie.tsx';
+import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTabla.tsx';
+import { DimEnLectura, TableHeader } from '../shared/EditaBloqueo.tsx';
+import { useEditable } from '../shared/EditaBloqueo.tsx';
+import type { EstadoPresupuesto, Presupuesto } from '../tipos.ts';
+
+const ESTADO_LABEL: Record<EstadoPresupuesto, string> = {
+  borrador: 'Borrador',
+  en_revision: 'En Revisión',
+  cerrado: 'Cerrado',
+};
+
+interface Props {
+  selId: string | null;
+  onSelect: (id: string) => void;
+}
+
+export function ProyectosPanel({ selId, onSelect }: Props) {
+  const { state, patch } = useCivilManager();
+  const editable = useEditable();
+  const flat = flattenPresupuestos(state.presupuestos);
+
+  function crear() {
+    const nuevo: Presupuesto = {
+      id: crypto.randomUUID(),
+      codigo: genCodeFor(state.presupuestos, 'PPT'),
+      nombre: 'Nuevo presupuesto',
+      entidad: '',
+      contrato: '',
+      objeto: '',
+      plazo: '',
+      fecha_creacion: new Date().toISOString().slice(0, 10),
+      ciudad: '',
+      departamento: '',
+      elaborado_por: '',
+      activo: true,
+      con_sub_proyectos: false,
+      parent_id: null,
+      estado: 'borrador',
+      fecha_cierre: '',
+      observaciones: '',
+      items: [],
+      aiu_override: {
+        activo: false,
+        pct_a: state.config.pct_administracion,
+        pct_i: state.config.pct_imprevistos,
+        pct_u: state.config.pct_utilidad,
+        iva_pct: 19,
+      },
+      factores_snap: state.factoresPrestaciones,
+      cargos_snap: state.cargos,
+      apus_snap: state.apus,
+      insumos_snap: state.insumos,
+      equipos_snap: state.equipos,
+      cuadrillas_snap: state.cuadrillas,
+      perfil_pais_snap:
+        state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ?? null,
+      formulario_original: null,
+    };
+    patch({ presupuestos: [...state.presupuestos, nuevo] });
+    onSelect(nuevo.id);
+  }
+
+  async function eliminar(id: string) {
+    const tieneHijos = state.presupuestos.some((p) => p.parent_id === id);
+    if (tieneHijos) {
+      if (
+        !(await askConfirm(
+          'Este presupuesto tiene sub-proyectos. ¿Eliminar de todas formas? (los sub-proyectos quedarán huérfanos)',
+        ))
+      )
+        return;
+    } else if (!(await askConfirm('¿Eliminar este presupuesto?'))) {
+      return;
+    }
+    patch({ presupuestos: state.presupuestos.filter((p) => p.id !== id) });
+  }
+
+  function upd(id: string, k: keyof Presupuesto, v: string | boolean) {
+    patch({ presupuestos: state.presupuestos.map((p) => (p.id === id ? { ...p, [k]: v } : p)) });
+  }
+
+  return (
+    <XlWrap>
+      <TableHeader title="Proyectos" icon="proyectos" />
+      <DimEnLectura>
+        <XlScroll>
+          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th title="Código único del presupuesto, generado automáticamente.">Código</th>
+                  <th title="Nombre del proyecto o presupuesto.">Nombre</th>
+                  <th title="Tipo de presupuesto (obra, estudio, etc.).">Tipo</th>
+                  <th title="Borrador, en cierre o cerrado; controla si se puede editar.">
+                    Estado
+                  </th>
+                  <th title="Cantidad de ítems del presupuesto.">Ítems</th>
+                  <th aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {flat.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="cm-empty-row">
+                      Sin presupuestos
+                    </td>
+                  </tr>
+                )}
+                {flat.map(({ pres, level }, i) => (
+                  <tr
+                    key={pres.id}
+                    style={{
+                      background: selId === pres.id ? 'rgba(37,99,235,.1)' : undefined,
+                      cursor: 'pointer',
+                    }}
+                    tabIndex={0}
+                    onClick={() => onSelect(pres.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelect(pres.id);
+                      }
+                    }}
+                  >
+                    <XlRowNum n={i + 1} />
+                    <td>{pres.codigo}</td>
+                    <td style={{ paddingLeft: level ? 24 : undefined }}>
+                      {level > 0 ? '↳ ' : ''}
+                      {pres.nombre}
+                    </td>
+                    <td>{getTipoProyecto(pres, state.presupuestos)}</td>
+                    <td>
+                      <select
+                        className="cm-sel"
+                        aria-label="Estado"
+                        value={pres.estado}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => upd(pres.id, 'estado', e.target.value)}
+                      >
+                        {Object.entries(ESTADO_LABEL).map(([k, l]) => (
+                          <option key={k} value={k}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>{pres.items.length}</td>
+                    <XlAct onDelete={() => eliminar(pres.id)} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </fieldset>
+        </XlScroll>
+      </DimEnLectura>
+      <CrudFooter
+        onAdd={crear}
+        addLabel="Nuevo Presupuesto"
+        countLabel="Total:"
+        count={state.presupuestos.length}
+      />
+    </XlWrap>
+  );
+}

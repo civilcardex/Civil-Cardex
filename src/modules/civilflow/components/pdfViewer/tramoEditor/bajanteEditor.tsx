@@ -1,24 +1,24 @@
 import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
-import { opcionesDiametroElemento } from '../drawingElementContextMenu/diameterSelector';
-import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials';
-import { useMaterialesLl } from '../../../context/RainwaterContext';
+import { opcionesDiametroElemento } from '../drawingElementContextMenu/diametroSelector.tsx';
+import { MATERIALES_CUBIERTA_LL } from '../../../constants/ingenieriaDatosMaterials.ts';
+import { useMaterialesLl } from '../../../context/LluviasContexto.tsx';
 import { OpcionesMaterial } from '../drawingElementContextMenu/canalesAsociados';
-import { usePlans } from '../../../context/PlansContext';
-import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules';
-import { normalizeDnLabel } from '../../../utils/formatUtils';
-import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import { usePlans } from '../../../context/PlanosContexto.tsx';
+import { direccionBajaPermitida } from '../../../lib/PlanoEngine/direccionReglas.ts';
+import { normalizeDnLabel } from '../../../utils/formatoUtiles.ts';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
+import { diamPulgFromLabel } from '../../../utils/diamPulgFromEtiqueta.ts';
 import { entradaPor } from '../../../utils/diamLookup';
-import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
-import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
-import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoMotor.ts';
+import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoEstado.ts';
+import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteReglas.ts';
 import {
   SELECT_STYLE,
   INPUT_CENTER_STYLE,
   CHECK_GRID_STYLE,
   CHECK_ROW_STYLE,
   READONLY_CENTER_STYLE,
-} from './context';
+} from './contexto.ts';
 import { useCaudalLl } from './useCaudalLl';
 
 /** Editor del bajante/montante seleccionado: diámetro, altura vertical, llenado (R) y área

@@ -1,6 +1,6 @@
 import { MONO_3D } from '../../../components/shared/config3d';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
-import type { DeclutterFrame } from '../labelDeclutter';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import type { DeclutterFrame } from '../etiquetaDesaclarar.ts';
 
 export function drawFallbackSymbol(
   ctx: CanvasRenderingContext2D,

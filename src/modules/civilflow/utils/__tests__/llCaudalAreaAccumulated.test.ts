@@ -4,9 +4,9 @@ import {
   materialComun,
   repartirOtrasCanal,
   sumaOtrasAsociados,
-} from '../rainwaterRows';
+} from '../lluviasFilas.ts';
 import type { Tramo } from '../../context/tramosReducer';
-import type { PlanItem } from '../../context/PlansContext';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
 
 // Caudal real de aguas lluvias (orig. usuario): se calcula con la columna TOTAL =
 // Parcial + Otras. La Parcial con la fórmula COMPARTIDA areaParcialBajanteLl (área dibujada
@@ -16,7 +16,7 @@ import type { PlanItem } from '../../context/PlansContext';
 // REQ material absoluto: sin materialCubierta elegido el cálculo NO dispara (C=0 → Q=0),
 // ni con áreas ni con el caudal manual del dibujo (t.qLps).
 
-vi.mock('../../services/storageService', () => ({
+vi.mock('../../services/almacenamientoServicio.ts', () => ({
   loadFromStorage: vi.fn(() => null), // sin dibujo → areaAcumMap vacío
   saveToStorage: vi.fn(),
 }));

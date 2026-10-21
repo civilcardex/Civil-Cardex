@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { renameRamalId } from '../networkRenumber';
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState';
+import { renameRamalId } from '../redRenumera.ts';
+import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoEstado.ts';
 
 // Convertir tributario en ramal renombra T1788... → RS8 en motor y storage (orig. usuario:
 // las tablas mostraban el id viejo mientras el dibujo mostraba el label nuevo).

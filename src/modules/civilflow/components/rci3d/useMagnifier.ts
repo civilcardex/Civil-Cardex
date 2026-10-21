@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Rci3DApi } from './useRci3DScene';
+import type { Rci3DApi } from './useRci3Escena.ts';
 
 // LUPA circular (port del HTML Isometrico_RCI_Open_Code_v19 §1682-1778): renderer WebGL
 // secundario creado solo al prender; cámara clonada recentrada bajo el cursor (soporta

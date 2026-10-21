@@ -1,7 +1,7 @@
 ﻿// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { useState } from 'react';
-import { renderEnJsdom, escribirEnInput, blurEnInput } from '../render';
+import { renderEnJsdom, escribirEnInput, blurEnInput } from '../dibuja.tsx';
 
 /**
  * Prueba del propio harness de render: si esto pasa, los tests de componente tienen red.

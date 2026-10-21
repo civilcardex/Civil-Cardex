@@ -1,17 +1,17 @@
 import type React from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
-import type { ProbedElement } from '../pdfViewer/tramoEditor/context';
-import type { SelectableTarget } from '../fixturesStorage';
-import type { BajanteLL } from '../../context/RainwaterContext';
-import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import { NETS } from '../../lib/PlanoEngine/PlanoState';
+import type { ProbedElement } from '../pdfViewer/tramoEditor/contexto.ts';
+import type { SelectableTarget } from '../aparatosAlmacenamiento.ts';
+import type { BajanteLL } from '../../context/LluviasContexto.tsx';
+import type PlanoEngine from '../../lib/PlanoEngine/PlanoMotor.ts';
+import { NETS } from '../../lib/PlanoEngine/PlanoEstado.ts';
 import { vetarSelloCanal, levantarVetoSelloCanal } from '../../lib/PlanoEngine/canalAssociation';
 import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
 } from '../pdfViewer/drawingElementContextMenu/canalesAsociados';
-import { camposAsocManual } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit';
-import { bajanteLabel, ramalLabel } from '../../utils/accessoryAbbreviations';
+import { camposAsocManual } from '../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
+import { bajanteLabel, ramalLabel } from '../../utils/accesorioAbbreviations.ts';
 
 /** Panel de asociaciones de aguas lluvias (ll): canales, ramales y bajantes. Cada casilla
  *  escribe en el motor, respeta el veto de sello del canal y refresca la selección. */

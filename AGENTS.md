@@ -414,3 +414,31 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
 - **Dedups aplicados**: `distSeg/distAPadre` (tributaries importa de counting; ~17L), `libroHeredadoDe` (bajanteAssocShared importa de counting; ~6L), `despacharStorage` (una copia en books.ts, con guard `typeof window` para tests node; ~5L).
 - **Quedó pendiente (deuda, no bug)**: adoptar `leerDocDePlan` en los 7 sitios crudos restantes (RainChannelsCheck, RainDownpipesCheck ×2, rainwaterRows ×2, waterRowsCore, sanConnectivity, useWaterNetworkGraph) — variantes de genérico/fallback por sitio, ~30-45 min.
 - Gates: tsc 0 · lint 0 · vitest 1306/1307 (220) · build + prerender 13/13 ✓ · graphify ✓.
+
+## Session Summary — 2026-10-20 (rondas 62-65: G8 + C3 + C2 + SEO)
+- **G8 (guard de complejidad) NUEVO**: `src/architecture/complejidad.ts` cuenta "focos" = búsquedas
+  lineales (find/findIndex/some/filter/indexOf/includes) DENTRO de bucles, parseando con el AST de
+  TypeScript (no regex). Reglas del guard: (A) ningún archivo nuevo con ≥5 focos, (B) ninguno CRECE,
+  (C) el total no sube, (D) si el código tiene menos que el baseline → hay que bajarlo (anti-congelación).
+  Baseline congelado: 596 focos en 48 archivos. Regenerar con `npm run baseline:complejidad`.
+  Excluye del conteo lo que NO escala: catálogos fijos (NETS, TEE_TYPES), los puntos de un trazo y las
+  listas correlativas cortas (recibeDeIds).
+- **C3 (tablas/memoria)**: `sanConnectivity` 21→6 · `buildBajanteGraph` 16→5 · `waterRowsCore` 39→5 ·
+  `useWaterNetworkGraph` 45→6 · `rainwaterRows` 26→13 · `bajanteVentRows` 27→9 ·
+  `buildTramos` 19→10 · `assocLayoutMigration` (I/O por elemento: `loadData` DENTRO del bucle → cache por plano)
+  · `copyDrawingFromPlan` · `directionSelector` · `editorSections` · `fixtureMirrors`.
+  Helpers nuevos: `utils/indices.ts` (indicePorId/indicePorClave/conjuntoDe) + `utils/indices.test.ts`.
+- **C2 (motor)**: `lib/PlanoEngine/indicesMotor.ts` (indicesDeMotor: id→pieza de los 6 tipos; se construye
+  POR OPERACIÓN, nunca cacheado — el motor reasigna sus arrays en ~20 sitios y un índice cacheado se pudre).
+  `mouseDownHits` 18→3 · `handleDragMove` 10→2 · `ventDiameters` 10→2 · `renderBajantes` 15→10 ·
+  `deleteSelected` (el .some por tribario era O(n²) por pasada del while) · `propagation/edges` 19→13.
+- **SEO cerrado (2 huecos)**: (1) las 6 rutas de módulo NO tenían H1 (`<h2>` en los heroes) → ñ h1
+  (13/13 rutas prerenderizadas con H1); (2) `usePageMeta` reescribía título/descripción a mano mientras
+  ROUTE_META se declaraba "fuente única" sin que nadie la consumiera → `metaDeRuta(path)` + `ModuleConfig.ruta`.
+  Test `seo/__tests__/routeMeta.test.ts` (7) + verificación de que las 13 rutas coinciden con ROUTE_META.
+- **Cerrado sin tocar**: el loader del manager YA usaba `<CargandoProyecto />` (el "Abriendo proyecto…" que
+  quedaba es etiqueta de tarjeta en `ProyectoCard.tsx`, no un loader).
+- **Gates**: tsc 0 · lint 0 · vitest 1338/1338 (224 archivos) · build + prerender 13/13 · graphify ✓.
+- **Pendiente**: focos que siguen en el baseline (los ≥5 restantes por archivo, sobre todo render y
+  borrado del motor), WorkAreaCivilManagerPage (cerrado), y las acciones de usuario de SEO
+  (Search Console + Bing Webmaster Tools).

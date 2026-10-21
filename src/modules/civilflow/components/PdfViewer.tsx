@@ -1,31 +1,35 @@
 /* eslint-disable no-empty */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
-import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
-import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome';
-import { useViewerResponsive } from './pdfViewer/useViewerResponsive';
-import { leerPlansMeta, planCalibrado } from '../utils/plansMeta';
-import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamera';
-import { bboxDelDibujo } from './pdfViewer/drawingBBox';
+import { usePlanoLoadSwitch } from './pdfViewer/usePlanoCargaInterruptor.ts';
+import { ViewerMobileChrome } from './pdfViewer/ViewerMovilCromo.tsx';
+import { useViewerResponsive } from './pdfViewer/useViewerResponsivo.ts';
+import { leerPlansMeta, planCalibrado } from '../utils/planosMeta.ts';
+import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamara.ts';
+import { bboxDelDibujo } from './pdfViewer/dibujoCaja.ts';
 import { useNavigate } from 'react-router-dom';
 import PlanoEngine, {
   type ElementItem,
   type ToolType,
   type TramoType,
-} from '../lib/PlanoEngine/PlanoEngine';
-import type { PlanoElement } from '../lib/PlanoEngine/PlanoState';
-import { aparatoEnExtremoInvalido } from '../lib/PlanoEngine/PlanoEngineDrawing';
-import type { Piso } from '../lib/shared/projectTypes';
-import type { PlanItem } from '../context/PlansContext';
+} from '../lib/PlanoEngine/PlanoMotor.ts';
+import type { PlanoElement } from '../lib/PlanoEngine/PlanoEstado.ts';
+import { aparatoEnExtremoInvalido } from '../lib/PlanoEngine/PlanoMotorDibujo.ts';
+import type { Piso } from '../lib/shared/proyectoTipos.ts';
+import type { PlanItem } from '../context/PlanosContexto.tsx';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
-import { useProject } from '../context/ProjectContext';
-import { usePlans } from '../context/PlansContext';
+import { useProject } from '../context/ProyectoContexto.tsx';
+import { usePlans } from '../context/PlanosContexto.tsx';
 import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
-} from '../utils/drawingSync';
-import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber';
-import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
+} from '../utils/dibujoSync.ts';
+import { isPlanKeyFor } from '../lib/PlanoEngine/redRenumera.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  getActiveProyectoId,
+} from '../services/almacenamientoServicio.ts';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
@@ -33,39 +37,39 @@ import {
   ACTIVE_NETS_KEY,
   PDF_HIDDEN_NETS_KEY,
   PDF_LOCKED_NETS_KEY,
-} from '../constants/storage-keys';
-import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
+} from '../constants/almacenamientoClaves.ts';
+import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerBarra.tsx';
 
-import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistTrazos';
-import { useViewerDialogs } from './pdfViewer/useViewerDialogs';
-import { useViewerToolbarActions } from './pdfViewer/useViewerToolbarActions';
-import { validateBeforeClose } from './pdfViewer/closeValidation';
+import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persisteTrazos.ts';
+import { useViewerDialogs } from './pdfViewer/useViewerDialogos.ts';
+import { useViewerToolbarActions } from './pdfViewer/useViewerBarraAcciones.ts';
+import { validateBeforeClose } from './pdfViewer/cierraValidacion.ts';
 export { validateBeforeClose };
-import { sleep } from './shared/sequentialLoad';
-import PdfCanvas from './pdfViewer/PdfCanvas';
-import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar';
+import { sleep } from './shared/sequentialCarga.ts';
+import PdfCanvas from './pdfViewer/PdfLienzo.tsx';
+import PdfViewerNetworkBar from './pdfViewer/PdfViewerRedBarra.tsx';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
-import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit';
-import TextInputOverlay from './pdfViewer/TextInputOverlay';
+import { usePdfViewerEngine } from './pdfViewer/PdfViewerMotorInicial.ts';
+import TextInputOverlay from './pdfViewer/TextoEntradaSuperposicion.tsx';
 import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
-import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/context';
-import ConfirmDialog from './pdfViewer/ConfirmDialog';
-import AccesorioModal from './pdfViewer/FittingModal';
+import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/contexto.ts';
+import ConfirmDialog from './pdfViewer/ConfirmDialogo.tsx';
+import AccesorioModal from './pdfViewer/AjusteModal.tsx';
 import TramoEditor from './pdfViewer/tramoEditor';
 import BajanteAsociacion from './pdfViewer/BajanteAssociation';
-import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements';
-import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
-import AparatosPanel from './FixturesPanel';
-import { prefetchAllTrazos } from '../utils/prefetchTrazos';
-import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement';
-import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs';
-import { useNetColorsInit } from './pdfViewer/useNetColorsInit';
-import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility';
-import { useFloorRamales } from './pdfViewer/useFloorRamales';
-import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
-import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
-import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents';
+import PdfViewerDrawnElements from './pdfViewer/PdfViewerDibujadoElementos.tsx';
+import { CopyFromPlanPanel } from './pdfViewer/CopiaFromPlanoPanel.tsx';
+import AparatosPanel from './AparatosPanel.tsx';
+import { prefetchAllTrazos } from '../utils/precargaTrazos.ts';
+import { applyAccesorioPlacement } from './pdfViewer/ajusteUbicacion.ts';
+import { useSessionVisorPrefs } from './pdfViewer/useSesionViewerPreferencias.ts';
+import { useNetColorsInit } from './pdfViewer/useRedColoresInicial.ts';
+import { useActiveNetsVisibility } from './pdfViewer/useActivoNetsVisibilidad.ts';
+import { useFloorRamales } from './pdfViewer/usePisoRamales.ts';
+import { useTrazosLoader } from './pdfViewer/useTrazosCargador.ts';
+import { useKeyboardShortcuts } from './pdfViewer/useTecladoAtajos.ts';
+import { diamPulgFromLabel } from '../utils/diamPulgFromEtiqueta.ts';
+import { emitAparatosClear, EV_STORAGE } from '../utils/aparatoEventos.ts';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,

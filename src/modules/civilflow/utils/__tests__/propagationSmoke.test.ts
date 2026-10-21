@@ -1,6 +1,6 @@
 ﻿import { describe, it, expect } from 'vitest';
 import { propagarAparatosPresion, diagUltimaPropagacion } from '../propagation';
-import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
+import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/almacenamientoClaves.ts';
 
 describe('debug', () => {
   it('propaga', () => {

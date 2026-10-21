@@ -1,10 +1,10 @@
-import { loadFromStorage } from '../../services/storageService';
+import { loadFromStorage } from '../../services/almacenamientoServicio.ts';
 import {
   APARATOS_HEREDADOS_KEY,
   APARATOS_HEREDADOS_TRIB_KEY,
   BAJADAS_RECEPTORAS_KEY,
-} from '../../constants/storage-keys';
-import type { Cnt } from './counting';
+} from '../../constants/almacenamientoClaves.ts';
+import type { Cnt } from './conteo.ts';
 
 const HEREDADOS_KEY = APARATOS_HEREDADOS_KEY;
 const HEREDADOS_TRIB_KEY = APARATOS_HEREDADOS_TRIB_KEY;

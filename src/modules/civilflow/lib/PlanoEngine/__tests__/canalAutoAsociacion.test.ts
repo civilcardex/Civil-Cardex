@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { finishRamal } from '../finishRamal';
 import { vetarSelloCanal, leerEstadoSello } from '../canalAssociation';
-import PlanoEngineCtor from '../PlanoEngine';
-import type PlanoEngine from '../PlanoEngine';
+import PlanoEngineCtor from '../PlanoMotor.ts';
+import type PlanoEngine from '../PlanoMotor.ts';
 
 // Sello automático canal↔bajante por ramal (orig. usuario): un ramal ll que une canal y
 // bajante registra b.canalId solo, para que menús/paneles lo muestren sin marcar a mano.

@@ -1,0 +1,172 @@
+import { supabase } from '../../../lib/supabase';
+import { devError } from '../../../utils/desarrolloError.ts';
+import { CF_TABLES } from '../constants/tablaNombres.ts';
+import type { BajanteLL, CanalLL } from '../context/LluviasContexto.tsx';
+
+export interface RainwaterOverrides {
+  bajantes: BajanteLL[];
+  canales: CanalLL[];
+}
+
+interface BajanteOverrideRow {
+  id_cliente: string;
+  bajante: string;
+  area_parcial: number | null;
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable, por defecto 0. */
+  area_otras: number | null;
+  area_acumulada: number | null;
+  intensidad: number | null;
+  coeficiente_c: number | null;
+  /** Techo que escurre al bajante, o sea de qué material está (zinc, teja…). Ej: catálogo
+   *  de ll (Lluvias); de ahí sale C, el coeficiente de escorrentía (cuánta lluvia llega
+   *  al tubo y cuánta se absorbe en el techo). */
+  material_cubierta: string | null;
+  R: string | null;
+  manning: number | null;
+  diam_propuesto: number | null;
+}
+interface CanalOverrideRow {
+  id_cliente: string;
+  sector: string;
+  area_parcial: number | null;
+  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable, por defecto 0. */
+  area_otras: number | null;
+  area_acumulada: number | null;
+  intensidad: number | null;
+  coeficiente_c: number | null;
+  /** Port hoja "2. Canales" del cuaderno: materiales (de ellos salen C = coeficiente de
+   *  escorrentía y n = coeficiente de Manning, qué tan rugoso es el canal), muro vertical
+   *  y borde libre. */
+  material_cubierta: string | null;
+  material_canal: string | null;
+  muro_vertical: number | null;
+  borde_libre_cm: number | null;
+  manning: number | null;
+  pendiente: number | null;
+  b: number | null;
+  h: number | null;
+}
+
+/**
+ * Carga los overrides manuales de drenaje pluvial de un proyecto. Devuelve listas vacías
+ * cuando aún no hay filas. Los ids efímeros (BLL-n/CLL-n) se regeneran porque dependen del
+ * largo de la lista; la clave estable es bajante/sector.
+ */
+export async function loadRainwaterOverrides(proyectoId: string): Promise<RainwaterOverrides> {
+  try {
+    const [bajantesRes, canalesRes] = await Promise.all([
+      // select('*'): tolerante a esquemas de BD sin migrar — si una columna (p. ej. R) aún no
+      // existe, la carga no revienta (el mapeo ya rellena defaults). Cuando la columna exista,
+      // se puebla sola.
+      supabase
+        .from(CF_TABLES.anulacionesBajantes)
+        .select('*')
+        .eq('proyecto_id', proyectoId)
+        .order('id'),
+      supabase
+        .from(CF_TABLES.anulacionesCanales)
+        .select('*')
+        .eq('proyecto_id', proyectoId)
+        .order('id'),
+    ]);
+    if (bajantesRes.error) throw bajantesRes.error;
+    if (canalesRes.error) throw canalesRes.error;
+
+    const bajantes: BajanteLL[] = ((bajantesRes.data ?? []) as BajanteOverrideRow[]).map(
+      (r, i) => ({
+        id: `BLL-${i + 1}`,
+        bajante: r.bajante,
+        areaParcial: r.area_parcial ?? 0,
+        areaOtras: r.area_otras ?? 0,
+        areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
+        intensidad: r.intensidad ?? 100,
+        coeficienteC: r.coeficiente_c ?? 0,
+        materialCubierta: r.material_cubierta ?? '',
+        R: r.R ?? '',
+        manning: r.manning ?? 0,
+        diamPropuesto: r.diam_propuesto ?? 0,
+      }),
+    );
+    const canales: CanalLL[] = ((canalesRes.data ?? []) as CanalOverrideRow[]).map((r, i) => ({
+      id: `CLL-${i + 1}`,
+      sector: r.sector,
+      areaParcial: r.area_parcial ?? 0,
+      areaOtras: r.area_otras ?? 0,
+      areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
+      intensidad: r.intensidad ?? 100,
+      coeficienteC: r.coeficiente_c ?? 0,
+      materialCubierta: r.material_cubierta ?? '',
+      materialCanal: r.material_canal ?? '',
+      muroVertical: r.muro_vertical ?? 0,
+      bordeLibreCm: r.borde_libre_cm ?? 10,
+      manning: r.manning ?? 0.011,
+      pendiente: r.pendiente ?? 0,
+      b: r.b ?? 0,
+      h: r.h ?? 0,
+    }));
+    return { bajantes, canales };
+  } catch (e) {
+    devError('rainwaterOverridesService load:', e);
+    return { bajantes: [], canales: [] };
+  }
+}
+
+/** Guarda tus ediciones manuales de lluvias en la BD (una foto por tabla). Solo viajan filas con bajante o sector; las vacías se pierden al recargar. Ej: BLL-1 con área. */
+export async function saveRainwaterOverrides(
+  proyectoId: string,
+  bajantes: BajanteLL[],
+  canales: CanalLL[],
+): Promise<void> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const bajanteRows = bajantes
+      .filter((b) => b.bajante.trim().length > 0)
+      .map((b) => ({
+        id_cliente: b.bajante.trim(),
+        bajante: b.bajante.trim(),
+        // Defaults defensivos: un campo undefined en el payload llega NULL al RPC y viola
+        // los NOT NULL de la tabla (orig. usuario: "null value in column R").
+        area_parcial: b.areaParcial ?? 0,
+        area_otras: b.areaOtras ?? 0,
+        area_acumulada: b.areaAcumulada ?? 0,
+        intensidad: b.intensidad ?? 100,
+        coeficiente_c: b.coeficienteC ?? 0,
+        material_cubierta: b.materialCubierta ?? '',
+        R: b.R ?? '',
+        manning: b.manning ?? 0,
+        diam_propuesto: b.diamPropuesto ?? 0,
+      }));
+    const canalRows = canales
+      .filter((c) => c.sector.trim().length > 0)
+      .map((c) => ({
+        id_cliente: c.sector.trim(),
+        sector: c.sector.trim(),
+        area_parcial: c.areaParcial ?? 0,
+        area_otras: c.areaOtras ?? 0,
+        area_acumulada: c.areaAcumulada ?? 0,
+        intensidad: c.intensidad ?? 100,
+        coeficiente_c: c.coeficienteC ?? 0,
+        material_cubierta: c.materialCubierta ?? '',
+        material_canal: c.materialCanal ?? '',
+        muro_vertical: c.muroVertical ?? 0,
+        borde_libre_cm: c.bordeLibreCm ?? 10,
+        manning: c.manning ?? 0.011,
+        pendiente: c.pendiente ?? 0,
+        b: c.b ?? 0,
+        h: c.h ?? 0,
+      }));
+
+    const { error } = await supabase.rpc('save_rainwater_overrides', {
+      p_proyecto_id: proyectoId,
+      p_bajantes: bajanteRows,
+      p_canales: canalRows,
+    });
+    if (error) devError('rainwaterOverridesService save rpc:', error.message);
+  } catch (e) {
+    devError('rainwaterOverridesService save exception:', e);
+  }
+}

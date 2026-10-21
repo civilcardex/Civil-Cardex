@@ -44,7 +44,7 @@ function upsertOptsOf(table: string): { defaultToNull?: boolean } | null {
   return (c?.opts as { defaultToNull?: boolean } | undefined) ?? null;
 }
 
-import { defaultState, civilManagerSave } from '../storage';
+import { defaultState, civilManagerSave } from '../almacenamiento.ts';
 
 const PROYECTO = '11111111-1111-4111-8111-111111111111';
 

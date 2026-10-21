@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { eraseRamalAt } from '../drawingErase';
-import { deleteSelected as _deleteSelected } from '../deleteSelected';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
+import { eraseRamalAt } from '../dibujoBorra.ts';
+import { deleteSelected as _deleteSelected } from '../eliminaSelected.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
 
 // Cadena completa del usuario: yee doble (tronco partido por los splits + 2 laterales) →
 // borrar el 4º brazo → queda yee simple → borrar el lateral restante ("el trazo que creó la

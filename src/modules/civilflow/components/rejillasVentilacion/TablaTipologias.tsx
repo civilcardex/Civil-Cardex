@@ -2,10 +2,10 @@
 // por celda con confirmación). Extraída del hub — incluye el rediseño de subfilas y los
 // fixes de borrado de la ronda 2026-10-06 (no es movimiento verbatim puro).
 import React, { useEffect, useRef, useState } from 'react';
-import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
+import { APARATOS_DEF } from '../../constants/ingenieriaDatosAparatos.ts';
 import { SOL } from '../../constants/rejillasNTC3631';
-import { clasifRecinto, solucionAplicada } from '../../utils/rejillasCalc';
-import type { RejResultado } from '../../utils/rejillasCalc';
+import { clasifRecinto, solucionAplicada } from '../../utils/rejillasCalculo.ts';
+import type { RejResultado } from '../../utils/rejillasCalculo.ts';
 import {
   INP,
   SEL,
@@ -18,9 +18,9 @@ import {
   onAparatoCol,
   quitarColumna,
   setCantCol,
-} from './rejillasShared';
-import type { RejFila } from './rejillasShared';
-import type { OverridesMap, RejOverride } from './rejillasStorage';
+} from './rejillasCompartido.ts';
+import type { RejFila } from './rejillasCompartido.ts';
+import type { OverridesMap, RejOverride } from './rejillasAlmacenamiento.ts';
 import { useStickyThead2Offset } from '../shared/useStickyThead2Offset';
 
 export function TablaTipologias({

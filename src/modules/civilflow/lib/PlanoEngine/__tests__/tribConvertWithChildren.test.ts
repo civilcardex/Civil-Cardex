@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tribsBlockingRamalConversion } from '../../../components/pdfViewer/drawingElementContextMenu/ramalMenuHelpers';
-import type { PlanoRamal } from '../PlanoState';
+import { tribsBlockingRamalConversion } from '../../../components/pdfViewer/drawingElementContextMenu/ramalMenuAyudantes.ts';
+import type { PlanoRamal } from '../PlanoEstado.ts';
 
 // Convertir un segmento de línea tributaria partida no debe bloquearse por sus hermanos ni
 // por los tributarios que drenan hacia él (serán tributarios normales del ramal nuevo).

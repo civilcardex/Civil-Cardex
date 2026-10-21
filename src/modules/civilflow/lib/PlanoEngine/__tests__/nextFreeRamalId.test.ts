@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nextFreeRamalId } from '../PlanoState';
+import { nextFreeRamalId } from '../PlanoEstado.ts';
 
 // Ida y vuelta ramal↔tributario: el id heredado del ramal previo NO debe bloquear la
 // numeración — RS2 convertido a tributario deja RS2 libre y la vuelta recupera RS2

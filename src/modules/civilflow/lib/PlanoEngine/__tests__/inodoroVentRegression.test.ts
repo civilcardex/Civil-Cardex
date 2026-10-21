@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
-import { finishRamal } from '../PlanoEngineDrawing';
-import { deleteSelected } from '../deleteSelected';
-import PlanoEngineCtor from '../PlanoEngine';
-import type PlanoEngine from '../PlanoEngine';
+import { APARATOS_BY_TRAMO_KEY } from '../../../constants/almacenamientoClaves.ts';
+import { finishRamal } from '../PlanoMotorDibujo.ts';
+import { deleteSelected } from '../eliminaSelected.ts';
+import PlanoEngineCtor from '../PlanoMotor.ts';
+import type PlanoEngine from '../PlanoMotor.ts';
 
 // Reproducción de sesión completa: inodoro en RS4 (san) + conexión de ventilación (ramal vent
 // + bajante de vent) + borrado del vent + renumeración + undo + guardado/recarga. Tras CADA

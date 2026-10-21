@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { bumpBajanteToMaxRamal, followBajanteToMaxRamal } from '../drawingUtils';
-import { updateSelected } from '../PlanoEngineSelection';
-import { autoSplitJunctionAndSumFlow } from '../junctionAutoSplit';
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState';
+import { bumpBajanteToMaxRamal, followBajanteToMaxRamal } from '../dibujoUtiles.ts';
+import { updateSelected } from '../PlanoMotorSeleccion.ts';
+import { autoSplitJunctionAndSumFlow } from '../empalmeAutoDivide.ts';
+import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoEstado.ts';
 
 // El bajante toma por defecto el mayor diámetro de sus ramales (solo sube, nunca baja).
 describe('bumpBajanteToMaxRamal', () => {

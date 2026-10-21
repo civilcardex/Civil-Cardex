@@ -1,25 +1,25 @@
 // Sync de trazos con Supabase: cola por plano, merge con disco, usuario cacheado y carga.
 // Extraído verbatim de storageService.
-import { devError } from '../../../../utils/devError';
+import { devError } from '../../../../utils/desarrolloError.ts';
 import { supabase } from '../../../../lib/supabase';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
   GAS_ACC_KEY,
-} from '../../constants/storage-keys';
-import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence';
-import { dedupPorId, mergeBajanteDedup } from '../../lib/PlanoEngine/PlanoPersistence';
+} from '../../constants/almacenamientoClaves.ts';
+import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistencia.ts';
+import { dedupPorId, mergeBajanteDedup } from '../../lib/PlanoEngine/PlanoPersistencia.ts';
 import {
   getActiveProyectoId,
   loadFromStorage,
   saveToStorage,
   type PlanTrazos,
-} from './localStorage';
-import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes';
-import type { SupabaseRow } from './planoRowMappers';
-import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents';
-import { countKey } from '../../utils/keys';
+} from './localAlmacenamiento.ts';
+import type { CrossFloorGhost } from '../../lib/shared/crossPisoFantasmaTipos.ts';
+import type { SupabaseRow } from './planoFilaMappers.ts';
+import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/aparatoEventos.ts';
+import { countKey } from '../../utils/claves.ts';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -27,7 +27,7 @@ import type {
   PlanoDimension,
   PlanoTextAnnotation,
   PlanoGuideLine,
-} from '../../lib/PlanoEngine/PlanoState';
+} from '../../lib/PlanoEngine/PlanoEstado.ts';
 import {
   ramalToRow,
   rowToRamal,
@@ -43,7 +43,7 @@ import {
   rowToGuideLine,
   ghostToRow,
   rowToGhost,
-} from './planoRowMappers';
+} from './planoFilaMappers.ts';
 export function emitBdSaveError(reason: string, message: string): void {
   try {
     window.dispatchEvent(

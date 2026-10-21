@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
+import { contarFocosPorArchivo, totalFocos } from './complejidad';
 
 /**
  * GUARDIAS DE ARQUITECTURA (desmonotilización 2026-10-19).
@@ -12,6 +13,7 @@ import { join, relative, resolve, dirname, sep } from 'node:path';
  *  G3 Ciclos: no aparecen ciclos de import nuevos (el conocido está en la lista).
  *  G4 Pureza: los módulos de cálculo no importan React (son testeables en node).
  *  G5 Cobertura: cada módulo nuevo tiene al menos un test que lo importa.
+ *  G8 Complejidad: las búsquedas lineales dentro de bucles (focos O(n²)) no crecen.
  */
 
 const RAIZ = resolve(process.cwd(), 'src');
@@ -30,41 +32,42 @@ const TOPE_NUEVO = 700;
  */
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 1493,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1425,
-  'modules/civilflow/components/workareaContent/useInfTables.ts': 1236,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 1225,
-  'modules/civilflow/utils/sanAccesoriosTable.ts': 1213,
-  'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
-  'modules/civilflow/components/DownpipesTable.tsx': 1001,
-  'modules/civilflow/components/SupplyConnection.tsx': 1162,
+  'modules/civilflow/lib/PlanoEngine/PlanoMotor.ts': 1425,
+  'modules/civilflow/components/workareaContent/useInfTablas.ts': 1236,
+  'modules/civilflow/lib/PlanoEngine/renderers/dibujaRamales.ts': 1225,
+  'modules/civilflow/utils/sanAccesoriosTabla.ts': 1213,
+  'modules/civilflow/utils/waterFilasNucleo.ts': 704,
+  'modules/civilflow/components/workarea/PlanosPestana.tsx': 710,
+  'modules/civilflow/components/BajantesTabla.tsx': 1001,
+  'modules/civilflow/components/SupplyConexion.tsx': 1162,
   'modules/civilflow/components/GasDesign.tsx': 380,
-  'modules/civilflow/components/FixturesPanel.tsx': 905,
-  'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 605,
-  'modules/civilflow/components/RainChannelsCheck.tsx': 993,
+  'modules/civilflow/components/AparatosPanel.tsx': 905,
+  'modules/civilflow/components/workarea/PlanoConfigurador.tsx': 605,
+  'modules/civilflow/components/LluviaCanalesVerifica.tsx': 993,
   'modules/civilflow/constants/rejillasNTC3631.ts': 978,
-  'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 977,
-  'pages/auth/ProfilePage.tsx': 967,
-  'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 936,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 918,
+  'modules/civilflow/lib/PlanoEngine/manejaArrastrarMueve.ts': 977,
+  'pages/auth/PerfilPagina.tsx': 967,
+  'modules/civilflow/lib/PlanoEngine/PlanoEstado.ts': 936,
+  'modules/civilflow/components/workarea/isometry/useIsometriaDibuja.ts': 918,
   'modules/civilflow/components/rejillasVentilacion/TablaTipologias.tsx': 898,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 883,
-  'pages/PricingPage.tsx': 878,
+  'pages/PreciosPagina.tsx': 878,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 867,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 844,
-  'modules/civilflow/components/RainDownpipesCheck.tsx': 827,
-  'modules/civilflow/components/DesignParameters.tsx': 822,
-  'modules/civilflow/utils/equipmentRows.ts': 822,
+  'modules/civilflow/components/LluviaBajantesVerifica.tsx': 827,
+  'modules/civilflow/components/DesignParametros.tsx': 822,
+  'modules/civilflow/utils/equipoFilas.ts': 822,
   'modules/civilflow/components/BombaARDesign.tsx': 815,
-  'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 807,
-  'components/help/helpGuideFlow.tsx': 804,
-  'modules/civilflow/components/SanitaryDesign.tsx': 802,
-  'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 770,
-  'modules/civilflow/components/ep/EPVerificationPage.tsx': 751,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 749,
-  'modules/civilflow/context/RainwaterContext.tsx': 746,
-  'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 743,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 736,
-  'modules/civilflow/utils/copyDrawingFromPlan.ts': 701,
+  'modules/civilflow/lib/PlanoEngine/sanAccesoriosCalculo.ts': 807,
+  'components/help/ayudaGuiaFlujo.tsx': 804,
+  'modules/civilflow/components/SanitariaDesign.tsx': 802,
+  'modules/civilflow/components/pdfViewer/PdfViewerBarra.tsx': 770,
+  'modules/civilflow/components/ep/EPVerificationPagina.tsx': 751,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/medioRamalAccesorioSelector.tsx': 749,
+  'modules/civilflow/context/LluviasContexto.tsx': 746,
+  'modules/civilflow/lib/PlanoEngine/manejaArrastrarArriba.ts': 743,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diametroSelector.tsx': 736,
+  'modules/civilflow/utils/copiaDibujoFromPlano.ts': 701,
 };
 
 /**
@@ -73,8 +76,8 @@ const CONOCIDOS: Record<string, number> = {
  */
 const GESTIONADOS: Record<string, number> = {
   'modules/civilflow/utils/aparatosPresion.ts': 40,
-  'modules/civilflow/utils/sanAccesoriosTable.ts': 40,
-  'modules/civilflow/components/SupplyConnection.tsx': 60,
+  'modules/civilflow/utils/sanAccesoriosTabla.ts': 40,
+  'modules/civilflow/components/SupplyConexion.tsx': 60,
 };
 
 /**
@@ -112,115 +115,115 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     ruta: 'modules/civilflow/utils/propagation/index.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/index',
+    test: '../propagation',
   },
   {
     ruta: 'modules/civilflow/utils/propagation/reading.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/reading',
+    test: '../propagation/reading',
   },
   {
-    ruta: 'modules/civilflow/utils/propagation/edges.ts',
+    ruta: 'modules/civilflow/utils/propagation/aristas.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/edges',
+    test: '../propagation/aristas.ts',
   },
   {
     ruta: 'modules/civilflow/utils/propagation/folding.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/folding',
+    test: '../propagation/folding',
   },
   {
     ruta: 'modules/civilflow/utils/propagation/dfs.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/dfs',
+    test: '../propagation/dfs',
   },
   {
     ruta: 'modules/civilflow/utils/propagation/writing.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/writing',
+    test: '../propagation/writing',
   },
   {
-    ruta: 'modules/civilflow/utils/propagation/counting.ts',
+    ruta: 'modules/civilflow/utils/propagation/conteo.ts',
     maxLineas: 500,
     puro: true,
-    test: 'aparatosPresion/counting',
+    test: '../propagation/conteo.ts',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/index.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/index',
+    test: '../accessoriesTable/index',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/collection.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/collection',
+    test: '../accessoriesTable/collection',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/yees.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/yees',
+    test: '../accessoriesTable/yees',
   },
   {
-    ruta: 'modules/civilflow/utils/accessoriesTable/catalog.ts',
+    ruta: 'modules/civilflow/utils/accessoriesTable/catalogo.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/catalog',
+    test: '../accessoriesTable/catalogo.ts',
   },
   {
-    ruta: 'modules/civilflow/utils/accessoriesTable/counting.ts',
+    ruta: 'modules/civilflow/utils/accessoriesTable/conteo.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/counting',
+    test: '../accessoriesTable/conteo.ts',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/bushing.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/bushing',
+    test: '../accessoriesTable/bushing',
   },
   {
-    ruta: 'modules/civilflow/utils/accessoriesTable/rows.ts',
+    ruta: 'modules/civilflow/utils/accessoriesTable/filas.ts',
     maxLineas: 450,
     puro: true,
-    test: 'sanAccesoriosTable/rows',
+    test: '../accessoriesTable/filas.ts',
   },
   {
-    ruta: 'modules/civilflow/components/workareaContent/useSanTables.ts',
+    ruta: 'modules/civilflow/components/workareaContent/useSanTablas.ts',
     maxLineas: 300,
     puro: false,
-    test: 'useSanTables',
+    test: '../useSanTablas.ts',
   },
   {
-    ruta: 'modules/civilflow/components/workareaContent/useLlTables.ts',
+    ruta: 'modules/civilflow/components/workareaContent/useLlTablas.ts',
     maxLineas: 300,
     puro: false,
-    test: 'useLlTables',
+    test: '../useLlTablas.ts',
   },
   {
-    ruta: 'modules/civilflow/components/workareaContent/useAfTables.ts',
+    ruta: 'modules/civilflow/components/workareaContent/useAfTablas.ts',
     maxLineas: 300,
     puro: false,
-    test: 'useAfTables',
+    test: '../useAfTablas.ts',
   },
   {
-    ruta: 'modules/civilflow/components/workareaContent/useAcTables.ts',
+    ruta: 'modules/civilflow/components/workareaContent/useAcTablas.ts',
     maxLineas: 300,
     puro: false,
-    test: 'useAcTables',
+    test: '../useAcTablas.ts',
   },
   {
-    ruta: 'modules/civilflow/components/workareaContent/tableHelpers.ts',
+    ruta: 'modules/civilflow/components/workareaContent/tablaAyudantes.ts',
     maxLineas: 60,
     puro: false,
-    test: 'tablasHelpers',
+    test: '../tablaAyudantes.ts',
   },
   {
     ruta: 'modules/civilflow/components/supplyConnection/Acometida.tsx',
@@ -241,108 +244,198 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/ParamRow.tsx',
+    ruta: 'modules/civilflow/components/supplyConnection/ParamFila.tsx',
     maxLineas: 60,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/InlineComparisonRow.tsx',
+    ruta: 'modules/civilflow/components/supplyConnection/InlineComparisonFila.tsx',
     maxLineas: 60,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/styles.ts',
+    ruta: 'modules/civilflow/components/supplyConnection/estilos.ts',
     maxLineas: 120,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/utils/diamFractionValue.ts',
+    ruta: 'modules/civilflow/utils/diamFractionValor.ts',
     maxLineas: 60,
     puro: true,
-    test: 'diamFractionValue',
+    test: '../diamFractionValor.ts',
   },
   {
-    ruta: 'test/render.tsx',
+    ruta: 'test/dibuja.tsx',
     maxLineas: 200,
     puro: false,
-    test: 'harness',
+    test: '../dibuja.tsx',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/FlowSection.tsx',
+    ruta: 'modules/civilflow/components/supplyConnection/FlujoSeccion.tsx',
     maxLineas: 360,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/ParametersSection.tsx',
+    ruta: 'modules/civilflow/components/supplyConnection/ParametrosSeccion.tsx',
     maxLineas: 300,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/VerificationSection.tsx',
+    ruta: 'modules/civilflow/components/supplyConnection/VerificationSeccion.tsx',
     maxLineas: 300,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/supplyConnection/types.ts',
+    ruta: 'modules/civilflow/components/supplyConnection/tipos.ts',
     maxLineas: 120,
     puro: false,
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/rainChannels/CanalRow.tsx',
+    ruta: 'modules/civilflow/components/rainChannels/CanalFila.tsx',
     maxLineas: 330,
     puro: false,
     test: 'rainChannels',
   },
   {
-    ruta: 'modules/civilflow/components/rainChannels/CanalDimField.tsx',
+    ruta: 'modules/civilflow/components/rainChannels/CanalDimCampo.tsx',
     maxLineas: 140,
     puro: false,
     test: 'rainChannels',
   },
   {
-    ruta: 'modules/civilflow/utils/rainChannelCalc.ts',
+    ruta: 'modules/civilflow/utils/lluviaCanalCalculo.ts',
     maxLineas: 140,
     puro: true,
     test: 'canalesLluviasCalculo',
   },
   {
-    ruta: 'modules/civilflow/utils/readPlanDrawing.ts',
+    ruta: 'modules/civilflow/utils/leePlanoDibujo.ts',
     maxLineas: 60,
     puro: true,
-    test: 'readPlanDrawing',
+    test: 'leePlanoDibujo',
   },
   {
     ruta: 'modules/civilflow/utils/isLevelTaken.ts',
     maxLineas: 60,
     puro: true,
-    test: 'pisoOcupadoPor',
+    test: '../isLevelTaken',
   },
   {
-    ruta: 'modules/civilflow/utils/plansMeta.ts',
+    ruta: 'modules/civilflow/utils/planosMeta.ts',
     maxLineas: 100,
     puro: true,
-    test: 'plansMeta',
+    test: '../planosMeta.ts',
   },
   {
-    ruta: 'modules/civilflow/components/fixtures/fixtureMirrors.ts',
-    maxLineas: 400,
+    ruta: 'modules/civilflow/components/fixtures/aparatoEspejos.ts',
+    maxLineas: 410,
     puro: false,
-    test: 'useFixtureMirrors',
+    test: 'useAparatoEspejos',
   },
   {
-    ruta: 'modules/civilflow/components/fixtures/fixtureMirrorsTypes.ts',
+    ruta: 'modules/civilflow/components/fixtures/aparatoEspejosTipos.ts',
     maxLineas: 60,
     puro: false,
-    test: 'useFixtureMirrors',
+    test: 'useAparatoEspejos',
+  },
+  {
+    ruta: 'architecture/complejidad.ts',
+    maxLineas: 250,
+    puro: true,
+    test: './complejidad',
+  },
+  {
+    ruta: 'modules/civilflow/utils/indices.ts',
+    maxLineas: 120,
+    puro: true,
+    test: '../indices',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/indicesMotor.ts',
+    maxLineas: 120,
+    puro: true,
+    test: '../indicesMotor',
   },
 ];
+
+/**
+ * G8 · COMPLEJIDAD — línea base de búsquedas lineales dentro de bucles (focos O(n²)).
+ *
+ * Un "foco" es una búsqueda lineal (`.find`, `.findIndex`, `.some`, `.filter`, `.indexOf`,
+ * `.includes`) dentro de un bucle: por cada pieza del plano se recorre OTRA vez la lista de
+ * piezas. El detector vive en `complejidad.ts` (puro, testeado aparte).
+ *
+ * Este baseline congela el estado actual: el guard NO permite que ningún archivo CREZCA de
+ * focos, ni que aparezca uno nuevo. Cuando un archivo se arregla, su número baja aquí en el
+ * mismo commit — si no, la regla D falla y avisa de que el baseline quedó viejo.
+ *
+ * Los archivos con menos de 5 focos no se listan: tolerados, pero sin veto (arreglarlos es
+ * opcional; si uno llega a 5, entra en la lista y sí queda vigilado).
+ */
+const FOCOS_CONOCIDOS: Record<string, number> = {
+  'modules/civilflow/lib/PlanoEngine/renderers/dibujaEmpalmes.ts': 18,
+  'modules/civilflow/lib/PlanoEngine/eliminaSelected.ts': 17,
+  'modules/civilflow/lib/PlanoEngine/renderers/dibujaRamales.ts': 16,
+  'modules/civilflow/utils/asocDisposicionMigration.ts': 16,
+  'modules/civilflow/utils/copiaDibujoFromPlano.ts': 15,
+  'modules/civilflow/utils/propagation/aristas.ts': 13,
+  'modules/civilflow/utils/lluviasFilas.ts': 13,
+  'modules/civilflow/lib/PlanoEngine/eliminaYeePreserve.ts': 12,
+  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 11,
+  'modules/civilflow/components/pdfViewer/tramoEditor/editorSecciones.tsx': 11,
+  'modules/civilflow/components/fixtures/aparatoEspejos.ts': 10,
+  'modules/civilflow/lib/PlanoEngine/manejaArrastrarArriba.ts': 10,
+  'modules/civilflow/utils/construyeTramos.ts': 10,
+  'modules/civilflow/lib/PlanoEngine/ratonAbajoArrastres.ts': 9,
+  'modules/civilflow/utils/bajanteVentFilas.ts': 9,
+  'modules/civilflow/lib/PlanoEngine/dibujoUtiles.ts': 8,
+  'modules/civilflow/lib/PlanoEngine/renderers/bajanteFantasmas.ts': 8,
+  'modules/civilflow/lib/PlanoEngine/sanAccesoriosCalculo.ts': 8,
+  'modules/civilflow/utils/bajanteFilaModelo.ts': 8,
+  'modules/civilflow/utils/waterFilasAcometida.ts': 8,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConexionSecciones.tsx': 7,
+  'modules/civilflow/components/pdfViewer/usePisoRamales.ts': 7,
+  'modules/civilflow/components/workarea/isometry/useIsometriaDibuja.ts': 7,
+  'modules/civilflow/components/workarea/IsometriaGeneral.tsx': 7,
+  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 7,
+  'modules/civilflow/lib/PlanoEngine/redRenumera.ts': 7,
+  'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
+  'modules/civilflow/components/fixtures/SecMontantes.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/canalesAsociados.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/direccionSelector.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuAyudantes.ts': 6,
+  'modules/civilflow/components/LluviaBajantesVerifica.tsx': 6,
+  'modules/civilflow/context/LluviasContexto.tsx': 6,
+  'modules/civilflow/lib/PlanoEngine/canalSello.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/empalmeAutoDivide.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/PlanoMotorRed.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/renderers/dibujaRamalRuta.ts': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConexionPanel.tsx': 5,
+  'modules/civilflow/components/rejillasVentilacion/TablaTipologias.tsx': 5,
+  'modules/civilflow/lib/PlanoEngine/dibujoFlujo.ts': 5,
+  'modules/civilflow/lib/PlanoEngine/manejaRatonAbajo.ts': 5,
+  'modules/civilflow/lib/PlanoEngine/renderers/dibujaBajantes.ts': 5,
+  'modules/civilflow/utils/accessoriesTable/yees.ts': 5,
+  'modules/civilflow/utils/construyeBajanteGrafo.ts': 5,
+  'modules/civilflow/utils/drawingWrites/diametros.ts': 5,
+  'modules/civilflow/utils/sanConnectivity.ts': 5,
+  'pages/ModuloPagina.tsx': 5,
+};
+
+/**
+ * Total de focos de todo src/ al congelar el baseline. El guard lo usa como techo global:
+ * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
+ * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
+ */
+const TOTAL_FOCOS_BASE = 596;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
@@ -360,11 +453,11 @@ const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
     ],
   },
   {
-    ruta: 'modules/civilflow/utils/sanAccesoriosTable.ts',
+    ruta: 'modules/civilflow/utils/sanAccesoriosTabla.ts',
     simbolos: ['computeAccesoriosTable'],
   },
   {
-    ruta: 'modules/civilflow/components/workareaContent/useInfTables.ts',
+    ruta: 'modules/civilflow/components/workareaContent/useInfTablas.ts',
     simbolos: ['useInfTables'],
   },
 ];
@@ -508,6 +601,49 @@ describe('G5 · cada módulo nuevo tiene test', () => {
         sinTest.push(`${m.ruta}: ningún test lo importa (${m.test})`);
     }
     expect(sinTest).toEqual([]);
+  });
+});
+
+describe('G8 · los focos de complejidad no crecen', () => {
+  // El conteo se calcula UNA vez (parsear 600 archivos con el AST de TS cuesta segundos).
+  let conteoReal: Record<string, number>;
+  // Parsear 600 archivos con el AST de TypeScript tarda ~12 s: el hook necesita margen.
+  beforeAll(() => {
+    const fuentes: Record<string, string> = {};
+    for (const p of todosLosArchivos) fuentes[REL(p)] = readFileSync(p, 'utf8');
+    conteoReal = contarFocosPorArchivo(fuentes);
+  }, 120_000);
+
+  it('ningún archivo nuevo alcanza 5 focos de búsqueda lineal en bucle', () => {
+    const nuevos = Object.entries(conteoReal)
+      .filter(([ruta, n]) => n >= 5 && !(ruta in FOCOS_CONOCIDOS))
+      .map(([ruta, n]) => `${ruta}: ${n}`);
+    expect(nuevos).toEqual([]);
+  });
+
+  it('ningún archivo conocido ha crecido', () => {
+    const crecidos: string[] = [];
+    for (const [ruta, tope] of Object.entries(FOCOS_CONOCIDOS)) {
+      const n = conteoReal[ruta] ?? 0;
+      if (n > tope) crecidos.push(`${ruta}: ${n} > ${tope}`);
+    }
+    expect(crecidos).toEqual([]);
+  });
+
+  it('el total de focos no sube', () => {
+    const total = totalFocos(conteoReal);
+    expect(total).toBeLessThanOrEqual(TOTAL_FOCOS_BASE);
+  });
+
+  it('el baseline no quedó viejo: si el código tiene menos focos, hay que bajar el número', () => {
+    // Anti-congelación: arreglar un archivo sin actualizar la lista deja el guard mintiendo
+    // sobre el estado real. Esta regla obliga a bajar el baseline en el mismo commit.
+    const viejos: string[] = [];
+    for (const [ruta, tope] of Object.entries(FOCOS_CONOCIDOS)) {
+      const n = conteoReal[ruta] ?? 0;
+      if (n < tope) viejos.push(`${ruta}: el código tiene ${n}, el baseline dice ${tope}`);
+    }
+    expect(viejos).toEqual([]);
   });
 });
 

@@ -5,12 +5,13 @@ import type {
   PlanoTextAnnotation,
   PlanoDimension,
   PlanoGuideLine,
-} from './PlanoState';
-import type { IPlanoEngineCore } from './PlanoState';
-import { _midpoint } from './PlanoEngineDrawing';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
-import { pointToSegmentDist } from './HitTester';
-import { sectorDe } from '../../utils/formatUtils';
+} from './PlanoEstado.ts';
+import type { IPlanoEngineCore } from './PlanoEstado.ts';
+import { _midpoint } from './PlanoMotorDibujo.ts';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromEtiqueta.ts';
+import { pointToSegmentDist } from './ImpactoProbador.ts';
+import { sectorDe } from '../../utils/formatoUtiles.ts';
+import { indicesDeMotor } from './indicesMotor';
 
 /** Frena los cambios de diámetro en ventilación (vent) que se salgan de los límites de la norma
  *  (tol 2.0 px): false = no se permite el cambio. */
@@ -22,16 +23,25 @@ export function checkVentDiameterLimits(
   if (!el || !fields) return true;
   if (!('tipo' in el)) return true; // text annotations / areas never trigger vent-diameter checks
 
+  // Índices del motor: la búsqueda por id (ramal) era O(piezas) por consulta.
+  // Los ramales/bajantes de ventilación se filtraban por red en CADA llamada (y la llamada se
+  // repite por cada bajante): se filtran una vez.
+  const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
+  const ventBajantes = engine.bajantes.filter((b) => b.net === 'vent');
+  // Set de los ids que cada bajante recibe: el .includes dentro del bucle era O(recibeDeIds).
+  const recibeDe = new Map<string, Set<string>>();
+  for (const b of engine.bajantes) {
+    if (b.id) recibeDe.set(b.id, new Set(b.recibeDeIds || []));
+  }
+
   const getConnectedVentRamales = (b: PlanoBajante) => {
-    const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
     const connected: PlanoRamal[] = [];
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     const bx = b.x + (disp ? disp.dx : 0);
     const by = b.y + (disp ? disp.dy : 0);
+    const recibe = b.id ? recibeDe.get(b.id) : undefined;
     for (const vr of ventRamales) {
-      const isExplicit =
-        b.recibeDeIds &&
-        (b.recibeDeIds.includes(vr.id) || (vr.label && b.recibeDeIds.includes(vr.label)));
+      const isExplicit = !!recibe && (recibe.has(vr.id) || (!!vr.label && recibe.has(vr.label)));
       let isConnected = isExplicit;
       if (!isConnected && vr.pts && vr.pts.length >= 2) {
         const d1 = Math.hypot(vr.pts[0][0] - bx, vr.pts[0][1] - by);
@@ -44,15 +54,13 @@ export function checkVentDiameterLimits(
   };
 
   const getConnectedVentBajantes = (r: PlanoRamal) => {
-    const ventBajantes = engine.bajantes.filter((b) => b.net === 'vent');
     const connected: PlanoBajante[] = [];
     for (const vb of ventBajantes) {
       const disp = vb.desplazamientos?.[engine.nivelActual?.label ?? ''];
       const bx = vb.x + (disp ? disp.dx : 0);
       const by = vb.y + (disp ? disp.dy : 0);
-      const isExplicit =
-        vb.recibeDeIds &&
-        (vb.recibeDeIds.includes(r.id) || (r.label && vb.recibeDeIds.includes(r.label)));
+      const recibe = vb.id ? recibeDe.get(vb.id) : undefined;
+      const isExplicit = !!recibe && (recibe.has(r.id) || (!!r.label && recibe.has(r.label)));
       let isConnected = isExplicit;
       if (!isConnected && r.pts && r.pts.length >= 2) {
         const d1 = Math.hypot(r.pts[0][0] - bx, r.pts[0][1] - by);
@@ -187,6 +195,13 @@ export function syncVentBajanteDiameters(
 // @returns id del san bajante o null.
 function resolveVentSanTarget(engine: IPlanoEngineCore, ventB: PlanoBajante): string | null {
   const sanBajs = engine.bajantes.filter((b) => b.net === 'san' || b.net === 'll');
+  // Índices del motor: la búsqueda por id (ramal) y la de "quién recibe a este" eran
+  // O(piezas) y O(recibeDeIds) por consulta.
+  const idx = indicesDeMotor(engine);
+  const recibeDe = new Map<string, Set<string>>();
+  for (const b of engine.bajantes) {
+    if (b.id) recibeDe.set(b.id, new Set(b.recibeDeIds || []));
+  }
   const findSanBaj = (ref: string | null | undefined): PlanoBajante | null => {
     if (!ref) return null;
     const parts = String(ref).split('|');
@@ -211,7 +226,8 @@ function resolveVentSanTarget(engine: IPlanoEngineCore, ventB: PlanoBajante): st
   for (const r of engine.ramales) {
     if (r.net !== 'vent' || !r.pts || r.pts.length < 2) continue;
     const explicit =
-      ventB.recibeDeIds?.includes(r.id) || (!!r.label && ventB.recibeDeIds?.includes(r.label));
+      (recibeDe.get(ventB.id ?? '')?.has(r.id) ?? false) ||
+      (!!r.label && (recibeDe.get(ventB.id ?? '')?.has(r.label) ?? false));
     const head = r.pts[r.pts.length - 1];
     const geo =
       Math.hypot(r.pts[0][0] - bx, r.pts[0][1] - by) < 2.0 ||
@@ -219,7 +235,7 @@ function resolveVentSanTarget(engine: IPlanoEngineCore, ventB: PlanoBajante): st
     if (explicit || geo) ventRamalIds.add(r.id);
   }
   for (const vrId of ventRamalIds) {
-    const vr = engine.ramales.find((r) => r.id === vrId);
+    const vr = idx.ramales.get(vrId);
     if (!vr?.pts || vr.pts.length < 2) continue;
     const eps = [vr.pts[0], vr.pts[vr.pts.length - 1]];
     for (const san of engine.ramales) {
@@ -277,12 +293,17 @@ function findSanBajanteDownstream(
     return null;
   };
   const visited = new Set<string>();
+  // Set de los ids que cada bajante recibe: el .includes por salto de la cadena era O(k).
+  const recibeDe = new Map<string, Set<string>>();
+  for (const b of engine.bajantes) {
+    if (b.id) recibeDe.set(b.id, new Set(b.recibeDeIds || []));
+  }
   let cur: PlanoRamal | null = start;
   for (let hop = 0; hop < 8 && cur; hop++) {
     if (visited.has(cur.id)) break;
     visited.add(cur.id);
     const curId = cur.id;
-    const byRecibe = sanBajs.find((b) => b.recibeDeIds?.includes(curId));
+    const byRecibe = sanBajs.find((b) => recibeDe.get(b.id ?? '')?.has(curId) ?? false);
     if (byRecibe) return byRecibe.id;
     const byRef = findSanBaj(cur.fin) || findSanBaj(cur.ini);
     if (byRef) return byRef.id;

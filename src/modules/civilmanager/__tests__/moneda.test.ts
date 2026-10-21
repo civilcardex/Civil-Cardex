@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { configurarMoneda, fmt, fmtMoneda } from '../calc';
+import { configurarMoneda, fmt, fmtMoneda } from '../calculo.ts';
 
 describe('moneda general (símbolo por país escogido)', () => {
   it('fmtMoneda antepone el símbolo de la moneda configurada', () => {

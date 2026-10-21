@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { applyBajanteAssociation } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { correrEspejos } from '../../components/fixtures/useFixtureMirrors';
-import { currentMapDe, type TargetArgs } from '../../components/fixtures/useFixtureTarget';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState';
+import { correrEspejos } from '../../components/fixtures/useAparatoEspejos.ts';
+import { currentMapDe, type TargetArgs } from '../../components/fixtures/useAparatoObjetivo.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // SECUENCIA VIVA completa (orig. usuario: "no se están propagando los aparatos entre pisos
 // cuando asocio montantes"): los tests de apply cortan en el storage recién escrito y el E2E

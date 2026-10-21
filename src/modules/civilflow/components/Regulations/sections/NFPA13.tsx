@@ -1,11 +1,9 @@
-import {
-  NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES,
-} from "../regulationsData";
-import { subHeadingStyle as h4 } from "../shared";
+import { NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES } from '../normativaDatos.ts';
+import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function NFPA13() {
   return (
-    <div className="card-b" style={{ padding: "18px" }}>
+    <div className="card-b" style={{ padding: '18px' }}>
       <h3 style={h4}>5.1 Clasificación de riesgos (§5.2)</h3>
       <table className="tbl" style={{ fontSize: 12 }}>
         <caption className="visually-hidden">Clasificación de riesgos NFPA 13</caption>

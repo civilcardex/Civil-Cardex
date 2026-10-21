@@ -1,5 +1,5 @@
-import { loadFromStorage } from '../services/storageService';
-import { TRAZOS_PLAN_PREFIX, TRAZOS_PREFIX } from '../constants/storage-keys';
+import { loadFromStorage } from '../services/almacenamientoServicio.ts';
+import { TRAZOS_PLAN_PREFIX, TRAZOS_PREFIX } from '../constants/almacenamientoClaves.ts';
 import { APARATOS_DEF } from '../constants';
 import { mapUdBombaDesdeTrazos } from './bombaHerencia';
 

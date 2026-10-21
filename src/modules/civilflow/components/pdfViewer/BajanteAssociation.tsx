@@ -1,6 +1,6 @@
 import React from 'react';
-import { splitPtr } from '../../utils/keys';
-import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
+import { splitPtr } from '../../utils/claves.ts';
+import { writeBajantePropToDrawing } from '../../utils/escribeDiametroToDibujo.ts';
 import {
   applyBajanteAssociation,
   clearBajanteAssociation,
@@ -8,10 +8,10 @@ import {
   type AssocEndpoint,
 } from '../../utils/bajanteAssociation';
 import { pisoCorto, buildBajanteVisualLabel } from '../../constants';
-import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState';
-import type { PlanItem } from '../../context/PlansContext';
-import type { LowerFloorRamales } from './drawingElementContextMenu/context';
+import type PlanoEngine from '../../lib/PlanoEngine/PlanoMotor.ts';
+import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
+import type { LowerFloorRamales } from './drawingElementContextMenu/contexto.ts';
 import { BombaAsociarBajantesSection } from './drawingElementContextMenu/bombaMenu';
 const BajanteAsociacion_S1: React.CSSProperties = {
   width: '100%',

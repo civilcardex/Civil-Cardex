@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dedupPorId, mergeBajanteDedup } from '../PlanoPersistence';
+import { dedupPorId, mergeBajanteDedup } from '../PlanoPersistencia.ts';
 
 // Datos de sesiones con bugs viejos traen el mismo elemento DOS veces en un piso: el RPC
 // save_plano_data rechaza el insert entero ("ON CONFLICT DO UPDATE cannot affect row a second

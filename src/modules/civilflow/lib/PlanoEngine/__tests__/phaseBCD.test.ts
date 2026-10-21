@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
-import { direccionBajaPermitida, direccionSegura } from '../directionRules';
-import { copyDrawingFromPlan } from '../../../utils/copyDrawingFromPlan';
-import { writeSanDrawingSync } from '../../../utils/drawingSync';
-import type { IPlanoEngineCore } from '../PlanoState';
+import { direccionBajaPermitida, direccionSegura } from '../direccionReglas.ts';
+import { copyDrawingFromPlan } from '../../../utils/copiaDibujoFromPlano.ts';
+import { writeSanDrawingSync } from '../../../utils/dibujoSync.ts';
+import type { IPlanoEngineCore } from '../PlanoEstado.ts';
 
 // Fase B/C/D del prompt de depuración: (9) 'baja' prohibida en el último nivel; (5+13) copia
 // excluye LD_, recalcula totalL y copia cotas con la escala destino; (10) GC↔reanclar ya no

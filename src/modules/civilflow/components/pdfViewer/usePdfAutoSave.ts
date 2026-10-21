@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import PlanoEngine from '../../lib/PlanoEngine/PlanoMotor.ts';
 import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
-} from '../../utils/drawingSync';
-import type { PlanItem } from '../../context/PlansContext';
-import { persistTrazosSnapshot } from './persistTrazos';
+} from '../../utils/dibujoSync.ts';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
+import { persistTrazosSnapshot } from './persisteTrazos.ts';
 
 export function usePdfAutoSave(
   engineRef: React.MutableRefObject<PlanoEngine | null>,

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, type RefObject } from 'react';
-import type { ExistingCal } from './PlanoConfigurator';
+import type { ExistingCal } from './PlanoConfigurador.tsx';
 
 export interface UseCalibrationParams {
   zoom: number;

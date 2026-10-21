@@ -1,19 +1,23 @@
 ﻿import { memo, useEffect, useRef, useState } from 'react';
-import { loadFromStorage } from '../../../services/storageService';
-import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
+import { loadFromStorage } from '../../../services/almacenamientoServicio.ts';
+import { APARATOS_BY_TRAMO_KEY } from '../../../constants/almacenamientoClaves.ts';
 import {
   junctionHasIncomingFlow,
   junctionRespectsTributarioDirection,
-} from '../../../utils/flowDirection';
-import { aparatoEnExtremoInvalido } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
-import { moveAllAparatoCounts } from '../../../utils/syncExtremeAccessory';
-import { writeHydroDrawingSync } from '../../../utils/drawingSync';
-import UcMoveModal, { type UcMoveModalState } from '../UcMoveModal';
-import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
-import type { PlanoBajante, PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
-import type { Piso } from '../../../lib/shared/projectTypes';
-import type { PlanItem } from '../../../context/PlansContext';
-import type { MaterialItem } from '../../../context/ProjectContext';
+} from '../../../utils/flujoDireccion.ts';
+import { aparatoEnExtremoInvalido } from '../../../lib/PlanoEngine/PlanoMotorDibujo.ts';
+import { moveAllAparatoCounts } from '../../../utils/syncExtremoAccesorio.ts';
+import { writeHydroDrawingSync } from '../../../utils/dibujoSync.ts';
+import UcMoveModal, { type UcMoveModalState } from '../UcMueveModal.tsx';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoMotor.ts';
+import type {
+  PlanoBajante,
+  PlanoElement,
+  PlanoRamal,
+} from '../../../lib/PlanoEngine/PlanoEstado.ts';
+import type { Piso } from '../../../lib/shared/proyectoTipos.ts';
+import type { PlanItem } from '../../../context/PlanosContexto.tsx';
+import type { MaterialItem } from '../../../context/ProyectoContexto.tsx';
 import {
   DrawingElementContextMenuCtx,
   useDrawingElementContextMenu,
@@ -22,11 +26,11 @@ import {
   type ContextMenuState,
   type LowerFloorRamales,
   type ProbedElement,
-} from './context';
+} from './contexto.ts';
 import { BajanteMenu } from './bajanteMenu';
 import { BombaAsociarBajantesSection } from './bombaMenu';
-import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otherMenus';
-import { GuideLineMenu } from './guideLineMenu';
+import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otroMenus.tsx';
+import { GuideLineMenu } from './guiaLineaMenu.tsx';
 import { RamalMenu } from './ramalMenu';
 
 interface DrawingElementContextMenuProps {

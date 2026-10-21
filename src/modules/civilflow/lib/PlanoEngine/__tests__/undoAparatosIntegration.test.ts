@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
-import PlanoEngineCtor from '../PlanoEngine';
-import type PlanoEngine from '../PlanoEngine';
+import { APARATOS_BY_TRAMO_KEY } from '../../../constants/almacenamientoClaves.ts';
+import PlanoEngineCtor from '../PlanoMotor.ts';
+import type PlanoEngine from '../PlanoMotor.ts';
 
 // Reproducción EXTREMO A EXTREMO del bug reportado ("Ctrl+Z no quita el aparato asignado en el
 // paso inmediato anterior") con el MOTOR REAL (no mocks): pausa → updateElementById → disco →

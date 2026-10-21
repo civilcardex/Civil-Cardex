@@ -1,9 +1,9 @@
 ﻿import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { applyBajanteAssociation } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { deleteSelected } from '../../lib/PlanoEngine/deleteSelected';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState';
+import { deleteSelected } from '../../lib/PlanoEngine/eliminaSelected.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // (1) El montante de destino NO puede tomar 12 UC cuando el de arriba tiene 3: el libro de
 //     herencia lleva la MISMA carga en cada pieza que la recibió y hay que tomar el MÁXIMO

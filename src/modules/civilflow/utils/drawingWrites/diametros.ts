@@ -1,15 +1,19 @@
-import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync';
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
+import { writeHydroDrawingSync, writeSanDrawingSync } from '../dibujoSync.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  saveTrazosToDB,
+} from '../../services/almacenamientoServicio.ts';
 import {
   TRAZOS_PREFIX,
   HYDRO_FAMILIES,
   SAN_FAMILIES,
   APARATOS_BY_TRAMO_KEY,
   CHEQUEOS_PRESION_KEY,
-} from '../../constants/storage-keys';
-import type { SyncPlanInput, RawElement } from '../drawingSync';
-import { diamPulgFromLabel } from '../diamPulgFromLabel';
-import { pisoLbl } from '../../constants/helpers';
+} from '../../constants/almacenamientoClaves.ts';
+import type { SyncPlanInput, RawElement } from '../dibujoSync.ts';
+import { diamPulgFromLabel } from '../diamPulgFromEtiqueta.ts';
+import { pisoLbl } from '../../constants/ayudantes.ts';
 
 /** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones,
  *  ej. stubs `AC-01-X-P1` — `split('-')` los truncaba en silencio).
@@ -20,14 +24,14 @@ export function parseBajanteKey(key: string): [string, string] {
   if (sep <= 0) return [key, ''];
   return [key.slice(0, sep), key.slice(sep + 1)];
 }
-import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/drawingUtils';
-import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitaryDiamCompat';
-import { bumpConnectedBajantes } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit';
-import { recomputeDownstreamDiameters } from '../../lib/PlanoEngine/drawingUtils';
+import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/dibujoUtiles.ts';
+import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitariaDiamCompat.ts';
+import { bumpConnectedBajantes } from '../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
+import { recomputeDownstreamDiameters } from '../../lib/PlanoEngine/dibujoUtiles.ts';
 import {
   convergirDiametroNodoPresion,
   propagarSanDiametroAguasAbajo,
-} from '../../lib/PlanoEngine/drawingFlow';
+} from '../../lib/PlanoEngine/dibujoFlujo.ts';
 
 interface LocalDrawingData {
   ts?: number;

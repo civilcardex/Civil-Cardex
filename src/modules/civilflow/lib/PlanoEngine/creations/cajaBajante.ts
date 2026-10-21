@@ -1,11 +1,11 @@
 // Creación de cajas (CAN/CALL) y bajantes (san/vent/ll) sobre el plano.
-import { NETS } from '../PlanoState';
-import type { IPlanoEngineCore } from '../PlanoState';
-import { _statusMsg } from '../ramalMeasure';
+import { NETS } from '../PlanoEstado.ts';
+import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { _statusMsg } from '../ramalMedir.ts';
 import { resolveAndClampToCanal } from '../canalAssociation';
 import { distToPolyline } from '../../shared/geometry';
-import { maxDiametroLabel } from '../PlanoEngineDrawing';
-import { angleAtHalfLength } from '../drawingAngles';
+import { maxDiametroLabel } from '../PlanoMotorDibujo.ts';
+import { angleAtHalfLength } from '../dibujoAngulos.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos

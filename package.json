@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr src/seo/prerenderEntry.tsx --outDir dist-ssr",
+    "build": "vite build && vite build --ssr src/seo/prerenderEntrada.tsx --outDir dist-ssr",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -17,7 +17,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "check": "tsc --noEmit && vitest run && npm run build",
     "prepare": "simple-git-hooks",
-    "postbuild": "node scripts/prerender.mjs"
+    "postbuild": "node scripts/prerender.mjs",
+    "baseline:complejidad": "node --experimental-strip-types scripts/generarBaselineComplejidad.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"

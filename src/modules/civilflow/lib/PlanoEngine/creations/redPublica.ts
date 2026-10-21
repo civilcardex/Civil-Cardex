@@ -1,7 +1,7 @@
 // Creación de red pública y contadores.
-import { NETS } from '../PlanoState';
-import type { IPlanoEngineCore } from '../PlanoState';
-import { _statusMsg } from '../ramalMeasure';
+import { NETS } from '../PlanoEstado.ts';
+import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { _statusMsg } from '../ramalMedir.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos

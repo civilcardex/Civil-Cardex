@@ -1,0 +1,500 @@
+import {
+  NETS,
+  allocNetNumber,
+  allocTributaryNumber,
+  rootTributarioLabel,
+  relabelTribChain,
+  uniqRamalId,
+} from './PlanoEstado.ts';
+import type { PlanoRamal, IPlanoEngineCore } from './PlanoEstado.ts';
+import { angleAtHalfLength } from './dibujoAngulos.ts';
+import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flujoDireccion.ts';
+import { REDES_PRESION } from './nodos';
+import { conflictoDosEntradas, resolverConflictoSentido } from './reEnraizar';
+import { ramalFlowDirectionCheck } from './dibujoFlujo.ts';
+import { moveAparatoCount } from '../../utils/syncExtremoAccesorio.ts';
+import { calculateRamalLength } from './ramalMedir.ts';
+import { _midpoint, maxDiametroLabel, bumpBajanteToMaxRamal } from './dibujoUtiles.ts';
+import {
+  normalizeTribPadresAt,
+  healedPadreId,
+  normalizeTribPadresAtPoint,
+} from './tribPadreNormalize';
+
+// Cuando el extremo de un ramal recién terminado (o arrastrado) cae a mitad del cuerpo de un
+// ramal EXISTENTE — una tee T/Y de verdad, no una unión extremo-con-extremo — se divide ese
+// ramal existente en la unión en una porción aguas arriba (conservada, sin cambios) y un ramal
+// nuevo aguas abajo que carga el caudal combinado: diámetro = el mayor de los dos ramales que
+// convergen, uc = su suma. Aplica uniformemente a todas las redes (san/ll acumulan UC, af/ac/gas
+// acumulan su propia cifra de carga — todas en el mismo campo genérico `uc`), igual que un
+// diseño hidráulico real aumenta el tamaño/calificación de la tubería después de un punto de
+// confluencia, en vez de asumir que la calificación del tramo aguas arriba sigue valiendo más
+// allá. Solo se maneja el caso de cuerpo medio — una unión extremo-con-extremo no tiene "resto
+// del recorrido" más allá de la unión que dividir, así que no hay nada que auto-crear ahí.
+// Unión tributario-a-tributario de AC/AF/gas: permitida solo cuando el tributario destino
+// comparte el MISMO ramal padre seleccionado (el elegido en la barra lateral). Lo usan todas las
+// guardias de dibujo para que una unión del mismo padre nunca se bloquee y una de padre
+// distinto siempre alerte.
+
+/** Cuando una tubería nueva aterriza en el MEDIO de otra, la parte en dos: la pieza de aguas abajo
+ *  se queda con el caudal y el diámetro acumulados (así los cálculos no pierden lo que venía de
+ *  atrás). */
+export function autoSplitJunctionAndSumFlow(
+  engine: IPlanoEngineCore,
+  incoming: PlanoRamal,
+): boolean {
+  if (!incoming.pts || incoming.pts.length < 2) return false;
+  const TOL = 0.5;
+  // San + vent comparten uniones como una sola subred — permitir también la detección de
+  // extremos entre redes aquí.
+  const sameNetGroup = (a: string, b: string) =>
+    a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+  const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
+  for (const ep of endpoints) {
+    // ¿El punto coincide TAMBIÉN con el vértice de un ramal normal? Entonces la
+    // conexión real es ramal-a-ramal; un tributario que comparte ese vértice (p.ej.
+    // porque aterrizó ahí antes) no debe disparar "Los ramales no se conectan a
+    // tributarios" al extender el ramal desde ese extremo.
+    let normalRamalId: string | null = null;
+    for (const ex of engine.ramales) {
+      if (
+        ex.id !== incoming.id &&
+        sameNetGroup(ex.net, incoming.net) &&
+        ex.tipo !== 'tributario' &&
+        !!ex.pts &&
+        ex.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)
+      ) {
+        normalRamalId = ex.id;
+        break;
+      }
+    }
+    const alsoNormalRamalHere = !!normalRamalId;
+    for (const existing of engine.ramales) {
+      if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
+      if (!existing.pts || existing.pts.length < 2) continue;
+      if (existing.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) {
+        // Unión extremo-con-extremo (o extremo-sobre-vértice) — no es una tee de cuerpo medio,
+        // así que no hay nada que dividir, pero un tributario que aterriza aquí debe ser su propio
+        // padre y nada más. Sin esto, LLEGAR a un vértice del ramal equivocado (a diferencia de
+        // empezar ahí, o chocar contra su cuerpo a mitad de recorrido) quedaba sin verificar — la
+        // validación de snap al dibujar solo dispara mientras se coloca un punto fresco, y puede
+        // fallarla si el snap de ángulo movió el clic un poco fuera del vértice exacto antes de
+        // que corriera ese chequeo; esto es la última palabra, verificada directamente contra la
+        // posición real del extremo del ramal terminado.
+        if (incoming.tipo === 'tributario') {
+          // Ítem 7/2/3: un tributario puede unirse al extremo de OTRO tributario en cualquier
+          // red (no solo af/ac/gas), sin exigir el mismo ramal padre — para dibujar un tributario
+          // conectado a otro tributario. El símbolo de la unión lo genera el flujo AccesorioModal.
+          const tribToTribOk = existing.tipo === 'tributario';
+          // Regla del usuario: si hay RAMAL (tronco) en el punto, ese es el padre de TODOS los
+          // tributarios del punto; solo trib-trib aislado adopta el padre del otro.
+          if (normalRamalId) {
+            normalizeTribPadresAt(engine, ep, normalRamalId, sameNetGroup, TOL);
+          } else if (tribToTribOk) {
+            incoming.padre = existing.padre;
+            // La cadena del incoming re-etiqueta con la raíz ACTUAL (los trib intermedios
+            // arrastraban la raíz vieja, orig. usuario).
+            relabelTribChain(engine.ramales, incoming.id, (suffix) =>
+              allocTributaryNumber(engine, suffix),
+            );
+            // Todos los tributarios del punto comparten el padre del primero (regla usuario),
+            // saneado contra el label (dibujos viejos con padre stale).
+            const healedEp = healedPadreId(engine.ramales, existing.id);
+            if (healedEp) {
+              incoming.padre = healedEp;
+              normalizeTribPadresAtPoint(engine, ep, healedEp, existing.net, sameNetGroup, TOL);
+            }
+          }
+          if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
+            // Advertencia "Ramal padre incorrecto" inhabilitada (orig. usuario) — el padre se
+            // autodetecta; la conexión no se bloquea.
+          }
+        }
+        // Regla del usuario: un RAMAL no se conecta al vértice de un TRIBUTARIO (salvo que el
+        // punto sea también vértice de un ramal normal — la conexión real es ramal-a-ramal,
+        // ver alsoNormalRamalHere). Retorno bloqueado: el caller revierte/retira el ramal.
+        // Los tributarios sí pueden unirse entre sí (tribToTribOk).
+        else if (
+          incoming.tipo === 'ramal' &&
+          existing.tipo === 'tributario' &&
+          !alsoNormalRamalHere
+        ) {
+          engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
+          return true;
+        }
+        continue;
+      }
+      let segIdx = -1;
+      for (let i = 0; i < existing.pts.length - 1; i++) {
+        const [ax, ay] = existing.pts[i],
+          [bx, by] = existing.pts[i + 1];
+        const dx = bx - ax,
+          dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 0.0001) continue;
+        const t = ((ep[0] - ax) * dx + (ep[1] - ay) * dy) / lenSq;
+        if (t < 0.02 || t > 0.98) continue;
+        const projX = ax + t * dx,
+          projY = ay + t * dy;
+        if (Math.hypot(ep[0] - projX, ep[1] - projY) < TOL) {
+          segIdx = i;
+          break;
+        }
+      }
+      if (segIdx === -1) continue;
+      // Validación de dirección de flujo para uniones creadas por arrastre (finishRamal valida
+      // la creación por dibujo; la ruta ptDrag/ramalDrag llega a esta función directo). Un ramal
+      // que se une a otro a mitad de cuerpo debe llevar la dirección de flujo del ramal
+      // principal (dot > 0) — misma regla que el chequeo de finishRamal, ahora con el helper
+      // compartido que usa vectores LOCALES por extremo/ramal tocado (ítem 2) e incluye la regla
+      // del codo reventilado vent↔san (ítem 5). Dirección equivocada = sin unión, alerta.
+      if (incoming.net === 'san' || incoming.net === 'll' || incoming.net === 'vent') {
+        // Cuando el incoming aterriza a mitad de cuerpo de `existing` (segIdx >= 0), es un SPLIT
+        // de unión: la dirección del incoming se auto-orienta en el split de abajo (misma
+        // convención que af/ac/gas) y el ramal se parte en dos — el check de flujo san no
+        // aplica aquí. Sin esto, dibujar un ramal/tributario sobre el cuerpo de otro en san se
+        // bloqueaba con "Dirección de flujo incorrecta" y el split nunca ocurría (bug: no se
+        // partían). Lo mismo para trib-trib (id. comentario previo).
+        const isSplitBody = segIdx >= 0;
+        // Tributario que aterriza a CUERPO ajeno: se auto-orienta al partir el trazo abajo
+        // (semántica de arrastre/adopción, tests de cadenas trib-trib). El bloqueo de
+        // contrarias para tributarios aplica en la CREACIÓN (finishRamal) y en los re-anclajes
+        // de arrastre vía dragFlowCheck. Excepción guía: resolveRamalEndsFromGuide ya orientó
+        // el trazo drenando hacia el cruce.
+        const skipSplitFlow =
+          (isSplitBody && incoming.tipo === 'tributario') ||
+          (isSplitBody && !!(engine as unknown as { _guideTributary?: boolean })._guideTributary);
+        const flowErr = skipSplitFlow ? null : ramalFlowDirectionCheck(engine, incoming, [], TOL);
+        if (flowErr) {
+          // Sin auto-orientación: una conexión san/ll/vent con dirección de flujo distinta a la
+          // del ramal principal se bloquea con alerta. La única auto-orientación permitida ocurre
+          // al CREAR tributarios (apuntan a la unión) — nunca al conectar un ramal ya dibujado.
+          engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
+          continue;
+        }
+      } else if (
+        (incoming.net === 'af' || incoming.net === 'ac' || incoming.net === 'gas') &&
+        !junctionHasOutgoingFlow(engine.ramales, incoming.net, ep, TOL)
+      ) {
+        engine.triggerAlert(
+          'Conexión sin salida',
+          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+        );
+        continue;
+      }
+      // 'Conexión sin entrada' RETIRADA del split (orig. usuario: aparatos con flechas
+      // hacia sus extremos = ninguna pieza ENTRA a la T, y bloquear el split impedía
+      // propagar hacia el rack). La unión se forma igual; la coherencia hidráulica queda
+      // como aviso de estado, sin bloquear.
+      if (
+        (incoming.net === 'af' || incoming.net === 'ac' || incoming.net === 'gas') &&
+        !junctionHasIncomingFlow(engine.ramales, incoming.net, ep, TOL)
+      ) {
+        engine._emitStatus(
+          'T sin ramal entrante — revisa las direcciones de flujo de los aparatos.',
+        );
+      }
+      // Un tributario que llega a una unión T/Y a mitad de cuerpo de un ramal distinto a su
+      // padre seleccionado es exactamente el mismo caso de "ramal equivocado" que handleLineDown
+      // ya bloquea con modal cuando ocurre en un vértice — esta es la misma violación cayendo
+      // sobre el CUERPO de un ramal, y esta función corre incondicionalmente para toda red/tipo,
+      // así que sin esto dividía y fusionaba el flujo en silencio con cualquier ramal que el
+      // tributario tocara, sin alerta alguna.
+      if (incoming.tipo === 'tributario') {
+        // Excepción AC/AF/gas (ítem 7): un tributario que aterriza a mitad de cuerpo sobre OTRO
+        // tributario que comparte el mismo padre seleccionado está permitido — sin esto, este
+        // chequeo (que solo sabe comparar contra el id del ramal padre real) disparaba antes de
+        // llegar al manejo tributario-a-tributario de abajo, bloqueando una unión del mismo
+        // padre perfectamente válida.
+        const tribToTribOk = existing.tipo === 'tributario';
+        // Un tributario creado desde LÍNEA GUÍA ya lleva su padre fijado al ramal que cruza
+        // (buildTribFromGuide) — no debe bloquearse por tocar otro ramal en el mismo punto
+        // (orig. #5). Solo el dibujo manual con padre seleccionado en la barra valida contra él.
+        if (
+          incoming.padre &&
+          existing.id !== incoming.padre &&
+          !tribToTribOk &&
+          !(engine as unknown as { _guideTributary?: boolean })._guideTributary
+        ) {
+          // Advertencia "Ramal padre incorrecto" inhabilitada — la conexión sigue sin bloquearse.
+          continue;
+        }
+        // Ítem 4: los tributarios san/ll se unen al camino af/ac/gas — llegan a su propio padre a
+        // mitad de cuerpo y lo DIVIDEN: una tee física (el segmento aguas arriba del padre se
+        // queda, un ramal nuevo aguas abajo continúa el recorrido, y el tributario se une en el
+        // punto, acumulando su UC/UD en el downstream). Antes san/vent/ll se unían tal cual (sin
+        // mergesFrom, sin acumular UC/UD). Vent conserva ese comportamiento viejo: un tributario
+        // de ventilación no acumula UC aguas abajo (el cómputo de accesorios san ya detecta las
+        // uniones reventilado geométricamente). La excepción tribToTribOk (tributario-a-tributario
+        // del mismo padre) sigue siendo solo af/ac/gas; en san/ll una unión tributario→tributario
+        // se queda como unión simple (el bloque `existing.tipo === 'tributario'` de abajo hace
+        // continue).
+        if (existing.net === 'vent') continue;
+      }
+      // Un tributario tampoco puede ser un TRONCO — un ramal principal que cae a mitad de cuerpo
+      // sobre un tributario no debe dividirlo. Sin esto, la división de abajo produce un ramal
+      // `downstream` que extiende `...existing` (incluido `existing.tipo`) tal cual, así que
+      // hereda en silencio `tipo: 'tributario'` cargando UC/UD reales fusionados — esa fuente de
+      // fusión mal etiquetada se filtra después por todos los filtros de tributario (tablas de
+      // diseño, columna "Otros Ramales").
+      if (existing.tipo === 'tributario') {
+        // Los ramales no se conectan a tributarios: un ramal principal que cae a mitad de
+        // cuerpo sobre un tributario debe bloquearse con alerta (antes continuaba en silencio,
+        // y la división heredaba `tipo: 'tributario'` cargando UC/UD fusionados mal etiquetados).
+        // Retorno bloqueado: el caller revierte/retira el ramal (punto sin mutaciones aún).
+        if (incoming.tipo === 'ramal') {
+          engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
+          return true;
+        }
+        // Tributario-a-tributario (ítem 7/2/3): permitido en cualquier red y sin exigir el mismo
+        // ramal padre. Un tributario SÍ puede partir (splitear) a otro tributario: el tramo que
+        // cae a mitad de cuerpo del tributario existente lo divide igual que un ramal, creando
+        // el `downstream` correspondiente. No cortamos aquí — dejamos fluir al split de abajo,
+        // que adopta padres/re-etiqueta UNA sola vez (regla usuario: todos comparten la raíz).
+      }
+
+      // Las uniones entre redes san↔vent a mitad de cuerpo NO deben dividir el ramal existente.
+      // Ambas subredes comparten el mismo grupo de nodos, así que las conexiones parecen uniones
+      // de la misma red, pero un ramal san cayendo a mitad de cuerpo sobre uno de vent (o al
+      // revés) es un cruce normal, no una confluencia de flujo — renderNetCrossings.ts dibuja el
+      // cruce visual.
+      if (existing.net !== incoming.net) continue;
+
+      // AC/AF/gas: la cola de la flecha del tributario siempre apunta hacia la unión que se
+      // acaba de crear (fluye DESDE la T hacia el aparato) — convención fija, nunca editable por
+      // el usuario después (ver el gating del botón "Invertir dirección de flujo" en
+      // DrawingElementContextMenu.tsx). Al llegar aquí, `incoming.tipo === 'tributario'`
+      // garantiza que esto es la división real tributario-contra-su-padre en af/ac/gas (los
+      // demás casos de tributario ya hicieron `continue` más arriba). `existing`/`downstream`
+      // (la misma línea partida en dos) siempre se reparten exactamente 1 entrada + 1 salida
+      // entre ellos mientras no se toquen sus flags por separado, así que fijar la salida del
+      // tributario aquí basta para garantizar la unión de "2 salidas + 1 entrada" sin validación
+      // adicional en el momento de crearla.
+      if (incoming.tipo === 'tributario') {
+        const epIsStart = Math.hypot(incoming.pts[0][0] - ep[0], incoming.pts[0][1] - ep[1]) < TOL;
+        // La convención de la punta de flecha difiere según la red: af/ac/gas fluyen DESDE la
+        // unión hacia el aparato (flecha en el extremo libre); san/ll drenan HACIA la unión
+        // (flecha apuntando a la unión, igual que en finishRamal y en la creación desde línea
+        // guía). Vent sigue el patrón af/ac/gas (se aleja de la unión).
+        incoming._tribReversed =
+          incoming.net === 'san' || incoming.net === 'll' ? epIsStart : !epIsStart;
+      }
+
+      const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
+      existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
+      existing.totalL = calculateRamalLength(existing.pts, engine);
+      // Re-centrar la etiqueta de `existing` sobre su cuerpo ahora truncado — antes conservaba
+      // el labelX/labelY que tenía para el ramal COMPLETO pre-división, que tras el corte podía
+      // quedar fuera (o lejos) del segmento aguas arriba más corto que queda.
+      const [existLabelX, existLabelY] = _midpoint(existing.pts);
+      existing.labelX = existLabelX;
+      existing.labelY = existLabelY;
+      if (!existing.labelMoved) existing.labelAngle = angleAtHalfLength(existing.pts);
+      // NO fijar accesorioFin aquí — dejar que detectAccesorioTrigger + el modal lo asignen.
+      // Fijarlo prematuramente hace que el barrido alreadyResolved se salte el modal por
+      // completo, así el usuario nunca puede elegir el tipo real de tee (teeSube, teeBaja, yee,
+      // etc.).
+
+      // El UC se acumula en `downstream` (la continuación auto-creada) aquí, incondicionalmente —
+      // NO en el ramal que "entra" a la unión. `downstream` es lo que una división POSTERIOR
+      // más adelante en la misma línea lee como su propio `existing.uc` de entrada (encadenado
+      // hacia adelante cada vez que se dibuja una T nueva); anularlo para AF/AC soltaría en
+      // silencio todo el total acumulado de la cadena aguas arriba la próxima vez que la línea
+      // se divida. Qué ramal DISPLAYA el número combinado (puede diferir de `downstream`, según
+      // la convención AF/AC de "quien entra a la unión") es una preocupación solo de
+      // presentación, manejada en las tablas de diseño (waterNetworkRows.ts /
+      // WaterNetworkDesign.tsx), no aquí.
+      const preSplitExistingUc = existing.uc || 0;
+      const preSplitIncomingUc = incoming.uc || 0;
+
+      // El accesorio del extremo lejano de `existing` pre-división (si había uno) pertenecía al
+      // punto que solía ser su último vértice — tras el truncado ese punto ya no es el extremo
+      // de existing, es el de downstream. Dejado en su lugar, seguía renderizándose en el
+      // extremo NUEVO (truncado) de existing, o sea justo en la unión — "saltando" visualmente
+      // ahí aunque nada del accesorio hubiera cambiado. Se mueve a `downstream`, que ahora sí
+      // termina en ese punto.
+      const farAccesorio = existing.accesorioFin;
+      const farDiametro = existing.diametroFin;
+      const farAparato = existing.aparatoFin;
+      const farSifonLabel = existing.sifonLabelFin;
+      existing.accesorioFin = '';
+      existing.diametroFin = '';
+      existing.aparatoFin = '';
+      existing.sifonLabelFin = undefined;
+
+      const netDef = NETS.find((n) => n.id === existing.net);
+      const pfx = netDef ? netDef.lbl : 'R';
+      const isTrib = existing.tipo === 'tributario';
+      // Sanear el padre del existing ANTES de derivar la raíz del downstream: con dibujos
+      // legacy (padre stale, p. ej. T1RS2 con padre RS1) el tramo autocreado heredaba el
+      // padre podrido y su label salía con la raíz equivocada — el bug reportado 3 veces.
+      if (isTrib) {
+        const healedPre = healedPadreId(engine.ramales, existing.id);
+        if (healedPre && existing.padre !== healedPre) existing.padre = healedPre;
+      }
+      // Numeración CONTRA LA RAÍZ (ítem 10/2): un tributario cuyo padre es otro tributario se
+      // numera contra el ramal raíz con consecutivo global — T5RS1, nunca T1T1RS1. `allocTributaryNumber`
+      // ya salta labels existentes, así que el consecutivo no colisiona con los tributarios
+      // directos del raíz.
+      const rootLabel = isTrib ? rootTributarioLabel(engine.ramales, existing.id) : '';
+      const cnt = isTrib
+        ? allocTributaryNumber(engine, rootLabel)
+        : allocNetNumber(engine, existing.net, 'ramal', (n) =>
+            engine.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
+          );
+      const newId = isTrib ? uniqRamalId() : pfx + cnt;
+      // Posición/ángulo propios de la etiqueta desde el punto medio del segmento aguas abajo —
+      // extender `...existing` solo dejaba la etiqueta en la posición vieja de la porción aguas
+      // arriba, aterrizando justo encima de la etiqueta propia (sin cambios) de `existing`, ya
+      // que ambos objetos compartían entonces un solo punto.
+      const [downLabelX, downLabelY] = _midpoint(downstreamPts);
+      const downLabelAngle = angleAtHalfLength(downstreamPts);
+      const downstream: PlanoRamal = {
+        ...existing,
+        id: newId,
+        pts: downstreamPts,
+        totalL: calculateRamalLength(downstreamPts, engine),
+        label: isTrib ? `T${cnt}${rootLabel}` : `${pfx}${cnt}`,
+        labelX: downLabelX,
+        labelY: downLabelY,
+        labelAngle: downLabelAngle,
+        // El ramal auto-creado toma el mayor de los dos diámetros que formaron la unión, en
+        // todas las redes (incluidas AF/AC/gas) — el tee aguas abajo sigue al ramal más ancho.
+        diametro: maxDiametroLabel(existing.diametro, incoming.diametro),
+        uc: preSplitExistingUc + preSplitIncomingUc,
+        ini: '',
+        fin: '',
+        accesorioInicio: '',
+        accesorioFin: farAccesorio || '',
+        accMed: {},
+        diametroInicio: '',
+        diametroFin: farDiametro || '',
+        aparatoInicio: '',
+        aparatoFin: farAparato || '',
+        sifonLabelFin: farSifonLabel,
+        // El tramo resultante de un split debe ser EDITABLE (mover, etiqueta, etc.) — si hereda
+        // `bloqueado:true` (caso tributario, que se crea bloqueado), el usuario no puede mover su
+        // etiqueta ni arrastrarlo, solo seleccionarlo. Ítem usuario.
+        bloqueado: isTrib ? false : true,
+        mergesFrom: [existing.id, incoming.id],
+      };
+      engine.ramales.push(downstream);
+      // El padre real de un tributario que parte a su padre es el ramal AUTO-CREADO
+      // (downstream): la unión queda en su nacimiento y es él quien recibe la descarga y
+      // acumula el caudal. Sin esto, padre y label seguían apuntando al tramo aguas arriba
+      // (T2RS9) aunque el tributario drena al segmento nuevo (RS8) — etiqueta equivocada en
+      // el plano (orig. usuario).
+      if (incoming.tipo === 'tributario') {
+        // Regla del usuario: trib-trib → los PADRES quedan iguales. Si el existing es
+        // tributario, el incoming adopta SU padre (no el downstream autocreado); si es un
+        // ramal, el padre real es el downstream autocreado que recibe la descarga.
+        incoming.padre = isTrib ? existing.padre : downstream.id;
+        const rootLbl =
+          (isTrib ? rootTributarioLabel(engine.ramales, downstream.id) : '') ||
+          downstream.label ||
+          downstream.id;
+        incoming.label = `T${allocTributaryNumber(engine, rootLbl)}${rootLbl}`;
+        // Cadena del incoming con la raíz actual (hijos incluidos).
+        relabelTribChain(engine.ramales, incoming.id, (suffix) =>
+          allocTributaryNumber(engine, suffix),
+        );
+        // Regla del usuario: TODOS los tributarios del punto (incluido el downstream recién
+        // creado) comparten el padre del primer tributario — cualquier dirección, cualquier
+        // estado previo de los padres. El padre se SANEA contra el label (dibujos viejos con
+        // padre stale: T1RS2 con padre RS1).
+        if (isTrib) {
+          const healed = healedPadreId(engine.ramales, existing.id);
+          if (healed) {
+            existing.padre = healed;
+            normalizeTribPadresAtPoint(engine, ep, healed, existing.net, sameNetGroup, TOL);
+          }
+        }
+      }
+      if (farAparato && engine._loadedPlanId != null) {
+        moveAparatoCount(existing.net, existing.id, newId, engine._loadedPlanId, farAparato);
+      }
+      // SPLIT + BAJANTE: asocia automáticamente al nuevo ramal aguas abajo para que no aparezca verde
+      // y quede checkeado en ambas secciones (ramal: bajantes asociados / bajante: ramales asociados)
+      // Se basa en topología: si el bajante estaba en existing o está geométricamente sobre el tramo aguas abajo
+      const TOL_B = 2.0;
+      const distToSeg = (pts: number[][], bx: number, by: number): number => {
+        let min = Infinity;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const A = pts[i],
+            B = pts[i + 1];
+          const dx = B[0] - A[0],
+            dy = B[1] - A[1];
+          const len2 = dx * dx + dy * dy;
+          if (len2 < 1e-9) {
+            min = Math.min(min, Math.hypot(bx - A[0], by - A[1]));
+            continue;
+          }
+          const t = Math.max(0, Math.min(1, ((bx - A[0]) * dx + (by - A[1]) * dy) / len2));
+          const px = A[0] + t * dx,
+            py = A[1] + t * dy;
+          min = Math.min(min, Math.hypot(bx - px, by - py));
+        }
+        min = Math.min(min, Math.hypot(bx - pts[0][0], by - pts[0][1]));
+        const last = pts[pts.length - 1];
+        min = Math.min(min, Math.hypot(bx - last[0], by - last[1]));
+        return min;
+      };
+      for (const b of engine.bajantes) {
+        if (b.net !== existing.net) continue;
+        const wasOnExisting = !!b.recibeDeIds?.includes(existing.id);
+        const nearDown = distToSeg(downstream.pts, b.x, b.y) < TOL_B;
+        const nearExist = distToSeg(existing.pts, b.x, b.y) < TOL_B;
+        // si estaba en existing o está geométricamente sobre el nuevo aguas abajo, mover a downstream
+        if (wasOnExisting || (nearDown && !nearExist)) {
+          const targetId = downstream.id;
+          b.recibeDeIds = (b.recibeDeIds || []).filter(
+            (id) => id !== existing.id && id !== downstream.id,
+          );
+          if (!b.recibeDeIds.includes(targetId)) b.recibeDeIds.push(targetId);
+        } else if (nearExist && !nearDown) {
+          // queda en existing (upstream) — limpiar posible duplicado en downstream
+          b.recibeDeIds = (b.recibeDeIds || []).filter((id) => id !== downstream.id);
+        }
+      }
+      // El downstream nace con el mayor diámetro de la unión: los bajantes que quedaron
+      // asociados a él suben a ese piso si estaban por debajo (misma regla de asociación).
+      for (const b of engine.bajantes) {
+        if (
+          (b.tipo === 'bajante' || b.tipo === 'montante') &&
+          (b.recibeDeIds || []).includes(downstream.id)
+        ) {
+          const bumped = bumpBajanteToMaxRamal(engine.ramales, b.recibeDeIds, b.dNominal || '');
+          if (bumped) b.dNominal = bumped;
+        }
+      }
+      // ── Re-enraizamiento automático (docx fase 2, reglas 1-5) ──
+      // Si el entrante quedó ENTRANDO a la tee (2 entradas), corrige el sentido solo:
+      // invertir el nuevo / re-enraizar el existente. Undo agrupado, aviso no bloqueante.
+      if (
+        REDES_PRESION.has(incoming.net || '') &&
+        conflictoDosEntradas(engine, ep, incoming, incoming.net || '')
+      ) {
+        void resolverConflictoSentido(engine, ep, incoming, existing, async () => {
+          // Regla 5 (sin datos para decidir): conservador — invertir el tramo nuevo.
+          engine.triggerAlert(
+            'Sentido del tramo nuevo',
+            'El tramo entró a la tee sin poder determinar el sentido. Se invirtió el NUEVO; si era al revés, usa "Invertir dirección" en el menú del tramo.',
+          );
+          return 'nuevo';
+        });
+      }
+
+      break;
+    }
+  }
+  return false;
+}
+
+export { canJoinTributario, detectTributaryPadre } from './empalmeDetectors.ts';
+export { puntoEnCaja, checkRamalAnglesExcludingConnections } from './ramalAnguloVerificaciones.ts';
+export {
+  normalizeTribPadresAt,
+  healedPadreId,
+  normalizeTribPadresAtPoint,
+} from './tribPadreNormalize';
+export { healTribPadres } from './sanarTribPadres.ts';

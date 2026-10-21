@@ -1,10 +1,10 @@
-import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
-import { loadFromStorage } from '../../../services/storageService';
-import { loadPDF } from '../../../services/idbStorage';
+import { TRAZOS_PREFIX } from '../../../constants/almacenamientoClaves.ts';
+import { loadFromStorage } from '../../../services/almacenamientoServicio.ts';
+import { loadPDF } from '../../../services/idbAlmacenamiento.ts';
 import { getPdfjs } from '../../../utils/lazyPdfjs';
-import type { PlanoRamal, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
+import type { PlanoRamal, PlanoBajante } from '../../../lib/PlanoEngine/PlanoEstado.ts';
 import type { CrossFloorGhost } from '../../../utils/associateBajanteAcrossFloors';
-import type { PlanItem } from '../../../context/PlansContext';
+import type { PlanItem } from '../../../context/PlanosContexto.tsx';
 
 interface ProjPt {
   sx: number;

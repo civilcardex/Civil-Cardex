@@ -3,9 +3,9 @@ import {
   computeCanalBajanteRamalKeys,
   buildLlBajanteAssociations,
   maxRamalPulgDeBajante,
-} from '../rainwaterRows';
-import type { PlanItem } from '../../context/PlansContext';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys';
+} from '../lluviasFilas.ts';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
+import { TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 
 // Ramales DE los canales fuera de diseño: marcados esCanalId O que descargan en el
 // canal (último punto dentro del rectángulo). Colectores reales se quedan.

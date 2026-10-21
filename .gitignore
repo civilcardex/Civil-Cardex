@@ -50,3 +50,6 @@ supabase/.temp/
 # ZCode sesion (tooling local)
 .zcode/
 .zcodeignore
+
+# Generado por scripts/generarBaselineComplejidad.mjs (el baseline vive en el guard)
+scripts/baselineComplejidad.txt

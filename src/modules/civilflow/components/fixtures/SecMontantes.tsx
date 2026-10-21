@@ -2,10 +2,10 @@ import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
 } from '../pdfViewer/drawingElementContextMenu/canalesAsociados';
-import { camposAsocManual } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit';
-import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import type { SelectableTarget } from '../fixturesStorage';
-import type { ProbedElement } from '../pdfViewer/tramoEditor/context';
+import { camposAsocManual } from '../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
+import type PlanoEngine from '../../lib/PlanoEngine/PlanoMotor.ts';
+import type { SelectableTarget } from '../aparatosAlmacenamiento.ts';
+import type { ProbedElement } from '../pdfViewer/tramoEditor/contexto.ts';
 
 /**
  * ¿El ramal es el Ldesvio (LD_<idSuperior>) del enlace entre pisos de este bajante/montante?

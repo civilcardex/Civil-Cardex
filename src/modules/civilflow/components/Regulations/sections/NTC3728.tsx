@@ -1,5 +1,5 @@
-import { NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES } from '../regulationsData';
-import { subHeadingStyle as h4 } from '../shared';
+import { NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES } from '../normativaDatos.ts';
+import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function NTC3728() {
   return (

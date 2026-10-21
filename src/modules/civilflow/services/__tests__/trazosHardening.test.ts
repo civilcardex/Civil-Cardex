@@ -19,10 +19,17 @@ vi.mock('../../../../lib/supabase', () => ({
   },
 }));
 
-import { saveTrazosToDB, trazosDocHasContent, trazosLocalGanaABdVacia } from '../storageService';
-import { writeCrossFloorGhost, createCrossFloorLdesvioRamal } from '../../utils/crossFloorStorage';
-import { migrateAssocLayoutOnLoad, markAssocLayout } from '../../utils/assocLayoutMigration';
-import { prefetchAllTrazos } from '../../utils/prefetchTrazos';
+import {
+  saveTrazosToDB,
+  trazosDocHasContent,
+  trazosLocalGanaABdVacia,
+} from '../almacenamientoServicio.ts';
+import {
+  writeCrossFloorGhost,
+  createCrossFloorLdesvioRamal,
+} from '../../utils/crossPisoAlmacenamiento.ts';
+import { migrateAssocLayoutOnLoad, markAssocLayout } from '../../utils/asocDisposicionMigration.ts';
+import { prefetchAllTrazos } from '../../utils/precargaTrazos.ts';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 
 function resetStorage() {

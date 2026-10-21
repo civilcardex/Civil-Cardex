@@ -1,9 +1,9 @@
 import { MONTANTE_NETS } from './cajaBajante';
 // Creación de montantes (gas/ac/af), calentadores y stubs de tee a mitad de cuerpo.
-import { NETS } from '../PlanoState';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
-import { calculateRamalLength, _statusMsg } from '../ramalMeasure';
-import { codoPolarityOk, maxDiametroLabel } from '../PlanoEngineDrawing';
+import { NETS } from '../PlanoEstado.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { calculateRamalLength, _statusMsg } from '../ramalMedir.ts';
+import { codoPolarityOk, maxDiametroLabel } from '../PlanoMotorDibujo.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos

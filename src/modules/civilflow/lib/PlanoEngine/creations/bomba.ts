@@ -1,6 +1,6 @@
 // Creación de bomba sobre caja.
-import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
-import { _statusMsg } from '../ramalMeasure';
+import type { IPlanoEngineCore, PlanoBajante } from '../PlanoEstado.ts';
+import { _statusMsg } from '../ramalMedir.ts';
 import { pisoCorto } from '../../../constants';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que

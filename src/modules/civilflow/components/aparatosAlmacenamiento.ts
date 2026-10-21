@@ -1,0 +1,273 @@
+import { NETS } from '../lib/PlanoEngine/PlanoEstado.ts';
+import { APARATOS_DEF, UD_BASE_INIT, AF_UC_IDS, AC_UC_IDS } from '../constants';
+import { loadFromStorage, saveToStorage } from '../services/almacenamientoServicio.ts';
+import {
+  GAS_ACC_KEY,
+  APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+} from '../constants/almacenamientoClaves.ts';
+
+export const GAS_ID = 'gas';
+
+export const UNIDAD = {
+  uc: 'UC',
+  ud: 'UD',
+  qgas: 'm³/h',
+};
+
+const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
+
+export type CountsMap = Record<string, Record<string, number>>;
+// ponytail: misma forma que utils/drawingSyncTypes.HidroDataEntry — una sola definición.
+import type { HidroDataEntry } from '../utils/dibujoSyncTipos.ts';
+export type { HidroDataEntry };
+export type HidroDataMap = Record<string, HidroDataEntry>;
+export type GasAccMap = Record<string, Record<string, number>>;
+
+export function loadAll(): CountsMap {
+  return loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as CountsMap;
+}
+
+export function saveAll(map: CountsMap) {
+  saveToStorage(APARATOS_BY_TRAMO_KEY, map);
+}
+
+export function loadHidroData(): HidroDataMap {
+  return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
+}
+
+export function saveHidroData(map: HidroDataMap) {
+  saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
+}
+
+export function loadGasAcc(): GasAccMap {
+  const raw = loadFromStorage<GasAccMap>(GAS_ACC_KEY, {});
+  const next: GasAccMap = { ...raw };
+  for (const [tramoId, map] of Object.entries(next)) {
+    if (!map || typeof map !== 'object') continue;
+    const vals = Object.values(map).filter((v) => typeof v === 'number');
+    if (vals.length === 0 || vals.every((v) => v <= 0)) {
+      delete next[tramoId];
+    }
+  }
+  return next;
+}
+
+export function saveGasAcc(map: GasAccMap) {
+  saveToStorage(GAS_ACC_KEY, map);
+}
+
+type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
+
+export function unitFor(netId: string): ApUnitKey | null {
+  const net = NETS.find((n) => n.id === netId);
+  if (!net) return null;
+  if (netId === GAS_ID) return 'qgas';
+  if (net.ucType === 'uc') return netId === 'ac' ? 'uc_ac' : 'uc_af';
+  if (net.ucType === 'ud') return 'ud';
+  return null;
+}
+
+export function esAplicable(
+  ap: (typeof APARATOS_DEF)[number],
+  netId: string,
+  unitKey: ApUnitKey | null,
+) {
+  if (netId === GAS_ID) return ap.grupo === 'g' && (ap.qgas || 0) > 0;
+  if (unitKey === 'ud') return SAN_UD_IDS.has(ap.id);
+  if (unitKey === 'uc_af') return AF_UC_IDS.includes(ap.id);
+  if (unitKey === 'uc_ac') return AC_UC_IDS.includes(ap.id);
+  return false;
+}
+
+export interface SelectableTarget {
+  id?: string;
+  tipo?: string;
+  label?: string;
+  code?: string;
+  mergesFrom?: [string, string];
+  net?: string;
+  pts?: number[][];
+  _tribReversed?: boolean;
+}
+
+export function isCountableTarget(el: SelectableTarget | null): boolean {
+  if (!el) return false;
+  return (
+    el.id?.startsWith('R') ||
+    el.id?.startsWith('B') ||
+    el.id?.startsWith('T') ||
+    // MONTANTES (orig. usuario): panel de aparatos con las UDs que se les propagan — igual que
+    // bajantes (original/fantasma/asociado). Los ids `MON{n}_{red}` no entran por prefijo.
+    el.tipo === 'montante' ||
+    el.id?.startsWith('MON') ||
+    // Cajas CAN/CALL (aguas negras/lluvias): panel de UDs en modo solo lectura.
+    el.tipo === 'caja_san' ||
+    el.tipo === 'caja_ll' ||
+    // Ldesvio entre pisos: espejo de las UDs del bajante (seleccionable pero de solo lectura).
+    el.id?.startsWith('LD_') ||
+    el.tipo === 'calentador'
+  );
+}
+
+interface BajanteLikeSalida {
+  id: string;
+  code?: string;
+  net: string;
+  x: number;
+  y: number;
+  _circ?: { r?: number };
+  recibeDeIds?: string[];
+  alimentaIds?: string[];
+}
+interface RamalLikeSalida {
+  id: string;
+  net?: string;
+  tipo?: string;
+  pts?: number[][];
+  _tribReversed?: boolean;
+  ini?: string;
+}
+
+/** JSON con claves ordenadas (comparar mapas sin falsos positivos por orden de inserción).
+ *  Se usa para recargar estado solo si el contenido cambió y no entrar en loop sync→reload. */
+export function stableStringify(m: unknown): string {
+  return JSON.stringify(m, (_k, v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return v as unknown;
+    const o = v as Record<string, unknown>;
+    const sorted: Record<string, unknown> = {};
+    for (const k of Object.keys(o).sort()) sorted[k] = o[k];
+    return sorted;
+  });
+}
+/** Reduce el libro de herencia cross-floor (`ucAplicado`) a UN mapa por aparato: el MÁXIMO de cada entrada.
+ * El libro guarda una entrada por clave destino (+ la del Ldesvio (ramal desvio entrepisos)) y todas contienen el MISMO agregado aplicado — sumarlas mostraba 2×/3× la herencia (12 → 24). */
+export function libroHeredado(baj: {
+  ucAplicado?: Record<string, Record<string, number>>;
+}): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const m of Object.values(baj.ucAplicado || {}))
+    for (const [k, v] of Object.entries(m)) out[k] = Math.max(out[k] || 0, Number(v) || 0);
+  return out;
+}
+
+/** Valor a espejar en los ramales de SALIDA de un bajante: EXACTAMENTE lo que muestra su panel — libro de herencia si lo hay (bajante asociado entre
+ * pisos), si no el agregado del árbol. null = nada que copiar (vacío). */
+export function aggParaEspejoSalida(
+  treeAgg: Record<string, number>,
+  libro: Record<string, number>,
+): Record<string, number> | null {
+  const agg = Object.keys(libro).length ? libro : treeAgg;
+  return Object.keys(agg).length ? { ...agg } : null;
+}
+
+/** Ids de los ramales que SALEN (nacen) del bajante/caja dado.
+ * La referencia explícita manda: un ramal de salida con `_tribReversed (flag de flujo invertido en tributario)` invertía la geometría cola/cabeza y dejaba de detectarse — el agregado del bajante volvía a caminar su subárbol y re-fusionaba las UDs (Unidades de Desague) en su propia clave de salida (crecían en cada pasada, orig. usuario: "la caja AN duplica las UDs (Unidades de Desague) del ramal de salida"). */
+export function idsSalidasDeBajante(
+  baj: BajanteLikeSalida,
+  ramales: RamalLikeSalida[],
+  zoom: number,
+): Set<string> {
+  const out = new Set<string>();
+  const tol = (baj._circ?.r || 8 * (zoom || 1)) / (zoom || 1) + 1;
+  const code = baj.code || baj.id;
+  for (const r of ramales) {
+    if (r.tipo === 'tributario' || (r.net ?? '') !== baj.net) continue;
+    // Referencia explícita: nace en este elemento — salida sin ambigüedad geométrica.
+    if ((baj.alimentaIds || []).includes(r.id) || (r.ini && r.ini === code)) {
+      out.add(r.id);
+      continue;
+    }
+    if (!r.pts || r.pts.length < 2) continue;
+    const t = r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
+    const h = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
+    const tailAt = Math.hypot(t[0] - baj.x, t[1] - baj.y) < tol;
+    const headAt = Math.hypot(h[0] - baj.x, h[1] - baj.y) < tol;
+    if (tailAt && !headAt) {
+      out.add(r.id);
+      continue;
+    }
+    // Caso ambiguo (AMBOS extremos dentro de la tolerancia — p.ej. cajas, cuyo _circ es la
+    // semidiagonal del cuadro y se traga ramales cortos): decide la DIRECCIÓN DE FLUJO —
+    // es salida si el extremo de DESCARGA está lejos del elemento.
+    if (tailAt && headAt) {
+      const hDist = Math.hypot(h[0] - baj.x, h[1] - baj.y);
+      const tDist = Math.hypot(t[0] - baj.x, t[1] - baj.y);
+      if (hDist > tDist) out.add(r.id);
+    }
+  }
+  return out;
+}
+
+/** Ramales que SALEN de un bajante (por id): delega en idsSalidasDeBajante con el zoom del
+ *  motor. Casa natural del helper que el panel envolvía en useCallback solo por engineRef. */
+export function salidasDeBajante(
+  eng: { bajantes: BajanteLikeSalida[]; ramales: RamalLikeSalida[]; zoom: number } | null,
+  bajId: string,
+): Set<string> {
+  const baj = eng?.bajantes.find((b) => b.id === bajId);
+  if (!eng || !baj) return new Set<string>();
+  return idsSalidasDeBajante(baj, eng.ramales, eng.zoom || 1);
+}
+
+/** Espeja `next` sobre la clave (reemplazo, no fusión) y devuelve si cambió — comparación JSON contra el valor en disco. */
+export function syncMirrorKey(
+  disk: Record<string, Record<string, number>>,
+  key: string,
+  next: Record<string, number>,
+  deleteEmpty: boolean,
+): boolean {
+  if (!Object.keys(next).length) {
+    if (deleteEmpty && disk[key]) {
+      delete disk[key];
+      return true;
+    }
+    return false;
+  }
+  if (stableStringify(disk[key] || {}) === stableStringify(next)) return false;
+  disk[key] = { ...next };
+  return true;
+}
+
+import { leerHeredadosPresion } from '../utils/propagation';
+
+/** Accesorios hidráulicos (codos, tees) guardados del tramo; entrada vacía si no tiene. */
+export function hidroDeClave(hidroData: HidroDataMap, storageKey: string | null): HidroDataEntry {
+  if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
+  return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+}
+
+/** Total de UD (Unidades de Desague) del tramo: suma de cada aparato (cuántos hay × las UD que gasta cada uno). */
+export function totalDeUnidades(
+  items: readonly { id: string; [campo: string]: unknown }[],
+  currentMap: Record<string, number> | undefined,
+  unitKey: string | null,
+  storageKey: string | null,
+): number {
+  if (!storageKey) return 0;
+  let s = 0;
+  for (const ap of items) {
+    const u = (unitKey ? (ap[unitKey] as number | undefined) : undefined) || 0;
+    s += (currentMap?.[ap.id] || 0) * u;
+  }
+  return s;
+}
+
+/** Unidades MANUALES propias de este tramo: la carga de la clave MENOS lo heredado por
+ *  propagación (antes se sumaba la carga completa y un tramo con solo heredado no
+ *  podía recibir su primer aparato manual). */
+export function ownTotalDe(counts: CountsMap, storageKey: string | null): number {
+  if (!storageKey) return 0;
+  const libro = leerHeredadosPresion(storageKey);
+  return Object.entries(counts[storageKey] || {}).reduce(
+    (s, [k, v]) => s + Math.max(0, v - (libro[k] || 0)),
+    0,
+  );
+}
+
+/** ¿El aparato lo asignó el usuario acá (y no es solo una copia heredada de la propagación)? */
+export function esPropioDe(counts: CountsMap, storageKey: string | null, apId: string): boolean {
+  if (!storageKey) return false;
+  const libro = leerHeredadosPresion(storageKey);
+  return (counts[storageKey]?.[apId] || 0) - (libro[apId] || 0) > 0;
+}

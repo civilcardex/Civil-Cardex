@@ -1,5 +1,5 @@
 import { perfilDe, type PerfNormas } from '../../constants/normasPais';
-import { useProyecto } from '../../context/ProjectContext';
+import { useProyecto } from '../../context/ProyectoContexto.tsx';
 
 // País del proyecto → notas normativas de los visores 3D de isometría (orig. usuario: donde la
 // norma es POR PAÍS y no universal, la nota cita la del país del proyecto; NFPA/UL/ISO quedan

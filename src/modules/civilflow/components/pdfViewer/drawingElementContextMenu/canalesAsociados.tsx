@@ -1,12 +1,12 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
-import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
-import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoMotor.ts';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
 import { vetarSelloCanal, levantarVetoSelloCanal } from '../../../lib/PlanoEngine/canalAssociation';
-import { useMaterialesLl } from '../../../context/RainwaterContext';
+import { useMaterialesLl } from '../../../context/LluviasContexto.tsx';
 import {
   MATERIALES_CANAL_LL,
   MATERIALES_CUBIERTA_LL,
-} from '../../../constants/engineeringDataMaterials';
+} from '../../../constants/ingenieriaDatosMaterials.ts';
 import {
   MENU_CHECK_LABEL_STYLE,
   MENU_CHECK_ROW_STYLE,
@@ -14,7 +14,7 @@ import {
   MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
   type ContextMenuState,
-} from './context';
+} from './contexto.ts';
 
 /** Secciones de asociación del menú contextual y del panel derecho — estilos COMPARTIDOS (orig. usuario:
  * bajantes/cajas/canales/montantes/ramales deben verse idénticos) y lógica de toggle bidireccional. */

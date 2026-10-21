@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { copyDrawingFromPlan } from '../../../utils/copyDrawingFromPlan';
-import { rebasarEscalaTrazos, type PlanoWorkData } from '../PlanoPersistence';
+import { copyDrawingFromPlan } from '../../../utils/copiaDibujoFromPlano.ts';
+import { rebasarEscalaTrazos, type PlanoWorkData } from '../PlanoPersistencia.ts';
 
 // Prueba de validación (orig. usuario 2026-09-21): un elemento copiado a varias pisos en la
 // MISMA posición relativa debe producir COTAS IDÉNTICAS en todos los pisos. Causa raíz del

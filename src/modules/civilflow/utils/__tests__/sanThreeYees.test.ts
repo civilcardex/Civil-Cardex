@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeAccesoriosTable } from '../sanFittingsRows';
+import { computeAccesoriosTable } from '../sanAccesoriosFilas.ts';
 import type { Tramo } from '../../context/tramosReducer';
-import type { PlanItem } from '../../context/PlansContext';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
 
 // Reporte usuario: 3 yees simples sobre el tronco (imagen WC) — la tabla contaba 2.
 // Repro con las variantes que pueden hacer caer una unión del conteo.

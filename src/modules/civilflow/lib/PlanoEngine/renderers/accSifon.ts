@@ -1,8 +1,8 @@
-import { rotatedRectCorners } from '../HitTester';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
-import { findFreeLabelCenter } from '../labelDeclutter';
-import type { DeclutterFrame } from '../labelDeclutter';
-import { normalizeDnLabel } from '../../../utils/formatUtils';
+import { rotatedRectCorners } from '../ImpactoProbador.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { findFreeLabelCenter } from '../etiquetaDesaclarar.ts';
+import type { DeclutterFrame } from '../etiquetaDesaclarar.ts';
+import { normalizeDnLabel } from '../../../utils/formatoUtiles.ts';
 
 export function drawSifonSymbol(
   ctx: CanvasRenderingContext2D,

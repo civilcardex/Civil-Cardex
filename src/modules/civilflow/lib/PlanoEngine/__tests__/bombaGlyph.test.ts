@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { renderBajantes } from '../renderers/renderBajantes';
-import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
+import { renderBajantes } from '../renderers/dibujaBajantes.ts';
+import type { IPlanoEngineCore, PlanoBajante } from '../PlanoEstado.ts';
 
 // Bomba: los brazos nacen AL RAS del borde de la volute (sin entrar ni flotar) y la
 // volute se interrumpe en las bocas justo en el filo de cada línea.

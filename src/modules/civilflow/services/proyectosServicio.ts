@@ -1,0 +1,169 @@
+import { supabase } from '../../../lib/supabase';
+import { devError } from '../../../utils/desarrolloError.ts';
+import { CF_TABLES } from '../constants/tablaNombres.ts';
+import { emitBdSaveError } from './almacenamientoServicio.ts';
+
+export interface ProyectoRow {
+  /** Identificador único universal (uuid) del proyecto (cf_proyectos.id); mismo formato que cm_proyectos, para deep-links. */
+  id: string;
+  user_id: string;
+  codigo: string;
+  nombre: string;
+  created_at?: string;
+}
+
+/** Mapea la fila cruda de BD a la forma del cliente (id uuid). */
+function rowToProyecto(raw: Record<string, unknown>): ProyectoRow {
+  return { ...(raw as unknown as ProyectoRow), id: String(raw.id) };
+}
+
+/** Variante estricta para flujos que deben distinguir "sin proyectos" de "fallo de red/BD":
+ *  lanza en error del servidor o de red; solo devuelve [] cuando el usuario no tiene ninguno. */
+export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('sin-sesion');
+  // Sin filtro user_id: RLS devuelve propios + proyectos de la empresa (asiento activo).
+  const { data, error } = await supabase
+    .from(CF_TABLES.proyectos)
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return ((data as unknown as Record<string, unknown>[]) || []).map(rowToProyecto);
+}
+
+/**
+ * Trae todos los proyectos del usuario autenticado, ordenados por más reciente.
+ * @returns Arreglo de objetos ProyectoRow; arreglo vacío ante error o usuario no autenticado.
+ */
+export async function fetchProyectos(): Promise<ProyectoRow[]> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Sin filtro user_id: RLS devuelve propios + proyectos de la empresa (asiento activo).
+    const { data, error } = await supabase
+      .from(CF_TABLES.proyectos)
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      if (
+        error.code === 'PGRST116' ||
+        error.message?.includes('relation') ||
+        error.message?.includes('does not exist')
+      ) {
+        return [];
+      }
+      devError('proyectosService fetch:', error.message);
+      return [];
+    }
+
+    return ((data as unknown as Record<string, unknown>[]) || []).map(rowToProyecto);
+  } catch (e) {
+    devError('proyectosService fetch exception:', e);
+    return [];
+  }
+}
+
+/**
+ * Crea un proyecto nuevo vía RPC SECURITY DEFINER y devuelve la fila insertada (el RPC
+ * devuelve el row como jsonb; la validación de propiedad/texto la hace el servidor). Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
+ * @param codigo - Código corto del proyecto.
+ * @param nombre - Nombre legible del proyecto.
+ * @returns ProyectoRow insertado o null ante fallo.
+ */
+/** Resultado de crear proyecto: fila creada, o fallo con mensaje del RPC (p. ej.
+ *  'suscripcion_requerida' cuando la BD tiene el gating activo y la suscripción venció). */
+export type CreateProyectoResult = { ok: true; row: ProyectoRow } | { ok: false; msg: string };
+
+export async function createProyecto(
+  codigo: string,
+  nombre: string,
+): Promise<CreateProyectoResult> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, msg: 'sin_sesion' };
+
+    const { data, error } = await supabase.rpc('save_proyecto', {
+      p_codigo: codigo,
+      p_nombre: nombre,
+    });
+
+    if (error) {
+      devError('proyectosService create rpc:', error.message);
+      // '' colisiona con "ok pero vacío": los mensajes se propagan como { ok:false, msg }.
+      return { ok: false, msg: error.message };
+    }
+
+    return { ok: true, row: rowToProyecto(data as unknown as Record<string, unknown>) };
+  } catch (e) {
+    devError('proyectosService create exception:', e);
+    return { ok: false, msg: 'error_red' };
+  }
+}
+
+/**
+ * Actualiza el nombre mostrado de un proyecto existente vía RPC (validación y propiedad
+ * server-side).
+ * @param id - Clave primaria del proyecto.
+ * @param nombre - Nuevo nombre mostrado.
+ * @returns True si la actualización funcionó, false si no.
+ */
+export async function updateProyectoNombre(id: string, nombre: string): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase.rpc('update_proyecto_nombre', {
+      p_id: id,
+      p_nombre: nombre,
+    });
+
+    if (error) {
+      devError('proyectosService updateNombre rpc:', error.message);
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    devError('proyectosService updateNombre exception:', e);
+    return false;
+  }
+}
+
+/**
+ * Elimina un proyecto por id vía RPC (validación de propiedad server-side; el RPC borra
+ * también sus dependencias en cascada, definidas en el esquema).
+ * @param id - Clave primaria del proyecto.
+ * @returns True si la eliminación funcionó, false si no.
+ */
+export async function deleteProyecto(id: string): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { error } = await supabase.rpc('delete_proyecto', { p_id: id });
+
+    if (error) {
+      devError('proyectosService delete rpc:', error.message);
+      emitBdSaveError('delete-proyecto', error.message);
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    devError('proyectosService delete exception:', e);
+    return false;
+  }
+}

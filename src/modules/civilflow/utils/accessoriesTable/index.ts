@@ -1,12 +1,12 @@
 import type { Tramo } from '../../context/tramosReducer';
-import type { PlanItem } from '../../context/PlansContext';
-import { catalogoDeRed, resumenCatalogo } from './catalog';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
+import { catalogoDeRed, resumenCatalogo } from './catalogo.ts';
 import { coleccionarPiezas } from './collection';
 import { detectarYees } from './yees';
-import { contarAccesorios } from './counting';
+import { contarAccesorios } from './conteo.ts';
 import { calcularBushing } from './bushing';
-import { armarTabla } from './rows';
-import type { MemoriaTable } from '../exportMemoryFinal';
+import { armarTabla } from './filas.ts';
+import type { MemoriaTable } from '../exportaMemoryFinal.ts';
 
 /**
  * Tabla de accesorios de tubería (san/ll/af/ac/gas): cuenta codons, uniones, yees y

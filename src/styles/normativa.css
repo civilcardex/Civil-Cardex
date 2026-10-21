@@ -1,0 +1,65 @@
+/* ── Info Boxes ── */
+
+.ib {
+  padding: 12px 16px;
+  border-radius: var(--r2);
+  font-size: 14px;
+  line-height: 1.6;
+  display: flex;
+  gap: 10px;
+}
+
+.ib.ok {
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-b);
+  color: var(--ok);
+}
+
+.ib.warn {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-b);
+  color: var(--warn);
+}
+
+.ib.gas {
+  background: var(--gas-bg);
+  border: 1px solid var(--gas-b);
+  color: var(--gas);
+}
+
+.ib.info {
+  background: var(--af-bg);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  color: var(--acc2);
+}
+
+.ib.err {
+  background: var(--err-bg);
+  border: 1px solid var(--err-b);
+  color: var(--err);
+}
+
+/* ── Validation Results ── */
+
+.val-ico {
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ── Normativa ── */
+
+.nli {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--txt3);
+}
+
+.nld {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}

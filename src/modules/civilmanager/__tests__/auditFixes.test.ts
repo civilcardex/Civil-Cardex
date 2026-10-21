@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { migrateState, defaultState } from '../storage';
-import { calcAPU, parseNum } from '../calc';
-import { findContadorBajante } from '../../civilflow/utils/writeDiameterToDrawing';
+import { migrateState, defaultState } from '../almacenamiento.ts';
+import { calcAPU, parseNum } from '../calculo.ts';
+import { findContadorBajante } from '../../civilflow/utils/escribeDiametroToDibujo.ts';
 // findContadorBajante vive en civilflow/utils — path relativo desde civilmanager/__tests:
-import type { Apu, Insumo } from '../types';
+import type { Apu, Insumo } from '../tipos.ts';
 
 // Fixes de la auditoría 2026-09-14: RPC con forma inesperada no debe tumbar la carga;
 // 0 es un valor legítimo de consumo/desperdicio; el diámetro del contador viaja a la FILA editada.

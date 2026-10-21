@@ -39,7 +39,7 @@ module.exports = {
         'src/modules/civilflow/components/pdfViewer/AccesorioModal.tsx',
         'src/modules/civilflow/components/pdfViewer/BajanteAsociacion.tsx',
         'src/modules/civilflow/components/pdfViewer/ExtremeAccessoryEditor.tsx',
-        'src/modules/civilflow/components/workarea/PlanosTab.tsx',
+        'src/modules/civilflow/components/workarea/PlanosPestana.tsx',
         'src/modules/civilflow/components/FixturesPanel.tsx',
         'src/modules/civilflow/components/fixtures/**/*.{ts,tsx}',
       ],

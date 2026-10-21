@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import RciRedSidebar from './RciRedSidebar';
-import { COMPONENTS, LABEL_POSITIONS } from './rciRedData';
-import type { RciRedLabel } from './rciRedData';
-import { useRci3DScene, type Rci3DApi } from '../rci3d/useRci3DScene';
-import { useRciRedCarga } from './useRciRedLoad';
+import RciRedSidebar from './RciRedLateral.tsx';
+import { COMPONENTS, LABEL_POSITIONS } from './rciRedDatos.ts';
+import type { RciRedLabel } from './rciRedDatos.ts';
+import { useRci3DScene, type Rci3DApi } from '../rci3d/useRci3Escena.ts';
+import { useRciRedCarga } from './useRciRedCarga.ts';
 import { useLupa } from '../rci3d/useMagnifier';
-import { vistaOrto, resetVista, type VistaKey } from '../rci3d/viewsRci';
+import { vistaOrto, resetVista, type VistaKey } from '../rci3d/vistasRci.ts';
 import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniViewerRed';
 
 // Visor 3D "Red contra incendio" — port del HTML Isometrico_RCI_Open_Code_v19. Modelo REAL

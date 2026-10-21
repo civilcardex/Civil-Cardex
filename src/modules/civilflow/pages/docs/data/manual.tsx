@@ -1,4 +1,4 @@
-import { NormaLink } from '../../../components/shared/standardsLinks';
+import { NormaLink } from '../../../components/shared/normasLinks.tsx';
 import { Tabla } from './ui';
 
 const manual = {

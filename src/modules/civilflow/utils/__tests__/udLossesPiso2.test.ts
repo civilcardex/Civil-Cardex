@@ -4,8 +4,8 @@ import {
   setSyncLoadedLiveIds,
   markPlanTrazosFresh,
   reanclarClavesDesdeTrazosLocales,
-} from '../drawingSync';
-import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
+} from '../dibujoSync.ts';
+import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/almacenamientoClaves.ts';
 
 // Bug piso 2 (orig. usuario): UDs asignadas en el piso con más trazos aparecían en 0 al
 // volver mucho después (símbolos intactos, hidro intacto). Cadena: la cuota muda de

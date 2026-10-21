@@ -3,13 +3,13 @@ import {
   APARATOS_BY_TRAMO_KEY,
   APARATOS_HEREDADOS_KEY,
   TRAZOS_PREFIX,
-} from '../../constants/storage-keys';
+} from '../../constants/almacenamientoClaves.ts';
 import { applyBajanteAssociation, clearBajanteAssociation } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { buildTramos } from '../buildTramos';
-import { collectSourceAgg } from '../bajanteAssocShared';
+import { buildTramos } from '../construyeTramos.ts';
+import { collectSourceAgg } from '../bajanteAsocCompartido.ts';
 import { handleMontanteDown } from '../../lib/PlanoEngine/creations/montantes.ts';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // MONTANTES asociados entre pisos: deben ir TOMANDO los mismos aparatos. Si el montante del
 // piso 2 tiene 3 UC y se asocia a uno del piso 1, el de abajo queda con 3 UC — y lo mismo el

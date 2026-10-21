@@ -1,10 +1,18 @@
-import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync';
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
-import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys';
-import type { SyncPlanInput, RawElement } from '../drawingSync';
-import { diamPulgFromLabel } from '../diamPulgFromLabel';
+import { writeHydroDrawingSync, writeSanDrawingSync } from '../dibujoSync.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  saveTrazosToDB,
+} from '../../services/almacenamientoServicio.ts';
+import {
+  TRAZOS_PREFIX,
+  HYDRO_FAMILIES,
+  SAN_FAMILIES,
+} from '../../constants/almacenamientoClaves.ts';
+import type { SyncPlanInput, RawElement } from '../dibujoSync.ts';
+import { diamPulgFromLabel } from '../diamPulgFromEtiqueta.ts';
 import { punterosBajante, validarDiametroEntrePisos, parseBajanteKey } from './diametros';
-import { avisarDiametroInvalido } from '../diametroValidation';
+import { avisarDiametroInvalido } from '../diametroValidacion.ts';
 
 /** Diámetro a varios ramales con un solo load+save por plano (ruta batch del D vent propuesto). */
 // Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.

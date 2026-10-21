@@ -1,7 +1,7 @@
-import { loadFromStorage } from '../../services/storageService';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { loadFromStorage } from '../../services/almacenamientoServicio.ts';
+import { TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { isLdesvioRamalId } from '../associateBajanteAcrossFloors';
-import type { PlanItem } from '../../context/PlansContext';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
 
 /** Ramal dibujado (del trazo guardado del plano). */
 export type RamalDibujo = {

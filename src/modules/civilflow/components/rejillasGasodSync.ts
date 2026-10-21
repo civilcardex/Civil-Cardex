@@ -1,13 +1,17 @@
-import { getActiveProyectoId, loadFromStorage, saveToStorage } from '../services/storageService';
+import {
+  getActiveProyectoId,
+  loadFromStorage,
+  saveToStorage,
+} from '../services/almacenamientoServicio.ts';
 import {
   loadRejillasProyecto,
   saveRejillasProyecto,
   type RejillasBlob,
-} from '../services/projectDataService';
-import { APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
-import { devError } from '../../../utils/devError';
-import { leerGasod } from './rejillasVentilacion/rejillasStorage';
-import { emitAparatosClear, EV_APARATOS_CLEAR } from '../utils/fixtureEvents';
+} from '../services/proyectoDatosServicio.ts';
+import { APARATOS_BY_TRAMO_KEY } from '../constants/almacenamientoClaves.ts';
+import { devError } from '../../../utils/desarrolloError.ts';
+import { leerGasod } from './rejillasVentilacion/rejillasAlmacenamiento.ts';
+import { emitAparatosClear, EV_APARATOS_CLEAR } from '../utils/aparatoEventos.ts';
 
 /** Sincronía BD de los conteos de gasodomésticos de áreas rejillas (claves gas_AR…), VIVA aunque la tabla de Rejillas esté cerrada: - startRejillasGasodSync(): cada EV_APARATOS_CLEAR (panel del visor, tabla, GC) re-empuja el blob con lo que hay en disco — sin esto borrar/asignar desde el PANEL dejaba el
  * blob viejo y la hidratación resucitaba lo borrado. - hidratarRejillasGasod(): fill-missing del blob al disco — sin esto el panel derecho arrancaba vacío hasta que el usuario entrara a la tabla (única hidratación existente). */

@@ -8,13 +8,13 @@ export {
   collectSourceAgg,
   trazaDeUltimoGrupo,
   estamparAsocsClearedTs,
-} from './bajanteAssocShared';
-export { clearBajanteAssociation } from './bajanteAssociationClear';
+} from './bajanteAsocCompartido.ts';
+export { clearBajanteAssociation } from './bajanteAssociationLimpia.ts';
 export { applyBajanteAssociation } from './bajanteAssociationApply';
-export { healHerenciaInvertida } from './bajanteAssociationHeal';
+export { healHerenciaInvertida } from './bajanteAssociationSanar.ts';
 export type {
   AssocEndpoint,
   InheritPoolRamal,
   InheritPoolBajante,
   CollectedAgg,
-} from './bajanteAssocShared';
+} from './bajanteAsocCompartido.ts';

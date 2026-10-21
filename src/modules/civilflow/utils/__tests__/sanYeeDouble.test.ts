@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadSanLlTramos } from '../buildTramos';
+import { loadSanLlTramos } from '../construyeTramos.ts';
 import { buildSanConnectivity } from '../sanConnectivity';
-import { computeSanRows } from '../sanRows';
-import type { PlanItem } from '../../context/PlansContext';
+import { computeSanRows } from '../sanFilas.ts';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
 
 // Yee doble: un tributario en un cluster sin salida (tronco muerto sin `fin`) se quedaba sin
 // arista y su UD desaparecía del total (no se muestra en ninguna fila). Ahora cuelga de su

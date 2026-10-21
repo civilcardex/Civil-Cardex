@@ -1,5 +1,5 @@
-import { dec } from '../utils/parseDecimal';
-import { matHazenC } from '../constants/engineeringDataMaterials';
+import { dec } from '../utils/analizaDecimal.ts';
+import { matHazenC } from '../constants/ingenieriaDatosMaterials.ts';
 
 /** Inputs editables por bomba. */
 export interface BombaInputs {

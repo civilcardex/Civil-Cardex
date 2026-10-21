@@ -7,9 +7,9 @@ vi.mock('../../../../lib/supabase', () => ({
   },
 }));
 
-import { reanclarClavesDesdeTrazosLocales, setSyncLoadedLiveIds } from '../drawingSync';
-import { loadFromStorage, saveToStorage } from '../../services/storageService';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { reanclarClavesDesdeTrazosLocales, setSyncLoadedLiveIds } from '../dibujoSync.ts';
+import { loadFromStorage, saveToStorage } from '../../services/almacenamientoServicio.ts';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 
 // Anti-resurrección (orig. usuario: Quitar/"-" sin efecto tras reentrar): la copia `fixtures`
 // del ramal en el trazo se escribe al cargar y nada la invalida al quitar el aparato. El

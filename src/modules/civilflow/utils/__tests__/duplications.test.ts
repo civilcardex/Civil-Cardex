@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { pisoOcupadoPor } from '../isLevelTaken';
-import { leerPlansMeta, planCalibrado } from '../plansMeta';
+import { leerPlansMeta, planCalibrado } from '../planosMeta.ts';
 
 /**
  * Los helpers que eran copias:

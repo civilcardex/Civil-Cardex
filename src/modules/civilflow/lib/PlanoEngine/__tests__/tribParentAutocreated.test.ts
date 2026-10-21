@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { finishRamal } from '../PlanoEngineDrawing';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
+import { finishRamal } from '../PlanoMotorDibujo.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
 
 // Ítem 3: al dividir un ramal creando un tributario, el tributario toma como padre el ramal
 // AUTOCREADO (aguas abajo), no el original — por dibujo manual (split a mitad de cuerpo y

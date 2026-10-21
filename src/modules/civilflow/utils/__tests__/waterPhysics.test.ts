@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { hunterK, hunterQ, computeDesignRow } from '../../components/waterNetworkDesign/rowPhysics';
+import {
+  hunterK,
+  hunterQ,
+  computeDesignRow,
+} from '../../components/waterNetworkDesign/filaPhysics.ts';
 import type { Tramo } from '../../context/tramosReducer';
 
 // Spec: curva de Hunter (NTC 1500) y física de fila de la tabla de diseño AF/AC.

@@ -1,16 +1,16 @@
 ﻿import { useState, useEffect } from 'react';
-import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations';
-import { getAccessoryOptions } from '../../../utils/accessoryOptions';
-import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
+import { bajanteLabel, ramalLabel } from '../../../utils/accesorioAbbreviations.ts';
+import { getAccessoryOptions } from '../../../utils/accesorioOpciones.ts';
+import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoEstado.ts';
 import {
   flipRamalFlow,
   ramalFlowDirectionCheck,
   aparatoEnExtremoInvalido,
-} from '../../../lib/PlanoEngine/PlanoEngineDrawing';
-import { directNeighborRamales } from '../../../utils/flowDirection';
-import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState';
-import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber';
-import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules';
+} from '../../../lib/PlanoEngine/PlanoMotorDibujo.ts';
+import { directNeighborRamales } from '../../../utils/flujoDireccion.ts';
+import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoEstado.ts';
+import { renameRamalId } from '../../../lib/PlanoEngine/redRenumera.ts';
+import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteReglas.ts';
 import {
   useDrawingElementContextMenu,
   MENU_GRID_2COL_TALL_STYLE,
@@ -18,9 +18,9 @@ import {
   MENU_CHECK_ROW_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
   MENU_SELECT_STYLE,
-} from './context';
+} from './contexto.ts';
 import { moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
-import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
 import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
@@ -28,14 +28,14 @@ import {
   MontantesAsociadosSection,
   refrescarMenu,
 } from './canalesAsociados';
-import { MidRamalAccessorySelector } from './midRamalAccessorySelector';
+import { MidRamalAccessorySelector } from './medioRamalAccesorioSelector.tsx';
 import {
   pointOnRamalBody,
   ramalHasInterconnections,
   tribsBlockingRamalConversion,
-} from './ramalMenuHelpers';
-import { BajanteConnectionPanel } from './bajanteConnectionPanel';
-import { ElementCodeEditor } from './elementEditor';
+} from './ramalMenuAyudantes.ts';
+import { BajanteConnectionPanel } from './bajanteConexionPanel.tsx';
+import { ElementCodeEditor } from './elementoEditor.tsx';
 import { guardarMallas } from '../../../lib/PlanoEngine/nodos';
 
 export function RamalMenu() {

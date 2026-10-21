@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import type { RejResultado } from '../utils/rejillasCalc';
-import type { RejFila } from './rejillasVentilacion/rejillasShared';
+import type { RejResultado } from '../utils/rejillasCalculo.ts';
+import type { RejFila } from './rejillasVentilacion/rejillasCompartido.ts';
 import { AlzadoMuro } from './rejillasVentilacion/AlzadoMuro';
 import { TablaTipologias } from './rejillasVentilacion/TablaTipologias';
-import { useRejillasData } from './rejillasVentilacion/useRejillasData';
-import EditButton from './shared/EditButton';
+import { useRejillasData } from './rejillasVentilacion/useRejillasDatos.ts';
+import EditButton from './shared/EditaBoton.tsx';
 
 // Módulo Rejillas de ventilación (NTC 3631, 3ª actualización) — tabla Tipologías por sector.
 /** Alertas del sector seleccionado + notas generales (visible también vacío). */

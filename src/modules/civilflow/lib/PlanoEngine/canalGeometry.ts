@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from './PlanoState';
+import type { IPlanoEngineCore } from './PlanoEstado.ts';
 
 /** Caja inclinada de un canal recolector de lluvias (ll): dónde arranca, cuánto mide de largo
  *  (longitud) y de ancho (base), en pixels de plano, y su inclinación. Sirve para responder

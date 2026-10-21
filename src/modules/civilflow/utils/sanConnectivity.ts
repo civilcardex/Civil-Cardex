@@ -1,16 +1,17 @@
 import type { Tramo } from '../context/tramosReducer';
-import type { BajanteRaw } from './drawingSyncTypes';
-import type { PlanItem } from '../context/PlansContext';
-import { calcUDparcial } from './componentHelpers';
+import type { BajanteRaw } from './dibujoSyncTipos.ts';
+import type { PlanItem } from '../context/PlanosContexto.tsx';
+import { calcUDparcial } from './componentAyudantes.tsx';
 import { distToPolyline } from '../lib/shared/geometry';
-import { parseDescargaEnId } from './parseDescargaEnId';
+import { parseDescargaEnId } from './analizaDescargaEnId.ts';
+import { indicePorClave } from './indices';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
-import { loadFromStorage } from '../services/storageService';
-import type { DrawingData, RawElement } from './drawingSync';
+import { TRAZOS_PREFIX } from '../constants/almacenamientoClaves.ts';
+import { loadFromStorage } from '../services/almacenamientoServicio.ts';
+import type { DrawingData, RawElement } from './dibujoSync.ts';
 
 /** Bajante (tubo vertical) tal cual está guardado, con su posición en el plano para poder enlazarlo entre pisos. */
-export type { BajanteRaw } from './drawingSyncTypes';
+export type { BajanteRaw } from './dibujoSyncTipos.ts';
 
 /** Lo que aporta cada tramo sanitario (sus aparatos con su UD (Unidades de Desague)) ya fusionado de todas sus claves; es la entrada de las tablas sanitarias. */
 export interface MergedApBase {
@@ -33,11 +34,22 @@ export function buildSanConnectivity(
   plans: PlanItem[],
   mergedBase: MergedApBase[],
 ): SanConnectivity {
-  const calculoMap: Record<string, string[]> = {};
+  // Set por clave: la pertenencia (¿ya enlazado?) era un .includes sobre un array que crece.
+  const calculoMap = new Map<string, Set<string>>();
+  const enlazar = (padre: string, hijo: string): void => {
+    let set = calculoMap.get(padre);
+    if (!set) {
+      set = new Set<string>();
+      calculoMap.set(padre, set);
+    }
+    set.add(hijo);
+  };
 
   // fin (código del elemento aguas abajo) vive en tramosSan; el trazo crudo de localStorage puede
   // no tenerlo persistido (el test lo define solo en el tramo). Se resuelve con el tramo por
   // `${id}-${planId}` para el desempate de co-sumideros de abajo.
+  // Índice por clave de tramo: los .find repetidos (por _key) eran O(n) por consulta.
+  const tramoPorClave = indicePorClave(tramosSan, (t) => t._key || null);
   const tramoFinByKey = new Map<string, string>();
   for (const t of tramosSan) {
     const k = t._key || `${t.id}-${t.piso}`;
@@ -59,6 +71,20 @@ export function buildSanConnectivity(
 
     const ramales = data.ramales || [];
     const bajantes = (data.bajantes || []) as BajanteRaw[];
+    // Set de los ramales que cada bajante recibe: el .includes dentro del bucle de ramales era
+    // O(n) por cada bajante y cada ramal.
+    const recibePorBajante = new Map<string, Set<string>>();
+    for (const b of bajantes) {
+      if (b.id) recibePorBajante.set(b.id, new Set(b.recibeDeIds || []));
+    }
+    // índices id/label de los ramales: buscar "el ramal que se llama rxFin" con un .some
+    // sobre toda la lista era O(n) por cada candidato (y había miles de candidatos).
+    const ramalPorId = new Map<string, (typeof ramales)[number]>();
+    const ramalPorLabel = new Map<string, (typeof ramales)[number]>();
+    for (const rr of ramales) {
+      if (!ramalPorId.has(rr.id)) ramalPorId.set(rr.id, rr);
+      if (rr.label && !ramalPorLabel.has(rr.label)) ramalPorLabel.set(rr.label, rr);
+    }
 
     // Los dos ramales origen de una división de unión a mitad de cuerpo (mergesFrom) terminan
     // ambos con un extremo en la coordenada exacta del inicio del ramal auto-creado — así que la
@@ -99,9 +125,8 @@ export function buildSanConnectivity(
                 (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label)));
           if (isDischargingIntoR) continue;
 
-          const isExplicit =
-            b.recibeDeIds &&
-            (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+          const recibe = b.id ? recibePorBajante.get(b.id) : undefined;
+          const isExplicit = !!recibe && (recibe.has(r.id) || (!!r.label && recibe.has(r.label)));
           const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
           if (isExplicit) {
             const otherPt = pt === pEnd ? pStart : pEnd;
@@ -148,14 +173,13 @@ export function buildSanConnectivity(
               // `fin` es un extremo muerto, y si su `fin` referencia a OTRO ramal que toca este
               // mismo punto (conexión tipeada por el usuario) es igual un sumidero aquí — dejarlo
               // recibir formaría un ciclo (RS1↔RS4) que infla o rompe la propagación.
+              // El .some original aceptaba CUALQUIER ramal cuyo id o label fuera rxFin:
+              // se miran los dos candidatos por índice (id y label) y basta con que uno
+              // cumple la geometría.
               const finIsRamalAtPt =
                 !!rxFin &&
-                ramales.some(
-                  (o) =>
-                    (o.id === rxFin || (o.label && o.label === rxFin)) &&
-                    o.pts &&
-                    o.pts.length >= 2 &&
-                    distToPolyline(pt, o.pts) < 2.0,
+                [ramalPorId.get(rxFin), ramalPorLabel.get(rxFin)].some(
+                  (o) => !!o && o.pts && o.pts.length >= 2 && distToPolyline(pt, o.pts) < 2.0,
                 );
               if (!rxFin || finIsRamalAtPt) {
                 if (r.tipo === 'tributario') cosinkSkipped.push({ id: rx.id, tipo: rx.tipo });
@@ -198,10 +222,7 @@ export function buildSanConnectivity(
 
       for (const connection of connections) {
         const targetKey = `${connection.id}-${plan.id}`;
-        if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-        if (!calculoMap[targetKey].includes(rKey)) {
-          calculoMap[targetKey].push(rKey);
-        }
+        enlazar(targetKey, rKey);
       }
     }
   }
@@ -220,10 +241,7 @@ export function buildSanConnectivity(
       const lowerKey = sections[i]._key;
       const upperKey = sections[i + 1]._key;
       if (lowerKey && upperKey) {
-        if (!calculoMap[lowerKey]) calculoMap[lowerKey] = [];
-        if (!calculoMap[lowerKey].includes(upperKey)) {
-          calculoMap[lowerKey].push(upperKey);
-        }
+        enlazar(lowerKey, upperKey);
       }
     }
   }
@@ -235,30 +253,29 @@ export function buildSanConnectivity(
       const targetRamalId = parts[1];
       if (targetRamalId) {
         const targetKey = `${targetRamalId}-${dPlanId}`;
-        const targetExists = tramosSan.some((x) => x._key === targetKey);
+        const targetExists = tramoPorClave.has(targetKey);
         if (targetExists) {
-          if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-          if (!calculoMap[targetKey].includes(t._key)) {
-            calculoMap[targetKey].push(t._key);
-          }
+          enlazar(targetKey, t._key);
         }
       }
     }
   }
 
-  const adj: Record<string, string[]> = {};
+  // Set por nodo: la adyacencia se consulta y se poda mucho (era .includes/.filter sobre
+  // arrays — O(n²) al podar).
+  const adj: Record<string, Set<string>> = {};
   for (const t of tramosSan) {
     if (t._key) {
-      adj[t._key] = [];
+      adj[t._key] = new Set();
     }
   }
 
-  for (const [parentKey, children] of Object.entries(calculoMap)) {
-    if (!adj[parentKey]) adj[parentKey] = [];
+  for (const [parentKey, children] of calculoMap) {
+    if (!adj[parentKey]) adj[parentKey] = new Set();
     for (const childKey of children) {
-      if (!adj[childKey]) adj[childKey] = [];
-      if (!adj[parentKey].includes(childKey)) adj[parentKey].push(childKey);
-      if (!adj[childKey].includes(parentKey)) adj[childKey].push(parentKey);
+      if (!adj[childKey]) adj[childKey] = new Set();
+      adj[parentKey].add(childKey);
+      adj[childKey].add(parentKey);
     }
   }
 
@@ -271,13 +288,13 @@ export function buildSanConnectivity(
     while (queue.length > 0) {
       const node = queue.shift()!;
       if (node !== startKey) {
-        const tr = tramosSan.find((x) => x._key === node);
+        const tr = tramoPorClave.get(node);
         const isMainRamal = tr && tr.tipo === 'ramal' && !tr.esBajante;
         if (isMainRamal) {
           results.add(node);
         }
       }
-      for (const neighbor of adj[node] || []) {
+      for (const neighbor of adj[node] || new Set<string>()) {
         if (!visited.has(neighbor)) {
           visited.add(neighbor);
           queue.push(neighbor);
@@ -306,7 +323,7 @@ export function buildSanConnectivity(
       while (q.length > 0) {
         const curr = q.shift()!;
         comp.push(curr);
-        for (const neigh of adj[curr] || []) {
+        for (const neigh of adj[curr] || new Set<string>()) {
           if (!compVisited.has(neigh)) {
             compVisited.add(neigh);
             q.push(neigh);
@@ -318,7 +335,7 @@ export function buildSanConnectivity(
   }
 
   const getRootScore = (key: string): number => {
-    const tr = tramosSan.find((x) => x._key === key);
+    const tr = tramoPorClave.get(key);
     if (!tr) return 99999999;
     const piso = tr.piso || 0;
     const isBajante = tr.esBajante;
@@ -403,11 +420,11 @@ export function buildSanConnectivity(
   // (RS5→RS3 en imagen) donde el motor NO crea mergesFrom (solo cuerpo-medio lo crea); antes
   // solo corría si cero merges existían, entonces RS3 sin mergesFrom quedaba sin entrada y
   // dependía 100% de la geometría dirigida — si esa fallaba por 2px, RS3 perdía RS5.
-  for (const [parentKey, children] of Object.entries(calculoMap)) {
+  for (const [parentKey, children] of calculoMap) {
     if (mergeBranches[parentKey]) continue;
     const parentTramo = byKey.get(parentKey);
     if (!parentTramo) continue;
-    const tramoChildren = children.filter((c) => byKey.has(c));
+    const tramoChildren = [...children].filter((c) => byKey.has(c));
     if (tramoChildren.length > 1) {
       mergeBranches[parentKey] = tramoChildren;
     }
@@ -430,8 +447,9 @@ export function buildSanConnectivity(
   // Nodos de unión sin fila propia (bajantes inter-piso, nodos de cruce) también acumulan, para
   // propagar el total de una rama completa al tramo aguas abajo que la recibe.
   const childrenMap: Record<string, string[]> = {};
-  for (const [parentKey, children] of Object.entries(calculoMap)) {
-    childrenMap[parentKey] = children.filter((c, i) => children.indexOf(c) === i);
+  for (const [parentKey, children] of calculoMap) {
+    // El Set ya no tiene repetidos: el filtro de unicidad era O(n²) sobre el array.
+    childrenMap[parentKey] = [...children];
   }
   // Punto fijo: cada tramo acumula SU UD parcial + el total de los tramos que le entregan.
   // La base es el UD PROPIO (fijo, calcUDparcial), NO el total en evolución del tramo — usar el
@@ -447,10 +465,9 @@ export function buildSanConnectivity(
   // es `propia + Σ propias de descendientes únicos (transitivo, dedup por visited)`.
   const ownTotals: Record<string, number> = { ...directedTotals };
   // Grafo completo para totales: unión de hijos geométricos + ramas de merge (mergesFrom)
-  const fullChildrenMap: Record<string, string[]> = {};
+  const fullChildrenMap: Record<string, Set<string>> = {};
   for (const k of new Set([...Object.keys(childrenMap), ...Object.keys(mergeBranches)])) {
-    const s = new Set<string>([...(childrenMap[k] || []), ...(mergeBranches[k] || [])]);
-    fullChildrenMap[k] = Array.from(s);
+    fullChildrenMap[k] = new Set<string>([...(childrenMap[k] || []), ...(mergeBranches[k] || [])]);
   }
   // Cross-floor: bajante descargaEnId → target bajante/ramal asegura que el piso inferior
   // herede las UD/UC del superior, tanto si hay fantasma+Ldesvio como si es alineado (sin Ldesvio).
@@ -465,11 +482,15 @@ export function buildSanConnectivity(
     if (
       !byKey.has(tgtKey) &&
       !Object.prototype.hasOwnProperty.call(fullChildrenMap, tgtKey) &&
-      !Object.keys(ownTotals).includes(tgtKey)
+      !Object.prototype.hasOwnProperty.call(ownTotals, tgtKey)
     )
       continue;
-    if (!fullChildrenMap[tgtKey]) fullChildrenMap[tgtKey] = [];
-    if (!fullChildrenMap[tgtKey].includes(t._key)) fullChildrenMap[tgtKey].push(t._key);
+    let setTgt = fullChildrenMap[tgtKey];
+    if (!setTgt) {
+      setTgt = new Set<string>();
+      fullChildrenMap[tgtKey] = setTgt;
+    }
+    setTgt.add(t._key);
   }
   const componentTotalMap: Record<string, number> = {};
   // Para cada nodo, BFS/DFS sobre fullChildrenMap con visited para no duplicar hojas compartidas
@@ -481,14 +502,14 @@ export function buildSanConnectivity(
     if (ownTotals[k] === undefined && !fullChildrenMap[k]) continue;
     // visited arranca con la raíz: un ciclo que vuelva a k no debe volver a contar su propia UD.
     const visited = new Set<string>([k]);
-    const stack = [...(fullChildrenMap[k] || [])];
+    const stack = [...(fullChildrenMap[k] || new Set<string>())];
     let sum = ownTotals[k] ?? 0;
     while (stack.length > 0) {
       const cur = stack.pop()!;
       if (visited.has(cur)) continue;
       visited.add(cur);
       sum += ownTotals[cur] ?? 0;
-      for (const child of fullChildrenMap[cur] || []) {
+      for (const child of fullChildrenMap[cur] || new Set<string>()) {
         if (!visited.has(child)) stack.push(child);
       }
     }
@@ -566,5 +587,13 @@ export function buildSanConnectivity(
     if (displayMap[branchId]) displayMap[branchId] = [];
   }
 
-  return { orientedConexiones, displayMap, componentTotalMap, fullChildrenMap };
+  // El tipo público sigue siendo Record<string, string[]>: se convierte el Set al salir.
+  return {
+    orientedConexiones,
+    displayMap,
+    componentTotalMap,
+    fullChildrenMap: Object.fromEntries(
+      Object.entries(fullChildrenMap).map(([k, v]) => [k, [...v]]),
+    ),
+  };
 }

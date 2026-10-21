@@ -1,11 +1,9 @@
-import {
-  NSR10_CLASIFICACION, NSR10_ALTURA,
-} from "../regulationsData";
-import { subHeadingStyle as h4 } from "../shared";
+import { NSR10_CLASIFICACION, NSR10_ALTURA } from '../normativaDatos.ts';
+import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function NSR10() {
   return (
-    <div className="card-b" style={{ padding: "18px" }}>
+    <div className="card-b" style={{ padding: '18px' }}>
       <h3 style={h4}>4.1 Clasificación por tipo de ocupación (J.2)</h3>
       <table className="tbl" style={{ fontSize: 12 }}>
         <caption className="visually-hidden">Clasificación por tipo de ocupación NSR-10</caption>
@@ -19,7 +17,9 @@ export function NSR10() {
         <tbody>
           {NSR10_CLASIFICACION.map(([t, c, e]) => (
             <tr key={t}>
-              <td className="c" style={{ fontWeight: 600 }}>{t}</td>
+              <td className="c" style={{ fontWeight: 600 }}>
+                {t}
+              </td>
               <td>{c}</td>
               <td>{e}</td>
             </tr>

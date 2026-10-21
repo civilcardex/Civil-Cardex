@@ -1,12 +1,18 @@
 import {
-  NTC1500_DOTACIONES, NTC1500_UC, NTC1500_HAZEN_C, NTC1500_VELOCIDADES,
-  NTC1500_UD, NTC1500_PENDIENTES, NTC1500_CAPACIDAD, NTC1500_VENTILACION,
-} from "../regulationsData";
-import { subHeadingStyle as h4 } from "../shared";
+  NTC1500_DOTACIONES,
+  NTC1500_UC,
+  NTC1500_HAZEN_C,
+  NTC1500_VELOCIDADES,
+  NTC1500_UD,
+  NTC1500_PENDIENTES,
+  NTC1500_CAPACIDAD,
+  NTC1500_VENTILACION,
+} from '../normativaDatos.ts';
+import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function NTC1500() {
   return (
-    <div className="card-b" style={{ padding: "18px" }}>
+    <div className="card-b" style={{ padding: '18px' }}>
       <h3 style={h4}>1.1 Dotaciones de diseño (§4)</h3>
       <table className="tbl" style={{ fontSize: 12 }}>
         <caption className="visually-hidden">Dotaciones de diseño NTC 1500</caption>
@@ -45,7 +51,9 @@ export function NTC1500() {
           {NTC1500_UC.map(([nom, sig, uca, ucac, pmin, pmax]) => (
             <tr key={nom}>
               <td style={{ fontWeight: 500 }}>{nom}</td>
-              <td><span className="sigla">{sig}</span></td>
+              <td>
+                <span className="sigla">{sig}</span>
+              </td>
               <td className="c">{uca}</td>
               <td className="c">{ucac}</td>
               <td className="c">{pmin}</td>
@@ -56,9 +64,11 @@ export function NTC1500() {
       </table>
 
       <h3 style={h4}>1.4 Cálculo hidráulico — Hazen-Williams (§5.4)</h3>
-      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: '10px 14px', color: 'var(--txt)' }}>
         <span>∑</span>
-        <span><b>Hf = 10.67 × L × Q¹·⁸⁵² / (C¹·⁸⁵² × D⁴·⁸⁷)</b></span>
+        <span>
+          <b>Hf = 10.67 × L × Q¹·⁸⁵² / (C¹·⁸⁵² × D⁴·⁸⁷)</b>
+        </span>
       </div>
 
       <h3 style={h4}>Coeficientes C de Hazen-Williams</h3>
@@ -135,14 +145,16 @@ export function NTC1500() {
         <tbody>
           {NTC1500_PENDIENTES.map(([d, min, rec]) => (
             <tr key={d}>
-              <td className="c" style={{ fontWeight: 500 }}>{d}</td>
+              <td className="c" style={{ fontWeight: 500 }}>
+                {d}
+              </td>
               <td className="c">{min}</td>
               <td className="c">{rec}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="ib warn" style={{ fontSize: 12, padding: "8px 12px", marginTop: 6 }}>
+      <div className="ib warn" style={{ fontSize: 12, padding: '8px 12px', marginTop: 6 }}>
         <span>⚠</span>
         <span>NTC 1500 permite S = 1% para D ≥ 2" con justificación hidráulica.</span>
       </div>
@@ -161,7 +173,9 @@ export function NTC1500() {
         <tbody>
           {NTC1500_CAPACIDAD.map(([d, rh, b1, b3]) => (
             <tr key={d}>
-              <td className="c" style={{ fontWeight: 500 }}>{d}"</td>
+              <td className="c" style={{ fontWeight: 500 }}>
+                {d}"
+              </td>
               <td className="c">{rh}</td>
               <td className="c">{b1}</td>
               <td className="c">{b3}</td>

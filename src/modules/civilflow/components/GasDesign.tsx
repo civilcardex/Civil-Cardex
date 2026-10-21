@@ -1,32 +1,36 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
-import { usePlans } from '../context/PlansContext';
-import { useProyecto } from '../context/ProjectContext';
+import { usePlans } from '../context/PlanosContexto.tsx';
+import { useProyecto } from '../context/ProyectoContexto.tsx';
 import {
   writeDiametroToDrawing,
   writeMaterialToDrawing,
   clearDiametroToDrawing,
-} from '../utils/writeDiameterToDrawing';
-import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
-import { loadGasDatos, saveGasDatos } from '../services/projectDataService';
-import GasCalcUC from './GasCalcUC';
-import { GasDatosGenerales } from './gas/GasGeneralData';
-import { GasTablaRed } from './gas/GasNetworkTable';
-import { GasContadores } from './gas/GasMeters';
-import type { DrawingData, RawElement } from '../utils/drawingSync';
+} from '../utils/escribeDiametroToDibujo.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  getActiveProyectoId,
+} from '../services/almacenamientoServicio.ts';
+import { loadGasDatos, saveGasDatos } from '../services/proyectoDatosServicio.ts';
+import GasCalcUC from './GasCalculoUC.tsx';
+import { GasDatosGenerales } from './gas/GasGeneralDatos.tsx';
+import { GasTablaRed } from './gas/GasRedTabla.tsx';
+import { GasContadores } from './gas/GasContadores.tsx';
+import type { DrawingData, RawElement } from '../utils/dibujoSync.ts';
 
 import {
   TRAZOS_PREFIX,
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
-} from '../constants/storage-keys';
-import { factoresGas, patmDeAltitud } from '../utils/gasUtils';
-import { claveGas } from '../utils/gasNetwork';
-import { calculaFilasGas, propiosDeTramo } from '../utils/gasCalcRows';
-import { compareTramosPisoDesc } from '../utils/componentHelpers';
-import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasRows';
-import { avisarDiametroInvalido } from '../utils/diametroValidation';
+} from '../constants/almacenamientoClaves.ts';
+import { factoresGas, patmDeAltitud } from '../utils/gasUtiles.ts';
+import { claveGas } from '../utils/gasRed.ts';
+import { calculaFilasGas, propiosDeTramo } from '../utils/gasCalculoFilas.ts';
+import { compareTramosPisoDesc } from '../utils/componentAyudantes.tsx';
+import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasFilas.ts';
+import { avisarDiametroInvalido } from '../utils/diametroValidacion.ts';
 
 type GasAccMap = Record<string, Record<string, number>>;
 interface GasRamalRaw extends RawElement {

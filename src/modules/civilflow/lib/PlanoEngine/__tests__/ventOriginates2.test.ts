@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { handleLineDown, finishRamal } from '../PlanoEngineDrawing';
-import type { IPlanoEngineCore } from '../PlanoState';
+import { handleLineDown, finishRamal } from '../PlanoMotorDibujo.ts';
+import type { IPlanoEngineCore } from '../PlanoEstado.ts';
 
 // Red vent nace en 2" (trazos a mano, tributarios y desde guía — igual que sus
 // bajantes/montantes). Otras redes nacen vacías (cierran con "Diámetros pendientes").

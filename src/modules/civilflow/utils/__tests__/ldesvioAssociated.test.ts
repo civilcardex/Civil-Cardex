@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { applyBajanteAssociation } from '../bajanteAssociationApply';
-import { clearBajanteAssociation } from '../bajanteAssociationClear';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { clearBajanteAssociation } from '../bajanteAssociationLimpia.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import { TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 
 /**
  * El Ldesvio (LD, ramal en L) que conecta el fantasma con el original debe quedar registrado como ramal asociado: recibeDeIds + asocManual + fin.

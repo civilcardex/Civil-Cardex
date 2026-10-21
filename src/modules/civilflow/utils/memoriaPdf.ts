@@ -1,6 +1,11 @@
 // Generador PDF (jspdf + autotable) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
-import { type MemoriaTable, type MemoriaData, fileBase, REDES_ORDEN } from './memoriaExportShared';
-import { loadJspdf } from '../../../utils/exportLoaders';
+import {
+  type MemoriaTable,
+  type MemoriaData,
+  fileBase,
+  REDES_ORDEN,
+} from './memoriaExportaCompartido.ts';
+import { loadJspdf } from '../../../utils/exportaCargadores.ts';
 function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
   if (!table.headerGroups) return [table.headers.map((h) => ({ content: h }))];
   const row1: Record<string, unknown>[] = [];

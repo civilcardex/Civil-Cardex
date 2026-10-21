@@ -1,0 +1,151 @@
+import type { Tramo } from '../context/tramosReducer';
+import type { PlanItem } from '../context/PlanosContexto.tsx';
+import type { BajanteLL } from '../context/LluviasContexto.tsx';
+import { TRAZOS_PREFIX } from '../constants/almacenamientoClaves.ts';
+import { loadFromStorage } from '../services/almacenamientoServicio.ts';
+import { chequeoBajanteLluvia } from './calculoLluvias.ts';
+import { cDeCubierta } from '../constants/ingenieriaDatosMaterials.ts';
+import { areaParcialBajanteLl } from './lluviasFilas.ts';
+import type { DrawingData } from './dibujoSync.ts';
+import type { MemoriaTable } from './exportaMemoryFinal.ts';
+
+interface Row {
+  key: string;
+  bajante: string;
+  areaParcial: number;
+  areaOtras: number;
+  areaAcum: number;
+  intensidad: number;
+  /** C del material de cubierta (0 sin material: Q (Caudal) = 0 absoluto). */
+  coeficienteC: number;
+  materialCubierta: string;
+  R: string;
+  manning: number;
+  diamPropuesto: number;
+}
+
+export function computeRainDownpipesTable(
+  tramosLl: Tramo[],
+  plans: PlanItem[],
+  bajantesLl: BajanteLL[],
+): MemoriaTable | null {
+  const drawingBajantes = tramosLl.filter((t) => t.esBajante);
+
+  const areaDibujoMap: Record<string, number> = {};
+  for (const plan of plans || []) {
+    if (plan.nivel == null) continue;
+    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
+    if (!raw) continue;
+    let data: DrawingData = raw as DrawingData;
+    if (typeof raw === 'string') {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+    }
+    for (const b of data.bajantes || []) {
+      if (b.net === 'll' && b.area_m2) {
+        areaDibujoMap[b.code || b.id] = b.area_m2;
+        areaDibujoMap[b.id] = b.area_m2;
+      }
+    }
+  }
+
+  const manualMap = new Map<string, BajanteLL>();
+  for (const m of bajantesLl) manualMap.set(m.bajante || m.id, m);
+
+  const usedManual = new Set<string>();
+  const rows: Row[] = [];
+
+  for (const d of drawingBajantes) {
+    const code = d.code || d.id;
+    const manual = manualMap.get(code) || manualMap.get(d.id);
+    if (manual) usedManual.add(manual.bajante || manual.id);
+    const areaDib = areaDibujoMap[code] || areaDibujoMap[d.id] || 0;
+    // Parcial = dibujo (fórmula compartida con la tabla y el canal); Otras editable
+    // (default 0); TOTAL = Parcial + Otras (orig. usuario).
+    const areaParcial = areaParcialBajanteLl(areaDib, d.area_m2, manual);
+    const areaOtras = manual?.areaOtras ?? 0;
+    const areaAcum = areaParcial + areaOtras;
+    const rVal = d.bajR != null ? (Math.abs(d.bajR - 0.25) < 0.001 ? '1/4' : '7/24') : '7/24';
+    rows.push({
+      key: 'd_' + d.id + '_' + d.piso,
+      bajante: code,
+      areaParcial,
+      areaOtras,
+      areaAcum,
+      intensidad: manual?.intensidad ?? 100,
+      // Requisito absoluto del material: sin material → C=0 → Q=0 (igual que la tabla).
+      coeficienteC: cDeCubierta(manual?.materialCubierta ?? '') ?? 0,
+      materialCubierta: manual?.materialCubierta ?? '',
+      R: rVal,
+      manning: manual?.manning || 0.009,
+      diamPropuesto: d.diamDisPulg || 0,
+    });
+  }
+
+  for (const m of bajantesLl) {
+    const key = m.bajante || m.id;
+    if (usedManual.has(key)) continue;
+    const bajDib = drawingBajantes.find((d) => d.code === m.bajante || d.id === m.bajante);
+    const areaDib = areaDibujoMap[m.bajante] || 0;
+    const areaParcial = areaParcialBajanteLl(areaDib, bajDib?.area_m2, m);
+    const areaOtras = m.areaOtras ?? 0;
+    const areaAcum = areaParcial + areaOtras;
+    rows.push({
+      key: 'm_' + m.id,
+      bajante: m.bajante || m.id,
+      areaParcial,
+      areaOtras,
+      areaAcum,
+      intensidad: m.intensidad ?? 100,
+      // Requisito absoluto del material: sin material → C=0 → Q=0 (igual que la tabla).
+      coeficienteC: cDeCubierta(m.materialCubierta ?? '') ?? 0,
+      materialCubierta: m.materialCubierta ?? '',
+      R: m.R,
+      manning: m.manning || 0.009,
+      diamPropuesto: m.diamPropuesto,
+    });
+  }
+
+  if (rows.length === 0) return null;
+
+  const headers = [
+    'Bajante',
+    'Área parcial (m²)',
+    'Otras (m²)',
+    'Área total (m²)',
+    'Intensidad (mm/hr)',
+    'Coef. escorrentía',
+    'Llenado',
+    'Q (LPS)',
+    'Manning',
+    'D calculado (")',
+    'D propuesto (")',
+    'Chequeo',
+  ];
+  const tableRows = rows.map((row) => {
+    const { Q, dCalc, chequeo } = chequeoBajanteLluvia({
+      ...row,
+      areaAcumulada: row.areaAcum || 0,
+      manning: row.manning || 0.009,
+    });
+    return [
+      row.bajante || '—',
+      row.areaParcial > 0 ? row.areaParcial.toFixed(2) : '—',
+      row.areaOtras.toFixed(2),
+      row.areaAcum > 0 ? row.areaAcum.toFixed(2) : '—',
+      row.intensidad ?? 100,
+      row.coeficienteC > 0 ? row.coeficienteC.toFixed(2) : '—',
+      row.R || '—',
+      Q > 0 ? Q.toFixed(2) : '—',
+      row.manning || '—',
+      dCalc > 0 ? dCalc.toFixed(2) : '—',
+      row.diamPropuesto ? row.diamPropuesto + '"' : '—',
+      chequeo,
+    ];
+  });
+
+  return { title: 'Chequeo capacidad bajantes aguas lluvias', headers, rows: tableRows };
+}

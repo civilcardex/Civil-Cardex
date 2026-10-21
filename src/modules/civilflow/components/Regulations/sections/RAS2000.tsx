@@ -1,11 +1,15 @@
 import {
-  RAS2000_DOTACIONES, RAS2000_VELOCIDADES, RAS2000_LLENADO, RAS2000_ESCORRENTIA, RAS2000_TR,
-} from "../regulationsData";
-import { subHeadingStyle as h4 } from "../shared";
+  RAS2000_DOTACIONES,
+  RAS2000_VELOCIDADES,
+  RAS2000_LLENADO,
+  RAS2000_ESCORRENTIA,
+  RAS2000_TR,
+} from '../normativaDatos.ts';
+import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function RAS2000() {
   return (
-    <div className="card-b" style={{ padding: "18px" }}>
+    <div className="card-b" style={{ padding: '18px' }}>
       <h3 style={h4}>2.1 Dotaciones por nivel de complejidad (Tabla B.2.1)</h3>
       <table className="tbl" style={{ fontSize: 12 }}>
         <caption className="visually-hidden">Dotaciones por nivel de complejidad RAS 2000</caption>
@@ -28,9 +32,11 @@ export function RAS2000() {
       </table>
 
       <h3 style={h4}>2.3 Ecuación de Manning (§D.4.3)</h3>
-      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: '10px 14px', color: 'var(--txt)' }}>
         <span>∑</span>
-        <span><b>V = (1/n) × R²⸍³ × S¹⸍² &nbsp;·&nbsp; Q = V × A</b></span>
+        <span>
+          <b>V = (1/n) × R²⸍³ × S¹⸍² &nbsp;·&nbsp; Q = V × A</b>
+        </span>
       </div>
 
       <h3 style={h4}>Velocidades en tuberías sanitarias</h3>
@@ -72,9 +78,11 @@ export function RAS2000() {
       </table>
 
       <h3 style={h4}>2.5 Aguas lluvias — Método Racional (§D.2)</h3>
-      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: '10px 14px', color: 'var(--txt)' }}>
         <span>∑</span>
-        <span><b>Q = C × I × A / 360.000</b> &nbsp;—&nbsp; Válido para A &lt; 2 km²</span>
+        <span>
+          <b>Q = C × I × A / 360.000</b> &nbsp;—&nbsp; Válido para A &lt; 2 km²
+        </span>
       </div>
 
       <h3 style={h4}>Coeficientes de escorrentía C (Tabla D.2.1)</h3>

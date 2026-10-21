@@ -1,6 +1,6 @@
 import { pisoLbl } from '../../constants';
-import type { Piso } from '../../lib/shared/projectTypes';
-import type { PlanItem } from '../../context/PlansContext';
+import type { Piso } from '../../lib/shared/proyectoTipos.ts';
+import type { PlanItem } from '../../context/PlanosContexto.tsx';
 import {
   PlanoConfigurator_S3,
   PlanoConfigurator_S4,
@@ -15,7 +15,7 @@ import {
   PlanoConfigurator_stepHeader,
   PlanoConfigurator_origenBtn,
   PlanoConfigurator_trazarBtn,
-} from './PlanoConfigurator.styles';
+} from './PlanoConfiguradorEstilos.ts';
 
 /**
  * Panel de calibración a la derecha del visor: asignar nivel, marcar origen, calibrar X/Y y guardar.

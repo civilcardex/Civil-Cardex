@@ -1,6 +1,6 @@
 // Creación/commit de canales (glifo, ancho, eje). canalEjeTs es privado del bloque.
-import type { IPlanoEngineCore } from '../PlanoState';
-import { _statusMsg } from '../ramalMeasure';
+import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { _statusMsg } from '../ramalMedir.ts';
 import { pisoCortoLoose } from '../../../constants';
 import {
   geometriaCanalDesdePuntos,

@@ -1,6 +1,11 @@
 // Generador Excel (xlsx) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
-import { type MemoriaTable, type MemoriaData, fileBase, REDES_ORDEN } from './memoriaExportShared';
-import { loadXlsx } from '../../../utils/exportLoaders';
+import {
+  type MemoriaTable,
+  type MemoriaData,
+  fileBase,
+  REDES_ORDEN,
+} from './memoriaExportaCompartido.ts';
+import { loadXlsx } from '../../../utils/exportaCargadores.ts';
 interface XlsxCellStyle {
   font?: { bold?: boolean; sz?: number; color?: { rgb: string }; italic?: boolean };
   fill?: { fgColor: { rgb: string } };

@@ -1,6 +1,6 @@
 import React from 'react';
-import { SI } from '../../styles/sharedTableStyles';
-import { LazyDecimalInput } from '../shared/LazyDecimalInput';
+import { SI } from '../../styles/compartidoTablaEstilos.ts';
+import { LazyDecimalInput } from '../shared/LazyDecimalEntrada.tsx';
 
 export interface EPData {
   qac: string;

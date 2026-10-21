@@ -1,11 +1,19 @@
-import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync';
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService';
-import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys';
-import type { SyncPlanInput, RawElement } from '../drawingSync';
+import { writeHydroDrawingSync, writeSanDrawingSync } from '../dibujoSync.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  saveTrazosToDB,
+} from '../../services/almacenamientoServicio.ts';
+import {
+  TRAZOS_PREFIX,
+  HYDRO_FAMILIES,
+  SAN_FAMILIES,
+} from '../../constants/almacenamientoClaves.ts';
+import type { SyncPlanInput, RawElement } from '../dibujoSync.ts';
 import { normalizarCanal } from '../../lib/PlanoEngine/canalAssociation';
-import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoords';
+import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoordenadas.ts';
 import { parseBajanteKey } from './diametros';
-import { devError } from '../../../../utils/devError';
+import { devError } from '../../../../utils/desarrolloError.ts';
 
 /** Doc de dibujo local (ramales + bajantes con ts) para los writes de este módulo. */
 interface LocalDrawingData {

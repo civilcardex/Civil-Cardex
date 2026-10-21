@@ -3,14 +3,18 @@
 // una bomba. La herencia hacia ARRIBA la ejecuta el efecto de FixturesPanel (clave de la
 // bomba → libro ucAplicado del bajante → ramales del piso superior). Compartido entre el menú
 // contextual y el panel derecho.
-import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
-import { splitPtr } from './keys';
+import {
+  loadFromStorage,
+  saveToStorage,
+  saveTrazosToDB,
+} from '../services/almacenamientoServicio.ts';
+import { splitPtr } from './claves.ts';
 import {
   TRAZOS_PLAN_PREFIX,
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
-} from '../constants/storage-keys';
-import { writeBajantePropToDrawing } from './writeDiameterToDrawing';
+} from '../constants/almacenamientoClaves.ts';
+import { writeBajantePropToDrawing } from './escribeDiametroToDibujo.ts';
 import {
   writeCrossFloorGhost,
   removeCrossFloorGhostsBySource,
@@ -21,18 +25,18 @@ import {
   nextRamalLabel,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
-import { markAssocLayout } from './assocLayoutMigration';
-import { aFrameDe } from './crossFloorStorage';
+import { markAssocLayout } from './asocDisposicionMigration.ts';
+import { aFrameDe } from './crossPisoAlmacenamiento.ts';
 import { setBajanteDesplazamientoInStorage } from './bajanteAssociation';
-import { registrarLdesvioComoAsociado } from './bajanteAssocShared';
+import { registrarLdesvioComoAsociado } from './bajanteAsocCompartido.ts';
 import { pisoCorto } from '../constants';
 import { pisoLbl } from '../constants';
-import type { PlanoBajante } from '../lib/PlanoEngine/PlanoState';
-import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
-import type { PlanItem } from '../context/PlansContext';
+import type { PlanoBajante } from '../lib/PlanoEngine/PlanoEstado.ts';
+import type PlanoEngine from '../lib/PlanoEngine/PlanoMotor.ts';
+import type { PlanItem } from '../context/PlanosContexto.tsx';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from './bombaHerencia';
-import type { BombaRow } from './bombaQueries';
-import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents';
+import type { BombaRow } from './bombaConsultas.ts';
+import { emitAparatosClear, EV_STORAGE } from './aparatoEventos.ts';
 
 export function asociarBomba(
   eng: PlanoEngine,

@@ -10,13 +10,13 @@ import {
   distPuntoACanalOBB,
   esquinasCanalOBB,
 } from '../canalAssociation';
-import { deleteSelected } from '../deleteSelected';
-import { updateSelected } from '../PlanoEngineSelection';
-import { _trySelRamalDrag } from '../mouseDownDrags';
-import { handleCanalDown, commitCanalAncho } from '../drawingCreations';
-import { handleKeyDown } from '../handleKeyDown';
-import PlanoEngineCtor from '../PlanoEngine';
-import type PlanoEngine from '../PlanoEngine';
+import { deleteSelected } from '../eliminaSelected.ts';
+import { updateSelected } from '../PlanoMotorSeleccion.ts';
+import { _trySelRamalDrag } from '../ratonAbajoArrastres.ts';
+import { handleCanalDown, commitCanalAncho } from '../dibujoCreations.ts';
+import { handleKeyDown } from '../manejaClaveAbajo.ts';
+import PlanoEngineCtor from '../PlanoMotor.ts';
+import type PlanoEngine from '../PlanoMotor.ts';
 
 // 8 ítems canal/lluvias: diagonal + base-corta + renumber + etiqueta persistente.
 

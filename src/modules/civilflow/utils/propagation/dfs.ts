@@ -1,4 +1,4 @@
-import { sumaCnt, type Cnt, type Ctx } from './counting';
+import { sumaCnt, type Cnt, type Ctx } from './conteo.ts';
 
 /**
  * Fase 5: DFS topológico con corte de ciclo - un ramal en pila (ciclo) aporta solo su base.

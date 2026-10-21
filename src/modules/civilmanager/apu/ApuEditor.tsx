@@ -1,11 +1,11 @@
-import { useCivilManager } from '../context';
-import { fmtMoneda } from '../calc';
-import { useIsMobile } from '../../../hooks/useMediaQuery';
-import { ApuSeccionMO } from './ApuSectionMO';
-import { ApuSeccionEquipo } from './ApuSectionEquipment';
-import { ApuSeccionInsumos } from './ApuSectionInsumos';
-import { ApuSeccionTransporte } from './ApuSectionTransport';
-import type { Apu } from '../types';
+import { useCivilManager } from '../contexto.tsx';
+import { fmtMoneda } from '../calculo.ts';
+import { useIsMobile } from '../../../hooks/useMedioConsulta.ts';
+import { ApuSeccionMO } from './ApuSeccionMO.tsx';
+import { ApuSeccionEquipo } from './ApuSeccionEquipo.tsx';
+import { ApuSeccionInsumos } from './ApuSeccionInsumos.tsx';
+import { ApuSeccionTransporte } from './ApuSeccionTransporte.tsx';
+import type { Apu } from '../tipos.ts';
 
 interface Props {
   apu: Apu;

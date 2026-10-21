@@ -1,12 +1,12 @@
 import { useContext, useMemo } from 'react';
-import { PLANS_META_KEY, TRAZOS_PREFIX } from '../../../constants/storage-keys';
-import { loadFromStorage } from '../../../services/storageService';
-import { RainwaterContext } from '../../../context/RainwaterContext';
-import { buildLlBajanteAssociations } from '../../../utils/rainwaterRows';
-import { chequeoBajanteLluvia } from '../../../utils/calcRainwater';
-import { splitPtr } from '../../../utils/keys';
-import { cDeCubierta } from '../../../constants/engineeringDataMaterials';
-import type { DrawingData } from '../../../utils/drawingSync';
+import { PLANS_META_KEY, TRAZOS_PREFIX } from '../../../constants/almacenamientoClaves.ts';
+import { loadFromStorage } from '../../../services/almacenamientoServicio.ts';
+import { RainwaterContext } from '../../../context/LluviasContexto.tsx';
+import { buildLlBajanteAssociations } from '../../../utils/lluviasFilas.ts';
+import { chequeoBajanteLluvia } from '../../../utils/calculoLluvias.ts';
+import { splitPtr } from '../../../utils/claves.ts';
+import { cDeCubierta } from '../../../constants/ingenieriaDatosMaterials.ts';
+import type { DrawingData } from '../../../utils/dibujoSync.ts';
 
 /** Forma mínima de un override manual de bajante ll (Lluvias) (BajanteLL de RainwaterContext). */
 interface BajanteLLManual {

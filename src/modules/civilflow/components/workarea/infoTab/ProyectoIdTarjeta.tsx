@@ -1,0 +1,142 @@
+import React from 'react';
+import { USOS } from '../../../constants';
+import { NORMAS_PAIS } from '../../../constants/normasPais';
+import EditButton from '../../shared/EditaBoton.tsx';
+import { devError } from '../../../../../utils/desarrolloError.ts';
+import { getActiveProyectoId } from '../../../services/almacenamientoServicio.ts';
+import { updateProyectoNombre } from '../../../services/proyectosServicio.ts';
+
+interface ProjectIdInfo {
+  nombre: string;
+  dir: string;
+  ciudad: string;
+  pais: string;
+  uso: string;
+}
+
+const ProjectIdCard = React.memo(function ProjectIdCard({
+  proy,
+  setP,
+}: {
+  proy: ProjectIdInfo;
+  setP: (k: string, v: string) => void;
+}) {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const wasEditingRef = React.useRef(isEditing);
+
+  React.useEffect(() => {
+    if (wasEditingRef.current && !isEditing) {
+      const proyectoId = getActiveProyectoId();
+      const trimmed = proy.nombre?.trim();
+      if (proyectoId && trimmed) {
+        updateProyectoNombre(proyectoId, trimmed).catch(devError);
+      }
+    }
+    wasEditingRef.current = isEditing;
+  }, [isEditing, proy.nombre]);
+
+  return (
+    <section className="card" style={{ flex: '0 1 auto', minWidth: 200 }}>
+      <div className="card-h" style={{ padding: '4px 8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
+            <img
+              src="/iconos_civilflow/info_general/identificacion_del_proyecto.webp"
+              alt="Identificación del proyecto"
+              width={22}
+              height={22}
+              style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }}
+              loading="lazy"
+            />
+            Identificación del proyecto
+            <EditButton edit={isEditing} setEdit={setIsEditing} />
+          </h3>
+          <span className="card-s" style={{ fontSize: 11 }}>
+            Datos para memorias de cálculo
+          </span>
+        </div>
+      </div>
+      <div style={{ padding: '4px 6px' }}>
+        <div className="f" style={{ marginBottom: 3 }}>
+          <label htmlFor="proj-nombre" style={{ fontSize: 12 }}>
+            Nombre del proyecto
+          </label>
+          <input
+            id="proj-nombre"
+            disabled={!isEditing}
+            value={proy.nombre}
+            onChange={(e) => setP('nombre', e.target.value)}
+            style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }}
+          />
+        </div>
+        <div className="f" style={{ marginBottom: 3 }}>
+          <label htmlFor="proj-dir" style={{ fontSize: 12 }}>
+            Dirección
+          </label>
+          <input
+            id="proj-dir"
+            disabled={!isEditing}
+            value={proy.dir}
+            onChange={(e) => setP('dir', e.target.value)}
+            style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }}
+          />
+        </div>
+        <div className="f" style={{ marginBottom: 3 }}>
+          <label htmlFor="proj-ciudad" style={{ fontSize: 12 }}>
+            Ciudad
+          </label>
+          <input
+            id="proj-ciudad"
+            disabled={!isEditing}
+            value={proy.ciudad}
+            onChange={(e) => setP('ciudad', e.target.value)}
+            style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }}
+          />
+        </div>
+        <div className="f" style={{ marginBottom: 3 }}>
+          <label htmlFor="proj-pais" style={{ fontSize: 12 }}>
+            País
+          </label>
+          <select
+            id="proj-pais"
+            disabled={!isEditing}
+            value={NORMAS_PAIS.some((p) => p.nombre === proy.pais) ? proy.pais : ''}
+            onChange={(e) => setP('pais', e.target.value)}
+            style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }}
+          >
+            <option value="">—</option>
+            {NORMAS_PAIS.map((p) => (
+              <option key={p.id} value={p.nombre}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="f" style={{ marginBottom: 0 }}>
+          <label htmlFor="proj-uso" style={{ fontSize: 12 }}>
+            Uso
+          </label>
+          <select
+            id="proj-uso"
+            disabled={!isEditing}
+            value={proy.uso}
+            onChange={(e) => setP('uso', e.target.value)}
+            style={{
+              fontSize: 12,
+              padding: '3px 6px',
+              width: '100%',
+              opacity: isEditing ? 1 : 0.7,
+            }}
+          >
+            <option value="">—</option>
+            {USOS.map((u) => (
+              <option key={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </section>
+  );
+});
+
+export default ProjectIdCard;

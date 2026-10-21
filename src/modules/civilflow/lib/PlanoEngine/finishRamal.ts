@@ -6,24 +6,24 @@ import {
   rootTributarioLabel,
   relabelTribChain,
   uniqRamalId,
-} from './PlanoState';
-import type { PlanoRamal, IPlanoEngineCore } from './PlanoState';
-import { devError } from '../../../../utils/devError';
-import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles';
+} from './PlanoEstado.ts';
+import type { PlanoRamal, IPlanoEngineCore } from './PlanoEstado.ts';
+import { devError } from '../../../../utils/desarrolloError.ts';
+import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './dibujoAngulos.ts';
 import { DEFAULT_PENDIENTE_PCT } from '../../constants';
-import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection';
+import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flujoDireccion.ts';
 import {
   flipRamalFlow,
   ramalFlowDirectionCheck,
   propagarSanDiametroAguasAbajo,
-} from './drawingFlow';
-import { _statusMsg, calculateRamalLength } from './ramalMeasure';
+} from './dibujoFlujo.ts';
+import { _statusMsg, calculateRamalLength } from './ramalMedir.ts';
 import {
   autoSplitJunctionAndSumFlow,
   detectTributaryPadre,
   checkRamalAnglesExcludingConnections,
   puntoEnCaja,
-} from './junctionAutoSplit';
+} from './empalmeAutoDivide.ts';
 import {
   _nextLabel,
   _midpoint,
@@ -31,7 +31,7 @@ import {
   ramalDischargeEnd,
   ramalContinuesPast,
   asociarRamalABajantes,
-} from './drawingUtils';
+} from './dibujoUtiles.ts';
 import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './canalAssociation';
 

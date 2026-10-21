@@ -26,9 +26,9 @@ vi.mock('../../../../lib/supabase', () => ({
   },
 }));
 
-import { saveTrazosToDB, loadTrazosFromDB } from '../storageService';
-import { persistTrazosSnapshot } from '../../components/pdfViewer/persistTrazos';
-import { aplicarEnDocDePlan } from '../../utils/writePlanDoc';
+import { saveTrazosToDB, loadTrazosFromDB } from '../almacenamientoServicio.ts';
+import { persistTrazosSnapshot } from '../../components/pdfViewer/persisteTrazos.ts';
+import { aplicarEnDocDePlan } from '../../utils/escribePlanoDocumento.ts';
 
 type Row = Record<string, unknown>;
 

@@ -5,11 +5,11 @@ import {
   ldesvioIdFor,
   buildLdesvioRamal,
   type LocalGhostDrawingData,
-} from './crossFloorStorage';
-import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
+} from './crossPisoAlmacenamiento.ts';
+import { TRAZOS_PLAN_PREFIX } from '../constants/almacenamientoClaves.ts';
 
-export type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
-export { enrichCrossFloorGhosts } from './crossFloorGhosts';
+export type { CrossFloorGhost } from '../lib/shared/crossPisoFantasmaTipos.ts';
+export { enrichCrossFloorGhosts } from './crossPisoFantasmas.ts';
 
 // Núcleo de E/S re-exportado: los ~20 consumidores existentes no cambian de ruta de import.
 export {
@@ -30,7 +30,7 @@ export {
   type StoredBajante,
   hasCachedPlan,
   type LocalGhostDrawingData,
-} from './crossFloorStorage';
+} from './crossPisoAlmacenamiento.ts';
 
 // Layout nuevo: actualiza el punto INICIAL (pts[0], la posición del bajante SUPERIOR) del
 // Ldesvio que vive en el piso INFERIOR — se llama cuando se arrastra el bajante superior (ese

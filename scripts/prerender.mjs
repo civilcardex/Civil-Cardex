@@ -1,5 +1,5 @@
 // Prerender post-build: escribe dist/<ruta>/index.html para las rutas públicas usando el
-// bundle SSR (dist-ssr/prerenderEntry.js, generado con `vite build --ssr`).
+// bundle SSR (dist-ssr/prerenderEntrada.js, generado con `vite build --ssr`).
 // SIN dependencias nuevas. Fallo = warning + exit 0: el dist preexistente sigue siendo válido.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -51,7 +51,7 @@ globalThis.document = globalThis.document ?? {
 };
 
 async function main() {
-  const ssr = await import(pathToFileURL(join(ROOT, 'dist-ssr', 'prerenderEntry.js')).href);
+  const ssr = await import(pathToFileURL(join(ROOT, 'dist-ssr', 'prerenderEntrada.js')).href);
   const { renderPage } = ssr;
   const { ROUTE_META, SITE_URL } = ssr;
 
