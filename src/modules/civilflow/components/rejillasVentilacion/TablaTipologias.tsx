@@ -421,8 +421,6 @@ export function TablaTipologias({
                     )}
                   </td>
                   <td
-                    onClick={borrarEsta}
-                    title="Potencia nominal en kW del aparato — la fija el catálogo NTC 3728 según el tipo de gas del proyecto (alimenta el requerimiento de ventilación)."
                     style={{
                       ...TD,
                       fontFamily: 'var(--mono)',
@@ -432,7 +430,25 @@ export function TablaTipologias({
                       background: enModoBorrado ? 'rgba(231,120,107,.10)' : undefined,
                     }}
                   >
-                    {ap && ap.id ? num(ap.kw, 2) : '—'}
+                    {/* Botón real (no <td onClick>): el borrado tiene que ser alcanzable
+                        con teclado (WCAG 2.1.1). Un <td> con onClick no es enfocable. */}
+                    <button
+                      type="button"
+                      onClick={borrarEsta}
+                      title="Potencia nominal en kW del aparato — la fija el catálogo NTC 3728 según el tipo de gas del proyecto (alimenta el requerimiento de ventilación)."
+                      aria-label={`Borrar potencia nominal${ap && ap.id ? ` de ${ap.id}` : ''}`}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        cursor: 'pointer',
+                        color: 'inherit',
+                        font: 'inherit',
+                      }}
+                    >
+                      {ap && ap.id ? num(ap.kw, 2) : '—'}
+                    </button>
                   </td>
                   <td {...tdBorra({})}>
                     {edit && ap && !ap.vacio ? (
@@ -473,6 +489,16 @@ export function TablaTipologias({
                   onClick={() => {
                     if (enModoBorrado) return; // el borrado vive SOLO en las celdas de la subfila
                     onSelect(i);
+                  }}
+                  // Fila seleccionable por teclado (WCAG 2.1.1): role + tabIndex + Enter.
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (enModoBorrado) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelect(i);
+                    }
                   }}
                   style={{
                     cursor: 'pointer',

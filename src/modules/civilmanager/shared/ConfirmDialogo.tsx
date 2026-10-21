@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useFocoEnDialogo } from '../../../hooks/useFocoEnDialogo.ts';
 
 type ResolveFn = (v: boolean) => void;
 let _showConfirm: ((msg: string) => Promise<boolean>) | null = null;
@@ -11,6 +12,8 @@ export function askConfirm(msg: string): Promise<boolean> {
 export function ConfirmDialog() {
   const [req, setReq] = useState<string | null>(null);
   const resolveRef = useRef<ResolveFn | null>(null);
+  // Foco contenido dentro del diálogo + Tab que cicla dentro (WCAG 2.4.3).
+  const dialogoRef = useFocoEnDialogo<HTMLDivElement>(req != null);
 
   useEffect(() => {
     _showConfirm = (msg) =>
@@ -34,10 +37,15 @@ export function ConfirmDialog() {
   }
 
   return (
-    // Backdrop con cierre por click-fuera. Gap conocido: este modal no tiene cierre por Escape ni
-    // focus trap — agregar en un pase futuro (ver plan de accesibilidad, sección 1.4).
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div className="cm-modal-overlay" role="presentation" onClick={() => answer(false)}>
+    // Backdrop con cierre por click-fuera Y por Escape (WCAG 2.1.1 / 2.4.3).
+    <div
+      className="cm-modal-overlay"
+      role="presentation"
+      onClick={() => answer(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') answer(false);
+      }}
+    >
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
       <div
         className="cm-modal-box"
@@ -45,6 +53,7 @@ export function ConfirmDialog() {
         aria-modal="true"
         aria-labelledby="cm-confirm-title"
         onClick={(e) => e.stopPropagation()}
+        ref={dialogoRef}
       >
         <div id="cm-confirm-title" className="cm-modal-head">
           CivilManager pregunta:

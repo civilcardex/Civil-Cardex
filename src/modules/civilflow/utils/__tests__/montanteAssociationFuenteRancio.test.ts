@@ -71,16 +71,33 @@ describe('una FUENTE con libro rancio ramal-claveado no aporta su libro al grupo
     expect(agg).toEqual({});
   });
 
-  // La purga en MEMORIA pasa (macRefresh la registra); su persistencia al doc storage la
-  // hace el autosave del motor en vivo — fuera de alcance de este harness sin autosave.
-  it.skip('5bis purga el libro rancio de la fuente (conserva la entrada anidada de su clave)', () => {
+  // La purga en MEMORIA pasa (macRefresh la registra) y el propagador es storage-driven:
+  // se verifica en el DOC del piso (el mockStorage captura la escritura).
+  it('5bis purga el libro rancio de la fuente (conserva la entrada anidada de su clave)', () => {
     mockStorage[`civilflow_${TRAZOS_PREFIX}2`] = JSON.stringify({
-      ramales: [],
+      // Al menos un ramal de la red: sin piezas, la propagación sale antes de la fase 5bis
+      // (no hay red que propagar) y la purga nunca se ejecutaría.
+      ramales: [
+        {
+          id: 'RAC1',
+          net: 'ac',
+          tipo: 'ramal',
+          pts: [
+            [0, 0],
+            [100, 0],
+          ],
+        },
+      ],
       bajantes: [
         {
           id: 'MAC1_ac',
           net: 'ac',
           tipo: 'montante',
+          // pid: el piso dueño del bajante (lo asigna el cargador al abrir el plano). La
+          // purga de 5bis compara contra la clave propia `${net}_${id}_${pid}`: sin pid, la
+          // clave propia no coincide y se purgaría también (el test quedaba sin poder
+          // verificar la conservación de la entrada anidada).
+          pid: '2',
           x: 0,
           y: 0,
           code: 'MAC1',

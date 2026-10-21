@@ -2,8 +2,11 @@
  *
  * La implementación vive en `propagation/` (un módulo por fase: reading, tributaries,
  * edges, upMontante, folding, dfs, fittings, writing + books con los lectores públicos).
- * ponytail: los importadores fueron rewirados directo a `propagation/` — este facade
- * queda como puerta de entrada documental (guardia G1/G2 de architecture.test.ts).
+ *
+ * ponytail: esta fachada NO tiene importadores (los importadores fueron rewirados
+ * directo a `propagation/`). Existe SOLO como contrato del guard G2 de
+ * architecture.test.ts, que verifica que la API pública de la propagación no se rompa.
+ * Si algún día se borra, hay que quitar también sus entradas del guard.
  */
 export {
   propagarAparatosPresion,

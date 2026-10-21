@@ -17,18 +17,6 @@ export const fmt = (v: unknown, d = 2) =>
   v == null || Number.isNaN(Number(v)) ? '—' : Number(v).toFixed(d);
 
 /**
- * Trunca (SIN redondear) a 2 decimales para las tablas (5.6789 → '5.67'); la precisión
- * interna de los cálculos no se toca.
- * @param v - Valor a truncar.
- * @returns String truncado a 2 decimales o "—" ante null/NaN.
- */
-export const trunc2 = (v: unknown): string => {
-  const n = Number(v);
-  if (v == null || Number.isNaN(n)) return '—';
-  return (Math.trunc(n * 100) / 100).toFixed(2);
-};
-
-/**
  * Deja un nombre listo para usarlo como nombre de archivo (solo letras, dígitos,
  * espacios, guiones y guiones bajos; sin acentos ni símbolos raros).
  */

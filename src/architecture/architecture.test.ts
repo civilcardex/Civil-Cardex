@@ -519,6 +519,31 @@ describe('G2 · la API pública no se rompió', () => {
     }
     expect(faltantes).toEqual([]);
   });
+
+  // Las fachadas de la des-monotilización NO tienen importadores: existen SÓLO como
+  // contrato del guard G2 (los importadores fueron rewirados al módulo real). Este test
+  // hace explícita esa condición: si alguien vuelve a importarlas, avisa (la fachada ya
+  // no es una puerta, es un contrato) en vez de dejar que el grafo diga lo contrario.
+  it('las fachadas pinningadas siguen SIN importadores (existen solo como contrato)', () => {
+    const conImportadores: string[] = [];
+    for (const { ruta } of API_PUBLICA) {
+      if (!ruta.endsWith('aparatosPresion.ts') && !ruta.endsWith('sanAccesoriosTabla.ts')) continue;
+      const nombreArchivo = ruta.split('/').pop()!;
+      for (const p of todosLosArchivos) {
+        if (p.endsWith(ruta)) continue; // el archivo mismo
+        const src = readFileSync(p, 'utf8');
+        if (src.includes(nombreArchivo.replace(/\.ts$/, '')) && /from\s+['"][^'"]*'/.test(src)) {
+          // Solo cuenta si lo importa por RUTA (no si lo menciona en un comentario).
+          if (
+            new RegExp(`from\\s+['"][^'"]*${nombreArchivo.replace(/\.ts$/, '')}\\.ts['"]`).test(src)
+          ) {
+            conImportadores.push(`${ruta} importada por ${REL(p)}`);
+          }
+        }
+      }
+    }
+    expect(conImportadores).toEqual([]);
+  });
 });
 
 describe('G3 · sin ciclos de import nuevos', () => {

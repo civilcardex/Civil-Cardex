@@ -6,13 +6,6 @@ export type Fam = 'san' | 'll' | 'vent' | 'af' | 'ac' | 'gas';
 /** PlanId normalizado a string en el borde (los planos son bigint en BD, string en keys). */
 export type PlanId = string;
 
-/** `${fam}_${id}_${plan}` — clave con la que se guardan los conteos (aparatos/hidro/gas). Ej: san_RS1_2. */
-export type CountKey = `${Fam}_${string}_${PlanId}`;
-/** `${id}-${plan}` — la que identifica cada tramo en las tablas. Ej: RS1-2. */
-export type TramoKey = `${string}-${PlanId}`;
-/** `${plan}|${id}` — punteros entrepisos (descargaEnId/origenId/bombaEnId...). Ej: 2|BAN1. */
-export type Ptr = `${PlanId}|${string}`;
-
 /**
  * Número de un bajante/montante a partir de su id o code, sin importar el sufijo de piso.
  *
