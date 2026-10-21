@@ -16,6 +16,11 @@ export interface PlanoWorkData {
   zoom: number;
   offX: number;
   offY: number;
+  /** Tamaño de la lámina (px de plano) con el que se calibró la cámara: si al reabrir la
+   *  lámina tiene otro tamaño (p. ej. tras un re-base de escala), la cámara guardada ya no
+   *  encaja y hay que reencuadrar. */
+  pageW?: number;
+  pageH?: number;
   lineWidth?: number;
   nets: { id: string; col: string }[];
   ramales: unknown[];
@@ -184,6 +189,8 @@ export function serializeWork(engine: {
   zoom: number;
   offX: number;
   offY: number;
+  pageW?: number;
+  pageH?: number;
   lineWidthScale: number;
   ramales: unknown[];
   dims: unknown[];
@@ -218,6 +225,8 @@ export function serializeWork(engine: {
     zoom: engine.zoom,
     offX: engine.offX,
     offY: engine.offY,
+    pageW: engine.pageW,
+    pageH: engine.pageH,
     lineWidth: engine.lineWidthScale,
     nets: NETS.map((n) => ({ id: n.id, col: n.col })),
     ramales: dedupPorId(stripRenderCache(engine.ramales)),

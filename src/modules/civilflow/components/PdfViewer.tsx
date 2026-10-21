@@ -4,6 +4,8 @@ import { usePlanoLoadSwitch } from './pdfViewer/usePlanoCargaInterruptor.ts';
 import { ViewerMobileChrome } from './pdfViewer/ViewerMovilCromo.tsx';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsivo.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/planosMeta.ts';
+import { decideEscalaPorDefectoDelPlan, textoReporte } from '../utils/cargaDiagnostico.ts';
+import { escalaDeDoc } from '../utils/planoEscala.ts';
 import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamara.ts';
 import { bboxDelDibujo } from './pdfViewer/dibujoCaja.ts';
 import { useNavigate } from 'react-router-dom';
@@ -362,10 +364,6 @@ function PdfViewer_({
       const plano = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
       // Solo pisos SIN calibración: el set estándar pisaba el scaleM calibrado que vino en
       // los trazos (y el autosave lo persistía pisado — normalización de copias corrupta).
-      // MISMA FUENTE que el gate del re-base (orig. usuario trazos corridos/más cortos):
-      // si plans_meta tiene origen para ESTE piso (calibrado), el scaleM del doc es su
-      // verdad — pisarlo emparejaba scaleM con pts de otro espacio y la siguiente carga
-      // re-basaba (encogiendo) en cada reingreso.
       let calibrado = false;
       try {
         const meta = leerPlansMeta();
@@ -373,8 +371,25 @@ function PdfViewer_({
       } catch {
         /* sin meta: comportamiento previo */
       }
-      if (plano && plano.scale && !plano.origen && !calibrado) {
-        const derived = String(plano.scale / 100);
+      // Y además: la escala por defecto del plano SOLO se aplica a un piso SIN dibujo.
+      // Si el piso ya tiene doc (escala propia) o elementos cargados, su escala manda: pisarla
+      // dejaba las cotas leiendo en otra escala y los elementos corridos (orig. usuario: al
+      // reingresar, "los elementos aparecen desplazados y las cotas leen menos").
+      const eng = engineRef.current;
+      const planIdCargado = eng?._loadedPlanId ?? currentIdRef.current ?? null;
+      const escalaDoc = planIdCargado != null ? escalaDeDoc(planIdCargado) : null;
+      const tieneContenido = !!(
+        eng &&
+        eng.ramales.length +
+          eng.bajantes.length +
+          eng.areas.length +
+          eng.dims.length +
+          eng.textAnnots.length >
+          0
+      );
+      const escalaPlan = plano && plano.scale ? plano.scale / 100 : null;
+      if (!calibrado && decideEscalaPorDefectoDelPlan({ escalaDoc, tieneContenido, escalaPlan })) {
+        const derived = String(escalaPlan);
         if (['0.5', '0.75', '1', '1.25', '2'].includes(derived)) {
           setScaleM(derived);
           if (engineRef.current) engineRef.current.setScaleM(derived);
@@ -772,7 +787,29 @@ function PdfViewer_({
     eng.setTipoTramo(tipoTramo as TramoType);
     eng.setSnap(snapOn);
     eng.setGridMode(gridOn);
-    eng.setScaleM(scaleM);
+    // La escala del MOTOR manda cuando el piso tiene dibujo: el doc define el espacio de
+    // los píxeles y su escala es la que interpretan las cotas. Si el estado de React se
+    // diferenció (un refresco de planos lo pisa), se adopta la del motor en vez de deformar
+    // el dibujo (orig. usuario: al reingresar, las cotas leían menos y los elementos
+    // aparecían desplazados).
+    const smEstado = Number(scaleM);
+    const conDibujo =
+      eng.ramales.length +
+        eng.bajantes.length +
+        eng.areas.length +
+        eng.dims.length +
+        eng.textAnnots.length >
+      0;
+    if (
+      conDibujo &&
+      Number.isFinite(smEstado) &&
+      eng.scaleM > 0 &&
+      Math.abs(smEstado - eng.scaleM) > 1e-9
+    ) {
+      setScaleM(String(eng.scaleM));
+    } else {
+      eng.setScaleM(scaleM);
+    }
     const floorObj = pisos.find((p) => p.n === selectedNivel);
     eng.nivelActual = floorObj
       ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
@@ -853,6 +890,22 @@ function PdfViewer_({
     // ponytail: sin setScale(ceil) — el observer bgOnly re-rasteriza a la densidad del
     // zoom ajustado; el setScale disparaba un renderPage COMPLETO (bg+draw+reload) duplicado.
   }, [engineRef, cwRef]);
+
+  /** Copia el diagnóstico de carga del piso al portapapeles (escala del doc, escala calibrada,
+   *  escala global, decisión tomada, lámina y cámara): sirve para comparar dos sesiones y
+   *  ver qué piso se movió y cuánto (orig. usuario: "al reingresar los elementos aparecen
+   *  desplazados y las cotas leen menos"). */
+  const handleDiag = useCallback(() => {
+    const id = currentIdRef.current || engineRef.current?._loadedPlanId || null;
+    if (id == null) return;
+    const texto = textoReporte(id);
+    try {
+      void navigator.clipboard?.writeText(texto);
+    } catch {
+      /* portapapeles bloqueado: el texto sale en el aviso */
+    }
+    engineRef.current?.triggerAlert('Diagnóstico de carga', texto);
+  }, [engineRef]);
 
   const { handleClear, handleClearGuides, handleSave, handleSnapToggle, handleGridToggle } =
     useViewerToolbarActions({
@@ -1243,6 +1296,7 @@ function PdfViewer_({
               onRedo={handleRedo}
               onClear={handleClear}
               onClearGuides={handleClearGuides}
+              onDiag={handleDiag}
             />
           )}
         </div>

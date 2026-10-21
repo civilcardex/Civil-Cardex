@@ -15,6 +15,7 @@ import {
   paginaDeDoc,
   type RenderReq,
 } from '../../utils/planoEscala.ts';
+import { EVENTO_ESCALA_CAMBIADA, registraCarga } from '../../utils/cargaDiagnostico.ts';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -268,6 +269,21 @@ export function usePdfViewerEngine({
                 eng.render();
               }
             }
+            // Diagnóstico de la carga: con qué escala se rasterizó la lámina, de qué tamaño
+            // quedó y con qué cámara quedó el encuadre (para comparar dos sesiones).
+            try {
+              registraCarga(resolvedId, {
+                escalaRaster: sc,
+                pageW: viewport.width,
+                pageH: viewport.height,
+                zoom: eng.zoom,
+                offX: eng.offX,
+                offY: eng.offY,
+                elementos: eng.ramales.length + eng.bajantes.length + eng.areas.length,
+              });
+            } catch {
+              /* el diagnóstico es best-effort */
+            }
             pdfRenderedRef.current = true;
             try {
               callbacksRef.current.onReady?.();
@@ -462,10 +478,29 @@ export function usePdfViewerEngine({
               // contenedor los RECORTA (el "recuadro"). Re-encuadre síncrono ANTES del
               // primer paint — mismo cálculo que "Ajustar" (solo zoom/offX/offY; la
               // geometría y la escala no se tocan).
-              if (Math.abs(es - scaleRef.current) > 1e-6) {
+              // Solo si NO hay cámara guardada (doc legacy) o si la lámina cambió de tamaño
+              // (el re-base de escala la cambia): con la F1 la lámina se rasteriza siempre a
+              // la escala del doc, así que la cámara guardada sigue siendo válida.
+              const docObj = (() => {
+                if (typeof saved !== 'string')
+                  return (saved as { zoom?: number; pageW?: number }) || {};
+                try {
+                  return JSON.parse(saved) as { zoom?: number; pageW?: number };
+                } catch {
+                  return {} as { zoom?: number; pageW?: number };
+                }
+              })();
+              const camara = docObj.zoom;
+              const sinCamara = typeof camara !== 'number' || !(camara > 0);
+              const laminaPrevia = docObj.pageW;
+              const laminaCambio =
+                typeof laminaPrevia === 'number' &&
+                laminaPrevia > 0 &&
+                Math.abs(laminaPrevia - pg.w) / laminaPrevia > 0.02;
+              if (sinCamara || laminaCambio) {
                 const cw = cwRef.current;
                 if (cw && eng2.pageW && eng2.pageH) {
-                  // Mismo encuadre que el bot\u00f3n "Ajustar": encaja el DIBUJO (no la l\u00e1mina)
+                  // Mismo encuadre que el botón "Ajustar": encaja el DIBUJO (no la lámina)
                   // para que se vea solo el plano, sin el fondo negro.
                   const encuadre = encuadrarDibujo({
                     visW: cw.clientWidth,
@@ -601,6 +636,21 @@ export function usePdfViewerEngine({
     mountId.current += 1;
     renderPage(1, scale, mountId.current);
   }, [scale, renderPage]);
+
+  // La escala del piso cambió (corrección al cargar): la lámina de fondo vuelve a
+  // rasterizarse con la escala del doc — si no, el fondo queda en la escala vieja y el
+  // dibujo aparece corrido y más corto respecto de la lámina (orig. usuario).
+  useEffect(() => {
+    const onEscalaCambiada = () => {
+      const id = currentIdRef.current || engineRef.current?._loadedPlanId || null;
+      const sc = escalaDeDoc(id) ?? scaleRef.current;
+      mountId.current += 1;
+      void renderPage(1, sc, mountId.current);
+    };
+    window.addEventListener(EVENTO_ESCALA_CAMBIADA, onEscalaCambiada);
+    return () => window.removeEventListener(EVENTO_ESCALA_CAMBIADA, onEscalaCambiada);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- currentIdRef/engineRef son refs estables (no cambian de identidad); el listener solo lee su valor VIVO
+  }, [renderPage]);
 
   return {
     engineRef,

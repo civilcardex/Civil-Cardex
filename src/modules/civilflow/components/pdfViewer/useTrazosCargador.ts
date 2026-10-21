@@ -5,6 +5,12 @@
 import { useCallback } from 'react';
 import { leerPlansMeta, planCalibrado } from '../../utils/planosMeta.ts';
 import {
+  corrigeEscalaMeta,
+  decideEscalaDelDoc,
+  registraCarga,
+  EVENTO_ESCALA_CAMBIADA,
+} from '../../utils/cargaDiagnostico.ts';
+import {
   loadFromStorage,
   saveToStorage,
   saveTrazosToDB,
@@ -15,6 +21,7 @@ import {
 import type { PlanTrazos } from '../../services/almacenamientoServicio.ts';
 import { devError } from '../../../../utils/desarrolloError.ts';
 import { validaDocTrazos } from '../../services/storage/validaDocTrazos.ts';
+import { PLANS_META_KEY } from '../../constants/almacenamientoClaves.ts';
 import {
   migrateAssocLayoutOnLoad,
   sweepMisplacedLdesvios,
@@ -152,75 +159,103 @@ export function useTrazosLoader({
       } catch (e) {
         devError('[LOAD] Supabase error/sync error:', e);
       }
-      // ESCALA ÚNICA DEL PROYECTO (causa raíz de cotas distintas entre pisos, incidente
-      // 2026-09-21): cada piso guardaba su propio scaleM y las calibraciones manuales
-      // divergían 0.5–1.5 % — una cota de 4 m medía distinto en cada piso. Si existe
-      // calibración global (calGlobal) y el piso trae otra escala, la geometría se RE-BASA
-      // anclada al origen de calibración del piso (px−origen constante = posición física
-      // preservada; totalL/L de cotas intactos) y el piso pasa a la escala global +
-      // persistencia inmediata. Idempotente: tras el re-base los trazos ya quedan con ella
-      // (2ª carga = no-op).
-      // Compara el scaleM DEL DOCUMENTO (capturado tras loadWork) — el engine vivo puede
-      // venir pisado por el estado React durante el await de BD (bug: elementos corridos).
+      // ESCALA DEL PISO (decisión 2026-10-21, orig. usuario: "al reingresar los elementos
+      // aparecen desplazados y las cotas leen menos").
+      //
+      // La escala de un piso es la SUYA: la de su calibración en plans_meta. Antes se
+      // comparaba contra la escala GLOBAL del proyecto (el primer plan con calGlobal) y, si
+      // no coincidía, se re-escalaba TODA la geometría anclada al origen — eso encogía el
+      // dibujo de los pisos calibrados a mano en cuanto el portador global cambiaba, y el
+      // cambio quedaba guardado. Ahora:
+      //  · piso calibrado a mano  → su escala manda (nadie la re-escala).
+      //  · piso que hereda el global (calGlobal) → sigue al global (una sola escala de
+      //    proyecto), pero cualquier re-escalado se ANUNCIa y se registra.
+      //  · piso sin calibración → su escala de doc manda (nada la toca).
+      // El doc manda sobre el valor por defecto del plano: es el que define el espacio de
+      // los píxeles del dibujo.
       const escalaGlobal = escalaGlobalRef.current;
-      // SOLO pisos calibrados por el usuario (origen en su entrada de plans_meta): su doc
-      // trae una escala hecha a mano que debe unificarse a la global. Un piso SIN
-      // calibración con el set estándar (0.5/0.75/1/…) ya está en su escala de verdad —
-      // re-basarlo con la global de OTRO piso lo desplazaba todo y el autosave persistía
-      // el desplazamiento (orig. usuario: trazos corridos al reingresar, 2026-10-15).
-      let pisoCalibrado = false;
+      let meta = [] as ReturnType<typeof leerPlansMeta>;
       try {
-        pisoCalibrado = planCalibrado(leerPlansMeta(), resolvedId);
+        meta = leerPlansMeta();
       } catch {
-        /* sin meta accesible: mantener comportamiento previo */
-        pisoCalibrado = true;
+        /* sin meta accesible: el doc manda tal cual */
       }
-      if (escalaGlobal && docScale && pisoCalibrado && Math.abs(docScale - escalaGlobal) > 1e-9) {
-        // Meta legacy REDONDEADO (0.4723 → 47 → 0.47): el re-base movería TODA la geometría
-        // ~0.5 % una vez por piso legacy. Self-heal: el doc (exacto) corrige al meta y no se
-        // tocan trazos. Divergencias reales (calibraciones manuales) superan el 0.6 %.
-        if (Math.abs(docScale - escalaGlobal) / escalaGlobal <= 0.006) {
-          escalaGlobalRef.current = docScale;
-          setScaleM(String(docScale));
-          try {
-            const meta = leerPlansMeta();
-            const holder = meta.find(
-              (m) =>
-                m.calGlobal === true &&
-                typeof m.scale === 'number' &&
-                Math.abs(m.scale / 100 - escalaGlobal) < 1e-9,
-            );
-            if (holder) {
-              holder.scale = docScale * 100;
-              saveToStorage('plans_meta', meta);
-            }
-          } catch {
-            /* sin meta accesible: solo queda aplicado en la ref de esta sesión */
-          }
-        } else {
-          try {
-            (eng as unknown as PlanoWorkData).scaleM = docScale;
+      const entrada = meta.find((m) => String(m.id) === String(resolvedId));
+      const calibrado = planCalibrado(meta, resolvedId);
+      // Escala calibrada del piso: la global si el piso la hereda (calGlobal), si no la suya.
+      const escalaPropia =
+        calibrado && typeof entrada?.scale === 'number' && entrada.scale > 0
+          ? entrada.calGlobal === true && escalaGlobal
+            ? escalaGlobal
+            : entrada.scale / 100
+          : null;
+      const decision = decideEscalaDelDoc({ escalaDoc: docScale, escalaPlano: escalaPropia });
+      const elementosCargados =
+        eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length;
+      registraCarga(resolvedId, {
+        escalaDoc: docScale || null,
+        escalaPlano: escalaPropia,
+        escalaGlobal: escalaGlobal ?? null,
+        accion: decision.accion,
+        factor: decision.accion === 'rebase' ? decision.factor : null,
+        elementos: elementosCargados,
+      });
+      if (decision.accion === 'autoheal') {
+        // Meta legacy REDONDEADO (0.4723 → 47 → 0.47): el doc (exacto) corrige al meta y no
+        // se tocan trazos. Divergencias reales (calibraciones manuales) superan el 0.6 %.
+        escalaGlobalRef.current = entrada?.calGlobal === true ? decision.escala : escalaGlobal;
+        setScaleM(String(decision.escala));
+        try {
+          const corregido = corrigeEscalaMeta(
+            meta,
+            resolvedId,
+            decision.escala,
+            entrada?.calGlobal === true,
+          );
+          if (corregido.cambio) saveToStorage(PLANS_META_KEY, corregido.meta);
+        } catch {
+          /* sin meta accesible: solo queda aplicado en la ref de esta sesión */
+        }
+      } else if (decision.accion === 'reparar-etiqueta' || decision.accion === 'rebase') {
+        // La etiqueta del doc quedó pisada (o el doc está en otra escala real): se deja la
+        // geometría donde está y se corrige la escala que la interpreta. En el re-base la
+        // geometría SÍ se re-escala (px−origen constante = posición física preservada).
+        try {
+          (eng as unknown as PlanoWorkData).scaleM = docScale;
+          if (decision.accion === 'rebase') {
             rebasarEscalaTrazos(
               eng as unknown as PlanoWorkData,
-              escalaGlobal,
+              decision.escala,
               origenDePlan(String(resolvedId)),
             );
-            eng.setScaleM(escalaGlobal);
-            setScaleM(String(escalaGlobal));
-            const work = eng.saveWork();
-            // Tumba anti-vacío: un loadWork fallido a medias deja el engine sin contenido —
-            // persistir el re-base pisaría la caché (y luego BD vía el RPC destructivo) con
-            // un doc vacío. Solo persiste con contenido, o si no había nada que proteger.
-            const conContenido =
-              eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length > 0;
-            if (conContenido || !localData) {
-              saveTrazosLocales(resolvedId, work as unknown as Record<string, unknown>);
-              void saveTrazosToDB(String(resolvedId), work);
-            }
-            window.dispatchEvent(new Event(EV_STORAGE));
-          } catch (e) {
-            devError('[LOAD] re-base escala global:', e);
+          } else {
+            (eng as unknown as PlanoWorkData).scaleM = decision.escala;
           }
+          eng.setScaleM(decision.escala);
+          setScaleM(String(decision.escala));
+          const work = eng.saveWork();
+          // Tumba anti-vacío: un loadWork fallido a medias deja el engine sin contenido —
+          // persistir el re-base pisaría la caché (y luego BD vía el RPC destructivo) con
+          // un doc vacío. Solo persiste con contenido, o si no había nada que proteger.
+          const conContenido =
+            eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length > 0;
+          if (conContenido || !localData) {
+            saveTrazosLocales(resolvedId, work as unknown as Record<string, unknown>);
+            void saveTrazosToDB(String(resolvedId), work);
+          }
+          window.dispatchEvent(new Event(EV_STORAGE));
+          // La lámina de fondo se rasteriza con la escala del doc: si la escala cambia, la
+          // lámina tiene que volver a rasterizarse o el fondo y el dibujo quedan en escalas
+          // distintas (el dibujo se ve corrido y más corto respecto de la lámina).
+          window.dispatchEvent(new CustomEvent(EVENTO_ESCALA_CAMBIADA));
+          eng.triggerAlert(
+            'Escala del piso corregida',
+            decision.accion === 'rebase'
+              ? `El piso ${resolvedId} estaba a ${docScale} m/px y se pasó a ${decision.escala} m/px (se re-escaló el dibujo, anclado al origen de calibración).`
+              : `El piso ${resolvedId} tenía la escala mal puesta (${docScale} m/px) y se restauró la de su calibración (${decision.escala} m/px). El dibujo NO se movió.`,
+          );
+        } catch (e) {
+          devError('[LOAD] corrección de escala del piso:', e);
         }
       }
       // Migración del layout de asociación (fantasma+Ldesvio ahora viven en el piso inferior):

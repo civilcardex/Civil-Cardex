@@ -146,6 +146,8 @@ export type PdfViewerToolbarProps = {
   onRedo: NavFn;
   onClear: NavFn;
   onClearGuides: NavFn;
+  /** Copia el diagnóstico de carga del piso (escala, lámina y cámara) al portapapeles. */
+  onDiag?: () => void;
   /** Motivo del último fallo de guardado a BD (evento civilflow_bd_save_error). */
   bdError?: string | null;
 };
@@ -191,6 +193,7 @@ function PdfViewerToolbar_({
   onRedo,
   onClear,
   onClearGuides,
+  onDiag,
   bdError,
 }: PdfViewerToolbarProps) {
   // El RPC de guardado falla con 'suscripcion_requerida' cuando la suscripción venció: bdError
@@ -353,6 +356,16 @@ function PdfViewerToolbar_({
             >
               <span style={{ fontSize: 14 }}>{'⛶'}</span>
             </button>
+            {onDiag && (
+              <button
+                type="button"
+                onClick={onDiag}
+                style={compactBtn}
+                title="Copiar el diagnóstico de carga del piso (escala, lámina y cámara)"
+              >
+                <span style={{ fontSize: 14 }}>{'⧉'}</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onSave}
@@ -627,6 +640,31 @@ function PdfViewerToolbar_({
               </span>
             </div>
           </button>
+          {onDiag && (
+            <button
+              type="button"
+              onClick={onDiag}
+              style={{ ...accBtn, width: '100%' }}
+              title="Copiar el diagnóstico de carga del piso (escala, lámina y cámara)"
+            >
+              <span style={{ fontSize: 14 }}>{'⧉'}</span>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 0,
+                  lineHeight: 1.1,
+                  flex: 1,
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Diag</span>
+                <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
+                  Copiar diagnóstico
+                </span>
+              </div>
+            </button>
+          )}
           <button
             type="button"
             onClick={onSave}
