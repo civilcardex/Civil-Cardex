@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { devError } from '../utils/desarrolloError.ts';
+import { clearLocalWorkspace } from '../modules/civilflow/services/workspaceReinicia.ts';
 
 interface User {
   id: string;
@@ -58,7 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       } finally {
         setLoading(false);
-        subscription = supabase.auth.onAuthStateChange((_event, session) => {
+        subscription = supabase.auth.onAuthStateChange((event, session) => {
+          // Cierre de sesión (manual, por timeout o por otra pestaña): se borra el
+          // workspace local para que el proyecto anterior no quede legible en el
+          // navegador del equipo compartido.
+          if (event === 'SIGNED_OUT') {
+            try {
+              clearLocalWorkspace();
+            } catch {
+              /* storage bloqueado: ignorar */
+            }
+          }
           setUser(session?.user as User | null);
         }).data.subscription;
       }

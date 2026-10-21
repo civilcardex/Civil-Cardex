@@ -373,25 +373,32 @@ export function usePdfViewerEngine({
     engineRef.current = eng;
     // Diagnóstico: instancia accesible desde la consola para depurar conteos/trazos
     // (window.__cfEngine.ramales.map(r=>[r.id,r.label,r.tipo])).
-    (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
+    // Solo en DEV: en producción el motor vivo expone el proyecto del cliente a cualquiera
+    // que abra la consola del navegador.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
+    }
     // Dump __cfCam (patrón __cfDiag/__cfScale): verifica que la LÁMINA y el dibujo comparten
     // escala. escalaRender === escalaDoc y pageW === pageW_esperado (px de lámina base ×
     // escalaDoc) = fondo y geometría alineados; distintos = la hoja quedó en otra escala.
-    (window as unknown as { __cfCam?: () => unknown }).__cfCam = () => {
-      const escalaDoc = escalaDeDoc(currentIdRef.current);
-      const escalaRender = lastRenderScRef.current;
-      const baseW = lastPageBaseWRef.current;
-      return {
-        escalaDoc,
-        escalaRender,
-        pageW_base_px: baseW,
-        pageW_esperado: baseW != null && escalaDoc ? baseW * escalaDoc : null,
-        pageW_dibujado: escalaRender != null && baseW != null ? baseW * escalaRender : null,
-        zoom: eng.zoom,
-        offX: eng.offX,
-        offY: eng.offY,
+    // Solo en DEV (expone la escala de la lámina del cliente en la consola).
+    if (import.meta.env.DEV) {
+      (window as unknown as { __cfCam?: () => unknown }).__cfCam = () => {
+        const escalaDoc = escalaDeDoc(currentIdRef.current);
+        const escalaRender = lastRenderScRef.current;
+        const baseW = lastPageBaseWRef.current;
+        return {
+          escalaDoc,
+          escalaRender,
+          pageW_base_px: baseW,
+          pageW_esperado: baseW != null && escalaDoc ? baseW * escalaDoc : null,
+          pageW_dibujado: escalaRender != null && baseW != null ? baseW * escalaRender : null,
+          zoom: eng.zoom,
+          offX: eng.offX,
+          offY: eng.offY,
+        };
       };
-    };
+    }
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
     eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);

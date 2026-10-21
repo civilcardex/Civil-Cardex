@@ -42,13 +42,19 @@
   - X-Frame-Options: DENY is set as an HTTP header in vercel.json; browsers ignore it via meta tag.
 
   Additional CSP rationale:
-  - unsafe-inline required for Vite HMR in dev mode, and for the inline canonical/og:url script below in production
-  - unsafe-eval required by pdfjs-dist internal parser (the worker itself is self-hosted at /pdfjs/pdf.worker.min.mjs, not CDN-loaded)
+  - script-src NO lleva 'unsafe-inline': los scripts de arranque (fixer de canonical/og:url y
+    texto de la pantalla de carga) viven en /scripts/*.js (un archivo propio: 'self' los cubre).
+    Con 'unsafe-inline' la directiva no restringe NADA.
+  - 'wasm-unsafe-eval' (no 'unsafe-eval'): pdfjs-dist compila WebAssembly para algunos
+    decodificadores de imagen. pdf.js solo usa `new Function` como TEST de disponibilidad
+    (isEvalSupported) y degrada solo si eval no existe -> no necesita 'unsafe-eval'.
+  - En DESARROLLO el server de Vite inyecta scripts inline (HMR / React Refresh): la CSP la
+    relaja vite.config.js (transformIndexHtml), no el index.html de producción.
   - va.vercel-scripts.com: scripts de Vercel Analytics/Speed Insights (cargan desde ahí también en producción)
   - frame-ancestors NO va aquí: los navegadores lo ignoran en <meta>; lo aplica el header HTTP de vercel.json
   - SRI (integrity) on Google Fonts not feasible — URLs are dynamically generated. crossorigin="anonymous" is set instead.
 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'self' blob:; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'self' blob:; base-uri 'self'; form-action 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
@@ -149,15 +155,7 @@
       <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
     </noscript>
     <link rel="canonical" id="canonical-link" href="https://civilcardex.com" />
-    <script>
-      (function() {
-        var currentUrl = window.location.origin + window.location.pathname;
-        var canonical = document.getElementById('canonical-link');
-        if (canonical) canonical.setAttribute('href', currentUrl);
-        var ogUrl = document.querySelector('meta[property="og:url"]');
-        if (ogUrl) ogUrl.setAttribute('content', currentUrl);
-      })();
-    </script>
+    <script src="/scripts/canonical.js"></script>
     <link rel="preconnect" href="https://klkwpjdzargmeovwcgxe.supabase.co" />
     <link rel="dns-prefetch" href="https://klkwpjdzargmeovwcgxe.supabase.co" />
     <link rel="modulepreload" href="/src/main.tsx" />
@@ -179,14 +177,7 @@
   </head>
   <body>
     <div id="root"><h1 class="sr-only">Civil Cardex — Plataforma de ingeniería civil</h1><div class="_preload"><img src="/logos/civilCardexlogo-v2.webp" alt="Civil Cardex" width="48" height="48" /><p id="_preloadMsg">Cargando proyecto…</p></div></div>
-    <script>
-      // El visor abre el PDF (planos y redes); el resto de la app, un proyecto. Se ajusta antes
-      // del primer paint para que esta pantalla y la de React digan lo MISMO (una sola, sin
-      // cambio de texto al hidratar).
-      if (location.pathname.indexOf('/visor') === 0) {
-        document.getElementById('_preloadMsg').textContent = 'Cargando planos y redes…';
-      }
-    </script>
+    <script src="/scripts/preload.js"></script>
     <noscript>
       <div style="padding: 2rem; font-family: system-ui, sans-serif; text-align: center; background: #111317; color: #e2e2e8; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
         <div>

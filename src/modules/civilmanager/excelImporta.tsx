@@ -125,7 +125,7 @@ export interface UseExcelImportExportOptions<T extends { codigo?: string }> {
   matchKey?: keyof T;
 }
 
-/** Import/export genérico contra Excel (xlsx-js-style), reutilizado por todos los catálogos. */
+/** Import/export genérico contra Excel (SheetJS xlsx), reutilizado por todos los catálogos. */
 export function useExcelImportExport<T extends { codigo?: string }>(
   opts: UseExcelImportExportOptions<T>,
 ) {
@@ -175,9 +175,21 @@ export function useExcelImportExport<T extends { codigo?: string }>(
     const reader = new FileReader();
     reader.onload = async (ev) => {
       try {
+        // Límite de tamaño ANTES de parsear: el archivo lo elige el usuario final
+        // (presupuestos y APU que llegan de clientes) y el parser es la superficie
+        // expuesta (CVE-2024-22363, ReDoS, ya parcheada en SheetJS 0.20.3, pero el
+        // límite evita que un archivo hostil tumbe la pestaña).
+        if (file.size > 20 * 1024 * 1024) {
+          showToast('El archivo supera 20 MB', { type: 'err' });
+          setPreviewModal(null);
+          e.target.value = '';
+          return;
+        }
         const XLSX = await loadXlsx();
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
+        // sheetRows: acota cuántas filas se materializan (una hoja con 1 M de filas no
+        // es un presupuesto: es un archivo hostil).
+        const wb = XLSX.read(data, { type: 'array', sheetRows: 5000 });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
           header: 1,

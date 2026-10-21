@@ -935,8 +935,15 @@ function ProfilePage() {
                   // Logout manual = recordar siempre la próxima (la marca solo vive si el
                   // usuario desmarcó "Recordarme" al entrar y NO pasó por este botón).
                   localStorage.removeItem('civilflow_no_recordar');
-                  await supabase.auth.signOut();
-                  navigate('/');
+                  // Se borra el WORKSPACE local (dibujo completo del plano, conteos, hidros,
+                  // proyecto activo): sin esto, el proyecto anterior queda legible en el
+                  // navegador para el siguiente usuario que inicie sesión en este equipo.
+                  clearLocalWorkspace();
+                  try {
+                    await supabase.auth.signOut();
+                  } finally {
+                    navigate('/');
+                  }
                 }}
                 style={{
                   padding: '6px 14px',

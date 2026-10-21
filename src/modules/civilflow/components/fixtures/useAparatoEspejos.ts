@@ -27,7 +27,10 @@ declare global {
     __cfScale?: () => unknown;
   }
 }
-if (typeof window !== 'undefined') {
+// Los ganchos de diagnóstico (__cfDiag, __cfScale) solo existen en DEV: en producción
+// exponían la topología completa del proyecto del cliente a cualquiera que abriera la
+// consola, y __cfDiag además permite mutar la propagación en vivo.
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
   window.__cfDiag = (net) => {
     propagarAparatosPresion(net);
     const diag = diagUltimaPropagacion() as Record<string, unknown>;
@@ -98,8 +101,12 @@ if (typeof window !== 'undefined') {
     // fácil que copiar objetos anidados (orig. usuario: el JSON del clipboard no llegó).
     // La versión va impresa EN el dump: si no dice v54, el tab corre un bundle viejo y los
     // arreglos recientes no están cargados (fue la causa de varias rondas de "sigue igual").
-    // eslint-disable-next-line no-console -- herramienta de diagnóstico solicitada por el usuario
-    console.log('[CF-DIAG v58] ' + JSON.stringify({ v: 'v58', ...diag }));
+    // Solo en DEV: en producción el volcado expone la topología del proyecto del cliente
+    // a cualquiera que abra la consola del navegador.
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console -- herramienta de diagnóstico (solo DEV)
+      console.log('[CF-DIAG v58] ' + JSON.stringify({ v: 'v58', ...diag }));
+    }
     return { v: 'v58', ...diag };
   };
   window.__cfScale = () => {
