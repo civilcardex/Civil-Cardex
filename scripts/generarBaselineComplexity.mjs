@@ -1,7 +1,7 @@
 /**
  * Regenera el baseline de focos de complejidad del guard G8.
  *
- * Uso: `node --experimental-strip-types scripts/generarBaselineComplejidad.mjs`
+ * Uso: `node --experimental-strip-types scripts/generarBaselineComplexity.mjs`
  *
  * Imprime el bloque `FOCOS_CONOCIDOS` y el `TOTAL_FOCOS_BASE` para pegar en
  * `src/architecture/architecture.test.ts`. Se ejecuta DESPUÉS de arreglar un archivo:
@@ -29,7 +29,7 @@ function listar(dir, acc = []) {
 
 // Node 22 puede ejecutar TS directamente con --experimental-strip-types (sin build extra).
 const { contarFocosPorArchivo, totalFocos } = await import(
-  pathToFileURL(join(RAIZ, 'architecture', 'complejidad.ts')).href
+  pathToFileURL(join(RAIZ, 'architecture', 'complexity.ts')).href
 );
 
 const fuentes = {};
@@ -43,7 +43,7 @@ const entradas = Object.entries(conteo)
 
 const bloque = entradas.map(([f, n]) => `  '${f}': ${n},`).join('\n');
 const texto = `const TOTAL_FOCOS_BASE = ${totalFocos(conteo)};\n\nconst FOCOS_CONOCIDOS: Record<string, number> = {\n${bloque}\n};`;
-const destino = join(process.cwd(), 'scripts', 'baselineComplejidad.txt');
+const destino = join(process.cwd(), 'scripts', 'baselineComplexity.txt');
 writeFileSync(destino, texto + '\n', 'utf8');
 console.log(`TOTAL ${totalFocos(conteo)} | archivos con >=5: ${entradas.length}`);
-console.log(`escrito en scripts/baselineComplejidad.txt`);
+console.log(`escrito en scripts/baselineComplexity.txt`);
