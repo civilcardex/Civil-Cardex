@@ -188,9 +188,9 @@ export async function saveProyectoCoreData(
 ): Promise<boolean> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
@@ -254,9 +254,9 @@ export async function saveProyectoCoreData(
 export async function saveRedesActivas(proyectoId: string, redes: string[]): Promise<boolean> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
@@ -313,9 +313,9 @@ export async function loadGasDatos(proyectoId: string): Promise<GasDatosGenerale
 export async function saveGasDatos(proyectoId: string, datos: GasDatosGenerales): Promise<boolean> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
@@ -351,9 +351,9 @@ export async function saveProyectoPlansMeta(
 ): Promise<boolean> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
@@ -391,59 +391,80 @@ export async function saveProyectoPlansMeta(
  * criterios + metadatos de planos), en lugar de 6 selects secuenciales a tablas.
  */
 export async function loadProyectoData(proyectoId: string): Promise<ProyectoDataRow | null> {
+  const { data } = await loadProyectoDataConError(proyectoId);
+  return data;
+}
+
+/**
+ * Igual que loadProyectoData, pero DISTINGUE "el proyecto no tiene datos" de "la carga
+ * falló" (sin red, RLS, suscripción vencida).
+ *
+ * Por qué: con un único `null` el flujo de apertura de proyecto no podía saber si abrir
+ * un proyecto vacío (legítimo: recién creado) o si la carga falló (ilegítimo: el
+ * proyecto está en la nube y el workarea abriría VACÍO, y el usuario redibujaría encima).
+ *
+ * @param proyectoId id del proyecto.
+ * @returns los datos (o null si no hay) y el mensaje de error (o null si no hubo).
+ */
+export async function loadProyectoDataConError(
+  proyectoId: string,
+): Promise<{ data: ProyectoDataRow | null; error: string | null }> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return { data: null, error: 'sin-sesion' };
 
     const { data, error } = await supabase.rpc('get_proyecto_data', { p_proyecto_id: proyectoId });
 
     if (error) {
       devError('proyectoDataService load:', error.message);
-      return null;
+      return { data: null, error: error.message };
     }
-    if (!data) return null;
+    if (!data) return { data: null, error: null };
 
     const result = data as GetProyectoDataResult;
     return {
-      pisos: (result.pisos ?? []).map((p) => ({
-        id: p.id,
-        n: p.n,
-        npt: p.npt ?? '',
-        ok: p.ok,
-        tipo: p.tipo,
-        h: p.h != null ? String(p.h) : '',
-      })),
-      proy: result.proyecto_general
-        ? (proyectoGeneralRowToProy(result.proyecto_general) as Proyecto)
-        : undefined,
-      mats: result.materiales ?? {},
-      profs: (result.profundidades ?? []).map((r) => ({
-        id: r.client_id,
-        red: r.red,
-        col: r.col ?? '',
-        prof: r.prof ?? 0,
-        norma: r.norma ?? '',
-        nota: r.nota ?? '',
-      })),
-      crits: (result.criterios ?? []).map((r) => ({
-        id: r.client_id,
-        red: r.red,
-        param: r.param ?? '',
-        val: r.val ?? '',
-        uni: r.uni ?? '',
-        norma: r.norma ?? '',
-        art: r.art ?? '',
-        cumple: r.cumple ?? '',
-        nota: r.nota ?? '',
-      })),
-      plans_meta: (result.planos_meta ?? []).map(planoMetaRowToPlanMeta),
-      redesActivas: result.proyecto_general?.redes_activas ?? undefined,
+      data: {
+        pisos: (result.pisos ?? []).map((p) => ({
+          id: p.id,
+          n: p.n,
+          npt: p.npt ?? '',
+          ok: p.ok,
+          tipo: p.tipo,
+          h: p.h != null ? String(p.h) : '',
+        })),
+        proy: result.proyecto_general
+          ? (proyectoGeneralRowToProy(result.proyecto_general) as Proyecto)
+          : undefined,
+        mats: result.materiales ?? {},
+        profs: (result.profundidades ?? []).map((r) => ({
+          id: r.client_id,
+          red: r.red,
+          col: r.col ?? '',
+          prof: r.prof ?? 0,
+          norma: r.norma ?? '',
+          nota: r.nota ?? '',
+        })),
+        crits: (result.criterios ?? []).map((r) => ({
+          id: r.client_id,
+          red: r.red,
+          param: r.param ?? '',
+          val: r.val ?? '',
+          uni: r.uni ?? '',
+          norma: r.norma ?? '',
+          art: r.art ?? '',
+          cumple: r.cumple ?? '',
+          nota: r.nota ?? '',
+        })),
+        plans_meta: (result.planos_meta ?? []).map(planoMetaRowToPlanMeta),
+        redesActivas: result.proyecto_general?.redes_activas ?? undefined,
+      },
+      error: null,
     };
   } catch (e) {
     devError('proyectoDataService load exception:', e);
-    return null;
+    return { data: null, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -456,9 +477,9 @@ export async function saveCampoProyectoGeneral(
 ): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
       emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return;
     }

@@ -21,9 +21,9 @@ function rowToProyecto(raw: Record<string, unknown>): ProyectoRow {
  *  lanza en error del servidor o de red; solo devuelve [] cuando el usuario no tiene ninguno. */
 export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('sin-sesion');
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error('sin-sesion');
   // Sin filtro user_id: RLS devuelve propios + proyectos de la empresa (asiento activo).
   const { data, error } = await supabase
     .from(CF_TABLES.proyectos)
@@ -40,9 +40,9 @@ export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
 export async function fetchProyectos(): Promise<ProyectoRow[]> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return [];
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return [];
 
     // Sin filtro user_id: RLS devuelve propios + proyectos de la empresa (asiento activo).
     const { data, error } = await supabase
@@ -87,9 +87,9 @@ export async function createProyecto(
 ): Promise<CreateProyectoResult> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { ok: false, msg: 'sin_sesion' };
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return { ok: false, msg: 'sin_sesion' };
 
     const { data, error } = await supabase.rpc('save_proyecto', {
       p_codigo: codigo,
@@ -119,9 +119,9 @@ export async function createProyecto(
 export async function updateProyectoNombre(id: string, nombre: string): Promise<boolean> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return false;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return false;
 
     const { error } = await supabase.rpc('update_proyecto_nombre', {
       p_id: id,
@@ -149,9 +149,9 @@ export async function updateProyectoNombre(id: string, nombre: string): Promise<
 export async function deleteProyecto(id: string): Promise<boolean> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return false;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return false;
 
     const { error } = await supabase.rpc('delete_proyecto', { p_id: id });
 

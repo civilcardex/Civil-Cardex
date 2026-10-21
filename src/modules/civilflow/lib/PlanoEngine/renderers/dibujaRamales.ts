@@ -27,15 +27,62 @@ const aparatoImgCache = new Map<string, HTMLImageElement | null>();
 // arrastre o edición— pasa de ~1 caja. 4 queda entre ambas: coge lo desterrado y no toca lo vivo.
 const FAR_LABEL_BOXES = 4;
 
+/** Índice red→config: evita buscar en NETS por cada ramal dibujado (antes O(ramales×redes)). */
+const NET_POR_ID = new Map(NETS.map((n) => [n.id, n]));
+
+/** Lado de la celda del índice de puntos (la tolerancia del codo reventilado es 0.5). */
+const CELDA_PUNTOS = 0.5;
+
+/**
+ * Índice de puntos por celda para consultar "¿hay un punto a menos de 0.5?".
+ *
+ * Por qué: la comprobación del codo reventilado recorría TODOS los puntos de TODOS los
+ * ramales sanitize, y se hacía por cada ramal y por cada frame del render (que se agenda
+ * por rAF en cada mousemove del arrastre): O(ramales×puntos) por frame.
+ *
+ * @param pts puntos a indexar (en coordenadas de plano).
+ * @returns función que responde si hay un punto a menos de 0.5 de (x, y).
+ */
+function indicePuntosCercanos(pts: number[][]): (x: number, y: number) => boolean {
+  const celdas = new Map<string, number[][]>();
+  for (const p of pts) {
+    const k = `${Math.floor(p[0] / CELDA_PUNTOS)},${Math.floor(p[1] / CELDA_PUNTOS)}`;
+    const arr = celdas.get(k);
+    if (arr) arr.push(p);
+    else celdas.set(k, [p]);
+  }
+  return (x: number, y: number) => {
+    const cx = Math.floor(x / CELDA_PUNTOS);
+    const cy = Math.floor(y / CELDA_PUNTOS);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const arr = celdas.get(`${cx + dx},${cy + dy}`);
+        if (!arr) continue;
+        for (const p of arr) {
+          if (Math.hypot(x - p[0], y - p[1]) < 0.5) return true;
+        }
+      }
+    }
+    return false;
+  };
+}
+
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
   // Foto de obstáculos para el auto-orden de etiquetas (solo mueve las nunca tocadas a mano).
   const declutter = beginDeclutterFrame(engine);
   let declutterNeedsSeed = false;
+  // Índices del frame (UNA vez, no por ramal): el render se agenda por rAF en cada
+  // mousemove del arrastre, así que cualquier búsqueda lineal dentro del bucle de ramales
+  // se multiplicaba por el número de ramales en cada frame.
+  const ventRamales = engine.ramales.filter((rm) => rm.net === 'vent');
+  const sanRamales = engine.ramales.filter((rm) => rm.net === 'san');
+  const hayPuntoSanCercano = indicePuntosCercanos(sanRamales.flatMap((sr) => sr.pts));
+  const bajantesSan = (engine.bajantes || []).filter((b) => b.net === 'san');
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
-    const net = NETS.find((n) => n.id === r.net);
+    const net = NET_POR_ID.get(r.net);
     const col = net ? net.col : '#e2e2e8';
     const sel = r.id === engine.selId;
     const isPadre = r.id === padreId;
@@ -677,15 +724,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         let codoEndIdx = -1;
 
         if (r.net === 'vent' || r.net === 'san') {
-          const ventRamales = engine.ramales.filter((rm) => rm.net === 'vent');
-          const sanRamales = engine.ramales.filter((rm) => rm.net === 'san');
-
           for (const vr of ventRamales) {
             for (const idx of [0, vr.pts.length - 1]) {
               const pt = vr.pts[idx];
-              const connectsToSan = sanRamales.some((sr) =>
-                sr.pts.some((sPt: number[]) => Math.hypot(pt[0] - sPt[0], pt[1] - sPt[1]) < 0.5),
-              );
+              // ¿Hay un punto de la red sanitaria a menos de 0.5? Índice por celda: O(1)
+              // en vez de recorrer todos los puntos de todos los ramales san en cada frame.
+              const connectsToSan = hayPuntoSanCercano(pt[0], pt[1]);
               if (connectsToSan) {
                 const rEndIdx = [0, r.pts.length - 1].find(
                   (eIdx) => Math.hypot(r.pts[eIdx][0] - pt[0], r.pts[eIdx][1] - pt[1]) < 0.5,
@@ -702,8 +746,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
 
         if (r.net === 'san' && !isCodoReventiladoConnection) {
-          for (const b of engine.bajantes || []) {
-            if (b.net !== 'san') continue;
+          for (const b of bajantesSan) {
             if (!b.recibeDeIds?.includes(r.id)) continue;
             const firstPt = r.pts[0];
             const lastPt = r.pts[r.pts.length - 1];

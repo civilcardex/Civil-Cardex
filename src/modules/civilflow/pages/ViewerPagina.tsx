@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useCallback,
   useContext,
+  useMemo,
   useSyncExternalStore,
 } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -42,6 +43,15 @@ import type { Piso, PlanMeta } from '../lib/shared/proyectoTipos.ts';
 import { EV_STORAGE } from '../utils/aparatoEventos.ts';
 import { CargandoProyecto } from '../components/shared/CargandoProyecto';
 import { useProyectoCargado } from '../hooks/useProyectoCargado';
+import {
+  ViewerPage_S1,
+  ViewerPage_S2,
+  ViewerPage_S3,
+  ViewerPage_S4,
+  ViewerPage_S5,
+  ViewerPage_S6,
+  VIEWER_JSONLD,
+} from './visorEstilos.ts';
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -58,90 +68,6 @@ const pdfReadyStore = {
   // planos y redes…" — el mismo que pone el fallback de la ruta y el preload de index.html.
   everReady: false,
   listeners: new Set<() => void>(),
-};
-
-const ViewerPage_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const ViewerPage_S2: React.CSSProperties = {
-  height: 36,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '0 16px',
-  background: '#111317',
-  borderBottom: '1px solid #3a494a',
-  position: 'relative',
-};
-const ViewerPage_S3: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '3px 10px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  cursor: 'pointer',
-  fontFamily: 'Geist, monospace',
-  fontSize: 12,
-};
-const ViewerPage_S4: React.CSSProperties = {
-  position: 'absolute',
-  top: '100%',
-  left: 0,
-  marginTop: 4,
-  minWidth: 240,
-  background: '#15171b',
-  border: '1px solid #3a494a',
-  borderRadius: 6,
-  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-  overflow: 'hidden',
-  zIndex: 100,
-};
-const ViewerPage_S5: React.CSSProperties = {
-  flex: 1,
-  padding: '5px 8px',
-  background: '#1e2024',
-  border: '1px dashed #3a494a',
-  borderRadius: 3,
-  color: '#b9caca',
-  cursor: 'pointer',
-  fontSize: 12,
-  fontFamily: 'Geist, monospace',
-  fontWeight: 600,
-  textAlign: 'center',
-};
-const ViewerPage_S6: React.CSSProperties = {
-  padding: '5px 8px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#9BA8AA',
-  cursor: 'pointer',
-  fontSize: 12,
-  fontFamily: 'Geist, monospace',
-  textAlign: 'center',
-};
-
-const VIEWER_JSONLD = {
-  '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: 'Visor de planos — CivilCardex',
-  description:
-    'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.',
-  url: 'https://civilcardex.com/visor',
-  applicationCategory: 'ViewerApplication',
-  operatingSystem: 'Web',
-  browserRequirements: 'Requiere JavaScript y WebGL',
 };
 
 export default function ViewerPage() {
@@ -298,7 +224,10 @@ export default function ViewerPage() {
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [dropdownOpen]);
 
-  const files = plans.map((p) => ({ id: p.id, file: p.file }));
+  // Identidad estable: un array nuevo en cada render ANULABA el memo(PdfViewer) (1428 L:
+  // canvas + 2 barras + panel de aparatos + menú contextual) -> se re-renderizaba entero
+  // en cada dropdown, toggle o cambio de plan.
+  const files = useMemo(() => plans.map((p) => ({ id: p.id, file: p.file })), [plans]);
   const planIdResolvedRef = useRef(false);
   usePageMeta(
     'Visor de planos',

@@ -94,6 +94,27 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   // sin esto la marca de bajada quedaba huérfana tras el renumerado y la poda la tiraba.
   cleanOrphans(BAJADAS_RECEPTORAS_KEY);
 
+  // Los blobs se leen UNA vez por renumerado: antes, `migrateKeys` hacía load+save por
+  // CADA ramal (5 blobs × N ramales = 200 JSON.parse del blob COMPLETO en un solo clic;
+  // con 50 KB por blob eran ~10 MB de parseo). Ahora se mutan en memoria y se graban
+  // una vez al final.
+  const STORES_A_MIGRAR = [
+    'aparatos_by_tramo_v2',
+    'tramo_hidro_data_v3',
+    'gas_accesorios',
+    APARATOS_HEREDADOS_KEY,
+    APARATOS_HEREDADOS_TRIB_KEY,
+  ];
+  const storeCache = new Map<string, Record<string, unknown>>();
+  const storeDirty = new Set<string>();
+  for (const sk of STORES_A_MIGRAR) {
+    try {
+      storeCache.set(sk, loadFromStorage(sk, {}) as Record<string, unknown>);
+    } catch {
+      storeCache.set(sk, {});
+    }
+  }
+
   ramalesNet.forEach((r) => {
     let n = 1;
     while (used.has(n)) n++;
@@ -103,7 +124,8 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
     if (oldId !== newId) {
       const migrateKeys = (storageKey: string) => {
         try {
-          const data = loadFromStorage(storageKey, {}) as Record<string, unknown>;
+          const data = storeCache.get(storageKey);
+          if (!data) return;
           let changed = false;
           for (const k of Object.keys(data)) {
             // Solo claves del piso cargado: renombrar RS4→RS1 aquí no debe mover ni fusionar
@@ -168,7 +190,7 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
               changed = true;
             }
           }
-          if (changed) saveToStorage(storageKey, data);
+          if (changed) storeDirty.add(storageKey);
         } catch (e) {
           devError('PlanoEngine:', e);
         }
@@ -228,6 +250,11 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
       }
     }
   });
+  // Un solo guardado por blob (antes: uno por ramal).
+  for (const sk of storeDirty) {
+    const data = storeCache.get(sk);
+    if (data) saveToStorage(sk, data);
+  }
   let maxN = 0;
   for (const n of used) if (n > maxN) maxN = n;
   engine._netCounts[netId].ramal = maxN;

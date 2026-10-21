@@ -119,9 +119,9 @@ export async function saveRainwaterOverrides(
 ): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
 
     const bajanteRows = bajantes
       .filter((b) => b.bajante.trim().length > 0)

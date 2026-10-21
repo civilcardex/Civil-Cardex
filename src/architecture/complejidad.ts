@@ -55,14 +55,19 @@ export function detectarFocosEnFuente(src: string): FocoComplejidad[] {
    * Propiedades cuyo tamaño NO escala con el plano: los puntos de un trazo, sus extremos, su
    * longitud. Buscar dentro de ellas es barato (decenas de elementos), aunque el detector lo
    * vea como un bucle.
+   *
+   * OJO: se comparan por NOMBRE de propiedad (sin punto). Con un regex que exigía el punto
+   * inicial contra `name.text` (que NO lo tiene), la exclusión NUNCA se aplicaba y el
+   * baseline medía 25 focos de más (regla D del guard: si el código tiene menos, hay que
+   * bajar el número).
    */
-  const PROPS_POR_TRAZO = /\.(pts|puntos|extremos|vertices|verticesPts)$/;
+  const PROPS_POR_TRAZO = new Set(['pts', 'puntos', 'extremos', 'vertices', 'verticesPts']);
 
   /**
    * Propiedades de listas CORRELATIVAS (los ids que una pieza recibe o alimenta). Son cortas —
    * unas pocas por pieza — y no crecen con el tamaño del plano.
    */
-  const PROPS_LISTA_CORTA = /\.(recibeDeIds|alimentaIds)$/;
+  const PROPS_LISTA_CORTA = new Set(['recibeDeIds', 'alimentaIds']);
 
   /**
    * Catálogos de tamaño FIJO (la lista de redes, de materiales, de tipos de accesorio…).
@@ -89,7 +94,7 @@ export function detectarFocosEnFuente(src: string): FocoComplejidad[] {
     // Sobre los puntos de un trazo no escala: un trazo tiene decenas de puntos, no cientos.
     if (
       ts.isPropertyAccessExpression(expr.expression) &&
-      PROPS_POR_TRAZO.test(expr.expression.name.text)
+      PROPS_POR_TRAZO.has(expr.expression.name.text)
     ) {
       return null;
     }
@@ -100,7 +105,7 @@ export function detectarFocosEnFuente(src: string): FocoComplejidad[] {
     // Sobre una lista correlativa corta (los ids que una pieza recibe) no escala.
     if (
       ts.isPropertyAccessExpression(expr.expression) &&
-      PROPS_LISTA_CORTA.test(expr.expression.name.text)
+      PROPS_LISTA_CORTA.has(expr.expression.name.text)
     ) {
       return null;
     }

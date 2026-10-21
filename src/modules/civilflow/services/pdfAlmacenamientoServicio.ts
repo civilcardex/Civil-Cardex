@@ -19,13 +19,13 @@ function objectPath(userId: string, proyectoId: string, planId: number): string 
 export async function uploadPlanPDF(proyectoId: string, planId: number, file: File): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error('sin-sesion');
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error('sin-sesion');
 
     const { error } = await supabase.storage
       .from(BUCKET)
-      .upload(objectPath(user.id, proyectoId, planId), file, {
+      .upload(objectPath(session.user.id, proyectoId, planId), file, {
         upsert: true,
         contentType: 'application/pdf',
       });
@@ -43,13 +43,13 @@ export async function downloadPlanPDF(
 ): Promise<File | null> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return null;
 
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .download(objectPath(user.id, proyectoId, planId));
+      .download(objectPath(session.user.id, proyectoId, planId));
     if (error || !data) {
       if (error) devError('pdfStorageService download:', error.message);
       return null;
@@ -76,13 +76,13 @@ export async function deletePlanMeta(planId: number): Promise<void> {
 export async function deletePlanPDF(proyectoId: string, planId: number): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
 
     const { error } = await supabase.storage
       .from(BUCKET)
-      .remove([objectPath(user.id, proyectoId, planId)]);
+      .remove([objectPath(session.user.id, proyectoId, planId)]);
     if (error) devError('pdfStorageService delete:', error.message);
   } catch (e) {
     devError('pdfStorageService delete exception:', e);

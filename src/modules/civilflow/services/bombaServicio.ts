@@ -95,9 +95,9 @@ export async function loadBombaDatos(proyectoId: string): Promise<BombaData | nu
 export async function saveBombaDatos(proyectoId: string, b: BombaData): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
 
     const { error } = await supabase.rpc('save_bomba_datos', {
       p_proyecto_id: proyectoId,

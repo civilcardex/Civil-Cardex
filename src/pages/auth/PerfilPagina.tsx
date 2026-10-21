@@ -22,7 +22,7 @@ import {
   deleteCmProyecto,
   type CmProyectoRow,
 } from '../../modules/civilmanager/services/cmProyectosServicio.ts';
-import { loadProyectoData } from '../../modules/civilflow/services/proyectoDatosServicio.ts';
+import { loadProyectoDataConError } from '../../modules/civilflow/services/proyectoDatosServicio.ts';
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfAlmacenamientoServicio.ts';
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbAlmacenamiento.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReinicia.ts';
@@ -103,6 +103,7 @@ function ProfilePage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [cmDeleteConfirm, setCmDeleteConfirm] = useState<string | null>(null);
+  const [errorApertura, setErrorApertura] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [cmOpeningId, setCmOpeningId] = useState<string | null>(null);
   const userIdRef = useRef<string | null>(null);
@@ -126,13 +127,23 @@ function ProfilePage() {
       // an await and therefore lands in its own render commit.
       projectCtx?.pauseCloudSync();
       plansCtx?.pauseCloudSync();
+
+      // 1) CARGAR PRIMERO. Si la carga falla (sin red, RLS, suscripción vencida), NO se
+      // borra el workspace anterior y NO se navega: entrar al workarea con un proyecto
+      // VACÍO hacía que el usuario redibujara encima de un trabajo que sí estaba en la nube.
+      const { data, error: errorCarga } = await loadProyectoDataConError(proy.id);
+      if (errorCarga) {
+        devError('Error abriendo proyecto:', errorCarga);
+        setErrorApertura('No se pudo cargar el proyecto. Revisa tu conexión o tu suscripción.');
+        return;
+      }
+
+      // 2) Ahora sí: workspace en blanco y traspaso por localStorage.
       clearLocalWorkspace();
       await clearAllPDFs();
       plansCtx?.resetPlans();
       projectCtx?.resetToDefaults();
       localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, proy.id);
-
-      const data = await loadProyectoData(proy.id);
 
       // The context setters below (setPisos/setProyAll/setMats/.../restorePlans) are no-ops
       // on this route — CivilFlowProviders only wraps /civilflowareatrabajo, so projectCtx and
@@ -780,6 +791,19 @@ function ProfilePage() {
                       </Link>
                     )}
                 </div>
+
+                {errorApertura ? (
+                  <div
+                    role="alert"
+                    className="px-6 py-3 text-sm"
+                    style={{
+                      color: 'var(--error, #ff4444)',
+                      borderBottom: '1px solid var(--outline-variant)',
+                    }}
+                  >
+                    {errorApertura}
+                  </div>
+                ) : null}
 
                 {proyLoading ? (
                   <div className="px-6 py-8 text-center text-on-surface-variant text-sm">

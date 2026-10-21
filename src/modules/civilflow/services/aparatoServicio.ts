@@ -48,7 +48,7 @@ interface CatalogoGlobalRow {
  *  es del dueño, no del miembro que lo abre — así todos editan la misma lista. null si
  *  no hay proyecto activo, la fila no es visible por las reglas de seguridad por fila
  *  (RLS = Row Level Security, permisos de Postgres fila por fila) o falla la consulta —
- *  el llamador cae a user.id. */
+ *  el llamador cae a session.user.id. */
 async function ownerProyectoActivo(): Promise<string | null> {
   const pid = getActiveProyectoId();
   if (!pid) return null;
@@ -74,9 +74,9 @@ async function ownerProyectoActivo(): Promise<string | null> {
 export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return null;
 
     // Owner del proyecto activo ANTES de leer: filtra el catálogo por el dueño — sin
     // esto un miembro de empresa y el dueño mezclaban snapshots de user_ids distintos
@@ -89,7 +89,7 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
         .select('client_id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud')
         // Del OWNER del proyecto activo (propios sin proyecto activo): evita mezclar
         // filas de dueño y miembro en un mismo snapshot de catálogo.
-        .eq('user_id', ownerId ?? user.id)
+        .eq('user_id', ownerId ?? session.user.id)
         .order('id'),
       supabase.from(CF_TABLES.aparatosUdBase).select('id, nombre, ud'),
     ]);
@@ -185,9 +185,9 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
 export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
 
     const { error } = await supabase.rpc('save_aparatos_usuario', {
       p_aps: aps.map((a) => ({

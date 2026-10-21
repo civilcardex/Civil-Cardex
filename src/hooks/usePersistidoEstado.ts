@@ -31,9 +31,12 @@ export function usePersistedState<T>(
     PERSIST_DEBOUNCE_MS,
     [key, state],
   );
+  // Los efectos SIN deps se ejecutaban en CADA render: marcaban "pendiente" sin que
+  // hubiera cambio (el flush de pagehide escribía en localStorage sin motivo) y
+  // re-registraban el listener de pagehide (remove+add) en cada render.
   useEffect(() => {
     pendienteRef.current = true; // hay un save agendado tras cada cambio de state
-  });
+  }, [state]);
   useEffect(() => {
     const flush = () => {
       if (pendienteRef.current) saveToStorage(key, state);
@@ -43,8 +46,7 @@ export function usePersistedState<T>(
     return () => {
       window.removeEventListener('pagehide', flush);
     };
-    // state queda capturado por corrida; el listener se re-registra en cada cambio (barato).
-  });
+  }, [key, state]);
 
   return [state, setState];
 }

@@ -135,9 +135,9 @@ export async function loadEpDatos(proyectoId: string): Promise<EPData | null> {
 export async function saveEpDatos(proyectoId: string, ep: EPData): Promise<void> {
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
 
     const { error } = await supabase.rpc('save_ep_datos', {
       p_proyecto_id: proyectoId,

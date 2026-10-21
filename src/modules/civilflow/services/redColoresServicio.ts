@@ -85,13 +85,13 @@ export async function saveNetColor(netId: string, color: string): Promise<void> 
   }
   try {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return;
     const { data: existing, error: selError } = await supabase
       .from(CF_TABLES.perfiles)
       .select('net_colors')
-      .eq('id', user.id)
+      .eq('id', session.user.id)
       .maybeSingle();
     if (selError) throw selError;
     const merged = {
