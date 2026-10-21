@@ -121,8 +121,9 @@ export async function saveBombaDatos(proyectoId: string, b: BombaData): Promise<
         bombas: b.bombas,
       },
     });
-    if (error) devError('bombaService save rpc:', error.message);
+    if (error) throw new Error(error.message);
   } catch (e) {
     devError('bombaService save exception:', e);
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }

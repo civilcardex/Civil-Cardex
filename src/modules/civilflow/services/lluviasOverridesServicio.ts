@@ -165,8 +165,9 @@ export async function saveRainwaterOverrides(
       p_bajantes: bajanteRows,
       p_canales: canalRows,
     });
-    if (error) devError('rainwaterOverridesService save rpc:', error.message);
+    if (error) throw new Error(error.message);
   } catch (e) {
     devError('rainwaterOverridesService save exception:', e);
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }

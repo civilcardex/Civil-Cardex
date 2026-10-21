@@ -10,6 +10,7 @@ import type { EPData } from './ep/EPShared';
 import { EP_DEFAULTS } from './ep/EPShared';
 import { getActiveProyectoId } from '../services/almacenamientoServicio.ts';
 import { loadEpDatos, saveEpDatos } from '../services/epServicio.ts';
+import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
 
 // Diseño del Equipo de Presión (redes 'ep'). La página "Esquema" se movió a la sub-pestaña
 // "Equipo de presión constante" de Isometría (components/epc3d/). Página "Cisterna" solo
@@ -60,7 +61,9 @@ function useEpSincronizado(): {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;
-      void saveEpDatos(proyectoId, ep);
+      // Si el guardado falla, se reintenta y se avisa: el informe PDF se genera desde la BD,
+      // así que un fallo silencioso entregaba la bomba con los valores viejos.
+      void guardaConReintento('equipo-presion', () => saveEpDatos(proyectoId, ep));
     }, 1200);
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);

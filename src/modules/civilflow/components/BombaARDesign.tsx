@@ -5,6 +5,7 @@ import {
   getActiveProyectoId,
 } from '../services/almacenamientoServicio.ts';
 import { loadBombaDatos, saveBombaDatos } from '../services/bombaServicio.ts';
+import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
 import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
 import PageNav from './PaginaNavegacion.tsx';
 import EditButton from './shared/EditaBoton.tsx';
@@ -260,25 +261,27 @@ function BombaARDesign() {
     bombaSaveTimerRef.current = window.setTimeout(() => {
       bombaSaveTimerRef.current = null;
       const f = first;
-      void saveBombaDatos(proyectoId, {
-        salSim: f ? f.inp.sal : '',
-        udTot: f ? String(f.uds) : '0',
-        hz: f ? f.inp.hz : '',
-        lImp: f ? f.inp.lImp : '',
-        dImp: f ? f.inp.dImp : '',
-        cHW: '',
-        pDesc: f ? f.inp.pDesc : '',
-        etaB: f ? f.inp.etaB : '',
-        fSrv: f ? f.inp.fSrv : '1.25',
-        tCic: f ? f.inp.tCic : '',
-        hMin: f ? f.inp.hMin : '',
-        hMax: f ? f.inp.hMax : '',
-        bCam: f ? f.inp.bCam : '',
-        lCam: f ? f.inp.lCam : '',
-        npsh: f ? f.inp.npsh : '',
-        tipoTuberia: f ? f.inp.tipoTuberia : 'PVC-PR',
-        bombas: bombInputs as unknown as Record<string, Record<string, string>>,
-      });
+      void guardaConReintento('bomba', () =>
+        saveBombaDatos(proyectoId, {
+          salSim: f ? f.inp.sal : '',
+          udTot: f ? String(f.uds) : '0',
+          hz: f ? f.inp.hz : '',
+          lImp: f ? f.inp.lImp : '',
+          dImp: f ? f.inp.dImp : '',
+          cHW: '',
+          pDesc: f ? f.inp.pDesc : '',
+          etaB: f ? f.inp.etaB : '',
+          fSrv: f ? f.inp.fSrv : '1.25',
+          tCic: f ? f.inp.tCic : '',
+          hMin: f ? f.inp.hMin : '',
+          hMax: f ? f.inp.hMax : '',
+          bCam: f ? f.inp.bCam : '',
+          lCam: f ? f.inp.lCam : '',
+          npsh: f ? f.inp.npsh : '',
+          tipoTuberia: f ? f.inp.tipoTuberia : 'PVC-PR',
+          bombas: bombInputs as unknown as Record<string, Record<string, string>>,
+        }),
+      );
     }, 1200);
     return () => {
       if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);

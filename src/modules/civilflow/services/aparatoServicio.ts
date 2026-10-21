@@ -179,7 +179,9 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
   }
 }
 
-/** Guarda tu catálogo entero de un golpe (borra e inserta). La UI lo llama sin esperar. Ej: editas un inodoro y queda en tus filas propias. */
+/** Guarda tu catálogo entero de un golpe (borra e inserta). Lanza si el guardado falla: el
+ *  snapshot es destructivo, así que un fallo silencioso dejaba el catálogo con la fila
+ *  anterior sin que el usuario se enterara. Ej: editas un inodoro y queda en tus filas propias. */
 export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
   try {
     const {
@@ -205,8 +207,9 @@ export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
         blk_ud: !!a._blkUd,
       })),
     });
-    if (error) devError('apparatusService save rpc:', error.message);
+    if (error) throw new Error(error.message);
   } catch (e) {
     devError('apparatusService save exception:', e);
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }

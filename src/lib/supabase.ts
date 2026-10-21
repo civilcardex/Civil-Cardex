@@ -11,4 +11,23 @@ if (!supabaseUrl || !supabaseKey) {
 // habilita RLS y crea policies CRUD owner por auth.uid() en TODAS las tablas, más revoke de
 // grants a anon. 20260813000001_rls_project_ownership.sql además verifica la propiedad del
 // proyecto/plano referenciado en los INSERT/UPDATE de las tablas hijas.
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
+//
+// Timeout global: sin él, una request colgada en el proxy (red móvil en "midway") NUNCA
+// resolvía ni rechazaba -> el debounce de guardado quedaba con la promesa colgada y el
+// estado "guardando" para siempre, sin error visible ni forma de reintentar.
+const TIMEOUT_MS = 20_000;
+
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    fetch: (input, init = {}) => {
+      const ctrl = new AbortController();
+      const t = setTimeout(
+        () => ctrl.abort(new DOMException('timeout', 'TimeoutError')),
+        TIMEOUT_MS,
+      );
+      return fetch(input, { ...init, signal: init.signal ?? ctrl.signal }).finally(() =>
+        clearTimeout(t),
+      );
+    },
+  },
+});

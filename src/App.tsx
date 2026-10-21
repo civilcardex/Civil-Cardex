@@ -248,7 +248,16 @@ function App() {
 
                 {/* Rutas protegidas */}
                 <Route element={<ProtectedRoute />}>
-                  <Route element={<Layout />}>
+                  {/* El Layout (con su Navbar) va DENTRO de una frontera: las fronteras de las
+                      rutas hijas solo cubren su `element`, así que una excepción en el Navbar
+                      desmontaba el árbol entero -> pantalla en blanco sin "Reintentar". */}
+                  <Route
+                    element={
+                      <ErrorBoundary>
+                        <Layout />
+                      </ErrorBoundary>
+                    }
+                  >
                     <Route
                       path="/civilflowareatrabajo/:proyectoId?"
                       element={

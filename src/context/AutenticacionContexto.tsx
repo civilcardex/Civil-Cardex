@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { devError } from '../utils/desarrolloError.ts';
 
 interface User {
   id: string;
@@ -39,19 +40,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
 
+    // La carga inicial NUNCA puede dejar `loading` en true: si getUser() lanza (red caída,
+    // initializePromise rechazado) y no hay try/finally, `setLoading(false)` no corre y
+    // ProtectedRuta devuelve null para siempre -> pantalla en blanco en toda ruta protegida.
+    // El listener de onAuthStateChange se registra en el `finally` para que la app siempre
+    // reaccione a login/logout, incluso si la carga inicial falló.
     const initAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user as User | null);
-      setLoading(false);
-
-      subscription = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user as User | null);
-      }).data.subscription;
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (error) devError('initAuth:', error.message);
+        setUser(user as User | null);
+      } catch (e) {
+        devError('initAuth exception:', e);
+        setUser(null);
+      } finally {
+        setLoading(false);
+        subscription = supabase.auth.onAuthStateChange((_event, session) => {
+          setUser(session?.user as User | null);
+        }).data.subscription;
+      }
     };
 
-    initAuth();
+    void initAuth();
 
     // "Recordarme" del login (LoginPage): DESMARCADO deja la marca `civilflow_no_recordar`
     // y al cerrar la pestaña/navegador se cierra la sesión (best-effort: el navegador no da

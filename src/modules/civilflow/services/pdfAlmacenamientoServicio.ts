@@ -8,12 +8,20 @@ function objectPath(userId: string, proyectoId: string, planId: number): string 
   return `${userId}/${proyectoId}/${planId}.pdf`;
 }
 
+/** Sube el PDF del plano al bucket. Lanza si la subida falla: el llamador reintenta y avisa.
+ *  Tragar el error dejaba la fila de metadata en `cf_planos` sin binario — el visor abría
+ *  sin lámina en otro dispositivo y nadie sabía por qué.
+ *  @param proyectoId id del proyecto (uuid).
+ *  @param planId id del plano.
+ *  @param file archivo PDF.
+ * @returns promesa resuelta cuando el archivo está subido.
+ */
 export async function uploadPlanPDF(proyectoId: string, planId: number, file: File): Promise<void> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) throw new Error('sin-sesion');
 
     const { error } = await supabase.storage
       .from(BUCKET)
@@ -21,9 +29,10 @@ export async function uploadPlanPDF(proyectoId: string, planId: number, file: Fi
         upsert: true,
         contentType: 'application/pdf',
       });
-    if (error) devError('pdfStorageService upload:', error.message);
+    if (error) throw new Error(error.message);
   } catch (e) {
     devError('pdfStorageService upload exception:', e);
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }
 

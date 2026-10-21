@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App';
+import { ErrorBoundary } from './components/ErrorLimite.tsx';
 import './index.css';
 // PlanoState solo trae tipos + el catálogo NETS (sin motor): no engorda el bundle de entrada.
 import { NETS } from './modules/civilflow/lib/PlanoEngine/PlanoEstado.ts';
@@ -36,12 +37,17 @@ import { NETS } from './modules/civilflow/lib/PlanoEngine/PlanoEstado.ts';
   }
 }
 
+// Frontera de error RAIZ: las fronteras de App.tsx envuelven el `element` de cada ruta, así
+// que una excepción en el Layout (p. ej. Navbar leyendo localStorage) desmontaba el árbol
+// entero y dejaba la app en blanco, sin mensaje y sin botón "Reintentar".
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
-      <Analytics />
-      <SpeedInsights />
+      <ErrorBoundary>
+        <App />
+        <Analytics />
+        <SpeedInsights />
+      </ErrorBoundary>
     </BrowserRouter>
   </StrictMode>,
 );

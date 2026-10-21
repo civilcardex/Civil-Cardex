@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { devError } from '../../utils/desarrolloError.ts';
+import { emitErrorGuardado } from '../../utils/guardaEnNube.ts';
 import {
   calcAPU,
   calcCargos,
@@ -92,7 +93,13 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
         devError('CivilManagerContext: guardado de estado vacío bloqueado (safeguard)');
         return;
       }
-      civilManagerSave(state).catch((e) => devError('CivilManagerContext save:', e));
+      // El guardado en BD es encadenado: si un upsert falla, la BD queda a medias. El aviso
+      // va por el canal GLOBAL (proveedor de alertas en la raíz) y no por el toast local:
+      // así se ve aunque el Toast del gestor no esté montado, y no se pierde el error.
+      civilManagerSave(state).catch((e) => {
+        devError('CivilManagerContext save:', e);
+        emitErrorGuardado('civilmanager', e instanceof Error ? e.message : String(e));
+      });
     }, 300);
     return () => clearTimeout(t);
   }, [state]);

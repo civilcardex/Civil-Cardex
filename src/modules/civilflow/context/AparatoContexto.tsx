@@ -12,6 +12,7 @@ import { UD_BASE_INIT, APS_DEFAULT } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/almacenamientoServicio.ts';
 import { APS_STORAGE_KEY } from '../constants/almacenamientoClaves.ts';
 import { loadAparatosUsuario, saveAparatosUsuario } from '../services/aparatoServicio.ts';
+import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
 
 export interface UdBaseItem {
   id: string;
@@ -85,7 +86,8 @@ export function ApparatusProvider({ children }: { children?: ReactNode }) {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;
-      void saveAparatosUsuario(aps);
+      // El snapshot del catálogo es destructivo: si falla, se reintenta y se avisa.
+      void guardaConReintento('catalogo-aparatos', () => saveAparatosUsuario(aps));
     }, 600);
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);

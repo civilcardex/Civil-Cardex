@@ -1,6 +1,7 @@
 // Sync de trazos con Supabase: cola por plano, merge con disco, usuario cacheado y carga.
 // Extraído verbatim de storageService.
 import { devError } from '../../../../utils/desarrolloError.ts';
+import { emitErrorGuardado } from '../../../../utils/guardaEnNube.ts';
 import { supabase } from '../../../../lib/supabase';
 import {
   TRAZOS_PREFIX,
@@ -44,14 +45,10 @@ import {
   ghostToRow,
   rowToGhost,
 } from './planoFilaMappers.ts';
+/** Avisa de un fallo de guardado a BD. Delega en el contrato compartido (utils/guardaEnNube)
+ *  para que el proveedor global de alertas lo escuche desde cualquier ruta. */
 export function emitBdSaveError(reason: string, message: string): void {
-  try {
-    window.dispatchEvent(
-      new CustomEvent('civilflow_bd_save_error', { detail: { reason, message } }),
-    );
-  } catch {
-    /* sin window (tests) */
-  }
+  emitErrorGuardado(reason, message);
 }
 
 /** Guardado a BD OK — apaga la alerta roja del visor (franja vuelve al estado normal). */

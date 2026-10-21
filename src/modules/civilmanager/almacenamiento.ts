@@ -426,6 +426,10 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     }
   } catch (e) {
     devError('saveToSupabase:', e);
+    // El guardado hace ~10 upserts encadenados: si uno falla, el resto no se ejecuta y
+    // la BD queda a medias. Tragar el error dejaba la UI diciendo "guardado" mientras la
+    // BD tenía la versión anterior -> al recargar, presupuestos y APU revertidos.
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }
 

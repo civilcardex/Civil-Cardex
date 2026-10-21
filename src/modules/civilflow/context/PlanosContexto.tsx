@@ -26,6 +26,7 @@ import { saveProyectoPlansMeta, loadProyectoData } from '../services/proyectoDat
 import { PLANS_META_KEY } from '../constants/almacenamientoClaves.ts';
 import { useDebouncedEffect } from '../../../hooks/useRetardadoEfecto.ts';
 import { devError } from '../../../utils/desarrolloError.ts';
+import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
 import type { PlanMeta } from '../lib/shared/proyectoTipos.ts';
 export type { PlanMeta } from '../lib/shared/proyectoTipos.ts';
 
@@ -362,7 +363,13 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
         storePDF(id, f).catch((e) => {
           devError('storePDF error:', e);
         });
-        if (proyectoId) uploadPlanPDF(proyectoId, id, f);
+        // La subida a la nube es idempotente (upsert): se reintenta con backoff y, si
+        // falla del todo, el canal global de alertas avisa. Antes era fire-and-forget con
+        // el error tragado -> la metadata quedaba en cf_planos sin binario y el visor
+        // abría sin lámina en otro dispositivo, sin explicación posible.
+        if (proyectoId) {
+          void guardaConReintento('pdf-plano', () => uploadPlanPDF(proyectoId, id, f));
+        }
       }
     }
     if (pdfs.length === 0 && newFiles.length > 0) {

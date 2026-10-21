@@ -131,7 +131,7 @@ export async function loadEpDatos(proyectoId: string): Promise<EPData | null> {
   }
 }
 
-/** Guarda lo del equipo a presión en la BD (una fila por proyecto, sin tocar lo demás). Lo usa la página de diseño con debounce. Ej: ep (Equipo de Presion) con caché viva en localStorage. */
+/** Guarda lo del equipo a presión en la BD (una fila por proyecto, sin tocar lo demás). Lo usa la página de diseño con debounce. Lanza si el guardado falla: si no, el informe PDF generado desde la BD salía con los valores viejos. Ej: ep (Equipo de Presion) con caché viva en localStorage. */
 export async function saveEpDatos(proyectoId: string, ep: EPData): Promise<void> {
   try {
     const {
@@ -145,8 +145,9 @@ export async function saveEpDatos(proyectoId: string, ep: EPData): Promise<void>
         Object.entries(FIELD_MAP).map(([k, col]) => [col, ep[k as keyof EPData]]),
       ),
     });
-    if (error) devError('epService save rpc:', error.message);
+    if (error) throw new Error(error.message);
   } catch (e) {
     devError('epService save exception:', e);
+    throw e instanceof Error ? e : new Error(String(e));
   }
 }
