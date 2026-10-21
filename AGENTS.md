@@ -1,4 +1,4 @@
-﻿## graphify
+## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
@@ -22,6 +22,20 @@ Rules:
 - Carga: `UC (Unidades de Consumo)`, `UD (Unidades de Desague)`, `Q (Caudal)`, `Hunter (metodo de probabilidad de uso simultaneo)`, `Manning (formula de flujo en tuberia)`, `Froude (numero adimensional de regimen)`, `Wyly-Eaton (formula de ventilacion sanitaria)`, `Renouard (formula de perdida en gas)`.
 - Normas: `NTC (Norma Tecnica Colombiana)`, `RAS (Reglamento de Agua y Saneamiento)`, `NSR (Norma Sismo Resistente)`.
 - Motor CAD: `XFG (fantasma entrepisos)`, `LD_ (ramal desvio entrepisos)`, `scaleM (escala metros por pixel)`, `mergesFrom (genealogia del split: anfitrion + entrantes)`, `recibeDeIds/alimentaIds (ramales que llegan/salen del bajante)`, `_tribReversed (flag de flujo invertido en tributario)`, `npt (nivel de piso topografico)`, `NETS (catalogo de redes del motor)`.
+
+## Nombres de archivo: inglés por fuera, dominio en español
+
+Los ARCHIVOS y CARPETAS se nombran en **inglés**, con una excepción: las palabras del **vocabulario de dominio** —las que el usuario necesita para entender el sistema— **se dejan en español**. Son objetos del sistema, no palabras de la interfaz.
+
+- **Se traducen**: red→network · canal→channel · presión→pressure · bomba→pump · caudal→flow · cota→dimension · equipo→equipment · y las genéricas (cálculo, ayuda, guía, carga, memoria→report, proyecto, tabla, sección, tarjeta, uso, estilos, fila, datos, navegación, complejidad, portada→hero, modal, foco, diálogo, guardado→save).
+- **NO se traducen** (quedan en español): bajante · montante · ramal · tributario · tramo · caja · rejilla · nodo · acometida · aparato · ldesvio · y los códigos de red (af, ac, san, ll, gas, rci, vent, ep, bom).
+
+Convención resultante (mixta, como el repo original): `bajanteRules.ts` · `upMontante.ts` · `bajanteAssociationClear.ts` · `useCrudTable.ts` · `pumpAssociation.ts` · `channelGeometry.ts` · `publicNetwork.ts` · `sanReport.ts`.
+
+Reglas de la operación (ronda 2026-10-21, 718 archivos movidos):
+- Se traduce el NOMBRE, **nunca se restaura contenido de la historia**: los archivos se mueven (`git mv`) y solo se reescriben las rutas de import y las rutas fijadas (guard de arquitectura, baseline de complejidad, eslint, scripts, docs).
+- Identificadores, comentarios y textos de UI **siguen en español** (el glosario de siglas de arriba).
+- Al rehacer un renombrado: `git show --name-status --find-renames <commit>` da el mapa, pero hay que **resolver cadenas** (un archivo renombrado dos veces vuelve a su nombre original) y resolver los imports **sin extensión** (`'./complejidad'`) contra el mapa, no contra el disco (el nombre viejo ya no existe).
 
 ## Suscripciones por módulo (IMPLEMENTADAS PERO DESHABILITADAS)
 
@@ -583,3 +597,25 @@ Y en la migración, envuelve lo que exista (`execute format('alter function publ
 **Tercera regla:** una migración correctiva debe ser **idempotente** (si el `_impl` ya existe, no tocar nada), para que sirva tanto a la base que aplicó la versión rota como a una instalación limpia.
 
 Ver también: `20261021000001_fix_sobrecarga_save_campo.sql` (correctiva) y la `20261021000000` corregida (detecta la firma).
+
+## Session Summary — 2026-10-21 (ronda 68: escala del piso + nombres en ingles)
+
+### 1. Fix del visor: "al reingresar los elementos aparecen desplazados y las cotas leen menos"
+El sintoma era **metrico** (las cotas en metros leian menos), no visual: la escala del doc (`scaleM`, metros por pixel) se pisaba por dos rutas y quedaba **persistida** en la BD.
+
+- **F-A — el "piso seleccionado" pisaba la escala**: el efecto de `PdfViewer.tsx` aplicaba `plano.scale/100` (el valor por defecto del plano) a cualquier piso sin calibracion, cada vez que se refrescaba el array `planos` (p. ej. una sincronizacion de fondo). Con contenido en el piso, el doc quedaba con una escala que NO correspondia a sus pixeles -> las cotas leian en otra escala y el dibujo quedaba corrido respecto de la lamina. Ahora la escala por defecto solo se aplica a un piso **vacio y sin doc** (`decideEscalaPorDefectoDelPlan`).
+- **F-B — el re-base comparaba contra la escala GLOBAL del proyecto**: el cargador re-escalaba toda la geometria (anclada al origen) cuando el doc no coincidia con el primer plan `calGlobal`; un piso calibrado **a mano** se encogia en silencio en cuanto el portador global cambiaba, y el cambio quedaba guardado. Ahora el objetivo es la escala calibrada del **PROPIO piso** (un piso `calGlobal` sigue al global, pero el re-escalado se anuncia y se registra).
+- **F-E — etiqueta pisada**: una escala del set estandar (0.5/0.75/1/1.25/2) en el doc significa que la **etiqueta** esta mal, no los pixeles -> se restaura la etiqueta SIN tocar la geometria (las cotas vuelven a leer bien sin mover un trazo).
+- **F-C — el motor manda con contenido**: `syncEngine` ya no empuja la escala del estado React sobre un piso con dibujo (adopta la del motor).
+- **F-D — diagnostico**: `utils/cargaDiagnostico.ts` (decisiones puras + registro por piso) y boton **"diag"** en la barra del visor que copia el reporte (escala del doc, calibrada, global, decision, lamina y camara). La camara guardada ya no se reencuadra siempre (solo si no hay camara o si la lamina cambio de tamano) y el doc guarda el tamano con el que se calibro (`pageW/pageH`).
+
+Tests: `utils/__tests__/cargaDiagnostico.test.ts` (15).
+
+### 2. Nombres de archivo en ingles (718 archivos movidos)
+El renombrado a espanol (35861b6 + 36e46aa) habia ido **al reves** de lo pedido. Se revirtio al nombre ingles original (630 archivos) y se traduzco al ingles lo que quedaba en espanol (88). Glosario cerrado con el usuario: se traducen red/canal/presion/bomba (+ genericas) y se **mantienen en espanol** bajante, montante, ramal, tributario, tramo, caja, rejilla, nodo, acometida y aparato. Seccion nueva en este AGENTS.md con el vocabulario.
+
+**LECCION (churn concurrente)**: los 88 renombres de la Fase B quedaron dentro del commit `b0546df` de la **sesion paralela** (su `git commit` se llevo lo que yo tinha en el index). Esta commited, el tree quedo bien, pero el mensaje de ese commit no los describe.
+
+**LECCION (imports sin extension)**: el resolutor de imports tiene que probar `.ts`/`.tsx`/`/index.ts` **contra el mapa de renombres**, no contra el disco: tras mover el archivo, el nombre viejo ya no existe y el import queda apuntando al nowhere (`'./complejidad'`). Con extension en el specifier hay que resolver igual.
+
+Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/13 - graphify (11616 nodos, 31549 aristas).
