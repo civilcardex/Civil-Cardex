@@ -28,13 +28,13 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
                 else if (t.id === 'crit') import('./Regulations/Regulations.tsx').catch(() => {});
                 else if (t.id === 'iso') import('./workarea/IsometryTab.tsx').catch(() => {});
                 else if (t.id === 'redes')
-                  import('./workareaContent/redesTab.tsx')
+                  import('./workareaContent/networksTab.tsx')
                     .then((m) => m.prefetchRedesInicial())
                     .catch(() => {});
               }}
               onFocus={() => {
                 if (t.id === 'redes')
-                  import('./workareaContent/redesTab.tsx')
+                  import('./workareaContent/networksTab.tsx')
                     .then((m) => m.prefetchRedesInicial())
                     .catch(() => {});
               }}

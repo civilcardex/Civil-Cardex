@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AyudaContexto } from './helpContext.ts';
-import { GUIA, iconoDeGrupo, type GuiaGrupo } from './ayudaGuia.tsx';
+import { GUIA, iconoDeGrupo, type GuiaGrupo } from './helpGuide.tsx';
 import { tutorialDe, type Tutorial } from './helpTutoriales.ts';
 
 // Panel de ayuda IN-PLACE (orig. usuario: el botón AYUDA de la navbar NO redirige a otra

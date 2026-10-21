@@ -7,7 +7,7 @@ import type { Tramo } from '../context/tramosReducer';
 import { usePisos } from '../context/ProjectContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { useApparatus } from '../context/ApparatusContext.tsx';
-import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import { calculaFilaBajante } from '../utils/bajanteRowModel.ts';
 import { renderStatus } from '../utils/componentHelpers.tsx';
 import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';

@@ -6,7 +6,7 @@ import {
   textLocalCorner,
   rotateLocalPoint,
 } from './textAnnotationGeometry.ts';
-import { bajanteHitDistance, bajanteAsociadoACanal } from './canalAssociation';
+import { bajanteHitDistance, bajanteAsociadoACanal } from './channelAssociation';
 import { pointInLabelBox, pointOnAnyBodySegment, pointToSegmentDist } from './HitTester.ts';
 import { getSelected, selectAt } from './PlanoEngineSelection.ts';
 import { guideBodyHit } from './guideLines.ts';

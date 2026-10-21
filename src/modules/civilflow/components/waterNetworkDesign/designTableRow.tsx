@@ -5,7 +5,7 @@ import { fmt, sectorDe } from '../../utils/formatUtils.ts';
 import { parseDecimalInput } from '../../utils/parseDecimal.ts';
 import { hunterK, computeDesignRow } from './rowPhysics.ts';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared.ts';
-import { perfilDe } from '../../constants/normasPais';
+import { perfilDe } from '../../constants/countryStandards';
 import { leerHeredadosPresion } from '../../utils/propagation';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
 import ChipList from '../shared/ChipList.tsx';

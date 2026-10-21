@@ -1,12 +1,12 @@
 import { useState, type ComponentType } from 'react';
 import ModulePageLayout from '../components/ModulePageLayout.tsx';
 import FlowHero from '../modules/civilflow/components/modulePage/FlowHero.tsx';
-import StructureHero from '../components/modulePage/StructurePortada.tsx';
-import TerrainHero from '../components/modulePage/TerrainPortada.tsx';
-import BimHero from '../components/modulePage/BimPortada.tsx';
+import StructureHero from '../components/modulePage/StructureHero.tsx';
+import TerrainHero from '../components/modulePage/TerrainHero.tsx';
+import BimHero from '../components/modulePage/BimHero.tsx';
 import ManageHero from '../components/modulePage/ManageHero.tsx';
-import MepHero from '../components/modulePage/MepPortada.tsx';
-import RoadsHero from '../components/modulePage/RoadsPortada.tsx';
+import MepHero from '../components/modulePage/MepHero.tsx';
+import RoadsHero from '../components/modulePage/RoadsHero.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
 import { MODULES_DATA } from './moduleData.ts';

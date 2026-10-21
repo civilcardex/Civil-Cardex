@@ -2,7 +2,7 @@
 import { NETS } from '../PlanoState.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { _statusMsg } from '../ramalMeasure.ts';
-import { resolveAndClampToCanal } from '../canalAssociation';
+import { resolveAndClampToCanal } from '../channelAssociation';
 import { distToPolyline } from '../../shared/geometry';
 import { maxDiametroLabel } from '../PlanoEngineDrawing.ts';
 import { angleAtHalfLength } from '../drawingAngles.ts';

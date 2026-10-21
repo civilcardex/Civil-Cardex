@@ -27,11 +27,7 @@ import {
   setSyncLoadedLiveIds,
 } from '../utils/drawingSync.ts';
 import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  getActiveProyectoId,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService.ts';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
@@ -49,7 +45,7 @@ import { validateBeforeClose } from './pdfViewer/closeValidation.ts';
 export { validateBeforeClose };
 import { sleep } from './shared/sequentialLoad.ts';
 import PdfCanvas from './pdfViewer/PdfCanvas.tsx';
-import PdfViewerNetworkBar from './pdfViewer/PdfViewerRedBarra.tsx';
+import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar.tsx';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
 import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit.ts';
 import TextInputOverlay from './pdfViewer/TextInputOverlay.tsx';

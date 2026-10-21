@@ -1,6 +1,6 @@
 import React from 'react';
 import { USOS } from '../../../constants';
-import { NORMAS_PAIS } from '../../../constants/normasPais';
+import { NORMAS_PAIS } from '../../../constants/countryStandards';
 import EditButton from '../../shared/EditButton.tsx';
 import { devError } from '../../../../../utils/devError.ts';
 import { getActiveProyectoId } from '../../../services/storageService.ts';

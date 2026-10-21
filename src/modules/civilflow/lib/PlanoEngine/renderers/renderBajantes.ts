@@ -1,6 +1,6 @@
 import { NETS, type IPlanoEngineCore } from '../PlanoState.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { parseDescargaEnId } from '../../../utils/parseDescargaEnId.ts';
+import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import {
   DIR_MAP,
@@ -8,10 +8,10 @@ import {
   renderBajanteLabel,
   drawDireccionSymbol,
 } from './bajanteLabels.ts';
-import { renderCanalGlyph } from './renderCanal.ts';
+import { renderCanalGlyph } from './renderChannel.ts';
 import { indicesDeMotor } from '../indicesMotor';
 
-export { renderCanalGhost } from './renderCanal.ts';
+export { renderCanalGhost } from './renderChannel.ts';
 export { renderGhosts, renderCrossFloorGhosts } from './bajanteGhosts.ts';
 
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {

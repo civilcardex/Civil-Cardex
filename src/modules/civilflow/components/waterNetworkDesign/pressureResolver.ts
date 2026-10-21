@@ -1,5 +1,5 @@
 import type { Tramo } from '../../context/tramosReducer';
-import { APARATO_PMAX_BY_CODE, HEATER_LOSS_FACTOR, isAf } from '../../utils/waterRedFilas.ts';
+import { APARATO_PMAX_BY_CODE, HEATER_LOSS_FACTOR, isAf } from '../../utils/waterNetworkRows.ts';
 import { hunterQ, computeDesignRow } from './rowPhysics.ts';
 
 interface ResolvePressuresInputs {

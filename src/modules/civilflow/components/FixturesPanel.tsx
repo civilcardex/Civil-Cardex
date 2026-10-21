@@ -356,7 +356,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   // Todos los ramales del plano actual (almacenamiento crudo, no el motor en vivo) — necesario
   // para hallar, en AF/AC/gas, qué ramal acumula de verdad la UC combinada de un empalme. Ya no es
   // siempre el ramal auto-creado (mergesFrom solo vive en él) — es aquel de los tres participantes
-  // cuya dirección de flujo entra de verdad al empalme (ver waterRedFilas.ts).
+  // cuya dirección de flujo entra de verdad al empalme (ver waterNetworkRows.ts).
   // Deliberadamente NO memoizado solo por planId — el dibujo (un nuevo corte, una dirección
   // invertida) cambia constantemente mientras este panel queda abierto sobre el mismo plano, y no
   // hay evento dedicado de "geometría cambiada" contra el cual invalidar un caché. Una lectura

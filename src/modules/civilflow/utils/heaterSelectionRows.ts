@@ -5,7 +5,7 @@ import { CAT_APS } from '../constants/engineeringDataFixtures.ts';
 import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 import { fmt } from './formatUtils.ts';
 import type { MemoriaTable } from './exportMemoryFinal.ts';
-import { computeHeaterNetworkTotal } from './waterRedFilas.ts';
+import { computeHeaterNetworkTotal } from './waterNetworkRows.ts';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 

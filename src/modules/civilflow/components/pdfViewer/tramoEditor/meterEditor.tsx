@@ -1,5 +1,5 @@
 import { GAS_DN_LABELS } from '../../../constants/engineeringDataGas.ts';
-import { DIAMETROS_AF } from '../../../constants/hidraulicoDatos.ts';
+import { DIAMETROS_AF } from '../../../constants/hydraulicsData.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { SELECT_STYLE } from './context.ts';

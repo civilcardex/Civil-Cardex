@@ -1,16 +1,8 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../../services/storageService.ts';
-import {
-  TRAZOS_PREFIX,
-  HYDRO_FAMILIES,
-  SAN_FAMILIES,
-} from '../../constants/storage-keys.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
+import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys.ts';
 import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
-import { normalizarCanal } from '../../lib/PlanoEngine/canalAssociation';
+import { normalizarCanal } from '../../lib/PlanoEngine/channelAssociation';
 import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoords.ts';
 import { parseBajanteKey } from './diametros';
 import { devError } from '../../../../utils/devError.ts';

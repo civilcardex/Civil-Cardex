@@ -86,7 +86,7 @@ export const NORMA_URLS: Record<string, string> = {
   IEC: 'https://webstore.iec.ch',
   ASTM: 'https://www.astm.org',
   ASME: 'https://www.asme.org/codes-and-standards',
-  // Por país (Fase A0): claves que citan los perfiles de normasPais.ts.
+  // Por país (Fase A0): claves que citan los perfiles de countryStandards.ts.
   //  - CL gas: DS 66/2007 (NO NCh 4 — esa es electricidad); idNorma BCN verificado 2026-10.
   //  - MX: CONAGUA (MAPAS) + DOF para NOM (sin deep-link estable: va a la portada oficial).
   //  - NCh de pago (INN): van a la tienda, no a PDF — no existe link público por norma.

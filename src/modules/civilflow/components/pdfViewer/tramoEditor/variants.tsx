@@ -25,7 +25,7 @@ export function CalentadorTramoEditor() {
 // controlado por tecla pelea contra el tipeo decimal ('.' final, números parciales).
 
 // Re-exports: index.tsx consume los editores desde este hub (contrato previo al split).
-export { CanalTramoEditor } from './canalEditors.tsx';
+export { CanalTramoEditor } from './channelEditors.tsx';
 export {
   BajanteHeaderFields,
   RejillasSectorFields,

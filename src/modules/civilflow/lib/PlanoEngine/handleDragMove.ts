@@ -8,11 +8,11 @@ import {
 } from './PlanoEngineDrawing.ts';
 import { angleAtPosition, angleAtHalfLength } from './drawingAngles.ts';
 import { checkRamalAnglesExcludingConnections } from './junctionAutoSplit.ts';
-import { parseDescargaEnId } from '../../utils/parseDescargaEnId.ts';
+import { parseDescargaEnId } from '../../utils/parseDischargeInId.ts';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry.ts';
 import { puedeConectarRamalABajante } from './bajanteRules.ts';
 import { bumpBajanteToMaxRamal, _calcPolyArea } from './drawingUtils.ts';
-import { normalizarCanal, pxPerCmDe } from './canalAssociation';
+import { normalizarCanal, pxPerCmDe } from './channelAssociation';
 
 /** Buscador rápido por id de tuberías (durante un arrastre se consulta muchas veces por cuadro;
  *  recorrer la lista cada vez se sentía lento). */

@@ -1,5 +1,5 @@
 import { CATALOGO_BASE } from '../../constants/rejillasNTC3631';
-import SectionCard from './SeccionTarjeta.tsx';
+import SectionCard from './SectionCard.tsx';
 
 // Tabla del catálogo de rejillas de ventilación (NTC 3631) — página del Catálogo Maestro.
 // Muestra las referencias base con área efectiva declarada por el fabricante; ES la misma

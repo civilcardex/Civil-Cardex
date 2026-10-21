@@ -6,7 +6,7 @@ import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 import { fmt } from '../utils/formatUtils.ts';
 import { usePlans } from '../context/PlansContext.tsx';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing.ts';
-import { computeHeaterNetworkTotal } from '../utils/waterRedFilas.ts';
+import { computeHeaterNetworkTotal } from '../utils/waterNetworkRows.ts';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 const HeaterSelection_S1: React.CSSProperties = {

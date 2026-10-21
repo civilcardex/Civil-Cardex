@@ -19,7 +19,7 @@ import {
   MENU_SECTION_LABEL_ROW_STYLE,
   MENU_SELECT_STYLE,
 } from './context.ts';
-import { moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
+import { moverAsociacionCanal } from '../../../lib/PlanoEngine/channelAssociation';
 import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
 import {
   ASSOC_CHECKBOX_STYLE,
@@ -27,7 +27,7 @@ import {
   CanalesAsociadosRamalSection,
   MontantesAsociadosSection,
   refrescarMenu,
-} from './canalesAsociados';
+} from './associatedChannels';
 import { MidRamalAccessorySelector } from './midRamalAccessorySelector.tsx';
 import {
   pointOnRamalBody,

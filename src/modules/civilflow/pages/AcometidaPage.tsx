@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { DIAMETROS_AF } from '../constants/hidraulicoDatos.ts';
+import { DIAMETROS_AF } from '../constants/hydraulicsData.ts';
 import { lookupInterno } from '../utils/fittingsUtils.ts';
 
 const WaterNetworkDesign = React.lazy(() => import('../components/WaterNetworkDesign.tsx'));

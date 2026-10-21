@@ -5,7 +5,7 @@ import ActiveNetsCard from './infoTab/ActiveNetsCard.tsx';
 import ActiveEquiposCard from './infoTab/ActiveEquipmentCard.tsx';
 import FloorGeneratorCard from './infoTab/FloorGeneratorCard.tsx';
 import LevelsCard from './infoTab/LevelsCard.tsx';
-import UsageGuideCard from './infoTab/UsageGuiaTarjeta.tsx';
+import UsageGuideCard from './infoTab/UsageGuideCard.tsx';
 
 const InfoTab_S2: React.CSSProperties = {
   flexShrink: 0,

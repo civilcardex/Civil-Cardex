@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { RejResultado } from '../utils/rejillasCalc.ts';
 import type { RejFila } from './rejillasVentilacion/rejillasShared.ts';
 import { AlzadoMuro } from './rejillasVentilacion/AlzadoMuro';
-import { TablaTipologias } from './rejillasVentilacion/TablaTipologias';
+import { TablaTipologias } from './rejillasVentilacion/TableTypologies';
 import { useRejillasData } from './rejillasVentilacion/useRejillasData.ts';
 import EditButton from './shared/EditButton.tsx';
 

@@ -12,7 +12,7 @@ import { UD_BASE_INIT, APS_DEFAULT } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import { APS_STORAGE_KEY } from '../constants/storage-keys.ts';
 import { loadAparatosUsuario, saveAparatosUsuario } from '../services/apparatusService.ts';
-import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
+import { guardaConReintento } from '../../../utils/saveToCloud.ts';
 
 export interface UdBaseItem {
   id: string;

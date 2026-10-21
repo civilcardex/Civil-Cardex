@@ -416,7 +416,7 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
 - Gates: tsc 0 · lint 0 · vitest 1306/1307 (220) · build + prerender 13/13 ✓ · graphify ✓.
 
 ## Session Summary — 2026-10-20 (rondas 62-65: G8 + C3 + C2 + SEO)
-- **G8 (guard de complejidad) NUEVO**: `src/architecture/complejidad.ts` cuenta "focos" = búsquedas
+- **G8 (guard de complejidad) NUEVO**: `src/architecture/complexity.ts` cuenta "focos" = búsquedas
   lineales (find/findIndex/some/filter/indexOf/includes) DENTRO de bucles, parseando con el AST de
   TypeScript (no regex). Reglas del guard: (A) ningún archivo nuevo con ≥5 focos, (B) ninguno CRECE,
   (C) el total no sube, (D) si el código tiene menos que el baseline → hay que bajarlo (anti-congelación).
@@ -456,7 +456,7 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
   nombres, con casing real — en Windows `existsSync` es case-insensitive y miente), `repararCss.mjs`
   (el renombrador perdía la extensión: `tarjetas.css` → `tarjetasCss`), `actualizarRutasGuard.mjs`
   (tablas del guard de arquitectura), `recalcularMarcadoresTest.mjs` (campo `test:` de MODULOS_NUEVOS).
-- **G8 (guard de complejidad)**: `src/architecture/complejidad.ts` (detector AST con el parser de
+- **G8 (guard de complejidad)**: `src/architecture/complexity.ts` (detector AST con el parser de
   TypeScript, NO regex) + `__tests__/complejidad.test.ts` (11) + guard con baseline congelado
   (`FOCOS_CONOCIDOS` + `TOTAL_FOCOS_BASE` = 596 focos / 48 archivos) + `scripts/generarBaselineComplejidad.mjs`
   (npm `baseline:complejidad`). Reglas: (A) sin archivo nuevo ≥5 focos, (B) ninguno CRECE,

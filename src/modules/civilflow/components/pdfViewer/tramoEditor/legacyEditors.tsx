@@ -2,5 +2,5 @@
 export { ContadorEditor } from './meterEditor.tsx';
 export { CalentadorEditor } from './heaterEditor.tsx';
 export { BajanteEditor } from './bajanteEditor';
-export { CaudalField } from './caudalField.tsx';
+export { CaudalField } from './flowField.tsx';
 export { RamalEditor } from './ramalEditor';

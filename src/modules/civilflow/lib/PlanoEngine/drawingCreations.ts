@@ -10,6 +10,6 @@ export {
   handleCreateTeeCapStub,
   handleCalentadorDown,
 } from './creations/montantes.ts';
-export { handleCanalDown, commitCanalAncho } from './creations/canales';
-export { handleRedPublicaDown, handleContadorDown } from './creations/redPublica';
-export { handleCreateBomba } from './creations/bomba';
+export { handleCanalDown, commitCanalAncho } from './creations/channels';
+export { handleRedPublicaDown, handleContadorDown } from './creations/publicNetwork';
+export { handleCreateBomba } from './creations/pump';

@@ -26,7 +26,7 @@ import { saveProyectoPlansMeta, loadProyectoData } from '../services/projectData
 import { PLANS_META_KEY } from '../constants/storage-keys.ts';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect.ts';
 import { devError } from '../../../utils/devError.ts';
-import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
+import { guardaConReintento } from '../../../utils/saveToCloud.ts';
 import type { PlanMeta } from '../lib/shared/projectTypes.ts';
 export type { PlanMeta } from '../lib/shared/projectTypes.ts';
 

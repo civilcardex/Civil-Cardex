@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore, PlanoElement } from './PlanoState.ts';
-import { canalRectHitDistance } from './canalAssociation';
+import { canalRectHitDistance } from './channelAssociation';
 import { pointInLabelBox, pointInPoly, pointOnAnyBodySegment } from './HitTester.ts';
 
 export interface ContextMenuHitResult {

@@ -5,9 +5,9 @@ import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { computeUcTable } from '../../utils/ucRows.ts';
 import { computeAccesoriosTable } from '../../utils/sanFittingsRows.ts';
 import { computeAccesoriosPorRamalTable } from '../../utils/fittingsByRamalRows.ts';
-import { computeWaterNetworkRows } from '../../utils/waterRedFilas.ts';
+import { computeWaterNetworkRows } from '../../utils/waterNetworkRows.ts';
 import { computeHeaterSelectionTables } from '../../utils/heaterSelectionRows.ts';
-import { DIAMETROS_AC } from '../../constants/hidraulicoDatos.ts';
+import { DIAMETROS_AC } from '../../constants/hydraulicsData.ts';
 import { lookupInternoAC } from '../../utils/fittingsUtils.ts';
 import { pisoCorto } from '../../constants';
 

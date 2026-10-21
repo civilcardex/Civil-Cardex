@@ -11,7 +11,7 @@ import type { DrawingData, RawElement } from '../../utils/drawingSync.ts';
 import { isLdesvioRamalId } from '../../utils/associateBajanteAcrossFloors';
 import { hunterQ } from './rowPhysics.ts';
 import { resolveJunctionEntrant } from '../../utils/flowDirection.ts';
-import { isAC2 } from '../../utils/waterRedFilas.ts';
+import { isAC2 } from '../../utils/waterNetworkRows.ts';
 import { indicePorClave } from '../../utils/indices';
 
 // Grafo de conectividad de la red leído de TODOS los planos dibujados: enlaces ramal→bajante y
@@ -163,7 +163,7 @@ export function useWaterNetworkGraph({
         // SALE de jc, así que con tres ramales la división es siempre 2-vs-1, y el único disidente
         // (el que discrepa de los otros dos) es el entrante. Se recalcula fresco desde el
         // `_tribReversed` actual en cada render, para que un "Invertir dirección de flujo" en
-        // cualquiera de los tres cambie de inmediato cuál acumula. Espejo de waterRedFilas.ts.
+        // cualquiera de los tres cambie de inmediato cuál acumula. Espejo de waterNetworkRows.ts.
         const [aId, bId] = r.mergesFrom;
         const existingObj = ramalPorId.get(aId);
         const incomingObj = ramalPorId.get(bId);

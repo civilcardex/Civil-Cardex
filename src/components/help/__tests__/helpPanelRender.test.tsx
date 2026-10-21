@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import AyudaPanel from '../HelpPanel.tsx';
-import { GUIA } from '../ayudaGuia.tsx';
+import { GUIA } from '../helpGuide.tsx';
 import { tutorialDe } from '../helpTutoriales.ts';
 
 // Regresión reportada: "la info de ayuda ya no está, solo está el video". El panel debe

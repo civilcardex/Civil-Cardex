@@ -5,7 +5,11 @@ import {
   MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
 } from './context.ts';
-import { ASSOC_CHECKBOX_STYLE, ASSOC_ROW_STYLE, MaterialesCanalSection } from './canalesAsociados';
+import {
+  ASSOC_CHECKBOX_STYLE,
+  ASSOC_ROW_STYLE,
+  MaterialesCanalSection,
+} from './associatedChannels';
 import { ElementCodeEditor } from './elementEditor.tsx';
 import {
   ramalesDelCanal,
@@ -13,7 +17,7 @@ import {
   normalizarCanal,
   vetarSelloCanal,
   levantarVetoSelloCanal,
-} from '../../../lib/PlanoEngine/canalAssociation';
+} from '../../../lib/PlanoEngine/channelAssociation';
 import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal.ts';
 import { EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 

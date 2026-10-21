@@ -12,7 +12,7 @@ import { estaActiva } from '../../../../lib/subscriptions/subscriptionsService.t
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';
 import SuscripcionInactivaModal, {
   codigoProyecto,
-} from '../../../../components/shared/SuscripcionInactivaModal';
+} from '../../../../components/shared/SubscriptionInactiveModal';
 
 interface Props {
   open: boolean;

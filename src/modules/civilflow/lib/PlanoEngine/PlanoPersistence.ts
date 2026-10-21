@@ -3,7 +3,7 @@ import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts.ts';
 import { claveBajante, dedupPorClave } from '../../utils/bajanteLocal.ts';
 import { propagarSanDiametroAguasAbajo } from './drawingFlow.ts';
 import { direccionBajaPermitida } from './directionRules.ts';
-import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './canalAssociation';
+import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './channelAssociation';
 import { cmToPlanePx } from './planoCoords.ts';
 import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
 

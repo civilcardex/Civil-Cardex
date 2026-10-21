@@ -8,12 +8,12 @@ import {
   CajaBombaSection,
   AsociarBombaSection,
   cajaSinBomba,
-} from './bombaSections.tsx';
+} from './pumpSections.tsx';
 import {
   CanalesAsociadosBajSection,
   MaterialCubiertaBajSection,
   RamalesAsociadosMontSection,
-} from './canalesAsociados';
+} from './associatedChannels';
 
 /** Menú contextual del bajante/montante elegido: arma el selector de dirección, el de diámetro
  *  y destino, y el panel de conexiones para redes sanitarias y de lluvias (en cajas agrega

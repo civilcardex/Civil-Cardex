@@ -33,7 +33,7 @@ import {
   asociarRamalABajantes,
 } from './drawingUtils.ts';
 import { distToPolyline } from '../shared/geometry';
-import { detectarCanalEnExtremos } from './canalAssociation';
+import { detectarCanalEnExtremos } from './channelAssociation';
 
 /** Cierra la tubería que venías dibujando: revisa que sea válida, la crea, parte las uniones en T
  *  que toque y la engancha a los bajantes cercanos. */

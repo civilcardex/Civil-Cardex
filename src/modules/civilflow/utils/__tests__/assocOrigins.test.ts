@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { applyBajanteAssociation } from '../bajanteAssociation';
-import { sincronizarDesvioBomba } from '../bombaAssociation';
+import { sincronizarDesvioBomba } from '../pumpAssociation';
 import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState.ts';
 
 // Alineación por ORIGEN de calibración: las láminas del mismo AutoCAD no comparten posición

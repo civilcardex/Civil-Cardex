@@ -2,7 +2,7 @@ import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constan
 import { opcionesDiametroElemento } from '../drawingElementContextMenu/diameterSelector.tsx';
 import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials.ts';
 import { useMaterialesLl } from '../../../context/RainwaterContext.tsx';
-import { OpcionesMaterial } from '../drawingElementContextMenu/canalesAsociados';
+import { OpcionesMaterial } from '../drawingElementContextMenu/associatedChannels';
 import { usePlans } from '../../../context/PlansContext.tsx';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
@@ -19,7 +19,7 @@ import {
   CHECK_ROW_STYLE,
   READONLY_CENTER_STYLE,
 } from './context.ts';
-import { useCaudalLl } from './useCaudalLl';
+import { useCaudalLl } from './useFlowLl';
 
 /** Editor del bajante/montante seleccionado: diámetro, altura vertical, llenado (R) y área
  *  servida. */

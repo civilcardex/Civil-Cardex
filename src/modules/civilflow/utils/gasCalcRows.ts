@@ -1,5 +1,5 @@
 import { LE_K } from '../constants';
-import { perfilDe } from '../constants/normasPais';
+import { perfilDe } from '../constants/countryStandards';
 import { renouardByType, qDisenoGas } from './gasUtils.ts';
 import { mapaPadresGas, acumuladosGas, claveGas, type GasTramoNeto } from './gasNetwork.ts';
 

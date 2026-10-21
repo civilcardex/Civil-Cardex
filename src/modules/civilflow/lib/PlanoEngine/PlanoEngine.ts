@@ -115,7 +115,7 @@ import {
   podarReferenciasStaleDeBajantes,
   ensureRpCntRamal,
 } from './PlanoEngineNetwork.ts';
-import { sellarAsociacionesCanalBajante } from './canalAssociation';
+import { sellarAsociacionesCanalBajante } from './channelAssociation';
 import { fixVentCodoToTee } from './ventCodoTeeFix';
 import { healTribPadres } from './junctionAutoSplit.ts';
 import { PlanoHistory } from './PlanoHistory.ts';
@@ -266,8 +266,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   mallasDeclaradas: Set<string> = new Set();
   /** Puente al modal "¿qué sentido tiene esta tubería?" del re-enraizamiento (regla 5 del memo). */
   private _onOpcionesCb:
-    | ((title: string, msg: string, opciones: string[]) => Promise<number>)
-    | null = null;
+    ((title: string, msg: string, opciones: string[]) => Promise<number>) | null = null;
   planId?: string | number;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;

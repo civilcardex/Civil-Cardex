@@ -1,4 +1,4 @@
-import { filaId } from './filaId';
+import { filaId } from './rowId';
 import { useCivilManager } from '../context.tsx';
 import { fmtMoneda, parseNum } from '../calc.ts';
 import { NumInput } from '../shared/NumInput.tsx';

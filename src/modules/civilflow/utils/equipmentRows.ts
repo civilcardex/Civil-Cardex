@@ -2,12 +2,12 @@ import type { MemoriaTable } from './exportMemoryFinal.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 import { dec } from './parseDecimal.ts';
 import type { EPData } from '../components/ep/EPShared';
-import { PVC_SCH40, NEMA_HP, selectDN } from '../components/ep/calculos.ts';
+import { PVC_SCH40, NEMA_HP, selectDN } from '../components/ep/calcs.ts';
 import { AGUA_DENSIDAD, GRAVEDAD } from './calcSanitaryCore.ts';
 import { entradaPor } from './diamLookup';
-import { perfilDe } from '../constants/normasPais';
+import { perfilDe } from '../constants/countryStandards';
 
-// Espeja el objeto que BombaARDesign.tsx persiste vía saveToStorage('civilflow_memoria_bomba_data').
+// Espeja el objeto que PumpARDesign.tsx persiste vía saveToStorage('civilflow_memoria_bomba_data').
 interface BombaMemoriaData {
   inputs: {
     salSim: string;

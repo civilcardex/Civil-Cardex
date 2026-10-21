@@ -22,9 +22,9 @@ import {
 } from '../../../utils/bajanteAssociation';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
 import { splitPtr } from '../../../utils/keys.ts';
-import { DIAMETROS_AF, DIAMETROS_AC } from '../../../constants/hidraulicoDatos.ts';
+import { DIAMETROS_AF, DIAMETROS_AC } from '../../../constants/hydraulicsData.ts';
 import { validarDiametroEntrePisos } from '../../../utils/drawingWrites/diametros';
-import { avisarDiametroInvalido } from '../../../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../../../utils/diameterValidation.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';

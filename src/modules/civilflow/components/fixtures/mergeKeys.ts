@@ -135,7 +135,7 @@ export function calcularMergeKeys(args: {
   // la dirección actual del flujo — no está fijo a "existing" ni al "auto-creado":
   // junctionHasOutgoingFlow ya garantiza al menos uno de los tres flujos FUERA del empalme, así
   // que con tres ramales la división es siempre 2-vs-1, y el único disidente (el que discrepa de
-  // los otros dos) es el entrante. Coincide con waterRedFilas.ts / WaterNetworkDesign.tsx.
+  // los otros dos) es el entrante. Coincide con waterNetworkRows.ts / WaterNetworkDesign.tsx.
   if (!hostR.id || !hostR.pts || hostR.pts.length === 0) return null;
   // Para la sidebar de aparatos mostrar el combinado en CUALQUIERA de los participantes
   // (auto o fuente), no solo en el entrante — el usuario espera ver en RS3 (auto) el total

@@ -7,7 +7,7 @@ import { buildBajanteGraph } from './buildBajanteGraph.ts';
 import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
 import { manning_SAN } from './calcSanitaryCore.ts';
 import { calculateVentStack } from './ventStackCalc.ts';
-import { parseDescargaEnId } from './parseDescargaEnId.ts';
+import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { splitPtr, splitTramo } from './keys.ts';
 import type { DrawingData } from './drawingSync.ts';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal.ts';

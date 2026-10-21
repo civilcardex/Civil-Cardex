@@ -1,7 +1,7 @@
 import type { Tramo } from '../context/tramosReducer';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords.ts';
-import { canalOBBDe, puntoEnCanalOBB } from '../lib/PlanoEngine/canalAssociation';
+import { canalOBBDe, puntoEnCanalOBB } from '../lib/PlanoEngine/channelAssociation';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { diametroManning } from './calcSanitaryCore.ts';
 import { chequeoBajanteLluvia } from './calcRainwater.ts';

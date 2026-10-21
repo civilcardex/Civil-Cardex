@@ -13,12 +13,8 @@ import {
 import { collectSourceAgg } from '../../utils/bajanteAssociation';
 import { esRedAparatosPresion } from '../../utils/propagation';
 import { ldesvioIdFor } from '../../utils/associateBajanteAcrossFloors';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../../services/storageService.ts';
-import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../../utils/bombaAssociation';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
+import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../../utils/pumpAssociation';
 
 /** (3) Espejos de salidas + herencia entre pisos + bomba: el efecto grande, mantiene las
  *  claves espejo al día cada vez que algo cambia. */

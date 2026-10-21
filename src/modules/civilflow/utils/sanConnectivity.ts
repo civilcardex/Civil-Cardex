@@ -3,7 +3,7 @@ import type { BajanteRaw } from './drawingSyncTypes.ts';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { calcUDparcial } from './componentHelpers.tsx';
 import { distToPolyline } from '../lib/shared/geometry';
-import { parseDescargaEnId } from './parseDescargaEnId.ts';
+import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { indicePorClave } from './indices';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';

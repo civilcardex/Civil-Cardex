@@ -7,7 +7,7 @@ import {
 } from './drawingAngles.ts';
 import { _statusMsg, calculateRamalLength } from './ramalMeasure.ts';
 import { finishRamal, checkCrossRamalAngle } from './finishRamal';
-import { detectarCanalEnExtremos, resolveCanalForPoint } from './canalAssociation';
+import { detectarCanalEnExtremos, resolveCanalForPoint } from './channelAssociation';
 import { canJoinTributario, puntoEnCaja } from './junctionAutoSplit.ts';
 import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils.ts';
 import { commitOpenGuide } from './guideLines.ts';

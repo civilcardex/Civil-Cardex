@@ -386,7 +386,7 @@ export interface PlanoRamal {
   lvert?: string;
   // Solo lo lleva un ramal CREADO AUTOMÁTICAMENTE al dividir una unión T/Y
   // (autoSplitJunctionAndSumFlow en PlanoEngineDrawing.ts) — guarda los ids de los dos ramales
-  // que se juntan en él. Lo leen waterRedFilas.ts / WaterNetworkDesign.tsx para forzar que el
+  // que se juntan en él. Lo leen waterNetworkRows.ts / WaterNetworkDesign.tsx para forzar que el
   // total de UC de ESTE ramal sea la suma de esos dos, sin importar hacia qué lado corra el árbol
   // dirigido general por este punto (ese árbol se orienta hacia la fuente real de toda la red,
   // y en una unión local arbitraria puede correr en cualquier dirección).

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MONO_3D } from './shared/config3d';
-import { EVENTO_ERROR_GUARDADO } from '../../../utils/guardaEnNube.ts';
+import { EVENTO_ERROR_GUARDADO } from '../../../utils/saveToCloud.ts';
 
 const GAlertDialog_S1: React.CSSProperties = {
   background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',

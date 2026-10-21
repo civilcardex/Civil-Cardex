@@ -7,11 +7,7 @@ import {
   writeMaterialToDrawing,
   clearDiametroToDrawing,
 } from '../utils/writeDiameterToDrawing.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  getActiveProyectoId,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService.ts';
 import { loadGasDatos, saveGasDatos } from '../services/projectDataService.ts';
 import GasCalcUC from './GasCalcUC.tsx';
 import { GasDatosGenerales } from './gas/GasGeneralData.tsx';
@@ -30,7 +26,7 @@ import { claveGas } from '../utils/gasNetwork.ts';
 import { calculaFilasGas, propiosDeTramo } from '../utils/gasCalcRows.ts';
 import { compareTramosPisoDesc } from '../utils/componentHelpers.tsx';
 import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasRows.ts';
-import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 
 type GasAccMap = Record<string, Record<string, number>>;
 interface GasRamalRaw extends RawElement {

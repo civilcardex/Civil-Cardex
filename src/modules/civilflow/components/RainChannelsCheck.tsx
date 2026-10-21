@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { FilaCanalRow } from './rainChannels/CanalRow.tsx';
+import { FilaCanalRow } from './rainChannels/ChannelRow.tsx';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { pisoCorto, DIAM_BAN } from '../constants';
@@ -8,7 +8,7 @@ import { loadFromStorage } from '../services/storageService.ts';
 import { useRainwater } from '../context/RainwaterContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { writeCanalDimsToDrawing } from '../utils/writeDiameterToDrawing.ts';
-import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import { sectorDe } from '../utils/formatUtils.ts';
 import { entradaPor } from '../utils/diamLookup';
 import { repartirOtrasCanal } from '../utils/rainwaterRows.ts';

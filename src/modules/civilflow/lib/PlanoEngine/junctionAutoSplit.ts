@@ -302,7 +302,7 @@ export function autoSplitJunctionAndSumFlow(
       // silencio todo el total acumulado de la cadena aguas arriba la próxima vez que la línea
       // se divida. Qué ramal DISPLAYA el número combinado (puede diferir de `downstream`, según
       // la convención AF/AC de "quien entra a la unión") es una preocupación solo de
-      // presentación, manejada en las tablas de diseño (waterRedFilas.ts /
+      // presentación, manejada en las tablas de diseño (waterNetworkRows.ts /
       // WaterNetworkDesign.tsx), no aquí.
       const preSplitExistingUc = existing.uc || 0;
       const preSplitIncomingUc = incoming.uc || 0;

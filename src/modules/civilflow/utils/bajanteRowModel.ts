@@ -5,7 +5,7 @@ import type { UDBase } from './componentHelpers.tsx';
 import { calcUDparcial } from './componentHelpers.tsx';
 import { fmtPiso, pisoCorto } from '../constants';
 import { planIdDeKey, sectorDe } from './formatUtils.ts';
-import { parseDescargaEnId } from './parseDescargaEnId.ts';
+import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { maxSanRamalDiamPulg } from './bajanteVentRows.ts';
 import { ventBajPulg, calculateVentStack } from './ventStackCalc.ts';
 

@@ -31,7 +31,7 @@ import {
   saveToStorage,
 } from '../../modules/civilflow/services/storageService.ts';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
-import { ProyectoCard } from './ProyectoCard.tsx';
+import { ProyectoCard } from './ProjectCard.tsx';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialog.tsx';
 import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
@@ -72,7 +72,7 @@ function inicialesDe(nombre: string): string {
   );
 }
 
-// fechaCorta y ProyectoCard viven en hermanos (profileHelpers.ts / ProyectoCard.tsx).
+// fechaCorta y ProyectoCard viven en hermanos (profileHelpers.ts / ProjectCard.tsx).
 
 function ProfilePage() {
   const { user } = useAuth();

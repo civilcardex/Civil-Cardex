@@ -5,11 +5,11 @@ import type { SelectableTarget } from '../fixturesStorage.ts';
 import type { BajanteLL } from '../../context/RainwaterContext.tsx';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { NETS } from '../../lib/PlanoEngine/PlanoState.ts';
-import { vetarSelloCanal, levantarVetoSelloCanal } from '../../lib/PlanoEngine/canalAssociation';
+import { vetarSelloCanal, levantarVetoSelloCanal } from '../../lib/PlanoEngine/channelAssociation';
 import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
-} from '../pdfViewer/drawingElementContextMenu/canalesAsociados';
+} from '../pdfViewer/drawingElementContextMenu/associatedChannels';
 import { camposAsocManual } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
 import { bajanteLabel, ramalLabel } from '../../utils/accessoryAbbreviations.ts';
 

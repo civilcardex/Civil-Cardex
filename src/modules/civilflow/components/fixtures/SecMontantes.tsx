@@ -1,7 +1,7 @@
 import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
-} from '../pdfViewer/drawingElementContextMenu/canalesAsociados';
+} from '../pdfViewer/drawingElementContextMenu/associatedChannels';
 import { camposAsocManual } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { SelectableTarget } from '../fixturesStorage.ts';

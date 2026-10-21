@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import Card from '../shared/Card.tsx';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
-import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from './calculos.ts';
+import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from './calcs.ts';
 import { entradaPor } from '../../utils/diamLookup';
 import { LazyInp, Param, type EPData } from './EPShared';
 import { calcularCisterna } from './epCalcs.ts';

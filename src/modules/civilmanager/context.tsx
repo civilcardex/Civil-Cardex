@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { devError } from '../../utils/devError.ts';
-import { emitErrorGuardado } from '../../utils/guardaEnNube.ts';
+import { emitErrorGuardado } from '../../utils/saveToCloud.ts';
 import {
   calcAPU,
   calcCargos,
@@ -21,8 +21,7 @@ import { civilManagerLoad, civilManagerSave, defaultState } from './storage.ts';
 import type { ApuCalculado, CargoCalculado, CivilManagerState } from './types.ts';
 
 type Action =
-  | { type: 'LOAD'; state: CivilManagerState }
-  | { type: 'PATCH'; patch: Partial<CivilManagerState> };
+  { type: 'LOAD'; state: CivilManagerState } | { type: 'PATCH'; patch: Partial<CivilManagerState> };
 
 function reducer(state: CivilManagerState, action: Action): CivilManagerState {
   switch (action.type) {

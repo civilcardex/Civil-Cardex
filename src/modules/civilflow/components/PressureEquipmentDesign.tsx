@@ -5,12 +5,12 @@ import EPVerificationPage from './ep/EPVerificationPage.tsx';
 import EPCisternaPage from './ep/EPCisternaPage.tsx';
 import { usePersistedState } from '../../../hooks/usePersistedState.ts';
 import { useProyecto } from '../context/ProjectContext.tsx';
-import { perfilDe } from '../constants/normasPais';
+import { perfilDe } from '../constants/countryStandards';
 import type { EPData } from './ep/EPShared';
 import { EP_DEFAULTS } from './ep/EPShared';
 import { getActiveProyectoId } from '../services/storageService.ts';
 import { loadEpDatos, saveEpDatos } from '../services/epService.ts';
-import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
+import { guardaConReintento } from '../../../utils/saveToCloud.ts';
 
 // Diseño del Equipo de Presión (redes 'ep'). La página "Esquema" se movió a la sub-pestaña
 // "Equipo de presión constante" de Isometría (components/epc3d/). Página "Cisterna" solo

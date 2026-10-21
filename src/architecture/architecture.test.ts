@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, dirname, sep } from 'node:path';
-import { contarFocosPorArchivo, totalFocos } from './complejidad';
+import { contarFocosPorArchivo, totalFocos } from './complexity';
 
 /**
  * GUARDIAS DE ARQUITECTURA (desmonotilización 2026-10-19).
@@ -49,7 +49,7 @@ const CONOCIDOS: Record<string, number> = {
   'pages/auth/ProfilePage.tsx': 967,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 936,
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 918,
-  'modules/civilflow/components/rejillasVentilacion/TablaTipologias.tsx': 898,
+  'modules/civilflow/components/rejillasVentilacion/TableTypologies.tsx': 898,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 883,
   'pages/PricingPage.tsx': 878,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 867,
@@ -57,7 +57,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/RainDownpipesCheck.tsx': 827,
   'modules/civilflow/components/DesignParameters.tsx': 822,
   'modules/civilflow/utils/equipmentRows.ts': 822,
-  'modules/civilflow/components/BombaARDesign.tsx': 815,
+  'modules/civilflow/components/PumpARDesign.tsx': 815,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 807,
   'components/help/helpGuideFlow.tsx': 804,
   'modules/civilflow/components/SanitaryDesign.tsx': 802,
@@ -75,7 +75,7 @@ const CONOCIDOS: Record<string, number> = {
  * El resto del repo tiene otras sesiones trabajando encima: su tamaño no es contrato aquí.
  */
 const GESTIONADOS: Record<string, number> = {
-  'modules/civilflow/utils/aparatosPresion.ts': 40,
+  'modules/civilflow/utils/aparatosPressure.ts': 40,
   'modules/civilflow/utils/sanAccesoriosTable.ts': 40,
   'modules/civilflow/components/SupplyConnection.tsx': 60,
 };
@@ -286,13 +286,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     test: 'supplyConnection',
   },
   {
-    ruta: 'modules/civilflow/components/rainChannels/CanalRow.tsx',
+    ruta: 'modules/civilflow/components/rainChannels/ChannelRow.tsx',
     maxLineas: 330,
     puro: false,
     test: 'rainChannels',
   },
   {
-    ruta: 'modules/civilflow/components/rainChannels/CanalDimField.tsx',
+    ruta: 'modules/civilflow/components/rainChannels/ChannelDimField.tsx',
     maxLineas: 140,
     puro: false,
     test: 'rainChannels',
@@ -334,10 +334,10 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     test: 'useAparatoEspejos',
   },
   {
-    ruta: 'architecture/complejidad.ts',
+    ruta: 'architecture/complexity.ts',
     maxLineas: 250,
     puro: true,
-    test: './complejidad',
+    test: './complexity',
   },
   {
     ruta: 'modules/civilflow/utils/indices.ts',
@@ -358,7 +358,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
  *
  * Un "foco" es una búsqueda lineal (`.find`, `.findIndex`, `.some`, `.filter`, `.indexOf`,
  * `.includes`) dentro de un bucle: por cada pieza del plano se recorre OTRA vez la lista de
- * piezas. El detector vive en `complejidad.ts` (puro, testeado aparte).
+ * piezas. El detector vive en `complexity.ts` (puro, testeado aparte).
  *
  * Este baseline congela el estado actual: el guard NO permite que ningún archivo CREZCA de
  * focos, ni que aparezca uno nuevo. Cuando un archivo se arregla, su número baja aquí en el
@@ -393,16 +393,16 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/fixtures/SecMontantes.tsx': 6,
   'modules/civilflow/components/RainDownpipesCheck.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionSections.tsx': 6,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/canalesAsociados.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/associatedChannels.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 6,
-  'modules/civilflow/lib/PlanoEngine/canalSeal.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/channelSeal.ts': 6,
   'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 6,
   'modules/civilflow/lib/PlanoEngine/networkRenumber.ts': 6,
   'modules/civilflow/lib/PlanoEngine/renderers/drawRamalPath.ts': 6,
   'modules/civilflow/utils/waterRowsAcometida.ts': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionPanel.tsx': 5,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuHelpers.ts': 5,
-  'modules/civilflow/components/rejillasVentilacion/TablaTipologias.tsx': 5,
+  'modules/civilflow/components/rejillasVentilacion/TableTypologies.tsx': 5,
   'modules/civilflow/context/RainwaterContext.tsx': 5,
   'modules/civilflow/lib/PlanoEngine/drawingFlow.ts': 5,
   'modules/civilflow/lib/PlanoEngine/handleMouseDown.ts': 5,
@@ -423,7 +423,7 @@ const TOTAL_FOCOS_BASE = 542;
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
   {
-    ruta: 'modules/civilflow/utils/aparatosPresion.ts',
+    ruta: 'modules/civilflow/utils/aparatosPressure.ts',
     simbolos: [
       'propagarAparatosPresion',
       'esRedAparatosPresion',
@@ -515,7 +515,8 @@ describe('G2 · la API pública no se rompió', () => {
   it('las fachadas pinningadas siguen SIN importadores (existen solo como contrato)', () => {
     const conImportadores: string[] = [];
     for (const { ruta } of API_PUBLICA) {
-      if (!ruta.endsWith('aparatosPresion.ts') && !ruta.endsWith('sanAccesoriosTable.ts')) continue;
+      if (!ruta.endsWith('aparatosPressure.ts') && !ruta.endsWith('sanAccesoriosTable.ts'))
+        continue;
       const nombreArchivo = ruta.split('/').pop()!;
       for (const p of todosLosArchivos) {
         if (p.endsWith(ruta)) continue; // el archivo mismo

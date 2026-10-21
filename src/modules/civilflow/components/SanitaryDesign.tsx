@@ -12,7 +12,7 @@ import {
   writeNSalidasToDrawing,
 } from '../utils/writeDiameterToDrawing.ts';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck.ts';
-import { perfilDe, rangoSanTxt, ftTxt } from '../constants/normasPais';
+import { perfilDe, rangoSanTxt, ftTxt } from '../constants/countryStandards';
 import { useProyecto } from '../context/ProjectContext.tsx';
 import { fmt, sectorDe } from '../utils/formatUtils.ts';
 import { dec } from '../utils/parseDecimal.ts';

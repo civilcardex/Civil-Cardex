@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { aggBajanteAsociado } from '../bombaAssociation';
+import { aggBajanteAsociado } from '../pumpAssociation';
 
 // Fuente única del panel del bajante ASOCIADO (orig. usuario: original/fantasma/Ldesvio deben
 // mostrar SIEMPRE las UD del grupo — 12 —, nunca la suma local del piso — 16). Orden de la

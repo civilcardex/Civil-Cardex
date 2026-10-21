@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.tsx';
-import { CargandoProyecto } from '../modules/civilflow/components/shared/CargandoProyecto';
+import { CargandoProyecto } from '../modules/civilflow/components/shared/LoadingProject';
 
 /** Puerta de las rutas que exigen sesión.
  *  - Mientras la sesión se resuelve: pantalla de carga (NUNCA null: un null deja la página

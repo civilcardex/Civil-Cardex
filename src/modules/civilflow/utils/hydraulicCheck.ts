@@ -7,7 +7,7 @@ import {
   fuerzaTractiva as fuerzaTractivaCore,
 } from './calcSanitaryCore.ts';
 import { V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from '../constants';
-import type { perfilDe } from '../constants/normasPais';
+import type { perfilDe } from '../constants/countryStandards';
 
 /** Límites de chequeo por país (perfil de normasPais); sin él, Colombia. */
 export type LimitesSan = ReturnType<typeof perfilDe>['san'];

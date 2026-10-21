@@ -1,4 +1,4 @@
-import { perfilDe, type PerfNormas } from '../../constants/normasPais';
+import { perfilDe, type PerfNormas } from '../../constants/countryStandards';
 import { useProyecto } from '../../context/ProjectContext.tsx';
 
 // País del proyecto → notas normativas de los visores 3D de isometría (orig. usuario: donde la

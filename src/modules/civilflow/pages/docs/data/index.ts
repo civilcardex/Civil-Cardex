@@ -8,9 +8,9 @@ import equipos from './equipment.tsx';
 import tablas from './tables.tsx';
 import formulas from './formulas';
 import manual from './manual';
-import glosario from './glosario';
+import glosario from './glossary';
 import manager from './manager.tsx';
-import normas_pais from './normasPais';
+import normas_pais from './countryStandards';
 
 export const docData = {
   hidraulica,

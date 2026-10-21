@@ -34,53 +34,99 @@
 -- firma (bigint, text, text) — DISTINTA de la que tenía el wrapper con candado
 -- (bigint, text, jsonb) en 20260924000001, que 20260924000002 borró con un DROP.
 -- Resultado: la función viva nunca recibió el candado.
+--
+-- IMPORTANTE (corrección 2026-10-21): la firma NO se puede hardcodear. La función nació
+-- como (bigint, text, text) en 20261002000000, pero 20261006000000 la reescribió a
+-- (uuid, text, text) y borró la bigint. La versión anterior de esta migración asumía
+-- `bigint` y creaba una SEGUNDA sobrecarga -> PostgREST no podía elegir candidato
+-- ("Could not choose the best candidate function") y NINGÚN guardado de campo del
+-- proyecto funcionaba. Por eso aquí se DETECTA la firma viva y se envuelve la que exista.
 
 do $$
+declare
+  r record;
+  v_args text;
+  v_llamada text;
 begin
+  -- Si el _impl ya existe, la función YA está envuelta: no se toca (idempotencia).
   if exists (
     select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public'
-      and p.proname = 'save_proyecto_general_campo'
-      and pg_get_function_identity_arguments(p.oid) = 'p_proyecto_id bigint, p_campo text, p_valor text'
+    where n.nspname = 'public' and p.proname = 'save_proyecto_general_campo_impl'
   ) then
-    -- Renombrar a _impl: los grants viajan con el rename (se revocan abajo).
-    execute 'alter function public.save_proyecto_general_campo(bigint, text, text) '
-         || 'rename to save_proyecto_general_campo_impl';
+    raise notice 'save_proyecto_general_campo ya está envuelta: no se toca';
+    return;
+  end if;
+
+  -- La función viva: la que NO es _impl. Si hubiera varias (por el bug de la versión
+  -- anterior de esta migración), se prefiere la que NO es bigint: la del cliente.
+  select p.oid, pg_get_function_identity_arguments(p.oid) as args
+    into r
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'save_proyecto_general_campo'
+   order by (pg_get_function_identity_arguments(p.oid) ilike '%bigint%') asc
+   limit 1;
+
+  if not found then
+    raise exception 'no existe public.save_proyecto_general_campo: revisa el orden de migraciones';
+  end if;
+
+  v_args := r.args;
+
+  -- Solo se soporta la firma de 3 argumentos simples (p_proyecto_id, p_campo, p_valor).
+  if array_length(string_to_array(v_args, ','), 1) <> 3 then
+    raise exception 'firma inesperada de save_proyecto_general_campo: %', v_args;
+  end if;
+
+  -- Nombres de los argumentos (para la llamada al impl). btrim: la firma viene con
+  -- espacios tras las comas (" p_campo text") y split_part devolvería vacío sin el trim.
+  select string_agg(split_part(btrim(x), ' ', 1), ', ')
+    into v_llamada
+    from unnest(string_to_array(v_args, ',')) as x;
+
+  -- Renombrar a _impl: el cuerpo real se conserva intacto y los grants viajan con el rename
+  -- (se revocan abajo).
+  execute format('alter function public.save_proyecto_general_campo(%s) rename to save_proyecto_general_campo_impl', v_args);
+
+  -- Wrapper con candado de USO. El cuerpo real vive en el _impl (sin cambios de lógica).
+  execute format($ddl$
+    create or replace function public.save_proyecto_general_campo(%s)
+    returns void language plpgsql security definer set search_path = public as $fn$
+    begin
+      if auth.uid() is null then raise exception 'no_autenticado'; end if;
+      if not public.acceso_modulo(auth.uid(), 'flow') then raise exception 'suscripcion_requerida'; end if;
+      perform public.save_proyecto_general_campo_impl(%s);
+    end;
+    $fn$;
+  $ddl$, v_args, v_llamada);
+
+  raise notice 'save_proyecto_general_campo envuelta con candado: (%)', v_args;
+end;
+$$;
+
+-- Grants: el impl NO se expone (solo lo llama el wrapper, que es SECURITY DEFINER);
+-- el wrapper es el único ejecutable por un usuario autenticado.
+do $$
+declare
+  r record;
+  v_args text;
+begin
+  select pg_get_function_identity_arguments(p.oid) as args
+    into r
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'save_proyecto_general_campo_impl'
+   limit 1;
+  if found then
+    v_args := r.args;
+    execute format('revoke all on function public.save_proyecto_general_campo_impl(%s) from public, anon, authenticated', v_args);
+    execute format('revoke all on function public.save_proyecto_general_campo(%s) from public, anon', v_args);
+    execute format('grant execute on function public.save_proyecto_general_campo(%s) to authenticated', v_args);
   end if;
 end;
 $$;
-
--- Wrapper con candado de USO. El cuerpo real vive en el _impl (sin cambios de lógica).
-create or replace function public.save_proyecto_general_campo(
-  p_proyecto_id bigint,
-  p_campo text,
-  p_valor text
-)
-returns void language plpgsql security definer set search_path = public as $$
-begin
-  if auth.uid() is null then raise exception 'no_autenticado'; end if;
-  if not public.acceso_modulo(auth.uid(), 'flow') then raise exception 'suscripcion_requerida'; end if;
-  perform public.save_proyecto_general_campo_impl(p_proyecto_id, p_campo, p_valor);
-end;
-$$;
-
--- El impl NO se expone: solo el wrapper (que tiene el candado) lo llama.
-do $$
-begin
-  if exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public'
-      and p.proname = 'save_proyecto_general_campo_impl'
-      and pg_get_function_identity_arguments(p.oid) = 'p_proyecto_id bigint, p_campo text, p_valor text'
-  ) then
-    execute 'revoke all on function public.save_proyecto_general_campo_impl(bigint, text, text) '
-         || 'from public, anon, authenticated';
-  end if;
-end;
-$$;
-
-revoke all on function public.save_proyecto_general_campo(bigint, text, text) from public, anon;
-grant execute on function public.save_proyecto_general_campo(bigint, text, text) to authenticated;
 
 -- ═══ 2) Las 9 tablas hijas de CM: el candado va en SU policy ════════════════════════
 --
@@ -144,3 +190,27 @@ $$;
 --  where schemaname='public' and policyname like '%_propietario_%' and qual is not null
 --    and qual not like '%acceso_modulo%';
 -- -- 0 (todas las policies de escritura de CM llevan el candado)
+
+-- ═══ Comprobación dura: UNA sola sobrecarga con el nombre "de cara al cliente" ════════
+-- Con dos sobrecargas, PostgREST responde "Could not choose the best candidate function"
+-- y NINGÚN guardado de campo del proyecto funciona. Esta comprobación hace que el fallo
+-- aparezca al aplicar la migración y no meses después en producción.
+do $$
+declare
+  n int;
+  firmas text;
+begin
+  select count(*), string_agg(pg_get_function_identity_arguments(p.oid), ' | ')
+    into n, firmas
+    from pg_proc p
+    join pg_namespace ns on ns.oid = p.pronamespace
+   where ns.nspname = 'public'
+     and p.proname = 'save_proyecto_general_campo';
+  if n <> 1 then
+    raise exception 'save_proyecto_general_campo tiene % sobrecargas (debe tener 1): %', n, coalesce(firmas, '');
+  end if;
+  if firmas like '%bigint%' then
+    raise exception 'quedó la sobrecarga bigint: %', firmas;
+  end if;
+end;
+$$;

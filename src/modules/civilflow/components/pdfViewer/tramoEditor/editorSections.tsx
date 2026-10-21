@@ -9,7 +9,7 @@ import {
   asociarBomba,
   quitarBomba,
   bombsImmediateLowerFloor,
-} from '../../../utils/bombaAssociation';
+} from '../../../utils/pumpAssociation';
 import {
   useTramoEditorContext,
   CHECK_GRID_STYLE,

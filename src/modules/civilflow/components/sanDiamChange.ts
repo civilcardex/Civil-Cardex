@@ -10,7 +10,7 @@ import {
   sanFeederMinMsg,
 } from '../utils/sanitaryDiamCompat.ts';
 import { parseBajanteKey } from '../utils/drawingWrites/diametros';
-import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 
 /** Datos que necesita el cambio de diámetro sanitario (antes vivían dentro de SanitaryDesign). */
 export interface SanDiamChangeCtx {

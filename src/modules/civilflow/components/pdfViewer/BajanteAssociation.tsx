@@ -12,7 +12,7 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import type { LowerFloorRamales } from './drawingElementContextMenu/context.ts';
-import { BombaAsociarBajantesSection } from './drawingElementContextMenu/bombaMenu';
+import { BombaAsociarBajantesSection } from './drawingElementContextMenu/pumpMenu';
 const BajanteAsociacion_S1: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',
@@ -67,14 +67,12 @@ export default function BajanteAsociacion({
       />
     );
   }
-  if (
-    !(
-      rawSelElement &&
-      ((rawSelElement as { tipo?: string }).tipo === 'bajante' ||
-        (rawSelElement as { tipo?: string }).tipo === 'montante') &&
-      !engineRef.current?._isGhostSel
-    )
-  ) {
+  if (!(
+    rawSelElement &&
+    ((rawSelElement as { tipo?: string }).tipo === 'bajante' ||
+      (rawSelElement as { tipo?: string }).tipo === 'montante') &&
+    !engineRef.current?._isGhostSel
+  )) {
     return null;
   }
   const selElement = rawSelElement as PlanoBajante;

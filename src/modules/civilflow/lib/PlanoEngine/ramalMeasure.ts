@@ -1,6 +1,6 @@
 import { NETS } from './PlanoState.ts';
 import type { IPlanoEngineCore } from './PlanoState.ts';
-import { geometriaCanalDesdePuntos, geometriaCanalAncho, norm180 } from './canalAssociation';
+import { geometriaCanalDesdePuntos, geometriaCanalAncho, norm180 } from './channelAssociation';
 
 /** Lo que dice la barra de estado según la herramienta activa y lo que llevas dibujado: cuántos
  *  puntos y cuántos metros lleva la tubería en curso (o el ancho del canal, etc.). */

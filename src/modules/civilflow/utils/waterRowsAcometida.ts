@@ -13,7 +13,7 @@ import { findContadorBajante } from './writeDiameterToDrawing.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { distToPolyline } from '../lib/shared/geometry';
 import { isContador, isAC1, isAC2, type BajanteRaw } from './waterRowsShared.ts';
-import { perfilDe } from '../constants/normasPais';
+import { perfilDe } from '../constants/countryStandards';
 /** Resumen de la acometida: tramos red→contador y contador→montante, con presiones y validez. */
 export interface AcometidaSummary {
   tr1: {

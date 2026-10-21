@@ -4,7 +4,7 @@ import EmptyRow from '../shared/EmptyRow.tsx';
 import { SD, TH as _TH, TD as _TD } from '../../styles/sharedTableStyles.ts';
 import { pisoCorto } from '../../constants';
 import { fmt } from '../../utils/formatUtils.ts';
-import { gasTxt } from '../../constants/normasPais';
+import { gasTxt } from '../../constants/countryStandards';
 import { listaDn } from '../../utils/gasRows.ts';
 import type { FilaGasCalc } from '../../utils/gasCalcRows.ts';
 

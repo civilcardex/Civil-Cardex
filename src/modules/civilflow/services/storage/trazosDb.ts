@@ -1,7 +1,7 @@
 // Sync de trazos con Supabase: cola por plano, merge con disco, usuario cacheado y carga.
 // Extraído verbatim de storageService.
 import { devError } from '../../../../utils/devError.ts';
-import { emitErrorGuardado } from '../../../../utils/guardaEnNube.ts';
+import { emitErrorGuardado } from '../../../../utils/saveToCloud.ts';
 import { supabase } from '../../../../lib/supabase';
 import {
   TRAZOS_PREFIX,

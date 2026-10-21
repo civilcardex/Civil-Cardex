@@ -11,9 +11,9 @@ import {
   writeDiametroToDrawing,
   writePendienteToDrawing,
 } from '../utils/writeDiameterToDrawing.ts';
-import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck.ts';
-import { perfilDe } from '../constants/normasPais';
+import { perfilDe } from '../constants/countryStandards';
 import { useProyecto } from '../context/ProjectContext.tsx';
 import { fmt } from '../utils/formatUtils.ts';
 import { dec } from '../utils/parseDecimal.ts';

@@ -24,11 +24,7 @@ import { fetchProyectos } from '../services/projectsService.ts';
 import { loadProyectoData } from '../services/projectDataService.ts';
 import { clearLocalWorkspace } from '../services/workspaceReset.ts';
 import { clearAllPDFs } from '../services/idbStorage.ts';
-import {
-  getActiveProyectoId,
-  saveToStorage,
-  loadFromStorage,
-} from '../services/storageService.ts';
+import { getActiveProyectoId, saveToStorage, loadFromStorage } from '../services/storageService.ts';
 import { prefetchAllTrazos } from '../utils/prefetchTrazos.ts';
 import {
   ACTIVE_NETS_KEY,
@@ -41,8 +37,8 @@ import {
 import { setAyudaContext } from '../../../components/help/helpContext.ts';
 import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
-import { CargandoProyecto } from '../components/shared/CargandoProyecto';
-import { useProyectoCargado } from '../hooks/useProyectoCargado';
+import { CargandoProyecto } from '../components/shared/LoadingProject';
+import { useProyectoCargado } from '../hooks/useProjectLoaded';
 import {
   ViewerPage_S1,
   ViewerPage_S2,
@@ -51,7 +47,7 @@ import {
   ViewerPage_S5,
   ViewerPage_S6,
   VIEWER_JSONLD,
-} from './visorEstilos.ts';
+} from './viewerStyles.ts';
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

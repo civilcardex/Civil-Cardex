@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GAS } from '../constants/engineeringDataGas.ts';
 import { OPEN_TAB_KEY } from '../constants/storage-keys.ts';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData.ts';
-import SectionCard from './catalog/SeccionTarjeta.tsx';
+import SectionCard from './catalog/SectionCard.tsx';
 import {
   PipeTable,
   GasTable,

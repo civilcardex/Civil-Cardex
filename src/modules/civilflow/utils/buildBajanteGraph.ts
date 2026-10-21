@@ -3,7 +3,7 @@ import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 import { pisoLbl } from '../constants';
 import { distToPolyline } from '../lib/shared/geometry';
-import { parseDescargaEnId } from './parseDescargaEnId.ts';
+import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { calcUDparcial, type UDBase } from './componentHelpers.tsx';
 import type { Tramo } from '../context/tramosReducer';
 import type { RawElement } from './drawingSync.ts';

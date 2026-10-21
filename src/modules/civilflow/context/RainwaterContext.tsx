@@ -14,7 +14,7 @@ import {
   canalOBBDe,
   puntoEnCanalOBB,
   distPuntoACanalOBB,
-} from '../lib/PlanoEngine/canalAssociation';
+} from '../lib/PlanoEngine/channelAssociation';
 import { pisoCorto, pisoCortoLoose } from '../constants/helpers.ts';
 import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys.ts';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService.ts';

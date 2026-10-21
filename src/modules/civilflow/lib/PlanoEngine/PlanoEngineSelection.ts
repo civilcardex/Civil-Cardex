@@ -16,7 +16,7 @@ import {
   findAccMedVertexHit,
   pointOnAnyBodySegment,
 } from './HitTester.ts';
-import { bajanteHitDistance } from './canalAssociation';
+import { bajanteHitDistance } from './channelAssociation';
 
 export {
   updateSelected,

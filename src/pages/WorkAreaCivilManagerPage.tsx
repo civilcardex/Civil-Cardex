@@ -4,7 +4,7 @@ import WorkAreaCivilManager from '../modules/civilmanager/WorkAreaCivilManager.t
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { devError } from '../utils/devError.ts';
 import { fetchCmProyectos } from '../modules/civilmanager/services/cmProjectsService.ts';
-import { CargandoProyecto } from '../modules/civilflow/components/shared/CargandoProyecto';
+import { CargandoProyecto } from '../modules/civilflow/components/shared/LoadingProject';
 
 const WorkAreaCivilManagerPage_S1: React.CSSProperties = {
   position: 'absolute',

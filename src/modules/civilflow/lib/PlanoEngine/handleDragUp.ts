@@ -17,7 +17,7 @@ import {
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 import { asociarRamalABajantes } from './drawingUtils.ts';
-import { canalMarco, esquinasCanalOBB } from './canalAssociation';
+import { canalMarco, esquinasCanalOBB } from './channelAssociation';
 
 // Las uniones de san/ll/vent (tee/codo/yee) se crean solas vía calcSanitaryAccessories +
 // renderJunctions — solo AF/AC/gas necesitan que el usuario elija el tipo de tee.

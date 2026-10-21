@@ -4,7 +4,7 @@ import type { CountsMap, HidroDataMap, SelectableTarget } from '../fixturesStora
 import { loadFromStorage } from '../../services/storageService.ts';
 import { loadAll } from '../fixturesStorage.ts';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
-import { aggBajanteAsociado, type AsocLiveBaj } from '../../utils/bombaAssociation';
+import { aggBajanteAsociado, type AsocLiveBaj } from '../../utils/pumpAssociation';
 import { bajanteLocalDe } from '../../utils/bajanteLocal.ts';
 import { useMemo } from 'react';
 

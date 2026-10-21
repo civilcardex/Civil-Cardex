@@ -28,7 +28,7 @@ import {
   type ProbedElement,
 } from './context.ts';
 import { BajanteMenu } from './bajanteMenu';
-import { BombaAsociarBajantesSection } from './bombaMenu';
+import { BombaAsociarBajantesSection } from './pumpMenu';
 import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otherMenus.tsx';
 import { GuideLineMenu } from './guideLineMenu.tsx';
 import { RamalMenu } from './ramalMenu';

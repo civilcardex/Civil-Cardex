@@ -14,13 +14,13 @@ import {
   findContadorBajante,
 } from '../utils/writeDiameterToDrawing.ts';
 
-import { isAf, isAC1, isAC2, isContador } from '../utils/waterRedFilas.ts';
+import { isAf, isAC1, isAC2, isContador } from '../utils/waterNetworkRows.ts';
 import { calcLeAcces } from '../utils/fittingsUtils.ts';
 import { chequeoPresionAparato } from '../utils/waterRowsShared.ts';
-import { perfilDe } from '../constants/normasPais';
+import { perfilDe } from '../constants/countryStandards';
 import { fracAscii } from '../utils/formatUtils.ts';
 import { leerLibrosPresion, propagarAparatosPresion } from '../utils/propagation';
-import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
+import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import Acometida from './SupplyConnection.tsx';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph.ts';
 import { calcFila } from './waterNetworkDesign/acometidaCalc.ts';

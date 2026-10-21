@@ -6,7 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { GlobalAlertDialogProvider } from './modules/civilflow/components/GlobalAlertDialogProvider.tsx';
 import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders.tsx';
-import { CargandoProyecto } from './modules/civilflow/components/shared/CargandoProyecto';
+import { CargandoProyecto } from './modules/civilflow/components/shared/LoadingProject';
 import PageTransition from './components/landing/PageTransition.tsx';
 
 // Una sola pantalla de carga en toda la app: el Suspense y el gate de datos usan la MISMA pieza
@@ -44,9 +44,7 @@ const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPage.tsx
 const WorkAreaCivilFlowPage = React.lazy(
   () => import('./modules/civilflow/pages/WorkAreaCivilFlowPage.tsx'),
 );
-const WorkAreaCivilManagerPage = React.lazy(
-  () => import('./pages/WorkAreaCivilManagerPage.tsx'),
-);
+const WorkAreaCivilManagerPage = React.lazy(() => import('./pages/WorkAreaCivilManagerPage.tsx'));
 const CatalogoMaestroPage = React.lazy(
   () => import('./modules/civilflow/pages/CatalogMasterPage.tsx'),
 );

@@ -6,7 +6,7 @@ export {
   type MemoriaTable,
   type MemoriaData,
   dropAllZeroColumns,
-} from './memoriaExportShared.ts';
-export { generateMemoriaExcel } from './memoriaExcel';
-export { generateMemoriaDocx } from './memoriaDocx';
-export { generateMemoriaPdf } from './memoriaPdf';
+} from './reportExportShared.ts';
+export { generateMemoriaExcel } from './reportExcel';
+export { generateMemoriaDocx } from './reportDocx';
+export { generateMemoriaPdf } from './reportPdf';

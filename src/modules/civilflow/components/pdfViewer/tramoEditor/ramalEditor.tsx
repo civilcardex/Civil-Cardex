@@ -8,7 +8,7 @@ import {
   sanDiamLabelAllowedForApparatus,
   SAN_INODORO_MIN_MSG,
 } from '../../../utils/sanitaryDiamCompat.ts';
-import { useCaudalLl } from './useCaudalLl';
+import { useCaudalLl } from './useFlowLl';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import {
@@ -19,7 +19,7 @@ import {
   MAT_NAME_STYLE,
   ramalHasCodoReventilado,
 } from './context.ts';
-import { CaudalField } from './caudalField.tsx';
+import { CaudalField } from './flowField.tsx';
 import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal.ts';
 
 /** Editor del ramal seleccionado: material, diámetro, pendiente, desnivel vertical y número

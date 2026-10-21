@@ -16,8 +16,8 @@ import {
   PLANS_META_KEY,
 } from '../constants/storage-keys.ts';
 import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
-import { useProyectoCargado } from '../hooks/useProyectoCargado';
-import { CargandoProyecto } from '../components/shared/CargandoProyecto';
+import { useProyectoCargado } from '../hooks/useProjectLoaded';
+import { CargandoProyecto } from '../components/shared/LoadingProject';
 
 const WorkAreaCivilFlowPage_S1: React.CSSProperties = {
   position: 'absolute',

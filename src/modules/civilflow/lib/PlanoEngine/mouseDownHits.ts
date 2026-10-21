@@ -17,7 +17,7 @@ import {
   canalRectHitDistance,
   canalMarco,
   esquinasCanalOBB,
-} from './canalAssociation';
+} from './channelAssociation';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork.ts';
 import { indicesDeMotor } from './indicesMotor';
 

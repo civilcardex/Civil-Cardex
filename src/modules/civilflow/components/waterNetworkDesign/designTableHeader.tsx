@@ -1,4 +1,4 @@
-import { rangoAfTxt } from '../../constants/normasPais';
+import { rangoAfTxt } from '../../constants/countryStandards';
 // Encabezado estático de la tabla de diseño (2 filas × 24 columnas, con celdas combinadas).
 // No tiene lógica: solo depende de la clase de color de la red activa (af/ac).
 /** Encabezado estático de la tabla de diseño de red: dos filas y 24 columnas con celdas

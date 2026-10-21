@@ -7,12 +7,12 @@ import type { MemoriaTable } from '../../utils/exportMemoryFinal.ts';
 import { pisoLbl, pisoCorto, AF_UC_IDS, AC_UC_IDS } from '../../constants';
 import { isAC2 } from '../../utils/waterRowsShared.ts';
 import { useRainwater } from '../../context/RainwaterContext.tsx';
-import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hidraulicoDatos.ts';
+import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicsData.ts';
 import { computeDesignRow, hunterQ } from '../waterNetworkDesign/rowPhysics.ts';
 import { useWaterNetworkGraph } from '../waterNetworkDesign/useWaterNetworkGraph.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
 import { CHEQUEOS_PRESION_KEY } from '../../constants/storage-keys.ts';
-import { computeAcometidaSummary } from '../../utils/waterRedFilas.ts';
+import { computeAcometidaSummary } from '../../utils/waterNetworkRows.ts';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils.ts';
 import { computeBombaTables, computeEpTables } from '../../utils/equipmentRows.ts';
 import { computeGasRows } from '../../utils/gasRows.ts';
@@ -23,7 +23,7 @@ import {
   chequeoBajanteLluvia,
 } from '../../utils/calcRainwater.ts';
 import { nDeCanal, cDeCubierta } from '../../constants/engineeringDataMaterials.ts';
-import { perfilDe } from '../../constants/normasPais';
+import { perfilDe } from '../../constants/countryStandards';
 import type { Tramo } from '../../context/tramosReducer';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 
