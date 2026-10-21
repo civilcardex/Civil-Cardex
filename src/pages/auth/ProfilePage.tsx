@@ -72,7 +72,7 @@ function inicialesDe(nombre: string): string {
   );
 }
 
-// fechaCorta y ProyectoCard viven en hermanos (profileHelpers.ts / ProjectCard.tsx).
+// fechaCorta y ProyectoCard viven en hermanos (ProfilePage.tsx / ProjectCard.tsx).
 
 function ProfilePage() {
   const { user } = useAuth();

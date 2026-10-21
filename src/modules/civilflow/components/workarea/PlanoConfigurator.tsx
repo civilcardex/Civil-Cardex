@@ -167,7 +167,7 @@ function PlanoConfiguratorBase({
   }, [autoOrigen, origen, setModoCalX, setModoCalY, setModoOrigen]);
 
   // Render del overlay
-  // Render del overlay: solo pinta; el dibujo vive en calibracionOverlay.ts.
+  // Render del overlay: solo pinta; el dibujo vive en calibrationOverlay.ts.
   React.useEffect(() => {
     const canv = canvRef.current;
     if (!canv || !imgLoaded || !pageWRef.current || !pageHRef.current) return;

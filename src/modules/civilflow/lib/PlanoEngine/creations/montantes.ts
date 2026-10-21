@@ -178,7 +178,7 @@ export function handleCreateMontanteMidBody(
   // abajo) — antes estaba hardcodeado a 'teeDirecto', así que el glifo de tee del montante nunca
   // mostraba de verdad el círculo+marca de sube/baja que la dirección debe transmitir. Se
   // mantiene sincronizado con la dirección del montante después por BajanteDirectionSelector
-  // (DrawingElementContextMenu.tsx).
+  // (drawingElementContextMenu/index.tsx).
   shiftedAccMed[`accMed${newIdx}`] = 'teeSube';
   r.pts = newPts;
   r.accMed = shiftedAccMed;

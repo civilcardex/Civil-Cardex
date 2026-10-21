@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSanTables } from './useSanTables.ts';
 import { useLlTables } from './useLlTables.ts';
 import { useAfTables } from './useAfTables.ts';
@@ -597,7 +597,7 @@ export function useInfTablas(state: WorkAreaState) {
       : '✗ Revisar redes con errores';
   const estadoColor = !hasCheckedNet ? 'var(--txt3)' : allOk ? 'var(--ok)' : 'var(--err)';
 
-  // ── BOMBA / EP ── computeBombaTables/computeEpTables (equiposRows.ts) reconstruyen cada tabla
+  // ── BOMBA / EP ── computeBombaTables/computeEpTables (equipmentRows.ts) reconstruyen cada tabla
   // desde todas las páginas de la pantalla en fresco al momento de descargar — mismo patrón de
   // "sin dependencia de visitar pantallas, sin useMemo obsoleto" que buildAcometidaTables de
   // arriba, y una tabla por tarjeta en vez de un resumen único aplanado (coincide con lo que las

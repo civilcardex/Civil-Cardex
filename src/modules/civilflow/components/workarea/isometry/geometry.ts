@@ -59,7 +59,7 @@ function readDrawingAll(plans: PlanItem[], netIds: string[]) {
   const origenMap: Record<number, { x_px: number; y_px: number }> = {};
   // Los ghosts se recogen por separado y se convierten en entradas sintéticas de bajante
   // dibujables (pero con la línea de conector suprimida — ver el flag `_isCrossFloorGhost` y
-  // useIsometriaRender.ts) más abajo. La posición del ghost es el ancla visual realmente buscada
+  // useIsometryRender.ts) más abajo. La posición del ghost es el ancla visual realmente buscada
   // para la conexión entre pisos — posiblemente desfasada a propósito del destino real mediante
   // una desviación Ldesvio — por lo que el conector de la bajante origen real debe llegar
   // exactamente a ESTE punto, no a otra bajante/ramal encontrado resolviendo descargaEnId por su

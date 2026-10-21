@@ -434,7 +434,7 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
   lineales (find/findIndex/some/filter/indexOf/includes) DENTRO de bucles, parseando con el AST de
   TypeScript (no regex). Reglas del guard: (A) ningún archivo nuevo con ≥5 focos, (B) ninguno CRECE,
   (C) el total no sube, (D) si el código tiene menos que el baseline → hay que bajarlo (anti-congelación).
-  Baseline congelado: 596 focos en 48 archivos. Regenerar con `npm run baseline:complejidad`.
+  Baseline congelado: 596 focos en 48 archivos. Regenerar con `npm run baseline:complexity`.
   Excluye del conteo lo que NO escala: catálogos fijos (NETS, TEE_TYPES), los puntos de un trazo y las
   listas correlativas cortas (recibeDeIds).
 - **C3 (tablas/memoria)**: `sanConnectivity` 21→6 · `buildBajanteGraph` 16→5 · `waterRowsCore` 39→5 ·
@@ -471,9 +471,9 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
   (el renombrador perdía la extensión: `tarjetas.css` → `tarjetasCss`), `actualizarRutasGuard.mjs`
   (tablas del guard de arquitectura), `recalcularMarcadoresTest.mjs` (campo `test:` de MODULOS_NUEVOS).
 - **G8 (guard de complejidad)**: `src/architecture/complexity.ts` (detector AST con el parser de
-  TypeScript, NO regex) + `__tests__/complejidad.test.ts` (11) + guard con baseline congelado
-  (`FOCOS_CONOCIDOS` + `TOTAL_FOCOS_BASE` = 596 focos / 48 archivos) + `scripts/generarBaselineComplejidad.mjs`
-  (npm `baseline:complejidad`). Reglas: (A) sin archivo nuevo ≥5 focos, (B) ninguno CRECE,
+  TypeScript, NO regex) + `__tests__/complexity.test.ts` (11) + guard con baseline congelado
+  (`FOCOS_CONOCIDOS` + `TOTAL_FOCOS_BASE` = 596 focos / 48 archivos) + `scripts/generarBaselineComplexity.mjs`
+  (npm `baseline:complexity`). Reglas: (A) sin archivo nuevo ≥5 focos, (B) ninguno CRECE,
   (C) el total no sube, (D) si el código quedó por debajo del baseline hay que bajarlo.
   Excluye del conteo: catálogos fijos, props por trazo (pts), listas correlativas cortas, filtros
   que reasignan.

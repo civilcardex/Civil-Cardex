@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 /**
  * Cada fase de la propagación se prueba en su propio módulo (no solo a través del
  * orquestador): si un módulo deja de usarse o se rompe su contrato, salta aquí.
- * Complementa a `aparatosPresionCaracterizacion.test.ts` (que congela el resultado final).
+ * Complementa a `propagarAparatosPresion.test.ts` (que congela el resultado final).
  */
 
 const mockStorage: Record<string, string> = {};

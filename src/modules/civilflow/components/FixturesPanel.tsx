@@ -1,4 +1,4 @@
-﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { itemsDelPanel } from './fixtures/panelItems.ts';
 import { calcularMergeKeys } from './fixtures/mergeKeys.ts';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
@@ -482,7 +482,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   );
 
   // Cluster de espejos/herencia (rediseño): sanado de sifones + propagación + espejos
-  // cross-floor — ver aparatos/useAparatoEspejos.ts.
+  // cross-floor — ver fixtures/useFixtureMirrors.ts.
   useFixtureMirrors({
     engineRef,
     loadingPlanRef,
@@ -577,7 +577,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     return false;
   }, [targetId, netId, selElement, exitsDeBajante, engineRef]);
 
-  // Mutaciones de aparatos (movidas a aparatos/useAparatoMutaciones.ts — Oleada rediseño):
+  // Mutaciones de aparatos (movidas a fixtures/useFixtureMutations.ts — Oleada rediseño):
   // el ctx viaja como objeto; mutarInc/mutarDec son pinnables sin harness de React.
   const { inc, dec } = useFixtureMutations({
     netId,

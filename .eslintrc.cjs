@@ -32,7 +32,7 @@ module.exports = {
         'src/modules/civilflow/components/pdfViewer/drawingElementContextMenu/**/*.{ts,tsx}',
         'src/modules/civilflow/components/pdfViewer/tramoEditor/**/*.{ts,tsx}',
         'src/modules/civilflow/components/rci3d/*.{ts,tsx}',
-        'src/modules/civilflow/components/rci-red3d/*.{ts,tsx}',
+        'src/modules/civilflow/components/rciNetwork3d/*.{ts,tsx}',
         'src/modules/civilflow/components/aparatos3d/*.{ts,tsx}',
         'src/modules/civilflow/components/epc3d/*.{ts,tsx}',
         'src/modules/civilflow/components/pdfViewer/CopyFromPlanPanel.tsx',

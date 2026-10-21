@@ -107,7 +107,7 @@ export function BajanteDiameterSelector({
 
   // Sincronización en tiempo real del desplegable "Origen (piso superior)": `upperFloorGroup`
   // es estado de PdfViewer que solo vuelve a leer su piso objetivo cuando cambia la SELECCIÓN —
-  // una asociación creada o eliminada aquí (o desde el panel BajanteAsociacion, o desde el menú
+  // una asociación creada o eliminada aquí (o desde el panel BajanteAssociation, o desde el menú
   // "Destino" del otro piso) nunca toca esas dependencias, así que la lista de opciones quedaría
   // desactualizada. Se vuelve a leer el storage del piso superior cada vez que cambian el
   // elemento de este menú o sus punteros entre pisos (writeBajantePropToDrawing persiste en
@@ -149,7 +149,7 @@ export function BajanteDiameterSelector({
   };
 
   // Espejo del onChange de "Destino" (más abajo) pero para el selector "Origen" del piso
-  // inmediatamente superior — misma lógica que associateOrigin en BajanteAsociacion.tsx,
+  // inmediatamente superior - misma lógica que associateOrigin en BajanteAssociation.tsx,
   // duplicada aquí (no compartida) porque esta versión lee/escribe `element` (lo que se haya
   // clicado con botón derecho, no necesariamente selElement) y sincroniza contextMenuState
   // igual que el resto de handlers de este componente.

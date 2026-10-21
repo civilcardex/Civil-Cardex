@@ -139,7 +139,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     ruta: 'modules/civilflow/utils/propagation/counting.ts',
     maxLineas: 500,
     puro: true,
-    test: '../propagation/conteo.ts',
+    test: '../propagation/counting.ts',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/index.ts',
@@ -163,13 +163,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     ruta: 'modules/civilflow/utils/accessoriesTable/catalog.ts',
     maxLineas: 450,
     puro: true,
-    test: '../accessoriesTable/catalogo.ts',
+    test: '../accessoriesTable/catalog.ts',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/counting.ts',
     maxLineas: 450,
     puro: true,
-    test: '../accessoriesTable/conteo.ts',
+    test: '../accessoriesTable/counting.ts',
   },
   {
     ruta: 'modules/civilflow/utils/accessoriesTable/bushing.ts',
@@ -301,13 +301,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     ruta: 'modules/civilflow/utils/rainChannelCalc.ts',
     maxLineas: 140,
     puro: true,
-    test: 'canalesLluviasCalculo',
+    test: 'rainChannelCalc',
   },
   {
     ruta: 'modules/civilflow/utils/readPlanDrawing.ts',
     maxLineas: 60,
     puro: true,
-    test: 'leePlanoDibujo',
+    test: 'readPlanDrawing',
   },
   {
     ruta: 'modules/civilflow/utils/isLevelTaken.ts',
@@ -325,13 +325,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     ruta: 'modules/civilflow/components/fixtures/fixtureMirrors.ts',
     maxLineas: 410,
     puro: false,
-    test: 'useAparatoEspejos',
+    test: 'useFixtureMirrors',
   },
   {
     ruta: 'modules/civilflow/components/fixtures/fixtureMirrorsTypes.ts',
     maxLineas: 60,
     puro: false,
-    test: 'useAparatoEspejos',
+    test: 'useFixtureMirrors',
   },
   {
     ruta: 'architecture/complexity.ts',
