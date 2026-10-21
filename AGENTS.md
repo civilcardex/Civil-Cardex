@@ -563,3 +563,23 @@ Verificación de una migración de CSS aquí: NO basta con que compile. El A/B c
 Otra trampa del mismo tipo: una dependencia por URL (`https://cdn.sheetjs.com/...`) rompe el árbol de npm 10 igual. Por eso `xlsx` va como **alias** de npm: `"xlsx": "npm:xlsx-republish@0.20.3"` (el republish oficial de SheetJS en npm, autor "sheetjs", mismo código que el CDN).
 
 Estado: `npm audit` → **0 vulnerabilidades**.
+
+## Migraciones: NUNCA hardcodear la firma de una función (2026-10-21)
+
+Incidente: la migración `20261021000000` creó una sobrecarga `(bigint, text, text)` de `public.save_proyecto_general_campo` porque copié la firma del archivo `20261002000000`. Pero esa firma ya no existía: `20261006000000` la había convertido a `(uuid, text, text)` y borrado la bigint. Con DOS sobrecargas del mismo nombre, PostgREST responde *"Could not choose the best candidate function"* y **ningún guardado de campo del proyecto funcionaba** (rejillas, af_alimentacion, tanque_npt, presion_garantizada).
+
+**Regla:** antes de envolver una función existente, **detecta su firma viva en la BD** en vez de copiarla de un `.sql` anterior:
+
+```sql
+select p.proname, pg_get_function_identity_arguments(p.oid) as args
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname = '<nombre>';
+```
+
+Y en la migración, envuelve lo que exista (`execute format('alter function public.%I(%s) rename to ..._impl', ...)`) en vez de escribir la firma a mano.
+
+**Segunda regla:** toda migración que toque una función debe terminar con una comprobación que **falle ruidosamente** si el resultado no es el esperado (p.ej. "exactamente 1 sobrecarga con este nombre"). Así el fallo aparece al aplicar la migración, no semanas después en producción.
+
+**Tercera regla:** una migración correctiva debe ser **idempotente** (si el `_impl` ya existe, no tocar nada), para que sirva tanto a la base que aplicó la versión rota como a una instalación limpia.
+
+Ver también: `20261021000001_fix_sobrecarga_save_campo.sql` (correctiva) y la `20261021000000` corregida (detecta la firma).
