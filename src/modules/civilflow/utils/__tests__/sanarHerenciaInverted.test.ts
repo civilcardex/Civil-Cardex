@@ -177,4 +177,38 @@ describe('healHerenciaInvertida', () => {
       duc: 1,
     });
   });
+
+  // ── Regresión 2026-10-21 (CRÍTICO): el sanador borraba el libro PROPIO legítimo ──
+  it('preserva la clave propia del receptor: no resta su conteo ni borra su libro', () => {
+    // MONTANTE (bajante) que RECIBE de un ramal del mismo piso: sin origenId ni bombaEnId,
+    // pero con recibeDeIds. Su libro `san_MAF1_5` es la carga real que escribe 5bis.
+    // El sanador lo trata como "libro falso estructural": restaba el conteo del usuario
+    // (1 lavadero -> 0) y borraba el libro entero, y lo subía a la BD sin reversa.
+    setLS('civilflow_trazos_5', {
+      bajantes: [
+        {
+          id: 'MAF1',
+          net: 'san',
+          recibeDeIds: ['RAF1'],
+          ucAplicado: { san_MAF1_5: { lvm: 1 } },
+        },
+      ],
+    });
+    setLS('civilflow_aparatos_by_tramo_v2', {
+      san_MAF1_5: { lvm: 1 },
+    });
+    // El sanador actúa (el libro no es del todo falso), pero la clave propia sobrevive.
+    healHerenciaInvertida([{ id: 5, nivel: 5 }]);
+    const apos = parseLS('civilflow_aparatos_by_tramo_v2');
+    expect(apos.san_MAF1_5).toEqual({ lvm: 1 });
+    const t5 = parseLS('civilflow_trazos_5');
+    expect(t5.bajantes[0].ucAplicado).toEqual({ san_MAF1_5: { lvm: 1 } });
+  });
+
+  it('deja copia de seguridad del doc antes de reescribirlo', () => {
+    seedEnvenenado();
+    healHerenciaInvertida(plans);
+    const bak = parseLS('civilflow_trazos_1_bak');
+    expect(bak.bajantes[0].ucAplicado).toEqual({ san_RS2_1: { sif: 3, lvm: 2, ino: 1, duc: 1 } });
+  });
 });

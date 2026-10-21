@@ -1,6 +1,7 @@
 import {
   loadFromStorage,
   saveToStorage,
+  saveTrazosLocales,
   saveTrazosToDB,
 } from '../services/almacenamientoServicio.ts';
 import {
@@ -12,8 +13,10 @@ import {
 
 interface HealBajante {
   id?: string;
+  net?: string;
   origenId?: string | null;
   bombaEnId?: string | null;
+  recibeDeIds?: string[];
   ucAplicado?: Record<string, Record<string, number>>;
   ucAplicadoHidro?: Record<string, Record<string, number>>;
 }
@@ -52,6 +55,10 @@ export function healHerenciaInvertida(
       continue;
     }
     let docDirty = false;
+    // COPIA DE SEGURIDAD del doc tal como estaba ANTES de sanar (objeto aparte: sanar
+    // muta `doc`): el sanado es heurístico y antes no tenía reversa — el borrado quedaba
+    // en la BD y no se podía recuperar.
+    const docPrevio = JSON.parse(raw) as typeof doc;
     for (const b of doc.bajantes || []) {
       const libro = b.ucAplicado;
       if (!libro || Object.keys(libro).length === 0) continue;
@@ -63,12 +70,19 @@ export function healHerenciaInvertida(
       // estrictamente ABAJO; nivel desconocido (lista de planes parcial) o empate (regla del
       // apply) → legítimo, no se toca (orig. usuario: el sanador borraba libros legítimos).
       if (b.bombaEnId) continue;
+      // La entrada de la CLAVE PROPIA (`net_id_plan`) NO es una herencia falsa: es la carga
+      // que el propio bajante recibe de sus ramales (la escribe 5bis y la lee el panel).
+      // Se preserva intacta — antes se restaba del conteo del usuario y se borraba su
+      // libro entero (pérdida de datos que además se subía a la BD).
+      const propiaKey = b.id ? `${b.net ?? ''}_${b.id}_${pid}` : null;
       if (!o) {
-        // sin punteros: libro falso estructural → sanar
+        // Sin punteros: el libro se considera falso estructural (salvo la clave propia).
       } else if (nivO === undefined || nivO >= nivPid) {
         continue;
       }
       for (const [tk, m] of Object.entries(libro)) {
+        // La clave propia NO se resta: es la carga real del bajante, no una herencia falsa.
+        if (propiaKey && tk === propiaKey) continue;
         const cur = apos[tk];
         if (cur) {
           for (const [k, v] of Object.entries(m)) {
@@ -95,13 +109,35 @@ export function healHerenciaInvertida(
         }
       }
       if (b.id) bogusIds.set(b.id, nivPid);
-      delete b.ucAplicado;
-      delete b.ucAplicadoHidro;
+      // Se borra el libro falso pero SE CONSERVA la entrada de la clave propia (si existe).
+      if (b.ucAplicado) {
+        if (propiaKey && b.ucAplicado[propiaKey]) {
+          const soloPropia = { [propiaKey]: b.ucAplicado[propiaKey] };
+          b.ucAplicado = soloPropia;
+        } else {
+          delete b.ucAplicado;
+        }
+      }
+      if (b.ucAplicadoHidro) {
+        if (propiaKey && b.ucAplicadoHidro[propiaKey]) {
+          b.ucAplicadoHidro = { [propiaKey]: b.ucAplicadoHidro[propiaKey] };
+        } else {
+          delete b.ucAplicadoHidro;
+        }
+      }
       docDirty = true;
     }
     if (docDirty) {
+      // Copia de seguridad ANTES de reescribir (el sanado no tiene reversa).
+      try {
+        saveToStorage(`${TRAZOS_PREFIX}${pid}_bak`, docPrevio);
+      } catch {
+        /* best-effort: sin quota no hay copia */
+      }
       doc.ts = Date.now();
-      saveToStorage(TRAZOS_PREFIX + pid, doc);
+      // saveTrazosLocales (no saveToStorage): preserva la marca `assocLayout`, que el
+      // guardado crudo perdía -> la migración de layout se re-corria en cada carga.
+      saveTrazosLocales(pid, doc as unknown as Record<string, unknown>);
       saveTrazosToDB(pid, doc);
       changed = true;
     }
