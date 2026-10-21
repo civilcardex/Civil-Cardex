@@ -81,7 +81,7 @@ export function ProyectoCard({
         </p>
         <span
           aria-hidden
-          className="absolute bottom-3 right-3 material-symbols-outlined text-on-surface-variant text-lg opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute bottom-3 right-3 material-symbols-outlined text-on-surface-variant text-lg! opacity-0 group-hover:opacity-100 transition-opacity"
         >
           arrow_forward
         </span>
@@ -95,7 +95,7 @@ export function ProyectoCard({
         aria-label={`Eliminar proyecto ${codigo}`}
         title="Eliminar proyecto"
         disabled={inactivo}
-        className="absolute top-[14px] right-[14px] shrink-0 material-symbols-outlined text-[18px] opacity-60 group-hover:opacity-100 transition-opacity"
+        className="absolute top-[14px] right-[14px] shrink-0 material-symbols-outlined text-[18px]! opacity-60 group-hover:opacity-100 transition-opacity"
         style={{
           cursor: inactivo ? 'default' : 'pointer',
           color: 'var(--error, #ff4444)',

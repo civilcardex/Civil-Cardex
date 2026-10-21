@@ -409,7 +409,7 @@ function LandingPage() {
                 >
                   <div className="flex items-center gap-4">
                     <span
-                      className="material-symbols-outlined text-2xl flex-shrink-0"
+                      className="material-symbols-outlined text-2xl! flex-shrink-0"
                       style={{ color: '#e8c84a', fontVariationSettings: "'FILL' 0" }}
                     >
                       {p.icon}
@@ -490,7 +490,7 @@ function LandingPage() {
                   style={{ background: '#111317' }}
                 >
                   <span
-                    className="material-symbols-outlined text-3xl mb-4 block group-hover:text-primary transition-colors"
+                    className="material-symbols-outlined text-3xl! mb-4 block group-hover:text-primary transition-colors"
                     style={{ color: '#e8c84a' }}
                   >
                     {f.icon}

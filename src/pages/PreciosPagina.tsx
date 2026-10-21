@@ -811,7 +811,7 @@ function PricingPage() {
                   {plan.features.map((f, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <span
-                        className="material-symbols-outlined text-sm mt-0.5"
+                        className="material-symbols-outlined text-sm! mt-0.5"
                         style={{ color: '#2ff801', fontSize: 16 }}
                       >
                         check_circle
@@ -822,7 +822,7 @@ function PricingPage() {
                   {plan.missing.map((f, i) => (
                     <div key={'m' + i} className="flex items-start gap-2 opacity-40">
                       <span
-                        className="material-symbols-outlined text-sm mt-0.5"
+                        className="material-symbols-outlined text-sm! mt-0.5"
                         style={{ color: '#849495', fontSize: 16 }}
                       >
                         remove

@@ -719,7 +719,7 @@ function ProfilePage() {
                           </span>
                         )}
                       </span>
-                      <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">
+                      <span className="material-symbols-outlined text-xs! text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">
                         edit
                       </span>
                     </button>
@@ -740,7 +740,7 @@ function ProfilePage() {
               className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary text-xl">folder_open</span>
+                <span className="material-symbols-outlined text-primary text-xl!">folder_open</span>
                 <div>
                   <h2
                     id="proyectos-heading"
@@ -775,7 +775,7 @@ function ProfilePage() {
                       else setShowModSel(true);
                     }}
                   >
-                    <span className="material-symbols-outlined text-lg">add_circle</span>
+                    <span className="material-symbols-outlined text-lg!">add_circle</span>
                     Nuevo proyecto
                   </button>
                   {user &&
@@ -786,7 +786,7 @@ function ProfilePage() {
                         to="/empresa"
                         className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
                       >
-                        <span className="material-symbols-outlined text-lg">group</span>
+                        <span className="material-symbols-outlined text-lg!">group</span>
                         Gestionar equipo
                       </Link>
                     )}

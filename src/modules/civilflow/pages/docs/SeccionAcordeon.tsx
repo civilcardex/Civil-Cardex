@@ -65,7 +65,7 @@ export default function SectionAccordion({
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-container-high"
       >
         <span
-          className={`material-symbols-outlined text-lg transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+          className={`material-symbols-outlined text-lg! transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
         >
           chevron_right
         </span>
@@ -80,7 +80,7 @@ export default function SectionAccordion({
             {section.categoryName}
           </span>
         )}
-        <span className="ml-auto material-symbols-outlined text-on-surface-variant text-sm">
+        <span className="ml-auto material-symbols-outlined text-on-surface-variant text-sm!">
           {isOpen ? 'expand_less' : 'expand_more'}
         </span>
       </button>

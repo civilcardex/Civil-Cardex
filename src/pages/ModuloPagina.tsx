@@ -241,7 +241,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     <span
                       className={
                         cfg.customLayout === 'manage'
-                          ? 'material-symbols-outlined text-3xl'
+                          ? 'material-symbols-outlined text-3xl!'
                           : 'material-symbols-outlined'
                       }
                       style={{ fontVariationSettings: "'FILL' 1" }}
@@ -323,7 +323,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 {f.autoSize && (
                   <div className="mt-auto flex items-center gap-2">
                     <span
-                      className="material-symbols-outlined text-sm"
+                      className="material-symbols-outlined text-sm!"
                       style={{ color: '#79ff5b' }}
                     >
                       check_box
@@ -389,7 +389,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     className="flex items-end gap-2 font-bold text-[13px]"
                     style={{ fontFamily: 'Geist, monospace', color: cfg.accent }}
                   >
-                    <span className="material-symbols-outlined text-sm animate-pulse">sensors</span>{' '}
+                    <span className="material-symbols-outlined text-sm! animate-pulse">
+                      sensors
+                    </span>{' '}
                     Live Data Feed Active
                   </div>
                 )}
@@ -414,7 +416,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     }}
                   >
                     Explorar Herramientas{' '}
-                    <span className="material-symbols-outlined text-sm">arrow_outward</span>
+                    <span className="material-symbols-outlined text-sm!">arrow_outward</span>
                   </div>
                 )}
               </div>
@@ -476,7 +478,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               style={{ background: '#0c0e12' }}
             >
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-on-surface-variant text-base">
+                <span className="material-symbols-outlined text-on-surface-variant text-base!">
                   table_rows
                 </span>
                 <h3

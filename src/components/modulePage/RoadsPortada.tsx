@@ -48,7 +48,7 @@ export default function RoadsHero({ cfg }: { cfg: ModuleConfig }) {
               style={{ fontFamily: 'Geist, monospace' }}
             >
               {cfg.ctaText}{' '}
-              <span className="material-symbols-outlined text-base">arrow_forward</span>
+              <span className="material-symbols-outlined text-base!">arrow_forward</span>
             </Link>
             <Link
               to="/docs"

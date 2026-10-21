@@ -230,7 +230,7 @@ function DocsPage() {
                   >
                     <span
                       aria-hidden="true"
-                      className="material-symbols-outlined text-base transition-transform duration-200 text-on-surface-variant"
+                      className="material-symbols-outlined text-base! transition-transform duration-200 text-on-surface-variant"
                       style={{ transform: on ? 'rotate(90deg)' : 'none' }}
                     >
                       chevron_right
@@ -266,7 +266,7 @@ function DocsPage() {
                               }}
                             >
                               <span
-                                className="material-symbols-outlined text-[19px] rounded-md"
+                                className="material-symbols-outlined text-[19px]! rounded-md"
                                 style={{
                                   color: sel ? cat.color : undefined,
                                   background: sel ? `${cat.color}1c` : 'transparent',
@@ -324,7 +324,7 @@ function DocsPage() {
               </div>
               <div className="w-full md:w-72">
                 <div className="flex items-center border border-outline-variant bg-surface-container px-3 rounded-md">
-                  <span className="material-symbols-outlined text-on-surface-variant text-lg">
+                  <span className="material-symbols-outlined text-on-surface-variant text-lg!">
                     search
                   </span>
                   <input
@@ -342,7 +342,7 @@ function DocsPage() {
                       aria-label="Limpiar búsqueda"
                       className="text-on-surface-variant hover:text-on-surface"
                     >
-                      <span aria-hidden="true" className="material-symbols-outlined text-base">
+                      <span aria-hidden="true" className="material-symbols-outlined text-base!">
                         close
                       </span>
                     </button>

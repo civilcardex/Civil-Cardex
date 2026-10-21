@@ -49,14 +49,14 @@ export default function BimHero({ cfg }: { cfg: ModuleConfig }) {
               className="inline-flex border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:border-[#d946ef] transition-colors"
               style={{ fontFamily: 'Geist, monospace', background: '#333539' }}
             >
-              <span className="material-symbols-outlined text-lg">terminal</span> {cfg.ctaText}
+              <span className="material-symbols-outlined text-lg!">terminal</span> {cfg.ctaText}
             </Link>
             <Link
               to="/docs"
               className="border border-outline-variant text-on-surface-variant px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:text-on-surface transition-colors"
               style={{ fontFamily: 'Geist, monospace' }}
             >
-              <span className="material-symbols-outlined text-lg">description</span> Documentación
+              <span className="material-symbols-outlined text-lg!">description</span> Documentación
               API
             </Link>
           </div>

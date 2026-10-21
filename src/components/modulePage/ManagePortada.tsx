@@ -125,7 +125,7 @@ export default function ManageHero({ cfg, onCtaClick }: Props) {
               }}
             >
               <span
-                className="mh-card-icon material-symbols-outlined text-4xl transition-transform duration-300"
+                className="mh-card-icon material-symbols-outlined text-4xl! transition-transform duration-300"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
                 {f.icon}

@@ -1,6 +1,71 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind 4 (CSS-first): el tema vive aquí, no en tailwind.config.js (que ya no existe).
+ *
+ * Migración 2026-10-21 desde Tailwind 3:
+ *   - `@tailwind base/components/utilities` -> `@import "tailwindcss"`.
+ *   - `theme.extend.colors` -> `@theme { --color-*: ... }`.
+ *   - `theme.extend.fontFamily` -> `@theme { --font-sans / --font-mono }`.
+ *   - `theme.extend.spacing` -> `@theme { --spacing-gutters }`.
+ *   - `darkMode: "class"` -> `@custom-variant dark` (v4 lo desactiva por defecto).
+ *
+ * El color de cada utility sigue siendo `var(--bg)`, `var(--acc)`, etc.: las variables de
+ * marca se redefinen por scope (`.landing-root` cambia --acc/--acc2/--acc3) y el tema solo
+ * las referencia, así que ese comportamiento se conserva.
+ */
+@import 'tailwindcss';
+
+/* Fuentes a escanear. La autodetección de v4 ya cubre el proyecto, pero se declara
+   explícito para que no dependa del directorio de trabajo del build. */
+@source "../../index.html";
+@source "../**/*.{ts,tsx}";
+
+/* Modo oscuro por clase (v4 usa prefers-color-scheme por defecto). El app es dark-only
+   por variables CSS, pero se conserva el contrato del config v3. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* @theme INLINE (no el normal): es lo que preserva los overrides por scope.
+ *
+ * Con `@theme` normal, `--color-primary: var(--acc)` se RESUELVE en :root (queda congelado
+ * al azul) y las utilities usan `var(--color-primary)`: el scope que redefiniera `--acc`
+ * (el navbar con `.navbar-gold`, la landing con `.landing-root`) ya no cambiaría el color.
+ * En Tailwind 3 la utility era `color: var(--acc)` (se resolvía POR ELEMENTO) y el scope sí
+ * mandaba. `@theme inline` deja la utility tal como está escrita -> mismo comportamiento
+ * que v3. */
+@theme inline {
+  /* Colores de marca: referencias a las variables de :root (abajo). */
+  --color-surface-bg: var(--bg);
+  --color-surface-container: var(--bg3);
+  --color-surface-container-low: var(--bg2);
+  --color-surface-container-high: var(--bg4);
+  --color-surface-container-highest: var(--bg5);
+  --color-primary: var(--acc);
+  --color-primary-container: var(--acc2);
+  --color-primary-fixed: var(--acc2);
+  --color-primary-fixed-dim: var(--acc3);
+  --color-secondary: var(--ok);
+  --color-tertiary: #fff9f7;
+  --color-error: var(--err);
+  --color-outline: var(--txt3);
+  --color-outline-variant: var(--line);
+  --color-on-surface: var(--txt);
+  --color-on-surface-variant: var(--txt2);
+  --color-on-primary: #003739;
+  --color-on-primary-container: #006c71;
+  --color-on-secondary-container: #0f0d00;
+  --color-on-tertiary-container: #b92a00;
+  --color-on-background: var(--txt);
+  --color-on-error: #690005;
+}
+
+/* Valores que NO dependen de otra variable: aquí el `@theme` normal sirve (se emiten en
+   :root y las utilities los referencian). */
+@theme {
+  /* Tipografías. */
+  --font-sans: 'Hanken Grotesk', sans-serif;
+  --font-mono: 'Geist', monospace;
+
+  /* Espaciado extra. */
+  --spacing-gutters: 12px;
+}
 
 :root {
   --bg: #111317;

@@ -76,7 +76,7 @@ function Navbar() {
             aria-label="Menú"
             aria-expanded={menuOpen}
           >
-            <span aria-hidden="true" className="material-symbols-outlined text-xl">
+            <span aria-hidden="true" className="material-symbols-outlined text-xl!">
               {menuOpen ? 'close' : 'menu'}
             </span>
           </button>

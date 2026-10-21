@@ -529,7 +529,7 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
               color: '#0b1014',
             }}
           >
-            <span className="material-symbols-outlined text-sm">rocket_launch</span>
+            <span className="material-symbols-outlined text-sm!">rocket_launch</span>
             {cfg.ctaText}
           </button>
           <Link
@@ -537,7 +537,7 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
             className="inline-flex items-center gap-2 border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-colors"
             style={{ fontFamily: 'Geist, monospace', background: 'rgba(17,19,23,0.5)' }}
           >
-            <span className="material-symbols-outlined text-sm">menu_book</span>
+            <span className="material-symbols-outlined text-sm!">menu_book</span>
             Documentación
           </Link>
         </div>
