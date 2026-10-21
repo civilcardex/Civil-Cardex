@@ -442,3 +442,52 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
 - **Pendiente**: focos que siguen en el baseline (los ≥5 restantes por archivo, sobre todo render y
   borrado del motor), WorkAreaCivilManagerPage (cerrado), y las acciones de usuario de SEO
   (Search Console + Bing Webmaster Tools).
+
+## Session Summary — 2026-10-20 (rondas 61-66: recuperación + renombre a español)
+- **INCIDENTE cerrado**: un `git checkout -- src/` (para deshacer un renombrado parcial) revirtió TODOS los
+  cambios de las rondas 61-65 en archivos versionados. **Recuperados** desde la copia de rescate
+  `C:\Users\ASUS\AppData\Local\Temp\opencode\prueba-rename` (tenía el estado completo con nombres ya
+  traducidos). Verificado: 0 archivos de HEAD perdieron su API pública (comparación de símbolos
+  exportados). LECCIÓN: commitear ANTES de los experimentos de renombrado.
+- **Renombrado a español APLICADO y commiteado** (35861b6): 641 archivos renombrados (git los detecta
+  como R) + 171 modificados + 10 nuevos. **Solo ARCHIVOS; las CARPETAS quedaron en inglés** (el usuario
+  pidió archivos). Excepciones: glosario de siglas de AGENTS.md + convenciones de framework.
+  Herramientas (temporales, borradas al final): `arreglarImports.mjs` (resuelve imports por índice de
+  nombres, con casing real — en Windows `existsSync` es case-insensitive y miente), `repararCss.mjs`
+  (el renombrador perdía la extensión: `tarjetas.css` → `tarjetasCss`), `actualizarRutasGuard.mjs`
+  (tablas del guard de arquitectura), `recalcularMarcadoresTest.mjs` (campo `test:` de MODULOS_NUEVOS).
+- **G8 (guard de complejidad)**: `src/architecture/complejidad.ts` (detector AST con el parser de
+  TypeScript, NO regex) + `__tests__/complejidad.test.ts` (11) + guard con baseline congelado
+  (`FOCOS_CONOCIDOS` + `TOTAL_FOCOS_BASE` = 596 focos / 48 archivos) + `scripts/generarBaselineComplejidad.mjs`
+  (npm `baseline:complejidad`). Reglas: (A) sin archivo nuevo ≥5 focos, (B) ninguno CRECE,
+  (C) el total no sube, (D) si el código quedó por debajo del baseline hay que bajarlo.
+  Excluye del conteo: catálogos fijos, props por trazo (pts), listas correlativas cortas, filtros
+  que reasignan.
+- **C2 (motor)**: `lib/PlanoEngine/indicesMotor.ts` — índices por OPERACIÓN (nunca cacheados: el motor
+  reasigna sus arrays en ~20 sitios y un índice cacheado se pudre). mouseDownHits 18→3,
+  handleDragMove 10→2, ventDiameters 10→2, renderBajantes 15→10, deleteSelected (el .some por
+  tributario era O(n²) por pasada del while), propagation/edges 19→13.
+- **C3 (tablas/memoria)**: `utils/indices.ts` (indicePorId/indicePorClave/conjuntoDe). sanConnectivity
+  21→6, waterRowsCore 39→5, useWaterNetworkGraph 45→6, rainwaterRows 26→13, bajanteVentRows 27→9,
+  buildBajanteGraph 16→5, buildTramos 19→10, assocLayoutMigration (I/O por elemento → cache por plano),
+  copyDrawingFromPlan, directionSelector, editorSections, fixtureMirrors.
+- **Extracciones (bloques 1-6)**: `components/fixtures/{panelElementos,fusionClaves}` (FixturesPanel
+  1054→905), `components/pdfViewer/{usePlanoCargaInterruptor,useViewerResponsivo,ViewerMovilCromo}`
+  (PdfViewer 1744→1493), `components/gas/{GasGeneralDatos,GasRedTabla,GasContadores}` + `utils/gasCalculoFilas.ts`
+  (GasDesign 1159→377; la cuenta duplicada checkRows/computeGasRows ahora es UNA con entradas por
+  parámetro), `utils/bajanteFilaModelo.ts` (DownpipesTable 1144→1001; la fila ya no se calcula en el JSX),
+  `workarea/planosTab/*` (PlanosTab 1208→710), `workarea/PlanoConfigurador.tsx` (1081→605).
+  OJO: el campo del override de red en el catálogo es `ucaf` (NO `uc_af`).
+- **SEO cerrado**: `seo/rutaMeta.ts` con `metaDeRuta(path)` como fuente única + `ModuleConfig.ruta`
+  (`pages/moduloDatos.ts`) + los 6 heroes de módulo con `<h1>` (antes `<h2>`): **13/13 rutas
+  prerenderizadas con H1**. Test `seo/__tests__/rutaMeta.test.ts` (7). El prerender se renombró a
+  `seo/prerenderEntrada.tsx` (package.json `build` y `scripts/prerender.mjs` actualizados).
+- **Fix del recorte del visor**: la lámina de fondo se re-rasterizaba al cambiar la escala pero el
+  LIENZO de dibujo no se re-medía → el trazo se cortaba antes que la lámina. `PlanoEngine.watchContainerSize()`
+  (ResizeObserver sobre el contenedor) + `PdfViewerMotorInicial.ts` lo arranca.
+- **JSDoc**: cabecera de módulo en los 13 módulos nuevos (QUÉ + POR QUÉ + ejemplo, siglas expandidas).
+  El estándar de AGENTS.md manda: 1-3 líneas, sin jerga, un ejemplo concreto.
+- **Gates**: tsc 0 · lint 0 · vitest 1338/1338 (224 archivos, 1 skip) · build + prerender 13/13 ·
+  graphify (7970 nodos, 18240 aristas) · commit 35861b6, working tree limpio.
+- **Pendiente del usuario**: push del commit 35861b6 (641 renombres — revisar en el PR que no se
+  rompió nada), + las acciones de SEO (Search Console + Bing Webmaster Tools).
