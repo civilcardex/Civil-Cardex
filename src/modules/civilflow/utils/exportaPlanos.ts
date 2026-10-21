@@ -57,7 +57,7 @@ async function renderPlanoComposite(
     eng.setPageSize(w, h);
     eng.resizeCanvas(w, h);
 
-    // nivelActual default a null en un engine fresco — renderBajantes.ts (bajantes, montantes,
+    // nivelActual default a null en un engine fresco — dibujaBajantes.ts (bajantes, montantes,
     // contadores, calentadores) compara el piso propio de cada elemento contra él para decidir si
     // es un "fantasma" de otro piso, así que dejarlo sin fijar hacía que cada uno de esos
     // elementos se renderizara como un fantasma/placeholder adyacente a fantasma en vez de su

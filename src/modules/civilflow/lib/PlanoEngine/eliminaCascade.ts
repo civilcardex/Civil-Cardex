@@ -26,7 +26,7 @@ import type { HidroDataEntry } from '../../utils/dibujoSyncTipos.ts';
 import { emitAparatosClear } from '../../utils/aparatoEventos.ts';
 export type { HidroDataEntry };
 
-// La barra lateral de Aparatos (FixturesPanel.tsx/AccesoriosSection) lleva su propio conteo de
+// La barra lateral de Aparatos (AparatosPanel.tsx/AccesoriosSection) lleva su propio conteo de
 // cada glifo de tee como "accesorio" asignado al ramal huésped (HYDRO_DATA_STORAGE_KEY, llave
 // `${net}_${ramalId}_${planId}`) — limpiar el campo del glifo en el objeto del ramal no toca ese
 // conteo, así que la barra seguía mostrando la tee como asignada después de que el símbolo

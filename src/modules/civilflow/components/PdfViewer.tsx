@@ -112,7 +112,7 @@ const PdfViewer_S5: React.CSSProperties = {
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
 // Barra izquierda colapsada conserva una franja estrecha de iconos (herramientas + snap +
 // acciones) en vez de desaparecer a 0 — coherente con el render colapsado de la propia
-// toolbar en PdfViewerToolbar.tsx.
+// toolbar en PdfViewerBarra.tsx.
 const LEFT_COLLAPSED_WIDTH = 44;
 
 // Sonda estructural de la unión PlanoElement: permite leer `tipo`/`net`/`diametro`/`pendiente`

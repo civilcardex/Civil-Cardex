@@ -51,7 +51,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    // realMmToCanvasPx tiene un piso de 1mm de papel (ver PlanoEngine.ts) — en escalas
+    // realMmToCanvasPx tiene un piso de 1mm de papel (ver PlanoMotor.ts) — en escalas
     // arquitectónicas comunes un radio real de 20mm o 10mm caen en ese piso y renderizan
     // idéntico, así que dividir a la mitad el argumento en mm solo es invisible. Se divide el
     // valor px resultante en su lugar.

@@ -94,11 +94,11 @@ export function useWaterNetworkGraph({
     // al construir la adyacencia.
     const calculoMap = new Map<string, Set<string>>();
     // Un montante/bajante no conserva identidad entre pisos — copiar un trazo entre planos le
-    // asigna un id/código nuevo (ver copyDrawingFromPlan.ts). La única señal confiable de que dos
+    // asigna un id/código nuevo (ver copiaDibujoFromPlano.ts). La única señal confiable de que dos
     // elementos por piso son el mismo tubo ascendente físico es estar (aproximadamente) en el
     // mismo x/y en pisos distintos — se recolectan aquí y se enlazan una vez escaneados todos los planos.
     const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
-    // Un ramal auto-creado en empalme T/Y (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
+    // Un ramal auto-creado en empalme T/Y (autoSplitJunctionAndSumFlow, PlanoMotorDibujo.ts)
     // lleva mergesFrom = [idA, idB] — pero eso solo registra el PAR que disparó el corte en medio
     // del cuerpo. Un tercer (o cuarto) ramal que termina en la misma coordenada se conecta por
     // empalme extremo-a-extremo simple y nunca entra a mergesFrom — y aun así su arista de
@@ -163,7 +163,7 @@ export function useWaterNetworkGraph({
         // SALE de jc, así que con tres ramales la división es siempre 2-vs-1, y el único disidente
         // (el que discrepa de los otros dos) es el entrante. Se recalcula fresco desde el
         // `_tribReversed` actual en cada render, para que un "Invertir dirección de flujo" en
-        // cualquiera de los tres cambie de inmediato cuál acumula. Espejo de waterNetworkRows.ts.
+        // cualquiera de los tres cambie de inmediato cuál acumula. Espejo de waterRedFilas.ts.
         const [aId, bId] = r.mergesFrom;
         const existingObj = ramalPorId.get(aId);
         const incomingObj = ramalPorId.get(bId);
@@ -477,7 +477,7 @@ export function useWaterNetworkGraph({
 
     // Enraizado en la fuente real de suministro, no en todo el componente conectado no dirigido
     // — una rama que alimenta un aparato solo debe mostrar SU total acumulado, no la demanda de
-    // todo el edificio solo por ser hidráulicamente parte de la misma red (ver connectionGraph.ts).
+    // todo el edificio solo por ser hidráulicamente parte de la misma red (ver conexionGrafo.ts).
     // CARGA PROPAGADA (orig. usuario): ver waterRowsCore — las claves ya traen la carga
     // (propia + heredada); el total del tramo es directo, sin acumulación de subárbol ni
     // overrides de merge (duplicarían lo que la propagación ya escribió).

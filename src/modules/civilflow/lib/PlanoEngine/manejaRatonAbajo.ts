@@ -32,7 +32,7 @@ export function handleSelectDown(
   engine._isGhostSel = false;
   engine._lblDragIsParent = false;
   // Traza de diagnóstico del flujo de selección para DEV — documenta qué ramal/bajante ganó en
-  // cada etapa y por qué. Se imprime desde _onDownHandler (PlanoEngine.ts) solo en dev.
+  // cada etapa y por qué. Se imprime desde _onDownHandler (PlanoMotor.ts) solo en dev.
   if (import.meta.env?.DEV) {
     engine._debugSel = { x, y, notes: [] as string[], final: null as string | null };
   }
@@ -153,17 +153,15 @@ export function handleSelectDown(
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if (
-      !(
-        isBajante(sel) &&
-        (sel.tipo === 'bajante' ||
-          sel.tipo === 'montante' ||
-          sel.tipo === 'red_publica' ||
-          sel.tipo === 'contador' ||
-          sel.tipo === 'calentador' ||
-          sel.id?.startsWith('B'))
-      )
-    ) {
+    if (!(
+      isBajante(sel) &&
+      (sel.tipo === 'bajante' ||
+        sel.tipo === 'montante' ||
+        sel.tipo === 'red_publica' ||
+        sel.tipo === 'contador' ||
+        sel.tipo === 'calentador' ||
+        sel.id?.startsWith('B'))
+    )) {
       const lPos = engine.toCvs(sel.labelX!, sel.labelY!);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
@@ -176,7 +174,7 @@ export function handleSelectDown(
     const b = sel._box;
     // Cualquiera de las 4 esquinas se puede arrastrar para redimensionar. El ancla es la esquina
     // OPUESTA en el marco local (sin rotar) de la caja — calculada con las mismas fórmulas que
-    // renderTextAnnotations.ts usa para dibujarla — para que la posición de canvas de esa
+    // dibujaTextoAnotaciones.ts usa para dibujarla — para que la posición de canvas de esa
     // esquina quede exactamente fija mientras se redimensiona, sin importar qué esquina se agarró
     // ni si el texto está rotado.
     const corners: { x: number; y: number; corner: TextCorner }[] = [

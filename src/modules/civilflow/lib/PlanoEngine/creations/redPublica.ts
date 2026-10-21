@@ -4,8 +4,8 @@ import type { IPlanoEngineCore } from '../PlanoEstado.ts';
 import { _statusMsg } from '../ramalMedir.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
-// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
-// de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
+// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerBarra.tsx) y los atajos
+// de teclado (PlanoMotor.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
 /** Dibuja el símbolo de la llegada de la red pública (la acometida, de donde entra el agua al

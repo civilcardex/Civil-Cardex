@@ -22,7 +22,7 @@ vi.stubGlobal('localStorage', {
 });
 vi.stubGlobal('window', { dispatchEvent: () => {} });
 
-import { currentMapDe, type TargetArgs } from '../../components/fixtures/useAparatoObjetivo.ts';
+import { currentMapDe, type TargetArgs } from '../../components/aparatos/useAparatoObjetivo.ts';
 
 const PLAN = 5;
 

@@ -3,7 +3,7 @@ import { calculaFilaBajante, type ContextoBajanteRow } from '../bajanteFilaModel
 import type { Tramo } from '../../context/tramosReducer';
 
 /**
- * Caracterización del modelo de fila de la tabla de bajantes (utils/bajanteRowModel.ts).
+ * Caracterización del modelo de fila de la tabla de bajantes (utils/bajanteFilaModelo.ts).
  *
  * Antes la cuenta vivía dentro del JSX del componente, con búsquedas lineales por fila.
  * Estos tests fijan la cuenta: qué se muestra y qué se avisa.

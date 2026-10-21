@@ -1,4 +1,4 @@
-import { writeBajantePropToDrawing } from './escribeDiametroToDibujo.ts';
+﻿import { writeBajantePropToDrawing } from './escribeDiametroToDibujo.ts';
 import { splitPtr } from './claves.ts';
 import { bajanteLocalDe, bajanteLocalQueCumple } from './bajanteLocal.ts';
 import { aplicarEnDocDePlan } from './escribePlanoDocumento.ts';
@@ -34,8 +34,8 @@ import type {
 } from './bajanteAsocCompartido.ts';
 import { emitAparatosClear, emitSanSync, EV_STORAGE } from './aparatoEventos.ts';
 
-/** Anula un puntero de asociaci�n (origenId / descargaEnId) del doc del piso: si el piso est�
- *  abierto se toca su estado VIVO (nunca se pisa lo dibujado hace un momento); si est� cerrado,
+/** Anula un puntero de asociación (origenId / descargaEnId) del doc del piso: si el piso está
+ *  abierto se toca su estado VIVO (nunca se pisa lo dibujado hace un momento); si está cerrado,
  *  se lee del storage y se escribe. */
 function limpiarPunteroEnStorage(
   eng: IPlanoEngineCore | null,
@@ -46,13 +46,12 @@ function limpiarPunteroEnStorage(
   try {
     aplicarEnDocDePlan(eng, planId, (doc) => {
       const b = (doc.bajantes || []).find((x) => (x as { id?: string }).id === bajanteId) as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       if (!b || b[prop] == null) return;
       b[prop] = null;
     });
   } catch {
-    /* best-effort: la desasociaci�n sigue valiendo en el motor */
+    /* best-effort: la desasociación sigue valiendo en el motor */
   }
 }
 
@@ -69,8 +68,8 @@ export function clearBajanteAssociation(
   const loadedPlanId = String(eng._loadedPlanId ?? '');
   const reverseValue = `${sourcePlanId}|${sourceBajanteId}`;
 
-  // LD/ghost/anillo de ESTE enlace y nada m�s: el LD es LD_<upperId> en el piso inferior
-  // (nuevo) o en el superior (legado sin migrar � mismo id, otro piso).
+  // LD/ghost/anillo de ESTE enlace y nada más: el LD es LD_<upperId> en el piso inferior
+  // (nuevo) o en el superior (legado sin migrar — mismo id, otro piso).
   const roles = resolveLinkRoles(
     sourcePlanId,
     sourceBajanteId,
@@ -84,7 +83,7 @@ export function clearBajanteAssociation(
     removeCrossFloorLdesvioRamal(roles.upperPlanId, roles.upperId);
     removeCrossFloorGhost(roles.upperPlanId, roles.lowerPlanId, roles.lowerId);
     // El LD era un RAMAL ASOCIADO del elemento destino (registro real): al morir el enlace,
-    // sale tambi�n de sus listas � si se queda, los espejos le escriben la carga del bajante
+    // sale también de sus listas — si se queda, los espejos le escriben la carga del bajante
     // y aparece una clave fantasma de UDs (orig. usuario).
     desasociarLdesvioDeBajante({
       planId: roles.lowerPlanId,
@@ -94,8 +93,7 @@ export function clearBajanteAssociation(
     });
     if (loadedPlanId === roles.lowerPlanId) {
       const vivo = bajanteLocalDe(eng, roles.lowerId) as
-        | (Record<string, unknown> & { id: string })
-        | undefined;
+        (Record<string, unknown> & { id: string }) | undefined;
       if (vivo) {
         const recibe = ((vivo.recibeDeIds as string[] | undefined) || []).filter(
           (id) => id !== exactLd,
@@ -106,7 +104,7 @@ export function clearBajanteAssociation(
         eng.updateElementById(vivo.id, { recibeDeIds: recibe, asocManual: manual });
       }
     }
-    // El ANILLO del fantasma (desplazamientos/ghostData del bajante destino � el montante
+    // El ANILLO del fantasma (desplazamientos/ghostData del bajante destino — el montante
     // fantasma dibujado en el piso inferior) muere con el enlace: sin esto quedaba el
     // fantasma flotando aunque el Ldesvio y el marcador XFG ya no existieran
     // (orig. usuario: al desasociar "solo se borra el Ldesvio").
@@ -128,15 +126,14 @@ export function clearBajanteAssociation(
         const bAnillo = (doc.bajantes || []).find(
           (x) => (x as { id?: string }).id === roles.lowerId,
         ) as Record<string, unknown> | undefined;
-        // El helper persiste (estado vivo si el piso est� abierto, storage si est� cerrado).
+        // El helper persiste (estado vivo si el piso está abierto, storage si está cerrado).
         if (bAnillo) sinAnillo(bAnillo);
       });
     } catch {
       /* best-effort */
     }
     const vivoAnillo = bajanteLocalDe(eng, roles.lowerId) as
-      | (Record<string, unknown> & { id: string })
-      | undefined;
+      (Record<string, unknown> & { id: string }) | undefined;
     if (vivoAnillo && sinAnillo(vivoAnillo)) {
       eng.updateElementById(vivoAnillo.id, {
         desplazamientos: vivoAnillo.desplazamientos,
@@ -144,7 +141,7 @@ export function clearBajanteAssociation(
       });
     }
   } else {
-    // �ltimo recurso (sin ghost ni npts): barrido amplio legacy.
+    // Último recurso (sin ghost ni npts): barrido amplio legacy.
     removeCrossFloorGhost(targetPlanId, sourcePlanId, sourceBajanteId);
     removeCrossFloorGhost(sourcePlanId, targetPlanId, targetBajanteId);
     removeCrossFloorLdesvioRamal(sourcePlanId, sourceBajanteId);
@@ -152,8 +149,8 @@ export function clearBajanteAssociation(
     removeCrossFloorLdesvioRamal(targetPlanId, sourceBajanteId);
     removeCrossFloorLdesvioRamal(sourcePlanId, targetBajanteId);
   }
-  // Punteros: solo se anulan si a�n apuntan a ESTE enlace (un puntero a otro enlace es de
-  // otro par y no se toca � p. ej. el origenId de una cadena de 3 pisos).
+  // Punteros: solo se anulan si aún apuntan a ESTE enlace (un puntero a otro enlace es de
+  // otro par y no se toca — p. ej. el origenId de una cadena de 3 pisos).
   const curSrcPtr = readBajanteLink(eng, sourcePlanId, sourceBajanteId);
   const curTgtPtr = readBajanteLink(eng, targetPlanId, targetBajanteId);
   if (curTgtPtr.origenId === reverseValue) {
@@ -174,17 +171,17 @@ export function clearBajanteAssociation(
       plans,
     );
   }
-  // Los punteros tambi�n directo al storage de cada piso: `writeBajantePropToDrawing` solo
-  // recorre los planes CONFIRMADOS que le pasan, y desde el motor no hay lista de planes �
-  // sin esta pasada el origenId del piso vecino sobreviv�a y el desplegable de origen segu�a
+  // Los punteros también directo al storage de cada piso: `writeBajantePropToDrawing` solo
+  // recorre los planes CONFIRMADOS que le pasan, y desde el motor no hay lista de planes —
+  // sin esta pasada el origenId del piso vecino sobrevivía y el desplegable de origen seguía
   // apuntando a un enlace ya deshecho (orig. usuario: al borrar el fantasma, "sin origen").
   limpiarPunteroEnStorage(eng, targetPlanId, targetBajanteId, 'origenId');
   limpiarPunteroEnStorage(eng, sourcePlanId, sourceBajanteId, 'descargaEnId');
 
-  // Fantasma en el motor vivo: el piso abierto lo renderiza (punteada + cuarto de c�rculo)
-  // aunque el storage ya se limpi� � antes solo se filtraba si el cargado era el TARGET, y
+  // Fantasma en el motor vivo: el piso abierto lo renderiza (punteada + cuarto de círculo)
+  // aunque el storage ya se limpió — antes solo se filtraba si el cargado era el TARGET, y
   // desasociar desde el superior (SOURCE) dejaba el fantasma pintado (orig. usuario).
-  // Filtro por enlace exacto, sin importar qu� lado est� cargado.
+  // Filtro por enlace exacto, sin importar qué lado está cargado.
   if (roles) {
     eng.crossFloorGhosts = eng.crossFloorGhosts.filter(
       (g) => !(g.sourcePlanId === roles.lowerPlanId && g.sourceBajanteId === roles.lowerId),
@@ -207,10 +204,10 @@ export function clearBajanteAssociation(
     if (s && (s.descargaEnId ?? null) === `${targetPlanId}|${targetBajanteId}`)
       eng.updateElementById(s.id, { descargaEnId: null });
   }
-  // El Ldesvio (ramal autogenerado) de ESTE enlace se borra del motor vivo por id exacto �
+  // El Ldesvio (ramal autogenerado) de ESTE enlace se borra del motor vivo por id exacto —
   // el filtro amplio por ambos ids borraba el LD de un enlace cruzado en el mismo piso.
   if (exactLd) eng.ramales = eng.ramales.filter((r) => r.id !== exactLd);
-  // Anillo (desplazamientos) que referencia el LD exacto � en el bajante inferior (nuevo) o
+  // Anillo (desplazamientos) que referencia el LD exacto — en el bajante inferior (nuevo) o
   // en el superior (legado): buscar por id exacto, nunca por familia de ids.
   const limpiarDespExacto = (planId: string) => {
     if (!exactLd) return;
@@ -261,7 +258,7 @@ export function clearBajanteAssociation(
       });
     } else {
       if (!exactLd) {
-        // Legacy sin id exacto: barrido amplio solo como �ltimo recurso (comportamiento previo).
+        // Legacy sin id exacto: barrido amplio solo como último recurso (comportamiento previo).
         const raw = loadFromStorage<{ bajantes?: StoredBajanteDesp[] } | null>(
           TRAZOS_PREFIX + pid,
           null,
@@ -294,13 +291,13 @@ export function clearBajanteAssociation(
     }
   }
 
-  // Revertir la herencia de UC/UD (orig. usuario): al asociar se SUM� el agregado del bajante
+  // Revertir la herencia de UC/UD (orig. usuario): al asociar se SUMÓ el agregado del bajante
   // superior a los ramales del inferior (y a su Ldesvio + ucAcum). Al desasociar se RESTA esa
-  // misma porci�n, se borra la clave del Ldesvio, se resetea ucAcum y se refrescan los paneles
+  // misma porción, se borra la clave del Ldesvio, se resetea ucAcum y se refrescan los paneles
   // en vivo (eventos storage/aparatos-clear).
   try {
-    // 1) Reversi�n EXACTA por libro de herencia (orig. usuario): `ucAplicado` en el bajante
-    //    destino registra lo que la asociaci�n SUM� por clave � al desasociar se resta eso
+    // 1) Reversión EXACTA por libro de herencia (orig. usuario): `ucAplicado` en el bajante
+    //    destino registra lo que la asociación SUMÓ por clave — al desasociar se resta eso
     //    (piso a 0), preservando asignaciones manuales posteriores; la clave del Ldesvio se
     //    borra, ucAcum vuelve a 0 y se refresca en vivo.
     const tgtTrazosSnap = loadFromStorage<{
@@ -313,7 +310,7 @@ export function clearBajanteAssociation(
     } | null>(TRAZOS_PREFIX + targetPlanId, null);
     const tb = tgtTrazosSnap?.bajantes?.find((x) => x.id === targetBajanteId);
     // El motor VIVO manda sobre el storage cuando el piso destino es el cargado: el autosave
-    // puede llevar hasta 1.5 s de retraso y un libro reci�n escrito solo existe en memoria.
+    // puede llevar hasta 1.5 s de retraso y un libro recién escrito solo existe en memoria.
     const liveTb = loadedPlanId === targetPlanId ? bajanteLocalDe(eng, targetBajanteId) : undefined;
     const aplicado =
       liveTb?.ucAplicado && Object.keys(liveTb.ucAplicado).length
@@ -324,7 +321,7 @@ export function clearBajanteAssociation(
         ? liveTb.ucAplicadoHidro
         : tb?.ucAplicadoHidro;
     const snap = aplicado && Object.keys(aplicado).length ? aplicado : undefined;
-    // Libro hidro gemelo; sin �l (dibujos viejos) se resta el libro de aparatos, como antes.
+    // Libro hidro gemelo; sin él (dibujos viejos) se resta el libro de aparatos, como antes.
     const snapHidro =
       aplicadoHidro && Object.keys(aplicadoHidro).length ? aplicadoHidro : undefined;
     if (snap || snapHidro) {
@@ -356,7 +353,7 @@ export function clearBajanteAssociation(
           }
           if (Object.keys(h.accesorios).length === 0) delete h.accesorios;
         }
-        // Sin accesorios ni valores queda un cascar�n vac�o creado por la herencia: fuera.
+        // Sin accesorios ni valores queda un cascarón vacío creado por la herencia: fuera.
         if (h && !h.accesorios && !((h.Lh ?? 0) > 0) && !((h.nSalidas ?? 0) > 0)) delete hydro[tk];
       }
       if (tb) {
@@ -382,12 +379,12 @@ export function clearBajanteAssociation(
       }
       saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
       saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
-      // Sin snapshot del trazos destino (cach� ausente, libro ven�a del motor vivo) no hay
-      // nada que revertir en disco: escribir null fabricaba una cach� muerta y el push vac�o
+      // Sin snapshot del trazos destino (caché ausente, libro venía del motor vivo) no hay
+      // nada que revertir en disco: escribir null fabricaba una caché muerta y el push vacío
       // a BD borraba el piso. Solo se re-escribe un documento existente.
       if (tgtTrazosSnap && String(loadedPlanId ?? '') !== String(targetPlanId)) {
-        // Si el plano destino est� ABIERTO, el motor es la verdad (y su autosave persiste):
-        // reescribir el snapshot (un doc VIEJO) encima machacar�a lo dibujado despu�s.
+        // Si el plano destino está ABIERTO, el motor es la verdad (y su autosave persiste):
+        // reescribir el snapshot (un doc VIEJO) encima machacaría lo dibujado después.
         (tgtTrazosSnap as { ts?: number }).ts = Date.now();
         saveToStorage(TRAZOS_PREFIX + targetPlanId, tgtTrazosSnap);
         saveTrazosToDB(targetPlanId, tgtTrazosSnap);
@@ -414,8 +411,8 @@ export function clearBajanteAssociation(
       eng.render?.();
       return;
     }
-    // Sin libro (dibujos viejos / otro dispositivo): la reversi�n exacta sale de la propia
-    // clave LD � el espejo machine-written registra justo lo heredado. Solo sin LD se
+    // Sin libro (dibujos viejos / otro dispositivo): la reversión exacta sale de la propia
+    // clave LD — el espejo machine-written registra justo lo heredado. Solo sin LD se
     // recomputa en directo (mejor esfuerzo, sin topes).
     const apos = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
     const hydro = loadFromStorage<
@@ -428,7 +425,7 @@ export function clearBajanteAssociation(
     const hydroAgg: Record<string, number> = { ...ldHydro };
     if (!Object.keys(agg).length && !Object.keys(hydroAgg).length) {
       // Enlace alineado viejo (sin LD): recomputar directo del lado source, sin cierre
-      // transitivo (espeja lo que el apply viejo sum�) y sin topes.
+      // transitivo (espeja lo que el apply viejo sumó) y sin topes.
       const srcRaw = loadFromStorage<{
         bajantes?: InheritPoolBajante[];
         ramales?: InheritPoolRamal[];
@@ -447,7 +444,7 @@ export function clearBajanteAssociation(
           hydroAgg[k] = (hydroAgg[k] || 0) + (v as number);
       }
     }
-    // Clave del Ldesvio: se borra entera (el conector desaparece con la desasociaci�n).
+    // Clave del Ldesvio: se borra entera (el conector desaparece con la desasociación).
     if (ldKeyExact) {
       delete apos[ldKeyExact];
       delete hydro[ldKeyExact];
@@ -456,8 +453,8 @@ export function clearBajanteAssociation(
       delete apos[`${sourceNet}_${ldId}_${targetPlanId}`];
       delete hydro[`${sourceNet}_${ldId}_${targetPlanId}`];
     }
-    // Ramales del destino: restar el agregado heredado (piso a 0, sin claves vac�as). Sin
-    // listas (dibujos viejos): respaldo geom�trico por extremo, no toda la red (eso restaba
+    // Ramales del destino: restar el agregado heredado (piso a 0, sin claves vacías). Sin
+    // listas (dibujos viejos): respaldo geométrico por extremo, no toda la red (eso restaba
     // UDs ajenas al bajante).
     const tgtRaw = loadFromStorage<{
       bajantes?: (InheritPoolBajante & { x?: number; y?: number })[];
@@ -506,19 +503,18 @@ export function clearBajanteAssociation(
     }
     saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
     saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
-    // ucAcum del bajante destino vuelve a 0 � escritura directa al storage del piso destino
-    // (no depende del par�metro plans, que llega vac�o en algunos caminos de borrado).
+    // ucAcum del bajante destino vuelve a 0 — escritura directa al storage del piso destino
+    // (no depende del parámetro plans, que llega vacío en algunos caminos de borrado).
     aplicarEnDocDePlan(eng, targetPlanId, (doc) => {
       const tb = (doc.bajantes || []).find((x) => (x as { id?: string }).id === targetBajanteId) as
-        | { id: string; ucAcum?: number }
-        | undefined;
+        { id: string; ucAcum?: number } | undefined;
       if (tb && tb.ucAcum) tb.ucAcum = 0;
     });
     if (loadedPlanId === targetPlanId) {
       const t = bajanteLocalDe(eng, targetBajanteId);
       if (t) eng.updateElementById(t.id, { ucAcum: 0 });
     }
-    // Refresco en vivo de paneles y tablas: reescribir sync (�rbol sin el enlace) + eventos.
+    // Refresco en vivo de paneles y tablas: reescribir sync (árbol sin el enlace) + eventos.
     try {
       writeSanDrawingSync(plans);
       writeHydroDrawingSync(plans);
@@ -531,10 +527,10 @@ export function clearBajanteAssociation(
     eng._markDirty?.();
     eng.render?.();
   } catch {
-    /* reversi�n best-effort */
+    /* reversión best-effort */
   }
 
-  // Marca de desasociaci�n en AMBOS pisos (ver estamparAsocsClearedTs): corta la
-  // resurrecci�n desde cach�s stale de otros dispositivos.
+  // Marca de desasociación en AMBOS pisos (ver estamparAsocsClearedTs): corta la
+  // resurrección desde cachés stale de otros dispositivos.
   estamparAsocsClearedTs(Array.from(new Set([sourcePlanId, targetPlanId])));
 }

@@ -47,7 +47,7 @@ export function RamalMenu() {
     setTribConvOpen(false);
   }, [contextMenuState]);
 
-  // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
+  // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoMotorImpactoPruebas.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
   // — es decir, accMedIdx = segmentIdx + 1, misma convención que usan
   // handleCreateMontanteMidBody/handleCreateTeeCapStub.
@@ -120,7 +120,7 @@ export function RamalMenu() {
     const updates: Record<string, unknown> = {
       tipo: 'tributario',
       padre: padreId,
-      // Convención de punta de flecha igual que autoSplitJunctionAndSumFlow (PlanoEngineDrawing.ts
+      // Convención de punta de flecha igual que autoSplitJunctionAndSumFlow (PlanoMotorDibujo.ts
       // 576-583): san/ll drenan HACIA la unión; af/ac/gas/vent fluyen DESDE la unión hacia el
       // aparato. La geometría ya está conectada (el ramal tocó y dividió a su padre al
       // dibujarse) — esto solo cambia la semántica.

@@ -8,10 +8,10 @@ import {
 import { factoresGas } from '../gasUtiles.ts';
 
 /**
- * Caracterización del núcleo de cálculo de la red de gas (utils/gasCalcRows.ts).
+ * Caracterización del núcleo de cálculo de la red de gas (utils/gasCalculoFilas.ts).
  *
  * Antes de la unificación esta cuenta estaba duplicada: `checkRows` en GasDesign.tsx (con
- * los datos VIVOS de la pantalla) y `computeGasRows` en gasRows.ts (con lo que hay en
+ * los datos VIVOS de la pantalla) y `computeGasRows` en gasFilas.ts (con lo que hay en
  * storage, para la tabla resumen). Estos tests fijan la fórmula compartida.
  */
 

@@ -163,7 +163,7 @@ export function selectAt(
     );
     let hitD = distLine;
     if (d._labelPos) {
-      // d._labelPos ya está en coordenadas de canvas (ver renderDimensions.ts:59, donde lx/ly
+      // d._labelPos ya está en coordenadas de canvas (ver dibujaDimensiones.ts:59, donde lx/ly
       // salieron de toCvs). Llamar a toCvs una segunda vez duplicaría la transformación — usar
       // directamente.
       const labelDist = Math.hypot(cx - d._labelPos.x, cy - d._labelPos.y);

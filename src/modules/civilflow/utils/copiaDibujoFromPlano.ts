@@ -502,7 +502,7 @@ export function copyDrawingFromPlan(
       // arranca sin área hasta que se le asigne la suya.
       delete b.area_m2;
       delete b.desplazamientos;
-      // pisoBase registra el piso al que "pertenece" un bajante/montante/global — renderBajantes.ts
+      // pisoBase registra el piso al que "pertenece" un bajante/montante/global — dibujaBajantes.ts
       // nunca dibuja el círculo propio del elemento cuando difiere de la etiqueta del piso
       // cargado actualmente (esa discrepancia es cómo un fantasma entre pisos permanece invisible
       // salvo como marcador de fantasma). Dejado en la etiqueta del piso FUENTE, cada elemento

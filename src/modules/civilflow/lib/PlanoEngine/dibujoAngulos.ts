@@ -499,7 +499,7 @@ export function detectAccesorioTrigger(
       return null;
     }
     for (let i = 1; i < lastIdx; i++) {
-      // accMed es un mapa anidado con llaves 'accMed<i>' en PlanoRamal (PlanoState.ts:245) — la
+      // accMed es un mapa anidado con llaves 'accMed<i>' en PlanoRamal (PlanoEstado.ts:245) — la
       // lectura plana anterior r['accMed<i>'] nunca coincidía en silencio, así que los vértices
       // que ya tenían accesorio podían volver a disparar el modal. Leer la llave anidada.
       if (r.accMed?.[`accMed${i}`]) continue;

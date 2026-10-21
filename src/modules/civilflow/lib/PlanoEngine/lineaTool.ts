@@ -86,7 +86,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // Fallback para prolongación san: si no se encontró candidato con filtro padre,
     // buscar cualquier tributario del mismo net (permite extender desde extremo libre
     // aunque el padre no esté seleccionado exactamente).
-    // ini/fin están sobrecargados: autoDetectRamalConnections (PlanoEngineNetwork.ts) escribe
+    // ini/fin están sobrecargados: autoDetectRamalConnections (PlanoMotorRed.ts) escribe
     // ahí el código de un bajante cuando el extremo descarga en uno, pero TAMBIÉN escribe el
     // label/id de un ramal vecino cuando solo toca otro ramal (sin bajante) — y ese segundo caso
     // corre automáticamente en cada _markDirty(), o sea justo después de terminar cualquier

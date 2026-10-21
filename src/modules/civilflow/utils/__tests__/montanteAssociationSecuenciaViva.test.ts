@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { applyBajanteAssociation } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { correrEspejos } from '../../components/fixtures/useAparatoEspejos.ts';
-import { currentMapDe, type TargetArgs } from '../../components/fixtures/useAparatoObjetivo.ts';
+import { correrEspejos } from '../../components/aparatos/useAparatoEspejos.ts';
+import { currentMapDe, type TargetArgs } from '../../components/aparatos/useAparatoObjetivo.ts';
 import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // SECUENCIA VIVA completa (orig. usuario: "no se están propagando los aparatos entre pisos
@@ -353,8 +353,7 @@ describe('secuencia viva: asociar desde arriba → abrir abajo → la herencia e
     asociarDesdeArriba();
     expect(apos()['af_LD_MAC1_1']).toEqual(GRUPO);
     const tb = doc('1').bajantes?.find((b) => b.id === 'MAC1') as
-      | { ucAplicado?: Record<string, Record<string, number>>; ucAcum?: number }
-      | undefined;
+      { ucAplicado?: Record<string, Record<string, number>>; ucAcum?: number } | undefined;
     expect(tb?.ucAplicado?.['af_LD_MAC1_1']).toEqual(GRUPO);
     expect(tb?.ucAcum).toBe(4);
   });

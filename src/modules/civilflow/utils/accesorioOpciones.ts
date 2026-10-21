@@ -34,11 +34,11 @@ export function getAccessoryOptions(netId: string) {
   }
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
     // AF/AC: válvulas (incluida llave terminal — válida como accesorio de extremo, ver
-    // ExtremeAccessoryEditor.tsx), válvulas de pie, reducciones, ampliaciones, otros, el codo
+    // ExtremoAccesorioEditor.tsx), válvulas de pie, reducciones, ampliaciones, otros, el codo
     // medio 90° (codo90rm), y tee sube/baja/con tapón/con llave terminal (marcadores de
     // glifo puros — no necesitan ramal aparte, a diferencia del auto-tee del montante). La
     // teeDirecto simple sigue excluida: una tee plana siempre se auto-detecta geométricamente
-    // (renderJunctions.ts). El 'tapon' simple sigue excluido: tapar la pierna libre de una tee
+    // (dibujaEmpalmes.ts). El 'tapon' simple sigue excluido: tapar la pierna libre de una tee
     // pasa por 'teeTapon' ahora, no por una tapa pelada sin marca de tee. teeReduccion/teeLado
     // quedan excluidas de ESTE dropdown específicamente — siguen disponibles desde el contador
     // de accesorios del sidebar y el modal de detección de uniones, solo que no como elección

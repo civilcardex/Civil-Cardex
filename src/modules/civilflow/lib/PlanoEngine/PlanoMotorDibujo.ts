@@ -1,16 +1,16 @@
 // Hub de compatibilidad del módulo de dibujo: re-exporta los símbolos de los sub-módulos
-// extraídos para que los consumidores externos (PlanoEngine.ts, componentes, tests) sigan
+// extraídos para que los consumidores externos (PlanoMotor.ts, componentes, tests) sigan
 // importando desde aquí sin cambios.
-//   drawingAngles.ts   — validación de ángulos y snaps de tributario
-//   drawingFlow.ts     — dirección de flujo, polaridad de codos y válidos de extremo
-//   drawingCreations.ts — handlers de creación (bajante, montante, contador, canal…)
-//   ramalMeasure.ts    — estado de barra y cálculo de longitudes
-//   drawingUtils.ts    — utilidades geométricas, etiquetas y escala
-//   junctionAutoSplit.ts — auto-división de uniones y detección de padre/yee
+//   dibujoAngulos.ts   — validación de ángulos y snaps de tributario
+//   dibujoFlujo.ts     — dirección de flujo, polaridad de codos y válidos de extremo
+//   dibujoCreations.ts — handlers de creación (bajante, montante, contador, canal…)
+//   ramalMedir.ts    — estado de barra y cálculo de longitudes
+//   dibujoUtiles.ts    — utilidades geométricas, etiquetas y escala
+//   empalmeAutoDivide.ts — auto-división de uniones y detección de padre/yee
 //   finishRamal.ts     — finalización del ramal y validación de ángulo cruzado
-//   lineTool.ts        — herramienta de línea (y dim/text/área/erase de un clic)
-//   guideLines.ts      — líneas guía: snap, cruces en T y uniones
-//   drawingErase.ts    — borrador y división de ramales
+//   lineaTool.ts        — herramienta de línea (y dim/text/área/erase de un clic)
+//   guiaLineas.ts      — líneas guía: snap, cruces en T y uniones
+//   dibujoBorra.ts    — borrador y división de ramales
 
 export {
   checkRamalAngles,

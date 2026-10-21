@@ -9,8 +9,8 @@ import { angleAtHalfLength } from '../dibujoAngulos.ts';
 import { numDeBajante } from '../../../utils/claves.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
-// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
-// de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
+// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerBarra.tsx) y los atajos
+// de teclado (PlanoMotor.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
 export const BAJANTE_NETS = ['san', 'vent', 'll'];
@@ -88,7 +88,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   // Un bajante recién creado NO tiene dirección todavía (el usuario elige Sube/Baja/Continua
   // después) — así que no hay nada que proteger aquí al crearlo. Solo se asocia con el extremo
   // de ramal cercano (inicio o fin) más próximo; la guardia de dirección de flujo
-  // (flowDirection.ts) re-valida correctamente una vez que el usuario fija "Baja" en este
+  // (flujoDireccion.ts) re-valida correctamente una vez que el usuario fija "Baja" en este
   // bajante, contra los ramales que estén conectados para entonces.
   for (const r of engine.ramales) {
     if (r.net !== engine.activeNet || !r.pts?.length) continue;

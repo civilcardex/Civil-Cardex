@@ -572,7 +572,7 @@ export function _tryMultiSelDrag(
           if (mel) {
             // Ítem 7: una traslación rígida del conjunto nunca dobla la forma del ramal, así que
             // `bloqueado` (que existe para impedir el doblado) no excluye a nadie del arrastre de
-            // grupo — mismo razonamiento ya aplicado al arrastre de cuerpo en handleDragMove.ts.
+            // grupo — mismo razonamiento ya aplicado al arrastre de cuerpo en manejaArrastrarMueve.ts.
             origData[mid] = {
               type: 'ramal',
               origPts: mel.pts.map((p) => [...p]),

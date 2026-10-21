@@ -340,7 +340,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   // partir de ceros.
   // En la misma pasada también recolecta los glifos de canal dibujados (tipo:'canal', el
   // handleCanalDown de PlanoEngine) por piso, porque ambos necesitan la misma lectura cruda
-  // de storage por plano — los glifos de canal no pasan por TramosContext/buildTramos.ts (esa
+  // de storage por plano — los glifos de canal no pasan por TramosContext/construyeTramos.ts (esa
   // tubería solo modela ramales/bajantes con semántica sanitaria/bajante), así que se leen
   // directo aquí, igual que `areas` arriba.
   const {

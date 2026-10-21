@@ -61,7 +61,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     };
 
     // Manijas de redimensionado — cuadrados pequeños en cada una de las 4 esquinas, en el
-    // mismo espacio alineado a ejes contra el que hace hit-test handleMouseDown.ts, para que
+    // mismo espacio alineado a ejes contra el que hace hit-test manejaRatonAbajo.ts, para que
     // lo dibujado sea exactamente lo agarrable.
     if (sel) {
       const b = t._box;

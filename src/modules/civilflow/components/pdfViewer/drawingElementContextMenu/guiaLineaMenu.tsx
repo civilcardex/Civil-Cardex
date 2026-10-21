@@ -81,7 +81,7 @@ export function GuideLineMenu() {
             eng.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
           );
           const ramId = `${pfx}${cnt}`;
-          // El flujo se dibuja desde pts[0] hacia el último punto (renderRamales.ts) — se
+          // El flujo se dibuja desde pts[0] hacia el último punto (dibujaRamales.ts) — se
           // orienta el nuevo ramal para que su flujo apunte siempre al ramal sobre el que se
           // dibujó esta guía (el cruce ES la conexión que crea), con el extremo cercano
           // anclado al cruce exacto para que nazca conectado (split + UD + "Convertir en

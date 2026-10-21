@@ -29,7 +29,7 @@ import type { useWorkAreaState } from '../useTrabajoAreaEstado.ts';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
-export function useInfTables(state: WorkAreaState) {
+export function useInfTablas(state: WorkAreaState) {
   const {
     proy,
     redesActivas,

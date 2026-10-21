@@ -348,7 +348,7 @@ export function _trySelRamalDrag(
   }
 
   // Los íconos de accesorio a mitad de ramal se dibujan desplazados de la línea central
-  // (renderRamales.ts), así que un clic sobre el ícono visible puede errar el radio ajustado
+  // (dibujaRamales.ts), así que un clic sobre el ícono visible puede errar el radio ajustado
   // por vértice de abajo. Se chequea primero la huella más ancha del ícono para que clicar el
   // ícono mismo — no solo el vértice subyacente exacto — inicie el arrastre de deslizamiento
   // por el cuerpo. "Bloquear Movimiento" también lo bloquea: el usuario decidió que el candado

@@ -27,7 +27,7 @@ const domId = (key: string): string =>
 
 /** Agrupación de categorías por módulo (pedido del cliente: la doc se navega por módulo).
  *  Las claves SON las de docData (data/index.ts) — aunque el archivo fuente se llame
- *  hydraulics.tsx etc., la clave exportada sigue en español. */
+ *  hidraulica.tsx etc., la clave exportada sigue en español. */
 const MODULOS: { label: string; nota: string; cats: string[] }[] = [
   {
     label: 'Civil Flow',

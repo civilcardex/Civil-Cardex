@@ -136,7 +136,7 @@ export function computeGasRows(plans: PlanItem[], pais?: string): GasRow[] {
   }
 
   const porClave = new Map(gasTramos.map((t) => [claveGas(t.planId, t.id), t]));
-  // El cálculo vive en gasCalcRows.ts (compartido con la pantalla de diseño de gas).
+  // El cálculo vive en gasCalculoFilas.ts (compartido con la pantalla de diseño de gas).
   // Las filas salen en el orden del recorrido (raíz primero, luego por piso descendente).
   return calculaFilasGas({
     tramos: gasTramos.map((t) => ({

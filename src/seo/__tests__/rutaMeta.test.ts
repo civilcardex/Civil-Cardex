@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ROUTE_META, metaDeRuta } from '../rutaMeta.ts';
 
 /**
- * Las metas de las rutas públicas salen de UNA sola tabla (routeMeta.ts): el prerender la
+ * Las metas de las rutas públicas salen de UNA sola tabla (rutaMeta.ts): el prerender la
  * consume para el HTML y las páginas la consumen en el cliente. Si divergen, el crawler ve
  * una cosa y el navegador otra.
  */

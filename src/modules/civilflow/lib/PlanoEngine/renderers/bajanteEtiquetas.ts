@@ -47,7 +47,7 @@ export function renderBajanteLabel(
   const bTipo2 = 'tipo' in b ? b.tipo : undefined;
   const labelSizeMul = bTipo2 === 'contador' || bTipo2 === 'calentador' ? 0.75 : 1;
   // La etiqueta de código del bajante/montante usa exactamente la misma fórmula de tamaño que
-  // la etiqueta de nombre de un ramal (fsName/fsInfo en renderRamales.ts) para que las dos se
+  // la etiqueta de nombre de un ramal (fsName/fsInfo en dibujaRamales.ts) para que las dos se
   // lean objetivamente iguales en tamaño.
   const fsCode = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM * labelSizeMul);
   const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * labelSizeMul);
@@ -130,7 +130,7 @@ export function renderBajanteLabel(
   ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
 
   if (dirText) {
-    // Misma fuente/peso que la línea de información de un ramal (600, ver renderRamales.ts)
+    // Misma fuente/peso que la línea de información de un ramal (600, ver dibujaRamales.ts)
     // para que las etiquetas del canal se lean idénticas a las de los ramales.
     ctx.font = `600 ${fsDir}px Geist, monospace`;
     ctx.fillStyle = textColor;
@@ -266,5 +266,5 @@ export function drawDireccionSymbol(
 // bajantes, cuya forma rota con labelAngle), porque un rectángulo no cuadrado rotando con la
 // etiqueta contradeciría visualmente sus propias manijas de redimensionado, que siempre están
 // alineadas a los ejes. Las esquinas seleccionadas reciben una manija cuadrada pequeña
-// (agarrada por _tryCanalResizeHit en handleMouseDown.ts) para redimensionar independientemente
+// (agarrada por _tryCanalResizeHit en manejaRatonAbajo.ts) para redimensionar independientemente
 // de la rotación de la etiqueta.

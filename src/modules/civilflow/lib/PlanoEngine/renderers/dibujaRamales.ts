@@ -860,7 +860,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const outX = idx === 0 ? -dx : dx;
       const outY = idx === 0 ? -dy : dy;
 
-      // realMmToCanvasPx piso en 1mm de papel (ver PlanoEngine.ts) — dividir a la mitad el
+      // realMmToCanvasPx piso en 1mm de papel (ver PlanoMotor.ts) — dividir a la mitad el
       // argumento en mm solo es invisible a escalas comunes, ya que ambos caen en ese piso.
       // Se divide el resultado en px.
       const rad = engine.realMmToCanvasPx(23) * 0.6;
@@ -1074,7 +1074,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       px = branchDir.px;
       py = branchDir.py;
 
-      // realMmToCanvasPx piso en 1mm de papel (ver PlanoEngine.ts) — dividir a la mitad el
+      // realMmToCanvasPx piso en 1mm de papel (ver PlanoMotor.ts) — dividir a la mitad el
       // argumento en mm solo es invisible a escalas comunes, ya que ambos caen en ese piso.
       // Se divide el resultado en px.
       const rad = engine.realMmToCanvasPx(23) * 0.6;

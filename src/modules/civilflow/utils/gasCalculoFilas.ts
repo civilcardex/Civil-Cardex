@@ -7,7 +7,7 @@ import { mapaPadresGas, acumuladosGas, claveGas, type GasTramoNeto } from './gas
  * Núcleo de cálculo de la red de gas (una sola cuenta para toda la app).
  *
  * Antes vivía duplicado en dos sitios: `checkRows` dentro de GasDesign.tsx (con los diámetros
- * y accesorios VIVOS de la pantalla) y `computeGasRows` en gasRows.ts (con lo que hay en
+ * y accesorios VIVOS de la pantalla) y `computeGasRows` en gasFilas.ts (con lo que hay en
  * storage, para la tabla resumen). La fórmula es la misma; lo que cambia son las ENTRADAS,
  * así que aquí van por parámetro: cada pantalla dice de dónde saca el diámetro interior, los
  * accesorios y los factores.

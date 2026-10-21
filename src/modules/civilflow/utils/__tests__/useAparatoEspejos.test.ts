@@ -38,7 +38,7 @@ import {
   correrPropagacion,
   correrSanadoSifones,
   type EspejosArgs,
-} from '../../components/fixtures/useAparatoEspejos.ts';
+} from '../../components/aparatos/useAparatoEspejos.ts';
 import { loadAll } from '../../components/aparatosAlmacenamiento.ts';
 
 const PLAN = 5;

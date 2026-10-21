@@ -14,7 +14,7 @@ import {
 import { claveDeBorrado } from '../../components/pdfViewer/persisteTrazos.ts';
 
 // Track C, gate de datos legado: dibujos viejos (claves sin sufijo, `_P`, punteros sin
-// `|`, stubs AC-01, LD_) deben leerse igual antes y después de centralizar en keys.ts.
+// `|`, stubs AC-01, LD_) deben leerse igual antes y después de centralizar en claves.ts.
 describe('keys', () => {
   it('countKey respeta la excepción AC-01', () => {
     expect(countKey('ac', 'AC-01-C1', 7)).toBe('ac_C1_7');

@@ -4,7 +4,7 @@ import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoEstado.
 
 // Un montante a mitad de cuerpo escribe un marcador de tee (accMed) en su ramal anfitrión al crearse.
 // Borrar el montante sin limpiar también ese marcador dejaba el glifo/contador de tee para siempre,
-// porque nada más vuelve a revisar accMed una vez escrito — ver cleanupTeeMarkersAt en deleteSelected.ts.
+// porque nada más vuelve a revisar accMed una vez escrito — ver cleanupTeeMarkersAt en eliminaSelected.ts.
 
 function makeRamal(id: string, pts: number[][], accMed: Record<string, string>): PlanoRamal {
   return {

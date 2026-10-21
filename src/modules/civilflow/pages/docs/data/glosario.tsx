@@ -54,7 +54,7 @@ const glosario = {
       ),
     },
     {
-      title: 'Claves compuestas (utils/keys.ts)',
+      title: 'Claves compuestas (utils/claves.ts)',
       body: (
         <div className="space-y-3">
           <p>
@@ -76,7 +76,7 @@ const glosario = {
       ),
     },
     {
-      title: 'Bus de fixtures (utils/fixtureEvents.ts)',
+      title: 'Bus de fixtures (utils/aparatoEventos.ts)',
       body: (
         <div className="space-y-3">
           <p>

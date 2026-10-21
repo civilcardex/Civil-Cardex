@@ -146,7 +146,7 @@ function WaterNetworkDesign({
     const res = writeDiametroToDrawing(tramoId, networkType, opt.label, plans);
     if (!res.ok && res.reason === 'accessory-larger') {
       // Mostrar el mismo AlertDialog de la app que el flujo del motor (espejo de
-      // ExtremeAccessoryEditor.tsx:110-117, que valida la dirección inversa). Sin esto la escritura
+      // ExtremoAccesorioEditor.tsx:110-117, que valida la dirección inversa). Sin esto la escritura
       // de la tabla de diseño tendría éxito en silencio y un accesorio más ancho terminaría dibujado
       // alrededor de un tubo más delgado — físicamente absurdo.
       if (

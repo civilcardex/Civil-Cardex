@@ -162,7 +162,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     const d = (data ?? {}) as Partial<PlanoWorkData>;
 
     // Los conteos de Aparato/UD y los accesorios hidro/gas solo viven en localStorage
-    // (FixturesPanel.tsx / GasDesign.tsx, clave compuesta `${net}_${ramalId}_${planId}`) —
+    // (AparatosPanel.tsx / GasDesign.tsx, clave compuesta `${net}_${ramalId}_${planId}`) —
     // adjuntamos el mapa propio de cada ramal antes de sincronizar para que llegue a la BD
     // vía planos_ramales.fixtures / hydro_accesorios / gas_accesorios, en vez de perderse
     // fuera de este equipo.
@@ -425,7 +425,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       nets: [],
     };
     // Devolvemos los fixtures y accesorios hidro/gas que viajan en la BD por cada ramal a los
-    // mapas de localStorage que FixturesPanel.tsx / GasDesign.tsx realmente leen
+    // mapas de localStorage que AparatosPanel.tsx / GasDesign.tsx realmente leen
     // (APARATOS_BY_TRAMO_KEY / HYDRO_DATA_STORAGE_KEY / GAS_ACC_KEY) — si no, un plano cargado
     // fresco en otro dispositivo/sesión mostraría el panel Aparatos vacío pese a que la BD
     // tiene los datos.
@@ -483,7 +483,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     // app ya montó sus tramos/UC leyendo un mapa vacío o viejo (dispositivo con caché limpia o
     // desactualizada), las tablas de diseño quedan con los conteos en cero hasta que algo vuelva
     // a disparar EV_STORAGE/sync. Se notifica aquí mismo para reconstruirlos con los datos de la
-    // BD sin esperar a una edición manual. Mismo patrón de eventos que networkSanitary.ts.
+    // BD sin esperar a una edición manual. Mismo patrón de eventos que redSanitaria.ts.
     if (aparatosChanged || hidroChanged || gasChanged) {
       window.dispatchEvent(new Event(EV_STORAGE));
       emitSanSync();

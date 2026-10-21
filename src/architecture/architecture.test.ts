@@ -27,7 +27,7 @@ const TOPE_NUEVO = 700;
 /**
  * Monolitos que NO se parten en esta tanda (ya son fachadas/tipos o son riesgo de render) con
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
- * Los que sí se parten (aparatosPresion, sanAccesoriosTable, useInfTables, PdfViewer,
+ * Los que sí se parten (aparatosPresion, sanAccesoriosTable, useInfTablas, PdfViewer,
  * PlanosTab, las tablas grandes) desaparecen de aquí al dividirse: su ausencia ES la prueba.
  */
 const CONOCIDOS: Record<string, number> = {
@@ -81,30 +81,18 @@ const GESTIONADOS: Record<string, number> = {
 };
 
 /**
- * Ciclos de import PREEXISTENTES (línea base 2026-10-19: 18 ciclos canónicos). El guard exige
- * que no aparezcan NUEVOS: cualquier ciclo fuera de esta lista es un regresión de la
- * desmonotilización. Si una división elimina alguno, esta lista se acorta (y el guard lo pide).
+ * Ciclos de import PREEXISTENTES que se permiten.
+ *
+ * Línea base 2026-10-21: la lista anterior tenía 18 entradas con los nombres de archivo
+ * VIEJOS (PlanoMotorDibujo.ts, AparatoContexto.tsx, PlanosContexto.tsx…), que ya no
+ * existen: el grafo actual NO tiene ningún ciclo. La lista era letra muerta y el guard
+ * comparaba contra ella sin que nada coincidiera.
+ *
+ * El guard sigue siendo útil: cualquier ciclo que aparezca NO estará en esta lista y
+ * hará fallar el test. Si una futura división INTRODUCE un ciclo conocido, se anota
+ * aquí (con los nombres REALES de los archivos) para que sea explícito.
  */
-const CICLOS_CONOCIDOS = [
-  'ApparatusContext.tsx|apparatusService.ts',
-  'PlanoConfigurator.tsx|useCalibration.ts',
-  'PlanoEngine.ts|bombaAssociation.ts|bombaDesvio.ts|deleteSelected.ts',
-  'PlanoEngineDrawing.ts|cajaBajante.ts|drawingCreations.ts',
-  'PlanoEngineDrawing.ts|cajaBajante.ts|drawingCreations.ts|montantes.ts',
-  'PlanoEngineDrawing.ts|deleteJunctionCleanup.ts|deleteRemerge.ts|deleteRemergeInternals.ts|drawingErase.ts',
-  'PlanoEngineDrawing.ts|deleteJunctionCleanup.ts|deleteRemerge.ts|drawingErase.ts',
-  'PlanoEngineDrawing.ts|deleteJunctionCleanup.ts|drawingErase.ts',
-  'PlanoEngineDrawing.ts|deleteRemerge.ts|deleteRemergeInternals.ts|drawingErase.ts',
-  'PlanoEngineDrawing.ts|deleteRemerge.ts|drawingErase.ts',
-  'PlanoEngineDrawing.ts|deleteYeePreserve.ts|drawingErase.ts',
-  'PlanoEngineDrawing.ts|drawingCreations.ts|montantes.ts',
-  'PlanoEngineSelection.ts|PlanoEngineSelectionEdit.ts',
-  'PlansContext.tsx|gasRows.ts|projectDataService.ts',
-  'ProjectContext.tsx|projectDataService.ts',
-  'RainwaterContext.tsx|rainwaterOverrideStore.ts',
-  'RainwaterContext.tsx|rainwaterOverridesService.ts',
-  'labels.ts|useEpc3DScene.ts',
-];
+const CICLOS_CONOCIDOS: string[] = [];
 
 /**
  * Módulos que nacieron de la desmonotilización: el contrato de la división.
@@ -334,13 +322,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     test: '../planosMeta.ts',
   },
   {
-    ruta: 'modules/civilflow/components/fixtures/aparatoEspejos.ts',
+    ruta: 'modules/civilflow/components/aparatos/aparatoEspejos.ts',
     maxLineas: 410,
     puro: false,
     test: 'useAparatoEspejos',
   },
   {
-    ruta: 'modules/civilflow/components/fixtures/aparatoEspejosTipos.ts',
+    ruta: 'modules/civilflow/components/aparatos/aparatoEspejosTipos.ts',
     maxLineas: 60,
     puro: false,
     test: 'useAparatoEspejos',
@@ -388,7 +376,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/propagation/aristas.ts': 13,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 11,
   'modules/civilflow/lib/PlanoEngine/renderers/dibujaRamales.ts': 11,
-  'modules/civilflow/components/fixtures/aparatoEspejos.ts': 10,
+  'modules/civilflow/components/aparatos/aparatoEspejos.ts': 10,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSecciones.tsx': 9,
   'modules/civilflow/utils/bajanteVentFilas.ts': 9,
   'modules/civilflow/lib/PlanoEngine/eliminaYeePreserve.ts': 8,
@@ -402,7 +390,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/ratonAbajoArrastres.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
   'modules/civilflow/utils/construyeTramos.ts': 7,
-  'modules/civilflow/components/fixtures/SecMontantes.tsx': 6,
+  'modules/civilflow/components/aparatos/SecMontantes.tsx': 6,
   'modules/civilflow/components/LluviaBajantesVerifica.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConexionSecciones.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/canalesAsociados.tsx': 6,
@@ -453,7 +441,7 @@ const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
   },
   {
     ruta: 'modules/civilflow/components/workareaContent/useInfTablas.ts',
-    simbolos: ['useInfTables'],
+    simbolos: ['useInfTablas'],
   },
 ];
 

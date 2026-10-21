@@ -272,7 +272,7 @@ export function removeCrossFloorGhostsBySource(
 // Id determinista para el conector Ldesvio de un bajante origen — uno por origen, siempre
 // sobrescribible al re-ejecutar create con el mismo sourceBajanteId, y removible directo por id
 // sin tener que buscar/adivinar qué número secuencial de ramal le tocó. Deliberadamente NO tiene
-// la forma `${netPrefix}\d+` (ver la regex de conteo de PlanoPersistence.ts al cargar), así
+// la forma `${netPrefix}\d+` (ver la regex de conteo de PlanoPersistencia.ts al cargar), así
 // nunca consume un número de ramal real.
 export function ldesvioIdFor(sourceBajanteId: string): string {
   return `LD_${sourceBajanteId}`;
@@ -290,7 +290,7 @@ export function isLdesvioRamalId(id: string | null | undefined): boolean {
 // El `id` del Ldesvio es una clave estable y determinista (para buscar/limpiar) — su `label` (lo
 // que realmente se imprime en el dibujo) debe leerse como el de cualquier otro ramal, p. ej.
 // "R12", o imprime el id interno crudo ("LD_BAN1...") en el plano. Espeja el mismo escaneo que
-// hace `PlanoPersistence.ts` al cargar: máximo `${prefix}N` existente para esta red, +1 — pero
+// hace `PlanoPersistencia.ts` al cargar: máximo `${prefix}N` existente para esta red, +1 — pero
 // solo entre ramales REALES (nunca otro Ldesvio, que de entrada nunca coincide con ese patrón,
 // así que no hace falta exclusión especial).
 // IMPORTANTE: se escanean id Y label — el id del LD (`LD_BAN1`) nunca coincide con el patrón,

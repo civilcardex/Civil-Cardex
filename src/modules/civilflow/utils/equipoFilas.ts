@@ -343,7 +343,7 @@ export function computeBombaTables(): MemoriaTable[] {
   return [datosEntrada, perdidasCarga, bombaParams, bombaSpec, camaraParams, camaraSpec];
 }
 
-// Equipo de presión (PressureEquipmentDesign.tsx → EPInputPage.tsx + EPVerificationPage.tsx, 3
+// Equipo de presión (PresionEquipoDesign.tsx → EPInputPagina.tsx + EPVerificationPagina.tsx, 3
 // páginas de pantalla) — misma idea que Bomba AR arriba: cada card/tabla de cada página,
 // replicada desde los mismos campos `ep` crudos y las mismas fórmulas que calculan las pantallas
 // en vivo, en vez de un resumen aplanado.

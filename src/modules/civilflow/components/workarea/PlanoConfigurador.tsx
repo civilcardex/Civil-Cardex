@@ -379,7 +379,7 @@ function PlanoConfiguratorBase({
       factorY,
       // Alcance ya no se pregunta al usuario: toda calibración aplica a todos los planos del
       // proyecto. Mantener el campo calGlobal=true para no romper `globalCal` / `Usar calibración
-      // previa` en PlanosTab (PlanosTab.tsx:289-298), que filtra por calGlobal===true.
+      // previa` en PlanosTab (PlanosPestana.tsx:289-298), que filtra por calGlobal===true.
       calGlobal: true,
       definedScale,
     });

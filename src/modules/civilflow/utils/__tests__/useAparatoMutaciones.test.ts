@@ -36,7 +36,7 @@ import {
   mutarInc,
   mutarDec,
   type FixtureMutationCtx,
-} from '../../components/fixtures/useAparatoMutaciones.ts';
+} from '../../components/aparatos/useAparatoMutaciones.ts';
 import { loadAll, saveAll } from '../../components/aparatosAlmacenamiento.ts';
 
 const PLAN = 5;

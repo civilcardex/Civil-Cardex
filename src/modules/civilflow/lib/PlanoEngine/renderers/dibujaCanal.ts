@@ -107,7 +107,7 @@ export function renderCanalGlyph(
   ctx.globalAlpha = 1;
 
   // Las manijas de redimensionado de esquina deliberadamente no se dibujan — el hit-test de
-  // agarre en _tryCanalResizeHit de handleMouseDown.ts funciona puramente por proximidad a las
+  // agarre en _tryCanalResizeHit de manejaRatonAbajo.ts funciona puramente por proximidad a las
   // esquinas del OBB (calculadas abajo sin importar lo renderizado), así que el
   // redimensionado funciona igual sin los cuadrados visuales.
 

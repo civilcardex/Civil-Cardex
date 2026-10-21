@@ -385,27 +385,27 @@ export interface PlanoRamal {
   caudal?: number;
   lvert?: string;
   // Solo lo lleva un ramal CREADO AUTOMÁTICAMENTE al dividir una unión T/Y
-  // (autoSplitJunctionAndSumFlow en PlanoEngineDrawing.ts) — guarda los ids de los dos ramales
-  // que se juntan en él. Lo leen waterNetworkRows.ts / WaterNetworkDesign.tsx para forzar que el
+  // (autoSplitJunctionAndSumFlow en PlanoMotorDibujo.ts) — guarda los ids de los dos ramales
+  // que se juntan en él. Lo leen waterRedFilas.ts / WaterRedDesign.tsx para forzar que el
   // total de UC de ESTE ramal sea la suma de esos dos, sin importar hacia qué lado corra el árbol
   // dirigido general por este punto (ese árbol se orienta hacia la fuente real de toda la red,
   // y en una unión local arbitraria puede correr en cualquier dirección).
   mergesFrom?: [string, string];
   // Solo para el viaje de ida/vuelta a la base de datos: aparato-id -> cantidad, el mismo dato
-  // que FixturesPanel.tsx guarda en APARATOS_BY_TRAMO_KEY (localStorage) para este ramal. El
-  // motor NO lo lee — se adjunta aquí solo para que storageService.ts lo lleve hacia/desde la
+  // que AparatosPanel.tsx guarda en APARATOS_BY_TRAMO_KEY (localStorage) para este ramal. El
+  // motor NO lo lee — se adjunta aquí solo para que almacenamientoServicio.ts lo lleve hacia/desde la
   // columna `fixtures` de la BD; el mapa de localStorage sigue siendo la fuente de verdad que la
   // interfaz lee/escribe durante la sesión.
   fixtures?: Record<string, number>;
   // Igual que `fixtures`: solo para el viaje ida/vuelta a la base de datos. Accesorios
   // hidrosanitarios ({ accesorios, Lh, nSalidas }) y de gas (aparato-id -> cantidad) que
   // FixturesPanel/GasDesign guardan en HYDRO_DATA_STORAGE_KEY / GAS_ACC_KEY (localStorage).
-  // El motor NO los lee — storageService.ts los lleva hacia/desde `hydro_accesorios` /
+  // El motor NO los lee — almacenamientoServicio.ts los lleva hacia/desde `hydro_accesorios` /
   // `gas_accesorios` de planos_ramales.
   hydroAcc?: { accesorios: Record<string, number>; Lh: number; nSalidas: number };
   gasAcc?: Record<string, number>;
   // Posición en el plano de la etiqueta "S D=..." de un sifón, una vez que el usuario la arrastró
-  // fuera de su posición calculada por defecto (renderRamales.ts). Indefinido = usar la posición
+  // fuera de su posición calculada por defecto (dibujaRamales.ts). Indefinido = usar la posición
   // por defecto.
   sifonLabelIni?: [number, number];
   sifonLabelFin?: [number, number];
@@ -421,7 +421,7 @@ export interface PlanoRamal {
   // las que nunca se movieron; las manuales quedan intactas y actúan como obstáculos fijos.
   labelMoved?: boolean;
   // Identidad de una yee doble (ítem 2): posiciones de los dos vértices que forman el par
-  // (`[[x1,y1],[x2,y2]]`). Se registra al DETECTAR la yee doble en networkSanitary.ts y se
+  // (`[[x1,y1],[x2,y2]]`). Se registra al DETECTAR la yee doble en redSanitaria.ts y se
   // persiste vía el sync, de modo que el símbolo sobrevive al borrado de uno de los brazos
   // laterales — el renderer lo dibuja mientras la identidad exista, aunque un lado quede sin
   // trazo conectado. Se limpia solo cuando se elimina el tronco o el accesorio.
@@ -596,12 +596,7 @@ export interface PlanoNetCounts {
 
 /** Todos los tipos de elemento que el motor puede dibujar y seleccionar. */
 export type PlanoElement =
-  | PlanoRamal
-  | PlanoBajante
-  | PlanoArea
-  | PlanoTextAnnotation
-  | PlanoDimension
-  | PlanoGuideLine;
+  PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | PlanoGuideLine;
 
 /** La tubería que se está dibujando ahora mismo, todavía sin confirmar: sus puntos y la longitud
  *  que lleva. Mientras exista, un clic añade un punto y Enter la guarda como ramal. */

@@ -21,7 +21,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
     // AF/AC: un vértice con un tipo de tee específico ya asignado (teeReduccion/teeLado/teeSube/
     // teeBaja/teeTapon/teeLlaveTerminal, elegido a mano o auto-asignado) dibuja SU PROPIO glifo en
-    // renderRamales.ts — dibujar aquí también el tick geométrico genérico de tee lo duplicaría
+    // dibujaRamales.ts — dibujar aquí también el tick geométrico genérico de tee lo duplicaría
     // encima. Solo se salta el genérico cuando el punto YA tiene uno de esos tipos asignado; una
     // tee plana sin accesorio (teeDirecto, el caso común) no tiene ningún otro renderer que la
     // dibuje, así que sí debe pasar por aquí — antes se excluía TODO af/ac sin distinguir, dejando
@@ -194,7 +194,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
           // AF/AC con un tipo de tee específico ya asignado en este punto (teeReduccion/teeLado/
           // teeSube/teeBaja/etc.) se salta el tick genérico — ese caso ya tiene su propio glifo
-          // en renderRamales.ts. Una tee af/ac SIN accesorio asignado (teeDirecto, el caso común
+          // en dibujaRamales.ts. Una tee af/ac SIN accesorio asignado (teeDirecto, el caso común
           // al conectar dos ramales) sí pasa, para no quedarse sin ningún símbolo.
           if ((isTee && (!isAfAc || !hasTeeMarkerAt(P))) || isYee) {
             junctions.push({ P, uA, uB, branches, isTee, isYee });

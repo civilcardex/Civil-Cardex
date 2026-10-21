@@ -58,7 +58,7 @@ export interface AcometidaSummary {
   pResidual: number;
   estadoOk: boolean;
 }
-// Espeja el cálculo del panel Acometida propio de WaterNetworkDesign.tsx (mismo grafo de
+// Espeja el cálculo del panel Acometida propio de WaterRedDesign.tsx (mismo grafo de
 // conectividad que computeWaterNetworkRows de arriba, misma fórmula calcFila, mismos defaults de
 // respaldo para el caso no-dibujado) como función pura — para que, como computeWaterNetworkRows,
 // la exportación de memorias nunca dependa de que el usuario haya abierto esa pantalla. Devuelve
@@ -85,7 +85,7 @@ export function computeAcometidaSummary(
   const tramos = tramosAf;
   const tr1 = tramos.find(isAC1);
   const tr2 = tramos.find(isAC2);
-  // Sin retorno temprano cuando ninguno está dibujado — el panel propio de SupplyConnection.tsx
+  // Sin retorno temprano cuando ninguno está dibujado — el panel propio de SupplyConexion.tsx
   // tampoco se oculta nunca; solo cae a sus valores default de AC-01/AC-02 (los mismos defaults
   // usados abajo), así que la exportación debe mostrar lo mismo que vería la pantalla viva.
   // ── Grafo de conectividad (igual que computeWaterNetworkRows) — solo se necesita para Qaco vía el total de componente de tr2 ──
@@ -197,7 +197,7 @@ export function computeAcometidaSummary(
     adj,
     (t) => calcUCparcial(t, AP, 'uc'),
   );
-  // ── Resolución específica de acometida (espeja las props de SupplyConnection.tsx exactamente) ──
+  // ── Resolución específica de acometida (espeja las props de SupplyConexion.tsx exactamente) ──
   const resolvedMonName = (() => {
     if (tr2) {
       const iniStr = typeof tr2.ini === 'string' ? tr2.ini : '';
@@ -304,7 +304,7 @@ export function computeAcometidaSummary(
     f1.Pfin,
     cHW2,
   );
-  // ── Selección de contador: dinámica desde el diámetro de un bajante, espejando WaterNetworkDesign.tsx ──
+  // ── Selección de contador: dinámica desde el diámetro de un bajante, espejando WaterRedDesign.tsx ──
   let acoContIx = 2;
   const found = findContadorBajante(plans, networkType);
   if (found && found.bajante.dNominal) {

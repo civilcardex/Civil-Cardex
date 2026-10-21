@@ -1,6 +1,6 @@
 ﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { itemsDelPanel } from './fixtures/panelElementos.ts';
-import { calcularMergeKeys } from './fixtures/fusionClaves.ts';
+import { itemsDelPanel } from './aparatos/panelElementos.ts';
+import { calcularMergeKeys } from './aparatos/fusionClaves.ts';
 import { TRAZOS_PREFIX } from '../constants/almacenamientoClaves.ts';
 import { useRainwater } from '../context/LluviasContexto.tsx';
 import { leerHeredadosPresion, leerFoldTribPresion } from '../utils/propagation';
@@ -21,9 +21,9 @@ import {
   setSyncLoadedLiveIds,
 } from '../utils/dibujoSync.ts';
 import type { DrawingData } from '../utils/dibujoSync.ts';
-import FixtureGrid from './fixtures/AparatoRejilla.tsx';
-import { SecMontantes } from './fixtures/SecMontantes';
-import AccesoriosSection from './fixtures/AccesoriosSeccion.tsx';
+import FixtureGrid from './aparatos/AparatoRejilla.tsx';
+import { SecMontantes } from './aparatos/SecMontantes';
+import AccesoriosSection from './aparatos/AccesoriosSeccion.tsx';
 import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/desarrolloError.ts';
 import { loadFromStorage, saveToStorage } from '../services/almacenamientoServicio.ts';
@@ -43,11 +43,11 @@ import {
 } from './aparatosAlmacenamiento.ts';
 import { hidroDeClave, totalDeUnidades, ownTotalDe, esPropioDe } from './aparatosAlmacenamiento.ts';
 import { podarGasAccPorPlanos } from '../utils/dibujoSyncGc.ts';
-import { useFixtureAccMutations } from './fixtures/useAparatoAccMutaciones.ts';
-import { useFixtureMirrors } from './fixtures/useAparatoEspejos.ts';
-import { useFixtureMutations } from './fixtures/useAparatoMutaciones.ts';
-import { useFixtureTarget } from './fixtures/useAparatoObjetivo.ts';
-import { agregarCargaDeBajante } from './fixtures/bajanteAgregado.ts';
+import { useFixtureAccMutations } from './aparatos/useAparatoAccMutaciones.ts';
+import { useFixtureMirrors } from './aparatos/useAparatoEspejos.ts';
+import { useFixtureMutations } from './aparatos/useAparatoMutaciones.ts';
+import { useFixtureTarget } from './aparatos/useAparatoObjetivo.ts';
+import { agregarCargaDeBajante } from './aparatos/bajanteAgregado.ts';
 
 const FixturesPanel_S1: React.CSSProperties = {
   width: '100%',
@@ -86,7 +86,7 @@ const FixturesPanel_S3: React.CSSProperties = {
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
-import { LlAssociationsPanel } from './fixtures/LlAssociationsPanel';
+import { LlAssociationsPanel } from './aparatos/LlAssociationsPanel';
 import { bajanteLabel, ramalLabel } from '../utils/accesorioAbbreviations.ts';
 
 import type PlanoEngine from '../lib/PlanoEngine/PlanoMotor.ts';
@@ -356,7 +356,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   // Todos los ramales del plano actual (almacenamiento crudo, no el motor en vivo) — necesario
   // para hallar, en AF/AC/gas, qué ramal acumula de verdad la UC combinada de un empalme. Ya no es
   // siempre el ramal auto-creado (mergesFrom solo vive en él) — es aquel de los tres participantes
-  // cuya dirección de flujo entra de verdad al empalme (ver waterNetworkRows.ts).
+  // cuya dirección de flujo entra de verdad al empalme (ver waterRedFilas.ts).
   // Deliberadamente NO memoizado solo por planId — el dibujo (un nuevo corte, una dirección
   // invertida) cambia constantemente mientras este panel queda abierto sobre el mismo plano, y no
   // hay evento dedicado de "geometría cambiada" contra el cual invalidar un caché. Una lectura
@@ -482,7 +482,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   );
 
   // Cluster de espejos/herencia (rediseño): sanado de sifones + propagación + espejos
-  // cross-floor — ver fixtures/useFixtureMirrors.ts.
+  // cross-floor — ver aparatos/useAparatoEspejos.ts.
   useFixtureMirrors({
     engineRef,
     loadingPlanRef,
@@ -577,7 +577,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     return false;
   }, [targetId, netId, selElement, exitsDeBajante, engineRef]);
 
-  // Mutaciones de aparatos (movidas a fixtures/useFixtureMutations.ts — Oleada rediseño):
+  // Mutaciones de aparatos (movidas a aparatos/useAparatoMutaciones.ts — Oleada rediseño):
   // el ctx viaja como objeto; mutarInc/mutarDec son pinnables sin harness de React.
   const { inc, dec } = useFixtureMutations({
     netId,
@@ -662,7 +662,7 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (target) decAccGas(target);
   };
 
-  // AGUAS LLUVIAS (rediseño): panel propio — ver fixtures/LlAssociationsPanel.tsx.
+  // AGUAS LLUVIAS (rediseño): panel propio — ver aparatos/LlAssociationsPanel.tsx.
   if (netId === 'll') {
     return (
       <LlAssociationsPanel

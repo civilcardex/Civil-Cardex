@@ -30,7 +30,7 @@ export const isAC2 = (t: Tramo) => {
   return false;
 };
 
-// Misma transformación sigla → código que aplica PlanoEngineNetwork.ts al escribir la
+// Misma transformación sigla → código que aplica PlanoMotorRed.ts al escribir la
 // abreviatura de un fixture en el ini/fin de un ramal: "Duc:" -> "DUC".
 /** Presión máxima (m.c.a.) que soporta cada aparato, indexada por su sigla ("LAV" → lavamanos); usa la misma sigla que dibuja el motor. */
 export const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(

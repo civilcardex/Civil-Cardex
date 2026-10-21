@@ -22,7 +22,7 @@ vi.stubGlobal('localStorage', {
 });
 vi.stubGlobal('window', { dispatchEvent: () => {} });
 
-import { mutarHidroAcc, mutarGasAcc } from '../../components/fixtures/useAparatoAccMutaciones.ts';
+import { mutarHidroAcc, mutarGasAcc } from '../../components/aparatos/useAparatoAccMutaciones.ts';
 import {
   loadHidroData,
   saveHidroData,

@@ -130,12 +130,12 @@ export function calcularMergeKeys(args: {
   const [aId, bId] = hostR.mergesFrom;
   if (!aId || !bId) return null;
   // `hostR.mergesFrom` es siempre [existing.id, incoming.id] por construcción
-  // (PlanoEngineDrawing.ts, autoSplitJunctionAndSumFlow). Cuál de los tres ramales de este
+  // (PlanoMotorDibujo.ts, autoSplitJunctionAndSumFlow). Cuál de los tres ramales de este
   // empalme (existing, hostR=downstream, incoming) MUESTRA el total combinado se decide solo por
   // la dirección actual del flujo — no está fijo a "existing" ni al "auto-creado":
   // junctionHasOutgoingFlow ya garantiza al menos uno de los tres flujos FUERA del empalme, así
   // que con tres ramales la división es siempre 2-vs-1, y el único disidente (el que discrepa de
-  // los otros dos) es el entrante. Coincide con waterNetworkRows.ts / WaterNetworkDesign.tsx.
+  // los otros dos) es el entrante. Coincide con waterRedFilas.ts / WaterRedDesign.tsx.
   if (!hostR.id || !hostR.pts || hostR.pts.length === 0) return null;
   // Para la sidebar de aparatos mostrar el combinado en CUALQUIERA de los participantes
   // (auto o fuente), no solo en el entrante — el usuario espera ver en RS3 (auto) el total

@@ -123,7 +123,7 @@ export function useAfTables(args: {
 
   // ── Acometida (solo AF) — computeAcometidaSummary recalcula todo desde tramosAf + plans, con el
   // mismo patrón de "cálculo en fresco" que afTable/ucAfTable de arriba, así (a diferencia de una
-  // versión anterior que leía un valor que WaterNetworkDesign.tsx solo persistía al abrirlo) la
+  // versión anterior que leía un valor que WaterRedDesign.tsx solo persistía al abrirlo) la
   // exportación nunca depende de que el usuario haya visitado antes esa pantalla específica.
   // Las filas de Acometida usan su propio formateador (no el f2 compartido) porque f2 trata el 0
   // como "sin datos" e imprime '—' — pero aquí el 0 es un valor calculado legítimo (p. ej. Qaco

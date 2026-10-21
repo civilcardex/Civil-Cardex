@@ -40,7 +40,7 @@ module.exports = {
         'src/modules/civilflow/components/pdfViewer/ExtremoAccesorioEditor.tsx',
         'src/modules/civilflow/components/workarea/PlanosPestana.tsx',
         'src/modules/civilflow/components/AparatosPanel.tsx',
-        'src/modules/civilflow/components/fixtures/**/*.{ts,tsx}',
+        'src/modules/civilflow/components/aparatos/**/*.{ts,tsx}',
       ],
       rules: {
         'react-hooks/refs': 'off',

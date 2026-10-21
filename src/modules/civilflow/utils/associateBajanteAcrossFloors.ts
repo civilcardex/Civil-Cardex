@@ -97,7 +97,7 @@ export function updateCrossFloorDesplazamientoAnchor(
 }
 
 // El id/código de un bajante se reescribe cuandoquiera que corre _renumberBajantes
-// (networkRenumber.ts) — p. ej. después de borrar CUALQUIER bajante de la misma red/piso, cerrando
+// (redRenumera.ts) — p. ej. después de borrar CUALQUIER bajante de la misma red/piso, cerrando
 // el hueco de numeración. Toda referencia cruzada entre pisos se ancla en ese id (el id del ramal
 // Ldesvio es `LD_<id>`, el `sourceBajanteId`/`targetBajanteId` del fantasma espejo, y el puntero
 // `descargaEnId`/`origenId` del otro lado, formato `${planId}|${id}`) — nada de eso se actualiza

@@ -116,7 +116,7 @@ function FilaItem({ it }: { it: { nombre: string; desc: string } }): React.JSX.E
   );
 }
 
-/** Reproductor del tutorial de la sección (mapa TUTORIALES en helpTutoriales.ts).
+/** Reproductor del tutorial de la sección (mapa TUTORIALES en ayudaTutoriales.ts).
  *  Embebido YouTube-nocookie/Vimeo — frame-src ya los permite (index.html + vercel.json). */
 function VideoTutorial({ t }: { t: Tutorial }) {
   // Saneo antes de interpolar en la URL del iframe: solo [A-Za-z0-9_-] de 6-20 caracteres.

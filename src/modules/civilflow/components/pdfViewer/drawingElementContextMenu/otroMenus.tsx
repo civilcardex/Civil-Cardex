@@ -76,7 +76,7 @@ const CANAL_FIELD_LABELS: Record<'base' | 'altura' | 'longitud' | 'pendiente', s
 };
 
 // Patrón de commit con texto libre (buffer de edición local, commit al perder el foco) — igual
-// que CanalDimField en RainChannelsCheck.tsx, ya que los demás campos numéricos de este archivo
+// que CanalDimField en LluviaCanalesVerifica.tsx, ya que los demás campos numéricos de este archivo
 // son todos desplegables <select> y base/altura necesitan entrada decimal arbitraria.
 function CanalDimInput({
   field,

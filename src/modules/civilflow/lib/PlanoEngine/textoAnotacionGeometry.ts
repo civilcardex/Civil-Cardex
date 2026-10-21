@@ -1,7 +1,7 @@
 // Geometría compartida para el redimensionado de anotaciones de texto: posición en lienzo de la
 // esquina de la caja para una esquina nombrada en el marco local (sin rotar) de la propia caja,
-// y rotación de un punto del marco local al espacio del lienzo. Tanto handleMouseDown.ts (agarre)
-// como handleDragMove.ts (arrastre) necesitan exactamente las mismas matemáticas para que la
+// y rotación de un punto del marco local al espacio del lienzo. Tanto manejaRatonAbajo.ts (agarre)
+// como manejaArrastrarMueve.ts (arrastre) necesitan exactamente las mismas matemáticas para que la
 // esquina agarrada quede anclada con precisión en el lado opuesto a la que se redimensiona.
 
 export type TextCorner = 'tl' | 'tr' | 'bl' | 'br';
@@ -11,7 +11,7 @@ export function oppositeTextCorner(c: TextCorner): TextCorner {
 }
 
 // boxWFull/boxHFull son las dimensiones completas de la caja con padding en px de lienzo (coincide
-// con renderTextAnnotations.ts: rect dibujado en (-pad, -fs-pad) con tamaño boxWFull x boxHFull).
+// con dibujaTextoAnotaciones.ts: rect dibujado en (-pad, -fs-pad) con tamaño boxWFull x boxHFull).
 export function textLocalCorner(
   corner: TextCorner,
   fs: number,

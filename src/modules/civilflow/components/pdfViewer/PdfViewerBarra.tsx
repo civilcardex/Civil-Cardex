@@ -12,7 +12,7 @@ export interface ToolDef {
 
 // Bajante solo tiene sentido en san/vent/ll (bajantes); montante solo en gas/ac/af (montantes) —
 // centralizado aquí para que las dos rutas de render de la barra (expandida/colapsada) y los
-// atajos de teclado de PlanoEngine.ts apliquen exactamente la misma regla sin divergir.
+// atajos de teclado de PlanoMotor.ts apliquen exactamente la misma regla sin divergir.
 export function isToolDisabledForNet(
   toolId: string,
   net: string,

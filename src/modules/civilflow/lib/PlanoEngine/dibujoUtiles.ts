@@ -24,7 +24,7 @@ export function _nextLabel(engine: IPlanoEngineCore): string {
 
 // Invierte la dirección de un ramal en el sitio: revierte el orden de sus puntos e intercambia
 // todo campo simétrico por extremo para que cada uno siga refiriéndose al extremo físico
-// correcto después. Las flechas de dirección de flujo (renderRamales.ts, derivadas en vivo de
+// correcto después. Las flechas de dirección de flujo (dibujaRamales.ts, derivadas en vivo de
 // pts[0] vs pts[último]) se voltean solas como resultado — no hace falta un campo de dirección
 // aparte.
 /** Le da la vuelta a un ramal en su sitio: invierte el orden de sus puntos y cambia lo del inicio

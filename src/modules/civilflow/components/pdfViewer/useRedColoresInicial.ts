@@ -30,7 +30,7 @@ export function useNetColorsInit(): void {
         } else {
           // Sin override guardado — sincronizar el default de la variable CSS a NETS[].col para
           // que lluvias (cyan #22d3ee por defecto en CSS) no se dibuje con el morado #8B5CF6 fijo
-          // en PlanoState.ts.
+          // en PlanoEstado.ts.
           const cssVal = getComputedStyle(document.documentElement)
             .getPropertyValue('--' + net.id)
             .trim();

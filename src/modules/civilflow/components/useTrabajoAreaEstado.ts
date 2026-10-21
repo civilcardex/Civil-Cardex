@@ -527,7 +527,7 @@ export function useWorkAreaState() {
         // Sin override guardado — sincroniza el default de la variable CSS hacia NETS[].col
         // para que el motor de dibujo (que lee exclusivamente de NETS[].col) use el mismo color
         // que la UI/selector de color (que lee de variables CSS). Evita que lluvias quede en
-        // morado (#8B5CF6 hardcodeado en PlanoState.ts) mientras la variable CSS dice cyan
+        // morado (#8B5CF6 hardcodeado en PlanoEstado.ts) mientras la variable CSS dice cyan
         // (#22d3ee).
         const cssVal = getComputedStyle(document.documentElement)
           .getPropertyValue('--' + r.id)

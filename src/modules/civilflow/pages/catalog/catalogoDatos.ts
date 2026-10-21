@@ -166,7 +166,7 @@ export const MATERIALES_POR_RED = [
 // tiene realmente cada red. Decide si el campo material de un ramal muestra un selector
 // o texto estático: solo una red cuyo catálogo canónico liste más de un material debe
 // ofrecer elección, sin importar cuántas entradas tenga el catálogo separado
-// `mats`/MaterialesContext (engineeringDataMaterials.ts, lista editable más amplia usada en búsquedas de diámetro).
+// `mats`/MaterialesContext (ingenieriaDatosMaterials.ts, lista editable más amplia usada en búsquedas de diámetro).
 const RED_LABEL_TO_NET: Record<string, string> = {
   Sanitaria: 'san',
   'Aguas lluvias': 'll',

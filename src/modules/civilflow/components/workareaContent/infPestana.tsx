@@ -9,7 +9,7 @@ import {
 import { getPdfjs } from '../../utils/lazyPdfjs';
 import { downloadPlanosPdf } from '../../utils/exportaPlanos.ts';
 import type { useWorkAreaState } from '../useTrabajoAreaEstado.ts';
-import { useInfTables } from './useInfTablas.ts';
+import { useInfTablas } from './useInfTablas.ts';
 import { REDES } from '../../constants/uiConfig';
 
 const ANEXO_PDF_URL = '/docs/detalle-instalacion-aparatos-hsg.pdf';
@@ -123,7 +123,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       ),
     [state.redes],
   );
-  const tables = useInfTables(state);
+  const tables = useInfTablas(state);
   const proy = tables.proy;
   const plans = tables.plans;
   const pisos = tables.pisos;

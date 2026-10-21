@@ -256,7 +256,7 @@ export function autoSplitJunctionAndSumFlow(
       // Las uniones entre redes san↔vent a mitad de cuerpo NO deben dividir el ramal existente.
       // Ambas subredes comparten el mismo grupo de nodos, así que las conexiones parecen uniones
       // de la misma red, pero un ramal san cayendo a mitad de cuerpo sobre uno de vent (o al
-      // revés) es un cruce normal, no una confluencia de flujo — renderNetCrossings.ts dibuja el
+      // revés) es un cruce normal, no una confluencia de flujo — dibujaRedCruces.ts dibuja el
       // cruce visual.
       if (existing.net !== incoming.net) continue;
 
@@ -302,8 +302,8 @@ export function autoSplitJunctionAndSumFlow(
       // silencio todo el total acumulado de la cadena aguas arriba la próxima vez que la línea
       // se divida. Qué ramal DISPLAYA el número combinado (puede diferir de `downstream`, según
       // la convención AF/AC de "quien entra a la unión") es una preocupación solo de
-      // presentación, manejada en las tablas de diseño (waterNetworkRows.ts /
-      // WaterNetworkDesign.tsx), no aquí.
+      // presentación, manejada en las tablas de diseño (waterRedFilas.ts /
+      // WaterRedDesign.tsx), no aquí.
       const preSplitExistingUc = existing.uc || 0;
       const preSplitIncomingUc = incoming.uc || 0;
 

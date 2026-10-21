@@ -85,7 +85,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   }, []);
 
   // Persistir a la BD debounced (600 ms) — localStorage sigue siendo la caché en vivo que
-  // leen los cálculos (gasRows.ts) durante la sesión.
+  // leen los cálculos (gasFilas.ts) durante la sesión.
   const gasSaveTimerRef = useRef<number | null>(null);
   useEffect(() => {
     const proyectoId = getActiveProyectoId();
@@ -280,7 +280,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     );
     // Árbol de red + aparatos acumulados (docx flujo de nodos): el tronco lleva la
     // demanda de toda su red descendente; presión y ΔP acumulada POR RAMA.
-    // El cálculo vive en utils/gasCalcRows.ts (compartido con la tabla resumen).
+    // El cálculo vive en utils/gasCalculoFilas.ts (compartido con la tabla resumen).
     const propios = new Map<string, Record<string, number>>();
     for (const t of gasTramos) {
       propios.set(

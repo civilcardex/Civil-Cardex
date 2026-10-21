@@ -21,7 +21,7 @@ export function CalentadorTramoEditor() {
 }
 
 // Patrón de texto libre con commit al perder el foco (buffer local de edición) — igual que CanalDimField
-// en RainChannelsCheck.tsx y CanalDimInput en DrawingElementContextMenu, porque un input
+// en LluviaCanalesVerifica.tsx y CanalDimInput en DrawingElementContextMenu, porque un input
 // controlado por tecla pelea contra el tipeo decimal ('.' final, números parciales).
 
 // Re-exports: index.tsx consume los editores desde este hub (contrato previo al split).

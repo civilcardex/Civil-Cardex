@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { collectSourceAgg } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { correrEspejos } from '../../components/fixtures/useAparatoEspejos.ts';
+import { correrEspejos } from '../../components/aparatos/useAparatoEspejos.ts';
 import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // REPRO dump v58: el montante SUPERIOR es una FUENTE (sin origenId/bomba, recibeDeIds y

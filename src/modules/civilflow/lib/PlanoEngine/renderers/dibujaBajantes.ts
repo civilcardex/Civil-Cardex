@@ -40,7 +40,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // Cuando este bajante es un fantasma de piso remoto, nunca dibujar el borde amarillo grueso
     // de selección.
     const sel = b.id === engine.selId && !engine._isGhostSel && !isDirectionGhost;
-    // realMmToCanvasPx tiene un piso de 1mm de papel (ver PlanoEngine.ts) — en escalas
+    // realMmToCanvasPx tiene un piso de 1mm de papel (ver PlanoMotor.ts) — en escalas
     // arquitectónicas comunes un radio real de 20mm o 10mm caen en ese piso y renderizan
     // idéntico, así que dividir a la mitad el argumento en mm solo es invisible. Se divide el
     // valor px resultante en su lugar.

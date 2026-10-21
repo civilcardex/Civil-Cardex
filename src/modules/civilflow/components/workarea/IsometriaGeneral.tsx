@@ -41,7 +41,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     for (const n of NETS) {
       for (const plan of plans) {
         // Hay que pasar por el accessor con prefijo civilflow_ con el que todo escribe
-        // (storageService.ts) — un localStorage.getItem directo aquí no tenía ese prefijo y
+        // (almacenamientoServicio.ts) — un localStorage.getItem directo aquí no tenía ese prefijo y
         // siempre leía una clave que nadie escribe.
         const data = loadFromStorage<{
           ramales?: { net: string }[];

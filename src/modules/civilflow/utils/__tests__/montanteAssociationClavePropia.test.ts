@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { applyBajanteAssociation } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { correrEspejos } from '../../components/fixtures/useAparatoEspejos.ts';
-import { currentMapDe, type TargetArgs } from '../../components/fixtures/useAparatoObjetivo.ts';
+import { correrEspejos } from '../../components/aparatos/useAparatoEspejos.ts';
+import { currentMapDe, type TargetArgs } from '../../components/aparatos/useAparatoObjetivo.ts';
 import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // Escenario EXACTO del usuario (capturas MAC1-P2=4.5 ✓ / MAC2-P1=15.5 ✗): los aparatos de

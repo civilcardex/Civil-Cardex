@@ -60,7 +60,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
 
   // El modal "Cambio de dirección de flujo" vive en el raíz (NO dentro del menú): al abrirlo se
   // cierra el menú contextual y el modal queda portaleado a body — el plano se ve completo, el
-  // modal queda centrado y movible (ver UcMoveModal.tsx). Como el raíz puede volver a renderizar
+  // modal queda centrado y movible (ver UcMueveModal.tsx). Como el raíz puede volver a renderizar
   // con el menú cerrado, el estado y la lógica de confirmación se mantienen aquí, no en RamalMenu.
   const [ucMoveState, setUcMoveState] = useState<UcMoveModalState>({
     isOpen: false,
@@ -178,7 +178,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
       );
       return;
     }
-    // Para af/ac/gas la dirección EFECTIVA (flecha renderRamales.ts:993/1243 Y validaciones
+    // Para af/ac/gas la dirección EFECTIVA (flecha dibujaRamales.ts:993/1243 Y validaciones
     // junctionHasOutgoingFlow/junctionRespectsTributarioDirection) es
     // `_tribReversed ? pts[last] : pts[0]` — un XOR. Combinar flipRamalFlow (pts.reverse) con
     // toggle del flag se CANCELA: flecha y validación no cambian. La inversión real de estas

@@ -48,7 +48,7 @@ export interface WnRow {
   Pfin: number;
 }
 
-// Versión snapshot del cálculo de filas propio de WaterNetworkDesign.tsx (grafo de conectividad,
+// Versión snapshot del cálculo de filas propio de WaterRedDesign.tsx (grafo de conectividad,
 // árbol de presiones dirigido, pérdidas Hazen-Williams) — usada por la tabla en pantalla vía
 // estado vivo del componente (diámetros pendientes de guardar, ediciones manuales de presión) y,
 // aquí, como función pura que usa solo lo ya persistido en los objetos Tramo, para que la
@@ -79,7 +79,7 @@ export function computeWaterNetworkRows(
     })
     .filter((x): x is { id: string; uc: number } => x !== null);
 
-  // ── Grafo de conectividad + árbol de presiones dirigido (espeja el useMemo de WaterNetworkDesign.tsx) ──
+  // ── Grafo de conectividad + árbol de presiones dirigido (espeja el useMemo de WaterRedDesign.tsx) ──
   // Set por clave: la pertenencia (¿ya enlazado?) era un .includes sobre un array que crece.
   const calculoMap = new Map<string, Set<string>>();
   const enlazar = (padre: string, hijo: string): void => {
@@ -88,7 +88,7 @@ export function computeWaterNetworkRows(
     calculoMap.set(padre, set);
   };
   const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
-  // Un ramal auto-creado en una unión T/Y (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
+  // Un ramal auto-creado en una unión T/Y (autoSplitJunctionAndSumFlow, PlanoMotorDibujo.ts)
   // lleva mergesFrom = [idA, idB] — pero eso solo registra el UN par que disparó la división a
   // mitad de cuerpo. Un tercer (o cuarto) ramal que termina en la coordenada exacta se une vía
   // empalme extremo-a-extremo simple y nunca entra a mergesFrom — y aun así su arista de
@@ -98,7 +98,7 @@ export function computeWaterNetworkRows(
   const mergeBranches: Record<string, string[]> = {};
   // Cada extremo de ramal, etiquetado con su plano — usado abajo para encontrar uniones SIMPLES
   // (no-mergesFrom) donde 3+ ramales se juntan en una coordenada por dibujo extremo-a-extremo
-  // ordinario. Espeja el cycle-pruning de WaterNetworkDesign.tsx — ver el comentario ahí para el
+  // ordinario. Espeja el cycle-pruning de WaterRedDesign.tsx — ver el comentario ahí para el
   // razonamiento completo.
   const ramalEndpoints: Array<{ key: string; x: number; y: number; planId: string }> = [];
 
@@ -299,7 +299,7 @@ export function computeWaterNetworkRows(
     }
   }
 
-  // Uniones simples (no-mergesFrom) — espejan el cycle-pruning de WaterNetworkDesign.tsx, ver el
+  // Uniones simples (no-mergesFrom) — espejan el cycle-pruning de WaterRedDesign.tsx, ver el
   // comentario ahí para el razonamiento completo. Agrupa cada extremo de ramal por coordenada
   // (solo mismo plano) y, dentro de cada cúmulo de 3+ vías, quita cualquier arista de adyacencia
   // que cerraría un ciclo (vía union-find), sin desconectar a nadie.
@@ -379,7 +379,7 @@ export function computeWaterNetworkRows(
   }
 
   // Dirigido (enraizado en la fuente real de suministro), no la componente conectada no dirigida
-  // completa — ver connectionGraph.ts. Una rama que alimenta un fixture debe mostrar solo SU
+  // completa — ver conexionGrafo.ts. Una rama que alimenta un fixture debe mostrar solo SU
   // total acumulado propio, no la demanda de todo el edificio solo porque hidráulicamente sea
   // parte de la misma red.
   // CARGA PROPAGADA (orig. usuario): las claves de aparatos ya traen la carga acumulada
@@ -442,7 +442,7 @@ export function computeWaterNetworkRows(
     .filter((t) => t.tipo !== 'tributario' && !t.esBajante && !isAC1(t))
     .sort(compareTramosPisoDesc);
 
-  // ── Acometida (solo AF) — mismos defaults con los que arranca el useState propio de WaterNetworkDesign.tsx ──
+  // ── Acometida (solo AF) — mismos defaults con los que arranca el useState propio de WaterRedDesign.tsx ──
   const tr1 = isAf(networkType) ? tramos.find(isAC1) : null;
   const tr2 = isAf(networkType) ? tramos.find(isAC2) : null;
   const acoContMonDiam = 1.25;

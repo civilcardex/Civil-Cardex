@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { propagarAparatosPresion } from '../propagation';
-import { correrEspejos } from '../../components/fixtures/useAparatoEspejos.ts';
-import { currentMapDe, type TargetArgs } from '../../components/fixtures/useAparatoObjetivo.ts';
+import { correrEspejos } from '../../components/aparatos/useAparatoEspejos.ts';
+import { currentMapDe, type TargetArgs } from '../../components/aparatos/useAparatoObjetivo.ts';
 import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
 
 // E2E INTEGRAL (espec. usuario): la herencia de montantes debe mostrar ABAJO exactamente lo

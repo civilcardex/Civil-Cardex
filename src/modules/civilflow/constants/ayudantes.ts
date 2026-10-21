@@ -33,7 +33,7 @@ export function fmtPiso(val: string, pisos: { n: number }[]): string {
   return val;
 }
 
-// La etiqueta con la que un bajante realmente se dibuja en el canvas (renderBajantes.ts) — código
+// La etiqueta con la que un bajante realmente se dibuja en el canvas (dibujaBajantes.ts) — código
 // sin '#' y en mayúsculas, más el sufijo corto de piso ("BAN1-P1", "MAF1-S2", "BALL1-C"). La
 // reutilizan las alertas de asociación entre pisos para citar la etiqueta visual, no el id/código
 // pelado.

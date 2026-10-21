@@ -671,7 +671,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
     // Si este ramal es un Ldesvio, al arrastrarlo también se arrastró su bajante origen (ver
-    // handleDragMove.ts) — cualquier rollback de abajo debe revertir eso también, y cualquier
+    // manejaArrastrarMueve.ts) — cualquier rollback de abajo debe revertir eso también, y cualquier
     // soltado exitoso debe propagar la nueva posición del bajante al storage del otro piso, igual
     // que ya lo hace un bajDrag directo.
     const srcBajId = rId.startsWith('LD_') ? rId.slice(3) : null;

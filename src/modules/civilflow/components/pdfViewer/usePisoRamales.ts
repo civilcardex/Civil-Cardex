@@ -101,7 +101,7 @@ export function useFloorRamales({
           ) || [];
       } else {
         // Debe pasar por el mismo accessor con prefijo civilflow_ que usa todo lo demás
-        // (saveToStorage/loadFromStorage de storageService.ts) — un localStorage.getItem crudo
+        // (saveToStorage/loadFromStorage de almacenamientoServicio.ts) — un localStorage.getItem crudo
         // aquí perdía ese prefijo por completo, leía siempre una clave que nadie escribía y caía
         // silenciosamente a la consulta de BD de abajo en cada llamada.
         const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(

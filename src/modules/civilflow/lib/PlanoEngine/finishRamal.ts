@@ -842,7 +842,7 @@ export function checkCrossRamalAngle(
           } else if (isAfAc) {
             // AF/AC solo forma una tee (90°) en una unión — nada de fusiones estilo yee de 45°,
             // por pedido explícito. Misma tolerancia que usa la detección isTee de
-            // renderJunctions.ts.
+            // dibujaEmpalmes.ts.
             isAllowed = Math.abs(internalAngle - 90) <= 15;
           } else {
             isAllowed = internalAngle >= 50;

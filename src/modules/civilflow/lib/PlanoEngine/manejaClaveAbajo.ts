@@ -56,7 +56,7 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     engine.setTool('guide');
     e.preventDefault();
   }
-  // Bajante solo en san/vent/ll, montante solo en gas/ac/af — misma regla que PdfViewerToolbar.tsx
+  // Bajante solo en san/vent/ll, montante solo en gas/ac/af — misma regla que PdfViewerBarra.tsx
   // aplica en sus botones (isToolDisabledForNet); duplicada aquí como chequeo plano en vez de
   // importada, porque lib/PlanoEngine no debe depender de components/.
   else if (k === 'b') {

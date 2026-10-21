@@ -41,7 +41,7 @@ interface LocalDrawingData {
 }
 
 // diametroInicio/diametroFin se guardan como el VALOR COMPLETO de la opción del dropdown de
-// diámetro, p. ej. `1-1/2" — 42.7 mm` — todo lo demás que los lee (ExtremeAccessoryEditor.tsx,
+// diámetro, p. ej. `1-1/2" — 42.7 mm` — todo lo demás que los lee (ExtremoAccesorioEditor.tsx,
 // DrawingElementContextMenu.tsx) recorta primero hasta la parte en pulgadas antes del `"`. Sin
 // eso, el manejo propio de guion-em de diamPulgFromLabel entra en acción y lee la cifra en *mm*
 // después del guion como si fueran pulgadas (42.7 en vez de 1.5) — un número salvajemente
@@ -127,7 +127,7 @@ export function writeDiametroToDrawing(
   const [ramalId, planId] = parseBajanteKey(ramalKey);
 
   // Validación: el diámetro de un ramal no puede bajar del diámetro mayor de cualquier accesorio
-  // adjunto a él. Espejo del chequeo inverso en ExtremeAccessoryEditor.tsx:110-117 — sin esto,
+  // adjunto a él. Espejo del chequeo inverso en ExtremoAccesorioEditor.tsx:110-117 — sin esto,
   // las páginas de tabla de diseño pueden encoger una tubería bajo un accesorio más ancho sin
   // que nadie lo note hasta la rareza en tiempo de render (el accesorio de ajuste más ancho
   // termina dibujado alrededor de una tubería más delgada).

@@ -4,8 +4,8 @@ import { _statusMsg } from '../ramalMedir.ts';
 import { pisoCorto } from '../../../constants';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
-// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
-// de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
+// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerBarra.tsx) y los atajos
+// de teclado (PlanoMotor.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
 /** Crea la bomba que saca el agua de una caja de registro (san (Sanitaria) o ll (Lluvias)); se
