@@ -6,6 +6,7 @@ import {
   REDES_ORDEN,
 } from './memoriaExportaCompartido.ts';
 import { loadJspdf } from '../../../utils/exportaCargadores.ts';
+import { sanaCelda, sanaTablas } from './memoriaSana.ts';
 function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
   if (!table.headerGroups) return [table.headers.map((h) => ({ content: h }))];
   const row1: Record<string, unknown>[] = [];
@@ -29,6 +30,10 @@ const PDF_NAVY: [number, number, number] = [40, 60, 90];
 export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
   const { jsPDF, autoTable } = await loadJspdf();
 
+  // Frontera de exportación: se sanean las celdas ANTES de escribir. La memoria es un
+  // entregable firmable: un NaN o un Infinity en una columna de cálculo es un defecto.
+  const tablas = sanaTablas(data.tables) || [];
+
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
 
@@ -43,7 +48,7 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
   autoTable(doc, {
     startY: 95,
     head: [['Campo', 'Valor']],
-    body: data.rows,
+    body: data.rows.map((r) => r.map(sanaCelda)),
     styles: { fontSize: 10, cellPadding: 5 },
     headStyles: {
       fillColor: PDF_NAVY,
@@ -56,8 +61,8 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
 
   let prevKey: string | null = null;
   let cursorY = 55;
-  for (let i = 0; i < (data.tables || []).length; i++) {
-    const table = (data.tables || [])[i];
+  for (let i = 0; i < tablas.length; i++) {
+    const table = tablas[i];
     const key = table.red || '';
     if (key !== prevKey) {
       // Cada red empieza en su propia página nueva — la hoja de resumen queda sola en la página 1.

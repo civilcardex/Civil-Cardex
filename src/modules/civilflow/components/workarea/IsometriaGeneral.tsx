@@ -367,8 +367,12 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
       }
       for (const b of netData.bajantes) {
         const prof2 = profByNet[b.net] ?? 0;
-        let baseZ = ((b.nptBase || 0) + prof2) * 1000;
-        let cimaZ = ((b.nptCima || 0) + prof2) * 1000;
+        // npt YA viene en mm (lo mismo que nptMap): NO se multiplica por 1000. Con el
+        // factor de más, un bajante con npt=2700 quedaba a 2 700 000 (400 km por encima
+        // de sus propios ramales) y se dibujaba fuera del lienzo. La profundidad está en
+        // m: se convierte a mm restándola (signo NEGATIVO bajo losa, igual que el ramal).
+        let baseZ = (b.nptBase || 0) - prof2 * 1000;
+        let cimaZ = (b.nptCima || 0) - prof2 * 1000;
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
         if (b.descargaEnId) {

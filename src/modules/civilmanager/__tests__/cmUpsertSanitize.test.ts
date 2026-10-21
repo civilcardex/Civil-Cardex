@@ -7,6 +7,14 @@ const integrantesExistentes = vi.hoisted(() => ({
   fail: false,
 }));
 
+// El select de existentes se espera directo (`await supabase.from(t).select('id').eq(...)`)
+// y el del dueño encadena `.maybeSingle()`. La cadena devuelve un objeto que es AMBAS
+// cosas: awaitable (para el select de existentes) y con maybeSingle (para el del dueño).
+const eqChain = (owner: string | null) => ({
+  then: (res: (v: unknown) => void) => res({ data: [], error: null }),
+  maybeSingle: async () => ({ data: owner ? { user_id: owner } : null, error: null }),
+});
+
 vi.mock('../../../lib/supabase', () => ({
   supabase: {
     auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
@@ -21,7 +29,7 @@ vi.mock('../../../lib/supabase', () => ({
             ? { data: null, error: { message: 'select fail' } }
             : { data: integrantesExistentes.data, error: null },
         // reconciliación de borrados por tabla: sin filas existentes no hay stale
-        eq: async () => ({ data: [], error: null }),
+        eq: () => eqChain('u1'),
       }),
       delete: () => ({
         in: (_col: string, ids: string[]) => {

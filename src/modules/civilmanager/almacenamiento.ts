@@ -131,19 +131,27 @@ async function getUserId(): Promise<string | null> {
   }
 }
 
-/** Empresarial: user_id del dueño del proyecto activo (visible por RLS solo si tengo
- *  acceso). null = proyecto propio o inaccesible → las filas se sellan con la sesión. */
-async function ownerIdProyectoActivo(proyectoUid: string): Promise<string | null> {
-  try {
-    const { data } = await supabase
-      .from('cm_proyectos')
-      .select('user_id')
-      .eq('id', proyectoUid)
-      .single();
-    return (data?.user_id as string) ?? null;
-  } catch {
-    return null;
-  }
+/**
+ * Empresarial: user_id del dueño del proyecto activo.
+ *
+ * Falla si la consulta no se puede resolver: con RLS bloqueando el SELECT, `.single()`
+ * devuelve `{data: null, error}` y un `null` silencioso hacía que las filas se sellaran con
+ * el user_id del MIEMBRO en vez del dueño (el dueño no las veía y el catálogo "duplicaba"
+ * por usuario). El fallo de red y el caso "no hay dueño" ya no son indistinguibles.
+ *
+ * @param proyectoUid id del proyecto CM.
+ * @returns el user_id del dueño.
+ * @throws Error si la consulta falla o el proyecto no tiene dueño.
+ */
+async function ownerIdProyectoActivo(proyectoUid: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('cm_proyectos')
+    .select('user_id')
+    .eq('id', proyectoUid)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.user_id) throw new Error('proyecto CM sin dueño');
+  return data.user_id as string;
 }
 
 async function loadFromSupabase(): Promise<CivilManagerState | null> {
@@ -198,9 +206,10 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
   try {
     const proyectoUid = proyectoId; // RLS exige proyecto válido del usuario
     // Empresarial: miembro editando el proyecto del dueño → las filas se sellan con el
-    // user_id del DUEÑO (la policy RLS valida el asiento del miembro).
+    // user_id del DUEÑO (la policy RLS valida el asiento del miembro). Si no se puede
+    // resolver el dueño, NO se sella con un id adivinado: se propaga el error.
     const ownerProyecto = await ownerIdProyectoActivo(proyectoUid);
-    const userIdEscritura = ownerProyecto && ownerProyecto !== userId ? ownerProyecto : userId;
+    const userIdEscritura = ownerProyecto !== userId ? ownerProyecto : userId;
     // Columnas reales por tabla (migración cm_schema + snaps): todo campo de más
     // (fuera de esta lista) tumbaba el upsert con 400.
     const TABLE_COLUMNS: Record<string, string[]> = {

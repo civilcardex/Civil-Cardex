@@ -1,5 +1,6 @@
 // Generador Word (docx apaisado) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
 import { type MemoriaTable, type MemoriaData, fileBase } from './memoriaExportaCompartido.ts';
+import { sanaTablas } from './memoriaSana.ts';
 function computeColumnWidthsDxa(headers: string[]): number[] {
   const twipsPerChar = 105;
   const minWidth = 650;
@@ -209,7 +210,9 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   });
 
   const tableSections = [];
-  const allTables = data.tables || [];
+  // Frontera de exportación: se sanean las celdas ANTES de escribir (la memoria es un
+  // entregable firmable: un NaN o un Infinity en una columna es un defecto).
+  const allTables = sanaTablas(data.tables) || [];
   for (let i = 0; i < allTables.length; i++) {
     const table = allTables[i];
     const nextTable = table.side ? allTables[i + 1] : undefined;

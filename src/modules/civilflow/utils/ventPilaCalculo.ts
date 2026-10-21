@@ -75,10 +75,17 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
 
   const Q = caudalHunterLPS(UD_acum, 1);
 
+  // Radio (r) con guarda: un radio 0 (el usuario escribe 0 en la columna "Radio", o una
+  // fila legacy trae baj_r=0) hacía Math.pow(0, 5/3)=0 -> división por cero -> Infinity
+  // -> la memoria PDF imprimía "Infinity"" en la columna "D. calc" (entregable firmable).
+  const radio = Number.isFinite(r) && r > 0 ? r : 7 / 24;
+
   // Wyly-Eaton completo (Excel "3. Bajantes AN" col. H): el factor (n_ref/n) entra al
   // cálculo — con n=0.009 equivale al 1.754 anterior (27.8·0.0630902).
-  const DcalcPulg =
-    Q > 0 ? Math.pow(Q / 0.0630902 / (27.8 * (0.009 / n) * Math.pow(r, 5 / 3)), 3 / 8) : 0;
+  const DcalcPulgBruto =
+    Q > 0 ? Math.pow(Q / 0.0630902 / (27.8 * (0.009 / n) * Math.pow(radio, 5 / 3)), 3 / 8) : 0;
+  // Última barrera: si el cálculo sale no finito (n=0, caudal enorme), NO se propaga.
+  const DcalcPulg = Number.isFinite(DcalcPulgBruto) && DcalcPulgBruto > 0 ? DcalcPulgBruto : 0;
   const DcalcMm = DcalcPulg * 25.4;
 
   const Dprop =

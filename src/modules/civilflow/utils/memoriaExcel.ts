@@ -6,6 +6,7 @@ import {
   REDES_ORDEN,
 } from './memoriaExportaCompartido.ts';
 import { loadXlsx } from '../../../utils/exportaCargadores.ts';
+import { sanaCelda, sanaTablas } from './memoriaSana.ts';
 interface XlsxCellStyle {
   font?: { bold?: boolean; sz?: number; color?: { rgb: string }; italic?: boolean };
   fill?: { fgColor: { rgb: string } };
@@ -141,12 +142,16 @@ export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
 
+  // Frontera de exportación: se sanean las celdas ANTES de escribir (la memoria es un
+  // entregable firmable: un NaN o un Infinity en una columna es un defecto).
+  const tablas = sanaTablas(data.tables) || [];
+
   const resumenAoa: (string | number)[][] = [
     ['Memorias Finales', ''],
     [data.proyNombre || 'Proyecto', ''],
     ['', ''],
     ['Campo', 'Valor'],
-    ...data.rows,
+    ...data.rows.map((r) => r.map(sanaCelda)),
   ];
   const wsResumen = XLSX.utils.aoa_to_sheet(resumenAoa);
   wsResumen['!cols'] = [{ wch: 28 }, { wch: 30 }];
@@ -172,7 +177,7 @@ export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
   for (const { key, label } of REDES_ORDEN) {
-    const tables = (data.tables || []).filter((t) => t.red === key);
+    const tables = tablas.filter((t) => t.red === key);
     if (tables.length === 0) continue;
     const { aoa, merges, styleCells, maxCols } = buildRedSheet(tables, XLSX.utils.encode_cell);
     const ws = XLSX.utils.aoa_to_sheet(aoa);

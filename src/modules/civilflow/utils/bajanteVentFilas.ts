@@ -254,7 +254,9 @@ export function computeBajanteVentTable(
     }
     const res = calculateVentStack({
       UD_acum: totalUD,
-      r: t.bajR ?? 7 / 24,
+      // `??` NO captura el 0: un radio 0 explícito (o legacy) debe caer al valor por
+      // defecto, no propagar Infinity al PDF.
+      r: Number.isFinite(t.bajR) && (t.bajR as number) > 0 ? (t.bajR as number) : 7 / 24,
       n: t.nmaning || manning_SAN,
       bajDprop: resolvedSanDprop || 0,
       bajLong: t.bajLong || 3,

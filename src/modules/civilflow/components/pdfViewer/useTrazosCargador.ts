@@ -14,6 +14,7 @@ import {
 } from '../../services/almacenamientoServicio.ts';
 import type { PlanTrazos } from '../../services/almacenamientoServicio.ts';
 import { devError } from '../../../../utils/desarrolloError.ts';
+import { validaDocTrazos } from '../../services/storage/validaDocTrazos.ts';
 import {
   migrateAssocLayoutOnLoad,
   sweepMisplacedLdesvios,
@@ -47,7 +48,15 @@ export function useTrazosLoader({
       const tryLoad = (id: string | number): PlanTrazos | string | null => {
         const key = `trazos_${id}`;
         const saved = loadFromStorage<PlanTrazos | string | null>(key, null);
-        return saved || null;
+        if (!saved) return null;
+        // Se valida la FORMA antes de cargarlo: un doc de era vieja (o truncado) con
+        // 'ramales' como objeto, o sin 'bajantes', metía basura en el motor o dejaba el
+        // piso vacío sin aviso (el usuario creía que había guardado).
+        if (!validaDocTrazos(saved)) {
+          devError('useTrazosCargador: doc con forma inválida en', key);
+          return null;
+        }
+        return saved;
       };
       const localData = tryLoad(resolvedId);
       let initiallyLoaded = false;
@@ -91,6 +100,13 @@ export function useTrazosLoader({
             saveTrazosToDB(String(resolvedId), localData);
           } else if (dbTs > localTs || !localData) {
             const merged = typeof dbData === 'string' ? (JSON.parse(dbData) as PlanTrazos) : dbData;
+            // Misma validación de forma que la caché local: un doc BD de era vieja con
+            // 'ramales' como objeto (o sin 'bajantes') NO debe entrar al motor — metía
+            // piezas sin id o dejaba el piso vacío sin aviso.
+            if (!validaDocTrazos(merged)) {
+              devError('useTrazosCargador: doc BD con forma inválida en', String(resolvedId));
+              return initiallyLoaded;
+            }
             // Asociación entre pisos (orig. usuario): unión SIEMPRE cuando BD gana — fantasma
             // XFG / Ldesvio / anillo presentes en la caché local y ausentes en el doc BD se
             // restauran. Sin gates: el gate dbSinAsocs/reciente era CIEGO para layout-2 (en el
