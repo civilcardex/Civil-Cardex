@@ -6,24 +6,24 @@ import {
   rootTributarioLabel,
   relabelTribChain,
   uniqRamalId,
-} from './PlanoEstado.ts';
-import type { PlanoRamal, IPlanoEngineCore } from './PlanoEstado.ts';
-import { devError } from '../../../../utils/desarrolloError.ts';
-import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './dibujoAngulos.ts';
+} from './PlanoState.ts';
+import type { PlanoRamal, IPlanoEngineCore } from './PlanoState.ts';
+import { devError } from '../../../../utils/devError.ts';
+import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles.ts';
 import { DEFAULT_PENDIENTE_PCT } from '../../constants';
-import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flujoDireccion.ts';
+import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection.ts';
 import {
   flipRamalFlow,
   ramalFlowDirectionCheck,
   propagarSanDiametroAguasAbajo,
-} from './dibujoFlujo.ts';
-import { _statusMsg, calculateRamalLength } from './ramalMedir.ts';
+} from './drawingFlow.ts';
+import { _statusMsg, calculateRamalLength } from './ramalMeasure.ts';
 import {
   autoSplitJunctionAndSumFlow,
   detectTributaryPadre,
   checkRamalAnglesExcludingConnections,
   puntoEnCaja,
-} from './empalmeAutoDivide.ts';
+} from './junctionAutoSplit.ts';
 import {
   _nextLabel,
   _midpoint,
@@ -31,7 +31,7 @@ import {
   ramalDischargeEnd,
   ramalContinuesPast,
   asociarRamalABajantes,
-} from './dibujoUtiles.ts';
+} from './drawingUtils.ts';
 import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './canalAssociation';
 
@@ -842,7 +842,7 @@ export function checkCrossRamalAngle(
           } else if (isAfAc) {
             // AF/AC solo forma una tee (90°) en una unión — nada de fusiones estilo yee de 45°,
             // por pedido explícito. Misma tolerancia que usa la detección isTee de
-            // dibujaEmpalmes.ts.
+            // renderJunctions.ts.
             isAllowed = Math.abs(internalAngle - 90) <= 15;
           } else {
             isAllowed = internalAngle >= 50;

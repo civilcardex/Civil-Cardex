@@ -1,17 +1,17 @@
 import type { Tramo } from '../context/tramosReducer';
-import type { BajanteRaw } from './dibujoSyncTipos.ts';
-import type { PlanItem } from '../context/PlanosContexto.tsx';
-import { calcUDparcial } from './componentAyudantes.tsx';
+import type { BajanteRaw } from './drawingSyncTypes.ts';
+import type { PlanItem } from '../context/PlansContext.tsx';
+import { calcUDparcial } from './componentHelpers.tsx';
 import { distToPolyline } from '../lib/shared/geometry';
-import { parseDescargaEnId } from './analizaDescargaEnId.ts';
+import { parseDescargaEnId } from './parseDescargaEnId.ts';
 import { indicePorClave } from './indices';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
-import { TRAZOS_PREFIX } from '../constants/almacenamientoClaves.ts';
-import { loadFromStorage } from '../services/almacenamientoServicio.ts';
-import type { DrawingData, RawElement } from './dibujoSync.ts';
+import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
+import { loadFromStorage } from '../services/storageService.ts';
+import type { DrawingData, RawElement } from './drawingSync.ts';
 
 /** Bajante (tubo vertical) tal cual está guardado, con su posición en el plano para poder enlazarlo entre pisos. */
-export type { BajanteRaw } from './dibujoSyncTipos.ts';
+export type { BajanteRaw } from './drawingSyncTypes.ts';
 
 /** Lo que aporta cada tramo sanitario (sus aparatos con su UD (Unidades de Desague)) ya fusionado de todas sus claves; es la entrada de las tablas sanitarias. */
 export interface MergedApBase {

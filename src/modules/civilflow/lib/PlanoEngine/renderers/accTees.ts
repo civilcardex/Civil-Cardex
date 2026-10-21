@@ -1,5 +1,5 @@
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
-import type { DeclutterFrame } from '../etiquetaDesaclarar.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
+import type { DeclutterFrame } from '../labelDeclutter.ts';
 
 export function drawTeeSymbols(
   ctx: CanvasRenderingContext2D,
@@ -22,18 +22,18 @@ export function drawTeeSymbols(
   if (accType === 'teeSube' || accType === 'teeBaja') {
     // teeDirecto NO dibuja nada aquí a propósito — una tee recta simple siempre es detectable
     // geométricamente (3 segmentos compartiendo este vértice exacto), así que el pase
-    // puramente geométrico de dibujaEmpalmes.ts ya la dibuja, sin dependencia de datos que
+    // puramente geométrico de renderJunctions.ts ya la dibuja, sin dependencia de datos que
     // pueda quedarse vieja. Duplicarla aquí (como esta rama solía hacer, para los tres tipos de
     // tee) dibujaba un segundo símbolo encima. teeSube/teeBaja se quedan aquí porque cargan
     // info de DIRECCIÓN (sube/baja) que el detector geométrico no tiene forma de saber — eso
     // necesita un glifo respaldado por datos reales, no solo topología.
     // Mismo lenguaje visual que el glifo tee/yee auto-detectado geométricamente
-    // (dibujaEmpalmes.ts): tres brazos finos irradiando del punto con una marca perpendicular
+    // (renderJunctions.ts): tres brazos finos irradiando del punto con una marca perpendicular
     // pequeña al final de cada brazo — sin disco blanco/anillo negro de fondo (ese es el estilo
     // de los OTROS glifos de accesorio — codo, etc — y era lo que hacía que esto se viera
     // sobredimensionado/inconsistente). Dos brazos siguen la dirección recta propia del ramal
     // (dx,dy); el tercero (px,py) marca la rama que se une aquí. Mismas constantes mm2cvs(2.0)
-    // / mm2cvs(0.8) que usa dibujaEmpalmes.ts, así que la escala coincide exactamente.
+    // / mm2cvs(0.8) que usa renderJunctions.ts, así que la escala coincide exactamente.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(1.0);
     const armW = 1.2 * engine.zoom * (engine.lineWidthScale || 1); // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
@@ -106,7 +106,7 @@ export function drawTeeSymbols(
   }
   if (accType === 'teeReduccion' || accType === 'teeLado') {
     // Glifo de tee real (tres brazos + marcas de extremo), mismo lenguaje visual que la tee
-    // geométrica (dibujaEmpalmes.ts) y teeSube/teeBaja. La rama
+    // geométrica (renderJunctions.ts) y teeSube/teeBaja. La rama
     // (px,py) se une perpendicular a la dirección de paso (dx,dy). teeReduccion dibuja el
     // brazo de la rama más angosto (diámetro reducido) con un collar corto de ancho completo en
     // la unión; teeLado mantiene la rama a ancho completo.

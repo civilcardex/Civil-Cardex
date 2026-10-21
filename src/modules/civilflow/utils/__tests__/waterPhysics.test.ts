@@ -3,7 +3,7 @@ import {
   hunterK,
   hunterQ,
   computeDesignRow,
-} from '../../components/waterNetworkDesign/filaPhysics.ts';
+} from '../../components/waterNetworkDesign/rowPhysics.ts';
 import type { Tramo } from '../../context/tramosReducer';
 
 // Spec: curva de Hunter (NTC 1500) y física de fila de la tabla de diseño AF/AC.

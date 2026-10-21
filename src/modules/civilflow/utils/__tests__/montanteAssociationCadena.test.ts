@@ -1,8 +1,8 @@
 ﻿import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { applyBajanteAssociation } from '../bajanteAssociation';
-import { buildTramos } from '../construyeTramos.ts';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import { buildTramos } from '../buildTramos.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState.ts';
 
 // CADENA de montantes entre pisos: piso 3 -> piso 2 -> piso 1. El montante del piso 2 recibe
 // 3 UC del piso 3 y, al asociarlo con el del piso 1, ese de abajo debe tomar LOS MISMOS 3.

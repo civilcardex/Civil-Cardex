@@ -10,8 +10,8 @@
  * "reparar etiqueta" (los píxeles están bien, la etiqueta mal): las cotas vuelven a leer bien
  * sin mover un solo trazo.
  */
-import { loadFromStorage, saveToStorage } from '../services/almacenamientoServicio.ts';
-import type { PlanMeta } from './planosMeta.ts';
+import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
+import type { PlanMeta } from './plansMeta.ts';
 
 /** Escalas del set estándar de planos (metros por píxel): 1:200, 1:133, 1:100, 1:80, 1:50. */
 export const ESCALAS_ESTANDAR = [0.5, 0.75, 1, 1.25, 2];

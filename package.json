@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr src/seo/prerenderEntrada.tsx --outDir dist-ssr",
+    "build": "vite build && vite build --ssr src/seo/prerenderEntry.tsx --outDir dist-ssr",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

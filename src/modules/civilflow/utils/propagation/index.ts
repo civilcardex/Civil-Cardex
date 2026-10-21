@@ -1,19 +1,19 @@
-import { loadFromStorage } from '../../services/almacenamientoServicio.ts';
+import { loadFromStorage } from '../../services/storageService.ts';
 import {
   APARATOS_HEREDADOS_KEY,
   APARATOS_HEREDADOS_TRIB_KEY,
   BAJADAS_RECEPTORAS_KEY,
-} from '../../constants/almacenamientoClaves.ts';
+} from '../../constants/storage-keys.ts';
 import { leerPiezas, calcularCargaBajantes } from './reading';
 import { detectarDownTrib } from './tributaries';
-import { calcularAristas } from './aristas.ts';
-import { calcularUpMonte } from './arribaMontante.ts';
+import { calcularAristas } from './edges.ts';
+import { calcularUpMonte } from './upMontante.ts';
 import { calcularPlegado } from './folding';
 import { calcularTotales } from './dfs';
-import { refrescarMontantes } from './accesorios.ts';
+import { refrescarMontantes } from './fittings.ts';
 import { escribirDelta } from './writing';
 import { setUltimaDiag } from './books';
-import type { Cnt, Ctx } from './conteo.ts';
+import type { Cnt, Ctx } from './counting.ts';
 
 // La API pública vive en `libros` (los lectores) — se re-exporta aquí para que la fachada
 // `../aparatosPresion` siga exponiendo exactamente lo mismo que antes.

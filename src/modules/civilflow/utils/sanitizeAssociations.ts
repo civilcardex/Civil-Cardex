@@ -1,15 +1,15 @@
 /** Saneo entrepisos tras recalibrar: traslada anillos/LD_ (ramal desvio entrepisos)/fantasmas por Δ de origen. */
-import { devError } from '../../../utils/desarrolloError.ts';
-import { splitPtr } from './claves.ts';
-import { TRAZOS_PLAN_PREFIX } from '../constants/almacenamientoClaves.ts';
-import { EV_STORAGE } from './aparatoEventos.ts';
+import { devError } from '../../../utils/devError.ts';
+import { splitPtr } from './keys.ts';
+import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
+import { EV_STORAGE } from './fixtureEvents.ts';
 import {
   loadData,
   saveData,
   origenDePlan,
   isLdesvioRamalId,
   type LocalGhostDrawingData,
-} from './crossPisoAlmacenamiento.ts';
+} from './crossFloorStorage.ts';
 
 interface PuntoPx {
   x_px: number;

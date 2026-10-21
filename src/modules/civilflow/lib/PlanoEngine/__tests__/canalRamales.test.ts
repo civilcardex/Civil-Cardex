@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { finishRamal } from '../finishRamal';
-import { handleBajanteDown } from '../dibujoCreations.ts';
-import { deleteSelected } from '../eliminaSelected.ts';
+import { handleBajanteDown } from '../drawingCreations.ts';
+import { deleteSelected } from '../deleteSelected.ts';
 import { moverAsociacionCanal, ramalesDelCanal } from '../canalAssociation';
-import PlanoEngineCtor from '../PlanoMotor.ts';
-import type PlanoEngine from '../PlanoMotor.ts';
+import PlanoEngineCtor from '../PlanoEngine.ts';
+import type PlanoEngine from '../PlanoEngine.ts';
 
 // Ramal de canal (orig. usuario): la asociación canal↔bajante vive SOLO en ramales que el
 // usuario dibuja desde dentro del canal hacia un bajante. Nada automático por cercanía.

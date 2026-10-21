@@ -1,4 +1,4 @@
-import type { PlanoNet } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import type { PlanoNet } from '../../lib/PlanoEngine/PlanoState.ts';
 
 const PdfViewerNetworkBar_S1: React.CSSProperties = {
   height: 38,

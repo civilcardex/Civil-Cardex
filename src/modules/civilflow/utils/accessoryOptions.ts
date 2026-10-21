@@ -1,0 +1,67 @@
+import { ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from '../constants';
+
+export function getAccessoryOptions(netId: string) {
+  if (netId === 'san') {
+    return SAN_ACCESORIOS.filter(
+      (a) =>
+        a.id === 'codo90rmSube' ||
+        a.id === 'codo90rmBaja' ||
+        a.id === 'codoReventilado' ||
+        a.id === 'sifon',
+    ).map((a) => ({ value: a.id, label: a.nombre }));
+  }
+  if (netId === 'vent') {
+    // La ventilación no admite sifón ni codo reventilado (ambos son de la rama sanitaria).
+    // 'tapon' (Tapón de limpieza) fuera de los CUERPOS (orig. usuario pt. 7) — sigue existiendo
+    // como accesorio de extremo/menú.
+    return SAN_ACCESORIOS.filter(
+      (a) => a.id !== 'sifon' && a.id !== 'codoReventilado' && a.id !== 'tapon',
+    ).map((a) => ({ value: a.id, label: a.nombre }));
+  }
+  if (netId === 'll') {
+    // 'tapon' (Tapón de limpieza) fuera de los CUERPOS (orig. usuario pt. 7).
+    return SAN_ACCESORIOS.filter((a) => a.id !== 'tapon').map((a) => ({
+      value: a.id,
+      label: a.nombre,
+    }));
+  }
+  if (netId === 'gas') {
+    // PUNTO 7b: 'teeTapon' ("Tapón soldado") fuera de los cuerpos de gas también.
+    return GAS_ACCESORIOS.filter((a) => a.id !== 'teeTapon').map((a) => ({
+      value: a.id,
+      label: a.nombre,
+    }));
+  }
+  if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
+    // AF/AC: válvulas (incluida llave terminal — válida como accesorio de extremo, ver
+    // ExtremeAccessoryEditor.tsx), válvulas de pie, reducciones, ampliaciones, otros, el codo
+    // medio 90° (codo90rm), y tee sube/baja/con tapón/con llave terminal (marcadores de
+    // glifo puros — no necesitan ramal aparte, a diferencia del auto-tee del montante). La
+    // teeDirecto simple sigue excluida: una tee plana siempre se auto-detecta geométricamente
+    // (renderJunctions.ts). El 'tapon' simple sigue excluido: tapar la pierna libre de una tee
+    // pasa por 'teeTapon' ahora, no por una tapa pelada sin marca de tee. teeReduccion/teeLado
+    // quedan excluidas de ESTE dropdown específicamente — siguen disponibles desde el contador
+    // de accesorios del sidebar y el modal de detección de uniones, solo que no como elección
+    // de glifo de cuerpo aquí.
+    return ACCESORIOS_HIDRO.filter(
+      (a) =>
+        (a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||
+        a.id === 'codo90rm' ||
+        a.id === 'codo90rmSube' ||
+        a.id === 'codo90rmBaja' ||
+        a.id === 'teeSube' ||
+        a.id === 'teeBaja' ||
+        // PUNTO 7b (orig. usuario): 'teeTapon' ("Tapón soldado") también fuera de los cuerpos.
+        a.id === 'teeLlaveTerminal',
+    ).map((a) =>
+      a.id === 'codo90rm'
+        ? { value: a.id, label: 'Codo medio 90°' }
+        : a.id === 'codo90rmSube'
+          ? { value: a.id, label: 'Codo 90° sube' }
+          : a.id === 'codo90rmBaja'
+            ? { value: a.id, label: 'Codo 90° baja' }
+            : { value: a.id, label: a.nombre },
+    );
+  }
+  return [];
+}

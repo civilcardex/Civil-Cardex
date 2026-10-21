@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { eraseRamalAt } from '../dibujoBorra.ts';
-import { deleteSelected as _deleteSelected } from '../eliminaSelected.ts';
-import { calcSanitaryAccessories } from '../redSanitaria.ts';
-import { loadFromStorage } from '../../../services/almacenamientoServicio.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { eraseRamalAt } from '../drawingErase.ts';
+import { deleteSelected as _deleteSelected } from '../deleteSelected.ts';
+import { calcSanitaryAccessories } from '../networkSanitary.ts';
+import { loadFromStorage } from '../../../services/storageService.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {

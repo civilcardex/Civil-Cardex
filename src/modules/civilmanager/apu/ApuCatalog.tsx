@@ -1,0 +1,186 @@
+import { useMemo, useState } from 'react';
+import { useCivilManager } from '../context.tsx';
+import { fmtMoneda } from '../calc.ts';
+import { genCodeFor } from '../codeGen.ts';
+import { askConfirm } from '../shared/ConfirmDialog.tsx';
+import { showToast } from '../shared/Toast.tsx';
+import { CrudFooter } from '../shared/CrudFooter.tsx';
+import {
+  DimEnLectura,
+  EditableSection,
+  TableHeader,
+  useEditable,
+} from '../shared/EditLock.tsx';
+
+import { ActionIcon } from '../shared/icons.tsx';
+import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
+import { ApuEditor } from './ApuEditor';
+import { exportApuExcel, exportApuPdf } from './apuExport.ts';
+import type { Apu } from '../types.ts';
+
+export function ApuCatalog() {
+  const { state, patch, cargosCalc, esHora, apuCalcMap, apusBasicoCalc } = useCivilManager();
+  const editable = useEditable();
+  const [selId, setSelId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search) return state.apus;
+    const s = search.toLowerCase();
+    return state.apus.filter(
+      (a) =>
+        a.codigo.toLowerCase().includes(s) ||
+        a.nombre.toLowerCase().includes(s) ||
+        a.categoria.toLowerCase().includes(s),
+    );
+  }, [state.apus, search]);
+
+  const sel = selId ? (state.apus.find((a) => a.id === selId) ?? null) : null;
+
+  function addApu() {
+    const nuevo: Apu = {
+      id: crypto.randomUUID(),
+      codigo: genCodeFor(state.apus, 'APU'),
+      nombre: 'Nuevo APU',
+      categoria: state.categorias_apu[0]?.categoria ?? '',
+      unidad: state.config_listas.unidades[0]?.abreviatura ?? 'un',
+      fecha_creacion: new Date().toISOString().slice(0, 10),
+      es_basico: false,
+      recursos_mo: [],
+      recursos_eq: [],
+      recursos_ins: [],
+      recursos_transporte: [],
+    };
+    patch({ apus: [...state.apus, nuevo] });
+    setSelId(nuevo.id);
+  }
+
+  function updateApu(id: string, p: Partial<Apu>) {
+    patch({ apus: state.apus.map((a) => (a.id === id ? { ...a, ...p } : a)) });
+  }
+
+  async function delApu(id: string) {
+    const usadoEnPresupuestos = state.presupuestos.some((p) =>
+      p.items.some((it) => it.apu_id === id),
+    );
+    const usadoComoBasico = state.insumos.some((x) => x.apu_basico_id === id);
+    if (usadoEnPresupuestos || usadoComoBasico) {
+      showToast('No se puede eliminar: el APU está referenciado en presupuestos o insumos', {
+        type: 'err',
+      });
+      return;
+    }
+    if (!(await askConfirm('¿Eliminar este APU?'))) return;
+    patch({ apus: state.apus.filter((a) => a.id !== id) });
+    if (selId === id) setSelId(null);
+  }
+
+  function exportCtx() {
+    return {
+      cargosCalc,
+      equipos: state.equipos,
+      insumos: state.insumos,
+      usarFP: state.config.usar_fp_en_apu,
+      esHora,
+      apuCalcMap,
+      abMap: new Map(apusBasicoCalc.map((a) => [a.id, a])),
+    };
+  }
+
+  return (
+    <EditableSection dim={false}>
+      <XlWrap>
+        <TableHeader title="Análisis de precios unitarios" icon="analisis_precios_unitarios" />
+        <DimEnLectura>
+          <XlScroll>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th title="Código único del APU (APU-xxx), generado automáticamente.">Código</th>
+                  <th title="Nombre de la actividad o partida del APU.">Nombre</th>
+                  <th title="Categoría del APU (lista editable en Configuración).">Categoría</th>
+                  <th title="Unidad de obra del APU (m2, m3, ml…).">Unidad</th>
+                  <th title="Costo directo calculado: mano de obra + equipo + insumos + transporte.">
+                    Costo Unitario
+                  </th>
+                  <th aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="cm-empty-row">
+                      Sin APU
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((a, i) => (
+                  <tr
+                    key={a.id}
+                    style={{
+                      background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined,
+                      cursor: 'pointer',
+                    }}
+                    tabIndex={0}
+                    onClick={() => setSelId(a.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelId(a.id);
+                      }
+                    }}
+                  >
+                    <XlRowNum n={i + 1} />
+                    <td>{a.codigo}</td>
+                    <td>{a.nombre}</td>
+                    <td>{a.categoria}</td>
+                    <td>{a.unidad}</td>
+                    <td>{fmtMoneda(apuCalcMap.get(a.id)?.totalDirecto ?? 0)}</td>
+                    <XlAct onDelete={() => delApu(a.id)} />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </XlScroll>
+          <CrudFooter
+            onAdd={addApu}
+            addLabel="Nuevo APU"
+            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+            countLabel="Total:"
+            count={filtered.length}
+          />
+        </DimEnLectura>
+      </XlWrap>
+
+      {sel && (
+        <DimEnLectura>
+          <div>
+            <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
+              <button
+                type="button"
+                className="cm-btn cm-btn-warn"
+                onClick={() => exportApuExcel(sel, exportCtx())}
+              >
+                <ActionIcon name="download" label="" /> Exportar Excel
+              </button>
+              <button
+                type="button"
+                className="cm-btn cm-btn-warn"
+                onClick={() => exportApuPdf(sel, exportCtx())}
+              >
+                <ActionIcon name="picture_as_pdf" label="" /> Exportar PDF
+              </button>
+            </div>
+            <fieldset
+              disabled={!editable}
+              style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}
+            >
+              <ApuEditor apu={sel} onUpdate={(p) => updateApu(sel.id, p)} />
+            </fieldset>
+          </div>
+        </DimEnLectura>
+      )}
+    </EditableSection>
+  );
+}

@@ -1,13 +1,13 @@
 import { MONTANTE_NETS } from './cajaBajante';
 // Creación de montantes (gas/ac/af), calentadores y stubs de tee a mitad de cuerpo.
-import { NETS } from '../PlanoEstado.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
-import { calculateRamalLength, _statusMsg } from '../ramalMedir.ts';
-import { codoPolarityOk, maxDiametroLabel } from '../PlanoMotorDibujo.ts';
+import { NETS } from '../PlanoState.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
+import { calculateRamalLength, _statusMsg } from '../ramalMeasure.ts';
+import { codoPolarityOk, maxDiametroLabel } from '../PlanoEngineDrawing.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
-// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerBarra.tsx) y los atajos
-// de teclado (PlanoMotor.ts _onKeyDownHandler); se re-chequea aquí como defensa en
+// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
+// de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
 /** Crea un montante (la tubería vertical que SUBE entre pisos: MAF, MAC, MG...) donde hiciste clic
@@ -146,7 +146,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
 // herramienta de la barra. Divide el ramal en el punto clicado (el mismo patrón de inserción de
 // vértice que ya usa el selector de accesorios a mitad de cuerpo) y siempre escribe un accesorio
 // de tee acompañante ahí — un montante siempre implica una tee. Lo inverso nunca debe pasar:
-// colocar una tee manualmente (ver accesorioOpciones.ts / MidRamalAccessorySelector) jamás crea
+// colocar una tee manualmente (ver accessoryOptions.ts / MidRamalAccessorySelector) jamás crea
 // un montante — se mantiene como camino de escritura separado a propósito.
 /** Pone un montante justo en el medio de una tubería de af (Agua Frío) o ac (Agua Caliente),
  *  partiéndola con una T. */
@@ -236,7 +236,7 @@ export function handleCreateMontanteMidBody(
 // red de agua caliente, aunque el usuario lo ancle en un ramal de agua fría (af); solo el punto
 // de inserción difiere del creado por barra (handleCalentadorDown). El ramal af conserva su red
 // y continúa por el vértice de división; la conexión ac/af es implícita vía el id CALENTn (la
-// misma convención que construyeTramos.ts usa para construir el ramal sintético AC-01-{calId} desde
+// misma convención que buildTramos.ts usa para construir el ramal sintético AC-01-{calId} desde
 // cualquier bajante de calentador).
 /** Inserta un calentador en una tubería de af (Agua Frío): se corta el tramo y de ahí nace la
  *  tubería de ac (Agua Caliente) que reparte el agua ya calentada. */
@@ -357,7 +357,7 @@ export function handleCreateTeeCapStub(
     by = uyIn;
   }
   // La misma bisectriz por la que se dibuja el glifo de la tee (el pase accMed de
-  // dibujaRamales.ts) — la rama libre corre perpendicular a ella.
+  // renderRamales.ts) — la rama libre corre perpendicular a ella.
   const px_ = -by,
     py_ = bx;
 

@@ -1,8 +1,8 @@
 // Normalización de padres de tributarios (el label T{n}{raíz} es la verdad); usado por el
 // autoSplit y el sanado global. Extraído verbatim de junctionAutoSplit.
 
-import type { IPlanoEngineCore } from './PlanoEstado.ts';
-import { rootTributarioLabel, allocTributaryNumber, relabelTribChain } from './PlanoEstado.ts';
+import type { IPlanoEngineCore } from './PlanoState.ts';
+import { rootTributarioLabel, allocTributaryNumber, relabelTribChain } from './PlanoState.ts';
 
 /** En una unión, todos los ramalitos (tributarios) se renombran para colgar de la MISMA raíz: el
  *  nombre T{n}{raíz} es la verdad (T2RS1 = el ramalito nº 2 de RS1), no la cadena de padres, que

@@ -1,7 +1,7 @@
 // Hub de compatibilidad: el código vive en 5 hermanos (queries, desvio, herencia, equipos,
 // live). Importadores y tests no cambian.
-export { bombsImmediateLowerFloor, bajantesImmediateUpperFloor } from './bombaConsultas.ts';
-export type { BombaRow, BajanteSuperiorRow } from './bombaConsultas.ts';
+export { bombsImmediateLowerFloor, bajantesImmediateUpperFloor } from './bombaQueries.ts';
+export type { BombaRow, BajanteSuperiorRow } from './bombaQueries.ts';
 export {
   asociarBomba,
   sincronizarDesvioBomba,

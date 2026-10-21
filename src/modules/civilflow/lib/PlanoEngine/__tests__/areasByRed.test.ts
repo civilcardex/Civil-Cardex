@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { _renumberAreas } from '../redRenumera.ts';
-import { finishArea } from '../dibujoUtiles.ts';
-import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { _renumberAreas } from '../networkRenumber.ts';
+import { finishArea } from '../drawingUtils.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 // Numeración de áreas POR RED (orig. usuario): cada red lleva su propia serie AREA1..N —
 // borrar/crear en una red no altera la serie de las demás.

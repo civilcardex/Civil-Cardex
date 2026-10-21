@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import PlanoEngineCtor from '../PlanoMotor.ts';
-import type PlanoEngine from '../PlanoMotor.ts';
+import PlanoEngineCtor from '../PlanoEngine.ts';
+import type PlanoEngine from '../PlanoEngine.ts';
 
 // Reproducción: T2RS1 (padre RS1) se une a mitad del cuerpo de T1RS2 (padre RS2).
 // Regla del usuario: TODOS los tributarios del punto comparten el padre del primer tributario

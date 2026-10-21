@@ -1,5 +1,5 @@
 // AlzadoMuro: alzado del recinto a escala con las aberturas requeridas (superior/inferior).
-import type { RejResultado } from '../../utils/rejillasCalculo.ts';
+import type { RejResultado } from '../../utils/rejillasCalc.ts';
 
 export function AlzadoMuro({ res }: { res: RejResultado }) {
   const e = res.entrada;

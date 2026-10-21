@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { otrosPorToque } from './useWaterRedGrafo.ts';
+import { otrosPorToque } from './useWaterNetworkGraph.ts';
 
 // Caso RAC3-P2 (orig. usuario): mergesFrom stale nombraba al anfitrión ancestral RAC1
 // (a 250px del empalme) y la columna mostraba [RAC1][RAC2]. Solo quienes tocan listan.

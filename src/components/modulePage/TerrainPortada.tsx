@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { ModuleConfig } from '../../pages/moduloDatos.ts';
+import type { ModuleConfig } from '../../pages/moduleData.ts';
 
 export default function TerrainHero({ cfg }: { cfg: ModuleConfig }) {
   return (

@@ -1,13 +1,13 @@
-﻿import { cntIgual, cntVacio, limpiar, sumaCnt, type Ctx } from './conteo.ts';
+﻿import { cntIgual, cntVacio, limpiar, sumaCnt, type Ctx } from './counting.ts';
 import { despacharStorage } from './books';
 import { setUltimaDiag } from './books';
-import { saveToStorage } from '../../services/almacenamientoServicio.ts';
+import { saveToStorage } from '../../services/storageService.ts';
 
 /** Avisa a tablas y panel que los conteos cambiaron (tolerante si no hay window). */
 import {
   APARATOS_HEREDADOS_KEY,
   APARATOS_HEREDADOS_TRIB_KEY,
-} from '../../constants/almacenamientoClaves.ts';
+} from '../../constants/storage-keys.ts';
 
 const APARATOS_KEY = 'aparatos_by_tramo_v2';
 const HEREDADOS_KEY = APARATOS_HEREDADOS_KEY;

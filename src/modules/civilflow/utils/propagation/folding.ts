@@ -1,9 +1,9 @@
-import { cntVacio, sumaCnt, type Cnt, type Ctx } from './conteo.ts';
+import { cntVacio, sumaCnt, type Cnt, type Ctx } from './counting.ts';
 import {
   APARATOS_RESIDUO_BAK_KEY,
   BAJADAS_RECEPTORAS_KEY,
-} from '../../constants/almacenamientoClaves.ts';
-import { loadFromStorage, saveToStorage } from '../../services/almacenamientoServicio.ts';
+} from '../../constants/storage-keys.ts';
+import { loadFromStorage, saveToStorage } from '../../services/storageService.ts';
 import { isLdesvioRamalId } from '../associateBajanteAcrossFloors';
 
 /**

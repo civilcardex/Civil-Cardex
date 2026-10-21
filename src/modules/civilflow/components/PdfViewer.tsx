@@ -1,37 +1,37 @@
 /* eslint-disable no-empty */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
-import { usePlanoLoadSwitch } from './pdfViewer/usePlanoCargaInterruptor.ts';
-import { ViewerMobileChrome } from './pdfViewer/ViewerMovilCromo.tsx';
-import { useViewerResponsive } from './pdfViewer/useViewerResponsivo.ts';
-import { leerPlansMeta, planCalibrado } from '../utils/planosMeta.ts';
+import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch.ts';
+import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome.tsx';
+import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
+import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
 import { decideEscalaPorDefectoDelPlan, textoReporte } from '../utils/cargaDiagnostico.ts';
-import { escalaDeDoc } from '../utils/planoEscala.ts';
-import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamara.ts';
-import { bboxDelDibujo } from './pdfViewer/dibujoCaja.ts';
+import { escalaDeDoc } from '../utils/planScale.ts';
+import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamera.ts';
+import { bboxDelDibujo } from './pdfViewer/drawingBBox.ts';
 import { useNavigate } from 'react-router-dom';
 import PlanoEngine, {
   type ElementItem,
   type ToolType,
   type TramoType,
-} from '../lib/PlanoEngine/PlanoMotor.ts';
-import type { PlanoElement } from '../lib/PlanoEngine/PlanoEstado.ts';
-import { aparatoEnExtremoInvalido } from '../lib/PlanoEngine/PlanoMotorDibujo.ts';
-import type { Piso } from '../lib/shared/proyectoTipos.ts';
-import type { PlanItem } from '../context/PlanosContexto.tsx';
+} from '../lib/PlanoEngine/PlanoEngine.ts';
+import type { PlanoElement } from '../lib/PlanoEngine/PlanoState.ts';
+import { aparatoEnExtremoInvalido } from '../lib/PlanoEngine/PlanoEngineDrawing.ts';
+import type { Piso } from '../lib/shared/projectTypes.ts';
+import type { PlanItem } from '../context/PlansContext.tsx';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
-import { useProject } from '../context/ProyectoContexto.tsx';
-import { usePlans } from '../context/PlanosContexto.tsx';
+import { useProject } from '../context/ProjectContext.tsx';
+import { usePlans } from '../context/PlansContext.tsx';
 import {
   writeSanDrawingSync,
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
-} from '../utils/dibujoSync.ts';
-import { isPlanKeyFor } from '../lib/PlanoEngine/redRenumera.ts';
+} from '../utils/drawingSync.ts';
+import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber.ts';
 import {
   loadFromStorage,
   saveToStorage,
   getActiveProyectoId,
-} from '../services/almacenamientoServicio.ts';
+} from '../services/storageService.ts';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
@@ -39,39 +39,39 @@ import {
   ACTIVE_NETS_KEY,
   PDF_HIDDEN_NETS_KEY,
   PDF_LOCKED_NETS_KEY,
-} from '../constants/almacenamientoClaves.ts';
-import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerBarra.tsx';
+} from '../constants/storage-keys.ts';
+import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar.tsx';
 
-import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persisteTrazos.ts';
-import { useViewerDialogs } from './pdfViewer/useViewerDialogos.ts';
-import { useViewerToolbarActions } from './pdfViewer/useViewerBarraAcciones.ts';
-import { validateBeforeClose } from './pdfViewer/cierraValidacion.ts';
+import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistTrazos.ts';
+import { useViewerDialogs } from './pdfViewer/useViewerDialogs.ts';
+import { useViewerToolbarActions } from './pdfViewer/useViewerToolbarActions.ts';
+import { validateBeforeClose } from './pdfViewer/closeValidation.ts';
 export { validateBeforeClose };
-import { sleep } from './shared/sequentialCarga.ts';
-import PdfCanvas from './pdfViewer/PdfLienzo.tsx';
+import { sleep } from './shared/sequentialLoad.ts';
+import PdfCanvas from './pdfViewer/PdfCanvas.tsx';
 import PdfViewerNetworkBar from './pdfViewer/PdfViewerRedBarra.tsx';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
-import { usePdfViewerEngine } from './pdfViewer/PdfViewerMotorInicial.ts';
-import TextInputOverlay from './pdfViewer/TextoEntradaSuperposicion.tsx';
+import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit.ts';
+import TextInputOverlay from './pdfViewer/TextInputOverlay.tsx';
 import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
-import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/contexto.ts';
-import ConfirmDialog from './pdfViewer/ConfirmDialogo.tsx';
-import AccesorioModal from './pdfViewer/AjusteModal.tsx';
+import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/context.ts';
+import ConfirmDialog from './pdfViewer/ConfirmDialog.tsx';
+import AccesorioModal from './pdfViewer/FittingModal.tsx';
 import TramoEditor from './pdfViewer/tramoEditor';
 import BajanteAsociacion from './pdfViewer/BajanteAssociation';
-import PdfViewerDrawnElements from './pdfViewer/PdfViewerDibujadoElementos.tsx';
-import { CopyFromPlanPanel } from './pdfViewer/CopiaFromPlanoPanel.tsx';
-import AparatosPanel from './AparatosPanel.tsx';
-import { prefetchAllTrazos } from '../utils/precargaTrazos.ts';
-import { applyAccesorioPlacement } from './pdfViewer/ajusteUbicacion.ts';
-import { useSessionVisorPrefs } from './pdfViewer/useSesionViewerPreferencias.ts';
-import { useNetColorsInit } from './pdfViewer/useRedColoresInicial.ts';
-import { useActiveNetsVisibility } from './pdfViewer/useActivoNetsVisibilidad.ts';
-import { useFloorRamales } from './pdfViewer/usePisoRamales.ts';
-import { useTrazosLoader } from './pdfViewer/useTrazosCargador.ts';
-import { useKeyboardShortcuts } from './pdfViewer/useTecladoAtajos.ts';
-import { diamPulgFromLabel } from '../utils/diamPulgFromEtiqueta.ts';
-import { emitAparatosClear, EV_STORAGE } from '../utils/aparatoEventos.ts';
+import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements.tsx';
+import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel.tsx';
+import AparatosPanel from './FixturesPanel.tsx';
+import { prefetchAllTrazos } from '../utils/prefetchTrazos.ts';
+import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement.ts';
+import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs.ts';
+import { useNetColorsInit } from './pdfViewer/useNetColorsInit.ts';
+import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility.ts';
+import { useFloorRamales } from './pdfViewer/useFloorRamales.ts';
+import { useTrazosLoader } from './pdfViewer/useTrazosLoader.ts';
+import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts.ts';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel.ts';
+import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -114,7 +114,7 @@ const PdfViewer_S5: React.CSSProperties = {
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
 // Barra izquierda colapsada conserva una franja estrecha de iconos (herramientas + snap +
 // acciones) en vez de desaparecer a 0 — coherente con el render colapsado de la propia
-// toolbar en PdfViewerBarra.tsx.
+// toolbar en PdfViewerToolbar.tsx.
 const LEFT_COLLAPSED_WIDTH = 44;
 
 // Sonda estructural de la unión PlanoElement: permite leer `tipo`/`net`/`diametro`/`pendiente`

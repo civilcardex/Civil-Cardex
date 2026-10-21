@@ -2,17 +2,17 @@ import {
   loadFromStorage,
   saveToStorage,
   saveTrazosToDB,
-} from '../services/almacenamientoServicio.ts';
-import { splitPtr } from './claves.ts';
+} from '../services/storageService.ts';
+import { splitPtr } from './keys.ts';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
-} from '../constants/almacenamientoClaves.ts';
+} from '../constants/storage-keys.ts';
 import { ldesvioIdFor } from './associateBajanteAcrossFloors';
 import { collectSourceAgg } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
-import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoEstado.ts';
+import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState.ts';
 
 /** UD (Unidades de Desague) de una bomba (= las de su caja): cierre vía recibeDeIds/alimentaIds (ramales que llegan/salen del bajante) sin motor. */
 export function mapUdBombaDesdeTrazos(

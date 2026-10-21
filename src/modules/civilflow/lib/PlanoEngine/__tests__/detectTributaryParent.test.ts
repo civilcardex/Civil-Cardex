@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { detectTributaryPadre, finishRamal } from '../PlanoMotorDibujo.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { detectTributaryPadre, finishRamal } from '../PlanoEngineDrawing.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const calls: string[] = [];

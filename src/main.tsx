@@ -4,10 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App';
-import { ErrorBoundary } from './components/ErrorLimite.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 // PlanoState solo trae tipos + el catálogo NETS (sin motor): no engorda el bundle de entrada.
-import { NETS } from './modules/civilflow/lib/PlanoEngine/PlanoEstado.ts';
+import { NETS } from './modules/civilflow/lib/PlanoEngine/PlanoState.ts';
 
 // Colores personalizados por red (orig. usuario): aplicar la caché de localStorage ANTES del
 // primer paint — al reingresar ya no se ven los predeterminados y luego los suyos. La BD

@@ -1,16 +1,16 @@
 ﻿import { useState, useEffect } from 'react';
-import { bajanteLabel, ramalLabel } from '../../../utils/accesorioAbbreviations.ts';
-import { getAccessoryOptions } from '../../../utils/accesorioOpciones.ts';
-import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoEstado.ts';
+import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
+import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
+import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import {
   flipRamalFlow,
   ramalFlowDirectionCheck,
   aparatoEnExtremoInvalido,
-} from '../../../lib/PlanoEngine/PlanoMotorDibujo.ts';
-import { directNeighborRamales } from '../../../utils/flujoDireccion.ts';
-import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoEstado.ts';
-import { renameRamalId } from '../../../lib/PlanoEngine/redRenumera.ts';
-import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteReglas.ts';
+} from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
+import { directNeighborRamales } from '../../../utils/flowDirection.ts';
+import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState.ts';
+import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber.ts';
+import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules.ts';
 import {
   useDrawingElementContextMenu,
   MENU_GRID_2COL_TALL_STYLE,
@@ -18,9 +18,9 @@ import {
   MENU_CHECK_ROW_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
   MENU_SELECT_STYLE,
-} from './contexto.ts';
+} from './context.ts';
 import { moverAsociacionCanal } from '../../../lib/PlanoEngine/canalAssociation';
-import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
+import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
 import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
@@ -28,14 +28,14 @@ import {
   MontantesAsociadosSection,
   refrescarMenu,
 } from './canalesAsociados';
-import { MidRamalAccessorySelector } from './medioRamalAccesorioSelector.tsx';
+import { MidRamalAccessorySelector } from './midRamalAccessorySelector.tsx';
 import {
   pointOnRamalBody,
   ramalHasInterconnections,
   tribsBlockingRamalConversion,
-} from './ramalMenuAyudantes.ts';
-import { BajanteConnectionPanel } from './bajanteConexionPanel.tsx';
-import { ElementCodeEditor } from './elementoEditor.tsx';
+} from './ramalMenuHelpers.ts';
+import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';
+import { ElementCodeEditor } from './elementEditor.tsx';
 import { guardarMallas } from '../../../lib/PlanoEngine/nodos';
 
 export function RamalMenu() {
@@ -47,7 +47,7 @@ export function RamalMenu() {
     setTribConvOpen(false);
   }, [contextMenuState]);
 
-  // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoMotorImpactoPruebas.ts
+  // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
   // — es decir, accMedIdx = segmentIdx + 1, misma convención que usan
   // handleCreateMontanteMidBody/handleCreateTeeCapStub.
@@ -120,7 +120,7 @@ export function RamalMenu() {
     const updates: Record<string, unknown> = {
       tipo: 'tributario',
       padre: padreId,
-      // Convención de punta de flecha igual que autoSplitJunctionAndSumFlow (PlanoMotorDibujo.ts
+      // Convención de punta de flecha igual que autoSplitJunctionAndSumFlow (PlanoEngineDrawing.ts
       // 576-583): san/ll drenan HACIA la unión; af/ac/gas/vent fluyen DESDE la unión hacia el
       // aparato. La geometría ya está conectada (el ramal tocó y dividió a su padre al
       // dibujarse) — esto solo cambia la semántica.

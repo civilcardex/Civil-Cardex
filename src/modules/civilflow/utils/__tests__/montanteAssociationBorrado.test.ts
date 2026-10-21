@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { applyBajanteAssociation, clearBajanteAssociation } from '../bajanteAssociation';
 import { propagarAparatosPresion } from '../propagation';
-import { deleteSelected } from '../../lib/PlanoEngine/eliminaSelected.ts';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import { deleteSelected } from '../../lib/PlanoEngine/deleteSelected.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState.ts';
 
 // (1) Al borrar el fantasma (o su Ldesvio) el enlace se desasocia: el montante/bajante
 //     original vuelve a mostrar "sin origen" (el puntero origenId queda en null).

@@ -1,16 +1,16 @@
-import { clearBajanteAssociation } from './bajanteAssociationLimpia.ts';
+import { clearBajanteAssociation } from './bajanteAssociationClear.ts';
 import { bajanteLocalDe as bajanteLocalCompartido } from './bajanteLocal.ts';
-import { splitPtr } from './claves.ts';
+import { splitPtr } from './keys.ts';
 import { esRedAparatosPresion, propagarAparatosPresion } from './propagation';
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
 // siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
 // visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
 // crea el ramal de desvío Ldesvio (en el piso del source) solo cuando los dos no están ya
 // alineados.
-import { writeBajantePropToDrawing } from './escribeDiametroToDibujo.ts';
-import { writeSanDrawingSync, writeHydroDrawingSync } from './dibujoSync.ts';
-import type { SyncPlanInput } from './dibujoSync.ts';
-import type { IPlanoEngineCore, PlanoBajante } from '../lib/PlanoEngine/PlanoEstado.ts';
+import { writeBajantePropToDrawing } from './writeDiameterToDrawing.ts';
+import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync.ts';
+import type { SyncPlanInput } from './drawingSync.ts';
+import type { IPlanoEngineCore, PlanoBajante } from '../lib/PlanoEngine/PlanoState.ts';
 import {
   writeCrossFloorGhost,
   createCrossFloorLdesvioRamal,
@@ -21,20 +21,20 @@ import {
   saveData,
   type CrossFloorGhost,
 } from './associateBajanteAcrossFloors';
-import { aFrameDe } from './crossPisoAlmacenamiento.ts';
-import { markAssocLayout } from './asocDisposicionMigration.ts';
-import { direccionSegura } from '../lib/PlanoEngine/direccionReglas.ts';
-import { devError } from '../../../utils/desarrolloError.ts';
+import { aFrameDe } from './crossFloorStorage.ts';
+import { markAssocLayout } from './assocLayoutMigration.ts';
+import { direccionSegura } from '../lib/PlanoEngine/directionRules.ts';
+import { devError } from '../../../utils/devError.ts';
 import {
   loadFromStorage,
   saveToStorage,
   saveTrazosToDB,
-} from '../services/almacenamientoServicio.ts';
+} from '../services/storageService.ts';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
-} from '../constants/almacenamientoClaves.ts';
+} from '../constants/storage-keys.ts';
 import { pisoCorto, pisoLbl } from '../constants';
 import {
   isAligned,
@@ -43,13 +43,13 @@ import {
   collectSourceAgg,
   registrarLdesvioComoAsociado,
   GEO_TOL_BAJANTE,
-} from './bajanteAsocCompartido.ts';
+} from './bajanteAssocShared.ts';
 import type {
   AssocEndpoint,
   InheritPoolRamal,
   InheritPoolBajante,
-} from './bajanteAsocCompartido.ts';
-import { emitAparatosClear, emitSanSync, EV_STORAGE } from './aparatoEventos.ts';
+} from './bajanteAssocShared.ts';
+import { emitAparatosClear, emitSanSync, EV_STORAGE } from './fixtureEvents.ts';
 
 /** Estampa la carga heredada en el fantasma (XFG) del enlace: el marcador guarda y muestra
  *  los UC que bajan por él (NO participa en cálculos - sigue siendo un marcador). Se escribe

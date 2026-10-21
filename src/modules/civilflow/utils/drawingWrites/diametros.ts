@@ -1,19 +1,19 @@
-import { writeHydroDrawingSync, writeSanDrawingSync } from '../dibujoSync.ts';
+import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync.ts';
 import {
   loadFromStorage,
   saveToStorage,
   saveTrazosToDB,
-} from '../../services/almacenamientoServicio.ts';
+} from '../../services/storageService.ts';
 import {
   TRAZOS_PREFIX,
   HYDRO_FAMILIES,
   SAN_FAMILIES,
   APARATOS_BY_TRAMO_KEY,
   CHEQUEOS_PRESION_KEY,
-} from '../../constants/almacenamientoClaves.ts';
-import type { SyncPlanInput, RawElement } from '../dibujoSync.ts';
-import { diamPulgFromLabel } from '../diamPulgFromEtiqueta.ts';
-import { pisoLbl } from '../../constants/ayudantes.ts';
+} from '../../constants/storage-keys.ts';
+import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
+import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+import { pisoLbl } from '../../constants/helpers.ts';
 
 /** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones,
  *  ej. stubs `AC-01-X-P1` — `split('-')` los truncaba en silencio).
@@ -24,14 +24,14 @@ export function parseBajanteKey(key: string): [string, string] {
   if (sep <= 0) return [key, ''];
   return [key.slice(0, sep), key.slice(sep + 1)];
 }
-import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/dibujoUtiles.ts';
-import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitariaDiamCompat.ts';
-import { bumpConnectedBajantes } from '../../lib/PlanoEngine/PlanoMotorSeleccionEdita.ts';
-import { recomputeDownstreamDiameters } from '../../lib/PlanoEngine/dibujoUtiles.ts';
+import { inchPartOfDiametro as inchPartOf } from '../../lib/PlanoEngine/drawingUtils.ts';
+import { INODORO_APP_ID, sanDiamAllowedForApparatus } from '../sanitaryDiamCompat.ts';
+import { bumpConnectedBajantes } from '../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
+import { recomputeDownstreamDiameters } from '../../lib/PlanoEngine/drawingUtils.ts';
 import {
   convergirDiametroNodoPresion,
   propagarSanDiametroAguasAbajo,
-} from '../../lib/PlanoEngine/dibujoFlujo.ts';
+} from '../../lib/PlanoEngine/drawingFlow.ts';
 
 interface LocalDrawingData {
   ts?: number;
@@ -41,7 +41,7 @@ interface LocalDrawingData {
 }
 
 // diametroInicio/diametroFin se guardan como el VALOR COMPLETO de la opción del dropdown de
-// diámetro, p. ej. `1-1/2" — 42.7 mm` — todo lo demás que los lee (ExtremoAccesorioEditor.tsx,
+// diámetro, p. ej. `1-1/2" — 42.7 mm` — todo lo demás que los lee (ExtremeAccessoryEditor.tsx,
 // DrawingElementContextMenu.tsx) recorta primero hasta la parte en pulgadas antes del `"`. Sin
 // eso, el manejo propio de guion-em de diamPulgFromLabel entra en acción y lee la cifra en *mm*
 // después del guion como si fueran pulgadas (42.7 en vez de 1.5) — un número salvajemente
@@ -127,7 +127,7 @@ export function writeDiametroToDrawing(
   const [ramalId, planId] = parseBajanteKey(ramalKey);
 
   // Validación: el diámetro de un ramal no puede bajar del diámetro mayor de cualquier accesorio
-  // adjunto a él. Espejo del chequeo inverso en ExtremoAccesorioEditor.tsx:110-117 — sin esto,
+  // adjunto a él. Espejo del chequeo inverso en ExtremeAccessoryEditor.tsx:110-117 — sin esto,
   // las páginas de tabla de diseño pueden encoger una tubería bajo un accesorio más ancho sin
   // que nadie lo note hasta la rareza en tiempo de render (el accesorio de ajuste más ancho
   // termina dibujado alrededor de una tubería más delgada).

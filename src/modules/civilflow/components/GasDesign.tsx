@@ -1,36 +1,36 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
-import { usePlans } from '../context/PlanosContexto.tsx';
-import { useProyecto } from '../context/ProyectoContexto.tsx';
+import { usePlans } from '../context/PlansContext.tsx';
+import { useProyecto } from '../context/ProjectContext.tsx';
 import {
   writeDiametroToDrawing,
   writeMaterialToDrawing,
   clearDiametroToDrawing,
-} from '../utils/escribeDiametroToDibujo.ts';
+} from '../utils/writeDiameterToDrawing.ts';
 import {
   loadFromStorage,
   saveToStorage,
   getActiveProyectoId,
-} from '../services/almacenamientoServicio.ts';
-import { loadGasDatos, saveGasDatos } from '../services/proyectoDatosServicio.ts';
-import GasCalcUC from './GasCalculoUC.tsx';
-import { GasDatosGenerales } from './gas/GasGeneralDatos.tsx';
-import { GasTablaRed } from './gas/GasRedTabla.tsx';
-import { GasContadores } from './gas/GasContadores.tsx';
-import type { DrawingData, RawElement } from '../utils/dibujoSync.ts';
+} from '../services/storageService.ts';
+import { loadGasDatos, saveGasDatos } from '../services/projectDataService.ts';
+import GasCalcUC from './GasCalcUC.tsx';
+import { GasDatosGenerales } from './gas/GasGeneralData.tsx';
+import { GasTablaRed } from './gas/GasNetworkTable.tsx';
+import { GasContadores } from './gas/GasMeters.tsx';
+import type { DrawingData, RawElement } from '../utils/drawingSync.ts';
 
 import {
   TRAZOS_PREFIX,
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
-} from '../constants/almacenamientoClaves.ts';
-import { factoresGas, patmDeAltitud } from '../utils/gasUtiles.ts';
-import { claveGas } from '../utils/gasRed.ts';
-import { calculaFilasGas, propiosDeTramo } from '../utils/gasCalculoFilas.ts';
-import { compareTramosPisoDesc } from '../utils/componentAyudantes.tsx';
-import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasFilas.ts';
-import { avisarDiametroInvalido } from '../utils/diametroValidacion.ts';
+} from '../constants/storage-keys.ts';
+import { factoresGas, patmDeAltitud } from '../utils/gasUtils.ts';
+import { claveGas } from '../utils/gasNetwork.ts';
+import { calculaFilasGas, propiosDeTramo } from '../utils/gasCalcRows.ts';
+import { compareTramosPisoDesc } from '../utils/componentHelpers.tsx';
+import { GAS_DATOS_DEFAULT, lookupDn } from '../utils/gasRows.ts';
+import { avisarDiametroInvalido } from '../utils/diametroValidation.ts';
 
 type GasAccMap = Record<string, Record<string, number>>;
 interface GasRamalRaw extends RawElement {
@@ -85,7 +85,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
   }, []);
 
   // Persistir a la BD debounced (600 ms) — localStorage sigue siendo la caché en vivo que
-  // leen los cálculos (gasFilas.ts) durante la sesión.
+  // leen los cálculos (gasRows.ts) durante la sesión.
   const gasSaveTimerRef = useRef<number | null>(null);
   useEffect(() => {
     const proyectoId = getActiveProyectoId();
@@ -280,7 +280,7 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
     );
     // Árbol de red + aparatos acumulados (docx flujo de nodos): el tronco lleva la
     // demanda de toda su red descendente; presión y ΔP acumulada POR RAMA.
-    // El cálculo vive en utils/gasCalculoFilas.ts (compartido con la tabla resumen).
+    // El cálculo vive en utils/gasCalcRows.ts (compartido con la tabla resumen).
     const propios = new Map<string, Record<string, number>>();
     for (const t of gasTramos) {
       propios.set(

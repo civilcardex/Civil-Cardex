@@ -1,9 +1,9 @@
 ﻿import React from 'react';
-import { SeccionFlujoHidraulico } from './FlujoSeccion.tsx';
-import type { AcometidaProps } from './tipos.ts';
-import { SCROLL_INNER } from './estilos.ts';
-import { SeccionResumenParametros } from './ParametrosSeccion.tsx';
-import { SeccionVerificacion } from './VerificationSeccion.tsx';
+import { SeccionFlujoHidraulico } from './FlowSection.tsx';
+import type { AcometidaProps } from './types.ts';
+import { SCROLL_INNER } from './styles.ts';
+import { SeccionResumenParametros } from './ParametersSection.tsx';
+import { SeccionVerificacion } from './VerificationSection.tsx';
 
 /** La tabla de acometida: tres secciones (flujo hidráulico, resumen de parámetros y
  *  verificación final). Cada sección vive en su propio archivo. */

@@ -1,4 +1,4 @@
-import { NTC3096_PARAMS } from '../normativaDatos.ts';
+import { NTC3096_PARAMS } from '../regulationsData.ts';
 
 export function NTC3096() {
   return (

@@ -1,15 +1,15 @@
 ﻿import { type RefObject } from 'react';
-import type PlanoEngine from '../../../lib/PlanoEngine/PlanoMotor.ts';
-import type { PlanoElement } from '../../../lib/PlanoEngine/PlanoEstado.ts';
-import type { Piso } from '../../../lib/shared/proyectoTipos.ts';
-import type { PlanItem } from '../../../context/PlanosContexto.tsx';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
+import type { PlanoElement } from '../../../lib/PlanoEngine/PlanoState.ts';
+import type { Piso } from '../../../lib/shared/projectTypes.ts';
+import type { PlanItem } from '../../../context/PlansContext.tsx';
 import {
   TramoEditorCtx,
   useTramoEditorContext,
   ROTATE_LABEL_BTN_STYLE,
   type ProbedElement,
   type TramoEditorContextValue,
-} from './contexto.ts';
+} from './context.ts';
 import {
   ContadorTramoEditor,
   CalentadorTramoEditor,
@@ -21,7 +21,7 @@ import {
   RamalHeaderFields,
   BajanteEditorSection,
   RamalEditorSection,
-} from './variantes.tsx';
+} from './variants.tsx';
 
 interface TramoEditorProps {
   selElement: PlanoElement | null;

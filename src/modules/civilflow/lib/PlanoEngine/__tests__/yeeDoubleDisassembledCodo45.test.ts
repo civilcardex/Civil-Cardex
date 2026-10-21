@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { eraseRamalAt } from '../dibujoBorra.ts';
-import { deleteSelected as _deleteSelected } from '../eliminaSelected.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { eraseRamalAt } from '../drawingErase.ts';
+import { deleteSelected as _deleteSelected } from '../deleteSelected.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {

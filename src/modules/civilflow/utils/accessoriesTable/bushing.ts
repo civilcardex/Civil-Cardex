@@ -5,12 +5,12 @@ import {
   ACC_MED_CODOS,
   TEES_ACC_MED,
   type HidroEntry,
-} from '../sanAccesoriosCatalogo.ts';
+} from '../sanFittingsCatalog.ts';
 import { distToSegment } from '../../lib/shared/geometry';
-import { fmtPulg } from '../formatoUtiles.ts';
-import { diamPulgFromLabel } from '../diamPulgFromEtiqueta.ts';
+import { fmtPulg } from '../formatUtils.ts';
+import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
 import type { RamalDibujo, TribDibujo, VentDibujo, BajanteDibujo } from './collection';
-import type { AddAcc } from './conteo.ts';
+import type { AddAcc } from './counting.ts';
 import type { YeeJunction } from './yees';
 
 /**

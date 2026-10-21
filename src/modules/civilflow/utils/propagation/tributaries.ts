@@ -1,4 +1,4 @@
-import { cabezaDe, colaDe, distAPadre, type DownTrib, type RamalP } from './conteo.ts';
+import { cabezaDe, colaDe, distAPadre, type DownTrib, type RamalP } from './counting.ts';
 /**
  * Detecta los tributarios verticales ABAJO (continuación receptora de su unión) y arma el
  * índice por plano (para buscar el padre de cada tributario en un paso).

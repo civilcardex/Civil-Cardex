@@ -1,13 +1,13 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Layout from './layouts/Disposicion.tsx';
-import { ErrorBoundary } from './components/ErrorLimite.tsx';
-import { ProtectedRoute } from './components/ProtectedRuta.tsx';
-import { AuthProvider } from './context/AutenticacionContexto.tsx';
-import { GlobalAlertDialogProvider } from './modules/civilflow/components/GlobalAlertaDialogoProveedor.tsx';
-import { CivilFlowProviders } from './modules/civilflow/context/CivilFlujoProviders.tsx';
+import Layout from './layouts/Layout.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { ProtectedRoute } from './components/ProtectedRoute.tsx';
+import { AuthProvider } from './context/AuthContext.tsx';
+import { GlobalAlertDialogProvider } from './modules/civilflow/components/GlobalAlertDialogProvider.tsx';
+import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders.tsx';
 import { CargandoProyecto } from './modules/civilflow/components/shared/CargandoProyecto';
-import PageTransition from './components/landing/PaginaTransicion.tsx';
+import PageTransition from './components/landing/PageTransition.tsx';
 
 // Una sola pantalla de carga en toda la app: el Suspense y el gate de datos usan la MISMA pieza
 // (CargandoProyecto), así abrir un proyecto no encadena dos pantallas distintas. El texto nombra
@@ -23,36 +23,36 @@ const Fallback = () => {
 };
 
 // Rutas ligeras - import estatico
-import LandingPage from './pages/InicioPagina.tsx';
-import LoginPage from './pages/auth/IngresarPagina.tsx';
-import RegisterPage from './pages/auth/RegistroPagina.tsx';
-import ResetPasswordPage from './pages/auth/ReiniciaContrasenaPagina.tsx';
-import TermsPage from './pages/TerminosPagina.tsx';
-import PrivacyPage from './pages/PrivacidadPagina.tsx';
-import CookiesPage from './pages/GalletasPagina.tsx';
-import CookieBanner from './components/GalletaBanner.tsx';
-import PricingPage from './pages/PreciosPagina.tsx';
-import RequireModule from './components/subscriptions/RequireModulo.tsx';
+import LandingPage from './pages/LandingPage.tsx';
+import LoginPage from './pages/auth/LoginPage.tsx';
+import RegisterPage from './pages/auth/RegisterPage.tsx';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage.tsx';
+import TermsPage from './pages/TermsPage.tsx';
+import PrivacyPage from './pages/PrivacyPage.tsx';
+import CookiesPage from './pages/CookiesPage.tsx';
+import CookieBanner from './components/CookieBanner.tsx';
+import PricingPage from './pages/PricingPage.tsx';
+import RequireModule from './components/subscriptions/RequireModule.tsx';
 
-import NotFound from './pages/NotEncontrado.tsx';
+import NotFound from './pages/NotFound.tsx';
 
-const ProfilePage = React.lazy(() => import('./pages/auth/PerfilPagina.tsx'));
+const ProfilePage = React.lazy(() => import('./pages/auth/ProfilePage.tsx'));
 
 // Rutas pesadas - lazy
-const ViewerPage = React.lazy(() => import('./modules/civilflow/pages/ViewerPagina.tsx'));
-const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPagina.tsx'));
+const ViewerPage = React.lazy(() => import('./modules/civilflow/pages/ViewerPage.tsx'));
+const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPage.tsx'));
 const WorkAreaCivilFlowPage = React.lazy(
-  () => import('./modules/civilflow/pages/TrabajoAreaCivilFlujoPagina.tsx'),
+  () => import('./modules/civilflow/pages/WorkAreaCivilFlowPage.tsx'),
 );
 const WorkAreaCivilManagerPage = React.lazy(
-  () => import('./pages/TrabajoAreaCivilGestorPagina.tsx'),
+  () => import('./pages/WorkAreaCivilManagerPage.tsx'),
 );
 const CatalogoMaestroPage = React.lazy(
-  () => import('./modules/civilflow/pages/CatalogoMasterPagina.tsx'),
+  () => import('./modules/civilflow/pages/CatalogMasterPage.tsx'),
 );
-const CompanyPage = React.lazy(() => import('./pages/EmpresaPagina.tsx'));
-const CompanyPreviewPage = React.lazy(() => import('./pages/EmpresaVistaPreviaPagina.tsx'));
-const ModulePage = React.lazy(() => import('./pages/ModuloPagina.tsx'));
+const CompanyPage = React.lazy(() => import('./pages/CompanyPage.tsx'));
+const CompanyPreviewPage = React.lazy(() => import('./pages/CompanyPreviewPage.tsx'));
+const ModulePage = React.lazy(() => import('./pages/ModulePage.tsx'));
 
 function App() {
   return (

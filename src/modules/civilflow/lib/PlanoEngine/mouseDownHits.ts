@@ -1,0 +1,638 @@
+import type {
+  IPlanoEngineCore,
+  PlanoBajante,
+  PlanoElement,
+  MultiDragOrigData,
+} from './PlanoState.ts';
+import { ensureActiveNet } from './PlanoState.ts';
+import {
+  pointInLabelBox,
+  pointToSegmentDist,
+  distanceToRamal,
+  pointOnAnyBodySegment,
+} from './HitTester.ts';
+import { selectAt } from './PlanoEngineSelection.ts';
+import {
+  bajanteHitDistance,
+  canalRectHitDistance,
+  canalMarco,
+  esquinasCanalOBB,
+} from './canalAssociation';
+import { findCodoReventiladoLinks } from './PlanoEngineNetwork.ts';
+import { indicesDeMotor } from './indicesMotor';
+
+/** Foto de seguridad antes de arrastrar un bajante: guarda dónde estaba y los trazos de las
+ *  tuberías que él mueve (las que le llegan, la que descarga y su conector de desvío LD_).
+ *  Ej: al soltar un bajante que quedó torcido, esta foto es lo que permite volver atrás. */
+export function _captureBajDragBackup(engine: IPlanoEngineCore, b: PlanoBajante): void {
+  engine._bajDragBackupXY = { x: b.x, y: b.y, labelX: b.labelX, labelY: b.labelY };
+  const assocIds = [...(b.recibeDeIds || [])];
+  if (b.descargaEnId) assocIds.push(b.descargaEnId);
+  const lvl = engine.nivelActual?.label ?? '';
+  const ldesvioId = b.desplazamientos?.[lvl]?.Ldesvio;
+  if (ldesvioId) assocIds.push(ldesvioId);
+  const backup: Record<string, number[][]> = {};
+  for (const rid of assocIds) {
+    const r = indicesDeMotor(engine).ramales.get(rid);
+    if (r) backup[rid] = structuredClone(r.pts);
+  }
+  engine._bajDragBackupPts = backup;
+}
+
+/** Intenta agarrar con este clic un bajante, montante, contador, calentador, canal o fantasma
+ *  entre pisos; devuelve true si lo agarró y deja el arrastre preparado. El orden importa: primero
+ *  la etiqueta, luego el símbolo, luego el fantasma y por último el cuerpo del canal.
+ *  Ej: un clic sobre "BAN1" arrastra el bajante; un clic sobre su símbolo lo selecciona. */
+export function _tryBajanteHit(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+): boolean {
+  // Escanear todos los bajantes, elegir el mejor acierto de etiqueta (padre preferido sobre
+  // fantasma, más cercano preferido)
+  let bestB: (typeof engine.bajantes)[0] | null = null;
+  let bestDist = Infinity;
+  let bestIsGhost = false;
+  for (const b of engine.bajantes) {
+    if (engine._hiddenNets.has(b.net)) continue;
+    if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
+    const lx = b.labelX ?? b.x;
+    const ly = b.labelY ?? b.y + 20;
+    const lPos = engine.toCvs(lx, ly);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < 40) {
+      if (ensureActiveNet(engine, b.net)) return true;
+      const isGhost = b.pisoBase !== engine.nivelActual?.label;
+      if (!bestB || (!isGhost && bestIsGhost) || (isGhost === bestIsGhost && d < bestDist)) {
+        bestB = b;
+        bestDist = d;
+        bestIsGhost = isGhost;
+      }
+    }
+    // Etiqueta de contador/calentador en posición desplazada
+    if (b.tipo === 'contador' || b.tipo === 'calentador') {
+      const clx = b.labelX ?? b.x - 25;
+      const cly = b.labelY ?? b.y;
+      const clPos = engine.toCvs(clx, cly);
+      const cd = Math.hypot(x - clPos.x, y - clPos.y);
+      if (cd < 50) {
+        if (ensureActiveNet(engine, b.net)) return true;
+        if (!bestB || cd < bestDist) {
+          bestB = b;
+          bestDist = cd;
+          bestIsGhost = false;
+        }
+      }
+    }
+    // Acierto de SÍMBOLO (solo si no hubo acierto de etiqueta). El objetivo de clic de un canal
+    // es su rectángulo visible (_canalBox), no un círculo, así que nunca se traga clics de un
+    // bajante que quede dentro de él — los glifos reales ganan primero (gana el círculo más
+    // cercano), y el cuerpo del canal solo agarra el clic cuando ningún glifo está en el punto.
+    if (!bestB) {
+      let symBest: { b: (typeof engine.bajantes)[0]; d: number } | null = null;
+      for (const b of engine.bajantes) {
+        if (b.tipo === 'canal') continue;
+        if (engine._hiddenNets.has(b.net)) continue;
+        if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
+        const circ = b._circ;
+        if (!circ) continue;
+        const d = Math.hypot(x - circ.x, y - circ.y);
+        if (d < circ.r && (!symBest || d < symBest.d)) symBest = { b, d };
+      }
+      if (symBest) {
+        const b = symBest.b;
+        if (ensureActiveNet(engine, b.net)) return true;
+        if (b.id !== sel?.id) {
+          engine.selId = b.id;
+          engine._emitSelect(b);
+          engine.render();
+        }
+        const dragAnchor = engine.toCvs(b.x, b.y);
+        // Copia entre pisos: símbolo seleccionable pero no arrastrable (2 sitios de bajDrag).
+        if (!b.copiaPiso)
+          engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
+        _captureBajDragBackup(engine, b);
+        return true;
+      }
+      // Fantasma (proyección entre pisos) visible en ESTE piso dentro de un canal: debe poder
+      // agarrarse/arrastrarse independientemente del canal — el canal no lo secuestra. Corre
+      // ANTES del fallback del rectángulo del canal: sin esto, un clic sobre un fantasma que cae
+      // dentro de un canal seleccionaba/movía siempre el canal (cuyo bajDrag arrastra al padre).
+      const fg = engine.getBajantesFantasma();
+      let gHit: PlanoBajante | null = null;
+      for (const g of fg) {
+        if (!g._ghost) continue;
+        if (Math.hypot(x - g._ghost.x, y - g._ghost.y) < g._ghost.r) {
+          gHit = g;
+          break;
+        }
+      }
+      if (!gHit) {
+        for (const g of fg) {
+          if (g._ghostLabelBox && pointInLabelBox(x, y, g._ghostLabelBox)) {
+            gHit = g;
+            break;
+          }
+        }
+      }
+      if (gHit) {
+        if (ensureActiveNet(engine, gHit.net)) return true;
+        engine.selId = gHit.id;
+        engine._isGhostSel = true;
+        engine._emitSelect(gHit);
+        engine.render();
+        if (gHit._ghostLabelBox && pointInLabelBox(x, y, gHit._ghostLabelBox)) {
+          const c = gHit._ghostLabelBox;
+          engine._lblDragIsParent = false;
+          engine.lblDrag = { id: gHit.id, offX: x - c.cx, offY: y - c.cy };
+        } else {
+          // Anillo de ASOCIACIÓN entre pisos (su desplazamiento apunta a un conector LD_):
+          // SIEMPRE bloqueado (orig. usuario) — su posición es la proyección del bajante del
+          // otro piso y solo cambia arrastrando a ese bajante. Solo los anillos creados por
+          // arrastre manual (Ldesvio con id secuencial) siguen siendo movibles.
+          const assocRing =
+            gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.Ldesvio?.startsWith('LD_');
+          if (!assocRing) {
+            engine.ghostDrag = {
+              id: gHit.id,
+              startX: x,
+              startY: y,
+              baseDx: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
+              baseDy: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
+            };
+          }
+        }
+        return true;
+      }
+      for (const b of engine.bajantes) {
+        if (b.tipo !== 'canal') continue;
+        if (engine._hiddenNets.has(b.net)) continue;
+        if (canalRectHitDistance(b, x, y, 4 * engine.zoom) === Infinity) continue;
+        if (ensureActiveNet(engine, b.net)) return true;
+        if (b.id !== sel?.id) {
+          engine.selId = b.id;
+          engine._emitSelect(b);
+          engine.render();
+        }
+        const dragAnchor = engine.toCvs(b.x, b.y);
+        // Copia entre pisos: símbolo seleccionable pero no arrastrable (2 sitios de bajDrag).
+        if (!b.copiaPiso)
+          engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
+        _captureBajDragBackup(engine, b);
+        return true;
+      }
+    }
+  }
+  if (bestB) {
+    const lPos = engine.toCvs(bestB.labelX ?? bestB.x, bestB.labelY ?? bestB.y + 20);
+    if (bestB.id !== sel?.id) {
+      engine.selId = bestB.id;
+      engine._emitSelect(bestB);
+      engine.render();
+    }
+    engine._lblDragIsParent = true;
+    engine.lblDrag = { id: bestB.id, offX: x - lPos.x, offY: y - lPos.y };
+    return true;
+  }
+  return false;
+}
+
+/** Coge una esquina del rectángulo del canal ya seleccionado para redimensionarlo. Corre antes del
+ *  chequeo de símbolo porque si no, esa esquina caería dentro del círculo y movería el canal entero.
+ *  Ej: arrastrar la esquina inferior derecha ensancha el canal. */
+export function _tryCanalResizeHit(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+): boolean {
+  const canal = sel as PlanoBajante | null;
+  if (!canal || canal.tipo !== 'canal') return false;
+  // Esquinas del OBB en canvas (no del AABB): en diagonal las manijas viven en el rombo.
+  // Orden local: (0,0)=tl, (w,0)=tr, (w,h)=br, (0,h)=bl — con ángulo 0 coincide con el AABB.
+  const m = canalMarco(engine.cmToPlanePx(1), canal);
+  const corners = esquinasCanalOBB(m).map((p) => engine.toCvs(p.x, p.y));
+  const names = ['tl', 'tr', 'br', 'bl'] as const;
+  const grabbedIdx = corners.findIndex((c) => Math.hypot(x - c.x, y - c.y) < 10);
+  if (grabbedIdx < 0) return false;
+  const anchor = [
+    { lx: m.w, ly: m.h },
+    { lx: 0, ly: m.h },
+    { lx: 0, ly: 0 },
+    { lx: m.w, ly: 0 },
+  ][grabbedIdx];
+  engine.canalResizeDrag = {
+    id: canal.id,
+    corner: names[grabbedIdx],
+    anchorLX: anchor.lx,
+    anchorLY: anchor.ly,
+    oX: m.x,
+    oY: m.y,
+    ang: m.angRad,
+  };
+  return true;
+}
+
+/** Intenta agarrar un extremo (la punta) de una tubería. Cuando el acierto es dudoso —la
+ *  etiqueta de otro ramal encima, o dos tramos que convergen en el mismo punto— cede el clic y
+ *  deja que selectAt decida cuál era. Ej: un clic a 5 px de la punta de RAF1 la estira; el mismo
+ *  clic sobre el cuerpo la solo selecciona. */
+export function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
+  // Un clic sobre la ETIQUETA de un ramal es su target explícito — nunca debe robarlo el
+  // extremo cercano de otro ramal (bug: la etiqueta de una rama tee AF cerca de la unión
+  // agarraba el extremo de un ll que terminaba ahí y cambiaba la red activa a aguas lluvias).
+  // Se devuelve false para que el flujo de etiquetas de handleSelectDown decida con el
+  // ensureActiveNet del dueño.
+  for (const r of engine.ramales) {
+    if (r._labelBox && pointInLabelBox(x, y, r._labelBox)) return false;
+    // Fallback por cercanía al centro (12px, mismo que el loop de etiquetas de
+    // handleSelectDown): caja stale/ausente en ramales cortos (ítem 2 usuario).
+    const lPos = engine.toCvs(r.labelX, r.labelY);
+    if (Math.hypot(x - lPos.x, y - lPos.y) < 12) return false;
+  }
+  let bestRamal = null;
+  let bestPtIdx = -1;
+  let minPtDist = 15;
+  // El ramal de desvío de un bajante fantasma tiene un extremo sentado exactamente en la
+  // posición desplazada del fantasma, así que un clic sobre el símbolo del fantasma también cae
+  // dentro de la tolerancia de ese extremo — sin esto, el acierto de extremo de abajo gana
+  // primero y roba el clic al fantasma.
+  const lvl = engine.nivelActual?.label ?? '';
+  const ghostPts = engine.getBajantesFantasma().map((b) => {
+    const disp = b.desplazamientos?.[lvl];
+    return { x: b.x + (disp ? disp.dx : 0), y: b.y + (disp ? disp.dy : 0) };
+  });
+  for (const r of engine.ramales) {
+    if (engine._hiddenNets.has(r.net)) continue;
+    if (r.pts && r.pts.length >= 2) {
+      for (const i of [0, r.pts.length - 1]) {
+        // Un ramal auto-creado por una tee (mergesFrom) empieza EXACTAMENTE en el punto de la
+        // unión — su vértice de arranque coincide con el extremo del ramal real que el usuario
+        // dibujó (y con el cuerpo de la rama de la tee). Si su arranque participara en el acierto
+        // de extremo, un clic sobre la rama/etiqueta del ramal real cerca de la unión lo
+        // seleccionaba a él (el "fantasma RAF3") y cambiaba la red activa a la del tramo
+        // auto-creado. Su extremo LIBRE (pts[último]) sigue agarrándose normal.
+        if (r.mergesFrom && i === 0) continue;
+        const pc = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+        const d = Math.hypot(x - pc.x, y - pc.y);
+        if (d < minPtDist) {
+          // Ramas CORTAS (o extremos pegados al propio cuerpo): el radio fijo de extremo
+          // convertía TODO el cuerpo cercano al extremo en "extremo" — un clic sobre el cuerpo de
+          // una rama tee corta agarraba su extremo de la unión y arrancaba un arrastre (o
+          // seleccionaba el ramal pero moviendo la unión), en vez de seleccionar limpio
+          // ("no me deja seleccionar RAF2 por el cuerpo ni por la etiqueta — la hitbox es enorme").
+          // Regla: clic SOBRE el propio cuerpo (≤3px de su línea) y a >4px del extremo → NO agarrar
+          // el extremo; selección limpia vía selectAt. El agarrar extremo queda para clics sobre el
+          // punto mismo (≤4px) o fuera del trazo del ramal (buscar extremo cercano sigue igual).
+          const ownBodyDist = distanceToRamal(
+            x,
+            y,
+            r.pts,
+            (px, py) => engine.toCvs(px, py),
+            engine.mm2cvs(3),
+          );
+          if (ownBodyDist < engine.mm2cvs(3) && d > 4) {
+            if (engine._debugSel)
+              engine._debugSel.notes.push(
+                `endpoint-skip ${r.id} i=${i} d=${d.toFixed(1)} onSelfBody`,
+              );
+            continue;
+          }
+          const epP = r.pts[i];
+          const bajAtEp = engine.bajantes.find(
+            (b) => Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1,
+          );
+          const ghostAtEp = ghostPts.some(
+            (g) => Math.abs(g.x - epP[0]) < 0.1 && Math.abs(g.y - epP[1]) < 0.1,
+          );
+          if (bajAtEp || ghostAtEp) continue;
+          minPtDist = d;
+          bestRamal = r;
+          bestPtIdx = i;
+        }
+      }
+    }
+  }
+  if (!bestRamal) return false;
+
+  if (engine._debugSel) {
+    engine._debugSel.notes.push(
+      `_tryRamalEndpointHit win: ${bestRamal.id} i=${bestPtIdx} d=${minPtDist.toFixed(1)}`,
+    );
+  }
+
+  // Una rama de tee insertada sobre el cuerpo de otra línea: su extremo cae dentro del trazo del
+  // host (o un ramal ll pasó cerca por casualidad). Un clic así es un clic SOBRE EL CUERPO de ese
+  // otro ramal — debe seleccionarlo (selectAt decide), NUNCA agarrar el extremo cercano, y mucho
+  // menos cambiar la red activa a la red del ramal cuyo extremo quedó dentro del radio (af → ll,
+  // que era el bug reportado: clic sobre rama AF que quedaba seleccionando/haciendo drag en ll).
+  if (
+    pointOnAnyBodySegment(
+      engine.ramales.filter((r) => r.id !== bestRamal.id && !engine._hiddenNets.has(r.net)),
+      x,
+      y,
+      (px, py) => engine.toCvs(px, py),
+      engine.mm2cvs(3),
+    )
+  ) {
+    // El clic pertenece al cuerpo de OTRO ramal — seleccionarlo (selectAt resuelve por
+    // distancia con bonus del dueño del cuerpo) en vez de agarrar el extremo cercano. Devolver
+    // false dejaba el clic a su suerte sobre el orden del array y podía seleccionar un ll que
+    // cruzaba la unión (cambio de red accidental).
+    selectAt(engine, x, y);
+    return true;
+  }
+
+  // Unión convergente: si OTRO ramal del mismo net tiene un extremo en el MISMO punto que el
+  // extremo capturado (p.ej. el tramo resultante de un split y el ramal que lo partió), no
+  // robar el clic a favor del primero del array — dejar que selectAt decida (con su desempate
+  // por cuerpo/etiqueta) para poder seleccionar el tramo que se quiere. Bug 2.
+  {
+    const pt = bestRamal.pts[bestPtIdx];
+    const TOL_JOIN = 0.6;
+    let othersAtPt = 0;
+    for (const r of engine.ramales) {
+      if (r.id === bestRamal.id || !r.pts || r.pts.length < 2) continue;
+      if (r.net !== bestRamal.net) continue;
+      if (
+        Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL_JOIN ||
+        Math.hypot(r.pts[r.pts.length - 1][0] - pt[0], r.pts[r.pts.length - 1][1] - pt[1]) <
+          TOL_JOIN
+      ) {
+        othersAtPt++;
+      }
+    }
+    if (othersAtPt > 0) {
+      // El clic está cerca del punto de unión convergente — el usuario puede querer agarrar el
+      // extremo del tramo concreto (para estirarlo) o seleccionar el otro. selectAt + el
+      // arrastre de vértice posterior lo resuelven con el desempate justo.
+      selectAt(engine, x, y);
+      return true;
+    }
+  }
+
+  if (ensureActiveNet(engine, bestRamal.net)) return true;
+  engine.selId = bestRamal.id;
+  engine.multiSel = [];
+  engine._emitSelect(bestRamal);
+  // Este es el camino de primer clic para agarrar el extremo de un ramal (corre antes de
+  // _trySelRamalDrag, que solo maneja un SEGUNDO clic sobre un ramal ya seleccionado).
+  // "Bloquear Movimiento" debe mantener inmutable la geometría del ramal — el checkbox del
+  // menú contextual conmuta bloqueado, así que todo arrastre que escribiría pts está
+  // condicionado a ello, incluido este. La selección misma sigue funcionando (el ramal queda
+  // seleccionable, solo no arrastrable); la cascada (ser arrastrado porque un ramal conectado
+  // se movió) sigue permitida, y los arrastres de cuerpo completo se condicionan en
+  // _trySelRamalDrag abajo.
+
+  let slideConstraint = undefined;
+  {
+    // Estrictamente solo misma red — un extremo nunca debe restringirse al deslizamiento
+    // contra un segmento de una red distinta solo porque esté visualmente cerca.
+    const pt = bestRamal.pts[bestPtIdx];
+    for (const other of engine.ramales) {
+      if (other.id === bestRamal.id || other.net !== bestRamal.net) continue;
+      for (let si = 0; si < other.pts.length - 1; si++) {
+        const [ax, ay] = other.pts[si],
+          [bx, by] = other.pts[si + 1];
+        const sDx = bx - ax,
+          sDy = by - ay;
+        const sLen = Math.hypot(sDx, sDy);
+        if (sLen < 0.001) continue;
+        const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
+        if (cross < 0.05) {
+          // Solo una unión T genuina (pt en el INTERIOR del otro segmento) debe restringir el
+          // deslizamiento. Dos ramales que solo convergen en una esquina de bajante compartido
+          // también pasan el chequeo cruzado aquí, porque se tocan en el extremo propio de ese
+          // segmento — excluir el margen exterior distingue esos dos casos.
+          const t = ((pt[0] - ax) * sDx + (pt[1] - ay) * sDy) / (sLen * sLen);
+          const marginT = Math.min(0.45, 2 / sLen);
+          if (t > marginT && t < 1 - marginT) {
+            slideConstraint = { otherId: other.id, segmentIdx: si };
+            break;
+          }
+        }
+      }
+      if (slideConstraint) break;
+    }
+  }
+
+  if (bestRamal.bloqueado) return false;
+
+  const codoLinks = findCodoReventiladoLinks(engine, bestRamal, bestPtIdx);
+  if (codoLinks.length > 0) {
+    const backups: Record<string, number[][]> = {};
+    for (const link of codoLinks) {
+      const other = indicesDeMotor(engine).ramales.get(link.id);
+      if (other) backups[link.id] = structuredClone(other.pts);
+    }
+    engine._dragLinkedBackupPts = backups;
+  } else {
+    engine._dragLinkedBackupPts = null;
+  }
+
+  engine._dragBackupPts = structuredClone(bestRamal.pts);
+  engine.ptDrag = {
+    id: bestRamal.id,
+    ptIdx: bestPtIdx,
+    slideConstraint,
+    linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
+  };
+  engine.render();
+  return true;
+}
+
+/** ¿El clic cayó sobre la punta de algo que ya estaba en la selección múltiple? Entonces el
+ *  arrastre del grupo NO debe quedarse con el clic: esa punta sigue remodelando su elemento.
+ *  Ej: con cinco ramales seleccionados, clicar en la punta de uno estira solo ese. */
+export function _tryMultiSelEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
+  if (engine.multiSel.length === 0) return false;
+  const idx = indicesDeMotor(engine);
+  for (const id of engine.multiSel) {
+    const re = idx.ramales.get(id);
+    if (!re || !re.pts || re.pts.length < 2) continue;
+    for (const i of [0, re.pts.length - 1]) {
+      const c = engine.toCvs(re.pts[i][0], re.pts[i][1]);
+      if (Math.hypot(x - c.x, y - c.y) < 15) return true;
+    }
+  }
+  return false;
+}
+
+/** Coge uno de los elementos ya seleccionados para arrastrar el grupo entero desde su sitio
+ *  original; Ctrl+clic sobre un miembro lo saca del grupo. Ej: seleccionar tres ramales y arrastrar
+ *  cualquiera de ellos los mueve a los tres, sin doblar ninguno. */
+export function _tryMultiSelDrag(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  isMultiSelectModifier: boolean,
+): boolean {
+  if (engine.multiSel.length === 0 || engine.tool !== 'sel') return false;
+
+  // Índices id→pieza: cada elemento seleccionado buscaba su ramal, bajante, anotación, área,
+  // cota y guía recorriendo la lista completa (N × 6 × lista por clic).
+  const idx = indicesDeMotor(engine);
+
+  for (const id of engine.multiSel) {
+    let hit = false;
+    const re = idx.ramales.get(id);
+    if (re && re.pts) {
+      for (let i = 0; i < re.pts.length; i++) {
+        const pc = engine.toCvs(re.pts[i][0], re.pts[i][1]);
+        if (Math.hypot(x - pc.x, y - pc.y) < 12) {
+          hit = true;
+          break;
+        }
+      }
+      if (!hit) {
+        for (let i = 0; i < re.pts.length - 1; i++) {
+          const p1 = engine.toCvs(re.pts[i][0], re.pts[i][1]);
+          const p2 = engine.toCvs(re.pts[i + 1][0], re.pts[i + 1][1]);
+          if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 8) {
+            hit = true;
+            break;
+          }
+        }
+      }
+      if (!hit) {
+        const d = distanceToRamal(x, y, re.pts, (px, py) => engine.toCvs(px, py), engine.mm2cvs(4));
+        if (d < 12) hit = true;
+      }
+      if (!hit && re._labelBox && pointInLabelBox(x, y, re._labelBox)) hit = true;
+    }
+    const be = idx.bajantes.get(id);
+    if (!hit && be) {
+      hit = Number.isFinite(bajanteHitDistance(be, x, y));
+      if (!hit && be._labelBox && pointInLabelBox(x, y, be._labelBox)) hit = true;
+    }
+    const te = idx.textos.get(id);
+    if (!hit && te && te._box) {
+      hit =
+        x >= te._box.x &&
+        x <= te._box.x + te._box.w &&
+        y >= te._box.y &&
+        y <= te._box.y + te._box.h;
+    }
+    // PUNTO (orig. usuario): las ÁREAS de la multiselección también agarran el arrastre del
+    // grupo — press dentro de su bbox (criterio igual al marquee).
+    const ae = idx.areas.get(id);
+    if (!hit && ae?._polyBox) {
+      const pb = ae._polyBox;
+      hit = x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h;
+    }
+    const gde = idx.guias.get(id);
+    if (!hit && gde?.pts) {
+      for (let i = 0; i < gde.pts.length; i++) {
+        const pc = engine.toCvs(gde.pts[i][0], gde.pts[i][1]);
+        if (Math.hypot(x - pc.x, y - pc.y) < 12) {
+          hit = true;
+          break;
+        }
+      }
+      if (!hit) {
+        for (let i = 0; i < gde.pts.length - 1; i++) {
+          const p1 = engine.toCvs(gde.pts[i][0], gde.pts[i][1]);
+          const p2 = engine.toCvs(gde.pts[i + 1][0], gde.pts[i + 1][1]);
+          if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 8) {
+            hit = true;
+            break;
+          }
+        }
+      }
+    }
+    const mdm = idx.cotas.get(id);
+    if (!hit && mdm) {
+      // COTA del grupo: tocar el segmento (10px) o el punto de etiqueta arrastrada (12px).
+      const p1 = engine.toCvs(mdm.x1, mdm.y1);
+      const p2 = engine.toCvs(mdm.x2, mdm.y2);
+      if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 10) {
+        hit = true;
+      } else {
+        const lp =
+          mdm.lblX != null && mdm.lblY != null ? engine.toCvs(mdm.lblX, mdm.lblY) : mdm._labelPos;
+        if (lp && Math.hypot(x - lp.x, y - lp.y) < 12) hit = true;
+      }
+    }
+    if (hit) {
+      if (isMultiSelectModifier) {
+        // Ctrl+clic sobre un miembro del conjunto: lo QUITA (toggle) — mismo comportamiento
+        // que toggleMultiArea; antes era un clic muerto (no arrastraba ni deseleccionaba).
+        engine.multiSel = engine.multiSel.filter((m) => m !== id);
+        engine.selId = null;
+        engine._emitSelect(null);
+        engine.render();
+        return true;
+      }
+      {
+        const tp = engine.toPlane(x, y);
+        const origData: MultiDragOrigData = {};
+        for (const mid of engine.multiSel) {
+          const mel = idx.ramales.get(mid);
+          if (mel) {
+            // Ítem 7: una traslación rígida del conjunto nunca dobla la forma del ramal, así que
+            // `bloqueado` (que existe para impedir el doblado) no excluye a nadie del arrastre de
+            // grupo — mismo razonamiento ya aplicado al arrastre de cuerpo en handleDragMove.ts.
+            origData[mid] = {
+              type: 'ramal',
+              origPts: mel.pts.map((p) => [...p]),
+              origLabelX: mel.labelX,
+              origLabelY: mel.labelY,
+              origLabelAngle: mel.labelAngle || 0,
+            };
+            continue;
+          }
+          const mba = idx.bajantes.get(mid);
+          if (mba) {
+            origData[mid] = {
+              type: 'bajante',
+              origX: mba.x,
+              origY: mba.y,
+              origLabelX: mba.labelX,
+              origLabelY: mba.labelY,
+            };
+            continue;
+          }
+          const mtx = idx.textos.get(mid);
+          if (mtx) {
+            origData[mid] = { type: 'text', origX: mtx.x, origY: mtx.y };
+            continue;
+          }
+          const mgl = idx.guias.get(mid);
+          if (mgl) {
+            // La guía es UNA entidad: se traslada completa (todos sus vértices).
+            origData[mid] = { type: 'guide', origPts: mgl.pts.map((pt) => [...pt]) };
+            continue;
+          }
+          const mar = idx.areas.get(mid);
+          if (mar) {
+            // ÁREA: se traslada completa (vértices + etiqueta), igual que el resto del grupo.
+            origData[mid] = {
+              type: 'area',
+              origPts: mar.pts.map((pt) => [...pt]),
+              origLabelX: mar.labelX,
+              origLabelY: mar.labelY,
+            };
+            continue;
+          }
+          const mdm = idx.cotas.get(mid);
+          if (mdm) {
+            // COTA del grupo: extremos como "pts" (2 puntos) + etiqueta arrastrada si existe.
+            origData[mid] = {
+              type: 'dim',
+              origPts: [
+                [mdm.x1, mdm.y1],
+                [mdm.x2, mdm.y2],
+              ],
+              origLabelX: mdm.lblX,
+              origLabelY: mdm.lblY,
+            };
+          }
+        }
+        engine.multiDrag = { startX: tp.x, startY: tp.y, origData };
+      }
+      return true;
+    }
+  }
+  return false;
+}

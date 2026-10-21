@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { calcHydroAccessories } from '../redSanitaria.ts';
-import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { calcHydroAccessories } from '../networkSanitary.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 // Codos de canal SIN doble conteo (orig. usuario): el ramal de canal cuenta su codo 90° baja
 // UNA sola vez (accesorioInicio en la salida del canal) — la inferencia por recibeDeIds de los
 // bajantes ll NO debe sumarlo otra vez. Los ramales ll normales sí conservan la inferencia.
 
 const storageMock: Record<string, unknown> = {};
-vi.mock('../../../services/almacenamientoServicio.ts', () => ({
+vi.mock('../../../services/storageService.ts', () => ({
   loadFromStorage: vi.fn((k: string, fb: unknown) => storageMock[k] ?? fb),
   saveToStorage: vi.fn((k: string, v: unknown) => {
     storageMock[k] = v;

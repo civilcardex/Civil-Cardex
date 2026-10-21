@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { updateElementById } from '../PlanoMotorSeleccion.ts';
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoEstado.ts';
+import { updateElementById } from '../PlanoEngineSelection.ts';
+import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState.ts';
 
 // updateCrossFloorGhostFieldBySource (invocado por updateElementById al cambiar
 // dNominal) itera localStorage — en environment 'node' no existe. Stub vacío.

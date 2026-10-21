@@ -1,5 +1,5 @@
 // Generador Word (docx apaisado) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
-import { type MemoriaTable, type MemoriaData, fileBase } from './memoriaExportaCompartido.ts';
+import { type MemoriaTable, type MemoriaData, fileBase } from './memoriaExportShared.ts';
 import { sanaTablas } from './memoriaSana.ts';
 function computeColumnWidthsDxa(headers: string[]): number[] {
   const twipsPerChar = 105;

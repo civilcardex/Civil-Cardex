@@ -4,8 +4,8 @@ import {
   type MemoriaData,
   fileBase,
   REDES_ORDEN,
-} from './memoriaExportaCompartido.ts';
-import { loadXlsx } from '../../../utils/exportaCargadores.ts';
+} from './memoriaExportShared.ts';
+import { loadXlsx } from '../../../utils/exportLoaders.ts';
 import { sanaCelda, sanaTablas } from './memoriaSana.ts';
 interface XlsxCellStyle {
   font?: { bold?: boolean; sz?: number; color?: { rgb: string }; italic?: boolean };

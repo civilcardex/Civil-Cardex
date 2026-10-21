@@ -478,10 +478,10 @@ La sesión paralela siguió commiteando DURANTE esta auditoría (A-5 ya aplicado
   parámetro), `utils/bajanteFilaModelo.ts` (DownpipesTable 1144→1001; la fila ya no se calcula en el JSX),
   `workarea/planosTab/*` (PlanosTab 1208→710), `workarea/PlanoConfigurador.tsx` (1081→605).
   OJO: el campo del override de red en el catálogo es `ucaf` (NO `uc_af`).
-- **SEO cerrado**: `seo/rutaMeta.ts` con `metaDeRuta(path)` como fuente única + `ModuleConfig.ruta`
-  (`pages/moduloDatos.ts`) + los 6 heroes de módulo con `<h1>` (antes `<h2>`): **13/13 rutas
+- **SEO cerrado**: `seo/routeMeta.ts` con `metaDeRuta(path)` como fuente única + `ModuleConfig.ruta`
+  (`pages/moduleData.ts`) + los 6 heroes de módulo con `<h1>` (antes `<h2>`): **13/13 rutas
   prerenderizadas con H1**. Test `seo/__tests__/rutaMeta.test.ts` (7). El prerender se renombró a
-  `seo/prerenderEntrada.tsx` (package.json `build` y `scripts/prerender.mjs` actualizados).
+  `seo/prerenderEntry.tsx` (package.json `build` y `scripts/prerender.mjs` actualizados).
 - **Fix del recorte del visor**: la lámina de fondo se re-rasterizaba al cambiar la escala pero el
   LIENZO de dibujo no se re-medía → el trazo se cortaba antes que la lámina. `PlanoEngine.watchContainerSize()`
   (ResizeObserver sobre el contenedor) + `PdfViewerMotorInicial.ts` lo arranca.

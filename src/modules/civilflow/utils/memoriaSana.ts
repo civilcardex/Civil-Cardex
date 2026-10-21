@@ -1,4 +1,4 @@
-import type { MemoriaTable } from './memoriaExportaCompartido.ts';
+import type { MemoriaTable } from './memoriaExportShared.ts';
 
 /**
  * Convierte un valor de celda en algo imprimible: nunca NaN, Infinity, undefined ni null.

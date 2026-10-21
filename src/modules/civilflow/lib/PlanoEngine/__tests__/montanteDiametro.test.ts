@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { updateElementById, updateSelected } from '../PlanoMotorSeleccionEdita.ts';
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoEstado.ts';
+import { updateElementById, updateSelected } from '../PlanoEngineSelectionEdit.ts';
+import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState.ts';
 
 // Montante af/ac: el diámetro va ligado al ramal conectado — nunca queda por debajo
 // (misma verificación que bajantes/ramales sanitarios: alerta modal y no permite),

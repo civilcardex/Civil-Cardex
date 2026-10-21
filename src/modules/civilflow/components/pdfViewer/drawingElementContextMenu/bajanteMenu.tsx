@@ -1,14 +1,14 @@
-import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoEstado.ts';
-import { useDrawingElementContextMenu } from './contexto.ts';
-import { BajanteConnectionPanel } from './bajanteConexionPanel.tsx';
-import { BajanteDirectionSelector } from './direccionSelector.tsx';
-import { BajanteDiameterSelector } from './diametroSelector.tsx';
+import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
+import { useDrawingElementContextMenu } from './context.ts';
+import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';
+import { BajanteDirectionSelector } from './directionSelector.tsx';
+import { BajanteDiameterSelector } from './diameterSelector.tsx';
 import {
   BotonCrearBomba,
   CajaBombaSection,
   AsociarBombaSection,
   cajaSinBomba,
-} from './bombaSecciones.tsx';
+} from './bombaSections.tsx';
 import {
   CanalesAsociadosBajSection,
   MaterialCubiertaBajSection,

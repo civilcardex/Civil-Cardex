@@ -10,7 +10,7 @@ import {
   pMinRedTxt,
   pMinAparatoTxt,
 } from '../normasPais';
-import { normaUrl, NormaTxt, NormaLink } from '../../components/shared/normasLinks.tsx';
+import { normaUrl, NormaTxt, NormaLink } from '../../components/shared/standardsLinks.tsx';
 import React from 'react';
 
 // Matriz normativa por país: cada perfil trae valores, etiquetas de referencia y fuente.

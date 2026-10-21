@@ -1,6 +1,6 @@
-import { loadFromStorage, saveToStorage } from '../../services/almacenamientoServicio.ts';
+import { loadFromStorage, saveToStorage } from '../../services/storageService.ts';
 import { despacharStorage } from './books';
-import { TRAZOS_PREFIX, BAJADAS_RECEPTORAS_KEY } from '../../constants/almacenamientoClaves.ts';
+import { TRAZOS_PREFIX, BAJADAS_RECEPTORAS_KEY } from '../../constants/storage-keys.ts';
 import {
   cntVacio,
   sumaCnt,
@@ -9,7 +9,7 @@ import {
   type RawRam,
   type RamalP,
   type BajanteP,
-} from './conteo.ts';
+} from './counting.ts';
 
 /** Pisos que tienen dibujo guardado (ids leíos de las claves civilflow_trazos_*). */
 function idsDePlanos(): string[] {

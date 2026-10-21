@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { updateSelected } from '../PlanoMotorSeleccionEdita.ts';
-import { convergirDiametroNodoPresion } from '../dibujoFlujo.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { updateSelected } from '../PlanoEngineSelectionEdit.ts';
+import { convergirDiametroNodoPresion } from '../drawingFlow.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 // Redes de presión: la regla salida/entrada se RETIRÓ (sin alerta). Los trazos conectados
 // en la unión toman automáticamente el MAYOR diámetro (solo suben, nunca bajan).

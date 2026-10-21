@@ -1,6 +1,6 @@
-import { devError } from '../../../../utils/desarrolloError.ts';
-import type { IPlanoEngineCore, PlanoRamal } from './PlanoEstado.ts';
-import { pointToSegmentDist } from './ImpactoProbador.ts';
+import { devError } from '../../../../utils/devError.ts';
+import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
+import { pointToSegmentDist } from './HitTester.ts';
 
 /** Revisión de las tuberías a presión (el agua empuja, no cae sola): af (Agua Fría), ac (Agua
  *  Caliente), gas (Gas) y rci (Red Contra Incendio). Cada tramo debe tener por dónde le LLEGA

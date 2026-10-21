@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { usePlans } from '../context/PlanosContexto.tsx';
-import { useTramos } from '../context/TramosContexto.tsx';
-import { prefetchAllTrazos } from '../utils/precargaTrazos.ts';
+import { usePlans } from '../context/PlansContext.tsx';
+import { useTramos } from '../context/TramosContext.tsx';
+import { prefetchAllTrazos } from '../utils/prefetchTrazos.ts';
 
 /** Tope de espera del gate: si algo se cuelga (nube lenta, restore atascado), la entrada
  *  nunca queda bloqueada más de 10 s — mismo tope que el fallback del visor. */

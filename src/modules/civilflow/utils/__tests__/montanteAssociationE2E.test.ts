@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { propagarAparatosPresion } from '../propagation';
-import { correrEspejos } from '../../components/aparatos/useAparatoEspejos.ts';
-import { currentMapDe, type TargetArgs } from '../../components/aparatos/useAparatoObjetivo.ts';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import { correrEspejos } from '../../components/fixtures/useFixtureMirrors.ts';
+import { currentMapDe, type TargetArgs } from '../../components/fixtures/useFixtureTarget.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState.ts';
 
 // E2E INTEGRAL (espec. usuario): la herencia de montantes debe mostrar ABAJO exactamente lo
 // que muestra ARRIBA — con TODO el estado rancio real acumulado por las doctrinas viejas:

@@ -4,8 +4,8 @@ import {
   type MemoriaData,
   fileBase,
   REDES_ORDEN,
-} from './memoriaExportaCompartido.ts';
-import { loadJspdf } from '../../../utils/exportaCargadores.ts';
+} from './memoriaExportShared.ts';
+import { loadJspdf } from '../../../utils/exportLoaders.ts';
 import { sanaCelda, sanaTablas } from './memoriaSana.ts';
 function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
   if (!table.headerGroups) return [table.headers.map((h) => ({ content: h }))];

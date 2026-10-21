@@ -1,4 +1,4 @@
-import { devError } from './desarrolloError.ts';
+import { devError } from './devError.ts';
 
 /** Nombre del evento de ventana con el que se avisa de un fallo de guardado en la nube.
  *  Contrato compartido: lo emiten los servicios de guardado y lo escucha el proveedor

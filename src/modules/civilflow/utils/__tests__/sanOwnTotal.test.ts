@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadSanLlTramos } from '../construyeTramos.ts';
+import { loadSanLlTramos } from '../buildTramos.ts';
 import { buildSanConnectivity } from '../sanConnectivity';
-import { computeSanRows } from '../sanFilas.ts';
-import type { PlanItem } from '../../context/PlanosContexto.tsx';
+import { computeSanRows } from '../sanRows.ts';
+import type { PlanItem } from '../../context/PlansContext.tsx';
 
 // UD propia incluye los tributarios que REALMENTE descargan en el segmento (grafo), no los
 // del `padre` declarado — tras un split el padre puede quedar aguas arriba y su UD ya no

@@ -1,0 +1,422 @@
+import { NETS, initNetCounts } from './PlanoState.ts';
+import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts.ts';
+import { claveBajante, dedupPorClave } from '../../utils/bajanteLocal.ts';
+import { propagarSanDiametroAguasAbajo } from './drawingFlow.ts';
+import { direccionBajaPermitida } from './directionRules.ts';
+import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './canalAssociation';
+import { cmToPlanePx } from './planoCoords.ts';
+import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
+
+export interface PlanoWorkData {
+  v: number;
+  ts?: number;
+  scaleM: number;
+  definedScaleM: number;
+  activeNet: string;
+  zoom: number;
+  offX: number;
+  offY: number;
+  /** Tamaño de la lámina (px de plano) con el que se calibró la cámara: si al reabrir la
+   *  lámina tiene otro tamaño (p. ej. tras un re-base de escala), la cámara guardada ya no
+   *  encaja y hay que reencuadrar. */
+  pageW?: number;
+  pageH?: number;
+  lineWidth?: number;
+  nets: { id: string; col: string }[];
+  ramales: unknown[];
+  dims: unknown[];
+  textAnnots: unknown[];
+  bajantes: unknown[];
+  areas: unknown[];
+  nptLevels: unknown[];
+  guideLines?: unknown[];
+  // Los "fantasmas" entre pisos (marcadores del bajante que viene del piso de arriba) pueden
+  // escribirse en un piso distinto al que está abierto. Si al cargar este piso no se vuelven a
+  // leer, el siguiente autoguardado (que sobreescribe TODO el storage del piso) los borraría sin
+  // querer — por eso se incluyen aquí, tanto al leer como al escribir.
+  crossFloorGhosts?: unknown[];
+}
+
+/** Cambia la escala del documento (scaleM, la escala metros por pixel) y reescala TODO el dibujo
+ *  para que los elementos queden en el mismo punto FÍSICO del edificio: si cambias de 1:100 a
+ *  1:50, una columna que estaba a 3 m sigue a 3 m. Opcionalmente ancla el giro a un punto. */
+export function rebasarEscalaTrazos(
+  data: PlanoWorkData,
+  toScale: number,
+  ancla?: { x_px: number; y_px: number } | null,
+): void {
+  const fromScale = data.scaleM || 0.5;
+  if (!toScale || Math.abs(fromScale - toScale) < 1e-9) return;
+  const f = fromScale / toScale;
+  const ax = ancla?.x_px ?? 0;
+  const ay = ancla?.y_px ?? 0;
+  // 6 decimales de plane-px ≈ submicrón: estabiliza float sin pérdida práctica.
+  const n = (v: number): number => +(v * f).toFixed(6); // relativo (deltas/offsets)
+  const nx = (v: number): number => +(ax + (v - ax) * f).toFixed(6); // absoluto x
+  const ny = (v: number): number => +(ay + (v - ay) * f).toFixed(6); // absoluto y
+  const pt2 = (p: number[]): number[] => [nx(p[0]), ny(p[1])];
+  const escPtLista = (obj: unknown, campo: string): void => {
+    const o = obj as Record<string, unknown>;
+    const pts = o[campo];
+    if (Array.isArray(pts)) o[campo] = (pts as number[][]).map(pt2);
+  };
+  for (const r of (data.ramales || []) as Record<string, unknown>[]) {
+    escPtLista(r, 'pts');
+    if (typeof r.labelX === 'number') r.labelX = nx(r.labelX);
+    if (typeof r.labelY === 'number') r.labelY = ny(r.labelY);
+  }
+  for (const b of (data.bajantes || []) as Record<string, unknown>[]) {
+    if (typeof b.x === 'number') b.x = nx(b.x);
+    if (typeof b.y === 'number') b.y = ny(b.y);
+    if (typeof b.labelX === 'number') b.labelX = nx(b.labelX);
+    if (typeof b.labelY === 'number') b.labelY = ny(b.labelY);
+    const desp = b.desplazamientos as Record<string, { dx?: number; dy?: number }> | undefined;
+    if (desp) {
+      for (const d of Object.values(desp)) {
+        if (typeof d.dx === 'number') d.dx = n(d.dx);
+        if (typeof d.dy === 'number') d.dy = n(d.dy);
+      }
+    }
+    // Etiquetas arrastradas del fantasma/anillo por nivel (px de plano — sin esto quedaban
+    // descolgadas de su marcador tras un re-base).
+    const gd = b.ghostData as Record<string, { labelX?: number; labelY?: number }> | undefined;
+    if (gd) {
+      for (const g of Object.values(gd)) {
+        if (g && typeof g.labelX === 'number') g.labelX = nx(g.labelX);
+        if (g && typeof g.labelY === 'number') g.labelY = ny(g.labelY);
+      }
+    }
+  }
+  for (const a of (data.areas || []) as Record<string, unknown>[]) {
+    escPtLista(a, 'pts');
+    if (typeof a.labelX === 'number') a.labelX = nx(a.labelX);
+    if (typeof a.labelY === 'number') a.labelY = ny(a.labelY);
+  }
+  for (const d of (data.dims || []) as Record<string, unknown>[]) {
+    if (typeof d.x1 === 'number') d.x1 = nx(d.x1);
+    if (typeof d.y1 === 'number') d.y1 = ny(d.y1);
+    if (typeof d.x2 === 'number') d.x2 = nx(d.x2);
+    if (typeof d.y2 === 'number') d.y2 = ny(d.y2);
+    // Etiqueta arrastrada de la cota (px de plano — sin esto quedaba descolgada del segmento).
+    if (typeof d.lblX === 'number') d.lblX = nx(d.lblX);
+    if (typeof d.lblY === 'number') d.lblY = ny(d.lblY);
+    // d.L (metros reales) intacto: px escala ×f y la escala ÷f — la distancia real no cambia.
+  }
+  for (const t of (data.textAnnots || []) as Record<string, unknown>[]) {
+    if (typeof t.x === 'number') t.x = nx(t.x);
+    if (typeof t.y === 'number') t.y = ny(t.y);
+    // Offset relativo al punto de la anotación: escala puro, sin ancla.
+    if (typeof t.lblOffX === 'number') t.lblOffX = n(t.lblOffX);
+    if (typeof t.lblOffY === 'number') t.lblOffY = n(t.lblOffY);
+  }
+  for (const g of (data.guideLines || []) as Record<string, unknown>[]) {
+    escPtLista(g, 'pts');
+  }
+  // Marcadores de asociación entre pisos: px de plano propios — sin esto quedaban corridos
+  // tras un re-base (la geometría se movía y ellos no).
+  for (const g of (data.crossFloorGhosts || []) as Record<string, unknown>[]) {
+    if (typeof g.x === 'number') g.x = nx(g.x);
+    if (typeof g.y === 'number') g.y = ny(g.y);
+  }
+  data.scaleM = toScale;
+}
+
+/** Deja UNO por id (si el mismo elemento quedó duplicado, gana la última copia; tener dos rompe
+ *  el guardado con un error 500 del RPC). `merge` combina los campos que la última copia perdió.
+ *  @param lista elementos; @param merge combina colisión; @returns lista limpia. */
+export function dedupPorId<T>(lista: T[], merge?: (base: T, previa: T) => T): T[] {
+  const pos = new Map<string, number>();
+  const out: T[] = [];
+  for (const el of lista) {
+    const id = ((el as { id?: string } | null)?.id || '') + '';
+    const i = id ? pos.get(id) : undefined;
+    if (i !== undefined) out[i] = merge ? merge(el, out[i]) : el;
+    else {
+      if (id) pos.set(id, out.length);
+      out.push(el);
+    }
+  }
+  return out;
+}
+
+// Campos de asociación entre pisos que SOBREVIVEN al dedup: updateElementById muta la PRIMERA
+// copia del array; con el dedup keep-last, el libro (ucAplicado) escrito en la copia 1 se
+// descartaba al serializar y el autosave pisaba la caché buena (orig. usuario: herencia a 0
+// al reentrar con datos legacy duplicados). desplazamientos/ghostData = el ANILLO del fantasma
+// (mismo destino si la copia que sobrevive no lo trae — incidente 2026-09-25).
+const CAMPOS_ASOC = [
+  'ucAplicado',
+  'ucAplicadoHidro',
+  'origenId',
+  'descargaEnId',
+  'bombaEnId',
+  'recibeDeIds',
+  'alimentaIds',
+  'asocManual',
+  'desplazamientos',
+  'ghostData',
+] as const;
+
+/** Solo el anillo de desplazamientos vacío cuenta como "no puesto" (recibeDeIds (ramales que
+ *  llegan) vacío SÍ es un borrado real del usuario). */
+const CAMPOS_OBJETO_VACIO = new Set(['desplazamientos', 'ghostData']);
+
+/** Junta dos copias del mismo bajante: manda la más nueva, pero se recuperan de la anterior los
+ *  campos de asociación entre pisos que la nueva perdió (así un enlace no se borra "solo"). */
+export function mergeBajanteDedup<T>(base: T, previa: T): T {
+  const b = base as Record<string, unknown>;
+  const p = previa as Record<string, unknown> | null;
+  if (!p || typeof p !== 'object') return base;
+  let merged: Record<string, unknown> | null = null;
+  for (const k of CAMPOS_ASOC) {
+    const vacio =
+      CAMPOS_OBJETO_VACIO.has(k) &&
+      b[k] != null &&
+      typeof b[k] === 'object' &&
+      Object.keys(b[k] as object).length === 0;
+    if ((b[k] == null || vacio) && p[k] != null) {
+      if (!merged) merged = { ...b };
+      merged[k] = p[k];
+    }
+  }
+  return (merged as T) || base;
+}
+
+export function serializeWork(engine: {
+  scaleM: number;
+  definedScaleM: number;
+  activeNet: string;
+  zoom: number;
+  offX: number;
+  offY: number;
+  pageW?: number;
+  pageH?: number;
+  lineWidthScale: number;
+  ramales: unknown[];
+  dims: unknown[];
+  textAnnots: unknown[];
+  bajantes: unknown[];
+  areas: unknown[];
+  nptLevels: unknown[];
+  crossFloorGhosts: unknown[];
+  guideLines: unknown[];
+}): PlanoWorkData {
+  // Strip de cachés de render (`_labelBox`, `_circ`): se recalculan en cada render y
+  // dominaban el tamaño del JSON (la cuota muda de localStorage congelaba la caché local
+  // del piso y el GC borraba sus claves de aparatos — orig. usuario piso 2). Copia
+  // superficial solo del elemento que trae cachés; el resto sigue por referencia.
+  const stripRenderCache = (arr: unknown[] | undefined): unknown[] =>
+    (arr ?? []).map((el) => {
+      if (!el || typeof el !== 'object') return el;
+      // _canalBox: caché de broadphase del canal — su JSDoc promete caché de render; sin
+      // tirarlo viajaba stale al JSON/BD (ronda 9 F10).
+      if (!('_labelBox' in el) && !('_circ' in el) && !('_canalBox' in el)) return el;
+      const cp = { ...(el as Record<string, unknown>) };
+      delete cp._labelBox;
+      delete cp._circ;
+      delete cp._canalBox;
+      return cp;
+    });
+  return {
+    v: 6,
+    scaleM: engine.scaleM,
+    definedScaleM: engine.definedScaleM,
+    activeNet: engine.activeNet,
+    zoom: engine.zoom,
+    offX: engine.offX,
+    offY: engine.offY,
+    pageW: engine.pageW,
+    pageH: engine.pageH,
+    lineWidth: engine.lineWidthScale,
+    nets: NETS.map((n) => ({ id: n.id, col: n.col })),
+    ramales: dedupPorId(stripRenderCache(engine.ramales)),
+    dims: dedupPorId(stripRenderCache(engine.dims)),
+    textAnnots: dedupPorId(stripRenderCache(engine.textAnnots)),
+    // Los bajantes se deduplican por id|pisoBase, NO solo por id: el id SOLO es único dentro
+    // de un piso (el motor guarda el bajante real del piso abierto y la proyección de otro
+    // piso con el MISMO id). Con dedup por id ganaba la última copia — la proyección — y el
+    // autosave escribía su geometría, y `saveTrazosToDB` subía ese error a Supabase.
+    bajantes: dedupPorClave(
+      stripRenderCache(engine.bajantes) as { id?: string; pisoBase?: string }[],
+      claveBajante,
+      mergeBajanteDedup,
+    ),
+    areas: dedupPorId(stripRenderCache(engine.areas)),
+    nptLevels: engine.nptLevels,
+    crossFloorGhosts: engine.crossFloorGhosts,
+    guideLines: dedupPorId(stripRenderCache(engine.guideLines)),
+  };
+}
+
+export function applyWorkData(
+  engine: {
+    scaleM: number;
+    definedScaleM: number;
+    activeNet: string;
+    lineWidthScale?: number;
+    ramales: unknown[];
+    dims: unknown[];
+    textAnnots: unknown[];
+    bajantes: unknown[];
+    areas: unknown[];
+    nptLevels: unknown[];
+    crossFloorGhosts: unknown[];
+    guideLines: unknown[];
+    selId: string | null;
+    activeRamal: unknown;
+    activeArea: unknown;
+    _netCounts: Record<string, { ramal: number; tributario: number }>;
+    _dirty: boolean;
+    render: () => void;
+    [key: string]: unknown;
+  },
+  d: PlanoWorkData,
+) {
+  engine.scaleM = d.scaleM || 0.5;
+  engine.definedScaleM = d.definedScaleM || 0;
+  engine.activeNet = d.activeNet || 'af';
+  engine.zoom = d.zoom ?? 1;
+  engine.offX = d.offX ?? 0;
+  engine.offY = d.offY ?? 0;
+  engine.lineWidthScale = d.lineWidth && d.lineWidth > 0 ? d.lineWidth : 1;
+  engine.ramales = dedupPorId(d.ramales || []);
+  engine.dims = dedupPorId(d.dims || []);
+  engine.textAnnots = dedupPorId(d.textAnnots || []);
+  // Migración: los canales recolectores usaban el prefijo de código CALL{n}-P{n}, reservado
+  // ahora para las cajas de aguas lluvias (tipo caja_ll). Canales → CNL{n}-P{n}.
+  // Sanado legacy (ítems 4-5 usuario): sin `angulo`, base=Y/longitud=X eje-alineado →
+  // base-corta + angulo (0/±90/180) con el mismo rectángulo mundo. Idempotente.
+  const pxPerCm = cmToPlanePx(d.scaleM || 0.5, 1);
+  engine.bajantes = dedupPorClave(
+    ((d.bajantes || []) as { id?: string; pisoBase?: string }[]).map((b) => {
+      const bb = b as { tipo?: string; code?: string; id?: string };
+      if (bb.tipo === 'canal' && typeof bb.code === 'string' && bb.code.startsWith('CALL')) {
+        bb.code = 'CNL' + bb.code.slice(4);
+      }
+      if (bb.tipo === 'canal') {
+        try {
+          sanearCanalLegacy(
+            pxPerCm,
+            bb as { x: number; y: number; longitud?: number; base?: number; angulo?: number },
+          );
+        } catch {
+          // Un canal corrupto no tumba la carga del piso — queda como venga.
+        }
+      }
+      return b;
+    }),
+    claveBajante,
+    mergeBajanteDedup,
+  );
+  // Ramales DE canal sin marca (docs pre-migración es_canal_id): re-derivar por geometría
+  // con los canales ya sanados (ítem 2 usuario) — nunca pisa marcas existentes.
+  try {
+    sanearEsCanalIdFaltante(
+      pxPerCm,
+      engine.ramales as Array<{
+        id?: string;
+        net?: string;
+        tipo?: string;
+        pts?: number[][];
+        esCanalId?: string | null;
+      }>,
+      engine.bajantes as Array<{
+        id?: string;
+        x?: number;
+        y?: number;
+        longitud?: number;
+        base?: number;
+        angulo?: number;
+      }>,
+    );
+  } catch {
+    // Mejor sin marca que sin piso.
+  }
+  engine.areas = dedupPorId(d.areas || []);
+  engine.nptLevels = d.nptLevels || [];
+  // PUNTO 9: barrido de carga — ningún bajante del ÚLTIMO nivel inferior persiste con
+  // direccion 'baja' (coerce a 'continua' + una sola alerta).
+  {
+    let invalidos = 0;
+    for (const b of engine.bajantes as Array<{
+      direccion?: string;
+      nptBase?: number;
+      tipo?: string;
+    }>) {
+      if (b.direccion !== 'baja' || b.tipo === 'montante') continue;
+      if (!direccionBajaPermitida(engine, b)) {
+        b.direccion = 'continua';
+        invalidos++;
+      }
+    }
+    const alerta = (engine as { triggerAlert?: (t: string, m: string) => void }).triggerAlert;
+    if (invalidos && alerta)
+      alerta(
+        'Dirección inválida corregida',
+        `${invalidos} bajante(s) del último nivel del proyecto tenían dirección "baja" (no hay piso debajo) y fueron corregidos a "continua".`,
+      );
+  }
+  // Fantasmas entre pisos se cargan tal cual: son el AVISO del enlace de asociación. Los
+  // residuales de bajantes copiados se limpian al copiar (copyDrawingFromPlan), no aquí.
+  engine.crossFloorGhosts = d.crossFloorGhosts?.length
+    ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[])
+    : [];
+  engine.guideLines = dedupPorId(d.guideLines || []);
+  // Retro-propagación de diámetros al cargar (orig. usuario): dibujos guardados ANTES de que
+  // existiera la propagación quedaron con receptores vacíos/menores aunque sus llegadores ya
+  // tenían diámetro (RS1 4" + RS2 2" → RS3 vacío). Cada trazo con diámetro propaga su mayor;
+  // la compuerta "todos asignados" y el nunca-bajar hacen que la pasada converja al estado
+  // que habría quedado si la propagación hubiera estado activa al asignar.
+  {
+    const sanLl = (
+      engine.ramales as Array<{
+        id: string;
+        net?: string;
+        diametro?: string;
+        pts?: number[][];
+      }>
+    ).filter((r) => (r.net === 'san' || r.net === 'll') && r.diametro);
+    for (const r of sanLl) {
+      propagarSanDiametroAguasAbajo(
+        engine.ramales as unknown as Parameters<typeof propagarSanDiametroAguasAbajo>[0],
+        r.id,
+        engine.bajantes as unknown as Array<{ recibeDeIds?: string[]; alimentaIds?: string[] }>,
+      );
+    }
+  }
+  engine.selId = null;
+  engine.activeRamal = null;
+  engine.activeArea = null;
+  initNetCounts(engine);
+  for (const r of engine.ramales as Array<{
+    net?: string;
+    tipo?: string;
+    id?: string;
+    label?: string;
+  }>) {
+    const net = NETS.find((n) => n.id === r.net);
+    if (net && r.tipo !== 'tributario') {
+      const re = new RegExp('^' + net.lbl + '(\\d+)$');
+      // Un Ldesvio tiene id `LD_...` pero label de ramal real (p. ej. "RS2") — el consecutivo
+      // debe seguir contándolo, o un ramal manual nuevo chocaría con su label.
+      const m = r.id?.match(re) || r.label?.match(re);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        const counts = engine._netCounts[r.net!] as unknown as Record<string, number> | undefined;
+        if (n > (counts?.[r.tipo!] || 0)) {
+          if (!engine._netCounts[r.net!]) engine._netCounts[r.net!] = { ramal: 0, tributario: 0 };
+          (engine._netCounts[r.net!] as unknown as Record<string, number>)[r.tipo!] = n;
+        }
+      }
+    }
+    if (net && r.tipo === 'tributario') {
+      const m = (r.label || r.id || '').match(/^T(\d+)/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > engine._netCounts[net.id].tributario) engine._netCounts[net.id].tributario = n;
+      }
+    }
+  }
+  engine._dirty = false;
+  engine.render();
+}

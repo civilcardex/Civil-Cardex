@@ -4,7 +4,7 @@ import {
   RAS2000_LLENADO,
   RAS2000_ESCORRENTIA,
   RAS2000_TR,
-} from '../normativaDatos.ts';
+} from '../regulationsData.ts';
 import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function RAS2000() {

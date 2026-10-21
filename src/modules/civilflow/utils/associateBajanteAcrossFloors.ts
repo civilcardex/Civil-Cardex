@@ -5,11 +5,11 @@ import {
   ldesvioIdFor,
   buildLdesvioRamal,
   type LocalGhostDrawingData,
-} from './crossPisoAlmacenamiento.ts';
-import { TRAZOS_PLAN_PREFIX } from '../constants/almacenamientoClaves.ts';
+} from './crossFloorStorage.ts';
+import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
 
-export type { CrossFloorGhost } from '../lib/shared/crossPisoFantasmaTipos.ts';
-export { enrichCrossFloorGhosts } from './crossPisoFantasmas.ts';
+export type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes.ts';
+export { enrichCrossFloorGhosts } from './crossFloorGhosts.ts';
 
 // Núcleo de E/S re-exportado: los ~20 consumidores existentes no cambian de ruta de import.
 export {
@@ -30,7 +30,7 @@ export {
   type StoredBajante,
   hasCachedPlan,
   type LocalGhostDrawingData,
-} from './crossPisoAlmacenamiento.ts';
+} from './crossFloorStorage.ts';
 
 // Layout nuevo: actualiza el punto INICIAL (pts[0], la posición del bajante SUPERIOR) del
 // Ldesvio que vive en el piso INFERIOR — se llama cuando se arrastra el bajante superior (ese
@@ -97,7 +97,7 @@ export function updateCrossFloorDesplazamientoAnchor(
 }
 
 // El id/código de un bajante se reescribe cuandoquiera que corre _renumberBajantes
-// (redRenumera.ts) — p. ej. después de borrar CUALQUIER bajante de la misma red/piso, cerrando
+// (networkRenumber.ts) — p. ej. después de borrar CUALQUIER bajante de la misma red/piso, cerrando
 // el hueco de numeración. Toda referencia cruzada entre pisos se ancla en ese id (el id del ramal
 // Ldesvio es `LD_<id>`, el `sourceBajanteId`/`targetBajanteId` del fantasma espejo, y el puntero
 // `descargaEnId`/`origenId` del otro lado, formato `${planId}|${id}`) — nada de eso se actualiza

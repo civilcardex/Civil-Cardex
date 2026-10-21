@@ -1,6 +1,6 @@
 // Sync de trazos con Supabase: cola por plano, merge con disco, usuario cacheado y carga.
 // Extraído verbatim de storageService.
-import { devError } from '../../../../utils/desarrolloError.ts';
+import { devError } from '../../../../utils/devError.ts';
 import { emitErrorGuardado } from '../../../../utils/guardaEnNube.ts';
 import { supabase } from '../../../../lib/supabase';
 import {
@@ -8,20 +8,20 @@ import {
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
   GAS_ACC_KEY,
-} from '../../constants/almacenamientoClaves.ts';
-import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistencia.ts';
-import { dedupPorId, mergeBajanteDedup } from '../../lib/PlanoEngine/PlanoPersistencia.ts';
+} from '../../constants/storage-keys.ts';
+import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
+import { dedupPorId, mergeBajanteDedup } from '../../lib/PlanoEngine/PlanoPersistence.ts';
 import { claveBajante, dedupPorClave } from '../../utils/bajanteLocal.ts';
 import {
   getActiveProyectoId,
   loadFromStorage,
   saveToStorage,
   type PlanTrazos,
-} from './localAlmacenamiento.ts';
-import type { CrossFloorGhost } from '../../lib/shared/crossPisoFantasmaTipos.ts';
-import type { SupabaseRow } from './planoFilaMappers.ts';
-import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/aparatoEventos.ts';
-import { countKey } from '../../utils/claves.ts';
+} from './localStorage.ts';
+import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes.ts';
+import type { SupabaseRow } from './planoRowMappers.ts';
+import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents.ts';
+import { countKey } from '../../utils/keys.ts';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -29,7 +29,7 @@ import type {
   PlanoDimension,
   PlanoTextAnnotation,
   PlanoGuideLine,
-} from '../../lib/PlanoEngine/PlanoEstado.ts';
+} from '../../lib/PlanoEngine/PlanoState.ts';
 import {
   ramalToRow,
   rowToRamal,
@@ -45,7 +45,7 @@ import {
   rowToGuideLine,
   ghostToRow,
   rowToGhost,
-} from './planoFilaMappers.ts';
+} from './planoRowMappers.ts';
 /** Avisa de un fallo de guardado a BD. Delega en el contrato compartido (utils/guardaEnNube)
  *  para que el proveedor global de alertas lo escuche desde cualquier ruta. */
 export function emitBdSaveError(reason: string, message: string): void {
@@ -162,7 +162,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     const d = (data ?? {}) as Partial<PlanoWorkData>;
 
     // Los conteos de Aparato/UD y los accesorios hidro/gas solo viven en localStorage
-    // (AparatosPanel.tsx / GasDesign.tsx, clave compuesta `${net}_${ramalId}_${planId}`) —
+    // (FixturesPanel.tsx / GasDesign.tsx, clave compuesta `${net}_${ramalId}_${planId}`) —
     // adjuntamos el mapa propio de cada ramal antes de sincronizar para que llegue a la BD
     // vía planos_ramales.fixtures / hydro_accesorios / gas_accesorios, en vez de perderse
     // fuera de este equipo.
@@ -425,7 +425,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       nets: [],
     };
     // Devolvemos los fixtures y accesorios hidro/gas que viajan en la BD por cada ramal a los
-    // mapas de localStorage que AparatosPanel.tsx / GasDesign.tsx realmente leen
+    // mapas de localStorage que FixturesPanel.tsx / GasDesign.tsx realmente leen
     // (APARATOS_BY_TRAMO_KEY / HYDRO_DATA_STORAGE_KEY / GAS_ACC_KEY) — si no, un plano cargado
     // fresco en otro dispositivo/sesión mostraría el panel Aparatos vacío pese a que la BD
     // tiene los datos.
@@ -483,7 +483,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     // app ya montó sus tramos/UC leyendo un mapa vacío o viejo (dispositivo con caché limpia o
     // desactualizada), las tablas de diseño quedan con los conteos en cero hasta que algo vuelva
     // a disparar EV_STORAGE/sync. Se notifica aquí mismo para reconstruirlos con los datos de la
-    // BD sin esperar a una edición manual. Mismo patrón de eventos que redSanitaria.ts.
+    // BD sin esperar a una edición manual. Mismo patrón de eventos que networkSanitary.ts.
     if (aparatosChanged || hidroChanged || gasChanged) {
       window.dispatchEvent(new Event(EV_STORAGE));
       emitSanSync();

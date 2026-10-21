@@ -5,12 +5,12 @@ import type {
   PlanoTextAnnotation,
   PlanoDimension,
   PlanoGuideLine,
-} from './PlanoEstado.ts';
-import type { IPlanoEngineCore } from './PlanoEstado.ts';
-import { _midpoint } from './PlanoMotorDibujo.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromEtiqueta.ts';
-import { pointToSegmentDist } from './ImpactoProbador.ts';
-import { sectorDe } from '../../utils/formatoUtiles.ts';
+} from './PlanoState.ts';
+import type { IPlanoEngineCore } from './PlanoState.ts';
+import { _midpoint } from './PlanoEngineDrawing.ts';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { pointToSegmentDist } from './HitTester.ts';
+import { sectorDe } from '../../utils/formatUtils.ts';
 import { indicesDeMotor } from './indicesMotor';
 
 /** Frena los cambios de diámetro en ventilación (vent) que se salgan de los límites de la norma

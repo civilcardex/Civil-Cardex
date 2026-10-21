@@ -1,9 +1,9 @@
-import { PLAN_CROP_KEY } from '../constants/almacenamientoClaves.ts';
+import { PLAN_CROP_KEY } from '../constants/storage-keys.ts';
 import {
   loadFromStorage,
   saveToStorage,
   removeFromStorage,
-} from '../services/almacenamientoServicio.ts';
+} from '../services/storageService.ts';
 
 export interface PlanCrop {
   x: number;

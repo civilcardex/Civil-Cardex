@@ -1,0 +1,546 @@
+import { direccionSegura } from '../../../lib/PlanoEngine/directionRules.ts';
+import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
+import { DIAM_BY_MAT } from '../../../constants';
+import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
+import { BAJANTE_NETS, MONTANTE_NETS } from '../../../lib/PlanoEngine/drawingCreations.ts';
+import { codoPolarityOk, flowEndsAt } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
+import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
+import {
+  syncExtremeAccessoryToHidroData,
+  setAparatoCountValue,
+  contarSifonesDe,
+} from '../../../utils/syncExtremeAccessory.ts';
+import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { matchDiamOption } from '../../../utils/diamOptionMatch.ts';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
+import {
+  NETS,
+  type PlanoBajante,
+  type PlanoElement,
+  type PlanoRamal,
+} from '../../../lib/PlanoEngine/PlanoState.ts';
+import type { PlanItem } from '../../../context/PlansContext.tsx';
+import { MENU_SELECT_STYLE, MENU_ACTION_BTN_STYLE, type ContextMenuState } from './context.ts';
+import { RamalesAsociadosGrid } from './bajanteConnectionSections.tsx';
+import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers.ts';
+
+/** Panel del menú contextual para bajantes y extremos de ramal: ramales asociados (Y doble), creación de bajante/montante en el extremo y editor del
+ * accesorio de extremo con sus validaciones de polaridad y diámetro. */
+export function BajanteConnectionPanel({
+  element,
+  isGhostClick = false,
+  ramalEndpoint,
+  engineRef,
+  selElement,
+  setSelElement,
+  setContextMenuState,
+  activeNet,
+  planosCtx,
+}: {
+  element: PlanoBajante | PlanoRamal;
+  isGhostClick?: boolean;
+  ramalEndpoint?: { idx: number; x: number; y: number } | null;
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
+  activeNet: string;
+  planosCtx?: { plans: PlanItem[] };
+}) {
+  const hasPts = !!(element as Partial<PlanoRamal>).pts;
+  const ramalEl = element as PlanoRamal;
+
+  return (
+    <>
+      <RamalesAsociadosGrid
+        element={element}
+        isGhostClick={isGhostClick}
+        ramalEndpoint={ramalEndpoint}
+        engineRef={engineRef}
+        selElement={selElement}
+        setSelElement={setSelElement}
+        setContextMenuState={setContextMenuState}
+        activeNet={activeNet}
+        planosCtx={planosCtx}
+      />
+
+      {hasPts &&
+        ramalEndpoint &&
+        (() => {
+          const supNets = ['san', 'll', 'vent', 'af', 'ac', 'gas', 'rci', 'rec'];
+          if (!supNets.includes(ramalEl.net)) return null;
+          const ep = ramalEndpoint;
+
+          const netDef = NETS.find((n) => n.id === ramalEl.net);
+
+          return (
+            <>
+              <div
+                style={{
+                  padding: '4px 8px',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: 4,
+                  flexWrap: 'wrap',
+                }}
+              >
+                {(['bajante', 'montante'] as const)
+                  .filter((bmLabel) =>
+                    bmLabel === 'montante'
+                      ? MONTANTE_NETS.includes(ramalEl.net)
+                      : BAJANTE_NETS.includes(ramalEl.net),
+                  )
+                  .map((bmLabel) => {
+                    const isMon = bmLabel === 'montante';
+                    const pfx = isMon
+                      ? netDef?.bmType === 'montante'
+                        ? netDef?.bmPfx || 'MON'
+                        : 'M' + (netDef?.lbl || 'MON')
+                      : netDef?.bmPfx || 'B';
+                    const existingExtreme = (engineRef.current?.bajantes || []).find(
+                      (b) =>
+                        Math.abs(b.x - ep.x) < 0.5 &&
+                        Math.abs(b.y - ep.y) < 0.5 &&
+                        b.net === ramalEl.net,
+                    );
+                    if (existingExtreme) return null;
+                    const fieldAcc = ep.idx === 0 ? 'accesorioInicio' : 'accesorioFin';
+                    const fieldApp = ep.idx === 0 ? 'aparatoInicio' : 'aparatoFin';
+                    if (ramalEl[fieldAcc] || ramalEl[fieldApp]) return null;
+                    return (
+                      <button
+                        type="button"
+                        key={bmLabel}
+                        onClick={() => {
+                          const eng = engineRef.current;
+                          if (!eng) return;
+                          const cnt =
+                            eng.bajantes.filter(
+                              (b) => b.tipo === bmLabel && (!isMon || b.net === ramalEl.net),
+                            ).length + 1;
+                          const id = isMon ? pfx + cnt + '_' + ramalEl.net : pfx + cnt;
+                          const code = isMon ? pfx + cnt : id;
+                          const nl = eng.nivelActual;
+                          // Ítem 3: dirección automática según flujo del ramal en el extremo
+                          const flowToEp = flowEndsAt(ramalEl, [ep.x, ep.y], 0.5);
+                          // PUNTO 9: 'baja' sin piso debajo → 'continua' (creación).
+                          const autoDir = (direccionSegura(
+                            eng,
+                            { nptBase: nl?.npt ?? 0 },
+                            flowToEp ? 'baja' : 'sube',
+                          ) ?? 'sube') as 'baja' | 'sube' | 'continua';
+                          eng.bajantes.push({
+                            id,
+                            net: ramalEl.net,
+                            tipo: bmLabel,
+                            code: code,
+                            direccion: autoDir,
+                            x: ep.x,
+                            y: ep.y,
+                            pisoBase: nl?.label ?? '',
+                            pisoCima: nl?.label ?? '',
+                            nptBase: nl?.npt ?? 0,
+                            nptCima: nl?.npt ?? 0,
+                            hVert: 0,
+                            dNominal: ramalEl.diametro || '',
+                            recibeDeIds: [ramalEl.id],
+                            alimentaIds: [],
+                            descargaEnId: null,
+                            ucAcum: 0,
+                            ucExtra: 0,
+                            area_m2: 0,
+                            desplazamientos: {},
+                            lblOffX: 0,
+                            lblOffY: 0,
+                            labelAngle: 0,
+                            labelX: ep.x,
+                            labelY: ep.y + 20,
+                            bajR: 7 / 24,
+                          });
+                          // Relleno automático del ini/fin del ramal
+                          if (ep.idx === 0) {
+                            eng.updateElementById(ramalEl.id, { ini: code });
+                          } else {
+                            eng.updateElementById(ramalEl.id, { fin: code });
+                          }
+                          // Se bloquea el ramal para que el bajante recién anclado no pueda
+                          // arrastrarse de forma independiente
+                          eng.updateElementById(ramalEl.id, { bloqueado: true });
+                          if (bmLabel === 'montante') {
+                            eng._renumberMontantes();
+                          } else {
+                            eng._renumberBajantes(ramalEl.net);
+                          }
+                          const newlyCreated = eng.bajantes.find(
+                            (b) => b.tipo === bmLabel && b.x === ep.x && b.y === ep.y,
+                          );
+                          if (newlyCreated) {
+                            eng.selId = newlyCreated.id;
+                            eng._emitSelect(newlyCreated);
+                          }
+                          eng._isGhostSel = false;
+                          eng.render();
+                          eng._markDirty();
+                          setContextMenuState(null);
+                        }}
+                        style={MENU_ACTION_BTN_STYLE}
+                      >
+                        + Crear {bmLabel}
+                      </button>
+                    );
+                  })}
+              </div>
+
+              {(ramalEl.tipo === 'tributario' || ramalEl.tipo === 'ramal') &&
+                ['san', 'af', 'ac', 'gas', 'vent'].includes(ramalEl.net) &&
+                (() => {
+                  const isStart = ep.idx === 0;
+                  const fieldAcc: 'accesorioInicio' | 'accesorioFin' = isStart
+                    ? 'accesorioInicio'
+                    : 'accesorioFin';
+                  const fieldDiam: 'diametroInicio' | 'diametroFin' = isStart
+                    ? 'diametroInicio'
+                    : 'diametroFin';
+                  const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart
+                    ? 'aparatoInicio'
+                    : 'aparatoFin';
+
+                  // Vivo (orig. usuario): el snapshot puede llegar rancio tras asignar
+                  // desde el panel derecho con el menú abierto.
+                  const ramalVivoAcc = ramalVivoDelPlanoCargado(engineRef.current, ramalEl.id);
+                  const currentAcc = ramalVivoAcc?.[fieldAcc] || ramalEl[fieldAcc] || '';
+
+                  const accOptions = getAccessoryOptions(ramalEl.net);
+
+                  return (
+                    <div
+                      style={{
+                        padding: '4px 8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        borderBottom: '1px solid #3a494a',
+                        marginBottom: 4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: '#849495',
+                          fontFamily: "'Geist',monospace",
+                          textTransform: 'uppercase',
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        Extremo {isStart ? 'Inicio (Aparato)' : 'Fin (Ramal)'}
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: '#849495',
+                            marginBottom: 2,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Seleccionar Accesorio
+                        </div>
+                        <select
+                          value={currentAcc}
+                          aria-label="Seleccionar Accesorio"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              if (ramalEl[fieldApp]) {
+                                engineRef.current?.triggerAlert(
+                                  'Aparato existente',
+                                  'Este extremo ya tiene un aparato. Elimínalo antes de asignar un accesorio.',
+                                );
+                                return;
+                              }
+                              const existingBm = (engineRef.current?.bajantes || []).find(
+                                (b) =>
+                                  Math.abs(b.x - ep.x) < 0.5 &&
+                                  Math.abs(b.y - ep.y) < 0.5 &&
+                                  b.net === ramalEl.net,
+                              );
+                              if (existingBm) {
+                                engineRef.current?.triggerAlert(
+                                  'Elemento existente',
+                                  `Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un accesorio.`,
+                                );
+                                return;
+                              }
+                              if (
+                                val === 'codoReventilado' &&
+                                (diamPulgFromLabel(ramalEl.diametro || '') < 3 ||
+                                  diamPulgFromLabel(ramalEl.diametro || '') > 4)
+                              ) {
+                                engineRef.current?.triggerAlert(
+                                  'Diámetro no permitido',
+                                  'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".',
+                                );
+                                return;
+                              }
+                              // Ítem 2 (reventilado): el codo reventilado NO puede recibir
+                              // flujo — si el flujo del ramal sanitario termina en el extremo
+                              // (lo recibe), bloquear. Solo es válido en el extremo DESDE donde
+                              // fluye el ramal (junto al sifón del aparato).
+                              if (val === 'codoReventilado' && ramalEl.net === 'san') {
+                                const epPt: number[] = [ep.x, ep.y];
+                                if (flowEndsAt(ramalEl, epPt, 0.5)) {
+                                  engineRef.current?.triggerAlert(
+                                    'Codo reventilado no puede recibir flujo',
+                                    'El codo reventilado debe colocarse en el extremo DESDE donde fluye el ramal sanitario. Invierte la dirección del ramal.',
+                                  );
+                                  return;
+                                }
+                              }
+                              // Ítems 4/5 (polaridad sube/baja) en extremo: sube solo ENTREGA
+                              // (cola de la flecha al extremo — flujo SALE de ahí); baja solo
+                              // RECIBE (cabeza de la flecha al extremo — flujo LLEGA ahí). Se
+                              // valida contra el ramal VIVO del engine (el snapshot `ramalEl`
+                              // puede estar stale si el flujo cambió tras abrir el menú).
+                              if (
+                                (val === 'codoSube' ||
+                                  val === 'codoBaja' ||
+                                  val === 'codo90rmSube' ||
+                                  val === 'codo90rmBaja') &&
+                                engineRef.current
+                              ) {
+                                const live = ramalVivoDelPlanoCargado(
+                                  engineRef.current,
+                                  ramalEl.id,
+                                );
+                                const target = live || ramalEl;
+                                const isVentTee2 =
+                                  target.net === 'vent' &&
+                                  hasTeeAtPoint(engineRef.current, [ep.x, ep.y], target.net);
+                                if (
+                                  !isVentTee2 &&
+                                  !codoPolarityOk(target, [ep.x, ep.y], val, 0.5)
+                                ) {
+                                  const isSube = val === 'codoSube' || val === 'codo90rmSube';
+                                  engineRef.current.triggerAlert(
+                                    'Polaridad de codo incorrecta',
+                                    isSube
+                                      ? 'El codo 90° sube solo puede entregar flujo: la cola de la flecha debe apuntar al extremo (el flujo sale de ahí hacia el codo).'
+                                      : 'El codo 90° baja solo puede recibir flujo: la cabeza de la flecha debe apuntar al extremo (el flujo llega ahí desde el codo).',
+                                  );
+                                  return;
+                                }
+                              }
+                              // Si este extremo ya tiene un accesorio distinto, se reemplaza
+                              // directamente por la nueva selección en lugar de bloquear con alerta.
+                            }
+                            if (engineRef.current) {
+                              const accessoryVal = val as string;
+                              // Sifón redirect: si el usuario lo pone en el extremo que RECIBE
+                              // flujo (!isStart), redirigir automáticamente al extremo libre.
+                              let useFieldAcc = fieldAcc;
+                              let useFieldDiam = fieldDiam;
+                              let useIsStart = isStart;
+                              if (accessoryVal === 'sifon' && ramalEl.net === 'san' && !isStart) {
+                                const otherAcc = ramalEl['accesorioInicio'] || '';
+                                const otherApp = ramalEl['aparatoInicio'] || '';
+                                if (!otherAcc && !otherApp) {
+                                  useFieldAcc = 'accesorioInicio';
+                                  useFieldDiam = 'diametroInicio';
+                                  useIsStart = true;
+                                } else {
+                                  engineRef.current.triggerAlert(
+                                    'Revisar ubicación del sifón',
+                                    'El sifón no puede recibir flujo y el extremo opuesto ya está ocupado.',
+                                  );
+                                  return;
+                                }
+                              }
+                              if (
+                                (accessoryVal === 'llaveTerminal' ||
+                                  accessoryVal === 'teeLlaveTerminal') &&
+                                useIsStart
+                              ) {
+                                engineRef.current.triggerAlert(
+                                  'Revisar ubicación llave terminal',
+                                  'La llave terminal debe recibir el flujo.',
+                                );
+                                return;
+                              }
+                              const oldVal = ramalEl[useFieldAcc] || '';
+                              const updates: Record<string, unknown> = { [useFieldAcc]: val };
+                              // El accesorio hereda el diámetro del ramal como valor por defecto:
+                              // si el ramal ya tiene diámetro asignado, el accesorio nuevo nace
+                              // con ese mismo diámetro (resuelto al valor canónico del selector);
+                              // si no, queda "Ninguno".
+                              if (val && !oldVal) {
+                                const aMatShort =
+                                  ramalEl.material || (ramalEl.net === 'san' ? 'PVC-S' : '');
+                                const aDiamList =
+                                  (ramalEl.net === 'san' && DIAM_BY_MAT['PVC-S']) ||
+                                  DIAM_BY_MAT[aMatShort] ||
+                                  [];
+                                updates[useFieldDiam] = matchDiamOption(
+                                  aDiamList,
+                                  ramalEl.diametro,
+                                );
+                              }
+                              // Sifón desde el EXTREMO = mismo comportamiento que desde el
+                              // cuerpo (orig. usuario): suma el aparato 'sif' y auto-asigna el
+                              // diámetro del ramal si está vacío.
+                              if (val === 'sifon' && ramalEl.net === 'san' && !ramalEl.diametro) {
+                                updates.diametro = '2"';
+                              }
+                              engineRef.current.updateElementById(ramalEl.id, updates);
+                              setContextMenuState((prev) =>
+                                prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+                              );
+                              if (selElement?.id === ramalEl.id) {
+                                setSelElement({ ...selElement, ...updates });
+                              }
+                              engineRef.current.render();
+                              // Mismo orden que ExtremeAccessoryEditor: el sync de conteos debe
+                              // correr ANTES del reconcile de _markDirty, o el bump +1 duplica el
+                              // accesorio en hidroData (reducción contada dos veces en el resumen).
+                              if (val !== oldVal && planosCtx?.plans) {
+                                // Nº de glifos sifón vivos TRAS la escritura — el auto-sif es
+                                // SET (idempotente): el bump ciego acumulaba sifones fantasma
+                                // al re-seleccionar (orig. usuario).
+                                const ramalVivo = ramalVivoDelPlanoCargado(
+                                  engineRef.current,
+                                  ramalEl.id,
+                                );
+                                syncExtremeAccessoryToHidroData(
+                                  ramalEl.id,
+                                  useFieldAcc,
+                                  oldVal,
+                                  val,
+                                  planosCtx.plans,
+                                  contarSifonesDe(ramalVivo ?? ramalEl),
+                                );
+                              } else if (val !== oldVal && ramalEl.net === 'san') {
+                                // Sin planes confirmados el sync no corre — el conteo 'sif'
+                                // se fija directo por glifos vivos (SET, nunca bump ciego).
+                                const planId = engineRef.current?._loadedPlanId ?? '';
+                                const ramalVivo = ramalVivoDelPlanoCargado(
+                                  engineRef.current,
+                                  ramalEl.id,
+                                );
+                                setAparatoCountValue(
+                                  'san',
+                                  ramalEl.id,
+                                  planId,
+                                  'sif',
+                                  contarSifonesDe(ramalVivo ?? ramalEl),
+                                );
+                              }
+                              engineRef.current._markDirty();
+                            }
+                          }}
+                          style={MENU_SELECT_STYLE}
+                        >
+                          <option value="">Ninguno</option>
+                          {accOptions.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Diámetro del accesorio — defaults to ramal's own diameter, validates
+                          the chosen value is not smaller than the ramal's. */}
+                      {ramalEl[fieldAcc] &&
+                        (() => {
+                          const matShort =
+                            ramalEl.material || (ramalEl.net === 'san' ? 'PVC-S' : '');
+                          const diamList =
+                            (ramalEl.net === 'san' && DIAM_BY_MAT['PVC-S']) ||
+                            DIAM_BY_MAT[matShort] ||
+                            [];
+                          if (diamList.length === 0) return null;
+                          const ramalVivoDiam = ramalVivoDelPlanoCargado(
+                            engineRef.current,
+                            ramalEl.id,
+                          );
+                          const currentDiam =
+                            matchDiamOption(diamList, ramalVivoDiam?.[fieldDiam]) ||
+                            matchDiamOption(diamList, ramalEl[fieldDiam]) ||
+                            matchDiamOption(diamList, ramalVivoDiam?.diametro) ||
+                            matchDiamOption(diamList, ramalEl.diametro) ||
+                            '';
+                          return (
+                            <div style={{ marginTop: 6 }}>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: '#849495',
+                                  marginBottom: 2,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 0.5,
+                                }}
+                              >
+                                Diámetro del accesorio
+                              </div>
+                              <select
+                                value={currentDiam}
+                                aria-label="Diámetro del accesorio"
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v && ramalEl.diametro) {
+                                    const inchFrom = (d: string) => {
+                                      const q = d.indexOf('"');
+                                      return q > 0 ? d.slice(0, q) : d;
+                                    };
+                                    // Leer el diámetro del ramal fresco del engine — el snapshot
+                                    // ramalEl puede estar stale si el ramal se editó desde
+                                    // TramoEditor mientras el menú estaba abierto.
+                                    const fresh = ramalVivoDelPlanoCargado(
+                                      engineRef.current,
+                                      ramalEl.id,
+                                    );
+                                    const ramalDiam = fresh?.diametro || ramalEl.diametro;
+                                    if (
+                                      ramalDiam &&
+                                      diamPulgFromLabel(inchFrom(v)) >
+                                        diamPulgFromLabel(inchFrom(ramalDiam))
+                                    ) {
+                                      engineRef.current?.triggerAlert(
+                                        'Diámetro no permitido',
+                                        'El diámetro del accesorio no puede ser mayor al diámetro del ramal.',
+                                      );
+                                      return;
+                                    }
+                                  }
+                                  const u: Record<string, unknown> = { [fieldDiam]: v };
+                                  engineRef.current?.updateElementById(ramalEl.id, u);
+                                  setContextMenuState((prev) =>
+                                    prev ? { ...prev, element: { ...prev.element, ...u } } : null,
+                                  );
+                                  if (selElement?.id === ramalEl.id) {
+                                    setSelElement({ ...selElement, ...u });
+                                  }
+                                }}
+                                style={MENU_SELECT_STYLE}
+                              >
+                                <option value="">— Sin diámetro —</option>
+                                {diamList.map((d) => {
+                                  return (
+                                    <option key={d.n} value={d.n}>
+                                      {normalizeDnLabel(d.n)}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          );
+                        })()}
+                    </div>
+                  );
+                })()}
+            </>
+          );
+        })()}
+    </>
+  );
+}

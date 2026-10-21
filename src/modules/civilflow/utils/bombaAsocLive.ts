@@ -1,12 +1,12 @@
-import { loadFromStorage } from '../services/almacenamientoServicio.ts';
-import { splitPtr } from './claves.ts';
-import { TRAZOS_PREFIX } from '../constants/almacenamientoClaves.ts';
+import { loadFromStorage } from '../services/storageService.ts';
+import { splitPtr } from './keys.ts';
+import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { collectSourceAgg } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import { pisoLbl } from '../constants';
 import { mapUdBombaDesdeTrazos } from './bombaHerencia';
 
-import { libroHeredado } from '../components/aparatosAlmacenamiento.ts';
+import { libroHeredado } from '../components/fixturesStorage.ts';
 
 export interface AsocLiveBaj {
   id?: string;

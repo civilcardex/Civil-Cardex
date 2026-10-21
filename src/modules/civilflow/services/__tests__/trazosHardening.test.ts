@@ -23,13 +23,13 @@ import {
   saveTrazosToDB,
   trazosDocHasContent,
   trazosLocalGanaABdVacia,
-} from '../almacenamientoServicio.ts';
+} from '../storageService.ts';
 import {
   writeCrossFloorGhost,
   createCrossFloorLdesvioRamal,
-} from '../../utils/crossPisoAlmacenamiento.ts';
-import { migrateAssocLayoutOnLoad, markAssocLayout } from '../../utils/asocDisposicionMigration.ts';
-import { prefetchAllTrazos } from '../../utils/precargaTrazos.ts';
+} from '../../utils/crossFloorStorage.ts';
+import { migrateAssocLayoutOnLoad, markAssocLayout } from '../../utils/assocLayoutMigration.ts';
+import { prefetchAllTrazos } from '../../utils/prefetchTrazos.ts';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 
 function resetStorage() {

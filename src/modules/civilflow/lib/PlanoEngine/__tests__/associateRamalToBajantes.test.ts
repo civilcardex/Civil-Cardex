@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { asociarRamalABajantes } from '../dibujoUtiles.ts';
-import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoEstado.ts';
+import { asociarRamalABajantes } from '../drawingUtils.ts';
+import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoState.ts';
 
 // La asociación a bajantes al crear (llegada/salida + ini/fin + diámetros + Y doble) es UNA
 // sola función compartida entre dibujo manual (finishRamal) y conversiones desde línea

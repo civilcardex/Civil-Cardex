@@ -5,10 +5,10 @@ import {
 } from '../../../utils/bombaAssociation';
 import type { BajanteSuperiorRow } from '../../../utils/bombaAssociation';
 import { buildBajanteVisualLabel, pisoLbl } from '../../../constants';
-import type PlanoEngine from '../../../lib/PlanoEngine/PlanoMotor.ts';
-import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoEstado.ts';
-import type { PlanItem } from '../../../context/PlanosContexto.tsx';
-import { MENU_CHECK_ROW_STYLE, MENU_SECTION_LABEL_ROW_STYLE } from './contexto.ts';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
+import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
+import type { PlanItem } from '../../../context/PlansContext.tsx';
+import { MENU_CHECK_ROW_STYLE, MENU_SECTION_LABEL_ROW_STYLE } from './context.ts';
 
 /** Lista de checkboxes "Asociar bajantes del piso superior" DESDE LA BOMBA (orig. usuario): bajantes de la red de la bomba en el piso
  * inmediatamente superior; marcado = ese bajante tiene bombaEnId apuntando aquí. */

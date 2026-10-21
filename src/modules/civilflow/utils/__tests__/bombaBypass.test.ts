@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { asociarBomba, quitarBomba, propagarHerenciaBomba } from '../bombaAssociation';
-import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoEstado.ts';
+import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState.ts';
 
 // Desvío bomba→bajante superior (orig. usuario): desalineados, un ramal LD_ que SALE DE LA
 // BOMBA en su piso — cuenta como cualquier ramal y ESPEJA las UDs de la bomba (lo mantiene

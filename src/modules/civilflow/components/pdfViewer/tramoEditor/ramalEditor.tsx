@@ -1,16 +1,16 @@
 import { DIAM_BY_MAT } from '../../../constants';
-import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogoDatos.ts';
-import { GAS } from '../../../constants/ingenieriaDatosGas.ts';
-import { normalizeDnLabel } from '../../../utils/formatoUtiles.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromEtiqueta.ts';
+import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogData.ts';
+import { GAS } from '../../../constants/engineeringDataGas.ts';
+import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
+import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
 import {
   INODORO_APP_ID,
   sanDiamLabelAllowedForApparatus,
   SAN_INODORO_MIN_MSG,
-} from '../../../utils/sanitariaDiamCompat.ts';
+} from '../../../utils/sanitaryDiamCompat.ts';
 import { useCaudalLl } from './useCaudalLl';
-import type PlanoEngine from '../../../lib/PlanoEngine/PlanoMotor.ts';
-import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoEstado.ts';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
+import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import {
   INPUT_CENTER_STYLE,
   READONLY_CENTER_STYLE,
@@ -18,9 +18,9 @@ import {
   MAT_ROW_STYLE,
   MAT_NAME_STYLE,
   ramalHasCodoReventilado,
-} from './contexto.ts';
-import { CaudalField } from './caudalCampo.tsx';
-import { dec, sanitizarInputDecimal } from '../../../utils/analizaDecimal.ts';
+} from './context.ts';
+import { CaudalField } from './caudalField.tsx';
+import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal.ts';
 
 /** Editor del ramal seleccionado: material, diámetro, pendiente, desnivel vertical y número
  *  de descargas en simultáneo. */

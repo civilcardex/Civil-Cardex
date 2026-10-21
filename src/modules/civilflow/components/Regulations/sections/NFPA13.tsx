@@ -1,4 +1,4 @@
-import { NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES } from '../normativaDatos.ts';
+import { NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES } from '../regulationsData.ts';
 import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function NFPA13() {

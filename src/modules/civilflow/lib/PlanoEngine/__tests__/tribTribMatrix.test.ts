@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import PlanoEngineCtor from '../PlanoMotor.ts';
-import type PlanoEngine from '../PlanoMotor.ts';
-import { buildTribFromGuide } from '../../../components/pdfViewer/drawingElementContextMenu/guiaOperaciones.ts';
+import PlanoEngineCtor from '../PlanoEngine.ts';
+import type PlanoEngine from '../PlanoEngine.ts';
+import { buildTribFromGuide } from '../../../components/pdfViewer/drawingElementContextMenu/guideOps.ts';
 
 // Matriz de reproducción "trib-trib comparten padre": 4 formas de aterrizar un tributario
 // sobre T1RS2 (padre RS2) — cuerpo, cerca de vértice, extremo, y desde línea guía. En TODAS,

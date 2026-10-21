@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { dedupPorId, mergeBajanteDedup } from '../PlanoPersistencia.ts';
+import { dedupPorId, mergeBajanteDedup } from '../PlanoPersistence.ts';
 import { bajanteLocalDe, claveBajante, dedupPorClave } from '../../../utils/bajanteLocal.ts';
-import { numDeBajante } from '../../../utils/claves.ts';
+import { numDeBajante } from '../../../utils/keys.ts';
 
 // El id de un bajante/montante SOLO es único dentro de un piso: el motor guarda en el mismo
 // array el bajante real del piso abierto y la PROYECCIÓN de otro piso que atraviesa esta

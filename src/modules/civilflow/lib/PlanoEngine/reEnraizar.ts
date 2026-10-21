@@ -1,7 +1,7 @@
-import { devError } from '../../../../utils/desarrolloError.ts';
+import { devError } from '../../../../utils/devError.ts';
 import { origenDe } from '../shared/geometry';
-import type { IPlanoEngineCore, PlanoRamal } from './PlanoEstado.ts';
-import { flipRamalFlow } from './dibujoFlujo.ts';
+import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
+import { flipRamalFlow } from './drawingFlow.ts';
 import { entradasSalidas, extremoLejanoTipo, REDES_PRESION } from './nodos';
 
 /** Re-enraizado de sentido: cuando un ramal nuevo llega a una unión que ya tenía dueño, el

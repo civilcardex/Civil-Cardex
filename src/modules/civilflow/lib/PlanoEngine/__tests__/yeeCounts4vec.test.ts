@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { calcSanitaryAccessories } from '../redSanitaria.ts';
-import { loadFromStorage } from '../../../services/almacenamientoServicio.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { calcSanitaryAccessories } from '../networkSanitary.ts';
+import { loadFromStorage } from '../../../services/storageService.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {

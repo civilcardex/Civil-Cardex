@@ -5,14 +5,14 @@ export {
   SAN_UC_IDS,
   APARATO_IMG,
   CAT_APS,
-} from './ingenieriaDatosAparatos.ts';
+} from './engineeringDataFixtures.ts';
 
 export {
   ACCESORIOS_HIDRO,
   ACCESORIOS_YEE,
   SAN_ACCESORIOS,
   GAS_ACCESORIOS,
-} from './ingenieriaDatosAccesorios.ts';
+} from './engineeringDataAccessories.ts';
 
 export {
   MATS_DEFAULT,
@@ -30,9 +30,9 @@ export {
   DIAM_BAN_LL,
   DIAM_VENT,
   DIAM_BY_MAT,
-} from './ingenieriaDatosMaterials.ts';
+} from './engineeringDataMaterials.ts';
 
-export { GAS, CAT_GAS, GAS_DN_LABELS } from './ingenieriaDatosGas.ts';
+export { GAS, CAT_GAS, GAS_DN_LABELS } from './engineeringDataGas.ts';
 
 export { REDES, NAV_TABS, FILTROS_NORM, REQ_ITEMS, NORM_COL, USOS } from './uiConfig';
 
@@ -46,7 +46,7 @@ export {
   V_MAX,
   Y_D_MAX,
   FUERZA_TRACTIVA_MIN,
-} from './porDefecto.ts';
+} from './defaults.ts';
 
 export {
   pisoLbl,
@@ -56,7 +56,7 @@ export {
   buildBajanteVisualLabel,
   matDrawingLabel,
   matFullName,
-} from './ayudantes.ts';
+} from './helpers.ts';
 
 export const LE_K = {
   codos_90_std: 30,

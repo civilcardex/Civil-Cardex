@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import PlanoEngineCtor from '../PlanoMotor.ts';
-import type PlanoEngine from '../PlanoMotor.ts';
-import { saveToStorage, loadFromStorage } from '../../../services/almacenamientoServicio.ts';
+import PlanoEngineCtor from '../PlanoEngine.ts';
+import type PlanoEngine from '../PlanoEngine.ts';
+import { saveToStorage, loadFromStorage } from '../../../services/storageService.ts';
 import {
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
   GAS_ACC_KEY,
-} from '../../../constants/almacenamientoClaves.ts';
+} from '../../../constants/storage-keys.ts';
 
 // Borrar un ramal/tributario debe purgar TODO su estado asociado del piso (conteos de aparatos,
 // accesorios hidro/gas): la renumeración REUTILIZA ids (RS1/T1RS1) y, sin purga, el trazo

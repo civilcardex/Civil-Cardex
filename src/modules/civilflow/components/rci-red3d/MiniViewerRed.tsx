@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { parseGLBRed } from './rciRedAnalizador.ts';
+import { parseGLBRed } from './rciRedParser.ts';
 import { cargarGlbBuffer } from '../shared/glbCache';
 import { aspectDe, proyeccionEsquinas } from '../shared/controls3d';
-import type { VistaKey } from '../rci3d/vistasRci.ts';
+import type { VistaKey } from '../rci3d/viewsRci.ts';
 
 // Mini visor de detalle (port del HTML Isometrico_RCI_Open_Code_v19 §1378-1621): segunda
 // escena propia con el GLB del componente (rociador/colgante/soportes). Panel FIJO (sin

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recomputeDownstreamDiameters } from '../dibujoUtiles.ts';
+import { recomputeDownstreamDiameters } from '../drawingUtils.ts';
 
 // Ítems 5+6: el ramal receptor toma el MAYOR diámetro de los ramales que llegan a él, y cada
 // cambio (suba o baje) re-dispara el cálculo aguas abajo desde la topología actual.

@@ -1,6 +1,6 @@
 // Creación/commit de canales (glifo, ancho, eje). canalEjeTs es privado del bloque.
-import type { IPlanoEngineCore } from '../PlanoEstado.ts';
-import { _statusMsg } from '../ramalMedir.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
+import { _statusMsg } from '../ramalMeasure.ts';
 import { pisoCortoLoose } from '../../../constants';
 import {
   geometriaCanalDesdePuntos,
@@ -14,8 +14,8 @@ import {
 } from '../canalAssociation';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
-// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerBarra.tsx) y los atajos
-// de teclado (PlanoMotor.ts _onKeyDownHandler); se re-chequea aquí como defensa en
+// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
+// de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
 // Canal recolectora (canalón de techo) — un símbolo independiente, mismo patrón de array/sin-
@@ -28,7 +28,7 @@ import {
 // ≤15°) — y el tercer clic define el ANCHO perpendicular al eje (geometriaCanalAncho; un punto
 // que proyecta más allá del extremo lo alarga). Así el canal queda a escala del plano desde el
 // momento en que se dibuja y el ancho nunca sale "de casualidad" del arrastre. Una vez creado,
-// todavía puede redimensionarse desde sus esquinas (_tryCanalResizeHit en manejaRatonAbajo.ts) o
+// todavía puede redimensionarse desde sus esquinas (_tryCanalResizeHit en handleMouseDown.ts) o
 // editarse con precisión por el menú contextual (CanalMenu). A diferencia del bajante (que
 // agrega su sufijo de piso solo al renderizar, porque un bajante puede abarcar pisos), el piso
 // queda incrustado en el code/id aquí al crearlo — un canal vive en un solo piso.

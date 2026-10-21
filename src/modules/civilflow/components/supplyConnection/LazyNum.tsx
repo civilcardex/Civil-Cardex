@@ -1,5 +1,5 @@
 import React from 'react';
-import { LazyDecimalInput } from '../shared/LazyDecimalEntrada.tsx';
+import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
 
 /** Input numérico perezoso: solo avisa el cambio al salir del campo (blur/Enter), para no pelear con el valor formateado mientras se escribe. */
 export function LazyNum({

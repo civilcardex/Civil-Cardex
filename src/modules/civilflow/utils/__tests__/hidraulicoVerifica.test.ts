@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcHydraulicCheck } from '../hidraulicoVerifica.ts';
+import { calcHydraulicCheck } from '../hydraulicCheck.ts';
 
 describe('calcHydraulicCheck', () => {
   const params = {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { finishRamal } from '../PlanoMotorDibujo.ts';
-import { ramalFlowDirectionCheck } from '../dibujoFlujo.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { finishRamal } from '../PlanoEngineDrawing.ts';
+import { ramalFlowDirectionCheck } from '../drawingFlow.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {

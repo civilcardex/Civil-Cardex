@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { handleDragUp } from '../manejaArrastrarArriba.ts';
-import { _tryMultiSelDrag } from '../ratonAbajoImpactos.ts';
-import { handleDragMove } from '../manejaArrastrarMueve.ts';
-import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { handleDragUp } from '../handleDragUp.ts';
+import { _tryMultiSelDrag } from '../mouseDownHits.ts';
+import { handleDragMove } from '../handleDragMove.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 // Multiselección universal (orig. usuario): el marquee selecciona TODO elemento que TOQUE el
 // recuadro (intersección bbox/segmento — nunca contención total ni solo el punto centro) y las

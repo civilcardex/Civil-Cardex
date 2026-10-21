@@ -6,7 +6,7 @@ import type {
   PlanoGuideLine,
   PlanoRamal,
   PlanoTextAnnotation,
-} from './PlanoEstado.ts';
+} from './PlanoState.ts';
 
 /**
  * Índices por id de las piezas del motor (ramales, bajantes, anotaciones, áreas, cotas, guías).

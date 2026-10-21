@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from './PlanoEstado.ts';
+import type { IPlanoEngineCore } from './PlanoState.ts';
 
 function sameNet(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));

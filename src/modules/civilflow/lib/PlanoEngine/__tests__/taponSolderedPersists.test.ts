@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import PlanoEngineCtor from '../PlanoMotor.ts';
-import type PlanoEngine from '../PlanoMotor.ts';
-import { deleteSelected } from '../eliminaSelected.ts';
+import PlanoEngineCtor from '../PlanoEngine.ts';
+import type PlanoEngine from '../PlanoEngine.ts';
+import { deleteSelected } from '../deleteSelected.ts';
 
 // El "tapón soldado" (borrar un segmento del brazo principal de una yee doble) debía
 // persistir: la limpieza de banderas muertas borraba `yeeDobleAt` sin blindaje y la

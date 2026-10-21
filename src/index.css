@@ -1,11 +1,11 @@
 @import './styles/tokens.css';
-@import './styles/disposicion.css';
-@import './styles/tarjetas.css';
-@import './styles/controles.css';
-@import './styles/datosTarjetas.css';
-@import './styles/tablas.css';
+@import './styles/layout.css';
+@import './styles/cards.css';
+@import './styles/controls.css';
+@import './styles/data-cards.css';
+@import './styles/tables.css';
 @import './styles/overrides.css';
-@import './styles/normativa.css';
+@import './styles/regulations.css';
 @import './styles/utilities.css';
 
 .visually-hidden {

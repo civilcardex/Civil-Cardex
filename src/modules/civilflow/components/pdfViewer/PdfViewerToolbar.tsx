@@ -1,0 +1,807 @@
+import { memo } from 'react';
+import { Link } from 'react-router-dom';
+
+export interface ToolDef {
+  id: string;
+  label: string;
+  ico: string;
+  key: string;
+  icoCol: string;
+  shortcut: string;
+}
+
+// Bajante solo tiene sentido en san/vent/ll (bajantes); montante solo en gas/ac/af (montantes) —
+// centralizado aquí para que las dos rutas de render de la barra (expandida/colapsada) y los
+// atajos de teclado de PlanoEngine.ts apliquen exactamente la misma regla sin divergir.
+export function isToolDisabledForNet(
+  toolId: string,
+  net: string,
+  recolectoraActive = true,
+): boolean {
+  if (toolId === 'baj') return !['san', 'vent', 'll'].includes(net);
+  if (toolId === 'mon') return !['gas', 'ac', 'af'].includes(net);
+  // Los glifos de canal recolectora solo tienen sentido con la red de agua lluvias ('ll')
+  // ACTIVA en esa sesión — de lo contrario la herramienta dibujaría formas de una red que el
+  // proyecto no está diseñando (ni el piso la está viendo).
+  if (toolId === 'canal') return net !== 'll' || !recolectoraActive;
+  // Cajas de recolección: CAN solo con sanitaria activa, CALL solo con lluvias activa.
+  if (toolId === 'caja') return !['san', 'll'].includes(net);
+  return false;
+}
+
+const TOOLS: ToolDef[] = [
+  {
+    id: 'sel',
+    label: 'Seleccionar',
+    ico: '\uD83D\uDC46',
+    key: 'S',
+    icoCol: '#9BA8AA',
+    shortcut: 'S',
+  },
+  {
+    id: 'line-ramal',
+    label: 'Ramal principal',
+    ico: '\u2571',
+    key: 'R',
+    icoCol: '#4D8FF7',
+    shortcut: 'R',
+  },
+  {
+    id: 'line-trib',
+    label: 'Tributario',
+    ico: '\u2571',
+    key: 'T',
+    icoCol: '#4D8FF7',
+    shortcut: 'T',
+  },
+  { id: 'area', label: 'Área', ico: '\u2B21', key: 'A', icoCol: '#22D3EE', shortcut: 'A' },
+  {
+    id: 'dim',
+    label: 'Medir/Acotar',
+    ico: '\uD83D\uDCCF',
+    key: 'D',
+    icoCol: '#22D3EE',
+    shortcut: 'D',
+  },
+  {
+    id: 'guide',
+    label: 'L\u00EDnea gu\u00EDa',
+    ico: '\u2504',
+    // 'G' colisionaba con el atajo mostrado para Snap \u2014 U (de "gU\u00EDa") queda libre.
+    key: 'U',
+    icoCol: '#888888',
+    shortcut: 'U',
+  },
+  { id: 'text', label: 'Texto', ico: 'T', key: 'C', icoCol: '#A855F7', shortcut: 'C' },
+  { id: 'baj', label: 'Bajante', ico: '\u2193', key: 'B', icoCol: '#F04545', shortcut: 'B' },
+  { id: 'mon', label: 'Montante', ico: '\u2191', key: 'M', icoCol: '#3B82F6', shortcut: 'M' },
+  { id: 'erase', label: 'Borrador', ico: '🧽', key: 'E', icoCol: '#ffb4ab', shortcut: 'E' },
+];
+
+const PdfViewerToolbar_S2: React.CSSProperties = {
+  padding: '5px 8px',
+  fontFamily: "'Geist',monospace",
+  fontWeight: 600,
+  transition: 'all .12s',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  width: '100%',
+};
+const PdfViewerToolbar_S3: React.CSSProperties = {
+  padding: '5px 8px',
+  fontFamily: "'Geist',monospace",
+  fontWeight: 600,
+  transition: 'all .12s',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  width: '100%',
+  fontSize: 12,
+};
+
+export const STATUS: Record<string, { color: string; label: string }> = {
+  saved: { color: '#22c55e', label: '\u2714 Guardado' },
+  saving: { color: '#3b82f6', label: '\u23F3 Guardando...' },
+  error: { color: '#ef4444', label: '\u26A0 Sin guardar' },
+};
+
+/** Mensaje amable cuando el guardado a BD falla por suscripción vencida (excepción Postgres 'suscripcion_requerida'). */
+const SUSCRIPCION_VENCIDA_TXT =
+  'Suscripción vencida — tu trabajo se guarda solo en este dispositivo. Renueva en Precios para volver a guardar en la nube.';
+
+const accBtn: React.CSSProperties = {
+  padding: '6px 8px',
+  background: '#1e2024',
+  border: '1px solid #3a494a',
+  borderRadius: '4px',
+  color: '#b9caca',
+  cursor: 'pointer',
+  fontFamily: "'Geist',monospace",
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  transition: 'all .12s',
+};
+
+type NavFn = () => void;
+type SelToolFn = (toolId: string) => void;
+export type PdfViewerToolbarProps = {
+  tool: string;
+  tipoTramo: string;
+  onTipoTramoSelect: (t: 'ramal' | 'tributario') => void;
+  snapOn: boolean;
+  gridOn: boolean;
+  activeNet: string;
+  currentFile: File | null;
+  saveStatus: string;
+  collapsed?: boolean;
+  recolectoraActive: boolean;
+  onSelectTool: SelToolFn;
+  onSnapToggle: NavFn;
+  onGridToggle: NavFn;
+  onFit: NavFn;
+  onSave: NavFn;
+  onUndo: NavFn;
+  onRedo: NavFn;
+  onClear: NavFn;
+  onClearGuides: NavFn;
+  /** Copia el diagnóstico de carga del piso (escala, lámina y cámara) al portapapeles. */
+  onDiag?: () => void;
+  /** Motivo del último fallo de guardado a BD (evento civilflow_bd_save_error). */
+  bdError?: string | null;
+};
+
+const compactBtn: React.CSSProperties = {
+  width: '100%',
+  padding: '3px 0',
+  background: '#1e2024',
+  border: '1px solid #3a494a',
+  borderRadius: '3px',
+  color: '#b9caca',
+  cursor: 'pointer',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 1,
+  fontFamily: "'Geist',monospace",
+  transition: 'all .12s',
+};
+
+// "Espacio" ya no aparece en la barra (herramienta Mover eliminada) — el helper queda por si
+// algún shortcut vuelve a necesitar abreviarse en la franja colapsada.
+const compactShortcut = (s: string) => (s === 'Espacio' ? 'Esp' : s);
+
+function PdfViewerToolbar_({
+  tool,
+  tipoTramo,
+  onTipoTramoSelect,
+  snapOn,
+  gridOn,
+  activeNet,
+  currentFile,
+  saveStatus,
+  collapsed,
+  recolectoraActive,
+  onSelectTool,
+  onSnapToggle,
+  onGridToggle,
+  onFit,
+  onSave,
+  onUndo,
+  onRedo,
+  onClear,
+  onClearGuides,
+  onDiag,
+  bdError,
+}: PdfViewerToolbarProps) {
+  // El RPC de guardado falla con 'suscripcion_requerida' cuando la suscripción venció: bdError
+  // ya viaja como "reason: message", así que basta detectar el marcador en la cadena completa
+  // (cubre el reason O el message).
+  const esSuscripcionVencida = !!bdError && bdError.includes('suscripcion_requerida');
+  const netTools = [...TOOLS];
+  if (activeNet === 'af' || activeNet === 'gas') {
+    netTools.splice(7, 0, {
+      id: 'cont',
+      label: 'Contador',
+      ico: '🔳',
+      key: 'O',
+      icoCol: '#4D8FF7',
+      shortcut: 'O',
+    });
+  }
+  // El canal está disponible en cualquier piso/red activa mientras canal recolectora esté
+  // activa — la visibilidad la controla isToolDisabledForNet(..., recolectoraActive) abajo.
+  // Atajo 'L' (de aguas Lluvias): la 'C' ya es la herramienta Texto (useKeyboardShortcuts).
+  netTools.splice(7, 0, {
+    id: 'canal',
+    label: 'Canal',
+    ico: '▭',
+    key: 'L',
+    icoCol: '#8B5CF6',
+    shortcut: 'L',
+  });
+  // Caja de recolección (san → CAN, ll → CALL): cuadrados concéntricos 100×100/70×70cm
+  // a escala. La red del
+  // elemento la decide handleCajaDown según activeNet; la etiqueta de la herramienta nombra la
+  // red activa. ('X' ya borra montante.)
+  netTools.splice(7, 0, {
+    id: 'caja',
+    label: activeNet === 'll' ? 'Caja ALL' : 'Caja AN',
+    ico: '⧉',
+    key: 'J',
+    icoCol: '#10B981',
+    shortcut: 'J',
+  });
+
+  const visibleTools = netTools.filter(
+    (t) => !isToolDisabledForNet(t.id, activeNet, recolectoraActive),
+  );
+
+  // Ramal principal / Tributario comparten la herramienta 'line' — el par tool+tipoTramo
+  // decide el resaltado y el click fija ambos (mismo flujo que el viejo selector del panel
+  // derecho, ahora solo en el panel izquierdo).
+  const isToolActive = (id: string): boolean => {
+    if (id === 'line-ramal') return tool === 'line' && tipoTramo === 'ramal';
+    if (id === 'line-trib') return tool === 'line' && tipoTramo === 'tributario';
+    return tool === id;
+  };
+  const onToolClick = (id: string): void => {
+    if (id === 'line-ramal') {
+      onTipoTramoSelect('ramal');
+      onSelectTool('line');
+      return;
+    }
+    if (id === 'line-trib') {
+      onTipoTramoSelect('tributario');
+      onSelectTool('line');
+      return;
+    }
+    onSelectTool(id);
+  };
+
+  if (collapsed) {
+    return (
+      <>
+        <div style={{ padding: '4px 4px', borderBottom: '1px solid #3a494a' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {visibleTools.map((t) => {
+              return (
+                <button
+                  type="button"
+                  key={t.id}
+                  onClick={() => onToolClick(t.id)}
+                  aria-label={t.label}
+                  title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
+                  style={{
+                    ...compactBtn,
+                    background: isToolActive(t.id) ? '#2563EB' : '#1e2024',
+                    border: `1px solid ${isToolActive(t.id) ? '#2563EB' : '#3a494a'}`,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: 14, color: isToolActive(t.id) ? '#fff' : t.icoCol }}>
+                    {t.ico}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      color: isToolActive(t.id) ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                    }}
+                  >
+                    {compactShortcut(t.shortcut)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <button
+              type="button"
+              onClick={onSnapToggle}
+              aria-label="Snap"
+              title={`Snap (${'G'})`}
+              style={{
+                ...compactBtn,
+                background: snapOn ? '#10B98122' : '#1e2024',
+                border: `1px solid ${snapOn ? '#10B981' : '#3a494a'}`,
+                color: snapOn ? '#10B981' : '#9BA8AA',
+              }}
+            >
+              <span style={{ fontSize: 14, color: snapOn ? '#10B981' : '#8AB4D6' }}>
+                {snapOn ? '◉' : '○'}
+              </span>
+              <span style={{ fontSize: 9, color: snapOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>
+                G
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={onGridToggle}
+              aria-label="Grilla (H)"
+              title="Mostrar/ocultar grilla (H)"
+              style={{
+                ...compactBtn,
+                background: gridOn ? '#10B98122' : '#1e2024',
+                border: `1px solid ${gridOn ? '#10B981' : '#3a494a'}`,
+                color: gridOn ? '#10B981' : '#9BA8AA',
+              }}
+            >
+              <span style={{ fontSize: 14, color: gridOn ? '#10B981' : '#8AB4D6' }}>
+                {gridOn ? '▦' : '▢'}
+              </span>
+              <span style={{ fontSize: 9, color: gridOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>
+                #
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ padding: '4px 4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <button
+              type="button"
+              onClick={onFit}
+              disabled={!currentFile}
+              aria-label="Ajustar PDF al visor"
+              style={{
+                ...compactBtn,
+                borderColor: '#10B98155',
+                color: '#10B981',
+                opacity: !currentFile ? 0.4 : 1,
+                cursor: !currentFile ? 'not-allowed' : 'pointer',
+              }}
+              title={currentFile ? 'Ajustar PDF al visor' : 'Carga un plano para poder ajustarlo'}
+            >
+              <span style={{ fontSize: 14 }}>{'⛶'}</span>
+            </button>
+            {onDiag && (
+              <button
+                type="button"
+                onClick={onDiag}
+                style={compactBtn}
+                title="Copiar el diagnóstico de carga del piso (escala, lámina y cámara)"
+              >
+                <span style={{ fontSize: 14 }}>{'⧉'}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onSave}
+              aria-label="Guardar"
+              style={compactBtn}
+              title={
+                esSuscripcionVencida
+                  ? SUSCRIPCION_VENCIDA_TXT
+                  : bdError
+                    ? `Error guardando a BD: ${bdError}`
+                    : 'Guarda los trazados y cambios realizados en el plano para la red activa'
+              }
+            >
+              <span
+                style={{ fontSize: 14, color: STATUS[saveStatus]?.color || STATUS.error.color }}
+              >
+                {'💾'}
+              </span>
+            </button>
+            {esSuscripcionVencida && (
+              <Link
+                to="/pricing"
+                title="Ir a Precios para renovar la suscripción"
+                style={{
+                  ...compactBtn,
+                  padding: '4px 0',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#ffb4ab',
+                  textDecoration: 'none',
+                }}
+              >
+                Renovar
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={onUndo}
+              aria-label="Deshacer"
+              style={compactBtn}
+              title="Deshacer (Ctrl + Z)"
+            >
+              <span style={{ fontSize: 14 }}>{'↩'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onRedo}
+              aria-label="Rehacer"
+              style={compactBtn}
+              title="Rehacer (Ctrl + Y)"
+            >
+              <span style={{ fontSize: 14 }}>{'↪'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClear}
+              aria-label="Limpiar trazado de la red activa"
+              style={{ ...compactBtn, borderColor: 'rgba(255,180,171,.3)', color: '#ffb4ab' }}
+              title="Eliminar todo el trazado de la red activa"
+            >
+              <span style={{ fontSize: 14 }}>{'🗑'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClearGuides}
+              aria-label="Borrar todas las líneas guía"
+              style={{ ...compactBtn, borderColor: 'rgba(190,255,190,.3)', color: '#befeb' }}
+              title="Borrar todas las líneas guía de todos los pisos"
+            >
+              <span style={{ fontSize: 14 }}>{'≋'}</span>
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#9BA8AA',
+            marginBottom: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Herramientas
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {visibleTools.map((t) => {
+            return (
+              <button
+                type="button"
+                key={t.id}
+                onClick={() => onToolClick(t.id)}
+                title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
+                style={{
+                  ...PdfViewerToolbar_S2,
+                  background: isToolActive(t.id) ? '#2563EB' : '#1e2024',
+                  border: `1px solid ${isToolActive(t.id) ? '#2563EB' : '#3a494a'}`,
+                  borderRadius: '3px',
+                  color: '#b9caca',
+                  cursor: 'pointer',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 14,
+                    width: 18,
+                    textAlign: 'center',
+                    color: isToolActive(t.id) ? '#fff' : t.icoCol,
+                  }}
+                >
+                  {t.ico}
+                </span>
+                <span style={{ fontSize: 12, flex: 1, textAlign: 'left' }}>{t.label}</span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: isToolActive(t.id) ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                    fontFamily: "'Geist',monospace",
+                    marginLeft: 'auto',
+                  }}
+                >
+                  {t.shortcut}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <button
+            type="button"
+            onClick={onSnapToggle}
+            style={{
+              ...PdfViewerToolbar_S3,
+              background: snapOn ? '#10B98122' : '#1e2024',
+              border: `1px solid ${snapOn ? '#10B981' : '#3a494a'}`,
+              borderRadius: '3px',
+              color: snapOn ? '#10B981' : '#9BA8AA',
+              cursor: 'pointer',
+            }}
+          >
+            <span
+              style={{
+                fontSize: 14,
+                width: 18,
+                textAlign: 'center',
+                color: snapOn ? '#10B981' : '#8AB4D6',
+              }}
+            >
+              {snapOn ? '\u25C9' : '\u25CB'}
+            </span>
+            <span style={{ flex: 1 }}>Snap</span>
+            <span
+              style={{
+                fontSize: 12,
+                color: snapOn ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                fontFamily: "'Geist',monospace",
+              }}
+            >
+              G
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onGridToggle}
+            aria-label="Mostrar/ocultar grilla"
+            style={{
+              ...PdfViewerToolbar_S3,
+              background: gridOn ? '#10B98122' : '#1e2024',
+              border: `1px solid ${gridOn ? '#10B981' : '#3a494a'}`,
+              borderRadius: '3px',
+              color: gridOn ? '#10B981' : '#9BA8AA',
+              cursor: 'pointer',
+            }}
+          >
+            <span
+              style={{
+                fontSize: 14,
+                width: 18,
+                textAlign: 'center',
+                color: gridOn ? '#10B981' : '#8AB4D6',
+              }}
+            >
+              {gridOn ? '▦' : '▢'}
+            </span>
+            <span style={{ flex: 1 }}>Grilla</span>
+            <span
+              style={{
+                fontSize: 12,
+                color: gridOn ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                fontFamily: "'Geist',monospace",
+              }}
+            >
+              H
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#9BA8AA',
+            marginBottom: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Acciones
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {esSuscripcionVencida && (
+            <div
+              role="alert"
+              style={{
+                padding: '6px 8px',
+                background: '#1e2024',
+                border: '1px solid #ef444455',
+                borderRadius: '4px',
+                fontFamily: "'Geist',monospace",
+                fontSize: 11,
+                lineHeight: 1.35,
+                color: '#ffb4ab',
+              }}
+            >
+              {SUSCRIPCION_VENCIDA_TXT}{' '}
+              <Link
+                to="/pricing"
+                title="Ir a Precios para renovar la suscripción"
+                style={{ color: '#8AB4D6', fontWeight: 700, textDecoration: 'underline' }}
+              >
+                Renovar
+              </Link>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onFit}
+            disabled={!currentFile}
+            style={{
+              ...accBtn,
+              width: '100%',
+              borderColor: '#10B98155',
+              color: '#10B981',
+              opacity: !currentFile ? 0.4 : 1,
+              cursor: !currentFile ? 'not-allowed' : 'pointer',
+            }}
+            title={currentFile ? 'Ajustar PDF al visor' : 'Carga un plano para poder ajustarlo'}
+          >
+            <span style={{ fontSize: 14 }}>{'\u26F6'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Ajustar</span>
+              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
+                Encajar PDF al visor
+              </span>
+            </div>
+          </button>
+          {onDiag && (
+            <button
+              type="button"
+              onClick={onDiag}
+              style={{ ...accBtn, width: '100%' }}
+              title="Copiar el diagnóstico de carga del piso (escala, lámina y cámara)"
+            >
+              <span style={{ fontSize: 14 }}>{'⧉'}</span>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  gap: 0,
+                  lineHeight: 1.1,
+                  flex: 1,
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Diag</span>
+                <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
+                  Copiar diagnóstico
+                </span>
+              </div>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onSave}
+            style={{ ...accBtn, width: '100%' }}
+            title={
+              esSuscripcionVencida
+                ? SUSCRIPCION_VENCIDA_TXT
+                : 'Guarda los trazados y cambios realizados en el plano para la red activa'
+            }
+          >
+            <span style={{ fontSize: 14 }}>{'\uD83D\uDCBE'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Guardar</span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  color: STATUS[saveStatus]?.color || STATUS.error.color,
+                }}
+              >
+                {STATUS[saveStatus]?.label || STATUS.error.label}
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onUndo}
+            style={{ ...accBtn, width: '100%' }}
+            title="Deshacer (Ctrl + Z)"
+          >
+            <span style={{ fontSize: 14 }}>{'\u21A9'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Deshacer (Ctrl + Z)
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onRedo}
+            style={{ ...accBtn, width: '100%' }}
+            title="Rehacer (Ctrl + Y)"
+          >
+            <span style={{ fontSize: 14 }}>{'\u21AA'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Rehacer (Ctrl + Y)
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            style={{
+              ...accBtn,
+              width: '100%',
+              borderColor: 'rgba(255,180,171,.3)',
+              color: '#ffb4ab',
+            }}
+            title="Eliminar todo el trazado de la red activa"
+          >
+            <span style={{ fontSize: 14 }}>{'\uD83D\uDDD1'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Borrar elementos de red
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onClearGuides}
+            style={{
+              ...accBtn,
+              width: '100%',
+              borderColor: 'rgba(190,255,190,.3)',
+              color: '#befeb',
+            }}
+            title="Borrar todas las líneas guía de todos los pisos"
+          >
+            <span style={{ fontSize: 14 }}>{'\u224B'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Borrar líneas guía
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+const PdfViewerToolbar = memo(PdfViewerToolbar_);
+export default PdfViewerToolbar;

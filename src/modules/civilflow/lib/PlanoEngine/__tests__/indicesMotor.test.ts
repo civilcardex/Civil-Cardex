@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { indicesDeMotor } from '../indicesMotor';
-import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 /**
  * Los índices id→pieza del motor (indicesMotor.ts) quitan las búsquedas lineales dentro de

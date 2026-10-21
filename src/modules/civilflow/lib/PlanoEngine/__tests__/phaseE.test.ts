@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { asociarRamalABajantes } from '../dibujoUtiles.ts';
+import { asociarRamalABajantes } from '../drawingUtils.ts';
 import { applyBajanteAssociation } from '../../../utils/bajanteAssociation';
-import { copyDrawingFromPlan } from '../../../utils/copiaDibujoFromPlano.ts';
-import { updateSelected } from '../PlanoMotorSeleccion.ts';
-import type { IPlanoEngineCore } from '../PlanoEstado.ts';
+import { copyDrawingFromPlan } from '../../../utils/copyDrawingFromPlan.ts';
+import { updateSelected } from '../PlanoEngineSelection.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 // Fase E: (1) ramal desde caja recortado al BORDE siguiendo la dirección del usuario;
 // (8) canal↔bajante ll entre pisos crea fantasma+Ldesvio; (B) LD no admite diámetro mayor
@@ -252,7 +252,7 @@ describe('punto 1b — segundo ramal desde la misma caja (tras borrar el primero
 
 describe('punto 5b — clic sobre vértice del área seleccionada lanza areaPtDrag', () => {
   it('handleSelectDown sobre la esquina fija areaPtDrag (no areaDrag)', async () => {
-    const { handleSelectDown } = await import('../manejaRatonAbajo.ts');
+    const { handleSelectDown } = await import('../handleMouseDown.ts');
     const eng = makeEngine('1') as unknown as {
       selId: string | null;
       multiSel: string[];
@@ -289,7 +289,7 @@ describe('punto 5b — clic sobre vértice del área seleccionada lanza areaPtDr
     eng.toPlane = (x, y) => ({ x, y });
     (eng as unknown as { getBajantesFantasma: () => unknown[] }).getBajantesFantasma = () => [];
     // Primer clic: centro → inicia marquee-candidato; el mouseUp sin arrastre selecciona.
-    const { handleDragUp: dragUp } = await import('../manejaArrastrarArriba.ts');
+    const { handleDragUp: dragUp } = await import('../handleDragUp.ts');
     handleSelectDown(eng as never, 150, 150);
     dragUp(eng as never);
     expect(eng.selId).toBe('AR1');
@@ -306,7 +306,7 @@ describe('punto 5b — clic sobre vértice del área seleccionada lanza areaPtDr
 
 describe('marquee incluye áreas', () => {
   it('recuadro sobre el área la agrega a multiSel', async () => {
-    const { handleDragUp } = await import('../manejaArrastrarArriba.ts');
+    const { handleDragUp } = await import('../handleDragUp.ts');
     const eng = makeEngine('1') as unknown as {
       marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
       multiSel: string[];
@@ -342,9 +342,9 @@ describe('marquee incluye áreas', () => {
 
 describe('multiselección e2e — recuadro selecciona áreas', () => {
   it('press dentro del área + drag + up: AR1 queda en multiSel', async () => {
-    const { handleSelectDown } = await import('../manejaRatonAbajo.ts');
-    const { handleDragMove } = await import('../manejaArrastrarMueve.ts');
-    const { handleDragUp } = await import('../manejaArrastrarArriba.ts');
+    const { handleSelectDown } = await import('../handleMouseDown.ts');
+    const { handleDragMove } = await import('../handleDragMove.ts');
+    const { handleDragUp } = await import('../handleDragUp.ts');
     const eng = makeEngine('1') as unknown as {
       tool: string;
       multiSel: string[];

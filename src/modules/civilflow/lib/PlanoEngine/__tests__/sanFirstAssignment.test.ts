@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanDiametroPermitido, propagarSanDiametroAguasAbajo } from '../dibujoFlujo.ts';
+import { sanDiametroPermitido, propagarSanDiametroAguasAbajo } from '../drawingFlow.ts';
 
 // Primera asignación libre (orig. usuario): un alimentador sin diámetro puede tomar el que
 // sea aunque supere al receptor. La SUBIDA del alimentador siempre libre — el motor propaga

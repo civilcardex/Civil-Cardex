@@ -7,7 +7,7 @@ import {
   NTC1500_PENDIENTES,
   NTC1500_CAPACIDAD,
   NTC1500_VENTILACION,
-} from '../normativaDatos.ts';
+} from '../regulationsData.ts';
 import { subHeadingStyle as h4 } from '../compartido.tsx';
 
 export function NTC1500() {

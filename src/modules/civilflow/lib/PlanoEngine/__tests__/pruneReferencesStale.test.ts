@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { autoDetectRamalConnections, podarReferenciasStaleDeBajantes } from '../PlanoMotorRed.ts';
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoEstado.ts';
+import { autoDetectRamalConnections, podarReferenciasStaleDeBajantes } from '../PlanoEngineNetwork.ts';
+import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState.ts';
 
 // Regresión (orig. usuario 2026-09-18): borrar/recortar un trazo dejaba a la caja o
 // bajante/montante "recordando" la asociación (recibeDeIds/alimentaIds con ids de trazos que

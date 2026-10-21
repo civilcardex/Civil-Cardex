@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { SAN_SYNC_KEY, HYDRO_DATA_STORAGE_KEY } from '../../../constants/almacenamientoClaves.ts';
+import { SAN_SYNC_KEY, HYDRO_DATA_STORAGE_KEY } from '../../../constants/storage-keys.ts';
 import { isLdesvioRamalId, ldesvioIdFor } from '../../../utils/associateBajanteAcrossFloors';
-import { _renumberRamales } from '../redRenumera.ts';
-import { loadSanLlTramos } from '../../../utils/construyeTramos.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoEstado.ts';
+import { _renumberRamales } from '../networkRenumber.ts';
+import { loadSanLlTramos } from '../../../utils/buildTramos.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 // Los ramales conectores de ldesvío (id `LD_<bajanteId>`) son ayudas de dibujo, no tuberías
 // hidráulicas. No deben filtrarse a las tablas de diseño (tramos vacíos falsos tipo "RS1") ni ser
@@ -51,9 +51,9 @@ const sanSyncFixture = {
   updatedAt: 0,
 };
 
-vi.mock('../../../services/almacenamientoServicio.ts', async (importOriginal) => {
+vi.mock('../../../services/storageService.ts', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../../services/almacenamientoServicio.ts')>();
+    await importOriginal<typeof import('../../../services/storageService.ts')>();
   return {
     ...actual,
     loadFromStorage: vi.fn((key: string, fallback: unknown) => {

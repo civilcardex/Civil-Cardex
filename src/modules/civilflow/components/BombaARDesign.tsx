@@ -3,23 +3,23 @@ import {
   loadFromStorage,
   saveToStorage,
   getActiveProyectoId,
-} from '../services/almacenamientoServicio.ts';
-import { loadBombaDatos, saveBombaDatos } from '../services/bombaServicio.ts';
+} from '../services/storageService.ts';
+import { loadBombaDatos, saveBombaDatos } from '../services/bombaService.ts';
 import { guardaConReintento } from '../../../utils/guardaEnNube.ts';
 import { equiposBombaDesdeTrazos } from '../utils/bombaAssociation';
-import PageNav from './PaginaNavegacion.tsx';
-import EditButton from './shared/EditaBoton.tsx';
-import { SI } from '../styles/compartidoTablaEstilos.ts';
+import PageNav from './PageNav.tsx';
+import EditButton from './shared/EditButton.tsx';
+import { SI } from '../styles/sharedTableStyles.ts';
 import Tbl from './shared/Tbl';
-import Card from './shared/Tarjeta.tsx';
-import { APS_STORAGE_KEY } from '../constants/almacenamientoClaves.ts';
+import Card from './shared/Card.tsx';
+import { APS_STORAGE_KEY } from '../constants/storage-keys.ts';
 import { cHazenDe, calcsDe, INPUTS_DEFAULT, type BombaInputs } from './bombaARCalcs';
 import {
   EV_APARATOS_CLEAR,
   EV_SAN_SYNC,
   EV_HIDRO_SYNC,
   EV_STORAGE,
-} from '../utils/aparatoEventos.ts';
+} from '../utils/fixtureEvents.ts';
 
 export { calcsDe, INPUTS_DEFAULT } from './bombaARCalcs';
 export type { BombaInputs } from './bombaARCalcs';

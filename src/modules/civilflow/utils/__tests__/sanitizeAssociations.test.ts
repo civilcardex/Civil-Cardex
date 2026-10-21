@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
-import { TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
+import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { sanearAsociacionesTrasRecalibrar } from '../sanitizeAssociations';
 
 // Recalibración del origen: los artefactos de asociación (anillo dx/dy, inicio del Ldesvio,
@@ -239,7 +239,7 @@ describe('sanearAsociacionesTrasRecalibrar', () => {
     // Otro dispositivo recalibró plan 1 a {120,110} (doc + meta ya estampados al abrir).
     const nuevo = { x_px: 120, y_px: 110 };
     seedPlan('1', { ...trazosDe('1'), origen: nuevo });
-    const { migrateAssocLayoutOnLoad } = await import('../asocDisposicionMigration.ts');
+    const { migrateAssocLayoutOnLoad } = await import('../assocLayoutMigration.ts');
     // Abrir el piso 1 (host del anillo): el re-anclaje debe recolocar anillo/LD con aFrameDe.
     migrateAssocLayoutOnLoad('1', 'P1');
     expect(trazosDe('1').bajantes?.[0].desplazamientos?.P2).toEqual({

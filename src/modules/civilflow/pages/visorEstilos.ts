@@ -3,7 +3,7 @@ import type React from 'react';
 /**
  * Estilos y datos estructurados de la página del visor.
  *
- * Por qué viven aquí: eran constantes de módulo dentro de `ViewerPagina.tsx`, que ya
+ * Por qué viven aquí: eran constantes de módulo dentro de `ViewerPage.tsx`, que ya
  * estaba en el tope de líneas del guard anti-monolito (700). Separarlas deja la página
  * con la LÓGICA (carga, overlay, selector de planos) y este módulo con la CAPA.
  */
