@@ -1,4 +1,5 @@
 import { clearBajanteAssociation } from './bajanteAssociationLimpia.ts';
+import { bajanteLocalDe as bajanteLocalCompartido } from './bajanteLocal.ts';
 import { splitPtr } from './claves.ts';
 import { esRedAparatosPresion, propagarAparatosPresion } from './propagation';
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
@@ -85,11 +86,10 @@ function estamparCargaEnFantasma(
 
 /** Bajante vivo por id prefiriendo el del PISO ABIERTO: el motor tiene los bajantes de otros
  *  pisos que atraviesan esta altura (proyecciones con pisoBase ajeno y el MISMO id tras un
- *  renombre) — un find() plano podía traer la proyección con libro rancio (orig. usuario). */
+ *  renombre) — un find() plano podía traer la proyección con libro rancio (orig. usuario).
+ *  Resolvedor compartido (utils/bajanteLocal) para que TODOS loslectores usen el mismo criterio. */
 function bajanteLocalDe(eng: IPlanoEngineCore, id: string): PlanoBajante | undefined {
-  const nivelLbl = eng.nivelActual?.label ?? '';
-  const mismos = eng.bajantes.filter((b) => b.id === id);
-  return mismos.find((b) => (b.pisoBase ?? '') === nivelLbl) ?? mismos[0];
+  return bajanteLocalCompartido(eng, id);
 }
 
 export function applyBajanteAssociation(

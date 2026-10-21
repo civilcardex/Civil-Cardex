@@ -14,6 +14,30 @@ export type TramoKey = `${string}-${PlanId}`;
 export type Ptr = `${PlanId}|${string}`;
 
 /**
+ * Número de un bajante/montante a partir de su id o code, sin importar el sufijo de piso.
+ *
+ * Por qué: había DOS criterios distintos para el mismo número. El orden de renumeración
+ * usaba `replace(pfx,'')` ('BAN9-P1' -> 9) y el "menor número libre" usaba el regex del
+ * FINAL del id ('BAN9-P1' -> 1, el 1 del piso). Con ids legacy con sufijo de piso, el
+ * segundo veía el número del piso: creaba 'BAN2' cuando ya había 'BAN2-P1' y el motor
+ * acababa con DOS bajantes de id 'BAN2' (que el guardado fusionaba, perdiendo geometría).
+ *
+ * @param idOrCode - id o code del bajante ('BAN9-P1', 'BAN9', 'M1_af').
+ * @param pfx - prefijo de la familia ('BAN', 'MAC', 'M1'…).
+ * @returns el número, o 0 si no se puede leer.
+ */
+export function numDeBajante(idOrCode: string | undefined | null, pfx: string): number {
+  const s = idOrCode ?? '';
+  if (!s) return 0;
+  const esc = pfx.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const m = new RegExp('^' + esc + '(\\d+)').exec(s);
+  if (m) return parseInt(m[1], 10);
+  // Prefijo alterno (los montantes usan 'M' + etiqueta de red: 'M1_af' con pfx 'M1').
+  const alt = new RegExp('^(\\d+)').exec(s.replace(/^M/, ''));
+  return alt ? parseInt(alt[1], 10) : 0;
+}
+
+/**
  * Clave de conteos de un elemento en su piso. Misma regla que loadTrazosFromDB: los stubs
  * sintéticos AC-01-<calId> vuelven bajo `ac_<calId>_<plan>`.
  * Ej: ('san', 'RS1', 2) → 'san_RS1_2'.

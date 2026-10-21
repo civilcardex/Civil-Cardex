@@ -11,6 +11,7 @@ import {
 } from '../../constants/almacenamientoClaves.ts';
 import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistencia.ts';
 import { dedupPorId, mergeBajanteDedup } from '../../lib/PlanoEngine/PlanoPersistencia.ts';
+import { claveBajante, dedupPorClave } from '../../utils/bajanteLocal.ts';
 import {
   getActiveProyectoId,
   loadFromStorage,
@@ -244,7 +245,14 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     const textAnnots = (d.textAnnots ?? []) as PlanoTextAnnotation[];
     const guideLines = (d.guideLines ?? []) as PlanoGuideLine[];
     const crossFloorGhosts = (d.crossFloorGhosts ?? []) as CrossFloorGhost[];
-    const bajantes = dedupPorId((d.bajantes ?? []) as PlanoBajante[], mergeBajanteDedup);
+    // Dedup por id|pisoBase (NO solo id): el id de bajante solo es único dentro de un piso.
+    // Con dedup por id ganaba la proyección de otro piso y se subía a Supabase la geometría
+    // del fantasma en vez de la del montante real.
+    const bajantes = dedupPorClave(
+      (d.bajantes ?? []) as PlanoBajante[],
+      claveBajante,
+      mergeBajanteDedup,
+    );
 
     // Un solo payload jsonb → el RPC SECURITY DEFINER valida propiedad/estructura/caps y hace
     // upsert de cabecera + reemplazo de colecciones + rebuild de bajante_conexiones en una

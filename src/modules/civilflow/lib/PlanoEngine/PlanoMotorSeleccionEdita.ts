@@ -9,6 +9,7 @@ import {
   sanDiametroPermitido,
 } from './dibujoFlujo.ts';
 import { updateCrossFloorGhostFieldBySource } from '../../utils/associateBajanteAcrossFloors';
+import { bajanteLocalDe } from '../../utils/bajanteLocal.ts';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromEtiqueta.ts';
 import { checkVentDiameterLimits, syncVentBajanteDiameters } from './ventDiameters';
 
@@ -214,7 +215,7 @@ export function pushBajanteDiameterToRamales(
   bajId: string,
   newDNominal: string,
 ): boolean {
-  const baj = engine.bajantes.find((b) => b.id === bajId);
+  const baj = bajanteLocalDe(engine, bajId);
   if (!baj || (baj.tipo !== 'bajante' && baj.tipo !== 'montante')) return true;
   // san/ll siempre; af/ac/gas SOLO montantes (orig. usuario: el montante nunca queda por
   // debajo del ramal conectado — misma verificación que bajantes/ramales sanitarios).
@@ -290,9 +291,12 @@ export function updateElementById(
   id: string,
   fields: Record<string, unknown>,
 ): void {
+  // Los bajantes se resuelven por PISO: el motor puede tener el real del piso abierto y la
+  // proyección de otro piso con el MISMO id. Un find() plano mutaba la proyección y el
+  // cambio de diámetro del montante real se perdía (y heredaba el piso vecino).
   const el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | undefined =
     engine.ramales.find((r) => r.id === id) ||
-    engine.bajantes.find((b) => b.id === id) ||
+    bajanteLocalDe(engine, id) ||
     engine.textAnnots.find((t) => t.id === id) ||
     engine.areas.find((a) => a.id === id);
   // Diámetro previo para el seguimiento del bajante (follow en ambas direcciones).

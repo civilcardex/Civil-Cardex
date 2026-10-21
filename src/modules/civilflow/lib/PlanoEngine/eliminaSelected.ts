@@ -520,7 +520,16 @@ export function deleteSelected(
     engine._markDirty();
     return;
   }
-  const idxB = engine.bajantes.findIndex((b) => b.id === engine.selId);
+  // Se borra el bajante del PISO ABIERTO: el motor puede tener el real y la proyección de
+  // otro piso con el MISMO id — un findIndex plano borraba la proyección y el montante
+  // real se quedaba en el dibujo ("no se borró nada", orig. usuario).
+  const nivelSel = engine.nivelActual?.label ?? '';
+  const idxCandidatos = engine.bajantes
+    .map((b, i) => ({ b, i }))
+    .filter((x) => x.b.id === engine.selId);
+  const idxB = idxCandidatos.length
+    ? (idxCandidatos.find((x) => (x.b.pisoBase ?? '') === nivelSel) ?? idxCandidatos[0]).i
+    : -1;
   if (idxB >= 0) {
     const deleted: PlanoBajante = engine.bajantes[idxB];
     const deletedId = deleted.id;

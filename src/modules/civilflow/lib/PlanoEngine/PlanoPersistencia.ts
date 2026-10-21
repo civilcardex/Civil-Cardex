@@ -1,5 +1,6 @@
 import { NETS, initNetCounts } from './PlanoEstado.ts';
 import { enrichCrossFloorGhosts } from '../../utils/crossPisoFantasmas.ts';
+import { claveBajante, dedupPorClave } from '../../utils/bajanteLocal.ts';
 import { propagarSanDiametroAguasAbajo } from './dibujoFlujo.ts';
 import { direccionBajaPermitida } from './direccionReglas.ts';
 import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './canalAssociation';
@@ -222,7 +223,15 @@ export function serializeWork(engine: {
     ramales: dedupPorId(stripRenderCache(engine.ramales)),
     dims: dedupPorId(stripRenderCache(engine.dims)),
     textAnnots: dedupPorId(stripRenderCache(engine.textAnnots)),
-    bajantes: dedupPorId(stripRenderCache(engine.bajantes), mergeBajanteDedup),
+    // Los bajantes se deduplican por id|pisoBase, NO solo por id: el id SOLO es único dentro
+    // de un piso (el motor guarda el bajante real del piso abierto y la proyección de otro
+    // piso con el MISMO id). Con dedup por id ganaba la última copia — la proyección — y el
+    // autosave escribía su geometría, y `saveTrazosToDB` subía ese error a Supabase.
+    bajantes: dedupPorClave(
+      stripRenderCache(engine.bajantes) as { id?: string; pisoBase?: string }[],
+      claveBajante,
+      mergeBajanteDedup,
+    ),
     areas: dedupPorId(stripRenderCache(engine.areas)),
     nptLevels: engine.nptLevels,
     crossFloorGhosts: engine.crossFloorGhosts,
@@ -269,8 +278,8 @@ export function applyWorkData(
   // Sanado legacy (ítems 4-5 usuario): sin `angulo`, base=Y/longitud=X eje-alineado →
   // base-corta + angulo (0/±90/180) con el mismo rectángulo mundo. Idempotente.
   const pxPerCm = cmToPlanePx(d.scaleM || 0.5, 1);
-  engine.bajantes = dedupPorId(
-    (d.bajantes || []).map((b) => {
+  engine.bajantes = dedupPorClave(
+    ((d.bajantes || []) as { id?: string; pisoBase?: string }[]).map((b) => {
       const bb = b as { tipo?: string; code?: string; id?: string };
       if (bb.tipo === 'canal' && typeof bb.code === 'string' && bb.code.startsWith('CALL')) {
         bb.code = 'CNL' + bb.code.slice(4);
@@ -287,6 +296,7 @@ export function applyWorkData(
       }
       return b;
     }),
+    claveBajante,
     mergeBajanteDedup,
   );
   // Ramales DE canal sin marca (docs pre-migración es_canal_id): re-derivar por geometría

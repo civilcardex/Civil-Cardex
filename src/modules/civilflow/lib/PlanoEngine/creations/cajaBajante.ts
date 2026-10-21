@@ -6,6 +6,7 @@ import { resolveAndClampToCanal } from '../canalAssociation';
 import { distToPolyline } from '../../shared/geometry';
 import { maxDiametroLabel } from '../PlanoMotorDibujo.ts';
 import { angleAtHalfLength } from '../dibujoAngulos.ts';
+import { numDeBajante } from '../../../utils/claves.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
@@ -138,14 +139,14 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   const netPfx = net ? net.bmPfx : 'BAJ';
   // PUNTO 9 (orig. usuario): MENOR NÚMERO LIBRE sobre ids existentes — borrar BAN-2 de
   // {1,2,3} reutiliza el 2 (antes count+1 generaba huecos y duplicados tras borrar).
+  // El número se lee con el extractor CANÓNICO (utils/claves): el regex del final del id
+  // veía el número del SUFIJO de piso ('BAN9-P1' -> 1) y creaba ids duplicados en los
+  // pisos legacy con sufijo.
   const usedNums = new Set<number>(
     engine.bajantes
       .filter((b) => b.tipo === 'bajante' && b.net === engine.activeNet)
-      .map((b) => {
-        const mm = /(\d+)\s*$/.exec(b.id || '');
-        return mm ? parseInt(mm[1], 10) : NaN;
-      })
-      .filter((n) => Number.isFinite(n)),
+      .map((b) => numDeBajante(b.id, netPfx))
+      .filter((n) => n > 0),
   );
   let cnt = 1;
   while (usedNums.has(cnt)) cnt++;

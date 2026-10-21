@@ -1,4 +1,5 @@
 import { countKey } from '../../utils/claves.ts';
+import { bajanteLocalDe } from '../../utils/bajanteLocal.ts';
 import { leerLibrosPresion, udPropiaDe } from '../../utils/propagation';
 import { idsServidosPorBajante, type InheritPoolRamal } from '../../utils/bajanteAsocCompartido.ts';
 import type { CountsMap } from '../aparatosAlmacenamiento.ts';
@@ -73,7 +74,7 @@ export function agregarCargaDeBajante(args: {
       // explícita (alimentaIds / ini = código) ADEMÁS del set geométrico - una salida
       // que la geometría no detecta (ramal corto junto a una caja) no puede volver al
       // walk, o su clave (que ya contiene el agregado) crecería en cada pasada.
-      const bajRef = engineRef.current?.bajantes?.find((b) => b.id === bajId);
+      const bajRef = bajanteLocalDe(engineRef.current, bajId);
       // Un MONTANTE no tiene espejos: sus ramales alimentados son los que llevan los
       // aparatos de ese piso (se suman); solo un bajante normal espeja sus salidas.
       const esMontanteRef = bajRef?.tipo === 'montante';
@@ -111,7 +112,7 @@ export function agregarCargaDeBajante(args: {
     // MONTANTES (orig. usuario): sus ramales nacen EN él (la dirección de flujo los hace
     // parecer "salidas") pero son sus ALIMENTADOS - se suman, nunca se excluyen.
     const eng = engineRef.current;
-    const baj = eng?.bajantes?.find((b) => b.id === bajId);
+    const baj = bajanteLocalDe(eng, bajId);
     const esMontante = baj?.tipo === 'montante';
     const esPresion = netId === 'af' || netId === 'ac' || netId === 'gas';
     const seen = new Set<string>([

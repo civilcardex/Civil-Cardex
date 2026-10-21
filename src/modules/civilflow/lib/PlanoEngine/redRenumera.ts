@@ -17,7 +17,12 @@ import {
   renameBajanteAcrossFloorReferences,
 } from '../../utils/associateBajanteAcrossFloors';
 
-import { keyPlanSuffixOf, isPlanKeyFor, renombrarIdEnClave } from '../../utils/claves.ts';
+import {
+  keyPlanSuffixOf,
+  isPlanKeyFor,
+  renombrarIdEnClave,
+  numDeBajante,
+} from '../../utils/claves.ts';
 import { EV_STORAGE } from '../../utils/aparatoEventos.ts';
 export { keyPlanSuffixOf, isPlanKeyFor };
 
@@ -241,8 +246,8 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
   const pfx = net ? net.bmPfx : 'BAJ';
   const bajantesNet = engine.bajantes.filter((b) => b.tipo === 'bajante' && b.net === netId);
   bajantesNet.sort((a, b) => {
-    const na = parseInt((a.id || '').replace(pfx, ''), 10) || 0;
-    const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
+    const na = numDeBajante(a.id, pfx);
+    const nb = numDeBajante(b.id, pfx);
     return na - nb;
   });
   const thisPlanId = String(engine._loadedPlanId ?? '');
@@ -311,8 +316,8 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
       (b) => b.tipo === 'montante' && (b.net || 'af') === netId,
     );
     montantes.sort((a, b) => {
-      const na = parseInt((a.code || a.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
-      const nb = parseInt((b.code || b.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
+      const na = numDeBajante(a.code || a.id, pfx);
+      const nb = numDeBajante(b.code || b.id, pfx);
       return na - nb;
     });
     montantes.forEach((b, i) => {
@@ -381,8 +386,22 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
             // `af_MAF1_<planB>` (mismo patrón que _renumberRamales arriba).
             if (!isPlanKeyFor(k, thisPlanId)) continue;
             const nk = sujeto(k);
-            if (nk && !store[nk]) {
+            if (!nk) continue;
+            if (!store[nk]) {
               store[nk] = store[k];
+              delete store[k];
+              toco = true;
+            } else {
+              // El destino YA existe (clave huérfana del montante borrado): se fusiona por
+              // máximo y se borra la clave vieja. Antes no se copiaba NADA: el montante nuevo
+              // conservaba su clave vieja y la clave del borrado quedaba con sus conteos.
+              const dst = store[nk] as Record<string, number>;
+              const src = store[k] as Record<string, number>;
+              const out = { ...dst };
+              for (const [k2, v2] of Object.entries(src)) {
+                out[k2] = Math.max(Number(out[k2]) || 0, Number(v2) || 0);
+              }
+              store[nk] = out;
               delete store[k];
               toco = true;
             }

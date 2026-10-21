@@ -5,6 +5,7 @@ import { loadFromStorage } from '../../services/almacenamientoServicio.ts';
 import { loadAll } from '../aparatosAlmacenamiento.ts';
 import { TRAZOS_PREFIX } from '../../constants/almacenamientoClaves.ts';
 import { aggBajanteAsociado, type AsocLiveBaj } from '../../utils/bombaAssociation';
+import { bajanteLocalDe } from '../../utils/bajanteLocal.ts';
 import { useMemo } from 'react';
 
 /** Args del mapa visible del panel (objeto — el panel pasa sus closures tal cual). */
@@ -58,9 +59,7 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
   // esta altura viven en el mismo array, con su pisoBase): si el primero que find() encuentra
   // es la proyección del piso de arriba, el panel leía SU libro rancio en vez del real
   // (orig. usuario MAC1-P1: 15.5 con el real en 4.5) — se prefiere el del piso abierto.
-  const nivelLbl = engineRef.current?.nivelActual?.label ?? '';
-  const mismosId = engineRef.current?.bajantes.filter((b) => b.id === targetId) ?? [];
-  const liveBaj = mismosId.find((b) => (b.pisoBase ?? '') === nivelLbl) ?? mismosId[0];
+  const liveBaj = targetId ? bajanteLocalDe(engineRef.current, targetId) : undefined;
   const origen =
     liveBaj?.origenId ??
     liveBaj?.bombaEnId ??
@@ -93,15 +92,22 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
     !targetId.startsWith('B')
   ) {
     const engM = engineRef.current;
-    const owner = engM?.bajantes.find((b) => b.net === netId && exitsDeBajante(b.id).has(targetId));
-    if (owner) {
+    // Se resuelve por PISO: el motor puede tener el owner real y la proyección de otro piso
+    // con el mismo id (un find plano leía el libro rancio de la proyección).
+    const owner = engM?.bajantes.filter(
+      (b) => b.net === netId && exitsDeBajante(b.id).has(targetId),
+    );
+    const ownerBaj = owner?.length
+      ? (owner.find((b) => (b.pisoBase ?? '') === (engM?.nivelActual?.label ?? '')) ?? owner[0])
+      : undefined;
+    if (ownerBaj) {
       // Salida de un bajante ASOCIADO: misma fuente única (la suma cruda del árbol daba 16).
-      if (owner.origenId?.includes('|') || owner.bombaEnId?.includes('|')) {
+      if (ownerBaj.origenId?.includes('|') || ownerBaj.bombaEnId?.includes('|')) {
         const asoc = aggBajanteAsociado({
-          targetId: owner.id,
+          targetId: ownerBaj.id,
           netId,
           planId: String(planId ?? ''),
-          liveBaj: owner,
+          liveBaj: ownerBaj,
           plans,
           counts,
           hidro: hidroData as unknown as Record<string, { accesorios?: Record<string, number> }>,
@@ -109,7 +115,7 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
         });
         if (asoc) return asoc;
       }
-      return agregadoBajante(owner.id);
+      return agregadoBajante(ownerBaj.id);
     }
   }
   // LDesvio: espeja el GRUPO de la asociación (la clave espejo `net_LD_X_plan` puede quedar
@@ -122,9 +128,14 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
     const engL = engineRef.current;
     // splitPtr sin '|' devuelve el string completo en [1] — matchearía en falso un
     // origenId pelado; el original (split('|')[1]) solo matcheaba punteros cross-floor.
-    let lower = engL?.bajantes.find(
+    // Se resuelve por PISO (el motor puede tener el asociado real y su proyección con el
+    // mismo id: un find plano leía el libro rancio de la proyección).
+    const nivelLbl = engL?.nivelActual?.label ?? '';
+    const candidatos = (engL?.bajantes ?? []).filter(
       (b) => ((b as { origenId?: string }).origenId ?? '').split('|')[1] === upperId,
-    ) as unknown as AsocLiveBaj | undefined;
+    );
+    let lower = (candidatos.find((b) => (b.pisoBase ?? '') === nivelLbl) ??
+      candidatos[0]) as unknown as AsocLiveBaj | undefined;
     if (!lower) {
       const rawLoc = loadFromStorage<{ bajantes?: AsocLiveBaj[] } | null>(
         TRAZOS_PREFIX + String(planId ?? ''),
