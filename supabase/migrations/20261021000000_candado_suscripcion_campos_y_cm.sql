@@ -35,48 +35,80 @@
 -- (bigint, text, jsonb) en 20260924000001, que 20260924000002 borró con un DROP.
 -- Resultado: la función viva nunca recibió el candado.
 --
--- IMPORTANTE (corrección 2026-10-21): la firma NO se puede hardcodear. La función nació
--- como (bigint, text, text) en 20261002000000, pero 20261006000000 la reescribió a
--- (uuid, text, text) y borró la bigint. La versión anterior de esta migración asumía
--- `bigint` y creaba una SEGUNDA sobrecarga -> PostgREST no podía elegir candidato
--- ("Could not choose the best candidate function") y NINGÚN guardado de campo del
--- proyecto funcionaba. Por eso aquí se DETECTA la firma viva y se envuelve la que exista.
+-- IMPORTANTE (corrección 2026-10-21, dos veces): la firma NO se puede hardcodear. La función
+-- nació como (bigint, text, text) en 20261002000000, pero 20261006000000 la reescribió a
+-- (uuid, text, text) y borró la bigint.
+--   - La 1ª versión de esta migración asumía `bigint` y creaba una SEGUNDA sobrecarga ->
+--     PostgREST no podía elegir candidato ("Could not choose the best candidate function")
+--     y NINGÚN guardado de campo del proyecto funcionaba.
+--   - La 2ª versión envolvía la función correcta pero NO limpiaba la sobrecarga bigint que
+--     había dejado la 1ª -> su propia comprobación dura ("debe tener 1") falló.
+-- Esta versión CONVERGE cualquier estado previo a uno único y válido: borra las sobrecargas
+-- bigint espurias, deja el cuerpo real en _impl y crea el wrapper con candado. Es idempotente.
 
 do $$
 declare
   r record;
+  v_cuerpo record;
   v_args text;
   v_llamada text;
 begin
-  -- Si el _impl ya existe, la función YA está envuelta: no se toca (idempotencia).
-  if exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'save_proyecto_general_campo_impl'
-  ) then
-    raise notice 'save_proyecto_general_campo ya está envuelta: no se toca';
-    return;
-  end if;
-
-  -- La función viva: la que NO es _impl. Si hubiera varias (por el bug de la versión
-  -- anterior de esta migración), se prefiere la que NO es bigint: la del cliente.
-  select p.oid, pg_get_function_identity_arguments(p.oid) as args
-    into r
+  -- 1) Localizar el CUERPO REAL por su contenido: es la función que ESCRIBE en
+  --    cf_proyecto_general (la wrapper solo delega en el _impl). Buscar por contenido y
+  --    no por firma evita depender del orden en que se aplicaron las migraciones
+  --    (la firma de esta función ya cambió: bigint -> uuid).
+  select p.proname, pg_get_function_identity_arguments(p.oid) as args
+    into v_cuerpo
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
-     and p.proname = 'save_proyecto_general_campo'
+     and p.proname in ('save_proyecto_general_campo', 'save_proyecto_general_campo_impl')
+     and p.prosrc like '%cf_proyecto_general%'
    order by (pg_get_function_identity_arguments(p.oid) ilike '%bigint%') asc
    limit 1;
 
   if not found then
-    raise exception 'no existe public.save_proyecto_general_campo: revisa el orden de migraciones';
+    raise exception '[candado] no se encuentra el cuerpo real de save_proyecto_general_campo (prosrc con cf_proyecto_general)';
   end if;
 
-  v_args := r.args;
+  v_args := v_cuerpo.args;
 
-  -- Solo se soporta la firma de 3 argumentos simples (p_proyecto_id, p_campo, p_valor).
+  -- El cliente manda un uuid. Si el cuerpo real no tiene esa firma, no se convierte aquí
+  -- (eso es trabajo de 20261006000000): se dice en voz alta en vez de dejar un desastre.
+  if v_args ilike '%bigint%' then
+    raise exception '[candado] el cuerpo real tiene firma bigint (%) pero el cliente manda uuid: revisa 20261006000000', v_args;
+  end if;
+
+  -- 2) El cuerpo real pasa a llamarse _impl (el rename NO toca el cuerpo).
+  if v_cuerpo.proname <> 'save_proyecto_general_campo_impl' then
+    execute format(
+      'alter function public.save_proyecto_general_campo(%s) rename to save_proyecto_general_campo_impl',
+      v_args
+    );
+    raise notice '[candado] cuerpo real movido a _impl: (%)', v_args;
+  end if;
+
+  -- 3) Borrar TODO lo demás con estos nombres (wrappers viejos, sobrecargas bigint
+  --    espurias, el _impl huérfano de otra firma). Con dos sobrecargas, PostgREST no
+  --    puede elegir candidato y NINGÚN guardado de campo del proyecto funciona.
+  for r in
+    select p.proname, pg_get_function_identity_arguments(p.oid) as args
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('save_proyecto_general_campo', 'save_proyecto_general_campo_impl')
+       and not (
+         p.proname = 'save_proyecto_general_campo_impl'
+         and pg_get_function_identity_arguments(p.oid) = v_args
+       )
+  loop
+    execute format('drop function if exists public.%I(%s)', r.proname, r.args);
+    raise notice '[candado] eliminada función sobrante: % (%)', r.proname, r.args;
+  end loop;
+
+  -- 4) Wrapper con candado de uso, sobre la MISMA firma que el impl.
   if array_length(string_to_array(v_args, ','), 1) <> 3 then
-    raise exception 'firma inesperada de save_proyecto_general_campo: %', v_args;
+    raise exception '[candado] firma inesperada de save_proyecto_general_campo: %', v_args;
   end if;
 
   -- Nombres de los argumentos (para la llamada al impl). btrim: la firma viene con
@@ -85,11 +117,6 @@ begin
     into v_llamada
     from unnest(string_to_array(v_args, ',')) as x;
 
-  -- Renombrar a _impl: el cuerpo real se conserva intacto y los grants viajan con el rename
-  -- (se revocan abajo).
-  execute format('alter function public.save_proyecto_general_campo(%s) rename to save_proyecto_general_campo_impl', v_args);
-
-  -- Wrapper con candado de USO. El cuerpo real vive en el _impl (sin cambios de lógica).
   execute format($ddl$
     create or replace function public.save_proyecto_general_campo(%s)
     returns void language plpgsql security definer set search_path = public as $fn$
@@ -101,30 +128,13 @@ begin
     $fn$;
   $ddl$, v_args, v_llamada);
 
-  raise notice 'save_proyecto_general_campo envuelta con candado: (%)', v_args;
-end;
-$$;
+  -- 5) Grants: el impl NO se expone (solo lo llama el wrapper, que es SECURITY DEFINER);
+  --    el wrapper es el único ejecutable por un usuario autenticado.
+  execute format('revoke all on function public.save_proyecto_general_campo_impl(%s) from public, anon, authenticated', v_args);
+  execute format('revoke all on function public.save_proyecto_general_campo(%s) from public, anon', v_args);
+  execute format('grant execute on function public.save_proyecto_general_campo(%s) to authenticated', v_args);
 
--- Grants: el impl NO se expone (solo lo llama el wrapper, que es SECURITY DEFINER);
--- el wrapper es el único ejecutable por un usuario autenticado.
-do $$
-declare
-  r record;
-  v_args text;
-begin
-  select pg_get_function_identity_arguments(p.oid) as args
-    into r
-    from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public'
-     and p.proname = 'save_proyecto_general_campo_impl'
-   limit 1;
-  if found then
-    v_args := r.args;
-    execute format('revoke all on function public.save_proyecto_general_campo_impl(%s) from public, anon, authenticated', v_args);
-    execute format('revoke all on function public.save_proyecto_general_campo(%s) from public, anon', v_args);
-    execute format('grant execute on function public.save_proyecto_general_campo(%s) to authenticated', v_args);
-  end if;
+  raise notice '[candado] save_proyecto_general_campo lista: wrapper + impl sobre (%)', v_args;
 end;
 $$;
 
@@ -207,10 +217,10 @@ begin
    where ns.nspname = 'public'
      and p.proname = 'save_proyecto_general_campo';
   if n <> 1 then
-    raise exception 'save_proyecto_general_campo tiene % sobrecargas (debe tener 1): %', n, coalesce(firmas, '');
+    raise exception '[candado] save_proyecto_general_campo tiene % sobrecargas (debe tener 1): %', n, coalesce(firmas, '');
   end if;
   if firmas like '%bigint%' then
-    raise exception 'quedó la sobrecarga bigint: %', firmas;
+    raise exception '[candado] quedó la sobrecarga bigint: %', firmas;
   end if;
 end;
 $$;

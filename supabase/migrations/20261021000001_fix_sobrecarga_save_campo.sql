@@ -1,79 +1,94 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════
--- CORRECTIVA: sobrecarga espuria de save_proyecto_general_campo (2026-10-21)
+-- CORRECTIVA v2: deja UNA sola sobrecarga de save_proyecto_general_campo, con candado
 -- Fecha: 2026-10-21
 --
--- Qué pasó: la migración 20261021000000 (candado de suscripción) creó una sobrecarga
--- (bigint, text, text) de public.save_proyecto_general_campo. La función VIVA es la
--- (uuid, text, text): la convirtió 20261006000000, que reescribió el cuerpo y borró la
--- bigint. Con DOS sobrecargas del mismo nombre, PostgREST no puede elegir candidato:
+-- CADENA DE INCIDENTES (para no repetirla):
+--   1) 20261021000000 (1ª versión) creó una sobrecarga (bigint, text, text) de una función
+--      que ya no existía con esa firma: la viva es (uuid, text, text), convertida por
+--      20261006000000. Con dos sobrecargas, PostgREST responde "Could not choose the best
+--      candidate function" y NINGÚN guardado de campo del proyecto funciona.
+--   2) La 20261021000000 (2ª versión) envolvía la función correcta pero NO limpiaba la
+--      sobrecarga bigint espuria -> su comprobación dura ("debe tener 1") falló.
 --
---   Could not choose the best candidate function between:
---     public.save_proyecto_general_campo(p_proyecto_id -> bigint, p_campo -> text, p_valor -> text),
---     public.save_proyecto_general_campo(p_proyecto_id -> uuid,  p_campo -> text, p_valor -> text)
+-- QUÉ HACE ESTA: converge CUALQUIER estado previo a un único estado válido, y lo hace
+-- localizando el CUERPO REAL por su contenido (la función que escribe en
+-- cf_proyecto_general), no por la firma. Así no depende de en qué orden se aplicaron las
+-- migraciones ni de qué sobrecargas quedaron sueltas.
 --
--- Efecto: NINGÚN guardado de campo del proyecto funcionaba (rejillas, af_alimentacion,
--- tanque_npt, presion_garantizada) — todos van por ese RPC.
+--   1) Localiza el cuerpo real (prosrc con 'cf_proyecto_general') y exige que su firma
+--      sea la que usa el cliente (uuid). Si no lo es, se detiene con un mensaje claro
+--      (convertir la firma sería rehacer 20261006000000).
+--   2) Lo deja como save_proyecto_general_campo_impl (el rename NO toca el cuerpo).
+--   3) Borra TODO lo demás con esos nombres (wrappers y sobrecargas bigint huérfanas).
+--   4) Crea el wrapper con el candado de suscripción sobre la MISMA firma.
+--   5) Comprueba que quede 1 sobrecarga expuesta y que el impl no sea público.
 --
--- Esta migración es IDEMPOTENTE: sirve tanto para la base que ya aplicó la 20261021000000
--- rota (limpia la sobrecarga y envuelve la uuid) como para una base donde la 20261021000000
--- ya está corregida (solo comprueba y no toca nada).
+-- Es IDEMPOTENTE: se puede aplicar las veces que haga falta y sobre una base ya corregida.
 --
--- ⚠️  APLICAR EN EL SQL EDITOR (después de 20261021000000).
+-- ⚠️  APLICAR EN EL SQL EDITOR.
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 
--- ═══ 1) Limpiar las sobrecargas espurias (las de firma bigint) ══════════════════════
--- Primero el wrapper, luego el impl (por si ambos existieran).
 do $$
 declare
   r record;
+  v_cuerpo record;
+  v_args text;
+  v_llamada text;
 begin
+  -- ═══ 1) Localizar el CUERPO REAL ══════════════════════════════════════════════════
+  -- Es la función que ESCRIBE en cf_proyecto_general; la wrapper solo delega en el _impl.
+  -- Se busca por contenido porque las firmas cambiaron varias veces (bigint -> uuid).
+  select p.proname, pg_get_function_identity_arguments(p.oid) as args
+    into v_cuerpo
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname in ('save_proyecto_general_campo', 'save_proyecto_general_campo_impl')
+     and p.prosrc like '%cf_proyecto_general%'
+   order by (pg_get_function_identity_arguments(p.oid) ilike '%bigint%') asc
+   limit 1;
+
+  if not found then
+    raise exception '[fix] no se encuentra el cuerpo real de save_proyecto_general_campo (prosrc con cf_proyecto_general)';
+  end if;
+
+  v_args := v_cuerpo.args;
+
+  -- El cliente manda un uuid: si el cuerpo real no tiene esa firma, no la convertimos aquí
+  -- (eso es trabajo de 20261006000000). Se dice en voz alta en vez de dejar un desastre.
+  if v_args ilike '%bigint%' then
+    raise exception '[fix] el cuerpo real tiene firma bigint (%) pero el cliente manda uuid: revisa 20261006000000', v_args;
+  end if;
+
+  -- ═══ 2) El cuerpo real pasa a llamarse _impl (el rename NO toca el cuerpo) ══════════
+  if v_cuerpo.proname <> 'save_proyecto_general_campo_impl' then
+    execute format(
+      'alter function public.save_proyecto_general_campo(%s) rename to save_proyecto_general_campo_impl',
+      v_args
+    );
+    raise notice '[fix] cuerpo real movido a _impl: (%)', v_args;
+  end if;
+
+  -- ═══ 3) Borrar TODO lo demás con estos nombres ═══════════════════════════════════
+  -- (wrappers viejos, sobrecargas bigint espurias, el _impl huérfano de otra firma).
   for r in
     select p.proname, pg_get_function_identity_arguments(p.oid) as args
       from pg_proc p
       join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and p.proname in ('save_proyecto_general_campo', 'save_proyecto_general_campo_impl')
-       and pg_get_function_identity_arguments(p.oid) ilike '%bigint%'
+       and not (
+         p.proname = 'save_proyecto_general_campo_impl'
+         and pg_get_function_identity_arguments(p.oid) = v_args
+       )
   loop
     execute format('drop function if exists public.%I(%s)', r.proname, r.args);
-    raise notice 'eliminada sobrecarga espuria: % (%)', r.proname, r.args;
+    raise notice '[fix] eliminada función sobrante: % (%)', r.proname, r.args;
   end loop;
-end;
-$$;
 
--- ═══ 2) Envolver la función viva con el candado de uso (solo si no lo tenía) ══════════
--- Si el _impl NO existe, la función viva es la original (sin candado): se renombra a
--- _impl y se crea el wrapper con candado. Si el _impl YA existe, la 20261021000000 (o
--- esta misma migración) ya la envolvió y no hay que hacer nada.
-do $$
-declare
-  r record;
-  v_args text;
-  v_llamada text;
-begin
-  if exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'save_proyecto_general_campo_impl'
-  ) then
-    raise notice 'save_proyecto_general_campo ya estaba envuelta: no se toca';
-    return;
-  end if;
-
-  select pg_get_function_identity_arguments(p.oid) as args
-    into r
-    from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public'
-     and p.proname = 'save_proyecto_general_campo'
-   limit 1;
-
-  if not found then
-    raise exception 'no existe public.save_proyecto_general_campo: revisa el orden de migraciones';
-  end if;
-
-  v_args := r.args;
+  -- ═══ 4) Wrapper con candado de uso, sobre la MISMA firma que el impl ═══════════════
   if array_length(string_to_array(v_args, ','), 1) <> 3 then
-    raise exception 'firma inesperada de save_proyecto_general_campo: %', v_args;
+    raise exception '[fix] firma inesperada de save_proyecto_general_campo: %', v_args;
   end if;
 
   -- btrim: la firma viene con espacios tras las comas (" p_campo text") y split_part
@@ -81,9 +96,6 @@ begin
   select string_agg(split_part(btrim(x), ' ', 1), ', ')
     into v_llamada
     from unnest(string_to_array(v_args, ',')) as x;
-
-  -- El cuerpo real se conserva: el rename no lo toca.
-  execute format('alter function public.save_proyecto_general_campo(%s) rename to save_proyecto_general_campo_impl', v_args);
 
   execute format($ddl$
     create or replace function public.save_proyecto_general_campo(%s)
@@ -96,17 +108,17 @@ begin
     $fn$;
   $ddl$, v_args, v_llamada);
 
-  -- Grants: el impl no se expone; el wrapper es el único ejecutable por un usuario.
+  -- ═══ 5) Grants: el impl no se expone; el wrapper es el único ejecutable ════════════
   execute format('revoke all on function public.save_proyecto_general_campo_impl(%s) from public, anon, authenticated', v_args);
   execute format('revoke all on function public.save_proyecto_general_campo(%s) from public, anon', v_args);
   execute format('grant execute on function public.save_proyecto_general_campo(%s) to authenticated', v_args);
 
-  raise notice 'save_proyecto_general_campo envuelta con candado: (%)', v_args;
+  raise notice '[fix] save_proyecto_general_campo lista: wrapper + impl sobre (%)', v_args;
 end;
 $$;
 
--- ═══ 3) Comprobaciones duras (fallan ruidosamente si algo quedó mal) ═════════════════
--- (a) No puede quedar más de una sobrecarga con el nombre "de cara al cliente".
+-- ═══ Comprobaciones duras (fallan ruidosamente si algo quedó mal) ═════════════════════
+-- (a) Exactamente UNA sobrecarga con el nombre de cara al cliente.
 do $$
 declare
   n int;
@@ -119,15 +131,15 @@ begin
    where ns.nspname = 'public'
      and p.proname = 'save_proyecto_general_campo';
   if n <> 1 then
-    raise exception 'save_proyecto_general_campo tiene % sobrecargas (debe tener 1): %', n, coalesce(firmas, '');
+    raise exception '[fix] save_proyecto_general_campo tiene % sobrecargas (debe tener 1): %', n, coalesce(firmas, '');
   end if;
   if firmas like '%bigint%' then
-    raise exception 'quedó la sobrecarga bigint: %', firmas;
+    raise exception '[fix] quedó la sobrecarga bigint: %', firmas;
   end if;
 end;
 $$;
 
--- (b) El impl existe y NO es ejecutable por nadie; el wrapper sí lo es por authenticated.
+-- (b) El impl existe, comparte firma con el wrapper y NO es ejecutable por PUBLIC.
 do $$
 declare
   v_impl_args text;
@@ -148,27 +160,26 @@ begin
    limit 1;
 
   if v_impl_args is null then
-    raise exception 'falta save_proyecto_general_campo_impl';
+    raise exception '[fix] falta save_proyecto_general_campo_impl';
   end if;
   if v_wrapper_args is null then
-    raise exception 'falta save_proyecto_general_campo';
+    raise exception '[fix] falta save_proyecto_general_campo';
   end if;
   if v_impl_args <> v_wrapper_args then
-    raise exception 'impl (%) y wrapper (%) no comparten firma', v_impl_args, v_wrapper_args;
+    raise exception '[fix] impl (%) y wrapper (%) no comparten firma', v_impl_args, v_wrapper_args;
   end if;
   -- proacl NULL = ACL por defecto = PUBLIC tiene EXECUTE. Con el revoke aplicado el acl
-  -- queda {owner=X/owner} (sin entrada "=X" que es PUBLIC). Si el acl es NULL o trae
-  -- la entrada de PUBLIC, el impl sigue expuesto.
+  -- queda {owner=X/owner} (sin la entrada "=X", que es PUBLIC).
   if v_impl_acl is null or v_impl_acl ~ '(^|[{,])=X' then
-    raise exception 'el impl sigue siendo ejecutable por PUBLIC: %', coalesce(v_impl_acl, '(acl por defecto)');
+    raise exception '[fix] el impl sigue siendo ejecutable por PUBLIC: %', coalesce(v_impl_acl, '(acl por defecto)');
   end if;
   if v_wrapper_acl is null or v_wrapper_acl not like '%authenticated=X%' then
-    raise exception 'el wrapper no es ejecutable por authenticated: %', coalesce(v_wrapper_acl, '(acl por defecto)');
+    raise exception '[fix] el wrapper no es ejecutable por authenticated: %', coalesce(v_wrapper_acl, '(acl por defecto)');
   end if;
 end;
 $$;
 
--- ═══ 4) Comprobación manual (pegar el resultado si algo sigue fallando) ═════════════
+-- ═══ Comprobación manual ════════════════════════════════════════════════════════════
 -- select p.proname,
 --        pg_get_function_identity_arguments(p.oid) as args,
 --        p.proacl
@@ -176,5 +187,5 @@ $$;
 --  where n.nspname = 'public' and p.proname like 'save_proyecto_general_campo%'
 --  order by p.proname;
 -- Debe salir EXACTAMENTE 2 filas:
---   save_proyecto_general_campo      (p_proyecto_id uuid, p_campo text, p_valor text)  {authenticated}
---   save_proyecto_general_campo_impl (p_proyecto_id uuid, p_campo text, p_valor text)  {}
+--   save_proyecto_general_campo      (p_proyecto_id uuid, p_campo text, p_valor text)  {…authenticated…}
+--   save_proyecto_general_campo_impl (p_proyecto_id uuid, p_campo text, p_valor text)  {…owner…}
