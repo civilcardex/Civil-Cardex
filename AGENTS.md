@@ -541,3 +541,25 @@ Editar archivos de este repo con **node**, nunca con `perl`/`sed`/`Set-Content` 
 5. JSDoc: 273 exports públicos.
 
 Gates: tsc 0 · vitest 1369/1369 (226 archivos) · lint 0 · build + prerender 13/13 · npm audit 17 → 9 (los 9 son DoS de herramientas de build, sin ruta en el bundle).
+
+## Tailwind 4 (CSS-first) — TRAMPAS de la migración v3 → v4 (2026-10-21)
+
+Migrado a Tailwind 4.3.3 (CSS-first). **Ya no existe `tailwind.config.js`**: el tema vive en `src/styles/tokens.css` (`@theme` + `@source` + `@custom-variant`), y el plugin de PostCSS es `@tailwindcss/postcss` (en v4 el plugin va en su propio paquete, no en `tailwindcss`).
+
+Las dos trampas que ROMPIERON la app en la primera pasada y hay que tener presentes al tocar el tema:
+
+1. **`@theme` CONGELA las variables de color en `:root`.** Con `@theme { --color-primary: var(--acc) }` la utility sale como `color: var(--color-primary)` y esa variable se RESUELVE en `:root` → queda congelada y los overrides por scope dejan de mandar (el navbar con `.navbar-gold` y la landing con `.landing-root` se quedaban en azul). En v3 la utility era `color: var(--acc)` (se resolvía POR ELEMENTO). **Fix: `@theme inline`** → la utility usa el valor tal cual. Regla: si un color del tema es `var(--algo)`, va en `@theme inline`.
+
+2. **Las utilities de Tailwind viven en `@layer utilities`; una hoja de estilos EXTERNA sin capa gana SIEMPRE.** La hoja de Google Fonts pone `.material-symbols-outlined { font-size: 24px }` → vencia a `text-sm` / `text-[19px]` y todos los iconos salían a 24px. **Fix: el modificador `!` de Tailwind 4** (sufijo: `text-sm!`): importante gana a la hoja externa. Los 25 iconos con utilidad de tamaño llevan el `!`.
+
+Verificación de una migración de CSS aquí: NO basta con que compile. El A/B correcto es (a) generar el CSS con la versión vieja y con la nueva, (b) medir en el navegador los `getBoundingClientRect` + estilos calculados de cada elemento con y sin el CSS viejo inyectado por encima, y (c) diff píxel a píxel de una captura antes/después. La página `/docs` sirve de referencia (uso denso de Tailwind, sin animaciones).
+
+## npm 10.9.2 no puede resolver el peer-set de vitest ≥ 4.1.11
+
+`npm install` falla con `Cannot read properties of null (reading 'edgesOut')` (bug de arborist `#loadPeerSet`) en cuanto hay que **re-resolver** vitest. Con el lock presente, npm 10 instala bien; el bug solo salta al cambiar el rango o borrar el lock.
+
+**Workaround: usar npm 11** (`npx npm@11 install` o `npm i -g npm@11` para el equipo). El lock que genera es `lockfileVersion 3`, el mismo que lee npm 10 sin problema.
+
+Otra trampa del mismo tipo: una dependencia por URL (`https://cdn.sheetjs.com/...`) rompe el árbol de npm 10 igual. Por eso `xlsx` va como **alias** de npm: `"xlsx": "npm:xlsx-republish@0.20.3"` (el republish oficial de SheetJS en npm, autor "sheetjs", mismo código que el CDN).
+
+Estado: `npm audit` → **0 vulnerabilidades**.
