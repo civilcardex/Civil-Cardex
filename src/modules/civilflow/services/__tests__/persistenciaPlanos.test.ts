@@ -223,15 +223,13 @@ describe('A) la asociación montante↔ramal sobrevive al cierre y la reapertura
 
     const work = await loadTrazosFromDB('501');
     const baj = work?.bajantes?.find((b) => (b as { id?: string }).id === 'MAC1_af') as
-      | { asocManual?: string[]; recibeDeIds?: string[] }
-      | undefined;
+      { asocManual?: string[]; recibeDeIds?: string[] } | undefined;
     expect(baj).toBeDefined();
     expect(baj!.asocManual).toEqual(['RAF1']);
     expect(baj!.recibeDeIds).toContain('RAF1');
     // El ramal vuelve con su geometría y su vínculo al montante por `fin`.
     const ramal = work?.ramales?.find((r) => (r as { id?: string }).id === 'RAF1') as
-      | { fin?: string }
-      | undefined;
+      { fin?: string } | undefined;
     expect(ramal).toBeDefined();
     expect(ramal!.fin).toBe('MAC1');
   });
@@ -255,8 +253,7 @@ describe('A) la asociación montante↔ramal sobrevive al cierre y la reapertura
     };
     const work = await loadTrazosFromDB('502');
     const baj = work?.bajantes?.find((b) => (b as { id?: string }).id === 'MAC1_af') as
-      | { recibeDeIds?: string[]; asocManual?: string[] }
-      | undefined;
+      { recibeDeIds?: string[]; asocManual?: string[] } | undefined;
     expect(baj!.recibeDeIds ?? []).not.toContain('RAF1');
     expect(baj!.asocManual ?? []).toEqual([]);
   });
@@ -418,5 +415,58 @@ describe('E) el guardado se completa antes de dar por persistido', () => {
     });
     const local = JSON.parse(getLS('civilflow_trazos_1001') || '{}') as { ts?: number };
     expect(local.ts).toBeGreaterThan(1);
+  });
+});
+
+describe('F) quitar aparatos y cambiar de piso NO resucita los conteos', () => {
+  it('la lápida {} bloquea el merge de fixtures de la BD; la clave borrada sí se resucita', async () => {
+    // 1) Piso 5 con RS2 y sus aparatos en el disco local → saveTrazosToDB los lleva a la BD
+    //    (el RPC adjunta fixtures desde aparatos_by_tramo_v2 antes de subir).
+    setLS('civilflow_trazos_5', {
+      v: 6,
+      scaleM: 0.5,
+      ramales: [
+        {
+          id: 'RS2',
+          net: 'san',
+          tipo: 'ramal',
+          padre: null,
+          pts: [
+            [0, 0],
+            [100, 0],
+          ],
+          totalL: 3,
+          label: 'RS2',
+          ini: '',
+          fin: 'BAN1',
+          piso: 'P2',
+        },
+      ],
+      bajantes: [],
+      areas: [],
+      dims: [],
+      textAnnots: [],
+      guideLines: [],
+      crossFloorGhosts: [],
+    });
+    setLS('civilflow_aparatos_by_tramo_v2', { san_RS2_5: { lavamanos: 1, inodoro: 1, ducha: 1 } });
+    await saveTrazosToDB('5', JSON.parse(getLS('civilflow_trazos_5') || '{}'));
+    const fila = db['5'].ramales.find((r) => r.client_id === 'RS2') as Row | undefined;
+    expect((fila?.fixtures as Row) ?? null).toEqual({ lavamanos: 1, inodoro: 1, ducha: 1 });
+
+    // 2) El usuario los QUITA: mutarDec deja la clave como {} (lápida — el estado nuevo).
+    setLS('civilflow_aparatos_by_tramo_v2', { san_RS2_5: {} });
+
+    // 3) Cambio de piso = loadTrazosFromDB: el merge NO debe re-agregar los quitados.
+    await loadTrazosFromDB('5');
+    let disk = JSON.parse(getLS('civilflow_aparatos_by_tramo_v2') || '{}');
+    expect(disk.san_RS2_5).toEqual({});
+
+    // 4) Contraste (el bug original, documentado): con la clave BORRADA el merge sí
+    //    resucita el snapshot viejo de la BD — por eso la lápida es necesaria.
+    delLS('civilflow_aparatos_by_tramo_v2');
+    await loadTrazosFromDB('5');
+    disk = JSON.parse(getLS('civilflow_aparatos_by_tramo_v2') || '{}');
+    expect(disk.san_RS2_5).toEqual({ lavamanos: 1, inodoro: 1, ducha: 1 });
   });
 });

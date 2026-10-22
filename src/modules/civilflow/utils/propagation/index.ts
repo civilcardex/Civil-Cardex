@@ -26,6 +26,7 @@ export {
   udPropiaDe,
   diagUltimaPropagacion,
 } from './books';
+export { mezclarMax } from './counting';
 
 const APARATOS_KEY = 'aparatos_by_tramo_v2';
 const HEREDADOS_KEY = APARATOS_HEREDADOS_KEY;

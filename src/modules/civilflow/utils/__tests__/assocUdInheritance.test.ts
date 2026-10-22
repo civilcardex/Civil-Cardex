@@ -476,7 +476,8 @@ describe('asociación entre pisos: herencia de UDs', () => {
       npt: 0,
     };
     applyBajanteAssociation(eng, src, tgt, PLANS);
-    expect(apos()['san_RS1_1']).toEqual({ lav: 1, san: 1 });
+    // Doctrina LD: la herencia vive en el LD + libro; el ramal conserva SOLO lo propio
+    expect(apos()['san_RS1_1']).toEqual({ lav: 1 });
 
     // Manual posterior en el piso inferior + aparato nuevo en el superior
     const a0 = apos();
@@ -488,8 +489,8 @@ describe('asociación entre pisos: herencia de UDs', () => {
     const a = apos();
     // LD = agregado nuevo exacto (sin duplicar el san viejo)
     expect(a['san_LD_BAN1_1']).toEqual({ san: 1, sif: 1 });
-    // Destino: manual (lav, duc) intacto + herencia nueva exacta
-    expect(a['san_RS1_1']).toEqual({ lav: 1, san: 1, sif: 1, duc: 1 });
+    // Destino: manual (lav, duc) intacto — la herencia nueva vive en el LD ({san,sif}) y el libro
+    expect(a['san_RS1_1']).toEqual({ lav: 1, duc: 1 });
     // El superior no se toca
     expect(a['san_RS4_2']).toEqual({ san: 1, sif: 1 });
   });
@@ -673,8 +674,8 @@ describe('asociación entre pisos: herencia de UDs', () => {
     const a = apos();
     // 4 + 2 + 6 + 12 = 24 (el espejo RS9 con 9 NO suma)
     expect(a['san_LD_BAN1_1']).toEqual({ san: 4, lav: 2, sif: 6, duc: 12 });
-    // RS1 conserva su lav:1 manual + hereda (lav:2 del tributario incluido)
-    expect(a['san_RS1_1']).toEqual({ lav: 3, san: 4, sif: 6, duc: 12 });
+    // RS1 conserva SOLO su lav:1 manual — la herencia completa (24 UD) vive en el LD + libro
+    expect(a['san_RS1_1']).toEqual({ lav: 1 });
     const t1 = JSON.parse(localStorage.getItem('civilflow_' + TRAZOS_PREFIX + '1') || '{}');
     expect((t1.bajantes || []).find((x: { id: string }) => x.id === 'BAN2')?.ucAcum).toBe(24);
     // El superior no se toca (ni su espejo)
@@ -854,7 +855,8 @@ describe('asociación entre pisos: herencia de UDs', () => {
     // El inferior refleja el NUEVO agregado exacto (sin restos del viejo ni duplicados)
     expect(a['san_LD_BAN1_1']).toBeUndefined();
     expect(a['san_LD_BAN2_1']).toEqual({ duc: 5 });
-    expect(a['san_RS1_1']).toEqual({ lav: 1, duc: 5 });
+    // El ramal conserva SOLO su manual — la herencia del nuevo asociado vive en su LD
+    expect(a['san_RS1_1']).toEqual({ lav: 1 });
     // El viejo origen quedó sin puntero
     const up = JSON.parse(localStorage.getItem('civilflow_' + TRAZOS_PREFIX + '2') || '{}');
     expect(
@@ -993,8 +995,8 @@ describe('asociación entre pisos: herencia de UDs', () => {
     const ghosts2 = (p2.crossFloorGhosts || []) as { sourceBajanteId: string }[];
     expect(ghosts2.some((g) => g.sourceBajanteId === 'BAN2')).toBe(true);
     // El 1 sí se limpió: ucAcum 0 y sin herencia colgada. RS1 es ramal de BAN2-P1
-    // (enlace 2), así que conserva su herencia {san:1} + su manual {lav:1}.
+    // (enlace 2): conserva SOLO su manual — la herencia vive en el LD + libro del enlace.
     expect((p1.bajantes || []).find((x: { id: string }) => x.id === 'BAN1')?.ucAcum ?? 0).toBe(0);
-    expect(a['san_RS1_1']).toEqual({ lav: 1, san: 1 });
+    expect(a['san_RS1_1']).toEqual({ lav: 1 });
   });
 });

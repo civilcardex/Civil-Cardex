@@ -1,14 +1,25 @@
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
-import { adoptarDiametroDelSuperior } from '../../utils/bajanteAssocShared.ts';
-import type { InheritPoolBajante, InheritPoolRamal } from '../../utils/bajanteAssocShared.ts';
+import {
+  adoptarDiametroDelSuperior,
+  type InheritPoolBajante,
+  type InheritPoolRamal,
+} from '../../utils/bajanteAssocShared.ts';
 import type { EspejosArgs } from './fixtureMirrorsTypes.ts';
+import {
+  refreshMontanteBooksFromUpper,
+  type MontanteLinkLike,
+} from './montanteInheritanceRefresh.ts';
 import {
   aggParaEspejoSalida,
   libroHeredado,
   loadAll,
   loadHidroData,
+  loadPropioSnap,
+  propioDeClave,
   saveAll,
   saveHidroData,
+  savePropioSnap,
+  stableStringify,
   syncMirrorKey,
 } from '../fixturesStorage.ts';
 import { collectSourceAgg } from '../../utils/bajanteAssociation';
@@ -16,6 +27,8 @@ import { esRedAparatosPresion } from '../../utils/propagation';
 import { ldesvioIdFor } from '../../utils/associateBajanteAcrossFloors';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from '../../utils/pumpAssociation';
+import { bajanteDePisoEn, bajanteLocalQueCumple } from '../../utils/bajanteLocal.ts';
+import { pisoLbl } from '../../constants/helpers.ts';
 
 /** (3) Espejos de salidas + herencia entre pisos + bomba: el efecto grande, mantiene las
  *  claves espejo al día cada vez que algo cambia. */
@@ -37,8 +50,24 @@ export function correrEspejos(a: EspejosArgs): void {
   // pero `eng.bajantes` aún es el piso anterior — escribir aquí estampaba claves/libros con
   // el sufijo de piso equivocado.
   if (loadingPlanRef?.current) return;
+  // Piso dueño del motor. Un bajante con OTRO `pisoBase` es la PROYECCIÓN de entrepiso: sus
+  // punteros `descargaEnId`/`origenId` son del piso que lo dibujó y el bajante local con el
+  // MISMO id ya se procesa por su cuenta. Procesarla creaba un enlace al PROPIO piso cargado
+  // (empate de nivel de `origenId`) y el grupo se volvía a sumar en cada pase — los conteos
+  // san crecían al cambiar de piso (orig. usuario). Sin `pisoBase` (docs viejos) se procesa.
+  const loadedLbl = eng.nivelActual?.label ?? '';
+  const esDeEstePiso = (b: { pisoBase?: string }) =>
+    !loadedLbl || !b.pisoBase || b.pisoBase === loadedLbl;
+  const espejoDeSalida = (b: { net: string; pisoBase?: string }) =>
+    b.net === netId && esDeEstePiso(b);
   const disk = loadAll();
   const hdisk = loadHidroData();
+  // Foto de lo PROPIO de cada clave espejo (ver APARATOS_PROPIO_KEY): el espejo transporta
+  // `propio + grupo heredado` y el libro del doc dice cuánto se heredó. Si el doc perdió esa
+  // entrada, sin la foto el pase siguiente tomaba la herencia como conteo propio y la volvía a
+  // sumar: los UD (Unidades de Desague) crecían a cada cambio de piso.
+  const propioSnap = loadPropioSnap();
+  let snapDirty = false;
   const pkey = (rid: string) => (planId ? `${netId}_${rid}_${planId}` : `${netId}_${rid}`);
   let dirty = false;
   let hdirty = false;
@@ -47,14 +76,22 @@ export function correrEspejos(a: EspejosArgs): void {
   let trazBooks = new Map<string, Record<string, Record<string, number>>>();
   try {
     const t = loadFromStorage<{
-      bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
+      bajantes?: Array<{
+        id: string;
+        pisoBase?: string;
+        ucAplicado?: Record<string, Record<string, number>>;
+      }>;
     } | null>(TRAZOS_PREFIX + planId, null);
-    for (const b of t?.bajantes || []) if (b.ucAplicado) trazBooks.set(b.id, b.ucAplicado);
+    // Solo las copias de ESTE piso: la proyección del piso vecino con el mismo id trae un
+    // libro rancio (o `{}`) y, al ganar por "última copia", el espejo de salidas copiaba el
+    // árbol entero (propio + heredado) en vez de la herencia.
+    for (const b of t?.bajantes || [])
+      if (b.ucAplicado && esDeEstePiso(b)) trazBooks.set(b.id, b.ucAplicado);
   } catch {
     trazBooks = new Map();
   }
   for (const baj of eng.bajantes) {
-    if (baj.net !== netId) continue;
+    if (!espejoDeSalida(baj)) continue;
     // MONTANTES (orig. usuario): NO espejan sus ramales — son la inversa de un bajante (los
     // alimentan, no los reciben); sus ramales mantienen UDs propias asignables.
     if (baj.tipo === 'montante') continue;
@@ -153,6 +190,8 @@ export function correrEspejos(a: EspejosArgs): void {
     const bajantePorId = new Map((eng.bajantes ?? []).map((b) => [b.id, b] as const));
     for (const baj of eng.bajantes) {
       if (baj.net !== propNet) continue;
+      // Proyección de otro piso: no es titular del enlace (ver `esDeEstePiso`).
+      if (!esDeEstePiso(baj)) continue;
       const links: { ldPlan: string; lowerBajId: string; upperBajId: string }[] = [];
       if (baj.descargaEnId?.includes('|')) {
         const [q, qBaj] = baj.descargaEnId.split('|');
@@ -195,6 +234,7 @@ export function correrEspejos(a: EspejosArgs): void {
         const tgt = loadFromStorage<{
           bajantes?: Array<{
             id: string;
+            pisoBase?: string;
             ucAcum?: number;
             dNominal?: string;
             recibeDeIds?: string[];
@@ -203,14 +243,22 @@ export function correrEspejos(a: EspejosArgs): void {
             ucAplicadoHidro?: Record<string, Record<string, number>>;
           }>;
         } | null>(TRAZOS_PREFIX + ldPlanId, null);
-        const tBaj = tgt?.bajantes?.find((x) => x.id === lowerBajId);
+        // El libro y los ramales destino son los del bajante DUEÑO de ese piso: con una
+        // proyección primero, el `find` plano escribía el libro en la copia equivocada y el
+        // real quedaba sin herencia → el pase siguiente la contaba como propia y la sumaba.
+        const tgtNivel = planPorId.get(ldPlanId)?.nivel;
+        const tgtLbl =
+          typeof tgtNivel === 'number' && Number.isFinite(tgtNivel) ? pisoLbl(tgtNivel) : '';
+        const tBaj = bajanteDePisoEn(tgt?.bajantes, lowerBajId, tgtLbl);
         const tgtRamalIds = [...(tBaj?.recibeDeIds || []), ...(tBaj?.alimentaIds || [])];
         const ownKey = `${propNet}_${lowerBajId}_${ldPlanId}`;
         const own = disk[ownKey] || {};
-        const aplicadoPrev = tBaj?.ucAplicado || {};
         const aplicadoHidroPrev = tBaj?.ucAplicadoHidro || {};
         let tgtChanged = false;
         if (tBaj && adoptarDiametroDelSuperior(tBaj, baj)) tgtChanged = true;
+        const snapKey = `${ldPlanId}|${lowerBajId}`;
+        const snapBaj = propioSnap[snapKey] || { uc: {}, hidro: {} };
+        propioSnap[snapKey] = snapBaj;
         const ucAplicadoNuevo: Record<string, Record<string, number>> = {};
         const ucAplicadoHidroNuevo: Record<string, Record<string, number>> = {};
         for (const rid of tgtRamalIds) {
@@ -221,36 +269,44 @@ export function correrEspejos(a: EspejosArgs): void {
           // propio + heredado).
           const extra =
             esAlimenta && !esRedAparatosPresion(propNet) ? { ...liveAgg, ...own } : liveAgg;
+          // FOTO de lo propio de la clave: el disco ya no recibe herencia, así que lo que
+          // hay aquí ES lo propio del ramal. La desasociación la usa de SUELO al restar el
+          // libro — sin ella, restar el grupo completo de un libro rancio borraba las
+          // asignaciones manuales del usuario (cur=0).
           const cur = disk[tk] || {};
-          const prevAp = aplicadoPrev[tk] || {};
-          const result: Record<string, number> = {};
-          const keys = new Set([...Object.keys(cur), ...Object.keys(extra)]);
-          for (const k of keys) {
-            const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
-            if (nv > 0) result[k] = nv;
+          if (stableStringify(snapBaj.uc[tk] || {}) !== stableStringify(cur)) {
+            snapBaj.uc[tk] = { ...cur };
+            snapDirty = true;
           }
-          // PRESIÓN (af/ac/gas): la carga heredada viaja SOLO por el libro del montante (el
-          // propagador la entrega aguas abajo con el upMonte) — escribirla TAMBIÉN en el
-          // disco del ramal la duplicaba (misma regla del apply: 4 piezas × 3 UC = 12 UC).
-          if (!esRedAparatosPresion(propNet) && syncMirrorKey(disk, tk, result, true))
-            tgtChanged = true;
+          // La herencia viaja SOLO por el libro del bajante destino (y la clave del Ldesvio,
+          // espejada abajo) — NUNCA al disco de cada ramal. Escribirla ahí la mezclaba con
+          // lo propio del ramal (RL1 con lavamanos propio sumaba ×2) y, con la entrada del
+          // libro perdida/rancia, el delta la re-sumaba en cada pase (orig. usuario: +1
+          // lavamanos/inodoro/ducha por cambio de piso). El panel del asociado lee el
+          // libro; la rejilla del ramal muestra SOLO lo propio (recepción bloqueada).
           ucAplicadoNuevo[tk] = { ...extra };
           if (liveHydro) {
             const prevH = aplicadoHidroPrev[tk] || {};
             const hcur = hdisk[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-            const acc: Record<string, number> = {};
-            for (const k of new Set([
-              ...Object.keys(hcur.accesorios || {}),
-              ...Object.keys(liveHydro),
-            ])) {
-              const nv =
-                Math.max(0, ((hcur.accesorios || {})[k] || 0) - (prevH[k] || 0)) +
-                (liveHydro[k] || 0);
-              if (nv > 0) acc[k] = nv;
-            }
-            if (JSON.stringify(hcur.accesorios || {}) !== JSON.stringify(acc)) {
-              hdisk[tk] = { ...hcur, accesorios: acc };
-              hdirty = true;
+            const tieneEntradaH = Object.prototype.hasOwnProperty.call(aplicadoHidroPrev, tk);
+            const propioH = propioDeClave(
+              hcur.accesorios || {},
+              prevH,
+              snapBaj.hidro[tk],
+              tieneEntradaH,
+            );
+            const acc: Record<string, number> = { ...propioH };
+            for (const [k, v] of Object.entries(liveHydro)) acc[k] = (acc[k] || 0) + Number(v || 0);
+            for (const k of Object.keys(acc)) if (!(acc[k] > 0)) delete acc[k];
+            if (tBaj) {
+              if (stableStringify(hcur.accesorios || {}) !== stableStringify(acc)) {
+                hdisk[tk] = { ...hcur, accesorios: acc };
+                hdirty = true;
+              }
+              if (stableStringify(snapBaj.hidro[tk] || {}) !== stableStringify(propioH)) {
+                snapBaj.hidro[tk] = { ...propioH };
+                snapDirty = true;
+              }
             }
             ucAplicadoHidroNuevo[tk] = { ...liveHydro };
           }
@@ -300,12 +356,26 @@ export function correrEspejos(a: EspejosArgs): void {
           // del doc SIEMPRE vienen del disco al momento de guardar.
           const tgtFresco = loadFromStorage<typeof tgt>(TRAZOS_PREFIX + ldPlanId, null);
           if (tgtFresco) {
-            const baj = tgtFresco.bajantes?.find((x) => x.id === lowerBajId);
+            const baj = bajanteDePisoEn(tgtFresco.bajantes, lowerBajId, tgtLbl);
             if (baj) {
               baj.ucAplicado = { ...ucAplicadoNuevo };
               if (liveHydro || Object.keys(ucAplicadoHidroNuevo).length)
                 baj.ucAplicadoHidro = { ...ucAplicadoHidroNuevo };
               baj.ucAcum = totalUc;
+              // Enlace DENTRO del mismo piso cargado (empate de nivel): el autosave serializa
+              // el MOTOR, así que el libro tiene que quedar también en su objeto vivo — si no,
+              // el guardado siguiente restaura el libro viejo y el pase vuelve a sumar el
+              // grupo (crecimiento por cambio de piso). Para el piso vecino no se toca nada:
+              // su motor no está cargado y el doc es la verdad.
+              if (ldPlanId === loadedPid) {
+                const vivoTgt = bajanteLocalQueCumple(eng, (b) => b.id === lowerBajId);
+                if (vivoTgt) {
+                  vivoTgt.ucAplicado = { ...ucAplicadoNuevo };
+                  if (liveHydro || Object.keys(ucAplicadoHidroNuevo).length)
+                    vivoTgt.ucAplicadoHidro = { ...ucAplicadoHidroNuevo };
+                  vivoTgt.ucAcum = totalUc;
+                }
+              }
               (tgtFresco as { ts?: number }).ts = Date.now();
               saveToStorage(TRAZOS_PREFIX + ldPlanId, tgtFresco);
               saveTrazosToDB(ldPlanId, tgtFresco);
@@ -316,76 +386,19 @@ export function correrEspejos(a: EspejosArgs): void {
       }
     }
   }
-  // PARIDAD CON BAJANTES (orig. usuario: "literal replicar la lógica de los bajantes"):
-  // montante de presión del piso INFERIOR con origenId. El bloque de arriba solo re-computa
-  // el libro con el piso SUPERIOR cargado — trabajando en el piso de abajo (donde el usuario
-  // pasa el rato), un libro rancio de una doctrina vieja JAMÁS se refrescaba y el panel
-  // seguía mostrándolo. Se re-computa el grupo leyendo el storage del piso de arriba (sin
-  // escribir NADA hacia arriba — el trinquete) y se actualiza SOLO el montante del MOTOR:
-  // el autosave lo persiste (reescribir el doc del piso cargado aquí era el wipe de los
-  // checkboxes de asociación). El libro lleva el grupo PURO (regla presión del apply).
-  for (const baj of eng.bajantes as Array<{
-    id: string;
-    net: string;
-    tipo?: string;
-    dNominal?: string;
-    origenId?: string | null;
-    recibeDeIds?: string[];
-    alimentaIds?: string[];
-    ucAplicado?: Record<string, Record<string, number>>;
-    ucAcum?: number;
-  }>) {
-    if (baj.tipo !== 'montante' || !baj.origenId?.includes('|')) continue;
-    if (!esRedAparatosPresion(baj.net)) continue;
-    const [upPlan, upBajId] = baj.origenId.split('|');
-    const nUp = upPlan ? nptOf(upPlan) : null;
-    if (!upPlan || !upBajId || loadedNpt == null || nUp == null || loadedNpt >= nUp) continue;
-    try {
-      const srcRaw = loadFromStorage<{
-        bajantes?: InheritPoolBajante[];
-        ramales?: InheritPoolRamal[];
-      } | null>(TRAZOS_PREFIX + upPlan, null);
-      const storedBaj = srcRaw?.bajantes?.find((x) => x.id === upBajId) ?? null;
-      if (adoptarDiametroDelSuperior(baj, storedBaj)) dirty = true;
-      const { agg } = collectSourceAgg({
-        net: baj.net,
-        planId: upPlan,
-        bajId: upBajId,
-        liveBaj: null,
-        liveRamales: null,
-        storedBaj,
-        storedRamales: srcRaw?.ramales ?? null,
-        counts: disk,
-        hidro: hdisk as unknown as Record<string, { accesorios?: Record<string, number> }>,
-      });
-      // Grupo vacío con el storage del superior PRESENTE = verdad (la fuente no tiene
-      // carga): el libro del asociado se limpia TAMBIÉN — sin esto, un libro rancio de una
-      // era vieja en el piso de abajo sobrevivía para siempre (el guard antiguo solo
-      // protegía el caso "storage ausente", no el "storage dice cero").
-      if (Object.keys(agg).length === 0) {
-        if (srcRaw && baj.ucAplicado && Object.keys(baj.ucAplicado).length) {
-          baj.ucAplicado = {};
-          baj.ucAcum = 0;
-          dirty = true;
-        }
-        continue;
-      }
-      const lk = `${baj.net}_${ldesvioIdFor(upBajId)}_${loadedPid}`;
-      if (syncMirrorKey(disk, lk, agg, true)) dirty = true;
-      const libroNuevo: Record<string, Record<string, number>> = {};
-      for (const rid of [...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]) {
-        libroNuevo[`${baj.net}_${rid}_${loadedPid}`] = { ...agg };
-      }
-      libroNuevo[lk] = { ...agg };
-      if (JSON.stringify(baj.ucAplicado || {}) !== JSON.stringify(libroNuevo)) {
-        baj.ucAplicado = libroNuevo;
-        baj.ucAcum = Object.values(agg).reduce((s, v) => s + (v as number), 0);
-        dirty = true;
-      }
-    } catch {
-      /* best-effort: el próximo ciclo reintenta */
-    }
-  }
+  // PARIDAD CON BAJANTES (orig. usuario): el montante ASOCIADO del piso abierto re-computa su
+  // libro leyendo el storage del piso de arriba (detalle y doctrina en el helper).
+  if (
+    refreshMontanteBooksFromUpper({
+      bajantes: eng.bajantes as unknown as MontanteLinkLike[],
+      loadedPid,
+      loadedNpt,
+      nptOf,
+      disk,
+      hdisk,
+    })
+  )
+    dirty = true;
   if (dirty) {
     saveAll(disk);
     setCounts(disk);
@@ -404,6 +417,9 @@ export function correrEspejos(a: EspejosArgs): void {
     saveHidroData(hdisk);
     setHidroData(hdisk);
   }
+  // La foto de lo propio se guarda aunque no haya nada que re-renderizar: es la memoria que
+  // impide que un doc atrasado haga crecer los conteos en el próximo pase.
+  if (snapDirty) savePropioSnap(propioSnap);
 }
 
 /** Grupo de efectos de espejos del panel (se disparan con los mismos datos que los efectos originales). */

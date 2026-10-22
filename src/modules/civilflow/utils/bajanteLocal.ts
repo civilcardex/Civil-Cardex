@@ -51,6 +51,31 @@ export function bajanteLocalDe<T extends { id: string; pisoBase?: string }>(
 }
 
 /**
+ * Bajante de una LISTA (documento guardado) por id, prefiriendo la copia del piso dueño.
+ *
+ * Por qué: los documentos también arrastran la PROYECCIÓN de otro piso con el MISMO id y un
+ * `ucAplicado` viejo. Un `find()` plano sobre el doc escribía/leía la herencia en la
+ * proyección y el bajante real quedaba sin libro — el pase siguiente contaba lo heredado
+ * como propio y lo volvía a sumar. Ej. doc del Piso 1 con BAN1 real + proyección del Piso 2
+ * → se elige el de `pisoBase 'Piso 1'`.
+ *
+ * @param bajantes lista del documento.
+ * @param id id a buscar (único solo por piso).
+ * @param pisoLabel etiqueta del piso dueño (`pisoLbl(nivel)`); vacía = sin preferencia.
+ * @returns la copia del piso dueño; si no hay, la primera con ese id.
+ */
+export function bajanteDePisoEn<T extends { id: string; pisoBase?: string }>(
+  bajantes: readonly T[] | null | undefined,
+  id: string,
+  pisoLabel: string | null | undefined,
+): T | undefined {
+  const copias = (bajantes ?? []).filter((b) => b.id === id);
+  if (copias.length === 0) return undefined;
+  if (!pisoLabel) return copias[0];
+  return copias.find((b) => (b.pisoBase ?? '') === pisoLabel) ?? copias[0];
+}
+
+/**
  * Clave de identidad de un bajante: el id SOLO es único dentro de un piso.
  *
  * Por qué: `dedupPorId` (guardado) conservaba la última copia y, con la proyección de otro

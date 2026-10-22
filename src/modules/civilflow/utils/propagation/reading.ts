@@ -3,6 +3,7 @@ import { despacharStorage } from './books';
 import { TRAZOS_PREFIX, BAJADAS_RECEPTORAS_KEY } from '../../constants/storage-keys.ts';
 import {
   cntVacio,
+  mezclarMax,
   sumaCnt,
   type Cnt,
   type RawBaj,
@@ -137,9 +138,8 @@ export function calcularCargaBajantes(
     // que muestra el panel.
     const propio: Cnt = { ...(disk[`${net}_${b.id}_${b.pid}`] || {}) };
     if (cntVacio(propio)) Object.assign(propio, disk[`${net}_${b.id}_P`] || {});
-    const libro: Cnt = {};
-    for (const m of Object.values(b.ucAplicado || {}))
-      for (const [k, v] of Object.entries(m)) libro[k] = Math.max(libro[k] || 0, Number(v) || 0);
+    let libro: Cnt = {};
+    for (const m of Object.values(b.ucAplicado || {})) libro = mezclarMax(libro, m);
     const c = sumaCnt(propio, libro);
     cargaBaj.set(`${b.id}|${b.pid}`, cntVacio(c) ? {} : c);
   }

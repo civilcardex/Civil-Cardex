@@ -1,5 +1,5 @@
 import { clearBajanteAssociation } from './bajanteAssociationClear.ts';
-import { bajanteLocalDe as bajanteLocalCompartido } from './bajanteLocal.ts';
+import { bajanteDePisoEn, bajanteLocalDe as bajanteLocalCompartido } from './bajanteLocal.ts';
 import { splitPtr } from './keys.ts';
 import { esRedAparatosPresion, propagarAparatosPresion } from './propagation';
 // Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
@@ -25,11 +25,7 @@ import { aFrameDe } from './crossFloorStorage.ts';
 import { markAssocLayout } from './assocLayoutMigration.ts';
 import { direccionSegura } from '../lib/PlanoEngine/directionRules.ts';
 import { devError } from '../../../utils/devError.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService.ts';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
@@ -44,11 +40,7 @@ import {
   registrarLdesvioComoAsociado,
   GEO_TOL_BAJANTE,
 } from './bajanteAssocShared.ts';
-import type {
-  AssocEndpoint,
-  InheritPoolRamal,
-  InheritPoolBajante,
-} from './bajanteAssocShared.ts';
+import type { AssocEndpoint, InheritPoolRamal, InheritPoolBajante } from './bajanteAssocShared.ts';
 import { emitAparatosClear, emitSanSync, EV_STORAGE } from './fixtureEvents.ts';
 
 /** Estampa la carga heredada en el fantasma (XFG) del enlace: el marcador guarda y muestra
@@ -367,7 +359,7 @@ export function applyBajanteAssociation(
       liveBaj: loadedPlanId === source.planId ? (bajanteLocalDe(eng, source.id) ?? null) : null,
       liveRamales:
         loadedPlanId === source.planId ? (eng.ramales as unknown as InheritPoolRamal[]) : null,
-      storedBaj: srcRaw?.bajantes?.find((b) => b.id === source.id) ?? null,
+      storedBaj: bajanteDePisoEn(srcRaw?.bajantes, source.id, pisoLbl(source.nivelN)) ?? null,
       storedRamales: srcRaw?.ramales ?? null,
       counts: apos,
       hidro: hydro,
@@ -415,7 +407,7 @@ export function applyBajanteAssociation(
         }[];
         ramales?: { id: string; net: string }[];
       } | null>(TRAZOS_PREFIX + target.planId, null);
-      const tgtBaj = tgtRaw?.bajantes?.find((b) => b.id === target.id);
+      const tgtBaj = bajanteDePisoEn(tgtRaw?.bajantes, target.id, pisoLbl(target.nivelN));
       // Mismo criterio vivo-sobre-storage para el bajante destino.
       const liveTgtBaj =
         loadedPlanId === target.planId ? bajanteLocalDe(eng, target.id) : undefined;
@@ -465,18 +457,23 @@ export function applyBajanteAssociation(
         const extra = esAlimenta && !esRedAparatosPresion(target.net) ? { ...agg, ...own } : agg;
         const prevAp = prevBook[tk] || {};
         const cur = apos[tk] || {};
+        // Delta UNA SOLA VEZ (acción del usuario): reemplaza la herencia previa por la nueva
+        // conservando lo propio — y en el caso ALINEADOS sin Ldesvio este disco es el ÚNICO
+        // camino de la herencia. Auto-consistente: el libro previo se lee del MISMO doc que
+        // se está por escribir (a diferencia de los espejos, que re-lean un doc que otro
+        // writer pudo mover — ahí la herencia va SOLO por libro + Ldesvio; el delta repetido
+        // re-sumaba en cada pase: +1 aparato por cambio de piso, orig. usuario).
         const result: Record<string, number> = {};
         for (const k of new Set([...Object.keys(cur), ...Object.keys(extra)])) {
           const nv = Math.max(0, (cur[k] || 0) - (prevAp[k] || 0)) + (extra[k] || 0);
           if (nv > 0) result[k] = nv;
         }
-        // PRESIÓN (af/ac/gas): la carga heredada viaja por UN SOLO camino — el Ldesvio (el
-        // carrier) → el montante de destino (su libro) → los ramales que él alimenta (el
-        // propagador se los entrega con el upMonte). Escribirla además en el disco de cada
-        // ramal del destino la multiplicaba (Ldesvio + N ramales = la misma carga repetida:
-        // 4 piezas x 3 UC = 12 UC en vez de 3 — orig. usuario). La book's delta se sigue
-        // registering igual (para que la desasociación reste lo que se aplicó).
-        if (!esRedAparatosPresion(target.net)) {
+        // Con LDesvio (!aligned) la herencia viaja SOLO por el libro + la clave del LD:
+        // escribirla además en cada ramal la mezclaba con lo propio y los espejos la
+        // re-sumaban en cada pase (+1 lavamanos/inodoro/ducha por cambio de piso — orig.
+        // usuario). ALINEADOS (sin LD) este disco es el ÚNICO camino de la herencia y el
+        // delta queda (el apply es una acción única y lee el libro del mismo doc que escribe).
+        if (aligned) {
           if (JSON.stringify(cur) !== JSON.stringify(result)) {
             if (Object.keys(result).length) apos[tk] = result;
             else delete apos[tk];
@@ -547,7 +544,7 @@ export function applyBajanteAssociation(
             ucAplicadoHidro?: Record<string, Record<string, number>>;
           }>;
         } | null>(TRAZOS_PREFIX + target.planId, null);
-        const tb = tgtSave?.bajantes?.find((x) => x.id === target.id);
+        const tb = bajanteDePisoEn(tgtSave?.bajantes, target.id, pisoLbl(target.nivelN));
         if (tb) {
           tb.ucAplicado = ucAplicado;
           if (Object.keys(ucAplicadoHidro).length) tb.ucAplicadoHidro = ucAplicadoHidro;

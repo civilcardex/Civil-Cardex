@@ -63,6 +63,14 @@ export const sumaCnt = (a: Cnt, b: Cnt): Cnt => {
   return out;
 };
 
+/** Mezcla dos conteos con MÁXIMO por aparato (no suma): la herencia deja la MISMA carga en
+ *  cada clave que la recibió y sumarlas la contaba N veces. Ej: {lav:2} + {lav:1,ino:1} → {lav:2,ino:1}. */
+export const mezclarMax = (a: Cnt, b: Cnt): Cnt => {
+  const out: Cnt = { ...a };
+  for (const k of Object.keys(b)) out[k] = Math.max(out[k] || 0, Number(b[k]) || 0);
+  return out;
+};
+
 export const cntVacio = (c: Cnt): boolean => Object.values(c).every((v) => !v);
 
 /** Quita del mapa los aparatos que quedaron en 0 (al restar el libro previo sobran ceros). */

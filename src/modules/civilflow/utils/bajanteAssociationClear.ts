@@ -1,6 +1,7 @@
 ﻿import { writeBajantePropToDrawing } from './writeDiameterToDrawing.ts';
 import { splitPtr } from './keys.ts';
-import { bajanteLocalDe, bajanteLocalQueCumple } from './bajanteLocal.ts';
+import { bajanteDePisoEn, bajanteLocalDe, bajanteLocalQueCumple } from './bajanteLocal.ts';
+import { pisoLbl } from '../constants';
 import { aplicarEnDocDePlan } from './writePlanDoc.ts';
 import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync.ts';
 import type { SyncPlanInput } from './drawingSync.ts';
@@ -10,11 +11,8 @@ import {
   removeCrossFloorLdesvioRamal,
   ldesvioIdFor,
 } from './associateBajanteAcrossFloors';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService.ts';
+import { APARATOS_PROPIO_KEY } from '../constants/storage-keys.ts';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
@@ -67,6 +65,12 @@ export function clearBajanteAssociation(
   if (!targetPlanId || !targetBajanteId) return;
   const loadedPlanId = String(eng._loadedPlanId ?? '');
   const reverseValue = `${sourcePlanId}|${sourceBajanteId}`;
+  // Etiqueta del piso dueño de un doc: los docs arrastran la PROYECCIÓN del piso vecino con el
+  // MISMO id de bajante; leer/escribir su libro por `find` plano tocaba la copia equivocada.
+  const lblDePlan = (pid: string): string => {
+    const n = plans.find((p) => String(p.id) === String(pid))?.nivel;
+    return n != null && Number.isFinite(Number(n)) ? pisoLbl(Number(n)) : '';
+  };
 
   // LD/ghost/anillo de ESTE enlace y nada más: el LD es LD_<upperId> en el piso inferior
   // (nuevo) o en el superior (legado sin migrar — mismo id, otro piso).
@@ -308,7 +312,7 @@ export function clearBajanteAssociation(
         ucAplicadoHidro?: Record<string, Record<string, number>>;
       }>;
     } | null>(TRAZOS_PREFIX + targetPlanId, null);
-    const tb = tgtTrazosSnap?.bajantes?.find((x) => x.id === targetBajanteId);
+    const tb = bajanteDePisoEn(tgtTrazosSnap?.bajantes, targetBajanteId, lblDePlan(targetPlanId));
     // El motor VIVO manda sobre el storage cuando el piso destino es el cargado: el autosave
     // puede llevar hasta 1.5 s de retraso y un libro recién escrito solo existe en memoria.
     const liveTb = loadedPlanId === targetPlanId ? bajanteLocalDe(eng, targetBajanteId) : undefined;
@@ -321,7 +325,9 @@ export function clearBajanteAssociation(
         ? liveTb.ucAplicadoHidro
         : tb?.ucAplicadoHidro;
     const snap = aplicado && Object.keys(aplicado).length ? aplicado : undefined;
-    // Libro hidro gemelo; sin él (dibujos viejos) se resta el libro de aparatos, como antes.
+    // Libro hidro gemelo; sin él (dibujos viejos) NO se resta nada del hidro — el fallback
+    // viejo de restar el libro de APARATOS sobre el mapa de ACCESORIOS era una resta de
+    // unidades mezcladas (lavamanos ≠ codos).
     const snapHidro =
       aplicadoHidro && Object.keys(aplicadoHidro).length ? aplicadoHidro : undefined;
     if (snap || snapHidro) {
@@ -332,22 +338,43 @@ export function clearBajanteAssociation(
       const hydro = loadFromStorage<
         Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
       >(HYDRO_DATA_STORAGE_KEY, {});
+      // SUELO de lo propio (foto `aparatos_propio_v1` del enlace): la resta de un libro
+      // rancio jamás debe bajar la clave por debajo de lo propio del usuario — con la
+      // doctrina libro-solo el disco del ramal YA no contiene herencia y restar el grupo
+      // completo lo borraba todo (orig. auditoría F-1: desasociar limpiaba {lav:1} manual).
+      // Sin foto (docs viejos / caso alineado antes del 1er pase) la resta es la de siempre.
+      const fotoTodo =
+        loadFromStorage<Record<
+          string,
+          {
+            uc?: Record<string, Record<string, number>>;
+            hidro?: Record<string, Record<string, number>>;
+          }
+        > | null>(APARATOS_PROPIO_KEY, {}) || {};
+      // La foto del espejo va indexada por `${planoDestino}|${bajanteDestino}` (mismo enlace).
+      const foto = fotoTodo[`${targetPlanId}|${targetBajanteId}`] || {};
+      const propioUc = foto.uc || {};
+      const propioHidro = foto.hidro || {};
       for (const [tk, applied] of Object.entries(snap || {})) {
         const cur = apos[tk];
         if (cur) {
+          const propio = propioUc[tk] || {};
           for (const [k, v] of Object.entries(applied)) {
-            const nv = Math.max(0, (cur[k] || 0) - (v as number));
+            const heredadoEnDisco = Math.max(0, (cur[k] || 0) - (propio[k] || 0));
+            const nv = (cur[k] || 0) - Math.min(v as number, heredadoEnDisco);
             if (nv > 0) cur[k] = nv;
             else delete cur[k];
           }
           if (Object.keys(cur).length === 0) delete apos[tk];
         }
       }
-      for (const [tk, applied] of Object.entries(snapHidro || snap || {})) {
+      for (const [tk, applied] of Object.entries(snapHidro || {})) {
         const h = hydro[tk];
         if (h?.accesorios) {
+          const propio = propioHidro[tk] || {};
           for (const [k, v] of Object.entries(applied)) {
-            const nv = Math.max(0, (h.accesorios[k] || 0) - (v as number));
+            const heredadoEnDisco = Math.max(0, (h.accesorios[k] || 0) - (propio[k] || 0));
+            const nv = (h.accesorios[k] || 0) - Math.min(v as number, heredadoEnDisco);
             if (nv > 0) h.accesorios[k] = nv;
             else delete h.accesorios[k];
           }
@@ -432,7 +459,8 @@ export function clearBajanteAssociation(
       } | null>(TRAZOS_PREFIX + sourcePlanId, null);
       const liveSrcBaj =
         loadedPlanId === sourcePlanId ? bajanteLocalDe(eng, sourceBajanteId) : undefined;
-      const srcBaj = liveSrcBaj ?? srcRaw?.bajantes?.find((b) => b.id === sourceBajanteId);
+      const srcBaj =
+        liveSrcBaj ?? bajanteDePisoEn(srcRaw?.bajantes, sourceBajanteId, lblDePlan(sourcePlanId));
       const byId = new Map((srcRaw?.ramales || []).map((r) => [r.id, r]));
       for (const rid of srcBaj?.recibeDeIds || []) {
         const sk = `${sourceNet}_${rid}_${sourcePlanId}`;
@@ -460,7 +488,7 @@ export function clearBajanteAssociation(
       bajantes?: (InheritPoolBajante & { x?: number; y?: number })[];
       ramales?: (InheritPoolRamal & { net: string })[];
     } | null>(TRAZOS_PREFIX + targetPlanId, null);
-    const tgtBaj = tgtRaw?.bajantes?.find((x) => x.id === targetBajanteId);
+    const tgtBaj = bajanteDePisoEn(tgtRaw?.bajantes, targetBajanteId, lblDePlan(targetPlanId));
     const liveTgtBaj =
       loadedPlanId === targetPlanId ? bajanteLocalDe(eng, targetBajanteId) : undefined;
     const effTgtBaj = liveTgtBaj ?? tgtBaj;

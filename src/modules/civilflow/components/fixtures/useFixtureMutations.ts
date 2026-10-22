@@ -40,6 +40,27 @@ export interface FixtureMutationCtx {
  *  (solo lectura, espejo, unión), permite un solo aparato y dibuja el glifo en el
  *  extremo libre. Escribe primero en disco para no perderlo si la página se recarga,
  *  y propaga el cambio por la red de af (Agua Fria)/ac (Agua Caliente). */
+/** Aplica un ajuste de conteo a una clave: disco-primero (persistencia síncrona antes del
+ *  snapshot — el useEffect que guarda es asíncrono y el redo restauraría geometría nueva con
+ *  conteos viejos) con fallback al estado React cuando no hay storage (tests). Una clave que
+ *  queda vacía se conserva como {} (lápida): el merge del loader la distingue de "nunca tuvo"
+ *  y no resucita los aparatos desde la BD.
+ *  Ej: mutarConteo(clave, setCounts, (cur) => ({ ...cur, lav: (cur.lav || 0) + 1 })). */
+function mutarConteo(
+  storageKey: string,
+  setCounts: Dispatch<SetStateAction<CountsMap>>,
+  ajusta: (cur: Record<string, number>) => Record<string, number>,
+): void {
+  try {
+    const disk = loadAll();
+    const nextDisk = { ...disk, [storageKey]: ajusta({ ...(disk[storageKey] || {}) }) };
+    saveAll(nextDisk);
+    setCounts(nextDisk);
+  } catch {
+    setCounts((prev) => ({ ...prev, [storageKey]: ajusta({ ...(prev[storageKey] || {}) }) }));
+  }
+}
+
 export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
   const {
     storageKey,
@@ -256,19 +277,7 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
     // Ítem 1: persistencia síncrona a disco ANTES del snapshot final — el useEffect que
     // guarda es asíncrono y el snapshot debe incluir los conteos nuevos (si no, redo
     // restauraría geometría nueva con conteos viejos). Disco-primero evita stale closures.
-    try {
-      const disk = loadAll();
-      const curD = { ...(disk[storageKey] || {}) };
-      const nextDisk = { ...disk, [storageKey]: { ...curD, [apId]: (curD[apId] || 0) + 1 } };
-      saveAll(nextDisk);
-      setCounts(nextDisk);
-    } catch (_e) {
-      void _e;
-      setCounts((prev) => {
-        const cur = prev[storageKey] || {};
-        return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
-      });
-    }
+    mutarConteo(storageKey, setCounts, (curD) => ({ ...curD, [apId]: (curD[apId] || 0) + 1 }));
   } finally {
     if (eng) eng.resumeHistory();
   }
@@ -387,30 +396,13 @@ export function mutarDec(ctx: FixtureMutationCtx, apId: string): void {
         }
       }
     }
-    // Ítem 1: disco-primero (ver inc) + un snapshot final con todo persistido.
-    try {
-      const disk = loadAll();
-      const curD = { ...(disk[storageKey] || {}) };
+    // Ítem 1: disco-primero (ver mutarConteo) + un snapshot final con todo persistido.
+    mutarConteo(storageKey, setCounts, (curD) => {
       const v = (curD[apId] || 0) - 1;
       if (v <= 0) delete curD[apId];
       else curD[apId] = v;
-      const nextDisk = { ...disk };
-      if (Object.keys(curD).length === 0) delete nextDisk[storageKey];
-      else nextDisk[storageKey] = curD;
-      saveAll(nextDisk);
-      setCounts(nextDisk);
-    } catch (_e) {
-      void _e;
-      setCounts((prev) => {
-        const cur = { ...(prev[storageKey] || {}) };
-        const v = (cur[apId] || 0) - 1;
-        if (v <= 0) delete cur[apId];
-        else cur[apId] = v;
-        const next = { ...prev, [storageKey]: cur };
-        if (Object.keys(cur).length === 0) delete next[storageKey];
-        return next;
-      });
-    }
+      return curD; // vacío = lápida {} (ver mutarConteo)
+    });
   } finally {
     if (engDec) engDec.resumeHistory();
   }

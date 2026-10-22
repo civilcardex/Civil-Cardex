@@ -194,7 +194,7 @@ describe('mutarInc / mutarDec (pines movimiento 3, motor real)', () => {
     expect(raf1.aparatoFin).toBe('inodoro');
   });
 
-  it('dec PROPIO a cero: limpia aparatoFin + fixtures=undefined + borra la clave', () => {
+  it('dec PROPIO a cero: limpia aparatoFin + fixtures=undefined + deja LAPIDA {} en la clave', () => {
     seedClave('inodoro', 1); // disco: carga propia (esPropio lee el disco)
     const raf1: Ramal = {
       id: 'RAF1',
@@ -211,7 +211,9 @@ describe('mutarInc / mutarDec (pines movimiento 3, motor real)', () => {
     mutarDec(ctxDe(engine, { counts: { [KEY]: { inodoro: 1 } } }), 'inodoro');
     expect(raf1.aparatoFin).toBeNull();
     expect(raf1.fixtures).toBeUndefined();
-    expect(loadAll()[KEY]).toBeUndefined();
+    // LAPIDA (orig. usuario: "sigue reescribiendose"): la clave queda en {} a proposito para
+    // que el merge con la BD distinga "se vacio" de "nunca tuvo" y no resucite los aparatos.
+    expect(loadAll()[KEY]).toEqual({});
   });
 
   it('límite 1 aparato por ramal (ownTotal>=1): alerta y sin segundo conteo', () => {

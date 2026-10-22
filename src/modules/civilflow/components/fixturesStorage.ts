@@ -1,9 +1,11 @@
 import { NETS } from '../lib/PlanoEngine/PlanoState.ts';
 import { APARATOS_DEF, UD_BASE_INIT, AF_UC_IDS, AC_UC_IDS } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
+import { bajanteLocalDe } from '../utils/bajanteLocal.ts';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
+  APARATOS_PROPIO_KEY,
   HYDRO_DATA_STORAGE_KEY,
 } from '../constants/storage-keys.ts';
 
@@ -116,6 +118,8 @@ interface BajanteLikeSalida {
   net: string;
   x: number;
   y: number;
+  /** Piso dueño del bajante (las proyecciones de entrepiso traen el ajeno). */
+  pisoBase?: string;
   _circ?: { r?: number };
   recibeDeIds?: string[];
   alimentaIds?: string[];
@@ -127,6 +131,7 @@ interface RamalLikeSalida {
   pts?: number[][];
   _tribReversed?: boolean;
   ini?: string;
+  fin?: string;
 }
 
 /** JSON con claves ordenadas (comparar mapas sin falsos positivos por orden de inserción).
@@ -145,9 +150,48 @@ export function stableStringify(m: unknown): string {
 export function libroHeredado(baj: {
   ucAplicado?: Record<string, Record<string, number>>;
 }): Record<string, number> {
+  let out: Record<string, number> = {};
+  for (const m of Object.values(baj.ucAplicado || {})) out = mezclarMax(out, m);
+  return out;
+}
+
+/** Foto de lo PROPIO de cada clave espejo de un bajante entre pisos (sin la herencia). */
+export interface PropioBajanteSnap {
+  uc: Record<string, Record<string, number>>;
+  hidro: Record<string, Record<string, number>>;
+}
+/** `${planId}|${bajId}` → foto de sus claves espejo. */
+export type PropioSnapMap = Record<string, PropioBajanteSnap>;
+
+/** Foto persistida de lo propio de los espejos entre pisos (ver APARATOS_PROPIO_KEY). */
+export function loadPropioSnap(): PropioSnapMap {
+  return loadFromStorage<PropioSnapMap>(APARATOS_PROPIO_KEY, {}) || {};
+}
+
+export function savePropioSnap(map: PropioSnapMap): void {
+  saveToStorage(APARATOS_PROPIO_KEY, map);
+}
+
+/** Lo PROPIO de una clave espejo = disco menos lo que el libro dice haber heredado.
+ *  Si el libro no tiene entrada para esa clave (doc viejo, escritura perdida), manda la foto
+ *  guardada: tomar el disco entero volvería a sumar la herencia en cada pase y el conteo
+ *  crecería sin techo al cambiar de piso. Ej: cur {lav:3} con libro {lav:2} → propio {lav:1}.
+ *  @param cur - conteos actuales de la clave.
+ *  @param libroPrev - lo que la herencia anterior escribió en esa clave.
+ *  @param foto - foto de lo propio guardada en el pase anterior.
+ *  @param tieneEntradaLibro - ¿el libro trae una entrada (aunque sea vacía) para la clave? */
+export function propioDeClave(
+  cur: Record<string, number> | undefined,
+  libroPrev: Record<string, number> | undefined,
+  foto: Record<string, number> | undefined,
+  tieneEntradaLibro: boolean,
+): Record<string, number> {
+  if (!tieneEntradaLibro && foto) return { ...foto };
   const out: Record<string, number> = {};
-  for (const m of Object.values(baj.ucAplicado || {}))
-    for (const [k, v] of Object.entries(m)) out[k] = Math.max(out[k] || 0, Number(v) || 0);
+  for (const k of new Set([...Object.keys(cur || {}), ...Object.keys(libroPrev || {})])) {
+    const v = Math.max(0, ((cur || {})[k] || 0) - ((libroPrev || {})[k] || 0));
+    if (v > 0) out[k] = v;
+  }
   return out;
 }
 
@@ -173,16 +217,40 @@ export function idsSalidasDeBajante(
   const code = baj.code || baj.id;
   for (const r of ramales) {
     if (r.tipo === 'tributario' || (r.net ?? '') !== baj.net) continue;
-    // Referencia explícita: nace en este elemento — salida sin ambigüedad geométrica.
-    if ((baj.alimentaIds || []).includes(r.id) || (r.ini && r.ini === code)) {
+    // Geometría cola/cabeza (con _tribReversed): la usa el veto entrante de abajo. Un ramal sin
+    // puntos (mock viejo, doc a medio hidratar) NO se descarta: la referencia explícita
+    // (fin/ini/alimentaIds) decide sola.
+    const pts = r.pts && r.pts.length >= 2 ? r.pts : null;
+    const t = pts ? (r._tribReversed ? pts[pts.length - 1] : pts[0]) : null;
+    const h = pts ? (r._tribReversed ? pts[0] : pts[pts.length - 1]) : null;
+    const tailAt = !!t && Math.hypot(t[0] - baj.x, t[1] - baj.y) < tol;
+    const headAt = !!h && Math.hypot(h[0] - baj.x, h[1] - baj.y) < tol;
+    // ENTRANTE (precedencia 3b, igual que la entrega de montantes) — gana a cualquier lista:
+    // (a) su FIN es el código del elemento; (b) su CABEZA descarga sobre él y la cola está
+    // lejos. Sin el veto geométrico, un ramal en un `alimentaIds` rancio (era de roles
+    // invertidos) seguía siendo "salida" aunque terminara en el bajante, y el espejo
+    // re-fusionaba el agregado del elemento (que camina recibeDeIds e incluye la clave del
+    // entrante) en su propia clave: crecía/reescría en cada pase de espejos (orig. usuario
+    // RS2-P2 → BAN1-P2: la BD recargaba el valor y el Ldesvio del piso de abajo arrastraba
+    // el mismo grupo).
+    if (r.fin && r.fin === code) continue;
+    // Nace aquí (dibujado desde el elemento): la evidencia más fuerte de salida.
+    if (r.ini && r.ini === code) {
       out.add(r.id);
       continue;
     }
-    if (!r.pts || r.pts.length < 2) continue;
-    const t = r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
-    const h = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
-    const tailAt = Math.hypot(t[0] - baj.x, t[1] - baj.y) < tol;
-    const headAt = Math.hypot(h[0] - baj.x, h[1] - baj.y) < tol;
+    // Listado como receptor sin nacer aquí: entrante también (el checkbox de asociación) —
+    // gana sobre un `alimentaIds` rancio de la misma era.
+    // (b) CABEZA sobre el elemento y cola lejos: entrante geometrico. Va DESPUES del `ini`
+    // porque `_tribReversed` invierte cola/cabeza en los ramales que nacen aqui.
+    if (headAt && !tailAt) continue;
+    if ((baj.recibeDeIds || []).includes(r.id)) continue;
+    if ((baj.alimentaIds || []).includes(r.id)) {
+      out.add(r.id);
+      continue;
+    }
+    // Sin geometría útil no queda más evidencia que la referencia (ya resuelta arriba).
+    if (!t || !h) continue;
     if (tailAt && !headAt) {
       out.add(r.id);
       continue;
@@ -200,12 +268,19 @@ export function idsSalidasDeBajante(
 }
 
 /** Ramales que SALEN de un bajante (por id): delega en idsSalidasDeBajante con el zoom del
- *  motor. Casa natural del helper que el panel envolvía en useCallback solo por engineRef. */
+ *  motor. Casa natural del helper que el panel envolvía en useCallback solo por engineRef.
+ *  Resuelve el bajante del PISO ABIERTO: con una proyección de otro piso primero, el `find`
+ *  plano devolvía sus listas y el espejo escribía claves que no son de este piso. */
 export function salidasDeBajante(
-  eng: { bajantes: BajanteLikeSalida[]; ramales: RamalLikeSalida[]; zoom: number } | null,
+  eng: {
+    bajantes: BajanteLikeSalida[];
+    ramales: RamalLikeSalida[];
+    zoom: number;
+    nivelActual?: { label?: string } | null;
+  } | null,
   bajId: string,
 ): Set<string> {
-  const baj = eng?.bajantes.find((b) => b.id === bajId);
+  const baj = bajanteLocalDe(eng, bajId);
   if (!eng || !baj) return new Set<string>();
   return idsSalidasDeBajante(baj, eng.ramales, eng.zoom || 1);
 }
@@ -229,7 +304,7 @@ export function syncMirrorKey(
   return true;
 }
 
-import { leerHeredadosPresion } from '../utils/propagation';
+import { leerHeredadosPresion, mezclarMax } from '../utils/propagation';
 
 /** Accesorios hidráulicos (codos, tees) guardados del tramo; entrada vacía si no tiene. */
 export function hidroDeClave(hidroData: HidroDataMap, storageKey: string | null): HidroDataEntry {
