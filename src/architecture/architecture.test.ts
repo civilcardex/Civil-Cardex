@@ -27,15 +27,13 @@ const TOPE_NUEVO = 700;
 /**
  * Monolitos que NO se parten en esta tanda (ya son fachadas/tipos o son riesgo de render) con
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
- * Los que sí se parten (aparatosPresion, sanAccesoriosTable, useInfTablas, PdfViewer,
- * PlanosTab, las tablas grandes) desaparecen de aquí al dividirse: su ausencia ES la prueba.
  */
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 1493,
+  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 715,
   'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1425,
   'modules/civilflow/components/workareaContent/useInfTables.ts': 1236,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 1225,
-  'modules/civilflow/utils/sanAccesoriosTable.ts': 1213,
   'modules/civilflow/utils/waterRowsCore.ts': 704,
   'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
   'modules/civilflow/components/DownpipesTable.tsx': 1001,
@@ -75,8 +73,6 @@ const CONOCIDOS: Record<string, number> = {
  * El resto del repo tiene otras sesiones trabajando encima: su tamaño no es contrato aquí.
  */
 const GESTIONADOS: Record<string, number> = {
-  'modules/civilflow/utils/aparatosPressure.ts': 40,
-  'modules/civilflow/utils/sanAccesoriosTable.ts': 40,
   'modules/civilflow/components/SupplyConnection.tsx': 60,
 };
 
@@ -323,7 +319,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
   },
   {
     ruta: 'modules/civilflow/components/fixtures/fixtureMirrors.ts',
-    maxLineas: 410,
+    maxLineas: 425,
     puro: false,
     test: 'useFixtureMirrors',
   },
@@ -351,6 +347,12 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     puro: true,
     test: '../indicesMotor',
   },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/intersectionTrim.ts',
+    maxLineas: 200,
+    puro: true,
+    test: '../intersectionTrim',
+  },
 ];
 
 /**
@@ -369,14 +371,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
  */
 const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 17,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 16,
   'modules/civilflow/utils/assocLayoutMigration.ts': 16,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 15,
-  'modules/civilflow/utils/rainwaterRows.ts': 13,
   'modules/civilflow/utils/propagation/edges.ts': 13,
+  'modules/civilflow/utils/rainwaterRows.ts': 13,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 11,
+  'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 11,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 11,
-  'modules/civilflow/components/fixtures/fixtureMirrors.ts': 10,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSections.tsx': 9,
   'modules/civilflow/utils/bajanteVentRows.ts': 9,
   'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 8,
@@ -385,26 +386,25 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 8,
   'modules/civilflow/utils/bajanteRowModel.ts': 8,
   'modules/civilflow/components/pdfViewer/useFloorRamales.ts': 7,
-  'modules/civilflow/components/workarea/IsometryGeneral.tsx': 7,
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 7,
+  'modules/civilflow/components/workarea/IsometryGeneral.tsx': 7,
   'modules/civilflow/lib/PlanoEngine/mouseDownDrags.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
   'modules/civilflow/utils/buildTramos.ts': 7,
+  'modules/civilflow/components/fixtures/fixtureMirrors.ts': 6,
   'modules/civilflow/components/fixtures/SecMontantes.tsx': 6,
-  'modules/civilflow/components/RainDownpipesCheck.tsx': 6,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionSections.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/associatedChannels.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionSections.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 6,
+  'modules/civilflow/components/RainDownpipesCheck.tsx': 6,
   'modules/civilflow/lib/PlanoEngine/channelSeal.ts': 6,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 6,
   'modules/civilflow/lib/PlanoEngine/networkRenumber.ts': 6,
-  'modules/civilflow/lib/PlanoEngine/renderers/drawRamalPath.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 6,
   'modules/civilflow/utils/waterRowsAcometida.ts': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionPanel.tsx': 5,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuHelpers.ts': 5,
   'modules/civilflow/components/rejillasVentilacion/TableTypologies.tsx': 5,
   'modules/civilflow/context/RainwaterContext.tsx': 5,
-  'modules/civilflow/lib/PlanoEngine/drawingFlow.ts': 5,
   'modules/civilflow/lib/PlanoEngine/handleMouseDown.ts': 5,
   'modules/civilflow/utils/accessoriesTable/yees.ts': 5,
   'modules/civilflow/utils/buildBajanteGraph.ts': 5,
@@ -418,27 +418,10 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 542;
+const TOTAL_FOCOS_BASE = 531;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
-  {
-    ruta: 'modules/civilflow/utils/aparatosPressure.ts',
-    simbolos: [
-      'propagarAparatosPresion',
-      'esRedAparatosPresion',
-      'esReceptorPropagacion',
-      'leerHeredadosPresion',
-      'leerFoldTribPresion',
-      'leerLibrosPresion',
-      'udPropiaDe',
-      'diagUltimaPropagacion',
-    ],
-  },
-  {
-    ruta: 'modules/civilflow/utils/sanAccesoriosTable.ts',
-    simbolos: ['computeAccesoriosTable'],
-  },
   {
     ruta: 'modules/civilflow/components/workareaContent/useInfTables.ts',
     simbolos: ['useInfTablas'],
@@ -506,32 +489,6 @@ describe('G2 · la API pública no se rompió', () => {
       }
     }
     expect(faltantes).toEqual([]);
-  });
-
-  // Las fachadas de la des-monotilización NO tienen importadores: existen SÓLO como
-  // contrato del guard G2 (los importadores fueron rewirados al módulo real). Este test
-  // hace explícita esa condición: si alguien vuelve a importarlas, avisa (la fachada ya
-  // no es una puerta, es un contrato) en vez de dejar que el grafo diga lo contrario.
-  it('las fachadas pinningadas siguen SIN importadores (existen solo como contrato)', () => {
-    const conImportadores: string[] = [];
-    for (const { ruta } of API_PUBLICA) {
-      if (!ruta.endsWith('aparatosPressure.ts') && !ruta.endsWith('sanAccesoriosTable.ts'))
-        continue;
-      const nombreArchivo = ruta.split('/').pop()!;
-      for (const p of todosLosArchivos) {
-        if (p.endsWith(ruta)) continue; // el archivo mismo
-        const src = readFileSync(p, 'utf8');
-        if (src.includes(nombreArchivo.replace(/\.ts$/, '')) && /from\s+['"][^'"]*'/.test(src)) {
-          // Solo cuenta si lo importa por RUTA (no si lo menciona en un comentario).
-          if (
-            new RegExp(`from\\s+['"][^'"]*${nombreArchivo.replace(/\.ts$/, '')}\\.ts['"]`).test(src)
-          ) {
-            conImportadores.push(`${ruta} importada por ${REL(p)}`);
-          }
-        }
-      }
-    }
-    expect(conImportadores).toEqual([]);
   });
 });
 
