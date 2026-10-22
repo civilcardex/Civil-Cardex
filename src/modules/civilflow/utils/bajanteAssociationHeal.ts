@@ -5,7 +5,6 @@ import {
   saveTrazosToDB,
 } from '../services/storageService.ts';
 import {
-  TRAZOS_PREFIX,
   TRAZOS_PLAN_PREFIX,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
@@ -128,9 +127,12 @@ export function healHerenciaInvertida(
       docDirty = true;
     }
     if (docDirty) {
-      // Copia de seguridad ANTES de reescribir (el sanado no tiene reversa).
+      // Copia de seguridad ANTES de reescribir (el sanado no tiene reversa). FUERA del
+      // namespace `trazos_*`: `idsDePlanos()` barre ese prefijo y el respaldo se volvía un
+      // PISO FANTASMA que entraba a toda la propagación (piezas `_bak` duplicadas, libros
+      // contaminados — orig. usuario, dump 2026-10-22: LD del piso de arriba al doble).
       try {
-        saveToStorage(`${TRAZOS_PREFIX}${pid}_bak`, docPrevio);
+        saveToStorage(`civilflow_respaldo_heal_${pid}`, docPrevio);
       } catch {
         /* best-effort: sin quota no hay copia */
       }

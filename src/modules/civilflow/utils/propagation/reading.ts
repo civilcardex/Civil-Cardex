@@ -11,14 +11,19 @@ import {
   type BajanteP,
 } from './counting.ts';
 
-/** Pisos que tienen dibujo guardado (ids leíos de las claves civilflow_trazos_*). */
+/** Pisos que tienen dibujo guardado (ids leídos de las claves civilflow_trazos_*).
+ *  EXCLUYE respaldos: los `_bak` (era del sanador de herencia) son documentos completos bajo
+ *  el mismo prefijo — tratarlos como piso inyectaba sus piezas DOS veces en la propagación
+ *  y doblaba los aparatos de los elementos enlazados (dump 2026-10-22). */
 function idsDePlanos(): string[] {
   const out: string[] = [];
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (k && k.startsWith(`civilflow_${TRAZOS_PREFIX}`)) {
-        out.push(k.slice(`civilflow_${TRAZOS_PREFIX}`.length));
+        const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
+        if (pid.endsWith('_bak')) continue;
+        out.push(pid);
       }
     }
   } catch {

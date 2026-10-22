@@ -1,13 +1,16 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   corrigeEscalaMeta,
+  debeAvisarCorreccionEscala,
   decideEscalaDelDoc,
   decideEscalaPorDefectoDelPlan,
+  docConTs,
   esEscalaEstandar,
   leeReportes,
   registraCarga,
   textoReporte,
 } from '../cargaDiagnostico.ts';
+import { localGanaABdPorTs } from '../../services/storage/localStorage.ts';
 
 /**
  * Decisiones de ESCALA del piso al cargar el visor (fix 2026-10-21).
@@ -120,6 +123,50 @@ describe('corrigeEscalaMeta', () => {
     const { meta, cambio } = corrigeEscalaMeta([{ id: 1, scale: 50 }], 1, 0.5);
     expect(cambio).toBe(false);
     expect(meta[0].scale).toBe(50);
+  });
+});
+
+describe('arbitraje local vs BD por ts', () => {
+  it('un doc persistido con ts fresco gana a la BD vieja (la corrección se queda)', () => {
+    const doc = docConTs({ scaleM: 0.664 }, 5000);
+    expect(doc.ts).toBe(5000);
+    expect(localGanaABdPorTs(doc.ts, 1000)).toBe(true);
+  });
+
+  it('una copia local SIN ts pierde contra la BD (por eso el doc corregido lleva ts fresco)', () => {
+    // El bug: la corrección de escala se guardaba sin ts -> la copia local contaba 0 y la BD
+    // (con la escala vieja) ganaba en la siguiente entrada -> el aviso se repetía siempre.
+    expect(localGanaABdPorTs(undefined, 1000)).toBe(false);
+    expect(localGanaABdPorTs(null, 1000)).toBe(false);
+  });
+
+  it('una copia local con ts fresco gana a la BD vieja', () => {
+    expect(localGanaABdPorTs(2000, 1000)).toBe(true);
+  });
+
+  it('con el mismo ts gana la BD (desempate del arbitration original)', () => {
+    expect(localGanaABdPorTs(1000, 1000)).toBe(false);
+  });
+});
+
+describe('aviso de corrección de escala (una vez por par)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('avisa la primera vez y no repite con la misma corrección', () => {
+    expect(debeAvisarCorreccionEscala(7, '0.5->0.664')).toBe(true);
+    expect(debeAvisarCorreccionEscala(7, '0.5->0.664')).toBe(false);
+  });
+
+  it('avisa de nuevo si la escala encontrada o la corregida cambian', () => {
+    expect(debeAvisarCorreccionEscala(7, '0.5->0.664')).toBe(true);
+    expect(debeAvisarCorreccionEscala(7, '0.75->0.664')).toBe(true);
+  });
+
+  it('cada piso lleva su propio aviso', () => {
+    expect(debeAvisarCorreccionEscala(7, '0.5->0.664')).toBe(true);
+    expect(debeAvisarCorreccionEscala(8, '0.5->0.664')).toBe(true);
   });
 });
 

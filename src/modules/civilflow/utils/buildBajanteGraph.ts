@@ -50,6 +50,13 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
 
     const ramales = data.ramales || [];
     const bajantes = data.bajantes || [];
+    // Set de los ramales que cada bajante recibe (el .includes dentro del bucle era O(n)).
+    // ANTES del bucle de ramales: checkEndpoint lo lee y vivía declarado después — TDZ
+    // "Cannot access 'recibePorBajante' before initialization" en el primer ramal con bajantes.
+    const recibePorBajante = new Map<string, Set<string>>();
+    for (const b of bajantes) {
+      if (b.id) recibePorBajante.set(b.id, new Set(b.recibeDeIds || []));
+    }
 
     const getBajantePos = (b: BajanteRaw) => {
       const lvl = pisoLbl(plan.nivel ?? 0);
@@ -127,11 +134,6 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     // Los ramales/bajantes san se filtraban DENTRO del bucle de ventilación (O(n²) de filtros).
     const sanRamales = ramales.filter((r: RamalRaw) => r.net === 'san');
     const sanBajantes = bajantes.filter((b: BajanteRaw) => b.net === 'san');
-    // Set de los ramales que cada bajante recibe (el .includes dentro del bucle era O(n)).
-    const recibePorBajante = new Map<string, Set<string>>();
-    for (const b of bajantes) {
-      if (b.id) recibePorBajante.set(b.id, new Set(b.recibeDeIds || []));
-    }
 
     for (const vb of ventBajantes) {
       const vbKey = `${vb.id}-${plan.id}`;

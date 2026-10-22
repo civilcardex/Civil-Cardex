@@ -208,7 +208,7 @@ describe('healHerenciaInvertida', () => {
   it('deja copia de seguridad del doc antes de reescribirlo', () => {
     seedEnvenenado();
     healHerenciaInvertida(plans);
-    const bak = parseLS('civilflow_trazos_1_bak');
+    const bak = parseLS('civilflow_civilflow_respaldo_heal_1');
     expect(bak.bajantes[0].ucAplicado).toEqual({ san_RS2_1: { sif: 3, lvm: 2, ino: 1, duc: 1 } });
   });
 });

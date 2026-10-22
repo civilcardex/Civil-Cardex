@@ -125,6 +125,13 @@ export interface ReporteCargaPlano {
   escalaPlano: number | null;
   /** Escala global del proyecto (m/px). */
   escalaGlobal: number | null;
+  /** `scaleM` de la copia LOCAL del doc (la que gana el arbitrage si su ts es mayor). */
+  escalaLocal: number | null;
+  /** `scaleM` de la copia de BD. */
+  escalaBd: number | null;
+  /** ts (milisegundos) de cada copia: el arbitro local-vs-BD gana el mayor. */
+  tsLocal: number | null;
+  tsBd: number | null;
   /** Decisión tomada con la escala. */
   accion: string;
   /** Factor aplicado al re-escalar la geometría (null si no hubo re-base). */
@@ -172,6 +179,10 @@ export function registraCarga(planId: string | number, parcial: Partial<ReporteC
       escalaDoc: null,
       escalaPlano: null,
       escalaGlobal: null,
+      escalaLocal: null,
+      escalaBd: null,
+      tsLocal: null,
+      tsBd: null,
       accion: 'nada',
       factor: null,
       escalaRaster: null,
@@ -207,10 +218,41 @@ export function textoReporte(planId: string | number): string {
   const lineas = [
     `[CF-CARGA] piso ${r.planId}`,
     `escalaDoc=${r.escalaDoc} escalaPlano=${r.escalaPlano} escalaGlobal=${r.escalaGlobal}`,
+    `local escala=${r.escalaLocal} ts=${r.tsLocal} | bd escala=${r.escalaBd} ts=${r.tsBd}`,
     `accion=${r.accion} factor=${r.factor}`,
     `escalaRaster=${r.escalaRaster} lamina=${r.pageW}x${r.pageH}`,
     `camara zoom=${r.zoom} off=${r.offX},${r.offY} elementos=${r.elementos}`,
     `ts=${new Date(r.ts).toISOString()}`,
   ];
   return lineas.join('\n');
+}
+
+/**
+ * Estampa el ts (milisegundos) en un doc antes de persistirlo. El arbitration local-vs-BD
+ * gana el MAYOR ts y una copia sin ts cuenta 0 -> la BD manda y la corrección se deshace en la
+ * siguiente entrada (el aviso de escala salía en cada entrada, orig. usuario).
+ * @param doc - doc a persistir (se devuelve una copia con ts).
+ * @param ts - marca de tiempo; por defecto, ahora.
+ */
+export function docConTs<T extends object>(doc: T, ts: number = Date.now()): T & { ts: number } {
+  return { ...doc, ts };
+}
+
+const PREFIJO_AVISO = 'diag_aviso_escala_';
+
+/**
+ * ¿Avisar al usuario de la corrección de escala de este piso? Una vez por par
+ * "escala encontrada → escala corregida": si el problema se repite (la corrección no se
+ * quedó guardada), el modal NO vuelve a saltar — el aviso molesto cada entrada tapaba el
+ * aviso útil. El registro del diagnóstico deja la traza igual.
+ * @param planId - id del plano.
+ * @param clave - par "origen→destino" de la corrección.
+ * @returns true si es la primera vez (hay que avisar).
+ */
+export function debeAvisarCorreccionEscala(planId: string | number, clave: string): boolean {
+  const k = PREFIJO_AVISO + String(planId);
+  const previo = loadFromStorage<string | null>(k, null);
+  if (previo === clave) return false;
+  saveToStorage(k, clave);
+  return true;
 }

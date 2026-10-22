@@ -1,4 +1,5 @@
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { adoptarDiametroDelSuperior } from '../../utils/bajanteAssocShared.ts';
 import type { InheritPoolBajante, InheritPoolRamal } from '../../utils/bajanteAssocShared.ts';
 import type { EspejosArgs } from './fixtureMirrorsTypes.ts';
 import {
@@ -195,6 +196,7 @@ export function correrEspejos(a: EspejosArgs): void {
           bajantes?: Array<{
             id: string;
             ucAcum?: number;
+            dNominal?: string;
             recibeDeIds?: string[];
             alimentaIds?: string[];
             ucAplicado?: Record<string, Record<string, number>>;
@@ -208,6 +210,7 @@ export function correrEspejos(a: EspejosArgs): void {
         const aplicadoPrev = tBaj?.ucAplicado || {};
         const aplicadoHidroPrev = tBaj?.ucAplicadoHidro || {};
         let tgtChanged = false;
+        if (tBaj && adoptarDiametroDelSuperior(tBaj, baj)) tgtChanged = true;
         const ucAplicadoNuevo: Record<string, Record<string, number>> = {};
         const ucAplicadoHidroNuevo: Record<string, Record<string, number>> = {};
         for (const rid of tgtRamalIds) {
@@ -325,6 +328,7 @@ export function correrEspejos(a: EspejosArgs): void {
     id: string;
     net: string;
     tipo?: string;
+    dNominal?: string;
     origenId?: string | null;
     recibeDeIds?: string[];
     alimentaIds?: string[];
@@ -342,6 +346,7 @@ export function correrEspejos(a: EspejosArgs): void {
         ramales?: InheritPoolRamal[];
       } | null>(TRAZOS_PREFIX + upPlan, null);
       const storedBaj = srcRaw?.bajantes?.find((x) => x.id === upBajId) ?? null;
+      if (adoptarDiametroDelSuperior(baj, storedBaj)) dirty = true;
       const { agg } = collectSourceAgg({
         net: baj.net,
         planId: upPlan,

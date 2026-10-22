@@ -9,11 +9,7 @@ import {
 } from './associateBajanteAcrossFloors';
 import { origenDePlan } from './crossFloorStorage.ts';
 import { devError } from '../../../utils/devError.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService.ts';
 import {
   TRAZOS_PREFIX,
   APARATOS_HEREDADOS_KEY,
@@ -120,9 +116,20 @@ export interface InheritPoolRamal {
   [k: string]: unknown;
 }
 
+/** Diámetro entre pisos (ped. usuario): el asociado toma el dNominal del SUPERIOR en cada pase — no solo al asociar. Devuelve true si cambió. */
+export function adoptarDiametroDelSuperior(
+  asociado: { dNominal?: string },
+  superior?: { dNominal?: string } | null,
+): boolean {
+  if (!superior?.dNominal || asociado.dNominal === superior.dNominal) return false;
+  asociado.dNominal = superior.dNominal;
+  return true;
+}
+
 export interface InheritPoolBajante {
   id: string;
   tipo?: string;
+  dNominal?: string;
   /** Código visible del bajante (el que guardan los ramales en `ini`). */
   code?: string;
   /** Ramales asociados a mano (checkbox): el bajante les ENTREGA su carga (no le traen). */
