@@ -238,7 +238,7 @@ describe('convergencia de diámetro en nodos de presión', () => {
     expect(eng.ramales[1].diametro).toBe('2"');
   });
 
-  it('imagen usuario 2026-10-14: subir RAF1 arrastra SOLO a RAF3 — RAF2 (lateral perpendicular) intacta', () => {
+  it('imagen usuario 2026-10-14: subir RAF1 arrastra a RAF3 Y a la lateral RAF2 (araña completa)', () => {
     // RAF1 llega a la T (40,0); RAF2 NACE en la T y fluye hacia abajo (lateral, perpendicular);
     // RAF3 continúa colineal hacia MAF1. La convergencia sigue el sentido de los aparatos:
     // solo la continuación colineal sube — la hermana de la unión conserva su diámetro.
@@ -272,13 +272,14 @@ describe('convergencia de diámetro en nodos de presión', () => {
     updateSelected(eng, { diametro: '3"' });
     expect(eng.ramales.find((r) => r.id === 'RAF1')!.diametro).toBe('3"');
     expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('3"');
-    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('1/2"');
+    // La lateral menor TAMBIÉN recibe (doctrina araña completa, ped. usuario 2026-10-22).
+    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('3"');
   });
 
-  it('continuación SIN diámetro + lateral diametrada: la lateral no sube (conteo topológico)', () => {
-    // El conteo de candidatos es topológico: la continuación colineal SIN diámetro cuenta
-    // igual → modo estricto → la lateral perpendicular (diametrada) conserva el suyo,
-    // independiente del estado transitorio del tercer tramo.
+  it('continuación SIN diámetro + lateral diametrada: ambas reciben el seleccionado', () => {
+    // La continuación colineal SIN diámetro RECIBE (ped. usuario 2026-10-22: la araña se
+    // cortaba en los tramos sin diametrar) y re-encola su downstream; el conteo sigue
+    // topológico → la lateral perpendicular (diametrada) conserva el suyo.
     const eng = makeEngine([
       R(
         'RAF1',
@@ -307,10 +308,9 @@ describe('convergencia de diámetro en nodos de presión', () => {
     ]);
     eng.selId = 'RAF1';
     updateSelected(eng, { diametro: '3"' });
-    // El vecino sin diámetro no recibe push (oIn<=0 salta) — el pin es la LATERAL: no sube
-    // aunque sea la única "elegible" diametrada.
-    expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('');
-    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('1/2"');
+    // Continuación Y lateral menor reciben el seleccionado (doctrina araña completa).
+    expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('3"');
+    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('3"');
   });
 
   it('downstream autocreado (mergesFrom) converge aunque doble en ángulo en la unión', () => {
@@ -382,7 +382,7 @@ describe('convergencia de diámetro en nodos de presión', () => {
     expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('1-1/4"');
   });
 
-  it('lateral perpendicular de un salto intermedio conserva su diámetro', () => {
+  it('lateral perpendicular de un salto intermedio sube al seleccionado (si es menor)', () => {
     const eng = makeEngine([
       R(
         'RAF1',
@@ -420,6 +420,7 @@ describe('convergencia de diámetro en nodos de presión', () => {
     eng.selId = 'RAF1';
     updateSelected(eng, { diametro: '1-1/4"' });
     expect(eng.ramales.find((r) => r.id === 'RAF3')!.diametro).toBe('1-1/4"');
-    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('1/2"');
+    // La lateral del salto intermedio también sube (doctrina araña completa).
+    expect(eng.ramales.find((r) => r.id === 'RAF2')!.diametro).toBe('1-1/4"');
   });
 });
