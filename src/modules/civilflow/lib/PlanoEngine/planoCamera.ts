@@ -146,3 +146,24 @@ export function zoomAnclado(cam: CamaraConRender, nzRaw: number, mx: number, my:
   if (typeof c.scheduleRender === 'function') c.scheduleRender();
   else cam.render();
 }
+
+/** Encaja el DIBUJO (no la lámina) de un motor en su contenedor — el mismo cálculo del botón
+ *  "Ajustar": solo zoom/offX/offY; la geometría y la escala no se tocan. Lo usan el arranque
+ *  del visor (pre-paint) y el switch de piso para que la entrada SIEMPRE quede centrada. */
+export function encuadrarContenido(
+  eng: { pageW: number; pageH: number; zoom: number; offX: number; offY: number },
+  cw: HTMLElement | null,
+  bbox: Parameters<typeof encuadrarDibujo>[0]['bbox'],
+): void {
+  if (!cw || !eng.pageW || !eng.pageH) return;
+  const encuadre = encuadrarDibujo({
+    visW: cw.clientWidth,
+    visH: cw.clientHeight,
+    pageW: eng.pageW,
+    pageH: eng.pageH,
+    bbox,
+  });
+  eng.zoom = encuadre.zoom;
+  eng.offX = encuadre.offX;
+  eng.offY = encuadre.offY;
+}

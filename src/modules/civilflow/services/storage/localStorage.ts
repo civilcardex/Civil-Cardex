@@ -34,7 +34,7 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
  */
 const quotaFailedKeys = new Set<string>();
 /** Guarda el dibujo en caché sin perder la marca de asociación entre pisos. Sin ella, al reabrir se repite la migración completa. Ej: pasa siempre por aquí, no por saveToStorage. */
-export function saveTrazosLocales(planId: string | number, doc: Record<string, unknown>): void {
+export function saveTrazosLocales(planId: string | number, doc: Record<string, unknown>): boolean {
   try {
     const previo = loadFromStorage<{ assocLayout?: number } | null>(
       TRAZOS_PREFIX + String(planId),
@@ -46,7 +46,24 @@ export function saveTrazosLocales(planId: string | number, doc: Record<string, u
   } catch {
     /* sin marca previa accesible: guardar tal cual */
   }
-  saveToStorage(TRAZOS_PREFIX + String(planId), doc);
+  // false = la caché local NO se pudo escribir (cuota llena): quien llama tiene que saberlo,
+  // si no persiste una corrección y cree que sí (el doc viejo sigue en storage).
+  return saveToStorage(TRAZOS_PREFIX + String(planId), doc);
+}
+
+/**
+ * ¿La copia local del doc gana a la de BD? El arbitration local-vs-BD es POR TS (gana el
+ * mayor) y una copia sin ts cuenta 0 -> la BD manda siempre. Por eso TODO doc que se
+ * persiste lleva ts fresco: sin él, una corrección (p. ej. la escala de un piso) se
+ * deshace en la siguiente entrada y el aviso se repite.
+ * @param localTs - ts (milisegundos) de la copia local; null/undefined = 0.
+ * @param dbTs - ts (milisegundos) de la copia de BD.
+ */
+export function localGanaABdPorTs(
+  localTs: number | null | undefined,
+  dbTs: number | null | undefined,
+): boolean {
+  return Number(localTs ?? 0) > Number(dbTs ?? 0);
 }
 
 export function saveToStorage(key: string, data: unknown): boolean {

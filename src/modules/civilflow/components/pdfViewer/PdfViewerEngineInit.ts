@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getPdfjs } from '../../utils/lazyPdfjs';
-import { encuadrarDibujo } from '../../lib/PlanoEngine/planoCamera.ts';
+import { pdfDeCache, pdfACache, calentarPdfs } from './pdfCache.ts';
+import { instalarCfCam } from './diagCamara.ts';
+import { useReRasterEscala } from './useReRasterEscala.ts';
+import { encuadrarContenido } from '../../lib/PlanoEngine/planoCamera.ts';
 import { bboxDelDibujo } from './drawingBBox.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
@@ -15,10 +18,13 @@ import {
   paginaDeDoc,
   type RenderReq,
 } from '../../utils/planScale.ts';
-import { EVENTO_ESCALA_CAMBIADA, registraCarga } from '../../utils/cargaDiagnostico.ts';
+import { registraCarga } from '../../utils/cargaDiagnostico.ts';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
+  /** Todos los planos del proyecto: para precalentar el parse de sus PDFs tras la 1ª entrada
+   *  y que los cambios de piso no re-parseen nada (cambio fluido, ped. usuario). */
+  files?: Array<{ id: number; file: File }>;
   currentId: string | number | undefined;
   currentIdRef: React.MutableRefObject<string | number | undefined>;
   activeNetRef: React.MutableRefObject<string>;
@@ -53,6 +59,7 @@ interface UsePdfViewerEngineParams {
 
 export function usePdfViewerEngine({
   currentFile,
+  files,
   currentId,
   currentIdRef,
   activeNetRef,
@@ -83,6 +90,10 @@ export function usePdfViewerEngine({
   const engineRef = externalEngineRef ?? internalEngineRef;
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
   const mountId = useRef(0);
+  // Secuencia de carga: cada apertura del PDF incrementa este contador. El overlay de carga
+  // se baja al terminar la carga vigente, NO cuando cambia el montaje (un re-raster por zoom
+  // o por cambio de escala movía el mountId y dejaba el spinner colgado).
+  const cargaSeq = useRef(0);
   const renderTaskRef = useRef<RenderTask | null>(null);
   const renderingRef = useRef(false);
   // Re-raster pedido mientras había uno en vuelo (F2): se ENCOLA y se ejecuta al cerrar el
@@ -103,6 +114,15 @@ export function usePdfViewerEngine({
   // la escala del doc — distintas = lámina y dibujo en escalas distintas).
   const lastRenderScRef = useRef<number | null>(null);
   const lastPageBaseWRef = useRef<number | null>(null);
+  // Re-sincroniza el re-raster de fondo con el zoom REAL (lo llama el loader tras el primer
+  // render): lastZoomRaster nace en 1 y el fit de entrada deja el zoom en otro valor.
+  const reprogramarBgRef = useRef<(() => void) | null>(null);
+  // Trazabilidad + dedupe de re-rasters completos (parpadeo del plano del piso de entrada,
+  // orig. usuario): un renderPage FULL con la MISMA escala se SALTA — el flip repetido de la
+  // escala del estado entre dos escritores era un bucle de raster visible como parpadeo.
+  const ultimoFullScRef = useRef<number | null>(null);
+  const renderCountRef = useRef(0);
+  const causaRenderRef = useRef<string>('-');
   const [engineReady, setEngineReady] = useState(false);
   const pdfRenderedRef = useRef(false);
   const internalLoadingPlanRef = useRef(false);
@@ -156,15 +176,16 @@ export function usePdfViewerEngine({
       pageNum: number,
       sc: number,
       mountCheck: number,
-      opts: { bgOnly?: boolean; extraScale?: number } = {},
+      opts: { bgOnly?: boolean; extraScale?: number; causa?: string } = {},
     ) => {
+      renderCountRef.current += 1;
+      causaRenderRef.current = opts?.causa ?? (opts?.bgOnly ? 'bg' : 'full');
       // extraScale > 1: rasteriza el fondo a mayor densidad (zoom en vivo) SIN tocar el
       // drawCanvas ni el engine — el bitmap sube de resolución y el scale() por CSS del
       // pdfWrap deja de estirar píxeles (planos borrosos, ped. usuario).
-      // ponytail: densidad total = extra*dpr, tope ~2 — el re-raster es el tirón
-      // al soltar la rueda; 3x pedía el doble de píxeles por un detalle invisible.
-      const dprCap = Math.max(1, 2 / (window.devicePixelRatio || 1));
-      const extra = Math.max(1, Math.min(opts.extraScale ?? 1, 2, dprCap));
+      // Pedido SIN tope duro de 2× (a zoom de trabajo, extra < zoom estira el bitmap):
+      // el presupuesto post-viewport es el único límite (lado ≤6000px, área ≤24MP).
+      const extraPedido = opts.extraScale ?? 1;
       // En vuelo: ENCOLAR (no descartar) — el último pedido gana y corre al cerrar este.
       const req: RenderReq = { pageNum, sc, opts };
       const fila = filaRender(renderingRef.current, renderPendingRef.current, req);
@@ -196,6 +217,19 @@ export function usePdfViewerEngine({
         const page = await pdf.getPage(pageNum);
         if (mountCheck && mountCheck !== mountId.current) return;
         const viewport = page.getViewport({ scale: sc });
+        // Presupuesto del bitmap: la densidad extra pedida se recorta a lado ≤6000px y
+        // área ≤40MP — hojas grandes en pantallas dpr>=2 sin reventar memoria; el zoom
+        // hasta ~3× sigue viéndose nativo también a 150% de escala de Windows (antes
+        // dpr>=2 quedaba clavado en 1×).
+        const lado = Math.max(viewport.width, viewport.height) * dpr;
+        const extra = Math.max(
+          1,
+          Math.min(
+            extraPedido,
+            6000 / lado,
+            Math.sqrt(40e6 / (viewport.width * viewport.height * dpr * dpr)),
+          ),
+        );
         lastRenderScRef.current = sc;
         lastPageBaseWRef.current = viewport.width / sc;
         // Tamaño de la LÁMINA a escala 1 (el del archivo PDF): se guarda para que la próxima
@@ -207,9 +241,15 @@ export function usePdfViewerEngine({
           guardarPaginaDeDoc(planId, viewport.width / sc, viewport.height / sc);
         }
         // Bitmap a densidad extra (o dpr, lo que dé más); CSS SIEMPRE al tamaño base.
+        // Asignar width/height LIMPIA el bitmap: si el tamaño no cambió (re-raster a igual
+        // densidad o cambio de piso con la misma hoja), NO tocar — el fondo anterior queda
+        // visible hasta que el nuevo render termine (cambio de piso sin flash, ped. usuario).
         const hi = extra > 1 ? page.getViewport({ scale: sc * extra }) : null;
-        pdfCanvas.width = Math.floor((hi ?? viewport).width * dpr);
-        pdfCanvas.height = Math.floor((hi ?? viewport).height * dpr);
+        const nuevoW = Math.floor((hi ?? viewport).width * dpr);
+        const nuevoH = Math.floor((hi ?? viewport).height * dpr);
+        const reDimensionado = pdfCanvas.width !== nuevoW || pdfCanvas.height !== nuevoH;
+        if (pdfCanvas.width !== nuevoW) pdfCanvas.width = nuevoW;
+        if (pdfCanvas.height !== nuevoH) pdfCanvas.height = nuevoH;
         pdfCanvas.style.width = viewport.width + 'px';
         pdfCanvas.style.height = viewport.height + 'px';
         const ctx = pdfCanvas.getContext('2d')!;
@@ -218,7 +258,10 @@ export function usePdfViewerEngine({
         ctx!.imageSmoothingEnabled = true;
         ctx!.imageSmoothingQuality = 'high';
         ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx!.clearRect(0, 0, (hi ?? viewport).width, (hi ?? viewport).height);
+        // Limpiar SOLO si re-dimensionó (el resize ya deja el canvas vacío): sin resize, el
+        // clearRect borraría el fondo anterior que precisamente estamos conservando — el
+        // render nuevo pinta la hoja completa encima (opaca).
+        if (reDimensionado) ctx!.clearRect(0, 0, (hi ?? viewport).width, (hi ?? viewport).height);
         const task = page.render({ canvas: pdfCanvas, viewport: hi ?? viewport });
         renderTaskRef.current = task;
         try {
@@ -232,64 +275,80 @@ export function usePdfViewerEngine({
         }
         renderTaskRef.current = null;
 
+        if (!opts.bgOnly) {
+          // Re-encuadre tras el raster REAL (el fit de entrada usó el tamaño PERSISTIDO de la
+          // lámina; el viewport real puede diferir): corrige antes de que suba el velo.
+          const cwFit = cwRef.current;
+          if (cwFit && engineRef.current) {
+            encuadrarContenido(engineRef.current, cwFit, bboxDelDibujo(engineRef.current));
+          }
+        }
+
+        // Repintar los elementos sobre la lámina recién rasterizada: si ensureCanvasSize
+        // re-dimensionó el lienzo de dibujo aquí, quedó limpio — sin esto los elementos no
+        // aparecen hasta la siguiente interacción.
+        engineRef.current?.render();
+
         if (opts.bgOnly) {
           renderingRef.current = false;
           return;
         }
+        // Full render completado con esta escala: los dedupes de los llamadores (efecto de
+        // escala / evento) la usan para no re-rasterizar el mismo valor.
+        ultimoFullScRef.current = sc;
 
         const drawCanvas = drawCanvasRef.current;
-        if (drawCanvas) {
-          drawCanvas.width = Math.floor(viewport.width * dpr);
-          drawCanvas.height = Math.floor(viewport.height * dpr);
-          drawCanvas.style.width = viewport.width + 'px';
-          drawCanvas.style.height = viewport.height + 'px';
+        if (drawCanvas && engineRef.current) {
+          // UN SOLO dueño del tamaño del lienzo de dibujo: el motor (`ensureCanvasSize`,
+          // fórmula de área visible). renderPage le pasaba HOJA×dpr y el motor volvía a
+          // ÁREA-VISIBLE en el siguiente render — cada cambio de tamaño limpia el canvas y
+          // repinta: el plano PARPADEABA en bucle hasta que un trazo lo asentaba
+          // (orig. usuario). El resize del motor ya lleva backing × dpr + setTransform.
+          const eng = engineRef.current;
+          eng.dpr = dpr;
+          eng.setPageSize(viewport.width, viewport.height);
+          eng.ensureCanvasSize();
           const dctx = drawCanvas.getContext('2d');
           dctx!.imageSmoothingEnabled = false;
           dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-          if (engineRef.current) {
-            const eng = engineRef.current;
-            eng.dpr = dpr;
-            eng.setPageSize(viewport.width, viewport.height);
-            eng.resizeCanvas(viewport.width, viewport.height);
 
-            const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
-            if (
-              eng.ramales.length === 0 &&
-              eng.bajantes.length === 0 &&
-              eng.dims.length === 0 &&
-              eng.textAnnots.length === 0 &&
-              eng.areas.length === 0
-            ) {
-              const loaded = await loadTrazosForPlan(eng, resolvedId);
-              if (loaded) {
-                const loadedNet = eng.activeNet || activeNetRef.current || 'af';
-                const sm = eng.scaleM;
-                setActiveNet(loadedNet);
-                if (sm != null) setScaleM(String(sm));
-                eng.render();
-              }
+          const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
+          if (
+            eng.ramales.length === 0 &&
+            eng.bajantes.length === 0 &&
+            eng.dims.length === 0 &&
+            eng.textAnnots.length === 0 &&
+            eng.areas.length === 0
+          ) {
+            const loaded = await loadTrazosForPlan(eng, resolvedId);
+            if (loaded) {
+              const loadedNet = eng.activeNet || activeNetRef.current || 'af';
+              const sm = eng.scaleM;
+              setActiveNet(loadedNet);
+              if (sm != null) setScaleM(String(sm));
+              eng.render();
             }
-            // Diagnóstico de la carga: con qué escala se rasterizó la lámina, de qué tamaño
-            // quedó y con qué cámara quedó el encuadre (para comparar dos sesiones).
-            try {
-              registraCarga(resolvedId, {
-                escalaRaster: sc,
-                pageW: viewport.width,
-                pageH: viewport.height,
-                zoom: eng.zoom,
-                offX: eng.offX,
-                offY: eng.offY,
-                elementos: eng.ramales.length + eng.bajantes.length + eng.areas.length,
-              });
-            } catch {
-              /* el diagnóstico es best-effort */
-            }
-            pdfRenderedRef.current = true;
-            try {
-              callbacksRef.current.onReady?.();
-            } catch {
-              /* ignorar */
-            }
+          }
+          // Diagnóstico de la carga: con qué escala se rasterizó la lámina, de qué tamaño
+          // quedó y con qué cámara quedó el encuadre (para comparar dos sesiones).
+          try {
+            registraCarga(resolvedId, {
+              escalaRaster: sc,
+              pageW: viewport.width,
+              pageH: viewport.height,
+              zoom: eng.zoom,
+              offX: eng.offX,
+              offY: eng.offY,
+              elementos: eng.ramales.length + eng.bajantes.length + eng.areas.length,
+            });
+          } catch {
+            /* el diagnóstico es best-effort */
+          }
+          pdfRenderedRef.current = true;
+          try {
+            callbacksRef.current.onReady?.();
+          } catch {
+            /* ignorar */
           }
         }
       } catch (err) {
@@ -360,6 +419,11 @@ export function usePdfViewerEngine({
         });
       }, delay);
     };
+    // El loader re-sincroniza la densidad del fondo tras el primer render (ver refs arriba).
+    reprogramarBgRef.current = () => {
+      lastZoomRaster = engineRef.current?.zoom ?? 1;
+      scheduleBg(300);
+    };
     const zoomObserver = new MutationObserver(() => {
       // Fuente de verdad = engine.zoom, no el string del transform (acopla a su formato).
       const live = engineRef.current?.zoom;
@@ -394,26 +458,16 @@ export function usePdfViewerEngine({
     if (import.meta.env.DEV) {
       (window as unknown as { __cfEngine?: PlanoEngine }).__cfEngine = eng;
     }
-    // Dump __cfCam (patrón __cfDiag/__cfScale): verifica que la LÁMINA y el dibujo comparten
-    // escala. escalaRender === escalaDoc y pageW === pageW_esperado (px de lámina base ×
-    // escalaDoc) = fondo y geometría alineados; distintos = la hoja quedó en otra escala.
-    // Solo en DEV (expone la escala de la lámina del cliente en la consola).
+    // Dump __cfCam: diagnóstico de alineación lámina↔dibujo (módulo diagCamara, solo DEV).
     if (import.meta.env.DEV) {
-      (window as unknown as { __cfCam?: () => unknown }).__cfCam = () => {
-        const escalaDoc = escalaDeDoc(currentIdRef.current);
-        const escalaRender = lastRenderScRef.current;
-        const baseW = lastPageBaseWRef.current;
-        return {
-          escalaDoc,
-          escalaRender,
-          pageW_base_px: baseW,
-          pageW_esperado: baseW != null && escalaDoc ? baseW * escalaDoc : null,
-          pageW_dibujado: escalaRender != null && baseW != null ? baseW * escalaRender : null,
-          zoom: eng.zoom,
-          offX: eng.offX,
-          offY: eng.offY,
-        };
-      };
+      instalarCfCam({
+        engineRef,
+        currentIdRef,
+        lastRenderScRef,
+        lastPageBaseWRef,
+        renderCountRef,
+        causaRenderRef,
+      });
     }
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
@@ -478,42 +532,11 @@ export function usePdfViewerEngine({
               // contenedor los RECORTA (el "recuadro"). Re-encuadre síncrono ANTES del
               // primer paint — mismo cálculo que "Ajustar" (solo zoom/offX/offY; la
               // geometría y la escala no se tocan).
-              // Solo si NO hay cámara guardada (doc legacy) o si la lámina cambió de tamaño
-              // (el re-base de escala la cambia): con la F1 la lámina se rasteriza siempre a
-              // la escala del doc, así que la cámara guardada sigue siendo válida.
-              const docObj = (() => {
-                if (typeof saved !== 'string')
-                  return (saved as { zoom?: number; pageW?: number }) || {};
-                try {
-                  return JSON.parse(saved) as { zoom?: number; pageW?: number };
-                } catch {
-                  return {} as { zoom?: number; pageW?: number };
-                }
-              })();
-              const camara = docObj.zoom;
-              const sinCamara = typeof camara !== 'number' || !(camara > 0);
-              const laminaPrevia = docObj.pageW;
-              const laminaCambio =
-                typeof laminaPrevia === 'number' &&
-                laminaPrevia > 0 &&
-                Math.abs(laminaPrevia - pg.w) / laminaPrevia > 0.02;
-              if (sinCamara || laminaCambio) {
-                const cw = cwRef.current;
-                if (cw && eng2.pageW && eng2.pageH) {
-                  // Mismo encuadre que el botón "Ajustar": encaja el DIBUJO (no la lámina)
-                  // para que se vea solo el plano, sin el fondo negro.
-                  const encuadre = encuadrarDibujo({
-                    visW: cw.clientWidth,
-                    visH: cw.clientHeight,
-                    pageW: eng2.pageW,
-                    pageH: eng2.pageH,
-                    bbox: bboxDelDibujo(eng2),
-                  });
-                  eng2.zoom = encuadre.zoom;
-                  eng2.offX = encuadre.offX;
-                  eng2.offY = encuadre.offY;
-                }
-              }
+              // Encuadre INCONDICIONAL pre-paint (ped. usuario: "que siempre se muestre
+              // centrado el plano" + "el pequeño salto mientras se acomodan"): entrar a un
+              // piso SIEMPRE muestra el dibujo encajado — la cámara guardada deja de mandar
+              // en la entrada y la resolución local-vs-BD posterior no produce reacomodo.
+              encuadrarContenido(eng2, cwRef.current, bboxDelDibujo(eng2));
               eng2.render();
               // El estado React = la escala del doc: si no, syncEngine pisa el motor con el
               // default ('0.5') y las longitudes quedan calculadas en la escala equivocada.
@@ -584,37 +607,76 @@ export function usePdfViewerEngine({
       setLoading(false);
       return;
     }
+    mountId.current += 1;
+    const thisMount = mountId.current;
+    // Secuencia de CARGA (no de montaje): el overlay se baja cuando termina ESTA carga. Si se
+    // comprobara el mountId, cualquier render extra (re-raster por zoom o por cambio de escala)
+    // invalidaría la comprobación y dejaría el spinner colgado para siempre (orig. usuario).
+    const thisCarga = ++cargaSeq.current;
+    // Precalentar el RESTO de los pisos (una sola vez por sesión): parse en reposo tras la
+    // primera entrada — los switches posteriores caen en la caché y no re-parsean nada.
+    const calentarResto = (): void => calentarPdfs(files ?? []);
+    // Cache hit: sin parse y SIN NINGÚN spinner (ni overlay ni velo). El canvas conserva
+    // el bitmap anterior mientras rasteriza el nuevo → swap imperceptible.
+    const enCache = pdfDeCache(currentFile);
+    if (enCache) {
+      void (async () => {
+        try {
+          pdfDocRef.current = enCache;
+          setError(null);
+          await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount, {
+            causa: 'loader-cache',
+          });
+          reprogramarBgRef.current?.();
+          calentarResto();
+        } catch (err) {
+          if (thisCarga === cargaSeq.current) {
+            devError('Error rasterizando PDF en caché:', err);
+            setError('Error cargando PDF');
+            setLoading(false);
+          }
+        }
+      })();
+      return;
+    }
     // Overlay desde el MISMO ciclo de montaje: si se levantara en reader.onload (async),
     // el pre-paint local del motor alcanzaba a verse desplazado un instante (el tirón).
     setLoading(true);
-    mountId.current += 1;
-    const thisMount = mountId.current;
     const reader = new FileReader();
 
     reader.onload = async () => {
-      if (thisMount !== mountId.current) return;
+      if (thisCarga !== cargaSeq.current) return;
       try {
         setLoading(true);
         setError(null);
         const buffer = reader.result as ArrayBuffer;
         const pdfjsLib = await pdfjsPromise;
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-        if (thisMount !== mountId.current) return;
+        if (thisCarga !== cargaSeq.current) return;
         pdfDocRef.current = pdf;
+        // Guardar en la caché de parseados: el regreso a este piso (o su precalentamiento)
+        // no vuelve a pasar por FileReader + getDocument.
+        if (currentFile) pdfACache(currentFile, pdf);
         // F1: la lámina se rasteriza con la ESCALA DEL DOC (no con el default del estado —
         // el loader pone engine.scaleM = docScale DENTRO de este render; rasterizar antes
         // con 0.5 dejaba fondo y dibujo en escalas distintas toda la sesión).
-        await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount);
+        await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount, {
+          causa: 'loader-pdf',
+        });
+        // Re-sincronizar la densidad del fondo con el zoom real (el fit de entrada cambia
+        // el zoom y lastZoomRaster nacía en 1) + precalentar el resto de los pisos.
+        reprogramarBgRef.current?.();
+        calentarResto();
         // El spinner cubre el PRIMER PAINT COMPLETO + un asentamiento breve: cualquier frame
         // de ajuste (cámara/redes asentándose) queda dentro de la carga, nunca a la vista
         // (orig. usuario: prefiere pantalla de carga un poco más larga al acomodarse).
-        if (thisMount === mountId.current) {
+        if (thisCarga === cargaSeq.current) {
           window.setTimeout(() => {
-            if (thisMount === mountId.current) setLoading(false);
+            if (thisCarga === cargaSeq.current) setLoading(false);
           }, 600);
         }
       } catch (err) {
-        if (thisMount === mountId.current) {
+        if (thisCarga === cargaSeq.current) {
           devError('Error cargando PDF:', err);
           setError('Error cargando PDF');
           setLoading(false);
@@ -629,28 +691,18 @@ export function usePdfViewerEngine({
 
     const pdfjsPromise = getPdfjs();
     reader.readAsArrayBuffer(currentFile);
-  }, [currentFile, currentId, renderPage, setError, setLoading]);
+  }, [currentFile, currentId, files, renderPage, setError, setLoading]);
 
-  useEffect(() => {
-    if (!pdfDocRef.current) return;
-    mountId.current += 1;
-    renderPage(1, scale, mountId.current);
-  }, [scale, renderPage]);
-
-  // La escala del piso cambió (corrección al cargar): la lámina de fondo vuelve a
-  // rasterizarse con la escala del doc — si no, el fondo queda en la escala vieja y el
-  // dibujo aparece corrido y más corto respecto de la lámina (orig. usuario).
-  useEffect(() => {
-    const onEscalaCambiada = () => {
-      const id = currentIdRef.current || engineRef.current?._loadedPlanId || null;
-      const sc = escalaDeDoc(id) ?? scaleRef.current;
-      mountId.current += 1;
-      void renderPage(1, sc, mountId.current);
-    };
-    window.addEventListener(EVENTO_ESCALA_CAMBIADA, onEscalaCambiada);
-    return () => window.removeEventListener(EVENTO_ESCALA_CAMBIADA, onEscalaCambiada);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- currentIdRef/engineRef son refs estables (no cambian de identidad); el listener solo lee su valor VIVO
-  }, [renderPage]);
+  // Re-rasters por escala (prop + evento), con dedupe anti-parpadeo: useReRasterEscala.
+  useReRasterEscala({
+    pdfDocRef,
+    scale,
+    currentIdRef,
+    engineRef,
+    scaleRef,
+    ultimoFullScRef,
+    renderPage,
+  });
 
   return {
     engineRef,

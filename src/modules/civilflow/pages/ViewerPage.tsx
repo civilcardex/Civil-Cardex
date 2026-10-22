@@ -39,6 +39,7 @@ import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
+import { suscribirCalentamiento, calentamientoListo } from '../components/pdfViewer/pdfCache.ts';
 import {
   ViewerPage_S1,
   ViewerPage_S2,
@@ -304,6 +305,10 @@ export default function ViewerPage() {
 
   // Datos globales: gate compartido con el workarea (planos+trazos+sync+tramos).
   const { listo } = useProyectoCargado();
+  // Calentamiento de los PDFs de TODOS los pisos (ped. usuario: "antes de que se abra
+  // totalmente el visor que se cargue todo"): el overlay de primera entrada no se levanta
+  // hasta que cada plano esté parseado en memoria — los cambios de piso quedan instantáneos.
+  const calentamiento = useSyncExternalStore(suscribirCalentamiento, calentamientoListo);
   const hasFilesReady = files.length > 0 && files.every((f) => !!f.file);
 
   // --- Loading overlay via useSyncExternalStore (avoids refs-in-render + setState-in-effect) ---
@@ -342,7 +347,23 @@ export default function ViewerPage() {
     return () => window.clearTimeout(t);
   }, []);
   const isDrawingLoading =
-    !listo || pdfPendiente || switchPendiente || switching || visorLoading || minHoldCarga;
+    !listo ||
+    pdfPendiente ||
+    switchPendiente ||
+    switching ||
+    visorLoading ||
+    minHoldCarga ||
+    !calentamiento;
+  // El overlay grande SOLO en la primera carga de la sesión (ped. usuario: entre cambio de
+  // pisos no debe aparecer "Cargando planos y redes…"): tras la primera entrada, los
+  // `true` del visor se ignoran y los switches quedan sin overlay (el velo chico del canvas
+  // del visor sigue cubriendo el re-raster). Los `false` siempre pasan (liberan por si acaso).
+  const primeraCargaHechaRef = useRef(false);
+  const handleVisorLoading = useCallback((v: boolean): void => {
+    if (v && primeraCargaHechaRef.current) return;
+    if (!v) primeraCargaHechaRef.current = true;
+    setVisorLoading(v);
+  }, []);
   const handlePdfReady = useCallback(() => {
     if (!pdfReadyStore.ready || !pdfReadyStore.everReady) {
       pdfReadyStore.ready = true;
@@ -615,7 +636,7 @@ export default function ViewerPage() {
             pisos={pisos}
             activeNetworks={activeNetworks}
             onReady={handlePdfReady}
-            onLoadingChange={setVisorLoading}
+            onLoadingChange={handleVisorLoading}
           />
         </RainwaterProvider>
       </main>

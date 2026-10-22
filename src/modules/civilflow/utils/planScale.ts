@@ -53,7 +53,7 @@ export function guardarPaginaDeDoc(
 export interface RenderReq {
   pageNum: number;
   sc: number;
-  opts?: { bgOnly?: boolean; extraScale?: number };
+  opts?: { bgOnly?: boolean; extraScale?: number; causa?: string };
 }
 
 /** Resultado de la cola: `arranca` = renderizar ya; `pendiente` = lo que queda esperando. */

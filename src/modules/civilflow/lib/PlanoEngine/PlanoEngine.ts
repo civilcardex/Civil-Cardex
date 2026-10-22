@@ -1126,6 +1126,47 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
   }
 
+  /** Re-encuadra el DIBUJO (no la lámina) tras un loadWork: contenido nuevo → bbox nuevo →
+   *  misma doctrina de entrada siempre centrado. La arbitración local-vs-BD que aterriza
+   *  después del raster no puede mover los elementos a la vista (orig. usuario: «salto
+   *  residual mientras se acomodan»). Sin dibujo cae a la hoja completa. */
+  reEncuadrarContenido(): void {
+    const pts: Array<{ x: number; y: number }> = [];
+    for (const r of this.ramales || []) for (const p of r.pts || []) pts.push({ x: p[0], y: p[1] });
+    for (const b of this.bajantes || []) {
+      if (typeof b.x === 'number' && typeof b.y === 'number') pts.push({ x: b.x, y: b.y });
+    }
+    for (const a of this.areas || []) {
+      for (const p of (a as { pts?: number[][] }).pts || []) pts.push({ x: p[0], y: p[1] });
+    }
+    for (const d of this.dims || []) {
+      const dd = d as { x1?: number; y1?: number; x2?: number; y2?: number };
+      if (typeof dd.x1 === 'number' && typeof dd.y1 === 'number') pts.push({ x: dd.x1, y: dd.y1 });
+      if (typeof dd.x2 === 'number' && typeof dd.y2 === 'number') pts.push({ x: dd.x2, y: dd.y2 });
+    }
+    if (pts.length === 0) {
+      this.fitPage();
+      return;
+    }
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    const pad = 8;
+    const availW = Math.max(1, this.cw.clientWidth - pad * 2);
+    const availH = Math.max(1, this.cw.clientHeight - pad * 2);
+    const sc = Math.min(availW / Math.max(1, maxX - minX), availH / Math.max(1, maxY - minY));
+    this.zoom = sc;
+    this.offX = (this.cw.clientWidth - (minX + maxX) * sc) / 2;
+    this.offY = (this.cw.clientHeight - (minY + maxY) * sc) / 2;
+  }
+
   /** Ajusta la página PDF dentro del viewport con margen. */
   fitPage(): void {
     if (!this.pageW || !this.pageH) return;
@@ -1415,6 +1456,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.txtDrag ||
       this.txtResize ||
       this.dimLblDrag ||
+      this.dimDrag ||
       this.areaDrag ||
       this.areaPtDrag ||
       this.ptDrag ||

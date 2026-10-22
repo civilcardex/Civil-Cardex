@@ -310,6 +310,16 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       // El padre sigue conectado a su ramal original; solo se mueve el fantasma.
       b.desplazamientos[engine.nivelActual.label ?? ''] = { dx, dy, Ldesvio: lDesvio };
 
+      // La etiqueta del fantasma colocada a mano acompaña al anillo (ped. usuario: se
+      // quedaba clavada mientras el fantasma seguía al cursor). Solo si existe la etiqueta
+      // previa — la de offset fijo (15mm) se recalcula sola en el render.
+      const lbl = engine.nivelActual.label ?? '';
+      const gd = b.ghostData?.[lbl];
+      if (gd && gd.labelX != null && gd.labelY != null && oldD) {
+        gd.labelX += dx - oldD.dx;
+        gd.labelY += dy - oldD.dy;
+      }
+
       // Actualizar solo el ramal Ldesvio si existe (el ramal explícito de desplazamiento)
       const newGx = b.x + dx;
       const newGy = b.y + dy;

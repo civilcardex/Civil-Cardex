@@ -423,8 +423,11 @@ export function handleSelectDown(
   if (boxHit) {
     if (ensureActiveNet(engine, boxHit.r.net)) return;
     engine.selId = boxHit.r.id;
-    const bx = boxHit.r._labelBox!;
-    const lPosB = { x: bx.cx, y: bx.cy };
+    // El OFFSET del arrastre se toma del ANCLA (labelX/labelY → canvas), no del centro
+    // pintado de la caja: el renderer vuelve a sumar el gap al ancla, así que anclar al
+    // centro pintado hacía que la etiqueta SALTARA un gap entero en el primer mousemove y
+    // quedara con ese bias todo el drag (ped. usuario: "la etiqueta no sigue al cursor").
+    const lPosB = engine.toCvs(boxHit.r.labelX, boxHit.r.labelY);
     engine.lblDrag = { id: boxHit.r.id, offX: x - lPosB.x, offY: y - lPosB.y };
     engine._emitSelect(boxHit.r);
     engine.render();

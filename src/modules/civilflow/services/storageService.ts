@@ -6,6 +6,7 @@ export {
   saveToStorage,
   removeFromStorage,
   saveTrazosLocales,
+  localGanaABdPorTs,
   getActiveProyectoId,
   loadPlanTrazos,
   savePlanTrazos,

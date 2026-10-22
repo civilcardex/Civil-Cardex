@@ -29,18 +29,19 @@ export function usePdfAutoSave(
   const saveTrazosToStorage = useCallback(() => {
     const eng = engineRef.current;
     if (!eng || !eng._dirty) return;
-    // Carga en vuelo: el engine está a medio hidratar (o aún con el piso anterior bajo el id
-    // nuevo, usePlanoLoadSwitch reasigna _loadedPlanId antes de cargar) — guardar aquí persiste
-    // un trabajo vacío/ajeno con ts fresco y pisa la caché buena del piso entrante.
-    if (loadingPlanRef?.current) return;
+    // SIN guard de loadingPlanRef (orig. usuario: elementos del PRIMER piso perdidos): el
+    // _dirty ya garantiza ediciones reales sobre el contenido cargado — el contenido del
+    // motor al desmontar es el del piso visible, cargue o no su await de BD.
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     performSave(eng, id);
-  }, [currentIdRef, engineRef, performSave, loadingPlanRef]);
+  }, [currentIdRef, engineRef, performSave]);
 
   const doSave = useCallback(() => {
     const eng = engineRef.current;
     if (!eng) return;
-    if (loadingPlanRef?.current) return;
+    // SIN guard de loadingPlanRef (mismo motivo que saveTrazosToStorage): cerrar la pestaña
+    // o cambiar de piso durante el await de BD de la entrada no puede perder las ediciones —
+    // el _dirty solo se enciende con ediciones reales sobre el contenido ya cargado.
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     eng._dirty = false;
     performSave(eng, id);
@@ -64,7 +65,7 @@ export function usePdfAutoSave(
       /* ignore */
     }
     setSaveStatus('saved');
-  }, [currentIdRef, engineRef, plans, performSave, loadingPlanRef]);
+  }, [currentIdRef, engineRef, plans, performSave]);
 
   // Guardar de forma robusta al cerrar pestaña, ocultar ventana o recargar
   useEffect(() => {

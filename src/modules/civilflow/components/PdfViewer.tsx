@@ -670,6 +670,7 @@ function PdfViewer_({
   const [lineWidthScale, setLineWidthScale] = useState(1);
   const { engineReady } = usePdfViewerEngine({
     currentFile,
+    files,
     currentId,
     currentIdRef,
     activeNetRef,
@@ -887,22 +888,6 @@ function PdfViewer_({
     // zoom ajustado; el setScale disparaba un renderPage COMPLETO (bg+draw+reload) duplicado.
   }, [engineRef, cwRef]);
 
-  /** Copia el diagnóstico de carga del piso al portapapeles (escala del doc, escala calibrada,
-   *  escala global, decisión tomada, lámina y cámara): sirve para comparar dos sesiones y
-   *  ver qué piso se movió y cuánto (orig. usuario: "al reingresar los elementos aparecen
-   *  desplazados y las cotas leen menos"). */
-  const handleDiag = useCallback(() => {
-    const id = currentIdRef.current || engineRef.current?._loadedPlanId || null;
-    if (id == null) return;
-    const texto = textoReporte(id);
-    try {
-      void navigator.clipboard?.writeText(texto);
-    } catch {
-      /* portapapeles bloqueado: el texto sale en el aviso */
-    }
-    engineRef.current?.triggerAlert('Diagnóstico de carga', texto);
-  }, [engineRef]);
-
   const { handleClear, handleClearGuides, handleSave, handleSnapToggle, handleGridToggle } =
     useViewerToolbarActions({
       engineRef: engineRef as React.RefObject<PlanoEngine | null>,
@@ -1036,6 +1021,24 @@ function PdfViewer_({
       window.removeEventListener('civilflow_local_quota_ok', onQuotaOk);
     };
   }, [setSaveStatus]);
+
+  /** Copia el diagnóstico de carga del piso al portapapeles (escala del doc, escala calibrada,
+   *  escala global, decisión tomada, lámina y cámara): sirve para comparar dos sesiones y
+   *  ver qué piso se movió y cuánto (orig. usuario: "al reingresar los elementos aparecen
+   *  desplazados y las cotas leen menos"). */
+  const handleDiag = useCallback(() => {
+    const id = currentIdRef.current || engineRef.current?._loadedPlanId || null;
+    if (id == null) return;
+    // El error de guardado a BD va en el reporte: si la copia de BD no trae la escala
+    // corregida, la causa está en el push (RPC, sesión o proyecto activo).
+    const texto = textoReporte(id) + (bdError ? `\nerrorBd=${bdError}` : '\nerrorBd=ninguno');
+    try {
+      void navigator.clipboard?.writeText(texto);
+    } catch {
+      /* portapapeles bloqueado: el texto sale en el aviso */
+    }
+    engineRef.current?.triggerAlert('Diagnóstico de carga', texto);
+  }, [engineRef, bdError]);
 
   const resetKey = activeNet + '|' + tipoTramo;
   useEffect(() => {
