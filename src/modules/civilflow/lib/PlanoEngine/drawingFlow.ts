@@ -78,7 +78,10 @@ export function convergirDiametroNodoPresion(
     const sPrev = sRev ? semilla.pts[1] : semilla.pts[semilla.pts.length - 2];
     const lEnt = Math.hypot(sDest[0] - sPrev[0], sDest[1] - sPrev[1]);
     const dEnt = lEnt < 1e-9 ? null : [(sDest[0] - sPrev[0]) / lEnt, (sDest[1] - sPrev[1]) / lEnt];
-    const nuevoD = semillaId === ramalId ? diámetroSemilla : semilla.diametro || '';
+    // El diámetro que PROPAGA es siempre el SELECCIONADO (no el propio del tramo atravesado):
+    // a través de una continuación ya mayor, sus downstream reciben el seleccionado — y solo
+    // donde su actual sea menor (ped. usuario 2026-10-22).
+    const nuevoD = diámetroSemilla;
     const nuevoIn = diamPulgFromLabel(nuevoD);
     if (!(nuevoIn > 0)) continue;
     const enDestinoS = ramales.filter((o) => {
@@ -94,21 +97,33 @@ export function convergirDiametroNodoPresion(
       if (procesados.has(o.id)) continue;
       const oPts = o.pts;
       const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
-      if (oIn <= 0 || oIn >= nuevoIn) continue;
       const oOrigin = o._tribReversed ? oPts[oPts.length - 1] : oPts[0];
-      const enMiDestino = Math.hypot(oOrigin[0] - sDest[0], oOrigin[1] - sDest[1]) < TOL;
+      const esContinuacion = Math.hypot(oOrigin[0] - sDest[0], oOrigin[1] - sDest[1]) < TOL;
       const naceDeMiCuerpo = ptEnCuerpo(semilla.pts, oOrigin);
-      if (!enMiDestino && !naceDeMiCuerpo) continue;
-      if (enMiDestino && exigirS) {
-        const ob = o._tribReversed ? oPts[oPts.length - 2] : oPts[1];
-        const lSal = Math.hypot(ob[0] - oOrigin[0], ob[1] - oOrigin[1]);
-        const dSal =
-          lSal < 1e-9 ? null : [(ob[0] - oOrigin[0]) / lSal, (ob[1] - oOrigin[1]) / lSal];
-        const colineal =
-          dEnt != null && dSal != null && dEnt[0] * dSal[0] + dEnt[1] * dSal[1] >= 0.9;
-        const viaMerge = (o.mergesFrom || []).includes(semillaId);
-        if (!colineal && !viaMerge) continue;
+      if (!esContinuacion && !naceDeMiCuerpo) continue;
+      // Ya ≥ al seleccionado: no cambia. SOLO se sigue recorriendo por la CONTINUACIÓN
+      // (colineal/mergesFrom en unión multi-salida) — sus downstream reciben el seleccionado
+      // donde su actual sea menor (ped. usuario 2026-10-22: la araña completa, no parar en
+      // el tramo ya diametrado igual). Las brazos laterales ya mayores no se recorren: su
+      // subsystem es suyo.
+      if (oIn > 0 && oIn >= nuevoIn) {
+        if (!esContinuacion || procesados.has(o.id)) continue;
+        let recorre = exigirS ? false : true;
+        if (exigirS) {
+          const ob = o._tribReversed ? oPts[oPts.length - 2] : oPts[1];
+          const lSal = Math.hypot(ob[0] - oOrigin[0], ob[1] - oOrigin[1]);
+          const dSal =
+            lSal < 1e-9 ? null : [(ob[0] - oOrigin[0]) / lSal, (ob[1] - oOrigin[1]) / lSal];
+          const colineal =
+            dEnt != null && dSal != null && dEnt[0] * dSal[0] + dEnt[1] * dSal[1] >= 0.9;
+          const viaMerge = (o.mergesFrom || []).includes(semillaId);
+          recorre = colineal || viaMerge;
+        }
+        if (recorre) pendientes.push(o.id);
+        continue;
       }
+      // Menor (o sin diámetro): RECIBE el seleccionado — continuación Y brazos laterales
+      // (ped. usuario: en toda la araña el diámetro se propaga; jamás baja).
       o.diametro = nuevoD;
       changed = true;
       if (!procesados.has(o.id)) pendientes.push(o.id);
