@@ -11,6 +11,10 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
+## Tests: solo los de los archivos modificados (2026-10-22, REGLA PERMANENTE)
+
+Los gates de VITEST corren SOLO los tests relacionados con los archivos modificados (su lógica, sus tests propios y los módulos que los consumen directamente) — NUNCA la suite completa. La suite entera tarda ~1 minuto y casi siempre lo que rompe el cambio ya se ve en sus tests vecinos. Ej: toque drawingFlow.ts → corro nodoPressureDiameter.test.ts + los tests de quien lo importa. La suite COMPLETA queda reservada para: auditorías, pre-release/commit mayor, o cuando el usuario la pida explícitamente. tsc + eslint + build sí corren siempre (son rápidos y globales).
+
 ## JSDoc standard (corto + ejemplo + ameno)
 - 1-3 lines: WHAT it does (plain words, no jargon) + WHY it matters + one concrete example. Numbers carry units/range. `@param/@returns` only on pure utils. Delete obvious JSDoc (getters, one-line predicates like `esCaja`). Comments only — never change logic in a JSDoc pass.
 - Tone: friendly to a NEW programmer. Name the domain idea in simple words before the technical term. Ej: "Reparte la carga de aparatos (quién alimenta a quién) entre ramales de agua fría" beats "Propaga carga por aristas".
@@ -692,4 +696,10 @@ Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/1
 - **Diámetro entre pisos en cada pase**: `correrEspejos` sincroniza el dNominal del superior al asociado — arriba (cross-floor block) y desde abajo (bloque paridad, leyendo storage del superior). Helper compartido `adoptarDiametroDelSuperior` en `bajanteAssocShared` (sin .find dentro del bucle — guard G8).
 - **Salto residual al acomodarse**: re-encuadre (`encuadrarContenido`) tras CADA raster completo (no bgOnly) — el fit de entrada usaba el tamaño PERSISTIDO de la lámina y el viewport real puede diferir un pelín; el ajuste corre antes de que suba el velo.
 - Nota: `fixtureMirrors.ts` 412>410 (tope declarado) → helper extraído + comentario huérfano fuera (410 exacto).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
+
+## Session Summary — 2026-10-22 (ronda: doctrina araña COMPLETA + salto post-carga)
+- **Araña de presión — doctrina final (ped. usuario, 3 iteraciones hoy)**: `convergirDiametroNodoPresion` — (1) tramos SIN diámetro reciben; (2) un tramo ya ≥ al seleccionado NO se salta: se RECORRE si es continuación colineal/mergesFrom (sus downstream reciben), no si es lateral ya mayor (su subsystem es suyo); (3) el diámetro que PROPAGA es siempre el SELECCIONADO (no el propio del tramo atravesado); (4) los brazos laterales menores TAMBIÉN reciben — el colineal solo gobierna el RECORRIDO, ya no la asignación. Tests `nodoPressureDiameter` ×3 actualizados a la nueva doctrina.
+- **Salto residual post-carga**: la arbitración local-vs-BD aterriza DESPUÉS del raster y movía contenido → nuevo método `eng.reEncuadrarContenido()` (bbox propio del motor, sin importar la fachada pinneada drawingBBox — guards G2/G3) llamado por el loader tras cada loadWork + re-fit en renderPage tras raster completo.
+- Nota: G3 ciclos flakea en corrida completa bajo carga (pasa en solitario). El build OOM-eó en graphify una vez — prerender 13/13 verificado en dist.
 - Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
