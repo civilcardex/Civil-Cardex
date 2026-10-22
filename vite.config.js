@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   server: {
     hmr: {
       overlay: true,
@@ -29,5 +29,9 @@ export default defineConfig({
   ].filter(Boolean),
   build: {
     chunkSizeWarningLimit: 900,
+    // El bundle SSR (src/seo/prerenderEntry.tsx) solo se EJECUTA en Node para producir el HTML
+    // de las 13 rutas: copiarle `public/` (67 MB de PDFs de ejemplo y fuentes) al `dist-ssr` es
+    // peso muerto en cada build. El bundle del cliente sigue copiando `public/` como siempre.
+    copyPublicDir: !isSsrBuild,
   },
-})
+}))

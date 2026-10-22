@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "node scripts/ignorarBuildDocs.mjs",
   "headers": [
     {
       "source": "/iconos_civilflow/(.*)",

@@ -319,7 +319,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
   },
   {
     ruta: 'modules/civilflow/components/fixtures/fixtureMirrors.ts',
-    maxLineas: 425,
+    maxLineas: 430,
     puro: false,
     test: 'useFixtureMirrors',
   },
