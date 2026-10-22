@@ -4,7 +4,7 @@
 // que solo cambia AGENTS.md o docs/*.md no altera NADA del sitio: gastar ese build es tiempo
 // (y minutos de facturación) tirados. Ej: "docs: AGENTS.md — ronda 70" → skip.
 //
-// Vercel llama este script vía `ignoreCommand`: exit 1 = NO construir, exit 0 = construir.
+// Vercel llama este script vía `ignoreCommand`: exit 0 = NO construir (saltar), no-cero = construir.
 // Si no hay diff utilizable (primer commit del clon, fuera de Vercel) se construye: ante la
 // duda, construir es lo seguro.
 import { execFileSync } from 'node:child_process';
@@ -29,13 +29,13 @@ function archivosDelCommit() {
 const archivos = archivosDelCommit();
 if (!archivos || archivos.length === 0) {
   console.log('[ignore-build] sin diff utilizable: se construye');
-  process.exit(0);
+  process.exit(1);
 }
 
 const codigo = archivos.filter((f) => !SOLO_DOCS.test(f));
 if (codigo.length === 0) {
   console.log(`[ignore-build] solo documentación (${archivos.length} archivo/s): se salta`);
-  process.exit(1);
+  process.exit(0);
 }
 
 console.log(`[ignore-build] ${codigo.length} archivo/s de código: se construye`);
