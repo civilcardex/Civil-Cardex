@@ -611,6 +611,18 @@ El sintoma era **metrico** (las cotas en metros leian menos), no visual: la esca
 
 Tests: `utils/__tests__/cargaDiagnostico.test.ts` (15).
 
+### 1b. El aviso de "escala del piso corregida" salia SIEMPRE (bucle)
+La reparación se guardaba **sin `ts`**: el arbitration local-vs-BD gana el **mayor ts** y una copia sin ts cuenta 0 → la BD (con la escala vieja) ganaba siempre y el doc conservaba la etiqueta mala → el aviso se repetía en cada entrada. Dos arreglos:
+- **Todo doc que se persiste lleva ts fresco** (mismo convenio que `persistTrazosSnapshot`). Helper puro `localGanaABdPorTs` (localStorage.ts) + test que pina que una copia sin ts pierde.
+- **El aviso sale una vez por par "escala encontrada → corregida"** (`debeAvisarCorreccionEscala`): si la corrección no se queda guardada, el modal no vuelve a tapar el visor — el diagnóstico deja la traza igual.
+- `saveTrazosLocales` ahora devuelve si la escritura local se pudo hacer (cuota llena) y el cargador avisa si la corrección no quedó guardada.
+- El reporte del diagnóstico ahora trae la escala y el ts de **cada copia** (local vs BD) y el error de BD: si la copia de BD no trae la escala corregida, la causa está en el push (RPC, sesión o proyecto activo).
+
+### 1c. "Aceptar" el aviso dejaba el visor CARGANDO (spinner eterno)
+El re-raster de la lámina por cambio de escala bumpeaba `mountId` → el `setLoading(false)` de la carga comprueba `thisMount === mountId.current` → la comprobación fallaba y **el overlay de carga nunca se bajaba**. Dos arreglos:
+- El re-raster por cambio de escala **no bumpea `mountId`** (usa `mountCheck = 0`, "sin chequeo de montaje": es el mismo plano).
+- El overlay se baja por una **secuencia de CARGA** (`cargaSeq`), no por el montaje: cualquier render extra (re-raster por zoom, por cambio de escala) ya no puede dejar el spinner colgado.
+
 ### 2. Nombres de archivo en ingles (718 archivos movidos)
 El renombrado a espanol (35861b6 + 36e46aa) habia ido **al reves** de lo pedido. Se revirtio al nombre ingles original (630 archivos) y se traduzco al ingles lo que quedaba en espanol (88). Glosario cerrado con el usuario: se traducen red/canal/presion/bomba (+ genericas) y se **mantienen en espanol** bajante, montante, ramal, tributario, tramo, caja, rejilla, nodo, acometida y aparato. Seccion nueva en este AGENTS.md con el vocabulario.
 
@@ -619,3 +631,65 @@ El renombrado a espanol (35861b6 + 36e46aa) habia ido **al reves** de lo pedido.
 **LECCION (imports sin extension)**: el resolutor de imports tiene que probar `.ts`/`.tsx`/`/index.ts` **contra el mapa de renombres**, no contra el disco: tras mover el archivo, el nombre viejo ya no existe y el import queda apuntando al nowhere (`'./complejidad'`). Con extension en el specifier hay que resolver igual.
 
 Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/13 - graphify (11616 nodos, 31549 aristas).
+
+## Session Summary — 2026-10-22 (ronda 69: FK de guardado, fotocopia entre pisos, prod y visor)
+- **"No se pudo guardar en la nube" (FK `planos_fantasmas_entrepisos_plano_origen_id_fkey`) + "no se guardan los elementos" = UN bug**: borrar un plano deja cachés vecinas con fantasmas huérfanos → el RPC `save_plano_data` (transaccional) abortaba el guardado COMPLETO del piso. Fix: `20261022000000_fantasmas_huerfanos.sql` — parche POSICIONAL del cuerpo vivo (patrón r64: ancla única + copia `__check` + idempotente con marcador `fantasmas_huerfanos_vivos`); el insert gana `where r.plano_origen_id is null or exists (select 1 from cf_planos ...)`. PENDIENTE USUARIO: aplicar en SQL Editor.
+- **FOTOCOPIA entre pisos (elementos del piso 2 "de la nada" en la cubierta) — raíz**: carrera de carga. El switch reasignaba `_loadedPlanId` ANTES del await y una carga BD lenta del piso viejo aterrizaba después: `loadWork` pisaba el motor con contenido ajeno y `finCarga()` bajaba el flag global a mitad de la carga vigente → cualquier escritura persistía la fotocopia (RPC destructivo). Fix doble: token secuencial en `usePlanoLoadSwitch` (carga obsoleta no baja el flag ni toca el motor) + `pisoVigente()` en `useTrazosLoader` (re-verifica `_loadedPlanId === resolvedId` antes de cada loadWork/save post-await; también guarda la corrección de escala del piso correcto). Los duplicados YA copiados se borran a mano una vez.
+- **Prod "sin estilos" (perfil)**: la CSP (`script-src` sin `'unsafe-inline'`) bloqueaba los `onload` inline de los `<link>` de Google Fonts → fuentes/iconos nunca se activaban (el CSS de Tailwind estaba bien). Fix: `public/scripts/fuentes.js` (patrón canonical.js) promueve preload→stylesheet; `index.html` sin onload inline.
+- **PDF difuminado**: el dprCap viejo `max(1, 2/dpr)` clavaba extra=1 en retina (dpr≥2) → cualquier zoom>1 estiraba el bitmap. Fix: presupuesto — `extra = min(pedido, 2)` recortado a lado ≤6000px y área ≤24MP post-viewport.
+- **Etiquetas no siguen al cursor**: (a) `dimDrag` FALTABA en la lista `hasDrag` de PlanoEngine → arrastrar cota por el cuerpo no hacía nada en vivo; (b) el agarre de etiqueta de ramal usaba el centro PINTADO de la caja como ancla y el renderer re-sumaba el gap → salto de un gap en el primer mousemove; ahora ancla = `toCvs(labelX,labelY)`; (c) `ghostDrag` no movía `ghostData[nivel].labelX/labelY` (etiqueta del fantasma clavada).
+- **Centrado sin salto**: encuadre PRE-PAINT incondicional por piso — el init ya no condiciona el re-fit a `sinCamara || laminaCambio` (la cámara guardada deja de mandar en la entrada) y el switch ajusta `paginaDeDoc` + `fitPage()` antes de su primer render. La resolución local-vs-BD queda bajo el primer overlay. (El auto-fit de la ronda anterior lo pisó la sesión paralela al extraer hooks — re-hecho pre-paint.)
+- **Spinner solo en la 1ª entrada**: `ViewerPage` envuelve `onLoadingChange` (`handleVisorLoading`) — tras la primera carga completa los `true` se ignoran → switches de piso sin "Cargando planos y redes…" (queda el velo chico del canvas).
+- **Alerta "Escala del piso corregida"**: correcta (auto-heal 1 vez/dispositivo) — la etiqueta 0.5 del doc era del pisado viejo; con la FK arreglada persiste y deja de repetir entre dispositivos. Sin cambio.
+- Gates: tsc 0 (propios) · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
+
+## Session Summary — 2026-10-22 (ronda 69bis: raster que persigue el zoom + pisos precalentados)
+- **PDF difuminado a zoom de trabajo**: el re-raster de fondo nacía con `lastZoomRaster = 1` y densidad extra topeada a 2× — a zoom 2-3 el bitmap quedaba estirado (ratio extra/zoom < 1). Fix: `extraPedido` SIN tope duro (el presupuesto de bitmap post-viewport es el único límite: lado ≤6000px, área ≤24MP) + `reprogramarBgRef` — tras el primer render el loader re-sincroniza la densidad con el zoom REAL del fit de entrada.
+- **Cambio de piso fluido / todo cargado a la 1ª entrada**: `pdfCache.ts` nuevo — caché de PDFDocumentProxy por File (re-parsear el mismo File en cada switch era el retraso entero). Tras la primera entrada, `calentarPdfs` parsea los PDFs de los DEMÁS pisos en reposo (2.5 s, best-effort) → los switches caen en caché: solo re-raster con asentamiento 600→150 ms (el velo chico del canvas cubre el swap; el overlay grande ya no sale por piso). Los trazos de todos los pisos ya los traía `prefetchAllTrazos`.
+- **G1**: `PdfViewerEngineInit.ts` volvió a tocar el tope (740) → extraído `pdfCache.ts` + `diagCamara.ts` (el dump `__cfCam` ahora se instala con `instalarCfCam`, 700 lines exact).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
+
+## Session Summary — 2026-10-22 (ronda 69ter: TDZ grafo vent + recorte que re-rasteriza)
+- **"Cannot access 'recibePorBajante' before initialization"**: el refactor C3 movió el Map DEBAJO del bucle de ramales en `buildBajanteGraph.ts` — `checkEndpoint` lo leía en TDZ en el primer ramal con bajantes. Fix: el mapa se construye ANTES del bucle (junto a `bajantes`).
+- **Recorte difuminado (raíz del "PDF difuminado" en carga/calibración/recorte)**: `PlanCropModal` rasterizaba la página UNA vez a escala fija 2 y el `drawImage` la estiraba con el zoom — por encima de 2×, borroso permanente. Fix: re-raster bajo demanda — cuando `zoom × dpr` supera la escala del raster con 20% de margen, se vuelve a rasterizar (presupuesto: lado ≤9000px, área ≤40MP; el dibujo actual queda en pantalla hasta el swap). Calibración/carga no tienen raster propio (overlay del visor / `<embed>` nativo).
+- **Visor: presupuesto de área 24→40MP** — a 150% de escala de Windows (dpr 1.5) el tope viejo dejaba ratio 0.82 a zoom 3; ahora ~1.0.
+- **G1**: `PlanCropPanel.tsx` pasó el tope (715) → modal extraído a `planosTab/PlanCropModal.tsx` (panel 126, modal 593).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
+
+## Session Summary — 2026-10-22 (ronda 69quater: cero spinner en switches + todo antes de abrir)
+- **"Cambio de piso SIN NINGÚN spinner"**: el cache-hit del loader ya no toca `loading` (ni overlay grande ni velo z-30 del canvas) y `renderPage` ya no limpia el canvas si el tamaño no cambió (`reDimensionado` guard + `clearRect` condicional) — el fondo ANTERIOR queda visible hasta que el nuevo raster termina: swap imperceptible con hojas del mismo tamaño.
+- **"Parpadeo + vuelve al zoom inicial"**: el efecto de switch recargaba el piso cuando sus deps se movían (identidades de callbacks/planes) — cada recarga hacía `loadWork` y pisaba la cámara del motor con la guardada. Fix: `pisosCargadosRef` — un piso carga UNA vez por montaje; re-entradas no tocan nada.
+- **"Todo cargado antes de que se abra totalmente el visor"**: `pdfCache.ts` expone el estado de calentamiento (`suscribirCalentamiento`/`calentamientoListo`, arranca en listo; tope de seguridad 20 s) y el calentamiento corre INMEDIATAMENTE tras el primer render (ya sin los 2.5 s). El overlay de primera entrada de `ViewerPage` ahora incluye `!calentamiento` — no se levanta hasta que TODOS los pisos estén parseados en memoria.
+- **"Trabado" en zoom/pan**: guard de tamaño evita clears + recomposites del fondo en cada re-raster; los re-rasters solo corren en pausas del gesto (debounce 600ms + gap 1.5s, sin cambio). Si persiste, siguiente palanca = partir el raster pesado en dos pasos (rápido + fino).
+- **G1**: `PdfViewerEngineInit.ts` (705) → extracto `encuadrarContenido` a `planoCamera.ts` (687); fit pre-paint del init y del switch comparten UNA rutina.
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
+
+## Session Summary — 2026-10-22 (fix: guard del switch bloqueaba re-visitas)
+- **"Los elementos no cambian según el piso" (regresión mía, ronda 69quater)**: `pisosCargadosRef` saltaba la carga de CUALQUIER piso ya visitado — volver a un piso dejaba el motor con los elementos del anterior y `_loadedPlanId` sin reasignar (risco de fotocopia de nuevo). Fix: el guard SOLO aplica a la RECARGA del MISMO piso (`_loadedPlanId === resolvedId && ya cargado`); las re-visitas pasan por la carga completa (con fit y token). Gates: tsc 0 · vitest 1391/1391 · build ✓.
+
+## Session Summary — 2026-10-22 (fix: elementos del PRIMER piso perdidos)
+- **"Los elementos que no se guardan son los del piso al que uno entra por primera vez"**: cerró el diagnóstico del guard `!loadingPlanRef` — la ventana del await de BD de la entrada es donde el usuario dibuja justo al abrir; al cambiar de piso (o cerrar pestaña) el guard saltaba el guardado Y limpiaba el autosave pendiente. Fix completo: el guard salió de los TRES caminos (switch-save en `usePlanoLoadSwitch`, `doSave` de unload/visibilitychange y `saveTrazosToStorage` de unmount en `usePdfAutoSave`). Seguro porque `_dirty` solo se enciende con ediciones reales sobre el contenido ya cargado (`applyWorkData` lo apaga en cada carga) y el token de carga + `pisoVigente` garantizan la propiedad del contenido. El debounced autosave conserva su guard (solo difiere — `_dirty` queda vivo para el próximo camino).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 · build + prerender 13/13 ✓.
+
+## Session Summary — 2026-10-22 (fix: parpadeo del plano del primer piso)
+- **"Parpadea el plano y hay que dibujar un bajante para que pare"**: DOS dueños del tamaño del lienzo de dibujo — `renderPage` lo dimensionaba a HOJA×dpr (con `eng.resizeCanvas(viewport)`) y el motor lo devolvía a ÁREA-VISIBLE (`ensureCanvasSize`) en el siguiente render; cada cambio de tamaño LIMPIA el canvas → limpiar+repintar en bucle. Fix: UN solo dueño — `renderPage` solo fija `eng.dpr`/`setPageSize` y llama `eng.ensureCanvasSize()` (el motor manda); añadido `eng.render()` tras el raster del PDF (si el lienzo se redimensionó, los elementos se repintan de inmediato y no en la próxima interacción). El "dibujar un bajante lo arreglaba" era el `_markDirty` → render → tamaño convergido.
+- Gates: tsc 0 · vitest 1391/1391 · build + prerender 13/13 ✓.
+
+## Session Summary — 2026-10-22 (ronda: dedupe anti-parpadeo + sonda __cfCam + landing sin texto)
+- **Parpadeo del piso de entrada (persistía)**: los dos re-rasters por escala (prop `scale` + `EVENTO_ESCALA_CAMBIADA`) re-rasterizaban SIN dedupe — el flip repetido de scaleM entre dos escritores era un bucle de raster visible. Fix: `ultimoFullScRef` — un FULL con escala ya rasterizada se salta; extraído a `useReRasterEscala.ts` (G1: init 691 líneas).
+- **Sonda**: `__cfCam()` ahora devuelve `renders` (contador de rasters completos) y `causaRender` ('loader-pdf'/'loader-cache'/'prop-escala'/'evento-escala'/'bg') — dos dumps durante un parpadeo dicen si el contador sube y quién dispara.
+- **Landing sin "Cargando proyecto…"**: `preload.js` oculta el texto en `/` (queda solo el logo).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 · build + prerender 13/13 ✓.
+
+## Session Summary — 2026-10-22 (RAÍZ del "aparatos que aumentan al cambiar de piso": el piso fantasma `_bak`)
+- **Dump del usuario (v58) lo delató**: cada ramal aparecía DOS veces en `piezas` — copia `_bak` + real — y `bajLibro` tenía entradas `_bak`. Causa: el sanador de herencia invertida guardaba su respaldo como `trazos_<pid>_bak` (MISMO namespace que barre `idsDePlanos()`) → el respaldo completo era un PISO FANTASMA que entraba a toda la propagación: piezas duplicadas, LD del piso de arriba al doble (`san_LD_BAN1_...481` = 8 en vez de 4), inflación en ambos sentidos al alternar pisos.
+- Fix doble: (1) `propagation/reading.ts` `idsDePlanos` excluye pids `_bak` (los respaldos YA creados dejan de contaminar — los valores dobles se auto-curan: los espejos REEMPLAZAN y `escribirDelta` recompone base+her con las fuentes normalizadas); (2) `bajanteAssociationHeal.ts` guarda el respaldo FUERA del namespace (`civilflow_respaldo_heal_<pid>`).
+- Nota: entre turnos se renombró `aparatosPresion/` → `propagation/` (reading/writing/folding/counting…).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
+
+## Session Summary — 2026-10-22 (ronda: diámetro araña completa + entre pisos + re-fit anti-salto)
+- **Araña de presión: la cascada moría en tramos SIN diametrar** — `convergirDiametroNodoPresion` saltaba `oIn <= 0`: la continuación sin diámetro no recibía ni re-encolaba. Fix: `oIn > 0 && oIn >= nuevoIn` (el sin diámetro recibe y re-encola; `jamás baja` intacto; el conteo topológico de la unión multi-salida ya contaba los sin diámetro — la lateral perpendicular sigue sin subir). Test `nodoPressureDiameter` actualizado a la nueva semántica (la continuación toma, la lateral conserva).
+- **Diámetro entre pisos en cada pase**: `correrEspejos` sincroniza el dNominal del superior al asociado — arriba (cross-floor block) y desde abajo (bloque paridad, leyendo storage del superior). Helper compartido `adoptarDiametroDelSuperior` en `bajanteAssocShared` (sin .find dentro del bucle — guard G8).
+- **Salto residual al acomodarse**: re-encuadre (`encuadrarContenido`) tras CADA raster completo (no bgOnly) — el fit de entrada usaba el tamaño PERSISTIDO de la lámina y el viewport real puede diferir un pelín; el ajuste corre antes de que suba el velo.
+- Nota: `fixtureMirrors.ts` 412>410 (tope declarado) → helper extraído + comentario huérfano fuera (410 exacto).
+- Gates: tsc 0 · eslint 0 · vitest 1391/1391 (227) · build + prerender 13/13 · graphify ✓.
