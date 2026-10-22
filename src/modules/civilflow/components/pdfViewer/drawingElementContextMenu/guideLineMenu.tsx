@@ -25,9 +25,12 @@ import {
   resolveGuideJunctionAccessory,
   snapGuideArrivalToHost,
   isGuideRelativeAngleValid,
-  guideEndTouchesNetwork,
+  debeVoltearRamalDeGuia,
   guidePolylineSide,
+  getPadreHostAngles,
 } from './guideOps.ts';
+import { recortarEnPrimerCruce } from '../../../lib/PlanoEngine/intersectionTrim.ts';
+import { puntoEnCaja } from '../../../lib/PlanoEngine/junctionAutoSplit.ts';
 
 export function GuideLineMenu() {
   const ctx = useDrawingElementContextMenu();
@@ -43,7 +46,7 @@ export function GuideLineMenu() {
   // en san/ll/vent el chequeo de dirección de flujo (el tributario fluye HACIA la unión)
   // rechaza siempre uno de los dos lados del cruce (la unión quedaría en punto muerto), así que
   // el botón plural se oculta y queda el singular.
-  const tCrossRaw = eng ? findGuideTCrossing(eng.ramales, guide) : null;
+  const tCrossRaw = eng ? findGuideTCrossing(eng.ramales, guide, effectiveNet) : null;
   const tCross =
     tCrossRaw &&
     (() => {
@@ -86,11 +89,35 @@ export function GuideLineMenu() {
           // dibujó esta guía (el cruce ES la conexión que crea), con el extremo cercano
           // anclado al cruce exacto para que nazca conectado (split + UD + "Convertir en
           // tributario" disponible).
-          const crossing = findGuideCrossing(eng, liveGuide);
+          const crossing = findGuideCrossing(eng, liveGuide, effectiveNet);
           let { pts: guidePts } = resolveRamalEndsFromGuide(eng, liveGuide, crossing);
+          // RECORTE: si la guía atraviesa un ramal de su red ANTES del cruce elegido, el ramal
+          // nuevo se corta en ese primer cruce (mismo criterio que finishRamal: el excedente
+          // nunca se rechaza, se recorta y la unión se forma ahí).
+          let hostAngOverride: number | null = null;
+          {
+            const recorte = recortarEnPrimerCruce(guidePts, eng.ramales, effectiveNet, {
+              dentroDeCaja: (p) => puntoEnCaja(eng, p, effectiveNet),
+            });
+            if (recorte.invalido) {
+              eng.triggerAlert(
+                'Conexión no permitida',
+                'La línea guía se cruza con otro ramal demasiado cerca de su inicio: sepárala del trazo existente.',
+              );
+              return;
+            }
+            if (recorte.cortado) {
+              guidePts = recorte.pts;
+              const hostCorte = eng.ramales.find((r) => r.id === recorte.cruce?.ramalId);
+              const angs = hostCorte
+                ? getPadreHostAngles(hostCorte, guidePts[guidePts.length - 1])
+                : [];
+              hostAngOverride = angs[0] ?? null;
+            }
+          }
           // Validación relativa si la guía cruza un ramal (ítem 4): host a 30° + guía a 120° es 90° relativa válida.
           const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
-          const hostAng = crossing ? crossing.angle : null;
+          const hostAng = hostAngOverride ?? (crossing ? crossing.angle : null);
           // Corrección fina de la llegada (±7.5°) antes de validar: una guía freehand llega a
           // 44.3° y la validación exige exactitud — se corrige el desfase en vez de alertar.
           if (hostAng !== null) {
@@ -168,19 +195,14 @@ export function GuideLineMenu() {
             // del trazo de la guía (mismo flag que los tributarios creados desde guía).
             _sinAccMedInterior: true,
           };
-          // san/ll: la flecha SIEMPRE entra a la conexión (el accesorio) — el sentido en que
-          // se dibujó la guía no influye (orig. usuario). El ramal drena hacia el extremo que
-          // toca la red existente; resolveRamalEndsFromGuide ya lo orienta cuando hay cruce,
-          // esta regla lo fuerza también sin cruce detectado (guía dibujada DESDE el ramal).
-          if (effectiveNet === 'san' || effectiveNet === 'll') {
-            const pts = newRamal.pts;
-            const lastTouch = guideEndTouchesNetwork(
-              eng,
-              [pts[pts.length - 1][0], pts[pts.length - 1][1]],
-              effectiveNet,
-            );
-            const firstTouch = guideEndTouchesNetwork(eng, [pts[0][0], pts[0][1]], effectiveNet);
-            if (firstTouch && !lastTouch) flipRamalFlow(newRamal);
+          // Orientación como en el trazo manual (orig. usuario): en presión (af/ac/gas/rci) el
+          // ramal SALE de la unión — se dibuja del tronco hacia afuera — mientras san/ll drenan
+          // HACIA la conexión. `resolveRamalEndsFromGuide` deja el cruce al final (pensado para
+          // san/ll); en presión eso dejaba el ramal ENTRANDO a la T y el motor abría el modal
+          // "Sentido del tramo nuevo" (regla 5) en vez de resolverlo. Aquí se voltea en silencio,
+          // antes del split, igual que el sentido de un ramal dibujado a mano.
+          if (debeVoltearRamalDeGuia(eng, newRamal.pts, effectiveNet)) {
+            flipRamalFlow(newRamal);
           }
           // El flip invierte pts (san/ll/vent) — el labelAngle quedó calculado ANTES del flip y
           // sale 180° fuera; el gap perpendicular del render empujaba la caja HACIA el trazo en
@@ -250,7 +272,7 @@ export function GuideLineMenu() {
             const eng = ctx.engineRef.current;
             if (!eng) return;
             const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
-            const crossing = findGuideTCrossing(eng.ramales, liveGuide);
+            const crossing = findGuideTCrossing(eng.ramales, liveGuide, effectiveNet);
             if (!crossing) return;
             const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
             // Misma red restringida que la visibilidad del botón (ver tCross arriba)
@@ -308,7 +330,7 @@ export function GuideLineMenu() {
             const eng = ctx.engineRef.current;
             if (!eng) return;
             const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
-            const crossing = findGuideCrossing(eng, liveGuide);
+            const crossing = findGuideCrossing(eng, liveGuide, effectiveNet);
             if (!crossing) {
               eng.triggerAlert(
                 'Sin cruce con ramal',

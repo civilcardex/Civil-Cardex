@@ -1,6 +1,7 @@
 import { rotatedRectCorners } from '../HitTester.ts';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
 import type { CrossFloorGhost } from '../../../utils/associateBajanteAcrossFloors';
+import { anchoTexto } from './medidaTexto.ts';
 
 /** La dirección del bajante con la primera letra en mayúscula, para mostrarla: Sube / Baja /
  *  Continua. */
@@ -55,7 +56,7 @@ export function renderBajanteLabel(
 
   ctx.save();
   ctx.font = `bold ${fsCode}px Geist, monospace`;
-  const tw1 = ctx.measureText(line1).width;
+  const tw1 = anchoTexto(ctx, line1);
   const boxW = tw1 + engine.mm2cvs(4);
   const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
   const hh2 = boxH / 2;

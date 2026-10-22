@@ -65,8 +65,11 @@ export function checkRamalAnglesExcludingConnections(
     return false;
   };
   const lastIdx = r.pts.length - 1;
-  const startConnects = r.pts.length >= 2 && touchesAny(r.pts[0]);
-  const endConnects = r.pts.length >= 2 && touchesAny(r.pts[lastIdx]);
+  // Punta con APARATO (aparatoInicio / aparatoFin): la llegada la define el aparato, no la regla
+  // de 45°/90° — igual que una punta que toca otra tubería. Sin esto, un ramal que nace en un
+  // aparato y gira hacia su trazado se rechazaba por el ángulo del primer codo.
+  const startConnects = r.pts.length >= 2 && (!!r.aparatoInicio || touchesAny(r.pts[0]));
+  const endConnects = r.pts.length >= 2 && (!!r.aparatoFin || touchesAny(r.pts[lastIdx]));
   let ptsToCheck: number[][] = r.pts;
   if (startConnects && endConnects) ptsToCheck = r.pts.slice(1, lastIdx);
   else if (endConnects) ptsToCheck = r.pts.slice(0, lastIdx);

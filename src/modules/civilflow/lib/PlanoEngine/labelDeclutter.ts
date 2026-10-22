@@ -193,6 +193,61 @@ export function findFreeLabelCenter(
   return null;
 }
 
+/** Des-tapado con MEMORIA: el sitio elegido se guarda como DESPLAZAMIENTO en unidades del PLANO
+ *  (pantalla ÷ zoom), que ni el paneo ni el zoom cambian, y se reutiliza mientras la geometría
+ *  siga igual. Ej: mover la cámara o hacer zoom en un plano denso deja de repetir la espiral de
+ *  12 anillos para cada etiqueta en cada frame — la mitad del costo del render (orig. usuario:
+ *  paneo/zoom "trabado").
+ *  @param clave - firma de la geometría: si cambia (un trazo se movió), el mapa arranca limpio.
+ */
+export function desTapadoConMemoria(clave: string | number) {
+  const off = new Map<string, { dx: number; dy: number } | null>();
+  return {
+    clave,
+    /** @param escala - zoom con el que se está pintando AHORA (convierte plano↔pantalla). */
+    busca(
+      selfId: string,
+      boxW: number,
+      boxH: number,
+      angle: number,
+      defCx: number,
+      defCy: number,
+      placed: DeclutterBox[],
+      segs: DeclutterSeg[],
+      escala = 1,
+    ): { x: number; y: number } | null {
+      const z = escala || 1;
+      if (off.has(selfId)) {
+        const d = off.get(selfId);
+        return d ? { x: defCx + d.dx * z, y: defCy + d.dy * z } : null;
+      }
+      const spot = findFreeLabelCenter(selfId, boxW, boxH, angle, defCx, defCy, placed, segs);
+      off.set(selfId, spot ? { dx: (spot.x - defCx) / z, dy: (spot.y - defCy) / z } : null);
+      return spot;
+    },
+  };
+}
+
+const memoriasPorMotor = new WeakMap<
+  object,
+  { clave: string | number; memoria: ReturnType<typeof desTapadoConMemoria> }
+>();
+
+/** Memoria del des-tapado vigente para ese motor y esa geometría. Si la geometría cambió —un
+ *  trazo se movió, se borró o cambió de red—, arranca limpia: los sitios ya no valen. El zoom NO
+ *  entra en la clave: el desplazamiento se guarda en unidades del plano, así que acercar o
+ *  alejar reutiliza los mismos sitios. Ej: rueda del mouse en un plano denso → ningún cálculo. */
+export function desTapadoDelMotor(
+  engine: IPlanoEngineCore,
+  clave: string | number,
+): ReturnType<typeof desTapadoConMemoria> {
+  const previa = memoriasPorMotor.get(engine as object);
+  if (previa && previa.clave === clave) return previa.memoria;
+  const memoria = desTapadoConMemoria(clave);
+  memoriasPorMotor.set(engine as object, { clave, memoria });
+  return memoria;
+}
+
 /** Toma la foto de obstáculos antes de pintar: etiquetas movidas a mano, etiquetas de sifón, de
  *  bajantes y de áreas, los textos del plano ("TERRAZA COMPACTIDA") y todos los tramos de ramal
  *  visibles; las redes ocultas no cuentan. Quien llama mete aquí las etiquetas que va pintando, para

@@ -7,11 +7,9 @@ import {
 import { relabelTribChain, allocTributaryNumber } from './PlanoState.ts';
 import { _midpoint } from './PlanoEngineDrawing.ts';
 import { loadFromStorage, saveToStorage } from '../../services/storageService.ts';
-import {
-  APARATOS_BY_TRAMO_KEY,
-  HYDRO_DATA_STORAGE_KEY,
-} from '../../constants/storage-keys.ts';
+import { APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys.ts';
 import { devError } from '../../../../utils/devError.ts';
+import { mezclarMax } from '../../utils/propagation/counting.ts';
 import { scrubAccMedTeeAt, scrubPlanCodoAt } from './deleteJunctionCleanup.ts';
 
 import { angleAtHalfLength } from './drawingAngles.ts';
@@ -345,10 +343,7 @@ export function mergeTribPairAt(engine: IPlanoEngineCore, pt: number[]): void {
       const from = `${b.net}_${b.id}_${planId}`;
       const to = `${b.net}_${a.id}_${planId}`;
       if (all[from]) {
-        const dst = { ...(all[to] || {}) };
-        for (const [k, v] of Object.entries(all[from]))
-          dst[k] = Math.max(Number(dst[k]) || 0, Number(v) || 0);
-        all[to] = dst;
+        all[to] = mezclarMax(all[to] || {}, all[from]);
         delete all[from];
         saveToStorage(APARATOS_BY_TRAMO_KEY, all);
       }

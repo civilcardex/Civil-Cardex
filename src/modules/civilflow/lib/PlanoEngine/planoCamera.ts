@@ -11,31 +11,17 @@ export interface CamaraConRender {
   render(): void;
 }
 
-/** Tamaño del lienzo de DIBUJO: debe cubrir el ÁREA VISIBLE, no solo la caja de la hoja.
- *  Con zoom > 1 el fondo se sale de la hoja (lo recorta el contenedor) pero un lienzo medido
- *  como la hoja cortaba el TRAZO en su borde: un "recuadro" que partía la geometría (laterales
- *  y superiores recortados, orig. usuario). Aquí el lienzo cubre la hoja×zoom y el viewport:
- *  el trazo se recorta JUSTO donde se recorta el fondo.
+/** Tamaño del lienzo de DIBUJO: SOLO el área visible del visor.
+ *  Antes medía `max(viewport, hoja×zoom)`: con zoom 3 y dpr 2 el lienzo llegaba a ~50 MP y
+ *  CADA frame del paneo lo limpiaba y repintaba entero — el "trabado" del visor. El contenedor
+ *  (`overflow:hidden`) ya recorta en el mismo sitio, así que el lienzo visible pinta lo mismo
+ *  con una fracción del raster. Ej: visor 1200×800 → lienzo 1200×800 CSS (×dpr de backing).
  * @param visW - ancho del área visible (el contenedor del visor).
  * @param visH - alto del área visible.
- * @param pageW - ancho de la hoja en px de la escala actual (0 si aún no se conoce).
- * @param pageH - alto de la hoja.
- * @param zoom - zoom de la cámara.
- * @returns tamaño del lienzo en px CSS.
+ * @returns tamaño del lienzo en px CSS (0 si el área aún no está medida).
  */
-export function tamanoLienzoDibujo(args: {
-  visW: number;
-  visH: number;
-  pageW: number;
-  pageH: number;
-  zoom: number;
-}): { w: number; h: number } {
-  const { visW, visH, pageW, pageH, zoom } = args;
-  const z = zoom > 0 ? zoom : 1;
-  return {
-    w: Math.max(visW || 0, Math.ceil(pageW * z)),
-    h: Math.max(visH || 0, Math.ceil(pageH * z)),
-  };
+export function tamanoLienzoDibujo(args: { visW: number; visH: number }): { w: number; h: number } {
+  return { w: Math.max(0, Math.floor(args.visW || 0)), h: Math.max(0, Math.floor(args.visH || 0)) };
 }
 
 /** El encuadre que se aplica: zoom + desplazamiento (en px de la hoja, espacio del canvas). */

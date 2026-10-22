@@ -81,6 +81,7 @@ import {
   labelScaleM as labelScaleMLib,
 } from './planoCoords.ts';
 import { zoomAnclado, tamanoLienzoDibujo } from './planoCamera.ts';
+import { iniciarFrame, terminarFrame } from './renderers/frameIndex.ts';
 import { handleKeyDown } from './handleKeyDown.ts';
 import {
   selectAt as _selectAt,
@@ -1175,7 +1176,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
       (this.cw.clientHeight - 36) / this.pageH,
     );
     this.zoom = s;
-    this.offX = (this.pageW * (1 - s)) / 2;
+    // El lienzo mide el ÁREA VISIBLE (no la hoja): centrar es viewport − hoja·zoom. La fórmula
+    // anterior (pageW·(1−s)/2) suponía un lienzo del tamaño de la hoja y dejaba la hoja
+    // corrida a un lado desde que el lienzo pasó a ser la vista.
+    this.offX = (this.cw.clientWidth - this.pageW * s) / 2;
     this.offY = (this.cw.clientHeight - this.pageH * s) / 2;
     this.render();
   }
@@ -1183,19 +1187,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Último transform aplicado al wrapper: re-escribirlo cada cuadro dispara al
    *  MutationObserver del fondo (re-raster) aunque el zoom no cambió. */
   private _lastTransform = '';
-  /** Reajusta el lienzo de DIBUJO para que cubra el ÁREA VISIBLE, no solo la caja de la hoja.
-   *  Con zoom > 1 el fondo se sale de la hoja (lo recorta el contenedor) pero el lienzo de
-   *  dibujo medía lo mismo que la hoja → el trazo se cortaba en el borde de la hoja: un
-   *  "recuadro" que partía la geometría (laterales y superiores recortados, orig. usuario).
-   *  Aquí el lienzo cubre la hoja×zoom y el viewport: el trazo se recorta JUSTO donde se
-   *  recorta el fondo. */
+  /** Reajusta el lienzo de DIBUJO al ÁREA VISIBLE del visor (no a la hoja). Con zoom alto la
+   *  hoja se sale del contenedor y este ya recorta: rasterizar fuera de la vista era el costo
+   *  que trababa el paneo (hasta ~50 MP por frame, orig. usuario).
+   *  En un motor DESACOPLADO (exportación de planos: contenedor fuera del DOM) no manda el
+   *  viewport: ahí el tamaño lo fija `resizeCanvas` explícitamente. */
   ensureCanvasSize(): void {
+    if (!this.cw || !this.cw.isConnected) return;
     const t = tamanoLienzoDibujo({
-      visW: this.cw?.clientWidth || 0,
-      visH: this.cw?.clientHeight || 0,
-      pageW: this.pageW,
-      pageH: this.pageH,
-      zoom: this.zoom,
+      visW: this.cw.clientWidth || 0,
+      visH: this.cw.clientHeight || 0,
     });
     if (t.w === this._canvasW && t.h === this._canvasH) return;
     this._canvasW = t.w;
@@ -1246,6 +1247,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     // ahí lo deja en un recuadro provisional y el dibujo salta al llegar el PDF (orig.
     // usuario). El motor espera a que la lámina marque la medida buena.
     if (!this.pageW || !this.pageH) return;
+    const t0 = performance.now();
     ctx.clearRect(0, 0, w, h);
 
     if (this.pdfWrap) {
@@ -1258,21 +1260,35 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }
     }
 
-    if (this.gridMode) renderGrid(ctx, this);
-    renderGuideLines(ctx, this);
-    renderDims(ctx, this);
-    renderTexts(ctx, this);
-    renderAreas(ctx, this);
-    renderRamales(ctx, this);
-    renderNetCrossings(ctx, this);
-    renderBajantes(ctx, this);
-    renderGhosts(ctx, this);
-    renderCrossFloorGhosts(ctx, this);
-    renderDimGhost(ctx, this);
-    renderGuideGhost(ctx, this);
-    renderCanalGhost(ctx, this);
-    renderActiveArea(ctx, this);
-    renderActiveRamal(ctx, this);
+    // Índice geométrico del frame: lo construye UNA vez y lo comparten todos los renderers
+    // (codos, uniones, etiquetas). Sin cambios de geometría se reutiliza: el paneo y el zoom
+    // solo mueven la cámara.
+    iniciarFrame(this);
+    try {
+      if (this.gridMode) renderGrid(ctx, this);
+      renderGuideLines(ctx, this);
+      renderDims(ctx, this);
+      renderTexts(ctx, this);
+      renderAreas(ctx, this);
+      const tRam = performance.now();
+      renderRamales(ctx, this);
+      this._perf.capas.ramales = performance.now() - tRam;
+      const tBaj = performance.now();
+      renderNetCrossings(ctx, this);
+      renderBajantes(ctx, this);
+      this._perf.capas.bajantes = performance.now() - tBaj;
+      renderGhosts(ctx, this);
+      renderCrossFloorGhosts(ctx, this);
+      renderDimGhost(ctx, this);
+      renderGuideGhost(ctx, this);
+      renderCanalGhost(ctx, this);
+      renderActiveArea(ctx, this);
+      renderActiveRamal(ctx, this);
+      this._perf.frames++;
+      this._perf.totalMs = performance.now() - t0;
+    } finally {
+      terminarFrame();
+    }
 
     if (this.marqueeRect) {
       const { x1, y1, x2, y2 } = this.marqueeRect;
@@ -1285,6 +1301,45 @@ export default class PlanoEngine implements IPlanoEngineCore {
       ctx.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
       ctx.restore();
     }
+  }
+
+  /** Tiempos del último render (los lee `__cfPerf` en DEV): sirve para saber si el costo está
+   *  en el trazo, en las uniones o en el fondo, sin adivinar. */
+  _perf = {
+    frames: 0,
+    totalMs: 0,
+    capas: {} as Record<string, number>,
+  };
+
+  /** Reporte legible del último render para la consola (`__cfPerf()`). */
+  reportePerf(): Record<string, unknown> {
+    const c = this._perf.capas;
+    const ms = (n: number) => Math.round((n || 0) * 10) / 10;
+    return {
+      frame: this._perf.frames,
+      totalMs: ms(this._perf.totalMs),
+      capasMs: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, ms(v)])),
+      lienzo: {
+        anchoCss: this._canvasW,
+        altoCss: this._canvasH,
+        dpr: this.dpr,
+        mp: +((this._canvasW * this._canvasH * this.dpr * this.dpr) / 1e6).toFixed(2),
+      },
+      elementos: {
+        ramales: this.ramales.length,
+        puntos: this.ramales.reduce((s, r) => s + (r.pts?.length || 0), 0),
+        bajantes: this.bajantes.length,
+        areas: this.areas.length,
+        textos: this.textAnnots.length,
+        dims: (this.dims || []).length,
+      },
+      camara: {
+        zoom: +this.zoom.toFixed(3),
+        offX: Math.round(this.offX),
+        offY: Math.round(this.offY),
+      },
+      hojas: { pageW: Math.round(this.pageW), pageH: Math.round(this.pageH) },
+    };
   }
 
   scheduleRender(): void {

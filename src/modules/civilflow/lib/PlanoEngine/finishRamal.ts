@@ -34,6 +34,7 @@ import {
 } from './drawingUtils.ts';
 import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './channelAssociation';
+import { recortarEnPrimerCruce } from './intersectionTrim.ts';
 
 /** Cierra la tubería que venías dibujando: revisa que sea válida, la crea, parte las uniones en T
  *  que toque y la engancha a los bajantes cercanos. */
@@ -564,6 +565,32 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   }
 
   engine.ramales.push(r);
+  // RECORTE EN EL PRIMER CRUCE (orig. usuario: "recortar siempre el excedente en la
+  // intersección, no rechazar"): si el trazo se pasó del punto de unión, se corta JUSTO en el
+  // cruce y la unión en T/Y se forma ahí (autoSplitJunctionAndSumFlow hace el resto). Antes el
+  // sobrante hacía rechazar el trazo entero ("un tributario no puede cruzar un ramal") o dejaba
+  // el cruce sin dividir. Aplica a ramales y tributarios, vengan de dibujo manual o de guía.
+  {
+    const recorte = recortarEnPrimerCruce(r.pts, engine.ramales, r.net, {
+      ignorarIds: [r.id],
+      dentroDeCaja: (p) => puntoEnCaja(engine, p, r.net),
+    });
+    if (recorte.invalido) {
+      engine.triggerAlert(
+        'Conexión no permitida',
+        'El trazo se cruza con otro ramal demasiado cerca de su inicio: conéctalo en un extremo o a mitad del trazo, sin atravesarlo.',
+      );
+      engine.ramales.pop();
+      engine.activeRamal = null;
+      engine._markDirty();
+      engine.render();
+      return;
+    }
+    if (recorte.cortado) {
+      r.pts = recorte.pts;
+      r.totalL = +calculateRamalLength(r.pts, engine).toFixed(3);
+    }
+  }
   // Redes de presión (af/ac/gas/rci): las 3 verificaciones vivas BLOQUEAN el dibujo —
   // si el tramo viola (sale de aparato / entra a fuente / ciclo no declarado), se alerta
   // y NO queda dibujado (patrón pop de los checks de ángulo/cruce de abajo).
@@ -595,66 +622,6 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     engine._markDirty();
     engine.render();
     return;
-  }
-  // Los tributarios no pueden CRUZAR otro ramal (atravesarlo por el interior): alerta + bloqueo.
-  // La intersección se descarta si cae pegada a un extremo del propio tributario (≤2 unid): el
-  // aterrizaje legítimo a mitad del cuerpo del host (split de tee) ocurre justo en su punta —
-  // con snap imperfecto el cruce queda a <2 de la punta y NO es un atravesamiento real.
-  if (r.tipo === 'tributario') {
-    const sameGroup = (x: string, y: string) =>
-      x === y || ((x === 'san' || x === 'vent') && (y === 'san' || y === 'vent'));
-    const strictHit = (
-      a1: number[],
-      a2: number[],
-      b1: number[],
-      b2: number[],
-    ): [number, number] | null => {
-      const d = (a1[0] - a2[0]) * (b1[1] - b2[1]) - (a1[1] - a2[1]) * (b1[0] - b2[0]);
-      if (Math.abs(d) < 1e-10) return null;
-      const t = ((a1[0] - b1[0]) * (b1[1] - b2[1]) - (a1[1] - b1[1]) * (b1[0] - b2[0])) / d;
-      const u = -((a1[0] - a2[0]) * (a1[1] - b1[1]) - (a1[1] - a2[1]) * (a1[0] - b1[0])) / d;
-      if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-      const ix = a1[0] + t * (a2[0] - a1[0]);
-      const iy = a1[1] + t * (a2[1] - a1[1]);
-      if (
-        Math.hypot(ix - a1[0], iy - a1[1]) < 0.001 ||
-        Math.hypot(ix - a2[0], iy - a2[1]) < 0.001 ||
-        Math.hypot(ix - b1[0], iy - b1[1]) < 0.001 ||
-        Math.hypot(ix - b2[0], iy - b2[1]) < 0.001
-      )
-        return null;
-      return [ix, iy];
-    };
-    const near = (p: number[], q: number[], tol: number) =>
-      Math.hypot(p[0] - q[0], p[1] - q[1]) < tol;
-    for (const o of engine.ramales) {
-      if (o.id === r.id || !sameGroup(o.net, r.net) || !o.pts || o.pts.length < 2) continue;
-      let crosses = false;
-      for (let i = 0; i < r.pts.length - 1 && !crosses; i++) {
-        for (let j = 0; j < o.pts.length - 1 && !crosses; j++) {
-          const hit = strictHit(r.pts[i], r.pts[i + 1], o.pts[j], o.pts[j + 1]);
-          // Entrar a la misma caja no es cruzar (igual que en el chequeo en vivo de lineTool).
-          if (
-            hit &&
-            !near(hit, r.pts[i], 2.0) &&
-            !near(hit, r.pts[r.pts.length - 1], 2.0) &&
-            !puntoEnCaja(engine, hit, r.net)
-          )
-            crosses = true;
-        }
-      }
-      if (crosses) {
-        engine.triggerAlert(
-          'Conexión no permitida',
-          'Un tributario no puede cruzar un ramal. Conéctalo en un extremo o a mitad del trazo, sin atravesarlo.',
-        );
-        engine.ramales.pop();
-        engine.activeRamal = null;
-        engine._markDirty();
-        engine.render();
-        return;
-      }
-    }
   }
   // Regla "Los ramales no se conectan a tributarios": autoSplitJunctionAndSumFlow devuelve si la
   // conexión fue bloqueada — aquí se hace cumplir retirando el ramal recién terminado (antes la

@@ -146,7 +146,7 @@ describe('entrar a la misma caja no alerta', () => {
     expect(engine.ramales[1].fin).toBe('CAN1');
   });
 
-  it('control cruce sin caja: el tributario sí alerta y no se crea', () => {
+  it('control cruce sin caja: el tributario se RECORTA en el cruce y forma la T (no se rechaza)', () => {
     const alerts: string[] = [];
     const engine = makeEngine(alerts);
     draw(engine, [
@@ -159,7 +159,14 @@ describe('entrar a la misma caja no alerta', () => {
     handleLineDown(engine, 105, 125);
     handleLineDown(engine, 170, 190);
     finishRamal(engine);
-    expect(alerts.some((a) => a.includes('cruzar'))).toBe(true);
-    expect(engine.ramales).toHaveLength(1);
+    // Orig. usuario: el excedente se RECORTA en el cruce (antes se rechazaba el trazo entero).
+    expect(alerts.some((a) => a.includes('cruzar'))).toBe(false);
+    expect(engine.ramales).toHaveLength(3);
+    const trib = engine.ramales.find(
+      (r) => Math.hypot(r.pts[0][0] - 105, r.pts[0][1] - 125) < 0.5,
+    )!;
+    const fin = trib.pts[trib.pts.length - 1];
+    expect(fin[0]).toBeCloseTo(150, 6);
+    expect(fin[1]).toBeCloseTo(170, 6);
   });
 });

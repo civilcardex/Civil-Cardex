@@ -3,6 +3,7 @@ import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { findFreeLabelCenter } from '../labelDeclutter.ts';
 import type { DeclutterFrame } from '../labelDeclutter.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
+import { anchoTexto } from './medidaTexto.ts';
 
 export function drawSifonSymbol(
   ctx: CanvasRenderingContext2D,
@@ -119,7 +120,7 @@ export function drawSifonSymbol(
       ctx.textBaseline = 'middle';
       const labelOff = H2 * 0.9 + fs * 0.6;
       const text = `S  D=${normalizeDnLabel(String(diamLabel).replace(/["″”]+$/, ''))}"`;
-      const tw = ctx.measureText(text).width;
+      const tw = anchoTexto(ctx, text);
       const boxW = tw + engine.mm2cvs(2);
       const boxH = fs + engine.mm2cvs(1);
       const storedPlane =

@@ -59,74 +59,38 @@ export function convergirDiametroNodoPresion(
   // chequeo de continuación (dependería del estado transitorio del tercer tramo).
 
   let changed = false;
-  // BFS en cascada (orig. usuario araña 2026-10-15: la convergencia era de UN salto y una
-  // cadena RAC1→RAC4→RAC3 quedaba parcial): cada vecino que SUBE encola su propio
-  // downstream con la misma regla — hasta punto fijo. Por salto se preservan: jamás baja,
-  // hermanas perpendiculares no reciben, y en unión con varias salidas solo sube la
-  // continuación colineal/mergesFrom.
+  // Doctrina ARAÑA COMPLETA (2026-10-22, ped. usuario tras varias iteraciones): el diámetro
+  // seleccionado se propaga a TODA la araña conectada aguas abajo — continuaciones, brazos
+  // laterales y tramos partidos; cada pieza con diámetro distinto lo recibe, sin filtros
+  // colineales ni de tamaño: la araña queda uniforme. Aguas arriba queda fuera por la
+  // dirección (solo conectan piezas que NACEN en mi destino o sobre mi cuerpo).
   const pendientes: string[] = [ramalId];
   const procesados = new Set<string>();
   const diámetroSemilla = r.diametro || '';
+  const seleccionadoIn = diamPulgFromLabel(diámetroSemilla);
   while (pendientes.length > 0) {
-    const semillaId = pendientes.shift() as string;
-    if (procesados.has(semillaId)) continue;
-    procesados.add(semillaId);
-    const semilla = ramales.find((x) => x.id === semillaId);
-    if (!semilla || !semilla.pts || semilla.pts.length < 2) continue;
-    const sRev = !!semilla._tribReversed;
-    const sDest = sRev ? semilla.pts[0] : semilla.pts[semilla.pts.length - 1];
-    const sPrev = sRev ? semilla.pts[1] : semilla.pts[semilla.pts.length - 2];
-    const lEnt = Math.hypot(sDest[0] - sPrev[0], sDest[1] - sPrev[1]);
-    const dEnt = lEnt < 1e-9 ? null : [(sDest[0] - sPrev[0]) / lEnt, (sDest[1] - sPrev[1]) / lEnt];
-    // El diámetro que PROPAGA es siempre el SELECCIONADO (no el propio del tramo atravesado):
-    // a través de una continuación ya mayor, sus downstream reciben el seleccionado — y solo
-    // donde su actual sea menor (ped. usuario 2026-10-22).
-    const nuevoD = diámetroSemilla;
-    const nuevoIn = diamPulgFromLabel(nuevoD);
-    if (!(nuevoIn > 0)) continue;
-    const enDestinoS = ramales.filter((o) => {
-      if (o.id === semillaId || o.net !== semilla.net || !o.pts || o.pts.length < 2) return false;
-      const oIn0 = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
-      if (oIn0 >= nuevoIn) return false;
-      const oo = o._tribReversed ? o.pts[o.pts.length - 1] : o.pts[0];
-      return Math.hypot(oo[0] - sDest[0], oo[1] - sDest[1]) < TOL;
-    });
-    const exigirS = enDestinoS.length > 1;
+    const id = pendientes.shift() as string;
+    if (procesados.has(id)) continue;
+    procesados.add(id);
+    const s = ramales.find((x) => x.id === id);
+    if (!s || !s.pts || s.pts.length < 2) continue;
+    const destino = s._tribReversed ? s.pts[0] : s.pts[s.pts.length - 1];
     for (const o of ramales) {
-      if (o.id === semillaId || o.net !== semilla.net || !o.pts || o.pts.length < 2) continue;
+      if (o.id === id || o.net !== s.net || !o.pts || o.pts.length < 2) continue;
       if (procesados.has(o.id)) continue;
-      const oPts = o.pts;
+      const origen = o._tribReversed ? o.pts[o.pts.length - 1] : o.pts[0];
+      const enDestino = Math.hypot(origen[0] - destino[0], origen[1] - destino[1]) < TOL;
+      const enCuerpo = ptEnCuerpo(s.pts, origen);
+      if (!enDestino && !enCuerpo) continue;
+      // Asigna SOLO cuando el actual es menor que el seleccionado (o no tiene): «jamás baja».
+      // RECORRE siempre la araña conectada — el corte aquí era lo que dejaba media araña sin
+      // propagar (orig. usuario: arañas grandes «llegan a un punto y no se propagan»).
       const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
-      const oOrigin = o._tribReversed ? oPts[oPts.length - 1] : oPts[0];
-      const esContinuacion = Math.hypot(oOrigin[0] - sDest[0], oOrigin[1] - sDest[1]) < TOL;
-      const naceDeMiCuerpo = ptEnCuerpo(semilla.pts, oOrigin);
-      if (!esContinuacion && !naceDeMiCuerpo) continue;
-      // Ya ≥ al seleccionado: no cambia. SOLO se sigue recorriendo por la CONTINUACIÓN
-      // (colineal/mergesFrom en unión multi-salida) — sus downstream reciben el seleccionado
-      // donde su actual sea menor (ped. usuario 2026-10-22: la araña completa, no parar en
-      // el tramo ya diametrado igual). Las brazos laterales ya mayores no se recorren: su
-      // subsystem es suyo.
-      if (oIn > 0 && oIn >= nuevoIn) {
-        if (!esContinuacion || procesados.has(o.id)) continue;
-        let recorre = exigirS ? false : true;
-        if (exigirS) {
-          const ob = o._tribReversed ? oPts[oPts.length - 2] : oPts[1];
-          const lSal = Math.hypot(ob[0] - oOrigin[0], ob[1] - oOrigin[1]);
-          const dSal =
-            lSal < 1e-9 ? null : [(ob[0] - oOrigin[0]) / lSal, (ob[1] - oOrigin[1]) / lSal];
-          const colineal =
-            dEnt != null && dSal != null && dEnt[0] * dSal[0] + dEnt[1] * dSal[1] >= 0.9;
-          const viaMerge = (o.mergesFrom || []).includes(semillaId);
-          recorre = colineal || viaMerge;
-        }
-        if (recorre) pendientes.push(o.id);
-        continue;
+      if ((o.diametro || '') !== diámetroSemilla && (!(oIn > 0) || oIn < seleccionadoIn)) {
+        o.diametro = diámetroSemilla;
+        changed = true;
       }
-      // Menor (o sin diámetro): RECIBE el seleccionado — continuación Y brazos laterales
-      // (ped. usuario: en toda la araña el diámetro se propaga; jamás baja).
-      o.diametro = nuevoD;
-      changed = true;
-      if (!procesados.has(o.id)) pendientes.push(o.id);
+      pendientes.push(o.id);
     }
   }
   return changed;

@@ -1,6 +1,7 @@
 import { NETS } from '../PlanoState.ts';
 import { rotatedRectCorners } from '../HitTester.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
+import { anchoTexto } from './medidaTexto.ts';
 
 export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.areas.forEach((a) => {
@@ -68,7 +69,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       const aFs = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
       const aFsSub = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
       ctx.font = `bold ${aFs}px Geist, monospace`;
-      const tw = Math.max(ctx.measureText(displayLabel).width, ctx.measureText(areaLabel).width);
+      const tw = Math.max(anchoTexto(ctx, displayLabel), anchoTexto(ctx, areaLabel));
       const aBoxW = tw + 10,
         aBoxH = areaLabel ? aFs + aFsSub + 10 : aFs + 8;
       const {

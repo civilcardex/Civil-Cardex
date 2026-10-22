@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
+import { indiceFrame } from './frameIndex.ts';
 
 const PLAN_CODO_TYPES = [
   'codo90rc',
@@ -26,13 +27,28 @@ export function planCodoCornerAt(
   // Recolectar longitudes en cvs para actualRad
   const baseRad = engine.mm2cvs(1.5);
   let minLen = Infinity;
-  for (const o of engine.ramales) {
+  // Candidatos: SOLO los ramales con un extremo en `pt` (antes se barría `engine.ramales`
+  // completo por cada quiebre de cada trazo: O(n²) por frame, el grueso del "trabado").
+  const idx = indiceFrame(engine);
+  const vistos = new Set<PlanoRamal>();
+  const cands: Array<{ o: PlanoRamal; i: number }> = [];
+  for (const ref of idx.tocan(pt[0], pt[1])) {
+    const o = ref.r;
+    if (vistos.has(o) || !o.pts || o.pts.length < 2) continue;
+    const li = o.pts.length - 1;
+    if (ref.i !== 0 && ref.i !== li) continue;
+    vistos.add(o);
+    // El extremo INICIAL manda si los dos caen en el punto (mismo criterio del original).
+    const i = Math.hypot(o.pts[0][0] - pt[0], o.pts[0][1] - pt[1]) < TOL ? 0 : li;
+    cands.push({ o, i });
+  }
+  cands.sort((a, b) => idx.orden(a.o) - idx.orden(b.o));
+  for (const { o, i } of cands) {
     if (engine._hiddenNets.has(o.net)) continue;
-    if (!o.pts || o.pts.length < 2) continue;
     const li = o.pts.length - 1;
     let d: { x: number; y: number } | null = null;
     let cvsLen = Infinity;
-    if (Math.hypot(o.pts[0][0] - pt[0], o.pts[0][1] - pt[1]) < TOL) {
+    if (i === 0) {
       const dx = o.pts[1][0] - o.pts[0][0],
         dy = o.pts[1][1] - o.pts[0][1];
       const l = Math.hypot(dx, dy);
@@ -41,7 +57,7 @@ export function planCodoCornerAt(
       const cvs0 = engine.toCvs(pt[0], pt[1]);
       const cvs1 = engine.toCvs(o.pts[1][0], o.pts[1][1]);
       cvsLen = Math.hypot(cvs1.x - cvs0.x, cvs1.y - cvs0.y);
-    } else if (Math.hypot(o.pts[li][0] - pt[0], o.pts[li][1] - pt[1]) < TOL) {
+    } else {
       const dx = o.pts[li - 1][0] - o.pts[li][0],
         dy = o.pts[li - 1][1] - o.pts[li][1];
       const l = Math.hypot(dx, dy);
@@ -101,8 +117,8 @@ export function drawRamalPath(
   const elbows: ElbowInfo[] = [];
 
   const activeRamal = engine.activeRamal;
-  const r =
-    engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
+  const idx = indiceFrame(engine);
+  const r = idx.porPts(pts) || (activeRamal?.pts === pts ? activeRamal : null);
 
   // PUNTO 1 (orig. usuario): ramal conectado a una CAJA — el extremo que SALE del cuadro se
   // RECORTA AL BORDE, siguiendo la dirección del trazo dibujado (jamás al punto medio del
@@ -182,14 +198,9 @@ export function drawRamalPath(
     trim(pts.length - 1, pts.length - 2);
   }
   const netId = r ? r.net : engine.activeNet;
-  const netRamales = engine.ramales.filter((rm) => rm.net === netId);
-  if (
-    activeRamal &&
-    activeRamal.net === netId &&
-    !netRamales.some((rm) => rm.pts === activeRamal.pts)
-  ) {
-    netRamales.push(activeRamal as unknown as PlanoRamal);
-  }
+  const redSanVent = netId === 'san' || netId === 'vent';
+  const mismaRed = (otro: PlanoRamal) =>
+    otro.net === netId || (redSanVent && (otro.net === 'san' || otro.net === 'vent'));
 
   ctx.beginPath();
   ctx.moveTo(cvsPts[0].x, cvsPts[0].y);
@@ -226,50 +237,39 @@ export function drawRamalPath(
           }
         }
         if (!isJunc) {
-          const r = engine.ramales.find((rm) => rm.pts === pts);
-          if (r) {
-            const hasTrib = engine.ramales.some(
-              (other) =>
-                other.padre === r.id &&
-                other.pts.length >= 2 &&
-                Math.hypot(other.pts[0][0] - pt[0], other.pts[0][1] - pt[1]) < 0.5,
-            );
+          const rr = idx.porPts(pts);
+          if (rr) {
+            const hasTrib = idx
+              .hijosDe(rr.id)
+              .some(
+                (other) =>
+                  other.pts.length >= 2 &&
+                  Math.hypot(other.pts[0][0] - pt[0], other.pts[0][1] - pt[1]) < 0.5,
+              );
             if (hasTrib) isJunc = true;
           }
         }
         // N2: codo en quiebre interior no debe dibujarse si hay otro ramal (misma red) tocando ese vértice (tee)
         if (!isJunc) {
-          const hasOtherRamalAtPoint = engine.ramales.some((other) => {
-            if (other.pts === pts) return false;
-            // vent/san comparten red para tee
-            const sameGroup =
-              other.net === netId ||
-              ((other.net === 'san' || other.net === 'vent') &&
-                (netId === 'san' || netId === 'vent'));
-            if (!sameGroup) return false;
-            for (const op of other.pts) {
-              if (Math.hypot(op[0] - pt[0], op[1] - pt[1]) < 0.5) return true;
+          // Vértice a <0.5 (tocan) o cuerpo que pasa por el punto (cruzan): dos consultas al
+          // índice del frame en vez del barrido de todos los ramales por cada codo.
+          const toca = idx.tocan(pt[0], pt[1]);
+          for (const ref of toca) {
+            if (ref.r.pts === pts) continue;
+            if (mismaRed(ref.r)) {
+              isJunc = true;
+              break;
             }
-            for (let s = 0; s < other.pts.length - 1; s++) {
-              const [ax, ay] = other.pts[s];
-              const [bx, by] = other.pts[s + 1];
-              const dx = bx - ax,
-                dy = by - ay,
-                lenSq = dx * dx + dy * dy;
-              if (lenSq < 0.001) continue;
-              let t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / lenSq;
-              t = Math.max(0, Math.min(1, t));
-              const px = ax + t * dx,
-                py = ay + t * dy;
-              if (Math.hypot(pt[0] - px, pt[1] - py) < 0.5) {
-                const lenA = Math.hypot(ax - pt[0], ay - pt[1]),
-                  lenB = Math.hypot(bx - pt[0], by - pt[1]);
-                if (lenA > 0.5 && lenB > 0.5) return true;
+          }
+          if (!isJunc) {
+            for (const other of idx.cruzan(pt[0], pt[1])) {
+              if (other.pts === pts) continue;
+              if (mismaRed(other)) {
+                isJunc = true;
+                break;
               }
             }
-            return false;
-          });
-          if (hasOtherRamalAtPoint) isJunc = true;
+          }
         }
         if (!isJunc) {
           // Supresión del arco de codo SOLO cuando un bajante ocupa REALMENTE la unión:

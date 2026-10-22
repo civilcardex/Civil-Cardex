@@ -21,12 +21,14 @@ import { calculateRamalLength } from '../../../lib/PlanoEngine/ramalMeasure.ts';
 import { asociarRamalABajantes } from '../../../lib/PlanoEngine/drawingUtils.ts';
 import {
   findGuideCrossing,
-  getPadreHostAngle,
+  getPadreHostAngles,
   guideAngleAlertMessage,
   isGuideRelativeAngleValid,
   netAllowedSteps,
   snapGuideArrivalToHost,
 } from './guideGeometry.ts';
+import { recortarEnPrimerCruce } from '../../../lib/PlanoEngine/intersectionTrim.ts';
+import { puntoEnCaja } from '../../../lib/PlanoEngine/junctionAutoSplit.ts';
 
 export function autoAdjustGuide(
   eng: PlanoEngine,
@@ -36,7 +38,9 @@ export function autoAdjustGuide(
 ): void {
   const live = eng.guideLines.find((g) => g.id === guide.id) || guide;
   if (!live.pts || live.pts.length < 2) return;
-  const crossing = findGuideCrossing(eng, live);
+  // La red SELECCIONADA manda (no la del ramal que la guía cruce de paso).
+  const net = eng.activeNet || live.net;
+  const crossing = findGuideCrossing(eng, live, net);
   if (!crossing) {
     eng.triggerAlert(
       'Sin cruce con ramal',
@@ -46,7 +50,7 @@ export function autoAdjustGuide(
   }
   const host = eng.ramales.find((r) => r.id === crossing.ramalId);
   if (!host || !host.pts || host.pts.length < 2) return;
-  const step = netAllowedSteps(host.net)[0] ?? 45;
+  const step = netAllowedSteps(net)[0] ?? 45;
   const C = crossing.point;
   let bestI = 0;
   let bestD = Infinity;
@@ -152,44 +156,67 @@ export function buildTribFromGuide(
         Math.hypot(p[0] - pEnd[0], p[1] - pEnd[1]) > 1e-6,
     );
   let fullPts: [number, number][] = [pStart, ...via, pEnd];
-  const hostAng = getPadreHostAngle(padre, crossPt);
-  const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
-  const arrivalSeg: [number, number][] =
-    fullPts.length >= 2
-      ? [fullPts[fullPts.length - 2], fullPts[fullPts.length - 1]]
-      : [pStart, pEnd];
-  let corrected: [number, number][] | null = fullPts;
-  if (hostAng !== null) {
-    corrected = snapGuideArrivalToHost(fullPts, hostAng, padre.net, 'tributario');
-    if (!corrected) {
-      eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(padre.net, 'tributario'));
+  // Ramal que de verdad recibe la unión: si el trazo se recorta en otro ramal antes de llegar al
+  // padre, la llegada se mide contra ESE ramal (no contra el que la guía apuntaba).
+  let hostParaAngulo: PlanoRamal = padre;
+  // RECORTE: si la guía se pasó del padre (o cruzó otro ramal antes de llegar), el tributario se
+  // corta en el primer cruce. Mismo criterio que finishRamal: el excedente nunca rechaza el trazo.
+  {
+    const recorte = recortarEnPrimerCruce(fullPts, eng.ramales, padre.net, {
+      ignorarIds: [id],
+      dentroDeCaja: (p) => puntoEnCaja(eng, p, padre.net),
+    });
+    if (recorte.invalido) {
+      eng.triggerAlert(
+        'Conexión no permitida',
+        'El tributario se cruza con otro ramal demasiado cerca de su inicio: sepáralo del trazo existente.',
+      );
       return null;
     }
+    if (recorte.cortado) {
+      fullPts = recorte.pts;
+      const hostCorte = eng.ramales.find((r) => r.id === recorte.cruce?.ramalId);
+      if (hostCorte && hostCorte.id !== padre.id) hostParaAngulo = hostCorte;
+    }
   }
-  const angleOk =
-    hostAng !== null
-      ? isGuideRelativeAngleValid(
-          corrected[corrected.length - 2],
-          corrected[corrected.length - 1],
+  const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
+  // En un VÉRTICE del padre hay dos segmentos incidentes: vale cualquiera que deje la llegada
+  // legal (antes se probaba solo el primero y el bueno se descartaba al azar).
+  const hostAngs = getPadreHostAngles(hostParaAngulo, fullPts[fullPts.length - 1]);
+  let angleOk = false;
+  if (hostAngs.length === 0) {
+    angleOk = checkRamalAngles(fullPts, padre.net, 'tributario', snapOn);
+  } else {
+    for (const hostAng of hostAngs) {
+      const snapped = snapGuideArrivalToHost(fullPts, hostAng, padre.net, 'tributario');
+      if (!snapped) continue;
+      const nSnap = snapped.length;
+      if (
+        !isGuideRelativeAngleValid(
+          snapped[nSnap - 2],
+          snapped[nSnap - 1],
           hostAng,
           padre.net,
           'tributario',
           snapOn,
         )
-      : checkRamalAngles(fullPts, padre.net, 'tributario', snapOn);
+      )
+        continue;
+      fullPts = snapped;
+      angleOk = true;
+      break;
+    }
+  }
   if (!angleOk) {
     eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(padre.net, 'tributario'));
     return null;
   }
-  if (corrected !== fullPts) {
-    fullPts = corrected;
-    arrivalSeg[0] = fullPts[fullPts.length - 2];
-    arrivalSeg[1] = fullPts[fullPts.length - 1];
-  }
-  void arrivalSeg;
+  const arrivalSeg: [number, number][] = [fullPts[fullPts.length - 2], fullPts[fullPts.length - 1]];
+  // Punto REAL de unión (puede haberse recortado respecto del cruce original).
+  const endPt: [number, number] = [arrivalSeg[1][0], arrivalSeg[1][1]];
   let tribReversedForFlow: boolean | undefined;
   if (padre.net === 'san' || padre.net === 'll' || padre.net === 'vent') {
-    const flowEx = flowVecAt(padre, crossPt, 1);
+    const flowEx = flowVecAt(padre, endPt, 1);
     if (flowEx) {
       const flowNew = [arrivalSeg[1][0] - arrivalSeg[0][0], arrivalSeg[1][1] - arrivalSeg[0][1]];
       if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] > 0) {
@@ -217,8 +244,8 @@ export function buildTribFromGuide(
     dz: '',
     uc: 0,
     nSalidas: 1,
-    labelX: (pStart[0] + pEnd[0]) / 2,
-    labelY: (pStart[1] + pEnd[1]) / 2,
+    labelX: (pStart[0] + endPt[0]) / 2,
+    labelY: (pStart[1] + endPt[1]) / 2,
     labelAngle: _firstSegmentAngle(fullPts),
     material: padre.material || eng._ramalDefaults?.material || '',
     diametro: padre.net === 'vent' ? '2"' : '',
@@ -252,8 +279,8 @@ export function buildTribFromGuide(
     const splitAtCross = eng.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === newTrib.id);
     if (!splitAtCross) {
       const touchesPadre =
-        (padre.pts || []).some((p) => Math.hypot(p[0] - crossPt[0], p[1] - crossPt[1]) < 0.6) ||
-        (padre.pts && padre.pts.length >= 2 && distToPolyline(crossPt, padre.pts) < 0.6);
+        (padre.pts || []).some((p) => Math.hypot(p[0] - endPt[0], p[1] - endPt[1]) < 0.6) ||
+        (padre.pts && padre.pts.length >= 2 && distToPolyline(endPt, padre.pts) < 0.6);
       if (touchesPadre && (padre.net === 'san' || padre.net === 'll')) {
         newTrib._tribReversed = false;
       }
@@ -268,7 +295,7 @@ export function buildTribFromGuide(
           sameGroup(r.net, newTrib.net) &&
           !!r.pts &&
           r.pts.length >= 2 &&
-          Math.hypot(r.pts[0][0] - crossPt[0], r.pts[0][1] - crossPt[1]) < TOL_EP,
+          Math.hypot(r.pts[0][0] - endPt[0], r.pts[0][1] - endPt[1]) < TOL_EP,
       );
       if (receptor) {
         const recLbl = receptor.label || receptor.id;
@@ -277,7 +304,7 @@ export function buildTribFromGuide(
       }
     }
   }
-  scrubGuideJunctionAccessories(eng, crossPt);
+  scrubGuideJunctionAccessories(eng, endPt);
   {
     const assoc = asociarRamalABajantes(eng, newTrib, false);
     if (assoc.alert) eng.triggerAlert(assoc.alert.title, assoc.alert.msg);

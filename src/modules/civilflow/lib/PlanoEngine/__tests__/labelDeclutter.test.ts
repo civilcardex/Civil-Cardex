@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   findFreeLabelCenter,
   beginDeclutterFrame,
+  desTapadoConMemoria,
   type DeclutterBox,
 } from '../labelDeclutter.ts';
 
@@ -57,6 +58,35 @@ describe('findFreeLabelCenter', () => {
     const placed = [box('MANUAL', 0, 0)];
     const res = findFreeLabelCenter('AUTO', 60, 20, 0, 0, 0, placed, []);
     expect(res).not.toBeNull();
+  });
+});
+
+describe('desTapadoConMemoria', () => {
+  it('reutiliza el sitio elegido aunque la cámara se mueva (el desplazamiento no depende del paneo)', () => {
+    const memoria = desTapadoConMemoria('1.5|123');
+    const a = memoria.busca('A', 60, 20, 0, 0, 0, [box('B', 10, 0)], []);
+    expect(a).not.toBeNull();
+    // Mismo dibujo con la cámara 40 px a la derecha y 30 abajo: TODO se corre igual.
+    const b = memoria.busca('A', 60, 20, 0, 40, 30, [box('B', 50, 30)], []);
+    expect(b!.x).toBeCloseTo(a!.x + 40, 6);
+    expect(b!.y).toBeCloseTo(a!.y + 30, 6);
+  });
+
+  it('el zoom NO invalida la memoria: el sitio se escala desde el centro por defecto', () => {
+    const memoria = desTapadoConMemoria('geometria-igual');
+    const a = memoria.busca('A', 60, 20, 0, 0, 0, [box('B', 10, 0)], [], 1);
+    expect(a).not.toBeNull();
+    // Zoom 2: el centro por defecto, el obstáculo y la caja se van al doble; el sitio también.
+    const b = memoria.busca('A', 120, 40, 0, 0, 0, [box('B', 20, 0, 120, 40)], [], 2);
+    expect(b!.x).toBeCloseTo(a!.x * 2, 6);
+    expect(b!.y).toBeCloseTo(a!.y * 2, 6);
+  });
+
+  it('una clave nueva (geometría distinta) vuelve a decidir', () => {
+    const previa = desTapadoConMemoria('1|geometria-vieja');
+    expect(previa.busca('A', 60, 20, 0, 0, 0, [], [])).toBeNull();
+    const nueva = desTapadoConMemoria('1|geometria-nueva');
+    expect(nueva.busca('A', 60, 20, 0, 0, 0, [box('B', 0, 0)], [])).not.toBeNull();
   });
 });
 

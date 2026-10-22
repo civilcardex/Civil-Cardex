@@ -1,5 +1,6 @@
 import { NETS } from '../PlanoState.ts';
-import type { IPlanoEngineCore } from '../PlanoState.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
+import { indiceFrame } from './frameIndex.ts';
 
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   // Ventilación es parte de la red sanitaria: un tubo de ventilación que se conecta a una línea
@@ -11,13 +12,91 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     if (processed.has(net.id)) return;
     const group = net.id === 'san' || net.id === 'vent' ? ['san', 'vent'] : [net.id];
     group.forEach((g) => processed.add(g));
+    // Pertenencia al grupo por Set (`.has`): un `includes` por ramal volvería a ser una
+    // búsqueda lineal dentro del bucle de uniones.
+    const enGrupo = new Set(group);
     const netRamales = engine.ramales.filter(
-      (r) => group.includes(r.net) && !engine._hiddenNets.has(r.net),
+      (r) => enGrupo.has(r.net) && !engine._hiddenNets.has(r.net),
     );
     if (netRamales.length === 0) return;
 
     const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
     const vertexMap = new Map<string, number[]>();
+
+    // Índice del frame (se comparte con el resto de renderers): antes CADA vértice de CADA red
+    // barría la lista completa de ramales y todos sus puntos — O(V·n·p) por frame, el segundo
+    // foco del "trabado" del visor (orig. usuario).
+    const idx = indiceFrame(engine);
+    const visible = (r: PlanoRamal) => enGrupo.has(r.net) && !engine._hiddenNets.has(r.net);
+    /** Ramales del grupo con un VÉRTICE a <0.5 del punto. */
+    const ramalesEnPunto = (P: number[]): PlanoRamal[] => {
+      const out: PlanoRamal[] = [];
+      const vistos = new Set<PlanoRamal>();
+      for (const ref of idx.tocan(P[0], P[1])) {
+        const r = ref.r;
+        if (vistos.has(r) || !visible(r)) continue;
+        vistos.add(r);
+        out.push(r);
+      }
+      return out;
+    };
+    /** Vectores sin repetir: dos ramales colineales aportan la misma dirección. */
+    const uniqVectores = (vs: { x: number; y: number }[]): { x: number; y: number }[] => {
+      const out: { x: number; y: number }[] = [];
+      for (const v of vs) {
+        if (!out.some((u) => u.x * v.x + u.y * v.y > 0.99)) out.push(v);
+      }
+      return out;
+    };
+    /** Vectores que salen del punto: los del ramal que lo tiene como vértice y los del que
+     *  pasa por encima con el cuerpo (misma doctrina que el render de codos). */
+    const vecsEnPunto = (P: number[]): { x: number; y: number }[] => {
+      const out: { x: number; y: number }[] = [];
+      const enVertice = new Set<PlanoRamal>();
+      for (const ref of idx.tocan(P[0], P[1])) {
+        const r = ref.r;
+        if (!visible(r)) continue;
+        enVertice.add(r);
+        const i = ref.i;
+        if (i > 0) {
+          const prev = r.pts[i - 1];
+          const dx = prev[0] - P[0],
+            dy = prev[1] - P[1];
+          const len = Math.hypot(dx, dy);
+          if (len > 0.1) out.push({ x: dx / len, y: dy / len });
+        }
+        if (i < r.pts.length - 1) {
+          const next = r.pts[i + 1];
+          const dx = next[0] - P[0],
+            dy = next[1] - P[1];
+          const len = Math.hypot(dx, dy);
+          if (len > 0.1) out.push({ x: dx / len, y: dy / len });
+        }
+      }
+      for (const r of idx.cruzan(P[0], P[1])) {
+        if (enVertice.has(r) || !visible(r)) continue;
+        for (let i = 0; i < r.pts.length - 1; i++) {
+          const A = r.pts[i];
+          const B = r.pts[i + 1];
+          const dx = B[0] - A[0],
+            dy = B[1] - A[1];
+          const lenSq = dx * dx + dy * dy;
+          if (lenSq <= 0.001) continue;
+          let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
+          t = Math.max(0, Math.min(1, t));
+          const projX = A[0] + t * dx;
+          const projY = A[1] + t * dy;
+          if (Math.hypot(P[0] - projX, P[1] - projY) >= 0.5) continue;
+          const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
+          const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
+          if (lenA > 0.5 && lenB > 0.5) {
+            out.push({ x: (A[0] - P[0]) / lenA, y: (A[1] - P[1]) / lenA });
+            out.push({ x: (B[0] - P[0]) / lenB, y: (B[1] - P[1]) / lenB });
+          }
+        }
+      }
+      return out;
+    };
 
     // AF/AC: un vértice con un tipo de tee específico ya asignado (teeReduccion/teeLado/teeSube/
     // teeBaja/teeTapon/teeLlaveTerminal, elegido a mano o auto-asignado) dibuja SU PROPIO glifo en
@@ -36,7 +115,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     ]);
     const hasTeeMarkerAt = (P: number[]): boolean => {
       const TOL = 0.5;
-      for (const r of netRamales) {
+      for (const r of ramalesEnPunto(P)) {
         if (!r.pts || r.pts.length < 2) continue;
         if (
           r.accesorioInicio &&
@@ -101,64 +180,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     const junctions: JunctionData[] = [];
 
     vertexMap.forEach((P) => {
-      const outgoingVectors: { x: number; y: number }[] = [];
-
-      netRamales.forEach((r) => {
-        let isVertex = false;
-        for (let i = 0; i < r.pts.length; i++) {
-          if (Math.hypot(r.pts[i][0] - P[0], r.pts[i][1] - P[1]) < 0.5) {
-            isVertex = true;
-            if (i > 0) {
-              const prev = r.pts[i - 1];
-              const dx = prev[0] - P[0],
-                dy = prev[1] - P[1];
-              const len = Math.hypot(dx, dy);
-              if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
-            }
-            if (i < r.pts.length - 1) {
-              const next = r.pts[i + 1];
-              const dx = next[0] - P[0],
-                dy = next[1] - P[1];
-              const len = Math.hypot(dx, dy);
-              if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
-            }
-          }
-        }
-
-        if (!isVertex) {
-          for (let i = 0; i < r.pts.length - 1; i++) {
-            const A = r.pts[i];
-            const B = r.pts[i + 1];
-            const dx = B[0] - A[0],
-              dy = B[1] - A[1];
-            const lenSq = dx * dx + dy * dy;
-            if (lenSq > 0.001) {
-              let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
-              t = Math.max(0, Math.min(1, t));
-              const projX = A[0] + t * dx;
-              const projY = A[1] + t * dy;
-              const dist = Math.hypot(P[0] - projX, P[1] - projY);
-
-              const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
-              const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
-
-              if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
-                outgoingVectors.push({ x: (A[0] - P[0]) / lenA, y: (A[1] - P[1]) / lenA });
-                outgoingVectors.push({ x: (B[0] - P[0]) / lenB, y: (B[1] - P[1]) / lenB });
-              }
-            }
-          }
-        }
-      });
-
-      const uniqueVectors: { x: number; y: number }[] = [];
-      outgoingVectors.forEach((v) => {
-        const isDup = uniqueVectors.some((uv) => {
-          const dot = uv.x * v.x + uv.y * v.y;
-          return dot > 0.99;
-        });
-        if (!isDup) uniqueVectors.push(v);
-      });
+      const uniqueVectors = uniqVectores(vecsEnPunto(P));
 
       if (uniqueVectors.length >= 3 && uniqueVectors.length <= 4) {
         let bestPair = { i: -1, j: -1, dot: 1 };
@@ -211,26 +233,20 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       // dibujada en un solo punto y merece bandera [P,P]. Una yee SIMPLE (1 rama) no se
       // persiste: borrar uno de sus brazos debe borrar el glifo (orig. usuario).
       if (j.isYee && j.branches.length >= 2) {
-        for (const pr of netRamales) {
+        for (const pr of ramalesEnPunto(j.P)) {
           if (!pr.pts || pr.yeeDobleAt) continue;
-          if (pr.pts.some((p) => Math.hypot(p[0] - j.P[0], p[1] - j.P[1]) < 0.5)) {
-            pr.yeeDobleAt = [
-              [j.P[0], j.P[1]],
-              [j.P[0], j.P[1]],
-            ];
-          }
+          pr.yeeDobleAt = [
+            [j.P[0], j.P[1]],
+            [j.P[0], j.P[1]],
+          ];
         }
       } else if (j.isYee) {
         // Auto-limpieza de banderas [P,P] viejas en yees simples (datos guardados antes de
         // esta regla) — sin esto un glifo simple seguía sobreviviendo al borrado.
-        for (const pr of netRamales) {
+        for (const pr of ramalesEnPunto(j.P)) {
           if (!pr.yeeDobleAt) continue;
           const [fa, fb] = pr.yeeDobleAt;
-          if (
-            fa[0] === fb[0] &&
-            fa[1] === fb[1] &&
-            pr.pts?.some((p) => Math.hypot(p[0] - j.P[0], p[1] - j.P[1]) < 0.5)
-          ) {
+          if (fa[0] === fb[0] && fa[1] === fb[1]) {
             pr.yeeDobleAt = undefined;
           }
         }
@@ -286,57 +302,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     // deja de ser "junction", por lo que el par no se forma y el símbolo desaparecía. Con la
     // identidad persistida en el ramal, se dibuja el glifo igual: los dos puntos del par + ticks
     // por brazo, mientras el tronco siga pasando por ambos.
-    const vecsAt = (P: number[]): { x: number; y: number }[] => {
-      const out: { x: number; y: number }[] = [];
-      for (const r of netRamales) {
-        if (!r.pts || r.pts.length < 2) continue;
-        let isVertex = false;
-        for (let i = 0; i < r.pts.length; i++) {
-          if (Math.hypot(r.pts[i][0] - P[0], r.pts[i][1] - P[1]) < 0.5) {
-            isVertex = true;
-            if (i > 0) {
-              const px = r.pts[i - 1][0] - P[0],
-                py = r.pts[i - 1][1] - P[1];
-              const l = Math.hypot(px, py);
-              if (l > 0.1) out.push({ x: px / l, y: py / l });
-            }
-            if (i < r.pts.length - 1) {
-              const nx = r.pts[i + 1][0] - P[0],
-                ny = r.pts[i + 1][1] - P[1];
-              const l = Math.hypot(nx, ny);
-              if (l > 0.1) out.push({ x: nx / l, y: ny / l });
-            }
-          }
-        }
-        if (!isVertex) {
-          for (let i = 0; i < r.pts.length - 1; i++) {
-            const A = r.pts[i],
-              B = r.pts[i + 1];
-            const dx = B[0] - A[0],
-              dy = B[1] - A[1];
-            const lenSq = dx * dx + dy * dy;
-            if (lenSq > 0.001) {
-              let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
-              t = Math.max(0, Math.min(1, t));
-              const projX = A[0] + t * dx,
-                projY = A[1] + t * dy;
-              const dist = Math.hypot(P[0] - projX, P[1] - projY);
-              const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
-              const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
-              if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
-                out.push({ x: (A[0] - P[0]) / lenA, y: (A[1] - P[1]) / lenA });
-                out.push({ x: (B[0] - P[0]) / lenB, y: (B[1] - P[1]) / lenB });
-              }
-            }
-          }
-        }
-      }
-      const uniq: { x: number; y: number }[] = [];
-      for (const v of out) {
-        if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
-      }
-      return uniq;
-    };
+    /** Vectores sin repetir: dos ramales colineales aportan la misma dirección. */
     const rad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(1.0);
     for (const r of netRamales) {
@@ -345,8 +311,8 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       // Regla del usuario: Yee doble SOLO en un punto. Pares de dos uniones [P1,P2] ya no se
       // dibujan como doble — cada unión dibuja su Y simple en el pase por-junction.
       if (Math.hypot(B[0] - A[0], B[1] - A[1]) >= 0.5) continue;
-      let vA = vecsAt(A);
-      let vB = vecsAt(B);
+      let vA = uniqVectores(vecsEnPunto(A));
+      let vB = uniqVectores(vecsEnPunto(B));
       // Persistencia pedida: el símbolo debe mantenerse aunque un ramal del brazo principal
       // se borre. Si el tronco ya no pasa por el punto, vA/vB puede quedar con 1 solo vector
       // (la rama lateral) o vacío. Se sintetiza la dirección del tronco a partir del par

@@ -8,7 +8,9 @@ import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '..
 import { drawRamalPath } from './drawRamalPath.ts';
 import { drawExtremeAccessorySymbol, drawCornerCodoArc } from './renderAccessorySymbols.ts';
 import { renderJunctions } from './renderJunctions.ts';
-import { beginDeclutterFrame, findFreeLabelCenter } from '../labelDeclutter.ts';
+import { beginDeclutterFrame, desTapadoDelMotor, findFreeLabelCenter } from '../labelDeclutter.ts';
+import { indiceFrame } from './frameIndex.ts';
+import { anchoTexto } from './medidaTexto.ts';
 import { pickTeeBranchDir } from './teeUtils.ts';
 
 export { pickTeeBranchDir };
@@ -73,6 +75,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // Foto de obstáculos para el auto-orden de etiquetas (solo mueve las nunca tocadas a mano).
   const declutter = beginDeclutterFrame(engine);
   let declutterNeedsSeed = false;
+  // Memoria del des-tapado: con la misma geometría y el mismo zoom el sitio elegido por cada
+  // etiqueta no cambia (se guarda como desplazamiento desde su centro, que el paneo no mueve),
+  // así que mover la cámara no repite la espiral por etiqueta. Se desactiva mientras alguna
+  // etiqueta movida a mano todavía no tenga caja: el frame siguiente debe re-converger.
+  const firmaFrame = indiceFrame(engine).firma;
+  const puedeMemorizar = !engine.ramales.some((rm) => rm.labelMoved && !rm._labelBox);
+  const memoria = puedeMemorizar ? desTapadoDelMotor(engine, firmaFrame) : null;
+
   // Índices del frame (UNA vez, no por ramal): el render se agenda por rAF en cada
   // mousemove del arrastre, así que cualquier búsqueda lineal dentro del bucle de ramales
   // se multiplicaba por el número de ramales en cada frame.
@@ -317,12 +327,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const segSep = infoStr ? '' : ' · ';
       let sepW = 0;
       ctx.font = `600 ${fsInfo}px Geist, monospace`;
-      if (infoSegs.length > 1) sepW = ctx.measureText(segSep).width;
+      if (infoSegs.length > 1) sepW = anchoTexto(ctx, segSep);
       for (const s of infoSegs) {
         ctx.font = s!.bold
           ? `bold ${fsInfo}px Geist, monospace`
           : `600 ${fsInfo}px Geist, monospace`;
-        s!.w = ctx.measureText(s!.text).width;
+        s!.w = anchoTexto(ctx, s!.text);
       }
       const totalInfoW = infoSegs.reduce(
         (sum: number, s, i) => sum + s!.w + (i < infoSegs.length - 1 ? sepW : 0),
@@ -330,7 +340,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       );
 
       ctx.font = `bold ${fsName}px Geist, monospace`;
-      const nameW = lbl ? ctx.measureText(lbl).width : 0;
+      const nameW = lbl ? anchoTexto(ctx, lbl) : 0;
       const contentW = Math.max(nameW, totalInfoW);
       const boxW = contentW + boxPadX * 2;
       const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
@@ -374,16 +384,28 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           adjCx = drawX + gapOffX;
           adjCy = drawY + gapOffY;
         }
-        const spot = findFreeLabelCenter(
-          r.id,
-          boxW,
-          boxH,
-          labelAngle,
-          adjCx,
-          adjCy,
-          declutter.placed,
-          declutter.segs,
-        );
+        const spot = memoria
+          ? memoria.busca(
+              r.id,
+              boxW,
+              boxH,
+              labelAngle,
+              adjCx,
+              adjCy,
+              declutter.placed,
+              declutter.segs,
+              engine.zoom,
+            )
+          : findFreeLabelCenter(
+              r.id,
+              boxW,
+              boxH,
+              labelAngle,
+              adjCx,
+              adjCy,
+              declutter.placed,
+              declutter.segs,
+            );
         if (spot) {
           // El sitio elegido es SOLO de este render: no se guarda en labelX/labelY. Antes sí se
           // escribía, y el frame siguiente lo tomaba como "por defecto" —ya libre, porque las
@@ -1109,7 +1131,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // el pase sanitaria), produciendo el glifo tee/yee correcto según la geometría — no más codo
   // reventilado forzado en cada contacto vent-san, que es por lo que el pase viejo de
   // renderVentCodos ya no existe.
+  // Tiempo de las uniones (tee/yee): va dentro de `capas.ramales`, se separa para saber si el
+  // costo del frame está en el trazo o en las uniones (lo lee `__cfPerf` en DEV).
+  const tJun = performance.now();
   renderJunctions(ctx, engine);
+  const perf = (engine as { _perf?: { capas: Record<string, number> } })._perf;
+  if (perf) perf.capas.junctions = performance.now() - tJun;
 }
 
 export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {

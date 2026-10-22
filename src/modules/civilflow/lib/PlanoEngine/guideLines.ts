@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore } from './PlanoState.ts';
-import { ANGLE_EPS, _firstSegmentAngle } from './drawingAngles.ts';
+import { ANGLE_EPS, _firstSegmentAngle, sameNetGroup } from './drawingAngles.ts';
 import { _statusMsg } from './ramalMeasure.ts';
 
 /** Al trazar una línea guía, cada clic se pega a los ángulos legales y a extremos de tuberías
@@ -270,19 +270,23 @@ function segSegIntersection(
 }
 
 /** ¿La guía atraviesa el extremo de un ramal formando una T? Si sí, se habilita "Crear
- *  tributarios a partir de línea guía". Devuelve el cruce más cercano al inicio de la guía, o
- *  null si no hay ninguno. */
+ *  tributarios a partir de línea guía". `net` limita la búsqueda a la red seleccionada (+ su
+ *  grupo sanitario): un cruce con otra red no debe ofrecer botones de esa red.
+ *  Devuelve el cruce más cercano a la PUNTA de la guía (el extremo que el usuario lleva al
+ *  trazo), o null si no hay ninguno. */
 export function findGuideTCrossing(
-  ramales: Array<{ id: string; pts?: number[][] }>,
+  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   guide: { pts: [number, number][] },
+  net?: string,
 ): { point: [number, number]; ramalId: string } | null {
-  const hits = guideRamalJunctions(ramales, guide).filter((j) => j.passThrough);
+  const filtrados = net ? ramales.filter((r) => sameNetGroup(String(r.net || ''), net)) : ramales;
+  const hits = guideRamalJunctions(filtrados, guide).filter((j) => j.passThrough);
   if (!hits.length) return null;
-  const [p0] = guide.pts;
+  const tip = guide.pts[guide.pts.length - 1];
   let best = hits[0];
   let bestD = Infinity;
   for (const h of hits) {
-    const d = Math.hypot(h.point[0] - p0[0], h.point[1] - p0[1]);
+    const d = Math.hypot(h.point[0] - tip[0], h.point[1] - tip[1]);
     if (d < bestD) {
       bestD = d;
       best = h;

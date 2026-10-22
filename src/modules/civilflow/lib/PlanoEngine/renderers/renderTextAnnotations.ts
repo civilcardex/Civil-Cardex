@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
+import { anchoTexto } from './medidaTexto.ts';
 
 export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.textAnnots.forEach((t) => {
@@ -11,7 +12,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.translate(c.x, c.y);
     ctx.rotate(angle);
     ctx.font = `${fs}px Geist, monospace`;
-    const tw = t.boxW > 0 ? t.boxW * engine.zoom : ctx.measureText(t.text).width;
+    const tw = t.boxW > 0 ? t.boxW * engine.zoom : anchoTexto(ctx, t.text);
     const pad = 5 * engine.zoom;
     const boxW = tw + pad * 2;
     const boxH = fs + pad * 2;
