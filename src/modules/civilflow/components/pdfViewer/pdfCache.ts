@@ -11,6 +11,11 @@ const cache = new Map<File, PDFDocumentProxy>();
 let calentado = false;
 // Arranca en TRUE (nada pendiente): solo un calentamiento real (≥2 pisos) la baja a false.
 let calentamientoHecho = true;
+// Primer piso del visor totalmente cargado (pre-paint + raster + arbitración local-vs-BD +
+// corrección de escala): el overlay de primera entrada no se levanta hasta que el piso que
+// se abre por defecto quedó ASENTADO — sin esto se veía «elementos desplazados → salto →
+// acomodados» justo al entrar (orig. usuario 2026-10-22).
+let primerPisoListo = false;
 const oyentes = new Set<() => void>();
 
 export function suscribirCalentamiento(cb: () => void): () => void {
@@ -19,12 +24,23 @@ export function suscribirCalentamiento(cb: () => void): () => void {
 }
 
 export function calentamientoListo(): boolean {
-  return calentamientoHecho;
+  return calentamientoHecho && primerPisoListo;
+}
+
+function avisar(): void {
+  oyentes.forEach((l) => l());
+}
+
+/** El loader lo llama cuando el primer piso terminó de asentarse (idempotente). */
+export function marcarPrimerPisoCargado(): void {
+  if (primerPisoListo) return;
+  primerPisoListo = true;
+  avisar();
 }
 
 function marcarCalentamiento(hecho: boolean): void {
   calentamientoHecho = hecho;
-  oyentes.forEach((l) => l());
+  avisar();
 }
 
 export function pdfDeCache(file: File): PDFDocumentProxy | undefined {

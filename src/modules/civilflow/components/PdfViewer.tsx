@@ -4,7 +4,7 @@ import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch.ts';
 import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome.tsx';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
-import { decideEscalaPorDefectoDelPlan, textoReporte } from '../utils/cargaDiagnostico.ts';
+import { decideEscalaPorDefectoDelPlan } from '../utils/cargaDiagnostico.ts';
 import { escalaDeDoc } from '../utils/planScale.ts';
 import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamera.ts';
 import { bboxDelDibujo } from './pdfViewer/drawingBBox.ts';
@@ -1022,24 +1022,6 @@ function PdfViewer_({
     };
   }, [setSaveStatus]);
 
-  /** Copia el diagnóstico de carga del piso al portapapeles (escala del doc, escala calibrada,
-   *  escala global, decisión tomada, lámina y cámara): sirve para comparar dos sesiones y
-   *  ver qué piso se movió y cuánto (orig. usuario: "al reingresar los elementos aparecen
-   *  desplazados y las cotas leen menos"). */
-  const handleDiag = useCallback(() => {
-    const id = currentIdRef.current || engineRef.current?._loadedPlanId || null;
-    if (id == null) return;
-    // El error de guardado a BD va en el reporte: si la copia de BD no trae la escala
-    // corregida, la causa está en el push (RPC, sesión o proyecto activo).
-    const texto = textoReporte(id) + (bdError ? `\nerrorBd=${bdError}` : '\nerrorBd=ninguno');
-    try {
-      void navigator.clipboard?.writeText(texto);
-    } catch {
-      /* portapapeles bloqueado: el texto sale en el aviso */
-    }
-    engineRef.current?.triggerAlert('Diagnóstico de carga', texto);
-  }, [engineRef, bdError]);
-
   const resetKey = activeNet + '|' + tipoTramo;
   useEffect(() => {
     if (resetKey === prevResetKey.current) return;
@@ -1295,7 +1277,6 @@ function PdfViewer_({
               onRedo={handleRedo}
               onClear={handleClear}
               onClearGuides={handleClearGuides}
-              onDiag={handleDiag}
             />
           )}
         </div>

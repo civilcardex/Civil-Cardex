@@ -11,6 +11,7 @@ import {
   GAS_ACC_KEY,
 } from '../../constants/storage-keys.ts';
 import { devError } from '../../../../utils/devError.ts';
+import { mezclarMax } from '../../utils/propagation/counting.ts';
 import {
   ldesvioIdFor,
   isLdesvioRamalId,
@@ -511,10 +512,7 @@ export function renameRamalId(
           } else {
             // Mismo ramal, dos copias del conteo (p. ej. clave vieja resucitada por el estado
             // stale de FixturesPanel): MAX por aparato — sumar duplicaba las UD al reconvertir.
-            const out = { ...all[to] };
-            for (const [k, v] of Object.entries(all[from]))
-              out[k] = Math.max(Number(out[k]) || 0, Number(v) || 0);
-            all[to] = out;
+            all[to] = mezclarMax(all[to] || {}, all[from]);
           }
           delete all[from];
           saveToStorage(APARATOS_BY_TRAMO_KEY, all);
@@ -533,10 +531,7 @@ export function renameRamalId(
             if (bl[toB] === undefined) {
               bl[toB] = bl[fromB];
             } else {
-              const out = { ...bl[toB] };
-              for (const [k, v] of Object.entries(bl[fromB]))
-                out[k] = Math.max(Number(out[k]) || 0, Number(v) || 0);
-              bl[toB] = out;
+              bl[toB] = mezclarMax(bl[toB] || {}, bl[fromB]);
             }
             delete bl[fromB];
             saveToStorage(bk, bl);
@@ -580,9 +575,7 @@ export function renameRamalId(
             all[to] = src;
           } else {
             // Mismo ramal, dos copias: MAX por accesorio y por escalar (sumar duplicaba).
-            const acc = { ...(dst.accesorios || {}) };
-            for (const [k, v] of Object.entries(src.accesorios || {}))
-              acc[k] = Math.max(Number(acc[k]) || 0, Number(v) || 0);
+            const acc = mezclarMax(dst.accesorios || {}, src.accesorios || {});
             all[to] = {
               accesorios: acc,
               Lh: Math.max(dst.Lh ?? 0, src.Lh ?? 0),
@@ -606,9 +599,7 @@ export function renameRamalId(
         all[newId] = all[oldId];
       } else {
         // Mismo ramal, dos copias: MAX por aparato (sumar duplicaba).
-        const dst = all[newId];
-        for (const [k, v] of Object.entries(all[oldId]))
-          dst[k] = Math.max(Number(dst[k]) || 0, Number(v) || 0);
+        all[newId] = mezclarMax(all[newId] || {}, all[oldId]);
       }
       delete all[oldId];
       saveToStorage(GAS_ACC_KEY, all);

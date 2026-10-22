@@ -1,3 +1,4 @@
+import { leerDocDePlan } from '../utils/readPlanDrawing';
 import { useMemo } from 'react';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
@@ -12,8 +13,6 @@ import {
 } from '../utils/rainwaterRows.ts';
 import ChipList from './shared/ChipList.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater.ts';
 import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import { renderStatus } from '../utils/componentHelpers.tsx';
@@ -168,16 +167,8 @@ export default function ChequeoBajantesLluvias() {
     const map: Record<string, number> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-      if (!raw) continue;
-      let data: DrawingData = raw as DrawingData;
-      if (typeof raw === 'string') {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-      }
+      const data = leerDocDePlan<DrawingData>(plan.id);
+      if (!data) continue;
       for (const b of data.bajantes || []) {
         if (b.net === 'll' && b.tipo !== 'canal' && b.area_m2) {
           map[b.code || b.id] = b.area_m2;
@@ -198,16 +189,8 @@ export default function ChequeoBajantesLluvias() {
     const map: Record<string, string[]> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-      if (!raw) continue;
-      let data: DrawingData = raw as DrawingData;
-      if (typeof raw === 'string') {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-      }
+      const data = leerDocDePlan<DrawingData>(plan.id);
+      if (!data) continue;
       const suf = pisoCorto(plan.nivel);
       for (const b of data.bajantes || []) {
         // Cajas CALL fuera: no son bajantes asociados (glifo de captura).

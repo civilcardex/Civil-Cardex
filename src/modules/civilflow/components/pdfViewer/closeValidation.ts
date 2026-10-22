@@ -2,8 +2,9 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { pisoLbl } from '../../constants';
 import { loadFromStorage, type PlanTrazos } from '../../services/storageService.ts';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys.ts';
 import { distToPolyline } from '../../lib/shared/geometry';
+import { leerDocDePlan } from '../../utils/readPlanDrawing';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
 
 // Validación de cierre del visor: se ejecuta al pulsar "Cerrar dibujo" en la barra de redes.
@@ -319,14 +320,7 @@ function formatLista(items: string[]): string {
 
 /** Lee la caché local de trazos de un piso (acepta JSON en crudo); null si no hay o está rota. */
 function leerTrazos(id: string | number): PlanTrazos | null {
-  const raw = loadFromStorage<PlanTrazos | string | null>(TRAZOS_PREFIX + String(id), null);
-  if (!raw) return null;
-  if (typeof raw !== 'string') return raw;
-  try {
-    return JSON.parse(raw) as PlanTrazos;
-  } catch {
-    return null;
-  }
+  return leerDocDePlan<PlanTrazos>(String(id));
 }
 
 /** Revisión de diámetros de un conjunto de trazos: elementos sin diámetro y bajantes/montantes con diámetro inferior al del ramal conectado. */

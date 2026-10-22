@@ -33,4 +33,9 @@ export function instalarCfCam(args: {
       causaRender: args.causaRenderRef?.current ?? null,
     };
   };
+  // __cfPerf: tiempos del último render por capa (trazo, uniones, bajantes) + tamaño del
+  // lienzo en megapíxeles. Sirve para saber si el paneo/zoom "trabado" viene del dibujo, del
+  // fondo o del tamaño del canvas, sin adivinar.
+  (window as unknown as { __cfPerf?: () => unknown }).__cfPerf = () =>
+    args.engineRef.current?.reportePerf() ?? null;
 }

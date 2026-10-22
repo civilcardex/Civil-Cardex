@@ -1,3 +1,4 @@
+import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords.ts';
@@ -37,16 +38,8 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
   const keys = new Set<string>();
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan<DrawingData>(plan.id);
+    if (!data) continue;
     const canales = (data.bajantes || []).filter(
       (b): b is BajanteRaw & { base?: number; longitud?: number; angulo?: number } =>
         b.net === 'll' && b.tipo === 'canal',
@@ -117,16 +110,8 @@ export function buildLlBajanteAssociations(
 
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan<DrawingData>(plan.id);
+    if (!data) continue;
 
     const ramales = (data.ramales || []).filter((r) => r.net === 'll');
     // Canales fuera: no son bajantes (glifo recolector) y un recibeDeIds legacy del canal no

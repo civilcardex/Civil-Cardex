@@ -1,5 +1,4 @@
-import { TRAZOS_PREFIX } from '../../../constants/storage-keys.ts';
-import { loadFromStorage } from '../../../services/storageService.ts';
+import { leerDocDePlan } from '../../../utils/readPlanDrawing';
 import { loadPDF } from '../../../services/idbStorage.ts';
 import { getPdfjs } from '../../../utils/lazyPdfjs';
 import type { PlanoRamal, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
@@ -72,18 +71,7 @@ function readDrawingAll(plans: PlanItem[], netIds: string[]) {
   for (const nid of netIds) ghostsByNet[nid] = [];
   for (const plan of plans) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<StoredDrawing | string | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    const data: StoredDrawing | null =
-      typeof raw === 'string'
-        ? (() => {
-            try {
-              return JSON.parse(raw);
-            } catch {
-              return null;
-            }
-          })()
-        : raw;
+    const data = leerDocDePlan<StoredDrawing>(plan.id);
     if (!data) continue;
     if (data.scaleM) scaleMap[plan.nivel] = data.scaleM;
     if (data.origen) origenMap[plan.nivel] = data.origen;

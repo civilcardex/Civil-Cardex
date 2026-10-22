@@ -221,6 +221,9 @@ export function usePdfViewerEngine({
         // área ≤40MP — hojas grandes en pantallas dpr>=2 sin reventar memoria; el zoom
         // hasta ~3× sigue viéndose nativo también a 150% de escala de Windows (antes
         // dpr>=2 quedaba clavado en 1×).
+        // A PROPÓSITO la lámina se rasteriza ENTERA (no solo el área visible): con el fondo
+        // completo, arrastrar y desplazar la cámara no vuelve a rasterizar nada; rasterizar
+        // por viewport obligaría a rehacer el fondo en cada paneo (el "trabado" original).
         const lado = Math.max(viewport.width, viewport.height) * dpr;
         const extra = Math.max(
           1,
@@ -377,6 +380,7 @@ export function usePdfViewerEngine({
       engineRef,
       pdfCanvasRef,
       drawCanvasRef,
+      cwRef,
     ],
   );
   useEffect(() => {
@@ -526,7 +530,9 @@ export function usePdfViewerEngine({
                 pdfCanvas.style.height = pg.h + 'px';
               }
               eng2.setPageSize(pg.w, pg.h);
-              eng2.resizeCanvas(pg.w, pg.h);
+              // El lienzo de DIBUJO mide el área VISIBLE (lo fija el motor en su primer render);
+              // aquí solo se asegura la medida antes del primer paint.
+              eng2.ensureCanvasSize();
               // Cámara calibrada bajo OTRA rasterización (pre-fix, lámina a 0.5): con la
               // lámina a su tamaño real los bordes caen fuera del viewport y el overflow del
               // contenedor los RECORTA (el "recuadro"). Re-encuadre síncrono ANTES del

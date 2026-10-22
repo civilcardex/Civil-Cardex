@@ -8,6 +8,11 @@ export const APARATOS_HEREDADOS_TRIB_KEY = 'aparatos_heredados_trib_v1';
 /** Respaldo de conteos limpiados por fase A sin campo de aparato (recuperación manual desde
  *  DevTools: copiar el valor a `aparatos_by_tramo_v2` si una limpieza fue ilegítima). */
 export const APARATOS_RESIDUO_BAK_KEY = 'aparatos_residuo_bak_v1';
+/** Foto de lo PROPIO (sin herencia) de cada clave espejo de un bajante entre pisos. El libro
+ *  `ucAplicado` del doc dice cuánto se heredó; esta foto dice cuánto era del usuario — así el
+ *  espejo nunca confunde su propia herencia con un conteo manual aunque el doc venga atrasado.
+ *  Ej: si el doc perdió el libro, la foto evita que el próximo pase sume la herencia otra vez. */
+export const APARATOS_PROPIO_KEY = 'aparatos_propio_v1';
 /** Marcadores de bajadas receptoras de la propagación (persistente — la bajada sigue
  *  siendo receptora aunque su disco se llene). Libro COMPARTIDO entre redes af/ac/gas:
  *  las claves llevan prefijo de red y la poda es per-net. */

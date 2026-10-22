@@ -15,10 +15,19 @@ function readLocalColor(netId: string): string | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    return typeof parsed === 'string' ? parsed : null;
+    return typeof parsed === 'string' ? colorHexValida(parsed) : null;
   } catch {
-    return raw;
+    return colorHexValida(raw);
   }
+}
+
+/**
+ * Colores válidos para el picker: solo hex #rgb/#rrggbb (input[type=color] exige ese
+ * formato — un valor viejo tipo 'gray' guardado en una era anterior disparaba el warning
+ * "does not conform to the required format" y dejaba el picker muerto).
+ */
+function colorHexValida(c: string): string | null {
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c) ? c : null;
 }
 
 /**
@@ -40,7 +49,11 @@ export function loadNetColors(): Promise<Record<string, string>> {
           .maybeSingle();
         if (error) throw error;
         const dbColors = (data?.net_colors ?? {}) as Record<string, string>;
-        const merged = { ...local, ...dbColors };
+        const merged: Record<string, string> = { ...local };
+        for (const [id, c] of Object.entries(dbColors)) {
+          const v = typeof c === 'string' ? colorHexValida(c) : null;
+          if (v) merged[id] = v;
+        }
         for (const [id, c] of Object.entries(merged)) {
           try {
             localStorage.setItem(NET_COLOR_PREFIX + id, c);

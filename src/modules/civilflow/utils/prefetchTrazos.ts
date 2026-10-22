@@ -2,12 +2,9 @@
 // caché local, migra el layout de asociaciones y re-escribe las claves de sync para que las
 // tablas (FixturesPanel, InfTab, diseño) muestren todos los pisos sin necesidad de abrir el
 // visor 2D piso por piso (orig. usuario). Idempotente: correrlo varias veces no duplica nada.
-import {
-  loadFromStorage,
-  saveToStorage,
-  loadTrazosFromDB,
-} from '../services/storageService.ts';
+import { saveToStorage, loadTrazosFromDB } from '../services/storageService.ts';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
+import { leerDocDePlan } from './readPlanDrawing';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from './assocLayoutMigration.ts';
 import { healHerenciaInvertida } from './bajanteAssociation';
 import { writeSanDrawingSync, writeHydroDrawingSync, markPlanTrazosFresh } from './drawingSync.ts';
@@ -53,7 +50,7 @@ async function runPrefetch(
         }
       }
     };
-    const missing = planes.filter((p) => loadFromStorage(TRAZOS_PREFIX + p.id, null) == null);
+    const missing = planes.filter((p) => leerDocDePlan(p.id) == null);
     await Promise.all(
       missing.map(async (p) => {
         const data = await loadTrazosFromDB(String(p.id));

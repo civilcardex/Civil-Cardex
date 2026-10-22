@@ -1,7 +1,6 @@
 // Mappers plano↔fila Supabase (ramal/bajante/area/dim/texto/guía/ghost), simétricos.
 // Extraídos verbatim de storageService.
 // (PlanoWorkData no se usa aquí — vive en el bloque localStorage/trazosDb)
-'../../../../lib/PlanoEngine/PlanoPersistence';
 import type {
   PlanoRamal,
   PlanoBajante,

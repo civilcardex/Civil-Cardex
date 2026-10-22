@@ -1,10 +1,9 @@
 ﻿import React from 'react';
+import { leerDocDePlan } from '../utils/readPlanDrawing';
 import { FilaCanalRow } from './rainChannels/ChannelRow.tsx';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { pisoCorto, DIAM_BAN } from '../constants';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
 import { useRainwater } from '../context/RainwaterContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { writeCanalDimsToDrawing } from '../utils/writeDiameterToDrawing.ts';
@@ -117,16 +116,8 @@ export default function ChequeoCanalesLluvias() {
     const map: Record<string, number> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-      if (!raw) continue;
-      let data: DrawingData = raw as DrawingData;
-      if (typeof raw === 'string') {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-      }
+      const data = leerDocDePlan<DrawingData>(plan.id);
+      if (!data) continue;
       const suf = pisoCorto(plan.nivel);
       for (const b of data.bajantes || []) {
         if (b.net !== 'll' || b.tipo !== 'bajante') continue;

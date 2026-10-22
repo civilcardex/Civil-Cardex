@@ -4,20 +4,6 @@ import { pisoLbl } from '../../constants';
 import { OPEN_TAB_KEY } from '../../constants/storage-keys.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
-const PdfCanvas_S1: React.CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  // OPACO: mientras carga el primer paint, no se adivinan los elementos en su posición
-  // provisional (el salto del visor, orig. usuario prefiere pantalla de carga al acomodarse).
-  background: '#111317',
-  zIndex: 5,
-};
 const PdfCanvas_S2: React.CSSProperties = {
   position: 'absolute',
   top: 0,
@@ -202,16 +188,9 @@ function PdfCanvas({
         />
       </div>
 
-      {/* Pantalla de carga del visor: CAPA PROPIA del área completa (no del contenedor del
-        canvas — si el lienzo aún no tiene tamaño guardado, el contenedor es una caja chica
-        de 300×150 y el estado provisional se veía ALREDEDOR). Opaca hasta el primer paint
-        completo: lámina a escala del doc + trazos + cámara (orig. usuario prefiere la
-        pantalla de carga a ver los elementos acomodarse). */}
-      {loading && currentFile && !error && (
-        <div style={{ ...PdfCanvas_S1, zIndex: 30 }}>
-          <div className="sp" />
-        </div>
-      )}
+      {/* SIN spinner interno (ped. usuario): la primera entrada la cubre el overlay de
+        ViewerPage y los cambios de piso no tienen estado de carga. El estado `loading`
+        solo gobierna las pantallas de aviso de abajo. */}
 
       {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
       {(!currentFile || selectedNivel === null || selectedNivel === undefined) &&

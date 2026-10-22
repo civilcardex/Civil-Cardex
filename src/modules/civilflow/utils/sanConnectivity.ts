@@ -1,3 +1,4 @@
+import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import type { PlanItem } from '../context/PlansContext.tsx';
@@ -58,16 +59,8 @@ export function buildSanConnectivity(
 
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan<DrawingData>(plan.id);
+    if (!data) continue;
 
     const ramales = data.ramales || [];
     const bajantes = (data.bajantes || []) as BajanteRaw[];

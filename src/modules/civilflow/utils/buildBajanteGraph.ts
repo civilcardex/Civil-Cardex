@@ -1,6 +1,5 @@
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
-import { loadFromStorage } from '../services/storageService.ts';
+import { leerDocDePlan } from './readPlanDrawing';
 import { pisoLbl } from '../constants';
 import { distToPolyline } from '../lib/shared/geometry';
 import { parseDescargaEnId } from './parseDischargeInId.ts';
@@ -37,16 +36,8 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
 
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data = raw as { ramales?: RamalRaw[]; bajantes?: BajanteRaw[] };
-    if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan<{ ramales?: RamalRaw[]; bajantes?: BajanteRaw[] }>(plan.id);
+    if (!data) continue;
 
     const ramales = data.ramales || [];
     const bajantes = data.bajantes || [];

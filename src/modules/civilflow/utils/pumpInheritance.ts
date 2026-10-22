@@ -7,6 +7,7 @@ import {
 } from '../constants/storage-keys.ts';
 import { ldesvioIdFor } from './associateBajanteAcrossFloors';
 import { collectSourceAgg } from './bajanteAssociation';
+import { bajanteDePisoEn } from './bajanteLocal.ts';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState.ts';
 
@@ -105,6 +106,10 @@ export function propagarHerenciaBomba(
         : null,
     );
     const tgtRamalIds = [...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])];
+    // Delta sobre el disco, AQUÍ sí: el libro vive en el piso CARGADO (objeto del motor +
+    // doc persistido en el mismo pase) — sin el desacople cross-floor, la fórmula es
+    // genuinamente idempotente (test de convergencia ×2) y el carry es visible al marcar
+    // el checkbox sin esperar al efecto (doctrina del usuario).
     const ucNuevo: Record<string, Record<string, number>> = {};
     for (const rid of tgtRamalIds) {
       const tk = pkey(rid);
@@ -158,7 +163,7 @@ export function propagarHerenciaBomba(
     const trazosBaj = loadFromStorage<{
       bajantes?: Array<{ id: string; ucAplicado?: Record<string, Record<string, number>> }>;
     } | null>(TRAZOS_PREFIX + pid, null);
-    const tBj = trazosBaj?.bajantes?.find((x) => x.id === baj.id);
+    const tBj = bajanteDePisoEn(trazosBaj?.bajantes, baj.id, baj.pisoBase ?? '');
     if (tBj && JSON.stringify(tBj.ucAplicado || {}) !== JSON.stringify(ucNuevo)) {
       tBj.ucAplicado = ucNuevo;
       (trazosBaj as { ts?: number }).ts = Date.now();

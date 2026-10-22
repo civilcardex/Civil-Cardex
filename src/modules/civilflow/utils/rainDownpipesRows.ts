@@ -1,8 +1,7 @@
+import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import type { BajanteLL } from '../context/RainwaterContext.tsx';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
 import { chequeoBajanteLluvia } from './calcRainwater.ts';
 import { cDeCubierta } from '../constants/engineeringDataMaterials.ts';
 import { areaParcialBajanteLl } from './rainwaterRows.ts';
@@ -34,16 +33,8 @@ export function computeRainDownpipesTable(
   const areaDibujoMap: Record<string, number> = {};
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan<DrawingData>(plan.id);
+    if (!data) continue;
     for (const b of data.bajantes || []) {
       if (b.net === 'll' && b.area_m2) {
         areaDibujoMap[b.code || b.id] = b.area_m2;

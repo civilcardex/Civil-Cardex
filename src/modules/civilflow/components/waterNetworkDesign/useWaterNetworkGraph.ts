@@ -4,8 +4,7 @@ import type { Tramo } from '../../context/tramosReducer';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { APARATOS_DEF } from '../../constants';
 import { calcUCparcial } from '../../utils/componentHelpers.tsx';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
-import { loadFromStorage } from '../../services/storageService.ts';
+import { leerDocDePlan } from '../../utils/readPlanDrawing';
 import { distToPolyline } from '../../lib/shared/geometry';
 import type { DrawingData, RawElement } from '../../utils/drawingSync.ts';
 import { isLdesvioRamalId } from '../../utils/associateBajanteAcrossFloors';
@@ -118,16 +117,8 @@ export function useWaterNetworkGraph({
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-      if (!raw) continue;
-      let data: DrawingData = raw as DrawingData;
-      if (typeof raw === 'string') {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-      }
+      const data = leerDocDePlan<DrawingData>(plan.id);
+      if (!data) continue;
 
       // Mismo filtro que el snapshot de memoria (waterRowsCore): los L-desvío no son
       // tramos de red — sin él la tabla viva y la memoria divergen.

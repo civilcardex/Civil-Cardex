@@ -5,6 +5,7 @@ import { collectSourceAgg } from './bajanteAssociation';
 import type { InheritPoolBajante, InheritPoolRamal } from './bajanteAssociation';
 import { pisoLbl } from '../constants';
 import { mapUdBombaDesdeTrazos } from './pumpInheritance';
+import { bajanteDePisoEn, bajanteLocalDe } from './bajanteLocal.ts';
 
 import { libroHeredado } from '../components/fixturesStorage.ts';
 
@@ -27,7 +28,8 @@ export function aggBajanteAsociado(opts: {
   hidro: Record<string, { accesorios?: Record<string, number> }>;
   engine?: {
     _loadedPlanId?: string | number | null;
-    bajantes: unknown[];
+    nivelActual?: { label?: string } | null;
+    bajantes: Array<{ id: string; pisoBase?: string }>;
     ramales: unknown[];
   } | null;
 }): Record<string, number> | null {
@@ -63,17 +65,22 @@ export function aggBajanteAsociado(opts: {
     libro = liveBaj.ucAplicado;
   } else {
     try {
+      const pb = liveBaj.pisoBase;
       const planDelLibro = (() => {
-        const pb = liveBaj.pisoBase;
         if (!pb) return planId;
         const home = plans.find((p) => p.nivel != null && pisoLbl(Number(p.nivel)) === pb);
         return home && String(home.id) !== String(planId) ? String(home.id) : planId;
       })();
-      libro = loadFromStorage<{
-        bajantes?: Array<{ id?: string; ucAplicado?: Record<string, Record<string, number>> }>;
-      } | null>(TRAZOS_PREFIX + planDelLibro, null)?.bajantes?.find(
-        (x) => x.id === targetId,
-      )?.ucAplicado;
+      // El doc del piso dueño puede arrastrar la PROYECCIÓN del vecino con el mismo id y un
+      // libro rancio; se resuelve la copia del piso del libro (mismo criterio que el panel).
+      const docLibro = loadFromStorage<{
+        bajantes?: Array<{
+          id: string;
+          pisoBase?: string;
+          ucAplicado?: Record<string, Record<string, number>>;
+        }>;
+      } | null>(TRAZOS_PREFIX + planDelLibro, null);
+      libro = bajanteDePisoEn(docLibro?.bajantes, targetId, pb ?? '')?.ucAplicado;
     } catch {
       /* lectura best-effort */
     }
@@ -90,15 +97,21 @@ export function aggBajanteAsociado(opts: {
         ramales?: unknown[];
         bajantes?: unknown[];
       } | null>(TRAZOS_PREFIX + oPlan, null);
-      const srcBaj = (rawOrigen?.bajantes as InheritPoolBajante[] | undefined)?.find(
-        (x) => x.id === oBaj,
+      // Piso dueño del doc origen (el árbol se lee del bajante REAL, no de su proyección).
+      const nivOrigen = plans.find((p) => String(p.id) === String(oPlan))?.nivel;
+      const lblOrigen =
+        nivOrigen != null && Number.isFinite(Number(nivOrigen)) ? pisoLbl(Number(nivOrigen)) : '';
+      const srcBaj = bajanteDePisoEn(
+        rawOrigen?.bajantes as InheritPoolBajante[] | undefined,
+        oBaj,
+        lblOrigen,
       );
       if (srcBaj) {
         const { agg } = collectSourceAgg({
           net: netId,
           planId: String(oPlan),
           bajId: oBaj,
-          liveBaj: poolVivoDe(oPlan)?.bajantes.find((b) => b.id === oBaj) ?? null,
+          liveBaj: poolVivoDe(oPlan) ? (bajanteLocalDe(eng, oBaj) ?? null) : null,
           liveRamales: poolVivoDe(oPlan)?.ramales ?? null,
           storedBaj: srcBaj,
           storedRamales: (rawOrigen?.ramales ?? []) as InheritPoolRamal[],

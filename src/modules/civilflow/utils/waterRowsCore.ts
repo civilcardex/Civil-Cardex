@@ -1,11 +1,10 @@
+import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
 import { calcUCparcial, compareTramosPisoDesc } from './componentHelpers.tsx';
 import { calcLeAcces } from './fittingsUtils.ts';
 import { distToPolyline } from '../lib/shared/geometry';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
 import type { DrawingData, RawElement } from './drawingSync.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { indicePorId } from './indices';
@@ -104,16 +103,8 @@ export function computeWaterNetworkRows(
 
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan<DrawingData>(plan.id);
+    if (!data) continue;
 
     const ramales = (data.ramales || []).filter(
       (r) => r.net === networkType && !isLdesvioRamalId(r.id),

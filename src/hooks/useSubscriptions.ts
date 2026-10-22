@@ -18,16 +18,30 @@ import {
   type ModuloId,
 } from '../lib/subscriptions/catalog.ts';
 
+// Caché de sesión (ped. usuario: salir del visor no debe re-mostrar «Verificando
+// suscripción...»): una vez resuelto, los remontajes de RequireModule hidratan al instante
+// desde aquí y el effect sigue refrescando en vivo. Se invalida al cambiar de usuario.
+let cacheSesion: {
+  userId: string | null;
+  rows: SuscripcionRow[];
+  flagBD: boolean | null;
+  accesos: ModuloId[];
+} | null = null;
+
 export function useSuscripciones() {
   const { user } = useAuth();
-  const [rows, setRows] = useState<SuscripcionRow[] | null>(null);
+  const userId = user?.id ?? null;
+  const [rows, setRows] = useState<SuscripcionRow[] | null>(cacheSesion?.rows ?? null);
   // null = aún consultando el flag de BD (evita el flash en RequireModule).
-  const [flagBD, setFlagBD] = useState<boolean | null>(null);
+  const [flagBD, setFlagBD] = useState<boolean | null>(cacheSesion?.flagBD ?? null);
   // Módulos del RPC mis_accesos (propias + asientos de empresa); [] sin sesión o
   // sin migración (fail-open — ver fetchModulosConAcceso).
-  const [accesos, setAccesos] = useState<ModuloId[]>([]);
+  const [accesos, setAccesos] = useState<ModuloId[]>(cacheSesion?.accesos ?? []);
 
   useEffect(() => {
+    // Invalidación de la caché de sesión al cambiar de usuario (fuera del render — regla
+    // de pureza del react-compiler).
+    if (cacheSesion && cacheSesion.userId !== userId) cacheSesion = null;
     // Precios desde BD (fuente única, deuda #4): pisa CATALOGO con app_precios antes de
     // que ningún modal muestre/mande un total. Fallback silencioso sin migración.
     void sincronizarPreciosBd();
@@ -43,6 +57,7 @@ export function useSuscripciones() {
         user ? fetchModulosConAcceso() : Promise.resolve<ModuloId[]>([]),
       ]);
       if (!ignore) {
+        cacheSesion = { userId, rows: filas, flagBD: hab, accesos: acc };
         setRows(filas);
         setFlagBD(hab);
         setAccesos(acc);
@@ -55,7 +70,7 @@ export function useSuscripciones() {
       ignore = true;
       window.removeEventListener(EV_SUSCRIPCIONES, onCambio);
     };
-  }, [user]);
+  }, [user, userId]);
 
   // activos = suscripciones propias (RLS) + asientos de empresa (mis_accesos):
   // el gating cliente no puede ver los asientos con la lectura owner-only.
