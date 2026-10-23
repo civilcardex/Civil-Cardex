@@ -62,24 +62,6 @@ const MODULOS_HERO = [
     cats: ['Modelos 3D', 'Curvas de nivel', 'Volúmenes corte/relleno', 'Integración LiDAR'],
   },
   {
-    id: 'bim',
-    logo: '/logos/civilBIMlogo.webp',
-    name: 'CivilBIM',
-    color: '#8e44ad',
-    path: '/civilbim',
-    desc: 'Integración BIM para coordinación multidisciplinar. Visualización y gestión de modelos 3D inteligentes.',
-    cats: ['Importación IFC', 'Detección de colisiones', 'Coordinación BIM', 'Vinculación Revit'],
-  },
-  {
-    id: 'mep',
-    logo: '/logos/civilMEPlogo.webp',
-    name: 'CivilMEP',
-    color: '#16a085',
-    path: '/civilmep',
-    desc: 'Diseño de instalaciones mecánicas, eléctricas y de plomería integradas al modelo civil.',
-    cats: ['Ruteo inteligente', 'Análisis de cargas', 'Dimensionamiento', 'Coordination MEP'],
-  },
-  {
     id: 'roads',
     logo: '/logos/civilRoadslogo.webp',
     name: 'CivilRoads',
@@ -94,9 +76,7 @@ const MOD_SUB = {
   flow: 'REDES HIDRÁULICAS, SANITARIAS Y GAS',
   structure: 'DISEÑO ESTRUCTURAL Y ANÁLISIS',
   terrain: 'TOPOGRAFÍA Y MOVIMIENTO DE TIERRAS',
-  bim: 'INTEGRACIÓN BIM',
   manage: 'PRESUPUESTOS Y APU',
-  mep: 'INSTALACIONES MEP',
   roads: 'VÍAS Y URBANISMO',
 };
 
@@ -281,7 +261,7 @@ function LandingPage() {
 
         <ScrollIndicator />
 
-        {/* 7 Module Cards — bottom area */}
+        {/* 5 Module Cards — bottom area */}
         <div className="relative z-10 px-4 pb-6 sm:pb-8 md:pb-10">
           <ul
             className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-5"
@@ -481,7 +461,7 @@ function LandingPage() {
               {
                 icon: 'hub',
                 title: 'COBERTURA INTEGRAL',
-                desc: 'Redes, estructuras, terreno, vías y coordinación BIM bajo una misma plataforma, con datos compartidos entre módulos y disciplinas de la ingeniería civil.',
+                desc: 'Redes, estructuras, terreno, vías y presupuestos bajo una misma plataforma, con datos compartidos entre módulos y disciplinas de la ingeniería civil.',
               },
             ].map((f, index) => (
               <FadeIn key={f.icon} delay={index * 100} className="h-full">

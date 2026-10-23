@@ -60,26 +60,10 @@ export const ROUTE_META: RouteMeta[] = [
     priority: '0.8',
   },
   {
-    path: '/civilbim',
-    title: 'BIM',
-    description:
-      'Modelado BIM para infraestructura civil. Integración IFC, Revit, detección de colisiones y coordinación multidisciplinar.',
-    changefreq: 'monthly',
-    priority: '0.8',
-  },
-  {
     path: '/civilmanager',
     title: 'Civil Manager',
     description:
       'Presupuestos de obra civil: APU (análisis de precios unitarios) con mano de obra, insumos, equipo y transporte, catálogos de proveedores y configuración de perfil país y factor prestacional.',
-    changefreq: 'monthly',
-    priority: '0.8',
-  },
-  {
-    path: '/civilmep',
-    title: 'MEP',
-    description:
-      'Modelado MEP de sistemas mecánicos, eléctricos e hidrosanitarios. Ruteo inteligente y dimensionamiento normativo.',
     changefreq: 'monthly',
     priority: '0.8',
   },

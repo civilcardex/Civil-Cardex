@@ -5,10 +5,6 @@ export interface Feature {
   span?: string;
   badge?: string | null;
   badgeColor?: string | null;
-  tags?: string[];
-  terminal?: string[];
-  autoSize?: boolean;
-  highlight?: boolean;
 }
 
 export interface Spec {
@@ -35,17 +31,8 @@ export interface ModuleConfig {
   features: Feature[];
   specs?: Spec[];
   normas?: string[];
-  syncRows?: {
-    id: string;
-    cat: string;
-    estado: string;
-    desv: string;
-    desvColor: string;
-    valid: string;
-    validColor: string;
-  }[];
   metrics?: { label: string; value: string; isAccent?: boolean }[];
-  customLayout?: 'flow' | 'structure' | 'terrain' | 'bim' | 'manage' | 'mep' | 'roads';
+  customLayout?: 'flow' | 'structure' | 'terrain' | 'manage' | 'roads';
 }
 
 export const MODULES_DATA: Record<string, ModuleConfig> = {
@@ -192,70 +179,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     ],
     customLayout: 'terrain',
   },
-  bim: {
-    title: 'BIM',
-    ruta: '/civilbim',
-    metaTitle: 'BIM',
-    metaDesc:
-      'Modelado BIM para infraestructura civil. Integración IFC, Revit, detección de colisiones y coordinación multidisciplinar.',
-    accent: '#d946ef',
-    logo: '/logos/civilBIMlogo.webp',
-    badgeLabel: 'Módulo CivilBIM',
-    headline: 'CivilBIM: El Nexo Digital de la Construcción',
-    description:
-      'Integración total de modelos inteligentes en flujos de trabajo es. Conecte diseño, análisis y gestión en un entorno unificado de alta precisión para proyectos de infraestructura civil.',
-    ctaText: 'Iniciar Terminal BIM',
-    features: [
-      {
-        icon: 'hub',
-        title: 'Interoperabilidad IFC y Revit',
-        desc: 'Importación y exportación bidireccional sin pérdida de metadatos constructivos.',
-        tags: ['.IFC', '.RVT', '.DWG'],
-        span: 'col-span-1 md:col-span-2 lg:col-span-2',
-      },
-      {
-        icon: 'timeline',
-        title: 'Coordinación 4D/5D',
-        desc: 'Cronogramas de obra y estimación de costos integrados en tiempo real al modelo.',
-      },
-      {
-        icon: 'warning',
-        title: 'Detección de Colisiones',
-        desc: 'Análisis automatizado de interferencias MEP vs Estructura.',
-        highlight: true,
-      },
-    ],
-    syncRows: [
-      {
-        id: 'P-104A',
-        cat: 'Pilote Cimentación',
-        estado: 'Excavado',
-        desv: '+2.4',
-        desvColor: '#79ff5b',
-        valid: 'OK',
-        validColor: '#79ff5b',
-      },
-      {
-        id: 'V-201B',
-        cat: 'Viga Riostra',
-        estado: 'Armado',
-        desv: '-15.2',
-        desvColor: '#ffb4ab',
-        valid: 'REVISIÓN',
-        validColor: '#ffb4ab',
-      },
-      {
-        id: 'M-005C',
-        cat: 'Muro Contención',
-        estado: 'Encofrado',
-        desv: '+0.8',
-        desvColor: '#79ff5b',
-        valid: 'OK',
-        validColor: '#79ff5b',
-      },
-    ],
-    customLayout: 'bim',
-  },
   manage: {
     title: 'Civil Manager',
     ruta: '/civilmanager',
@@ -292,48 +215,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
       },
     ],
     customLayout: 'manage',
-  },
-  mep: {
-    title: 'MEP',
-    ruta: '/civilmep',
-    metaTitle: 'MEP',
-    metaDesc:
-      'Modelado MEP de sistemas mecánicos, eléctricos e hidrosanitarios. Ruteo inteligente y dimensionamiento normativo.',
-    accent: '#00dce5',
-    logo: '/logos/civilMEPlogo.webp',
-    badgeLabel: 'Module: CivilMEP',
-    headline: 'Diseño Inteligente de Instalaciones Especiales',
-    description:
-      'Modelado avanzado de sistemas mecánicos, eléctricos e hidrosanitarios. Diseñado para workflows de alta densidad y precisión.',
-    ctaText: 'INICIAR MODELADO',
-    features: [
-      {
-        icon: 'account_tree',
-        title: 'Ruteo Inteligente de Tuberías y Ductos',
-        desc: 'Algoritmos de pathfinding para el trazado automático evitando colisiones estructurales. Optimización de material basada en parámetros de fricción y caída de presión.',
-        span: 'lg:col-span-2 lg:row-span-2',
-        badge: 'STATUS: OPTIMAL',
-      },
-      {
-        icon: 'bolt',
-        title: 'Análisis de Cargas',
-        desc: 'Simulación térmica y eléctrica en tiempo real.',
-        terminal: ['LOAD_ELEC: ACTIVE', 'LOAD_THERM: CALC...'],
-      },
-      {
-        icon: 'settings_overscan',
-        title: 'Dimensionamiento',
-        desc: 'Selección automática de equipos según normativa.',
-        autoSize: true,
-      },
-      {
-        icon: 'architecture',
-        title: 'Documentación de Planos de Taller',
-        desc: 'Extracción automatizada de isométricos, listados de materiales (BOM) y detalles constructivos directamente del modelo federado.',
-        span: 'md:col-span-2 lg:col-span-2',
-      },
-    ],
-    customLayout: 'mep',
   },
   roads: {
     title: 'Vías',

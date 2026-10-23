@@ -42,6 +42,12 @@
       ]
     }
   ],
+  "redirects": [
+    { "source": "/civilbim", "destination": "/", "permanent": true },
+    { "source": "/civilbim/:path*", "destination": "/:path*", "permanent": true },
+    { "source": "/civilmep", "destination": "/", "permanent": true },
+    { "source": "/civilmep/:path*", "destination": "/:path*", "permanent": true }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

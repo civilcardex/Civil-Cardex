@@ -3,9 +3,7 @@ import ModulePageLayout from '../components/ModulePageLayout.tsx';
 import FlowHero from '../modules/civilflow/components/modulePage/FlowHero.tsx';
 import StructureHero from '../components/modulePage/StructureHero.tsx';
 import TerrainHero from '../components/modulePage/TerrainHero.tsx';
-import BimHero from '../components/modulePage/BimHero.tsx';
 import ManageHero from '../components/modulePage/ManageHero.tsx';
-import MepHero from '../components/modulePage/MepHero.tsx';
 import RoadsHero from '../components/modulePage/RoadsHero.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
@@ -28,7 +26,7 @@ const ModulePage_S1: React.CSSProperties = {
 };
 
 interface ModulePageProps {
-  moduleId: 'flow' | 'structure' | 'terrain' | 'bim' | 'manage' | 'mep' | 'roads';
+  moduleId: 'flow' | 'structure' | 'terrain' | 'manage' | 'roads';
 }
 
 interface HeroProps {
@@ -40,9 +38,7 @@ const HERO_BY_LAYOUT: Record<string, ComponentType<HeroProps>> = {
   flow: FlowHero,
   structure: StructureHero,
   terrain: TerrainHero,
-  bim: BimHero,
   manage: ManageHero,
-  mep: MepHero,
   roads: RoadsHero,
 };
 
@@ -173,28 +169,24 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               className="text-xl font-semibold text-on-surface"
               style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
             >
-              {cfg.customLayout === 'mep' ? 'Capacidades del Módulo' : 'Capacidades del sistema'}
+              Capacidades del sistema
             </h2>
             <p
               className="text-[13px] text-outline uppercase"
               style={{ fontFamily: 'Geist, monospace' }}
             >
-              {cfg.customLayout === 'mep'
-                ? 'SYS.MEP.FEATURES // ANALYTICS'
-                : 'Módulos de integración activos'}
+              Módulos de integración activos
             </p>
           </div>
         )}
 
         <div
           className={
-            cfg.customLayout === 'mep'
-              ? 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-[250px]'
-              : cfg.customLayout === 'roads'
-                ? 'grid grid-cols-1 md:grid-cols-12 gap-3'
-                : cfg.customLayout === 'manage'
-                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-[320px]'
-                  : 'grid grid-cols-1 md:grid-cols-3 gap-3'
+            cfg.customLayout === 'roads'
+              ? 'grid grid-cols-1 md:grid-cols-12 gap-3'
+              : cfg.customLayout === 'manage'
+                ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-[320px]'
+                : 'grid grid-cols-1 md:grid-cols-3 gap-3'
           }
         >
           {cfg.features.map((f, i) => {
@@ -202,27 +194,20 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               cfg.customLayout === 'roads'
                 ? f.span
                 : f.span
-                  ? cfg.customLayout === 'mep'
-                    ? f.span
-                    : cfg.customLayout === 'manage'
-                      ? 'md:col-span-2'
-                      : 'col-span-1 md:col-span-2 lg:col-span-2'
+                  ? cfg.customLayout === 'manage'
+                    ? 'md:col-span-2'
+                    : 'col-span-1 md:col-span-2 lg:col-span-2'
                   : '';
             return (
               <div
                 key={i}
-                className={`border p-6 flex flex-col justify-between group transition-all relative overflow-hidden ${isSpan} ${f.highlight ? '' : ''}`}
+                className={`border p-6 flex flex-col justify-between group transition-all relative overflow-hidden ${isSpan}`}
                 style={{
                   background:
                     cfg.customLayout === 'manage'
                       ? `linear-gradient(155deg, #1e2128 0%, #1a1c20 55%, ${cfg.accent}14 100%)`
-                      : cfg.customLayout === 'mep'
-                        ? f.span
-                          ? '#1e2024'
-                          : '#1a1c20'
-                        : '#1a1c20',
-                  borderColor: f.highlight ? cfg.accent : '#3a494a',
-                  boxShadow: f.highlight ? `0 0 15px -3px ${cfg.accent}` : 'none',
+                      : '#1a1c20',
+                  borderColor: '#3a494a',
                 }}
               >
                 <div className="z-10 flex flex-col gap-4">
@@ -268,33 +253,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                   >
                     {f.desc}
                   </p>
-
-                  {f.tags && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {f.tags.map((t) => (
-                        <span
-                          key={t}
-                          className={
-                            cfg.customLayout === 'manage'
-                              ? 'text-[12px] px-3 py-1.5 border border-outline-variant text-on-surface-variant'
-                              : 'text-[10px] px-2 py-1 border border-outline-variant text-on-surface-variant'
-                          }
-                          style={{ background: '#111317', fontFamily: 'Geist, monospace' }}
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {f.highlight && cfg.customLayout !== 'manage' && (
-                    <span
-                      className="text-[10px] flex items-center gap-1 mt-1"
-                      style={{ fontFamily: 'Geist, monospace', color: '#ffb4ab' }}
-                    >
-                      <span className="w-1.5 h-1.5 bg-error rounded-full animate-pulse" /> AUTO-SCAN
-                      ACTIVE
-                    </span>
-                  )}
                 </div>
 
                 {f.badge && (
@@ -307,32 +265,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                         <span className="w-1.5 h-1.5" style={{ background: f.badgeColor }} />
                       )}{' '}
                       {f.badge}
-                    </span>
-                  </div>
-                )}
-                {f.terminal && (
-                  <div
-                    className="mt-auto text-[13px] text-outline bg-surface p-2 border border-outline-variant"
-                    style={{ fontFamily: 'Geist, monospace', color: '#8AB4D6' }}
-                  >
-                    {f.terminal.map((line, j) => (
-                      <div key={j}>&gt; {line}</div>
-                    ))}
-                  </div>
-                )}
-                {f.autoSize && (
-                  <div className="mt-auto flex items-center gap-2">
-                    <span
-                      className="material-symbols-outlined text-sm!"
-                      style={{ color: '#79ff5b' }}
-                    >
-                      check_box
-                    </span>
-                    <span
-                      className="text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      AUTO-SIZE ON
                     </span>
                   </div>
                 )}
@@ -466,68 +398,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             </div>
           )}
         </div>
-
-        {/* Sync table inside features container for BIM */}
-        {cfg.syncRows && (
-          <div
-            className="mt-6 border border-outline-variant flex flex-col overflow-hidden w-full"
-            style={{ background: '#1a1c20' }}
-          >
-            <div
-              className="flex items-center justify-between px-4 py-2 border-b border-outline-variant"
-              style={{ background: '#0c0e12' }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-on-surface-variant text-base!">
-                  table_rows
-                </span>
-                <h3
-                  className="text-[13px] text-on-surface-variant uppercase"
-                  style={{ fontFamily: 'Geist, monospace' }}
-                >
-                  Sincronización Datos de Campo
-                </h3>
-              </div>
-              <span
-                className="text-[10px] px-2 py-0.5 border"
-                style={{
-                  fontFamily: 'Geist, monospace',
-                  color: '#79ff5b',
-                  borderColor: '#2ff80133',
-                  background: 'rgba(47,248,1,0.1)',
-                }}
-              >
-                LIVE CONNECTION
-              </span>
-            </div>
-            <div className="flex-grow p-4 flex gap-4 overflow-x-auto">
-              <div
-                className="min-w-[760px] w-full flex flex-col gap-1 text-[12px]"
-                style={{ fontFamily: 'Geist, monospace' }}
-              >
-                <div className="grid grid-cols-5 text-on-surface-variant border-b border-outline-variant pb-1 mb-1 uppercase text-[10px]">
-                  <span>ID Elemento</span>
-                  <span>Categoría</span>
-                  <span>Estado Terreno</span>
-                  <span>Desviación (mm)</span>
-                  <span>Validación</span>
-                </div>
-                {cfg.syncRows.map((r) => (
-                  <div
-                    key={r.id}
-                    className="grid grid-cols-5 text-on-surface py-1 hover:bg-surface-container transition-colors"
-                  >
-                    <span style={{ color: '#00dce5' }}>{r.id}</span>
-                    <span>{r.cat}</span>
-                    <span>{r.estado}</span>
-                    <span style={{ color: r.desvColor }}>{r.desv}</span>
-                    <span style={{ color: r.validColor }}>{r.valid}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Specifications table section (Only for Flow) */}
         {cfg.specs && (

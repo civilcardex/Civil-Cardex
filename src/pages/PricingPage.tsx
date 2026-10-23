@@ -297,10 +297,7 @@ function PricingSuscripciones() {
   }, [refPago, navigate]);
 
   const modulosProx = useMemo(
-    () =>
-      (['structure', 'terrain', 'bim', 'mep', 'roads'] as const).map(
-        (id) => MODULES_DATA[id]?.title ?? id,
-      ),
+    () => (['structure', 'terrain', 'roads'] as const).map((id) => MODULES_DATA[id]?.title ?? id),
     [],
   );
 

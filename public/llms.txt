@@ -1,6 +1,6 @@
 # Civil Cardex
 
-> Plataforma de ingeniería civil en la web para el diseño y cálculo de redes hidrosanitarias, estructuras, terreno, BIM, gestión de obra, MEP y vías, con verificación normativa automática (normas colombianas NTC, RAS e internacionales IPC/UPC, ASCE, NFPA) y exportación de memorias de cálculo.
+> Plataforma de ingeniería civil en la web para el diseño y cálculo de redes hidrosanitarias, estructuras, terreno, gestión de obra y vías, con verificación normativa automática (normas colombianas NTC, RAS e internacionales IPC/UPC, ASCE, NFPA) y exportación de memorias de cálculo.
 
 Civil Cardex es una aplicación web por módulos dirigida a ingenieros civiles, diseñadores hidrosanitarios, consultores y constructores de América Latina. Funciona directamente en el navegador sobre planos PDF reales.
 
@@ -9,9 +9,7 @@ Civil Cardex es una aplicación web por módulos dirigida a ingenieros civiles, 
 - [Civil Flow](https://civilcardex.com/civilflow): diseño y cálculo de redes hidrosanitarias (agua fría, agua caliente, sanitaria, lluvias, gas, contra incendio) con método Hunter, Renouard, Manning y verificación NTC 1500 / IPC / UPC / NFPA.
 - [Estructuras](https://civilcardex.com/civilstructure): diseño y verificación de elementos estructurales.
 - [Terreno](https://civilcardex.com/civilterrain): análisis y movimiento de tierras.
-- [BIM](https://civilcardex.com/civilbim): coordinación BIM.
 - [Civil Manager](https://civilcardex.com/civilmanager): gestión y administración de proyectos de obra.
-- [MEP](https://civilcardex.com/civilmep): mecánica, eléctrica y plomería.
 - [Vías](https://civilcardex.com/civilroads): diseño geométrico vial.
 
 ## Documentación

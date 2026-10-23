@@ -1,7 +1,7 @@
 {
   "name": "Civil Cardex — Plataforma de Ingeniería Civil",
   "short_name": "Civil Cardex",
-  "description": "Plataforma de ingeniería civil para diseño hidrosanitario, estructural, vial y BIM.",
+  "description": "Plataforma de ingeniería civil para diseño hidrosanitario, estructural y vial.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

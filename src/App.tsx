@@ -196,31 +196,11 @@ function App() {
                   }
                 />
                 <Route
-                  path="/civilbim"
-                  element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="bim" />
-                      </Suspense>
-                    </ErrorBoundary>
-                  }
-                />
-                <Route
                   path="/civilmanager"
                   element={
                     <ErrorBoundary>
                       <Suspense fallback={<Fallback />}>
                         <ModulePage moduleId="manage" />
-                      </Suspense>
-                    </ErrorBoundary>
-                  }
-                />
-                <Route
-                  path="/civilmep"
-                  element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="mep" />
                       </Suspense>
                     </ErrorBoundary>
                   }

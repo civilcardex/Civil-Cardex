@@ -6,9 +6,7 @@ const MODULE_NAMES: Record<string, string> = {
   civilflow: 'Civil Flow',
   civilstructure: 'Estructuras',
   civilterrain: 'Terreno',
-  civilbim: 'BIM',
   civilmanager: 'Civil Manager',
-  civilmep: 'MEP',
   civilroads: 'Vías',
 };
 
