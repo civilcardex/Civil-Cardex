@@ -752,3 +752,16 @@ Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/1
 - **shrink diag**: bloque __cfDiag/__cfScale (~110L) fuera de useFixtureMirrors → `fixtures/diagnosticoDev.ts` con `instalarDiagnosticoDev()` (gate DEV dentro). El hook queda con sus 3 efectos.
 - **Tope fixtureMirrors** 410 → 425 (la foto de propio de F-1 añadió líneas legítimas).
 - Gates: guardias 22/22 · tsc 0 · lint 0 · vitest 682/682 · build + prerender 13/13.
+
+## Session Summary — 2026-10-22 (panel Equipo a producción con datos de ejemplo)
+- **/empresa en PRODUCCIÓN**: mientras `SUSCRIPCIONES_ACTIVAS` esté apagado, la página muestra los DATOS DE EJEMPLO (flow anual 5 puestos/3 miembros, manage semestral 2 puestos/1 miembro) en SOLO LECTURA con banner «Vista de ejemplo» — `PanelSuscripcion(soloLectura, mock)` corta TODOS los RPCs (cero escrituras a BD). Con el flag activo el bloque desaparece solo y la página usa los planes reales (nada que borrar).
+- **/empresa-preview BORRADA** (ruta DEV + lazy + `CompanyPreviewPage.tsx`): su función vive ahora en el modo ejemplo de CompanyPage.
+- Gates: tsc 0 · eslint 0 · arquitectura 11/11 · build + prerender 13/13 ✓.
+
+## Session Summary — 2026-10-23 (auditoría propia: 5 hallazgos, todos cerrados + fixtureMirrors partido)
+- **F-1 bis CRÍTICO (ventana del F-1)**: el suelo de propio del clear dependía de la foto que SOLO escribía el pase de espejos — asociar (no alineado) y desasociar ANTES del primer pase caía al fallback de resta completa y borraba los manuales. FIX: el APPLY siembra la foto al asociar (APARATOS_PROPIO_KEY, claves destino = disco actual = propio puro). Test nuevo: apply → clear INMEDIATO sin espejos → {lav:1} sobrevive.
+- **F-5: fixtureMirrors PARTIDO** (417L → orquestador de 119L): `salidasEspejo.ts` (96L — espejo de salidas/bomba por REEMPLAZO) + `herenciaCrossFloor.ts` (232L — enlaces entre pisos, libro-solo, parche quirúrgico, foto de propio) + `correrEspejos` como orquestador (guards de piso, PaseEspejos compartido, bomba, montantes, persistencia UNA vez por almacén). Código movido VERBATIM — repros verdes al primer intento. `PaseEspejos` (estado mutable del pase) vive en fixtureMirrorsTypes. Guard: tope fixtureMirrors 430→130, nuevos módulos registrados, entrada de 6 focos fuera (se redistribuyeron <5 por archivo, total igual 531).
+- **F-2**: mutarConteo ya no traga fallos de disco — devError con contexto (se pierde al recargar).
+- **F-3**: contrato de leerDocDePlan documentado (null también ante JSON roto — prefetchTrazos auto-cura cachés corruptas; antes el string roto contaba como presente).
+- **F-4**: instalarDiagnosticoDev() marcado ponytail (side-effect de import intencional, gate DEV, idempotente).
+- Gates: guardias 22/22 · tsc 0 · lint 0 · vitest 683/683 · build + prerender 13/13.
