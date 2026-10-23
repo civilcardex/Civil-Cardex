@@ -793,3 +793,25 @@ Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/1
 - G1: bajanteAssocShared (722) entra a CONOCIDOS (las +48 L son JSDoc); techos actualizados: renderRamales 855, DownpipesTable 211.
 - G8 regla D (anti-congelación): renderRamales 11→2 focos (salieron con las flechas) → baseline bajado en el mismo commit: TOTAL_FOCOS_BASE 531→522 (39 archivos). El baseline del guard vive en architecture.test.ts (FOCOS_CONOCIDOS); el .txt es solo el dump del script.
 - Gates finales: tsc 0 · lint 0 · vitest 1445/1445 (238 archivos) · build + prerender 13/13 · graphify ✓. 8 commits (3a03b420..e0969a5f).
+
+## Session Summary — 2026-10-23bis (BIM/MEP fuera + PdfViewer y PlanoEngine divididos)
+
+### F0 — Civil BIM y Civil MEP FUERA (módulos 100% marketing)
+- Rutas /civilbim y /civilmep (13→11 prerenderizadas) · BimHero/MepHero · logos · entradas de moduleData · campos muertos de Feature (tags/highlight/terminal/autoSize) y syncRows · Landing 7→5 tarjetas · Pricing 'Próximamente' · sitemap 11 URLs · llms.txt · index.html sin BIM/MEP (title/og/twitter/JSON-LD/noscript) · webmanifest.
+- **vercel.json: redirects 301** /civilbim→/ y /civilmep→/ (URLs indexadas — sin esto, 404s SEO).
+- Se QUEDAN: pricingData 'API BIM/ERP' (término genérico), rciNetwork3d (es de civilflow), three.js (civilflow).
+- Pendiente usuario: og-image-v2.png trae píldora "BIM" (tarea de diseño).
+
+### F1 — PdfViewer 1529→1313
+- `pdfViewer/useViewerDirtySweep.ts` (sweep de aparatos inviables + auto-bump de diámetros, con sus 2 refs de dedupe/supresión) · `useSaveStatusBanner.ts` (4 listeners de error de guardado) · `PdfViewerRightSidebar.tsx` (nivel + copia + paneles de edición).
+- Lección de extracción por rango: el botón IZQUIERDO de colapso quedó dentro del rango cortado — detectado por tsc (setLeftCollapsed sin usar) y devuelto verbatim. Cuando se corta por anclas, enumerar TODO lo que vive entre ellas.
+
+### F2 — PlanoEngine 1586→1492 (riesgo ALTO, alcance ajustado)
+- `lib/PlanoEngine/snapExisting.ts`: snapToExisting + snapPreviewToPadre como funciones libres; la clase queda con delegados de 2 líneas.
+- `planoCamera.ts ptsDeDibujoConDims`: la colección del re-encuadre CON cotas; reEncuadrarContenido delega con el guard de piso vacío INTACTO (fitPage pads 20/36 ≠ encuadrarHoja 16 — sin ese guard cambiaba el encuadre de pisos vacíos).
+- **drawingBBox.ts BORRADO** (bboxDelDibujo sin dims, huérfano desde el fix del encuadre unificado — 0 consumidores).
+- **ponytail (decisión de riesgo)**: gestos wheel/pinch + setup touch NO extraídos — su estado son campos privados de instancia; moverlos a funciones libres rompería el patrón por ~115 L. PlanoEngine queda 1492 (más los delegados ya existentes).
+
+### Cierre
+- Techos G1 actualizados: PdfViewer 1493→1313, PlanoEngine 1425→1492 (el pin viejo estaba rancio). Baseline G8 sin cambios (522 — los módulos nuevos no traen focos).
+- Gates finales: tsc 0 · lint 0 · vitest 1445/1445 (238) · build + prerender 11/11 · graphify ✓. 4 commits (cc3420c6..).

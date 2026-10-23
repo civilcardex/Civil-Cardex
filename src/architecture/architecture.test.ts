@@ -29,9 +29,9 @@ const TOPE_NUEVO = 700;
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
  */
 const CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/components/PdfViewer.tsx': 1493,
+  'modules/civilflow/components/PdfViewer.tsx': 1313,
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 715,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1425,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1492,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 1236,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 855,
   'modules/civilflow/utils/waterRowsCore.ts': 704,
