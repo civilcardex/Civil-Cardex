@@ -14,7 +14,6 @@ import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectC
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
-import { estaActiva } from '../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
 const ModulePage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -51,8 +50,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { rows, bloqueando } = useSuscripciones();
-  const tieneModulo = (id: 'flow' | 'manage') => rows.some((r) => r.modulo === id && estaActiva(r));
+  const { activos, bloqueando } = useSuscripciones();
+  // Seat-aware: activos = filas propias ∪ puestos de empresa (mis_accesos).
+  const tieneModulo = (id: 'flow' | 'manage') => activos.has(id);
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateCM, setShowCreateCM] = useState(false);
   // Las metas salen de la fuente ÚNICA (ROUTE_META): el prerender usa la misma tabla, así que

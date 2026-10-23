@@ -46,5 +46,5 @@ Deno.serve(async (req: Request) => {
   // Defensa IDOR: la referencia debe ser del caller.
   if (pago.user_id !== user.id) return json({ aprobado: false });
 
-  return json({ aprobado: pago.estado === 'aprobado' });
+  return json({ aprobado: pago.estado === 'aprobado', estado: pago.estado });
 });

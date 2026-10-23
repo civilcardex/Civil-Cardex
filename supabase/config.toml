@@ -5,3 +5,11 @@
 [functions.ls-webhook]
 verify_jwt = false
 
+
+# crear-checkout y verificar-pago las llama el CLIENTE con JWT → verify_jwt true
+# (el default; explícito para que un cambio de plataforma no los rompa en silencio).
+[functions.crear-checkout]
+verify_jwt = true
+
+[functions.verificar-pago]
+verify_jwt = true

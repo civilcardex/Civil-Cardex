@@ -8,7 +8,6 @@ import { clearLocalWorkspace } from '../../services/workspaceReset.ts';
 import { saveToStorage } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys.ts';
-import { estaActiva } from '../../../../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';
 import SuscripcionInactivaModal, {
   codigoProyecto,
@@ -26,7 +25,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
   const plansCtx = useContext(PlansContext);
   const projectCtx = useContext(ProjectContext);
   const navigate = useNavigate();
-  const { rows: subs, loading: subsLoading, bloqueando: subsBloqueando } = useSuscripciones();
+  const { activos, loading: subsLoading, bloqueando: subsBloqueando } = useSuscripciones();
 
   useEffect(() => {
     if (open) requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
@@ -94,7 +93,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
   // Candado de UX; el real es el check de suscripción dentro de save_proyecto.
   // Bloquea solo si VITE y el flag de BD están encendidos; mientras cargan se
   // deja pasar (la BD decide al final).
-  if (subsBloqueando && !subsLoading && !subs.some((r) => r.modulo === 'flow' && estaActiva(r))) {
+  if (subsBloqueando && !subsLoading && !activos.has('flow')) {
     return <SuscripcionInactivaModal modulo="CivilFlow" onClose={onClose} />;
   }
 

@@ -130,7 +130,11 @@ export function usePlanoLoadSwitch({
           // llega a ver.
           const pg = paginaDeDoc(resolvedId, eng.scaleM);
           if (pg) eng.setPageSize(pg.w, pg.h);
-          eng.fitPage();
+          // MISMA fórmula que el loader y el post-raster (reEncuadrarContenido, bbox del
+          // dibujo CON dims): antes fitPage encuadraba la HOJA aquí y pisaba la cámara que
+          // el loader acababa de poner — la cámara cambiaba dos veces a la vista (el salto
+          // residual del cambio de piso, orig. usuario). Sin dibujo cae a la hoja (fitPage).
+          eng.reEncuadrarContenido();
           setActiveNet(loadedNet);
           if (sm != null) setScaleM(String(sm));
           requestAnimationFrame(() => {

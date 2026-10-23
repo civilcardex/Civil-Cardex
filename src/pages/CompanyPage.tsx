@@ -25,6 +25,8 @@ const MSG_ERROR: Record<string, string> = {
   ya_es_miembro: 'Ese correo ya es miembro del equipo.',
   no_puedes_asignarte: 'No puedes asignarte un puesto a ti mismo.',
   suscripcion_vencida: 'Tu suscripción está vencida; renuévala para gestionar puestos.',
+  no_autenticado: 'Tu sesión expiró. Vuelve a entrar e intenta de nuevo.',
+  miembro_no_encontrado: 'Ese miembro ya no está en la lista; recarga la página.',
   email_invalido: 'Correo inválido.',
   no_autorizado: 'No autorizado.',
 };

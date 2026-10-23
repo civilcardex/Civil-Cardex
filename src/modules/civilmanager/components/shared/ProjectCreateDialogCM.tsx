@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createCmProyecto } from '../../services/cmProjectsService.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { estaActiva } from '../../../../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';
 import SuscripcionInactivaModal, {
   codigoProyecto,
@@ -18,7 +17,7 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
   const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { rows: subs, loading: subsLoading, bloqueando: subsBloqueando } = useSuscripciones();
+  const { activos, loading: subsLoading, bloqueando: subsBloqueando } = useSuscripciones();
 
   useEffect(() => {
     if (open) requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
@@ -53,7 +52,7 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
   // Candado de UX; el real es la política INSERT de cm_proyectos con
   // acceso_modulo(). Bloquea solo si VITE y el flag de BD están encendidos;
   // mientras cargan se deja pasar.
-  if (subsBloqueando && !subsLoading && !subs.some((r) => r.modulo === 'manage' && estaActiva(r))) {
+  if (subsBloqueando && !subsLoading && !activos.has('manage')) {
     return <SuscripcionInactivaModal modulo="CivilManager" onClose={onClose} />;
   }
 

@@ -84,9 +84,15 @@ Deno.serve(async (req: Request) => {
   // 5 · Precio SIEMPRE server-side, desde app_precios (la verdad en BD — cambiar precio
   //     = UPDATE en SQL Editor, sin deploy); lemon.ts queda como fallback si la fila del
   //     módulo falta o trae un valor no positivo. ≥25 puestos = venta manual (negociado).
-  const { data: preciosRows } = await admin
+  // FAIL-CLOSED: si la lectura de la verdad (app_precios) falla, NO se cobra con
+  // literales viejos — el cliente podría estar mostrando precios de BD distintos.
+  const { data: preciosRows, error: errPrecios } = await admin
     .from('app_precios')
     .select('modulo, precio_mensual_centavos, precio_semestral_centavos, precio_anual_centavos');
+  if (errPrecios) {
+    console.error('crear-checkout: app_precios ilegible:', errPrecios.message);
+    return json({ error: 'error_interno' }, 500);
+  }
   const preciosBd: Partial<Record<ModuloId, PreciosBd>> = {};
   for (const r of preciosRows ?? []) {
     if (r.modulo !== 'flow' && r.modulo !== 'manage') continue;

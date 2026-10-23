@@ -6,8 +6,6 @@ import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
 import { decideEscalaPorDefectoDelPlan } from '../utils/cargaDiagnostico.ts';
 import { escalaDeDoc } from '../utils/planScale.ts';
-import { encuadrarDibujo } from '../lib/PlanoEngine/planoCamera.ts';
-import { bboxDelDibujo } from './pdfViewer/drawingBBox.ts';
 import { useNavigate } from 'react-router-dom';
 import PlanoEngine, {
   type ElementItem,
@@ -869,24 +867,15 @@ function PdfViewer_({
   }, [engineRef]);
   const handleFit = useCallback(() => {
     const eng = engineRef.current;
-    const cw = cwRef.current;
-    if (!eng || !cw || !eng.pageW || !eng.pageH) return;
+    if (!eng) return;
     // Encuadre sobre el DIBUJO (lo que el usuario trazó): recorta el fondo negro de la lámina.
-    // Sin dibujo (piso vacío) cae a la hoja completa.
-    const enc = encuadrarDibujo({
-      visW: cw.clientWidth,
-      visH: cw.clientHeight,
-      pageW: eng.pageW,
-      pageH: eng.pageH,
-      bbox: bboxDelDibujo(eng),
-    });
-    eng.zoom = enc.zoom;
-    eng.offX = enc.offX;
-    eng.offY = enc.offY;
+    // Sin dibujo (piso vacío) cae a la hoja completa. MISMA fórmula que la entrada del visor
+    // (reEncuadrarContenido) — Ajustar devuelve a la cámara de entrada exacta.
+    eng.reEncuadrarContenido();
     eng.scheduleRender();
     // ponytail: sin setScale(ceil) — el observer bgOnly re-rasteriza a la densidad del
     // zoom ajustado; el setScale disparaba un renderPage COMPLETO (bg+draw+reload) duplicado.
-  }, [engineRef, cwRef]);
+  }, [engineRef]);
 
   const { handleClear, handleClearGuides, handleSave, handleSnapToggle, handleGridToggle } =
     useViewerToolbarActions({

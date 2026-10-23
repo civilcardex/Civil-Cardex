@@ -3,8 +3,6 @@ import { getPdfjs } from '../../utils/lazyPdfjs';
 import { pdfDeCache, pdfACache, calentarPdfs } from './pdfCache.ts';
 import { instalarCfCam } from './diagCamara.ts';
 import { useReRasterEscala } from './useReRasterEscala.ts';
-import { encuadrarContenido } from '../../lib/PlanoEngine/planoCamera.ts';
-import { bboxDelDibujo } from './drawingBBox.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
@@ -279,12 +277,11 @@ export function usePdfViewerEngine({
         renderTaskRef.current = null;
 
         if (!opts.bgOnly) {
-          // Re-encuadre tras el raster REAL (el fit de entrada usó el tamaño PERSISTIDO de la
-          // lámina; el viewport real puede diferir): corrige antes de que suba el velo.
-          const cwFit = cwRef.current;
-          if (cwFit && engineRef.current) {
-            encuadrarContenido(engineRef.current, cwFit, bboxDelDibujo(engineRef.current));
-          }
+          // Re-encuadre tras el raster REAL: MISMA fórmula que pre-paint y switch
+          // (reEncuadrarContenido, bbox del dibujo CON dims) — con una sola fórmula de
+          // encuadre la cámara no se mueve un píxel entre el primer paint y aquí (el salto
+          // residual del visor, orig. usuario).
+          engineRef.current?.reEncuadrarContenido();
         }
 
         // Repintar los elementos sobre la lámina recién rasterizada: si ensureCanvasSize
@@ -380,7 +377,6 @@ export function usePdfViewerEngine({
       engineRef,
       pdfCanvasRef,
       drawCanvasRef,
-      cwRef,
     ],
   );
   useEffect(() => {
@@ -536,13 +532,15 @@ export function usePdfViewerEngine({
               // Cámara calibrada bajo OTRA rasterización (pre-fix, lámina a 0.5): con la
               // lámina a su tamaño real los bordes caen fuera del viewport y el overflow del
               // contenedor los RECORTA (el "recuadro"). Re-encuadre síncrono ANTES del
-              // primer paint — mismo cálculo que "Ajustar" (solo zoom/offX/offY; la
-              // geometría y la escala no se tocan).
+              // primer paint — MISMA fórmula que el post-raster y el switch
+              // (reEncuadrarContenido, bbox del dibujo CON dims; sin dibujo cae a la hoja):
+              // una sola fórmula de encuadre = la cámara de entrada es idéntica en todos los
+              // pasos y nada se re-acomoda (el salto residual, orig. usuario).
               // Encuadre INCONDICIONAL pre-paint (ped. usuario: "que siempre se muestre
-              // centrado el plano" + "el pequeño salto mientras se acomodan"): entrar a un
-              // piso SIEMPRE muestra el dibujo encajado — la cámara guardada deja de mandar
-              // en la entrada y la resolución local-vs-BD posterior no produce reacomodo.
-              encuadrarContenido(eng2, cwRef.current, bboxDelDibujo(eng2));
+              // centrado el plano"): entrar a un piso SIEMPRE muestra el dibujo encajado —
+              // la cámara guardada deja de mandar en la entrada y la resolución
+              // local-vs-BD posterior no produce reacomodo.
+              eng2.reEncuadrarContenido();
               eng2.render();
               // El estado React = la escala del doc: si no, syncEngine pisa el motor con el
               // default ('0.5') y las longitudes quedan calculadas en la escala equivocada.

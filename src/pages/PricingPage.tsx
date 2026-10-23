@@ -268,15 +268,26 @@ function PricingSuscripciones() {
       const { data, error: errVerif } = await supabase.functions.invoke('verificar-pago', {
         body: { referencia: refPago },
       });
-      if (!ignore) {
-        if (data?.aprobado) dispararRefetchSuscripciones();
-        else if (errVerif && edgePagoNoDesplegada(errVerif)) {
-          // Edge Lemon pendiente de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falte,
-          // el guard evita el error crudo — se informa como verificación pendiente, neutro.
-          setAvisoPago(
-            'Estamos verificando tu pago; tu suscripción quedará activa en breve y esta página se actualizará sola.',
-          );
-        }
+      if (ignore) return;
+      if (data?.aprobado) {
+        setAvisoPago('¡Pago aprobado! Tu suscripción ya está activa.');
+        dispararRefetchSuscripciones();
+      } else if (data?.estado === 'revision') {
+        // Pago recibido pero bajo el monto esperado (p. ej. cupón): quedó en revisión.
+        setAvisoPago(
+          'Tu pago quedó en revisión (el monto no coincidió). Escríbenos y lo activamos a mano.',
+        );
+      } else if (errVerif && edgePagoNoDesplegada(errVerif)) {
+        // Edge Lemon pendiente de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falte,
+        // el guard evita el error crudo — se informa como verificación pendiente, neutro.
+        setAvisoPago(
+          'Estamos verificando tu pago; tu suscripción quedará activa en breve y esta página se actualizará sola.',
+        );
+      } else {
+        // Webhook aún en vuelo (normal: tarda segundos). Sin error, sin aprobado aún.
+        setAvisoPago(
+          'Estamos verificando tu pago. Si en un minuto no se activa, recarga la página.',
+        );
       }
       navigate('/pricing', { replace: true });
     })();
@@ -706,7 +717,11 @@ function PricingSuscripciones() {
         onClose={() => setCheckoutAbierto(false)}
         modulos={[...seleccionEfectiva]}
         periodo={periodo}
-        puestos={Object.fromEntries([...seleccionEfectiva].map((id) => [id, puestos[id] ?? 1]))}
+        puestos={
+          modo === 'empresarial'
+            ? Object.fromEntries([...seleccionEfectiva].map((id) => [id, puestos[id] ?? 1]))
+            : undefined
+        }
       />
     </div>
   );

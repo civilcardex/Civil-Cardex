@@ -52,6 +52,10 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
             const body = (await err.context.json()) as { error?: string };
             if (body?.error === 'suscripciones_deshabilitadas') {
               especifico = 'Las suscripciones no están activadas aún.';
+            } else if (body?.error === 'demasiados_intentos') {
+              especifico = 'Demasiados intentos en la última hora. Espera unos minutos.';
+            } else if (body?.error === 'venta_manual') {
+              especifico = 'Para 25 o más puestos la venta es directa: contáctanos.';
             }
           } catch {
             // body no-JSON (proxy/HTML): mensaje genérico

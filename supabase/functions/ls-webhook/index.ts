@@ -63,8 +63,7 @@ Deno.serve(async (req: Request) => {
 
   // 4 · custom data del checkout: { referencia, user_id } (viaja en la orden).
   const custom = (attrs.checkout_data as Record<string, unknown> | undefined)?.custom as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   const referencia = typeof custom?.referencia === 'string' ? custom.referencia : '';
   if (!referencia) {
     // Orden de LS sin nuestra marca (otro producto de la tienda): reconocida, sin acción.
@@ -104,6 +103,13 @@ Deno.serve(async (req: Request) => {
       '<',
       pago.monto_centavos,
     );
+    // Dinero cobrado sin activación → estado operable (no 'pendiente' eterno):
+    // el cliente ve "en revisión" y el dueño lo activa a mano.
+    await admin
+      .from('app_pagos')
+      .update({ estado: 'revision' })
+      .eq('id', pago.id)
+      .eq('estado', 'pendiente');
     return json({ ok: true });
   }
 

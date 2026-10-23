@@ -1874,7 +1874,7 @@ revoke execute on function
   public.asignar_puesto(bigint, text), public.quitar_puesto(bigint, uuid),
   public.cambiar_permiso_miembro(bigint, uuid, boolean),
   public.empresa_lectura(uuid, text), public.empresa_escritura(uuid, text),
-  public.activar_suscripciones(text, text), public.intenciones_recientes(uuid),
+  public.activar_suscripciones(text, text),
   public.handle_new_user(), public.fantasmas_layout_default(),
   public.save_plano_data_impl(bigint, jsonb), public.save_proyecto_core_impl(uuid, jsonb),
   public.save_planos_meta_impl(uuid, jsonb), public.save_redes_activas_impl(uuid, text[]),
@@ -1900,7 +1900,44 @@ grant execute on function
 to authenticated;
 
 grant execute on function public.activar_suscripciones(text, text) to service_role;
-grant execute on function public.intenciones_recientes(uuid) to service_role;
+
+-- registrar_intencion_pago (20261006000000): inserta la intención PENDIENTE de forma
+-- atómica (advisory lock + cap 5/h). Solo service_role — la llama crear-checkout.
+create or replace function public.registrar_intencion_pago(
+  p_uid uuid,
+  p_referencia text,
+  p_modulos text[],
+  p_periodo text,
+  p_monto bigint,
+  p_puestos jsonb
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_recientes bigint;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(p_uid::text, 0));
+  select count(*) into v_recientes
+  from public.app_pagos
+  where user_id = p_uid and estado = 'pendiente' and created_at > now() - interval '1 hour';
+  if v_recientes >= 5 then return false; end if;
+  insert into public.app_pagos
+    (referencia, user_id, modulos, periodo, monto_centavos, moneda, estado, puestos_por_modulo)
+  values
+    (p_referencia, p_uid, p_modulos, p_periodo, p_monto, 'USD', 'pendiente', p_puestos);
+  return true;
+end;
+$fn$;
+
+revoke execute on function
+  public.registrar_intencion_pago(uuid, text, text[], text, bigint, jsonb)
+from public, anon;
+grant execute on function
+  public.registrar_intencion_pago(uuid, text, text[], text, bigint, jsonb)
+to service_role;
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 11 · STORAGE (bucket de PDFs de planos)
