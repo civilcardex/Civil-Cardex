@@ -1,17 +1,11 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 import { devError } from '../../utils/devError.ts';
 import { useAuth } from '../../context/AuthContext.tsx';
-import {
-  ProjectContext,
-  PROY_DEFAULTS,
-  type Proyecto,
-} from '../../modules/civilflow/context/ProjectContext.tsx';
-import type { Piso } from '../../modules/civilflow/lib/shared/projectTypes.ts';
+import { ProjectContext } from '../../modules/civilflow/context/ProjectContext.tsx';
 import { PlansContext } from '../../modules/civilflow/context/PlansContext.tsx';
-import type { PlanMeta } from '../../modules/civilflow/lib/shared/projectTypes.ts';
 import {
   fetchProyectos,
   deleteProyecto,
@@ -22,28 +16,20 @@ import {
   deleteCmProyecto,
   type CmProyectoRow,
 } from '../../modules/civilmanager/services/cmProjectsService.ts';
-import { loadProyectoDataConError } from '../../modules/civilflow/services/projectDataService.ts';
-import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService.ts';
-import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage.ts';
-import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
-import {
-  getActiveProyectoId,
-  saveToStorage,
-} from '../../modules/civilflow/services/storageService.ts';
+import { getActiveProyectoId } from '../../modules/civilflow/services/storageService.ts';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
-import { ProyectoCard } from './ProjectCard.tsx';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialog.tsx';
+import { ConfirmModal } from '../../components/shared/ConfirmModal.tsx';
+import { ProjectsSection } from './ProjectsSection.tsx';
+import { abrirProyectoCf } from './workspaceHandoff.ts';
 import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';
 import SiteFooter from '../../components/landing/SiteFooter.tsx';
 import { estaActiva } from '../../lib/subscriptions/subscriptionsService.ts';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames.ts';
-import {
-  ACTIVE_PROYECTO_ID_KEY,
-  ACTIVE_NETS_KEY,
-  PLANS_META_KEY,
-} from '../../modules/civilflow/constants/storage-keys.ts';
+import { ACTIVE_PROYECTO_ID_KEY } from '../../modules/civilflow/constants/storage-keys.ts';
+import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 
 const campos = [
   { key: 'nombre', label: 'Nombre' },
@@ -117,86 +103,17 @@ function ProfilePage() {
     // de storage y dejan mezcla de dos proyectos; respaldo del disabled por blocked.
     if (openingId != null || cmOpeningId != null) return;
     setOpeningId(proy.id);
+    // La secuencia de traspaso (pausar cloud-sync → cargar → reset → hand-off → navegar)
+    // vive en workspaceHandoff.ts; el resume va en su finally.
     try {
-      // Local workspace always starts blank before loading the selected project —
-      // clearing localStorage alone doesn't touch state already sitting in the context
-      // providers (they wrap the whole app and don't remount on navigation).
-      // Pause the debounced cloud-save effects before resetting — otherwise the reset's
-      // transient empty state gets written to Supabase (wiping the project) before the
-      // manual restore below has a chance to run, since it's separated from the reset by
-      // an await and therefore lands in its own render commit.
-      projectCtx?.pauseCloudSync();
-      plansCtx?.pauseCloudSync();
-
-      // 1) CARGAR PRIMERO. Si la carga falla (sin red, RLS, suscripción vencida), NO se
-      // borra el workspace anterior y NO se navega: entrar al workarea con un proyecto
-      // VACÍO hacía que el usuario redibujara encima de un trabajo que sí estaba en la nube.
-      const { data, error: errorCarga } = await loadProyectoDataConError(proy.id);
-      if (errorCarga) {
-        devError('Error abriendo proyecto:', errorCarga);
-        setErrorApertura('No se pudo cargar el proyecto. Revisa tu conexión o tu suscripción.');
-        return;
-      }
-
-      // 2) Ahora sí: workspace en blanco y traspaso por localStorage.
-      clearLocalWorkspace();
-      await clearAllPDFs();
-      plansCtx?.resetPlans();
-      projectCtx?.resetToDefaults();
-      localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, proy.id);
-
-      // The context setters below (setPisos/setProyAll/setMats/.../restorePlans) are no-ops
-      // on this route — CivilFlowProviders only wraps /civilflowareatrabajo, so projectCtx and
-      // plansCtx are both null here. The real hand-off to the work area is via localStorage:
-      // ProyectoProvider/PisosProvider/etc each read their own key on mount via
-      // usePersistedState, which internally prefixes the key AGAIN (usePersistedState is
-      // already called with the prefixed 'civilflow_proy'/'civilflow_pisos'/etc), so the actual
-      // storage key is the DOUBLED civilflow_civilflow_proy — must go through saveToStorage
-      // (which applies that same second prefix), never a raw localStorage.setItem, or the
-      // write lands on a key nobody reads.
-      if (data) {
-        if (data.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
-        const proyToSave =
-          data.proy && Object.keys(data.proy).length
-            ? { ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) }
-            : { ...PROY_DEFAULTS, nombre: proy.nombre };
-        saveToStorage('civilflow_proy', proyToSave);
-        if (data.mats && Object.keys(data.mats).length) saveToStorage('civilflow_mats', data.mats);
-        if (data.profs && data.profs.length) saveToStorage('civilflow_profs', data.profs);
-        if (data.crits && data.crits.length) saveToStorage('civilflow_crits', data.crits);
-        if (data.redesActivas && data.redesActivas.length)
-          saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
-      } else {
-        // No saved data yet for this project (created before this feature, or never
-        // touched) — at least show the right name instead of the reset default.
-        saveToStorage('civilflow_proy', { ...PROY_DEFAULTS, nombre: proy.nombre });
-      }
-
-      const plansMeta = (data?.plans_meta as PlanMeta[]) || [];
-      // Carga silenciosa (orig. usuario): guardar la metadata de planos INMEDIATAMENTE y navegar
-      // sin esperar los PDFs — cada PDF se descarga EN PARALELO en background y se cachea en
-      // IndexedDB. Al montar, PlansContext lee la metadata de localStorage y carga los PDFs
-      // faltantes lazy por piso.
-      if (plansMeta.length > 0) saveToStorage(PLANS_META_KEY, plansMeta);
-
-      // Deep-link tipo CM por slug uuid (fallback numérico si la migración aún no corre).
-      navigate(`/civilflowareatrabajo/${proy.id}`);
-
-      void (async () => {
-        const resolved = await Promise.all(
-          plansMeta.map(async (m) => {
-            const file = await downloadPlanPDF(proy.id, m.id, m.name || `plano_${m.id}.pdf`);
-            if (file) await storePDF(m.id, file);
-            return m;
-          }),
-        );
-        if (resolved.length > 0) saveToStorage(PLANS_META_KEY, resolved);
-      })();
-    } catch (err) {
-      devError('Error abriendo proyecto:', err);
+      await abrirProyectoCf({
+        proy,
+        projectCtx,
+        plansCtx,
+        navigate,
+        onError: setErrorApertura,
+      });
     } finally {
-      projectCtx?.resumeCloudSync();
-      plansCtx?.resumeCloudSync();
       setOpeningId(null);
     }
   }
@@ -431,163 +348,20 @@ function ProfilePage() {
           onClose={() => setModuloElegido(null)}
         />
         {deleteConfirm != null && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 9999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(0,0,0,0.6)',
-            }}
-          >
-            <div
-              style={{
-                background: 'var(--surface-container, #1e1e24)',
-                border: '1px solid var(--outline-variant, #3a3a44)',
-                borderRadius: 8,
-                padding: 24,
-                minWidth: 360,
-                maxWidth: 420,
-                boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: 'var(--on-surface, #e2e2e8)',
-                  margin: '0 0 4px',
-                }}
-              >
-                Eliminar Proyecto
-              </h3>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: 'var(--on-surface-variant, #9ba8aa)',
-                  margin: '0 0 16px',
-                }}
-              >
-                ¿Estás seguro de eliminar este proyecto? Esta acción no se puede deshacer.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirm(null)}
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: 'transparent',
-                    border: '1px solid var(--outline-variant, #3a3a44)',
-                    borderRadius: 4,
-                    color: 'var(--on-surface, #e2e2e8)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteProject(deleteConfirm)}
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: 'var(--error, #ff4444)',
-                    border: 'none',
-                    borderRadius: 4,
-                    color: '#fff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfirmModal
+            title="Eliminar Proyecto"
+            message="¿Estás seguro de eliminar este proyecto? Esta acción no se puede deshacer."
+            onClose={() => setDeleteConfirm(null)}
+            onConfirm={() => handleDeleteProject(deleteConfirm)}
+          />
         )}
         {cmDeleteConfirm != null && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 9999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'rgba(0,0,0,0.6)',
-            }}
-          >
-            <div
-              style={{
-                background: 'var(--surface-container, #1e1e24)',
-                border: '1px solid var(--outline-variant, #3a3a44)',
-                borderRadius: 8,
-                padding: 24,
-                minWidth: 360,
-                maxWidth: 420,
-                boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: 'var(--on-surface, #e2e2e8)',
-                  margin: '0 0 4px',
-                }}
-              >
-                Eliminar Proyecto CM
-              </h3>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: 'var(--on-surface-variant, #9ba8aa)',
-                  margin: '0 0 16px',
-                }}
-              >
-                ¿Estás seguro de eliminar este proyecto de Civil Manager? Esta acción no se puede
-                deshacer.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setCmDeleteConfirm(null)}
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: 'transparent',
-                    border: '1px solid var(--outline-variant, #3a3a44)',
-                    borderRadius: 4,
-                    color: 'var(--on-surface, #e2e2e8)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteCmProyecto(cmDeleteConfirm)}
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: 'var(--error, #ff4444)',
-                    border: 'none',
-                    borderRadius: 4,
-                    color: '#fff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfirmModal
+            title="Eliminar Proyecto CM"
+            message="¿Estás seguro de eliminar este proyecto de Civil Manager? Esta acción no se puede deshacer."
+            onClose={() => setCmDeleteConfirm(null)}
+            onConfirm={() => handleDeleteCmProyecto(cmDeleteConfirm)}
+          />
         )}
         <header className="border border-outline-variant bg-surface-container p-6">
           <div className="flex items-start justify-between gap-4">
@@ -729,161 +503,29 @@ function ProfilePage() {
             </ul>
           </section>
 
-          <section
-            aria-labelledby="proyectos-heading"
-            className="border border-outline-variant bg-surface-container"
-          >
-            <button
-              type="button"
-              onClick={() => setProyectosOpen((prev) => !prev)}
-              aria-expanded={proyectosOpen}
-              className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary text-xl!">folder_open</span>
-                <div>
-                  <h2
-                    id="proyectos-heading"
-                    className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant"
-                  >
-                    Proyectos
-                  </h2>
-                  <span className="text-[13px] text-on-surface font-medium">
-                    {proyectos.length + cmProyectos.length} proyectos
-                  </span>
-                </div>
-              </div>
-              <span
-                className={`material-symbols-outlined text-on-surface-variant transition-transform ${proyectosOpen ? 'rotate-180' : ''}`}
-              >
-                expand_more
-              </span>
-            </button>
-
-            {proyectosOpen && (
-              <div className="border-t border-outline-variant">
-                <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
-                    onClick={() => {
-                      // 1 módulo activo → directo al modal de nombre; 0 o 2+ → selector
-                      // (0 muestra el aviso de pricing dentro del selector).
-                      if (!subsBloqueando) setShowCreate(true);
-                      else if (modulosActivosUser.size === 1)
-                        setModuloElegido([...modulosActivosUser][0]);
-                      else setShowModSel(true);
-                    }}
-                  >
-                    <span className="material-symbols-outlined text-lg!">add_circle</span>
-                    Nuevo proyecto
-                  </button>
-                  {user &&
-                    subsRows.some(
-                      (r) => r.user_id === user.id && (r.puestos ?? 1) > 1 && estaActiva(r),
-                    ) && (
-                      <Link
-                        to="/empresa"
-                        className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-lg!">group</span>
-                        Gestionar equipo
-                      </Link>
-                    )}
-                </div>
-
-                {errorApertura ? (
-                  <div
-                    role="alert"
-                    className="px-6 py-3 text-sm"
-                    style={{
-                      color: 'var(--error, #ff4444)',
-                      borderBottom: '1px solid var(--outline-variant)',
-                    }}
-                  >
-                    {errorApertura}
-                  </div>
-                ) : null}
-
-                {proyLoading ? (
-                  <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
-                    Cargando proyectos...
-                  </div>
-                ) : proyectos.length + cmProyectos.length === 0 ? (
-                  <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
-                    Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
-                  </div>
-                ) : (
-                  <>
-                    <div className="px-6 py-2 flex gap-2 border-b border-outline-variant bg-surface-container-low">
-                      {(['todos', 'cf', 'cm'] as const).map((mod) => (
-                        <button
-                          key={mod}
-                          type="button"
-                          onClick={() => setFiltroModulo(mod)}
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            borderRadius: 4,
-                            border: '1px solid var(--outline-variant, #3a3a44)',
-                            background:
-                              filtroModulo === mod ? 'var(--primary, #4D8FF7)' : 'transparent',
-                            color:
-                              filtroModulo === mod
-                                ? 'var(--on-primary, #fff)'
-                                : 'var(--on-surface-variant, #9ba8aa)',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {(mod === 'todos'
-                            ? 'Todos'
-                            : mod === 'cf'
-                              ? 'CivilFlow'
-                              : 'Civil Manager'
-                          ).toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="grid gap-3 p-4 sm:grid-cols-2 2xl:grid-cols-3">
-                      {(filtroModulo === 'todos' || filtroModulo === 'cf') &&
-                        proyectos.map((proy) => (
-                          <ProyectoCard
-                            key={`cf-${proy.id}`}
-                            badge="CF"
-                            badgeColor="var(--primary)"
-                            empresa={!!user && proy.user_id !== user.id}
-                            codigo={proy.codigo}
-                            nombre={proy.nombre}
-                            fecha={proy.created_at}
-                            opening={openingId === proy.id}
-                            blocked={openingId != null || cmOpeningId != null}
-                            onOpen={() => openProyecto(proy)}
-                            onDelete={() => setDeleteConfirm(proy.id)}
-                          />
-                        ))}
-                      {(filtroModulo === 'todos' || filtroModulo === 'cm') &&
-                        cmProyectos.map((proy) => (
-                          <ProyectoCard
-                            key={`cm-${proy.id}`}
-                            badge="CM"
-                            badgeColor="#cca043"
-                            empresa={!!user && proy.user_id !== user.id}
-                            codigo={proy.codigo}
-                            nombre={proy.nombre}
-                            fecha={proy.created_at}
-                            opening={cmOpeningId === proy.id}
-                            blocked={openingId != null || cmOpeningId != null}
-                            onOpen={() => openCmProyecto(proy)}
-                            onDelete={() => setCmDeleteConfirm(proy.id)}
-                          />
-                        ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </section>
+          <ProjectsSection
+            proyectosOpen={proyectosOpen}
+            onToggleOpen={() => setProyectosOpen((prev) => !prev)}
+            proyectos={proyectos}
+            cmProyectos={cmProyectos}
+            proyLoading={proyLoading}
+            filtroModulo={filtroModulo}
+            onFiltroModulo={setFiltroModulo}
+            user={user}
+            subsBloqueando={subsBloqueando}
+            modulosActivosUser={modulosActivosUser}
+            subsRows={subsRows}
+            onNuevoDirecto={() => setShowCreate(true)}
+            onNuevoModuloElegido={setModuloElegido}
+            onNuevoSelector={() => setShowModSel(true)}
+            errorApertura={errorApertura}
+            openingId={openingId}
+            cmOpeningId={cmOpeningId}
+            onOpenCf={openProyecto}
+            onOpenCm={openCmProyecto}
+            onDeleteCf={setDeleteConfirm}
+            onDeleteCm={setCmDeleteConfirm}
+          />
         </div>
 
         <div className="flex justify-end">
@@ -899,92 +541,30 @@ function ProfilePage() {
       </div>
 
       {confirmLogout && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.6)',
+        <ConfirmModal
+          compactMessage
+          title="Cerrar sesión"
+          message="¿Salir de tu cuenta? Tus proyectos quedan guardados."
+          confirmLabel="Cerrar sesión"
+          minWidth={340}
+          onClose={() => setConfirmLogout(false)}
+          onConfirm={async () => {
+            setConfirmLogout(false);
+            if (!supabase) return;
+            // Logout manual = recordar siempre la próxima (la marca solo vive si el
+            // usuario desmarcó "Recordarme" al entrar y NO pasó por este botón).
+            localStorage.removeItem('civilflow_no_recordar');
+            // Se borra el WORKSPACE local (dibujo completo del plano, conteos, hidros,
+            // proyecto activo): sin esto, el proyecto anterior queda legible en el
+            // navegador para el siguiente usuario que inicie sesión en este equipo.
+            clearLocalWorkspace();
+            try {
+              await supabase.auth.signOut();
+            } finally {
+              navigate('/');
+            }
           }}
-        >
-          <div
-            style={{
-              background: 'var(--surface-container, #1e1e24)',
-              border: '1px solid var(--outline-variant, #3a3a44)',
-              borderRadius: 8,
-              padding: 24,
-              minWidth: 340,
-              maxWidth: 420,
-              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-            }}
-          >
-            <h3
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: 'var(--on-surface, #e2e2e8)',
-                margin: '0 0 6px',
-              }}
-            >
-              Cerrar sesión
-            </h3>
-            <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', margin: 0 }}>
-              ¿Salir de tu cuenta? Tus proyectos quedan guardados.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
-              <button
-                type="button"
-                onClick={() => setConfirmLogout(false)}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: 'transparent',
-                  border: '1px solid var(--outline-variant, #3a3a44)',
-                  borderRadius: 4,
-                  color: 'var(--on-surface, #e2e2e8)',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  setConfirmLogout(false);
-                  if (!supabase) return;
-                  // Logout manual = recordar siempre la próxima (la marca solo vive si el
-                  // usuario desmarcó "Recordarme" al entrar y NO pasó por este botón).
-                  localStorage.removeItem('civilflow_no_recordar');
-                  // Se borra el WORKSPACE local (dibujo completo del plano, conteos, hidros,
-                  // proyecto activo): sin esto, el proyecto anterior queda legible en el
-                  // navegador para el siguiente usuario que inicie sesión en este equipo.
-                  clearLocalWorkspace();
-                  try {
-                    await supabase.auth.signOut();
-                  } finally {
-                    navigate('/');
-                  }
-                }}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: 'var(--error, #ff4444)',
-                  border: 'none',
-                  borderRadius: 4,
-                  color: '#fff',
-                  cursor: 'pointer',
-                }}
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       <div className="mt-auto">
