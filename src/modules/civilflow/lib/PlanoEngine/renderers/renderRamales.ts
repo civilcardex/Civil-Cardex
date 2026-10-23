@@ -2,9 +2,10 @@
 import { snapTributaryToPadre45Deg, _midpoint } from '../PlanoEngineDrawing.ts';
 import { rotatedRectCorners } from '../HitTester.ts';
 import { angleAtHalfLength, segmentAtPosition } from '../drawingAngles.ts';
-import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
-import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '../../../constants';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
+import { buildRamalLabelParts } from './ramalLabelText.ts';
+import { renderLabelFlowArrow, renderEndpointFlowArrows } from './renderFlowArrows.ts';
+import { renderAparatoSymbols } from './renderAparatoSymbols.ts';
 import { drawRamalPath } from './drawRamalPath.ts';
 import { drawExtremeAccessorySymbol, drawCornerCodoArc } from './renderAccessorySymbols.ts';
 import { renderJunctions } from './renderJunctions.ts';
@@ -14,14 +15,6 @@ import { anchoTexto } from './measureText.ts';
 import { pickTeeBranchDir } from './teeUtils.ts';
 
 export { pickTeeBranchDir };
-
-// Cache de nivel de módulo para los símbolos de aparato (drawRamalPath + pase de aparato
-// abajo). DEBE vivir aquí, no dentro de renderRamales: un cache por-render se borra en cada
-// engine.render(), así que la imagen reiniciaría su carga en cada pase, nunca se dibujaría, y
-// cada onload dispararía otro render (bucle infinito de recargas). Con un cache de nivel de
-// módulo el primer render arranca la carga, onload guarda la imagen y re-renderiza una vez, y
-// el siguiente pase la dibuja síncronamente desde el cache.
-const aparatoImgCache = new Map<string, HTMLImageElement | null>();
 
 // A qué distancia del punto medio una etiqueta automática se considera "desterrada" (en cajas
 // de etiqueta, no en px: así el umbral escala con el tamaño del texto). El des-tapado puede
@@ -197,117 +190,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowLen = Math.hypot(flowDx, flowDy);
       }
 
-      const pCorto = getPisoCorto(engine.nivelActual?.n);
-      const lvlSuffix = pCorto ? `-${pCorto}` : '';
-      const showName = r.showName !== false;
-      const showLength = r.showLength !== false;
+      // Ítem 1: formatos por red (san/ll/ac/af/gas compacto; vent y resto genérico) —
+      // la construcción del texto vive en ramalLabelText.ts (pura y testeada).
+      const { lbl, infoStr, matPart, dPart, pendPart, lblPart } = buildRamalLabelParts(
+        r,
+        engine.nivelActual?.n,
+      );
       const showGuide = r.showGuide !== false;
-      const showMatDiamPend =
-        (r as unknown as { showMatDiamPend?: boolean }).showMatDiamPend !== false;
-      // Ramal de canal (orig. usuario): SIN nombre — solo Longitud/Pendiente/Diámetro.
-      const esCanal = !!(r as unknown as { esCanalId?: string | null }).esCanalId;
-      const lbl = showName && r.label && !esCanal ? `${r.label}${lvlSuffix}` : '';
-      // Ítem 1: formatos por red. Para san/ll/ac/af/gas se produce un único string compacto;
-      // vent y el resto mantienen el esquema de segmentos genérico de abajo.
-      const inchPartOf = (d: string): string => {
-        const q = d.indexOf('"');
-        return q > 0 ? d.slice(0, q + 1) : d;
-      };
-      const rdePartOf = (d: string): string => {
-        const q = d.indexOf('"');
-        return q >= 0 && q + 1 < d.length ? d.slice(q + 1).trim() : '';
-      };
-      const diamPulg = (d?: string): string => {
-        if (!d) return '';
-        const norm = normalizeDnLabel(d)
-          .replace(/\s*—.*$/, '')
-          .trim();
-        return inchPartOf(norm);
-      };
-      let infoStr: string | null = null;
-      let matPart = '';
-      if (r.net === 'san') {
-        const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
-        const pendVal =
-          showMatDiamPend && r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
-        const longPartSan = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = showMatDiamPend
-          ? [`${diamPart ? `S${diamPart}` : 'S'}`, pendVal ? `P${pendVal}%` : 'P%', longPartSan]
-          : [longPartSan];
-        infoStr = segs.filter(Boolean).join(' ') || null;
-        if (infoStr === 'S P% m' || infoStr === 'S') infoStr = null;
-      } else if (r.net === 'll') {
-        if (esCanal) {
-          // Ramal de canal: etiqueta L/S/D con los valores EDITABLES del ramal
-          // (pendiente y diámetro default 2 — orig. usuario).
-          const dPartC = diamPulg(r.diametro);
-          infoStr =
-            [
-              showLength && r.totalL ? `L=${r.totalL.toFixed(2)}m` : '',
-              r.pendiente ? `S=${Number(r.pendiente)}%` : '',
-              dPartC ? `D=${dPartC}` : '',
-            ]
-              .filter(Boolean)
-              .join(' ') || null;
-        } else {
-          const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
-          const pendVal =
-            showMatDiamPend && r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
-          const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-          const segs = showMatDiamPend
-            ? [`ALL${diamPart ? ` ${diamPart}` : ''}`, pendVal ? `P ${pendVal}%` : '', longPart]
-            : [longPart];
-          infoStr = segs.filter(Boolean).join(' ') || null;
-        }
-      } else if (r.net === 'ac') {
-        const norm = r.diametro
-          ? normalizeDnLabel(r.diametro)
-              .replace(/\s*—.*$/, '')
-              .trim()
-          : '';
-        const diamPart = showMatDiamPend ? inchPartOf(norm) : '';
-        const rde = showMatDiamPend ? rdePartOf(norm) : '';
-        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = showMatDiamPend
-          ? [`CPVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart]
-          : [longPart];
-        infoStr = segs.filter(Boolean).join(' ') || null;
-      } else if (r.net === 'af') {
-        const norm = r.diametro
-          ? normalizeDnLabel(r.diametro)
-              .replace(/\s*—.*$/, '')
-              .trim()
-          : '';
-        const diamPart = showMatDiamPend ? inchPartOf(norm) : '';
-        const rde = showMatDiamPend ? rdePartOf(norm) : '';
-        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = showMatDiamPend
-          ? [`PVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart]
-          : [longPart];
-        infoStr = segs.filter(Boolean).join(' ') || null;
-      } else if (r.net === 'gas') {
-        const diamPart = showMatDiamPend ? diamPulg(r.diametro) : '';
-        const mat = showMatDiamPend ? matDrawingLabel(r.material) : '';
-        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
-        const segs = showMatDiamPend
-          ? [mat ? `${mat}${diamPart ? ` ${diamPart}` : ''}` : diamPart, longPart]
-          : [longPart];
-        infoStr = segs.filter(Boolean).join(' ') || null;
-      }
-      const matPartFallback = showMatDiamPend
-        ? matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '')
-        : '';
-      matPart = infoStr ? '' : r.net === 'san' ? '' : matPartFallback;
-      const dPart =
-        !infoStr && showMatDiamPend && r.net !== 'san' && r.diametro
-          ? `D=${normalizeDnLabel(r.diametro)}`
-          : '';
-      const pPart =
-        !infoStr && showMatDiamPend && r.net !== 'san' && r.pendiente ? `S=${r.pendiente}%` : '';
-      const showPend = r.net === 'san' || r.net === 'll';
-      const pendPart = !infoStr && r.net !== 'san' && showPend && pPart ? pPart : '';
-      const lblPart =
-        !infoStr && r.net !== 'san' && showLength && r.totalL ? `L=${r.totalL.toFixed(2)}m` : '';
 
       const fsName = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
       const fsInfo = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
@@ -541,118 +430,23 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.textAlign = 'center';
       }
 
-      if (
-        showFlow &&
-        (r as unknown as { showFlowDir?: boolean }).showFlowDir !== false &&
-        flowLen > 12 * engine.zoom
-      ) {
-        // Ítem 11a: la flecha apunta según el flujo real, no según el labelAngle. En coordenadas
-        // locales del label el vector de flujo es (dot, perp); se dibuja a lo largo de él.
-        const dot = flowDx * cosA + flowDy * sinA;
-        const perp = -flowDx * sinA + flowDy * cosA;
-        const len = Math.hypot(dot, perp) || 1;
-        const ux = dot / len;
-        const uy = perp / len;
-        const halfSize = nameW ? nameW / 2 : 12 * engine.zoom;
-        const margin = 3 * engine.zoom;
-        const segsCanvas: Array<[number[], number[]]> = [];
-        for (let i = 0; i + 1 < (r.pts?.length || 0); i++) {
-          const a = engine.toCvs(r.pts[i][0], r.pts[i][1]);
-          const b = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
-          segsCanvas.push([
-            [a.x, a.y],
-            [b.x, b.y],
-          ]);
-        }
-        const distToRamal = (p: [number, number]): number => {
-          let d = Infinity;
-          for (const [a, b] of segsCanvas) {
-            const vx = b[0] - a[0];
-            const vy = b[1] - a[1];
-            const l2 = vx * vx + vy * vy;
-            const t2 =
-              l2 < 1e-9
-                ? 0
-                : Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / l2));
-            d = Math.min(d, Math.hypot(p[0] - (a[0] + t2 * vx), p[1] - (a[1] + t2 * vy)));
-          }
-          return d;
-        };
-        // Dibuja la flecha anclada al lado `side` de la caja (1 = banda entre caja y trazo,
-        // −1 = lado opuesto). Devuelve false si el recorte la agotó. La banda restringe t·uy:
-        // lado del trazo → entre el borde de caja y la tubería; lado opuesto → solo despejar
-        // la caja (el recorte contra el trazo lo hace distToRamal más abajo).
-        const drawFlowArrow = (side: 1 | -1): boolean => {
-          const anchorY = side * (boxH / 2 + 2 * engine.zoom);
-          const arrowPt = (t: number): [number, number] => {
-            const lx = t * ux;
-            const ly = labelGap + anchorY + t * uy;
-            return [drawX + lx * cosA - ly * sinA, drawY + lx * sinA + ly * cosA];
-          };
-          const bandLo = side === 1 ? -1 * engine.zoom : -1e6;
-          const bandHi = side === 1 ? labelClear - 4 * engine.zoom : 1 * engine.zoom;
-          let tMin = -halfSize;
-          let tMax = halfSize;
-          if (uy > 1e-3) {
-            tMin = Math.max(tMin, bandLo / uy);
-            tMax = Math.min(tMax, bandHi / uy);
-          } else if (uy < -1e-3) {
-            tMin = Math.max(tMin, bandHi / uy);
-            tMax = Math.min(tMax, bandLo / uy);
-          }
-          // Recorte geométrico: los extremos de la flecha en canvas se miden contra la
-          // polilínea del propio ramal y el lado que invade el margen se acorta por
-          // iteraciones hasta despejar o agotar la flecha.
-          for (let it = 0; it < 24 && tMax - tMin >= 4 * engine.zoom; it++) {
-            const tailD = distToRamal(arrowPt(tMin));
-            const tipD = distToRamal(arrowPt(tMax));
-            // Punto medio: una esquina del trazo puede atravesar la flecha por el centro con
-            // ambos extremos despejados.
-            const midD = distToRamal(arrowPt((tMin + tMax) / 2));
-            const span = tMax - tMin;
-            if (tailD >= margin && tipD >= margin && midD >= margin) break;
-            if (midD < margin || (tailD < margin && tipD < margin)) {
-              // Acortar simétricamente conservando el tramo central.
-              tMin += span * 0.2;
-              tMax -= span * 0.2;
-            } else if (tailD < margin) {
-              tMin += span * 0.2;
-            } else {
-              tMax -= span * 0.2;
-            }
-          }
-          if (tMax - tMin < 4 * engine.zoom) return false;
-          ctx.save();
-          ctx.translate(0, anchorY);
-          ctx.strokeStyle = col;
-          ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(tMin * ux, tMin * uy);
-          ctx.lineTo(tMax * ux, tMax * uy);
-          ctx.stroke();
-          const aSize = Math.min(6 * engine.zoom, (tMax - tMin) * 0.4);
-          ctx.fillStyle = col;
-          ctx.beginPath();
-          const tipX = tMax * ux;
-          const tipY = tMax * uy;
-          const baseX = tipX - ux * aSize;
-          const baseY = tipY - uy * aSize;
-          const perpX = -uy;
-          const perpY = ux;
-          ctx.moveTo(tipX, tipY);
-          ctx.lineTo(baseX + perpX * aSize * 0.4, baseY + perpY * aSize * 0.4);
-          ctx.lineTo(baseX - perpX * aSize * 0.4, baseY - perpY * aSize * 0.4);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-          return true;
-        };
-        // Abajo (banda caja-trazo); si el trazo —p. ej. en diagonal bajo una etiqueta
-        // horizontal— la agota, se reintenta ENCIMA de la caja: siempre visible, nunca bajo
-        // el trazo (orig. usuario: RS5 sin flecha de flujo).
-        if (!drawFlowArrow(1)) drawFlowArrow(-1);
-      }
+      renderLabelFlowArrow(ctx, {
+        engine,
+        r,
+        col,
+        showFlow,
+        flowDx,
+        flowDy,
+        flowLen,
+        cosA,
+        sinA,
+        nameW,
+        labelGap,
+        labelClear,
+        drawX,
+        drawY,
+        boxH,
+      });
       ctx.restore();
     } else {
       r._labelBox = undefined;
@@ -660,173 +454,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
     ctx.restore();
 
-    if (r.pts.length >= 2 && (r.id === engine.selId || (engine.multiSel || []).includes(r.id))) {
-      let desvioBajante: PlanoBajante | null = null;
-      const isDesvio = engine.bajantes.some((b) => {
-        const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
-        if (!disp || disp.Ldesvio !== r.id) return false;
-        const gx = b.x + (disp.dx || 0),
-          gy = b.y + (disp.dy || 0);
-        const firstPt = r.pts[0],
-          lastPt = r.pts[r.pts.length - 1];
-        const nearParent = Math.hypot(firstPt[0] - b.x, firstPt[1] - b.y) < 0.5;
-        const nearGhost = Math.hypot(lastPt[0] - gx, lastPt[1] - gy) < 0.5;
-        if (nearParent && nearGhost) {
-          desvioBajante = b;
-          return true;
-        }
-        return false;
-      });
-
-      if (isDesvio && desvioBajante) {
-        const baj: PlanoBajante = desvioBajante;
-        const firstPt = r.pts[0];
-
-        let startIdx = 0,
-          nextIdx = 1;
-
-        const firstIsParent = Math.hypot(firstPt[0] - baj.x, firstPt[1] - baj.y) < 0.5;
-        // La punta de flecha va SIEMPRE sobre el extremo cuyo bajante tiene dirección 'baja' — no
-        // siempre el mismo lado, porque el bajante padre (source) puede ser 'sube' o 'baja' según
-        // en qué piso quede el otro extremo de la asociación (ver applyBajanteAssociation). Mismo
-        // criterio que el indicador de flujo permanente más arriba.
-        const parentIdx = firstIsParent ? 0 : r.pts.length - 1;
-        const otherIdx = firstIsParent ? r.pts.length - 1 : 0;
-        if (baj.direccion === 'baja') {
-          startIdx = parentIdx;
-          nextIdx = otherIdx;
-        } else {
-          startIdx = otherIdx;
-          nextIdx = parentIdx;
-        }
-
-        const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
-        const secondC = engine.toCvs(r.pts[nextIdx][0], r.pts[nextIdx][1]);
-        const adx = secondC.x - firstC.x,
-          ady = secondC.y - firstC.y;
-        const alen = Math.hypot(adx, ady);
-
-        if (alen > 2) {
-          const unx = adx / alen,
-            uny = ady / alen;
-          const arrowR = 10 * engine.zoom;
-          const cx = firstC.x;
-          const cy = firstC.y;
-          ctx.save();
-          ctx.fillStyle = '#FFEB3B';
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
-          ctx.shadowColor = '#000';
-          ctx.shadowBlur = 6 * engine.zoom;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(
-            cx - unx * arrowR + uny * arrowR * 0.4,
-            cy - uny * arrowR - unx * arrowR * 0.4,
-          );
-          ctx.lineTo(
-            cx - unx * arrowR - uny * arrowR * 0.4,
-            cy - uny * arrowR + unx * arrowR * 0.4,
-          );
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        }
-      } else {
-        let startIdx = 0;
-        let nextIdx = 1;
-
-        if (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))) {
-          startIdx = r.pts.length - 1;
-          nextIdx = r.pts.length - 2;
-        }
-
-        let isCodoReventiladoConnection = false;
-        let codoEndIdx = -1;
-
-        if (r.net === 'vent' || r.net === 'san') {
-          for (const vr of ventRamales) {
-            for (const idx of [0, vr.pts.length - 1]) {
-              const pt = vr.pts[idx];
-              // ¿Hay un punto de la red sanitaria a menos de 0.5? Índice por celda: O(1)
-              // en vez de recorrer todos los puntos de todos los ramales san en cada frame.
-              const connectsToSan = hayPuntoSanCercano(pt[0], pt[1]);
-              if (connectsToSan) {
-                const rEndIdx = [0, r.pts.length - 1].find(
-                  (eIdx) => Math.hypot(r.pts[eIdx][0] - pt[0], r.pts[eIdx][1] - pt[1]) < 0.5,
-                );
-                if (rEndIdx !== undefined) {
-                  isCodoReventiladoConnection = true;
-                  codoEndIdx = rEndIdx;
-                  break;
-                }
-              }
-            }
-            if (isCodoReventiladoConnection) break;
-          }
-        }
-
-        if (r.net === 'san' && !isCodoReventiladoConnection) {
-          for (const b of bajantesSan) {
-            if (!b.recibeDeIds?.includes(r.id)) continue;
-            const firstPt = r.pts[0];
-            const lastPt = r.pts[r.pts.length - 1];
-            const bajanteNearFirst = Math.hypot(firstPt[0] - b.x, firstPt[1] - b.y) < 0.5;
-            const bajanteNearLast = Math.hypot(lastPt[0] - b.x, lastPt[1] - b.y) < 0.5;
-            if (bajanteNearFirst) {
-              startIdx = r.pts.length - 1;
-              nextIdx = r.pts.length - 2;
-            } else if (bajanteNearLast) {
-              startIdx = 0;
-              nextIdx = 1;
-            }
-            break;
-          }
-        }
-
-        if (isCodoReventiladoConnection && codoEndIdx !== -1) {
-          startIdx = codoEndIdx === 0 ? r.pts.length - 1 : 0;
-          nextIdx = startIdx === 0 ? 1 : r.pts.length - 2;
-        } else if (r.net === 'vent' && r.pts[r.pts.length - 1][0] < r.pts[0][0]) {
-          startIdx = r.pts.length - 1;
-          nextIdx = r.pts.length - 2;
-        }
-
-        const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
-        const secondC = engine.toCvs(r.pts[nextIdx][0], r.pts[nextIdx][1]);
-        const adx = secondC.x - firstC.x,
-          ady = secondC.y - firstC.y;
-        const alen = Math.hypot(adx, ady);
-        if (alen > 2) {
-          const unx = adx / alen,
-            uny = ady / alen;
-          const arrowR = 10 * engine.zoom;
-          const cx = firstC.x;
-          const cy = firstC.y;
-          ctx.save();
-          ctx.fillStyle = '#FFEB3B';
-          ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
-          ctx.shadowColor = '#000';
-          ctx.shadowBlur = 6 * engine.zoom;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(
-            cx - unx * arrowR + uny * arrowR * 0.4,
-            cy - uny * arrowR - unx * arrowR * 0.4,
-          );
-          ctx.lineTo(
-            cx - unx * arrowR - uny * arrowR * 0.4,
-            cy - uny * arrowR + unx * arrowR * 0.4,
-          );
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-    }
+    renderEndpointFlowArrows(ctx, engine, r, { ventRamales, hayPuntoSanCercano, bajantesSan });
   });
 
   // Primer frame tras cargar (cajas manuales aún sin calcular): el declutter trabajó sin
@@ -953,76 +581,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     });
   });
 
-  // Dibujar símbolos de aparato (fixture) en los extremos de ramal. aparatoInicio/aparatoFin
-  // guardan un id de fixture (id de APARATOS_DEF como 'lvm'/'duc') asignado vía el dropdown
-  // "Seleccionar Aparato". Los fixtures son imágenes webp (APARATO_IMG), no paths vectoriales
-  // como los accesorios, así que se renderizan con ctx.drawImage y un cache de nivel de módulo
-  // con carga asíncrona (ver aparatoImgCache arriba) — cuando una imagen por fin carga, el
-  // engine re-renderiza para que el símbolo aparezca sin interacción del usuario.
-  const getAparatoImg = (src: string): HTMLImageElement | null => {
-    if (aparatoImgCache.has(src)) return aparatoImgCache.get(src) || null;
-    aparatoImgCache.set(src, null);
-    const img = new Image();
-    img.onload = () => {
-      aparatoImgCache.set(src, img);
-      engine.render();
-    };
-    img.onerror = () => {
-      aparatoImgCache.set(src, null);
-    };
-    img.src = src;
-    return null;
-  };
-  engine.ramales.forEach((r) => {
-    if (engine._hiddenNets.has(r.net)) return;
-    if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
-    // En AF/AC el símbolo del aparato no se dibuja: el glifo de accesorio implícito (codo 90°
-    // sube junto al aparato, arriba) ya marca el extremo y la imagen del fixture solo ensucia
-    // el plano. En gas tampoco (orig. usuario: al asignar un gasodoméstico no debe ponerse
-    // nada en el extremo) — el aparato vive en el campo/conteo, no como glifo.
-    if (r.net === 'af' || r.net === 'ac' || r.net === 'gas') return;
-
-    [0, r.pts.length - 1].forEach((idx) => {
-      const appType = idx === 0 ? r.aparatoInicio : r.aparatoFin;
-      if (!appType) return;
-      const imgSrc = (APARATO_IMG as Record<string, string>)[appType];
-      if (!imgSrc) return;
-      const img = getAparatoImg(imgSrc);
-      if (!img) return; // todavía cargando — onload re-renderiza este pase
-
-      const pt = r.pts[idx];
-      const c = engine.toCvs(pt[0], pt[1]);
-
-      let dx = 0,
-        dy = 0;
-      if (idx === 0) {
-        dx = r.pts[1][0] - r.pts[0][0];
-        dy = r.pts[1][1] - r.pts[0][1];
-      } else {
-        dx = r.pts[idx][0] - r.pts[idx - 1][0];
-        dy = r.pts[idx][1] - r.pts[idx - 1][1];
-      }
-      const len = Math.hypot(dx, dy);
-      if (len > 0.01) {
-        dx /= len;
-        dy /= len;
-      } else {
-        dx = 1;
-        dy = 0;
-      }
-      const outX = idx === 0 ? -dx : dx;
-      const outY = idx === 0 ? -dy : dy;
-
-      const rad = engine.realMmToCanvasPx(23) * 0.9;
-      const size = rad * 2;
-      ctx.save();
-      // Ponytail: keep the codo90rmSube disk visible at the pipe end — push the fixture image
-      // outward so it does not cover the codo symbol (bajante at one end, aparato at the other).
-      ctx.translate(c.x + outX * rad * 1.4, c.y + outY * rad * 1.4);
-      ctx.drawImage(img, -size / 2, -size / 2, size, size);
-      ctx.restore();
-    });
-  });
+  // Símbolos de aparato (fixture) en los extremos — pase extraído a renderAparatoSymbols.ts
+  // (con su cache de imágenes de nivel de módulo).
+  renderAparatoSymbols(ctx, engine);
 
   // Dibujar accesorios de mitad de ramal (accMed*) — accesorios asignados a vértices interiores
   // con clic derecho sobre el cuerpo de un ramal, en vez de un extremo. La dirección es la
