@@ -33,11 +33,12 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 715,
   'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1425,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 1236,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 1225,
+  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 855,
   'modules/civilflow/utils/waterRowsCore.ts': 704,
   'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
-  'modules/civilflow/components/DownpipesTable.tsx': 1001,
+  'modules/civilflow/components/DownpipesTable.tsx': 211,
   'modules/civilflow/components/SupplyConnection.tsx': 1162,
+  'modules/civilflow/utils/bajanteAssocShared.ts': 722,
   'modules/civilflow/components/GasDesign.tsx': 380,
   'modules/civilflow/components/FixturesPanel.tsx': 905,
   'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 605,
@@ -389,7 +390,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/rainwaterRows.ts': 13,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 11,
   'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 11,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 11,
+  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 2,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSections.tsx': 9,
   'modules/civilflow/utils/bajanteVentRows.ts': 9,
   'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 8,
@@ -429,7 +430,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 531;
+const TOTAL_FOCOS_BASE = 522;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [

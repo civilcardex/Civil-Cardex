@@ -1,4 +1,4 @@
-const TOTAL_FOCOS_BASE = 531;
+const TOTAL_FOCOS_BASE = 522;
 
 const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 17,
@@ -8,7 +8,6 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/rainwaterRows.ts': 13,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 11,
   'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 11,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 11,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSections.tsx': 9,
   'modules/civilflow/utils/bajanteVentRows.ts': 9,
   'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 8,
