@@ -9,7 +9,7 @@ import { perfilDe } from '../../constants/countryStandards';
 import { leerHeredadosPresion } from '../../utils/propagation';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
 import ChipList from '../shared/ChipList.tsx';
-import { writeNSalidasToDrawing } from '../../utils/drawingWrites/otros';
+import { writeNSalidasToDrawing } from '../../utils/drawingWrites/others';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { useState } from 'react';
 

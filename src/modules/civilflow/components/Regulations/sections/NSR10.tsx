@@ -1,5 +1,5 @@
 import { NSR10_CLASIFICACION, NSR10_ALTURA } from '../regulationsData.ts';
-import { subHeadingStyle as h4 } from '../compartido.tsx';
+import { subHeadingStyle as h4 } from '../shared.tsx';
 
 export function NSR10() {
   return (

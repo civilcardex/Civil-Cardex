@@ -11,7 +11,7 @@ import {
   registraCarga,
   debeAvisarCorreccionEscala,
   EVENTO_ESCALA_CAMBIADA,
-} from '../../utils/cargaDiagnostico.ts';
+} from '../../utils/loadDiagnostics.ts';
 import {
   loadFromStorage,
   saveToStorage,
@@ -23,7 +23,7 @@ import {
 } from '../../services/storageService.ts';
 import type { PlanTrazos } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { validaDocTrazos } from '../../services/storage/validaDocTrazos.ts';
+import { validaDocTrazos } from '../../services/storage/validateDocStrokes.ts';
 import { marcarPrimerPisoCargado } from './pdfCache.ts';
 import { PLANS_META_KEY } from '../../constants/storage-keys.ts';
 import {

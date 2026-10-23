@@ -3,7 +3,7 @@ import { NETS } from '../../lib/PlanoEngine/PlanoState.ts';
 import { TRAZOS_PREFIX, ISO_COLLAPSED_KEY } from '../../constants/storage-keys.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
 import { parseDescargaEnId } from '../../utils/parseDischargeInId.ts';
-import { prefetchAllTrazos } from '../../utils/prefetchTrazos.ts';
+import { prefetchAllTrazos } from '../../utils/prefetchStrokes.ts';
 import {
   readDrawingAll,
   loadPlanImage,

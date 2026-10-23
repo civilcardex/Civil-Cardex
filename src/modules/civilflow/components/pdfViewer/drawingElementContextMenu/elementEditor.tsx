@@ -8,7 +8,7 @@ import {
   NETS_WITH_MULTIPLE_MATERIALS,
 } from '../../../pages/catalog/catalogData.ts';
 import { DIAMETROS_AF } from '../../../constants/hydraulicsData.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import {
   writeAcoDiamToDrawing,
   writeContadorDiamToDrawing,

@@ -1,11 +1,11 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import type { DeclutterFrame } from '../labelDeclutter.ts';
-import { drawSifonSymbol } from './accSifon';
-import { drawCodoSymbols } from './accCodos';
+import { drawSifonSymbol } from './accTraps';
+import { drawCodoSymbols } from './accElbows';
 import { drawTeeSymbols } from './accTees';
 import { drawValveSymbols } from './accValves';
 import { drawFallbackSymbol } from './accFallback';
-export { drawCornerCodoArc } from './cornerCodoArc.ts';
+export { drawCornerCodoArc } from './cornerElbowArc.ts';
 
 // Hub verbatim (Fase A3): dispatcher conserva firma y orden semántico original.
 // ponytail: split mecánico por familia; cada helper retorna true si manejó accType.

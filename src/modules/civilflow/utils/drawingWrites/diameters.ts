@@ -1,9 +1,5 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../../services/storageService.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import {
   TRAZOS_PREFIX,
   HYDRO_FAMILIES,
@@ -12,7 +8,7 @@ import {
   CHEQUEOS_PRESION_KEY,
 } from '../../constants/storage-keys.ts';
 import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
-import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import { pisoLbl } from '../../constants/helpers.ts';
 
 /** Parte una clave "id-planId" por el ÚLTIMO guion (los ids pueden traer guiones,

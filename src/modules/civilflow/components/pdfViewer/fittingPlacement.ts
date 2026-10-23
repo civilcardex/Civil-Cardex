@@ -9,7 +9,7 @@ import {
   codoNivelPermitidoEn,
   flowEndsAt,
 } from '../../lib/PlanoEngine/PlanoEngineDrawing.ts';
-import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventCodoTeeFix';
+import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventElbowTeeFix';
 
 /** Coloca un accesorio del modal sobre un ramal: localiza la unión por posición, valida sifón y codos, y limpia accesorios conflictivos en el mismo punto.
  * Devuelve el ramal mutado, o null si una validación bloqueó la colocación (se levantó alerta). */

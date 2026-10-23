@@ -1,4 +1,4 @@
-﻿import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+﻿import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { distToSegment } from '../lib/shared/geometry';
 
 export interface HidroEntry {

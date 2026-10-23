@@ -3,7 +3,7 @@ import { loadFromStorage, saveToStorage } from '../../services/storageService.ts
 import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys.ts';
 import { _midpoint, maxDiametroLabel } from './PlanoEngineDrawing.ts';
 import { _firstSegmentAngle } from './drawingAngles.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { type HidroDataEntry } from './deleteCascade.ts';
 import { devError } from '../../../../utils/devError.ts';
 

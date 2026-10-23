@@ -1,8 +1,4 @@
-import {
-  getActiveProyectoId,
-  loadFromStorage,
-  saveToStorage,
-} from '../services/storageService.ts';
+import { getActiveProyectoId, loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import {
   loadRejillasProyecto,
   saveRejillasProyecto,
@@ -10,7 +6,7 @@ import {
 } from '../services/projectDataService.ts';
 import { APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys.ts';
 import { devError } from '../../../utils/devError.ts';
-import { leerGasod } from './rejillasVentilacion/rejillasStorage.ts';
+import { leerGasod } from './rejillasVentilation/rejillasStorage.ts';
 import { emitAparatosClear, EV_APARATOS_CLEAR } from '../utils/fixtureEvents.ts';
 
 /** Sincronía BD de los conteos de gasodomésticos de áreas rejillas (claves gas_AR…), VIVA aunque la tabla de Rejillas esté cerrada: - startRejillasGasodSync(): cada EV_APARATOS_CLEAR (panel del visor, tabla, GC) re-empuja el blob con lo que hay en disco — sin esto borrar/asignar desde el PANEL dejaba el

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import type { PlanCrop } from '../../../utils/planoRecorte.ts';
+import type { PlanCrop } from '../../../utils/planoCrop.ts';
 import { getPdfjs } from '../../../utils/lazyPdfjs.ts';
 
 const hintChipStyle: React.CSSProperties = {

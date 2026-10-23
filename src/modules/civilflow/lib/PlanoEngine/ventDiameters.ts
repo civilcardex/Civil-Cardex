@@ -8,7 +8,7 @@ import type {
 } from './PlanoState.ts';
 import type { IPlanoEngineCore } from './PlanoState.ts';
 import { _midpoint } from './PlanoEngineDrawing.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { pointToSegmentDist } from './HitTester.ts';
 import { sectorDe } from '../../utils/formatUtils.ts';
 import { indicesDeMotor } from './indicesMotor';

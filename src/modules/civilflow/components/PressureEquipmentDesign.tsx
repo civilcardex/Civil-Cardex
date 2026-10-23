@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import PageNav from './PageNav.tsx';
 import EPInputPage from './ep/EPInputPage.tsx';
 import EPVerificationPage from './ep/EPVerificationPage.tsx';
-import EPCisternaPage from './ep/EPCisternaPage.tsx';
+import EPCisternaPage from './ep/EPTankPage.tsx';
 import { usePersistedState } from '../../../hooks/usePersistedState.ts';
 import { useProyecto } from '../context/ProjectContext.tsx';
 import { perfilDe } from '../constants/countryStandards';

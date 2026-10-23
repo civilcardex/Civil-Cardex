@@ -3,7 +3,7 @@ import { useSanTables } from './useSanTables.ts';
 import { useLlTables } from './useLlTables.ts';
 import { useAfTables } from './useAfTables.ts';
 import { useAcTables } from './useAcTables.ts';
-import type { MemoriaTable } from '../../utils/exportMemoryFinal.ts';
+import type { MemoriaTable } from '../../utils/exportReportFinal.ts';
 import { pisoLbl, pisoCorto, AF_UC_IDS, AC_UC_IDS } from '../../constants';
 import { isAC2 } from '../../utils/waterRowsShared.ts';
 import { useRainwater } from '../../context/RainwaterContext.tsx';

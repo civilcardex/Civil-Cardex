@@ -6,7 +6,7 @@ import { chequeoBajanteLluvia } from './calcRainwater.ts';
 import { cDeCubierta } from '../constants/engineeringDataMaterials.ts';
 import { areaParcialBajanteLl } from './rainwaterRows.ts';
 import type { DrawingData } from './drawingSync.ts';
-import type { MemoriaTable } from './exportMemoryFinal.ts';
+import type { MemoriaTable } from './exportReportFinal.ts';
 
 interface Row {
   key: string;

@@ -4,13 +4,13 @@ import { DIAM_BY_MAT } from '../../../constants';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../../lib/PlanoEngine/drawingCreations.ts';
 import { codoPolarityOk, flowEndsAt } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
-import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
+import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventElbowTeeFix';
 import {
   syncExtremeAccessoryToHidroData,
   setAparatoCountValue,
   contarSifonesDe,
 } from '../../../utils/syncExtremeAccessory.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { matchDiamOption } from '../../../utils/diamOptionMatch.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import {

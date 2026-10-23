@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
-import type { MemoriaTable } from '../../utils/exportMemoryFinal.ts';
+import type { MemoriaTable } from '../../utils/exportReportFinal.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { useRainwater } from '../../context/RainwaterContext.tsx';
 import { pisoCorto } from '../../constants';

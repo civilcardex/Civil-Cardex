@@ -20,10 +20,10 @@ import {
   areEndpointsAligned,
   type AssocEndpoint,
 } from '../../../utils/bajanteAssociation';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { splitPtr } from '../../../utils/keys.ts';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../../constants/hydraulicsData.ts';
-import { validarDiametroEntrePisos } from '../../../utils/drawingWrites/diametros';
+import { validarDiametroEntrePisos } from '../../../utils/drawingWrites/diameters';
 import { avisarDiametroInvalido } from '../../../utils/diameterValidation.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../lib/PlanoEngine/PlanoState.ts';

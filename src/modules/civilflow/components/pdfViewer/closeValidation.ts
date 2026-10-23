@@ -5,7 +5,7 @@ import { loadFromStorage, type PlanTrazos } from '../../services/storageService.
 import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys.ts';
 import { distToPolyline } from '../../lib/shared/geometry';
 import { leerDocDePlan } from '../../utils/readPlanDrawing';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 
 // Validación de cierre del visor: se ejecuta al pulsar "Cerrar dibujo" en la barra de redes.
 // Bloquea el cierre (con alerta) mientras haya ramales sin UC/UD, elementos sin diámetro o

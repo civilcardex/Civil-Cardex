@@ -10,7 +10,7 @@ import { drawExtremeAccessorySymbol, drawCornerCodoArc } from './renderAccessory
 import { renderJunctions } from './renderJunctions.ts';
 import { beginDeclutterFrame, desTapadoDelMotor, findFreeLabelCenter } from '../labelDeclutter.ts';
 import { indiceFrame } from './frameIndex.ts';
-import { anchoTexto } from './medidaTexto.ts';
+import { anchoTexto } from './measureText.ts';
 import { pickTeeBranchDir } from './teeUtils.ts';
 
 export { pickTeeBranchDir };

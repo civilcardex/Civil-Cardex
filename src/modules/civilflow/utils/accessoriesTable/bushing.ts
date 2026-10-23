@@ -8,7 +8,7 @@ import {
 } from '../sanFittingsCatalog.ts';
 import { distToSegment } from '../../lib/shared/geometry';
 import { fmtPulg } from '../formatUtils.ts';
-import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import type { RamalDibujo, TribDibujo, VentDibujo, BajanteDibujo } from './collection';
 import type { AddAcc } from './counting.ts';
 import type { YeeJunction } from './yees';

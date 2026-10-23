@@ -22,7 +22,7 @@ import {
 } from '../utils/drawingSync.ts';
 import type { DrawingData } from '../utils/drawingSync.ts';
 import FixtureGrid from './fixtures/FixtureGrid.tsx';
-import { SecMontantes } from './fixtures/SecMontantes';
+import { SecMontantes } from './fixtures/montantesSection';
 import AccesoriosSection from './fixtures/AccessoriesSection.tsx';
 import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/devError.ts';

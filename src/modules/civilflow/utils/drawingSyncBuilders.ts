@@ -7,7 +7,7 @@ import {
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
 } from '../constants/storage-keys.ts';
-import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import type {
   SyncPlanInput,
   TraceData,

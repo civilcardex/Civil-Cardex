@@ -1,7 +1,7 @@
 /**
  * Regenera el baseline de focos de complejidad del guard G8.
  *
- * Uso: `node --experimental-strip-types scripts/generarBaselineComplexity.mjs`
+ * Uso: `node --experimental-strip-types scripts/generateBaselineComplexity.mjs`
  *
  * Imprime el bloque `FOCOS_CONOCIDOS` y el `TOTAL_FOCOS_BASE` para pegar en
  * `src/architecture/architecture.test.ts`. Se ejecuta DESPUÉS de arreglar un archivo:

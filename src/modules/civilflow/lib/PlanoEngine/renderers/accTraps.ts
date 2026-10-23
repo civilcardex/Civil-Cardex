@@ -3,7 +3,7 @@ import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { findFreeLabelCenter } from '../labelDeclutter.ts';
 import type { DeclutterFrame } from '../labelDeclutter.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { anchoTexto } from './medidaTexto.ts';
+import { anchoTexto } from './measureText.ts';
 
 export function drawSifonSymbol(
   ctx: CanvasRenderingContext2D,

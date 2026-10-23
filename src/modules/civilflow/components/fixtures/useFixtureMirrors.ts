@@ -8,7 +8,7 @@ import { emitAparatosClear } from '../../utils/fixtureEvents.ts';
 import { loadAll, loadHidroData, saveAll, stableStringify } from '../fixturesStorage.ts';
 import { loadPlanTrazos } from '../../services/storageService.ts';
 import { useEffect } from 'react';
-import { instalarDiagnosticoDev } from './diagnosticoDev';
+import { instalarDiagnosticoDev } from './devDiagnostics';
 
 // ponytail: side-effect de import intencional (instala __cfDiag/__cfScale SOLO en DEV;
 // idempotente, fuera del bundle de prod). No copiar este patrón sin gate DEV interno.

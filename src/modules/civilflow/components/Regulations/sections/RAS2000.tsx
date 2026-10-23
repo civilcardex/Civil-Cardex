@@ -5,7 +5,7 @@ import {
   RAS2000_ESCORRENTIA,
   RAS2000_TR,
 } from '../regulationsData.ts';
-import { subHeadingStyle as h4 } from '../compartido.tsx';
+import { subHeadingStyle as h4 } from '../shared.tsx';
 
 export function RAS2000() {
   return (

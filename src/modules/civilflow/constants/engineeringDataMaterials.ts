@@ -1,5 +1,5 @@
 import { AGUA_CALIENTE, VENTILACION } from '../pages/catalog/catalogData.ts';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
 
 const MATS_RAW = {
   af: ['PVC-PR', 'CPVC', 'Cobre rígido', 'Polipropileno PP-R'],

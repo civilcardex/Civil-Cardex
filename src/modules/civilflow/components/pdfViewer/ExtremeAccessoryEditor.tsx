@@ -6,10 +6,10 @@ import {
 import { getAccessoryOptions } from '../../utils/accessoryOptions.ts';
 import { DIAM_BY_MAT } from '../../constants';
 import { matShortKey } from '../../constants';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { matchDiamOption } from '../../utils/diamOptionMatch.ts';
 import { codoPolarityOk, codoNivelPermitidoEn } from '../../lib/PlanoEngine/PlanoEngineDrawing.ts';
-import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventCodoTeeFix';
+import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventElbowTeeFix';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { SyncPlanInput } from '../../utils/drawingSync.ts';

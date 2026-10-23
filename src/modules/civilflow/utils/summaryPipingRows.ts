@@ -1,9 +1,9 @@
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { loadFromStorage } from '../services/storageService.ts';
-import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
-import { dropAllZeroColumns, type MemoriaTable } from './exportMemoryFinal.ts';
+import { dropAllZeroColumns, type MemoriaTable } from './exportReportFinal.ts';
 
 const NET_LABELS: Record<string, string> = {
   san: 'Sanitaria',

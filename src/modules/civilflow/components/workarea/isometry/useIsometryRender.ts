@@ -1,6 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 import { NETS } from '../../../lib/PlanoEngine/PlanoState.ts';
-import { loadPlanCrop } from '../../../utils/planoRecorte.ts';
+import { loadPlanCrop } from '../../../utils/planoCrop.ts';
 import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { splitPtr } from '../../../utils/keys.ts';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from './geometry';

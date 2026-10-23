@@ -1,4 +1,4 @@
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
 import { AGUA_CALIENTE } from '../pages/catalog/catalogData.ts';
 
 export interface DiametroComercialAF {

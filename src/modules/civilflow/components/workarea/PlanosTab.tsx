@@ -35,26 +35,26 @@ import { ModalNivelPiso, ModalOrigenPlan } from './planosTab/PlanModals.tsx';
 import { ListaPendientes } from './planosTab/PendingPlansList.tsx';
 import { ListaCargados } from './planosTab/LoadedPlansList.tsx';
 import { devError } from '../../../../utils/devError.ts';
-import type { CalibrationData } from './planosTabCalibracion.ts';
+import type { CalibrationData } from './planosTabCalibration.ts';
 import {
   calDataDePlan,
   seedCalData,
   computeGlobalCal,
   computeOrigenesCompartidos,
   stampCalibracion,
-} from './planosTabCalibracion.ts';
+} from './planosTabCalibration.ts';
 export {
   calDataDePlan,
   seedCalData,
   computeGlobalCal,
   computeOrigenesCompartidos,
   stampCalibracion,
-} from './planosTabCalibracion.ts';
+} from './planosTabCalibration.ts';
 export type {
   PlanCalibFuente,
   CalibrationData,
   ConfigCalibracion,
-} from './planosTabCalibracion.ts';
+} from './planosTabCalibration.ts';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 

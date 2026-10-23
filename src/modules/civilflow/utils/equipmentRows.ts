@@ -1,4 +1,4 @@
-import type { MemoriaTable } from './exportMemoryFinal.ts';
+import type { MemoriaTable } from './exportReportFinal.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 import { dec } from './parseDecimal.ts';
 import type { EPData } from '../components/ep/EPShared';

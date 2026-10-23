@@ -8,7 +8,7 @@ import {
   NTC1500_CAPACIDAD,
   NTC1500_VENTILACION,
 } from '../regulationsData.ts';
-import { subHeadingStyle as h4 } from '../compartido.tsx';
+import { subHeadingStyle as h4 } from '../shared.tsx';
 
 export function NTC1500() {
   return (

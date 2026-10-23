@@ -1,6 +1,6 @@
-﻿import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+﻿import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import { computeBushingCounts } from '../sanFittingsCatalog.ts';
-import { dropAllZeroColumns, type MemoriaTable } from '../exportMemoryFinal.ts';
+import { dropAllZeroColumns, type MemoriaTable } from '../exportReportFinal.ts';
 import type { RamalDibujo, TribDibujo, BajanteDibujo } from './collection';
 
 /** Arma las filas de la tabla (totales por diámetro) y la devuelve lista para pintar. */

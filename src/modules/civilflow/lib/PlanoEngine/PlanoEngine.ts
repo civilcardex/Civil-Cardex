@@ -117,7 +117,7 @@ import {
   ensureRpCntRamal,
 } from './PlanoEngineNetwork.ts';
 import { sellarAsociacionesCanalBajante } from './channelAssociation';
-import { fixVentCodoToTee } from './ventCodoTeeFix';
+import { fixVentCodoToTee } from './ventElbowTeeFix';
 import { healTribPadres } from './junctionAutoSplit.ts';
 import { PlanoHistory } from './PlanoHistory.ts';
 import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting.ts';

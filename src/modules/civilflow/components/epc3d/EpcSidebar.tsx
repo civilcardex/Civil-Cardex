@@ -1,7 +1,7 @@
 import { COMPONENTES, COMP_DESC } from './epc3dData.ts';
 import { MONO_3D } from '../shared/config3d';
 import { NormaLink, NormaTxt } from '../shared/standardsLinks.tsx';
-import { usePerfilIso } from '../shared/notaNormativaIso';
+import { usePerfilIso } from '../shared/isoStandardsNote';
 import ViewerSidebar, { cuerpoDe } from '../shared/ViewerSidebar.tsx';
 
 // Sidebar izquierdo del visor 3D del EPC — mismo patrón que AparatosSidebar (orig. usuario):

@@ -2,7 +2,7 @@ import { DIAM_BY_MAT } from '../../../constants';
 import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogData.ts';
 import { GAS } from '../../../constants/engineeringDataGas.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import {
   INODORO_APP_ID,
   sanDiamLabelAllowedForApparatus,

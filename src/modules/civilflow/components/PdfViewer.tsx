@@ -4,7 +4,7 @@ import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch.ts';
 import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome.tsx';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
-import { decideEscalaPorDefectoDelPlan } from '../utils/cargaDiagnostico.ts';
+import { decideEscalaPorDefectoDelPlan } from '../utils/loadDiagnostics.ts';
 import { escalaDeDoc } from '../utils/planScale.ts';
 import { useNavigate } from 'react-router-dom';
 import PlanoEngine, {
@@ -36,7 +36,7 @@ import {
 } from '../constants/storage-keys.ts';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar.tsx';
 
-import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistTrazos.ts';
+import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistStrokes.ts';
 import { useViewerDialogs } from './pdfViewer/useViewerDialogs.ts';
 import { useViewerToolbarActions } from './pdfViewer/useViewerToolbarActions.ts';
 import { validateBeforeClose } from './pdfViewer/closeValidation.ts';
@@ -56,15 +56,15 @@ import BajanteAsociacion from './pdfViewer/BajanteAssociation';
 import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements.tsx';
 import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel.tsx';
 import AparatosPanel from './FixturesPanel.tsx';
-import { prefetchAllTrazos } from '../utils/prefetchTrazos.ts';
+import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement.ts';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs.ts';
 import { useNetColorsInit } from './pdfViewer/useNetColorsInit.ts';
 import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility.ts';
 import { useFloorRamales } from './pdfViewer/useFloorRamales.ts';
-import { useTrazosLoader } from './pdfViewer/useTrazosLoader.ts';
+import { useTrazosLoader } from './pdfViewer/useStrokesLoader.ts';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts.ts';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
 import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',

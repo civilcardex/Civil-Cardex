@@ -1,6 +1,6 @@
 import type { Tramo } from '../context/tramosReducer';
 import { ACCESORIOS_HIDRO, pisoCorto } from '../constants';
-import { dropAllZeroColumns, type MemoriaTable } from './exportMemoryFinal.ts';
+import { dropAllZeroColumns, type MemoriaTable } from './exportReportFinal.ts';
 
 const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter((a) => a.id !== 'llaveTerminal');
 

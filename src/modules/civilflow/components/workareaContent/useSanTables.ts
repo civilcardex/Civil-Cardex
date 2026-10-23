@@ -1,13 +1,9 @@
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
-import type { MemoriaTable } from '../../utils/exportMemoryFinal.ts';
+import type { MemoriaTable } from '../../utils/exportReportFinal.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { pisoCorto, SAN_UC_IDS, APARATOS_DEF } from '../../constants';
-import {
-  buildSanConnectivity,
-  computeSanRows,
-  computeUdTable,
-} from '../../utils/sanitaryRows.ts';
+import { buildSanConnectivity, computeSanRows, computeUdTable } from '../../utils/sanitaryRows.ts';
 import { computeBajanteVentTable } from '../../utils/bajanteVentRows.ts';
 import { computeAccesoriosTable } from '../../utils/sanFittingsRows.ts';
 import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows.ts';

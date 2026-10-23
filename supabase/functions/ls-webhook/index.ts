@@ -17,7 +17,7 @@ import {
   clienteAdmin,
   json,
   LS_WEBHOOK_KEY,
-} from '../_shared/pago_utils.ts';
+} from '../_shared/payment_utils.ts';
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);

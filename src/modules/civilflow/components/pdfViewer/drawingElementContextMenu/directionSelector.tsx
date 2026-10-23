@@ -1,9 +1,12 @@
-import { codoPolarityOk, codoNivelPermitidoEn } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
+import {
+  codoPolarityOk,
+  codoNivelPermitidoEn,
+} from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
 // BajanteDirectionSelector: dirección sube/baja/continua con reglas por red y nivel.
 // Extraído verbatim de bajanteMenu (des-monolitización 2026-10-06).
 import { pisoLbl } from '../../../constants';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules.ts';
-import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
+import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventElbowTeeFix';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { Piso } from '../../../lib/shared/projectTypes.ts';

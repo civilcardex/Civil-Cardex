@@ -6,7 +6,7 @@ import {
   setSyncLoadedLiveIds,
 } from '../../utils/drawingSync.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
-import { persistTrazosSnapshot } from './persistTrazos.ts';
+import { persistTrazosSnapshot } from './persistStrokes.ts';
 
 export function usePdfAutoSave(
   engineRef: React.MutableRefObject<PlanoEngine | null>,

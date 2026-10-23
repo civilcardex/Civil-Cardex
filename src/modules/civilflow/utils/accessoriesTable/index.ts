@@ -6,7 +6,7 @@ import { detectarYees } from './yees';
 import { contarAccesorios } from './counting.ts';
 import { calcularBushing } from './bushing';
 import { armarTabla } from './rows.ts';
-import type { MemoriaTable } from '../exportMemoryFinal.ts';
+import type { MemoriaTable } from '../exportReportFinal.ts';
 
 /**
  * Tabla de accesorios de tubería (san/ll/af/ac/gas): cuenta codons, uniones, yees y

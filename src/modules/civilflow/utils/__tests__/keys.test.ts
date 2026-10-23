@@ -11,7 +11,7 @@ import {
   isOrphanKey,
   renombrarIdEnClave,
 } from '../keys.ts';
-import { claveDeBorrado } from '../../components/pdfViewer/persistTrazos.ts';
+import { claveDeBorrado } from '../../components/pdfViewer/persistStrokes.ts';
 
 // Track C, gate de datos legado: dibujos viejos (claves sin sufijo, `_P`, punteros sin
 // `|`, stubs AC-01, LD_) deben leerse igual antes y después de centralizar en keys.ts.

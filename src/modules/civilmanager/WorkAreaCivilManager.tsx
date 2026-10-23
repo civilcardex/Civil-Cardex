@@ -7,23 +7,18 @@ import { NavIcon, type NavIconName } from './shared/icons.tsx';
 import { EditableSection } from './shared/EditLock.tsx';
 
 import { ColaboradoresTab } from './catalogs/CollaboratorsTab.tsx';
-import { CuadrillasTab } from './catalogs/CuadrillasTab.tsx';
+import { CuadrillasTab } from './catalogs/CrewsTab.tsx';
 import { EquiposTab } from './catalogs/EquipmentTab.tsx';
 import { InsumosTab } from './catalogs/InsumosTab.tsx';
 import { ProveedoresTab } from './catalogs/SuppliersTab.tsx';
 import { ConfigTab } from './config/ConfigTab.tsx';
 import { ApuCatalog } from './apu/ApuCatalog.tsx';
-import { PresupuestosTab } from './budgets/PresupuestosTab.tsx';
+import { PresupuestosTab } from './budgets/BudgetsTab.tsx';
 import { setAyudaContext } from '../../components/help/helpContext.ts';
 
 type MainSection = 'catalogos' | 'apus' | 'presupuestos';
 type CatalogoTab =
-  | 'configuracion'
-  | 'colaboradores'
-  | 'cuadrillas'
-  | 'equipos'
-  | 'insumos'
-  | 'proveedores';
+  'configuracion' | 'colaboradores' | 'cuadrillas' | 'equipos' | 'insumos' | 'proveedores';
 
 const MAIN_SECTIONS: { id: MainSection; label: string; icon: NavIconName; active: boolean }[] = [
   { id: 'catalogos', label: 'Catálogos', icon: 'catalogos', active: true },

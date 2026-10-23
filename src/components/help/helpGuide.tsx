@@ -2,7 +2,7 @@
 // ponytail: split mecánico types/criterios/flow/manager; consumidores importan igual.
 export type { GuiaItem, GuiaGrupo, GUIA_TYPE } from './helpGuideTypes.tsx';
 export { iconoDeGrupo } from './helpGuideTypes.tsx';
-export { CRITERIOS_3631 } from './helpGuideCriterios.tsx';
+export { CRITERIOS_3631 } from './helpGuideCriteria.tsx';
 export { GUIA_FLOW } from './helpGuideFlow.tsx';
 export { GUIA_MANAGER } from './helpGuideManager.tsx';
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';

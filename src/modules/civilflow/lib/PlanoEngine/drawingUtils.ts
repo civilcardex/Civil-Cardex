@@ -1,7 +1,7 @@
 import { NETS, allocTributaryNumber, rootTributarioLabel } from './PlanoState.ts';
 import type { PlanoRamal, PlanoArea, IPlanoEngineCore } from './PlanoState.ts';
 import { _statusMsg } from './ramalMeasure.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { distToPolyline } from '../shared/geometry';
 import { esCaja, puedeConectarRamalABajante } from './bajanteRules.ts';
 import { angleAtHalfLength } from './drawingAngles.ts';

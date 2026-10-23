@@ -25,7 +25,7 @@ import { loadProyectoData } from '../services/projectDataService.ts';
 import { clearLocalWorkspace } from '../services/workspaceReset.ts';
 import { clearAllPDFs } from '../services/idbStorage.ts';
 import { getActiveProyectoId, saveToStorage, loadFromStorage } from '../services/storageService.ts';
-import { prefetchAllTrazos } from '../utils/prefetchTrazos.ts';
+import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import {
   ACTIVE_NETS_KEY,
   ACTIVE_PROYECTO_ID_KEY,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWorkAreaState } from './useWorkAreaState.ts';
-import { prefetchAllTrazos } from '../utils/prefetchTrazos.ts';
+import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { fetchProyectosOrThrow } from '../services/projectsService.ts';
 import { getActiveProyectoId } from '../services/storageService.ts';
 import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys.ts';

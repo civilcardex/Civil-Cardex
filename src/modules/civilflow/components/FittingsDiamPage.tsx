@@ -3,7 +3,7 @@ import { useTramos } from '../context/TramosContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { computeAccesoriosTable } from '../utils/sanFittingsRows.ts';
 import { fmtPulg, fracAscii } from '../utils/formatUtils.ts';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
 import { SAN_ACCESORIOS, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
 import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents.ts';
 

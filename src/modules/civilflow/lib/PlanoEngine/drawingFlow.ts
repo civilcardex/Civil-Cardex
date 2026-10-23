@@ -1,7 +1,7 @@
 import type { PlanoRamal } from './PlanoState.ts';
 import { pointToSegmentDist } from './HitTester.ts';
 import { distToPolyline } from '../shared/geometry';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { ramalContinuesPast } from './drawingUtils.ts';
 import { sanFeederMinMsg } from '../../utils/sanitaryDiamCompat.ts';
 import { FUENTE_TIPOS, REDES_PRESION } from './nodos';

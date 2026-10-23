@@ -4,7 +4,7 @@ import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/sto
 import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
 import { normalizarCanal } from '../../lib/PlanoEngine/channelAssociation';
 import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoords.ts';
-import { parseBajanteKey } from './diametros';
+import { parseBajanteKey } from './diameters';
 import { devError } from '../../../../utils/devError.ts';
 
 /** Doc de dibujo local (ramales + bajantes con ts) para los writes de este módulo. */

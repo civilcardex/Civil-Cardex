@@ -1,4 +1,4 @@
-import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 
 // Ítems 6/7/8: regla central de compatibilidad "aparato sanitario ↔ diámetro de ramal".
 // Antes esta regla estaba duplicada (con variantes) en FixturesPanel, SanitaryDesign,

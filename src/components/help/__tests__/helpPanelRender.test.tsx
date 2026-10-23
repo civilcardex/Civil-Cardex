@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import AyudaPanel from '../HelpPanel.tsx';
 import { GUIA } from '../helpGuide.tsx';
-import { tutorialDe } from '../helpTutoriales.ts';
+import { tutorialDe } from '../helpTutorials.ts';
 
 // Regresión reportada: "la info de ayuda ya no está, solo está el video". El panel debe
 // renderizar los acordeones de GUIA además de la sección de video.

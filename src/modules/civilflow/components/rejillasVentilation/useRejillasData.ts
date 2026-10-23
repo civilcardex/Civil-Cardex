@@ -6,10 +6,7 @@ import { CATALOGO_BASE, TIPO_DEFAULT } from '../../constants/rejillasNTC3631';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { usePlans } from '../../context/PlansContext.tsx';
 import type { PlanoArea } from '../../lib/PlanoEngine/PlanoState.ts';
-import {
-  loadRejillasProyecto,
-  saveRejillasProyecto,
-} from '../../services/projectDataService.ts';
+import { loadRejillasProyecto, saveRejillasProyecto } from '../../services/projectDataService.ts';
 import {
   getActiveProyectoId,
   loadFromStorage,

@@ -4,7 +4,7 @@ import {
   TABLAS_CRITERIOS,
   TABLAS_ALTITUDES,
 } from '../regulationsData.ts';
-import { subHeadingStyle as h4 } from '../compartido.tsx';
+import { subHeadingStyle as h4 } from '../shared.tsx';
 
 export function TablasRef() {
   return (

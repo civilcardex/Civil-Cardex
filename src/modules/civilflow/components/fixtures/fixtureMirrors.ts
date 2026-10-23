@@ -3,8 +3,8 @@ import {
   refreshMontanteBooksFromUpper,
   type MontanteLinkLike,
 } from './montanteInheritanceRefresh.ts';
-import { espejarSalidas } from './salidasEspejo.ts';
-import { heredarEntrePisos } from './herenciaCrossFloor.ts';
+import { espejarSalidas } from './mirrorOutputs.ts';
+import { heredarEntrePisos } from './crossFloorInheritance.ts';
 import {
   loadAll,
   loadHidroData,

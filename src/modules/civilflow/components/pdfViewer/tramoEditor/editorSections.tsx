@@ -16,7 +16,7 @@ import {
   CHECK_ROW_STYLE,
   type ProbedElement,
 } from './context.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { BajanteEditor, RamalEditor } from './legacyEditors.tsx';
 
 export function BajanteEditorSection() {

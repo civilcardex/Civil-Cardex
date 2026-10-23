@@ -10,7 +10,7 @@ import type { PlanoRamal, IPlanoEngineCore } from './PlanoState.ts';
 import { angleAtHalfLength } from './drawingAngles.ts';
 import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection.ts';
 import { REDES_PRESION } from './nodos';
-import { conflictoDosEntradas, resolverConflictoSentido } from './reEnraizar';
+import { conflictoDosEntradas, resolverConflictoSentido } from './reRoot';
 import { ramalFlowDirectionCheck } from './drawingFlow.ts';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory.ts';
 import { calculateRamalLength } from './ramalMeasure.ts';
@@ -19,7 +19,7 @@ import {
   normalizeTribPadresAt,
   healedPadreId,
   normalizeTribPadresAtPoint,
-} from './tribPadreNormalize';
+} from './tribParentNormalize';
 
 // Cuando el extremo de un ramal recién terminado (o arrastrado) cae a mitad del cuerpo de un
 // ramal EXISTENTE — una tee T/Y de verdad, no una unión extremo-con-extremo — se divide ese
@@ -496,5 +496,5 @@ export {
   normalizeTribPadresAt,
   healedPadreId,
   normalizeTribPadresAtPoint,
-} from './tribPadreNormalize';
-export { healTribPadres } from './healTribPadres.ts';
+} from './tribParentNormalize';
+export { healTribPadres } from './healTribParents.ts';

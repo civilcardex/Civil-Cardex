@@ -1,6 +1,6 @@
 import { ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import {
   MENU_GRID_2COL_STYLE,
   MENU_CHECK_LABEL_STYLE,

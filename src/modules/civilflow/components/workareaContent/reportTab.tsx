@@ -5,11 +5,11 @@ import {
   generateMemoriaPdf,
   type MemoriaTable,
   type MemoriaData,
-} from '../../utils/exportMemoryFinal.ts';
+} from '../../utils/exportReportFinal.ts';
 import { getPdfjs } from '../../utils/lazyPdfjs';
 import { downloadPlanosPdf } from '../../utils/exportPlanos.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
-import { useInfTablas } from './useInfTables.ts';
+import { useInfTablas } from './useReportTables.ts';
 import { REDES } from '../../constants/uiConfig';
 
 const ANEXO_PDF_URL = '/docs/detalle-instalacion-aparatos-hsg.pdf';

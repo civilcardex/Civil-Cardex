@@ -1,7 +1,7 @@
 import { COMPONENTS, COMP_DESC } from './aparatos3dData.ts';
 import { MONO_3D } from '../shared/config3d';
 import { NormaLink, NormaTxt } from '../shared/standardsLinks.tsx';
-import { usePerfilIso } from '../shared/notaNormativaIso';
+import { usePerfilIso } from '../shared/isoStandardsNote';
 import ViewerSidebar, { cuerpoDe } from '../shared/ViewerSidebar.tsx';
 
 // Sidebar izquierdo del visor 3D de aparatos (orig. usuario): desplegable "Aparato:" arriba,

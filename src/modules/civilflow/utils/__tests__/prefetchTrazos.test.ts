@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { prefetchAllTrazos } from '../prefetchTrazos.ts';
+import { prefetchAllTrazos } from '../prefetchStrokes.ts';
 import { readSanDrawingSync } from '../drawingSync.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
 

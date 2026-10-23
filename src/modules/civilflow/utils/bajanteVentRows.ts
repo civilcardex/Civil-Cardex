@@ -4,13 +4,13 @@ import type { PlanItem } from '../context/PlansContext.tsx';
 import type { UDBase } from './componentHelpers.tsx';
 import { calcUDparcial } from './componentHelpers.tsx';
 import { buildBajanteGraph } from './buildBajanteGraph.ts';
-import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { manning_SAN } from './calcSanitaryCore.ts';
 import { calculateVentStack } from './ventStackCalc.ts';
 import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { splitPtr, splitTramo } from './keys.ts';
 import type { DrawingData } from './drawingSync.ts';
-import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoryFinal.ts';
+import type { MemoriaTable, MemoriaHeaderGroup } from './exportReportFinal.ts';
 import { fmtPiso } from '../constants';
 import { planIdDeKey } from './formatUtils.ts';
 /** Mayor diámetro san (Sanitaria) (pulg) entre ramales del recibeDeIds/alimentaIds (ramales que llegan/salen del bajante). */

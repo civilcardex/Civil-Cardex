@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { sanaCelda, sanaTabla, sanaTablas } from '../sanReport.ts';
-import { validaDocTrazos } from '../../services/storage/validaDocTrazos.ts';
+import { validaDocTrazos } from '../../services/storage/validateDocStrokes.ts';
 
 // La memoria de cálculo es un ENTREGABLE FIRMABLE: un NaN o un Infinity en una columna de
 // cálculo es un defecto legal del documento que se le entrega al cliente.

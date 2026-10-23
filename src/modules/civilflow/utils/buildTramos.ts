@@ -1,6 +1,6 @@
 import { readSanDrawingSync, readHydroDrawingSync } from './drawingSync.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
-import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { countKey } from './keys.ts';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys.ts';

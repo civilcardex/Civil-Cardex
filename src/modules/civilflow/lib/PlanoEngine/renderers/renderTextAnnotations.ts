@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
-import { anchoTexto } from './medidaTexto.ts';
+import { anchoTexto } from './measureText.ts';
 
 export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.textAnnots.forEach((t) => {

@@ -17,7 +17,7 @@ const CalculoUC = lazy(() => import('../CalcUC.tsx'));
 const WaterNetworkDesign = lazy(() => import('../WaterNetworkDesign.tsx'));
 const BombaARDesign = lazy(() => import('../PumpARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
-const RejillasVentilacion = lazy(() => import('../RejillasVentilacion'));
+const RejillasVentilacion = lazy(() => import('../RejillasVentilation'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign.tsx'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage.tsx'));
 

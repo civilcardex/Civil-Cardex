@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { loadPlanCrop, savePlanCrop, type PlanCrop } from '../../utils/planoRecorte.ts';
+import { loadPlanCrop, savePlanCrop, type PlanCrop } from '../../utils/planoCrop.ts';
 import { PlanCropModal } from './planosTab/PlanCropModal.tsx';
 
 const recortarBtnStyle: React.CSSProperties = {

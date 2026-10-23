@@ -1,4 +1,4 @@
-import { FRAC_CHAR_TO_DEC } from './diamPulgFromLabel.ts';
+import { FRAC_CHAR_TO_DEC } from './diamInchesFromLabel.ts';
 
 const DEC_KEYS = [0.5, 0.75, 0.25, 0.125, 0.375, 0.625, 0.875];
 const FRAC: Record<number, string> = Object.fromEntries(

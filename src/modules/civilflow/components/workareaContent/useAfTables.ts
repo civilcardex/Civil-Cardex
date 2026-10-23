@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
-import type { MemoriaTable } from '../../utils/exportMemoryFinal.ts';
+import type { MemoriaTable } from '../../utils/exportReportFinal.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { computeUcTable } from '../../utils/ucRows.ts';
 import { computeAccesoriosTable } from '../../utils/sanFittingsRows.ts';

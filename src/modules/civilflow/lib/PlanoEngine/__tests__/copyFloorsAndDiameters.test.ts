@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { copyDrawingFromPlan } from '../../../utils/copyDrawingFromPlan.ts';
 import { propagarSanDiametroAguasAbajo } from '../drawingFlow.ts';
 import { writeDiametroToDrawing } from '../../../utils/writeDiameterToDrawing.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoState.ts';
 
 /* ── Helpers motor ── */

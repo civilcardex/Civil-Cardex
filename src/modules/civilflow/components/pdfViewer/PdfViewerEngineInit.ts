@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getPdfjs } from '../../utils/lazyPdfjs';
 import { pdfDeCache, pdfACache, calentarPdfs } from './pdfCache.ts';
-import { instalarCfCam } from './diagCamara.ts';
-import { useReRasterEscala } from './useReRasterEscala.ts';
+import { instalarCfCam } from './diagCamera.ts';
+import { useReRasterEscala } from './useReRasterScale.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
@@ -16,7 +16,7 @@ import {
   paginaDeDoc,
   type RenderReq,
 } from '../../utils/planScale.ts';
-import { registraCarga } from '../../utils/cargaDiagnostico.ts';
+import { registraCarga } from '../../utils/loadDiagnostics.ts';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;

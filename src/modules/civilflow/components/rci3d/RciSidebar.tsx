@@ -1,6 +1,6 @@
 import { COMPONENTS, COMP_DESC, RCI_MONO } from './rci3dData.ts';
 import { NormaLink, NormaTxt } from '../shared/standardsLinks.tsx';
-import { usePerfilIso } from '../shared/notaNormativaIso';
+import { usePerfilIso } from '../shared/isoStandardsNote';
 import ViewerSidebar, { nombreLegible } from '../shared/ViewerSidebar.tsx';
 
 // Sidebar izquierdo del visor 3D RCI — mismo patrón que AparatosSidebar (orig. usuario):

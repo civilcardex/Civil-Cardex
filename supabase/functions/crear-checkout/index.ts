@@ -30,7 +30,7 @@ import {
   LS_STORE,
   preflight,
   SITE_URL,
-} from '../_shared/pago_utils.ts';
+} from '../_shared/payment_utils.ts';
 
 Deno.serve(async (req: Request) => {
   // Preflight CORS: functions.invoke manda Authorization/apikey ⇒ el navegador

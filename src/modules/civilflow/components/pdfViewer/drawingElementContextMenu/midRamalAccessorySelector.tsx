@@ -10,8 +10,8 @@ import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { extremumOccupied, flowTailEnd } from './ramalMenuHelpers.ts';
 import { codoPolarityOk, flowEndsAt } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
-import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventElbowTeeFix';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import {
   bumpHidroAccesorio,
   bumpAparatoCount,

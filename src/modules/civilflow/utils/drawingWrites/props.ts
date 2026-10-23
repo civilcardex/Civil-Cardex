@@ -2,8 +2,8 @@ import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync.ts';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys.ts';
 import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
-import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
-import { punterosBajante, validarDiametroEntrePisos, parseBajanteKey } from './diametros';
+import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
+import { punterosBajante, validarDiametroEntrePisos, parseBajanteKey } from './diameters';
 import { avisarDiametroInvalido } from '../diameterValidation.ts';
 
 /** Diámetro a varios ramales con un solo load+save por plano (ruta batch del D vent propuesto). */

@@ -1,7 +1,7 @@
 import { compactYeeDiam } from '../sanFittingsCatalog.ts';
 import { distToSegment } from '../../lib/shared/geometry';
 import { fmtPulg } from '../formatUtils.ts';
-import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import type { RamalDibujo, TribDibujo, VentDibujo } from './collection';
 import type { Tramo } from '../../context/tramosReducer';
 

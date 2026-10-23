@@ -9,7 +9,7 @@ import { FUENTE_TIPOS } from '../../lib/PlanoEngine/nodos';
 import { extremoEntrelazado, flowEndsAt } from '../../lib/PlanoEngine/PlanoEngineDrawing.ts';
 import { flowTailEnd } from '../pdfViewer/drawingElementContextMenu/ramalMenuHelpers.ts';
 import { matchDiamOption } from '../../utils/diamOptionMatch.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { sanDiamAllowedForApparatus } from '../../utils/sanitaryDiamCompat.ts';
 import { DIAM_BY_MAT } from '../../constants';
 import { bumpHidroAccesorio } from '../../utils/syncExtremeAccessory.ts';

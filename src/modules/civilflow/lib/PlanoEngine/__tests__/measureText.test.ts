@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { anchoTexto } from '../renderers/medidaTexto.ts';
+import { anchoTexto } from '../renderers/measureText.ts';
 
 /**
  * Memoria de `measureText` (el render medía el mismo texto con la misma fuente varias veces

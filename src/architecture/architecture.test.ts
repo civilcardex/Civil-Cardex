@@ -32,7 +32,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 1493,
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 715,
   'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1425,
-  'modules/civilflow/components/workareaContent/useInfTables.ts': 1236,
+  'modules/civilflow/components/workareaContent/useReportTables.ts': 1236,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 1225,
   'modules/civilflow/utils/waterRowsCore.ts': 704,
   'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
@@ -47,7 +47,7 @@ const CONOCIDOS: Record<string, number> = {
   'pages/auth/ProfilePage.tsx': 967,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 936,
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 918,
-  'modules/civilflow/components/rejillasVentilacion/TableTypologies.tsx': 898,
+  'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 898,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 883,
   'pages/PricingPage.tsx': 878,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 867,
@@ -324,13 +324,13 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     test: 'useFixtureMirrors',
   },
   {
-    ruta: 'modules/civilflow/components/fixtures/salidasEspejo.ts',
+    ruta: 'modules/civilflow/components/fixtures/mirrorOutputs.ts',
     maxLineas: 110,
     puro: false,
     test: '../fixtureMirrors',
   },
   {
-    ruta: 'modules/civilflow/components/fixtures/herenciaCrossFloor.ts',
+    ruta: 'modules/civilflow/components/fixtures/crossFloorInheritance.ts',
     maxLineas: 250,
     puro: false,
     test: '../fixtureMirrors',
@@ -403,7 +403,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/mouseDownDrags.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
   'modules/civilflow/utils/buildTramos.ts': 7,
-  'modules/civilflow/components/fixtures/SecMontantes.tsx': 6,
+  'modules/civilflow/components/fixtures/montantesSection.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/associatedChannels.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionSections.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 6,
@@ -414,12 +414,12 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/waterRowsAcometida.ts': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionPanel.tsx': 5,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuHelpers.ts': 5,
-  'modules/civilflow/components/rejillasVentilacion/TableTypologies.tsx': 5,
+  'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 5,
   'modules/civilflow/context/RainwaterContext.tsx': 5,
   'modules/civilflow/lib/PlanoEngine/handleMouseDown.ts': 5,
   'modules/civilflow/utils/accessoriesTable/yees.ts': 5,
   'modules/civilflow/utils/buildBajanteGraph.ts': 5,
-  'modules/civilflow/utils/drawingWrites/diametros.ts': 5,
+  'modules/civilflow/utils/drawingWrites/diameters.ts': 5,
   'modules/civilflow/utils/sanConnectivity.ts': 5,
   'pages/ModulePage.tsx': 5,
 };
@@ -434,7 +434,7 @@ const TOTAL_FOCOS_BASE = 531;
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
   {
-    ruta: 'modules/civilflow/components/workareaContent/useInfTables.ts',
+    ruta: 'modules/civilflow/components/workareaContent/useReportTables.ts',
     simbolos: ['useInfTablas'],
   },
 ];

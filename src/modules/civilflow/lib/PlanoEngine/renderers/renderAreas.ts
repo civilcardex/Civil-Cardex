@@ -1,7 +1,7 @@
 import { NETS } from '../PlanoState.ts';
 import { rotatedRectCorners } from '../HitTester.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
-import { anchoTexto } from './medidaTexto.ts';
+import { anchoTexto } from './measureText.ts';
 
 export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.areas.forEach((a) => {

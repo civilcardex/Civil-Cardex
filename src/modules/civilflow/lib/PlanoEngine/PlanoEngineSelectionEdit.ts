@@ -10,7 +10,7 @@ import {
 } from './drawingFlow.ts';
 import { updateCrossFloorGhostFieldBySource } from '../../utils/associateBajanteAcrossFloors';
 import { bajanteLocalDe } from '../../utils/bajanteLocal.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { checkVentDiameterLimits, syncVentBajanteDiameters } from './ventDiameters';
 
 // Mutaciones de selección/edición del motor: update de tramos por engine/id, guard de diámetro

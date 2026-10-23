@@ -3,7 +3,7 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { cargarMallas } from '../../lib/PlanoEngine/nodos';
 import { emitPlanLoaded } from '../../utils/fixtureEvents.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { persistTrazosSnapshot } from './persistTrazos.ts';
+import { persistTrazosSnapshot } from './persistStrokes.ts';
 import { paginaDeDoc } from '../../utils/planScale.ts';
 
 interface UsePlanoLoadSwitchParams {

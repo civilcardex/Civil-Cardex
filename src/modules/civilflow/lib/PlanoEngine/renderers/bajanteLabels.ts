@@ -1,7 +1,7 @@
 import { rotatedRectCorners } from '../HitTester.ts';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
 import type { CrossFloorGhost } from '../../../utils/associateBajanteAcrossFloors';
-import { anchoTexto } from './medidaTexto.ts';
+import { anchoTexto } from './measureText.ts';
 
 /** La dirección del bajante con la primera letra en mayúscula, para mostrarla: Sube / Baja /
  *  Continua. */

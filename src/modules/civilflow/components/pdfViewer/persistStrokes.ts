@@ -8,7 +8,7 @@ import {
 import { markPlanTrazosFresh } from '../../utils/drawingSync.ts';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { splitCount } from '../../utils/keys.ts';
 
 /** Guarda el trabajo del engine bajo `id` con ts fresco; a BD solo si el id es real (no 'work',

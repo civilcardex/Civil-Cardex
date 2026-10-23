@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 
-describe('diamPulgFromLabel', () => {
+describe('diamInchesFromLabel', () => {
   it('parses integers and decimals with double quotes', () => {
     expect(diamPulgFromLabel('2"')).toBe(2);
     expect(diamPulgFromLabel('1.5"')).toBe(1.5);

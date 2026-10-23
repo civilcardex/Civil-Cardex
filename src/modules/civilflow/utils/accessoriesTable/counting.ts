@@ -1,4 +1,4 @@
-import { diamPulgFromLabel } from '../diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import { fmtPulg } from '../formatUtils.ts';
 import {
   ACC_MED_CODOS,

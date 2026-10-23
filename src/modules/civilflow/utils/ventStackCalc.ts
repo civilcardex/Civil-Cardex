@@ -3,7 +3,7 @@
 // verbatim de DownpipesTable (des-monolitización 2026-10-06).
 import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
 import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore.ts';
-import { diamPulgFromLabel } from './diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { entradaPor } from './diamLookup';
 
 export interface BajanteVentilacionParams {

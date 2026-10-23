@@ -1,5 +1,5 @@
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';
-import { CRITERIOS_3631 } from './helpGuideCriterios.tsx';
+import { CRITERIOS_3631 } from './helpGuideCriteria.tsx';
 export const GUIA_FLOW: GUIA_TYPE = {
   'cf:info': [
     {
@@ -422,7 +422,7 @@ export const GUIA_FLOW: GUIA_TYPE = {
         },
         {
           nombre: 'Diseño de red (tabla grande)',
-          desc: '23 columnas: UC propia/otros/caudal, K, diámetro estimado vs propuesto (editable), velocidad, pérdidas por fricción y presión inicial/final. Los chips "Otros Ramales" saltan a los tramos conectados.',
+          desc: '23 columnas: UC propia/others/caudal, K, diámetro estimado vs propuesto (editable), velocidad, pérdidas por fricción y presión inicial/final. Los chips "Otros Ramales" saltan a los tramos conectados.',
         },
         {
           nombre: 'Acometida (AF)',
@@ -535,7 +535,7 @@ export const GUIA_FLOW: GUIA_TYPE = {
         },
         {
           nombre: 'Diseño de red (tabla grande)',
-          desc: 'UC propia/otros/caudal, K, diámetro estimado vs propuesto (editable), velocidad y pérdidas por fricción y presión. Los chips "Otros Ramales" saltan a los tramos conectados.',
+          desc: 'UC propia/others/caudal, K, diámetro estimado vs propuesto (editable), velocidad y pérdidas por fricción y presión. Los chips "Otros Ramales" saltan a los tramos conectados.',
         },
         {
           nombre: 'Acometida',

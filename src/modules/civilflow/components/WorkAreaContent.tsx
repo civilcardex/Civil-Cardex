@@ -2,7 +2,7 @@ import { Suspense, lazy } from 'react';
 import { RainwaterProvider } from '../context/RainwaterContext.tsx';
 import InfoTab from './workarea/InfoTab.tsx';
 import { RedesTab } from './workareaContent/networksTab.tsx';
-import { InfTab } from './workareaContent/infTab.tsx';
+import { InfTab } from './workareaContent/reportTab.tsx';
 import type { useWorkAreaState } from './useWorkAreaState.ts';
 
 const PlanosTab = lazy(() => import('./workarea/PlanosTab.tsx'));

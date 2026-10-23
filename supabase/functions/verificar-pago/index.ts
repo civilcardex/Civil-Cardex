@@ -11,7 +11,7 @@
 // webhook aún no llegó, responde { aprobado: false } y el cliente muestra
 // "verificación pendiente".
 
-import { clienteAdmin, clienteUsuario, json, preflight } from '../_shared/pago_utils.ts';
+import { clienteAdmin, clienteUsuario, json, preflight } from '../_shared/payment_utils.ts';
 
 Deno.serve(async (req: Request) => {
   // Preflight CORS (functions.invoke manda Authorization/apikey).

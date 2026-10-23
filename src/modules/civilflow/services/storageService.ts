@@ -18,4 +18,4 @@ export {
   trazosLocalGanaABdVacia,
   saveTrazosToDB,
   loadTrazosFromDB,
-} from './storage/trazosDb';
+} from './storage/strokesDb';

@@ -1,8 +1,5 @@
 import { devError, devLog } from '../../../../utils/devError.ts';
-import {
-  rebasarEscalaTrazos,
-  type PlanoWorkData,
-} from '../../lib/PlanoEngine/PlanoPersistence.ts';
+import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
 /** Subconjunto de PlanItem que la derivación necesita (PlanItem del context lo satisface). */
 export interface PlanCalibFuente {
   id: number;

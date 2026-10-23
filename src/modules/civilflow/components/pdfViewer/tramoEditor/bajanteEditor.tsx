@@ -7,7 +7,7 @@ import { usePlans } from '../../../context/PlansContext.tsx';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
-import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel.ts';
+import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { entradaPor } from '../../../utils/diamLookup';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';

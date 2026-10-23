@@ -9,7 +9,7 @@ import {
   leeReportes,
   registraCarga,
   textoReporte,
-} from '../cargaDiagnostico.ts';
+} from '../loadDiagnostics.ts';
 import { localGanaABdPorTs } from '../../services/storage/localStorage.ts';
 
 /**

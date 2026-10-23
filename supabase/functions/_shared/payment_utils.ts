@@ -1,5 +1,5 @@
 // Helpers compartidos de las 3 funciones de pago (Lemon Squeezy).
-// Deno: import con ruta relativa '../_shared/pago_utils.ts'.
+// Deno: import con ruta relativa '../_shared/payment_utils.ts'.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 

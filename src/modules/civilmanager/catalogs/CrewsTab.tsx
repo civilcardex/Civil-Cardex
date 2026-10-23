@@ -7,12 +7,7 @@ import { NumInput } from '../shared/NumInput.tsx';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { ActionIcon } from '../shared/icons.tsx';
 import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
-import {
-  DimEnLectura,
-  EditableSection,
-  TableHeader,
-  useEditable,
-} from '../shared/EditLock.tsx';
+import { DimEnLectura, EditableSection, TableHeader, useEditable } from '../shared/EditLock.tsx';
 import type { Cuadrilla, CuadrillaIntegrante } from '../types.ts';
 
 /** Provider propio + cuerpo en hijo: useEditable en este body resolvería el provider

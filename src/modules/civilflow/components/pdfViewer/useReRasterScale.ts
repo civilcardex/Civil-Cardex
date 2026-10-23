@@ -6,7 +6,7 @@
 // piso de entrada (orig. usuario).
 import { useEffect } from 'react';
 import { escalaDeDoc } from '../../utils/planScale.ts';
-import { EVENTO_ESCALA_CAMBIADA } from '../../utils/cargaDiagnostico.ts';
+import { EVENTO_ESCALA_CAMBIADA } from '../../utils/loadDiagnostics.ts';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 

@@ -1,7 +1,7 @@
 import { useState, type ReactNode, type Key } from 'react';
 import { useProject } from '../../context/ProjectContext.tsx';
 import { FILTROS_NORM, CRIT0 } from '../../constants';
-import { TabBtn, FilterBtn } from './compartido.tsx';
+import { TabBtn, FilterBtn } from './shared.tsx';
 import { SECCIONES } from './regulationsData.ts';
 import { NTC1500 } from './sections/NTC1500';
 import { RAS2000 } from './sections/RAS2000';
