@@ -4,9 +4,13 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 /**
  * Lee el dibujo (doc) de un plano del storage local.
  *
- * Antes esta lectura estaba COPIADA en 6 sitios (tabla de bajantes, canales de lluvias,
- * bajantes de lluvia, contexto de lluvias, filas de bajante-vent y filas de acometida): cada
- * copia con su propio parseo y sus propios defaults. Una sola fuente para evitar que dos
+ * Devuelve null en TRES casos: no existe, es un JSON roto, o es null explícito. Los
+ * consumidores que solo prueban EXISTENCIA (p. ej. prefetchTrazos) heredan la auto-cura:
+ * un doc corrupto se re-descarga de la BD — antes (lectura cruda) el string roto contaba
+ * como "presente" y el piso quedaba atrapado con su caché dañada.
+ *
+ * Antes esta lectura estaba COPIADA en 20 sitios (tablas, checks, contextos): cada copia
+ * con su propio parseo y sus propios defaults. Una sola fuente para evitar que dos
  * pantallas lean doc distinto del mismo plano.
  */
 export function leerDocDePlan<T = unknown>(planId: string | number): T | null {

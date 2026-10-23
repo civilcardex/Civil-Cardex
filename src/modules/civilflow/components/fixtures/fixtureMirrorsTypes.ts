@@ -1,6 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
-import type { CountsMap, HidroDataMap } from '../fixturesStorage.ts';
+import type { CountsMap, HidroDataMap, PropioSnapMap } from '../fixturesStorage.ts';
 
 /** Argumentos del paso de espejos (carga, herencia y bomba). */
 export interface EspejosArgs {
@@ -22,4 +22,32 @@ export interface EspejosArgs {
   /** Tick para lecturas directas de libros en render (heredados/fold): se bumpnea tras cada
    *  propagación aunque los conteos no cambien, para que el panel no quede rancio. */
   onLibrosChange?: () => void;
+}
+
+/** Motor del piso cargado (non-null: el orquestador ya validó que existe). */
+export type EngVivo = NonNullable<EspejosArgs['engineRef']['current']>;
+
+/** Estado mutable compartido de UN pase de espejos: los bloques (salidas, herencia
+ *  cross-floor, bomba, montantes) mutan `disk`/`hdisk`/`propioSnap` y alzan su flag —
+ *  el orquestador persiste todo al final. Así cada bloque es testeable solo y el pase
+ *  sigue siendo UNA escritura por almacén. */
+export interface PaseEspejos {
+  eng: EngVivo;
+  netId: string;
+  planId: string | number;
+  /** Claves de conteos (aparatos) del mapa global — se muta in situ. */
+  disk: CountsMap;
+  /** Accesorios hidráulicos — se muta in situ. */
+  hdisk: HidroDataMap;
+  /** Foto de lo propio de cada clave espejo (suelo de la desasociación). */
+  propioSnap: PropioSnapMap;
+  dirty: boolean;
+  hdirty: boolean;
+  snapDirty: boolean;
+  /** ¿El bajante es del piso cargado? (las proyecciones de otros pisos no son titulares). */
+  esDeEstePiso: (b: { pisoBase?: string }) => boolean;
+  /** Clave de conteo de un ramal del piso cargado. */
+  pkey: (rid: string) => string;
+  agregadoBajante: (bajId: string) => Record<string, number>;
+  exitsDeBajante: (bajId: string) => Set<string>;
 }

@@ -1,4 +1,5 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { devError } from '../../../../utils/devError.ts';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { SelectableTarget } from '../fixturesStorage.ts';
 import type { CountsMap } from '../fixturesStorage.ts';
@@ -56,7 +57,10 @@ function mutarConteo(
     const nextDisk = { ...disk, [storageKey]: ajusta({ ...(disk[storageKey] || {}) }) };
     saveAll(nextDisk);
     setCounts(nextDisk);
-  } catch {
+  } catch (e) {
+    // Disco falló (quota/storage): el conteo queda SOLO en estado React — se pierde al
+    // recargar. Sin esta señal era un fantasma indiagnosticable (familia "se pierden").
+    devError('[mutarConteo] no persistió (se perderá al recargar):', e);
     setCounts((prev) => ({ ...prev, [storageKey]: ajusta({ ...(prev[storageKey] || {}) }) }));
   }
 }

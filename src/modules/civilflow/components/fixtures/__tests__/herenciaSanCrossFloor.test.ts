@@ -357,3 +357,43 @@ it('desasociar conserva el lavamanos propio del ramal (suelo de propio, auditor�
   expect(disk()['san_RL1_1']).toEqual({ lav: 1 });
   expect(disk()['san_RU1_2']).toEqual({ lav: 1, ino: 1, duc: 1 });
 });
+
+it('apply y clear INMEDIATO (sin pase de espejos): el manual sobrevive (F-1 bis)', () => {
+  // La ventana: el apply no alineado no toca el disco y la foto de propio la escribe el
+  // pase de espejos (asíncrono). Desasociar dentro de esa ventana caía al fallback de
+  // resta completa y borraba {lav:1}. El apply ahora SIEMBRA la foto al asociar.
+  seed();
+  const engP2 = engineDe('2');
+  (engP2 as unknown as { nivelActual: { label: string } }).nivelActual = { label: 'Piso 2' };
+  applyBajanteAssociation(
+    engP2 as never,
+    {
+      planId: '2',
+      id: 'BAN1',
+      x: 0,
+      y: 0,
+      net: 'san',
+      dNominal: '4"',
+      code: 'BAN1',
+      nivelN: 1,
+      npt: 320,
+    },
+    {
+      planId: '1',
+      id: 'BAN1',
+      x: 60,
+      y: 60,
+      net: 'san',
+      dNominal: '4"',
+      code: 'BAN1',
+      nivelN: 0,
+      npt: 0,
+    },
+    PLANS,
+  );
+  expect(disk()['san_RL1_1']).toEqual({ lav: 1 });
+  // SIN correrEspejos intermedio — directo a desasociar.
+  clearBajanteAssociation(engP2 as never, '2', 'BAN1', 'san', '1|BAN1', PLANS);
+  expect(disk()['san_RL1_1']).toEqual({ lav: 1 });
+  expect(disk()['san_RU1_2']).toEqual({ lav: 1, ino: 1, duc: 1 });
+});

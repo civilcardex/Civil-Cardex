@@ -10,6 +10,8 @@ import { loadPlanTrazos } from '../../services/storageService.ts';
 import { useEffect } from 'react';
 import { instalarDiagnosticoDev } from './diagnosticoDev';
 
+// ponytail: side-effect de import intencional (instala __cfDiag/__cfScale SOLO en DEV;
+// idempotente, fuera del bundle de prod). No copiar este patrón sin gate DEV interno.
 instalarDiagnosticoDev();
 
 /** Datos que necesita el grupo de efectos de espejos (viajan en un objeto: el panel pasa sus funciones tal cual). */

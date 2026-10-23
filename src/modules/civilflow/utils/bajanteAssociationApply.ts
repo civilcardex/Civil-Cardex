@@ -29,6 +29,7 @@ import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/stor
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
+  APARATOS_PROPIO_KEY,
   HYDRO_DATA_STORAGE_KEY,
 } from '../constants/storage-keys.ts';
 import { pisoCorto, pisoLbl } from '../constants';
@@ -498,6 +499,35 @@ export function applyBajanteAssociation(
             hydroDirty = true;
           }
           ucAplicadoHidro[tk] = { ...hydroAgg };
+        }
+      }
+      if (!aligned) {
+        // SEMBRAR la foto de lo propio del enlace AHORA (no esperar al primer pase de
+        // espejos): un clear inmediato, sin foto todavía, caía al fallback "resta completa"
+        // y borraba las asignaciones manuales de un disco que jamás recibió herencia
+        // (doctrina libro-solo — orig. auditoría F-1'). En no-alineado el disco de cada
+        // clave destino ES lo propio en este momento.
+        try {
+          const snap =
+            loadFromStorage<
+              Record<
+                string,
+                {
+                  uc?: Record<string, Record<string, number>>;
+                  hidro?: Record<string, Record<string, number>>;
+                }
+              >
+            >(APARATOS_PROPIO_KEY, {}) || {};
+          const entry = snap[`${lower.planId}|${lower.id}`] || { uc: {}, hidro: {} };
+          entry.uc = entry.uc || {};
+          for (const rid of tgtRamalIds) {
+            const tk = `${target.net}_${rid}_${target.planId}`;
+            entry.uc[tk] = { ...(apos[tk] || {}) };
+          }
+          snap[`${lower.planId}|${lower.id}`] = entry;
+          saveToStorage(APARATOS_PROPIO_KEY, snap);
+        } catch {
+          /* best-effort: el pase de espejos re-siembra */
         }
       }
       if (!aligned) {
