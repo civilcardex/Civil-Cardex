@@ -1,5 +1,4 @@
-import { NETS, netsSnapLinked, initNetCounts } from './PlanoState.ts';
-import { bajanteLleno } from './bajanteRules.ts';
+import { NETS, initNetCounts } from './PlanoState.ts';
 import { devError } from '../../../../utils/devError.ts';
 import type {
   PlanoElement,
@@ -33,6 +32,10 @@ import {
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales.ts';
 import { renderNetCrossings } from './renderers/renderNetCrossings.ts';
 import { snapToSegment } from './HitTester.ts';
+import {
+  snapToExisting as snapToExistingLib,
+  snapPreviewToPadre as snapPreviewToPadreLib,
+} from './snapExisting.ts';
 import { serializeWork, applyWorkData } from './PlanoPersistence.ts';
 import {
   setTool as _setTool,
@@ -80,7 +83,12 @@ import {
   realMmToCanvasPx as realMmToCanvasPxLib,
   labelScaleM as labelScaleMLib,
 } from './planoCoords.ts';
-import { zoomAnclado, tamanoLienzoDibujo } from './planoCamera.ts';
+import {
+  zoomAnclado,
+  tamanoLienzoDibujo,
+  encuadrarDibujo,
+  ptsDeDibujoConDims,
+} from './planoCamera.ts';
 import { iniciarFrame, terminarFrame } from './renderers/frameIndex.ts';
 import { handleKeyDown } from './handleKeyDown.ts';
 import {
@@ -723,79 +731,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     tipo?: string,
     permitirBajantesLlenos: boolean = false,
   ): Point | null {
-    const netRef = net ?? this.activeNet;
-    let best: Point | null = null;
-    let minD = 16 / this.zoom;
-    this.ramales.forEach((r) => {
-      // Nunca pegar entre redes — elementos de redes distintas no deben conectarse solo porque
-      // están visualmente cerca. Excepción: ventilación debe caer exactamente sobre un punto de
-      // sanitaria (el marcador de reventilado existente depende de eso), así que se permite ese
-      // único par.
-      if (!netsSnapLinked(r.net, netRef)) return;
-      // Los ramales no se conectan a tributarios — un trazo de tipo ramal solo pega a ramales.
-      if (tipo === 'ramal' && r.tipo === 'tributario') return;
-      r.pts.forEach(([rx, ry], idx) => {
-        let thresh = 16 / this.zoom;
-        if (idx > 0 && idx < r.pts.length - 1) {
-          const ptA = r.pts[idx - 1];
-          const ptB = r.pts[idx];
-          const ptC = r.pts[idx + 1];
-          const ax = ptB[0] - ptA[0],
-            ay = ptB[1] - ptA[1];
-          const bx = ptC[0] - ptB[0],
-            by = ptC[1] - ptB[1];
-          const lenA = Math.hypot(ax, ay),
-            lenB = Math.hypot(bx, by);
-          if (lenA > 0 && lenB > 0) {
-            const cosAngle = (-ax * bx - ay * by) / (lenA * lenB);
-            if (Math.abs(cosAngle) < 0.05) {
-              thresh = 24 / this.zoom;
-            }
-          }
-        }
-        const d = Math.hypot(x - rx, y - ry);
-        if (d < thresh && (!best || d < minD)) {
-          minD = d;
-          best = { x: rx, y: ry };
-        }
-      });
-    });
-    const bajThresh = 20 / this.zoom;
-    const lvlLabel = this.nivelActual?.label ?? '';
-    this.bajantes.forEach((b) => {
-      if (this._hiddenNets.has(b.net)) return;
-      if (!netsSnapLinked(b.net, netRef)) return;
-      // El canal no atrae el snap: su _circ es media longitud y pegaría el extremo al CENTRO
-      // del canal, borrando el punto de salida arbitrario del ramal de canal (orig. usuario).
-      if (b.tipo === 'canal') return;
-      // Bajante LLENO fuera del snap (orig. usuario): enganchar el trazo a un bajante que ya
-      // tiene sus 2 asociaciones solo dispara "Bajante completo" sin conectar nada. Salvo
-      // cuando el trazo es de canal (exento del tope) — ahí el snap es la única forma precisa
-      // de aterrizar en el bajante.
-      if (!permitirBajantesLlenos && bajanteLleno(b)) return;
-      const disp = b.desplazamientos?.[lvlLabel] || {};
-      const bx = b.x + (disp.dx || 0);
-      const by = b.y + (disp.dy || 0);
-      const d = Math.hypot(x - bx, y - by);
-      if (d < bajThresh && (!best || d < minD)) {
-        minD = d;
-        best = { x: bx, y: by };
-      }
-    });
-    // Snap al CUERPO de ramales de redes enlazadas (vent↔san) — el cursor del trazo activo se
-    // acerca visualmente al ramal aunque no esté sobre un vértice, señalando la conexión antes de
-    // finalizar el trazo.
-    this.ramales.forEach((r) => {
-      if (!netsSnapLinked(r.net, netRef)) return;
-      if (tipo === 'ramal' && r.tipo === 'tributario') return;
-      const segThresh = 12 / this.zoom;
-      const p = snapToSegment(x, y, r.pts, segThresh);
-      if (p && (!best || Math.hypot(p.x - x, p.y - y) < minD)) {
-        minD = Math.hypot(p.x - x, p.y - y);
-        best = p;
-      }
-    });
-    return best;
+    return snapToExistingLib(this, x, y, net, tipo, permitirBajantesLlenos);
   }
 
   _snapToSegment(
@@ -808,10 +744,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   snapPreviewToPadre(x: number, y: number): Point | null {
-    if (this.tipoTramo !== 'tributario' || !this.padreTributario || this.activeRamal) return null;
-    const padre = this.ramales.find((r) => r.id === this.padreTributario);
-    if (!padre) return null;
-    return this._snapToSegment(x, y, padre.pts, 20 / this.zoom);
+    return snapPreviewToPadreLib(this, x, y);
   }
 
   _wrapTouch(fn: (e: TouchEvent) => void): (e: TouchEvent) => void {
@@ -1132,40 +1065,21 @@ export default class PlanoEngine implements IPlanoEngineCore {
    *  después del raster no puede mover los elementos a la vista (orig. usuario: «salto
    *  residual mientras se acomodan»). Sin dibujo cae a la hoja completa. */
   reEncuadrarContenido(): void {
-    const pts: Array<{ x: number; y: number }> = [];
-    for (const r of this.ramales || []) for (const p of r.pts || []) pts.push({ x: p[0], y: p[1] });
-    for (const b of this.bajantes || []) {
-      if (typeof b.x === 'number' && typeof b.y === 'number') pts.push({ x: b.x, y: b.y });
-    }
-    for (const a of this.areas || []) {
-      for (const p of (a as { pts?: number[][] }).pts || []) pts.push({ x: p[0], y: p[1] });
-    }
-    for (const d of this.dims || []) {
-      const dd = d as { x1?: number; y1?: number; x2?: number; y2?: number };
-      if (typeof dd.x1 === 'number' && typeof dd.y1 === 'number') pts.push({ x: dd.x1, y: dd.y1 });
-      if (typeof dd.x2 === 'number' && typeof dd.y2 === 'number') pts.push({ x: dd.x2, y: dd.y2 });
-    }
-    if (pts.length === 0) {
+    const bbox = ptsDeDibujoConDims(this);
+    if (!bbox) {
       this.fitPage();
       return;
     }
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    for (const p of pts) {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
-    }
-    const pad = 8;
-    const availW = Math.max(1, this.cw.clientWidth - pad * 2);
-    const availH = Math.max(1, this.cw.clientHeight - pad * 2);
-    const sc = Math.min(availW / Math.max(1, maxX - minX), availH / Math.max(1, maxY - minY));
-    this.zoom = sc;
-    this.offX = (this.cw.clientWidth - (minX + maxX) * sc) / 2;
-    this.offY = (this.cw.clientHeight - (minY + maxY) * sc) / 2;
+    const enc = encuadrarDibujo({
+      visW: this.cw.clientWidth,
+      visH: this.cw.clientHeight,
+      pageW: this.pageW,
+      pageH: this.pageH,
+      bbox,
+    });
+    this.zoom = enc.zoom;
+    this.offX = enc.offX;
+    this.offY = enc.offY;
   }
 
   /** Ajusta la página PDF dentro del viewport con margen. */

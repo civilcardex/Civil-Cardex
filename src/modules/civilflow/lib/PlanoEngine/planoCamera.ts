@@ -101,6 +101,34 @@ export function encuadrarDibujo(args: {
   };
 }
 
+/**
+ * Rect\u00e1ngulo del DIBUJO de un motor incluidas las COTAS (dims) — la colección del motor es
+ * la que usan reEncuadrarContenido y el botón Ajustar: sin dims, un piso que solo tenga cotas
+ * quedaría con bbox vacío y caería a la hoja.
+ * @returns bbox en px de plano, o null si no hay nada trazado.
+ */
+export function ptsDeDibujoConDims(eng: {
+  ramales?: Array<{ pts?: number[][] }>;
+  bajantes?: Array<{ x?: number; y?: number }>;
+  areas?: Array<{ pts?: number[][] }>;
+  dims?: Array<{ x1?: number; y1?: number; x2?: number; y2?: number }>;
+}): BboxDibujo | null {
+  const pts: Array<{ x: number; y: number }> = [];
+  for (const r of eng.ramales || []) for (const p of r.pts || []) pts.push({ x: p[0], y: p[1] });
+  for (const b of eng.bajantes || []) {
+    if (typeof b.x === 'number' && typeof b.y === 'number') pts.push({ x: b.x, y: b.y });
+  }
+  for (const a of eng.areas || []) {
+    for (const p of (a as { pts?: number[][] }).pts || []) pts.push({ x: p[0], y: p[1] });
+  }
+  for (const d of eng.dims || []) {
+    const dd = d as { x1?: number; y1?: number; x2?: number; y2?: number };
+    if (typeof dd.x1 === 'number' && typeof dd.y1 === 'number') pts.push({ x: dd.x1, y: dd.y1 });
+    if (typeof dd.x2 === 'number' && typeof dd.y2 === 'number') pts.push({ x: dd.x2, y: dd.y2 });
+  }
+  return bboxDePuntos(pts);
+}
+
 /** Rect\u00e1ngulo que abarca un conjunto de puntos (px de plano). */
 export function bboxDePuntos(pts: Array<{ x: number; y: number }>): BboxDibujo | null {
   if (!pts.length) return null;
