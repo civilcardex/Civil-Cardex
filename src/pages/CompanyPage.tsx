@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { useAuth } from '../context/AuthContext.tsx';
-import { CATALOGO } from '../lib/subscriptions/catalog.ts';
+import { CATALOGO, SUSCRIPCIONES_ACTIVAS } from '../lib/subscriptions/catalog.ts';
 import { estaActiva, type SuscripcionRow } from '../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
 import { devError } from '../utils/devError.ts';
@@ -55,7 +55,8 @@ const BTN_FANTASMA: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Exportado solo para el preview de desarrollo (/empresa-preview), que pasa mock (miembros falsos, sin RPCs) + soloLectura para NO
+/** Exportado para el modo EJEMPLO de esta misma página: mientras el sistema de suscripciones
+ * está apagado, CompanyPage pasa mock (miembros falsos, sin RPCs) + soloLectura para NO
  * disparar RPCs reales (asignar_puesto tocaría datos de verdad). */
 export function PanelSuscripcion({
   sus,
@@ -285,6 +286,39 @@ export function PanelSuscripcion({
   );
 }
 
+// Datos de EJEMPLO (antes vivían en /empresa-preview, borrada): se muestran mientras el
+// sistema de suscripciones esté apagado; con el flag activo la página usa datos reales.
+const EJEMPLO: { sus: SuscripcionRow; miembros: Miembro[] }[] = [
+  {
+    sus: {
+      id: -1,
+      modulo: 'flow',
+      periodo: 'anual',
+      estado: 'activa',
+      fecha_fin: new Date(Date.now() + 86400000 * 300).toISOString(),
+      puestos: 5,
+      user_id: '',
+    },
+    miembros: [
+      { user_id: 'u1', email: 'ana@constructora.com', puede_editar: true, asignado_en: '' },
+      { user_id: 'u2', email: 'luis@constructora.com', puede_editar: false, asignado_en: '' },
+      { user_id: 'u3', email: 'maria@constructora.com', puede_editar: true, asignado_en: '' },
+    ],
+  },
+  {
+    sus: {
+      id: -2,
+      modulo: 'manage',
+      periodo: 'semestral',
+      estado: 'activa',
+      fecha_fin: new Date(Date.now() + 86400000 * 150).toISOString(),
+      puestos: 2,
+      user_id: '',
+    },
+    miembros: [{ user_id: 'u4', email: 'jefe@obra.com', puede_editar: true, asignado_en: '' }],
+  },
+];
+
 export default function CompanyPage() {
   usePageMeta(
     'Equipo',
@@ -295,6 +329,40 @@ export default function CompanyPage() {
   const empresa = user
     ? rows.filter((r) => r.user_id === user.id && (r.puestos ?? 1) > 1 && estaActiva(r))
     : [];
+
+  // ponytail: mientras el sistema de suscripciones NO está activo, la página muestra los
+  // DATOS DE EJEMPLO en solo lectura (cero RPCs — PanelSuscripcion corta con mock+soloLectura).
+  // Cuando se active el flag, este bloque desaparece solo y quedan los planes reales.
+  if (!SUSCRIPCIONES_ACTIVAS) {
+    return (
+      <div className="container mx-auto px-6 py-10" style={{ maxWidth: 860 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Equipo</h1>
+        <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', marginBottom: 16 }}>
+          Asigna puestos de tus planes empresariales por correo (el miembro debe tener cuenta
+          registrada) y define quién puede editar los proyectos de la empresa.
+        </p>
+        <div
+          role="status"
+          style={{
+            border: '1px dashed var(--outline-variant, #3a3a44)',
+            borderRadius: 10,
+            padding: '10px 14px',
+            marginBottom: 20,
+            fontSize: 12,
+            color: 'var(--on-surface-variant, #9ba8aa)',
+          }}
+        >
+          Vista de ejemplo — el sistema de suscripciones todavía no está activo. Cuando lo esté,
+          aquí verás tus planes y puestos reales.
+        </div>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {EJEMPLO.map(({ sus, miembros }) => (
+            <PanelSuscripcion key={sus.id} sus={sus} soloLectura mock={{ miembros }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-6 py-10" style={{ maxWidth: 860 }}>

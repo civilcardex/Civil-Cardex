@@ -49,7 +49,6 @@ const CatalogoMaestroPage = React.lazy(
   () => import('./modules/civilflow/pages/CatalogMasterPage.tsx'),
 );
 const CompanyPage = React.lazy(() => import('./pages/CompanyPage.tsx'));
-const CompanyPreviewPage = React.lazy(() => import('./pages/CompanyPreviewPage.tsx'));
 const ModulePage = React.lazy(() => import('./pages/ModulePage.tsx'));
 
 function App() {
@@ -314,18 +313,6 @@ function App() {
                     />
                   </Route>
                 </Route>
-
-                {/* SOLO DESARROLLO: preview de /empresa con datos falsos (borrar) — fuera del bundle de prod la ruta cae al 404 */}
-                {import.meta.env.DEV && (
-                  <Route
-                    path="/empresa-preview"
-                    element={
-                      <Suspense fallback={<Fallback />}>
-                        <CompanyPreviewPage />
-                      </Suspense>
-                    }
-                  />
-                )}
 
                 {/* 404 catch-all */}
                 <Route
