@@ -13,10 +13,9 @@ import PlanoEngine, {
   type TramoType,
 } from '../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement } from '../lib/PlanoEngine/PlanoState.ts';
-import { aparatoEnExtremoInvalido } from '../lib/PlanoEngine/PlanoEngineDrawing.ts';
 import type { Piso } from '../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../context/PlansContext.tsx';
-import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
+import { pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import {
@@ -51,11 +50,6 @@ import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
 import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/context.ts';
 import ConfirmDialog from './pdfViewer/ConfirmDialog.tsx';
 import AccesorioModal from './pdfViewer/FittingModal.tsx';
-import TramoEditor from './pdfViewer/tramoEditor';
-import BajanteAsociacion from './pdfViewer/BajanteAssociation';
-import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements.tsx';
-import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel.tsx';
-import AparatosPanel from './FixturesPanel.tsx';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement.ts';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs.ts';
@@ -64,7 +58,9 @@ import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility.ts'
 import { useFloorRamales } from './pdfViewer/useFloorRamales.ts';
 import { useTrazosLoader } from './pdfViewer/useStrokesLoader.ts';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts.ts';
-import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
+import { useViewerDirtySweep } from './pdfViewer/useViewerDirtySweep.ts';
+import { PdfViewerRightSidebar } from './pdfViewer/PdfViewerRightSidebar.tsx';
+import { useSaveStatusBanner } from './pdfViewer/useSaveStatusBanner.ts';
 import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
@@ -429,14 +425,6 @@ function PdfViewer_({
 
   const markDirtyRef = useRef<() => void>(() => {});
 
-  // Ítem 2 (rev 2): dedupe de la alerta de estado inviable — el ramal se alerta UNA vez por
-  // sesión mientras siga inválido (se rehabilita al corregirse).
-  const aparatoFlowAlertedRef = useRef<Set<string>>(new Set());
-  // Orig. usuario: al BORRAR un ramal no debe salir la alerta — los estados intermedios
-  // del borrado (splits a medio re-unir, renumerado) disparaban el sweep. Ventana de
-  // supresión + limpieza del dedupe para los ids borrados (el renumerado los reutiliza).
-  const suprimirAparatoSweepHastaRef = useRef(0);
-
   const { saveStatus, setSaveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
     engineRef,
     currentIdRef,
@@ -446,6 +434,8 @@ function PdfViewer_({
   useEffect(() => {
     markDirtyRef.current = markDirty;
   }, [markDirty]);
+  // Sweep de aparatos inviables (dedupe + ventana anti-borrado) — refs vivían en este archivo.
+  const { barreAparatos, suprimirPorBorrado } = useViewerDirtySweep();
 
   const onDirtyHandler = useCallback(
     (eng: PlanoEngine) => {
@@ -469,72 +459,22 @@ function PdfViewer_({
         }
       }
       if (loadingPlanRef.current) return;
-      // Ítem 2 (rev 5): un aparato es inviable si su extremo está conectado a la red (T/Y/bajante
-      // no fuente) o si el flujo va en contra de ese extremo (apunta a la conexión, no al
-      // extremo libre). Llega por datos persistidos o por empalmes posteriores al asignar.
-      // Se alerta una vez por ramal; al corregirse el estado, el ramal se rehabilita. Durante
-      // la ventana de supresión post-borrado no se barre (estados transitorios).
-      if (Date.now() >= suprimirAparatoSweepHastaRef.current) {
-        for (const r of eng.ramales) {
-          if (
-            aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r, eng.nivelActual?.label)
-          ) {
-            if (!aparatoFlowAlertedRef.current.has(r.id)) {
-              aparatoFlowAlertedRef.current.add(r.id);
-              eng.triggerAlert(
-                'Aparato no permitido',
-                `El ramal ${r.label || r.id} tiene un aparato en un extremo inválido: está conectado a la red (T/Y/bajante) o el flujo va en su contra. El aparato solo va en el extremo libre hacia el que apunta el flujo. Quita el aparato, invierte la dirección del ramal o muévelo al extremo correcto.`,
-              );
-            }
-          } else {
-            aparatoFlowAlertedRef.current.delete(r.id);
-          }
-        }
-        // Diámetro de bajante/montante por debajo del ramal conectado (orig. usuario): NO
-        // alerta — se SUBE solo al mayor ramal conectado. El cambio manual del montante por
-        // debajo sí bloquea con alerta (pushBajanteDiameterToRamales); esto cura estados
-        // residuales que escaparon por cualquier vía.
-        for (const b of eng.bajantes || []) {
-          if ((b.tipo !== 'bajante' && b.tipo !== 'montante') || b.isFantasma) continue;
-          const bIn = b.dNominal ? diamPulgFromLabel(String(b.dNominal).replace(/-/g, ' ')) : 0;
-          if (!(bIn > 0)) continue;
-          const ids = new Set([...(b.recibeDeIds || []), ...(b.alimentaIds || [])]);
-          let topDiam = 0;
-          let topLabel = '';
-          for (const r of eng.ramales) {
-            if (r.net !== b.net) continue;
-            const rIn = r.diametro ? diamPulgFromLabel(String(r.diametro).replace(/-/g, ' ')) : 0;
-            if (!(rIn > bIn)) continue;
-            const conectado =
-              ids.has(r.id) ||
-              (r.pts != null &&
-                r.pts.length >= 2 &&
-                (Math.hypot(r.pts[0][0] - b.x, r.pts[0][1] - b.y) < 2.0 ||
-                  Math.hypot(r.pts[r.pts.length - 1][0] - b.x, r.pts[r.pts.length - 1][1] - b.y) <
-                    2.0));
-            if (conectado && rIn > topDiam) {
-              topDiam = rIn;
-              topLabel = r.diametro || '';
-            }
-          }
-          if (topLabel) b.dNominal = topLabel;
-        }
-      }
+      // Sweep de aparatos inviables + auto-bump de diámetros (hook pdfViewer/useViewerDirtySweep).
+      barreAparatos(eng);
       try {
         const id = eng._loadedPlanId || currentIdRef.current || 'work';
         if (id) persistTrazosSnapshot(eng, id);
       } catch {}
       syncDrawings();
     },
-    [syncDrawings],
+    [syncDrawings, barreAparatos],
   );
 
   const onDeleteHandler = useCallback(
     (ids: string[]) => {
       // Ventana anti-alerta durante el borrado + limpieza del dedupe (el renumerado
       // reutiliza ids y no debe heredar la supresión del ramal borrado).
-      suprimirAparatoSweepHastaRef.current = Date.now() + 2000;
-      for (const id of ids) aparatoFlowAlertedRef.current.delete(id);
+      suprimirPorBorrado(ids);
       // [] = solo abre la ventana anti-alerta (borrador en vacío): sin fan-out — un clic sin
       // nada borrado no es un cambio (no emite aparatos-clear ni re-sincroniza dibujos).
       if (ids.length === 0) return;
@@ -568,7 +508,7 @@ function PdfViewer_({
       emitAparatosClear({ ids });
       syncDrawings();
     },
-    [syncDrawings],
+    [syncDrawings, suprimirPorBorrado],
   );
 
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
@@ -974,42 +914,8 @@ function PdfViewer_({
   }, [finalVisibleNets, activeNet]);
 
   const prevResetKey = useRef('');
-  // Error de guardado a BD (evento de storageService.saveTrazosToDB): franja en rojo + motivo
-  // en el botón Guardar — el fallo ya no es silencioso (orig. usuario).
-  const [bdError, setBdError] = useState<string | null>(null);
-  useEffect(() => {
-    const onBdError = (e: Event) => {
-      const detail = (e as CustomEvent<{ reason: string; message: string }>).detail;
-      setBdError(
-        detail?.message ? `${detail.reason}: ${detail.message}` : detail?.reason || 'error',
-      );
-      // El texto del botón Guardar usa saveStatus (que doSave pone en 'saved' sin mirar el
-      // resultado del push a BD): sin esto, la franja quedaba roja mientras abajo decía
-      // "✔ Guardado" (orig. usuario).
-      setSaveStatus('error');
-    };
-    window.addEventListener('civilflow_bd_save_error', onBdError);
-    const onBdOk = () => setBdError(null);
-    window.addEventListener('civilflow_bd_save_ok', onBdOk);
-    // Cuota local llena (evento de saveToStorage): misma franja roja — un guardado local
-    // fallido congelaba la caché del piso y el GC borraba sus UDs (orig. usuario piso 2).
-    const onQuota = (e: Event) => {
-      const detail = (e as CustomEvent<{ key: string }>).detail;
-      setBdError(
-        `almacenamiento local lleno (clave ${detail?.key || '?'}): libera espacio del navegador`,
-      );
-      setSaveStatus('error');
-    };
-    window.addEventListener('civilflow_local_quota', onQuota);
-    const onQuotaOk = () => setBdError(null);
-    window.addEventListener('civilflow_local_quota_ok', onQuotaOk);
-    return () => {
-      window.removeEventListener('civilflow_bd_save_error', onBdError);
-      window.removeEventListener('civilflow_bd_save_ok', onBdOk);
-      window.removeEventListener('civilflow_local_quota', onQuota);
-      window.removeEventListener('civilflow_local_quota_ok', onQuotaOk);
-    };
-  }, [setSaveStatus]);
+  // Error de guardado (BD o cuota local): franja roja + motivo — hook pdfViewer/useSaveStatusBanner.
+  const bdError = useSaveStatusBanner({ setSaveStatus });
 
   const resetKey = activeNet + '|' + tipoTramo;
   useEffect(() => {
@@ -1325,158 +1231,47 @@ function PdfViewer_({
           onSelect={onAccesorioSelected}
         />
 
-        {/* Barra lateral derecha */}
-        <div className="visor-sidebar-right" style={dynamicRightStyle}>
-          <h2 style={PdfViewer_SR_ONLY}>Panel de edición</h2>
-          <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-            <div
-              style={{
-                fontFamily: "'Geist',monospace",
-                fontSize: 12,
-                color: '#849495',
-                marginBottom: 6,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Nivel
-            </div>
-            <select
-              aria-label="Seleccionar nivel"
-              value={selectedNivel ?? ''}
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                const idx =
-                  v !== null
-                    ? planos.findIndex((p) => p.nivel === v && p.status === 'confirmed')
-                    : -1;
-                setSelectedNivel(v);
-                if (idx >= 0 && onSelectPlan) onSelectPlan(idx);
-              }}
-              style={PdfViewer_S4}
-            >
-              <option value="">— Seleccionar piso —</option>
-              {pisos
-                .toSorted((a, b) => b.n - a.n)
-                .map((s) => {
-                  const tienePlano = planos.some(
-                    (p) => p.nivel === s.n && p.status === 'confirmed',
-                  );
-                  return (
-                    <option key={s.id} value={s.n}>
-                      {tienePlano ? '🟢 ' : ''}
-                      {pisoLbl(s.n)} ({s.npt} m)
-                    </option>
-                  );
-                })}
-            </select>
-            {planoAsocInfo}
-          </div>
-
-          <CopyFromPlanPanel
-            engineRef={engineRef}
-            currentId={currentId}
-            currentIdRef={currentIdRef}
-            planosCtx={planosCtx}
-            pisos={pisos}
-            visibleNets={finalVisibleNets}
-          />
-
-          {tool !== 'guide' && (
-            <div style={rightSidebarOpacity}>
-              {!esCotaSel && (
-                <TramoEditor
-                  selElement={selElement as PlanoElement | null}
-                  activeNet={activeNet}
-                  rejillasActive={rejillasActive}
-                  engineRef={engineRef}
-                  diamSel={diamSel}
-                  gasMatSel={gasMatSel}
-                  pendSel={pendSel}
-                  pendInput={pendInput}
-                  mats={mats}
-                  matLongName={matLongName}
-                  setDiamSel={setDiamSel}
-                  setGasMatSel={setGasMatSel}
-                  setPendSel={setPendSel}
-                  setPendInput={setPendInput}
-                  setSelElement={setSelElement}
-                  handleUpdateSel={handleUpdateSel}
-                  handleRotateLabel={handleRotateLabel}
-                  plans={planosCtx.plans}
-                  pisos={pisos}
-                  triggerConfirm={(title, message, onConfirm, confirmLabel) => {
-                    setConfirmState({
-                      isOpen: true,
-                      title,
-                      message,
-                      confirmLabel,
-                      onConfirm: () => {
-                        onConfirm();
-                        setConfirmState((prev) => ({ ...prev, isOpen: false }));
-                      },
-                    });
-                  }}
-                />
-              )}
-
-              <BajanteAsociacion
-                selElement={selElement}
-                setSelElement={setSelElement}
-                selectedNivel={selectedNivel}
-                pisoLbl={pisoLbl}
-                lowerFloorsRamales={lowerFloorsRamales}
-                upperFloorGroup={upperFloorGroup}
-                planosCtx={planosCtx}
-                engineRef={engineRef}
-                triggerConfirm={(title, message, onConfirm, confirmLabel) => {
-                  setConfirmState({
-                    isOpen: true,
-                    title,
-                    message,
-                    confirmLabel,
-                    onConfirm: () => {
-                      onConfirm();
-                      setConfirmState((prev) => ({ ...prev, isOpen: false }));
-                    },
-                  });
-                }}
-              />
-
-              {/* MONTANTES SÍ tienen panel de aparatos (orig. usuario): UDs propagadas/asignadas
-                  como bajantes. Solo áreas y guías lo excluyen — EXCEPCIÓN: área de sector del
-                  módulo Rejillas de ventilación (rejillas activa + área gas), que cuenta
-                  gasodomésticos con conteos libres por aparato. */}
-              {!(
-                selElement &&
-                (esCotaSel ||
-                  selElement.id?.startsWith('GL') ||
-                  (selElement.id?.startsWith('AR') && !esAreaRejillas))
-              ) && (
-                <AparatosPanel
-                  activeNet={activeNet}
-                  selElement={selElement}
-                  setSelElement={setSelElement}
-                  planId={currentId}
-                  engineRef={engineRef}
-                  loadingPlanRef={loadingPlanRef}
-                  rejillasArea={esAreaRejillas}
-                />
-              )}
-
-              {!esCotaSel && (
-                <PdfViewerDrawnElements
-                  drawnElements={drawnElements}
-                  activeNet={activeNet}
-                  selElement={selElement}
-                  engineRef={engineRef}
-                />
-              )}
-
-              <div style={{ flex: 1 }} />
-            </div>
-          )}
-        </div>
+        {/* Barra lateral derecha (componente: pdfViewer/PdfViewerRightSidebar) */}
+        <PdfViewerRightSidebar
+          style={dynamicRightStyle}
+          srOnlyStyle={PdfViewer_SR_ONLY}
+          selectStyle={PdfViewer_S4}
+          rightSidebarOpacity={rightSidebarOpacity}
+          tool={tool}
+          selElement={selElement}
+          setSelElement={setSelElement}
+          activeNet={activeNet}
+          rejillasActive={rejillasActive}
+          esCotaSel={esCotaSel}
+          esAreaRejillas={esAreaRejillas}
+          engineRef={engineRef}
+          currentId={currentId}
+          currentIdRef={currentIdRef}
+          planosCtx={planosCtx}
+          pisos={pisos}
+          planos={planos}
+          selectedNivel={selectedNivel}
+          setSelectedNivel={setSelectedNivel}
+          onSelectPlan={onSelectPlan}
+          planoAsocInfo={planoAsocInfo}
+          finalVisibleNets={finalVisibleNets}
+          diamSel={diamSel}
+          setDiamSel={setDiamSel}
+          gasMatSel={gasMatSel}
+          setGasMatSel={setGasMatSel}
+          pendSel={pendSel}
+          setPendSel={setPendSel}
+          pendInput={pendInput}
+          setPendInput={setPendInput}
+          mats={mats}
+          handleUpdateSel={handleUpdateSel}
+          handleRotateLabel={handleRotateLabel}
+          lowerFloorsRamales={lowerFloorsRamales}
+          upperFloorGroup={upperFloorGroup}
+          setConfirmState={setConfirmState}
+          loadingPlanRef={loadingPlanRef}
+          drawnElements={drawnElements}
+        />
 
         <button
           type="button"
