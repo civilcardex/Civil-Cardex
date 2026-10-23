@@ -765,3 +765,31 @@ Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/1
 - **F-3**: contrato de leerDocDePlan documentado (null también ante JSON roto — prefetchTrazos auto-cura cachés corruptas; antes el string roto contaba como presente).
 - **F-4**: instalarDiagnosticoDev() marcado ponytail (side-effect de import intencional, gate DEV, idempotente).
 - Gates: guardias 22/22 · tsc 0 · lint 0 · vitest 683/683 · build + prerender 13/13.
+
+## Session Summary — 2026-10-23 (salto del visor muerto + 75 renombres EN + 4 monolitos partidos + JSDoc priorizada)
+
+### F0 — El salto residual del visor (raíz: 3 fórmulas de encuadre conviviendo)
+- reEncuadrarContenido (loader, bbox CON dims) → fitPage (switch, HOJA pads 20/36) → encuadrarContenido+bboxDelDibujo (post-raster, bbox SIN dims): la cámara se calculaba DISTINTA tres veces y el camino de caché (switch de piso, sin overlay por diseño) lo mostraba entero — el "muy poco pero se ve".
+- FIX: UNA sola fórmula en los 4 sitios (switch de piso, post-raster, pre-paint, botón Ajustar = `eng.reEncuadrarContenido()`); piso sin dibujo cae a la hoja como antes. Lección: el re-fit pre-paint (r54) y el re-encuadre del loader (r58) eran fórmulas hermanas que NO eran la misma — unificar llamadas, no fórmulas.
+
+### F1 — Renombres (ronda final del convenio, 75 archivos + 1 carpeta)
+- `diamPulgFromLabel`→`diamInchesFromLabel` (37 imp) · `exportMemoryFinal`→`exportReportFinal` (16) · `compartido`→`shared` · `prefetchTrazos`→`prefetchStrokes` · `medidaTexto`→`measureText` · `ventCodoTeeFix`→`ventElbowTeeFix` · `diametros`→`diameters` · `persistTrazos`→`persistStrokes` · `cargaDiagnostico`→`loadDiagnostics` · `salidasEspejo`→`mirrorOutputs` · `herenciaCrossFloor`→`crossFloorInheritance` · `SecMontantes`→`montantesSection` · `useInfTables`→`useReportTables` · `useTrazosLoader`→`useStrokesLoader` · `trazosDb`→`strokesDb` · `validaDocTrazos`→`validateDocStrokes` · `diagCamara`→`diagCamera` · `infTab`→`reportTab` · `PresupuestosTab`→`BudgetsTab` · `CuadrillasTab`→`CrewsTab` · `rejillasVentilacion/`→`rejillasVentilation/` · +35 tests + `generarBaselineComplexity`→`generateBaselineComplexity` (package.json). NO tocados: edge functions `crear-checkout`/`verificar-pago` (URL VIVA), `useFocusEnDialog` (solo preposición ES), `ApuSection*Insumos` y `rejillasGasodSync` (vocabulario de dominio).
+- **LECCIÓN (de nuevo)**: la reescritura de imports por SEGMENTO suelto tocó claves de datos (`id: 'otros'` → `'others'` — 9 archivos de datos dañados). Reparado restaurando desde HEAD + re-pase SOLO specifiers (`from '...' | import('...') | import '...'`). El regex de imports debe anclarse a `from`/`import`, nunca al basename pelado.
+- Pines actualizados: architecture.test.ts (8 rutas) · package.json · baselineComplexity.txt regenerado.
+
+### F2 — Desmonotilización (mandato: comportamiento idéntico, código VERBATIM, tsc entre pasos)
+- **ProfilePage 997→577**: `shared/ConfirmModal.tsx` (los 3 modales inline ~250 L — borrar CF/CM + logout compacto) · `pages/auth/workspaceHandoff.ts` (`abrirProyectoCf`, secuencia pause→cargar→reset→hand-off→navigate intacta) · `pages/auth/ProjectsSection.tsx` (acordeón por props).
+- **DownpipesTable 1001→211**: `downpipes/DownpipesHeader.tsx` (thead 3×23 markup puro) · `downpipes/DownpipesRow.tsx` (fila + 4 editores) · `utils/ventDiameterFanout.ts` (`clavesRamalesVentDeBajantes`, parte pura del fan-out del D vent + test dorado). Fuera el `tramoById` muerto (se construía, jamás se leía).
+- **renderRamales 1294→855**: `renderers/ramalLabelText.ts` (`buildRamalLabelParts` pura + test dorado que PINA las rarezas reales: san vacío da `'S P%'` (el guard solo cubre 'S'/'S P% m'), ac/af duplican el prefijo si el dato ya lo trae, pendPart solo san/ll) · `renderers/renderFlowArrows.ts` (flecha del label con recorte contra el trazo + flechas de extremo: desvío/codo reventilado/receptor/vent) · `renderers/renderAparatoSymbols.ts` (cache de imágenes a NIVEL DE MÓDULO — moverla a la función = bucle de re-renders). labelRatchet verde sin edición.
+- **handleDragMove 1027→43** (dispatcher): `drags/dragContext` (índices + sameNetGroup san/vent) · `dragMultiSelect` · `dragRamalBody` (segmento ortogonal + traslación con cascada connRamales y Ldesvio) · `dragBajante` (fantasma + auto-conexión, canal excluido) · `dragAnnotations` (9 ramas) · `dragVertex` (snap + propagación BFS por frontera + linkedPts). Invariantes intactos: reasignación de pts sin copias, gates `labelMoved`, early-returns, orden del dispatcher idéntico.
+- **Gates F2**: los tests existentes de cada archivo quedaron verdes SIN editarlos; 2 tests dorados nuevos (ventDiameterFanout 3, ramalLabelText 4).
+
+### F3 — JSDoc priorizada (~190 comentarios, CERO lógica — verificado por diff)
+- Lógica completa: bajanteAssocShared 13 · crossFloorStorage 14 · planoRowMappers 15 · fixturesStorage 16 · cm calc 10 · channelQueries 7 · guideGeometry 8 · rainwaterRows 7 · fixtureEvents 5 · sanFittingsCatalog 4 · PlanoState callbacks 3.
+- Headers de datos: storage-keys (+26 claves) · regulationsData (+27 datasets) · cm types (+20) · seedData 14 · engineeringDataMaterials 20 · defaults 9 · catalogData 9 · styles ×3 · rciNetworkData.
+- Higiene: 3 JSDoc-obvio borrados · ~9 siglas expandidas (af/ac/UC/UD/XFG/LD_/scaleM/Q) · @param fuera de no-utils (hook foco, guardaConReintento) · bloques largos recortados (validateDocStrokes 14→5, complexity 14→4, _observarResize 9→2) · ejemplo en bumpBajanteToMaxRamal.
+
+### Cierre (guards hicieron su trabajo)
+- G1: bajanteAssocShared (722) entra a CONOCIDOS (las +48 L son JSDoc); techos actualizados: renderRamales 855, DownpipesTable 211.
+- G8 regla D (anti-congelación): renderRamales 11→2 focos (salieron con las flechas) → baseline bajado en el mismo commit: TOTAL_FOCOS_BASE 531→522 (39 archivos). El baseline del guard vive en architecture.test.ts (FOCOS_CONOCIDOS); el .txt es solo el dump del script.
+- Gates finales: tsc 0 · lint 0 · vitest 1445/1445 (238 archivos) · build + prerender 13/13 · graphify ✓. 8 commits (3a03b420..e0969a5f).
