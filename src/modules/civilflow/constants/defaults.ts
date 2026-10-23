@@ -1,16 +1,22 @@
 import { APARATOS_DEF, SAN_UC_IDS } from './engineeringDataFixtures.ts';
 
+/** Valores UD (Unidades de Desagüe, o sea cuánta agua sucia genera) iniciales por aparato sanitario, sembrados del catálogo base. Ej: inodoro -> 4 UD, lavamanos -> 2 UD. */
 export const UD_BASE_INIT = APARATOS_DEF.filter((d) => SAN_UC_IDS.includes(d.id)).map((d) => ({
   id: d.id,
   nombre: d.nombre,
   ud: d.ud,
 }));
 
+/** Velocidad mínima de auto-limpieza en tubería sanitaria: 0.45 m/s (RAS — Reglamento de Agua y Saneamiento, §D.4.3). Más lento y el sedimento se asienta y tapona. */
 export const V_MIN = 0.45;
+/** Velocidad máxima en la red sanitaria: 4.0 m/s (RAS). Más rápido erosiona la tubería y las uniones. */
 export const V_MAX = 4.0;
+/** Tirante máximo y/D (altura de agua como fracción del diámetro) en sanitaria: 0.75 — deja el 25 % superior del tubo libre para picos de caudal. */
 export const Y_D_MAX = 0.75;
+/** Fuerza tractiva mínima del agua sobre el fondo: 0.15 kg/m² (criterio RAS). Es el jalón necesario para que los sólidos no se queden. */
 export const FUERZA_TRACTIVA_MIN = 0.15;
 
+/** Catálogo de aparatos semilla: sigla, nombre, UC (Unidades de Consumo) af/ac, UD, presión mín/máx y caudal de gas. _blkUd: aparato sin UD (no desagua) — su celda viene bloqueada. */
 export const APS_DEFAULT = APARATOS_DEF.map((d) => ({
   id: d.id,
   s: d.sigla,
@@ -26,6 +32,7 @@ export const APS_DEFAULT = APARATOS_DEF.map((d) => ({
   _blkUd: (d.ud || 0) === 0,
 }));
 
+/** Profundidad por defecto de cada red en metros bajo el NPT (nivel de piso terminado; negativo = hacia abajo) con su norma de referencia. Ej: sanitaria -0.7 m bajo losa, af -0.05 a nivel. */
 export const PROFS_DEFAULT = [
   {
     id: 'san',
@@ -77,6 +84,7 @@ export const PROFS_DEFAULT = [
   },
 ];
 
+/** Criterios normativos de chequeo por red (velocidades, presiones mínimas por aparato, coeficientes) con norma y artículo — llenan la tabla de cumplimiento. Ej: P mín inodoro 0.71 mca (NTC 1500:2020, Tabla 3). */
 export const CRIT0 = [
   {
     id: 'a1',
@@ -289,6 +297,7 @@ export const CRIT0 = [
   },
 ];
 
+/** Material y profundidad por defecto de cada red al crear el proyecto. fixed: un solo material (selector bloqueado); rci y gas traen opts con materiales elegibles. */
 export const REDES_MAT = [
   { id: 'san', lbl: 'Sanitaria', mat: 'PVC-S', prof: -0.7, fixed: true },
   { id: 'll', lbl: 'Aguas lluvias', mat: 'PVC-S', prof: -0.5, fixed: true },

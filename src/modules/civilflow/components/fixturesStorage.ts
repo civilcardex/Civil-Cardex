@@ -11,6 +11,8 @@ import {
 
 export const GAS_ID = 'gas';
 
+/** Etiquetas de unidad que ve el usuario según la red: UC (Unidades de Consumo) en presión,
+ *  UD (Unidades de Desague) en sanitarias y m³/h en gas. */
 export const UNIDAD = {
   uc: 'UC',
   ud: 'UD',
@@ -19,29 +21,44 @@ export const UNIDAD = {
 
 const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
 
+/** El libro maestro de aparatos: clave de tramo (`<red>_<id>_<plano>`) → aparato → cantidad.
+ *  Ej: { af_RAF1_7: { lav: 2 } } = 2 lavamanos en el ramal RAF1 del plano 7. */
 export type CountsMap = Record<string, Record<string, number>>;
 // ponytail: misma forma que utils/drawingSyncTypes.HidroDataEntry — una sola definición.
 import type { HidroDataEntry } from '../utils/drawingSyncTypes.ts';
+/** Re-exportado para que los consumidores de este módulo usen la única definición
+ *  (utils/drawingSyncTypes). */
 export type { HidroDataEntry };
+/** Ficha hidráulica por clave de tramo: accesorios contados, Lh (longitud equivalente de los
+ *  accesorios, en m) y nSalidas. */
 export type HidroDataMap = Record<string, HidroDataEntry>;
+/** Accesorios de gas por clave de tramo: accesorio → cantidad (codos, tees…) para las pérdidas
+ *  por accesorios de la red gas. */
 export type GasAccMap = Record<string, Record<string, number>>;
 
+/** Lee el libro maestro de aparatos (APARATOS_BY_TRAMO_KEY) — la fuente que paneles, tablas y
+ *  propagación consultan para saber cuántos aparatos hay en cada tramo. */
 export function loadAll(): CountsMap {
   return loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as CountsMap;
 }
 
+/** Guarda el libro maestro de aparatos completo (reemplazo, no fusión). */
 export function saveAll(map: CountsMap) {
   saveToStorage(APARATOS_BY_TRAMO_KEY, map);
 }
 
+/** Lee las fichas hidráulicas por tramo (accesorios + Lh + nSalidas). */
 export function loadHidroData(): HidroDataMap {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
 }
 
+/** Guarda las fichas hidráulicas por tramo. */
 export function saveHidroData(map: HidroDataMap) {
   saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
 }
 
+/** Lee los accesorios de gas por tramo y PODA las entradas vacías o en ceros — un tramo sin
+ *  accesorios no debe aparecer en la tabla de gas ni sumar pérdidas. */
 export function loadGasAcc(): GasAccMap {
   const raw = loadFromStorage<GasAccMap>(GAS_ACC_KEY, {});
   const next: GasAccMap = { ...raw };
@@ -55,12 +72,17 @@ export function loadGasAcc(): GasAccMap {
   return next;
 }
 
+/** Guarda los accesorios de gas por tramo. */
 export function saveGasAcc(map: GasAccMap) {
   saveToStorage(GAS_ACC_KEY, map);
 }
 
 type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
 
+/** Qué unidad maneja una red: 'qgas' en gas, 'uc_af'/'uc_ac' (UC (Unidades de Consumo) de af
+ *  (Agua Fria)/ac (Agua Caliente)) y 'ud' en sanitarias.
+ *  @param netId - id de la red ('af', 'ac', 'gas', 'san'…).
+ *  @returns la clave de unidad para leer el catálogo, o null si la red no cuenta aparatos. */
 export function unitFor(netId: string): ApUnitKey | null {
   const net = NETS.find((n) => n.id === netId);
   if (!net) return null;
@@ -70,6 +92,10 @@ export function unitFor(netId: string): ApUnitKey | null {
   return null;
 }
 
+/** ¿Este aparato aplica a esta red? En gas solo aparatos del grupo 'g' con caudal; en
+ *  sanitarias solo los que tienen UD; en af/ac solo los del catálogo de UC correspondiente.
+ *  Ej: la estufa (grupo 'g') solo aparece en la red gas.
+ *  @returns true si el panel de esa red debe listar el aparato. */
 export function esAplicable(
   ap: (typeof APARATOS_DEF)[number],
   netId: string,
@@ -82,6 +108,8 @@ export function esAplicable(
   return false;
 }
 
+/** Elemento del dibujo seleccionable en el panel de aparatos (ramal, bajante, montante, caja):
+ *  lo mínimo que el panel necesita para identificarlo y calcular su tolerancia geométrica. */
 export interface SelectableTarget {
   id?: string;
   tipo?: string;
@@ -93,6 +121,9 @@ export interface SelectableTarget {
   _tribReversed?: boolean;
 }
 
+/** ¿Puede este elemento recibir conteo de aparatos? Cubre ramales/bajantes/tributarios (por
+ *  prefijo de id), montantes, cajas san/ll, el LD_ entre pisos (espejo de solo lectura) y
+ *  calentadores. Ej: 'RAF1' o 'MON1_ac' → true; una línea guía → false. */
 export function isCountableTarget(el: SelectableTarget | null): boolean {
   if (!el) return false;
   return (
@@ -168,6 +199,7 @@ export function loadPropioSnap(): PropioSnapMap {
   return loadFromStorage<PropioSnapMap>(APARATOS_PROPIO_KEY, {}) || {};
 }
 
+/** Guarda la foto de lo propio de los espejos entre pisos (la escritura de loadPropioSnap). */
 export function savePropioSnap(map: PropioSnapMap): void {
   saveToStorage(APARATOS_PROPIO_KEY, map);
 }

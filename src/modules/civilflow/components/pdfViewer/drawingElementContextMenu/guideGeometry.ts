@@ -83,6 +83,10 @@ export function findGuideCrossing(
   return best;
 }
 
+/**
+ * Parte la guía en los DOS tramos que quedan a cada lado del cruce con el ramal — el ramal
+ * nuevo hereda el lado correcto (hacia dónde sigue la guía).
+ */
 export function guidePolylineSide(
   guidePts: [number, number][],
   crossPt: [number, number],
@@ -135,11 +139,16 @@ export function guidePolylineSide(
   return { sideA, sideB };
 }
 
+/** Pasos de ángulo que admite la red: 45° en san/ll/vent, 90° en presión (af/ac/gas). */
 export function netAllowedSteps(net: string): (45 | 90)[] {
   if (net === 'san' || net === 'll' || net === 'vent') return [45];
   return [90];
 }
 
+/**
+ * ¿El ángulo RELATIVO del tramo contra el ángulo del padre (host) cumple la norma de la red?
+ * san/ll: ±45° del host; af/ac/gas: 90° exactos; vent: múltiplos de 45°.
+ */
 export function isGuideRelativeAngleValid(
   pStart: [number, number],
   pEnd: [number, number],
@@ -170,6 +179,8 @@ export function isGuideRelativeAngleValid(
   return rem <= ANGLE_EPS || rem >= 45 - ANGLE_EPS;
 }
 
+/** ¿El extremo de la guía toca una tubería (misma red o grupo san/vent) a <0.6? — valida el
+ *  ARRANQUE de la guía antes de crear el ramal. */
 export function guideEndTouchesNetwork(
   eng: PlanoEngine,
   pt: [number, number],
@@ -269,6 +280,7 @@ export function getPadreHostAngles(padre: PlanoRamal, crossPt: [number, number])
   return out;
 }
 
+/** El ángulo del host (el primero) o null si el cruce no toca ningún segmento del padre. */
 export function getPadreHostAngle(padre: PlanoRamal, crossPt: [number, number]): number | null {
   const all = getPadreHostAngles(padre, crossPt);
   return all.length ? all[0] : null;
@@ -283,6 +295,10 @@ export function resolveGuideNet(eng: PlanoEngine, guide: PlanoGuideLine): string
   return eng.activeNet || guide.net;
 }
 
+/**
+ * Ajusta la LLEGADA de la guía (su penúltimo punto) al ángulo válido contra el host: el
+ * usuario dibuja libre y el snap corrige el último tramo — sin mover la punta.
+ */
 export function snapGuideArrivalToHost(
   guidePts: [number, number][],
   hostAngRad: number,
@@ -330,6 +346,7 @@ export function snapGuideArrivalToHost(
   return out;
 }
 
+/** Mensaje de la alerta de ángulo ilegal, en las palabras de la red (45° vs 90°). */
 export function guideAngleAlertMessage(net: string, tipo: string): string {
   void tipo;
   if (net === 'san' || net === 'll')
@@ -340,6 +357,10 @@ export function guideAngleAlertMessage(net: string, tipo: string): string {
   return 'Las redes de presión (AF (Agua Fría), AC (Agua Caliente) y gas) solo permiten ángulos de 90°. Usar línea guía para ajustar ángulo.';
 }
 
+/**
+ * Vértices del ramal que nace de la guía: si la punta de la guía (no la cola) es la que
+ * cruza al host, el ramal se recorta EN el cruce; si la cola tocó el host, igual al revés.
+ */
 export function resolveRamalEndsFromGuide(
   eng: PlanoEngine,
   guide: PlanoGuideLine,

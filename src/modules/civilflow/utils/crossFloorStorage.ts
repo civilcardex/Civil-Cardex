@@ -1,15 +1,7 @@
 /** E/S de trazos entrepisos por piso (XFG (fantasma entrepisos)/LD_ (ramal desvio entrepisos) sin ciclos de import). */
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService.ts';
 import { devError } from '../../../utils/devError.ts';
-import {
-  PLANS_META_KEY,
-  TRAZOS_PREFIX,
-  TRAZOS_PLAN_PREFIX,
-} from '../constants/storage-keys.ts';
+import { PLANS_META_KEY, TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
 import { NETS } from '../lib/PlanoEngine/PlanoState.ts';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes.ts';
 
@@ -67,6 +59,9 @@ export function aFrameDe(
   return { x: pt.x - oF.x_px + oT.x_px, y: pt.y - oF.y_px + oT.y_px };
 }
 
+/** Ramal LD_ (ramal desvio entrepisos) tal como se guarda en el doc del piso: geometría de
+ *  2 puntos, etiqueta visible, diámetro y bandera `bloqueado` (no se arrastra ni renumera como
+ *  una tubería real). Ej: { id:'LD_BAN1', label:'RAF4', bloqueado:true }. */
 export interface LocalLdesvioRamal {
   id: string;
   net: string;
@@ -91,6 +86,9 @@ export interface LocalLdesvioRamal {
 
 // Bajante tal como viaja en el JSON de trazos — solo los campos que este módulo lee/escribe;
 // el resto de propiedades del elemento viajan junto al objeto sin declararse aquí.
+/** Bajante del doc guardado, recortado a lo que este módulo toca: posición, código visible,
+ *  punteros entre pisos (descargaEnId/origenId), anillo de desplazamientos y datos de etiqueta
+ *  del fantasma. Ej: BAN1 con origenId 'BAN2' apuntando al piso de arriba. */
 export interface StoredBajante {
   id: string;
   x?: number;
@@ -104,6 +102,10 @@ export interface StoredBajante {
   ghostData?: Record<string, { direccion?: string; labelX?: number; labelY?: number }>;
 }
 
+/** Doc de dibujo COMPLETO de un piso (la clave `civilflow_trazos_<id>`): timestamp del último
+ *  guardado, layout de asociación, scaleM (escala metros por pixel) y las colecciones —
+ *  fantasmas XFG (fantasma entrepisos), ramales (incluidos los LD_) y bajantes. Se lee y se
+ *  guarda entero. */
 export interface LocalGhostDrawingData {
   ts?: number;
   // Marca de versión del layout de asociación (2 = layout nuevo: fantasma+Ldesvio en el
@@ -203,6 +205,9 @@ export function restaurarAsociacionesDesdeLocal<T extends object>(local: unknown
 
 // Escribe (o reemplaza, si ya existe uno del mismo origen) un fantasma entre pisos en el
 // almacenamiento crudo del piso DESTINO — el piso destino no necesita estar cargado/activo.
+/** Deja el marcador XFG (fantasma entrepisos) del bajante origen en el piso DESTINO, escribiendo
+ *  directo a su storage (ese piso no necesita estar abierto). Reemplaza uno previo del mismo
+ *  origen. Ej: asociar BAN1-P1 → P2 deja en el piso 2 el marcador que muestra 'BAN1 · 4 UC'. */
 export function writeCrossFloorGhost(targetPlanId: string | number, ghost: CrossFloorGhost): void {
   if (!hasCachedPlan(targetPlanId)) {
     devError(
@@ -222,6 +227,8 @@ export function writeCrossFloorGhost(targetPlanId: string | number, ghost: Cross
 // Quita cualquier fantasma que este bajante origen específico haya puesto en `targetPlanId` — se
 // usa al re-asociar a otro piso (o limpiar la asociación) para que un fantasma viejo no se quede
 // en el piso que ya no es el destino.
+/** Quita del piso destino el XFG (fantasma entrepisos) puesto por ese bajante origen — al
+ *  re-asociar o desasociar, el marcador no debe quedarse en un piso que ya no es el destino. */
 export function removeCrossFloorGhost(
   targetPlanId: string | number,
   sourcePlanId: string | number,
@@ -239,6 +246,8 @@ export function removeCrossFloorGhost(
 // Recorre el localStorage de TODOS los pisos y quita cualquier fantasma entre pisos que
 // referencie al bajante origen dado. Se llama cuando se borra un bajante — los fantasmas viejos
 // en otros pisos deben limpiarse.
+/** Barrido por TODOS los pisos guardados que quita los XFG (fantasma entrepisos) de un bajante
+ *  borrado — sin esto, el marcador huérfano quedaba dibujado en cada piso que lo espejaba. */
 export function removeCrossFloorGhostsBySource(
   sourcePlanId: string | number | null,
   sourceBajanteId: string,
@@ -274,6 +283,9 @@ export function removeCrossFloorGhostsBySource(
 // sin tener que buscar/adivinar qué número secuencial de ramal le tocó. Deliberadamente NO tiene
 // la forma `${netPrefix}\d+` (ver la regex de conteo de PlanoPersistence.ts al cargar), así
 // nunca consume un número de ramal real.
+/** Id determinista del conector LD_ (ramal desvio entrepisos) de un bajante origen:
+ *  `LD_<bajanteId>` — siempre el mismo, así se reemplaza o borra directo sin adivinar qué
+ *  número de ramal le tocó. Ej: el LD_ de BAN1 siempre es 'LD_BAN1'. */
 export function ldesvioIdFor(sourceBajanteId: string): string {
   return `LD_${sourceBajanteId}`;
 }
@@ -283,6 +295,8 @@ export function ldesvioIdFor(sourceBajanteId: string): string {
 // escáner de conectividad y pase de renumeración debe excluirlo, o se filtra a las tablas de
 // diseño como un tramo falso (y el pase de renumeración incluso lo renombra a un `RS\d+` con
 // apariencia real).
+/** ¿Es un conector LD_ (ramal desvio entrepisos) y no una tubería real? Tablas, conteo de
+ *  aparatos y renumeración lo excluyen. Ej: 'LD_BAN1' → true, 'RS12' → false. */
 export function isLdesvioRamalId(id: string | null | undefined): boolean {
   return !!id && id.startsWith('LD_');
 }
@@ -296,6 +310,11 @@ export function isLdesvioRamalId(id: string | null | undefined): boolean {
 // IMPORTANTE: se escanean id Y label — el id del LD (`LD_BAN1`) nunca coincide con el patrón,
 // así que mirar solo el id dejaba sus labels fuera del conteo y cada LD nuevo repetía el
 // número (varios LD con "RS1"). Los allocators de ramales reales ya miran ambos.
+/** Siguiente etiqueta libre para un ramal de la red (máximo existente + 1, mirando id Y label)
+ *  — el LD_ (ramal desvio entrepisos) imprime esta etiqueta, no su id interno.
+ *  @param net - id de la red (su definición trae el prefijo: af → 'RAF', san → 'RS'…).
+ *  @param existingRamales - ramales ya existentes en el piso.
+ *  @returns la etiqueta; p. ej. en af existiendo RAF1 y RAF3 → 'RAF4'. */
 export function nextRamalLabel(
   net: string,
   existingRamales: Array<{ id?: string; label?: string }>,
@@ -313,6 +332,9 @@ export function nextRamalLabel(
   return `${prefix}${maxN + 1}`;
 }
 
+/** Construye el objeto del ramal LD_ (ramal desvio entrepisos) listo para guardar: 2 puntos,
+ *  largo real calculado con scaleM (escala metros por pixel), etiqueta perpendicular al tramo y
+ *  pendiente estándar 2%. Puro — no toca storage ni engine; el caller decide dónde guardarlo. */
 export function buildLdesvioRamal(
   id: string,
   label: string,
@@ -367,6 +389,9 @@ export function buildLdesvioRamal(
 // almacenamiento de ese piso — apropiado cuando ese piso NO es el cargado actualmente (el caller
 // debe empujar al engine.ramales vivo en su lugar, cuando lo es, para que el autosave no pise
 // esto).
+/** Crea (o reemplaza) el ramal LD_ (ramal desvio entrepisos) del bajante origen en su propio
+ *  piso: el desvío —a veces diagonal— que la tubería recorre antes de llegar al fantasma del
+ *  otro piso. Ej: BAN1 baja en diagonal hacia el XFG del piso 2 → queda 'LD_BAN1' con su label. */
 export function createCrossFloorLdesvioRamal(
   planId: string | number,
   sourceBajanteId: string,
@@ -408,6 +433,8 @@ export function createCrossFloorLdesvioRamal(
 // Quita el conector Ldesvio determinista del bajante origen dado del almacenamiento propio de
 // `planId` — se usa al limpiar/re-apuntar una asociación para que el ramal de desvío viejo no
 // quede rondando.
+/** Borra el ramal LD_ (ramal desvio entrepisos) de ese bajante origen del piso dado — al limpiar
+ *  o re-apuntar una asociación, el desvío viejo no debe quedar rondando el dibujo. */
 export function removeCrossFloorLdesvioRamal(
   planId: string | number,
   sourceBajanteId: string,
@@ -424,6 +451,9 @@ export function removeCrossFloorLdesvioRamal(
 // coincida con el padre dado y actualiza un solo campo en cada uno. Se llama cuando cambia el
 // diámetro o la dirección del bajante padre — sin esto el fantasma espejo en el piso destino
 // sigue leyendo el valor viejo.
+/** Propaga un cambio del bajante origen (diámetro o dirección) a TODOS los XFG (fantasma
+ *  entrepisos) que lo espejan en otros pisos. Ej: BAN1 pasa a dNominal '4"' → cada marcador
+ *  espejo se actualiza (si no, seguiría mostrando el diámetro viejo en el otro piso). */
 export function updateCrossFloorGhostFieldBySource(
   sourcePlanId: string | number,
   sourceBajanteId: string,
@@ -462,6 +492,9 @@ export function updateCrossFloorGhostFieldBySource(
 // termina de arrastrarse en su propio piso, para que un fantasma que lo espeja en otro piso
 // (creado vía el selector "Destino" o "Origen" — ambos dependen de descargaEnId/sourceBajanteId
 // igual) no se quede pegado en su posición de creación.
+/** Tras arrastrar el bajante origen, mueve sus XFG (fantasma entrepisos) espejos en los demás
+ *  pisos. Los (x, y) llegan en el frame del piso origen y se traducen al de cada destino
+ *  (aFrameDe) — sin traducirlos, el marcador quedaba corrido entre hojas desalineadas. */
 export function updateCrossFloorGhostPositionBySource(
   sourcePlanId: string | number,
   sourceBajanteId: string,

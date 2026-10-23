@@ -1,3 +1,9 @@
+/**
+ * Estilos en línea del panel "Planos" del área de trabajo (carga de planos por
+ * piso, pendientes por cargar y acciones por plano: confirmar, ver, borrar).
+ * Los S1..S14 son bloques anónimos en orden de aparición en el componente; los
+ * de nombre largo (reqBtnBase, pendingLi, verBtn) son bloques semánticos.
+ */
 export const PlanosTab_S1: React.CSSProperties = {
   padding: '4px 12px',
   background: 'var(--bg3)',
@@ -11,6 +17,8 @@ export const PlanosTab_S1: React.CSSProperties = {
   alignItems: 'center',
   gap: 4,
 };
+
+/** Botón verde "✓ CONFIRMAR PLANO" (cierre de la calibración). */
 export const PlanosTab_S2: React.CSSProperties = {
   padding: '4px 14px',
   background: 'rgba(14,204,122,0.12)',
@@ -43,6 +51,7 @@ export const PlanosTab_S4: React.CSSProperties = {
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 };
+/** Overlay punteado que cubre la zona del plano mientras arrastras un PDF encima (feedback de drag & drop). */
 export const PlanosTab_S5: React.CSSProperties = {
   position: 'absolute',
   inset: 0,
@@ -54,6 +63,7 @@ export const PlanosTab_S5: React.CSSProperties = {
   justifyContent: 'center',
   pointerEvents: 'none',
 };
+/** Botón-plano: la gran zona clicable del área vacía que abre el selector de archivo (bajo el aviso "Sube un plano o arrastra un PDF aquí"). */
 export const PlanosTab_S6: React.CSSProperties = {
   flex: 1,
   width: '100%',
@@ -71,6 +81,7 @@ export const PlanosTab_S6: React.CSSProperties = {
   cursor: 'pointer',
   position: 'relative',
 };
+/** Dropzone punteado "importar plano" del panel lateral derecho. */
 export const PlanosTab_S7: React.CSSProperties = {
   width: '100%',
   padding: '10px',
@@ -191,6 +202,7 @@ export const PlanosTab_reqBtnBase: React.CSSProperties = {
   justifyContent: 'center',
   gap: 4,
 };
+/** Tarjeta de un plano pendiente en la lista (título + acciones). */
 export const PlanosTab_pendingLi: React.CSSProperties = {
   padding: '10px',
   borderRadius: 'var(--r)',

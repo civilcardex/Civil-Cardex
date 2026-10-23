@@ -16,16 +16,23 @@ import type { UcMoveModalState } from '../UcMoveModal.tsx';
 // exportados en cada punto de acceso.
 export type ProbedElement = PlanoElement & { tipo?: string; pts?: number[][] };
 
+/** Qué se pinchó con clic derecho: el elemento, dónde abrir el menú y el contexto del golpe
+ *  (fantasma entrepisos, un extremo del ramal o el cuerpo a mitad de segmento). */
 export interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
   element: PlanoElement;
+  /** El clic fue sobre la PROYECCIÓN fantasma de un bajante de otro piso (XFG). */
   isGhostClick?: boolean;
+  /** El clic fue sobre un EXTREMO del ramal (p. ej. para conectar/desconectar). */
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
+  /** El clic fue sobre el CUERPO del ramal (p. ej. accesorio a mitad de tramo). */
   midRamalHit?: { segmentIdx: number; x: number; y: number } | null;
 }
 
+/** Bajantes de un piso vecino (candidatos para la herencia entrepisos): su plano, su npt
+ *  (nivel de piso topografico — decide si hereda hacia abajo o arriba) y si es el piso actual. */
 export interface LowerFloorRamales {
   planId: string | number;
   planName: string;
@@ -34,6 +41,9 @@ export interface LowerFloorRamales {
   isCurrent: boolean;
 }
 
+/** Lo que el menú contextual (y sus submenús) necesitan del raíz del visor: estado del menú,
+ *  pisos/plans/materiales para sus selects, y las acciones que viven portaleadas (modal UC,
+ *  inversión de dirección). */
 export interface DrawingElementContextMenuContextValue {
   contextMenuState: ContextMenuState;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
@@ -68,6 +78,8 @@ const DrawingElementContextMenuCtx = createContext<DrawingElementContextMenuCont
   null,
 );
 
+/** Acceso al contexto del menú contextual — lanza si se usa fuera del provider (error de
+ *  ensamblaje, no silencio). */
 export function useDrawingElementContextMenu(): DrawingElementContextMenuContextValue {
   const ctx = useContext(DrawingElementContextMenuCtx);
   if (!ctx)

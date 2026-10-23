@@ -18,14 +18,8 @@ export function emitErrorGuardado(reason: string, message: string): void {
   }
 }
 
-/** Ejecuta un guardado en la nube reintentando ante fallo y avisa si no se logra.
- *  Sin este reintento, un 5xx puntual en una subida (idempotente) dejaba el plano sin
- *  binario en la nube y el usuario lo descubría en otro dispositivo, sin aviso.
- *  @param etiqueta nombre corto para los logs y el aviso (p. ej. 'pdf-plano').
- *  @param fn operación de guardado a ejecutar.
- *  @param intentos número máximo de intentos (por defecto 3).
- *  @returns el resultado de la operación, o null si falló en todos los intentos.
- */
+/** Ejecuta un guardado en la nube reintentando ante fallo y avisa si no se logra. Sin el
+ *  reintento, un 5xx puntual dejaba el plano sin binario en la nube y sin aviso. */
 export async function guardaConReintento<T>(
   etiqueta: string,
   fn: () => Promise<T>,

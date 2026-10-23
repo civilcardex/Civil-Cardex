@@ -325,12 +325,13 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
   });
 }
 
-/** Renumera los montantes de todas las redes (AF/AC), cada una por separado con su propio
- *  consecutivo, y MUEVE todo lo que cuelga del id: extremos de ramal (ini/fin por código),
- *  punteros entre pisos (origenId/descargaEnId `plan|id`), ramal LDesvio, anillos, fantasmas
- *  XFG (motor + pisos vecinos vía renameBajanteAcrossFloorReferences) y las claves de UDs
- *  del piso cargado. Ej: dos montantes MAC1 y MAC3 pasan a MAC1 y MAC2 sin perder ni una
- *  referencia (antes el renombre dejaba punteros y aparatos huérfanos — orig. usuario). */
+/** Renumera los montantes de todas las redes (af = Agua Fría, ac = Agua Caliente), cada una
+ *  por separado con su propio consecutivo, y MUEVE todo lo que cuelga del id: extremos de
+ *  ramal (ini/fin por código), punteros entre pisos (origenId/descargaEnId `plan|id`), ramal
+ *  LDesvio (LD_, ramal desvio entrepisos), anillos, fantasmas XFG (fantasma entrepisos;
+ *  motor + pisos vecinos vía renameBajanteAcrossFloorReferences) y las claves de UD
+ *  (Unidades de Desague) del piso cargado. Ej: dos montantes MAC1 y MAC3 pasan a MAC1 y
+ *  MAC2 sin perder ni una referencia (antes el renombre dejaba punteros huérfanos). */
 export function _renumberMontantes(engine: IPlanoEngineCore): void {
   const nets = Array.from(
     new Set(engine.bajantes.filter((b) => b.tipo === 'montante').map((b) => b.net || 'af')),

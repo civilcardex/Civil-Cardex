@@ -17,6 +17,9 @@ import {
 } from '../constants/storage-keys.ts';
 import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState.ts';
 import { bajanteEntregaSuCargaAlRamal } from './propagation/counting.ts';
+/** Bajante tal como vive en el doc guardado, recortado a lo que este módulo parchea: el anillo
+ *  de desplazamientos por nivel y la posición/etiqueta del fantasma. Ej: BAN1 con
+ *  desplazamientos['P2'] = {dx:14, dy:-22, Ldesvio:'LD_BAN1'}. */
 export interface StoredBajanteDesp {
   id: string;
   desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
@@ -32,6 +35,9 @@ export interface StoredBajanteDesp {
 // de este bajante — claveada por el id de Ldesvio (único por source) en vez de por una etiqueta
 // de nivel, porque la etiqueta no siempre puede reconstruirse del piso (posiblemente distinto)
 // cargado actualmente del caller.
+/** Escribe (o con disp null, borra) el desplazamiento de un nivel del anillo del bajante DIRECTO
+ *  en el storage de su piso — funciona aunque ese piso no esté cargado. Ej: guardar
+ *  {dx:14, dy:-22} del nivel 'P2' de BAN1 y la dirección 'sube' del fantasma, con el piso 2 cerrado. */
 export function setBajanteDesplazamientoInStorage(
   planId: string,
   bajanteId: string,
@@ -60,6 +66,9 @@ export function setBajanteDesplazamientoInStorage(
 // Un extremo bajante/montante de una asociación entre pisos — suficiente para escribir los
 // punteros de ambas direcciones, el fantasma, y (cuando está desalineado) el ramal de desvío
 // Ldesvio, sin importar cuál de los dos pisos resulte ser el cargado en vivo actualmente.
+/** Un extremo (bajante o montante) de una asociación entre pisos: con estos datos se reconstruye
+ *  el enlace completo (punteros, fantasma XFG (fantasma entrepisos) y desvío LD_ (ramal desvio
+ *  entrepisos)) desde cualquiera de los dos pisos. Ej: BAN1 del piso 1 con nivelN 0 y su npt. */
 export interface AssocEndpoint {
   planId: string;
   id: string;
@@ -102,6 +111,9 @@ export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean
 // fuentes mergesFrom + vecinos geométricos aguas arriba (cadenas extremo-con-extremo), y
 // excluye espejos (alimentaIds + colas geométricas), LDs y otras redes. Sin topes.
 
+/** Ramal tal como entra al cómputo de herencia (del motor vivo o del storage): basta su
+ *  red/geometría y sus aparatos (`fixtures`) para sumar sus UC (Unidades de Consumo) al grupo
+ *  que baja. Ej: RAF1 con fixtures {lav:2} aporta 2 lavamanos al cierre de su bajante. */
 export interface InheritPoolRamal {
   id: string;
   net?: string;
@@ -126,6 +138,9 @@ export function adoptarDiametroDelSuperior(
   return true;
 }
 
+/** Bajante/montante tal como entra al cómputo de herencia (vivo o storage): sus listas de
+ *  ramales, sus punteros entre pisos y su libro `ucAplicado` deciden qué carga hereda el piso
+ *  de abajo. Ej: MAC1 con origenId marcado y ucAplicado con el grupo {tin:2, lvm:2, duc:1}. */
 export interface InheritPoolBajante {
   id: string;
   tipo?: string;
@@ -148,6 +163,9 @@ export interface InheritPoolBajante {
   ucAplicado?: Record<string, Record<string, number>>;
 }
 
+/** Resultado del agregado de herencia de collectSourceAgg: `agg` (aparato → UC del grupo),
+ *  `hydroAgg` (accesorios hidráulicos del grupo, null si no hay) y `ramalIds` (los ramales que
+ *  entraron al cierre — la traza usa para nombrar de dónde salió cada pieza). */
 export interface CollectedAgg {
   agg: Record<string, number>;
   hydroAgg: Record<string, number> | null;
@@ -158,18 +176,33 @@ export interface CollectedAgg {
 // dónde salió CADA pieza del grupo — clave propia, cierre de ramales, ramales servidos y
 // qué libro se mezcló. Con esto un dump nombra la rama exacta sin adivinar.
 let trazaUltimoGrupo: Record<string, unknown> | null = null;
+/** Última foto calculada por collectSourceAgg (la lee __cfDiag → asoc[].grupoDetalle): con ella
+ *  un dump nombra la rama exacta — clave propia, cierre de ramales, servidos y libro mezclado. */
 export function trazaDeUltimoGrupo(): Record<string, unknown> | null {
   return trazaUltimoGrupo;
 }
 
+/** Tolerancia en px de plano para encadenar dos ramales extremo-con-extremo (la cabeza de uno
+ *  cae sobre la cola del otro) al caminar aguas arriba. Ej: cabeza a 0.4 px de la cola → mismo
+ *  flujo; a 5 px → piezas distintas. */
 export const GEO_TOL_UPSTREAM = 0.6;
+/** Tolerancia en px para considerar que un extremo de ramal cae SOBRE el bajante (menos de
+ *  2 px de su centro) — así se detectan entradas y espejos cuando no hay listas que lo digan. */
 export const GEO_TOL_BAJANTE = 2.0;
 
+/** Punto donde ENTRA el flujo al ramal (su arranque): pts[0] normal, pts[último] si
+ *  `_tribReversed` invirtió la geometría.
+ *  @param r - ramal del pool con sus puntos y el flag de inversión.
+ *  @returns [x, y] de la cola, o null si el ramal no tiene al menos 2 puntos. */
 export function flowTailOf(r: InheritPoolRamal): number[] | null {
   if (!r.pts || r.pts.length < 2) return null;
   return r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
 }
 
+/** Punto donde el ramal DESCARGA (su punta): la que, apoyada sobre un bajante, lo vuelve
+ *  receptor. Último punto normal, primero si `_tribReversed`.
+ *  @param r - ramal del pool con sus puntos y el flag de inversión.
+ *  @returns [x, y] de la cabeza, o null si el ramal no tiene al menos 2 puntos. */
 export function flowHeadOf(r: InheritPoolRamal): number[] | null {
   if (!r.pts || r.pts.length < 2) return null;
   return r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
@@ -208,10 +241,10 @@ export function registrarLdesvioComoAsociado(args: {
   });
 }
 
-/** Quita el desvío en L (LD) de la asociación del bajante (muere con el enlace): lo saca de
- *  `recibeDeIds` + `asocManual`. Sin esto, el LD muerto quedaba en la lista y los espejos le
- *  escribían la carga del bajante (una clave fantasma que el usuario veía como UDs
- *  residuales, orig. usuario). */
+/** Quita el desvío en L (LD_, ramal desvio entrepisos) de la asociación del bajante (muere
+ *  con el enlace): lo saca de `recibeDeIds` + `asocManual`. Sin esto, el LD muerto quedaba en
+ *  la lista y los espejos le escribían la carga del bajante (clave fantasma de UD (Unidades
+ *  de Desague) residuales, orig. usuario). */
 export function desasociarLdesvioDeBajante(args: {
   planId: string | number;
   bajanteId: string;
@@ -599,6 +632,10 @@ export function readBajanteLink(
   return { descargaEnId: b?.descargaEnId ?? null, origenId: b?.origenId ?? null };
 }
 
+/** NPT (nivel de piso topografico) del piso buscado dentro de la lista de pisos del proyecto —
+ *  con él se sabe qué extremo del enlace queda arriba. Ej: plans con 'Piso 2' de npt 3.0 → 3.
+ *  @param plans - pisos del proyecto (plans_meta).
+ *  @returns el npt en metros, o null si el piso no existe o no trae npt numérico. */
 export function nptOfPlan(planId: string, plans: SyncPlanInput[]): number | null {
   const p = plans.find((x) => String(x.id) === String(planId));
   return typeof p?.npt === 'number' ? p.npt : null;
@@ -608,6 +645,9 @@ export function nptOfPlan(planId: string, plans: SyncPlanInput[]): number | null
 // no por los roles UI source/target): el ghost XFG_<lowerId>_<lowerPlan> hospedado en el piso
 // superior dice la verdad; sin ghost, se deriva por npt (empate → upper = target, igual que
 // el apply); sin npts, null (barrido amplio legacy como último recurso).
+/** Roles físicos (piso de ARRIBA / piso de ABAJO) de un enlace entre pisos: primero pregunta al
+ *  fantasma guardado (dice la verdad aunque falten NPT (nivel de piso topografico)) y sin él
+ *  deriva por npt. Ej: BAN1-P1 ↔ BAN2-P2 → upper = BAN2 del piso 2. */
 export function resolveLinkRoles(
   sourcePlanId: string,
   sourceBajanteId: string,

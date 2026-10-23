@@ -1,18 +1,9 @@
 import ts from 'typescript';
 
 /**
- * Detector de focos de complejidad (guard G8).
- *
- * Un "foco" es una búsqueda lineal (`.find`, `.findIndex`, `.some`, `.filter`, `.indexOf`,
- * `.includes`) hecha DENTRO de un bucle: el caso clásico de O(n²) — por cada pieza del plano
- * se recorre otra vez la lista de piezas.
- *
- * Se parsea con el AST de TypeScript (no con regex): así el detector sabe qué es de verdad
- * un bucle y qué es una llamada suelta, y no cuenta falsos positivos.
- *
- * El detector NO decide si el foco duele: eso lo sabe el que escribe el código. Aquí solo se
- * cuenta, para que el guard pueda decir "esto no puede crecer" y para que cada arreglo hecho
- * baje el número de forma visible.
+ * Detector de focos de complejidad (guard G8): búsquedas lineales (.find/.some/…) DENTRO de
+ * bucles — el O(n²) clásico por pieza del plano. AST de TypeScript, no regex (sin falsos
+ * positivos). Aquí solo se cuenta; el guard decide si puede crecer.
  */
 
 /** Una búsqueda lineal detectada dentro de un bucle. */

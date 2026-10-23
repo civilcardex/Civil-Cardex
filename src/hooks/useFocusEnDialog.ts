@@ -1,15 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-/**
- * Mantiene el foco dentro de un diálogo abierto y cierra con Escape (WCAG 2.4.3).
- *
- * Por qué: varios diálogos declaran `aria-modal="true"`, que promete fondo inerte y foco
- * contenido; sin trampa, Tab se sale del diálogo a la página de fondo. Además, el
- * backdrop con onClick cerraba solo con el ratón.
- *
- * @param activo true mientras el diálogo está abierto.
- * @returns ref para attaching al contenedor del diálogo.
- */
+/** Mantiene el foco dentro de un diálogo abierto y cierra con Escape (WCAG 2.4.3): sin la
+ *  trampa, Tab se sale a la página de fondo (los diálogos prometen `aria-modal="true"`). */
 export function useFocoEnDialogo<T extends HTMLElement>(activo: boolean) {
   const ref = useRef<T | null>(null);
 

@@ -1,3 +1,8 @@
+/**
+ * Estilos de las secciones del panel de conexión/acometida (Acometida,
+ * FlowSection, ParametersSection, VerificationSection): tarjetas con cabecera,
+ * mini-tablas de parámetros (valor | unidad) y selects embebidos compactos.
+ */
 import React from 'react';
 
 /** Ped. usuario: sin EDITAR la celda es texto plano (sin borde ni fondo). */
@@ -7,6 +12,7 @@ export const estiloPlano: React.CSSProperties = {
   fontWeight: 600,
 };
 
+/** Fila resultado compacta en monospace 9 px (rótulo a la izquierda, caudal/valor a la derecha). */
 export const SupplyConnection_S1: React.CSSProperties = {
   fontFamily: 'monospace',
   fontSize: 9,
@@ -21,6 +27,7 @@ export const SupplyConnection_S1: React.CSSProperties = {
   alignItems: 'center',
 };
 
+/** Select oscuro centrado embebido en las mini-tablas de parámetros (textAlignLast centra la opción). */
 export const SupplyConnection_S2: React.CSSProperties = {
   width: '100%',
   padding: '3px 4px',
@@ -35,6 +42,7 @@ export const SupplyConnection_S2: React.CSSProperties = {
   textAlignLast: 'center',
 };
 
+/** Columna-tarjeta de una sección (borde, fondo, esquinas recortadas por overflow). */
 export const SECTION_COL: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -80,6 +88,7 @@ export const TD_PARAM_UNIT: React.CSSProperties = {
   padding: '1px 2px',
 };
 
+/** Envoltorio flexible (wrap, gap 16 px) del área con scroll donde se acomodan las tarjetas de sección. */
 export const SCROLL_INNER: React.CSSProperties = {
   display: 'flex',
   flexWrap: 'wrap',

@@ -30,6 +30,7 @@ interface CtxMin {
 
 export const ASSOC_LABEL_STYLE = MENU_SECTION_LABEL_ROW_STYLE;
 
+/** Fila de asociación (checkbox + nombre) con fondo — legible sobre el menú. */
 export const ASSOC_ROW_STYLE: React.CSSProperties = {
   ...MENU_CHECK_ROW_STYLE,
   padding: '4px 6px',
@@ -38,6 +39,7 @@ export const ASSOC_ROW_STYLE: React.CSSProperties = {
   borderRadius: 3,
 };
 
+/** Bloque de una sección del menú (etiqueta + filas) separado por línea superior. */
 export const ASSOC_SECTION_STYLE: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -51,6 +53,7 @@ export const ASSOC_GRID_STYLE = MENU_GRID_2COL_STYLE;
 
 export const ASSOC_CELL_STYLE = MENU_CHECK_LABEL_STYLE;
 
+/** Mensaje "sin canales asociados" a lo ancho de las 2 columnas de la grilla. */
 export const ASSOC_EMPTY_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#6b8cae',
@@ -58,6 +61,7 @@ export const ASSOC_EMPTY_STYLE: React.CSSProperties = {
   gridColumn: 'span 2',
 };
 
+/** Checkbox de asociación en ámbar (el color de "asociado" en todo el visor). */
 export const ASSOC_CHECKBOX_STYLE: React.CSSProperties = {
   accentColor: '#F5A623',
   margin: 0,

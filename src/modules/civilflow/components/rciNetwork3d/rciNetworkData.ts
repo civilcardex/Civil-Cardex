@@ -1,4 +1,13 @@
 // ── DATOS RED CONTRA INCENDIO (port verbatim del HTML Isometrico_RCI_Open_Code_v19) ──
+
+/**
+ * Datos del visor 3D de la rci (Red Contra Incendio): componentes del sistema, posiciones/
+ * escalas de los modelos GLB, etiquetas 3D de cada red y la cámara isométrica por defecto.
+ * Es un PORT de datos — no contiene cálculo; los valores se ajustaron a mano en el HTML
+ * original y se respetan tal cual.
+ */
+
+/** Etiqueta 3D de una red: posición, escala, ángulos de orientación y las 2 líneas de texto. */
 export interface RciRedLabel {
   pos: [number, number, number];
   scale: number;
@@ -10,6 +19,7 @@ export interface RciRedLabel {
   ref?: number;
 }
 
+/** Piezas del sistema RCI que se montan en la escena (gabinete, rociadores, bomba…). */
 export const COMPONENTS = [
   { id: 1, name: 'Tubería de acero negro', color: '#f85149', detail: null },
   { id: 2, name: 'Rociador automático', color: '#e3b341', detail: 'rociador' },
@@ -27,6 +37,7 @@ export const COMPONENTS = [
   { id: 14, name: 'Soporte sísmico 4 vías', color: '#a5a5a5', detail: 'soporte_4vias' },
 ];
 
+/** Descripción + norma de referencia de cada componente (al seleccionarlo en 3D). */
 export const COMP_DESC: Record<number, { body: string; norm: string }> = {
   1: {
     body: 'Conduce el agua desde la fuente hasta rociadores y gabinetes: riser, matrices y ramales. Su diámetro sale del cálculo hidráulico.',
@@ -86,6 +97,7 @@ export const COMP_DESC: Record<number, { body: string; norm: string }> = {
   },
 };
 
+/** Posición [x,y,z] de cada modelo GLB en la escena (ajustada a mano en el HTML origen). */
 export const GLB_POSITIONS: Record<string, [number, number, number]> = {
   mamposteria: [-0.017, -1.1, 0.758],
   piso1_bombas: [0.01, -1.1, 0.755],
@@ -94,6 +106,7 @@ export const GLB_POSITIONS: Record<string, [number, number, number]> = {
   cubierta: [0.003, 9.48, 0.758],
 };
 
+/** Escala inicial de cada modelo GLB (los portados nacen en tamaños dispares). */
 export const INITIAL_SCALES: Record<string, [number, number, number]> = {
   mamposteria: [3.744, 3.89, 4.563],
   piso1_bombas: [1.0, 1.0, 1.086],
@@ -102,6 +115,7 @@ export const INITIAL_SCALES: Record<string, [number, number, number]> = {
   cubierta: [0.999, 1.0, 1.085],
 };
 
+/** Componentes construidos por PARTES (sub-meshes separadas con sus propias posiciones). */
 export const SPLIT_BUILDS: Record<
   string,
   {
@@ -237,6 +251,7 @@ export const SPLIT_BUILDS: Record<
   },
 };
 
+/** Etiqueta 3D por red (RCI1, RCI2…): dónde flota y hacia dónde mira. */
 export const LABEL_POSITIONS: Record<string, RciRedLabel> = {
   1: { pos: [14.82, 6.89, -7.048], scale: 0.75, dir: 1, vdir: 0, ang: 35, L1: 25, L2: 60, ref: 1 }, // Tubería acero negro
   '1b': {
@@ -331,4 +346,5 @@ export const LABEL_POSITIONS: Record<string, RciRedLabel> = {
 };
 
 // Pose ISO calibrada del visor principal.
+/** Cámara isométrica de entrada: posición y target. */
 export const ISO_DEFAULT = { pos: [23.967, 4.763, 9.433], tgt: [9.809, 3.883, -5.382] } as const;

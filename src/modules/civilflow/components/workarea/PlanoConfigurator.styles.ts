@@ -1,10 +1,18 @@
+/**
+ * Estilos en línea del configurador de plano (modal de calibración: marcar el
+ * origen físico y medir la escala). Toast superior, barra de herramientas,
+ * banners de estado y botones de cada paso del panel de calibración. Los S1..S11
+ * van en orden de aparición; los de nombre largo son bloques semánticos.
+ */
 import type { CSSProperties } from 'react';
 
+/** Fondo del toast por severidad: err rojo, warn ámbar, ok verde. */
 export const TOAST_BG: Record<string, string> = {
   err: 'rgba(211,47,47,0.9)',
   warn: 'rgba(245,158,11,0.9)',
   ok: 'rgba(14,204,122,0.9)',
 };
+/** Toast fijo en la parte alta del modal (verde ok por defecto) con el resultado de la última acción. */
 export const PlanoConfigurator_S1: CSSProperties = {
   position: 'absolute',
   top: 0,
@@ -121,6 +129,7 @@ export const PlanoConfigurator_S11: CSSProperties = {
   fontSize: 12,
   lineHeight: 1,
 };
+/** Base de los banners de estado del flujo (pendiente/calibrado); el color lo agrega el consumidor. */
 export const PlanoConfigurator_bannerBase: CSSProperties = {
   margin: '8px 10px',
   padding: '6px 8px',
@@ -142,6 +151,7 @@ export const PlanoConfigurator_stepHeader: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
 };
+/** Botón del paso "marcar origen" (el punto físico de referencia del piso). */
 export const PlanoConfigurator_origenBtn: CSSProperties = {
   width: '100%',
   padding: '6px 8px',
@@ -155,6 +165,7 @@ export const PlanoConfigurator_origenBtn: CSSProperties = {
   gap: 4,
   transition: 'all .15s',
 };
+/** Botón compacto del paso de trazo (dibujar una longitud conocida para medir la escala). */
 export const PlanoConfigurator_trazarBtn: CSSProperties = {
   padding: '5px 4px',
   fontSize: 10.5,

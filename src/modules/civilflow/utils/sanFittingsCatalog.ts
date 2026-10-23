@@ -1,15 +1,16 @@
 ﻿import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { distToSegment } from '../lib/shared/geometry';
 
+/** Entrada de datos hidráulicos por clave de tramo: qué accesorios (por id de catálogo)
+ *  arrastra el cálculo — p. ej. { accesorios: { codo90rm: 3 } }. */
 export interface HidroEntry {
   accesorios?: Record<string, number>;
 }
 
-// Marcadores de tee escritos en los vértices del cuerpo de un ramal (accMed) o en sus extremos
-// (accesorioInicio/Fin) — cada uno tiene entrada de catálogo (ACCESORIOS_HIDRO / GAS_ACCESORIOS);
-// el auto-tee del montante y el selector de accesorios de mitad de cuerpo persisten tees SOLO
-// aquí (nunca en hidroData como fuente primaria de conteo), así que el resumen debe contarlas del
-// dibujo, no de los tramos.
+/** Marcadores de tee escritos en los vértices del cuerpo de un ramal (accMed) o en sus extremos
+ *  (accesorioInicio/Fin) — cada uno tiene entrada de catálogo; el auto-tee del montante y el
+ *  selector de mitad de cuerpo persisten tees SOLO aquí (nunca en hidroData como fuente primaria),
+ *  así que el resumen las cuenta del dibujo, no de los tramos. */
 export const TEES_ACC_MED = new Set([
   'teeDirecto',
   'teeReduccion',
@@ -53,6 +54,7 @@ export const ACC_MED_CODOS = new Set([
 // ponytail: alias — una sola fuente.
 export const CODO_90_IDS = ACC_MED_CODOS;
 
+/** Fila de resumen que agrupa todos los codos de 90° de af/ac/ll en UNA columna. */
 export const CODO_MEDIO_90 = {
   id: 'codoMedio90',
   emoji: '🔩',
@@ -79,6 +81,10 @@ export function compactYeeDiam(parts: string[]): string {
 // ¿El ramal ya trae un codo manual (90° o 45°) en el extremo que toca al bajante? Si sí, ese
 // cubre la pieza y el bloque bajante no debe auto-agregar otro codo 90° (evita duplicar).
 const MANUAL_CODO_AT_BAJANTE = new Set([...CODO_90_IDS, 'codo45rc']);
+/**
+ * ¿El ramal ya trae un codo manual (90° o 45°) en el extremo que toca al bajante? Si sí, ese
+ * cubre la pieza y el bloque bajante no auto-agrega otro codo 90° (evita duplicar).
+ */
 export function ramalHasManualCodoAt(
   r: { pts?: number[][]; accIni?: string; accFin?: string },
   bx?: number,

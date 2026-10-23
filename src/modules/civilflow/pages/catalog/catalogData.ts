@@ -1,3 +1,11 @@
+/**
+ * Catálogos dimensionales por red y material: etiqueta de diámetro -> diámetro
+ * interno real en mm (sanitaria, ventilación, RCI, agua fría/caliente), caudal
+ * de referencia de contadores y coeficientes de fricción. La búsqueda de
+ * diámetro del motor se apoya en estas tablas.
+ */
+
+/** Diámetros internos del PVC-S sanitario: 2" = 54.48 mm ... 6" = 160.04 mm (arranca en 2": el 1-1/2" fue retirado por pedido del usuario). */
 export const SANITARIAS = [
   {
     mat: 'PVC-S',
@@ -11,6 +19,7 @@ export const SANITARIAS = [
   },
 ];
 
+/** Diámetros internos del PVC-V de ventilación sanitaria: 2"-4". La ventilación (método Wyly-Eaton) usa el diámetro interno real. */
 export const VENTILACION = [
   {
     mat: 'PVC-V',
@@ -23,6 +32,7 @@ export const VENTILACION = [
   },
 ];
 
+/** Diámetros por material de la RCI (Red Contra Incendio): acero SCH 10/40, PVC C900 RDE 14/18 y acero galvanizado, de ½" a 10". */
 export const RCI = [
   {
     mat: 'Acero al carbono SCH 10',
@@ -96,6 +106,7 @@ export const RCI = [
   },
 ];
 
+/** Diámetros internos del PVC-PR por serie RDE (Relación Dimensión-Espesor): ½ (RDE 9) = 16.6 mm ... 6 (RDE 21) = 152.22 mm. */
 export const AGUA_FRIA = [
   {
     mat: 'PVC-Pr',
@@ -117,6 +128,7 @@ export const AGUA_FRIA = [
   },
 ];
 
+/** Diámetros internos del CPVC: RDE 11 de ½" a 3" más las series gruesas SCH 80 de 2" a 3". */
 export const AGUA_CALIENTE = [
   {
     mat: 'CPVC',
@@ -134,6 +146,7 @@ export const AGUA_CALIENTE = [
   },
 ];
 
+/** Diámetro y caudal de referencia (l/s) de contadores; la pérdida se calcula como (Q/q)². Ej: 3/4" -> q = 1.4 l/s. */
 export const CONTADORES = [
   { dn: '1/2', q: 0.84 },
   { dn: '3/4', q: 1.4 },
@@ -142,6 +155,7 @@ export const CONTADORES = [
   { dn: '2', q: 8.4 },
 ];
 
+/** Materiales de cada red: mat único (sanitaria PVC-S...) o mats[] cuando la red ofrece varios (gas, RCI). */
 export const MATERIALES_POR_RED = [
   { red: 'Sanitaria', mat: 'PVC-S' },
   { red: 'Aguas lluvias', mat: 'PVC-S' },
@@ -176,12 +190,14 @@ const RED_LABEL_TO_NET: Record<string, string> = {
   Gas: 'gas',
   'Contra incendio': 'rci',
 };
+/** Ids de red con más de un material en el catálogo canónico -> el campo material del ramal muestra selector en vez de texto fijo. */
 export const NETS_WITH_MULTIPLE_MATERIALS = new Set(
   MATERIALES_POR_RED.filter((r) => (r.mats?.length ?? 0) > 1)
     .map((r) => RED_LABEL_TO_NET[r.red])
     .filter((id): id is string => !!id),
 );
 
+/** Coeficientes de fricción por material y sistema: n (Manning), c/cu (Hazen-Williams nuevo/usado), e (rugosidad absoluta, mm) y pn (nota de presión nominal). */
 export const COEF_FRICCION = [
   {
     tipo: 'PVC-S',

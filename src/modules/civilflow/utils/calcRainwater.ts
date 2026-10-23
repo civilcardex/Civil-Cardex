@@ -96,7 +96,7 @@ export interface ChequeoCanalResult {
   Qmax: number;
   /** Tirante normal (m): altura del agua dentro del canal, por iteración (5 pasadas, como el Excel AJ:AP). */
   yn: number;
-  /** Velocidad del flujo dentro del canal (m/s) = Q/(b·yn). */
+  /** Velocidad del flujo dentro del canal (m/s) = Q/(b·yn), con Q (Caudal) en L/s y b el ancho. */
   velocidad: number;
   chequeo: string;
   /** Texto "b × (h+borde)" de la sección total. */

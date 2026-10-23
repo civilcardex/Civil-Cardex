@@ -10,6 +10,8 @@ import type {
   PlanoGuideLine,
 } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes.ts';
+/** Una fila cruda de Supabase (columnas snake_case tal como llegan del RPC). Los mappers leen
+ *  con fallback (`g`) para tolerar filas viejas que aún no traen una columna nueva. */
 export type SupabaseRow = Record<string, unknown>;
 const g = <T>(row: SupabaseRow, key: string, fb: T): T => (row[key] as T) ?? fb;
 
@@ -17,6 +19,9 @@ const g = <T>(row: SupabaseRow, key: string, fb: T): T => (row[key] as T) ?? fb;
 function baseRow(planoId: number, userId: string, clientId: string) {
   return { plano_id: planoId, user_id: userId, client_id: clientId };
 }
+/** Ramal del motor (camelCase) → fila de `planos_ramales` (snake_case) para el guardado por RPC.
+ *  Aplica vacíos seguros: bloqueado false, banderas de vista true y accesorios `{}` (columna
+ *  NOT NULL — un undefined tumbaría el INSERT completo del reemplazo de colección). */
 export function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
   return {
     ...baseRow(planoId, userId, r.id),
@@ -76,6 +81,8 @@ export function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
   };
 }
 
+/** Fila de `planos_ramales` → ramal del motor (la inversa exacta de ramalToRow): cada columna
+ *  snake_case vuelve a su propiedad camelCase con el mismo fallback. */
 export function rowToRamal(row: SupabaseRow): PlanoRamal {
   return {
     id: g(row, 'client_id', ''),
@@ -128,6 +135,10 @@ export function rowToRamal(row: SupabaseRow): PlanoRamal {
   };
 }
 
+/** Bajante/montante del motor → fila de `planos_bajantes`. Además de las columnas directas
+ *  lleva `asoc_links` (los ids de RAMAL de recibe/alimenta/manual — el RPC solo resuelve enlaces
+ *  bajante→bajante) y `uc_aplicado` (el libro de herencia entre pisos): sin ellas, al recargar
+ *  el bajante volvía sin ramales asociados y sin la carga heredada. */
 export function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
   return {
     ...baseRow(planoId, userId, b.id),
@@ -200,6 +211,8 @@ export function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
   };
 }
 
+/** Fila de `planos_bajantes` → bajante del motor: restaura los enlaces de `asoc_links`
+ *  (recibe/alimenta/manual) que viajan aparte de las columnas bajante→bajante del RPC. */
 export function rowToBajante(row: SupabaseRow): PlanoBajante {
   // Enlaces guardados en BD (asoc_links): los ids de ramal que el RPC no puede guardar.
   const links = (row.asoc_links ?? {}) as {
@@ -269,6 +282,7 @@ export function rowToBajante(row: SupabaseRow): PlanoBajante {
   };
 }
 
+/** Área dibujada del plano (polígono con etiqueta, color y m²) → fila de `planos_areas`. */
 export function areaToRow(planoId: number, userId: string, a: PlanoArea) {
   return {
     ...baseRow(planoId, userId, a.id),
@@ -285,6 +299,7 @@ export function areaToRow(planoId: number, userId: string, a: PlanoArea) {
   };
 }
 
+/** Fila de `planos_areas` → área del motor (inversa de areaToRow). */
 export function rowToArea(row: SupabaseRow): PlanoArea {
   return {
     id: g(row, 'client_id', ''),
@@ -301,6 +316,8 @@ export function rowToArea(row: SupabaseRow): PlanoArea {
   };
 }
 
+/** Cota (medida entre dos puntos del plano, con su etiqueta movible) → fila de
+ *  `planos_dimensiones`. */
 export function dimToRow(planoId: number, userId: string, d: PlanoDimension) {
   return {
     ...baseRow(planoId, userId, d.id),
@@ -314,6 +331,7 @@ export function dimToRow(planoId: number, userId: string, d: PlanoDimension) {
   };
 }
 
+/** Fila de `planos_dimensiones` → cota del motor (inversa de dimToRow). */
 export function rowToDim(row: SupabaseRow): PlanoDimension {
   return {
     id: g(row, 'client_id', ''),
@@ -327,6 +345,8 @@ export function rowToDim(row: SupabaseRow): PlanoDimension {
   };
 }
 
+/** Nota de texto del plano (posición, tamaño de fuente en mm, caja y ángulo) → fila de
+ *  `planos_anotaciones_texto`. */
 export function textAnnotToRow(planoId: number, userId: string, t: PlanoTextAnnotation) {
   return {
     ...baseRow(planoId, userId, t.id),
@@ -341,6 +361,7 @@ export function textAnnotToRow(planoId: number, userId: string, t: PlanoTextAnno
   };
 }
 
+/** Fila de `planos_anotaciones_texto` → nota de texto del motor (inversa de textAnnotToRow). */
 export function rowToTextAnnot(row: SupabaseRow): PlanoTextAnnotation {
   return {
     id: g(row, 'client_id', ''),
@@ -355,6 +376,8 @@ export function rowToTextAnnot(row: SupabaseRow): PlanoTextAnnotation {
   };
 }
 
+/** Línea guía (ayuda de dibujo asociada a una red, solo puntos) → fila de
+ *  `planos_lineas_guia`. */
 export function guideLineToRow(planoId: number, userId: string, g: PlanoGuideLine) {
   return {
     ...baseRow(planoId, userId, g.id),
@@ -363,6 +386,7 @@ export function guideLineToRow(planoId: number, userId: string, g: PlanoGuideLin
   };
 }
 
+/** Fila de `planos_lineas_guia` → línea guía del motor (inversa de guideLineToRow). */
 export function rowToGuideLine(row: SupabaseRow): PlanoGuideLine {
   return {
     id: g(row, 'client_id', ''),
@@ -371,6 +395,9 @@ export function rowToGuideLine(row: SupabaseRow): PlanoGuideLine {
   };
 }
 
+/** Marcador XFG (fantasma entrepisos) → fila de `planos_cross_floor_ghosts`: quién es el bajante
+ *  origen (plano_origen_id + bajante_origen_id), a quién apunta y el `layout` (2 = marcador en
+ *  el piso superior) — sin esa columna la migración re-procesaba el fantasma y lo borraba. */
 export function ghostToRow(planoId: number, userId: string, g: CrossFloorGhost) {
   return {
     plano_id: planoId,
@@ -394,6 +421,8 @@ export function ghostToRow(planoId: number, userId: string, g: CrossFloorGhost) 
   };
 }
 
+/** Fila de `planos_cross_floor_ghosts` → XFG (fantasma entrepisos) del motor (inversa de
+ *  ghostToRow; los ids de origen vuelven como string). */
 export function rowToGhost(row: SupabaseRow): CrossFloorGhost {
   return {
     id: g(row, 'id_cliente', ''),

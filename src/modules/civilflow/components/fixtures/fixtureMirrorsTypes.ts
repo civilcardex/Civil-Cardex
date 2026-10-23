@@ -9,7 +9,7 @@ export interface EspejosArgs {
   netId: string;
   planId?: string | number;
   /** Planos del proyecto: el `nivel` de cada uno es el npt (nivel de piso topografico)
-   *  que dice si la herencia de UDs baja o sube de piso. */
+   *  que dice si la herencia de UD (Unidades de Desague) baja o sube de piso. */
   plans: Array<{ id: string | number; nivel?: number | null; status?: string }>;
   planLoadedTick: number;
   targetId: string | null;

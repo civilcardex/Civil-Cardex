@@ -31,6 +31,7 @@ export function parseNum(v: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
+/** Formatea un número con separador de miles y d decimales (0-4) estilo en-US; NaN cae en 0 para no pintar "NaN" en la tabla. Ej: fmt(1234.5) -> "1,234.50". */
 export function fmt(v: number, d = 2): string {
   const n = Number(v);
   return isNaN(n)
@@ -54,14 +55,17 @@ export function fmtMoneda(v: number, d = 2): string {
   return simboloMoneda + fmt(v, d);
 }
 
+/** Suma los FP (Factores Prestacionales: % del salario que costea el empleador además del básico). Ej: prestaciones 37.06 % + seguridad social 27.46 % -> 64.52 %. */
 export function sumFactorPrestacional(factores: FactorPrestacional[]): number {
   return r2(factores.reduce((s, f) => s + parseNum(f.factor), 0));
 }
 
+/** ¿El país cotiza la mano de obra por HORA (ej: US) y no por mes (Colombia)? Decide si el jornal de los APU (Análisis de Precios Unitarios) sale de costo_*_hora o de costo_*_dia. */
 export function esHoraPais(pais: string, perfilesPais: ConfigListas['perfiles_pais']): boolean {
   return getPaisData(pais, perfilesPais).unidad === 'hora';
 }
 
+/** Deriva de cada cargo su costo básico y total por día y hora, desde el salario base y el FP (Factor Prestacional) total. Ej: 2 sb × $1.400.000 con FP 60 % -> básico $2.800.000/mes, total $4.480.000/mes, $149.333/día (30 días). País por hora: no divide (los valores ya son por hora). */
 export function calcCargos(
   cargos: Cargo[],
   config: CivilManagerConfig,
@@ -92,6 +96,7 @@ export function calcCargos(
   });
 }
 
+/** Jornal con el que un cargo entra a la mano de obra del APU. usarFP=true toma el costo BASE (el FP se suma aparte como vrPrest); usarFP=false toma el TOTAL (FP ya incluido). esHora cambia día<->hora. */
 export function cargoJornal(
   cargo: CargoCalculado | undefined,
   usarFP: boolean,
@@ -102,6 +107,7 @@ export function cargoJornal(
   return usarFP ? cargo.costo_base_dia || cargo.costo_total_dia || 0 : cargo.costo_total_dia || 0;
 }
 
+/** Costo de una cuadrilla (equipo de trabajo): suma valorBasico × cantidad de cada integrante y lo baja a día/hora. Ej: 1 oficial ($2.800.000) + 2 ayudantes ($1.400.000 c/u) -> vBase $5.600.000/mes, $186.667/día. Guarda ÷0 con defaults 30 días / 240 horas. */
 export function calcCuadrillaCost(
   cuadrilla: Cuadrilla,
   cargoMap: Map<string, CargoCalculado>,
@@ -276,6 +282,7 @@ interface ResumenPresupuesto {
   valorTotal: number;
 }
 
+/** Totales de todo el presupuesto —costo directo, AIU (Administración, Imprevistos, Utilidad), IVA sobre la utilidad y valor total— sumando ítem por ítem; las filas de capítulo final solo agrupan y no suman. */
 export function calcResumenPresupuesto(
   items: PresupuestoItem[],
   apuCalcMap: Map<string, ApuCalculado>,
@@ -308,12 +315,14 @@ export function calcResumenPresupuesto(
   };
 }
 
+/** ¿La fila es un capítulo (título que agrupa ítems, sin cantidad ni precio)? es_capitulo_manual (decisión del usuario en la grilla) gana sobre es_capitulo (autodetección al importar el formulario). */
 export function esCapituloFinal(item: PresupuestoItem): boolean {
   if (item.es_capitulo_manual !== null && item.es_capitulo_manual !== undefined)
     return item.es_capitulo_manual;
   return item.es_capitulo;
 }
 
+/** Clasifica un presupuesto para el árbol de proyectos: 'sub_proyecto' (tiene padre), 'principal' (marcado con_sub_proyectos o con hijos) o 'independiente'. */
 export function getTipoProyecto(
   p: { parent_id: string | null; con_sub_proyectos: boolean; id: string },
   presupuestos: { parent_id: string | null }[],
@@ -324,6 +333,7 @@ export function getTipoProyecto(
   return 'independiente';
 }
 
+/** Aplana el árbol de presupuestos (hasta 2 niveles) en lista ordenada con level para indentar el render; los huérfanos (padre borrado) se tratan como raíz para que no desaparezcan de la lista. */
 export function flattenPresupuestos<T extends { id: string; parent_id: string | null }>(
   presupuestos: T[],
 ): { pres: T; level: number }[] {

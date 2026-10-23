@@ -1,5 +1,13 @@
+/**
+ * Catálogos semilla con los que nace el módulo CM (Civil Manager): factores
+ * prestacionales colombianos, cargos típicos de obra, unidades, orígenes,
+ * categorías de insumo y APU (Análisis de Precios Unitarios), y perfiles
+ * laborales de ~30 países. Se siembran una sola vez al inicializar; después
+ * las ediciones del usuario son la verdad.
+ */
 import type { FactorPrestacional, ListaItem, PerfilPais, UnidadMedida } from './types.ts';
 
+/** FP (Factores Prestacionales) de la liquidación colombiana: prestaciones 37.06 %, seguridad social 27.46 %, parafiscales 11.5 %, otros 3 % — total ≈ 79 % sobre el salario. */
 export const PREST_DEFAULTS: Omit<FactorPrestacional, 'id'>[] = [
   { codigo: 'FP-001', nombre: 'Subsidio de transporte', factor: 14.23, tipo: 'prestaciones' },
   {
@@ -29,6 +37,7 @@ export const PREST_DEFAULTS: Omit<FactorPrestacional, 'id'>[] = [
   { codigo: 'FP-016', nombre: 'Otros auxilios', factor: 0, tipo: 'otros' },
 ];
 
+/** Descripción que el panel muestra al desplegar cada categoría de FP (prestaciones / seguridad social / parafiscales / otros). */
 export const FP_CAT_DESC_DEFAULTS: Record<FactorPrestacional['tipo'], string> = {
   prestaciones:
     'Beneficios económicos obligatorios derivados del contrato laboral: cesantías, intereses, prima, vacaciones, dotación, subsidio de transporte.',
@@ -40,6 +49,7 @@ export const FP_CAT_DESC_DEFAULTS: Record<FactorPrestacional['tipo'], string> = 
     'Componentes adicionales específicos de cada empresa o sector: horas extras, recargos nocturnos, dominicales, beneficios extralegales.',
 };
 
+/** Cargos típicos de obra con su paga en salarios base: ayudante 1.0 sb, oficial 2.0, Ing Civil Jr. 5.0. */
 export const CARGOS_DEFAULTS: { descripcion: string; num_salarios_base: number }[] = [
   { descripcion: 'Ayudante de construcción', num_salarios_base: 1.0 },
   { descripcion: 'Ayudante de Soldadura', num_salarios_base: 1.5 },
@@ -55,6 +65,7 @@ export const CARGOS_DEFAULTS: { descripcion: string; num_salarios_base: number }
   { descripcion: 'Trabajadora Social', num_salarios_base: 2.0 },
 ];
 
+/** Origen de un insumo: Local / Nacional / Importado / Preparado en obra (el precio lo trae el APU básico de referencia, no el catálogo). */
 export const ORIGENES: ListaItem[] = [
   {
     codigo: 'OR-01',
@@ -78,6 +89,7 @@ export const ORIGENES: ListaItem[] = [
   },
 ];
 
+/** Unidades de medida del catálogo con su tipo (Longitud, Masa, Conteo...) para agrupar el selector. */
 export const UNIDADES: UnidadMedida[] = [
   { abreviatura: 'm', descripcion: 'Metro', tipo: 'Longitud' },
   { abreviatura: 'm2', descripcion: 'Metro cuadrado', tipo: 'Área' },
@@ -105,6 +117,7 @@ export const UNIDADES: UnidadMedida[] = [
   { abreviatura: 'cm', descripcion: 'Centímetro', tipo: 'Longitud' },
 ];
 
+/** Unidades de la sección transporte del APU: Global (tarifa fija) o por volumen/peso × distancia (M3-Km, Ton-Km). */
 export const TRANSP_UNIDADES: ListaItem[] = [
   { codigo: 'UT-01', nombre: 'Hasta la Obra', desc: 'Flete completo hasta el sitio de obra' },
   { codigo: 'UT-02', nombre: 'Acarreo Interno', desc: 'Movimiento de material dentro de la obra' },
@@ -115,6 +128,7 @@ export const TRANSP_UNIDADES: ListaItem[] = [
   { codigo: 'UT-07', nombre: 'Ton-Km', desc: 'Por peso y distancia recorrida' },
 ];
 
+/** Clasificación de equipos: maquinaria pesada, equipo especial y menor, transporte (sección C del APU, no la A) y herramienta menor. */
 export const TIPO_EQUIPO: ListaItem[] = [
   {
     codigo: 'TE-01',
@@ -143,6 +157,7 @@ export const TIPO_EQUIPO: ListaItem[] = [
   },
 ];
 
+/** Tipos de unidad predefinidos para el selector al crear una unidad nueva (Longitud, Área, Volumen, Masa...). */
 export const TIPOS_UNIDAD_PRE: string[] = [
   'General',
   'Longitud',
@@ -154,6 +169,7 @@ export const TIPOS_UNIDAD_PRE: string[] = [
   'Global',
 ];
 
+/** Categorías del catálogo de insumos (CI-01..CI-12): pétreos, concretos, metales, tubería de presión y alcantarillado, eléctricos... */
 export const CATEGORIAS_INSUMO: ListaItem[] = [
   {
     codigo: 'CI-01',
@@ -213,6 +229,7 @@ export const CATEGORIAS_INSUMO: ListaItem[] = [
   },
 ];
 
+/** Categorías de APU por capítulo de obra (CAT-01..CAT-23): preliminares, movimiento de tierras, redes, acabados... incluida "Preparado en Obra" para subproductos. */
 export const CATEGORIAS_APU: ListaItem[] = [
   {
     codigo: 'CAT-01',
@@ -644,10 +661,12 @@ const PAISES: Record<string, Omit<PerfilPais, 'codigo'>> = {
   },
 };
 
+/** Genera los perfiles de país semilla (~30 países: moneda, salario mínimo, días/horas mes, mes vs hora). Copia fresca en cada llamada para no compartir referencias. */
 export function perfilesPaisDefault(): PerfilPais[] {
   return Object.entries(PAISES).map(([codigo, p]) => ({ codigo, ...p }));
 }
 
+/** Perfil de un país buscado en la lista EDITADA por el usuario; si falta cae al semilla y de último a Colombia. Ej: getPaisData('US', ...) -> unidad 'hora'. */
 export function getPaisData(codigo: string, perfilesPais?: PerfilPais[]): PerfilPais {
   const found = perfilesPais?.find((p) => p.codigo === codigo);
   if (found) return found;
@@ -655,6 +674,7 @@ export function getPaisData(codigo: string, perfilesPais?: PerfilPais[]): Perfil
   return { codigo: codigo in PAISES ? codigo : 'CO', ...base };
 }
 
+/** Ayudas por defecto que la hoja de APU muestra junto a cada campo (tipo de salario, FP, herramienta menor, AIU...). */
 export const COMENTARIOS_APU_DEFAULTS = {
   tipo_salario: 'Definir entre JORNAL/DIA o HH.',
   factor_prest: 'Valor Obtenido en Modulo Categorias',
@@ -668,6 +688,7 @@ export const COMENTARIOS_APU_DEFAULTS = {
   usar_en_cada_apu: 'Si se usa en cada APU o al final en el presupuesto aplica',
 };
 
+/** Código del próximo cargo creado: MO-001, MO-002... (índice 0 -> 'MO-001'). */
 export function cargoCodigoDefault(index: number): string {
   return 'MO-' + String(index + 1).padStart(3, '0');
 }

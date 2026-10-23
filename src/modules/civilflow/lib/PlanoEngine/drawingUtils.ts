@@ -6,7 +6,9 @@ import { distToPolyline } from '../shared/geometry';
 import { esCaja, puedeConectarRamalABajante } from './bajanteRules.ts';
 import { angleAtHalfLength } from './drawingAngles.ts';
 
-/** Nombre del próximo pedazo de tubería: RAF1, RAF2...; si estás dibujando un ramal que cuelga de
+/**
+ * Ej: bajante de 2" + ramal entrante de 3" → 3" (nunca baja: quitar el ramal de 3" la deja
+ * en 3"). Nombre del próximo pedazo de tubería: RAF1, RAF2...; si estás dibujando un ramal que cuelga de
  *  otro (tributario) se llama T1RS1 = primer ramal que cuelga de RS1. */
 export function _nextLabel(engine: IPlanoEngineCore): string {
   const net = NETS.find((n) => n.id === engine.activeNet);

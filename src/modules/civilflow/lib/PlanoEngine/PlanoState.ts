@@ -902,14 +902,16 @@ export interface IPlanoEngineCore {
  *  ramalito que cuelga de otro y desemboca en él). */
 export type TramoType = 'ramal' | 'tributario';
 
-/** Un punto suelto, con sus dos coordenadas. */
 export interface Point {
   x: number;
   y: number;
 }
 
+/** El usuario pinchó/seleccionó un elemento (o null al deseleccionar) → el panel derecho muestra su grilla. */
 export type SelectCallback = (el: Record<string, unknown> | null) => void;
+/** Mensaje efímero de estado para la barra del visor (ej: 'Sin salida' al validar un ramal). */
 export type StatusCallback = (msg: string) => void;
+/** Notificación genérica de datos actualizados (p. ej. conteos de aparatos del panel). */
 export type UpdateCallback = (data: unknown) => void;
 /** Avisa que el dibujo cambió y hay que guardarlo. */
 export type DirtyCallback = () => void;

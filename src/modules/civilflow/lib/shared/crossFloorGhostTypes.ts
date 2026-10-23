@@ -38,7 +38,7 @@ export interface CrossFloorGhost {
    *  NO participa en ningún cálculo (sigue siendo un marcador), pero SÍ muestra y guarda
    *  cuántos UC bajan por él. */
   aparatos?: Record<string, number>;
-  /** Total de UC heredados (mismo dato, como número, para la isometría). */
+  /** Total de UC (Unidades de Consumo) heredados — mismo dato, como número, para la isometría. */
   ucAcum?: number;
   // Marca de versión del layout de asociación: 2 = fantasma-marcador en el piso superior
   // (layout nuevo). La migración salta los ghosts que ya la traen.

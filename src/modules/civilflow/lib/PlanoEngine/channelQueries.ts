@@ -16,6 +16,11 @@ export function canalRectHitDistance(b: PlanoBajante, x: number, y: number, padP
   return 1;
 }
 
+/**
+ * Distancia de impacto de un bajante/montante (disco) o canal (rectángulo ×1.1 de aire) bajo
+ * el cursor en px de canvas; Infinity si cayó fuera. Ej: cursor a 8px del centro con radio 12
+ * → devuelve 8 (gana el más cercano).
+ */
 export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): number {
   if (b.tipo === 'canal') {
     const box = b._canalBox;
@@ -46,6 +51,10 @@ function pointInCanal(
   return puntoEnCanalOBB(canalOBBEngine(engine, canal), x, y);
 }
 
+/**
+ * Canal de lluvia (ll) bajo el punto dado — el preferido primero si el punto cae dentro.
+ * @returns el canal que contiene el punto, o null.
+ */
 export function resolveCanalForPoint(
   engine: IPlanoEngineCore,
   x: number,
@@ -74,6 +83,11 @@ function clampToCanal(
   return canalToWorld(obb, Math.min(Math.max(lx, 0), obb.w), Math.min(Math.max(ly, 0), obb.h));
 }
 
+/**
+ * Resuelve el canal bajo el punto y RECORTA el punto al interior de su rectángulo: un aparato
+ * arrastrado "fuera" del canal queda pegado a su borde, nunca perdido. Ej: suelto 5px más
+ * allá del borde derecho → vuelve a borded derecho con canalId del canal.
+ */
 export function resolveAndClampToCanal(
   engine: IPlanoEngineCore,
   x: number,
@@ -86,11 +100,17 @@ export function resolveAndClampToCanal(
   return { ...clamped, canalId: canal.id };
 }
 
+/** Resultado de detectar canales en los extremos de un ramal nuevo: el canal tocado y si el
+ *  ramal nace al revés (tocó el extremo lejano → hay que voltear la dirección del flujo). */
 export interface CanalOrigenDet {
   canal: PlanoBajante | null;
   voltear: boolean;
 }
 
+/**
+ * Detecta si un ramal de lluvia (por sus dos extremos) termina dentro de un canal: cero toques
+ * → sin canal; un toque → ese canal (voltear si fue el final); dos → ambiguo, ninguno.
+ */
 export function detectarCanalEnExtremos(engine: IPlanoEngineCore, pts: number[][]): CanalOrigenDet {
   if (!pts || pts.length < 2) return { canal: null, voltear: false };
   const p0 = pts[0];
@@ -103,10 +123,16 @@ export function detectarCanalEnExtremos(engine: IPlanoEngineCore, pts: number[][
   return { canal: null, voltear: false };
 }
 
+/** Ramales que descargan DENTRO del canal (esCanalId apunta al canal). */
 export function ramalesDelCanal(engine: IPlanoEngineCore, canalId: string): PlanoRamal[] {
   return engine.ramales.filter((r) => r.esCanalId === canalId);
 }
 
+/**
+ * Mueve la asociación de un ramal hacia otro bajante (o la desasocia con null): lo saca del
+ * recibeDeIds del dueño viejo, lo mete en el nuevo y sella `fin` con su código. Ej: ramal R1
+ * de BAN1 → BAN2: R1.fin = 'BAN2' y BAN1 lo pierde de su lista.
+ */
 export function moverAsociacionCanal(
   engine: IPlanoEngineCore,
   ramalId: string,

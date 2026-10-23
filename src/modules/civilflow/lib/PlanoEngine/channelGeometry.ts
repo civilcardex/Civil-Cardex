@@ -106,8 +106,8 @@ export function canalOBBEngine(
   return canalMarco(engine.cmToPlanePx(1), canal);
 }
 
-/** Cuántos pixels de plano mide 1 cm real (sale de la escala scaleM del proyecto). Lanza error si
- *  la escala es inválida: sin este número todo el módulo de canales mediría cualquier cosa. */
+/** Cuántos pixels de plano mide 1 cm real (sale de la escala scaleM — metros por pixel — del
+ *  proyecto). Lanza error si la escala es inválida: sin este número los canales no miden. */
 export function pxPerCmDe(engine: { cmToPlanePx(cm: number): number }): number {
   const v = engine.cmToPlanePx(1);
   if (!(v > 0)) throw new Error('escala_invalida');

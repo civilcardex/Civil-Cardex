@@ -18,6 +18,8 @@ import type { DrawingData, RawElement } from './drawingSync.ts';
 interface AreaRaw {
   areaM2?: number;
 }
+/** Override manual (tabla Diseño de lluvias) de un bajante de aguas lluvias: áreas, intensidad
+ *  (mm/h), material de cubierta — lo escrito a mano manda sobre lo del dibujo. */
 export interface BajanteLl {
   bajante?: string;
   id?: string;
@@ -31,9 +33,11 @@ export interface BajanteLl {
   materialCubierta?: string;
 }
 
-// Ramales DE los canales (orig. usuario): los marcados `esCanalId` por finishRamal y los que
-// DESCARGAN en un canal (extremo dentro del OBB del canal — misma regla que el motor) — fuera
-// de la tabla Diseño de red aguas lluvias. Claves `${id}-${planId}` (formato _key de tramos).
+/**
+ * Ramales DE los canales (orig. usuario): los marcados `esCanalId` y los que DESCARGAN en un
+ * canal (extremo dentro del OBB — misma regla que el motor) — fuera de la tabla de diseño.
+ * @returns claves `${id}-${planId}` (formato _key de tramos).
+ */
 export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
   const keys = new Set<string>();
   for (const plan of plans || []) {
@@ -90,9 +94,11 @@ export function maxRamalPulgDeBajante(
   return max;
 }
 
-// Qué códigos de bajante alimentan cada ramal — la misma BFS de proximidad geométrica usada por
-// la tabla DisenoLluvias, compartida con la exportación de memoria para que ambas reporten las
-// mismas asociaciones.
+/**
+ * Qué códigos de bajante alimentan cada ramal — la misma BFS de proximidad geométrica de la
+ * tabla DisenoLluvias, compartida con la memoria para que ambas reporten lo mismo.
+ * @returns mapa clave-de-ramal → códigos de bajante ('BAN2-P2').
+ */
 export function buildLlBajanteAssociations(
   tramosLl: Tramo[],
   plans: PlanItem[],
@@ -276,6 +282,11 @@ export function repartirOtrasCanal(total: number, n: number): number[] {
 // Caudal (LPS) que llega a cada tramo — escorrentía propia para un bajante, escorrentía del área
 // acumulada para un ramal colector vía sus bajantes asociados. Compartido con la exportación de
 // memoria.
+/**
+ * Q (Caudal, L/s) por clave de tramo de aguas lluvias: baja la lluvia acumulada (áreas de
+ * áreas-dibujo + overrides manuales repartidos) por la cadena bajante→canal→ramal.
+ * @returns mapa _key de tramo → Q en L/s (0 donde no llueve nada acumulado).
+ */
 export function computeLlQMap(
   tramosLl: Tramo[],
   plans: PlanItem[],
@@ -366,6 +377,10 @@ export function computeLlQMap(
   return totalQMap;
 }
 
+/**
+ * Ids de tributarios (de dónde BEBEN los tramos): los recibeDe + los id listados en la
+ * descripción 'A+B'. @returns el Set para filtrar ramal vs tributario.
+ */
 export function getTributarioIds(
   tramos: Array<{ recibeDe?: string[]; descripcion?: string; id: string }>,
 ): Set<string> {
@@ -385,6 +400,8 @@ export function getTributarioIds(
   return tribSet;
 }
 
+/** Fila de la tabla de diseño de aguas lluvias: Q, diámetros (calculado/disponible/interno
+ *  mm), velocidad y tirantes (crítico/normal, Froude (numero adimensional de regimen)) + chequeos. */
 export interface LlRow {
   tKey: string;
   id: string;
@@ -414,8 +431,11 @@ export interface LlRow {
   chequeoFT: string;
 }
 
-// Fila de diseño hidráulico por-tramo para aguas lluvias — mismas fórmulas que la tabla de
-// DisenoLluvias.
+/**
+ * Fila de diseño hidráulico por tramo para aguas lluvias — mismas fórmulas que DisenoLluvias
+ * (Manning (formula de flujo en tuberia) + Froude (numero adimensional de regimen) + fuerza tractiva),
+ * ordenadas piso descendente.
+ */
 export function computeLlRows(
   displayTramos: Tramo[],
   qMap: Record<string, number>,

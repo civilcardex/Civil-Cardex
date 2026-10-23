@@ -16,6 +16,9 @@ export type ProbedElement = PlanoElement & {
   net?: string;
 };
 
+/** Lo que el editor de tramos (panel derecho del visor) necesita: motor, selección, pisos/
+ *  plans para sus selects de nivel, los 3 maps de elección (diámetro, material gas, pendiente)
+ *  y el updater de campo del elemento seleccionado. */
 export interface TramoEditorContextValue {
   engineRef: React.MutableRefObject<PlanoEngine | null>;
   selElement: PlanoElement | null;
@@ -23,7 +26,9 @@ export interface TramoEditorContextValue {
   activeNet: string;
   /** Subred Rejillas de ventilación activa (áreas de sector NTC (Norma Tecnica Colombiana) 3631). */
   rejillasActive?: boolean;
+  /** Escribe un campo en el elemento seleccionado y marca el dibujo sucio (guardar). */
   handleUpdateSel: (field: string, value: unknown) => void;
+  /** Gira la etiqueta del tramo seleccionado (flecha apunta al otro segmento). */
   handleRotateLabel: () => void;
   diamSel: Record<string, string>;
   setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
@@ -44,6 +49,7 @@ export interface TramoEditorContextValue {
 
 export const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null);
 
+/** Acceso al contexto del editor de tramos — lanza fuera del provider (error de ensamblaje). */
 export function useTramoEditorContext(): TramoEditorContextValue {
   const ctx = useContext(TramoEditorCtx);
   if (!ctx) throw new Error('useTramoEditorContext must be used within TramoEditor provider');
@@ -52,6 +58,8 @@ export function useTramoEditorContext(): TramoEditorContextValue {
 
 // Una tubería principal sanitaria solo necesita el mínimo de 3" cuando realmente lleva un codo
 // reventilado (en un extremo o en medio) — no cualquier ramal de la red principal.
+/** ¿El ramal lleva codo reventilado (en un extremo o a mitad)? — decide si la tubería
+ *  principal sanitaria exige su mínimo de 3". */
 export function ramalHasCodoReventilado(r: PlanoRamal | null): boolean {
   if (!r) return false;
   if (r.accesorioInicio === 'codoReventilado' || r.accesorioFin === 'codoReventilado') return true;

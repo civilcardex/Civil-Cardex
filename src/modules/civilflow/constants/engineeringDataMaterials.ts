@@ -1,3 +1,9 @@
+/**
+ * Materiales de tubería del motor CAD: qué materiales ofrece cada red (af, ac,
+ * san, ll, vent, gas, rci), sus coeficientes hidráulicos (n de Manning, C de
+ * Hazen-Williams) y los diámetros comerciales por material. Ej: PVC sanitario
+ * n = 0.009 y C = 150.
+ */
 import { AGUA_CALIENTE, VENTILACION } from '../pages/catalog/catalogData.ts';
 import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
 
@@ -10,10 +16,12 @@ const MATS_RAW = {
   gas: ['PE al PE', 'Cobre rígido', 'A.C.', 'Acero HG', 'Polipropileno PP-R'],
   rci: ['A.C. SCH 40', 'A.C. SCH 10', 'Acero HG', 'CPVC CPVC-CI', 'PVC C900 RDE 14'],
 };
+/** Catálogo de materiales por red. Ej: af -> [PVC-PR, CPVC, Cobre rígido, PP-R]; san -> [PVC-S, Novatec, Hierro fundido, Concreto]. */
 export const MATS_DEFAULT = Object.fromEntries(
   Object.entries(MATS_RAW).map(([k, v]) => [k, v.map((o, i) => ({ id: k + i, val: o }))]),
 );
 
+/** Abreviatura de material -> nombre completo para mostrar en UI. Ej: 'A.C.' -> 'Acero al carbono'. */
 export const MAT_LONGFORM = {
   'PVC-PR': 'PVC Presión',
   'PVC-S': 'PVC Sanitario',
@@ -38,6 +46,7 @@ export const MAT_LONGFORM = {
   'Gres cerámico': 'Gres cerámico',
 };
 
+/** Nombre completo de un material abreviado (vacío -> '—'). Ej: matLongName('PVC-S') -> 'PVC Sanitario'. */
 export function matLongName(short: string) {
   if (!short) return '—';
   return (MAT_LONGFORM as Record<string, string>)[short] || short;
@@ -47,11 +56,13 @@ export function matLongName(short: string) {
 const MAT_SHORT_REVERSE: Record<string, string> = Object.fromEntries(
   Object.entries(MAT_LONGFORM).map(([k, v]) => [v, k]),
 );
+/** Inverso de MAT_LONGFORM: del nombre completo vuelve a la clave abreviada que usan los catálogos. Ej: 'PVC Sanitario' -> 'PVC-S'; si no existe, devuelve el input tal cual. */
 export function matShortKey(longName: string): string {
   if (!longName) return '';
   return MAT_SHORT_REVERSE[longName] || longName;
 }
 
+/** Rugosidad n de Manning (fórmula de flujo en tubería) por material: plásticos 0.009, hierro fundido/concreto 0.013, acero 0.015. */
 export const MAT_MANNING = {
   'PVC-S': 0.009,
   'PVC-V': 0.009,
@@ -76,11 +87,13 @@ export const MAT_MANNING = {
   'Acero HG': 0.015,
 };
 
+/** n de Manning del material, o null si no está en el catálogo. */
 export function matManning(short: string) {
   if (!short) return null;
   return (MAT_MANNING as Record<string, number>)[short] ?? null;
 }
 
+/** Coeficiente C de Hazen-Williams (pérdida por fricción en redes a presión) por material: PVC 150, cobre 140, acero 120. */
 export const MAT_HAZEN_C: Record<string, number> = {
   'PVC-S': 150,
   'PVC-V': 150,
@@ -106,11 +119,13 @@ export const MAT_HAZEN_C: Record<string, number> = {
   'Acero HG': 120,
 };
 
+/** C de Hazen-Williams del material, o null si no está. */
 export function matHazenC(short: string): number | null {
   if (!short) return null;
   return (MAT_HAZEN_C as Record<string, number>)[short] ?? null;
 }
 
+/** Diámetros comerciales de bajantes: pulgadas, diámetro INTERNO en mm y etiqueta. Ej: 3" -> 76.2 mm. */
 export const DIAM_BAN = [
   { pulg: 1.5, mm: 42.68, nom: '1-1/2"' },
   { pulg: 2, mm: 54.48, nom: '2"' },
@@ -119,6 +134,7 @@ export const DIAM_BAN = [
   { pulg: 6, mm: 160.04, nom: '6"' },
 ];
 
+/** DIAM_BAN como opciones de selector ({ pulg, label, mm }). */
 export const DIAM_OPTIONS = DIAM_BAN.map((d) => ({ pulg: d.pulg, label: d.nom, mm: d.mm }));
 
 // Sin 1-1/2": bajantes san (orig. usuario #6), bajantes/colectores ll y colectores/ramales
@@ -127,17 +143,23 @@ export const DIAM_OPTIONS = DIAM_BAN.map((d) => ({ pulg: d.pulg, label: d.nom, m
 const DIAM_SIN_112 = DIAM_BAN.filter((d) => d.pulg !== 1.5);
 const opcionesDe = (base: typeof DIAM_BAN) =>
   base.map((d) => ({ pulg: d.pulg, label: d.nom, mm: d.mm }));
+/** Diámetros de la red sanitaria (bajantes y colectores): igual que DIAM_BAN pero sin 1-1/2" — arranca en 2" (pedido del usuario). */
 export const DIAM_BAN_SAN = DIAM_SIN_112;
+/** Diámetros de bajantes/colectores de aguas lluvias: misma lista que sanitaria (sin 1-1/2"). */
 export const DIAM_BAN_LL = DIAM_SIN_112;
+/** DIAM_BAN_SAN como opciones de selector. */
 export const DIAM_OPTIONS_SAN = opcionesDe(DIAM_SIN_112);
+/** DIAM_BAN_LL como opciones de selector. */
 export const DIAM_OPTIONS_LL = opcionesDe(DIAM_SIN_112);
 
+/** Diámetros de la red de ventilación, derivados del catálogo PVC-V (2"-4", diámetro interno en mm). */
 export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r) => ({
   pulg: diamPulgFromLabel(r.dn),
   mm: r.d,
   nom: r.dn,
 }));
 
+/** Diámetros comerciales POR material (incluye las series RDE del PVC presión). Ej: 'PVC-PR' -> ['1/2" RDE 9', ..., '6" RDE 21']. */
 export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
   'PVC-S': [{ n: '2"' }, { n: '3"' }, { n: '4"' }, { n: '6"' }],
   'PVC-PR': [
@@ -246,12 +268,14 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
 // POR MATERIAL" de la hoja Parametros (sin la columna de referencia; el catálogo maestro las
 // muestra desde estas constantes).
 
+/** Material de cubierta con su coeficiente de escorrentía C (0-1) para el método racional de lluvias. */
 export interface MaterialCubiertaLL {
   nombre: string;
   abrev: string;
   C: number;
 }
 
+/** Catálogo de cubiertas: zinc C=0.95, teja de barro 0.85, cubierta verde intensiva 0.2. */
 export const MATERIALES_CUBIERTA_LL: MaterialCubiertaLL[] = [
   { nombre: 'Lámina metálica (zinc, galvanizada, termoacústica)', abrev: 'Metal', C: 0.95 },
   { nombre: 'Vidrio', abrev: 'Vidrio', C: 0.95 },
@@ -280,12 +304,14 @@ export function cDeCubierta(nombre: string): number | null {
   return hit ? hit.C : null;
 }
 
+/** Material de canaleta con su rugosidad n de Manning. */
 export interface MaterialCanalLL {
   nombre: string;
   abrev: string;
   n: number;
 }
 
+/** Catálogo de canaletas: PVC n=0.010, lámina galvanizada 0.012, concreto sin acabado 0.015. */
 export const MATERIALES_CANAL_LL: MaterialCanalLL[] = [
   { nombre: 'PVC', abrev: 'PVC', n: 0.01 },
   { nombre: 'Aluminio', abrev: 'Aluminio', n: 0.011 },

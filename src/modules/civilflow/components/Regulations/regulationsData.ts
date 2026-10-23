@@ -1,3 +1,10 @@
+/**
+ * Datos de la pestaña Normativa (ayuda): tablas de las normas colombianas que sustentan los
+ * cálculos — NTC (Norma Técnica Colombiana) 1500 (fontanería), RAS (Reglamento de Agua y
+ * Saneamiento) 2000, NTC 3728 (redes contra incendio… presión/caudales), NSR-10 (sismo) y
+ * NFPA 13 (rociadores) — más las tablas resumen por red que muestra la UI. Solo datos; los
+ * límites vivos del cálculo están en constants/.
+ */
 export const SECCIONES = [
   {
     id: 'ntc1500',
@@ -43,6 +50,7 @@ export const SECCIONES = [
   },
 ] as const;
 
+/** Dotaciones NTC 1500 por aparato (L/min·aparato). */
 export const NTC1500_DOTACIONES = [
   ['Vivienda estrato 1–2', '200 L/hab/día', '250 L/hab/día'],
   ['Vivienda estrato 3–4', '220 L/hab/día', '280 L/hab/día'],
@@ -55,6 +63,7 @@ export const NTC1500_DOTACIONES = [
   ['Hoteles', '300 L/habitación/día', '500 L/habitación/día'],
 ] as const;
 
+/** UC (Unidades de Consumo) NTC 1500 por aparato (método Hunter (metodo de probabilidad de uso simultaneo)). */
 export const NTC1500_UC = [
   ['Lavamanos', 'Lvm', 0.5, 0.5, 0.51, 5.63],
   ['Inodoro', 'San', 2.2, '—', 0.71, 14.1],
@@ -70,6 +79,7 @@ export const NTC1500_UC = [
   ['Bebedero', 'Beb', 0.5, '—', 0.51, 5.63],
 ] as const;
 
+/** Coeficiente C de Hazen-Williams por material (NTC 1500). */
 export const NTC1500_HAZEN_C = [
   ['PVC presión (nuevo)', 150],
   ['CPVC RDE 11 (nuevo)', 150],
@@ -80,12 +90,14 @@ export const NTC1500_HAZEN_C = [
   ['Fierro fundido', 100],
 ] as const;
 
+/** Velocidades máximas permitidas por red (m/s, NTC 1500). */
 export const NTC1500_VELOCIDADES = [
   ['Mínima (evitar sedimentación)', '0,50 m/s'],
   ['Máxima recomendada', '2,50 m/s'],
   ['Máxima absoluta', '3,00 m/s'],
 ] as const;
 
+/** UD (Unidades de Desague) NTC 1500 por aparato (drenajes). */
 export const NTC1500_UD = [
   ['Lavamanos', 2, '1½"', '2"'],
   ['Sanitario con sifón', 4, '3"', '3"'],
@@ -102,6 +114,7 @@ export const NTC1500_UD = [
   ['Piso-sumidero 4"', 3, '4"', '4"'],
 ] as const;
 
+/** Pendientes mínimas/máximas de drenaje (%, NTC 1500). */
 export const NTC1500_PENDIENTES = [
   ['1½" y 2"', '2,0%', '2,5%'],
   ['3"', '1,0%', '2,0%'],
@@ -110,6 +123,7 @@ export const NTC1500_PENDIENTES = [
   ['≥ 8"', '0,3%', '0,5%'],
 ] as const;
 
+/** Capacidad hidráulica de tuberías por diámetro (NTC 1500). */
 export const NTC1500_CAPACIDAD = [
   ['1½', 3, 4, 8],
   ['2', 6, 10, 24],
@@ -120,6 +134,7 @@ export const NTC1500_CAPACIDAD = [
   ['8', 1400, 2200, 3600],
 ] as const;
 
+/** Criterios de ventilación sanitaria (NTC 1500). */
 export const NTC1500_VENTILACION = [
   ['Diámetro mínimo tubería ventilación', '1½"', '§9.2'],
   ['D mín no menor que', 'Mitad del D ramal', '§9.2'],
@@ -131,6 +146,7 @@ export const NTC1500_VENTILACION = [
   ['Re-ventilación máx 4"', '3,60 m', '§9.5'],
 ] as const;
 
+/** Dotaciones RAS (Reglamento de Agua y Saneamiento) 2000 por uso (L/hab·día). */
 export const RAS2000_DOTACIONES = [
   ['Bajo', '100 L/hab/día', '150 L/hab/día'],
   ['Medio', '120 L/hab/día', '175 L/hab/día'],
@@ -138,16 +154,19 @@ export const RAS2000_DOTACIONES = [
   ['Alto', '170 L/hab/día', '280 L/hab/día'],
 ] as const;
 
+/** Velocidades límite RAS 2000 por red (m/s). */
 export const RAS2000_VELOCIDADES = [
   ['Mínima (auto-limpieza)', '0,45 m/s'],
   ['Máxima (evitar erosión)', '4,00 m/s'],
 ] as const;
 
+/** Llenados máximos RAS 2000 por diámetro (fracción del diámetro). */
 export const RAS2000_LLENADO = [
   ['Máximo a Q diseño', '0,75'],
   ['Condición óptima', '0,60–0,70'],
 ] as const;
 
+/** Coeficientes de escorrentía C por superficie (RAS 2000, aguas lluvias). */
 export const RAS2000_ESCORRENTIA = [
   ['Teja metálica / zinc', 0.85, 0.95],
   ['Losa concreto impermeable', 0.85, 0.95],
@@ -161,6 +180,7 @@ export const RAS2000_ESCORRENTIA = [
   ['Piscina / espejo de agua', 1.0, 1.0],
 ] as const;
 
+/** Períodos de retorno Tr (años) de diseño de lluvias (RAS 2000). */
 export const RAS2000_TR = [
   ['Cubierta residencial', 5],
   ['Cubierta comercial', 10],
@@ -170,12 +190,14 @@ export const RAS2000_TR = [
   ['Obras de infraestructura', '25–100'],
 ] as const;
 
+/** Presiones de diseño de redes contra incendio (NTC 3728, kg/cm²). */
 export const NTC3728_PRESIONES = [
   ['Red baja presión (domiciliaria)', '17 mbar', '100 mbar'],
   ['Presión de operación típica', '20–25 mbar', '—'],
   ['Pérdida máxima admisible', '—', '9,81 mbar'],
 ] as const;
 
+/** Factores de simultaneidad de hidrantes (NTC 3728). */
 export const NTC3728_SIMULTANEIDAD = [
   ['1–2', 1.0],
   ['3–5', 0.8],
@@ -184,6 +206,7 @@ export const NTC3728_SIMULTANEIDAD = [
   ['> 20', 0.5],
 ] as const;
 
+/** Caudales de incendio por clasificación de riesgo (NTC 3728, L/s). */
 export const NTC3728_CAUDALES = [
   ['Quemador cocina (1 hornilla)', 0.34],
   ['Estufa 4 quemadores', 1.35],
@@ -199,6 +222,7 @@ export const NTC3728_CAUDALES = [
   ['Caldera residencial pequeña', 2.5],
 ] as const;
 
+/** Clasificación sismorresistente de edificaciones (NSR-10, grupos de uso). */
 export const NSR10_CLASIFICACION = [
   ['A', 'Vivienda unifamiliar / bifamiliar', 'Casas, apartamentos'],
   ['B', 'Vivienda multifamiliar', 'Edificios residenciales ≥ 3 unidades'],
@@ -209,12 +233,14 @@ export const NSR10_CLASIFICACION = [
   ['G', 'Alta concentración', 'Estadios, teatros, culto'],
 ] as const;
 
+/** Requisitos de altura/área por grupo NSR-10. */
 export const NSR10_ALTURA = [
   ['≤ 3 pisos', 'Extintor portátil', 'Extintor portátil', 'Red húmeda'],
   ['4–9 pisos', 'Extintor', 'Red húmeda', 'Red húmeda + RCI'],
   ['≥ 10 pisos', 'Red húmeda + RCI', 'RCI completo', 'RCI completo'],
 ] as const;
 
+/** Clases de riesgo de NFPA 13 (almacenamiento ligero → extra). */
 export const NFPA13_RIESGOS = [
   ['Riesgo leve (RL)', 'Baja combustibilidad', 'Vivienda, oficinas, salas, iglesias'],
   ['Riesgo ordinario G1 (RO1)', 'Combustibilidad media-baja', 'Parking, salas mecánicas'],
@@ -223,6 +249,7 @@ export const NFPA13_RIESGOS = [
   ['Riesgo extra G2 (RE2)', 'Muy alta combustibilidad', 'Químicos, almacenaje palets'],
 ] as const;
 
+/** Densidades de descarga de NFPA 13 (L/min·m²) por riesgo. */
 export const NFPA13_DENSIDADES = [
   ['Riesgo leve', 0.1, 139.4],
   ['Riesgo ordinario G1', 0.15, 139.4],
@@ -231,6 +258,7 @@ export const NFPA13_DENSIDADES = [
   ['Riesgo extra G2', '0,40–0,60', 232.3],
 ] as const;
 
+/** Área de cobertura por rociador (NFPA 13, m²). */
 export const NFPA13_ROCIADORES = [
   ['Presión mínima de operación', '7,0 PSI (4,92 mca)'],
   ['Presión máxima de operación', '175 PSI (123 mca)'],
@@ -242,6 +270,7 @@ export const NFPA13_ROCIADORES = [
   ['Distancia máxima a pared', '2,30 m (RL)'],
 ] as const;
 
+/** Parámetros de letrinas/letrinización (NTC 3096). */
 export const NTC3096_PARAMS = [
   ['Temperatura máxima de servicio', '93°C'],
   ['Presión máxima de servicio', '100 PSI (70 mca) a 23°C'],
@@ -251,6 +280,7 @@ export const NTC3096_PARAMS = [
   ['Tipo de unión', 'Solvente (cemento CPVC)'],
 ] as const;
 
+/** Tabla resumen de criterios de PRESIÓN que muestra la UI, por red. */
 export const TABLAS_PRESION = [
   ['1 m.c.a.', 1.0, 0.0981, 1.4223, 9.807, 98.07],
   ['1 bar', 10.2, 1.0, 14.504, 100.0, 1000],
@@ -259,6 +289,7 @@ export const TABLAS_PRESION = [
   ['1 mbar', 0.0102, 0.001, 0.0145, 0.1, 1.0],
 ] as const;
 
+/** Tabla resumen de criterios de CAUDAL por red. */
 export const TABLAS_CAUDALES = [
   ['1 lps', 1.0, 60.0, 3.6, 15.85],
   ['1 lpm', 0.01667, 1.0, 0.06, 0.2642],
@@ -266,6 +297,7 @@ export const TABLAS_CAUDALES = [
   ['1 gpm', 0.06309, 3.785, 0.2271, 1.0],
 ] as const;
 
+/** Otros criterios transversales (llenado, Froude (numero adimensional de regimen), fuerza tractiva…) por red. */
 export const TABLAS_CRITERIOS = [
   ['AF / AC', 'V mínima', '≥ 0,50 m/s', 'NTC 1500 §5.4'],
   ['AF / AC', 'V máxima', '≤ 2,50 m/s', 'NTC 1500 §5.4'],
@@ -290,6 +322,7 @@ export const TABLAS_CRITERIOS = [
   ['RCI', 'Duración suministro RL', '30 min', 'NFPA 13 §11.2.3.1.3'],
 ] as const;
 
+/** Presión atmosférica por altitud (m sobre nivel del mar → kPa) para gas. */
 export const TABLAS_ALTITUDES = [
   ['Bogotá D.C.', 2600, 74.7, 0.793],
   ['Medellín', 1495, 85.58, 0.905],

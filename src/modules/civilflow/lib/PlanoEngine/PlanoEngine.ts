@@ -1206,15 +1206,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _canvasW = 0;
   private _canvasH = 0;
 
-  /**
-   * Re-mide el lienzo cuando cambia el ÁREA VISIBLE (plegar una barra lateral, redimensionar
-   * la ventana).
-   *
-   * Sin esto el lienzo de dibujo se quedaba con el tamaño que tenía al abrirse: el PDF de
-   * fondo (que es CSS) llegaba al borde del visor y los RAMALES (que son píxeles del lienzo)
-   * se cortaban antes — el trazo desaparecía por un lado (orig. usuario: "en la parte
-   * derecha donde está el PDF y los ramales se ve como recortado").
-   */
+  /** Re-mide el lienzo cuando cambia el ÁREA VISIBLE (plegar una barra, redimensionar la
+   *  ventana): sin esto el trazo se cortaba antes que el PDF de fondo (CSS) — orig. usuario. */
   private _observarResize: ResizeObserver | null = null;
 
   /** Empieza a vigilar el tamaño del contenedor visible. */
@@ -1229,7 +1222,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._observarResize.observe(this.cw);
   }
 
-  /** Deja de vigilar el tamaño del contenedor. */
   stopWatchingContainerSize(): void {
     this._observarResize?.disconnect();
     this._observarResize = null;

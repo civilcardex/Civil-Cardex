@@ -9,7 +9,6 @@ import type { PlanItem } from '../../../context/PlansContext.tsx';
 export interface ModalNivelPisoProps {
   /** Planos ya cargados: un piso no puede repetirse entre planos confirmados. */
   plans: PlanItem[];
-  /** Pisos del proyecto. */
   pisos: { n: number }[];
   /** Plan al que se le asigna el piso (null = modal cerrado). */
   planId: number | null;

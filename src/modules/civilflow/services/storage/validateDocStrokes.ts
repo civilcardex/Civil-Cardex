@@ -1,16 +1,9 @@
 /**
- * Valida la FORMA del doc de un plano antes de dejarlo entrar al motor.
- *
- * Por qué: el doc viene de `localStorage` (JSON.parse sin esquema) o de la BD, y puede
- * ser de una era vieja o estar truncado (escritura interrumpida, cuota al límite). Sin
- * validación:
- *   - `ramales` como objeto en vez de array → `dedupPorId` itera los VALORES y el motor
- *     recibe piezas sin `id` con `pts` posiblemente undefined;
- *   - `bajantes` ausente → `engine.bajantes = []` → el piso aparece VACÍO, sin error y sin
- *     aviso (el usuario cree que guardó y el piso queda vacío en la BD).
- *
+ * Valida la FORMA del doc de un plano antes de dejarlo entrar al motor (viene de localStorage
+ * o BD, sin esquema, y puede estar truncado): ramales como objeto → piezas sin id; bajantes
+ * ausente → piso VACÍO sin error (el usuario cree que guardó).
  * @param raw contenido crudo del doc (ya parseado o sin parsear).
- * @returns el doc si tiene la forma esperada; `null` si no la tiene.
+ * @returns el doc si tiene la forma esperada; null si no la tiene.
  */
 export function validaDocTrazos(raw: unknown): Record<string, unknown> | null {
   if (!raw) return null;
