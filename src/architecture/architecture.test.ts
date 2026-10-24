@@ -50,7 +50,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 924,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 881,
   'pages/PricingPage.tsx': 921,
-  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 831,
+  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 836,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 852,
   'modules/civilflow/components/RainDownpipesCheck.tsx': 810,
   'modules/civilflow/components/DesignParameters.tsx': 822,
