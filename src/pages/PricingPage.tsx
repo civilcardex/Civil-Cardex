@@ -261,6 +261,13 @@ function PricingSuscripciones() {
   // Vuelta desde el checkout hosteado de Lemon Squeezy: verifica la referencia
   // con la edge function y refresca suscripciones. Limpia ?ref para no re-verificar.
   const refPago = new URLSearchParams(location.search).get('ref');
+  // Referencia que aún no confirma (webhook en vuelo / edge sin deployar): el polling de
+  // abajo la re-verifica cada 15 s. Las 2 cadenas viven aquí para que el primer check y
+  // el polling no diverjan.
+  const [refPendiente, setRefPendiente] = useState<string | null>(null);
+  const AVISO_APROBADO = '¡Pago aprobado! Tu suscripción ya está activa.';
+  const AVISO_REVISION =
+    'Tu pago quedó en revisión (el monto no coincidió). Escríbenos y lo activamos a mano.';
   useEffect(() => {
     if (!refPago) return;
     let ignore = false;
@@ -270,24 +277,22 @@ function PricingSuscripciones() {
       });
       if (ignore) return;
       if (data?.aprobado) {
-        setAvisoPago('¡Pago aprobado! Tu suscripción ya está activa.');
+        setAvisoPago(AVISO_APROBADO);
         dispararRefetchSuscripciones();
       } else if (data?.estado === 'revision') {
         // Pago recibido pero bajo el monto esperado (p. ej. cupón): quedó en revisión.
-        setAvisoPago(
-          'Tu pago quedó en revisión (el monto no coincidió). Escríbenos y lo activamos a mano.',
-        );
+        setAvisoPago(AVISO_REVISION);
       } else if (errVerif && edgePagoNoDesplegada(errVerif)) {
         // Edge Lemon pendiente de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falte,
         // el guard evita el error crudo — se informa como verificación pendiente, neutro.
         setAvisoPago(
           'Estamos verificando tu pago; tu suscripción quedará activa en breve y esta página se actualizará sola.',
         );
+        setRefPendiente(refPago);
       } else {
         // Webhook aún en vuelo (normal: tarda segundos). Sin error, sin aprobado aún.
-        setAvisoPago(
-          'Estamos verificando tu pago. Si en un minuto no se activa, recarga la página.',
-        );
+        setAvisoPago('Estamos verificando tu pago; esta página se actualizará sola.');
+        setRefPendiente(refPago);
       }
       navigate('/pricing', { replace: true });
     })();
@@ -295,6 +300,37 @@ function PricingSuscripciones() {
       ignore = true;
     };
   }, [refPago, navigate]);
+
+  // Polling de la referencia sin confirmar: el aviso "se actualizará sola" era falso sin
+  // esto (el webhook puede tardar >1 min). Tope de 20 intentos (~5 min) — después el
+  // usuario recarga a mano; la BD sigue siendo el candado real.
+  useEffect(() => {
+    if (!refPendiente) return;
+    let intentos = 0;
+    const id = window.setInterval(() => {
+      intentos += 1;
+      if (intentos > 20) {
+        setAvisoPago('Si tu pago no se refleja en unos minutos, recarga la página.');
+        setRefPendiente(null);
+        return;
+      }
+      void (async () => {
+        const { data } = await supabase.functions.invoke('verificar-pago', {
+          body: { referencia: refPendiente },
+        });
+        if (data?.aprobado) {
+          setAvisoPago(AVISO_APROBADO);
+          dispararRefetchSuscripciones();
+          setRefPendiente(null);
+        } else if (data?.estado === 'revision') {
+          setAvisoPago(AVISO_REVISION);
+          setRefPendiente(null);
+        }
+        // ni aprobado ni revisión → el intervalo sigue
+      })();
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [refPendiente]);
 
   const modulosProx = useMemo(
     () => (['structure', 'terrain', 'roads'] as const).map((id) => MODULES_DATA[id]?.title ?? id),

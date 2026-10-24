@@ -73,11 +73,19 @@ export function edgePagoNoDesplegada(err: unknown): boolean {
   return /not found|404/i.test(e?.message ?? '') || status === 404;
 }
 
+// Caché del flag con TTL: un valor cacheado PARA SIEMPRE escondía un cambio del
+// interruptor (encender/apagar suscripciones_activas) hasta recargar la página.
 let promiseHabilitadas: Promise<boolean> | null = null;
+let habilitadasDesde = 0;
+const HABILITADAS_TTL_MS = 5 * 60 * 1000;
 
 /** Interruptor maestro guardado en la BD (función suscripciones_habilitadas): mientras esté en off, la app funciona como siempre y nadie se bloquea. Si la lectura falla devuelve false SIN guardarlo (se reintenta). */
 export function suscripcionesHabilitadas(): Promise<boolean> {
-  promiseHabilitadas ??= (async () => {
+  // El TTL es del RESULTADO, no de la promesa: un error no se cachea (lo maneja el body).
+  if (promiseHabilitadas && Date.now() - habilitadasDesde < HABILITADAS_TTL_MS)
+    return promiseHabilitadas;
+  habilitadasDesde = Date.now();
+  promiseHabilitadas = (async () => {
     try {
       const { data, error } = await supabase.rpc('suscripciones_habilitadas');
       if (error) {

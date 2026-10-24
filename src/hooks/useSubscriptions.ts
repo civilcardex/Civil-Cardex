@@ -2,7 +2,7 @@
  *  de pago aprobado. `activos` son los módulos que el usuario puede usar HOY; para el
  *  candado estricto de rutas está RequireModule, que revisa la fecha de vencimiento
  *  en cada render. */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext.tsx';
 import {
   EV_SUSCRIPCIONES,
@@ -31,12 +31,16 @@ let cacheSesion: {
 export function useSuscripciones() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [rows, setRows] = useState<SuscripcionRow[] | null>(cacheSesion?.rows ?? null);
+  // Hidratar SOLO si la caché es del usuario actual: el hook se desmonta al cerrar sesión,
+  // así que el guard del effect no corre entre sesión y sesión — sin este filtro, el primer
+  // render del siguiente usuario en la misma pestaña ve rows/accesos del anterior.
+  const propia = cacheSesion && cacheSesion.userId === userId ? cacheSesion : null;
+  const [rows, setRows] = useState<SuscripcionRow[] | null>(propia?.rows ?? null);
   // null = aún consultando el flag de BD (evita el flash en RequireModule).
-  const [flagBD, setFlagBD] = useState<boolean | null>(cacheSesion?.flagBD ?? null);
+  const [flagBD, setFlagBD] = useState<boolean | null>(propia?.flagBD ?? null);
   // Módulos del RPC mis_accesos (propias + asientos de empresa); [] sin sesión o
   // sin migración (fail-open — ver fetchModulosConAcceso).
-  const [accesos, setAccesos] = useState<ModuloId[]>(cacheSesion?.accesos ?? []);
+  const [accesos, setAccesos] = useState<ModuloId[]>(propia?.accesos ?? []);
 
   useEffect(() => {
     // Invalidación de la caché de sesión al cambiar de usuario (fuera del render — regla
@@ -74,11 +78,11 @@ export function useSuscripciones() {
 
   // activos = suscripciones propias (RLS) + asientos de empresa (mis_accesos):
   // el gating cliente no puede ver los asientos con la lectura owner-only.
-  const activos = useMemo(() => {
-    const base = modulosActivos(rows ?? []);
-    for (const m of accesos) base.add(m);
-    return base;
-  }, [rows, accesos]);
+  // SIN useMemo: la fecha de vencimiento se evalúa EN CADA render — un memo congelaba el
+  // resultado al montaje y una suscripción vencida seguía dando acceso (activos.has)
+  // hasta un remount/refetch. El Set es diminuto; reconstruirlo por render es gratis.
+  const activos = modulosActivos(rows ?? []);
+  for (const m of accesos) activos.add(m);
   const bloqueando = SUSCRIPCIONES_ACTIVAS && flagBD === true;
   const decidido = !SUSCRIPCIONES_ACTIVAS || flagBD !== null;
 
