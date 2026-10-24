@@ -68,10 +68,14 @@ export function heredarEntrePisos(
         });
         const liveAgg = srcAgg.agg;
         const liveHydro = srcAgg.hydroAgg;
-        // Sin agregado (el GC o claves stale vaciaron las claves del origen) NO se propaga:
-        // escribía libro vacío y restaba a 0 las UDs heredadas del destino (mismo guard que
-        // las ramas gemelas de espejos de salida).
-        if (Object.keys(liveAgg).length === 0) continue;
+        // Origen VACÍO: se distingue "la verdad es cero" (el usuario borró los aparatos del
+        // superior — su clave propia existe en el disco, aunque sea {}) de "no hay verdad"
+        // (claves nunca escritas o comidas por el GC). Solo el primero limpia el libro del
+        // destino; el segundo conserva el guard viejo — escribir libro vacío restaba a 0 las
+        // UDs heredadas del destino.
+        const clavePropiaOrigen = `${propNet}_${upperBajId}_${loadedPid}`;
+        const origenPresente = disk[clavePropiaOrigen] != null;
+        if (Object.keys(liveAgg).length === 0 && !origenPresente) continue;
         const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
         if (syncMirrorKey(disk, lk, liveAgg, true)) p.dirty = true;
         const tgt = loadFromStorage<{
@@ -97,7 +101,11 @@ export function heredarEntrePisos(
         const ownKey = `${propNet}_${lowerBajId}_${ldPlanId}`;
         const own = disk[ownKey] || {};
         const aplicadoHidroPrev = tBaj?.ucAplicadoHidro || {};
+        const dNomSup = baj.dNominal;
         let tgtChanged = false;
+        // La adopción de diámetro sobre tBaj SOLO detecta el cambio (tgtChanged): el
+        // diámetro de verdad se estampa en el parche FRESCO de abajo (escribirlo aquí se
+        // perdía con el snapshot — el doc persistido se re-lee del storage).
         if (tBaj && adoptarDiametroDelSuperior(tBaj, baj)) tgtChanged = true;
         const snapKey = `${ldPlanId}|${lowerBajId}`;
         const snapBaj = propioSnap[snapKey] || { uc: {}, hidro: {} };
@@ -201,6 +209,9 @@ export function heredarEntrePisos(
           if (tgtFresco) {
             const baj = bajanteDePisoEn(tgtFresco.bajantes, lowerBajId, tgtLbl);
             if (baj) {
+              // Diámetro adoptado del superior — AQUÍ (doc fresco), no en el snapshot: es el
+              // único sitio que sobrevive al guardado (mismo parche que el libro).
+              if (dNomSup && baj.dNominal !== dNomSup) baj.dNominal = dNomSup;
               baj.ucAplicado = { ...ucAplicadoNuevo };
               if (liveHydro || Object.keys(ucAplicadoHidroNuevo).length)
                 baj.ucAplicadoHidro = { ...ucAplicadoHidroNuevo };
@@ -213,6 +224,7 @@ export function heredarEntrePisos(
               if (ldPlanId === loadedPid) {
                 const vivoTgt = bajanteLocalQueCumple(eng, (b) => b.id === lowerBajId);
                 if (vivoTgt) {
+                  if (dNomSup && vivoTgt.dNominal !== dNomSup) vivoTgt.dNominal = dNomSup;
                   vivoTgt.ucAplicado = { ...ucAplicadoNuevo };
                   if (liveHydro || Object.keys(ucAplicadoHidroNuevo).length)
                     vivoTgt.ucAplicadoHidro = { ...ucAplicadoHidroNuevo };

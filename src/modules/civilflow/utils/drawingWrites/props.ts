@@ -5,6 +5,20 @@ import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
 import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import { punterosBajante, validarDiametroEntrePisos, parseBajanteKey } from './diameters';
 import { avisarDiametroInvalido } from '../diameterValidation.ts';
+import { bajanteDePisoEn } from '../bajanteLocal.ts';
+import { splitTramo } from '../keys.ts';
+import { pisoLbl } from '../../constants';
+
+/**
+ * Etiqueta de piso de un plan (`pisoLbl(nivel)`): la que distingue el bajante REAL de ese
+ * piso de las proyecciones de otros pisos que arrastra el doc con el MISMO id.
+ * Ej: plan.nivel 2 → 'Piso 2'; nivel raro/null → '' (bajanteDePisoEn cae a la primera copia).
+ */
+function etiquetaPisoDe(plan: SyncPlanInput | undefined): string {
+  const n = plan?.nivel;
+  const nivel = typeof n === 'number' ? n : n != null && n !== '' ? Number(n) : NaN;
+  return Number.isFinite(nivel) ? pisoLbl(nivel) : '';
+}
 
 /** Diámetro a varios ramales con un solo load+save por plano (ruta batch del D vent propuesto). */
 // Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.
@@ -27,9 +41,7 @@ export function writeDiametroToDrawingBatch(
   const isVent = net === 'vent';
   const porPlan = new Map<string, string[]>();
   for (const key of ramalKeys) {
-    const sep = key.lastIndexOf('-');
-    const rid = sep > 0 ? key.slice(0, sep) : key;
-    const pid = sep > 0 ? key.slice(sep + 1) : '';
+    const [rid, pid] = splitTramo(key);
     if (!rid || !pid) continue;
     const lista = porPlan.get(pid) ?? [];
     lista.push(rid);
@@ -92,11 +104,13 @@ export function writeBajantePropToDrawing(
     const data = raw;
     let changed = false;
 
-    for (const b of data.bajantes || []) {
-      if (b.id === bajanteId && b.net === net) {
-        b[prop] = val;
-        changed = true;
-      }
+    // SOLO el bajante REAL de este piso (pisoBase = etiqueta del plan): el doc también
+    // arrastra la PROYECCIÓN del piso vecino con el MISMO id — estamparla aquí dejaba dos
+    // copias divergentes y el espejo de abajo leía la equivocada (find plano).
+    const bReal = bajanteDePisoEn(data.bajantes, bajanteId, etiquetaPisoDe(plan));
+    if (bReal && bReal.net === net) {
+      bReal[prop] = val;
+      changed = true;
     }
 
     if (changed) {
@@ -127,7 +141,11 @@ export function writeBajantePropToDrawing(
           bajantes?: { id: string; dNominal?: unknown; net?: string; recibeDeIds?: string[] }[];
           ramales?: { id?: string; net?: string; diametro?: string }[];
         } | null>(TRAZOS_PREFIX + pPlan, null);
-        const pareja = rawP?.bajantes?.find((x) => x.id === pId);
+        // Pareja REAL del otro piso (pisoBase = su etiqueta): el find plano podía devolver
+        // la proyección —si su dNominal ya había sido estampado por una pasada anterior, el
+        // guard de "valor ya igual" daba falso y el espejo se SALTABA (diámetros divergentes).
+        const planP = plans.find((pl) => pl && String(pl.id) === pPlan);
+        const pareja = bajanteDePisoEn(rawP?.bajantes, pId, etiquetaPisoDe(planP));
         if (pareja && pareja.net === net && pareja.dNominal !== val) {
           // Doctrina ll "auto-sube" en el piso DESTINO también: si el valor espejado deja a
           // la pareja por debajo del máximo de SUS ramales conectados, se sube al máximo en

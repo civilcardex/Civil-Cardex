@@ -7,6 +7,8 @@ import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
 import { syncMirrorKey } from '../fixturesStorage.ts';
 import type { CountsMap, HidroDataMap } from '../fixturesStorage.ts';
+import { bajanteDePisoEn } from '../../utils/bajanteLocal.ts';
+import { pisoLbl } from '../../constants/helpers.ts';
 
 /** Bajante del motor con lo que este pase lee/escribe (el enlace entre pisos). */
 export interface MontanteLinkLike {
@@ -51,7 +53,9 @@ export function refreshMontanteBooksFromUpper(args: {
         bajantes?: InheritPoolBajante[];
         ramales?: InheritPoolRamal[];
       } | null>(TRAZOS_PREFIX + upPlan, null);
-      const storedBaj = srcRaw?.bajantes?.find((x) => x.id === upBajId) ?? null;
+      // Bajante REAL del piso superior (no su proyección en otros pisos, que comparte id y
+      // arrastra un ucAplicado rancio — mismo criterio de bajanteLocal).
+      const storedBaj = bajanteDePisoEn(srcRaw?.bajantes, upBajId, pisoLbl(nUp)) ?? null;
       if (adoptarDiametroDelSuperior(baj, storedBaj)) dirty = true;
       const { agg } = collectSourceAgg({
         net: baj.net,

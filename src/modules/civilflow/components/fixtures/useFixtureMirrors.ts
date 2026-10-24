@@ -7,6 +7,7 @@ import { esRedAparatosPresion, propagarAparatosPresion } from '../../utils/propa
 import { emitAparatosClear } from '../../utils/fixtureEvents.ts';
 import { loadAll, loadHidroData, saveAll, stableStringify } from '../fixturesStorage.ts';
 import { loadPlanTrazos } from '../../services/storageService.ts';
+import { bajanteDePisoEn } from '../../utils/bajanteLocal.ts';
 import { useEffect } from 'react';
 import { instalarDiagnosticoDev } from './devDiagnostics';
 
@@ -106,14 +107,20 @@ export function correrPropagacion(a: EspejosArgs): () => void {
       const pid = String(
         (eng as unknown as { _loadedPlanId?: string | number })._loadedPlanId ?? '',
       );
-      for (const b of eng.bajantes || []) {
+      for (const b of eng.bajantes) {
         if (b.tipo !== 'montante') continue;
         try {
           const trazos = loadPlanTrazos(pid) as {
-            bajantes?: Array<{ id?: string; ucAplicado?: Record<string, Record<string, number>> }>;
+            bajantes?: Array<{
+              id: string;
+              pisoBase?: string;
+              ucAplicado?: Record<string, Record<string, number>>;
+            }>;
           } | null;
           if (!trazos || !trazos.bajantes) continue;
-          const mon = trazos.bajantes.find((x) => x.id === b.id);
+          // Copia del PISO CARGADO (no la proyección del vecino, mismo id, libro rancio —
+          // bug ronda 53): preferencia por pisoBase = etiqueta del nivel abierto.
+          const mon = bajanteDePisoEn(trazos.bajantes, b.id, eng.nivelActual?.label ?? '');
           if (mon && mon.ucAplicado) b.ucAplicado = mon.ucAplicado;
         } catch {
           /* ignore */

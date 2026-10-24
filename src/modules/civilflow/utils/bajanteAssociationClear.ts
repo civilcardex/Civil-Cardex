@@ -406,6 +406,11 @@ export function clearBajanteAssociation(
       }
       saveToStorage(APARATOS_BY_TRAMO_KEY, apos);
       saveToStorage(HYDRO_DATA_STORAGE_KEY, hydro);
+      // La FOTO de lo propio de este enlace muere con él: sin este borrado la entrada de
+      // `aparatos_propio_v1` quedaba para siempre y, si el set de ramales cambiaba antes de
+      // una re-asociación, `propioDeClave` reaparecía el suelo stale como si fuera propio.
+      delete fotoTodo[`${targetPlanId}|${targetBajanteId}`];
+      saveToStorage(APARATOS_PROPIO_KEY, fotoTodo);
       // Sin snapshot del trazos destino (caché ausente, libro venía del motor vivo) no hay
       // nada que revertir en disco: escribir null fabricaba una caché muerta y el push vacío
       // a BD borraba el piso. Solo se re-escribe un documento existente.
