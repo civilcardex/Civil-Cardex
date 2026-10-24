@@ -1,6 +1,7 @@
 import type * as THREE_NS from 'three';
 import { LABEL_POSITIONS, RCI_MONO } from './rci3dData.ts';
 import type { Rci3DApi } from './useRci3DScene.ts';
+import { dibujarEtiquetaLider } from '../shared/etiquetaLider.ts';
 
 // Capa de etiquetas — port del HTML original: canvas 2D full-viewport (pointer-events none)
 // redibujado cada frame. Cada etiqueta = línea guía con codo + flecha en la punta + círculo
@@ -42,7 +43,7 @@ function checkOcclusion(api: Rci3DApi, pos3d: THREE_NS.Vector3): boolean {
   return estado.raycaster.intersectObjects(api.occluders, false).length > 0;
 }
 
-/** Línea guía con codo + flecha + círculo numerado (port 1:1 del drawLabel del HTML). */
+/** Línea guía con codo + flecha + círculo numerado — geometría en dibujarEtiquetaLider. */
 function drawLabel(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -54,55 +55,20 @@ function drawLabel(
   L1: number,
   L2: number,
 ): void {
-  const R = Math.round(14 * sc);
-  const col = '#1f6feb';
-  const lw = 2.5;
-  const fs = Math.round(21 * sc);
-  const as = Math.round(6 * sc);
-
-  const rad = (ang * Math.PI) / 180;
-  const sign = dir === 0 ? 1 : -1;
-  const kx = x + sign * Math.sin(rad) * L2;
-  const ky = y - Math.cos(rad) * L2;
-  const cx = kx + sign * L1;
-  const cy = ky;
-
-  ctx.strokeStyle = col;
-  ctx.fillStyle = col;
-  ctx.lineWidth = lw;
-
-  // Segmento con flecha: punta → codo
-  ctx.beginPath();
-  ctx.moveTo(x + sign * Math.sin(rad) * as * 1.8, y - Math.cos(rad) * as * 1.8);
-  ctx.lineTo(kx, ky);
-  ctx.stroke();
-
-  // Flecha en la punta
-  const fx1 = x + sign * Math.sin(rad) * as * 1.8 - Math.cos(rad) * as;
-  const fy1 = y - Math.cos(rad) * as * 1.8 - sign * Math.sin(rad) * as;
-  const fx2 = x + sign * Math.sin(rad) * as * 1.8 + Math.cos(rad) * as;
-  const fy2 = y - Math.cos(rad) * as * 1.8 + sign * Math.sin(rad) * as;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(fx1, fy1);
-  ctx.lineTo(fx2, fy2);
-  ctx.closePath();
-  ctx.fill();
-
-  // Segmento horizontal: codo → borde círculo
-  ctx.beginPath();
-  ctx.moveTo(kx, ky);
-  ctx.lineTo(cx - sign * R, cy);
-  ctx.stroke();
-
-  // Círculo + número
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.font = `bold ${fs}px ${RCI_MONO}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(id), cx, cy);
+  dibujarEtiquetaLider(
+    ctx,
+    x,
+    y,
+    id,
+    sc,
+    dir,
+    ang,
+    L1,
+    L2,
+    '#1f6feb',
+    2.5,
+    `bold {fs}px ${RCI_MONO}`,
+  );
 }
 
 /** Frame de etiquetas — llamado desde el loop de la escena. Solo dibuja la etiqueta del

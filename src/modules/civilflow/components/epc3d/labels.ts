@@ -1,6 +1,7 @@
 import type * as THREE_NS from 'three';
 import { ETIQUETAS } from './epc3dData.ts';
 import type { Epc3DApi } from './useEpc3DScene.ts';
+import { dibujarEtiquetaLider } from '../shared/etiquetaLider.ts';
 
 // Etiquetas numeradas con flecha (port del HTML original): punta sobre la pieza, segmento
 // inclinado con flecha, codo horizontal y círculo con el número. Solo se dibuja la etiqueta
@@ -9,7 +10,8 @@ import type { Epc3DApi } from './useEpc3DScene.ts';
 const ETIQUETA_ACTIVA = '#1f6feb';
 const ETIQUETA_BASE = '#00ffff';
 
-/** Dibuja una etiqueta: flecha → codo inclinado → segmento horizontal → círculo numerado. */
+/** Dibuja una etiqueta: flecha → codo inclinado → segmento horizontal → círculo numerado.
+ *  Activa = azul/grueso; base = cian/fin. Geometría en dibujarEtiquetaLider (compartida). */
 function dibujarEtiqueta(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -22,57 +24,20 @@ function dibujarEtiqueta(
   L2: number,
   activa: boolean,
 ): void {
-  const R = Math.round(14 * sc);
-  const col = activa ? ETIQUETA_ACTIVA : ETIQUETA_BASE;
-  const lw = activa ? 2.5 : 1.5;
-  const fs = Math.round(21 * sc);
-  const as = Math.round(6 * sc);
-
-  const rad = (ang * Math.PI) / 180;
-  const sign = dir === 0 ? 1 : -1;
-  // Codo: sube L2 desde la punta, inclinado ang grados hacia el lado del círculo
-  const kx = x + sign * Math.sin(rad) * L2;
-  const ky = y - Math.cos(rad) * L2;
-  // Círculo: L1 horizontal desde el codo
-  const cx = kx + sign * L1;
-  const cy = ky;
-
-  ctx.strokeStyle = col;
-  ctx.fillStyle = col;
-  ctx.lineWidth = lw;
-
-  // Segmento con flecha: punta → codo
-  ctx.beginPath();
-  ctx.moveTo(x + sign * Math.sin(rad) * as * 1.8, y - Math.cos(rad) * as * 1.8);
-  ctx.lineTo(kx, ky);
-  ctx.stroke();
-
-  // Flecha en la punta
-  const fx1 = x + sign * Math.sin(rad) * as * 1.8 - Math.cos(rad) * as;
-  const fy1 = y - Math.cos(rad) * as * 1.8 - sign * Math.sin(rad) * as;
-  const fx2 = x + sign * Math.sin(rad) * as * 1.8 + Math.cos(rad) * as;
-  const fy2 = y - Math.cos(rad) * as * 1.8 + sign * Math.sin(rad) * as;
-  ctx.beginPath();
-  ctx.moveTo(x, y);
-  ctx.lineTo(fx1, fy1);
-  ctx.lineTo(fx2, fy2);
-  ctx.closePath();
-  ctx.fill();
-
-  // Segmento horizontal: codo → borde del círculo
-  ctx.beginPath();
-  ctx.moveTo(kx, ky);
-  ctx.lineTo(cx - sign * R, cy);
-  ctx.stroke();
-
-  // Círculo + número
-  ctx.beginPath();
-  ctx.arc(cx, cy, R, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.font = `bold ${fs}px monospace`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(String(id), cx, cy);
+  dibujarEtiquetaLider(
+    ctx,
+    x,
+    y,
+    id,
+    sc,
+    dir,
+    ang,
+    L1,
+    L2,
+    activa ? ETIQUETA_ACTIVA : ETIQUETA_BASE,
+    activa ? 2.5 : 1.5,
+    'bold {fs}px monospace',
+  );
 }
 
 // Temporales lazy (three se importa dinámicamente — no hay namespace en tiempo de módulo)
