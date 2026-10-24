@@ -293,9 +293,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   panX!: number;
   panY!: number;
-  drawingAcc!: boolean;
-  dirty!: boolean;
-  offCtx!: CanvasRenderingContext2D | null;
 
   _onDown: (e: MouseEvent | TouchEvent) => void;
   _onMove: (e: MouseEvent | TouchEvent) => void;

@@ -1,6 +1,7 @@
 /** Detectores de uniones, separados de junctionAutoSplit: a qué familia pertenece un ramalito y
  *  cuál es su ramal principal (padre) cuando aterriza sobre otro. Movidos tal cual. */
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
+import { sameNetGroup } from './drawingAngles.ts';
 
 /** ¿Puede engancharse este ramalito (tributario) al ramal destino? Solo entre ramalitos de la
  *  misma familia: la regla de "tener el mismo padre" se revisa aguas arriba. */
@@ -30,8 +31,6 @@ export function detectTributaryPadre(
     const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq));
     return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
   };
-  const sameGroup = (o: string) =>
-    o === net || ((o === 'san' || o === 'vent') && (net === 'san' || net === 'vent'));
   const tribEps = [pts[0], pts[pts.length - 1]];
   const mid: number[] = [
     (pts[0][0] + pts[pts.length - 1][0]) / 2,
@@ -39,7 +38,7 @@ export function detectTributaryPadre(
   ];
   let best: { id: string; d: number; midD: number } | null = null;
   for (const other of engine.ramales) {
-    if (!sameGroup(other.net) || !other.pts || other.pts.length < 2) continue;
+    if (!sameNetGroup(other.net, net) || !other.pts || other.pts.length < 2) continue;
     let d = Infinity;
     for (const p of tribEps) {
       for (let i = 0; i < other.pts.length - 1; i++) {

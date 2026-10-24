@@ -144,7 +144,7 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
       // Una FUENTE en un extremo no lo bloquea (orig. usuario: montante/red/
       // contador/calentador/bomba es punto de suministro — un trazo SÍ puede llegar a
       // él y el panel queda habilitado; sus aparatos entran por propagación).
-      const bajantesOcc = (eng.bajantes || []).filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
+      const bajantesOcc = eng.bajantes.filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
       const headOcc = extremoEntrelazado(eng.ramales, bajantesOcc, live, head);
       const tailOcc = extremoEntrelazado(eng.ramales, bajantesOcc, live, tail);
       // Misma regla del barrido (aparatoEnExtremoInvalido, orig. usuario): el extremo solo
@@ -152,7 +152,7 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
       // Así una asignación nueva jamás nace inválida: sin símbolo ni conteo si ningún
       // extremo vale, y el sweep no tiene nada que flaguear después.
       const tocaFuente = (pt: number[]) =>
-        (eng.bajantes || []).some(
+        eng.bajantes.some(
           (b) =>
             FUENTE_TIPOS.has(b.tipo || '') &&
             b.net === live.net &&
@@ -181,7 +181,7 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
         headVal && tailVal ? (flowEndsAt(live, head, 0.5) ? head : tail) : headVal ? head : tail;
       const field: 'aparatoInicio' | 'aparatoFin' = endPt === head ? 'aparatoFin' : 'aparatoInicio';
       const accField = field === 'aparatoInicio' ? 'accesorioInicio' : 'accesorioFin';
-      const hasBajante = (eng.bajantes || []).some(
+      const hasBajante = eng.bajantes.some(
         (b) =>
           !FUENTE_TIPOS.has(b.tipo || '') &&
           Math.abs(b.x - endPt[0]) < 0.5 &&
@@ -232,7 +232,7 @@ export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
       const head = live.pts[live.pts.length - 1];
       const tail = live.pts[0];
       // Una FUENTE en un extremo no lo bloquea (orig. usuario: punto de suministro).
-      const bajantesOcc = (eng.bajantes || []).filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
+      const bajantesOcc = eng.bajantes.filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
       const headOcc = extremoEntrelazado(eng.ramales, bajantesOcc, live, head);
       const tailOcc = extremoEntrelazado(eng.ramales, bajantesOcc, live, tail);
       // Item 1 (regla global): ambos extremos ocupados → no crear símbolo, sin

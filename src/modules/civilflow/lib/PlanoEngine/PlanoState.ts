@@ -698,9 +698,6 @@ export interface IPlanoEngineCore {
   panX0: number;
   panY0: number;
   panning: boolean;
-  drawingAcc: boolean;
-  dirty: boolean;
-  offCtx: CanvasRenderingContext2D | null;
   padreTributario: string | null;
   nivelActual: PlanoLevel | null;
   // Transitorio: se fija justo después de que el primer punto de un ramal de ventilación nuevo se

@@ -1,6 +1,7 @@
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState.ts';
+import { sameNetGroup } from '../../../lib/PlanoEngine/drawingAngles.ts';
 import { extremoEntrelazado } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
 import { FUENTE_TIPOS } from '../../../lib/PlanoEngine/nodos';
 
@@ -110,13 +111,11 @@ export function extremumOccupied(
   epPt: number[],
 ): boolean {
   if (!eng) return false;
-  const sinFuentes = (eng.bajantes || []).filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
+  const sinFuentes = eng.bajantes.filter((b) => !FUENTE_TIPOS.has(b.tipo || ''));
   return extremoEntrelazado(eng.ramales, sinFuentes, ramal, epPt);
 }
 
 const CONV_TOL = 0.5;
-const convSameGroup = (a: string, b: string) =>
-  a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 
 function ptTouchesRamal(pts: number[][], p: number[]): boolean {
   return (
@@ -167,7 +166,7 @@ export function tribsBlockingRamalConversion(ramales: PlanoRamal[], freshId: str
   const jointIsClean = (p: number[], idA: string, idB: string): boolean => {
     for (const r of ramales) {
       if (r.id === idA || r.id === idB) continue;
-      if (!convSameGroup(r.net, fresh.net) || !r.pts || r.pts.length < 2) continue;
+      if (!sameNetGroup(r.net, fresh.net) || !r.pts || r.pts.length < 2) continue;
       if (ptTouchesRamal(r.pts, p)) return false;
     }
     return true;
@@ -179,7 +178,7 @@ export function tribsBlockingRamalConversion(ramales: PlanoRamal[], freshId: str
       if (
         group.has(o.id) ||
         o.tipo !== 'tributario' ||
-        !convSameGroup(o.net, fresh.net) ||
+        !sameNetGroup(o.net, fresh.net) ||
         !o.pts ||
         o.pts.length < 2
       )
@@ -212,7 +211,7 @@ export function tribsBlockingRamalConversion(ramales: PlanoRamal[], freshId: str
   const blockers: PlanoRamal[] = [];
   if (fresh.padre) {
     const p = ramales.find((r) => r.id === fresh.padre);
-    if (p && p.tipo === 'tributario' && convSameGroup(p.net, fresh.net) && !group.has(p.id))
+    if (p && p.tipo === 'tributario' && sameNetGroup(p.net, fresh.net) && !group.has(p.id))
       blockers.push(p);
   }
   const freshHead = tribHead(fresh);
@@ -220,14 +219,14 @@ export function tribsBlockingRamalConversion(ramales: PlanoRamal[], freshId: str
     ramales.some(
       (t) =>
         t.tipo !== 'tributario' &&
-        convSameGroup(t.net, fresh.net) &&
+        sameNetGroup(t.net, fresh.net) &&
         t.pts &&
         t.pts.length >= 2 &&
         ptTouchesRamal(t.pts, p),
     );
   for (const o of ramales) {
     if (o.id === fresh.id || group.has(o.id) || blockers.includes(o)) continue;
-    if (o.tipo !== 'tributario' || !convSameGroup(o.net, fresh.net) || !o.pts || o.pts.length < 2)
+    if (o.tipo !== 'tributario' || !sameNetGroup(o.net, fresh.net) || !o.pts || o.pts.length < 2)
       continue;
     // Solo bloquea la CABEZA propia sobre el tributario ajeno (fresh entrega ahí):
     // con la cola, fresh RECIBE (el lateral llega a su entrada); con el cuerpo no hay

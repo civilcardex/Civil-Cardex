@@ -9,7 +9,12 @@ import {
 } from './PlanoState.ts';
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { _firstSegmentAngle, angleAtHalfLength, detectAccesorioTrigger } from './drawingAngles.ts';
+import {
+  _firstSegmentAngle,
+  angleAtHalfLength,
+  detectAccesorioTrigger,
+  sameNetGroup,
+} from './drawingAngles.ts';
 import { DEFAULT_PENDIENTE_PCT } from '../../constants';
 import { junctionHasIncomingFlow, junctionHasOutgoingFlow } from '../../utils/flowDirection.ts';
 import {
@@ -117,10 +122,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         const isFreeTip = (ex: PlanoRamal, ep: number[]): boolean => {
           for (const o of engine.ramales) {
             if (o.id === ex.id || !o.pts || o.pts.length < 2) continue;
-            const linked =
-              o.net === ex.net ||
-              ((o.net === 'san' || o.net === 'vent') && (ex.net === 'san' || ex.net === 'vent'));
-            if (!linked) continue;
+            if (!sameNetGroup(o.net, ex.net)) continue;
             if (o.pts.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL)) return false;
             for (let i = 0; i < o.pts.length - 1; i++) {
               const [ax, ay] = o.pts[i];
@@ -512,10 +514,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       if (r.net === 'vent' && r.pts.length >= 2) {
         const pStart = r.pts[0];
         const pEnd = r.pts[r.pts.length - 1];
-        const endOnVentBajante = (engine.bajantes || []).some(
+        const endOnVentBajante = engine.bajantes.some(
           (b) => b.net === 'vent' && Math.hypot(b.x - pEnd[0], b.y - pEnd[1]) < TOL,
         );
-        const endOnSanBajante = (engine.bajantes || []).some(
+        const endOnSanBajante = engine.bajantes.some(
           (b) => b.net === 'san' && Math.hypot(b.x - pEnd[0], b.y - pEnd[1]) < TOL,
         );
         if (!endOnVentBajante && (touchesSan(pEnd) || endOnSanBajante) && !touchesRamal(pStart)) {

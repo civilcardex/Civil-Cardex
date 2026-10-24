@@ -1,11 +1,9 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
-import { calculateRamalLength, _midpoint } from '../PlanoEngineDrawing.ts';
-import { angleAtHalfLength } from '../drawingAngles.ts';
 import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { puedeConectarRamalABajante } from '../bajanteRules.ts';
 import { bumpBajanteToMaxRamal } from '../drawingUtils.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
-import { indexRamales, indexBajantes, type DragCtx } from './dragContext.ts';
+import { indexRamales, indexBajantes, refrescarTrazo, type DragCtx } from './dragContext.ts';
 
 /** Arrastre del FANTASMA entrepisos (anillo de desplazamiento): SOLO actualiza el
  *  desplazamiento del piso — no toca ramales existentes salvo el Ldesvio explícito. */
@@ -51,11 +49,7 @@ export function dragGhost(engine: IPlanoEngineCore, x: number, y: number): void 
       if (r) {
         r.pts[0] = [b.x, b.y];
         r.pts[r.pts.length - 1] = [newGx, newGy];
-        r.totalL = calculateRamalLength(r.pts, engine);
-        if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
-        const [mx, my] = _midpoint(r.pts);
-        r.labelX = mx;
-        r.labelY = my;
+        refrescarTrazo(engine, r, true);
       }
     }
 
@@ -69,7 +63,6 @@ export function dragGhost(engine: IPlanoEngineCore, x: number, y: number): void 
 export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx: DragCtx): void {
   const { ramalesPorId } = ctx;
   const bajantesById = indexBajantes(engine);
-  const ramalesById = indexRamales(engine);
   const b = bajantesById.get(engine.bajDrag!.id);
   if (b) {
     let p = engine.toPlane(x - engine.bajDrag!.offX, y - engine.bajDrag!.offY);
@@ -95,7 +88,7 @@ export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx:
       const assocIds = [...(b.recibeDeIds || [])];
       if (b.descargaEnId) assocIds.push(b.descargaEnId);
       const assocSet = new Set(assocIds);
-      const assocRamales = (engine.ramales || []).filter(
+      const assocRamales = engine.ramales.filter(
         (r) => assocSet.has(r.id) && r.pts && r.pts.length >= 2,
       );
       if (assocRamales.length > 0) {
@@ -160,7 +153,7 @@ export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx:
     // exclusivo de bajantes.
     const autoThresh = 20 / engine.zoom;
     const recibeDeSet = new Set(b.recibeDeIds || []);
-    for (const r of b.tipo === 'canal' ? [] : engine.ramales || []) {
+    for (const r of b.tipo === 'canal' ? [] : engine.ramales) {
       if (!r.pts || r.pts.length === 0) continue;
       if (r.net !== b.net) continue;
       // Tributarios ni llegan ni salen de un bajante (orig. usuario) — se saltan en silencio
@@ -247,13 +240,7 @@ export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx:
           changed = true;
         }
         if (changed) {
-          r.totalL = calculateRamalLength(r.pts, engine);
-          if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
-          if (!r.labelMoved) {
-            const [mx, my] = _midpoint(r.pts);
-            r.labelX = mx;
-            r.labelY = my;
-          }
+          refrescarTrazo(engine, r);
           checkRamalAnglesExcludingConnections(engine, r);
         }
       });
@@ -269,19 +256,13 @@ export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx:
       const dyMove = p.y - oldY;
       for (const d of Object.values(b.desplazamientos)) {
         if (!d.Ldesvio) continue;
-        const r = ramalesById.get(d.Ldesvio);
+        const r = ramalesPorId.get(d.Ldesvio);
         if (!r) continue;
         r.pts[r.pts.length - 1] = [b.x, b.y];
         d.dx -= dxMove;
         d.dy -= dyMove;
         r.pts[0] = [b.x + d.dx, b.y + d.dy];
-        r.totalL = calculateRamalLength(r.pts, engine);
-        if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
-        if (!r.labelMoved) {
-          const [mx, my] = _midpoint(r.pts);
-          r.labelX = mx;
-          r.labelY = my;
-        }
+        refrescarTrazo(engine, r);
       }
     }
 

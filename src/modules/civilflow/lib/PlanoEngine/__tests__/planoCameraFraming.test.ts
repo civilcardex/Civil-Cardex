@@ -39,6 +39,20 @@ describe('encuadrarDibujo', () => {
     expect(cx).toBeCloseTo(500, 6);
   });
 
+  it('bbox degenerado (una línea horizontal) se encuadra SOBRE el contenido, no cae a la hoja', () => {
+    // El único trazo del piso es horizontal: alto 0. Con divisor en 1 el zoom lo
+    // encuadra centrado — caer a la hoja completa des-centraba el primer trazo.
+    const enc = encuadrarDibujo({
+      ...vis,
+      bbox: { minX: 100, minY: 50, maxX: 300, maxY: 50 },
+    });
+    const cy = 50 * enc.zoom + enc.offY;
+    expect(cy).toBeCloseTo(400, 6);
+    // Y con la lámina sin medir (pageW=0) no produce NaN: identidad.
+    const sinHoja = encuadrarHoja({ ...vis, pageW: 0, pageH: 0 });
+    expect(sinHoja).toEqual({ zoom: 1, offX: 0, offY: 0 });
+  });
+
   it('encuadrarHoja deja la lámina centrada con el aire pedido', () => {
     const enc = encuadrarHoja({ ...vis, pad: 16 });
     const sc = Math.min((1000 - 32) / 2000, (800 - 32) / 1600);

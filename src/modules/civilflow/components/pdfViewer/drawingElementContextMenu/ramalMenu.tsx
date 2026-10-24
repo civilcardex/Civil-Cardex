@@ -10,6 +10,7 @@ import {
 import { directNeighborRamales } from '../../../utils/flowDirection.ts';
 import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber.ts';
+import { sameNetGroup } from '../../../lib/PlanoEngine/drawingAngles.ts';
 import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules.ts';
 import {
   useDrawingElementContextMenu,
@@ -78,11 +79,7 @@ export function RamalMenu() {
     const out: PlanoRamal[] = [];
     for (const o of eng.ramales) {
       if (o.id === ramalEl.id || o.tipo === 'tributario') continue;
-      const sameGroup =
-        o.net === ramalEl.net ||
-        ((o.net === 'san' || o.net === 'vent') &&
-          (ramalEl.net === 'san' || ramalEl.net === 'vent'));
-      if (!sameGroup) continue;
+      if (!sameNetGroup(o.net, ramalEl.net)) continue;
       const touch = eps.some(
         (e) =>
           (o.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
@@ -230,9 +227,7 @@ export function RamalMenu() {
               // Ítem 2 (rev 5): con aparato asignado, el flip puede dejarlo en un extremo
               // conectado a la red o en contra del flujo — se deshace (involución) y alerta.
               // Se evalúa PRIMERO que la validación de dirección de flujo.
-              if (
-                aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r, eng.nivelActual?.label)
-              ) {
+              if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes, r, eng.nivelActual?.label)) {
                 flipRamalFlow(r);
                 ctx.setContextMenuState(null);
                 eng.triggerAlert(
@@ -305,12 +300,7 @@ export function RamalMenu() {
                 // ANTES de abrir el modal de cambio de dirección de flujo.
                 const sim = { ...ramalEl, _tribReversed: !ramalEl._tribReversed };
                 if (
-                  aparatoEnExtremoInvalido(
-                    eng.ramales,
-                    eng.bajantes || [],
-                    sim,
-                    eng.nivelActual?.label,
-                  )
+                  aparatoEnExtremoInvalido(eng.ramales, eng.bajantes, sim, eng.nivelActual?.label)
                 ) {
                   ctx.setContextMenuState(null);
                   eng.triggerAlert(

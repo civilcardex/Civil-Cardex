@@ -41,11 +41,14 @@ export interface BboxDibujo {
 
 /**
  * Encuadre que muestra la HOJA COMPLETA centrada en el viewport.
- * @param visW - ancho del \u00e1rea visible.
- * @param visH - alto del \u00e1rea visible.
+ * @param visW - ancho del área visible.
+ * @param visH - alto del área visible.
  * @param pageW - ancho de la hoja.
  * @param pageH - alto de la hoja.
  * @param pad - aire (px) alrededor de la hoja.
+ * @returns identidad {zoom:1, off:0} si la lámina aún no está medida (pageW/pageH = 0,
+ *   antes del primer raster): sin el guard, sc=Infinity y offX=NaN — el canvas con
+ *   transform NaN no pinta nada.
  */
 export function encuadrarHoja(args: {
   visW: number;
@@ -55,14 +58,15 @@ export function encuadrarHoja(args: {
   pad?: number;
 }): Encuadre {
   const { visW, visH, pageW, pageH } = args;
+  if (!(pageW > 0) || !(pageH > 0)) return { zoom: 1, offX: 0, offY: 0 };
   const pad = args.pad ?? 16;
   const availW = Math.max(1, visW - pad * 2);
   const availH = Math.max(1, visH - pad * 2);
   const sc = Math.min(availW / pageW, availH / pageH);
   return {
     zoom: sc,
-    // El lienzo de DIBUJO mide el \u00e1rea VISIBLE (no la l\u00e1mina): la l\u00e1mina se centra en
-    // el viewport. La f\u00f3rmula anterior (pageW*(1-sc)/2) la dejaba corrida a un lado.
+    // El lienzo de DIBUJO mide el área VISIBLE (no la lámina): la lámina se centra en
+    // el viewport. La fórmula anterior (pageW*(1-sc)/2) la dejaba corrida a un lado.
     offX: (visW - pageW * sc) / 2,
     offY: (visH - pageH * sc) / 2,
   };
@@ -70,9 +74,11 @@ export function encuadrarHoja(args: {
 
 /**
  * Encuadre que muestra SOLO el DIBUJO (el contenido), centrado: recorta el fondo negro de la
- * l\u00e1mina y del visor (orig. usuario: "que se vea solo el plano, no el fondo negro").
- * Si no hay dibujo (piso vac\u00edo) cae a la hoja completa.
- * @param bbox - rect\u00e1ngulo del dibujo en px de plano (null si no hay nada).
+ * lámina y del visor (orig. usuario: "que se vea solo el plano, no el fondo negro").
+ * Si no hay dibujo (bbox null) cae a la hoja completa. Un bbox DEGENERADO (una sola línea
+ * recta: ancho o alto 0, punto único) se encuadra igual con el divisor en 1 — caer a la hoja
+ * des-centraba el primer trazo de un piso nuevo.
+ * @param bbox - rectángulo del dibujo en px de plano (null si no hay nada).
  */
 export function encuadrarDibujo(args: {
   visW: number;
@@ -83,16 +89,16 @@ export function encuadrarDibujo(args: {
   pad?: number;
 }): Encuadre {
   const { visW, visH, bbox } = args;
-  if (!bbox || bbox.maxX <= bbox.minX || bbox.maxY <= bbox.minY) {
+  if (!bbox) {
     return encuadrarHoja(args);
   }
   const pad = args.pad ?? 8;
-  const w = bbox.maxX - bbox.minX;
-  const h = bbox.maxY - bbox.minY;
+  const w = Math.max(1, bbox.maxX - bbox.minX);
+  const h = Math.max(1, bbox.maxY - bbox.minY);
   const availW = Math.max(1, visW - pad * 2);
   const availH = Math.max(1, visH - pad * 2);
   const sc = Math.min(availW / w, availH / h);
-  // El motor dibuja as\u00ed: cvs = plano * zoom + off \u2192 para centrar el bbox:
+  // El motor dibuja así: cvs = plano * zoom + off → para centrar el bbox:
   // off = centro del viewport - centro del dibujo * zoom.
   return {
     zoom: sc,
@@ -102,7 +108,7 @@ export function encuadrarDibujo(args: {
 }
 
 /**
- * Rect\u00e1ngulo del DIBUJO de un motor incluidas las COTAS (dims) — la colección del motor es
+ * Rectángulo del DIBUJO de un motor incluidas las COTAS (dims) — la colección del motor es
  * la que usan reEncuadrarContenido y el botón Ajustar: sin dims, un piso que solo tenga cotas
  * quedaría con bbox vacío y caería a la hoja.
  * @returns bbox en px de plano, o null si no hay nada trazado.
@@ -129,7 +135,7 @@ export function ptsDeDibujoConDims(eng: {
   return bboxDePuntos(pts);
 }
 
-/** Rect\u00e1ngulo que abarca un conjunto de puntos (px de plano). */
+/** Rectángulo que abarca un conjunto de puntos (px de plano). */
 export function bboxDePuntos(pts: Array<{ x: number; y: number }>): BboxDibujo | null {
   if (!pts.length) return null;
   let minX = Infinity;
@@ -159,25 +165,4 @@ export function zoomAnclado(cam: CamaraConRender, nzRaw: number, mx: number, my:
   const c = cam as CamaraConRender & { scheduleRender?: () => void };
   if (typeof c.scheduleRender === 'function') c.scheduleRender();
   else cam.render();
-}
-
-/** Encaja el DIBUJO (no la lámina) de un motor en su contenedor — el mismo cálculo del botón
- *  "Ajustar": solo zoom/offX/offY; la geometría y la escala no se tocan. Lo usan el arranque
- *  del visor (pre-paint) y el switch de piso para que la entrada SIEMPRE quede centrada. */
-export function encuadrarContenido(
-  eng: { pageW: number; pageH: number; zoom: number; offX: number; offY: number },
-  cw: HTMLElement | null,
-  bbox: Parameters<typeof encuadrarDibujo>[0]['bbox'],
-): void {
-  if (!cw || !eng.pageW || !eng.pageH) return;
-  const encuadre = encuadrarDibujo({
-    visW: cw.clientWidth,
-    visH: cw.clientHeight,
-    pageW: eng.pageW,
-    pageH: eng.pageH,
-    bbox,
-  });
-  eng.zoom = encuadre.zoom;
-  eng.offX = encuadre.offX;
-  eng.offY = encuadre.offY;
 }

@@ -63,34 +63,11 @@ export function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): stri
 
 // Yee doble: eximir del borrado en bloque — los ramales del brazo principal de una yee doble
 // deben poder borrarse individualmente (el símbolo persiste), no como cluster colineal.
+// La detección es la misma de isDeletedYeeDoblePart: marca propia O trazo que pasa por los
+// brazos de otra yee.
 function isYeeDobleInvolved(engine: IPlanoEngineCore, ramalId: string): boolean {
   const r = engine.ramales.find((x) => x.id === ramalId);
-  if (!r) return false;
-  if (r.yeeDobleAt && r.yeeDobleAt.length === 2) return true;
-  const pts = r.pts || [];
-  if (pts.length < 2) return false;
-  for (const other of engine.ramales) {
-    if (!other.yeeDobleAt || other.yeeDobleAt.length !== 2) continue;
-    for (const yp of other.yeeDobleAt) {
-      for (const rp of pts) {
-        if (Math.hypot(yp[0] - rp[0], yp[1] - rp[1]) < 20) return true;
-      }
-      for (let i = 0; i < pts.length - 1; i++) {
-        const A = pts[i];
-        const B = pts[i + 1];
-        const dx = B[0] - A[0];
-        const dy = B[1] - A[1];
-        const lenSq = dx * dx + dy * dy;
-        if (lenSq < 1e-6) continue;
-        const t = ((yp[0] - A[0]) * dx + (yp[1] - A[1]) * dy) / lenSq;
-        const ct = Math.max(0, Math.min(1, t));
-        const px = A[0] + ct * dx;
-        const py = A[1] + ct * dy;
-        if (Math.hypot(yp[0] - px, yp[1] - py) < 0.5) return true;
-      }
-    }
-  }
-  return false;
+  return r ? isDeletedYeeDoblePart(engine, r) : false;
 }
 
 /** La dirección de la tubería principal (tronco) que pasa por el punto: busca el par de brazos

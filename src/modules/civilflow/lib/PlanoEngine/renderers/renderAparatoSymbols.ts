@@ -15,9 +15,13 @@ const getAparatoImg = (src: string, engine: IPlanoEngineCore): HTMLImageElement 
   const img = new Image();
   img.onload = () => {
     aparatoImgCache.set(src, img);
-    engine.render();
+    // Soltar el handler: el closure captura `engine` y, si vive, la cache de módulo
+    // retenía cada motor que alguna vez pidió un símbolo (fuga tras destroy()).
+    img.onload = null;
+    engine.scheduleRender();
   };
   img.onerror = () => {
+    img.onerror = null;
     aparatoImgCache.set(src, null);
   };
   img.src = src;

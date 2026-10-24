@@ -1,25 +1,8 @@
 import { MONO_3D } from '../../../components/shared/config3d';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
-import type { DeclutterFrame } from '../labelDeclutter.ts';
+import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
-export function drawFallbackSymbol(
-  ctx: CanvasRenderingContext2D,
-  engine: IPlanoEngineCore,
-  accType: string,
-  c: { x: number; y: number },
-  _dx: number,
-  _dy: number,
-  _px: number,
-  _py: number,
-  _outX: number,
-  _outY: number,
-  rad: number,
-  _diamLabel?: string,
-  _ramal?: PlanoRamal,
-  _slot?: 'ini' | 'fin',
-  _declutter?: DeclutterFrame,
-  _pipeToward?: { x: number; y: number },
-): boolean {
+export function drawFallbackSymbol(a: AccSimboloArgs): boolean {
+  const { ctx, engine, accType, c, rad } = a;
   if (
     accType.startsWith('tee') ||
     accType === 'te_linea' ||

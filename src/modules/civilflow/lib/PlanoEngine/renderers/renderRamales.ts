@@ -82,7 +82,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   const ventRamales = engine.ramales.filter((rm) => rm.net === 'vent');
   const sanRamales = engine.ramales.filter((rm) => rm.net === 'san');
   const hayPuntoSanCercano = indicePuntosCercanos(sanRamales.flatMap((sr) => sr.pts));
-  const bajantesSan = (engine.bajantes || []).filter((b) => b.net === 'san');
+  const bajantesSan = engine.bajantes.filter((b) => b.net === 'san');
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     const net = NET_POR_ID.get(r.net);
@@ -545,25 +545,25 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      drawExtremeAccessorySymbol(
+      drawExtremeAccessorySymbol({
         ctx,
         engine,
         accType,
         c,
-        accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? px : dx,
-        accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? py : dy,
+        dx: accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? px : dx,
+        dy: accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? py : dy,
         px,
         py,
         outX,
         outY,
         rad,
         diamLabel,
-        r,
-        idx === 0 ? 'ini' : 'fin',
+        ramal: r,
+        slot: idx === 0 ? 'ini' : 'fin',
         declutter,
         // Hacia el cuerpo del ramal (los brazos de la horquilla del tapón abren al trazo).
-        { x: -outX, y: -outY },
-      );
+        pipeToward: { x: -outX, y: -outY },
+      });
       ctx.restore();
       // Los glifos de codo (codoSube/codoBaja/codo90rmSube/codo90rmBaja) son discos blancos
       // rellenos dibujados en este pase, DESPUÉS del path del ramal — si el extremo queda cerca
@@ -665,7 +665,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      drawExtremeAccessorySymbol(
+      drawExtremeAccessorySymbol({
         ctx,
         engine,
         accType,
@@ -674,16 +674,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         dy,
         px,
         py,
-        px,
-        py,
+        outX: px,
+        outY: py,
         rad,
-        undefined,
-        undefined,
-        undefined,
         declutter,
         // Horquilla del tapón a mitad de ramal: abierta a lo largo del eje del trazo.
-        { x: dx, y: dy },
-      );
+        pipeToward: { x: dx, y: dy },
+      });
       ctx.restore();
     }
   });

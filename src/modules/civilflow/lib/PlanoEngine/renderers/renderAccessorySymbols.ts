@@ -7,47 +7,34 @@ import { drawValveSymbols } from './accValves';
 import { drawFallbackSymbol } from './accFallback';
 export { drawCornerCodoArc } from './cornerElbowArc.ts';
 
-// Hub verbatim (Fase A3): dispatcher conserva firma y orden semántico original.
-// ponytail: split mecánico por familia; cada helper retorna true si manejó accType.
-export function drawExtremeAccessorySymbol(
-  ctx: CanvasRenderingContext2D,
-  engine: IPlanoEngineCore,
-  accType: string,
-  c: { x: number; y: number },
-  dx: number,
-  dy: number,
-  px: number,
-  py: number,
-  outX: number,
-  outY: number,
-  rad: number,
-  diamLabel?: string,
-  ramal?: PlanoRamal,
-  slot?: 'ini' | 'fin',
-  declutter?: DeclutterFrame,
-  pipeToward?: { x: number; y: number },
-): void {
-  const args = [
-    ctx,
-    engine,
-    accType,
-    c,
-    dx,
-    dy,
-    px,
-    py,
-    outX,
-    outY,
-    rad,
-    diamLabel,
-    ramal,
-    slot,
-    declutter,
-    pipeToward,
-  ] as const;
-  if (drawSifonSymbol(...args)) return;
-  if (drawCodoSymbols(...args)) return;
-  if (drawTeeSymbols(...args)) return;
-  if (drawValveSymbols(...args)) return;
-  drawFallbackSymbol(...args);
+/** Argumentos del símbolo de accesorio en extremo de ramal — un solo objeto en vez de una
+ *  firma de 16 posicionales que cada familia ignoraba en parte. Ej: drawCodoSymbols solo
+ *  lee ctx/engine/accType/c/dx/dy/px/py/rad; el resto lo ignora. */
+export interface AccSimboloArgs {
+  ctx: CanvasRenderingContext2D;
+  engine: IPlanoEngineCore;
+  accType: string;
+  c: { x: number; y: number };
+  dx: number;
+  dy: number;
+  px: number;
+  py: number;
+  outX: number;
+  outY: number;
+  rad: number;
+  diamLabel?: string;
+  ramal?: PlanoRamal;
+  slot?: 'ini' | 'fin';
+  declutter?: DeclutterFrame;
+  /** Hacia el cuerpo del ramal: horquillas/tapones abren sus brazos hacia allí. */
+  pipeToward?: { x: number; y: number };
+}
+
+// Cada helper retorna true si manejó accType; el fallback dibuja el disco de respaldo.
+export function drawExtremeAccessorySymbol(a: AccSimboloArgs): void {
+  if (drawSifonSymbol(a)) return;
+  if (drawCodoSymbols(a)) return;
+  if (drawTeeSymbols(a)) return;
+  if (drawValveSymbols(a)) return;
+  drawFallbackSymbol(a);
 }

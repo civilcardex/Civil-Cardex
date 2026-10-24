@@ -8,6 +8,7 @@ import {
   checkRamalAngles,
   detectAccesorioTrigger,
   _firstSegmentAngle,
+  sameNetGroup,
 } from '../../../lib/PlanoEngine/drawingAngles.ts';
 import {
   autoSplitJunctionAndSumFlow,
@@ -285,14 +286,12 @@ export function buildTribFromGuide(
         newTrib._tribReversed = false;
       }
       const TOL_EP = 0.5;
-      const sameGroup = (a: string, b: string) =>
-        a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
       const receptor = eng.ramales.find(
         (r) =>
           r.id !== newTrib.id &&
           r.id !== newTrib.padre &&
           r.tipo !== 'tributario' &&
-          sameGroup(r.net, newTrib.net) &&
+          sameNetGroup(r.net, newTrib.net) &&
           !!r.pts &&
           r.pts.length >= 2 &&
           Math.hypot(r.pts[0][0] - endPt[0], r.pts[0][1] - endPt[1]) < TOL_EP,

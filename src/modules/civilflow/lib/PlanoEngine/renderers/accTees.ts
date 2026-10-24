@@ -1,24 +1,7 @@
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
-import type { DeclutterFrame } from '../labelDeclutter.ts';
+import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
-export function drawTeeSymbols(
-  ctx: CanvasRenderingContext2D,
-  engine: IPlanoEngineCore,
-  accType: string,
-  c: { x: number; y: number },
-  dx: number,
-  dy: number,
-  px: number,
-  py: number,
-  outX: number,
-  outY: number,
-  rad: number,
-  _diamLabel?: string,
-  _ramal?: PlanoRamal,
-  _slot?: 'ini' | 'fin',
-  _declutter?: DeclutterFrame,
-  pipeToward?: { x: number; y: number },
-): boolean {
+export function drawTeeSymbols(a: AccSimboloArgs): boolean {
+  const { ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad, pipeToward } = a;
   if (accType === 'teeSube' || accType === 'teeBaja') {
     // teeDirecto NO dibuja nada aquí a propósito — una tee recta simple siempre es detectable
     // geométricamente (3 segmentos compartiendo este vértice exacto), así que el pase

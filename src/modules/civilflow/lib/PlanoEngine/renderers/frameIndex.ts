@@ -118,7 +118,7 @@ function construir(eng: IPlanoEngineCore, firma: number): IndiceFrame {
   const hijos = new Map<string, PlanoRamal[]>();
   const orden = new Map<PlanoRamal, number>();
   let n = 0;
-  for (const r of eng.ramales || []) {
+  for (const r of eng.ramales) {
     orden.set(r, n++);
     const pts = r.pts;
     if (!pts) continue;
@@ -212,7 +212,7 @@ export function firmaGeometria(eng: IPlanoEngineCore): number {
     }
     h = mezclar(h, 0x2c);
   };
-  const ramales = eng.ramales || [];
+  const ramales = eng.ramales;
   h = mezclar(h, ramales.length);
   for (const r of ramales) {
     txt(r.id);
@@ -228,7 +228,7 @@ export function firmaGeometria(eng: IPlanoEngineCore): number {
       num(p[1]);
     }
   }
-  const bajantes = eng.bajantes || [];
+  const bajantes = eng.bajantes;
   h = mezclar(h, bajantes.length);
   for (const b of bajantes) {
     txt(b.id);

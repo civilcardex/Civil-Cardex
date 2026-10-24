@@ -3,7 +3,7 @@
 
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState.ts';
 import { esCaja } from './bajanteRules.ts';
-import { checkRamalAngles } from './drawingAngles.ts';
+import { checkRamalAngles, sameNetGroup } from './drawingAngles.ts';
 
 /** ¿Este punto cayó dentro del cuadro exterior (100×100 cm a escala real) de una caja de la red?
  *  Sirve para que conectarse a una caja no dispare la alarma de ángulos. */
@@ -48,10 +48,7 @@ export function checkRamalAnglesExcludingConnections(
     if (puntoEnCaja(engine, ep, r.net)) return true;
     for (const o of engine.ramales) {
       if (o.id === r.id || !o.pts || o.pts.length < 2) continue;
-      const sameGroup =
-        o.net === r.net ||
-        ((o.net === 'san' || o.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
-      if (!sameGroup) continue;
+      if (!sameNetGroup(o.net, r.net)) continue;
       if (
         o.pts.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) ||
         o.pts.some((_, i) => i < o.pts!.length - 1 && pointOnSeg(ep, o.pts![i], o.pts![i + 1]))

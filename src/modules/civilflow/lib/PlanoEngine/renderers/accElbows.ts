@@ -1,24 +1,7 @@
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
-import type { DeclutterFrame } from '../labelDeclutter.ts';
+import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
-export function drawCodoSymbols(
-  ctx: CanvasRenderingContext2D,
-  engine: IPlanoEngineCore,
-  accType: string,
-  c: { x: number; y: number },
-  dx: number,
-  dy: number,
-  px: number,
-  py: number,
-  _outX: number,
-  _outY: number,
-  rad: number,
-  _diamLabel?: string,
-  _ramal?: PlanoRamal,
-  _slot?: 'ini' | 'fin',
-  _declutter?: DeclutterFrame,
-  _pipeToward?: { x: number; y: number },
-): boolean {
+export function drawCodoSymbols(a: AccSimboloArgs): boolean {
+  const { ctx, engine, accType, c, dx, dy, px, py, rad } = a;
   if (accType === 'codoSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';

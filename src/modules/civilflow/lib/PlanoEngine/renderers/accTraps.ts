@@ -1,28 +1,11 @@
 import { rotatedRectCorners } from '../HitTester.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
+import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 import { findFreeLabelCenter } from '../labelDeclutter.ts';
-import type { DeclutterFrame } from '../labelDeclutter.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { anchoTexto } from './measureText.ts';
 
-export function drawSifonSymbol(
-  ctx: CanvasRenderingContext2D,
-  engine: IPlanoEngineCore,
-  accType: string,
-  c: { x: number; y: number },
-  _dx: number,
-  _dy: number,
-  _px: number,
-  _py: number,
-  outX: number,
-  outY: number,
-  rad: number,
-  diamLabel?: string,
-  ramal?: PlanoRamal,
-  slot?: 'ini' | 'fin',
-  declutter?: DeclutterFrame,
-  _pipeToward?: { x: number; y: number },
-): boolean {
+export function drawSifonSymbol(a: AccSimboloArgs): boolean {
+  const { ctx, engine, accType, c, outX, outY, rad, diamLabel, ramal, slot, declutter } = a;
   if (accType === 'sifon') {
     // Esto es una vista en PLANTA (mirando desde arriba) — la "caída" 2D de la trampa no tiene
     // relación real con la gravedad (que aquí es perpendicular a la página, ni siquiera se

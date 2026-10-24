@@ -109,8 +109,8 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
     const planId = String(engine._loadedPlanId ?? '');
     const estado = leerEstadoSello(planId);
     let cambiado = false;
-    const canales = (engine.bajantes || []).filter((b) => b.tipo === 'canal' && b.net === 'll');
-    const bajantes = (engine.bajantes || []).filter((b) => b.net === 'll' && b.tipo === 'bajante');
+    const canales = engine.bajantes.filter((b) => b.tipo === 'canal' && b.net === 'll');
+    const bajantes = engine.bajantes.filter((b) => b.net === 'll' && b.tipo === 'bajante');
     type Puente = { bajId: string; canalId: string; ramId: string; nace: boolean };
     const puentes: Puente[] = [];
     for (const c of canales) {
@@ -118,7 +118,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
       const obb = canalOBBDe(pxPerCm, c);
       const enCanal = (pt: number[]): boolean =>
         puntoEnCanalOBB(obb, pt[0], pt[1], CANAL_PUENTE_PAD);
-      for (const r of engine.ramales || []) {
+      for (const r of engine.ramales) {
         if (r.net !== 'll' || !r.pts || r.pts.length < 2 || r.id == null) continue;
         const pS = r.pts[0];
         const pE = r.pts[r.pts.length - 1];
@@ -151,7 +151,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
       const sep = key.lastIndexOf('|');
       const bajId = key.slice(0, sep);
       const canalPart = key.slice(sep + 1);
-      const b = (engine.bajantes || []).find((bb) => String(bb.id) === bajId);
+      const b = engine.bajantes.find((bb) => String(bb.id) === bajId);
       if (b && b.canalId === canalPart) b.canalId = null;
       cambiado = true;
     }
@@ -165,7 +165,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
       const sep = key.lastIndexOf('|');
       const ramId = key.slice(0, sep);
       const canalPart = key.slice(sep + 1);
-      const r = (engine.ramales || []).find((rr) => String(rr.id) === ramId);
+      const r = engine.ramales.find((rr) => String(rr.id) === ramId);
       const c = canales.find((cc) => String(cc.id) === canalPart);
       if (r && c && r.pts && r.pts.length >= 2 && c.x != null && c.y != null) {
         try {
@@ -197,7 +197,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
     for (const p of puentes) {
       const bk = `${p.bajId}|${p.canalId}`;
       if (!setVetoBaj.has(bk)) {
-        const b = (engine.bajantes || []).find((bb) => String(bb.id) === p.bajId);
+        const b = engine.bajantes.find((bb) => String(bb.id) === p.bajId);
         if (b) {
           if (!b.canalId) {
             b.canalId = p.canalId;
@@ -216,7 +216,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
       if (p.nace) {
         const rk = `${p.ramId}|${p.canalId}`;
         if (!setVetoRam.has(rk)) {
-          const r = (engine.ramales || []).find((rr) => String(rr.id) === p.ramId);
+          const r = engine.ramales.find((rr) => String(rr.id) === p.ramId);
           if (r) {
             if (!r.esCanalId) {
               r.esCanalId = p.canalId;

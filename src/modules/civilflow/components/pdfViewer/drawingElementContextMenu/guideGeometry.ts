@@ -187,12 +187,9 @@ export function guideEndTouchesNetwork(
   net?: string,
 ): boolean {
   const TOL = 0.6;
-  const sameGroup = (other: string | undefined) =>
-    !!net &&
-    (other === net || ((net === 'san' || net === 'vent') && (other === 'san' || other === 'vent')));
   for (const r of eng.ramales) {
     if (!r.pts || r.pts.length < 2) continue;
-    if (net && !sameGroup(r.net)) continue;
+    if (net && !sameNetGroup(r.net, net)) continue;
     if (distToPolyline(pt, r.pts) < TOL) return true;
   }
   return false;
@@ -278,12 +275,6 @@ export function getPadreHostAngles(padre: PlanoRamal, crossPt: [number, number])
     if (!repetido) out.push(ang);
   }
   return out;
-}
-
-/** El ángulo del host (el primero) o null si el cruce no toca ningún segmento del padre. */
-export function getPadreHostAngle(padre: PlanoRamal, crossPt: [number, number]): number | null {
-  const all = getPadreHostAngles(padre, crossPt);
-  return all.length ? all[0] : null;
 }
 
 /** Red a la que pertenece la guía: la SELECCIONADA manda (orig. usuario: "la red seleccionada

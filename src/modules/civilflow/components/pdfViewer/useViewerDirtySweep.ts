@@ -27,7 +27,7 @@ export function useViewerDirtySweep(): UseViewerDirtySweepRes {
   const barreAparatos = (eng: PlanoEngine): void => {
     if (Date.now() >= suprimirAparatoSweepHastaRef.current) {
       for (const r of eng.ramales) {
-        if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r, eng.nivelActual?.label)) {
+        if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes, r, eng.nivelActual?.label)) {
           if (!aparatoFlowAlertedRef.current.has(r.id)) {
             aparatoFlowAlertedRef.current.add(r.id);
             eng.triggerAlert(
@@ -43,7 +43,7 @@ export function useViewerDirtySweep(): UseViewerDirtySweepRes {
       // alerta — se SUBE solo al mayor ramal conectado. El cambio manual del montante por
       // debajo sí bloquea con alerta (pushBajanteDiameterToRamales); esto cura estados
       // residuales que escaparon por cualquier vía.
-      for (const b of eng.bajantes || []) {
+      for (const b of eng.bajantes) {
         if ((b.tipo !== 'bajante' && b.tipo !== 'montante') || b.isFantasma) continue;
         const bIn = b.dNominal ? diamPulgFromLabel(String(b.dNominal).replace(/-/g, ' ')) : 0;
         if (!(bIn > 0)) continue;

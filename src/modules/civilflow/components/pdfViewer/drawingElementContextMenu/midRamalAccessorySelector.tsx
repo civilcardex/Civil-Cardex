@@ -582,7 +582,7 @@ export function MidRamalAccessorySelector({
                 );
                 return;
               }
-              const existingBm = (eng.bajantes || []).find(
+              const existingBm = eng.bajantes.find(
                 (b) =>
                   Math.abs(b.x - targetPt[0]) < 0.5 &&
                   Math.abs(b.y - targetPt[1]) < 0.5 &&

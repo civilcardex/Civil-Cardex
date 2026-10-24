@@ -437,7 +437,7 @@ const AparatosPanel = memo(function AparatosPanel_({
       const eng = engineRef.current;
       if (eng) {
         // (b) Salida de un bajante: el espejo reescribe su clave en cada pase.
-        for (const b of eng.bajantes || []) {
+        for (const b of eng.bajantes) {
           if (b.net !== netId) continue;
           if (exitsDeBajante(b.id).has(targetId)) return true;
         }
@@ -447,7 +447,7 @@ const AparatosPanel = memo(function AparatosPanel_({
         const cola: string[] = [targetId];
         while (cola.length > 0) {
           const actual = cola.pop() as string;
-          for (const r of eng.ramales || []) {
+          for (const r of eng.ramales) {
             if (r.net !== netId || r.padre !== actual || vistas.has(r.id)) continue;
             vistas.add(r.id);
             const m = counts[`${netId}_${r.id}_${planId}`] || {};

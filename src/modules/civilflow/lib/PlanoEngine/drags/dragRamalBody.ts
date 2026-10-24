@@ -1,8 +1,7 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { calculateRamalLength, _midpoint } from '../PlanoEngineDrawing.ts';
-import { angleAtHalfLength } from '../drawingAngles.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
-import { indexRamales, sameNetGroup } from './dragContext.ts';
+import { indexRamales, sameNetGroup, refrescarTrazo } from './dragContext.ts';
 
 /** Arrastre del CUERPO de un ramal: segmento suelto (con snap ortogonal) o traslación rígida
  *  completa con cascada connRamales/connBaj, restricción de deslizamiento contra T genuinas y
@@ -27,16 +26,9 @@ export function dragRamalBody(engine: IPlanoEngineCore, x: number, y: number): v
       r.pts[si + 1][0] = engine.ramalDrag!.origPts[si + 1][0] + dx;
       r.pts[si + 1][1] = engine.ramalDrag!.origPts[si + 1][1] + dy;
     }
-    r.totalL = calculateRamalLength(r.pts, engine);
     // Etiqueta movida a mano (ítem 2 usuario): los re-encuadres de geometría no la tocan —
-    // solo el arrastre de etiqueta (lblDrag) la mueve. Sin este gate, mover un extremo
-    // y clickar fuera "devolvía" la etiqueta al punto medio.
-    if (!r.labelMoved) {
-      const [mx, my] = _midpoint(r.pts);
-      r.labelX = mx;
-      r.labelY = my;
-    }
-    if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
+    // ver refrescarTrazo.
+    refrescarTrazo(engine, r);
     engine.scheduleRender();
     return;
   }

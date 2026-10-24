@@ -207,7 +207,7 @@ export function ramalFlowDirectionCheck(
     // dispararían una falsa advertencia de dirección de flujo.
     // CAJAS incluidas con SEMILADO (mismo criterio de asociación): que lleguen a la caja NO
     // las conecta entre sí — la dirección de flujo no se valida (orig. usuario).
-    const epEnCajaOBajante = (engine.bajantes || []).some((b) => {
+    const epEnCajaOBajante = engine.bajantes.some((b) => {
       if (b.net !== ram.net) return false;
       const circ = b._circ?.r || 8 * (engine.zoom || 1);
       const bTol = esCaja(b) ? circ / Math.SQRT2 / (engine.zoom || 1) + 0.5 : tol;

@@ -1,17 +1,15 @@
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
-import { calculateRamalLength, _midpoint } from '../PlanoEngineDrawing.ts';
-import { angleAtHalfLength } from '../drawingAngles.ts';
 import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
-import { indexRamales, sameNetGroup, type DragCtx } from './dragContext.ts';
+import { indexRamales, sameNetGroup, refrescarTrazo, type DragCtx } from './dragContext.ts';
 
 /** Arrastre de un VÉRTICE/EXTREMO de ramal: accesorio deslizándose por su línea, snap 45°
  *  con restricción de colinealidad, snap a bajantes/extremos vecinos y la PROPAGACIÓN por
  *  frontera (BFS geométrico) que arrastra los ramales conectados + linkedPts (codo
  *  reventilado). Los bajantes son anclajes fijos: el ramal se adapta a ellos. */
 export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: DragCtx): void {
-  const { bajantesQueReciben } = ctx;
-  const r = engine.ramales.find((rr) => rr.id === engine.ptDrag!.id);
+  const { bajantesQueReciben, ramalesPorId } = ctx;
+  const r = ramalesPorId.get(engine.ptDrag!.id);
   if (r) {
     let p = engine.toPlane(x, y);
     const idx = engine.ptDrag!.ptIdx;
@@ -208,13 +206,7 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
           }
           if (changed) {
             movedRamalIds.add(other.id);
-            other.totalL = calculateRamalLength(other.pts, engine);
-            if (!other.labelMoved) other.labelAngle = angleAtHalfLength(other.pts);
-            if (!other.labelMoved) {
-              const [mx, my] = _midpoint(other.pts);
-              other.labelX = mx;
-              other.labelY = my;
-            }
+            refrescarTrazo(engine, other);
           }
         }
         frontier = nextFrontier;
@@ -230,13 +222,7 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
           const other = ramalesById.get(link.id);
           if (!other || !other.pts[link.ptIdx]) continue;
           other.pts[link.ptIdx] = [p.x, p.y];
-          other.totalL = calculateRamalLength(other.pts, engine);
-          if (!other.labelMoved) other.labelAngle = angleAtHalfLength(other.pts);
-          if (!other.labelMoved) {
-            const [mx, my] = _midpoint(other.pts);
-            other.labelX = mx;
-            other.labelY = my;
-          }
+          refrescarTrazo(engine, other);
         }
       }
       // Los bajantes son los anclajes fijos de la red — un arrastre de extremo debe adaptar el
@@ -257,13 +243,7 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
         }
       }
     }
-    if (!r.labelMoved) r.labelAngle = angleAtHalfLength(r.pts);
-    r.totalL = calculateRamalLength(r.pts, engine);
-    if (!r.labelMoved) {
-      const [mx, my] = _midpoint(r.pts);
-      r.labelX = mx;
-      r.labelY = my;
-    }
+    refrescarTrazo(engine, r);
     checkRamalAnglesExcludingConnections(engine, r);
     engine.scheduleRender();
   }
