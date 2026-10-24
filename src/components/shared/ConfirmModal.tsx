@@ -1,3 +1,5 @@
+import { ModalShell } from './ModalShell.tsx';
+
 interface ConfirmModalProps {
   title: string;
   message: string;
@@ -23,91 +25,67 @@ export function ConfirmModal({
   compactMessage = false,
 }: ConfirmModalProps) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)',
-      }}
-    >
-      <div
+    <ModalShell minWidth={minWidth}>
+      <h3
         style={{
-          background: 'var(--surface-container, #1e1e24)',
-          border: '1px solid var(--outline-variant, #3a3a44)',
-          borderRadius: 8,
-          padding: 24,
-          minWidth,
-          maxWidth: 420,
-          boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+          fontSize: 15,
+          fontWeight: 700,
+          color: 'var(--on-surface, #e2e2e8)',
+          margin: compactMessage ? '0 0 6px' : '0 0 4px',
         }}
       >
-        <h3
+        {title}
+      </h3>
+      <p
+        style={{
+          fontSize: compactMessage ? 13 : 12,
+          color: 'var(--on-surface-variant, #9ba8aa)',
+          margin: compactMessage ? 0 : '0 0 16px',
+        }}
+      >
+        {message}
+      </p>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 8,
+          marginTop: compactMessage ? 18 : undefined,
+        }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
           style={{
-            fontSize: 15,
-            fontWeight: 700,
+            padding: '6px 14px',
+            fontSize: 12,
+            fontWeight: 600,
+            background: 'transparent',
+            border: '1px solid var(--outline-variant, #3a3a44)',
+            borderRadius: 4,
             color: 'var(--on-surface, #e2e2e8)',
-            margin: compactMessage ? '0 0 6px' : '0 0 4px',
+            cursor: 'pointer',
           }}
         >
-          {title}
-        </h3>
-        <p
+          {cancelLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
           style={{
-            fontSize: compactMessage ? 13 : 12,
-            color: 'var(--on-surface-variant, #9ba8aa)',
-            margin: compactMessage ? 0 : '0 0 16px',
+            padding: '6px 14px',
+            fontSize: 12,
+            fontWeight: 600,
+            background: 'var(--error, #ff4444)',
+            border: 'none',
+            borderRadius: 4,
+            color: '#fff',
+            cursor: 'pointer',
           }}
         >
-          {message}
-        </p>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 8,
-            marginTop: compactMessage ? 18 : undefined,
-          }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              background: 'transparent',
-              border: '1px solid var(--outline-variant, #3a3a44)',
-              borderRadius: 4,
-              color: 'var(--on-surface, #e2e2e8)',
-              cursor: 'pointer',
-            }}
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              background: 'var(--error, #ff4444)',
-              border: 'none',
-              borderRadius: 4,
-              color: '#fff',
-              cursor: 'pointer',
-            }}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }
-
-export default ConfirmModal;

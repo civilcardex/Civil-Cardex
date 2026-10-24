@@ -1,3 +1,4 @@
+import { ModalShell } from '../shared/ModalShell.tsx';
 /** Checkout Lemon Squeezy: pide la URL de checkout a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). */
 import { useEffect, useRef, useState } from 'react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -82,65 +83,39 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
   if (!open) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Checkout de pago"
+    <ModalShell ariaLabel="Checkout de pago">
+      {' '}
+      <h3
         style={{
-          background: 'var(--surface-container, #1e1e24)',
-          border: '1px solid var(--outline-variant, #3a3a44)',
-          borderRadius: 8,
-          padding: 24,
-          minWidth: 360,
-          maxWidth: 420,
-          boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+          fontSize: 15,
+          fontWeight: 700,
+          color: 'var(--on-surface, #e2e2e8)',
+          margin: '0 0 4px',
         }}
       >
-        <h3
+        Finalizar compra
+      </h3>
+      <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', margin: '0 0 16px' }}>
+        {error ? mensaje : 'Redirigiendo a la pasarela de pago (Lemon Squeezy)...'}
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={onClose}
           style={{
-            fontSize: 15,
-            fontWeight: 700,
+            padding: '6px 14px',
+            fontSize: 12,
+            fontWeight: 600,
+            background: 'transparent',
+            border: '1px solid var(--outline-variant, #3a3a44)',
+            borderRadius: 4,
             color: 'var(--on-surface, #e2e2e8)',
-            margin: '0 0 4px',
+            cursor: 'pointer',
           }}
         >
-          Finalizar compra
-        </h3>
-        <p
-          style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', margin: '0 0 16px' }}
-        >
-          {error ? mensaje : 'Redirigiendo a la pasarela de pago (Lemon Squeezy)...'}
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              background: 'transparent',
-              border: '1px solid var(--outline-variant, #3a3a44)',
-              borderRadius: 4,
-              color: 'var(--on-surface, #e2e2e8)',
-              cursor: 'pointer',
-            }}
-          >
-            Cerrar
-          </button>
-        </div>
+          Cerrar
+        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

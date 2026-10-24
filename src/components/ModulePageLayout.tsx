@@ -71,7 +71,6 @@ export default function ModulePageLayout({
             <span className="ccx-silver">Civil</span>
             <span className="ccx-gold"> Cardex</span>
           </span>
-          <div className="flex flex-wrap items-center justify-center gap-6"></div>
           <span
             className="text-[13px] text-on-surface-variant uppercase"
             style={{ fontFamily: 'Geist, monospace' }}

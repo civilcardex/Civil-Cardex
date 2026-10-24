@@ -1,0 +1,46 @@
+/**
+ * Overlay + card compartidos por los modales de la app: fixed a pantalla completa con
+ * backdrop oscuro y card centrada con la superficie estándar. Ej:
+ * <ModalShell ariaLabel="Checkout de pago">...contenido...</ModalShell>.
+ * @param minWidth - ancho mínimo de la card (default 360).
+ * @param maxWidth - ancho máximo de la card (default 420).
+ * @param ariaLabel - si viene, la card es role="dialog" aria-modal.
+ */
+export function ModalShell(props: {
+  minWidth?: number;
+  maxWidth?: number;
+  ariaLabel?: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  const { minWidth = 360, maxWidth = 420, ariaLabel, children } = props;
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)',
+      }}
+    >
+      <div
+        role={ariaLabel ? 'dialog' : undefined}
+        aria-modal={ariaLabel ? true : undefined}
+        aria-label={ariaLabel}
+        style={{
+          background: 'var(--surface-container, #1e1e24)',
+          border: '1px solid var(--outline-variant, #3a3a44)',
+          borderRadius: 8,
+          padding: 24,
+          minWidth,
+          maxWidth,
+          boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
