@@ -1,6 +1,7 @@
 // Prerender post-build: escribe dist/<ruta>/index.html para las rutas públicas usando el
 // bundle SSR (dist-ssr/prerenderEntry.js, generado con `vite build --ssr`).
-// SIN dependencias nuevas. Fallo = warning + exit 0: el dist preexistente sigue siendo válido.
+// SIN dependencias nuevas. Fallo = exit 1 (build rojo en Vercel); el dist preexistente
+// no se corrompe — solo se sobreescribe lo prerenderizado con éxito.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
