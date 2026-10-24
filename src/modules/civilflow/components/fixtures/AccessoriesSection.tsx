@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ContadorStepper } from './ContadorStepper.tsx';
 const AccessoriesSection_S1: React.CSSProperties = {
   width: '100%',
   display: 'flex',
@@ -11,16 +12,6 @@ const AccessoriesSection_S1: React.CSSProperties = {
   borderTop: '1px solid var(--bg4)',
   textAlign: 'left',
 };
-const AccessoriesSection_S2: React.CSSProperties = {
-  flex: 1,
-  padding: '1px 0',
-  border: 'none',
-  background: 'transparent',
-  fontSize: 12,
-  fontWeight: 800,
-  lineHeight: 1,
-  fontFamily: "'Geist',monospace",
-} as const;
 const AccessoriesSection_S3: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -149,61 +140,18 @@ export default function AccessoriesSection({
                       {a.nombre}
                     </span>
                   </button>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'stretch',
-                      borderTop: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`,
-                      background: v > 0 ? 'rgba(37,99,235,.06)' : 'transparent',
-                    }}
+                  <ContadorStepper
+                    activo={v > 0}
+                    bloqueado={!targetId}
+                    puedeDec={v > 0}
+                    accent={accent}
+                    paddingY="1px 0"
+                    conLineHeight
+                    onDec={() => decAcc(a.id)}
+                    onInc={() => incAcc(a.id)}
                   >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (targetId) decAcc(a.id);
-                      }}
-                      disabled={!targetId || v === 0}
-                      style={{
-                        ...AccessoriesSection_S2,
-                        borderRight: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`,
-                        color: v === 0 || !targetId ? 'var(--line)' : '#ffb4ab',
-                        cursor: v === 0 || !targetId ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      −
-                    </button>
-                    <div
-                      style={{
-                        flex: 1.2,
-                        textAlign: 'center',
-                        fontSize: 12,
-                        fontWeight: 800,
-                        lineHeight: '14px',
-                        color: v > 0 ? accent : 'var(--txt2)',
-                        fontFamily: "'Geist',monospace",
-                        background: v > 0 ? 'rgba(37,99,235,.18)' : 'transparent',
-                      }}
-                    >
-                      {v}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (targetId) incAcc(a.id);
-                      }}
-                      disabled={!targetId}
-                      style={{
-                        ...AccessoriesSection_S2,
-                        borderLeft: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`,
-                        color: !targetId ? 'var(--line)' : accent,
-                        cursor: !targetId ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
+                    {v}
+                  </ContadorStepper>
                 </div>
               );
             })}

@@ -1,4 +1,5 @@
 import { APARATO_IMG, APARATOS_DEF } from '../../constants';
+import { ContadorStepper } from './ContadorStepper.tsx';
 const FixtureGrid_S1: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
@@ -32,15 +33,6 @@ const FixtureGrid_S3: React.CSSProperties = {
   font: 'inherit',
   color: 'inherit',
   width: '100%',
-} as const;
-const FixtureGrid_S4: React.CSSProperties = {
-  flex: 1,
-  padding: '2px 0',
-  background: 'transparent',
-  fontSize: 12,
-  fontWeight: 800,
-  fontFamily: "'Geist',monospace",
-  border: 'none',
 } as const;
 const FixtureGrid_S5: React.CSSProperties = {
   flex: 1.2,
@@ -155,56 +147,17 @@ export default function FixtureGrid({
                 {c} {unidadLbl}
               </div>
             ) : (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'stretch',
-                  borderTop: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
-                  background: active ? 'rgba(37,99,235,.06)' : 'transparent',
-                }}
+              <ContadorStepper
+                activo={active}
+                bloqueado={gridDisabled}
+                puedeDec={c > 0}
+                accent={accent}
+                paddingY="2px 0"
+                onDec={() => dec(ap.id)}
+                onInc={() => inc(ap.id)}
               >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (targetId) dec(ap.id);
-                  }}
-                  disabled={gridDisabled || c === 0}
-                  style={{
-                    ...FixtureGrid_S4,
-                    color: c === 0 || gridDisabled ? 'var(--line)' : '#ffb4ab',
-                    cursor: c === 0 || gridDisabled ? 'not-allowed' : 'pointer',
-                    borderRight: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
-                  }}
-                >
-                  −
-                </button>
-                <div
-                  style={{
-                    ...FixtureGrid_S5,
-                    color: c > 0 ? accent : 'var(--txt2)',
-                    background: c > 0 ? 'rgba(37,99,235,.18)' : 'transparent',
-                  }}
-                >
-                  {c} {unidadLbl}
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (targetId) inc(ap.id);
-                  }}
-                  disabled={gridDisabled}
-                  style={{
-                    ...FixtureGrid_S4,
-                    color: gridDisabled ? 'var(--line)' : accent,
-                    cursor: gridDisabled ? 'not-allowed' : 'pointer',
-                    borderLeft: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
-                  }}
-                >
-                  +
-                </button>
-              </div>
+                {c} {unidadLbl}
+              </ContadorStepper>
             )}
           </div>
         );
