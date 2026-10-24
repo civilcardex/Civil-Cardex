@@ -29,53 +29,50 @@ const TOPE_NUEVO = 700;
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
  */
 const CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/components/PdfViewer.tsx': 1313,
-  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 715,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1492,
-  'modules/civilflow/components/workareaContent/useReportTables.ts': 1236,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 855,
-  'modules/civilflow/utils/waterRowsCore.ts': 704,
-  'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
-  'modules/civilflow/components/DownpipesTable.tsx': 211,
-  'modules/civilflow/components/SupplyConnection.tsx': 1162,
+  'modules/civilflow/components/PdfViewer.tsx': 1314,
+  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 717,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1490,
+  'modules/civilflow/components/workareaContent/useReportTables.ts': 669,
+  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 853,
+  'modules/civilflow/utils/waterRowsCore.ts': 695,
+  'modules/civilflow/components/workarea/PlanosTab.tsx': 712,
+  'modules/civilflow/components/DownpipesTable.tsx': 212,
   'modules/civilflow/utils/bajanteAssocShared.ts': 722,
-  'modules/civilflow/components/GasDesign.tsx': 380,
-  'modules/civilflow/components/FixturesPanel.tsx': 905,
-  'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 605,
-  'modules/civilflow/components/RainChannelsCheck.tsx': 993,
+  'modules/civilflow/components/GasDesign.tsx': 370,
+  'modules/civilflow/components/FixturesPanel.tsx': 900,
+  'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 604,
+  'modules/civilflow/components/RainChannelsCheck.tsx': 537,
   'modules/civilflow/constants/rejillasNTC3631.ts': 978,
-  'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 977,
-  'pages/auth/ProfilePage.tsx': 967,
-  'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 936,
+  'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
+  'pages/auth/ProfilePage.tsx': 578,
+  'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 930,
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 918,
-  'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 898,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 883,
-  'pages/PricingPage.tsx': 878,
-  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 867,
-  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 844,
-  'modules/civilflow/components/RainDownpipesCheck.tsx': 827,
+  'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 924,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 881,
+  'pages/PricingPage.tsx': 921,
+  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 831,
+  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 852,
+  'modules/civilflow/components/RainDownpipesCheck.tsx': 810,
   'modules/civilflow/components/DesignParameters.tsx': 822,
   'modules/civilflow/utils/equipmentRows.ts': 822,
-  'modules/civilflow/components/PumpARDesign.tsx': 815,
+  'modules/civilflow/components/PumpARDesign.tsx': 823,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 807,
   'components/help/helpGuideFlow.tsx': 804,
-  'modules/civilflow/components/SanitaryDesign.tsx': 802,
+  'modules/civilflow/components/SanitaryDesign.tsx': 805,
   'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 770,
   'modules/civilflow/components/ep/EPVerificationPage.tsx': 751,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 749,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 753,
   'modules/civilflow/context/RainwaterContext.tsx': 746,
   'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 743,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 736,
-  'modules/civilflow/utils/copyDrawingFromPlan.ts': 701,
+  'modules/civilflow/utils/copyDrawingFromPlan.ts': 705,
+  'modules/civilflow/components/SupplyConnection.tsx': 28,
 };
 
 /**
  * Archivos que gestiona esta campaña (los que se parten): deben quedar como fachadas cortas.
  * El resto del repo tiene otras sesiones trabajando encima: su tamaño no es contrato aquí.
  */
-const GESTIONADOS: Record<string, number> = {
-  'modules/civilflow/components/SupplyConnection.tsx': 60,
-};
 
 /**
  * Ciclos de import PREEXISTENTES que se permiten.
@@ -465,14 +462,16 @@ describe('G1 · anti-monolito', () => {
     expect(grandes.map((g) => `${g.ruta} (${g.lineas})`)).toEqual([]);
   });
 
-  it('los archivos que gestiona esta campaña NO han crecido', () => {
-    // Solo los de la desmonotilización: el resto del repo tiene otras sesiones trabajando
-    // encima, y su tamaño no es contrato de esta campaña.
+  it('los monolitos conocidos no CRECEN (techo = tamaño real al cerrar la ronda)', () => {
+    // Sin este test la tabla CONOCIDOS era decoración: solo eximía del tope nuevo y los
+    // monolitos podían volver a crecer sin que nada fallara (TableTypologies creció
+    // 898→924 con el guard verde). Techo = tamaño medido; si uno se encoge, BAJAR el
+    // número (misma regla D del guard G8: el techo sigue al código, no al revés).
     const crecidos: string[] = [];
-    for (const [ruta, techo] of Object.entries(GESTIONADOS)) {
+    for (const [ruta, techo] of Object.entries(CONOCIDOS)) {
       const p = join(RAIZ, ruta);
       if (!exists(p)) {
-        crecidos.push(`${ruta}: desapareció (debería ser la fachada)`);
+        crecidos.push(`${ruta}: desapareció (quitar de CONOCIDOS)`);
         continue;
       }
       const n = lineasDe(p);
