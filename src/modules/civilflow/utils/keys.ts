@@ -127,10 +127,7 @@ export function isPlanKeyFor(key: string, planId: string | number | null | undef
  * @param key - clave a inspeccionar.
  * @returns true si el último segmento tras `_` son dígitos.
  */
-export const hasNumericPlanSuffix = (key: string): boolean => {
-  const lastUnderscore = key.lastIndexOf('_');
-  return lastUnderscore > 0 && /^\d+$/.test(key.slice(lastUnderscore + 1));
-};
+export const hasNumericPlanSuffix = (key: string): boolean => keyPlanSuffixOf(key) !== null;
 
 /**
  * ¿Sobró una clave cuyo ramal/bajante ya no existe en NINGÚN plano? Solo entonces se borra

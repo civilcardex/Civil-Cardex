@@ -11,7 +11,7 @@ import { isLdesvioRamalId } from '../../utils/associateBajanteAcrossFloors';
 import { hunterQ } from './rowPhysics.ts';
 import { resolveJunctionEntrant } from '../../utils/flowDirection.ts';
 import { isAC2 } from '../../utils/waterNetworkRows.ts';
-import { indicePorClave } from '../../utils/indices';
+import { indicePorId } from '../../utils/indices';
 
 // Grafo de conectividad de la red leído de TODOS los planos dibujados: enlaces ramal→bajante y
 // ramal→ramal por cercanía de extremos, puentes de montantes entre pisos, poda de ciclos y
@@ -84,10 +84,7 @@ export function useWaterNetworkGraph({
   );
 
   // Índice de tramos por clave "id-planId": los .find/.some repetidos eran O(n) por consulta.
-  const tramoPorClave = useMemo(
-    () => indicePorClave(tramos, (t) => t._key || t.id || null),
-    [tramos],
-  );
+  const tramoPorClave = useMemo(() => indicePorId(tramos, (t) => t._key || t.id || null), [tramos]);
   const [conexionesDisplay, componentTotalMap, tramoParentOf, rootKey, qpropMap] = useMemo(() => {
     // Sets: la pertenencia (¿ya enlazado?) era un .includes sobre un array que crece — O(n²)
     // al construir la adyacencia.

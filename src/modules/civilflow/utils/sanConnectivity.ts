@@ -5,7 +5,7 @@ import type { PlanItem } from '../context/PlansContext.tsx';
 import { calcUDparcial } from './componentHelpers.tsx';
 import { distToPolyline } from '../lib/shared/geometry';
 import { parseDescargaEnId } from './parseDischargeInId.ts';
-import { indicePorClave } from './indices';
+import { indicePorId } from './indices';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { loadFromStorage } from '../services/storageService.ts';
@@ -50,7 +50,7 @@ export function buildSanConnectivity(
   // no tenerlo persistido (el test lo define solo en el tramo). Se resuelve con el tramo por
   // `${id}-${planId}` para el desempate de co-sumideros de abajo.
   // Índice por clave de tramo: los .find repetidos (por _key) eran O(n) por consulta.
-  const tramoPorClave = indicePorClave(tramosSan, (t) => t._key || null);
+  const tramoPorClave = indicePorId(tramosSan, (t) => t._key || null);
   const tramoFinByKey = new Map<string, string>();
   for (const t of tramosSan) {
     const k = t._key || `${t.id}-${t.piso}`;

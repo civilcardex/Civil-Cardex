@@ -27,32 +27,3 @@ export function indicePorId<T>(
   }
   return m;
 }
-
-/**
- * Conjunto de valores, para reemplazar `.includes` / `.some` dentro de bucles.
- * @param valores - los valores auclear.
- * @returns conjunto con esos valores.
- */
-export function conjuntoDe<T>(valores: Iterable<T>): Set<T> {
-  return new Set(valores);
-}
-
-/**
- * Índice por una clave compuesta (p. ej. "piso:id"), que es como se identifican las piezas
- * cuando los ids se repiten entre pisos.
- * @param piezas - las piezas a indexar.
- * @param clave - cómo sacar la clave compuesta de cada pieza.
- * @returns mapa clave→pieza.
- */
-export function indicePorClave<T>(
-  piezas: readonly T[],
-  clave: (p: T) => string | undefined | null,
-): Map<string, T> {
-  const m = new Map<string, T>();
-  for (const p of piezas) {
-    const k = clave(p);
-    if (k == null) continue;
-    if (!m.has(k)) m.set(k, p);
-  }
-  return m;
-}

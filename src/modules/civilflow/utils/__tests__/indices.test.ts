@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { indicePorId, indicePorClave, conjuntoDe } from '../indices';
+import { indicePorId } from '../indices';
 
 /**
  * Los índices quitan las búsquedas lineales dentro de bucles (guard G8). Estos tests fijan
@@ -46,11 +46,9 @@ describe('indicePorId', () => {
     expect(idx.size).toBe(1);
     expect(idx.get('A')).toBeDefined();
   });
-});
 
-describe('indicePorClave', () => {
-  it('indexa por clave compuesta (piso:id)', () => {
-    const idx = indicePorClave<Pieza>(
+  it('indexa por clave compuesta (piso:id) — misma función, otra clave', () => {
+    const idx = indicePorId<Pieza>(
       [
         { id: 'A', piso: 1 },
         { id: 'A', piso: 2 },
@@ -59,13 +57,5 @@ describe('indicePorClave', () => {
     );
     expect(idx.get('1:A')?.piso).toBe(1);
     expect(idx.get('2:A')?.piso).toBe(2);
-  });
-});
-
-describe('conjuntoDe', () => {
-  it('responde si un valor está (reemplaza a .includes)', () => {
-    const c = conjuntoDe(['a', 'b']);
-    expect(c.has('a')).toBe(true);
-    expect(c.has('z')).toBe(false);
   });
 });
