@@ -182,6 +182,40 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
  * proyecto con el snapshot dado, vía RPC seguro en la BD (borra e inserta por tabla en una
  * transacción atómica). Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
+/**
+ * Esqueleto común de los guardados RPC: exige sesión (emite 'sin-sesion' si no hay), corre
+ * la escritura, emite el error etiquetado y convierte la excepción en false.
+ * Ej: conSesion('save-gas', () => supabase.rpc('save_gas_datos', {...})) → true solo si la
+ * RPC volvió sin error.
+ * @param etiqueta etiqueta corta para el canal de alertas (ej. 'save-core').
+ * @param fn la escritura; se ejecuta solo con sesión activa.
+ * @returns true si la RPC terminó sin error; false sin sesión, con error o con excepción.
+ */
+async function conSesion(
+  etiqueta: string,
+  // PromiseLike: el builder de Postgrest es thenable pero no Promise nativa.
+  fn: () => PromiseLike<{ error: { message: string } | null }>,
+): Promise<boolean> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return false;
+    }
+    const { error } = await fn();
+    if (error) {
+      emitBdSaveError(etiqueta, error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    devError(`proyectoDataService ${etiqueta} exception:`, e);
+    return false;
+  }
+}
+
 export async function saveProyectoCoreData(
   proyectoId: string,
   core: ProyectoCoreData,
@@ -252,28 +286,12 @@ export async function saveProyectoCoreData(
  * independiente del guardado principal del proyecto.
  */
 export async function saveRedesActivas(proyectoId: string, redes: string[]): Promise<boolean> {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
-      return false;
-    }
-
-    const { error } = await supabase.rpc('save_redes_activas', {
+  return conSesion('save-redes', () =>
+    supabase.rpc('save_redes_activas', {
       p_proyecto_id: proyectoId,
       p_redes: redes,
-    });
-    if (error) {
-      emitBdSaveError('save-redes', error.message);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    devError('proyectoDataService saveRedesActivas exception:', e);
-    return false;
-  }
+    }),
+  );
 }
 
 /**
@@ -311,16 +329,8 @@ export async function loadGasDatos(proyectoId: string): Promise<GasDatosGenerale
  * verdad; localStorage queda como caché en vivo.
  */
 export async function saveGasDatos(proyectoId: string, datos: GasDatosGenerales): Promise<boolean> {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
-      return false;
-    }
-
-    const { error } = await supabase.rpc('save_gas_datos', {
+  return conSesion('save-gas', () =>
+    supabase.rpc('save_gas_datos', {
       p_proyecto_id: proyectoId,
       p_datos: {
         altitud: datos.alt,
@@ -329,16 +339,8 @@ export async function saveGasDatos(proyectoId: string, datos: GasDatosGenerales)
         presion_min: datos.pmin,
         densidad_relativa: datos.densRel,
       },
-    });
-    if (error) {
-      emitBdSaveError('save-gas', error.message);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    devError('proyectoDataService saveGasDatos exception:', e);
-    return false;
-  }
+    }),
+  );
 }
 
 /**
@@ -349,16 +351,8 @@ export async function saveProyectoPlansMeta(
   proyectoId: string,
   plansMeta: PlanMeta[],
 ): Promise<boolean> {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
-      return false;
-    }
-
-    const { error } = await supabase.rpc('save_planos_meta', {
+  return conSesion('save-planos-meta', () =>
+    supabase.rpc('save_planos_meta', {
       p_proyecto_id: proyectoId,
       p_planos: plansMeta.map((p) => ({
         id: p.id,
@@ -373,16 +367,8 @@ export async function saveProyectoPlansMeta(
         cal_global: p.calGlobal ?? null,
         defined_scale: p.definedScale ?? null,
       })),
-    });
-    if (error) {
-      emitBdSaveError('save-planos-meta', error.message);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    devError('proyectoDataService savePlansMeta exception:', e);
-    return false;
-  }
+    }),
+  );
 }
 
 /**
@@ -475,23 +461,13 @@ export async function saveCampoProyectoGeneral(
   campo: 'af_alimentacion' | 'tanque_npt' | 'presion_garantizada' | 'rejillas',
   value: string,
 ): Promise<void> {
-  try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
-      return;
-    }
-    const { error } = await supabase.rpc('save_proyecto_general_campo', {
+  await conSesion(`save-${campo}`, () =>
+    supabase.rpc('save_proyecto_general_campo', {
       p_proyecto_id: proyectoId,
       p_campo: campo,
       p_valor: value,
-    } as never);
-    if (error) emitBdSaveError(`save-${campo}`, error.message);
-  } catch (e) {
-    devError(`saveCampoProyectoGeneral(${campo}) exception:`, e);
-  }
+    } as never),
+  );
 }
 
 /** Lee UNA columna whitelisteada de cf_proyecto_general por proyecto (null si no hay fila). */
