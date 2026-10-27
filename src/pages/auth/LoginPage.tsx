@@ -1,21 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../../components/Navbar.tsx';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import AuthLayout from './AuthLayout.tsx';
+import PwdField from './PwdField.tsx';
 import FormField from '../../components/FormField.tsx';
 import AuthSubmitButton from './AuthSubmitButton.tsx';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { mensajeAuthGenerico } from '../../utils/authMessage.ts';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
-const LoginPage_S1: React.CSSProperties = {
-  color: '#F04545',
-  fontSize: 12,
-  fontFamily: 'Geist, monospace',
-  textAlign: 'center',
-  padding: '8px',
-  background: 'rgba(240,69,69,.08)',
-  border: '1px solid rgba(240,69,69,.2)',
-  borderRadius: 4,
-};
 
+import { AUTH_ERROR_STYLE } from '../../components/shared/sharedStyles.ts';
 const LOGIN_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
@@ -34,6 +27,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const { signIn } = useAuth();
   usePageMeta(
     'Iniciar Sesión',
@@ -50,155 +44,87 @@ function LoginPage() {
       else localStorage.setItem('civilflow_no_recordar', '1');
       await signIn(email, password);
       // Volver al destino que pidió login (ModulePage pasa state.from) — default /perfil.
-      const from = (location as { state?: { from?: string } }).state?.from ?? '/perfil';
+      // useLocation() (react-router), NO el location global: window.location.state no existe.
+      const from = (routeLocation.state as { from?: string } | null)?.from ?? '/perfil';
       navigate(from);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      setError(message);
+      // Mensajes genéricos: el error crudo de Supabase enumera cuentas ("Email not confirmed").
+      setError(mensajeAuthGenerico(err, 'Error al iniciar sesión'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="landing-root min-h-screen flex flex-col"
-      style={{ background: '#0a0e14', color: '#e2e2e8' }}
+    <AuthLayout
+      jsonld={LOGIN_JSONLD}
+      titulo={['CIVIL', ' CARDEX']}
+      subtituloColor="#6b8cae"
+      subtitulo="Ingeniería de Precisión"
     >
-      <script type="application/ld+json">{JSON.stringify(LOGIN_JSONLD)}</script>
-      <Navbar />
+      <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-5">
+        <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend className="sr-only">Datos de inicio de sesión</legend>
+          <FormField
+            label="CORREO ELECTRÓNICO"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="usuario@civilcardex.com"
+            autoComplete="email"
+            required
+          />
 
-      <div className="flex-1 flex items-center justify-center relative pt-16">
-        <div className="absolute inset-0 login-grid pointer-events-none" />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none"
-          style={{ background: 'rgba(0,170,255,0.06)' }}
-        />
+          <PwdField
+            label="CONTRASEÑA"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+            minLength={6}
+            show={showPwd}
+            onToggle={() => setShowPwd((prev) => !prev)}
+          />
+        </fieldset>
 
-        <div className="relative z-10 w-full max-w-[420px] mx-4">
-          <div
-            className="border border-outline-variant"
-            style={{ background: 'rgba(10,14,20,0.8)', backdropFilter: 'blur(16px)' }}
+        <div className="flex items-center justify-between">
+          <label
+            className="flex items-center gap-2 cursor-pointer"
+            title="Desmarcado: la sesión termina al cerrar el navegador"
           >
-            <div className="px-8 pt-10 pb-6 text-center">
-              <div className="flex justify-center mb-5">
-                <img
-                  src="/logos/civilCardexlogo-v2.webp"
-                  alt="CivilCardex"
-                  className="w-24 h-24 object-contain"
-                  style={{ filter: 'drop-shadow(0 0 20px rgba(0,170,255,0.25))' }}
-                  width={96}
-                  height={96}
-                  loading="lazy"
-                />
-              </div>
-              <h1
-                className="text-2xl font-black tracking-tight uppercase mb-1"
-                style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-              >
-                <span style={{ color: '#dce3ea' }}>CIVIL</span>
-                <span style={{ color: '#e8c84a' }}> CARDEX</span>
-              </h1>
-              <p
-                className="text-xs uppercase tracking-widest"
-                style={{ color: '#6b8cae', fontFamily: 'Geist, monospace', fontWeight: 600 }}
-              >
-                Ingeniería de Precisión
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-5">
-              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-                <legend className="sr-only">Datos de inicio de sesión</legend>
-                <FormField
-                  label="CORREO ELECTRÓNICO"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="usuario@civilcardex.com"
-                  autoComplete="email"
-                  required
-                />
-
-                <div style={{ position: 'relative' }}>
-                  <FormField
-                    label="CONTRASEÑA"
-                    type={showPwd ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    required
-                    minLength={6}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPwd((prev) => !prev)}
-                    aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                    className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#8AB4D6',
-                      padding: 0,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {showPwd ? '⬡' : '👁'}
-                  </button>
-                </div>
-              </fieldset>
-
-              <div className="flex items-center justify-between">
-                <label
-                  className="flex items-center gap-2 cursor-pointer"
-                  title="Desmarcado: la sesión termina al cerrar el navegador"
-                >
-                  <input
-                    type="checkbox"
-                    checked={recordarme}
-                    onChange={(e) => setRecordarme(e.target.checked)}
-                    className="w-4 h-4 border accent-[#00dce5]"
-                    style={{ borderColor: '#3a494a', background: '#0a0e14' }}
-                  />
-                  <span className="text-xs" style={{ color: '#6b8cae' }}>
-                    Recordarme
-                  </span>
-                </label>
-                <Link
-                  to="/restablecer"
-                  className="text-xs hover:underline"
-                  style={{ color: '#00dce5' }}
-                >
-                  ¿Olvidó su contraseña?
-                </Link>
-              </div>
-
-              <AuthSubmitButton busy={loading} label="INICIAR SESIÓN" busyLabel="INGRESANDO..." />
-              {error && (
-                <div role="alert" style={LoginPage_S1}>
-                  {error}
-                </div>
-              )}
-            </form>
-
-            <div className="px-8 py-5 border-t text-center" style={{ borderColor: '#3a494a' }}>
-              <p className="text-xs" style={{ color: '#6b8cae' }}>
-                ¿No tiene cuenta?{' '}
-                <Link
-                  to="/register"
-                  className="font-bold hover:underline"
-                  style={{ color: '#00dce5' }}
-                >
-                  Registrarse
-                </Link>
-              </p>
-            </div>
-          </div>
+            <input
+              type="checkbox"
+              checked={recordarme}
+              onChange={(e) => setRecordarme(e.target.checked)}
+              className="w-4 h-4 border accent-[#00dce5]"
+              style={{ borderColor: '#3a494a', background: '#0a0e14' }}
+            />
+            <span className="text-xs" style={{ color: '#6b8cae' }}>
+              Recordarme
+            </span>
+          </label>
+          <Link to="/restablecer" className="text-xs hover:underline" style={{ color: '#00dce5' }}>
+            ¿Olvidó su contraseña?
+          </Link>
         </div>
+
+        <AuthSubmitButton busy={loading} label="INICIAR SESIÓN" busyLabel="INGRESANDO..." />
+        {error && (
+          <div role="alert" style={AUTH_ERROR_STYLE}>
+            {error}
+          </div>
+        )}
+      </form>
+
+      <div className="px-8 py-5 border-t text-center" style={{ borderColor: '#3a494a' }}>
+        <p className="text-xs" style={{ color: '#6b8cae' }}>
+          ¿No tiene cuenta?{' '}
+          <Link to="/register" className="font-bold hover:underline" style={{ color: '#00dce5' }}>
+            Registrarse
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 
