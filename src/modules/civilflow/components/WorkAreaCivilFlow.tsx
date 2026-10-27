@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useWorkAreaState } from './useWorkAreaState.ts';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { fetchProyectosOrThrow } from '../services/projectsService.ts';
-import { getActiveProyectoId } from '../services/storageService.ts';
+import { getActiveProyectoId, setActiveProyectoId } from '../services/storageService.ts';
 import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys.ts';
 import { WorkAreaSidebar } from './WorkAreaSidebar.tsx';
 import WorkAreaContent from './WorkAreaContent.tsx';
@@ -117,21 +117,20 @@ function CivilFlowInner({ tabInicial }: { tabInicial?: string | null }) {
         const proyectos = await fetchProyectosOrThrow();
         if (ignore) return;
         const activo = getActiveProyectoId();
-        // Purga del id legacy (numérico pre-conversión o basura): getActiveProyectoId es PURA
-        // (se llama desde render) y devuelve null sin mutar storage — el saneamiento vive
-        // aquí, dentro del efecto. Clave vacía se conserva (mismo contrato que antes).
+        // Purga del id legacy (numérico pre-conversión o basura): la sesión es la verdad —
+        // el puntero inválido se limpia vía setActiveProyectoId (también en storage).
         const rawActivo = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
         if (rawActivo != null && rawActivo.trim() !== '' && activo == null) {
-          localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
+          setActiveProyectoId(null);
         }
         const activoVivo = activo != null && proyectos.some((p) => String(p.id) === String(activo));
         if (activoVivo) {
           setProyectoResuelto(true);
           return;
         }
-        if (activo != null) localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
+        if (activo != null) setActiveProyectoId(null);
         if (proyectos.length === 1) {
-          localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proyectos[0].id));
+          setActiveProyectoId(String(proyectos[0].id));
           // SPA: CivilFlowProviders re-monta los providers con la key de generación —
           // sin reload del navegador (recarga "de la nada", ped. usuario).
           window.dispatchEvent(new Event('civilflow_proyecto_activo'));
@@ -162,7 +161,17 @@ function CivilFlowInner({ tabInicial }: { tabInicial?: string | null }) {
   }, [state.plans]);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    // Isometría se acota al hueco real (100dvh − navbar h-14) para que su sidebar sea el
+    // ÚNICO scroll. Las demás pestañas usan '100%' (valor ORIGINAL): la cadena flex de
+    // .content > .fu necesita una altura definida para que cada sección llene el viewport.
+    <div
+      style={{
+        height: state.tab === 'iso' ? 'calc(100dvh - 3.5rem)' : '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       {tour}
       {proyectoResuelto === false && (
         <div

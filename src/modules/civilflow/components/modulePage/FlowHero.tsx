@@ -564,7 +564,7 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
 
   return (
     <div
-      className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] relative border px-10 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
+      className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] relative border px-6 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
       style={{
         // OPACO (ped. usuario): translúcido dejaba ver las líneas decorativas del hero
         // (punto y línea amarilla) a través de las tarjetas.
@@ -615,7 +615,7 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
         </div>
       </div>
 
-      <div className="relative z-10 w-full min-h-[48px]">
+      <div className="relative z-10 w-full min-h-[64px]">
         {net.features.map((f, i) => (
           <div
             key={f}

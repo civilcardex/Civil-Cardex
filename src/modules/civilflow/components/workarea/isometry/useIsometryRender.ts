@@ -1,7 +1,6 @@
 import { useEffect, type RefObject } from 'react';
 import { NETS } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { loadPlanCrop } from '../../../utils/planoCrop.ts';
-import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { splitPtr } from '../../../utils/keys.ts';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from './geometry';
 import type { IsoCanvas, IsoSegment } from './useIsometryInteraction.ts';
@@ -623,7 +622,7 @@ export function useIsometriaRender({
             targetZ = nptMap[targetBajante.planNivel] || 0;
           } else {
             // Respaldo defensivo para datos incompletos/desactualizados que no tienen ghost.
-            const parts = parseDescargaEnId(b.descargaEnId, b.planId);
+            const parts = splitPtr(b.descargaEnId, b.planId);
             const targetPlanId = parts[0];
             const targetId = parts[1];
             targetRamal = netData.ramales.find(

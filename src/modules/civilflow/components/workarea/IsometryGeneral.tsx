@@ -1,8 +1,8 @@
+import { splitPtr } from '../../utils/keys.ts';
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { NETS } from '../../lib/PlanoEngine/PlanoState.ts';
 import { TRAZOS_PREFIX, ISO_COLLAPSED_KEY } from '../../constants/storage-keys.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
-import { parseDescargaEnId } from '../../utils/parseDischargeInId.ts';
 import { prefetchAllTrazos } from '../../utils/prefetchStrokes.ts';
 import {
   readDrawingAll,
@@ -159,6 +159,9 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     (profs || []).forEach((p) => {
       m[p.id] = p.prof ?? 0;
     });
+    // Ventilación comparte la profundidad de sanitaria (decisión usuario 2026-10-23):
+    // sin fila propia caía a 0/NPT y se dibujaba a ras.
+    if (m.san != null) m.vent = m.san;
     return m;
   }, [profs]);
 
@@ -376,7 +379,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
         if (b.descargaEnId) {
-          const parts = parseDescargaEnId(b.descargaEnId, b.planId);
+          const parts = splitPtr(b.descargaEnId, b.planId);
           const targetPlanId = parts[0];
           const targetId = parts[1];
           const targetRamal = netData.ramales.find(
