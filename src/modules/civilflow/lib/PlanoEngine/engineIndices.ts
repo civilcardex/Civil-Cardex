@@ -9,16 +9,9 @@ import type {
 } from './PlanoState.ts';
 
 /**
- * Índices por id de las piezas del motor (ramales, bajantes, anotaciones, áreas, cotas, guías).
- *
- * El motor busca piezas por id DENTRO de bucles — al arrastrar un grupo de N elementos
- * seleccionados, cada uno buscaba su ramal, su bajante, su anotación, su área, su cota y su
- * guía recorriendo la lista completa: N × 6 × lista. Con 50 elementos seleccionados y 500
- * ramales en el plano, eso son 150 000 comparaciones POR CLIC.
- *
- * El índice se construye una vez por operación (no se cachea en el motor): el motor muta sus
- * arrays en muchos sitios (`engine.ramales = engine.ramales.filter(...)`), y un índice
- * cacheado se quedaría rancia. Aquí se construye al empezar el clic y se usa mientras dura.
+ * Índices por id de las 6 colecciones del motor: se construye UNA vez por operación
+ * (clic/drag) — nunca cacheado, el motor reasigna sus arrays en muchos sitios y un
+ * índice viejo se pudre. Ej: drag de 50 seleccionados = 50 lookups O(1), no 50×6 scans.
  */
 export interface IndicesMotor {
   ramales: Map<string, PlanoRamal>;

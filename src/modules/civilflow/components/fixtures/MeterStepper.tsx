@@ -3,12 +3,6 @@
  * look en ambos paneles — borde y fondo acentuados cuando hay conteo, steppers grises y sin
  * clic sin tramo asignado. Ej: {activo} {bloqueado=false} children=3 → [−][ 3 ][+] con borde
  * del color del acento.
- * @param activo - conteo > 0: acentúa borde/fondo del bloque central.
- * @param bloqueado - sin tramo asignado (targetId null): steppers deshabilitados y grises.
- * @param puedeDec - false deshabilita solo el − (conteo en 0); default true.
- * @param paddingY - '1px 0' (accesorios) o '2px 0' (aparatos): píxel exacto de cada panel.
- * @param conLineHeight - los accesorios fijan lineHeight 1 en los botones.
- * @param children - contenido de la caja central (el número, con o sin unidad).
  */
 export function ContadorStepper(props: {
   activo: boolean;

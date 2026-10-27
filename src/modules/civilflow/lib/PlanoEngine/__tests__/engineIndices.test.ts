@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { indicesDeMotor } from '../indicesMotor';
+import { indicesDeMotor } from '../engineIndices';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 /**

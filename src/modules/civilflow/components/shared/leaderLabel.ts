@@ -2,9 +2,6 @@
  * Etiqueta de leader 3D compartida por epc3d y rci3d: flecha en la punta → codo inclinado →
  * segmento horizontal → círculo con el número. Port 1:1 del drawLabel del HTML original —
  * la geometría es idéntica; solo cambian color, grosor y fuente por módulo.
- * @param col - color de línea/relleno/texto (ej. '#1f6feb' activa).
- * @param lw - grosor de línea (px canvas).
- * @param fuente - fuente del número (ej. 'bold 21px monospace' ya escalado por sc).
  */
 export function dibujarEtiquetaLider(
   ctx: CanvasRenderingContext2D,
