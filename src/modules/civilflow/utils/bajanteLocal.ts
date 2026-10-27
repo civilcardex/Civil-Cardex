@@ -1,13 +1,8 @@
 /**
- * Resolvedor de bajantes por piso.
- *
- * Por qué existe: el motor guarda en el MISMO array los bajantes de otros pisos que
- * atraviesan esta altura (proyecciones de entrepiso con `pisoBase` ajeno y el MISMO id tras
- * un renombre). Un `find()` plano devolvía la proyección —con el libro rancio— en vez del
- * montante real (orig. usuario: MAC1-P1 marcaba 15,5 con el real en 4,5).
- *
- * Este módulo NO importa nada: usa tipos estructurales, así que ni el motor ni los utils
- * dependen de él en runtime (evita ciclos de import y lo deja testeable en node).
+ * Resolvedor de bajantes por piso: el motor guarda en el MISMO array las proyecciones de otros
+ * pisos con el MISMO id, y un find() plano devolvía la proyección (con su libro rancio) en vez
+ * del real — MAC1-P1 marcaba 15,5 con el real en 4,5. Sin imports de runtime (tipos
+ * estructurales): testeable en node y sin ciclos de import.
  */
 
 /** Bajante mínimo que necesita el resolvedor (el motor tiene más campos). */
@@ -51,14 +46,10 @@ export function bajanteLocalDe<T extends { id: string; pisoBase?: string }>(
 }
 
 /**
- * Bajante de una LISTA (documento guardado) por id, prefiriendo la copia del piso dueño.
- *
- * Por qué: los documentos también arrastran la PROYECCIÓN de otro piso con el MISMO id y un
- * `ucAplicado` viejo. Un `find()` plano sobre el doc escribía/leía la herencia en la
- * proyección y el bajante real quedaba sin libro — el pase siguiente contaba lo heredado
- * como propio y lo volvía a sumar. Ej. doc del Piso 1 con BAN1 real + proyección del Piso 2
- * → se elige el de `pisoBase 'Piso 1'`.
- *
+ * Bajante de una LISTA (documento guardado) por id, prefiriendo la copia del piso dueño: el
+ * doc también arrastra la proyección de otro piso con el MISMO id y un ucAplicado viejo, y
+ * un find() plano escribía la herencia en la proyección dejando al real sin libro.
+ * Ej: doc del Piso 1 con BAN1 real + proyección del Piso 2 → se elige el de `pisoBase 'Piso 1'`.
  * @param bajantes lista del documento.
  * @param id id a buscar (único solo por piso).
  * @param pisoLabel etiqueta del piso dueño (`pisoLbl(nivel)`); vacía = sin preferencia.
@@ -76,12 +67,8 @@ export function bajanteDePisoEn<T extends { id: string; pisoBase?: string }>(
 }
 
 /**
- * Clave de identidad de un bajante: el id SOLO es único dentro de un piso.
- *
- * Por qué: `dedupPorId` (guardado) conservaba la última copia y, con la proyección de otro
- * piso en el array, el autosave escribía la geometría del fantasma en vez de la del montante
- * real — y `saveTrazosToDB` subía ese error a Supabase.
- *
+ * Clave de identidad de un bajante: el id SOLO es único dentro de un piso (el dedup por id
+ * conservaba la proyección de otro piso y el autosave subía su geometría a la BD).
  * @param b bajante (o cualquier elemento con id y pisoBase).
  * @returns clave `id|pisoBase`; cadena vacía si el elemento no tiene id (entonces no
  *   colisiona con nada y se conserva cada copia).

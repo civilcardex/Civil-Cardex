@@ -182,6 +182,9 @@ export function useAparatos3DScene(
         });
         api.scene.clear();
         api.renderer.dispose();
+        // Sin esto, alternar visores 3D acumula contextos WebGL hasta el tope de Chrome
+        // (~16) y el navegador mata el más antiguo — puede ser el canvas de un visor vivo.
+        api.renderer.forceContextLoss();
         apiRef.current = null;
       }
       // Limitación conocida: ColorManagement es un flag GLOBAL del singleton three — si

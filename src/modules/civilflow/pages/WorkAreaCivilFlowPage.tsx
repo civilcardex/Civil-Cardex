@@ -3,35 +3,25 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import WorkArea from '../components/WorkAreaCivilFlow.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
 import { devError } from '../../../utils/devError.ts';
+import { marcarNavInterna } from '../../../utils/internalNavigation.ts';
 import { ProjectContext, PROY_DEFAULTS, type Proyecto } from '../context/ProjectContext.tsx';
 import { PlansContext } from '../context/PlansContext.tsx';
 import { fetchProyectos } from '../services/projectsService.ts';
 import { loadProyectoData } from '../services/projectDataService.ts';
 import { clearLocalWorkspace } from '../services/workspaceReset.ts';
 import { clearAllPDFs } from '../services/idbStorage.ts';
-import { getActiveProyectoId, saveToStorage } from '../services/storageService.ts';
 import {
-  ACTIVE_PROYECTO_ID_KEY,
-  ACTIVE_NETS_KEY,
-  PLANS_META_KEY,
-} from '../constants/storage-keys.ts';
+  getActiveProyectoId,
+  setActiveProyectoId,
+  saveToStorage,
+} from '../services/storageService.ts';
+import { ACTIVE_NETS_KEY, PLANS_META_KEY } from '../constants/storage-keys.ts';
 import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
 import { parseFlowSplat, rutaFlow } from '../components/workarea/tabRoute.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 
-const WorkAreaCivilFlowPage_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 /** Enlace legacy (id sin formato uuid, de antes del cambio a identificadores universales):
  *  aviso centrado SIN workspace montado — abrir el activo en silencio haría que el usuario
  *  dibuje en el proyecto equivocado. */
@@ -146,7 +136,7 @@ function WorkAreaCivilFlowPage() {
         await clearAllPDFs();
         plansCtx?.resetPlans();
         projectCtx?.resetToDefaults();
-        localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, wantsId);
+        setActiveProyectoId(wantsId);
         // Escritura vía saveToStorage (aplica el 2º prefijo civilflow_ que leen los
         // providers al montar — mismo contrato de hand-off documentado en ProfilePage).
         if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
@@ -162,14 +152,16 @@ function WorkAreaCivilFlowPage() {
           saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
         if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
         // Reload completo: providers re-nacen leyendo el storage recién volcado.
+        marcarNavInterna();
         window.location.replace(rutaFlow(wantsId, tabUrl));
       } catch (e) {
         devError('abrir proyecto desde URL:', e);
         // Rollback: recarga completa — el workspace del proyecto previo ya no existe en
         // memoria (la destrucción pudo correr antes del fallo); los providers se re-nacen
         // con la recarga, un resume in situ dejaría un workspace vacío sin sync.
-        if (idAnterior) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, idAnterior);
+        if (idAnterior) setActiveProyectoId(idAnterior);
         // Ruta limpia: el redirect al uuid del activo lo hace el efecto de entrada.
+        marcarNavInterna();
         window.location.replace(idAnterior ? '/civilflowareatrabajo' : '/perfil');
         return;
       }
@@ -184,7 +176,7 @@ function WorkAreaCivilFlowPage() {
   if (enlaceLegacy) {
     return (
       <main className="h-full" style={ENLACE_LEGACY_STYLE}>
-        <h1 style={WorkAreaCivilFlowPage_S1}>Área de trabajo</h1>
+        <h1 style={SR_ONLY_STYLE}>Área de trabajo</h1>
         <div role="alert" style={ENLACE_LEGACY_AVISO_STYLE}>
           Este enlace corresponde a una versión antigua del proyecto — ábrelo desde tu lista de
           proyectos.
@@ -204,7 +196,7 @@ function WorkAreaCivilFlowPage() {
   }
   return (
     <main className="h-full">
-      <h1 style={WorkAreaCivilFlowPage_S1}>Área de trabajo</h1>
+      <h1 style={SR_ONLY_STYLE}>Área de trabajo</h1>
       <WorkArea tabInicial={tabUrl} />
     </main>
   );

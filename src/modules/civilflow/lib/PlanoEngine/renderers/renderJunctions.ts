@@ -8,6 +8,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
   // especial. Para lograrlo, se procesan juntas (comparten vértices) y cada otra red se procesa
   // por separado.
   const processed = new Set<string>();
+  // Los fantasmas entre pisos NO dependen de la red: getBajantesFantasma una sola vez por
+  // frame (antes corría dentro de NETS.forEach — hasta 11 filter+sort de nptLevels por frame).
+  const fantasmaIdsGlobal = new Set(engine.getBajantesFantasma().map((b) => b.id));
   NETS.forEach((net) => {
     if (processed.has(net.id)) return;
     const group = net.id === 'san' || net.id === 'vent' ? ['san', 'vent'] : [net.id];
@@ -147,7 +150,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     // una unión entre tubos y no debe dibujarse ningún símbolo de tee/yee ahí (saldría encima del
     // círculo del bajante, confundiendo la lectura del plano).
     const lvl = engine.nivelActual?.label ?? '';
-    const fantasmaIds = new Set(engine.getBajantesFantasma().map((b) => b.id));
+    const fantasmaIds = fantasmaIdsGlobal;
     const bajantePts: number[][] = [];
     engine.bajantes.forEach((b) => {
       if (!group.includes(b.net) || engine._hiddenNets.has(b.net)) return;

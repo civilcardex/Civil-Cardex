@@ -76,7 +76,7 @@ export default function EpcViewer(): React.JSX.Element {
 
   return (
     <div
-      data-tour="iso-panel"
+      data-tour="iso-panel iso-viewer-sidebar"
       style={{
         display: 'flex',
         flex: 1,

@@ -134,6 +134,12 @@ export function markAssocLayout(planId: string | number): void {
   // Sin caché local del piso no se marca: saveData fabricaría `{assocLayout:2}` y el RPC
   // destructivo lo persistiría en BD — borrado del piso. El prefetch marca tras descargar.
   if (!hasCachedPlan(planId)) return;
+  // Chequeo crudo ANTES de parsear (mismo guard barato de migrateAssocLayoutOnLoad:173):
+  // en la pasada 2 se llama por bajante asociado y el 99% de los pisos ya están marcados —
+  // loadData (JSON.parse del doc completo) solo cuando el raw no trae la marca. Un falso
+  // positivo del includes es benigno: solo reintenta el marcaje en la próxima carga.
+  if ((localStorage.getItem(TRAZOS_PLAN_PREFIX + String(planId)) || '').includes('"assocLayout":2'))
+    return;
   const data = loadData(planId);
   if (data.assocLayout === 2) return;
   data.assocLayout = 2;

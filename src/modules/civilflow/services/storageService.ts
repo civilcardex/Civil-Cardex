@@ -8,6 +8,7 @@ export {
   saveTrazosLocales,
   localGanaABdPorTs,
   getActiveProyectoId,
+  setActiveProyectoId,
   loadPlanTrazos,
   savePlanTrazos,
   type PlanTrazos,

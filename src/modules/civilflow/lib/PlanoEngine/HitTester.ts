@@ -1,3 +1,51 @@
+import { distToSegment } from '../shared/geometry.ts';
+
+interface Codo {
+  actualRad: number;
+  T_A: { x: number; y: number };
+  T_C: { x: number; y: number };
+  ccx: number;
+  ccy: number;
+  angle_TA: number;
+  angle_TC: number;
+  counterclockwise: boolean;
+}
+
+/** Tangentes del arco de codo en B (entre los tramos A→B y B→C), radio recortado a 0.8 de
+ *  cada pata. null si B no forma un codo 90° significativo (patas degeneradas o colineales).
+ *  Lo consumen el hit-test del codo (distancia al arco) y el recorte de los tramos adyacentes. */
+function tangentesCodo(
+  A: { x: number; y: number },
+  B: { x: number; y: number },
+  C: { x: number; y: number },
+  rad: number,
+): Codo | null {
+  const ax = B.x - A.x,
+    ay = B.y - A.y;
+  const bx = C.x - B.x,
+    by = C.y - B.y;
+  const lenA = Math.hypot(ax, ay),
+    lenB = Math.hypot(bx, by);
+  if (lenA <= 0 || lenB <= 0) return null;
+  const ux = -ax / lenA,
+    uy = -ay / lenA; // B -> A
+  const vx = bx / lenB,
+    vy = by / lenB; // B -> C
+  if (Math.abs(ux * vx + uy * vy) >= 0.05) return null;
+  const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
+  if (actualRad <= 0.1) return null;
+  return {
+    actualRad,
+    T_A: { x: B.x + actualRad * ux, y: B.y + actualRad * uy },
+    T_C: { x: B.x + actualRad * vx, y: B.y + actualRad * vy },
+    ccx: B.x + (ux + vx) * actualRad,
+    ccy: B.y + (uy + vy) * actualRad,
+    angle_TA: Math.atan2(-vy, -vx),
+    angle_TC: Math.atan2(-uy, -ux),
+    counterclockwise: ux * vy - uy * vx > 0,
+  };
+}
+
 /** ¿Cayó el clic dentro de este polígono? Traza una línea horizontal desde el clic y cuenta
  *  cuántas veces corta el contorno: un número impar de cortes significa "dentro".
  *  Ej: el rectángulo de un área dibujada devuelve true; un punto fuera, false. */
@@ -42,7 +90,9 @@ export function pointInLabelBox(
 
 /** Distancia más corta del clic al tramo que va de (x1,y1) a (x2,y2). La proyección del clic se
  *  recorta al tramo: si el clic cae "más allá" de un extremo, devuelve la distancia hasta ese
- *  extremo y no hasta la recta que se prolongaría en la misma dirección. */
+ *  extremo y no hasta la recta que se prolongaría en la misma dirección.
+ *  ponytail: misma matemática que distToSegment (shared/geometry) — wrapper que conserva la
+ *  firma escalar de los ~10 call sites. */
 export function pointToSegmentDist(
   px: number,
   py: number,
@@ -51,13 +101,7 @@ export function pointToSegmentDist(
   x2: number,
   y2: number,
 ) {
-  const dx = x2 - x1,
-    dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
-  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+  return distToSegment([px, py], [x1, y1], [x2, y2]);
 }
 
 /** ¿Cayó el clic sobre un accesorio dibujado en el cuerpo de un ramal (tee, válvula…)? Devuelve
@@ -202,51 +246,10 @@ export function distanceToRamal(
 
   for (let i = 0; i < cvsPts.length; i++) {
     const isCorner = i > 0 && i < cvsPts.length - 1;
-    let actualRad = 0;
-    let T_A = { x: 0, y: 0 };
-    let T_C = { x: 0, y: 0 };
-    let ccx = 0,
-      ccy = 0;
-    let angle_TA = 0,
-      angle_TC = 0;
-    let counterclockwise = false;
+    const codo = isCorner ? tangentesCodo(cvsPts[i - 1], cvsPts[i], cvsPts[i + 1], rad) : null;
 
-    if (isCorner) {
-      const cvsA = cvsPts[i - 1];
-      const cvsB = cvsPts[i];
-      const cvsC = cvsPts[i + 1];
-
-      const ax = cvsB.x - cvsA.x,
-        ay = cvsB.y - cvsA.y;
-      const bx = cvsC.x - cvsB.x,
-        by = cvsC.y - cvsB.y;
-      const lenA = Math.hypot(ax, ay),
-        lenB = Math.hypot(bx, by);
-
-      if (lenA > 0 && lenB > 0) {
-        const ux = -ax / lenA,
-          uy = -ay / lenA; // B -> A
-        const vx = bx / lenB,
-          vy = by / lenB; // B -> C
-        const cosAngle = ux * vx + uy * vy;
-
-        if (Math.abs(cosAngle) < 0.05) {
-          actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
-          if (actualRad > 0.1) {
-            T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
-            T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
-            ccx = cvsB.x + (ux + vx) * actualRad;
-            ccy = cvsB.y + (uy + vy) * actualRad;
-            angle_TA = Math.atan2(-vy, -vx);
-            angle_TC = Math.atan2(-uy, -ux);
-            const cross = ux * vy - uy * vx;
-            counterclockwise = cross > 0;
-          }
-        }
-      }
-    }
-
-    if (isCorner && actualRad > 0.1) {
+    if (codo) {
+      const { T_A, T_C, ccx, ccy, angle_TA, angle_TC, counterclockwise, actualRad } = codo;
       const distToCenter = Math.hypot(cx - ccx, cy - ccy);
       const distToCircle = Math.abs(distToCenter - actualRad);
 
@@ -287,56 +290,14 @@ export function distanceToRamal(
     let start = cvsPts[i];
     let end = cvsPts[i + 1];
 
-    const startIsCorner = i > 0;
-    if (startIsCorner) {
-      const cvsA = cvsPts[i - 1];
-      const cvsB = cvsPts[i];
-      const cvsC = cvsPts[i + 1];
-      const ax = cvsB.x - cvsA.x,
-        ay = cvsB.y - cvsA.y;
-      const bx = cvsC.x - cvsB.x,
-        by = cvsC.y - cvsB.y;
-      const lenA = Math.hypot(ax, ay),
-        lenB = Math.hypot(bx, by);
-      if (lenA > 0 && lenB > 0) {
-        const ux = -ax / lenA,
-          uy = -ay / lenA;
-        const vx = bx / lenB,
-          vy = by / lenB;
-        const cosAngle = ux * vx + uy * vy;
-        if (Math.abs(cosAngle) < 0.05) {
-          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
-          if (actualRad > 0.1) {
-            start = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy }; // T_C
-          }
-        }
-      }
+    // El extremo interior al codo se acorta hasta la tangente: el hueco lo cubre el arco.
+    if (i > 0) {
+      const c = tangentesCodo(cvsPts[i - 1], cvsPts[i], cvsPts[i + 1], rad);
+      if (c) start = c.T_C;
     }
-
-    const endIsCorner = i + 1 < cvsPts.length - 1;
-    if (endIsCorner) {
-      const cvsA = cvsPts[i];
-      const cvsB = cvsPts[i + 1];
-      const cvsC = cvsPts[i + 2];
-      const ax = cvsB.x - cvsA.x,
-        ay = cvsB.y - cvsA.y;
-      const bx = cvsC.x - cvsB.x,
-        by = cvsC.y - cvsB.y;
-      const lenA = Math.hypot(ax, ay),
-        lenB = Math.hypot(bx, by);
-      if (lenA > 0 && lenB > 0) {
-        const ux = -ax / lenA,
-          uy = -ay / lenA;
-        const vx = bx / lenB,
-          vy = by / lenB;
-        const cosAngle = ux * vx + uy * vy;
-        if (Math.abs(cosAngle) < 0.05) {
-          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
-          if (actualRad > 0.1) {
-            end = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy }; // T_A
-          }
-        }
-      }
+    if (i + 1 < cvsPts.length - 1) {
+      const c = tangentesCodo(cvsPts[i], cvsPts[i + 1], cvsPts[i + 2], rad);
+      if (c) end = c.T_A;
     }
 
     const d = pointToSegmentDist(cx, cy, start.x, start.y, end.x, end.y);

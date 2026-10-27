@@ -1,7 +1,7 @@
 import type * as THREE_NS from 'three';
 import { ETIQUETAS } from './epc3dData.ts';
 import type { Epc3DApi } from './useEpc3DScene.ts';
-import { dibujarEtiquetaLider } from '../shared/etiquetaLider.ts';
+import { dibujarEtiquetaLider } from '../shared/leaderLabel.ts';
 
 // Etiquetas numeradas con flecha (port del HTML original): punta sobre la pieza, segmento
 // inclinado con flecha, codo horizontal y círculo con el número. Solo se dibuja la etiqueta

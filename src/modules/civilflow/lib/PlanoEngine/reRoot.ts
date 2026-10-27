@@ -8,11 +8,7 @@ import { entradasSalidas, extremoLejanoTipo, REDES_PRESION } from './nodos';
  *  sentido de la tubería vieja puede quedar al revés — aquí se corrige (todo dentro de UN solo
  *  Ctrl+Z). */
 
-/** Las tuberías a presión (af (Agua Fría), ac (Agua Caliente), gas (Gas), rci (Red Contra
- *  Incendio) y vent (Ventilación)) no se redibujan al invertir el flujo: solo prenden el flag
- *  _tribReversed (flag de flujo invertido en tributario). Las que drenan por gravedad (san
- *  (Sanitaria), ll (Lluvias)) sí voltean sus puntos.
- *  @param net red; @returns true si usa el flag. */
+/** La inversión de una red de presión (af/ac/gas/rci/vent) solo prende `_tribReversed` (flag de flujo invertido en tributario); las de gravedad (san/ll) voltean pts. */
 function usaFlag(net: string): boolean {
   return net !== 'san' && net !== 'll';
 }

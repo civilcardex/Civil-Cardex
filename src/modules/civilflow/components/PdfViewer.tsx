@@ -23,19 +23,13 @@ import {
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
 } from '../utils/drawingSync.ts';
-import { isPlanKeyFor } from '../lib/PlanoEngine/networkRenumber.ts';
-import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService.ts';
-import {
-  GAS_ACC_KEY,
-  APARATOS_BY_TRAMO_KEY,
-  HYDRO_DATA_STORAGE_KEY,
-  ACTIVE_NETS_KEY,
-  PDF_HIDDEN_NETS_KEY,
-  PDF_LOCKED_NETS_KEY,
-} from '../constants/storage-keys.ts';
+import { loadFromStorage, getActiveProyectoId } from '../services/storageService.ts';
+import { ACTIVE_NETS_KEY } from '../constants/storage-keys.ts';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar.tsx';
 
-import { persistTrazosSnapshot, claveDeBorrado } from './pdfViewer/persistStrokes.ts';
+import { persistTrazosSnapshot } from './pdfViewer/persistStrokes.ts';
+import { limpiarStoresDeBorrado } from './pdfViewer/aparatosDeleteSweep.ts';
+import { useNetVisibilityState } from './pdfViewer/useNetVisibilityState.ts';
 import { useViewerDialogs } from './pdfViewer/useViewerDialogs.ts';
 import { useViewerToolbarActions } from './pdfViewer/useViewerToolbarActions.ts';
 import { validateBeforeClose } from './pdfViewer/closeValidation.ts';
@@ -62,17 +56,8 @@ import { useViewerDirtySweep } from './pdfViewer/useViewerDirtySweep.ts';
 import { PdfViewerRightSidebar } from './pdfViewer/PdfViewerRightSidebar.tsx';
 import { useSaveStatusBanner } from './pdfViewer/useSaveStatusBanner.ts';
 import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
-const PdfViewer_SR_ONLY: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
+
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const PdfViewer_S4: React.CSSProperties = {
   width: '100%',
   padding: '5px 8px',
@@ -282,24 +267,6 @@ function PdfViewer_({
   }, [planos]);
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
   const syncedNivelForIdRef = useRef<string | number | null>(null);
-  const [hiddenNets, setHiddenNets] = useState<Set<string>>(() => {
-    try {
-      const saved = loadFromStorage<string[] | null>(PDF_HIDDEN_NETS_KEY, null);
-      if (saved) return new Set(saved);
-    } catch {
-      /* ignore */
-    }
-    return new Set();
-  });
-  const [lockedNets, setLockedNets] = useState<Set<string>>(() => {
-    try {
-      const saved = loadFromStorage<string[] | null>(PDF_LOCKED_NETS_KEY, null);
-      if (saved) return new Set(saved);
-    } catch {
-      /* ignore */
-    }
-    return new Set();
-  });
 
   const [selElement, setSelElement] = useState<ProbedElement | null>(null);
   const [drawnElements, setDrawnElements] = useState<ElementItem[]>([]);
@@ -478,33 +445,7 @@ function PdfViewer_({
       // [] = solo abre la ventana anti-alerta (borrador en vacío): sin fan-out — un clic sin
       // nada borrado no es un cambio (no emite aparatos-clear ni re-sincroniza dibujos).
       if (ids.length === 0) return;
-      const cleanStore = (key: string) => {
-        const store = loadFromStorage(key, {}) as Record<string, unknown>;
-        let changed = false;
-        // Solo claves del piso cargado: borrar RS4 aquí no debe borrar `san_RS4_<otroPlano>`
-        // (cada piso numera por su cuenta; sin este filtro, borrar en un piso vaciaba las
-        // UDs del mismo id en los demás).
-        const loadedPid = engineRef.current?._loadedPlanId ?? null;
-        // Ids actuales tras el borrado+renumerado (el nuevo RS1 ya existe en engine)
-        const currentIds = new Set([
-          ...(engineRef.current?.ramales.map((r) => r.id) ?? []),
-          ...(engineRef.current?.bajantes.map((b) => b.id) ?? []),
-          ...(engineRef.current?.ramales.map((r) => r.label) ?? []),
-        ]);
-        for (const k of Object.keys(store)) {
-          if (!isPlanKeyFor(k, loadedPid)) continue;
-          // No borrar si el nuevo ramal renumerado ocupa ese mismo id (ej. RS2→RS1):
-          // currentIds contiene el nuevo RS1, así que no se borra.
-          if (claveDeBorrado(k, ids, currentIds)) {
-            delete store[k];
-            changed = true;
-          }
-        }
-        if (changed) saveToStorage(key, store);
-      };
-      cleanStore(GAS_ACC_KEY);
-      cleanStore(APARATOS_BY_TRAMO_KEY);
-      cleanStore(HYDRO_DATA_STORAGE_KEY);
+      limpiarStoresDeBorrado(engineRef.current, ids);
       emitAparatosClear({ ids });
       syncDrawings();
     },
@@ -665,6 +606,11 @@ function PdfViewer_({
 
   useNetColorsInit();
 
+  // Cambio de PISO en vuelo: velo translúcido sobre el canvas (el overlay grande solo corre
+  // en la primera entrada). Estado espejo de loadingPlanRef — lo pide usePlanoLoadSwitch.
+  const [cambioPiso, setCambioPiso] = useState(false);
+  const handleCambioPiso = useCallback((v: boolean) => setCambioPiso(v), []);
+
   usePlanoLoadSwitch({
     engineRef,
     engineReady,
@@ -674,6 +620,7 @@ function PdfViewer_({
     syncDrawings,
     autoSaveTimerRef,
     loadingPlanRef,
+    onCambioPiso: handleCambioPiso,
     activeNetRef,
     activeNetworksRef,
     setActiveNet,
@@ -842,76 +789,20 @@ function PdfViewer_({
     [engineRef, selElement, setSelElement],
   );
 
-  const handleToggleHidden = useCallback(
-    (id: string) => {
-      const next = new Set(hiddenNets);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      setHiddenNets(next);
-      saveToStorage(PDF_HIDDEN_NETS_KEY, [...next]);
-      if (engineRef.current) engineRef.current.setNetHidden(id, next.has(id));
-    },
-    [hiddenNets, setHiddenNets, engineRef],
-  );
-  // Restaurar visibilidad al (re)cargar el visor (orig. usuario: tras recargar la página la
-  // red reaparecía pero el botón seguía en "oculta" — el set solo se aplicaba desde el
-  // toggle). engineReady gatea: el motor no existe en el primer render.
-  useEffect(() => {
-    if (!engineReady) return;
-    const eng = engineRef.current;
-    if (!eng) return;
-    for (const id of hiddenNets) eng.setNetHidden(id, true);
-    // hiddenNets deliberadamente fuera: el estado inicial ya trae lo persistido.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engineReady]);
-
-  // Seleccionar red en la barra (orig. usuario): si la red está OCULTA, el aviso sale
-  // EN CUANTO se selecciona — no al intentar dibujar.
-  const handleSelectNet = useCallback(
-    (id: string) => {
-      setActiveNet(id);
-      if (hiddenNets.has(id)) {
-        const nombre = finalVisibleNets.find((n) => n.id === id)?.name || id;
-        engineRef.current?.triggerAlert(
-          'Red oculta',
-          `${nombre} está oculta. Muéstrala en la barra de redes para dibujar en ella.`,
-        );
-      }
-    },
-    [hiddenNets, finalVisibleNets, engineRef],
-  );
-
-  const handleToggleLocked = useCallback(
-    (id: string) => {
-      const next = new Set(lockedNets);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      setLockedNets(next);
-      saveToStorage(PDF_LOCKED_NETS_KEY, [...next]);
-      if (engineRef.current) engineRef.current.setNetLocked(id, next.has(id));
-    },
-    [lockedNets, setLockedNets, engineRef],
-  );
+  // Redes ocultas/bloqueadas: estado + persistencia + toggles + restore + prune viven en
+  // pdfViewer/useNetVisibilityState (preferencia de dispositivo, no datos del proyecto).
+  const { hiddenNets, lockedNets, handleToggleHidden, handleToggleLocked, handleSelectNet } =
+    useNetVisibilityState({
+      engineRef,
+      engineReady,
+      finalVisibleNets,
+      activeNet,
+      setActiveNet,
+    });
 
   useEffect(() => {
     syncEngine();
   }, [syncEngine]);
-
-  useEffect(() => {
-    if (finalVisibleNets.length === 0) return;
-    if (!finalVisibleNets.some((n) => n.id === activeNet)) setActiveNet(finalVisibleNets[0].id);
-    setHiddenNets((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      for (const id of [...next]) {
-        if (!finalVisibleNets.some((n) => n.id === id)) {
-          next.delete(id);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [finalVisibleNets, activeNet]);
 
   const prevResetKey = useRef('');
   // Error de guardado (BD o cuota local): franja roja + motivo — hook pdfViewer/useSaveStatusBanner.
@@ -1113,6 +1004,10 @@ function PdfViewer_({
           step={0.1}
           value={lineWidthScale}
           aria-label="Grosor de líneas"
+          // Commit-on-release: cada evento `input` disparaba la cascada completa de
+          // _markDirty (recálculo de red + snapshot de undo + autosave) ×25 por arrastre,
+          // y llenaba el historial de undo de pasos de 0.1× de grosor. El arrastre solo
+          // redibuza; UN dirty al soltar consolida guardado + undo.
           onChange={(e) => {
             const v = Number(e.target.value);
             setLineWidthScale(v);
@@ -1120,8 +1015,17 @@ function PdfViewer_({
             if (eng) {
               eng.lineWidthScale = v;
               eng.scheduleRender();
-              eng._markDirty();
             }
+          }}
+          onPointerUp={() => {
+            const eng = engineRef.current;
+            if (eng) eng._markDirty();
+          }}
+          // Teclado: flechas/Home/End sobre el range disparan onChange pero NUNCA
+          // pointerup — sin esto el ajuste vía teclado se pierde al recargar.
+          onKeyUp={() => {
+            const eng = engineRef.current;
+            if (eng) eng._markDirty();
           }}
           style={{ width: 140, accentColor: '#F5A623' }}
         />
@@ -1141,7 +1045,7 @@ function PdfViewer_({
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative', minWidth: 0 }}>
         <div className="visor-sidebar" data-tour="toolbar" style={dynamicLeftStyle}>
-          <h2 style={PdfViewer_SR_ONLY}>Panel de capas</h2>
+          <h2 style={SR_ONLY_STYLE}>Panel de capas</h2>
           <div
             style={{
               height: 3,
@@ -1180,7 +1084,7 @@ function PdfViewer_({
           data-tour="canvas"
           style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
         >
-          <h2 style={PdfViewer_SR_ONLY}>Visor de planos</h2>
+          <h2 style={SR_ONLY_STYLE}>Visor de planos</h2>
           <ViewerMobileChrome
             isMobile={isMobile}
             isNarrow={isNarrow}
@@ -1197,6 +1101,7 @@ function PdfViewer_({
             currentFile={currentFile}
             error={error}
             loading={loading}
+            cambioPiso={cambioPiso}
             selectedNivel={selectedNivel}
             pisos={pisos}
             planos={planos}
@@ -1237,7 +1142,7 @@ function PdfViewer_({
         {/* Barra lateral derecha (componente: pdfViewer/PdfViewerRightSidebar) */}
         <PdfViewerRightSidebar
           style={dynamicRightStyle}
-          srOnlyStyle={PdfViewer_SR_ONLY}
+          srOnlyStyle={SR_ONLY_STYLE}
           selectStyle={PdfViewer_S4}
           rightSidebarOpacity={rightSidebarOpacity}
           tool={tool}

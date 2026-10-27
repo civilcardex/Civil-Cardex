@@ -44,7 +44,7 @@ export const APARATO_PMIN_BY_CODE: Record<string, number> = Object.fromEntries(
 if (APARATO_PMAX_BY_CODE.HORG != null) APARATO_PMAX_BY_CODE.HOR = APARATO_PMAX_BY_CODE.HORG;
 if (APARATO_PMIN_BY_CODE.HORG != null) APARATO_PMIN_BY_CODE.HOR = APARATO_PMIN_BY_CODE.HORG;
 
-/** ¿La presión en el aparato está dentro del rango pmin–pmax del catálogo NTC (Norma Tecnica Colombiana) 1500? Devuelve '' si no hay aparato o presión. */
+/** ¿La presión en el aparato está dentro del rango pmin–pmax del catálogo NTC (Norma Tecnica Colombiana) 1500? Chequea el extremo fin (con Pfin) y luego el ini (con Pin). Devuelve '' si no hay aparato o presión. Ej: fin 'LAV' con pFin 2.0 → 'O.K.'; con 0.8 → 'NO'. */
 export function chequeoPresionAparato(
   ini: Tramo['ini'],
   fin: Tramo['fin'],

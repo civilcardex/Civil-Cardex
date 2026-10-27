@@ -299,14 +299,31 @@ export function drawRamalPath(
           }
         }
 
+        // Codo 45° (inglete) y codo 90° (arco): mismo preámbulo, mismo bloque de trazo —
+        // solo difiere la geometría central (línea por B vs arco con centro/radio).
         const is45 = Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05;
-        if (is45 && !isJunc) {
+        const es90 = Math.abs(cosAngle) < 0.05;
+        if ((is45 || es90) && !isJunc) {
           const rad = engine.mm2cvs(1.5);
           const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
 
           if (actualRad > 0.1) {
             const T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
             const T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
+            const perp_u = { x: -uy, y: ux };
+            const perp_v = { x: -vy, y: vx };
+            let ccx = 0,
+              ccy = 0,
+              angle_TA = 0,
+              angle_TC = 0,
+              counterclockwise = false;
+            if (!is45) {
+              ccx = cvsB.x + (ux + vx) * actualRad;
+              ccy = cvsB.y + (uy + vy) * actualRad;
+              angle_TA = Math.atan2(-vy, -vx);
+              angle_TC = Math.atan2(-uy, -ux);
+              counterclockwise = ux * vy - uy * vx > 0;
+            }
 
             if (!marksOnly) {
               ctx.lineTo(T_A.x, T_A.y);
@@ -323,50 +340,13 @@ export function drawRamalPath(
             // que sin esto el propio símbolo de codo lo hereda y se dibuja también discontinuo.
             ctx.setLineDash([]);
             ctx.beginPath();
-            ctx.moveTo(T_A.x, T_A.y);
-            ctx.lineTo(cvsB.x, cvsB.y);
-            ctx.lineTo(T_C.x, T_C.y);
-            ctx.stroke();
-            ctx.restore();
-
-            if (!marksOnly) {
-              ctx.beginPath();
-              ctx.moveTo(T_C.x, T_C.y);
+            if (is45) {
+              ctx.moveTo(T_A.x, T_A.y);
+              ctx.lineTo(cvsB.x, cvsB.y);
+              ctx.lineTo(T_C.x, T_C.y);
+            } else {
+              ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);
             }
-
-            const perp_u = { x: -uy, y: ux };
-            const perp_v = { x: -vy, y: vx };
-            elbows.push({ T_A, T_C, perp_u, perp_v });
-            drewArc = true;
-          }
-        } else if (Math.abs(cosAngle) < 0.05 && !isJunc) {
-          const rad = engine.mm2cvs(1.5);
-          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
-
-          if (actualRad > 0.1) {
-            const T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
-            const T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
-            const ccx = cvsB.x + (ux + vx) * actualRad;
-            const ccy = cvsB.y + (uy + vy) * actualRad;
-            const angle_TA = Math.atan2(-vy, -vx);
-            const angle_TC = Math.atan2(-uy, -ux);
-            const cross = ux * vy - uy * vx;
-            const counterclockwise = cross > 0;
-            const perp_u = { x: -uy, y: ux };
-            const perp_v = { x: -vy, y: vx };
-
-            if (!marksOnly) {
-              ctx.lineTo(T_A.x, T_A.y);
-              ctx.stroke();
-            }
-
-            ctx.save();
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
-            // Mismo problema de herencia de dash que el inglete de 45° de arriba — se reinicia explícitamente.
-            ctx.setLineDash([]);
-            ctx.beginPath();
-            ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);
             ctx.stroke();
             ctx.restore();
 

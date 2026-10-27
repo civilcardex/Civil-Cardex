@@ -1,6 +1,6 @@
+import { splitPtr } from '../../../utils/keys.ts';
 import { NETS, type IPlanoEngineCore } from '../PlanoState.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import {
   DIR_MAP,
@@ -9,7 +9,7 @@ import {
   drawDireccionSymbol,
 } from './bajanteLabels.ts';
 import { renderCanalGlyph } from './renderChannel.ts';
-import { indicesDeMotor } from '../indicesMotor';
+import { indicesDeMotor } from '../engineIndices';
 
 export { renderCanalGhost } from './renderChannel.ts';
 export { renderGhosts, renderCrossFloorGhosts } from './bajanteGhosts.ts';
@@ -102,7 +102,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
 
     if (b.descargaEnId) {
-      const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+      const parts = splitPtr(b.descargaEnId, engine._loadedPlanId);
       const targetPlanId = parts[0];
       const targetId = parts[1];
 

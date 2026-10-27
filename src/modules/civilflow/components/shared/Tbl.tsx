@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const TH_DEFAULT: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
@@ -54,18 +55,6 @@ interface TblProps {
   colStyles?: (React.CSSProperties | undefined)[];
 }
 
-const VH: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
 const Tbl = React.memo(function Tbl({
   cols,
   tips,
@@ -97,7 +86,7 @@ const Tbl = React.memo(function Tbl({
         ...tableStyle,
       }}
     >
-      {caption && <caption style={VH}>{caption}</caption>}
+      {caption && <caption style={SR_ONLY_STYLE}>{caption}</caption>}
       <thead>
         <tr>
           {cols.map((c, i) => (

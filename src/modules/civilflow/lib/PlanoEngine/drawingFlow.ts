@@ -6,13 +6,13 @@ import { ramalContinuesPast } from './drawingUtils.ts';
 import { sanFeederMinMsg } from '../../utils/sanitaryDiamCompat.ts';
 import { FUENTE_TIPOS, REDES_PRESION } from './nodos';
 
-// Redes de presión (af/ac/gas/rci): SIN bloqueo salida/entrada (orig. usuario: regla y
-// alerta retiradas). Los trazos conectados suben automáticamente al MAYOR diámetro SOLO en
-// el sentido del flujo (el mismo sentido en que se propagan los aparatos, orig. usuario):
-// sube el vecino cuyo ORIGEN de flujo recibe mi DESTINO de flujo (continuación extremo-
-// extremo o T que nace de mi cuerpo). Aguas arriba y ramas hermanas jamás. Nunca baja: el
-// tramo editado conserva el valor del usuario (espejo de sanitaria). @returns true si subió
-// algún vecino.
+/** Redes de presión (af/ac/gas/rci): SIN bloqueo salida/entrada (orig. usuario: regla y
+ *  alerta retiradas). Los trazos conectados suben automáticamente al MAYOR diámetro SOLO en
+ *  el sentido del flujo (el mismo sentido en que se propagan los aparatos, orig. usuario):
+ *  sube el vecino cuyo ORIGEN de flujo recibe mi DESTINO de flujo (continuación extremo-
+ *  extremo o T que nace de mi cuerpo). Aguas arriba y ramas hermanas jamás. Nunca baja: el
+ *  tramo editado conserva el valor del usuario (espejo de sanitaria). Ej: subes RAF1 a 1/2"
+ *  → su continuación RAF4 sube sola; la lateral de la T no. @returns true si subió algún vecino. */
 export function convergirDiametroNodoPresion(
   ramales: Array<{
     id: string;
@@ -96,11 +96,11 @@ export function convergirDiametroNodoPresion(
   return changed;
 }
 
-// Red sanitaria: el receptor no puede quedar con menor diámetro que el mayor ramal que le
-// descarga directo (regla inversa a presión: aguas abajo SIEMPRE >= aguas arriba). Corre en
-// updateElementById vía guardDiametroNodo para que CUALQUIER camino de dibujo (menú
-// contextual, TramoEditor) quede validado con alerta — igual que la tabla de diseño.
-// Solo cuentan alimentadores tipo `ramal` (tributarios y bajantes no restringen).
+/** Red sanitaria: el receptor no puede quedar con menor diámetro que el mayor ramal que le
+ *  descarga directo (regla inversa a presión: aguas abajo SIEMPRE >= aguas arriba). Corre en
+ *  updateElementById vía guardDiametroNodo para que CUALQUIER camino de dibujo (menú
+ *  contextual, TramoEditor) quede validado con alerta — igual que la tabla de diseño.
+ *  Solo cuentan alimentadores tipo `ramal` (tributarios y bajantes no restringen). */
 export function sanReceptorDiametroPermitido(
   ramales: Array<{
     id: string;
@@ -169,6 +169,12 @@ export function sanDiametroPermitido(
   return sanReceptorDiametroPermitido(ramales, ramalId, newLabel);
 }
 
+/** Invierte el sentido de la tubería: voltea pts y permuta inicio/fin de accesorios,
+ *  diámetros, aparatos, ini/fin y reindexa accMed (los vértices interiores cambian de orden).
+ *  Ej: un ramal dibujado de bajante→aparato queda aparato→bajante con SU accesorio de inicio. */
+/** Invierte el sentido de la tubería: voltea pts y permuta inicio/fin de accesorios,
+ *  diámetros, aparatos, ini/fin y reindexa accMed (los vértices interiores cambian de orden).
+ *  Ej: un ramal dibujado bajante→aparato queda aparato→bajante con SU accesorio de inicio. */
 export function flipRamalFlow(ram: PlanoRamal): void {
   ram.pts = [...ram.pts].reverse();
   const tmpAcc = ram.accesorioInicio;
@@ -307,6 +313,12 @@ export {
 } from './flowChecks.ts';
 export { codoPolarityOk, ventFlowsIntoJunction, flowDirectionOkAt } from './flowChecks.ts';
 export { pointOnRamalSegment } from './flowChecks.ts';
+/** Propaga en cascada el MAYOR diámetro aguas abajo en sanitaria: si subiste un tramo, todo
+ *  receptor directo encadena (RS1→RS2→RS3 converge completo). Dirección hidráulica: un ramal
+ *  nunca alimenta a un tributario (el tributario receptor solo recibe de tributarios). */
+/** Propaga en cascada el MAYOR diámetro aguas abajo en sanitaria: si subiste un tramo, todo
+ *  receptor directo encadena (RS1→RS2→RS3 converge completo). Dirección hidráulica: un ramal
+ *  nunca alimenta a un tributario — el tributario receptor solo recibe de otros tributarios. */
 export function propagarSanDiametroAguasAbajo(
   ramales: Parameters<typeof sanReceptorDiametroPermitido>[0],
   ramalId: string,

@@ -10,8 +10,6 @@ import { cDeCubierta } from '../constants/engineeringDataMaterials.ts';
 import { calcHydraulicCheck } from './hydraulicCheck.ts';
 import { compareTramosPisoDesc } from './componentHelpers.tsx';
 import { DIAM_OPTIONS } from '../constants';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
 import { distToPolyline } from '../lib/shared/geometry';
 import type { DrawingData, RawElement } from './drawingSync.ts';
 
@@ -296,21 +294,25 @@ export function computeLlQMap(
   const areaAcumMap: Record<string, number> = {};
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
-      TRAZOS_PREFIX + plan.id,
-      null,
-    );
-    if (!raw) continue;
-    let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
-    if (typeof raw === 'string') {
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-    }
+    // Viaja por la cache de leerDocDePlan (los paneles leen los mismos pisos ×4-6 por render).
+    const data = leerDocDePlan<DrawingData & { areas?: AreaRaw[] }>(plan.id);
+    if (!data) continue;
     const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
     areaAcumMap[String(plan.nivel)] = totalArea;
+  }
+
+  // Índices de lookup una vez (hoy: .find dentro de bucles ×2 — 400 tramos × 800 = 1M comparaciones).
+  // Precedencia nueva vs el .find viejo (equivalente con códigos canónicos): gana t.id
+  // sobre t.code y, en colisión entre dos bajantes, el ÚLTIMO insertado (no el primero).
+  const manualPorClave = new Map<string, BajanteLl>();
+  for (const b of bajantesLl) {
+    if (b.bajante) manualPorClave.set(b.bajante, b);
+    if (b.id) manualPorClave.set(b.id, b);
+  }
+  const tramoPorClave = new Map<string, Tramo>();
+  for (const tb of tramosLl) {
+    if (tb.code) tramoPorClave.set(tb.code, tb);
+    if (tb.id) tramoPorClave.set(tb.id, tb);
   }
 
   const ownQMap: Record<string, number> = {};
@@ -318,9 +320,7 @@ export function computeLlQMap(
     if (!t._key) continue;
     // Mismo cálculo que el panel (qBajanteLl): una sola precedencia. El caudal manual del
     // dibujo (t.qLps) también queda gated por el material del override (requisito absoluto).
-    const manual = bajantesLl.find(
-      (b) => b.bajante === t.id || b.bajante === t.code || b.id === t.id || b.id === t.code,
-    );
+    const manual = manualPorClave.get(t.id || '') ?? manualPorClave.get(t.code || '') ?? undefined;
     const conMaterial = !!cDeCubierta(manual?.materialCubierta ?? '');
     const ownQ = qBajanteLl(t, manual) || (conMaterial ? t.qLps || 0 : 0);
     ownQMap[t._key] = ownQ;
@@ -334,8 +334,8 @@ export function computeLlQMap(
     if (t.tipo === 'ramal' && !t.esBajante) {
       const associatedCodes = associations[t._key] || [];
       for (const code of associatedCodes) {
-        const bajante = bajantesLl.find((b) => b.bajante === code || b.id === code);
-        const trBaj = tramosLl.find((tb) => tb.code === code || tb.id === code);
+        const bajante = manualPorClave.get(code);
+        const trBaj = tramoPorClave.get(code);
 
         // Área TOTAL (orig. usuario) = Parcial + Otras. Parcial con la MISMA fórmula
         // compartida del chequeo de bajantes y del canal (areaParcialBajanteLl: área
@@ -363,7 +363,7 @@ export function computeLlQMap(
       // Caudal manual del ramal (dibujo) también gated: sin material en NINGÚN bajante
       // asociado no hay Q (decisión del usuario).
       const algunMaterial = associatedCodes.some((code) => {
-        const b = bajantesLl.find((x) => x.bajante === code || x.id === code);
+        const b = manualPorClave.get(code);
         return !!cDeCubierta(b?.materialCubierta ?? '');
       });
       if (total === 0 && t.qLps && algunMaterial) {

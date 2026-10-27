@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
+import { indiceFrame } from './frameIndex.ts';
 
 type RamalRender = IPlanoEngineCore['ramales'][number];
 
@@ -29,9 +30,41 @@ interface LabelFlowArgs {
 }
 
 /**
+ * Segmentos del ramal en coordenadas de PLANO, cacheados por (firma, ramal): antes se
+ * reconstruía un segsCanvas (toCvs por punto) por ramal etiquetado y por frame — GC churn
+ * puro en paneo. Las tuplas REFERENCIAN los arrays de pts (cero copia de coordenadas).
+ * La firma viene del frame abierto (indiceFrame) — drag muta pts, la firma cambia y el
+ * cache se reconstruye solo.
+ */
+const segsPlanoMemo = new WeakMap<
+  object,
+  { firma: number; porRamal: Map<unknown, Array<[number[], number[]]>> }
+>();
+
+function segsPlanoDe(
+  engine: IPlanoEngineCore,
+  r: RamalRender,
+  firma: number,
+): Array<[number[], number[]]> {
+  let memo = segsPlanoMemo.get(engine as object);
+  if (!memo || memo.firma !== firma) {
+    memo = { firma, porRamal: new Map() };
+    segsPlanoMemo.set(engine as object, memo);
+  }
+  const hit = memo.porRamal.get(r);
+  if (hit) return hit;
+  const pts = r.pts || [];
+  const segs: Array<[number[], number[]]> = [];
+  for (let i = 0; i + 1 < pts.length; i++) segs.push([pts[i], pts[i + 1]]);
+  memo.porRamal.set(r, segs);
+  return segs;
+}
+
+/**
  * Flecha de flujo anclada a la etiqueta del ramal (local +h/2, banda caja↔trazo).
  * La translate/rotate del label ya está aplicada al ctx: se dibuja en coordenadas locales
- * y el recorte contra el trazo se mide en canvas. Cero writes al engine.
+ * y el recorte contra el trazo se mide en PLANO (d_canvas = zoom·d_plano: recorte exacto
+ * igual al histórico, sin convertir los segmentos a canvas por frame). Cero writes al engine.
  */
 export function renderLabelFlowArrow(
   ctx: CanvasRenderingContext2D,
@@ -67,25 +100,18 @@ export function renderLabelFlowArrow(
   const ux = dot / len;
   const uy = perp / len;
   const halfSize = nameW ? nameW / 2 : 12 * engine.zoom;
-  const margin = 3 * engine.zoom;
-  const segsCanvas: Array<[number[], number[]]> = [];
-  for (let i = 0; i + 1 < (r.pts?.length || 0); i++) {
-    const a = engine.toCvs(r.pts[i][0], r.pts[i][1]);
-    const b = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
-    segsCanvas.push([
-      [a.x, a.y],
-      [b.x, b.y],
-    ]);
-  }
-  const distToRamal = (p: [number, number]): number => {
+  // Margen de recorte en UNIDADES DE PLANO (3·zoom px / zoom = 3 — idéntico al histórico).
+  const margin = 3;
+  const segs = segsPlanoDe(engine, r, indiceFrame(engine).firma);
+  const distToRamal = (px: number, py: number): number => {
     let d = Infinity;
-    for (const [a, b] of segsCanvas) {
+    for (const [a, b] of segs) {
       const vx = b[0] - a[0];
       const vy = b[1] - a[1];
       const l2 = vx * vx + vy * vy;
       const t2 =
-        l2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / l2));
-      d = Math.min(d, Math.hypot(p[0] - (a[0] + t2 * vx), p[1] - (a[1] + t2 * vy)));
+        l2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * vy) / l2));
+      d = Math.min(d, Math.hypot(px - (a[0] + t2 * vx), py - (a[1] + t2 * vy)));
     }
     return d;
   };
@@ -111,15 +137,20 @@ export function renderLabelFlowArrow(
       tMin = Math.max(tMin, bandHi / uy);
       tMax = Math.min(tMax, bandLo / uy);
     }
-    // Recorte geométrico: los extremos de la flecha en canvas se miden contra la
+    // Recorte geométrico: los extremos de la flecha se miden (en PLANO) contra la
     // polilínea del propio ramal y el lado que invade el margen se acorta por
     // iteraciones hasta despejar o agotar la flecha.
+    const alPlano = (t: number): [number, number] => {
+      const p = arrowPt(t);
+      const w = engine.toPlane(p[0], p[1]);
+      return [w.x, w.y];
+    };
     for (let it = 0; it < 24 && tMax - tMin >= 4 * engine.zoom; it++) {
-      const tailD = distToRamal(arrowPt(tMin));
-      const tipD = distToRamal(arrowPt(tMax));
+      const tailD = distToRamal(...alPlano(tMin));
+      const tipD = distToRamal(...alPlano(tMax));
       // Punto medio: una esquina del trazo puede atravesar la flecha por el centro con
       // ambos extremos despejados.
-      const midD = distToRamal(arrowPt((tMin + tMax) / 2));
+      const midD = distToRamal(...alPlano((tMin + tMax) / 2));
       const span = tMax - tMin;
       if (tailD >= margin && tipD >= margin && midD >= margin) break;
       if (midD < margin || (tailD < margin && tipD < margin)) {

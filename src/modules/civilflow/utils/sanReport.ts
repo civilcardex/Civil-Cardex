@@ -1,13 +1,9 @@
 import type { MemoriaTable } from './reportExportShared.ts';
 
 /**
- * Convierte un valor de celda en algo imprimible: nunca NaN, Infinity, undefined ni null.
- *
- * Por qué: la memoria de cálculo es un ENTREGABLE FIRMABLE. Un `bajLong` NaN (doc de era
- * vieja) o un radio 0 (que daba Infinity en el cálculo de ventilación) llegaban tal cual a
- * la celda del PDF/DOCX/XLSX y se imprimían como "NaN" o "Infinity" en una columna de
- * cálculo — un defecto legal del documento entregado al cliente.
- *
+ * Convierte un valor de celda en algo imprimible: nunca NaN, Infinity, undefined ni null —
+ * la memoria de cálculo es un ENTREGABLE FIRMABLE y un "NaN" en una columna de cálculo es un
+ * defecto legal del documento entregado. Ej: bajLong NaN → '—'; radio 0 (Infinity en vent) → '—'.
  * @param v valor crudo de la celda.
  * @returns el valor si es utilizable, o '—' (guion largo) si no.
  */

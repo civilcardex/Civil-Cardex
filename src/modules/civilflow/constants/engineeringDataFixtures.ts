@@ -1,3 +1,9 @@
+/**
+ * Catálogos de datos de ingeniería: aparatos sanitarios (UD por aparato), materiales
+ * de tubería por red, coeficientes C de cubierta y catálogo de gasodomésticos NTC 3728.
+ * Son datos de REFERENCIA (norma/fabricante) — los overrides del usuario viven en BD
+ * (cf_aparatos_usuario) y se mezclan encima en los paneles.
+ */
 export const APARATOS_DEF = [
   {
     id: 'sif',
@@ -352,10 +358,19 @@ export const APARATOS_DEF = [
   },
 ];
 
+/** Aparatos que SÍ cuentan UC (Unidades de Consumo) en af (Agua Fría): los que consumen agua.
+ *  La usan CalcUC y fixturesStorage para saber qué aparato suma en la red. Ej: 'san' (inodoro,
+ *  2.2 UC) sí; 'sif' (sifón, solo UD) no. */
 export const AF_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'nev'];
+/** Aparatos que cuentan UC (Unidades de Consumo) en ac (Agua Caliente): solo los que usan agua
+ *  caliente. Ej: 'lavav' (lavavajillas) está aquí pero 'nev' (nevera, solo fría) no. */
 export const AC_UC_IDS = ['lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
+/** Aparatos que descargan a san (Sanitaria) — o sea, los que aportan UD (Unidades de Desague).
+ *  Incluye al sifón, que no consume agua pero sí descarga. Ej: 'san' (inodoro) UD 4. */
 export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro', 'lavav'];
 
+/** Icono webp por id de aparato, para las grillas del panel y los símbolos dibujados en el
+ *  plano. Ej: 'duc' -> /iconos_civilflow/aparatos/ducha.webp. */
 export const APARATO_IMG = {
   sif: '/iconos_civilflow/aparatos/sifon.webp',
   lvm: '/iconos_civilflow/aparatos/lavamanos.webp',
@@ -384,6 +399,10 @@ export const APARATO_IMG = {
   calp: '/iconos_civilflow/aparatos/caldera_pequena.webp',
 };
 
+/** Catálogo compacto de aparatos hidráulicos para los paneles de parámetros: id, nombre, sigla,
+ *  control (llave/válvula…) y UC (Unidades de Consumo) base en af (Agua Fría) y ac (Agua
+ *  Caliente). Ej: inodoro 2.2 af / 0 ac. Lo consumen DesignParameters y la selección de
+ *  calentadores. */
 export const CAT_APS = [
   { id: 'sif', n: 'Sifones', s: 'Sif', ctrl: 'N.A.', af: 0, ac: 0 },
   { id: 'san', n: 'Inodoro', s: 'Ino', ctrl: 'Tanque', af: 2.2, ac: 0 },

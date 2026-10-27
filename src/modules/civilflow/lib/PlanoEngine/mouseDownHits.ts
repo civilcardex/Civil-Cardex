@@ -19,7 +19,7 @@ import {
   esquinasCanalOBB,
 } from './channelAssociation';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork.ts';
-import { indicesDeMotor } from './indicesMotor';
+import { indicesDeMotor } from './engineIndices';
 
 /** Foto de seguridad antes de arrastrar un bajante: guarda dónde estaba y los trazos de las
  *  tuberías que él mueve (las que le llegan, la que descarga y su conector de desvío LD_).

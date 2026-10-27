@@ -1,5 +1,5 @@
 import { APARATO_IMG, APARATOS_DEF } from '../../constants';
-import { ContadorStepper } from './ContadorStepper.tsx';
+import { ContadorStepper } from './MeterStepper.tsx';
 const FixtureGrid_S1: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,

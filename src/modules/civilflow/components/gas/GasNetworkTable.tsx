@@ -8,20 +8,9 @@ import { gasTxt } from '../../constants/countryStandards';
 import { listaDn } from '../../utils/gasRows.ts';
 import type { FilaGasCalc } from '../../utils/gasCalcRows.ts';
 
+import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const TH = { ..._TH, fontSize: 10.5, padding: '2px 3px' };
 const TD = { ..._TD, fontSize: 10.5, padding: '1px 2px' };
-
-const SR_ONLY = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-} as const;
 
 // Columnas MOSTRADAS en la tabla (ped. usuario): las variantes sube/baja y el tapón
 // cuentan en Le pero no aparecen como columnas.
@@ -131,7 +120,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
             borderCollapse: 'collapse',
           }}
         >
-          <caption style={SR_ONLY}>Diseño de red</caption>
+          <caption style={SR_ONLY_STYLE}>Diseño de red</caption>
           <thead>
             <tr>
               {COLS.map((c, i) => (

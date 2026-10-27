@@ -382,13 +382,9 @@ export async function loadProyectoData(proyectoId: string): Promise<ProyectoData
 }
 
 /**
- * Igual que loadProyectoData, pero DISTINGUE "el proyecto no tiene datos" de "la carga
- * falló" (sin red, RLS, suscripción vencida).
- *
- * Por qué: con un único `null` el flujo de apertura de proyecto no podía saber si abrir
- * un proyecto vacío (legítimo: recién creado) o si la carga falló (ilegítimo: el
- * proyecto está en la nube y el workarea abriría VACÍO, y el usuario redibujaría encima).
- *
+ * Igual que loadProyectoData, pero DISTINGUE "el proyecto no tiene datos" (recién creado:
+ * legítimo) de "la carga falló" (sin red, RLS, suscripción vencida) — con un único null el
+ * workarea abría VACÍO y el usuario redibujaba encima de un proyecto que sí está en la nube.
  * @param proyectoId id del proyecto.
  * @returns los datos (o null si no hay) y el mensaje de error (o null si no hubo).
  */

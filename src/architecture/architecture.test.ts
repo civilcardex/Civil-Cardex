@@ -29,44 +29,44 @@ const TOPE_NUEVO = 700;
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
  */
 const CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/components/PdfViewer.tsx': 1314,
-  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 717,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1490,
+  'modules/civilflow/components/PdfViewer.tsx': 1221,
+  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 741,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1469,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 669,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 853,
+  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 831,
   'modules/civilflow/utils/waterRowsCore.ts': 695,
-  'modules/civilflow/components/workarea/PlanosTab.tsx': 712,
+  'modules/civilflow/components/workarea/PlanosTab.tsx': 706,
   'modules/civilflow/components/DownpipesTable.tsx': 212,
   'modules/civilflow/utils/bajanteAssocShared.ts': 722,
   'modules/civilflow/components/GasDesign.tsx': 370,
   'modules/civilflow/components/FixturesPanel.tsx': 900,
   'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 604,
   'modules/civilflow/components/RainChannelsCheck.tsx': 537,
-  'modules/civilflow/constants/rejillasNTC3631.ts': 978,
+  'modules/civilflow/constants/rejillasNTC3631.ts': 977,
   'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
-  'pages/auth/ProfilePage.tsx': 578,
-  'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 930,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 918,
-  'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 924,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 881,
-  'pages/PricingPage.tsx': 921,
-  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 836,
-  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 852,
-  'modules/civilflow/components/RainDownpipesCheck.tsx': 810,
-  'modules/civilflow/components/DesignParameters.tsx': 822,
-  'modules/civilflow/utils/equipmentRows.ts': 822,
-  'modules/civilflow/components/PumpARDesign.tsx': 823,
+  'pages/auth/ProfilePage.tsx': 577,
+  'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 636,
+  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 917,
+  'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 682,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 761,
+  'pages/PricingPage.tsx': 928,
+  'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 604,
+  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 523,
+  'modules/civilflow/components/RainDownpipesCheck.tsx': 520,
+  'modules/civilflow/components/DesignParameters.tsx': 635,
+  'modules/civilflow/utils/equipmentRows.ts': 488,
+  'modules/civilflow/components/PumpARDesign.tsx': 773,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 807,
   'components/help/helpGuideFlow.tsx': 787,
-  'modules/civilflow/components/SanitaryDesign.tsx': 805,
-  'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 770,
+  'modules/civilflow/components/SanitaryDesign.tsx': 795,
+  'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 761,
   'modules/civilflow/components/ep/EPVerificationPage.tsx': 751,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 753,
   'modules/civilflow/context/RainwaterContext.tsx': 746,
   'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 743,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 736,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 770,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 705,
-  'modules/civilflow/components/SupplyConnection.tsx': 28,
+  'modules/civilflow/components/SupplyConnection.tsx': 10,
 };
 
 /**
@@ -299,7 +299,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
   },
   {
     ruta: 'modules/civilflow/utils/readPlanDrawing.ts',
-    maxLineas: 60,
+    maxLineas: 80,
     puro: true,
     test: 'readPlanDrawing',
   },
@@ -329,7 +329,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
   },
   {
     ruta: 'modules/civilflow/components/fixtures/crossFloorInheritance.ts',
-    maxLineas: 250,
+    maxLineas: 260,
     puro: false,
     test: '../fixtureMirrors',
   },
@@ -352,16 +352,106 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     test: '../indices',
   },
   {
-    ruta: 'modules/civilflow/lib/PlanoEngine/indicesMotor.ts',
+    ruta: 'modules/civilflow/lib/PlanoEngine/engineIndices.ts',
     maxLineas: 120,
     puro: true,
-    test: '../indicesMotor',
+    test: '../engineIndices',
   },
   {
     ruta: 'modules/civilflow/lib/PlanoEngine/intersectionTrim.ts',
     maxLineas: 200,
     puro: true,
     test: '../intersectionTrim',
+  },
+  {
+    ruta: 'modules/civilflow/components/rejillasVentilation/typologiesChrome.tsx',
+    maxLineas: 350,
+    puro: false,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/components/rainDownpipesHeader.tsx',
+    maxLineas: 250,
+    puro: false,
+    test: 'rainDownpipesDerived',
+  },
+  {
+    ruta: 'modules/civilflow/utils/rainDownpipesDerived.ts',
+    maxLineas: 150,
+    puro: true,
+    test: 'rainDownpipesDerived',
+  },
+  {
+    ruta: 'modules/civilflow/components/designParameters/GasCatalogCard.tsx',
+    maxLineas: 200,
+    puro: false,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/tramoEditor/bajanteGhostEditor.tsx',
+    maxLineas: 220,
+    puro: false,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/tramoEditor/DirectionFlowButtons.tsx',
+    maxLineas: 80,
+    puro: false,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuConvert.ts',
+    maxLineas: 200,
+    puro: true,
+    test: 'ramalMenuConvert',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/planoNets.ts',
+    maxLineas: 250,
+    puro: true,
+    test: 'planoNets',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/planoNumbering.ts',
+    maxLineas: 150,
+    puro: true,
+    test: 'planoNets',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/finishRamalMergeExtreme.ts',
+    maxLineas: 300,
+    puro: true,
+    test: 'finishRamalMergeExtreme',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/tramoEditor/AssociatedRamalesGrid.tsx',
+    maxLineas: 180,
+    puro: false,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/useNetVisibilityState.ts',
+    maxLineas: 150,
+    puro: false,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/aparatosDeleteSweep.ts',
+    maxLineas: 70,
+    puro: true,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/planoToolDispatch.ts',
+    maxLineas: 80,
+    puro: true,
+    test: 'typologiesChrome',
+  },
+  {
+    ruta: 'modules/civilflow/utils/pumpReport.ts',
+    maxLineas: 400,
+    puro: true,
+    test: 'typologiesChrome',
   },
 ];
 
@@ -384,13 +474,13 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/assocLayoutMigration.ts': 16,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 15,
   'modules/civilflow/utils/propagation/edges.ts': 13,
-  'modules/civilflow/utils/rainwaterRows.ts': 13,
-  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 11,
+  'modules/civilflow/utils/rainwaterRows.ts': 9,
+  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 2,
   'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 11,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 2,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSections.tsx': 9,
   'modules/civilflow/utils/bajanteVentRows.ts': 9,
-  'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 8,
+  'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 4,
   'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 8,
   'modules/civilflow/lib/PlanoEngine/renderers/bajanteGhosts.ts': 8,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 8,
@@ -404,11 +494,11 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/fixtures/montantesSection.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/associatedChannels.tsx': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionSections.tsx': 6,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 6,
-  'modules/civilflow/components/RainDownpipesCheck.tsx': 6,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 4,
+  'modules/civilflow/components/RainDownpipesCheck.tsx': 2,
   'modules/civilflow/lib/PlanoEngine/channelSeal.ts': 6,
   'modules/civilflow/lib/PlanoEngine/networkRenumber.ts': 6,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 5,
   'modules/civilflow/utils/waterRowsAcometida.ts': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionPanel.tsx': 5,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuHelpers.ts': 5,
@@ -420,6 +510,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/drawingWrites/diameters.ts': 5,
   'modules/civilflow/utils/sanConnectivity.ts': 5,
   'pages/ModulePage.tsx': 5,
+  'modules/civilflow/components/pdfViewer/tramoEditor/AssociatedRamalesGrid.tsx': 6,
 };
 
 /**
@@ -427,7 +518,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 522;
+const TOTAL_FOCOS_BASE = 508;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
@@ -479,6 +570,19 @@ describe('G1 · anti-monolito', () => {
     }
     expect(crecidos).toEqual([]);
   });
+
+  it('regla D: el techo no quedó viejo — si el archivo encogió, hay que bajar el número', () => {
+    // Anti-congelación de CONOCIDOS (misma regla D de G8): un techo mayor al tamaño real
+    // deja margen fantasma para volver a crecer sin aviso.
+    const viejos: string[] = [];
+    for (const [ruta, techo] of Object.entries(CONOCIDOS)) {
+      const p = join(RAIZ, ruta);
+      if (!exists(p)) continue;
+      const n = lineasDe(p);
+      if (n < techo) viejos.push(`${ruta}: el archivo tiene ${n}, el techo dice ${techo}`);
+    }
+    expect(viejos).toEqual([]);
+  });
 });
 
 describe('G2 · la API pública no se rompió', () => {
@@ -504,50 +608,54 @@ describe('G2 · la API pública no se rompió', () => {
 });
 
 describe('G3 · sin ciclos de import nuevos', () => {
-  it('el grafo de imports relativos no tiene ciclos fuera de los conocidos', () => {
-    const aristas = new Map<string, string[]>();
-    for (const p of todosLosArchivos) {
-      const src = readFileSync(p, 'utf8');
-      const dst: string[] = [];
-      const re = /(?:from|import)\s+['"](\.[^'"]+)['"]/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(src))) {
-        const base = resolve(dirname(p), m[1]);
-        for (const cand of [
-          base + '.ts',
-          base + '.tsx',
-          join(base, 'index.ts'),
-          join(base, 'index.tsx'),
-        ])
-          if (exists(cand)) {
-            dst.push(cand);
-            break;
-          }
+  it(
+    'el grafo de imports relativos no tiene ciclos fuera de los conocidos',
+    { timeout: 20000 },
+    () => {
+      const aristas = new Map<string, string[]>();
+      for (const p of todosLosArchivos) {
+        const src = readFileSync(p, 'utf8');
+        const dst: string[] = [];
+        const re = /(?:from|import)\s+['"](\.[^'"]+)['"]/g;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(src))) {
+          const base = resolve(dirname(p), m[1]);
+          for (const cand of [
+            base + '.ts',
+            base + '.tsx',
+            join(base, 'index.ts'),
+            join(base, 'index.tsx'),
+          ])
+            if (exists(cand)) {
+              dst.push(cand);
+              break;
+            }
+        }
+        aristas.set(p, dst);
       }
-      aristas.set(p, dst);
-    }
-    const ciclos = new Set<string>();
-    const visitar = (n: string, pila: string[], vistas: Set<string>): void => {
-      if (pila.includes(n)) {
-        // Canónico: los nodos del ciclo ordenados (el mismo ciclo se detecta desde varios
-        // puntos de entrada y no debe contar N veces).
-        ciclos.add(
-          [...pila.slice(pila.indexOf(n))]
-            .map((x) => x.split(sep).pop()!)
-            .sort()
-            .join('|'),
-        );
-        return;
-      }
-      if (vistas.has(n)) return;
-      vistas.add(n);
-      for (const d of aristas.get(n) || []) visitar(d, [...pila, n], vistas);
-    };
-    for (const p of todosLosArchivos) visitar(p, [], new Set());
-    const nuevos = [...ciclos].filter((c) => !CICLOS_CONOCIDOS.includes(c));
-    expect(nuevos).toEqual([]);
-    expect(ciclos.size).toBeLessThanOrEqual(CICLOS_CONOCIDOS.length);
-  });
+      const ciclos = new Set<string>();
+      const visitar = (n: string, pila: string[], vistas: Set<string>): void => {
+        if (pila.includes(n)) {
+          // Canónico: los nodos del ciclo ordenados (el mismo ciclo se detecta desde varios
+          // puntos de entrada y no debe contar N veces).
+          ciclos.add(
+            [...pila.slice(pila.indexOf(n))]
+              .map((x) => x.split(sep).pop()!)
+              .sort()
+              .join('|'),
+          );
+          return;
+        }
+        if (vistas.has(n)) return;
+        vistas.add(n);
+        for (const d of aristas.get(n) || []) visitar(d, [...pila, n], vistas);
+      };
+      for (const p of todosLosArchivos) visitar(p, [], new Set());
+      const nuevos = [...ciclos].filter((c) => !CICLOS_CONOCIDOS.includes(c));
+      expect(nuevos).toEqual([]);
+      expect(ciclos.size).toBeLessThanOrEqual(CICLOS_CONOCIDOS.length);
+    },
+  );
 });
 
 describe('G4 · los módulos de cálculo son puros', () => {

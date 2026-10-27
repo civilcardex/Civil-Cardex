@@ -9,6 +9,20 @@ import { commitCanalAncho } from './drawingCreations.ts';
 export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void {
   const tag = (e.target as HTMLElement).tagName;
   const k = e.key.toLowerCase();
+  // Congelado (cambio de piso en vuelo): el motor aún muestra el piso ANTERIOR bajo el id
+  // del nuevo — un Ctrl+Z aquí restaura un snapshot cross-piso, enciende _dirty y el
+  // autosave lo persiste como fotocopia del piso entrante. Teclas que solo cambian de
+  // herramienta no mutan geometría y siguen vivas (el touch ya pasa por _onDownHandler,
+  // que sí respeta _frozen).
+  if (
+    engine._frozen &&
+    ((e.ctrlKey && (k === 'z' || k === 'y')) ||
+      k === 'enter' ||
+      k === 'escape' ||
+      k === 'delete' ||
+      k === 'backspace')
+  )
+    return;
   // Ctrl+Z/Ctrl+Y funcionan AUNQUE el foco haya quedado en un <select> (p. ej. el selector de
   // aparato del menú contextual, que no hace blur al elegir): un select no edita texto y el
   // undo debe llegar siempre. En INPUT/TEXTAREA Ctrl+Z es el deshacer nativo del texto.

@@ -33,19 +33,11 @@ const HEREDADOS_KEY = APARATOS_HEREDADOS_KEY;
 const HEREDADOS_TRIB_KEY = APARATOS_HEREDADOS_TRIB_KEY;
 
 /**
- * Propagación PERSISTENTE de aparatos en redes de presión (af/ac, orig. usuario): los aparatos
- * "fluyen" con el agua - cada ramal RECIBE ESCRITO en su clave de conteos lo que hereda de
- * aguas arriba: montantes (con su carga heredada del piso inferior vía ucAplicado) y ramales
- * cuyas uniones de extremos lo alimentan (regla usuario RAF3 = montante-vía-RAF1 + lavamanos
- * de RAF2). Todo el cómputo se particiona POR PLANO (los ids se repiten entre pisos y las
- * copias bit-exactas comparten coordenadas: sin partición habría herencia fantasma cross-piso).
- * Patrón libro + delta de los bajantes sanitarios, con DOS libros: `aparatos_heredados_v1`
- * (herencia de uniones/montantes) y `aparatos_heredados_trib_v1` (plegado de tributarios).
- * manual = actual − libroHer − libroTrib → re-correr es idempotente y quitar un aparato
- * arriba baja solo abajo, sin re-sumarse nunca.
- *
- * Las fases viven en módulos propios (lectura, tributarios, aristas, upMonte, plegado, dfs,
- * montantes, escritura): este módulo solo las encadena.
+ * Propagación PERSISTENTE de aparatos en redes de presión (af (Agua Fría), ac (Agua Caliente), gas): cada ramal RECIBE ESCRITO en su clave de conteos lo que
+ * hereda de aguas arriba (montantes vía ucAplicado y uniones de extremos); cómputo particionado
+ * POR PLANO (los ids se repiten entre pisos) e idempotente (manual = actual − libros → quitar
+ * un aparato arriba baja solo abajo). Patrón libro + delta de los bajantes sanitarios.
+ * Ej: RAF3 unido a RAF1 (montante con 2 lavamanos) y RAF2 (1 lavamanos) hereda 3 lavamanos.
  */
 export function propagarAparatosPresion(net: 'af' | 'ac' | 'gas'): void {
   const disk = loadFromStorage<Record<string, Cnt>>(APARATOS_KEY, {}) || {};

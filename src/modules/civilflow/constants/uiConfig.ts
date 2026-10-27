@@ -1,5 +1,7 @@
-// REDES: UI-display network definitions (lbl, sub, ico, icoImg, col as CSS var).
-// Para definiciones del motor de dibujo usa PlanoState.NETS en su lugar (tiene ucType, bmType, etc).
+/** Catálogo de redes para la UI (nombre, subtítulo con norma, iconos y color CSS): cada una
+ *  con su id de red. Ej: af (Agua Fría) -> { lbl: 'Agua fría', sub: 'NTC 1500 ·
+ *  Hazen-Williams' }. Para la definición del MOTOR de dibujo usar PlanoState.NETS en su lugar
+ *  (ahí viven ucType, bmType, etc). */
 export const REDES = [
   {
     id: 'san',
@@ -91,6 +93,8 @@ export const REDES = [
   },
 ];
 
+/** Tipos de uso del edificio para el formulario de información general del proyecto.
+ *  Ej: 'Vivienda multifamiliar'. */
 export const USOS = [
   'Vivienda unifamiliar',
   'Vivienda multifamiliar',
@@ -99,6 +103,9 @@ export const USOS = [
   'Mixto',
 ];
 
+/** Pestañas del workarea flow en orden de navegación (id interno + etiqueta + iconos):
+ *  'info' Información general, 'planos' Carga de planos… 'crit' Normativa. El segmento de
+ *  URL de cada una lo define TAB_SLUGS (components/workarea/tabRoute.ts). */
 export const NAV_TABS = [
   {
     id: 'info',
@@ -135,6 +142,8 @@ export const NAV_TABS = [
   { id: 'crit', l: 'Normativa', ico: '§', icoImg: '/normativa.webp' },
 ];
 
+/** Chips de filtro de la pestaña Normativa: 'todos' o por red (AF/AC, Sanitaria, Lluvias,
+ *  Gas, rci (Red Contra Incendio)). La clave (k) es el id de red. */
 export const FILTROS_NORM = [
   { k: 'todos', l: 'Todos' },
   { k: 'af', l: 'AF/AC' },
@@ -144,6 +153,8 @@ export const FILTROS_NORM = [
   { k: 'rci', l: 'RCI' },
 ];
 
+/** Color CSS por red para los títulos/chips de la pestaña Normativa. Ej: san (Sanitaria) ->
+ *  'var(--san)' — el mismo color con que esa red se pinta en el visor. */
 export const NORM_COL = {
   af: 'var(--af)',
   ac: 'var(--ac)',
@@ -156,6 +167,9 @@ export const NORM_COL = {
   bom: 'var(--bom)',
 };
 
+/** Checklist de requisitos para dibujar bien (sección "requerimientos" de Carga de planos):
+ *  escala definida, 1 plano por nivel, cotas npt (nivel de piso topografico) en planta, redes
+ *  por color y simbología NTC (Norma Técnica Colombiana) 1500. */
 export const REQ_ITEMS = [
   {
     ico: '📏',

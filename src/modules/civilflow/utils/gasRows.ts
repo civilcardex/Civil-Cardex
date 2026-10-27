@@ -17,6 +17,7 @@ interface GasRamalRaw extends RawElement {
   Lh?: number;
 }
 
+/** Datos generales del diseño de gas (gas (Gas)): altitud (m), presión atmosférica (kPa), temperatura (°C), presión mínima (mbar) y densidad relativa del combustible. Los escriben los inputs de GasGeneralData. */
 export interface GasDatosGenerales {
   alt: string;
   patm: string;
@@ -25,6 +26,7 @@ export interface GasDatosGenerales {
   densRel: string;
 }
 
+/** Valores por defecto para Bogotá (~960 msnm). Ej: alt 959 → fAlt (factor altitud de Renouard (fórmula de pérdida en gas)) ≈ 0.88. */
 export const GAS_DATOS_DEFAULT: GasDatosGenerales = {
   alt: '959',
   patm: '90.32',
@@ -43,6 +45,7 @@ function allDn() {
   }
   return allDnCache;
 }
+/** Busca un diámetro nominal (DN) de gas por material + etiqueta, normalizando variantes (PEAD resuelve a PE al PE: la tabla no trae filas propias). @returns fila con K (coeficiente del material) y d (diámetro interior en mm), o null si no existe. */
 export function lookupDn(mat: string, dn: string) {
   const normDn = normalizeDnLabel(dn);
   // PEAD = polietileno de alta densidad: mismas filas que PE al PE (el catálogo de
@@ -59,6 +62,7 @@ export function listaDn(): Array<{ mat: string; K: number; dn: string; d: number
   return allDn();
 }
 
+/** Fila de la tabla de diseño de gas: geometría del tramo, Q (Caudal) de diseño y la caída de presión Renouard acumulada (dPAcum, en mbar) con su chequeo contra pmin. */
 export interface GasRow {
   id: string;
   piso: number;
@@ -83,6 +87,7 @@ export interface GasRow {
   chequeo: string;
 }
 
+/** Construye las filas de la tabla de gas desde los trazos guardados de los planos confirmados: tramos + accesorios + datos generales → calculaFilasGas (Renouard). Es la MISMA cuenta que la pantalla viva (GasDesign), pero leyendo storage — la usan los reportes. */
 export function computeGasRows(plans: PlanItem[], pais?: string): GasRow[] {
   const datos = loadFromStorage<GasDatosGenerales>(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const pMin = Number(datos.pmin) || 17;

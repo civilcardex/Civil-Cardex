@@ -66,8 +66,7 @@ export const CODO_MEDIO_90 = {
 /** Tolerancia (0.5 px de plano) para considerar que un ramal está tocando un elemento: los busshings (cambios de diámetro) solo cuentan cuando el contacto es real. */
 export const BUSHING_TOL = 0.5;
 
-// Compacta los brazos de una yee con igual diámetro a un solo valor, en orden de
-// aparición: ["4\"","4\"","2\""] → '4"×2"'. La columna Diámetro del resumen no repite medidas.
+/** Compacta los brazos de una yee con diámetro repetido a un solo valor, en orden de aparición: ["4\"","4\"","2\""] → '4\"×2\"'. La columna Diámetro del resumen no repite medidas. */
 export function compactYeeDiam(parts: string[]): string {
   const seen: string[] = [];
   for (const p of parts) {

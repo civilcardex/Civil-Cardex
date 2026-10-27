@@ -1,8 +1,8 @@
+import { splitPtr } from './keys.ts';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { leerDocDePlan } from './readPlanDrawing';
 import { pisoLbl } from '../constants';
 import { distToPolyline } from '../lib/shared/geometry';
-import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { calcUDparcial, type UDBase } from './componentHelpers.tsx';
 import type { Tramo } from '../context/tramosReducer';
 import type { RawElement } from './drawingSync.ts';
@@ -147,7 +147,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
           let foundSanId: string | null = null;
 
           if (vr.descargaEnId) {
-            const parts = parseDescargaEnId(vr.descargaEnId, plan.id);
+            const parts = splitPtr(vr.descargaEnId, plan.id);
             if (parts[1] !== vb.id && parts[1] !== vb.label) {
               const sanKey = `${parts[1]}-${parts[0]}`;
               anadir(vMap, vbKey, sanKey);
@@ -224,7 +224,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
   // Añadir conexiones de descarga (descargaEnId) de bajantes hacia ramales inferiores
   for (const t of tramosSan) {
     if (t.esBajante && t.descargaEnId && t._key) {
-      const parts = parseDescargaEnId(t.descargaEnId, '');
+      const parts = splitPtr(t.descargaEnId, '');
       const dPlanId = parts[0];
       const targetRamalId = parts[1];
       if (targetRamalId) {

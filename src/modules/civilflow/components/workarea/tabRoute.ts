@@ -3,6 +3,8 @@
 // contra NAV_TABS); sessionStorage queda como fallback para redirects de recarga completa
 // (el switch de proyecto usa window.location.replace) y OPEN_TAB_KEY como legado.
 
+/** Ids internos de las pestañas del workarea flow aceptados en la URL (la verdad de qué pestaña
+ *  está activa es el segmento de ruta, validado aquí). Ej: 'info', 'planos', 'visor'. */
 export const TABS_VALIDOS: readonly string[] = [
   'info',
   'planos',
@@ -14,8 +16,9 @@ export const TABS_VALIDOS: readonly string[] = [
   'crit',
 ];
 
-// Slug de URL EXPLÍCITO por pestaña (ped. usuario: la URL debe decir qué hay): los ids
-// internos (state/keys de tour/ayuda/sessionStorage) NO cambian — solo el segmento de ruta.
+/** Slug de URL EXPLÍCITO por pestaña (ped. usuario: la URL debe decir qué hay): los ids
+ *  internos (state/keys de tour/ayuda/sessionStorage) NO cambian — solo el segmento de ruta.
+ *  Ej: 'planos' -> 'cargaPlanos' (ruta /civilflowareatrabajo/<proyecto>/cargaPlanos). */
 export const TAB_SLUGS: Record<string, string> = {
   info: 'informacionGeneral',
   planos: 'cargaPlanos',
@@ -73,7 +76,11 @@ export function parseFlowSplat(splat: string | undefined): {
 }
 
 // ── CivilManager ──
+/** Secciones válidas del workarea CivilManager en la URL: catalogos, apus (Análisis de
+ *  Precios Unitarios) y presupuestos. */
 export const CM_SECCIONES: readonly string[] = ['catalogos', 'apus', 'presupuestos'];
+/** Pestañas válidas dentro de la sección 'catalogos' de CivilManager (configuracion,
+ *  colaboradores, cuadrillas, equipos, insumos, proveedores). */
 export const CM_CATALOGOS: readonly string[] = [
   'configuracion',
   'colaboradores',

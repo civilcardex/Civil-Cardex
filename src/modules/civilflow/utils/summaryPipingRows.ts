@@ -1,6 +1,5 @@
 import type { PlanItem } from '../context/PlansContext.tsx';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
+import { leerDocDePlan } from './readPlanDrawing';
 import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { dropAllZeroColumns, type MemoriaTable } from './exportReportFinal.ts';
@@ -26,27 +25,18 @@ export function computeResumenTuberiasTable(net: string, plans: PlanItem[]): Mem
   const groups: Record<string, ResumenRow> = {};
   for (const plan of plans || []) {
     if (plan.status !== 'confirmed') continue;
-    const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    let data = raw as
-      | {
-          ramales?: Array<{
-            net?: string;
-            diametro?: string;
-            material?: string;
-            totalL?: number;
-          }>;
-        }
-      | string;
-    if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data);
-      } catch {
-        continue;
-      }
-    }
+    const data = leerDocDePlan(plan.id);
+    if (!data) continue;
     for (const r of (
       data as {
+        ramales?: Array<{
+          id?: string;
+          net?: string;
+          diametro?: string;
+          material?: string;
+          totalL?: number;
+        }>;
+      } as {
         ramales?: Array<{
           id?: string;
           net?: string;

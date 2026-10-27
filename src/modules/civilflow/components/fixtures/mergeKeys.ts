@@ -24,13 +24,9 @@ export interface BajanteMerge {
 
 /**
  * Claves de conteo que el ramal elegido debe MOSTRAR (el combinado de su empalme + el subárbol
- * aguas arriba).
- *
- * Unir AMBAS fuentes de verdad de flujo: mergesFrom (auto-split) + geometría (extremo-a-extremo).
- * RS3 suele ser extremo-a-extremo (sin mergesFrom) pero RS5 es auto-split (con mergesFrom); el
- * subárbol completo de RS3 debe incluir ambos.
- *
- * Antes solo se usaba mergesFrom y RS3 dibujado a mano quedaba en 0 ("muestra de menos").
+ * aguas arriba): unión de mergesFrom (auto-split) y geometría extremo-a-extremo — RS3 suele ser
+ * de un tipo y RS5 del otro, el subárbol completo debe incluir ambos. Antes solo se usaba
+ * mergesFrom y un RS3 dibujado a mano quedaba en 0 ("muestra de menos").
  */
 export function calcularMergeKeys(args: {
   target: RamalMerge;

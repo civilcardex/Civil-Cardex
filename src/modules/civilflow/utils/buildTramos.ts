@@ -1,7 +1,7 @@
+import { splitPtr } from './keys.ts';
 import { readSanDrawingSync, readHydroDrawingSync } from './drawingSync.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
-import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { countKey } from './keys.ts';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys.ts';
 import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from '../services/storageService.ts';
@@ -473,7 +473,7 @@ export function loadSanLlTramos() {
     const venMap = new Map<string, { diametro: string; rId: string; rPlanId: string | number }>();
     for (const vr of venRamales) {
       if (vr.descargaEnId) {
-        const parts = parseDescargaEnId(vr.descargaEnId, String(planId));
+        const parts = splitPtr(vr.descargaEnId, String(planId));
         if (parts[0] === String(planId))
           venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
       }

@@ -4,6 +4,7 @@ import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicsData.ts';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 
+import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const AccesoriosTable = lazy(() => import('../AccessoriesTable.tsx'));
 const HeaterSelection = lazy(() => import('../HeaterSelection.tsx'));
 const CalculoUD = lazy(() => import('../FixtureUnitCalc.tsx'));
@@ -36,18 +37,6 @@ export function prefetchRedesInicial(): void {
 }
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
-
-const SR_ONLY_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
 
 const NET_BTN_STYLE: React.CSSProperties = {
   display: 'flex',

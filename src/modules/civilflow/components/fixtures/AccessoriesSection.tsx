@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ContadorStepper } from './ContadorStepper.tsx';
+import { ContadorStepper } from './MeterStepper.tsx';
 const AccessoriesSection_S1: React.CSSProperties = {
   width: '100%',
   display: 'flex',

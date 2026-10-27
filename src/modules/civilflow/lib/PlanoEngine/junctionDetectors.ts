@@ -1,5 +1,6 @@
 /** Detectores de uniones, separados de junctionAutoSplit: a qué familia pertenece un ramalito y
  *  cuál es su ramal principal (padre) cuando aterriza sobre otro. Movidos tal cual. */
+import { distToSegment } from '../shared/geometry.ts';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
 import { sameNetGroup } from './drawingAngles.ts';
 
@@ -23,14 +24,6 @@ export function detectTributaryPadre(
   // Distancia de un punto `p` al segmento [a,b] (para elegir el ramal al que el tributario se
   // conecta MÁS directamente, en vez de devolver el primer ramal del array que lo toque — el bug
   // reportado: todo tributario caía en el primer ramal de la red).
-  const segDist = (p: number[], a: number[], b: number[]) => {
-    const dx = b[0] - a[0],
-      dy = b[1] - a[1];
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq < 1e-9) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq));
-    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-  };
   const tribEps = [pts[0], pts[pts.length - 1]];
   const mid: number[] = [
     (pts[0][0] + pts[pts.length - 1][0]) / 2,
@@ -42,16 +35,19 @@ export function detectTributaryPadre(
     let d = Infinity;
     for (const p of tribEps) {
       for (let i = 0; i < other.pts.length - 1; i++) {
-        d = Math.min(d, segDist(p, other.pts[i], other.pts[i + 1]));
+        d = Math.min(d, distToSegment(p, other.pts[i], other.pts[i + 1]));
       }
-      d = Math.min(d, segDist(p, other.pts[0], other.pts[0]));
-      d = Math.min(d, segDist(p, other.pts[other.pts.length - 1], other.pts[other.pts.length - 1]));
+      d = Math.min(d, distToSegment(p, other.pts[0], other.pts[0]));
+      d = Math.min(
+        d,
+        distToSegment(p, other.pts[other.pts.length - 1], other.pts[other.pts.length - 1]),
+      );
     }
     if (d > TOL) continue;
     // distancia del punto medio del tributario al padre para desempate en Y compartida
     let midD = Infinity;
     for (let i = 0; i < other.pts.length - 1; i++) {
-      midD = Math.min(midD, segDist(mid, other.pts[i], other.pts[i + 1]));
+      midD = Math.min(midD, distToSegment(mid, other.pts[i], other.pts[i + 1]));
     }
     if (!best) {
       best = { id: other.id, d, midD };

@@ -25,32 +25,29 @@ export function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): stri
   const isHalf =
     !!d?.mergesFrom || engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[0] === ramalId);
   if (!isHalf) return [];
-  // BFS over merges edges: collect whole connected component — but skip yeeDoble hosts (deben borrarse solo segmento)
+  // BFS over merges edges: collect whole connected component — but skip yeeDoble hosts (deben borrarse solo segmento).
+  // Índices precalculados UNA vez (antes: 3-4 ramales.some/find por ramal y por pasada del
+  // while — O(pasadas × n²) por Supr en mallas de splits encadenados).
+  const porId = new Map(engine.ramales.map((r) => [r.id, r] as const));
+  const esHost = (id: string | undefined): boolean => {
+    if (!id) return false;
+    const x = porId.get(id);
+    return !!x && !!x.yeeDobleAt && x.yeeDobleAt.length === 2;
+  };
+  // Solo las aristas sin NINGÚN host yeeDoble participan (misma guarda que el bucle viejo:
+  // se saltaba el ramal entero si él o u/i/did eran host).
+  const aristas = engine.ramales
+    .filter((r) => r.mergesFrom && !esHost(r.id))
+    .map((r) => ({ u: r.mergesFrom![0], i: r.mergesFrom![1], did: r.id }))
+    .filter((e) => !esHost(e.u) && !esHost(e.i) && !esHost(e.did));
   const S = new Set<string>([ramalId]);
   let expanded = true;
   while (expanded) {
     expanded = false;
-    for (const r of engine.ramales) {
-      if (!r.mergesFrom) continue;
-      if (r.yeeDobleAt && r.yeeDobleAt.length === 2) continue;
-      if (engine.ramales.some((x) => x.id === r.id && x.yeeDobleAt && x.yeeDobleAt.length === 2))
-        continue;
-      const [u, i] = r.mergesFrom;
-      const did = r.id;
-      // no expandir si algún miembro ya es yeeDoble
-      if (
-        [u, i, did].some((id) =>
-          engine.ramales.some((x) => x.id === id && x.yeeDobleAt && x.yeeDobleAt.length === 2),
-        )
-      )
-        continue;
-      const touches = S.has(u) || S.has(i) || S.has(did);
-      if (!touches) continue;
-      for (const nid of [u, i, did]) {
-        if (nid && !S.has(nid) && engine.ramales.some((x) => x.id === nid)) {
-          // no meter yeeDoble hosts en el set
-          const cand = engine.ramales.find((x) => x.id === nid);
-          if (cand && cand.yeeDobleAt && cand.yeeDobleAt.length === 2) continue;
+    for (const e of aristas) {
+      if (!(S.has(e.u) || S.has(e.i) || S.has(e.did))) continue;
+      for (const nid of [e.u, e.i, e.did]) {
+        if (nid && !S.has(nid) && porId.has(nid)) {
           S.add(nid);
           expanded = true;
         }
@@ -63,11 +60,17 @@ export function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): stri
 
 // Yee doble: eximir del borrado en bloque — los ramales del brazo principal de una yee doble
 // deben poder borrarse individualmente (el símbolo persiste), no como cluster colineal.
-// La detección es la misma de isDeletedYeeDoblePart: marca propia O trazo que pasa por los
-// brazos de otra yee.
+// Diferencia CON isDeletedYeeDoblePart (deliberada): un ramal degenerado de 1 punto NO
+// exime del borrado en bloque aunque su único punto caiga cerca de un brazo — sin este
+// guard, un residuo de 1 punto bloqueaba el borrado del cluster entero.
 function isYeeDobleInvolved(engine: IPlanoEngineCore, ramalId: string): boolean {
   const r = engine.ramales.find((x) => x.id === ramalId);
-  return r ? isDeletedYeeDoblePart(engine, r) : false;
+  if (!r) return false;
+  // La MARCA propia decide antes que el guard de pts: un ramal de 1 punto con yeeDobleAt
+  // sí está involucrado; sin marca, pts<2 no exime del cluster.
+  if (r.yeeDobleAt && r.yeeDobleAt.length === 2) return true;
+  if ((r.pts || []).length < 2) return false;
+  return isDeletedYeeDoblePart(engine, r);
 }
 
 /** La dirección de la tubería principal (tronco) que pasa por el punto: busca el par de brazos
@@ -139,6 +142,16 @@ export function preserveYeeDobleAt(
   if (!deleted.yeeDobleAt || deleted.yeeDobleAt.length !== 2) return;
   const survivors = engine.ramales.filter((x) => x.net === 'san' && x.pts && x.pts.length >= 2);
   if (survivors.length === 0) return;
+  // Blob HIDRO cargado UNA vez (se persiste al final del pase) — cada load/save de este
+  // mapa re-parsea el hidro de TODOS los pisos (1-5 MB).
+  let hidroMap: Record<string, HidroDataEntry> | null = null;
+  if (engine._loadedPlanId != null) {
+    try {
+      hidroMap = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+    } catch (e) {
+      devError('PlanoEngine:', e);
+    }
+  }
 
   // ¿Era LATERAL o TRONCO? Solo el TRONCO deja un extremo abierto que se tapa. Borrar un
   // LATERAL deja la yee viva (tronco + otro lateral) SIN tapón ni re-anclaje (orig. usuario:
@@ -374,23 +387,26 @@ export function preserveYeeDobleAt(
     if (!best.yeeDobleAt) {
       best.yeeDobleAt = deleted.yeeDobleAt;
       const planId = engine._loadedPlanId;
-      if (planId != null) {
-        try {
-          const map = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
-          const kDel = `san_${deleted.id}_${planId}`;
-          const kBest = `san_${best.id}_${planId}`;
-          const delEntry = map[kDel];
-          const yeeVal = delEntry?.accesorios?.['yeeDoble'] ?? 1;
-          if (!map[kBest]) map[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
-          if (!map[kBest].accesorios) map[kBest].accesorios = {};
-          map[kBest].accesorios['yeeDoble'] = yeeVal;
-          saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
-        } catch (e) {
-          devError('PlanoEngine:', e);
-        }
+      if (planId != null && hidroMap) {
+        const kDel = `san_${deleted.id}_${planId}`;
+        const kBest = `san_${best.id}_${planId}`;
+        const delEntry = hidroMap[kDel];
+        const yeeVal = delEntry?.accesorios?.['yeeDoble'] ?? 1;
+        if (!hidroMap[kBest]) hidroMap[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+        if (!hidroMap[kBest].accesorios) hidroMap[kBest].accesorios = {};
+        hidroMap[kBest].accesorios['yeeDoble'] = yeeVal;
       }
     }
-    placeTaponOnHost(engine, best, port);
+    placeTaponOnHost(engine, best, port, hidroMap);
+  }
+  // El blob HIDRO se persiste UNA vez al final (antes: parse+stringify del mapa completo
+  // por host/puerto — el borrado de una yee con 2 puertos hacía 2-4 ciclos de 1-5 MB).
+  if (hidroMap) {
+    try {
+      saveToStorage(HYDRO_DATA_STORAGE_KEY, hidroMap);
+    } catch (e) {
+      devError('PlanoEngine:', e);
+    }
   }
   for (const { host, port } of placedHosts) bumpChainFrom(host, port);
   // El flujo de los laterales pasa ahora entero por los sobrevivientes: el tramo tapado y la
@@ -418,8 +434,14 @@ function minDistToPts(p: number[], pts: number[][]): number {
 
 /** Tapa el hueco que dejó el brazo borrado: marca el accesorio 'tapon' en el extremo (o en el
  *  vértice) de la tubería que sigue, con el diámetro del anfitrión, y suma 1 al resumen de
- *  accesorios (hidro). */
-export function placeTaponOnHost(engine: IPlanoEngineCore, host: PlanoRamal, pt: number[]): void {
+ *  accesorios (hidro). Con `hidro` provided muta ESE mapa sin persistir (el caller lo guarda
+ *  una vez); sin él, carga/persiste por sí misma. */
+export function placeTaponOnHost(
+  engine: IPlanoEngineCore,
+  host: PlanoRamal,
+  pt: number[],
+  hidro?: Record<string, HidroDataEntry> | null,
+): void {
   if (!host.pts || host.pts.length < 2) return;
   let bestIdx = 0;
   let bestD = Infinity;
@@ -478,7 +500,13 @@ export function placeTaponOnHost(engine: IPlanoEngineCore, host: PlanoRamal, pt:
     host.accMed[`accMed${bestIdx}`] = 'tapon';
   }
   const planId = engine._loadedPlanId;
-  if (planId != null) {
+  if (hidro) {
+    // Mapa compartido del pase: solo mutar — preserveYeeDobleAt persiste al final.
+    const kBest = `san_${host.id}_${planId}`;
+    if (!hidro[kBest]) hidro[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!hidro[kBest].accesorios) hidro[kBest].accesorios = {};
+    hidro[kBest].accesorios['tapon'] = (hidro[kBest].accesorios['tapon'] || 0) + 1;
+  } else if (planId != null) {
     try {
       const map = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
       const kBest = `san_${host.id}_${planId}`;

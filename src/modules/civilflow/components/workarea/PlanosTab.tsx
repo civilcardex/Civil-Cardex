@@ -43,18 +43,6 @@ import {
   computeOrigenesCompartidos,
   stampCalibracion,
 } from './planosTabCalibration.ts';
-export {
-  calDataDePlan,
-  seedCalData,
-  computeGlobalCal,
-  computeOrigenesCompartidos,
-  stampCalibracion,
-} from './planosTabCalibration.ts';
-export type {
-  PlanCalibFuente,
-  CalibrationData,
-  ConfigCalibracion,
-} from './planosTabCalibration.ts';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -362,10 +350,12 @@ function PlanosTab({ state }: PlanosTabProps) {
           borderRight: '1px solid var(--line)',
         }}
       >
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          data-tour="planos-requisitos"
+        >
           <div
             className="card-h"
-            data-tour="planos-requisitos"
             style={{
               padding: '8px 10px',
               borderBottom: '1px solid var(--line)',

@@ -1,3 +1,7 @@
+/** Catálogo de accesorios hidráulicos dibujables en redes a presión — af (Agua Fría), ac (Agua
+ *  Caliente) y rci (Red Contra Incendio) —: codos, tees, válvulas y reducciones, cada uno con
+ *  id, emoji, nombre, icono y categoría (cat). Lo consumen el selector de accesorios en el
+ *  dibujo (FittingModal) y las tablas de accesorios por ramal. */
 export const ACCESORIOS_HIDRO = [
   {
     id: 'codo90rc',
@@ -162,6 +166,7 @@ export const ACCESORIOS_HIDRO = [
   },
 ];
 
+/** Yees (uniones en Y a 45°) disponibles para san (Sanitaria): simple y doble. */
 export const ACCESORIOS_YEE = [
   {
     id: 'yeeSimple',
@@ -179,6 +184,9 @@ export const ACCESORIOS_YEE = [
   },
 ];
 
+/** Subconjunto para san (Sanitaria) — lo que ofrece el selector de accesorios en ramales
+ *  sanitarios—: codos 90°/45° y tapón del catálogo hidráulico + sube/baja, codo reventilado,
+ *  sifón y las yees. */
 export const SAN_ACCESORIOS = [
   ...ACCESORIOS_HIDRO.filter((a) => a.id === 'codo90rm' || a.id === 'codo45rc' || a.id === 'tapon'),
   {
@@ -212,6 +220,9 @@ export const SAN_ACCESORIOS = [
   ...ACCESORIOS_YEE,
 ];
 
+/** Accesorios de la red gas con ids propios (distintos de los hidráulicos): codos 90° estándar
+ *  y de radio largo con variantes sube/baja, tees y válvula bola. Es el catálogo del módulo gas
+ *  para sus tablas de accesorios. */
 export const GAS_ACCESORIOS = [
   {
     id: 'codos_90_std',

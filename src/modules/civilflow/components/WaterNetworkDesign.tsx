@@ -32,18 +32,7 @@ import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import { CHEQUEOS_PRESION_KEY } from '../constants/storage-keys.ts';
 
-const WaterNetworkDesign_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 interface WaterNetworkDesignProps {
   networkType: 'af' | 'ac';
   diamTable: Array<{ pulg: number; nominal: string; label?: string; dInt: number }>;
@@ -615,7 +604,7 @@ function WaterNetworkDesign({
                 className="tbl"
                 style={{ fontSize: 10.5, tableLayout: 'auto', width: '100%' }}
               >
-                <caption style={WaterNetworkDesign_S1}>{`Diseño de red ${title}`}</caption>
+                <caption style={SR_ONLY_STYLE}>{`Diseño de red ${title}`}</caption>
 
                 <DesignTableHeader cssClass={cssClass} pais={proy.pais} />
                 <tbody>

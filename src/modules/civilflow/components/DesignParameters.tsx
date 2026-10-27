@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext.tsx';
 import { useApparatus, type ApsItem } from '../context/ApparatusContext.tsx';
-import { NORM_COL, REDES_MAT, CAT_APS, CAT_GAS, APARATOS_DEF } from '../constants';
+import { NORM_COL, REDES_MAT, CAT_APS, APARATOS_DEF } from '../constants';
+import { GasCatalogCard } from './designParameters/GasCatalogCard.tsx';
 import { fmt } from '../utils/formatUtils.ts';
 import { LazyDecimalInput } from './shared/LazyDecimalInput.tsx';
 import EditButton from './shared/EditButton.tsx';
 
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const NUMERIC_INPUT_DISABLED_STYLE: React.CSSProperties = {
   display: 'inline-block',
   textAlign: 'center',
@@ -70,17 +72,7 @@ function NumericInput({
     />
   );
 }
-const DesignParameters_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
+
 const DesignParameters_S2: React.CSSProperties = {
   width: '100%',
   padding: '8px 10px',
@@ -111,9 +103,6 @@ const DesignParameters_S3: React.CSSProperties = {
   background: 'transparent',
 };
 
-/** Valor numérico del catálogo NTC (Norma Tecnica Colombiana) 3728: null (dato pendiente) se muestra como guion. */
-const fmtNTC = (x: number | null) => (x == null ? '—' : x.toFixed(2));
-
 interface RedMat {
   id: string;
   lbl: string;
@@ -134,6 +123,9 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const matMap = Object.fromEntries(activeRedes.map((r: RedMat) => [r.id, r]));
   const merged = activeRedes.map((r) => ({
     ...r,
+    // Ventilación comparte material/profundidad con sanitaria (decisión usuario): una fila
+    // «Sanitaria/Ventilación» — el set de material abajo escribe ambas claves.
+    lbl: r.id === 'san' ? 'Sanitaria/Ventilación' : r.lbl,
     matSel: (mats[r.id] && mats[r.id][0]?.val) || r.mat,
     prof: profs.find((p) => p.id === r.id)?.prof ?? r.prof,
   }));
@@ -143,10 +135,15 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
   const setMatSel = (redId: string, newVal: string) => {
     setMats((prev) => {
-      const list = prev[redId] || [];
-      if (list.length === 0)
-        return { ...prev, [redId]: [{ id: redId + '_' + Date.now(), val: newVal }] };
-      return { ...prev, [redId]: [{ ...list[0], val: newVal }, ...list.slice(1)] };
+      const apply = (m: typeof prev, rid: string) => {
+        const list = m[rid] || [];
+        return list.length === 0
+          ? { ...m, [rid]: [{ id: rid + '_' + Date.now(), val: newVal }] }
+          : { ...m, [rid]: [{ ...list[0], val: newVal }, ...list.slice(1)] };
+      };
+      // Sanitaria/Ventilación comparten material: san escribe también vent.
+      const next = apply(prev, redId);
+      return redId === 'san' ? apply(next, 'vent') : next;
     });
   };
 
@@ -281,7 +278,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
-              <caption style={DesignParameters_S1}>
+              <caption style={SR_ONLY_STYLE}>
                 Materiales y profundidad de instalación por red
               </caption>
               <thead>
@@ -321,7 +318,6 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </thead>
               <tbody>
                 {merged.map((r, ix) => {
-                  const col = (NORM_COL as Record<string, string>)[r.id] || 'var(--txt2)';
                   const isLast = ix === merged.length - 1;
                   return (
                     <tr
@@ -343,18 +339,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                         {ix + 1}
                       </td>
                       <td style={{ padding: '3px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span
-                            style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              background: col,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <span style={{ fontWeight: 500, fontSize: 12 }}>{r.lbl}</span>
-                        </div>
+                        <span style={{ fontWeight: 500, fontSize: 12 }}>{r.lbl}</span>
                       </td>
                       <td style={{ padding: '3px 8px' }}>
                         {r.fixed ? (
@@ -642,183 +627,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           </div>
         </section>
 
-        <section
-          className="card"
-          data-tour="datos-gas"
-          style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
-        >
-          <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <h3 className="card-t" style={{ fontSize: 13 }}>
-              <img
-                src="/iconos_civilflow/parametros_de_diseno/catalogo_gasodomesticos.webp"
-                alt="Catálogo de gasodomésticos"
-                width={20}
-                height={20}
-                style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 2 }}
-                loading="lazy"
-              />
-              Catálogo de gasodomésticos
-            </h3>
-            <span className="card-s" style={{ fontSize: 12 }}>
-              NTC 3728 · m³/hr
-            </span>
-          </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
-            <table className="tbl" style={{ fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
-              <thead>
-                <tr>
-                  <th
-                    title="Aparato de gas del proyecto."
-                    scope="col"
-                    style={{ padding: '4px 8px' }}
-                  >
-                    Aparato
-                  </th>
-                  <th
-                    title="Sigla con la que se identifica el aparato."
-                    scope="col"
-                    style={{ width: 58, padding: '4px 6px' }}
-                  >
-                    Sigla
-                  </th>
-                  <th
-                    title="Consumo de gas natural por hora (m³/h) — tabla gas natural NTC 3728."
-                    scope="col"
-                    className="c"
-                    style={{ width: 106, padding: '4px 6px', whiteSpace: 'normal' }}
-                  >
-                    Consumo gas
-                    <br />
-                    natural (m³/h)
-                  </th>
-                  <th
-                    title="Potencia según la tabla de gas natural (kW)."
-                    scope="col"
-                    className="c"
-                    style={{ width: 94, padding: '4px 6px', whiteSpace: 'normal' }}
-                  >
-                    Potencia gas
-                    <br />
-                    natural (kW)
-                  </th>
-                  <th
-                    title="Consumo de GLP por hora (m³/h) — tabla GLP NTC 3728."
-                    scope="col"
-                    className="c"
-                    style={{ width: 76, padding: '4px 6px', whiteSpace: 'normal' }}
-                  >
-                    Consumo
-                    <br />
-                    GLP (m³/h)
-                  </th>
-                  <th
-                    title="Potencia según la tabla GLP (kW)."
-                    scope="col"
-                    className="c"
-                    style={{ width: 76, padding: '4px 6px', whiteSpace: 'normal' }}
-                  >
-                    Potencia
-                    <br />
-                    GLP (kW)
-                  </th>
-                  <th
-                    title="Tipo de control del aparato."
-                    scope="col"
-                    style={{ width: 68, padding: '4px 6px', whiteSpace: 'normal' }}
-                  >
-                    Tipo de
-                    <br />
-                    control
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {CAT_GAS.map((g, ix) => (
-                  <tr key={g.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)' }}>
-                    <td style={{ padding: '3px 8px', fontWeight: 500 }}>
-                      <span
-                        title={g.n}
-                        style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          overflowWrap: 'anywhere',
-                        }}
-                      >
-                        {g.n}
-                      </span>
-                    </td>
-                    <td style={{ padding: '3px 6px' }}>
-                      <span
-                        style={{
-                          fontFamily: 'var(--mono)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: 'var(--txt2)',
-                          padding: '0',
-                        }}
-                      >
-                        {g.s.toUpperCase()}
-                      </span>
-                    </td>
-                    <td
-                      style={{
-                        textAlign: 'center',
-                        padding: '3px 6px',
-                        fontFamily: 'var(--mono)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: 'var(--txt)',
-                      }}
-                    >
-                      {fmtNTC(g.q)}
-                    </td>
-                    <td
-                      style={{
-                        textAlign: 'center',
-                        padding: '3px 6px',
-                        fontFamily: 'var(--mono)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: 'var(--txt)',
-                      }}
-                    >
-                      {fmtNTC(g.kw)}
-                    </td>
-                    <td
-                      style={{
-                        textAlign: 'center',
-                        padding: '3px 6px',
-                        fontFamily: 'var(--mono)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: 'var(--txt)',
-                      }}
-                    >
-                      {fmtNTC(g.qglp)}
-                    </td>
-                    <td
-                      style={{
-                        textAlign: 'center',
-                        padding: '3px 6px',
-                        fontFamily: 'var(--mono)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: 'var(--txt)',
-                      }}
-                    >
-                      {fmtNTC(g.kwglp)}
-                    </td>
-                    <td style={{ padding: '3px 6px', fontSize: 12, color: 'var(--txt2)' }}>
-                      Llave
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <GasCatalogCard />
       </div>
     </div>
   );

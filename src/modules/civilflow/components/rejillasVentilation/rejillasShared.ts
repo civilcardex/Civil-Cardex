@@ -20,8 +20,14 @@ export const ALIAS_CAT_GAS: Record<string, string> = {
   sauna: 'bs',
   turco: 'bt',
 };
-// Formato numérico de la tabla: punto decimal y 2 decimales (redondeado), igual que el resto
-// de las tablas de diseño (antes: toLocaleString es-CO con coma).
+/**
+ * Formatea un número para las celdas de la tabla: punto decimal y d decimales (2 por
+ * defecto), igual que el resto de las tablas de diseño (antes toLocaleString es-CO con coma).
+ * Ej: num(3.14159) → '3.14'; num(undefined) → '0.00'.
+ * @param x - valor a formatear (null/undefined cuentan como 0).
+ * @param d - decimales (default 2).
+ * @returns el número formateado como texto.
+ */
 export const num = (x: number | undefined | null, d = 2) => fmt(+(x ?? 0) || 0, d);
 
 /** Fila de la tabla Tipologías: sector del dibujo + overrides + columnas de aparato. */
@@ -152,7 +158,8 @@ export function grupoDe(apId: string): GrupoGasod | null {
   return 'otros';
 }
 
-/** Estado + datos derivados del módulo (compartido por la tabla y la página de alzado). */
+// ── Estilos de celda de la tabla Rejillas (TD/TH y variantes: compartidos por la tabla y la
+// página de alzado; los nombres se explican solos).
 
 export const TD: React.CSSProperties = {
   border: '1px solid var(--line)',

@@ -53,7 +53,8 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
 }
 
 /** Suma la longitud real en metros de un trazo, sin contar dos veces los pedazos que se solapan
- *  (3 decimales). */
+ *  (3 decimales). Ej: 2 segmentos de 3 m c/u más un retroceso sobre el último (ida y vuelta)
+ *  suman 6 m — el segmento de vuelta se detecta y se salta. */
 export function calculateRamalLength(pts: number[][], engine: IPlanoEngineCore): number {
   let len = 0;
   const segments: Array<[number, number, number, number]> = [];

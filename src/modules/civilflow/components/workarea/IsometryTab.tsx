@@ -70,7 +70,18 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
       <PageNav page={sub} setPage={setSub} total={5} labels={SUBTABS} color="var(--acc)" />
       {/* El ancla del tour vive DENTRO de cada visor (data-tour="iso-canvas"): aquí se
           envolvería también la barra y los paneles, que el paso no debe resaltar. */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      {/* display:flex OBLIGATORIO: sin él este wrapper es un bloque y el flex:1 del root
+          de Isometría se ignora — el panel crece con el contenido y el overflow:hidden lo
+          recorta SIN scroll (la sidebar quedaba clavada). */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+        }}
+      >
         {sub === 1 && <IsometriaGeneral state={state} />}
         {sub === 2 && (
           <Suspense fallback={FALLBACK}>

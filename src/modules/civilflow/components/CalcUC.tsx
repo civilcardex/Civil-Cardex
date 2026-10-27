@@ -6,17 +6,6 @@ import { useApparatus } from '../context/ApparatusContext.tsx';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
 import { calcUCparcial } from '../utils/componentHelpers.tsx';
 import { leerLibrosPresion, udPropiaDe } from '../utils/propagation';
-const CalculoUC_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
 
 interface CalculoUCProps {
   tipo: 'af' | 'ac';
@@ -25,6 +14,7 @@ interface CalculoUCProps {
 import { useState, useEffect } from 'react';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const monof = 'var(--mono)';
 const txt2 = '#94a3b8';
 const txt = '#e2e8f0';
@@ -146,7 +136,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
             <table ref={tablaRef} className="tbl" style={{ minWidth: 800 }}>
-              <caption style={CalculoUC_S1}>{`Cálculo de unidades de consumo ${title}`}</caption>
+              <caption style={SR_ONLY_STYLE}>{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>
                   <th

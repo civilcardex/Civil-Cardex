@@ -31,9 +31,8 @@ const METODO_BUSQUEDA = new Set<string>(METODOS_BUSQUEDA);
 /**
  * Cuenta los focos de un archivo.
  *
- * Cada búsqueda lineal cuenta UNA vez, atribuida al bucle MÁS EXTERNO que la contiene: así
- * una búsqueda dentro de un bucle dentro de otro bucle no se cuenta dos veces (el número
- * reflects cuántos bucles deeply anidados hay, no cuántos focos).
+ * Cada búsqueda lineal cuenta UNA vez, atribuida al bucle MÁS EXTERNO que la contiene:
+ * el número dice cuántos bucles con búsqueda anidada hay, no cuántas búsquedas.
  *
  * @param src - código fuente del archivo.
  * @returns los focos encontrados, con su línea y método.

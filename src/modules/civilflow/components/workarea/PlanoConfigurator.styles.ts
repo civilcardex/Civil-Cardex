@@ -26,6 +26,7 @@ export const PlanoConfigurator_S1: CSSProperties = {
   background: TOAST_BG.ok,
   color: '#fff',
 };
+/** Barra de herramientas superior del modal (título + acciones). */
 export const PlanoConfigurator_S2: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -37,6 +38,7 @@ export const PlanoConfigurator_S2: CSSProperties = {
   minHeight: 36,
   flexWrap: 'wrap',
 };
+/** Select de nivel del plano (Paso 1, media fila). */
 export const PlanoConfigurator_S3: CSSProperties = {
   width: '50%',
   padding: '5px 6px',
@@ -47,6 +49,7 @@ export const PlanoConfigurator_S3: CSSProperties = {
   color: 'var(--txt2)',
   cursor: 'pointer',
 };
+/** Select de escala predefinida 1:N (fila completa, incluye la calibrada si no es estándar). */
 export const PlanoConfigurator_S4: CSSProperties = {
   width: '100%',
   padding: '5px 6px',
@@ -57,6 +60,7 @@ export const PlanoConfigurator_S4: CSSProperties = {
   color: 'var(--txt2)',
   cursor: 'pointer',
 };
+/** Botón ✕ compacto para quitar el origen marcado. */
 export const PlanoConfigurator_S5: CSSProperties = {
   padding: '3px 6px',
   background: 'transparent',
@@ -67,6 +71,7 @@ export const PlanoConfigurator_S5: CSSProperties = {
   fontSize: 12,
   lineHeight: 1,
 };
+/** Input de la longitud de referencia del eje X en metros (Paso 3). */
 export const PlanoConfigurator_S6: CSSProperties = {
   flex: 1,
   minWidth: 0,
@@ -78,6 +83,7 @@ export const PlanoConfigurator_S6: CSSProperties = {
   color: 'var(--txt)',
   fontFamily: 'monospace',
 };
+/** Línea "✓ factor X" con el botón para quitarlo (Paso 3 resuelto). */
 export const PlanoConfigurator_S7: CSSProperties = {
   marginTop: 3,
   fontSize: 12,
@@ -88,6 +94,7 @@ export const PlanoConfigurator_S7: CSSProperties = {
   gap: 4,
   whiteSpace: 'nowrap',
 };
+/** Botón ✕ compacto para quitar el factor X. */
 export const PlanoConfigurator_S8: CSSProperties = {
   padding: '3px 6px',
   background: 'transparent',
@@ -98,6 +105,7 @@ export const PlanoConfigurator_S8: CSSProperties = {
   fontSize: 12,
   lineHeight: 1,
 };
+/** Input de la longitud de referencia del eje Y en metros (Paso 4). */
 export const PlanoConfigurator_S9: CSSProperties = {
   flex: 1,
   minWidth: 0,
@@ -109,6 +117,7 @@ export const PlanoConfigurator_S9: CSSProperties = {
   color: 'var(--txt)',
   fontFamily: 'monospace',
 };
+/** Línea "✓ factor Y" con el botón para quitarlo (Paso 4 resuelto). */
 export const PlanoConfigurator_S10: CSSProperties = {
   marginTop: 3,
   fontSize: 12,
@@ -119,6 +128,7 @@ export const PlanoConfigurator_S10: CSSProperties = {
   gap: 4,
   whiteSpace: 'nowrap',
 };
+/** Botón ✕ compacto para quitar el factor Y. */
 export const PlanoConfigurator_S11: CSSProperties = {
   padding: '3px 6px',
   background: 'transparent',
@@ -141,6 +151,7 @@ export const PlanoConfigurator_bannerBase: CSSProperties = {
   letterSpacing: 0.5,
   transition: 'all 0.2s ease',
 };
+/** Cabecera numerada de cada paso (1. Nivel, 2. Origen…): el color lo agrega el consumidor según estado. */
 export const PlanoConfigurator_stepHeader: CSSProperties = {
   fontSize: 11,
   fontWeight: 700,

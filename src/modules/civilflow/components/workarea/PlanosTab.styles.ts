@@ -4,6 +4,7 @@
  * Los S1..S14 son bloques anónimos en orden de aparición en el componente; los
  * de nombre largo (reqBtnBase, pendingLi, verBtn) son bloques semánticos.
  */
+/** Botón "← VOLVER A CARGA DE PLANOS" de la barra del modo calibración. */
 export const PlanosTab_S1: React.CSSProperties = {
   padding: '4px 12px',
   background: 'var(--bg3)',
@@ -30,6 +31,7 @@ export const PlanosTab_S2: React.CSSProperties = {
   fontWeight: 700,
   whiteSpace: 'nowrap',
 };
+/** Barra superior del modo calibración: nombre + nivel del plano y sus acciones. */
 export const PlanosTab_S3: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -40,6 +42,7 @@ export const PlanosTab_S3: React.CSSProperties = {
   background: 'var(--bg)',
   minHeight: 36,
 };
+/** Botón cian "DIBUJAR REDES EN ESTE PLANO →" (salta al visor con ese plano activo). */
 export const PlanosTab_S4: React.CSSProperties = {
   padding: '3px 10px',
   background: 'rgba(0,220,229,0.08)',
@@ -98,6 +101,7 @@ export const PlanosTab_S7: React.CSSProperties = {
   gap: 5,
   transition: 'all .15s',
 };
+/** Cabecera de la sección "Pendientes (n)" de la lista lateral. */
 export const PlanosTab_S8: React.CSSProperties = {
   padding: '7px 10px',
   fontSize: 12,
@@ -111,6 +115,7 @@ export const PlanosTab_S8: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: 0.5,
 };
+/** Botón-zona vacía "Subir planos" de la lista de pendientes cuando aún no hay nada. */
 export const PlanosTab_S9: React.CSSProperties = {
   flex: 1,
   width: '100%',
@@ -129,6 +134,7 @@ export const PlanosTab_S9: React.CSSProperties = {
   textAlign: 'center',
   lineHeight: 1.6,
 };
+/** Lista (ul) de planos pendientes de la lista lateral. */
 export const PlanosTab_S10: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
@@ -139,6 +145,7 @@ export const PlanosTab_S10: React.CSSProperties = {
   listStyle: 'none',
   margin: 0,
 };
+/** Botón verde "CONFIRMAR" de una fila pendiente (solo si el plano ya está calibrado). */
 export const PlanosTab_S11: React.CSSProperties = {
   padding: '1px 6px',
   background: 'rgba(14,204,122,0.12)',
@@ -151,6 +158,7 @@ export const PlanosTab_S11: React.CSSProperties = {
   transition: 'all 0.15s ease',
   whiteSpace: 'nowrap',
 };
+/** Botón rojo "ELIMINAR" de una fila pendiente. */
 export const PlanosTab_S12: React.CSSProperties = {
   padding: '3px 6px',
   fontSize: 12,
@@ -163,6 +171,7 @@ export const PlanosTab_S12: React.CSSProperties = {
   transition: 'all 0.15s ease',
   whiteSpace: 'nowrap',
 };
+/** Cabecera de la sección "Cargados (n)" de la lista lateral. */
 export const PlanosTab_S13: React.CSSProperties = {
   padding: '7px 10px',
   fontSize: 12,
@@ -176,6 +185,7 @@ export const PlanosTab_S13: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: 0.5,
 };
+/** Botón rojo "ELIMINAR" de una fila cargada. */
 export const PlanosTab_S14: React.CSSProperties = {
   padding: '3px 6px',
   fontSize: 12,
@@ -189,6 +199,7 @@ export const PlanosTab_S14: React.CSSProperties = {
   transition: 'all 0.15s ease',
   whiteSpace: 'nowrap',
 };
+/** Base del botón "📋 Requisitos para carga": color/borde los agrega el hover del consumidor. */
 export const PlanosTab_reqBtnBase: React.CSSProperties = {
   width: '100%',
   padding: '6px 8px',
@@ -211,6 +222,7 @@ export const PlanosTab_pendingLi: React.CSSProperties = {
   gap: 6,
   transition: 'all 0.15s ease',
 };
+/** Botón pequeño "VER" de una fila cargada (el color lo agrega el consumidor según la selección). */
 export const PlanosTab_verBtn: React.CSSProperties = {
   padding: '3px 6px',
   fontSize: 12,

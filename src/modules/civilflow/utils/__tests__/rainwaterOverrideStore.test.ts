@@ -10,11 +10,11 @@ import {
   guardarEspejo,
   claveEspejo,
 } from '../rainwaterOverrideStore.ts';
+import { setActiveProyectoId } from '../../services/storageService.ts';
 import type { BajanteLL, CanalLL } from '../../context/RainwaterContext.tsx';
 
 const PID_A = '123e4567-e89b-12d3-a456-426614174000';
 const PID_B = '123e4567-e89b-12d3-a456-426614174001';
-const PID_KEY = 'civilflow_active_proyecto_id';
 
 const bajante = (id: string, baj: string, areaParcial = 0): BajanteLL => ({
   id,
@@ -81,16 +81,16 @@ describe('unirOverrides', () => {
 
 describe('espejo por proyecto', () => {
   it('ignora el espejo de un proyecto distinto', () => {
-    localStorage.setItem(PID_KEY, PID_A);
+    setActiveProyectoId(PID_A);
     guardarEspejo(PID_A, [bajante('BLL-1', 'BALL1', 5)], [canal('CLL-1', 'CNL1')], []);
-    localStorage.setItem(PID_KEY, PID_B);
+    setActiveProyectoId(PID_B);
     expect(leerEspejo()).toBeNull();
-    localStorage.setItem(PID_KEY, PID_A);
+    setActiveProyectoId(PID_A);
     expect(leerEspejo()?.bajantes?.map(claveBajante)).toEqual(['BALL1']);
   });
 
   it('filtra filas efímeras sin clave al escribir', () => {
-    localStorage.setItem(PID_KEY, PID_A);
+    setActiveProyectoId(PID_A);
     guardarEspejo(
       PID_A,
       [bajante('BLL-1', ''), bajante('BLL-2', 'BALL2')],
@@ -108,7 +108,7 @@ describe('espejo por proyecto', () => {
   });
 
   it('persiste y devuelve las tumbas del proyecto activo', () => {
-    localStorage.setItem(PID_KEY, PID_A);
+    setActiveProyectoId(PID_A);
     guardarEspejo(PID_A, [], [], ['BALL1', 'CNL1']);
     expect(leerEspejo()?.tumbas).toEqual(['BALL1', 'CNL1']);
   });

@@ -1,7 +1,43 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError.ts';
+import { CF_TABLES } from '../constants/tableNames.ts';
 
 const BUCKET = 'plan_pdfs';
+
+/** Dueño resuelto por proyecto: el user_id del dueño no cambia en la sesión — cada
+ *  upload/download/delete ahorraba un SELECT a cf_proyectos antes de tocar storage. */
+const ownerCache = new Map<string, string>();
+
+/**
+ * Dueño (user_id) del proyecto: en proyectos de empresa el miembro que sube/descarga NO es
+ * el dueño — la primera carpeta del bucket debe ser SIEMPRE la del dueño, o las policies
+ * `pdfs_empresa_*` (que asumen dueño en carpeta 1) y las descargas del dueño no encuentran
+ * el objeto. Fallback a `fallback` (uid de sesión) si la consulta falla o RLS oculta la fila
+ * (un fallback NUNCA se cachea: el siguiente intento reconsulta — p.ej. tras ganar el asiento).
+ * @param proyectoId id del proyecto (uuid).
+ * @param fallback uid de sesión al que caer si no se puede resolver el dueño.
+ */
+async function ownerDe(proyectoId: string, fallback: string): Promise<string> {
+  const hit = ownerCache.get(proyectoId);
+  if (hit) return hit;
+  try {
+    const { data, error } = await supabase
+      .from(CF_TABLES.proyectos)
+      .select('user_id')
+      .eq('id', proyectoId)
+      .maybeSingle();
+    if (error) {
+      devError('pdfStorageService owner lookup:', error.message);
+      return fallback;
+    }
+    const owner = (data as { user_id: string } | null)?.user_id;
+    if (!owner) return fallback;
+    ownerCache.set(proyectoId, owner);
+    return owner;
+  } catch {
+    return fallback;
+  }
+}
 
 /** Ruta del objeto: userId/proyectoId(uuid)/planId.pdf. */
 function objectPath(userId: string, proyectoId: string, planId: number): string {
@@ -25,7 +61,7 @@ export async function uploadPlanPDF(proyectoId: string, planId: number, file: Fi
 
     const { error } = await supabase.storage
       .from(BUCKET)
-      .upload(objectPath(session.user.id, proyectoId, planId), file, {
+      .upload(objectPath(await ownerDe(proyectoId, session.user.id), proyectoId, planId), file, {
         upsert: true,
         contentType: 'application/pdf',
       });
@@ -49,7 +85,7 @@ export async function downloadPlanPDF(
 
     const { data, error } = await supabase.storage
       .from(BUCKET)
-      .download(objectPath(session.user.id, proyectoId, planId));
+      .download(objectPath(await ownerDe(proyectoId, session.user.id), proyectoId, planId));
     if (error || !data) {
       if (error) devError('pdfStorageService download:', error.message);
       return null;
@@ -82,7 +118,7 @@ export async function deletePlanPDF(proyectoId: string, planId: number): Promise
 
     const { error } = await supabase.storage
       .from(BUCKET)
-      .remove([objectPath(session.user.id, proyectoId, planId)]);
+      .remove([objectPath(await ownerDe(proyectoId, session.user.id), proyectoId, planId)]);
     if (error) devError('pdfStorageService delete:', error.message);
   } catch (e) {
     devError('pdfStorageService delete exception:', e);

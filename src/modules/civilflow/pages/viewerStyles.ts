@@ -8,19 +8,6 @@ import type React from 'react';
  * con la LÓGICA (carga, overlay, selector de planos) y este módulo con la CAPA.
  */
 
-/** Texto solo para lectores de pantalla (el rótulo visible va en otro elemento). */
-export const ViewerPage_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
 /** Barra superior del visor. */
 export const ViewerPage_S2: React.CSSProperties = {
   height: 36,

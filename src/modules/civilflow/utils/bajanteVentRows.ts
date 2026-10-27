@@ -7,7 +7,6 @@ import { buildBajanteGraph } from './buildBajanteGraph.ts';
 import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { manning_SAN } from './calcSanitaryCore.ts';
 import { calculateVentStack } from './ventStackCalc.ts';
-import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { splitPtr, splitTramo } from './keys.ts';
 import type { DrawingData } from './drawingSync.ts';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportReportFinal.ts';
@@ -149,7 +148,7 @@ export function computeBajanteVentTable(
     let targetPiso = '';
     let destinoVal = '—';
     if (t.descargaEnId) {
-      const parts = parseDescargaEnId(t.descargaEnId, '');
+      const parts = splitPtr(t.descargaEnId, '');
       const dPlanId = parts[0];
       const targetRamal = parts[1] || '';
       const targetPlan = plans?.find((p) => String(p.id) === String(dPlanId));

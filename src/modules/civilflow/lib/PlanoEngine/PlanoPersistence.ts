@@ -275,9 +275,11 @@ export function applyWorkData(
   engine.scaleM = d.scaleM || 0.5;
   engine.definedScaleM = d.definedScaleM || 0;
   engine.activeNet = d.activeNet || 'af';
-  engine.zoom = d.zoom ?? 1;
-  engine.offX = d.offX ?? 0;
-  engine.offY = d.offY ?? 0;
+  // Cámara NO se restaura: la doctrina de entrada es "siempre bbox-fit" (reEncuadrarContenido
+  // corre justo después de cada loadWork) — restaurar el zoom/offX/offY guardados era un
+  // vestigio que mostraba la cámara VIEJA un frame antes del salto a la nueva (el reacomodo,
+  // orig. usuario). El guardado de cámara sigue en el doc (save) por si se quiere volver a
+  // restaurarla; aquí no manda.
   engine.lineWidthScale = d.lineWidth && d.lineWidth > 0 ? d.lineWidth : 1;
   engine.ramales = dedupPorId(d.ramales || []);
   engine.dims = dedupPorId(d.dims || []);

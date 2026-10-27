@@ -7,6 +7,19 @@ import PageNav from './PageNav.tsx';
 import EditButton from './shared/EditButton.tsx';
 import { SI } from '../styles/sharedTableStyles.ts';
 import Tbl from './shared/Tbl';
+import {
+  Fmt3,
+  Fmt2,
+  TH_R,
+  TD_R,
+  TDL_R,
+  COLS_IN,
+  COLS_OUT,
+  TIPS_IN,
+  TIPS_OUT,
+  COL_STYLES,
+  Eq,
+} from './pumpARStyles.tsx';
 import Card from './shared/Card.tsx';
 import { APS_STORAGE_KEY } from '../constants/storage-keys.ts';
 import { cHazenDe, calcsDe, INPUTS_DEFAULT, type BombaInputs } from './pumpARCalcs';
@@ -26,69 +39,6 @@ export type { BombaInputs } from './pumpARCalcs';
 // (las reales del diseño vía equiposBombaDesdeTrazos) y todas las tablas muestran esa bomba.
 // Persistencia: cf_bomba_datos_proyecto.bombas (jsonb, mapa por código) + espejo plano de la
 // primera bomba para compat con informes.
-
-const Fmt3 = (v: string | number, u = '') => {
-  if (v === '' || v === null || v === undefined)
-    return <span style={{ color: 'var(--txt3)', fontSize: 13 }}>—</span>;
-  const val = typeof v === 'number' ? v.toFixed(3) : v;
-  return (
-    <span style={{ fontFamily: 'var(--mono)', fontSize: 14 }}>
-      {val}
-      {u ? ` ${u}` : ''}
-    </span>
-  );
-};
-
-const Fmt2 = (v: string | number, u = '') => {
-  if (v === '' || v === null || v === undefined)
-    return <span style={{ color: 'var(--txt3)', fontSize: 13 }}>—</span>;
-  const val = typeof v === 'number' ? v.toFixed(2) : v;
-  return (
-    <span style={{ fontFamily: 'var(--mono)', fontSize: 14 }}>
-      {val}
-      {u ? ` ${u}` : ''}
-    </span>
-  );
-};
-
-// Mismos estilos que las tablas de Equipo de Presión (EPVerificationPage) — orig. usuario.
-const TH_R = { fontSize: 12.5, padding: '3px 4px' };
-const TD_R = { fontSize: 12.5, padding: '2px 4px' };
-// Compacto: la columna Parámetro/Componente sin el ancho grande por defecto de Tbl.
-const TDL_R = { minWidth: 0, fontSize: 13.5, fontWeight: 600 };
-// Equivalencia/Fuente: columna de notas — texto que sí puede partir en varias líneas.
-const NOTE_COL = { whiteSpace: 'normal' as const, minWidth: 130, fontSize: 12 };
-// Bordes EXTERIORES en las celdas extremas (orig. usuario: al ras del contenido — el borde
-// del elemento <table> quedaba separado de la grilla por el reparto de columnas).
-const EDGE_L = { borderLeft: '1px solid var(--line)' };
-const EDGE_R = { ...NOTE_COL, borderRight: '1px solid var(--line)' };
-const COLS_IN = ['Parámetro', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Fuente / norma'];
-const COLS_OUT = ['Componente', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Observación'];
-const TIPS_IN = [
-  'Nombre del parámetro de entrada.',
-  'Símbolo con el que se representa el parámetro.',
-  'Valor ingresado o calculado.',
-  'Unidad del valor.',
-  'Equivalencia del valor en otra unidad.',
-  'Fuente o norma de la que proviene el dato.',
-];
-const TIPS_OUT = [
-  'Componente o variable del cálculo.',
-  'Símbolo con el que se representa.',
-  'Valor calculado.',
-  'Unidad del valor.',
-  'Equivalencia del valor en otra unidad.',
-  'Observación sobre el resultado.',
-];
-const COL_STYLES = [EDGE_L, undefined, undefined, undefined, NOTE_COL, EDGE_R];
-
-/** Valor equivalente REAL (orig. usuario): muestra `valor × factor + unidad` de la propia
- *  celda — p.ej. Qd 12 lps → "190.20 GPM". Sin valor → "—". */
-const Eq = (raw: string | number | undefined, f: number, u: string) => {
-  const v = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '').replace(',', '.'));
-  if (!v || !isFinite(v)) return '—';
-  return `${(v * f).toFixed(2)} ${u}`;
-};
 
 function BombaARDesign() {
   const [bp, setBp] = useState(1);

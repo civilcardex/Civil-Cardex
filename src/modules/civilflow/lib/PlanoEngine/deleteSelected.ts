@@ -1,5 +1,4 @@
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState.ts';
-import { parseDescargaEnId } from '../../utils/parseDischargeInId.ts';
 import { splitPtr } from '../../utils/keys.ts';
 import {
   removeCrossFloorGhostsBySource,
@@ -155,7 +154,7 @@ export function deleteSelected(
             b.alimentaIds = b.alimentaIds.filter((rid) => rid !== deleted.id);
           }
           if (b.descargaEnId) {
-            const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+            const parts = splitPtr(b.descargaEnId, engine._loadedPlanId);
             if (parts[parts.length - 1] === deleted.id) b.descargaEnId = null;
           }
           // Si este ramal era el conector Ldesvio de un desplazamiento fantasma, al fantasma ya
@@ -446,7 +445,7 @@ export function deleteSelected(
         b.alimentaIds = b.alimentaIds.filter((r) => r !== deletedId);
       }
       if (b.descargaEnId) {
-        const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+        const parts = splitPtr(b.descargaEnId, engine._loadedPlanId);
         if (parts[parts.length - 1] === deletedId) b.descargaEnId = null;
       }
       if (b.desplazamientos) {

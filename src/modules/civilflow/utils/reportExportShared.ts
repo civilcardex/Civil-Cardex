@@ -2,11 +2,13 @@
 // Extraídos verbatim de exportMemoryFinal (des-monolitización 2026-10-06).
 import { sanitizeFileName } from './formatUtils.ts';
 
+/** Grupo de encabezado de la memoria (fila de agrupación sobre las columnas de una tabla). */
 export interface MemoriaHeaderGroup {
   label: string;
   span: number;
 }
 
+/** Una tabla de la memoria: título, encabezados y filas de strings (celda = texto listo). */
 export interface MemoriaTable {
   title: string;
   headers: string[];
@@ -39,6 +41,8 @@ export interface MemoriaTable {
 // etiqueta iniciales y las columnas de totales calculados finales de quitarse aunque sean todo
 // cero. Salta tablas con headerGroups (la matemática de spans habría que ajustarla también, y
 // ninguna tabla de accesorios actual las usa).
+/** Quita de la tabla las columnas cuyo valor es 0 en TODAS las filas (ruido de catálogo:
+ *  accesorios que este proyecto no usa no deben salir en la memoria). */
 export function dropAllZeroColumns(
   table: MemoriaTable,
   labelCols = 1,
@@ -60,15 +64,18 @@ export function dropAllZeroColumns(
   };
 }
 
+/** Todo lo que un export de memoria necesita: proyecto, grupos de tablas por red. */
 export interface MemoriaData {
   proyNombre: string;
   rows: [string, string][];
   tables?: MemoriaTable[];
 }
 
+/** Base del nombre de archivo de export: nombre del proyecto saneado. Ej: 'Edif. A/3' → 'Edif A_3'. */
 export function fileBase(proyNombre: string): string {
   return sanitizeFileName(`Memorias Finales ${proyNombre || 'Proyecto'}`);
 }
+/** Orden canónico de las redes en la memoria y sus rótulos (af antes de ac, san antes de ll…). */
 export const REDES_ORDEN: { key: string; label: string }[] = [
   { key: 'san', label: 'Sanitaria' },
   { key: 'll', label: 'Aguas Lluvias' },

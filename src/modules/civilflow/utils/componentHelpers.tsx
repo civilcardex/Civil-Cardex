@@ -1,25 +1,24 @@
 import type { Tramo } from '../context/TramosContext.tsx';
+// Chip base + overrides: S1 (verde/ok) y S2 (rojo/error) comparten todo menos color/borde.
+const CHIP_BASE = {
+  padding: '1px 5px',
+  borderRadius: '3px',
+  fontWeight: 600,
+  fontSize: '9px',
+  fontFamily: 'var(--mono)',
+  display: 'inline-block',
+} as const;
 const componentHelpers_S1: React.CSSProperties = {
+  ...CHIP_BASE,
   color: 'var(--ok)',
   background: 'rgba(47, 248, 1, 0.08)',
   border: '1px solid rgba(47, 248, 1, 0.15)',
-  padding: '1px 5px',
-  borderRadius: '3px',
-  fontWeight: 600,
-  fontSize: '9px',
-  fontFamily: 'var(--mono)',
-  display: 'inline-block',
 };
 const componentHelpers_S2: React.CSSProperties = {
+  ...CHIP_BASE,
   color: 'var(--err)',
   background: 'rgba(255, 180, 171, 0.08)',
   border: '1px solid rgba(255, 180, 171, 0.15)',
-  padding: '1px 5px',
-  borderRadius: '3px',
-  fontWeight: 600,
-  fontSize: '9px',
-  fontFamily: 'var(--mono)',
-  display: 'inline-block',
   whiteSpace: 'nowrap',
 };
 
@@ -36,7 +35,7 @@ interface UCBase {
 
 /**
  * Calcula el UD parcial de un tramo sumando (conteo de aparato × valor unitario) sobre todas
- * las entradas de base UD.
+ * las entradas de base UD. Ej: tramo con 3 lavamanos (ud 2 c/u) → 6 UD.
  * @param tramo - Tramo con mapa de aparatos.
  * @param udB - Array de definiciones de base UD.
  * @returns Total de UD parcial.
@@ -47,7 +46,8 @@ export function calcUDparcial(tramo: Tramo, udB: UDBase[]): number {
 
 /**
  * Calcula el valor UC parcial de un tramo para un campo dado sumando (conteo de aparato × valor
- * del campo) sobre las entradas base.
+ * del campo) sobre las entradas base. Ej: con base APARATOS_DEF y field 'uc_af' (Unidades de
+ * Consumo de Agua Fría), 2 lavamanos (uc_af 0.5 c/u) → 1 UC.
  * @param tramo - Tramo con mapa de aparatos.
  * @param baseArr - Array de definiciones de base UC.
  * @param field - Nombre de campo en cada entrada base a multiplicar.
@@ -88,6 +88,7 @@ function calcAcumulado(tramos: Tramo[], calcParcial: (t: Tramo) => number): Reco
 /**
  * Computa valores UC acumulados a través de un grafo de dependencias de tramos (enlaces
  * recibeDe). Resuelve en orden topológico; los tramos no resolubles caen a su valor parcial.
+ * Ej: RS2 con 3 lavamanos (ud 2 c/u) que recibe de RS1 (2 UD) → acumulado RS2 = 8 UD.
  * @param tramos - Array de tramos con listas de dependencia recibeDe.
  * @param baseArr - Array de definiciones de base UC.
  * @param field - Nombre de campo en cada entrada base a multiplicar.

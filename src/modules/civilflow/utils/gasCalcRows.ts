@@ -103,6 +103,8 @@ export interface EntradaCalculoGas {
  *
  * El recorrido se ordena por PROFUNDIDAD en el árbol (el padre antes que el hijo) para que la
  * presión se herede de arriba hacia abajo; a igual profundidad, por piso descendente.
+ * Ej (Renouard): 2 estufas de 2 quemadores (qgas 0.68 m³/h c/u) → qConsumo (0.68·2)/2 = 0.68
+ * m³/h; con factores 1.0 el qDiseno cae al piso 2.7 m³/h y su dP entra al acumulado del árbol.
  */
 export function calculaFilasGas(entrada: EntradaCalculoGas): FilaGasCalc[] {
   const { tramos, dIntDe, accDe, propios, pMin, factores, pais } = entrada;

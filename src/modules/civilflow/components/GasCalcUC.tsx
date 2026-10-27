@@ -8,29 +8,8 @@ import { pisoCorto } from '../constants';
 import { TH, TD } from '../styles/sharedTableStyles.ts';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import type { DrawingData } from '../utils/drawingSync.ts';
-const GasCalcUC_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const GasCalcUC_S2: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
 
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const ABREV = {
   est4: 'EST-4Q',
   est2: 'EST-2Q',
@@ -227,7 +206,7 @@ function GasCalcUC() {
         </div>
         <div style={{ padding: 16 }}>
           <table className="tbl" style={{ width: '100%' }}>
-            <caption style={GasCalcUC_S1}>Cálculo de unidades de consumo gas</caption>
+            <caption style={SR_ONLY_STYLE}>Cálculo de unidades de consumo gas</caption>
             {tableHeader}
             <tbody>
               <tr>
@@ -272,7 +251,7 @@ function GasCalcUC() {
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '8px 10px' }}>
           <table ref={tablaRef} className="tbl" style={{ width: '100%' }}>
-            <caption style={GasCalcUC_S2}>Cálculo de unidades de consumo gas</caption>
+            <caption style={SR_ONLY_STYLE}>Cálculo de unidades de consumo gas</caption>
             {tableHeader}
             <tbody>
               {tramos.map((t, i) => (

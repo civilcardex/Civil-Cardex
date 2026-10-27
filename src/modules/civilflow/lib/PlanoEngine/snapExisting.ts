@@ -3,6 +3,24 @@ import type { IPlanoEngineCore } from './PlanoState.ts';
 import { netsSnapLinked } from './PlanoState.ts';
 import { bajanteLleno } from './bajanteRules.ts';
 import { snapToSegment } from './HitTester.ts';
+import { indiceFrame } from './renderers/frameIndex.ts';
+
+/**
+ * ¿El bbox del ramal puede contener un punto dentro de `margen` del cursor? Preconsulta
+ * del índice del frame (bbox cacheado por firma): en espacio vacío los 3 barridos de
+ * puntos/cuerpos de abajo no iteran NADA (antes ~12.000 tests de distancia por mousemove).
+ */
+function bboxLejos(
+  idx: ReturnType<typeof indiceFrame>,
+  r: { pts?: number[][] },
+  x: number,
+  y: number,
+  margen: number,
+): boolean {
+  const bb = r.pts && r.pts.length >= 2 ? idx.bboxDe(r as never) : null;
+  if (!bb) return false;
+  return x < bb[0] - margen || x > bb[2] + margen || y < bb[1] - margen || y > bb[3] + margen;
+}
 
 /**
  * Punto de snap existente más cercano al cursor (extremos de ramales, bajantes y CUERPO de
@@ -20,6 +38,9 @@ export function snapToExisting(
   permitirBajantesLlenos: boolean = false,
 ): Point | null {
   const netRef = net ?? eng.activeNet;
+  const idx = indiceFrame(eng);
+  // Margen que cubre TODOS los umbrales de abajo (24/zoom vértices, 12/zoom cuerpo).
+  const margenR = 24 / eng.zoom;
   let best: Point | null = null;
   let minD = 16 / eng.zoom;
   eng.ramales.forEach((r) => {
@@ -30,12 +51,14 @@ export function snapToExisting(
     if (!netsSnapLinked(r.net, netRef)) return;
     // Los ramales no se conectan a tributarios — un trazo de tipo ramal solo pega a ramales.
     if (tipo === 'ramal' && r.tipo === 'tributario') return;
-    r.pts.forEach(([rx, ry], idx) => {
+    // bbox > margen del cursor: ningún punto/cuerpo de este ramal puede snapear.
+    if (bboxLejos(idx, r, x, y, margenR)) return;
+    r.pts.forEach(([rx, ry], idx2) => {
       let thresh = 16 / eng.zoom;
-      if (idx > 0 && idx < r.pts.length - 1) {
-        const ptA = r.pts[idx - 1];
-        const ptB = r.pts[idx];
-        const ptC = r.pts[idx + 1];
+      if (idx2 > 0 && idx2 < r.pts.length - 1) {
+        const ptA = r.pts[idx2 - 1];
+        const ptB = r.pts[idx2];
+        const ptC = r.pts[idx2 + 1];
         const ax = ptB[0] - ptA[0],
           ay = ptB[1] - ptA[1];
         const bx = ptC[0] - ptB[0],
@@ -84,6 +107,7 @@ export function snapToExisting(
   eng.ramales.forEach((r) => {
     if (!netsSnapLinked(r.net, netRef)) return;
     if (tipo === 'ramal' && r.tipo === 'tributario') return;
+    if (bboxLejos(idx, r, x, y, margenR)) return;
     const segThresh = 12 / eng.zoom;
     const p = snapToSegment(x, y, r.pts, segThresh);
     if (p && (!best || Math.hypot(p.x - x, p.y - y) < minD)) {

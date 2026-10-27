@@ -5,9 +5,8 @@ import { ProjectContext } from '../../context/ProjectContext.tsx';
 import { createProyecto } from '../../services/projectsService.ts';
 import { clearAllPDFs } from '../../services/idbStorage.ts';
 import { clearLocalWorkspace } from '../../services/workspaceReset.ts';
-import { saveToStorage } from '../../services/storageService.ts';
+import { saveToStorage, setActiveProyectoId } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys.ts';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';
 import SuscripcionInactivaModal, {
   codigoProyecto,
@@ -58,9 +57,9 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
       // quedan aislados por proyecto_id, no hace falta borrar nada del lado del servidor.
       clearLocalWorkspace();
       await clearAllPDFs();
-      // Marca este proyecto como activo para que trazos/plans/proyecto_data queden acotados a él
-      // La maquinaria interna (RPCs, claves) sigue numerada: proyecto_num.
-      localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, proyecto.id);
+      // Marca este proyecto como activo (sesión + storage) para que trazos/plans/proyecto_data
+      // queden acotados a él. La maquinaria interna (RPCs, claves) sigue numerada: proyecto_num.
+      setActiveProyectoId(proyecto.id);
       // Los providers de contexto no están montados en la ruta de perfil (CivilFlowProviders está
       // acotado al área de trabajo), así que setP de abajo no hace nada ahí. Persiste el nombre
       // directamente — ProyectoProvider lo restaura desde esta clave al montarse, y el área de

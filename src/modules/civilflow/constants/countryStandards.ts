@@ -241,15 +241,3 @@ export function gasTxt(pais: string | undefined): string {
   const p = perfilDe(pais);
   return `V ≤ ${p.gas.vMax} m/s · ΔP acumulada ≤ ${String(p.gas.dpMax).replace('.', ',')} mbar ${cita(p, p.norma.gas)}`;
 }
-
-/** Presión mínima de red del país (red pública en entrega) + cita. Ej: Colombia → '5 m.c.a. (NTC 1500 / RAS 2000)'. */
-export function pMinRedTxt(pais: string | undefined): string {
-  const p = perfilDe(pais);
-  return `${String(p.af.pMinRed).replace('.', ',')} m.c.a. ${cita(p, p.norma.af)}`;
-}
-
-/** Presión mínima en aparato del país (punto más desfavorable) + cita. Ej: Perú → '2 m.c.a. (ref. RNE IS.010 — norma en verificación)'. */
-export function pMinAparatoTxt(pais: string | undefined): string {
-  const p = perfilDe(pais);
-  return `${String(p.af.pMinAparato).replace('.', ',')} m.c.a. ${cita(p, p.norma.af)}`;
-}

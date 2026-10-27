@@ -3,6 +3,9 @@ import type { ComponenteEpc, EtiquetaEpc } from './epc3dTypes.ts';
 // Datos extraídos del HTML original "EPC CIVILCARDEX SEP 16 2026 VF" (script one-off).
 // LABEL_POSITIONS: pos = [x,y,z] en metros del modelo; ref agrupa sub-etiquetas (2b/2c…) al componente principal.
 
+/** Los 13 componentes del esquema 3D del ep (Equipo de Presión) —tanque hidroneumático, moto
+ *  bomba, VFD (Variador de Frecuencia), tableros, tuberías…— cada uno con id, nombre y color.
+ *  Los consumen la escena 3D (useEpc3DScene) y la barra lateral. */
 export const COMPONENTES: ComponenteEpc[] = [
   {
     id: 1,
@@ -84,6 +87,9 @@ export const COMPONENTES: ComponenteEpc[] = [
   },
 ];
 
+/** Posición y geometría de cada etiqueta 3D, clave = id de COMPONENTES ('1'…'13') o
+ *  sub-etiqueta ('2b','3c'…): pos [x,y,z] en metros, escala, dir/ang de orientación y largos
+ *  L1/L2; ref agrupa la sub-etiqueta a su componente principal. Extraído del HTML original. */
 export const ETIQUETAS: Record<string, EtiquetaEpc> = {
   '1': {
     pos: [0.55, 2.168, -1.655],
@@ -353,6 +359,9 @@ export const ETIQUETAS: Record<string, EtiquetaEpc> = {
   },
 };
 
+/** Descripción técnica y normas aplicables por componente (clave = id de COMPONENTES), que la
+ *  barra lateral muestra al seleccionarlo. Ej: '1' tanque hidroneumático con NTC (Norma Técnica
+ *  Colombiana) 1500 y RAS (Reglamento de Agua y Saneamiento). */
 export const COMP_DESC: Record<string, { body: string; norm?: string }> = {
   '1': {
     body: 'Recipiente presurizado con cámara de aire/gas separada por membrana o diafragma. Amortigua variaciones de presión y reduce la frecuencia de arranques de la bomba, estabilizando la presión y contribuyendo a reducir transitorios hidráulicos.',
@@ -480,6 +489,8 @@ export const COMP_DESC: Record<string, { body: string; norm?: string }> = {
   },
 };
 
+/** Posición [x,y,z] en metros de cada pieza GLB (modelo 3D binario glTF) que arma la escena:
+ *  el esquema completo, la tapa del tanque y la mampostería. */
 export const GLB_POSITIONS: Record<string, [number, number, number]> = {
   epc_esquema: [0.103, -1, -0.521],
   tapa_tanque: [0, 0.928, -0.05],
@@ -493,4 +504,6 @@ export const GLB_SCALE_OVERRIDE: Record<string, [number, number, number] | null>
   mamposteria: [0.8, 1.3, 1.034],
 };
 
+/** Ruta pública del modelo GLB (modelo 3D binario glTF) por clave. Ej: 'epc_esquema' ->
+ *  /models/epc/epc_esquema.glb. */
 export const GLB_URL = (key: string): string => `/models/epc/${key}.glb`;

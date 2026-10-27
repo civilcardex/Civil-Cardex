@@ -1,3 +1,4 @@
+import { TH_C } from './downpipesHeaderStyles';
 /** Cabecera de 3 filas de la tabla de bajantes (23 columnas agrupadas en
  *  INFORMACIÓN COMÚN / BAJANTES AGUAS NEGRAS / TUBERÍA DE VENTILACIÓN). Markup puro. */
 export function DownpipesHeader() {
@@ -9,7 +10,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           colSpan={9}
-          style={{ textAlign: 'center', padding: '1px 2px', fontSize: 11 }}
+          style={TH_C}
         >
           INFORMACIÓN
           <br />
@@ -20,7 +21,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ok"
           colSpan={7}
-          style={{ textAlign: 'center', padding: '1px 2px', fontSize: 11 }}
+          style={TH_C}
         >
           BAJANTES
           <br />
@@ -31,7 +32,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ven"
           colSpan={7}
-          style={{ textAlign: 'center', padding: '1px 2px', fontSize: 11 }}
+          style={TH_C}
         >
           TUBERÍA DE
           <br />
@@ -44,7 +45,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           No.
         </th>
@@ -53,7 +54,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           colSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Nivel
         </th>
@@ -62,7 +63,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Ramales
           <br />
@@ -73,7 +74,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           colSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Unidades
           <br />
@@ -84,7 +85,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Llenado
           <br />
@@ -94,7 +95,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Caudal
         </th>
@@ -103,7 +104,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h san"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Manning
           <br />
@@ -113,7 +114,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ok"
           colSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Diámetro
         </th>
@@ -122,7 +123,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ok"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Chequeo
         </th>
@@ -131,7 +132,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ok"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Caudal <br /> máximo
         </th>
@@ -140,7 +141,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ok"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Velocidad <br /> terminal
         </th>
@@ -149,7 +150,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ok"
           colSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Longitud
           <br />
@@ -160,7 +161,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ven"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Velocidad
           <br />
@@ -171,7 +172,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ven"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Fricción
           <br />
@@ -182,7 +183,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ven"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Caudal <br /> Aire
         </th>
@@ -191,7 +192,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ven"
           rowSpan={2}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Longitud <br /> Bajante
         </th>
@@ -200,7 +201,7 @@ export function DownpipesHeader() {
           scope="col"
           className="col-h ven"
           colSpan={3}
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Diámetro
           <br />
@@ -208,27 +209,17 @@ export function DownpipesHeader() {
         </th>
       </tr>
       <tr>
-        <th
-          title="Piso donde nace el bajante."
-          scope="col"
-          className="col-h san"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
-        >
+        <th title="Piso donde nace el bajante." scope="col" className="col-h san" style={TH_C}>
           Origen
         </th>
-        <th
-          title="Bajante o ramal donde descarga."
-          scope="col"
-          className="col-h san"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
-        >
+        <th title="Bajante o ramal donde descarga." scope="col" className="col-h san" style={TH_C}>
           Destino
         </th>
         <th
           title="Unidades de descarga generadas en el propio bajante."
           scope="col"
           className="col-h san"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Parcial
         </th>
@@ -236,7 +227,7 @@ export function DownpipesHeader() {
           title="Unidades de descarga totales acumuladas."
           scope="col"
           className="col-h san"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Acumulada
         </th>
@@ -244,7 +235,7 @@ export function DownpipesHeader() {
           title="Diámetro que exige el caudal de diseño (pulg). Unidad: ″."
           scope="col"
           className="col-h ok"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Calculado
         </th>
@@ -252,7 +243,7 @@ export function DownpipesHeader() {
           title="Diámetro comercial propuesto (pulg). Unidad: ″."
           scope="col"
           className="col-h ok"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Propuesto
         </th>
@@ -260,7 +251,7 @@ export function DownpipesHeader() {
           title="Longitud terminal calculada con la velocidad (m). Unidad: m."
           scope="col"
           className="col-h ok"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Calculada
         </th>
@@ -268,7 +259,7 @@ export function DownpipesHeader() {
           title="Longitud terminal mínima recomendada (m). Unidad: m."
           scope="col"
           className="col-h ok"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Mínima
         </th>
@@ -276,7 +267,7 @@ export function DownpipesHeader() {
           title="Diámetro de ventilación que exige el caudal de aire (pulg). Unidad: ″."
           scope="col"
           className="col-h ven"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Calculado
         </th>
@@ -284,7 +275,7 @@ export function DownpipesHeader() {
           title="Diámetro comercial de ventilación propuesto (pulg). Unidad: ″."
           scope="col"
           className="col-h ven"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Propuesto
         </th>
@@ -292,7 +283,7 @@ export function DownpipesHeader() {
           title="Estado del chequeo de la ventilación."
           scope="col"
           className="col-h ven"
-          style={{ textAlign: 'center', padding: '1px 1px', fontSize: 11 }}
+          style={TH_C}
         >
           Chequeo
         </th>

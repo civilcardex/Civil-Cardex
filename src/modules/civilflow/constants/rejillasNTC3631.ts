@@ -55,7 +55,6 @@ export const SOL: Record<
 };
 
 /** Grupos de gasodomésticos de la tabla (columnas Estufa/Calent./Otros). */
-/** Grupos de gasodomésticos de la tabla (columnas Estufa/Calent./Otros). */
 export type GrupoGasod = 'estufa' | 'calent' | 'otros';
 /** Tipo de artefacto NTC 3631 por defecto de cada grupo (A suma, B suma con ducto, C estanco). */
 export const TIPO_DEFAULT: Record<GrupoGasod, 'A' | 'B' | 'C'> = {

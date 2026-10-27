@@ -2,10 +2,9 @@ import type { DrawingData } from './drawingSync.ts';
 import { sectorDe, planIdDeKey } from './formatUtils.ts';
 
 /**
- * Ramales de ventilación conectados a los bajantes de vent de un bajante sanitario:
- * los que nacen o terminan en el bajante (por id o por code). Es la parte pura del
- * fan-out del "D vent propuesto" — cambiar el diámetro propuesto adopta el mismo
- * diámetro en TODOS estos ramales con UN batch write.
+ * Ramales de ventilación conectados a los bajantes de vent de un bajante sanitario (los que
+ * nacen o terminan en él, por id o code): es la parte pura del fan-out del "D vent propuesto"
+ * — cambiar el diámetro propuesto adopta el mismo en TODOS estos ramales con UN batch write.
  * @param ventBajKeys - claves de los bajantes de vent conectados (p.ej. "BAV2-P2").
  * @param ventBajKey - clave del bajante de vent principal (fallback si la lista viene vacía).
  * @param storageByPlan - docs de dibujo por planId (fuente de la geometría).

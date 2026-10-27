@@ -20,6 +20,7 @@ import EmptyRow from './shared/EmptyRow.tsx';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows.ts';
 import { aplicarCambioDiametroSan } from './sanDiamChange.ts';
 
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const SanitaryDesign_S1: React.CSSProperties = {
   fontFamily: 'var(--mono)',
   fontSize: 10.5,
@@ -31,17 +32,6 @@ const SanitaryDesign_S1: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const SR_ONLY = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-} as const;
 const TH_HDR = { fontSize: 10.5, textAlign: 'center', padding: '1px 7px' } as const;
 const TH_SUB = { fontSize: 10.5, textAlign: 'center', padding: '1px 7px' } as const;
 // Agrupadores colSpan: sin border-bottom propio — el 1px de .tbl th se leía como hueco
@@ -185,7 +175,7 @@ export default function DisenosSanitarios() {
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
             <table ref={tablaRef} className="tbl" style={{ fontSize: 10.5 }}>
-              <caption style={SR_ONLY}>Diseño de red sanitaria</caption>
+              <caption style={SR_ONLY_STYLE}>Diseño de red sanitaria</caption>
               <thead>
                 <tr>
                   <th

@@ -7,8 +7,6 @@ import {
   rangoSanTxt,
   ftTxt,
   gasTxt,
-  pMinRedTxt,
-  pMinAparatoTxt,
 } from '../countryStandards';
 import { normaUrl, NormaTxt, NormaLink } from '../../components/shared/standardsLinks.tsx';
 import React from 'react';
@@ -132,9 +130,6 @@ describe('normasPais: perfilDe y helpers', () => {
     expect(ftTxt('EC')).toContain('(ref. NEC (cap. desagüe pendiente)');
     expect(gasTxt('CO')).toBe('V ≤ 10 m/s · ΔP acumulada ≤ 9,81 mbar (NTC 3728)');
     expect(gasTxt('CL')).toContain('DS 66/2007');
-    expect(pMinRedTxt('PE')).toBe('10 m.c.a. (ref. RNE IS.010 — norma en verificación)');
-    expect(pMinAparatoTxt('PE')).toBe('2 m.c.a. (ref. RNE IS.010 — norma en verificación)');
-    expect(pMinAparatoTxt('CO')).toBe('3 m.c.a. (NTC 1500 / RAS 2000)');
   });
 });
 

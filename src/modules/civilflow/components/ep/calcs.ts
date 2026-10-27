@@ -1,3 +1,6 @@
+/** Diámetros comerciales de tubería PVC (Policloruro de Vinilo) Sch 40 con su diámetro interior
+ *  real (mm). La consume selectDN para dimensionar y la verificación del módulo ep (Equipo de
+ *  Presión). */
 export const PVC_SCH40 = [
   { dn: 20, dInt: 20.93 },
   { dn: 25, dInt: 26.64 },
@@ -10,8 +13,13 @@ export const PVC_SCH40 = [
   { dn: 150, dInt: 154.05 },
 ];
 
+/** Potencias estándar de motor en HP (caballos de fuerza) según NEMA (National Electrical
+ *  Manufacturers Association): se toma la primera comercial que cubre la potencia calculada.
+ *  Ej: cálculo 6.4 HP -> se redondea a 7.5. */
 export const NEMA_HP = [0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100];
 
+/** Potencias comerciales de motor con su equivalencia en kW (kilovatios): pares hp/kw para
+ *  reportes y selección de bombas del módulo ep. Ej: 5 hp -> 3.7 kW. */
 export const COMM_HP = [
   { hp: 0.33, kw: 0.25 },
   { hp: 0.5, kw: 0.37 },
@@ -39,6 +47,12 @@ export const COMM_HP = [
   { hp: 150, kw: 110 },
 ];
 
+/** Devuelve el primer diámetro PVC (Policloruro de Vinilo) Sch 40 cuya velocidad real no supere
+ *  vmax * 1.15 (m/s); si ninguno cumple, el mayor del catálogo. Ej: selectDN(5, 2.0) -> dn 65
+ *  con Vreal ≈ 1.62 m/s.
+ *  @param Qlps caudal en L/s (litros por segundo), > 0.
+ *  @param vmax velocidad máxima de diseño en m/s (típico 1.5-2.5).
+ *  @returns el diámetro elegido {dn, dInt} con su velocidad real Vreal en m/s. */
 export function selectDN(Qlps: number, vmax: number) {
   const Qm3s = Qlps / 1000;
   for (const t of PVC_SCH40) {

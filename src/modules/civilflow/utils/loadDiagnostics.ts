@@ -1,15 +1,7 @@
-/** Decisiones de ESCALA del piso al cargar el visor + registro de diagnóstico.
- *
- * Motivo (orig. usuario): al reingresar al visor, los elementos aparecían desplazados y las
- * cotas en metros leían menos. La escala del dibujo vive en el doc del piso (`scaleM`, metros
- * por píxel de plano) y hay tres rutas que la tocaban sin dar cuenta: el cambio de piso, el
- * re-base a la escala global del proyecto y la calibración. Aquí vive la decisión PURA de qué
- * escala manda (testeable sin motor) y el registro de lo que pasó en cada carga.
- *
- * Ej: piso calibrado a 0.669 m/px cuyo doc quedó con `scaleM` 0.5 → la decisión es
- * "reparar etiqueta" (los píxeles están bien, la etiqueta mal): las cotas vuelven a leer bien
- * sin mover un solo trazo.
- */
+/** Decisiones de ESCALA del piso al cargar el visor + registro de diagnóstico. La escala vive
+ *  en el doc del piso (scaleM, metros por píxel) y tres rutas la tocaban sin dar cuenta
+ *  (cambio de piso, re-base a la global, calibración) — aquí la decisión PURA, testeable sin motor.
+ *  Ej: piso calibrado a 0.669 m/px con doc en 0.5 → "reparar etiqueta": cotas bien, cero trazos movidos. */
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import type { PlanMeta } from './plansMeta.ts';
 
@@ -241,10 +233,9 @@ export function docConTs<T extends object>(doc: T, ts: number = Date.now()): T &
 const PREFIJO_AVISO = 'diag_aviso_escala_';
 
 /**
- * ¿Avisar al usuario de la corrección de escala de este piso? Una vez por par
- * "escala encontrada → escala corregida": si el problema se repite (la corrección no se
- * quedó guardada), el modal NO vuelve a saltar — el aviso molesto cada entrada tapaba el
- * aviso útil. El registro del diagnóstico deja la traza igual.
+ * ¿Avisar al usuario de la corrección de escala de este piso? Una sola vez por par
+ * "encontrada → corregida" (el aviso en cada entrada tapaba el útil); la traza queda igual
+ * en el registro de diagnóstico.
  * @param planId - id del plano.
  * @param clave - par "origen→destino" de la corrección.
  * @returns true si es la primera vez (hay que avisar).

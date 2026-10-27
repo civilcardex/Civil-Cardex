@@ -19,11 +19,9 @@ export function escalaDeDoc(planId: string | number | null | undefined): number 
 const PAGINA_KEY = 'pagina_';
 
 /**
- * Tamaño de la LÁMINA de un plano (px CSS del PDF a escala 1 — el tamaño del archivo, no el
- * de la escala del dibujo): con él el lienzo de dibujo y el contenedor se dimensionan ANTES de
- * que llegue el PDF — si no, el dibujo se pinta en un lienzo de 300×150 y al llegar la lámina
- * el contenedor se re-centra (el "salto" del visor, orig. usuario) y el trazo queda recortado
- * (el "recuadro", orig. usuario).
+ * Tamaño de la LÁMINA de un plano (px CSS del PDF a escala 1): con él el lienzo de dibujo y
+ * el contenedor se dimensionan ANTES de que llegue el PDF — sin esto el dibujo nacía en un
+ * lienzo 300×150, el visor saltaba al re-centrar y el trazo quedaba recortado (orig. usuario).
  * @param planId - id del plano.
  * @param escala - escala del doc (metros por px): el tamaño se devuelve YA aplicado.
  * @returns tamaño {w,h} en px CSS, o null si el plano aún no se ha rasterizado.

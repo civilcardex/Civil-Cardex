@@ -174,6 +174,13 @@ export function setRamalDefaults(
  *  Ej: viendo el sótano, se ve punteado el BAN2 del primer piso que pasa por allí. */
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
+  const npt = engine.nivelActual.npt || 0;
+  const lvl = engine.nivelActual.label || '';
+  // El primer npt SUPERIOR al piso abierto es el mismo para todos los bajantes: se calcula
+  // UNA vez (antes: filter+sort de nptLevels POR bajante dentro del filter).
+  const superior = engine.nptLevels
+    .filter((l) => (l.npt || 0) > npt)
+    .sort((a, b) => (a.npt || 0) - (b.npt || 0))[0]?.npt;
   return engine.bajantes.filter((b) => {
     if (
       b.tipo === 'contador' ||
@@ -182,25 +189,21 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
       b.tipo === 'canal'
     )
       return false;
-    if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label || '']) return true;
+    if (b.desplazamientos && b.desplazamientos[lvl]) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);
-    const npt = engine.nivelActual!.npt || 0;
     if (npt >= base && npt <= cima) {
       // No mostrar el fantasma de dirección en el nivel del propio padre
-      if (b.pisoBase === engine.nivelActual!.label) return false;
+      if (b.pisoBase === lvl) return false;
       return true;
     }
-    const superior = engine.nptLevels
-      .filter((l) => (l.npt || 0) > npt)
-      .sort((a, b) => (a.npt || 0) - (b.npt || 0))[0]?.npt;
     if (superior === undefined) return false;
     // Un bajante que pertenece a ESTE piso (pisoBase = nivel actual) nunca es su propio
     // fantasma — renderBajantes ya dibuja su círculo y etiqueta. Sin este guard, un bajante
     // COPIADO entre pisos conservaba los nptBase/nptCima del piso origen y esta rama lo
     // listaba como fantasma: doble etiqueta (BAN1 Sube + BAN1 Baja) hasta editarlo a mano
     // (orig. usuario). Las otras dos ramas ya tienen su guard equivalente.
-    if (b.pisoBase === engine.nivelActual!.label) return false;
+    if (b.pisoBase === lvl) return false;
     return b.nptBase === superior || b.nptCima === superior;
   }) as unknown as PlanoBajante[];
 }

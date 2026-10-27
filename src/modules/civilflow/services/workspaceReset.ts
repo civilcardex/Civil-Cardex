@@ -8,6 +8,8 @@ const PREFIJOS_PREFERENCIAS = [
   'civilflow_net_',
 ];
 
+import { setActiveProyectoId } from './storage/localStorage.ts';
+
 export function clearLocalWorkspace(): void {
   const lsKeys: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -23,4 +25,7 @@ export function clearLocalWorkspace(): void {
       /* ignore */
     }
   }
+  // La clave ACTIVE_PROYECTO_ID_KEY murió arriba: la sesión en memoria no debe quedar
+  // apuntando a un proyecto cuyo workspace acaba de borrarse.
+  setActiveProyectoId(null);
 }

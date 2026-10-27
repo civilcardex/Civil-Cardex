@@ -106,12 +106,42 @@ export function removeFromStorage(key: string): void {
  *  a loadProyectoData — el proyecto se re-abre desde la lista. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Id del proyecto activo de ESTA PESTAÑA (no de localStorage).
+ *
+ * localStorage es compartido entre pestañas: si el guardado leyera el puntero en caliente,
+ * abrir el proyecto B en otra pestaña redirigía los guardados de ESTA (el RPC de pisos es
+ * destructivo — borraba B y dejaba A). La sesión es variable de módulo (por-pestaña),
+ * inicializada perezosamente con el puntero persistido y cambiada SOLO por escritores
+ * legítimos vía setActiveProyectoId.
+ */
+let proyectoSesionId: string | null | undefined = undefined;
+
 /** Id activo (uuid) o null. Los ids legacy pre-conversión (numéricos) devuelven null
  *  PERO no se purgan aquí — la purga vive en efecto (ver uso en WorkAreaCivilFlow). */
 export function getActiveProyectoId(): string | null {
-  const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-  const id = raw && raw.trim() ? raw.trim() : null;
-  return id && UUID_RE.test(id) ? id : null;
+  if (proyectoSesionId === undefined) {
+    const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    const id = raw && raw.trim() ? raw.trim() : null;
+    proyectoSesionId = id && UUID_RE.test(id) ? id : null;
+  }
+  return proyectoSesionId;
+}
+
+/**
+ * Fija el proyecto activo de ESTA pestaña y persiste el puntero.
+ * ÚNICO canal de escritura del id de sesión — toda apertura/creación/borrado de proyecto
+ * pasa por aquí; los guardados debounced leen la sesión, nunca localStorage en caliente.
+ * @param id uuid del proyecto, o null para desasociar (logout, workspace limpio).
+ */
+export function setActiveProyectoId(id: string | null): void {
+  proyectoSesionId = id;
+  try {
+    if (id == null) localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
+    else localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, id);
+  } catch {
+    /* storage bloqueado: la sesión en memoria sigue mandando */
+  }
 }
 
 export type PlanTrazos = Partial<PlanoWorkData>;

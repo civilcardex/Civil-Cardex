@@ -1,10 +1,10 @@
+import { splitPtr } from './keys.ts';
 import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { calcUDparcial } from './componentHelpers.tsx';
 import { distToPolyline } from '../lib/shared/geometry';
-import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { indicePorId } from './indices';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
@@ -241,7 +241,7 @@ export function buildSanConnectivity(
 
   for (const t of tramosSan) {
     if (t.esBajante && t.descargaEnId && t._key) {
-      const parts = parseDescargaEnId(t.descargaEnId, '');
+      const parts = splitPtr(t.descargaEnId, '');
       const dPlanId = parts[0];
       const targetRamalId = parts[1];
       if (targetRamalId) {
@@ -468,7 +468,7 @@ export function buildSanConnectivity(
   // tributarios estuvieran en otro piso (phantom no propagaba).
   for (const t of tramosSan) {
     if (!t.esBajante || !t.descargaEnId || !t._key) continue;
-    const [dPlanId, tgtId] = parseDescargaEnId(t.descargaEnId, '');
+    const [dPlanId, tgtId] = splitPtr(t.descargaEnId, '');
     if (!tgtId || dPlanId == null) continue;
     const tgtKey = `${tgtId}-${dPlanId}`;
     // solo si el target existe como tramo (bajante inferior)

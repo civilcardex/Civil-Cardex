@@ -41,6 +41,8 @@ interface HistorySnapshot {
   crossFloorGhosts: CrossFloorGhost[];
   counts: Record<string, string | null>;
   _netCounts: Record<string, { ramal: number; tributario: number }>;
+  /** Hash FNV del contenido (captura): el dedupe lo compara ANTES de serializar. */
+  hash: number;
 }
 
 function readCounts(): Record<string, string | null> {
@@ -75,28 +77,74 @@ function serializeState(s: HistorySnapshot): string {
   return JSON.stringify(s);
 }
 
+/** Mezcla FNV-1a de un entero (misma técnica que frameIndex.firmaGeometria). */
+function mezclar(h: number, n: number): number {
+  let x = h ^ (n | 0);
+  x = Math.imul(x, 16777619);
+  return x >>> 0;
+}
+
+/**
+ * Hash barato del snapshot (sin construir strings — O(primitivas), ~10× más barato que
+ * JSON.stringify). Solo sirve para descartar: hash DISTINTO = seguro distinto; hash IGUAL
+ * se confirma con un stringify (collisión imposible en la práctica, cubierta igualmente).
+ */
+function hashDe(h: number, v: unknown, depth = 0): number {
+  if (depth > 10) return mezclar(h, 0x3d);
+  if (v === null || v === undefined) return mezclar(h, 0x7f);
+  const t = typeof v;
+  if (t === 'number') {
+    const n = v as number;
+    return mezclar(h, Number.isFinite(n) ? Math.round(n * 100) : 0x1ff);
+  }
+  if (t === 'boolean') return mezclar(h, v ? 1 : 0);
+  if (t === 'string') {
+    const s = v as string;
+    for (let i = 0; i < s.length; i++) h = mezclar(h, s.charCodeAt(i));
+    return mezclar(h, s.length);
+  }
+  if (Array.isArray(v)) {
+    for (const x of v) h = hashDe(h, x, depth + 1);
+    return mezclar(h, v.length);
+  }
+  if (t === 'object') {
+    for (const k of Object.keys(v as object).sort()) {
+      h = hashDe(h, k, depth + 1);
+      h = hashDe(h, (v as Record<string, unknown>)[k], depth + 1);
+    }
+    return h;
+  }
+  return mezclar(h, 0x5a);
+}
+
+/** Colecciones del engine que viajan en cada snapshot (mismas claves en capture/restore). */
+const SNAPSHOT_KEYS = [
+  'ramales',
+  'bajantes',
+  'areas',
+  'dims',
+  'textAnnots',
+  'guideLines',
+  'crossFloorGhosts',
+] as const;
+
 function captureSnapshot(e: IPlanoEngineCore): HistorySnapshot {
-  return {
-    ramales: structuredClone(e.ramales),
-    bajantes: structuredClone(e.bajantes),
-    areas: structuredClone(e.areas),
-    dims: structuredClone(e.dims),
-    textAnnots: structuredClone(e.textAnnots),
-    guideLines: structuredClone(e.guideLines),
-    crossFloorGhosts: structuredClone(e.crossFloorGhosts),
+  const snap: Omit<HistorySnapshot, 'hash'> = {
     counts: readCounts(),
     _netCounts: structuredClone(e._netCounts),
-  };
+  } as Omit<HistorySnapshot, 'hash'>;
+  for (const k of SNAPSHOT_KEYS) {
+    (snap as Record<string, unknown>)[k] = structuredClone(e[k as keyof IPlanoEngineCore]);
+  }
+  return { ...snap, hash: hashDe(2166136261, snap) };
 }
 
 function restoreSnapshot(e: IPlanoEngineCore, snap: HistorySnapshot): void {
-  e.ramales = structuredClone(snap.ramales);
-  e.bajantes = structuredClone(snap.bajantes);
-  e.areas = structuredClone(snap.areas);
-  e.dims = structuredClone(snap.dims);
-  e.textAnnots = structuredClone(snap.textAnnots);
-  e.guideLines = structuredClone(snap.guideLines);
-  e.crossFloorGhosts = structuredClone(snap.crossFloorGhosts || []);
+  for (const k of SNAPSHOT_KEYS) {
+    (e as unknown as Record<string, unknown>)[k] = structuredClone(
+      (snap as unknown as Record<string, unknown>)[k] ?? (k === 'crossFloorGhosts' ? [] : []),
+    );
+  }
   writeCounts(snap.counts || {});
   e._netCounts = structuredClone(snap._netCounts);
 }
@@ -148,8 +196,15 @@ export class PlanoHistory {
     // internamente y el caller marca al final). Sin dedupe, el primer Ctrl+Z restauraba el
     // snapshot duplicado — estado idéntico al actual, con el aparato/accesorio recién
     // asignado incluido — y parecía "no hacer nada": había que deshacer DOS veces.
+    // Dedupe con hash (barato): hash distinto = seguro distinto; hash igual se confirma
+    // con UN stringify (antes: dos stringify del doc completo POR CADA guardado).
     const top = this._undoStack[this._undoStack.length - 1];
-    if (top && serializeState(top) === serializeState(snap)) return;
+    if (top) {
+      // hash distinto = seguro distintos; hash igual se confirma con UN stringify
+      // (collisión prácticamente imposible, cubierta igualmente).
+      const igual = top.hash === snap.hash ? serializeState(top) === serializeState(snap) : false;
+      if (igual) return;
+    }
     this._redoStack = [];
     this._undoStack.push(snap);
     if (this._undoStack.length > MAX_UNDO_STACK) this._undoStack.shift();
@@ -255,5 +310,14 @@ export class PlanoHistory {
     this._undoStack = [];
     this._redoStack = [];
     this.saveSnapshot();
+  }
+
+  /** Vacía SOLO el historial (sin tocar el dibujo): se cargó otro piso y los snapshots
+   *  del anterior ya no corresponden a lo que el motor muestra — un Ctrl+Z cross-piso
+   *  restauraba contenido viejo bajo el id del piso nuevo y el autosave lo persistía
+   *  como fotocopia. El saveSnapshot posterior a loadWork deja la foto del piso nuevo. */
+  reset(): void {
+    this._undoStack = [];
+    this._redoStack = [];
   }
 }

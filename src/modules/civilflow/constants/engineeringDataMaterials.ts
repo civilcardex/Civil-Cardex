@@ -87,7 +87,7 @@ export const MAT_MANNING = {
   'Acero HG': 0.015,
 };
 
-/** n de Manning del material, o null si no está en el catálogo. */
+/** n de Manning del material, o null si no está en el catálogo. Ej: matManning('PVC-S') → 0.009; matManning('Acero HG') → 0.015. */
 export function matManning(short: string) {
   if (!short) return null;
   return (MAT_MANNING as Record<string, number>)[short] ?? null;
@@ -324,7 +324,7 @@ export const MATERIALES_CANAL_LL: MaterialCanalLL[] = [
   { nombre: 'Concreto sin acabado', abrev: 'Concreto s/acabado', n: 0.015 },
 ];
 
-/** Manning n por material de canal; null si el material no está. */
+/** Manning n por material de canal; null si el material no está. Ej: nDeCanal('PVC') → 0.010; nDeCanal('Concreto sin acabado') → 0.015. */
 export function nDeCanal(nombre: string): number | null {
   if (!nombre) return null;
   const hit = MATERIALES_CANAL_LL.find((m) => m.nombre === nombre);

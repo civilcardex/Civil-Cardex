@@ -281,7 +281,9 @@ export function ramalContinuesPast(
   }
   return sMax >= 0 && total - sMax > tol;
 }
-/** Recalcula receptores como el mayor de sus alimentadores actuales, hasta punto fijo. */
+/** Recalcula receptores como el mayor de sus alimentadores actuales, hasta punto fijo.
+ *  Ej: un colector que recibe ramales de 3" y 2" sube a 3"; si su receptor entra en cadena,
+ *  el siguiente también se revisa (hasta 20 pasadas o estabilidad). */
 export function recomputeDownstreamDiameters(
   ramales: Array<{
     id: string;

@@ -27,6 +27,16 @@ export interface IndiceFrame {
   orden(r: PlanoRamal): number;
   /** Firma de la geometría con la que se construyó (para reutilizarlo entre frames). */
   firma: number;
+  /** Ramales de vent — el codo reventilado los consulta por frame (antes: filter por frame). */
+  ventRamales: PlanoRamal[];
+  /** Ramales de san. */
+  sanRamales: PlanoRamal[];
+  /** Bajantes de san. */
+  bajantesSan: IPlanoEngineCore['bajantes'];
+  /** ¿Hay un punto san a menos de 0.5 de (x,y)? (celdas de 0.5 — misma tolerancia). */
+  hayPuntoSan(x: number, y: number): boolean;
+  /** bbox de un ramal (o null si no tiene pts) — prefiltra snaps por radio grande. */
+  bboxDe(r: PlanoRamal): [number, number, number, number] | null;
 }
 
 const TOL = 0.5;
@@ -34,6 +44,8 @@ const TOL = 0.5;
 const CELDA_V = 1;
 /** Celda de los cuerpos de ramal (más gruesa: un segmento largo cruza muchas celdas finas). */
 const CELDA_S = 32;
+/** Celda del índice de puntos sanitarios (tolerancia del codo reventilado = 0.5). */
+const CELDA_PUNTOS_SAN = 0.5;
 
 const clave = (cx: number, cy: number) => `${cx},${cy}`;
 
@@ -117,11 +129,40 @@ function construir(eng: IPlanoEngineCore, firma: number): IndiceFrame {
   const porPts = new Map<unknown, PlanoRamal>();
   const hijos = new Map<string, PlanoRamal[]>();
   const orden = new Map<PlanoRamal, number>();
+  const bboxes = new Map<PlanoRamal, [number, number, number, number]>();
+  // Puntos sanitarios por celda de 0.5 (el codo reventilado consulta "¿hay punto san cerca?"
+  // por ramal y frame — antes el flatMap + Map se reconstruían en CADA render, pan/zoom incluido).
+  const puntosSan = new Map<string, number[][]>();
+  const ventRamales: PlanoRamal[] = [];
+  const sanRamales: PlanoRamal[] = [];
   let n = 0;
   for (const r of eng.ramales) {
     orden.set(r, n++);
     const pts = r.pts;
+    if (r.net === 'vent') ventRamales.push(r);
+    else if (r.net === 'san') sanRamales.push(r);
+    if (pts && pts.length >= 2) {
+      let minx = Infinity,
+        miny = Infinity,
+        maxx = -Infinity,
+        maxy = -Infinity;
+      for (const p of pts) {
+        if (p[0] < minx) minx = p[0];
+        if (p[0] > maxx) maxx = p[0];
+        if (p[1] < miny) miny = p[1];
+        if (p[1] > maxy) maxy = p[1];
+      }
+      bboxes.set(r, [minx, miny, maxx, maxy]);
+    }
     if (!pts) continue;
+    if (r.net === 'san') {
+      for (const p of pts) {
+        const k = clave(Math.floor(p[0] / CELDA_PUNTOS_SAN), Math.floor(p[1] / CELDA_PUNTOS_SAN));
+        const arr = puntosSan.get(k);
+        if (arr) arr.push(p);
+        else puntosSan.set(k, [p]);
+      }
+    }
     porPts.set(pts, r);
     if (r.padre) {
       const lista = hijos.get(r.padre);
@@ -146,11 +187,30 @@ function construir(eng: IPlanoEngineCore, firma: number): IndiceFrame {
       });
     }
   }
+  const bajantesSan = eng.bajantes.filter((b) => b.net === 'san');
   return {
     firma,
+    ventRamales,
+    sanRamales,
+    bajantesSan,
+    bboxDe: (r) => bboxes.get(r) ?? null,
     porPts: (pts) => porPts.get(pts),
     hijosDe: (padreId) => hijos.get(padreId) || [],
     orden: (r) => orden.get(r) ?? -1,
+    hayPuntoSan(x, y) {
+      const cx = Math.floor(x / CELDA_PUNTOS_SAN);
+      const cy = Math.floor(y / CELDA_PUNTOS_SAN);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const arr = puntosSan.get(clave(cx + dx, cy + dy));
+          if (!arr) continue;
+          for (const p of arr) {
+            if (Math.hypot(x - p[0], y - p[1]) < 0.5) return true;
+          }
+        }
+      }
+      return false;
+    },
     tocan(x, y) {
       const out: RefVertice[] = [];
       const cx0 = Math.floor(x / CELDA_V);

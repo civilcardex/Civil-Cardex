@@ -73,6 +73,7 @@ function bumpGasAccesorio(ramalId: string, acc: string, delta: number): void {
   }
 }
 
+/** Suma/resta un accesorio en el mapa hidráulico del tramo (HYDRO_DATA_STORAGE_KEY) y borra la fila si queda en cero. Ej: +1 codo45 en ac_RAC2_P1. */
 export function bumpHidroAccesorio(
   netId: string,
   acc: string,
@@ -157,6 +158,7 @@ export function setSingleAparatoCount(
   dispararPropagacion(netId);
 }
 
+/** Al cambiar el aparato de un extremo (p.ej. lavamanos→inodoro): resta el viejo y suma el nuevo en TODOS los planos donde viva el ramal, y refresca las tablas (emitAparatosClear). */
 export function syncExtremeAparatoToCounts(
   ramalId: string,
   oldApp: string,
@@ -182,6 +184,7 @@ export function syncExtremeAparatoToCounts(
   }
 }
 
+/** Mueve el conteo de un aparato de un tramo a otro (split/merge de ramales): −1 en el origen, +1 en el destino, misma red y piso. */
 export function moveAparatoCount(
   netId: string,
   fromId: string,
@@ -261,6 +264,7 @@ export function contarSifonesDe(ramal: unknown): number {
   return n;
 }
 
+/** Al cambiar un accesorio de extremo (codo, sifón…): aplica el delta en gas_accesorios (clave SIN planId — una sola vez aunque el ramal viva en varios pisos) y en el mapa hidráulico por piso. nSifonVivos corrige los sifones reales cuando el doc está desfasado. */
 export function syncExtremeAccessoryToHidroData(
   ramalId: string,
   _field: 'accesorioInicio' | 'accesorioFin',

@@ -1,20 +1,10 @@
 /** Claves compuestas del módulo: se construyen con las funciones de aquí y se parten con los parseadores (siempre cortando por el ÚLTIMO separador, porque los ids pueden traer guiones). */
 
-/** Familias de red que guardan conteos de aparatos: san (Sanitaria), ll (Lluvias), vent (Ventilacion), af (Agua Fria), ac (Agua Caliente), gas (Gas). */
-export type Fam = 'san' | 'll' | 'vent' | 'af' | 'ac' | 'gas';
-
-/** PlanId normalizado a string en el borde (los planos son bigint en BD, string en keys). */
-export type PlanId = string;
-
 /**
  * Número de un bajante/montante a partir de su id o code, sin importar el sufijo de piso.
- *
- * Por qué: había DOS criterios distintos para el mismo número. El orden de renumeración
- * usaba `replace(pfx,'')` ('BAN9-P1' -> 9) y el "menor número libre" usaba el regex del
- * FINAL del id ('BAN9-P1' -> 1, el 1 del piso). Con ids legacy con sufijo de piso, el
- * segundo veía el número del piso: creaba 'BAN2' cuando ya había 'BAN2-P1' y el motor
- * acababa con DOS bajantes de id 'BAN2' (que el guardado fusionaba, perdiendo geometría).
- *
+ * Unifica los DOS criterios que había (replace del prefijo vs regex del final): con
+ * 'BAN9-P1' el regex del final leía el 1 del piso y creaba 'BAN2' duplicando 'BAN2-P1'.
+ * Ej: numDeBajante('BAN9-P1', 'BAN') → 9.
  * @param idOrCode - id o code del bajante ('BAN9-P1', 'BAN9', 'M1_af').
  * @param pfx - prefijo de la familia ('BAN', 'MAC', 'M1'…).
  * @returns el número, o 0 si no se puede leer.

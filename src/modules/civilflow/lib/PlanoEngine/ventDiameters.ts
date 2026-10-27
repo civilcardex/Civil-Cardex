@@ -11,10 +11,11 @@ import { _midpoint } from './PlanoEngineDrawing.ts';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { pointToSegmentDist } from './HitTester.ts';
 import { sectorDe } from '../../utils/formatUtils.ts';
-import { indicesDeMotor } from './indicesMotor';
+import { indicesDeMotor } from './engineIndices';
 
 /** Frena los cambios de diámetro en ventilación (vent) que se salgan de los límites de la norma
- *  (tol 2.0 px): false = no se permite el cambio. */
+ *  (tol 2.0 px): false = no se permite el cambio. Ej: bajar el bajante vent a 2" cuando su
+ *  ramal vent conectado es de 3" → alerta "Diámetro no válido" y el campo se revierte. */
 export function checkVentDiameterLimits(
   engine: IPlanoEngineCore,
   el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | PlanoDimension | PlanoGuideLine,
@@ -145,7 +146,8 @@ export function checkVentDiameterLimits(
 // mismo san bajante destino toman ese mismo diámetro. Esto garantiza estado
 // consistente: todos los vents de un mismo san tienen el mismo diámetro.
 /** Todos los ventiladores de una misma tubería sanitaria deben tener el MISMO diámetro: cuando
- *  cambia uno, los demás copian el nuevo (así el resumen no queda con medidas contradictorias). */
+ *  cambia uno, los demás copian el nuevo (así el resumen no queda con medidas contradictorias).
+ *  Ej: dos bajantes vent descargan en BAN1 (san); cambio una a 3" → la otra pasa a 3". */
 export function syncVentBajanteDiameters(
   engine: IPlanoEngineCore,
   el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | PlanoDimension | PlanoGuideLine,

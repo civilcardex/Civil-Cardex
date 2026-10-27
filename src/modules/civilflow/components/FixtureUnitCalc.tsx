@@ -6,18 +6,8 @@ import { useApparatus } from '../context/ApparatusContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { APARATOS_DEF, SAN_UC_IDS, pisoCorto } from '../constants';
 import { buildSanConnectivity } from '../utils/sanitaryRows.ts';
-const FixtureUnitCalc_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
 
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 /** Todos los tramos que cuelgan de una clave (hijos, nietos…), recorridos uno por uno con
  *  una pila; la lista de visitados corta los ciclos cuando dos tramos comparten destino. */
 function descendientesDe(fullChildrenMap: Record<string, string[]>, start: string): string[] {
@@ -154,7 +144,7 @@ function CalculoUD() {
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
             <table ref={tablaRef} className="tbl" style={{ minWidth: 900 }}>
-              <caption style={FixtureUnitCalc_S1}>Cálculo de unidades de descarga</caption>
+              <caption style={SR_ONLY_STYLE}>Cálculo de unidades de descarga</caption>
               <thead>
                 <tr>
                   <th

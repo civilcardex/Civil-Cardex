@@ -18,6 +18,7 @@ function estadoSelloVacio(): SelloCanalEstado {
   return { autoBaj: [], vetoBaj: [], autoRam: [], vetoRam: [] };
 }
 
+/** Lee la memoria del sello del piso (sin datos o storage corrupto → estado vacío). */
 export function leerEstadoSello(planId: string | number | null | undefined): SelloCanalEstado {
   const vacio = estadoSelloVacio();
   try {
@@ -37,6 +38,7 @@ export function leerEstadoSello(planId: string | number | null | undefined): Sel
   }
 }
 
+/** Persiste la memoria del sello (idempotente: si el JSON no cambió, no escribe). */
 export function guardarEstadoSello(
   planId: string | number | null | undefined,
   estado: SelloCanalEstado,
@@ -51,6 +53,9 @@ export function guardarEstadoSello(
   }
 }
 
+/** El usuario DESMARCO una conexión canal↔bajante/ramal: queda vetada (no se vuelve a
+ *  sellar sola) y se saca de la lista de automáticas. Ej: desmarcar el checkbox del BAN2
+ *  en el canal CLL1 graba 'BAN2|CLL1' en vetoBaj. */
 export function vetarSelloCanal(
   planId: string | number | null | undefined,
   tipo: 'baj' | 'ram',
@@ -73,6 +78,8 @@ export function vetarSelloCanal(
   }
 }
 
+/** El usuario RE-MARCO una conexión vetada: sale de la lista de vetos y vuelve a poder
+ *  sellarse sola en la próxima pasada. */
 export function levantarVetoSelloCanal(
   planId: string | number | null | undefined,
   tipo: 'baj' | 'ram',
@@ -90,8 +97,8 @@ export function levantarVetoSelloCanal(
   }
 }
 
-/** Cuánto puede sobrar (en pixeles de plano) para que un ramal siga contando como conectado al
- *  canal o al bajante: 4 px al canal, 2 px al bajante. */
+/** Tolerancias (px de plano) para que un ramal cuente como conectado: al CANAL puede sobrar
+ *  4 px (el OBB del canal es ancho); al BAJANTE solo 2 (su círculo es chico). */
 export const CANAL_PUENTE_PAD = 4;
 export const BAJANTE_PUENTE_TOL = 2;
 

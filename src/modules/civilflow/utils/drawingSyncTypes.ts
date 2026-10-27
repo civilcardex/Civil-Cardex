@@ -1,6 +1,7 @@
 // Tipos del sync de dibujo a BD/localStorage (elemento crudo, doc completo, input de plan).
 // Extraídos verbatim de drawingSync (des-monolitización 2026-10-06).
 
+/** Elemento crudo del dibujo tal como vive en el doc de trazos (id, red, tipo y geometría mínima): la unidad del sync caché↔BD. */
 export interface RawElement {
   id: string;
   net: string;
@@ -86,18 +87,21 @@ export interface SyncPlanInput {
   status?: string;
 }
 
+/** Doc completo de trazos de un piso: ramales + bajantes (+ resto de colecciones libres). Es lo que save/load traga. */
 export interface TraceData {
   ramales?: RawElement[];
   bajantes?: RawElement[];
   [key: string]: unknown;
 }
 
+/** Fila hidráulica de un tramo: conteo de accesorios, longitud horizontal (Lh, m) y número de salidas — alimenta las tablas de af/ac. */
 export interface HidroDataEntry {
   accesorios: Record<string, number>;
   Lh: number;
   nSalidas: number;
 }
 
+/** Ramal listo para BD: geometría, diámetros, punteros entre pisos (descargaEnId) y claves internas (_aparatosKey). */
 export interface RamalSyncObj {
   id: string;
   label: string;
@@ -123,6 +127,7 @@ export interface RamalSyncObj {
   yeeDobleAt?: number[][];
 }
 
+/** Snapshot global del proyecto para sync: docs por plano + conteos de aparatos + datos hidráulicos, con marca de tiempo (el mayor-ts arbitra). */
 export interface SyncDataResult {
   planes: Record<string, unknown>;
   aparatosByTramo?: Record<string, unknown>;

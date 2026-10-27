@@ -66,6 +66,9 @@ function maxAccessoryDiam(ramal: {
   return max;
 }
 
+/** Localiza el bajante CONTADOR de una red en los planos confirmados. Con objetivo (planId+id)
+ *  resuelve SOLO esa fila — sin él ganaba el primer contador y con 2+ el diámetro se escribía
+ *  en el piso equivocado. */
 export function findContadorBajante(
   plans: SyncPlanInput[],
   net: string,
@@ -100,8 +103,9 @@ export function findContadorBajante(
 
 // Tipo de resultado para que el caller de la tabla de diseño (GasDesign, WaterNetworkDesign,
 // etc.) pueda mostrar el AlertDialog de la app en vez de un rechazo silencioso cuando el cambio
-// viola una restricción. La única vigente: accesorio más ancho que el tubo (el bloqueo
-// salida/entrada de redes de presión se retiró — los vecinos convergen al mayor).
+/** Resultado de escribir un diámetro en el dibujo: ok, o bloqueado porque algún accesorio
+ *  adjunto es más ancho que el tubo nuevo (única restricción vigente — el bloqueo
+ *  salida/entrada de redes de presión se retiró: los vecinos convergen al mayor). */
 export interface WriteDiametroResult {
   ok: boolean;
   reason?: 'accessory-larger';
@@ -110,6 +114,9 @@ export interface WriteDiametroResult {
   attemptedDiam?: string;
 }
 
+/** Escribe el diámetro nuevo en el doc del piso dueño del ramal (caché + BD) y dispara la
+ *  sincronía de tablas. Bloquea si un accesorio adjunto queda más ancho que el tubo.
+ *  ramalKey formato "id-planId" (parseBajanteKey). */
 export function writeDiametroToDrawing(
   ramalKey: string,
   net: string,
@@ -306,6 +313,7 @@ export function writeContadorDiamToDrawing(
   if (SAN_FAMILIES.has(net)) writeSanDrawingSync(plans);
 }
 
+/** Escribe el diámetro de acometida (acoDiam) en el contador de la red y sincroniza tablas. */
 export function writeAcoDiamToDrawing(val: string, plans: SyncPlanInput[], net: string): void {
   if (!plans) return;
   const found = findContadorBajante(plans, net);

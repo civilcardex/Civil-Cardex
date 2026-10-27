@@ -11,13 +11,13 @@ import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniViewerNetwork';
 // Visor 3D "Red contra incendio" — port del HTML Isometrico_RCI_Open_Code_v19. Modelo REAL
 // de la red (tubería por pisos + abrazaderas SPLIT + losas translúcidas). Lupa con toggle
 // (como el HTML): renderer secundario que sigue al cursor, rueda ×2–×12. Etiquetas SIEMPRE
-// ON (orig. usuario, sin botón): foco en el componente del desplegable, sin selección la #1.
+// ON (orig. usuario, sin botón): foco en el componente del desplegable; sin selección,
+// SIN etiquetas (paridad con rci3d — el fallback "la #1" del HTML se retiró).
 // ISO y ⟳ van a la pose ISO_DEFAULT calibrada (HTML VIEWS.iso / rst). Selección con detalle
 // abre el mini visor y el canvas se corre a la derecha (HTML syncLayoutForMini).
 
 // Dibuja las etiquetas de la RED — SIEMPRE ON (orig. usuario, sin toggle): con componente
-// seleccionado dibuja SOLO sus etiquetas (modo foco, HTML §1215); sin selección, la
-// principal (ref 1). Occlusion-cast por etiqueta en cada frame pintado (el HTML cachéa cada
+// seleccionado dibuja SOLO sus etiquetas (modo foco, HTML §1215); sin selección, nada. Occlusion-cast por etiqueta en cada frame pintado (el HTML cachéa cada
 // 4 frames; con foco son ≤4 etiquetas — simplificación deliberada).
 function dibujarEtiquetasRed(
   api: Rci3DApi,
@@ -35,6 +35,9 @@ function dibujarEtiquetasRed(
     lblCanvas.height = H;
   }
   ctx.clearRect(0, 0, W, H);
+  // NINGUNO seleccionado: sin etiquetas (paridad con rci3d/labelsRci). El fallback porteado
+  // del HTML ("sin selección la #1") mostraba hasta 4 círculos "1" — pedido: no mostrar nada.
+  if (seleccionado == null) return;
   const cam = api.orthoOn ? api.camO : api.camP;
   const projCam = cam.clone();
   if (!api.orthoOn) {
@@ -69,9 +72,8 @@ function dibujarEtiquetasRed(
   const entries = Object.entries(LABEL_POSITIONS) as Array<[string, RciRedLabel]>;
   for (const [idStr, lbl] of entries) {
     const refId = lbl.ref ?? (Number.isNaN(Number(idStr)) ? idStr : parseInt(idStr, 10));
-    // Foco (HTML §1215): seleccionado = solo sus etiquetas; sin selección, la principal.
-    if (seleccionado != null && String(refId) !== String(seleccionado)) continue;
-    if (seleccionado == null && refId !== 1) continue;
+    // Foco (HTML §1215): solo las etiquetas del componente seleccionado.
+    if (String(refId) !== String(seleccionado)) continue;
 
     const v = new THREE.Vector3(lbl.pos[0], lbl.pos[1], lbl.pos[2]).project(projCam as never);
     const x = (v.x * 0.5 + 0.5) * W;
@@ -79,7 +81,7 @@ function dibujarEtiquetasRed(
     if (v.z >= 1 || x < 10 || x > W - 10 || y < 10 || y > H - 10) continue;
     if (checkOcclusion({ x: lbl.pos[0], y: lbl.pos[1], z: lbl.pos[2] })) continue;
 
-    const activo = seleccionado != null && String(refId) === String(seleccionado);
+    const activo = true; // con foco: toda etiqueta dibujada es del seleccionado
     dibujarLabelRed(ctx, x, y, refId, lbl, activo);
   }
 }
@@ -207,7 +209,7 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
 
   return (
     <div
-      data-tour="iso-panel"
+      data-tour="iso-panel iso-viewer-sidebar"
       style={{
         display: 'flex',
         flex: 1,

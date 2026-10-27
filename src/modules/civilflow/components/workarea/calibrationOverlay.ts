@@ -51,9 +51,8 @@ export interface EstadoOverlay {
 }
 
 /**
- * Pinta el overlay de calibración sobre la lámina. Ej: origen marcado -> cruz naranja y etiqueta (0,0).
- * @param ctx - contexto 2D con la transformación de devicePixelRatio aplicada.
- * @param st - estado de la calibración.
+ * Pinta el overlay de calibración sobre la lámina (ctx ya con transform dpr). Ej: origen
+ * marcado -> cruz naranja y etiqueta (0,0).
  */
 export function dibujaOverlayCalibracion(ctx: CanvasRenderingContext2D, st: EstadoOverlay): void {
   const {

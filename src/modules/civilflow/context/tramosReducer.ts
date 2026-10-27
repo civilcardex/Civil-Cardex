@@ -1,3 +1,4 @@
+/** Un tramo (pedazo de tubería) de una red tal como lo muestran las tablas: extremos (desde/hasta), diámetro, aparatos que sirve y resultados del cálculo. Ej: un ramal con qLps (Q (Caudal) en litros por segundo) y velCumple tras el diseño. */
 export interface Tramo {
   id: string;
   _key?: string;
@@ -67,6 +68,7 @@ export interface Tramo {
   _aparatosKey?: string;
 }
 
+/** Los 4 juegos de tramos de la sesión, uno por red: san (Sanitaria), af (Agua Fría), ac (Agua Caliente) y ll (Lluvias). */
 export type TramosState = {
   tramosSan: Tramo[];
   tramosAf: Tramo[];
@@ -86,12 +88,14 @@ function idMatch(t: Tramo, id: string): boolean {
   return t.id === id;
 }
 
+/** Acciones que editan los tramos: reemplazar la lista de una red (SET_TRAMOS), borrar uno (DEL_TRAMO), cambiarle un campo (UPD_TRAMO, ej. field 'diametro') o sumarle un accesorio (UPD_TRAMO_ACC). */
 export type TramosAction =
   | { type: 'SET_TRAMOS'; net: string; payload: Tramo[] }
   | { type: 'DEL_TRAMO'; net: string; id: string }
   | { type: 'UPD_TRAMO'; net: string; id: string; field: string; val: string | number | boolean }
   | { type: 'UPD_TRAMO_ACC'; net: string; id: string; accId: string; val: number };
 
+/** Aplica una acción devolviendo un estado NUEVO sin mutar el anterior (como exige React). Ej: UPD_TRAMO con field 'diametro' y val '4"' cambia solo ese tramo, en la red que dice la acción. */
 export function tramosReducer(state: TramosState, action: TramosAction): TramosState {
   switch (action.type) {
     case 'SET_TRAMOS': {

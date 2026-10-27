@@ -50,7 +50,7 @@ export interface BajanteVentilacionResult {
   cumple: boolean;
 }
 
-/** Pulgadas del bajante vent (Ventilacion) (diamPulg vivo, si no parsea dNominal). */
+/** Pulgadas del bajante vent (Ventilacion) (diamPulg vivo, si no parsea dNominal). Ej: {diamPulg: 3} → 3; {dNominal: '4"'} → 4; vacío → 0. */
 export function ventBajPulg(b: { diamPulg?: unknown; dNominal?: unknown }): number {
   const n = Number(b.diamPulg);
   if (Number.isFinite(n) && n > 0) return n;

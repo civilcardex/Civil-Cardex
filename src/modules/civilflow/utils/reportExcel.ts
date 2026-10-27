@@ -7,6 +7,7 @@ import {
 } from './reportExportShared.ts';
 import { loadXlsx } from '../../../utils/exportLoaders.ts';
 import { sanaCelda, sanaTablas } from './sanReport.ts';
+import { sanitizarCelda } from '../../civilmanager/excelSafe.ts';
 interface XlsxCellStyle {
   font?: { bold?: boolean; sz?: number; color?: { rgb: string }; italic?: boolean };
   fill?: { fgColor: { rgb: string } };
@@ -65,7 +66,9 @@ function buildRedSheet(
     maxCols = Math.max(maxCols, nCols);
 
     const titleRow = aoa.length;
-    aoa.push([table.title, ...Array(Math.max(0, nCols - 1)).fill('')]);
+    // sanitizarCelda: título/etiquetas de tabla llevan nombre de proyecto/red (input del
+    // usuario) — un `=WEBSERVICE(...)` se ejecutaba al abrir el Excel (CWE-1236).
+    aoa.push([sanitizarCelda(table.title), ...Array(Math.max(0, nCols - 1)).fill('')]);
     if (nCols > 1) merges.push({ s: { r: titleRow, c: 0 }, e: { r: titleRow, c: nCols - 1 } });
     styleCells.push({ ref: encodeCell({ r: titleRow, c: 0 }), style: xlsxTitleStyle() });
 
@@ -91,22 +94,22 @@ function buildRedSheet(
           leafIdx += g.span;
         }
       }
-      aoa.push(row1);
-      aoa.push(row2);
+      aoa.push(row1.map(sanitizarCelda));
+      aoa.push(row2.map(sanitizarCelda));
       for (let c = 0; c < nCols; c++) {
         styleCells.push({ ref: encodeCell({ r: row1Idx, c }), style: xlsxHeaderStyle() });
         styleCells.push({ ref: encodeCell({ r: row2Idx, c }), style: xlsxHeaderStyle() });
       }
     } else {
       const headerRowIdx = aoa.length;
-      aoa.push([...table.headers]);
+      aoa.push(table.headers.map(sanitizarCelda));
       for (let c = 0; c < nCols; c++)
         styleCells.push({ ref: encodeCell({ r: headerRowIdx, c }), style: xlsxHeaderStyle() });
     }
 
     for (const row of table.rows) {
       const bodyRowIdx = aoa.length;
-      aoa.push(row);
+      aoa.push(row.map(sanitizarCelda));
       for (let c = 0; c < row.length; c++)
         styleCells.push({ ref: encodeCell({ r: bodyRowIdx, c }), style: xlsxBodyStyle() });
     }

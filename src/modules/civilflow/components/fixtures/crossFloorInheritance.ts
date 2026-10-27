@@ -69,14 +69,19 @@ export function heredarEntrePisos(
         const liveAgg = srcAgg.agg;
         const liveHydro = srcAgg.hydroAgg;
         // Origen VACÍO: se distingue "la verdad es cero" (el usuario borró los aparatos del
-        // superior — su clave propia existe en el disco, aunque sea {}) de "no hay verdad"
-        // (claves nunca escritas o comidas por el GC). Solo el primero limpia el libro del
-        // destino; el segundo conserva el guard viejo — escribir libro vacío restaba a 0 las
-        // UDs heredadas del destino.
+        // superior) de "no hay verdad" (claves nunca escritas o comidas por el GC). Solo el
+        // primero limpia el libro del destino; el segundo conserva el guard viejo — escribir
+        // libro vacío restaba a 0 las UDs heredadas del destino. Evidencia de vida: la clave
+        // propia del disco (que writing.ts BORRA al vaciarse) o la FOTO del ENLACE (debajo,
+        // snapBaj.uc[lk] — lk es per-upper; dos montantes sobre el mismo bajante inferior no
+        // se comparten evidencia). Limitación aceptada: enlaces creados ANTES de este sello
+        // no limpian el libro al vaciarse hasta que un pase con aparatos re-estampe el lk.
         const clavePropiaOrigen = `${propNet}_${upperBajId}_${loadedPid}`;
-        const origenPresente = disk[clavePropiaOrigen] != null;
-        if (Object.keys(liveAgg).length === 0 && !origenPresente) continue;
+        const snapKey = `${ldPlanId}|${lowerBajId}`;
         const lk = `${propNet}_${ldesvioIdFor(upperBajId)}_${ldPlanId}`;
+        const origenPresente =
+          disk[clavePropiaOrigen] != null || propioSnap[snapKey]?.uc?.[lk] != null;
+        if (Object.keys(liveAgg).length === 0 && !origenPresente) continue;
         if (syncMirrorKey(disk, lk, liveAgg, true)) p.dirty = true;
         const tgt = loadFromStorage<{
           bajantes?: Array<{
@@ -107,7 +112,6 @@ export function heredarEntrePisos(
         // diámetro de verdad se estampa en el parche FRESCO de abajo (escribirlo aquí se
         // perdía con el snapshot — el doc persistido se re-lee del storage).
         if (tBaj && adoptarDiametroDelSuperior(tBaj, baj)) tgtChanged = true;
-        const snapKey = `${ldPlanId}|${lowerBajId}`;
         const snapBaj = propioSnap[snapKey] || { uc: {}, hidro: {} };
         propioSnap[snapKey] = snapBaj;
         const ucAplicadoNuevo: Record<string, Record<string, number>> = {};
@@ -181,6 +185,13 @@ export function heredarEntrePisos(
         // El libro cubre también la clave del Ldesvio (el mismo agregado): sin esta entrada,
         // la desasociación no sabría qué restar de ella y sus UDs quedarían colgadas.
         ucAplicadoNuevo[lk] = { ...liveAgg };
+        // Sello de vida del ENLACE (per-upper): la foto retiene el último agregado de ESTE
+        // superior ({} tras un vaciado legítimo) — es la evidencia que el guard del siguiente
+        // pase consulta en vez del snapKey compartido del bajante inferior.
+        if (stableStringify(snapBaj.uc[lk] ?? null) !== stableStringify({ ...liveAgg })) {
+          snapBaj.uc[lk] = { ...liveAgg };
+          p.snapDirty = true;
+        }
         if (tBaj && JSON.stringify(tBaj.ucAplicado || {}) !== JSON.stringify(ucAplicadoNuevo)) {
           tBaj.ucAplicado = ucAplicadoNuevo;
           tgtChanged = true;

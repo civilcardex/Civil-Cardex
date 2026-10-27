@@ -1,26 +1,30 @@
 import { sanitizeMojibake } from '../utils/formatUtils.ts';
 
+/** Etiqueta completa del piso para paneles y alertas. Ej: -1 → "Sótano 1", 2 → "Piso 2", 99 → "Cubierta". */
 export function pisoLbl(n: number) {
   if (n < 0) return `Sótano ${Math.abs(n)}`;
   if (n === 99) return `Cubierta`;
   return `Piso ${n}`;
 }
 
+/** Etiqueta corta del piso para chips y claves compuestas. Ej: -1 → "S1", 2 → "P2", 99 → "C". */
 export function pisoCorto(n: number) {
   if (n < 0) return `S${Math.abs(n)}`;
   if (n === 99) return `C`;
   return `P${n}`;
 }
 
+/** pisoCorto tolerante: acepta número o string ("2", "P2") y devuelve "" si no parsea —
+ *  para datos de fila que pueden venir vacíos. Ej: "2" → "P2", "x" → "". */
 export function pisoCortoLoose(v: unknown): string {
   const n = typeof v === 'number' ? v : parseInt(String(v), 10);
   if (isNaN(n)) return '';
   return pisoCorto(n);
 }
 
-// Convierte el valor de piso de una tabla a su etiqueta corta ("P1", "S2", "C"): acepta un
-// número ("2"), el nombre completo ("Piso 2", "Sótano 2") o "Cubierta", y lo resuelve contra la
-// lista de pisos del proyecto para no inventar etiquetas de pisos inexistentes.
+/** Convierte el valor de piso de una tabla a su etiqueta corta ("P1", "S2", "C"): acepta un
+ *  número ("2"), el nombre completo ("Piso 2", "Sótano 2") o "Cubierta", y lo resuelve contra la
+ *  lista de pisos del proyecto para no inventar etiquetas de pisos inexistentes. */
 export function fmtPiso(val: string, pisos: { n: number }[]): string {
   if (!val) return '—';
   const num = parseInt(val);
@@ -33,10 +37,10 @@ export function fmtPiso(val: string, pisos: { n: number }[]): string {
   return val;
 }
 
-// La etiqueta con la que un bajante realmente se dibuja en el canvas (renderBajantes.ts) — código
-// sin '#' y en mayúsculas, más el sufijo corto de piso ("BAN1-P1", "MAF1-S2", "BALL1-C"). La
-// reutilizan las alertas de asociación entre pisos para citar la etiqueta visual, no el id/código
-// pelado.
+/** La etiqueta con la que un bajante realmente se dibuja en el canvas (renderBajantes.ts) — código
+ *  sin '#' y en mayúsculas, más el sufijo corto de piso ("BAN1-P1", "MAF1-S2", "BALL1-C"). La
+ *  reutilizan las alertas de asociación entre pisos para citar la etiqueta visual, no el id/código
+ *  pelado. */
 export function buildBajanteVisualLabel(
   b: { code?: string | null; id?: string | null } | null | undefined,
   pisoCortoStr?: string,
@@ -47,12 +51,7 @@ export function buildBajanteVisualLabel(
   return `${id}${pisoCortoStr ? '-' + pisoCortoStr : ''}`;
 }
 
-// Etiqueta corta de material usada SOLO en las etiquetas de dibujo del canvas
-// (renderRamales/renderBajantes). Tablas, memorias y catálogos conservan el nombre completo —
-// este mapa es una abreviación puramente de render. La comparación ignora mayúsculas/acentos y
-// también cubre las formas cortas que guardan los propios catálogos de la app (p. ej. "Acero HG",
-// "PE al PE"), de modo que nombres largos específicos del proyecto y los nombres cortos de fábrica
-// colapsan a la misma etiqueta de dibujo.
+/** Abreviaturas de material para el dibujo del canvas (ver matDrawingLabel). */
 const MAT_DRAWING_ABBREV: Array<[RegExp, string]> = [
   [/acero\s*galvanizado/i, 'H.G.'],
   [/acero\s*hg/i, 'H.G.'],
@@ -65,6 +64,13 @@ const MAT_DRAWING_ABBREV: Array<[RegExp, string]> = [
   [/cobre\s*rigido|rígido/i, 'CURIG'],
 ];
 
+/** Etiqueta corta de material usada SOLO en las etiquetas de dibujo del canvas
+ *  (renderRamales/renderBajantes). Tablas, memorias y catálogos conservan el nombre completo —
+ *  este mapa es una abreviación puramente de render. La comparación ignora mayúsculas/acentos y
+ *  también cubre las formas cortas que guardan los propios catálogos de la app (p. ej. "Acero HG",
+ *  "PE al PE"), de modo que nombres largos específicos del proyecto y los nombres cortos de fábrica
+ *  colapsan a la misma etiqueta de dibujo.
+ *  @param material nombre del material (de catálogo o libre); @returns abreviatura de dibujo o el nombre saneado. */
 export function matDrawingLabel(material?: string | null): string {
   if (!material) return '';
   const norm = material
@@ -90,6 +96,12 @@ const MAT_FULLNAME: Array<[RegExp, string]> = [
   [/cobre\s*rigido|rígido/i, 'Cobre rígido'],
 ];
 
+/** Nombre completo para el dropdown de material en el menú contextual del ramal — los valores
+ *  guardados son las formas cortas de catálogo ("Acero HG", "PE al PE", "A.C.", ...) pero el
+ *  usuario elige entre los nombres completos ("Acero galvanizado", "Polietileno", "Acero al
+ *  carbono", ...). El mapeo de abreviaturas (matDrawingLabel) se aplica solo a la etiqueta de
+ *  dibujo del canvas, nunca aquí.
+ *  @param material forma corta guardada; @returns nombre completo o el mismo valor saneado. */
 export function matFullName(material?: string | null): string {
   if (!material) return '';
   const norm = material

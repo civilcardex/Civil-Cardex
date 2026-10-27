@@ -16,6 +16,8 @@ import type { YeeJunction } from './yees';
 /**
  * Bloque 14: accesorios de bajante (codo 90º del bajante + Y simple/doble) y el bushing por
  * especificación (un ramal menor que conecta a un bajante de mayor diámetro).
+ * Ej: un ramal de 2" que llega a un bajante de 4" → Y simple 2"×4" + codo 90° de 4"
+ * (si no hay codo manual en el extremo) + 1 bushing "4_2".
  */
 export function calcularBushing(
   net: 'san' | 'll' | 'af' | 'ac' | 'gas',

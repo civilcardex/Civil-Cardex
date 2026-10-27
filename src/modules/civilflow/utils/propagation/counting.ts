@@ -1,6 +1,8 @@
 /** Tipos y helpers puros de la propagación de presión (sin I/O): los compares y las aristas los comparten todas las fases. */
+/** Conteo de aparatos por sigla. Ej: {lav: 2, ino: 1} = 2 lavamanos + 1 inodoro (UC, Unidades de Consumo). */
 export type Cnt = Record<string, number>;
 
+/** Ramal crudo del storage (sin clave de piso): la foto mínima que la propagación lee. */
 export interface RawRam {
   id: string;
   net: string;
@@ -19,6 +21,7 @@ export interface RawRam {
   aparatoFin?: string;
 }
 
+/** Bajante/montante crudo del storage: ids de asociación y libro ucAplicado (UDs que le aplicaron). */
 export interface RawBaj {
   id: string;
   code?: string;
@@ -57,6 +60,7 @@ export interface DownTrib {
   finConn: 'cola' | 'cabeza';
 }
 
+/** Suma dos conteos por aparato. Ej: {lav:2} + {lav:1,ino:1} → {lav:3,ino:1}. */
 export const sumaCnt = (a: Cnt, b: Cnt): Cnt => {
   const out: Cnt = { ...a };
   for (const k of Object.keys(b)) out[k] = (out[k] || 0) + (b[k] || 0);
@@ -71,6 +75,7 @@ export const mezclarMax = (a: Cnt, b: Cnt): Cnt => {
   return out;
 };
 
+/** ¿Conteo sin nada? (sin claves o todas en 0). */
 export const cntVacio = (c: Cnt): boolean => Object.values(c).every((v) => !v);
 
 /** Quita del mapa los aparatos que quedaron en 0 (al restar el libro previo sobran ceros). */
@@ -80,6 +85,7 @@ export const limpiar = (c: Cnt): Cnt => {
   return out;
 };
 
+/** ¿Mismo contenido efectivo (ignora ceros)? — idempotencia de la escritura. */
 export const cntIgual = (a: Cnt, b: Cnt): boolean => {
   const ka = Object.keys(a).filter((k) => a[k] > 0);
   const kb = Object.keys(b).filter((k) => b[k] > 0);

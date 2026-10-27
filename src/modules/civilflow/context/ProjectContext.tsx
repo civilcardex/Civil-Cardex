@@ -15,6 +15,7 @@ import { saveProyectoCoreData, loadProyectoData } from '../services/projectDataS
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect.ts';
 import type { Piso } from '../lib/shared/projectTypes.ts';
 
+/** Datos generales del proyecto (hoja 1 del cuaderno): identificación, materiales por red y parámetros de cálculo. */
 export interface Proyecto {
   nombre: string;
   dir: string;
@@ -41,11 +42,13 @@ export interface Proyecto {
   pendienteSan: number;
 }
 
+/** Fila del catálogo de materiales de una red: id estable + texto mostrado. Ej: { id: 'af0', val: 'PVC-PR' } (los ids son red + posición, af0 = primer material de af). */
 export interface MaterialItem {
   id: string;
   val: string;
 }
 
+/** Fila de la tabla de profundidades: red, su color en la tabla (col, ej. 'var(--san)'), profundidad en m (ej. −0.7 bajo losa), norma (RAS (Reglamento de Agua y Saneamiento) §D.4.1) y nota. */
 export interface ProfItem {
   id: string;
   red: string;
@@ -55,6 +58,7 @@ export interface ProfItem {
   nota: string;
 }
 
+/** Fila de la tabla de criterios de diseño: red, parámetro con valor y unidades, norma y artículo que lo exige, y si cumple. Ej: velocidad máxima en af según RAS (Reglamento de Agua y Saneamiento). */
 export interface CritItem {
   id: string;
   red: string;
@@ -67,6 +71,7 @@ export interface CritItem {
   nota: string;
 }
 
+/** Valores de arranque de un proyecto nuevo (materiales PVC-PR, altitud 959, pendiente sanitaria 0.02…). recoverProyecto los mezcla sobre datos viejos. */
 export const PROY_DEFAULTS: Proyecto = {
   nombre: '',
   dir: '',
@@ -130,6 +135,7 @@ interface ProjectContextValue {
   resumeCloudSync: () => void;
 }
 
+/** Contexto React que comparte el estado del proyecto con toda el área de trabajo: lo crea ProjectProvider y se lee con useProject (o los atajos de abajo). */
 export const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 /** Provee el estado de proyecto (pisos/materiales/profundidades/criterios). */
@@ -343,7 +349,7 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 
-/** Lee/escribe el estado agregado del proyecto. Falla fuera del provider. */
+/** Hook principal del contexto del proyecto: pisos, materiales, profundidades, criterios y datos generales. Lanza si no hay ProjectProvider encima. */
 export function useProject() {
   const ctx = useContext(ProjectContext);
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
@@ -356,6 +362,7 @@ export const usePisos = () => {
   return { pisos, setPisos };
 };
 
+/** Solo el bloque de identificación del proyecto (nombre, ciudad, uso, materiales por red…). */
 export const useProyecto = () => {
   const { proy, setP, setProyAll, setProy } = useProject();
   return { proy, setP, setProyAll, setProy };

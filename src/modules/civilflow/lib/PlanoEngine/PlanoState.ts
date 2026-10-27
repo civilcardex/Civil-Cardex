@@ -1,147 +1,24 @@
 import type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
 export type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
 
-/** Catálogo de redes que el motor sabe dibujar (NETS): cada una con su color, el prefijo de sus
- *  etiquetas (af (Agua Fría) -> RAF1, san (Sanitaria) -> RS1) y el tipo de tubería vertical que
- *  usa (montante el que SUBE, bajante el que BAJA). Para los nombres/iconos que se muestran en la
- *  interfaz, usar uiConfig.REDES en su lugar. */
-export const NETS = [
-  {
-    id: 'af',
-    lbl: 'RAF',
-    col: '#4D8FF7',
-    ucType: 'uc',
-    bmType: 'montante',
-    bmPfx: 'MAF',
-    bmIco: '⬆',
-    emoji: '💧',
-    name: 'Agua fría',
-  },
-  {
-    id: 'ac',
-    lbl: 'RAC',
-    col: '#F04545',
-    ucType: 'uc',
-    bmType: 'montante',
-    bmPfx: 'MAC',
-    bmIco: '⬆',
-    emoji: '🔥',
-    name: 'Agua caliente',
-  },
-  {
-    id: 'san',
-    lbl: 'RS',
-    col: '#F5A623',
-    ucType: 'ud',
-    bmType: 'bajante',
-    bmPfx: 'BAN',
-    bmIco: '⬇',
-    emoji: '🚽',
-    name: 'Sanitaria',
-  },
-  {
-    id: 'vent',
-    lbl: 'REV',
-    col: '#808080',
-    ucType: null,
-    bmType: 'bajante',
-    bmPfx: 'BREV',
-    bmIco: '⬇',
-    emoji: '🌬',
-    name: 'Ventilación',
-  },
-  {
-    id: 'll',
-    lbl: 'RALL',
-    col: '#8B5CF6',
-    ucType: 'ud',
-    bmType: 'bajante',
-    bmPfx: 'BALL',
-    bmIco: '⬇',
-    emoji: '🌧',
-    name: 'Aguas lluvias',
-  },
-  {
-    id: 'recolectora',
-    lbl: 'RECOLL',
-    col: '#7C3AED',
-    ucType: null,
-    bmType: 'bajante',
-    bmPfx: 'RECOLL',
-    bmIco: '⬇',
-    emoji: '🏠',
-    name: 'Canal recolectora',
-  },
-  {
-    id: 'gas',
-    lbl: 'RG',
-    col: '#A855F7',
-    ucType: null,
-    bmType: 'montante',
-    bmPfx: 'MG',
-    bmIco: '⬆',
-    emoji: '⛽',
-    name: 'Gas',
-  },
-  {
-    id: 'rejillas',
-    lbl: 'REJ',
-    col: '#A855F7',
-    ucType: null,
-    bmType: 'montante',
-    bmPfx: 'REJ',
-    bmIco: '▦',
-    emoji: '🪟',
-    name: 'Rejillas de ventilación',
-  },
-  {
-    id: 'rci',
-    lbl: 'RRCI',
-    col: '#F87171',
-    ucType: null,
-    bmType: 'montante',
-    bmPfx: 'MRCI',
-    bmIco: '⬆',
-    emoji: '🔴',
-    name: 'Contra incendio',
-  },
-  {
-    id: 'rec',
-    lbl: 'RREC',
-    col: '#22D3EE',
-    ucType: null,
-    bmType: 'montante',
-    bmPfx: 'MREC',
-    bmIco: '⬆',
-    emoji: '🔄',
-    name: 'Recirculación',
-  },
-  {
-    id: 'bom',
-    lbl: 'RBOM',
-    col: '#8A9BB8',
-    ucType: null,
-    bmType: 'bajante',
-    bmPfx: 'BOM',
-    bmIco: '⬇',
-    emoji: '⬆️',
-    name: 'Bombeo',
-  },
-];
-
-/** Una red de tubería del catálogo (af, ac, san, ll, gas, vent, rci…): su código, el color con que
- *  se dibuja, sus nombres para los botones y el tipo de aparato que cuenta. */
-export interface PlanoNet {
-  id: string;
-  lbl: string;
-  col: string;
-  ucType: string | null;
-  bmType: string;
-  bmPfx: string;
-  bmIco: string;
-  emoji: string;
-  name: string;
-}
+// Catálogo de redes + numeración: extraídos a planoNets/planoNumbering (desmonotilización).
+// Re-exportados AQUÍ para que los ~60 consumidores y tests de PlanoState no cambien.
+export {
+  NETS,
+  checkActiveNet,
+  ensureActiveNet,
+  initNetCounts,
+  allocNetNumber,
+  netsSnapLinked,
+} from './planoNets.ts';
+export type { PlanoNet, PlanoNetCounts } from './planoNets.ts';
+export {
+  uniqRamalId,
+  allocTributaryNumber,
+  nextFreeRamalId,
+  relabelTribChain,
+  rootTributarioLabel,
+} from './planoNumbering.ts';
 
 /** Un rectángulo en píxeles de pantalla, con su esquina superior izquierda: sirve para medir
  *  cuerpos de tubería, cajas de etiqueta y textos (el PDF de fondo ya es una imagen). */
@@ -152,174 +29,7 @@ export interface CanvasBox {
   h: number;
 }
 
-/** Dice si una red (af = Agua Fría, san = Sanitaria, ll = Lluvias...) está activa en el proyecto.
- *  Si el usuario no definió conjunto, todas valen. Ej: proyecto con solo sanitarias →
- *  checkActiveNet(engine, 'af') es false. */
-export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
-  const activeNets = engine.activeNetworks as Set<string> | undefined;
-  return activeNets ? activeNets.has(netId) : true;
-}
-
-/** Cambia a la red si el proyecto la tiene activa; si no, avisa al usuario y aborta (true = no
- *  seguir). Ej: ensureActiveNet(engine, 'gas') en un proyecto sin gas → alerta "Red inactiva". */
-export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
-  if (netId === engine.activeNet) return false;
-  if (!checkActiveNet(engine, netId)) {
-    const netObj = NETS.find((n) => n.id === netId);
-    engine.triggerAlert(
-      'Red inactiva',
-      `Debe activar la red de ${netObj ? netObj.name : netId} en la información general`,
-    );
-    return true;
-  }
-  engine.setActiveNet(netId);
-  return false;
-}
-
-/** Puesta a cero de la numeración de cada red: todos los contadores a cero. Se llama al abrir un
- *  plano y al pulsar Limpiar. */
-export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCounts> }): void {
-  target._netCounts = {};
-  NETS.forEach((n) => {
-    target._netCounts[n.id] = { ramal: 0, tributario: 0 };
-  });
-}
-
-/** Siguiente número libre de ramal o tributario en una red (el 1, 2, 3… que ve el usuario).
- *  `isTaken` evita repetir un número que ya existe aunque el contador se haya desfasado.
- *  Ej: tras dibujar RAF1 y RAF2, el siguiente ramal de af (Agua Fría) es 3. */
-export function allocNetNumber(
-  target: { _netCounts: Record<string, PlanoNetCounts> },
-  netId: string,
-  tipo: 'ramal' | 'tributario',
-  isTaken: (n: number) => boolean,
-): number {
-  if (!target._netCounts[netId]) target._netCounts[netId] = { ramal: 0, tributario: 0 };
-  let n = ++target._netCounts[netId][tipo];
-  while (isTaken(n)) n = ++target._netCounts[netId][tipo];
-  return n;
-}
-
-/** Id unico de ramal (milisegundo mas azar, evita choques en splits).
- *  @returns id nuevo. */
-export function uniqRamalId(): string {
-  return 'T' + Date.now() + Math.random().toString(36).slice(2, 7);
-}
-
-/** Siguiente numero libre T{n} del padre (numeracion por padre desde 1: los ramales que cuelgan de
- *  RS1 se llaman T1RS1, T2RS1...). Ej: con T1RS1 ocupado devuelve 2.
- *  @param suffix etiqueta del ramal raíz (p.ej. 'RS1'); @returns numero libre. */
-export function allocTributaryNumber(
-  target: { ramales: Array<{ label?: string }> },
-  suffix: string,
-): number {
-  const used = new Set(target.ramales.map((r) => r.label));
-  let n = 1;
-  while (used.has(`T${n}${suffix}`)) n++;
-  return n;
-}
-
-/** Primer id libre pfx{n} para volver un tributario a ramal (ignora el propio que se convierte).
- *  Ej: pfx 'RS' con RS1 y RS2 tomados -> 'RS3'.
- *  @param pfx prefijo de la red ('RS', 'RAF'...); @returns id libre. */
-export function nextFreeRamalId(
-  ramales: Array<{ id: string; label?: string }>,
-  pfx: string,
-  excludeId?: string,
-): string {
-  const ids = new Set(ramales.filter((r) => r.id !== excludeId).map((r) => r.id));
-  const labels = new Set(ramales.filter((r) => r.id !== excludeId).map((r) => r.label || ''));
-  let n = 1;
-  while (ids.has(`${pfx}${n}`) || labels.has(`${pfx}${n}`)) n++;
-  return `${pfx}${n}`;
-}
-
-/** Re-etiqueta en cascada un tributario y todo lo que cuelga de él, para que su etiqueta nombre
- *  al ramal raíz actual (máx 20 niveles de fondo, para no loopear con datos corruptos). */
-export function relabelTribChain(
-  ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
-  id: string,
-  alloc: (suffix: string) => number,
-  depth = 0,
-): void {
-  if (depth > 20) return;
-  const r = ramales.find((x) => x.id === id);
-  if (!r || r.tipo !== 'tributario') return;
-  // Raíz = caminar la cadena de padres hasta el primer NO tributario (el tronco receptor).
-  let root = '';
-  let cur: string | null = r.padre;
-  let guard = 0;
-  while (cur && guard++ < 20) {
-    const p_ = ramales.find((x) => x.id === cur);
-    if (!p_) break;
-    if (p_.tipo !== 'tributario') {
-      root = p_.label || p_.id;
-      break;
-    }
-    cur = p_.padre;
-  }
-  if (root) {
-    const endsOk = !!r.label && r.label.endsWith(root);
-    if (!endsOk) {
-      r.label = `T${alloc(root)}${root}`;
-    }
-  }
-  for (const child of ramales) {
-    if (child.padre === id && child.tipo === 'tributario') {
-      relabelTribChain(ramales, child.id, alloc, depth + 1);
-    }
-  }
-}
-
-/** Etiqueta del ramal raíz de un tributario (el primer no-tributario subiendo por `padre`, sin
- *  mergesFrom (genealogía del split: anfitrión + entrantes)). Sirve para que T2RS1 sepa a qué
- *  tronco pertenece.
- *  @param ramalId id del tributario; @returns etiqueta del raíz ('' si no existe). */
-export function rootTributarioLabel(
-  ramales: Array<{
-    id: string;
-    label?: string;
-    tipo?: string;
-    padre: string | null;
-    mergesFrom?: [string, string];
-  }>,
-  ramalId: string | null | undefined,
-): string {
-  if (!ramalId) return '';
-  let cur = ramales.find((r) => r.id === ramalId) as
-    | {
-        id: string;
-        label?: string;
-        tipo?: string;
-        padre: string | null;
-        mergesFrom?: [string, string];
-      }
-    | undefined;
-  const seen = new Set<string>();
-  while (cur && !seen.has(cur.id)) {
-    seen.add(cur.id);
-    // La raíz es el PRIMER no-tributario de la cadena de padres (el padre inmediato del
-    // tributario). NO se sigue mergesFrom hacia el tronco original: un tributario cuyo padre
-    // es el downstream autocreado de un split (RS2) debe etiquetarse contra RS2, no contra el
-    // tronco original (RS1) — regla usuario: el label nombra al padre inmediato.
-    if (cur.tipo === 'tributario' && cur.padre) {
-      cur = ramales.find((r) => r.id === cur!.padre) as typeof cur;
-    } else {
-      break;
-    }
-  }
-  // Cadena corrupta (ciclo): devolver vacío
-  if (cur && seen.has(cur.id) && cur.tipo === 'tributario') return '';
-  return cur ? cur.label || cur.id || '' : '';
-}
-
-/** Dice si dos redes se "pegan" al dibujar: la misma siempre, y sanitarias con ventilación se
- *  imánan entre sí (los codos reventilados unen ambas).
- *  @param a primera red; @param b segunda red; @returns true si se pegan. */
-export function netsSnapLinked(a: string, b: string): boolean {
-  return a === b || (a === 'vent' && b === 'san') || (a === 'san' && b === 'vent');
-}
-
+/** ¿Es este elemento un bajante/montante? (guard de tipo para el union PlanoElement). */
 export function isBajante(el: PlanoElement | null): el is PlanoBajante {
   return el != null && '_circ' in el;
 }
@@ -587,13 +297,6 @@ export interface PlanoLevel {
   n?: string | number;
 }
 
-/** Cuántos ramales y tributarios se han numerado en cada red, para seguir la cuenta sin releer el
- *  plano. Ej: af lleva 3 ramales → el siguiente será RAF4. */
-export interface PlanoNetCounts {
-  ramal: number;
-  tributario: number;
-}
-
 /** Todos los tipos de elemento que el motor puede dibujar y seleccionar. */
 export type PlanoElement =
   PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | PlanoGuideLine;
@@ -721,9 +424,11 @@ export interface IPlanoEngineCore {
   _lblDragIsParent?: boolean;
   _dragBackupPts?: number[][] | null;
   _dragLinkedBackupPts?: Record<string, number[][]> | null;
-  _netCounts: Record<string, PlanoNetCounts>;
+  _netCounts: Record<string, import('./planoNets.ts').PlanoNetCounts>;
   _ramalDefaults: PlanoRamalDefaults | null;
   _dirty: boolean;
+  /** Input congelado (cambio de piso en vuelo): mousedown no dibuja ni arrastra. */
+  _frozen?: boolean;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
   _loadedPlanId: string | number | null;
   planId?: string | number;
@@ -899,6 +604,7 @@ export interface IPlanoEngineCore {
  *  ramalito que cuelga de otro y desemboca en él). */
 export type TramoType = 'ramal' | 'tributario';
 
+/** Par de coordenadas en UNIDADES DE PLANO (píxeles del PDF a scaleM 1) — la unidad de TODO el motor; el canvas la convierte con zoom/offX/offY. */
 export interface Point {
   x: number;
   y: number;

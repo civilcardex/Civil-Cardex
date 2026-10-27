@@ -1,4 +1,3 @@
-import { leerDocDePlan } from '../utils/readPlanDrawing';
 import { useMemo } from 'react';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
@@ -11,19 +10,23 @@ import {
   maxRamalPulgDeBajante,
   areaParcialBajanteLl,
 } from '../utils/rainwaterRows.ts';
+import {
+  buildAreaDibujoMap,
+  buildCanalDeBaj,
+  buildRamalesByBajante,
+  buildUppersByBajante,
+} from '../utils/rainDownpipesDerived.ts';
+import { RainDownpipesHeader } from './rainDownpipesHeader.tsx';
 import ChipList from './shared/ChipList.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { chequeoBajanteLluvia } from '../utils/calcRainwater.ts';
 import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import { renderStatus } from '../utils/componentHelpers.tsx';
-import { parseDescargaEnId } from '../utils/parseDischargeInId.ts';
-import { splitTramo } from '../utils/keys.ts';
 import { DIAM_BAN, DIAM_BAN_LL, pisoCorto } from '../constants';
 import { MATERIALES_CUBIERTA_LL, cDeCubierta } from '../constants/engineeringDataMaterials.ts';
 import { fmt } from '../utils/formatUtils.ts';
 import { entradaPor } from '../utils/diamLookup';
 import React from 'react';
-import type { DrawingData } from '../utils/drawingSync.ts';
 import { sanitizarInputDecimal } from '../utils/parseDecimal.ts';
 
 interface Row {
@@ -50,19 +53,7 @@ interface Row {
   canalesAsoc: string[];
   ramalesAsoc: string[];
 }
-// Encabezados compactos (orig. usuario: la tabla sin scroll horizontal): wrap a 2-3 líneas.
-const thC: React.CSSProperties = {
-  fontSize: 9.5,
-  textAlign: 'center',
-  padding: '2px 3px',
-  whiteSpace: 'normal',
-  // Ancho mínimo por celda de encabezado: sin él, con 18 columnas las palabras parten
-  // a la mitad ('MATERIA-L', 'Q CAR.') — ped. usuario estética.
-  minWidth: 52,
-  hyphens: 'auto',
-  overflowWrap: 'anywhere',
-};
-const thCg: React.CSSProperties = { ...thC, fontWeight: 700, letterSpacing: 0.3 };
+// Encabezados compactos viven en rainDownpipesStyles.ts (compartidos con el header extraído).
 
 const RainDownpipesCheck_S1: React.CSSProperties = {
   width: 56,
@@ -138,18 +129,10 @@ export default function ChequeoBajantesLluvias() {
   const [edit, setEdit] = React.useState(false);
   const tablaRef = useStickyThead2Offset();
   const { bajantesLl, updBajanteLL, canalesLl, canalAlimIds } = useRainwater();
-  // Bajante (`planId|id`) → etiqueta del canal que lo recibe. canalAlimIds trae claves
-  // exactas `planId|idBaj` (geométricas + manuales); el inverso alimenta la columna.
-  const canalDeBaj = useMemo(() => {
-    const inv = new Map<string, string>();
-    for (const c of canalesLl) {
-      if (!c.drawId) continue;
-      for (const combo of canalAlimIds[c.drawId] || []) {
-        if (!inv.has(combo)) inv.set(combo, c.sector || c.id);
-      }
-    }
-    return inv;
-  }, [canalesLl, canalAlimIds]);
+  const canalDeBaj = useMemo(
+    () => buildCanalDeBaj(canalesLl, canalAlimIds),
+    [canalesLl, canalAlimIds],
+  );
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
 
@@ -163,21 +146,7 @@ export default function ChequeoBajantesLluvias() {
     );
   }, [tramosLl]);
 
-  const areaDibujoMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const plan of plans || []) {
-      if (plan.nivel == null) continue;
-      const data = leerDocDePlan<DrawingData>(plan.id);
-      if (!data) continue;
-      for (const b of data.bajantes || []) {
-        if (b.net === 'll' && b.tipo !== 'canal' && b.area_m2) {
-          map[b.code || b.id] = b.area_m2;
-          map[b.id] = b.area_m2;
-        }
-      }
-    }
-    return map;
-  }, [plans]);
+  const areaDibujoMap = useMemo(() => buildAreaDibujoMap(plans || []), [plans]);
 
   // (areaAcumMap del total dibujado del piso retirado — orig. usuario: TOTAL = Parcial + Otras,
   // sin fallback al total del piso; el área que no sea la del dibujo se escribe en Otras.)
@@ -185,27 +154,7 @@ export default function ChequeoBajantesLluvias() {
   // Bajantes del piso superior que descargan en cada bajante: el bajante superior deja
   // descargaEnId = "planId|id" apuntando al inferior (asociación entre pisos) — un escaneo de
   // todos los pisos construye el mapa inverso.
-  const uppersByBajante = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const plan of plans || []) {
-      if (plan.nivel == null) continue;
-      const data = leerDocDePlan<DrawingData>(plan.id);
-      if (!data) continue;
-      const suf = pisoCorto(plan.nivel);
-      for (const b of data.bajantes || []) {
-        // Cajas CALL fuera: no son bajantes asociados (glifo de captura).
-        if (b.net !== 'll' || b.tipo === 'caja_ll' || !b.descargaEnId) continue;
-        // Formato canónico 'plan|id'; el LEGACY sin '|' apunta al MISMO plan — sin
-        // normalizarlo la columna "asociados" quedaba en — para esos datos viejos.
-        const [dPlan, dId] = parseDescargaEnId(b.descargaEnId, plan.id);
-        const clave = `${dPlan}|${dId}`;
-        if (!map[clave]) map[clave] = [];
-        const code = `${b.code || b.id}-${suf}`;
-        if (!map[clave].includes(code)) map[clave].push(code);
-      }
-    }
-    return map;
-  }, [plans]);
+  const uppersByBajante = useMemo(() => buildUppersByBajante(plans || []), [plans]);
 
   // Ramales asociados a cada bajante: misma BFS que Diseño de red lluvias, invertida
   // (clave de bajante → ids de ramales que le drenan).
@@ -216,37 +165,10 @@ export default function ChequeoBajantesLluvias() {
   // Ramales de/descargando al canal: nunca son "ramales asociados" de un bajante.
   const canalRamalKeys = useMemo(() => computeCanalBajanteRamalKeys(plans), [plans]);
 
-  const ramalesByBajante = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const [ramalKey, codes] of Object.entries(bajanteAssociations)) {
-      // El id del ramal puede contener '-' (patrón AC-01-<id>): splitTramo corta por el
-      // ÚLTIMO guion (antes inline con lastIndexOf aquí mismo).
-      const [ramalId, planId] = splitTramo(ramalKey);
-      // Piso del ramal (de su plano) → etiqueta "RS1-P1" en el chip.
-      const nivel = plans?.find((pl) => String(pl.id) === planId)?.nivel;
-      const label = nivel != null ? `${ramalId}-${pisoCorto(nivel)}` : ramalId;
-      // Ramal de canal: fuera.
-      if (canalRamalKeys.has(ramalKey)) continue;
-      // Ldesvio: conector de asociación entre pisos, no ramal de drenaje — fuera.
-      if (ramalId.startsWith('LD_')) continue;
-      for (const code of codes) {
-        // Scoping POR PISO: el mismo id de bajante existe en cada piso (BALL1-P1, BALL1-P2) —
-        // sin el filtro de planId el find traía el de otro piso y el guard de abajo lo
-        // descartaba: columna "Ramales asociados" siempre vacía (incidente 2026-09-25).
-        const t = tramosLl.find(
-          (x) =>
-            x.esBajante && (x.code === code || x.id === code) && String(x.planId ?? '') === planId,
-        );
-        const k = t?._key;
-        if (!k) continue;
-        // Solo ramales del MISMO piso del bajante (orig. usuario).
-        if (String(t.planId ?? '') !== planId) continue;
-        if (!map[k]) map[k] = [];
-        if (!map[k].includes(label)) map[k].push(label);
-      }
-    }
-    return map;
-  }, [bajanteAssociations, tramosLl, plans, canalRamalKeys]);
+  const ramalesByBajante = useMemo(
+    () => buildRamalesByBajante(bajanteAssociations, canalRamalKeys, tramosLl, plans || []),
+    [bajanteAssociations, tramosLl, plans, canalRamalKeys],
+  );
 
   const rows = useMemo(() => {
     const manualMap = new Map<string, BajanteLL>();
@@ -354,219 +276,7 @@ export default function ChequeoBajantesLluvias() {
             borderCollapse: 'collapse',
           }}
         >
-          <colgroup>
-            <col style={{ width: 70 }} />
-            <col style={{ width: 78 }} />
-            <col style={{ width: 78 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 72 }} />
-            <col style={{ width: 100 }} />
-            <col style={{ width: 72 }} />
-            <col style={{ width: 54 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 46 }} />
-            <col style={{ width: 48 }} />
-            <col style={{ width: 50 }} />
-            <col style={{ width: 40 }} />
-            <col style={{ width: 58 }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th
-                title="Bajante de aguas lluvias (BALL) según el dibujo."
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={thC}
-              >
-                Bajante
-              </th>
-              <th
-                title="Bajantes de pisos superiores que descargan en este bajante."
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={thC}
-              >
-                Bajantes asociados
-              </th>
-              <th
-                title="Canal recolector que recibe este bajante (según el dibujo)."
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={thC}
-              >
-                Canales
-                <br />
-                asociados
-              </th>
-              <th
-                title="Ramales de la red de lluvias que drenan a este bajante."
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={thC}
-              >
-                Ramales asociados
-              </th>
-              <th
-                title="Área de cubierta que drena (m²)."
-                scope="col"
-                className="col-h ll"
-                colSpan={3}
-                style={thCg}
-              >
-                ÁREA (m²)
-              </th>
-              <th
-                title="Método racional: lluvia que cae sobre el área del grupo."
-                scope="col"
-                className="col-h ll"
-                colSpan={4}
-                style={thCg}
-              >
-                CAUDAL DE DISEÑO
-              </th>
-              <th
-                title="Verificación de capacidad y uso del tubo propuesto."
-                scope="col"
-                className="col-h ll"
-                colSpan={6}
-                style={thCg}
-              >
-                CAPACIDAD DEL TUBO (Wyly-Eaton)
-              </th>
-              <th
-                title="Estado del chequeo de diámetros. Unidad: Dcalc ≤ Dprop."
-                scope="col"
-                className="col-h ll"
-                rowSpan={2}
-                style={{ ...thC, width: 84, minWidth: 84, maxWidth: 100 }}
-              >
-                Chequeo
-              </th>
-            </tr>
-            <tr>
-              <th
-                title="Área que drena al bajante según el dibujo (m²)."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Parcial
-              </th>
-              <th
-                title="Área adicional no dibujada, editable (m²)."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Otras
-              </th>
-              <th
-                title="Área total = Parcial + Otras (m²)."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Total
-              </th>
-              <th
-                title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
-                scope="col"
-                className="col-h ll"
-                style={{ ...thC, minWidth: 96 }}
-              >
-                Material
-                <br />
-                cubierta
-              </th>
-              <th
-                title="Coeficiente de escorrentía del material; sin material elegido el cálculo no se realiza (Q = 0)."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Coeficiente
-                <br />
-                escorrentía
-              </th>
-              <th
-                title="Intensidad de lluvia de diseño (mm/h). Unidad: mm/h."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Intensidad
-              </th>
-              <th
-                title="Caudal de diseño del bajante (L/s) por método racional. Unidad: L/s."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Caudal
-              </th>
-              <th
-                title="Fracción de la sección del tubo ocupada por el agua (flujo anular)."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Llenado
-              </th>
-              <th
-                title="Rugosidad de referencia del material de la bajante."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Manning
-              </th>
-              <th
-                title="Diámetro que exige el caudal de diseño (pulg). Unidad: pulg."
-                scope="col"
-                className="col-h ok"
-                style={thC}
-              >
-                Diámetro
-                <br />
-                calculado
-              </th>
-              <th
-                title="Diámetro comercial propuesto (pulg) — no menor al mayor ramal conectado. Unidad: pulg."
-                scope="col"
-                className="col-h ok"
-                style={thC}
-              >
-                Diámetro
-                <br />
-                propuesto
-              </th>
-              <th
-                title="Capacidad del diámetro propuesto (L/s). Unidad: L/s."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Q
-                <br />
-                capacidad
-              </th>
-              <th
-                title="Qué tan lleno trabaja el tubo: relación entre el caudal de diseño y la capacidad del diámetro propuesto; debe quedar por debajo del 100%."
-                scope="col"
-                className="col-h ll"
-                style={thC}
-              >
-                Uso
-              </th>
-            </tr>
-          </thead>
+          <RainDownpipesHeader />
           <tbody>
             {rows.length === 0 ? (
               <tr>

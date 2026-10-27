@@ -1,3 +1,4 @@
+import { splitPtr } from './keys.ts';
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import type { DrawingData, RawElement } from './drawingSync.ts';
@@ -5,7 +6,6 @@ import type { UDBase } from './componentHelpers.tsx';
 import { calcUDparcial } from './componentHelpers.tsx';
 import { fmtPiso, pisoCorto } from '../constants';
 import { planIdDeKey, sectorDe } from './formatUtils.ts';
-import { parseDescargaEnId } from './parseDischargeInId.ts';
 import { maxSanRamalDiamPulg } from './bajanteVentRows.ts';
 import { ventBajPulg, calculateVentStack } from './ventStackCalc.ts';
 
@@ -131,7 +131,7 @@ export function calculaFilaBajante(t: Tramo, ctx: ContextoBajanteRow): FilaBajan
   let targetPiso = '';
   let destinoVal = '—';
   if (t.descargaEnId) {
-    const parts = parseDescargaEnId(t.descargaEnId, '');
+    const parts = splitPtr(t.descargaEnId, '');
     const dPlanId = parts[0];
     const targetRamal = parts[1] || '';
     const targetPlan = ctx.plans?.find((p) => String(p.id) === String(dPlanId));

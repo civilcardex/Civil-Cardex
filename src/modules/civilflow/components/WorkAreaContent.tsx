@@ -5,6 +5,7 @@ import { RedesTab } from './workareaContent/networksTab.tsx';
 import { InfTab } from './workareaContent/reportTab.tsx';
 import type { useWorkAreaState } from './useWorkAreaState.ts';
 
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const PlanosTab = lazy(() => import('./workarea/PlanosTab.tsx'));
 const BaseDatos = lazy(() => import('./DesignParameters.tsx'));
 const Normativa = lazy(() => import('./Regulations/Regulations.tsx'));
@@ -12,17 +13,6 @@ const IsometriaTab = lazy(() =>
   import('./workarea/IsometryTab.tsx').then((m) => ({ default: m.IsometriaTab })),
 );
 
-const SR_ONLY_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;

@@ -6,61 +6,8 @@ import {
   MATERIALES_CANAL_LL,
 } from '../../constants/engineeringDataMaterials.ts';
 import { normalizeDnLabel } from '../../utils/formatUtils.ts';
-const CatalogTables_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const CatalogTables_S2: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const CatalogTables_S3: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const CatalogTables_S4: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-const CatalogTables_S5: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
+
+import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const CatalogTables_S6: React.CSSProperties = {
   padding: '2px 8px',
   textAlign: 'center',
@@ -151,6 +98,9 @@ interface GasGroupType {
   rows: Array<{ dn: string; d: number }>;
 }
 
+/** Tabla de diámetros nominales e interiores (mm) agrupados por material (el material ocupa una
+ *  celda con rowSpan). La muestra el catálogo maestro; compact = métricas apretadas para caber
+ *  en informes. */
 export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: boolean }) {
   const cp = compact
     ? {
@@ -182,7 +132,7 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
         border: '1px solid var(--line)',
       }}
     >
-      <caption style={CatalogTables_S1}>Diámetros nominales e interiores por material</caption>
+      <caption style={SR_ONLY_STYLE}>Diámetros nominales e interiores por material</caption>
       <thead>
         <tr>
           <Th
@@ -237,6 +187,8 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
   );
 }
 
+/** Tabla de diámetros para la red gas: nominal, interior (mm) y el coeficiente K del material
+ *  (su fricción para el cálculo de gas). Sin grupos usa el catálogo global GAS. */
 export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact?: boolean }) {
   let idx = 0;
   const data = groups || GAS;
@@ -270,7 +222,7 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
         border: '1px solid var(--line)',
       }}
     >
-      <caption style={CatalogTables_S2}>
+      <caption style={SR_ONLY_STYLE}>
         Diámetros nominales, interiores y coeficiente K para gas
       </caption>
       <thead>
@@ -334,10 +286,12 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
   );
 }
 
+/** Tabla de caudales nominales (Qn en L/s (litros por segundo)) de contadores de agua por
+ *  diámetro — referencia para chequear si el contador del proyecto aguanta el caudal. */
 export function ContadoresTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S3}>Caudales nominales de contadores por diámetro</caption>
+      <caption style={SR_ONLY_STYLE}>Caudales nominales de contadores por diámetro</caption>
       <thead>
         <tr>
           <Th style={{ width: '50%' }}>Diámetro</Th>
@@ -362,10 +316,12 @@ export function ContadoresTable() {
 
 const cmpTd = { padding: '2px 6px', fontSize: 13 };
 
+/** Tabla de materiales recomendados por tipo de red. Ej: Agua caliente -> CPVC
+ *  (Cloruro de Polivinilo Clorado); Sanitaria -> PVC-S. */
 export function MaterialesPorRedTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S4}>Materiales recomendados por tipo de red</caption>
+      <caption style={SR_ONLY_STYLE}>Materiales recomendados por tipo de red</caption>
       <thead>
         <tr>
           <Th style={{ width: '30%', padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>
@@ -416,9 +372,7 @@ const coefTd = {
 export function EscorrentiaCubiertaTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S5}>
-        Coeficiente de escorrentía por material de cubierta
-      </caption>
+      <caption style={SR_ONLY_STYLE}>Coeficiente de escorrentía por material de cubierta</caption>
       <thead>
         <tr>
           <Th style={{ width: '70%' }}>Material de cubierta</Th>
@@ -441,7 +395,7 @@ export function EscorrentiaCubiertaTable() {
 export function ManningCanalesLlTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={CatalogTables_S5}>Coeficiente de Manning por material (canales)</caption>
+      <caption style={SR_ONLY_STYLE}>Coeficiente de Manning por material (canales)</caption>
       <thead>
         <tr>
           <Th style={{ width: '70%' }}>Material del canal</Th>
@@ -460,11 +414,14 @@ export function ManningCanalesLlTable() {
   );
 }
 
+/** Tabla de coeficientes de fricción por tubería: Manning (formula de flujo en tuberia) n,
+ *  Hazen-Williams C (y C de uso) y rugosidad ε (mm) — la fuente de las pérdidas de carga que
+ *  usan las tablas de dimensionamiento por red. */
 export function CoefFriccionTable() {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-        <caption style={CatalogTables_S5}>Coeficientes de fricción por tipo de tubería</caption>
+        <caption style={SR_ONLY_STYLE}>Coeficientes de fricción por tipo de tubería</caption>
         <thead>
           <tr>
             <th scope="colgroup" colSpan={9} style={CatalogTables_S6}>
