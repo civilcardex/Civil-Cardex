@@ -21,6 +21,8 @@ import {
 import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal.ts';
 import { EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 
+/** Menú contextual de un área del plano: reutiliza el editor de código/etiqueta genérico
+ *  (ElementCodeEditor) para el elemento seleccionado. */
 export function AreaMenu() {
   const ctx = useDrawingElementContextMenu();
   return (
@@ -38,6 +40,8 @@ export function AreaMenu() {
   );
 }
 
+/** Menú contextual de un contador de agua del plano: editor de código del elemento
+ *  (ElementCodeEditor). */
 export function ContadorMenu() {
   const ctx = useDrawingElementContextMenu();
   return (
@@ -55,6 +59,8 @@ export function ContadorMenu() {
   );
 }
 
+/** Menú contextual de un calentador de agua del plano (equipo de ac (Agua Caliente)): editor de
+ *  código del elemento (ElementCodeEditor). */
 export function CalentadorMenu() {
   const ctx = useDrawingElementContextMenu();
   return (
@@ -123,6 +129,9 @@ function CanalDimInput({
   );
 }
 
+/** Menú contextual de un canal de lluvias (ll (Lluvias)): dimensiones editables (base/altura/
+ *  longitud en cm, pendiente 0-15 %), materiales, bajantes ll asociados (checkbox bidireccional
+ *  canal↔bajante) y sus ramales con el bajante que recibe cada uno. */
 export function CanalMenu() {
   const { element, engineRef, selElement, setSelElement, setContextMenuState, activeNet } =
     useDrawingElementContextMenu();

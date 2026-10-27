@@ -1,5 +1,5 @@
+import { splitPtr } from '../../../utils/keys.ts';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
-import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
 import { indexRamales, sameNetGroup, refrescarTrazo, type DragCtx } from './dragContext.ts';
 
@@ -76,7 +76,7 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
         const isRecibe = (b.recibeDeIds?.length ?? 0) > 0 && recibidoresDeR.has(b.id);
         let isDescarga = false;
         if (b.descargaEnId) {
-          const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+          const parts = splitPtr(b.descargaEnId, engine._loadedPlanId);
           const targetPlanId = parts[0];
           const targetId = parts[1];
           if (String(targetPlanId) === String(engine._loadedPlanId) && targetId === r.id) {

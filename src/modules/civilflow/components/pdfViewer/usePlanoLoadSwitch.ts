@@ -15,6 +15,9 @@ interface UsePlanoLoadSwitchParams {
   syncDrawings: () => void;
   autoSaveTimerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   loadingPlanRef: React.MutableRefObject<boolean>;
+  /** Cambio de PISO en vuelo (estado React espejo de loadingPlanRef): lo consume el velo
+   *  translúcido del canvas — el overlay grande solo corre en la primera entrada. */
+  onCambioPiso?: (v: boolean) => void;
   activeNetRef: React.RefObject<string>;
   activeNetworksRef: React.RefObject<Set<string>>;
   setActiveNet: React.Dispatch<React.SetStateAction<string>>;
@@ -32,6 +35,7 @@ export function usePlanoLoadSwitch({
   syncDrawings,
   autoSaveTimerRef,
   loadingPlanRef,
+  onCambioPiso,
   activeNetRef,
   activeNetworksRef,
   setActiveNet,
@@ -93,6 +97,12 @@ export function usePlanoLoadSwitch({
     const finCarga = (): void => {
       if (!vigente()) return;
       loadingPlanRef.current = false;
+      eng._frozen = false;
+      try {
+        onCambioPiso?.(false);
+      } catch {
+        /* ignore */
+      }
       try {
         emitPlanLoaded();
       } catch {
@@ -102,6 +112,14 @@ export function usePlanoLoadSwitch({
     eng._loadedPlanId = resolvedId;
     eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
     loadingPlanRef.current = true;
+    try {
+      onCambioPiso?.(true);
+    } catch {
+      /* ignore */
+    }
+    // Congelar el input mientras la carga vuela (ver _onDownHandler): el canvas sigue
+    // mostrando el piso anterior y un trazo dibujado aquí moriría con el loadWork entrante.
+    eng._frozen = true;
     (async () => {
       try {
         const loaded = await loadTrazosForPlan(eng, resolvedId);
@@ -151,6 +169,11 @@ export function usePlanoLoadSwitch({
           eng.activeRamal = null;
           eng.activeArea = null;
           eng.setActiveNet(activeNetRef.current);
+          // Piso vacío también centra: sin esto, fitPage corría con el pageW del piso
+          // ANTERIOR (setPageSize del raster llega después) y el encuadre llegaba tarde.
+          const pg = paginaDeDoc(resolvedId, eng.scaleM);
+          if (pg) eng.setPageSize(pg.w, pg.h);
+          eng.reEncuadrarContenido();
           eng.render();
           finCarga();
         }
@@ -169,6 +192,7 @@ export function usePlanoLoadSwitch({
     engineRef,
     currentIdRef,
     loadingPlanRef,
+    onCambioPiso,
     activeNetRef,
     activeNetworksRef,
     setActiveNet,

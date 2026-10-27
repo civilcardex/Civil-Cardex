@@ -67,6 +67,21 @@ export function useTrazosLoader({
       };
       const localData = tryLoad(resolvedId);
       let initiallyLoaded = false;
+      // Sin caché local: el motor aún muestra el piso ANTERIOR. Vaciarlo ANTES del await —
+      // con `_frozen` el usuario no puede dibujar encima, y no hay contenido viejo que el
+      // loadWork de BD vaya a pisar (ni nada que revivir por undo). Mismo vaciado que la
+      // rama post-await "sin datos" — sincronizado con esa para no divergir.
+      if (!localData) {
+        eng.ramales = [];
+        eng.bajantes = [];
+        eng.areas = [];
+        eng.dims = [];
+        eng.textAnnots = [];
+        eng.selId = null;
+        eng.activeRamal = null;
+        eng.activeArea = null;
+        eng.render();
+      }
       // scaleM del DOCUMENTO capturado tras cada loadWork — el engine vivo puede ser pisado
       // por el estado React (syncEngine/default '0.5') durante el await de BD; el re-base
       // debe comparar la escala del doc, no la pisada (bug: elementos corridos al reabrir).

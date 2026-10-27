@@ -9,6 +9,8 @@ import type {
 } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { useTramoEditorContext, INPUT_50_STYLE, INPUT_STYLE, READONLY_STYLE } from './context.ts';
 
+/** Cabecera del editor de tramos para un BAJANTE (columna vertical de drenaje): solo el campo
+ *  de código, aplicado al elemento seleccionado del motor (ej: BAN1-P1). */
 export function BajanteHeaderFields() {
   const { selElement: rawSelElement, engineRef, setSelElement } = useTramoEditorContext();
   if (!rawSelElement) return null;
@@ -135,6 +137,9 @@ export function RejillasSectorFields() {
   );
 }
 
+/** Cabecera para un área dibujada: etiqueta, área calculada (m², solo lectura) y el desplegable
+ *  "Asociar Bajante" — oculto en sectores de Rejillas de ventilación porque el sector no drena
+ *  a un bajante, ventilá por rejillas. */
 export function AreaHeaderFields() {
   const { selElement: rawSelElement, engineRef, setSelElement } = useTramoEditorContext();
   if (!rawSelElement) return null;
@@ -236,6 +241,8 @@ export function AreaHeaderFields() {
   );
 }
 
+/** Cabecera para una anotación de texto del plano: solo la edición de su contenido
+ *  (ej: una nota suelta "Q = 2.5 L/s"). */
 export function TextHeaderFields() {
   const { selElement: rawSelElement, engineRef, setSelElement } = useTramoEditorContext();
   if (!rawSelElement) return null;
@@ -271,6 +278,8 @@ export function TextHeaderFields() {
   );
 }
 
+/** Cabecera para un ramal (tramo que une dos elementos): nombre —con sufijo de piso automático,
+ *  ej: RAC1-P2—, conexión de inicio y de fin (códigos de los elementos que une). */
 export function RamalHeaderFields() {
   const { selElement: rawSelElement, engineRef, setSelElement } = useTramoEditorContext();
   if (!rawSelElement) return null;

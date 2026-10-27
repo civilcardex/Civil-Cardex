@@ -124,6 +124,8 @@ interface PdfCanvasProps {
   currentFile: File | null;
   error: Error | string | null;
   loading: boolean;
+  /** Cambio de PISO en vuelo: velo translúcido sobre el canvas (la lámina/trazos entran desparejos). */
+  cambioPiso: boolean;
   selectedNivel: number | null;
   pisos: Piso[];
   planos: PlanItem[];
@@ -139,6 +141,7 @@ function PdfCanvas({
   currentFile,
   error,
   loading,
+  cambioPiso,
   selectedNivel,
   planos,
   tool,
@@ -191,6 +194,22 @@ function PdfCanvas({
       {/* SIN spinner interno (ped. usuario): la primera entrada la cubre el overlay de
         ViewerPage y los cambios de piso no tienen estado de carga. El estado `loading`
         solo gobierna las pantallas de aviso de abajo. */}
+
+      {/* Velo del cambio de piso: cubre la ventana lámina-vieja/trazos-nuevos + arbitración
+        BD (orig. usuario: el reacomodo se veía entero — no hay overlay grande en switches).
+        Translúcido: no oculta el avance, solo suaviza el tránsito. */}
+      {cambioPiso && !loading && !error && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(10,14,20,0.45)',
+            pointerEvents: 'none',
+            zIndex: 20,
+            transition: 'opacity 0.15s',
+          }}
+        />
+      )}
 
       {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
       {(!currentFile || selectedNivel === null || selectedNivel === undefined) &&

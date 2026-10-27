@@ -2,14 +2,19 @@
 import { snapTributaryToPadre45Deg, _midpoint } from '../PlanoEngineDrawing.ts';
 import { rotatedRectCorners } from '../HitTester.ts';
 import { angleAtHalfLength, segmentAtPosition } from '../drawingAngles.ts';
-import type { IPlanoEngineCore } from '../PlanoState.ts';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { buildRamalLabelParts } from './ramalLabelText.ts';
 import { renderLabelFlowArrow, renderEndpointFlowArrows } from './renderFlowArrows.ts';
 import { renderAparatoSymbols } from './renderAparatoSymbols.ts';
 import { drawRamalPath } from './drawRamalPath.ts';
 import { drawExtremeAccessorySymbol, drawCornerCodoArc } from './renderAccessorySymbols.ts';
 import { renderJunctions } from './renderJunctions.ts';
-import { beginDeclutterFrame, desTapadoDelMotor, findFreeLabelCenter } from '../labelDeclutter.ts';
+import {
+  beginDeclutterFrame,
+  desTapadoDelMotor,
+  findFreeLabelCenter,
+  gapAnclaACaja,
+} from '../labelDeclutter.ts';
 import { indiceFrame } from './frameIndex.ts';
 import { anchoTexto } from './measureText.ts';
 import { pickTeeBranchDir } from './teeUtils.ts';
@@ -25,42 +30,9 @@ const FAR_LABEL_BOXES = 4;
 /** Índice red→config: evita buscar en NETS por cada ramal dibujado (antes O(ramales×redes)). */
 const NET_POR_ID = new Map(NETS.map((n) => [n.id, n]));
 
-/** Lado de la celda del índice de puntos (la tolerancia del codo reventilado es 0.5). */
-const CELDA_PUNTOS = 0.5;
-
-/**
- * Índice de puntos por celda para consultar "¿hay un punto a menos de 0.5?".
- *
- * Por qué: la comprobación del codo reventilado recorría TODOS los puntos de TODOS los
- * ramales sanitize, y se hacía por cada ramal y por cada frame del render (que se agenda
- * por rAF en cada mousemove del arrastre): O(ramales×puntos) por frame.
- *
- * @param pts puntos a indexar (en coordenadas de plano).
- * @returns función que responde si hay un punto a menos de 0.5 de (x, y).
- */
-function indicePuntosCercanos(pts: number[][]): (x: number, y: number) => boolean {
-  const celdas = new Map<string, number[][]>();
-  for (const p of pts) {
-    const k = `${Math.floor(p[0] / CELDA_PUNTOS)},${Math.floor(p[1] / CELDA_PUNTOS)}`;
-    const arr = celdas.get(k);
-    if (arr) arr.push(p);
-    else celdas.set(k, [p]);
-  }
-  return (x: number, y: number) => {
-    const cx = Math.floor(x / CELDA_PUNTOS);
-    const cy = Math.floor(y / CELDA_PUNTOS);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        const arr = celdas.get(`${cx + dx},${cy + dy}`);
-        if (!arr) continue;
-        for (const p of arr) {
-          if (Math.hypot(x - p[0], y - p[1]) < 0.5) return true;
-        }
-      }
-    }
-    return false;
-  };
-}
+/** Memo de snapCandidates del trazo activo (un dibujo a la vez): lista cacheada por firma.
+ *  WeakMap por MOTOR (no singleton de módulo): dos visores vivos no se pisan el cache. */
+const snapMemo = new WeakMap<object, { firma: number; net: string; lista: PlanoRamal[] }>();
 
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
@@ -68,21 +40,17 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // Foto de obstáculos para el auto-orden de etiquetas (solo mueve las nunca tocadas a mano).
   const declutter = beginDeclutterFrame(engine);
   let declutterNeedsSeed = false;
+  // Índice del frame compartido: además de tocan/cruzan expone ventRamales/sanRamales/
+  // bajantesSan/hayPuntoSan construidos UNA vez por cambio de geometría — antes estos 4
+  // (filters + flatMap + Map de ~4000 claves) se reconstruían en CADA render, pan/zoom incluido.
+  const indiceF = indiceFrame(engine);
+  const firmaFrame = indiceF.firma;
   // Memoria del des-tapado: con la misma geometría y el mismo zoom el sitio elegido por cada
   // etiqueta no cambia (se guarda como desplazamiento desde su centro, que el paneo no mueve),
   // así que mover la cámara no repite la espiral por etiqueta. Se desactiva mientras alguna
   // etiqueta movida a mano todavía no tenga caja: el frame siguiente debe re-converger.
-  const firmaFrame = indiceFrame(engine).firma;
   const puedeMemorizar = !engine.ramales.some((rm) => rm.labelMoved && !rm._labelBox);
   const memoria = puedeMemorizar ? desTapadoDelMotor(engine, firmaFrame) : null;
-
-  // Índices del frame (UNA vez, no por ramal): el render se agenda por rAF en cada
-  // mousemove del arrastre, así que cualquier búsqueda lineal dentro del bucle de ramales
-  // se multiplicaba por el número de ramales en cada frame.
-  const ventRamales = engine.ramales.filter((rm) => rm.net === 'vent');
-  const sanRamales = engine.ramales.filter((rm) => rm.net === 'san');
-  const hayPuntoSanCercano = indicePuntosCercanos(sanRamales.flatMap((sr) => sr.pts));
-  const bajantesSan = engine.bajantes.filter((b) => b.net === 'san');
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     const net = NET_POR_ID.get(r.net);
@@ -244,14 +212,16 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // pantalla (16·zoom): con menos aire las etiquetas quedaban muy encima del trazo y se
       // solapaban con él (orig. usuario). La línea guía (leader) mantiene la lectura clara.
       // labelClear es también la banda donde vive la flecha de flujo (ver más abajo).
+      // gapAnclaACaja es la MISMA fórmula que usa dragLabel para re-anclar el primer agarre.
       const labelClear = Math.max(
         engine.mm2cvs(4) + 6 * engine.zoom,
         boxH * 0.35,
         16 * engine.zoom,
       );
       const labelGap = -(boxH / 2 + labelClear);
-      const gapOffX = -labelGap * sinA;
-      const gapOffY = labelGap * cosA;
+      const gapOff = gapAnclaACaja(boxH, labelAngle, engine.mm2cvs.bind(engine), engine.zoom);
+      const gapOffX = gapOff.x;
+      const gapOffY = gapOff.y;
       let adjCx = drawX + gapOffX;
       let adjCy = drawY + gapOffY;
       // Auto-orden: la etiqueta nunca movida a mano busca un sitio libre (espiral) si su caja
@@ -454,7 +424,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
     ctx.restore();
 
-    renderEndpointFlowArrows(ctx, engine, r, { ventRamales, hayPuntoSanCercano, bajantesSan });
+    renderEndpointFlowArrows(ctx, engine, r, {
+      ventRamales: indiceF.ventRamales,
+      hayPuntoSanCercano: indiceF.hayPuntoSan,
+      bajantesSan: indiceF.bajantesSan,
+    });
   });
 
   // Primer frame tras cargar (cajas manuales aún sin calcular): el declutter trabajó sin
@@ -754,12 +728,21 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     ctx.fill();
   };
 
-  const activeRamales = engine.ramales.filter((r) => r.net === ar.net);
-  // Item 5: preview igual que el trazo real — el vent pega en 45°/90° a ramales san.
-  const snapCandidates =
-    ar.net === 'vent'
-      ? [...activeRamales, ...engine.ramales.filter((r) => r.net === 'san')]
-      : activeRamales;
+  // snapCandidates constante por (geometría, red): los 2 filters eran O(2n) por mousemove
+  // durante todo el dibujo. El memo vive a nivel módulo (un solo trazo activo a la vez).
+  const indiceF = indiceFrame(engine);
+  let snapCache = snapMemo.get(engine as object);
+  if (!snapCache || snapCache.firma !== indiceF.firma || snapCache.net !== ar.net) {
+    snapCache = {
+      firma: indiceF.firma,
+      net: ar.net,
+      lista: engine.ramales.filter(
+        (r) => r.net === ar.net || (ar.net === 'vent' && r.net === 'san'),
+      ),
+    };
+    snapMemo.set(engine as object, snapCache);
+  }
+  const snapCandidates = snapCache.lista;
   for (const r of snapCandidates) {
     if (r.id === ar.id) continue;
     // Igual que el trazo real: un ramal no pega a tributarios (evita el círculo

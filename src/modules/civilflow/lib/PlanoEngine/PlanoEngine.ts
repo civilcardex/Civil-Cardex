@@ -47,22 +47,10 @@ import {
   _nextLabel,
   _midpoint,
   _calcPolyArea,
-  handleLineDown,
-  handleDimDown,
-  handleGuideDown,
-  handleTextDown,
-  handleBajanteDown,
-  handleMontanteDown,
   handleCreateMontanteMidBody,
   handleCreateCalentadorMidBody,
   handleCreateTeeCapStub,
-  handleRedPublicaDown,
-  handleContadorDown,
-  handleCalentadorDown,
-  handleCanalDown,
-  handleCajaDown,
   handleEraseDown,
-  handleAreaDown,
   eraseRamalAt,
   handleDrawingMouseMove,
   handleDoubleClick,
@@ -70,6 +58,7 @@ import {
   setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing.ts';
+import { TOOL_DOWN } from './planoToolDispatch.ts';
 import type { ToolType } from './PlanoEngineDrawing.ts';
 export type { ToolType };
 import {
@@ -329,6 +318,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }) => void)
     | null;
   _dirty: boolean;
+  /** Input congelado (cambio de piso en vuelo): mousedown no dibuja ni arrastra. */
+  _frozen: boolean;
   _lastRightClickTime: number;
 
   _ramalDefaults!: PlanoRamalDefaults | null;
@@ -450,6 +441,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onAlertCb = null;
     this._onAccesorioModalCb = null;
     this._dirty = false;
+    this._frozen = false;
     this._lastRightClickTime = 0;
     this._onUpdateCb = null;
     this._loadedPlanId = null;
@@ -1050,6 +1042,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
       sellarAsociacionesCanalBajante(this);
       ensureRpCntRamal(this);
       if (this._history) {
+        // Reset ANTES de la foto: el stack puede traer snapshots del piso ANTERIOR — un
+        // Ctrl+Z los restauraba en el motor ya bajo el id del piso nuevo (fotocopia
+        // cross-piso persistida por el autosave). La foto de abajo queda como base.
+        this._history.reset();
         this._history.saveSnapshot();
       }
     } catch (e) {
@@ -1126,9 +1122,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._observarResize || !this.cw || typeof ResizeObserver === 'undefined') return;
     this._observarResize = new ResizeObserver(() => {
       // El observer dispara también con el cambio de tamaño del lienzo (que cuelga del
-      // contenedor): se compara el tamaño para no re-pintar en bucle.
+      // contenedor): se compara el tamaño para no re-pintar en bucle. scheduleRender (no
+      // render) coalesca la ráfaga del RO durante la transición CSS de las barras.
       this.ensureCanvasSize();
-      this.render();
+      this.scheduleRender();
     });
     this._observarResize.observe(this.cw);
   }
@@ -1256,6 +1253,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
+    // Congelado (cambio de piso en vuelo): el motor aún muestra el piso ANTERIOR — dibujar
+    // o arrastrar aquí crea trazos que loadWork destruirá al aterrizar la BD (y el undo
+    // los reviviría como fotocopia cross-piso). Pan y rueda siguen vivos (solo mirar).
+    if (this._frozen) return;
     // 2º dedo del pinch (o palma apoyada): NO re-ejecutar hit-test/selección/dibujo — el
     // touchstart de CADA dedo entra aquí y crearía vértices o selecciones fantasma.
     if (e instanceof TouchEvent && e.touches.length > 1) return;
@@ -1350,32 +1351,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
         e instanceof MouseEvent && (e.ctrlKey || false),
         e instanceof MouseEvent && e.shiftKey,
       );
-    } else if (this.tool === 'line') {
-      handleLineDown(this, p.x, p.y);
-    } else if (this.tool === 'dim') {
-      handleDimDown(this, p.x, p.y);
-    } else if (this.tool === 'guide') {
-      handleGuideDown(this, p.x, p.y);
-    } else if (this.tool === 'text') {
-      handleTextDown(this, p.x, p.y);
-    } else if (this.tool === 'baj') {
-      handleBajanteDown(this, p.x, p.y);
-    } else if (this.tool === 'mon') {
-      handleMontanteDown(this, p.x, p.y);
-    } else if (this.tool === 'red_pub') {
-      handleRedPublicaDown(this, p.x, p.y);
-    } else if (this.tool === 'cont') {
-      handleContadorDown(this, p.x, p.y);
-    } else if (this.tool === 'calent') {
-      handleCalentadorDown(this, p.x, p.y);
-    } else if (this.tool === 'canal') {
-      handleCanalDown(this, p.x, p.y);
-    } else if (this.tool === 'caja') {
-      handleCajaDown(this, p.x, p.y);
-    } else if (this.tool === 'area') {
-      handleAreaDown(this, p.x, p.y);
-    } else if (this.tool === 'erase') {
-      handleEraseDown(this, x, y);
+    } else {
+      // Dispatch de herramientas (extraído a planoToolDispatch): la escalera de 13
+      // if/else era el último bloque largo de este método.
+      TOOL_DOWN[this.tool]?.(this, p.x, p.y, x, y);
     }
   }
 

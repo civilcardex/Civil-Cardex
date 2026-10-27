@@ -1,7 +1,7 @@
 import type * as THREE_NS from 'three';
 import { LABEL_POSITIONS, RCI_MONO } from './rci3dData.ts';
 import type { Rci3DApi } from './useRci3DScene.ts';
-import { dibujarEtiquetaLider } from '../shared/etiquetaLider.ts';
+import { dibujarEtiquetaLider } from '../shared/leaderLabel.ts';
 
 // Capa de etiquetas — port del HTML original: canvas 2D full-viewport (pointer-events none)
 // redibujado cada frame. Cada etiqueta = línea guía con codo + flecha en la punta + círculo

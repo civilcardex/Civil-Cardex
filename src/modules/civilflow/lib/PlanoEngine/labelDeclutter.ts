@@ -300,3 +300,19 @@ export function beginDeclutterFrame(engine: IPlanoEngineCore): DeclutterFrame {
   }
   return { placed, segs };
 }
+
+/** Desplazamiento (canvas) del ANCLA de la etiqueta a su CENTRO pintado: el renderer separa
+ *  la caja del trazo con un gap perpendicular (`labelClear`), y el des-tapado puede moverla
+ *  más lejos sin tocar el ancla. Con esto dragLabel puede re-anclar una etiqueta NUNCA movida
+ *  al centro que el usuario agarró — sin él, el primer arrastre teleporta la etiqueta desde
+ *  su sitio destapado al punto medio del ramal y arrastra con desfase todo el gesto. */
+export function gapAnclaACaja(
+  boxH: number,
+  angle: number,
+  mm2cvs: (mm: number) => number,
+  zoom: number,
+): { x: number; y: number } {
+  const labelClear = Math.max(mm2cvs(4) + 6 * zoom, boxH * 0.35, 16 * zoom);
+  const labelGap = -(boxH / 2 + labelClear);
+  return { x: -labelGap * Math.sin(angle), y: labelGap * Math.cos(angle) };
+}

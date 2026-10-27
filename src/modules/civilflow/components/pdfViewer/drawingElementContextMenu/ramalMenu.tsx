@@ -8,9 +8,6 @@ import {
   aparatoEnExtremoInvalido,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
 import { directNeighborRamales } from '../../../utils/flowDirection.ts';
-import { allocTributaryNumber, nextFreeRamalId } from '../../../lib/PlanoEngine/PlanoState.ts';
-import { renameRamalId } from '../../../lib/PlanoEngine/networkRenumber.ts';
-import { sameNetGroup } from '../../../lib/PlanoEngine/drawingAngles.ts';
 import { puedeConectarRamalABajante, esCaja } from '../../../lib/PlanoEngine/bajanteRules.ts';
 import {
   useDrawingElementContextMenu,
@@ -30,11 +27,8 @@ import {
   refrescarMenu,
 } from './associatedChannels';
 import { MidRamalAccessorySelector } from './midRamalAccessorySelector.tsx';
-import {
-  pointOnRamalBody,
-  ramalHasInterconnections,
-  tribsBlockingRamalConversion,
-} from './ramalMenuHelpers.ts';
+import { ramalHasInterconnections } from './ramalMenuHelpers.ts';
+import { convertirARamal, convertirATributario, tribCandidatesDe } from './ramalMenuConvert.ts';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';
 import { ElementCodeEditor } from './elementEditor.tsx';
 import { guardarMallas } from '../../../lib/PlanoEngine/nodos';
@@ -66,133 +60,20 @@ export function RamalMenu() {
   const isOccupiedTee =
     isExistingTee || existingTeeType === 'teeTapon' || existingTeeType === 'teeLlaveTerminal';
 
-  // Ítem 8: candidatos a padre para "Convertir en tributario" — ramales de la misma red (o
-  // grupo san/vent) que ESTE ramal toca (extremo sobre vértice o sobre cuerpo). Los
-  // tributarios no son candidatos: un tributario nunca es un tronco.
-  const tribCandidates = (() => {
-    const eng = ctx.engineRef.current;
-    if (!eng || ramalEl.tipo === 'tributario' || !ramalEl.pts || ramalEl.pts.length < 2) {
-      return [];
-    }
-    const TOL = 0.5;
-    const eps = [ramalEl.pts[0], ramalEl.pts[ramalEl.pts.length - 1]];
-    const out: PlanoRamal[] = [];
-    for (const o of eng.ramales) {
-      if (o.id === ramalEl.id || o.tipo === 'tributario') continue;
-      if (!sameNetGroup(o.net, ramalEl.net)) continue;
-      const touch = eps.some(
-        (e) =>
-          (o.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
-          pointOnRamalBody(o.pts || [], e, TOL),
-      );
-      if (touch) out.push(o);
-    }
-    return out;
-  })();
+  // Ítem 8: candidatos a padre y conversiones — lógica en ramalMenuConvert.ts (testeable
+  // sin menú montado). tribCandidatesDe acepta null (guard propio).
+  const tribCandidates = tribCandidatesDe(engineRef.current, ramalEl);
 
   const convertToTributario = (padreId: string) => {
-    const eng = ctx.engineRef.current;
+    const eng = engineRef.current;
     if (!eng) return;
-    const fresh = eng.ramales.find((r) => r.id === ramalEl.id);
-    if (!fresh || !fresh.pts || fresh.pts.length < 2) return;
-    const TOL = 0.5;
-    const p0 = fresh.pts[0];
-    const p1 = fresh.pts[fresh.pts.length - 1];
-    const padre = eng.ramales.find((r) => r.id === padreId);
-    const touchOnPadre = (e: number[]) =>
-      (padre?.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
-      pointOnRamalBody(padre?.pts || [], e, TOL);
-    const t0 = touchOnPadre(p0);
-    const t1 = touchOnPadre(p1);
-    const epIsStart = t0 && !t1;
-    // Renumeración: el tributario hereda el label consecutivo del grupo del padre
-    // (T{n}{labelRaíz}) — igual que autoSplitJunctionAndSumFlow al crear un tributario por
-    // guía, y con la misma cadena de raíz global (rootTributarioLabel). Sin esto el ramal
-    // conservaba su label de ramal normal (RS1, AS1...) y no se distinguía de los troncos.
-    // El consecutivo va contra el padre ELEGIDO, no contra su raíz aguas arriba: los
-    // candidatos nunca son tributarios, y un padre auto-creado (con mergesFrom) hacía que
-    // rootTributarioLabel subiera hasta el tramo original — el usuario elegía RS8 y el label
-    // salía T2RS9 (orig. usuario).
-    const rootLbl = padre?.label || padreId;
-    const updates: Record<string, unknown> = {
-      tipo: 'tributario',
-      padre: padreId,
-      // Convención de punta de flecha igual que autoSplitJunctionAndSumFlow (PlanoEngineDrawing.ts
-      // 576-583): san/ll drenan HACIA la unión; af/ac/gas/vent fluyen DESDE la unión hacia el
-      // aparato. La geometría ya está conectada (el ramal tocó y dividió a su padre al
-      // dibujarse) — esto solo cambia la semántica.
-      _tribReversed: fresh.net === 'san' || fresh.net === 'll' ? epIsStart : !epIsStart,
-    };
-    if (rootLbl) {
-      updates.label = `T${allocTributaryNumber(eng, rootLbl)}${rootLbl}`;
-    }
-    eng.updateElementById(fresh.id, updates);
-    if (ctx.selElement?.id === fresh.id) {
-      ctx.setSelElement({ ...ctx.selElement, ...updates });
-    }
-    eng.render();
-    eng._markDirty();
-    ctx.setContextMenuState(null);
+    convertirATributario(ctx, eng, ramalEl, padreId);
   };
 
   const convertToRamal = () => {
-    const eng = ctx.engineRef.current;
+    const eng = engineRef.current;
     if (!eng) return;
-    const fresh = eng.ramales.find((r) => r.id === ramalEl.id);
-    if (!fresh) return;
-    // Ítem 9 (aclaración usuario): la conversión es una transformación, no un dibujo nuevo —
-    // se convierte y recalcula sin la alerta de conexión nueva. PERO si el ramal resultante
-    // LLEGA a un tributario (un extremo propio sobre él), la regla "los ramales no se
-    // conectan a tributarios" SÍ aplica y la alerta debe aparecer. No bloquean los
-    // segmentos hermanos de la misma línea ni los tributarios que llegan a este (los
-    // recibe) — ver tribsBlockingRamalConversion. Mismo texto que el path de dibujo.
-    if (fresh.tipo === 'tributario' && fresh.pts && fresh.pts.length >= 2) {
-      if (tribsBlockingRamalConversion(eng.ramales, fresh.id).length > 0) {
-        eng.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
-        return;
-      }
-    }
-    // El flip de la flecha del renderer depende de `tipo`: san/ll/vent solo aplican
-    // _tribReversed a TRIBUTARIOS; al pasar a ramal el flip vuelve a 1 y la flecha se
-    // invertiría si el tributario traía _tribReversed. Revertir pts + limpiar el flag
-    // deja la flecha apuntando igual que antes de la conversión.
-    const net = fresh.net;
-    if ((net === 'san' || net === 'll' || net === 'vent') && fresh._tribReversed) {
-      fresh.pts = [...fresh.pts].reverse();
-      fresh._tribReversed = undefined;
-    }
-    const pfx = (eng as unknown as { _netCounts?: Record<string, { ramal: number }> })
-      ? net === 'san'
-        ? 'RS'
-        : net === 'll'
-          ? 'RALL'
-          : net === 'af'
-            ? 'RAF'
-            : net === 'ac'
-              ? 'RAC'
-              : 'R'
-      : 'R';
-    // fallback label via allocNetNumber-like: primer id/etiqueta libre, EXCLUYENDO el propio
-    // elemento — su id heredado de ramal (RS2) no debe bloquear la numeración: ida y vuelta
-    // (RS2→T1RS2→ramal) recupera RS2 (nextFreeRamalId, orig. usuario).
-    const oldId = fresh.id;
-    const newId = nextFreeRamalId(eng.ramales, pfx, oldId);
-    const updates: Record<string, unknown> = {
-      tipo: 'ramal',
-      padre: null,
-      label: newId,
-      pts: fresh.pts,
-      _tribReversed: fresh._tribReversed,
-    };
-    // El id de tributario (T1788...) quedaba en las tablas mientras el dibujo mostraba el
-    // label nuevo (RS8): se renombra el id y se migran todas sus referencias (orig. usuario).
-    renameRamalId(eng, oldId, newId, fresh.label);
-    eng.updateElementById(newId, updates);
-    if (ctx.selElement?.id === oldId)
-      ctx.setSelElement({ ...ctx.selElement, ...updates, id: newId });
-    eng.render();
-    eng._markDirty();
-    ctx.setContextMenuState(null);
+    convertirARamal(ctx, eng, ramalEl, (t, m) => eng.triggerAlert(t, m));
   };
   return (
     <>

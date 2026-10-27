@@ -1,12 +1,16 @@
-﻿import { createContext, useContext } from 'react';
+// Contexto del editor de tramos (panel derecho del visor): motor+selección+estilos
+// compartidos por todos los editores de elemento (bajante, ramal, area, texto…).
+import { createContext, useContext } from 'react';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { Piso } from '../../../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
 
-// Sonda estructural de la unión PlanoElement: permite inspeccionar `tipo`/`pts` (presentes en
-// algunos tipos de elemento, ausentes en otros) sin estrechar el tipo con los type guards exportados
-// en cada punto de acceso.
+/**
+ * Sonda estructural de la unión PlanoElement: permite inspeccionar `tipo`/`pts` (presentes en
+ * algunos tipos de elemento, ausentes en otros) sin estrechar el tipo con los type guards
+ * exportados en cada punto de acceso.
+ */
 export type ProbedElement = PlanoElement & {
   tipo?: string;
   pts?: number[][];
@@ -47,24 +51,26 @@ export interface TramoEditorContextValue {
   triggerConfirm?: (title: string, message: string, onOk: () => void, okLabel?: string) => void;
 }
 
+/** Contexto React del editor de tramos (null fuera del provider). */
 export const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null);
 
-/** Acceso al contexto del editor de tramos — lanza fuera del provider (error de ensamblaje). */
+/** Hook de acceso al contexto del editor de tramos; lanza si el componente vive fuera del provider (error de ensamblaje). */
 export function useTramoEditorContext(): TramoEditorContextValue {
   const ctx = useContext(TramoEditorCtx);
   if (!ctx) throw new Error('useTramoEditorContext must be used within TramoEditor provider');
   return ctx;
 }
 
-// Una tubería principal sanitaria solo necesita el mínimo de 3" cuando realmente lleva un codo
-// reventilado (en un extremo o en medio) — no cualquier ramal de la red principal.
-/** ¿El ramal lleva codo reventilado (en un extremo o a mitad)? — decide si la tubería
- *  principal sanitaria exige su mínimo de 3". */
+/** ¿El ramal san tiene un codo reventilado (en un extremo o a mitad)? Decide si la tubería
+ *  principal exige su mínimo de 3" y si el editor muestra el aviso de la unión vent↔san. */
 export function ramalHasCodoReventilado(r: PlanoRamal | null): boolean {
   if (!r) return false;
   if (r.accesorioInicio === 'codoReventilado' || r.accesorioFin === 'codoReventilado') return true;
   return Object.values(r.accMed || {}).includes('codoReventilado');
 }
+
+// ── Estilos compartidos de los editores (inputs centrados, select, grid de checkboxes,
+// filas de material) — un solo look en todo el panel derecho.
 
 export const SELECT_STYLE: React.CSSProperties = {
   width: '100%',
@@ -184,6 +190,7 @@ export const READONLY_STYLE: React.CSSProperties = {
   fontSize: 12,
   fontFamily: "'Geist',monospace",
 };
+/** Botón violeta que gira la etiqueta del tramo (pareja de handleRotateLabel: la flecha apunta al otro segmento). */
 export const ROTATE_LABEL_BTN_STYLE: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',

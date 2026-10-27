@@ -93,6 +93,9 @@ export function usePdfViewerEngine({
   // o por cambio de escala movía el mountId y dejaba el spinner colgado).
   const cargaSeq = useRef(0);
   const renderTaskRef = useRef<RenderTask | null>(null);
+  // Espejo de files para calentarPdfs sin meter el array en las deps del efecto currentFile.
+  const filesRef = useRef(files);
+  filesRef.current = files;
   const renderingRef = useRef(false);
   // Re-raster pedido mientras había uno en vuelo (F2): se ENCOLA y se ejecuta al cerrar el
   // actual — antes el guard lo descartaba y la lámina se quedaba en la escala vieja.
@@ -275,6 +278,14 @@ export function usePdfViewerEngine({
           throw rerr;
         }
         renderTaskRef.current = null;
+
+        // Tamaño de página del piso NUEVO ANTES de re-encuadrar: el fitPage del piso vacío
+        // usa pageW — con el del piso ANTERIOR el encuadre salía equivocado y el reacomodo
+        // llegaba tarde (bug de orden puro, orig. usuario: «el salto sigue pasando»).
+        const eng0 = engineRef.current;
+        if (!opts.bgOnly && eng0) {
+          eng0.setPageSize(viewport.width, viewport.height);
+        }
 
         // Re-encuadre tras el raster REAL (misma fórmula que pre-paint/switch): la cámara
         // no se mueve un píxel entre el primer paint y aquí (salto residual, orig. usuario).
@@ -617,7 +628,9 @@ export function usePdfViewerEngine({
     const thisCarga = ++cargaSeq.current;
     // Precalentar el RESTO de los pisos (una sola vez por sesión): parse en reposo tras la
     // primera entrada — los switches posteriores caen en la caché y no re-parsean nada.
-    const calentarResto = (): void => calentarPdfs(files ?? []);
+    // filesRef (NO `files` en las deps): cada retry de PlansContext regenera el array y
+    // re-disparaba ESTA cadena abortando la carga en vuelo (H5 auditoría 2026-10-27).
+    const calentarResto = (): void => calentarPdfs(filesRef.current ?? []);
     // Cache hit: sin parse ni spinner; el canvas conserva el bitmap anterior (swap imperceptible).
     const enCache = pdfDeCache(currentFile);
     if (enCache) {
@@ -628,6 +641,10 @@ export function usePdfViewerEngine({
           await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount, {
             causa: 'loader-cache',
           });
+          // Si una carga FRÍA anterior quedó con el spinner arriba y esta corrida la
+          // reemplazó (cambio de piso por retry de contexto), bajarlo aquí: este path
+          // nunca lo tocaba y el overlay quedaba colgado.
+          if (thisCarga === cargaSeq.current) setLoading(false);
           reprogramarBgRef.current?.();
           calentarResto();
         } catch (err) {
@@ -668,13 +685,23 @@ export function usePdfViewerEngine({
         // el zoom y lastZoomRaster nacía en 1) + precalentar el resto de los pisos.
         reprogramarBgRef.current?.();
         calentarResto();
-        // El spinner cubre el PRIMER PAINT COMPLETO + un asentamiento breve: cualquier frame
-        // de ajuste (cámara/redes asentándose) queda dentro de la carga, nunca a la vista
-        // (orig. usuario: prefiere pantalla de carga un poco más larga al acomodarse).
+        // El spinner cubre el PRIMER PAINT COMPLETO + asentamiento CAUSAL: el mínimo de 600ms
+        // se extiende mientras haya un raster en vuelo o un re-raster encolado (la corrección
+        // de escala y el bgOnly de densidad llegan DESPUÉS del render principal — bajar por
+        // timer fijo los dejaba ver: el reacomodo, orig. usuario). Techo de 3s por si acaso.
         if (thisCarga === cargaSeq.current) {
-          window.setTimeout(() => {
-            if (thisCarga === cargaSeq.current) setLoading(false);
-          }, 600);
+          const t0 = Date.now();
+          const bajar = (): void => {
+            if (thisCarga !== cargaSeq.current) return;
+            const ocupado =
+              renderingRef.current || renderPendingRef.current != null || renderTaskRef.current;
+            if (ocupado && Date.now() - t0 < 3000) {
+              window.setTimeout(bajar, 100);
+              return;
+            }
+            setLoading(false);
+          };
+          window.setTimeout(bajar, 600);
         }
       } catch (err) {
         if (thisCarga === cargaSeq.current) {
@@ -692,7 +719,7 @@ export function usePdfViewerEngine({
 
     const pdfjsPromise = getPdfjs();
     reader.readAsArrayBuffer(currentFile);
-  }, [currentFile, currentId, files, renderPage, setError, setLoading]);
+  }, [currentFile, currentId, renderPage, setError, setLoading]);
 
   // Re-rasters por escala (prop + evento), con dedupe anti-parpadeo: useReRasterEscala.
   useReRasterEscala({

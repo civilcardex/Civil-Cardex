@@ -1,4 +1,6 @@
-﻿import { createContext, useContext } from 'react';
+// Contexto del menú contextual del visor (click derecho sobre un elemento): estado del
+// menú, motor, pisos y estilos compartidos por todas las secciones del menú.
+import { createContext, useContext } from 'react';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type {
   PlanoElement,
@@ -10,10 +12,12 @@ import type { PlanItem } from '../../../context/PlansContext.tsx';
 import type { MaterialItem } from '../../../context/ProjectContext.tsx';
 import type { UcMoveModalState } from '../UcMoveModal.tsx';
 
-// Sonda estructural de la unión PlanoElement: permite al código inspeccionar `tipo`/`pts`
-// (presentes en algunos tipos de elemento y ausentes en otros) igual que hace el dispatch
-// en tiempo de ejecución del engine, sin tener que estrechar el tipo con los guards
-// exportados en cada punto de acceso.
+/**
+ * Sonda estructural de la unión PlanoElement: permite al código inspeccionar `tipo`/`pts`
+ * (presentes en algunos tipos de elemento y ausentes en otros) igual que hace el dispatch
+ * en tiempo de ejecución del engine, sin tener que estrechar el tipo con los guards
+ * exportados en cada punto de acceso.
+ */
 export type ProbedElement = PlanoElement & { tipo?: string; pts?: number[][] };
 
 /** Qué se pinchó con clic derecho: el elemento, dónde abrir el menú y el contexto del golpe
@@ -78,8 +82,7 @@ const DrawingElementContextMenuCtx = createContext<DrawingElementContextMenuCont
   null,
 );
 
-/** Acceso al contexto del menú contextual — lanza si se usa fuera del provider (error de
- *  ensamblaje, no silencio). */
+/** Hook de acceso al menú contextual; lanza si se usa fuera del provider (error de ensamblaje, no silencio). */
 export function useDrawingElementContextMenu(): DrawingElementContextMenuContextValue {
   const ctx = useContext(DrawingElementContextMenuCtx);
   if (!ctx)
@@ -90,6 +93,9 @@ export function useDrawingElementContextMenu(): DrawingElementContextMenuContext
 }
 
 export { DrawingElementContextMenuCtx };
+
+// ── Estilos del menú (select, botones de dirección, grids de checkboxes y botones de
+// acción) — look único del menú contextual.
 
 export const MENU_SELECT_STYLE: React.CSSProperties = {
   width: '100%',
@@ -102,6 +108,7 @@ export const MENU_SELECT_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   cursor: 'pointer',
 };
+/** Botón de dirección de flujo (↔) de las secciones del menú: fila compacta con elipsis si el texto no cabe. */
 export const MENU_DIR_BTN_STYLE: React.CSSProperties = {
   padding: '3px 5px',
   textAlign: 'left',
@@ -119,6 +126,7 @@ export const MENU_DIR_BTN_STYLE: React.CSSProperties = {
   textOverflow: 'ellipsis',
   minWidth: 0,
 };
+/** Fila-botón de la sección fantasma entrepisos (XFG (fantasma entrepisos)): ancha, con separador superior. */
 export const MENU_FANTASMA_BTN_STYLE: React.CSSProperties = {
   border: 'none',
   padding: '6px 8px',
@@ -196,7 +204,7 @@ export const MENU_PANEL_STYLE: React.CSSProperties = {
   overflow: 'hidden',
 };
 
-// Variante más ancha solo para menús de bajante/montante (más filas y selects largos).
+/** Variante más ancha solo para menús de bajante/montante (más filas y selects largos). */
 export const MENU_PANEL_BAJANTE_STYLE: React.CSSProperties = {
   ...MENU_PANEL_STYLE,
   minWidth: 280,

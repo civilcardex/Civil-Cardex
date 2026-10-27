@@ -20,15 +20,21 @@ import {
 } from '../context/ProjectContext.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
 import { devError } from '../../../utils/devError.ts';
+import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
+import { marcarNavInterna } from '../../../utils/internalNavigation.ts';
 import { fetchProyectos } from '../services/projectsService.ts';
 import { loadProyectoData } from '../services/projectDataService.ts';
 import { clearLocalWorkspace } from '../services/workspaceReset.ts';
 import { clearAllPDFs } from '../services/idbStorage.ts';
-import { getActiveProyectoId, saveToStorage, loadFromStorage } from '../services/storageService.ts';
+import {
+  getActiveProyectoId,
+  setActiveProyectoId,
+  saveToStorage,
+  loadFromStorage,
+} from '../services/storageService.ts';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import {
   ACTIVE_NETS_KEY,
-  ACTIVE_PROYECTO_ID_KEY,
   NETS_CHANGED_EVENT,
   PLANS_META_KEY,
   VISOR_ACTIVE_PLAN_ID_KEY,
@@ -42,7 +48,6 @@ import { useProyectoCargado } from '../hooks/useProjectLoaded';
 import { useTour } from '../../../components/tour/useTour.tsx';
 import { suscribirCalentamiento, calentamientoListo } from '../components/pdfViewer/pdfCache.ts';
 import {
-  ViewerPage_S1,
   ViewerPage_S2,
   ViewerPage_S3,
   ViewerPage_S4,
@@ -187,7 +192,7 @@ export default function ViewerPage() {
         await clearAllPDFs();
         plansCtx?.resetPlans();
         projectCtx?.resetToDefaults();
-        localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, wantsId);
+        setActiveProyectoId(wantsId);
         if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
         const proyToSave =
           data?.proy && Object.keys(data.proy).length
@@ -200,10 +205,12 @@ export default function ViewerPage() {
         if (data?.redesActivas && data.redesActivas.length)
           saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
         if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
+        marcarNavInterna();
         window.location.replace(`/dibujoRedes/${wantsId}`);
       } catch (e) {
         devError('abrir proyecto desde URL (visor):', e);
-        if (idAnterior) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, idAnterior);
+        if (idAnterior) setActiveProyectoId(idAnterior);
+        marcarNavInterna();
         window.location.replace(idAnterior ? '/dibujoRedes' : '/perfil');
         return;
       }
@@ -476,7 +483,7 @@ export default function ViewerPage() {
       <script type="application/ld+json">{JSON.stringify(VIEWER_JSONLD)}</script>
       <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
-        <h1 style={ViewerPage_S1}>Visor de planos</h1>
+        <h1 style={SR_ONLY_STYLE}>Visor de planos</h1>
         <div style={ViewerPage_S2}>
           <span
             style={{

@@ -5,7 +5,6 @@ export interface ToolDef {
   id: string;
   label: string;
   ico: string;
-  key: string;
   icoCol: string;
   shortcut: string;
 }
@@ -34,7 +33,6 @@ const TOOLS: ToolDef[] = [
     id: 'sel',
     label: 'Seleccionar',
     ico: '\uD83D\uDC46',
-    key: 'S',
     icoCol: '#9BA8AA',
     shortcut: 'S',
   },
@@ -42,7 +40,6 @@ const TOOLS: ToolDef[] = [
     id: 'line-ramal',
     label: 'Ramal principal',
     ico: '\u2571',
-    key: 'R',
     icoCol: '#4D8FF7',
     shortcut: 'R',
   },
@@ -50,16 +47,14 @@ const TOOLS: ToolDef[] = [
     id: 'line-trib',
     label: 'Tributario',
     ico: '\u2571',
-    key: 'T',
     icoCol: '#4D8FF7',
     shortcut: 'T',
   },
-  { id: 'area', label: 'Área', ico: '\u2B21', key: 'A', icoCol: '#22D3EE', shortcut: 'A' },
+  { id: 'area', label: 'Área', ico: '\u2B21', icoCol: '#22D3EE', shortcut: 'A' },
   {
     id: 'dim',
     label: 'Medir/Acotar',
     ico: '\uD83D\uDCCF',
-    key: 'D',
     icoCol: '#22D3EE',
     shortcut: 'D',
   },
@@ -68,14 +63,13 @@ const TOOLS: ToolDef[] = [
     label: 'L\u00EDnea gu\u00EDa',
     ico: '\u2504',
     // 'G' colisionaba con el atajo mostrado para Snap \u2014 U (de "gU\u00EDa") queda libre.
-    key: 'U',
     icoCol: '#888888',
     shortcut: 'U',
   },
-  { id: 'text', label: 'Texto', ico: 'T', key: 'C', icoCol: '#A855F7', shortcut: 'C' },
-  { id: 'baj', label: 'Bajante', ico: '\u2193', key: 'B', icoCol: '#F04545', shortcut: 'B' },
-  { id: 'mon', label: 'Montante', ico: '\u2191', key: 'M', icoCol: '#3B82F6', shortcut: 'M' },
-  { id: 'erase', label: 'Borrador', ico: '🧽', key: 'E', icoCol: '#ffb4ab', shortcut: 'E' },
+  { id: 'text', label: 'Texto', ico: 'T', icoCol: '#A855F7', shortcut: 'C' },
+  { id: 'baj', label: 'Bajante', ico: '\u2193', icoCol: '#F04545', shortcut: 'B' },
+  { id: 'mon', label: 'Montante', ico: '\u2191', icoCol: '#3B82F6', shortcut: 'M' },
+  { id: 'erase', label: 'Borrador', ico: '🧽', icoCol: '#ffb4ab', shortcut: 'E' },
 ];
 
 const PdfViewerToolbar_S2: React.CSSProperties = {
@@ -203,7 +197,6 @@ function PdfViewerToolbar_({
       id: 'cont',
       label: 'Contador',
       ico: '🔳',
-      key: 'O',
       icoCol: '#4D8FF7',
       shortcut: 'O',
     });
@@ -215,7 +208,6 @@ function PdfViewerToolbar_({
     id: 'canal',
     label: 'Canal',
     ico: '▭',
-    key: 'L',
     icoCol: '#8B5CF6',
     shortcut: 'L',
   });
@@ -227,7 +219,6 @@ function PdfViewerToolbar_({
     id: 'caja',
     label: activeNet === 'll' ? 'Caja ALL' : 'Caja AN',
     ico: '⧉',
-    key: 'J',
     icoCol: '#10B981',
     shortcut: 'J',
   });

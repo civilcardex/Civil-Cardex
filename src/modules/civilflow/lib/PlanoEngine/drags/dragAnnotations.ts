@@ -9,6 +9,7 @@ import {
 } from '../textAnnotationGeometry.ts';
 import { normalizarCanal, pxPerCmDe } from '../channelAssociation';
 import { _calcPolyArea } from '../drawingUtils.ts';
+import { gapAnclaACaja } from '../labelDeclutter.ts';
 
 /** Arrastre de una GUÍA: mueve ESE vértice (con el snap del dibujo de guías) o la entidad
  *  completa — la guía es una sola pieza con varios vértices. */
@@ -47,6 +48,22 @@ export function dragLabel(engine: IPlanoEngineCore, x: number, y: number): void 
     engine.bajantes.find((b) => b.id === engine.lblDrag!.id) ||
     engine.areas.find((a) => a.id === engine.lblDrag!.id);
   if (el) {
+    // Primer agarre de una etiqueta NUNCA movida: la caja agarrada puede estar DESPLAZADA
+    // del ancla (el des-tapado mueve lo pintado sin tocar labelX/labelY). Re-anclar el ancla
+    // al "centro agarrado menos gap" y corregir el offset del gesto en el mismo paso — sin
+    // esto, al encenderse labelMoved abajo el declutter se apaga y la etiqueta TELEPORTA el
+    // desplazamiento completo (orig. usuario: la primera vez no sigue bien el cursor).
+    const caja = (el as PlanoRamal)._labelBox;
+    if (!el.labelMoved && caja && el.labelX != null) {
+      const anclaCvs = engine.toCvs(el.labelX, el.labelY!);
+      const gap = gapAnclaACaja(caja.h, caja.angle, engine.mm2cvs.bind(engine), engine.zoom);
+      const dAncla = { x: caja.cx - gap.x - anclaCvs.x, y: caja.cy - gap.y - anclaCvs.y };
+      engine.lblDrag!.offX -= dAncla.x;
+      engine.lblDrag!.offY -= dAncla.y;
+      const anclaNueva = engine.toPlane(caja.cx - gap.x, caja.cy - gap.y);
+      el.labelX = anclaNueva.x;
+      el.labelY = anclaNueva.y;
+    }
     const p = engine.toPlane(x - engine.lblDrag!.offX, y - engine.lblDrag!.offY);
     // Solo un bajante tiene posiciones de etiqueta "fantasma" entre pisos (ghostData, una por
     // piso) — los ramales/áreas nunca. Se usa la bandera _lblDragIsParent: si el arrastre

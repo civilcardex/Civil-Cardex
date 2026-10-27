@@ -1,5 +1,5 @@
+import { splitPtr } from '../../../utils/keys.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
-import { parseDescargaEnId } from '../../../utils/parseDischargeInId.ts';
 import { puedeConectarRamalABajante } from '../bajanteRules.ts';
 import { bumpBajanteToMaxRamal } from '../drawingUtils.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
@@ -117,7 +117,7 @@ export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx:
       });
     }
     if (b.descargaEnId) {
-      const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+      const parts = splitPtr(b.descargaEnId, engine._loadedPlanId);
       const targetPlanId = parts[0];
       const targetId = parts[1];
       if (String(targetPlanId) === String(engine._loadedPlanId)) {

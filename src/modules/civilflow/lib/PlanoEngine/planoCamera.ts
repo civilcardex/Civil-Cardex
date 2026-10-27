@@ -11,11 +11,10 @@ export interface CamaraConRender {
   render(): void;
 }
 
-/** Tamaño del lienzo de DIBUJO: SOLO el área visible del visor.
- *  Antes medía `max(viewport, hoja×zoom)`: con zoom 3 y dpr 2 el lienzo llegaba a ~50 MP y
- *  CADA frame del paneo lo limpiaba y repintaba entero — el "trabado" del visor. El contenedor
- *  (`overflow:hidden`) ya recorta en el mismo sitio, así que el lienzo visible pinta lo mismo
- *  con una fracción del raster. Ej: visor 1200×800 → lienzo 1200×800 CSS (×dpr de backing).
+/** Tamaño del lienzo de DIBUJO: SOLO el área visible del visor (antes max(viewport, hoja×zoom)
+ *  llegaba a ~50 MP con zoom 3 y dpr 2 y cada frame repintaba entero — el "trabado"; el
+ *  contenedor con overflow:hidden ya recorta en el mismo sitio).
+ *  Ej: visor 1200×800 → lienzo 1200×800 CSS (×dpr de backing).
  * @param visW - ancho del área visible (el contenedor del visor).
  * @param visH - alto del área visible.
  * @returns tamaño del lienzo en px CSS (0 si el área aún no está medida).
@@ -41,14 +40,8 @@ export interface BboxDibujo {
 
 /**
  * Encuadre que muestra la HOJA COMPLETA centrada en el viewport.
- * @param visW - ancho del área visible.
- * @param visH - alto del área visible.
- * @param pageW - ancho de la hoja.
- * @param pageH - alto de la hoja.
- * @param pad - aire (px) alrededor de la hoja.
- * @returns identidad {zoom:1, off:0} si la lámina aún no está medida (pageW/pageH = 0,
- *   antes del primer raster): sin el guard, sc=Infinity y offX=NaN — el canvas con
- *   transform NaN no pinta nada.
+ * @returns identidad {zoom:1, off:0} si la lámina aún no está medida (pageW/pageH = 0): sin
+ *   ese guard, sc=Infinity y offX=NaN — el canvas con transform NaN no pinta nada.
  */
 export function encuadrarHoja(args: {
   visW: number;
@@ -74,9 +67,8 @@ export function encuadrarHoja(args: {
 
 /**
  * Encuadre que muestra SOLO el DIBUJO (el contenido), centrado: recorta el fondo negro de la
- * lámina y del visor (orig. usuario: "que se vea solo el plano, no el fondo negro").
- * Si no hay dibujo (bbox null) cae a la hoja completa. Un bbox DEGENERADO (una sola línea
- * recta: ancho o alto 0, punto único) se encuadra igual con el divisor en 1 — caer a la hoja
+ * lámina y del visor (orig. usuario). Cae a la hoja completa si bbox es null; un bbox
+ * DEGENERADO (una sola línea recta) se encuadra igual con divisor 1 — caer a la hoja
  * des-centraba el primer trazo de un piso nuevo.
  * @param bbox - rectángulo del dibujo en px de plano (null si no hay nada).
  */

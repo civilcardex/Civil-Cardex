@@ -28,8 +28,6 @@ interface CtxMin {
   setContextMenuState: Dispatch<SetStateAction<ContextMenuState | null>>;
 }
 
-export const ASSOC_LABEL_STYLE = MENU_SECTION_LABEL_ROW_STYLE;
-
 /** Fila de asociación (checkbox + nombre) con fondo — legible sobre el menú. */
 export const ASSOC_ROW_STYLE: React.CSSProperties = {
   ...MENU_CHECK_ROW_STYLE,
@@ -48,10 +46,6 @@ export const ASSOC_SECTION_STYLE: React.CSSProperties = {
   borderTop: '1px solid #3a494a',
   marginTop: 4,
 };
-
-export const ASSOC_GRID_STYLE = MENU_GRID_2COL_STYLE;
-
-export const ASSOC_CELL_STYLE = MENU_CHECK_LABEL_STYLE;
 
 /** Mensaje "sin canales asociados" a lo ancho de las 2 columnas de la grilla. */
 export const ASSOC_EMPTY_STYLE: React.CSSProperties = {
@@ -106,11 +100,11 @@ export function CanalesAsociadosBajSection({
   const actual = vivo?.canalId || '';
   return (
     <div style={ASSOC_SECTION_STYLE}>
-      <div style={ASSOC_LABEL_STYLE}>Canales asociados</div>
-      <div style={ASSOC_GRID_STYLE}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Canales asociados</div>
+      <div style={MENU_GRID_2COL_STYLE}>
         {canales.length === 0 && <div style={ASSOC_EMPTY_STYLE}>Sin canales dibujados.</div>}
         {canales.map((c) => (
-          <label key={c.id} style={ASSOC_CELL_STYLE}>
+          <label key={c.id} style={MENU_CHECK_LABEL_STYLE}>
             <input
               type="checkbox"
               style={ASSOC_CHECKBOX_STYLE}
@@ -152,11 +146,11 @@ export function CanalesAsociadosRamalSection({
   const actual = vivo?.esCanalId || '';
   return (
     <div style={ASSOC_SECTION_STYLE}>
-      <div style={ASSOC_LABEL_STYLE}>Canales asociados</div>
-      <div style={ASSOC_GRID_STYLE}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Canales asociados</div>
+      <div style={MENU_GRID_2COL_STYLE}>
         {canales.length === 0 && <div style={ASSOC_EMPTY_STYLE}>Sin canales dibujados.</div>}
         {canales.map((c) => (
-          <label key={c.id} style={ASSOC_CELL_STYLE}>
+          <label key={c.id} style={MENU_CHECK_LABEL_STYLE}>
             <input
               type="checkbox"
               style={ASSOC_CHECKBOX_STYLE}
@@ -199,7 +193,7 @@ export function MaterialCubiertaBajSection({
   const chip = mat.chipDeBajante(bajEl.code || bajEl.id, planNivel);
   return (
     <div style={ASSOC_SECTION_STYLE}>
-      <div style={ASSOC_LABEL_STYLE}>Material de cubierta</div>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Material de cubierta</div>
       <select
         aria-label="Material de cubierta del bajante"
         value={mat.materialDeBajante(chip)}
@@ -230,7 +224,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
     val: string,
   ) => (
     <div key={field} style={{ paddingTop: 4 }}>
-      <div style={ASSOC_LABEL_STYLE}>{label}</div>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>{label}</div>
       <select
         aria-label={label}
         value={val}
@@ -271,13 +265,13 @@ export function MontantesAsociadosSection({
   if (montantes.length === 0) return null;
   return (
     <div style={ASSOC_SECTION_STYLE}>
-      <div style={ASSOC_LABEL_STYLE}>Montantes asociados</div>
-      <div style={ASSOC_GRID_STYLE}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Montantes asociados</div>
+      <div style={MENU_GRID_2COL_STYLE}>
         {montantes.map((m) => {
           const activo =
             (m.recibeDeIds || []).includes(ramal.id) || (m.alimentaIds || []).includes(ramal.id);
           return (
-            <label key={m.id} style={ASSOC_CELL_STYLE}>
+            <label key={m.id} style={MENU_CHECK_LABEL_STYLE}>
               <input
                 type="checkbox"
                 style={ASSOC_CHECKBOX_STYLE}
@@ -318,13 +312,13 @@ export function RamalesAsociadosMontSection({
   if (ramales.length === 0) return null;
   return (
     <div style={ASSOC_SECTION_STYLE}>
-      <div style={ASSOC_LABEL_STYLE}>Ramales asociados</div>
-      <div style={ASSOC_GRID_STYLE}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales asociados</div>
+      <div style={MENU_GRID_2COL_STYLE}>
         {ramales.map((r) => {
           const activo =
             (vivo.recibeDeIds || []).includes(r.id) || (vivo.alimentaIds || []).includes(r.id);
           return (
-            <label key={r.id} style={ASSOC_CELL_STYLE}>
+            <label key={r.id} style={MENU_CHECK_LABEL_STYLE}>
               <input
                 type="checkbox"
                 style={ASSOC_CHECKBOX_STYLE}

@@ -1,4 +1,4 @@
-import { DIAM_BAN, DIAM_BAN_LL, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
+import { DIAM_VENT } from '../../../constants';
 import { opcionesDiametroElemento } from '../drawingElementContextMenu/diameterSelector.tsx';
 import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials.ts';
 import { useMaterialesLl } from '../../../context/RainwaterContext.tsx';
@@ -6,20 +6,15 @@ import { OpcionesMaterial } from '../drawingElementContextMenu/associatedChannel
 import { usePlans } from '../../../context/PlansContext.tsx';
 import { direccionBajaPermitida } from '../../../lib/PlanoEngine/directionRules.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { camposAsocManual } from '../../../lib/PlanoEngine/PlanoEngineSelectionEdit.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { entradaPor } from '../../../utils/diamLookup';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
-import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules.ts';
-import {
-  SELECT_STYLE,
-  INPUT_CENTER_STYLE,
-  CHECK_GRID_STYLE,
-  CHECK_ROW_STYLE,
-  READONLY_CENTER_STYLE,
-} from './context.ts';
+import { SELECT_STYLE, INPUT_CENTER_STYLE, READONLY_CENTER_STYLE } from './context.ts';
 import { useCaudalLl } from './useFlowLl';
+import { BajanteGhostEditor } from './bajanteGhostEditor.tsx';
+import { RamalesAsociadosGrid } from './AssociatedRamalesGrid.tsx';
+import { DireccionFlowButtons } from './DirectionFlowButtons.tsx';
 
 /** Editor del bajante/montante seleccionado: diámetro, altura vertical, llenado (R) y área
  *  servida. */
@@ -56,195 +51,14 @@ export function BajanteEditor({
   const mostrarH = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
   const mostrarArea = (engineRef.current?.areas || []).some((a) => a.net === selElement.net);
   if (isGhostSel) {
-    const gd = selElement.ghostData?.[lvl] || {};
-    const currentGhostDiam = gd.dNominal || '';
-    const currentGhostDir = gd.direccion || '';
-
-    const updateGhostField = (
-      mutate: (cd: NonNullable<PlanoBajante['ghostData']>[string]) => void,
-    ) => {
-      const gdNew = { ...(selElement.ghostData || {}) };
-      const cd = { ...(gdNew[lvl] || {}) };
-      mutate(cd);
-      gdNew[lvl] = cd;
-      if (engineRef.current) {
-        engineRef.current.updateSelected({ ghostData: gdNew });
-        setSelElement({ ...selElement, ghostData: gdNew });
-        engineRef.current.render();
-      }
-    };
-
     return (
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Datos específicos (Fantasma)
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {selElement.net === 'll' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: '#9BA8AA',
-                    fontFamily: "'Geist',monospace",
-                    marginBottom: 2,
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                  }}
-                >
-                  Caudal (LPS)
-                </div>
-                <div
-                  style={{
-                    ...READONLY_CENTER_STYLE,
-                    display: 'flex',
-                    alignItems: 'center',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {caudalLl != null ? caudalLl.toFixed(2) : '—'}
-                </div>
-              </div>
-            </div>
-          )}
-          <div>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Diámetro
-            </div>
-            <select
-              value={currentGhostDiam}
-              aria-label="Diámetro"
-              onChange={(e) => {
-                const val = e.target.value;
-                // Regla ll bajante≥ramal en el GHOST también: sin esto, el fantasma aceptaba
-                // un diámetro menor que sus ramales sin alerta y sin espejar al real.
-                if (val && engineRef.current) {
-                  const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
-                  if (bajIn > 0) {
-                    const fuenteId = selElement.id.startsWith('XFG_') ? undefined : selElement.id;
-                    const idsRamales = fuenteId
-                      ? (selElement.recibeDeIds ?? [])
-                      : (
-                          engineRef.current.ramales as Array<{
-                            id?: string;
-                            net?: string;
-                            diametro?: string;
-                          }>
-                        )
-                          .filter((r) => r.net === selElement.net && r.diametro)
-                          .map((r) => r.id || '');
-                    for (const rid of idsRamales) {
-                      const ram = engineRef.current.ramales.find((r) => r.id === rid);
-                      if (!ram || !ram.diametro) continue;
-                      const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
-                      if (ramIn > 0 && ramIn > bajIn) {
-                        engineRef.current.triggerAlert(
-                          'Diámetro no permitido',
-                          `Diámetro del fantasma no puede ser menor al del ramal conectado (${ram.diametro})`,
-                        );
-                        e.target.value = currentGhostDiam;
-                        return;
-                      }
-                    }
-                  }
-                }
-                updateGhostField((cd) => {
-                  cd.dNominal = val;
-                });
-              }}
-              style={SELECT_STYLE}
-            >
-              <option value="">—</option>
-              {(selElement.net === 'vent'
-                ? DIAM_VENT
-                : selElement.net === 'san'
-                  ? DIAM_BAN_SAN
-                  : selElement.net === 'll'
-                    ? DIAM_BAN_LL
-                    : DIAM_BAN
-              ).map((d) => (
-                <option key={d.pulg} value={d.nom}>
-                  {normalizeDnLabel(d.nom)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Dirección de flujo
-            </div>
-            <div style={{ display: 'flex', gap: 3 }}>
-              {(
-                [
-                  ['sube', '↑ Sube'],
-                  ['baja', '↓ Baja'],
-                  ['continua', '➜ Continua'],
-                ] as const
-              ).map(([val, lbl]) => {
-                const isActive = currentGhostDir === val;
-                return (
-                  <button
-                    type="button"
-                    key={val}
-                    onClick={() => {
-                      updateGhostField((cd) => {
-                        const newDir = cd.direccion === val ? undefined : val;
-                        if (newDir) {
-                          cd.direccion = newDir;
-                        } else {
-                          delete cd.direccion;
-                        }
-                      });
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '4px 6px',
-                      fontSize: 12,
-                      fontFamily: "'Geist',monospace",
-                      borderRadius: 3,
-                      border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
-                      background: isActive ? 'rgba(245,166,35,.15)' : '#1e2024',
-                      color: isActive ? '#F5A623' : '#9BA8AA',
-                      cursor: 'pointer',
-                      fontWeight: isActive ? 600 : 400,
-                    }}
-                  >
-                    {lbl}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
+      <BajanteGhostEditor
+        selElement={selElement}
+        engineRef={engineRef}
+        setSelElement={setSelElement}
+        lvl={lvl}
+        caudalLl={caudalLl}
+      />
     );
   }
 
@@ -628,191 +442,44 @@ export function BajanteEditor({
           >
             Dirección
           </div>
-          <div style={{ display: 'flex', gap: 3 }}>
-            {(
-              [
-                ['sube', '↑ Sube'],
-                ['baja', '↓ Baja'],
-                ['continua', '➜ Continua'],
-              ] as const
-            ).map(([val, lbl]) => {
+          <DireccionFlowButtons
+            current={selElement.direccion || ''}
+            onPick={(val) => {
               const eng = engineRef.current;
-              const isActive = selElement.direccion === val;
-
-              return (
-                <button
-                  type="button"
-                  key={val}
-                  onClick={() => {
-                    if (!eng) return;
-                    // PUNTO 8: original de asociación (origenId) → solo baja/continua.
-                    if (val === 'sube' && selElement.origenId) {
-                      eng.triggerAlert(
-                        'Dirección no permitida',
-                        'Este bajante es el original de una asociación entre pisos: solo admite "Baja" o "Continua".',
-                      );
-                      return;
-                    }
-                    const newDir = selElement.direccion === val ? undefined : val;
-                    // PUNTO 9: 'baja' sin piso debajo → coerces a 'continua' con alerta.
-                    let dirFinal = newDir;
-                    if (newDir === 'baja' && !direccionBajaPermitida(eng, selElement)) {
-                      dirFinal = 'continua';
-                      eng.triggerAlert(
-                        'Dirección no permitida',
-                        'Este es el último nivel del proyecto: no hay un piso inferior hacia el cual continuar el flujo. Se aplicó "Continua".',
-                      );
-                    }
-                    eng.updateSelected({
-                      direccion: dirFinal,
-                      desplazamientos: { ...(selElement.desplazamientos || {}) },
-                    });
-                    setSelElement({ ...selElement, direccion: dirFinal });
-                    eng.render();
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '4px 6px',
-                    fontSize: 12,
-                    fontFamily: "'Geist',monospace",
-                    borderRadius: 3,
-                    border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
-                    background: isActive ? 'rgba(245,166,35,.15)' : '#1e2024',
-                    color: isActive ? '#F5A623' : '#9BA8AA',
-                    cursor: 'pointer',
-                    fontWeight: isActive ? 600 : 400,
-                  }}
-                >
-                  {lbl}
-                </button>
-              );
-            })}
-          </div>
+              if (!eng) return;
+              // PUNTO 8: original de asociación (origenId) → solo baja/continua.
+              if (val === 'sube' && selElement.origenId) {
+                eng.triggerAlert(
+                  'Dirección no permitida',
+                  'Este bajante es el original de una asociación entre pisos: solo admite "Baja" o "Continua".',
+                );
+                return;
+              }
+              const newDir = selElement.direccion === val ? undefined : val;
+              // PUNTO 9: 'baja' sin piso debajo → coerces a 'continua' con alerta.
+              let dirFinal = newDir;
+              if (newDir === 'baja' && !direccionBajaPermitida(eng, selElement)) {
+                dirFinal = 'continua';
+                eng.triggerAlert(
+                  'Dirección no permitida',
+                  'Este es el último nivel del proyecto: no hay un piso inferior hacia el cual continuar el flujo. Se aplicó "Continua".',
+                );
+              }
+              eng.updateSelected({
+                direccion: dirFinal,
+                desplazamientos: { ...(selElement.desplazamientos || {}) },
+              });
+              setSelElement({ ...selElement, direccion: dirFinal });
+              eng.render();
+            }}
+          />
         </div>
         {['san', 'll', 'af', 'ac', 'gas'].includes(selElement.net || '') && (
-          <div style={{ width: '100%' }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 2,
-                textTransform: 'uppercase',
-                letterSpacing: 1,
-              }}
-            >
-              Ramales asociados
-            </div>
-            <div style={CHECK_GRID_STYLE}>
-              {(() => {
-                const bajRamales = (engineRef.current?.ramales || []).filter(
-                  (r) => r.net === selElement.net && r.tipo !== 'tributario',
-                );
-                if (bajRamales.length === 0)
-                  return (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: '#8AB4D6',
-                        fontFamily: "'Geist',monospace",
-                        padding: '4px',
-                        gridColumn: 'span 4',
-                      }}
-                    >
-                      Sin ramales en esta red
-                    </div>
-                  );
-                const recibidos = selElement.recibeDeIds || [];
-                const alimentan = selElement.alimentaIds || [];
-                const bajCode = selElement.code || selElement.id;
-                return bajRamales.map((r) => (
-                  <label key={r.id} style={CHECK_ROW_STYLE}>
-                    <input
-                      type="checkbox"
-                      checked={
-                        recibidos.includes(r.id) ||
-                        alimentan.includes(r.id) ||
-                        r.ini === bajCode ||
-                        r.fin === bajCode
-                      }
-                      onChange={(e) => {
-                        // Regla central (ítem 1.2): tope de asociaciones ANTES de escribir.
-                        if (e.target.checked && !recibidos.includes(r.id)) {
-                          const check = puedeConectarRamalABajante(selElement, r);
-                          if (!check.ok) {
-                            if (check.title && check.msg)
-                              engineRef.current?.triggerAlert(check.title, check.msg);
-                            e.preventDefault();
-                            return;
-                          }
-                        }
-                        if (e.target.checked && recibidos.length === 1) {
-                          const existing = (engineRef.current?.ramales || []).find(
-                            (x) => x.id === recibidos[0],
-                          ) as unknown as { diametro?: string } | undefined;
-                          if (existing && existing.diametro && r.diametro) {
-                            const p1 = diamPulgFromLabel(existing.diametro);
-                            const p2 = diamPulgFromLabel(r.diametro);
-                            if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
-                              engineRef.current?.triggerAlert(
-                                'Diámetros no compatibles',
-                                'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
-                              );
-                              e.preventDefault();
-                              return;
-                            }
-                          }
-                        }
-                        // Estado REAL: se escribe sobre el bajante VIVO del motor (no la copia
-                        // de la selección) y con `camposAsocManual` → recibeDeIds + asocManual
-                        // (la asociación a mano no se poda por geometría). El menú contextual
-                        // usa la MISMA función → los dos sitios muestran el mismo estado.
-                        const vivo = engineRef.current?.bajantes.find(
-                          (bb) => bb.id === selElement.id,
-                        );
-                        const campos = vivo
-                          ? camposAsocManual(vivo as never, r.id, e.target.checked)
-                          : {
-                              recibeDeIds: e.target.checked
-                                ? [...recibidos, r.id]
-                                : recibidos.filter((id: string) => id !== r.id),
-                              alimentaIds: e.target.checked
-                                ? alimentan
-                                : alimentan.filter((id: string) => id !== r.id),
-                              asocManual: selElement.asocManual || [],
-                            };
-                        engineRef.current?.updateElementById(selElement.id, campos);
-                        if (!e.target.checked) {
-                          const ramalUpdates: Record<string, unknown> = {};
-                          if (r.ini === bajCode) ramalUpdates.ini = '';
-                          if (r.fin === bajCode) ramalUpdates.fin = '';
-                          if (Object.keys(ramalUpdates).length)
-                            engineRef.current?.updateElementById(r.id, ramalUpdates);
-                        }
-                        const fresh = engineRef.current?.bajantes.find(
-                          (bb) => bb.id === selElement.id,
-                        );
-                        if (fresh) setSelElement({ ...fresh });
-                        engineRef.current?.render();
-                        engineRef.current?._markDirty();
-                      }}
-                      style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
-                    />
-                    <span
-                      style={{
-                        flex: 1,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {r.label || r.id}
-                    </span>
-                  </label>
-                ));
-              })()}
-            </div>
-          </div>
+          <RamalesAsociadosGrid
+            selElement={selElement}
+            engineRef={engineRef}
+            setSelElement={setSelElement}
+          />
         )}
         {selElement.net === 'san' && (
           <div style={{ width: '100%' }}>

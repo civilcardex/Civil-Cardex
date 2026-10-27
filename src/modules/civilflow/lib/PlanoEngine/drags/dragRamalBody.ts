@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
-import { calculateRamalLength, _midpoint } from '../PlanoEngineDrawing.ts';
+import { calculateRamalLength } from '../PlanoEngineDrawing.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
 import { indexRamales, sameNetGroup, refrescarTrazo } from './dragContext.ts';
 

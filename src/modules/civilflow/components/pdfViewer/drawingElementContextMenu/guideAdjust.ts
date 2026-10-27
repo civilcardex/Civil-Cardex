@@ -31,6 +31,9 @@ import {
 import { recortarEnPrimerCruce } from '../../../lib/PlanoEngine/intersectionTrim.ts';
 import { puntoEnCaja } from '../../../lib/PlanoEngine/junctionAutoSplit.ts';
 
+/** Auto-ajusta la guía dibujada sobre un ramal: inserta el punto de cruce en los pts de la
+ *  guía y encadena el recorte del ramal en ese cruce (el ramal queda partido, la guía pasa a
+ *  marcar el nuevo tramo). Es el «Ajustar automático» del menú de la guía. */
 export function autoAdjustGuide(
   eng: PlanoEngine,
   guide: PlanoGuideLine,
@@ -139,6 +142,9 @@ export function autoAdjustGuide(
   eng._markDirty();
 }
 
+/** Convierte la porción libre de la guía en un TRIBUTARIO del ramal tocado: crea el tramo
+ *  T{n}{raíz} desde el punto de cruce hasta el extremo libre, con la convención de flecha
+ *  de tributarios (_tribReversed). Ej: guías que llegan a RS1 generan T1RS1. */
 export function buildTribFromGuide(
   eng: PlanoEngine,
   padre: PlanoRamal,
@@ -316,6 +322,8 @@ export function buildTribFromGuide(
   return newTrib;
 }
 
+/** Limpia accesorios de extremo de los ramales que tocan el punto: al re-ajustar una guía el
+ *  punto de unión cambió y los codos/tees viejos de ese vértice ya no aplican. */
 export function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, number]): void {
   const TOL = 0.5;
   for (const r of eng.ramales) {
@@ -326,6 +334,9 @@ export function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, num
   }
 }
 
+/** Resuelve el accesorio de la unión de la guía en redes de presión (af/ac/gas): según el
+ *  ángulo del quiebre (45°/90°) y el sentido del flujo, asigna el codo que corresponde o lo
+ *  limpia. Sin trigger (no hay quiebre) no toca nada. */
 export function resolveGuideJunctionAccessory(eng: PlanoEngine, ramalId: string): void {
   const r = eng.ramales.find((x) => x.id === ramalId);
   if (!r || !r.pts || r.pts.length < 2) return;

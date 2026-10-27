@@ -6,6 +6,7 @@
 // aparatos/epc) y aquí solo se re-nombran para no tocar los consumidores.
 export { MONO_3D as RCI_MONO, FOV_3D as RCI_FOV } from '../shared/config3d';
 
+/** Pieza del cuarto de bombas RCI: modelo GLB, id interno y código de etiqueta. */
 export interface RciComponente {
   id: number;
   name: string;
@@ -13,11 +14,13 @@ export interface RciComponente {
   color: string;
 }
 
+/** Texto de la etiqueta de una pieza (nombre + specs técnicas del equipo). */
 export interface RciCompDesc {
   body: string;
   norm: string;
 }
 
+/** Posición y anclaje de una etiqueta flotante del cuarto: [x,y,z] en metros. */
 export interface RciLabelPos {
   pos: [number, number, number];
   scale: number;
@@ -31,6 +34,7 @@ export interface RciLabelPos {
   ref?: number;
 }
 
+/** Catálogo de piezas del cuarto (modelos + códigos) — el orden define el listado UI. */
 export const COMPONENTS: RciComponente[] = [
   { id: 1, name: 'Bomba Principal 4"x4"', modelKey: 'bomba', color: '#007fff' },
   { id: 2, name: 'Junta antivibratoria', modelKey: null, color: '#7d8590' },
@@ -57,6 +61,7 @@ export const COMPONENTS: RciComponente[] = [
   { id: 23, name: 'Tuberia drenaje 2" A.C. SCH-10', modelKey: 'recirculacion', color: '#f85149' },
 ];
 
+/** Descripciones técnicas por pieza (clave = id del COMPONENTE). */
 export const COMP_DESC: Record<number, RciCompDesc> = {
   1: {
     body: 'Bomba centrifuga contra incendio listada que aporta el 100 % del caudal y de la presión de diseño de la red. Se selecciona con base en la demanda hidráulica del sistema, NPSH disponible y fuente de energía, según requerimiento de Norma.',
@@ -152,7 +157,7 @@ export const COMP_DESC: Record<number, RciCompDesc> = {
   },
 };
 
-/** Posición de montaje de cada pieza GLB (metros). */
+/** Anclaje [x,y,z] en metros de cada modelo GLB dentro de la sala (clave = MODELO_KEYS). */
 export const GLB_POSITIONS: Record<string, [number, number, number]> = {
   tanque: [-2.126, -2.513, -0.369],
   mamposteria: [-2.13, 0.24, -0.37],
@@ -169,7 +174,7 @@ export const GLB_POSITIONS: Record<string, [number, number, number]> = {
   descarga: [-1.933, 0.868, 0.01],
 };
 
-/** Orden de carga (el mismo del HTML): pieza a pieza con pausa para no congelar el browser. */
+/** Claves de los modelos GLB posicionados (precalculadas de GLB_POSITIONS). */
 export const MODELO_KEYS = Object.keys(GLB_POSITIONS);
 
 /** Grupos cuyos vértices blanco/gris-claro se recolorean a rojo (válvulas de cheque). */

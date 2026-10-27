@@ -96,7 +96,7 @@ function RciViewerInner({ onReintentar }: { onReintentar: () => void }): React.J
 
   return (
     <div
-      data-tour="iso-panel"
+      data-tour="iso-panel iso-viewer-sidebar"
       style={{
         display: 'flex',
         flex: 1,

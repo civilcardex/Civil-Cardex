@@ -381,13 +381,21 @@ export function ElementCodeEditor({
                 style={MENU_SELECT_STYLE}
               >
                 <option value="">— Sin diámetro —</option>
-                {(bajEl.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map((d) => d.nominal)).map(
-                  (d) => (
-                    <option key={d} value={d}>
-                      {normalizeDnLabel(d)}
-                    </option>
-                  ),
-                )}
+                {(bajEl.net === 'gas'
+                  ? GAS_DN_LABELS
+                  : // Catálogo de la red: material activo del PROP mats (mismo criterio del
+                    // montante — y la misma fuente que persiste setMatSel). Antes esto
+                    // releía civilflow_mats de localStorage en cada render del menú.
+                    (() => {
+                      const matShort = mats?.[bajEl.net || 'af']?.[0]?.val;
+                      const porMat = matShort ? DIAM_BY_MAT[matShort] : undefined;
+                      return porMat?.map((x) => x.n) ?? DIAMETROS_AF.map((d) => d.nominal);
+                    })()
+                ).map((d) => (
+                  <option key={d} value={d}>
+                    {normalizeDnLabel(d)}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
