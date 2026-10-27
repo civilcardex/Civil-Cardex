@@ -1,9 +1,12 @@
 /** Precios y descuentos de venta por módulo. AVISO: estos números son solo el respaldo — el precio real vive en la tabla app_precios (BD) y se baja con sincronizarPreciosBd; cambiarlo en SQL no necesita deploy. */
 import { devError } from '../../utils/devError.ts';
 
+/** Id del módulo vendible: 'flow' (diseño hidrosanitario) o 'manage' (presupuestos de obra). */
 export type ModuloId = 'flow' | 'manage';
+/** Periodo de pago de una suscripción: mensual, semestral (6 meses juntos) o anual (12 meses juntos). */
 export type Periodo = 'mensual' | 'semestral' | 'anual';
 
+/** Un módulo tal como se vende: nombre, ruta de su área de trabajo y los 3 precios en centavos de USD. */
 export interface ModuloVenta {
   id: ModuloId;
   nombre: string;
@@ -14,8 +17,7 @@ export interface ModuloVenta {
   precioAnualCentavos: number;
 }
 
-// Montos en centavos USD (pasarela Lemon Squeezy, cobra USD). La verdad es
-// app_precios en BD (sincronizarPreciosBd los pisa); cambiar precio = UPDATE en SQL Editor.
+/** Los módulos que se venden, con montos en centavos de USD (la pasarela Lemon Squeezy cobra USD). La verdad es app_precios en BD (sincronizarPreciosBd los pisa); cambiar precio = UPDATE en SQL Editor. */
 export const CATALOGO: ModuloVenta[] = [
   {
     id: 'flow',

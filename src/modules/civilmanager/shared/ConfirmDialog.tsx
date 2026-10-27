@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useFocoEnDialogo } from '../../../hooks/useFocusEnDialog.ts';
+import { useFocoEnDialogo } from '../../../hooks/useFocusInDialog.ts';
 
 type ResolveFn = (v: boolean) => void;
 let _showConfirm: ((msg: string) => Promise<boolean>) | null = null;

@@ -21,7 +21,8 @@
     "check": "tsc --noEmit && vitest run && npm run build",
     "prepare": "simple-git-hooks",
     "postbuild": "node scripts/prerender.mjs",
-    "baseline:complexity": "node --experimental-strip-types scripts/generateBaselineComplexity.mjs"
+    "baseline:complexity": "node --experimental-strip-types scripts/generateBaselineComplexity.mjs",
+    "techos:g1": "node scripts/sincronizarTechosG1.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"

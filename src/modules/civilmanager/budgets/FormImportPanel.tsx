@@ -2,11 +2,7 @@ import { useRef, useState } from 'react';
 import { parseCantidad } from '../excelImport.tsx';
 import { showToast } from '../shared/Toast.tsx';
 import { DimEnLectura, TableHeader, useEditable } from '../shared/EditLock.tsx';
-import {
-  autoDetectarFilaInicio,
-  detectarFilaCapitulo,
-  type ColumnMapping,
-} from './formImport.ts';
+import { autoDetectarFilaInicio, detectarFilaCapitulo, type ColumnMapping } from './formImport.ts';
 import { loadXlsx } from '../../../utils/exportLoaders.ts';
 import type { Presupuesto, PresupuestoItem } from '../types.ts';
 
@@ -39,9 +35,19 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
       e.target.value = '';
       return;
     }
+    // Límite de tamaño ANTES de arrayBuffer(): el archivo lo envía un cliente (presupuestos
+    // de terceros) y arrayBuffer() materializa los MB COMPLETOS en memoria antes de que
+    // sheetRows recorte nada — mismo guard que excelImport.tsx (self-DoS).
+    if (file.size > 20 * 1024 * 1024) {
+      showToast('El archivo supera 20 MB', { type: 'err' });
+      e.target.value = '';
+      return;
+    }
     const XLSX = await loadXlsx();
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+    // sheetRows: 5000 — archivo hostil/enorme no materializa todas las filas (self-DoS,
+    // mismo guard que excelImport.tsx).
+    const wb = XLSX.read(new Uint8Array(buf), { type: 'array', sheetRows: 5000 });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
       header: 1,

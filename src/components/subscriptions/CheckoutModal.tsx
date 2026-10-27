@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import type { ModuloId, Periodo, PuestosPorModulo } from '../../lib/subscriptions/catalog.ts';
 import { edgePagoNoDesplegada } from '../../lib/subscriptions/subscriptionsService.ts';
 import { devError } from '../../utils/devError.ts';
+import { marcarNavInterna } from '../../utils/internalNavigation.ts';
 
 interface Props {
   open: boolean;
@@ -35,7 +36,21 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
         body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
       });
       if (data?.checkoutUrl) {
-        window.location.assign(data.checkoutUrl as string);
+        // Allowlist: la URL de la edge function no se asigna a ciegas — un proxy/deploys
+        // confusos no deben poder redirigir el pago a un clon con el modal abierto.
+        // try/catch OBLIGATORIO: un throw aquí es un unhandled rejection (IIFE void) —
+        // el modal quedaba clavado en «Redirigiendo…» sin feedback y pedidoRef bloqueado.
+        try {
+          const url = new URL(data.checkoutUrl as string);
+          if (!/(^|\.)lemonsqueezy\.com$/.test(url.hostname))
+            throw new Error('checkout_url_invalida');
+          marcarNavInterna();
+          window.location.assign(url.toString());
+        } catch (e) {
+          devError('crear-checkout: url inválida:', e);
+          setError(true);
+          setMensaje('La pasarela devolvió una URL de pago inválida. Inténtalo más tarde.');
+        }
         return;
       }
       devError('crear-checkout:', err?.message ?? data);

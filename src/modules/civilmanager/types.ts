@@ -29,6 +29,7 @@ export interface CargoCalculado extends Cargo {
   costo_total_hora: number;
 }
 
+/** Cargo dentro de una cuadrilla y cuántos hay. Ej: {cargo_id: oficial, cantidad: 1} + {ayudante, 2}. */
 export interface CuadrillaIntegrante {
   id: string;
   cargo_id: string;
@@ -71,6 +72,7 @@ export interface Insumo {
   proveedor_id: string;
 }
 
+/** Proveedor de insumos del catálogo de costos (nit para la factura del APU). */
 export interface Proveedor {
   id: string;
   codigo: string;
@@ -96,6 +98,7 @@ export interface ApuRecursoMO {
   rendimiento: number;
 }
 
+/** Equipo dentro de un APU con su rendimiento (unidades/hora — multiplica el costo_hora). */
 export interface ApuRecursoEquipo {
   equipo_id: string;
   rendimiento: number;
@@ -240,6 +243,7 @@ export interface Presupuesto {
   alarmas_precio_faltante?: string[] | null;
 }
 
+/** Fila de una lista de precios exportada/importada (desc legible + categoría para agrupar). */
 export interface ListaItem {
   codigo: string;
   nombre?: string;
@@ -247,6 +251,7 @@ export interface ListaItem {
   desc: string;
 }
 
+/** Unidad de medida del catálogo global (m, m³, gl, und…) con su tipo para agrupar. */
 export interface UnidadMedida {
   abreviatura: string;
   descripcion: string;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EditableSection } from '../shared/EditLock.tsx';
 import { UnidadesPanel } from './UnitsPanel.tsx';
-import { CategoriasInsumoPanel } from './CategoriesInsumoPanel.tsx';
+import { CategoriasInsumoPanel } from './CategoriesSupplyPanel.tsx';
 import { CategoriasApuPanel } from './CategoriesApuPanel.tsx';
 import { TiposEquipoPanel } from './TypesEquipmentPanel.tsx';
 import { OrigenesPanel } from './OriginsPanel.tsx';

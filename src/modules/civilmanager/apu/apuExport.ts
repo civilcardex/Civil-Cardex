@@ -1,4 +1,5 @@
 import { cargoJornal, fmt, parseNum } from '../calc.ts';
+import { sanitizarCelda } from '../excelSafe.ts';
 import { showToast } from '../shared/Toast.tsx';
 import { loadJspdf, loadXlsx } from '../../../utils/exportLoaders.ts';
 import type { Apu, ApuCalculado, CargoCalculado, Equipo, Insumo } from '../types.ts';
@@ -72,14 +73,22 @@ function buildRows(apu: Apu, ctx: ExportCtx): (string | number)[][] {
   return rows;
 }
 
+/** Sanitiza una fila completa para el aoa_to_sheet (inyección de fórmulas, CWE-1236). */
+function filaExcel(fila: (string | number)[]): (string | number)[] {
+  return fila.map(sanitizarCelda);
+}
+
 export async function exportApuExcel(apu: Apu, ctx: ExportCtx): Promise<void> {
   const XLSX = await loadXlsx();
   const rows = buildRows(apu, ctx);
+  // sanitizarCelda en TODO lo que viene del usuario (código/nombre del APU, descripciones
+  // de cargos, nombres de equipos/insumos): un `=WEBSERVICE(...)` como nombre se ejecutaba
+  // al abrir el Excel (CWE-1236).
   const ws = XLSX.utils.aoa_to_sheet([
-    [`APU ${apu.codigo} — ${apu.nombre}`],
-    [`Unidad: ${apu.unidad}`],
+    filaExcel([`APU ${apu.codigo} — ${apu.nombre}`]),
+    filaExcel([`Unidad: ${apu.unidad}`]),
     [],
-    ...rows,
+    ...rows.map(filaExcel),
   ]);
   ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }];
   const wb = XLSX.utils.book_new();

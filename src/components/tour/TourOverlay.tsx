@@ -39,18 +39,42 @@ export function TourOverlay({ steps, onEnd }: { steps: TourStep[]; onEnd: () => 
   const paso = steps[Math.min(idx, steps.length - 1)];
   const esUltimo = idx >= steps.length - 1;
 
-  // Re-medir el ancla al cambiar de paso y al redimensionar la ventana.
+  // Re-medir el ancla al cambiar de paso, al redimensionar la ventana y AL SCROLL (capture:
+  // también scrolls internos de contenedores) — sin esto el agujero queda donde estaba el
+  // ancla y el spotlight se desalinea.
   useEffect(() => {
     const medir = () => setRect(rectDe(paso?.sel));
     medir();
     window.addEventListener('resize', medir);
-    return () => window.removeEventListener('resize', medir);
+    window.addEventListener('scroll', medir, { capture: true });
+    return () => {
+      window.removeEventListener('resize', medir);
+      window.removeEventListener('scroll', medir, { capture: true });
+    };
   }, [paso?.sel]);
 
-  // Escape termina; foco a la tarjeta al montar y en cada paso.
+  // Escape termina; foco a la tarjeta al montar y en cada paso. Tab = trap cíclico entre
+  // los botones de la tarjeta: sin trap el foco escapaba detrás del overlay (aria-modal
+  // roto) y con el bloqueo total los botones quedaban inalcanzables por teclado — el tour
+  // era incompletable sin Escape (que lo salta entero).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onEnd();
+      if (e.key === 'Tab') {
+        const card = cardRef.current;
+        const btns = card?.querySelectorAll<HTMLElement>('button');
+        if (!card || !btns || btns.length === 0) return;
+        e.preventDefault();
+        const first = btns[0];
+        const last = btns[btns.length - 1];
+        const act = document.activeElement as HTMLElement | null;
+        const dentro = !!act && card.contains(act) && act !== card;
+        // La card recibe el foco inicial (tabIndex=-1) y cuenta como ANTES del primero:
+        // sin esta rama, con el foco en la card ninguna condición calzaba y Tab moría
+        // (preventDefault ya corrido) — los botones eran inalcanzables por teclado.
+        if (e.shiftKey && (!dentro || act === first)) last.focus();
+        else if (!e.shiftKey && (!dentro || act === last)) first.focus();
+      }
     };
     window.addEventListener('keydown', onKey);
     cardRef.current?.focus();

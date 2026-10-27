@@ -1,12 +1,7 @@
 import { useCivilManager } from '../context.tsx';
 import { loadJspdf, loadXlsx } from '../../../utils/exportLoaders.ts';
-import {
-  calcItemValue,
-  calcResumenPresupuesto,
-  esCapituloFinal,
-  fmt,
-  fmtMoneda,
-} from '../calc.ts';
+import { filaSegura, sanitizarCelda } from '../excelSafe.ts';
+import { calcItemValue, calcResumenPresupuesto, esCapituloFinal, fmt, fmtMoneda } from '../calc.ts';
 import { showToast } from '../shared/Toast.tsx';
 import { ActionIcon } from '../shared/icons.tsx';
 import type { ApuCalculado, CivilManagerConfig, Presupuesto, PresupuestoItem } from '../types.ts';
@@ -36,11 +31,11 @@ export function EntregablesPanel({ pres }: Props) {
     const rows = buildItemRows(pres.items, apuCalcMap, pres.aiu_override, state.config);
     const resumen = calcResumenPresupuesto(pres.items, apuCalcMap, pres.aiu_override, state.config);
     const ws = XLSX.utils.aoa_to_sheet([
-      [pres.nombre],
-      [`Código: ${pres.codigo}`, `Entidad: ${pres.entidad}`],
+      [sanitizarCelda(pres.nombre)],
+      [sanitizarCelda(`Código: ${pres.codigo}`), sanitizarCelda(`Entidad: ${pres.entidad}`)],
       [],
       ['Ítem', 'Descripción', 'Unidad', 'Cantidad', 'Vr. Unitario', 'Vr. Total'],
-      ...rows,
+      ...rows.map(filaSegura),
       [],
       ['', '', '', '', 'COSTO DIRECTO', resumen.costoDirecto],
       ['', '', '', '', 'ADMINISTRACIÓN', resumen.administracion],
@@ -66,7 +61,7 @@ export function EntregablesPanel({ pres }: Props) {
       ['Listado de Precios Unitarios'],
       [],
       ['Código', 'Descripción', 'Unidad', 'Vr. Unitario'],
-      ...rows,
+      ...rows.map(filaSegura),
     ]);
     ws['!cols'] = [{ wch: 12 }, { wch: 40 }, { wch: 10 }, { wch: 16 }];
     const wb = XLSX.utils.book_new();

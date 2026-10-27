@@ -9,7 +9,7 @@ import { EditableSection } from './shared/EditLock.tsx';
 import { ColaboradoresTab } from './catalogs/CollaboratorsTab.tsx';
 import { CuadrillasTab } from './catalogs/CrewsTab.tsx';
 import { EquiposTab } from './catalogs/EquipmentTab.tsx';
-import { InsumosTab } from './catalogs/InsumosTab.tsx';
+import { InsumosTab } from './catalogs/SuppliesTab.tsx';
 import { ProveedoresTab } from './catalogs/SuppliersTab.tsx';
 import { ConfigTab } from './config/ConfigTab.tsx';
 import { ApuCatalog } from './apu/ApuCatalog.tsx';
@@ -28,10 +28,10 @@ type MainSection = 'catalogos' | 'apus' | 'presupuestos';
 type CatalogoTab =
   'configuracion' | 'colaboradores' | 'cuadrillas' | 'equipos' | 'insumos' | 'proveedores';
 
-const MAIN_SECTIONS: { id: MainSection; label: string; icon: NavIconName; active: boolean }[] = [
-  { id: 'catalogos', label: 'Catálogos', icon: 'catalogos', active: true },
-  { id: 'apus', label: 'Análisis de precios unitarios', icon: 'apus', active: true },
-  { id: 'presupuestos', label: 'Presupuestos', icon: 'proyectos', active: true },
+const MAIN_SECTIONS: { id: MainSection; label: string; icon: NavIconName }[] = [
+  { id: 'catalogos', label: 'Catálogos', icon: 'catalogos' },
+  { id: 'apus', label: 'Análisis de precios unitarios', icon: 'apus' },
+  { id: 'presupuestos', label: 'Presupuestos', icon: 'proyectos' },
 ];
 
 const CATALOGO_TABS: { id: CatalogoTab; label: string; icon: NavIconName }[] = [
@@ -115,7 +115,6 @@ function CivilManagerShell() {
             key={s.id}
             type="button"
             className={mainSection === s.id ? 'cm-active' : ''}
-            disabled={!s.active}
             onClick={() => setMainSection(s.id)}
             aria-current={mainSection === s.id ? 'true' : undefined}
           >

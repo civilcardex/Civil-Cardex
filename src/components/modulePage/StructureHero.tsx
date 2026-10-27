@@ -68,13 +68,6 @@ export default function StructureHero({ cfg }: { cfg: ModuleConfig }) {
             >
               {cfg.ctaText}
             </Link>
-            <button
-              type="button"
-              className="border text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2"
-              style={{ fontFamily: 'Geist, monospace', borderColor: cfg.accent, color: cfg.accent }}
-            >
-              <span className="material-symbols-outlined text-base!">download</span> DESCARGAR SDK
-            </button>
           </div>
         </div>
         <div className="relative h-[400px] lg:h-auto w-full flex items-center justify-center">

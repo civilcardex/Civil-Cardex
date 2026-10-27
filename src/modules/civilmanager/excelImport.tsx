@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { parseNum } from './calc.ts';
 import { showToast } from './shared/Toast.tsx';
 import { loadXlsx } from '../../utils/exportLoaders.ts';
+import { filaSegura } from './excelSafe.ts';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const MONTHS_MAP: Record<string, number> = {
@@ -155,7 +156,13 @@ export function useExcelImportExport<T extends { codigo?: string }>(
   const doExport = async () => {
     if (!previewModal || previewModal.type !== 'export') return;
     const XLSX = await loadXlsx();
-    const ws = XLSX.utils.aoa_to_sheet([[title], previewModal.headers, ...previewModal.rows]);
+    // filaSegura: los datos cruzaron frontera de confianza (import de terceros) — una
+    // celda '=WEBSERVICE(...)' no debe ejecutarse al abrir el export (CWE-1236).
+    const ws = XLSX.utils.aoa_to_sheet([
+      [title],
+      previewModal.headers,
+      ...previewModal.rows.map(filaSegura),
+    ]);
     if (colWidths) ws['!cols'] = colWidths;
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, sheetName);

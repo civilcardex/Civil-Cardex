@@ -3,7 +3,7 @@ import { fmtMoneda } from '../calc.ts';
 import { useIsMobile } from '../../../hooks/useMediaQuery.ts';
 import { ApuSeccionMO } from './ApuSectionMO.tsx';
 import { ApuSeccionEquipo } from './ApuSectionEquipment.tsx';
-import { ApuSeccionInsumos } from './ApuSectionInsumos.tsx';
+import { ApuSeccionInsumos } from './ApuSectionSupplies.tsx';
 import { ApuSeccionTransporte } from './ApuSectionTransport.tsx';
 import type { Apu } from '../types.ts';
 

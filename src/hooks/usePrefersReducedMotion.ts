@@ -1,19 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useMediaQuery } from './useMediaQuery.ts';
 
-const QUERY = '(prefers-reduced-motion: reduce)';
-
+/** true si el usuario pidió menos animación en el SO. Envuelve useMediaQuery: mismo
+ *  comportamiento (SSR-safe por el getter de servidor de useSyncExternalStore). */
 export function usePrefersReducedMotion(): boolean {
-  const [prefers, setPrefers] = useState<boolean>(() =>
-    typeof window === 'undefined' ? false : window.matchMedia(QUERY).matches,
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia(QUERY);
-    const listener = (event: MediaQueryListEvent) => setPrefers(event.matches);
-    mediaQuery.addEventListener('change', listener);
-    return () => mediaQuery.removeEventListener('change', listener);
-  }, []);
-
-  return prefers;
+  return useMediaQuery('(prefers-reduced-motion: reduce)');
 }

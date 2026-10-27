@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { devError } from '../utils/devError.ts';
+import { esNavInterna, limpiarNavInterna } from '../utils/internalNavigation.ts';
 import { clearLocalWorkspace } from '../modules/civilflow/services/workspaceReset.ts';
 
 interface User {
@@ -83,6 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // = la sesión persiste en localStorage como siempre.
     const cerrarSiNoRecordar = () => {
       try {
+        // Reload interno (switch de proyecto, checkout): NO es cierre de pestaña — un
+        // signOut en carrera dejaba al usuario sin sesión en pleno trabajo.
+        if (esNavInterna()) {
+          limpiarNavInterna();
+          return;
+        }
         if (localStorage.getItem('civilflow_no_recordar') === '1') void supabase.auth.signOut();
       } catch {
         /* storage bloqueado: ignorar */
