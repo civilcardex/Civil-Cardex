@@ -815,3 +815,66 @@ Gates: tsc 0 - vitest 1384/1384 (227 archivos) - lint 0 - build + prerender 13/1
 ### Cierre
 - Techos G1 actualizados: PdfViewer 1493→1313, PlanoEngine 1425→1492 (el pin viejo estaba rancio). Baseline G8 sin cambios (522 — los módulos nuevos no traen focos).
 - Gates finales: tsc 0 · lint 0 · vitest 1445/1445 (238) · build + prerender 11/11 · graphify ✓. 4 commits (cc3420c6..).
+
+## Session Summary — 2026-10-23 (tour de onboarding CivilFlow + CivilManager)
+- **Tour spotlight hand-rolled (cero deps)**: `src/components/tour/` — `TourOverlay.tsx` (portal z-999999, "agujero" por box-shadow gigante, card Anterior/Siguiente/Saltar, Escape, re-medición en resize, paso con ancla oculta → card centrada), `tourSteps.ts` (3 tours: cf:visor 6 pasos, cf:workarea 4, cm:workarea 4; textos destilados de helpGuide*), `useTour.tsx` (marca `cardex_tour_<clave>` cruda — sobrevive logout/cambio de proyecto; ≥1024px; `listo` pospone tras pantallas de carga; hook SIEMPRE antes de early returns — rules-of-hooks; arranque vía setTimeout(0) por regla react-compiler de no-setState-síncrono-en-effect; evento EV_TOUR_REPETIR).
+- **Anclas**: `data-tour` en planos-pisos/redes/toolbar/canvas/barra-redes + selectores de clase existentes (`.visor-sidebar-right`, `nav.nav`, `.content`, `[aria-label="Secciones de CivilManager"]`, `[aria-label="Catálogos"]`, `.cm-main`) — cero wrappers nuevos.
+- **Repetir tour**: enlace `⟲ REPETIR TOUR` al pie de HelpPanel — mapea el contexto de Ayuda (`tourDe`) y dispara el evento; el tour de ESA pantalla remonta al vuelo.
+- **Móvil <1024**: no arranca solo (anclas colapsadas) — pendiente si se pide una variante card-only.
+- NOTA: prerender ahora 11/11 — correcto: commit cc3420c6 sacó CivilBIM/CivilMEP de ROUTE_META.
+- Gates: tsc 0 · eslint 0 · tests relacionados 14/14 (tourSteps 3 + arquitectura 11) · build + prerender 11/11 · graphify ✓.
+
+## Session Summary — 2026-10-23 (tour POR PESTAÑA en cada módulo)
+- **De 3 tours → 16**: cada pestaña del workarea flow tiene su recorrido (`cf:tab:<id>` — info/planos/datos/redes/iso/inf/crit, anclado a `data-tour="cf-tab-<id>"` en el root de cada pestaña + `nav.nav`/`barra-redes` ya existentes) y CivilManager por sección/sub (`cm:catalogos:<sub>` ×6 con anclas aria-label/`.cm-main`, `cm:apus`, `cm:presupuestos`). Los tours `cf:workarea`/`cm:workarea` fueron reemplazados por esta familia; el del visor (`cf:visor`) sigue igual.
+- **Montaje**: flow dentro de `WorkAreaCivilFlow` (tiene `state.tab`; hook antes de early returns), manager en `WorkAreaCivilManager` (clave = `cm:catalogos:<catalogoTab>` si catálogos, si no `cm:<sección>`). Cambiar de pestaña → si esa pestaña no está vista, su tour arranca; `key={clave}` en el overlay remonta y nace en el paso 1.
+- **tourDe**: `cf:<tab>` → `cf:tab:<tab>` (sub-contexto recortado: cf:redes:san → redes; cf:iso:N → iso); `cm:*` viaja completo.
+- **useTour**: clave sin tour definido → null (sin crash); reestructura post-lint (useState duplicado, early-return antes de hooks, sin autoFocus, arranque via setTimeout(0)).
+- Gates: tsc 0 · eslint 0 · tourSteps 4/4 · arquitectura 11/11 · build + prerender 11/11 · graphify ✓.
+
+## Session Summary — 2026-10-23 (fuera el Glosario de /docs)
+- **Sección «Glosario ES ↔ EN» eliminada de /docs**: `docs/data/glossary.tsx` borrado + entrada/import fuera de `docs/data/index.ts` + fuera de la lista Civil Flow en `DocsPage.tsx`. La doc pierde una categoría (12 → 11... alineado con las 11 rutas prerender, casualidad).
+- Gates: tsc 0 · eslint 0 · arquitectura+routeMeta 18/18 · build + prerender 11/11 ✓.
+
+## Session Summary — 2026-10-23 (tarjetas del hero CivilFlow: fondo opaco + títulos alineados)
+- **Línea/punto amarillo visible a través de las tarjetas**: fondo de tarjeta era `rgba(17,19,23,0.6)` — las líneas decorativas del hero (SVG isométrico) se veían a través. Fix: fondo OPACO `#14161a` (FlowHero.tsx).
+- **Textos desalineados**: títulos de 2 líneas («Aguas lluvias», «Contra incendio») empujaban la descripción más abajo que los de 1 línea → `minHeight: 40` en el span del título reserva 2 líneas para todos.
+- Gates: tsc 0 · eslint 0 · build + prerender 11/11 ✓.
+
+## Session Summary — 2026-10-23 (tour granular por sección + orden del visor + recorte + catálogo maestro)
+- **Visor reordenado (ped. usuario)**: redes y escala → herramientas → lienzo → panel derecho → planos y pisos → cierre.
+- **cf:tab:info** suma paso de barra-redes; **cf:tab:planos** granular (pendientes/cargados/recorte con data-tour en las listas y PlanCropPanel); **cf:tab:datos** granular (3 tarjetas: materiales/aparatos/gasodomésticos, data-tour fusionado a la línea className por G1); **cf:tab:redes** granular (chips data-tour=redes-chips + sub-páginas redes-paginas + barra).
+- **NUEVO tour cf:catmaestro** para /catalogomaestro (paginación + contenido, montaje en CatalogMasterPage); `data-tour="catmaestro-contenido"` en el contenedor de tablas.
+- Gates: tsc 0 · eslint 0 · tourSteps 4/4 · arquitectura 11/11 · build + prerender 11/11 · graphify ✓.
+
+## Session Summary — 2026-10-23 (fases A-C: arnés de tests + subrutas de pestañas)
+- **A · Arnés de tests**: `src/test/storageHarness.ts` (resetStorage/seedTrazos/seedAparatos/trazosDe/aparatos — SIEMPRE constantes de storage-keys) + `src/test/engineFixture.ts` (makeEngine única + conUpdateElemento; eran ~117 copias). Migrados: montanteAssociationE2E (stub+seed→arnés), OwnKey/StaleSource (mockStorage obj→localStorage global), propagateAparatosPressure + propagationCharacterization (literal 'aparatos_by_tramo_v2'→constante). **NUEVO** `pisoFantasmaBak.test.ts`: contrato "respaldos bajo trazos_* jamás se propagan" (regresión del piso fantasma; seed OJO: seedAparatos REEMPLAZA el mapa — una sola llamada).
+- **B/C · Subrutas**: `/civilflowareatrabajo/*` y `/civilmanagerareatrabajo/*` (splat). `workarea/tabRoute.ts`: parseFlowSplat/parseManagerSplat/rutaFlow/rutaManager (uuid↔sección por formato, TABS_VALIDOS/CM_SECCIONES/CM_CATALOGOS). Flow: tab inicial desde URL (useWorkAreaState(tabInicial, onTabChange) — onTabChange sincroniza URL en cada cambio), redirect cosmético y post-switch PRESERVAN la pestaña; banner legacy desde parse (legacyId); visor sigue top-level; OPEN_TAB_KEY queda como fallback deprecado (lectura one-shot intacta). Manager: mainSection/catalogoTab nacen de URL y setters navegan (back/adelante funcionan); redirects de página/dialog/perfil preservan sub-segmento.
+- **Claves de tour/ayuda intactas** (cf:tab:<id>, cm:catalogos:<sub>) — marcas localStorage no se invalidan.
+- Gates: tsc 0 · eslint 0 · relacionados 16/16 · build + prerender 11/11 · graphify ✓.
+
+## Session Summary — 2026-10-23 (tour: recorte/requisitos/redes-paginas/iso ×5 + Volver)
+- **cf:tab:planos de IZQ→DER**: requisitos (nuevo, data-tour en sidebar izquierda) → recorte → pendientes → cargados.
+- **redes-paginas**: data-tour en los 4 PageNav de networksTab (solo el de la red activa está en DOM) — el paso "Sub-secciones" ahora SÍ resalta.
+- **Isometría POR SUBPESTAÑA**: cf:tab:iso:1..5 (Redes/Aparatos/Cuarto bombas RCI/EPC/RCI), cada una con data-tour="iso-contenido" en el wrapper del visor 3D; IsometryTab monta useTour(`cf:tab:iso:${sub}`); tourDe mapea cf:iso:N → cf:tab:iso:N; la clave genérica cf:tab:iso SALIÓ de TOURS (el shell devuelve null → sin doble overlay).
+- **PlanCropModal**: botón «Cancelar» → «Volver».
+- Gates: tsc 0 · eslint 0 · tourSteps 4/4 · arquitectura 11/11 · build + prerender 11/11 ✓.
+
+## Session Summary — 2026-10-23 (slugs de subruta explícitos + /dibujoRedes)
+- **URLs de pestañas legibles (ped. usuario)**: map `TAB_SLUGS` en tabRoute.ts — informacionGeneral/cargaPlanos/parametrosDiseno/dibujoRedes/disenoRedes/isometria/informes/normativa. Los IDS internos NO cambian (state/tour/ayuda/sessionStorage intactos); el slug vive SOLO en la ruta (tabDeSplat rev-map + rutaFlow fwd-map).
+- **/visor → /dibujoRedes** (ruta top-level del visor): route + navegadores (WorkAreaSidebar, PlanosTab ×2, ViewerPage redirects) + legacy redirect `/visor/*` → `/dibujoRedes` + preload.js acepta ambas.
+- Gates: tsc 0 · eslint 0 · relacionados 15/15 · build + prerender 11/11 ✓.
+
+## Session Summary — 2026-10-23 (salto residual: la marca espera al ÚLTIMO raster)
+- **Causa del residuo**: `marcarPrimerPisoCargado` corría al terminar la CARGA DE TRAZOS, pero la corrección de escala dispara un re-raster DESPUÉS (evento EVENTO_ESCALA_CAMBIADA → renderPage → re-encuadre) — el velo se levantaba y ese re-encuadre se veía. Fix: la marca vive ahora en `renderPage` al completar CADA raster completo (no bgOnly, idempotente) — el velo de primera entrada espera al último raster. La marca salió del loader; `calentarPdfs` con 0 archivos marca directo (nada se moverá jamás).
+- G1: PdfViewerEngineInit 714/717 (comentarios comprimidos; el bloque de re-encuadre lo reescribió la sesión paralela — respetado).
+- Gates: tsc 0 · eslint 0 · arquitectura 11/11 · build + prerender 11/11 ✓.
+
+## Session Summary — 2026-10-23 (tour PROPIO del editor de recorte)
+- **cf:recorte** (3 pasos): gestos (data-tour=recorte-gestos en los chips del header) → dibuja el recorte (recorte-canvas) → aplicar o salir (recorte-acciones). El modal lo monta con useTour: corre SOLO la primera vez que se abre el editor + botón «⟲ Tour» en el header del modal lo repite (el AYUDA de la navbar es inaccesible con el modal a pantalla completa). El overlay z-999999 queda sobre el modal z-1000.
+- El "Repetir tour" de HelpPanel en carga de planos sigue lanzando el tour de la pestaña (correcto); el recorte tiene ahora el suyo dentro del modal.
+- Gates: tsc 0 · eslint 0 · relacionados 15/15 · build + prerender 11/11 ✓.
+
+## Session Summary — 2026-10-23 (fix: el paso «Requisitos del plano» resaltaba también el recorte)
+- El ancla `planos-requisitos` estaba en el div de la sidebar izquierda que TAMBIÉN envuelve a PlanCropPanel (el recorte vive dentro de ella) → el spotlight cubría ambas zonas. Fix: header+lista de requisitos envueltos en un wrapper propio (flex column) con el ancla; el recorte queda fuera del spotlight.
+- G1: PlanosTab 711/712.
+- Gates: tsc 0 · eslint 0 · arquitectura 11/11 · build + prerender 11/11 ✓.
