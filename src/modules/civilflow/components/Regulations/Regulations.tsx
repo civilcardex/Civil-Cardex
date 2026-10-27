@@ -78,6 +78,7 @@ export default function Normativa() {
     return (
       <div
         className="fu norm-tab"
+        data-tour="cf-tab-crit"
         role="tabpanel"
         aria-labelledby="tab-criterios"
         style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}

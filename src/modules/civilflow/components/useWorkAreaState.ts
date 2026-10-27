@@ -10,11 +10,7 @@ import { REDES } from '../constants';
 import { parseDecimalInput, parseIntInput } from '../utils/parseDecimal.ts';
 import { NETS } from '../lib/PlanoEngine/PlanoState.ts';
 import { devError } from '../../../utils/devError.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  getActiveProyectoId,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService.ts';
 import { loadProyectoData, saveRedesActivas } from '../services/projectDataService.ts';
 import { loadNetColors, applyNetColors } from '../services/netColorsService.ts';
 import {
@@ -100,7 +96,7 @@ function leerPaginas(): Record<string, number> {
   return {};
 }
 
-export function useWorkAreaState() {
+export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: string) => void) {
   const tramosCtx = useTramos();
   const projectCtx = useProject();
   const apparatusCtx = useApparatus();
@@ -110,10 +106,17 @@ export function useWorkAreaState() {
   // primer ingreso a redes era un remount con estado efímero, no una recarga real).
   const paginasInit = useMemo(() => leerPaginas(), []);
   const [tab, setTab] = useState<string>(() => {
+    // Subruta (ped. usuario): el segmento de ruta manda; fallback sessionStorage → 'info'.
+    if (tabInicial && NAV_TABS.some((x) => x.id === tabInicial)) return tabInicial;
     const t = leerUI(UI_TAB_KEY);
     return t && NAV_TABS.some((x) => x.id === t) ? t : 'info';
   });
   useEffect(() => guardarUI(UI_TAB_KEY, tab), [tab]);
+  // Subrutas: el dueño sincroniza la URL en cada cambio de pestaña.
+  useEffect(() => {
+    if (onTabChange) onTabChange(tab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- callback estable del dueño
+  }, [tab]);
 
   // Ayuda contextual (orig. usuario): reporta módulo + pestaña activa a la navbar. La sub-pestaña
   // de isometría la reporta IsometriaTab (hijo, reporta más específico): el padre la OMITE y al

@@ -45,7 +45,7 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     accent: '#00dce5',
     logo: '/logos/civilFlowlogo.webp',
     badgeLabel: 'Módulo Principal',
-    headline: 'Diseño Hidrosanitario con Verificación Normativa',
+    headline: 'Diseño hidrosanitario con Verificación Normativa',
     description:
       'Diseñe redes de agua fría, caliente, sanitaria, lluvias, gas y contra incendio sobre planos reales. Cálculo de unidades de consumo y descarga, pérdida de presión por Renouard, verificación contra IPC/UPC, ASCE, NFPA 54 y NFPA 13, y exportación de memorias de cálculo completas.',
     ctaText: 'Iniciar nuevo proyecto',

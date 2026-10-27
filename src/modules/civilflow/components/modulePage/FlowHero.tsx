@@ -566,7 +566,9 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
     <div
       className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] relative border px-10 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
       style={{
-        background: 'rgba(17,19,23,0.6)',
+        // OPACO (ped. usuario): translúcido dejaba ver las líneas decorativas del hero
+        // (punto y línea amarilla) a través de las tarjetas.
+        background: '#14161a',
         borderColor: '#3a494a',
         minHeight: 130,
       }}
@@ -598,8 +600,14 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
               RED
             </span>
             <span
-              className="text-base font-bold leading-tight"
-              style={{ fontFamily: 'Hanken Grotesk, sans-serif', color: '#f0f4f8' }}
+              className="text-base font-bold leading-tight inline-block"
+              style={{
+                fontFamily: 'Hanken Grotesk, sans-serif',
+                color: '#f0f4f8',
+                // Reserva 2 líneas: títulos de 1 palabra no desalinean la descripción de
+                // los que ocupan 2 («Aguas lluvias», «Contra incendio»).
+                minHeight: 40,
+              }}
             >
               {net.name}
             </span>

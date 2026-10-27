@@ -232,6 +232,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
   return (
     <div
       className="fu bd-section"
+      data-tour="cf-tab-datos"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -253,6 +254,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
       >
         <section
           className="card"
+          data-tour="datos-materiales"
           style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         >
           <div
@@ -483,6 +485,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <section
           className="card"
+          data-tour="datos-aparatos"
           style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
         >
           <div
@@ -641,6 +644,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <section
           className="card"
+          data-tour="datos-gas"
           style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
         >
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>

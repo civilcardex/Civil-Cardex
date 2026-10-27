@@ -57,7 +57,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/equipmentRows.ts': 822,
   'modules/civilflow/components/PumpARDesign.tsx': 823,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 807,
-  'components/help/helpGuideFlow.tsx': 804,
+  'components/help/helpGuideFlow.tsx': 787,
   'modules/civilflow/components/SanitaryDesign.tsx': 805,
   'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 770,
   'modules/civilflow/components/ep/EPVerificationPage.tsx': 751,

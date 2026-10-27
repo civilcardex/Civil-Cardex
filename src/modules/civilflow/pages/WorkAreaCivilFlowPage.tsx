@@ -17,6 +17,7 @@ import {
 } from '../constants/storage-keys.ts';
 import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
+import { parseFlowSplat, rutaFlow } from '../components/workarea/tabRoute.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 
 const WorkAreaCivilFlowPage_S1: React.CSSProperties = {
@@ -57,24 +58,22 @@ const ENLACE_LEGACY_AVISO_STYLE: React.CSSProperties = {
   fontFamily: 'var(--body)',
 };
 
-const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** Abre el proyecto del enlace (/civilflowareatrabajo/:id) o el activo si no hay id. Si el id cambió, recarga todo para no mezclar dibujos entre proyectos. Ej: uuid del activo. */
 function WorkAreaCivilFlowPage() {
   usePageMeta(
     'Área de trabajo',
     'Área de trabajo de CivilCardex. Diseño de redes hidráulicas, sanitarias, gas, aguas lluvias y equipos a presión.',
   );
-  const { proyectoId } = useParams<{ proyectoId?: string }>();
+  const { '*': splat } = useParams<{ '*': string }>();
+  const { proyectoId, tab: tabUrl, legacyId } = parseFlowSplat(splat);
   const navigate = useNavigate();
   // wantsId crudo (parámetro tal cual llega): distingue "sin parámetro" de "parámetro
   // presente pero no-uuid" (id numérico legacy o basura).
-  const wantsCrudo = proyectoId ?? null;
-  const wantsId = wantsCrudo && ES_UUID.test(wantsCrudo) ? wantsCrudo : null;
+  const wantsId = proyectoId ?? null;
   // Enlace con id no-uuid: el lookup num→uuid es imposible (la columna legacy_num fue
   // dropeada) — banner en vez de abrir el proyecto ACTIVO en silencio (el usuario dibujaría
   // creyendo estar en el proyecto del enlace viejo).
-  const enlaceLegacy = wantsCrudo != null && wantsId == null;
+  const enlaceLegacy = legacyId != null;
   const projectCtx = useContext(ProjectContext);
   const plansCtx = useContext(PlansContext);
   // Gate de carga global: no se monta el workspace hasta que planos + trazos + sync + tramos
@@ -113,7 +112,7 @@ function WorkAreaCivilFlowPage() {
         const rows = await fetchProyectos();
         if (!alive) return;
         const found = rows.find((r) => r.id === activeId);
-        if (found) navigate(`/civilflowareatrabajo/${found.id}`, { replace: true });
+        if (found) navigate(rutaFlow(found.id, tabUrl), { replace: true });
       } catch {
         /* cosmético: sin redirect */
       }
@@ -121,6 +120,7 @@ function WorkAreaCivilFlowPage() {
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tabUrl viaja en el splat; redirect solo cuando falta proyecto
   }, [proyectoId, navigate]);
 
   useEffect(() => {
@@ -162,7 +162,7 @@ function WorkAreaCivilFlowPage() {
           saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
         if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
         // Reload completo: providers re-nacen leyendo el storage recién volcado.
-        window.location.replace(`/civilflowareatrabajo/${wantsId}`);
+        window.location.replace(rutaFlow(wantsId, tabUrl));
       } catch (e) {
         devError('abrir proyecto desde URL:', e);
         // Rollback: recarga completa — el workspace del proyecto previo ya no existe en
@@ -177,6 +177,8 @@ function WorkAreaCivilFlowPage() {
     // El volcado corre una sola vez por id entrante; switchingRef evita re-entradas.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsId]);
+
+  // Hook ANTES de cualquier early return (reglas-de-hooks), incluido el banner legacy de
 
   // Enlace con id no-uuid (numérico legacy): banner + link al perfil, SIN montar workspace.
   if (enlaceLegacy) {
@@ -203,7 +205,7 @@ function WorkAreaCivilFlowPage() {
   return (
     <main className="h-full">
       <h1 style={WorkAreaCivilFlowPage_S1}>Área de trabajo</h1>
-      <WorkArea />
+      <WorkArea tabInicial={tabUrl} />
     </main>
   );
 }

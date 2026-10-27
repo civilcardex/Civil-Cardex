@@ -250,7 +250,7 @@ function PlanosTab({ state }: PlanosTabProps) {
       }
     }
     const pid = getActiveProyectoId();
-    navigate(pid ? `/visor/${pid}` : '/visor');
+    navigate(pid ? `/dibujoRedes/${pid}` : '/dibujoRedes');
   };
 
   // Modo calibración: PlanoConfigurator a ancho completo con botón volver
@@ -343,6 +343,7 @@ function PlanosTab({ state }: PlanosTabProps) {
   return (
     <div
       className="fu"
+      data-tour="cf-tab-planos"
       style={{
         flex: 1,
         minHeight: 0,
@@ -361,89 +362,92 @@ function PlanosTab({ state }: PlanosTabProps) {
           borderRight: '1px solid var(--line)',
         }}
       >
-        <div
-          className="card-h"
-          style={{
-            padding: '8px 10px',
-            borderBottom: '1px solid var(--line)',
-            flexShrink: 0,
-            background: 'none',
-          }}
-        >
-          <h3 className="card-t" style={{ fontSize: 15 }}>
-            <img
-              src="/iconos_civilflow/carga_planos/requisitos_del_plano.webp"
-              alt="Requisitos del plano"
-              width={24}
-              height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
-              loading="lazy"
-            />
-            Requisitos del plano
-          </h3>
-        </div>
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '8px 10px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setShowProtocolo(true)}
-            onMouseEnter={() => setBtnHover(true)}
-            onMouseLeave={() => setBtnHover(false)}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div
+            className="card-h"
+            data-tour="planos-requisitos"
             style={{
-              ...PlanosTab_reqBtnBase,
-              background: btnHover ? 'rgba(0, 220, 229, 0.1)' : 'var(--bg3)',
-              border: `1.5px solid ${btnHover ? '#00dce5' : 'var(--line)'}`,
-              color: btnHover ? '#00dce5' : 'var(--txt2)',
-              fontWeight: btnHover ? 600 : 400,
+              padding: '8px 10px',
+              borderBottom: '1px solid var(--line)',
+              flexShrink: 0,
+              background: 'none',
             }}
           >
-            📋 Requisitos para carga
-          </button>
-          {REQ_ITEMS.map(({ ico, icoImg, t, s }) => (
-            <div
-              key={t}
+            <h3 className="card-t" style={{ fontSize: 15 }}>
+              <img
+                src="/iconos_civilflow/carga_planos/requisitos_del_plano.webp"
+                alt="Requisitos del plano"
+                width={24}
+                height={24}
+                style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+                loading="lazy"
+              />
+              Requisitos del plano
+            </h3>
+          </div>
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '8px 10px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowProtocolo(true)}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
               style={{
-                display: 'flex',
-                gap: 10,
-                alignItems: 'flex-start',
-                padding: '10px 12px',
-                background: 'var(--bg3)',
-                borderRadius: 'var(--r)',
-                border: '1px solid var(--line)',
+                ...PlanosTab_reqBtnBase,
+                background: btnHover ? 'rgba(0, 220, 229, 0.1)' : 'var(--bg3)',
+                border: `1.5px solid ${btnHover ? '#00dce5' : 'var(--line)'}`,
+                color: btnHover ? '#00dce5' : 'var(--txt2)',
+                fontWeight: btnHover ? 600 : 400,
               }}
             >
-              <span style={{ fontSize: 16, flexShrink: 0 }}>
-                {icoImg ? (
-                  <img
-                    src={icoImg}
-                    alt=""
-                    width={24}
-                    height={24}
-                    style={{ width: 24, height: 24, verticalAlign: 'middle' }}
-                    loading="lazy"
-                  />
-                ) : (
-                  ico
-                )}
-              </span>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{t}</div>
-                <div
-                  style={{ fontSize: 12.5, color: 'var(--txt3)', marginTop: 2, lineHeight: 1.4 }}
-                >
-                  {s}
+              📋 Requisitos para carga
+            </button>
+            {REQ_ITEMS.map(({ ico, icoImg, t, s }) => (
+              <div
+                key={t}
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'flex-start',
+                  padding: '10px 12px',
+                  background: 'var(--bg3)',
+                  borderRadius: 'var(--r)',
+                  border: '1px solid var(--line)',
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0 }}>
+                  {icoImg ? (
+                    <img
+                      src={icoImg}
+                      alt=""
+                      width={24}
+                      height={24}
+                      style={{ width: 24, height: 24, verticalAlign: 'middle' }}
+                      loading="lazy"
+                    />
+                  ) : (
+                    ico
+                  )}
+                </span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{t}</div>
+                  <div
+                    style={{ fontSize: 12.5, color: 'var(--txt3)', marginTop: 2, lineHeight: 1.4 }}
+                  >
+                    {s}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         {selectedPlan && selectedPlanUrl && (
           <PlanCropPanel selectedPlanUrl={selectedPlanUrl} planFile={selectedPlan.file} />
@@ -529,7 +533,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                       }
                     }
                     const pid = getActiveProyectoId();
-                    navigate(pid ? `/visor/${pid}` : '/visor');
+                    navigate(pid ? `/dibujoRedes/${pid}` : '/dibujoRedes');
                   }}
                   style={PlanosTab_S4}
                 >

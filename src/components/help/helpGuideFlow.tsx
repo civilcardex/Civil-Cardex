@@ -1,5 +1,6 @@
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';
 import { CRITERIOS_3631 } from './helpGuideCriteria.tsx';
+import { GUIA_RECORTE } from './helpGuideCrop.tsx';
 export const GUIA_FLOW: GUIA_TYPE = {
   'cf:info': [
     {
@@ -112,27 +113,6 @@ export const GUIA_FLOW: GUIA_TYPE = {
       ],
     },
     {
-      titulo: 'Recorte para isometría',
-      items: [
-        {
-          nombre: 'Panel Recorte (isometría)',
-          desc: 'Vive bajo la barra izquierda de Carga de planos, con un plano seleccionado: miniatura del PDF con el rectángulo naranja de la zona. Botones Recortar (editor de arrastre) y Quitar.',
-        },
-        {
-          nombre: 'Alcance global',
-          desc: 'La zona es UNA sola para todos los planos ya cargados (no por plano): la isometría recorta cada lámina con el mismo rectángulo relativo.',
-        },
-        {
-          nombre: 'Tamaño mínimo',
-          desc: 'El editor exige ancho y alto ≥ 2% de la hoja; debajo de eso no guarda.',
-        },
-        {
-          nombre: 'Efecto en isometría',
-          desc: 'Solo deforma la lámina de fondo (drawImage recortada); trazos, bajantes y cotas no se mueven.',
-        },
-      ],
-    },
-    {
       titulo: 'Calibración (configurador)',
       items: [
         {
@@ -154,6 +134,9 @@ export const GUIA_FLOW: GUIA_TYPE = {
         { nombre: '💾 Guardar configuración', desc: 'Persiste nivel, escala y origen del plano.' },
       ],
     },
+    // Recorte para isometría: grupo COLAPSABLE propio (ped. usuario) — misma guía que ve el
+    // editor de recorte en su contexto cf:recorte; su tour se repite desde AYUDA del editor.
+    { titulo: GUIA_RECORTE.titulo, items: GUIA_RECORTE.items },
   ],
 
   'cf:datos': [

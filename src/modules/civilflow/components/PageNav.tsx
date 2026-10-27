@@ -9,11 +9,21 @@ interface PageNavProps {
   onPageHover?: (page: number) => void;
 }
 
-function PageNav({ page, setPage, total, labels, color, onPageHover }: PageNavProps) {
+function PageNav({
+  page,
+  setPage,
+  total,
+  labels,
+  color,
+  onPageHover,
+  ...rest
+}: PageNavProps & React.HTMLAttributes<HTMLElement>) {
   // Sin flechas prev/next (orig. usuario): solo botones numerados con etiqueta.
+  // ...rest: los callers pasan data-tour (anclas del tour de onboarding).
   return (
     <nav
       aria-label="Paginación"
+      {...rest}
       style={{
         display: 'flex',
         alignItems: 'center',

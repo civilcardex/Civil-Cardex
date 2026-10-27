@@ -40,6 +40,7 @@ export default function IsometriaSidebar({
 }: IsometriaSidebarProps) {
   return (
     <div
+      data-tour="iso-sidebar"
       style={{
         width: 200,
         flexShrink: 0,

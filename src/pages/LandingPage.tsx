@@ -436,7 +436,7 @@ function LandingPage() {
               {
                 icon: 'design_services',
                 title: 'DISEÑO SOBRE PLANOS',
-                desc: 'Cargue planos en PDF o imagen y trace los elementos de diseño por nivel. Autosave y visualización isométrica mientras diseña.',
+                desc: 'Cargue planos en PDF y trace los elementos de diseño por nivel. Autosave y visualización isométrica mientras diseña.',
               },
               {
                 icon: 'speed',

@@ -96,6 +96,7 @@ function RciViewerInner({ onReintentar }: { onReintentar: () => void }): React.J
 
   return (
     <div
+      data-tour="iso-panel"
       style={{
         display: 'flex',
         flex: 1,
@@ -106,7 +107,11 @@ function RciViewerInner({ onReintentar }: { onReintentar: () => void }): React.J
     >
       <RciSidebar selectedId={selectedId} onSelect={setSelectedId} />
 
-      <div ref={wrapRef} style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
+      <div
+        ref={wrapRef}
+        data-tour="iso-canvas"
+        style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
+      >
         <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
         {/* Etiquetas numeradas (línea guía + círculo) — overlay sin interacción */}

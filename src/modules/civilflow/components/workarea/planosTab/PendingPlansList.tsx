@@ -51,6 +51,7 @@ export function ListaPendientes(props: ListaPendientesProps) {
   } = props;
   return (
     <div
+      data-tour="planos-pendientes"
       style={{
         flex: '1 1 50%',
         minHeight: 0,

@@ -625,9 +625,10 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
           totals={totals}
         />
 
-        {/* Lienzo */}
+        {/* Lienzo 3D (ancla del tour: solo el visor, no los paneles laterales) */}
         <div
           ref={containerRef}
+          data-tour="iso-canvas"
           style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
         >
           <canvas

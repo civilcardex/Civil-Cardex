@@ -24,7 +24,6 @@ import {
 import type { PlanTrazos } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { validaDocTrazos } from '../../services/storage/validateDocStrokes.ts';
-import { marcarPrimerPisoCargado } from './pdfCache.ts';
 import { PLANS_META_KEY } from '../../constants/storage-keys.ts';
 import {
   migrateAssocLayoutOnLoad,
@@ -331,9 +330,6 @@ export function useTrazosLoader({
       } catch (e) {
         devError('[LOAD] migración asociaciones:', e);
       }
-      // Piso asentado (raster + arbitración + escala corregida): el overlay de primera
-      // entrada puede levantarse — nada más va a mover los elementos a la vista.
-      if (pisoVigente()) marcarPrimerPisoCargado();
       return initiallyLoaded;
     },
     [activeNetRef, setActiveNet, setScaleM, escalaGlobalRef],

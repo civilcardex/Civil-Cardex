@@ -1,45 +1,20 @@
-import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { describe, it, expect } from 'vitest';
 import { propagarAparatosPresion } from '../propagation';
 import { correrEspejos } from '../../components/fixtures/useFixtureMirrors.ts';
 import { currentMapDe, type TargetArgs } from '../../components/fixtures/useFixtureTarget.ts';
 import type { IPlanoEngineCore } from '../../lib/PlanoEngine/PlanoState.ts';
+import { makeEngine } from '../../../../test/engineFixture.ts';
+import {
+  resetStorage,
+  seedTrazos,
+  seedAparatos,
+  aparatos,
+} from '../../../../test/storageHarness.ts';
 
 // E2E INTEGRAL (espec. usuario): la herencia de montantes debe mostrar ABAJO exactamente lo
 // que muestra ARRIBA — con TODO el estado rancio real acumulado por las doctrinas viejas:
 // junk en ramales con campo aparato, libros rancios en el storage de AMBOS pisos y la
 // proyección fantasma del superior conviviendo con el real en el motor del piso abierto.
-
-beforeAll(() => {
-  const g = globalThis as Record<string, unknown>;
-  if (!g.document)
-    g.document = {
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      createElement: () => ({}),
-    };
-  if (!g.window)
-    g.window = {
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => {},
-    };
-});
-
-vi.stubGlobal('localStorage', {
-  getItem: (key: string) => mockStorage[key] ?? null,
-  setItem: (key: string, value: string) => {
-    mockStorage[key] = value;
-  },
-  removeItem: (key: string) => {
-    delete mockStorage[key];
-  },
-  get length() {
-    return Object.keys(mockStorage).length;
-  },
-  key: (i: number) => Object.keys(mockStorage)[i] ?? null,
-});
-const mockStorage: Record<string, string> = {};
 
 const GRUPO_REAL = { duc: 1, lvro: 1, lvm: 1, lvp: 1, tin: 1 }; // 4.5 UC arriba ✓
 const RANCIO = { duc: 3, lvro: 3, lvm: 5, lvp: 2, tin: 5 }; // 15.5+ de eras viejas
@@ -47,7 +22,7 @@ const RANCIO = { duc: 3, lvro: 3, lvm: 5, lvp: 2, tin: 5 }; // 15.5+ de eras vie
 function seedTodoElRancio() {
   // Piso SUPERIOR: la carga real vive en la CLAVE PROPIA del montante; ramales viejos con
   // campo aparato y junk listados en alimentaIds; libro rancio de una era anterior.
-  mockStorage[`civilflow_${TRAZOS_PREFIX}2`] = JSON.stringify({
+  seedTrazos('2', {
     scaleM: 0.5,
     ramales: [
       {
@@ -76,7 +51,7 @@ function seedTodoElRancio() {
     ],
   });
   // Piso INFERIOR: montante asociado (origenId) con libro RANCIO heredado de la era vieja.
-  mockStorage[`civilflow_${TRAZOS_PREFIX}1`] = JSON.stringify({
+  seedTrazos('1', {
     scaleM: 0.5,
     ramales: [],
     bajantes: [
@@ -93,46 +68,28 @@ function seedTodoElRancio() {
       },
     ],
   });
-  mockStorage[`civilflow_${APARATOS_BY_TRAMO_KEY}`] = JSON.stringify({
+  seedAparatos({
     ac_MAC1_ac_2: { ...GRUPO_REAL },
     ac_RAFA_2: { duc: 2, lvro: 2, lvm: 4, lvp: 1, tin: 4 },
   });
 }
 
-function makeEngine(): IPlanoEngineCore {
-  const engine: Partial<IPlanoEngineCore> = {
-    ramales: [],
-    bajantes: [],
-    dims: [],
-    textAnnots: [],
-    areas: [],
-    crossFloorGhosts: [],
-    guideLines: [],
-    selId: null,
-    _hiddenNets: new Set(),
+function makeEnginePiso1(): IPlanoEngineCore {
+  return makeEngine({
     activeNet: 'ac',
-    tipoTramo: 'ramal',
     _loadedPlanId: '1',
-    nivelActual: { label: 'Piso 1', n: 0, npt: 0 } as never,
-    scaleM: 0.5,
-    render: () => {},
-    _emitSelect: () => {},
-    _emitStatus: () => {},
-    _markDirty: () => {},
-    triggerAlert: () => {},
-    updateElementById: () => {},
-  };
-  return engine as IPlanoEngineCore;
+    nivelActual: { label: 'Piso 1', n: 0, npt: 0 },
+  });
 }
 
 beforeEach(() => {
-  for (const k of Object.keys(mockStorage)) delete mockStorage[k];
+  resetStorage();
   seedTodoElRancio();
 });
 
 describe('E2E: con todo el rancio acumulado, abajo muestra lo mismo que arriba', () => {
   it('espejos + propagación dejan el panel del asociado y el LD en el grupo real', () => {
-    const eng1 = makeEngine();
+    const eng1 = makeEnginePiso1();
     // El motor del piso abierto: el real del piso 1 Y la proyección del superior (mismo id,
     // pisoBase ajeno, libro rancio) — como en la sesión real del usuario.
     eng1.bajantes.push(
@@ -179,7 +136,7 @@ describe('E2E: con todo el rancio acumulado, abajo muestra lo mismo que arriba',
       ] as never,
       planLoadedTick: 1,
       targetId: null,
-      counts: JSON.parse(mockStorage[`civilflow_${APARATOS_BY_TRAMO_KEY}`] || '{}'),
+      counts: aparatos(),
       setCounts: () => {},
       hidroData: {},
       setHidroData: () => {},
@@ -201,7 +158,7 @@ describe('E2E: con todo el rancio acumulado, abajo muestra lo mismo que arriba',
       isBajanteSan: true,
       planId: '1',
       selElement: real as never,
-      counts: JSON.parse(mockStorage[`civilflow_${APARATOS_BY_TRAMO_KEY}`] || '{}'),
+      counts: aparatos(),
       hidroData: {},
       plans: [
         { id: '1', nivel: 0 },
@@ -214,8 +171,7 @@ describe('E2E: con todo el rancio acumulado, abajo muestra lo mismo que arriba',
     expect(panel).toEqual(GRUPO_REAL);
 
     // El LDesvio también quedó con el grupo real (storage).
-    const apos = JSON.parse(mockStorage[`civilflow_${APARATOS_BY_TRAMO_KEY}`] || '{}');
-    expect(apos['ac_LD_MAC1_ac_1']).toEqual(GRUPO_REAL);
+    expect(aparatos()['ac_LD_MAC1_ac_1']).toEqual(GRUPO_REAL);
 
     // Y el libro del asociado (motor vivo) quedó curado — sin entradas rancias.
     const ucAp = (real.ucAplicado ?? {}) as Record<string, Record<string, number>>;

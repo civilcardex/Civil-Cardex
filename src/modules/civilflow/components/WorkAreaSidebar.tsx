@@ -20,7 +20,7 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
               onClick={() => {
                 if (t.id === 'visor') {
                   const pid = getActiveProyectoId();
-                  navigate(pid ? `/visor/${pid}` : '/visor');
+                  navigate(pid ? `/dibujoRedes/${pid}` : '/dibujoRedes');
                 } else setTab(t.id);
               }}
               onMouseEnter={() => {

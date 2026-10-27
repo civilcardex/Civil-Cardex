@@ -78,6 +78,7 @@ function InfoTab({ state }: InfoTabProps) {
   return (
     <div
       className="fu info-gral"
+      data-tour="cf-tab-info"
       style={{
         display: 'flex',
         flexDirection: 'column',

@@ -8,4 +8,11 @@ export { GUIA_MANAGER } from './helpGuideManager.tsx';
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';
 import { GUIA_FLOW } from './helpGuideFlow.tsx';
 import { GUIA_MANAGER } from './helpGuideManager.tsx';
-export const GUIA: GUIA_TYPE = { ...GUIA_FLOW, ...GUIA_MANAGER };
+import { GUIA_RECORTE } from './helpGuideCrop.tsx';
+export const GUIA: GUIA_TYPE = {
+  ...GUIA_FLOW,
+  ...GUIA_MANAGER,
+  // El editor de recorte publica su propio contexto (cf:recorte): su Ayuda muestra esta
+  // misma sección colapsable, y el «REPETIR TOUR» del pie lanza el tour del recorte.
+  'cf:recorte': [{ titulo: GUIA_RECORTE.titulo, items: GUIA_RECORTE.items }],
+};

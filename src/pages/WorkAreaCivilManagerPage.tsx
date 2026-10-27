@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import WorkAreaCivilManager from '../modules/civilmanager/WorkAreaCivilManager.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
+import { parseManagerSplat } from '../modules/civilflow/components/workarea/tabRoute.ts';
 import { devError } from '../utils/devError.ts';
 import { fetchCmProyectos } from '../modules/civilmanager/services/cmProjectsService.ts';
 import { CargandoProyecto } from '../modules/civilflow/components/shared/LoadingProject';
@@ -26,7 +27,9 @@ function WorkAreaCivilManagerPage() {
     'Área de trabajo CivilManager',
     'Presupuestos de obra civil: catálogos, análisis de precios unitarios (APU) y presupuestos con AIU.',
   );
-  const { proyectoId } = useParams<{ proyectoId?: string }>();
+  const { '*': splat } = useParams<{ '*': string }>();
+  const { proyectoId, seccion, catalogoTab } = parseManagerSplat(splat);
+  const cola = seccion ? (catalogoTab ? `/${seccion}/${catalogoTab}` : `/${seccion}`) : '';
   const idActivo = localStorage.getItem('cm_proyecto_activo_id');
   const activeId = !proyectoId ? idActivo : null;
   // Switch pendiente evaluado EN RENDER: la URL ya apunta a otro proyecto — nunca montar
@@ -55,21 +58,21 @@ function WorkAreaCivilManagerPage() {
         const nombre = rows.find((r) => r.id === proyectoId)?.nombre || '';
         localStorage.setItem('cm_proyecto_activo_id', proyectoId);
         localStorage.setItem('cm_proyecto_activo_nombre', nombre);
-        window.location.replace(`/civilmanagerareatrabajo/${proyectoId}`);
+        window.location.replace(`/civilmanagerareatrabajo/${proyectoId}${cola}`);
       } catch (e) {
         devError('abrir proyecto CM desde URL:', e);
         // Rollback: recarga completa — el workspace del proyecto previo solo existe
         // en storage tras restaurar el puntero; los providers se re-nacen con la recarga.
         if (idAnterior != null) localStorage.setItem('cm_proyecto_activo_id', idAnterior);
         window.location.replace(
-          idAnterior != null ? `/civilmanagerareatrabajo/${idAnterior}` : '/perfil',
+          idAnterior != null ? `/civilmanagerareatrabajo/${idAnterior}${cola}` : '/perfil',
         );
       }
     })();
-  }, [proyectoId, switching]);
+  }, [proyectoId, switching, cola]);
 
   if (!proyectoId && activeId) {
-    return <Navigate to={`/civilmanagerareatrabajo/${activeId}`} replace />;
+    return <Navigate to={`/civilmanagerareatrabajo/${activeId}${cola}`} replace />;
   }
   // Misma pantalla que el resto de la app (CargandoProyecto) para no encadenar dos al abrir.
   if (switchPendiente || switching) {

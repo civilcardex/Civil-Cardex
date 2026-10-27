@@ -7,6 +7,9 @@ import { getActiveProyectoId } from '../services/storageService.ts';
 import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys.ts';
 import { WorkAreaSidebar } from './WorkAreaSidebar.tsx';
 import WorkAreaContent from './WorkAreaContent.tsx';
+import { useTour } from '../../../components/tour/useTour.tsx';
+import { useNavigate } from 'react-router-dom';
+import { parseFlowSplat, rutaFlow } from './workarea/tabRoute.ts';
 import { ErrorBoundary } from '../../../components/ErrorBoundary.tsx';
 import { REDES } from '../constants';
 const WorkAreaCivilFlow_S1: React.CSSProperties = {
@@ -43,7 +46,7 @@ interface NetworkBarProps {
 
 function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: NetworkBarProps) {
   return (
-    <div style={WorkAreaCivilFlow_S1}>
+    <div data-tour="barra-redes" style={WorkAreaCivilFlow_S1}>
       {redesActivas.map((r) => {
         const active = tab === 'redes' && redActiva === r.id;
         const netColor = r.col || '#666';
@@ -83,8 +86,14 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
   );
 }
 
-function CivilFlowInner() {
-  const state = useWorkAreaState();
+function CivilFlowInner({ tabInicial }: { tabInicial?: string | null }) {
+  const navigate = useNavigate();
+  const url = parseFlowSplat(window.location.pathname);
+  const state = useWorkAreaState(tabInicial ?? url.tab, (t) =>
+    navigate(rutaFlow(getActiveProyectoId() ?? undefined, t)),
+  );
+  // Tour por PESTAÑA (ped. usuario): cada pestaña tiene su recorrido la primera vez.
+  const tour = useTour(`cf:tab:${state.tab}`);
   // null = sin decidir aún; true = hay proyecto activo o se auto-activó; false = no se pudo
   // (sin proyectos o fallo de red tras los reintentos) → banner visible. Init perezoso: con
   // proyecto activo no hay efecto que correr ni setState síncrono.
@@ -154,6 +163,7 @@ function CivilFlowInner() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {tour}
       {proyectoResuelto === false && (
         <div
           role="status"
@@ -195,10 +205,10 @@ function CivilFlowInner() {
   );
 }
 
-export default function CivilFlow() {
+export default function CivilFlow({ tabInicial }: { tabInicial?: string | null } = {}) {
   return (
     <ErrorBoundary>
-      <CivilFlowInner />
+      <CivilFlowInner tabInicial={tabInicial} />
     </ErrorBoundary>
   );
 }

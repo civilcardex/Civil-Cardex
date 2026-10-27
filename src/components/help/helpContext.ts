@@ -6,7 +6,7 @@
 import { useSyncExternalStore } from 'react';
 
 export interface AyudaContexto {
-  /** Clave de la guía detallada (cf:<tab> · cf:iso:<sub> · cm:catalogos:<tab> · cm:<seccion>). */
+  /** Clave de la guía detallada (cf:<tab> · cf:iso:<sub> · cf:recorte · cm:catalogos:<tab> · cm:<seccion>). */
   key: string;
   /** Módulo visible al usuario («Civil Flow», «Civil Manager»). */
   modulo: string;

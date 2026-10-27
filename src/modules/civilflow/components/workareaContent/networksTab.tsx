@@ -124,9 +124,11 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
   return (
     <div
       className="fu"
+      data-tour="cf-tab-redes"
       style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}
     >
       <fieldset
+        data-tour="redes-chips"
         style={{ display: 'flex', gap: 6, flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}
       >
         <legend style={SR_ONLY_STYLE}>Redes</legend>
@@ -175,6 +177,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'san' && redes.has('san') && (
         <div
           className="fu"
+          data-tour="redes-contenido"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -185,6 +188,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           }}
         >
           <PageNav
+            data-tour="redes-paginas"
             page={sanPage}
             setPage={setSanPage}
             total={4}
@@ -222,6 +226,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'll' && redes.has('ll') && (
         <div
           className="fu"
+          data-tour="redes-contenido"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -232,6 +237,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           }}
         >
           <PageNav
+            data-tour="redes-paginas"
             page={llPage}
             setPage={setLlPage}
             total={4}
@@ -269,6 +275,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'af' && redes.has('af') && (
         <div
           className="fu"
+          data-tour="redes-contenido"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -279,6 +286,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           }}
         >
           <PageNav
+            data-tour="redes-paginas"
             page={afPage}
             setPage={setAfPage}
             total={5}
@@ -327,6 +335,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'ac' && redes.has('ac') && (
         <div
           className="fu"
+          data-tour="redes-contenido"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -337,6 +346,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           }}
         >
           <PageNav
+            data-tour="redes-paginas"
             page={acPage}
             setPage={setAcPage}
             total={5}
@@ -394,6 +404,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'gas' && redes.has('gas') && (
         <div
           className="fu"
+          data-tour="redes-contenido"
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -404,6 +415,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           }}
         >
           <PageNav
+            data-tour="redes-paginas"
             page={gasPage}
             setPage={setGasPage}
             total={redes.has('rejillas') ? 5 : 4}

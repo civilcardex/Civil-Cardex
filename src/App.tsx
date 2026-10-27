@@ -15,7 +15,7 @@ import PageTransition from './components/landing/PageTransition.tsx';
 // elige la ruta para que el fallback de React y el preload de index.html digan lo mismo.
 const Fallback = () => {
   const { pathname } = useLocation();
-  return pathname.startsWith('/visor') ? (
+  return pathname.startsWith('/dibujoRedes') || pathname.startsWith('/visor') ? (
     <CargandoProyecto texto="Cargando planos y redes…" />
   ) : (
     <CargandoProyecto />
@@ -142,7 +142,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/visor/:proyectoId?"
+                  path="/dibujoRedes/:proyectoId?"
                   element={
                     <ErrorBoundary>
                       <CivilFlowProviders>
@@ -217,6 +217,7 @@ function App() {
                 />
 
                 {/* Redirects */}
+                <Route path="/visor/*" element={<Navigate to="/dibujoRedes" replace />} />
                 <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
                 <Route
                   path="/dashboard"
@@ -236,7 +237,7 @@ function App() {
                     }
                   >
                     <Route
-                      path="/civilflowareatrabajo/:proyectoId?"
+                      path="/civilflowareatrabajo/*"
                       element={
                         <RequireModule modulo="flow">
                           <ErrorBoundary>
@@ -250,7 +251,7 @@ function App() {
                       }
                     />
                     <Route
-                      path="/civilmanagerareatrabajo/:proyectoId?"
+                      path="/civilmanagerareatrabajo/*"
                       element={
                         <RequireModule modulo="manage">
                           <ErrorBoundary>

@@ -51,6 +51,7 @@ export default function ViewerSidebar({
   const verNombre = muestraNombre ?? ((n: string) => n);
   return (
     <div
+      data-tour="iso-viewer-sidebar"
       style={{
         width: 370,
         flexShrink: 0,

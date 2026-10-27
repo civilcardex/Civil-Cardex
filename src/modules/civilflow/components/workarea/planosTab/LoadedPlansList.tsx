@@ -21,6 +21,7 @@ export function ListaCargados(props: ListaCargadosProps) {
   const { planos, selectedPlanId, origenesCompartidos, onSelect, onCalibrar, onEliminar } = props;
   return (
     <div
+      data-tour="planos-cargados"
       style={{
         flex: '1 1 50%',
         minHeight: 0,

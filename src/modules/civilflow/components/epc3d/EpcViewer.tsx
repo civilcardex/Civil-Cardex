@@ -76,6 +76,7 @@ export default function EpcViewer(): React.JSX.Element {
 
   return (
     <div
+      data-tour="iso-panel"
       style={{
         display: 'flex',
         flex: 1,
@@ -87,7 +88,11 @@ export default function EpcViewer(): React.JSX.Element {
       <EpcSidebar selectedId={selected} onSelect={setSelected} />
 
       {/* Área del canvas + overlays */}
-      <div ref={wrapRef} style={{ flex: 1, position: 'relative', minHeight: 380 }}>
+      <div
+        ref={wrapRef}
+        data-tour="iso-canvas"
+        style={{ flex: 1, position: 'relative', minHeight: 380 }}
+      >
         <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
         <canvas
           ref={lblCanvasRef}

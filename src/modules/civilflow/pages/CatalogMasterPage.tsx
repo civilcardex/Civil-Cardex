@@ -15,6 +15,7 @@ import {
 } from './catalog/CatalogTables.tsx';
 const RejillasCatalogTable = lazy(() => import('./catalog/RejillasCatalogTable.tsx'));
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
+import { useTour } from '../../../components/tour/useTour.tsx';
 import { useIsMobile } from '../../../hooks/useMediaQuery.ts';
 const CatalogMasterPage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -58,6 +59,7 @@ export default function CatalogMasterPage() {
     'Catálogo de materiales, tuberías y equipos para diseño hidrosanitario. PVC, CPVC, cobre, acero y más según NTC 1500.',
   );
 
+  const tour = useTour('cf:catmaestro');
   return (
     <div
       style={{
@@ -119,6 +121,7 @@ export default function CatalogMasterPage() {
           >
             ← VOLVER
           </button>
+          {tour}
           <h1
             className="td-mono"
             style={{
@@ -135,6 +138,7 @@ export default function CatalogMasterPage() {
         </div>
 
         <div
+          data-tour="catmaestro-contenido"
           style={{
             flex: 1,
             minHeight: 0,

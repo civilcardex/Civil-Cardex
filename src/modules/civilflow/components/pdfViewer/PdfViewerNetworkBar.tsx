@@ -64,7 +64,7 @@ export default function PdfViewerNetworkBar({
   onClose,
 }: PdfViewerNetworkBarProps) {
   return (
-    <div style={PdfViewerNetworkBar_S1}>
+    <div data-tour="redes" style={PdfViewerNetworkBar_S1}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div
           style={{

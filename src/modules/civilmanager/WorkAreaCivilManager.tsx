@@ -15,6 +15,14 @@ import { ConfigTab } from './config/ConfigTab.tsx';
 import { ApuCatalog } from './apu/ApuCatalog.tsx';
 import { PresupuestosTab } from './budgets/BudgetsTab.tsx';
 import { setAyudaContext } from '../../components/help/helpContext.ts';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  CM_CATALOGOS,
+  CM_SECCIONES,
+  parseManagerSplat,
+  rutaManager,
+} from '../../modules/civilflow/components/workarea/tabRoute.ts';
+import { useTour } from '../../components/tour/useTour.tsx';
 
 type MainSection = 'catalogos' | 'apus' | 'presupuestos';
 type CatalogoTab =
@@ -46,8 +54,26 @@ const AYUDA_INTROS_CM: Record<MainSection, string> = {
 
 function CivilManagerShell() {
   const { loaded } = useCivilManager();
-  const [mainSection, setMainSection] = useState<MainSection>('catalogos');
-  const [catalogoTab, setCatalogoTab] = useState<CatalogoTab>('colaboradores');
+  const navigate = useNavigate();
+  const { '*': splat } = useParams<{ '*': string }>();
+  const url = parseManagerSplat(splat);
+  const [mainSection, setMainSectionState] = useState<MainSection>(
+    url.seccion && CM_SECCIONES.includes(url.seccion) ? (url.seccion as MainSection) : 'catalogos',
+  );
+  const [catalogoTab, setCatalogoTabState] = useState<CatalogoTab>(
+    url.catalogoTab && CM_CATALOGOS.includes(url.catalogoTab)
+      ? (url.catalogoTab as CatalogoTab)
+      : 'colaboradores',
+  );
+  // La URL es la verdad: setters delegan en navigate (back/adelante funcionan).
+  const setMainSection = (id: MainSection): void => {
+    setMainSectionState(id);
+    navigate(rutaManager(url.proyectoId, id, url.catalogoTab));
+  };
+  const setCatalogoTab = (id: CatalogoTab): void => {
+    setCatalogoTabState(id);
+    navigate(rutaManager(url.proyectoId, mainSection, id));
+  };
 
   // Ayuda contextual (orig. usuario): sección activa de Civil Manager para el panel de la navbar.
   useEffect(() => {
@@ -64,6 +90,12 @@ function CivilManagerShell() {
     return () => setAyudaContext(null);
   }, [mainSection, catalogoTab]);
 
+  // Hook ANTES del early return (reglas-de-hooks); `loaded` lo pospone hasta el shell real.
+  // Tour por SECCIÓN/SUB-SECCIÓN (ped. usuario): Catálogos tiene uno por cada catálogo.
+  const tour = useTour(
+    mainSection === 'catalogos' ? `cm:catalogos:${catalogoTab}` : `cm:${mainSection}`,
+    loaded,
+  );
   if (!loaded) {
     return (
       <div className="cm-shell">
@@ -76,6 +108,7 @@ function CivilManagerShell() {
 
   return (
     <div className="cm-shell">
+      {tour}
       <nav className="cm-nav" aria-label="Secciones de CivilManager">
         {MAIN_SECTIONS.map((s) => (
           <button

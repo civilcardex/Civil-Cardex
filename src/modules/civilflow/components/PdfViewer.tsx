@@ -1140,7 +1140,7 @@ function PdfViewer_({
       </div>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative', minWidth: 0 }}>
-        <div className="visor-sidebar" style={dynamicLeftStyle}>
+        <div className="visor-sidebar" data-tour="toolbar" style={dynamicLeftStyle}>
           <h2 style={PdfViewer_SR_ONLY}>Panel de capas</h2>
           <div
             style={{
@@ -1176,7 +1176,10 @@ function PdfViewer_({
           )}
         </div>
 
-        <div style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}>
+        <div
+          data-tour="canvas"
+          style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
+        >
           <h2 style={PdfViewer_SR_ONLY}>Visor de planos</h2>
           <ViewerMobileChrome
             isMobile={isMobile}

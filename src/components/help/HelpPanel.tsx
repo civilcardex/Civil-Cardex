@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import type { AyudaContexto } from './helpContext.ts';
 import { GUIA, iconoDeGrupo, type GuiaGrupo } from './helpGuide.tsx';
 import { tutorialDe, type Tutorial } from './helpTutorials.ts';
+import { repetirTour } from '../tour/useTour.tsx';
+import { tourDe } from '../tour/tourSteps.ts';
 
 // Panel de ayuda IN-PLACE (orig. usuario: el botón AYUDA de la navbar NO redirige a otra
 // página): modal con portal — mismo patrón que ModalProtocolo (backdrop, Escape, foco
@@ -437,8 +439,33 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
             background: 'var(--bg2)',
             display: 'flex',
             justifyContent: 'flex-end',
+            gap: 16,
+            alignItems: 'center',
           }}
         >
+          {/* Repetir el tour de onboarding de ESTA pantalla (ped. usuario). En el editor de
+              recorte el contexto es cf:recorte: el mismo botón repite el tour del recorte. */}
+          {tourDe(ctx.key) && (
+            <button
+              type="button"
+              onClick={() => {
+                repetirTour(tourDe(ctx.key)!);
+                onClose();
+              }}
+              style={{
+                fontSize: 12,
+                fontFamily: 'Geist, monospace',
+                color: 'var(--txt3)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                letterSpacing: 0.5,
+              }}
+            >
+              ⟲ REPETIR TOUR
+            </button>
+          )}
           <Link
             to="/docs"
             onClick={onClose}

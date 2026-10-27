@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getPdfjs } from '../../utils/lazyPdfjs';
-import { pdfDeCache, pdfACache, calentarPdfs } from './pdfCache.ts';
+import { pdfDeCache, pdfACache, calentarPdfs, marcarPrimerPisoCargado } from './pdfCache.ts';
 import { instalarCfCam } from './diagCamera.ts';
 import { useReRasterEscala } from './useReRasterScale.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
@@ -276,18 +276,16 @@ export function usePdfViewerEngine({
         }
         renderTaskRef.current = null;
 
-        if (!opts.bgOnly) {
-          // Re-encuadre tras el raster REAL: MISMA fórmula que pre-paint y switch
-          // (reEncuadrarContenido, bbox del dibujo CON dims) — con una sola fórmula de
-          // encuadre la cámara no se mueve un píxel entre el primer paint y aquí (el salto
-          // residual del visor, orig. usuario).
-          engineRef.current?.reEncuadrarContenido();
-        }
+        // Re-encuadre tras el raster REAL (misma fórmula que pre-paint/switch): la cámara
+        // no se mueve un píxel entre el primer paint y aquí (salto residual, orig. usuario).
+        if (!opts.bgOnly) engineRef.current?.reEncuadrarContenido();
 
-        // Repintar los elementos sobre la lámina recién rasterizada: si ensureCanvasSize
-        // re-dimensionó el lienzo de dibujo aquí, quedó limpio — sin esto los elementos no
-        // aparecen hasta la siguiente interacción.
+        // Repintar tras el raster (el lienzo pudo re-dimensionarse y quedó vacío) + marcar
+        // el primer piso SOLO al completar el ÚLTIMO raster completo: la corrección de
+        // escala dispara uno después de la carga de trazos y marcar antes dejaba ver el
+        // re-encuadre («salto residual»). Idempotente.
         engineRef.current?.render();
+        marcarPrimerPisoCargado();
 
         if (opts.bgOnly) {
           renderingRef.current = false;
@@ -620,8 +618,7 @@ export function usePdfViewerEngine({
     // Precalentar el RESTO de los pisos (una sola vez por sesión): parse en reposo tras la
     // primera entrada — los switches posteriores caen en la caché y no re-parsean nada.
     const calentarResto = (): void => calentarPdfs(files ?? []);
-    // Cache hit: sin parse y SIN NINGÚN spinner (ni overlay ni velo). El canvas conserva
-    // el bitmap anterior mientras rasteriza el nuevo → swap imperceptible.
+    // Cache hit: sin parse ni spinner; el canvas conserva el bitmap anterior (swap imperceptible).
     const enCache = pdfDeCache(currentFile);
     if (enCache) {
       void (async () => {

@@ -92,6 +92,7 @@ export default function DetalleAparatosViewer(): React.JSX.Element {
 
   return (
     <div
+      data-tour="iso-panel"
       style={{
         display: 'flex',
         flex: 1,
@@ -102,7 +103,11 @@ export default function DetalleAparatosViewer(): React.JSX.Element {
     >
       <AparatosSidebar selectedId={selectedId} onSelect={handleSelect} />
 
-      <div ref={wrapRef} style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
+      <div
+        ref={wrapRef}
+        data-tour="iso-canvas"
+        style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
+      >
         <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
         {!selectedId && ready && (

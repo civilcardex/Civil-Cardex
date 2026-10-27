@@ -220,6 +220,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   return (
     <div
       className="fu"
+      data-tour="cf-tab-inf"
       style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}
     >
       <div

@@ -113,6 +113,7 @@ export default function IsometriaToolbar({
 }: IsometriaToolbarProps) {
   return (
     <div
+      data-tour="iso-toolbar"
       style={{
         display: 'flex',
         alignItems: 'center',

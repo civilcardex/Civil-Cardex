@@ -55,7 +55,12 @@ export function pdfACache(file: File, pdf: PDFDocumentProxy): void {
 export function calentarPdfs(files: Array<{ file: File }>): void {
   if (calentado) return;
   calentado = true;
-  if (files.length < 2) return; // nada que calentar: listo por defecto
+  if (files.length < 2) {
+    // Sin pisos que calentar el flag de primer piso no puede bloquear el velo (un solo
+    // piso marca su raster en renderPage; cero planos → nada se moverá jamás).
+    marcarPrimerPisoCargado();
+    return;
+  }
   marcarCalentamiento(false);
   // Tope de seguridad: si algún PDF se atasca, el overlay no puede quedarse para siempre.
   const tope = window.setTimeout(() => marcarCalentamiento(true), 20000);

@@ -67,6 +67,7 @@ export function PlanCropPanel({
         </span>
       </div>
       <div
+        data-tour="planos-recorte"
         style={{
           position: 'relative',
           width: '100%',

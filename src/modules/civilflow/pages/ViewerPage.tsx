@@ -39,6 +39,7 @@ import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
+import { useTour } from '../../../components/tour/useTour.tsx';
 import { suscribirCalentamiento, calentamientoListo } from '../components/pdfViewer/pdfCache.ts';
 import {
   ViewerPage_S1,
@@ -159,7 +160,7 @@ export default function ViewerPage() {
         const rows = await fetchProyectos();
         if (!alive) return;
         const found = rows.find((r) => r.id === activeId);
-        if (found) navigate(`/visor/${found.id}`, { replace: true });
+        if (found) navigate(`/dibujoRedes/${found.id}`, { replace: true });
       } catch {
         /* cosmético: sin redirect */
       }
@@ -199,11 +200,11 @@ export default function ViewerPage() {
         if (data?.redesActivas && data.redesActivas.length)
           saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
         if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
-        window.location.replace(`/visor/${wantsId}`);
+        window.location.replace(`/dibujoRedes/${wantsId}`);
       } catch (e) {
         devError('abrir proyecto desde URL (visor):', e);
         if (idAnterior) localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, idAnterior);
-        window.location.replace(idAnterior ? '/visor' : '/perfil');
+        window.location.replace(idAnterior ? '/dibujoRedes' : '/perfil');
         return;
       }
     })();
@@ -354,6 +355,8 @@ export default function ViewerPage() {
     visorLoading ||
     minHoldCarga ||
     !calentamiento;
+  // Hook ANTES de cualquier early return (reglas-de-hooks); arranca al bajar la carga.
+  const tourVisor = useTour('cf:visor', !isDrawingLoading);
   // El overlay grande SOLO en la primera carga de la sesión (ped. usuario: entre cambio de
   // pisos no debe aparecer "Cargando planos y redes…"): tras la primera entrada, los
   // `true` del visor se ignoran y los switches quedan sin overlay (el velo chico del canvas
@@ -440,6 +443,7 @@ export default function ViewerPage() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>
+      {tourVisor}
       <div
         style={{
           position: 'fixed',
@@ -488,6 +492,7 @@ export default function ViewerPage() {
           <nav
             ref={dropdownNavRef}
             aria-label="Selector de planos"
+            data-tour="planos-pisos"
             style={{ position: 'relative' }}
           >
             <button

@@ -1,6 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import type { PlanCrop } from '../../../utils/planoCrop.ts';
 import { getPdfjs } from '../../../utils/lazyPdfjs.ts';
+import { useTour } from '../../../../../components/tour/useTour.tsx';
+import {
+  setAyudaContext,
+  useAyudaContext,
+  type AyudaContexto,
+} from '../../../../../components/help/helpContext.ts';
 
 const hintChipStyle: React.CSSProperties = {
   display: 'flex',
@@ -39,6 +45,24 @@ export function PlanCropModal({
   onClose: () => void;
   onSave: (crop: PlanCrop) => void;
 }) {
+  // Tour PROPIO del editor de recorte (ped. usuario): corre la primera vez que se abre.
+  // Repetirlo es cosa de la Ayuda de este contexto: su botón «⟲ REPETIR TOUR» del pie
+  // lanza 'cf:recorte' (tourDe) y cierra el panel para que el overlay se vea.
+  const tour = useTour('cf:recorte');
+  // Mientras el editor está abierto la AYUDA de la navbar muestra SU sección (no la de Carga
+  // de planos): su «Repetir tour» lanza este tour. Al cerrar se restaura el contexto previo.
+  const ayudaActual = useAyudaContext();
+  const [ayudaPrevia] = useState<AyudaContexto | null>(() => ayudaActual);
+  useEffect(() => {
+    setAyudaContext({
+      key: 'cf:recorte',
+      modulo: 'Civil Flow',
+      seccion: 'Recorte para isometría',
+      intro:
+        'Define qué zona del plano se verá en la isometría. Solo recorta la lámina de fondo; el visor de dibujo no cambia.',
+    });
+    return () => setAyudaContext(ayudaPrevia);
+  }, [ayudaPrevia]);
   const [rect, setRect] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(
     initialCrop
       ? {
@@ -404,6 +428,7 @@ export function PlanCropModal({
         flexDirection: 'column',
       }}
     >
+      {tour}
       <div
         style={{
           display: 'flex',
@@ -417,7 +442,10 @@ export function PlanCropModal({
         <span style={{ fontSize: 14, fontWeight: 700, color: '#F5A623', whiteSpace: 'nowrap' }}>
           Definir recorte
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div
+          data-tour="recorte-gestos"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+        >
           {[
             { lbl: 'Clic izquierdo', desc: 'dibujar / mover esquina' },
             { lbl: 'Clic central', desc: 'mover el plano' },
@@ -429,43 +457,53 @@ export function PlanCropModal({
             </span>
           ))}
         </div>
-        <div style={{ flex: 1 }} />
-        {rectNorm && (
+        <div
+          data-tour="recorte-acciones"
+          style={{
+            flex: 1,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          {rectNorm && (
+            <button
+              type="button"
+              onClick={() => setRect(null)}
+              style={{ ...modalSecondaryBtnStyle, color: '#ef5350' }}
+            >
+              Borrar rectángulo
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setRect(null)}
-            style={{ ...modalSecondaryBtnStyle, color: '#ef5350' }}
+            onClick={onClose}
+            style={{ ...modalSecondaryBtnStyle, color: 'var(--txt2)' }}
           >
-            Borrar rectángulo
+            Volver
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          style={{ ...modalSecondaryBtnStyle, color: 'var(--txt2)' }}
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          disabled={!rectNorm || rectNorm.w < 0.02 || rectNorm.h < 0.02}
-          onClick={() => {
-            if (rectNorm && rectNorm.w >= 0.02 && rectNorm.h >= 0.02) onSave(rectNorm);
-          }}
-          style={{
-            padding: '5px 14px',
-            background: 'rgba(14,204,122,0.15)',
-            border: '1.5px solid rgba(14,204,122,0.4)',
-            borderRadius: 'var(--r)',
-            color: '#0ECC7A',
-            cursor: rectNorm ? 'pointer' : 'default',
-            opacity: rectNorm ? 1 : 0.5,
-            fontSize: 12,
-            fontWeight: 700,
-          }}
-        >
-          Guardar recorte
-        </button>
+          <button
+            type="button"
+            disabled={!rectNorm || rectNorm.w < 0.02 || rectNorm.h < 0.02}
+            onClick={() => {
+              if (rectNorm && rectNorm.w >= 0.02 && rectNorm.h >= 0.02) onSave(rectNorm);
+            }}
+            style={{
+              padding: '5px 14px',
+              background: 'rgba(14,204,122,0.15)',
+              border: '1.5px solid rgba(14,204,122,0.4)',
+              borderRadius: 'var(--r)',
+              color: '#0ECC7A',
+              cursor: rectNorm ? 'pointer' : 'default',
+              opacity: rectNorm ? 1 : 0.5,
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            Guardar recorte
+          </button>
+        </div>
       </div>
       <div
         style={{
@@ -538,6 +576,7 @@ export function PlanCropModal({
       </div>
       <div style={{ flex: 1, minHeight: 0, padding: 20, display: 'flex' }}>
         <div
+          data-tour="recorte-canvas"
           ref={containerRef}
           style={{
             position: 'relative',

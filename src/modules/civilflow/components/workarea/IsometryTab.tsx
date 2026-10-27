@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useState } from 'react';
+import { useTour } from '../../../../components/tour/useTour.tsx';
 import PageNav from '../PageNav.tsx';
 import { IsometriaGeneral } from './IsometryGeneral.tsx';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
@@ -40,6 +41,8 @@ const AYUDA_ISO: Record<number, { intro: string }> = {
 
 function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState> }) {
   const [sub, setSub] = useState(1);
+  // Tour por SUBPESTAÑA de isometría (ped. usuario): cada vista 3D tiene su recorrido.
+  const tour = useTour(`cf:tab:iso:${sub}`);
   // Ayuda contextual: reporta la sub-pestaña activa (el padre omite 'iso' por esto).
   useEffect(() => {
     setAyudaContext({
@@ -53,6 +56,7 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
   return (
     <div
       className="fu"
+      data-tour="cf-tab-iso"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -62,28 +66,33 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
         overflow: 'hidden',
       }}
     >
+      {tour}
       <PageNav page={sub} setPage={setSub} total={5} labels={SUBTABS} color="var(--acc)" />
-      {sub === 1 && <IsometriaGeneral state={state} />}
-      {sub === 2 && (
-        <Suspense fallback={FALLBACK}>
-          <Aparatos3D />
-        </Suspense>
-      )}
-      {sub === 3 && (
-        <Suspense fallback={FALLBACK}>
-          <RciCuartoBombasViewer />
-        </Suspense>
-      )}
-      {sub === 4 && (
-        <Suspense fallback={FALLBACK}>
-          <Epc3D />
-        </Suspense>
-      )}
-      {sub === 5 && (
-        <Suspense fallback={FALLBACK}>
-          <RciRed3D />
-        </Suspense>
-      )}
+      {/* El ancla del tour vive DENTRO de cada visor (data-tour="iso-canvas"): aquí se
+          envolvería también la barra y los paneles, que el paso no debe resaltar. */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {sub === 1 && <IsometriaGeneral state={state} />}
+        {sub === 2 && (
+          <Suspense fallback={FALLBACK}>
+            <Aparatos3D />
+          </Suspense>
+        )}
+        {sub === 3 && (
+          <Suspense fallback={FALLBACK}>
+            <RciCuartoBombasViewer />
+          </Suspense>
+        )}
+        {sub === 4 && (
+          <Suspense fallback={FALLBACK}>
+            <Epc3D />
+          </Suspense>
+        )}
+        {sub === 5 && (
+          <Suspense fallback={FALLBACK}>
+            <RciRed3D />
+          </Suspense>
+        )}
+      </div>
     </div>
   );
 }
