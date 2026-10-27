@@ -1,24 +1,14 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import WorkAreaCivilManager from '../modules/civilmanager/WorkAreaCivilManager.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { parseManagerSplat } from '../modules/civilflow/components/workarea/tabRoute.ts';
 import { devError } from '../utils/devError.ts';
+import { marcarNavInterna } from '../utils/internalNavigation.ts';
 import { fetchCmProyectos } from '../modules/civilmanager/services/cmProjectsService.ts';
 import { CargandoProyecto } from '../modules/civilflow/components/shared/LoadingProject';
 
-const WorkAreaCivilManagerPage_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
+import { SR_ONLY_STYLE } from '../components/shared/sharedStyles.ts';
 // Reutilizada por <CargandoProyecto> (el loader compartido de la app).
 
 /** Ruta /civilmanagerareatrabajo/:proyectoId? — deep-link por proyecto (espejo de la ruta de flow). Sin id → redirect al activo. */
@@ -58,12 +48,14 @@ function WorkAreaCivilManagerPage() {
         const nombre = rows.find((r) => r.id === proyectoId)?.nombre || '';
         localStorage.setItem('cm_proyecto_activo_id', proyectoId);
         localStorage.setItem('cm_proyecto_activo_nombre', nombre);
+        marcarNavInterna();
         window.location.replace(`/civilmanagerareatrabajo/${proyectoId}${cola}`);
       } catch (e) {
         devError('abrir proyecto CM desde URL:', e);
         // Rollback: recarga completa — el workspace del proyecto previo solo existe
         // en storage tras restaurar el puntero; los providers se re-nacen con la recarga.
         if (idAnterior != null) localStorage.setItem('cm_proyecto_activo_id', idAnterior);
+        marcarNavInterna();
         window.location.replace(
           idAnterior != null ? `/civilmanagerareatrabajo/${idAnterior}${cola}` : '/perfil',
         );
@@ -80,7 +72,7 @@ function WorkAreaCivilManagerPage() {
   }
   return (
     <div className="h-full">
-      <h1 style={WorkAreaCivilManagerPage_S1}>Área de trabajo CivilManager</h1>
+      <h1 style={SR_ONLY_STYLE}>Área de trabajo CivilManager</h1>
       <WorkAreaCivilManager />
     </div>
   );

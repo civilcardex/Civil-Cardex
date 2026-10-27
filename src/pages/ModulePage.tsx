@@ -13,18 +13,8 @@ import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/Pro
 import { useAuth } from '../context/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
-const ModulePage_S1: React.CSSProperties = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
 
+import { SR_ONLY_STYLE } from '../components/shared/sharedStyles.ts';
 interface ModulePageProps {
   moduleId: 'flow' | 'structure' | 'terrain' | 'manage' | 'roads';
 }
@@ -42,6 +32,16 @@ const HERO_BY_LAYOUT: Record<string, ComponentType<HeroProps>> = {
   roads: RoadsHero,
 };
 
+// Columnas de la tabla de especificaciones (orden fijo, espejo de Spec en moduleData).
+const SPECS_COLS = [
+  'Parámetro',
+  'Red Hidráulica',
+  'Saneamiento',
+  'Red de Gas',
+  'Ventilación',
+  'Contra Incendio',
+];
+
 export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
   const { user } = useAuth();
@@ -53,10 +53,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
   const [showCreateCM, setShowCreateCM] = useState(false);
   // Las metas salen de la fuente ÚNICA (ROUTE_META): el prerender usa la misma tabla, así que
   // el crawler y el navegador ven lo mismo.
-  const rutaMeta = metaDeRuta(cfg?.ruta ?? '') ?? {
-    title: cfg?.metaTitle ?? '',
-    description: cfg?.metaDesc ?? '',
-  };
+  // ROUTE_META cubre las 5 rutas de módulo (test routeMeta): el fallback es '' por si
+  // cfg no existe (ruta desconocida), no duplica metas.
+  const rutaMeta = metaDeRuta(cfg?.ruta ?? '') ?? { title: '', description: '' };
   usePageMeta(rutaMeta.title, rutaMeta.description);
   const softwareAppJsonLd = {
     '@context': 'https://schema.org',
@@ -413,54 +412,22 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               style={{ background: '#1e2024' }}
             >
               <table className="w-full text-left text-sm min-w-[600px]">
-                <caption style={ModulePage_S1}>Especificaciones del módulo</caption>
+                <caption style={SR_ONLY_STYLE}>Especificaciones del módulo</caption>
                 <thead
                   className="border-b border-outline-variant"
                   style={{ background: '#282a2e' }}
                 >
                   <tr>
-                    <th
-                      scope="col"
-                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Parámetro
-                    </th>
-                    <th
-                      scope="col"
-                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Red Hidráulica
-                    </th>
-                    <th
-                      scope="col"
-                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Saneamiento
-                    </th>
-                    <th
-                      scope="col"
-                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Red de Gas
-                    </th>
-                    <th
-                      scope="col"
-                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Ventilación
-                    </th>
-                    <th
-                      scope="col"
-                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Contra Incendio
-                    </th>
+                    {SPECS_COLS.map((c) => (
+                      <th
+                        key={c}
+                        scope="col"
+                        className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                        style={{ fontFamily: 'Geist, monospace' }}
+                      >
+                        {c}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="text-on-surface-variant">
@@ -503,18 +470,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               Únase a los equipos de ingeniería que confían en CivilStructure para validar la
               seguridad estructural de sus proyectos más exigentes.
             </p>
-            <button
-              type="button"
-              className="bg-primary text-on-primary px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all"
-              style={{
-                fontFamily: 'Geist, monospace',
-                background: cfg.accent,
-                boxShadow: `0 0 15px ${cfg.accent}4d`,
-                color: '#000',
-              }}
-            >
-              SOLICITAR LICENCIA DE PRUEBA
-            </button>
           </div>
         </section>
       ) : null}

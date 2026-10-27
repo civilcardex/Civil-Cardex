@@ -76,11 +76,9 @@ export function PanelSuscripcion({
   const [ocupado, setOcupado] = useState(false);
 
   const refetch = useCallback(async () => {
-    // Mock del preview: corta antes de tocar Supabase.
-    if (mock) {
-      setMiembros(mock.miembros);
-      return;
-    }
+    // Mock: sin RPCs — el estado ya nace con los miembros falsos (useState) y el
+    // effect de carga ni siquiera dispara (guard de abajo).
+    if (mock) return;
     const { data, error } = await supabase.rpc('mis_miembros', { p_suscripcion_id: sus.id });
     if (error) {
       devError('mis_miembros:', error.message);
@@ -90,26 +88,12 @@ export function PanelSuscripcion({
     setMiembros(((data as Miembro[]) ?? []) as Miembro[]);
   }, [sus.id, mock]);
 
-  // Carga inicial con bandera ignore (patrón ProfilePage) — evita setState síncrono
-  // en el effect (react-hooks/set-state-in-effect).
+  // Carga inicial vía refetch (mismo RPC, mismo estado) — el effect solo lo dispara.
   useEffect(() => {
     if (mock) return; // el estado ya nace con los miembros falsos (ver useState de abajo)
-    let ignore = false;
-    async function cargar() {
-      const { data, error } = await supabase.rpc('mis_miembros', { p_suscripcion_id: sus.id });
-      if (ignore) return;
-      if (error) {
-        devError('mis_miembros:', error.message);
-        setMiembros([]);
-        return;
-      }
-      setMiembros(((data as Miembro[]) ?? []) as Miembro[]);
-    }
-    void cargar();
-    return () => {
-      ignore = true;
-    };
-  }, [sus.id, mock]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch es async RPC: sin mock no hay setState síncrono
+    void refetch();
+  }, [refetch, mock]);
 
   async function asignar() {
     const correo = email.trim();

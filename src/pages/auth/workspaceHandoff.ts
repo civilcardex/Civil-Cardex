@@ -6,12 +6,11 @@ import { loadProyectoDataConError } from '../../modules/civilflow/services/proje
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService.ts';
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
-import { saveToStorage } from '../../modules/civilflow/services/storageService.ts';
 import {
-  ACTIVE_PROYECTO_ID_KEY,
-  ACTIVE_NETS_KEY,
-  PLANS_META_KEY,
-} from '../../modules/civilflow/constants/storage-keys.ts';
+  saveToStorage,
+  setActiveProyectoId,
+} from '../../modules/civilflow/services/storageService.ts';
+import { ACTIVE_NETS_KEY, PLANS_META_KEY } from '../../modules/civilflow/constants/storage-keys.ts';
 import type { ProyectoRow } from '../../modules/civilflow/services/projectsService.ts';
 
 interface AbrirProyectoCfArgs {
@@ -59,7 +58,7 @@ export async function abrirProyectoCf({
     await clearAllPDFs();
     plansCtx?.resetPlans();
     projectCtx?.resetToDefaults();
-    localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, proy.id);
+    setActiveProyectoId(proy.id);
 
     // The context setters below (setPisos/setProyAll/setMats/.../restorePlans) are no-ops
     // on this route — CivilFlowProviders only wraps /civilflowareatrabajo, so projectCtx and

@@ -20,8 +20,6 @@ export interface ModuleConfig {
   /** Ruta pública del módulo (la usan ROUTE_META y el prerender). */
   ruta: string;
   title: string;
-  metaTitle: string;
-  metaDesc: string;
   accent: string;
   logo: string;
   badgeLabel: string;
@@ -39,9 +37,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
   flow: {
     title: 'Civil Flow',
     ruta: '/civilflow',
-    metaTitle: 'Civil Flow',
-    metaDesc:
-      'Diseño y cálculo de redes hidrosanitarias (AF, AC, sanitaria, lluvias, gas, RCI) con verificación normativa IPC/UPC, ASCE, NFPA 54 y NFPA 13 y memorias de cálculo exportables.',
     accent: '#00dce5',
     logo: '/logos/civilFlowlogo.webp',
     badgeLabel: 'Módulo Principal',
@@ -104,9 +99,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
   structure: {
     title: 'Estructuras',
     ruta: '/civilstructure',
-    metaTitle: 'Estructuras',
-    metaDesc:
-      'Diseño estructural avanzado con análisis FEM. Cálculo de cargas sísmicas, viento y cimentaciones según normativa.',
     accent: '#00f5ff',
     logo: '/logos/civilStructurelogo.webp',
     badgeLabel: 'Módulo Estructural',
@@ -142,9 +134,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
   terrain: {
     title: 'Terreno',
     ruta: '/civilterrain',
-    metaTitle: 'Terreno',
-    metaDesc:
-      'Modelado digital de elevación con datos LiDAR. Cálculo de volúmenes, curvas de nivel e interoperabilidad topográfica.',
     accent: '#79ff5b',
     logo: '/logos/civilTerrainlogo.webp',
     badgeLabel: 'Módulo CivilTerrain',
@@ -182,9 +171,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
   manage: {
     title: 'Civil Manager',
     ruta: '/civilmanager',
-    metaTitle: 'Civil Manager',
-    metaDesc:
-      'Presupuestos de obra civil: APU (análisis de precios unitarios) con mano de obra, insumos, equipo y transporte, catálogos de proveedores y configuración de perfil país y factor prestacional.',
     accent: '#f59e0b',
     logo: '/logos/civilManagelogo.webp',
     badgeLabel: 'Módulo de Gestión',
@@ -219,9 +205,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
   roads: {
     title: 'Vías',
     ruta: '/civilroads',
-    metaTitle: 'Vías',
-    metaDesc:
-      'Diseño geométrico de carreteras, urbanismo, peraltes y alineamientos. Simulación de tráfico e impacto vial integrada.',
     accent: '#FFC107',
     logo: '/logos/civilRoadslogo.webp',
     badgeLabel: 'CivilRoads Module',

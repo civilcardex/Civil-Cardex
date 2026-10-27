@@ -2,9 +2,10 @@
 // tarjeta. Extraído verbatim de PricingPage (des-monolitización 2026-10-06).
 import type { ModuloId } from '../lib/subscriptions/catalog.ts';
 
-/** Cap del stepper "+" por tarjeta: anti-spam de clics; distinto al tope automático (por pedido total → CTA negociado). */
+/** Tope del stepper "+" de puestos en la UI (anti-spam de clics): 25+ es venta negociada (CTA Contáctenos), no checkout — distinto del tope automático por pedido total. */
 export const PUESTOS_CAP_STEPPER = 99;
 
+/** Planes de marketing de la landing de precios (lo que se MUESTRA; la verdad de cobro es app_precios en BD). */
 export const plans = Object.freeze([
   {
     id: 'basico',
@@ -73,6 +74,7 @@ export const plans = Object.freeze([
   },
 ]);
 
+/** JSON-LD FAQPage de /pricing (SEO: preguntas de facturación, módulos y suscripciones). */
 export const FAQ_JSONLD = Object.freeze({
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
@@ -104,6 +106,7 @@ export const FAQ_JSONLD = Object.freeze({
   ],
 });
 
+/** JSON-LD Product+Offer de /pricing (SEO: precios de lista por módulo). */
 export const PRODUCT_JSONLD = Object.freeze({
   '@context': 'https://schema.org',
   '@type': 'Product',
@@ -125,6 +128,7 @@ export const PRODUCT_JSONLD = Object.freeze({
   },
 });
 
+/** Estilo de las cintas de descuento de las tarjetas de plan. */
 export const BADGE_STYLE = {
   borderColor: '#1D4ED8',
   color: '#3B82F6',
@@ -139,6 +143,7 @@ export const BADGE_STYLE = {
 // Página de compra por módulo (SUSCRIPCIONES_ACTIVAS = true).
 // ---------------------------------------------------------------------------
 
+/** Bullets de beneficios por módulo para las tarjetas (flow y manage). */
 export const BENEFICIOS: Record<ModuloId, string[]> = {
   flow: [
     'Dibujo de redes sobre el plano PDF calibrado',
@@ -156,6 +161,7 @@ export const BENEFICIOS: Record<ModuloId, string[]> = {
   ],
 };
 
+/** Icono del módulo en las tarjetas (ruta de asset por ModuloId). */
 export const LOGO: Record<ModuloId, string> = {
   flow: '/logos/civilFlowlogo.webp',
   manage: '/logos/civilManagelogo.webp',

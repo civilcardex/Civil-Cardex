@@ -1,3 +1,4 @@
+import { devError } from '../utils/devError.ts';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar.tsx';
@@ -37,6 +38,37 @@ import {
   LOGO,
   PUESTOS_CAP_STEPPER,
 } from './pricingData.ts';
+
+/** Botón +/− del stepper de puestos (mismo estilo para ambos). */
+const StepperBtn = ({
+  aria,
+  onClick,
+  children,
+}: {
+  aria: string;
+  onClick: (e: React.MouseEvent) => void;
+  children: string;
+}) => (
+  <button
+    type="button"
+    aria-label={aria}
+    onClick={onClick}
+    className="pr-cta"
+    style={{
+      width: 26,
+      height: 26,
+      borderRadius: 7,
+      border: '1px solid #3a494a',
+      background: '#1e2126',
+      color: '#e2e2e8',
+      cursor: 'pointer',
+      fontSize: 15,
+      lineHeight: 1,
+    }}
+  >
+    {children}
+  </button>
+);
 
 function ModuleCard({
   modulo,
@@ -141,57 +173,31 @@ function ModuleCard({
       </p>
       {empresarial && (
         <div className="mt-3 inline-flex items-center gap-2">
-          <button
-            type="button"
-            aria-label={`Menos puestos de ${modulo.nombre}`}
+          <StepperBtn
+            aria={`Menos puestos de ${modulo.nombre}`}
             onClick={(e) => {
               e.stopPropagation();
               onPuestos(Math.max(1, puesto - 1));
             }}
-            className="pr-cta"
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 7,
-              border: '1px solid #3a494a',
-              background: '#1e2126',
-              color: '#e2e2e8',
-              cursor: 'pointer',
-              fontSize: 15,
-              lineHeight: 1,
-            }}
           >
             −
-          </button>
+          </StepperBtn>
           <span
             className="text-[13px] text-on-surface-variant"
             style={{ minWidth: 78, textAlign: 'center' }}
           >
             {puesto} {puesto === 1 ? 'puesto' : 'puestos'}
           </span>
-          <button
-            type="button"
-            aria-label={`Más puestos de ${modulo.nombre}`}
+          <StepperBtn
+            aria={`Más puestos de ${modulo.nombre}`}
             onClick={(e) => {
               e.stopPropagation();
               // Cap por pedido TOTAL (no por módulo): 25+ puestos totales = negociado, lo decide el CTA; puestosDe sanea al leer.
               onPuestos(Math.min(PUESTOS_CAP_STEPPER, puesto + 1));
             }}
-            className="pr-cta"
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 7,
-              border: '1px solid #3a494a',
-              background: '#1e2126',
-              color: '#e2e2e8',
-              cursor: 'pointer',
-              fontSize: 15,
-              lineHeight: 1,
-            }}
           >
             +
-          </button>
+          </StepperBtn>
         </div>
       )}
 
@@ -315,9 +321,18 @@ function PricingSuscripciones() {
         return;
       }
       void (async () => {
-        const { data } = await supabase.functions.invoke('verificar-pago', {
-          body: { referencia: refPendiente },
-        });
+        let data: { aprobado?: boolean; estado?: string } | null = null;
+        try {
+          data = (
+            await supabase.functions.invoke('verificar-pago', {
+              body: { referencia: refPendiente },
+            })
+          ).data;
+        } catch (e) {
+          // Fallo de red/transitorio: el intervalo sigue — el tope de 20 corta.
+          devError('verificar-pago (polling):', e);
+          return;
+        }
         if (data?.aprobado) {
           setAvisoPago(AVISO_APROBADO);
           dispararRefetchSuscripciones();

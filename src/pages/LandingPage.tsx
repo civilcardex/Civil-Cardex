@@ -22,12 +22,6 @@ const MODULOS_HERO = [
     color: '#00aaff',
     path: '/civilflow',
     desc: 'Diseño y análisis de redes hidráulicas, sanitarias y de gas. Modelado de flujos, presiones y caudales.',
-    cats: [
-      'Modelado de redes',
-      'Análisis de presiones',
-      'Cálculo de caudales',
-      'Normativas integradas',
-    ],
   },
   {
     id: 'manage',
@@ -36,12 +30,6 @@ const MODULOS_HERO = [
     color: '#e67e22',
     path: '/civilmanager',
     desc: 'Presupuestos de obra civil, análisis de precios unitarios (APU) con mano de obra, insumos, equipo y transporte, catálogos integrados y configuración de perfil país y factor prestacional.',
-    cats: [
-      'Análisis de Precios Unitarios',
-      'Catálogos de obra',
-      'Configuración por país',
-      'Importación desde Excel',
-    ],
   },
   {
     id: 'structure',
@@ -50,7 +38,6 @@ const MODULOS_HERO = [
     color: '#7f8c8d',
     path: '/civilstructure',
     desc: 'Diseño estructural y análisis de elementos como puentes, losas y marcos. Cálculo de cargas y resistencia.',
-    cats: ['Análisis FEM', 'Diseño de elementos', 'Cálculo de cargas', 'Normativa por país'],
   },
   {
     id: 'terrain',
@@ -59,7 +46,6 @@ const MODULOS_HERO = [
     color: '#27ae60',
     path: '/civilterrain',
     desc: 'Topografía digital, perfiles de terreno y cálculo de movimiento de tierras. Modelos 3D del suelo.',
-    cats: ['Modelos 3D', 'Curvas de nivel', 'Volúmenes corte/relleno', 'Integración LiDAR'],
   },
   {
     id: 'roads',
@@ -68,7 +54,6 @@ const MODULOS_HERO = [
     color: '#f1c40f',
     path: '/civilroads',
     desc: 'Diseño geométrico de vías, urbanismo, peraltes y alineamientos horizontales y verticales.',
-    cats: ['Alineamientos', 'Diseño geométrico', 'Señalización', 'Análisis de tráfico'],
   },
 ];
 

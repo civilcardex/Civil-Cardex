@@ -2,9 +2,6 @@
  * Overlay + card compartidos por los modales de la app: fixed a pantalla completa con
  * backdrop oscuro y card centrada con la superficie estándar. Ej:
  * <ModalShell ariaLabel="Checkout de pago">...contenido...</ModalShell>.
- * @param minWidth - ancho mínimo de la card (default 360).
- * @param maxWidth - ancho máximo de la card (default 420).
- * @param ariaLabel - si viene, la card es role="dialog" aria-modal.
  */
 export function ModalShell(props: {
   minWidth?: number;

@@ -16,7 +16,10 @@ import {
   deleteCmProyecto,
   type CmProyectoRow,
 } from '../../modules/civilmanager/services/cmProjectsService.ts';
-import { getActiveProyectoId } from '../../modules/civilflow/services/storageService.ts';
+import {
+  getActiveProyectoId,
+  setActiveProyectoId,
+} from '../../modules/civilflow/services/storageService.ts';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialog.tsx';
@@ -28,7 +31,6 @@ import { useSuscripciones } from '../../hooks/useSubscriptions.ts';
 import SiteFooter from '../../components/landing/SiteFooter.tsx';
 import { estaActiva } from '../../lib/subscriptions/subscriptionsService.ts';
 import { CF_TABLES } from '../../modules/civilflow/constants/tableNames.ts';
-import { ACTIVE_PROYECTO_ID_KEY } from '../../modules/civilflow/constants/storage-keys.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 
 const campos = [
@@ -251,7 +253,7 @@ function ProfilePage() {
       setProyectos((prev) => prev.filter((p) => p.id !== id));
       // Si el proyecto borrado era el ACTIVO, limpiar el puntero: si no, el área de trabajo
       // seguía autoguardando sobre un proyecto inexistente (404/no_autorizado en cada sync).
-      if (getActiveProyectoId() === id) localStorage.removeItem(ACTIVE_PROYECTO_ID_KEY);
+      if (getActiveProyectoId() === id) setActiveProyectoId(null);
     } else {
       devError('Error eliminando proyecto');
       window.alert('No se pudo eliminar el proyecto (fallo del servidor o de conexión).');

@@ -1,5 +1,18 @@
 import { Link } from 'react-router-dom';
 
+/** Enlaces internos del pie (mismo estilo); el botón de correo va aparte (no es Link). */
+const LINKS: [string, string][] = [
+  ['/docs', 'Documentación'],
+  ['/pricing', 'Precios'],
+  ['/terminos', 'Términos'],
+];
+const LINK_STYLE: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  fontFamily: 'Geist, monospace',
+  color: '#6a8e8e',
+};
+
 /** Footer global del sitio (mismo bloque que cierra la landing): logo + Documentación /
  *  Precios / Términos / Contacto Técnico + ©. Full-bleed con contenedor interno max-w-7xl. */
 export default function SiteFooter() {
@@ -25,42 +38,16 @@ export default function SiteFooter() {
             </span>
           </Link>
           <nav aria-label="Pie de página" className="flex gap-6">
-            <Link
-              to="/docs"
-              className="uppercase tracking-widest transition-colors hover:text-on-surface"
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                fontFamily: 'Geist, monospace',
-                color: '#6a8e8e',
-              }}
-            >
-              Documentación
-            </Link>
-            <Link
-              to="/pricing"
-              className="uppercase tracking-widest transition-colors hover:text-on-surface"
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                fontFamily: 'Geist, monospace',
-                color: '#6a8e8e',
-              }}
-            >
-              Precios
-            </Link>
-            <Link
-              to="/terminos"
-              className="uppercase tracking-widest transition-colors hover:text-on-surface"
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                fontFamily: 'Geist, monospace',
-                color: '#6a8e8e',
-              }}
-            >
-              Términos
-            </Link>
+            {LINKS.map(([to, label]) => (
+              <Link
+                key={to}
+                to={to}
+                className="uppercase tracking-widest transition-colors hover:text-on-surface"
+                style={LINK_STYLE}
+              >
+                {label}
+              </Link>
+            ))}
             <button
               type="button"
               onClick={() => {
