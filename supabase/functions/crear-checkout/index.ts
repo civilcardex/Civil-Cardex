@@ -32,13 +32,34 @@ import {
   SITE_URL,
 } from '../_shared/payment_utils.ts';
 
+/** Rol del payload de un JWT de Supabase (los 3 segmentos son base64url: alfabeto '-'/'_' sin
+ *  padding — atob() lanza con esos caracteres, hay que convertir a base64 estándar antes).
+ *  @param authHeader cabecera Authorization completa ('Bearer eyJ...'); @returns 'authenticated' | 'anon' | undefined. */
+export function rolDeJwt(authHeader: string): string | undefined {
+  const seg = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+  const payloadSeg = seg.split('.')[1];
+  if (!payloadSeg) return undefined;
+  try {
+    const b64 = payloadSeg.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))) as {
+      role?: string;
+    };
+    return payload.role;
+  } catch {
+    return undefined;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   // Preflight CORS: functions.invoke manda Authorization/apikey ⇒ el navegador
   // exige OPTIONS antes del POST real (sin esto toda llamada browser muere aquí).
   if (req.method === 'OPTIONS') return preflight();
   if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
 
-  // 1 · Identidad del caller.
+  // 1 · Identidad del caller. La ANON KEY es un JWT válido (rol 'anon'): sin este check
+  //     un atacante sin cuenta quema invocaciones edge + getUser() por request hasta el 401.
+  const rolJwt = rolDeJwt(req.headers.get('Authorization') ?? '');
+  if (rolJwt !== 'authenticated') return json({ error: 'no_autenticado' }, 401);
   const supaUser = clienteUsuario(req);
   const {
     data: { user },
