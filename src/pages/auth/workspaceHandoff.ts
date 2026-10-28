@@ -53,8 +53,11 @@ export async function abrirProyectoCf({
       return false;
     }
 
-    // 2) Ahora sí: workspace en blanco y traspaso por localStorage.
-    clearLocalWorkspace();
+    // 2) Ahora sí: workspace en blanco y traspaso por localStorage. Las copias locales de
+    // trazos del proyecto que se abre se conservan (ver clearLocalWorkspace): son el único
+    // respaldo de un piso cuyo guardado en la nube falló — orig. usuario: la cubierta
+    // desaparecía al cerrar la pestaña y reabrir el proyecto.
+    clearLocalWorkspace({ planosVigentes: (data?.plans_meta ?? []).map((m) => m.id) });
     await clearAllPDFs();
     plansCtx?.resetPlans();
     projectCtx?.resetToDefaults();

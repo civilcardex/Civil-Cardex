@@ -196,7 +196,6 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
         <th style={THS} title="Área efectiva instalada en cm²: la menor entre las aberturas">
           Área Efectiva Instalada
         </th>
-        <th style={THS}>Estado</th>
       </tr>
     </thead>
   );

@@ -96,7 +96,7 @@ export function ListaCargados(props: ListaCargadosProps) {
                   {p.origen && origenesCompartidos.has(`${p.origen.x_px}|${p.origen.y_px}`) && (
                     <span
                       style={{ color: '#F5A623', fontSize: 11, fontWeight: 600 }}
-                      title="Esta lámina comparte el origen px con otra: si las hojas no están exactamente alineadas, re-marque el origen (CALIBRAR) en el mismo punto físico del AutoCAD para que copias e isometría queden verticales entre pisos."
+                      title="Esta lámina comparte el origen px con otra: si las hojas no están exactamente alineadas, re-marque el origen (REDEFINIR ORIGEN) en el mismo punto físico del AutoCAD para que copias e isometría queden verticales entre pisos."
                     >
                       ⚠ Origen compartido
                     </span>
@@ -118,10 +118,16 @@ export function ListaCargados(props: ListaCargadosProps) {
               <button
                 type="button"
                 onClick={() => onCalibrar(p.id)}
-                style={{ ...PlanosTab_verBtn, flexShrink: 0 }}
-                title="Re-marcar origen / recalibrar esta lámina"
+                style={{
+                  ...PlanosTab_verBtn,
+                  whiteSpace: 'pre-line',
+                  lineHeight: 1.15,
+                  textAlign: 'center',
+                  flexShrink: 0,
+                }}
+                title="Re-definir el origen de esta lámina (el plano ya está calibrado)"
               >
-                CALIBRAR
+                {'REDEFINIR\nORIGEN'}
               </button>
               <button
                 type="button"

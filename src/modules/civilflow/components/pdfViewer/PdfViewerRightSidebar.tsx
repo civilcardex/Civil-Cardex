@@ -101,7 +101,10 @@ export function PdfViewerRightSidebar({
   return (
     <div className="visor-sidebar-right" style={style}>
       <h2 style={srOnlyStyle}>Panel de edición</h2>
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+      <div
+        data-tour="visor-nivel"
+        style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}
+      >
         <div
           style={{
             fontFamily: "'Geist',monospace",
@@ -152,7 +155,7 @@ export function PdfViewerRightSidebar({
       />
 
       {tool !== 'guide' && (
-        <div style={rightSidebarOpacity}>
+        <div data-tour="visor-edicion" style={rightSidebarOpacity}>
           {!esCotaSel && (
             <TramoEditor
               selElement={selElement as PlanoElement | null}

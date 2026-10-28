@@ -11,11 +11,14 @@ import { collectSourceAgg, trazaDeUltimoGrupo } from '../../utils/bajanteAssocia
 import { diagUltimaPropagacion, propagarAparatosPresion } from '../../utils/propagation';
 import { leerPlansMeta } from '../../utils/plansMeta.ts';
 import { loadAll } from '../fixturesStorage.ts';
+import { leerJournalTrazos, limpiarJournalTrazos } from '../../services/storage/trazosJournal.ts';
 
 declare global {
   interface Window {
     __cfDiag?: (net: 'af' | 'ac' | 'gas') => unknown;
     __cfScale?: () => unknown;
+    __cfSave?: () => Promise<unknown>;
+    __cfJournal?: (limpiar?: boolean) => unknown;
   }
 }
 
@@ -139,5 +142,67 @@ export function instalarDiagnosticoDev(): void {
     } catch (e) {
       return { error: String(e) };
     }
+  };
+  // __cfSave() — veredicto de guardado POR PISO: conteos (ramales/bajantes/fantasmas) + ts de
+  // la caché local VS lo que devuelve la BD (get_plano_data). Con esto se ve en cuál de los
+  // dos lados pierde el piso (local vacío = el snapshot nunca se escribió; bd vacía = el RPC
+  // llegó sin contenido o falló) sin adivinar. El pisado local→BD o BD→local (árbitro por ts)
+  // queda evidenciado comparando los dos ts del mismo piso. (Caso abierto: cubierta.)
+  window.__cfSave = async () => {
+    const meta = leerPlansMeta();
+    const out: Record<string, unknown> = {};
+    const { supabase } = await import('../../../../lib/supabase');
+    for (const m of meta) {
+      const pid = String(m.id);
+      let local: {
+        ramales?: unknown[];
+        bajantes?: unknown[];
+        crossFloorGhosts?: unknown[];
+        ts?: number;
+      } = {};
+      try {
+        local = JSON.parse(localStorage.getItem(`civilflow_${TRAZOS_PREFIX}${pid}`) || '{}');
+      } catch {
+        /* local ilegible → conteos 0 */
+      }
+      let bd: unknown = null;
+      try {
+        const { data, error } = await supabase.rpc('get_plano_data', { p_plano_id: Number(pid) });
+        if (error) bd = { bdError: error.message };
+        else if (!data?.plano) bd = { bdError: 'sin plano en BD' };
+        else
+          bd = {
+            nRam: (data.ramales ?? []).length,
+            nBaj: (data.bajantes ?? []).length,
+            ts: data.plano.ts,
+          };
+      } catch (e) {
+        bd = { bdError: String(e) };
+      }
+      out[pid] = {
+        piso: `n${m.nivel ?? '?'}`,
+        nombre: m.nombre ?? m.name ?? null,
+        local: {
+          nRam: local.ramales?.length ?? 0,
+          nBaj: local.bajantes?.length ?? 0,
+          nGhost: local.crossFloorGhosts?.length ?? 0,
+          ts: local.ts ?? null,
+        },
+        bd,
+      };
+    }
+    // eslint-disable-next-line no-console -- herramienta de diagnóstico (solo DEV)
+    console.log('[CF-SAVE] ' + JSON.stringify({ v: 'v1', pisos: out }));
+    return { v: 'v1', pisos: out };
+  };
+  // __cfJournal() — caja negra de escrituras del doc de trazos (sobrevive al cierre de la
+  // pestaña: la clave vive fuera del namespace civilflow_). Con `true` limpia primero:
+  // __cfJournal(true) → reproducir → __cfJournal().
+  window.__cfJournal = (limpiar?: boolean) => {
+    if (limpiar) limpiarJournalTrazos();
+    const entradas = leerJournalTrazos();
+    // eslint-disable-next-line no-console -- herramienta de diagnóstico (solo DEV)
+    console.log('[CF-JOURNAL] ' + JSON.stringify(entradas));
+    return entradas;
   };
 }

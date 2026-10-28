@@ -44,14 +44,14 @@ export const TOURS: Record<TourClave, TourStep[]> = {
       desc: 'Clic derecho sobre un elemento abre su menú (diámetro, dirección, asociar entre pisos). La rueda hace zoom y el clic central desplaza.',
     },
     {
-      sel: '.visor-sidebar-right',
+      sel: '[data-tour="visor-edicion"]',
       titulo: 'Panel de edición',
       desc: 'Lo que hayas seleccionado se edita aquí: aparatos del tramo, diámetros, asociaciones. También se copian elementos de otro piso.',
     },
     {
-      sel: '[data-tour="planos-pisos"]',
+      sel: '[data-tour="visor-nivel"]',
       titulo: 'Planos y pisos',
-      desc: 'Cambia de piso aquí: cada piso (sótano, niveles, cubierta) es una lámina del proyecto con su propio dibujo. "+ Agregar" sube más planos PDF.',
+      desc: 'Cambia de piso aquí: cada piso (sótano, niveles, cubierta) es una lámina del proyecto con su propio dibujo. El 🟢 marca el piso con plano confirmado.',
     },
     cierre,
   ],

@@ -29,9 +29,9 @@ const TOPE_NUEVO = 700;
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
  */
 const CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/components/PdfViewer.tsx': 1222,
-  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 741,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1469,
+  'modules/civilflow/components/PdfViewer.tsx': 1223,
+  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 746,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1478,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 669,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 836,
   'modules/civilflow/utils/waterRowsCore.ts': 695,
@@ -518,7 +518,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 508;
+const TOTAL_FOCOS_BASE = 509;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [

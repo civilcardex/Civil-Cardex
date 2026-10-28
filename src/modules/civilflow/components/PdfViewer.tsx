@@ -547,7 +547,7 @@ function PdfViewer_({
   // Grosor de líneas (slider bajo la barra de redes): factor multiplicador de todos los
   // lineWidth del dibujo, persistido por plano (cf_planos.line_width vía serializeWork).
   const [lineWidthScale, setLineWidthScale] = useState(1);
-  const { engineReady } = usePdfViewerEngine({
+  const { engineReady, hayRasterEnVuelo } = usePdfViewerEngine({
     currentFile,
     files,
     currentId,
@@ -621,6 +621,7 @@ function PdfViewer_({
     autoSaveTimerRef,
     loadingPlanRef,
     onCambioPiso: handleCambioPiso,
+    hayRasterEnVuelo,
     activeNetRef,
     activeNetworksRef,
     setActiveNet,

@@ -188,7 +188,9 @@ export default function ViewerPage() {
         plansCtx?.pauseCloudSync();
         const data = await loadProyectoData(wantsId);
         if (!data) throw new Error('proyecto-no-encontrado-o-sin-acceso');
-        clearLocalWorkspace();
+        // Conserva las copias locales de trazos de ESTE proyecto (ver clearLocalWorkspace):
+        // son el único respaldo de un piso cuyo guardado en la nube falló.
+        clearLocalWorkspace({ planosVigentes: (data?.plans_meta ?? []).map((m) => m.id) });
         await clearAllPDFs();
         plansCtx?.resetPlans();
         projectCtx?.resetToDefaults();

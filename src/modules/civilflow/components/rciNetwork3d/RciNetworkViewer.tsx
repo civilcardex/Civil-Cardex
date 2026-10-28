@@ -81,8 +81,8 @@ function dibujarEtiquetasRed(
     if (v.z >= 1 || x < 10 || x > W - 10 || y < 10 || y > H - 10) continue;
     if (checkOcclusion({ x: lbl.pos[0], y: lbl.pos[1], z: lbl.pos[2] })) continue;
 
-    const activo = true; // con foco: toda etiqueta dibujada es del seleccionado
-    dibujarLabelRed(ctx, x, y, refId, lbl, activo);
+    // ponytail: sin selección no se llega aquí (guard temprano) — siempre es la etiqueta del seleccionado.
+    dibujarLabelRed(ctx, x, y, refId, lbl, true);
   }
 }
 
