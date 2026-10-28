@@ -17,6 +17,7 @@ export {
   emitBdSaveError,
   trazosDocHasContent,
   trazosLocalGanaABdVacia,
+  trazosBdGanaALocalVacia,
   saveTrazosToDB,
   loadTrazosFromDB,
 } from './storage/strokesDb';

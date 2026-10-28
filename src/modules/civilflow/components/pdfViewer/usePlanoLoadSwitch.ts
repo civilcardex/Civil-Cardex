@@ -4,6 +4,7 @@ import { cargarMallas } from '../../lib/PlanoEngine/nodos';
 import { emitPlanLoaded } from '../../utils/fixtureEvents.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { persistTrazosSnapshot } from './persistStrokes.ts';
+import { markPlanContentLoaded } from '../../utils/drawingSync.ts';
 import { paginaDeDoc } from '../../utils/planScale.ts';
 
 interface UsePlanoLoadSwitchParams {
@@ -18,6 +19,10 @@ interface UsePlanoLoadSwitchParams {
   /** Cambio de PISO en vuelo (estado React espejo de loadingPlanRef): lo consume el velo
    *  translúcido del canvas — el overlay grande solo corre en la primera entrada. */
   onCambioPiso?: (v: boolean) => void;
+  /** ¿Hay raster en vuelo o re-raster encolado (lo expone usePdfViewerEngine)? finCarga lo
+   *  espera (techo 3 s): el re-raster de la corrección de escala aterriza DESPUÉS del await
+   *  del loader por evento — bajar el velo antes lo dejaba ver. */
+  hayRasterEnVuelo?: () => boolean;
   activeNetRef: React.RefObject<string>;
   activeNetworksRef: React.RefObject<Set<string>>;
   setActiveNet: React.Dispatch<React.SetStateAction<string>>;
@@ -36,6 +41,7 @@ export function usePlanoLoadSwitch({
   autoSaveTimerRef,
   loadingPlanRef,
   onCambioPiso,
+  hayRasterEnVuelo,
   activeNetRef,
   activeNetworksRef,
   setActiveNet,
@@ -94,20 +100,31 @@ export function usePlanoLoadSwitch({
       return;
     const token = ++cargaTokenRef.current;
     const vigente = (): boolean => token === cargaTokenRef.current;
+    /** Baja el velo/flag UNA vez que no queda raster en vuelo (el re-raster de la corrección
+     *  de escala aterriza por evento DESPUÉS de este await). Mínimo inmediato, techo 3 s. */
     const finCarga = (): void => {
       if (!vigente()) return;
-      loadingPlanRef.current = false;
-      eng._frozen = false;
-      try {
-        onCambioPiso?.(false);
-      } catch {
-        /* ignore */
-      }
-      try {
-        emitPlanLoaded();
-      } catch {
-        /* ignore */
-      }
+      const t0 = Date.now();
+      const bajar = (): void => {
+        if (!vigente()) return;
+        if (hayRasterEnVuelo?.() && Date.now() - t0 < 3000) {
+          window.setTimeout(bajar, 100);
+          return;
+        }
+        loadingPlanRef.current = false;
+        eng._frozen = false;
+        try {
+          onCambioPiso?.(false);
+        } catch {
+          /* ignore */
+        }
+        try {
+          emitPlanLoaded();
+        } catch {
+          /* ignore */
+        }
+      };
+      bajar();
     };
     eng._loadedPlanId = resolvedId;
     eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
@@ -127,6 +144,9 @@ export function usePlanoLoadSwitch({
         // la carga vigente es la única autorizada.
         if (!vigente()) return;
         pisosCargadosRef.current.add(String(resolvedId));
+        // Contenido CONFIRMADO en el motor: habilita el vaciado legítimo (borrar todo) en
+        // el guard anti-pisado de persistTrazosSnapshot (solo se marca con loaded=true).
+        if (loaded) markPlanContentLoaded(resolvedId);
         const currentRefId = currentIdRef.current || 'work';
         if (resolvedId !== currentRefId) {
           finCarga();
@@ -193,6 +213,7 @@ export function usePlanoLoadSwitch({
     currentIdRef,
     loadingPlanRef,
     onCambioPiso,
+    hayRasterEnVuelo,
     activeNetRef,
     activeNetworksRef,
     setActiveNet,

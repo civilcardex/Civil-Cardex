@@ -736,5 +736,10 @@ export function usePdfViewerEngine({
     engineRef,
     engineReady,
     loadingPlanRef,
+    /** ¿Hay raster en vuelo o re-raster encolado? El finCarga del switch la espera: el
+     *  re-raster de la corrección de escala va por EVENTO y aterriza después del await del
+     *  loader — bajar el velo antes lo dejaba ver (auditoría 2026-10-27, ficha 4). */
+    hayRasterEnVuelo: () =>
+      renderingRef.current || renderPendingRef.current != null || renderTaskRef.current != null,
   };
 }

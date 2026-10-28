@@ -3,6 +3,7 @@
 import { devError } from '../../../../utils/devError.ts';
 import { TRAZOS_PREFIX, ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys.ts';
 import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
+import { journalTrazos } from './trazosJournal.ts';
 
 const PREFIX = 'civilflow_';
 
@@ -48,7 +49,9 @@ export function saveTrazosLocales(planId: string | number, doc: Record<string, u
   }
   // false = la caché local NO se pudo escribir (cuota llena): quien llama tiene que saberlo,
   // si no persiste una corrección y cree que sí (el doc viejo sigue en storage).
-  return saveToStorage(TRAZOS_PREFIX + String(planId), doc);
+  const ok = saveToStorage(TRAZOS_PREFIX + String(planId), doc);
+  journalTrazos('local', planId, doc, ok ? undefined : 'cuota-llena');
+  return ok;
 }
 
 /**

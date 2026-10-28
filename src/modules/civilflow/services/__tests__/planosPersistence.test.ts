@@ -28,12 +28,13 @@ vi.mock('../../../../lib/supabase', () => ({
 
 import { saveTrazosToDB, loadTrazosFromDB } from '../storageService.ts';
 import { persistTrazosSnapshot } from '../../components/pdfViewer/persistStrokes.ts';
+import { markPlanContentLoaded } from '../../utils/drawingSync.ts';
 import { aplicarEnDocDePlan } from '../../utils/writePlanDoc.ts';
 
 type Row = Record<string, unknown>;
 
 /** BD simulada: guarda el payload de cada plano y lo sirve como lo haría el RPC real. */
-const db: Record<string, { bajantes: Row[]; ramales: Row[]; header: Row }> = {};
+const db: Record<string, { bajantes: Row[]; ramales: Row[]; header: Row; fantasmas: Row[] }> = {};
 
 function resetStorage() {
   const m = new Map<string, string>();
@@ -88,6 +89,7 @@ beforeEach(() => {
         header: payload.header,
         bajantes: (payload.bajantes ?? []).map(filaDeBajante),
         ramales: (payload.ramales ?? []).map(filaDeBajante),
+        fantasmas: ((payload as Row).fantasmas_entrepisos ?? []) as Row[],
       };
       return { data: null, error: null };
     }
@@ -127,7 +129,7 @@ beforeEach(() => {
           dimensiones: [],
           anotaciones_texto: [],
           lineas_guia: [],
-          fantasmas_entrepisos: [],
+          fantasmas_entrepisos: stored.fantasmas,
         },
         error: null,
       };
@@ -250,6 +252,7 @@ describe('A) la asociación montante↔ramal sobrevive al cierre y la reapertura
         },
       ],
       ramales: [],
+      fantasmas: [],
     };
     const work = await loadTrazosFromDB('502');
     const baj = work?.bajantes?.find((b) => (b as { id?: string }).id === 'MAC1_af') as
@@ -468,5 +471,228 @@ describe('F) quitar aparatos y cambiar de piso NO resucita los conteos', () => {
     await loadTrazosFromDB('5');
     disk = JSON.parse(getLS('civilflow_aparatos_by_tramo_v2') || '{}');
     expect(disk.san_RS2_5).toEqual({ lavamanos: 1, inodoro: 1, ducha: 1 });
+  });
+});
+
+describe('F) piso CUBIERTA (ll): canal + es_canal_id + fantasma sobreviven el roundtrip', () => {
+  it('canal con angulo/canal_flow_dir, ramal de canal y XFG se guardan y vuelven', async () => {
+    const docCubierta = {
+      v: 6,
+      scaleM: 0.5,
+      ramales: [
+        {
+          id: 'RALL1',
+          net: 'll',
+          tipo: 'ramal',
+          padre: null,
+          pts: [
+            [0, 0],
+            [80, 0],
+          ],
+          totalL: 3,
+          label: 'RALL1',
+          ini: 'CNL1',
+          fin: 'BALL1',
+          piso: 'C',
+          // Marca ramal-de-canal (20260930000000): sin ella el ramal pierde su origen.
+          esCanalId: 'CNL1_af',
+        },
+      ],
+      bajantes: [
+        {
+          id: 'CNL1_af',
+          net: 'll',
+          tipo: 'canal',
+          code: 'CNL1',
+          x: 40,
+          y: 0,
+          pisoBase: 'C',
+          pisoCima: 'C',
+          nptBase: 0,
+          nptCima: 0,
+          hVert: 0,
+          dNominal: '4"',
+          recibeDeIds: [],
+          alimentaIds: [],
+          descargaEnId: null,
+          ucAcum: 0,
+          ucExtra: 0,
+          area_m2: 0,
+          desplazamientos: {},
+          lblOffX: 0,
+          lblOffY: 0,
+          labelAngle: 0,
+          labelX: 40,
+          labelY: 20,
+          bajR: 0.29,
+          // Forma del canal: diagonal + sentido dibujado (el engine lleva _canalFlowDir).
+          angulo: 30,
+          _canalFlowDir: 'derecha',
+        },
+        {
+          id: 'BALL1',
+          net: 'll',
+          tipo: 'bajante',
+          code: 'BALL1',
+          x: 80,
+          y: 0,
+          pisoBase: 'C',
+          pisoCima: 'C',
+          nptBase: 0,
+          nptCima: 0,
+          hVert: 0,
+          dNominal: '3"',
+          recibeDeIds: ['RALL1'],
+          alimentaIds: [],
+          descargaEnId: null,
+          ucAcum: 0,
+          ucExtra: 0,
+          area_m2: 0,
+          desplazamientos: {},
+          lblOffX: 0,
+          lblOffY: 0,
+          labelAngle: 0,
+          labelX: 80,
+          labelY: 20,
+          bajR: 0.29,
+        },
+      ],
+      areas: [],
+      dims: [],
+      textAnnots: [],
+      guideLines: [],
+      crossFloorGhosts: [
+        {
+          id: 'XFG_BALL1',
+          net: 'll',
+          code: 'BALL1',
+          x: 80,
+          y: 0,
+          dNominal: '3"',
+          direccion: 'baja',
+          piso: 'P1',
+          sourcePlanId: '999',
+          sourceBajanteId: 'BALL1',
+          aparatos: {},
+          ucAcum: 0,
+        },
+      ],
+    };
+    await saveTrazosToDB('801', { ...docCubierta, ts: Date.now() });
+    // Sondeo: ¿el payload a BD incluyó el canal?
+    expect(db['801'].bajantes.map((b) => b.client_id)).toEqual(['CNL1_af', 'BALL1']);
+    delLS('civilflow_trazos_801');
+
+    const doc = await loadTrazosFromDB('801');
+    const ramales = (doc?.ramales ?? []) as Row[];
+    const bajantes = (doc?.bajantes ?? []) as Row[];
+    const ghosts = (doc?.crossFloorGhosts ?? []) as Row[];
+
+    // El canal volvió, con su forma (objetos del motor: id/angulo/_canalFlowDir).
+    const canal = bajantes.find((b) => b.id === 'CNL1_af');
+    expect(canal).toBeTruthy();
+    expect(Number(canal?.angulo)).toBeCloseTo(30, 5);
+    expect(canal?._canalFlowDir).toBe('derecha');
+
+    // El ramal de canal conserva su marca.
+    const rall = ramales.find((r) => r.id === 'RALL1');
+    expect(rall?.esCanalId).toBe('CNL1_af');
+
+    // El bajante ll y su asociación con el ramal (BAJANTE→BAJANTE no aplica; RALL1 es ramal
+    // → la conexión no viaja por bajante_conexiones, vive en fin del ramal).
+    const ball = bajantes.find((b) => b.id === 'BALL1');
+    expect(ball).toBeTruthy();
+    expect(rall?.fin).toBe('BALL1');
+
+    // El fantasma entrepisos volvió.
+    expect(ghosts.map((g) => g.id)).toContain('XFG_BALL1');
+  });
+});
+
+describe('G) un snapshot VACÍO de otro piso no pisa el doc con contenido', () => {
+  it('persistTrazosSnapshot bloquea el vaciado cuando el engine está en OTRO piso', async () => {
+    // 1) El piso tiene contenido en local (25 ramales como cubierta real).
+    const lleno = {
+      v: 6,
+      scaleM: 0.5,
+      ramales: [
+        { id: 'RALL1', net: 'll', tipo: 'ramal', pts: [[0, 0]], label: 'RALL1', piso: 'C' },
+      ],
+      bajantes: [],
+      areas: [],
+      dims: [],
+      textAnnots: [],
+      guideLines: [],
+      crossFloorGhosts: [],
+    };
+    setLS('civilflow_trazos_901', lleno);
+
+    // 2) Un autosave con engine a medio hidratar (_loadedPlanId de OTRO piso) produce un
+    //    snapshot vacío: NO debe tocar local ni BD.
+    const eng = {
+      _loadedPlanId: '999',
+      saveWork: () => ({ v: 6, ramales: [], bajantes: [], areas: [], dims: [] }),
+    };
+    persistTrazosSnapshot(eng as never, '901');
+
+    const disk = JSON.parse(getLS('civilflow_trazos_901') || '{}');
+    expect((disk.ramales ?? []).map((r: Row) => r.id)).toEqual(['RALL1']);
+    expect(db['901']).toBeUndefined(); // BD sin tocar (ni siquiera el ts cambió en local)
+    expect(JSON.parse(getLS('civilflow_trazos_901') || '{}').ts).toBeUndefined();
+  });
+
+  it('con el engine EN el piso, el vaciado legítimo (borrar todo) sí se guarda', async () => {
+    const lleno = {
+      v: 6,
+      ts: 1,
+      scaleM: 0.5,
+      ramales: [
+        { id: 'RALL1', net: 'll', tipo: 'ramal', pts: [[0, 0]], label: 'RALL1', piso: 'C' },
+      ],
+      bajantes: [],
+      areas: [],
+      dims: [],
+      textAnnots: [],
+      guideLines: [],
+      crossFloorGhosts: [],
+    };
+    setLS('civilflow_trazos_902', lleno);
+    // El contenido del piso CARGÓ en esta sesión (marca del loader): el vaciado legítimo
+    // (borrar todo) queda habilitado.
+    markPlanContentLoaded('902');
+    const eng = {
+      _loadedPlanId: '902',
+      saveWork: () => ({ v: 6, ramales: [], bajantes: [], areas: [], dims: [] }),
+    };
+    persistTrazosSnapshot(eng as never, '902');
+    const disk = JSON.parse(getLS('civilflow_trazos_902') || '{}');
+    expect(disk.ramales).toEqual([]); // vaciado legítimo persistido, con ts fresco
+    expect(disk.ts ?? 0).toBeGreaterThan(1);
+  });
+
+  it('snapshot VACÍO de un piso cuyo contenido NUNCA cargó en la sesión: bloqueado (caso cubierta)', async () => {
+    // La apertura limpia la caché local, la carga de BD del piso no llega y un _dirty
+    // espurio dispara el autosave con el motor vacío — el 0/0 jamás debe pisar la BD.
+    setLS('civilflow_trazos_903', {
+      v: 6,
+      scaleM: 0.5,
+      ramales: [{ id: 'R1', net: 'll', tipo: 'ramal', pts: [[0, 0]], label: 'R1', piso: 'C' }],
+      bajantes: [],
+      areas: [],
+      dims: [],
+      textAnnots: [],
+      guideLines: [],
+      crossFloorGhosts: [],
+    });
+    // SIN markPlanContentLoaded('903'): la carga nunca confirmó contenido.
+    const eng = {
+      _loadedPlanId: '903',
+      saveWork: () => ({ v: 6, ramales: [], bajantes: [], areas: [], dims: [] }),
+    };
+    persistTrazosSnapshot(eng as never, '903');
+    const disk = JSON.parse(getLS('civilflow_trazos_903') || '{}');
+    expect((disk.ramales ?? []).map((r: Row) => r.id)).toEqual(['R1']);
+    expect(disk.ts).toBeUndefined();
+    expect(db['903']).toBeUndefined();
   });
 });

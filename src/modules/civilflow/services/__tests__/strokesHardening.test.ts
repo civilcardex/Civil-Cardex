@@ -19,7 +19,12 @@ vi.mock('../../../../lib/supabase', () => ({
   },
 }));
 
-import { saveTrazosToDB, trazosDocHasContent, trazosLocalGanaABdVacia } from '../storageService.ts';
+import {
+  saveTrazosToDB,
+  trazosDocHasContent,
+  trazosLocalGanaABdVacia,
+  trazosBdGanaALocalVacia,
+} from '../storageService.ts';
 import {
   writeCrossFloorGhost,
   createCrossFloorLdesvioRamal,
@@ -99,6 +104,27 @@ describe('árbitro: la local gana sobre BD sin contenido', () => {
   it('local vacía o ausente → regla no aplica', () => {
     expect(trazosLocalGanaABdVacia({ ramales: [] }, {})).toBe(false);
     expect(trazosLocalGanaABdVacia(null, {})).toBe(false);
+  });
+});
+
+describe('árbitro: la BD gana sobre local vacía (espejo)', () => {
+  it('local vacía con ts mayor vs BD con contenido → gana la BD', () => {
+    // El doc vacío de la era del bug sobrevive a la apertura del proyecto (la caché ya no se
+    // borra) y su ts fresco bloquearía la copia buena para siempre.
+    expect(
+      trazosBdGanaALocalVacia({ ramales: [], ts: 999 }, { ramales: [{ id: 'R1' }], ts: 1 }),
+    ).toBe(true);
+  });
+  it('local ausente o ilegible vs BD con contenido → gana la BD', () => {
+    expect(trazosBdGanaALocalVacia(null, { ramales: [{ id: 'R1' }] })).toBe(true);
+    expect(trazosBdGanaALocalVacia('doc legacy', { bajantes: [{ id: 'B1' }] })).toBe(true);
+  });
+  it('ambos con contenido, ambos vacíos o BD vacía → regla no aplica (manda el ts)', () => {
+    expect(trazosBdGanaALocalVacia({ ramales: [{ id: 'R1' }] }, { ramales: [{ id: 'R2' }] })).toBe(
+      false,
+    );
+    expect(trazosBdGanaALocalVacia({}, {})).toBe(false);
+    expect(trazosBdGanaALocalVacia({}, { ramales: [] })).toBe(false);
   });
 });
 

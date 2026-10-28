@@ -6,6 +6,8 @@ export { hasNumericPlanSuffix, isOrphanKey } from './drawingSyncBuilders.ts';
 export {
   setSyncLoadedLiveIds,
   markPlanTrazosFresh,
+  markPlanContentLoaded,
+  planContentLoaded,
   reanclarClavesDesdeTrazosLocales,
 } from './drawingSyncGc.ts';
 export {

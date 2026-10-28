@@ -18,6 +18,7 @@ import {
   saveTrazosToDB,
   loadTrazosFromDB,
   trazosLocalGanaABdVacia,
+  trazosBdGanaALocalVacia,
   saveTrazosLocales,
   localGanaABdPorTs,
 } from '../../services/storageService.ts';
@@ -149,13 +150,17 @@ export function useTrazosLoader({
           bdInfo = escalaTsDe(dbData);
           const dbTs = Number(dbData.ts || 0);
           const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);
-          // Regla de contenido: un documento BD SIN contenido nunca gana a una caché local CON
-          // contenido, aunque su ts sea mayor — el ts fresco de un vaciado accidental no puede
-          // borrar el piso (el RPC de guardado es destructivo y el mayor-ts mandaba). La local
-          // manda y se re-sube para sanear la fila BD.
+          // Regla de contenido (las DOS direcciones): una BD SIN contenido nunca gana a una
+          // caché local CON contenido, y una caché local VACÍA nunca gana a una BD con
+          // contenido — el ts fresco de un vaciado accidental no puede borrar el piso (el RPC
+          // de guardado es destructivo y el mayor-ts mandaba). La local con contenido manda y
+          // se re-sube para sanear la fila BD; el vacío local se descarta y se reemplaza por la
+          // copia buena. La segunda dirección es obligatoria desde que la caché sobrevive a la
+          // apertura del proyecto (clearLocalWorkspace): un doc vacío de la era del bug ya no
+          // muere al abrir y, con su ts fresco, bloquearía la BD para siempre.
           if (trazosLocalGanaABdVacia(localData, dbData)) {
             saveTrazosToDB(String(resolvedId), localData);
-          } else if (dbTs > localTs || !localData) {
+          } else if (dbTs > localTs || !localData || trazosBdGanaALocalVacia(localData, dbData)) {
             const merged = typeof dbData === 'string' ? (JSON.parse(dbData) as PlanTrazos) : dbData;
             // Misma validación de forma que la caché local: un doc BD de era vieja con
             // 'ramales' como objeto (o sin 'bajantes') NO debe entrar al motor — metía

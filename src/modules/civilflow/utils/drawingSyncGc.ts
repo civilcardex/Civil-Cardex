@@ -39,6 +39,25 @@ export function markPlanTrazosFresh(planId: string | number | null | undefined):
   freshTrazosPlans.add(String(planId));
 }
 
+// Pisos cuyo CONTENIDO se leyó al menos una vez en esta sesión (loadTrazosForPlan devolvió
+// true). Un autosave con snapshot VACÍO sobre un piso que nunca cargó contenido es la firma
+// de la carrera de apertura (cache limpiada + carga de BD no llegada + _dirty espurio): ese
+// 0/0 jamás debe pisar la BD. Con contenido ya cargado, el vaciado legítimo (borrar todo)
+// sigue permitido.
+const loadedContentPlans = new Set<string>();
+
+/** Marca que el piso entró al motor CON contenido (llamar cuando la carga devuelve true). */
+export function markPlanContentLoaded(planId: string | number | null | undefined): void {
+  if (planId == null || planId === 'work') return;
+  loadedContentPlans.add(String(planId));
+}
+
+/** ¿El contenido de este piso cargó alguna vez en esta sesión? */
+export function planContentLoaded(planId: string | number | null | undefined): boolean {
+  if (planId == null) return false;
+  return loadedContentPlans.has(String(planId));
+}
+
 /** Respaldo de lo último que borró el limpiador de basura (una sola entrada; si algo desapareció, se puede recuperar de aquí). */
 const GC_BAK_KEY = 'gc_bak_ultimo';
 

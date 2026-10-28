@@ -22,6 +22,7 @@ import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes.ts';
 import type { SupabaseRow } from './planoRowMappers.ts';
 import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents.ts';
 import { countKey } from '../../utils/keys.ts';
+import { journalTrazos } from './trazosJournal.ts';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -87,6 +88,17 @@ export function trazosLocalGanaABdVacia(local: unknown, db: unknown): boolean {
   return trazosDocHasContent(local) && !trazosDocHasContent(db);
 }
 
+/** Espejo de `trazosLocalGanaABdVacia`: la BD CON contenido gana sobre una caché local VACÍA
+ *  aunque el ts local sea mayor. La caché ya no se borra al abrir el proyecto (ver
+ *  clearLocalWorkspace), así que un doc vacío de la era del bug sobrevive y su ts fresco
+ *  bloquearía para siempre la copia buena de la BD. Un vacío nunca es la verdad del piso
+ *  cuando el otro lado tiene contenido. Contrapartida: un borrado TOTAL de un piso solo se
+ *  respeta si el push vacío llegó a BD (la tumba anti-vacío lo deja pasar cuando la caché
+ *  local ya está vacía); si ese push falló, la copia de BD revive el piso. */
+export function trazosBdGanaALocalVacia(local: unknown, db: unknown): boolean {
+  return trazosDocHasContent(db) && !trazosDocHasContent(local);
+}
+
 // Cola por plano: el RPC es destructivo (borra y reinserta colecciones) y hay decenas de
 // llamadores fire-and-forget (autosave, escritores cross-floor, copiar plano). Dos pushes
 // en vuelo para el mismo plano podían aterrizar en orden arbitrario y dejar el doc viejo
@@ -110,10 +122,13 @@ export function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
 
 async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
+    // Caja negra (solo DEV): toda intención de push queda anotada con conteos + quién llamó.
+    journalTrazos('db', planoId, data);
     // Los ids de plano son numéricos (Date.now*1000+rand). Un uuid aquí es un plano fantasma
     // (estado de sesión contaminado): bloquear antes del RPC — el RPC espera bigint.
     if (!/^\d+$/.test(planoId)) {
       devError('storageService saveTrazosToDB: planoId no numérico descartado', planoId);
+      journalTrazos('db-block', planoId, data, 'planoId-no-numerico');
       return;
     }
     // Tumba anti-vacío (antes del check de sesión: abort barato): el RPC borra y re-inserta
@@ -134,6 +149,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
           'vacio',
           'Guardado a BD abortado: el trabajo está vacío pero el plano tiene datos guardados.',
         );
+        journalTrazos('db-block', planoId, data, 'vacio-con-cache-llena');
         return;
       }
     }
@@ -141,6 +157,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     const user = await cachedSupabaseUser();
     if (!user) {
       emitBdSaveError('sin-sesion', 'No hay sesión activa en Supabase.');
+      journalTrazos('db-block', planoId, data, 'sin-sesion');
       return;
     }
 
@@ -150,6 +167,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
         'sin-proyecto',
         'No hay proyecto activo seleccionado (clave ' + 'de proyecto ausente).',
       );
+      journalTrazos('db-block', planoId, data, 'sin-proyecto');
       return;
     }
 
@@ -301,12 +319,19 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     if (error) {
       devError('storageService saveTrazosToDB rpc:', error.message);
       emitBdSaveError('rpc', error.message);
+      journalTrazos('db-block', planoId, data, `rpc: ${error.message}`);
     } else {
       emitBdSaveOk();
     }
   } catch (e) {
     devError('storageService saveTrazosToDB exception:', e);
     emitBdSaveError('excepcion', e instanceof Error ? e.message : String(e));
+    journalTrazos(
+      'db-block',
+      planoId,
+      data,
+      `excepcion: ${e instanceof Error ? e.message : String(e)}`,
+    );
   }
 }
 

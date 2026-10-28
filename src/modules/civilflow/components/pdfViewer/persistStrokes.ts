@@ -4,9 +4,11 @@ import {
   saveTrazosToDB,
   loadFromStorage,
   saveTrazosLocales,
+  trazosDocHasContent,
 } from '../../services/storageService.ts';
-import { markPlanTrazosFresh } from '../../utils/drawingSync.ts';
+import { markPlanTrazosFresh, planContentLoaded } from '../../utils/drawingSync.ts';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { journalTrazos } from '../../services/storage/trazosJournal.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { splitCount } from '../../utils/keys.ts';
@@ -24,6 +26,33 @@ export function persistTrazosSnapshot(
   id: string | number,
 ): void {
   const work = eng.saveWork();
+  // BLINDAJE anti-borrado (dump [CF-SAVE] pasos 1→2, 2026-10-28: cubierta guardó 1 ramal
+  // (16:42:41) y al REABRIR la pestaña quedó 0/0 con ts fresco — la apertura limpia la caché
+  // local, la carga de BD del piso no llega (carrera) y un _dirty espurio dispara el autosave
+  // con el motor vacío, que pisa local Y BD). Un push VACÍO solo es legítimo si el contenido
+  // de ese piso CARGÓ alguna vez en esta sesión (borrar todo); si nunca cargó, el snapshot
+  // vacío es basura de carrera y no toca nada. El guard previo (engine en otro piso) no
+  // alcanzaba: aquí el engine SÍ estaba en el piso, pero su contenido jamás llegó.
+  if (!trazosDocHasContent(work) && !planContentLoaded(String(id))) {
+    const engId = (eng as { _loadedPlanId?: unknown })._loadedPlanId;
+    devError(
+      `[CF-PERSIST] piso ${id}: snapshot VACÍO bloqueado (contenido nunca cargó esta sesión; engine piso=${String(engId)})`,
+    );
+    journalTrazos('persist-block', id, work, `vacio-sin-carga engine=${String(engId)}`);
+    return;
+  }
+  if (!trazosDocHasContent(work)) {
+    const engId = (eng as { _loadedPlanId?: unknown })._loadedPlanId;
+    const mismoPiso = engId != null && String(engId) === String(id);
+    const prev = loadFromStorage<unknown>(TRAZOS_PREFIX + String(id), null);
+    if (trazosDocHasContent(prev) && !mismoPiso) {
+      devError(
+        `[CF-PERSIST] piso ${id}: snapshot VACÍO bloqueado (engine en otro piso: ${String(engId)})`,
+      );
+      journalTrazos('persist-block', id, work, `vacio-otro-piso engine=${String(engId)}`);
+      return;
+    }
+  }
   // El panel del visor cambia el diámetro con updateSelected (solo r.diametro + bump de
   // dNominal vía bumpConnectedBajantes): sincronizar diamPulg de los bajantes de ventilación
   // desde su dNominal para que la tabla "Bajantes AN/vent" lea el "D vent propuesto".
