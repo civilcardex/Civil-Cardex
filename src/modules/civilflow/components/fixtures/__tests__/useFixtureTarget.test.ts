@@ -119,3 +119,42 @@ describe('el panel de las piezas de la asociación af lee el grupo vivo', () => 
     expect(currentMapDe(a)).toEqual(GRUPO);
   });
 });
+
+describe('ramal nacido en bajante/montante con enlace entre pisos', () => {
+  function argsSan(ramales: unknown[], bajantes: unknown[]) {
+    const a = argsDe('RALL1', 'san_RALL1_1');
+    a.netId = 'san';
+    a.counts = { san_RALL1_1: { lav: 3 } };
+    const eng = a.engineRef.current as unknown as {
+      ramales: unknown[];
+      bajantes: unknown[];
+      crossFloorGhosts: unknown[];
+    };
+    eng.ramales = ramales;
+    eng.bajantes = bajantes;
+    return a;
+  }
+
+  const ball = { id: 'BALL1', net: 'san', code: 'BALL1', tipo: 'bajante', pisoBase: 'P1' };
+  const rall = { id: 'RALL1', net: 'san', tipo: 'ramal', ini: 'BALL1', fin: '' };
+
+  it('dueño con LD_ pero SIN asociación (bajante fuente del piso superior): muestra el grupo', () => {
+    // El LD_/fantasmas por sí solos NO vacían el panel: el lado FUENTE conserva la carga
+    // visible en sus ramales de salida (la prueba de que el grupo bajó al piso de abajo).
+    const a = argsSan(
+      [rall, { id: 'LD_BALL1', net: 'san', tipo: 'ramal', ini: '', fin: '' }],
+      [ball],
+    );
+    expect(currentMapDe(a)).toEqual({ lav: 3 });
+  });
+
+  it('dueño con origenId (asociado): panel vacío', () => {
+    const a = argsSan([rall], [{ ...ball, origenId: '2|BALL1' }]);
+    expect(currentMapDe(a)).toEqual({});
+  });
+
+  it('dueño SIN enlace entre pisos: el panel muestra lo suyo como siempre', () => {
+    const a = argsSan([rall], [ball]);
+    expect(currentMapDe(a)).toEqual({ lav: 3 });
+  });
+});

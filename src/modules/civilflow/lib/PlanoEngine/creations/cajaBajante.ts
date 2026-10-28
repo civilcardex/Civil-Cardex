@@ -117,8 +117,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
       } else assocRamales.push(r.id);
     }
   }
-  // Regla de negocio: dentro de un canal recolectora solo caben bajantes de aguas lluvias (ll).
-  // Si se intenta crear un bajante de otra red dentro de un canal, se aborta la creación con
+  // Regla de negocio: dentro de un canal recolectora solo caben bajantes de aguas lluvias (ll).// Si se intenta crear un bajante de otra red dentro de un canal, se aborta la creación con
   // una alerta modal — el canal es una canaleta de aguas lluvias y las otras redes no se pueden
   // hacer pasar por dentro. Se revisa DESPUÉS de la asociación con ramales porque ella puede
   // desplazar el punto final del bajante hacia el extremo de un ramal.
@@ -177,8 +176,10 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     net: engine.activeNet,
     tipo: 'bajante',
     code: bajId,
-    // Sin dirección por defecto — el usuario debe elegir Sube/Baja/Continua explícitamente
-    // para este bajante; ver los botones BajanteDirectionSelector.
+    // Sin dirección por defecto (CONTRATO sanConnectivity/PlanoPersistence: 'sube' saca al
+    // bajante del drenaje geométrico de la propagación de UD y 'baja' inválida se coacciona
+    // a 'continua' con alerta) — la elige el usuario en BajanteDirectionSelector, o la fija
+    // la ASOCIACIÓN entre pisos (bajanteAssociationApply escribe la que corresponde).
     x: px,
     y: py,
     pisoBase: engine.nivelActual?.label ?? '',

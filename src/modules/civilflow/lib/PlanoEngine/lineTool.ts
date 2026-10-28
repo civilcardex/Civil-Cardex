@@ -11,6 +11,7 @@ import { detectarCanalEnExtremos, resolveCanalForPoint } from './channelAssociat
 import { canJoinTributario, puntoEnCaja } from './junctionAutoSplit.ts';
 import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils.ts';
 import { commitOpenGuide } from './guideLines.ts';
+import { isLdesvioRamalId } from '../../utils/crossFloorStorage.ts';
 
 export type ToolType =
   | 'sel'
@@ -93,6 +94,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // ramal. Solo el caso del bajante debe bloquear la continuación; un extremo que solo toca
     // otro ramal debe seguir siendo continuable.
     const isBajanteCode = (v: string) => engine.bajantes.some((b) => (b.code || b.id) === v);
+    // Clic sobre el extremo del LD_ (ramal desvio entrepisos) que toca SU bajante/montante
+    // (hay fantasma entrepisos): NO se continúa el LD — nace un ramal NUEVO con etiqueta
+    // propia que toma la carga del bajante vía la asociación de salida (ini + alimentaIds).
+    // El extremo del anillo (lejos del bajante) sí sigue continuable.
+    const ldContinuable = (rm: PlanoRamal, ep: number[]): boolean => {
+      if (!isLdesvioRamalId(rm.id)) return true;
+      const host = engine.bajantes.find((b) => b.id === rm.id.slice(3));
+      if (!host) return true;
+      return Math.hypot(host.x - ep[0], host.y - ep[1]) > CONTINUE_THRESH;
+    };
     for (const rm of activeNetsRamales) {
       const firstPt = rm.pts[0];
       const lastPt = rm.pts[rm.pts.length - 1];
@@ -111,11 +122,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       const isPtsDrivenMain = rm.tipo !== 'tributario' && ['san', 'll', 'vent'].includes(rm.net);
       if (dFirst < CONTINUE_THRESH && dFirst <= dLast && !isPtsDrivenMain) {
         if (rm.ini && isBajanteCode(rm.ini)) continue;
+        if (!ldContinuable(rm, firstPt)) continue;
         continueRamal = rm;
         reversePoints = true;
         break;
       } else if (dLast < CONTINUE_THRESH) {
         if (rm.fin && isBajanteCode(rm.fin)) continue;
+        if (!ldContinuable(rm, lastPt)) continue;
         continueRamal = rm;
         break;
       }
@@ -129,11 +142,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         const dLast = Math.hypot(px - lastPt[0], py - lastPt[1]);
         if (dFirst < CONTINUE_THRESH && dFirst <= dLast) {
           if (rm.ini && isBajanteCode(rm.ini)) continue;
+          if (!ldContinuable(rm, firstPt)) continue;
           continueRamal = rm;
           reversePoints = true;
           break;
         } else if (dLast < CONTINUE_THRESH) {
           if (rm.fin && isBajanteCode(rm.fin)) continue;
+          if (!ldContinuable(rm, lastPt)) continue;
           continueRamal = rm;
           break;
         }

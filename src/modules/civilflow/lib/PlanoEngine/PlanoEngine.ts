@@ -1053,16 +1053,24 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
   }
 
+  /** Clave del último encuadre (bbox + tamaño de página): igual → skip. Las 3 llamadas de
+   *  una carga (loader local, arbitración BD, post-raster) computan lo MISMO — sin guard,
+   *  cualquier fuente de bbox divergente reintroduciría el salto por esta puerta. */
+  private _encuadreKey = '';
   /** Re-encuadra el DIBUJO (no la lámina) tras un loadWork: contenido nuevo → bbox nuevo →
    *  misma doctrina de entrada siempre centrado. La arbitración local-vs-BD que aterriza
    *  después del raster no puede mover los elementos a la vista (orig. usuario: «salto
-   *  residual mientras se acomodan»). Sin dibujo cae a la hoja completa. */
+   *  residual mientras se acomodan»). Sin dibujo cae a la hoja completa. Cámara quieta si el
+   *  bbox y la lámina no cambiaron (mismo resultado, cero renders extra). */
   reEncuadrarContenido(): void {
     const bbox = ptsDeDibujoConDims(this);
     if (!bbox) {
       this.fitPage();
+      this._encuadreKey = '';
       return;
     }
+    const clave = `${bbox.minX.toFixed(1)},${bbox.minY.toFixed(1)},${bbox.maxX.toFixed(1)},${bbox.maxY.toFixed(1)}|${this.pageW.toFixed(1)}x${this.pageH.toFixed(1)}`;
+    if (clave === this._encuadreKey) return;
     const enc = encuadrarDibujo({
       visW: this.cw.clientWidth,
       visH: this.cw.clientHeight,
@@ -1073,6 +1081,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.zoom = enc.zoom;
     this.offX = enc.offX;
     this.offY = enc.offY;
+    this._encuadreKey = clave;
   }
 
   /** Ajusta la página PDF dentro del viewport con margen. */

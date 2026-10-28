@@ -53,8 +53,19 @@ export function dragLabel(engine: IPlanoEngineCore, x: number, y: number): void 
     // al "centro agarrado menos gap" y corregir el offset del gesto en el mismo paso — sin
     // esto, al encenderse labelMoved abajo el declutter se apaga y la etiqueta TELEPORTA el
     // desplazamiento completo (orig. usuario: la primera vez no sigue bien el cursor).
+    // SOLO ramales sin slot: son los únicos con declutter. Bajantes (offset constante
+    // propio), áreas, etiquetas fantasma (escriben ghostData) y sifón (escribe
+    // sifonLabelIni/Fin) NO declutteran — la fórmula de gap de ramal les desplazaría el
+    // ancla (y en fantasma/sifón corrompería un drag que ni toca labelX).
+    const tipoEl = (el as PlanoRamal).tipo;
     const caja = (el as PlanoRamal)._labelBox;
-    if (!el.labelMoved && caja && el.labelX != null) {
+    if (
+      (tipoEl === 'ramal' || tipoEl === 'tributario') &&
+      !engine.lblDrag!.slot &&
+      !el.labelMoved &&
+      caja &&
+      el.labelX != null
+    ) {
       const anclaCvs = engine.toCvs(el.labelX, el.labelY!);
       const gap = gapAnclaACaja(caja.h, caja.angle, engine.mm2cvs.bind(engine), engine.zoom);
       const dAncla = { x: caja.cx - gap.x - anclaCvs.x, y: caja.cy - gap.y - anclaCvs.y };

@@ -73,4 +73,53 @@ describe('dragLabel · primer agarre de etiqueta des-tapada', () => {
     expect(r.labelX).toBe(140);
     expect(r.labelY).toBe(10);
   });
+
+  /** Bajante con labelMoved falsy y caja propia: su geometría de etiqueta NO usa el gap de
+   *  ramal — el re-anclaje NO debe tocarlo (el padre escribiría su ancla con desfase). */
+  it('BAJANTE nunca movida: sin re-anclaje (ancla y offset intactos)', () => {
+    const baj = {
+      id: 'BAN1',
+      net: 'san',
+      x: 50,
+      y: 30,
+      labelX: 50,
+      labelY: 55,
+      labelMoved: false,
+      _labelBox: { cx: 150, cy: -60, w: 80, h: 30, angle: 0, corners: [] },
+    };
+    const eng = {
+      ramales: [],
+      bajantes: [baj],
+      areas: [],
+      dims: [],
+      lblDrag: { id: 'BAN1', offX: 55, offY: -65 },
+      zoom: 1,
+      mm2cvs: (mm: number) => mm * 3,
+      toCvs: (x: number, y: number) => ({ x, y }),
+      toPlane: (x: number, y: number) => ({ x, y }),
+      scheduleRender: () => {},
+    } as unknown as IPlanoEngineCore;
+    dragLabel(eng, 195, -55);
+    // sin tipo 'ramal' → sin re-anclaje: off intacto y ancla escrita por la ruta del padre
+    expect(eng.lblDrag!.offX).toBe(55);
+    expect(eng.lblDrag!.offY).toBe(-65);
+    expect(baj.labelX).toBe(140); // p = cursor − off
+    expect(baj.labelY).toBe(10);
+    expect(baj.labelMoved).toBe(true);
+  });
+
+  /** RAMAL con slot de sifón: el drag escribe sifonLabelIni/Fin, no labelX — el re-anclaje
+   *  no debe correr (corrompería el ancla del ramal sin que el usuario la tocara). */
+  it('ramal con slot de sifón: sin re-anclaje, escribe sifonLabelIni', () => {
+    const r = ramalConCajaDesplazada();
+    const eng = motor(r, 55, -65);
+    eng.lblDrag!.slot = 'ini';
+    dragLabel(eng, 195, -55);
+    expect(eng.lblDrag!.offX).toBe(55);
+    expect(eng.lblDrag!.offY).toBe(-65);
+    expect(r.labelX).toBe(100); // ancla original intacta
+    expect(r.labelY).toBe(0);
+    expect(r.sifonLabelIni).toEqual([140, 10]);
+    expect(r.labelMoved).toBe(false); // el slot no enciende labelMoved (sigue en false del fixture)
+  });
 });

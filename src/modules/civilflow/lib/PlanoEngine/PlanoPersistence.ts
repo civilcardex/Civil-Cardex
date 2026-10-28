@@ -13,9 +13,11 @@ export interface PlanoWorkData {
   scaleM: number;
   definedScaleM: number;
   activeNet: string;
-  zoom: number;
-  offX: number;
-  offY: number;
+  /** Cámara: opcional y SIN consumidor (applyWorkData no la restaura — la doctrina de entrada
+   *  es siempre bbox-fit). serializeWork deja de escribirla; quedan opcionales por filas BD viejas. */
+  zoom?: number;
+  offX?: number;
+  offY?: number;
   /** Tamaño de la lámina (px de plano) con el que se calibró la cámara: si al reabrir la
    *  lámina tiene otro tamaño (p. ej. tras un re-base de escala), la cámara guardada ya no
    *  encaja y hay que reencuadrar. */
@@ -186,9 +188,6 @@ export function serializeWork(engine: {
   scaleM: number;
   definedScaleM: number;
   activeNet: string;
-  zoom: number;
-  offX: number;
-  offY: number;
   pageW?: number;
   pageH?: number;
   lineWidthScale: number;
@@ -222,9 +221,6 @@ export function serializeWork(engine: {
     scaleM: engine.scaleM,
     definedScaleM: engine.definedScaleM,
     activeNet: engine.activeNet,
-    zoom: engine.zoom,
-    offX: engine.offX,
-    offY: engine.offY,
     pageW: engine.pageW,
     pageH: engine.pageH,
     lineWidth: engine.lineWidthScale,

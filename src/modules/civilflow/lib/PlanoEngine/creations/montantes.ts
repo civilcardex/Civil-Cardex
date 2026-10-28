@@ -3,7 +3,8 @@ import { MONTANTE_NETS } from './cajaBajante';
 import { NETS } from '../PlanoState.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { calculateRamalLength, _statusMsg } from '../ramalMeasure.ts';
-import { codoPolarityOk, maxDiametroLabel } from '../PlanoEngineDrawing.ts';
+import { maxDiametroLabel } from '../PlanoEngineDrawing.ts';
+import { flowEndsAt, flowStartsAt } from '../flowChecks.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
@@ -47,24 +48,22 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     engine.bajantes.filter((b) => b.tipo === 'montante' && b.net === engine.activeNet).length + 1;
   const monId = `${pfx}${cnt}_${engine.activeNet}`;
   const code = `${pfx}${cnt}`;
-  // Ítems 12/13: el montante escribe codo90rmSube en el extremo del ramal asociado — ese codo
-  // ENTREGA flujo (la cola de la flecha apunta al extremo: el flujo SALE de P hacia el montante).
-  // Si el punto cae en el FINAL del flujo (el montante recibiría del ramal), la polaridad es
-  // contradictoria: se rechaza la creación con alerta en vez de escribir un codo incoherente
-  // con la flecha.
-  if (assocRamales.length > 0) {
-    const TOL = 0.5;
-    for (const rid of assocRamales) {
-      const r = engine.ramales.find((rr) => rr.id === rid);
-      if (!r || !r.pts || r.pts.length < 2) continue;
-      if (!codoPolarityOk(r, [px, py], 'codo90rmSube', TOL)) {
-        engine.triggerAlert(
-          'Polaridad de codo incorrecta',
-          'El codo 90° sube del montante exige que la cola de la flecha apunte al extremo (el flujo debe salir de ahí hacia el montante). Coloca el montante en el extremo inicial del ramal, o invierte la dirección del ramal.',
-        );
-        return;
-      }
-    }
+  // Ítems 12/13 + detección automática (orig. usuario): el codo y la dirección del montante se
+  // eligen según la DIRECCIÓN del ramal en el punto de conexión — si el flujo SALE del extremo
+  // (cola de flecha) el montante RECIBE del ramal → codo90rmSube y dirección 'sube'; si el
+  // flujo LLEGA al extremo el montante ENTREGA → codo90rmBaja y dirección 'baja'. La creación
+  // ya no se rechaza por polaridad contradictoria.
+  const TOL = 0.5;
+  const codoPorRamal = new Map<string, string>();
+  let direccionDetectada: 'sube' | 'baja' | null = null;
+  for (const rid of assocRamales) {
+    const r = engine.ramales.find((rr) => rr.id === rid);
+    if (!r || !r.pts || r.pts.length < 2) continue;
+    const sube = flowStartsAt(r, [px, py], TOL);
+    const baja = !sube && flowEndsAt(r, [px, py], TOL);
+    // Ni sube ni baja (geometría ambigua): el default del codo es sube, como siempre fue.
+    codoPorRamal.set(rid, baja ? 'codo90rmBaja' : 'codo90rmSube');
+    if (!direccionDetectada && (sube || baja)) direccionDetectada = sube ? 'sube' : 'baja';
   }
   let defDNominal = '';
   for (const rid of assocRamales) {
@@ -78,7 +77,10 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     net: engine.activeNet,
     tipo: 'montante',
     code: code,
-    // Sin dirección por defecto — el usuario debe elegir Sube/Baja/Continua
+    // Dirección AUTO-DETECTADA del ramal al que se conectó (sube = el ramal le entrega,
+    // baja = el montante le entrega al ramal); sin conexión sigue sin dirección y el
+    // usuario la elige en BajanteDirectionSelector.
+    direccion: direccionDetectada ?? undefined,
     x: px,
     y: py,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -105,13 +107,12 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     bajR: 7 / 24,
   });
   // Auto-rellenar ini/fin en los ramales asociados — y auto-contar el codo que un montante en
-  // un extremo siempre implica: codo sube/baja (coincidiendo con la dirección propia del
-  // montante, siempre 'sube' recién salido de la creación de arriba), con diámetro igualado al
-  // ramal donde cae.
-  const codoAccId = 'codo90rmSube';
+  // un extremo siempre implica, con la VARIANTE detectada por ramal (sube/baja según la
+  // dirección del flujo en el extremo), con diámetro igualado al ramal donde cae.
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
     if (!r || !r.pts) continue;
+    const codoAccId = codoPorRamal.get(rid) || 'codo90rmSube';
     const distStart = Math.hypot(r.pts[0][0] - px, r.pts[0][1] - py);
     const lastIdx = r.pts.length - 1;
     const distEnd = Math.hypot(r.pts[lastIdx][0] - px, r.pts[lastIdx][1] - py);

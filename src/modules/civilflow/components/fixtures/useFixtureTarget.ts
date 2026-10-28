@@ -52,6 +52,21 @@ export function currentMapDe(a: TargetArgs): Record<string, number> {
     isBajanteSan,
   } = a;
   if (!storageKey) return {};
+  // Ramales NACIDOS en un bajante/montante ASOCIADO entre pisos (origenId/bombaEnId, orig.
+  // usuario): el panel de aparatos NO lista nada — su carga la define el bajante dueño
+  // (se dimensiona en CalcUC/tablas) y listarla aquí con botones Quitar la hacía parecer
+  // asignable en el ramal. SOLO el lado asociado/receptor: el bajante FUENTE del piso
+  // superior conserva el grupo visible en sus ramales de salida (la prueba de que bajó).
+  // Los bajantes/proyecciones y el propio LD_ siguen mostrando el grupo (ramas de abajo).
+  if (targetId && !targetId.startsWith('LD_')) {
+    const engR = engineRef.current;
+    const ramalSel = engR?.ramales.find((r) => r.id === targetId);
+    const codeDueño = ramalSel?.ini || '';
+    if (codeDueño) {
+      const dueño = engR?.bajantes.find((b) => (b.code || b.id) === codeDueño);
+      if (dueño && (dueño.origenId || dueño.bombaEnId)) return {};
+    }
+  }
   // Bajante ASOCIADO desde arriba (origenId): muestra las UDs del GRUPO — la clave del
   // Ldesvio las mantiene la propagación en vivo desde el piso superior.
   // origenId leído del ENGINE VIVO (selElement puede quedar stale tras updateElementById).
