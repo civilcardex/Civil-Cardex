@@ -8,6 +8,12 @@ import type { PlanItem } from '../../../context/PlansContext.tsx';
 
 import { drawIsoCuboid, hexA, type IsoPt } from './isoDrawUtils.ts';
 
+/** Nivel del plano por id (para el filtro de pisos visibles); undefined si no existe. */
+function nivelDePlanId(plans: PlanItem[], planId: string): number | undefined {
+  const p = plans.find((x) => String(x.id) === planId);
+  return p && p.nivel != null ? Number(p.nivel) : undefined;
+}
+
 interface UseIsometriaRenderParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   planImagesRef: RefObject<Map<number, { img: HTMLCanvasElement; w: number; h: number }>>;
@@ -29,9 +35,12 @@ interface UseIsometriaRenderParams {
   renderTick: number;
   getIsoCoords: (px: number, py: number, nivel: number) => { x: number; y: number };
   getZPix: (zMm: number, nivel?: number) => number;
+  /** Pisos visibles (orig. usuario): null = todos. Bajantes con asociación cuyo otro extremo está en un piso visible se dibujan igual. */
+  pisosVisibles?: Set<number> | null;
 }
 
 export function useIsometriaRender({
+  pisosVisibles = null,
   canvasRef,
   planImagesRef,
   dataByNet,
@@ -79,6 +88,9 @@ export function useIsometriaRender({
       for (const [planId, planData] of planImagesRef.current) {
         const plan = confirmedPlanos.find((p) => p.id === planId);
         if (!plan || plan.nivel == null) continue;
+        // Piso oculto (orig. usuario): el chip quita el PLANO COMPLETO — lámina PDF incluida,
+        // no solo sus elementos.
+        if (pisosVisibles && !pisosVisibles.has(Number(plan.nivel))) continue;
         const z = nptMap[plan.nivel] || 0;
         const z_pix = getZPix(z, plan.nivel);
         const img = planData.img;
@@ -421,6 +433,8 @@ export function useIsometriaRender({
         ctx.stroke();
       };
       for (const r of netData.ramales) {
+        // Piso oculto por el usuario → fuera (los ramales no cruzan pisos).
+        if (pisosVisibles && !pisosVisibles.has(r.planNivel)) continue;
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
         // respecto a NPT") se guarda NEGATIVO para instalaciones bajo losa (p. ej. sanitaria
         // -0.70). En esta proyección un z MÁS POSITIVO se renderiza MÁS ABAJO en pantalla (ver
@@ -443,7 +457,6 @@ export function useIsometriaRender({
         ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
         ctx.lineWidth = isSel ? 3.5 : 2;
         ctx.stroke();
-
         for (let i = 1; i < pts.length; i++) {
           const iso1 = getIsoCoords(pts[i - 1][0], pts[i - 1][1], r.planNivel);
           const iso2 = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
@@ -488,6 +501,20 @@ export function useIsometriaRender({
       }
 
       for (const b of netData.bajantes) {
+        // Piso oculto (orig. usuario): fuera, SALVO bajantes con asociación entre pisos cuyo
+        // destino (descargaEnId) esté en un piso visible — la tubería cruza y conecta con lo
+        // que sí se ve, se dibuja igual.
+        if (
+          pisosVisibles &&
+          !pisosVisibles.has(b.planNivel) &&
+          !(
+            b.descargaEnId &&
+            pisosVisibles.has(
+              nivelDePlanId(confirmedPlanos, splitPtr(b.descargaEnId, '')[0]) ?? NaN,
+            )
+          )
+        )
+          continue;
         // Un CrossFloorGhost solo se consulta como referencia (a qué bajante real se conecta este
         // origen y en qué piso) — ver las llamadas a `netData.bajantes.find` más abajo. Ya no
         // necesita representación visual propia: el conector real origen→destino ahora se ancla
@@ -647,7 +674,9 @@ export function useIsometriaRender({
 
         const lo = Math.min(currentZ, targetZ);
         const hi = Math.max(currentZ, targetZ);
-        const isSube = b.direccion === 'sube' || b.tipo === 'montante';
+        // Dirección explícita manda (los montantes la llevan auto-detectada: 'baja' existe);
+        // sin dirección, el default por tipo (montante sube, bajante baja).
+        const isSube = b.direccion ? b.direccion === 'sube' : b.tipo === 'montante';
         // nptMap usa z NEGATIVO para los pisos (P1=-2700, P2=-5400...) y la proyección renderiza
         // un z más negativo MÁS ARRIBA en pantalla. Por eso el stub de una bajante sin destino
         // debe extenderse hacia el z MÁS NEGATIVO (SUBE = hacia arriba) y hacia el menos negativo
@@ -747,6 +776,11 @@ export function useIsometriaRender({
           cx,
           cy,
         );
+        // Círculo + indicador de dirección en el PISO PROPIO de la bajante (currentZ), no en el
+        // extremo del destino ni en el del stub: para una bajante SUBE es el extremo inferior del
+        // recorrido y para una BAJA el superior, y con ghost/destino en otro piso el símbolo
+        // sigue presidiendo su propio piso (el círculo se desliza por la línea del conector hasta
+        // la altura de currentZ).
         const circR = 6 * zoom;
         ctx.save();
         ctx.strokeStyle = netColor;
@@ -760,7 +794,7 @@ export function useIsometriaRender({
         ctx.fillStyle = netColor;
         ctx.beginPath();
         const triS = circR * 0.5;
-        const isSubeDir = b.direccion === 'sube' || b.tipo === 'montante';
+        const isSubeDir = b.direccion ? b.direccion === 'sube' : b.tipo === 'montante';
         const dirY = isSubeDir ? -1 : 1;
         ctx.moveTo(floorPt.sx, floorPt.sy + dirY * triS);
         ctx.lineTo(floorPt.sx - triS, floorPt.sy - dirY * triS * 0.3);
@@ -892,6 +926,7 @@ export function useIsometriaRender({
     canvas.__isoCx = W / 2;
     canvas.__isoCy = H / 2;
   }, [
+    pisosVisibles,
     canvasRef,
     planImagesRef,
     dataByNet,

@@ -77,6 +77,14 @@ describe('reanclarClavesDesdeTrazosLocales — anti-resurrección de aparatos', 
     expect(mapa()['san_RS1_7']).toEqual({ sif: 1 });
   });
 
+  it('codoReventilado como glifo del inodoro TAMBIÉN restaura la clave perdida', () => {
+    // Orig. usuario: cambió el codo90 por codo reventilado (reventilación del inodoro) y al
+    // reingresar la asignación se perdía — el re-anclaje no lo reconocía como portador.
+    seedTrazo({ ...ramalBase, accesorioFin: 'codoReventilado', fixtures: { san: 1 } });
+    expect(reanclarClavesDesdeTrazosLocales(plans)).toBe(1);
+    expect(mapa()['san_RS1_7']).toEqual({ san: 1 });
+  });
+
   it('bajante sin campos portadores sigue restaurando (UDs de bomba/caja)', () => {
     saveToStorage(TRAZOS_PREFIX + '7', {
       ramales: [],

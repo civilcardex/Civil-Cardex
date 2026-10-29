@@ -80,12 +80,12 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 500 });
-  const [showPlanos, setShowPlanos] = useState(true);
+  // Planos SIEMPRE visibles (toggle retirado, orig. usuario).
+  const showPlanos = true;
   const planImagesRef = useRef<Map<number, { img: HTMLCanvasElement; w: number; h: number }>>(
     new Map(),
   );
   const [renderTick, setRenderTick] = useState(0);
-  const [planosCount, setPlanosCount] = useState('0/0');
 
   useEffect(() => {
     const el = containerRef.current;
@@ -124,6 +124,12 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     };
   }, [plans]);
 
+  // Pisos visibles (orig. usuario): null = todos. Con selección, el render dibuja SOLO los
+  // pisos chequeados + las piezas con asociación entre pisos cuyo otro extremo sigue visible
+  // (bajante con descarga/origen en un piso activo, fantasmas XFG). Solo sesión (visual).
+  // El popover de la toolbar maneja el toggle/Todos/Ninguno.
+  const [pisosVisibles, setPisosVisibles] = useState<Set<number> | null>(null);
+
   const sortedNets = useMemo(() => [...activeNets].toSorted(), [activeNets]);
   const result = useMemo(
     () => readDrawingAll(plans || [], sortedNets),
@@ -140,16 +146,23 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
     const defaultSpacingMm = 2700;
-    // z+ se renderiza ABAJO en pantalla (project() con rotX=-45). Pisos sobre el suelo
-    // (n 0..89) apilan hacia arriba (z negativo, más alto = más negativo); los sótanos hacia
-    // abajo (z positivo, n negativo indica profundidad). La cubierta (n=99, 'C' en pisoLbl/
-    // pisoCorto) queda ENCIMA de todos los pisos — el z MÁS NEGATIVO del proyecto (el layout
-    // viejo la ubicaba así; una revisión la mandó bajo el piso 0 y quedaba "bajo tierra").
+    // z+ se renderiza ABAJO en pantalla (project() con rotX=-45). Altura REAL por piso (orig.
+    // usuario: cubierta y sótano quedaban con huecos invertidos/dobles): el NPT de cada piso
+    // (el del generador: C=4 m, P2=2, P1=0, S1=-2) manda → z = -npt·1000 (NPT mayor = más
+    // arriba; sótano con NPT negativo cae bajo el suelo). Fallback: proyecto sin NPTs → el
+    // apilado índice de siempre (pisos arriba, cubierta encima de todos, sótanos abajo).
     const nSobreSuelo = pisosArr.filter((p) => p.n >= 0 && p.n < 90).length;
+    const sinNpt = pisosArr.every((p) => !Number(p.npt));
     for (const p of pisosArr) {
-      if (p.n >= 0 && p.n < 90) m[p.n] = -p.n * defaultSpacingMm;
-      else if (p.n === 99) m[p.n] = -(nSobreSuelo + 1) * defaultSpacingMm;
-      else m[p.n] = Math.abs(p.n) * defaultSpacingMm;
+      if (!sinNpt) {
+        m[p.n] = -Number(p.npt) * 1000;
+      } else if (p.n >= 0 && p.n < 90) {
+        m[p.n] = -p.n * defaultSpacingMm;
+      } else if (p.n === 99) {
+        m[p.n] = -(nSobreSuelo + 1) * defaultSpacingMm;
+      } else {
+        m[p.n] = Math.abs(p.n) * defaultSpacingMm;
+      }
     }
     return m;
   }, [pisos]);
@@ -333,7 +346,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         if (!cancelled) {
           planImagesRef.current = newImages;
           setRenderTick((n) => n + 1);
-          setPlanosCount(`${newImages.size}/${confirmedPlanos.length}`);
           setIsoLoading(false);
         }
       }
@@ -529,6 +541,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     renderTick,
     getIsoCoords,
     getZPix,
+    pisosVisibles,
   });
 
   useEffect(() => {
@@ -595,9 +608,16 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         nets={populatedNets.map((nid) => NETS.find((x) => x.id === nid)!).filter(Boolean)}
         activeNets={activeNets}
         toggleNet={toggleNet}
-        showPlanos={showPlanos}
-        setShowPlanos={setShowPlanos}
-        planosCount={planosCount}
+        pisosVisibles={pisosVisibles}
+        setPisosVisibles={setPisosVisibles}
+        // TODOS los pisos del proyecto (orig. usuario), de arriba a abajo — no solo los que
+        // tienen contenido dibujado.
+        pisosIso={(pisos || [])
+          .toSorted((a, b) => b.n - a.n)
+          .map((p) => ({
+            nivel: p.n,
+            label: p.n < 0 ? `S${Math.abs(p.n)}` : p.n === 99 ? 'C' : `P${p.n}`,
+          }))}
         rotX={rotX}
         setRotX={setRotX}
         rotZ={rotZ}
@@ -606,7 +626,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         setScaleZ={setScaleZ}
         zoom={zoom}
         setZoom={setZoom}
-        fitView={fitView}
         showExportMenu={showExportMenu}
         setShowExportMenu={setShowExportMenu}
         exportRef={exportRef}

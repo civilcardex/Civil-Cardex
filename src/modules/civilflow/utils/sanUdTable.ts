@@ -42,7 +42,7 @@ export function computeUdTable(
     'Nivel',
     'Inicio',
     'Fin',
-    ...mergedBase.map((d) => `${d.nombre} (${d.ud} UD)`),
+    ...mergedBase.map((d) => `${d.nombre}\n(${d.ud} UD)`),
     'Unidades de descarga totales',
   ];
   const headerGroups: (string | MemoriaHeaderGroup)[] = [

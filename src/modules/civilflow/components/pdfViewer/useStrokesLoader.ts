@@ -35,6 +35,7 @@ import { origenDePlan } from '../../utils/crossFloorStorage.ts';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents.ts';
+import { journalTrazos, resumenTrazos } from '../../services/storage/trazosJournal.ts';
 
 interface UseTrazosLoaderParams {
   activeNetRef: React.RefObject<string>;
@@ -142,6 +143,12 @@ export function useTrazosLoader({
         if (eng._dirty) {
           const fresco = tryLoad(resolvedId);
           if (fresco) {
+            journalTrazos(
+              'load',
+              resolvedId,
+              fresco,
+              `engine-dirty: se conserva la caché (${resumenTrazos(fresco)}) y se re-sube`,
+            );
             saveTrazosToDB(String(resolvedId), fresco);
             return initiallyLoaded;
           }
@@ -158,9 +165,25 @@ export function useTrazosLoader({
           // copia buena. La segunda dirección es obligatoria desde que la caché sobrevive a la
           // apertura del proyecto (clearLocalWorkspace): un doc vacío de la era del bug ya no
           // muere al abrir y, con su ts fresco, bloquearía la BD para siempre.
-          if (trazosLocalGanaABdVacia(localData, dbData)) {
+          const ganaLocal = trazosLocalGanaABdVacia(localData, dbData);
+          const ganaBd =
+            !ganaLocal &&
+            (dbTs > localTs || !localData || trazosBdGanaALocalVacia(localData, dbData));
+          // Caja negra (DEV): la decisión del árbitro con los conteos de AMBOS lados. Es la
+          // firma que nombra al culpable cuando un piso aparece vacío al reabrir: si aquí se
+          // ve `local=vacio bd=vacio`, el borrado ocurrió ANTES (buscar el push vacío en el
+          // diario); si se ve `gana=local-ts` con local vacío, el árbitro no protegió.
+          journalTrazos(
+            'load',
+            resolvedId,
+            ganaBd ? dbData : (localData ?? undefined),
+            `local=${resumenTrazos(localData)} bd=${resumenTrazos(dbData)} gana=${
+              ganaBd ? 'BD' : ganaLocal ? 'local-contenido' : 'local-ts'
+            }`,
+          );
+          if (ganaLocal) {
             saveTrazosToDB(String(resolvedId), localData);
-          } else if (dbTs > localTs || !localData || trazosBdGanaALocalVacia(localData, dbData)) {
+          } else if (ganaBd) {
             const merged = typeof dbData === 'string' ? (JSON.parse(dbData) as PlanTrazos) : dbData;
             // Misma validación de forma que la caché local: un doc BD de era vieja con
             // 'ramales' como objeto (o sin 'bajantes') NO debe entrar al motor — metía
@@ -208,7 +231,17 @@ export function useTrazosLoader({
             saveTrazosToDB(String(resolvedId), localData);
           }
         } else if (localData) {
+          journalTrazos(
+            'load',
+            resolvedId,
+            localData,
+            `local=${resumenTrazos(localData)} bd=sin-fila gana=local`,
+          );
           saveTrazosToDB(String(resolvedId), localData);
+        } else {
+          // Ni caché ni fila BD: el piso entra vacío. Queda en el diario para no confundirlo
+          // con un borrado (aquí NO hay nada que perder).
+          journalTrazos('load', resolvedId, undefined, 'local=vacio bd=sin-fila gana=nada');
         }
       } catch (e) {
         devError('[LOAD] Supabase error/sync error:', e);

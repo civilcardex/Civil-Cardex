@@ -122,7 +122,8 @@ export function computeBajanteVentTable(
     'Llenado',
     'Caudal (LPS)',
     'Manning',
-    'D calculado (")',
+    // Sin repetir "vent" (orig. usuario): el grupo ya dice "Tubería de ventilación".
+    'D calc (")',
     'D propuesto (")',
     'Chequeo',
     'Caudal máximo (LPS)',
@@ -133,8 +134,8 @@ export function computeBajanteVentTable(
     'Fricción (f)',
     'Caudal aire (LPS)',
     'Longitud bajante (m)',
-    'D vent calc (")',
-    'D vent propuesto (")',
+    'D calc (")',
+    'D propuesto (")',
   ];
   const headerGroups: (string | MemoriaHeaderGroup)[] = [
     { label: 'Información común', span: 8 },
@@ -155,16 +156,18 @@ export function computeBajanteVentTable(
       if (targetPlan && targetPlan.nivel != null) {
         targetPiso = targetPlan.nivel.toString();
         const targetPisoVal = fmtPiso(targetPiso, pisos);
-        const isTgtBajante = targetRamal.startsWith('B') || targetRamal.startsWith('M');
-        const prefix = isTgtBajante ? 'Bajante: ' : 'Ramal: ';
-        destinoVal = targetRamal ? `${prefix}${targetPisoVal}-${targetRamal}` : targetPisoVal;
+        // Etiqueta limpia (orig. usuario): sin prefijo "Bajante:" — `BAN1-P1`, código + piso.
+        destinoVal = targetRamal ? `${targetRamal}-${targetPisoVal}` : targetPisoVal;
       } else {
         destinoVal = targetRamal || '—';
       }
     }
     const ramalesIds = (t.recibeDeIds || []).filter(
-      // Solo ramales del MISMO piso del bajante: el id debe existir en el doc de ese piso.
-      (rid) => !!storageByPlan[planIdStr]?.ramales?.some((r) => r.id === rid),
+      // Solo ramales del MISMO piso del bajante (el id debe existir en el doc) y NUNCA
+      // LDesvios (orig. usuario: el LD_ (ramal desvio entrepisos) es conector entre pisos,
+      // no un ramal de la red — no va en "Ramales asociados").
+      (rid) =>
+        !rid.startsWith('LD_') && !!storageByPlan[planIdStr]?.ramales?.some((r) => r.id === rid),
     );
     const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
     let totalUD = getBajanteTotalUD(t._key || `${t.id}-${planIdStr}`);

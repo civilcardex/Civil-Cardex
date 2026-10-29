@@ -154,7 +154,11 @@ export function calculaFilaBajante(t: Tramo, ctx: ContextoBajanteRow): FilaBajan
   const idsDelPiso = new Set(
     ctx.tramosSan.filter((x) => String(x.planId ?? '') === String(t.planId ?? '')).map((x) => x.id),
   );
-  const ramalesIds = (t.recibeDeIds || []).filter((rid) => idsDelPiso.has(rid));
+  const ramalesIds = (t.recibeDeIds || []).filter(
+    // LD_ (ramal desvio entrepisos) fuera (orig. usuario): conector entre pisos, no un
+    // ramal de la red — no va en "Ramales asociados".
+    (rid) => !rid.startsWith('LD_') && idsDelPiso.has(rid),
+  );
   // Respaldo geométrico (ver geoAsocByBaj): ramales san del mismo plano cuyo extremo
   // toca el bajante, aunque recibeDeIds no los registre.
   const geoIds: string[] = ctx.geoAsocByBaj[`${t.id}-${String(t.planId ?? '')}`] || [];

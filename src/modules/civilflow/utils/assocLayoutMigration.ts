@@ -1,5 +1,5 @@
 ﻿/** Migra y barre la asociación entrepisos (marca assocLayout): layout 2 = fantasma + LD_ (ramal desvio entrepisos) abajo. */
-import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, trazosDocHasContent } from '../services/storageService.ts';
 import { splitPtr } from './keys.ts';
 import { registrarLdesvioComoAsociado } from './bajanteAssocShared.ts';
 import { TRAZOS_PLAN_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys.ts';
@@ -142,6 +142,10 @@ export function markAssocLayout(planId: string | number): void {
     return;
   const data = loadData(planId);
   if (data.assocLayout === 2) return;
+  // Doc SIN contenido: no hay nada que migrar y marcarlo lo PERSISTIRÍA en BD con ts fresco
+  // (saveData → RPC destructivo) — un vacío transitorio (engine sin hidratar, caché recién
+  // vaciada) borraba el piso. La marca se pone cuando el piso tenga contenido.
+  if (!trazosDocHasContent(data)) return;
   data.assocLayout = 2;
   saveData(planId, data);
 }
@@ -185,6 +189,9 @@ export function migrateAssocLayoutOnLoad(planId: string | number, nivelLabel: st
   // y además dejaba la clave no-null, bloqueando para siempre el relleno del prefetch.
   if (!hasCachedPlan(pid)) return;
   let data = loadData(pid);
+  // Mismo guard anti-vacío que markAssocLayout: un doc sin elementos no se marca NI se
+  // re-guarda (el saveData de la migración empujaba el vacío a BD con ts fresco).
+  if (!trazosDocHasContent(data)) return;
   const ghosts = data.crossFloorGhosts || [];
   let touched = false;
   // Marca de versión sobre el documento YA cargado: cada saveData de abajo la persiste sin

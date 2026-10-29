@@ -49,7 +49,7 @@ export function saveTrazosLocales(planId: string | number, doc: Record<string, u
   }
   // false = la caché local NO se pudo escribir (cuota llena): quien llama tiene que saberlo,
   // si no persiste una corrección y cree que sí (el doc viejo sigue en storage).
-  const ok = saveToStorage(TRAZOS_PREFIX + String(planId), doc);
+  const ok = saveToStorage(TRAZOS_PREFIX + String(planId), doc, { sinDiario: true });
   journalTrazos('local', planId, doc, ok ? undefined : 'cuota-llena');
   return ok;
 }
@@ -69,7 +69,7 @@ export function localGanaABdPorTs(
   return Number(localTs ?? 0) > Number(dbTs ?? 0);
 }
 
-export function saveToStorage(key: string, data: unknown): boolean {
+export function saveToStorage(key: string, data: unknown, opts?: { sinDiario?: boolean }): boolean {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(data));
   } catch (e) {
@@ -81,6 +81,13 @@ export function saveToStorage(key: string, data: unknown): boolean {
       /* ignore */
     }
     return false;
+  }
+  // Caja negra (solo DEV): las escrituras CRUDAS del doc de trazos (saveData cross-floor,
+  // handleSaveConfig, drawingWrites, writePlanDoc...) no pasaban por saveTrazosLocales y eran
+  // invisibles en el diario — justo el hueco donde vive el "piso vaciado". saveTrazosLocales
+  // anota su propia entrada `local` (sinDiario) para no duplicar.
+  if (!opts?.sinDiario && key.startsWith(TRAZOS_PREFIX)) {
+    journalTrazos('raw', key.slice(TRAZOS_PREFIX.length), data);
   }
   if (quotaFailedKeys.size > 0) {
     quotaFailedKeys.clear();

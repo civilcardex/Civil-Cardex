@@ -125,11 +125,16 @@ export function reanclarClavesDesdeTrazosLocales(plans: SyncPlanInput[]): number
     // verdad local — se conserva el comportamiento anterior.
     const elVivoEnCargado = (planIdStr: string, elId: string): boolean =>
       !_loadedLive || _loadedLive.planId !== planIdStr || _loadedLive.ids.has(elId);
+    // codoReventilado CUENTA como portador (orig. usuario: inodoros perdían la asignación al
+    // reingresar tras cambiar el codo90 por reventilado — el re-anclaje no lo reconocía y el
+    // conteo san_<id>_<plan> no se restauraba desde fixtures).
     const ramalLlevaAparato = (r: FixtureCarrier & RawElement): boolean =>
       !!r.aparatoInicio ||
       !!r.aparatoFin ||
       r.accesorioInicio === 'codo90rmSube' ||
       r.accesorioFin === 'codo90rmSube' ||
+      r.accesorioInicio === 'codoReventilado' ||
+      r.accesorioFin === 'codoReventilado' ||
       r.accesorioInicio === 'sifon' ||
       r.accesorioFin === 'sifon';
     for (const r of (data.ramales || []) as (FixtureCarrier & RawElement)[]) {

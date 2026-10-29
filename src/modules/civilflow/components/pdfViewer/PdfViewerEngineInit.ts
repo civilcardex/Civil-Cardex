@@ -4,9 +4,7 @@ import { pdfDeCache, pdfACache, calentarPdfs, marcarPrimerPisoCargado } from './
 import { instalarCfCam } from './diagCamera.ts';
 import { useReRasterEscala } from './useReRasterScale.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
-import { saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import { cargarMallas } from '../../lib/PlanoEngine/nodos';
 import {
@@ -17,6 +15,7 @@ import {
   type RenderReq,
 } from '../../utils/planScale.ts';
 import { registraCarga } from '../../utils/loadDiagnostics.ts';
+import { guardarAlDesmontar } from './persistStrokes.ts';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -568,15 +567,7 @@ export function usePdfViewerEngine({
         // vuelo con el engine a medio hidratar persistía un trabajo vacío/ajeno con ts fresco
         // bajo el id del plano entrante — borrado de la caché y, vía autosave/BD, del piso.
         // eslint-disable-next-line react-hooks/exhaustive-deps -- el valor VIVO del ref en el cleanup es el objetivo del guard
-        if (!loadingPlanRef.current && eng._dirty) {
-          const id = eng._loadedPlanId || currentIdAtInit || 'work';
-          const work = eng.saveWork();
-          work.ts = Date.now();
-          saveToStorage(TRAZOS_PREFIX + id, work);
-          if (id !== 'work') {
-            saveTrazosToDB(String(id), work);
-          }
-        }
+        guardarAlDesmontar(eng, currentIdAtInit, loadingPlanRef.current);
       } catch (e) {
         devError('[CLEANUP] error', e);
       }

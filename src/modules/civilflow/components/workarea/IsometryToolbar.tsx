@@ -1,16 +1,13 @@
-import type { RefObject, Dispatch, SetStateAction } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+  type RefObject,
+} from 'react';
 import type { PlanoNet } from '../../lib/PlanoEngine/PlanoState.ts';
 
-const IsometriaToolbar_S2: React.CSSProperties = {
-  padding: '3px 8px',
-  fontSize: 12,
-  fontFamily: 'Geist,monospace',
-  borderRadius: 3,
-  border: '1px solid #3a494a',
-  cursor: 'pointer',
-  background: '#1e2024',
-  color: '#b9caca',
-};
 const IsometriaToolbar_S3: React.CSSProperties = {
   padding: '3px 8px',
   fontSize: 12,
@@ -53,26 +50,16 @@ const IsometriaToolbar_S6: React.CSSProperties = {
   cursor: 'pointer',
   textAlign: 'left',
 };
-const IsometriaToolbar_planosLabel: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  fontSize: 12,
-  color: '#849495',
-  fontFamily: 'Geist,monospace',
-  cursor: 'pointer',
-  marginLeft: 8,
-  padding: '3px 8px',
-  borderRadius: 3,
-};
 
 interface IsometriaToolbarProps {
   nets: PlanoNet[];
   activeNets: Set<string>;
   toggleNet: (netId: string) => void;
-  showPlanos: boolean;
-  setShowPlanos: (v: boolean) => void;
-  planosCount: string;
+  /** Pisos visibles (orig. usuario): null = todos; popover de checkboxes. */
+  pisosVisibles: Set<number> | null;
+  setPisosVisibles: Dispatch<SetStateAction<Set<number> | null>>;
+  /** Pisos con contenido (nivel + etiqueta corta) para los chips. */
+  pisosIso: Array<{ nivel: number; label: string }>;
   rotX: number;
   setRotX: (v: number) => void;
   rotZ: number;
@@ -81,7 +68,6 @@ interface IsometriaToolbarProps {
   setScaleZ: (v: number) => void;
   zoom: number;
   setZoom: (v: number) => void;
-  fitView: () => void;
   showExportMenu: boolean;
   setShowExportMenu: Dispatch<SetStateAction<boolean>>;
   exportRef: RefObject<HTMLDivElement | null>;
@@ -93,9 +79,9 @@ export default function IsometriaToolbar({
   nets,
   activeNets,
   toggleNet,
-  showPlanos,
-  setShowPlanos,
-  planosCount,
+  pisosVisibles,
+  setPisosVisibles,
+  pisosIso,
   rotX,
   setRotX,
   rotZ,
@@ -104,7 +90,6 @@ export default function IsometriaToolbar({
   setScaleZ,
   zoom,
   setZoom,
-  fitView,
   showExportMenu,
   setShowExportMenu,
   exportRef,
@@ -152,21 +137,13 @@ export default function IsometriaToolbar({
         })}
       </div>
 
-      <label
-        style={{
-          ...IsometriaToolbar_planosLabel,
-          border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`,
-          background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent',
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={showPlanos}
-          onChange={(e) => setShowPlanos(e.target.checked)}
-          style={{ accentColor: '#4D8FF7', margin: 0 }}
+      {pisosIso.length > 1 && (
+        <PisosPopover
+          pisosIso={pisosIso}
+          pisosVisibles={pisosVisibles}
+          setPisosVisibles={setPisosVisibles}
         />
-        Planos ({planosCount})
-      </label>
+      )}
 
       <div style={{ flex: 1 }} />
 
@@ -322,9 +299,6 @@ export default function IsometriaToolbar({
         <span style={{ width: 36, textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
       </label>
 
-      <button type="button" onClick={fitView} title="Encuadrar todo" style={IsometriaToolbar_S2}>
-        ⊞
-      </button>
       <div ref={exportRef} style={{ position: 'relative', display: 'inline-block' }}>
         <button
           type="button"
@@ -359,6 +333,147 @@ export default function IsometriaToolbar({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+const PisosPopover_box: React.CSSProperties = {
+  position: 'relative',
+  display: 'inline-block',
+};
+const PisosPopover_btn: React.CSSProperties = {
+  padding: '3px 10px',
+  fontSize: 12,
+  fontFamily: 'Geist,monospace',
+  borderRadius: 3,
+  border: '1px solid',
+  cursor: 'pointer',
+  background: '#1e2024',
+  fontWeight: 600,
+};
+const PisosPopover_menu: React.CSSProperties = {
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  zIndex: 120,
+  background: '#1e2024',
+  border: '1px solid #3a494a',
+  borderRadius: 3,
+  padding: '6px 4px',
+  minWidth: 170,
+  maxHeight: 280,
+  overflowY: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+};
+const PisosPopover_row: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontSize: 12,
+  fontFamily: 'Geist,monospace',
+  color: '#b9caca',
+  cursor: 'pointer',
+  padding: '3px 8px',
+  borderRadius: 3,
+  userSelect: 'none',
+};
+const PisosPopover_Quick: React.CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  color: '#8ab4f7',
+  cursor: 'pointer',
+  fontSize: 11.5,
+  fontFamily: 'Geist,monospace',
+  textAlign: 'left',
+  padding: '3px 8px',
+};
+
+/** Selector de pisos visibles ("Pisos: Todos ▾"): popover con checkbox por piso + accesos
+ *  Todos/Ninguno — escala a cualquier cantidad de pisos sin engordar la barra (patrón del
+ *  selector de redes de las memorias). Ocultar un piso quita su PLANO y sus elementos; las
+ *  piezas asociadas a pisos visibles siguen dibujándose. */
+function PisosPopover({
+  pisosIso,
+  pisosVisibles,
+  setPisosVisibles,
+}: {
+  pisosIso: Array<{ nivel: number; label: string }>;
+  pisosVisibles: Set<number> | null;
+  setPisosVisibles: Dispatch<SetStateAction<Set<number> | null>>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const fuera = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', fuera);
+    return () => document.removeEventListener('mousedown', fuera);
+  }, [open]);
+  const total = pisosIso.length;
+  const visibles = pisosVisibles ? pisosVisibles.size : total;
+  const etiqueta =
+    visibles === total
+      ? `Pisos: todos (${total})`
+      : visibles === 0
+        ? 'Pisos: ninguno'
+        : `Pisos: ${visibles} de ${total} visibles`;
+  return (
+    <div ref={ref} style={PisosPopover_box}>
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title="Elige qué pisos ver en la isometría: los pisos desmarcados quitan su plano y sus elementos (las tuberías conectadas a pisos visibles siguen dibujándose)."
+        style={{
+          ...PisosPopover_btn,
+          borderColor: visibles === total ? '#3a494a' : '#4D8FF7',
+          color: visibles === total ? '#b9caca' : '#8ab4f7',
+        }}
+      >
+        {etiqueta} {open ? '▴' : '▾'}
+      </button>
+      {open && (
+        <div style={PisosPopover_menu}>
+          <button type="button" onClick={() => setPisosVisibles(null)} style={PisosPopover_Quick}>
+            Todos
+          </button>
+          <button
+            type="button"
+            onClick={() => setPisosVisibles(new Set())}
+            style={PisosPopover_Quick}
+          >
+            Ninguno
+          </button>
+          {pisosIso.map((p) => {
+            const isOn = !pisosVisibles || pisosVisibles.has(p.nivel);
+            return (
+              <label key={p.nivel} style={PisosPopover_row}>
+                <input
+                  type="checkbox"
+                  checked={isOn}
+                  onChange={() =>
+                    setPisosVisibles((prev) => {
+                      const todos = pisosIso.map((x) => x.nivel);
+                      const base = prev ?? new Set(todos);
+                      const nx = new Set(base);
+                      if (nx.has(p.nivel)) nx.delete(p.nivel);
+                      else nx.add(p.nivel);
+                      return nx.size === todos.length ? null : nx;
+                    })
+                  }
+                  style={{ accentColor: '#4D8FF7', margin: 0, cursor: 'pointer' }}
+                />
+                {p.label}
+              </label>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

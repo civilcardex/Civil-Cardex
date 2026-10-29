@@ -16,7 +16,7 @@ export interface TrazosJournalEntry {
   /** Hora UTC legible (hh:mm:ss.mmm): comparable con los ts de `__cfSave`. */
   t: string;
   plan: string;
-  /** local | db | db-block | persist-block | wipe */
+  /** local | raw | load | db | db-block | persist-block | cleanup | cleanup-skip | wipe */
   op: string;
   ram?: number;
   baj?: number;
@@ -39,6 +39,22 @@ function conteos(doc: unknown): { ram?: number; baj?: number; gho?: number; ts?:
     gho: n('crossFloorGhosts'),
     ts: typeof d.ts === 'number' ? d.ts : null,
   };
+}
+
+/** Resumen corto de un doc para el `detalle` del diario: `ram/baj/gho@ts` (un doc string se
+ *  parsea; uno ausente se lee `vacio`). Ej: `3/1/0@1793211175922`. */
+export function resumenTrazos(doc: unknown): string {
+  let d = doc;
+  if (typeof d === 'string') {
+    try {
+      d = JSON.parse(d) as unknown;
+    } catch {
+      return 'json-roto';
+    }
+  }
+  const c = conteos(d);
+  if (c.ram == null && c.baj == null && c.gho == null) return 'vacio';
+  return `${c.ram ?? 0}/${c.baj ?? 0}/${c.gho ?? 0}@${c.ts ?? 'sin-ts'}`;
 }
 
 /** Anota una escritura/lectura destructiva del doc de trazos. Best-effort: nunca lanza ni
