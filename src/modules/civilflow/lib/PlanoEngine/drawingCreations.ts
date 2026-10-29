@@ -7,7 +7,6 @@ export {
   handleMontanteDown,
   handleCreateMontanteMidBody,
   handleCreateCalentadorMidBody,
-  handleCreateTeeCapStub,
   handleCalentadorDown,
 } from './creations/montantes.ts';
 export { handleCanalDown, commitCanalAncho } from './creations/channels';

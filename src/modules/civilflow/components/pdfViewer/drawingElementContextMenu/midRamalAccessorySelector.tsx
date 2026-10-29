@@ -93,7 +93,10 @@ export function MidRamalAccessorySelector({
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-      {element.net !== 'san' && !clicEnExtremo && (
+      {/* Bug (orig. usuario): al asignar, el vértice insertado cae EXACTO al clic → al reabrir,
+          clicEnExtremo salía true y el desplegable desaparecía sin poder eliminar. Si hay un
+          accMed existente en el punto, el desplegable se muestra igual. */}
+      {element.net !== 'san' && (!clicEnExtremo || existingKey) && (
         <>
           <div style={MENU_SECTION_LABEL_ROW_STYLE}>Accesorio en cuerpo del ramal</div>
           <select

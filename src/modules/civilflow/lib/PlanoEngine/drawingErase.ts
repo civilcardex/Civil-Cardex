@@ -1,18 +1,7 @@
-import {
-  NETS,
-  allocNetNumber,
-  allocTributaryNumber,
-  rootTributarioLabel,
-  uniqRamalId,
-} from './PlanoState.ts';
 import type { PlanoRamal, PlanoBajante, IPlanoEngineCore } from './PlanoState.ts';
 import { pointToSegmentDist } from './HitTester.ts';
-import { isDeletedYeeDoblePart } from './deleteYeePreserve.ts';
-import { mergeTouchingRemnant } from './deleteRemerge.ts';
-import { assignCodoAfterBranchDelete } from './deleteJunctionCleanup.ts';
 import { purgarEstadoRamalesBorrados } from './deleteCascade.ts';
-import { _firstSegmentAngle, angleAtHalfLength } from './drawingAngles.ts';
-import { _statusMsg, calculateRamalLength } from './ramalMeasure.ts';
+import { angleAtHalfLength } from './drawingAngles.ts';
 import { _midpoint } from './drawingUtils.ts';
 
 /** Borra la punta de la tubería más cercana a donde hiciste clic. Los dobleces del medio no se
@@ -91,11 +80,12 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
   engine._markDirty();
 }
 
-/** La herramienta borrador: un clic sobre cualquier elemento lo borra; si es una tubería, le
- *  recorta la punta más cercana (no toda entera). */
+/** La herramienta borrador: un clic sobre cualquier elemento lo borra. Tuberías: el ramal
+ *  COMPLETO con sus símbolos (orig. usuario 2026-10-29). Para recortar puntas existe la
+ *  herramienta de borrar segmento (deleteSegmentAt). */
 export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
-  // Ventana anti-alerta del sweep de aparatos: recortar/partir/borrar con el borrador genera
-  // estados transitorios que el sweep flagueaba (orig. usuario). [] = solo abre la ventana.
+  // Ventana anti-alerta del sweep de aparatos: borrar genera estados transitorios que el
+  // sweep flagueaba (orig. usuario). [] = solo abre la ventana, sin ids.
   engine._emitDelete([]);
   engine.selectAt(cx, cy);
   const selId = engine.selId;
@@ -140,228 +130,24 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
   }
 }
 
-/**
- * Recorta o borra el ramal ya seleccionado (via del teclado, sin reseleccionar).
- */
-/** Parte la tubería en dos por el punto donde hiciste clic (los accesorios se reparten entre las
- *  dos mitades). */
-function splitRamalAtSegment(engine: IPlanoEngineCore, r: PlanoRamal, segIdx: number): void {
-  const downstreamPts = r.pts.slice(segIdx + 1);
-  if (downstreamPts.length < 2) return;
-  const upPts = r.pts.slice(0, segIdx + 1);
-  // Accesorio que estaba en el punto de corte (pts[segIdx]) pasa a ser el extremo final de la
-  // mitad superior.
-  const accAtCut =
-    r.accMed?.[`accMed${segIdx}`] || (segIdx === r.pts.length - 1 ? r.accesorioFin : '');
-  // Redistribuir accMed: los índices <= segIdx quedan en la mitad superior; los > segIdx van a
-  // la mitad inferior desplazados.
-  const upAccMed: Record<string, string> = {};
-  const downAccMed: Record<string, string> = {};
-  for (const [k, v] of Object.entries(r.accMed || {})) {
-    const m = k.match(/^accMed(\d+)$/);
-    if (!m) continue;
-    const idx = parseInt(m[1], 10);
-    if (idx < segIdx) upAccMed[`accMed${idx}`] = v;
-    else if (idx > segIdx + 1) downAccMed[`accMed${idx - (segIdx + 1)}`] = v;
-  }
-  const upLast = upPts.length - 1;
-  if (accAtCut) upAccMed[`accMed${upLast}`] = accAtCut;
-  // El accesorioInicio del downstream (antiguo accMed en pts[segIdx+1], si existía).
-  const downStartAcc = r.accMed?.[`accMed${segIdx + 1}`] || '';
-
-  const netDef = NETS.find((n) => n.id === r.net);
-  const pfx = netDef ? netDef.lbl : 'R';
-  const isTrib = r.tipo === 'tributario';
-  const rootLabel = isTrib ? rootTributarioLabel(engine.ramales, r.id) : '';
-  const cnt = isTrib
-    ? allocTributaryNumber(engine, rootLabel)
-    : allocNetNumber(engine, r.net, 'ramal', (n) =>
-        engine.ramales.some((x) => x.id === `${pfx}${n}` || x.label === `${pfx}${n}`),
-      );
-  const newId = isTrib ? uniqRamalId() : pfx + cnt;
-  const [downLabelX, downLabelY] = _midpoint(downstreamPts);
-  const downLabelAngle = angleAtHalfLength(downstreamPts);
-  const downstream: PlanoRamal = {
-    ...r,
-    id: newId,
-    pts: downstreamPts,
-    totalL: calculateRamalLength(downstreamPts, engine),
-    label: isTrib ? `T${cnt}${rootLabel}` : `${pfx}${cnt}`,
-    labelX: downLabelX,
-    labelY: downLabelY,
-    labelAngle: downLabelAngle,
-    accMed: downAccMed,
-    accesorioInicio: downStartAcc || '',
-    diametroInicio: '',
-    mergesFrom: undefined,
-  };
-
-  // Truncar la mitad superior.
-  const upLen = calculateRamalLength(upPts, engine);
-  r.pts = upPts;
-  r.totalL = upLen;
-  r.accMed = upAccMed;
-  if (accAtCut) {
-    r.accesorioFin = accAtCut;
-    delete r.accMed[`accMed${upLast}`];
-  } else {
-    r.accesorioFin = '';
-  }
-  r.labelX = _midpoint(upPts)[0];
-  r.labelY = _midpoint(upPts)[1];
-  if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(upPts);
-
-  engine.ramales.push(downstream);
-}
-
-/** Borrador sobre una tubería ya seleccionada: recorta desde el punto donde hiciste clic, o la
- *  borra completa si solo tiene un tramo. */
+/** Borrador sobre una tubería ya seleccionada: borra el ramal COMPLETO con sus accMed
+ *  (símbolos). Antes recortaba/partía por los vértices con símbolo — el ramal quedaba troceado
+ *  (orig. usuario). Para recortar puntas existe deleteSegmentAt. */
 export function eraseRamalAt(
   engine: IPlanoEngineCore,
   r: PlanoRamal,
-  cx: number,
-  cy: number,
+  _cx: number,
+  _cy: number,
 ): void {
   // Path del teclado (Supr sobre ramal seleccionado): mismo anti-alerta que el borrador.
   engine._emitDelete([]);
-  const plane = engine.toPlane(cx, cy);
-  const HIT_DIST = 10 / engine.zoom;
-
-  let bestIdx = -1,
-    bestSegIdx = -1,
-    bestD = Infinity;
-  for (let i = 0; i < r.pts.length; i++) {
-    const d = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
-    if (d < bestD) {
-      bestD = d;
-      bestIdx = i;
-      bestSegIdx = -1;
-    }
-  }
-  if (bestD > HIT_DIST) {
-    for (let i = 0; i < r.pts.length - 1; i++) {
-      const d = pointToSegmentDist(
-        plane.x,
-        plane.y,
-        r.pts[i][0],
-        r.pts[i][1],
-        r.pts[i + 1][0],
-        r.pts[i + 1][1],
-      );
-      if (d < bestD) {
-        bestD = d;
-        bestSegIdx = i;
-        const dA = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
-        const dB = Math.hypot(plane.x - r.pts[i + 1][0], plane.y - r.pts[i + 1][1]);
-        bestIdx = dA <= dB ? i : i + 1;
-      }
-    }
-  }
-
-  // ¿Hay tapón de yee anclado en `pt`? En ese punto no se asigna un codo de plano
-  // (el tapón marca el extremo abierto del caso yee — orig. usuario).
-  const taponAt = (pt: number[]) =>
-    engine.ramales.some((rr) => {
-      if (!rr.pts || rr.pts.length < 2) return false;
-      const at = (p: number[]) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < 0.5;
-      return (
-        (rr.accesorioInicio === 'tapon' && at(rr.pts[0])) ||
-        (rr.accesorioFin === 'tapon' && at(rr.pts[rr.pts.length - 1])) ||
-        (!!rr.accMed &&
-          Object.entries(rr.accMed).some(([k, v]) => {
-            const m = k.match(/^accMed(\d+)$/);
-            const idx = m ? parseInt(m[1], 10) : -1;
-            return v === 'tapon' && idx >= 0 && !!rr.pts[idx] && at(rr.pts[idx]);
-          }))
-      );
-    });
-
-  // El ramal del brazo de una yee doble se borra COMPLETO con cualquier clic del borrador:
-  // recortarlo/partirlo solo lo desconectaba y el resto quedaba huérfano en el plano (orig.
-  // usuario). deleteSelected lo quita individualmente (sin clúster) y preserveYeeDobleAt deja
-  // el tapón/símbolo de la yee en el sobreviviente.
-  if (isDeletedYeeDoblePart(engine, r)) {
-    const isDivisorYee = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
-    engine.deleteSelected(undefined, { noMerge: !isDivisorYee });
-    engine._emitSelect(null);
-    engine.selId = null;
-    engine._emitStatus('Brazo de yee doble eliminado');
-    engine.render();
-    engine._markDirty();
-    return;
-  }
-
-  // Segmento a segmento, SIN excepciones (orig. usuario): ramales/tributarios se recortan o
-  // parten por el segmento clicado aunque sean mitades de una división (mergesFrom), vengan de
-  // líneas guía o estén conectados a cualquier cosa. Solo un ramal de 1 segmento (2 puntos) se
-  // elimina completo — el segmento ES el ramal — y con noMerge para no arrastrar al resto del
-  // conjunto unido.
-  const isEndpoint = bestIdx === 0 || bestIdx === r.pts.length - 1;
-  const canTrim = r.pts.length > 2;
-  // Segmento intermedio clickeado: partir el ramal en dos en ese segmento
-  // (cada mitad conserva su parte; el segmento clicado queda eliminado).
-  const isMidSegmentClick = bestSegIdx > 0 && bestSegIdx < r.pts.length - 2 && r.pts.length >= 4;
-  if (isMidSegmentClick) {
-    // Los dos puntos del segmento eliminado quedan como extremos abiertos (fin de la mitad
-    // superior, inicio de la inferior): cada uno puede formar una esquina L nueva con un ramal
-    // que termina ahí — mismo chequeo que el recorte de extremo.
-    const cutA = r.pts[bestSegIdx];
-    const cutB = r.pts[bestSegIdx + 1];
-    splitRamalAtSegment(engine, r, bestSegIdx);
-    if (!taponAt(cutA)) assignCodoAfterBranchDelete(engine, cutA);
-    if (!taponAt(cutB)) assignCodoAfterBranchDelete(engine, cutB);
-    engine._emitSelect(null);
-    engine.selId = null;
-    engine._emitStatus('Segmento eliminado — ramal dividido');
-  } else {
-    if (!isEndpoint && canTrim) {
-      const d0 = Math.hypot(plane.x - r.pts[0][0], plane.y - r.pts[0][1]);
-      const dLast = Math.hypot(
-        plane.x - r.pts[r.pts.length - 1][0],
-        plane.y - r.pts[r.pts.length - 1][1],
-      );
-      bestIdx = d0 <= dLast ? 0 : r.pts.length - 1;
-    }
-    if (canTrim && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
-      // Copia ANTES del splice (r.pts.splice muta el mismo array).
-      const oldPts = r.pts.slice();
-      r.pts.splice(bestIdx, 1);
-      r.totalL = calculateRamalLength(r.pts, engine);
-      if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
-      const [mx, my] = _midpoint(r.pts);
-      r.labelX = mx;
-      r.labelY = my;
-      // El recorte puede dejar una esquina en L (el vértice recortado era la unión con otro
-      // ramal): asignar codo de plano como haría el borrado completo — salvo que el punto
-      // quedó ocupado por el tapón del caso yee (orig. usuario).
-      if (!taponAt(oldPts[bestIdx])) assignCodoAfterBranchDelete(engine, oldPts[bestIdx]);
-      // El recorte también ABRE el extremo opuesto del segmento eliminado: si otro ramal termina
-      // ahí, nace una esquina L nueva en ese punto (desarmar una yee doble deja la esquina
-      // RS1|RS2 con su codo 45 — orig. usuario).
-      const openEnd = bestIdx === 0 ? r.pts[0] : r.pts[r.pts.length - 1];
-      if (!taponAt(openEnd)) assignCodoAfterBranchDelete(engine, openEnd);
-      engine._emitSelect(null);
-      engine.selId = null;
-      engine._emitStatus('Segmento extremo recortado');
-      // Yee desarmada con el borrador (orig. usuario): tras el recorte, los brazos restantes
-      // que se tocan donde estaba el vértice eliminado se funden en UN ramal.
-      mergeTouchingRemnant(engine, [oldPts[bestIdx]]);
-    } else {
-      // Ramal de un solo segmento: el segmento ES el ramal — se elimina completo. noMerge
-      // (borrado quirúrgico, sin re-unir) SOLO si el ramal no partió a otro: borrar el trazo
-      // que dividió un ramal debe RE-UNIR las mitades (remerge) — con noMerge el ramal seguía
-      // partido (orig. usuario: RS4|RS5). Los divisores no expanden clúster (splitMembersFor
-      // devuelve []), así que noMerge:false solo habilita el re-merge.
-      const isDivisor = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
-      const removedPts = r.pts.slice();
-      engine.deleteSelected(undefined, { noMerge: !isDivisor });
-      engine._emitSelect(null);
-      engine.selId = null;
-      engine._emitStatus('Ramal eliminado');
-      // Yee desarmada: los sobrevivientes que se tocan donde estaba este ramal se funden.
-      mergeTouchingRemnant(engine, removedPts);
-    }
-  }
+  // El ramal del brazo de una yee doble ya tenía borrado completo con noMerge propio
+  // (recortarlo lo dejaba huérfano — orig. usuario); la regla general lo cubre igual.
+  const isDivisor = engine.ramales.some((x) => x.mergesFrom && x.mergesFrom[1] === r.id);
+  engine.deleteSelected(undefined, { noMerge: !isDivisor });
+  engine._emitSelect(null);
+  engine.selId = null;
+  engine._emitStatus('Ramal eliminado');
   engine.render();
   engine._markDirty();
 }

@@ -578,6 +578,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // codo45rc, codos_90_std): el arco que dibuja drawRamalPath en cada quiebre ES el codo — el
       // círculo "C90"/"C45" al lado solo reduce (REV se dibujaba mal: arco + disco encima = mancha).
       if (
+        // codo90rm (orig. usuario) SÍ dibuja glifo: en línea recta no hay quiebre que lo
+        // represente y el usuario espera ver el símbolo. Los demás codos de presión siguen
+        // sin disco (el arco del quiebre es el codo).
+        accType !== 'codo90rm' &&
         (accType.startsWith('codo90') ||
           accType.startsWith('codo45') ||
           accType.startsWith('codos_90')) &&
@@ -631,10 +635,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       px = branchDir.px;
       py = branchDir.py;
 
-      // realMmToCanvasPx piso en 1mm de papel (ver PlanoEngine.ts) — dividir a la mitad el
-      // argumento en mm solo es invisible a escalas comunes, ya que ambos caen en ese piso.
-      // Se divide el resultado en px.
-      const rad = engine.realMmToCanvasPx(23) * 0.6;
+      // Tamaño UNIFORME de los glifos de cuerpo (orig. usuario 2026-10-29): todos igual de
+      // grandes que teeSube/teeBaja (brazos mm2cvs(1.4), mismas tees geométricas). Todos escalan
+      // un rad acorde (antes realMmToCanvasPx(23)*0.6, visiblemente más chico que la tee).
+      const rad = accType.startsWith('tee')
+        ? engine.realMmToCanvasPx(23) * 0.6
+        : engine.mm2cvs(1.4) * 0.4;
 
       ctx.save();
       ctx.lineCap = 'round';

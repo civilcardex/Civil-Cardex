@@ -49,7 +49,6 @@ import {
   _calcPolyArea,
   handleCreateMontanteMidBody,
   handleCreateCalentadorMidBody,
-  handleCreateTeeCapStub,
   handleEraseDown,
   eraseRamalAt,
   handleDrawingMouseMove,
@@ -916,9 +915,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
   createCalentadorMidBody(ramalId: string, x: number, y: number, segmentIdx: number): void {
     handleCreateCalentadorMidBody(this, ramalId, x, y, segmentIdx);
-  }
-  createTeeCapStub(ramalId: string, accMedIdx: number, accId: 'tapon' | 'llaveTerminal'): void {
-    handleCreateTeeCapStub(this, ramalId, accMedIdx, accId);
   }
   rotateLabelSnap(): void {
     _rotateLabelSnap(this);

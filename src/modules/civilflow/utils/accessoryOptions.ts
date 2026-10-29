@@ -33,35 +33,30 @@ export function getAccessoryOptions(netId: string) {
     }));
   }
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
-    // AF/AC: válvulas (incluida llave terminal — válida como accesorio de extremo, ver
-    // ExtremeAccessoryEditor.tsx), válvulas de pie, reducciones, ampliaciones, otros, el codo
-    // medio 90° (codo90rm), y tee sube/baja/con tapón/con llave terminal (marcadores de
-    // glifo puros — no necesitan ramal aparte, a diferencia del auto-tee del montante). La
-    // teeDirecto simple sigue excluida: una tee plana siempre se auto-detecta geométricamente
-    // (renderJunctions.ts). El 'tapon' simple sigue excluido: tapar la pierna libre de una tee
-    // pasa por 'teeTapon' ahora, no por una tapa pelada sin marca de tee. teeReduccion/teeLado
-    // quedan excluidas de ESTE dropdown específicamente — siguen disponibles desde el contador
-    // de accesorios del sidebar y el modal de detección de uniones, solo que no como elección
-    // de glifo de cuerpo aquí.
+    // AF/AC (cuerpos, ped. usuario 2026-10-29): SIN reducción/ampliación/otros (cat 'Otros'),
+    // SIN llave terminal pelada (solo teeLlaveTerminal) y SIN codos sube/baja de cuerpo (la
+    // polaridad solo tiene sentido en extremos). teeDirecto excluida: la detecta el pase
+    // geométrico. teeTapon/teeReduccion/teeLado excluidas de este dropdown.
     return ACCESORIOS_HIDRO.filter(
       (a) =>
-        (a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||
+        (a.cat !== 'Otros' && a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||
         a.id === 'codo90rm' ||
         a.id === 'codo90rmSube' ||
         a.id === 'codo90rmBaja' ||
         a.id === 'teeSube' ||
         a.id === 'teeBaja' ||
-        // PUNTO 7b (orig. usuario): 'teeTapon' ("Tapón soldado") también fuera de los cuerpos.
         a.id === 'teeLlaveTerminal',
-    ).map((a) =>
-      a.id === 'codo90rm'
-        ? { value: a.id, label: 'Codo medio 90°' }
-        : a.id === 'codo90rmSube'
-          ? { value: a.id, label: 'Codo 90° sube' }
-          : a.id === 'codo90rmBaja'
-            ? { value: a.id, label: 'Codo 90° baja' }
-            : { value: a.id, label: a.nombre },
-    );
+    )
+      .filter((a) => a.id !== 'llaveTerminal')
+      .map((a) =>
+        a.id === 'codo90rm'
+          ? { value: a.id, label: 'Codo medio 90°' }
+          : a.id === 'codo90rmSube'
+            ? { value: a.id, label: 'Codo 90° sube' }
+            : a.id === 'codo90rmBaja'
+              ? { value: a.id, label: 'Codo 90° baja' }
+              : { value: a.id, label: a.nombre },
+      );
   }
   return [];
 }

@@ -1,11 +1,14 @@
 import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
 export function drawValveSymbols(a: AccSimboloArgs): boolean {
-  const { ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad } = a;
+  const { ctx, engine, accType, c, dx, dy, px, py, outX, outY } = a;
+  // Válvulas un POCO más grandes que el resto (orig. usuario 2026-10-29).
+  const rad = a.rad * 1.25;
   if (accType === 'valvCompuerta') {
+    // Un poco más grande para que la base TAPE el trazo (orig. usuario 2026-10-29); forma intacta.
     const triH = rad * 0.9;
     const triW = rad * 0.7;
-    const stem = rad * 1.5;
+    const stem = rad * 1.5; // tallo largo: levanta el cuerpo y la base tapa el trazo
     const capW = rad * 0.7;
 
     ctx.fillStyle = '#000000';
@@ -14,20 +17,22 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';
 
-    // Triángulo relleno apuntando perpendicular al ramal (a lo largo de px,py)
+    // Cuerpo desplazado perpendicular (−px): la BASE del triángulo queda sobre el trazo y el
+    // tallo (arriba) es más largo — la válvula monta el trazo sin cambiar de forma.
+    const cxb = { x: c.x - px * triH * 0.6, y: c.y - py * triH * 0.6 };
     ctx.beginPath();
-    ctx.moveTo(c.x + px * triH, c.y + py * triH);
-    ctx.lineTo(c.x + dx * triW, c.y + dy * triW);
-    ctx.lineTo(c.x - dx * triW, c.y - dy * triW);
+    ctx.moveTo(cxb.x + px * triH, cxb.y + py * triH);
+    ctx.lineTo(cxb.x + dx * triW, cxb.y + dy * triW);
+    ctx.lineTo(cxb.x - dx * triW, cxb.y - dy * triW);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
     // Tallo desde el centro, perpendicular al ramal
-    const stemEndX = c.x + px * stem;
-    const stemEndY = c.y + py * stem;
+    const stemEndX = cxb.x + px * stem;
+    const stemEndY = cxb.y + py * stem;
     ctx.beginPath();
-    ctx.moveTo(c.x, c.y);
+    ctx.moveTo(cxb.x, cxb.y);
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
 

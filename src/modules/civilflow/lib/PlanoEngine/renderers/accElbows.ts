@@ -2,6 +2,17 @@ import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
 export function drawCodoSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, rad } = a;
+  if (accType === 'codo90rm') {
+    // Disco blanco pelado (orig. usuario: sin el C90 interior).
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 0.5 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    return true;
+  }
   if (accType === 'codoSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';

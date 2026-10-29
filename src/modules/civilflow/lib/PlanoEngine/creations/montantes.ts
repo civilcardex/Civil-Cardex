@@ -1,7 +1,7 @@
 import { MONTANTE_NETS } from './cajaBajante';
 // Creación de montantes (gas/ac/af), calentadores y stubs de tee a mitad de cuerpo.
 import { NETS } from '../PlanoState.ts';
-import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
+import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { calculateRamalLength, _statusMsg } from '../ramalMeasure.ts';
 import { maxDiametroLabel } from '../PlanoEngineDrawing.ts';
 import { flowEndsAt, flowStartsAt } from '../flowChecks.ts';
@@ -324,92 +324,6 @@ function pushCalentadorBajante(engine: IPlanoEngineCore, x: number, y: number): 
 // dirección libre (perpendicular) propia de la tee, tapado con el accesorio elegido en su
 // extremo lejano — el glifo del accesorio necesita un extremo de ramal real donde renderizarse,
 // porque no existe tal cosa como "un tapón sin tubería".
-/** Deja un tapón en la punta libre de una T: crea un pedacito de tubería de 300 mm con el tapón,
- *  porque el glifo necesita un extremo real donde dibujarse. */
-export function handleCreateTeeCapStub(
-  engine: IPlanoEngineCore,
-  ramalId: string,
-  accMedIdx: number,
-  accId: 'tapon' | 'llaveTerminal',
-): void {
-  const r = engine.ramales.find((rr) => rr.id === ramalId);
-  if (!r || !r.pts || accMedIdx <= 0 || accMedIdx >= r.pts.length - 1) return;
-  const pt = r.pts[accMedIdx];
-  const prev = r.pts[accMedIdx - 1];
-  const next = r.pts[accMedIdx + 1];
-  const dxIn = pt[0] - prev[0],
-    dyIn = pt[1] - prev[1];
-  const lenIn = Math.hypot(dxIn, dyIn);
-  const dxOut = next[0] - pt[0],
-    dyOut = next[1] - pt[1];
-  const lenOut = Math.hypot(dxOut, dyOut);
-  const uxIn = lenIn > 0.01 ? dxIn / lenIn : 1,
-    uyIn = lenIn > 0.01 ? dyIn / lenIn : 0;
-  const uxOut = lenOut > 0.01 ? dxOut / lenOut : uxIn,
-    uyOut = lenOut > 0.01 ? dyOut / lenOut : uyIn;
-  let bx = uxIn + uxOut,
-    by = uyIn + uyOut;
-  const bisLen = Math.hypot(bx, by);
-  if (bisLen > 0.01) {
-    bx /= bisLen;
-    by /= bisLen;
-  } else {
-    bx = uxIn;
-    by = uyIn;
-  }
-  // La misma bisectriz por la que se dibuja el glifo de la tee (el pase accMed de
-  // renderRamales.ts) — la rama libre corre perpendicular a ella.
-  const px_ = -by,
-    py_ = bx;
-
-  const STUB_LEN_MM = 300;
-  const endX = pt[0] + px_ * STUB_LEN_MM,
-    endY = pt[1] + py_ * STUB_LEN_MM;
-
-  const netDef = NETS.find((n) => n.id === r.net);
-  const pfx = netDef ? netDef.lbl : 'R';
-  const cnt = ++engine._netCounts[r.net].ramal;
-  const stub: PlanoRamal = {
-    id: `${pfx}${cnt}`,
-    net: r.net,
-    tipo: 'ramal',
-    padre: null,
-    pts: [
-      [pt[0], pt[1]],
-      [endX, endY],
-    ],
-    totalL: calculateRamalLength(
-      [
-        [pt[0], pt[1]],
-        [endX, endY],
-      ],
-      engine,
-    ),
-    label: `${pfx}${cnt}`,
-    ini: '',
-    fin: '',
-    piso: String(engine.nivelActual?.n ?? ''),
-    dz: '',
-    uc: 0,
-    nSalidas: 1,
-    labelX: (pt[0] + endX) / 2,
-    labelY: (pt[1] + endY) / 2,
-    labelAngle: 0,
-    material: r.material || '',
-    diametro: '',
-    pendiente: 0,
-    bloqueado: true,
-    accesorioFin: accId,
-    diametroFin: '',
-  };
-  engine.ramales.push(stub);
-  engine._renumberRamales(r.net);
-  engine.selId = stub.id;
-  engine._emitSelect(stub);
-  engine.render();
-  engine._markDirty();
-}
-
 /** Crea un calentador en ac (Agua Caliente) o gas (Gas). En af (Agua Frío) no existe: el agua
  *  fría se calienta DENTRO del equipo. */
 export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: number): void {

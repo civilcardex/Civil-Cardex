@@ -17,7 +17,7 @@ export function drawTeeSymbols(a: AccSimboloArgs): boolean {
     // sobredimensionado/inconsistente). Dos brazos siguen la dirección recta propia del ramal
     // (dx,dy); el tercero (px,py) marca la rama que se une aquí. Mismas constantes mm2cvs(2.0)
     // / mm2cvs(0.8) que usa renderJunctions.ts, así que la escala coincide exactamente.
-    const juncRad = engine.mm2cvs(2.0);
+    const juncRad = engine.mm2cvs(1.4);
     const tickLen = engine.mm2cvs(1.0);
     const armW = 1.2 * engine.zoom * (engine.lineWidthScale || 1); // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const arms: { x: number; y: number }[] = [
@@ -93,7 +93,7 @@ export function drawTeeSymbols(a: AccSimboloArgs): boolean {
     // (px,py) se une perpendicular a la dirección de paso (dx,dy). teeReduccion dibuja el
     // brazo de la rama más angosto (diámetro reducido) con un collar corto de ancho completo en
     // la unión; teeLado mantiene la rama a ancho completo.
-    const juncRad = engine.mm2cvs(2.0);
+    const juncRad = engine.mm2cvs(1.4);
     const tickLen = engine.mm2cvs(1.0);
     const armW = 1.2 * engine.zoom * (engine.lineWidthScale || 1);
     const branchW = accType === 'teeReduccion' ? armW * 0.55 : armW;

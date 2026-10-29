@@ -296,38 +296,9 @@ export function RamalMenu() {
           </button>
         </div>
       )}
-      {contextMenuState.midRamalHit &&
-        !contextMenuState.ramalEndpoint &&
-        ['af', 'ac'].includes(ramalEl.net) &&
-        isExistingTee && (
-          <div
-            style={{
-              padding: '4px 8px',
-              borderTop: '1px solid #3a494a',
-              marginTop: 4,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-            }}
-          >
-            <div style={MENU_SECTION_LABEL_ROW_STYLE}>Segmento libre de la tee</div>
-            {(['tapon', 'llaveTerminal'] as const).map((accId) => (
-              <button
-                type="button"
-                key={accId}
-                onClick={() => {
-                  const eng = engineRef.current;
-                  if (!eng) return;
-                  eng.createTeeCapStub(ramalEl.id, existingTeeIdx, accId);
-                  ctx.setContextMenuState(null);
-                }}
-                style={MENU_ACTION_BTN_STYLE}
-              >
-                + {accId === 'tapon' ? 'Tapón de limpieza' : 'Llave Terminal'}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Segmento libre de la tee RETIRADO (orig. usuario 2026-10-29): sin stub de 300mm ni
+          selector +Tapón/+Llave. La llave terminal en cuerpo va por el desplegable de accesorios
+          (teeLlaveTerminal, glifo autocontenido en el mismo vértice). */}
       {/* Orig. usuario "primero botones": el panel de conexión (acciones) va con los demás
           botones; los desplegables (canal, aparatos/accesorios, etiqueta) quedan al final. */}
       {contextMenuState.ramalEndpoint && (

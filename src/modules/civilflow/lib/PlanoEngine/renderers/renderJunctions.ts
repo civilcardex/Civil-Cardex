@@ -261,7 +261,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
-      const rad = engine.mm2cvs(2.0);
+      const rad = engine.mm2cvs(1.4);
       const cvsP = engine.toCvs(j.P[0], j.P[1]);
 
       const vectors = [j.uA, j.uB, ...j.branches];
@@ -306,7 +306,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     // identidad persistida en el ramal, se dibuja el glifo igual: los dos puntos del par + ticks
     // por brazo, mientras el tronco siga pasando por ambos.
     /** Vectores sin repetir: dos ramales colineales aportan la misma dirección. */
-    const rad = engine.mm2cvs(2.0);
+    const rad = engine.mm2cvs(1.4);
     const tickLen = engine.mm2cvs(1.0);
     for (const r of netRamales) {
       if (!r.yeeDobleAt || r.yeeDobleAt.length !== 2) continue;

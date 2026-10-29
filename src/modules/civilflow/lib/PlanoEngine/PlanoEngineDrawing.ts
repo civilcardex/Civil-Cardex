@@ -38,7 +38,6 @@ export {
   handleMontanteDown,
   handleCreateMontanteMidBody,
   handleCreateCalentadorMidBody,
-  handleCreateTeeCapStub,
   handleCalentadorDown,
   handleRedPublicaDown,
   handleContadorDown,
