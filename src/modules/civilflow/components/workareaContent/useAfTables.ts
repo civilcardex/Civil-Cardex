@@ -3,7 +3,7 @@ import { f2 } from './tableHelpers.ts';
 import type { MemoriaTable } from '../../utils/exportReportFinal.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { computeUcTable } from '../../utils/ucRows.ts';
-import { computeAccesoriosTable } from '../../utils/sanFittingsRows.ts';
+import { computeAccesoriosTableLarga } from '../../utils/sanFittingsRows.ts';
 import { computeAccesoriosPorRamalTable } from '../../utils/fittingsByRamalRows.ts';
 import { computeWaterNetworkRows, computeAcometidaSummary } from '../../utils/waterNetworkRows.ts';
 import { DIAMETROS_AF } from '../../constants/hydraulicsData.ts';
@@ -34,7 +34,7 @@ export function useAfTables(args: {
 
   const accAfDiamTable = useMemo<MemoriaTable | null>(() => {
     if (!hasAf) return null;
-    return computeAccesoriosTable('af', tramosAf, plans);
+    return computeAccesoriosTableLarga('af', tramosAf, plans);
   }, [hasAf, tramosAf, plans]);
 
   const afTable = useMemo<MemoriaTable | null>(() => {

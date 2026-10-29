@@ -29,7 +29,10 @@ const DOCX_SIDE_MARGIN_TWIP = 360;
 // normal; solo las tablas genuinamente anchas crecen más allá.
 const DOCX_MIN_PAGE_WIDTH_TWIP = 15840; // 11in
 
-export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
+export async function generateMemoriaDocx(
+  data: MemoriaData,
+  shouldCancel?: () => boolean,
+): Promise<void> {
   const {
     Document,
     Packer,
@@ -214,6 +217,10 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   // entregable firmable: un NaN o un Infinity en una columna es un defecto).
   const allTables = sanaTablas(data.tables) || [];
   for (let i = 0; i < allTables.length; i++) {
+    // Punto de cancelación (botón Cancelar, orig. usuario): por tabla. El yield deja procesar
+    // el click — la construcción docx es puro CPU y bloquea el hilo sin ceder.
+    if (shouldCancel?.()) throw new Error('cancelado');
+    await new Promise((r) => setTimeout(r, 0));
     const table = allTables[i];
     const nextTable = table.side ? allTables[i + 1] : undefined;
     if (nextTable) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import {
   generateMemoriaExcel,
   generateMemoriaDocx,
@@ -23,8 +23,8 @@ const ANEXO_PDF_URL = '/docs/detalle-instalacion-aparatos-hsg.pdf';
 // en otras partes del dibujo).
 const ANEXO_ROTULO_HEIGHT_PT = 185;
 
-async function downloadAnexoPdf(): Promise<void> {
-  const r = await fetch(ANEXO_PDF_URL);
+async function downloadAnexoPdf(signal?: AbortSignal): Promise<void> {
+  const r = await fetch(ANEXO_PDF_URL, { signal });
   if (!r.ok) throw new Error('No se encontró el anexo.');
   const buf = await r.arrayBuffer();
   const pdfjsLib = await getPdfjs();
@@ -105,6 +105,7 @@ const DL_BTN_STYLE: React.CSSProperties = {
   color: 'var(--txt)',
   fontSize: 13,
   fontWeight: 700,
+  cursor: 'pointer',
   transition: 'filter .15s',
 };
 
@@ -113,6 +114,12 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const [memoriaBusy, setMemoriaBusy] = useState(false);
   const [anexoBusy, setAnexoBusy] = useState(false);
   const [planosBusy, setPlanosBusy] = useState(false);
+  // Cancelar (orig. usuario): cada descarga en curso muestra su botón; los generadores
+  // consultan el flag entre unidades de trabajo (tabla/hoja/lámina) y abortan con
+  // Error('cancelado'), que el handler traga en silencio. El anexo aborta el fetch (AbortController).
+  const cancelMemoriaRef = useRef(false);
+  const cancelPlanosRef = useRef(false);
+  const cancelAnexoRef = useRef<AbortController | null>(null);
   // Redes EXCLUIDAS del PDF de planos (orig. usuario): la lista ofrecida son las redes ACTIVAS
   // del proyecto; set vacío = todas incluidas.
   const [netsExcluidasPdf, setNetsExcluidasPdf] = useState<Set<string>>(() => new Set());
@@ -123,6 +130,14 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       ),
     [state.redes],
   );
+  // Regla de exportación (orig. usuario): se imprime lo ACTIVO y CHEQUEADO. Las redes no
+  // activas no tienen checkbox en el selector → sus trazos residuales se colaban al PDF.
+  // La exclusión efectiva = desmarcadas + toda red del catálogo sin estar activa.
+  const ocultasExport = useMemo(() => {
+    const s = new Set(netsExcluidasPdf);
+    for (const r of REDES) if (!state.redes.has(r.id)) s.add(r.id);
+    return s;
+  }, [netsExcluidasPdf, state.redes]);
   const tables = useInfTablas(state);
   const proy = tables.proy;
   const plans = tables.plans;
@@ -159,6 +174,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const buildEpTables = tables.buildEpTables;
   const handleDescargarMemoria = async () => {
     setMemoriaBusy(true);
+    cancelMemoriaRef.current = false;
     try {
       const tag = (arr: (MemoriaTable | null)[], red: string): MemoriaTable[] =>
         arr.filter((t): t is MemoriaTable => t !== null).map((t) => ({ ...t, red }));
@@ -174,7 +190,10 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         ...tag([gasTable], 'gas'),
         ...tag(buildBombaTables(), 'bom'),
         ...tag(buildEpTables(), 'ep'),
-      ];
+        // "Redes a descargar" filtra TAMBIÉN las memorias (orig. usuario): el mismo selector
+        // gobierna planos de red y memorias finales — y las redes NO activas tampoco entran
+        // (regla "activa y chequeada"; aco/bom/ep nunca se filtran).
+      ].filter((t) => !t.red || !ocultasExport.has(t.red));
       if (tables.length === 0) {
         throw new Error(
           'No hay tablas para generar. Asegúrate de que las redes tengan datos dibujados.',
@@ -185,11 +204,14 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         rows: items.slice(0, 5).map(([k, v]) => [k, v] as [string, string]),
         tables,
       };
-      if (memoriaFmt === 'xlsx') await generateMemoriaExcel(data);
-      else if (memoriaFmt === 'pdf') await generateMemoriaPdf(data);
-      else await generateMemoriaDocx(data);
+      const cancelada = () => cancelMemoriaRef.current;
+      if (memoriaFmt === 'xlsx') await generateMemoriaExcel(data, cancelada);
+      else if (memoriaFmt === 'pdf') await generateMemoriaPdf(data, cancelada);
+      else await generateMemoriaDocx(data, cancelada);
     } catch (e) {
-      alert(`Error generando memorias: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      // Cancelar (orig. usuario): aborto intencional — sin alerta, el usuario lo pidió.
+      if ((e instanceof Error ? e.message : '') !== 'cancelado')
+        alert(`Error generando memorias: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     } finally {
       setMemoriaBusy(false);
     }
@@ -197,21 +219,26 @@ export function InfTab({ state }: { state: WorkAreaState }) {
 
   const handleDescargarAnexo = async () => {
     setAnexoBusy(true);
+    cancelAnexoRef.current = new AbortController();
     try {
-      await downloadAnexoPdf();
+      await downloadAnexoPdf(cancelAnexoRef.current.signal);
     } catch (e) {
-      alert(`Error descargando anexo: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      if (!(e instanceof DOMException && e.name === 'AbortError'))
+        alert(`Error descargando anexo: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     } finally {
       setAnexoBusy(false);
+      cancelAnexoRef.current = null;
     }
   };
 
   const handleDescargarPlanos = async () => {
     setPlanosBusy(true);
+    cancelPlanosRef.current = false;
     try {
-      await downloadPlanosPdf(plans, pisos, netsExcluidasPdf);
+      await downloadPlanosPdf(plans, pisos, ocultasExport, () => cancelPlanosRef.current);
     } catch (e) {
-      alert(`Error descargando planos: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      if ((e instanceof Error ? e.message : '') !== 'cancelado')
+        alert(`Error descargando planos: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     } finally {
       setPlanosBusy(false);
     }
@@ -401,6 +428,17 @@ export function InfTab({ state }: { state: WorkAreaState }) {
                 >
                   {memoriaBusy ? 'Generando…' : 'Descargar'}
                 </button>
+                {memoriaBusy && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      cancelMemoriaRef.current = true;
+                    }}
+                    style={{ ...DL_BTN_STYLE, color: '#E7786B', borderColor: '#E7786B' }}
+                  >
+                    Cancelar
+                  </button>
+                )}
               </div>
             </div>
 
@@ -422,6 +460,15 @@ export function InfTab({ state }: { state: WorkAreaState }) {
               >
                 {anexoBusy ? 'Descargando…' : 'Descargar'}
               </button>
+              {anexoBusy && (
+                <button
+                  type="button"
+                  onClick={() => cancelAnexoRef.current?.abort()}
+                  style={{ ...DL_BTN_STYLE, color: '#E7786B', borderColor: '#E7786B' }}
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
 
             <div style={DL_CHIP_STYLE}>
@@ -442,6 +489,17 @@ export function InfTab({ state }: { state: WorkAreaState }) {
               >
                 {planosBusy ? 'Generando…' : 'Descargar'}
               </button>
+              {planosBusy && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    cancelPlanosRef.current = true;
+                  }}
+                  style={{ ...DL_BTN_STYLE, color: '#E7786B', borderColor: '#E7786B' }}
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
 
             {redesOpcionesPdf.length > 0 && (
@@ -463,7 +521,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
                     letterSpacing: 0.3,
                   }}
                 >
-                  Redes en el PDF:
+                  Redes a descargar:
                 </span>
                 {redesOpcionesPdf.map((net) => {
                   const checked = !netsExcluidasPdf.has(net);

@@ -16,6 +16,31 @@ import { sanitizeFileName } from './formatUtils.ts';
 // niveles normales de zoom del visor PDF como 150-200%.)
 const RENDER_SCALE = 3;
 
+/** Elimina del motor de exportación TODO elemento de las redes excluidas, a nivel de datos:
+ *  ramales, bajantes, áreas y fantasmas entrepisos. El trazo que no existe ningún renderer lo
+ *  puede pintar. Exportado puro para test directo. */
+export function filtraRedesParaExport(
+  eng: {
+    ramales: Array<{ net: string }>;
+    bajantes: Array<{ net: string }>;
+    areas: unknown[];
+    crossFloorGhosts: Array<{ net: string }>;
+    _hiddenNets: Set<string>;
+  },
+  ocultarNets?: Set<string>,
+): void {
+  if (!ocultarNets || ocultarNets.size === 0) return;
+  eng.ramales = eng.ramales.filter((r) => !ocultarNets.has(r.net));
+  eng.bajantes = eng.bajantes.filter((b) => !ocultarNets.has(b.net));
+  eng.crossFloorGhosts = eng.crossFloorGhosts.filter((g) => !ocultarNets.has(g.net));
+  eng.areas = eng.areas.filter(
+    (a) =>
+      !(a as unknown as { net?: string }).net ||
+      !ocultarNets.has((a as unknown as { net?: string }).net!),
+  );
+  eng._hiddenNets = new Set(ocultarNets);
+}
+
 // Render headless de un plano: rasterizar su página PDF base (pdfjs) más cada elemento dibujado
 // sobre ella (PlanoEngine, alimentado con el mismo JSON de trazos persistido que carga el editor
 // en pantalla), compuesto en un solo canvas plano. Corre una instancia de PlanoEngine
@@ -70,9 +95,22 @@ async function renderPlanoComposite(
 
     const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
     if (raw) eng.loadWork(typeof raw === 'string' ? raw : JSON.stringify(raw));
-    // Selección de redes del usuario (informes → planos de red): lo mismo que el toggle de
-    // visibilidad del visor — los renderers ya respetan _hiddenNets.
-    if (ocultarNets && ocultarNets.size > 0) eng._hiddenNets = new Set(ocultarNets);
+    // Selección de redes del usuario (informes → "Redes a descargar"): filtro a nivel de
+    // DATOS (el trazo que no existe ningún renderer lo puede pintar) — el chequeo repartido
+    // en _hiddenNets dejaba pasar capas (el PDF imprimía todas las redes igual). La línea
+    // _hiddenNets queda como defensa extra para las capas que ya la respetan.
+    filtraRedesParaExport(eng, ocultarNets);
+    if (import.meta.env.DEV) {
+      // Trazas de diagnóstico del filtro (caso "el PDF imprime todas las redes"): el set
+      // recibido + lo que quedó vivo en el motor de export por red.
+      const porRed: Record<string, number> = {};
+      for (const r of eng.ramales) porRed[r.net] = (porRed[r.net] || 0) + 1;
+      // eslint-disable-next-line no-console -- diagnóstico del export (solo DEV)
+      console.log(
+        `[CF-EXPORT] "${plan.name}" ocultar=[${[...(ocultarNets ?? [])].join(',')}] ramalesPorRed=`,
+        porRed,
+      );
+    }
     eng.zoom = 1;
     eng.offX = 0;
     eng.offY = 0;
@@ -100,6 +138,7 @@ export async function downloadPlanosPdf(
   plans: PlanItem[],
   pisos: Piso[],
   ocultarNets?: Set<string>,
+  shouldCancel?: () => boolean,
 ): Promise<void> {
   const confirmed = plans
     .filter((p) => p.status === 'confirmed')
@@ -110,6 +149,10 @@ export async function downloadPlanosPdf(
   let doc: InstanceType<typeof jsPDF> | null = null;
 
   for (const plan of confirmed) {
+    // Punto de cancelación (botón Cancelar, orig. usuario): entre láminas. El yield deja
+    // procesar el click antes del raster (la lámina en curso termina, el resto no empieza).
+    if (shouldCancel?.()) throw new Error('cancelado');
+    await new Promise((r) => setTimeout(r, 0));
     const composite = await renderPlanoComposite(plan, pisos, ocultarNets);
     if (!composite) continue;
     const { dataUrl, w, h } = composite;

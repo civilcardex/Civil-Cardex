@@ -2,6 +2,7 @@
  * Núcleo compartido por el autosave debounced (usePdfAutoSave.performSave) y el onDirty del engine — antes la secuencia estaba duplicada en ambos lados y podía divergir (ts, LAST_TRAZOS_ID, sync a BD). */
 import {
   saveTrazosToDB,
+  saveToStorage,
   loadFromStorage,
   saveTrazosLocales,
   trazosDocHasContent,
@@ -116,6 +117,51 @@ export function persistTrazosSnapshot(
   if (id !== 'work') {
     saveTrazosToDB(String(id), work);
   }
+}
+
+/** Guardado de DESMONTE del visor (el último escritor de la pestaña): persiste el engine bajo el
+ *  piso cargado si hay ediciones reales y NO hay carga en vuelo (un engine a medio hidratar
+ *  escribiría un doc vacío/ajeno con ts fresco). Anota el motivo en el diario DEV.
+ *  Ej: cerrar la pestaña con trazos sin autosave -> caché local + BD con el doc vivo. */
+export function guardarAlDesmontar(
+  eng: {
+    _loadedPlanId?: string | number | null;
+    _dirty?: boolean;
+    saveWork(): TrazosSnapshot;
+  },
+  fallbackId: string | number | null | undefined,
+  loading: boolean,
+): void {
+  if (!eng._dirty) return;
+  const id = eng._loadedPlanId || fallbackId || 'work';
+  if (loading) {
+    // Desmonte DURANTE una carga: el guard evita persistir un engine a medio hidratar. Si esas
+    // ediciones se pierden, el diario deja el motivo (antes era invisible).
+    journalTrazos('cleanup-skip', id, null, 'carga-en-vuelo');
+    return;
+  }
+  const work = eng.saveWork();
+  work.ts = Date.now();
+  // Caja negra (DEV): id real vs fallback (plano nunca asignado) — la firma del piso perdido.
+  journalTrazos('cleanup', id, work, `loadedPlanId=${String(eng._loadedPlanId)}`);
+  saveToStorage(TRAZOS_PREFIX + id, work, { sinDiario: true });
+  if (id !== 'work') saveTrazosToDB(String(id), work);
+}
+
+/** Snapshot que escribe el PANEL de aparatos (no es el autosave): guarda el engine del piso
+ *  abierto en la caché local, salvo que el engine esté VACÍO y la caché tenga contenido — un
+ *  vacío con ts fresco (piso entrante que aún no hidrató) lo consolidaba en BD la
+ *  migración/prefetch y el piso se borraba al reabrir. El borrado legítimo va por el autosave
+ *  (_dirty). Ej: abrir un piso cuya carga de BD aún no llegó -> no se escribe nada. */
+export function guardarSnapshotDelPanel(eng: {
+  _loadedPlanId?: string | number | null;
+  saveWork(): TrazosSnapshot;
+}): void {
+  const clave = `${TRAZOS_PREFIX}${String(eng._loadedPlanId)}`;
+  const work = eng.saveWork();
+  if (!trazosDocHasContent(work) && trazosDocHasContent(loadFromStorage(clave, null))) return;
+  work.ts = Date.now();
+  saveToStorage(clave, work);
 }
 
 /** ¿La clave de conteos `k` corresponde a un elemento borrado?

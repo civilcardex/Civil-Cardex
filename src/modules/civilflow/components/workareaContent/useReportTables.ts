@@ -340,6 +340,8 @@ export function useInfTablas(state: WorkAreaState) {
       const conFallos: typeof tramos = [];
       const sinVerificar: typeof tramos = [];
       for (const t of tramos) {
+        // Montante fuera (orig. usuario): sin verificación propia, bloqueaba la descarga como "MAC1_ac-P2 (sin verificar)".
+        if (t.tipo === 'montante') continue;
         const c = chequeoDe(t, net);
         if (c.vel === false || c.pres === false) conFallos.push(t);
         else if (c.vel === null || c.pres === null) sinVerificar.push(t);

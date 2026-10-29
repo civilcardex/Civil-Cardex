@@ -27,7 +27,10 @@ function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
 
 const PDF_NAVY: [number, number, number] = [40, 60, 90];
 
-export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
+export async function generateMemoriaPdf(
+  data: MemoriaData,
+  shouldCancel?: () => boolean,
+): Promise<void> {
   const { jsPDF, autoTable } = await loadJspdf();
 
   // Frontera de exportación: se sanean las celdas ANTES de escribir. La memoria es un
@@ -47,13 +50,19 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
 
   autoTable(doc, {
     startY: 95,
+    // Compacta y centrada (orig. usuario): ancho fijo a la medida de 2 columnas cortas,
+    // margen simétrico y contenido centrado — antes ocupaba todo el ancho útil.
+    tableWidth: 340,
+    margin: { left: (pageW - 340) / 2, right: (pageW - 340) / 2 },
     head: [['Campo', 'Valor']],
     body: data.rows.map((r) => r.map(sanaCelda)),
-    styles: { fontSize: 10, cellPadding: 5 },
+    styles: { fontSize: 10, cellPadding: 5, halign: 'center', valign: 'middle' },
     headStyles: {
       fillColor: PDF_NAVY,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
       lineWidth: 0.1,
     },
     theme: 'grid',
@@ -62,6 +71,11 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
   let prevKey: string | null = null;
   let cursorY = 55;
   for (let i = 0; i < tablas.length; i++) {
+    // Punto de cancelación (botón Cancelar, orig. usuario): por tabla. 'cancelado' lo traga el
+    // caller. El yield es OBLIGATORIO: autoTable es puro CPU — sin ceder el hilo, el click en
+    // Cancelar jamás se procesa hasta que el bucle entero termina (por eso "no cancelaba").
+    if (shouldCancel?.()) throw new Error('cancelado');
+    await new Promise((r) => setTimeout(r, 0));
     const table = tablas[i];
     const key = table.red || '';
     if (key !== prevKey) {
@@ -148,12 +162,26 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(30, 30, 30);
-    doc.text(table.title, 30, cursorY);
+    // Resúmenes de accesorios por diámetro / tuberías (orig. usuario): menos anchos y
+    // centrados — ancho estimado por columnas (celdas cortas) con margen simétrico; el
+    // título se centra junto a la tabla. Resto de tablas: ancho completo como siempre.
+    const esResumen = /^Resumen de (accesorios( sanitarios)? por diámetro|tuberías)/.test(
+      table.title,
+    );
+    const resumenWidth = esResumen ? Math.min(pageW - 60, table.headers.length * 46 + 30) : 0;
+    if (esResumen) {
+      doc.text(table.title, pageW / 2, cursorY, { align: 'center' });
+    } else {
+      doc.text(table.title, 30, cursorY);
+    }
     cursorY += 8;
 
     autoTable(doc, {
       startY: cursorY,
-      margin: { left: 30, right: 30 },
+      margin: esResumen
+        ? { left: (pageW - resumenWidth) / 2, right: (pageW - resumenWidth) / 2 }
+        : { left: 30, right: 30 },
+      tableWidth: esResumen ? resumenWidth : undefined,
       head: buildAutoTableHead(table),
       body: table.rows,
       // minCellWidth garantiza que cada columna (incluidas las angostas como "%"/"m" bajo un

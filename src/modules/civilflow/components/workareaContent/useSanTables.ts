@@ -5,7 +5,7 @@ import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { pisoCorto, SAN_UC_IDS, APARATOS_DEF } from '../../constants';
 import { buildSanConnectivity, computeSanRows, computeUdTable } from '../../utils/sanitaryRows.ts';
 import { computeBajanteVentTable } from '../../utils/bajanteVentRows.ts';
-import { computeAccesoriosTable } from '../../utils/sanFittingsRows.ts';
+import { computeAccesoriosTableLarga } from '../../utils/sanFittingsRows.ts';
 import { computeResumenTuberiasTable } from '../../utils/summaryPipingRows.ts';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -45,7 +45,7 @@ export function useSanTables(args: {
 
   const sanAccTable = useMemo<MemoriaTable | null>(() => {
     if (!hasSan) return null;
-    return computeAccesoriosTable('san', tramosSan, plans);
+    return computeAccesoriosTableLarga('san', tramosSan, plans);
   }, [hasSan, tramosSan, plans]);
 
   const tuberiasSanTable = useMemo<MemoriaTable | null>(() => {

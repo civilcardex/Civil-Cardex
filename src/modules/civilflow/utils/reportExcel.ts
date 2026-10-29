@@ -141,7 +141,10 @@ function computeXlsxColWidths(tables: MemoriaTable[], maxCols: number): number[]
   return widths;
 }
 
-export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
+export async function generateMemoriaExcel(
+  data: MemoriaData,
+  shouldCancel?: () => boolean,
+): Promise<void> {
   const XLSX = await loadXlsx();
   const wb = XLSX.utils.book_new();
 
@@ -180,6 +183,10 @@ export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
   for (const { key, label } of REDES_ORDEN) {
+    // Punto de cancelación (botón Cancelar, orig. usuario): por hoja de red. El yield deja
+    // procesar el click — xlsx es puro CPU y sin ceder el bucle bloquea el hilo completo.
+    if (shouldCancel?.()) throw new Error('cancelado');
+    await new Promise((r) => setTimeout(r, 0));
     const tables = tablas.filter((t) => t.red === key);
     if (tables.length === 0) continue;
     const { aoa, merges, styleCells, maxCols } = buildRedSheet(tables, XLSX.utils.encode_cell);

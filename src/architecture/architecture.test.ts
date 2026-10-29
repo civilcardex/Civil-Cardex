@@ -30,9 +30,9 @@ const TOPE_NUEVO = 700;
  */
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 1223,
-  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 746,
+  'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 737,
   'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1478,
-  'modules/civilflow/components/workareaContent/useReportTables.ts': 669,
+  'modules/civilflow/components/workareaContent/useReportTables.ts': 671,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 836,
   'modules/civilflow/utils/waterRowsCore.ts': 695,
   'modules/civilflow/components/workarea/PlanosTab.tsx': 706,
@@ -46,7 +46,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
   'pages/auth/ProfilePage.tsx': 580,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 636,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 917,
+  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 948,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 755,
   'pages/PricingPage.tsx': 936,

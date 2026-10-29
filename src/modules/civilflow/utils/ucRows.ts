@@ -49,7 +49,7 @@ export function computeUcTable(
     'Nivel',
     'Inicio',
     'Fin',
-    ...AP.map((d) => `${d.nombre} (${d[field]} UC)`),
+    ...AP.map((d) => `${d.nombre}\n(${d[field]} UC)`),
     'Parcial',
   ];
   if (showTotal) headers.push('Total', 'Longitud (m)', 'No. desc. simult.');

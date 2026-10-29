@@ -26,7 +26,8 @@ import { SecMontantes } from './fixtures/montantesSection';
 import AccesoriosSection from './fixtures/AccessoriesSection.tsx';
 import { startRejillasGasodSync, hidratarRejillasGasod } from './rejillasGasodSync';
 import { devError } from '../../../utils/devError.ts';
-import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
+import { loadFromStorage } from '../services/storageService.ts';
+import { guardarSnapshotDelPanel } from './pdfViewer/persistStrokes.ts';
 import {
   UNIDAD,
   loadAll,
@@ -209,9 +210,8 @@ const AparatosPanel = memo(function AparatosPanel_({
       // entrante — snapshot aquí persistía trabajo vacío/ajeno con ts fresco sobre la caché
       // buena del piso entrante (orig. usuario: pisos vaciados al reabrir).
       if (eng && eng._loadedPlanId != null && !loadingPlanRef?.current) {
-        const work = eng.saveWork();
-        work.ts = Date.now();
-        saveToStorage(`${TRAZOS_PREFIX}${String(eng._loadedPlanId)}`, work);
+        // Anti-vaciado (ver guardarSnapshotDelPanel); el borrado legítimo va por el autosave.
+        guardarSnapshotDelPanel(eng);
       }
       // Registrar los ids VIVOS del piso cargado ANTES de sincronizar (el GC los consulta):
       // sincronizar sin ellos permitía borrar claves de ramales recientes (guard del GC).
