@@ -495,7 +495,7 @@ function LandingPage() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
             <Link
-              to="/civilflowareatrabajo"
+              to="/pricing"
               className="hidden md:inline-block bg-primary text-on-primary px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
               style={{
                 fontFamily: 'Geist, monospace',
