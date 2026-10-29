@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
@@ -51,10 +52,20 @@ const CatalogoMaestroPage = React.lazy(
 const CompanyPage = React.lazy(() => import('./pages/CompanyPage.tsx'));
 const ModulePage = React.lazy(() => import('./pages/ModulePage.tsx'));
 
+/** Scroll al inicio en cada cambio de ruta (sin él, /pricing heredaba la posición de la landing). */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <GlobalAlertDialogProvider>
+        <ScrollToTop />
         <a
           href="#app-content"
           className="skip-link"
