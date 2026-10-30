@@ -17,14 +17,7 @@ export interface FocoComplejidad {
 }
 
 /** Métodos que recorren la colección ENTERA (o una parte) buscando un valor. */
-export const METODOS_BUSQUEDA = [
-  'find',
-  'findIndex',
-  'some',
-  'filter',
-  'indexOf',
-  'includes',
-] as const;
+const METODOS_BUSQUEDA = ['find', 'findIndex', 'some', 'filter', 'indexOf', 'includes'] as const;
 
 const METODO_BUSQUEDA = new Set<string>(METODOS_BUSQUEDA);
 

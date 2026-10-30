@@ -67,7 +67,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 257,
   'modules/civilflow/context/RainwaterContext.tsx': 755,
   'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 747,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 773,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 769,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 702,
   'modules/civilflow/components/SupplyConnection.tsx': 10,
 };

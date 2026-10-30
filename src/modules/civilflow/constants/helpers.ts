@@ -64,7 +64,8 @@ export function compararPorCodigo(
   a: { code?: string | null; id?: string | null },
   b: { code?: string | null; id?: string | null },
 ): number {
-  return (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true });
+  // !: el crash con ambas ausentes es el comportamiento original de los 4 callers (preservado).
+  return (a.code || a.id)!.localeCompare((b.code || b.id)!, undefined, { numeric: true });
 }
 
 /** Abreviaturas de material para el dibujo del canvas (ver matDrawingLabel). */
