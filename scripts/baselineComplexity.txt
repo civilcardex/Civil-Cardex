@@ -1,4 +1,4 @@
-const TOTAL_FOCOS_BASE = 508;
+const TOTAL_FOCOS_BASE = 502;
 
 const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 17,
@@ -14,7 +14,6 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 8,
   'modules/civilflow/utils/bajanteRowModel.ts': 8,
   'modules/civilflow/components/pdfViewer/useFloorRamales.ts': 7,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 7,
   'modules/civilflow/components/workarea/IsometryGeneral.tsx': 7,
   'modules/civilflow/lib/PlanoEngine/mouseDownDrags.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,

@@ -1,31 +1,19 @@
 ﻿import { NETS } from '../PlanoState.ts';
-import { snapTributaryToPadre45Deg, _midpoint } from '../PlanoEngineDrawing.ts';
-import { rotatedRectCorners } from '../HitTester.ts';
-import { angleAtHalfLength, segmentAtPosition } from '../drawingAngles.ts';
+import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing.ts';
+import { segmentAtPosition } from '../drawingAngles.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
-import { buildRamalLabelParts } from './ramalLabelText.ts';
-import { renderLabelFlowArrow, renderEndpointFlowArrows } from './renderFlowArrows.ts';
+import { renderEndpointFlowArrows } from './renderFlowArrows.ts';
 import { renderAparatoSymbols } from './renderAparatoSymbols.ts';
 import { drawRamalPath } from './drawRamalPath.ts';
-import { drawExtremeAccessorySymbol, drawCornerCodoArc } from './renderAccessorySymbols.ts';
 import { renderJunctions } from './renderJunctions.ts';
-import {
-  beginDeclutterFrame,
-  desTapadoDelMotor,
-  findFreeLabelCenter,
-  gapAnclaACaja,
-} from '../labelDeclutter.ts';
+import { beginDeclutterFrame, desTapadoDelMotor } from '../labelDeclutter.ts';
 import { indiceFrame } from './frameIndex.ts';
-import { anchoTexto } from './measureText.ts';
 import { pickTeeBranchDir } from './teeUtils.ts';
+import { drawExtremeAccessorySymbol } from './renderAccessorySymbols.ts';
+import { dibujaCuerpoRamal, dibujaEtiquetaRamal } from './ramalBody.ts';
+import { pintaAccesoriosExtremos } from './ramalJunctions.ts';
 
 export { pickTeeBranchDir };
-
-// A qué distancia del punto medio una etiqueta automática se considera "desterrada" (en cajas
-// de etiqueta, no en px: así el umbral escala con el tamaño del texto). El des-tapado puede
-// alejarla hasta ~6.6 cajas (12 anillos × 0.55), y ninguna colocación legítima —creación,
-// arrastre o edición— pasa de ~1 caja. 4 queda entre ambas: coge lo desterrado y no toca lo vivo.
-const FAR_LABEL_BOXES = 4;
 
 /** Índice red→config: evita buscar en NETS por cada ramal dibujado (antes O(ramales×redes)). */
 const NET_POR_ID = new Map(NETS.map((n) => [n.id, n]));
@@ -34,6 +22,14 @@ const NET_POR_ID = new Map(NETS.map((n) => [n.id, n]));
  *  WeakMap por MOTOR (no singleton de módulo): dos visores vivos no se pisan el cache. */
 const snapMemo = new WeakMap<object, { firma: number; net: string; lista: PlanoRamal[] }>();
 
+/**
+ * Pinta TODOS los ramales del plano, en este orden de capas (no cambiar): cuerpo+etiqueta de
+ * cada ramal → flechas de flujo de extremos → accesorios de extremo (tee/codo) → símbolos de
+ * aparato → accesorios de mitad de ramal → uniones (tee/yee vent↔san). Los pedazos pesados
+ * viven en ramalBody.ts (trazo+cotas+etiquetas) y ramalJunctions.ts (glifos de extremo).
+ * Ej: al mover un ramal, este frame re-pinta su trazo, re-coloca su etiqueta con el des-tapado
+ * y re-estampa sus accesorios encima.
+ */
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
@@ -63,75 +59,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (r.pts.length > 1) {
-      if (isPadre && isTributarioMode) {
-        ctx.save();
-        ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
-        ctx.lineWidth = 3 * engine.zoom * (engine.lineWidthScale || 1);
-        ctx.strokeStyle = col;
-        drawRamalPath(ctx, r.pts, engine, col);
-        ctx.restore();
-      } else if (r.tipo === 'tributario') {
-        ctx.save();
-        ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
-        drawRamalPath(ctx, r.pts, engine, col);
-        ctx.restore();
-      } else {
-        drawRamalPath(ctx, r.pts, engine, col);
-      }
-    }
-
-    if (sel) {
-      r.pts.forEach(([px, py], idx: number) => {
-        if (idx > 0 && idx < r.pts.length - 1) {
-          const cvsA = engine.toCvs(r.pts[idx - 1][0], r.pts[idx - 1][1]);
-          const cvsB = engine.toCvs(px, py);
-          const cvsC = engine.toCvs(r.pts[idx + 1][0], r.pts[idx + 1][1]);
-          const ax = cvsB.x - cvsA.x,
-            ay = cvsB.y - cvsA.y;
-          const bx = cvsC.x - cvsB.x,
-            by = cvsC.y - cvsB.y;
-          const lenA = Math.hypot(ax, ay),
-            lenB = Math.hypot(bx, by);
-          if (lenA > 0 && lenB > 0) {
-            const ux = -ax / lenA,
-              uy = -ay / lenA;
-            const vx = bx / lenB,
-              vy = by / lenB;
-            const cosAngle = ux * vx + uy * vy;
-            // Ocultar puntos de selección intermedios colineales (tramo recto): si el ángulo es
-            // casi 180°, el vértice es decorativo y su punto estorba la lectura de la línea.
-            if (cosAngle < -0.95) {
-              return;
-            }
-          }
-        }
-        const c = engine.toCvs(px, py);
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 3 * engine.zoom, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    }
-
-    if (isPadre && isTributarioMode && !engine.activeRamal && r.pts.length >= 2) {
-      const mp = engine.snapPreviewToPadre(engine.mouseX, engine.mouseY);
-      if (mp) {
-        const c = engine.toCvs(mp.x, mp.y);
-        ctx.save();
-        ctx.fillStyle = col;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2 * engine.zoom * (engine.lineWidthScale || 1);
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 5 * engine.zoom, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
+    // Trazo + puntos de selección + vista previa de conexión (ramalBody.ts).
+    dibujaCuerpoRamal(ctx, engine, r, col, sel, isPadre, isTributarioMode);
 
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
-      const lc = engine.toCvs(r.labelX, r.labelY);
       const FLOW_NETS = ['san', 'll', 'af', 'ac', 'gas'];
       const showFlow = FLOW_NETS.includes(r.net) && r.pts.length >= 2;
       let flowDx = 0,
@@ -158,266 +89,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowLen = Math.hypot(flowDx, flowDy);
       }
 
-      // Ítem 1: formatos por red (san/ll/ac/af/gas compacto; vent y resto genérico) —
-      // la construcción del texto vive en ramalLabelText.ts (pura y testeada).
-      const { lbl, infoStr, matPart, dPart, pendPart, lblPart } = buildRamalLabelParts(
-        r,
-        engine.nivelActual?.n,
-      );
-      const showGuide = r.showGuide !== false;
-
-      const fsName = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
-      const fsInfo = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
-      const lineHName = fsName + 2;
-      const lineHInfo = fsName + 4;
-      const boxPadX = engine.mm2cvs(1.0);
-      const boxPadY = engine.mm2cvs(0.6);
-
-      const infoSegs: Array<{ text: string; bold: boolean; w: number } | null> = infoStr
-        ? [{ text: infoStr, bold: false, w: 0 }]
-        : ([
-            matPart ? { text: matPart, bold: false, w: 0 } : null,
-            dPart ? { text: dPart, bold: true, w: 0 } : null,
-            pendPart ? { text: pendPart, bold: false, w: 0 } : null,
-            lblPart ? { text: lblPart, bold: false, w: 0 } : null,
-          ].filter(Boolean) as Array<{ text: string; bold: boolean; w: number }>);
-      const segSep = infoStr ? '' : ' · ';
-      let sepW = 0;
-      ctx.font = `600 ${fsInfo}px Geist, monospace`;
-      if (infoSegs.length > 1) sepW = anchoTexto(ctx, segSep);
-      for (const s of infoSegs) {
-        ctx.font = s!.bold
-          ? `bold ${fsInfo}px Geist, monospace`
-          : `600 ${fsInfo}px Geist, monospace`;
-        s!.w = anchoTexto(ctx, s!.text);
-      }
-      const totalInfoW = infoSegs.reduce(
-        (sum: number, s, i) => sum + s!.w + (i < infoSegs.length - 1 ? sepW : 0),
-        0,
-      );
-
-      ctx.font = `bold ${fsName}px Geist, monospace`;
-      const nameW = lbl ? anchoTexto(ctx, lbl) : 0;
-      const contentW = Math.max(nameW, totalInfoW);
-      const boxW = contentW + boxPadX * 2;
-      const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
-      let drawX = lc.x;
-      let drawY = lc.y;
-      const labelAngleDeg = r.labelAngle != null ? r.labelAngle : angleAtHalfLength(r.pts || []);
-      const labelAngle = (labelAngleDeg * Math.PI) / 180;
-      const cosA = Math.cos(labelAngle),
-        sinA = Math.sin(labelAngle);
-      // Gap dinámico: el BORDE inferior de la caja (no su centro) queda separado del trazo.
-      // El aire mínimo crece con la propia caja (35% de su alto) y tiene piso en píxeles de
-      // pantalla (16·zoom): con menos aire las etiquetas quedaban muy encima del trazo y se
-      // solapaban con él (orig. usuario). La línea guía (leader) mantiene la lectura clara.
-      // labelClear es también la banda donde vive la flecha de flujo (ver más abajo).
-      // gapAnclaACaja es la MISMA fórmula que usa dragLabel para re-anclar el primer agarre.
-      const labelClear = Math.max(
-        engine.mm2cvs(4) + 6 * engine.zoom,
-        boxH * 0.35,
-        16 * engine.zoom,
-      );
-      const labelGap = -(boxH / 2 + labelClear);
-      const gapOff = gapAnclaACaja(boxH, labelAngle, engine.mm2cvs.bind(engine), engine.zoom);
-      const gapOffX = gapOff.x;
-      const gapOffY = gapOff.y;
-      let adjCx = drawX + gapOffX;
-      let adjCy = drawY + gapOffY;
-      // Auto-orden: la etiqueta nunca movida a mano busca un sitio libre (espiral) si su caja
-      // choca con otras etiquetas o trazos; la líder de abajo sigue sola al nuevo sitio.
-      if (!r.labelMoved && r.pts.length >= 2) {
-        // Autocuración: en una etiqueta automática labelX/labelY ES el punto medio del trazo
-        // (así la pone finishRamal y lo reencasilla cada arrastre o edición del panel). Si aparece
-        // a kilómetros de su punto medio, no lo puso el usuario: lo dejó un des-tapado de un
-        // render anterior que se guardó (y se persistió en label_x). Como ese sitio equivocado
-        // pasaba a ser el "por defecto" del frame siguiente —y allí estaba libre—, la etiqueta ya
-        // no volvía nunca. Se reencasilla en el punto medio.
-        const [mx, my] = _midpoint(r.pts);
-        const midC = engine.toCvs(mx, my);
-        if (Math.hypot(lc.x - midC.x, lc.y - midC.y) > boxW * FAR_LABEL_BOXES) {
-          r.labelX = mx;
-          r.labelY = my;
-          drawX = midC.x;
-          drawY = midC.y;
-          adjCx = drawX + gapOffX;
-          adjCy = drawY + gapOffY;
-        }
-        const spot = memoria
-          ? memoria.busca(
-              r.id,
-              boxW,
-              boxH,
-              labelAngle,
-              adjCx,
-              adjCy,
-              declutter.placed,
-              declutter.segs,
-              engine.zoom,
-            )
-          : findFreeLabelCenter(
-              r.id,
-              boxW,
-              boxH,
-              labelAngle,
-              adjCx,
-              adjCy,
-              declutter.placed,
-              declutter.segs,
-            );
-        if (spot) {
-          // El sitio elegido es SOLO de este render: no se guarda en labelX/labelY. Antes sí se
-          // escribía, y el frame siguiente lo tomaba como "por defecto" —ya libre, porque las
-          // demás etiquetas seguían en su sitio— así que cada des-tapado empujaba la etiqueta un
-          // poco más lejos (ratchet de hasta 12 anillos de la espiral, ~400 px) y el destino
-          // quedaba persistido. Orig. usuario: etiquetas muy alejadas de su ramal al reingresar
-          // al visor. La líder de abajo mantiene la lectura mientras el hueco siga ocupado.
-          drawX = spot.x - gapOffX;
-          drawY = spot.y - gapOffY;
-          adjCx = spot.x;
-          adjCy = spot.y;
-        }
-      } else if (r.labelMoved && !r._labelBox) {
-        // Etiqueta manual sin caja calculada aún (primer frame tras cargar): el declutter de
-        // este frame trabajó sin ella como obstáculo; reprogramar un pase para converger.
-        declutterNeedsSeed = true;
-      }
-
-      const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(
-        adjCx,
-        adjCy,
-        boxW,
-        boxH,
-        labelAngle,
-      );
-      r._labelBox = {
-        cx: adjCx,
-        cy: adjCy,
-        w: boxW,
-        h: boxH,
-        angle: labelAngle,
-        minX,
-        minY,
-        maxX,
-        maxY,
-        corners,
-      };
-      // La caja final (auto o manual) es obstáculo para las siguientes etiquetas de este frame.
-      declutter.placed.push({ id: r.id, minX, minY, maxX, maxY });
-
-      // Línea guía (leader): une la MITAD DEL LADO más cercano de la caja con el punto medio del
-      // ramal, para amarrar visualmente la etiqueta flotante a su tubería (pedido explícito:
-      // salir del lado, no de la esquina). Se recalcula en cada render, así que sigue
-      // automáticamente a la etiqueta cuando se arrastra y al ramal cuando se mueve/estira/
-      // encoge. Se salta cuando el punto medio cae DENTRO de la caja (etiqueta encima del ramal).
-      // Ítem 1: showGuide controla visibilidad de la guía.
-      if (showGuide !== false && r.pts.length >= 2) {
-        const [mx, my] = _midpoint(r.pts);
-        const mc = engine.toCvs(mx, my);
-        const relX = mc.x - adjCx;
-        const relY = mc.y - adjCy;
-        const localX = relX * cosA + relY * sinA;
-        const localY = -relX * sinA + relY * cosA;
-        const midInside = Math.abs(localX) <= boxW / 2 && Math.abs(localY) <= boxH / 2;
-        if (!midInside) {
-          // Puntos medios de los 4 lados de la caja rotada (coordenadas canvas).
-          const hw = boxW / 2;
-          const hh = boxH / 2;
-          const sideMids = [
-            { x: adjCx + hw * cosA, y: adjCy + hw * sinA }, // derecho (local +w/2, 0)
-            { x: adjCx - hw * cosA, y: adjCy - hw * sinA }, // izquierdo (local -w/2, 0)
-            { x: adjCx + hh * sinA, y: adjCy - hh * cosA }, // inferior (local 0, +h/2)
-            { x: adjCx - hh * sinA, y: adjCy + hh * cosA }, // superior (local 0, -h/2)
-          ];
-          let best = sideMids[0];
-          let bestD = Infinity;
-          for (const s of sideMids) {
-            const d = Math.hypot(s.x - mc.x, s.y - mc.y);
-            if (d < bestD) {
-              bestD = d;
-              best = s;
-            }
-          }
-          // Ítem 1 (rev 4): la flecha de flujo del label vive en el lado INFERIOR de la caja (local
-          // +h/2, trazo a +2·zoom del borde). Si el lado más cercano es ese inferior, la línea
-          // guía se ancla a la MITAD del lado pero DETENIÉNDOSE antes de la flecha: centrada en
-          // el eje de la flecha y separada de su trazo por un pequeño hueco — ni la cruza ni la
-          // toca.
-          if (showFlow && flowLen > 12 * engine.zoom) {
-            const bdx = best.x - adjCx;
-            const bdy = best.y - adjCy;
-            const bLocalY = -bdx * sinA + bdy * cosA;
-            if (Math.abs(bLocalY - hh) < 0.01) {
-              const ay = hh + 5 * engine.zoom;
-              best = { x: adjCx - ay * sinA, y: adjCy + ay * cosA };
-            }
-          }
-          ctx.save();
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 0.8 * engine.zoom * (engine.lineWidthScale || 1);
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(mc.x, mc.y);
-          ctx.lineTo(best.x, best.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-      }
-
-      ctx.save();
-      ctx.translate(drawX, drawY);
-      ctx.rotate(labelAngle);
-      ctx.translate(0, labelGap);
-      // Deliberadamente ya no se pinta fondo — las etiquetas antes se apoyaban sobre una placa
-      // blanca casi opaca; ahora se leen directamente sobre lo que haya debajo, según petición
-      // explícita.
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      if (lbl) {
-        ctx.font = `bold ${fsName}px Geist, monospace`;
-        ctx.fillStyle = col;
-        ctx.fillText(lbl, 0, -boxH / 2 + boxPadY + lineHName / 2);
-      }
-      if (infoSegs.length > 0) {
-        const yInfo = boxH / 2 - boxPadY - lineHInfo / 2;
-        let xCursor = -totalInfoW / 2;
-        for (let i = 0; i < infoSegs.length; i++) {
-          const s = infoSegs[i];
-          ctx.font = s!.bold
-            ? `bold ${fsInfo}px Geist, monospace`
-            : `600 ${fsInfo}px Geist, monospace`;
-          ctx.fillStyle = s!.bold ? '#000000' : '#1a1a1a';
-          ctx.textAlign = 'left';
-          ctx.fillText(s!.text, xCursor, yInfo);
-          xCursor += s!.w;
-          if (i < infoSegs.length - 1) {
-            ctx.font = `600 ${fsInfo}px Geist, monospace`;
-            ctx.fillStyle = '#1a1a1a';
-            ctx.fillText(segSep, xCursor, yInfo);
-            xCursor += sepW;
-          }
-        }
-        ctx.textAlign = 'center';
-      }
-
-      renderLabelFlowArrow(ctx, {
-        engine,
-        r,
-        col,
-        showFlow,
-        flowDx,
-        flowDy,
-        flowLen,
-        cosA,
-        sinA,
-        nameW,
-        labelGap,
-        labelClear,
-        drawX,
-        drawY,
-        boxH,
-      });
-      ctx.restore();
+      // Caja + des-tapado + guía + texto de la etiqueta (ramalBody.ts).
+      declutterNeedsSeed =
+        dibujaEtiquetaRamal(ctx, engine, r, col, declutter, memoria, {
+          showFlow,
+          flowDx,
+          flowDy,
+          flowLen,
+        }) || declutterNeedsSeed;
     } else {
       r._labelBox = undefined;
     }
@@ -438,122 +117,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // Dibujar accesorios de extremo (accesorioInicio/Fin) en su propio pase, después de que el
   // trazo del path de cada ramal ya se pintó — si no, la línea de un ramal iterado después
   // (p. ej. un ramal vent que comparte el punto final de un ramal san) pinta encima del
-  // símbolo de accesorio de un ramal anterior en ese mismo punto.
-  engine.ramales.forEach((r) => {
-    if (engine._hiddenNets.has(r.net)) return;
-    if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
-
-    [0, r.pts.length - 1].forEach((idx) => {
-      let accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
-      // Item 8: un aparato (distinto de nevera) en un extremo AF/AC implica un codo 90° sube —
-      // se dibuja el glifo junto al aparato aunque el campo de accesorio esté libre.
-      if (!accType && (r.net === 'af' || r.net === 'ac')) {
-        const app = idx === 0 ? r.aparatoInicio : r.aparatoFin;
-        if (app && app !== 'nev') accType = 'codo90rmSube';
-      }
-      // El codo/sifón solo se dibuja por el accesorio PERSISTIDO (accesorioInicio/Fin) o por un
-      // aparato AF/AC implícito — nunca auto-generado por la presencia de un bajante en el otro
-      // extremo (orig. usuario #4: crear un bajante no debe crear un codo 90° sube).
-      if (!accType) return;
-
-      const pt = r.pts[idx];
-      const c = engine.toCvs(pt[0], pt[1]);
-
-      let dx = 0,
-        dy = 0;
-      if (idx === 0) {
-        dx = r.pts[1][0] - r.pts[0][0];
-        dy = r.pts[1][1] - r.pts[0][1];
-      } else {
-        dx = r.pts[idx][0] - r.pts[idx - 1][0];
-        dy = r.pts[idx][1] - r.pts[idx - 1][1];
-      }
-      const len = Math.hypot(dx, dy);
-      if (len > 0.01) {
-        dx /= len;
-        dy /= len;
-      } else {
-        dx = 1;
-        dy = 0;
-      }
-      let px = -dy,
-        py = dx;
-      const branchDir = pickTeeBranchDir(engine, r.id, r.net, pt, dx, dy, px, py);
-      px = branchDir.px;
-      py = branchDir.py;
-      const outX = idx === 0 ? -dx : dx;
-      const outY = idx === 0 ? -dy : dy;
-
-      // realMmToCanvasPx piso en 1mm de papel (ver PlanoEngine.ts) — dividir a la mitad el
-      // argumento en mm solo es invisible a escalas comunes, ya que ambos caen en ese piso.
-      // Se divide el resultado en px.
-      const rad = engine.realMmToCanvasPx(23) * 0.6;
-
-      const diamLabel = idx === 0 ? r.diametroInicio : r.diametroFin;
-
-      // Ítem 6: el codo de plano en una esquina L (dos tuberías compartiendo el extremo) usa el
-      // símbolo de codo de segmentos — arco + marcas, igual que un quiebre interior — en vez del
-      // disco de respaldo con el texto "C90". Los codos de montante (codo90rmSube/Baja,
-      // codoSube/Baja) conservan su disco (verticales, sin esquina en planta).
-      const isPlanCodo =
-        accType === 'codo90rc' ||
-        accType === 'codo90rm' ||
-        accType === 'codo90rl' ||
-        accType === 'codos_90_std' ||
-        accType === 'codos_90_rl' ||
-        accType === 'codo45' ||
-        accType === 'codo45rc' ||
-        accType === 'codos_45';
-      if (isPlanCodo) {
-        // El arco necesita la dirección de la tubería SALIENDO del extremo (away): en el último
-        // vértice dx/dy es la dirección de LLEGADA y con ella el arco salía al lado contrario de
-        // la esquina ("codo al revés").
-        const awayX = idx === 0 ? dx : -dx;
-        const awayY = idx === 0 ? dy : -dy;
-        // ponytail: un codo de plano sin esquina real (extremo muerto tras borrar el tributario
-        // de una unión de guía) no dibuja nada — ni arco ni el disco de respaldo "C90".
-        drawCornerCodoArc(ctx, engine, pt, { x: awayX, y: awayY });
-        return;
-      }
-
-      ctx.save();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      drawExtremeAccessorySymbol({
-        ctx,
-        engine,
-        accType,
-        c,
-        dx: accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? px : dx,
-        dy: accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? py : dy,
-        px,
-        py,
-        outX,
-        outY,
-        rad,
-        diamLabel,
-        ramal: r,
-        slot: idx === 0 ? 'ini' : 'fin',
-        declutter,
-        // Hacia el cuerpo del ramal (los brazos de la horquilla del tapón abren al trazo).
-        pipeToward: { x: -outX, y: -outY },
-      });
-      ctx.restore();
-      // Los glifos de codo (codoSube/codoBaja/codo90rmSube/codo90rmBaja) son discos blancos
-      // rellenos dibujados en este pase, DESPUÉS del path del ramal — si el extremo queda cerca
-      // del quiebre interior (ramal corto de 2 segmentos), el disco tapa el arco del codo del
-      // quiebre. Redibujar solo las marcas de codo (arco/inglete + marcas T_A/T_C, sin el cuerpo
-      // de la tubería) para que el símbolo del quiebre interior siga visible.
-      if (
-        accType === 'codoSube' ||
-        accType === 'codoBaja' ||
-        accType === 'codo90rmSube' ||
-        accType === 'codo90rmBaja'
-      ) {
-        drawRamalPath(ctx, r.pts, engine, '', { marksOnly: true });
-      }
-    });
-  });
+  // símbolo de accesorio de un ramal anterior en ese mismo punto. (ramalJunctions.ts)
+  pintaAccesoriosExtremos(ctx, engine, declutter);
 
   // Símbolos de aparato (fixture) en los extremos — pase extraído a renderAparatoSymbols.ts
   // (con su cache de imágenes de nivel de módulo).

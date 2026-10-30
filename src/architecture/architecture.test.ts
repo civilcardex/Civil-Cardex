@@ -29,27 +29,27 @@ const TOPE_NUEVO = 700;
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
  */
 const CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/components/PdfViewer.tsx': 1223,
+  'modules/civilflow/components/PdfViewer.tsx': 818,
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 737,
   'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1176,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 671,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 842,
+  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 407,
   'modules/civilflow/utils/waterRowsCore.ts': 695,
   'modules/civilflow/components/workarea/PlanosTab.tsx': 706,
   'modules/civilflow/components/DownpipesTable.tsx': 212,
   'modules/civilflow/utils/bajanteAssocShared.ts': 722,
   'modules/civilflow/components/GasDesign.tsx': 370,
-  'modules/civilflow/components/FixturesPanel.tsx': 900,
+  'modules/civilflow/components/FixturesPanel.tsx': 521,
   'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 604,
   'modules/civilflow/components/RainChannelsCheck.tsx': 537,
   'modules/civilflow/constants/rejillasNTC3631.ts': 977,
   'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
   'pages/auth/ProfilePage.tsx': 580,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 636,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 1010,
+  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 158,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 725,
-  'pages/PricingPage.tsx': 936,
+  'pages/PricingPage.tsx': 432,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 600,
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 519,
   'modules/civilflow/components/RainDownpipesCheck.tsx': 520,
@@ -58,7 +58,9 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PumpARDesign.tsx': 773,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 807,
   'components/help/helpGuideFlow.tsx': 787,
-  'modules/civilflow/components/SanitaryDesign.tsx': 795,
+  'modules/civilflow/components/SanitaryDesign.tsx': 73,
+  // Cuerpo verbatim de tablas extraído de SanitaryDesign (794→72): monolito conocido, no nuevo.
+  'modules/civilflow/components/sanitary/SanitaryTables.tsx': 707,
   'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 761,
   'modules/civilflow/components/ep/EPVerificationPage.tsx': 751,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 258,
@@ -93,6 +95,37 @@ const CICLOS_CONOCIDOS: string[] = [];
  *  ruta → { maxLineas, puro, testQueLoImporta }
  */
 const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; test: string }> = [
+  {
+    ruta: 'modules/civilflow/components/workarea/isometry/painters/planSheets.ts',
+    maxLineas: 200,
+    puro: true,
+    test: '../useIsometryRender',
+  },
+  {
+    ruta: 'modules/civilflow/components/workarea/isometry/painters/channels.ts',
+    maxLineas: 400,
+    puro: true,
+    test: '../useIsometryRender',
+  },
+  {
+    // 601 líneas de dibujo con I/O de canvas: no es util pura (TOPE_PURO), usa TOPE_HOOK.
+    ruta: 'modules/civilflow/components/workarea/isometry/painters/networks.ts',
+    maxLineas: 700,
+    puro: false,
+    test: '../useIsometryRender',
+  },
+  {
+    ruta: 'modules/civilflow/components/workarea/isometry/painters/axes.ts',
+    maxLineas: 120,
+    puro: true,
+    test: '../useIsometryRender',
+  },
+  {
+    ruta: 'modules/civilflow/components/workarea/isometry/painters/isoView.ts',
+    maxLineas: 40,
+    puro: true,
+    test: '../useIsometryRender',
+  },
   {
     ruta: 'modules/civilflow/lib/PlanoEngine/events/pointerDown.ts',
     maxLineas: 250,
@@ -522,7 +555,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 8,
   'modules/civilflow/utils/bajanteRowModel.ts': 8,
   'modules/civilflow/components/pdfViewer/useFloorRamales.ts': 7,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 7,
+  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 0,
   'modules/civilflow/components/workarea/IsometryGeneral.tsx': 7,
   'modules/civilflow/lib/PlanoEngine/mouseDownDrags.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
@@ -554,7 +587,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 509;
+const TOTAL_FOCOS_BASE = 503;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
