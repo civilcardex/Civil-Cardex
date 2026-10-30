@@ -10,6 +10,7 @@ import {
 } from '../../../pages/catalog/catalogData.ts';
 import { DIAMETROS_AF } from '../../../constants/hydraulicsData.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
+import { inchPartOfDiametro } from '../../../lib/PlanoEngine/drawingUtils.ts';
 import {
   writeAcoDiamToDrawing,
   writeContadorDiamToDrawing,
@@ -221,10 +222,6 @@ export function ElementCodeEditor({
                   // RAMAL (no en los selectores de accesorio, que dejan elegir cualquier
                   // diámetro libremente) — un ramal nunca puede reducirse por debajo del
                   // diámetro del accesorio que ya tiene conectado.
-                  const inchFrom = (d: string) => {
-                    const q = d.indexOf('"');
-                    return q > 0 ? d.slice(0, q) : d;
-                  };
                   // Leer datos frescos del engine — el snapshot ramalEl puede estar stale
                   // si el usuario cambió el diámetro desde TramoEditor mientras el menú estaba abierto.
                   const fresh = engineRef.current?.ramales.find((x) => x.id === ramalEl.id);
@@ -232,12 +229,20 @@ export function ElementCodeEditor({
                     (fresh?.diametroInicio as string) || ramalEl.diametroInicio || '';
                   const liveAccDiamF = (fresh?.diametroFin as string) || ramalEl.diametroFin || '';
                   const accDiamNum = Math.max(
-                    liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0,
-                    liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0,
+                    liveAccDiamI ? diamPulgFromLabel(inchPartOfDiametro(liveAccDiamI)) : 0,
+                    liveAccDiamF ? diamPulgFromLabel(inchPartOfDiametro(liveAccDiamF)) : 0,
                   );
-                  if (val && accDiamNum > 0 && diamPulgFromLabel(inchFrom(val)) < accDiamNum) {
-                    const accINum = liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0;
-                    const accFNum = liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0;
+                  if (
+                    val &&
+                    accDiamNum > 0 &&
+                    diamPulgFromLabel(inchPartOfDiametro(val)) < accDiamNum
+                  ) {
+                    const accINum = liveAccDiamI
+                      ? diamPulgFromLabel(inchPartOfDiametro(liveAccDiamI))
+                      : 0;
+                    const accFNum = liveAccDiamF
+                      ? diamPulgFromLabel(inchPartOfDiametro(liveAccDiamF))
+                      : 0;
                     const blockEnd = accINum >= accFNum ? 'INICIO' : 'FIN';
                     const blockDiam = accINum >= accFNum ? liveAccDiamI : liveAccDiamF;
                     engineRef.current.triggerAlert(

@@ -105,60 +105,46 @@ interface GetProyectoDataResult {
   planos_meta: PlanoMetaRow[];
 }
 
+// Campos proyecto_general ↔ Proyecto: [clave en la fila BD, clave en Proyecto]. 15 comparten
+// nombre; 8 cambian de caso (pobl_fija↔poblFija...). Una sola tabla genera AMBAS direcciones,
+// así las 23 columnas viajan siempre en el mismo orden y ninguna queda desalineada.
+const CAMPOS_GENERAL: Array<[keyof ProyectoGeneralRow, keyof Proyecto]> = [
+  ['nombre', 'nombre'],
+  ['dir', 'dir'],
+  ['ciudad', 'ciudad'],
+  ['pais', 'pais'],
+  ['uso', 'uso'],
+  ['empresa', 'empresa'],
+  ['p_red', 'p_red'],
+  ['dot', 'dot'],
+  ['mat_af', 'mat_af'],
+  ['mat_ac', 'mat_ac'],
+  ['mat_rci', 'mat_rci'],
+  ['mat_san', 'mat_san'],
+  ['mat_ll', 'mat_ll'],
+  ['mat_ven', 'mat_ven'],
+  ['mat_gas', 'mat_gas'],
+  ['altitud', 'altitud'],
+  ['p_atm', 'p_atm'],
+  ['pobl_fija', 'poblFija'],
+  ['pobl_flot', 'poblFlot'],
+  ['area_piscina', 'areaPiscina'],
+  ['area_verdes', 'areaVerdes'],
+  ['c_escorrentia', 'C_escorrentia'],
+  ['pendiente_san', 'pendienteSan'],
+];
+
 function proyectoGeneralRowToProy(row: ProyectoGeneralRow): Partial<Proyecto> {
-  return {
-    nombre: row.nombre,
-    dir: row.dir,
-    ciudad: row.ciudad,
-    pais: row.pais,
-    uso: row.uso,
-    empresa: row.empresa,
-    p_red: row.p_red,
-    dot: row.dot,
-    mat_af: row.mat_af,
-    mat_ac: row.mat_ac,
-    mat_rci: row.mat_rci,
-    mat_san: row.mat_san,
-    mat_ll: row.mat_ll,
-    mat_ven: row.mat_ven,
-    mat_gas: row.mat_gas,
-    altitud: row.altitud,
-    p_atm: row.p_atm,
-    poblFija: row.pobl_fija,
-    poblFlot: row.pobl_flot,
-    areaPiscina: row.area_piscina,
-    areaVerdes: row.area_verdes,
-    C_escorrentia: row.c_escorrentia,
-    pendienteSan: row.pendiente_san,
-  };
+  const proy: Partial<Proyecto> = {};
+  for (const [rowKey, proyKey] of CAMPOS_GENERAL)
+    (proy as Record<string, unknown>)[proyKey] = row[rowKey];
+  return proy;
 }
 
 function proyToProyectoGeneralRow(proy: Proyecto) {
-  return {
-    nombre: proy.nombre,
-    dir: proy.dir,
-    ciudad: proy.ciudad,
-    pais: proy.pais,
-    uso: proy.uso,
-    empresa: proy.empresa,
-    p_red: proy.p_red,
-    dot: proy.dot,
-    mat_af: proy.mat_af,
-    mat_ac: proy.mat_ac,
-    mat_rci: proy.mat_rci,
-    mat_san: proy.mat_san,
-    mat_ll: proy.mat_ll,
-    mat_ven: proy.mat_ven,
-    mat_gas: proy.mat_gas,
-    altitud: proy.altitud,
-    p_atm: proy.p_atm,
-    pobl_fija: proy.poblFija,
-    pobl_flot: proy.poblFlot,
-    area_piscina: proy.areaPiscina,
-    area_verdes: proy.areaVerdes,
-    c_escorrentia: proy.C_escorrentia,
-    pendiente_san: proy.pendienteSan,
-  };
+  const row: Record<string, unknown> = {};
+  for (const [rowKey, proyKey] of CAMPOS_GENERAL) row[rowKey] = proy[proyKey];
+  return row;
 }
 
 function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {

@@ -49,6 +49,13 @@ const RainwaterDesign_S3: React.CSSProperties = {
   width: 50,
 };
 const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '2px 3px' } as const;
+// Estilo repetido de las celdas de datos: TD_MONO para códigos/id (fuente mono) y TD_NUM para números.
+const TD_MONO: React.CSSProperties = {
+  fontFamily: 'var(--mono)',
+  fontSize: 11.5,
+  padding: '2px 3px',
+};
+const TD_NUM: React.CSSProperties = { fontSize: 11.5, padding: '2px 3px' };
 
 export default function DisenoLluvias() {
   const { proy } = useProyecto();
@@ -498,16 +505,10 @@ export default function DisenoLluvias() {
                             return <ChipList items={associatedBajantes} />;
                           })()}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Q > 0 ? Q.toFixed(2) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {n > 0 ? n.toFixed(3) : '—'}
                         </td>
                         <td className="c" style={{ padding: '2px 2px' }}>
@@ -567,10 +568,7 @@ export default function DisenoLluvias() {
                             </span>
                           )}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}
                         </td>
                         <td className="c" style={{ padding: '2px 2px' }}>
@@ -591,70 +589,49 @@ export default function DisenoLluvias() {
                             ))}
                           </select>
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {DintMm > 0 ? fmt(DintMm, 2) : '—'}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {renderStatus(chequeoD)}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Qo > 0 ? Qo.toFixed(2) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Vo > 0 ? Vo.toFixed(2) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {qqo > 0 ? qqo.toFixed(2) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Vreal > 0 ? Vreal.toFixed(2) : '—'}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {renderStatus(chequeoV)}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Yc > 0 ? Yc.toFixed(2) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Yn > 0 ? Yn.toFixed(2) : '—'}
                         </td>
-                        <td
-                          className="c"
-                          style={{ fontFamily: 'var(--mono)', fontSize: 11.5, padding: '2px 3px' }}
-                        >
+                        <td className="c" style={TD_MONO}>
                           {Froude > 0 ? Froude.toFixed(2) : '—'}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {tipoFlujo}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {Ymax > 0 ? Ymax.toFixed(2) : '—'}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {renderStatus(chequeoYn)}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '—'}
                         </td>
-                        <td className="c" style={{ fontSize: 11.5, padding: '2px 3px' }}>
+                        <td className="c" style={TD_NUM}>
                           {renderStatus(chequeoFT)}
                         </td>
                       </tr>

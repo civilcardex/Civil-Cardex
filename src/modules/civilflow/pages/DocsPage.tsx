@@ -4,6 +4,7 @@ import { docData } from './docs/data';
 import SectionAccordion from './docs/SectionAccordion.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../../../seo/routeMeta.ts';
+import { sinAcentos } from '../constants/helpers.ts';
 
 /** Saca el texto plano de un bloque de la doc para poder buscarlo: baja por los hijos de
  *  cada pieza de React y junta solo letras y números (sin clases ni etiquetas). */
@@ -18,12 +19,7 @@ function nodeText(n: unknown): string {
 
 /** Key segura para atributos id/aria-controls DOM: sin espacios ni acentos.
  *  La key de React/estado sigue usando la clave original (cat:titulo). */
-const domId = (key: string): string =>
-  key
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-');
+const domId = (key: string): string => sinAcentos(key.toLowerCase()).replace(/[^a-z0-9]+/g, '-');
 
 /** Agrupación de categorías por módulo (pedido del cliente: la doc se navega por módulo).
  *  Las claves SON las de docData (data/index.ts) — aunque el archivo fuente se llame

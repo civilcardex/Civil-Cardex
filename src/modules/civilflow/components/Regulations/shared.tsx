@@ -1,5 +1,64 @@
 import type { ReactNode, CSSProperties } from 'react';
 
+/** Celda de RegTable que se desvía del default. Ej: {t:'1½"', c:true} centra la primera celda. */
+export interface RegCelda {
+  /** Contenido de la celda. Ej: el uso 'Vivienda estrato 1–2' o el valor 0.5. */
+  t: ReactNode;
+  /** Clase "c" (centrado). Default: primera celda no, resto sí. */
+  c?: boolean;
+  /** fontWeight (solo importa en la primera celda). Default 500; false = sin style. */
+  w?: 500 | 600 | false;
+  /** Envuelve el contenido en <span className="sigla">. Ej: la sigla 'Lvm' del lavamanos. */
+  sigla?: boolean;
+}
+
+/** Tabla normativa con el andamiaje común de la página Normativa: caption oculto, thead y filas
+ *  con primera celda en bold (500) y resto centrado. Ej:
+ *  <RegTable caption="Dotaciones NTC 1500" headers={['Uso','Min','Max']} rows={NTC1500_DOTACIONES} /> */
+export function RegTable({
+  caption,
+  headers,
+  rows,
+}: {
+  caption: string;
+  headers: readonly string[];
+  rows: ReadonlyArray<ReadonlyArray<string | number | RegCelda>>;
+}) {
+  return (
+    <table className="tbl" style={{ fontSize: 12 }}>
+      <caption className="visually-hidden">{caption}</caption>
+      <thead>
+        <tr>
+          {headers.map((h, hi) => (
+            <th key={hi} scope="col">
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((cells, ri) => (
+          <tr key={ri}>
+            {cells.map((cell, ci) => {
+              // ponytail: shorthand string/number = default (primera bold, resto centrada)
+              const o = cell !== null && typeof cell === 'object' ? cell : { t: cell };
+              const primera = ci === 0;
+              const cn = (o.c ?? !primera) ? 'c' : undefined;
+              const style = primera && o.w !== false ? { fontWeight: o.w ?? 500 } : undefined;
+              const contenido = o.sigla ? <span className="sigla">{o.t}</span> : o.t;
+              return (
+                <td key={ci} className={cn} style={style}>
+                  {contenido}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** Subtítulo de sección normativa (h4 visual). Ej: «Dotaciones por estrato» sobre la tabla RAS. */
 export const subHeadingStyle = {
   fontFamily: 'var(--mono)',

@@ -19,6 +19,10 @@ import {
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { BajanteEditor, RamalEditor } from './legacyEditors.tsx';
 
+// ponytail: la fuente mono del panel repetida en 7 estilos — una constante para que un cambio
+// de tipografía no tenga que tocar 7 sitios.
+const MONO_FONT = "'Geist',monospace";
+
 /** Sección del panel derecho para bajante/montante: datos específicos + editor de extremos; en san añade la sección de bomba asociada al bajante. */
 export function BajanteEditorSection() {
   const ctx = useTramoEditorContext();
@@ -86,7 +90,7 @@ function AsociarBombaPanel({
         style={{
           fontSize: 12,
           color: '#9BA8AA',
-          fontFamily: "'Geist',monospace",
+          fontFamily: MONO_FONT,
           marginBottom: 4,
           textTransform: 'uppercase',
           letterSpacing: 0.5,
@@ -95,7 +99,7 @@ function AsociarBombaPanel({
         Asociar bomba del piso inferior
       </div>
       {bombas.length === 0 && (
-        <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
+        <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: MONO_FONT }}>
           Sin bombas en el piso inmediatamente inferior
         </div>
       )}
@@ -206,7 +210,7 @@ export function RamalEditorSection() {
               style={{
                 fontSize: 12,
                 color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
+                fontFamily: MONO_FONT,
                 marginBottom: 4,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
@@ -230,7 +234,7 @@ export function RamalEditorSection() {
                       style={{
                         fontSize: 12,
                         color: '#8AB4D6',
-                        fontFamily: "'Geist',monospace",
+                        fontFamily: MONO_FONT,
                         padding: '4px',
                         gridColumn: 'span 2',
                       }}
@@ -294,7 +298,7 @@ export function RamalEditorSection() {
               style={{
                 fontSize: 12,
                 color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
+                fontFamily: MONO_FONT,
                 marginBottom: 4,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
@@ -313,7 +317,7 @@ export function RamalEditorSection() {
                       style={{
                         fontSize: 12,
                         color: '#8AB4D6',
-                        fontFamily: "'Geist',monospace",
+                        fontFamily: MONO_FONT,
                         padding: '4px',
                         gridColumn: 'span 2',
                       }}
@@ -419,7 +423,7 @@ export function RamalEditorSection() {
             style={{
               fontSize: 12,
               color: '#9BA8AA',
-              fontFamily: "'Geist',monospace",
+              fontFamily: MONO_FONT,
               marginBottom: 4,
               textTransform: 'uppercase',
               letterSpacing: 0.5,
@@ -438,7 +442,7 @@ export function RamalEditorSection() {
                     style={{
                       fontSize: 12,
                       color: '#8AB4D6',
-                      fontFamily: "'Geist',monospace",
+                      fontFamily: MONO_FONT,
                       padding: '4px',
                       gridColumn: 'span 2',
                     }}

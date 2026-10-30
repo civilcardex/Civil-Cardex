@@ -56,6 +56,7 @@ export {
   pisoCortoLoose,
   fmtPiso,
   buildBajanteVisualLabel,
+  compararPorCodigo,
   matDrawingLabel,
   matFullName,
 } from './helpers.ts';

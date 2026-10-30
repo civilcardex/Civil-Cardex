@@ -6,6 +6,7 @@ import EPInputPage from './ep/EPInputPage.tsx';
 import EPVerificationPage from './ep/EPVerificationPage.tsx';
 import EPCisternaPage from './ep/EPTankPage.tsx';
 import { usePersistedState } from '../../../hooks/usePersistedState.ts';
+import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect.ts';
 import { useProyecto } from '../context/ProjectContext.tsx';
 import { perfilDe } from '../constants/countryStandards';
 import type { EPData } from './ep/EPShared';
@@ -55,23 +56,18 @@ function useEpSincronizado(): {
     };
   }, [setEP, proy?.pais]);
 
-  const saveTimerRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!hydratedRef.current) return;
-    const proyectoId = getActiveProyectoId();
-    if (!proyectoId) return;
-    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(() => {
-      saveTimerRef.current = null;
+  useDebouncedEffect(
+    () => {
+      if (!hydratedRef.current) return;
+      const proyectoId = getActiveProyectoId();
+      if (!proyectoId) return;
       // Si el guardado falla, se reintenta y se avisa: el informe PDF se genera desde la BD,
       // así que un fallo silencioso entregaba la bomba con los valores viejos.
       void guardaConReintento('equipo-presion', () => saveEpDatos(proyectoId, ep));
-    }, 1200);
-    return () => {
-      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-    };
-  }, [ep]);
+    },
+    1200,
+    [ep],
+  );
 
   const updEP = useCallback(
     (field: keyof EPData, val: EPData[keyof EPData]) => {

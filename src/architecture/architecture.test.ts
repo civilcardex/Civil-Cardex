@@ -39,7 +39,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
   'modules/civilflow/components/DownpipesTable.tsx': 215,
   'modules/civilflow/utils/bajanteAssocShared.ts': 726,
-  'modules/civilflow/components/GasDesign.tsx': 373,
+  'modules/civilflow/components/GasDesign.tsx': 369,
   'modules/civilflow/components/FixturesPanel.tsx': 523,
   'modules/civilflow/components/workarea/PlanoConfigurator.tsx': 604,
   'modules/civilflow/components/RainChannelsCheck.tsx': 539,
@@ -67,8 +67,8 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 257,
   'modules/civilflow/context/RainwaterContext.tsx': 755,
   'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 747,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 772,
-  'modules/civilflow/utils/copyDrawingFromPlan.ts': 706,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 773,
+  'modules/civilflow/utils/copyDrawingFromPlan.ts': 702,
   'modules/civilflow/components/SupplyConnection.tsx': 10,
 };
 

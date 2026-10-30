@@ -64,25 +64,35 @@ function pedirChunk(clave: string, pedir: () => Promise<unknown>): void {
     chunksPedidos.delete(clave);
   });
 }
-const prefetchSan = (p: number) => {
-  if (p === 1) pedirChunk('san1', () => import('../FixtureUnitCalc.tsx'));
-  else if (p === 2) pedirChunk('san2', () => import('../SanitaryDesign.tsx'));
-  else if (p === 3) pedirChunk('san3', () => import('../DownpipesTable.tsx'));
-  else if (p === 4) pedirChunk('san4', () => import('../FittingsDiamPage.tsx'));
+// ponytail: las 3 cadenas else-if eran la misma tabla página→chunk — un array por red con el
+// MISMO orden exacto de páginas (índice 0 = página 1) y un solo helper que arma la clave
+// ('san1'…) y no hace nada con páginas fuera de rango, igual que las cadenas.
+const PAGINAS_SAN: Array<() => Promise<unknown>> = [
+  () => import('../FixtureUnitCalc.tsx'),
+  () => import('../SanitaryDesign.tsx'),
+  () => import('../DownpipesTable.tsx'),
+  () => import('../FittingsDiamPage.tsx'),
+];
+const PAGINAS_LL: Array<() => Promise<unknown>> = [
+  () => import('../RainwaterDesign.tsx'),
+  () => import('../RainDownpipesCheck.tsx'),
+  () => import('../RainChannelsCheck.tsx'),
+  () => import('../FittingsDiamPage.tsx'),
+];
+const PAGINAS_AF: Array<() => Promise<unknown>> = [
+  () => import('../CalcUC.tsx'),
+  () => import('../WaterNetworkDesign.tsx'),
+  () => import('../../pages/AcometidaPage.tsx'),
+  () => import('../AccessoriesTable.tsx'),
+  () => import('../FittingsDiamPage.tsx'),
+];
+const prefetchLista = (pfx: string, paginas: Array<() => Promise<unknown>>, p: number): void => {
+  const pedir = paginas[p - 1];
+  if (pedir) pedirChunk(`${pfx}${p}`, pedir);
 };
-const prefetchLl = (p: number) => {
-  if (p === 1) pedirChunk('ll1', () => import('../RainwaterDesign.tsx'));
-  else if (p === 2) pedirChunk('ll2', () => import('../RainDownpipesCheck.tsx'));
-  else if (p === 3) pedirChunk('ll3', () => import('../RainChannelsCheck.tsx'));
-  else if (p === 4) pedirChunk('ll4', () => import('../FittingsDiamPage.tsx'));
-};
-const prefetchAfAc = (p: number) => {
-  if (p === 1) pedirChunk('af1', () => import('../CalcUC.tsx'));
-  else if (p === 2) pedirChunk('af2', () => import('../WaterNetworkDesign.tsx'));
-  else if (p === 3) pedirChunk('af3', () => import('../../pages/AcometidaPage.tsx'));
-  else if (p === 4) pedirChunk('af4', () => import('../AccessoriesTable.tsx'));
-  else if (p === 5) pedirChunk('af5', () => import('../FittingsDiamPage.tsx'));
-};
+const prefetchSan = (p: number) => prefetchLista('san', PAGINAS_SAN, p);
+const prefetchLl = (p: number) => prefetchLista('ll', PAGINAS_LL, p);
+const prefetchAfAc = (p: number) => prefetchLista('af', PAGINAS_AF, p);
 const prefetchHeavy = () => {
   pedirChunk('bom', () => import('../PumpARDesign'));
   pedirChunk('ep', () => import('../PressureEquipmentDesign.tsx'));

@@ -8,6 +8,10 @@ import { useLupa } from '../rci3d/useMagnifier';
 import { vistaOrto, resetVista, type VistaKey } from '../rci3d/viewsRci.ts';
 import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniViewerNetwork';
 
+// ponytail: MONO_3D (components/shared/config3d.ts) es 'Geist', NO esta fuente — usarlo
+// cambiaría el render; se deduplica con una const local conservando 'JetBrains Mono'.
+const FONT_MONO = 'JetBrains Mono, monospace';
+
 // Visor 3D "Red contra incendio" — port del HTML Isometrico_RCI_Open_Code_v19. Modelo REAL
 // de la red (tubería por pisos + abrazaderas SPLIT + losas translúcidas). Lupa con toggle
 // (como el HTML): renderer secundario que sigue al cursor, rueda ×2–×12. Etiquetas SIEMPRE
@@ -244,7 +248,7 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
             border: 'none',
             borderBottom: '1px solid #30363d',
             background: 'transparent',
-            fontFamily: 'JetBrains Mono, monospace',
+            fontFamily: FONT_MONO,
             transition: 'background .12s',
           }}
           onClick={lupa.toggle}
@@ -318,7 +322,7 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
               bottom: 6,
               left: '50%',
               transform: 'translateX(-50%)',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: FONT_MONO,
               fontSize: '0.6rem',
               color: '#3fb950',
               background: 'rgba(13,17,23,.85)',
@@ -349,7 +353,7 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
                 fontSize: '0.72rem',
                 color: '#7d8590',
                 letterSpacing: '.04em',
-                fontFamily: 'JetBrains Mono, monospace',
+                fontFamily: FONT_MONO,
               }}
             >
               {cargaTxt || 'Procesando modelo 3D…'}
@@ -396,7 +400,7 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
                 color: '#f85149',
                 maxWidth: 320,
                 textAlign: 'center',
-                fontFamily: 'JetBrains Mono, monospace',
+                fontFamily: FONT_MONO,
               }}
             >
               {error}
@@ -488,7 +492,7 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
               transform: 'translateX(-50%)',
               fontSize: '0.60rem',
               color: '#7d8590',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: FONT_MONO,
               zIndex: 100,
               pointerEvents: 'none',
               whiteSpace: 'nowrap',

@@ -1,56 +1,28 @@
 /** Sección NSR-10 (Norma Sismo Resistente): clasificación de edificaciones y altura según
  *  uso — requisitos de consulta para el diseño. */
 import { NSR10_CLASIFICACION, NSR10_ALTURA } from '../regulationsData.ts';
-import { subHeadingStyle as h4 } from '../shared.tsx';
+import { subHeadingStyle as h4, RegTable } from '../shared.tsx';
 
 export function NSR10() {
   return (
     <div className="card-b" style={{ padding: '18px' }}>
       <h3 style={h4}>4.1 Clasificación por tipo de ocupación (J.2)</h3>
-      <table className="tbl" style={{ fontSize: 12 }}>
-        <caption className="visually-hidden">Clasificación por tipo de ocupación NSR-10</caption>
-        <thead>
-          <tr>
-            <th scope="col">Tipo</th>
-            <th scope="col">Clasificación</th>
-            <th scope="col">Ejemplos</th>
-          </tr>
-        </thead>
-        <tbody>
-          {NSR10_CLASIFICACION.map(([t, c, e]) => (
-            <tr key={t}>
-              <td className="c" style={{ fontWeight: 600 }}>
-                {t}
-              </td>
-              <td>{c}</td>
-              <td>{e}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <RegTable
+        caption="Clasificación por tipo de ocupación NSR-10"
+        headers={['Tipo', 'Clasificación', 'Ejemplos']}
+        rows={NSR10_CLASIFICACION.map(([tipo, clas, ej]) => [
+          { t: tipo, c: true, w: 600 },
+          { t: clas, c: false },
+          { t: ej, c: false },
+        ])}
+      />
 
       <h3 style={h4}>4.2 Requisitos según altura y ocupación (J.4)</h3>
-      <table className="tbl" style={{ fontSize: 12 }}>
-        <caption className="visually-hidden">Requisitos según altura y ocupación NSR-10</caption>
-        <thead>
-          <tr>
-            <th scope="col">Altura edificación</th>
-            <th scope="col">Tipo A</th>
-            <th scope="col">Tipo B</th>
-            <th scope="col">Tipo C</th>
-          </tr>
-        </thead>
-        <tbody>
-          {NSR10_ALTURA.map(([h, a, b, c]) => (
-            <tr key={h}>
-              <td style={{ fontWeight: 500 }}>{h}</td>
-              <td className="c">{a}</td>
-              <td className="c">{b}</td>
-              <td className="c">{c}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <RegTable
+        caption="Requisitos según altura y ocupación NSR-10"
+        headers={['Altura edificación', 'Tipo A', 'Tipo B', 'Tipo C']}
+        rows={NSR10_ALTURA}
+      />
     </div>
   );
 }

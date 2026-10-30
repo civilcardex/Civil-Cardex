@@ -10,6 +10,8 @@ import type { FilaGasCalc } from '../../utils/gasCalcRows.ts';
 
 import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const TH = { ..._TH, fontSize: 10.5, padding: '2px 3px' };
+// ponytail: TD ya trae el padding estrecho — los td que lo necesitan a mano NO deben repetir
+// `padding: '1px 2px'` sobre el spread (antes había 13 overrides idénticos al valor de TD).
 const TD = { ..._TD, fontSize: 10.5, padding: '1px 2px' };
 
 // Columnas MOSTRADAS en la tabla (ped. usuario): las variantes sube/baja y el tapón
@@ -257,10 +259,10 @@ export function GasTablaRed(props: GasTablaRedProps) {
                     </span>
                   </td>
 
-                  <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                  <td className="c" style={{ ...TD }}>
                     {t.ini || '—'}
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 2px', minWidth: 78 }}>
+                  <td className="c" style={{ ...TD, minWidth: 78 }}>
                     {t.fin || '—'}
                   </td>
                   <td className="c" style={{ padding: '0 1px' }}>
@@ -315,7 +317,6 @@ export function GasTablaRed(props: GasTablaRedProps) {
                     className="c"
                     style={{
                       ...TD,
-                      padding: '1px 2px',
                       color: dInt ? 'var(--txt)' : 'var(--txt3)',
                     }}
                   >
@@ -325,13 +326,12 @@ export function GasTablaRed(props: GasTablaRedProps) {
                     className="c"
                     style={{
                       ...TD,
-                      padding: '1px 2px',
                       color: kVal ? 'var(--txt)' : 'var(--txt3)',
                     }}
                   >
                     {kVal ? fmt(kVal, 2) : '—'}
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                  <td className="c" style={{ ...TD }}>
                     {t.longitud > 0 ? t.longitud.toFixed(2) : '—'}
                   </td>
                   {(['qConsumo', 'fAlt', 'fTemp', 'fDens', 'qDiseno'] as const).map((k) => (
@@ -340,7 +340,6 @@ export function GasTablaRed(props: GasTablaRedProps) {
                       className="c"
                       style={{
                         ...TD,
-                        padding: '1px 2px',
                         fontWeight: k === 'qDiseno' ? 600 : undefined,
                         color: (chk?.[k] ?? 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
                       }}
@@ -369,34 +368,32 @@ export function GasTablaRed(props: GasTablaRedProps) {
                     className="c"
                     style={{
                       ...TD,
-                      padding: '1px 2px',
                       fontWeight: 600,
                       borderLeft: '2px solid var(--line)',
                     }}
                   >
                     {(chk?.le ?? 0).toFixed(2)}
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                  <td className="c" style={{ ...TD }}>
                     {(chk?.dP ?? 0).toFixed(2)}
                   </td>
                   <td
                     className="c"
                     style={{
                       ...TD,
-                      padding: '1px 2px',
                       fontWeight: 600,
                       color: (chk?.dPAcum ?? 0) > 9.81 ? 'var(--err, #F04545)' : 'var(--txt)',
                     }}
                   >
                     {(chk?.dPAcum ?? 0).toFixed(2)}
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                  <td className="c" style={{ ...TD }}>
                     {(chk?.vel ?? 0).toFixed(2)}
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                  <td className="c" style={{ ...TD }}>
                     {(chk?.pIni ?? 0).toFixed(2)}
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 2px' }}>
+                  <td className="c" style={{ ...TD }}>
                     {(chk?.pFin ?? 0).toFixed(2)}
                   </td>
                   <td

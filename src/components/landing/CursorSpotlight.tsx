@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useMediaQuery } from '../../hooks/useMediaQuery.ts';
 
 interface CursorSpotlightProps {
   containerRef: React.RefObject<HTMLElement>;
@@ -8,22 +9,7 @@ interface CursorSpotlightProps {
 export default function CursorSpotlight({ containerRef }: CursorSpotlightProps) {
   const spotlightRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  // Lazy-initialized from the media query directly instead of an effect + setState on mount.
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
-    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-    // Listen to changes in preference
-    const listener = (event: MediaQueryListEvent) => {
-      setPrefersReducedMotion(event.matches);
-    };
-
-    mediaQuery.addEventListener('change', listener);
-    return () => mediaQuery.removeEventListener('change', listener);
-  }, []);
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   useEffect(() => {
     // Disable on touch devices or if reduced motion is preferred

@@ -1,4 +1,5 @@
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
+import { inchPartOfDiametro } from '../drawingUtils.ts';
 import { pisoCortoLoose as getPisoCorto, matDrawingLabel } from '../../../constants';
 
 /** Texto de las etiquetas de ramal: función pura (testeada) que arma nombre + info por red; el dibujo vive en ramalBody. */
@@ -19,9 +20,13 @@ export interface RamalLabelParts {
   lblPart: string;
 }
 
+// ponytail: la copia local (comilla INCLUIDA, p.ej. `1-1/2"`) se apoya ahora en
+// inchPartOfDiametro (drawingUtils), que la devuelve SIN comilla. La comilla se vuelve a pegar
+// solo si existía: en '' o sin comilla el local devolvía el string intacto y la etiqueta
+// CPVC/PVC no debe inventarse una (d='' → '', no '"').
 const inchPartOf = (d: string): string => {
-  const q = d.indexOf('"');
-  return q > 0 ? d.slice(0, q + 1) : d;
+  const s = inchPartOfDiametro(d);
+  return s === d ? d : s + '"';
 };
 const rdePartOf = (d: string): string => {
   const q = d.indexOf('"');

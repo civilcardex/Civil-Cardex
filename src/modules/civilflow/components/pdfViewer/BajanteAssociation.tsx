@@ -8,7 +8,7 @@ import {
   areEndpointsAligned,
   type AssocEndpoint,
 } from '../../utils/bajanteAssociation';
-import { pisoCorto, buildBajanteVisualLabel } from '../../constants';
+import { pisoCorto, buildBajanteVisualLabel, compararPorCodigo } from '../../constants';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
@@ -362,9 +362,7 @@ export default function BajanteAsociacion({
                     : group.bajantes || []
                 )
                   .slice()
-                  .sort((a, b) =>
-                    (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
-                  );
+                  .sort((a, b) => compararPorCodigo(a, b));
                 const hasBajantes = bajantesToShow.length > 0;
                 return (
                   <optgroup key={group.planId} label={pLabel}>
@@ -442,9 +440,7 @@ export default function BajanteAsociacion({
                   // Ascendente por código (orig. usuario).
                   const bajantesToShow = (upperFloorGroup.bajantes || [])
                     .slice()
-                    .sort((a, b) =>
-                      (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
-                    );
+                    .sort((a, b) => compararPorCodigo(a, b));
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup label={pLabel}>

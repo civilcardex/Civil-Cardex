@@ -1,8 +1,9 @@
 /** Pantalla de diseño de gas: datos generales, tabla de la red (diámetros Renouard (fórmula
  *  de pérdida en gas)) y contadores/calentadores. Ej: editar la presión de acometida recalcula
  *  los diámetros de todos los tramos gas. */
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
+import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect.ts';
 import { usePlans } from '../context/PlansContext.tsx';
 import { useProyecto } from '../context/ProjectContext.tsx';
 import {
@@ -85,20 +86,15 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
 
   // Persistir a la BD debounced (600 ms) — localStorage sigue siendo la caché en vivo que
   // leen los cálculos (gasRows.ts) durante la sesión.
-  const gasSaveTimerRef = useRef<number | null>(null);
-  useEffect(() => {
-    const proyectoId = getActiveProyectoId();
-    if (!proyectoId) return;
-    if (gasSaveTimerRef.current) window.clearTimeout(gasSaveTimerRef.current);
-    gasSaveTimerRef.current = window.setTimeout(() => {
-      gasSaveTimerRef.current = null;
+  useDebouncedEffect(
+    () => {
+      const proyectoId = getActiveProyectoId();
+      if (!proyectoId) return;
       void saveGasDatos(proyectoId, { alt, patm, temp, pmin, densRel });
-    }, 600);
-    return () => {
-      if (gasSaveTimerRef.current) window.clearTimeout(gasSaveTimerRef.current);
-      gasSaveTimerRef.current = null;
-    };
-  }, [alt, patm, temp, pmin, densRel]);
+    },
+    600,
+    [alt, patm, temp, pmin, densRel],
+  );
 
   const [gasRefreshKey] = useState(0);
   const [diamMat, setDiamMat] = useState<Record<string, string>>(() => ({}));

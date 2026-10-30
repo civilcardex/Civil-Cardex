@@ -169,3 +169,149 @@ describe('codo 90° en el render de isometría', () => {
     expect(calls.filter((c) => c.op === 'arc')).toHaveLength(1);
   });
 });
+
+describe('bajante que VIENE BAJANDO (descargaEnId a piso inferior)', () => {
+  it('baja con descarga: arco + ramal recortado + marcador separado por debajo', () => {
+    const baj: IsoBajante = {
+      ...(montante('baja') as object),
+      id: 'BAN1',
+      code: 'BAN1',
+      tipo: 'bajante',
+      dNominal: '4"',
+      descargaEnId: '2|BAN1',
+    } as unknown as IsoBajante;
+    const props = {
+      canvasRef: { current: null as unknown as HTMLCanvasElement },
+      planImagesRef: { current: new Map() },
+      dataByNet: {
+        af: {
+          ramales: [
+            ramalHacia(
+              [
+                [300, 100],
+                [100, 100],
+              ],
+              'BAN1',
+            ),
+          ],
+          bajantes: [baj],
+        },
+      },
+      activeNets: new Set(['af']),
+      profByNet: { af: 0 },
+      nptMap: { 0: 0, 1: 2700 },
+      pisos: [],
+      rotZ: 45,
+      rotX: -45,
+      scaleZ: 1,
+      zoom: 1,
+      offX: 0,
+      offY: 0,
+      size: { w: 800, h: 600 },
+      selTramo: null,
+      showPlanos: false,
+      confirmedPlanos: [],
+      renderTick: 0,
+      getIsoCoords: (x: number, y: number) => ({ x, y }),
+      getZPix: (z: number) => z,
+      pisosVisibles: null,
+    };
+    const { canvas, calls } = (() => {
+      const c = mkCanvas();
+      props.canvasRef.current = c.canvas as unknown as HTMLCanvasElement;
+      const cont = document.createElement('div');
+      document.body.appendChild(cont);
+      const Probe = () => useIsometriaRender(props) as never;
+      act(() => {
+        const root = createRoot(cont);
+        root.render(<Probe />);
+      });
+      return c;
+    })();
+    void canvas;
+    // Empalme + marcador = al menos 2 arcos. El empalme es el de radio 9 (marcador 5).
+    const arcs9 = calls.filter((c2) => c2.op === 'arc' && (c2.args as number[])[2] === 9);
+    expect(arcs9.length).toBe(1);
+    // Sin origenId (solo descarga): lado abajo. El centro exacto lo compara el test de abajo
+    // (la cámara iso real proyecta con rotación — la aserción absoluta no aplica en el mock).
+    (window as unknown as { __cySinOrigen?: number }).__cySinOrigen = (
+      arcs9[0].args as number[]
+    )[1] as number;
+    // Ramal recortado: ningún lineTo cae exacto en el centro del bajante (100,100).
+    const lineTos = calls.filter((c2) => c2.op === 'lineTo').map((c2) => c2.args as number[]);
+    expect(lineTos.some(([x, y]) => Math.abs(x - 100) < 0.5 && Math.abs(y - 100) < 0.5)).toBe(
+      false,
+    );
+  });
+});
+
+describe('lado del codo según origen', () => {
+  function montarLado(origenId: string | undefined) {
+    const baj: IsoBajante = {
+      ...(montante('baja') as object),
+      id: 'BAN1',
+      code: 'BAN1',
+      tipo: 'bajante',
+      dNominal: '4"',
+      descargaEnId: '2|BAN1',
+      origenId,
+    } as unknown as IsoBajante;
+    const props = {
+      canvasRef: { current: null as unknown as HTMLCanvasElement },
+      planImagesRef: { current: new Map() },
+      dataByNet: {
+        af: {
+          ramales: [
+            ramalHacia(
+              [
+                [300, 100],
+                [100, 100],
+              ],
+              'BAN1',
+            ),
+          ],
+          bajantes: [baj],
+        },
+      },
+      activeNets: new Set(['af']),
+      profByNet: { af: 0 },
+      nptMap: { 0: 0, 1: 2700 },
+      pisos: [],
+      rotZ: 45,
+      rotX: -45,
+      scaleZ: 1,
+      zoom: 1,
+      offX: 0,
+      offY: 0,
+      size: { w: 800, h: 600 },
+      selTramo: null,
+      showPlanos: false,
+      confirmedPlanos: [],
+      renderTick: 0,
+      getIsoCoords: (x: number, y: number) => ({ x, y }),
+      getZPix: (z: number) => z,
+      pisosVisibles: null,
+    };
+    const c = mkCanvas();
+    props.canvasRef.current = c.canvas as unknown as HTMLCanvasElement;
+    const cont = document.createElement('div');
+    document.body.appendChild(cont);
+    const Probe = () => useIsometriaRender(props) as never;
+    act(() => {
+      const root = createRoot(cont);
+      root.render(<Probe />);
+    });
+    const empalme = c.calls.filter((c2) => c2.op === 'arc' && (c2.args as number[])[2] === 9);
+    expect(empalme.length).toBe(1);
+    return (empalme[0].args as number[])[1] as number;
+  }
+
+  it('sin origenId (solo descarga): empalme del lado de la descarga', () => {
+    (window as unknown as { __cySin?: number }).__cySin = montarLado(undefined);
+  });
+
+  it('con origenId (viene bajando desde arriba): empalme ARRIBA del caso sin origen', () => {
+    const cyCon = montarLado('2|BAN1');
+    expect(cyCon).toBeLessThan((window as unknown as { __cySin?: number }).__cySin!);
+  });
+});

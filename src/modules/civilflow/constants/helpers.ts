@@ -1,5 +1,10 @@
 import { sanitizeMojibake } from '../utils/formatUtils.ts';
 
+/** Quita acentos/diacríticos de un texto (comparar "Rígido" con "Rigido"). Ej: sinAcentos('Cobre rígido') → 'Cobre rigido'. */
+export function sinAcentos(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 /** Etiqueta completa del piso para paneles y alertas. Ej: -1 → "Sótano 1", 2 → "Piso 2", 99 → "Cubierta". */
 export function pisoLbl(n: number) {
   if (n < 0) return `Sótano ${Math.abs(n)}`;
@@ -51,6 +56,17 @@ export function buildBajanteVisualLabel(
   return `${id}${pisoCortoStr ? '-' + pisoCortoStr : ''}`;
 }
 
+/** Ordena bajantes/montantes por código visible en listas y dropdowns (code, o id si no tiene código)
+ *  con orden numérico natural — BAN9 después de BAN2, no "BAN10" antes de "BAN2". Ej: [BAN2, BAN10]
+ *  queda [BAN2, BAN10], mientras un sort alfabético plano daría [BAN10, BAN2].
+ *  @param a - bajante con code/id opcionales; @param b - el otro bajante a comparar. */
+export function compararPorCodigo(
+  a: { code?: string | null; id?: string | null },
+  b: { code?: string | null; id?: string | null },
+): number {
+  return (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true });
+}
+
 /** Abreviaturas de material para el dibujo del canvas (ver matDrawingLabel). */
 const MAT_DRAWING_ABBREV: Array<[RegExp, string]> = [
   [/acero\s*galvanizado/i, 'H.G.'],
@@ -73,10 +89,7 @@ const MAT_DRAWING_ABBREV: Array<[RegExp, string]> = [
  *  @param material nombre del material (de catálogo o libre); @returns abreviatura de dibujo o el nombre saneado. */
 export function matDrawingLabel(material?: string | null): string {
   if (!material) return '';
-  const norm = material
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  const norm = sinAcentos(material).trim();
   for (const [re, abbr] of MAT_DRAWING_ABBREV) {
     if (re.test(norm)) return abbr;
   }
@@ -104,10 +117,7 @@ const MAT_FULLNAME: Array<[RegExp, string]> = [
  *  @param material forma corta guardada; @returns nombre completo o el mismo valor saneado. */
 export function matFullName(material?: string | null): string {
   if (!material) return '';
-  const norm = material
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  const norm = sinAcentos(material).trim();
   for (const [re, name] of MAT_FULLNAME) {
     if (re.test(norm)) return name;
   }

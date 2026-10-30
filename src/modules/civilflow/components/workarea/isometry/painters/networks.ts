@@ -484,39 +484,70 @@ export function pintaRedes(args: {
       // recorrido y para una BAJA el superior, y con ghost/destino en otro piso el símbolo
       // sigue presidiendo su propio piso (el círculo se desliza por la línea del conector hasta
       // la altura de currentZ).
-      const circR = 6 * zoom;
+      const circR = 5 * zoom;
+      const isSubeDir = b.direccion ? b.direccion === 'sube' : b.tipo === 'montante';
+      const dirY = isSubeDir ? -1 : 1;
+      // Con codo, el marcador se despega en DIAGONAL hacia FUERA de la esquina (orig. usuario:
+      // desplazado a lo largo del flujo quedaba ENCIMA de la tuberita vertical del tramo que
+      // sigue). Posición = vértice − normalizado(fd+hd)·14·zoom: fuera del codo, junto a la
+      // esquina, sin tocar tubo ni curva. Sin codo queda en floorPt como siempre.
+      const prepMarc = codo.porBajante.get(`${b.planId}:${b.id}`);
+      let marcX = floorPt.sx;
+      let marcY = floorPt.sy;
+      if (prepMarc) {
+        const dCima = Math.hypot(pCima.sx - floorPt.sx, pCima.sy - floorPt.sy);
+        const dBase = Math.hypot(pBase.sx - floorPt.sx, pBase.sy - floorPt.sy);
+        const cimaArriba = pCima.sy <= floorPt.sy;
+        const vieneDeArriba = !!(b as { origenId?: string }).origenId;
+        const ladoMarc: 'arriba' | 'abajo' = vieneDeArriba
+          ? 'arriba'
+          : (cimaArriba ? dCima : dBase) >= (cimaArriba ? dBase : dCima)
+            ? 'arriba'
+            : 'abajo';
+        const fdx = ladoMarc === 'arriba' ? 0 : 1;
+        const fdy = ladoMarc === 'arriba' ? -1 : 1;
+        const sx = prepMarc.dir.x + fdx;
+        const sy = prepMarc.dir.y + fdy;
+        const sl = Math.hypot(sx, sy) || 1;
+        marcX = prepMarc.vertex.sx - (sx / sl) * 14 * zoom;
+        marcY = prepMarc.vertex.sy - (sy / sl) * 14 * zoom;
+      }
       ctx.save();
       ctx.strokeStyle = netColor;
       ctx.lineWidth = 1.5;
       ctx.fillStyle = '#14161a';
       ctx.beginPath();
-      ctx.arc(floorPt.sx, floorPt.sy, circR, 0, Math.PI * 2);
+      ctx.arc(marcX, marcY, circR, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       // Triángulo de dirección dentro del círculo
       ctx.fillStyle = netColor;
       ctx.beginPath();
       const triS = circR * 0.5;
-      const isSubeDir = b.direccion ? b.direccion === 'sube' : b.tipo === 'montante';
-      const dirY = isSubeDir ? -1 : 1;
-      ctx.moveTo(floorPt.sx, floorPt.sy + dirY * triS);
-      ctx.lineTo(floorPt.sx - triS, floorPt.sy - dirY * triS * 0.3);
-      ctx.lineTo(floorPt.sx + triS, floorPt.sy - dirY * triS * 0.3);
+      ctx.moveTo(marcX, marcY + dirY * triS);
+      ctx.lineTo(marcX - triS, marcY - dirY * triS * 0.3);
+      ctx.lineTo(marcX + triS, marcY - dirY * triS * 0.3);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
 
       // Curva del codo 90° (orig. usuario): empalme tangente entre el ramal conectado y el
-      // tubo vertical, con vértice en la intersección real de las dos líneas. Del lado donde
-      // el tubo SIGUE (el de mayor tramo desde la unión — el otro muere en ella). La flecha
+      // tubo vertical, con vértice en la intersección real de las dos líneas. Lado del arco:
+      // si el elemento VIENE BAJANDO (origenId — asociado/recibido desde el piso superior,
+      // orig. usuario: la vertical visible sobre la unión es ese conector) el arco va ARRIBA;
+      // si no, del lado donde el tubo sigue (el de mayor tramo desde la unión). La flecha
       // círculo+triángulo de arriba se dibuja aparte e intacta, junto a la esquina.
       const prep = codo.porBajante.get(`${b.planId}:${b.id}`);
       if (prep) {
         const dCima = Math.hypot(pCima.sx - floorPt.sx, pCima.sy - floorPt.sy);
         const dBase = Math.hypot(pBase.sx - floorPt.sx, pBase.sy - floorPt.sy);
         const cimaArriba = pCima.sy <= floorPt.sy;
-        const lado =
-          (cimaArriba ? dCima : dBase) >= (cimaArriba ? dBase : dCima) ? 'arriba' : 'abajo';
+        const vieneDeArriba = !!(b as { origenId?: string }).origenId;
+        const lado = vieneDeArriba
+          ? 'arriba'
+          : (cimaArriba ? dCima : dBase) >= (cimaArriba ? dBase : dCima)
+            ? 'arriba'
+            : 'abajo';
         dibujaCodoIso({
           ctx,
           vertex: prep.vertex,

@@ -9,6 +9,7 @@ import {
   pisoLbl,
   pisoCorto,
   buildBajanteVisualLabel,
+  compararPorCodigo,
   DIAM_BAN,
   DIAM_BAN_LL,
   DIAM_BAN_SAN,
@@ -448,9 +449,7 @@ export function BajanteDiameterSelector({
                       : group.bajantes || []
                   )
                     .slice()
-                    .sort((a, b) =>
-                      (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
-                    );
+                    .sort((a, b) => compararPorCodigo(a, b));
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup key={group.planId} label={pLabel}>
@@ -586,9 +585,7 @@ export function BajanteDiameterSelector({
                     plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
                   const bajantesToShow = (freshUpperBajantes ?? (upperFloorGroup.bajantes || []))
                     .slice()
-                    .sort((a, b) =>
-                      (a.code || a.id).localeCompare(b.code || b.id, undefined, { numeric: true }),
-                    );
+                    .sort((a, b) => compararPorCodigo(a, b));
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup label={pLabel}>

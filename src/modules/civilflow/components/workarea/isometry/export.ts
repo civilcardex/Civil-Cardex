@@ -1,5 +1,10 @@
 import type { RefObject } from 'react';
 
+// ponytail: convención '_' para descargas — sanitizeFileName (utils/formatUtils) CONSERVA
+// espacios y elimina los símbolos; para archivos descargados sustituimos por '_' (criterio
+// histórico de este export), así que va como wrapper local y no usamos el global.
+const nombreArchivoDe = (base: string) => base.replace(/[^a-zA-Z0-9_-]/g, '_');
+
 interface ExportParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
   size: { w: number; h: number };
@@ -76,7 +81,7 @@ export async function exportPdf({
   doc.text(dateStr, pageW - margin, pageH - 8, { align: 'right' });
 
   doc.save(
-    `civilflow_isometria_${(proyNombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`,
+    `civilflow_isometria_${nombreArchivoDe(proyNombre || 'proyecto')}_${dateStr.replace(/\//g, '-')}.pdf`,
   );
 }
 
@@ -88,7 +93,7 @@ export function exportPng({
   const canvas = canvasRef.current;
   if (!canvas || size.w < 10) return;
   const link = document.createElement('a');
-  link.download = `civilflow_isometria_${(proyNombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.png`;
+  link.download = `civilflow_isometria_${nombreArchivoDe(proyNombre || 'proyecto')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.png`;
   link.href = canvas.toDataURL('image/png', 1.0);
   link.click();
 }

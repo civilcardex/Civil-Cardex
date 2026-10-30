@@ -35,6 +35,19 @@ import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import { CHEQUEOS_PRESION_KEY } from '../constants/storage-keys.ts';
 
 import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
+
+// ponytail: las 4 lecturas try/catch del libro de aparatos (la firma que decide si re-corre la
+// propagación) comparten una sola lectura. null = localStorage lanzó (modo privado/cuota) —
+// cada llamada decide con null qué hacer, igual que sus catch: 2 abortan la corrida y 2
+// conservan la firma previa. Ej: libro '{"RAF1_abc": {"lvm":2}}' → esa misma cadena.
+const leerLibroAparatos = (): string | null => {
+  try {
+    return localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
+  } catch {
+    return null;
+  }
+};
+
 interface WaterNetworkDesignProps {
   networkType: 'af' | 'ac';
   diamTable: Array<{ pulg: number; nominal: string; label?: string; dInt: number }>;
@@ -66,20 +79,13 @@ function WaterNetworkDesign({
   const [propTick, setPropTick] = useState(0);
   useEffect(() => {
     const correr = (): void => {
-      let firma = '';
-      try {
-        firma = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
-      } catch {
-        return;
-      }
+      const firma = leerLibroAparatos();
+      if (firma === null) return;
       if (firma === firmaRef.current && firmaRef.current !== '') return;
       firmaRef.current = firma;
       propagarAparatosPresion(networkType);
-      try {
-        firmaRef.current = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
-      } catch {
-        /* ignorar */
-      }
+      const firmaPost = leerLibroAparatos();
+      if (firmaPost !== null) firmaRef.current = firmaPost;
     };
     // El listener se registra ANTES de la corrida inicial: la propagación despacha
     // EV_STORAGE, y sin listener en ese instante nadie invalida los memos que leen los
@@ -92,20 +98,13 @@ function WaterNetworkDesign({
   }, [networkType]);
   useEffect(() => {
     if (propTick === 0) return;
-    let firma = '';
-    try {
-      firma = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
-    } catch {
-      return;
-    }
+    const firma = leerLibroAparatos();
+    if (firma === null) return;
     if (firma === firmaRef.current) return;
     firmaRef.current = firma;
     propagarAparatosPresion(networkType);
-    try {
-      firmaRef.current = localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '';
-    } catch {
-      /* ignorar */
-    }
+    const firmaPost = leerLibroAparatos();
+    if (firmaPost !== null) firmaRef.current = firmaPost;
   }, [propTick, networkType]);
   const updTramo = isAf(networkType) ? updTramoAf : updTramoAc;
 

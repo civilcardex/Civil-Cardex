@@ -5,11 +5,10 @@
  */
 export function ModalShell(props: {
   minWidth?: number;
-  maxWidth?: number;
   ariaLabel?: string;
   children: React.ReactNode;
 }): React.ReactElement {
-  const { minWidth = 360, maxWidth = 420, ariaLabel, children } = props;
+  const { minWidth = 360, ariaLabel, children } = props;
   return (
     <div
       style={{
@@ -32,7 +31,7 @@ export function ModalShell(props: {
           borderRadius: 8,
           padding: 24,
           minWidth,
-          maxWidth,
+          maxWidth: 420,
           boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
         }}
       >

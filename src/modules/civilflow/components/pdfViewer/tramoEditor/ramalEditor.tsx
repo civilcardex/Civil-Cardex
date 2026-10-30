@@ -4,6 +4,7 @@ import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalo
 import { GAS } from '../../../constants/engineeringDataGas.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
+import { inchPartOfDiametro } from '../../../lib/PlanoEngine/drawingUtils.ts';
 import {
   INODORO_APP_ID,
   sanDiamLabelAllowedForApparatus,
@@ -231,10 +232,6 @@ export function RamalEditor({
                 onChange={(e) => {
                   const dn = e.target.value;
                   // Invariante: ramal.diam >= accesorio.diam, igual que en el menú contextual.
-                  const inchFrom = (d: string) => {
-                    const q = d.indexOf('"');
-                    return q > 0 ? d.slice(0, q) : d;
-                  };
                   // Leer datos frescos del engine — el snapshot selElement puede estar stale
                   // si el usuario cambió el diámetro desde otro componente.
                   const fresh = engineRef.current
@@ -247,12 +244,12 @@ export function RamalEditor({
                   const aI = (fresh?.diametroInicio as string) || '';
                   const aF = (fresh?.diametroFin as string) || '';
                   const aNum = Math.max(
-                    aI ? diamPulgFromLabel(inchFrom(aI)) : 0,
-                    aF ? diamPulgFromLabel(inchFrom(aF)) : 0,
+                    aI ? diamPulgFromLabel(inchPartOfDiametro(aI)) : 0,
+                    aF ? diamPulgFromLabel(inchPartOfDiametro(aF)) : 0,
                   );
-                  if (dn && aNum > 0 && diamPulgFromLabel(inchFrom(dn)) < aNum) {
-                    const aINum = aI ? diamPulgFromLabel(inchFrom(aI)) : 0;
-                    const aFNum = aF ? diamPulgFromLabel(inchFrom(aF)) : 0;
+                  if (dn && aNum > 0 && diamPulgFromLabel(inchPartOfDiametro(dn)) < aNum) {
+                    const aINum = aI ? diamPulgFromLabel(inchPartOfDiametro(aI)) : 0;
+                    const aFNum = aF ? diamPulgFromLabel(inchPartOfDiametro(aF)) : 0;
                     const blockEnd = aINum >= aFNum ? 'INICIO' : 'FIN';
                     const blockDiam = aINum >= aFNum ? aI : aF;
                     engineRef.current?.triggerAlert(
@@ -353,10 +350,6 @@ export function RamalEditor({
                   }
                   // Invariante: ramal.diam >= accesorio.diam, igual que en el menú contextual.
                   {
-                    const inchFrom = (d: string) => {
-                      const q = d.indexOf('"');
-                      return q > 0 ? d.slice(0, q) : d;
-                    };
                     // Leer datos frescos del engine — el snapshot selElement puede estar stale.
                     const fresh = engineRef.current
                       ? selElement
@@ -368,12 +361,12 @@ export function RamalEditor({
                     const aI = (fresh?.diametroInicio as string) || '';
                     const aF = (fresh?.diametroFin as string) || '';
                     const aNum = Math.max(
-                      aI ? diamPulgFromLabel(inchFrom(aI)) : 0,
-                      aF ? diamPulgFromLabel(inchFrom(aF)) : 0,
+                      aI ? diamPulgFromLabel(inchPartOfDiametro(aI)) : 0,
+                      aF ? diamPulgFromLabel(inchPartOfDiametro(aF)) : 0,
                     );
-                    if (v && aNum > 0 && diamPulgFromLabel(inchFrom(v)) < aNum) {
-                      const aINum = aI ? diamPulgFromLabel(inchFrom(aI)) : 0;
-                      const aFNum = aF ? diamPulgFromLabel(inchFrom(aF)) : 0;
+                    if (v && aNum > 0 && diamPulgFromLabel(inchPartOfDiametro(v)) < aNum) {
+                      const aINum = aI ? diamPulgFromLabel(inchPartOfDiametro(aI)) : 0;
+                      const aFNum = aF ? diamPulgFromLabel(inchPartOfDiametro(aF)) : 0;
                       const blockEnd = aINum >= aFNum ? 'INICIO' : 'FIN';
                       const blockDiam = aINum >= aFNum ? aI : aF;
                       engineRef.current?.triggerAlert(

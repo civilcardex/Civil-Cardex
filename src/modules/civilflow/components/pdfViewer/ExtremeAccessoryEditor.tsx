@@ -8,6 +8,7 @@ import { getAccessoryOptions } from '../../utils/accessoryOptions.ts';
 import { DIAM_BY_MAT } from '../../constants';
 import { matShortKey } from '../../constants';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
+import { inchPartOfDiametro } from '../../lib/PlanoEngine/drawingUtils.ts';
 import { matchDiamOption } from '../../utils/diamOptionMatch.ts';
 import { codoPolarityOk, codoNivelPermitidoEn } from '../../lib/PlanoEngine/PlanoEngineDrawing.ts';
 import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventElbowTeeFix';
@@ -178,11 +179,10 @@ export default function ExtremeAccessoryEditor({
       const fresh = engineRef.current.ramales.find((x) => x.id === selElement.id);
       const ramalDiam = fresh?.diametro || selElement.diametro || '';
       if (val && ramalDiam) {
-        const inchFrom = (d: string) => {
-          const q = d.indexOf('"');
-          return q > 0 ? d.slice(0, q) : d;
-        };
-        if (diamPulgFromLabel(inchFrom(val)) > diamPulgFromLabel(inchFrom(ramalDiam))) {
+        if (
+          diamPulgFromLabel(inchPartOfDiametro(val)) >
+          diamPulgFromLabel(inchPartOfDiametro(ramalDiam))
+        ) {
           engineRef.current.triggerAlert(
             'Diámetro no permitido',
             'El diámetro del accesorio no puede ser mayor al diámetro del ramal.',

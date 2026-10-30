@@ -12,6 +12,7 @@ import {
   contarSifonesDe,
 } from '../../../utils/syncExtremeAccessory.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
+import { inchPartOfDiametro } from '../../../lib/PlanoEngine/drawingUtils.ts';
 import { matchDiamOption } from '../../../utils/diamOptionMatch.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import {
@@ -488,10 +489,6 @@ export function BajanteConnectionPanel({
                                 onChange={(e) => {
                                   const v = e.target.value;
                                   if (v && ramalEl.diametro) {
-                                    const inchFrom = (d: string) => {
-                                      const q = d.indexOf('"');
-                                      return q > 0 ? d.slice(0, q) : d;
-                                    };
                                     // Leer el diámetro del ramal fresco del engine — el snapshot
                                     // ramalEl puede estar stale si el ramal se editó desde
                                     // TramoEditor mientras el menú estaba abierto.
@@ -502,8 +499,8 @@ export function BajanteConnectionPanel({
                                     const ramalDiam = fresh?.diametro || ramalEl.diametro;
                                     if (
                                       ramalDiam &&
-                                      diamPulgFromLabel(inchFrom(v)) >
-                                        diamPulgFromLabel(inchFrom(ramalDiam))
+                                      diamPulgFromLabel(inchPartOfDiametro(v)) >
+                                        diamPulgFromLabel(inchPartOfDiametro(ramalDiam))
                                     ) {
                                       engineRef.current?.triggerAlert(
                                         'Diámetro no permitido',

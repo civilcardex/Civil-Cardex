@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
 import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
@@ -21,6 +22,22 @@ const Fallback = () => {
     <CargandoProyecto />
   );
 };
+
+/** Envoltura de ruta ESTÁTICA (import directo): solo frontera de error, sin Suspense.
+ *  Ej: / -> <Lazy><LandingPage /></Lazy>. */
+function Lazy({ children }: { children: ReactNode }) {
+  return <ErrorBoundary>{children}</ErrorBoundary>;
+}
+
+/** Envoltura de ruta LAZY: frontera de error + Suspense con el fallback único.
+ *  Ej: /docs -> <Guarded><DocsPage /></Guarded>. */
+function Guarded({ children }: { children: ReactNode }) {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<Fallback />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
+}
 
 // Rutas ligeras - import estatico
 import LandingPage from './pages/LandingPage.tsx';

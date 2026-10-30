@@ -2,15 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { askConfirm } from './ConfirmDialog.tsx';
 import { useEditable } from './EditLock.tsx';
 import { useExcelImportExport, type UseExcelImportExportOptions } from '../excelImport.tsx';
-
-// Combining diacritical marks block (U+0300-U+036F), built from char codes to avoid embedding raw combining characters in source.
-const DIACRITICS_RE = new RegExp(
-  '[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']',
-  'g',
-);
+import { sinAcentos } from '../../civilflow/constants/helpers.ts';
 
 function norm(s: string): string {
-  return s.normalize('NFD').replace(DIACRITICS_RE, '').toLowerCase();
+  return sinAcentos(s).toLowerCase();
 }
 
 function handleTabKeyDown(setEditIdx: (i: number | null) => void) {
