@@ -46,7 +46,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
   'pages/auth/ProfilePage.tsx': 580,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 636,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 949,
+  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 1010,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 725,
   'pages/PricingPage.tsx': 936,

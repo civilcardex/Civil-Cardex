@@ -1,4 +1,4 @@
-const TOTAL_FOCOS_BASE = 509;
+const TOTAL_FOCOS_BASE = 508;
 
 const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 17,

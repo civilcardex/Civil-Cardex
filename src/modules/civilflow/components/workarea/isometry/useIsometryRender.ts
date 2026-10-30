@@ -2,6 +2,8 @@ import { useEffect, type RefObject } from 'react';
 import { NETS } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { loadPlanCrop } from '../../../utils/planoCrop.ts';
 import { splitPtr } from '../../../utils/keys.ts';
+import { dibujaCodoIso } from './codoIso.ts';
+import { construyeJuncCodo, preparaCodos, recortaExtremoCodo } from './recorteCodo.ts';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from './geometry';
 import type { IsoCanvas, IsoSegment } from './useIsometryInteraction.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
@@ -389,6 +391,23 @@ export function useIsometriaRender({
       const projPt = (px: number, py: number, pz: number) =>
         project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
 
+      // Codos 90° de bajantes/montantes PREPARADOS antes del loop de ramales: por elemento
+      // con ramal conectado calcula el vértice (intersección ramal × vertical del centro),
+      // el lado donde el tubo sigue y el recorte EXACTO del ramal a su tangencia.
+      const proyectaNet = (iso: { x: number; y: number }, zP: number) =>
+        project(iso.x, iso.y, zP, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+      const codoJunc = construyeJuncCodo(netData.bajantes, pisosVisibles, confirmedPlanos);
+      const codo = preparaCodos({
+        bajantes: netData.bajantes,
+        ramales: netData.ramales,
+        proyecta: proyectaNet,
+        isoDe: getIsoCoords,
+        nptMap,
+        prof,
+        getZPix,
+        zoom,
+      });
+
       // Rectángulo acostado en el plano del piso (cajas CAN/CALL y red_publica): esquinas en
       // unidades iso (1 m = ISO_SCALE) proyectadas a los 4 vértices, solo trazo.
       const drawIsoRect = (
@@ -443,11 +462,31 @@ export function useIsometriaRender({
         const z_pix = getZPix(z, r.planNivel);
         const pts = r.pts;
         if (pts.length < 2) continue;
+        // Extremo que toca un bajante/montante CON codo: recorte exacto a la tangencia
+        // (distancia preparada por preparaCodos; si no hay prep, sin recorte).
+        const t0C = codo.porRamal.get(`${r.id}:0`);
+        const tLC = codo.porRamal.get(`${r.id}:1`);
+        const k0 =
+          t0C !== undefined ||
+          codoJunc.has(
+            `${Math.round(pts[0][0] * 10)}|${Math.round(pts[0][1] * 10)}|${r.planNivel}`,
+          );
+        const kL =
+          tLC !== undefined ||
+          codoJunc.has(
+            `${Math.round(pts[pts.length - 1][0] * 10)}|${Math.round(pts[pts.length - 1][1] * 10)}|${r.planNivel}`,
+          );
         const selKey = `${netId}:${r.planId}:${r.id}`;
         const isSel = selKey === selTramo;
         ctx.beginPath();
         for (let i = 0; i < pts.length; i++) {
-          const iso = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
+          const p =
+            k0 && i === 0
+              ? recortaExtremoCodo(pts[0], pts[1], t0C ?? 0)
+              : kL && i === pts.length - 1
+                ? recortaExtremoCodo(pts[pts.length - 1], pts[pts.length - 2], tLC ?? 0)
+                : pts[i];
+          const iso = getIsoCoords(p[0], p[1], r.planNivel);
           const pr = project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
           if (i === 0) ctx.moveTo(pr.sx, pr.sy);
           else ctx.lineTo(pr.sx, pr.sy);
@@ -800,6 +839,28 @@ export function useIsometriaRender({
         ctx.closePath();
         ctx.fill();
         ctx.restore();
+
+        // Curva del codo 90° (orig. usuario): empalme tangente entre el ramal conectado y el
+        // tubo vertical, con vértice en la intersección real de las dos líneas. Del lado donde
+        // el tubo SIGUE (el de mayor tramo desde la unión — el otro muere en ella). La flecha
+        // círculo+triángulo de arriba se dibuja aparte e intacta, junto a la esquina.
+        const prep = codo.porBajante.get(`${b.planId}:${b.id}`);
+        if (prep) {
+          const dCima = Math.hypot(pCima.sx - floorPt.sx, pCima.sy - floorPt.sy);
+          const dBase = Math.hypot(pBase.sx - floorPt.sx, pBase.sy - floorPt.sy);
+          const cimaArriba = pCima.sy <= floorPt.sy;
+          const lado =
+            (cimaArriba ? dCima : dBase) >= (cimaArriba ? dBase : dCima) ? 'arriba' : 'abajo';
+          dibujaCodoIso({
+            ctx,
+            vertex: prep.vertex,
+            ramalDir: prep.dir,
+            lado,
+            R: 9 * zoom,
+            color: netColor,
+            sel: isSel,
+          });
+        }
 
         segments.push({
           sx1: pBase.sx,
