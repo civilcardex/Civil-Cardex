@@ -80,8 +80,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 500 });
-  // Planos SIEMPRE visibles (toggle retirado, orig. usuario).
-  const showPlanos = true;
   const planImagesRef = useRef<Map<number, { img: HTMLCanvasElement; w: number; h: number }>>(
     new Map(),
   );
@@ -319,9 +317,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
   }, []);
 
   useEffect(() => {
-    // Sin planos visibles no hay rasterización que esperar: el overlay se puerta con
-    // showPlanos (isoLoading && showPlanos) en el JSX.
-    if (!showPlanos) return;
     let cancelled = false;
     (async () => {
       const newImages = new Map<number, { img: HTMLCanvasElement; w: number; h: number }>();
@@ -353,7 +348,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     return () => {
       cancelled = true;
     };
-  }, [confirmedPlanos, showPlanos]);
+  }, [confirmedPlanos]);
 
   const fitView = useCallback(() => {
     const W = size.w,
@@ -427,7 +422,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
       }
     }
 
-    if (showPlanos && planImagesRef.current.size > 0) {
+    if (planImagesRef.current.size > 0) {
       for (const [planId, planData] of planImagesRef.current) {
         const plan = confirmedPlanos.find((p) => p.id === planId);
         if (!plan || plan.nivel == null) continue;
@@ -486,7 +481,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     offX,
     offY,
     size,
-    showPlanos,
     confirmedPlanos,
     getIsoCoords,
     getZPix,
@@ -536,7 +530,6 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     offY,
     size,
     selTramo,
-    showPlanos,
     confirmedPlanos,
     renderTick,
     getIsoCoords,
@@ -585,8 +578,8 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
 
   const fittedRef = useRef(false);
   useEffect(() => {
-    if (!fittedRef.current && (hasAnyData || (showPlanos && planImagesRef.current.size > 0))) {
-      if (showPlanos && confirmedPlanos.length > 0 && planImagesRef.current.size === 0) return;
+    if (!fittedRef.current && (hasAnyData || planImagesRef.current.size > 0)) {
+      if (confirmedPlanos.length > 0 && planImagesRef.current.size === 0) return;
       const t = setTimeout(() => {
         if (fitView()) {
           fittedRef.current = true;
@@ -594,7 +587,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
       }, 100);
       return () => clearTimeout(t);
     }
-  }, [dataByNet, hasAnyData, showPlanos, confirmedPlanos.length, renderTick, fitView]);
+  }, [dataByNet, hasAnyData, confirmedPlanos.length, renderTick, fitView]);
 
   return (
     <div
@@ -659,7 +652,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
             onMouseDown={handleMouseDown}
             onContextMenu={(e) => e.preventDefault()}
           />
-          {isoLoading && showPlanos && (
+          {isoLoading && (
             <div className="iso-loading-overlay">
               <div className="iso-loading-spinner" />
               <div className="iso-loading-title">Cargando planos y redes...</div>

@@ -53,7 +53,6 @@ import {
   eraseRamalAt,
   handleDrawingMouseMove,
   handleDoubleClick,
-  deleteSegmentAt as _deleteSegmentAt,
   setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing.ts';
@@ -971,9 +970,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
   clearNet(netId: string): void {
     _clearNet(this, netId);
-  }
-  deleteSegmentAt(cx: number, cy: number): void {
-    _deleteSegmentAt(this, cx, cy);
   }
 
   getBajantesFantasma(): PlanoBajante[] {

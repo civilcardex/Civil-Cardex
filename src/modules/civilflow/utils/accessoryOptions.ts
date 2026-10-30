@@ -34,9 +34,10 @@ export function getAccessoryOptions(netId: string) {
   }
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
     // AF/AC (cuerpos, ped. usuario 2026-10-29): SIN reducción/ampliación/otros (cat 'Otros'),
-    // SIN llave terminal pelada (solo teeLlaveTerminal) y SIN codos sube/baja de cuerpo (la
-    // polaridad solo tiene sentido en extremos). teeDirecto excluida: la detecta el pase
-    // geométrico. teeTapon/teeReduccion/teeLado excluidas de este dropdown.
+    // SIN llave terminal pelada (solo teeLlaveTerminal). Los codos sube/baja SÍ se ofrecen en
+    // cuerpo (la polaridad la resuelve el pase geométrico) — igual que teeSube/teeBaja.
+    // teeDirecto excluida: la detecta el pase geométrico. teeTapon/teeReduccion/teeLado
+    // excluidas de este dropdown.
     return ACCESORIOS_HIDRO.filter(
       (a) =>
         (a.cat !== 'Otros' && a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||

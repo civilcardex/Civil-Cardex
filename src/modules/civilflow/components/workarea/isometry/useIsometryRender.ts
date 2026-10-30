@@ -30,7 +30,6 @@ interface UseIsometriaRenderParams {
   offY: number;
   size: { w: number; h: number };
   selTramo: string | null;
-  showPlanos: boolean;
   confirmedPlanos: PlanItem[];
   renderTick: number;
   getIsoCoords: (px: number, py: number, nivel: number) => { x: number; y: number };
@@ -56,7 +55,6 @@ export function useIsometriaRender({
   offY,
   size,
   selTramo,
-  showPlanos,
   confirmedPlanos,
   renderTick,
   getIsoCoords,
@@ -84,7 +82,7 @@ export function useIsometriaRender({
     const segments: IsoSegment[] = [];
 
     // Dibuja los planos como láminas de fondo semitransparentes
-    if (showPlanos && planImagesRef.current.size > 0) {
+    if (planImagesRef.current.size > 0) {
       for (const [planId, planData] of planImagesRef.current) {
         const plan = confirmedPlanos.find((p) => p.id === planId);
         if (!plan || plan.nivel == null) continue;
@@ -942,7 +940,6 @@ export function useIsometriaRender({
     offY,
     size,
     selTramo,
-    showPlanos,
     confirmedPlanos,
     renderTick,
     getIsoCoords,

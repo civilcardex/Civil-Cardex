@@ -44,8 +44,7 @@ export function RamalMenu() {
 
   // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
-  // — es decir, accMedIdx = segmentIdx + 1, misma convención que usan
-  // handleCreateMontanteMidBody/handleCreateTeeCapStub.
+  // — es decir, accMedIdx = segmentIdx + 1, misma convención que usa handleCreateMontanteMidBody.
   const hit = contextMenuState.midRamalHit;
   const existingTeeIdx = hit ? hit.segmentIdx + 1 : -1;
   const existingTeeType = hit ? ramalEl.accMed?.[`accMed${existingTeeIdx}`] : undefined;

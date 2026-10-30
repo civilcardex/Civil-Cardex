@@ -95,4 +95,4 @@ export {
   findGuideTCrossing,
 } from './guideLines.ts';
 
-export { deleteSegmentAt, handleEraseDown, eraseRamalAt } from './drawingErase.ts';
+export { handleEraseDown, eraseRamalAt } from './drawingErase.ts';

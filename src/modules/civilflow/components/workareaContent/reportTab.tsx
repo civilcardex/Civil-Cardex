@@ -192,7 +192,8 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         ...tag(buildEpTables(), 'ep'),
         // "Redes a descargar" filtra TAMBIÉN las memorias (orig. usuario): el mismo selector
         // gobierna planos de red y memorias finales — y las redes NO activas tampoco entran
-        // (regla "activa y chequeada"; aco/bom/ep nunca se filtran).
+        // (regla "activa y chequeada"; bom/ep SÍ se filtran — están en REDES. Solo aco,
+        // no presente en REDES, nunca sale del set).
       ].filter((t) => !t.red || !ocultasExport.has(t.red));
       if (tables.length === 0) {
         throw new Error(

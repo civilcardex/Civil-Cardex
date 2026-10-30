@@ -8,7 +8,7 @@ import type { PlanoRamal } from '../PlanoState.ts';
 
 // Doctrina borrador 2026-10-29 (orig. usuario): el borrador sobre un ramal lo borra COMPLETO
 // con sus accMed — antes recortaba/partía por los vértices con símbolo y el trazo quedaba
-// troceado. Para recortar puntas existe deleteSegmentAt.
+// troceado. No existe herramienta de recorte por segmento.
 
 function mkEngine(ramal: Partial<PlanoRamal>): { eng: PlanoEngine; ramal: PlanoRamal } {
   const eng = new PlanoEngineCtor(

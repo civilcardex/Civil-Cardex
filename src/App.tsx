@@ -1,5 +1,4 @@
-import React, { Suspense } from 'react';
-import { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';

@@ -1,88 +1,8 @@
 import type { PlanoRamal, PlanoBajante, IPlanoEngineCore } from './PlanoState.ts';
-import { pointToSegmentDist } from './HitTester.ts';
-import { purgarEstadoRamalesBorrados } from './deleteCascade.ts';
-import { angleAtHalfLength } from './drawingAngles.ts';
-import { _midpoint } from './drawingUtils.ts';
-
-/** Borra la punta de la tubería más cercana a donde hiciste clic. Los dobleces del medio no se
- *  borran con esto: para eso está el borrador. */
-export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
-  // Ventana anti-alerta del sweep de aparatos (orig. usuario: borrar no debe alertar
-  // "Aparato no permitido" por estados transitorios). [] = solo abre la ventana, sin ids.
-  engine._emitDelete([]);
-  const plane = engine.toPlane(cx, cy);
-  const HIT_DIST = 10 / engine.zoom;
-  let bestR: PlanoRamal | null = null,
-    bestIdx = -1,
-    bestD = Infinity;
-
-  for (const r of engine.ramales) {
-    if (!r.pts || r.pts.length < 2) continue;
-    for (let i = 0; i < r.pts.length; i++) {
-      const d = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
-      if (d < bestD) {
-        bestD = d;
-        bestIdx = i;
-        bestR = r;
-      }
-    }
-    if (bestD <= HIT_DIST) continue;
-    for (let i = 0; i < r.pts.length - 1; i++) {
-      const d = pointToSegmentDist(
-        plane.x,
-        plane.y,
-        r.pts[i][0],
-        r.pts[i][1],
-        r.pts[i + 1][0],
-        r.pts[i + 1][1],
-      );
-      if (d < bestD) {
-        bestD = d;
-        bestR = r;
-        const dA = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
-        const dB = Math.hypot(plane.x - r.pts[i + 1][0], plane.y - r.pts[i + 1][1]);
-        bestIdx = dA <= dB ? i : i + 1;
-      }
-    }
-  }
-  if (!bestR || bestIdx < 0 || bestD > HIT_DIST) return;
-  const r = bestR;
-  if (bestIdx > 0 && bestIdx < r.pts.length - 1) {
-    engine._emitStatus(
-      '⚠ No se puede eliminar un segmento intermedio. Solo se pueden eliminar extremos.',
-    );
-    return;
-  }
-  if (r.pts.length <= 2) {
-    // Borrado = SOLO el trazo borrador (pedido usuario): los tributarios que colgaban no se
-    // borran en cascada — el sanado global los re-ancla a la raíz que nombra su label.
-    engine.ramales = engine.ramales.filter((x) => x.id !== r.id);
-    // Purga conteos del piso (aparatos/hidro/gas) — el id puede reutilizarse al redibujar.
-    purgarEstadoRamalesBorrados(engine, [r.id]);
-    if (r.tipo !== 'tributario') engine._renumberRamales(r.net);
-    engine.selId = null;
-    engine._emitSelect(null);
-  } else {
-    r.pts.splice(bestIdx, 1);
-    if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
-    r.totalL = 0;
-    for (let i = 0; i < r.pts.length - 1; i++) {
-      r.totalL += engine.pxToM(
-        Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]),
-      );
-    }
-    r.totalL = +r.totalL.toFixed(3);
-    const [mx, my] = _midpoint(r.pts);
-    r.labelX = mx;
-    r.labelY = my;
-  }
-  engine.render();
-  engine._markDirty();
-}
 
 /** La herramienta borrador: un clic sobre cualquier elemento lo borra. Tuberías: el ramal
- *  COMPLETO con sus símbolos (orig. usuario 2026-10-29). Para recortar puntas existe la
- *  herramienta de borrar segmento (deleteSegmentAt). */
+ *  COMPLETO con sus símbolos (doctrina 2026-10-29). No recorta puntas: no existe herramienta
+ *  de recorte por segmento. */
 export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   // Ventana anti-alerta del sweep de aparatos: borrar genera estados transitorios que el
   // sweep flagueaba (orig. usuario). [] = solo abre la ventana, sin ids.
@@ -132,7 +52,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
 
 /** Borrador sobre una tubería ya seleccionada: borra el ramal COMPLETO con sus accMed
  *  (símbolos). Antes recortaba/partía por los vértices con símbolo — el ramal quedaba troceado
- *  (orig. usuario). Para recortar puntas existe deleteSegmentAt. */
+ *  (orig. usuario). */
 export function eraseRamalAt(
   engine: IPlanoEngineCore,
   r: PlanoRamal,
