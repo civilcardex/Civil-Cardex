@@ -1,21 +1,28 @@
 /* eslint-disable no-empty */
+/**
+ * Orquestador del visor de planos: monta el motor (usePdfViewerEngine) y conecta las piezas
+ * extraídas en components/pdfViewer/ — persistencia (useViewerPersistence), puente motor↔React
+ * (useEngineBridge), menú contextual (useViewerMenus), undo/fit (useViewerShortcuts) y el DOM
+ * (ViewerStage). El ORDEN de los efectos de este archivo es el mismo que cuando era el monolito:
+ * no reordenar sin repro de visor (la cámara, el re-base de escala y el ciclo de guardado
+ * dependen de esa secuencia).
+ *
+ * Ejemplo: el usuario traza un ramal → el motor emite onDirty → useViewerPersistence marca
+ * sucio y persiste el snapshot; 1.5 s después el autosave sube a BD y la franja del toolbar
+ * pasa a "Guardado".
+ */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch.ts';
-import { ViewerMobileChrome } from './pdfViewer/ViewerMobileChrome.tsx';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
 import { decideEscalaPorDefectoDelPlan } from '../utils/loadDiagnostics.ts';
 import { escalaDeDoc } from '../utils/planScale.ts';
 import { useNavigate } from 'react-router-dom';
-import PlanoEngine, {
-  type ElementItem,
-  type ToolType,
-  type TramoType,
-} from '../lib/PlanoEngine/PlanoEngine.ts';
+import PlanoEngine, { type ElementItem } from '../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement } from '../lib/PlanoEngine/PlanoState.ts';
 import type { Piso } from '../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../context/PlansContext.tsx';
-import { pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
+import { DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import {
@@ -25,25 +32,15 @@ import {
 } from '../utils/drawingSync.ts';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService.ts';
 import { ACTIVE_NETS_KEY } from '../constants/storage-keys.ts';
-import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar.tsx';
+import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
 
-import { persistTrazosSnapshot } from './pdfViewer/persistStrokes.ts';
-import { limpiarStoresDeBorrado } from './pdfViewer/aparatosDeleteSweep.ts';
 import { useNetVisibilityState } from './pdfViewer/useNetVisibilityState.ts';
 import { useViewerDialogs } from './pdfViewer/useViewerDialogs.ts';
 import { useViewerToolbarActions } from './pdfViewer/useViewerToolbarActions.ts';
 import { validateBeforeClose } from './pdfViewer/closeValidation.ts';
 export { validateBeforeClose };
 import { sleep } from './shared/sequentialLoad.ts';
-import PdfCanvas from './pdfViewer/PdfCanvas.tsx';
-import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar.tsx';
-import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
 import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit.ts';
-import TextInputOverlay from './pdfViewer/TextInputOverlay.tsx';
-import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
-import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/context.ts';
-import ConfirmDialog from './pdfViewer/ConfirmDialog.tsx';
-import AccesorioModal from './pdfViewer/FittingModal.tsx';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement.ts';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs.ts';
@@ -52,45 +49,13 @@ import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility.ts'
 import { useFloorRamales } from './pdfViewer/useFloorRamales.ts';
 import { useTrazosLoader } from './pdfViewer/useStrokesLoader.ts';
 import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts.ts';
-import { useViewerDirtySweep } from './pdfViewer/useViewerDirtySweep.ts';
-import { PdfViewerRightSidebar } from './pdfViewer/PdfViewerRightSidebar.tsx';
-import { useSaveStatusBanner } from './pdfViewer/useSaveStatusBanner.ts';
-import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
+import { useViewerPersistence } from './pdfViewer/useViewerPersistence.ts';
+import { useEngineBridge } from './pdfViewer/useEngineBridge.ts';
+import { useViewerMenus } from './pdfViewer/useViewerMenus.ts';
+import { useViewerShortcuts } from './pdfViewer/useViewerShortcuts.ts';
+import ViewerStage, { LEFT_COLLAPSED_WIDTH } from './pdfViewer/ViewerStage.tsx';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
-const PdfViewer_S4: React.CSSProperties = {
-  width: '100%',
-  padding: '5px 8px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  cursor: 'pointer',
-};
-const PdfViewer_S5: React.CSSProperties = {
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  zIndex: 40,
-  width: 16,
-  height: 24,
-  background: '#14161a',
-  border: '1px solid #3a494a',
-  color: '#22c55e',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 0,
-  fontSize: 12,
-} as const;
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
-// Barra izquierda colapsada conserva una franja estrecha de iconos (herramientas + snap +
-// acciones) en vez de desaparecer a 0 — coherente con el render colapsado de la propia
-// toolbar en PdfViewerToolbar.tsx.
-const LEFT_COLLAPSED_WIDTH = 44;
 
 // Sonda estructural de la unión PlanoElement: permite leer `tipo`/`net`/`diametro`/`pendiente`
 // (presentes en unos tipos de elemento, ausentes en otros) sin repetir narrowing con los
@@ -116,15 +81,6 @@ interface PdfViewerProps {
   onReady?: () => void;
 }
 
-const mainContainerStyle: CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  minHeight: 0,
-  background: '#111317',
-  border: '1px solid #3a494a',
-  overflow: 'hidden',
-};
 const leftSidebarStyle: CSSProperties = {
   width: 180,
   flexShrink: 0,
@@ -390,67 +346,42 @@ function PdfViewer_({
     escalaGlobalRef,
   });
 
-  const markDirtyRef = useRef<() => void>(() => {});
+  // ── Persistencia: autosave 1.5s, snapshot en cada onDirty, sweep, franja de error de guardado.
+  // (useSaveStatusBanner vivía tras el efecto de syncEngine; sus 4 listeners son de eventos
+  // globales asíncronos y sin co-oyentes en el visor: registrarlos antes no cambia nada.)
+  const { onDirtyHandler, saveStatus, doSave, autoSaveTimerRef, suprimirPorBorrado, bdError } =
+    useViewerPersistence({
+      engineRef,
+      currentIdRef,
+      loadingPlanRef,
+      activeNetRef,
+      syncDrawings,
+      plans: planosCtx.plans,
+      setDrawnElements,
+      setSelElement,
+      setDiamSel,
+    });
 
-  const { saveStatus, setSaveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
-    engineRef,
-    currentIdRef,
-    planosCtx.plans,
-    loadingPlanRef,
-  );
-  useEffect(() => {
-    markDirtyRef.current = markDirty;
-  }, [markDirty]);
-  // Sweep de aparatos inviables (dedupe + ventana anti-borrado) — refs vivían en este archivo.
-  const { barreAparatos, suprimirPorBorrado } = useViewerDirtySweep();
-
-  const onDirtyHandler = useCallback(
-    (eng: PlanoEngine) => {
-      markDirtyRef.current();
-      setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
-      if (eng.selId) {
-        const sel = eng.getSelected();
-        if (sel) {
-          const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = sel as unknown as Record<
-            string,
-            unknown
-          >;
-          setSelElement(rest as unknown as ProbedElement);
-          // ponytail: single source of truth — sync diamSel immediately so panel & menu dropdowns reflect new diametro without reselection
-          const d = (rest as unknown as { diametro?: string }).diametro;
-          if (d)
-            setDiamSel((prev) => ({
-              ...prev,
-              [(eng.activeNet || activeNetRef.current || 'af') as string]: d,
-            }));
-        }
-      }
-      if (loadingPlanRef.current) return;
-      // Sweep de aparatos inviables + auto-bump de diámetros (hook pdfViewer/useViewerDirtySweep).
-      barreAparatos(eng);
-      try {
-        const id = eng._loadedPlanId || currentIdRef.current || 'work';
-        if (id) persistTrazosSnapshot(eng, id);
-      } catch {}
-      syncDrawings();
-    },
-    [syncDrawings, barreAparatos],
-  );
-
-  const onDeleteHandler = useCallback(
-    (ids: string[]) => {
-      // Ventana anti-alerta durante el borrado + limpieza del dedupe (el renumerado
-      // reutiliza ids y no debe heredar la supresión del ramal borrado).
-      suprimirPorBorrado(ids);
-      // [] = solo abre la ventana anti-alerta (borrador en vacío): sin fan-out — un clic sin
-      // nada borrado no es un cambio (no emite aparatos-clear ni re-sincroniza dibujos).
-      if (ids.length === 0) return;
-      limpiarStoresDeBorrado(engineRef.current, ids);
-      emitAparatosClear({ ids });
-      syncDrawings();
-    },
-    [syncDrawings, suprimirPorBorrado],
-  );
+  // ── Puente motor↔React: handlers que el motor invoca + syncEngine (elecciones UI → motor).
+  const { onDeleteHandler, noopStatus, onSelectHandler, onAlertHandler, syncEngine } =
+    useEngineBridge({
+      engineRef,
+      syncDrawings,
+      suprimirPorBorrado,
+      setSelElement,
+      tool,
+      activeNet,
+      tipoTramo,
+      snapOn,
+      gridOn,
+      scaleM,
+      setScaleM,
+      mats,
+      diamSel,
+      gasMatSel,
+      selectedNivel,
+      pisos,
+    });
 
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
     setTextOverlay({ x, y, value: '', cb });
@@ -458,37 +389,12 @@ function PdfViewer_({
     return () => clearTimeout(t);
   }, []);
 
-  // ── Estado de diálogos ──
-  const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
-  // ponytail: keep context menu snapshot in sync with engine source of truth for diametro/material etc.
-  useEffect(() => {
-    if (!contextMenuState?.visible || !contextMenuState.element) return;
-    const eng = engineRef.current;
-    if (!eng) return;
-    const eid = (contextMenuState.element as { id?: string }).id;
-    if (!eid) return;
-    const fresh =
-      eng.ramales.find((r) => r.id === eid) ||
-      eng.bajantes.find((b) => b.id === eid) ||
-      eng.textAnnots.find((t) => t.id === eid) ||
-      eng.areas.find((a) => a.id === eid) ||
-      eng.guideLines.find((g) => g.id === eid);
-    if (!fresh) return;
-    const snap = contextMenuState.element as unknown as Record<string, unknown>;
-    const live = fresh as unknown as Record<string, unknown>;
-    if (
-      snap.diametro !== live.diametro ||
-      snap.material !== live.material ||
-      snap.accesorioInicio !== live.accesorioInicio ||
-      snap.accesorioFin !== live.accesorioFin ||
-      snap.aparatoInicio !== live.aparatoInicio ||
-      snap.aparatoFin !== live.aparatoFin
-    ) {
-      setContextMenuState((prev) =>
-        prev ? { ...prev, element: { ...fresh } as unknown as typeof prev.element } : null,
-      );
-    }
-  }, [selElement, contextMenuState?.visible, contextMenuState?.element]);
+  // ── Estado del menú contextual (clic derecho) ──
+  const { contextMenuState, setContextMenuState, contextMenuCbRef } = useViewerMenus({
+    engineRef,
+    selElement,
+  });
+
   const {
     confirmState,
     setConfirmState,
@@ -498,52 +404,6 @@ function PdfViewer_({
     triggerConfirm,
   } = useViewerDialogs(engineRef as React.RefObject<PlanoEngine | null>);
 
-  const contextMenuCbRef = useRef<
-    | ((
-        bajante: PlanoElement,
-        x: number,
-        y: number,
-        isGhostClick?: boolean,
-        ramalEndpoint?: { idx: number; x: number; y: number } | null,
-        midRamalHit?: { segmentIdx: number; x: number; y: number } | null,
-      ) => void)
-    | null
-  >(null);
-  const onContextMenuCb = useCallback(
-    (
-      bajante: PlanoElement,
-      x: number,
-      y: number,
-      isGhostClick?: boolean,
-      ramalEndpoint?: { idx: number; x: number; y: number } | null,
-      midRamalHit?: { segmentIdx: number; x: number; y: number } | null,
-    ) => {
-      setContextMenuState({
-        visible: true,
-        x,
-        y,
-        element: bajante,
-        isGhostClick,
-        ramalEndpoint,
-        midRamalHit,
-      });
-    },
-    [],
-  );
-  useEffect(() => {
-    contextMenuCbRef.current = onContextMenuCb;
-  }, [onContextMenuCb]);
-
-  // ── Inicialización del motor ──
-  const noopStatus = useCallback(() => {}, []);
-  const onSelectHandler = useCallback((el: Record<string, unknown> | null) => {
-    setSelElement(el as ProbedElement | null);
-  }, []);
-  const onAlertHandler = useCallback((title: string, msg: string) => {
-    window.dispatchEvent(
-      new CustomEvent('civilflow_diametro_validation', { detail: { title, message: msg } }),
-    );
-  }, []);
   // Grosor de líneas (slider bajo la barra de redes): factor multiplicador de todos los
   // lineWidth del dibujo, persistido por plano (cf_planos.line_width vía serializeWork).
   const [lineWidthScale, setLineWidthScale] = useState(1);
@@ -598,7 +458,8 @@ function PdfViewer_({
   useEffect(() => {
     if (engineRef.current && engineReady && contextMenuCbRef.current)
       engineRef.current.onContextMenu(contextMenuCbRef.current);
-  }, [engineReady, engineRef]);
+    // contextMenuCbRef añadido: ref estable (identidad fija) — sin cambio de conducta.
+  }, [engineReady, engineRef, contextMenuCbRef]);
 
   useEffect(() => {
     if (engineRef.current) engineRef.current.activeNetworks = activeNetworks;
@@ -661,109 +522,11 @@ function PdfViewer_({
   const { finalVisibleNets, recolectoraActive, rejillasActive } =
     useActiveNetsVisibility(activeNetworks);
 
-  // ── Acciones en línea ──
-  const syncEngine = useCallback(() => {
-    const eng = engineRef.current;
-    if (!eng) return;
-    eng.setTool(tool as ToolType);
-    eng.setActiveNet(activeNet);
-    eng.setTipoTramo(tipoTramo as TramoType);
-    eng.setSnap(snapOn);
-    eng.setGridMode(gridOn);
-    // La escala del MOTOR manda cuando el piso tiene dibujo: el doc define el espacio de
-    // los píxeles y su escala es la que interpretan las cotas. Si el estado de React se
-    // diferenció (un refresco de planos lo pisa), se adopta la del motor en vez de deformar
-    // el dibujo (orig. usuario: al reingresar, las cotas leían menos y los elementos
-    // aparecían desplazados).
-    const smEstado = Number(scaleM);
-    const conDibujo =
-      eng.ramales.length +
-        eng.bajantes.length +
-        eng.areas.length +
-        eng.dims.length +
-        eng.textAnnots.length >
-      0;
-    if (
-      conDibujo &&
-      Number.isFinite(smEstado) &&
-      eng.scaleM > 0 &&
-      Math.abs(smEstado - eng.scaleM) > 1e-9
-    ) {
-      setScaleM(String(eng.scaleM));
-    } else {
-      eng.setScaleM(scaleM);
-    }
-    const floorObj = pisos.find((p) => p.n === selectedNivel);
-    eng.nivelActual = floorObj
-      ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
-      : null;
-    eng.nptLevels = pisos.map((p) => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
-    // Gas tiene varias opciones reales de material (según MATERIALES_POR_RED) — a diferencia de
-    // las redes de un solo material, NO debe pre-rellenar un default silenciosamente; el usuario
-    // tiene que elegir uno activamente, igual que haría cualquier otra red multimaterial si
-    // tuviera más de una opción canónica.
-    const matName =
-      activeNet === 'gas'
-        ? gasMatSel[activeNet] || ''
-        : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
-    // Fix issue #3: tributario no hereda diámetro 4" por defecto — solo inodoro lo requiere
-    const dRaw = activeNet === 'gas' ? diamSel[activeNet] || '' : diamSel[activeNet] || '';
-    const d = tipoTramo === 'tributario' ? '' : dRaw;
-    const p = activeNet === 'san' || activeNet === 'll' ? DEFAULT_PENDIENTE_PCT : 0;
-    eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
-  }, [
-    tool,
-    activeNet,
-    tipoTramo,
-    snapOn,
-    gridOn,
-    scaleM,
-    mats,
-    diamSel,
-    selectedNivel,
-    pisos,
-    gasMatSel,
+  const { handleUndo, handleRedo, handleFit, handleRotateLabel } = useViewerShortcuts({
     engineRef,
-  ]);
-
-  // El Ctrl+Z de teclado lo maneja el propio engine (keydown en document) — este listener
-  // limpia las copias congeladas de la UI (menú contextual/panel) tras cada undo/redo.
-  useEffect(() => {
-    const clearFrozenUi = () => {
-      setSelElement(null);
-      setContextMenuState(null);
-    };
-    window.addEventListener('civilflow_undone', clearFrozenUi);
-    return () => window.removeEventListener('civilflow_undone', clearFrozenUi);
-  }, []);
-
-  const handleUndo = useCallback(() => {
-    if (engineRef.current) {
-      engineRef.current.undoLast();
-      // El menú contextual y el panel muestran COPIAS congeladas del elemento — tras revertir
-      // hay que cerrarlas o el usuario sigue viendo el aparato/accesorio que el undo ya quitó.
-      setSelElement(null);
-      setContextMenuState(null);
-    }
-  }, [engineRef]);
-  const handleRedo = useCallback(() => {
-    if (engineRef.current) {
-      engineRef.current.redoLast();
-      setSelElement(null);
-      setContextMenuState(null);
-    }
-  }, [engineRef]);
-  const handleFit = useCallback(() => {
-    const eng = engineRef.current;
-    if (!eng) return;
-    // Encuadre sobre el DIBUJO (lo que el usuario trazó): recorta el fondo negro de la lámina.
-    // Sin dibujo (piso vacío) cae a la hoja completa. MISMA fórmula que la entrada del visor
-    // (reEncuadrarContenido) — Ajustar devuelve a la cámara de entrada exacta.
-    eng.reEncuadrarContenido();
-    eng.scheduleRender();
-    // ponytail: sin setScale(ceil) — el observer bgOnly re-rasteriza a la densidad del
-    // zoom ajustado; el setScale disparaba un renderPage COMPLETO (bg+draw+reload) duplicado.
-  }, [engineRef]);
+    setSelElement,
+    setContextMenuState,
+  });
 
   const { handleClear, handleClearGuides, handleSave, handleSnapToggle, handleGridToggle } =
     useViewerToolbarActions({
@@ -776,9 +539,7 @@ function PdfViewer_({
       setSnapOn,
       setGridOn,
     });
-  const handleRotateLabel = useCallback(() => {
-    if (engineRef.current) engineRef.current.rotateLabelSnap();
-  }, [engineRef]);
+
   const handleUpdateSel = useCallback(
     (field: string, value: unknown) => {
       if (!engineRef.current || !selElement) return;
@@ -806,9 +567,6 @@ function PdfViewer_({
   }, [syncEngine]);
 
   const prevResetKey = useRef('');
-  // Error de guardado (BD o cuota local): franja roja + motivo — hook pdfViewer/useSaveStatusBanner.
-  const bdError = useSaveStatusBanner({ setSaveStatus });
-
   const resetKey = activeNet + '|' + tipoTramo;
   useEffect(() => {
     if (resetKey === prevResetKey.current) return;
@@ -935,286 +693,123 @@ function PdfViewer_({
     );
   }, [selectedNivel, planos]);
 
+  // Cierre del visor (antes closure inline del onClose de la barra de redes): mismo cuerpo.
+  // Deps = todo lo que el cuerpo lee por render (planos/handleSave cambian juntos al refrescar).
+  const handleCerrarVisor = useCallback(() => {
+    // Idempotente: el doble click no re-dispara el flujo. El prefetch que asegura la
+    // caché de TODOS los pisos tiene tope de 4s — una red colgada no bloquea el cierre
+    // para siempre (valida con la caché que haya, igual que si el prefetch fallara).
+    if (cerrandoRef.current) return;
+    cerrandoRef.current = true;
+    void (async () => {
+      try {
+        await Promise.race([prefetchAllTrazos(planos), sleep(4000)]);
+      } catch {
+        /* validar con la caché que haya */
+      }
+      const eng = engineRef.current;
+      if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) {
+        cerrandoRef.current = false;
+        return;
+      }
+      handleSave();
+      // Volver con el proyecto en la URL (orig. usuario: se perdía el /:proyectoId).
+      {
+        const pid = getActiveProyectoId();
+        navigate(pid ? `/civilflowareatrabajo/${pid}` : '/civilflowareatrabajo');
+      }
+    })();
+  }, [planos, onAlertHandler, handleSave, navigate]);
+
   return (
-    <div style={mainContainerStyle}>
-      <PdfViewerNetworkBar
-        nets={finalVisibleNets}
-        activeNet={activeNet}
-        hiddenNets={hiddenNets}
-        lockedNets={lockedNets}
-        onSelectNet={handleSelectNet}
-        onToggleHidden={handleToggleHidden}
-        onToggleLocked={handleToggleLocked}
-        scaleText={scaleText}
-        onClose={() => {
-          // Idempotente: el doble click no re-dispara el flujo. El prefetch que asegura la
-          // caché de TODOS los pisos tiene tope de 4s — una red colgada no bloquea el cierre
-          // para siempre (valida con la caché que haya, igual que si el prefetch fallara).
-          if (cerrandoRef.current) return;
-          cerrandoRef.current = true;
-          void (async () => {
-            try {
-              await Promise.race([prefetchAllTrazos(planos), sleep(4000)]);
-            } catch {
-              /* validar con la caché que haya */
-            }
-            const eng = engineRef.current;
-            if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) {
-              cerrandoRef.current = false;
-              return;
-            }
-            handleSave();
-            // Volver con el proyecto en la URL (orig. usuario: se perdía el /:proyectoId).
-            {
-              const pid = getActiveProyectoId();
-              navigate(pid ? `/civilflowareatrabajo/${pid}` : '/civilflowareatrabajo');
-            }
-          })();
-        }}
-      />
-
-      {/* Grosor de líneas: deslizador que define el grosor de TODAS las líneas y elementos de la
-          zona de dibujo (orig. usuario). Persistido por plano vía serializeWork → cf_planos. */}
-      <div
-        style={{
-          height: 30,
-          flexShrink: 0,
-          background: '#14161a',
-          borderBottom: '1px solid #2a3435',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '0 12px',
-        }}
-      >
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#6b8cae',
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Grosor:
-        </div>
-        <input
-          type="range"
-          min={0.5}
-          max={3}
-          step={0.1}
-          value={lineWidthScale}
-          aria-label="Grosor de líneas"
-          // Commit-on-release: cada evento `input` disparaba la cascada completa de
-          // _markDirty (recálculo de red + snapshot de undo + autosave) ×25 por arrastre,
-          // y llenaba el historial de undo de pasos de 0.1× de grosor. El arrastre solo
-          // redibuza; UN dirty al soltar consolida guardado + undo.
-          onChange={(e) => {
-            const v = Number(e.target.value);
-            setLineWidthScale(v);
-            const eng = engineRef.current;
-            if (eng) {
-              eng.lineWidthScale = v;
-              eng.scheduleRender();
-            }
-          }}
-          onPointerUp={() => {
-            const eng = engineRef.current;
-            if (eng) eng._markDirty();
-          }}
-          // Teclado: flechas/Home/End sobre el range disparan onChange pero NUNCA
-          // pointerup — sin esto el ajuste vía teclado se pierde al recargar.
-          onKeyUp={() => {
-            const eng = engineRef.current;
-            if (eng) eng._markDirty();
-          }}
-          style={{ width: 140, accentColor: '#F5A623' }}
-        />
-        <div
-          style={{
-            padding: '2px 8px',
-            background: '#1e2024',
-            border: '1px solid #2a3435',
-            color: '#8AB4D6',
-            fontSize: 12,
-            fontFamily: "'Geist',monospace",
-          }}
-        >
-          {lineWidthScale.toFixed(1)}×
-        </div>
-      </div>
-
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative', minWidth: 0 }}>
-        <div className="visor-sidebar" data-tour="toolbar" style={dynamicLeftStyle}>
-          <h2 style={SR_ONLY_STYLE}>Panel de capas</h2>
-          <div
-            style={{
-              height: 3,
-              flexShrink: 0,
-              transition: 'background .3s',
-              background: bdError ? '#ef4444' : STATUS[saveStatus]?.color || STATUS.error.color,
-            }}
-          />
-          {!isMobile && (
-            <PdfViewerToolbar
-              tool={tool}
-              tipoTramo={tipoTramo}
-              onTipoTramoSelect={(t) => setTipoTramo(t)}
-              snapOn={snapOn}
-              gridOn={gridOn}
-              activeNet={activeNet}
-              currentFile={currentFile}
-              saveStatus={saveStatus}
-              bdError={bdError}
-              collapsed={leftCollapsed}
-              recolectoraActive={recolectoraActive}
-              onSelectTool={setTool}
-              onSnapToggle={handleSnapToggle}
-              onGridToggle={handleGridToggle}
-              onFit={handleFit}
-              onSave={handleSave}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onClear={handleClear}
-              onClearGuides={handleClearGuides}
-            />
-          )}
-        </div>
-
-        <div
-          data-tour="canvas"
-          style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Visor de planos</h2>
-          <ViewerMobileChrome
-            isMobile={isMobile}
-            isNarrow={isNarrow}
-            currentFile={currentFile ?? null}
-            onFit={handleFit}
-            onZoomStep={(f) => engineRef.current?.zoomStep(f)}
-          />
-
-          <PdfCanvas
-            cwRef={cwRef}
-            containerRef={containerRef}
-            pdfCanvasRef={pdfCanvasRef}
-            drawCanvasRef={drawCanvasRef}
-            currentFile={currentFile}
-            error={error}
-            loading={loading}
-            cambioPiso={cambioPiso}
-            selectedNivel={selectedNivel}
-            pisos={pisos}
-            planos={planos}
-            tool={tool}
-            snapOn={snapOn}
-          />
-        </div>
-
-        {/* Diálogos */}
-        <TextInputOverlay
-          textOverlay={textOverlay}
-          setTextOverlay={setTextOverlay}
-          textInputRef={textInputRef}
-        />
-        <DrawingElementContextMenu
-          contextMenuState={contextMenuState}
-          setContextMenuState={setContextMenuState}
-          selectedNivel={selectedNivel}
-          pisos={pisos}
-          engineRef={engineRef}
-          selElement={selElement as PlanoElement | null}
-          setSelElement={setSelElement}
-          lowerFloorsRamales={lowerFloorsRamales}
-          upperFloorGroup={upperFloorGroup}
-          planosCtx={planosCtx}
-          mats={mats}
-          activeNet={activeNet}
-          setDiamSel={setDiamSel}
-          triggerConfirm={triggerConfirm}
-        />
-        <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
-        <AccesorioModal
-          modalState={accesorioModal}
-          onClose={() => setAccesorioModal((prev) => ({ ...prev, isOpen: false }))}
-          onSelect={onAccesorioSelected}
-        />
-
-        {/* Barra lateral derecha (componente: pdfViewer/PdfViewerRightSidebar) */}
-        <PdfViewerRightSidebar
-          style={dynamicRightStyle}
-          srOnlyStyle={SR_ONLY_STYLE}
-          selectStyle={PdfViewer_S4}
-          rightSidebarOpacity={rightSidebarOpacity}
-          tool={tool}
-          selElement={selElement}
-          setSelElement={setSelElement}
-          activeNet={activeNet}
-          rejillasActive={rejillasActive}
-          esCotaSel={esCotaSel}
-          esAreaRejillas={esAreaRejillas}
-          engineRef={engineRef}
-          currentId={currentId}
-          currentIdRef={currentIdRef}
-          planosCtx={planosCtx}
-          pisos={pisos}
-          planos={planos}
-          selectedNivel={selectedNivel}
-          setSelectedNivel={setSelectedNivel}
-          onSelectPlan={onSelectPlan}
-          planoAsocInfo={planoAsocInfo}
-          finalVisibleNets={finalVisibleNets}
-          diamSel={diamSel}
-          setDiamSel={setDiamSel}
-          gasMatSel={gasMatSel}
-          setGasMatSel={setGasMatSel}
-          pendSel={pendSel}
-          setPendSel={setPendSel}
-          pendInput={pendInput}
-          setPendInput={setPendInput}
-          mats={mats}
-          handleUpdateSel={handleUpdateSel}
-          handleRotateLabel={handleRotateLabel}
-          lowerFloorsRamales={lowerFloorsRamales}
-          upperFloorGroup={upperFloorGroup}
-          setConfirmState={setConfirmState}
-          loadingPlanRef={loadingPlanRef}
-          drawnElements={drawnElements}
-        />
-
-        <button
-          type="button"
-          onClick={() => setLeftCollapsed(!leftCollapsed)}
-          style={{
-            ...PdfViewer_S5,
-            left: leftCollapsed ? LEFT_COLLAPSED_WIDTH : 180,
-            borderLeft: '1px solid #3a494a',
-            borderRadius: 3,
-            transition: 'left 0.2s ease',
-          }}
-          title={leftCollapsed ? 'Expandir barra izquierda' : 'Colapsar barra izquierda'}
-          aria-label={leftCollapsed ? 'Expandir barra izquierda' : 'Colapsar barra izquierda'}
-        >
-          {leftCollapsed ? '▶' : '◀'}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setRightCollapsed(!rightCollapsed)}
-          style={{
-            ...PdfViewer_S5,
-            right: rightCollapsed ? 0 : 210,
-            borderRight: rightCollapsed ? '1px solid #3a494a' : 'none',
-            borderRadius: 3,
-            transition: 'right 0.2s ease',
-          }}
-          title={rightCollapsed ? 'Expandir barra derecha' : 'Colapsar barra derecha'}
-          aria-label={rightCollapsed ? 'Expandir barra derecha' : 'Colapsar barra derecha'}
-        >
-          {rightCollapsed ? '◀' : '▶'}
-        </button>
-      </div>
-    </div>
+    <ViewerStage
+      finalVisibleNets={finalVisibleNets}
+      activeNet={activeNet}
+      hiddenNets={hiddenNets}
+      lockedNets={lockedNets}
+      handleSelectNet={handleSelectNet}
+      handleToggleHidden={handleToggleHidden}
+      handleToggleLocked={handleToggleLocked}
+      scaleText={scaleText}
+      onCloseNetworkBar={handleCerrarVisor}
+      lineWidthScale={lineWidthScale}
+      setLineWidthScale={setLineWidthScale}
+      isMobile={isMobile}
+      isNarrow={isNarrow}
+      leftCollapsed={leftCollapsed}
+      rightCollapsed={rightCollapsed}
+      setLeftCollapsed={setLeftCollapsed}
+      setRightCollapsed={setRightCollapsed}
+      dynamicLeftStyle={dynamicLeftStyle}
+      dynamicRightStyle={dynamicRightStyle}
+      saveStatus={saveStatus}
+      bdError={bdError}
+      tool={tool}
+      tipoTramo={tipoTramo}
+      setTipoTramo={setTipoTramo}
+      snapOn={snapOn}
+      gridOn={gridOn}
+      setTool={setTool}
+      currentFile={currentFile}
+      recolectoraActive={recolectoraActive}
+      handleSnapToggle={handleSnapToggle}
+      handleGridToggle={handleGridToggle}
+      handleFit={handleFit}
+      handleSave={handleSave}
+      handleUndo={handleUndo}
+      handleRedo={handleRedo}
+      handleClear={handleClear}
+      handleClearGuides={handleClearGuides}
+      engineRef={engineRef}
+      cwRef={cwRef}
+      containerRef={containerRef}
+      pdfCanvasRef={pdfCanvasRef}
+      drawCanvasRef={drawCanvasRef}
+      error={error}
+      loading={loading}
+      cambioPiso={cambioPiso}
+      selectedNivel={selectedNivel}
+      pisos={pisos}
+      planos={planos}
+      textOverlay={textOverlay}
+      setTextOverlay={setTextOverlay}
+      textInputRef={textInputRef}
+      contextMenuState={contextMenuState}
+      setContextMenuState={setContextMenuState}
+      selElement={selElement}
+      setSelElement={setSelElement}
+      lowerFloorsRamales={lowerFloorsRamales}
+      upperFloorGroup={upperFloorGroup}
+      planosCtx={planosCtx}
+      mats={mats}
+      setDiamSel={setDiamSel}
+      triggerConfirm={triggerConfirm}
+      confirmState={confirmState}
+      setConfirmState={setConfirmState}
+      accesorioModal={accesorioModal}
+      setAccesorioModal={setAccesorioModal}
+      onAccesorioSelected={onAccesorioSelected}
+      rightSidebarOpacity={rightSidebarOpacity}
+      rejillasActive={rejillasActive}
+      esCotaSel={esCotaSel}
+      esAreaRejillas={esAreaRejillas}
+      currentId={currentId}
+      currentIdRef={currentIdRef}
+      setSelectedNivel={setSelectedNivel}
+      onSelectPlan={onSelectPlan}
+      planoAsocInfo={planoAsocInfo}
+      diamSel={diamSel}
+      gasMatSel={gasMatSel}
+      setGasMatSel={setGasMatSel}
+      pendSel={pendSel}
+      setPendSel={setPendSel}
+      pendInput={pendInput}
+      setPendInput={setPendInput}
+      handleUpdateSel={handleUpdateSel}
+      handleRotateLabel={handleRotateLabel}
+      loadingPlanRef={loadingPlanRef}
+      drawnElements={drawnElements}
+    />
   );
 }
 
