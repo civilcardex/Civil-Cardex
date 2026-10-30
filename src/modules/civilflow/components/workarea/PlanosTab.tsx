@@ -1,4 +1,8 @@
-﻿import React, { useState, useCallback, useEffect, useMemo } from 'react';
+﻿/**
+ * Pestaña "Planos" del área de trabajo: lista de pisos con su plano asignado (asignar PDF, calibrar escala, copiar el dibujo de otro piso, abrir el visor) y guardado de trazos a BD.
+ * Ej: asignar el plano "Piso 2.pdf" al nivel 2 calibra scaleM (metros por pixel) y habilita dibujar esa red ahí.
+ */
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { pisoOcupadoPor } from '../../utils/isLevelTaken';
 import { useNavigate } from 'react-router-dom';
 import {

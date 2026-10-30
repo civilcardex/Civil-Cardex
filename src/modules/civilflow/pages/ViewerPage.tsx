@@ -1,3 +1,7 @@
+/**
+ * Página del visor de planos (ruta /dibujoRedes/:proyectoId): monta el visor con cambio de piso, selección de redes activas, subida de PDFs y validación al cerrar — la vista de dibujo completa, hermana ligera del área de trabajo.
+ * Ej: activar la red ac (Agua Caliente) desde otra pestaña se re-sincroniza aquí por el evento NETS_CHANGED (no se queda con el snapshot del mount).
+ */
 import React, {
   useState,
   useRef,

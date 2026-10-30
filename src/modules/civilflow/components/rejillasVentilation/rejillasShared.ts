@@ -20,14 +20,7 @@ export const ALIAS_CAT_GAS: Record<string, string> = {
   sauna: 'bs',
   turco: 'bt',
 };
-/**
- * Formatea un número para las celdas de la tabla: punto decimal y d decimales (2 por
- * defecto), igual que el resto de las tablas de diseño (antes toLocaleString es-CO con coma).
- * Ej: num(3.14159) → '3.14'; num(undefined) → '0.00'.
- * @param x - valor a formatear (null/undefined cuentan como 0).
- * @param d - decimales (default 2).
- * @returns el número formateado como texto.
- */
+/** Formatea un número para las celdas de la tabla: punto decimal y d decimales (2 por defecto; el valor y los decimales llegan por parámetro), igual que el resto de las tablas de diseño. Ej: num(3.14159) -> '3.14'; num(undefined) -> '0.00'. */
 export const num = (x: number | undefined | null, d = 2) => fmt(+(x ?? 0) || 0, d);
 
 /** Fila de la tabla Tipologías: sector del dibujo + overrides + columnas de aparato. */

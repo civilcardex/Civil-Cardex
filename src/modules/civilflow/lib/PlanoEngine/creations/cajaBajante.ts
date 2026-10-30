@@ -13,9 +13,11 @@ import { numDeBajante } from '../../../utils/keys.ts';
 // de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
+/** Redes donde puede nacer una tubería vertical BAJANTE (san (Sanitaria), vent (Ventilación), ll (Lluvias)) — espejo de la regla de la barra de herramientas, re-chequeada como defensa. */
 export const BAJANTE_NETS = ['san', 'vent', 'll'];
+/** Redes donde puede nacer un MONTANTE (gas (Gas), ac (Agua Caliente), af (Agua Fría)). */
 export const MONTANTE_NETS = ['gas', 'ac', 'af'];
-// Cajas de recolección (cuadrado con cuadrado interior): CAN en sanitaria, CALL en lluvias.
+/** Cajas de recolección (cuadrado con cuadrado interior): CAN en sanitaria, CALL en lluvias. */
 export const CAJA_NETS = ['san', 'll'];
 
 /** Dibuja una caja de registro (donde se juntan varias tuberías antes de bajar) en san (Sanitaria)

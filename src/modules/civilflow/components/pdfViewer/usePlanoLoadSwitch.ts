@@ -30,8 +30,7 @@ interface UsePlanoLoadSwitchParams {
   setScaleM: React.Dispatch<React.SetStateAction<string>>;
 }
 
-/** Guardado y carga al cambiar de plano: persiste el trabajo pendiente del plano anterior y
- *  carga los trazos del entrante, o resetea el motor si el plano no tiene nada guardado. */
+/** Piso entrante SIN datos guardados → resetea el motor vacío (ramales/bajantes a cero). */
 export function usePlanoLoadSwitch({
   engineRef,
   engineReady,

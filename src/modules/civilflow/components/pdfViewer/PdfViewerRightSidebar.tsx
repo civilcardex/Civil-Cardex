@@ -56,9 +56,7 @@ interface PdfViewerRightSidebarProps {
   drawnElements: Array<{ id?: string }>;
 }
 
-/** Barra lateral derecha del visor: selector de nivel (con estado de plano confirmado),
- *  copia entre pisos y los paneles de edición (tramo, asociación de bajante, aparatos,
- *  elementos dibujados). Extraída verbatim de PdfViewer — mismo markup, mismos handlers. */
+/** Contenedor presentacional (todo por props): monta cada panel según la selección y el nivel (el 🟢 marca plano confirmado). */
 export function PdfViewerRightSidebar({
   style,
   srOnlyStyle,

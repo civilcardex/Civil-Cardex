@@ -1,8 +1,5 @@
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosLocales,
-} from '../services/storageService.ts';
+/** Copia el dibujo COMPLETO de un piso a otro (trazos + conteos de aparatos + datos hidro) al asignar un plano a un nivel vacío. */
+import { loadFromStorage, saveToStorage, saveTrazosLocales } from '../services/storageService.ts';
 import {
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,

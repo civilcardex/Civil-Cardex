@@ -4,11 +4,7 @@ import {
   removeCrossFloorLdesvioRamal,
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-} from '../../services/storageService.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 import {
   APARATOS_BY_TRAMO_KEY,
   APARATOS_HEREDADOS_KEY,
@@ -18,6 +14,8 @@ import {
 } from '../../constants/storage-keys.ts';
 import { _firstSegmentAngle } from './drawingAngles.ts';
 import { splitPtr } from '../../utils/keys.ts';
+
+/** Limpieza en cascada al borrar: conteos de accesorios en el almacén de hidráulica, enlaces entre pisos del montante borrado y purga de aparatos/hidráulica de ramales eliminados. */
 
 /** Una ficha del almacén de hidráulica de un ramal: cuántos accesorios de cada tipo lleva, su
  *  largo horizontal y cuántas salidas tiene. */

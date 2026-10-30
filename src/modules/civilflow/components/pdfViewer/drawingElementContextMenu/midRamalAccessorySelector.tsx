@@ -17,9 +17,7 @@ import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers.ts';
 import { emitAparatosClear, EV_APARATOS_CLEAR, EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 import { MidRamalAparatos } from './MidRamalAparatos.tsx';
 
-/** Selector de accesorio a mitad de un ramal (clic sobre el cuerpo): valida polaridad de codos,
- *  yees y conflictos de diámetro antes de escribir el accesorio en el vértice del tramo.
- *  La sección de APARATOS (af/ac/gas/san) vive en MidRamalAparatos. */
+/** La sección de APARATOS (af/ac/gas/san) vive en MidRamalAparatos. */
 export function MidRamalAccessorySelector({
   element,
   midRamalHit,

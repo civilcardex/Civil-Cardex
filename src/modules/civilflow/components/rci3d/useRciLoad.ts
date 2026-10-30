@@ -87,6 +87,8 @@ function finalizarCarga(api: Rci3DApi): void {
   api.marcarSombras?.();
 }
 
+/** Carga del visor rci (Red Contra Incendio): 13 piezas GLB en secuencia con progreso, y al
+ *  terminar encadre/luces/oclusores (finalizarCarga). Reporta fallo si la escena no arranca. */
 export function useRciCarga(apiRef: Rci3DApiRef, { onProgreso, onListo, onFallo }: Opciones): void {
   const optsRef = useRef({ onProgreso, onListo, onFallo });
   useEffect(() => {

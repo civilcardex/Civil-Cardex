@@ -1,3 +1,8 @@
+/**
+ * Diseño de equipos bom (Bomba)/ep (Equipo de Presión) tipo AR: lee las bombas dibujadas en los trazos de TODOS los pisos, calcula Q (Caudal)/altura/potencia del sistema con Hazen-Williams y muestra las tablas de entrada y verificación (succión/impulsión, tanque, NPSSH).
+ * Persiste por bomba (pumpService) y reacciona a los eventos de sincronización de aparatos/trazos.
+ * Ej: 120 UD en el edificio -> calcsDe da Qd y Hm, y la tabla sugiere la HP comercial que las cubre.
+ */
 import { useState, useEffect, useRef } from 'react';
 import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService.ts';
 import { loadBombaDatos, saveBombaDatos } from '../services/pumpService.ts';

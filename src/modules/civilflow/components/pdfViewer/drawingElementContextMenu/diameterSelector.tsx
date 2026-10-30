@@ -1,5 +1,8 @@
-// BajanteDiameterSelector: diámetros disponibles/sugeridos, UPS, base de NPT y wizard de
-// bomba. Extraído verbatim de bajanteMenu (des-monolitización 2026-10-06).
+/**
+ * BajanteDiameterSelector: diámetros disponibles/sugeridos, UPS, base de npt (nivel de piso topográfico) y wizard de bomba.
+ * Extraído verbatim de bajanteMenu (des-monolitización 2026-10-06).
+ * Ej: elegir Ø100 en BAN1 reescribe el diámetro en el dibujo (writeBajantePropToDrawing) y desplaza la fila de tablas.
+ */
 import { useState, useEffect } from 'react';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import {

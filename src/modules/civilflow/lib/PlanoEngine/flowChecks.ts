@@ -123,17 +123,12 @@ export function pointOnRamalSegment(p: number[], a: number[], b: number[], tol: 
   return Math.hypot(p[0] - px, p[1] - py) < tol;
 }
 
+/** ¿Cuentan como la misma red para uniones de flujo? san (Sanitaria) y vent (Ventilación) comparten uniones como un solo grupo. */
 export function sameNetGroupNet(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
-// Item 5: valida que el ángulo de conexión entre un ramal de ventilación y un
-// ramal sanitario sea 0° (continuación colineal), 45° (Y) o 90° (codo
-// reventilado), dentro de ANGLE_EPS (0.5°). Antes, la conexión se permitía a
-// 44°/46° porque solo se validaban los segmentos propios de cada ramal, no el
-// ángulo ENTRE ellos. El 0° es continuación recta de la línea (trazo bien
-// hecho) y no debe disparar la alerta.
-// @returns true si el ángulo es 0°, 45° o 90° (±0.5°), false si no.
+/** Ángulo de conexión vent↔san válido: 0° (continuación), 45° (Y) o 90° (codo reventilado), estricto ±0.5° — antes se aceptaba 44°/46° porque se medía el ángulo entre segmentos propios, no ENTRE tuberías. @returns true si el ángulo pasa. */
 export function ventSanAngleOk(
   vent: { pts: number[][]; _tribReversed?: boolean },
   san: { pts: number[][]; _tribReversed?: boolean },

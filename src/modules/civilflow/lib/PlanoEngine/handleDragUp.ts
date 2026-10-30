@@ -1,3 +1,7 @@
+/**
+ * Fin del arrastre en el motor (mouse up): consolida lo que el gesto dejó — cerrar el ramal dibujado con sus chequeos de dirección/ángulos, auto-split en nudos, asociación a bajantes/canales y actualización del fantasma entrepisos (XFG) y del LD_ (ramal desvío entrepisos).
+ * Ej: soltar el extremo de un ramal sobre un bajante escribe la asociación al instante (asociarRamalABajantes).
+ */
 import type { IPlanoEngineCore } from './PlanoState.ts';
 import type { PlanoRamal } from './PlanoState.ts';
 import { NETS } from './PlanoState.ts';

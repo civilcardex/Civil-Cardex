@@ -1,3 +1,4 @@
+/** Diseño hidráulico de las redes af (Agua Fria)/ac (Agua Caliente): UC (Unidades de Consumo) y Q (Caudal) Hunter (método de probabilidad de uso simultáneo), diámetros y pérdidas por Hazen-Williams, con chequeo de presión por aparato. */
 import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext.tsx';

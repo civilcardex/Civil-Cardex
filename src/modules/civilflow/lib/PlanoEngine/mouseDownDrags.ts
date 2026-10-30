@@ -11,11 +11,7 @@ import {
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork.ts';
 import { _captureBajDragBackup } from './mouseDownHits.ts';
 
-// BFS sobre extremos compartidos, transitivo — partiendo del ramal que se arrastra, encuentra
-// todo ramal alcanzable por una cadena de extremos que se tocan (o tributario-de-un-ramal-
-// alcanzable), más todo bajante que descarga desde cualquier ramal de ese conjunto alcanzable.
-// Sirve para que arrastrar un ramal cargue toda su red conectada, no solo sus vecinos directos
-// (de 1 salto).
+/** BFS por extremos compartidos (transitivo): todo ramal alcanzable desde el que se arrastra (o tributario de un alcanzable) + los bajantes que descargan de ese conjunto — arrastrar una tubería carga toda su red conectada, no solo vecinos de 1 salto. */
 export function collectConnectedGraph(
   engine: IPlanoEngineCore,
   startRamal: PlanoRamal,

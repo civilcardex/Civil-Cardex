@@ -4,6 +4,8 @@
 import type { PlanoRamal, IPlanoEngineCore } from './PlanoState.ts';
 import { rootTributarioLabel, allocTributaryNumber } from './PlanoState.ts';
 
+/** Sanado global de la cadena de padres de tributarios en cada _markDirty: re-ancla huérfanos, hereda padres en piezas de split y renumera T1, T2... sin huecos. */
+
 /** Pone en orden los ramalitos (tributarios) cada vez que cambia el dibujo: si el apunta a un
  *  padre que ya no existe, lo re-ancla; y renumerar T1, T2... sin huecos. Las piezas creadas al
  *  partir una tubería (mergesFrom) heredan el padre correcto solas. */

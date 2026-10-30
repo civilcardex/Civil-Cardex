@@ -12,13 +12,11 @@ import { devError } from '../../../../utils/devError.ts';
 import { mezclarMax } from '../../utils/propagation/counting.ts';
 import { scrubAccMedTeeAt, scrubPlanCodoAt } from './deleteJunctionCleanup.ts';
 
+/** Re-ensamblado tras un borrado: re-une mitades de splits (mergesFrom), funde pedazos que quedaron tocándose y junta tributarios huérfanos, para que el dibujo no quede con astillas. */
+
 import { angleAtHalfLength } from './drawingAngles.ts';
 import { calculateRamalLength } from './ramalMeasure.ts';
-// el tramo aguas abajo (D = mergesFrom[1]) que quedaron separados vuelven a ser UN ramal, con
-// los datos de extremo lejano de D movidos a A, el UC revertido (D.uc − uc del borrado) y la
-// etiqueta recalculada. Si en cambio se borra una de las dos mitades (A o D), solo se limpia la
-// referencia mergesFrom muerta de la sobreviviente. Las cadenas (D dividido de nuevo después)
-// se reescriben para apuntar de D.id → A.id.
+
 /** Vuelve a unir las dos mitades de una tubería que había sido partida (mergeFrom guarda la
  *  genealogía del split) y le resta al ramal la UC (Unidades de Consumo) que la división le había
  *  sumado. */

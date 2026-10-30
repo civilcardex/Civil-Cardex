@@ -5,15 +5,7 @@ import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { ContextMenuState } from './drawingElementContextMenu/context.ts';
 import type { ProbedElement } from './tramoEditor/context.ts';
 
-/**
- * Revertir/rehacer/encuadrar del visor: undo/redo (limpiando las copias congeladas del panel y
- * del menú contextual), "Ajustar" (re-encuadre sobre el dibujo) y girar la etiqueta. El Ctrl+Z
- * de teclado lo maneja el propio engine; los atajos r/t/c/h/g ya viven en
- * pdfViewer/useKeyboardShortcuts.ts.
- *
- * Ejemplo: tras un undo que quitó el aparato que el menú mostraba, clearFrozenUi cierra menú y
- * panel — el usuario no sigue editando un elemento que ya no existe.
- */
+/** Tras cada undo/redo del engine, clearFrozenUi cierra menú y panel — el usuario no sigue editando un elemento que ya no existe. */
 export function useViewerShortcuts(args: {
   engineRef: React.RefObject<PlanoEngine | null>;
   setSelElement: React.Dispatch<React.SetStateAction<ProbedElement | null>>;

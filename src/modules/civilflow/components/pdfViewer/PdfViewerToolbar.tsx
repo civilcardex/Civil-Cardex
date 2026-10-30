@@ -1,3 +1,8 @@
+/**
+ * Barra de herramientas del visor de planos: herramientas por red (bajante, montante, canal, cotas, texto), atajos de teclado y estado de guardado.
+ * La regla de qué herramienta aplica a qué red vive aquí (isToolDisabledForNet) para que las dos rutas de render y los atajos no diverjan.
+ * Ej: en gas el botón de bajante sale deshabilitado — solo san (Sanitaria), vent (Ventilación) y ll (Lluvias) lo usan.
+ */
 import { memo } from 'react';
 import { Link } from 'react-router-dom';
 

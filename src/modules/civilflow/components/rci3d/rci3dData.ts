@@ -217,6 +217,7 @@ export const LABEL_POSITIONS: Record<string, RciLabelPos> = {
   '16b': { pos: [-1.679, -0.606, 0.294], scale: 0.75, dir: 1, ang: 0, L1: 20, L2: 25, ref: 16 },
 };
 
+/** URL del GLB de un modelo rci (Red Contra Incendio). Ej: glbUrl('gabinete') -> '/models/rci/gabinete.glb'. */
 export function glbUrl(modelKey: string): string {
   return `/models/rci/${modelKey}.glb`;
 }

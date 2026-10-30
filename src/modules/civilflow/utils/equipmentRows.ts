@@ -149,6 +149,7 @@ function epBase(ep: EPData) {
   };
 }
 
+/** Tablas de la memoria del ep (Equipo de Presion): lee la bomba guardada ('ep') y arma parámetros, presiones, Hg/Hf y alertas contra el perfil del país. */
 export function computeEpTables(pais?: string): MemoriaTable[] {
   const ep = loadFromStorage<EPData | null>('ep', null);
   if (!ep) return [];

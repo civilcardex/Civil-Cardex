@@ -16,9 +16,7 @@ import {
   RamalesAsociadosMontSection,
 } from './associatedChannels';
 
-/** Menú contextual del bajante/montante elegido: arma el selector de dirección, el de diámetro
- *  y destino, y el panel de conexiones para redes sanitarias y de lluvias (en cajas agrega
- *  las secciones de bomba). */
+/** Secciones ordenadas (bomba al tope en cajas); sin dirección ni diámetro para cajas (no son hidráulicas). */
 export function BajanteMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element } = ctx;

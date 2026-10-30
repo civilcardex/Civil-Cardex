@@ -1,5 +1,6 @@
 import type { ReactNode, CSSProperties } from 'react';
 
+/** Subtítulo de sección normativa (h4 visual). Ej: «Dotaciones por estrato» sobre la tabla RAS. */
 export const subHeadingStyle = {
   fontFamily: 'var(--mono)',
   fontSize: 15,
@@ -20,6 +21,8 @@ const tabBtnBaseStyle: CSSProperties = {
   transition: 'all .15s',
 };
 
+/** Botón de pestaña de la página Normativa (rol tab, aria-selected): resalta la activa.
+ *  Ej: clic en «NTC 1500» -> su sección abre y el botón queda con borde azul. */
 export function TabBtn({
   active,
   onClick,
@@ -50,6 +53,8 @@ export function TabBtn({
   );
 }
 
+/** Botón de filtro por red dentro de una sección normativa: resalta la red activa.
+ *  Ej: filtrar «Sanitaria» -> solo se ven sus tablas. */
 export function FilterBtn({
   active,
   onClick,

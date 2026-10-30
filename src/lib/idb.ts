@@ -1,5 +1,15 @@
 const openPromises = new Map<string, Promise<IDBDatabase>>();
 
+/**
+ * Abre (y cachea) una base IndexedDB con un solo object store — dos aperturas simultáneas de
+ * la misma BD colisionaban y bloqueaban la segunda para siempre. Ej: openIdb('CivilManagerDB', 1, 'state', 'k').
+ *
+ * @param dbName nombre de la base.
+ * @param version versión (subirla solo con migración de stores).
+ * @param storeName nombre del object store a crear si falta.
+ * @param keyPath propiedad que hace de clave primaria.
+ * @returns la BD abierta (misma promesa para llamadas repetidas).
+ */
 export function openIdb(
   dbName: string,
   version: number,
@@ -31,6 +41,16 @@ export function openIdb(
   return cached;
 }
 
+/**
+ * Corre una operación dentro de una transacción IndexedDB y la envuelve en Promise (la API
+ * nativa es solo eventos). Ej: idbTx(db, 'state', 'readonly', s => s.get('civilmanager')).
+ *
+ * @param db base abierta con openIdb.
+ * @param storeName store de la transacción.
+ * @param mode 'readonly' o 'readwrite'.
+ * @param run operación que devuelve el IDBRequest a esperar.
+ * @returns el resultado del request cuando la transacción completa.
+ */
 export function idbTx<T>(
   db: IDBDatabase,
   storeName: string,

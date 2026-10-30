@@ -3,8 +3,7 @@ import { useCallback, useState } from 'react';
 import type React from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 
-/** Estado de los dos modales del visor: el de confirmación genérica (borrar, limpiar) y
- *  el de accesorio en unión. Sus funciones de abrir/cerrar viajan a los componentes por props. */
+/** Modal de confirmación genérica (borrar, limpiar). */
 export type ConfirmState = {
   isOpen: boolean;
   title: string;

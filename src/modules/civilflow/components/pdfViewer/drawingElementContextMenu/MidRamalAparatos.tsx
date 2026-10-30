@@ -29,11 +29,7 @@ import {
 } from './midRamalAparatos.ts';
 import type { ContextMenuState } from './context.ts';
 
-/** Sección "Seleccionar Aparato" del menú de clic sobre el CUERPO de un ramal (af/ac/gas/san):
- *  desplegable de aparato + tarjetas de asignados con su Quitar. La escritura (applyAparato)
- *  respeta extremo libre, reglas de diámetro (inodoro 4", resto 2") y coexistencia de
- *  aparatos (sifón + inodoro).
- *  Ej: clic en el cuerpo de RAF1 → elegir lavamanos → glifo de codo90 + conteo +1. */
+/** La escritura (applyAparato) respeta extremo libre, reglas de diámetro (inodoro 4", resto 2") y coexistencia de aparatos (sifón + inodoro). */
 export function MidRamalAparatos({
   element,
   midRamalHit,

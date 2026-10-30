@@ -357,12 +357,7 @@ export interface AssocBajanteResult {
   alert?: { title: string; msg: string };
 }
 
-// Asocia los extremos de un ramal NUEVO a bajantes (llegada → fin + recibeDeIds; inicio →
-// ini + alimentaIds) con la guard central puedeConectarRamalABajante + regla de diámetros
-// según dirección (el que SALE adopta el dNominal; el que LLEGA conserva y empuja al mayor;
-// cajas sin adopción/empuje). Extraído de finishRamal para compartirlo con las creaciones
-// desde línea guía ("Crear ramal/tributario"), que antes no asociaban: el trazo quedaba
-// suelto del bajante (sin checks en paneles, sin UDs heredadas, sin espejo de salida).
+/** Asocia los extremos de un ramal NUEVO a bajantes (llegada → fin + recibeDeIds; inicio → ini + alimentaIds) con la guard central y la regla de diámetros por dirección (el que SALE adopta el dNominal; el que LLEGA conserva). Lo comparten finishRamal y las creaciones desde línea guía. */
 export function asociarRamalABajantes(
   engine: IPlanoEngineCore,
   r: PlanoRamal,

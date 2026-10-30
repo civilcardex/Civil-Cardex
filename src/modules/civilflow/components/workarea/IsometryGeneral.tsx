@@ -1,3 +1,7 @@
+/**
+ * Vista isométrica del edificio: proyecta los ramales/bajantes de TODAS las redes y pisos a un lienzo isométrico (cada piso a la altura de su nivel), con navegación, sidebar de redes y exportación PDF/PNG.
+ * Ej: activar solo san apila los bajantes sanitarios de todos los pisos para ver el edificio completo de un vistazo.
+ */
 import { splitPtr } from '../../utils/keys.ts';
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { NETS } from '../../lib/PlanoEngine/PlanoState.ts';

@@ -21,6 +21,8 @@ import {
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork.ts';
 import { indicesDeMotor } from './engineIndices';
 
+/** Aciertos del mousedown con elemento seleccionado o herramienta especial: bajantes/canales/fantasmas (con reserva de etiqueta), resize de canal, extremos de ramal y arrastre multiselección. */
+
 /** Foto de seguridad antes de arrastrar un bajante: guarda dónde estaba y los trazos de las
  *  tuberías que él mueve (las que le llegan, la que descarga y su conector de desvío LD_).
  *  Ej: al soltar un bajante que quedó torcido, esta foto es lo que permite volver atrás. */

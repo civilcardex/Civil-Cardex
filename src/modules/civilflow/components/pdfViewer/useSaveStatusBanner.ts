@@ -6,9 +6,7 @@ interface UseSaveStatusBannerArgs {
   setSaveStatus: (s: string) => void;
 }
 
-/** Franja roja de errores de guardado: escucha los 4 eventos globales de storageService
- *  (BD error/ok, cuota local llena/ok) y expone el motivo. Sin esto, un fallo de push a
- *  BD era silencioso y abajo decía "✔ Guardado". */
+/** Escucha los 4 eventos (error/ok de BD, cuota llena/ok) y devuelve el motivo actual o null. */
 export function useSaveStatusBanner({ setSaveStatus }: UseSaveStatusBannerArgs): string | null {
   // Error de guardado a BD (evento de storageService.saveTrazosToDB): franja en rojo + motivo
   // en el botón Guardar — el fallo ya no es silencioso (orig. usuario).

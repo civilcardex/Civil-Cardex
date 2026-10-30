@@ -1,3 +1,8 @@
+/**
+ * Guía contextual del flujo de trabajo: para cada pantalla (claves 'cf:…') define las tarjetas de ayuda (título + ítems nombre/desc) que el usuario consulta desde el botón de ayuda.
+ * Es contenido puro, sin lógica — editar la guía nunca toca código de pantallas.
+ * Ej: 'cf:info' documenta los campos de identificación (nombre, dirección, uso del edificio).
+ */
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';
 import { CRITERIOS_3631 } from './helpGuideCriteria.tsx';
 import { GUIA_RECORTE } from './helpGuideCrop.tsx';

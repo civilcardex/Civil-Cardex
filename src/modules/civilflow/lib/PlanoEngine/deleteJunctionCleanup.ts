@@ -3,6 +3,8 @@ import { _midpoint } from './PlanoEngineDrawing.ts';
 import { _firstSegmentAngle } from './drawingAngles.ts';
 import { decrementAccesorioCount } from './deleteCascade.ts';
 
+/** Limpieza de glifos y conteos de uniones tras un borrado: marcadores de tee que sobrevivieron a su rama, reasignación de codos y recortes de accMed/plan-codo en puntos que ya no son unión. */
+
 const TEE_TYPES = [
   'teeDirecto',
   'teeSube',

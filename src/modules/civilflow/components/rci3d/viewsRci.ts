@@ -82,6 +82,8 @@ function setOrthoView(api: Rci3DApi, posVec: THREE_NS.Vector3, upVec: THREE_NS.V
   api.reencuadreOrto = () => setOrthoView(api, posVec, upVec);
 }
 
+/** Cambia a la vista ortográfica FRENTE/LATERAL/PLANTA, encuadrada sobre la escena.
+ *  Ej: clic «PLANTA» -> cámara arriba mirando abajo, toda la red en cuadro. */
 export function vistaOrto(api: Rci3DApi, key: 'front' | 'side' | 'top'): void {
   const THREE = api.THREE;
   if (key === 'front') setOrthoView(api, new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0));

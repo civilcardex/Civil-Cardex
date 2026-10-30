@@ -1,3 +1,7 @@
+/**
+ * Inicio de la interacción del motor (mouse down): decide QUÉ agarró el usuario según prioridad fija (etiquetas, marcadores XFG entrepisos, contador, bajantes, extremos/cuerpo de ramal, canales, cotas, guías) y activa el arrastre que corresponda.
+ * Ej: clic sobre la etiqueta de un bajante la agarra sin mover el cuerpo — la tolerancia de golpe la da bajanteHitDistance.
+ */
 import type { IPlanoEngineCore, PlanoBajante } from './PlanoState.ts';
 import { isBajante, isTextAnnotation, isArea, ensureActiveNet } from './PlanoState.ts';
 import {

@@ -4,6 +4,13 @@ import { dropAllZeroColumns, type MemoriaTable } from './exportReportFinal.ts';
 
 const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter((a) => a.id !== 'llaveTerminal');
 
+/**
+ * Tabla de la memoria: cuántos accesorios hidráulicos lleva cada tramo (una fila por tramo).
+ * Ej: tramo RAF1-P1 con 2 codos y 1 tee -> fila `RAF1-P1 | 2 | 1 | 0 ...`; quita columnas toda en cero.
+ * @param tramos tramos del dibujo (los tributarios se excluyen).
+ * @param title título de la tabla en la memoria.
+ * @returns la tabla lista para exportar, o null si no hay tramos.
+ */
 export function computeAccesoriosPorRamalTable(
   tramos: Tramo[],
   title: string,

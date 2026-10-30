@@ -83,10 +83,7 @@ export function saveGasAcc(map: GasAccMap) {
 
 type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
 
-/** Qué unidad maneja una red: 'qgas' en gas, 'uc_af'/'uc_ac' (UC (Unidades de Consumo) de af
- *  (Agua Fria)/ac (Agua Caliente)) y 'ud' en sanitarias.
- *  @param netId - id de la red ('af', 'ac', 'gas', 'san'…).
- *  @returns la clave de unidad para leer el catálogo, o null si la red no cuenta aparatos. */
+/** Qué unidad maneja una red (parámetro: id como 'af', 'ac', 'gas', 'san'): 'qgas' en gas, 'uc_af'/'uc_ac' (UC (Unidades de Consumo) de af (Agua Fria)/ac (Agua Caliente)) y 'ud' en sanitarias; null si la red no cuenta aparatos. */
 export function unitFor(netId: string): ApUnitKey | null {
   const net = NETS.find((n) => n.id === netId);
   if (!net) return null;
@@ -98,8 +95,7 @@ export function unitFor(netId: string): ApUnitKey | null {
 
 /** ¿Este aparato aplica a esta red? En gas solo aparatos del grupo 'g' con caudal; en
  *  sanitarias solo los que tienen UD; en af/ac solo los del catálogo de UC correspondiente.
- *  Ej: la estufa (grupo 'g') solo aparece en la red gas.
- *  @returns true si el panel de esa red debe listar el aparato. */
+ *  Ej: la estufa (grupo 'g') solo aparece en la red gas. */
 export function esAplicable(
   ap: (typeof APARATOS_DEF)[number],
   netId: string,
@@ -208,14 +204,7 @@ export function savePropioSnap(map: PropioSnapMap): void {
   saveToStorage(APARATOS_PROPIO_KEY, map);
 }
 
-/** Lo PROPIO de una clave espejo = disco menos lo que el libro dice haber heredado.
- *  Si el libro no tiene entrada para esa clave (doc viejo, escritura perdida), manda la foto
- *  guardada: tomar el disco entero volvería a sumar la herencia en cada pase y el conteo
- *  crecería sin techo al cambiar de piso. Ej: cur {lav:3} con libro {lav:2} → propio {lav:1}.
- *  @param cur - conteos actuales de la clave.
- *  @param libroPrev - lo que la herencia anterior escribió en esa clave.
- *  @param foto - foto de lo propio guardada en el pase anterior.
- *  @param tieneEntradaLibro - ¿el libro trae una entrada (aunque sea vacía) para la clave? */
+/** Lo PROPIO de una clave espejo = disco menos lo que el libro dice haber heredado (los parámetros son conteo actual, libro previo, foto guardada y si el libro trae entrada). Sin entrada en el libro manda la foto: tomar el disco entero volvía a sumar la herencia en cada pase y el conteo crecía sin techo al cambiar de piso. Ej: cur {lav:3} con libro {lav:2} -> propio {lav:1}. */
 export function propioDeClave(
   cur: Record<string, number> | undefined,
   libroPrev: Record<string, number> | undefined,

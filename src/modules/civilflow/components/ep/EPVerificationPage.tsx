@@ -1,3 +1,7 @@
+/**
+ * Página de verificación del ep (Equipo de Presión): parámetros editables de la cisterna/bomba y tablas de chequeo — diámetros PVC SCH40 por caudal, potencias NEMA/comercial y el volumen de la cisterna.
+ * Ej: calcularCisterna arma la HMT (altura manométrica total) = alturas geométricas + pérdidas + presión mínima, y chequea NPSH (cavitación) disponible ≥ requerido.
+ */
 import React, { useMemo } from 'react';
 import Card from '../shared/Card.tsx';
 import Tbl from '../shared/Tbl';

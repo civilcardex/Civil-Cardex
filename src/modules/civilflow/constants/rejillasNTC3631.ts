@@ -1,7 +1,8 @@
-// Rejillas de ventilación para recintos con gas — NTC 3631 (3ª actualización).
-// Port de los archivos fuente del módulo (DOCX especificación v3.0, XLSX NTC3631 y HTML v15):
-// constantes normativas, soluciones de ventilación, presets de gasodomésticos y catálogo
-// base de rejillas comerciales con área efectiva declarada por el fabricante.
+/**
+ * Catálogo NTC (Norma Técnica Colombiana) 3631 para dimensionar rejillas de ventilación de recintos con aparatos a gas: constantes normativas (cm²/kW), soluciones de ventilación, presets de gasodomésticos y rejillas comerciales con su área efectiva declarada.
+ * Port de los archivos fuente del módulo (DOCX especificación v3.0, XLSX NTC3631 y HTML v15).
+ * Ej: una cocina con calentador de 24 kW en recinto confinado exige aberturas superior e inferior con Σ cm²/kW del numeral 4.2.1.
+ */
 
 /** Constantes NTC 3631 (cm/cm²/mm). Numerales en comentario. */
 export const NTC3631 = {

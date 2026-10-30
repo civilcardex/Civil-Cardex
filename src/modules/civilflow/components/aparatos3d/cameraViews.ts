@@ -66,6 +66,8 @@ function encuadreOrto(
   return { halfW, halfH, radius: size.length() / 2 || api.mr };
 }
 
+/** Cambia a la vista ortográfica FRENTE/LATERAL/PLANTA del aparato activo, encuadrada con
+ *  margen 8 %. Ej: clic «FRENTE» -> la tina se ve de frente completa. */
 export function vistaOrto(
   api: Aparatos3DApi,
   key: 'front' | 'side' | 'top',

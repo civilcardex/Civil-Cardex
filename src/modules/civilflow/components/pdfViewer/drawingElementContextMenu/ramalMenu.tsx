@@ -1,4 +1,8 @@
-﻿import { useState, useEffect } from 'react';
+﻿/**
+ * Menú contextual de un ramal: accesorios (codo, tee…), dirección de flujo, asociación a bajante/montante y canales asociados — el mismo estado que escribe el panel de aparatos (camposAsocManual).
+ * Ej: marcar "asociar a BAN1" añade el ramal a recibeDeIds del bajante; desmarcar lo limpia.
+ */
+import { useState, useEffect } from 'react';
 import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';

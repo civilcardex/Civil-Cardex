@@ -1,4 +1,6 @@
-// AlzadoMuro: alzado del recinto a escala con las aberturas requeridas (superior/inferior).
+/** Alzado del muro del recinto a escala con las aberturas de vent (Ventilación sanitaria)
+ *  requeridas (superior/inferior). Ej: baño con rejilla 0.20 m² -> rectángulo con su abertura
+ *  marcada, para verificarla contra la norma sin abrir planos. */
 import type { RejResultado } from '../../utils/rejillasCalc.ts';
 
 export function AlzadoMuro({ res }: { res: RejResultado }) {

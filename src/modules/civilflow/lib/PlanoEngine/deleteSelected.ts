@@ -1,3 +1,7 @@
+/**
+ * Borrado de la selección en el motor: elimina ramales/bajantes/canales/cotas/textos con TODAS sus consecuencias — enlaces entre pisos (punteros origen/descarga, fantasmas XFG), anillos de desplazamiento, renumeración y persistencia en storage.
+ * Ej: borrar un LDesvio (ramal desvío entrepisos) individual limpia su puntero en el bajante origen y mata el anillo del piso de abajo.
+ */
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState.ts';
 import { splitPtr } from '../../utils/keys.ts';
 import {

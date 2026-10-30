@@ -39,12 +39,7 @@ function segCrossing(
   return { x: ax + t * r1x, y: ay + t * r1y };
 }
 
-// Dibuja un pequeño corte-y-salto donde dos ramales de redes DISTINTAS se cruzan sin
-// conectarse (los sistemas de fluidos diferentes nunca comparten una unión real). Corre como
-// pase aditivo después de renderRamales — nunca toca la lógica principal de trazo de
-// polilíneas, solo borra una cápsula corta de la línea de la red que "salta" y la redibuja
-// como un arco diminuto, re-trazando la línea de la otra red (que pasa recta) por ese mismo
-// tramo para que quede completamente intacta sin importar el ángulo del cruce.
+/** Corte-y-salto donde dos ramales de redes DISTINTAS se cruzan sin conectarse (sistemas de fluidos distintos jamás comparten unión): borra una cápsula corta de la línea que salta y la redibuja como arco, re-trazando la otra red recta e intacta. Pase aditivo después de renderRamales. */
 export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const ramales = engine.ramales.filter(
     (r) =>

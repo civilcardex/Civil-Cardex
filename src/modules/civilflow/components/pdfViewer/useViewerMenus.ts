@@ -6,15 +6,7 @@ import type { PlanoElement } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { ContextMenuState } from './drawingElementContextMenu/context.ts';
 import type { ProbedElement } from './tramoEditor/context.ts';
 
-/**
- * Estado del menú contextual del lienzo (clic derecho sobre ramal/bajante/guía): dónde abrió,
- * sobre qué elemento, y el snapshot del elemento re-sincronizado con el motor para que el menú
- * muestre el diámetro/material VIVO y no una copia rancia. Extraído de PdfViewer en el mismo
- * orden de efectos.
- *
- * Ejemplo: clic derecho en RAF1 → onContextMenuCb guarda {x, y, element: RAF1}; si el motor
- * cambia el diámetro de RAF1 con el menú abierto, el efecto lo re-estampa con el valor fresco.
- */
+/** Snapshot re-sincronizado con el motor: si cambia el diámetro/material con el menú abierto, el efecto lo re-estampa con el valor fresco. */
 export function useViewerMenus(args: {
   engineRef: React.RefObject<PlanoEngine | null>;
   selElement: ProbedElement | null;

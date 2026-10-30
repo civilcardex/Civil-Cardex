@@ -18,11 +18,13 @@ let calentamientoHecho = true;
 let primerPisoListo = false;
 const oyentes = new Set<() => void>();
 
+/** Se entera de los cambios del calentamiento/primer piso (el overlay del visor escucha). Ej: suscribirse → callback al aterrizar el PDF del piso 2. */
 export function suscribirCalentamiento(cb: () => void): () => void {
   oyentes.add(cb);
   return () => oyentes.delete(cb);
 }
 
+/** ¿Ya se puede levantar el overlay de primera entrada? Exige calentamiento completo Y primer piso asentado. */
 export function calentamientoListo(): boolean {
   return calentamientoHecho && primerPisoListo;
 }
@@ -43,10 +45,12 @@ function marcarCalentamiento(hecho: boolean): void {
   avisar();
 }
 
+/** Proxy pdf.js del archivo si ya está parseado; undefined = parsear en vivo. */
 export function pdfDeCache(file: File): PDFDocumentProxy | undefined {
   return cache.get(file);
 }
 
+/** Guarda el proxy parseado (reutilizable para getPage/render en cambios de piso). */
 export function pdfACache(file: File, pdf: PDFDocumentProxy): void {
   cache.set(file, pdf);
 }

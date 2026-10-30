@@ -1,6 +1,8 @@
 import { pointToSegmentDist } from './HitTester.ts';
 import type { IPlanoEngineCore } from './PlanoState.ts';
 
+/** Ángulos legales de las tuberías por red, imanes de 45°/90° y detección de uniones (tee/codo/yee). Es la policía geométrica de lo que se puede dibujar. */
+
 /** ¿Son estas dos redes la misma a la hora de buscar uniones? La sanitaria y la ventilación cuentan
  *  como una sola: comparten nodos y un codo en una unión afecta a las dos.
  *  Ej: sameNetGroup('san','vent') es true; ('san','ll') es false. */

@@ -36,8 +36,7 @@ import {
   type ProbedElement,
 } from './context.ts';
 
-/** Editor multi-tipo del menú contextual: material y diámetro de ramales, asociación de
- *  bajante en áreas, diámetro de contadores y capacidad de calentadores. */
+/** Cada tipo muestra solo SUS campos; escribe vía engine.updateElementById y refresca menú/panel. */
 export function ElementCodeEditor({
   element,
   engineRef,

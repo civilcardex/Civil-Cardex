@@ -7,6 +7,8 @@ import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { type HidroDataEntry } from './deleteCascade.ts';
 import { devError } from '../../../../utils/devError.ts';
 
+/** Yee doble y clusters de split al borrar: qué pedazos se llevan juntos (mergesFrom) y cuándo el hueco de una yee doble se tapa. */
+
 // Ítem 9/v2: borrar una MITAD de un ramal dividido (no la rama entrante) debe borrar TODA la
 // división — las dos mitades colineales + la rama que la partió. Si solo se borra una mitad,
 // quedan restos de la línea dividida y el usuario tiene que borrar dos veces. La rama entrante

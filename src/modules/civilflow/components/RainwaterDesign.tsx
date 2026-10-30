@@ -1,3 +1,7 @@
+/**
+ * Diseño de la red de ll (Lluvias): tablas de bajantes y canales con diámetro/pendiente escritos al dibujo y chequeo hidráulico por fila (velocidad, régimen por Froude, fuerza tractiva).
+ * Ej: bajar la pendiente de un canal puede marcar la fila en rojo si el régimen o la fuerza tractiva salen del rango permitido.
+ */
 import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import ChipList from './shared/ChipList.tsx';
 import EditButton from './shared/EditButton.tsx';

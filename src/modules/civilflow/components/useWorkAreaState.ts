@@ -1,3 +1,7 @@
+/**
+ * Estado central del área de trabajo: pestaña activa, redes activas (af/ac/san/ll/gas/…), colores por red y persistencia de todo eso por proyecto (localStorage + BD).
+ * Ej: activar la red gas en el menú de redes se guarda en ACTIVE_NETS_KEY y el visor lo relee al montar.
+ */
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import type { ChangeEvent, FocusEvent } from 'react';
@@ -96,6 +100,7 @@ function leerPaginas(): Record<string, number> {
   return {};
 }
 
+/** Hook raíz del área de trabajo: une contexto (tramos/proyecto/planes) con la UI (pestaña, redes, colores) y su persistencia. Ej: tabInicial='memoria' abre el área directamente en esa pestaña. */
 export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: string) => void) {
   const tramosCtx = useTramos();
   const projectCtx = useProject();

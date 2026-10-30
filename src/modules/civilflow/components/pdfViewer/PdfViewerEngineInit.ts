@@ -1,3 +1,7 @@
+/**
+ * Motor de render del visor (hook): parsea el PDF con pdfjs, rasteriza la lámina a la escala del doc (scaleM = metros por pixel), encola los re-rasters (filaRender: el que llega en vuelo corre al cerrar el actual — última gana) y monta el PlanoEngine sobre el canvas de dibujo.
+ * Ej: cambiar de piso no re-parsea nada — calentarPdfs ya parseó todos los planos tras la 1ª entrada.
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { getPdfjs } from '../../utils/lazyPdfjs';
 import { pdfDeCache, pdfACache, calentarPdfs, marcarPrimerPisoCargado } from './pdfCache.ts';

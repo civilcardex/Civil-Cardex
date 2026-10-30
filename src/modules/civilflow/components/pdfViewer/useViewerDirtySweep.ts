@@ -14,8 +14,7 @@ interface UseViewerDirtySweepRes {
   suprimirPorBorrado: (ids: string[]) => void;
 }
 
-/** Sweep del onDirty del visor: alertas de aparato inviable + auto-bump de diámetros.
- *  Extraído verbatim de PdfViewer — las 2 refs de dedupe/supresión viven aquí. */
+/** Sweep del onDirty del visor: alertas de aparato inviable + auto-bump de diámetros. */
 export function useViewerDirtySweep(): UseViewerDirtySweepRes {
   // Ítem 2 (rev 2): dedupe de la alerta de estado inviable — el ramal se alerta UNA vez por
   // sesión mientras siga inválido (se rehabilita al corregirse).

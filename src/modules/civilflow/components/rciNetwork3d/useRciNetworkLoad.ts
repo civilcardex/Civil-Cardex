@@ -21,6 +21,8 @@ const ESPERAS_MAX = 100;
 const BASE_KEYS = ['mamposteria', 'piso1_bombas', 'red_completa', 'entrepiso', 'cubierta'];
 const SPLIT_KEYS = Object.keys(SPLIT_BUILDS);
 
+/** Carga del visor de la RED rci (Red Contra Incendio): 5 piezas base + 10 abrazaderas SPLIT
+ *  en secuencia con progreso; reporta fallo si la escena no arranca. */
 export function useRciRedCarga(
   apiRef: Rci3DApiRef,
   { onProgreso, onListo, onFallo }: Opciones,

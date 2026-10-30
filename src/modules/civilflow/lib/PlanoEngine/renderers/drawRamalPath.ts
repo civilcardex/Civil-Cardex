@@ -14,11 +14,7 @@ const PLAN_CODO_TYPES = [
   'codos_45',
 ];
 
-// Esquina en L con codo de plano anclado en un EXTREMO compartido: devuelve las dos direcciones
-// de salida (hacia el cuerpo de cada tubería) si exactamente dos ramales terminan ahí en ángulo
-// y alguno lleva un codo de plano en ese extremo. Se usa para recortar los cuerpos de tubería
-// hasta los puntos de tangencia del arco: la esquina viva de la unión no se dibuja (el arco la
-// sustituye, igual que en los quiebres interiores).
+/** Esquina en L con codo de plano en un EXTREMO compartido: las 2 direcciones de salida (hacia el cuerpo de cada tubería) si exactamente dos ramales terminan ahí en ángulo y alguno lleva codo de plano. Sirve para recortar los cuerpos hasta los puntos de tangencia del arco. */
 export function planCodoCornerAt(
   engine: IPlanoEngineCore,
   pt: number[],

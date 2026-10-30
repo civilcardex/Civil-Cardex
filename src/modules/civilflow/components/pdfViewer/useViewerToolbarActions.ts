@@ -5,8 +5,6 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { NETS } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { ProbedElement } from './tramoEditor/context.ts';
 
-/** Acciones de la barra del visor: limpiar la red, borrar las líneas guía, guardar,
- *  activar el snap y mostrar la cuadrícula. */
 export function useViewerToolbarActions(args: {
   engineRef: React.RefObject<PlanoEngine | null>;
   activeNet: string;
