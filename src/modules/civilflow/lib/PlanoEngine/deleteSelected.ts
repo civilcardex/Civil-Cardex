@@ -2,6 +2,7 @@ import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState.ts
 import { splitPtr } from '../../utils/keys.ts';
 import {
   removeCrossFloorGhostsBySource,
+  removeCrossFloorGhostsBySourceBatch,
   isLdesvioRamalId,
 } from '../../utils/associateBajanteAcrossFloors';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
@@ -120,6 +121,9 @@ export function deleteSelected(
       }
     }
     const deletedRamalIds = new Set<string>();
+    // Fantasmas XFG a limpiar en otros pisos por TODOS los borrados de la rama: se acumulan y
+    // salen en UN solo barrido batch tras el bucle (antes: 1 barrido completo por elemento).
+    const ghostSourcesABorrar = new Set<string>();
     const deletedPts: number[][] = [];
     for (const id of toDelete) {
       const idxR = engine.ramales.findIndex((r) => r.id === id);
@@ -167,6 +171,9 @@ export function deleteSelected(
                 if (b.ghostData) delete b.ghostData[lvlKey];
                 // Borrar también el fantasma punteado del piso inferior
                 if (isLdesvioRamalId(deleted.id)) {
+                  // Inline a propósito (no va al batch): el clearBajanteAssociation de abajo lee
+                  // estos fantasmas YA borrados (resolveLinkRoles) — diferir el barrido le
+                  // mostraría el ghost vivo y cambiaría la rama de la desasociación.
                   removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
                   // El Ldesvio ERA el carrier del enlace entre pisos: al borrarlo, el enlace se
                   // desasocia y el original vuelve a mostrar "sin origen" (antes el puntero
@@ -196,8 +203,7 @@ export function deleteSelected(
         }
         // Ldesvio borrado directamente (sin desplazamiento asociado) — limpiar fantasmas huérfanos
         if (isLdesvioRamalId(deleted.id)) {
-          const sourceBajanteId = deleted.id.slice(3);
-          removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
+          ghostSourcesABorrar.add(deleted.id.slice(3));
         }
         continue;
       }
@@ -278,8 +284,7 @@ export function deleteSelected(
           else if (deleted.tipo === 'contador') bajNetsToRenumber.add('contador');
           else if (deleted.tipo === 'canal') renumberCanalesNeeded = true;
           // Limpia los fantasmas entre pisos de OTROS pisos que referencian este bajante
-          if (engine._loadedPlanId != null)
-            removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
+          ghostSourcesABorrar.add(deleted.id);
         }
         continue;
       }
@@ -341,6 +346,11 @@ export function deleteSelected(
         continue;
       }
     }
+    // Fantasmas de TODOS los borrados de la rama en UN solo barrido (H-6), ANTES del renumerado
+    // (que renombra sourceBajanteId de ghosts vivos — el batch debe ganarle). Seguro: entre el
+    // bucle y aquí nadie lee crossFloorGhosts (los clear que leen corrieron con su inline).
+    if (ghostSourcesABorrar.size > 0)
+      removeCrossFloorGhostsBySourceBatch(engine._loadedPlanId, [...ghostSourcesABorrar]);
     // Yee doble desarmada (orig. usuario): los brazos restantes que quedan tocándose en un
     // punto donde HABÍA un brazo borrado (grado 2) se funden en UN ramal (aunque formen
     // esquina) — el trazo restante queda como uno solo.
@@ -455,6 +465,8 @@ export function deleteSelected(
             delete b.desplazamientos[lvlKey];
             if (b.ghostData) delete b.ghostData[lvlKey];
             if (isLdesvioRamalId(deletedId)) {
+              // Inline a propósito (no va al batch): el clear de abajo lee estos fantasmas YA
+              // borrados (resolveLinkRoles) — diferirlo cambiaría la rama de la desasociación.
               removeCrossFloorGhostsBySource(engine._loadedPlanId, sourceBajanteId);
               // Mismo desenlace que el borrado en conjunto: el Ldesvio ERA el carrier del
               // enlace entre pisos — sin esto el origenId del original sobrevivía y su

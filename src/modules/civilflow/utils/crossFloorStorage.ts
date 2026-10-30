@@ -243,6 +243,20 @@ export function removeCrossFloorGhost(
   saveData(targetPlanId, data);
 }
 
+// Claves REALES ('civilflow_trazos_<id>') de los pisos con doc guardado, fotografiadas al
+// entrar a un barrido batch: los escrituras del barrido van sobre claves que YA existen
+// (saveData no crea pisos), así que la foto no se queda vieja a mitad de operación.
+/** Lista las claves de localStorage de todos los pisos con doc de dibujo guardado.
+ *  Ej: con pisos 1 y 2 guardados → ['civilflow_trazos_1', 'civilflow_trazos_2']. */
+function clavesPisosTrazos(): string[] {
+  const claves: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(TRAZOS_PLAN_PREFIX)) claves.push(k);
+  }
+  return claves;
+}
+
 // Recorre el localStorage de TODOS los pisos y quita cualquier fantasma entre pisos que
 // referencie al bajante origen dado. Se llama cuando se borra un bajante — los fantasmas viejos
 // en otros pisos deben limpiarse.
@@ -252,15 +266,31 @@ export function removeCrossFloorGhostsBySource(
   sourcePlanId: string | number | null,
   sourceBajanteId: string,
 ): void {
-  if (sourcePlanId == null) return;
+  removeCrossFloorGhostsBySourceBatch(sourcePlanId, [sourceBajanteId]);
+}
+
+// Versión batch del barrido anterior: UNA lectura de cada piso y UN guardado por piso tocado,
+// aunque la operación borre N bajantes (el borrado en conjunto llamaba a la individual N veces
+// = N barridos completos del localStorage). Mismo resultado final: cada piso queda sin los
+// fantasmas de los orígenes dados.
+/** Quita de TODOS los pisos los XFG (fantasma entrepisos) puestos por CUALQUIERA de los bajantes
+ *  origen dados, con un solo barrido del localStorage (1 lectura y máx. 1 guardado por piso).
+ *  Ej: borrar BAN1..BAN20 en conjunto → 1 barrido limpia sus marcadores en los pisos 2..10,
+ *  en vez de 20 barridos.
+ *  @returns cuántos fantasmas se eliminaron en total (0 si ninguno coincidía). */
+export function removeCrossFloorGhostsBySourceBatch(
+  sourcePlanId: string | number | null,
+  sourceBajanteIds: readonly string[],
+): number {
+  if (sourcePlanId == null || sourceBajanteIds.length === 0) return 0;
   const sp = String(sourcePlanId);
+  const ids = new Set(sourceBajanteIds);
+  let eliminados = 0;
   // saveToStorage prefija las claves de localStorage con 'civilflow_', así que TRAZOS_PREFIX
   // ('trazos_') se vuelve 'civilflow_trazos_' (== TRAZOS_PLAN_PREFIX) en el almacenamiento real.
   // Se itera por clave completa prefijada para ubicar los datos de trazado de cada piso y
   // despojarlos de los fantasmas que coincidan.
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  for (const k of clavesPisosTrazos()) {
     const targetPlanId = k.slice(TRAZOS_PLAN_PREFIX.length);
     if (targetPlanId === sp) continue; // same floor, skip
     try {
@@ -268,14 +298,16 @@ export function removeCrossFloorGhostsBySource(
       if (!data.crossFloorGhosts?.length) continue;
       const before = data.crossFloorGhosts.length;
       data.crossFloorGhosts = data.crossFloorGhosts.filter(
-        (g) => !(g.sourcePlanId === sp && g.sourceBajanteId === sourceBajanteId),
+        (g) => !(g.sourcePlanId === sp && ids.has(g.sourceBajanteId)),
       );
       if (data.crossFloorGhosts.length === before) continue;
+      eliminados += before - data.crossFloorGhosts.length;
       saveData(targetPlanId, data);
     } catch {
       continue;
     }
   }
+  return eliminados;
 }
 
 // Id determinista para el conector Ldesvio de un bajante origen — uno por origen, siempre
@@ -460,10 +492,34 @@ export function updateCrossFloorGhostFieldBySource(
   field: 'dNominal' | 'parentDireccion',
   value: string,
 ): void {
+  updateCrossFloorGhostFieldBySourceBatch(sourcePlanId, [
+    { bajanteId: sourceBajanteId, field, value },
+  ]);
+}
+
+// Versión batch: N cambios de campo de una misma operación aplican con UN barrido (cada piso
+// se lee una vez y —si algo cambió— se guarda una vez). Los items se aplican EN ORDEN, así que
+// repetir (bajanteId, field) equivale a las llamadas individuales consecutivas (gana la última).
+/** Propaga VARIOS cambios de campo (dNominal (diámetro nominal)/parentDireccion) de bajantes
+ *  origen a sus XFG (fantasma entrepisos) espejos en otros pisos, con un solo barrido del
+ *  localStorage. Ej: 5 bajantes cambian de diámetro → 1 barrido actualiza sus 5 espejos en los
+ *  demás pisos, en vez de 5 barridos. */
+export function updateCrossFloorGhostFieldBySourceBatch(
+  sourcePlanId: string | number,
+  items: ReadonlyArray<{ bajanteId: string; field: 'dNominal' | 'parentDireccion'; value: string }>,
+): void {
+  if (items.length === 0) return;
   const sp = String(sourcePlanId);
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  const cambiosPorId = new Map<
+    string,
+    Array<{ field: 'dNominal' | 'parentDireccion'; value: string }>
+  >();
+  for (const it of items) {
+    const lista = cambiosPorId.get(it.bajanteId);
+    if (lista) lista.push({ field: it.field, value: it.value });
+    else cambiosPorId.set(it.bajanteId, [{ field: it.field, value: it.value }]);
+  }
+  for (const k of clavesPisosTrazos()) {
     const targetPlanId = k.slice(TRAZOS_PLAN_PREFIX.length);
     if (targetPlanId === sp) continue; // mismo piso, salta — el bajante padre se actualiza ahí directo
     try {
@@ -472,10 +528,13 @@ export function updateCrossFloorGhostFieldBySource(
       let dirty = false;
       for (let j = 0; j < data.crossFloorGhosts.length; j++) {
         const g = data.crossFloorGhosts[j];
-        if (g.sourcePlanId === sp && g.sourceBajanteId === sourceBajanteId) {
-          const current = (g as unknown as Record<string, unknown>)[field];
+        if (g.sourcePlanId !== sp) continue;
+        const cambios = cambiosPorId.get(g.sourceBajanteId);
+        if (!cambios) continue;
+        for (const { field, value } of cambios) {
+          const current = (data.crossFloorGhosts[j] as unknown as Record<string, unknown>)[field];
           if (current !== value) {
-            data.crossFloorGhosts[j] = { ...g, [field]: value };
+            data.crossFloorGhosts[j] = { ...data.crossFloorGhosts[j], [field]: value };
             dirty = true;
           }
         }
@@ -490,7 +549,7 @@ export function updateCrossFloorGhostFieldBySource(
 // Barre el localStorage de TODOS los pisos por un fantasma entre pisos cuyo `sourceBajanteId`
 // coincida con el bajante ORIGEN dado y actualiza su x/y — se llama después de que ese bajante
 // termina de arrastrarse en su propio piso, para que un fantasma que lo espeja en otro piso
-// (creado vía el selector "Destino" o "Origen" — ambos dependen de descargaEnId/sourceBajanteId
+// (creado vía el selector "Destino" u "Origen" — ambos dependen de descargaEnId/sourceBajanteId
 // igual) no se quede pegado en su posición de creación.
 /** Tras arrastrar el bajante origen, mueve sus XFG (fantasma entrepisos) espejos en los demás
  *  pisos. Los (x, y) llegan en el frame del piso origen y se traducen al de cada destino
@@ -501,29 +560,49 @@ export function updateCrossFloorGhostPositionBySource(
   x: number,
   y: number,
 ): void {
+  updateCrossFloorGhostPositionBySourceBatch(sourcePlanId, [{ bajanteId: sourceBajanteId, x, y }]);
+}
+
+// Versión batch del re-anclaje: una operación que mueve VARIOS bajantes origen (p. ej. arrastrar
+// una selección múltiple) re-ancla todos sus espejos con UN barrido (1 lectura y máx. 1 guardado
+// por piso). Los items se aplican EN ORDEN — igual que llamadas individuales consecutivas — y
+// cada (x, y) se traduce al frame de cada piso destino con aFrameDe, como en la individual.
+/** Re-ancla los XFG (fantasma entrepisos) de VARIOS bajantes origen tras moverlos, con un solo
+ *  barrido del localStorage. Ej: arrastrar 20 bajantes → 1 barrido reposiciona sus 20 espejos
+ *  en los demás pisos, en vez de 20 barridos. */
+export function updateCrossFloorGhostPositionBySourceBatch(
+  sourcePlanId: string | number,
+  items: ReadonlyArray<{ bajanteId: string; x: number; y: number }>,
+): void {
+  if (items.length === 0) return;
   const sp = String(sourcePlanId);
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  const movsPorId = new Map<string, Array<{ x: number; y: number }>>();
+  for (const it of items) {
+    const lista = movsPorId.get(it.bajanteId);
+    if (lista) lista.push({ x: it.x, y: it.y });
+    else movsPorId.set(it.bajanteId, [{ x: it.x, y: it.y }]);
+  }
+  for (const k of clavesPisosTrazos()) {
     const targetPlanId = k.slice(TRAZOS_PLAN_PREFIX.length);
     if (targetPlanId === sp) continue;
     try {
       const data: LocalGhostDrawingData = JSON.parse(localStorage.getItem(k) || '{}');
       if (!data.crossFloorGhosts?.length) continue;
-      // (x,y) llegan en el frame del piso origen: traducirlos al frame de CADA piso destino
-      // — los ghosts viven en el frame de su anfitrión (misma regla que bajanteAssociation
-      // al crearlos; sin esto, arrastrar el bajante origen desplazaba el ghost espejo).
-      const xy = aFrameDe({ x, y }, sp, targetPlanId);
       let dirty = false;
       for (let j = 0; j < data.crossFloorGhosts.length; j++) {
         const g = data.crossFloorGhosts[j];
-        if (
-          g.sourcePlanId === sp &&
-          g.sourceBajanteId === sourceBajanteId &&
-          (g.x !== xy.x || g.y !== xy.y)
-        ) {
-          data.crossFloorGhosts[j] = { ...g, x: xy.x, y: xy.y };
-          dirty = true;
+        if (g.sourcePlanId !== sp) continue;
+        const movs = movsPorId.get(g.sourceBajanteId);
+        if (!movs) continue;
+        for (const { x, y } of movs) {
+          // (x,y) llegan en el frame del piso origen: traducirlos al frame de CADA piso destino
+          // — los ghosts viven en el frame de su anfitrión (misma regla que bajanteAssociation
+          // al crearlos; sin esto, arrastrar el bajante origen desplazaba el ghost espejo).
+          const xy = aFrameDe({ x, y }, sp, targetPlanId);
+          if (data.crossFloorGhosts[j].x !== xy.x || data.crossFloorGhosts[j].y !== xy.y) {
+            data.crossFloorGhosts[j] = { ...data.crossFloorGhosts[j], x: xy.x, y: xy.y };
+            dirty = true;
+          }
         }
       }
       if (dirty) saveData(targetPlanId, data);

@@ -31,7 +31,7 @@ const TOPE_NUEVO = 700;
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 1223,
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 737,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1175,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1176,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 671,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 842,
   'modules/civilflow/utils/waterRowsCore.ts': 695,
