@@ -9,8 +9,10 @@ export interface RouteMeta {
   priority: string;
 }
 
+/** Dominio canónico del sitio: arma canonical/og:url del prerender y del sitemap. */
 export const SITE_URL = 'https://civilcardex.com';
 
+/** Las 11 rutas públicas con su title/description y señales de sitemap (changefreq/priority). Ej: la ruta '/' prioridad 1.0. */
 export const ROUTE_META: RouteMeta[] = [
   {
     path: '/',

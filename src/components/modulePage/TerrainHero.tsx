@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { ModuleConfig } from '../../pages/moduleData.ts';
 
+/** Hero de la página del módulo Terreno: H1 + CTAs y panel de elevación/pendiente decorativo con el acento del módulo. */
 export default function TerrainHero({ cfg }: { cfg: ModuleConfig }) {
   return (
     <>

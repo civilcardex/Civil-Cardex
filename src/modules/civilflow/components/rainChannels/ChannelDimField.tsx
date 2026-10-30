@@ -23,6 +23,9 @@ const CANAL_FIELD_LABELS: Record<
   bordeLibreCm: 'Borde libre (cm)',
 };
 
+/** Celda editable de una dimensión del canal (base, altura, pendiente, longitud…) de la tabla
+ *  de ll (Lluvias): texto local mientras edita y commit con Enter/blur — evita re-render de la
+ *  tabla por cada tecla. Ej: editar pendiente 1.5 -> el Q (Caudal) Manning de la fila se recalcula. */
 export const CanalDimField = React.memo(function CanalDimField({
   id,
   field,

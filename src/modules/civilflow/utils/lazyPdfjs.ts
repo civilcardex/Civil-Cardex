@@ -4,6 +4,7 @@ import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 let cached: typeof PdfjsDist | null = null;
 let promise: Promise<typeof PdfjsDist> | null = null;
 
+/** Importa pdfjs-dist bajo demanda (con su worker) UNA vez: el bundle principal no carga el PDF engine hasta abrir un plano. */
 export function getPdfjs(): Promise<typeof PdfjsDist> {
   if (cached) return Promise.resolve(cached);
   if (!promise) {

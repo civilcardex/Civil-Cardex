@@ -1,3 +1,4 @@
+/** Grid "Ramales asociados" del menú de bajante san/ll: un checkbox por ramal de la red; marcarlo conecta (recibeDeIds/ini-fin), desmarcar desconecta, con topes y compatibilidad de diámetros validados antes de escribir. */
 import { ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';

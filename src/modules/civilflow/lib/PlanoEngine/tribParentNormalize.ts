@@ -30,6 +30,7 @@ export function normalizeTribPadresAt(
   }
 }
 
+/** El padre SANEADO del tributario: si su label T{n}{raíz} apunta a una raíz distinta de la cadena actual, gana la raíz del label. Ej: T2RS1 con padre RS2 viejo -> devuelve el id de RS1. */
 export function healedPadreId(
   ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
   tribId: string,
@@ -55,6 +56,7 @@ export function healedPadreId(
   return root.id;
 }
 
+/** En una unión concreta (punto), colga TODOS los tributarios que tocan del padre dado y re-etiqueta sus cadenas a la raíz correspondiente — aunque el padre no cambie, el label puede quedar viejo. */
 export function normalizeTribPadresAtPoint(
   engine: IPlanoEngineCore,
   ep: number[],

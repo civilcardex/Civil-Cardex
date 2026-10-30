@@ -1,8 +1,5 @@
 type DiamOpt = { pulg: number; nominal: string; label?: string; dInt: number };
 
-// Física de un tramo de la acometida (red → contador → montante): velocidad, longitud total,
-// pérdida por fricción y presión final. `diamTable` y `Qaco` llegan como parámetros para que
-// la función sea pura y testeable.
 /** Física de un tramo de la acometida (red→contador o contador→montante): velocidad, longitud total, pérdida por fricción y presión final.
  * `diamTable` y `Qaco` llegan como parámetros para que la función sea pura y testeable. */
 export function calcFila(

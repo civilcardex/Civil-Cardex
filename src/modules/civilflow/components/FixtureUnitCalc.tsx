@@ -1,3 +1,6 @@
+/** Tabla de UD (Unidades de Desague, o sea cuánto drena cada aparato) de san (Sanitaria):
+ *  cada fila es un ramal con su conteo de aparatos, UD parciales y el total que baja al
+ *  dimensionamiento Hunter (método de probabilidad de uso simultáneo). Ej: RS1 con 1 inodoro -> 6 UD. */
 import React, { useMemo } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow.tsx';

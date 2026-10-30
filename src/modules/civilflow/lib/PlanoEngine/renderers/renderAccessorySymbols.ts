@@ -7,6 +7,8 @@ import { drawValveSymbols } from './accValves';
 import { drawFallbackSymbol } from './accFallback';
 export { drawCornerCodoArc } from './cornerElbowArc.ts';
 
+/** Contrato común de los pintores de accesorios y el repartidor que elige la familia que dibuja cada glifo. */
+
 /** Argumentos del símbolo de accesorio en extremo de ramal — un solo objeto en vez de una
  *  firma de 16 posicionales que cada familia ignoraba en parte. Ej: drawCodoSymbols solo
  *  lee ctx/engine/accType/c/dx/dy/px/py/rad; el resto lo ignora. */
@@ -30,7 +32,7 @@ export interface AccSimboloArgs {
   pipeToward?: { x: number; y: number };
 }
 
-// Cada helper retorna true si manejó accType; el fallback dibuja el disco de respaldo.
+/** Reparte el glifo del accesorio de EXTREMO entre las familias (sifón → codo → tee → válvula → respaldo): el primero que reconoce el tipo gana. */
 export function drawExtremeAccessorySymbol(a: AccSimboloArgs): void {
   if (drawSifonSymbol(a)) return;
   if (drawCodoSymbols(a)) return;

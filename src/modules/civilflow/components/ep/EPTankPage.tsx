@@ -1,3 +1,6 @@
+/** Página de tanque del diseño de ep (Equipo de Presión): dimensiona el tanque (volumen de
+ *  regulación, presiones de corte/arranque). Ej: 2 baños + presión mínima 1.5 bar -> volumen
+ *  del tanque propuesto. */
 import React from 'react';
 import Card from '../shared/Card.tsx';
 import Tbl from '../shared/Tbl';

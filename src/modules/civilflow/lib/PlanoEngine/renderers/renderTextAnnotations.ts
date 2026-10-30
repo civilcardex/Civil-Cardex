@@ -1,6 +1,7 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { anchoTexto } from './measureText.ts';
 
+/** Anotaciones de texto libre del plano: caja, texto (con ángulo propio) y manijas de selección o multiselección. */
 export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.textAnnots.forEach((t) => {
     const c = engine.toCvs(t.x + (t.lblOffX || 0), t.y + (t.lblOffY || 0));

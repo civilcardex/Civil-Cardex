@@ -1,3 +1,4 @@
+/** Barrido automático tras cada cambio del visor: alerta (una vez por ramal) si un aparato queda en extremo inviable y sube el diámetro de un bajante/montante menor que su ramal conectado. Ej: conectar un ramal de 4" a un montante de 3" lo cura a 4" sin preguntar. */
 import { useRef } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { aparatoEnExtremoInvalido } from '../../lib/PlanoEngine/PlanoEngineDrawing.ts';

@@ -32,10 +32,6 @@ export interface DesignRowCalcParams {
   lookupFn: (pulg: number) => number;
 }
 
-// Física de una fila de la tabla de diseño: resuelve el diámetro efectivo (override manual →
-// diámetro original dibujado → diámetro diseñado), velocidad, longitudes (horizontal + vertical
-// + equivalente de accesorios) y pérdida por fricción Hazen-Williams. Es la única copia del
-// cálculo: la usan la tabla, el guardado de memoria y los checkpoints de velocidad.
 /** Física de una fila de la tabla de diseño: diámetro efectivo (override manual → original dibujado → diseñado), velocidad, longitudes y pérdida por fricción Hazen-Williams.
  * Es la única copia del cálculo: la usan la tabla, la memoria y los checkpoints de velocidad. */
 export function computeDesignRow(t: Tramo, p: DesignRowCalcParams) {

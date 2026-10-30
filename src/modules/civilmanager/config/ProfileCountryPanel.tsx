@@ -5,6 +5,7 @@ import { DimEnLectura, TableHeader } from '../shared/EditLock.tsx';
 import { useEditable } from '../shared/EditLock.tsx';
 import type { PerfilPais } from '../types.ts';
 
+/** Panel de perfiles por país: salario mínimo, moneda, días/horas del mes y si se cotiza por hora. Ej: Colombia mes/30 días; US hora. Aplicar copia los valores a la config activa. */
 export function PerfilPaisPanel() {
   const { state, patch } = useCivilManager();
   const editable = useEditable();

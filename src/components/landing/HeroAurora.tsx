@@ -1,3 +1,4 @@
+/** Manchas de luz difuminadas (aurora ámbar) del hero de la landing; tres blobs con keyframes lentos, apagados con prefers-reduced-motion. */
 export default function HeroAurora() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">

@@ -112,14 +112,7 @@ export function dibujaCuerpoRamal(
   }
 }
 
-/**
- * Etiqueta flotante del ramal (nombre + info de material/diámetro/pendiente con las cotas del
- * trazo): calcula su caja rotada, la auto-ordena con el des-tapado si nunca se movió a mano,
- * dibuja la línea guía al punto medio y pinta el texto + flecha de flujo.
- * Ej: "RS1" con "PVC · 2"" debajo, separado del trazo por el gap del borde de la caja.
- *
- * @returns true si quedó una etiqueta manual sin caja (hay que reprogramar un pase de render).
- */
+/** Etiqueta flotante del ramal (nombre + material/diámetro/pendiente): caja rotada, des-tapado automático si nunca se movió a mano, línea guía y texto. Ej: "RS1" con "PVC · 2"" debajo. @returns true si quedó una etiqueta manual sin caja (hay que reprogramar un pase de render). */
 export function dibujaEtiquetaRamal(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,

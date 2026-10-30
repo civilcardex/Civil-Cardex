@@ -48,6 +48,7 @@ export function writePendienteToDrawing(
   if (isSan) writeSanDrawingSync(plans);
 }
 
+/** Escribe el número de salidas de un ramal al doc + BD y refleja en tramo_hidro_data_v3 (el caller ya aplicó updTramo en contexto — aquí se reporta si el doc no se tocó). */
 export function writeNSalidasToDrawing(
   ramalKey: string,
   net: string,

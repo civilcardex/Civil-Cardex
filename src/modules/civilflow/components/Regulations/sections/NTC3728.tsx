@@ -1,3 +1,5 @@
+/** Sección NTC 3728 (Norma Técnica Colombiana de gas): presiones, simultaneidad y caudales
+ *  de consulta para el diseño gas. */
 import { NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES } from '../regulationsData.ts';
 import { subHeadingStyle as h4 } from '../shared.tsx';
 

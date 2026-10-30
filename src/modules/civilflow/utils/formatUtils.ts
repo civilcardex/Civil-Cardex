@@ -48,6 +48,11 @@ export function fracAscii(s: string): string {
   );
 }
 
+/**
+ * Pulgadas decimales a notación comercial (1.5 -> '1-1/2"', 0.75 -> '3/4"', 2 -> '2"').
+ * @param v diámetro en pulgadas decimales.
+ * @returns la etiqueta con comilla; '—' si v <= 0 o no cae en fracción comercial.
+ */
 export function fmtPulg(v: number): string {
   if (!v || v <= 0) return '—';
   const ent = Math.floor(v);
@@ -141,6 +146,11 @@ function lenientUtf8(bytes: number[]): string {
   return out;
 }
 
+/**
+ * Repara texto doble-codificado ("â€\"" -> '—', "Â½" -> '½'); lo limpio pasa igual.
+ * @param s texto posiblemente dañado (labels viejas, datos pegados de Excel).
+ * @returns el texto con los bytes CP1252 re-decodificados como UTF-8 tolerante.
+ */
 export function sanitizeMojibake(s: string): string {
   if (!s) return s;
   let out = '';

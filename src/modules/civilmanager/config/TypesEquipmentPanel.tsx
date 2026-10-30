@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { ListaItemPanel } from './ListItemPanel.tsx';
 
+/** Panel de tipos de equipo (ej: 'Excavación', 'Transporte'); uno usado por alguna máquina no se borra. */
 export function TiposEquipoPanel() {
   const { state, patch } = useCivilManager();
   const countUsage = useMemo(() => {

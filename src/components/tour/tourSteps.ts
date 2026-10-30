@@ -4,6 +4,7 @@
 // Textos destilados de la guía de ayuda (helpGuideFlow / helpGuideManager).
 import type { TourStep } from './TourOverlay.tsx';
 
+/** Clave del tour ('cf:visor', 'cf:tab:san', 'cm:catalogos:insumos'…) — coincide con el contexto de Ayuda de la pantalla. */
 export type TourClave = string;
 
 /** Qué tour corresponde a la pantalla del contexto de Ayuda actual (null si ninguno).
@@ -26,6 +27,7 @@ const cierre = {
   desc: 'El botón AYUDA de la barra superior trae la guía completa de esta pantalla cuando la necesites.',
 };
 
+/** Los pasos por pantalla: clave -> secuencia de pasos con ancla (data-tour) y textos. Ej: 'cf:visor' empieza en el selector de redes. */
 export const TOURS: Record<TourClave, TourStep[]> = {
   'cf:visor': [
     {

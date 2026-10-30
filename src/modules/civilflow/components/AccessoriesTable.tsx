@@ -1,3 +1,6 @@
+/** Tabla de accesorios hidráulicos (codos, tees, válvulas) contados por tramo san (Sanitaria):
+ *  sin ellos la Lh (longitud equivalente) y las pérdidas del tramo salen en cero.
+ *  Ej: RG1 con 3 codos 90° -> fila editable que suma a la ficha hidráulica del ramal. */
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO, pisoCorto } from '../constants';
 import EmptyRow from './shared/EmptyRow.tsx';

@@ -25,6 +25,7 @@ interface Params {
   ) => Promise<void> | null;
 }
 
+/** Re-rasteriza la lámina cuando cambia la escala (prop `scale` o evento de corrección al cargar), con dedupe: un raster completo con escala ya usada se salta. */
 export function useReRasterEscala({
   pdfDocRef,
   scale,

@@ -14,6 +14,7 @@ interface Particle {
   speed: number;
 }
 
+/** Fondo animado de la landing: partículas cruz/punto sobre canvas que orbitan su posición base. Decorativo y pointer-events-none. */
 export default function BlueprintParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 

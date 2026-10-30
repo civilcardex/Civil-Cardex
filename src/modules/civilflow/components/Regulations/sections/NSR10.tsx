@@ -1,3 +1,5 @@
+/** Sección NSR-10 (Norma Sismo Resistente): clasificación de edificaciones y altura según
+ *  uso — requisitos de consulta para el diseño. */
 import { NSR10_CLASIFICACION, NSR10_ALTURA } from '../regulationsData.ts';
 import { subHeadingStyle as h4 } from '../shared.tsx';
 

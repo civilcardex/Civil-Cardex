@@ -19,6 +19,7 @@ import {
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { BajanteEditor, RamalEditor } from './legacyEditors.tsx';
 
+/** Sección del panel derecho para bajante/montante: datos específicos + editor de extremos; en san añade la sección de bomba asociada al bajante. */
 export function BajanteEditorSection() {
   const ctx = useTramoEditorContext();
   const { engineRef, activeNet } = ctx;
@@ -147,6 +148,7 @@ function AsociarBombaPanel({
   );
 }
 
+/** Sección del panel derecho para ramal: cabecera (nombre/conexiones) + material, diámetro, pendiente y editor de extremos cuando la selección es de la red activa. */
 export function RamalEditorSection() {
   const ctx = useTramoEditorContext();
   const {

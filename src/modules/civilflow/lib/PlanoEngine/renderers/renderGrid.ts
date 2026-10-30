@@ -1,10 +1,13 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
+/** Rejilla de fondo del visor: cuadrícula clara para orientarse al dibujar (se puede apagar). */
+
 // Separación real entre líneas de rejilla — 0.5 m, lo bastante fina para servir de verdad
 // como ayuda de dibujo a escalas arquitectónicas típicas (1:50, 1:75, 1:100...). Antes era
 // 1000 (1 m): cuadros demasiado grandes.
 const GRID_SPACING_MM = 500;
 
+/** Dibuja la cuadrícula de 0.5 m en mm de PAPEL (con conversión real→papel por la escala del proyecto). */
 export function renderGrid(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   // mm2cvs() espera mm de PAPEL, no mm del mundo real — realMmToCanvasPx() hace la conversión
   // real→papel (dividiendo por la escala de dibujo) antes de llamarla, igual que todo otro

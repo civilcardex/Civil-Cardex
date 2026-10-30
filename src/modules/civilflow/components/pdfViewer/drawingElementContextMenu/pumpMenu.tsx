@@ -1,3 +1,4 @@
+/** Sección "Asociar bajantes del piso superior" vista desde la bomba (bom (Bomba)): un checkbox por bajante del piso de arriba de la misma red; si no están alineados, ofrece crear el ramal de desvío. */
 import {
   bajantesImmediateUpperFloor,
   asociarBomba,

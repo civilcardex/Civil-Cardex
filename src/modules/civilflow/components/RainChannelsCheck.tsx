@@ -1,4 +1,6 @@
-﻿import React from 'react';
+﻿/** Chequeo de canales de ll (Lluvias): tabla por canal con Q (Caudal) de diseño, pendiente y
+ *  diámetro Manning (fórmula de flujo en tubería). Ej: 80 m² de techo -> canal con su Q pluvial. */
+import React from 'react';
 import { leerDocDePlan } from '../utils/readPlanDrawing';
 import { FilaCanalRow } from './rainChannels/ChannelRow.tsx';
 import EditButton from './shared/EditButton.tsx';

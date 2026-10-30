@@ -7,6 +7,7 @@
 // ejemplo "Anexo A" del DOCX es un caso de Combinación mal etiquetado).
 import { NTC3631, COMERCIALES, SOL, type RejRef } from '../constants/rejillasNTC3631';
 
+/** Un aparato de gas (Gas) del recinto: tipo, clase de consumo, potencia (kW) y cuántos hay. */
 export interface RejArtefacto {
   tipo: 'Estufa' | 'Calentador' | 'Otros';
   clase: 'A' | 'B' | 'C';
@@ -14,6 +15,7 @@ export interface RejArtefacto {
   cant: number;
 }
 
+/** Entrada del cálculo NTC (Norma Tecnica Colombiana) 3631 para UN recinto: áreas, artefactos, solución elegida (SOL) y gas del sitio. */
 export interface RejSectorInput {
   nombre: string;
   areaM2: number;
@@ -56,6 +58,7 @@ interface RejAlerta {
   t: string;
 }
 
+/** Salida del cálculo del recinto: clasificación de volumen, aberturas con rejilla sugerida del catálogo, alertas y filas de memoria. */
 export interface RejResultado {
   entrada: RejSectorInput;
   estado: 'vacio' | 'ok' | 'warn';

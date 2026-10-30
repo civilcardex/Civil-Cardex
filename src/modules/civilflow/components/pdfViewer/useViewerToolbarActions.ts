@@ -1,3 +1,4 @@
+/** Handlers de la toolbar del visor: limpiar red, borrar líneas guía (con confirmación), guardar ya, snap y cuadrícula. Ej: "Limpiar red" pregunta antes de borrar el trazado af (Agua Fria) activo y deja revertir con Ctrl+Z. */
 import { useCallback } from 'react';
 import type React from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';

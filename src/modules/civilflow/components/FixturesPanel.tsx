@@ -1,3 +1,7 @@
+/** Panel de aparatos (derecha del visor): conteo de UC (Unidades de Consumo)/UD (Unidades de
+ *  Desague) de la pieza seleccionada del dibujo (ramal, bajante, montante, caja, LD_ (ramal
+ *  desvío entrepisos)). Ej: clic en RAF1 -> +/− lavamanos; la carga se escribe al libro maestro
+ *  y propaga al resto de la cadena. */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { itemsDelPanel } from './fixtures/panelItems.ts';
 import { calcularMergeKeys } from './fixtures/mergeKeys.ts';

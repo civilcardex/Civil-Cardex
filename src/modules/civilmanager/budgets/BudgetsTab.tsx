@@ -18,8 +18,12 @@ const SUBS: { id: Sub; label: string }[] = [
   { id: 'formulario', label: 'Importar Formulario' },
 ];
 
-// Sidebar vertical de sub-pestañas + panel a la derecha (igual que ConfigTab — orig. usuario):
-// EDITAR/LISTO arriba a la derecha de la tabla; solo el panel se opaca en lectura.
+/**
+ * Tab de presupuestos (sidebar vertical de sub-pestañas + panel a la derecha, igual que
+ * ConfigTab): árbol de proyectos, grilla de ítems, resumen AIU (Administración, Imprevistos,
+ * Utilidad), entregables e importe del formulario del cliente. EDITAR/LISTO arriba a la
+ * derecha; solo el panel se opaca en lectura.
+ */
 export function PresupuestosTab() {
   const { state, patch } = useCivilManager();
   const [selId, setSelId] = useState<string | null>(state.presupuestos[0]?.id ?? null);

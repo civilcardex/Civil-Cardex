@@ -3,6 +3,7 @@ import { rotatedRectCorners } from '../HitTester.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { anchoTexto } from './measureText.ts';
 
+/** Pinta los Aportes de área (polígonos de radicado por red): relleno translúcido de su color, borde más fuerte si está seleccionada y etiqueta con el área calculada. */
 export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.areas.forEach((a) => {
     if (a.net && engine._hiddenNets.has(a.net)) return;
@@ -140,6 +141,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
   });
 }
 
+/** El área EN CURSO (mientras el usuario traza sus vértices): relleno vivo del color de la red activa con lo puesto hasta ahora. */
 export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine.activeArea || engine.activeArea.pts.length < 1) return;
   const pts = engine.activeArea.pts.map((p: number[]) => engine.toCvs(p[0], p[1]));

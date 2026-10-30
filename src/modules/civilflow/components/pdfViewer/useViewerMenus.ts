@@ -1,3 +1,4 @@
+/** Estado del menú contextual del lienzo (clic derecho): posición, elemento y snapshot re-sincronizado con el motor para mostrar diámetro/material vivos. Ej: si el motor sube el diámetro de RAF1 con el menú abierto, el menú se re-estampa con el valor fresco. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';

@@ -10,8 +10,6 @@ import {
 import type { RawElement, SyncPlanInput, TraceData } from './drawingSyncTypes.ts';
 import { hasNumericPlanSuffix, isOrphanKey } from './drawingSyncBuilders.ts';
 import { loadGasAcc, saveGasAcc, type GasAccMap } from '../components/fixturesStorage.ts';
-// Recolección de basura de claves de conteos: TODO el estado mutable del sync vive aquí
-// (co-localizado — partirlo entre hermanos lo rompe). Extraído verbatim de drawingSync.
 
 let _loadedLive: { planId: string; ids: Set<string>; ts: number } | null = null;
 
@@ -227,6 +225,7 @@ function areaSinPruebaDeOrfandad(key: string, sinAreas: Set<string>): boolean {
   return !!m && sinAreas.has(m[2]);
 }
 
+/** Borra las claves de conteos (UC/UD, accesorios de gas) cuyo elemento ya no existe en NINGÚN plano: con ventana de gracia de 4 s para el autosave y aborto si algún plano no es legible (borraría datos que vienen de la BD). */
 export function performGarbageCollection(plans: SyncPlanInput[]) {
   if (!Array.isArray(plans) || plans.length === 0) return;
   const validKeys = new Set<string>();

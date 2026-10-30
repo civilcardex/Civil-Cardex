@@ -1,3 +1,4 @@
+/** Editor multi-tipo del menú contextual: material/diámetro de ramal, asociación bajante↔área, diámetro de contador y capacidad de calentador. Ej: clic derecho en RAF1 → cambiar material a PVC y diámetro a 2". */
 import { useEffect, useState } from 'react';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { matFullName, DIAM_BY_MAT, GAS_DN_LABELS } from '../../../constants';

@@ -19,6 +19,7 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
   placeholder?: string;
 }
 
+/** Input numérico de los catálogos: acepta coma o punto decimal y notifica números (nunca strings). Con format/moneda muestra separador de miles y símbolo al estar sin foco. Ej: el usuario escribe "1,5" -> onChange(1.5). */
 export function NumInput({
   value,
   onChange,

@@ -11,6 +11,7 @@ interface FormFieldProps {
   autoComplete?: string;
 }
 
+/** Input con su label asociado (htmlFor + useId) en el estilo oscuro de auth. Ej: <FormField label="Email" type="email" onChange={...}/> en el login. */
 function FormField({
   label,
   type = 'text',

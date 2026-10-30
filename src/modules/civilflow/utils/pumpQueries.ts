@@ -3,6 +3,7 @@ import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { pisoLbl } from '../constants';
 import type { PlanItem } from '../context/PlansContext.tsx';
 
+/** Fila del desplegable de bombas del piso inferior: identidad, caja, piso y posición (px) para el enlace. */
 export interface BombaRow {
   planId: string;
   id: string;
@@ -60,6 +61,7 @@ export function bombsImmediateLowerFloor(plans: PlanItem[], currentPlanId: strin
   return out;
 }
 
+/** Fila del desplegable de bajantes del piso superior: identidad, D nominal, piso y el enlace a bomba que ya traen. */
 export interface BajanteSuperiorRow {
   planId: string;
   id: string;

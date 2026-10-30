@@ -19,6 +19,7 @@ interface Props {
   count: number;
 }
 
+/** Pie de tabla CRUD (crear/editar/borrar): botón Agregar, import/export Excel, buscador y contador de registros — todo se oculta fuera del modo edición salvo el contador. */
 export function CrudFooter({
   onAdd,
   addLabel,

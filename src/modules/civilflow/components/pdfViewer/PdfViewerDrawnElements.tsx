@@ -1,3 +1,4 @@
+/** Lista lateral "Elementos de red": agrupa lo dibujado de la red activa (bajantes, ramales, tributarios...), permite seleccionar cada uno y desplegar su detalle (longitud, diámetro, pendiente). Ej: clic en RAF1 aquí = clic sobre RAF1 en el plano. */
 import { useState } from 'react';
 import PlanoEngine, { type ElementItem } from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement } from '../../lib/PlanoEngine/PlanoState.ts';

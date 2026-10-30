@@ -11,14 +11,7 @@ export interface CamaraConRender {
   render(): void;
 }
 
-/** Tamaño del lienzo de DIBUJO: SOLO el área visible del visor (antes max(viewport, hoja×zoom)
- *  llegaba a ~50 MP con zoom 3 y dpr 2 y cada frame repintaba entero — el "trabado"; el
- *  contenedor con overflow:hidden ya recorta en el mismo sitio).
- *  Ej: visor 1200×800 → lienzo 1200×800 CSS (×dpr de backing).
- * @param visW - ancho del área visible (el contenedor del visor).
- * @param visH - alto del área visible.
- * @returns tamaño del lienzo en px CSS (0 si el área aún no está medida).
- */
+/** Tamaño del lienzo de DIBUJO: SOLO el área visible del visor (el contenedor ya recorta el exceso; antes con zoom alto cada frame repintaba ~50 MP). Ej: visor 1200×800 → lienzo 1200×800 CSS. @param visW - ancho visible. @param visH - alto visible. @returns tamaño en px CSS (0 si el área aún no está medida). */
 export function tamanoLienzoDibujo(args: { visW: number; visH: number }): { w: number; h: number } {
   return { w: Math.max(0, Math.floor(args.visW || 0)), h: Math.max(0, Math.floor(args.visH || 0)) };
 }
@@ -65,13 +58,7 @@ export function encuadrarHoja(args: {
   };
 }
 
-/**
- * Encuadre que muestra SOLO el DIBUJO (el contenido), centrado: recorta el fondo negro de la
- * lámina y del visor (orig. usuario). Cae a la hoja completa si bbox es null; un bbox
- * DEGENERADO (una sola línea recta) se encuadra igual con divisor 1 — caer a la hoja
- * des-centraba el primer trazo de un piso nuevo.
- * @param bbox - rectángulo del dibujo en px de plano (null si no hay nada).
- */
+/** Encuadre que muestra SOLO el DIBUJO (el contenido) centrado, recortando el fondo de la lámina; cae a la hoja completa si bbox es null. Ej: un piso con 3 trazos se centra en esos 3 trazos. @param bbox - rectángulo del dibujo en px de plano (null si no hay nada). */
 export function encuadrarDibujo(args: {
   visW: number;
   visH: number;
@@ -99,12 +86,7 @@ export function encuadrarDibujo(args: {
   };
 }
 
-/**
- * Rectángulo del DIBUJO de un motor incluidas las COTAS (dims) — la colección del motor es
- * la que usan reEncuadrarContenido y el botón Ajustar: sin dims, un piso que solo tenga cotas
- * quedaría con bbox vacío y caería a la hoja.
- * @returns bbox en px de plano, o null si no hay nada trazado.
- */
+/** Rectángulo del dibujo de un motor INCLUIDAS las cotas (dims): sin ellas, un piso que solo tenga cotas caería a encuadrar la hoja vacía. @returns bbox en px de plano, o null si no hay nada trazado. */
 export function ptsDeDibujoConDims(eng: {
   ramales?: Array<{ pts?: number[][] }>;
   bajantes?: Array<{ x?: number; y?: number }>;

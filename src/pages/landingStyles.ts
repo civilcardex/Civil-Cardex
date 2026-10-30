@@ -1,3 +1,4 @@
+/** CSS de la landing inyectado como <style> (variables --acc, animaciones, hero) — vive junto al markup que lo usa. */
 export const LANDING_STYLES = `
         .landing-root {
           --acc: #e8c84a;

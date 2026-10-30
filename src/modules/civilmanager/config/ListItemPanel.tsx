@@ -21,7 +21,7 @@ interface Props {
   usageLabel?: string;
 }
 
-/** Panel genérico para las listas de configuración con forma {codigo, nombre|categoria, desc}. */
+/** Panel genérico para las listas de configuración con forma {codigo, nombre|categoria, desc}: alta/baja, conteo de uso y borrado bloqueado si el item se usa. Ej: OrigenesPanel = este panel con prefix 'OR'. */
 export function ListaItemPanel({
   title,
   icon,

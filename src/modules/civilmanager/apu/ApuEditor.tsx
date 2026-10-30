@@ -12,6 +12,7 @@ interface Props {
   onUpdate: (patch: Partial<Apu>) => void;
 }
 
+/** Formulario de UN APU (Análisis de Precios Unitarios): cabecera (código, nombre, unidad, es_basico) + sus 4 secciones de recursos. Ej: marcar es_basico lo vuelve reutilizable como insumo 'Preparado en obra'. */
 export function ApuEditor({ apu, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const calc = apuCalcMap.get(apu.id);

@@ -1,3 +1,4 @@
+/** Tablas y estado del Informe (pestaña Informe): agrega las tablas de todas las redes (san/ll/af/ac/gas/bom/ep), los items de resumen y el estado global de cumplimiento. Ej: allOk=true solo si toda red activa pasó sus chequeos. */
 import { useCallback, useMemo } from 'react';
 import { useSanTables } from './useSanTables.ts';
 import { useLlTables } from './useLlTables.ts';

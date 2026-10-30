@@ -1,3 +1,5 @@
+/** Diseño de af (Agua Fría)/ac (Agua Caliente): acometida (conexión al acueducto), parámetros
+ *  y tabla de diseño por tramo. Ej: editar la presión de acometida recalcula la tabla completa. */
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';

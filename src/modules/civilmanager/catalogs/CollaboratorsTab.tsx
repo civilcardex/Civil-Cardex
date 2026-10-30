@@ -12,6 +12,7 @@ import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Cargo } from '../types.ts';
 
+/** Tab de cargos (colaboradores): plaza en salarios base y sus costos día/hora derivados. Ej: 'Contra maestro' 2.5 sb -> básico $3.500.000/mes. Bordea si el cargo es usado por alguna cuadrilla. */
 export function ColaboradoresTab() {
   const { state, patch, cargosCalc } = useCivilManager();
 

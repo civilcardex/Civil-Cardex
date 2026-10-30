@@ -4,11 +4,13 @@ import { useFocoEnDialogo } from '../../../hooks/useFocusInDialog.ts';
 type ResolveFn = (v: boolean) => void;
 let _showConfirm: ((msg: string) => Promise<boolean>) | null = null;
 
+/** Pregunta sí/no como Promise, usable con await desde cualquier sitio del módulo. Ej: `if (!(await askConfirm('¿Eliminar?'))) return;` Sin diálogo montado cae a window.confirm. */
 export function askConfirm(msg: string): Promise<boolean> {
   if (_showConfirm) return _showConfirm(msg);
   return Promise.resolve(window.confirm(msg));
 }
 
+/** Diálogo modal que atiende askConfirm: foco contenido (WCAG 2.4.3), Escape y click-fuera cancelan. */
 export function ConfirmDialog() {
   const [req, setReq] = useState<string | null>(null);
   const resolveRef = useRef<ResolveFn | null>(null);

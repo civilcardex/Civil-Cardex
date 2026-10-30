@@ -37,5 +37,5 @@ export function renderPage(url: string): string {
   );
 }
 
-// El prerender también lee la tabla de metas desde este mismo bundle.
+/** Re-export para que scripts/prerender.mjs lea las metas del MISMO bundle que renderiza (una sola fuente, servidor y HTML no divergen). */
 export { ROUTE_META, SITE_URL } from './routeMeta.ts';

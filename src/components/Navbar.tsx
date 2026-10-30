@@ -23,6 +23,7 @@ const Navbar_navLinks = [
   { to: '/docs', label: 'DOCUMENTACIÓN' },
 ];
 
+/** Barra superior pública: logo, enlaces, botón AYUDA contextual (guía de la pestaña activa) e INGRESAR/perfil según sesión. Con scroll cambia de fondo. */
 function Navbar() {
   const { user, loading } = useAuth();
   const location = useLocation();

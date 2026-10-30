@@ -1,3 +1,5 @@
+/** Fila de parámetro con comparación inline (nuevo vs guardado): muestra el valor anterior al
+ *  lado del editado para que el cambio sea visible sin abrir la tabla. */
 import { LazyNum } from './LazyNum';
 import { fmt } from '../../utils/formatUtils.ts';
 import { estiloPlano } from './styles.ts';

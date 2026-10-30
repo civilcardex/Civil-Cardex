@@ -1,3 +1,4 @@
+/** Sección "Seleccionar Aparato" del clic sobre el cuerpo de un ramal: desplegable + tarjetas de asignados con Quitar, leyendo el motor vivo (nunca el snapshot rancio del menú). Ej: clic en RAF1 → lavamanos → glifo +1 UC (Unidad de Consumo). */
 import { APARATOS_DEF } from '../../../constants/engineeringDataFixtures.ts';
 import { DIAM_BY_MAT } from '../../../constants';
 import { loadAll } from '../../fixturesStorage.ts';

@@ -33,8 +33,11 @@ const SUBS: { id: ConfigSub; label: string }[] = [
   { id: 'unidades_transporte', label: 'Unidades de transporte' },
 ];
 
-// Sidebar vertical de sub-pestañas a la izquierda + panel a su derecha (orig. usuario):
-// EDITAR/LISTO arriba a la derecha de la tabla; solo el panel se opaca en lectura.
+/**
+ * Tab de configuración: sidebar vertical de sub-pestañas (parámetros APU (Análisis de Precios
+ * Unitarios), factor prestacional, perfil de país, unidades, categorías…) a la izquierda y
+ * el panel a su derecha. EDITAR/LISTO arriba a la derecha; solo el panel se opaca en lectura.
+ */
 export function ConfigTab() {
   const [sub, setSub] = useState<ConfigSub>('parametros');
 

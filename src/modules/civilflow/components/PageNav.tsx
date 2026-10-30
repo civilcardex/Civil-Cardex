@@ -1,3 +1,4 @@
+/** Paginador reutilizable («‹ 1 2 3 ›») para tablas largas: cambia de página sin recargar datos. Ej: 40 ramales en 10 páginas -> el usuario navega con clic por página. */
 import React from 'react';
 
 interface PageNavProps {

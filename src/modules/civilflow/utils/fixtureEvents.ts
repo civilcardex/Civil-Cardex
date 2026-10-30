@@ -17,15 +17,19 @@ function emit(name: string, detail?: unknown): void {
   window.dispatchEvent(detail === undefined ? new Event(name) : new CustomEvent(name, { detail }));
 }
 
+/** Dispara EV_APARATOS_CLEAR (borraron aparatos de un tramo). */
 export function emitAparatosClear(detail?: unknown): void {
   emit(EV_APARATOS_CLEAR, detail);
 }
+/** Dispara EV_SAN_SYNC (aterrizó un write de red san). */
 export function emitSanSync(detail?: unknown): void {
   emit(EV_SAN_SYNC, detail);
 }
+/** Dispara EV_HIDRO_SYNC (aterrizó un write de datos hidráulicos af/ac). */
 export function emitHidroSync(detail?: unknown): void {
   emit(EV_HIDRO_SYNC, detail);
 }
+/** Dispara EV_PLAN_LOADED (el piso terminó de cargar). */
 export function emitPlanLoaded(): void {
   emit(EV_PLAN_LOADED);
 }

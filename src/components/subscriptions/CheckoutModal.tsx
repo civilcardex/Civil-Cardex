@@ -1,5 +1,4 @@
 import { ModalShell } from '../shared/ModalShell.tsx';
-/** Checkout Lemon Squeezy: pide la URL de checkout a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). */
 import { useEffect, useRef, useState } from 'react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
@@ -17,6 +16,7 @@ interface Props {
   puestos?: PuestosPorModulo;
 }
 
+/** Checkout Lemon Squeezy: pide la URL a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). Ej: puestos {flow:3} con periodo anual -> total con descuentos server-side. */
 export default function CheckoutModal({ open, onClose, modulos, periodo, puestos }: Props) {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState(false);

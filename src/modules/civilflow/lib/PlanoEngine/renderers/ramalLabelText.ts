@@ -1,6 +1,8 @@
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { pisoCortoLoose as getPisoCorto, matDrawingLabel } from '../../../constants';
 
+/** Texto de las etiquetas de ramal: función pura (testeada) que arma nombre + info por red; el dibujo vive en ramalBody. */
+
 /** Partes de texto de la etiqueta de un ramal (formato por red, Ítem 1). */
 export interface RamalLabelParts {
   /** Nombre del ramal con sufijo de piso ("RAC1-P2") — vacío si showName off o canal. */
@@ -33,13 +35,7 @@ const diamPulg = (d?: string): string => {
   return inchPartOf(norm);
 };
 
-/**
- * Texto de la etiqueta de un ramal por red (san/ll/ac/af/gas compacto; vent y resto genérico).
- * Extraído verbatim del bloque de etiqueta de renderRamales — solo el contenido, el dibujo
- * (caja, declutter, fuentes) queda allá.
- * @param r - ramal con label/diametro/pendiente/totalL y flags show*.
- * @param nivelN - npt del nivel actual (para el sufijo "-P2").
- */
+/** Texto de la etiqueta de un ramal por red (san/ll compacto "S4" CPVC 1/2" P 0.5% 3.20m"; resto genérico). Solo el contenido — el dibujo (caja, declutter) queda en ramalBody. @param r - ramal con label/diametro/pendiente/totalL y flags show*. @param nivelN - npt (nivel de piso topografico) del nivel actual (para el sufijo "-P2"). */
 export function buildRamalLabelParts(
   r: {
     label?: string;

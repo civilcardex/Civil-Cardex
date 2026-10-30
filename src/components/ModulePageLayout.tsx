@@ -16,6 +16,7 @@ interface ModulePageLayoutProps {
   mainClassName?: string;
 }
 
+/** Esqueleto de las páginas de módulo: Navbar + footer + JSON-LD BreadcrumbList (Inicio > Módulo) y enlace "saltar al contenido" (a11y). */
 export default function ModulePageLayout({
   title: _title,
   children,

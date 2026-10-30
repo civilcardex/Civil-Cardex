@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+/** Torre 3D en wireframe que rota en canvas (decoración del hero): nodos + aristas proyectados a 2D; estática con prefers-reduced-motion. */
 export default function RotatingWireframe() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 

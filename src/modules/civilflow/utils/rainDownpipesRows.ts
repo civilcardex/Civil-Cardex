@@ -23,6 +23,7 @@ interface Row {
   diamPropuesto: number;
 }
 
+/** Tabla de la memoria "Chequeo capacidad bajantes aguas lluvias": una fila por bajante ll (Lluvias) con áreas parcial/otras/acumulada (m²), intensidad (mm/hr), C (coeficiente de escorrentía) del material, Q (LPS) y diámetro propuesto con su chequeo. */
 export function computeRainDownpipesTable(
   tramosLl: Tramo[],
   plans: PlanItem[],

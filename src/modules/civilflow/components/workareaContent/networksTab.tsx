@@ -1,3 +1,4 @@
+/** Pestaña "Redes" del área de trabajo: elige la red (san/ll/af/ac/gas/ep/bom) y monta su pantalla de diseño con lazy loading + prefetch al hover. Ej: clic en "Sanitario" monta CalculoUD; el hover ya descargó el chunk. */
 import { Suspense, lazy } from 'react';
 import PageNav from '../PageNav.tsx';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicsData.ts';
@@ -90,6 +91,7 @@ const prefetchHeavy = () => {
   pedirChunk('crit', () => import('../Regulations/Regulations.tsx'));
 };
 
+/** Cuerpo de la pestaña Redes: chips de red activa + la pantalla de diseño de esa red (una sola montada a la vez). */
 export function RedesTab({ state }: { state: WorkAreaState }) {
   const {
     redesActivas,

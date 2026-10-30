@@ -6,6 +6,7 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { escalaDeDoc } from '../../utils/planScale.ts';
 import { ptsDeDibujoConDims } from '../../lib/PlanoEngine/planoCamera.ts';
 
+/** Instala `window.__cfCam()` (solo DEV): vuelca escala de lámina vs escala de render, ancho de página esperado/dibujado y qué elementos empujan el bbox del encuadre. */
 export function instalarCfCam(args: {
   engineRef: React.RefObject<PlanoEngine | null>;
   currentIdRef: React.RefObject<string | number | undefined>;

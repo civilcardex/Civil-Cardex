@@ -1,3 +1,5 @@
+/** Aterrizaje de tuberías sobre el cuerpo de otra: parte el ramal golpeado en dos (split), reparte caudales y genera numeración nueva. Es la pieza que convierte un cruce en una unión real con dos piezas. */
+
 import {
   NETS,
   allocNetNumber,

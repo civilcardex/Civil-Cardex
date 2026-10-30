@@ -30,6 +30,7 @@ function handleTabKeyDown(setEditIdx: (i: number | null) => void) {
   };
 }
 
+/** Configuración de un catálogo: lista y escritor, item nuevo por defecto, claves donde busca y textos del borrado. */
 interface UseCrudTableOptions<T extends { id: string; codigo?: string }> {
   items: T[];
   onChange: (items: T[]) => void;
@@ -40,7 +41,11 @@ interface UseCrudTableOptions<T extends { id: string; codigo?: string }> {
   excelConfig?: Omit<UseExcelImportExportOptions<T>, 'items' | 'onImport' | 'prefix'>;
 }
 
-/** CRUD (crear, editar, borrar y listar) genérico para catálogos: edición inline, búsqueda, borrado con confirmación, import/export opcional. */
+/**
+ * CRUD (crear, editar, borrar y listar) genérico para catálogos: edición inline (Enter salta al
+ * siguiente campo), búsqueda sin acentos, borrado con confirmación e import/export opcional.
+ * Ej: SuppliersTab solo define headers/buildItem — todo el comportamiento de la tabla es este hook.
+ */
 export function useCrudTable<T extends { id: string; codigo?: string }>({
   items,
   onChange,

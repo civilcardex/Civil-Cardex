@@ -6,10 +6,7 @@ import {
   guideRamalJunctions,
 } from '../PlanoEngineDrawing.ts';
 
-// Las líneas guía son una ayuda de dibujo pura — punteadas, finas, gris apagado — para que
-// nunca se confundan de un vistazo con un ramal real, estén o no seleccionadas (la selección
-// solo cambia a un guion un poco más grueso, no a línea sólida, para conservar la distinción
-// visible incluso al editar).
+/** Líneas guía (ayuda de dibujo): punteadas, finas, gris apagado para no confundirse con un ramal real; seleccionada pasa a guion negro más grueso, nunca a línea sólida. */
 export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.guideLines.forEach((g) => {
     if (!g.pts || g.pts.length < 2) return;
@@ -72,6 +69,7 @@ function guideConnCircle(
   ctx.fill();
 }
 
+/** Guía EN CURSO (herramienta guide): vértices fijos + segmento al cursor YA CORREGIDO por el snap de ángulo — preview WYSIWYG de lo que quedará al hacer clic. */
 export function renderGuideGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine._guideStart || engine.tool !== 'guide') return;
   const mp = engine.toPlane(engine.mouseX, engine.mouseY);

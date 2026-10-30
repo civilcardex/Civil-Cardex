@@ -28,6 +28,7 @@ let cacheSesion: {
   accesos: ModuloId[];
 } | null = null;
 
+/** Fuente cliente del estado de suscripciones: filas propias + asientos de empresa + flag BD, con caché por sesión. Ej: `activos.has('flow')` decide si el botón entra a civilflowareatrabajo. */
 export function useSuscripciones() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -89,4 +90,5 @@ export function useSuscripciones() {
   return { rows: rows ?? [], activos, loading: rows === null, bloqueando, decidido };
 }
 
+/** Re-exporta ModuloId (ids de módulos: 'flow' | 'manage') para que los consumidores del hook no importen catalog.ts directamente. */
 export type { ModuloId };

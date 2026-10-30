@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import type { ModuloId } from './catalog.ts';
 import { devError } from '../../utils/devError.ts';
 
+/** Fila de app_suscripciones (una compra vigente de un módulo). Ej: {modulo:'flow', periodo:'mensual', fecha_fin:'2026-11-01'} -> acceso a flow hasta esa fecha. */
 export interface SuscripcionRow {
   id: number;
   modulo: ModuloId;
@@ -16,6 +17,7 @@ export interface SuscripcionRow {
 /** Evento DOM para pedir refetch tras un pago aprobado. */
 export const EV_SUSCRIPCIONES = 'civilflow_suscripciones_changed';
 
+/** Pide a todos los hooks de suscripciones que recarguen (dispara EV_SUSCRIPCIONES). Ej: el webhook de pago aprobado la llama para que el candado se abra sin recargar. */
 export function dispararRefetchSuscripciones(): void {
   window.dispatchEvent(new Event(EV_SUSCRIPCIONES));
 }

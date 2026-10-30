@@ -21,6 +21,15 @@ const TIPO_CFG = {
   },
 };
 
+/**
+ * Tabla de la memoria "Cálculo de unidades de consumo": UC (Unidades de Consumo, cuántos aparatos
+ * sirve un tramo) por tramo de af (Agua Fría) o ac (Agua Caliente) — columnas por aparato con su
+ * valor UC, parcial y (af) total acumulado Hunter (método de probabilidad de uso simultáneo).
+ * @param tipo 'af' o 'ac'.
+ * @param tramos tramos de la red (sin bajantes ni tributarios).
+ * @param aps overrides de UC editados por el usuario.
+ * @returns la tabla para la memoria; null si no hay tramos.
+ */
 export function computeUcTable(
   tipo: 'af' | 'ac',
   tramos: Tramo[],

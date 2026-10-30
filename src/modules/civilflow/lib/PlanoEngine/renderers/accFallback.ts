@@ -1,6 +1,7 @@
 import { MONO_3D } from '../../../components/shared/config3d';
 import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
+/** Último pintor de la cadena: si ningún pintor específico reconoció el accesorio, dibuja un círculo con sus siglas ('TEE', 'YEE'...) para que nunca quede un punto sin identificar. */
 export function drawFallbackSymbol(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, rad } = a;
   if (

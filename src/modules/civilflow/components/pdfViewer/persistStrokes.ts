@@ -14,14 +14,14 @@ import { devError } from '../../../../utils/devError.ts';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { splitCount } from '../../utils/keys.ts';
 
-/** Guarda el trabajo del engine bajo `id` con ts fresco; a BD solo si el id es real (no 'work',
- *  el doc de trabajo sin plano). Sincronía total con el storage local. */
+/** Foto del contenido del motor que se persiste (trazos + ts + scaleM (escala metros por pixel)). */
 export interface TrazosSnapshot {
   ts?: number;
   scaleM?: number;
   dims?: unknown[];
 }
 
+/** Guarda el trabajo del engine bajo `id` con ts (marca de tiempo) fresco; a BD solo si el id es real (no 'work', el doc de trabajo sin plano). Ej: autosave de RAF1 movido → caché local + BD con el doc vivo. */
 export function persistTrazosSnapshot(
   eng: { saveWork(): TrazosSnapshot },
   id: string | number,

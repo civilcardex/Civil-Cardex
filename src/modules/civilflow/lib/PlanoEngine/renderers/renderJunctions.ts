@@ -2,6 +2,8 @@ import { NETS } from '../PlanoState.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { indiceFrame } from './frameIndex.ts';
 
+/** Uniones geométricas del plano: los quiebres simples (tee recta = 3 segmentos en un vértice) se detectan y dibujan solos, sin depender de datos de accesorios que pueden quedar viejos. */
+
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   // Ventilación es parte de la red sanitaria: un tubo de ventilación que se conecta a una línea
   // san debe dibujar el mismo símbolo de tee/yee que cualquier unión san-san, no un codo

@@ -12,6 +12,7 @@ interface Props {
   onUpdate: (patch: Partial<Presupuesto>) => void;
 }
 
+/** Grilla de ítems del presupuesto: cantidad editable, asignación de APU (Análisis de Precios Unitarios) por fila, filas capítulo que agrupan, y valor total por ítem con AIU (Administración, Imprevistos, Utilidad). */
 export function ItemsPanel({ pres, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const editable = useEditable();

@@ -1,6 +1,8 @@
 import { NETS } from '../PlanoState.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
+/** Cruces entre redes distintas: un arco diminuto en la tubería que "salta" sobre la otra (que se re-traza recta e intacta por el mismo tramo, sin importar el ángulo). */
+
 const NET_ORDER: Record<string, number> = {};
 NETS.forEach((n, i) => {
   NET_ORDER[n.id] = i;

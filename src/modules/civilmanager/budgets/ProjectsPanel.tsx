@@ -19,6 +19,7 @@ interface Props {
   onSelect: (id: string) => void;
 }
 
+/** Árbol de presupuestos (hasta 2 niveles: principal -> sub_proyecto) con alta/borrado y cambio de estado (borrador/en revisión/cerrado). Ej: seleccionar 'Torre Norte' carga sus ítems a la derecha. */
 export function ProyectosPanel({ selId, onSelect }: Props) {
   const { state, patch } = useCivilManager();
   const editable = useEditable();

@@ -48,6 +48,12 @@ interface CivilManagerContextValue {
 
 const CivilManagerContext = createContext<CivilManagerContextValue | null>(null);
 
+/**
+ * Estado global del módulo CM (Civil Manager): carga de IDB/Supabase al montar, autoguardado
+ * con debounce de 300 ms tras cada patch, y los cálculos derivados (cargos, FP (Factor
+ * Prestacional), APU (Análisis de Precios Unitarios)) memoizados. Ej: editar un insumo
+ * recalcula el costo_unitario de todos los APU que lo usan.
+ */
 export function CivilManagerProvider({ children }: { children?: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, defaultState);
   const [loaded, setLoaded] = useState(false);
@@ -192,6 +198,7 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
   return <CivilManagerContext.Provider value={value}>{children}</CivilManagerContext.Provider>;
 }
 
+/** Accede al estado y cálculos del módulo CM (ej: `patch({config: {...}})` para cambiar el salario base). Lanza error fuera del provider — el dato nunca llega undefined en silencio. */
 export function useCivilManager(): CivilManagerContextValue {
   const ctx = useContext(CivilManagerContext);
   if (!ctx) throw new Error('useCivilManager must be used within CivilManagerProvider');

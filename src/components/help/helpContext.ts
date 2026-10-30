@@ -5,6 +5,7 @@
 // JSON) para que un emisor repetido no dispare renders.
 import { useSyncExternalStore } from 'react';
 
+/** Lo que la pestaña activa reporta a la navbar (botón AYUDA contextual). Ej: {key:'cf:san', modulo:'Civil Flow', seccion:'Sanitaria', intro:'Trazo y verificación de redes sanitarias'}. */
 export interface AyudaContexto {
   /** Clave de la guía detallada (cf:<tab> · cf:iso:<sub> · cf:recorte · cm:catalogos:<tab> · cm:<seccion>). */
   key: string;

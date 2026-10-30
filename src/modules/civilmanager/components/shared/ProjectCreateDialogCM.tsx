@@ -13,6 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
+/** Diálogo "Nuevo proyecto" del módulo CM (Civil Manager): nombre -> createCmProyecto y navegación al área de trabajo. Con suscripciones apagadas (VITE_SUSCRIPCIONES) entra directo, sin candado. */
 export default function ProjectCreateDialogCM({ open, onClose }: Props) {
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);

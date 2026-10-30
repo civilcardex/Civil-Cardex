@@ -138,6 +138,7 @@ async function renderPlanoComposite(
   }
 }
 
+/** Descarga TODOS los planos confirmados en un solo PDF (lámina + trazos rasterizados por piso, del nivel mayor al menor), con cancelación entre láminas. */
 export async function downloadPlanosPdf(
   plans: PlanItem[],
   pisos: Piso[],

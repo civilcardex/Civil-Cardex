@@ -1,3 +1,4 @@
+/** Caudal ll (Lluvias) del elemento elegido en el panel (ramal, bajante, XFG (fantasma entrepisos) o LD_ (ramal desvio entrepisos)): misma fórmula multi-piso que la tabla de diseño, con overrides manuales y herencia por asociación. Ej: bajante inferior asociado = Q propio + el que baja del superior. */
 import { useContext, useMemo } from 'react';
 import { PLANS_META_KEY, TRAZOS_PREFIX } from '../../../constants/storage-keys.ts';
 import { loadFromStorage } from '../../../services/storageService.ts';

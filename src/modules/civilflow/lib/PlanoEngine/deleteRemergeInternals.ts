@@ -7,6 +7,7 @@ import { scrubAccMedTeeAt, scrubPlanCodoAt } from './deleteJunctionCleanup.ts';
 import { dirAt } from './deleteCascade.ts';
 import { angleAtHalfLength } from './drawingAngles.ts';
 
+/** Limpia los vértices sobrantes de un ramal re-unido: quita los intermedios colineales (sin accesorio y sin otra pieza encima), reindexa accMed y re-cuenta totalL. Ej: dos mitades de split vueltas a juntar vuelven a ser una línea recta limpia. */
 export function healMergedVertices(engine: IPlanoEngineCore, a: PlanoRamal): void {
   const TOL = 0.5;
   if (!a.pts || a.pts.length < 3) return;
@@ -67,6 +68,7 @@ export function healMergedVertices(engine: IPlanoEngineCore, a: PlanoRamal): voi
     a.labelY = my;
   }
 }
+/** Fusiona pares de ramales colineales que se tocan por un extremo (restos de splits/borrados) en un solo tramo, en cadena hasta que no quede ninguno. */
 export function mergeCollinearPairs(engine: IPlanoEngineCore): void {
   const TOL = 0.5;
   let merged = true;
@@ -193,6 +195,7 @@ export function mergeCollinearPairs(engine: IPlanoEngineCore): void {
     }
   }
 }
+/** Distancia del punto al CUERPO de la polilínea (vértices + segmentos, px): sirve para saber si una unión sigue viva sobre el tramo re-unido. */
 export function distToPolylineBody(p: number[], pts: number[][]): number {
   let d = Infinity;
   for (let i = 0; i < pts.length; i++)

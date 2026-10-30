@@ -9,6 +9,7 @@ interface Props {
   style?: React.CSSProperties;
 }
 
+/** Texto del hero que se teclea letra a letra (50 ms/letra tras delay). SEO: el HTML prerenderizado trae el texto COMPLETO — el vaciado corre pre-paint en cliente. */
 export default function TypewriterText({ text, delay = 800, className, style }: Props) {
   const prefersReducedMotion = usePrefersReducedMotion();
   // usePrefersReducedMotion is already accurate on the first render (its own lazy useState

@@ -1,3 +1,4 @@
+/** Fracciones Unicode de pulgada a decimal (½ -> 0.5): las etiquetas pegadas/legadas las traen. */
 export const FRAC_CHAR_TO_DEC: Record<string, number> = {
   '½': 0.5,
   '⅓': 1 / 3,
@@ -10,6 +11,12 @@ export const FRAC_CHAR_TO_DEC: Record<string, number> = {
   '⅞': 0.875,
 };
 
+/**
+ * Lee el diámetro en pulgadas de cualquier etiqueta cruda: acepta fracciones Unicode (½), números
+ * mixtos ("1-1/2"), comillas tipográficas y valores métricos (54.5 mm -> 2", redondeo a la 1/2").
+ * @param d etiqueta del diámetro ("2\"", "1-1/2\" RDE 21", "54.5 mm").
+ * @returns pulgadas decimales (1.5, 2, 4); 0 si no hay número inicial legible.
+ */
 export function diamPulgFromLabel(d: unknown): number {
   if (!d) return 0;
   let s = String(d).trim();

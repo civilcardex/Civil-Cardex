@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Navbar from '../components/Navbar.tsx';
 
+/** Esqueleto de páginas con Navbar: skip-link de accesibilidad y un main con scroll propio (el workarea usa h-full y scrollea interno, no aquí). */
 function Layout() {
   return (
     <>

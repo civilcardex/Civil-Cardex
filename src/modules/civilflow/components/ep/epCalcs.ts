@@ -25,6 +25,8 @@ export interface EpCisternaIn {
   bciL: string;
 }
 
+/** Resultado de la cadena cisterna: alturas (Hg/Hf/HMT), NPSH disponible y veredicto de
+ *  cavitación, más volúmenes de consumo/total. Ej: npshOk false -> ampliar la succión. */
 export interface EpCisternaCalc {
   /** Modo RED: los números de cisterna no aplican (la página solo muestra aviso). */
   aplica: boolean;

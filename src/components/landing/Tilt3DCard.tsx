@@ -7,6 +7,7 @@ interface Props {
   style?: React.CSSProperties;
 }
 
+/** Tarjeta con inclinación 3D que sigue al mouse (perspective + rotateXY suave); sin efecto con reduced-motion. Ej: las tarjetas de módulos de la landing. */
 export default function Tilt3DCard({ children, className = '', style = {} }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const rectRef = useRef<DOMRect | null>(null);

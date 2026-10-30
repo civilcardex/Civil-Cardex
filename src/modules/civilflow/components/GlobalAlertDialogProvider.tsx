@@ -1,3 +1,6 @@
+/** Diálogo de alerta GLOBAL: un solo modal en la raíz que muestra los avisos que llegan por
+ *  eventos de ventana (validaciones de diámetro disparadas desde otras rutas).
+ *  Ej: intentar 2" en un ramal con inodoro -> alerta aunque estés en otra pestaña. */
 import React, { useEffect, useRef, useState } from 'react';
 import { MONO_3D } from './shared/config3d';
 import { EVENTO_ERROR_GUARDADO } from '../../../utils/saveToCloud.ts';

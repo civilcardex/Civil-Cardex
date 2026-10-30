@@ -1,5 +1,7 @@
 import { initNetCounts } from './PlanoState.ts';
 import type { IPlanoEngineCore } from './PlanoState.ts';
+
+/** Historial de deshacer/rehacer del visor: fotos completas del dibujo (y sus cantidades de aparatos) antes de cada acción del usuario. */
 import type {
   PlanoRamal,
   PlanoBajante,

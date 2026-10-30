@@ -4,12 +4,7 @@ import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { NumInput } from '../shared/NumInput.tsx';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
-import {
-  DimEnLectura,
-  EditableSection,
-  TableHeader,
-  useEditable,
-} from '../shared/EditLock.tsx';
+import { DimEnLectura, EditableSection, TableHeader, useEditable } from '../shared/EditLock.tsx';
 import { FP_CAT_DESC_DEFAULTS } from '../seedData.ts';
 import type { FactorPrestacional } from '../types.ts';
 
@@ -142,6 +137,7 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
   );
 }
 
+/** Panel de FP (Factores Prestacionales): % que el empleador paga además del salario (prestaciones, seguridad social, parafiscales) con el subtotal al pie. Ej: 15 filas que suman ≈ 79 %. */
 export function FactorPrestacionalPanel() {
   const { state, patch, factorPrest } = useCivilManager();
   const items = state.factoresPrestaciones;

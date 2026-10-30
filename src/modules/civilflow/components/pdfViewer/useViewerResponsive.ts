@@ -1,3 +1,4 @@
+/** Breakpoints del visor en un solo hook: móvil (<768, modo consulta) y angosto (<1024, colapsa sidebars al cruzar el umbral). Ej: en una tablet con teclado, cerrar el teclado no vuelve a colapsar los paneles que el usuario re-abrió. */
 import { useEffect, useState } from 'react';
 import { useIsMobile, useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
 

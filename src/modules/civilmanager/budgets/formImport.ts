@@ -1,5 +1,6 @@
 import { parseCantidad } from '../excelImport.tsx';
 
+/** Índices de las columnas (0 = primera) del formulario Excel que alimentan el importe. Ej: col_cantidad 4 lee la quinta celda de cada fila. */
 export interface ColumnMapping {
   col_item: number;
   col_descripcion: number;

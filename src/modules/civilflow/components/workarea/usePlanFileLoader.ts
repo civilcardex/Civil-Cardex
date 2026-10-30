@@ -1,3 +1,5 @@
+/** Hook de carga del archivo PDF del plano: baja los bytes, los abre con pdfjs (lector PDF)
+ *  y expone el documento renderizable. Ej: abrir un piso -> el PDF queda listo para rasterizar. */
 import { useState, useRef, useEffect, type RefObject } from 'react';
 import { getPdfjs } from '../../utils/lazyPdfjs';
 import { devError } from '../../../../utils/devError.ts';

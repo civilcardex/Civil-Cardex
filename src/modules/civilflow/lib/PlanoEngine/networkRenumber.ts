@@ -27,6 +27,8 @@ import {
 import { EV_STORAGE } from '../../utils/fixtureEvents.ts';
 export { keyPlanSuffixOf, isPlanKeyFor };
 
+/** Renumeración de la red: consecutivos sin huecos para ramales, bajantes, montantes y áreas, migrando TODO lo que cuelga del id (extremos ini/fin, punteros entre pisos, claves de UD (Unidades de Desague)) para que el renombre no deje referencias huérfanas. */
+
 /** Renumera los ramales y tributarios de una red para que no queden huecos (RAF1, RAF3, RAF4 →
  *  RAF1, RAF2, RAF3) y arrastra las claves de unidades de consumo (UD) de cada uno, para que los
  *  conteos no se queden en el id viejo.
@@ -325,13 +327,7 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
   });
 }
 
-/** Renumera los montantes de todas las redes (af = Agua Fría, ac = Agua Caliente), cada una
- *  por separado con su propio consecutivo, y MUEVE todo lo que cuelga del id: extremos de
- *  ramal (ini/fin por código), punteros entre pisos (origenId/descargaEnId `plan|id`), ramal
- *  LDesvio (LD_, ramal desvio entrepisos), anillos, fantasmas XFG (fantasma entrepisos;
- *  motor + pisos vecinos vía renameBajanteAcrossFloorReferences) y las claves de UD
- *  (Unidades de Desague) del piso cargado. Ej: dos montantes MAC1 y MAC3 pasan a MAC1 y
- *  MAC2 sin perder ni una referencia (antes el renombre dejaba punteros huérfanos). */
+/** Renumera los montantes de cada red con consecutivo propio y MUEVE todo lo que cuelga del id: extremos ini/fin de ramal, punteros entre pisos, LDesvio (LD_, ramal desvio entrepisos), anillos, fantasmas XFG (fantasma entrepisos) y claves de UD (Unidades de Desague) del piso cargado. Ej: al borrar MAC1, MAC3 pasa a MAC2 sin perder una referencia. */
 export function _renumberMontantes(engine: IPlanoEngineCore): void {
   const nets = Array.from(
     new Set(engine.bajantes.filter((b) => b.tipo === 'montante').map((b) => b.net || 'af')),

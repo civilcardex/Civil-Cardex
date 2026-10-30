@@ -1,3 +1,4 @@
+/** Sección "accesorio a mitad de ramal" del menú contextual (clic sobre el cuerpo del trazo): valida polaridad y diámetros antes de insertar en el vértice. Ej: yee en el cuerpo de RAF2 o tee con llave terminal, nunca un codo sube/baja ahí. */
 import { useState, useEffect } from 'react';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';

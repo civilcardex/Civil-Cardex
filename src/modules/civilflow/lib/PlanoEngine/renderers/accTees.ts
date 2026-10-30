@@ -1,5 +1,6 @@
 import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
+/** Símbolos de TEE (teeSube/teeBaja con bastón y flecha; la tee recta la dibuja el pase geométrico de renderJunctions). true = dibujó algo. */
 export function drawTeeSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad, pipeToward } = a;
   if (accType === 'teeSube' || accType === 'teeBaja') {

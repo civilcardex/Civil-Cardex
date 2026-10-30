@@ -1,6 +1,8 @@
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
 import { indiceFrame } from './frameIndex.ts';
 
+/** Flechas de sentido de flujo: junto a la etiqueta del ramal y en los extremos que descargan (con reglas propias para vent↔san). */
+
 type RamalRender = IPlanoEngineCore['ramales'][number];
 
 /** Contexto del frame que el pase de flechas de extremo necesita (índices ya construidos

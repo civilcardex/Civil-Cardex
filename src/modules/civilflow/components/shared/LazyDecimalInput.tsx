@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { sanitizarInputDecimal } from '../../utils/parseDecimal.ts';
 
+/** Props del input decimal perezoso: valor controlado + commit diferido (blur/Enter). */
 export interface LazyDecimalInputProps {
   value: string;
   onCommit: (v: string) => void;
@@ -14,6 +15,9 @@ export interface LazyDecimalInputProps {
   commitOnEnter?: boolean;
 }
 
+/** Input de números con decimales que escribe libre (acepta coma o punto) y SOLO comitea al
+ *  salir del campo — pisar onCommit por tecla creaba overrides "sticky" con el display
+ *  redondeado. Ej: escribir 2,5 -> comitea "2.5" al blur, no en cada tecla. */
 export function LazyDecimalInput({
   value,
   onCommit,

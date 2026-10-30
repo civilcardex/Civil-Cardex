@@ -11,6 +11,7 @@ interface Props {
   onChange: (recursos_transporte: ApuRecursoTransporte[]) => void;
 }
 
+/** Sección D del APU (Análisis de Precios Unitarios): transporte — unidad 'Global' cobra tarifa fija; el resto multiplica tarifa × distancia_km. Ej: M3-Km a $8.000 × 12 km. */
 export function ApuSeccionTransporte({ apu, onChange }: Props) {
   const { state } = useCivilManager();
   const unidades = state.config_listas.unidades_transporte;

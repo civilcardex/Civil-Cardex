@@ -1,3 +1,4 @@
+/** Distancia del punto p al segmento a→b (px): la proyección se recorta al tramo, así que "más allá del extremo" mide hasta el extremo. Es la base de todos los hit-tests de tuberías. */
 export function distToSegment(p: number[], a: number[], b: number[]): number {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
@@ -7,6 +8,7 @@ export function distToSegment(p: number[], a: number[], b: number[]): number {
   return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
 }
 
+/** Distancia del punto a la polilínea completa (el mínimo entre sus segmentos). @returns px; Infinity si pts está vacía. */
 export function distToPolyline(p: number[], pts: number[][]): number {
   let minDist = Infinity;
   for (let i = 0; i < pts.length - 1; i++) {

@@ -1,3 +1,4 @@
+/** Sección del menú contextual para bajantes/montantes: dirección, diámetro+destino, conexiones san/ll, bomba en cajas y ramales asociados del montante. Ej: clic derecho en BAN2 → "Sube/Baja" + diámetro 4". */
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { useDrawingElementContextMenu } from './context.ts';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';

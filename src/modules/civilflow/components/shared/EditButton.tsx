@@ -1,3 +1,5 @@
+/** Botón «Editar» genérico: alterna edición en paneles de solo lectura.
+ *  Ej: tarjeta de identificación del proyecto -> habilita sus campos. */
 import React from 'react';
 
 interface EditButtonProps {

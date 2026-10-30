@@ -1,3 +1,6 @@
+/** Raíz del área de trabajo flow: valida/auto-activa el proyecto activo (si su id murió en BD,
+ *  todo guardado fallaría en silencio), corre el tour por pestaña y pinta la barra de redes.
+ *  Ej: abrir /civilflowareatrabajo sin proyecto válido -> banner en vez de dibujo huérfano. */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWorkAreaState } from './useWorkAreaState.ts';

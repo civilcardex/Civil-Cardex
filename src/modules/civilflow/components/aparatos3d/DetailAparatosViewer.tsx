@@ -1,3 +1,5 @@
+/** Visor 3D de detalle de un aparato sanitario (canvas three.js con sidebar y controles).
+ *  Ej: doble clic en un aparato del catálogo -> inspección en 3D con cámara orbital. */
 import { useCallback, useRef, useState } from 'react';
 import AparatosSidebar from './AparatosSidebar.tsx';
 import { MONO_3D } from '../shared/config3d';

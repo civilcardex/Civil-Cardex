@@ -1,11 +1,8 @@
 /**
- * Valor decimal de una etiqueta de di\u00e1metro ("1/2\"", "3/4\"", "1 1/4", "20 mm"...).
- *
- * \u00dcNICA fuente: la usaban el panel de acometida (SupplyConnection) y la tabla de rows
- * (waterRowsAcometida) con el mismo c\u00f3digo copiado - dos verdades que pod\u00edan divergir.
- *
- * Las fracciones COMPUESTAS ("1 1/2") se leen antes que las simples: si se buscara "1/2" primero,
- * "1 1/2" devolver\u00eda 0.5 (la rama "1 1/2" quedaba inalcanzable).
+ * Valor decimal de una etiqueta de diámetro ("1/2\"" -> 0.5, "2 3/4\"" -> 2.75, "20 mm" -> 20).
+ * ÚNICA fuente: panel de acometida y tabla de acometida la compartían copiada (dos verdades).
+ * @param valStr etiqueta del diámetro.
+ * @returns el valor decimal; 0 si no hay número legible.
  */
 export function diamFractionValue(valStr: string): number {
   if (!valStr) return 0;

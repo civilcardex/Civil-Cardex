@@ -1,3 +1,4 @@
+/** Editor de accesorios y aparato en los EXTREMOS de un ramal (selects Inicio/Fin): valida sifón, llave terminal y polaridad de codos sube/baja antes de escribir. Ej: un sifón en el extremo que recibe flujo se rechaza con alerta. */
 import {
   syncExtremeAccessoryToHidroData,
   syncExtremeAparatoToCounts,

@@ -1,3 +1,4 @@
+/** Tablas de memoria técnica para la red san (Sanitaria): UD (Unidades de Desague), accesorios, bajante-vent y resúmenes de tuberías (también sirve ll/af/ac). Ej: el ramal con 1 inodoro sale con sus UD acumuladas, caudal Hunter y diámetro por Manning (formula de flujo en tuberia). */
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
 import type { MemoriaTable } from '../../utils/exportReportFinal.ts';

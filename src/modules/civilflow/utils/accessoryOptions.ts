@@ -1,5 +1,11 @@
 import { ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from '../constants';
 
+/**
+ * Opciones del dropdown de accesorios según la red: cada red admite un subconjunto del catálogo
+ * (san (Sanitaria) sin codos de ventilación; vent (Ventilacion) sin sifón; af/ac sin tees directas...).
+ * @param netId código de red (af, ac, san, ll, gas, vent, rci...).
+ * @returns lista `{value, label}` para el selector; vacía si la red no admite cuerpos.
+ */
 export function getAccessoryOptions(netId: string) {
   if (netId === 'san') {
     return SAN_ACCESORIOS.filter(

@@ -1,3 +1,4 @@
+/** Editor del contador de agua/gas seleccionado: el diámetro de su conexión a red. Ej: "5/8" para el contador del apartamento 101. */
 import { GAS_DN_LABELS } from '../../../constants/engineeringDataGas.ts';
 import { DIAMETROS_AF } from '../../../constants/hydraulicsData.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';

@@ -1,3 +1,6 @@
+/** Conmutador de pestañas del área de trabajo: carga perezosa (lazy) de cada pantalla
+ *  (planos, isometría, tablas, Base de Datos…) sobre el estado compartido del workarea.
+ *  Ej: clic en «Isometría» -> monta el visor solo en ese momento. */
 import { Suspense, lazy } from 'react';
 import { RainwaterProvider } from '../context/RainwaterContext.tsx';
 import InfoTab from './workarea/InfoTab.tsx';

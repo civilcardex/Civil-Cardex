@@ -1,3 +1,4 @@
+/** Página de accesorios (codos, tees, válvulas) y diámetros por tramo de san (Sanitaria) y gas: sin ellos las pérdidas por Lh (longitud equivalente) salen en cero. Ej: 4 codos 90° en RG1 -> la pérdida Renouard (fórmula de pérdida en gas) del ramal sube. */
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTramos } from '../context/TramosContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';

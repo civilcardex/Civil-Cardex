@@ -1,6 +1,4 @@
 import { ModalShell } from '../shared/ModalShell.tsx';
-/** Diálogo "¿en qué módulo desea crear el proyecto?": lista SOLO los módulos comprados y vigentes del usuario.
- * Con 0 activos ofrece ir a /pricing; con exactamente 1 entra directo (sin paso de selección). */
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { CATALOGO, type ModuloId, type ModuloVenta } from '../../lib/subscriptions/catalog.ts';
@@ -13,6 +11,7 @@ interface Props {
   onPick: (modulo: ModuloId) => void;
 }
 
+/** Diálogo "¿en qué módulo desea crear el proyecto?": lista SOLO los módulos comprados y vigentes ("Activo hasta X"). Con 0 activos ofrece /pricing; con 1 entra directo sin preguntar. */
 export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
   const { rows, activos, loading } = useSuscripciones();
   const [elegido, setElegido] = useState<ModuloId | null>(null);

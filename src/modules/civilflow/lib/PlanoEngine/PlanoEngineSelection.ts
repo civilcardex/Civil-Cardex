@@ -367,6 +367,7 @@ export function selectAt(
   }
 }
 
+/** Selecciona por id en CUALQUIER colección (ramales, bajantes, textos, áreas, cotas, guías) y dispara el evento de selección + render. Ej: el panel derecho llama selectById('RAC3') para resaltar el ramal. */
 export function selectById(engine: IPlanoEngineCore, id: string): void {
   engine._isGhostSel = false;
   const found =
@@ -383,6 +384,7 @@ export function selectById(engine: IPlanoEngineCore, id: string): void {
   }
 }
 
+/** El elemento actualmente seleccionado (buscado en todas las colecciones), o null si no hay nada. */
 export function getSelected(
   engine: IPlanoEngineCore,
 ):

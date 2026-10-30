@@ -42,6 +42,7 @@ const SPECS_COLS = [
   'Contra Incendio',
 ];
 
+/** Página pública de cada módulo (hero + features + specs + normas + CTA "Nuevo proyecto" con gating de suscripción). Ej: /civilflow pinta MODULES_DATA.flow con FlowHero. */
 export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
   const { user } = useAuth();

@@ -20,6 +20,7 @@ const DEFAULT_MAPPING: ColumnMapping = {
   col_cantidad: 3,
 };
 
+/** Sub-pestaña 'Importar Formulario': lee el Excel del cliente, detecta encabezado y capítulos, y precia los ítems con APU o con precio de entidad. Guarda copia del formulario en el presupuesto. */
 export function FormularioImportPanel({ pres, onUpdate }: Props) {
   const editable = useEditable();
   const fileRef = useRef<HTMLInputElement>(null);

@@ -1,3 +1,5 @@
+/** Chequeo de bajantes de ll (Lluvias): tabla por bajante con área aportada, Q (Caudal) y
+ *  diámetro. Ej: BLL1 que drena 120 m² -> fila con su caudal pluvial y diámetro propuesto. */
 import { useMemo } from 'react';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext.tsx';
 import { useTramos } from '../context/TramosContext.tsx';

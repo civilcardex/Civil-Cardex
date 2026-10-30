@@ -1,3 +1,6 @@
+/** Pantalla de diseño de gas: datos generales, tabla de la red (diámetros Renouard (fórmula
+ *  de pérdida en gas)) y contadores/calentadores. Ej: editar la presión de acometida recalcula
+ *  los diámetros de todos los tramos gas. */
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import { usePlans } from '../context/PlansContext.tsx';

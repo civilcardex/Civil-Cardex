@@ -18,9 +18,7 @@ interface ResumenRow {
   longitud: number;
 }
 
-// Una fila por (diámetro × material) en todos los planos dibujados, sumando el totalL de cada
-// ramal — una vista rápida de lista de materiales de la tubería instalada por red. totalL está
-// en metros (el mismo valor que las tablas hidráulicas alimentan a sus columnas de longitud).
+/** Tabla "Resumen de tuberías" de la memoria: una fila por (diámetro × material) en todos los planos confirmados, sumando totalL (m) de cada ramal de la red — lista rápida de materiales instalados. */
 export function computeResumenTuberiasTable(net: string, plans: PlanItem[]): MemoriaTable | null {
   const groups: Record<string, ResumenRow> = {};
   for (const plan of plans || []) {

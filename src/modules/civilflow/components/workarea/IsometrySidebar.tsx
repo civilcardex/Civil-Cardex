@@ -1,3 +1,5 @@
+/** Sidebar del visor de isometría: lista de ramales/bajantes de la escena con controles de
+ *  vista. Ej: clic en un bajante -> la cámara lo encuadra. */
 import type { Dispatch, SetStateAction } from 'react';
 import type { IsoRamal, IsoBajante } from './isometry/geometry';
 

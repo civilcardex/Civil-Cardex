@@ -1,3 +1,4 @@
+/** Tablas de memoria técnica para la red af (Agua Fria): UC (Unidades de Consumo), accesorios, diseño de red y acometida. Ej: con 2 lavamanos arma la tabla "Diseño de red agua fría" con caudal Hunter y diámetro por tramo. */
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
 import type { MemoriaTable } from '../../utils/exportReportFinal.ts';

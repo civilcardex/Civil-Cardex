@@ -11,6 +11,8 @@ import { normalizarCanal, pxPerCmDe } from '../channelAssociation';
 import { _calcPolyArea } from '../drawingUtils.ts';
 import { gapAnclaACaja } from '../labelDeclutter.ts';
 
+/** Arrastres de anotaciones: guías (vértice o entidad completa), textos y etiquetas de bajantes/canales (con snap y ángulo). */
+
 /** Arrastre de una GUÍA: mueve ESE vértice (con el snap del dibujo de guías) o la entidad
  *  completa — la guía es una sola pieza con varios vértices. */
 export function dragGuide(engine: IPlanoEngineCore, x: number, y: number): void {

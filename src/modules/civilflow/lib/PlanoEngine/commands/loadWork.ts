@@ -9,13 +9,7 @@ import {
 } from '../PlanoEngineNetwork.ts';
 import { sellarAsociacionesCanalBajante } from '../channelAssociation.ts';
 
-/**
- * Aplica un trabajo guardado (JSON u objeto PlanoWorkData) al motor: reemplaza elementos y
- * estado (incluye npt (niveles de piso topográfico) y scaleM (escala metros por pixel)) y
- * re-deriva conexiones/accesorios. Movido tal cual de PlanoEngine.loadWork — el método de la
- * clase solo delega; el historial se resetea ANTES de la foto para no revivir snapshots
- * cross-piso (fotocopias del piso anterior persistidas por el autosave).
- */
+/** Aplica un trabajo guardado (JSON u objeto PlanoWorkData) al motor: reemplaza elementos y estado (npt (nivel de piso topografico), scaleM (escala metros por pixel)) y re-deriva conexiones. El historial se resetea ANTES de la foto para no revivir snapshots del piso anterior. */
 export function loadWorkCommand(engine: EngineFull, json: string | object): void {
   try {
     const d = (typeof json === 'string'

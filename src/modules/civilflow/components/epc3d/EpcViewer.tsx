@@ -1,3 +1,5 @@
+/** Visor 3D del ep (Equipo de Presión): escena three.js con el equipo armado y su sidebar de
+ *  catálogo. Ej: cambiar el tanque desde el sidebar -> el visor re-monta la escena. */
 import { useCallback, useRef, useState } from 'react';
 import EpcSidebar from './EpcSidebar.tsx';
 import { MONO_3D } from '../shared/config3d';

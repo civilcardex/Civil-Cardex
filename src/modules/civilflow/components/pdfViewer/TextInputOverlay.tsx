@@ -1,3 +1,4 @@
+/** Modal de texto sobre el plano: escribir/editar la etiqueta de una anotación (Enter confirma, Escape/click-fuera cancela). Ej: la herramienta "texto" ('c') lo abre en el punto del clic. */
 const TextInputOverlay_S1: React.CSSProperties = {
   position: 'absolute',
   top: 0,

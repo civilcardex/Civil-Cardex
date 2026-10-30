@@ -1,3 +1,4 @@
+/** Los dos modales del visor: confirmación genérica ("¿borrar todo?") y selector de accesorio en unión de ramal. Ej: triggerConfirm('Limpiar red', ...) abre el primero y ejecuta onConfirm solo al aceptar. */
 import { useCallback, useState } from 'react';
 import type React from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';

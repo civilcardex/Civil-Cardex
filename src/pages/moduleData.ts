@@ -1,3 +1,4 @@
+/** Tarjeta de funcionalidad del módulo (icono + título + descripción) que pinta ModulePage. */
 export interface Feature {
   icon: string;
   title: string;
@@ -7,6 +8,7 @@ export interface Feature {
   badgeColor?: string | null;
 }
 
+/** Fila de la tabla de especificaciones del módulo (una norma por columna de red). */
 export interface Spec {
   param: string;
   hid: string;
@@ -16,6 +18,7 @@ export interface Spec {
   rci?: string;
 }
 
+/** Config de una página de módulo: textos del hero, acento, features, specs y layout propio. Ej: flow usa customLayout 'flow'. */
 export interface ModuleConfig {
   /** Ruta pública del módulo (la usan ROUTE_META y el prerender). */
   ruta: string;
@@ -33,6 +36,7 @@ export interface ModuleConfig {
   customLayout?: 'flow' | 'structure' | 'terrain' | 'manage' | 'roads';
 }
 
+/** Los 6 módulos indexados por id ('flow', 'manage', …): fuente de los heroes, precios y ROUTE_META. */
 export const MODULES_DATA: Record<string, ModuleConfig> = {
   flow: {
     title: 'Civil Flow',

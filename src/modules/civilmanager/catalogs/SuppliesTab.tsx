@@ -13,6 +13,7 @@ import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Insumo } from '../types.ts';
 
+/** Tab de insumos (materiales del catálogo): costo unitario, categoría y origen; los 'Preparado en obra' eligen su APU (Análisis de Precios Unitarios) básico como fuente de precio. */
 export function InsumosTab() {
   const { state, patch, apusBasicoCalc } = useCivilManager();
 

@@ -1,3 +1,4 @@
+/** Editor en panel derecho del ramal seleccionado: material (catálogo de SU red), diámetro (bloquea el 4" de inodoro si el ramal no lo sirve), pendiente y descargas simultáneas. Ej: RAF1 san → PVC, 2", 2 %. */
 import { DIAM_BY_MAT } from '../../../constants';
 import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogData.ts';
 import { GAS } from '../../../constants/engineeringDataGas.ts';

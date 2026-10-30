@@ -1,4 +1,5 @@
-﻿import { type RefObject } from 'react';
+﻿/** TramoEditor: panel derecho de edición del elemento seleccionado en el visor (bajante, ramal, canal, área, texto...). Enruta por tipo vía variants y comparte motor+selección por contexto. Ej: seleccionar RAF1 → aquí se edita su diámetro y pendiente. */
+import { type RefObject } from 'react';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { Piso } from '../../../lib/shared/projectTypes.ts';

@@ -1,3 +1,5 @@
+/** Tarjeta del catálogo de gas en Parámetros de Diseño: aparatos con su Q (Caudal) en m³/h
+ *  editable. Ej: subir el caudal de la estufa -> todas las tablas gas lo usan al recalcular. */
 // Card "Catálogo de gasodomésticos" de Parámetros de diseño: tabla read-only sobre el
 // catálogo NTC 3728 (Norma Técnica Colombiana de gasodomésticos). Sin estado ni handlers —
 // el ＋/− de edición no la toca.

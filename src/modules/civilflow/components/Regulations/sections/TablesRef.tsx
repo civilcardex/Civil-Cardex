@@ -1,3 +1,5 @@
+/** Tablas de referencia de presiones (TABLAS_PRESION): valores normativos de consulta para
+ *  af (Agua Fría)/ac (Agua Caliente)/rci (Red Contra Incendio) sin salir de la app. */
 import {
   TABLAS_PRESION,
   TABLAS_CAUDALES,

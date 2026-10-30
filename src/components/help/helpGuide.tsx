@@ -9,6 +9,7 @@ import type { GUIA_TYPE } from './helpGuideTypes.tsx';
 import { GUIA_FLOW } from './helpGuideFlow.tsx';
 import { GUIA_MANAGER } from './helpGuideManager.tsx';
 import { GUIA_RECORTE } from './helpGuideCrop.tsx';
+/** Guía fusionada por clave de contexto: flow + manager + recorte (el editor de recorte publica su propia clave 'cf:recorte'). */
 export const GUIA: GUIA_TYPE = {
   ...GUIA_FLOW,
   ...GUIA_MANAGER,

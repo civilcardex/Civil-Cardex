@@ -1,3 +1,5 @@
+/** Barra lateral del área de trabajo: las pestañas (NAV_TABS) que navegan por la ruta flow.
+ *  Ej: clic en «Tablas» -> cambia el splat de la URL sin recargar el proyecto. */
 import { useNavigate } from 'react-router-dom';
 import { NAV_TABS } from '../constants';
 import { getActiveProyectoId } from '../services/storageService.ts';

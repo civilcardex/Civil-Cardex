@@ -1,3 +1,4 @@
+/** Barra lateral derecha del visor: selector de nivel, copia entre pisos y los paneles de edición (tramo, asociación de bajante/montante, aparatos, elementos dibujados) según lo seleccionado. */
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement } from '../../lib/PlanoEngine/PlanoState.ts';

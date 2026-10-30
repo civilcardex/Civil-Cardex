@@ -30,6 +30,7 @@ export function repetirTour(clave: TourClave): void {
   window.dispatchEvent(new CustomEvent(EV_TOUR_REPETIR, { detail: clave }));
 }
 
+/** Lanza el tour la PRIMERA vez que se entra a la pantalla (marca localStorage por navegador) y devuelve el overlay listo para pintar (null si ya se vio o no hay pasos). */
 export function useTour(clave: TourClave, listo = true): React.ReactElement | null {
   const [activo, setActivo] = useState(false);
   const pasos = TOURS[clave];

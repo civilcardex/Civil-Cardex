@@ -14,6 +14,7 @@ interface Props {
 // Identidad perezosa de fila: se asigna una vez al objeto (viaja en el jsonb persistido) y
 // sobrevive a inserciones/borrados — key={i} desalineaba inputs al eliminar una fila previa.
 
+/** Sección B del APU (Análisis de Precios Unitarios): renglones de equipo con subtotal = costo_hora × rendimiento. */
 export function ApuSeccionEquipo({ apu, onChange }: Props) {
   const { state } = useCivilManager();
   const eqMap = new Map(state.equipos.map((e) => [e.id, e]));

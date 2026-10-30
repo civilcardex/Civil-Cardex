@@ -87,6 +87,8 @@ export function computeOrigenesCompartidos(plans: PlanCalibFuente[]): Set<string
   return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([k]) => k));
 }
 
+/** Calibración lista para estampar en un plano: origen px, scaleM (escala metros por pixel)
+ *  promedio y sus factores X/Y. Ej: { planId: 7, origen: {x_px: 300, y_px: 120}, scaleM: 0.02 }. */
 export interface ConfigCalibracion {
   planId: number;
   origen: { x_px: number; y_px: number } | null;

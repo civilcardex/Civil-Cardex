@@ -1,5 +1,6 @@
 import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
+/** Símbolos de CODO sobre la tubería (codo90rm, codoSube/codoBaja...): pinta el glifo en el vértice; true si dibujó algo (false = lo intenta otro pintor). */
 export function drawCodoSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, rad } = a;
   if (accType === 'codo90rm') {

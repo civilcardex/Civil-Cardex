@@ -1,3 +1,6 @@
+/** Página 1 del diseño de ep (Equipo de Presión): entrada de datos (acometida, aparatos,
+ *  presiones mínimas) que alimenta el cálculo del sistema. Ej: marcar «tanque hidroneumático»
+ *  -> el dimensionamiento de bom (Bomba) cambia de doctrina. */
 import React, { useState } from 'react';
 import type { EPData } from './EPShared';
 import Card from '../shared/Card.tsx';

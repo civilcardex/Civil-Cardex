@@ -9,6 +9,7 @@ interface State {
   readonly error: Error | null;
 }
 
+/** Frontera de errores de React: si un árbol lanza, pinta "Algo salió mal" + botón Reintentar en vez de la pantalla en blanco. Ej: envuelve la raíz en App — un fallo de render ya no mata toda la app. */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);

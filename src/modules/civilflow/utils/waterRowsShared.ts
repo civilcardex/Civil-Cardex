@@ -1,6 +1,8 @@
 import type { Tramo } from '../context/tramosReducer';
 import { APARATOS_DEF } from '../constants';
 
+/** Helpers compartidos de las tablas de agua (af (Agua Fria)/ac (Agua Caliente)): clasificación de tramos y presión por aparato. */
+
 export type { BajanteRaw } from './drawingSyncTypes.ts';
 
 export const isAf = (t: string) => t === 'af';

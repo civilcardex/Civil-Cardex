@@ -1,3 +1,4 @@
+/** Curvas de nivel SVG "respirando" detrás del hero (opacidad 8%, decorativas, reduced-motion apaga la animación). */
 export default function TopographyBackground() {
   return (
     <div className="absolute inset-0 pointer-events-none z-[2] opacity-[0.08] flex items-center justify-center overflow-hidden">

@@ -1,3 +1,5 @@
+/** Tarjeta de niveles (pestaña Info): npt (nivel de piso topográfico) de cada piso, base de
+ *  las cotas de las tablas. Ej: subir el npt del piso 2 -> las columnas de altura se recalculan. */
 import React from 'react';
 import { pisoLbl } from '../../../constants';
 import EditButton from '../../shared/EditButton.tsx';

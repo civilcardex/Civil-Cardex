@@ -1,3 +1,6 @@
+/** Página de parámetros de diseño por red (Base de Datos del área de trabajo): presiones de
+ *  servicio, presiones de prueba y catálogos que alimentan las tablas de cada red.
+ *  Ej: subir la presión mínima de rci (Red Contra Incendio) endurece el chequeo de todos sus tramos. */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext.tsx';

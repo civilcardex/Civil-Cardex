@@ -34,6 +34,7 @@ const DOCX_SIDE_MARGIN_TWIP = 360;
 // normal; solo las tablas genuinamente anchas crecen más allá.
 const DOCX_MIN_PAGE_WIDTH_TWIP = 15840; // 11in
 
+/** Descarga la memoria de cálculo como Word (.docx apaisado): una página por tabla, con cancelación entre tablas (ExportCancelada). */
 export async function generateMemoriaDocx(
   data: MemoriaData,
   shouldCancel?: () => boolean,

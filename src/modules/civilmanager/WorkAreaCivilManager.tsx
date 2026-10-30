@@ -165,6 +165,7 @@ function CivilManagerShell() {
   );
 }
 
+/** Shell del área de trabajo CM (Civil Manager): sidebar de secciones (catálogos, APU (Análisis de Precios Unitarios), presupuestos) con navegación por URL y sincronía de contexto de ayuda/tour. Ej: /civilmanagerareatrabajo/catalogos/insumos abre esa tab. */
 export default function WorkAreaCivilManager() {
   return (
     <CivilManagerProvider>

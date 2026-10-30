@@ -1,3 +1,5 @@
+/** Tarjeta de redes activas del proyecto (pestaña Info): qué redes (af (Agua Fría), san
+ *  (Sanitaria), ll (Lluvias)…) están encendidas y acceso a su diseño. */
 import React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { REDES } from '../../../constants';
@@ -63,8 +65,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     const pid = getActiveProyectoId();
     if (!pid) return;
     void (async () => {
-      const { loadCampoProyectoGeneral } =
-        await import('../../../services/projectDataService.ts');
+      const { loadCampoProyectoGeneral } = await import('../../../services/projectDataService.ts');
       const [afDb, nptDb, presDb] = await Promise.all([
         loadCampoProyectoGeneral<string>(pid, 'af_alimentacion'),
         loadCampoProyectoGeneral<string>(pid, 'tanque_npt'),

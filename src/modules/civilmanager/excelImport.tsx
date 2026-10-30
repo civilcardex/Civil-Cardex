@@ -100,12 +100,14 @@ export function parseCantidad(raw: unknown): number {
   return parseNum(s);
 }
 
+/** Datos que pinta el modal de vista previa antes de exportar o confirmar un import. Ej: type 'import' muestra las filas leídas del .xlsx del cliente. */
 export interface ExcelPreview {
   type: 'export' | 'import';
   headers: string[];
   rows: (string | number)[][];
 }
 
+/** Configuración del import/export de un catálogo: cabeceras de la hoja, cómo leer/escribir cada fila y cómo crear el item nuevo. */
 export interface UseExcelImportExportOptions<T extends { codigo?: string }> {
   items: T[];
   onImport: (items: T[]) => void;
@@ -126,7 +128,11 @@ export interface UseExcelImportExportOptions<T extends { codigo?: string }> {
   matchKey?: keyof T;
 }
 
-/** Import/export genérico contra Excel (SheetJS xlsx), reutilizado por todos los catálogos. */
+/**
+ * Import/export genérico contra Excel (SheetJS xlsx), reutilizado por todos los catálogos:
+ * preview modal antes de aplicar, límite de 20 MB y upsert por código (fila existente se
+ * actualiza; nueva se crea). Ej: SuppliesTab exporta sus insumos con los mismos headers que luego lee.
+ */
 export function useExcelImportExport<T extends { codigo?: string }>(
   opts: UseExcelImportExportOptions<T>,
 ) {

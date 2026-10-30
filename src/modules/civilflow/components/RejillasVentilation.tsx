@@ -1,3 +1,5 @@
+/** Rejillas de vent (Ventilación sanitaria): cálculo de aberturas libre/inferior por recinto
+ *  y su alzado. Ej: baño con 2 sanitarios -> rejilla con el área libre que exige la norma. */
 import React, { useEffect, useState } from 'react';
 import type { RejResultado } from '../utils/rejillasCalc.ts';
 import type { RejFila } from './rejillasVentilation/rejillasShared.ts';

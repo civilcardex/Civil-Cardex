@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+﻿/** Menús contextuales "chicos" del visor: área, contador, calentador (delegan en el editor genérico) y canal ll (Lluvias) con dimensiones, materiales y bajantes asociados. Ej: clic derecho en un canal → editar base/altura en cm. */
+import { useState } from 'react';
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
 import {
   useDrawingElementContextMenu,

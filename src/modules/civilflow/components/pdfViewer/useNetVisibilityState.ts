@@ -18,8 +18,6 @@ interface Params {
 /**
  * Redes ocultas (no se dibujan) y bloqueadas (no se puede dibujar en ellas): el usuario
  * las manipula en la barra de redes y su preferencia persiste por navegador.
- * @returns los dos Sets + sus 3 handlers (toggle oculta, toggle bloqueada, seleccionar
- *   con aviso si la red elegida está oculta).
  */
 export function useNetVisibilityState({
   engineRef,

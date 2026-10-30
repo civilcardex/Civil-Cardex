@@ -10,12 +10,9 @@ import { maxSanRamalDiamPulg } from './bajanteVentRows.ts';
 import { ventBajPulg, calculateVentStack } from './ventStackCalc.ts';
 
 /**
- * Modelo de fila de la tabla de bajantes (aguas negras y ventilación).
- *
- * Antes de la des-monolitización cada fila se calculaba dentro del JSX del componente, con
- * búsquedas lineales (`tramosSan.find`) por cada bajante y cada ramal: O(n²) en el render.
- * Aquí la cuenta vive en una función pura que recibe índices ya construidos y devuelve los
- * valores de la fila; el componente solo los pinta.
+ * Modelo de fila de la tabla de bajantes (aguas negras y vent (Ventilacion)): la cuenta vive en
+ * funciones puras con índices ya construidos (antes era `find` dentro del JSX, O(n²) por render);
+ * el componente solo pinta.
  */
 
 interface RamalWithDiam extends RawElement {

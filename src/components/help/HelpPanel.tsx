@@ -166,6 +166,7 @@ function VideoTutorial({ t }: { t: Tutorial }) {
   );
 }
 
+/** Modal de AYUDA contextual: intro de la pestaña activa + guía (grupos colapsables de elementos) + botón REPETIR TOUR. Ej: en Sanitaria lista las herramientas de la tab sanitaria. */
 function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
   const closeRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);

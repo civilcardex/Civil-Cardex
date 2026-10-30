@@ -1,3 +1,5 @@
+/** Diseño de ep (Equipo de Presión): datos de entrada, cálculo de la demanda y verificación
+ *  del sistema de bombeo. Ej: ajustar la presión mínima del sistema recalcula el ep necesario. */
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import PageNav from './PageNav.tsx';
 import EPInputPage from './ep/EPInputPage.tsx';

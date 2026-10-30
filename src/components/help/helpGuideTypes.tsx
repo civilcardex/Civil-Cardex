@@ -3,16 +3,19 @@
 // cada pestaña/visor — cada ítem es un elemento de UI con su propósito. Claves:
 //   cf:<tab> · cf:iso:<sub> · cm:catalogos:<tab> · cm:<seccion>
 
+/** Un elemento de UI de la pestaña y para qué sirve. Ej: {nombre:'Rejilla', desc:'Mueve puntos con imán a la rejilla'}. */
 export interface GuiaItem {
   nombre: string;
   desc: string;
 }
 
+/** Sección colapsable del panel de AYUDA: título + sus ítems. */
 export interface GuiaGrupo {
   titulo: string;
   items: GuiaItem[];
 }
 
+/** La guía completa: clave de contexto (ej: 'cf:san') -> grupos a mostrar. */
 export type GUIA_TYPE = Record<string, GuiaGrupo[]>;
 
 /** Icono material por grupo de ayuda (búsqueda por palabra en el título; primer match manda).

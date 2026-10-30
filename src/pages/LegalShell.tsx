@@ -11,12 +11,14 @@ export const LEGAL_H2: React.CSSProperties = {
   textTransform: 'uppercase',
   margin: '28px 0 8px',
 };
+/** Párrafo legal (13px, gris claro, interlineado 1.7). */
 export const LEGAL_P: React.CSSProperties = {
   fontSize: 13,
   lineHeight: 1.7,
   color: '#b9caca',
   margin: '0 0 10px',
 };
+/** Ítem de lista legal, indentado como el párrafo. */
 export const LEGAL_LI: React.CSSProperties = {
   fontSize: 13,
   lineHeight: 1.7,

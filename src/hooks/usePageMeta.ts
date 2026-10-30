@@ -12,6 +12,11 @@ function setMeta(prop: string, name: string, content: string, prev: Record<strin
   el.setAttribute('content', content);
 }
 
+/**
+ * Título/description/og/twitter/canonical por página: los escribe al montar y los RESTAURA
+ * al desmontar (una SPA de un solo document.html; sin restauración cada página heredaba el título de la anterior).
+ * Ej: usePageMeta('Precios', 'Planes de Civil Cardex') en la página de precios.
+ */
 export function usePageMeta(title?: string, description?: string, noindex?: boolean) {
   useEffect(() => {
     const prev: Record<string, string | null> = {};

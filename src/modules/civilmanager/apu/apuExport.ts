@@ -78,6 +78,7 @@ function filaExcel(fila: (string | number)[]): (string | number)[] {
   return fila.map(sanitizarCelda);
 }
 
+/** Exporta un APU (Análisis de Precios Unitarios) a .xlsx con sus 4 secciones (MO, equipo, insumos, transporte) y el costo total. Ej: exportApuExcel(apuExcavacion) -> apu_APU-001.xlsx. */
 export async function exportApuExcel(apu: Apu, ctx: ExportCtx): Promise<void> {
   const XLSX = await loadXlsx();
   const rows = buildRows(apu, ctx);
@@ -97,6 +98,7 @@ export async function exportApuExcel(apu: Apu, ctx: ExportCtx): Promise<void> {
   showToast('Excel exportado correctamente', { type: 'ok' });
 }
 
+/** Misma hoja del APU en PDF (carta vertical) vía jsPDF + autoTable, con números formateados con separador de miles. */
 export async function exportApuPdf(apu: Apu, ctx: ExportCtx): Promise<void> {
   const { jsPDF, autoTable } = await loadJspdf();
   const doc = new jsPDF({ orientation: 'portrait', format: 'letter' });

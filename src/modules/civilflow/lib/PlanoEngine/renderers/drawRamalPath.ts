@@ -1,6 +1,8 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { indiceFrame } from './frameIndex.ts';
 
+/** El cuerpo de una tubería en el plano: trazo con esquinas recortadas (arco en codos, inglete en 45°) y marcas de tangencia para los accesorios que van encima. */
+
 const PLAN_CODO_TYPES = [
   'codo90rc',
   'codo90rm',
@@ -88,6 +90,7 @@ export function planCodoCornerAt(
   return { arms: [arms[0], arms[1]], actualRad };
 }
 
+/** Datos de un quiebre recortado: puntos de tangencia (T_A/T_C) y perpendiculares, para que el glifo del accesorio tape exactamente el arco. */
 export interface ElbowInfo {
   T_A: { x: number; y: number };
   T_C: { x: number; y: number };
@@ -95,6 +98,7 @@ export interface ElbowInfo {
   perp_v: { x: number; y: number };
 }
 
+/** Opciones del trazo: marksOnly=true redibuja SOLO las marcas de codo (para restaurar el quiebre que un glifo blanco de accesorio tapó), sin el cuerpo. */
 export interface DrawRamalPathOpts {
   // Solo redibuja las marcas de codo de los quiebres interiores (arco/inglete + marcas T_A/T_C),
   // sin trazar el cuerpo de la tubería. Se usa para restaurar el símbolo de un quiebre que el
@@ -103,6 +107,7 @@ export interface DrawRamalPathOpts {
   marksOnly?: boolean;
 }
 
+/** Traza el cuerpo de la tubería (pts en px de plano) con esquinas redondeadas en codos, recorte en cajas y marcas de tangencia; devuelve los quiebres para los pintores de accesorios. */
 export function drawRamalPath(
   ctx: CanvasRenderingContext2D,
   pts: number[][],

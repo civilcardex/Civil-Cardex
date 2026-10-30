@@ -53,6 +53,9 @@ interface MiniApi {
   orthoOn: boolean;
 }
 
+/** Mini visor flotante del componente rci (Red Contra Incendio) seleccionado: escena propia con
+ *  el detalle (gabinete, rociador…) y botones de vista. Ej: clic en un componente -> aparece
+ *  abajo-derecha y el visor principal se corre a la derecha. */
 export default function MiniVisorRed({ titulo, detalle, onCerrar }: Props): React.JSX.Element {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

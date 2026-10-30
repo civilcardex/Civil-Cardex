@@ -1,4 +1,6 @@
-﻿import React from 'react';
+﻿/** Tarjeta contenedora genérica (borde, fondo, título opcional) de paneles y formularios.
+ *  Ej: las tarjetas de la pestaña Info son este componente con distinto título. */
+import React from 'react';
 
 interface CardProps {
   title?: string;

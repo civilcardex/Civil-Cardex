@@ -3,6 +3,7 @@ import { TRAZOS_PLAN_PREFIX, TRAZOS_PREFIX } from '../constants/storage-keys.ts'
 import { APARATOS_DEF } from '../constants';
 import { mapUdBombaDesdeTrazos } from './pumpInheritance';
 
+/** Un equipo de bomba en el proyecto: código, piso, red y sus UD (Unidades de Desague) heredadas. */
 export interface EquipoBomba {
   code: string;
   nivel: string;

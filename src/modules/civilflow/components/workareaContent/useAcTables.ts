@@ -1,3 +1,4 @@
+/** Tablas de memoria técnica para la red ac (Agua Caliente): UC (Unidades de Consumo), selección de calentadores y accesorios por ramal. Ej: con 2 duchas arma la tabla "Diseño de red agua caliente" con caudal y diámetro por tramo. */
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
 import type { MemoriaTable } from '../../utils/exportReportFinal.ts';

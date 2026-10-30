@@ -1,3 +1,4 @@
+/** Pestaña "Informe": resumen de cumplimiento del proyecto y descargas (memorias xlsx/docx/pdf, anexo de aparatos, planos de red), todo cancelable. Ej: "Memorias finales" en Excel arma un libro con las tablas de cada red activa y chequeada. */
 import { useMemo, useState, useRef } from 'react';
 import {
   generateMemoriaExcel,
@@ -110,6 +111,7 @@ const DL_BTN_STYLE: React.CSSProperties = {
   transition: 'filter .15s',
 };
 
+/** Cuerpo de la pestaña Informe: resumen (checks por red) + tarjetas de descarga con botones Cancelar. */
 export function InfTab({ state }: { state: WorkAreaState }) {
   const [memoriaFmt, setMemoriaFmt] = useState<'xlsx' | 'docx' | 'pdf'>('xlsx');
   const [memoriaBusy, setMemoriaBusy] = useState(false);

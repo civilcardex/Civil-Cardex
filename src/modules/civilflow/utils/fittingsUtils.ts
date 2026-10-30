@@ -29,9 +29,20 @@ function lookupInternoPulg(pulg: number, tabla: { pulg: number; dInt: number }[]
   return matches[matches.length - 1].dInt;
 }
 
+/** Diámetro interior (pulg) del tubo af (Agua Fría) para un nominal dado; null si no está en el catálogo. */
 export const lookupInterno = (pulg: number) => lookupInternoPulg(pulg, DIAMETROS_AF);
+/** Diámetro interior (pulg) del tubo ac (Agua Caliente) para un nominal dado; null si no está. */
 export const lookupInternoAC = (pulg: number) => lookupInternoPulg(pulg, DIAMETROS_AC);
 
+/**
+ * Longitud equivalente (m) de los accesorios de un tramo: cada accesorio "cuesta" como metros
+ * rectos de tubo (a·D + b, con D en pulgadas) y el factor k = (120/c)^1.85 lo lleva al material real.
+ * Ej: 2 codos 90 radio medio en 1" con c=120 -> 2·(0.67·1 + 0.09) = 1.52 m.
+ * @param accesorios conteo por id ('codo90rm': 2).
+ * @param diamPulg diámetro nominal del tramo en pulgadas.
+ * @param c rugosidad Hazen-Williams del material (120 PVC, 100 acero).
+ * @returns longitud equivalente total en m (los 'otros' cuentan su Le en metros tal cual).
+ */
 export function calcLeAcces(
   accesorios: Record<string, number>,
   diamPulg: number,

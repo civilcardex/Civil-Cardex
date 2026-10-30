@@ -24,6 +24,7 @@ function loadPersistedFactorSim(tramosAc: Tramo[]): number | null {
   return baj?.factorSim ?? null;
 }
 
+/** Tablas de la memoria para la selección de calentador de ac (Agua Caliente): aparatos con su UC (Unidades de Consumo), caudal probable (0.1163·UD^0.6875 LPS) ajustado por el factor de simultaneidad (%), y qué equipo del catálogo cumple. */
 export function computeHeaterSelectionTables(
   tramosAc: Tramo[],
   plans: PlanItem[],

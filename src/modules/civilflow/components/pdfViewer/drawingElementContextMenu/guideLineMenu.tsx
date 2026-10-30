@@ -1,4 +1,5 @@
-﻿import type { PlanoGuideLine, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
+﻿/** Menú contextual de la línea guía: rotar a 45°/90° según la red que cruza, ajustar automático, crear ramal/tributario desde la guía y voltear su dirección. Ej: clic derecho en una guía san → botón "45°" que rota el tramo al ángulo válido. */
+import type { PlanoGuideLine, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { NETS, allocNetNumber, uniqRamalId } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { checkRamalAngles, _firstSegmentAngle } from '../../../lib/PlanoEngine/drawingAngles.ts';
 import { calculateRamalLength } from '../../../lib/PlanoEngine/ramalMeasure.ts';

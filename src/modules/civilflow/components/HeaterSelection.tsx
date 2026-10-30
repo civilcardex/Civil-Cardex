@@ -1,3 +1,4 @@
+/** Selección de calentadores para ac (Agua Caliente): elige modelo del catálogo, lo estampa en el dibujo y recalcula el total de la red. Ej: 2 duchas + 1 lavadero -> el Q (Caudal) ac define el calentador de paso necesario. */
 import { useState, useMemo } from 'react';
 import { useTramos } from '../context/TramosContext.tsx';
 import { APARATOS_DEF } from '../constants';

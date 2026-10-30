@@ -4,13 +4,9 @@ import { renouardByType, qDisenoGas } from './gasUtils.ts';
 import { mapaPadresGas, acumuladosGas, claveGas, type GasTramoNeto } from './gasNetwork.ts';
 
 /**
- * Núcleo de cálculo de la red de gas (una sola cuenta para toda la app).
- *
- * Antes vivía duplicado en dos sitios: `checkRows` dentro de GasDesign.tsx (con los diámetros
- * y accesorios VIVOS de la pantalla) y `computeGasRows` en gasRows.ts (con lo que hay en
- * storage, para la tabla resumen). La fórmula es la misma; lo que cambia son las ENTRADAS,
- * así que aquí van por parámetro: cada pantalla dice de dónde saca el diámetro interior, los
- * accesorios y los factores.
+ * Núcleo de cálculo de la red de gas (Gas) — UNA sola cuenta para toda la app: la fórmula vivía
+ * duplicada en GasDesign (datos vivos) y gasRows (storage); aquí las ENTRADAS van por parámetro
+ * (diámetro interior, accesorios y factores los dice cada pantalla).
  */
 
 /** Tipos de accesorio que aportan longitud equivalente (Le, la longitud extra que representa
@@ -80,6 +76,7 @@ export interface FilaGasCalc {
   chequeo: string;
 }
 
+/** Entradas de calculaFilasGas: tramos, de dónde sacar diámetro/accesorios, aparatos propios, presión mínima y factores. */
 export interface EntradaCalculoGas {
   /** Tramos que participan en la red (los que quedan fuera no se cuentan). */
   tramos: TramoGasCalc[];

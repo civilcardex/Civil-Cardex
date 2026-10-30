@@ -7,6 +7,8 @@ import { sanearCanalLegacy, sanearEsCanalIdFaltante } from './channelAssociation
 import { cmToPlanePx } from './planoCoords.ts';
 import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
 
+/** Formato de guardado del dibujo completo de un piso (lo que viaja al storage y a la BD): escala, red activa y todas las colecciones de piezas. v=1 fija el esquema. */
+
 export interface PlanoWorkData {
   v: number;
   ts?: number;
@@ -184,6 +186,7 @@ export function mergeBajanteDedup<T>(base: T, previa: T): T {
   return (merged as T) || base;
 }
 
+/** Serializa el motor a PlanoWorkData para el autosave/BD: sin cachés de render (_labelBox, _circ) y con bajantes deduplicados por id|pisoBase (el id solo es único dentro de un piso). */
 export function serializeWork(engine: {
   scaleM: number;
   definedScaleM: number;
@@ -244,6 +247,7 @@ export function serializeWork(engine: {
   };
 }
 
+/** Carga un PlanoWorkData en el motor: reemplaza colecciones, escala, red activa y niveles npt (nivel de piso topografico), y re-vincula fantasmas entrepisos. */
 export function applyWorkData(
   engine: {
     scaleM: number;

@@ -1,3 +1,5 @@
+/** Pestaña de Información del área de trabajo: tarjetas de identificación, niveles (npt
+ *  (nivel de piso topográfico)), pisos, equipos activos y redes activas del proyecto. */
 import React from 'react';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import ProjectIdCard from './infoTab/ProjectIdCard.tsx';

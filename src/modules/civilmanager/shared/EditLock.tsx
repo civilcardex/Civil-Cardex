@@ -21,6 +21,7 @@ export function EditableSection({ children, dim = true }: { children: ReactNode;
   );
 }
 
+/** Lee el modo edición de la pestaña (true si no hay provider — fuera de una tabla todo es editable). Ej: una celda se deshabilita cuando useEditable() es false. */
 export function useEditable(): boolean {
   return useContext(EditLockCtx)?.editing ?? true;
 }

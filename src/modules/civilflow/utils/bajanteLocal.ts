@@ -12,12 +12,10 @@ export interface BajanteIdentificable {
 }
 
 /**
- * Primer bajante del PISO ABIERTO que cumple un filtro.
- *
+ * Primer bajante del PISO ABIERTO que cumple un filtro (fallback: el primero que lo cumpla).
  * @param eng motor del plano (con `nivelActual.label` y `bajantes`).
  * @param filtro predicado sobre el bajante.
- * @returns el bajante del piso abierto que cumple el filtro; si ninguno es del piso
- *   abierto, el primero que lo cumpla; si no hay ninguno, `undefined`.
+ * @returns el bajante del piso abierto; si no hay ninguno, `undefined`.
  */
 export function bajanteLocalQueCumple<T extends { id: string; pisoBase?: string }>(
   eng: { nivelActual?: { label?: string } | null; bajantes?: readonly T[] } | null | undefined,
@@ -31,12 +29,11 @@ export function bajanteLocalQueCumple<T extends { id: string; pisoBase?: string 
 }
 
 /**
- * Bajante vivo por id, prefiriendo el del PISO ABIERTO.
- *
- * @param eng motor del plano (con `nivelActual.label` y `bajantes`).
+ * Bajante vivo por id, prefiriendo el del PISO ABIERTO: el motor guarda proyecciones de otros
+ * pisos con el MISMO id y un `.find` plano devolvía la proyección (con su libro rancio).
+ * @param eng motor del plano.
  * @param id identificador del bajante.
- * @returns el bajante del piso abierto; si ninguno tiene ese `pisoBase`, el primero que
- *   coincida; si no hay ninguno, `undefined`.
+ * @returns el bajante del piso abierto; si no hay ninguno, `undefined`.
  */
 export function bajanteLocalDe<T extends { id: string; pisoBase?: string }>(
   eng: { nivelActual?: { label?: string } | null; bajantes?: readonly T[] } | null | undefined,
@@ -46,13 +43,12 @@ export function bajanteLocalDe<T extends { id: string; pisoBase?: string }>(
 }
 
 /**
- * Bajante de una LISTA (documento guardado) por id, prefiriendo la copia del piso dueño: el
- * doc también arrastra la proyección de otro piso con el MISMO id y un ucAplicado viejo, y
- * un find() plano escribía la herencia en la proyección dejando al real sin libro.
- * Ej: doc del Piso 1 con BAN1 real + proyección del Piso 2 → se elige el de `pisoBase 'Piso 1'`.
+ * Bajante de una LISTA (documento guardado) por id, prefiriendo la copia del piso dueño — el doc
+ * arrastra proyecciones con el MISMO id y escribir la herencia en la copia equivocada dejaba al
+ * real sin libro. Ej: doc del Piso 1 con BAN1 real + proyección del Piso 2 → gana `pisoBase 'Piso 1'`.
  * @param bajantes lista del documento.
  * @param id id a buscar (único solo por piso).
- * @param pisoLabel etiqueta del piso dueño (`pisoLbl(nivel)`); vacía = sin preferencia.
+ * @param pisoLabel etiqueta del piso dueño; vacía = sin preferencia.
  * @returns la copia del piso dueño; si no hay, la primera con ese id.
  */
 export function bajanteDePisoEn<T extends { id: string; pisoBase?: string }>(
@@ -67,11 +63,10 @@ export function bajanteDePisoEn<T extends { id: string; pisoBase?: string }>(
 }
 
 /**
- * Clave de identidad de un bajante: el id SOLO es único dentro de un piso (el dedup por id
- * conservaba la proyección de otro piso y el autosave subía su geometría a la BD).
+ * Clave de identidad de un bajante `id|pisoBase`: el id SOLO es único dentro de un piso (el dedup
+ * por id conservaba la proyección de otro piso y el autosave subía su geometría a la BD).
  * @param b bajante (o cualquier elemento con id y pisoBase).
- * @returns clave `id|pisoBase`; cadena vacía si el elemento no tiene id (entonces no
- *   colisiona con nada y se conserva cada copia).
+ * @returns la clave; cadena vacía si no tiene id (se conserva cada copia).
  */
 export function claveBajante(b: { id?: string; pisoBase?: string } | null | undefined): string {
   if (!b?.id) return ''; // sin id NO es una clave: se conserva cada copia (como dedupPorId)
@@ -80,9 +75,8 @@ export function claveBajante(b: { id?: string; pisoBase?: string } | null | unde
 
 /**
  * Dedup por clave de identidad (no solo por id), conservando la última copia.
- *
  * @param lista elementos a deduplicar.
- * @param clave función que devuelve la identidad única de cada elemento.
+ * @param clave identidad única de cada elemento (vacía = nunca colisiona).
  * @param merge combina la copia nueva con la previa cuando chocan.
  * @returns lista sin identidades repetidas.
  */

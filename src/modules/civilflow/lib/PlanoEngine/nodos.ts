@@ -11,6 +11,7 @@ import { pointToSegmentDist } from './HitTester.ts';
  *  conecta con nada). */
 export type ExtremoTipo = 'APARATO' | 'FUENTE' | 'NODO' | 'LIBRE';
 
+/** Un problema hallado en la revisión de la red: nivel error (rompe el diseño) o adv (advertencia), de qué tipo y en qué ramal. */
 export interface Incidencia {
   nivel: 'error' | 'adv';
   tipo: string;

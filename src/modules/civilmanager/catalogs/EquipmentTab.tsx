@@ -13,6 +13,7 @@ import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Equipo } from '../types.ts';
 
+/** Tab de equipos (máquinas con costo_hora): edita precio y proveedor, y marca en rojo la fecha de cotización con más de 180 días (isCotOld). */
 export function EquiposTab() {
   const { state, patch } = useCivilManager();
 

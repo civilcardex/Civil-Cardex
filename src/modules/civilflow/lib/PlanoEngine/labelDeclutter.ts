@@ -193,13 +193,7 @@ export function findFreeLabelCenter(
   return null;
 }
 
-/** Des-tapado con MEMORIA: el sitio elegido se guarda como DESPLAZAMIENTO en unidades del PLANO
- *  (pantalla ÷ zoom), que ni el paneo ni el zoom cambian, y se reutiliza mientras la geometría
- *  siga igual. Ej: mover la cámara o hacer zoom en un plano denso deja de repetir la espiral de
- *  12 anillos para cada etiqueta en cada frame — la mitad del costo del render (orig. usuario:
- *  paneo/zoom "trabado").
- *  @param clave - firma de la geometría: si cambia (un trazo se movió), el mapa arranca limpio.
- */
+/** Des-tapado con MEMORIA: el sitio elegido se guarda como desplazamiento en unidades del PLANO (ni paneo ni zoom lo cambian) y se reutiliza mientras la geometría siga igual — sin esto, cada frame repetía la espiral de 12 anillos por etiqueta (paneo "trabado"). @param clave - firma de la geometría: si cambia (un trazo se movió), el mapa arranca limpio. */
 export function desTapadoConMemoria(clave: string | number) {
   const off = new Map<string, { dx: number; dy: number } | null>();
   return {

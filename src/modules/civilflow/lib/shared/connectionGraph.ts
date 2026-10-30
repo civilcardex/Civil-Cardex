@@ -48,11 +48,7 @@ export function computeComponentTotals<T>(
   return componentTotalMap;
 }
 
-/** Total dirigido desde la fuente (contador/calentador): cada nodo suma su parcial + lo que cuelga debajo.
- *  @param tramos - tramos a acumular.
- *  @param getKey - clave única por tramo.
- *  @param adj - adyacencia no dirigida.
- *  @param getPartial - valor parcial por tramo.
+/** Total dirigido desde la fuente (contador/calentador): cada nodo suma su parcial + lo que cuelga debajo. Ej: RAF1 con 2 lavamanos y RAF2 colgado de él -> total de RAF2 incluye los de RAF1.
  *  @param rootKey - raíz (sin raíz válida cae al no dirigido).
  *  @returns mapa clave → total dirigido acumulado. */
 export function computeDirectedTotals<T>(

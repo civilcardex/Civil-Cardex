@@ -1,3 +1,5 @@
+/** Sección NTC 1500 (Norma Técnica Colombiana de instalaciones sanitarias): dotaciones por
+ *  aparato y kg UH de consulta. Ej: vivienda -> 120 L/hab·día y sus UD por aparato. */
 import {
   NTC1500_DOTACIONES,
   NTC1500_UC,

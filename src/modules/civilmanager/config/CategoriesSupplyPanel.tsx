@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { ListaItemPanel } from './ListItemPanel.tsx';
 
+/** Panel de categorías de insumo: agrupa los materiales del catálogo (ej: 'Cemento', 'Acero'); una categoría con insumos no se borra. */
 export function CategoriasInsumoPanel() {
   const { state, patch } = useCivilManager();
   const countUsage = useMemo(() => {

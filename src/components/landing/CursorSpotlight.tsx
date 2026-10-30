@@ -4,6 +4,7 @@ interface CursorSpotlightProps {
   containerRef: React.RefObject<HTMLElement>;
 }
 
+/** Halo que sigue al cursor dentro de la landing (efecto linterna sobre el plano). Se oculta en táctil o reduced-motion. */
 export default function CursorSpotlight({ containerRef }: CursorSpotlightProps) {
   const spotlightRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);

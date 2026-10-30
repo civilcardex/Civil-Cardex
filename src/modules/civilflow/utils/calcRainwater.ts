@@ -19,6 +19,7 @@ const CD_ORIFICIO = 0.6;
 const G_M_S2 = 9.81;
 const PULG_A_M = 0.0254;
 
+/** Resultado del chequeo del bajante de ll (Lluvias): Q exigido, D calculado y capacidad del propuesto con su cociente. */
 export interface ChequeoBajanteResult {
   /** Q (Caudal) de diseño (L/s): C·I·A/3600 — agua que cae (C coeficiente de escorrentía, I intensidad de lluvia, A área). */
   Q: number;
@@ -87,6 +88,7 @@ export function chequeoBajanteLluvia({
 /** Borde libre por defecto del canal de cubierta (cm): altura de seguridad que se deja sin agua antes de desbordar. */
 export const BORDE_LIBRE_CANAL_CM = 10;
 
+/** Resultado del chequeo del canal de cubierta: área efectiva, Q real vs capacidad Manning (formula de flujo en tuberia) y tirante normal. */
 export interface ChequeoCanalResult {
   /** Área efectiva (m²): cubierta + la mitad del muro vertical que también le llueve encima. */
   aEfectiva: number;
@@ -175,6 +177,7 @@ export function chequeoCanalLluvia({
   };
 }
 
+/** Resultado del chequeo de embocadura canal→bajante: Q que toca por bajante y altura de lámina requerida (m). */
 export interface EmbocaduraResult {
   /** Q (Caudal) que le toca a cada bajante (L/s) = Qreal / N bajantes. */
   QporBajante: number;

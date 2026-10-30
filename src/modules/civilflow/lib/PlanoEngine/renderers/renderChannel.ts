@@ -1,5 +1,7 @@
 import { NETS, type IPlanoEngineCore, type PlanoBajante } from '../PlanoState.ts';
 import { BORDE_LIBRE_CANAL_CM } from '../../../utils/calcRainwater.ts';
+
+/** Pintor del canal recolector de lluvias (ll, Red de Lluvias): rectángulo alargado con esquinas, flechas de entrega y su vista previa mientras se traza. */
 import { renderBajanteLabel } from './bajanteLabels.ts';
 import {
   canalMarco,

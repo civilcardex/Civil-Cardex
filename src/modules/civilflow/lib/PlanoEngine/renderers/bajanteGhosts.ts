@@ -12,15 +12,7 @@ import {
 /** Pinta las tuberías verticales "fantasma" de este piso (las que aparecen corridas o con otra
  *  dirección) con línea punteada y su etiqueta, para que se vea que son la misma tubería vista
  *  desde otro nivel. */
-/**
- * Direcci\u00f3n en la que la etiqueta del fantasma se separa de la del original.
- *
- * El fantasma es el ANILLO del bajante de otro piso: se dibuja donde est\u00e1 el padre, as\u00ed que
- * su etiqueta cae encima de la del original (el propio c\u00f3digo lo describe: "solo duplica la
- * etiqueta"). Aqu\u00ed se calcula la direcci\u00f3n para alejarla: si el original tiene etiqueta,
- * se va en sentido contrario (hacia el lado libre del anillo); si no, al lado (como antes).
- * @returns el vector unitario del offset.
- */
+/** Dirección en la que la etiqueta del fantasma (anillo del bajante de otro piso, dibujado donde está el padre) se separa de la del original: en sentido contrario si el original tiene etiqueta, al lado si no. @returns el vector unitario del offset. */
 export function direccionDeEtiquetaGhost(
   original: { labelX?: number; labelY?: number } | undefined,
   gx: number,
@@ -38,6 +30,7 @@ export function direccionDeEtiquetaGhost(
   return { x: dx / len, y: dy / len };
 }
 
+/** Pinta los marcadores entrepisos (XFG, fantasma entrepisos): anillo punteado + etiqueta del bajante que viene del piso de arriba, apartada de la del original para no pisarse. */
 export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const fg = engine.getBajantesFantasma();
   fg.forEach((b) => {

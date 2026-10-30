@@ -271,9 +271,7 @@ function PricingSuscripciones() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Página de planes (marketing) — rama por defecto con SUSCRIPCIONES_ACTIVAS off.
-// ---------------------------------------------------------------------------
+/** Página de planes (marketing): selección de módulos/puestos y periodo con totales calculados del catálogo; abre CheckoutModal. Sirve también como aterrizaje del retorno del checkout (?ref=). */
 function PricingPage() {
   usePageMeta(metaDeRuta('/pricing')?.title, metaDeRuta('/pricing')?.description);
   if (SUSCRIPCIONES_ACTIVAS) return <PricingSuscripciones />;

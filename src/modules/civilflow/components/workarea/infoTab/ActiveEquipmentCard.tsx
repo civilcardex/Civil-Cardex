@@ -1,3 +1,5 @@
+/** Tarjeta de equipos activos del proyecto (pestaña Info): bom (Bomba)/ep (Equipo de
+ *  Presión) instalados con acceso rápido a su pantalla de diseño. */
 import React, { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { REDES } from '../../../constants';

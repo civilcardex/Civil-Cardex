@@ -2,11 +2,9 @@ import { clearBajanteAssociation } from './bajanteAssociationClear.ts';
 import { bajanteDePisoEn, bajanteLocalDe as bajanteLocalCompartido } from './bajanteLocal.ts';
 import { splitPtr } from './keys.ts';
 import { esRedAparatosPresion, propagarAparatosPresion } from './propagation';
-// Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
-// siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
-// visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
-// crea el ramal de desvío Ldesvio (en el piso del source) solo cuando los dos no están ya
-// alineados.
+// Asociación ENTRE PISOS (apply): escribe AMBOS punteros (source.descargaEnId, target.origenId),
+// siempre crea el fantasma (confirmación visual permanente del enlace) y el ramal de desvío
+// Ldesvio solo cuando los dos no están ya alineados.
 import { writeBajantePropToDrawing } from './writeDiameterToDrawing.ts';
 import { writeSanDrawingSync, writeHydroDrawingSync } from './drawingSync.ts';
 import type { SyncPlanInput } from './drawingSync.ts';
@@ -77,14 +75,12 @@ function estamparCargaEnFantasma(
   }
 }
 
-/** Bajante vivo por id prefiriendo el del PISO ABIERTO: el motor tiene los bajantes de otros
- *  pisos que atraviesan esta altura (proyecciones con pisoBase ajeno y el MISMO id tras un
- *  renombre) — un find() plano podía traer la proyección con libro rancio (orig. usuario).
- *  Resolvedor compartido (utils/bajanteLocal) para que TODOS loslectores usen el mismo criterio. */
+/** Bajante vivo por id prefiriendo el del PISO ABIERTO (resolvedor compartido utils/bajanteLocal). */
 function bajanteLocalDe(eng: IPlanoEngineCore, id: string): PlanoBajante | undefined {
   return bajanteLocalCompartido(eng, id);
 }
 
+/** Aplica la asociación ENTRE PISOS source→target: escribe los dos punteros (descargaEnId/origenId), crea siempre el fantasma XFG en el piso del target y el LDesvio en el del source si no están alineados, y hereda la carga (UC/UD) por el libro ucAplicado. */
 export function applyBajanteAssociation(
   eng: IPlanoEngineCore,
   source: AssocEndpoint,

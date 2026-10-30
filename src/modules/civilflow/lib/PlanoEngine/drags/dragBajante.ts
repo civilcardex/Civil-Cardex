@@ -5,6 +5,8 @@ import { bumpBajanteToMaxRamal } from '../drawingUtils.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
 import { indexRamales, indexBajantes, refrescarTrazo, type DragCtx } from './dragContext.ts';
 
+/** Arrastres de tuberías verticales: el fantasma entrepisos (anillo de desplazamiento) y el bajante/montante completo (con reglas de conexión y topes mientras se mueve). */
+
 /** Arrastre del FANTASMA entrepisos (anillo de desplazamiento): SOLO actualiza el
  *  desplazamiento del piso — no toca ramales existentes salvo el Ldesvio explícito. */
 export function dragGhost(engine: IPlanoEngineCore, x: number, y: number): void {

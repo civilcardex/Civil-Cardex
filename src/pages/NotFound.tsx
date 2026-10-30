@@ -10,6 +10,7 @@ const NOTFOUND_JSONLD = {
   url: 'https://civilcardex.com/404',
 };
 
+/** Página 404 con JSON-LD propio, noindex y botón de vuelta al inicio. */
 export default function NotFound() {
   usePageMeta(
     'Página no encontrada',

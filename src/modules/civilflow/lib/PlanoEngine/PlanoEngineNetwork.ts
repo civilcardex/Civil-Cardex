@@ -10,6 +10,8 @@ export {
 } from './networkRenumber.ts';
 export { calcSanitaryAccessories, calcHydroAccessories } from './networkSanitary.ts';
 
+/** Operaciones de red del motor: visibilidad/bloqueo por red (NETS, catálogo de redes del motor), limpieza, padre de tributarios, detección automática de conexiones a bajantes y poda de referencias viejas. */
+
 /** Todas las tuberías, bajantes, areas y anotaciones de UNA red, en el formato que consumen las
  *  tablas de diseño (Identificador, longitud, nº de tramos, material, diámetro…). */
 export function getElementsByNet(
@@ -143,6 +145,7 @@ export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string | n
   engine.render();
 }
 
+/** El ramal elegido como padre del próximo tributario (el que setPadreTributario fijó), o null. */
 export function getPadreTributario(engine: IPlanoEngineCore): PlanoRamal | null {
   if (!engine.padreTributario) return null;
   return (engine.ramales.find((r) => r.id === engine.padreTributario) as PlanoRamal) || null;

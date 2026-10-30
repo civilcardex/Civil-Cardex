@@ -1,6 +1,8 @@
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState.ts';
 import { canalOBBEngine, canalToLocal, canalToWorld, puntoEnCanalOBB } from './channelGeometry';
 
+/** Consultas de canales de lluvia (ll, Red de Lluvias): quién está bajo el cursor, a cuál canal apunta un ramal y cómo mover esa asociación. Es la puerta única entre el mouse y la geometría del canal. */
+
 /** ¿El clic cayó dentro del rectángulo del canal? Devuelve 1 (distancia mínima, "sí, lo tocaste")
  *  o Infinity si cayó fuera. */
 export function canalRectHitDistance(b: PlanoBajante, x: number, y: number, padPx = 0): number {

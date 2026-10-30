@@ -1,18 +1,12 @@
 /**
- * Índices para quitar las búsquedas lineales dentro de bucles (guard G8).
- *
- * El patrón que más se repite en la app: dentro de un bucle sobre las piezas de un plano se
- * busca una pieza por id (`.find`), o se comprueba si algo ya está en una lista (`.includes`,
- * `.some`). Con un plano de 300 ramales eso son 300 × 300 comparaciones por cada render.
- *
- * Estos helpers construyen el índice UNA vez y lo reutilizan. No son cachés globales: el
- * índice se construye donde se usa, sobre los datos vivos de esa operación.
+ * Índices para quitar las búsquedas lineales dentro de bucles (guard G8): construyen el mapa UNA
+ * vez por operación sobre los datos vivos (300 ramales × 300 `.find` = 90 000 comparaciones por render).
  */
 
 /**
- * Índice id→pieza. El PRIMERO gana (como haría un `.find`).
- * @param piezas - las piezas a indexar.
- * @param clave - cómo sacar el id de cada pieza.
+ * Índice id→pieza: el PRIMERO gana (como haría un `.find`).
+ * @param piezas piezas a indexar.
+ * @param clave cómo sacar el id de cada pieza.
  * @returns mapa id→pieza.
  */
 export function indicePorId<T>(

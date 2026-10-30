@@ -17,6 +17,11 @@ if (!supabaseUrl || !supabaseKey) {
 // estado "guardando" para siempre, sin error visible ni forma de reintentar.
 const TIMEOUT_MS = 20_000;
 
+/**
+ * Cliente Supabase de la app (una sola instancia): RLS por auth.uid() hace el gating real y
+ * el fetch propio impone timeout de 20 s — sin él, una request colgada dejaba el estado
+ * "guardando" para siempre. Ej: supabase.rpc('save_proyecto', {...}).
+ */
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
   global: {
     fetch: (input, init = {}) => {

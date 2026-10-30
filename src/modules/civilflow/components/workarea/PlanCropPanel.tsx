@@ -1,3 +1,5 @@
+/** Panel de recorte del plano: define el recuadro visible del PDF (crop) que se persiste por
+ *  plano. Ej: recortar el margen blanco -> el visor encuadra solo la lámina útil. */
 import React, { useState, useCallback } from 'react';
 import { loadPlanCrop, savePlanCrop, type PlanCrop } from '../../utils/planoCrop.ts';
 import { PlanCropModal } from './planosTab/PlanCropModal.tsx';

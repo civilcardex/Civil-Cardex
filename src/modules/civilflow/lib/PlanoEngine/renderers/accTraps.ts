@@ -4,6 +4,7 @@ import { findFreeLabelCenter } from '../labelDeclutter.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { anchoTexto } from './measureText.ts';
 
+/** Sifón (trampa P en vista de planta: forma convencional, la caída real es perpendicular a la página) y su etiqueta Dn sin tapar otros trazos. true = dibujó algo. */
 export function drawSifonSymbol(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, outX, outY, rad, diamLabel, ramal, slot, declutter } = a;
   if (accType === 'sifon') {

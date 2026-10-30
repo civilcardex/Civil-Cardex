@@ -1,3 +1,4 @@
+/** Helpers del menú de ramal (pure utils): buscar el ramal vivo, punto sobre el cuerpo, interconexiones que vetan el flip y extremos entrelazados. Ej: "Invertir dirección" solo se ofrece si ramalHasInterconnections dice false. */
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState.ts';
@@ -13,8 +14,6 @@ export function ramalVivoDelPlanoCargado(
   return eng?.ramales.find((r) => r.id === id);
 }
 
-// ¿El punto p cae sobre el CUERPO (mitad de segmento) de pts? Excluye extremos (t<0.02/0.98),
-// que se validan por coincidencia de vértice aparte.
 /** ¿El punto cae sobre el CUERPO (mitad de segmento) de la polilínea? Excluye los extremos,
  *  que se validan aparte por coincidencia de vértice. */
 export function pointOnRamalBody(pts: number[][], p: number[], tol: number): boolean {
@@ -37,14 +36,10 @@ export function pointOnRamalBody(pts: number[][], p: number[], tol: number): boo
   return false;
 }
 
-// Un ramal que participa en cualquier unión con otros ramales no debe ver invertido su sentido
-// de flujo: invertir pts invalidaría cada extremo compartido, el vínculo con el tributario
-// padre, los glifos tee/yee de accMed en la unión y las asignaciones accesorioInicio/Fin de
-// los ramales conectados. "Interconexión" = comparte extremo con otro ramal, tiene tributarios
-// colgados, es él mismo tributario, o lleva marcadores de unión (accMed / cruces bilaterales /
-// pares de ids).
 /** ¿El ramal tiene interconexiones que impiden invertir su dirección? Comparte extremo con
- *  otro ramal, tiene tributarios colgados, es tributario o lleva marcadores de unión. */
+ *  otro ramal, tiene tributarios colgados, es tributario o lleva marcadores de unión —
+ *  invertir pts invalidaría extremos compartidos, el vínculo con el padre y los accesorios
+ *  de la unión. Ej: RAF1 con un tributario colgado → true (menú deshabilita "Invertir"). */
 export function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): boolean {
   if (!eng) return false;
   const TOL = 0.5;
@@ -102,9 +97,7 @@ export function flowTailEnd(endsAtStart: boolean, endsAtEnd: boolean): 0 | 1 | -
   return -1;
 }
 
-// ¿El extremo `epPt` del ramal está ENTRELAZADO con la red (otro ramal del mismo net o una
-// bajante/montante del mismo net en ese punto)? Cubre la unión en T por montante.
-/** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante NO fuente de la misma red en ese punto)? Las FUENTES nunca bloquean (orig. usuario). */
+/** ¿El extremo del ramal está entrelazado con la red (otro ramal o un bajante/montante NO fuente de la misma red en ese punto)? Las FUENTES nunca bloquean (orig. usuario). */
 export function extremumOccupied(
   eng: PlanoEngine | null,
   ramal: PlanoRamal,

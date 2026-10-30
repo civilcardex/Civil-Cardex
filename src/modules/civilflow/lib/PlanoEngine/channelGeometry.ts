@@ -1,5 +1,7 @@
 import type { IPlanoEngineCore } from './PlanoState.ts';
 
+/** Geometría de canales recolectores de lluvias (ll, Red de Lluvias): caja inclinada (OBB, bounding box orientado), tests de dentro/fuera y las 3 fases del trazo (eje, ancho, saneos). */
+
 /** Caja inclinada de un canal recolector de lluvias (ll): dónde arranca, cuánto mide de largo
  *  (longitud) y de ancho (base), en pixels de plano, y su inclinación. Sirve para responder
  *  "¿este punto cae dentro del canal?" aunque el canal esté torcido. */
@@ -200,6 +202,7 @@ export interface TrazoCanal {
   flujo: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
 }
 
+/** Cierra el trazo con el 3er clic: mide el ancho (baseCm, mínimo 1 cm) desde la perpendicular al eje y decide hacia dónde fluye el agua. Ej: clic a 40 cm del eje -> baseCm=40. */
 export function geometriaCanalAncho(
   eje: { x1: number; y1: number; x2: number; y2: number },
   p: { x: number; y: number },

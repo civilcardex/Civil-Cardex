@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { ListaItemPanel } from './ListItemPanel.tsx';
 
+/** Panel de unidades de transporte del APU (Análisis de Precios Unitarios) (ej: 'M3-Km', 'Global'); una usada en algún renglón de transporte no se borra. */
 export function UnidadesTransportePanel() {
   const { state, patch } = useCivilManager();
   const countUsage = useMemo(() => {

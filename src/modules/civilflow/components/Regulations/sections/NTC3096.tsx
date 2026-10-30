@@ -1,3 +1,5 @@
+/** Sección NTC 3096 (Norma Técnica Colombiana de vent (Ventilación sanitaria)): parámetros
+ *  de ventilación de consulta (dimensionado de rejillas y tuberías de ventilación). */
 import { NTC3096_PARAMS } from '../regulationsData.ts';
 
 export function NTC3096() {

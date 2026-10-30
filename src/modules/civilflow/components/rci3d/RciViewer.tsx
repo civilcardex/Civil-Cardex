@@ -1,3 +1,5 @@
+/** Visor 3D de rci (Red Contra Incendio): escena three.js con la red armada y su sidebar de
+ *  catálogo. Ej: añadir un gabinete desde el sidebar -> aparece en la escena. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import RciSidebar from './RciSidebar.tsx';
 import { COMPONENTS, RCI_MONO } from './rci3dData.ts';

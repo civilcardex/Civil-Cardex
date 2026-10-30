@@ -41,6 +41,7 @@ function CanalNumField({
   );
 }
 
+/** Editor del canal ll (Lluvias) seleccionado: dimensiones (base/altura/longitud/pendiente), materiales de canal y cubierta, y sus ramales con el bajante que recibe cada uno. */
 export function CanalTramoEditor() {
   const { selElement: rawSelElement, handleUpdateSel, engineRef } = useTramoEditorContext();
   // Intensidad vive en los overrides del RainwaterContext (no en el glifo) — acceso

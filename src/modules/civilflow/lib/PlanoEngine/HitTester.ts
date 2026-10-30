@@ -1,5 +1,7 @@
 import { distToSegment } from '../shared/geometry.ts';
 
+/** Primitivas de hit-test (¿bajo qué cayó el clic?): puntos en polígonos, cajas de etiqueta giradas, distancias a segmentos y vértices de accesorios. Son las reglas de "qué se puede agarrar" del plano. */
+
 interface Codo {
   actualRad: number;
   T_A: { x: number; y: number };

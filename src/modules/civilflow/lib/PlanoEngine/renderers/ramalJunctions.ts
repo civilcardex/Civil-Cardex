@@ -4,13 +4,7 @@ import { drawRamalPath } from './drawRamalPath.ts';
 import { pickTeeBranchDir } from './teeUtils.ts';
 import type { DeclutterFrame } from '../labelDeclutter.ts';
 
-/**
- * Glifos de EXTREMO de ramal (tee, codo, tapón, llave, sifón/receptor) en su propio pase,
- * DESPUÉS de que el trazo de todos los ramales ya está pintado — si no, la línea de un ramal
- * iterado después tapa el símbolo de un ramal anterior en el mismo punto. El codo de plano en
- * esquina L dibuja arco (drawCornerCodoArc); los verticales conservan su disco y redibujan las
- * marcas del quiebre. Ej: un teeTapon en el fin de RS1 se estampa sobre el trazo ya pintado.
- */
+/** Glifos de EXTREMO de ramal (tee, codo, tapón, sifón...) en su propio pase DESPUÉS de los trazos — así la línea de un ramal posterior ya no tapa el símbolo de uno anterior. Ej: el teeTapon del fin de RS1 se estampa sobre el trazo ya pintado. */
 export function pintaAccesoriosExtremos(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,

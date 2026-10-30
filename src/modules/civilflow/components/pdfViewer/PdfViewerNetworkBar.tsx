@@ -1,3 +1,4 @@
+/** Barra superior de redes del visor: chip por red (af/san/ll...) para activarla, ocultarla (ojo) o bloquearla (candado), más la escala y el botón de cerrar dibujo. Ej: clic en "Sanitaria" la vuelve la red activa de dibujo. */
 import type { PlanoNet } from '../../lib/PlanoEngine/PlanoState.ts';
 
 const PdfViewerNetworkBar_S1: React.CSSProperties = {

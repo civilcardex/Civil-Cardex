@@ -10,6 +10,7 @@ import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Proveedor } from '../types.ts';
 
+/** Tab de proveedores: contacto/nit/teléfonos y los tipos de suministro que manejan. Se borra solo si ningún equipo o insumo los referencia. */
 export function ProveedoresTab() {
   const { state, patch } = useCivilManager();
 

@@ -15,8 +15,6 @@ import type {
   RamalSyncObj,
   SyncDataResult,
 } from './drawingSyncTypes.ts';
-// Constructores del SyncDataResult: ruta prefijada (planes nuevos) y legacy sin prefijo.
-// Extraídos verbatim de drawingSync.
 
 function collectAparatos(out: SyncDataResult) {
   const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
@@ -35,6 +33,7 @@ function inferNivelFromDrawing(data: TraceData): string {
   return '0';
 }
 
+/** Arma el SyncDataResult leyendo los trazos de CADA plano desde storage: ruta prefijada (claves `fam_id_plan`, planes nuevos). No es puro: lee localStorage. */
 export function buildPrefixedSyncData(
   plans: SyncPlanInput[],
   families: Set<string>,
@@ -137,6 +136,7 @@ export function buildPrefixedSyncData(
   return out;
 }
 
+/** Arma el SyncDataResult para planos LEGADOS sin prefijo de plano en las claves (formato viejo del sync sanitario). Lee localStorage. */
 export function buildNonPrefixedSyncData(
   plans: SyncPlanInput[],
   families: Set<string>,

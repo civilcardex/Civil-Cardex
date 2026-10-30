@@ -5,12 +5,7 @@ import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { showToast } from '../shared/Toast.tsx';
 import { CrudFooter } from '../shared/CrudFooter.tsx';
-import {
-  DimEnLectura,
-  EditableSection,
-  TableHeader,
-  useEditable,
-} from '../shared/EditLock.tsx';
+import { DimEnLectura, EditableSection, TableHeader, useEditable } from '../shared/EditLock.tsx';
 
 import { ActionIcon } from '../shared/icons.tsx';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
@@ -18,6 +13,7 @@ import { ApuEditor } from './ApuEditor';
 import { exportApuExcel, exportApuPdf } from './apuExport.ts';
 import type { Apu } from '../types.ts';
 
+/** Tab de catálogo APU (Análisis de Precios Unitarios): lista de análisis con buscar/agregar/borrar y export Excel/PDF por fila. Ej: 'Excavación m³' con su costo_unitario calculado en vivo. */
 export function ApuCatalog() {
   const { state, patch, cargosCalc, esHora, apuCalcMap, apusBasicoCalc } = useCivilManager();
   const editable = useEditable();

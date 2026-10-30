@@ -1,3 +1,4 @@
+/** Panel de asociación entre pisos del bajante/montante seleccionado: hacia dónde descarga (piso inferior) y de quién recibe (piso superior), con aviso de desalineación; para una bomba muestra su sección de bajantes asociadas. Ej: BAN2-P1 → "Destino: BAN1-P0". */
 import React from 'react';
 import { splitPtr } from '../../utils/keys.ts';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing.ts';

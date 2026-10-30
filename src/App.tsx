@@ -64,6 +64,7 @@ function ScrollToTop() {
   return null;
 }
 
+/** Tabla de rutas de toda la app: públicas estáticas, privadas lazy tras ProtectedRoute + ErrorBoundary por ruta y áreas gated por RequireModule. Ej: /civilflowareatrabajo exige sesión y asiento de 'flow'. */
 function App() {
   return (
     <AuthProvider>

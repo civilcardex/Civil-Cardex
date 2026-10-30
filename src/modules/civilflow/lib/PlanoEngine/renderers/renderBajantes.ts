@@ -14,6 +14,7 @@ import { indicesDeMotor } from '../engineIndices';
 export { renderCanalGhost } from './renderChannel.ts';
 export { renderGhosts, renderCrossFloorGhosts } from './bajanteGhosts.ts';
 
+/** Pinta bajantes y montantes del piso (círculo con su etiqueta D y dirección) y delega los canales a su glifo de rectángulo. */
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   // Índices id→pieza: el render busca el ramal/bajante destino por id para CADA bajante
   // (era O(bajantes × piezas) en cada cuadro dibujado).

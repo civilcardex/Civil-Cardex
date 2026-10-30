@@ -1,3 +1,5 @@
+/** Modal de primera calibración: al abrir un plano sin escala known, guía al usuario a fijar
+ *  scaleM (escala metros por pixel). Ej: medir una puerta de 0.9 m -> todo el dibujo queda en m. */
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 

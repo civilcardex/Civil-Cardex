@@ -1,3 +1,6 @@
+/** Consulta normativa por país: NTC (Norma Técnica Colombiana), RAS (Reglamento de Agua y
+ *  Saneamiento), NSR (Norma Sismo Resistente), NFPA13 y tablas de referencia, filtradas por el
+ *  país del proyecto. Ej: proyecto en Colombia -> acordeón RAS/NTC; en Perú -> solo genéricas. */
 import { useState, type ReactNode, type Key } from 'react';
 import { useProject } from '../../context/ProjectContext.tsx';
 import { FILTROS_NORM, CRIT0 } from '../../constants';

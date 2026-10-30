@@ -1,3 +1,5 @@
+/** Sidebar del visor 3D de aparatos sanitarios: lista de componentes del catálogo con su
+ *  descripción para montarlos en la escena. Ej: elegir «inodoro» -> aparece en el visor 3D. */
 import { COMPONENTS, COMP_DESC } from './aparatos3dData.ts';
 import { MONO_3D } from '../shared/config3d';
 import { NormaLink, NormaTxt } from '../shared/standardsLinks.tsx';

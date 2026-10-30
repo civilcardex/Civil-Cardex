@@ -1,3 +1,4 @@
+/** Panel "Copiar desde otro plano": elige piso origen, tipos de elemento (ramales, bajantes...) y trae el dibujo al piso actual. Ej: replicar la red af (Agua Fria) del Piso 1 en el Piso 2 con un clic, sin redibujar. */
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { devError } from '../../../../utils/devError.ts';

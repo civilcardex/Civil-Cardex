@@ -1,3 +1,4 @@
+/** Editor en panel derecho del bajante/montante real seleccionado: diámetro, altura H de montante, llenado/área en ll (Lluvias), dirección y ramales asociados; delega en el editor fantasma si la selección es XFG. */
 import { DIAM_VENT } from '../../../constants';
 import { opcionesDiametroElemento } from '../drawingElementContextMenu/diameterSelector.tsx';
 import { MATERIALES_CUBIERTA_LL } from '../../../constants/engineeringDataMaterials.ts';

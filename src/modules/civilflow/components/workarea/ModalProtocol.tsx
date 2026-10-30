@@ -1,3 +1,5 @@
+/** Modal de protocolo de calibración: pasos guiados (clic en 2 puntos + medida real) para
+ *  fijar scaleM (escala metros por pixel) del plano activo. */
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 const ModalProtocolo_S1: React.CSSProperties = {

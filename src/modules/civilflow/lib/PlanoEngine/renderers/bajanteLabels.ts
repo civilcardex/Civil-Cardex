@@ -3,6 +3,8 @@ import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
 import type { CrossFloorGhost } from '../../../utils/associateBajanteAcrossFloors';
 import { anchoTexto } from './measureText.ts';
 
+/** Cartelitos de bajantes/montantes: texto por red (D=, dirección Sube/Baja/Continua), caja con fondo y el símbolo de dirección. */
+
 /** La dirección del bajante con la primera letra en mayúscula, para mostrarla: Sube / Baja /
  *  Continua. */
 export const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };

@@ -75,6 +75,9 @@ interface IsometriaToolbarProps {
   exportPng: () => void;
 }
 
+/** Barra de herramientas de la isometría: chips de redes activas, selector de pisos visibles,
+ *  rotaciones/escala Z, zoom y exportación PDF/PNG. Ej: ocultar el piso 2 -> sus ramales salen
+ *  de la escena sin borrar nada del dibujo. */
 export default function IsometriaToolbar({
   nets,
   activeNets,

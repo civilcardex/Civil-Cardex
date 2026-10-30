@@ -1,3 +1,4 @@
+/** Modal de confirmación genérico del visor (borrar elemento, limpiar red...): título, mensaje y botón que ejecuta la acción. Ej: "¿Eliminar todo el trazado de la red activa?" en rojo cuando la acción destructiva. */
 import React, { useEffect, useRef } from 'react';
 const ConfirmDialog_S1: React.CSSProperties = {
   background: 'var(--bg2)',

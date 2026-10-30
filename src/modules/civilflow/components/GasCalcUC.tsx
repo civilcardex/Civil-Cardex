@@ -1,3 +1,6 @@
+/** Tabla de Q (Caudal) de gas por ramal en m³/h: suma de aparatos con su caudal y factor de
+ *  simultaneidad, base del dimensionamiento por Renouard (fórmula de pérdida en gas).
+ *  Ej: RG1 con 2 estufas + 1 calentador -> Q del ramal y su diámetro propuesto. */
 import React, { useMemo } from 'react';
 import { usePlans } from '../context/PlansContext.tsx';
 import { loadFromStorage } from '../services/storageService.ts';

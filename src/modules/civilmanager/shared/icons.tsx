@@ -1,3 +1,4 @@
+/** Nombres válidos de ícono de navegación (uno por archivo svg en public/iconos_civilmanager/). */
 export type NavIconName =
   | 'catalogos'
   | 'apus'

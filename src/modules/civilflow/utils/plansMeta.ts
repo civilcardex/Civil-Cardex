@@ -32,7 +32,7 @@ export function leerPlansMeta(): PlanMeta[] {
 }
 
 /**
- * \u00bfEste plano está calibrado (tiene origen)? Lo usan el visor y el cargador de trazos.
+ * ¿Este plano está calibrado (tiene origen)? Lo usan el visor y el cargador de trazos.
  * @param meta - el `plans_meta` ya leído.
  * @param planId - el plano a preguntar.
  */

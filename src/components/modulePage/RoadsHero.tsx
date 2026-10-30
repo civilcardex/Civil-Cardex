@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { ModuleConfig } from '../../pages/moduleData.ts';
 
+/** Hero de la página del módulo Vías: H1 + CTAs y panel de métricas en vivo (mock decorativo) con el acento del módulo. */
 export default function RoadsHero({ cfg }: { cfg: ModuleConfig }) {
   return (
     <section

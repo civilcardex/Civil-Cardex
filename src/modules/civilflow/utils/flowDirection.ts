@@ -33,6 +33,16 @@ export function resolveJunctionEntrant(
   return existing.id;
 }
 
+/**
+ * ¿La unión tiene al menos una pierna SALIENTE (flujo que sale del punto)?
+ * Un ramal cuyo origen de flujo (o cuyo cuerpo que pasa de largo) queda en pt cuenta como salida.
+ * Ej: T con 3 ramales y 2 destinos de flujo en pt -> true (queda una salida).
+ * @param ramales ramales de la misma red.
+ * @param net código de red ('af', 'ac', 'gas'...).
+ * @param pt punto de la unión (px del lienzo).
+ * @param tol tolerancia de contacto en px.
+ * @returns true si hay salida o si la unión toca menos de 2 ramales (aún no aplica la regla).
+ */
 export function junctionHasOutgoingFlow(
   ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed'>[],
   net: string,
@@ -80,12 +90,11 @@ export function junctionHasOutgoingFlow(
   return hasOutgoing;
 }
 
-/** Regla de unión con tributario en af (Agua Fria)/ac (Agua Caliente)/gas (Gas) (exige una entrada exacta).
- *  @param ramales - ramales del mismo net.
- *  @param net - red a validar ('af' | 'ac' | 'gas').
- *  @param pt - punto de la unión.
- *  @param tol - tolerancia en px.
- *  @returns true si respeta la regla (o no aplica). */
+/** Ramales vecinos DIRECTOS de uno dado: misma red y con un extremo tocando un extremo del ramal.
+ *  @param ramales todos los ramales del plano.
+ *  @param ramal el ramal cuyo vecindario se busca.
+ *  @param tol tolerancia de contacto en px.
+ *  @returns los ramales que comparten extremo con él (sin contarlo). */
 export function directNeighborRamales(
   ramales: Pick<PlanoRamal, 'id' | 'net' | 'pts'>[],
   ramal: Pick<PlanoRamal, 'id' | 'net' | 'pts'>,
@@ -107,6 +116,15 @@ export function directNeighborRamales(
   );
 }
 
+/**
+ * ¿La unión tiene al menos una ENTRADA (flujo que llega al punto)?
+ * Espejo de junctionHasOutgoingFlow: cuenta el destino de flujo (o cuerpo que pasa) sobre pt.
+ * @param ramales ramales de la misma red.
+ * @param net código de red ('af', 'ac', 'gas'...).
+ * @param pt punto de la unión (px del lienzo).
+ * @param tol tolerancia de contacto en px.
+ * @returns true si hay entrada o si la unión toca menos de 2 ramales (aún no aplica la regla).
+ */
 export function junctionHasIncomingFlow(
   ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed'>[],
   net: string,
@@ -150,6 +168,16 @@ export function junctionHasIncomingFlow(
   return hasIncoming;
 }
 
+/**
+ * ¿La unión con tributario respeta la dirección (af (Agua Fria)/ac (Agua Caliente)/gas (Gas))?
+ * Con tributario presente exige EXACTAMENTE una entrada y al menos una salida; sin tributario
+ * cae a la regla general de salida. Ej: 2 entradas + 1 salida con trib -> false.
+ * @param ramales ramales de la misma red.
+ * @param net código de red.
+ * @param pt punto de la unión (px del lienzo).
+ * @param tol tolerancia de contacto en px.
+ * @returns true si respeta la regla (o no aplica).
+ */
 export function junctionRespectsTributarioDirection(
   ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed' | 'tipo'>[],
   net: string,

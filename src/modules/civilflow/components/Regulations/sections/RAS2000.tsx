@@ -1,3 +1,5 @@
+/** Sección RAS 2000 (Reglamento de Agua y Saneamiento de Colombia): dotaciones y fórmulas de
+ *  consulta por estrato. Ej: estrato 4 -> 150 L/hab·día para el diseño af (Agua Fría). */
 import {
   RAS2000_DOTACIONES,
   RAS2000_VELOCIDADES,

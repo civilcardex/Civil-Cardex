@@ -1,3 +1,5 @@
+/** Sección NFPA 13 (norma de rci (Red Contra Incendio)): riesgos, densidades y tipos de
+ *  rociador de consulta. Ej: riesgo ligero 4.1 L/min·m² -> referencia para el diseño. */
 import { NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES } from '../regulationsData.ts';
 import { subHeadingStyle as h4 } from '../shared.tsx';
 

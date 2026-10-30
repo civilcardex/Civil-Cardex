@@ -9,6 +9,7 @@ interface Props {
   onUpdate: (patch: Partial<Presupuesto>) => void;
 }
 
+/** Sub-pestaña 'Resumen AIU' (Administración, Imprevistos, Utilidad): % globales con posibilidad de override propio del presupuesto y los 6 totales (costo directo, adm, imp, uti, IVA de la utilidad, total). */
 export function ResumenPanel({ pres, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const editable = useEditable();

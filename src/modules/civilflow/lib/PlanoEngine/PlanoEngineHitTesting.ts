@@ -2,6 +2,9 @@ import type { IPlanoEngineCore, PlanoElement } from './PlanoState.ts';
 import { canalRectHitDistance } from './channelAssociation';
 import { pointInLabelBox, pointInPoly, pointOnAnyBodySegment } from './HitTester.ts';
 
+/** Hit-test del clic derecho: fantasma desplazado > contador > bajante/montante > canal > cuerpo y extremos de ramal, prioridad en ese orden. Responde QUÉ hay bajo el cursor para abrir el menú contextual correcto. */
+
+/** Qué encontró el clic derecho: el elemento, si fue sobre su fantasma entrepisos y si cayó en un punto medio del ramal (para insertar vértice). */
 export interface ContextMenuHitResult {
   element: PlanoElement;
   isGhostClick: boolean;
@@ -12,6 +15,7 @@ export interface ContextMenuHitResult {
   clientY: number;
 }
 
+/** Reparte el clic derecho del lienzo entre los candidatos (fantasma con desplazamiento, contador, bajante, canal, cuerpo/extremo de ramal) y devuelve el ganador con la posición del mouse para anclar el menú. */
 export function hitTestRightClick(
   engine: IPlanoEngineCore,
   x: number,
@@ -211,6 +215,7 @@ export function hitTestRightClick(
   return null;
 }
 
+/** ¿El clic cayó sobre la ETIQUETA del bajante seleccionado? Devuelve su id y el desfase (offX/offY, en px) entre el cursor y la etiqueta para arrastrarla sin salto. */
 export function hitTestBajanteLabelForDrag(
   engine: IPlanoEngineCore,
   x: number,

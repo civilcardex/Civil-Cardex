@@ -132,6 +132,7 @@ function FadeIn({
   );
 }
 
+/** Landing pública (hero con typewriter, módulos, docs, precios resumidos): contenido estático prerenderizado y animaciones de cliente encima. */
 function LandingPage() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   // SEO: en prerender nace listo (el HTML trae el hero, no el skeleton). En cliente,

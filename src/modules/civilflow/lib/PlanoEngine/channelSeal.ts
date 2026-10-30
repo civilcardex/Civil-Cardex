@@ -1,6 +1,8 @@
 import type { IPlanoEngineCore } from './PlanoState.ts';
 import { canalOBBDe, puntoEnCanalOBB, pxPerCmDe } from './channelGeometry';
 
+/** Sello automático canal↔bajante de lluvias (ll, Red de Lluvias): al cargar el plano marca los puentes canal-bajante y recuerda qué desmarcó el usuario (vetos) para no volver a marcarlo. */
+
 /** Memoria del enlace canal↔bajante de cada piso: qué ramales ya quedaron sellados como
  *  ramal-de-canal y qué pares quedan vetados (para no marcar dos veces lo mismo). */
 export interface SelloCanalEstado {

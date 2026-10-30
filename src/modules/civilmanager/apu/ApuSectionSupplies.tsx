@@ -14,6 +14,7 @@ interface Props {
 // Identidad perezosa de fila: se asigna una vez al objeto (viaja en el jsonb persistido) y
 // sobrevive a inserciones/borrados — key={i} desalineaba inputs al eliminar una fila previa.
 
+/** Sección C del APU (Análisis de Precios Unitarios): insumos con consumo y % de desperdicio; los 'Preparado en obra' toman el costo de su APU básico. Ej: cemento 0.35 bultos con 5 % de desperdicio. */
 export function ApuSeccionInsumos({ apu, onChange }: Props) {
   const { state, apusBasicoCalc } = useCivilManager();
   const insMap = new Map(state.insumos.map((x) => [x.id, x]));

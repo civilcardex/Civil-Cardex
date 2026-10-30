@@ -1,3 +1,6 @@
+/** Tabla de bajantes (columnas verticales san (Sanitaria)/ll (Lluvias)): UD (Unidades de
+ *  Desague) acumuladas, diámetro y aportes por bajante en un solo lugar.
+ *  Ej: BAN1 con 12 UD -> fila con su diámetro por Hunter (método de probabilidad de uso simultáneo). */
 import { memo, useMemo, useState, useEffect } from 'react';
 import { leerDocDePlan } from '../utils/readPlanDrawing.ts';
 import EditButton from './shared/EditButton.tsx';

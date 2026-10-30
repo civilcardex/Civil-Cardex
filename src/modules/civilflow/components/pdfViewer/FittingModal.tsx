@@ -1,3 +1,4 @@
+/** Modal donde se escoge el accesorio que nace en una unión de ramal (tee, codo, sifón... según la red). Ej: dibujas una derivación en RAF1 → aquí eliges "Tee 90" y el motor la coloca en ese punto. */
 import { useEffect, useRef, useState } from 'react';
 import { MONO_3D } from '../shared/config3d';
 import { ACCESORIOS_HIDRO, ACCESORIOS_YEE, GAS_ACCESORIOS, SAN_ACCESORIOS } from '../../constants';

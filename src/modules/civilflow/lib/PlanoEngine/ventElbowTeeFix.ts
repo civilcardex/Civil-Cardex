@@ -1,5 +1,7 @@
 import type { IPlanoEngineCore } from './PlanoState.ts';
 
+/** Cuando un punto de unión se vuelve una T (3+ tuberías), el codo que ahí quedó sobra: se detecta y se limpia para que la T geométrica tome el lugar. */
+
 function sameNet(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
@@ -38,11 +40,13 @@ function collectVectorsAtPoint(
   return uniq;
 }
 
+/** ¿Hay una T en el punto? Cuenta direcciones distintas de tuberías que tocan (3+ = T). */
 export function hasTeeAtPoint(engine: IPlanoEngineCore, pt: number[], net: string): boolean {
   const vecs = collectVectorsAtPoint(engine, pt, net);
   return vecs.length >= 3;
 }
 
+/** Borra los codos (accMed y de extremo) que quedaron en puntos que hoy son una T: la T geométrica de renderJunctions los reemplaza. */
 export function fixVentCodoToTee(engine: IPlanoEngineCore): void {
   // Cualquier red: un codo (Q90) en un punto que ahora es T (3+ vectores) debe desaparecer — solo queda T.
   // Para vent/san es geométrico (renderJunctions dibuja T); para AF/AC/Gas limpia el Q90 para que el modal de T pueda abrirse (N6).

@@ -1,3 +1,7 @@
+/** Libros de aparatos en storage: conteo maestro por tramo (UC (Unidades de Consumo)/UD
+ *  (Unidades de Desague)), fichas hidráulicas, accesorios gas y las fotos de lo propio de los
+ *  espejos entre pisos. La puerta única que paneles, tablas y propagación consultan.
+ *  Ej: loadAll()["af_RAF1_7"] -> { lav: 2 } (2 lavamanos en RAF1 del plano 7). */
 import { NETS } from '../lib/PlanoEngine/PlanoState.ts';
 import { APARATOS_DEF, UD_BASE_INIT, AF_UC_IDS, AC_UC_IDS } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';

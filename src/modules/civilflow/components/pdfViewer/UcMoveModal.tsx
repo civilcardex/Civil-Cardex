@@ -1,3 +1,4 @@
+/** Modal "mover UC (Unidades de Consumo)": lista las redes destino válidas para trasladar la carga de aparatos al invertir un ramal. Ej: invertir RAF1 pregunta a qué ramal vecino van las 2 UC de lavamanos. */
 import { useEffect, useRef, useState } from 'react';
 import { MONO_3D } from '../shared/config3d';
 import { createPortal } from 'react-dom';

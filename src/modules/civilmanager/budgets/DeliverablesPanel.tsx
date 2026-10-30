@@ -23,6 +23,7 @@ function buildItemRows(
   });
 }
 
+/** Sub-pestaña 'Entregables' del presupuesto: export de los ítems (con su valor AIU (Administración, Imprevistos, Utilidad) calculado) a Excel y PDF para el cliente. */
 export function EntregablesPanel({ pres }: Props) {
   const { state, apuCalcMap } = useCivilManager();
 

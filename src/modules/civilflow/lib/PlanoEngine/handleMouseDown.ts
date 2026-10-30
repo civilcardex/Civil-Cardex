@@ -21,6 +21,7 @@ import { _trySelBajanteDrag, _trySelDimDrag, _trySelRamalDrag } from './mouseDow
 
 export { collectConnectedGraph } from './mouseDownDrags.ts';
 
+/** Primer clic con la herramienta sel: reparte el golpe entre etiquetas de bajante, fantasmas, cotas, guías, textos, áreas, vértices/extremos de ramal y cuerpos — con prioridad fija; activa el arrastre que corresponda. */
 export function handleSelectDown(
   engine: IPlanoEngineCore,
   x: number,

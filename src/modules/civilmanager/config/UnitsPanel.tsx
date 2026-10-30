@@ -8,6 +8,7 @@ import { useEditable } from '../shared/EditLock.tsx';
 import { TIPOS_UNIDAD_PRE } from '../seedData.ts';
 import type { UnidadMedida } from '../types.ts';
 
+/** Panel de unidades de medida del catálogo (m, m³, gl, und…) con su tipo predefinido para agrupar (longitud, volumen, unidad…). */
 export function UnidadesPanel() {
   const { state, patch } = useCivilManager();
   const [editIdx, setEditIdxState] = useState<number | null>(null);

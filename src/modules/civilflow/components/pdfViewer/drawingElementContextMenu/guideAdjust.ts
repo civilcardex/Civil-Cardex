@@ -1,3 +1,4 @@
+/** Acciones de la guía sobre el ramal que cruza: auto-ajuste (recorte en el cruce), creación de tributario desde guía y accesorio de la unión resultante. Ej: "Ajustar automático" parte RAF1 donde la guía lo toca y crea el tributario T1RAF1. */
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type {
   PlanoElement,

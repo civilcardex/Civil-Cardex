@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { ListaItemPanel } from './ListItemPanel.tsx';
 
+/** Panel de orígenes de insumo (ej: 'Comprado', 'Preparado en obra'); uno con insumos asociados no se borra. */
 export function OrigenesPanel() {
   const { state, patch } = useCivilManager();
   const countUsage = useMemo(() => {

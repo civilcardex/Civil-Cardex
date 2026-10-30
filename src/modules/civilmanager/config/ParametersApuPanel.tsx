@@ -28,6 +28,7 @@ function Field({
   );
 }
 
+/** Panel 'Parámetros APU' (Análisis de Precios Unitarios): salario base, % de AIU (Administración, Imprevistos, Utilidad), herramienta menor y días/horas del mes — los números que gobiernan todos los cálculos. */
 export function ParametrosApuPanel() {
   const { state, patch } = useCivilManager();
   const editable = useEditable();

@@ -1,3 +1,4 @@
+/** Tablas de memoria técnica para la red ll (Lluvias): diseño de ramales, bajantes y canal recolectora de cubierta. Ej: un canal de 8 m con 60 m2 de techo sale con su caudal, base/altura y chequeo de borde libre. */
 import { useMemo } from 'react';
 import { f2 } from './tableHelpers.ts';
 import type { MemoriaTable } from '../../utils/exportReportFinal.ts';

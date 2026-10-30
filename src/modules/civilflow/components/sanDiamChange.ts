@@ -1,3 +1,6 @@
+/** Cambio de diámetro sanitario desde la tabla: valida (mínimo del inodoro, mayor hijo que
+ *  descarga, accesorio mayor) y propaga el mayor aguas abajo.
+ *  Ej: subir RS1 a 4" -> escribe en el dibujo y empuja 4" por la cadena que descarga en él. */
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { DIAM_OPTIONS_SAN } from '../constants';

@@ -1,3 +1,5 @@
+/** Fila de parámetro de la acometida (conexión al acueducto): etiqueta + input numérico
+ *  perezoso (LazyNum) con la unidad del parámetro. */
 import { LazyNum } from './LazyNum';
 import { estiloPlano } from './styles.ts';
 

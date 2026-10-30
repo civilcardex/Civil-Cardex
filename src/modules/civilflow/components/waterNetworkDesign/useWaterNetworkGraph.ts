@@ -18,17 +18,6 @@ import { indicePorId } from '../../utils/indices';
 // fusiones de empalmes. Devuelve los totales dirigidos por tramo, el mapa de padres, la raíz de
 // presión y el caudal probable por tramo. Es el insumo de toda la tabla de diseño.
 /**
- * Participantes del empalme de un ramal: quienes tocan su punto de unión (empalme) hoy, excepto
- * él mismo. La genealogía mergesFrom (genealogía del split) queda stale tras re-splits y listaba
- * al anfitrión ancestral aunque ya no toque el empalme (orig. usuario caso RAC3-P2: [RAC1][RAC2]
- * con RAC1 a 250px). Ej: RAC3 con RAC2 y RAC4 tocando su unión -> ['RAC2-P1','RAC4-P1'].
- * @param ramales - ramales del plano con geometría.
- * @param rId - id del ramal continuación.
- * @param planId - id del plano.
- * @param tol - tolerancia en px (misma del motor para uniones).
- * @returns claves `id-planId` de quienes tocan la unión.
- */
-/**
  * ¿Toca algún extremo del ramal el punto dado? Predicado único de cercanía a empalmes
  * (una sola tolerancia: si diverge aquí, la columna Otros y el merge discrepan).
  * @param o - ramal candidato con geometría.
@@ -44,6 +33,17 @@ function tocaEmpalme(o: { pts?: number[][] }, jc: number[], tol: number): boolea
     Math.hypot(s[0] - jc[0], s[1] - jc[1]) < tol || Math.hypot(e[0] - jc[0], e[1] - jc[1]) < tol
   );
 }
+/**
+ * Participantes del empalme de un ramal: quienes tocan su punto de unión (empalme) hoy, excepto
+ * él mismo. La genealogía mergesFrom (genealogía del split) queda stale tras re-splits y listaba
+ * al anfitrión ancestral aunque ya no toque el empalme (orig. usuario caso RAC3-P2: [RAC1][RAC2]
+ * con RAC1 a 250px). Ej: RAC3 con RAC2 y RAC4 tocando su unión -> ['RAC2-P1','RAC4-P1'].
+ * @param ramales - ramales del plano con geometría.
+ * @param rId - id del ramal continuación.
+ * @param planId - id del plano.
+ * @param tol - tolerancia en px (misma del motor para uniones).
+ * @returns claves `id-planId` de quienes tocan la unión.
+ */
 export function otrosPorToque(
   ramales: Array<{ id: string; pts?: number[][] }>,
   rId: string,

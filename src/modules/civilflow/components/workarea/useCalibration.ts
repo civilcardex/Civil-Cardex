@@ -1,6 +1,9 @@
 import React, { useState, useCallback, useEffect, type RefObject } from 'react';
 import type { ExistingCal } from './PlanoConfigurator.tsx';
 
+/** Estados y modos de la calibración del plano (origen + escala X/Y + promedio): convierte
+ *  píxeles del overlay en scaleM (escala metros por pixel) para que las medidas salgan en m.
+ *  Ej: medir una puerta de 0.9 m -> factorX/factorY -> scaleM con aviso si X/Y difieren >5 %. */
 export interface UseCalibrationParams {
   zoom: number;
   offset: { x: number; y: number };
@@ -10,6 +13,8 @@ export interface UseCalibrationParams {
   showToast: (msg: string, type?: 'err' | 'ok' | 'warn') => void;
 }
 
+/** Hook de calibración: modos activables (origen, calibrar X, calibrar Y), longitud real por
+ *  eje, promedio de factores con chequeo de distorsión y conversión canvas→plano. */
 export function useCalibration({
   zoom,
   offset,

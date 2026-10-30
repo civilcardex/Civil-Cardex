@@ -27,6 +27,7 @@ const REGLAS_PWD: { rx: RegExp; label: string }[] = [
   { rx: /[^A-Za-z0-9]/, label: 'Símbolo' },
 ];
 
+/** Registro de cuenta: email/contraseña con checklist visual de REGLAS_PWD (el server también la valida) y confirmación de correo. */
 function RegisterPage() {
   const [form, setForm] = useState({
     nombre: '',

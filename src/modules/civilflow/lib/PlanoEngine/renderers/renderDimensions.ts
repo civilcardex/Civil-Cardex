@@ -1,5 +1,6 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
+/** Cotas acotadas del plano (línea con marcas en los extremos y la medida en el centro), atenuadas para no competir con las tuberías; seleccionada va a opacidad plena. */
 export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.dims.forEach((d) => {
     // Highlight de selección (individual o multiselección): mismo lenguaje amarillo que
@@ -98,6 +99,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
   });
 }
 
+/** Cota EN CURSO (herramienta dim activa): rubber band desde el primer clic con el mismo snap que usará el clic final — lo que se ve es exactamente dónde aterrizará. */
 export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine._dimStart || engine.tool !== 'dim') return;
   const s = engine.toCvs(engine._dimStart.x, engine._dimStart.y);

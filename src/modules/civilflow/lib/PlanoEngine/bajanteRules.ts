@@ -5,6 +5,7 @@ import type { PlanoBajante } from './PlanoState.ts';
 // pasa por aquí ANTES de escribir recibeDeIds/alimentaIds/ini/fin, de modo que ninguna
 // herramienta pueda dejar la red en un estado inválido.
 
+/** Veredicto de la regla central: ok=true deja pasar; ok=false trae título y mensaje listos para el modal que explica por qué no. */
 export interface ConexionBajanteCheck {
   ok: boolean;
   title?: string;
@@ -19,6 +20,7 @@ export function esCaja(b: Pick<PlanoBajante, 'tipo'>): boolean {
   return b.tipo === 'caja_san' || b.tipo === 'caja_ll';
 }
 
+/** Los ramales conectados a este bajante en CUALQUIER sentido (los que le llegan + los que nacen ahí). Ej: BAN1 con recibeDeIds=[R1] y alimentaIds=[R2] -> {R1, R2}. */
 export function asociadosDeBajante(baj: PlanoBajante): Set<string> {
   return new Set([...(baj.recibeDeIds || []), ...(baj.alimentaIds || [])]);
 }

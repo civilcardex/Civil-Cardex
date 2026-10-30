@@ -34,6 +34,7 @@ import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from './pumpInheritance'
 import type { BombaRow } from './pumpQueries.ts';
 import { emitAparatosClear, EV_STORAGE } from './fixtureEvents.ts';
 
+/** Enlaza la bomba del piso inferior con el bajante superior: escribe bombaEnId + direccion 'sube', crea el desvío (LD (ramal desvio entrepisos)/anillo/fantasma XFG) y propaga las UD (Unidades de Desague) en vivo. */
 export function asociarBomba(
   eng: PlanoEngine,
   baj: {

@@ -190,6 +190,7 @@ export function collectConnectedGraph(
   return { ramales: resultRamales, bajantes: resultBajantes };
 }
 
+/** Con el bajante/montante seleccionado, decide qué agarra el clic: su etiqueta (a ≤30 px o dentro de la caja) o el disco (arrastre del símbolo; copias entre pisos no se arrastran). true = agarrió algo. */
 export function _trySelBajanteDrag(
   engine: IPlanoEngineCore,
   x: number,
@@ -244,6 +245,7 @@ export function _trySelBajanteDrag(
   return false;
 }
 
+/** Con una cota seleccionada: clic en su etiqueta (a ≤22 px) arrastra solo el número; clic en la línea (a ≤15 px) arrastra la cota entera. */
 export function _trySelDimDrag(
   engine: IPlanoEngineCore,
   x: number,
@@ -281,6 +283,7 @@ export function _trySelDimDrag(
   return false;
 }
 
+/** Con un ramal/tributario seleccionado: la etiqueta manda (nunca agarra vértice bajo ella), y el clic en un cuerpo colineal ajeno selecciona ESE otro ramal en vez de arrastrar. true = inició un arrastre propio. */
 export function _trySelRamalDrag(
   engine: IPlanoEngineCore,
   x: number,

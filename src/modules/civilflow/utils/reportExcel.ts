@@ -142,6 +142,7 @@ function computeXlsxColWidths(tables: MemoriaTable[], maxCols: number): number[]
   return widths;
 }
 
+/** Descarga la memoria de cálculo como Excel (.xlsx): hoja de resumen + una hoja por tabla, con celdas saneadas (sin NaN/Infinity) y cancelación. */
 export async function generateMemoriaExcel(
   data: MemoriaData,
   shouldCancel?: () => boolean,

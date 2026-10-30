@@ -8,6 +8,7 @@ interface ExcelHandle {
   doImport: () => void;
 }
 
+/** Modal de vista previa del import/export Excel: muestra headers + filas a procesar y confirma (Descargar / Aceptar e Importar) o cancela. Cierre por click-fuera. */
 export function ExcelPreviewModal({ excel }: { excel: ExcelHandle }) {
   if (!excel.previewModal) return null;
   const pm = excel.previewModal;

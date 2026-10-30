@@ -1,3 +1,5 @@
+/** Tarjeta generadora de pisos: crea N pisos iguales (nombre, altura, npt (nivel de piso
+ *  topográfico)) de una vez. Ej: «8 pisos de 3.0 m» -> 8 planos listos para dibujar. */
 import React from 'react';
 import type { ChangeEvent, FocusEvent } from 'react';
 import EditButton from '../../shared/EditButton.tsx';

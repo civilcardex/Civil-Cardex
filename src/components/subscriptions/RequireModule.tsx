@@ -21,6 +21,7 @@ function SpinnerVerificacion() {
   );
 }
 
+/** Guard que envuelve las áreas de trabajo: evalúa la fecha de vencimiento EN CADA render (vence en vivo) y redirige a /pricing?modulo=X si el módulo no está activo. */
 export default function RequireModule({ modulo, children }: Props) {
   const { rows, activos, loading, bloqueando, decidido } = useSuscripciones();
 

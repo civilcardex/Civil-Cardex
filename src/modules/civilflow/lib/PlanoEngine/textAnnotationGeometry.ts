@@ -4,14 +4,17 @@
 // como handleDragMove.ts (arrastre) necesitan exactamente las mismas matemáticas para que la
 // esquina agarrada quede anclada con precisión en el lado opuesto a la que se redimensiona.
 
+/** Esquina nombrada de la caja de texto: tl (arriba-izq), tr, bl, br. */
 export type TextCorner = 'tl' | 'tr' | 'bl' | 'br';
 
+/** La esquina opuesta a la agarrada: es la que queda ANCLADA mientras se redimensiona. Ej: agarras 'tl' → se ancla 'br'. */
 export function oppositeTextCorner(c: TextCorner): TextCorner {
   return c === 'tl' ? 'br' : c === 'tr' ? 'bl' : c === 'bl' ? 'tr' : 'tl';
 }
 
 // boxWFull/boxHFull son las dimensiones completas de la caja con padding en px de lienzo (coincide
 // con renderTextAnnotations.ts: rect dibujado en (-pad, -fs-pad) con tamaño boxWFull x boxHFull).
+/** Posición (en el marco local sin rotar de la caja) de una esquina nombrada, con su padding. */
 export function textLocalCorner(
   corner: TextCorner,
   fs: number,
@@ -24,6 +27,7 @@ export function textLocalCorner(
   return { lx, ly };
 }
 
+/** Rota un punto del marco local de la caja al espacio del lienzo (ángulo en radianes). */
 export function rotateLocalPoint(lx: number, ly: number, angle: number): { x: number; y: number } {
   const cos = Math.cos(angle),
     sin = Math.sin(angle);

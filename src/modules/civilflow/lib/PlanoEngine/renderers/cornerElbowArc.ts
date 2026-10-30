@@ -1,6 +1,7 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { planCodoCornerAt } from './drawRamalPath.ts';
 
+/** Arco del codo en la ESQUINA de una guía: mismo radio y brazos que el trim de drawRamalPath para que arco y tubería coincidan. true = había esquina que redondear. */
 export function drawCornerCodoArc(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,

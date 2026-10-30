@@ -1,7 +1,8 @@
-// Logging de errores solo en dev. Los objetos (p. ej. PostgREST error de supabase-js) se
-// aplanan a JSON de una línea: colapsados en consola escondían el code/message/details que
-// diagnostica el 400. El stringify va blindado: un objeto circular no debe tumbar la
-// cadena que estaba reportando el error.
+/**
+ * Logging de errores solo en dev (no-op en producción): los objetos (ej: PostgREST error de
+ * supabase-js) se aplanan a JSON de una línea para ver code/message/details que el 400 necesita.
+ * Ej: devError('upsert cm_apus:', error).
+ */
 export function devError(...args: unknown[]): void {
   if (!import.meta.env.DEV) return;
   console.error(

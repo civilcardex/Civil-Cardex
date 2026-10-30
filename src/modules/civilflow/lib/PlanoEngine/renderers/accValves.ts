@@ -1,5 +1,6 @@
 import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
+/** Símbolos de VÁLVULAS (compuerta, globo, cheque...): triángulos y círculos un poco más grandes que el resto de accesorios. true = dibujó algo. */
 export function drawValveSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, outX, outY } = a;
   // Válvulas un POCO más grandes que el resto (orig. usuario 2026-10-29).

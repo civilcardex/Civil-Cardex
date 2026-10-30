@@ -1,12 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import {
-  loadFromStorage,
-  saveToStorage,
-} from '../modules/civilflow/services/storageService.ts';
+import { loadFromStorage, saveToStorage } from '../modules/civilflow/services/storageService.ts';
 import { useDebouncedEffect } from './useDebouncedEffect.ts';
 
 const PERSIST_DEBOUNCE_MS = 300;
 
+/**
+ * useState que persiste en localStorage con debounce de 300 ms y flush en pagehide (cerrar
+ * la pestaña dentro del debounce ya no pierde la última edición). Ej: usePersistedState('mi_filtro', '') conserva el filtro entre sesiones.
+ *
+ * @param key clave de localStorage (prefijo civilflow_ del servicio).
+ * @param defaults valor inicial si no hay guardado.
+ * @param recover opcional: convierte el crudo guardado al tipo T (validar aquí, el storage no confía).
+ * @returns [valor, setter] idéntico a useState.
+ */
 export function usePersistedState<T>(
   key: string,
   defaults: T,

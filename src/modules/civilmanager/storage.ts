@@ -17,12 +17,18 @@ import {
 import { readCmSnapshot } from './dto.ts';
 import type { CivilManagerState } from './types.ts';
 
+/**
+ * Persistencia del módulo CM (CivilManager): una sola verdad (Supabase) con espejo local (IndexedDB).
+ * Carga: Supabase primero -> si falla/vacío, IDB (y migra lo local hacia arriba). Guardado: IDB + Supabase serializados.
+ * Ej: civilManagerLoad() abre el proyecto con sus APU (Análisis de Precio Unitario) aunque no haya red.
+ */
 const DB_NAME = 'CivilManagerDB';
 const STORE_NAME = 'state';
 const DB_VERSION = 1;
 const RECORD_KEY = 'civilmanager';
 const SCHEMA_VERSION = 1;
 
+/** Estado inicial del módulo: config por defecto (país CO, moneda USD, % de AIU) y listas semilla. Ej: un proyecto nuevo parte con salario_base 400 USD y sin APU. */
 export function defaultState(): CivilManagerState {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -76,6 +82,12 @@ export function defaultState(): CivilManagerState {
   };
 }
 
+/**
+ * Rellena las claves ausentes de un estado guardado con defaults, sin pisar lo que sí viene.
+ * Ej: un presupuesto viejo sin `insumos_snap` llega con `[]` y el resto del código confía en esa clave.
+ * @param raw estado parcial leído de IDB o del jsonb de Supabase (puede ser null).
+ * @returns estado completo listo para el motor.
+ */
 export function migrateState(
   raw: Partial<CivilManagerState> | null | undefined,
 ): CivilManagerState {
@@ -470,6 +482,11 @@ async function saveToIdb(state: CivilManagerState): Promise<void> {
   }
 }
 
+/**
+ * Carga el estado del módulo: Supabase primero (y lo cachea en IDB); si no hay datos, IDB.
+ * Ej: sin red, un usuario con APU locales sigue trabajando y su copia migra a la nube al reconectar.
+ * @returns el estado o null si no hay nada guardado.
+ */
 export async function civilManagerLoad(): Promise<CivilManagerState | null> {
   // 1) Try Supabase if authenticated
   const fromSupa = await loadFromSupabase();
@@ -503,7 +520,11 @@ export async function civilManagerLoad(): Promise<CivilManagerState | null> {
 // con apus de una generación y presupuestos de otra. Una nueva llamada espera a la anterior.
 let saveChain: Promise<void> = Promise.resolve();
 
-/** Guarda en IDB + Supabase. Las llamadas se SERIALIZAN: cada save espera al anterior. */
+/**
+ * Guarda el estado en IDB + Supabase, SERIALIZADO: cada save espera al anterior (~10 upserts).
+ * Ej: dos saves seguidos tras editar un APU y un presupuesto no intercalan tablas en la BD.
+ * @param state estado completo del módulo a persistir.
+ */
 export function civilManagerSave(state: CivilManagerState): Promise<void> {
   const job = saveChain
     .catch(() => {})

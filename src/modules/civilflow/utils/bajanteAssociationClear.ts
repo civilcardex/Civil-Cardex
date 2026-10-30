@@ -53,6 +53,7 @@ function limpiarPunteroEnStorage(
   }
 }
 
+/** Deshace la asociación ENTRE PISOS: anula los dos punteros (origenId/descargaEnId), borra fantasma XFG, LDesvio y anillo de desplazamientos, y limpia los libros de herencia del piso destino. */
 export function clearBajanteAssociation(
   eng: IPlanoEngineCore,
   sourcePlanId: string,

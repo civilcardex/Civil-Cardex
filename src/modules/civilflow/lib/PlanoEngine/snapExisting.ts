@@ -22,13 +22,7 @@ function bboxLejos(
   return x < bb[0] - margen || x > bb[2] + margen || y < bb[1] - margen || y > bb[3] + margen;
 }
 
-/**
- * Punto de snap existente más cercano al cursor (extremos de ramales, bajantes y CUERPO de
- * ramal) — el snap del trazo activo. Redes distintas no se atraen, salvo vent↔san (el marcador
- * de codo reventilado depende de caer exactamente sobre el punto sanitario).
- * @param permitirBajantesLlenos - el canal lo pasa true (su snap es la única forma precisa de
- *   aterrizar en el bajante); el resto respeta el tope de 2 asociaciones.
- */
+/** Punto de snap existente más cercano al cursor (extremos de ramales, bajantes y cuerpo de ramal) — el imán del trazo activo; redes distintas no se atraen, salvo vent↔san. @param permitirBajantesLlenos - el canal lo pasa true: su snap es la única forma precisa de aterrizar en el bajante. */
 export function snapToExisting(
   eng: IPlanoEngineCore,
   x: number,

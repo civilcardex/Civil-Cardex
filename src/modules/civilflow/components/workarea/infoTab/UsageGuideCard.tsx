@@ -1,3 +1,5 @@
+/** Tarjeta de guía de uso del proyecto (pestaña Info): explica el flujo de trabajo del área
+ *  (calibrar -> dibujar -> tablas) para el usuario nuevo. */
 import React from 'react';
 
 const UsageGuideCard = React.memo(function UsageGuideCard() {

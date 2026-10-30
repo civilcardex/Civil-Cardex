@@ -1,3 +1,6 @@
+/** Cálculos de bom (Bomba)/ep (Equipo de Presión) tipo AR: caudales (Q), alturas (H) y
+ *  potencia del sistema desde los inputs del formulario — pura y testeable.
+ *  Ej: calcsDe con 120 UD y alturas dadas -> Qd, Hm y la HP comercial que cubre. */
 import { dec } from '../utils/parseDecimal.ts';
 import { matHazenC } from '../constants/engineeringDataMaterials.ts';
 
@@ -48,6 +51,10 @@ export function cHazenDe(tipoTuberia: string): number {
   return matHazenC(MAT_POR_TIPO[tipoTuberia] ?? 'PVC-PR') ?? 150;
 }
 
+/** Todos los números de la bomba de una vez: Q de diseño (método de aforo por salidas), Q de
+ *  bombeo (1.25×), velocidad y pérdidas Hazen-Williams (fórmula de fricción), Hm = fricción +
+ *  estática, potencia hidráulica/eje/comercial y la selección en HP. Cadenas a precisión
+ *  completa (el Excel maestro encadena sin redondear). Ej: eta vacía -> P eje '' (nunca inventar). */
 export function calcsDe(inp: BombaInputs, uds: number) {
   const sal = dec(inp.sal);
   const hz = dec(inp.hz);

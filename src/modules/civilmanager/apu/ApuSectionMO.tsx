@@ -10,6 +10,7 @@ interface Props {
   onChange: (recursos_mo: ApuRecursoMO[]) => void;
 }
 
+/** Sección A del APU (Análisis de Precios Unitarios): mano de obra con subtotal = jornal × personas × rendimiento. Ej: 1 oficial con rendimiento 0.5 a $149.333/jornal. */
 export function ApuSeccionMO({ apu, onChange }: Props) {
   const { cargosCalc, esHora, state } = useCivilManager();
   const usarFP = state.config.usar_fp_en_apu;

@@ -26,9 +26,6 @@ export const TEES_ACC_MED = new Set([
 // Tees de las redes hidro que calcHydroAccessories arrastra a hidroData desde accMed/extremos —
 // en la tabla se cuentan SOLO desde los marcadores del dibujo (con nomenclatura de tres brazos),
 // así que esta ruta se excluye en AF/AC/gas para no duplicarlas.
-// Tees de las redes hidro que calcHydroAccessories arrastra a hidroData desde accMed/extremos —
-// en la tabla se cuentan SOLO desde los marcadores del dibujo (con nomenclatura de tres brazos),
-// así que esta ruta se excluye en AF/AC/gas para no duplicarlas.
 // ponytail: mismos ids que TEES_ACC_MED hoy — alias, una sola fuente.
 export const HYDRO_TEE_IDS = TEES_ACC_MED;
 
@@ -45,10 +42,6 @@ export const ACC_MED_CODOS = new Set([
   'codo90rmBaja',
 ]);
 
-// Todos los codos de 90° (variantes corto/medio/largo + sube/baja). En AF/AC/LL se resumen en UNA
-// sola columna "Codo medio 90°": el sube/baja solo describe cómo se instala (hacia arriba o hacia
-// abajo), no cambia la pieza, y rc/rm/rl son el mismo codo de 90° en el plano. San conserva sus
-// filas de catálogo.
 // Todos los codos de 90° (variantes corto/medio/largo + sube/baja). En AF/AC/LL se resumen en UNA
 // columna "Codo medio 90°"; para el cálculo son el MISMO grupo de ids que ACC_MED_CODOS.
 // ponytail: alias — una sola fuente.
@@ -80,10 +73,7 @@ export function compactYeeDiam(parts: string[]): string {
 // ¿El ramal ya trae un codo manual (90° o 45°) en el extremo que toca al bajante? Si sí, ese
 // cubre la pieza y el bloque bajante no debe auto-agregar otro codo 90° (evita duplicar).
 const MANUAL_CODO_AT_BAJANTE = new Set([...CODO_90_IDS, 'codo45rc']);
-/**
- * ¿El ramal ya trae un codo manual (90° o 45°) en el extremo que toca al bajante? Si sí, ese
- * cubre la pieza y el bloque bajante no auto-agrega otro codo 90° (evita duplicar).
- */
+/** ¿El ramal ya trae un codo manual (90° o 45°) en el extremo que toca al bajante? Si sí, ese cubre la pieza y el bloque bajante no auto-agrega otro (evita duplicar). */
 export function ramalHasManualCodoAt(
   r: { pts?: number[][]; accIni?: string; accFin?: string },
   bx?: number,

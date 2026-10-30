@@ -1,3 +1,4 @@
+/** Campo de solo lectura del caudal de un ramal en el panel derecho: muestra el calculado (ll (Lluvias)) o el manual. Ej: RAF1 ll con 2 rejillas → "12.40 LPS". */
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { READONLY_CENTER_STYLE } from './context.ts';
 

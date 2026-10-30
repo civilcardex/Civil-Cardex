@@ -21,6 +21,7 @@ export interface CruceRecorte {
   segmento: number;
 }
 
+/** Ajustes del recorte: qué ramales ignorar y las tolerancias que distinguen un cruce real del aterrizaje normal en la punta. */
 export interface OpcionesRecorte {
   /** Ids que no cuentan como host (el propio trazo, o el ramal del que se desvía). */
   ignorarIds?: Array<string | null | undefined>;
@@ -102,6 +103,7 @@ export function primerCruceEstricto(
   return mejor?.cruce ?? null;
 }
 
+/** Resultado del recorte: los puntos finales, si se cortó algo y en qué cruce (invalido=true = el corte dejó el trazo demasiado corto para existir). */
 export interface ResultadoRecorte {
   /** Puntos resultantes (recortados o los originales). */
   pts: [number, number][];

@@ -15,6 +15,7 @@ import { emitSanSync, emitHidroSync } from './fixtureEvents.ts';
 // buildSyncData + write/read de hidro y san (entrada/salida del blob de trazos).
 // Extraído verbatim de drawingSync.
 
+/** Arma el SyncDataResult de una familia de redes: primero re-ancla claves y hace GC (best-effort), luego delega en el builder prefijado o legacy. */
 export function buildSyncData(
   plans: SyncPlanInput[],
   families: Set<string>,

@@ -1,4 +1,5 @@
-﻿import { memo, useEffect, useRef, useState } from 'react';
+﻿/** Raíz del menú contextual del visor (clic derecho sobre cualquier elemento): enruta al menú del tipo (ramal, bajante, guía, área, canal...) dentro de un panel posicionado, y hospeda el modal de mover UC (Unidades de Consumo). */
+import { memo, useEffect, useRef, useState } from 'react';
 import { loadFromStorage } from '../../../services/storageService.ts';
 import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys.ts';
 import {

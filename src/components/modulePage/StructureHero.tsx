@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { ModuleConfig } from '../../pages/moduleData.ts';
 
+/** Hero de la página del módulo Estructuras: H1 + CTA sobre rejilla técnica y etiquetas FEM (Elemento Finito, método numérico de análisis) simuladas. */
 export default function StructureHero({ cfg }: { cfg: ModuleConfig }) {
   return (
     <section

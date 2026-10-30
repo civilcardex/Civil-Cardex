@@ -55,6 +55,9 @@ interface TblProps {
   colStyles?: (React.CSSProperties | undefined)[];
 }
 
+/** Tabla genérica de memoria de cálculo: encabezados con tooltip (tips), primera columna en
+ *  negrita y columna Valor estrecha (valueCol). Ej: reporte EP con 4 columnas -> Tbl({cols,
+ *  rows}) sin repetir markup de thead/tbody en cada página. */
 const Tbl = React.memo(function Tbl({
   cols,
   tips,

@@ -1,3 +1,4 @@
+/** Editor del calentador de gas seleccionado: su capacidad (catálogo CAT_GAS de calentadores). Ej: "CAL-17L" para un calentador de 17 litros. */
 import { CAT_GAS } from '../../../constants/engineeringDataGas.ts';
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { SELECT_STYLE } from './context.ts';

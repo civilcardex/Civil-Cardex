@@ -1,3 +1,4 @@
+/** Autosave del visor: 1.5 s tras la última edición, más guardado de emergencia al cerrar pestaña/cambiar de piso (beforeunload/pagehide/desmonte). Ej: mueves un ramal → "unsaved" → 1.5 s → snapshot a caché local + BD y "✔ Guardado". */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import {

@@ -1,3 +1,5 @@
+/** Tarjeta de identificación del proyecto (pestaña Info): nombre, uso, municipio y
+ *  departamento — datos que van a la memoria de cálculo y al PDF. */
 import React from 'react';
 import { USOS } from '../../../constants';
 import { NORMAS_PAIS } from '../../../constants/countryStandards';

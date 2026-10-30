@@ -20,7 +20,6 @@ function etiquetaPisoDe(plan: SyncPlanInput | undefined): string {
   return Number.isFinite(nivel) ? pisoLbl(nivel) : '';
 }
 
-/** Diámetro a varios ramales con un solo load+save por plano (ruta batch del D vent propuesto). */
 // Reentrancia del espejo de diámetros: el write de la pareja no vuelve a espejar.
 let espejoEnCurso = false;
 
@@ -31,6 +30,7 @@ interface LocalDrawingData {
   [key: string]: unknown;
 }
 
+/** Escribe el diámetro a VARIOS ramales con un solo load+save por plano (ruta batch del D vent propuesto). */
 export function writeDiametroToDrawingBatch(
   ramalKeys: string[],
   net: string,

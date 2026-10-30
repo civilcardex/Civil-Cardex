@@ -13,6 +13,7 @@ import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils.t
 import { commitOpenGuide } from './guideLines.ts';
 import { isLdesvioRamalId } from '../../utils/crossFloorStorage.ts';
 
+/** Las herramientas del visor: sel (seleccionar), line (tubería), dim (cota), text, baj (bajante), mon (montante), pan, area, erase, segdel/delm (borrar segmento/montante), red_pub, cont (contador), calent, canal, caja y guide (línea guía). */
 export type ToolType =
   | 'sel'
   | 'line'

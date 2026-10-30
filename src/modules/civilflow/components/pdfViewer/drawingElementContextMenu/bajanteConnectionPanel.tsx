@@ -1,3 +1,4 @@
+/** Panel de conexión del menú contextual (bajante y extremo de ramal): ramales asociados, crear bajante/montante en el extremo y accesorio de extremo con sus validaciones. Ej: clic derecho en la punta de RAF1 → "Crear bajante aquí". */
 import { direccionSegura } from '../../../lib/PlanoEngine/directionRules.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
 import { DIAM_BY_MAT } from '../../../constants';

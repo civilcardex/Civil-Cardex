@@ -13,6 +13,8 @@ import { pointToSegmentDist } from './HitTester.ts';
 import { sectorDe } from '../../utils/formatUtils.ts';
 import { indicesDeMotor } from './engineIndices';
 
+/** Diámetros de ventilación (vent, Red de Ventilación): límites de norma (el bajante vent nunca menor que su ramal) y sincronización (todos los vents de un mismo san copian el mismo diámetro). */
+
 /** Frena los cambios de diámetro en ventilación (vent) que se salgan de los límites de la norma
  *  (tol 2.0 px): false = no se permite el cambio. Ej: bajar el bajante vent a 2" cuando su
  *  ramal vent conectado es de 3" → alerta "Diámetro no válido" y el campo se revierte. */

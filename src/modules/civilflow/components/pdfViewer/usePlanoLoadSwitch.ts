@@ -1,3 +1,4 @@
+/** Cambio de plano/piso en el visor: guarda el piso saliente (caché+BD), carga el entrante con token anti-carrera y baja el velo de carga solo cuando no queda raster en vuelo. Ej: pasar de Piso 1 a Piso 2 nunca aterriza contenido viejo bajo el id nuevo. */
 import { useEffect, useRef } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { cargarMallas } from '../../lib/PlanoEngine/nodos';

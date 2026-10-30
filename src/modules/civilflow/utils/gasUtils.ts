@@ -1,7 +1,16 @@
 import { APARATOS_DEF } from '../constants';
 
+/** Aparatos de gas (Gas) del catálogo con caudal propio (qgas > 0, grupo 'g'): estufa, calentador, secadora... */
 export const GAS_APPARATUS = APARATOS_DEF.filter((a) => a.grupo === 'g' && (a.qgas || 0) > 0);
 
+/**
+ * Caudal probable de una instalación de gas (m³/h) por el criterio de diversidad del método
+ * Renouard (fórmula de pérdida en gas): los DOS tipos de mayor consumo cuentan a la mitad (no
+ * todos prenden a la vez) y los demás tipos completos. Ej: 4 estufas (1.2) + 1 calentador (2.5)
+ * -> (1.2·4 + 2.5·1)/2 = 3.65 m³/h.
+ * @param counts cuántos aparatos hay de cada id ('estufa': 4).
+ * @returns caudal probable en m³/h; 0 si no hay aparatos.
+ */
 export function renouardByType(counts: Record<string, number>) {
   const present = [];
   for (const ap of GAS_APPARATUS) {

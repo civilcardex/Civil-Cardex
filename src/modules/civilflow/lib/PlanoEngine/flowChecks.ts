@@ -110,6 +110,7 @@ export function flowDirectionOkAt(
   return fin[0] * fex[0] + fin[1] * fex[1] >= 0;
 }
 
+/** ¿El punto p cae sobre el segmento a→b (dentro de tol px y lejos de las puntas, t entre 0.02 y 0.98)? Es el test de "tocó el CUERPO" que distingue una T en medio de la tubería de una unión de extremos. */
 export function pointOnRamalSegment(p: number[], a: number[], b: number[], tol: number): boolean {
   const dx = b[0] - a[0];
   const dy = b[1] - a[1];
@@ -304,5 +305,3 @@ export function ramalFlowDirectionCheck(
   }
   return null;
 }
-
-/** Propaga el diametro san (Sanitaria) aguas abajo al mayor (nunca baja, tol 2.0 px). */

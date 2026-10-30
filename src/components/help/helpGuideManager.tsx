@@ -1,4 +1,5 @@
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';
+/** Guía contextual del módulo CM (Civil Manager): claves 'cm:<seccion>' y 'cm:catalogos:<tab>'. */
 export const GUIA_MANAGER: GUIA_TYPE = {
   'cm:catalogos:configuracion': [
     {

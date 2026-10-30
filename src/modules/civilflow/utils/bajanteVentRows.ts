@@ -47,6 +47,7 @@ export function maxSanRamalDiamPulg(
   }
   return maxD;
 }
+/** Tabla de la memoria de vent (Ventilacion) de bajantes: UD (Unidades de Desague) propias/acumuladas por bajante, Q Hunter, Wyly-Eaton (formula de ventilacion sanitaria) del bajante y su columna de vent (calculateVentStack por fila). */
 export function computeBajanteVentTable(
   tramosSan: Tramo[],
   plans: PlanItem[],

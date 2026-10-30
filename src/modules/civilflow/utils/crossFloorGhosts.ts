@@ -6,10 +6,7 @@ interface LocalGhostDrawingData {
   [key: string]: unknown;
 }
 
-// Completa los datos que le faltan a los fantasmas al cargar un piso: si un fantasma no sabe la
-// dirección de su bajante padre o su diámetro (porque se guardó antes de que existieran esos
-// campos, o porque el padre cambió después), se busca al padre en su piso y se copian los
-// valores actuales — así la etiqueta del fantasma siempre muestra información al día.
+/** Completa dirección/diámetro del bajante padre en los fantasmas XFG (fantasma entrepisos) al cargar un piso: los copia del doc del piso origen para que la etiqueta siempre muestre información al día. */
 export function enrichCrossFloorGhosts(ghosts: CrossFloorGhost[]): CrossFloorGhost[] {
   if (!ghosts.length) return ghosts;
   const cache: Record<string, LocalGhostDrawingData> = {};

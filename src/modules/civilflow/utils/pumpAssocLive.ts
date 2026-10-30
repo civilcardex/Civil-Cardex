@@ -9,6 +9,7 @@ import { bajanteDePisoEn, bajanteLocalDe } from './bajanteLocal.ts';
 
 import { libroHeredado } from '../components/fixturesStorage.ts';
 
+/** Vista mínima del bajante con su enlace vivo: a qué bomba (bombaEnId) o montante origen (origenId) apunta y su libro ucAplicado. */
 export interface AsocLiveBaj {
   id?: string;
   origenId?: string | null;

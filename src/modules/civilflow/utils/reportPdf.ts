@@ -28,6 +28,7 @@ function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
 
 const PDF_NAVY: [number, number, number] = [40, 60, 90];
 
+/** Descarga la memoria de cálculo como PDF (jspdf + autotable, apaisado A4): portada, resumen y una tabla por sección, con celdas saneadas (sin NaN/Infinity) y cancelación. */
 export async function generateMemoriaPdf(
   data: MemoriaData,
   shouldCancel?: () => boolean,

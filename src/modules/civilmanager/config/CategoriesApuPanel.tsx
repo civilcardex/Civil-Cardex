@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { ListaItemPanel } from './ListItemPanel.tsx';
 
+/** Panel de categorías de APU (Análisis de Precios Unitarios): lista editable que no borra una categoría usada por algún análisis. */
 export function CategoriasApuPanel() {
   const { state, patch } = useCivilManager();
   const countUsage = useMemo(() => {

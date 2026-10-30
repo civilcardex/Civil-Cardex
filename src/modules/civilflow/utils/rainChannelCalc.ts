@@ -6,13 +6,9 @@ import {
 import { cDeCubierta, nDeCanal } from '../constants/engineeringDataMaterials.ts';
 
 /**
- * C\u00e1lculo hidr\u00e1ulico de UNA fila de canal de lluvias (sin React: se puede probar sola).
- *
- * Reglas (ped. del usuario, no se tocan al mover el c\u00f3digo):
- *  - C SOLO del material de cubierta del cat\u00e1logo (sin material -> 0 -> Q=0 y "No cumple").
- *  - Sin material de canal NO hay manning: la fila no calcula ni chequea nada.
- *  - Secci\u00f3n total y A efectiva siempre visibles (no dependen del c\u00e1lculo).
- *  - Embocadura: n\u00ba = bajantes asociados, D = el menor propuesto (conservador).
+ * Cálculo hidráulico de UNA fila de canal de lluvias (sin React: se puede probar sola). Reglas:
+ * C (coeficiente de escorrentía) SOLO del material de cubierta; sin material de canal no hay
+ * Manning (fórmula de flujo en tubería) ni chequeo; embocadura = bajantes asociados con el menor D.
  */
 
 /** Una fila de canal tal como la entrega el contexto de lluvias. */
@@ -28,6 +24,7 @@ export interface FilaCanal {
   [k: string]: unknown;
 }
 
+/** Fila calculada: C y n derivados, Q real/máximo (LPS), tirante y velocidad (m/s), chequeo, y el chequeo de embocadura de los bajantes asociados. */
 export interface ResultadoFilaCanal {
   Cder: number;
   nder: number | null;

@@ -1,3 +1,5 @@
+/** Hero (portada) de la landing del módulo flow: título, beneficios y CTA de entrada.
+ *  Se prerenderiza en el build — el texto vive en DOM desde el primer render (SEO). */
 import { Link } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import type { ModuleConfig } from '../../../../pages/moduleData.ts';

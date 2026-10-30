@@ -18,6 +18,7 @@ const LOGIN_JSONLD = {
   url: 'https://civilcardex.com/login',
 };
 
+/** Formulario de ingreso: email/contraseña con validación y redirect a la ruta prevista (location.state). Con sesión ya activa redirige directo. */
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

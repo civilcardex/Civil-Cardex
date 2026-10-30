@@ -31,6 +31,7 @@ function rectDe(sel?: string): Rect | null {
   return { x: r.left, y: r.top, w: r.width, h: r.height };
 }
 
+/** El tour mismo: oscurece la pantalla con un "agujero" (box-shadow gigante, sin dependencias) sobre el ancla del paso actual y muestra la tarjeta Anterior/Siguiente/Saltar. */
 export function TourOverlay({ steps, onEnd }: { steps: TourStep[]; onEnd: () => void }) {
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState<Rect | null>(() => rectDe(steps[0]?.sel));

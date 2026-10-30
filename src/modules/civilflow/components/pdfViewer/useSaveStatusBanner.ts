@@ -1,3 +1,4 @@
+/** Franja de estado de guardado del visor: convierte los eventos globales de storage (BD/cuota local) en un motivo de error visible. Ej: "BD: fila duplicada" en rojo en vez de un "✔ Guardado" mentiroso. */
 import { useEffect, useState } from 'react';
 
 interface UseSaveStatusBannerArgs {

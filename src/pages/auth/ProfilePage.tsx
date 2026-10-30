@@ -62,6 +62,7 @@ function inicialesDe(nombre: string): string {
 
 // fechaCorta y ProyectoCard viven en hermanos (ProfilePage.tsx / ProjectCard.tsx).
 
+/** Perfil del usuario: datos de la cuenta, sus suscripciones (módulos y vigencia), gestión de proyectos y acceso a /empresa. */
 function ProfilePage() {
   const { user } = useAuth();
   const [perfil, setPerfil] = useState({

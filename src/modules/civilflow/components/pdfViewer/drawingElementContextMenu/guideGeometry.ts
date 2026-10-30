@@ -1,3 +1,4 @@
+/** Geometría de líneas guía (pure utils): cruce con ramales, reparto en dos lados, ángulos válidos por red (45° san/ll/vent, 90° af/ac/gas) y anclaje de la llegada al anfitrión. Ej: guía san que termina sobre RAF3 → findGuideCrossing da el punto y el ángulo del corte. */
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoGuideLine, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { ANGLE_EPS, sameNetGroup } from '../../../lib/PlanoEngine/drawingAngles.ts';

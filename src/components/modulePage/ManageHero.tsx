@@ -38,6 +38,7 @@ const FUNCTIONALITIES = [
   },
 ];
 
+/** Hero de la página del módulo CM (Civil Manager): H1, CTAs y funcionalidades clave sobre íconos de dominio de fondo (decorativos, aria-hidden). */
 export default function ManageHero({ cfg, onCtaClick }: Props) {
   const accent = cfg.accent;
 

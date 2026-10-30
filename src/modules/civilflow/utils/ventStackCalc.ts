@@ -6,6 +6,7 @@ import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore.ts';
 import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { entradaPor } from './diamLookup';
 
+/** Entrada del cálculo de la columna de ventilación: UD (Unidades de Desague) propias/acumuladas, radio de llenado r, Manning (fórmula de flujo en tubería) n y los diámetros propuestos del bajante y su vent (Ventilacion). */
 export interface BajanteVentilacionParams {
   bajante?: string;
   pisos?: string;
@@ -20,6 +21,7 @@ export interface BajanteVentilacionParams {
   ventDprop?: number;
 }
 
+/** Salida del cálculo: diámetro calculado vs propuesto (pulg/mm), chequeos de bajante y vent, velocidad y longitud del tramo de aire. */
 export interface BajanteVentilacionResult {
   bajante: string;
   pisos: string;
@@ -58,6 +60,14 @@ export function ventBajPulg(b: { diamPulg?: unknown; dNominal?: unknown }): numb
   return lbl ? diamPulgFromLabel(lbl) : 0;
 }
 
+/**
+ * Física de UNA columna de ventilación: del Q (Caudal) Hunter (método de probabilidad de uso
+ * simultáneo) sale el diámetro Wyly-Eaton (fórmula de ventilacion sanitaria) del bajante y de su
+ * vent, con chequeo doble (D calc <= D propuesto y D vent >= 0.5·D bajante). Ej: 30 UD acumuladas
+ * con r=7/24 -> D calc ~2.3" -> propuesta 3" -> 'Ok'.
+ * @param params UD, llenado, Manning y propuestos de la columna.
+ * @returns fila completa de la tabla de ventilación con los chequeos 'Ok'/'No cumple'.
+ */
 export function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacionResult {
   const {
     bajante = '',

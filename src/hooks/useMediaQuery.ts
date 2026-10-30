@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from 'react';
 
-// Adaptación responsive por JS (los estilos inline de la app no admiten media queries por
-// clase). Un solo hook para toda la app: query Tailwind-like ('(max-width: 767px)').
+/**
+ * Adaptación responsive por JS (los estilos inline de la app no admiten media queries por
+ * clase): true mientras la ventana cumple la query. Ej: useMediaQuery('(max-width: 767px)').
+ */
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (cb) => {

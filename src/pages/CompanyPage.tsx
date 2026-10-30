@@ -305,6 +305,7 @@ const EJEMPLO: { sus: SuscripcionRow; miembros: Miembro[] }[] = [
   },
 ];
 
+/** Página /empresa: gestionar los puestos (miembros del equipo) de las suscripciones empresariales — asignar por email, cambiar permiso de edición, quitar. En modo EJEMPLO muestra datos mock sin tocar BD. */
 export default function CompanyPage() {
   usePageMeta(
     'Equipo',

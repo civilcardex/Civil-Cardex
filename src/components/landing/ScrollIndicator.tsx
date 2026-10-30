@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.ts';
 
+/** Flecha "desplázate" del hero: rebota y se desvanece en los primeros 150 px de scroll (desaparece con reduced-motion). */
 export default function ScrollIndicator() {
   const [opacity, setOpacity] = useState(1);
   const prefersReducedMotion = usePrefersReducedMotion();

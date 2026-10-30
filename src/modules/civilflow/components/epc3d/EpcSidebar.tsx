@@ -1,3 +1,5 @@
+/** Sidebar del visor 3D de ep (Equipo de Presión): catálogo de componentes (tanque, bomba,
+ *  válvulas) con su descripción. Ej: elegir «bomba» -> se monta en la escena 3D. */
 import { COMPONENTES, COMP_DESC } from './epc3dData.ts';
 import { MONO_3D } from '../shared/config3d';
 import { NormaLink, NormaTxt } from '../shared/standardsLinks.tsx';

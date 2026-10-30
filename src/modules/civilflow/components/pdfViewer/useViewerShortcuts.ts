@@ -1,3 +1,4 @@
+/** Botones revertir/rehacer/encuadrar/girar etiqueta del visor; tras cada undo cierra menú y panel (mostraban un elemento ya borrado). Ej: Ctrl+Z del engine quita un codo y este hook limpia la copia congelada del menú contextual. */
 import { useCallback, useEffect } from 'react';
 import type React from 'react';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';

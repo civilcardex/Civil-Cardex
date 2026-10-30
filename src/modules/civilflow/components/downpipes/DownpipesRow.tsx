@@ -1,3 +1,5 @@
+/** Fila de la tabla de bajantes: UD (Unidades de Desague), diámetros por piso y aportes del
+ *  bajante, con las celdas editables sincronizadas al dibujo. */
 import type { CSSProperties } from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import type { FilaBajante } from '../../utils/bajanteRowModel.ts';
