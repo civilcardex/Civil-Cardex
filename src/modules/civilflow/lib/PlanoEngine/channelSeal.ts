@@ -39,7 +39,7 @@ export function leerEstadoSello(planId: string | number | null | undefined): Sel
 }
 
 /** Persiste la memoria del sello (idempotente: si el JSON no cambió, no escribe). */
-export function guardarEstadoSello(
+function guardarEstadoSello(
   planId: string | number | null | undefined,
   estado: SelloCanalEstado,
 ): void {
@@ -99,8 +99,8 @@ export function levantarVetoSelloCanal(
 
 /** Tolerancias (px de plano) para que un ramal cuente como conectado: al CANAL puede sobrar
  *  4 px (el OBB del canal es ancho); al BAJANTE solo 2 (su círculo es chico). */
-export const CANAL_PUENTE_PAD = 4;
-export const BAJANTE_PUENTE_TOL = 2;
+const CANAL_PUENTE_PAD = 4;
+const BAJANTE_PUENTE_TOL = 2;
 
 /** Marca solo, al cargar el plano, los ramales que conectan un canal con un bajante de lluvias
  *  (ll). Corre después de detectar conexiones y podar las viejas; si algo falla, se ignora en

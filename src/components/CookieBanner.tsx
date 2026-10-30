@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 // banner reaparecía (orig. usuario: una vez clickado, nunca más).
 const CONSENT_KEY = 'cardex_cookie_consent';
 
-export function cookieConsentDado(): boolean {
+function cookieConsentDado(): boolean {
   try {
     const v = localStorage.getItem(CONSENT_KEY);
     return v === 'accepted' || v === 'rejected';

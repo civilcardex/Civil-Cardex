@@ -37,7 +37,7 @@ export const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax]),
 );
 /** Presión mínima (m.c.a.) que necesita cada aparato para funcionar bien, por sigla. */
-export const APARATO_PMIN_BY_CODE: Record<string, number> = Object.fromEntries(
+const APARATO_PMIN_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmin]),
 );
 // Alias legacy: dibujos guardados antes de renombrar 'Hor:' → 'HorG:' conservan ini='HOR'.

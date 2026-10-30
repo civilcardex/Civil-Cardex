@@ -36,7 +36,7 @@ import { indicePorId } from '../../utils/indices';
  * @param tol - tolerancia en px.
  * @returns true si un extremo cae dentro de la tolerancia.
  */
-export function tocaEmpalme(o: { pts?: number[][] }, jc: number[], tol: number): boolean {
+function tocaEmpalme(o: { pts?: number[][] }, jc: number[], tol: number): boolean {
   if (!o.pts || o.pts.length < 2) return false;
   const s = o.pts[0];
   const e = o.pts[o.pts.length - 1];

@@ -17,7 +17,7 @@ export function hasCachedPlan(planId: string | number): boolean {
 }
 
 /** Origen de calibración guardado DENTRO del dibujo del piso (vía vieja; hoy se prefiere origenDePlan, que mira primero los metadatos). */
-export function origenDeTrazos(planId: string): { x_px: number; y_px: number } | null {
+function origenDeTrazos(planId: string): { x_px: number; y_px: number } | null {
   try {
     const raw = loadFromStorage<{ origen?: { x_px?: number; y_px?: number } | null } | null>(
       TRAZOS_PREFIX + planId,

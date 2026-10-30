@@ -6,11 +6,11 @@ import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import type { PlanMeta } from './plansMeta.ts';
 
 /** Escalas del set estándar de planos (metros por píxel): 1:200, 1:133, 1:100, 1:80, 1:50. */
-export const ESCALAS_ESTANDAR = [0.5, 0.75, 1, 1.25, 2];
+const ESCALAS_ESTANDAR = [0.5, 0.75, 1, 1.25, 2];
 
 /** Tolerancia de redondeo: por debajo de ella la diferencia entre dos escalas es ruido del
  * meta (0.4723 redondeado a 0.47 = 0.49 %) y no justifica mover la geometría. */
-export const TOLERANCIA_ESCALA = 0.006;
+const TOLERANCIA_ESCALA = 0.006;
 
 /** ¿La escala es una del set estándar? Solo el "pisado" de escala escribe valores así. */
 export function esEscalaEstandar(escala: number | null | undefined): boolean {
@@ -198,7 +198,7 @@ export function leeReportes(planId: string | number): ReporteCargaPlano[] {
 }
 
 /** Último reporte de carga de un piso (null si nunca se cargó). */
-export function ultimoReporte(planId: string | number): ReporteCargaPlano | null {
+function ultimoReporte(planId: string | number): ReporteCargaPlano | null {
   const lista = leeReportes(planId);
   return lista.length ? lista[lista.length - 1] : null;
 }

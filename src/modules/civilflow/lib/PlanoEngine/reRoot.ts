@@ -15,7 +15,7 @@ function usaFlag(net: string): boolean {
 
 /** Le da la vuelta al flujo de un tramo: en redes a presión solo prende/apaga _tribReversed; en
  *  sanitarias y lluvias invierte los puntos de verdad. */
-export function invertirTramo(ram: PlanoRamal): void {
+function invertirTramo(ram: PlanoRamal): void {
   if (usaFlag(ram.net || '')) ram._tribReversed = !ram._tribReversed;
   else flipRamalFlow(ram);
 }
@@ -36,7 +36,7 @@ function tocaComo(r: PlanoRamal, pt: number[], tol = 0.5): 'entra' | 'sale' | nu
 /** Camina hacia atrás desde un tramo volteando el sentido de cada tubería hasta llegar a la
  *  fuente (el medidor, el calentador, el equipo...). Si aborta (ciclo, dos fuentes o tope),
  *  DESHACE todo lo volteado: el dibujo queda como estaba. */
-export function reEnraizarDesde(engine: IPlanoEngineCore, idInicial: string): string[] | null {
+function reEnraizarDesde(engine: IPlanoEngineCore, idInicial: string): string[] | null {
   const net = engine.ramales.find((r) => r.id === idInicial)?.net || '';
   const invertidos: string[] = [];
   let cur = idInicial;

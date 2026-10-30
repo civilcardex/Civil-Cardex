@@ -436,7 +436,7 @@ function minDistToPts(p: number[], pts: number[][]): number {
  *  vértice) de la tubería que sigue, con el diámetro del anfitrión, y suma 1 al resumen de
  *  accesorios (hidro). Con `hidro` provided muta ESE mapa sin persistir (el caller lo guarda
  *  una vez); sin él, carga/persiste por sí misma. */
-export function placeTaponOnHost(
+function placeTaponOnHost(
   engine: IPlanoEngineCore,
   host: PlanoRamal,
   pt: number[],

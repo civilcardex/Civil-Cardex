@@ -69,7 +69,7 @@ export function nivelDePlanId(
 }
 
 /** Sonda de escala: px de pantalla por px de lámina en el punto p (sonda de 24 px en +X). */
-export function sondaEscala(
+function sondaEscala(
   proyecta: (iso: { x: number; y: number }, zPix: number) => { sx: number; sy: number },
   isoDe: (px: number, py: number, nivel: number) => { x: number; y: number },
   p: number[],

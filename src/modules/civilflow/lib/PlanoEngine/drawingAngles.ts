@@ -286,7 +286,7 @@ export function snapTributaryToPadre45Deg(
 /** Dos tuberías dibujadas por separado se tocan punta con punta y forman un codo: ¿a qué ángulo
  *  queda (45° o 90°) y con qué ramal? Es lo que dispara el modal para elegir el accesorio.
  *  @returns ángulo e id del otro ramal, o null. */
-export function detectJunctionAccesorio(
+function detectJunctionAccesorio(
   engine: IPlanoEngineCore,
   ramalId: string,
   epIdx: number,
@@ -571,7 +571,7 @@ export function codoNivelPermitidoEn(
 /** ¿En este punto se juntan 3 o más tramos de tubería (una T)? Devuelve también sobre qué ramal
  *  cae la unión: la tee se le asigna al trazo que pasa de largo, nunca al recién creado.
  *  @returns bandera isTee y el id del ramal pasante. */
-export function isTeeAtEndpoint(
+function isTeeAtEndpoint(
   ep: number[],
   engine: IPlanoEngineCore,
   currentRamalId: string,

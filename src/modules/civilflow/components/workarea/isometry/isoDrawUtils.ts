@@ -5,7 +5,7 @@ export interface IsoPt {
   sy: number;
 }
 
-export function shadeHex(col: string, f: number): string {
+function shadeHex(col: string, f: number): string {
   const n = parseInt(col.replace('#', ''), 16);
   if (!Number.isFinite(n)) return col;
   const r = Math.min(255, Math.round(((n >> 16) & 255) * f));
@@ -22,7 +22,7 @@ export function hexA(col: string, a: number): string {
 
 /** Vectores unitarios ortográficos en espacio de pantalla para los ejes del mundo en un punto iso dado — cada paso equivale a UN METRO MUNDIAL (ISO_SCALE unidades iso),
  * de modo que el código que lo invoca puede dimensionar elementos directamente en metros. */
-export function isoAxisVecs(
+function isoAxisVecs(
   proj: (x: number, y: number, z: number) => IsoPt,
   bx: number,
   by: number,

@@ -13,7 +13,7 @@ function norm(s: string): string {
   return s.normalize('NFD').replace(DIACRITICS_RE, '').toLowerCase();
 }
 
-export function handleTabKeyDown(setEditIdx: (i: number | null) => void) {
+function handleTabKeyDown(setEditIdx: (i: number | null) => void) {
   return (_i: number, e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();

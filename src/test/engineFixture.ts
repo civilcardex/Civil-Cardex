@@ -31,17 +31,3 @@ export function makeEngine(overrides: EngineOverrides = {}): IPlanoEngineCore {
   };
   return base as IPlanoEngineCore;
 }
-
-/** updateElementById que MUTA el elemento vivo (la mayoría de tests lo necesita). */
-export function conUpdateElemento(engine: IPlanoEngineCore): IPlanoEngineCore {
-  (engine as unknown as Record<string, unknown>).updateElementById = (
-    id: string,
-    fields: Record<string, unknown>,
-  ) => {
-    const el = [...(engine.bajantes || []), ...(engine.ramales || [])].find(
-      (x) => (x as { id: string }).id === id,
-    );
-    if (el) Object.assign(el, fields);
-  };
-  return engine;
-}

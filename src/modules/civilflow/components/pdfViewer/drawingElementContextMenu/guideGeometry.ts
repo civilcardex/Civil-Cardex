@@ -181,11 +181,7 @@ export function isGuideRelativeAngleValid(
 
 /** ¿El extremo de la guía toca una tubería (misma red o grupo san/vent) a <0.6? — valida el
  *  ARRANQUE de la guía antes de crear el ramal. */
-export function guideEndTouchesNetwork(
-  eng: PlanoEngine,
-  pt: [number, number],
-  net?: string,
-): boolean {
+function guideEndTouchesNetwork(eng: PlanoEngine, pt: [number, number], net?: string): boolean {
   const TOL = 0.6;
   for (const r of eng.ramales) {
     if (!r.pts || r.pts.length < 2) continue;
@@ -199,11 +195,7 @@ export function guideEndTouchesNetwork(
  *  las puntas)? Ese aterrizaje es la T de verdad — caer en un vértice es una unión de extremo a
  *  extremo y no se recorta ni se voltea nada.
  *  Ej: (50,100) sobre el tramo (0,100)-(200,100) → true; sobre (0,100) → false. */
-export function puntoSobreCuerpoDeRamal(
-  eng: PlanoEngine,
-  pt: [number, number],
-  net: string,
-): boolean {
+function puntoSobreCuerpoDeRamal(eng: PlanoEngine, pt: [number, number], net: string): boolean {
   const TOL = 0.6;
   for (const r of eng.ramales) {
     if (!r.pts || r.pts.length < 2 || r.net !== net) continue;

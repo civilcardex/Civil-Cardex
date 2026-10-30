@@ -35,11 +35,11 @@ export const TD_R = { fontSize: 12.5, padding: '2px 4px' };
 /** Columna Parámetro/Componente compacta: sin el ancho grande por defecto de Tbl. */
 export const TDL_R = { minWidth: 0, fontSize: 13.5, fontWeight: 600 };
 /** Columna de notas (Equivalencia/Fuente): el texto sí puede partir en varias líneas. */
-export const NOTE_COL = { whiteSpace: 'normal' as const, minWidth: 130, fontSize: 12 };
+const NOTE_COL = { whiteSpace: 'normal' as const, minWidth: 130, fontSize: 12 };
 /** Borde EXTERIOR izquierdo en la 1ª celda (orig. usuario: al ras del contenido — el borde de <table> quedaba separado de la grilla por el reparto de columnas). */
-export const EDGE_L = { borderLeft: '1px solid var(--line)' };
+const EDGE_L = { borderLeft: '1px solid var(--line)' };
 /** Borde EXTERIOR derecho en la última celda (misma razón; además hereda el estilo de notas). */
-export const EDGE_R = { ...NOTE_COL, borderRight: '1px solid var(--line)' };
+const EDGE_R = { ...NOTE_COL, borderRight: '1px solid var(--line)' };
 /** Encabezados de la tabla de ENTRADA (6 columnas). */
 export const COLS_IN = [
   'Parámetro',

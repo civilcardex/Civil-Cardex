@@ -47,7 +47,7 @@ function ramalesDe(engine: IPlanoEngineCore, net: string): PlanoRamal[] {
 }
 
 /** ¿Toca este punto una fuente (medidor, calentador, montante, bomba)? Tol en pixels de plano. */
-export function fuenteEnPt(engine: IPlanoEngineCore, net: string, pt: number[], tol = 1): boolean {
+function fuenteEnPt(engine: IPlanoEngineCore, net: string, pt: number[], tol = 1): boolean {
   for (const b of engine.bajantes) {
     if (!FUENTE_TIPOS.has(b.tipo || '')) continue;
     if (b.net && b.net !== net) continue;
@@ -257,7 +257,7 @@ export function guardarMallas(planId: string | number | null, redes: Set<string>
 }
 
 /** Clave de storage de mallas declaradas por planId. */
-export function mallasKey(planId: string | number | null): string {
+function mallasKey(planId: string | number | null): string {
   return `civilflow_mallas_${planId ?? 'x'}`;
 }
 

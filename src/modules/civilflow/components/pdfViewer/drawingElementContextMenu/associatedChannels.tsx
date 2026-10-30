@@ -38,7 +38,7 @@ export const ASSOC_ROW_STYLE: React.CSSProperties = {
 };
 
 /** Bloque de una sección del menú (etiqueta + filas) separado por línea superior. */
-export const ASSOC_SECTION_STYLE: React.CSSProperties = {
+const ASSOC_SECTION_STYLE: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 4,
@@ -48,7 +48,7 @@ export const ASSOC_SECTION_STYLE: React.CSSProperties = {
 };
 
 /** Mensaje "sin canales asociados" a lo ancho de las 2 columnas de la grilla. */
-export const ASSOC_EMPTY_STYLE: React.CSSProperties = {
+const ASSOC_EMPTY_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#6b8cae',
   fontFamily: "'Geist',monospace",

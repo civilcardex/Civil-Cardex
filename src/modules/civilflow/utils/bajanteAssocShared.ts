@@ -185,7 +185,7 @@ export function trazaDeUltimoGrupo(): Record<string, unknown> | null {
 /** Tolerancia en px de plano para encadenar dos ramales extremo-con-extremo (la cabeza de uno
  *  cae sobre la cola del otro) al caminar aguas arriba. Ej: cabeza a 0.4 px de la cola → mismo
  *  flujo; a 5 px → piezas distintas. */
-export const GEO_TOL_UPSTREAM = 0.6;
+const GEO_TOL_UPSTREAM = 0.6;
 /** Tolerancia en px para considerar que un extremo de ramal cae SOBRE el bajante (menos de
  *  2 px de su centro) — así se detectan entradas y espejos cuando no hay listas que lo digan. */
 export const GEO_TOL_BAJANTE = 2.0;
@@ -194,7 +194,7 @@ export const GEO_TOL_BAJANTE = 2.0;
  *  `_tribReversed` invirtió la geometría.
  *  @param r - ramal del pool con sus puntos y el flag de inversión.
  *  @returns [x, y] de la cola, o null si el ramal no tiene al menos 2 puntos. */
-export function flowTailOf(r: InheritPoolRamal): number[] | null {
+function flowTailOf(r: InheritPoolRamal): number[] | null {
   if (!r.pts || r.pts.length < 2) return null;
   return r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
 }
@@ -203,7 +203,7 @@ export function flowTailOf(r: InheritPoolRamal): number[] | null {
  *  receptor. Último punto normal, primero si `_tribReversed`.
  *  @param r - ramal del pool con sus puntos y el flag de inversión.
  *  @returns [x, y] de la cabeza, o null si el ramal no tiene al menos 2 puntos. */
-export function flowHeadOf(r: InheritPoolRamal): number[] | null {
+function flowHeadOf(r: InheritPoolRamal): number[] | null {
   if (!r.pts || r.pts.length < 2) return null;
   return r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
 }
@@ -636,7 +636,7 @@ export function readBajanteLink(
  *  con él se sabe qué extremo del enlace queda arriba. Ej: plans con 'Piso 2' de npt 3.0 → 3.
  *  @param plans - pisos del proyecto (plans_meta).
  *  @returns el npt en metros, o null si el piso no existe o no trae npt numérico. */
-export function nptOfPlan(planId: string, plans: SyncPlanInput[]): number | null {
+function nptOfPlan(planId: string, plans: SyncPlanInput[]): number | null {
   const p = plans.find((x) => String(x.id) === String(planId));
   return typeof p?.npt === 'number' ? p.npt : null;
 }

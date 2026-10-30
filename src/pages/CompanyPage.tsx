@@ -57,10 +57,10 @@ const BTN_FANTASMA: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Exportado para el modo EJEMPLO de esta misma página: mientras el sistema de suscripciones
+/** Para el modo EJEMPLO de esta misma página: mientras el sistema de suscripciones
  * está apagado, CompanyPage pasa mock (miembros falsos, sin RPCs) + soloLectura para NO
  * disparar RPCs reales (asignar_puesto tocaría datos de verdad). */
-export function PanelSuscripcion({
+function PanelSuscripcion({
   sus,
   soloLectura = false,
   mock,

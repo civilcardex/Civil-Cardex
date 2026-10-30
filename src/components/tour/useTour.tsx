@@ -10,9 +10,9 @@ import { TOURS, type TourClave } from './tourSteps.ts';
 const marcaDe = (clave: TourClave): string => `cardex_tour_${clave.replace(/[:]/g, '_')}`;
 
 /** Evento «Repetir tour» (HelpPanel): la pantalla correspondiente lo lanza al vuelo. */
-export const EV_TOUR_REPETIR = 'cardex_tour_repetir';
+const EV_TOUR_REPETIR = 'cardex_tour_repetir';
 
-export function marcarTourVisto(clave: TourClave): void {
+function marcarTourVisto(clave: TourClave): void {
   try {
     localStorage.setItem(marcaDe(clave), '1');
   } catch {

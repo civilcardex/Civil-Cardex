@@ -5,7 +5,7 @@
 
 /** Ids internos de las pestañas del workarea flow aceptados en la URL (la verdad de qué pestaña
  *  está activa es el segmento de ruta, validado aquí). Ej: 'info', 'planos', 'visor'. */
-export const TABS_VALIDOS: readonly string[] = [
+const TABS_VALIDOS: readonly string[] = [
   'info',
   'planos',
   'datos',
@@ -34,7 +34,7 @@ const TAB_DE_SLUG: Record<string, string> = Object.fromEntries(
 );
 
 /** Lee la pestaña de un splat de ruta (por SLUG explícito): primera válida gana. */
-export function tabDeSplat(splat: string | undefined): string | null {
+function tabDeSplat(splat: string | undefined): string | null {
   if (!splat) return null;
   for (const seg of splat.split('/')) {
     const id = TAB_DE_SLUG[seg];

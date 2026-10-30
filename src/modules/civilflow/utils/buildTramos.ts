@@ -14,7 +14,7 @@ import type { Tramo } from '../context/tramosReducer';
  *  el libro tiene una entrada por pieza que recibió la carga (el Ldesvio y los ramales del
  *  destino) y todas llevan la MISMA — sumarlas las contaría varias veces.
  *  Ej: un montante con 2 inodoros y 1 lavamanos heredados de arriba -> { ino: 2, lvm: 1 }. */
-export function heredadoDeMontante(b: {
+function heredadoDeMontante(b: {
   origenId?: string | null;
   descargaEnId?: string | null;
   ucAplicado?: Record<string, Record<string, number>>;

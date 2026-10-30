@@ -324,7 +324,7 @@ export function buildTribFromGuide(
 
 /** Limpia accesorios de extremo de los ramales que tocan el punto: al re-ajustar una guía el
  *  punto de unión cambió y los codos/tees viejos de ese vértice ya no aplican. */
-export function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, number]): void {
+function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, number]): void {
   const TOL = 0.5;
   for (const r of eng.ramales) {
     if (!r.pts || r.pts.length < 2) continue;

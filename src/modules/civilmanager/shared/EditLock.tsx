@@ -26,7 +26,7 @@ export function useEditable(): boolean {
 }
 
 /** Botón EDITAR/LISTO; vive dentro de un EditableSection (usa su estado). */
-export function EditToggleBtn(): React.JSX.Element {
+function EditToggleBtn(): React.JSX.Element {
   const ctx = useContext(EditLockCtx);
   if (!ctx) return <></>;
   return (
