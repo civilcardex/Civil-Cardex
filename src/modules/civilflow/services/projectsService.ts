@@ -69,18 +69,18 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
   }
 }
 
+/** Resultado de crear proyecto: fila creada, o fallo con mensaje del RPC (p. ej.
+ *  'suscripcion_requerida' cuando la BD tiene el gating activo y la suscripción venció). */
+export type CreateProyectoResult = { ok: true; row: ProyectoRow } | { ok: false; msg: string };
+
 /**
  * Crea un proyecto nuevo vía RPC SECURITY DEFINER y devuelve la fila insertada (el RPC
  * devuelve el row como jsonb; la validación de propiedad/texto la hace el servidor). Ver
  * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  * @param codigo - Código corto del proyecto.
  * @param nombre - Nombre legible del proyecto.
- * @returns ProyectoRow insertado o null ante fallo.
+ * @returns {ok:true, row} o {ok:false, msg} con el mensaje del RPC.
  */
-/** Resultado de crear proyecto: fila creada, o fallo con mensaje del RPC (p. ej.
- *  'suscripcion_requerida' cuando la BD tiene el gating activo y la suscripción venció). */
-export type CreateProyectoResult = { ok: true; row: ProyectoRow } | { ok: false; msg: string };
-
 export async function createProyecto(
   codigo: string,
   nombre: string,

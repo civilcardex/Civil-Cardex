@@ -3,6 +3,7 @@ import { devError } from '../../../utils/devError.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
 import type { BajanteLL, CanalLL } from '../context/RainwaterContext.tsx';
 
+/** Ediciones manuales de ll (Lluvias) que sobreviven a la recarga: listas de bajantes y canales con sus áreas y materiales. Ej: BLL-1 con areaOtras=20 m². */
 export interface RainwaterOverrides {
   bajantes: BajanteLL[];
   canales: CanalLL[];

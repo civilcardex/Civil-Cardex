@@ -38,9 +38,17 @@ import { areaParcialBajanteLl, materialComun, sumaOtrasAsociados } from '../util
 import { sectorDe } from '../utils/formatUtils.ts';
 import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents.ts';
 
+/**
+ * Contexto del cálculo pluvial (ll = Lluvias): bajantes de cubierta (BLL) y canales (CLL)
+ * que se auto-pueblan del dibujo (áreas, materiales, intensidad) y guardan las ediciones
+ * manuales del usuario (areaOtras) en BD. Ej: dibujas un canal sobre el plano, la tabla
+ * "Canales" aparece con su sector y su área, y tu edición de áreaOtras sobrevive al reload.
+ */
+
 interface AreaRaw {
   areaM2?: number;
 }
+/** Bajante pluvial de la tabla de lluvias: áreas (parcial + otras), intensidad de lluvia, coeficiente C de escorrentía (cuánta lluvia llega al tubo) y diámetro propuesto. */
 export interface BajanteLL {
   id: string;
   bajante: string;
@@ -59,6 +67,7 @@ export interface BajanteLL {
   manning: number;
   diamPropuesto: number;
 }
+/** Canal pluvial de la tabla de lluvias: geometría (b, h, pendiente), material con su n de Manning (rugosidad) y borde libre. Ej: canal de concreto n=0.013 con b=30 cm. */
 export interface CanalLL {
   id: string;
   sector: string;

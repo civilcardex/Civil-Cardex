@@ -1,3 +1,4 @@
+/** Contenido de la sección "Redes sanitarias" de la página /docs: UD (Unidades de Desague), bajantes y ventilación por NTC (Norma Técnica Colombiana) 1500. */
 import { Tabla, donde, fx } from './ui';
 
 const sanitarias = {

@@ -1,3 +1,4 @@
+/** Contenido de la sección "Principios de hidráulica" de la página /docs: Froude (número adimensional de régimen), Manning (fórmula de flujo en tubería) y fuerza tractiva. */
 import { donde, fx } from './ui';
 
 const hidraulica = {

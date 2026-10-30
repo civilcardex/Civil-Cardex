@@ -7,6 +7,8 @@ import type { Proyecto, MaterialItem, ProfItem, CritItem } from '../context/Proj
 import type { PlanMeta } from '../lib/shared/projectTypes.ts';
 import type { GasDatosGenerales } from '../utils/gasRows.ts';
 
+/** Lectura/escritura del dataset core del proyecto en la BD (proyecto_general, pisos, materiales, profundidades, criterios, metadatos de planos y datos de gas) — una sola puerta para los RPCs (funciones seguras del servidor) de contenido. */
+
 export type { GasDatosGenerales } from '../utils/gasRows.ts';
 
 interface ProyectoCoreData {
@@ -178,13 +180,9 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
 }
 
 /**
- * Reemplaza las filas de pisos/proyecto_general/materiales/profundidades/criterios de un
- * proyecto con el snapshot dado, vía RPC seguro en la BD (borra e inserta por tabla en una
- * transacción atómica). Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- */
-/**
- * Esqueleto común de los guardados RPC: exige sesión (emite 'sin-sesion' si no hay), corre
- * la escritura, emite el error etiquetado y convierte la excepción en false.
+ * Esqueleto común de los guardados RPC (Remote Procedure Call, funciones seguras en la BD):
+ * exige sesión (emite 'sin-sesion' si no hay), corre la escritura, emite el error etiquetado
+ * y convierte la excepción en false.
  * Ej: conSesion('save-gas', () => supabase.rpc('save_gas_datos', {...})) → true solo si la
  * RPC volvió sin error.
  * @param etiqueta etiqueta corta para el canal de alertas (ej. 'save-core').
@@ -216,6 +214,12 @@ async function conSesion(
   }
 }
 
+/**
+ * Reemplaza las filas de pisos/proyecto_general/materiales/profundidades/criterios de un
+ * proyecto con el snapshot dado, vía RPC seguro en la BD (borra e inserta por tabla en una
+ * transacción atómica). Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
+ * @returns true si el guardado terminó sin error.
+ */
 export async function saveProyectoCoreData(
   proyectoId: string,
   core: ProyectoCoreData,
@@ -496,6 +500,7 @@ export interface RejillasBlob {
   ts?: number;
 }
 
+/** Guarda el blob de rejillas del proyecto en la BD (campo 'rejillas' de proyecto_general). Ej: tras editar la tabla de NTC (Norma Técnica Colombiana) 3631. */
 export async function saveRejillasProyecto(proyectoId: string, blob: RejillasBlob): Promise<void> {
   return saveCampoProyectoGeneral(proyectoId, 'rejillas', JSON.stringify(blob ?? {}));
 }

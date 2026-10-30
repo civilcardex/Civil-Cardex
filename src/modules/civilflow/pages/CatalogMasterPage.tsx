@@ -50,6 +50,7 @@ const pageBtn = {
   minWidth: 30,
 };
 
+/** Página "Catálogo Maestro" (pestaña Parámetros de diseño): tablas dimensionales de tubería por red (san, vent, af, ac, rci, gas) y de rejillas. Ej: consultas el diámetro interior del PVC de 3/4" antes de dimensionar. */
 export default function CatalogMasterPage() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();

@@ -1,3 +1,4 @@
+/** Contenido de la sección "Bombas, tanques y equipos" de la página /docs: potencia de bom (Bomba), NPSH (Net Positive Suction Head, altura mínima de succión) e hidroneumáticos (ep = Equipo de Presion). */
 import { Tabla, donde, fx } from './ui';
 
 const equipos = {

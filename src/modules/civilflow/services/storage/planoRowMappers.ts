@@ -441,15 +441,3 @@ export function rowToGhost(row: SupabaseRow): CrossFloorGhost {
     layout: g<number | undefined>(row, 'layout', undefined),
   };
 }
-
-/**
- * Guarda el estado completo de dibujo de un plano (cabecera + todas las colecciones) vía
- * el RPC seguro `save_plano_data`: una sola transacción validada del lado del servidor.
- * La firma externa no cambió, así que todos los llamadores existentes siguen funcionando
- * sin modificaciones. Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
- */
-/**
- * Aviso visible de fallo de guardado a BD (orig. usuario: "no se guarda nada y la UI no se
- * entera"): cada salida temprana / error del RPC emite este evento; el visor lo escucha y
- * pinta la franja de estado en rojo con el motivo.
- */

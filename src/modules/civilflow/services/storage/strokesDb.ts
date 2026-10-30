@@ -367,6 +367,12 @@ function agregaEnlace(lista: string[], id: string): void {
   if (id && !lista.includes(id)) lista.push(id);
 }
 
+/**
+ * Carga el doc completo de un plano desde la BD vía el RPC get_plano_data (null si no hay
+ * sesión/fila). Además devuelve a localStorage los conteos de aparatos/hidro/gas que viajan
+ * dentro de ramales y bajantes — sin ese fusionado, el panel de Aparatos quedaba en cero
+ * tras abrir el piso en otro dispositivo aunque la BD tuviera los datos.
+ */
 export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {
     const user = await cachedSupabaseUser();

@@ -1,3 +1,4 @@
+/** Contenido de la sección "Red de gas" de la página /docs: método de Renouard (fórmula de pérdida de carga en gas) con NTC (Norma Técnica Colombiana) 3728 y materiales. */
 import { Tabla, donde, fx } from './ui';
 
 const gas = {

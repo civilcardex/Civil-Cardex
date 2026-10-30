@@ -1,3 +1,4 @@
+/** Contenido de la sección "Manual de usuario" de la página /docs: guía paso a paso del flujo de trabajo de Civil Flow. */
 import { NormaLink } from '../../../components/shared/standardsLinks.tsx';
 import { Tabla } from './ui';
 

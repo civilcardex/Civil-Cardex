@@ -1,3 +1,5 @@
+/** Barrel de constantes del módulo civilflow: catálogos de aparatos, materiales, gas, redes y valores por defecto. Importa desde aquí, no desde cada archivo. */
+
 export {
   APARATOS_DEF,
   AF_UC_IDS,
@@ -58,6 +60,7 @@ export {
   matFullName,
 } from './helpers.ts';
 
+/** Coeficientes Le (Longitud equivalente): metros de tubería recta que "cuesta" cada accesorio en pérdida de carga de gas (Gas). Ej: un codo de 90° estándar suma 30 m equivalentes. */
 export const LE_K = {
   codos_90_std: 30,
   codos_90_std_sube: 30,
@@ -70,4 +73,5 @@ export const LE_K = {
   teeTapon: 1,
   valvula_bola: 8,
 };
+/** Pendiente por defecto en % para canales de ll (Lluvias). Ej: 2.0 significa 2 cm de caída por metro. */
 export const DEFAULT_PENDIENTE_PCT = 2.0;

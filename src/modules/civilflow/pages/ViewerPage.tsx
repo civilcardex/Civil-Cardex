@@ -73,6 +73,12 @@ const pdfReadyStore = {
   listeners: new Set<() => void>(),
 };
 
+/**
+ * Visor (/visor): dibujo de redes sobre la lámina PDF del piso activo — carga de planos,
+ * overlay de carga única, selector de pisos y hand-off con el workarea. La lógica pesada
+ * (motor, raster, responsive) vive en components/PdfViewer y sus submódulos; aquí queda
+ * la orquestación de la página.
+ */
 export default function ViewerPage() {
   const { plans, addPlans, removePlan, restoreDone, cloudRestoreDone } = usePlans();
   const { pisos } = useProject();

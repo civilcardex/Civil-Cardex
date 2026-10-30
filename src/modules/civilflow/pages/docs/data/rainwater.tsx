@@ -1,3 +1,4 @@
+/** Contenido de la sección "Aguas lluvias" de la página /docs: método racional, coeficiente C (escorrentía), capacidad de bajantes (Wyly-Eaton, fórmula de ventilación sanitaria aplicada a pluvial) y canales. */
 import { Tabla, donde, fx } from './ui';
 
 const lluvias = {

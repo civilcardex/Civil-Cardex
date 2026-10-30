@@ -2,6 +2,7 @@ import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
 
+/** Ficha de la bomba sumergible (bom = Bomba): simulación, UD totales, altura, potencia, tubería de impulsión e inputs por bomba. Ej: hz=altura de bombeo en m. */
 export interface BombaData {
   salSim: string;
   udTot: string;

@@ -1,3 +1,4 @@
+/** Catálogo de tuberías de gas (Gas) por material: K (coeficiente de Rugosidad de Renouard, fórmula de pérdida de carga en gas) y diámetros comerciales con diámetro interior en mm. Ej: cobre rígido K=54.2 con 1/2" de 10.9 mm. */
 export const GAS = [
   {
     mat: 'Acero galvanizado',
@@ -59,12 +60,13 @@ export const GAS = [
   },
 ];
 
+/** Etiquetas de diámetro nominal únicas (3/8", 1/2"…) presentes en todos los materiales de GAS, en orden de aparición. Ej: llena el dropdown de diámetro del diseño de gas. */
 export const GAS_DN_LABELS: string[] = [];
 for (const g of GAS)
   for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
 
-// Catálogo de gasodomésticos — fuente: tabla NTC 3728. La potencia depende del tipo de
-// tabla: kw = tabla gas natural, kwglp = tabla GLP; q/qglp son los consumos (m³/h).
+// Catálogo de gasodomésticos — fuente: tabla NTC (Norma Técnica Colombiana) 3728. La potencia depende del tipo de
+// tabla: kw = tabla gas natural, kwglp = tabla GLP (Gas Licuado de Petróleo); q/qglp son los consumos (m³/h).
 /** Entrada del catálogo NTC 3728 (null = valor pendiente de la tabla completa). */
 export interface CatGasItem {
   id: string;
@@ -80,6 +82,7 @@ export interface CatGasItem {
   kwglp: number | null;
 }
 
+/** Catálogo de gasodomésticos (NTC 3728): consumo (m³/h) y potencia (kW) por tipo de gas. Ej: calentador de 11 LPM consume 1.88 m³/h de gas natural. */
 export const CAT_GAS: CatGasItem[] = [
   {
     id: 'pisc',

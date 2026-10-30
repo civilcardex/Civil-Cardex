@@ -10,6 +10,7 @@ interface SectionCardProps {
   compact?: boolean;
 }
 
+/** Tarjeta con título y subtítulo para las páginas de catálogo (grid del Catálogo Maestro). Ej: "Rejillas — Nacionales" con la tabla adentro; scroll y ancho opcionales. */
 export default function SectionCard({
   title,
   subtitle,

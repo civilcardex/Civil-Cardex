@@ -53,6 +53,7 @@ const MODULOS: { label: string; nota: string; cats: string[] }[] = [
   },
 ];
 
+/** Página pública de documentación (/docs): menú de categorías por módulo + buscador global sobre el texto plano de la doc + acordeones de secciones. Ej: /docs#gas abre la categoría de gas directamente. */
 function DocsPage() {
   // Deep-link (orig. usuario): /docs#categoria abre esa categoría directamente (lazy init, sin
   // efecto ni setState-en-render).

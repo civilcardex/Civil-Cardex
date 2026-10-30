@@ -30,6 +30,7 @@ import { guardaConReintento } from '../../../utils/saveToCloud.ts';
 import type { PlanMeta } from '../lib/shared/projectTypes.ts';
 export type { PlanMeta } from '../lib/shared/projectTypes.ts';
 
+/** Un plano del proyecto: su PDF, nombre, nivel de piso, escala y estado de la calibración (origen/factores). Ej: plano del P1 con origen calibrado y factorX 0.669. */
 export interface PlanItem {
   id: number;
   file: File;

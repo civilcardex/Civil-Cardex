@@ -4,6 +4,7 @@ import { lookupInterno } from '../utils/fittingsUtils.ts';
 
 const WaterNetworkDesign = React.lazy(() => import('../components/WaterNetworkDesign.tsx'));
 
+/** Pantalla de diseño de la acometida (la tubería que entra del acueducto al edificio, red af = Agua Fría) reusando el diseño de redes con `showOnlyAcometida`. */
 export default function AcometidaPage() {
   return (
     <div

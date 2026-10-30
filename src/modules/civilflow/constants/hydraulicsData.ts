@@ -1,6 +1,7 @@
 import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
 import { AGUA_CALIENTE } from '../pages/catalog/catalogData.ts';
 
+/** Catálogo de diámetros comerciales de af (Agua Fría): diámetro nominal, pulgadas, interior/exterior en mm y pared (RDE o sch). Ej: 1/2" RDE 9 -> dInt 16.6 mm. */
 export interface DiametroComercialAF {
   nominal: string;
   pulg: number;
@@ -11,6 +12,7 @@ export interface DiametroComercialAF {
   V?: number;
 }
 
+/** Diámetros comerciales de af (Agua Fría) en RDE (Rodríguez Determina Exterior, tubería PPR colombiana). Ej: seleccionar 3/4" RDE 11 para un lavamanos. */
 export const DIAMETROS_AF: DiametroComercialAF[] = [
   { nominal: '1/2" RDE 9', pulg: 0.5, dInt: 16.6, dExt: 12.7, rde: 9 },
   { nominal: '1/2" RDE 13.5', pulg: 0.5, dInt: 18.18, dExt: 12.7, rde: 13.5 },
@@ -27,6 +29,7 @@ export const DIAMETROS_AF: DiametroComercialAF[] = [
   { nominal: '6" RDE 21', pulg: 6.0, dInt: 152.22, dExt: 152.4, rde: 21 },
 ];
 
+/** Diámetros de ac (Agua Caliente) derivados del catálogo CPVC (Cloruro de Polivinilo Clorado) de la página de catálogos. Ej: "3/4" RDE 11" con dInt tomado de la tabla fuente. */
 export const DIAMETROS_AC: DiametroComercialAF[] = AGUA_CALIENTE[0].rows.map((r) => {
   const match = r.dn.match(/^(.+?)\s*\((.+?)\)$/);
   if (!match) return { nominal: r.dn, pulg: 0, dInt: r.d, dExt: 0 };

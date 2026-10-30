@@ -14,11 +14,13 @@ import { APS_STORAGE_KEY } from '../constants/storage-keys.ts';
 import { loadAparatosUsuario, saveAparatosUsuario } from '../services/apparatusService.ts';
 import { guardaConReintento } from '../../../utils/saveToCloud.ts';
 
+/** Aparato sanitario de la lista UD base: id, nombre y cuántas UD (Unidades de Desague) gasta. Ej: lavamanos -> 2 UD. */
 export interface UdBaseItem {
   id: string;
   nombre: string;
   ud: number;
 }
+/** Fila del catálogo APS (Aparatos del Proyecto): sigla, nombre, grupo, UC (Unidades de Consumo) af/ac, UD, presiones mín/máx, consumo de gas y control. Ej: inodoro con ucaf=4.2, ud=4. */
 export interface ApsItem {
   id: string;
   s: string;

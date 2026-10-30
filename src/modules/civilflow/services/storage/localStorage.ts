@@ -25,14 +25,6 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
-/**
- * Serializa un valor a JSON y lo escribe en localStorage.
- * @param key - Clave de storage (con prefijo `civilflow_`).
- * @param data - Cualquier valor serializable a JSON.
- * @returns true si se guardó; false si falló (p. ej. cuota llena — antes fallaba mudo y
- * la caché local vieja hacía que el GC borrara claves de aparatos, orig. usuario piso 2).
- * Emite `civilflow_local_quota` / `civilflow_local_quota_ok` en window para la franja de UI.
- */
 const quotaFailedKeys = new Set<string>();
 /** Guarda el dibujo en caché sin perder la marca de asociación entre pisos. Sin ella, al reabrir se repite la migración completa. Ej: pasa siempre por aquí, no por saveToStorage. */
 export function saveTrazosLocales(planId: string | number, doc: Record<string, unknown>): boolean {
@@ -69,6 +61,14 @@ export function localGanaABdPorTs(
   return Number(localTs ?? 0) > Number(dbTs ?? 0);
 }
 
+/**
+ * Serializa un valor a JSON y lo escribe en localStorage.
+ * @param key - Clave de storage (con prefijo `civilflow_`).
+ * @param data - Cualquier valor serializable a JSON.
+ * @returns true si se guardó; false si falló (p. ej. cuota llena — antes fallaba mudo y
+ * la caché local vieja hacía que el GC borrara claves de aparatos, orig. usuario piso 2).
+ * Emite `civilflow_local_quota` / `civilflow_local_quota_ok` en window para la franja de UI.
+ */
 export function saveToStorage(key: string, data: unknown, opts?: { sinDiario?: boolean }): boolean {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(data));
@@ -154,6 +154,7 @@ export function setActiveProyectoId(id: string | null): void {
   }
 }
 
+/** El doc completo de un piso (todo lo dibujado + cámara/escala); campos ausentes permitidos. Ej: loadPlanTrazos('123') devuelve este tipo con los ramales del piso. */
 export type PlanTrazos = Partial<PlanoWorkData>;
 
 /**

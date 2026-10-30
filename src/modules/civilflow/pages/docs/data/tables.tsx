@@ -1,3 +1,4 @@
+/** Contenido de la sección "Tablas y verificaciones" de la página /docs (Acuerdon): coeficientes, verificaciones y diámetros comerciales. */
 import { Tabla } from './ui';
 
 const tablas = {

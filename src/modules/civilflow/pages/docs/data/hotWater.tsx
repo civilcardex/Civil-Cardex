@@ -1,3 +1,4 @@
+/** Contenido de la sección "Agua caliente" de la página /docs: diseño, pérdidas de calor y recirculación de ac (Agua Caliente). */
 import { Tabla, donde, fx } from './ui';
 
 const agua_caliente = {

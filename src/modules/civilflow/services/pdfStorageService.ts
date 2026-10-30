@@ -72,6 +72,7 @@ export async function uploadPlanPDF(proyectoId: string, planId: number, file: Fi
   }
 }
 
+/** Descarga el PDF del plano del bucket (null si no existe o no hay sesión). Ej: al abrir el visor en otro dispositivo trae la lámina desde la nube. */
 export async function downloadPlanPDF(
   proyectoId: string,
   planId: number,
@@ -109,6 +110,7 @@ export async function deletePlanMeta(planId: number): Promise<void> {
   }
 }
 
+/** Borra el binario del bucket (par de deletePlanMeta). Ej: al eliminar un plano, se van fila de metadatos y PDF. */
 export async function deletePlanPDF(proyectoId: string, planId: number): Promise<void> {
   try {
     const {

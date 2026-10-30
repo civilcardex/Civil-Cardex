@@ -1,3 +1,4 @@
+/** Contenido de la sección "Información general" de la página /docs: metodología de APU (Análisis de Precios Unitarios), cuadrillas y AIU para Civil Manager. */
 import { donde, fx } from './ui';
 
 const manager = {

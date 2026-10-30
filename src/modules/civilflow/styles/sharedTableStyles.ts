@@ -1,3 +1,6 @@
+/** Estilos CSS compartidos por las tablas de diseño (inputs SI/SD, encabezado TH y celda TD): una sola fuente de verdad para que todas las tablas se vean iguales. Ej: SI = input centrado mono; SD = el mismo input alineado a la izquierda. */
+
+/** Celda-input centrada (texto cortos: cantidades, siglas) con fuente mono y borde fino. */
 export const SI: React.CSSProperties = {
   border: '1px solid var(--line)',
   borderRadius: 3,
@@ -10,12 +13,14 @@ export const SI: React.CSSProperties = {
   textAlign: 'center',
   padding: '3px 5px',
 };
+/** Celda-input alineada a la izquierda con fuente de texto (nombres largos: descripciones). */
 export const SD: React.CSSProperties = {
   ...SI,
   textAlign: 'left',
   fontFamily: 'var(--body)',
   cursor: 'pointer',
 };
+/** Encabezado de columna: mayúsculas, gris tenue y borde compartido. Ej: "DIÁMETRO (PULG)". */
 export const TH: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
@@ -31,6 +36,7 @@ export const TH: React.CSSProperties = {
   background: 'var(--bg3)',
   verticalAlign: 'middle',
 };
+/** Celda de solo lectura (valores calculados: caudal, velocidad), centrada y tenue. */
 export const TD: React.CSSProperties = {
   fontSize: 12,
   fontFamily: 'var(--mono)',

@@ -4,6 +4,7 @@ import type { ApsItem, UdBaseItem } from '../context/ApparatusContext.tsx';
 import { CF_TABLES } from '../constants/tableNames.ts';
 import { getActiveProyectoId } from './storageService.ts';
 
+/** Snapshot del catálogo de aparatos del usuario: lista UD base (sanitarios y cuánta UD (Unidades de Desague) gastan) + catálogo APS (Aparatos del Proyecto) propio. */
 export interface AparatosUsuarioData {
   udBase: UdBaseItem[];
   aps: ApsItem[];

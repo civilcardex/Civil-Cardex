@@ -35,6 +35,7 @@ function resaltar(title: string, q?: string): ReactNode {
   );
 }
 
+/** Acordeón de una sección de la página /docs: título clicable que abre/cierra; el cuerpo SIEMPRE queda montado (los crawlers leen el contenido cerrado). Ej: clic en "Hazen-Williams" y se despliega su fórmula. */
 export default function SectionAccordion({
   section,
   sectionKey,
