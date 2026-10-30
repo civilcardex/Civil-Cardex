@@ -53,7 +53,7 @@ import { useViewerPersistence } from './pdfViewer/useViewerPersistence.ts';
 import { useEngineBridge } from './pdfViewer/useEngineBridge.ts';
 import { useViewerMenus } from './pdfViewer/useViewerMenus.ts';
 import { useViewerShortcuts } from './pdfViewer/useViewerShortcuts.ts';
-import ViewerStage, { LEFT_COLLAPSED_WIDTH } from './pdfViewer/ViewerStage.tsx';
+import { ViewerStage, LEFT_COLLAPSED_WIDTH } from './pdfViewer/ViewerStage.tsx';
 
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
 

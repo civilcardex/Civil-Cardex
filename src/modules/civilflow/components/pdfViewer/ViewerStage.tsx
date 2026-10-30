@@ -21,12 +21,12 @@ import type { ConfirmState, AccesorioModalState } from './useViewerDialogs.ts';
 import PdfViewerToolbar, { STATUS } from './PdfViewerToolbar.tsx';
 import PdfViewerNetworkBar from './PdfViewerNetworkBar.tsx';
 import PdfCanvas from './PdfCanvas.tsx';
-import ViewerMobileChrome from './ViewerMobileChrome.tsx';
+import { ViewerMobileChrome } from './ViewerMobileChrome.tsx';
 import TextInputOverlay from './TextInputOverlay.tsx';
 import DrawingElementContextMenu from './drawingElementContextMenu';
 import ConfirmDialog from './ConfirmDialog.tsx';
 import AccesorioModal from './FittingModal.tsx';
-import PdfViewerRightSidebar from './PdfViewerRightSidebar.tsx';
+import { PdfViewerRightSidebar } from './PdfViewerRightSidebar.tsx';
 import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 
 /**
@@ -406,7 +406,7 @@ export function ViewerStage(props: ViewerStageProps) {
             isNarrow={isNarrow}
             currentFile={currentFile ?? null}
             onFit={handleFit}
-            onZoomStep={(f) => engineRef.current?.zoomStep(f)}
+            onZoomStep={(f: number) => engineRef.current?.zoomStep(f)}
           />
 
           <PdfCanvas
