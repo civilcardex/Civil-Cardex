@@ -18,6 +18,7 @@ import {
   setSingleAparatoCount,
 } from '../../../utils/syncExtremeAccessory.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
+import { devError } from '../../../../../utils/devError.ts';
 import {
   MENU_SELECT_STYLE,
   MENU_SECTION_LABEL_ROW_STYLE,
@@ -305,8 +306,9 @@ export function MidRamalAccessorySelector({
               const curMap = countsCur[keyCur] || {};
               const found = Object.keys(curMap).find((k) => (curMap[k] || 0) > 0);
               if (found) currentApp = found;
-            } catch (_e) {
-              void _e;
+            } catch (e) {
+              // Libro ilegible: el desplegable cae a vacío, pero el dato perdido queda rastreado.
+              devError('[midRamal] conteo de aparatos ilegible:', e);
             }
           }
           // Asignados COEXISTEN (orig. usuario: sifón + inodoro): una tarjeta por aparato con
@@ -321,7 +323,8 @@ export function MidRamalAccessorySelector({
                 return aparatoIds
                   .filter((id) => (curMap[id] || 0) > 0)
                   .map((id) => ({ id, n: curMap[id] }));
-              } catch {
+              } catch (e) {
+                devError('[midRamal] libro de aparatos ilegible: sin asignados', e);
                 return [];
               }
             }
@@ -417,8 +420,8 @@ export function MidRamalAccessorySelector({
                     (k) => (prevMap[k] || 0) > 0 && k !== val,
                   );
                   if (foundPrev) prevAparato = foundPrev;
-                } catch (_e) {
-                  void _e;
+                } catch (e) {
+                  devError('[midRamal] conteo previo ilegible (cambio de aparato):', e);
                 }
                 if (isInodoro) {
                   // ponytail: inodoro must be >=4" even when ramal has NO diameter (0 returns "allowed")

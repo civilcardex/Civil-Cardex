@@ -3,6 +3,7 @@ import {
   generateMemoriaExcel,
   generateMemoriaDocx,
   generateMemoriaPdf,
+  ExportCancelada,
   type MemoriaTable,
   type MemoriaData,
 } from '../../utils/exportReportFinal.ts';
@@ -116,7 +117,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const [planosBusy, setPlanosBusy] = useState(false);
   // Cancelar (orig. usuario): cada descarga en curso muestra su botón; los generadores
   // consultan el flag entre unidades de trabajo (tabla/hoja/lámina) y abortan con
-  // Error('cancelado'), que el handler traga en silencio. El anexo aborta el fetch (AbortController).
+  // ExportCancelada, que el handler traga en silencio. El anexo aborta el fetch (AbortController).
   const cancelMemoriaRef = useRef(false);
   const cancelPlanosRef = useRef(false);
   const cancelAnexoRef = useRef<AbortController | null>(null);
@@ -211,7 +212,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
       else await generateMemoriaDocx(data, cancelada);
     } catch (e) {
       // Cancelar (orig. usuario): aborto intencional — sin alerta, el usuario lo pidió.
-      if ((e instanceof Error ? e.message : '') !== 'cancelado')
+      if (!(e instanceof ExportCancelada))
         alert(`Error generando memorias: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     } finally {
       setMemoriaBusy(false);
@@ -238,7 +239,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
     try {
       await downloadPlanosPdf(plans, pisos, ocultasExport, () => cancelPlanosRef.current);
     } catch (e) {
-      if ((e instanceof Error ? e.message : '') !== 'cancelado')
+      if (!(e instanceof ExportCancelada))
         alert(`Error descargando planos: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     } finally {
       setPlanosBusy(false);

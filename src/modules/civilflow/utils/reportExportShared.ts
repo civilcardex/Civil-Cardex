@@ -75,6 +75,18 @@ export interface MemoriaData {
 export function fileBase(proyNombre: string): string {
   return sanitizeFileName(`Memorias Finales ${proyNombre || 'Proyecto'}`);
 }
+
+/** Cancelación de usuario (botón Cancelar) durante una exportación: se compara por TIPO
+ *  (instanceof), no por texto — un Error('cancelado') de una librería ya no se confunde con
+ *  el botón. Los generadores la lanzan entre unidades de trabajo (tabla/hoja/lámina) y el
+ *  caller la traga en silencio.
+ *  Ej: reportTab: catch (e) { if (!(e instanceof ExportCancelada)) alert(...); } */
+export class ExportCancelada extends Error {
+  constructor() {
+    super('Exportación cancelada');
+    this.name = 'ExportCancelada';
+  }
+}
 /** Orden canónico de las redes en la memoria y sus rótulos (af antes de ac, san antes de ll…). */
 export const REDES_ORDEN: { key: string; label: string }[] = [
   { key: 'san', label: 'Sanitaria' },

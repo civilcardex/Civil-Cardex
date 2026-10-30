@@ -4,6 +4,7 @@ import {
   type MemoriaData,
   fileBase,
   REDES_ORDEN,
+  ExportCancelada,
 } from './reportExportShared.ts';
 import { loadJspdf } from '../../../utils/exportLoaders.ts';
 import { sanaCelda, sanaTablas } from './sanReport.ts';
@@ -71,10 +72,10 @@ export async function generateMemoriaPdf(
   let prevKey: string | null = null;
   let cursorY = 55;
   for (let i = 0; i < tablas.length; i++) {
-    // Punto de cancelación (botón Cancelar, orig. usuario): por tabla. 'cancelado' lo traga el
-    // caller. El yield es OBLIGATORIO: autoTable es puro CPU — sin ceder el hilo, el click en
+    // Punto de cancelación (botón Cancelar, orig. usuario): por tabla. ExportCancelada la traga
+    // el caller. El yield es OBLIGATORIO: autoTable es puro CPU — sin ceder el hilo, el click en
     // Cancelar jamás se procesa hasta que el bucle entero termina (por eso "no cancelaba").
-    if (shouldCancel?.()) throw new Error('cancelado');
+    if (shouldCancel?.()) throw new ExportCancelada();
     await new Promise((r) => setTimeout(r, 0));
     const table = tablas[i];
     const key = table.red || '';

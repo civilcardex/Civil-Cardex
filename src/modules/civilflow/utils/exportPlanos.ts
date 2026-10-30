@@ -6,6 +6,7 @@ import type { PlanItem } from '../context/PlansContext.tsx';
 import type { Piso } from '../lib/shared/projectTypes.ts';
 import { pisoLbl } from '../constants';
 import { sanitizeFileName } from './formatUtils.ts';
+import { ExportCancelada } from './reportExportShared.ts';
 
 // Factor de sobremuestreo para el raster de exportación. La página PDF en sí se mantiene
 // dimensionada a escala-1 de pdfjs (ver w/h abajo — las coordenadas de elementos persistidas
@@ -23,7 +24,7 @@ export function filtraRedesParaExport(
   eng: {
     ramales: Array<{ net: string }>;
     bajantes: Array<{ net: string }>;
-    areas: unknown[];
+    areas: Array<{ net?: string }>;
     crossFloorGhosts: Array<{ net: string }>;
     _hiddenNets: Set<string>;
   },
@@ -33,11 +34,7 @@ export function filtraRedesParaExport(
   eng.ramales = eng.ramales.filter((r) => !ocultarNets.has(r.net));
   eng.bajantes = eng.bajantes.filter((b) => !ocultarNets.has(b.net));
   eng.crossFloorGhosts = eng.crossFloorGhosts.filter((g) => !ocultarNets.has(g.net));
-  eng.areas = eng.areas.filter(
-    (a) =>
-      !(a as unknown as { net?: string }).net ||
-      !ocultarNets.has((a as unknown as { net?: string }).net!),
-  );
+  eng.areas = eng.areas.filter((a) => !a.net || !ocultarNets.has(a.net));
   eng._hiddenNets = new Set(ocultarNets);
 }
 
@@ -46,6 +43,9 @@ export function filtraRedesParaExport(
 // en pantalla), compuesto en un solo canvas plano. Corre una instancia de PlanoEngine
 // desacoplada (nunca montada/visible) — es la misma clase que usa el visor interactivo, solo
 // apuntada a un canvas fuera de pantalla para que esto funcione sin que el visor esté abierto.
+// El finally libera AMBOS recursos: el engine y el PDFDocumentProxy (sin destroy() el worker
+// de pdf.js queda retenido por cada piso exportado — 10 pisos = 10 workers hasta que el
+// GC decida).
 async function renderPlanoComposite(
   plan: PlanItem,
   pisos: Piso[],
@@ -53,27 +53,30 @@ async function renderPlanoComposite(
 ): Promise<{ dataUrl: string; w: number; h: number } | null> {
   const pdfjsLib = await getPdfjs();
   const buf = await plan.file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 1 });
-  const w = Math.floor(viewport.width);
-  const h = Math.floor(viewport.height);
-  const scaledViewport = page.getViewport({ scale: RENDER_SCALE });
-  const sw = Math.floor(scaledViewport.width);
-  const sh = Math.floor(scaledViewport.height);
-
-  const pdfCanvas = document.createElement('canvas');
-  pdfCanvas.width = sw;
-  pdfCanvas.height = sh;
-  await page.render({ canvas: pdfCanvas, viewport: scaledViewport }).promise;
-
-  const drawCanvas = document.createElement('canvas');
-  drawCanvas.width = sw;
-  drawCanvas.height = sh;
-
-  const detachedCw = document.createElement('div');
-  const eng = new PlanoEngine(detachedCw, null, drawCanvas);
+  // El destroy() de pdfjs 6 vive en el LOADING TASK (libera documento + worker), no en el proxy.
+  const task = pdfjsLib.getDocument({ data: buf });
+  const pdf = await task.promise;
+  let eng: PlanoEngine | null = null;
   try {
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1 });
+    const w = Math.floor(viewport.width);
+    const h = Math.floor(viewport.height);
+    const scaledViewport = page.getViewport({ scale: RENDER_SCALE });
+    const sw = Math.floor(scaledViewport.width);
+    const sh = Math.floor(scaledViewport.height);
+
+    const pdfCanvas = document.createElement('canvas');
+    pdfCanvas.width = sw;
+    pdfCanvas.height = sh;
+    await page.render({ canvas: pdfCanvas, viewport: scaledViewport }).promise;
+
+    const drawCanvas = document.createElement('canvas');
+    drawCanvas.width = sw;
+    drawCanvas.height = sh;
+
+    const detachedCw = document.createElement('div');
+    eng = new PlanoEngine(detachedCw, null, drawCanvas);
     // Conducir el propio sobremuestreo de PlanoEngine vía dpr (coincide sw/sh exactamente, no
     // solo RENDER_SCALE, así que el canvas de overlay dibujado queda alineado píxel a píxel con
     // el raster de pdfjs de arriba aun después de que ambos fueran redondeados hacia abajo
@@ -130,7 +133,8 @@ async function renderPlanoComposite(
     // nitidez.
     return { dataUrl: out.toDataURL('image/png'), w, h };
   } finally {
-    eng.destroy();
+    eng?.destroy();
+    await task.destroy();
   }
 }
 
@@ -151,7 +155,7 @@ export async function downloadPlanosPdf(
   for (const plan of confirmed) {
     // Punto de cancelación (botón Cancelar, orig. usuario): entre láminas. El yield deja
     // procesar el click antes del raster (la lámina en curso termina, el resto no empieza).
-    if (shouldCancel?.()) throw new Error('cancelado');
+    if (shouldCancel?.()) throw new ExportCancelada();
     await new Promise((r) => setTimeout(r, 0));
     const composite = await renderPlanoComposite(plan, pisos, ocultarNets);
     if (!composite) continue;

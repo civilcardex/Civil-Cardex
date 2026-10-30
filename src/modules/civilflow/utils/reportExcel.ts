@@ -4,6 +4,7 @@ import {
   type MemoriaData,
   fileBase,
   REDES_ORDEN,
+  ExportCancelada,
 } from './reportExportShared.ts';
 import { loadXlsx } from '../../../utils/exportLoaders.ts';
 import { sanaCelda, sanaTablas } from './sanReport.ts';
@@ -185,7 +186,7 @@ export async function generateMemoriaExcel(
   for (const { key, label } of REDES_ORDEN) {
     // Punto de cancelación (botón Cancelar, orig. usuario): por hoja de red. El yield deja
     // procesar el click — xlsx es puro CPU y sin ceder el bucle bloquea el hilo completo.
-    if (shouldCancel?.()) throw new Error('cancelado');
+    if (shouldCancel?.()) throw new ExportCancelada();
     await new Promise((r) => setTimeout(r, 0));
     const tables = tablas.filter((t) => t.red === key);
     if (tables.length === 0) continue;

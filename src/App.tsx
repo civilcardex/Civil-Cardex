@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
 import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
@@ -51,12 +51,16 @@ const CatalogoMaestroPage = React.lazy(
 const CompanyPage = React.lazy(() => import('./pages/CompanyPage.tsx'));
 const ModulePage = React.lazy(() => import('./pages/ModulePage.tsx'));
 
-/** Scroll al inicio en cada cambio de ruta (sin él, /pricing heredaba la posición de la landing). */
+/** Sube al inicio SOLO en navegación nueva (PUSH/REPLACE, sin él /pricing heredaba la posición
+ *  de la landing). En atrás/adelante (POP) el navegador ya restaura la posición y forzarla al
+ *  tope la perdía.
+ *  Ej: landing → /pricing sube; Atrás vuelve a la landing donde estabas. */
 function ScrollToTop() {
   const { pathname } = useLocation();
+  const navType = useNavigationType();
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    if (navType !== 'POP') window.scrollTo(0, 0);
+  }, [pathname, navType]);
   return null;
 }
 

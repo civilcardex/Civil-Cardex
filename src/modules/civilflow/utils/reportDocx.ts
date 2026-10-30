@@ -1,5 +1,10 @@
 // Generador Word (docx apaisado) de la memoria de cálculo. Extraído verbatim de exportMemoryFinal.
-import { type MemoriaTable, type MemoriaData, fileBase } from './reportExportShared.ts';
+import {
+  type MemoriaTable,
+  type MemoriaData,
+  fileBase,
+  ExportCancelada,
+} from './reportExportShared.ts';
 import { sanaTablas } from './sanReport.ts';
 function computeColumnWidthsDxa(headers: string[]): number[] {
   const twipsPerChar = 105;
@@ -219,7 +224,7 @@ export async function generateMemoriaDocx(
   for (let i = 0; i < allTables.length; i++) {
     // Punto de cancelación (botón Cancelar, orig. usuario): por tabla. El yield deja procesar
     // el click — la construcción docx es puro CPU y bloquea el hilo sin ceder.
-    if (shouldCancel?.()) throw new Error('cancelado');
+    if (shouldCancel?.()) throw new ExportCancelada();
     await new Promise((r) => setTimeout(r, 0));
     const table = allTables[i];
     const nextTable = table.side ? allTables[i + 1] : undefined;

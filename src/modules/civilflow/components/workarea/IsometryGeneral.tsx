@@ -147,13 +147,23 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     // z+ se renderiza ABAJO en pantalla (project() con rotX=-45). Altura REAL por piso (orig.
     // usuario: cubierta y sótano quedaban con huecos invertidos/dobles): el NPT de cada piso
     // (el del generador: C=4 m, P2=2, P1=0, S1=-2) manda → z = -npt·1000 (NPT mayor = más
-    // arriba; sótano con NPT negativo cae bajo el suelo). Fallback: proyecto sin NPTs → el
-    // apilado índice de siempre (pisos arriba, cubierta encima de todos, sótanos abajo).
+    // arriba; sótano con NPT negativo cae bajo el suelo). Fallback POR PISO: sin NPT (dato
+    // viejo/import con NPT parcial) o proyecto entero sin NPTs → apilado índice de siempre
+    // (pisos arriba, cubierta encima de todos, sótanos abajo) — antes un piso sin NPT colapsaba
+    // a z=0 y se solapaba con P1.
     const nSobreSuelo = pisosArr.filter((p) => p.n >= 0 && p.n < 90).length;
     const sinNpt = pisosArr.every((p) => !Number(p.npt));
+    // NPT usable del piso: hay dato y es numérico (''/null/NaN = sin dato; 0 SÍ es dato —
+    // el suelo). Number('') es 0, por eso el chequeo de vacío va antes.
+    const nptNum = (p: { npt: number | string }) => {
+      if (p.npt === '' || p.npt == null) return null;
+      const n = Number(p.npt);
+      return Number.isFinite(n) ? n : null;
+    };
     for (const p of pisosArr) {
-      if (!sinNpt) {
-        m[p.n] = -Number(p.npt) * 1000;
+      const npt = sinNpt ? null : nptNum(p);
+      if (npt != null) {
+        m[p.n] = -npt * 1000;
       } else if (p.n >= 0 && p.n < 90) {
         m[p.n] = -p.n * defaultSpacingMm;
       } else if (p.n === 99) {
