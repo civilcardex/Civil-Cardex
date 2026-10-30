@@ -31,7 +31,7 @@ const TOPE_NUEVO = 700;
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 1223,
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 737,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1470,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1175,
   'modules/civilflow/components/workareaContent/useReportTables.ts': 671,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 842,
   'modules/civilflow/utils/waterRowsCore.ts': 695,
@@ -93,6 +93,42 @@ const CICLOS_CONOCIDOS: string[] = [];
  *  ruta → { maxLineas, puro, testQueLoImporta }
  */
 const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; test: string }> = [
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/events/pointerDown.ts',
+    maxLineas: 250,
+    puro: true,
+    test: '../PlanoEngine',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/events/pointerMove.ts',
+    maxLineas: 150,
+    puro: true,
+    test: '../PlanoEngine',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/events/wheelZoom.ts',
+    maxLineas: 80,
+    puro: true,
+    test: '../PlanoEngine',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/render/frame.ts',
+    maxLineas: 200,
+    puro: true,
+    test: '../PlanoEngine',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/commands/loadWork.ts',
+    maxLineas: 150,
+    puro: true,
+    test: '../PlanoEngine',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/engineFull.ts',
+    maxLineas: 100,
+    puro: true,
+    test: '../PlanoEngine',
+  },
   {
     ruta: 'modules/civilflow/utils/propagation/index.ts',
     maxLineas: 500,

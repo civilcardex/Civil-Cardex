@@ -18,25 +18,12 @@ import type {
 import type { IPlanoEngineCore } from './PlanoState.ts';
 import { chequearRed, REDES_PRESION } from './nodos';
 import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
-import { renderDims, renderDimGhost } from './renderers/renderDimensions.ts';
-import { renderGuideLines, renderGuideGhost } from './renderers/renderGuideLines.ts';
-import { renderTexts } from './renderers/renderTextAnnotations.ts';
-import { renderGrid } from './renderers/renderGrid.ts';
-import { renderAreas, renderActiveArea } from './renderers/renderAreas.ts';
-import {
-  renderBajantes,
-  renderGhosts,
-  renderCrossFloorGhosts,
-  renderCanalGhost,
-} from './renderers/renderBajantes.ts';
-import { renderRamales, renderActiveRamal } from './renderers/renderRamales.ts';
-import { renderNetCrossings } from './renderers/renderNetCrossings.ts';
 import { snapToSegment } from './HitTester.ts';
 import {
   snapToExisting as snapToExistingLib,
   snapPreviewToPadre as snapPreviewToPadreLib,
 } from './snapExisting.ts';
-import { serializeWork, applyWorkData } from './PlanoPersistence.ts';
+import { serializeWork } from './PlanoPersistence.ts';
 import {
   setTool as _setTool,
   finishRamal as _finishRamal,
@@ -51,12 +38,10 @@ import {
   handleCreateCalentadorMidBody,
   handleEraseDown,
   eraseRamalAt,
-  handleDrawingMouseMove,
   handleDoubleClick,
   setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing.ts';
-import { TOOL_DOWN } from './planoToolDispatch.ts';
 import type { ToolType } from './PlanoEngineDrawing.ts';
 export type { ToolType };
 import {
@@ -76,7 +61,6 @@ import {
   encuadrarDibujo,
   ptsDeDibujoConDims,
 } from './planoCamera.ts';
-import { iniciarFrame, terminarFrame } from './renderers/frameIndex.ts';
 import { handleKeyDown } from './handleKeyDown.ts';
 import {
   selectAt as _selectAt,
@@ -88,9 +72,12 @@ import {
   resetLabel as _resetLabel,
 } from './PlanoEngineSelection.ts';
 import { deleteSelected as _deleteSelected } from './deleteSelected.ts';
-import { handleSelectDown } from './handleMouseDown.ts';
-import { handleDragMove } from './handleDragMove.ts';
 import { handleDragUp } from './handleDragUp.ts';
+import { handlePointerDown } from './events/pointerDown.ts';
+import { handlePointerMove } from './events/pointerMove.ts';
+import { handleWheel } from './events/wheelZoom.ts';
+import { renderFrame } from './render/frame.ts';
+import { loadWorkCommand } from './commands/loadWork.ts';
 import {
   getElementsByNet as _getElementsByNet,
   setNetHidden as _setNetHidden,
@@ -115,7 +102,6 @@ import { sellarAsociacionesCanalBajante } from './channelAssociation';
 import { fixVentCodoToTee } from './ventElbowTeeFix';
 import { healTribPadres } from './junctionAutoSplit.ts';
 import { PlanoHistory } from './PlanoHistory.ts';
-import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting.ts';
 
 export { NETS };
 
@@ -447,16 +433,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   /** Distancia inicial del pinch (2 dedos); null = sin pinch activo. */
-  private _pinchDist0: number | null = null;
+  _pinchDist0: number | null = null;
   /** Zoom del engine al iniciar el pinch: base para escalar por razón de distancias. */
-  private _pinchZoom0 = 1;
+  _pinchZoom0 = 1;
   /** Rueda acumulada por cuadro: suma de deltaY normalizado a px (orig. tirón zoom). */
-  private _wheelAccum = 0;
+  _wheelAccum = 0;
   /** Id del rAF pendiente del flush de rueda; 0 = sin flush programado. */
-  private _wheelRaf = 0;
+  _wheelRaf = 0;
   /** Ancla del último evento de rueda (coords canvas); el flush usa la más reciente. */
-  private _wheelMX = 0;
-  private _wheelMY = 0;
+  _wheelMX = 0;
+  _wheelMY = 0;
   /** Rect del canvas cacheado por cuadro: getBoundingClientRect fuerza layout. */
   private _rectCache: { rect: DOMRect; t: number } | null = null;
 
@@ -1001,48 +987,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   /** Aplica un trabajo guardado (texto JSON u objeto) al motor. */
   loadWork(json: string | object): void {
-    try {
-      const d = (typeof json === 'string'
-        ? JSON.parse(json)
-        : json) as unknown as import('./PlanoPersistence.ts').PlanoWorkData;
-      applyWorkData(
-        this as unknown as {
-          scaleM: number;
-          definedScaleM: number;
-          activeNet: string;
-          lineWidthScale?: number;
-          ramales: unknown[];
-          dims: unknown[];
-          textAnnots: unknown[];
-          bajantes: unknown[];
-          areas: unknown[];
-          nptLevels: unknown[];
-          crossFloorGhosts: unknown[];
-          guideLines: unknown[];
-          selId: string | null;
-          activeRamal: unknown;
-          activeArea: unknown;
-          _netCounts: Record<string, PlanoNetCounts>;
-          _dirty: boolean;
-          render: () => void;
-          [key: string]: unknown;
-        },
-        d,
-      );
-      autoDetectRamalConnections(this);
-      podarReferenciasStaleDeBajantes(this);
-      sellarAsociacionesCanalBajante(this);
-      ensureRpCntRamal(this);
-      if (this._history) {
-        // Reset ANTES de la foto: el stack puede traer snapshots del piso ANTERIOR — un
-        // Ctrl+Z los restauraba en el motor ya bajo el id del piso nuevo (fotocopia
-        // cross-piso persistida por el autosave). La foto de abajo queda como base.
-        this._history.reset();
-        this._history.saveSnapshot();
-      }
-    } catch (e) {
-      devError('Error loading work:', e);
-    }
+    loadWorkCommand(this, json);
   }
 
   /** Clave del último encuadre (bbox + tamaño de página): igual → skip. Las 3 llamadas de
@@ -1094,7 +1039,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   /** Último transform aplicado al wrapper: re-escribirlo cada cuadro dispara al
    *  MutationObserver del fondo (re-raster) aunque el zoom no cambió. */
-  private _lastTransform = '';
+  _lastTransform = '';
   /** Reajusta el lienzo de DIBUJO al ÁREA VISIBLE del visor (no a la hoja). Con zoom alto la
    *  hoja se sale del contenedor y este ya recorta: rasterizar fuera de la vista era el costo
    *  que trababa el paneo (hasta ~50 MP por frame, orig. usuario).
@@ -1138,70 +1083,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   /** Repinta el canvas con todas las capas (cotas, ramales, bajantes y activos). */
   render(): void {
-    this.ensureCanvasSize();
-    const ctx = this.ctx;
-    const w = this.canv.width,
-      h = this.canv.height;
-    // ponytail: canvas sin tamaño (montaje/viewport oculto) — pintar es trabajo tirado.
-    if (w === 0 || h === 0) return;
-    // Sin LÁMINA conocida el contenedor todavía no tiene su tamaño final: pintar el trazo
-    // ahí lo deja en un recuadro provisional y el dibujo salta al llegar el PDF (orig.
-    // usuario). El motor espera a que la lámina marque la medida buena.
-    if (!this.pageW || !this.pageH) return;
-    const t0 = performance.now();
-    ctx.clearRect(0, 0, w, h);
-
-    if (this.pdfWrap) {
-      const t = `translate(${this.offX}px,${this.offY}px) scale(${this.zoom})`;
-      if (t !== this._lastTransform) {
-        this._lastTransform = t;
-        this.pdfWrap.style.transform = t;
-        this.pdfWrap.style.transformOrigin = '0 0';
-        this.pdfWrap.style.willChange = 'transform';
-      }
-    }
-
-    // Índice geométrico del frame: lo construye UNA vez y lo comparten todos los renderers
-    // (codos, uniones, etiquetas). Sin cambios de geometría se reutiliza: el paneo y el zoom
-    // solo mueven la cámara.
-    iniciarFrame(this);
-    try {
-      if (this.gridMode) renderGrid(ctx, this);
-      renderGuideLines(ctx, this);
-      renderDims(ctx, this);
-      renderTexts(ctx, this);
-      renderAreas(ctx, this);
-      const tRam = performance.now();
-      renderRamales(ctx, this);
-      this._perf.capas.ramales = performance.now() - tRam;
-      const tBaj = performance.now();
-      renderNetCrossings(ctx, this);
-      renderBajantes(ctx, this);
-      this._perf.capas.bajantes = performance.now() - tBaj;
-      renderGhosts(ctx, this);
-      renderCrossFloorGhosts(ctx, this);
-      renderDimGhost(ctx, this);
-      renderGuideGhost(ctx, this);
-      renderCanalGhost(ctx, this);
-      renderActiveArea(ctx, this);
-      renderActiveRamal(ctx, this);
-      this._perf.frames++;
-      this._perf.totalMs = performance.now() - t0;
-    } finally {
-      terminarFrame();
-    }
-
-    if (this.marqueeRect) {
-      const { x1, y1, x2, y2 } = this.marqueeRect;
-      ctx.save();
-      ctx.strokeStyle = '#3B82F6';
-      ctx.lineWidth = 1 * this.zoom;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-      ctx.fillStyle = 'rgba(59,130,246,0.08)';
-      ctx.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-      ctx.restore();
-    }
+    renderFrame(this);
   }
 
   /** Tiempos del último render (los lee `__cfPerf` en DEV): sirve para saber si el costo está
@@ -1254,168 +1136,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
-    // Congelado (cambio de piso en vuelo): el motor aún muestra el piso ANTERIOR — dibujar
-    // o arrastrar aquí crea trazos que loadWork destruirá al aterrizar la BD (y el undo
-    // los reviviría como fotocopia cross-piso). Pan y rueda siguen vivos (solo mirar).
-    if (this._frozen) return;
-    // 2º dedo del pinch (o palma apoyada): NO re-ejecutar hit-test/selección/dibujo — el
-    // touchstart de CADA dedo entra aquí y crearía vértices o selecciones fantasma.
-    if (e instanceof TouchEvent && e.touches.length > 1) return;
-    const { x, y } = this._getPos(e);
-
-    if ((e instanceof MouseEvent && e.button === 1) || this.tool === 'pan') {
-      this.panning = true;
-      this.panX0 = x - this.offX;
-      this.panY0 = y - this.offY;
-      this.canv.style.cursor = 'grabbing';
-      return;
-    }
-
-    if (e instanceof MouseEvent && e.button === 2) {
-      // Clic derecho durante el dibujo de un ramal: terminar el ramal
-      if (this.activeRamal && this.tool === 'line') {
-        this.finishRamal();
-        return;
-      }
-      const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
-      if (hit) {
-        const el = hit.element;
-        // No cambiar la selección con el clic derecho — solo mostrar el menú contextual
-        if (this._onContextMenuCb) {
-          this._onContextMenuCb(
-            el,
-            hit.clientX,
-            hit.clientY,
-            hit.isGhostClick,
-            hit.ramalEndpoint || null,
-            hit.midRamalHit || null,
-          );
-        }
-        this.render();
-      }
-      return;
-    }
-
-    // Doble clic durante el dibujo de un ramal: terminar el ramal (solo efectivo con botón
-    // izquierdo)
-    if (e instanceof MouseEvent && e.detail >= 2 && this.activeRamal && this.tool === 'line') {
-      this.finishRamal();
-      return;
-    }
-
-    if (this._lockedNets.has(this.activeNet)) return;
-
-    // Red OCULTA (orig. usuario): no se puede dibujar en ella — los trazos nacerían
-    // invisibles. El aviso MODAL ya salió al SELECCIONAR la red (handleSelectNet en el
-    // visor); aquí solo estado, sin duplicar la modal. Selección también: los hits de
-    // redes ocultas se filtran en los hit-tests.
-    if (this.tool !== 'sel' && this._hiddenNets.has(this.activeNet)) {
-      const netObj = NETS.find((n) => n.id === this.activeNet);
-      this._emitStatus(
-        `${netObj ? netObj.name : this.activeNet} está oculta — muéstrala en la barra de redes para dibujar en ella.`,
-      );
-      return;
-    }
-
-    if (this.activeNetworks && !this.activeNetworks.has(this.activeNet)) {
-      const netObj = NETS.find((n) => n.id === this.activeNet);
-      const netName = netObj ? netObj.name : this.activeNet;
-      this.triggerAlert(
-        'Red inactiva',
-        `Debe activar la red de ${netName} en la información general`,
-      );
-      return;
-    }
-
-    const p = this.toPlane(x, y);
-
-    if (this.tool === 'sel') {
-      const lblDragResult = hitTestBajanteLabelForDrag(this, x, y);
-      if (lblDragResult) {
-        // Este hit-test solo coincide con la posición REAL de la etiqueta del bajante (_labelBox
-        // / labelX,Y) — nunca revisa el _ghostLabelBox desplazado del fantasma — así que siempre
-        // es un arrastre de etiqueta del padre. _lblDragIsParent debe fijarse aquí explícitamente:
-        // esta ruta se saltea handleSelectDown por completo (retorno temprano), así que sin esto
-        // conservaba cualquier valor viejo de la INTERACCIÓN ANTERIOR. Si esa interacción previa
-        // había seleccionado el renderizado FANTASMA del mismo bajante (_lblDragIsParent en
-        // false), arrastrar lo que parecía la etiqueta real aquí escribía en silencio en
-        // ghostData — moviendo el fantasma a la posición del clic en vez de la etiqueta real que
-        // el usuario arrastraba.
-        this._lblDragIsParent = true;
-        this.lblDrag = lblDragResult;
-        return;
-      }
-      handleSelectDown(
-        this,
-        x,
-        y,
-        e instanceof MouseEvent && (e.ctrlKey || false),
-        e instanceof MouseEvent && e.shiftKey,
-      );
-    } else {
-      // Dispatch de herramientas (extraído a planoToolDispatch): la escalera de 13
-      // if/else era el último bloque largo de este método.
-      TOOL_DOWN[this.tool]?.(this, p.x, p.y, x, y);
-    }
+    handlePointerDown(this, e);
   }
 
   _onMouseMoveHandler(e: MouseEvent | TouchEvent): void {
-    // PINCH (≥2 dedos): zoom anclado al punto medio — modo consulta móvil/tablet. Con varios
-    // dedos no se dibuja ni se arrastra nada; el estado de drag queda congelado hasta levantar.
-    if (e instanceof TouchEvent && e.touches.length >= 2) {
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const rect = this._cachedRect();
-      const mx = (a.clientX + b.clientX) / 2 - rect.left;
-      const my = (a.clientY + b.clientY) / 2 - rect.top;
-      if (this._pinchDist0 == null) {
-        this._pinchDist0 = dist;
-        this._pinchZoom0 = this.zoom;
-        return;
-      }
-      zoomAnclado(this, (this._pinchZoom0 * dist) / this._pinchDist0, mx, my);
-      return;
-    }
-    this._pinchDist0 = null;
-    const { x, y } = this._getPos(e);
-    this._lastMouseCvs = { x, y };
-    if (this.panning) {
-      this.offX = x - this.panX0;
-      this.offY = y - this.panY0;
-      this.scheduleRender();
-      return;
-    }
-    const hasDrag =
-      this.ghostDrag ||
-      this.guideDrag ||
-      this.bajDrag ||
-      this.canalResizeDrag ||
-      this.lblDrag ||
-      this.txtDrag ||
-      this.txtResize ||
-      this.dimLblDrag ||
-      this.dimDrag ||
-      this.areaDrag ||
-      this.areaPtDrag ||
-      this.ptDrag ||
-      this.ramalDrag ||
-      this.multiDrag;
-    if (hasDrag) {
-      handleDragMove(this, x, y);
-    } else if (this.marqueeRect) {
-      this.marqueeRect.x2 = x;
-      this.marqueeRect.y2 = y;
-      this.scheduleRender();
-    } else if (
-      this.activeRamal ||
-      this._dimStart ||
-      this._guideStart ||
-      this._canalStart ||
-      this._canalEje ||
-      this.activeArea
-    ) {
-      handleDrawingMouseMove(this, x, y);
-    }
+    handlePointerMove(this, e);
   }
 
   _onMouseUpHandler(e: MouseEvent | TouchEvent): void {
@@ -1441,26 +1166,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onWheelHandler(e: WheelEvent): void {
-    e.preventDefault();
-    // Normaliza deltaMode: 0 = px, 1 = líneas (~16px), 2 = páginas (~800px).
-    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 800 : 1;
-    const norm = e.deltaY * unit;
-    if (!Number.isFinite(norm) || norm === 0) return;
-    const rect = this._cachedRect();
-    this._wheelMX = e.clientX - rect.left;
-    this._wheelMY = e.clientY - rect.top;
-    // Acumula y aplica UNA vez por cuadro: 60-120 ev/s → 1 zoom (sin tirón).
-    this._wheelAccum += norm;
-    if (this._wheelRaf) return;
-    this._wheelRaf = requestAnimationFrame(() => {
-      this._wheelRaf = 0;
-      // Tope ±120 por cuadro (~13% de salto máx): un fling que llenaba el ±400 viejo
-      // aplicaba 38% de golpe y se veía como tirón aunque la CPU fuera libre.
-      const accum = Math.max(-120, Math.min(120, this._wheelAccum));
-      this._wheelAccum = 0;
-      if (accum === 0) return;
-      zoomAnclado(this, this.zoom * Math.exp(-accum * 0.0012), this._wheelMX, this._wheelMY);
-    });
+    handleWheel(this, e);
   }
 
   _onKeyDownHandler(e: KeyboardEvent): void {
