@@ -14,6 +14,7 @@ import {
   cargoCodigoDefault,
   perfilesPaisDefault,
 } from './seedData.ts';
+import { readCmSnapshot } from './dto.ts';
 import type { CivilManagerState } from './types.ts';
 
 const DB_NAME = 'CivilManagerDB';
@@ -161,30 +162,30 @@ async function loadFromSupabase(): Promise<CivilManagerState | null> {
     const proyectoId = localStorage.getItem('cm_proyecto_activo_id') || null;
     const { data, error } = await supabase.rpc('cm_get_data', {
       p_proyecto_id: proyectoId,
-    } as unknown as never);
+    });
     if (error) {
       devError('cm_get_data rpc:', error);
       return null;
     }
     if (!data) return null;
-    const d = data as Partial<CivilManagerState> & { config?: unknown };
+    // readCmSnapshot es PASSTHROUGH: sin defaults, lo que falte en el jsonb queda undefined
+    // y migrateState (abajo) aplica su fallback por clave — igual que con el cast anterior.
+    const snap = readCmSnapshot(data);
     const raw: Partial<CivilManagerState> = {
-      factoresPrestaciones: (d as unknown as { factores: unknown[] }).factores as never,
-      cargos: (d as unknown as { cargos: unknown[] }).cargos as never,
-      cuadrillas: (d as unknown as { cuadrillas: unknown[] }).cuadrillas as never,
-      equipos: (d as unknown as { equipos: unknown[] }).equipos as never,
-      insumos: (d as unknown as { insumos: unknown[] }).insumos as never,
-      apus: (d as unknown as { apus: unknown[] }).apus as never,
-      presupuestos: (d as unknown as { presupuestos: unknown[] }).presupuestos as never,
-      proveedores: (d as unknown as { proveedores: unknown[] }).proveedores as never,
-      // cm_get_data devuelve d.config = {config, config_listas, categorias_apu} (wrapper) —
+      factoresPrestaciones: snap.factores,
+      cargos: snap.cargos,
+      cuadrillas: snap.cuadrillas,
+      equipos: snap.equipos,
+      insumos: snap.insumos,
+      apus: snap.apus,
+      presupuestos: snap.presupuestos,
+      proveedores: snap.proveedores,
+      // cm_get_data devuelve snap.config = {config, config_listas, categorias_apu} (wrapper) —
       // antes se asignaba el wrapper entero a ambas claves y categorias_apu no se extraía:
       // migrateState caía en defaults y se perdían país/salario/listas al cargar de Supabase.
-      config: (d as unknown as { config?: { config?: unknown } }).config?.config as never,
-      config_listas: (d as unknown as { config?: { config_listas?: unknown } }).config
-        ?.config_listas as never,
-      categorias_apu: (d as unknown as { config?: { categorias_apu?: unknown } }).config
-        ?.categorias_apu as never,
+      config: snap.config?.config,
+      config_listas: snap.config?.config_listas,
+      categorias_apu: snap.config?.categorias_apu,
     };
     return migrateState(raw);
   } catch (e) {
@@ -424,10 +425,10 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     const cfgRes = await supabase.from('cm_config').upsert(
       {
         user_id: userId,
-        config: state.config as unknown as never,
-        config_listas: state.config_listas as unknown as never,
-        categorias_apu: state.categorias_apu as unknown as never,
-      } as never,
+        config: state.config,
+        config_listas: state.config_listas,
+        categorias_apu: state.categorias_apu,
+      },
       { onConflict: 'user_id' },
     );
     if (cfgRes.error) {
