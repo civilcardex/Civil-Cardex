@@ -112,65 +112,65 @@ function App() {
                 <Route
                   path="/"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <LandingPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/login"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <LoginPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/register"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <RegisterPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/restablecer"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <ResetPasswordPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/terminos"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <TermsPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/privacidad"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <PrivacyPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/cookies"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <CookiesPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
                   path="/pricing"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <PricingPage />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
                 <Route
@@ -190,61 +190,49 @@ function App() {
                 <Route
                   path="/docs"
                   element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <DocsPage />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Guarded>
+                      <DocsPage />
+                    </Guarded>
                   }
                 />
                 <Route
                   path="/civilflow"
                   element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="flow" />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Guarded>
+                      <ModulePage moduleId="flow" />
+                    </Guarded>
                   }
                 />
                 <Route
                   path="/civilstructure"
                   element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="structure" />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Guarded>
+                      <ModulePage moduleId="structure" />
+                    </Guarded>
                   }
                 />
                 <Route
                   path="/civilterrain"
                   element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="terrain" />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Guarded>
+                      <ModulePage moduleId="terrain" />
+                    </Guarded>
                   }
                 />
                 <Route
                   path="/civilmanager"
                   element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="manage" />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Guarded>
+                      <ModulePage moduleId="manage" />
+                    </Guarded>
                   }
                 />
                 <Route
                   path="/civilroads"
                   element={
-                    <ErrorBoundary>
-                      <Suspense fallback={<Fallback />}>
-                        <ModulePage moduleId="roads" />
-                      </Suspense>
-                    </ErrorBoundary>
+                    <Guarded>
+                      <ModulePage moduleId="roads" />
+                    </Guarded>
                   }
                 />
 
@@ -286,42 +274,34 @@ function App() {
                       path="/civilmanagerareatrabajo/*"
                       element={
                         <RequireModule modulo="manage">
-                          <ErrorBoundary>
-                            <Suspense fallback={<Fallback />}>
-                              <WorkAreaCivilManagerPage />
-                            </Suspense>
-                          </ErrorBoundary>
+                          <Guarded>
+                            <WorkAreaCivilManagerPage />
+                          </Guarded>
                         </RequireModule>
                       }
                     />
                     <Route
                       path="/perfil"
                       element={
-                        <ErrorBoundary>
-                          <Suspense fallback={<Fallback />}>
-                            <ProfilePage />
-                          </Suspense>
-                        </ErrorBoundary>
+                        <Guarded>
+                          <ProfilePage />
+                        </Guarded>
                       }
                     />
                     <Route
                       path="/empresa"
                       element={
-                        <ErrorBoundary>
-                          <Suspense fallback={<Fallback />}>
-                            <CompanyPage />
-                          </Suspense>
-                        </ErrorBoundary>
+                        <Guarded>
+                          <CompanyPage />
+                        </Guarded>
                       }
                     />
                     <Route
                       path="/catalogomaestro"
                       element={
-                        <ErrorBoundary>
-                          <Suspense fallback={<Fallback />}>
-                            <CatalogoMaestroPage />
-                          </Suspense>
-                        </ErrorBoundary>
+                        <Guarded>
+                          <CatalogoMaestroPage />
+                        </Guarded>
                       }
                     />
                   </Route>
@@ -331,9 +311,9 @@ function App() {
                 <Route
                   path="*"
                   element={
-                    <ErrorBoundary>
+                    <Lazy>
                       <NotFound />
-                    </ErrorBoundary>
+                    </Lazy>
                   }
                 />
               </Routes>

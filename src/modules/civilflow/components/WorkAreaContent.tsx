@@ -2,6 +2,7 @@
  *  (planos, isometría, tablas, Base de Datos…) sobre el estado compartido del workarea.
  *  Ej: clic en «Isometría» -> monta el visor solo en ese momento. */
 import { Suspense, lazy } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { RainwaterProvider } from '../context/RainwaterContext.tsx';
 import InfoTab from './workarea/InfoTab.tsx';
 import { RedesTab } from './workareaContent/networksTab.tsx';
@@ -18,6 +19,24 @@ const IsometriaTab = lazy(() =>
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
+const SECCION_STYLE: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  flex: 1,
+  minHeight: 0,
+};
+
+/** Sección-tab estándar del conmutador: label accesible (aria + h2 oculto) y contenido que llena
+ *  el alto. Ej: <Seccion label="Carga de planos"><Suspense fallback={FALLBACK}><PlanosTab/></Suspense></Seccion>. */
+function Seccion({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <section aria-label={label} style={SECCION_STYLE}>
+      <h2 style={SR_ONLY_STYLE}>{label}</h2>
+      {children}
+    </section>
+  );
+}
+
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
 interface WorkAreaContentProps {
@@ -30,24 +49,16 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
   return (
     <RainwaterProvider>
       {tab === 'info' && (
-        <section
-          aria-label="Información del proyecto"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Información del proyecto</h2>
+        <Seccion label="Información del proyecto">
           <InfoTab state={state} />
-        </section>
+        </Seccion>
       )}
       {tab === 'planos' && (
-        <section
-          aria-label="Carga de planos"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Carga de planos</h2>
+        <Seccion label="Carga de planos">
           <Suspense fallback={FALLBACK}>
             <PlanosTab state={state} />
           </Suspense>
-        </section>
+        </Seccion>
       )}
       {tab === 'redes' && !redesRestoreDone && (
         <div role="status" style={{ padding: 24, color: 'var(--txt2)', fontSize: 13 }}>
@@ -55,13 +66,9 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
         </div>
       )}
       {tab === 'redes' && redesRestoreDone && redesActivas.length > 0 && (
-        <section
-          aria-label="Diseño de red"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Diseño de red</h2>
+        <Seccion label="Diseño de red">
           <RedesTab state={state} />
-        </section>
+        </Seccion>
       )}
       {tab === 'redes' && redesRestoreDone && redesActivas.length === 0 && (
         <div role="status" style={{ padding: 24, color: 'var(--txt2)', fontSize: 13 }}>
@@ -69,46 +76,30 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
         </div>
       )}
       {tab === 'datos' && (
-        <section
-          aria-label="Parámetros de diseño"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Parámetros de diseño</h2>
+        <Seccion label="Parámetros de diseño">
           <Suspense fallback={FALLBACK}>
             <BaseDatos redes={redes} />
           </Suspense>
-        </section>
+        </Seccion>
       )}
       {tab === 'crit' && (
-        <section
-          aria-label="Criterios y normativa"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Criterios y normativa</h2>
+        <Seccion label="Criterios y normativa">
           <Suspense fallback={FALLBACK}>
             <Normativa />
           </Suspense>
-        </section>
+        </Seccion>
       )}
       {tab === 'inf' && (
-        <section
-          aria-label="Resumen del proyecto"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Resumen del proyecto</h2>
+        <Seccion label="Resumen del proyecto">
           <InfTab state={state} />
-        </section>
+        </Seccion>
       )}
       {tab === 'iso' && (
-        <section
-          aria-label="Isometría de red"
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}
-        >
-          <h2 style={SR_ONLY_STYLE}>Isometría de red</h2>
+        <Seccion label="Isometría de red">
           <Suspense fallback={FALLBACK}>
             <IsometriaTab state={state} />
           </Suspense>
-        </section>
+        </Seccion>
       )}
     </RainwaterProvider>
   );

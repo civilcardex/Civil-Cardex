@@ -31,6 +31,45 @@ const FloorGeneratorCard_generarBtn: React.CSSProperties = {
   fontSize: 12,
 };
 
+/** Campo etiqueta+input de la grilla 2×3: misma pinta para los 5 valores numéricos.
+ *  Ej: <Campo id="fg-pisos" label="Pisos" value="8" set={setNPisos} ... /> (int) y
+ *  <Campo id="fg-altpiso" label="Altura entrepiso" decimal ... /> (dec, usa los handlers dec). */
+function Campo(props: {
+  id: string;
+  label: string;
+  /** decimal -> inputMode "decimal" + handlers onDec; entero -> "numeric" + handlers onInt. */
+  decimal?: boolean;
+  value: string;
+  set: (v: string) => void;
+  editing: boolean;
+  styleInput: React.CSSProperties;
+  onIntChange: (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => void;
+  onDecChange: (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => void;
+  onIntBlur: (setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => void;
+  onDecBlur: (setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => void;
+}) {
+  const onChange = props.decimal ? props.onDecChange : props.onIntChange;
+  const onBlur = props.decimal ? props.onDecBlur : props.onIntBlur;
+  return (
+    <div className="f" style={{ marginBottom: 0 }}>
+      <label htmlFor={props.id} style={{ fontSize: 12 }}>
+        {props.label}
+      </label>
+      <input
+        id={props.id}
+        type="text"
+        autoComplete="off"
+        disabled={!props.editing}
+        inputMode={props.decimal ? 'decimal' : 'numeric'}
+        value={props.value}
+        style={props.styleInput}
+        onChange={onChange(props.set)}
+        onBlur={onBlur(props.set)}
+      />
+    </div>
+  );
+}
+
 const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
   nSotanos: string;
   nPisos: string;
@@ -51,6 +90,46 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
   generarPisos: () => void;
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
+  // ponytail: 1 style derivado para las 6 superficies que se atenúan fuera de edición (0.5 el botón).
+  const opacidadEdicion = isEditing ? 1 : 0.7;
+  const styleInput: React.CSSProperties = {
+    textAlign: 'center',
+    fontSize: 12,
+    padding: '3px 5px',
+    opacity: opacidadEdicion,
+  };
+  // Orden de la grilla 2 col: pisos/altura, sótanos/altura sótano, NPT y el toggle al final.
+  const campos: {
+    id: string;
+    label: string;
+    decimal?: boolean;
+    value: string;
+    set: (v: string) => void;
+  }[] = [
+    { id: 'fg-pisos', label: 'Pisos', value: props.nPisos, set: props.setNPisos },
+    {
+      id: 'fg-altpiso',
+      label: 'Altura entrepiso',
+      decimal: true,
+      value: props.altPiso,
+      set: props.setAltPiso,
+    },
+    { id: 'fg-sotanos', label: 'Sótanos', value: props.nSotanos, set: props.setNSotanos },
+    {
+      id: 'fg-altsot',
+      label: 'Altura sótano',
+      decimal: true,
+      value: props.altSotano,
+      set: props.setAltSotano,
+    },
+    {
+      id: 'fg-npt',
+      label: 'NPT P1',
+      decimal: true,
+      value: props.nptPiso1,
+      set: props.setNptPiso1,
+    },
+  ];
   return (
     <section className="card" style={{ flex: '0 0 auto', minWidth: 0 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
@@ -74,111 +153,22 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
       </div>
       <div style={{ padding: '4px 6px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, alignItems: 'end' }}>
-          <div className="f" style={{ marginBottom: 0 }}>
-            <label htmlFor="fg-pisos" style={{ fontSize: 12 }}>
-              Pisos
-            </label>
-            <input
-              id="fg-pisos"
-              type="text"
-              autoComplete="off"
-              disabled={!isEditing}
-              inputMode="numeric"
-              value={props.nPisos}
-              style={{
-                textAlign: 'center',
-                fontSize: 12,
-                padding: '3px 5px',
-                opacity: isEditing ? 1 : 0.7,
-              }}
-              onChange={props.onIntChange(props.setNPisos)}
-              onBlur={props.onIntBlur(props.setNPisos)}
+          {campos.map((c) => (
+            <Campo
+              key={c.id}
+              id={c.id}
+              label={c.label}
+              decimal={c.decimal}
+              value={c.value}
+              set={c.set}
+              editing={isEditing}
+              styleInput={styleInput}
+              onIntChange={props.onIntChange}
+              onDecChange={props.onDecChange}
+              onIntBlur={props.onIntBlur}
+              onDecBlur={props.onDecBlur}
             />
-          </div>
-          <div className="f" style={{ marginBottom: 0 }}>
-            <label htmlFor="fg-altpiso" style={{ fontSize: 12 }}>
-              Altura entrepiso
-            </label>
-            <input
-              id="fg-altpiso"
-              type="text"
-              autoComplete="off"
-              disabled={!isEditing}
-              inputMode="decimal"
-              value={props.altPiso}
-              style={{
-                textAlign: 'center',
-                fontSize: 12,
-                padding: '3px 5px',
-                opacity: isEditing ? 1 : 0.7,
-              }}
-              onChange={props.onDecChange(props.setAltPiso)}
-              onBlur={props.onDecBlur(props.setAltPiso)}
-            />
-          </div>
-          <div className="f" style={{ marginBottom: 0 }}>
-            <label htmlFor="fg-sotanos" style={{ fontSize: 12 }}>
-              Sótanos
-            </label>
-            <input
-              id="fg-sotanos"
-              type="text"
-              autoComplete="off"
-              disabled={!isEditing}
-              inputMode="numeric"
-              value={props.nSotanos}
-              style={{
-                textAlign: 'center',
-                fontSize: 12,
-                padding: '3px 5px',
-                opacity: isEditing ? 1 : 0.7,
-              }}
-              onChange={props.onIntChange(props.setNSotanos)}
-              onBlur={props.onIntBlur(props.setNSotanos)}
-            />
-          </div>
-          <div className="f" style={{ marginBottom: 0 }}>
-            <label htmlFor="fg-altsot" style={{ fontSize: 12 }}>
-              Altura sótano
-            </label>
-            <input
-              id="fg-altsot"
-              type="text"
-              autoComplete="off"
-              disabled={!isEditing}
-              inputMode="decimal"
-              value={props.altSotano}
-              style={{
-                textAlign: 'center',
-                fontSize: 12,
-                padding: '3px 5px',
-                opacity: isEditing ? 1 : 0.7,
-              }}
-              onChange={props.onDecChange(props.setAltSotano)}
-              onBlur={props.onDecBlur(props.setAltSotano)}
-            />
-          </div>
-          <div className="f" style={{ marginBottom: 0 }}>
-            <label htmlFor="fg-npt" style={{ fontSize: 12 }}>
-              NPT P1
-            </label>
-            <input
-              id="fg-npt"
-              type="text"
-              autoComplete="off"
-              disabled={!isEditing}
-              inputMode="decimal"
-              value={props.nptPiso1}
-              style={{
-                textAlign: 'center',
-                fontSize: 12,
-                padding: '3px 5px',
-                opacity: isEditing ? 1 : 0.7,
-              }}
-              onChange={props.onDecChange(props.setNptPiso1)}
-              onBlur={props.onDecBlur(props.setNptPiso1)}
-            />
-          </div>
+          ))}
           <div
             style={{
               display: 'flex',
@@ -197,7 +187,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
               style={{
                 ...FloorGeneratorCard_cubiertaToggle,
                 cursor: isEditing ? 'pointer' : 'default',
-                opacity: isEditing ? 1 : 0.7,
+                opacity: opacidadEdicion,
               }}
             >
               <div
