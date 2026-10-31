@@ -232,6 +232,46 @@ export function preparaCodos(args: {
           leg,
         });
       }
+      // Descarga entre pisos a una BAJANTE (orig. usuario 2026-10-31: la columna viene
+      // bajando y conecta a una horizontal que NO es ramal — es el LD_ (ramal desvio
+      // entrepisos) de la bajante destino, nacido en su anillo). El codo vive en ese piso:
+      // la vertical baja hasta el anillo y el LD_ sale de ahí. Busco el ramal del piso
+      // destino cuyo extremo caiga sobre el anillo (tol 6 px de pantalla).
+      const parts = splitPtr(b.descargaEnId ?? '', b.planId);
+      const dest = bajantes.find(
+        (bb) => !bb._isCrossFloorGhost && bb.id === parts[1] && String(bb.planId) === parts[0],
+      );
+      if (dest && dest.planNivel !== b.planNivel) {
+        const zT = getZPix((nptMap[dest.planNivel] || 0) - prof * 1000, dest.planNivel);
+        const anilloP = proyecta(isoDe(b.x, b.y, b.planNivel), zT);
+        for (const r of ramales) {
+          if (r.planNivel !== dest.planNivel || r.pts.length < 2) continue;
+          const L = r.pts.length - 1;
+          for (const ladoExtremo of [0, 1] as const) {
+            const key = `${r.planId ?? dest.planId}:${r.id}:${ladoExtremo}`;
+            if (porRamal.has(key)) continue;
+            const ePt = ladoExtremo === 0 ? r.pts[0] : r.pts[L];
+            const innerPt = ladoExtremo === 0 ? r.pts[1] : r.pts[L - 1];
+            const eP = proyecta(isoDe(ePt[0], ePt[1], r.planNivel), zT);
+            // El extremo del ramal nace sobre el anillo (tol 6 px de pantalla).
+            if (Math.hypot(eP.sx - anilloP.sx, eP.sy - anilloP.sy) > 6) continue;
+            const innerP = proyecta(isoDe(innerPt[0], innerPt[1], r.planNivel), zT);
+            const hx = innerP.sx - eP.sx;
+            const hy = innerP.sy - eP.sy;
+            const hl = Math.hypot(hx, hy) || 1;
+            const s = sondaEscala(proyecta, isoDe, ePt, r.planNivel, zT);
+            preps.push({
+              vertex: anilloP,
+              dir: { x: hx / hl, y: hy / hl },
+              dTrimPlane: R / s,
+              ramalId: r.id,
+              ladoExtremo,
+              leg: 'ramal',
+            });
+            porRamal.set(key, R / s);
+          }
+        }
+      }
     }
     if (preps.length) porBajante.set(`${b.planId}:${b.id}`, preps);
   }

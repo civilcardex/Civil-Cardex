@@ -534,3 +534,53 @@ describe('origenId sin vertical dibujada arriba', () => {
     ).toBe(true);
   });
 });
+
+// Estructura EXACTA del usuario (2026-10-31): bajante superior con descarga a una BAJANTE
+// del piso inferior, y el horizontal que ve es el LD_ de esa bajante inferior nacido en el
+// anillo (= la posición de la bajante superior proyectada). El codo debe unir la vertical
+// con el LD_ en el anillo, y el LD_ queda recortado en su tangencia.
+describe('descarga a BAJANTE + LD_ al pie (caso usuario)', () => {
+  it('codo vertical→LD_ en el anillo, con el LD_ recortado', () => {
+    const bans: IsoBajante = {
+      ...(montante('baja') as object),
+      id: 'BANS',
+      code: 'BAN1',
+      tipo: 'bajante',
+      descargaEnId: '2|BAN1',
+      planId: '1',
+      planNivel: 0,
+    } as unknown as IsoBajante;
+    const banInf: IsoBajante = {
+      ...(montante('baja') as object),
+      id: 'BAN1',
+      code: 'BAN1',
+      tipo: 'bajante',
+      origenId: '1|BANS',
+      planId: '2',
+      planNivel: 1,
+    } as unknown as IsoBajante;
+    const ld: IsoRamal = {
+      id: 'LD_BAN1',
+      net: 'af',
+      tipo: 'ramal',
+      pts: [
+        [100, 100],
+        [260, 130],
+      ],
+      label: 'LDBAN1',
+      ini: '',
+      fin: 'BAN1',
+      planNivel: 1,
+      planId: '2',
+    } as unknown as IsoRamal;
+    const calls = montar([ld], [bans, banInf], { 0: 0, 1: 2700 });
+    // El empalme vertical→LD_ existe (Bézier).
+    const t1 = t1DelEmpalme(calls);
+    expect(t1.length).toBe(2);
+    // El LD_ queda recortado: ningún lineTo exacto en su extremo (100,100).
+    const lineTos = calls.filter((c) => c.op === 'lineTo').map((c) => c.args as number[]);
+    expect(lineTos.some(([x, y]) => Math.abs(x - 100) < 0.5 && Math.abs(y - 100) < 0.5)).toBe(
+      false,
+    );
+  });
+});
