@@ -2,10 +2,21 @@ import { NETS } from '../../../../lib/PlanoEngine/PlanoState.ts';
 import { splitPtr } from '../../../../utils/keys.ts';
 import { dibujaCodoIso } from '../codoIso.ts';
 import {
+  CODO_CIRC,
+  CODO_RADIO,
+  agrupaCodos,
   construyeJuncCodo,
+  extremosVerticales,
+  hayVerticalArriba,
+  ladoDelCodo,
+  nivelDePlanId,
   preparaCodos,
   recortaExtremoCodo,
-  nivelDePlanId,
+  recortaVerticalAlCodo,
+  unionDeGrupo,
+  unionEnExtremo,
+  verticalPasaAlOtroLado,
+  type CodoPrep,
 } from '../recorteCodo.ts';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from '../geometry';
 import { drawIsoCuboid } from '../isoDrawUtils.ts';
@@ -94,6 +105,18 @@ function resuelveDestinoBajante(
   return { targetZ, targetRamal, targetBajante };
 }
 
+/** ¿Se dibuja esta bajante/montante con el filtro de pisos activo? Una bajante de un piso
+ *  oculto se dibuja igual si su descarga cae en un piso visible (la tubería cruza). */
+function bajanteVisible(
+  b: IsoBajante,
+  pisosVisibles: Set<number> | null,
+  confirmedPlanos: PlanItem[],
+): boolean {
+  if (!pisosVisibles || pisosVisibles.has(b.planNivel)) return true;
+  if (!b.descargaEnId) return false;
+  return pisosVisibles.has(nivelDePlanId(confirmedPlanos, splitPtr(b.descargaEnId, '')[0]) ?? NaN);
+}
+
 /** Pase 3 de la isometría: dibuja las redes activas — primero los ramales (con recorte exacto
  * de codos) y luego las bajantes/montantes de cada red, con su conector entre pisos resuelto y
  * el círculo con flecha de dirección en su piso propio. Ej: la red san (Sanitaria) pinta sus
@@ -156,6 +179,26 @@ export function pintaRedes(args: {
       getZPix,
       zoom,
     });
+    // Tramos verticales proyectados (una pasada): sirven para saber si el codo es PASANTE —
+    // otra bajante/montante de la red llega a la unión desde el lado opuesto (piso vecino) y
+    // entonces la vertical NO se recorta. Solo tipos con tubo real (bajante/montante).
+    const spansVert: Array<{ sx: number; syMin: number; syMax: number }> = [];
+    for (const bb of netData.bajantes) {
+      if (bb._isCrossFloorGhost || (bb.tipo !== 'bajante' && bb.tipo !== 'montante')) continue;
+      if (!bajanteVisible(bb, pisosVisibles, confirmedPlanos)) continue;
+      const { targetZ: tz } = resuelveDestinoBajante(bb, netData, nptMap);
+      const { baseZ: bz, cimaZ: cz } = extremosVerticales(
+        bb.tipo,
+        bb.direccion,
+        nptMap[bb.planNivel] || 0,
+        tz,
+      );
+      const profBB = profByNet[bb.net] ?? 0;
+      const isoBB = getIsoCoords(bb.x, bb.y, bb.planNivel);
+      const pb = proyectaNet(isoBB, getZPix(bz - profBB * 1000, bb.planNivel));
+      const pc = proyectaNet(isoBB, getZPix(cz - profBB * 1000, bb.planNivel));
+      spansVert.push({ sx: pb.sx, syMin: Math.min(pb.sy, pc.sy), syMax: Math.max(pb.sy, pc.sy) });
+    }
 
     // Rectángulo acostado en el plano del piso (cajas CAN/CALL y red_publica): esquinas en
     // unidades iso (1 m = ISO_SCALE) proyectadas a los 4 vértices, solo trazo.
@@ -212,9 +255,10 @@ export function pintaRedes(args: {
       const pts = r.pts;
       if (pts.length < 2) continue;
       // Extremo que toca un bajante/montante CON codo: recorte exacto a la tangencia
-      // (distancia preparada por preparaCodos; si no hay prep, sin recorte).
-      const t0C = codo.porRamal.get(`${r.id}:0`);
-      const tLC = codo.porRamal.get(`${r.id}:1`);
+      // (distancia preparada por preparaCodos; si no hay prep, sin recorte). Clave con planId:
+      // el mismo id de ramal existe en varios pisos y todos se dibujan en la isometría.
+      const t0C = codo.porRamal.get(`${r.planId}:${r.id}:0`);
+      const tLC = codo.porRamal.get(`${r.planId}:${r.id}:1`);
       const k0 =
         t0C !== undefined ||
         codoJunc.has(`${Math.round(pts[0][0] * 10)}|${Math.round(pts[0][1] * 10)}|${r.planNivel}`);
@@ -276,15 +320,7 @@ export function pintaRedes(args: {
       // Piso oculto (orig. usuario): fuera, SALVO bajantes con asociación entre pisos cuyo
       // destino (descargaEnId) esté en un piso visible — la tubería cruza y conecta con lo
       // que sí se ve, se dibuja igual.
-      if (
-        pisosVisibles &&
-        !pisosVisibles.has(b.planNivel) &&
-        !(
-          b.descargaEnId &&
-          pisosVisibles.has(nivelDePlanId(confirmedPlanos, splitPtr(b.descargaEnId, '')[0]) ?? NaN)
-        )
-      )
-        continue;
+      if (!bajanteVisible(b, pisosVisibles, confirmedPlanos)) continue;
       // Un CrossFloorGhost solo se consulta como referencia (a qué bajante real se conecta este
       // origen y en qué piso) — ver las llamadas a `netData.bajantes.find` más abajo. Ya no
       // necesita representación visual propia: el conector real origen→destino ahora se ancla
@@ -376,18 +412,14 @@ export function pintaRedes(args: {
       const { targetZ, targetRamal, targetBajante } = resuelveDestinoBajante(b, netData, nptMap);
 
       const lo = Math.min(currentZ, targetZ);
-      const hi = Math.max(currentZ, targetZ);
-      // Dirección explícita manda (los montantes la llevan auto-detectada: 'baja' existe);
-      // sin dirección, el default por tipo (montante sube, bajante baja).
-      const isSube = b.direccion ? b.direccion === 'sube' : b.tipo === 'montante';
       // nptMap usa z NEGATIVO para los pisos (P1=-2700, P2=-5400...) y la proyección renderiza
       // un z más negativo MÁS ARRIBA en pantalla. Por eso el stub de una bajante sin destino
       // debe extenderse hacia el z MÁS NEGATIVO (SUBE = hacia arriba) y hacia el menos negativo
-      // (BAJA = hacia abajo). El signo anterior estaba invertido: dibujaba la bajante sube
-      // colgando hacia abajo y la baja hacia arriba. Misma corrección de signo que en el z del
-      // ramal: profB es negativo para bajo losa, por lo que se resta.
-      const baseZ = (lo === hi ? (isSube ? lo : lo + 1000) : lo) - profB * 1000;
-      const cimaZ = (lo === hi ? (isSube ? lo - 1000 : lo) : hi) - profB * 1000;
+      // (BAJA = hacia abajo). Misma corrección de signo que en el z del ramal: profB es
+      // negativo para bajo losa, por lo que se resta.
+      const { baseZ, cimaZ } = extremosVerticales(b.tipo, b.direccion, currentZ, targetZ);
+      const baseZ_pix = getZPix(baseZ - profB * 1000, b.planNivel);
+      const cimaZ_pix = getZPix(cimaZ - profB * 1000, b.planNivel);
 
       let targetPt: number[] | null = null;
       let targetPlanNivel: number | null = null;
@@ -418,8 +450,6 @@ export function pintaRedes(args: {
       // Ldesvio (dibujado como ramal del piso inferior, misma cota) cubre el desvío hasta la
       // bajante destino real. Antes ambos extremos se forzaban al (x,y) del destino, pisando
       // el dibujo real del desvío.
-      const baseZ_pix = getZPix(baseZ, b.planNivel);
-      const cimaZ_pix = getZPix(cimaZ, b.planNivel);
       const ownIso = getIsoCoords(b.x, b.y, b.planNivel);
       const baseIso = ownIso;
       const cimaIso = ownIso;
@@ -452,23 +482,15 @@ export function pintaRedes(args: {
       const selKey = `${netId}:${b.planId}:${b.id}`;
       const isSel = selKey === selTramo;
 
-      ctx.beginPath();
-      ctx.moveTo(pBase.sx, pBase.sy);
-      ctx.lineTo(pCima.sx, pCima.sy);
-      ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
-      ctx.lineWidth = isSel ? 3.5 : 2;
-      ctx.stroke();
-
       // Círculo + indicador de dirección en el PISO PROPIO de la bajante (currentZ), no en el
       // extremo del destino ni en el del stub: para una bajante SUBE es el extremo inferior del
       // recorrido y para una BAJA el superior, y con ghost/destino en otro piso el símbolo
       // sigue presidiendo su propio piso (el círculo se desliza por la línea del conector hasta
       // la altura de currentZ).
       const floorZ_pix = getZPix(currentZ - profB * 1000, b.planNivel);
-      const floorIso = ownIso;
       const floorPt = project(
-        floorIso.x,
-        floorIso.y,
+        ownIso.x,
+        ownIso.y,
         floorZ_pix,
         rotZ,
         rotX,
@@ -479,38 +501,88 @@ export function pintaRedes(args: {
         cx,
         cy,
       );
-      // Círculo + indicador de dirección en el PISO PROPIO de la bajante (currentZ), no en el
-      // extremo del destino ni en el del stub: para una bajante SUBE es el extremo inferior del
-      // recorrido y para una BAJA el superior, y con ghost/destino en otro piso el símbolo
-      // sigue presidiendo su propio piso (el círculo se desliza por la línea del conector hasta
-      // la altura de currentZ).
-      const circR = 5 * zoom;
+      // Codos del elemento: TODOS los ramales conectados, cada uno con su vértice y su
+      // dirección. Se AGRUPAN por punto de unión: un bajante puede tener una esquina en su
+      // piso y otra en el de descarga (columna entre pisos) — cada grupo lleva su lado y su
+      // recorte. La flecha va junto al grupo más cercano al piso propio del elemento.
+      const preps = codo.porBajante.get(`${b.planId}:${b.id}`) ?? [];
+      const esquinas: Array<{
+        preps: CodoPrep[];
+        u: { sx: number; sy: number };
+        lado: 'arriba' | 'abajo';
+      }> = [];
+      for (const g of agrupaCodos(preps, 2)) {
+        const u = unionDeGrupo(g);
+        // `origenId` (recibe del piso superior) solo manda 'arriba' si hay una vertical
+        // DIBUJADA que llega desde arriba; si no, el arco iría flotando y la tubería visible
+        // seguiría hacia abajo (el "codo al revés" de la captura del usuario).
+        const lado = ladoDelCodo(pBase, pCima, u, !!b.origenId && hayVerticalArriba(u, spansVert));
+        esquinas.push({ preps: g, u, lado });
+      }
+      // Recorte de la vertical en la tangencia: sin él queda el "pico" recto unión→tangencia
+      // asomando por dentro de la curva. SOLO si el arco va del lado del propio tramo vertical,
+      // la unión cae en un EXTREMO y el tubo MUERE ahí — si otra vertical de la red llega por
+      // el otro lado es un tee pasante y la línea principal sigue recta (recortarla dejaría un
+      // hueco). Se aplica por esquina: una columna entre pisos puede recortarse en sus DOS
+      // extremos (codo en el piso propio y en el de descarga).
+      let vBase = pBase;
+      let vCima = pCima;
+      for (const e of esquinas) {
+        if (
+          e.lado === ladoDelCodo(pBase, pCima, e.u, false) &&
+          unionEnExtremo(e.u, pBase, pCima) &&
+          !verticalPasaAlOtroLado(e.lado, e.u, spansVert)
+        ) {
+          const rec = recortaVerticalAlCodo(vBase, vCima, e.u, CODO_RADIO * zoom, e.lado);
+          vBase = rec.base;
+          vCima = rec.cima;
+        }
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(vBase.sx, vBase.sy);
+      ctx.lineTo(vCima.sx, vCima.sy);
+      ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
+      ctx.lineWidth = isSel ? 3.5 : 2;
+      ctx.stroke();
+
+      const circR = CODO_CIRC * zoom;
       const isSubeDir = b.direccion ? b.direccion === 'sube' : b.tipo === 'montante';
       const dirY = isSubeDir ? -1 : 1;
-      // Con codo, el marcador se despega en DIAGONAL hacia FUERA de la esquina (orig. usuario:
-      // desplazado a lo largo del flujo quedaba ENCIMA de la tuberita vertical del tramo que
-      // sigue). Posición = vértice − normalizado(fd+hd)·14·zoom: fuera del codo, junto a la
-      // esquina, sin tocar tubo ni curva. Sin codo queda en floorPt como siempre.
-      const prepMarc = codo.porBajante.get(`${b.planId}:${b.id}`);
+      // Con codo, la flecha se despega en DIAGONAL hacia FUERA de la esquina (orig. usuario:
+      // desplazada a lo largo del flujo quedaba ENCIMA de la tuberita vertical del tramo que
+      // sigue). Se promedian las bisectrices NORMALIZADAS de cada arco: con ramales simétricos
+      // sumar las direcciones crudas dejaba la flecha sobre la vertical, dentro del abanico.
+      // Sin codo queda en floorPt como siempre.
+      let esqMarc: (typeof esquinas)[number] | null = null;
+      let dMarc = Infinity;
+      for (const e of esquinas) {
+        const d = Math.hypot(e.u.sx - floorPt.sx, e.u.sy - floorPt.sy);
+        if (d < dMarc) {
+          dMarc = d;
+          esqMarc = e;
+        }
+      }
       let marcX = floorPt.sx;
       let marcY = floorPt.sy;
-      if (prepMarc) {
-        const dCima = Math.hypot(pCima.sx - floorPt.sx, pCima.sy - floorPt.sy);
-        const dBase = Math.hypot(pBase.sx - floorPt.sx, pBase.sy - floorPt.sy);
-        const cimaArriba = pCima.sy <= floorPt.sy;
-        const vieneDeArriba = !!(b as { origenId?: string }).origenId;
-        const ladoMarc: 'arriba' | 'abajo' = vieneDeArriba
-          ? 'arriba'
-          : (cimaArriba ? dCima : dBase) >= (cimaArriba ? dBase : dCima)
-            ? 'arriba'
-            : 'abajo';
-        const fdx = ladoMarc === 'arriba' ? 0 : 1;
-        const fdy = ladoMarc === 'arriba' ? -1 : 1;
-        const sx = prepMarc.dir.x + fdx;
-        const sy = prepMarc.dir.y + fdy;
-        const sl = Math.hypot(sx, sy) || 1;
-        marcX = prepMarc.vertex.sx - (sx / sl) * 14 * zoom;
-        marcY = prepMarc.vertex.sy - (sy / sl) * 14 * zoom;
+      if (esqMarc) {
+        const fd = { x: 0, y: esqMarc.lado === 'arriba' ? -1 : 1 };
+        let bx = 0;
+        let by = 0;
+        for (const p of esqMarc.preps) {
+          if (Math.abs(p.dir.x * fd.x + p.dir.y * fd.y) > 0.9) continue; // sin arco
+          const bx1 = fd.x + p.dir.x;
+          const by1 = fd.y + p.dir.y;
+          const bl1 = Math.hypot(bx1, by1) || 1;
+          bx += bx1 / bl1;
+          by += by1 / bl1;
+        }
+        const bl = Math.hypot(bx, by);
+        if (bl > 0.01) {
+          const dM = (CODO_RADIO + CODO_CIRC + 4) * zoom;
+          marcX = esqMarc.u.sx - (bx / bl) * dM;
+          marcY = esqMarc.u.sy - (by / bl) * dM;
+        }
       }
       ctx.save();
       ctx.strokeStyle = netColor;
@@ -531,32 +603,21 @@ export function pintaRedes(args: {
       ctx.fill();
       ctx.restore();
 
-      // Curva del codo 90° (orig. usuario): empalme tangente entre el ramal conectado y el
-      // tubo vertical, con vértice en la intersección real de las dos líneas. Lado del arco:
-      // si el elemento VIENE BAJANDO (origenId — asociado/recibido desde el piso superior,
-      // orig. usuario: la vertical visible sobre la unión es ese conector) el arco va ARRIBA;
-      // si no, del lado donde el tubo sigue (el de mayor tramo desde la unión). La flecha
-      // círculo+triángulo de arriba se dibuja aparte e intacta, junto a la esquina.
-      const prep = codo.porBajante.get(`${b.planId}:${b.id}`);
-      if (prep) {
-        const dCima = Math.hypot(pCima.sx - floorPt.sx, pCima.sy - floorPt.sy);
-        const dBase = Math.hypot(pBase.sx - floorPt.sx, pBase.sy - floorPt.sy);
-        const cimaArriba = pCima.sy <= floorPt.sy;
-        const vieneDeArriba = !!(b as { origenId?: string }).origenId;
-        const lado = vieneDeArriba
-          ? 'arriba'
-          : (cimaArriba ? dCima : dBase) >= (cimaArriba ? dBase : dCima)
-            ? 'arriba'
-            : 'abajo';
-        dibujaCodoIso({
-          ctx,
-          vertex: prep.vertex,
-          ramalDir: prep.dir,
-          lado,
-          R: 9 * zoom,
-          color: netColor,
-          sel: isSel,
-        });
+      // Curva del codo 90° (orig. usuario): empalme tangente entre CADA ramal conectado y el
+      // tubo vertical, con vértice en la intersección real de las dos líneas y el lado del
+      // grupo (donde el tubo sigue). La flecha círculo+triángulo de arriba se dibuja aparte.
+      for (const e of esquinas) {
+        for (const prep of e.preps) {
+          dibujaCodoIso({
+            ctx,
+            vertex: prep.vertex,
+            ramalDir: prep.dir,
+            lado: e.lado,
+            R: CODO_RADIO * zoom,
+            color: netColor,
+            sel: isSel,
+          });
+        }
       }
 
       segments.push({
@@ -575,9 +636,19 @@ export function pintaRedes(args: {
         const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
         const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
         const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const connectionPoint = targetZ === lo ? pBase : pCima;
+        let connectionPoint = targetZ === lo ? pBase : pCima;
+        // Codo entre pisos: el conector arranca en la TANGENCIA del arco, no en el vértice —
+        // así la curva y la recta quedan empalmadas. El ramal alineado no lleva conector
+        // (dConn <= 2): preparaCodos recortó el propio ramal en su tangencia.
+        for (const p of preps) {
+          if (p.leg !== 'conector') continue;
+          connectionPoint = {
+            sx: p.vertex.sx + p.dir.x * CODO_RADIO * zoom,
+            sy: p.vertex.sy + p.dir.y * CODO_RADIO * zoom,
+          };
+        }
         const dConn = Math.hypot(rProj.sx - connectionPoint.sx, rProj.sy - connectionPoint.sy);
-        if (dConn > 2) {
+        if (dConn > 1) {
           ctx.save();
           ctx.beginPath();
           ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
