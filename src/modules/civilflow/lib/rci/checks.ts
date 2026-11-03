@@ -720,30 +720,40 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
       ['entradas', 'bomba.hmin'],
     );
   }
+  /* ponytail: succión con par matSuc/dnSuc fuera de PIPES → IDs=NaN en pump.ts (pfUnit/Vsuc
+     dan NaN): estos checks dependen de la succión y pasan a PENDIENTE (dato faltante) en vez de
+     NO CUMPLE con "—". Ej: CPVC SDR 13,5 con 5" (el catálogo CPVC llega hasta 3"). */
+  const sinSuc = !isFinite(bo.IDs);
   add(
     'Velocidad en succión al 150 % ≤ 4,57 m/s',
-    bo.Vsuc <= 4.57 ? 'CUMPLE' : 'NO CUMPLE',
-    `${f1(bo.Vsuc)} m/s`,
+    sinSuc ? 'PENDIENTE' : bo.Vsuc <= 4.57 ? 'CUMPLE' : 'NO CUMPLE',
+    sinSuc ? 'Sin datos de succión' : `${f1(bo.Vsuc)} m/s`,
     'NFPA 20-2025',
-    `Aumente la succión a un diámetro interno de ${f1(bo.DintReq, 0)} mm o más.`,
+    sinSuc
+      ? 'El material/diámetro de la succión no existe en el catálogo de tuberías: revise matSuc/dnSuc en Entradas → Bomba.'
+      : `Aumente la succión a un diámetro interno de ${f1(bo.DintReq, 0)} mm o más.`,
     ['entradas', 'bomba.dnSuc'],
   );
   add(
     'Diámetro de succión ≥ mínimo de tabla',
-    bo.DsucAd >= bo.DsucMin ? 'CUMPLE' : 'NO CUMPLE',
-    `${bo.DsucAd} ≥ ${bo.DsucMin} pulg`,
+    sinSuc ? 'PENDIENTE' : bo.DsucAd >= bo.DsucMin ? 'CUMPLE' : 'NO CUMPLE',
+    sinSuc ? 'Sin datos de succión' : `${bo.DsucAd} ≥ ${bo.DsucMin} pulg`,
     'NFPA 20-2025, tabla resumen',
-    `Use succión de ${bo.DsucMin}" o mayor para ${bo.Qnom} gpm.`,
+    sinSuc
+      ? `Complete material y diámetro de la succión (se pide ${bo.DsucMin}" o mayor para ${bo.Qnom} gpm).`
+      : `Use succión de ${bo.DsucMin}" o mayor para ${bo.Qnom} gpm.`,
     ['entradas', 'bomba.dnSuc'],
   );
   const npshr = num(st.bomba.npshr) || 0,
     mg = num(st.bomba.margenNpsh) || 0;
   add(
     'NPSH disponible ≥ NPSH requerido + margen',
-    bo.NPSHd >= npshr + mg ? 'CUMPLE' : 'NO CUMPLE',
-    `${f1(bo.NPSHd)} ≥ ${f1(npshr + mg)} m`,
+    sinSuc ? 'PENDIENTE' : bo.NPSHd >= npshr + mg ? 'CUMPLE' : 'NO CUMPLE',
+    sinSuc ? 'Sin datos de succión' : `${f1(bo.NPSHd)} ≥ ${f1(npshr + mg)} m`,
     'Fabricante / NFPA 20-2025',
-    `Faltan ${f1(npshr + mg - bo.NPSHd)} m de NPSH. Pase a succión positiva, acorte la succión y reduzca accesorios, aumente el diámetro o elija una bomba con menor NPSHr.`,
+    sinSuc
+      ? 'Sin catálogo para la succión no hay NPSH disponible: revise matSuc/dnSuc.'
+      : `Faltan ${f1(npshr + mg - bo.NPSHd)} m de NPSH. Pase a succión positiva, acorte la succión y reduzca accesorios, aumente el diámetro o elija una bomba con menor NPSHr.`,
     ['entradas', 'bomba.npshr'],
   );
   {

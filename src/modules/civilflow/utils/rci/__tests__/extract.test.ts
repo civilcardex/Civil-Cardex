@@ -180,6 +180,15 @@ describe('extraerGris — estructura contra el ejemplo de verificación', () => 
     const g2 = extraerGris(pisosEjemplo(doc), { techo: 3 });
     expect(Number(g2.estado.redes['p1'].tramos[1].desgBajada)).toBeCloseTo(0.2, 6);
   });
+
+  it('opciones.techo de la tipología manda: zRam = techo y la bajada se recalcula', () => {
+    /* HtFt de la tipología = 4.0 m (13.12 ft): zRam nace con el techo real, no con el 5.30. */
+    const g = extraerGris(pisosEjemplo(), { techo: 4 });
+    expect(Number(g.estado.redes['p1'].zRam)).toBe(4);
+    /* Bajada: 4.00 − 2.50 = 1.50 → T2 L = 1.92 + 1.50 = 3.42. */
+    expect(Number(g.estado.redes['p1'].tramos[1].desgBajada)).toBeCloseTo(1.5, 6);
+    expect(Number(g.estado.redes['p1'].tramos[1].L)).toBeCloseTo(3.42, 6);
+  });
 });
 
 describe('extraerGris — ronda-trip idempotente (ids estables)', () => {
@@ -287,5 +296,61 @@ describe('mezclarOverrides — lo amarillo sobrevive por id estable', () => {
     doc.bajantes = [montanteRci({ altDeriv: 2.2 })];
     const m3 = mezclarOverrides(extraerGris(pisosEjemplo(doc)), prev);
     expect(Number(m3.estado.mont.hD)).toBe(2.2);
+  });
+
+  it('raiz/zRam/cota de derivación digitados en la red sobreviven; nudo nuevo del gris se añade', () => {
+    const m1 = mezclarOverrides(extraerGris(pisosEjemplo()), null);
+    const prev = m1.estado;
+    prev.redes['p1'].raiz = 'B';
+    prev.redes['p1'].zRam = 4.2;
+    prev.redes['p1'].nodos!['C'].z = 2.9;
+    delete prev.redes['p1'].nodos!.B; // nudo nuevo para el merge: lo aporta el gris
+
+    const m2 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(m2.estado.redes['p1'].raiz).toBe('B');
+    expect(Number(m2.estado.redes['p1'].zRam)).toBe(4.2);
+    expect(Number(m2.estado.redes['p1'].nodos?.C?.z)).toBe(2.9);
+    /* El nudo B reaparece con la cota del dibujo (vacía) y A sigue sin cota digitada. */
+    expect(m2.estado.redes['p1'].nodos?.B?.z).toBe('');
+    expect(m2.estado.redes['p1'].nodos?.A?.z).toBe('');
+  });
+
+  it('red sin prev en el merge (clave nueva) sale completa del gris', () => {
+    const m1 = mezclarOverrides(extraerGris(pisosEjemplo()), null);
+    const prev = m1.estado;
+    prev.redes['p1'].zRam = 4.2;
+    delete (prev.redes as Record<string, unknown>)['p1'];
+
+    const m2 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(Number(m2.estado.redes['p1'].zRam)).toBe(5.3);
+    expect(m2.estado.redes['p1'].raiz).toBe('C');
+    expect(Number(m2.estado.redes['p1'].nodos?.C?.z)).toBe(2.5);
+  });
+
+  it('el orden manual de ramales (moverRamal) sobrevive al re-merge; el gris aporta por id', () => {
+    const m1 = mezclarOverrides(extraerGris(pisosEjemplo()), null);
+    const prev = m1.estado;
+    /* [R1(p1|r2), R2(p1|r1), R3(p1|r3)] → [p1|r3, p1|r2, p1|r1] con fluyen digitado. */
+    const [a, b, c] = prev.redes['p1'].ramales;
+    prev.redes['p1'].ramales = [c, a, b];
+    prev.redes['p1'].ramales[0].fluyen = 4;
+
+    const m2 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(m2.estado.redes['p1'].ramales.map((r) => r.id)).toEqual(['p1|r3', 'p1|r2', 'p1|r1']);
+    expect(Number(m2.estado.redes['p1'].ramales[0].fluyen)).toBe(4);
+    /* La geometría gris sigue atada al id (dib 6/5/5) aunque el orden haya cambiado. */
+    expect(m2.estado.redes['p1'].ramales.map((r) => Number(r.dib))).toEqual([6, 5, 5]);
+    expect(m2.huerfanos).toEqual([]);
+  });
+
+  it('ramal nuevo del gris entra al final del orden previo', () => {
+    /* El prev se construyó con un dibujo sin R3 (p1|r3); el dibujo de HOY lo trae. */
+    const docSin = docP1();
+    docSin.ramales = docSin.ramales!.filter((r) => r.id !== 'r3');
+    const prev = mezclarOverrides(extraerGris(pisosEjemplo(docSin)), null).estado;
+
+    const m2 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(m2.estado.redes['p1'].ramales.map((r) => r.id)).toEqual(['p1|r2', 'p1|r1', 'p1|r3']);
+    expect(m2.huerfanos).toEqual([]);
   });
 });

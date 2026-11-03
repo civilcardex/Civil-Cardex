@@ -80,22 +80,25 @@ function Hbar({ children, nota }: { children: ReactNode; nota: ReactNode }) {
 }
 
 /** Qué columnas de una fila vienen del dibujo (gris 🔒): material/diámetro solo si el trazo
- *  los trae. Los índices de la red mezclada coinciden con los del gris (misma construcción). */
+ *  los trae. El candado se busca por ID ESTABLE de la fila: el orden de la red mezclada ya no
+ *  coincide con el del gris (el orden manual del diseñador sobrevive al re-merge). */
 interface FijosFila {
   dn: boolean;
   mat: boolean;
 }
 
-/** Fijos por índice para ramales o tramos de la red gris. */
-function fijosDe(filas: readonly { dn?: unknown; mat?: unknown }[] | undefined): FijosFila[] {
-  const out: FijosFila[] = [];
+/** Candados por id para ramales o tramos de la red gris. */
+function fijosPorId(
+  filas: readonly { id?: unknown; dn?: unknown; mat?: unknown }[] | undefined,
+): Map<string, FijosFila> {
+  const m = new Map<string, FijosFila>();
   for (const f of filas || []) {
-    out.push({
+    m.set(String(f.id ?? ''), {
       dn: f.dn !== undefined && f.dn !== null && f.dn !== '' && f.dn !== 'auto',
       mat: f.mat !== undefined && f.mat !== null && f.mat !== '',
     });
   }
-  return out;
+  return m;
 }
 
 /** Nudos disponibles de la red para el select de derivación: conexiones de ramales + extremos
@@ -158,8 +161,8 @@ export function RciHidraulica({
 
   const rams = filasRamales(red, rd);
   const trams = filasTramos(red, rd, techo, altDeriv);
-  const fijosR = fijosDe(grisRed?.ramales);
-  const fijosT = fijosDe(grisRed?.tramos);
+  const fijosR = fijosPorId(grisRed?.ramales);
+  const fijosT = fijosPorId(grisRed?.tramos);
   const sProyecto = String(estado.roc.S ?? '');
   const raiz = String(red?.raiz || '').trim() || 'D';
   const nudosLista = nudosDeRed(red, raiz);
@@ -414,7 +417,7 @@ export function RciHidraulica({
                 </thead>
                 <tbody>
                   {rams.map((f, i) => {
-                    const fij = fijosR[i] || { dn: false, mat: false };
+                    const fij = fijosR.get(f.id) || { dn: false, mat: false };
                     return (
                       <tr key={f.id || i}>
                         <td
@@ -735,7 +738,7 @@ export function RciHidraulica({
                 </thead>
                 <tbody>
                   {trams.map((f, i) => {
-                    const fij = fijosT[i] || { dn: false, mat: false };
+                    const fij = fijosT.get(f.id) || { dn: false, mat: false };
                     return (
                       <tr key={f.id || i}>
                         <td

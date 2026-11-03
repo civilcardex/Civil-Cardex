@@ -5,6 +5,7 @@
 // Lección de la ronda anterior: el vértice NO es el extremo del ramal (queda a varios px del
 // tubo y el arco se ve desconectado) — es la intersección de las dos líneas reales.
 import { splitPtr } from '../../../utils/keys.ts';
+import { isLdesvioRamalId } from '../../../utils/crossFloorStorage.ts';
 
 /** Radio base del codo en px (se multiplica por el zoom). UNA sola constante: el recorte del
  *  ramal, el recorte de la vertical y el arco dibujado usan el mismo radio (si divergen, el
@@ -246,6 +247,10 @@ export function preparaCodos(args: {
         const anilloP = proyecta(isoDe(b.x, b.y, b.planNivel), zT);
         for (const r of ramales) {
           if (r.planNivel !== dest.planNivel || r.pts.length < 2) continue;
+          // SOLO el LD_ (ramal desvio entrepisos) del destino (isLdesvioRamalId): el bloque
+          // busca el desvío nacido en su anillo — sin el guard, un ramal NORMAL del piso
+          // destino que pase a <6 px del anillo robaba el codo y su recorte.
+          if (!isLdesvioRamalId(r.id)) continue;
           const L = r.pts.length - 1;
           for (const ladoExtremo of [0, 1] as const) {
             const key = `${r.planId ?? dest.planId}:${r.id}:${ladoExtremo}`;
@@ -253,22 +258,28 @@ export function preparaCodos(args: {
             const ePt = ladoExtremo === 0 ? r.pts[0] : r.pts[L];
             const innerPt = ladoExtremo === 0 ? r.pts[1] : r.pts[L - 1];
             const eP = proyecta(isoDe(ePt[0], ePt[1], r.planNivel), zT);
-            // El extremo del ramal nace sobre el anillo (tol 6 px de pantalla).
-            if (Math.hypot(eP.sx - anilloP.sx, eP.sy - anilloP.sy) > 6) continue;
+            // El extremo del ramal nace sobre el anillo (tol 6 px de pantalla). La misma
+            // distancia es t0 (vértice→extremo): el extremo cae ENTRE el vértice y el
+            // interior, exactamente como en el mismo piso.
+            const t0 = Math.hypot(eP.sx - anilloP.sx, eP.sy - anilloP.sy);
+            if (t0 > 6) continue;
             const innerP = proyecta(isoDe(innerPt[0], innerPt[1], r.planNivel), zT);
             const hx = innerP.sx - eP.sx;
             const hy = innerP.sy - eP.sy;
             const hl = Math.hypot(hx, hy) || 1;
             const s = sondaEscala(proyecta, isoDe, ePt, r.planNivel, zT);
+            // Mismo recorte del mismo piso: (R - t0)/s lleva el extremo a la tangencia — el
+            // R/s crudo recortaba de más cuando el extremo no cae exacto en el vértice.
+            const dTrimPlane = (R - t0) / s;
             preps.push({
               vertex: anilloP,
               dir: { x: hx / hl, y: hy / hl },
-              dTrimPlane: R / s,
+              dTrimPlane,
               ramalId: r.id,
               ladoExtremo,
               leg: 'ramal',
             });
-            porRamal.set(key, R / s);
+            porRamal.set(key, dTrimPlane);
           }
         }
       }

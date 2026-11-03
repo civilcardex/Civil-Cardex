@@ -9,10 +9,15 @@ import { numDeBajante } from '../../../utils/keys.ts';
 export const GABINETE_PFX = 'GAB';
 
 /** Suelta un GABINETE (la caja pequeña donde vive la válvula/gabinete contra incendio) donde
- *  hiciste clic y lo deja seleccionado. Net-agnostic: hereda la red activa (en rci es donde se
- *  usa; el glifo toma el color de esa red). El montante que lo alimenta NO se fija aquí — se
- *  asigna después en `montante` (código del montante, ej: 'MRCI1'). */
+ *  hiciste clic y lo deja seleccionado. SOLO rci (Red Contra Incendio) — mismo guard que
+ *  handleMontanteDown/handleBajanteDown re-chequean aquí como defensa en profundidad. El
+ *  montante que lo alimenta NO se fija aquí — se asigna después en `montante` (código del
+ *  montante, ej: 'MRCI1'). */
 export function handleGabineteDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.activeNet !== 'rci') {
+    engine._emitStatus('El gabinete solo está disponible en la red RCI');
+    return;
+  }
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);
     if (sp) {
@@ -21,11 +26,12 @@ export function handleGabineteDown(engine: IPlanoEngineCore, px: number, py: num
     }
   }
   // MENOR NÚMERO LIBRE sobre ids existentes (mismo criterio de handleBajante): borrar GAB1 de
-  // {GAB1, GAB2} reutiliza el 1 en vez de dejar hueco. El número se lee con el extractor
-  // CANÓNICO (numDeBajante, el final del id/código).
+  // {GAB1, GAB2} reutiliza el 1 en vez de dejar hueco. Filtrado POR RED (como los otros
+  // creadores): la numeración de una red no debe consumir números de otra. El número se lee
+  // con el extractor CANÓNICO (numDeBajante, el final del id/código).
   const usedNums = new Set<number>(
     engine.bajantes
-      .filter((b) => b.tipo === 'gabinete')
+      .filter((b) => b.tipo === 'gabinete' && b.net === engine.activeNet)
       .map((b) => numDeBajante(b.code || b.id, GABINETE_PFX))
       .filter((n) => n > 0),
   );

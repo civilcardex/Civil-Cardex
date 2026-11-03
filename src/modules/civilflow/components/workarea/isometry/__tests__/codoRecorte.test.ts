@@ -322,6 +322,71 @@ describe('preparaCodos · descarga entre pisos a un RAMAL', () => {
   });
 });
 
+describe('preparaCodos · descarga entre pisos al LD_ de una BAJANTE destino', () => {
+  /** Bajante del piso 1 que descarga en la bajante BAN2 del piso 0: el codo vive en el LD_
+   *  (ramal desvio entrepisos) de BAN2, nacido en su anillo. BAN2 lejos del anillo (500,500)
+   *  para que su codo de mismo piso no participe: el que se prepara aquí es el de BAN1. */
+  function descargaLD(ramales: Array<Record<string, unknown>>) {
+    return preparar(ramales, [
+      bajante('BAN2', 'BAN2', { planId: '1', planNivel: 0, x: 500, y: 500 }),
+      bajante('BAN1', 'BAN1', { planId: '2', planNivel: 1, descargaEnId: '1|BAN2' }),
+    ]);
+  }
+
+  it('el LD_ del destino con extremo sobre el anillo recibe el codo y su recorte exacto', () => {
+    const { porBajante, porRamal } = descargaLD([
+      ramal(
+        'LD_BAN2_P2',
+        [
+          [100, 100],
+          [300, 100],
+        ],
+        { planId: '1', planNivel: 0 },
+      ),
+    ]);
+    const [prep] = porBajante.get('2:BAN1')!;
+    expect(prep.leg).toBe('ramal');
+    expect(prep.vertex).toEqual({ sx: 100, sy: 100 });
+    expect(prep.dir.x).toBeCloseTo(1, 5);
+    // Extremo exacto en el anillo (t0 = 0): el recorte cae en R, como en el mismo piso.
+    expect(prep.dTrimPlane).toBeCloseTo(CODO_RADIO, 5);
+    expect(porRamal.get('1:LD_BAN2_P2:0')).toBeCloseTo(CODO_RADIO, 5);
+  });
+
+  it('un ramal NORMAL del piso destino a <6 px del anillo NO roba el codo (solo el LD_)', () => {
+    // ponytail: antes el matcher era solo-geométrico y un ramal que pasara por ahí se llevaba
+    // el recorte del LD_.
+    const { porBajante, porRamal } = descargaLD([
+      ramal(
+        'RAF1',
+        [
+          [100, 100],
+          [300, 100],
+        ],
+        { planId: '1', planNivel: 0 },
+      ),
+    ]);
+    expect(porBajante.size).toBe(0);
+    expect(porRamal.size).toBe(0);
+  });
+
+  it('extremo del LD_ a t0 px del anillo: el recorte lo lleva a la tangencia ((R - t0)/s)', () => {
+    // Extremo 3 px a la derecha del anillo: con el R/s crudo quedaba recortado de más.
+    const { porBajante } = descargaLD([
+      ramal(
+        'LD_BAN2_P2',
+        [
+          [103, 100],
+          [300, 100],
+        ],
+        { planId: '1', planNivel: 0 },
+      ),
+    ]);
+    const [prep] = porBajante.get('2:BAN1')!;
+    expect(prep.dTrimPlane).toBeCloseTo(CODO_RADIO - 3, 5);
+  });
+});
+
 describe('agrupaCodos · dos esquinas de la misma columna', () => {
   function prep(sx: number, sy: number, ramalId: string): CodoPrep {
     return { vertex: { sx, sy }, dir: { x: 1, y: 0 }, dTrimPlane: 0, ramalId, ladoExtremo: 0 };

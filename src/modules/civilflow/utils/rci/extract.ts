@@ -15,9 +15,10 @@
  * tipología/clasificación decide después qué red usa cada tipología.
  *
  * mezclarOverrides(gris, prev) re-arma el estado completo: lo gris se re-extrae (geometría) y lo
- * amarillo sobrevive POR ID ESTABLE (nunca por nombre — renombrar en el plano no pierde datos).
- * Todo id del prev que quede sin dueño en el gris se reporta en `huerfanos` (con sus datos, para
- * que la UI avise y permita rescatarlo) — jamás se borra en silencio.
+ * amarillo sobrevive POR ID ESTABLE (nunca por nombre — renombrar en el plano no pierde datos),
+ * incluidas las claves de red que la UI edita (raiz, zRam, cotas de nudos) y el orden manual de
+ * los ramales. Todo id del prev que quede sin dueño en el gris se reporta en `huerfanos` (con
+ * sus datos, para que la UI avise y permita rescatarlo) — jamás se borra en silencio.
  *
  * Simplificaciones Fase 1 (documentadas): techo 5.30 m por defecto (la tipología lo pasará vía
  * `opciones.techo`); el tronco es lineal (si se ramifica se toma la ruta más larga y se avisa);
@@ -281,6 +282,19 @@ function siPrev<T>(vPrev: T | undefined, vGris: T): T {
     : vPrev;
 }
 
+/** Mezcla los nudos de una red: la cota digitada del prev gana en SUS claves (la UI escribe
+ *  nodos[raiz].z con "Cota de la derivación") y los nudos nuevos del gris se añaden con la cota
+ *  del dibujo (la derivación trae altDeriv; los demás nacen vacíos). Ej: gris {A:{z:''},C:{z:2.5}}
+ *  + prev con C=2.9 y sin B → {A:{z:''}, B:{z:''} (nuevo del gris), C:{z:2.9}}. */
+function mezclarNodos(grises: Red['nodos'], previos: Red['nodos']): NonNullable<Red['nodos']> {
+  const g = grises || {};
+  const p = previos || {};
+  const sal: NonNullable<Red['nodos']> = {};
+  for (const k of Object.keys(g)) sal[k] = { z: siPrev(p[k]?.z, g[k].z ?? '') };
+  for (const k of Object.keys(p)) if (!(k in sal)) sal[k] = { ...p[k] };
+  return sal;
+}
+
 /** Id estable de una fila (campo extra `id`); '' si no lo trae (no se puede emparejar por id). */
 function idDe(fila: TuberiaRow | PisoRow): string {
   const v = (fila as { id?: unknown }).id;
@@ -362,16 +376,17 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
     rows: filas,
   };
 
-  /* Redes: geometría gris fresca; lo digitado de cada fila sobrevive por id estable. */
+  /* Redes: geometría gris fresca; lo digitado de cada fila sobrevive por id estable, y las
+     claves que la UI edita (raiz/zRam con setRedK, cotas con setZRaiz) conservan el prev. */
   const prevRedes = prev?.redes || {};
   for (const key of Object.keys(g.redes)) {
     const grisRed = g.redes[key];
     const prevRed = prevRedes[key];
     est.redes[key] = {
-      raiz: grisRed.raiz,
+      raiz: siPrev(prevRed?.raiz, grisRed.raiz ?? ''),
       mat: siPrev(prevRed?.mat, grisRed.mat || ''),
-      zRam: grisRed.zRam,
-      nodos: grisRed.nodos,
+      zRam: siPrev(prevRed?.zRam, grisRed.zRam ?? ''),
+      nodos: mezclarNodos(grisRed.nodos, prevRed?.nodos),
       ramales: mezclarFilas(
         grisRed.ramales,
         prevRed?.ramales,
@@ -418,7 +433,9 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
 
 /** Mezcla una lista de filas (ramales o tramos): geometría, nombres y nudos del gris; lo
  *  digitado del prev (fluyen, diámetro si el dibujo calla, S, especiales…) sobrevive por id.
- *  Las filas del prev cuyo id ya no existe en el gris se reportan como huérfanos. */
+ *  El ORDEN del prev manda (el diseñador lo fija con moverRamal y el reparto de flujos corre
+ *  en orden de array); las filas nuevas del gris entran al final y las del prev cuyo id ya no
+ *  existe en el gris se reportan como huérfanos. */
 function mezclarFilas(
   grises: TuberiaRow[],
   previas: TuberiaRow[] | undefined,
@@ -433,11 +450,12 @@ function mezclarFilas(
     if (id) prevPorId.set(id, f);
     else huerfanos.push({ tipo, red: redKey, id: '', nombre: String(f.nombre || ''), fila: f });
   }
-  const salidas: TuberiaRow[] = [];
-  for (const grisFila of grises) {
+  const grisPorId = new Map<string, TuberiaRow>();
+  for (const grisFila of grises) grisPorId.set(idDe(grisFila), grisFila);
+  const mezclada = (grisFila: TuberiaRow): TuberiaRow => {
     const p = prevPorId.get(idDe(grisFila));
     if (tipo === 'ramal') {
-      salidas.push({
+      return {
         ...grisFila,
         ini: siPrev(p?.ini, ''),
         fluyen: siPrev(p?.fluyen, ''),
@@ -450,19 +468,26 @@ function mezclarFilas(
         comp: siPrev(p?.comp, ''),
         ret: siPrev(p?.ret, ''),
         zr: siPrev(p?.zr, ''),
-      });
-    } else {
-      salidas.push({
-        ...grisFila,
-        mat: grisFila.mat || siPrev(p?.mat, ''),
-        dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, 'auto'),
-        esp: siPrev(p?.esp, ''),
-        leqOtros: siPrev(p?.leqOtros, ''),
-        mar: siPrev(p?.mar, ''),
-        comp: siPrev(p?.comp, ''),
-        ret: siPrev(p?.ret, ''),
-      });
+      };
     }
+    return {
+      ...grisFila,
+      mat: grisFila.mat || siPrev(p?.mat, ''),
+      dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, 'auto'),
+      esp: siPrev(p?.esp, ''),
+      leqOtros: siPrev(p?.leqOtros, ''),
+      mar: siPrev(p?.mar, ''),
+      comp: siPrev(p?.comp, ''),
+      ret: siPrev(p?.ret, ''),
+    };
+  };
+  const salidas: TuberiaRow[] = [];
+  for (const [id] of prevPorId) {
+    const grisFila = grisPorId.get(id);
+    if (grisFila) salidas.push(mezclada(grisFila));
+  }
+  for (const grisFila of grises) {
+    if (!prevPorId.has(idDe(grisFila))) salidas.push(mezclada(grisFila));
   }
   for (const [id, f] of prevPorId) {
     if (!idsGris.has(id))

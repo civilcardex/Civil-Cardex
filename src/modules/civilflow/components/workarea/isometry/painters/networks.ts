@@ -621,11 +621,14 @@ export function pintaRedes(args: {
         }
       }
 
+      // Hit-test sobre lo DIBUJADO: la vertical pintada es vBase→vCima (recortada en la
+      // tangencia del codo) — el segmento del hit-test con pBase/pCima completos dejaba una
+      // zona clicable donde no hay tubería (el pico recto que el recorte elimina).
       segments.push({
-        sx1: pBase.sx,
-        sy1: pBase.sy,
-        sx2: pCima.sx,
-        sy2: pCima.sy,
+        sx1: vBase.sx,
+        sy1: vBase.sy,
+        sx2: vCima.sx,
+        sy2: vCima.sy,
         z: (baseZ_pix + cimaZ_pix) / 2,
         id: selKey,
         label: b.code || b.id,

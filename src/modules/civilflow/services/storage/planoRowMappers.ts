@@ -15,6 +15,11 @@ import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes.ts';
 export type SupabaseRow = Record<string, unknown>;
 const g = <T>(row: SupabaseRow, key: string, fb: T): T => (row[key] as T) ?? fb;
 
+// ponytail: espejo del valor de ALT_DERIV_RCI_DEFAULT (creations/montantes.ts) — importarlo
+// arrastraría el grafo del motor al bundle de servicios. Si ese default cambia, cambiar aquí.
+// Sirve para NO persistir el default (columna null = el extractor cae al mismo default).
+const ALT_DERIV_RCI_DEFAULT = 2.5;
+
 // ponytail: header shared — 3 fields repeated in 7 mappers
 function baseRow(planoId: number, userId: string, clientId: string) {
   return { plano_id: planoId, user_id: userId, client_id: clientId };
@@ -184,6 +189,11 @@ export function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     // jsonb_populate del RPC ignora claves extra hasta aplicarla — deploy seguro antes).
     angulo: b.angulo ?? null,
     canal_flow_dir: b._canalFlowDir ?? null,
+    // Altura de derivación del montante rci (Red Contra Incendio), m sobre npt (nivel de piso
+    // topográfico): sin columna el roundtrip BD con caché fría la perdía (la extracción de
+    // diseño rci la lee del montante). El default 2.5 no viaja (null = el extractor cae al
+    // mismo default) — filas limpias.
+    alt_deriv: b.altDeriv != null && b.altDeriv !== ALT_DERIV_RCI_DEFAULT ? b.altDeriv : null,
     copia_piso: b.copiaPiso ?? false,
     copiado_de_plan: b.copiadoDePlan ?? null,
     copiado_de_id: b.copiadoDeId ?? null,
@@ -274,6 +284,7 @@ export function rowToBajante(row: SupabaseRow): PlanoBajante {
     longitud: g(row, 'longitud', undefined),
     angulo: g(row, 'angulo', undefined),
     _canalFlowDir: g(row, 'canal_flow_dir', undefined),
+    altDeriv: g<number | undefined>(row, 'alt_deriv', undefined),
     copiaPiso: g(row, 'copia_piso', undefined),
     copiadoDePlan: g(row, 'copiado_de_plan', undefined),
     copiadoDeId: g(row, 'copiado_de_id', undefined),

@@ -205,3 +205,23 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
     expect(R2.count).toEqual(R.count);
   });
 });
+
+describe('rciEngine · succión fuera del catálogo PIPES → verificaciones PENDIENTE', () => {
+  it('CPVC 5" (no existe en PIPES): NPSH, velocidad y diámetro de succión quedan PENDIENTE', () => {
+    const stSuc = ejemploVerificacion();
+    stSuc.bomba.matSuc = 'CPVC SDR 13,5'; // el catálogo CPVC llega solo hasta 3"
+    stSuc.bomba.dnSuc = '5"';
+    const Rs = compute(stSuc, clasificar(stSuc));
+    /* IDs de la succión NaN (pump.ts): los checks que la leen no pueden evaluarse. */
+    expect(Number.isFinite(Rs.bomba.IDs)).toBe(false);
+    const porLab = new Map(Rs.checks.map((v) => [v.lab, v]));
+    for (const lab of [
+      'Velocidad en succión al 150 % ≤ 4,57 m/s',
+      'Diámetro de succión ≥ mínimo de tabla',
+      'NPSH disponible ≥ NPSH requerido + margen',
+    ]) {
+      expect(porLab.get(lab)?.st).toBe('PENDIENTE');
+      expect(porLab.get(lab)?.val).toBe('Sin datos de succión');
+    }
+  });
+});

@@ -15,10 +15,11 @@ import { loadRciDatos, saveRciDatos } from '../../services/projectDataService.ts
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { pisoLbl } from '../../constants/index.ts';
 import { extraerGris, mezclarOverrides } from '../../utils/rci/extract.ts';
+import { TECHO_DEF } from '../../utils/rci/extractRed.ts';
 import type { PisoRciFuente } from '../../utils/rci/extract.ts';
 import { sembrarRci } from '../../utils/rci/rowsModel.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/rowsModelExtras.ts';
-import { clasificar, compute } from '../../lib/rci/index.ts';
+import { clasificar, compute, num } from '../../lib/rci/index.ts';
 import type { RciState, TipCalc } from '../../lib/rci/types.ts';
 import type { DrawingData } from '../../utils/drawingSyncTypes.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
@@ -91,8 +92,14 @@ function RciDesign() {
     return out;
   }, [plans, pisos]);
 
-  /** La parte gris (geometría del dibujo) se re-extrae cada vez que cambian planos o pisos. */
-  const gris = useMemo(() => extraerGris(fuentes), [fuentes]);
+  /** Techo (m) con el que se extrae el gris: el de la tipología del piso activo — la misma vía
+   *  que RciHidraulica (tip.roc.HtFt/3.28084, que para la tipología ACTIVA es el htecho de
+   *  Entradas). Sin estado cargado aún cae al default del extractor (5.3). */
+  const techoGris = useMemo(() => num(estado?.clas.htecho) || TECHO_DEF, [estado]);
+  // ponytail: con el siPrev del merge, un zRam ya mezclado no sigue al techo cuando la tipología
+  // cambia de htecho — limpiar "Cota de los ramales" lo resincroniza con la cota del dibujo.
+  /** La parte gris (geometría del dibujo) se re-extrae cuando cambian planos, pisos o el techo. */
+  const gris = useMemo(() => extraerGris(fuentes, { techo: techoGris }), [fuentes, techoGris]);
 
   /* Carga BD + mezcla: al montar y cada vez que el dibujo cambia. Tras la primera carga el
      amarillo VIVO manda de base (el BD puede quedarse detrás del debounce de guardado). */
