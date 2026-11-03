@@ -23,6 +23,10 @@ const Fallback = () => {
   );
 };
 
+// ponytail: Lazy/Guarded son tipos DISTINCTOS en la misma posición de ruta — navegar entre
+// una ruta estática y una lazy REMONTA la frontera de error (limpia hasError). Intencional:
+// el comportamiento original reutilizaba la instancia y arrastraba el estado de error entre
+// rutas hasta pulsar Reintentar.
 /** Envoltura de ruta ESTÁTICA (import directo): solo frontera de error, sin Suspense.
  *  Ej: / -> <Lazy><LandingPage /></Lazy>. */
 function Lazy({ children }: { children: ReactNode }) {

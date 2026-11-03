@@ -106,6 +106,8 @@ export function useIsometriaRender({
       profByNet,
       nptMap,
       selTramo,
+      pisosVisibles,
+      confirmedPlanos,
       vista,
       getIsoCoords,
       getZPix,

@@ -33,6 +33,9 @@ export function usePdfAutoSave(
     // SIN guard de loadingPlanRef (orig. usuario: elementos del PRIMER piso perdidos): el
     // _dirty ya garantiza ediciones reales sobre el contenido cargado — el contenido del
     // motor al desmontar es el del piso visible, cargue o no su await de BD.
+    // _dirty = false ANTES de guardar: si no, el cleanup del engine (guardarAlDesmontar,
+    // que corre después en el desmonte) ve sucio y reescribe el mismo doc dos veces.
+    eng._dirty = false;
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     performSave(eng, id);
   }, [currentIdRef, engineRef, performSave]);

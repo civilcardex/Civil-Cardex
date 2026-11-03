@@ -47,7 +47,9 @@ export function RegTable({
               const style = primera && o.w !== false ? { fontWeight: o.w ?? 500 } : undefined;
               const contenido = o.sigla ? <span className="sigla">{o.t}</span> : o.t;
               return (
-                <td key={ci} className={cn} style={style}>
+                // key por CONTENIDO (no índice): si una tabla normativa se vuelve dinámica
+                // algún día, la reconciliación no reutiliza nodos equivocados.
+                <td key={`${ri}-${ci}-${String(o.t)}`} className={cn} style={style}>
                   {contenido}
                 </td>
               );

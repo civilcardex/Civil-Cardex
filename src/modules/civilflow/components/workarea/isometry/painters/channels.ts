@@ -1,6 +1,8 @@
 import { NETS } from '../../../../lib/PlanoEngine/PlanoState.ts';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from '../geometry';
 import { hexA, type IsoPt } from '../isoDrawUtils.ts';
+import type { PlanItem } from '../../../../context/PlansContext.tsx';
+import { bajanteVisible } from './networks.ts';
 import type { VistaIso } from './isoView.ts';
 
 /** Pase 2 de la isometría: dibuja TODOS los canales (de ll, Lluvias, y de cualquier otra red)
@@ -14,12 +16,25 @@ export function pintaCanales(args: {
   profByNet: Record<string, number>;
   nptMap: Record<number, number>;
   selTramo: string | null;
+  pisosVisibles: Set<number> | null;
+  confirmedPlanos: PlanItem[];
   vista: VistaIso;
   getIsoCoords: (px: number, py: number, nivel: number) => { x: number; y: number };
   getZPix: (zMm: number, nivel?: number) => number;
 }): void {
-  const { ctx, dataByNet, activeNets, profByNet, nptMap, selTramo, vista, getIsoCoords, getZPix } =
-    args;
+  const {
+    ctx,
+    dataByNet,
+    activeNets,
+    profByNet,
+    nptMap,
+    selTramo,
+    pisosVisibles,
+    confirmedPlanos,
+    vista,
+    getIsoCoords,
+    getZPix,
+  } = args;
   const { rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy } = vista;
   // Los canales se dibujan PRIMERO, en un pase propio ANTES de todas las redes: la cara blanca
   // opaca de la canaleta taparía cualquier bajante dibujado después del pase de su red
@@ -33,7 +48,11 @@ export function pintaCanales(args: {
     const netColorCanal = NETS.find((n) => n.id === netId)?.col || '#888';
     const profCanal = profByNet[netId] ?? 0;
     for (const b of netData.bajantes) {
+      // Mismo criterio de pisos visibles que los otros pases (orig. usuario): un canal de un
+      // piso oculto no queda flotando sobre espacio vacío salvo que su descarga caiga en un
+      // piso visible.
       if (b._isCrossFloorGhost || b.tipo !== 'canal') continue;
+      if (!bajanteVisible(b, pisosVisibles, confirmedPlanos)) continue;
       // Marco efectivo en METROS (misma regla que canalMarco del motor, sin engine): con
       // `angulo` se respeta; sin él (legacy) el flowDir manda y sin flowDir la forma
       // (base>longitud→90°). Los shifts de origen van en metros (getIsoCoords es lineal).

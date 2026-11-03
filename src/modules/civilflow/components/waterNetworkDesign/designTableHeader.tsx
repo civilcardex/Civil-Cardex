@@ -19,11 +19,11 @@ interface ColEnc {
   th?: CSSProperties;
 }
 
-function celdaTh(col: ColEnc, base: CSSProperties, cssClass: string) {
+function celdaTh(col: ColEnc, base: CSSProperties, cssClass: string, key: string) {
   const cls = col.cls === 'css' ? `col-h ${cssClass}` : col.cls === 'ok' ? 'col-h ok' : 'col-h';
   return (
     <th
-      key={col.title}
+      key={key}
       title={col.title}
       scope="col"
       className={cls}
@@ -177,8 +177,8 @@ const FILA2: ColEnc[] = [
 export function DesignTableHeader({ cssClass, pais }: { cssClass: string; pais?: string }) {
   return (
     <thead>
-      <tr>{fila1(pais).map((col) => celdaTh(col, TH_FILA1, cssClass))}</tr>
-      <tr>{FILA2.map((col) => celdaTh(col, TH_FILA2, cssClass))}</tr>
+      <tr>{fila1(pais).map((col, i) => celdaTh(col, TH_FILA1, cssClass, `f1-${i}`))}</tr>
+      <tr>{FILA2.map((col, i) => celdaTh(col, TH_FILA2, cssClass, `f2-${i}`))}</tr>
     </thead>
   );
 }

@@ -14,6 +14,18 @@ import { _midpoint } from './PlanoEngineDrawing.ts';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
 
+/** Índice del bajante con ese id prefiriendo el del PISO ABIERTO: el motor puede tener el
+ *  real y la proyección de otro piso con el MISMO id — un findIndex plano borraba la
+ *  proyección y el montante real se quedaba en el dibujo ("no se borró nada", orig. usuario).
+ *  Ej: motor con BAN1 real (Piso 1) + BAN1 proyección (Piso 2), nivelActual=Piso 1 → índice del real.
+ */
+function indiceBajanteDePiso(engine: IPlanoEngineCore, id: string): number {
+  const candidatos = engine.bajantes.map((b, i) => ({ b, i })).filter((x) => x.b.id === id);
+  if (candidatos.length === 0) return -1;
+  const nivel = engine.nivelActual?.label ?? '';
+  return (candidatos.find((x) => (x.b.pisoBase ?? '') === nivel) ?? candidatos[0]).i;
+}
+
 /** Desasocia los dos extremos de un enlace entre pisos: el de ARRIBA pierde su `descargaEnId`
  *  (apuntaba al de abajo) y el de ABAJO pierde su `origenId` (apuntaba al de arriba). Solo se
  *  toca el puntero que apunta AL OTRO extremo — en una cadena de tres pisos el montante del
@@ -211,7 +223,7 @@ export function deleteSelected(
         }
         continue;
       }
-      const idxB = engine.bajantes.findIndex((b) => b.id === id);
+      const idxB = indiceBajanteDePiso(engine, id);
       if (idxB >= 0) {
         const deleted: PlanoBajante = engine.bajantes[idxB];
         // Borrar un canal debe desasociar sus bajantes — si no, su canalId seguiría apuntando a
@@ -526,16 +538,8 @@ export function deleteSelected(
     engine._markDirty();
     return;
   }
-  // Se borra el bajante del PISO ABIERTO: el motor puede tener el real y la proyección de
-  // otro piso con el MISMO id — un findIndex plano borraba la proyección y el montante
-  // real se quedaba en el dibujo ("no se borró nada", orig. usuario).
-  const nivelSel = engine.nivelActual?.label ?? '';
-  const idxCandidatos = engine.bajantes
-    .map((b, i) => ({ b, i }))
-    .filter((x) => x.b.id === engine.selId);
-  const idxB = idxCandidatos.length
-    ? (idxCandidatos.find((x) => (x.b.pisoBase ?? '') === nivelSel) ?? idxCandidatos[0]).i
-    : -1;
+  // Se borra el bajante del PISO ABIERTO (mismo criterio que la ruta multi-selección arriba).
+  const idxB = indiceBajanteDePiso(engine, engine.selId ?? '');
   if (idxB >= 0) {
     const deleted: PlanoBajante = engine.bajantes[idxB];
     const deletedId = deleted.id;

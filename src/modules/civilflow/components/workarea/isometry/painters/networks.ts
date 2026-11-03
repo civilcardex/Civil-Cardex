@@ -106,8 +106,9 @@ function resuelveDestinoBajante(
 }
 
 /** ¿Se dibuja esta bajante/montante con el filtro de pisos activo? Una bajante de un piso
- *  oculto se dibuja igual si su descarga cae en un piso visible (la tubería cruza). */
-function bajanteVisible(
+ *  oculto se dibuja igual si su descarga cae en un piso visible (la tubería cruza).
+ *  Exportada: el pase de canales (channels.ts) aplica el mismo criterio. */
+export function bajanteVisible(
   b: IsoBajante,
   pisosVisibles: Set<number> | null,
   confirmedPlanos: PlanItem[],
