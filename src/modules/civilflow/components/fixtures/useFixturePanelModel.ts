@@ -207,6 +207,8 @@ export function itemsAccAfAc(): typeof ACCESORIOS_HIDRO {
         'llaveTerminal',
       ].includes(a.id) &&
       a.id !== 'codo90rmSube' &&
+      // 'rociador' es exclusivo de rci (Red Contra Incendio) — este panel es de af/ac.
+      a.id !== 'rociador' &&
       a.id !== 'codo90rmBaja',
   ).map((a) => (a.id === 'codo90rm' ? { ...a, nombre: 'Codo medio 90°' } : a));
 }

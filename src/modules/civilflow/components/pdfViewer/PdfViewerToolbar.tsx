@@ -14,7 +14,7 @@ export interface ToolDef {
   shortcut: string;
 }
 
-// Bajante solo tiene sentido en san/vent/ll (bajantes); montante solo en gas/ac/af (montantes) —
+// Bajante solo tiene sentido en san/vent/ll (bajantes); montante solo en gas/ac/af/rci (montantes) —
 // centralizado aquí para que las dos rutas de render de la barra (expandida/colapsada) y los
 // atajos de teclado de PlanoEngine.ts apliquen exactamente la misma regla sin divergir.
 export function isToolDisabledForNet(
@@ -23,7 +23,7 @@ export function isToolDisabledForNet(
   recolectoraActive = true,
 ): boolean {
   if (toolId === 'baj') return !['san', 'vent', 'll'].includes(net);
-  if (toolId === 'mon') return !['gas', 'ac', 'af'].includes(net);
+  if (toolId === 'mon') return !['gas', 'ac', 'af', 'rci'].includes(net);
   // Los glifos de canal recolectora solo tienen sentido con la red de agua lluvias ('ll')
   // ACTIVA en esa sesión — de lo contrario la herramienta dibujaría formas de una red que el
   // proyecto no está diseñando (ni el piso la está viendo).

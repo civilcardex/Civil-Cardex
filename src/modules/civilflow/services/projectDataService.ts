@@ -6,6 +6,7 @@ import type { Piso } from '../lib/shared/projectTypes.ts';
 import type { Proyecto, MaterialItem, ProfItem, CritItem } from '../context/ProjectContext.tsx';
 import type { PlanMeta } from '../lib/shared/projectTypes.ts';
 import type { GasDatosGenerales } from '../utils/gasRows.ts';
+import type { RciState } from '../lib/rci/index.ts';
 
 /** Lectura/escritura del dataset core del proyecto en la BD (proyecto_general, pisos, materiales, profundidades, criterios, metadatos de planos y datos de gas) — una sola puerta para los RPCs (funciones seguras del servidor) de contenido. */
 
@@ -331,6 +332,99 @@ export async function saveGasDatos(proyectoId: string, datos: GasDatosGenerales)
       },
     }),
   );
+}
+
+/**
+ * Chequeo mínimo de que un blob leído de la BD parece un RciState (Red Contra Incendio:
+ * estado completo del diseño). Ej: tras cambiar la forma del estado en una fase nueva, el
+ * dato viejo no debe colarse — null y listo, sin crashear la carga del proyecto.
+ */
+function pareceRciState(v: unknown): v is RciState {
+  if (typeof v !== 'object' || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.meta === 'object' && o.meta !== null && typeof o.pisos === 'object' && o.pisos !== null
+  );
+}
+
+/**
+ * Error de "la tabla/función aún no existe en la BD" (migración sin aplicar): PostgREST lo
+ * reporta con código 42P01/PGRST205 (tabla ausente del esquema cacheado) o PGRST202 (función
+ * RPC (Remote Procedure Call, funciones seguras en la BD) ausente). Ej: el usuario no corrió
+ * 20261102000000 en el SQL Editor → la app sigue sin persistencia RCI, sin pantallas de error.
+ */
+function esObjetoAusente(err: { message?: string; code?: string }): boolean {
+  if (err.code === '42P01' || err.code === 'PGRST205' || err.code === 'PGRST202') return true;
+  return /does not exist|could not find the (table|function)/i.test(err.message ?? '');
+}
+
+/**
+ * Carga el estado RCI (RciState completo — gris del plano + amarillos digitados) guardado en
+ * la BD (cf_rci_datos_proyecto, 1:1 con el proyecto). Devuelve null cuando la fila no existe,
+ * cuando el blob no parece un RciState o cuando la migración aún no está aplicada — el
+ * llamador decide si usar defaults.
+ */
+export async function loadRciDatos(proyectoId: string): Promise<RciState | null> {
+  try {
+    const { data, error } = await supabase
+      .from(CF_TABLES.rciDatos)
+      .select('datos')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle();
+    if (error) {
+      if (!esObjetoAusente(error)) devError('proyectoDataService loadRciDatos:', error.message);
+      return null;
+    }
+    if (!data) return null;
+    const datos = (data as { datos: unknown }).datos;
+    if (!pareceRciState(datos)) {
+      devError(
+        'proyectoDataService loadRciDatos: el blob guardado no parece un RciState; se ignora.',
+      );
+      return null;
+    }
+    return datos;
+  } catch (e) {
+    devError('proyectoDataService loadRciDatos exception:', e);
+    return null;
+  }
+}
+
+/**
+ * Guarda el estado RCI completo del proyecto vía el RPC save_rci_datos (upsert 1:1; el impl
+ * resuelve user_id y updated_at=now()). Misma tolerancia que load: si la migración aún no
+ * está aplicada devuelve false con devError limpio (sin alarma al canal de guardados), y
+ * cualquier otro error sí avisa como fallo de guardado.
+ */
+export async function saveRciDatos(proyectoId: string, estado: RciState): Promise<boolean> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) {
+      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      return false;
+    }
+    const { error } = await supabase.rpc('save_rci_datos', {
+      p_proyecto_id: proyectoId,
+      p_datos: estado,
+    });
+    if (error) {
+      if (esObjetoAusente(error)) {
+        devError(
+          'proyectoDataService saveRciDatos: save_rci_datos no existe aún (migración 20261102000000 sin aplicar); RCI sin persistencia en esta sesión.',
+          error.message,
+        );
+        return false;
+      }
+      emitBdSaveError('save-rci', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    devError('proyectoDataService saveRciDatos exception:', e);
+    return false;
+  }
 }
 
 /**

@@ -8,15 +8,15 @@ import { maxDiametroLabel } from '../PlanoEngineDrawing.ts';
 import { angleAtHalfLength } from '../drawingAngles.ts';
 import { numDeBajante } from '../../../utils/keys.ts';
 
-// El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
+// El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af/rci — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
 // de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
 /** Redes donde puede nacer una tubería vertical BAJANTE (san (Sanitaria), vent (Ventilación), ll (Lluvias)) — espejo de la regla de la barra de herramientas, re-chequeada como defensa. */
 export const BAJANTE_NETS = ['san', 'vent', 'll'];
-/** Redes donde puede nacer un MONTANTE (gas (Gas), ac (Agua Caliente), af (Agua Fría)). */
-export const MONTANTE_NETS = ['gas', 'ac', 'af'];
+/** Redes donde puede nacer un MONTANTE (gas (Gas), ac (Agua Caliente), af (Agua Fría), rci (Red Contra Incendio)). */
+export const MONTANTE_NETS = ['gas', 'ac', 'af', 'rci'];
 /** Cajas de recolección (cuadrado con cuadrado interior): CAN en sanitaria, CALL en lluvias. */
 export const CAJA_NETS = ['san', 'll'];
 

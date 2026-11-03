@@ -168,6 +168,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
   const accAcDiamTable = tables.accAcDiamTable;
   const acTable = tables.acTable;
   const gasTable = tables.gasTable;
+  const rciTable = tables.rciTable;
   const hasCheckedNet = tables.hasCheckedNet;
   const allOk = tables.allOk;
   const items = tables.items;
@@ -193,6 +194,7 @@ export function InfTab({ state }: { state: WorkAreaState }) {
         ...tag([gasTable], 'gas'),
         ...tag(buildBombaTables(), 'bom'),
         ...tag(buildEpTables(), 'ep'),
+        ...tag([rciTable], 'rci'),
         // "Redes a descargar" filtra TAMBIÉN las memorias (orig. usuario): el mismo selector
         // gobierna planos de red y memorias finales — y las redes NO activas tampoco entran
         // (regla "activa y chequeada"; bom/ep SÍ se filtran — están en REDES. Solo aco,

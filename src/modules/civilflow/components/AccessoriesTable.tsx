@@ -29,7 +29,10 @@ const AccessoriesTable_S5: React.CSSProperties = {
   overflow: 'hidden',
 };
 
-const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter((a) => a.id !== 'llaveTerminal');
+// 'rociador' fuera: es accesorio EXCLUSIVO de rci (Red Contra Incendio) — esta tabla es de af/ac.
+const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter(
+  (a) => a.id !== 'llaveTerminal' && a.id !== 'rociador',
+);
 
 // AF/AC sin sube/baja (orig. usuario, mismo criterio del panel/menú): esas columnas se ocultan
 // y sus conteos se FUSIONAN en la columna base (codo 90° sube/baja → Codo medio 90°;

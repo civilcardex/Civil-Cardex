@@ -19,6 +19,7 @@ const CalculoUC = lazy(() => import('../CalcUC.tsx'));
 const WaterNetworkDesign = lazy(() => import('../WaterNetworkDesign.tsx'));
 const BombaARDesign = lazy(() => import('../PumpARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
+const RciDesign = lazy(() => import('../rci/RciDesign'));
 const RejillasVentilacion = lazy(() => import('../RejillasVentilation'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign.tsx'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage.tsx'));
@@ -97,6 +98,7 @@ const prefetchHeavy = () => {
   pedirChunk('bom', () => import('../PumpARDesign'));
   pedirChunk('ep', () => import('../PressureEquipmentDesign.tsx'));
   pedirChunk('gas', () => import('../GasDesign'));
+  pedirChunk('rci', () => import('../rci/RciDesign'));
   pedirChunk('datos', () => import('../DesignParameters.tsx'));
   pedirChunk('crit', () => import('../Regulations/Regulations.tsx'));
 };
@@ -142,7 +144,8 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
               if (r.id === 'san') prefetchSan(1);
               else if (r.id === 'll') prefetchLl(1);
               else if (r.id === 'af' || r.id === 'ac') prefetchAfAc(1);
-              else if (r.id === 'bom' || r.id === 'ep' || r.id === 'gas') prefetchHeavy();
+              else if (r.id === 'bom' || r.id === 'ep' || r.id === 'gas' || r.id === 'rci')
+                prefetchHeavy();
             }}
             onFocus={() => {
               if (r.id === 'san') prefetchSan(1);
@@ -396,6 +399,25 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
         <Suspense fallback={FALLBACK}>
           <BombaARDesign />
         </Suspense>
+      )}
+      {redActiva === 'rci' && redes.has('rci') && (
+        <div
+          className="fu"
+          data-tour="redes-contenido"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+          }}
+        >
+          {/* Una sola página (secciones apiladas con anclas): sin PageNav. */}
+          <Suspense fallback={FALLBACK}>
+            <RciDesign />
+          </Suspense>
+        </div>
       )}
       {redActiva === 'ep' && redes.has('ep') && (
         <Suspense fallback={FALLBACK}>

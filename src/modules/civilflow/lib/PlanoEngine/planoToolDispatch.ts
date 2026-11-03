@@ -15,6 +15,7 @@ import {
   handleCalentadorDown,
   handleCanalDown,
   handleCajaDown,
+  handleGabineteDown,
   handleEraseDown,
   handleAreaDown,
 } from './PlanoEngineDrawing.ts';
@@ -35,6 +36,7 @@ export const TOOL_DOWN: Record<string, ToolDown> = {
   calent: (e, px, py) => handleCalentadorDown(e, px, py),
   canal: (e, px, py) => handleCanalDown(e, px, py),
   caja: (e, px, py) => handleCajaDown(e, px, py),
+  gab: (e, px, py) => handleGabineteDown(e, px, py),
   area: (e, px, py) => handleAreaDown(e, px, py),
   erase: (e, _px, _py, x, y) => handleEraseDown(e, x, y),
 };

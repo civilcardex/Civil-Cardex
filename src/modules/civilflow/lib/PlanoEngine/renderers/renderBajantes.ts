@@ -51,9 +51,14 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const angle = ((b.labelAngle || 0) * Math.PI) / 180;
 
     // Las cajas dibujan a escala real (100×100cm exterior): el hit del menú
-    // contextual (_circ.r) cubre la media diagonal para alcanzar las esquinas.
+    // contextual (_circ.r) cubre la media diagonal para alcanzar las esquinas. El gabinete
+    // rci es la caja pequeña (60×60cm) — mismo criterio de hit.
     const cajaHalf =
-      b.tipo === 'caja_san' || b.tipo === 'caja_ll' ? engine.realMmToCanvasPx(1000) / 2 : 0;
+      b.tipo === 'caja_san' || b.tipo === 'caja_ll'
+        ? engine.realMmToCanvasPx(1000) / 2
+        : b.tipo === 'gabinete'
+          ? engine.realMmToCanvasPx(600) / 2
+          : 0;
     const bombaR = b.tipo === 'bomba' ? (engine.realMmToCanvasPx(350) / 4) * 1.5 : 0;
     b._circ = {
       x: c.x,
@@ -310,6 +315,17 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.beginPath();
       ctx.rect(-inSide / 2, -inSide / 2, inSide, inSide);
       ctx.stroke();
+    } else if (b.tipo === 'gabinete') {
+      // Gabinete rci (GABn): UN cuadrado pequeño a escala real (60×60cm, la tapa del gabinete
+      // contra incendio), color de SU red — la etiqueta GABn-Pn la dibuja el pipeline de b.code.
+      const netObj = NETS.find((n) => n.id === b.net);
+      const col = netObj ? netObj.col : '#e2e2e8';
+      const side = engine.realMmToCanvasPx(600);
+      ctx.strokeStyle = sel ? '#FFEB3B' : col;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
+      ctx.beginPath();
+      ctx.rect(-side / 2, -side / 2, side, side);
+      ctx.stroke();
     } else {
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
@@ -345,6 +361,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     } else if (b.tipo === 'caja_san' || b.tipo === 'caja_ll') {
       // Interior del símbolo de caja: solo el cuadrado interior, sin letra ni símbolo de
       // dirección (la etiqueta CAN/CALL vive debajo, dibujada por el pipeline de b.code).
+    } else if (b.tipo === 'gabinete') {
+      // Interior del gabinete vacío: sin letra ni flecha de dirección (la etiqueta GABn la
+      // dibuja el pipeline de b.code).
     } else if (b.tipo === 'bomba') {
       // Sin glifo interno ni flecha de dirección — la etiqueta BOMAN-nivel la dibuja el pipeline.
     } else {

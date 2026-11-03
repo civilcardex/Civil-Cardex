@@ -6,11 +6,16 @@ import { calculateRamalLength, _statusMsg } from '../ramalMeasure.ts';
 import { maxDiametroLabel } from '../PlanoEngineDrawing.ts';
 import { flowEndsAt, flowStartsAt } from '../flowChecks.ts';
 
-// El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
+// El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af/rci — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
 // de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
 // profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
 // compuertas.
+/** Altura de derivación por defecto de un montante rci (Red Contra Incendio), en m sobre el
+ *  npt (nivel de piso topográfico). Práctica NFPA para la boca del rociador más alto; la
+ *  extracción de diseño rci la usa para dimensionar la bajada + 2 codos de cada derivación
+ *  (el motor SOLO la almacena). Ej: MRCI1 nace con altDeriv 2.5 -> derivaciones a 2.5 m. */
+export const ALT_DERIV_RCI_DEFAULT = 2.5;
 /** Crea un montante (la tubería vertical que SUBE entre pisos: MAF, MAC, MG...) donde hiciste clic
  *  y lo engancha a las tuberías cercanas, marcando el codo por donde entrega el agua. */
 export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
@@ -94,6 +99,9 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     // Auto-asociado estable: sin asocManual la poda/autodetección desmarcaba los
     // checkboxes al siguiente _markDirty (orig. usuario: crear montante en extremo).
     asocManual: [...assocRamales],
+    // Solo rci (Red Contra Incendio): altura de derivación (m sobre npt (nivel de piso
+    // topográfico)) que la extracción de diseño rci consumirá — af/ac/gas no la usan.
+    ...(engine.activeNet === 'rci' ? { altDeriv: ALT_DERIV_RCI_DEFAULT } : {}),
     descargaEnId: null,
     ucAcum: 0,
     ucExtra: 0,
@@ -207,6 +215,9 @@ export function handleCreateMontanteMidBody(
     recibeDeIds: [r.id],
     alimentaIds: [],
     asocManual: [r.id],
+    // Solo rci (Red Contra Incendio): altura de derivación (m sobre npt (nivel de piso
+    // topográfico)) — espejo de la creación por barra.
+    ...(r.net === 'rci' ? { altDeriv: ALT_DERIV_RCI_DEFAULT } : {}),
     descargaEnId: null,
     ucAcum: 0,
     ucExtra: 0,

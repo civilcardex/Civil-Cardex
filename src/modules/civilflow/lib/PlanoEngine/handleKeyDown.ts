@@ -42,10 +42,13 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     engine.setTool('sel');
     e.preventDefault();
   } else if (k === 'j') {
-    // 'J' → Caja de recolección (CAN en san, CALL en ll) — solo con esas redes activas,
-    // espejo de isToolDisabledForNet('caja') en la barra. ('X' ya es "borrar montante".)
+    // 'J' → Caja de recolección (CAN en san, CALL en ll); en rci (Red Contra Incendio) suelta
+    // el GABINETE (GABn) — la misma tecla "caja" según la red. ('X' ya es "borrar montante".)
     if (['san', 'll'].includes(engine.activeNet)) {
       engine.setTool('caja');
+      e.preventDefault();
+    } else if (engine.activeNet === 'rci') {
+      engine.setTool('gab');
       e.preventDefault();
     }
   } else if (k === 'l' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -70,7 +73,7 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     engine.setTool('guide');
     e.preventDefault();
   }
-  // Bajante solo en san/vent/ll, montante solo en gas/ac/af — misma regla que PdfViewerToolbar.tsx
+  // Bajante solo en san/vent/ll, montante solo en gas/ac/af/rci — misma regla que PdfViewerToolbar.tsx
   // aplica en sus botones (isToolDisabledForNet); duplicada aquí como chequeo plano en vez de
   // importada, porque lib/PlanoEngine no debe depender de components/.
   else if (k === 'b') {
@@ -79,7 +82,7 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     }
     e.preventDefault();
   } else if (k === 'm') {
-    if (['gas', 'ac', 'af'].includes(engine.activeNet)) {
+    if (['gas', 'ac', 'af', 'rci'].includes(engine.activeNet)) {
       engine.setTool('mon');
     }
     e.preventDefault();

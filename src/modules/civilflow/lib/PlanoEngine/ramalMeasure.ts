@@ -20,6 +20,7 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
     cont: 'Contador',
     guide: 'Línea guía',
     canal: 'Canal',
+    gab: 'Gabinete',
   };
   let m = names[engine.tool] || engine.tool;
   if (engine.tool === 'line') {

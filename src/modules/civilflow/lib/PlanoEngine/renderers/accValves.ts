@@ -1,10 +1,35 @@
 import type { AccSimboloArgs } from './renderAccessorySymbols.ts';
 
-/** Símbolos de VÁLVULAS (compuerta, globo, cheque...): triángulos y círculos un poco más grandes que el resto de accesorios. true = dibujó algo. */
+/** Símbolos de VÁLVULAS (compuerta, globo, cheque...) y del rociador rci: triángulos y círculos
+ *  un poco más grandes que el resto de accesorios. true = dibujó algo. */
 export function drawValveSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, outX, outY } = a;
   // Válvulas un POCO más grandes que el resto (orig. usuario 2026-10-29).
   const rad = a.rad * 1.25;
+  if (accType === 'rociador') {
+    // Rociador rci (Red Contra Incendio): círculo blanco del tamaño de las válvulas centrado
+    // sobre el trazo (como valvCheque) con una CRUZ (+) interior alineada a los ejes del
+    // ramal — es el glifo SPR que la extracción cuenta por ramal (accMed/extremo 'rociador').
+    const circR = rad * 0.9;
+    const arm = circR * 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Cruz interior: un brazo a lo largo del ramal (dx,dy), el otro perpendicular (px,py).
+    ctx.beginPath();
+    ctx.moveTo(c.x - dx * arm, c.y - dy * arm);
+    ctx.lineTo(c.x + dx * arm, c.y + dy * arm);
+    ctx.moveTo(c.x - px * arm, c.y - py * arm);
+    ctx.lineTo(c.x + px * arm, c.y + py * arm);
+    ctx.stroke();
+    return true;
+  }
   if (accType === 'valvCompuerta') {
     // Un poco más grande para que la base TAPE el trazo (orig. usuario 2026-10-29); forma intacta.
     const triH = rad * 0.9;

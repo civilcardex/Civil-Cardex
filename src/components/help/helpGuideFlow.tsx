@@ -447,8 +447,8 @@ export const GUIA_FLOW: GUIA_TYPE = {
       titulo: 'Red contra incendio',
       items: [
         {
-          nombre: 'Pestaña en construcción',
-          desc: 'El diseño de la red contra incendio aún no está montado en Diseño de redes: este espacio queda reservado. Mientras tanto, el visor 3D del cuarto de bombas vive en Isometría.',
+          nombre: 'Diseño de la red RCI',
+          desc: 'Criterios NFPA 13 por piso, hidráulica de ramales y tramos extraída del dibujo (gris con candado 🔒), montante/siamesa, bomba y tanque, y las 44 verificaciones con «Ir al dato». El detalle paso a paso está en la guía de la red RCI.',
         },
       ],
     },
@@ -641,11 +641,31 @@ export const GUIA_FLOW: GUIA_TYPE = {
 
   'cf:redes:rci': [
     {
-      titulo: 'Red contra incendio',
+      titulo: 'Red contra incendio (NFPA 13/14/20/22)',
       items: [
         {
-          nombre: 'Pestaña en construcción',
-          desc: 'El diseño de la red contra incendio aún no está montado: este espacio queda reservado. El visor 3D del cuarto de bombas vive en Isometría.',
+          nombre: 'De dónde sale cada dato',
+          desc: 'Lo que dibujaste en el visor (ramales con rociadores, tramos y el montante) llega como GRIS con candado 🔒: la geometría no se edita aquí, se corrige dibujando. Lo AMARILLO es del diseñador: criterios de rociadores, tipologías, bomba, tanque y siamesa.',
+        },
+        {
+          nombre: 'Pestañas y Guía de diseño',
+          desc: 'La pantalla se recorre con pestañas (Entradas, Rociadores, Tipologías, Hidráulica, Gabinetes, Perfil, Bomba y tanque, Soportes sísmicos, Verificaciones), cada una con sub-secciones al costado. El botón Guía de diseño (arriba a la izquierda, disponible siempre) abre los 9 pasos del cálculo con esquemas de tu proyecto y botones para saltar a cada pestaña.',
+        },
+        {
+          nombre: 'Pisos y tipologías',
+          desc: 'Una fila por piso: riesgo NFPA 13, sistema, techo, QR, K y S×L, salidas de manguera, válvula reguladora y VRP. Los pisos con los mismos criterios y planta comparten tipología: una red por tipología, calculada en su piso representativo ★.',
+        },
+        {
+          nombre: 'Hidráulica del piso activo',
+          desc: 'Tablas de Ramales y Tramos extraídas del plano (el primero es el más remoto). Editas "Fluyen", diámetro (Auto o el elegido) y material si el dibujo no lo trae; el motor calcula Q, pérdidas y presión en la derivación, y la selección de bomba se ajusta sola.',
+        },
+        {
+          nombre: 'Montante y siamesa · Bomba y tanque',
+          desc: 'Material y altura del montante, clase del sistema, conexión de bomberos, y la selección de la bomba (demanda, churn, motor, jockey) con el volumen del tanque. Todo recalcula al momento.',
+        },
+        {
+          nombre: 'Verificaciones',
+          desc: 'Las 44 comprobaciones normativas agrupadas por sección (Cumple / Revisar / No cumple / Pendiente) con «Ir al dato»: te lleva a la sección y enfoca el campo a corregir.',
         },
       ],
     },

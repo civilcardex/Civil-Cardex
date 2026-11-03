@@ -144,6 +144,17 @@ export const ACCESORIOS_HIDRO = [
     cat: 'Válvulas',
   },
   {
+    // Rociador rci (Red Contra Incendio): terminal de descarga del ramal, glifo círculo con
+    // cruz (+) dibujado en accValves.ts. SOLO se ofrece en rci (accesoryOptions.ts lo filtra
+    // para af/ac/rec) — la extracción de diseño rci cuenta los rociadores por ramal leyendo
+    // los accMed/accesorio extremos con este id.
+    id: 'rociador',
+    emoji: '🚿',
+    nombre: 'Rociador',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
     id: 'reduccion',
     emoji: '🔽',
     nombre: 'Reducción',

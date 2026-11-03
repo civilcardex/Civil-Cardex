@@ -43,6 +43,7 @@ export {
   handleContadorDown,
   handleCanalDown,
   handleCajaDown,
+  handleGabineteDown,
 } from './drawingCreations.ts';
 
 export { _statusMsg, calculateRamalLength } from './ramalMeasure.ts';

@@ -12,6 +12,7 @@ import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicsData.ts';
 import { computeDesignRow, hunterQ } from '../waterNetworkDesign/rowPhysics.ts';
 import { useWaterNetworkGraph } from '../waterNetworkDesign/useWaterNetworkGraph.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
+import { useRciInforme } from './useRciInforme.ts';
 import { CHEQUEOS_PRESION_KEY } from '../../constants/storage-keys.ts';
 import { computeAcometidaSummary } from '../../utils/waterNetworkRows.ts';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils.ts';
@@ -52,6 +53,7 @@ export function useInfTablas(state: WorkAreaState) {
   const hasGas = redesActivas.some((r) => r.id === 'gas');
   const hasBom = redesActivas.some((r) => r.id === 'bom');
   const hasEp = redesActivas.some((r) => r.id === 'ep');
+  const hasRci = redesActivas.some((r) => r.id === 'rci');
   // Rangos por país (normasPais) — identificación del proyecto.
   const perfil = perfilDe(proy.pais);
 
@@ -156,6 +158,9 @@ export function useInfTablas(state: WorkAreaState) {
       ]),
     };
   }, [hasGas, gasRowsCalc]);
+
+  // Bloque RCI del informe: estado guardado en BD + motor corrido en fresco (useRciInforme).
+  const rciInf = useRciInforme(hasRci);
 
   /** Revisa si una fila ya calculada cumple los rangos (velocidad, tirante, caudal lleno):
    *  la misma regla de rangos del país, aplicada AQUÍ en fresco sobre las filas de
@@ -415,7 +420,7 @@ export function useInfTablas(state: WorkAreaState) {
   const fallosGas = (gasRowsCalc ?? []).filter((r) => r.chequeo === 'NO');
   // Bomba AR: hoy sin filas cumple/no cumple — gate por presencia de memoria calculada.
   const alertasBomba = useMemo(() => (hasBom ? bombaAlertas() : null), [hasBom]);
-  const hasCheckedNet = hasSan || hasLl || hasAf || hasAc || hasGas || hasEp || hasBom;
+  const hasCheckedNet = hasSan || hasLl || hasAf || hasAc || hasGas || hasEp || hasBom || hasRci;
   // Gate ÚNICO: derivado de los mismos labs que alimentan el resumen (auditoría F-4).
   // Sin verificar (materiales sin elegir): la tabla no chequea, pero no es OK. Los chips se
   // calculan UNA vez — son insumo del gate Y de la lista del resumen (antes vivían 2 veces).
@@ -469,7 +474,10 @@ export function useInfTablas(state: WorkAreaState) {
     (!hasAc || okAC) &&
     (!hasGas || fallosGas.length === 0) &&
     (!hasEp || (epAlertas() ?? []).length === 0) &&
-    (!hasBom || alertasBomba === null || alertasBomba.length === 0);
+    (!hasBom || alertasBomba === null || alertasBomba.length === 0) &&
+    // RCI: sin datos guardados no bloquea (paralelo a gas con 0 filas); con datos, alguna
+    // verificación NO CUMPLE sí bloquea la descarga.
+    (!hasRci || rciInf === null || rciInf.fallos.length === 0);
 
   const items = useMemo<[string, string, string[]?][]>(() => {
     const rows: [string, string, string[]?][] = [
@@ -555,6 +563,12 @@ export function useInfTablas(state: WorkAreaState) {
         alertasBomba === null ? '◌ Sin calcular' : alertasBomba.length === 0 ? '✓ OK' : '✗ Revisar',
         alertasBomba ?? [],
       ]);
+    if (hasRci)
+      rows.push([
+        'CONTRA INCENDIO',
+        rciInf === null ? '◌ Sin calcular' : rciInf.fallos.length === 0 ? '✓ OK' : '✗ Revisar',
+        rciInf?.fallos ?? [],
+      ]);
     return rows;
   }, [
     proy,
@@ -590,6 +604,8 @@ export function useInfTablas(state: WorkAreaState) {
     acometidaOk,
     hasBom,
     alertasBomba,
+    hasRci,
+    rciInf,
     sinVerificarAf,
     sinVerificarAc,
   ]);
@@ -638,6 +654,7 @@ export function useInfTablas(state: WorkAreaState) {
     hasGas,
     hasBom,
     hasEp,
+    hasRci,
     ucSanTable,
     bajVentSanTable,
     sanAccTable,
@@ -660,6 +677,7 @@ export function useInfTablas(state: WorkAreaState) {
     accAcDiamTable,
     acTable,
     gasTable,
+    rciTable: rciInf?.tabla ?? null,
     hasCheckedNet,
     allOk,
     items,

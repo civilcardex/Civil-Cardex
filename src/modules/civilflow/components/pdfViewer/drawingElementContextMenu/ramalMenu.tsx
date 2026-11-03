@@ -264,7 +264,8 @@ export function RamalMenu() {
       )}
       {contextMenuState.midRamalHit &&
         !contextMenuState.ramalEndpoint &&
-        ['af', 'ac'].includes(ramalEl.net) &&
+        // rci incluida: el montante rci nace de la misma auto-tee (MONTANTE_NETS ya lo admite).
+        ['af', 'ac', 'rci'].includes(ramalEl.net) &&
         !isOccupiedTee && (
           <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
             <button

@@ -14,7 +14,14 @@ const MATS_RAW = {
   ll: ['PVC-S', 'Novatec', 'Hierro fundido', 'Concreto', 'Gres cerámico'],
   vent: ['PVC-V'],
   gas: ['PE al PE', 'Cobre rígido', 'A.C.', 'Acero HG', 'Polipropileno PP-R'],
-  rci: ['A.C. SCH 40', 'A.C. SCH 10', 'Acero HG', 'CPVC CPVC-CI', 'PVC C900 RDE 14'],
+  rci: [
+    'A.C. SCH 40',
+    'A.C. SCH 10',
+    'Acero HG',
+    'CPVC CPVC-CI',
+    'PVC C900 RDE 14',
+    'PVC C900 RDE 18',
+  ],
 };
 /** Catálogo de materiales por red. Ej: af -> [PVC-PR, CPVC, Cobre rígido, PP-R]; san -> [PVC-S, Novatec, Hierro fundido, Concreto]. */
 export const MATS_DEFAULT = Object.fromEntries(
@@ -159,8 +166,10 @@ export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r) => ({
   nom: r.dn,
 }));
 
-/** Diámetros comerciales POR material (incluye las series RDE del PVC presión). Ej: 'PVC-PR' -> ['1/2" RDE 9', ..., '6" RDE 21']. */
-export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
+/** Diámetros comerciales POR material (incluye las series RDE del PVC presión). `id` = diámetro
+ *  INTERNO en mm cuando el material tiene pared normalizada (series C900): 4" C900 RDE 18 ->
+ *  108.34 mm (OD 121.9 − 2×6.78, tabla del cálculo rci). Ej: 'PVC-PR' -> ['1/2" RDE 9', ..., '6" RDE 21']. */
+export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
   'PVC-S': [{ n: '2"' }, { n: '3"' }, { n: '4"' }, { n: '6"' }],
   'PVC-PR': [
     { n: '1/2" RDE 9' },
@@ -247,6 +256,15 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
     { n: '3"' },
   ],
   'PVC C900 RDE 14': [{ n: '4"' }, { n: '6"' }, { n: '8"' }, { n: '10"' }, { n: '12"' }],
+  // id = diámetro interno (mm) del C900 DR18: OD − 2×espesor (tabla PIPES del cálculo rci:
+  // 4" 121.9−2×6.78, 6" 175.3−2×9.73, 8" 229.9−2×12.78, 10" 281.9−2×15.67, 12" 335.3−2×18.62).
+  'PVC C900 RDE 18': [
+    { n: '4"', id: 108.34 },
+    { n: '6"', id: 155.84 },
+    { n: '8"', id: 204.34 },
+    { n: '10"', id: 250.56 },
+    { n: '12"', id: 298.06 },
+  ],
   'PE al PE': [
     { n: '1/2"' },
     { n: '3/4"' },

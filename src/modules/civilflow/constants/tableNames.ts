@@ -9,6 +9,7 @@ export const CF_TABLES = {
   aparatosCatalogo: 'cf_aparatos_catalogo_global',
   aparatosUsuario: 'cf_aparatos_usuario',
   gasDatos: 'cf_gas_datos_proyecto',
+  rciDatos: 'cf_rci_datos_proyecto',
   epDatos: 'cf_ep_datos_proyecto',
   bombaDatos: 'cf_bomba_datos_proyecto',
   anulacionesBajantes: 'cf_anulaciones_bajantes_pluviales',

@@ -97,4 +97,5 @@ export const REDES_ORDEN: { key: string; label: string }[] = [
   { key: 'gas', label: 'Gas' },
   { key: 'bom', label: 'Bomba aguas residuales' },
   { key: 'ep', label: 'Equipo presión' },
+  { key: 'rci', label: 'Contra incendio' },
 ];

@@ -49,7 +49,7 @@ const AYUDA_REDES_INTROS: Record<string, string> = {
   rejillas: 'Ventilación de recintos con gas (NTC 3631): sectores, aberturas y rejillas.',
   bom: 'Cálculo y selección de la bomba de aguas residuales y su cámara.',
   ep: 'Equipo de presión constante: datos de entrada, potencia y especificación.',
-  rci: 'Cuarto de bombas de red contra incendio (NFPA 20).',
+  rci: 'Diseño contra incendio (NFPA 13/14/20/22): pestañas de Entradas a Verificaciones con sub-secciones al costado; botón Guía de diseño arriba a la izquierda con los 9 pasos del cálculo.',
 };
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {

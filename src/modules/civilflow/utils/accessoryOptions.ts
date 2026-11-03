@@ -44,6 +44,8 @@ export function getAccessoryOptions(netId: string) {
     // cuerpo (la polaridad la resuelve el pase geométrico) — igual que teeSube/teeBaja.
     // teeDirecto excluida: la detecta el pase geométrico. teeTapon/teeReduccion/teeLado
     // excluidas de este dropdown.
+    // 'rociador' SOLO rci (Red Contra Incendio): es el terminal de descarga del ramal rci que
+    // la extracción de diseño cuenta — en af/ac/rec no significa nada y no se ofrece.
     return ACCESORIOS_HIDRO.filter(
       (a) =>
         (a.cat !== 'Otros' && a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||
@@ -55,6 +57,7 @@ export function getAccessoryOptions(netId: string) {
         a.id === 'teeLlaveTerminal',
     )
       .filter((a) => a.id !== 'llaveTerminal')
+      .filter((a) => netId === 'rci' || a.id !== 'rociador')
       .map((a) =>
         a.id === 'codo90rm'
           ? { value: a.id, label: 'Codo medio 90°' }
