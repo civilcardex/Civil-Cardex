@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dibujaCodoIso } from '../codoIso.ts';
+import { dibujaCodoIso } from '../elbowIso.ts';
 
 // Geometría del empalme del codo 90° en isometría: tangencias a R sobre las dos líneas (tubo
 // vertical y ramal), curva cúbica con los controles sobre las tangentes → el empalme entra y
@@ -56,7 +56,7 @@ function paralelo(v: Pt, d: Pt): boolean {
   return Math.abs(v.x * d.y - v.y * d.x) < 1e-6;
 }
 
-describe('empalme del codo (codoIso)', () => {
+describe('empalme del codo (elbowIso)', () => {
   it('dibuja UNA curva por llamada (solo el empalme — la flecha vive en el render)', () => {
     const calls = dibujar('abajo', { x: 1, y: 0 });
     expect(calls.filter((c) => c.op === 'bezierCurveTo')).toHaveLength(1);

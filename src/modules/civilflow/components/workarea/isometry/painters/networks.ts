@@ -1,6 +1,6 @@
 import { NETS } from '../../../../lib/PlanoEngine/PlanoState.ts';
 import { splitPtr } from '../../../../utils/keys.ts';
-import { dibujaCodoIso } from '../codoIso.ts';
+import { dibujaCodoIso } from '../elbowIso.ts';
 import {
   CODO_CIRC,
   CODO_RADIO,
@@ -17,7 +17,7 @@ import {
   unionEnExtremo,
   verticalPasaAlOtroLado,
   type CodoPrep,
-} from '../recorteCodo.ts';
+} from '../elbowTrim.ts';
 import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from '../geometry';
 import { drawIsoCuboid } from '../isoDrawUtils.ts';
 import type { IsoSegment } from '../useIsometryInteraction.ts';

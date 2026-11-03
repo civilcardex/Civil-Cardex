@@ -10,10 +10,10 @@ import {
   unionDeGrupo,
   unionEnExtremo,
   verticalPasaAlOtroLado,
-} from '../recorteCodo.ts';
-import type { CodoPrep } from '../recorteCodo.ts';
+} from '../elbowTrim.ts';
+import type { CodoPrep } from '../elbowTrim.ts';
 
-// Reglas del codo 90° que NO son el arco (eso lo cubre codoIso.test):
+// Reglas del codo 90° que NO son el arco (eso lo cubre elbowIso.test):
 //  · la vertical se recorta en la tangencia SOLO si el tubo muere en el codo (tee = pasante),
 //  · el lado del arco es el de la vertical que sigue (u `origenId` cuando viene de arriba),
 //  · un bajante con varios ramales produce un prep por ramal (antes solo el primero tenía codo),
