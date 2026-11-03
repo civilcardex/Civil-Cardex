@@ -119,9 +119,16 @@ begin
 end $$;
 
 -- ── 3) Comprobante ────────────────────────────────────────────────────────────────────
+-- El wrapper save_plano_data NO escribe cf_planos_bajantes (delega en el impl): 0
+-- apariciones es lo esperado ahí — por eso el estado distingue wrapper de impl.
+-- En el impl: 4 apariciones = las 3 piezas (el upsert cuenta 2: LHS + RHS de excluded).
 select p.proname as funcion,
        (length(p.prosrc) - length(replace(p.prosrc, 'alt_deriv', ''))) / length('alt_deriv') as apariciones,
-       case when strpos(p.prosrc, 'alt_deriv') > 0 then 'ok' else '⚠ REVISAR' end as estado
+       case
+         when strpos(p.prosrc, 'cf_planos_bajantes') = 0 then 'wrapper — 0 esperado'
+         when strpos(p.prosrc, 'alt_deriv') > 0 then 'ok (4 = 3 piezas, upsert cuenta 2)'
+         else '⚠ REVISAR'
+       end as estado
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
