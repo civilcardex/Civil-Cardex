@@ -87,7 +87,10 @@ begin
       raise exception 'save_plano_body_divergio: % — no se encuentra el FROM de las bajantes', r.proname;
     end if;
     -- La lista de valores NO termina en coma → la coma va ANTES de la expresión nueva.
-    v_new := substr(v_new, 1, i_from - 1) || ', r.alt_deriv' || substr(v_new, i_from);
+    -- Espacio TRAILING obligatorio: sin él, 'r.alt_deriv' se pega al 'from' del FROM
+    -- ('r.alt_derivfrom' — sintaxis 42601, la que abortó la 1ª aplicación en SQL Editor;
+    -- el compile-check de __check la atrapó sin tocar el RPC vivo).
+    v_new := substr(v_new, 1, i_from - 1) || ', r.alt_deriv ' || substr(v_new, i_from);
 
     -- (3) Upsert → la columna se actualiza con el valor nuevo (el primer 'do update set'
     --     DESPUÉS del insert de bajantes: el de la cabecera de planos va antes y no se toca).
