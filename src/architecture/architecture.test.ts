@@ -30,10 +30,19 @@ const TOPE_NUEVO = 700;
  */
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 818,
-  'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 702,
+  'modules/civilflow/components/rci/RciEntradas.tsx': 1293,
+  'modules/civilflow/components/rci/RciGuiaPasos.tsx': 747,
+  'modules/civilflow/components/rci/RciHidraulica.tsx': 910,
+  'modules/civilflow/components/rci/rciSvgEsquemas.tsx': 884,
+  'modules/civilflow/components/rci/rciSvgPlanta.tsx': 812,
+  'modules/civilflow/lib/rci/checks.ts': 837,
+  'modules/civilflow/lib/rci/types.ts': 912,
+  'modules/civilflow/utils/rci/extractRed.ts': 712,
+  'modules/civilflow/utils/rci/rowsModel.ts': 796,
+  'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 706,
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 741,
   'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1176,
-  'modules/civilflow/components/workareaContent/useReportTables.ts': 691,
+  'modules/civilflow/components/workareaContent/useReportTables.ts': 690,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 407,
   'modules/civilflow/utils/waterRowsCore.ts': 696,
   'modules/civilflow/components/workarea/PlanosTab.tsx': 710,
@@ -47,7 +56,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
   'pages/auth/ProfilePage.tsx': 581,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 623,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 158,
+  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 160,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 730,
   'pages/PricingPage.tsx': 430,
@@ -540,7 +549,7 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
  * opcional; si uno llega a 5, entra en la lista y sí queda vigilado).
  */
 const FOCOS_CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 17,
+  'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 16,
   'modules/civilflow/utils/assocLayoutMigration.ts': 16,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 15,
   'modules/civilflow/utils/propagation/edges.ts': 13,
@@ -588,7 +597,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 503;
+const TOTAL_FOCOS_BASE = 502;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
