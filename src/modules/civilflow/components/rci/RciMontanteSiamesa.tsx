@@ -14,6 +14,9 @@ import {
 import type { MontDibujo } from '../../utils/rci/extract.ts';
 import type { RciSia, RciSp } from '../../lib/rci/types.ts';
 
+/** Cuerpo de la Sección 5: montante (material/diámetro/alturas con candado del dibujo),
+ *  clase de sistema y siamesa, con los resultados de la ruta y la presión que pide el carro.
+ *  Ej: <RciMontanteSiamesa ctx={ctx} montDibujo={gris.montDibujo} /> fija los candados. */
 export function RciMontanteSiamesa({
   ctx,
   montDibujo,

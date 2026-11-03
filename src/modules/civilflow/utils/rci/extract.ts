@@ -1,12 +1,12 @@
 /**
- * Extractor RCI (Red Contra Incendio): convierte los trazos dibujados (red rci del PlanoEngine)
+ * Extractor RCI (Red Contra Incendio): convierte los trazos dibujados (red RCI del PlanoEngine)
  * al estado del motor de cálculo `RciState` — la parte "gris con candado" — y conserva lo
  * "amarillo" (lo digitado por el diseñador) al re-exportar.
  *
  * extraerGris lee por piso el doc de trazos (el que vive en `TRAZOS_PREFIX + plano.id`; el
  * consumidor UI lo carga como hace GasDesign: `loadFromStorage(TRAZOS_PREFIX + plano.id)` y
  * filtra `net === 'rci' && tipo !== 'tributario'` en ramales, `net === 'rci' && tipo ===
- * 'montante'` en bajantes) y arma, para cada piso con trazos rci: ramales y tramos EN EL ORDEN
+ * 'montante'` en bajantes) y arma, para cada piso con trazos RCI: ramales y tramos EN EL ORDEN
  * DEL DIBUJO (el primero es el más remoto — regla HU), nombres generados R1…/T1…, ids ESTABLES
  * `"<planId>|<idTrazo>"` (renombrar en el dibujo cambia `code`, no `id`), nudos A, B, C… desde
  * lo más remoto hasta la derivación (última letra, donde conecta el montante), el tramo hacia la
@@ -136,7 +136,7 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
   const idxPorPlanId = new Map<string, number>();
   filasPiso.forEach((f, i) => idxPorPlanId.set(f.planId, i));
 
-  /* Redes: una por piso con trazos rci, bajo la clave del planId (id estable del piso).
+  /* Redes: una por piso con trazos RCI, bajo la clave del planId (id estable del piso).
      El montante activo (Fase 1) = el del primer piso con red extraída. */
   const redes: Record<string, Red> = {};
   const montantes: MontanteCfg[] = [];

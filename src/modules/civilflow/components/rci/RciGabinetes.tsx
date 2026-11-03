@@ -48,6 +48,9 @@ const SUBS_GAB: SubItemRci[] = [
   { id: 'siamesa', titulo: 'Siamesa' },
 ];
 
+/** Cuerpo de la Sección 5: franja de demanda de montantes encima y las 2 subs (SUBS_GAB):
+ *  'ruta' (estado de cada tramo al cuarto de bombas) y 'siamesa' (conexión de bomberos).
+ *  Ej: <RciGabinetes ctx={ctx} /> con exigeSP 'No' muestra solo el salto a Entradas. */
 export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
   const { estado, R } = ctx;
   const navGab = useNavRci();

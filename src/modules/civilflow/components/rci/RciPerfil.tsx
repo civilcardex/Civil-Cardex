@@ -66,6 +66,9 @@ const SUBS_PERFIL: SubItemRci[] = [
   { id: 'pisos', titulo: 'Presiones piso a piso' },
 ];
 
+/** Cuerpo de la Sección 6 "Perfil": sub 'grafico' (PerfilSvg + diagnóstico lateral) y sub
+ *  'pisos' (tabla de presiones piso a piso con la acción sugerida). Ej: <RciPerfil ctx={ctx} />
+ *  con Pc 175 psi marca las VRP (Válvula Reductora de Presión) por piso en el resumen. */
 export default function RciPerfil({ ctx }: { ctx: RciCtx }) {
   const { estado, R, tips } = ctx;
   /* La sub abierta vive en la nav del shell (RciDesign). */

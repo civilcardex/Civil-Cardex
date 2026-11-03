@@ -184,6 +184,7 @@ const PdfViewer_S5: CSSProperties = {
 // toolbar en PdfViewerToolbar.tsx. La usa también el orquestador (ancho de dynamicLeftStyle).
 export const LEFT_COLLAPSED_WIDTH = 44;
 
+/** El escenario en sí: pinta el visor completo pieza por pieza con las props de arriba, sin lógica propia (cada clic delega en el handler que trae el orquestador). */
 export function ViewerStage(props: ViewerStageProps) {
   const {
     finalVisibleNets,

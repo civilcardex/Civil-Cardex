@@ -1,5 +1,5 @@
 /**
- * Maquinaria de extracción de UNA red rci (Red Contra Incendio) desde los trazos de un piso:
+ * Maquinaria de extracción de UNA red RCI (Red Contra Incendio) desde los trazos de un piso:
  * contactos geométricos (tolerancias del motor de dibujo), caminata del tronco desde el
  * montante, nudos con letras, reparto de accesorios y filas R/T del estado del motor.
  * La API pública vive en extract.ts (extraerGris/mezclarOverrides); esto es el interior.
@@ -44,7 +44,7 @@ export interface AvisoRci {
  * el ajuste se hace AQUÍ y no en el resto del extractor.
  * - Rociador dibujado = accesorio del ramal con tipo 'rociador' (AÚN no existe en el
  *   catálogo del motor: si Fase 2 usa otro nombre/tipo, se cambia solo contarRociadores).
- * - Montante rci = elemento bajante con net 'rci' y tipo 'montante' (YA ATERRIZÓ en
+ * - Montante RCI = elemento bajante con net 'rci' y tipo 'montante' (YA ATERRIZÓ en
  *   PlanoBajante): su `altDeriv?: number` (m sobre el NPT, default 2.5 — leerAltDeriv).
  *   Material/diámetro: `material` / `dNominal || diametro` (hoy vacíos en el montante).
  * - Gabinete (YA ATERRIZÓ como bajante con tipo 'gabinete' y campo `montante` con el
@@ -192,7 +192,7 @@ function codoEnVertice(acc: readonly AccDib[], idx: number): boolean {
 
 /* ==================== Modelo del dibujo por piso ==================== */
 
-/** Un trazo rci ya medido: sus extremos, sus accesorios y su orden en el dibujo. */
+/** Un trazo RCI ya medido: sus extremos, sus accesorios y su orden en el dibujo. */
 interface TrazoDib {
   el: RawElement;
   /** Id estable del trazo (`planId|idTrazo`). */
@@ -353,7 +353,7 @@ function mejorConexion(
   return mejor;
 }
 
-/** Arma la red rci de un piso desde sus trazos: camina el tronco desde el montante, reparte
+/** Arma la red RCI de un piso desde sus trazos: camina el tronco desde el montante, reparte
  *  nudos (letras), ramales (R1…) y tramos (T1…) en el orden del dibujo (remoto primero). */
 export function extraerRedDePiso(
   piso: { planId: string; label: string; doc: DrawingData | null },

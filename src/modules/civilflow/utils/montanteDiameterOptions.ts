@@ -30,7 +30,7 @@ function tokenMats(): string | null {
 /** Opciones de diámetro. Montantes: MISMAS opciones que los ramales de SU red (ped. usuario)
  *  — la lista por material del catálogo de la red (DIAM_BY_MAT, gas vía GAS_DN_LABELS), no la
  *  lista comercial completa (el material activo es el PRIMERO de la red en civilflow_mats:
- *  PlanoBajante no tiene campo material — la rama `el.material` era código muerto). rci (Red
+ *  PlanoBajante no tiene campo material — la rama `el.material` era código muerto). RCI (Red
  *  Contra Incendio) usa el mismo mecanismo; sin material cae a A.C. SCH 40 (default REDES_MAT).
  *  El resto de elementos usa las listas de bajantes por red (vent/san/ll/común).
  *  Memo WeakMap POR ELEMENTO + token del catálogo: el resultado depende de (tipo, net, contenido
@@ -41,6 +41,9 @@ const memoOpciones = new WeakMap<
   object,
   { token: string | null; lista: Array<{ pulg: number; nom: string }> }
 >();
+/** Lista de diámetros del menú para UN elemento: el montante usa la lista de SU red (gas con sus
+ *  DN (diámetro nominal) de gas; af (Agua Fría)/ac (Agua Caliente)/RCI (Red Contra Incendio) con
+ *  la comercial del material activo en civilflow_mats). Ej: montante RCI sin material -> SCH 40. */
 export function opcionesDiametroElemento(el: {
   tipo?: string;
   net?: string;
@@ -71,7 +74,7 @@ export function opcionesDiametroElemento(el: {
       if (porMat?.length) {
         out = aLista(porMat.map((d) => d.n));
       } else if (el.net === 'rci') {
-        // Sin material en el PROP: el default de la red rci es A.C. SCH 40 (REDES_MAT) —
+        // Sin material en el PROP: el default de la red RCI es A.C. SCH 40 (REDES_MAT) —
         // su lista comercial, no la de agua fría.
         out = aLista((DIAM_BY_MAT['A.C. SCH 40'] || []).map((d) => d.n));
       } else {

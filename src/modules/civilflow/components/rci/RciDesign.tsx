@@ -1,7 +1,7 @@
 /** Pantalla de diseño de la red contra incendio (RCI), con el layout del HTML de referencia:
  *  barra superior (Guía · piso activo · estado), pestañas horizontales y cada página con
  *  sub-pestañas verticales. Conecta el dibujo con el motor: (1) extrae la parte GRIS de los
- *  trazos rci (extraerGris), (2) mezcla lo AMARILLO digitado que sobrevivió en BD
+ *  trazos RCI (extraerGris), (2) mezcla lo AMARILLO digitado que sobrevivió en BD
  *  (mezclarOverrides por id estable), (3) calcula (clasificar + compute) y (4) guarda con
  *  debounce (saveRciDatos). La edición va POR TABLA (useEditarTabla + EditTablaBtn de cada
  *  GrupoTabla/tabla), sin EDITAR global. Ej: al marcar "Fluyen" en un ramal, la derivación y la
@@ -57,6 +57,9 @@ function primeraSub(tab: TabRci): string | null {
   return subs && subs.length ? subs[0].id : null;
 }
 
+/** Componente raíz (el export default): monta el shell de pestañas y corre en vivo el ciclo
+ *  extraer → mezclar → calcular → guardar que describe la cabecera. Ej: <RciDesign /> extrae
+ *  los pisos confirmados al montar y recalcula la bomba al marcar "Fluyen" en un ramal. */
 function RciDesign() {
   const { plans } = usePlans();
   const { pisos, proy } = useProject();
@@ -73,7 +76,7 @@ function RciDesign() {
   const estadoRef = useRef<RciState | null>(null);
   const cargadoRef = useRef(false);
 
-  /** Fuentes por plano confirmado: label y NPT del piso del proyecto + doc de trazos rci. */
+  /** Fuentes por plano confirmado: label y NPT del piso del proyecto + doc de trazos RCI. */
   const fuentes = useMemo<PisoRciFuente[]>(() => {
     const pisoPorNivel = new Map<string, Piso>();
     for (const p of pisos) pisoPorNivel.set(String(p.n), p);

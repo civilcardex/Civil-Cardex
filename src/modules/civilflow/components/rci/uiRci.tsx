@@ -75,6 +75,7 @@ export const TABS_RCI = [
   { id: 'sismo', lbl: 'Soportes sísmicos' },
   { id: 'verificaciones', lbl: 'Verificaciones' },
 ] as const;
+/** Id válido de pestaña del diseño (la unión de los ids de TABS_RCI). Ej: 'hidraulica'. */
 export type TabRci = (typeof TABS_RCI)[number]['id'];
 
 /** Contexto de navegación: pestaña/sub activas + el saltador que montan RciDesign y la guía.

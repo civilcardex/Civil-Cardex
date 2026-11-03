@@ -19,6 +19,9 @@ export const PAISES_RCI = [
   'Otro',
 ] as const;
 
+/** Cuerpo de la Sección 1: meta del proyecto, normativa local y la zona sísmica (aviso auto
+ *  por NSR-10 cuando el país la calcula). Ej: <RciProyectoNormativa ctx={ctx} /> pinta la
+ *  sub-pestaña 'normativa' con las 14 filas de st.local. */
 export function RciProyectoNormativa({ ctx }: { ctx: RciCtx }) {
   const { estado, edit, editar } = ctx;
   const ls = estado.local;

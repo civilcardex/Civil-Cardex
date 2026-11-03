@@ -1,5 +1,5 @@
 /** Hook del bloque RCI (Red Contra Incendio) del Informe: re-extrae la geometría GRIS del
- *  dibujo EN FRESCO (extraerGris sobre los trazos rci de cada piso confirmado — los mismos
+ *  dibujo EN FRESCO (extraerGris sobre los trazos RCI de cada piso confirmado — los mismos
  *  docs de localStorage que lee RciDesign) y mezcla encima lo AMARILLO digitado guardado en
  *  BD (mezclarOverrides sobre el blob de loadRciDatos). El blob SOLO aporta overrides, jamás
  *  la geometría: si el usuario edita el plano sin abrir la pestaña RCI (que re-extrae y

@@ -9,7 +9,7 @@ import { numDeBajante } from '../../../utils/keys.ts';
 export const GABINETE_PFX = 'GAB';
 
 /** Suelta un GABINETE (la caja pequeña donde vive la válvula/gabinete contra incendio) donde
- *  hiciste clic y lo deja seleccionado. SOLO rci (Red Contra Incendio) — mismo guard que
+ *  hiciste clic y lo deja seleccionado. SOLO RCI (Red Contra Incendio) — mismo guard que
  *  handleMontanteDown/handleBajanteDown re-chequean aquí como defensa en profundidad. El
  *  montante que lo alimenta NO se fija aquí — se asigna después en `montante` (código del
  *  montante, ej: 'MRCI1'). */
