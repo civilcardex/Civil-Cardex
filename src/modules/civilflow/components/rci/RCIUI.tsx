@@ -7,7 +7,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { SI } from '../../styles/sharedTableStyles.ts';
 import type { RciResult, RciState, Tips } from '../../lib/rci/types.ts';
-import type { KvRci } from '../../utils/rci/rowsModel.ts';
+import type { KvRci } from '../../utils/rci/RCIRowsModel.ts';
 
 /** Contexto que cada sección de RciDesign recibe: estado vivo, resultado del compute y el
  *  editor de amarillos (merge → recompute → debounced save los hace RciDesign). */
@@ -500,9 +500,59 @@ export function ChipEstado({ st }: { st: string }) {
 
 /** Tabla de resultados etiqueta/valor/nota (kv). Ej: <KvTabla filas={kvBombaTanque(...)} />.
  *  fontSize uniforme con el estándar de GrupoTabla (13; la nota queda en 12.5). */
-export function KvTabla({ filas, fontSize = 13 }: { filas: KvRci[]; fontSize?: number }) {
+export function KvTabla({
+  filas,
+  fontSize = 13,
+  titulos = false,
+}: {
+  filas: KvRci[];
+  fontSize?: number;
+  titulos?: boolean;
+}) {
   return (
     <table className="tbl" style={{ fontSize, width: '100%', borderCollapse: 'collapse' }}>
+      {titulos ? (
+        <thead>
+          <tr>
+            <th
+              style={{
+                fontSize: 11,
+                padding: '3px 6px',
+                textAlign: 'center',
+                color: 'var(--txt3)',
+                fontWeight: 600,
+              }}
+              title="Criterio de la tipología activa calculado por NFPA 13 (2025): área, rociadores exigidos, rectángulo de fuego, caudales y duración"
+            >
+              Concepto
+            </th>
+            <th
+              style={{
+                fontSize: 11,
+                padding: '3px 6px',
+                textAlign: 'center',
+                color: 'var(--txt3)',
+                fontWeight: 600,
+              }}
+              title="Resultado del cálculo para tu proyecto (unidades en la celda: ft², m, gpm, psi, min)"
+            >
+              Valor
+            </th>
+            <th
+              style={{
+                fontSize: 11,
+                padding: '3px 6px',
+                textAlign: 'center',
+                color: 'var(--txt3)',
+                fontWeight: 600,
+              }}
+              title="De dónde sale el valor: tabla de NFPA 13, datos de tu red dibujada o margen adoptado — gris = calculado, no editable"
+            >
+              Detalle
+            </th>
+          </tr>
+        </thead>
+      ) : null}
       <tbody>
         {filas.map((k) => (
           <tr key={k.l}>
@@ -514,6 +564,7 @@ export function KvTabla({ filas, fontSize = 13 }: { filas: KvRci[]; fontSize?: n
                 fontSize,
                 whiteSpace: 'nowrap',
               }}
+              title={k.nota || undefined}
             >
               {k.l}
             </td>
@@ -524,7 +575,7 @@ export function KvTabla({ filas, fontSize = 13 }: { filas: KvRci[]; fontSize?: n
                 fontFamily: 'var(--mono)',
                 fontWeight: 600,
                 color: 'var(--txt)',
-                textAlign: 'right',
+                textAlign: 'center',
                 whiteSpace: 'nowrap',
               }}
             >

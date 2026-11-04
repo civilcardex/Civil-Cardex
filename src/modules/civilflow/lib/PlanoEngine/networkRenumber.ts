@@ -450,6 +450,39 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
 
 /** Cambia el nombre de una tubería y arregla todas las referencias para que nada quede colgando:
  *  la genealogía del split (mergesFrom) y las listas de ramales que llegan (recibeDeIds). */
+/** Mueve la entrada `from`→`to` en el libro de storage `key` (mover-o-fusionar). Sin entrada en
+ *  `from` o claves iguales = no-op. El choque lo decide `fusion` (default: MAX por aparato —
+ *  sumar duplicaba las UD al reconvertir el mismo ramal). Ej: migrarClave(APARATOS…,
+ *  'af_R1_p1', 'af_T1_p1'). */
+function migrarClave<T>(
+  key: string,
+  from: string,
+  to: string,
+  fusion?: (dst: T, src: T) => T,
+): void {
+  try {
+    const all = (loadFromStorage(key, {}) as Record<string, T>) || {};
+    const src = all[from];
+    if (src === undefined || from === to) return;
+    if (all[to] === undefined) {
+      all[to] = src;
+    } else {
+      // Mismo ramal, dos copias del conteo (p. ej. clave vieja resucitada por el estado
+      // stale de FixturesPanel): MAX por aparato.
+      all[to] = fusion
+        ? fusion(all[to], src)
+        : (mezclarMax(
+            all[to] as unknown as Record<string, number>,
+            src as unknown as Record<string, number>,
+          ) as unknown as T);
+    }
+    delete all[from];
+    saveToStorage(key, all);
+  } catch (e) {
+    devError('PlanoEngine:', e);
+  }
+}
+
 export function renameRamalId(
   engine: IPlanoEngineCore,
   oldId: string,
@@ -497,113 +530,42 @@ export function renameRamalId(
       // Aparatos: { aparatoId: cantidad }. El id nuevo casi nunca tiene clave propia — se MUEVE
       // tal cual; solo si el destino ya tenía datos independientes se suma (sumar siempre
       // duplicaba las UD al deshacer y reconvertir el mismo tributario).
-      try {
-        const all =
-          (loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as Record<string, Record<string, number>>) ||
-          {};
-        const from = `${net}_${oldId}_${planId}`;
-        const to = `${net}_${newId}_${planId}`;
-        if (all[from] !== undefined && from !== to) {
-          if (all[to] === undefined) {
-            all[to] = all[from];
-          } else {
-            // Mismo ramal, dos copias del conteo (p. ej. clave vieja resucitada por el estado
-            // stale de FixturesPanel): MAX por aparato — sumar duplicaba las UD al reconvertir.
-            all[to] = mezclarMax(all[to] || {}, all[from]);
-          }
-          delete all[from];
-          saveToStorage(APARATOS_BY_TRAMO_KEY, all);
-        }
-      } catch (e) {
-        devError('PlanoEngine:', e);
-      }
+      migrarClave(APARATOS_BY_TRAMO_KEY, `${net}_${oldId}_${planId}`, `${net}_${newId}_${planId}`);
       // Libros de la propagación (mapas aparato→n como aparatos): misma migración
       // mover-o-MAX — sin esto lo propagado se volvía "manual" tras convertir (Σ ×N).
       for (const bk of [APARATOS_HEREDADOS_KEY, APARATOS_HEREDADOS_TRIB_KEY]) {
-        try {
-          const bl = (loadFromStorage(bk, {}) as Record<string, Record<string, number>>) || {};
-          const fromB = `${net}_${oldId}_${planId}`;
-          const toB = `${net}_${newId}_${planId}`;
-          if (bl[fromB] !== undefined && fromB !== toB) {
-            if (bl[toB] === undefined) {
-              bl[toB] = bl[fromB];
-            } else {
-              bl[toB] = mezclarMax(bl[toB] || {}, bl[fromB]);
-            }
-            delete bl[fromB];
-            saveToStorage(bk, bl);
-          }
-        } catch (e) {
-          devError('PlanoEngine:', e);
-        }
+        migrarClave(bk, `${net}_${oldId}_${planId}`, `${net}_${newId}_${planId}`);
       }
       // Libro de bajadas receptoras: valores NUMÉRICOS (1) — mover la marca tal cual,
       // conservando el destino si ya estaba marcado (mover-o-dejar, no MAX de objetos).
-      try {
-        const bl = (loadFromStorage(BAJADAS_RECEPTORAS_KEY, {}) as Record<string, number>) || {};
-        const fromB = `${net}_${oldId}_${planId}`;
-        const toB = `${net}_${newId}_${planId}`;
-        if (bl[fromB] !== undefined && fromB !== toB) {
-          if (bl[toB] === undefined) bl[toB] = bl[fromB];
-          delete bl[fromB];
-          saveToStorage(BAJADAS_RECEPTORAS_KEY, bl);
-        }
-      } catch (e) {
-        devError('PlanoEngine:', e);
-      }
+      migrarClave<Record<string, number>>(
+        BAJADAS_RECEPTORAS_KEY,
+        `${net}_${oldId}_${planId}`,
+        `${net}_${newId}_${planId}`,
+        (dst) => dst,
+      );
       // Hidro guarda { accesorios, Lh, nSalidas }: fusionar accesorios por suma y conservar
       // escalares del destino si existen.
-      try {
-        const all =
-          (loadFromStorage(HYDRO_DATA_STORAGE_KEY, {}) as Record<
-            string,
-            {
-              accesorios?: Record<string, number>;
-              Lh?: number;
-              nSalidas?: number;
-            }
-          >) || {};
-        const from = `${net}_${oldId}_${planId}`;
-        const to = `${net}_${newId}_${planId}`;
-        const src = all[from];
-        if (src !== undefined && from !== to) {
-          const dst = all[to];
-          if (dst === undefined) {
-            all[to] = src;
-          } else {
-            // Mismo ramal, dos copias: MAX por accesorio y por escalar (sumar duplicaba).
-            const acc = mezclarMax(dst.accesorios || {}, src.accesorios || {});
-            all[to] = {
-              accesorios: acc,
-              Lh: Math.max(dst.Lh ?? 0, src.Lh ?? 0),
-              nSalidas: Math.max(dst.nSalidas ?? 0, src.nSalidas ?? 0),
-            };
-          }
-          delete all[from];
-          saveToStorage(HYDRO_DATA_STORAGE_KEY, all);
-        }
-      } catch (e) {
-        devError('PlanoEngine:', e);
-      }
+      migrarClave<{
+        accesorios?: Record<string, number>;
+        Lh?: number;
+        nSalidas?: number;
+      }>(
+        HYDRO_DATA_STORAGE_KEY,
+        `${net}_${oldId}_${planId}`,
+        `${net}_${newId}_${planId}`,
+        (dst, src) => ({
+          // Mismo ramal, dos copias: MAX por accesorio y por escalar (sumar duplicaba).
+          accesorios: mezclarMax(dst.accesorios || {}, src.accesorios || {}),
+          Lh: Math.max(dst.Lh ?? 0, src.Lh ?? 0),
+          nSalidas: Math.max(dst.nSalidas ?? 0, src.nSalidas ?? 0),
+        }),
+      );
     }
   }
   // Gas usa claves de ramal peladas (sin red ni plano) — misma migración mover-o-sumar que
   // aparatos/hidro.
-  try {
-    const all = loadFromStorage(GAS_ACC_KEY, {}) as Record<string, Record<string, number>>;
-    if (all[oldId] !== undefined && oldId !== newId) {
-      if (all[newId] === undefined) {
-        all[newId] = all[oldId];
-      } else {
-        // Mismo ramal, dos copias: MAX por aparato (sumar duplicaba).
-        all[newId] = mezclarMax(all[newId] || {}, all[oldId]);
-      }
-      delete all[oldId];
-      saveToStorage(GAS_ACC_KEY, all);
-    }
-  } catch (e) {
-    devError('PlanoEngine:', e);
-  }
+  migrarClave(GAS_ACC_KEY, oldId, newId);
   // FixturesPanel cachea el mapa de aparatos/hidro/gas en estado de React y lo re-escribe
   // entero en cada cambio (saveAll en un effect). Sin este evento — que el storage nativo NO
   // dispara en la misma pestaña — su copia stale resucitaba la clave vieja y borraba la

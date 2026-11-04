@@ -1,13 +1,14 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { calculateRamalLength } from '../PlanoEngineDrawing.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
-import { indexRamales, sameNetGroup, refrescarTrazo } from './dragContext.ts';
+import { sameNetGroup, refrescarTrazo } from './dragContext.ts';
+import { indicesDeMotor } from '../engineIndices.ts';
 
 /** Arrastre del CUERPO de un ramal: segmento suelto (con snap ortogonal) o traslación rígida
  *  completa con cascada connRamales/connBaj, restricción de deslizamiento contra T genuinas y
  *  el Ldesvio entrepisos que lleva AMBOS extremos de la asociación. */
 export function dragRamalBody(engine: IPlanoEngineCore, x: number, y: number): void {
-  const ramalesById = indexRamales(engine);
+  const ramalesById = indicesDeMotor(engine).ramales;
   const r = ramalesById.get(engine.ramalDrag!.id);
   if (r && engine.ramalDrag!.segIdx !== undefined) {
     const tp = engine.toPlane(x, y);

@@ -15,22 +15,23 @@ import {
   useNavRci,
   type RciCtx,
   type SubItemRci,
-} from './uiRci.tsx';
-import { anchoValor, celdaEditable, IN_CELDA } from './celdaEditable.tsx';
+} from './RCIUI.tsx';
+import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import {
   AUTO_SI_NO,
+  CONSTR_OPCIONES,
   RIESGOS,
   SINO,
   SISTEMAS,
   filasTipologias,
   resumenTipologias,
-  salidaPorClase,
   type FilaTipologia,
-} from '../../utils/rci/rowsModel.ts';
-import { rangoTipologia } from '../../utils/rci/rowsModelExtras.ts';
-import { ElevSvg } from './rciSvgEdificio.tsx';
-import { colorTip } from './rciSvgEsquemas.tsx';
+} from '../../utils/rci/RCIRowsModel.ts';
+import { rangoTipologia } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { ElevSvg } from './RCISvgBuilding.tsx';
+import { colorTip } from './RCISvgSchemas.tsx';
+import { AYUDA_NIVEL, AYUDA_SALIDA, NivelCelda, SalidaCelda } from './RCIFloorCells.tsx';
 import type { NumIn, PisoRow, TipCalc, Tipologia, Tips } from '../../lib/rci/types.ts';
 
 /** Columnas de la tabla de pisos (tooltip = ayuda resumida del HTML de referencia). */
@@ -39,15 +40,22 @@ const COLS: { l: string; tip?: string }[] = [
   { l: 'NPT (m)', tip: 'Nivel de Piso Terminado. Necesario para el perfil de presiones.' },
   { l: 'Uso', tip: 'Uso del piso (texto libre, informativo).' },
   {
-    l: 'Planta',
-    tip: 'Planta arquitectónica: la red que se calcula es la extraída del plano con esa clave. La misma letra en dos pisos = comparten red.',
+    l: 'Nivel',
+    tip: AYUDA_NIVEL,
   },
   {
     l: 'Riesgo NFPA 13',
     tip: 'Clasificación de riesgo (NFPA 13 cap. 4). "Sin rociadores" saca el piso del cálculo de red.',
   },
   { l: 'Sistema', tip: 'Húmedo o seco. Seco: área +30 %, C del acero 100, sin reducción QR.' },
-  { l: 'Techo (m)', tip: 'Altura libre al techo del piso. > 9,14 m: requisitos de techos altos.' },
+  {
+    l: 'H techo (m)',
+    tip: 'Altura libre al techo del piso. > 9,14 m: requisitos de techos altos.',
+  },
+  {
+    l: 'Techo',
+    tip: 'Construcción del techo: define la cobertura máxima en riesgo leve (la misma opción de Entradas → Clasificación).',
+  },
   {
     l: 'QR',
     tip: 'Rociador de respuesta rápida en toda el área: puede reducir el área de diseño.',
@@ -57,7 +65,7 @@ const COLS: { l: string; tip?: string }[] = [
   { l: 'L (m)', tip: 'Separación entre ramales.' },
   {
     l: 'Salidas',
-    tip: 'Salida de manguera del montante en este piso (NFPA 14). El casillero pone la salida por defecto de la clase del sistema.',
+    tip: AYUDA_SALIDA,
   },
   {
     l: 'V.reg',
@@ -71,6 +79,27 @@ const COLS: { l: string; tip?: string }[] = [
     l: 'Tip.',
     tip: 'Tipología que agrupa el piso (T1…). ★ = piso representativo: donde se calcula su red.',
   },
+];
+
+/** Grupos del encabezado de 2 niveles (patrón .pisos del HTML): [grupo, n.º de columnas].
+ *  La fila de arriba reparte colSpan y la de abajo lista las columnas — la suma debe ser
+ *  COLS.length. Ej: 'Rociador' cubre QR y K. */
+const GRUPOS_PISOS: [string, number][] = [
+  ['Identificación', 3], // Piso · NPT (m) · Uso
+  ['Clasificación NFPA 13', 5], // Planta · Riesgo · Sistema · H techo · Techo
+  ['Rociador', 2], // Resp. rápida (QR) · K
+  ['Separación', 2], // S (m) · L (m)
+  ['Montante', 3], // Salidas · V.reg · VRP
+  ['Asignación', 1], // Tip.
+];
+
+/** Construcción del techo (NFPA 13): el valor es el de CONSTR_OPCIONES (el mismo de Entradas →
+ *  Clasificación) y la etiqueta es la corta del HTML (.pisos) para que el select quepa en 84 px.
+ *  Ej: 'Combustible obstruida' se muestra 'Comb. ≥ 0,91'. */
+const CONSTR_CORTO: [string, string][] = [
+  [CONSTR_OPCIONES[0], 'No comb.'],
+  [CONSTR_OPCIONES[1], 'Comb. ≥ 0,91'],
+  [CONSTR_OPCIONES[2], 'Comb. < 0,91'],
 ];
 
 /** Sub-pestañas de la pestaña Tipologías (ids alineados con SUBS_POR_TAB['pisos']/RUTA_DE, que
@@ -92,15 +121,15 @@ const TCHIP: CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-/** Control activo de las celdas de la tabla de pisos: caja tipo sanitario (IN_CELDA) con el
- *  tamaño de la tabla (13); el width va por celda — fijo o con anchoValor (el del valor) para
- *  que activar EDITAR no ensanche la columna. */
+/** Control activo de las celdas de la tabla de pisos: caja tipo sanitario (IN_CELDA) a 12 px;
+ *  el width va por celda (fijo) para que activar EDITAR no ensanche la columna. */
 const CELDA: CSSProperties = {
   ...IN_CELDA,
-  fontSize: 13,
+  fontSize: 12,
   boxSizing: 'border-box',
   textAlign: 'center',
 };
+const TDP: CSSProperties = { ...TD, fontSize: 12, padding: '1px 2px' }; // celda compacta de pisos
 
 /** Chip del estado de la red: Calculada (verde) / Sin red (ámbar) / Incompleta (rojo). */
 const CHIP: CSSProperties = {
@@ -153,18 +182,30 @@ function ChipRed({ t, planta }: { t: TipCalc | undefined; planta: string }) {
 function TablaPisos({
   filas,
   nota,
+  clase,
   setPiso,
-  toggleSalida,
   setRep,
 }: {
   filas: FilaTipologia[];
   /** Nota del header: cuántos pisos y tipologías hay. */
   nota: string;
+  /** Clase del sistema (sp.clase): resuelve la opción «Auto (por clase)» de la celda Salidas. */
+  clase: string;
   setPiso: (i: number, k: keyof PisoRow) => (v: string) => void;
-  toggleSalida: (i: number, actual: string) => () => void;
   setRep: (tipId: string, nombre: string) => void;
 }) {
   const [edit, toggleEdit] = useEditarTabla();
+  /* Desplegable de Nivel: un par por piso (value = planId, la llave de la red; label = nombre).
+   * Orden de filas: niveles menores primero (NPT asc) — la cubierta, al final. */
+  const vistos = new Set<string>();
+  /* La cubierta no participa en la tabla ni en el desplegable: sin rociadores, no tiene red
+   * que calcular. Match EXACTO del nombre («Cubierta técnica» sigue siendo piso editable).
+   * Se filtra SOLO la vista — los datos quedan intactos para el motor. */
+  const SIN_CUBIERTA = filas.filter((f) => f.nombre.trim().toLowerCase() !== 'cubierta');
+  const OPCIONES_NIVEL = SIN_CUBIERTA.slice()
+    .sort((x, y) => (Number(x.npt) || 0) - (Number(y.npt) || 0))
+    .map((f2) => ({ v: f2.planta, l: f2.nombre }))
+    .filter((o) => o.v && !vistos.has(o.v) && vistos.add(o.v));
   return (
     <SecRci
       id="tipologias"
@@ -174,7 +215,7 @@ function TablaPisos({
       extra={<EditTablaBtn on={edit} onToggle={toggleEdit} />}
     >
       <div style={{ overflowX: 'auto' }}>
-        <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 900 }}>
+        <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
           <caption
             style={{
               position: 'absolute',
@@ -188,6 +229,13 @@ function TablaPisos({
           </caption>
           <thead>
             <tr>
+              {GRUPOS_PISOS.map(([g, n]) => (
+                <th key={g} colSpan={n} scope="colgroup" style={{ ...TH, fontSize: 11 }}>
+                  {g}
+                </th>
+              ))}
+            </tr>
+            <tr>
               {COLS.map((c) => (
                 <th key={c.l} scope="col" title={c.tip} style={{ ...TH, fontSize: 11 }}>
                   {c.l}
@@ -196,11 +244,11 @@ function TablaPisos({
             </tr>
           </thead>
           <tbody>
-            {filas.map((f) => (
+            {SIN_CUBIERTA.map((f) => (
               <tr key={f.i}>
                 <td
                   className="c"
-                  style={{ ...TD, fontSize: 13, background: 'var(--bg3)', color: 'var(--txt3)' }}
+                  style={{ ...TDP, background: 'var(--bg3)', color: 'var(--txt3)' }}
                   title="Del plano (no editable aquí)"
                 >
                   {f.nombre}{' '}
@@ -208,41 +256,35 @@ function TablaPisos({
                 </td>
                 <td
                   className="c"
-                  style={{ ...TD, fontSize: 13, background: 'var(--bg3)', color: 'var(--txt3)' }}
+                  style={{ ...TDP, background: 'var(--bg3)', color: 'var(--txt3)' }}
                 >
                   {f.npt}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <input
                       value={f.uso}
                       onChange={(e) => setPiso(f.i, 'uso')(e.target.value)}
-                      style={{ ...CELDA, width: anchoValor(f.uso) }}
+                      style={{ ...CELDA, width: 84 }}
                     />,
-                    f.uso,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
-                  {celdaEditable(
-                    edit,
-                    <input
-                      value={f.planta}
-                      onChange={(e) => setPiso(f.i, 'planta')(e.target.value)}
-                      title="Red que usa este piso (clave de la planta)"
-                      style={{ ...CELDA, width: 60 }}
-                    />,
-                    f.planta,
-                    60,
-                  )}
+                <td className="c" style={TDP}>
+                  <NivelCelda
+                    edit={edit}
+                    planta={f.planta}
+                    opciones={OPCIONES_NIVEL}
+                    set={setPiso(f.i, 'planta')}
+                  />
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <select
                       value={f.riesgo}
                       onChange={(e) => setPiso(f.i, 'riesgo')(e.target.value)}
-                      style={{ ...CELDA, width: anchoValor(f.riesgo) }}
+                      style={{ ...CELDA, width: 116 }}
                     >
                       {RIESGOS.map((o) => (
                         <option key={o} value={o}>
@@ -250,16 +292,15 @@ function TablaPisos({
                         </option>
                       ))}
                     </select>,
-                    f.riesgo,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <select
                       value={f.sistema}
                       onChange={(e) => setPiso(f.i, 'sistema')(e.target.value)}
-                      style={{ ...CELDA, width: anchoValor(f.sistema) }}
+                      style={{ ...CELDA, width: 84 }}
                     >
                       {SISTEMAS.map((o) => (
                         <option key={o} value={o}>
@@ -267,10 +308,9 @@ function TablaPisos({
                         </option>
                       ))}
                     </select>,
-                    f.sistema,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <input
@@ -278,19 +318,34 @@ function TablaPisos({
                       step="any"
                       value={f.htecho}
                       onChange={(e) => setPiso(f.i, 'htecho')(e.target.value)}
-                      style={{ ...CELDA, width: 52 }}
+                      style={{ ...CELDA, width: 60 }}
                     />,
-                    f.htecho,
-                    52,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
+                  {celdaEditable(
+                    edit,
+                    <select
+                      value={f.constr}
+                      onChange={(e) => setPiso(f.i, 'constr')(e.target.value)}
+                      title={f.constr}
+                      style={{ ...CELDA, width: 84 }}
+                    >
+                      {CONSTR_CORTO.map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </select>,
+                  )}
+                </td>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <select
                       value={f.qr}
                       onChange={(e) => setPiso(f.i, 'qr')(e.target.value)}
-                      style={{ ...CELDA, width: anchoValor(f.qr) }}
+                      style={{ ...CELDA, width: 58 }}
                     >
                       {SINO.map((o) => (
                         <option key={o} value={o}>
@@ -298,10 +353,9 @@ function TablaPisos({
                         </option>
                       ))}
                     </select>,
-                    f.qr,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <input
@@ -309,13 +363,11 @@ function TablaPisos({
                       step="any"
                       value={f.K}
                       onChange={(e) => setPiso(f.i, 'K')(e.target.value)}
-                      style={{ ...CELDA, width: 48 }}
+                      style={{ ...CELDA, width: 60 }}
                     />,
-                    f.K,
-                    48,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <input
@@ -323,13 +375,11 @@ function TablaPisos({
                       step="any"
                       value={f.S}
                       onChange={(e) => setPiso(f.i, 'S')(e.target.value)}
-                      style={{ ...CELDA, width: 52 }}
+                      style={{ ...CELDA, width: 60 }}
                     />,
-                    f.S,
-                    52,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <input
@@ -337,36 +387,26 @@ function TablaPisos({
                       step="any"
                       value={f.L}
                       onChange={(e) => setPiso(f.i, 'L')(e.target.value)}
-                      style={{ ...CELDA, width: 52 }}
+                      style={{ ...CELDA, width: 60 }}
                     />,
-                    f.L,
-                    52,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px', whiteSpace: 'nowrap' }}>
-                  {edit ? (
-                    <>
-                      <input
-                        type="checkbox"
-                        checked={f.salida !== 'Ninguna'}
-                        onChange={toggleSalida(f.i, f.salida)}
-                        aria-label={`Salida de manguera en ${f.nombre}`}
-                      />
-                      <span style={{ fontSize: 11, color: 'var(--txt3)', marginLeft: 3 }}>
-                        {f.salida}
-                      </span>
-                    </>
-                  ) : (
-                    <span>{f.salida}</span>
-                  )}
+                <td className="c" style={{ ...TDP, whiteSpace: 'nowrap' }}>
+                  <SalidaCelda
+                    edit={edit}
+                    salida={f.salida}
+                    nombre={f.nombre}
+                    clase={clase}
+                    set={setPiso(f.i, 'salida')}
+                  />
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <select
                       value={f.vreg}
                       onChange={(e) => setPiso(f.i, 'vreg')(e.target.value)}
-                      style={{ ...CELDA, width: anchoValor(f.vreg) }}
+                      style={{ ...CELDA, width: 60 }}
                     >
                       {AUTO_SI_NO.map((o) => (
                         <option key={o} value={o}>
@@ -374,16 +414,15 @@ function TablaPisos({
                         </option>
                       ))}
                     </select>,
-                    f.vreg,
                   )}
                 </td>
-                <td className="c" style={{ padding: '1px 2px' }}>
+                <td className="c" style={TDP}>
                   {celdaEditable(
                     edit,
                     <select
                       value={f.vrp}
                       onChange={(e) => setPiso(f.i, 'vrp')(e.target.value)}
-                      style={{ ...CELDA, width: anchoValor(f.vrp) }}
+                      style={{ ...CELDA, width: 60 }}
                     >
                       {AUTO_SI_NO.map((o) => (
                         <option key={o} value={o}>
@@ -391,13 +430,9 @@ function TablaPisos({
                         </option>
                       ))}
                     </select>,
-                    f.vrp,
                   )}
                 </td>
-                <td
-                  className="c"
-                  style={{ ...TD, fontSize: 13, color: 'var(--txt3)', whiteSpace: 'nowrap' }}
-                >
+                <td className="c" style={{ ...TDP, color: 'var(--txt3)', whiteSpace: 'nowrap' }}>
                   {f.tipId || '—'}
                   {f.tipId && edit ? (
                     <button
@@ -421,9 +456,9 @@ function TablaPisos({
                 </td>
               </tr>
             ))}
-            {filas.length === 0 && (
+            {SIN_CUBIERTA.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} style={{ ...TD, fontSize: 13, color: 'var(--txt3)' }}>
+                <td colSpan={COLS.length} style={{ ...TDP, color: 'var(--txt3)' }}>
                   Sin pisos: confirme planos en el proyecto para registrarlos aquí.
                 </td>
               </tr>
@@ -465,7 +500,7 @@ function TablaTipologias({
           </caption>
           <thead>
             <tr>
-              {['Tipología', 'Pisos', 'N.º', 'Representativo', 'Planta', 'Red'].map((l) => (
+              {['Tipología', 'Pisos', 'N.º', 'Representativo', 'Nivel', 'Red'].map((l) => (
                 <th key={l} scope="col" style={{ ...TH, fontSize: 11 }}>
                   {l}
                 </th>
@@ -532,7 +567,8 @@ function TablaTipologias({
 function CorteEdificio({ pisos, tips, zBomba }: { pisos: PisoRow[]; tips: Tips; zBomba: NumIn }) {
   return (
     <SecRci id="corte" titulo="Corte esquemático" icono="/iconos/corte_esquematico.webp">
-      <div>
+      {/* Bloque angosto y centrado: el SVG escala solo (viewBox) — sin scroll vertical. */}
+      <div style={{ maxWidth: 520, margin: '0 auto' }}>
         <ElevSvg pisos={pisos} groups={tips} zBomba={zBomba} />
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
           <span style={LEG_ITEM}>
@@ -593,16 +629,6 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
         rows: e.pisos.rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)),
       },
     }));
-  /** El checkbox de salidas pone la salida por defecto de la clase del sistema. */
-  const toggleSalida = (i: number, actual: string) => () =>
-    setPiso(
-      i,
-      'salida',
-    )(
-      actual && actual !== 'Ninguna'
-        ? 'Ninguna'
-        : salidaPorClase(String(estado.sp.clase || 'Clase III')),
-    );
   const setRep = (tipId: string, nombre: string) =>
     editar((e) => ({ ...e, pisos: { ...e.pisos, rep: { ...e.pisos.rep, [tipId]: nombre } } }));
 
@@ -612,8 +638,8 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
         <TablaPisos
           filas={filas}
           nota={`${filas.length} piso(s) · ${resumen.length} tipología(s)`}
+          clase={estado.sp.clase}
           setPiso={setPiso}
-          toggleSalida={toggleSalida}
           setRep={setRep}
         />
       ) : null}

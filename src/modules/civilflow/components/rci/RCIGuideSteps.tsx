@@ -5,14 +5,14 @@
  *  Ej: <PasoGuia paso={0} ctx={ctx} irGo={(go) => irGo(go)} /> pinta "Clasifique el riesgo". */
 import { useMemo } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import { ChipEstado, COLOR_ESTADO, type RciCtx } from './uiRci.tsx';
-import { CorteSvg, PlanSvg } from './rciSvgPlanta.tsx';
-import { ElevSvg } from './rciSvgEdificio.tsx';
-import { rangoTipologia } from '../../utils/rci/rowsModelExtras.ts';
-import { fmt } from '../../utils/rci/rowsModelRci2.ts';
+import { ChipEstado, COLOR_ESTADO, type RciCtx } from './RCIUI.tsx';
+import { CorteSvg, PlanSvg } from './RCISvgFloorplan.tsx';
+import { ElevSvg } from './RCISvgBuilding.tsx';
+import { rangoTipologia } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import { num } from '../../lib/rci/hydraulics.ts';
 import { HZ } from '../../lib/rci/tables.ts';
-import { colorTip, n2 } from './rciSvgEsquemas.tsx';
+import { colorTip, n2 } from './RCISvgSchemas.tsx';
 import type { Tipologia, Verificacion } from '../../lib/rci/types.ts';
 
 /** Prefijos de verificación que la guía consulta (el chk(lab) del HTML, por startsWith). */

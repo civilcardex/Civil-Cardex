@@ -6,8 +6,8 @@
  *  (margen, succión, jockey, tanque) viven en Entradas → Bomba.
  *  Ej: el ejemplo muestra D2 de 500 gpm @ 127.36 psi en la brida y curva nominal a 141 psi. */
 import { useEffect, useRef, useState } from 'react';
-import { SecRci, KvTabla, SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './uiRci.tsx';
-import type { KvRci } from '../../utils/rci/rowsModel.ts';
+import { SecRci, KvTabla, SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
+import type { KvRci } from '../../utils/rci/RCIRowsModel.ts';
 import {
   kvDemandas,
   kvSeleccion,
@@ -15,8 +15,8 @@ import {
   kvSuccion,
   kvJockey,
   kvTanque,
-} from '../../utils/rci/rowsModelExtras.ts';
-import { PumpSvg, dibujaCurvaBomba, temaResuelto } from './rciSvgEsquemas.tsx';
+} from '../../utils/rci/RCIRowsModelExtras.ts';
+import { PumpSvg, dibujaCurvaBomba, temaResuelto } from './RCISvgSchemas.tsx';
 import type { BombaResult } from '../../lib/rci/types.ts';
 
 /** Sub-pestañas de la pestaña Bomba (los ids de SUBS_POR_TAB['bomba'] que toca RUTA_DE: los
@@ -41,6 +41,7 @@ const BTN_MIN: React.CSSProperties = {
 /** Bloque de solo lectura (SecRci): título en el header, nota opcional, tabla kv y (si trae
  *  `esquema`) el botón "Ver esquema" a la derecha del header — abre el modal con el esquema del
  *  cuarto de bombas resaltando esa sección. `icono` va a la IZQUIERDA del título (SecRci).
+ *  `ayuda` es el title nativo del bloque (tooltip del encabezado, 1 línea).
  *  Ej: <CardKv id="bomba" titulo="Demandas en la brida de descarga" filas={kvDemandas(R.bomba)} esquema="desc" … />. */
 function CardKv({
   id,
@@ -50,6 +51,7 @@ function CardKv({
   esquema,
   abrirEsquema,
   icono,
+  ayuda,
 }: {
   /** Ancla del bloque (SecRci antepone «rci-»); el primero de la pestaña lleva rci-bomba. */
   id: string;
@@ -60,9 +62,11 @@ function CardKv({
   abrirEsquema?: (m: 'suc' | 'desc') => void;
   /** Ruta pública del icono decorativo (ej. '/iconos/seleccion_bomba.webp'). */
   icono?: string;
+  /** Tooltip corto del encabezado del bloque (title nativo). */
+  ayuda?: string;
 }) {
   return (
-    <div style={{ width: 'fit-content', maxWidth: '100%' }}>
+    <div style={{ width: 'fit-content', maxWidth: '100%' }} title={ayuda}>
       <SecRci
         id={id}
         titulo={titulo}
@@ -156,12 +160,12 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
     <>
       <SubTabsRci subs={SUBS} sub={activa} setSub={setSub}>
         {activa === 'demanda' ? (
-          /* Dos columnas explícitas: Cuarto queda JUSTO debajo de Demandas y Succión debajo de
-             Selección (con grid por filas, la fila 2 arrancaba tras la card más alta). */
+          /* Tres columnas (demanda → selección → succión): Cuarto apilado JUSTO debajo de
+             Demandas y Selección/Succión cada una en su columna, alineadas arriba. */
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, max-content)',
+              gridTemplateColumns: 'repeat(3, max-content)',
               gap: 12,
               alignItems: 'start',
             }}
@@ -174,6 +178,8 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
                 filas={kvDemandas(R.bomba)}
                 esquema="desc"
                 abrirEsquema={setEsquema}
+                icono="/iconos/demandas_brida_descarga.webp"
+                ayuda="Q y P que la red de rociadores y los montantes exigen a la bomba: D1 (rociadores + mangueras) y D2 (montantes), NFPA 20"
               />
               <CardKv
                 id="cuarto"
@@ -181,30 +187,36 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
                 filas={kvCuarto(R.edif, R.gab)}
                 esquema="desc"
                 abrirEsquema={setEsquema}
+                icono="/iconos/cuarto_bombas_descarga.webp"
+                ayuda="Pérdidas y presiones desde la brida de la bomba hasta el montante: accesorios, VCP y tubería del cuarto"
               />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <CardKv
-                id="seleccion"
-                titulo="Selección de la bomba"
-                filas={kvSeleccion(R.bomba, R.edif, estado.bomba.qrManual, estado.bomba.margen)}
-                esquema="desc"
-                abrirEsquema={setEsquema}
-                icono="/iconos/seleccion_bomba.webp"
-              />
-              <CardKv
-                id="succion"
-                titulo="Succión y NPSH"
-                filas={kvSuccion(R.bomba, estado.bomba.npshr, estado.bomba.margenNpsh)}
-                esquema="suc"
-                abrirEsquema={setEsquema}
-                icono="/iconos/succion_cavitacion.webp"
-              />
-            </div>
+            <CardKv
+              id="seleccion"
+              titulo="Selección de la bomba"
+              filas={kvSeleccion(R.bomba, R.edif, estado.bomba.qrManual, estado.bomba.margen)}
+              esquema="desc"
+              abrirEsquema={setEsquema}
+              icono="/iconos/seleccion_bomba.webp"
+              ayuda="Bomba nominal elegida: caudal y presión en el 150 % del diseño y churn, con el margen que pide NFPA 20"
+            />
+            <CardKv
+              id="succion"
+              titulo="Succión y NPSH"
+              filas={kvSuccion(R.bomba, estado.bomba.npshr, estado.bomba.margenNpsh)}
+              esquema="suc"
+              abrirEsquema={setEsquema}
+              icono="/iconos/succion_cavitacion.webp"
+              ayuda="NPSH disponible vs requerido: la succión debe dejar margen sobre el NPSH del fabricante para no cavitacionar"
+            />
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <SecRci id="curva" titulo="Curva envolvente y demandas">
+            <SecRci
+              id="curva"
+              titulo="Curva envolvente y demandas"
+              icono="/iconos/curva_envolvente_demandas.webp"
+            >
               <CurvaBomba bomba={R.bomba} />
               <div style={LEGEND}>
                 <span>
@@ -263,12 +275,14 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
                 titulo="Bomba jockey"
                 filas={kvJockey(R.bomba)}
                 icono="/iconos/bomba_jockey.webp"
+                ayuda="Bomba pequeña que mantiene la presión del sistema y arranca antes que la principal ante pequeñas fugas"
               />
               <CardKv
                 id="tanque"
                 titulo="Tanque"
                 filas={kvTanque(R.bomba, R.tanque)}
                 icono="/iconos/tanque.webp"
+                ayuda="Capacidad y reserva del tanque según la duración de la demanda (NFPA 22): volumen bruto, útil y de cebado"
               />
             </div>
           </div>

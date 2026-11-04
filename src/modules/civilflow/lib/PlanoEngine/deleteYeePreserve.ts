@@ -6,6 +6,7 @@ import { _firstSegmentAngle } from './drawingAngles.ts';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { type HidroDataEntry } from './deleteCascade.ts';
 import { devError } from '../../../../utils/devError.ts';
+import { distToSegment } from '../shared/geometry.ts';
 
 /** Yee doble y clusters de split al borrar: qué pedazos se llevan juntos (mergesFrom) y cuándo el hueco de una yee doble se tapa. */
 
@@ -343,18 +344,7 @@ export function preserveYeeDobleAt(
       }
       // también distancia a segmento para troncos que pasan por el punto sin vértice exacto
       for (let i = 0; i < cand.pts.length - 1; i++) {
-        const A = cand.pts[i];
-        const B = cand.pts[i + 1];
-        const dx = B[0] - A[0];
-        const dy = B[1] - A[1];
-        const lenSq = dx * dx + dy * dy;
-        if (lenSq < 1e-6) continue;
-        const t = ((port[0] - A[0]) * dx + (port[1] - A[1]) * dy) / lenSq;
-        const ct = Math.max(0, Math.min(1, t));
-        const px = A[0] + ct * dx;
-        const py = A[1] + ct * dy;
-        const d = Math.hypot(port[0] - px, port[1] - py);
-        if (d < minD) minD = d;
+        minD = Math.min(minD, distToSegment(port, cand.pts[i], cand.pts[i + 1]));
       }
       if (minD >= 20) continue;
       // Colinealidad del brazo del sobreviviente con el entrante: el punto del cand más lejano
@@ -534,17 +524,7 @@ export function isDeletedYeeDoblePart(engine: IPlanoEngineCore, deleted: PlanoRa
         if (Math.hypot(yp[0] - rp[0], yp[1] - rp[1]) < 20) return true;
       }
       for (let i = 0; i < pts.length - 1; i++) {
-        const A = pts[i];
-        const B = pts[i + 1];
-        const dx = B[0] - A[0];
-        const dy = B[1] - A[1];
-        const lenSq = dx * dx + dy * dy;
-        if (lenSq < 1e-6) continue;
-        const t = ((yp[0] - A[0]) * dx + (yp[1] - A[1]) * dy) / lenSq;
-        const ct = Math.max(0, Math.min(1, t));
-        const px = A[0] + ct * dx;
-        const py = A[1] + ct * dy;
-        if (Math.hypot(yp[0] - px, yp[1] - py) < 0.5) return true;
+        if (distToSegment(yp, pts[i], pts[i + 1]) < 0.5) return true;
       }
     }
   }

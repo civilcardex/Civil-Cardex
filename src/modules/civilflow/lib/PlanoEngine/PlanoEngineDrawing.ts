@@ -15,7 +15,6 @@
 export {
   checkRamalAngles,
   _firstSegmentAngle,
-  segmentsIntersect,
   snapTributaryToPadre45Deg,
   codoNivelPermitidoEn,
 } from './drawingAngles.ts';
@@ -24,7 +23,6 @@ export {
   flipRamalFlow,
   flowVecAt,
   flowEndsAt,
-  ramalExtremoOcupado,
   extremoEntrelazado,
   aparatoEnExtremoInvalido,
   codoPolarityOk,
@@ -50,7 +48,6 @@ export { _statusMsg, calculateRamalLength } from './ramalMeasure.ts';
 
 export {
   _nextLabel,
-  reverseRamalEndpoints,
   _midpoint,
   _calcPolyArea,
   inchPartOfDiametro,
@@ -72,7 +69,7 @@ export {
   puntoEnCaja,
 } from './junctionAutoSplit.ts';
 
-export { finishRamal, checkCrossRamalAngle } from './finishRamal';
+export { finishRamal } from './finishRamal';
 
 export {
   setTool,

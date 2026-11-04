@@ -11,7 +11,7 @@
  */
 import type { NumIn, PisoOut, PisoRow, Tipologia, Tips } from '../../lib/rci/types';
 import { num } from '../../lib/rci/hydraulics';
-import { COL_TEMA, colorTip, fmtNum, type TemaRci } from './rciSvgEsquemas';
+import { COL_TEMA, colorTip, fmtNum, type TemaRci } from './RCISvgSchemas';
 import type { ReactNode } from 'react';
 
 /** Cota (m) del punto más alto dibujado en el eje de la bomba. */

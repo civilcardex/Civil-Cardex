@@ -3,15 +3,17 @@ import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 import { puedeConectarRamalABajante } from '../bajanteRules.ts';
 import { bumpBajanteToMaxRamal } from '../drawingUtils.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
-import { indexRamales, indexBajantes, refrescarTrazo, type DragCtx } from './dragContext.ts';
+import { refrescarTrazo, type DragCtx } from './dragContext.ts';
+import { indicesDeMotor } from '../engineIndices.ts';
 
 /** Arrastres de tuberías verticales: el fantasma entrepisos (anillo de desplazamiento) y el bajante/montante completo (con reglas de conexión y topes mientras se mueve). */
 
 /** Arrastre del FANTASMA entrepisos (anillo de desplazamiento): SOLO actualiza el
  *  desplazamiento del piso — no toca ramales existentes salvo el Ldesvio explícito. */
 export function dragGhost(engine: IPlanoEngineCore, x: number, y: number): void {
-  const bajantesById = indexBajantes(engine);
-  const ramalesById = indexRamales(engine);
+  const idx = indicesDeMotor(engine);
+  const bajantesById = idx.bajantes;
+  const ramalesById = idx.ramales;
   const b = bajantesById.get(engine.ghostDrag!.id);
   if (b && engine.nivelActual) {
     let dx = (x - engine.ghostDrag!.startX) / engine.zoom + engine.ghostDrag!.baseDx;
@@ -64,7 +66,7 @@ export function dragGhost(engine: IPlanoEngineCore, x: number, y: number): void 
  *  los extremos pegados + el Ldesvio del fantasma. */
 export function dragBajante(engine: IPlanoEngineCore, x: number, y: number, ctx: DragCtx): void {
   const { ramalesPorId } = ctx;
-  const bajantesById = indexBajantes(engine);
+  const bajantesById = indicesDeMotor(engine).bajantes;
   const b = bajantesById.get(engine.bajDrag!.id);
   if (b) {
     let p = engine.toPlane(x - engine.bajDrag!.offX, y - engine.bajDrag!.offY);

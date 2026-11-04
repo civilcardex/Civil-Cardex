@@ -1,10 +1,6 @@
 import type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
 export type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes.ts';
 
-// Borradores de dibujo en curso: extraídos a planoActiveDrafts (techo G1). Re-exportados AQUÍ
-// para que los consumidores (PlanoEngine.ts y compañía) no cambien.
-import type { PlanoActiveRamal, PlanoActiveArea, PlanoRamalDefaults } from './planoActiveDrafts.ts';
-
 // Catálogo de redes + numeración: extraídos a planoNets/planoNumbering (desmonotilización).
 // Re-exportados AQUÍ para que los ~60 consumidores y tests de PlanoState no cambien.
 export {
@@ -310,9 +306,33 @@ export interface PlanoLevel {
 export type PlanoElement =
   PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | PlanoGuideLine;
 
-// Borradores de dibujo (ramal/área en curso y defaults de tubería nueva): extraídos a
-// planoActiveDrafts (techo G1) — re-exportados para que los consumidores no cambien.
-export type { PlanoActiveRamal, PlanoActiveArea, PlanoRamalDefaults } from './planoActiveDrafts.ts';
+// Borradores de dibujo en curso (ramal/área a medias y defaults de tubería nueva):
+/** La tubería que se está dibujando ahora mismo, todavía sin confirmar: sus puntos y la longitud
+ *  que lleva. Mientras exista, un clic añade un punto y Enter la guarda como ramal.
+ *  Ej: RAF3 con 2 pts -> al Enter, finishRamal la convierte en PlanoRamal. */
+export interface PlanoActiveRamal {
+  id?: string;
+  net: string;
+  tipo: string;
+  padre: string | null;
+  pts: number[][];
+  totalL: number;
+}
+
+/** El área que se está delimitando ahora, todavía sin cerrar (los puntos y el color con que se
+ *  pintará al confirmar). Ej: el polígono del sector de gas mientras arrastras el 3er vértice. */
+export interface PlanoActiveArea {
+  pts: number[][];
+  color: string;
+}
+
+/** Lo que se le pone a una tubería nueva cuando el usuario no elige nada: el material, el diámetro
+ *  y la pendiente que heredan las siguientes. Ej: material 'PVC-PR' -> RAF4 nace con él. */
+export interface PlanoRamalDefaults {
+  material: string;
+  diametro: string;
+  pendiente: number;
+}
 
 /** Foto de la posición original de cada elemento de un arrastre en grupo: sin ella, mover un
  *  conjunto a la vez deformaría las tuberías. Ej: se guardan los puntos de cada ramal al empezar

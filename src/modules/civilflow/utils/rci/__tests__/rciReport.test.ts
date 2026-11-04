@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { construirInformeRci, type RciInforme } from '../rciReport.ts';
+import { construirInformeRci, type RciInforme } from '../RCIReport.ts';
 import { ejemploVerificacion } from '../../../lib/rci/index.ts';
 
 // El bloque RCI del Informe corre el motor sobre el estado guardado y lo aplana a una tabla

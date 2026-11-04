@@ -19,7 +19,7 @@ const CalculoUC = lazy(() => import('../CalcUC.tsx'));
 const WaterNetworkDesign = lazy(() => import('../WaterNetworkDesign.tsx'));
 const BombaARDesign = lazy(() => import('../PumpARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
-const RciDesign = lazy(() => import('../rci/RciDesign'));
+const RciDesign = lazy(() => import('../rci/RCIDesign'));
 const RejillasVentilacion = lazy(() => import('../RejillasVentilation'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign.tsx'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage.tsx'));
@@ -98,7 +98,7 @@ const prefetchHeavy = () => {
   pedirChunk('bom', () => import('../PumpARDesign'));
   pedirChunk('ep', () => import('../PressureEquipmentDesign.tsx'));
   pedirChunk('gas', () => import('../GasDesign'));
-  pedirChunk('rci', () => import('../rci/RciDesign'));
+  pedirChunk('rci', () => import('../rci/RCIDesign'));
   pedirChunk('datos', () => import('../DesignParameters.tsx'));
   pedirChunk('crit', () => import('../Regulations/Regulations.tsx'));
 };

@@ -19,14 +19,14 @@ import {
   type RciCtx,
   type SubItemRci,
   useNavRci,
-} from './uiRci.tsx';
-import { anchoValor, celdaEditable, IN_CELDA } from './celdaEditable.tsx';
+} from './RCIUI.tsx';
+import { anchoValor, celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
-import { DIAMETROS, MATERIALES, filasRamales, filasTramos } from '../../utils/rci/rowsModel.ts';
-import { SUBS_POR_TAB, stripDerivacion } from '../../utils/rci/rowsModelExtras.ts';
-import { fmt } from '../../utils/rci/rowsModelRci2.ts';
-import { PanelNudosRci, PanelDetalleRci } from './rciHidraulicaNudos.tsx';
-import { VrpSvg } from './rciSvgPlanta.tsx';
+import { DIAMETROS, MATERIALES, filasRamales, filasTramos } from '../../utils/rci/RCIRowsModel.ts';
+import { SUBS_POR_TAB, stripDerivacion } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
+import { PanelNudosRci, PanelDetalleRci } from './RCIHydraulicNodes.tsx';
+import { VrpSvg } from './RCISvgFloorplan.tsx';
 import { cOf } from '../../lib/rci/hydraulics.ts';
 import type { Red, TipCalc } from '../../lib/rci/types.ts';
 
@@ -293,8 +293,6 @@ export function RciHidraulica({
                       </option>
                     ))}
                   </select>,
-                  red?.mat || 'Acero SCH 40',
-                  170,
                 )}
               </label>
               <div style={HB}>
@@ -319,8 +317,6 @@ export function RciHidraulica({
                     style={HBIN}
                     aria-label="Cota de los ramales"
                   />,
-                  zRamTxt,
-                  150,
                 )}
               </label>
             </Hbar>
@@ -451,8 +447,6 @@ export function RciHidraulica({
                               aria-label={`Rociadores con flujo de ${f.nombre}`}
                               style={{ ...CELDA, width: 46 }}
                             />,
-                            f.fluyen,
-                            46,
                           )}
                         </td>
                         <td className="c" style={{ padding: '1px 2px' }}>
@@ -469,7 +463,6 @@ export function RciHidraulica({
                                 </option>
                               ))}
                             </select>,
-                            f.dn,
                           )}
                         </td>
                         <td className="c" style={{ padding: '1px 2px' }}>
@@ -487,7 +480,6 @@ export function RciHidraulica({
                                 </option>
                               ))}
                             </select>,
-                            f.mat,
                           )}
                         </td>
                         <td className="c" style={{ padding: '1px 2px' }}>
@@ -502,8 +494,6 @@ export function RciHidraulica({
                               aria-label={`Separación S de ${f.nombre}`}
                               style={{ ...CELDA, width: 52 }}
                             />,
-                            sDeRamal(red, i),
-                            52,
                           )}
                         </td>
                         <td
@@ -632,8 +622,6 @@ export function RciHidraulica({
                       </option>
                     ))}
                   </select>,
-                  raiz,
-                  150,
                 )}
               </label>
               <label style={HB}>
@@ -649,8 +637,6 @@ export function RciHidraulica({
                     style={HBIN}
                     aria-label="Cota de la derivación"
                   />,
-                  zRaizTxt,
-                  150,
                 )}
               </label>
               <button type="button" onClick={() => setVrpAbierta(true)} style={BTN_INL}>
@@ -774,7 +760,6 @@ export function RciHidraulica({
                                 </option>
                               ))}
                             </select>,
-                            f.mat,
                           )}
                         </td>
                         <td className="c" style={{ padding: '1px 2px' }}>
@@ -791,7 +776,6 @@ export function RciHidraulica({
                                 </option>
                               ))}
                             </select>,
-                            f.dn,
                           )}
                         </td>
                         <td

@@ -13,10 +13,10 @@ import {
   type RciCtx,
   type SubItemRci,
   type TabRci,
-} from './uiRci.tsx';
+} from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
-import { filasVerificaciones, GRUPOS_CHECK, grupoDeCheck } from '../../utils/rci/rowsModel.ts';
-import { RUTA_DE } from '../../utils/rci/rowsModelExtras.ts';
+import { filasVerificaciones, GRUPOS_CHECK, grupoDeCheck } from '../../utils/rci/RCIRowsModel.ts';
+import { RUTA_DE } from '../../utils/rci/RCIRowsModelExtras.ts';
 import type { Verificacion } from '../../lib/rci/types.ts';
 
 const TH10 = { ...TH, fontSize: 11 } as const;
@@ -53,22 +53,38 @@ function TablaChecks({ filas }: { filas: { v: Verificacion; i: number }[] }) {
       <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
-            <th scope="col" style={{ ...TH10, width: 30 }}>
+            <th
+              scope="col"
+              style={{ ...TH10, width: 30 }}
+              title="Número de la verificación en la lista completa"
+            >
               #
             </th>
-            <th scope="col" style={{ ...TH10, width: 84 }}>
+            <th
+              scope="col"
+              style={{ ...TH10, width: 84 }}
+              title="CUMPLE verde · REVISAR ámbar · NO CUMPLE rojo · PENDIENTE gris"
+            >
               Estado
             </th>
-            <th scope="col" style={TH10}>
+            <th scope="col" style={TH10} title="Qué exige la norma">
               Verificación
             </th>
-            <th scope="col" style={{ ...TH10, width: 170 }}>
+            <th
+              scope="col"
+              style={{ ...TH10, width: 170 }}
+              title="Valor calculado del proyecto frente al límite"
+            >
               Valor
             </th>
-            <th scope="col" style={{ ...TH10, width: 150 }}>
+            <th
+              scope="col"
+              style={{ ...TH10, width: 150 }}
+              title="Capítulo o sección de la norma que aplica"
+            >
               Norma
             </th>
-            <th scope="col" style={TH10}>
+            <th scope="col" style={TH10} title="Qué cambiar en el proyecto cuando no cumple">
               Cómo resolverlo
             </th>
             <th scope="col" style={{ ...TH10, width: 74 }} aria-label="Ir al dato" />
@@ -203,6 +219,7 @@ export function RciVerificaciones({ ctx }: { ctx: RciCtx }) {
               id="obs"
               titulo="Con observaciones"
               nota={`${obs.length} de ${R.checks.length} checks`}
+              icono="/iconos/observaciones_base.webp"
             >
               <TablaChecks filas={obs} />
             </SecRci>
@@ -223,7 +240,12 @@ export function RciVerificaciones({ ctx }: { ctx: RciCtx }) {
             </p>
           )
         ) : activa === 'todas' ? (
-          <SecRci id="todas" titulo="Todas" nota={`${R.checks.length} checks normativos`}>
+          <SecRci
+            id="todas"
+            titulo="Todas"
+            nota={`${R.checks.length} checks normativos`}
+            icono="/iconos/observaciones_base.webp"
+          >
             <TablaChecks filas={R.checks.map((v, i) => ({ v, i }))} />
           </SecRci>
         ) : (

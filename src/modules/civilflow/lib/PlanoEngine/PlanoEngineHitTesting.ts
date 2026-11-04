@@ -15,6 +15,25 @@ export interface ContextMenuHitResult {
   clientY: number;
 }
 
+/** Distancia del punto (x,y) al segmento p1→p2 (coords canvas) con el `t` de proyección
+ *  (0=p1, 1=p2, recortado). La usan los bucles de hit-test de ramal/guía (umbral 12 px) —
+ *  el ramal necesita `t` para ofrecer el punto medio de inserción de vértice. */
+function distTtoSegCvs(
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  x: number,
+  y: number,
+): { d: number; t: number } {
+  const l2 = (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+  const t =
+    l2 === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2));
+  const projX = p1.x + t * (p2.x - p1.x);
+  const projY = p1.y + t * (p2.y - p1.y);
+  return { d: Math.hypot(x - projX, y - projY), t };
+}
+
 /** Reparte el clic derecho del lienzo entre los candidatos (fantasma con desplazamiento, contador, bajante, canal, cuerpo/extremo de ramal) y devuelve el ganador con la posición del mouse para anclar el menú. */
 export function hitTestRightClick(
   engine: IPlanoEngineCore,
@@ -137,14 +156,13 @@ export function hitTestRightClick(
       // Revisar segmentos (distancia de 12px a la línea)
       if (!hitOnRamal) {
         for (let i = 0; i < r.pts.length - 1; i++) {
-          const p1 = engine.toCvs(r.pts[i][0], r.pts[i][1]);
-          const p2 = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
-          const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
-          let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
-          t = Math.max(0, Math.min(1, t));
-          const projX = p1.x + t * (p2.x - p1.x);
-          const projY = p1.y + t * (p2.y - p1.y);
-          if (Math.hypot(x - projX, y - projY) <= 12) {
+          const { d, t } = distTtoSegCvs(
+            engine.toCvs(r.pts[i][0], r.pts[i][1]),
+            engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]),
+            x,
+            y,
+          );
+          if (d <= 12) {
             hitOnRamal = true;
             // Solo ofrecer un punto de inserción a mitad de ramal cuando no esté efectivamente
             // encima de uno de los extremos propios del segmento (esos los cubren ramalEndpoint
@@ -185,14 +203,14 @@ export function hitTestRightClick(
     }
     if (g.pts && g.pts.length >= 2) {
       for (let i = 0; i < g.pts.length - 1; i++) {
-        const p1 = engine.toCvs(g.pts[i][0], g.pts[i][1]);
-        const p2 = engine.toCvs(g.pts[i + 1][0], g.pts[i + 1][1]);
-        const l2 = (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
-        let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
-        t = Math.max(0, Math.min(1, t));
-        const projX = p1.x + t * (p2.x - p1.x);
-        const projY = p1.y + t * (p2.y - p1.y);
-        if (Math.hypot(x - projX, y - projY) <= 12) {
+        if (
+          distTtoSegCvs(
+            engine.toCvs(g.pts[i][0], g.pts[i][1]),
+            engine.toCvs(g.pts[i + 1][0], g.pts[i + 1][1]),
+            x,
+            y,
+          ).d <= 12
+        ) {
           return { element: g, isGhostClick: false, clientX, clientY };
         }
       }

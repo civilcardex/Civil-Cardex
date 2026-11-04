@@ -5,12 +5,12 @@
  *  pestaña es un card simple con el salto a Entradas. Ej: Clase III pide 500 gpm @ 100 psi en
  *  la salida más remota y cierra con 127.36 psi en la brida de la bomba. */
 import type { CSSProperties } from 'react';
-import { SecRci, SubTabsRci, KvTabla, useNavRci, type RciCtx, type SubItemRci } from './uiRci.tsx';
+import { SecRci, SubTabsRci, KvTabla, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
-import { kvSiamesa } from '../../utils/rci/rowsModel.ts';
-import { SUBS_POR_TAB } from '../../utils/rci/rowsModelExtras.ts';
-import { filasGabinete, fmt } from '../../utils/rci/rowsModelRci2.ts';
-import { ResumenRci, type MetricaRci } from './rciSummary.tsx';
+import { kvSiamesa } from '../../utils/rci/RCIRowsModel.ts';
+import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { filasGabinete, fmt } from '../../utils/rci/RCIRowsModel2.ts';
+import { ResumenRci, type MetricaRci } from './RCISummary.tsx';
 import { num } from '../../lib/rci/hydraulics.ts';
 
 const TH10 = { ...TH, fontSize: 11 } as const;
@@ -166,16 +166,24 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                       >
                         Salida
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Caudal que descarga la salida de manguera en ese piso (250 gpm por salida en Clase I y III)"
+                      >
                         q salida (gpm)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Diámetro nominal del tramo según el plano"
+                      >
                         Ø
                       </th>
                       <th scope="col" style={TH10} title="Diámetro con el que se calculó">
                         Ø usado
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Longitud del tramo en metros">
                         L (m)
                       </th>
                       <th
@@ -192,28 +200,48 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                       >
                         q entra (gpm)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Caudal acumulado que transporta el tramo hacia la bomba"
+                      >
                         Q (gpm)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Coeficiente de Hazen-Williams del material del tramo"
+                      >
                         C
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Longitud acumulada desde la salida más remota hasta el final de este tramo"
+                      >
                         L total (m)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Pérdida por fricción del tramo (Hazen-Williams)"
+                      >
                         Pf (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Pérdida por accesorios del tramo">
                         Pe (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Presión al final del tramo">
                         P fin (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Velocidad del agua en el tramo">
                         V (m/s)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="OK verde; P baja / P alta / V alta rojo; válvula reguladora ámbar"
+                      >
                         Estado
                       </th>
                     </tr>
@@ -316,25 +344,37 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                     </caption>
                     <thead>
                       <tr>
-                        <th scope="col" style={TH10}>
+                        <th
+                          scope="col"
+                          style={TH10}
+                          title="Del nudo de la salida más remota a la siamesa (carro de bomberos)"
+                        >
                           Tramo
                         </th>
-                        <th scope="col" style={TH10}>
+                        <th
+                          scope="col"
+                          style={TH10}
+                          title="Caudal del carro de bomberos que pasa por el tramo"
+                        >
                           Q (gpm)
                         </th>
-                        <th scope="col" style={TH10}>
+                        <th scope="col" style={TH10} title="Diámetro del tramo de la ruta">
                           Ø
                         </th>
-                        <th scope="col" style={TH10}>
+                        <th scope="col" style={TH10} title="Longitud del tramo en metros">
                           L (m)
                         </th>
-                        <th scope="col" style={TH10}>
+                        <th
+                          scope="col"
+                          style={TH10}
+                          title="Pérdida por fricción del tramo (Hazen-Williams)"
+                        >
                           Pf (psi)
                         </th>
-                        <th scope="col" style={TH10}>
+                        <th scope="col" style={TH10} title="Pérdida por accesorios del tramo">
                           Pe (psi)
                         </th>
-                        <th scope="col" style={TH10}>
+                        <th scope="col" style={TH10} title="Presión al final del tramo">
                           P fin (psi)
                         </th>
                       </tr>

@@ -1,7 +1,8 @@
 import { splitPtr } from '../../../utils/keys.ts';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState.ts';
 import { checkRamalAnglesExcludingConnections } from '../junctionAutoSplit.ts';
-import { indexRamales, sameNetGroup, refrescarTrazo, type DragCtx } from './dragContext.ts';
+import { sameNetGroup, refrescarTrazo, type DragCtx } from './dragContext.ts';
+import { indicesDeMotor } from '../engineIndices.ts';
 
 /** Arrastre de un VÉRTICE/EXTREMO de ramal: accesorio deslizándose por su línea, snap 45°
  *  con restricción de colinealidad, snap a bajantes/extremos vecinos y la PROPAGACIÓN por
@@ -217,7 +218,7 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
       // posición absoluta en vez de por delta (evita la deriva si no estaban pixel-perfect
       // coincidentes).
       if (engine.ptDrag!.linkedPts) {
-        const ramalesById = indexRamales(engine);
+        const ramalesById = indicesDeMotor(engine).ramales;
         for (const link of engine.ptDrag!.linkedPts) {
           const other = ramalesById.get(link.id);
           if (!other || !other.pts[link.ptIdx]) continue;

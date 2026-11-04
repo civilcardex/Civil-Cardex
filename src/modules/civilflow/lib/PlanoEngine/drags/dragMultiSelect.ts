@@ -1,6 +1,6 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { calculateRamalLength } from '../PlanoEngineDrawing.ts';
-import { indexRamales, indexBajantes, indexGuias, indexAreas, indexCotas } from './dragContext.ts';
+import { indicesDeMotor } from '../engineIndices.ts';
 
 /** Arrastre de SELECCIÓN MÚLTIPLE: traslada rígidamente todo el grupo (ramales, bajantes,
  *  textos, guías, áreas y cotas) desde sus posiciones originales + delta — cada tipo con su
@@ -9,12 +9,13 @@ export function dragMultiSelect(engine: IPlanoEngineCore, x: number, y: number):
   const tp = engine.toPlane(x, y);
   const dx = tp.x - engine.multiDrag!.startX;
   const dy = tp.y - engine.multiDrag!.startY;
-  const ramalesById = indexRamales(engine);
-  const bajantesById = indexBajantes(engine);
-  const textAnnotsById = new Map(engine.textAnnots.map((tt) => [tt.id, tt]));
-  const guiasById = indexGuias(engine);
-  const areasById = indexAreas(engine);
-  const cotasById = indexCotas(engine);
+  const idx = indicesDeMotor(engine);
+  const ramalesById = idx.ramales;
+  const bajantesById = idx.bajantes;
+  const textAnnotsById = idx.textos;
+  const guiasById = idx.guias;
+  const areasById = idx.areas;
+  const cotasById = idx.cotas;
   for (const id of Object.keys(engine.multiDrag!.origData)) {
     const orig = engine.multiDrag!.origData[id];
     if (!orig) continue;

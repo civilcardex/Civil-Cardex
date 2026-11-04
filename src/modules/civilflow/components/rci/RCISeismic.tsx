@@ -5,7 +5,7 @@
  *  sísmicos" (esquema + 7 reglas) y "Riostras estimadas por piso de cada tipología". Sin
  *  reqSismo o sin edificio la pestaña es un card simple con el aviso.
  *  Ej: con reqSismo "No" muestra el vacío con el botón que salta a Entradas → Normativa local. */
-import { SecRci, KvTabla, SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './uiRci.tsx';
+import { SecRci, KvTabla, SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
 import { num } from '../../lib/rci/hydraulics.ts';
 import { zonaSis } from '../../lib/rci/index.ts';
@@ -16,8 +16,8 @@ import {
   SIS_4V,
   type SismoK,
   type SismoTip,
-} from '../../utils/rci/rowsModelExtras.ts';
-import { SismoSvg, fmtNum } from './rciSvgEsquemas.tsx';
+} from '../../utils/rci/RCIRowsModelExtras.ts';
+import { SismoSvg, fmtNum } from './RCISvgSchemas.tsx';
 
 /** Sub-pestañas de la pestaña Sismo (id 'criterios' = el destino de RUTA_DE para el tab sismo). */
 const SUBS: SubItemRci[] = [
@@ -222,6 +222,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
             id="sismo"
             titulo="Dónde van los soportes sísmicos"
             nota={`${zTxt} · NFPA 13 cap. 18 · indicativa`}
+            icono="/iconos/donde_van_soportes_sismicos.webp"
           >
             <div
               style={{
@@ -278,6 +279,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
             id="cantidades"
             titulo="Riostras estimadas por piso de cada tipología"
             nota="Indicativo: con las longitudes de la red; se confirma en el plano"
+            icono="/iconos/riostras_tipologia.webp"
           >
             <div style={{ overflowX: 'auto' }}>
               <table
@@ -286,28 +288,54 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
               >
                 <thead>
                   <tr>
-                    <th scope="col" style={TH10}>
+                    <th scope="col" style={TH10} title="T1, T2… una fila por red calculada">
                       Tipología
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Pisos que componen la tipología (rango por NPT)"
+                    >
                       Pisos
                     </th>
-                    <th scope="col" style={{ ...TH10, width: 54 }}>
+                    <th scope="col" style={{ ...TH10, width: 54 }} title="Pisos de la tipología">
                       N.º
                     </th>
-                    <th scope="col" style={{ ...TH10, width: 80 }}>
+                    <th
+                      scope="col"
+                      style={{ ...TH10, width: 80 }}
+                      title="Metros de tramos troncales y secundarios por piso (de la red dibujada)"
+                    >
                       L tramos (m)
                     </th>
-                    <th scope="col" style={{ ...TH10, width: 90 }}>
+                    <th
+                      scope="col"
+                      style={{ ...TH10, width: 90 }}
+                      title="Riostras laterales en tramos por piso (cada ≤ 12,2 m o menos según Cp y Ø)"
+                    >
                       Laterales tramos
                     </th>
-                    <th scope="col" style={{ ...TH10, width: 90 }}>
+                    <th
+                      scope="col"
+                      style={{ ...TH10, width: 90 }}
+                      title="Riostras longitudinales en tramos por piso (cada ≤ 12,2 m)"
+                    >
                       Longitudinales
                     </th>
-                    <th scope="col" style={{ ...TH10, width: 120 }}>
+                    <th
+                      scope="col"
+                      style={{ ...TH10, width: 120 }}
+                      title={'Riostras laterales en ramales de 2½" o más, por piso'}
+                    >
                       Laterales ramales ≥ 2½"
                     </th>
-                    <th scope="col" style={{ ...TH10, width: 90 }}>
+                    <th
+                      scope="col"
+                      style={{ ...TH10, width: 90 }}
+                      title={
+                        'Restricciones longitudinales en ramales menores de 2½" (extremo e intervalos)'
+                      }
+                    >
                       Restricciones
                     </th>
                   </tr>

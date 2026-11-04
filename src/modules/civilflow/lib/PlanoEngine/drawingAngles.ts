@@ -133,13 +133,6 @@ export function segmentIntersectionPoint(
   return [ix, iy];
 }
 
-/** ¿Estos dos trazos se atraviesan? Sirve para prohibir que un ramal cruce a otro (en san/ll un
- *  ramal no puede pasar por encima de otro).
- *  @returns true si se cruzan estrictamente por el interior. */
-export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
-  return segmentIntersectionPoint(a1, a2, b1, b2) !== null;
-}
-
 /** La inclinación del primer tramo del ramal (entre -90° y 90°): con ella se gira la etiqueta
  *  para que quede a lo largo de la tubería. */
 export function _firstSegmentAngle(pts: number[][]): number {

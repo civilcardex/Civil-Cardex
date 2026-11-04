@@ -139,12 +139,10 @@ export const colorTip = (id: string): string => TCOL[(+id.slice(1) - 1) % TCOL.l
 
 /* ---------------- Números ---------------- */
 
-/** Formatea con coma decimal es-CO; null/undefined/no-finito → "—" (igual que fmt del HTML).
+/** Coma decimal es-CO, "—" si no es finito — canónico en lib/rci/fmtEs (el fmt del HTML).
  *  Ej: fmtNum(12.5) === "12,50"; fmtNum(NaN) === "—". */
-export const fmtNum = (x: number | null | undefined, d = 2): string =>
-  x === null || x === undefined || !isFinite(x)
-    ? '—'
-    : Number(x).toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d });
+export { fmtEs as fmtNum } from '../../lib/rci/fmtEs.ts';
+import { fmtEs as fmtNum } from '../../lib/rci/fmtEs.ts';
 
 /** fmtNum a 2 decimales (el n2 del HTML, usado dentro de las cotas de los esquemas). */
 export const n2 = (x: number | null | undefined): string => fmtNum(x, 2);

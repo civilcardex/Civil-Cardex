@@ -15,10 +15,10 @@ import { loadRciDatos, saveRciDatos } from '../../services/projectDataService.ts
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { pisoLbl } from '../../constants/index.ts';
 import { extraerGris, mezclarOverrides } from '../../utils/rci/extract.ts';
-import { TECHO_DEF } from '../../utils/rci/extractRed.ts';
+import { TECHO_DEF } from '../../utils/rci/ExtractNetwork.ts';
 import type { PisoRciFuente } from '../../utils/rci/extract.ts';
-import { sembrarRci } from '../../utils/rci/rowsModel.ts';
-import { SUBS_POR_TAB } from '../../utils/rci/rowsModelExtras.ts';
+import { sembrarRci } from '../../utils/rci/RCIRowsModel.ts';
+import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { clasificar, compute, num } from '../../lib/rci/index.ts';
 import type { RciState, TipCalc } from '../../lib/rci/types.ts';
 import type { DrawingData } from '../../utils/drawingSyncTypes.ts';
@@ -30,17 +30,17 @@ import {
   COLOR_ESTADO,
   type RciCtx,
   type TabRci,
-} from './uiRci.tsx';
-import RciEntradas from './RciEntradas.tsx';
-import { RciTipologias } from './RciTipologias.tsx';
-import { RciRociadores } from './RciRociadores.tsx';
-import { RciHidraulica } from './RciHidraulica.tsx';
-import RciGabinetes from './RciGabinetes.tsx';
-import RciPerfil from './RciPerfil.tsx';
-import { RciBombaTanque } from './RciBombaTanque.tsx';
-import { RciSismo } from './RciSismo.tsx';
-import { RciVerificaciones } from './RciVerificaciones.tsx';
-import RciGuiaModal from './RciGuiaModal.tsx';
+} from './RCIUI.tsx';
+import RciInputs from './RCIInputs.tsx';
+import { RciTipologias } from './RCITypologies.tsx';
+import { RciRociadores } from './RCISprinklers.tsx';
+import { RciHidraulica } from './RCIHydraulics.tsx';
+import RciGabinetes from './RCICabinets.tsx';
+import RciPerfil from './RCIProfile.tsx';
+import { RciBombaTanque } from './RCIPumpTank.tsx';
+import { RciSismo } from './RCISeismic.tsx';
+import { RciVerificaciones } from './RCIChecks.tsx';
+import RciGuiaModal from './RCIGuideModal.tsx';
 
 /** Rótulo legible de un huérfano del merge (dato digitado cuyo dibujo dejó de existir). */
 const TIPO_HUERFANO: Record<string, string> = {
@@ -347,7 +347,7 @@ function RciDesign() {
           data-rci-tab-content
           style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}
         >
-          {tab === 'entradas' ? <RciEntradas ctx={ctx} /> : null}
+          {tab === 'entradas' ? <RciInputs ctx={ctx} /> : null}
           {tab === 'rociadores' ? <RciRociadores ctx={ctx} /> : null}
           {tab === 'tipologias' ? <RciTipologias ctx={ctx} /> : null}
           {tab === 'hidraulica' ? (

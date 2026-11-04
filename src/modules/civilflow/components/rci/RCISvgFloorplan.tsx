@@ -12,7 +12,7 @@
  */
 import type { Criterios, MontCfg } from '../../lib/rci/types';
 import { num } from '../../lib/rci/hydraulics';
-import { COL_TEMA, n2 } from './rciSvgEsquemas';
+import { COL_TEMA, n2 } from './RCISvgSchemas';
 import type { CSSProperties } from 'react';
 
 const SVG_CSS: CSSProperties = { width: '100%', height: 'auto', display: 'block' };

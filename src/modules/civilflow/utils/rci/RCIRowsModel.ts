@@ -8,7 +8,8 @@
 
 import { HZ, NOM, PIPES } from '../../lib/rci/tables.ts';
 import { num } from '../../lib/rci/hydraulics.ts';
-import { TECHO_DEF } from './extractRed.ts';
+import { fmtEs as f1 } from '../../lib/rci/fmtEs.ts';
+import { TECHO_DEF } from './ExtractNetwork.ts';
 import type {
   BombaResult,
   Criterios,
@@ -580,12 +581,6 @@ export interface KvRci {
   u?: string;
   nota?: string;
 }
-
-/** Número con decimales es-CO; "—" si no es finito. */
-const f1 = (x: number | null | undefined, d = 2): string =>
-  typeof x === 'number' && isFinite(x)
-    ? x.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d })
-    : '—';
 
 /** Criterios de rociadores — tabla 1 «Rociador y área de diseño» (9 filas, orden del HTML de
  *  referencia). qrTxt/sistemaTxt llegan de st.clas (no viven en Criterios).

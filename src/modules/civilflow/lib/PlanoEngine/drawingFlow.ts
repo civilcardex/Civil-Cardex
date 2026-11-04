@@ -201,7 +201,7 @@ export function flipRamalFlow(ram: PlanoRamal): void {
 
 /** ¿Este extremo ya está ocupado por otra tubería de la misma red (de punta a punta o apoyado
  *  sobre su cuerpo)? Sirve para no enganchar dos trazos al mismo hueco. */
-export function ramalExtremoOcupado(
+function ramalExtremoOcupado(
   ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
   ramal: { id: string; net?: string },
   epPt: number[],

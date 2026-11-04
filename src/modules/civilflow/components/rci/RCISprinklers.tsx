@@ -6,16 +6,16 @@
  *  RUTA_DE. Ej: con QR y techo de 5,30 m el área baja de 1500 a 1066 ft². */
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { KvTabla, SubTabsRci, type RciCtx, type SubItemRci, useNavRci } from './uiRci.tsx';
-import { GrupoTabla, type DefCampo } from './GrupoTabla.tsx';
+import { KvTabla, SubTabsRci, type RciCtx, type SubItemRci, useNavRci } from './RCIUI.tsx';
+import { GrupoTabla, type DefCampo } from './RCIGroupTable.tsx';
 import {
   SINO,
   kvRociadorDiseno,
   kvRociadorCobertura,
   type KvRci,
-} from '../../utils/rci/rowsModel.ts';
-import { datosRectangulo } from '../../utils/rci/rowsModelExtras.ts';
-import { dibujaRectangulo, fmtNum, temaResuelto } from './rciSvgEsquemas.tsx';
+} from '../../utils/rci/RCIRowsModel.ts';
+import { datosRectangulo } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { dibujaRectangulo, fmtNum, temaResuelto } from './RCISvgSchemas.tsx';
 import type { Criterios } from '../../lib/rci/types.ts';
 
 /** Sub-pestañas de la pestaña Rociadores: los ids 'datos' y 'criterios' son los de
@@ -27,8 +27,8 @@ const SUBS: SubItemRci[] = [
   { id: 'rectangulo', titulo: 'Rectángulo de fuego' },
 ];
 
-/** Alto CSS del canvas del rectángulo de fuego (el HTML usa 360; aquí 340 para caber en la sub). */
-const ALTO_RECT = 340;
+/** Alto CSS del canvas del rectángulo de fuego: 430 para verlo grande junto a la leyenda/tabla. */
+const ALTO_RECT = 430;
 
 /** Conteo de verificaciones por sub-pestaña: las que RUTA_DE manda a esta pestaña se reparten
  *  NO CUMPLE → badge rojo, REVISAR/PENDIENTE → ámbar. Una pasada con Map (sin find en bucles).
@@ -181,7 +181,7 @@ function CriteriosDiseno({
   sistemaTxt: string;
 }) {
   /** Mini-card titulada con su kv (patrón .card/.card-head del HTML). */
-  const tarjeta = (titulo: string, filas: KvRci[]) => (
+  const tarjeta = (titulo: string, filas: KvRci[], titulos = false) => (
     <section className="card" style={{ margin: 0 }}>
       <div className="card-h" style={{ padding: '6px 10px' }}>
         <h3 className="card-t" style={{ fontSize: 13.5, color: 'var(--txt2)' }}>
@@ -189,7 +189,7 @@ function CriteriosDiseno({
         </h3>
       </div>
       <div style={{ padding: 4 }}>
-        <KvTabla filas={filas} />
+        <KvTabla filas={filas} titulos={titulos} />
       </div>
     </section>
   );
@@ -203,8 +203,8 @@ function CriteriosDiseno({
           alignItems: 'start',
         }}
       >
-        {tarjeta('Rociador y área de diseño', kvRociadorDiseno(ro, qrTxt, sistemaTxt))}
-        {tarjeta('Cobertura y caudales', kvRociadorCobertura(ro, nOp))}
+        {tarjeta('Rociador y área de diseño', kvRociadorDiseno(ro, qrTxt, sistemaTxt), true)}
+        {tarjeta('Cobertura y caudales', kvRociadorCobertura(ro, nOp), true)}
       </div>
       {nOp !== null && ro.Nreq > nOp ? (
         <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--err, #F04545)' }}>
@@ -232,7 +232,7 @@ function ItemLeyenda({
         display: 'inline-flex',
         gap: 6,
         alignItems: 'center',
-        fontSize: 11,
+        fontSize: 12.5,
         color: 'var(--txt2)',
       }}
     >

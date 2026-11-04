@@ -4,9 +4,9 @@
  *  nudo a nudo con presiones, caudales y pérdidas. Ej: en el ejemplo el nudo A gobierna R1
  *  (20.29 psi) y R2 se equilibra a 56.51 gpm. */
 import type { CSSProperties } from 'react';
-import { SecRci } from './uiRci.tsx';
+import { SecRci } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
-import { filasDetalleNudo, filasNudos, fmt } from '../../utils/rci/rowsModelRci2.ts';
+import { filasDetalleNudo, filasNudos, fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { RedResult } from '../../lib/rci/types.ts';
 
 const TH10 = { ...TH, fontSize: 11 } as const;
@@ -25,7 +25,11 @@ const nud = (x: string | undefined): string => (x ? x : '—');
 export function PanelNudosRci({ rd }: { rd: RedResult }) {
   const filas = filasNudos(rd);
   return (
-    <SecRci id="nudos" titulo="Nudos: equilibrio de presiones">
+    <SecRci
+      id="nudos"
+      titulo="Nudos: equilibrio de presiones"
+      icono="/iconos/nudos_equilibrio_presiones.webp"
+    >
       {!filas.length ? (
         <div style={VACIO}>
           La tabla de equilibrio aparece cuando la red llega completa a la derivación del montante:
@@ -51,7 +55,11 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
               </caption>
               <thead>
                 <tr>
-                  <th scope="col" style={TH10}>
+                  <th
+                    scope="col"
+                    style={TH10}
+                    title="Letra del nudo en el plano: uniones de ramales/tramos y cambios de Ø o cota"
+                  >
                     Nudo
                   </th>
                   <th
@@ -61,16 +69,32 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
                   >
                     Alimenta a
                   </th>
-                  <th scope="col" style={TH10}>
+                  <th
+                    scope="col"
+                    style={TH10}
+                    title="Aporte con la mayor presión requerida: es el que fija la presión del nudo"
+                  >
                     Gobierna
                   </th>
-                  <th scope="col" style={TH10}>
+                  <th
+                    scope="col"
+                    style={TH10}
+                    title="La mayor presión requerida entre los aportes del nudo"
+                  >
                     P requerida (psi)
                   </th>
-                  <th scope="col" style={TH10}>
+                  <th
+                    scope="col"
+                    style={TH10}
+                    title="Suma de los caudales equilibrados que salen del nudo"
+                  >
                     Q total (gpm)
                   </th>
-                  <th scope="col" style={TH10}>
+                  <th
+                    scope="col"
+                    style={TH10}
+                    title="Presión con la que se equilibran los demás aportes (Q = K·√P)"
+                  >
                     P equilibrada (psi)
                   </th>
                   <th
@@ -133,7 +157,7 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
 export function PanelDetalleRci({ rd }: { rd: RedResult }) {
   const det = filasDetalleNudo(rd);
   return (
-    <SecRci id="detalle" titulo="Detalle nudo a nudo">
+    <SecRci id="detalle" titulo="Detalle nudo a nudo" icono="/iconos/detalle_nudo_a_nudo.webp">
       {!det.length ? (
         <div style={VACIO}>Sin ramales con flujo.</div>
       ) : (
@@ -163,37 +187,53 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
                   </caption>
                   <thead>
                     <tr>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Nudo de inicio del tramo (letras del plano)"
+                      >
                         Nudo ini
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Nudo de fin del tramo (letras del plano)">
                         Nudo fin
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Presión al inicio del tramo">
                         P ini (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Caudal del rociador en el nudo inicial (q = K·√P)"
+                      >
                         q rociador (gpm)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Caudal acumulado que transporta el tramo">
                         Q (gpm)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Longitud real del tramo">
                         L (m)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Longitud equivalente: L más los accesorios (tees, codos)"
+                      >
                         Leq (m)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Pérdida por fricción del tramo (Hazen-Williams)"
+                      >
                         Pf (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Pérdida por accesorios del tramo">
                         Pe (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Presión al final del tramo">
                         P fin (psi)
                       </th>
-                      <th scope="col" style={TH10}>
+                      <th scope="col" style={TH10} title="Velocidad del agua en el tramo">
                         V (m/s)
                       </th>
                     </tr>

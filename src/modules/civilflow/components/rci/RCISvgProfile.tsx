@@ -13,7 +13,7 @@
 import type { BombaResult, Edificio, PisoOut, Tips, Tipologia } from '../../lib/rci/types';
 import type { CSSProperties } from 'react';
 import { num } from '../../lib/rci/hydraulics';
-import { colorTip, fmtNum, niceStep, temaRci, type TemaRci } from './rciSvgEsquemas';
+import { colorTip, fmtNum, niceStep, temaRci, type TemaRci } from './RCISvgSchemas';
 
 /** Perfil de presiones: montante + curvas + estado por piso (ver cabecera del archivo).
  *  `bomba` aporta el arranque/parada del jockey (franja gris de reposo); `tips` los colores de

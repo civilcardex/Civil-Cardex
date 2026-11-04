@@ -20,11 +20,8 @@ import type {
 
 /* ============================ Utilidades (compartidas con rowsModelExtras) ============================ */
 
-/** Número con decimales es-CO; "—" si no es finito. Ej: fmt(37.704, 2) = "37,70". */
-export const fmt = (x: number | null | undefined, d = 2): string =>
-  typeof x === 'number' && isFinite(x)
-    ? x.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d })
-    : '—';
+import { fmtEs as fmt } from '../../lib/rci/fmtEs.ts';
+export { fmt };
 
 /** Texto de un campo opcional para el modelo ('' si no viene). */
 export const txt = (v: unknown): string => (v === null || v === undefined ? '' : String(v));

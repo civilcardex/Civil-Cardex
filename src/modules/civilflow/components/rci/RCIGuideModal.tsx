@@ -6,9 +6,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
-import { useNavRci, type RciCtx, type TabRci } from './uiRci.tsx';
-import { RUTA_DE } from '../../utils/rci/rowsModelExtras.ts';
-import { PasoGuia } from './RciGuiaPasos.tsx';
+import { useNavRci, type RciCtx, type TabRci } from './RCIUI.tsx';
+import { RUTA_DE } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { PasoGuia } from './RCIGuideSteps.tsx';
 
 /* ---------------- Datos del recorrido (los del GUIDE del HTML) ---------------- */
 

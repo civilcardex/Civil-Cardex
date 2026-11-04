@@ -38,8 +38,20 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     e.preventDefault();
     return;
   }
-  if (k === 's') {
-    engine.setTool('sel');
+  /* Tecla → herramienta directa (las que no necesitan condición): igual que TOOL_DOWN en
+   * planoToolDispatch. Las teclas con lógica de red (j/l/b/m) y de gesto (space/enter/…)
+   * quedan en la escalera de abajo. */
+  const KEY_TOOL: Record<string, Parameters<IPlanoEngineCore['setTool']>[0]> = {
+    s: 'sel',
+    d: 'dim',
+    u: 'guide',
+    a: 'area',
+    e: 'erase',
+    x: 'delm',
+    k: 'segdel',
+  };
+  if (KEY_TOOL[k]) {
+    engine.setTool(KEY_TOOL[k]);
     e.preventDefault();
   } else if (k === 'j') {
     // 'J' → Caja de recolección (CAN en san, CALL en ll); en rci (Red Contra Incendio) suelta
@@ -85,18 +97,6 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     if (['gas', 'ac', 'af', 'rci'].includes(engine.activeNet)) {
       engine.setTool('mon');
     }
-    e.preventDefault();
-  } else if (k === 'a') {
-    engine.setTool('area');
-    e.preventDefault();
-  } else if (k === 'e') {
-    engine.setTool('erase');
-    e.preventDefault();
-  } else if (k === 'x') {
-    engine.setTool('delm');
-    e.preventDefault();
-  } else if (k === 'k') {
-    engine.setTool('segdel');
     e.preventDefault();
   } else if (k === ' ') {
     engine.setTool(engine.tool === 'pan' ? 'sel' : 'pan');

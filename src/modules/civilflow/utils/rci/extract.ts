@@ -38,10 +38,10 @@ import type {
   TuberiaRow,
 } from '../../lib/rci/types.ts';
 import type { DrawingData } from '../drawingSyncTypes.ts';
-import { extraerRedDePiso, ALT_DERIV_DEF, MAT_DEF, TECHO_DEF } from './extractRed.ts';
-import type { AvisoRci } from './extractRed.ts';
+import { extraerRedDePiso, ALT_DERIV_DEF, MAT_DEF, TECHO_DEF } from './ExtractNetwork.ts';
+import type { AvisoRci } from './ExtractNetwork.ts';
 
-export type { AvisoRci } from './extractRed.ts';
+export type { AvisoRci } from './ExtractNetwork.ts';
 
 /** Versión del formato de extracción/mezcla: súbelo cuando cambie la forma del estado gris. */
 export const RCI_FORMAT_VERSION = 1;

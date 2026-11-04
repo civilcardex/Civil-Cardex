@@ -4,20 +4,20 @@
  *  con su panel lateral de diagnóstico) y "Presiones piso a piso" (la tabla con la acción
  *  sugerida en cada piso). Ej: en el ejemplo P3 gobierna la bomba y P1 pide válvulas por su
  *  estática de 170.62 psi cerca de los 175 psi de los componentes. */
-import { SecRci, SubTabsRci, type RciCtx, type SubItemRci, useNavRci } from './uiRci.tsx';
+import { SecRci, SubTabsRci, type RciCtx, type SubItemRci, useNavRci } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
-import { SUBS_POR_TAB } from '../../utils/rci/rowsModelExtras.ts';
+import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
 import {
   accionPerfil,
   filasPerfilPiso,
   fmt,
   txt,
   type ChipPerfil,
-} from '../../utils/rci/rowsModelRci2.ts';
-import { PERFIL_SIDE_INFO, PF_NOTAS, perfilSideFilas } from './rciSvgEdificio.tsx';
-import { PerfilSvg } from './rciSvgPerfil.tsx';
-import { colorTip } from './rciSvgEsquemas.tsx';
-import { ResumenRci, type MetricaRci } from './rciSummary.tsx';
+} from '../../utils/rci/RCIRowsModel2.ts';
+import { PERFIL_SIDE_INFO, PF_NOTAS, perfilSideFilas } from './RCISvgBuilding.tsx';
+import { PerfilSvg } from './RCISvgProfile.tsx';
+import { colorTip } from './RCISvgSchemas.tsx';
+import { ResumenRci, type MetricaRci } from './RCISummary.tsx';
 
 const TH10 = { ...TH, fontSize: 11 } as const;
 const TDC = { ...TD, fontSize: 13, padding: '2px 4px' } as const;
@@ -191,28 +191,56 @@ export default function RciPerfil({ ctx }: { ctx: RciCtx }) {
                 </caption>
                 <thead>
                   <tr>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Nombre del piso (del PLANO). Fondo verde: el piso que gobierna la bomba"
+                    >
                       Piso
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Nivel de Piso Terminado del piso (Tipologías)"
+                    >
                       NPT (m)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th scope="col" style={TH10} title="Tipología (red) que sirve este piso">
                       Tipología
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Cota de la derivación del montante en este piso"
+                    >
                       Cota deriv. (m)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Caudal total que exige el piso: su red de rociadores más mangueras"
+                    >
                       Q piso (gpm)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Presión que exige la red del piso en su derivación"
+                    >
                       P requerida deriv. (psi)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Presión que entrega la bomba en esa derivación (menos pérdidas del montante y del cuarto, y desnivel)"
+                    >
                       P disponible (psi)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Disponible − requerida. Verde: sobra presión; rojo: falta"
+                    >
                       Holgura (psi)
                     </th>
                     <th
@@ -222,16 +250,34 @@ export default function RciPerfil({ ctx }: { ctx: RciCtx }) {
                     >
                       Estática deriv. (psi)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Salida de manguera del montante en el piso (NFPA 14)"
+                    >
                       Salida
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Presión estática en la salida de manguera del piso (por desnivel)"
+                    >
                       Estática salida (psi)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title={
+                        'Presión residual en la salida de 1½": sobre 100 psi pide válvula reguladora'
+                      }
+                    >
                       Residual 1½" (psi)
                     </th>
-                    <th scope="col" style={TH10}>
+                    <th
+                      scope="col"
+                      style={TH10}
+                      title="Acción sugerida: OK, válvulas reguladoras/VRP, revisar o dividir en zonas"
+                    >
                       Acción
                     </th>
                   </tr>

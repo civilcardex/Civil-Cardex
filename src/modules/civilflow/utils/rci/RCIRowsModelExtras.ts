@@ -9,8 +9,8 @@
 
 import { PIPES } from '../../lib/rci/tables.ts';
 import { num } from '../../lib/rci/hydraulics.ts';
-import type { KvRci } from './rowsModel.ts';
-import { fmt, txt } from './rowsModelRci2.ts';
+import type { KvRci } from './RCIRowsModel.ts';
+import { fmt, txt } from './RCIRowsModel2.ts';
 import type {
   BombaResult,
   Criterios,

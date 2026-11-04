@@ -22,7 +22,7 @@ import {
   kvSiamesa,
   resumenTipologias,
   sembrarRci,
-} from '../rowsModel.ts';
+} from '../RCIRowsModel.ts';
 import {
   accionPerfil,
   filasDetalleNudo,
@@ -30,7 +30,7 @@ import {
   filasNudos,
   filasPerfilPiso,
   queHacerPerfil,
-} from '../rowsModelRci2.ts';
+} from '../RCIRowsModel2.ts';
 import {
   datosRectangulo,
   inchOf,
@@ -46,7 +46,7 @@ import {
   sismoConteo,
   stripDerivacion,
   SUBS_POR_TAB,
-} from '../rowsModelExtras.ts';
+} from '../RCIRowsModelExtras.ts';
 
 const st: RciState = ejemploVerificacion();
 const tips = clasificar(st);

@@ -5,6 +5,7 @@
  * corrección y el dato a donde ir ("go"). Ej: checks() del ejemplo devuelve 44 en "CUMPLE".
  */
 import { CDEF, PIPES } from './tables';
+import { fmtEs as f1 } from './fmtEs.ts';
 import { isSi, num } from './hydraulics';
 import { zonaSis } from './criteria';
 import type {
@@ -26,10 +27,7 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
     bo = R.bomba,
     c = st.clas,
     L: Verificacion[] = [];
-  const f1 = (x: unknown, d = 2): string =>
-    typeof x === 'number' && isFinite(x)
-      ? x.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d })
-      : '—';
+
   const add = (
     lab: string,
     st_: string,
