@@ -341,7 +341,7 @@ function PdfCanvas({
         <div style={{ flex: 1 }} />
         {tool === 'line' && (
           <span style={{ color: '#8AB4D6', fontSize: 12 }}>
-            Enter/Doble-clic:Guardar · Esc:Cancelar
+            Enter/clic derecho:Guardar · Esc:Cancelar
           </span>
         )}
         {tool === 'area' && (

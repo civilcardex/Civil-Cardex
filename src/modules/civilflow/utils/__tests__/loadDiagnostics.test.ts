@@ -8,7 +8,6 @@ import {
   esEscalaEstandar,
   leeReportes,
   registraCarga,
-  textoReporte,
 } from '../loadDiagnostics.ts';
 import { localGanaABdPorTs } from '../../services/storage/localStorage.ts';
 
@@ -181,7 +180,6 @@ describe('registro de carga (diagnóstico)', () => {
     expect(lista).toHaveLength(1);
     expect(lista[0].escalaDoc).toBe(0.5);
     expect(lista[0].accion).toBe('reparar-etiqueta');
-    expect(textoReporte(7)).toContain('[CF-CARGA] piso 7');
   });
 
   it('el motor completa el mismo registro cuando llega cerca en el tiempo', () => {

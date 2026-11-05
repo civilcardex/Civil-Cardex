@@ -2,10 +2,46 @@ import EditButton from '../shared/EditButton.tsx';
 import { SupplyConnection_S1 } from './styles.ts';
 import { useStickyThead2Offset } from '../shared/useStickyThead2Offset';
 import { fmt } from '../../utils/formatUtils.ts';
-import { LazyNumE } from './LazyNumE';
+import { LazyNum } from './LazyNum.tsx';
 import { SECTION_COL, SECTION_HDR, SECTION_H4, TH_CENTER } from './styles.ts';
 import type { AcometidaProps } from './types.ts';
 
+/** LazyNum con estilo por estado (ped. usuario): apagado = texto plano mono, encendido = input. */
+function LazyNumE({
+  edit,
+  value,
+  onChange,
+  ariaLabel,
+  style,
+  className,
+}: {
+  edit: boolean;
+  value: number;
+  onChange: (v: number) => void;
+  ariaLabel?: string;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
+  const estilo = edit
+    ? style
+    : {
+        ...style,
+        border: 'none',
+        background: 'transparent',
+        fontWeight: 600,
+        color: 'var(--txt)',
+      };
+  return (
+    <LazyNum
+      value={value}
+      onChange={onChange}
+      ariaLabel={ariaLabel}
+      style={estilo}
+      className={className}
+      disabled={!edit}
+    />
+  );
+}
 /** SeccionFlujoHidraulico: una sección de la tabla de acometida (props de la tabla). */
 export function SeccionFlujoHidraulico(props: AcometidaProps) {
   const tablaRef = useStickyThead2Offset();

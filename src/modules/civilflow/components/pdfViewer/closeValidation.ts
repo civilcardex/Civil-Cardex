@@ -111,6 +111,9 @@ export function validateBeforeClose(
     // Aguas lluvias (orig. usuario): SIN chequeo de UC/UD — sus tramos no llevan unidades de
     // descarga. En ll el cierre valida solo diámetros.
     if (r.net === 'll') return true;
+    // RCI (ped. usuario): igual que ll — sus tramos no llevan UC/UD; el cierre solo exige
+    // diámetro (el material lo siembra el diseñador rci, no se exige en el dibujo).
+    if (r.net === 'rci') return true;
     if (r.id.startsWith('LD_')) return true;
     if (r.accesorioFin === 'tapon' || r.accesorioInicio === 'tapon') return true;
     const tipo = r.tipo || 'ramal';

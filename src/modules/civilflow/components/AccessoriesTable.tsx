@@ -3,6 +3,7 @@
  *  Ej: RG1 con 3 codos 90° -> fila editable que suma a la ficha hidráulica del ramal. */
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO, pisoCorto } from '../constants';
+import { RCI_ACCESORIOS } from '../utils/accessoryOptions.ts';
 import EmptyRow from './shared/EmptyRow.tsx';
 import type { Tramo } from '../context/tramosReducer';
 const AccessoriesTable_S1: React.CSSProperties = {
@@ -29,9 +30,10 @@ const AccessoriesTable_S5: React.CSSProperties = {
   overflow: 'hidden',
 };
 
-// 'rociador' fuera: es accesorio EXCLUSIVO de rci (Red Contra Incendio) — esta tabla es de af/ac.
+// Rociadores + riostras sísmicas fuera: son accesorios EXCLUSIVOS de rci (Red Contra
+// Incendio) — esta tabla es de af/ac.
 const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter(
-  (a) => a.id !== 'llaveTerminal' && a.id !== 'rociador',
+  (a) => a.id !== 'llaveTerminal' && !RCI_ACCESORIOS.has(a.id),
 );
 
 // AF/AC sin sube/baja (orig. usuario, mismo criterio del panel/menú): esas columnas se ocultan

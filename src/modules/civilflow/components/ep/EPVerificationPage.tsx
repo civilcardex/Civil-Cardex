@@ -10,7 +10,7 @@ import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from './calcs.ts';
 import { entradaPor } from '../../utils/diamLookup';
 import { LazyInp, Param, type EPData } from './EPShared';
 import { calcularCisterna } from './epCalcs.ts';
-import { SI } from '../../styles/sharedTableStyles.ts';
+import { SI, TH_R, TD_R } from '../../styles/sharedTableStyles.ts';
 import { dec } from '../../utils/parseDecimal.ts';
 import { AGUA_DENSIDAD, GRAVEDAD } from '../../utils/calcSanitaryCore.ts';
 
@@ -61,8 +61,6 @@ const EPVerificationPage_selStyle: React.CSSProperties = {
 
 const TH_S = { fontSize: 10, padding: '2px 4px' };
 const TD_S = { fontSize: 10, padding: '2px 4px' };
-const TH_R = { fontSize: 11, padding: '2px 4px' };
-const TD_R = { fontSize: 11, padding: '3px 4px' };
 
 export default function EPVerificationPage({
   section = 'results',

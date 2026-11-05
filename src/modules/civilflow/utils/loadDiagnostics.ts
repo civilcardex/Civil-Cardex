@@ -197,28 +197,6 @@ export function leeReportes(planId: string | number): ReporteCargaPlano[] {
   return Array.isArray(lista) ? lista : [];
 }
 
-/** Último reporte de carga de un piso (null si nunca se cargó). */
-function ultimoReporte(planId: string | number): ReporteCargaPlano | null {
-  const lista = leeReportes(planId);
-  return lista.length ? lista[lista.length - 1] : null;
-}
-
-/** Texto plano del reporte (para el portapapeles): una línea por dato. */
-export function textoReporte(planId: string | number): string {
-  const r = ultimoReporte(planId);
-  if (!r) return `[CF-CARGA] sin registro para el piso ${planId}`;
-  const lineas = [
-    `[CF-CARGA] piso ${r.planId}`,
-    `escalaDoc=${r.escalaDoc} escalaPlano=${r.escalaPlano} escalaGlobal=${r.escalaGlobal}`,
-    `local escala=${r.escalaLocal} ts=${r.tsLocal} | bd escala=${r.escalaBd} ts=${r.tsBd}`,
-    `accion=${r.accion} factor=${r.factor}`,
-    `escalaRaster=${r.escalaRaster} lamina=${r.pageW}x${r.pageH}`,
-    `camara zoom=${r.zoom} off=${r.offX},${r.offY} elementos=${r.elementos}`,
-    `ts=${new Date(r.ts).toISOString()}`,
-  ];
-  return lineas.join('\n');
-}
-
 /**
  * Estampa el ts (milisegundos) en un doc antes de persistirlo. El arbitration local-vs-BD
  * gana el MAYOR ts y una copia sin ts cuenta 0 -> la BD manda y la corrección se deshace en la

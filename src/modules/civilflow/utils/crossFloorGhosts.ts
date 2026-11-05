@@ -1,4 +1,6 @@
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes.ts';
+import { loadFromStorage } from '../services/storageService.ts';
+import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 
 interface LocalGhostDrawingData {
   ts?: number;
@@ -12,14 +14,12 @@ export function enrichCrossFloorGhosts(ghosts: CrossFloorGhost[]): CrossFloorGho
   const cache: Record<string, LocalGhostDrawingData> = {};
   const loadPlan = (planId: string): LocalGhostDrawingData => {
     if (cache[planId]) return cache[planId];
-    try {
-      const raw = JSON.parse(localStorage.getItem('civilflow_' + 'trazos_' + planId) || '{}');
-      cache[planId] = raw;
-      return raw;
-    } catch {
-      cache[planId] = {};
-      return cache[planId];
-    }
+    const raw = loadFromStorage<LocalGhostDrawingData>(
+      TRAZOS_PREFIX + planId,
+      {} as LocalGhostDrawingData,
+    );
+    cache[planId] = raw;
+    return raw;
   };
   let changed = false;
   const out: CrossFloorGhost[] = [];

@@ -1,6 +1,24 @@
 import { ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from '../constants';
 
 /**
+ * Accesorios EXCLUSIVOS de rci (Red Contra Incendio): los 5 rociadores (colgante, montante,
+ * colgante seco, de pared, oculto, que fluye) y las 3 riostras sísmicas. En el resto de redes
+ * no significan nada y se ocultan de los selectores y de las tablas de af/ac.
+ * Ej: el panel de af no muestra "Riostra sísmica transversal".
+ */
+export const RCI_ACCESORIOS = new Set<string>([
+  'rociador',
+  'rociadorMontante',
+  'rociadorSeco',
+  'rociadorPared',
+  'rociadorOculto',
+  'rociadorArea',
+  'riostraLat',
+  'riostraLon',
+  'riostra4v',
+]);
+
+/**
  * Opciones del dropdown de accesorios según la red: cada red admite un subconjunto del catálogo
  * (san (Sanitaria) sin codos de ventilación; vent (Ventilacion) sin sifón; af/ac sin tees directas...).
  * @param netId código de red (af, ac, san, ll, gas, vent, rci...).
@@ -44,8 +62,10 @@ export function getAccessoryOptions(netId: string) {
     // cuerpo (la polaridad la resuelve el pase geométrico) — igual que teeSube/teeBaja.
     // teeDirecto excluida: la detecta el pase geométrico. teeTapon/teeReduccion/teeLado
     // excluidas de este dropdown.
-    // 'rociador' SOLO rci (Red Contra Incendio): es el terminal de descarga del ramal rci que
-    // la extracción de diseño cuenta — en af/ac/rec no significa nada y no se ofrece.
+    // 'rociador' + riostras sísmicas SOLO rci (Red Contra Incendio): los rociadores son el
+    // terminal de descarga que la extracción de diseño cuenta — en af/ac/rec no significan nada
+    // y no se ofrecen. En rci se siguen viendo además las válvulas de agua (comportamiento
+    // actual intacto).
     return ACCESORIOS_HIDRO.filter(
       (a) =>
         (a.cat !== 'Otros' && a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||
@@ -57,7 +77,7 @@ export function getAccessoryOptions(netId: string) {
         a.id === 'teeLlaveTerminal',
     )
       .filter((a) => a.id !== 'llaveTerminal')
-      .filter((a) => netId === 'rci' || a.id !== 'rociador')
+      .filter((a) => netId === 'rci' || !RCI_ACCESORIOS.has(a.id))
       .map((a) =>
         a.id === 'codo90rm'
           ? { value: a.id, label: 'Codo medio 90°' }

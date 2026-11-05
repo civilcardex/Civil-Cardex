@@ -11,7 +11,7 @@
  * Usa el MISMO detector que el guard (src/architecture/complexity.ts), importado directo:
  * node 22 lo ejecuta con --experimental-strip-types (sin dependencias nuevas).
  */
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -42,8 +42,7 @@ const entradas = Object.entries(conteo)
   .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
 const bloque = entradas.map(([f, n]) => `  '${f}': ${n},`).join('\n');
-const texto = `const TOTAL_FOCOS_BASE = ${totalFocos(conteo)};\n\nconst FOCOS_CONOCIDOS: Record<string, number> = {\n${bloque}\n};`;
-const destino = join(process.cwd(), 'scripts', 'baselineComplexity.txt');
-writeFileSync(destino, texto + '\n', 'utf8');
-console.log(`TOTAL ${totalFocos(conteo)} | archivos con >=5: ${entradas.length}`);
-console.log(`escrito en scripts/baselineComplexity.txt`);
+// Solo stdout: el resultado se pega a mano en architecture.test.ts (FOCOS_CONOCIDOS /
+// TOTAL_FOCOS_BASE). Sin archivo intermedio que se quede rancio.
+console.log(`const TOTAL_FOCOS_BASE = ${totalFocos(conteo)};\n\nconst FOCOS_CONOCIDOS: Record<string, number> = {\n${bloque}\n};`);
+console.log(`// TOTAL ${totalFocos(conteo)} | archivos con >=5: ${entradas.length}`);

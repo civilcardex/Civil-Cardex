@@ -1,4 +1,10 @@
-import { TH_C } from './downpipesHeaderStyles';
+import type { CSSProperties } from 'react';
+
+const TH_C: CSSProperties = {
+  textAlign: 'center',
+  padding: '1px 1px',
+  fontSize: 11,
+};
 /** Cabecera de 3 filas de la tabla de bajantes (23 columnas agrupadas en
  *  INFORMACIÓN COMÚN / BAJANTES AGUAS NEGRAS / TUBERÍA DE VENTILACIÓN). Markup puro. */
 export function DownpipesHeader() {

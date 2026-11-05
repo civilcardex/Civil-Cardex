@@ -7,6 +7,7 @@
  */
 import { ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../../constants';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { RCI_ACCESORIOS } from '../../utils/accessoryOptions.ts';
 import { leerHeredadosPresion, leerFoldTribPresion } from '../../utils/propagation';
 import { loadFromStorage } from '../../services/storageService.ts';
 import type { DrawingData } from '../../utils/drawingSync.ts';
@@ -207,8 +208,9 @@ export function itemsAccAfAc(): typeof ACCESORIOS_HIDRO {
         'llaveTerminal',
       ].includes(a.id) &&
       a.id !== 'codo90rmSube' &&
-      // 'rociador' es exclusivo de rci (Red Contra Incendio) — este panel es de af/ac.
-      a.id !== 'rociador' &&
+      // Rociadores + riostras sísmicas son exclusivos de rci (Red Contra Incendio) — este panel
+      // es de af/ac.
+      !RCI_ACCESORIOS.has(a.id) &&
       a.id !== 'codo90rmBaja',
   ).map((a) => (a.id === 'codo90rm' ? { ...a, nombre: 'Codo medio 90°' } : a));
 }

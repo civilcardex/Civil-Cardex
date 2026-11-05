@@ -3,6 +3,7 @@
 import type { MemoriaTable } from './exportReportFinal.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 import { dec } from './parseDecimal.ts';
+import { fmt as f2 } from './formatUtils.ts';
 
 // Espeja el objeto que PumpARDesign.tsx persiste vía saveToStorage('civilflow_memoria_bomba_data').
 interface BombaMemoriaData {
@@ -48,7 +49,6 @@ interface BombaMemoriaData {
 
 const or = (v: string | number | undefined | null): string =>
   v === '' || v == null ? '—' : String(v);
-const f2 = (n: number): string => (Number.isFinite(n) ? n.toFixed(2) : '—');
 
 /** Tablas de memoria Bomba AR (réplica 1:1 de las 4 páginas para la exportación). */
 export function computeBombaTables(): MemoriaTable[] {

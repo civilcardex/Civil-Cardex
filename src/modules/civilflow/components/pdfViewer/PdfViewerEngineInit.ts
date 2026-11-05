@@ -10,7 +10,6 @@ import { useReRasterEscala } from './useReRasterScale.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { devError } from '../../../../utils/devError.ts';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-import { cargarMallas } from '../../lib/PlanoEngine/nodos';
 import {
   escalaDeDoc,
   filaRender,
@@ -483,7 +482,6 @@ export function usePdfViewerEngine({
     }
     const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
-    eng.mallasDeclaradas = cargarMallas(eng._loadedPlanId);
     eng.onSelect((el) => callbacksRef.current.onSelect(el));
     eng.onStatus((msg) => callbacksRef.current.onStatus(msg));
     eng.onDelete((ids) => callbacksRef.current.onDelete(ids));

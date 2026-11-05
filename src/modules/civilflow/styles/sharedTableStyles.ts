@@ -47,3 +47,8 @@ export const TD: React.CSSProperties = {
   textAlign: 'center',
   verticalAlign: 'middle',
 };
+
+/** Cabecera compacta de las tablas EP (Cisterna/Verificación): 11 px, sin fondo propio. */
+export const TH_R: React.CSSProperties = { fontSize: 11, padding: '2px 4px' };
+/** Celda compacta de las tablas EP. */
+export const TD_R: React.CSSProperties = { fontSize: 11, padding: '3px 4px' };

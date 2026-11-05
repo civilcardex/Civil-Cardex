@@ -3,6 +3,7 @@
 import type { MemoriaTable } from './exportReportFinal.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 import { dec } from './parseDecimal.ts';
+import { fmt as f2 } from './formatUtils.ts';
 import type { EPData } from '../components/ep/EPShared';
 import { PVC_SCH40, NEMA_HP, selectDN } from '../components/ep/calcs.ts';
 import { AGUA_DENSIDAD, GRAVEDAD } from './calcSanitaryCore.ts';
@@ -13,7 +14,6 @@ export { computeBombaTables, bombaAlertas } from './pumpReport.ts';
 
 const or = (v: string | number | undefined | null): string =>
   v === '' || v == null ? '—' : String(v);
-const f2 = (n: number): string => (Number.isFinite(n) ? n.toFixed(2) : '—');
 
 // Equipo de presión (PressureEquipmentDesign.tsx → EPInputPage.tsx + EPVerificationPage.tsx, 3
 // páginas de pantalla) — misma idea que Bomba AR arriba: cada card/tabla de cada página,

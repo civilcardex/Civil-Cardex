@@ -30,6 +30,8 @@ export function isToolDisabledForNet(
   if (toolId === 'canal') return net !== 'll' || !recolectoraActive;
   // Cajas de recolección: CAN solo con sanitaria activa, CALL solo con lluvias activa.
   if (toolId === 'caja') return !['san', 'll'].includes(net);
+  // Gabinete GABn: solo rci (guard del motor: handleGabineteDown).
+  if (toolId === 'gab') return net !== 'rci';
   return false;
 }
 
@@ -225,6 +227,16 @@ function PdfViewerToolbar_({
     label: activeNet === 'll' ? 'Caja ALL' : 'Caja AN',
     ico: '⧉',
     icoCol: '#10B981',
+    shortcut: 'J',
+  });
+  // Gabinete GABn (SOLO rci): el motor ya trae la herramienta completa ('gab' en ToolType,
+  // handleGabineteDown, atajo 'J' — la misma tecla que Caja, redes mutuamente excluyentes);
+  // aquí solo se expone el botón (ped. usuario).
+  netTools.splice(7, 0, {
+    id: 'gab',
+    label: 'Gabinete',
+    ico: '▦',
+    icoCol: '#d29922',
     shortcut: 'J',
   });
 

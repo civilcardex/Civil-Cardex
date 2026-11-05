@@ -5,12 +5,6 @@
  * estructurales): testeable en node y sin ciclos de import.
  */
 
-/** Bajante mínimo que necesita el resolvedor (el motor tiene más campos). */
-export interface BajanteIdentificable {
-  id: string;
-  pisoBase?: string;
-}
-
 /**
  * Primer bajante del PISO ABIERTO que cumple un filtro (fallback: el primero que lo cumpla).
  * @param eng motor del plano (con `nivelActual.label` y `bajantes`).

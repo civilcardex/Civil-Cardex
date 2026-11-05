@@ -12,7 +12,6 @@ interface CardProps {
   style?: React.CSSProperties;
   headerStyle?: React.CSSProperties;
   bodyStyle?: React.CSSProperties;
-  bodyClassName?: string;
   children: React.ReactNode;
   headerRight?: React.ReactNode;
 }
@@ -27,7 +26,6 @@ const Card = React.memo(function Card({
   style,
   headerStyle,
   bodyStyle,
-  bodyClassName = 'card-b',
   headerRight,
   children,
 }: CardProps) {
@@ -65,7 +63,7 @@ const Card = React.memo(function Card({
           {subtitle && <span className="card-s">{subtitle}</span>}
         </div>
       )}
-      <div className={bodyClassName} style={{ padding: 1, ...bodyStyle }}>
+      <div className="card-b" style={{ padding: 1, ...bodyStyle }}>
         {children}
       </div>
     </div>

@@ -144,13 +144,80 @@ export const ACCESORIOS_HIDRO = [
     cat: 'Válvulas',
   },
   {
-    // Rociador rci (Red Contra Incendio): terminal de descarga del ramal, glifo círculo con
-    // cruz (+) dibujado en accValves.ts. SOLO se ofrece en rci (accesoryOptions.ts lo filtra
-    // para af/ac/rec) — la extracción de diseño rci cuenta los rociadores por ramal leyendo
-    // los accMed/accesorio extremos con este id.
+    // Rociador rci (Red Contra Incendio): terminal de descarga del ramal, glifo círculo con X
+    // dibujado en accValves.ts. SOLO se ofrece en rci (accessoryOptions.ts lo filtra para
+    // af/ac/rec) — la extracción de diseño rci cuenta los rociadores por ramal leyendo los
+    // accMed/accesorio extremos con este id. El id NO se toca: RE_ROCIADOR de ExtractNetwork
+    // (/rociador/i) cuenta también los 7 rociadores de abajo.
     id: 'rociador',
     emoji: '🚿',
-    nombre: 'Rociador',
+    nombre: 'Rociador colgante',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Rociador montante: boquilla hacia arriba (upright). Mismo id-familia 'rociador*' a
+    // propósito — la extracción de diseño rci los cuenta como rociadores.
+    id: 'rociadorMontante',
+    emoji: '🚿',
+    nombre: 'Rociador montante',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Rociador colgante seco: tubería seca (doble anillo + X en el glifo).
+    id: 'rociadorSeco',
+    emoji: '🚿',
+    nombre: 'Rociador colgante seco',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Rociador de pared: deflector contra el muro (base + domo + X en el glifo).
+    id: 'rociadorPared',
+    emoji: '🚿',
+    nombre: 'Rociador de pared',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Rociador oculto: bajo el cielorraso (anillo discontinuo + X en el glifo).
+    id: 'rociadorOculto',
+    emoji: '🚿',
+    nombre: 'Rociador oculto',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Rociador que fluye: área de diseño del cálculo hidráulico (anillo + X + circulito).
+    id: 'rociadorArea',
+    emoji: '🚿',
+    nombre: 'Rociador de área',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Riostra sísmica transversal: línea perpendicular al ramal con ganchos en los extremos.
+    // Las riostras NO matchean RE_ROCIADOR: no son equipos de flujo y no entran al conteo.
+    id: 'riostraLat',
+    emoji: '🔗',
+    nombre: 'Riostra sísmica transversal',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Riostra sísmica longitudinal: dos rayas diagonales flanqueando el nudo.
+    id: 'riostraLon',
+    emoji: '🔗',
+    nombre: 'Riostra sísmica longitudinal',
+    icono: '/iconos_civilflow/accesorios/otros.webp',
+    cat: 'Válvulas',
+  },
+  {
+    // Riostra sísmica de cuatro vías: molino de 4 brazos con gancho en L.
+    id: 'riostra4v',
+    emoji: '🔗',
+    nombre: 'Riostra sísmica de cuatro vías',
     icono: '/iconos_civilflow/accesorios/otros.webp',
     cat: 'Válvulas',
   },

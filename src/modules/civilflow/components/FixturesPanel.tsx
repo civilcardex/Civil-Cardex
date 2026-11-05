@@ -426,7 +426,9 @@ const AparatosPanel = memo(function AparatosPanel_({
     );
   }
   if (!visible) {
-    return <PanelNoCuantifica />;
+    // RCI (ped. usuario): SIN sección de cuantificación — la red no lleva aparatos y el
+    // bloque "Esta red no cuantifica…" no aporta nada. vent/otras conservan el aviso.
+    return netId === 'rci' ? null : <PanelNoCuantifica />;
   }
 
   const netObj = NETS.find((n) => n.id === netId);

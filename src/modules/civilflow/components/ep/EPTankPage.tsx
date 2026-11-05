@@ -7,6 +7,7 @@ import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
 import { LazyInp, Param, type EPData } from './EPShared';
 import { calcularCisterna } from './epCalcs.ts';
+import { TH_R, TD_R } from '../../styles/sharedTableStyles.ts';
 
 interface EPCisternaPageProps {
   ep: EPData;
@@ -17,8 +18,6 @@ const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as
 const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;
 const OK = { fontFamily: 'var(--mono)', fontWeight: 700, color: '#22c55e' };
 const ERR = { fontFamily: 'var(--mono)', fontWeight: 700, color: '#ef5350' };
-const TH_R = { fontSize: 11, padding: '2px 4px' };
-const TD_R = { fontSize: 11, padding: '3px 4px' };
 const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
 
 /** Página Cisterna (Excel hoja CISTERNA): datos de succión + verificación NPSH.

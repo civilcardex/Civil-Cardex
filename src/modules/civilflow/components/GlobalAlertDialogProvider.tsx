@@ -54,7 +54,7 @@ interface AlertState {
 const CLOSED: AlertState = { isOpen: false, title: '', message: '' };
 
 /** Monta un único AlertDialog en la raíz de la app y muestra las alertas que llegan por eventos de ventana (por ejemplo, validaciones disparadas desde otras rutas). */
-export function GlobalAlertDialogProvider({ children }: { children: React.ReactNode }) {
+export function GlobalAlertDialog() {
   const [state, setState] = useState<AlertState>(CLOSED);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -96,7 +96,6 @@ export function GlobalAlertDialogProvider({ children }: { children: React.ReactN
 
   return (
     <>
-      {children}
       {state.isOpen && (
         <dialog
           ref={dialogRef}

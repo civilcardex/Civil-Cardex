@@ -126,8 +126,11 @@ export function useEngineBridge(args: {
     // las redes de un solo material, NO debe pre-rellenar un default silenciosamente; el usuario
     // tiene que elegir uno activamente, igual que haría cualquier otra red multimaterial si
     // tuviera más de una opción canónica.
+    // rci (Red Contra Incendio) igual: nace con material VACÍO (ped. usuario) — el diseñador
+    // rci siembra el suyo ('Acero SCH 40', que sí es clave de PIPES) y los nombres del catálogo
+    // del dibujo ('A.C. SCH 40') no existen en el motor de cálculo.
     const matName =
-      activeNet === 'gas'
+      activeNet === 'gas' || activeNet === 'rci'
         ? gasMatSel[activeNet] || ''
         : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
     // Fix issue #3: tributario no hereda diámetro 4" por defecto — solo inodoro lo requiere
