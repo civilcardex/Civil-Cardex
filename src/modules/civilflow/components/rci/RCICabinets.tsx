@@ -13,8 +13,8 @@ import { filasGabinete, fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import { ResumenRci, type MetricaRci } from './RCISummary.tsx';
 import { num } from '../../lib/rci/hydraulics.ts';
 
-const TH10 = { ...TH, fontSize: 11 } as const;
-const TDC = { ...TD, fontSize: 13, padding: '2px 4px' } as const;
+const TH10 = { ...TH, fontSize: 12 } as const;
+const TDC = { ...TD, fontSize: 14, padding: '2px 4px' } as const;
 
 const BTN: CSSProperties = {
   border: '1px solid var(--line)',
@@ -57,6 +57,34 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
   const { irA } = navGab;
   const activa = navGab.sub ?? 'ruta';
   const spOn = estado.local.exigeSP === 'Sí';
+
+  /* Sin gabinetes dibujados (ped. usuario: la ruta nace del plano) — aviso en vez de filas
+     fabricadas. La siamesa sigue visible (es del diseñador). */
+  if (spOn && !(estado.gabinetes || []).length) {
+    return (
+      <section className="card">
+        <div
+          style={{
+            padding: '10px 12px',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            fontSize: 12,
+            color: 'var(--txt2)',
+          }}
+        >
+          <span>
+            Sin gabinetes dibujados: la ruta de montantes y gabinetes nace del plano. Use la
+            herramienta Gabinete (tecla J) en la red RCI y confirme el dibujo.
+          </span>
+          <button type="button" onClick={() => irA('hidraulica', 'ramales')} style={BTN}>
+            Ir a Hidráulica
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   if (!spOn) {
     return (
@@ -137,7 +165,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
               <div style={{ overflowX: 'auto' }}>
                 <table
                   className="tbl"
-                  style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 980 }}
+                  style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 980 }}
                 >
                   <caption
                     style={{
@@ -329,7 +357,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                 <div style={{ overflowX: 'auto' }}>
                   <table
                     className="tbl"
-                    style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 560 }}
+                    style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 560 }}
                   >
                     <caption
                       style={{

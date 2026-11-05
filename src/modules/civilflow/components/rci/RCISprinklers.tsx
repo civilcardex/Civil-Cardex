@@ -194,13 +194,14 @@ function CriteriosDiseno({
     </section>
   );
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)',
+          gridTemplateColumns: 'repeat(2, max-content)',
           gap: 10,
           alignItems: 'start',
+          justifyContent: 'center',
         }}
       >
         {tarjeta('Rociador y área de diseño', kvRociadorDiseno(ro, qrTxt, sistemaTxt), true)}
@@ -333,7 +334,12 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
 
   return (
     <SubTabsRci subs={subs} sub={activa} setSub={(id) => irA('rociadores', id)}>
-      {activa === 'datos' ? <DatosRociador ctx={ctx} ro={ro} /> : null}
+      {activa === 'datos' ? (
+        /* Centrada en la sección (ped. usuario). */
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <DatosRociador ctx={ctx} ro={ro} />
+        </div>
+      ) : null}
       {activa === 'criterios' ? (
         <CardLectura titulo="Criterios de diseño" icono="/iconos/criterios_diseno.webp">
           <CriteriosDiseno

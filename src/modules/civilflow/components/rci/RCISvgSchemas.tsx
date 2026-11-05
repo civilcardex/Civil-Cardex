@@ -50,7 +50,7 @@ export interface TemaRci {
 }
 
 /** Paleta FIJA del HTML (memoria impresa / rep=true / canvas): hex directos, sin variables. */
-export const COL_RCI: TemaRci = {
+const COL_RCI: TemaRci = {
   fire: '#B3131B',
   fireS: '#F8E3E4',
   steel: '#2F5D7C',
@@ -121,7 +121,7 @@ export function temaResuelto(): TemaRci {
 /* ---------------- Colores de tipología (TCOL del HTML: sin rojos) ---------------- */
 
 /** Colores por tipología del HTML (T1..Tn): sin rojos, que quedan para montante y gabinetes. */
-export const TCOL = [
+const TCOL = [
   '#2F5D7C',
   '#1E7A4C',
   '#B07A12',

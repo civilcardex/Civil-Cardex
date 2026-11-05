@@ -33,6 +33,7 @@ import type {
   MontCfg,
   MontanteCfg,
   PisoRow,
+  RciGabinete,
   RciState,
   Red,
   TuberiaRow,
@@ -79,6 +80,9 @@ export interface GrisRci {
   estado: RciState;
   /** Datos del montante leídos del dibujo (lo ausente queda null y sobrevive lo digitado). */
   montDibujo: MontDibujo;
+  /** Gabinetes GABn leídos del dibujo, por planId de piso. La salida de cada piso y la ruta
+   *  de montantes/gabinetes nacen de aquí (gris). */
+  gabinetes: RciGabinete[];
   /** Avisos para la UI (piso sin montante conectado, tronco ramificado, ramal flotante…). */
   avisos: AvisoRci[];
 }
@@ -111,7 +115,8 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
   const techo = opciones?.techo ?? TECHO_DEF;
   const avisos: AvisoRci[] = [];
 
-  /* Pisos: uno por plano, ordenados por NPT (el motor los agrupa y calcula en ese orden). */
+  /* Pisos: uno por plano, ordenados por NPT (el motor los agrupa y calcula en ese orden).
+     La SALIDA es GRIS: 'Sí' si el piso tiene gabinete GAB dibujado, 'Ninguna' si no. */
   const filasPiso: (PisoRow & { planId: string })[] = pisos
     .map((p) => ({
       nombre: p.label,
@@ -140,6 +145,8 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
      El montante activo (Fase 1) = el del primer piso con red extraída. */
   const redes: Record<string, Red> = {};
   const montantes: MontanteCfg[] = [];
+  const gabinetes: RciGabinete[] = [];
+  const planesConGab = new Set<string>();
   let mont: MontCfg = {
     mat: MAT_DEF,
     dn: 'auto',
@@ -152,6 +159,10 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
   let montDibujo: MontDibujo = { mat: null, dn: null, altDeriv: null };
   for (const piso of pisos) {
     const rdp = extraerRedDePiso(piso, techo, avisos);
+    for (const gab of rdp.gabinetes) {
+      gabinetes.push({ ...gab, planId: piso.planId });
+      planesConGab.add(piso.planId);
+    }
     if (!rdp.red) continue;
     redes[piso.planId] = rdp.red;
     const idx = idxPorPlanId.get(piso.planId);
@@ -173,8 +184,15 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
       montDibujo = { mat: rdp.matMont || null, dn: rdp.dnMont || null, altDeriv: rdp.altDeriv };
     }
   }
+  /* Salida GRIS por piso: con GAB dibujado = 'Sí'. */
+  for (const f of filasPiso) if (planesConGab.has(f.planId)) f.salida = 'Sí';
 
-  return { estado: estadoVacio(filasPiso, redes, montantes, mont), montDibujo, avisos };
+  return {
+    estado: estadoVacio(filasPiso, redes, montantes, mont, gabinetes),
+    montDibujo,
+    gabinetes,
+    avisos,
+  };
 }
 
 /** Estado completo con lo gris lleno y lo amarillo en vacíos (lo rellena el diseñador o el merge). */
@@ -183,6 +201,7 @@ function estadoVacio(
   redes: Record<string, Red>,
   montantes: MontanteCfg[],
   mont: MontCfg,
+  gabinetes: RciGabinete[],
 ): RciState {
   return {
     meta: { proyecto: '', pais: '', ciudad: '', disenador: '', revision: '' },
@@ -262,6 +281,7 @@ function estadoVacio(
     montantes,
     redes,
     mont,
+    gabinetes,
     esp: ESP_DEF(),
     pisos: {
       zBomba: 0,
@@ -329,6 +349,7 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
     montantes: g.montantes,
     redes: {},
     mont: g.mont,
+    gabinetes: g.gabinetes,
     pisos: { ...g.pisos, rows: [] },
   };
 
@@ -358,7 +379,9 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
       K: p?.K ?? '',
       S: p?.S ?? '',
       L: p?.L ?? '',
-      salida: p?.salida ?? 'Ninguna',
+      /* Salida GRIS-manda (ped. usuario): nace del dibujo (GAB sí/no) — el amarillo viejo no
+       * sobrevive. */
+      salida: f.salida,
       tip: p?.tip ?? 'auto',
       vreg: p?.vreg,
       vrp: p?.vrp,
@@ -416,8 +439,29 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
   }
 
   /* Montante: material/diámetro/altDeriv del dibujo si lo trae; lo demás digitado sobrevive
-     (hS, zBase, holgura y el cuarto de bombas son del diseñador). */
+     (hS, zBase, holgura y el cuarto de bombas son del diseñador). PURGA del fixture antiguo:
+     si el cuarto persistido es EXACTAMENTE la fila Base→CB que sembraba el "Nuevo proyecto"
+     (sembrarRci ya no la fabrica), se limpia (ped. usuario: nada hardcodeado). */
   const prevMont = prev?.mont;
+  /* La fila del fixture COMPLETA (sembrarRci viejo): { ni:'Base', nf:'CB', mat:'Acero SCH 10',
+     dn:'auto', L:5, tee:1, comp:1, ret:1, esp:'', zi:0, zf:0 }. Comparar TODOS los campos:
+     una fila real del diseñador que empiece Base→CB con L=5 no se purga. */
+  const cero = (v: unknown): boolean => v === 0 || v === '0' || v === '';
+  const esCuartoFixture = (cuarto: MontCfg['cuarto']): boolean =>
+    cuarto.length === 1 &&
+    cuarto[0].ni === 'Base' &&
+    cuarto[0].nf === 'CB' &&
+    cuarto[0].mat === 'Acero SCH 10' &&
+    (cuarto[0].dn === 'auto' || cuarto[0].dn === '') &&
+    (cuarto[0].L === 5 || cuarto[0].L === '5') &&
+    cuarto[0].tee === 1 &&
+    cuarto[0].comp === 1 &&
+    cuarto[0].ret === 1 &&
+    cero(cuarto[0].zi) &&
+    cero(cuarto[0].zf) &&
+    !cuarto[0].esp &&
+    !cuarto[0].leqOtros;
+  const cuartoPrev = prevMont?.cuarto;
   est.mont = {
     mat: gris.montDibujo.mat ?? siPrev(prevMont?.mat, g.mont.mat),
     dn: gris.montDibujo.dn ?? siPrev(prevMont?.dn, g.mont.dn),
@@ -425,7 +469,7 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
     hD: gris.montDibujo.altDeriv ?? siPrev(prevMont?.hD, g.mont.hD),
     zBase: prevMont?.zBase ?? g.mont.zBase,
     holgura: prevMont?.holgura ?? g.mont.holgura,
-    cuarto: prevMont?.cuarto ?? g.mont.cuarto,
+    cuarto: cuartoPrev && !esCuartoFixture(cuartoPrev) ? cuartoPrev : g.mont.cuarto,
   };
 
   return { estado: est, huerfanos, formatVersion: RCI_FORMAT_VERSION };

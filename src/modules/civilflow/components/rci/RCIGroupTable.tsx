@@ -110,8 +110,8 @@ export interface DefCampo {
 }
 
 /* ---------------- Estilos locales ---------------- */
-const TH10: CSSProperties = { ...TH, fontSize: 10 };
-const TDC: CSSProperties = { ...TD, fontSize: 10.5, padding: '1px 4px' };
+const TH10: CSSProperties = { ...TH, fontSize: 11 };
+const TDC: CSSProperties = { ...TD, fontSize: 12, padding: '1px 4px' };
 
 type EditarRci = RciCtx['editar'];
 
@@ -135,7 +135,7 @@ const UNI_TD: CSSProperties = {
  *  común» sin pasar el mouse. */
 const OBS_TD: CSSProperties = {
   ...TD,
-  fontSize: 12,
+  fontSize: 13,
   color: 'var(--txt2)',
   textAlign: 'left',
   whiteSpace: 'normal',
@@ -147,20 +147,45 @@ const BTN_OBS: CSSProperties = {
   color: 'var(--txt2)',
   borderRadius: 4,
   padding: '1px 6px',
-  fontSize: 11,
+  fontSize: 12,
   cursor: 'pointer',
   marginLeft: 6,
   whiteSpace: 'nowrap',
   verticalAlign: 'middle',
 };
-/** Control de valor activo: caja tipo sanitario (IN_CELDA) con el tamaño de esta tabla (13);
+/** Control de valor activo: caja tipo sanitario (IN_CELDA) con el tamaño de esta tabla (14);
  *  el width va por fila con anchoValor (el del valor) para que activar EDITAR no ensanche la columna. */
 const CTRL: CSSProperties = {
   ...IN_CELDA,
-  fontSize: 13,
+  fontSize: 14,
   boxSizing: 'border-box',
   textAlign: 'center',
 };
+/** Icono ⓘ de dependencia junto al título: tabla con filas que se habilitan con una
+ *  condición Sí/No de otra tabla (title = la explicación, depNota). SVG propio (el glifo de
+ *  texto ⓘ se ve borroso a 13 px en Windows): círculo + i con extremos redondeados. */
+function IconoDep() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 20 20"
+      role="img"
+      aria-hidden="true"
+      style={{ display: 'block', flexShrink: 0 }}
+    >
+      <circle cx="10" cy="10" r="8.3" fill="none" stroke="var(--txt3)" strokeWidth="1.9" />
+      <circle cx="10" cy="5.9" r="1.45" fill="var(--txt3)" />
+      <path
+        d="M10 8.9 V 14.4"
+        stroke="var(--txt3)"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
 
 /** Props de GrupoTabla: lo que la tarjeta necesita para pintarse y editarse. nota queda
  *  aceptada por compatibilidad con los llamadores, pero el header muestra SOLO el título. */
@@ -175,6 +200,12 @@ interface PropsGrupo {
   editar: EditarRci;
   /** Ancho mínimo de la tabla (px): estira las columnas para tablas aireadas. */
   minAncho?: number;
+  /** Texto del icono ⓘ junto al título: qué condición Sí/No habilita las filas bloqueadas
+   *  de esta tabla. Ausente = la tabla no tiene filas dependientes. */
+  depNota?: string;
+  /** Modo compacto (sub Tubería y mangueras: caben 3 tablas sin scroll vertical): fuentes
+   *  un paso menores en título, celdas y controles. */
+  compacta?: boolean;
   /** Abre el modal pedido por un campo con `abreModal` (la clave llega como parámetro).
    *  Ej: (clave) => clave === 'clases' && setModalClases(true). */
   onAbrirModal?: (clave: string) => void;
@@ -198,6 +229,8 @@ export function GrupoTabla({
   editar,
   onAbrirModal,
   minAncho,
+  depNota,
+  compacta,
 }: PropsGrupo) {
   const [edit, toggleEdit] = useEditarTabla();
   /** Lee un path 'seccion.hoja' del estado (ej: 'local.exigeSP'). */
@@ -215,17 +248,20 @@ export function GrupoTabla({
       return { ...e, [sec]: { ...grp, [hoja]: v } };
     });
   };
-  const thS: CSSProperties = { ...TH10, fontSize: 11 };
-  const lblS: CSSProperties = { ...LBL_TD, fontSize: 13 };
-  const uniS: CSSProperties = { ...UNI_TD, fontSize: 12 };
-  const ctrlS: CSSProperties = { ...CTRL, fontSize: 13 };
+  /* Tamaños según modo: estándar (14/13/12) vs compacta (12/11/11) para subs con varias tablas. */
+  const thS: CSSProperties = { ...TH10, fontSize: compacta ? 10.5 : 12 };
+  const lblS: CSSProperties = { ...LBL_TD, fontSize: compacta ? 12 : 14 };
+  const uniS: CSSProperties = { ...UNI_TD, fontSize: compacta ? 11 : 13 };
+  const ctrlS: CSSProperties = { ...CTRL, fontSize: compacta ? 12 : 14 };
+  const tdS: CSSProperties = compacta ? { ...TDC, fontSize: 11 } : TDC;
+  const obsS: CSSProperties = compacta ? { ...OBS_TD, fontSize: 11.5 } : OBS_TD;
   return (
     <section className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
-      <div className="card-h" style={{ padding: '6px 12px' }}>
+      <div className="card-h" style={{ padding: compacta ? '4px 10px' : '6px 12px' }}>
         <h3
           className="card-t"
           style={{
-            fontSize: 15,
+            fontSize: compacta ? 15 : 16,
             color: 'var(--txt2)',
             display: 'flex',
             alignItems: 'center',
@@ -236,6 +272,11 @@ export function GrupoTabla({
             <img src={icono} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
           ) : null}
           {titulo}
+          {depNota ? (
+            <span title={depNota} aria-label="Dependencia de esta tabla" style={{ cursor: 'help' }}>
+              <IconoDep />
+            </span>
+          ) : null}
         </h3>
         <div style={{ marginLeft: 'auto' }}>
           <EditTablaBtn on={edit} onToggle={toggleEdit} />
@@ -246,7 +287,7 @@ export function GrupoTabla({
           <table
             className="tbl"
             style={{
-              fontSize: 11,
+              fontSize: compacta ? 11 : 12,
               borderCollapse: 'collapse',
               width: 'auto',
               minWidth: minAncho,
@@ -296,7 +337,7 @@ export function GrupoTabla({
                     <td style={lblS} title={ayu}>
                       {d.lbl}
                     </td>
-                    <td style={TDC}>
+                    <td style={tdS}>
                       {celdaEditable(
                         edit && !off,
                         d.opts || d.optsPar ? (
@@ -327,10 +368,10 @@ export function GrupoTabla({
                       )}
                     </td>
                     <td style={uniS}>{d.uni || ''}</td>
-                    <td style={TDC}>
+                    <td style={tdS}>
                       <TagRci tag={TAGS_RCI[d.path]} />
                     </td>
-                    <td style={OBS_TD}>
+                    <td style={obsS}>
                       {ayu}
                       {abrirModal ? (
                         <button type="button" onClick={abrirModal} style={BTN_OBS}>

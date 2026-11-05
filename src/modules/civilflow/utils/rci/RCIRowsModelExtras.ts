@@ -486,51 +486,6 @@ export function sismoConteo(
   };
 }
 
-/* ============================ 8. Resumen de hidráulica ============================ */
-
-/** Una métrica del resumen de hidráulica: clave (qué es) y valor formateado. */
-export interface MetricaHid {
-  k: string;
-  v: string;
-}
-
-/**
- * Métricas del resumen de hidráulica (renderHidSummary del HTML): rociador más remoto, lo que
- * exige el área (reparto por ramal), la derivación del piso activo, cuántos rociadores entraron
- * al cálculo y la brida de descarga (la demanda que gobierna la bomba).
- * Ej: el ejemplo cierra con 128,5 gpm @ 37,7 psi en la derivación (T1) y 128,5 @ 59,3 en la brida.
- */
-export function resumenHidraulica(
-  ro: Criterios,
-  red: RedResult | null,
-  edif: Edificio,
-  _bomba: BombaResult,
-): MetricaHid[] {
-  const partes: string[] = [];
-  for (let j = 0; j < ro.Nramales; j++)
-    partes.push(String(j === ro.Nramales - 1 ? ro.Nultimo : ro.Nramal));
-  const met: MetricaHid[] = [];
-  met.push({ k: 'Rociador más remoto', v: `${fmt(ro.Q1)} gpm @ ${fmt(ro.Prem)} psi` });
-  met.push({ k: 'El área exige', v: `${ro.Nreq} rociadores (${partes.join(' + ')})` });
-  const rt = red && red.rt && red.rt.solved ? red.rt : null;
-  met.push({
-    k: `Derivación del piso (${txt(edif.activeId) || '—'})`,
-    v: rt ? `${fmt(rt.Q, 1)} gpm @ ${fmt(rt.P, 1)} psi` : 'Incompleta',
-  });
-  const Nop = red ? red.Nop : 0;
-  met.push({
-    k: 'En el cálculo',
-    v: Nop >= ro.Nreq ? `${Nop} rociadores ✓` : `${Nop} rociadores – faltan ${ro.Nreq - Nop}`,
-  });
-  const gov = edif.gov;
-  const alim = gov && gov.res ? gov.res : null;
-  met.push({
-    k: gov ? `Brida de descarga (gobierna ${gov.f.nombre})` : 'Brida de descarga',
-    v: alim ? `${fmt(alim.Qend, 1)} gpm @ ${fmt(alim.Pend, 1)} psi` : '—',
-  });
-  return met;
-}
-
 /* ============================ 9. Strip de la derivación ============================ */
 
 /**

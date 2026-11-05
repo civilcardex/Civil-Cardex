@@ -7,7 +7,7 @@
 import { ESP_DEF } from './tables';
 import { isSi, num, route } from './hydraulics';
 import { criterios } from './criteria';
-import { edificio } from './building';
+import { edificio, numMontantesDibujados } from './building';
 import { siamesaCalc, bombaPerfilCalc, tanqueCalc } from './pump';
 import { checks } from './checks';
 import type { CalcCtx, RciResult, RciState, Tips } from './types';
@@ -87,7 +87,9 @@ export function compute(st: RciState, tips?: Tips): RciResult {
   };
   R.branches = {};
   ctx.esp = st.esp || ESP_DEF();
-  const numSP = num(st.sp.num) || 1;
+  /* Montantes EFECTIVOS (ped. usuario): lo manda el dibujo (códigos GAB/MAC extraídos);
+     sin dibujo cae al amarillo sp.num. */
+  const numSP = numMontantesDibujados(st);
   const QreqSP =
     st.sp.clase === 'Clase II'
       ? 100

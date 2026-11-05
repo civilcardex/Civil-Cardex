@@ -1,3 +1,6 @@
+// Cronometraje solo en DEV: en prod los 4 performance.now() por frame son puro costo.
+const DEV = import.meta.env.DEV;
+
 import type { EngineFull } from '../engineFull.ts';
 import { renderDims, renderDimGhost } from '../renderers/renderDimensions.ts';
 import { renderGuideLines, renderGuideGhost } from '../renderers/renderGuideLines.ts';
@@ -31,7 +34,7 @@ export function renderFrame(engine: EngineFull): void {
   // ahí lo deja en un recuadro provisional y el dibujo salta al llegar el PDF (orig.
   // usuario). El motor espera a que la lámina marque la medida buena.
   if (!engine.pageW || !engine.pageH) return;
-  const t0 = performance.now();
+  const t0 = DEV ? performance.now() : 0;
   ctx.clearRect(0, 0, w, h);
 
   if (engine.pdfWrap) {
@@ -54,13 +57,13 @@ export function renderFrame(engine: EngineFull): void {
     renderDims(ctx, engine);
     renderTexts(ctx, engine);
     renderAreas(ctx, engine);
-    const tRam = performance.now();
+    const tRam = DEV ? performance.now() : 0;
     renderRamales(ctx, engine);
-    engine._perf.capas.ramales = performance.now() - tRam;
-    const tBaj = performance.now();
+    if (DEV) engine._perf.capas.ramales = performance.now() - tRam;
+    const tBaj = DEV ? performance.now() : 0;
     renderNetCrossings(ctx, engine);
     renderBajantes(ctx, engine);
-    engine._perf.capas.bajantes = performance.now() - tBaj;
+    if (DEV) engine._perf.capas.bajantes = performance.now() - tBaj;
     renderGhosts(ctx, engine);
     renderCrossFloorGhosts(ctx, engine);
     renderDimGhost(ctx, engine);
@@ -68,8 +71,10 @@ export function renderFrame(engine: EngineFull): void {
     renderCanalGhost(ctx, engine);
     renderActiveArea(ctx, engine);
     renderActiveRamal(ctx, engine);
-    engine._perf.frames++;
-    engine._perf.totalMs = performance.now() - t0;
+    if (DEV) {
+      engine._perf.frames++;
+      engine._perf.totalMs = performance.now() - t0;
+    }
   } finally {
     terminarFrame();
   }

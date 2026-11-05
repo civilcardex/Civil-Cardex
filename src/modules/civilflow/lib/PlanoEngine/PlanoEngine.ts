@@ -244,8 +244,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _touchMoveHandler?: (e: TouchEvent) => void;
   private _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | number | null;
-  /** Mallas/recirculaciones que el usuario marcó a mano (exentas del chequeo de ciclo). */
-  mallasDeclaradas: Set<string> = new Set();
   /** Puente al modal "¿qué sentido tiene esta tubería?" del re-enraizamiento (regla 5 del memo). */
   private _onOpcionesCb:
     ((title: string, msg: string, opciones: string[]) => Promise<number>) | null = null;

@@ -18,10 +18,10 @@ import type { ReactNode } from 'react';
 const SVG_CSS = { width: '100%', height: 'auto', display: 'block' } as const;
 
 /** Con más pisos con NPT que este número, el corte pasa a modo compacto (sin escala). */
-export const ELEV_MAX = 12;
+const ELEV_MAX = 12;
 
 /** Etiqueta por tipo de salida de montante (NFPA 14): la clase GABLAB del HTML. */
-export const GABLAB: Record<string, string> = {
+const GABLAB: Record<string, string> = {
   '2½"': 'Conexión 2½"',
   '1½"': 'Gabinete 1½"',
   '2½" + 1½"': 'Gabinete 2½" + 1½"',

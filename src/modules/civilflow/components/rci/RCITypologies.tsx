@@ -129,7 +129,7 @@ const CELDA: CSSProperties = {
   boxSizing: 'border-box',
   textAlign: 'center',
 };
-const TDP: CSSProperties = { ...TD, fontSize: 12, padding: '1px 2px' }; // celda compacta de pisos
+const TDP: CSSProperties = { ...TD, fontSize: 13, padding: '1px 2px' }; // celda compacta de pisos
 
 /** Chip del estado de la red: Calculada (verde) / Sin red (ámbar) / Incompleta (rojo). */
 const CHIP: CSSProperties = {
@@ -182,15 +182,12 @@ function ChipRed({ t, planta }: { t: TipCalc | undefined; planta: string }) {
 function TablaPisos({
   filas,
   nota,
-  clase,
   setPiso,
   setRep,
 }: {
   filas: FilaTipologia[];
   /** Nota del header: cuántos pisos y tipologías hay. */
   nota: string;
-  /** Clase del sistema (sp.clase): resuelve la opción «Auto (por clase)» de la celda Salidas. */
-  clase: string;
   setPiso: (i: number, k: keyof PisoRow) => (v: string) => void;
   setRep: (tipId: string, nombre: string) => void;
 }) {
@@ -215,7 +212,7 @@ function TablaPisos({
       extra={<EditTablaBtn on={edit} onToggle={toggleEdit} />}
     >
       <div style={{ overflowX: 'auto' }}>
-        <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
+        <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
           <caption
             style={{
               position: 'absolute',
@@ -230,14 +227,14 @@ function TablaPisos({
           <thead>
             <tr>
               {GRUPOS_PISOS.map(([g, n]) => (
-                <th key={g} colSpan={n} scope="colgroup" style={{ ...TH, fontSize: 11 }}>
+                <th key={g} colSpan={n} scope="colgroup" style={{ ...TH, fontSize: 12 }}>
                   {g}
                 </th>
               ))}
             </tr>
             <tr>
               {COLS.map((c) => (
-                <th key={c.l} scope="col" title={c.tip} style={{ ...TH, fontSize: 11 }}>
+                <th key={c.l} scope="col" title={c.tip} style={{ ...TH, fontSize: 12 }}>
                   {c.l}
                 </th>
               ))}
@@ -392,13 +389,7 @@ function TablaPisos({
                   )}
                 </td>
                 <td className="c" style={{ ...TDP, whiteSpace: 'nowrap' }}>
-                  <SalidaCelda
-                    edit={edit}
-                    salida={f.salida}
-                    nombre={f.nombre}
-                    clase={clase}
-                    set={setPiso(f.i, 'salida')}
-                  />
+                  <SalidaCelda salida={f.salida} />
                 </td>
                 <td className="c" style={TDP}>
                   {celdaEditable(
@@ -501,7 +492,7 @@ function TablaTipologias({
           <thead>
             <tr>
               {['Tipología', 'Pisos', 'N.º', 'Representativo', 'Nivel', 'Red'].map((l) => (
-                <th key={l} scope="col" style={{ ...TH, fontSize: 11 }}>
+                <th key={l} scope="col" style={{ ...TH, fontSize: 12 }}>
                   {l}
                 </th>
               ))}
@@ -638,7 +629,6 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
         <TablaPisos
           filas={filas}
           nota={`${filas.length} piso(s) · ${resumen.length} tipología(s)`}
-          clase={estado.sp.clase}
           setPiso={setPiso}
           setRep={setRep}
         />

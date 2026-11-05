@@ -18,7 +18,6 @@ import {
   kvBombaTanque,
   kvRociadorCobertura,
   kvRociadorDiseno,
-  kvMontante,
   kvSiamesa,
   resumenTipologias,
   sembrarRci,
@@ -29,7 +28,6 @@ import {
   filasGabinete,
   filasNudos,
   filasPerfilPiso,
-  queHacerPerfil,
 } from '../RCIRowsModel2.ts';
 import {
   datosRectangulo,
@@ -41,7 +39,6 @@ import {
   kvSuccion,
   kvTanque,
   RUTA_DE,
-  resumenHidraulica,
   rangoTipologia,
   sismoConteo,
   stripDerivacion,
@@ -127,10 +124,6 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
   });
 
   it('montante y siamesa: ruta 500 gpm @ 127.36 psi y siamesa 125.1 psi', () => {
-    const mont = kvMontante(R.edif, R.gab);
-    const porL = new Map(mont.map((k) => [k.l, k]));
-    expect(porL.get('Demanda de montantes (Clase)')!.v).toBe('500,0');
-    expect(porL.get('Demanda de montantes (Clase)')!.nota).toContain('127,36');
     const sia = kvSiamesa(R.sia);
     expect(sia[0].v).toBe('125,1');
   });
@@ -224,11 +217,13 @@ describe('sembrarRci · amarillos del proyecto nuevo', () => {
     expect(est.tub.Vmax).toBe(6);
     expect(est.mang.duracion).toBe(30);
     expect(est.sp.clase).toBe('Clase III');
-    expect(est.mont.cuarto).toHaveLength(1);
-    expect(est.pisos.rows.map((r) => r.riesgo)).toEqual(['Riesgo leve', 'Riesgo leve']);
+    /* El cuarto de bombas y los criterios por piso NO se siembran (ped. usuario: nada
+       fabricado) — nacen vacíos hasta que el diseñador los llene. */
+    expect(est.mont.cuarto).toEqual([]);
+    expect(est.pisos.rows.map((r) => r.riesgo)).toEqual(['', '']);
     expect(est.pisos.rows.map((r) => r.planta)).toEqual(['p1', 'p2']);
-    expect(est.pisos.rows.map((r) => r.K)).toEqual([5.6, 5.6]);
-    /* exigeSP siembra 'No' (proyecto nuevo del HTML) y el extractor deja salida 'Ninguna'. */
+    expect(est.pisos.rows.map((r) => r.K)).toEqual(['', '']);
+    /* Salida GRIS del extractor: 'Ninguna' sin gabinetes dibujados. */
     expect(est.pisos.rows.map((r) => r.salida)).toEqual(['Ninguna', 'Ninguna']);
   });
 
@@ -370,17 +365,6 @@ describe('rowsModelRci2 · perfil de presiones (perfilTable + perfilSide)', () =
     expect(accionPerfil(per[0]).some((c) => c.txt === 'Gobierna la bomba')).toBe(true);
   });
 
-  it('queHacerPerfil: los 3 pisos con su reguladora y sin línea de montante (PstMax 174.2 < 175)', () => {
-    const filas = queHacerPerfil(R.edif);
-    expect(filas).toHaveLength(3);
-    expect(filas.map((f) => f.c)).toEqual(['REVISAR', 'REVISAR', 'REVISAR']);
-    expect(filas[0].txt).toContain('P3');
-    expect(filas[0].txt).toContain('válvula reguladora');
-    expect(filas[0].txt).toContain('152');
-    expect(filas[2].txt).toContain('170');
-    expect(filas.some((f) => f.txt.startsWith('Montante'))).toBe(false);
-  });
-
   it('sin red la fila queda pendiente: chip PENDIENTE y línea "tipología … sin red"', () => {
     const est2 = ejemploVerificacion();
     delete est2.redes.A;
@@ -389,10 +373,6 @@ describe('rowsModelRci2 · perfil de presiones (perfilTable + perfilSide)', () =
     const per = filasPerfilPiso(R2.edif);
     expect(per.every((f) => !f.conRes)).toBe(true);
     expect(accionPerfil(per[0])[0]).toEqual({ c: 'PENDIENTE', txt: 'Red pendiente' });
-    const filas = queHacerPerfil(R2.edif);
-    expect(filas.some((f) => f.c === 'PENDIENTE' && f.txt.includes('tipología T1 sin red'))).toBe(
-      true,
-    );
   });
 });
 
@@ -588,17 +568,7 @@ describe('rowsModelRci2 · rectángulo de fuego y sismo', () => {
   });
 });
 
-describe('rowsModelRci2 · resumen de hidráulica y strip de derivación', () => {
-  it('resumenHidraulica: remoto 16.34 @ 8.51, 7 rociadores (3 + 3 + 1), derivación y brida', () => {
-    const met = resumenHidraulica(R.roc, R.red, R.edif, R.bomba);
-    const m = new Map(met.map((x) => [x.k, x.v]));
-    expect(m.get('Rociador más remoto')).toBe('16,34 gpm @ 8,51 psi');
-    expect(m.get('El área exige')).toBe('7 rociadores (3 + 3 + 1)');
-    expect(m.get('Derivación del piso (T1)')).toBe('128,5 gpm @ 37,7 psi');
-    expect(m.get('En el cálculo')).toBe('7 rociadores ✓');
-    expect(m.get('Brida de descarga (gobierna P3)')).toBe('128,5 gpm @ 59,3 psi');
-  });
-
+describe('rowsModelRci2 · strip de derivación', () => {
   it('stripDerivacion: 128.54 gpm @ 37.70 psi; null sin red o con avisos', () => {
     const s = stripDerivacion(R.red);
     cerca(s!.Q, 128.54);

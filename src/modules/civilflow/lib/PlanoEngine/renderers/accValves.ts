@@ -7,11 +7,13 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
   // Válvulas un POCO más grandes que el resto (orig. usuario 2026-10-29).
   const rad = a.rad * 1.25;
   if (accType === 'rociador') {
-    // Rociador rci (Red Contra Incendio): círculo blanco del tamaño de las válvulas centrado
-    // sobre el trazo (como valvCheque) con una CRUZ (+) interior alineada a los ejes del
-    // ramal — es el glifo SPR que la extracción cuenta por ramal (accMed/extremo 'rociador').
+    // Rociador colgante rci (Red Contra Incendio): círculo blanco del tamaño de las válvulas
+    // centrado sobre el trazo (como valvCheque) con una X DIAGONAL en ejes absolutos (45°
+    // respecto de la pantalla, no del ramal — así se ve en la simbología de referencia) y un
+    // cuadradito blanco central (el deflector). Es el glifo SPR que la extracción cuenta por
+    // ramal (accMed/extremo con id 'rociador').
     const circR = rad * 0.9;
-    const arm = circR * 0.55;
+    const arm = circR * 0.98;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
@@ -21,12 +23,19 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    // Cruz interior: un brazo a lo largo del ramal (dx,dy), el otro perpendicular (px,py).
+    // X diagonal absoluta.
+    const half = arm * Math.SQRT1_2;
     ctx.beginPath();
-    ctx.moveTo(c.x - dx * arm, c.y - dy * arm);
-    ctx.lineTo(c.x + dx * arm, c.y + dy * arm);
-    ctx.moveTo(c.x - px * arm, c.y - py * arm);
-    ctx.lineTo(c.x + px * arm, c.y + py * arm);
+    ctx.moveTo(c.x - half, c.y - half);
+    ctx.lineTo(c.x + half, c.y + half);
+    ctx.moveTo(c.x - half, c.y + half);
+    ctx.lineTo(c.x + half, c.y - half);
+    ctx.stroke();
+    // Deflector central: cuadradito blanco sobre el cruce de la X.
+    const side = circR * 0.22;
+    ctx.beginPath();
+    ctx.rect(c.x - side, c.y - side, side * 2, side * 2);
+    ctx.fill();
     ctx.stroke();
     return true;
   }

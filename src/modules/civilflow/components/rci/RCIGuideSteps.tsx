@@ -16,7 +16,7 @@ import { colorTip, n2 } from './RCISvgSchemas.tsx';
 import type { Tipologia, Verificacion } from '../../lib/rci/types.ts';
 
 /** Prefijos de verificación que la guía consulta (el chk(lab) del HTML, por startsWith). */
-export const PREFIJOS_CHK = [
+const PREFIJOS_CHK = [
   'Riesgo NFPA 13 compatible',
   'Altura de arrume',
   'Separación entre rociadores',

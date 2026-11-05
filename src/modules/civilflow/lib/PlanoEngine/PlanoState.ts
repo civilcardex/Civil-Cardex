@@ -358,8 +358,6 @@ export interface IPlanoEngineCore {
   pauseHistory?: () => void;
   /** Vuelve a activar el historial tras pausarlo (debe llamarse junto a pauseHistory). */
   resumeHistory?: () => void;
-  /** Mallas/recirculaciones que el usuario marcó a mano: el chequeo de lazos no las reclama. */
-  mallasDeclaradas?: Set<string>;
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];
   areas: PlanoArea[];

@@ -2,12 +2,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import { calcHydroAccessories } from '../networkSanitary.ts';
 import { drawValveSymbols } from '../renderers/accValves.ts';
+import { drawRciSymbols } from '../renderers/accRci.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
-// Rociador rci (Red Contra Incendio) — FASE 2 RCI: accesorio del cuerpo/extremo del ramal,
-// visible SOLO en rci, glifo círculo con cruz (+). La extracción de diseño (Fase 3) cuenta los
-// rociadores por ramal leyendo los accMed/accesorios de extremo con id 'rociador' — el conteo
-// hidro (calcHydroAccessories) ya los suma a tramo_hidro_data_v3 como cualquier accesorio.
+// Rociadores y riostras rci (Red Contra Incendio) — simbología del PDF de referencia: los 6
+// rociadores (colgante, montante, colgante seco, de pared, oculto, que fluye) y las 3 riostras
+// sísmicas (transversal, longitudinal, cuatro vías) viven SOLO en rci. La extracción de diseño
+// (Fase 3) cuenta los rociadores por ramal leyendo los accMed/accesorios de extremo con id
+// 'rociador*' (RE_ROCIADOR = /rociador/i en ExtractNetwork.ts) — las riostras no son equipos de
+// flujo y no entran al conteo.
+const RCI_NUEVOS = [
+  'rociadorMontante',
+  'rociadorSeco',
+  'rociadorPared',
+  'rociadorOculto',
+  'rociadorArea',
+  'riostraLat',
+  'riostraLon',
+  'riostra4v',
+];
 
 const storageMock: Record<string, unknown> = {};
 vi.mock('../../../services/storageService.ts', () => ({
@@ -31,6 +44,17 @@ describe('rociador: visibilidad SOLO rci en el dropdown de accesorios', () => {
     (net) => {
       const ids = getAccessoryOptions(net).map((o) => o.value);
       expect(ids).not.toContain('rociador');
+    },
+  );
+  it("getAccessoryOptions('rci') ofrece los 8 rociadores/riostras nuevos", () => {
+    const ids = getAccessoryOptions('rci').map((o) => o.value);
+    for (const id of RCI_NUEVOS) expect(ids).toContain(id);
+  });
+  it.each(['af', 'ac', 'rec', 'gas', 'san', 'll', 'vent'])(
+    "getAccessoryOptions('%s') NO ofrece rociadores ni riostras rci",
+    (net) => {
+      const ids = getAccessoryOptions(net).map((o) => o.value);
+      for (const id of RCI_NUEVOS) expect(ids).not.toContain(id);
     },
   );
 });
@@ -69,7 +93,7 @@ describe('rociador: conteo hidro por ramal (contrato Fase 3)', () => {
   });
 });
 
-describe('rociador: glifo círculo + cruz en la familia de válvulas', () => {
+describe('rociador: glifo círculo + X en la familia de válvulas', () => {
   function mkCtx(): CanvasRenderingContext2D {
     return new Proxy(
       {},
@@ -102,4 +126,14 @@ describe('rociador: glifo círculo + cruz en la familia de válvulas', () => {
   it("tipos de otra familia ('teeSube') no los dibuja esta familia (false)", () => {
     expect(drawValveSymbols({ ...baseArgs, accType: 'teeSube' })).toBe(false);
   });
+
+  it.each(RCI_NUEVOS)("drawRciSymbols reconoce '%s' (true)", (accType) => {
+    expect(drawRciSymbols({ ...baseArgs, accType })).toBe(true);
+  });
+  it.each(['valvCompuerta', 'teeSube', 'codo90rm', 'sifon', 'rociador'])(
+    "drawRciSymbols rechaza '%s' de otra familia (false)",
+    (accType) => {
+      expect(drawRciSymbols({ ...baseArgs, accType })).toBe(false);
+    },
+  );
 });

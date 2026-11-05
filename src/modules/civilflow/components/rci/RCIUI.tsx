@@ -5,7 +5,6 @@
  *  de sub-pestañas, patrón .entr del HTML) y el contexto de navegación que usan «Ir al dato»
  *  y los botones «Ir a» de la guía para saltar a (pestaña, sub-pestaña, campo). */
 import React, { createContext, useContext, useState } from 'react';
-import { SI } from '../../styles/sharedTableStyles.ts';
 import type { RciResult, RciState, Tips } from '../../lib/rci/types.ts';
 import type { KvRci } from '../../utils/rci/RCIRowsModel.ts';
 
@@ -236,7 +235,7 @@ export function SubTabsRci({
 }
 
 /** Definición de un tag: qué fija cada naturaleza de dato (title del chip). */
-export const TAGDEF_RCI: Record<string, string> = {
+const TAGDEF_RCI: Record<string, string> = {
   Norma: 'Lo fija la norma: se cumple',
   Rango: 'La norma fija límites; usted elige dentro de ellos',
   Fabricante: 'Dato del equipo listado (catálogo o placa)',
@@ -322,23 +321,6 @@ export function StripRci({ q, p }: { q: number | null; p: number | null }) {
   );
 }
 
-/** Grid de campos de una sección (varias columnas según el ancho). */
-export const GRID_RCI: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-  gap: '5px 14px',
-  alignItems: 'end',
-};
-
-/** Etiqueta de los campos: pequeña, gris, con la unidad aparte. */
-const LBL: React.CSSProperties = {
-  fontSize: 11,
-  color: 'var(--txt2)',
-  fontFamily: 'var(--body)',
-  display: 'block',
-  marginBottom: 2,
-};
-
 /** Sección-card del diseño RCI con ancla `rci-<id>`: el destino de los botones «Ir al dato» de
  *  las verificaciones. `icono` (ruta pública, ej. '/iconos/siamesa.webp') queda a la IZQUIERDA
  *  del título, dentro del h3. Ej: <SecRci id="bomba" titulo="Bomba y tanque">. */
@@ -380,96 +362,6 @@ export function SecRci({
   );
 }
 
-/** Campo del formulario RCI: select si trae `opciones`, número si `num`, texto si no. Con
- *  `fijo` (del dibujo) se pinta gris con candado 🔒 y readOnly — el gris es la geometría del
- *  plano y solo cambia dibujando. Con `des` queda deshabilitado porque depende de otra
- *  respuesta (p. ej. el artículo que exige rociadores cuando el código no los exige). `campo`
- *  es la ruta del dato (data-campo) para que «Ir al dato» lo enfoque.
- *  Ej: <CampoRci etiqueta="Factor K" val={5.6} num uni="gpm/psi½" />. */
-export function CampoRci({
-  etiqueta,
-  ayuda,
-  uni,
-  val,
-  set,
-  opciones,
-  num,
-  campo,
-  fijo,
-  des,
-  ancho,
-  tag,
-}: {
-  etiqueta: string;
-  ayuda?: string;
-  uni?: string;
-  val: string | number;
-  set?: (v: string) => void;
-  opciones?: readonly string[];
-  num?: boolean;
-  campo?: string;
-  fijo?: boolean;
-  des?: boolean;
-  ancho?: number;
-  /** Naturaleza del dato (Norma/Rango/Fabricante/Proyecto/Criterio) — chip junto al campo. */
-  tag?: string;
-}) {
-  const deshabilitado = fijo || des || !set;
-  const estiloInput: React.CSSProperties = {
-    ...SI,
-    fontSize: 11,
-    padding: '3px 5px',
-    width: ancho ?? '100%',
-    background: fijo ? 'var(--bg3)' : 'var(--bg4)',
-    color: fijo ? 'var(--txt3)' : 'var(--txt)',
-    cursor: fijo ? 'not-allowed' : undefined,
-  };
-  return (
-    <label
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) auto',
-        gap: '2px 8px',
-        minWidth: 0,
-        alignItems: 'center',
-      }}
-      title={ayuda}
-    >
-      <span className="lbl" style={LBL}>
-        {etiqueta}
-        {uni ? ` (${uni})` : ''}
-        {fijo ? ' 🔒' : ''}
-      </span>
-      <TagRci tag={tag} />
-      {opciones ? (
-        <select
-          data-campo={campo}
-          value={String(val ?? '')}
-          disabled={deshabilitado}
-          onChange={set ? (e) => set(e.target.value) : undefined}
-          style={{ ...estiloInput, cursor: fijo ? 'not-allowed' : 'pointer', gridColumn: '1 / -1' }}
-        >
-          {opciones.map((o) => (
-            <option key={o} value={o}>
-              {o === '' ? '— / Auto' : o}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          data-campo={campo}
-          type={num ? 'number' : 'text'}
-          step="any"
-          value={String(val ?? '')}
-          readOnly={deshabilitado}
-          onChange={set ? (e) => set(e.target.value) : undefined}
-          style={{ ...estiloInput, gridColumn: '1 / -1' }}
-        />
-      )}
-    </label>
-  );
-}
-
 /** Color de cada estado de verificación (los del repo: verde cumple, rojo no cumple). */
 export const COLOR_ESTADO: Record<string, string> = {
   CUMPLE: 'var(--succ, #5DBB83)',
@@ -499,10 +391,10 @@ export function ChipEstado({ st }: { st: string }) {
 }
 
 /** Tabla de resultados etiqueta/valor/nota (kv). Ej: <KvTabla filas={kvBombaTanque(...)} />.
- *  fontSize uniforme con el estándar de GrupoTabla (13; la nota queda en 12.5). */
+ *  fontSize uniforme con el estándar de GrupoTabla (14; la nota queda en 13.5). */
 export function KvTabla({
   filas,
-  fontSize = 13,
+  fontSize = 14,
   titulos = false,
 }: {
   filas: KvRci[];
@@ -516,7 +408,7 @@ export function KvTabla({
           <tr>
             <th
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 padding: '3px 6px',
                 textAlign: 'center',
                 color: 'var(--txt3)',
@@ -528,7 +420,7 @@ export function KvTabla({
             </th>
             <th
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 padding: '3px 6px',
                 textAlign: 'center',
                 color: 'var(--txt3)',
@@ -540,7 +432,7 @@ export function KvTabla({
             </th>
             <th
               style={{
-                fontSize: 11,
+                fontSize: 12,
                 padding: '3px 6px',
                 textAlign: 'center',
                 color: 'var(--txt3)',

@@ -10,7 +10,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   AvisosRci,
-  ChipEstado,
   EditTablaBtn,
   SecRci,
   StripRci,
@@ -20,31 +19,24 @@ import {
   type SubItemRci,
   useNavRci,
 } from './RCIUI.tsx';
-import { anchoValor, celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
-import { TH, TD } from '../../styles/sharedTableStyles.ts';
-import { DIAMETROS, MATERIALES, filasRamales, filasTramos } from '../../utils/rci/RCIRowsModel.ts';
-import { SUBS_POR_TAB, stripDerivacion } from '../../utils/rci/RCIRowsModelExtras.ts';
+import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
+import { MATERIALES, filasRamales, filasTramos } from '../../utils/rci/RCIRowsModel.ts';
+import { stripDerivacion } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
-import { PanelNudosRci, PanelDetalleRci } from './RCIHydraulicNodes.tsx';
+import { PanelNudosRci, PanelDetalleRci, VACIO } from './RCIHydraulicNodes.tsx';
 import { VrpSvg } from './RCISvgFloorplan.tsx';
+import { HidSummary } from './RCIHidSummary.tsx';
+import RciTablaRamales from './RciTablaRamales.tsx';
+import RciTablaTramos from './RciTablaTramos.tsx';
 import { cOf } from '../../lib/rci/hydraulics.ts';
 import type { Red, TipCalc } from '../../lib/rci/types.ts';
-
-const TH10 = { ...TH, fontSize: 11 } as const;
-const TDC = { ...TD, fontSize: 13, padding: '1px 3px' } as const;
 
 /** Barra horizontal de controles de la red (el .hbar del HTML): campos + nota al pie. */
 const HB: CSSProperties = { display: 'grid', gap: 2, fontSize: 13, color: 'var(--txt2)' };
 /** Control activo de la hbar: caja tipo sanitario con el tamaño de la vista (13). */
-const HBIN: CSSProperties = { ...IN_CELDA, fontSize: 13, width: 150 };
+const HBIN: CSSProperties = { ...IN_CELDA, fontSize: 14, width: 150 };
 /** Control activo de las celdas: caja tipo sanitario con el tamaño de la vista (13); el width
  *  propio va por celda — fijo o con anchoValor (el del valor) para que EDITAR no ensanche. */
-const CELDA: CSSProperties = {
-  ...IN_CELDA,
-  fontSize: 13,
-  boxSizing: 'border-box',
-  textAlign: 'center',
-};
 const BTN_INL: CSSProperties = {
   border: '1px solid var(--line)',
   background: 'var(--bg4)',
@@ -54,7 +46,6 @@ const BTN_INL: CSSProperties = {
   padding: '4px 10px',
   cursor: 'pointer',
 };
-const BTN_MV: CSSProperties = { ...BTN_INL, padding: '1px 6px' };
 
 /** Barra .hbar del HTML: controles alineados y la nota de uso debajo. */
 function Hbar({ children, nota }: { children: ReactNode; nota: ReactNode }) {
@@ -123,11 +114,12 @@ function nudosDeRed(red: Red | undefined, raiz: string): string[] {
     );
 }
 
-/** Sub-pestañas de Hidráulica: las dos de SUBS_POR_TAB (destino de «Ir al dato») más las dos
- *  nuevas de resultados (se ocultan sin red calculada). */
+/** Sub-pestañas de Hidráulica (ped. usuario): las 4 con contenido — Ramales, Tramos, Nudos,
+ *  Detalle nudo a nudo — en el orden del HTML. */
 const SUBS_HID: SubItemRci[] = [
-  ...SUBS_POR_TAB['hidraulica'].map((s) => ({ id: s.id, titulo: s.l })),
-  { id: 'nudos', titulo: 'Nudos: equilibrio' },
+  { id: 'ramales', titulo: 'Ramales' },
+  { id: 'tramos', titulo: 'Tramos' },
+  { id: 'nudos', titulo: 'Nudos' },
   { id: 'detalle', titulo: 'Detalle nudo a nudo' },
 ];
 
@@ -176,7 +168,7 @@ export function RciHidraulica({
       ? String(nodoRaiz.z)
       : '';
 
-  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S') => (v: string) =>
+  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr') => (v: string) =>
     editar((e) => {
       const r = e.redes[redKey];
       if (!r) return e;
@@ -207,13 +199,14 @@ export function RciHidraulica({
       if (!r) return e;
       return { ...e, redes: { ...e.redes, [redKey]: { ...r, [k]: v } } };
     });
-  /* Cota del nudo de derivación: una cota por nudo; crea la entrada si aún no existe. */
-  const setZRaiz = (v: string) =>
+  /* Cota de un nudo (una por nudo; crea la entrada si aún no existe). La derivación usa la
+   * misma vía: nodos[raiz].z. */
+  const setZNudo = (nodo: string) => (v: string) =>
     editar((e) => {
       const r = e.redes[redKey];
       if (!r) return e;
       const nodos = { ...(r.nodos || {}) };
-      nodos[raiz] = { ...(nodos[raiz] || { z: '' }), z: v };
+      nodos[nodo] = { ...(nodos[nodo] || { z: '' }), z: v };
       return { ...e, redes: { ...e.redes, [redKey]: { ...r, nodos } } };
     });
   /* Orden de los ramales: el primero es el más remoto; intercambia índices vecinos. */
@@ -239,13 +232,12 @@ export function RciHidraulica({
     return () => document.removeEventListener('keydown', onKey);
   }, [vrpAbierta]);
 
-  const subs: SubItemRci[] = SUBS_HID.map((s) =>
-    s.id === 'nudos' || s.id === 'detalle' ? { ...s, oculto: !rd } : s,
-  );
-  /* La sub abierta vive en la nav del shell; cae a 'ramales' si la guardada quedó oculta. */
+  /* Sub-pestañas SIEMPRE visibles (ped. usuario): Nudos/Detalle muestran su vacío cuando la
+   * red no llega completa a la derivación. */
+  /* La sub abierta vive en la nav del shell; cae a 'ramales' si no existe. */
   const navHid = useNavRci();
   const subActiva =
-    navHid.sub && subs.some((s) => s.id === navHid.sub && !s.oculto) ? navHid.sub : 'ramales';
+    navHid.sub && SUBS_HID.some((s) => s.id === navHid.sub) ? navHid.sub : 'ramales';
 
   /* Footer de totales: dibujados y con flujo contra lo que exige el área de diseño. */
   const okN = rd ? rd.flTot === R.roc.Nreq : false;
@@ -254,8 +246,10 @@ export function RciHidraulica({
     <>
       {/* Avisos de la red encima de los bloques (ramal flotante, nudo sin cerrar…). */}
       {rd && rd.errs.length ? <AvisosRci avisos={rd.errs} /> : null}
+      {/* Strip resumen del HTML (#hidSummary): los KPIs del cálculo del piso. */}
+      <HidSummary R={R} tip={tip} estado={estado} />
       <SubTabsRci
-        subs={subs}
+        subs={SUBS_HID}
         sub={subActiva}
         setSub={(id) => navHid.irA('hidraulica', id)}
         ancho={190}
@@ -320,272 +314,19 @@ export function RciHidraulica({
                 )}
               </label>
             </Hbar>
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                className="tbl"
-                style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 800 }}
-              >
-                <caption
-                  style={{
-                    position: 'absolute',
-                    width: 1,
-                    height: 1,
-                    overflow: 'hidden',
-                    clip: 'rect(0 0 0 0)',
-                  }}
-                >
-                  Ramales del piso
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col" style={TH10}>
-                      Ramal
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Nudo donde conecta el ramal (la última letra es la derivación del montante)"
-                    >
-                      Conecta
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Rociadores dibujados en el plano (del dibujo)"
-                    >
-                      Dibujados
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Rociadores con flujo. Vacío = reparto automático desde el más remoto hasta cubrir el área"
-                    >
-                      Fluyen
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Diámetro único del ramal. Auto: el menor que cumple la velocidad máxima"
-                    >
-                      Ø
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Material del ramal. Gris = lo trae el dibujo"
-                    >
-                      Material
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Separación entre rociadores del ramal (vacío = la del proyecto)"
-                    >
-                      S (m)
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Longitud del ramal punta → conexión, del dibujo. Entre paréntesis: brazo = L − (fluyen − 1) × S"
-                    >
-                      L ramal (m)
-                    </th>
-                    <th scope="col" style={TH10} title="Diámetro con el que se calculó">
-                      Ø usado
-                    </th>
-                    <th scope="col" style={TH10} title="Caudal del ramal en su conexión">
-                      Q (gpm)
-                    </th>
-                    <th scope="col" style={TH10} title="Presión que pide el ramal en su conexión">
-                      P req. (psi)
-                    </th>
-                    <th scope="col" style={TH10} title="Cálculo completo y dentro de límites">
-                      Estado
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Subir (más remoto) o bajar el ramal en el orden del cálculo"
-                    >
-                      Orden
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rams.map((f, i) => {
-                    const fij = fijosR.get(f.id) || { dn: false, mat: false };
-                    return (
-                      <tr key={f.id || i}>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                        >
-                          🔒 {f.nombre}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                        >
-                          {f.con || '—'}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                        >
-                          {f.dib ?? '—'}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px' }}>
-                          {celdaEditable(
-                            editRam,
-                            <input
-                              type="number"
-                              step="1"
-                              min="0"
-                              value={f.auto ? '' : String(f.fluyen ?? '')}
-                              placeholder={f.fluyen !== null ? String(f.fluyen) : ''}
-                              onChange={(e) => setRamal(i, 'fluyen')(e.target.value)}
-                              aria-label={`Rociadores con flujo de ${f.nombre}`}
-                              style={{ ...CELDA, width: 46 }}
-                            />,
-                          )}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px' }}>
-                          {celdaEditable(
-                            editRam && !fij.dn,
-                            <select
-                              value={f.dn}
-                              onChange={(e) => setRamal(i, 'dn')(e.target.value)}
-                              style={{ ...CELDA, width: anchoValor(f.dn) }}
-                            >
-                              {DIAMETROS.map((o) => (
-                                <option key={o} value={o}>
-                                  {o}
-                                </option>
-                              ))}
-                            </select>,
-                          )}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px' }}>
-                          {celdaEditable(
-                            editRam && !fij.mat,
-                            <select
-                              value={f.mat}
-                              onChange={(e) => setRamal(i, 'mat')(e.target.value)}
-                              style={{ ...CELDA, width: anchoValor(f.mat) }}
-                            >
-                              <option value="">—</option>
-                              {MATERIALES.map((m) => (
-                                <option key={m} value={m}>
-                                  {m}
-                                </option>
-                              ))}
-                            </select>,
-                          )}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px' }}>
-                          {celdaEditable(
-                            editRam,
-                            <input
-                              type="number"
-                              step="any"
-                              value={sDeRamal(red, i)}
-                              placeholder={sProyecto}
-                              onChange={(e) => setRamal(i, 'S')(e.target.value)}
-                              aria-label={`Separación S de ${f.nombre}`}
-                              style={{ ...CELDA, width: 52 }}
-                            />,
-                          )}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                          title="Del dibujo (con la bajada si llega a la derivación)"
-                        >
-                          {f.Lr !== null ? f.Lr.toFixed(2) : '—'}
-                          {f.brazo !== null ? ` (${f.brazo.toFixed(2)})` : ''}
-                        </td>
-                        <td className="c" style={TDC}>
-                          {f.dnUsado || '—'}
-                        </td>
-                        <td className="c" style={{ ...TDC, fontWeight: 600 }}>
-                          {f.Q !== null ? f.Q.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={{ ...TDC, fontWeight: 600 }}>
-                          {f.P !== null ? f.P.toFixed(2) : '—'}
-                        </td>
-                        <td
-                          className="c"
-                          style={{
-                            ...TDC,
-                            color: f.ok ? 'var(--succ, #5DBB83)' : 'var(--err, #F04545)',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {f.ok ? 'OK' : 'revisar'}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px', whiteSpace: 'nowrap' }}>
-                          <button
-                            type="button"
-                            title="Subir (más remoto)"
-                            aria-label={`Subir ${f.nombre}`}
-                            disabled={!editRam || i === 0}
-                            onClick={() => moverRamal(i, -1)}
-                            style={BTN_MV}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            title="Bajar"
-                            aria-label={`Bajar ${f.nombre}`}
-                            disabled={!editRam || i === rams.length - 1}
-                            onClick={() => moverRamal(i, 1)}
-                            style={{ ...BTN_MV, marginLeft: 2 }}
-                          >
-                            ↓
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {rams.length === 0 && (
-                    <tr>
-                      <td colSpan={13} style={TDC}>
-                        Sin ramales extraídos: dibuje rci en el plano y confírmelo.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td style={{ ...TDC, fontWeight: 700 }}>Totales</td>
-                    <td style={TDC} />
-                    <td className="c" style={{ ...TDC, fontWeight: 700 }}>
-                      {rd ? rd.dibTot || '—' : '—'}
-                    </td>
-                    <td className="c" style={{ ...TDC, fontWeight: 700 }}>
-                      {rd ? rd.flTot : '—'}
-                    </td>
-                    <td colSpan={8} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
-                      {rd ? (
-                        <>
-                          <ChipEstado
-                            st={okN ? 'CUMPLE' : rd.flTot < R.roc.Nreq ? 'NO CUMPLE' : 'REVISAR'}
-                          />{' '}
-                          {okN
-                            ? `${rd.flTot} = ${R.roc.Nreq} requeridos ✓`
-                            : `${rd.flTot} con flujo · el área exige ${R.roc.Nreq}`}{' '}
-                          <span style={{ color: 'var(--txt3)' }}>
-                            {R.roc.Nramal} por ramal (lado largo {fmt(R.roc.Llargo)} m)
-                          </span>
-                        </>
-                      ) : null}
-                    </td>
-                    <td style={TDC} />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+            <RciTablaRamales
+              rams={rams}
+              fijosR={fijosR}
+              red={red}
+              rd={rd}
+              editRam={editRam}
+              setRamal={setRamal}
+              moverRamal={moverRamal}
+              sProyecto={sProyecto}
+              zRamTxt={zRamTxt}
+              okN={okN}
+              roc={R.roc}
+            />
             <StripRci q={strip ? strip.Q : null} p={strip ? strip.P : null} />
           </SecRci>
         ) : null}
@@ -633,7 +374,7 @@ export function RciHidraulica({
                     step="any"
                     value={zRaizTxt}
                     placeholder={fmt(altDeriv)}
-                    onChange={(e) => setZRaiz(e.target.value)}
+                    onChange={(e) => setZNudo(raiz)(e.target.value)}
                     style={HBIN}
                     aria-label="Cota de la derivación"
                   />,
@@ -643,199 +384,37 @@ export function RciHidraulica({
                 Ver instalación típica de la derivación
               </button>
             </Hbar>
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                className="tbl"
-                style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 700 }}
-              >
-                <caption
-                  style={{
-                    position: 'absolute',
-                    width: 1,
-                    height: 1,
-                    overflow: 'hidden',
-                    clip: 'rect(0 0 0 0)',
-                  }}
-                >
-                  Tramos del piso
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col" style={TH10}>
-                      Tramo
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Nudo de inicio (llegan ramales o el tramo anterior)"
-                    >
-                      De
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Nudo final; la derivación del montante es la última letra"
-                    >
-                      A
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Material del tramo. Gris = lo trae el dibujo"
-                    >
-                      Material
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Diámetro. Auto: lo elige el motor por velocidad"
-                    >
-                      Ø
-                    </th>
-                    <th
-                      scope="col"
-                      style={TH10}
-                      title="Longitud total con desglose: planta + bajada a la derivación (del dibujo)"
-                    >
-                      L (m)
-                    </th>
-                    <th scope="col" style={TH10} title="Diámetro con el que se calculó">
-                      Ø usado
-                    </th>
-                    <th scope="col" style={TH10} title="Caudal total que transporta">
-                      Q (gpm)
-                    </th>
-                    <th scope="col" style={TH10} title="Pérdida por fricción y accesorios">
-                      Pérdida (psi)
-                    </th>
-                    <th scope="col" style={TH10} title="Presión por desnivel">
-                      Pe (psi)
-                    </th>
-                    <th scope="col" style={TH10} title="Presión al final del tramo">
-                      P final (psi)
-                    </th>
-                    <th scope="col" style={TH10} title="Velocidad del agua">
-                      V (m/s)
-                    </th>
-                    <th scope="col" style={TH10} title="Cálculo completo y dentro de límites">
-                      Estado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trams.map((f, i) => {
-                    const fij = fijosT.get(f.id) || { dn: false, mat: false };
-                    return (
-                      <tr key={f.id || i}>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                        >
-                          🔒 {f.nombre}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                        >
-                          {f.de || '—'}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                        >
-                          {f.a || '—'}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px' }}>
-                          {celdaEditable(
-                            editTram && !fij.mat,
-                            <select
-                              value={f.mat}
-                              onChange={(e) => setTramo(i, 'mat')(e.target.value)}
-                              style={{ ...CELDA, width: anchoValor(f.mat) }}
-                            >
-                              <option value="">—</option>
-                              {MATERIALES.map((m) => (
-                                <option key={m} value={m}>
-                                  {m}
-                                </option>
-                              ))}
-                            </select>,
-                          )}
-                        </td>
-                        <td className="c" style={{ padding: '1px 2px' }}>
-                          {celdaEditable(
-                            editTram && !fij.dn,
-                            <select
-                              value={f.dn}
-                              onChange={(e) => setTramo(i, 'dn')(e.target.value)}
-                              style={{ ...CELDA, width: anchoValor(f.dn) }}
-                            >
-                              {DIAMETROS.map((o) => (
-                                <option key={o} value={o}>
-                                  {o}
-                                </option>
-                              ))}
-                            </select>,
-                          )}
-                        </td>
-                        <td
-                          className="c"
-                          style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                          title="Planta + bajada (del dibujo)"
-                        >
-                          {f.L !== null ? f.L.toFixed(2) : '—'}
-                          {f.desgBajada !== null && f.desgBajada > 0 ? (
-                            <span style={{ display: 'block', fontSize: 11, color: 'var(--txt3)' }}>
-                              {f.desgPlanta !== null ? f.desgPlanta.toFixed(2) : '—'} planta +{' '}
-                              {f.desgBajada.toFixed(2)} bajada
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="c" style={TDC}>
-                          {f.dnUsado || '—'}
-                        </td>
-                        <td className="c" style={{ ...TDC, fontWeight: 600 }}>
-                          {f.Q !== null ? f.Q.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TDC}>
-                          {f.Pf !== null ? f.Pf.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TDC}>
-                          {f.Pe !== null ? f.Pe.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={{ ...TDC, fontWeight: 600 }}>
-                          {f.Pfin !== null ? f.Pfin.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TDC}>
-                          {f.V !== null ? f.V.toFixed(2) : '—'}
-                        </td>
-                        <td
-                          className="c"
-                          style={{
-                            ...TDC,
-                            color: f.ok ? 'var(--succ, #5DBB83)' : 'var(--err, #F04545)',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {f.ok ? 'OK' : 'revisar'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {trams.length === 0 && (
-                    <tr>
-                      <td colSpan={13} style={TDC}>
-                        Sin tramos extraídos.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <RciTablaTramos
+              trams={trams}
+              fijosT={fijosT}
+              red={red}
+              editTram={editTram}
+              setTramo={setTramo}
+              setZNudo={setZNudo}
+              zRamTxt={zRamTxt}
+              raiz={raiz}
+              altDeriv={altDeriv}
+            />
           </SecRci>
         ) : null}
-        {subActiva === 'nudos' && rd ? <PanelNudosRci rd={rd} /> : null}
-        {subActiva === 'detalle' && rd ? <PanelDetalleRci rd={rd} /> : null}
+        {/* «Red y tipología» y «Fin del piso»: tal cual el HTML v1.7.79 — la psec existe y el
+         *  build las deja VACÍAS (buildHidraulica: hRed/alimCard = ""). Sin contenido inventado. */}
+        {/* Tabs SIEMPRE visibles (ped. usuario): sin red calculada muestran su vacío —
+         *  el usuario ve POR QUÉ no hay nudos, no una sección en blanco. */}
+        {subActiva === 'nudos' ? (
+          rd ? (
+            <PanelNudosRci rd={rd} />
+          ) : (
+            <div style={VACIO}>Red sin calcular: la derivación no cerró (vea Ramales/Tramos).</div>
+          )
+        ) : null}
+        {subActiva === 'detalle' ? (
+          rd ? (
+            <PanelDetalleRci rd={rd} />
+          ) : (
+            <div style={VACIO}>Red sin calcular: no hay ruta nudo a nudo que detallar.</div>
+          )
+        ) : null}
       </SubTabsRci>
       {vrpAbierta ? (
         <div
@@ -884,10 +463,4 @@ export function RciHidraulica({
       ) : null}
     </>
   );
-}
-
-/** S digitada del ramal (vacío = usa la del proyecto). */
-function sDeRamal(red: Red | undefined, i: number): string {
-  const r = red?.ramales[i];
-  return r && r.S !== undefined && r.S !== null ? String(r.S) : '';
 }

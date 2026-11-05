@@ -590,6 +590,49 @@ export const GRUPOS: Record<string, DefCampo[]> = {
   ],
 };
 
+/** Título legible de cada grupo (para citar la tabla donde vive la condición en notaDeps). */
+const TITULO_GRUPO: Record<string, string> = {
+  normativa: 'Normativa',
+  clasificacion: 'Clasificación',
+  tuberia: 'Tubería y mangueras',
+  montantes: 'Montantes',
+  siamesa: 'Siamesa',
+  seleccion: 'Selección de bomba',
+  succion: 'Succión',
+  jockey: 'Bomba jockey',
+  tanque: 'Tanque',
+};
+
+/** Índice dep-path → ««label» (Tabla)», construido UNA vez de GRUPOS (sin búsquedas en bucles). */
+const FUENTE_DEP: Map<string, string> = new Map(
+  Object.entries(GRUPOS).flatMap(([id, camposGrupo]) =>
+    camposGrupo.map((c) => [c.path, `«${c.lbl}» (${TITULO_GRUPO[id] || id})`] as const),
+  ),
+);
+
+/** Nota del icono ⓘ de una tabla: qué condición Sí/No (de otra tabla) habilita sus filas
+ *  bloqueadas. Resuelve cada dep contra el índice FUENTE_DEP y cita su tabla. En FORMATO
+ *  LISTA (el title nativo respeta los saltos): primera línea con la condición y un punto
+ *  por fila habilitada. Ej: en Montantes → «Requiere «Sí» en «¿Exige montantes /
+ *  gabinetes?» (Normativa) para habilitar:\n• Clase de sistema\n• …». Vacío = sin deps. */
+export function notaDeps(campos: DefCampo[]): string {
+  const porDep = new Map<string, string[]>();
+  for (const d of campos) {
+    if (!d.dep) continue;
+    const filas = porDep.get(d.dep) || [];
+    filas.push(d.lbl);
+    porDep.set(d.dep, filas);
+  }
+  if (porDep.size === 0) return '';
+  const partes: string[] = [];
+  for (const [dep, filas] of porDep) {
+    partes.push(
+      `Requiere «Sí» en ${FUENTE_DEP.get(dep) || dep} para habilitar:\n${filas.map((f) => `• ${f}`).join('\n')}`,
+    );
+  }
+  return partes.join('\n\n');
+}
+
 /** Nota bajo el título de cada sub-pestaña (las que la traen en el HTML). */
 export const NOTA_SUB: Record<string, string> = {
   normativa: 'No interviene en los cálculos',

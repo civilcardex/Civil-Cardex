@@ -1,9 +1,6 @@
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
-import {
-  healMergedVertices,
-  mergeCollinearPairs,
-  distToPolylineBody,
-} from './deleteRemergeInternals.ts';
+import { healMergedVertices, mergeCollinearPairs } from './deleteRemergeInternals.ts';
+import { distToPolyline } from '../shared/geometry.ts';
 import { relabelTribChain, allocTributaryNumber } from './PlanoState.ts';
 import { _midpoint } from './PlanoEngineDrawing.ts';
 import { loadFromStorage, saveToStorage } from '../../services/storageService.ts';
@@ -289,7 +286,7 @@ export function mergeTribPairAt(engine: IPlanoEngineCore, pt: number[]): void {
     if (r.net !== tribAt[0].net) return false;
     if (
       r.pts.some((p) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL) ||
-      distToPolylineBody(pt, r.pts) < TOL
+      distToPolyline(pt, r.pts) < TOL
     )
       return true;
     return false;

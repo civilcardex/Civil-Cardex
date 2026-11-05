@@ -374,8 +374,17 @@ export function edificio(
     return o;
   });
   let gabRows: TuberiaRow[] = [];
+  /* Salidas de gabinete DESDE EL DIBUJO (ped. usuario): los pisos con GABn en st.gabinetes
+     son los outlets (cota de salida = npt − zB + hS, como siempre). Sin gabinetes dibujados
+     no hay outlets y la tabla queda vacía — nada fabricado. */
+  const planesConGab = new Set((st.gabinetes || []).map((g) => g.planId));
+  const idxConGab = new Set<number>();
+  (st.pisos?.rows || []).forEach((r, i) => {
+    const pid = (r as { planId?: unknown }).planId;
+    if (pid !== undefined && pid !== null && planesConGab.has(String(pid))) idxConGab.add(i);
+  });
   const outs = pf
-    .filter((o) => o.f.salida && o.f.salida !== 'Ninguna' && o.zS !== null)
+    .filter((o) => idxConGab.has(o.f.i) && o.zS !== null)
     .sort((a, b) => (b.zS as number) - (a.zS as number));
   if (outs.length) {
     const cl2 = st.sp.clase === 'Clase II',
@@ -434,4 +443,13 @@ export function edificio(
     montantes,
     mont: montantes[0],
   };
+}
+
+/** Número EFECTIVO de montantes (ped. usuario: lo manda el dibujo): códigos distintos de los
+ *  montantes rci extraídos (st.montantes, un código por montante vertical aunque cruce pisos);
+ *  sin dibujo cae al amarillo sp.num. Ej: 2 montantes dibujados → 2 (500+250 gpm de demanda). */
+export function numMontantesDibujados(st: RciState): number {
+  const codigos = new Set<string>();
+  for (const m of st.montantes || []) codigos.add(m.nombre || m.id);
+  return codigos.size || num(st.sp.num) || 1;
 }

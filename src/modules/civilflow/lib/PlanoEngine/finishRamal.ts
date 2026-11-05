@@ -360,7 +360,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // Redes de presión (af/ac/gas/rci): las 3 verificaciones vivas BLOQUEAN el dibujo —
   // si el tramo viola (sale de aparato / entra a fuente / ciclo no declarado), se alerta
   // y NO queda dibujado (patrón pop de los checks de ángulo/cruce de abajo).
-  const motivoPresion = validarTrazoPresion(engine, r);
+  const motivoPresion = validarTrazoPresion(r);
   if (motivoPresion) {
     engine.triggerAlert('Trazo no válido', motivoPresion);
     engine.ramales.pop();

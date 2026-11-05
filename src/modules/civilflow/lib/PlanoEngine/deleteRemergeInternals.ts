@@ -195,20 +195,3 @@ export function mergeCollinearPairs(engine: IPlanoEngineCore): void {
     }
   }
 }
-/** Distancia del punto al CUERPO de la polilínea (vértices + segmentos, px): sirve para saber si una unión sigue viva sobre el tramo re-unido. */
-export function distToPolylineBody(p: number[], pts: number[][]): number {
-  let d = Infinity;
-  for (let i = 0; i < pts.length; i++)
-    d = Math.min(d, Math.hypot(pts[i][0] - p[0], pts[i][1] - p[1]));
-  for (let i = 0; i + 1 < pts.length; i++) {
-    const A = pts[i];
-    const B = pts[i + 1];
-    const dx = B[0] - A[0];
-    const dy = B[1] - A[1];
-    const l2 = dx * dx + dy * dy;
-    if (l2 < 1e-9) continue;
-    const t = Math.max(0, Math.min(1, ((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / l2));
-    d = Math.min(d, Math.hypot(p[0] - (A[0] + t * dx), p[1] - (A[1] + t * dy)));
-  }
-  return d;
-}

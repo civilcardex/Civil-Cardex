@@ -18,7 +18,6 @@ import type {
   RciState,
   Red,
   RedResult,
-  RouteResult,
   SiaResult,
   TanqueResult,
   Tips,
@@ -42,8 +41,6 @@ export const CONSTR_OPCIONES = [
   'Combustible obstruida',
   'Combustible, elementos < 0,91 m',
 ] as const;
-/** Salidas de manguera del montante por piso (NFPA 14). */
-export const SALIDAS = ['Ninguna', '2½"', '1½"', '2½" + 1½"'] as const;
 /** Clases de sistema de montantes (NFPA 14). */
 export const CLASES_SP = ['Clase I', 'Clase II', 'Clase III'] as const;
 /** Materiales comerciales (la llave de PIPES). */
@@ -52,13 +49,6 @@ export const MATERIALES: string[] = Object.keys(PIPES);
 export const DIAMETROS = ['auto', ...NOM] as const;
 /** Zonas de amenaza sísmica; vacío = auto con el perfil del país. */
 export const ZONAS_SIS = ['', 'Baja', 'Intermedia', 'Alta'] as const;
-
-/** Salida de manguera por defecto según la clase del sistema (NFPA 14). Ej: Clase II → '1½"'. */
-export function salidaPorClase(clase: string): string {
-  if (clase === 'Clase II') return '1½"';
-  if (clase === 'Clase I') return '2½"';
-  return '2½" + 1½"';
-}
 
 /* ============================ Semillas del proyecto nuevo ============================ */
 
@@ -76,9 +66,6 @@ const vacio = (v: unknown): boolean => v === '' || v === null || v === undefined
  * Ej: sembrarRci(estadoVacio, 'Torre Norte').clas.riesgo = 'Riesgo leve'.
  */
 export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
-  const salidaDef = salidaPorClase(
-    est.sp.clase && !vacio(est.sp.clase) ? String(est.sp.clase) : 'Clase III',
-  );
   let cambio = false;
   const graba = <T>(actual: T, defecto: T): T => {
     if (!vacio(actual)) return actual;
@@ -168,47 +155,20 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
     margenNpsh: graba(est.bomba.margenNpsh, 0.5),
     qjockey: graba(est.bomba.qjockey, 2.0),
   };
-  /* Cuarto de bombas por defecto del "Nuevo proyecto" (Base → CB) si el diseñador no lo trajo. */
-  let cuarto = est.mont.cuarto;
-  if (!cuarto?.length) {
-    cambio = true;
-    cuarto = [
-      {
-        ni: 'Base',
-        nf: 'CB',
-        mat: 'Acero SCH 10',
-        dn: 'auto',
-        L: 5,
-        tee: 1,
-        comp: 1,
-        ret: 1,
-        esp: '',
-        zi: 0,
-        zf: 0,
-      },
-    ];
-  }
-  const mont = { ...est.mont, cuarto };
+  /* Cuarto de bombas SIN seed (ped. usuario: nada fabricado) — el diseñador llena la fila
+   * Base→CB en Entradas → Selección de bomba. */
+  const mont = { ...est.mont };
 
+  /* Por piso SOLO se siembra la planta (mapeo piso→red, ver doc de arriba): los criterios,
+   * la salida y la tipología NO se copian — la salida la fija el dibujo (gabinetes GAB) y
+   * lo demás lo digita el diseñador (ped. usuario: nada fabricado). */
   const rows = est.pisos.rows.map((r) => {
-    if (!vacio(r.riesgo)) return r;
+    if (!vacio(r.planta)) return r;
     cambio = true;
     const planId = String((r as PisoRow & { planId?: string }).planId || '');
     return {
       ...r,
-      planta: vacio(r.planta) ? planId || 'A' : r.planta,
-      riesgo: clas.riesgo,
-      sistema: vacio(r.sistema) ? clas.sistema : r.sistema,
-      htecho: vacio(r.htecho) ? clas.htecho : r.htecho,
-      qr: vacio(r.qr) ? clas.qr : r.qr,
-      constr: vacio(r.constr) ? clas.constr : r.constr,
-      techoIncl: vacio(r.techoIncl) ? clas.techoIncl : r.techoIncl,
-      ocultoComb: vacio(r.ocultoComb) ? clas.ocultoComb : r.ocultoComb,
-      K: vacio(r.K) ? roc.K : r.K,
-      S: vacio(r.S) ? roc.S : r.S,
-      L: vacio(r.L) ? roc.L : r.L,
-      salida: vacio(r.salida) ? salidaDef : r.salida,
-      tip: vacio(r.tip) ? 'auto' : r.tip,
+      planta: planId || 'A',
     };
   });
 
@@ -395,6 +355,20 @@ export interface FilaRamalRci {
   P: number | null;
   /** Brazo del ramal: L − (fluyen − 1) × S. */
   brazo: number | null;
+  /** Numeración global de rociadores del ramal: «Roc n0» y «n0–n1» (del compute). */
+  rocIni: number | null;
+  rocFin: number | null;
+  /** Pérdidas totales del ramal: fricción + accesorios del brazo (psi, suma de sus filas). */
+  Pf: number | null;
+  /** Presión por desnivel del ramal (psi, suma de sus filas). */
+  Pe: number | null;
+  /** K equivalente Q/√P del ramal visto desde su nudo. */
+  Keq: number | null;
+  /** Velocidad máxima dentro del ramal (m/s). */
+  Vmax: number | null;
+  /** Caudal/presión EQUILIBRADOS del ramal con la presión real de su nudo. */
+  Qeq: number | null;
+  Peq: number | null;
   /** true si la ruta del ramal cerró con datos completos. */
   ok: boolean;
 }
@@ -410,6 +384,7 @@ export function filasRamales(red: Red | undefined, rd: RedResult | null): FilaRa
     const r = rows[i];
     const x = porIndice.get(i);
     const res = x?.res;
+    const filasOk = res ? res.rows.filter((z) => z.ok) : [];
     filas.push({
       id: txtDe((r as TuberiaRow & { id?: string }).id),
       nombre: txtDe(r.nombre) || `R${i + 1}`,
@@ -424,6 +399,14 @@ export function filasRamales(red: Red | undefined, rd: RedResult | null): FilaRa
       Q: res?.valid ? res.Qend : null,
       P: res?.valid ? res.Pend : null,
       brazo: x?.brazo ?? null,
+      rocIni: x && x.fl > 0 ? x.n0 : null,
+      rocFin: x && x.fl > 0 ? x.n1 : null,
+      Pf: res?.valid ? filasOk.reduce((s, z) => s + z.Pf, 0) : null,
+      Pe: res?.valid ? filasOk.reduce((s, z) => s + z.Pe, 0) : null,
+      Keq: res?.valid && res.Keq !== undefined ? res.Keq : null,
+      Vmax: res?.valid && res.Vmax !== undefined ? res.Vmax : null,
+      Qeq: x?.Qeq ?? null,
+      Peq: x?.Peq ?? null,
       ok: !!res?.valid,
     });
   }
@@ -473,6 +456,12 @@ export interface FilaTramoRci {
   Pfin: number | null;
   /** Velocidad del agua (m/s). */
   V: number | null;
+  /** Caudal PROPIO del tramo: los ramales que le llegan en su nudo de inicio, equilibrados (gpm). */
+  Qpropio: number | null;
+  /** Caudal que le llega de OTROS tramos que alimenta (los anteriores en el orden) (gpm). */
+  Qotros: number | null;
+  /** Presión al INICIO del tramo (psi, la primera fila de su ruta). */
+  Pini: number | null;
   ok: boolean;
 }
 
@@ -488,6 +477,9 @@ export function filasTramos(
   const filas: FilaTramoRci[] = [];
   const rows = red ? red.tramos : [];
   const raiz = txtDe(red?.raiz);
+  /* Nudos del resultado por nombre: de ahí salen los aportes (ramales equilibrados y tramos
+   * aguas arriba) del caudal propio vs el de otros en el nudo de inicio de cada tramo. */
+  const nodosRes = rd?.nodes || {};
   for (let i = 0; i < rows.length; i++) {
     const t = rows[i];
     const y = porIndice.get(i);
@@ -495,6 +487,20 @@ export function filasTramos(
     const calc = primera && primera.ok ? primera : null;
     const esLlegada = txtDe(t.a) === raiz;
     const desg = desgloseDeTramo(t, esLlegada, techo, altDeriv);
+    /* Q propio vs de otros en el nudo de inicio (los aportes que este tramo RECIBE). */
+    let qPropio: number | null = null;
+    let qOtros: number | null = null;
+    const nudo = nodosRes[txtDe(t.de)];
+    if (nudo) {
+      let a = 0;
+      let b = 0;
+      for (const f of nudo.inflows) {
+        if (f.tipo === 'ramal') a += f.Q;
+        else b += f.Q;
+      }
+      qPropio = a;
+      qOtros = b;
+    }
     filas.push({
       id: txtDe((t as TuberiaRow & { id?: string }).id),
       nombre: txtDe(t.nombre) || `T${i + 1}`,
@@ -511,6 +517,9 @@ export function filasTramos(
       Pe: calc ? calc.Pe : null,
       Pfin: y?.res?.valid ? y.res.Pend : null,
       V: calc ? calc.V : null,
+      Qpropio: qPropio,
+      Qotros: qOtros,
+      Pini: calc ? calc.Pini : null,
       ok: !!y?.res?.valid,
     });
   }
@@ -665,46 +674,6 @@ export function kvRociadorCobertura(ro: Criterios, Nop: number | null): KvRci[] 
       u: 'min',
     },
   ];
-}
-
-/** Resultados del montante y su ruta: Ø usado, demanda de gabinetes y ruta del cuarto.
- *  Ej: el ejemplo cierra con 500 gpm @ 127.36 psi en la brida de la bomba. */
-export function kvMontante(edif: Edificio, gab: RouteResult | null): KvRci[] {
-  const filas: KvRci[] = [
-    {
-      l: 'Ø usado del montante',
-      v: edif.dnM || '—',
-      nota: edif.M.dn === 'auto' ? 'auto (velocidad + mínimo de norma)' : undefined,
-    },
-    {
-      l: 'Cota de la base del montante',
-      v: f1(edif.zBase),
-      u: 'm',
-      nota: 'sobre el eje de la bomba',
-    },
-    {
-      l: 'Salidas con manguera',
-      v: `${edif.outs.length}`,
-      nota: edif.outs.length
-        ? edif.outs.map((o) => `${o.f.nombre} (${o.f.salida})`).join(', ')
-        : 'márquelas en Tipologías',
-    },
-  ];
-  if (gab && gab.valid) {
-    filas.push({
-      l: 'Demanda de montantes (Clase)',
-      v: `${f1(gab.Qend, 1)}`,
-      u: 'gpm',
-      nota: `${f1(gab.Pend)} psi en la brida de la bomba`,
-    });
-  } else {
-    filas.push({
-      l: 'Demanda de montantes (Clase)',
-      v: '—',
-      nota: 'requiere salidas marcadas y el cuarto de bombas completo',
-    });
-  }
-  return filas;
 }
 
 /** Resultados de la siamesa (conexión de bomberos). Ej: el ejemplo pide 125.1 psi con 500 gpm. */

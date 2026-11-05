@@ -31,9 +31,6 @@ export function interpPV(T: number): { pv: number; rho: number } {
   return { pv: p0 + f * (p1 - p0), rho: d0 + f * (d1 - d0) };
 }
 
-/** ¿La salida del piso lleva manguera de 1½"? (NFPA 14: gatillo de la válvula reguladora). */
-const salidaConManguera15 = (salida: string): boolean => salida.includes('1½');
-
 /** Siamesa (conexión de bomberos, NFPA 14): el carro alimenta el montante sin la bomba del
  *  edificio; la presión requerida en las entradas sube por la tubería de la siamesa con sus
  *  accesorios y el desnivel. Ej: el ejemplo da 125.1 psi en las entradas con 500 gpm. */
@@ -185,7 +182,10 @@ export function bombaPerfilCalc(
       o.vrpFalta = o.vrpReq && o.f.vrp === 'No';
       if (o.f.salida && o.f.salida !== 'Ninguna') {
         /* NFPA 14: válvula reguladora si la residual de 1½" supera 100 psi o si la estática de cualquier salida supera 175 psi */
-        const has15 = salidaConManguera15(o.f.salida);
+        /* La manguera de 1½" por CLASE (la salida GRIS 'Sí' ya no distingue diámetro — el
+         * gabinete GAB del dibujo es un solo símbolo): Clase II y III la llevan, Clase I es
+         * solo de 2½". Ej: Clase III con salida 'Sí' → el chequeo de 100 psi sigue vivo. */
+        const has15 = ctx.claseSP !== 'Clase I';
         if (has15) {
           const rr = route(
             [

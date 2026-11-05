@@ -9,10 +9,12 @@ import { TH, TD } from '../../styles/sharedTableStyles.ts';
 import { filasDetalleNudo, filasNudos, fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { RedResult } from '../../lib/rci/types.ts';
 
-const TH10 = { ...TH, fontSize: 11 } as const;
-const TDC = { ...TD, fontSize: 13, padding: '1px 3px' } as const;
+const TH10 = { ...TH, fontSize: 12 } as const;
+const TDC = { ...TD, fontSize: 14, padding: '1px 3px' } as const;
 
-const VACIO: CSSProperties = { padding: '10px 12px', fontSize: 12, color: 'var(--txt2)' };
+/** Caja de vacío compartida (pintada por los paneles sin datos y por las tabs Nudos/Detalle
+ *  cuando la red del piso no llegó a derivación). */
+export const VACIO: CSSProperties = { padding: '10px 12px', fontSize: 12, color: 'var(--txt2)' };
 
 /** Texto de un valor numérico opcional ('—' si no cerró el cálculo). */
 const n = (x: number | null | undefined): string => (x === null || x === undefined ? '—' : fmt(x));
@@ -40,7 +42,7 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
           <div style={{ overflowX: 'auto' }}>
             <table
               className="tbl"
-              style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 760 }}
+              style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 760 }}
             >
               <caption
                 style={{
@@ -157,7 +159,11 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
 export function PanelDetalleRci({ rd }: { rd: RedResult }) {
   const det = filasDetalleNudo(rd);
   return (
-    <SecRci id="detalle" titulo="Detalle nudo a nudo" icono="/iconos/detalle_nudo_a_nudo.webp">
+    <SecRci
+      id="detalle"
+      titulo="Detalle nudo a nudo de cada ramal"
+      icono="/iconos/detalle_nudo_a_nudo.webp"
+    >
       {!det.length ? (
         <div style={VACIO}>Sin ramales con flujo.</div>
       ) : (
@@ -172,7 +178,7 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
               <div style={{ overflowX: 'auto' }}>
                 <table
                   className="tbl"
-                  style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 640 }}
+                  style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 640 }}
                 >
                   <caption
                     style={{

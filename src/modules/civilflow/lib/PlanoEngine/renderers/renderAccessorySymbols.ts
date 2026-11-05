@@ -4,6 +4,7 @@ import { drawSifonSymbol } from './accTraps';
 import { drawCodoSymbols } from './accElbows';
 import { drawTeeSymbols } from './accTees';
 import { drawValveSymbols } from './accValves';
+import { drawRciSymbols } from './accRci';
 import { drawFallbackSymbol } from './accFallback';
 export { drawCornerCodoArc } from './cornerElbowArc.ts';
 
@@ -32,11 +33,12 @@ export interface AccSimboloArgs {
   pipeToward?: { x: number; y: number };
 }
 
-/** Reparte el glifo del accesorio de EXTREMO entre las familias (sifón → codo → tee → válvula → respaldo): el primero que reconoce el tipo gana. */
+/** Reparte el glifo del accesorio de EXTREMO entre las familias (sifón → codo → tee → válvula → rci → respaldo): el primero que reconoce el tipo gana. */
 export function drawExtremeAccessorySymbol(a: AccSimboloArgs): void {
   if (drawSifonSymbol(a)) return;
   if (drawCodoSymbols(a)) return;
   if (drawTeeSymbols(a)) return;
   if (drawValveSymbols(a)) return;
+  if (drawRciSymbols(a)) return;
   drawFallbackSymbol(a);
 }

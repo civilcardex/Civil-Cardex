@@ -25,8 +25,8 @@ const SUBS: SubItemRci[] = [
   { id: 'cantidades', titulo: 'Cantidades por tipología' },
 ];
 
-const TH10 = { ...TH, fontSize: 11 } as const;
-const TDC = { ...TD, fontSize: 13, padding: '2px 4px' } as const;
+const TH10 = { ...TH, fontSize: 12 } as const;
+const TDC = { ...TD, fontSize: 14, padding: '2px 4px' } as const;
 
 /** Botón "Ir al dato" del vacío. */
 const BTN_IR: React.CSSProperties = {
@@ -235,7 +235,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
               <SismoSvg losaRestr={K.losaR} />
               <table
                 className="tbl"
-                style={{ fontSize: 11, borderCollapse: 'collapse', width: '100%' }}
+                style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}
               >
                 <tbody>
                   {reglas.map(([a, b]) => (
@@ -258,7 +258,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
                         style={{
                           padding: '4px 6px',
                           borderBottom: '1px solid var(--line)',
-                          fontSize: 13,
+                          fontSize: 14,
                           color: 'var(--txt)',
                         }}
                       >
@@ -284,7 +284,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
             <div style={{ overflowX: 'auto' }}>
               <table
                 className="tbl"
-                style={{ fontSize: 11, borderCollapse: 'collapse', width: '100%' }}
+                style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}
               >
                 <thead>
                   <tr>

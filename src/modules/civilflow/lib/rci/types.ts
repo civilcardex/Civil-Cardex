@@ -167,6 +167,14 @@ export interface RciSia {
 /** Montante NFPA 14 (standpipe): material/diámetro, alturas de salida de manguera (hS) y de
  *  derivación del piso (hD, en m sobre el NPT (Nivel de Piso Terminado)), cota de la base y la
  *  ruta del cuarto de bombas. */
+/** Gabinete dibujado en el plano (gris): el elemento del motor `tipo:'gabinete'` con código
+ *  GABn. Ej: {code:'GAB1', npt:3.5, planId:'12'} — npt = nptBase del piso donde cayó. */
+export interface RciGabinete {
+  code: string;
+  npt: number;
+  planId: string;
+}
+
 export interface MontCfg {
   mat: string;
   dn: string;
@@ -223,6 +231,8 @@ export interface PisoRow {
   L: NumIn;
   salida: string;
   tip: string;
+  /** Id del plano dueño de la fila (lo escribe el extractor; GRIS). Ej: '12'. */
+  planId?: string;
   vreg?: string;
   vrp?: string;
 }
@@ -263,6 +273,10 @@ export interface RciState {
   esp: EspAcc[];
   pisos: RciPisos;
   notas: string;
+  /** Gabinetes GABn leídos del DIBUJO (gris): código, NPT del piso donde caen y planId de su
+   *  plano. Alimenta la ruta de montantes/gabinetes de building.ts. Ej:
+   *  [{code:'GAB1', npt:3.5, planId:'12'}]. */
+  gabinetes?: RciGabinete[];
   /** Coeficientes C adoptados por el diseñador, por material: { "Acero SCH 40": { h: 120, s: 100 } }. */
   cmat?: Record<string, { h?: NumIn; s?: NumIn }>;
   /** Interruptor del cálculo automático de red (legado de la UI). */
@@ -842,6 +856,11 @@ export const ejemploVerificacion = (): RciState => ({
       },
     ],
   },
+  gabinetes: [
+    { code: 'GAB1', npt: 0, planId: 'A' },
+    { code: 'GAB2', npt: 6.1, planId: 'A' },
+    { code: 'GAB3', npt: 12.2, planId: 'A' },
+  ],
   esp: ESP_DEF(),
   pisos: {
     zBomba: 0,
@@ -853,6 +872,7 @@ export const ejemploVerificacion = (): RciState => ({
       {
         nombre: 'P3',
         npt: 12.2,
+        planId: 'A',
         uso: 'Oficinas',
         planta: 'A',
         riesgo: 'Riesgo leve',
@@ -871,6 +891,7 @@ export const ejemploVerificacion = (): RciState => ({
       {
         nombre: 'P2',
         npt: 6.1,
+        planId: 'A',
         uso: 'Oficinas',
         planta: 'A',
         riesgo: 'Riesgo leve',
@@ -889,6 +910,7 @@ export const ejemploVerificacion = (): RciState => ({
       {
         nombre: 'P1',
         npt: 0,
+        planId: 'A',
         uso: 'Recepción',
         planta: 'A',
         riesgo: 'Riesgo leve',

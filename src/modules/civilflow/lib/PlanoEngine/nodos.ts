@@ -1,4 +1,3 @@
-import { devError } from '../../../../utils/devError.ts';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
 import { pointToSegmentDist } from './HitTester.ts';
 
@@ -138,29 +137,13 @@ export function extremoLejanoTipo(
   return 'LIBRE';
 }
 
-/** Junta en grupos los extremos de ramales que caen en el mismo sitio (≤ tol px): cada grupo es
- *  una unión de la red (el "nodo" donde se juntan las tuberías). */
-function clustersDe(ramales: PlanoRamal[], tol = 0.5): { pt: number[]; ids: string[] }[] {
-  const out: { pt: number[]; ids: string[] }[] = [];
-  for (const r of ramales) {
-    for (const e of [r.pts![0] as number[], r.pts![r.pts!.length - 1] as number[]]) {
-      const hit = out.find((c) => Math.hypot(c.pt[0] - e[0], c.pt[1] - e[1]) <= tol);
-      if (hit) hit.ids.push(r.id);
-      else out.push({ pt: [e[0], e[1]], ids: [r.id] });
-    }
-  }
-  return out;
-}
-
 /** Revisa TODA una red a presión y devuelve la lista de problemas encontrados: tramos que SALEN
- *  de un aparato (el agua debe entrar en él) y lazos cerrados que el usuario no declaró como
- *  malla/recirculación. */
-export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): Incidencia[] {
+ *  de un aparato (el agua debe entrar en él). (El chequeo de ciclos/mallas se retiró — ped.
+ *  usuario.) */
+export function chequearRed(engine: IPlanoEngineCore, net: string): Incidencia[] {
   const ramales = ramalesDe(engine, net);
   const inc: Incidencia[] = [];
   if (ramales.length === 0) return inc;
-
-  const clusters = clustersDe(ramales, tol);
 
   // ── Sale de aparato / entra a fuente ──
   for (const r of ramales) {
@@ -177,94 +160,12 @@ export function chequearRed(engine: IPlanoEngineCore, net: string, tol = 0.5): I
     // (la alimentación llega a él); no es incidencia.
   }
 
-  // ── Ciclo no declarado: DFS sobre clusters (arista = ramal que une 2 clusters) ──
-  const mallas = (engine as { mallasDeclaradas?: Set<string> }).mallasDeclaradas;
-  const declarada = mallas?.has(net) ?? false;
-  if (!declarada) {
-    // aristas: ramal con extremos en 2 clusters distintos
-    const aristas: { a: number; b: number; id: string }[] = [];
-    ramales.forEach((r, ri) => {
-      const a = clusters.findIndex(
-        (c) =>
-          Math.hypot(c.pt[0] - (r.pts![0] as number[])[0], c.pt[1] - (r.pts![0] as number[])[1]) <=
-          tol,
-      );
-      const b = clusters.findIndex(
-        (c) =>
-          Math.hypot(
-            c.pt[0] - (r.pts![r.pts!.length - 1] as number[])[0],
-            c.pt[1] - (r.pts![r.pts!.length - 1] as number[])[1],
-          ) <= tol,
-      );
-      if (a >= 0 && b >= 0 && a !== b) aristas.push({ a, b, id: ralesId(ramales, ri) });
-    });
-    const adj: number[][] = clusters.map(() => []);
-    aristas.forEach((ar, i) => {
-      adj[ar.a].push(i);
-      adj[ar.b].push(i);
-    });
-    const visit = new Array(clusters.length).fill(false);
-    const parentEdge = new Array(clusters.length).fill(-1);
-    let ciclo: { a: number; b: number; id: string } | null = null;
-    const dfs = (u: number): void => {
-      visit[u] = true;
-      for (const ei of adj[u]) {
-        const v = aristas[ei].a === u ? aristas[ei].b : aristas[ei].a;
-        if (!visit[v]) {
-          parentEdge[v] = ei;
-          dfs(v);
-        } else if (parentEdge[u] !== ei && !ciclo) {
-          ciclo = aristas[ei];
-        }
-      }
-    };
-    for (let c = 0; c < clusters.length && !ciclo; c++) if (!visit[c]) dfs(c);
-    if (ciclo) {
-      const cinfo = ciclo as { a: number; b: number; id: string };
-      inc.push({
-        nivel: 'error',
-        tipo: 'ciclo',
-        ramalId: cinfo.id,
-        msg: `Ciclo en la red (tramo ${cinfo.id} cierra el lazo). Si es intencional, decláralo como malla/recirculación en el menú del tramo.`,
-      });
-    }
-  }
-
   return inc;
 }
 
-function ralesId(ramales: PlanoRamal[], i: number): string {
-  return ramales[i]?.id || '';
-}
-
-/** Lee qué redes marcó el usuario como malla/recirculación en este piso (guarda en el
- *  navegador, por plano). */
-export function cargarMallas(planId: string | number | null): Set<string> {
-  try {
-    const raw = localStorage.getItem(mallasKey(planId));
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-/** Persiste las redes declaradas de un plan. */
-export function guardarMallas(planId: string | number | null, redes: Set<string>): void {
-  try {
-    localStorage.setItem(mallasKey(planId), JSON.stringify([...redes]));
-  } catch (e) {
-    devError('guardarMallas:', e);
-  }
-}
-
-/** Clave de storage de mallas declaradas por planId. */
-function mallasKey(planId: string | number | null): string {
-  return `civilflow_mallas_${planId ?? 'x'}`;
-}
-
-/** Antes de dejar un trazo nuevo en el plano, lo rechaza si sale de un aparato o si cierra un
- *  lazo sin declarar. Devuelve el motivo (null = el trazo es válido y se puede quedar). */
-export function validarTrazoPresion(engine: IPlanoEngineCore, ram: PlanoRamal): string | null {
+/** Antes de dejar un trazo nuevo en el plano, lo rechaza si sale de un aparato. (El chequeo de
+ *  ciclos/mallas se retiró — ped. usuario.) Devuelve el motivo (null = el trazo es válido). */
+export function validarTrazoPresion(ram: PlanoRamal): string | null {
   if (!REDES_PRESION.has(ram.net || '')) return null;
 
   // 1) dirección vs aparato/fuente en este tramo
@@ -274,43 +175,5 @@ export function validarTrazoPresion(engine: IPlanoEngineCore, ram: PlanoRamal): 
   }
   // 'entra-a-fuente' retirada (orig. usuario): un montante SÍ puede recibir un trazo.
 
-  // 2) ciclo no declarado (DFS sobre clusters, igual que chequearRed)
-  const ramales = ramalesDe(engine, ram.net || '');
-  const clusters = clustersDe(ramales, 0.5);
-  const mallas = (engine as { mallasDeclaradas?: Set<string> }).mallasDeclaradas;
-  if (!(mallas?.has(ram.net || '') ?? false)) {
-    const idxDe = (pt: number[]): number =>
-      clusters.findIndex((c) => Math.hypot(c.pt[0] - pt[0], c.pt[1] - pt[1]) <= 0.5);
-    const aristas: { a: number; b: number; id: string }[] = [];
-    ramales.forEach((r) => {
-      const a = idxDe(r.pts![0] as number[]);
-      const b = idxDe(r.pts![r.pts!.length - 1] as number[]);
-      if (a >= 0 && b >= 0 && a !== b) aristas.push({ a, b, id: r.id });
-    });
-    const adj: number[][] = clusters.map(() => []);
-    aristas.forEach((ar, i) => {
-      adj[ar.a].push(i);
-      adj[ar.b].push(i);
-    });
-    const visit = new Array(clusters.length).fill(false);
-    const parentEdge = new Array(clusters.length).fill(-1);
-    let ciclo: string | null = null;
-    const dfs = (u: number): void => {
-      visit[u] = true;
-      for (const ei of adj[u]) {
-        const v = aristas[ei].a === u ? aristas[ei].b : aristas[ei].a;
-        if (!visit[v]) {
-          parentEdge[v] = ei;
-          dfs(v);
-        } else if (parentEdge[u] !== ei && !ciclo) {
-          ciclo = aristas[ei].id;
-        }
-      }
-    };
-    for (let c = 0; c < clusters.length && !ciclo; c++) if (!visit[c]) dfs(c);
-    if (ciclo) {
-      return `Ciclo en la red (tramo ${ciclo} cierra el lazo). Si es intencional, decláralo como malla/recirculación en el menú del tramo.`;
-    }
-  }
   return null;
 }

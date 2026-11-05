@@ -19,7 +19,7 @@ import {
 } from './RCIUI.tsx';
 import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 import { GrupoTabla } from './RCIGroupTable.tsx';
-import { FILAS_CLASE, GRUPOS, ICONO_SUB, NOTA_SUB } from './RCIInputDefs.ts';
+import { FILAS_CLASE, GRUPOS, ICONO_SUB, NOTA_SUB, notaDeps } from './RCIInputDefs.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
@@ -30,11 +30,17 @@ const SUB_POR_ID = new Map(SUBS_POR_TAB.entradas.map((s) => [s.id, s]));
 
 /* ---------------- Estilos locales ---------------- */
 const NOTA: CSSProperties = { margin: '4px 0 0', fontSize: 12, color: 'var(--txt3)' };
-const TH10: CSSProperties = { ...TH, fontSize: 11 };
-const TDC: CSSProperties = { ...TD, fontSize: 13, padding: '1px 4px' };
-const TDC12: CSSProperties = { ...TDC, fontSize: 12, padding: '1px 2px' }; // TablaEsp y TablaCuarto compactas
-/** Control activo de las celdas: caja tipo sanitario a 12 px (las tablas compactas); C-mat sube a 13 inline. */
-const IN: CSSProperties = { ...IN_CELDA, fontSize: 13 };
+const TH10: CSSProperties = { ...TH, fontSize: 12 };
+const TDC: CSSProperties = { ...TD, fontSize: 14, padding: '1px 4px' };
+const TDC12: CSSProperties = { ...TDC, fontSize: 13, padding: '1px 2px' }; // TablaEsp y TablaCuarto compactas
+/** Control activo de las celdas: caja tipo sanitario a 13 px (las tablas compactas); C-mat sube a 14 inline. */
+const IN: CSSProperties = { ...IN_CELDA, fontSize: 14 };
+/* Compacto EXTRA de la sub Tubería y mangueras (ped. usuario: sin scroll vertical con las 3
+ * tablas): Tubería (GrupoTabla compacta) + C-mat + accesorios especiales un paso menores. */
+const TH10C: CSSProperties = { ...TH, fontSize: 10.5 };
+const TDCC: CSSProperties = { ...TD, fontSize: 11.5, padding: '1px 2px' };
+const INC: CSSProperties = { ...IN_CELDA, fontSize: 12 };
+const NOTAC: CSSProperties = { ...NOTA, fontSize: 11 };
 const BTN: CSSProperties = {
   border: '1px solid var(--line)',
   background: 'var(--bg3)',
@@ -61,7 +67,7 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
       cmat: { ...(e.cmat || {}), [m]: { ...(e.cmat || {})[m], [k]: v === '' ? '' : Number(v) } },
     }));
   const inC = (m: string, k: 'h' | 's', modo: string) => (
-    <td style={TDC12}>
+    <td style={TDCC}>
       {celdaEditable(
         edit,
         <input
@@ -73,14 +79,14 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
           placeholder={String(CDEF(m, modo))}
           aria-label={`C adoptado ${modo} de ${m}`}
           onChange={(e) => setC(m, k)(e.target.value)}
-          style={{ ...IN, width: 48 }}
+          style={{ ...INC, width: 44 }}
         />,
       )}
     </td>
   );
   return (
     <section className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
-      <div className="card-h" style={{ padding: '6px 12px' }}>
+      <div className="card-h" style={{ padding: '4px 10px' }}>
         <h3
           className="card-t"
           style={{
@@ -107,19 +113,19 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
           <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH10} title="Material de la tubería">
+                <th style={TH10C} title="Material de la tubería">
                   Material
                 </th>
-                <th style={{ ...TH10, fontSize: 10 }} title="C de NFPA 13 en sistema húmedo">
+                <th style={{ ...TH10C, fontSize: 10 }} title="C de NFPA 13 en sistema húmedo">
                   NFPA 13·húm.
                 </th>
-                <th style={{ ...TH10, fontSize: 10 }} title="C de NFPA 13 en sistema seco">
+                <th style={{ ...TH10C, fontSize: 10 }} title="C de NFPA 13 en sistema seco">
                   NFPA 13·seco
                 </th>
-                <th style={{ ...TH10, fontSize: 10 }} title="C adoptado · húmedo (editable)">
+                <th style={{ ...TH10C, fontSize: 10 }} title="C adoptado · húmedo (editable)">
                   Adopt.·húm.
                 </th>
-                <th style={{ ...TH10, fontSize: 10 }} title="C adoptado · seco (editable)">
+                <th style={{ ...TH10C, fontSize: 10 }} title="C adoptado · seco (editable)">
                   Adopt.·seco
                 </th>
               </tr>
@@ -127,7 +133,7 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
             <tbody>
               {MATERIALES.map((m) => (
                 <tr key={m}>
-                  <td style={TDC12}>{m}</td>
+                  <td style={TDCC}>{m}</td>
                   <td style={{ ...TDC12, fontFamily: 'var(--mono)' }}>{CDEF(m, 'Húmedo')}</td>
                   <td style={{ ...TDC12, fontFamily: 'var(--mono)' }}>{CDEF(m, 'Seco')}</td>
                   {inC(m, 'h', 'Húmedo')}
@@ -137,7 +143,7 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
             </tbody>
           </table>
         </div>
-        <p style={NOTA}>
+        <p style={NOTAC}>
           El C se aplica a la fricción de la tubería y corrige las longitudes equivalentes de los
           accesorios (la tabla de NFPA 13 está hecha para C = 120). La succión de la bomba usa el
           valor de sistema húmedo.
@@ -176,7 +182,7 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
     }));
   return (
     <section className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
-      <div className="card-h" style={{ padding: '6px 12px' }}>
+      <div className="card-h" style={{ padding: '4px 10px' }}>
         <h3
           className="card-t"
           style={{
@@ -203,18 +209,18 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
           <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH10}>Código</th>
-                <th style={TH10}>Accesorio</th>
-                <th style={TH10}>Cómo se da la pérdida</th>
-                <th style={TH10}>Valor</th>
-                <th style={TH10}>Q ref. (gpm)</th>
-                <th style={TH10} />
+                <th style={TH10C}>Código</th>
+                <th style={TH10C}>Accesorio</th>
+                <th style={TH10C}>Cómo se da la pérdida</th>
+                <th style={TH10C}>Valor</th>
+                <th style={TH10C}>Q ref. (gpm)</th>
+                <th style={TH10C} />
               </tr>
             </thead>
             <tbody>
               {esp.map((a, i) => (
                 <tr key={i}>
-                  <td style={TDC12}>
+                  <td style={TDCC}>
                     {celdaEditable(
                       edit,
                       <input
@@ -222,11 +228,11 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
                         value={String(a.cod ?? '')}
                         aria-label={`Código del accesorio ${i + 1}`}
                         onChange={(e) => setE(i, 'cod')(e.target.value)}
-                        style={{ ...IN, width: 54 }}
+                        style={{ ...INC, width: 54 }}
                       />,
                     )}
                   </td>
-                  <td style={TDC12}>
+                  <td style={TDCC}>
                     {celdaEditable(
                       edit,
                       <input
@@ -234,18 +240,18 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
                         value={String(a.nombre ?? '')}
                         aria-label={`Nombre del accesorio ${i + 1}`}
                         onChange={(e) => setE(i, 'nombre')(e.target.value)}
-                        style={{ ...IN, width: 230 }}
+                        style={{ ...INC, width: 230 }}
                       />,
                     )}
                   </td>
-                  <td style={TDC12}>
+                  <td style={TDCC}>
                     {celdaEditable(
                       edit,
                       <select
                         value={a.modo}
                         aria-label={`Modo del accesorio ${i + 1}`}
                         onChange={(e) => setE(i, 'modo')(e.target.value)}
-                        style={{ ...IN, width: 104 }}
+                        style={{ ...INC, width: 180 }}
                       >
                         {MODOS_ESP.map(([v, l]) => (
                           <option key={v} value={v}>
@@ -255,7 +261,7 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
                       </select>,
                     )}
                   </td>
-                  <td style={TDC12}>
+                  <td style={TDCC}>
                     {celdaEditable(
                       edit,
                       <input
@@ -264,11 +270,11 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
                         value={String(a.valor ?? '')}
                         aria-label={`Valor del accesorio ${i + 1}`}
                         onChange={(e) => setE(i, 'valor', true)(e.target.value)}
-                        style={{ ...IN, width: 50, WebkitAppearance: 'textfield' }}
+                        style={{ ...INC, width: 50, WebkitAppearance: 'textfield' }}
                       />,
                     )}
                   </td>
-                  <td style={TDC12}>
+                  <td style={TDCC}>
                     {a.modo === 'dp' ? (
                       celdaEditable(
                         edit,
@@ -278,14 +284,14 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
                           value={String(a.qref ?? '')}
                           aria-label={`Caudal de referencia del accesorio ${i + 1}`}
                           onChange={(e) => setE(i, 'qref', true)(e.target.value)}
-                          style={{ ...IN, width: 50, WebkitAppearance: 'textfield' }}
+                          style={{ ...INC, width: 50, WebkitAppearance: 'textfield' }}
                         />,
                       )
                     ) : (
                       <span style={{ color: 'var(--txt3)' }}>—</span>
                     )}
                   </td>
-                  <td style={TDC12}>
+                  <td style={TDCC}>
                     <button
                       type="button"
                       title="Eliminar"
@@ -307,7 +313,7 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
             + Añadir accesorio
           </button>
         </div>
-        <p style={NOTA}>
+        <p style={NOTAC}>
           L/D: la longitud equivalente es L/D × diámetro interior del tramo. Δp: pérdida del
           fabricante a un caudal de referencia, escalada con (Q/Qref)^1,85.
         </p>
@@ -378,7 +384,7 @@ function ModalClases({ cerrar }: { cerrar: () => void }) {
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
+          <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={TH10}>Clase</th>
@@ -449,7 +455,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
         <h3
           className="card-t"
           style={{
-            fontSize: 15,
+            fontSize: 16,
             color: 'var(--txt2)',
             display: 'flex',
             alignItems: 'center',
@@ -469,7 +475,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
       </div>
       <div style={{ padding: 6 }}>
         <div style={{ overflowX: 'auto' }}>
-          <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
+          <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th colSpan={2} style={TH10}>
@@ -535,7 +541,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
                           value={String(r.mat || '')}
                           aria-label={`Material de la fila ${i + 1} del cuarto`}
                           onChange={(e) => setC(i, 'mat')(e.target.value)}
-                          style={{ ...IN, width: 92 }}
+                          style={{ ...IN, width: 118 }}
                         >
                           {MATERIALES.map((m) => (
                             <option key={m} value={m}>
@@ -646,10 +652,12 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
   return (
     <>
       <SubTabsRci subs={items} sub={sub} setSub={elegir}>
+        {/* Contenido centrado en la sección (ped. usuario), EXCEPTO Tubería y mangueras:
+         *  esa sub vuelve al alineado a la izquierda original (ped. usuario posterior). */}
         <section style={{ padding: '2px 0 8px' }}>
           {sub === 'tuberia' ? (
             /* Tubería y mangueras AL LADO del coeficiente C de Hazen-Williams; el catálogo de
-             * accesorios especiales, debajo. */
+             * accesorios especiales, debajo. Sin centrar: como estaba antes (ped. usuario). */
             <>
               <div
                 style={{
@@ -668,6 +676,8 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                   R={R}
                   editar={editar}
                   onAbrirModal={abrirModal}
+                  depNota={notaDeps(GRUPOS[sub] || [])}
+                  compacta
                 />
                 <TablaCmat estado={estado} editar={editar} />
               </div>
@@ -678,28 +688,34 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
           ) : sub === 'montantes' ? (
             /* Montantes NFPA 14 solo: la ayuda «¿Qué clase elegir?» salió de la tarjeta y vive
              * en el MODAL que abre la celda Observación de la fila Clase de sistema. */
-            <GrupoTabla
-              titulo={SUB_POR_ID.get(sub)?.l || sub}
-              nota={NOTA_SUB[sub]}
-              icono={ICONO_SUB[sub]}
-              campos={GRUPOS[sub] || []}
-              estado={estado}
-              R={R}
-              editar={editar}
-              onAbrirModal={abrirModal}
-            />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <GrupoTabla
+                titulo={SUB_POR_ID.get(sub)?.l || sub}
+                nota={NOTA_SUB[sub]}
+                icono={ICONO_SUB[sub]}
+                campos={GRUPOS[sub] || []}
+                estado={estado}
+                R={R}
+                editar={editar}
+                onAbrirModal={abrirModal}
+                depNota={notaDeps(GRUPOS[sub] || [])}
+              />
+            </div>
           ) : sub === 'seleccion' ? null : (
-            <GrupoTabla
-              minAncho={sub === 'clasificacion' ? 720 : undefined}
-              titulo={SUB_POR_ID.get(sub)?.l || sub}
-              nota={NOTA_SUB[sub]}
-              icono={ICONO_SUB[sub]}
-              campos={GRUPOS[sub] || []}
-              estado={estado}
-              R={R}
-              editar={editar}
-              onAbrirModal={abrirModal}
-            />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <GrupoTabla
+                minAncho={sub === 'clasificacion' ? 720 : undefined}
+                titulo={SUB_POR_ID.get(sub)?.l || sub}
+                nota={NOTA_SUB[sub]}
+                icono={ICONO_SUB[sub]}
+                campos={GRUPOS[sub] || []}
+                estado={estado}
+                R={R}
+                editar={editar}
+                onAbrirModal={abrirModal}
+                depNota={notaDeps(GRUPOS[sub] || [])}
+              />
+            </div>
           )}
           {sub === 'seleccion' ? (
             /* Bomba: selección, y la tubería del cuarto de bombas DEBAJO. */
@@ -708,7 +724,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
-                alignItems: 'start',
+                alignItems: 'center',
               }}
             >
               <GrupoTabla
@@ -720,6 +736,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 R={R}
                 editar={editar}
                 onAbrirModal={abrirModal}
+                depNota={notaDeps(GRUPOS[sub] || [])}
               />
               <div style={{ marginTop: 16 }}>
                 <TablaCuarto estado={estado} editar={editar} />

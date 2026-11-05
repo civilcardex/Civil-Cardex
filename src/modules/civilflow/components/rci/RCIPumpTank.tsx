@@ -66,7 +66,7 @@ function CardKv({
   ayuda?: string;
 }) {
   return (
-    <div style={{ width: 'fit-content', maxWidth: '100%' }} title={ayuda}>
+    <div title={ayuda}>
       <SecRci
         id={id}
         titulo={titulo}
@@ -160,17 +160,17 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
     <>
       <SubTabsRci subs={SUBS} sub={activa} setSub={setSub}>
         {activa === 'demanda' ? (
-          /* Tres columnas (demanda → selección → succión): Cuarto apilado JUSTO debajo de
-             Demandas y Selección/Succión cada una en su columna, alineadas arriba. */
+          /* Dos columnas (bgrid del HTML): Demandas + Selección a la izquierda; Cuarto de
+             bombas + Succión y NPSH a la derecha, cada par apilado y alineado arriba. */
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, max-content)',
-              gap: 12,
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 14,
               alignItems: 'start',
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {/* Ancla rci-bomba: destino del «Ir al dato» de las verificaciones de bomba. */}
               <CardKv
                 id="bomba"
@@ -182,33 +182,36 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
                 ayuda="Q y P que la red de rociadores y los montantes exigen a la bomba: D1 (rociadores + mangueras) y D2 (montantes), NFPA 20"
               />
               <CardKv
+                id="seleccion"
+                titulo="Selección de la bomba"
+                filas={kvSeleccion(R.bomba, R.edif, estado.bomba.qrManual, estado.bomba.margen)}
+                esquema="desc"
+                abrirEsquema={setEsquema}
+                icono="/iconos/seleccion_bomba.webp"
+                ayuda="Bomba nominal elegida: caudal y presión en el 150 % del diseño y churn, con el margen que pide NFPA 20"
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <CardKv
                 id="cuarto"
                 titulo="Cuarto de bombas: descarga"
+                nota="P en la base del montante + pérdidas = P exigida en la brida"
                 filas={kvCuarto(R.edif, R.gab)}
                 esquema="desc"
                 abrirEsquema={setEsquema}
                 icono="/iconos/cuarto_bombas_descarga.webp"
                 ayuda="Pérdidas y presiones desde la brida de la bomba hasta el montante: accesorios, VCP y tubería del cuarto"
               />
+              <CardKv
+                id="succion"
+                titulo="Succión y NPSH"
+                filas={kvSuccion(R.bomba, estado.bomba.npshr, estado.bomba.margenNpsh)}
+                esquema="suc"
+                abrirEsquema={setEsquema}
+                icono="/iconos/succion_cavitacion.webp"
+                ayuda="NPSH disponible vs requerido: la succión debe dejar margen sobre el NPSH del fabricante para no cavitacionar"
+              />
             </div>
-            <CardKv
-              id="seleccion"
-              titulo="Selección de la bomba"
-              filas={kvSeleccion(R.bomba, R.edif, estado.bomba.qrManual, estado.bomba.margen)}
-              esquema="desc"
-              abrirEsquema={setEsquema}
-              icono="/iconos/seleccion_bomba.webp"
-              ayuda="Bomba nominal elegida: caudal y presión en el 150 % del diseño y churn, con el margen que pide NFPA 20"
-            />
-            <CardKv
-              id="succion"
-              titulo="Succión y NPSH"
-              filas={kvSuccion(R.bomba, estado.bomba.npshr, estado.bomba.margenNpsh)}
-              esquema="suc"
-              abrirEsquema={setEsquema}
-              icono="/iconos/succion_cavitacion.webp"
-              ayuda="NPSH disponible vs requerido: la succión debe dejar margen sobre el NPSH del fabricante para no cavitacionar"
-            />
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -268,6 +271,7 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
                 gridTemplateColumns: 'repeat(2, max-content)',
                 gap: 12,
                 alignItems: 'start',
+                justifyContent: 'center',
               }}
             >
               <CardKv

@@ -249,6 +249,9 @@ export interface RedDePiso {
   dnMont: string;
   /** altDeriv del montante de derivación (null si el dibujo no la trae). */
   altDeriv: number | null;
+  /** Gabinetes GABn dibujados en este piso (código + NPT base), del elemento del motor
+   *  tipo 'gabinete'. Alimenta st.gabinetes (ruta de montantes/gabinetes). */
+  gabinetes: { code: string; npt: number }[];
 }
 
 /** Letra del nudo i: A, B, …, Z y después N27, N28… (una planta no llega a 26, pero por si acaso). */
@@ -367,9 +370,20 @@ export function extraerRedDePiso(
     matMont: '',
     dnMont: '',
     altDeriv: null,
+    gabinetes: [],
   };
   const doc = piso.doc;
   if (!doc) return vacio;
+
+  /* Gabinetes GABn dibujados en el piso (ped. usuario: la ruta de gabinetes nace del dibujo).
+   * Se leen SIEMPRE — incluso en un piso sin red rci, su GAB cuenta como salida. */
+  const gabinetes: { code: string; npt: number }[] = [];
+  for (const b of (doc.bajantes || []) as BajanteRaw[]) {
+    if (b.net !== 'rci' || b.tipo !== 'gabinete') continue;
+    const code = String(b.code || '');
+    if (!code) continue;
+    gabinetes.push({ code, npt: num((b as { nptBase?: unknown }).nptBase) ?? 0 });
+  }
 
   const trazos: TrazoDib[] = [];
   let orden = 0;
@@ -390,7 +404,7 @@ export function extraerRedDePiso(
       orden: orden++,
     });
   }
-  if (trazos.length === 0) return vacio;
+  if (trazos.length === 0) return { ...vacio, gabinetes };
 
   const montantesDib: BajanteRaw[] = [];
   for (const b of (doc.bajantes || []) as BajanteRaw[]) {
@@ -405,7 +419,7 @@ export function extraerRedDePiso(
       piso: piso.label,
       msg: 'Tiene trazos rci pero ningún montante conectado: la red no se exporta.',
     });
-    return vacio;
+    return { ...vacio, gabinetes };
   }
   const { montDer, posMont, pDer } = deriv;
 
@@ -479,7 +493,7 @@ export function extraerRedDePiso(
       piso: piso.label,
       msg: 'El tronco no recibe ningún ramal con rociadores: la red no se exporta.',
     });
-    return vacio;
+    return { ...vacio, gabinetes };
   }
 
   /* Nudos: clústeres de conexiones por posición (m a lo largo del tronco). Los que caen sobre
@@ -707,5 +721,6 @@ export function extraerRedDePiso(
     matMont: leerMaterial(montDer),
     dnMont: leerDn(montDer),
     altDeriv: leerAltDeriv(montDer),
+    gabinetes,
   };
 }
