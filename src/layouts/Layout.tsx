@@ -5,22 +5,8 @@ import Navbar from '../components/Navbar.tsx';
 function Layout() {
   return (
     <>
-      <a
-        href="#main-content"
-        style={{
-          position: 'absolute',
-          left: '-9999px',
-          zIndex: 9999,
-        }}
-        className="skip-link"
-        onFocus={(e) => {
-          e.currentTarget.style.left = '16px';
-          e.currentTarget.style.top = '16px';
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.left = '-9999px';
-        }}
-      >
+      {/* visible solo con :focus (index.css .skip-link) — sin JS. */}
+      <a href="#main-content" className="skip-link">
         Saltar al contenido principal
       </a>
       <div className="h-screen overflow-hidden bg-surface-bg flex flex-col">

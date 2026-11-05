@@ -5,7 +5,6 @@ import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
 import { LANDING_STYLES } from './landingStyles.ts';
 import BlueprintParticles from '../components/landing/BlueprintParticles.tsx';
-import CursorSpotlight from '../components/landing/CursorSpotlight.tsx';
 import Tilt3DCard from '../components/landing/Tilt3DCard.tsx';
 import TypewriterText from '../components/landing/TypewriterText.tsx';
 import ScrollIndicator from '../components/landing/ScrollIndicator.tsx';
@@ -187,8 +186,6 @@ function LandingPage() {
         <div className="absolute inset-0 z-[4] pointer-events-auto">
           <BlueprintParticles />
         </div>
-
-        <CursorSpotlight containerRef={heroRef as React.RefObject<HTMLElement>} />
 
         {/* Logo + Branding — upper area */}
         <div
@@ -498,10 +495,7 @@ function LandingPage() {
             <Link
               to="/pricing"
               className="hidden md:inline-block bg-primary text-on-primary px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
-              style={{
-                fontFamily: 'Geist, monospace',
-                boxShadow: '0 0 20px rgba(245,214,104,0.3)',
-              }}
+              style={{ fontFamily: 'Geist, monospace' }}
             >
               EMPEZAR AHORA
             </Link>

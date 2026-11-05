@@ -1,6 +1,8 @@
 /** Fuente ÚNICA de metas de las rutas públicas prerenderizables: la consume el prerender
  *  (scripts/prerender.mjs vía dist-ssr) y sirve de referencia para los usePageMeta de cada
  *  página — servidor y cliente no divergen. Las rutas privadas NO van aquí. */
+import { MODULES_DATA } from '../pages/moduleData.ts';
+
 export interface RouteMeta {
   path: string;
   title: string;
@@ -40,40 +42,35 @@ export const ROUTE_META: RouteMeta[] = [
   {
     path: '/civilflow',
     title: 'Civil Flow',
-    description:
-      'Diseño y cálculo de redes hidrosanitarias (AF, AC, sanitaria, lluvias, gas, RCI) con verificación normativa IPC/UPC, ASCE, NFPA 54 y NFPA 13 y memorias de cálculo exportables.',
+    description: MODULES_DATA.flow.description,
     changefreq: 'monthly',
     priority: '0.8',
   },
   {
     path: '/civilstructure',
     title: 'Estructuras',
-    description:
-      'Diseño estructural avanzado con análisis FEM. Cálculo de cargas sísmicas, viento y cimentaciones según normativa.',
+    description: MODULES_DATA.structure.description,
     changefreq: 'monthly',
     priority: '0.8',
   },
   {
     path: '/civilterrain',
     title: 'Terreno',
-    description:
-      'Modelado digital de elevación con datos LiDAR. Cálculo de volúmenes, curvas de nivel e interoperabilidad topográfica.',
+    description: MODULES_DATA.terrain.description,
     changefreq: 'monthly',
     priority: '0.8',
   },
   {
     path: '/civilmanager',
     title: 'Civil Manager',
-    description:
-      'Presupuestos de obra civil: APU (análisis de precios unitarios) con mano de obra, insumos, equipo y transporte, catálogos de proveedores y configuración de perfil país y factor prestacional.',
+    description: MODULES_DATA.manage.description,
     changefreq: 'monthly',
     priority: '0.8',
   },
   {
     path: '/civilroads',
     title: 'Vías',
-    description:
-      'Diseño geométrico de carreteras, urbanismo, peraltes y alineamientos. Simulación de tráfico e impacto vial integrada.',
+    description: MODULES_DATA.roads.description,
     changefreq: 'monthly',
     priority: '0.8',
   },

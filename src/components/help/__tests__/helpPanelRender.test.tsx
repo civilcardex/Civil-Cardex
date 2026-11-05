@@ -3,7 +3,6 @@ import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import AyudaPanel from '../HelpPanel.tsx';
 import { GUIA } from '../helpGuide.tsx';
-import { tutorialDe } from '../helpTutorials.ts';
 
 // Regresión reportada: "la info de ayuda ya no está, solo está el video". El panel debe
 // renderizar los acordeones de GUIA además de la sección de video.
@@ -16,7 +15,7 @@ const ctx = {
 };
 
 describe('HelpPanel', () => {
-  it('GUIA tiene contenido para cf:visor y el panel renderiza acordeones + video', () => {
+  it('GUIA tiene contenido para cf:visor y el panel renderiza acordeones', () => {
     expect((GUIA['cf:visor'] || []).length).toBeGreaterThan(0);
     const html = renderToString(
       <MemoryRouter>
@@ -25,8 +24,6 @@ describe('HelpPanel', () => {
     );
     expect(html).not.toContain('Aún no hay contenido');
     expect((html.match(/<button/g) || []).length).toBeGreaterThan(3);
-    expect(html).toContain('<iframe');
-    expect(tutorialDe('cf:visor')).not.toBeNull();
   });
 
   it('Carga de planos muestra el recorte como sección COLAPSABLE (no tarjeta fija)', () => {

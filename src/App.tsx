@@ -5,10 +5,9 @@ import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
-import { GlobalAlertDialogProvider } from './modules/civilflow/components/GlobalAlertDialogProvider.tsx';
+import { GlobalAlertDialog } from './modules/civilflow/components/GlobalAlertDialogProvider.tsx';
 import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders.tsx';
 import { CargandoProyecto } from './modules/civilflow/components/shared/LoadingProject';
-import PageTransition from './components/landing/PageTransition.tsx';
 
 // Una sola pantalla de carga en toda la app: el Suspense y el gate de datos usan la MISMA pieza
 // (CargandoProyecto), así abrir un proyecto no encadena dos pantallas distintas. El texto nombra
@@ -89,244 +88,239 @@ function ScrollToTop() {
 function App() {
   return (
     <AuthProvider>
-      <GlobalAlertDialogProvider>
-        <ScrollToTop />
-        <a
-          href="#app-content"
-          className="skip-link"
-          style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
-          onFocus={(e) => {
-            e.currentTarget.style.left = '16px';
-            e.currentTarget.style.top = '16px';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.left = '-9999px';
-          }}
-        >
-          Saltar al contenido principal
-        </a>
-        <div
-          id="app-content"
-          className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col"
-        >
-          <PageTransition>
-            {(displayLocation) => (
-              <Routes location={displayLocation}>
-                {/* Rutas públicas ligeras */}
-                <Route
-                  path="/"
-                  element={
-                    <Lazy>
-                      <LandingPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/login"
-                  element={
-                    <Lazy>
-                      <LoginPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/register"
-                  element={
-                    <Lazy>
-                      <RegisterPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/restablecer"
-                  element={
-                    <Lazy>
-                      <ResetPasswordPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/terminos"
-                  element={
-                    <Lazy>
-                      <TermsPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/privacidad"
-                  element={
-                    <Lazy>
-                      <PrivacyPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/cookies"
-                  element={
-                    <Lazy>
-                      <CookiesPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/pricing"
-                  element={
-                    <Lazy>
-                      <PricingPage />
-                    </Lazy>
-                  }
-                />
-                <Route
-                  path="/dibujoRedes/:proyectoId?"
-                  element={
-                    <ErrorBoundary>
-                      <CivilFlowProviders>
-                        <Suspense fallback={<Fallback />}>
-                          <ViewerPage />
-                        </Suspense>
-                      </CivilFlowProviders>
-                    </ErrorBoundary>
-                  }
-                />
+      <GlobalAlertDialog />
+      <ScrollToTop />
+      <a
+        href="#app-content"
+        className="skip-link"
+        style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '16px';
+          e.currentTarget.style.top = '16px';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Saltar al contenido principal
+      </a>
+      <div
+        id="app-content"
+        className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col"
+      >
+        {/* page-fade: el fade corre al montar (sin key por pathname — la remontaba el redirect cosmético). */}
+        <div className="page-fade">
+          <Routes>
+            {/* Rutas públicas ligeras */}
+            <Route
+              path="/"
+              element={
+                <Lazy>
+                  <LandingPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                <Lazy>
+                  <LoginPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                <Lazy>
+                  <RegisterPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/restablecer"
+              element={
+                <Lazy>
+                  <ResetPasswordPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/terminos"
+              element={
+                <Lazy>
+                  <TermsPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/privacidad"
+              element={
+                <Lazy>
+                  <PrivacyPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/cookies"
+              element={
+                <Lazy>
+                  <CookiesPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/pricing"
+              element={
+                <Lazy>
+                  <PricingPage />
+                </Lazy>
+              }
+            />
+            <Route
+              path="/dibujoRedes/:proyectoId?"
+              element={
+                <ErrorBoundary>
+                  <CivilFlowProviders>
+                    <Suspense fallback={<Fallback />}>
+                      <ViewerPage />
+                    </Suspense>
+                  </CivilFlowProviders>
+                </ErrorBoundary>
+              }
+            />
 
-                {/* Rutas lazy públicas */}
-                <Route
-                  path="/docs"
-                  element={
-                    <Guarded>
-                      <DocsPage />
-                    </Guarded>
-                  }
-                />
-                <Route
-                  path="/civilflow"
-                  element={
-                    <Guarded>
-                      <ModulePage moduleId="flow" />
-                    </Guarded>
-                  }
-                />
-                <Route
-                  path="/civilstructure"
-                  element={
-                    <Guarded>
-                      <ModulePage moduleId="structure" />
-                    </Guarded>
-                  }
-                />
-                <Route
-                  path="/civilterrain"
-                  element={
-                    <Guarded>
-                      <ModulePage moduleId="terrain" />
-                    </Guarded>
-                  }
-                />
-                <Route
-                  path="/civilmanager"
-                  element={
-                    <Guarded>
-                      <ModulePage moduleId="manage" />
-                    </Guarded>
-                  }
-                />
-                <Route
-                  path="/civilroads"
-                  element={
-                    <Guarded>
-                      <ModulePage moduleId="roads" />
-                    </Guarded>
-                  }
-                />
+            {/* Rutas lazy públicas */}
+            <Route
+              path="/docs"
+              element={
+                <Guarded>
+                  <DocsPage />
+                </Guarded>
+              }
+            />
+            <Route
+              path="/civilflow"
+              element={
+                <Guarded>
+                  <ModulePage moduleId="flow" />
+                </Guarded>
+              }
+            />
+            <Route
+              path="/civilstructure"
+              element={
+                <Guarded>
+                  <ModulePage moduleId="structure" />
+                </Guarded>
+              }
+            />
+            <Route
+              path="/civilterrain"
+              element={
+                <Guarded>
+                  <ModulePage moduleId="terrain" />
+                </Guarded>
+              }
+            />
+            <Route
+              path="/civilmanager"
+              element={
+                <Guarded>
+                  <ModulePage moduleId="manage" />
+                </Guarded>
+              }
+            />
+            <Route
+              path="/civilroads"
+              element={
+                <Guarded>
+                  <ModulePage moduleId="roads" />
+                </Guarded>
+              }
+            />
 
-                {/* Redirects */}
-                <Route path="/visor/*" element={<Navigate to="/dibujoRedes" replace />} />
-                <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
-                <Route
-                  path="/dashboard"
-                  element={<Navigate to="/civilflowareatrabajo" replace />}
-                />
+            {/* Redirects */}
+            <Route path="/visor/*" element={<Navigate to="/dibujoRedes" replace />} />
+            <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
+            <Route path="/dashboard" element={<Navigate to="/civilflowareatrabajo" replace />} />
 
-                {/* Rutas protegidas */}
-                <Route element={<ProtectedRoute />}>
-                  {/* El Layout (con su Navbar) va DENTRO de una frontera: las fronteras de las
+            {/* Rutas protegidas */}
+            <Route element={<ProtectedRoute />}>
+              {/* El Layout (con su Navbar) va DENTRO de una frontera: las fronteras de las
                       rutas hijas solo cubren su `element`, así que una excepción en el Navbar
                       desmontaba el árbol entero -> pantalla en blanco sin "Reintentar". */}
-                  <Route
-                    element={
-                      <ErrorBoundary>
-                        <Layout />
-                      </ErrorBoundary>
-                    }
-                  >
-                    <Route
-                      path="/civilflowareatrabajo/*"
-                      element={
-                        <RequireModule modulo="flow">
-                          <ErrorBoundary>
-                            <CivilFlowProviders>
-                              <Suspense fallback={<Fallback />}>
-                                <WorkAreaCivilFlowPage />
-                              </Suspense>
-                            </CivilFlowProviders>
-                          </ErrorBoundary>
-                        </RequireModule>
-                      }
-                    />
-                    <Route
-                      path="/civilmanagerareatrabajo/*"
-                      element={
-                        <RequireModule modulo="manage">
-                          <Guarded>
-                            <WorkAreaCivilManagerPage />
-                          </Guarded>
-                        </RequireModule>
-                      }
-                    />
-                    <Route
-                      path="/perfil"
-                      element={
-                        <Guarded>
-                          <ProfilePage />
-                        </Guarded>
-                      }
-                    />
-                    <Route
-                      path="/empresa"
-                      element={
-                        <Guarded>
-                          <CompanyPage />
-                        </Guarded>
-                      }
-                    />
-                    <Route
-                      path="/catalogomaestro"
-                      element={
-                        <Guarded>
-                          <CatalogoMaestroPage />
-                        </Guarded>
-                      }
-                    />
-                  </Route>
-                </Route>
-
-                {/* 404 catch-all */}
+              <Route
+                element={
+                  <ErrorBoundary>
+                    <Layout />
+                  </ErrorBoundary>
+                }
+              >
                 <Route
-                  path="*"
+                  path="/civilflowareatrabajo/*"
                   element={
-                    <Lazy>
-                      <NotFound />
-                    </Lazy>
+                    <RequireModule modulo="flow">
+                      <ErrorBoundary>
+                        <CivilFlowProviders>
+                          <Suspense fallback={<Fallback />}>
+                            <WorkAreaCivilFlowPage />
+                          </Suspense>
+                        </CivilFlowProviders>
+                      </ErrorBoundary>
+                    </RequireModule>
                   }
                 />
-              </Routes>
-            )}
-          </PageTransition>
+                <Route
+                  path="/civilmanagerareatrabajo/*"
+                  element={
+                    <RequireModule modulo="manage">
+                      <Guarded>
+                        <WorkAreaCivilManagerPage />
+                      </Guarded>
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="/perfil"
+                  element={
+                    <Guarded>
+                      <ProfilePage />
+                    </Guarded>
+                  }
+                />
+                <Route
+                  path="/empresa"
+                  element={
+                    <Guarded>
+                      <CompanyPage />
+                    </Guarded>
+                  }
+                />
+                <Route
+                  path="/catalogomaestro"
+                  element={
+                    <Guarded>
+                      <CatalogoMaestroPage />
+                    </Guarded>
+                  }
+                />
+              </Route>
+            </Route>
+
+            {/* 404 catch-all */}
+            <Route
+              path="*"
+              element={
+                <Lazy>
+                  <NotFound />
+                </Lazy>
+              }
+            />
+          </Routes>
         </div>
-        {/* Consentimiento de cookies: visible en toda la app hasta decidir. */}
-        <CookieBanner />
-      </GlobalAlertDialogProvider>
+      </div>
+      {/* Consentimiento de cookies: visible en toda la app hasta decidir. */}
+      <CookieBanner />
     </AuthProvider>
   );
 }

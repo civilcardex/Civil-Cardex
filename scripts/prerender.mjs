@@ -113,25 +113,14 @@ async function main() {
         'twitter:description',
       );
       // 3) BreadcrumbList por ruta (inicio → sección)
-      const secciones = {
-        '/pricing': 'Precios',
-        '/docs': 'Documentación',
-        '/civilflow': 'Civil Flow',
-        '/civilstructure': 'Estructuras',
-        '/civilterrain': 'Terreno',
-        '/civilmanager': 'Civil Manager',
-        '/civilroads': 'Vías',
-        '/terminos': 'Términos y Condiciones',
-        '/privacidad': 'Política de Privacidad',
-        '/cookies': 'Política de Cookies',
-      };
-      if (secciones[meta.path]) {
+      // El nombre de la sección es el title de la ruta (fuente única: ROUTE_META).
+      if (meta.title) {
         const crumb = JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
           itemListElement: [
             { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE_URL + '/' },
-            { '@type': 'ListItem', position: 2, name: secciones[meta.path], item: url },
+            { '@type': 'ListItem', position: 2, name: meta.title, item: url },
           ],
         });
         out = out.replace(
@@ -148,6 +137,17 @@ async function main() {
       fallos.push(`${meta.path}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+
+  // 4) sitemap.xml desde ROUTE_META (fuente única: path + changefreq + priority viven aquí).
+  const hoy = new Date().toISOString().slice(0, 10);
+  const fila = (m) =>
+    `  <url>\n    <loc>${SITE_URL}${m.path}</loc>\n    <lastmod>${hoy}</lastmod>\n    <changefreq>${m.changefreq}</changefreq>\n    <priority>${m.priority}</priority>\n  </url>\n`;
+  const sitemap =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    ROUTE_META.map(fila).join('') +
+    '</urlset>\n';
+  writeFileSync(join(ROOT, 'dist', 'sitemap.xml'), sitemap, 'utf8');
 
   if (fallos.length) {
     console.warn(`[prerender] ${fallos.length}/${ROUTE_META.length} rutas fallaron (dist intacto para el resto):`);

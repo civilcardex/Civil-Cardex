@@ -17,7 +17,7 @@ const Navbar_S1: React.CSSProperties = {
   fontWeight: 700,
   fontFamily: 'Geist, monospace',
 };
-const Navbar_navLinks = [
+const NAV_LINKS = [
   { to: '/', label: 'INICIO' },
   { to: '/pricing', label: 'PRECIOS' },
   { to: '/docs', label: 'DOCUMENTACIÓN' },
@@ -54,8 +54,6 @@ function Navbar() {
     'text-primary border-b border-primary pb-1 uppercase text-xs tracking-[0.08em] font-bold cursor-pointer active-nav-glow transition-all';
   const inactive =
     'text-on-surface-variant uppercase text-xs tracking-[0.08em] font-bold hover:text-primary transition-colors px-3 py-1';
-
-  const navLinks = Navbar_navLinks;
 
   const isLandingTop = path === '/' && scrollY < 50;
 
@@ -102,7 +100,7 @@ function Navbar() {
             className="hidden md:flex gap-4 items-center h-full"
             style={{ listStyle: 'none', margin: 0, padding: 0 }}
           >
-            {navLinks.map((l) => (
+            {NAV_LINKS.map((l) => (
               <li key={l.to}>
                 <Link
                   to={l.to}
@@ -178,7 +176,7 @@ function Navbar() {
             className="absolute top-14 left-0 right-0 border-b border-outline-variant md:hidden"
             style={{ background: '#111317' }}
           >
-            {navLinks.map((l) => (
+            {NAV_LINKS.map((l) => (
               <Link
                 key={l.to}
                 to={l.to}

@@ -89,6 +89,3 @@ export function useSuscripciones() {
 
   return { rows: rows ?? [], activos, loading: rows === null, bloqueando, decidido };
 }
-
-/** Re-exporta ModuloId (ids de módulos: 'flow' | 'manage') para que los consumidores del hook no importen catalog.ts directamente. */
-export type { ModuloId };
