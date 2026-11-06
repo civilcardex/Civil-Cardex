@@ -417,7 +417,7 @@ export function extraerRedDePiso(
   if (!deriv) {
     avisos.push({
       piso: piso.label,
-      msg: 'Tiene trazos rci pero ningún montante conectado: la red no se exporta.',
+      msg: 'Tiene trazos pero ningún montante conectado: la red no se exporta.',
     });
     return { ...vacio, gabinetes };
   }

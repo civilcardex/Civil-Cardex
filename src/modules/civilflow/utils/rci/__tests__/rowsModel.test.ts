@@ -201,7 +201,7 @@ describe('rowsModel · verificaciones agrupadas', () => {
 });
 
 describe('sembrarRci · amarillos del proyecto nuevo', () => {
-  it('estado recién extraído: riesgo leve, húmedo, K 5.6 y cada piso apuntando a la red de su plano', () => {
+  it('estado recién extraído: riesgo leve y húmedo de referencia; numéricos/booleanos VACÍOS y cada piso apuntando a la red de su plano', () => {
     const gris = extraerGris([
       { planId: 'p1', label: 'P1', npt: 0, doc: null },
       { planId: 'p2', label: 'P2', npt: 6.1, doc: null },
@@ -210,12 +210,14 @@ describe('sembrarRci · amarillos del proyecto nuevo', () => {
     expect(est.meta.proyecto).toBe('Torre Norte');
     expect(est.clas.riesgo).toBe('Riesgo leve');
     expect(est.clas.sistema).toBe('Húmedo');
-    expect(est.clas.htecho).toBe(5.3);
-    expect(est.roc.K).toBe(5.6);
-    expect(est.roc.S).toBe(4.3);
-    expect(est.local.exigeRoc).toBe('Sí');
-    expect(est.tub.Vmax).toBe(6);
-    expect(est.mang.duracion).toBe(30);
+    /* Numéricos y booleanos VACÍOS por defecto (ped. usuario) — el motor resuelve sus
+       defaults de norma al calcular. */
+    expect(est.clas.htecho).toBe('');
+    expect(est.roc.K).toBe('');
+    expect(est.roc.S).toBe('');
+    expect(est.local.exigeRoc).toBe('');
+    expect(est.tub.Vmax).toBe('');
+    expect(est.mang.duracion).toBe('');
     expect(est.sp.clase).toBe('Clase III');
     /* El cuarto de bombas y los criterios por piso NO se siembran (ped. usuario: nada
        fabricado) — nacen vacíos hasta que el diseñador los llene. */
@@ -310,6 +312,11 @@ describe('rowsModel · flujo completo dibujo → sembrar → compute', () => {
     };
     const gris = extraerGris([{ planId: '9', label: 'P1', npt: 0, doc }]);
     const est = sembrarRci(gris.estado, 'Torre');
+    /* Numéricos VACÍOS por defecto (ped. usuario): aquí se digitan K/S/L — el conteo del
+       área de diseño los necesita (los defaults de norma cubren presión/velocidad). */
+    est.roc.K = 5.6;
+    est.roc.S = 4.3;
+    est.roc.L = 3.53;
     /* La semilla conecta el piso con la red de su plano: planta = planId = clave de la red.
        (El motor lee la planta con toUpperCase: los planIds numéricos son invariantes.) */
     expect(est.pisos.rows[0].planta).toBe('9');

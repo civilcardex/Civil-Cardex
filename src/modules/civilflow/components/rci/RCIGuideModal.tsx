@@ -9,6 +9,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useNavRci, type RciCtx, type TabRci } from './RCIUI.tsx';
 import { RUTA_DE } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { PasoGuia } from './RCIGuideSteps.tsx';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 /* ---------------- Datos del recorrido (los del GUIDE del HTML) ---------------- */
 
@@ -142,22 +143,7 @@ export default function RciGuiaModal({
 
   const fase = PASOS[paso].fase;
   return createPortal(
-    <div
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="presentation"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,.6)',
-        padding: 20,
-      }}
-    >
+    <ModalOverlay zIndex={99999} onClose={onClose}>
       <div
         role="dialog"
         aria-modal="true"
@@ -321,7 +307,7 @@ export default function RciGuiaModal({
           ) : null}
         </div>
       </div>
-    </div>,
+    </ModalOverlay>,
     document.body,
   );
 }

@@ -50,6 +50,8 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
     routes: RouteResult[];
     rows: FilaRoute[];
     bld?: boolean;
+    /** Tipo de sistema de la tipología ('Húmedo'/'Seco'; el de clas si la tipología no lo trae). */
+    sis: string;
   };
   const E0: Edificio | null = R.edif;
   const tps: TpsItem[] = E0
@@ -57,6 +59,7 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
         id: t.g.id,
         ro: t.roc || ro,
         riesgo: t.riesgo || c.riesgo,
+        sis: (t as unknown as { g?: { sistema?: string } }).g?.sistema || c.sistema,
         rd: t.rd || null,
         Nop: t.rd ? t.rd.Nop : 0,
         Qroc: t.rd && t.rd.rt && t.rd.rt.solved ? t.rd.rt.Q! : 0,
@@ -72,6 +75,7 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
           id: '',
           ro,
           riesgo: c.riesgo,
+          sis: c.sistema,
           rd: R.red,
           Nop: R.Nop,
           Qroc: R.Qroc,
@@ -466,6 +470,45 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
       },
       tR,
     );
+    /* v1.7.80: las 2 verificaciones de SISTEMA SECO solo existen si alguna tipología es seca. */
+    if (tps.some((t) => t.sis === 'Seco')) {
+      addT(
+        'Rociadores compatibles con el sistema',
+        'NFPA 13-2025',
+        ['hidraulica'],
+        (t) => {
+          if (t.sis !== 'Seco')
+            return { st: 'CUMPLE', val: 'Sistema húmedo: cualquier tipo', guide: '' };
+          const ms = t
+            .rd!.rams.map((x) => ({ x, tp: x.r.troc || 'Colgante' }))
+            .filter((o) => o.tp === 'Colgante' || o.tp === 'Oculto');
+          return {
+            st: ms.length ? 'NO CUMPLE' : 'CUMPLE',
+            val: ms.length
+              ? ms.map((o) => `${o.x.nombre}: ${o.tp.toLowerCase()}`).join('; ')
+              : 'Montantes o colgantes secos',
+            guide:
+              'En sistema seco use montante o colgante seco: un colgante normal deja agua atrapada en la bajante. Cambie el tipo del ramal en Hidráulica → Ramales.',
+          };
+        },
+        tR,
+      );
+      addT(
+        'Sistema seco: requisitos fuera del cálculo',
+        'NFPA 13-2025 cap. 8',
+        ['entradas', 'clas.sistema'],
+        (t) =>
+          t.sis !== 'Seco'
+            ? { st: 'CUMPLE', val: 'Sistema húmedo', guide: '' }
+            : {
+                st: 'REVISAR',
+                val: 'Sistema seco',
+                guide:
+                  'El caudal y la presión ya incluyen el área +30 % y C = 100. Diseñe aparte, según NFPA 13: tiempo de llegada del agua o volumen máximo del sistema, válvula seca y fuente de aire, drenajes y pendiente de la tubería. Use rociadores montantes o colgantes secos y materiales permitidos para sistema seco.',
+              },
+        tR,
+      );
+    }
   }
   /* Verificaciones sobre todas las tuberías: cada tipología y, aparte, montante + cuarto de bombas + gabinetes */
   const tB: TpsItem[] = tpsRed.concat(
@@ -477,6 +520,7 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
             bld: true,
             ro: null as unknown as Criterios,
             riesgo: '',
+            sis: c.sistema,
             rd: null,
             Nop: 0,
             Qroc: 0,

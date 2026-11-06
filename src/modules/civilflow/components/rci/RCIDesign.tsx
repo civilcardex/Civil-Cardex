@@ -41,6 +41,7 @@ import { RciBombaTanque } from './RCIPumpTank.tsx';
 import { RciSismo } from './RCISeismic.tsx';
 import { RciVerificaciones } from './RCIChecks.tsx';
 import RciGuiaModal from './RCIGuideModal.tsx';
+import AccesoriosDiamPage from '../FittingsDiamPage.tsx';
 
 /** Rótulo legible de un huérfano del merge (dato digitado cuyo dibujo dejó de existir). */
 const TIPO_HUERFANO: Record<string, string> = {
@@ -279,34 +280,49 @@ function RciDesign() {
           <span style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
             PISO ACTIVO
           </span>
-          {[...fuentes]
-            .sort((x, y) => y.npt - x.npt)
-            .map((f) => (
-              <button
-                type="button"
-                key={f.planId}
-                onClick={() => elegirPiso(f.planId)}
-                aria-pressed={planIdActivo === f.planId}
-                style={{
-                  border: `1px solid ${planIdActivo === f.planId ? 'var(--rci)' : 'var(--line)'}`,
-                  borderRadius: 'var(--r)',
-                  padding: '3px 10px',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                  fontFamily: 'var(--body)',
-                  color: planIdActivo === f.planId ? 'var(--rci)' : 'var(--txt3)',
-                  background: planIdActivo === f.planId ? 'rgba(0,0,0,.15)' : 'transparent',
-                  fontWeight: planIdActivo === f.planId ? 700 : 400,
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          {fuentes.length === 0 ? (
+          {/* Desplegable (ped. usuario): con muchos pisos los chips no caben en la fila. */}
+          {fuentes.length > 0 ? (
+            <select
+              value={planIdActivo || ''}
+              onChange={(e) => elegirPiso(e.target.value)}
+              aria-label="Piso activo"
+              style={{
+                border: '1px solid var(--line)',
+                borderRadius: 'var(--r)',
+                padding: '3px 8px',
+                fontSize: 12,
+                fontFamily: 'var(--body)',
+                color: 'var(--txt)',
+                background: 'var(--bg3)',
+                cursor: 'pointer',
+              }}
+            >
+              {[...fuentes]
+                .sort((x, y) => y.npt - x.npt)
+                .map((f) => (
+                  <option key={f.planId} value={f.planId}>
+                    {f.label}
+                  </option>
+                ))}
+            </select>
+          ) : (
             <span style={{ fontSize: 11, color: 'var(--txt3)' }}>
               Sin planos confirmados: confirme planos para registrar los pisos.
             </span>
-          ) : null}
+          )}
+          {/* Avisos del merge CENTRADOS entre los chips de pisos y los de verificaciones
+              (ped. usuario): contenedor flex-1 centrado — los extremos quedan anclados. */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              minWidth: 0,
+              overflow: 'hidden',
+            }}
+          >
+            <AvisosRci avisos={[...avisosGris, ...huerfanos]} />
+          </div>
           <button
             type="button"
             onClick={() => irA('verificaciones', 'todas')}
@@ -341,7 +357,6 @@ function RciDesign() {
               ))}
           </button>
         </div>
-        <AvisosRci avisos={[...avisosGris, ...huerfanos]} />
         {/* Contenido de la pestaña activa (cada página maneja sus sub-pestañas verticales). */}
         <div
           data-rci-tab-content
@@ -363,6 +378,7 @@ function RciDesign() {
           {tab === 'perfil' ? <RciPerfil ctx={ctx} /> : null}
           {tab === 'bomba' ? <RciBombaTanque ctx={ctx} /> : null}
           {tab === 'sismo' ? <RciSismo ctx={ctx} /> : null}
+          {tab === 'accesorios' ? <AccesoriosDiamPage net="rci" /> : null}
           {tab === 'verificaciones' ? <RciVerificaciones ctx={ctx} /> : null}
         </div>
       </div>

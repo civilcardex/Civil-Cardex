@@ -6,9 +6,9 @@
 import type { CSSProperties } from 'react';
 import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 
-/** Ayuda de la columna nivel (a una línea): qué elegir y su efecto. La usa el title del th. */
+/** Ayuda de la columna planta (a una línea): qué elegir y su efecto. La usa el title del th. */
 export const AYUDA_NIVEL =
-  'Nivel del edificio al que pertenece esta fila: elige el piso (Piso 1, Sótano 1, Cubierta…). El nivel define de qué red dibujada toma sus datos esta tipología y su altura en el perfil de presiones.';
+  'Planta: letra que identifica la distribución arquitectónica del piso (elige el piso del plano — Piso 1, Sótano 1…). Misma distribución de rociadores y tuberías → misma planta; cada planta tiene su propia red en Hidráulica. No es un dato de norma.';
 
 /** Ayuda de la columna salidas: GRIS — la salida nace del dibujo (un gabinete GAB en el piso).
  *  La usa el title del th. */

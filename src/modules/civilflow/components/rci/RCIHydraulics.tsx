@@ -26,10 +26,11 @@ import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import { PanelNudosRci, PanelDetalleRci, VACIO } from './RCIHydraulicNodes.tsx';
 import { VrpSvg } from './RCISvgFloorplan.tsx';
 import { HidSummary } from './RCIHidSummary.tsx';
-import RciTablaRamales from './RciTablaRamales.tsx';
-import RciTablaTramos from './RciTablaTramos.tsx';
+import RciRamalesTable from './RciRamalesTable.tsx';
+import RciTramosTable from './RciTramosTable.tsx';
 import { cOf } from '../../lib/rci/hydraulics.ts';
 import type { Red, TipCalc } from '../../lib/rci/types.ts';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 /** Barra horizontal de controles de la red (el .hbar del HTML): campos + nota al pie. */
 const HB: CSSProperties = { display: 'grid', gap: 2, fontSize: 13, color: 'var(--txt2)' };
@@ -47,14 +48,15 @@ const BTN_INL: CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Barra .hbar del HTML: controles alineados y la nota de uso debajo. */
+/** Barra .hbar del HTML: controles + nota reparten el ancho en columnas uniformes (4: los
+ *  3 controles y la nota a la misma altura, ped. usuario). Ambos call sites traen 3 hijos. */
 function Hbar({ children, nota }: { children: ReactNode; nota: ReactNode }) {
   return (
     <div
       style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '6px 18px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: 18,
         alignItems: 'end',
         padding: '6px 10px',
         background: 'var(--bg3)',
@@ -63,9 +65,7 @@ function Hbar({ children, nota }: { children: ReactNode; nota: ReactNode }) {
       }}
     >
       {children}
-      <div style={{ flexBasis: '100%', fontSize: 12, color: 'var(--txt3)', lineHeight: 1.45 }}>
-        {nota}
-      </div>
+      <div style={{ fontSize: 12, color: 'var(--txt3)', lineHeight: 1.45 }}>{nota}</div>
     </div>
   );
 }
@@ -123,6 +123,9 @@ const SUBS_HID: SubItemRci[] = [
   { id: 'detalle', titulo: 'Detalle nudo a nudo' },
 ];
 
+/** Pestaña Hidráulica del diseño rci (Red Contra Incendio): pinta las sub-pestañas Ramales,
+ *  Tramos, Nudos y Detalle nudo a nudo con la red del piso activo — los candados de edición
+ *  salen de la red gris (la copia solo dibujo). Ej: "Ramales" lista D1 con su diámetro. */
 export function RciHidraulica({
   ctx,
   planId,
@@ -168,7 +171,7 @@ export function RciHidraulica({
       ? String(nodoRaiz.z)
       : '';
 
-  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr') => (v: string) =>
+  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) =>
     editar((e) => {
       const r = e.redes[redKey];
       if (!r) return e;
@@ -265,7 +268,7 @@ export function RciHidraulica({
             <Hbar
               nota={
                 <>
-                  Ordénelos desde el más remoto; un solo diámetro por ramal.
+                  Ordenalos desde el más remoto; un solo diámetro por ramal.
                   <br />
                   En el orden del dibujo, de la punta al nudo; el agua circula en sentido contrario.
                 </>
@@ -314,7 +317,7 @@ export function RciHidraulica({
                 )}
               </label>
             </Hbar>
-            <RciTablaRamales
+            <RciRamalesTable
               rams={rams}
               fijosR={fijosR}
               red={red}
@@ -384,7 +387,7 @@ export function RciHidraulica({
                 Ver instalación típica de la derivación
               </button>
             </Hbar>
-            <RciTablaTramos
+            <RciTramosTable
               trams={trams}
               fijosT={fijosT}
               red={red}
@@ -417,18 +420,8 @@ export function RciHidraulica({
         ) : null}
       </SubTabsRci>
       {vrpAbierta ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,.6)',
-            padding: 20,
-          }}
-        >
+        <ModalOverlay zIndex={60}>
+          {' '}
           <div
             role="dialog"
             aria-modal="true"
@@ -459,7 +452,7 @@ export function RciHidraulica({
             </div>
             <VrpSvg />
           </div>
-        </div>
+        </ModalOverlay>
       ) : null}
     </>
   );

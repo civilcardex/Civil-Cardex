@@ -58,9 +58,11 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
   const activa = navGab.sub ?? 'ruta';
   const spOn = estado.local.exigeSP === 'Sí';
 
-  /* Sin gabinetes dibujados (ped. usuario: la ruta nace del plano) — aviso en vez de filas
-     fabricadas. La siamesa sigue visible (es del diseñador). */
-  if (spOn && !(estado.gabinetes || []).length) {
+  /* Sin gabinetes dibujados NI salidas marcadas — aviso en vez de filas fabricadas. El
+     desplegable de Salidas es editable (ped. usuario): si marcó alguna, sí hay ruta.
+     La siamesa sigue visible (es del diseñador). */
+  const haySalida = (estado.pisos?.rows || []).some((r) => r.salida && r.salida !== 'Ninguna');
+  if (spOn && !(estado.gabinetes || []).length && !haySalida) {
     return (
       <section className="card">
         <div
@@ -138,6 +140,20 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
       v: `${fmt(R.sp.Qreq, 0)} gpm`,
     },
     { k: 'Duración', v: `${fmt(R.sp.dur, 0)} min` },
+    /* Cota de entrada a cada gabinete (HU): NPT del piso + altura de la válvula sobre el NPT
+       (sia.h, Entradas). La salida más remota es la de arriba (la que r0 representa). */
+    ...(r0
+      ? [
+          {
+            k: `Cota de entrada al gabinete (${gabPiso(r0.ni)})`,
+            v: `${fmt(num(r0.zi), 2)} m`,
+            ayuda: `NPT del piso + altura de la válvula sobre el NPT (${fmt(
+              num(estado.sia.h) || 0,
+              2,
+            )} m, Entradas → Siamesa y gabinetes). NFPA 14: entre 0,90 y 1,50 m sobre el NPT.`,
+          } as MetricaRci,
+        ]
+      : []),
     {
       k: 'Requerido en la brida de la bomba (cuarto de bombas)',
       v: g && g.valid ? `${fmt(g.Qend, 1)} gpm @ ${fmt(g.Pend, 1)} psi` : 'Ruta incompleta',

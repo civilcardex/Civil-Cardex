@@ -5,7 +5,7 @@
  *  <GrupoTabla titulo="Normativa" campos={GRUPOS.normativa} estado={estado} R={R} editar={editar} grande />. */
 import type { CSSProperties } from 'react';
 import { EditTablaBtn, TagRci, useEditarTabla, type RciCtx } from './RCIUI.tsx';
-import { anchoValor, celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
+import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import type { RciResult, RciState } from '../../lib/rci/types.ts';
 
@@ -131,14 +131,15 @@ const UNI_TD: CSSProperties = {
   whiteSpace: 'nowrap',
 };
 /** Celda de observación: la ayuda del campo SIEMPRE visible (no solo el title), texto que
- *  puede ocupar varias líneas. Ej: tub.Vmax muestra «NFPA 13 no fija límite; 6 m/s es práctica
- *  común» sin pasar el mouse. */
+ *  puede ocupar varias líneas (maxWidth para envolver a ~2 líneas). Ej: tub.Vmax muestra
+ *  «NFPA 13 no fija límite; 6 m/s es práctica común» sin pasar el mouse. */
 const OBS_TD: CSSProperties = {
   ...TD,
   fontSize: 13,
   color: 'var(--txt2)',
   textAlign: 'left',
   whiteSpace: 'normal',
+  maxWidth: 380,
 };
 /** Botón chico dentro de la celda Observación: abre el modal de la clave d.abreModal. */
 const BTN_OBS: CSSProperties = {
@@ -332,8 +333,11 @@ export function GrupoTabla({
                 /* Título del control: la ayuda + la forma compacta si el campo tiene fmtValor
                  * (p. ej. mont.dn guarda '1 1/2"' y muestra '1-1/2"'). */
                 const titulo = d.fmtValor ? `${ayu} · formato: ${d.fmtValor(v)}` : ayu;
+                /* Ancho del control: anchoValor tapa a 28ch — un select con valor largo
+                 * (clas.constr 'Combustible obstruida…') necesita hasta 60ch para leerse. */
+                const anchoCtl = `calc(${Math.min(60, Math.max(6, v.length + 2))}ch + 30px)`;
                 return (
-                  <tr key={d.path}>
+                  <tr key={d.path} style={off ? { opacity: 0.55 } : undefined}>
                     <td style={lblS} title={ayu}>
                       {d.lbl}
                     </td>
@@ -346,7 +350,7 @@ export function GrupoTabla({
                             value={v}
                             onChange={(e) => set?.(e.target.value)}
                             title={titulo}
-                            style={{ ...ctrlS, width: `calc(${anchoValor(v)} + 30px)` }}
+                            style={{ ...ctrlS, width: anchoCtl }}
                           >
                             {pares.map(([val, lbl]) => (
                               <option key={val} value={val}>
@@ -362,7 +366,7 @@ export function GrupoTabla({
                             value={v}
                             title={titulo}
                             onChange={(e) => set?.(e.target.value)}
-                            style={{ ...ctrlS, width: `calc(${anchoValor(v)} + 30px)` }}
+                            style={{ ...ctrlS, width: anchoCtl }}
                           />
                         ),
                       )}

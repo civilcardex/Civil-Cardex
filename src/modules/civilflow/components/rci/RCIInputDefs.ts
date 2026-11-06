@@ -143,7 +143,7 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       path: 'clas.sistema',
       lbl: 'Tipo de sistema',
       opts: ['Húmedo', 'Seco'],
-      ayu: 'Seco: área +30 %, C acero 100, sin reducción QR (respuesta rápida)',
+      ayu: 'Seco: área +30 %, C acero 100, sin reducción QR. El tiempo de llegada del agua, el volumen, los equipos y el drenaje del sistema seco se diseñan aparte',
     },
     {
       path: 'clas.htecho',

@@ -2,22 +2,21 @@
  *  (material/Ø/L con desglose planta+bajada), cotas por nudo (inicio/fin, editables — una cota
  *  por nudo se refleja en todas sus filas) y resultados (Ø usado, Q propio/de otros/total,
  *  pérdidas, Pe, P inicio/fin, V, estado). Extraída de RCIHydraulics por el guard de líneas
- *  (F9, mismo criterio que RciTablaRamales). Ej: <RciTablaTramos trams={trams} ... />. */
+ *  (F9, mismo criterio que RciRamalesTable). Ej: <RciTramosTable trams={trams} ... />. */
 import type { CSSProperties } from 'react';
 import { anchoValor, celdaEditable } from './RCIEditableCell.tsx';
-import { TH } from '../../styles/sharedTableStyles.ts';
+import { TH10 } from '../../styles/sharedTableStyles.ts';
 import { DIAMETROS, MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import type { FilaTramoRci } from '../../utils/rci/RCIRowsModel.ts';
-import { TDC, CELDA } from './RciTablaRamales.tsx';
+import { TDC, CELDA } from './RCIEditableCell.tsx';
 import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { Red } from '../../lib/rci/types.ts';
 
-const TH10 = { ...TH, fontSize: 12 } as const;
 const CELDA_COTA: CSSProperties = { padding: '1px 2px' };
 
 /** Props de la tabla de tramos: los handlers escriben en el estado del padre vía ctx.editar
  *  (setZNudo crea la entrada del nudo si aún no existe). */
-export function RciTablaTramos({
+export function RciTramosTable({
   trams,
   fijosT,
   red,
@@ -319,4 +318,4 @@ function zDeNudo(red: Red | undefined, nudo: string): string {
   return n && n.z !== undefined && n.z !== null && n.z !== '' ? String(n.z) : '';
 }
 
-export default RciTablaTramos;
+export default RciTramosTable;

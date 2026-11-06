@@ -9,7 +9,6 @@
 import { HZ, NOM, PIPES } from '../../lib/rci/tables.ts';
 import { num } from '../../lib/rci/hydraulics.ts';
 import { fmtEs as f1 } from '../../lib/rci/fmtEs.ts';
-import { TECHO_DEF } from './ExtractNetwork.ts';
 import type {
   BombaResult,
   Criterios,
@@ -78,83 +77,24 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
     ...est.meta,
     proyecto: graba(est.meta.proyecto, metaProyecto),
   };
-  const local = {
-    ...est.local,
-    exigeRoc: graba(est.local.exigeRoc, 'Sí'),
-    exigeSP: graba(est.local.exigeSP, 'No'),
-    reqSismo: graba(est.local.reqSismo, 'No'),
-    losaRestr: graba(est.local.losaRestr, 'Sí'),
-  };
+  const local = { ...est.local };
   const clas = {
     ...est.clas,
-    almacen: graba(est.clas.almacen, 'No'),
+    /* Categóricos con default de referencia (el cálculo necesita riesgo/sistema); los
+     * NUMÉRICOS y BOOLEANOS nacen VACÍOS (ped. usuario) — el motor los resuelve con sus
+     * defaults de norma al calcular y el diseñador los digita donde importa. */
     riesgo: graba(est.clas.riesgo, 'Riesgo leve'),
     sistema: graba(est.clas.sistema, 'Húmedo'),
-    htecho: graba(est.clas.htecho, TECHO_DEF),
-    qr: graba(est.clas.qr, 'Sí'),
-    constr: graba(est.clas.constr, CONSTR_OPCIONES[0]),
-    techoIncl: graba(est.clas.techoIncl, 'No'),
-    ocultoComb: graba(est.clas.ocultoComb, 'No'),
   };
-  const roc = {
-    ...est.roc,
-    K: graba(est.roc.K, 5.6),
-    Pmin: graba(est.roc.Pmin, 7),
-    S: graba(est.roc.S, 4.3),
-    L: graba(est.roc.L, 3.53),
-    Dmuro: graba(est.roc.Dmuro, 1.7),
-  };
-  const tub = { ...est.tub, Vmax: graba(est.tub.Vmax, 6), Pcomp: graba(est.tub.Pcomp, 175) };
-  const mang = {
-    ...est.mang,
-    mangBomba: graba(est.mang.mangBomba, 'Sí'),
-    mangTanque: graba(est.mang.mangTanque, 'Sí'),
-    duracion: graba(est.mang.duracion, 30),
-  };
+  const roc = { ...est.roc };
+  const tub = { ...est.tub };
+  const mang = { ...est.mang };
   const sp = {
     ...est.sp,
     clase: graba(est.sp.clase, 'Clase III'),
-    num: graba(est.sp.num, 1),
-    rociado: graba(est.sp.rociado, 'Sí'),
-    diam: graba(est.sp.diam, 4),
   };
-  const sia = {
-    ...est.sia,
-    n: graba(est.sia.n, 1),
-    entradas: graba(est.sia.entradas, 2),
-    h: graba(est.sia.h, 0.75),
-    mat: graba(est.sia.mat, 'Acero SCH 10'),
-    dn: graba(est.sia.dn, '4"'),
-    L: graba(est.sia.L, 6),
-    c90: graba(est.sia.c90, 2),
-    tee: graba(est.sia.tee, 1),
-    chq: graba(est.sia.chq, 1),
-    cierre: graba(est.sia.cierre, 'No'),
-    drenaje: graba(est.sia.drenaje, 'Sí'),
-  };
-  const bomba = {
-    ...est.bomba,
-    margen: graba(est.bomba.margen, 0.1),
-    fchurn: graba(est.bomba.fchurn, 1.2),
-    etaN: graba(est.bomba.etaN, 0.65),
-    eta150: graba(est.bomba.eta150, 0.6),
-    fs: graba(est.bomba.fs, 1.0),
-    zFondo: graba(est.bomba.zFondo, 0.3),
-    hmin: graba(est.bomba.hmin, 0.5),
-    hmax: graba(est.bomba.hmax, 2.0),
-    matSuc: graba(est.bomba.matSuc, 'Acero SCH 10'),
-    dnSuc: graba(est.bomba.dnSuc, '5"'),
-    lSuc: graba(est.bomba.lSuc, 4),
-    c90: graba(est.bomba.c90, 2),
-    tee: graba(est.bomba.tee, 1),
-    comp: graba(est.bomba.comp, 2),
-    chq: graba(est.bomba.chq, 0),
-    altitud: graba(est.bomba.altitud, 0),
-    tagua: graba(est.bomba.tagua, 23.5),
-    npshr: graba(est.bomba.npshr, 3.0),
-    margenNpsh: graba(est.bomba.margenNpsh, 0.5),
-    qjockey: graba(est.bomba.qjockey, 2.0),
-  };
+  const sia = { ...est.sia };
+  const bomba = { ...est.bomba };
   /* Cuarto de bombas SIN seed (ped. usuario: nada fabricado) — el diseñador llena la fila
    * Base→CB en Entradas → Selección de bomba. */
   const mont = { ...est.mont };
@@ -346,6 +286,8 @@ export interface FilaRamalRci {
   dn: string;
   mat: string;
   /** Longitud del ramal (punta → conexión), con la bajada incluida si llega a la derivación. */
+  /** Tipo de rociador del ramal (Colgante/Montante/Oculto/Colgante seco; 'Colgante' si no trae). */
+  troc: string;
   Lr: number | null;
   /** Diámetro con el que se calculó (el auto resuelto). */
   dnUsado: string | null;
@@ -394,6 +336,7 @@ export function filasRamales(red: Red | undefined, rd: RedResult | null): FilaRa
       auto: x ? x.auto : true,
       dn: txtDe(r.dn) || 'auto',
       mat: txtDe(r.mat),
+      troc: txtDe((r as { troc?: unknown }).troc) || 'Colgante',
       Lr: num(r.Lr),
       dnUsado: res?.valid ? (res.dn ?? null) : null,
       Q: res?.valid ? res.Qend : null,
@@ -533,6 +476,7 @@ export function filasTramos(
 export const GRUPOS_CHECK: { id: string; l: string }[] = [
   { id: 'normativa', l: 'Normativa local' },
   { id: 'tipologias', l: 'Tipologías' },
+  { id: 'rociadores', l: 'Rociadores' },
   { id: 'hidraulica', l: 'Hidráulica' },
   { id: 'montantes', l: 'Montante y siamesa' },
   { id: 'bomba', l: 'Bomba y tanque' },
@@ -544,6 +488,10 @@ export const GRUPOS_CHECK: { id: string; l: string }[] = [
 export function grupoDeCheck(v: Verificacion): string {
   const go0 = v.go?.[0] || '';
   const go1 = v.go?.[1] || '';
+  /* v1.7.80: las 2 verificaciones de sistema seco viven en el grupo Rociadores (como el HTML),
+     aunque sus «Ir al dato» apunten a Hidráulica/Tipologías. */
+  if (v.lab === 'Rociadores compatibles con el sistema' || v.lab.startsWith('Sistema seco:'))
+    return 'rociadores';
   if (go0 === 'pisos' || go1.startsWith('piso:')) return 'tipologias';
   if (go1.startsWith('local.') || go0 === 'sismo') return 'normativa';
   if (go1.startsWith('clas.') || go1.startsWith('roc.')) return 'tipologias';

@@ -379,9 +379,9 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
       K: p?.K ?? '',
       S: p?.S ?? '',
       L: p?.L ?? '',
-      /* Salida GRIS-manda (ped. usuario): nace del dibujo (GAB sí/no) — el amarillo viejo no
-       * sobrevive. */
-      salida: f.salida,
+      /* Salida: el extractor la propone GRIS ('Sí' con GAB dibujado) pero el desplegable de la
+       * tabla es EDITABLE de nuevo (ped. usuario) — el valor digitado sobrevive. */
+      salida: p?.salida ?? f.salida,
       tip: p?.tip ?? 'auto',
       vreg: p?.vreg,
       vrp: p?.vrp,
@@ -511,6 +511,7 @@ function mezclarFilas(
         mar: siPrev(p?.mar, ''),
         comp: siPrev(p?.comp, ''),
         ret: siPrev(p?.ret, ''),
+        troc: siPrev(p?.troc, ''),
         zr: siPrev(p?.zr, ''),
       };
     }

@@ -18,6 +18,7 @@ import {
 } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { PumpSvg, dibujaCurvaBomba, temaResuelto } from './RCISvgSchemas.tsx';
 import type { BombaResult } from '../../lib/rci/types.ts';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 /** Sub-pestañas de la pestaña Bomba (los ids de SUBS_POR_TAB['bomba'] que toca RUTA_DE: los
  *  «Ir al dato» de bomba caen en 'demanda'). Ej: setSub('jockey') muestra curva + jockey + tanque. */
@@ -295,22 +296,7 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
 
       {/* Modal liviano con el esquema del cuarto de bombas (resalta succión o descarga). */}
       {esquema ? (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setEsquema(null);
-          }}
-          role="presentation"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,.6)',
-            padding: 20,
-          }}
-        >
+        <ModalOverlay zIndex={9999} onClose={() => setEsquema(null)}>
           <div
             role="dialog"
             aria-modal="true"
@@ -346,7 +332,7 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
             </div>
             <PumpSvg modo={esquema} />
           </div>
-        </div>
+        </ModalOverlay>
       ) : null}
     </>
   );

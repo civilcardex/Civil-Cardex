@@ -194,14 +194,13 @@ function CriteriosDiseno({
     </section>
   );
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, max-content)',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
           gap: 10,
-          alignItems: 'start',
-          justifyContent: 'center',
+          alignItems: 'stretch',
         }}
       >
         {tarjeta('Rociador y área de diseño', kvRociadorDiseno(ro, qrTxt, sistemaTxt), true)}

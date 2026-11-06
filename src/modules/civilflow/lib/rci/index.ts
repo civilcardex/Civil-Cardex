@@ -29,8 +29,8 @@ export {
 } from './hydraulics';
 export { interpPV, siamesaCalc, bombaPerfilCalc, tanqueCalc } from './pump';
 export { checks } from './checks';
+export { ejemploVerificacion } from './example';
 export {
-  ejemploVerificacion,
   type RciState,
   type RciResult,
   type Tips,

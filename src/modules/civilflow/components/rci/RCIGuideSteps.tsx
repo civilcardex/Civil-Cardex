@@ -24,6 +24,7 @@ const PREFIJOS_CHK = [
   'Área por rociador',
   'Distancia a muro',
 ] as const;
+/** Unión de esos prefijos: los enlaces «Ir al dato» de la guía saltan a la verificación cuyo id empieza con él. */
 export type PrefijoChk = (typeof PREFIJOS_CHK)[number];
 
 /** Filas de la tabla de criterios por riesgo (catálogo fijo NFPA 13, resuelto una vez). */

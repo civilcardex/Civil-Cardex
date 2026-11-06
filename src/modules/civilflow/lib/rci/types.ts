@@ -3,7 +3,7 @@
  * resultado intermedio de compute(). Todos los módulos del motor importan sus tipos de aquí para
  * no crear ciclos de import. Ej: st.redes["A"].ramales[0].Lr = 18.67 (m de punta a conexión).
  */
-import { ESP_DEF, type EspAcc, type HzEntry } from './tables';
+import type { EspAcc, HzEntry } from './tables';
 
 export type { EspAcc, HzEntry, PipeSpec } from './tables';
 
@@ -40,6 +40,9 @@ export interface TuberiaRow {
   zr?: NumIn;
   zc?: NumIn;
   con?: string;
+  /** Tipo de rociador del ramal (v1.7.80): Colgante (default) | Montante | Oculto |
+   *  'Colgante seco'. No cambia el cálculo; en sistema seco se exige montante/colgante seco. */
+  troc?: string;
   roc?: boolean;
   k?: NumIn;
   /* Solo rutas de alimentación: aportes de ramales equilibrados o caudales fijos */
@@ -54,6 +57,8 @@ export interface TuberiaRow {
   [k: string]: unknown;
 }
 
+/** Identificación del proyecto (pestaña «Datos del proyecto»): nombre, país/ciudad, diseñador
+ *  y revisión. Ej: {proyecto:'Edificio Eureka', pais:'Colombia', revision:'B'}. */
 export interface RciMeta {
   proyecto: string;
   pais: string;
@@ -62,6 +67,10 @@ export interface RciMeta {
   revision: string;
 }
 
+/** Normativa local (pestaña «Normativa local»): qué exige el código local del país —
+ *  rociadores, salidas de manguera, adopción nacional, norma eléctrica y requisitos sísmicos
+ *  (zona, factor Cp, losa restringida). Ej: exigeSP='Sí' con refSP='Cap. 9 del código local'
+ *  obliga a calcular el montante NFPA 14. */
 export interface RciLocal {
   codLocal: string;
   ocupLocal: string;
@@ -79,6 +88,10 @@ export interface RciLocal {
   losaRestr: string;
 }
 
+/** Clasificación y riesgo (NFPA 13 cap. 4): riesgo (leve/ordinario/extra), sistema
+ *  (Húmedo/Seco), geometría del techo (altura, construcción, pendiente, ocultos combustibles)
+ *  y rociador de respuesta rápida (qr). Ej: riesgo='Riesgo leve' + sistema='Seco' suma 30 %
+ *  al área de diseño y baja el C de Hazen-Williams a 100. */
 export interface RciClas {
   almacen: string;
   arrumeH: NumIn;
@@ -91,6 +104,9 @@ export interface RciClas {
   ocultoComb: string;
 }
 
+/** Datos del rociador de la tipología activa: K (factor K, gpm/psi½), Pmin (presión mínima en
+ *  el rociador más remoto, psi), S y L (separación entre rociadores y entre ramales, m) y
+ *  Dmuro (distancia al muro, m). Ej: K=5.6 con Pmin=7 calcula Q = K·√P ≈ 14.8 gpm. */
 export interface RciRoc {
   K: NumIn;
   Pmin: NumIn;
@@ -99,17 +115,25 @@ export interface RciRoc {
   Dmuro: NumIn;
 }
 
+/** Límites de la red de tubería: Vmax (velocidad máxima, m/s) y Pcomp (presión que exigen los
+ *  componentes, psi — donde exige válvula reductora VRP). Ej: Vmax=6 marca «NO CUMPLE» la
+ *  verificación de velocidad si un tramo llega a 6.4 m/s. */
 export interface RciTub {
   Vmax: NumIn;
   Pcomp: NumIn;
 }
 
+/** Mangueras de bomberos: largo en la succión de la bomba y en el tanque, y duración de la
+ *  descarga que el tanque debe sostener. Ej: duracion=60 dimensiona el tanque de NFPA 22. */
 export interface RciMang {
   mangBomba: string;
   mangTanque: string;
   duracion: NumIn;
 }
 
+/** Rociadores de protección especial (SP): una demanda aparte de la del riesgo general —
+ *  clase de almacenamiento, n.º de rociadores simultáneos, diámetro y cota mínima de salida
+ *  (m). Ej: clase='Almacenamiento en estantes' con num=12 añade su demanda a la bomba. */
 export interface RciSp {
   clase: string;
   num: NumIn;
@@ -118,6 +142,10 @@ export interface RciSp {
   zMinSalida: NumIn;
 }
 
+/** Cuarto de bombas: margen de presión, churn (fchurn), eficiencias (etaN/eta150, %), factor
+ *  de servicio (fs), succión (material/diámetro/largo + accesorios c90/tee/comp/chq), niveles
+ *  del tanque (zFondo/hmin/hmax, m), altitud (m s. n. m. — ajusta la presión atmosférica del
+ *  NPSH (Net Positive Suction Head, carga neta positiva de succión)) y jockey (qjockey). */
 export interface RciBomba {
   margen: NumIn;
   qrManual: NumIn;
@@ -143,10 +171,15 @@ export interface RciBomba {
   qjockey: NumIn;
 }
 
+/** Volumen extra del tanque (m³) además del que exige la duración de mangueras. Ej:
+ *  vextra=5 suma 5 m³ al V total de NFPA 22. */
 export interface RciTanque {
   vextra: NumIn;
 }
 
+/** Siamesa (conexión de bomberos a la calle): n.º de entradas y rosca, altura sobre el NPT
+ *  (m), material/diámetro y su tubería de alimentación (L y accesorios). Ej: entradas=2 con
+ *  dn='4"' y L=15 calcula la presión que debe entregar la bomba de bomberos. */
 export interface RciSia {
   n: NumIn;
   entradas: NumIn;
@@ -164,9 +197,6 @@ export interface RciSia {
   hidrante: NumIn;
 }
 
-/** Montante NFPA 14 (standpipe): material/diámetro, alturas de salida de manguera (hS) y de
- *  derivación del piso (hD, en m sobre el NPT (Nivel de Piso Terminado)), cota de la base y la
- *  ruta del cuarto de bombas. */
 /** Gabinete dibujado en el plano (gris): el elemento del motor `tipo:'gabinete'` con código
  *  GABn. Ej: {code:'GAB1', npt:3.5, planId:'12'} — npt = nptBase del piso donde cayó. */
 export interface RciGabinete {
@@ -175,6 +205,9 @@ export interface RciGabinete {
   planId: string;
 }
 
+/** Montante NFPA 14 (standpipe): material/diámetro, alturas de salida de manguera (hS) y de
+ *  derivación del piso (hD, en m sobre el NPT (Nivel de Piso Terminado)), cota de la base y la
+ *  ruta del cuarto de bombas. */
 export interface MontCfg {
   mat: string;
   dn: string;
@@ -185,12 +218,16 @@ export interface MontCfg {
   cuarto: TuberiaRow[];
 }
 
+/** Un montante del edificio (puede haber varios): su id, nombre y los pisos (índices de
+ *  nivel) que atiende. Ej: {id:'M1', nombre:'Montante norte', pisos:[0,1,2]}. */
 export interface MontanteCfg {
   id: string;
   nombre: string;
   pisos: number[];
 }
 
+/** Cota de un nodo del árbol de la red (z, en m — la misma referencia que zRam). Ej:
+ *  nodos:{A:{z:3.5}} fija la altura del nudo A para el perfil de presiones. */
 export interface NodoCfg {
   z: NumIn;
 }
@@ -206,6 +243,9 @@ export interface Red {
   tramos: TuberiaRow[];
 }
 
+/** Generador rápido de pisos del formulario: n.º de sótanos, n.º de pisos, altura de piso
+ *  (m), altura de salida de manguera (m) y cota del piso 1 (m). Ej: {sot:1, pis:5, h:3.2}
+ *  crea 6 niveles encadenados. */
 export interface PisoGen {
   sot: number;
   pis: number;
@@ -214,6 +254,9 @@ export interface PisoGen {
   z1: number;
 }
 
+/** Fila de la tabla «Pisos del edificio»: nombre/NPT (Nivel de Piso Terminado) y planta
+ *  llegan del PLANO (gris); riesgo, sistema, techo, QR, K, S, L y salidas se editan. Ej:
+ *  salida='2½" + 1½"' marca un gabinete Clase III en ese piso. */
 export interface PisoRow {
   nombre: string;
   npt: NumIn;
@@ -237,6 +280,9 @@ export interface PisoRow {
   vrp?: string;
 }
 
+/** Bloque de pisos del edificio: zBomba (cota de la bomba, m), la planta activa, el
+ *  representativo por tipología (rep), el generador (gen) y las filas (rows). Ej:
+ *  rep:{T1:'Piso 3'} calcula la red de T1 sobre el NPT de P3. */
 export interface RciPisos {
   zBomba: NumIn;
   activa: string;
@@ -247,6 +293,8 @@ export interface RciPisos {
   rows: PisoRow[];
 }
 
+/** Datos de informe: matrícula profesional y revisiones (van a la memoria de cálculo). Ej:
+ *  matricula='CC 123456 - CIVIL'. */
 export interface RciInf {
   secs: Record<string, unknown>;
   matricula: string;
@@ -375,6 +423,9 @@ export interface RamalCalc {
   Peq?: number;
 }
 
+/** Un tramo (tubería común entre nudos) dentro del cálculo de la red: el row de entrada, de
+ *  qué nudo a qué nudo va y su ruta calculada. Ej: de:'A' a:'B' con res valida la tubería que
+ *  alimenta el ramal. */
 export interface TramoCalc {
   t: TuberiaRow;
   i: number;
@@ -390,6 +441,8 @@ export type Inflow =
   | { tipo: 'ramal'; x: RamalCalc; P: number; Q: number; Qb?: number }
   | { tipo: 'tramo'; y: TramoCalc; P: number; Q: number; Qb?: number };
 
+/** Un nudo del árbol de la red: los aportes que le llegan (inflows), la salida (out) y la
+ *  presión/caudal resueltos. Ej: gov = el aporte que GOBIERNA el nudo (el de P más alta). */
 export interface NudoCalc {
   nombre: string;
   inflows: Inflow[];
@@ -614,6 +667,9 @@ export interface SiaResult {
   combinado: boolean;
 }
 
+/** Resultado del cálculo de rociadores especiales (SP): presión/caudal requeridos, duración y
+ *  sus filas de tubería. Ej: Preq=175 psi entra a la comparación «gobierna la mayor» de la
+ *  bomba. */
 export interface SpResult {
   activo: boolean;
   Preq: number;
@@ -664,270 +720,3 @@ export interface RciResult {
   checks: Verificacion[];
   count: Record<string, number>;
 }
-
-/** Proyecto de ejemplo ("Cargar ejemplo de verificación" del HTML), extraído tal cual: edificio
- *  de oficinas de 3 pisos, riesgo leve QR, montante Clase III, bomba de 500 gpm a 141 psi. */
-export const ejemploVerificacion = (): RciState => ({
-  meta: {
-    proyecto: 'Ejemplo de verificación – edificio de oficinas de 3 pisos',
-    pais: 'Internacional',
-    ciudad: '',
-    disenador: '',
-    revision: '',
-  },
-  local: {
-    codLocal: 'NFPA 101 (referencia del ejemplo: registre aquí el código local vigente)',
-    ocupLocal: 'Oficinas',
-    exigeRoc: 'Sí',
-    refRoc: 'Capítulo de la ocupación (ejemplo)',
-    exigeSP: 'Sí',
-    refSP: 'Capítulo de la ocupación (ejemplo)',
-    adopNac: '',
-    normElec: '',
-    reqSismo: 'No',
-    normSis: '',
-    parSismo: '',
-    zonaSis: '',
-    cp: '',
-    losaRestr: 'Sí',
-  },
-  clas: {
-    almacen: 'No',
-    arrumeH: '',
-    riesgo: 'Riesgo leve',
-    sistema: 'Húmedo',
-    qr: 'Sí',
-    htecho: 5.3,
-    constr: 'No combustible / no obstruida',
-    techoIncl: 'No',
-    ocultoComb: 'No',
-  },
-  roc: { K: 5.6, Pmin: 7, S: 4.3, L: 3.53, Dmuro: 1.7 },
-  tub: { Vmax: 6, Pcomp: 175 },
-  mang: { mangBomba: 'Sí', mangTanque: 'Sí', duracion: 30 },
-  sp: { clase: 'Clase III', num: 1, rociado: 'Sí', diam: 4, zMinSalida: 1.2 },
-  bomba: {
-    margen: 0.1,
-    qrManual: '',
-    fchurn: 1.2,
-    etaN: 0.65,
-    eta150: 0.6,
-    fs: 1.0,
-    zFondo: 0.3,
-    hmin: 0.5,
-    hmax: 3.5,
-    matSuc: 'Acero SCH 10',
-    dnSuc: '5"',
-    lSuc: 4,
-    c90: 2,
-    tee: 1,
-    comp: 2,
-    chq: 0,
-    altitud: 959,
-    patmManual: '',
-    tagua: 23.5,
-    npshr: 3.0,
-    margenNpsh: 0.5,
-    qjockey: 2.0,
-  },
-  tanque: { vextra: 0 },
-  sia: {
-    n: 1,
-    entradas: 2,
-    rosca: 'Según el cuerpo de bomberos local',
-    npt: 0,
-    h: 0.75,
-    mat: 'Acero SCH 10',
-    dn: '4"',
-    L: 6,
-    c90: 2,
-    tee: 1,
-    chq: 1,
-    cierre: 'No',
-    drenaje: 'Sí',
-    hidrante: 25,
-  },
-  inf: { secs: {}, matricula: '', revs: [] },
-  montantes: [{ id: 'M1', nombre: 'Montante 1', pisos: [] }],
-  redes: {
-    A: {
-      raiz: 'C',
-      mat: 'Acero SCH 40',
-      zRam: 5.3,
-      nodos: { A: { z: '' }, B: { z: '' }, C: { z: 2.5 } },
-      ramales: [
-        {
-          nombre: 'R2',
-          ini: 'Eje F',
-          dib: 5,
-          fluyen: '',
-          mat: '',
-          dn: 'auto',
-          S: '',
-          Lr: 18.67,
-          c90: '',
-          tee: '',
-          esp: '',
-          leqOtros: '',
-          zr: '',
-          con: 'A',
-        },
-        {
-          nombre: 'R1',
-          ini: 'Eje F',
-          dib: 5,
-          fluyen: '',
-          mat: '',
-          dn: 'auto',
-          S: '',
-          Lr: 22.2,
-          c90: 1,
-          tee: 1,
-          esp: '',
-          leqOtros: '',
-          zr: '',
-          con: 'A',
-        },
-        {
-          nombre: 'R3',
-          ini: 'Eje F',
-          dib: 6,
-          fluyen: '',
-          mat: '',
-          dn: 'auto',
-          S: '',
-          Lr: 26.07,
-          c90: 1,
-          tee: '',
-          esp: '',
-          leqOtros: '',
-          zr: '',
-          con: 'B',
-        },
-      ],
-      tramos: [
-        {
-          nombre: 'T1',
-          de: 'A',
-          a: 'B',
-          mat: 'Acero SCH 40',
-          dn: 'auto',
-          L: 3.87,
-          tee: 1,
-          esp: '',
-          leqOtros: '',
-        },
-        {
-          nombre: 'T2',
-          de: 'B',
-          a: 'C',
-          mat: 'Acero SCH 10',
-          dn: '2"',
-          L: 4.72,
-          c90: 2,
-          tee: 1,
-          mar: 1,
-          esp: 'DF',
-          leqOtros: '',
-        },
-      ],
-    },
-  },
-  mont: {
-    mat: 'Acero SCH 10',
-    dn: '4"',
-    hS: 1.2,
-    hD: 2.5,
-    zBase: 0,
-    holgura: 0,
-    cuarto: [
-      {
-        ni: 'Base',
-        nf: 'CB',
-        mat: 'Acero SCH 10',
-        dn: '4"',
-        L: 3.0,
-        tee: 3,
-        comp: 2,
-        ret: 1,
-        esp: '',
-        zi: 0,
-        zf: 0,
-      },
-    ],
-  },
-  gabinetes: [
-    { code: 'GAB1', npt: 0, planId: 'A' },
-    { code: 'GAB2', npt: 6.1, planId: 'A' },
-    { code: 'GAB3', npt: 12.2, planId: 'A' },
-  ],
-  esp: ESP_DEF(),
-  pisos: {
-    zBomba: 0,
-    activa: 'T1',
-    rep: {},
-    estado: { T1: 'Calculada' },
-    gen: { sot: 0, pis: 3, h: 6.1, hs: 3, z1: 0 },
-    rows: [
-      {
-        nombre: 'P3',
-        npt: 12.2,
-        planId: 'A',
-        uso: 'Oficinas',
-        planta: 'A',
-        riesgo: 'Riesgo leve',
-        sistema: 'Húmedo',
-        htecho: 5.3,
-        qr: 'Sí',
-        constr: 'No combustible / no obstruida',
-        techoIncl: 'No',
-        ocultoComb: 'No',
-        K: 5.6,
-        S: 4.3,
-        L: 3.53,
-        salida: '2½" + 1½"',
-        tip: 'auto',
-      },
-      {
-        nombre: 'P2',
-        npt: 6.1,
-        planId: 'A',
-        uso: 'Oficinas',
-        planta: 'A',
-        riesgo: 'Riesgo leve',
-        sistema: 'Húmedo',
-        htecho: 5.3,
-        qr: 'Sí',
-        constr: 'No combustible / no obstruida',
-        techoIncl: 'No',
-        ocultoComb: 'No',
-        K: 5.6,
-        S: 4.3,
-        L: 3.53,
-        salida: '2½" + 1½"',
-        tip: 'auto',
-      },
-      {
-        nombre: 'P1',
-        npt: 0,
-        planId: 'A',
-        uso: 'Recepción',
-        planta: 'A',
-        riesgo: 'Riesgo leve',
-        sistema: 'Húmedo',
-        htecho: 5.3,
-        qr: 'Sí',
-        constr: 'No combustible / no obstruida',
-        techoIncl: 'No',
-        ocultoComb: 'No',
-        K: 5.6,
-        S: 4.3,
-        L: 3.53,
-        salida: '2½" + 1½"',
-        tip: 'auto',
-      },
-    ],
-  },
-  notas:
-    'Gabinetes según NFPA 14, Clase III (válvula 2½" + manguera 1½"): 500 gpm a 100 psi en la salida más remota. Con rociadores en todo el edificio no se suma la demanda de rociadores: gobierna la mayor. Tramo T2 (B–C): L = 1,92 m de planta + 2,80 m de bajada a la derivación (5,30 − 2,50); 2 codos, en la base y en la cabeza de la bajada.',
-});

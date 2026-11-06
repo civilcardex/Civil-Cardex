@@ -50,10 +50,25 @@ export function construirInformeRci(st: RciState): RciInforme | null {
         tip && typeof tip.P === 'number' && typeof tip.Q === 'number'
           ? `${f0(tip.Q)} gpm @ ${f2(tip.P)} psi`
           : 'pendiente';
+      /* v1.7.80: rociadores por tipo del ramal (no cambia el cálculo). */
+      const porTipo = new Map<string, number>();
+      for (const x of tip?.rd?.rams || []) {
+        const tp = x.r.troc || 'Colgante';
+        porTipo.set(tp, (porTipo.get(tp) || 0) + (x.dib ?? x.fl ?? 0));
+      }
+      const tiposTxt = porTipo.size
+        ? [...porTipo.entries()].map(([tp, n]) => `${n} ${tp.toLowerCase()}`).join(' + ')
+        : `${f0(g.roc.Nreq)} rociadores`;
       filas.push([
         `Tipología ${g.id} (${pisos || 'sin pisos'})`,
-        `Área ${f2(g.roc.Adis)} ft² · ${f0(g.roc.Nreq)} rociadores · Derivación ${deriv}`,
+        `Área ${f2(g.roc.Adis)} ft² · ${tiposTxt} · Derivación ${deriv}`,
       ]);
+      if ((g.sistema || st.clas.sistema) === 'Seco') {
+        filas.push([
+          `Sistema seco (${g.id})`,
+          'Se calcula la demanda hidráulica de la red. El tiempo de llegada del agua, el volumen de la red, la válvula de tubería seca, el compresor y el drenaje se diseñan aparte (NFPA 13).',
+        ]);
+      }
     }
     const sia = R.sia;
     filas.push(

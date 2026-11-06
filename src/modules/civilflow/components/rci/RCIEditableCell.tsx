@@ -6,6 +6,7 @@
  *  por compatibilidad con los ~40 call sites (no se usan). Ej:
  *  {celdaEditable(edit && !off, <input style={{ ...IN_CELDA, fontSize: 13, width: 64 }} />)}. */
 import { cloneElement, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { TD } from '../../styles/sharedTableStyles.ts';
 
 /** Estilo base del control: mono centrado, sin spinners ni flecha nativa (la flecha del select
  *  la añade celdaEditable como background cuando está ON). */
@@ -19,6 +20,28 @@ export const IN_CELDA: CSSProperties = {
   appearance: 'none',
   boxSizing: 'border-box',
   margin: 0,
+};
+
+/** Celda de SOLO LECTURA de las tablas de Hidráulica (Ramales/Tramos): 14 px compacta.
+ *  Ej: <td style={TDC}>128,54</td>. */
+export const TDC = { ...TD, fontSize: 14, padding: '1px 3px' } as const;
+
+/** Celda EDITABLE de las tablas de Hidráulica: control centrado que no ensancha al activar
+ *  EDITAR (el width lo pone cada celda sobre esta base). Ej: {...CELDA, width: 56}. */
+export const CELDA: CSSProperties = {
+  ...IN_CELDA,
+  fontSize: 14,
+  boxSizing: 'border-box',
+  textAlign: 'center',
+};
+
+/** Control activo de las celdas de la tabla de PISOS (12 px): la variante compacta de
+ *  CELDA. Ej: {...CELDA12, width: 120}. */
+export const CELDA12: CSSProperties = {
+  ...IN_CELDA,
+  fontSize: 12,
+  boxSizing: 'border-box',
+  textAlign: 'center',
 };
 
 /** Ancho del control de una celda editable, en `ch` (ancho de dígito en la mono de la tabla):

@@ -36,8 +36,10 @@ export function useEditarTabla(): [boolean, () => void] {
  *  cada call site lo coloca en su esquina (p. ej. wrapper con marginLeft:'auto' a la derecha).
  *  Ej: <div style={{ marginLeft: 'auto' }}><EditTablaBtn on={edit} onToggle={toggle} /></div>. */
 export function EditTablaBtn({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  // Mismo color que EditButton de las demás redes (ped. usuario): acento var(--acc), no el
+  // rojo rci.
   const base: React.CSSProperties = {
-    border: '1px solid var(--rci)',
+    border: '1px solid var(--acc)',
     borderRadius: 3,
     padding: '2px 8px',
     fontSize: 10,
@@ -51,8 +53,8 @@ export function EditTablaBtn({ on, onToggle }: { on: boolean; onToggle: () => vo
       onClick={onToggle}
       style={
         on
-          ? { ...base, background: 'var(--rci)', color: '#fff' }
-          : { ...base, background: 'transparent', color: 'var(--rci)' }
+          ? { ...base, background: 'var(--acc)', color: '#fff' }
+          : { ...base, background: 'transparent', color: 'var(--acc)' }
       }
     >
       {on ? 'LISTO' : 'EDITAR'}
@@ -72,6 +74,7 @@ export const TABS_RCI = [
   { id: 'perfil', lbl: 'Perfil de presiones' },
   { id: 'bomba', lbl: 'Bomba y tanque' },
   { id: 'sismo', lbl: 'Soportes sísmicos' },
+  { id: 'accesorios', lbl: 'Resumen de accesorios por diámetro' },
   { id: 'verificaciones', lbl: 'Verificaciones' },
 ] as const;
 /** Id válido de pestaña del diseño (la unión de los ids de TABS_RCI). Ej: 'hidraulica'. */
@@ -371,9 +374,20 @@ export const COLOR_ESTADO: Record<string, string> = {
 };
 
 /** Chip del estado de una verificación. Ej: <ChipEstado st="CUMPLE" /> pinta CUMPLE en verde. */
-export function ChipEstado({ st }: { st: string }) {
+export function ChipEstado({
+  st,
+  label,
+  title,
+}: {
+  st: string;
+  /** Texto mostrado (por defecto st) — para cuando el color y la palabra difieren. */
+  label?: string;
+  /** Tooltip opcional (p. ej. «Sin red: la planta no tiene trazos»). */
+  title?: string;
+}) {
   return (
     <span
+      title={title}
       style={{
         fontSize: 11,
         fontWeight: 700,
@@ -385,7 +399,7 @@ export function ChipEstado({ st }: { st: string }) {
         whiteSpace: 'nowrap',
       }}
     >
-      {st}
+      {label ?? st}
     </span>
   );
 }
@@ -492,24 +506,40 @@ export function KvTabla({
 }
 
 /** Aviso de la extracción (piso sin montante conectado, ramal flotante…) o de huérfanos del
- *  merge: texto ámbar, nunca bloquea. Ej: <AvisosRci avisos={[{ piso: 'P1', msg: '…' }]} />. */
+ *  merge: texto ámbar, nunca bloquea. Vive en la FILA de chips (Guía/pisos) como chip ámbar.
+ *  Ej: <AvisosRci avisos={['P2: Tiene trazos rci pero ningún montante conectado…']} />. */
 export function AvisosRci({ avisos }: { avisos: string[] }) {
   if (!avisos.length) return null;
   return (
     <ul
       style={{
-        margin: '4px 0 0',
-        padding: '4px 10px',
+        margin: 0,
+        padding: 0,
         listStyle: 'none',
-        background: 'rgba(224,164,0,0.08)',
-        border: '1px solid rgba(224,164,0,0.35)',
-        borderRadius: 4,
-        fontSize: 11,
-        color: 'var(--txt2)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
       }}
     >
       {avisos.map((a, i) => (
-        <li key={i}>⚠ {a}</li>
+        <li
+          key={i}
+          title={a}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '3px 10px',
+            border: '1px solid rgba(224,164,0,0.55)',
+            borderRadius: 'var(--r, 6px)',
+            background: 'rgba(224,164,0,0.12)',
+            fontSize: 12,
+            color: 'var(--txt)',
+          }}
+        >
+          <span style={{ color: '#E0A400', fontWeight: 700 }}>⚠</span>
+          {a}
+        </li>
       ))}
     </ul>
   );

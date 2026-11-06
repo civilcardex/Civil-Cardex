@@ -374,17 +374,11 @@ export function edificio(
     return o;
   });
   let gabRows: TuberiaRow[] = [];
-  /* Salidas de gabinete DESDE EL DIBUJO (ped. usuario): los pisos con GABn en st.gabinetes
-     son los outlets (cota de salida = npt − zB + hS, como siempre). Sin gabinetes dibujados
-     no hay outlets y la tabla queda vacía — nada fabricado. */
-  const planesConGab = new Set((st.gabinetes || []).map((g) => g.planId));
-  const idxConGab = new Set<number>();
-  (st.pisos?.rows || []).forEach((r, i) => {
-    const pid = (r as { planId?: unknown }).planId;
-    if (pid !== undefined && pid !== null && planesConGab.has(String(pid))) idxConGab.add(i);
-  });
+  /* Outlets: el piso con SALIDA marcada — el desplegable de Tipologías es editable de nuevo
+     (ped. usuario) y el extractor la propone 'Sí' donde hay GAB dibujado. Cota de salida =
+     npt − zB + hS, como siempre. Sin salidas → tabla vacía, nada fabricado. */
   const outs = pf
-    .filter((o) => idxConGab.has(o.f.i) && o.zS !== null)
+    .filter((o) => o.f.salida && o.f.salida !== 'Ninguna' && o.zS !== null)
     .sort((a, b) => (b.zS as number) - (a.zS as number));
   if (outs.length) {
     const cl2 = st.sp.clase === 'Clase II',
