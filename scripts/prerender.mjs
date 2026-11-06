@@ -114,7 +114,9 @@ async function main() {
       );
       // 3) BreadcrumbList por ruta (inicio → sección)
       // El nombre de la sección es el title de la ruta (fuente única: ROUTE_META).
-      if (meta.title) {
+      // La HOME no lleva breadcrumb: un BreadcrumbList que apunta a sí misma
+      // («Inicio → Inicio») es schema ruidoso/inválido para el crawler.
+      if (meta.path !== '/' && meta.title) {
         const crumb = JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
@@ -138,10 +140,10 @@ async function main() {
     }
   }
 
-  // 4) sitemap.xml desde ROUTE_META (fuente única: path + changefreq + priority viven aquí).
-  const hoy = new Date().toISOString().slice(0, 10);
+  // 4) sitemap.xml desde ROUTE_META (path/changefreq/priority/lastmod — lastmod lo edita el
+  // diseñador al cambiar contenido, JAMÁS la fecha de build: lastmod inflado pierde la señal).
   const fila = (m) =>
-    `  <url>\n    <loc>${SITE_URL}${m.path}</loc>\n    <lastmod>${hoy}</lastmod>\n    <changefreq>${m.changefreq}</changefreq>\n    <priority>${m.priority}</priority>\n  </url>\n`;
+    `  <url>\n    <loc>${SITE_URL}${m.path}</loc>\n    <lastmod>${m.lastmod}</lastmod>\n    <changefreq>${m.changefreq}</changefreq>\n    <priority>${m.priority}</priority>\n  </url>\n`;
   const sitemap =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
