@@ -26,7 +26,7 @@ const TD: React.CSSProperties = {
 const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
   net,
 }: {
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas';
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci';
 }) {
   const { tramosSan, tramosLl, tramosAf, tramosAc } = useTramos();
   const { plans } = usePlans();

@@ -1,4 +1,4 @@
-import { splitPtr } from './keys.ts';
+import { splitPtr, tramoKeyOf, tramoKeyPisoOf } from './keys.ts';
 import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
@@ -53,7 +53,7 @@ export function buildSanConnectivity(
   const tramoPorClave = indicePorId(tramosSan, (t) => t._key || null);
   const tramoFinByKey = new Map<string, string>();
   for (const t of tramosSan) {
-    const k = t._key || `${t.id}-${t.piso}`;
+    const k = tramoKeyPisoOf(t);
     if (typeof t.fin === 'string' && t.fin) tramoFinByKey.set(k, t.fin);
   }
 
@@ -370,7 +370,7 @@ export function buildSanConnectivity(
   // Corrección de ramas de merge (igual que AF/AC): los puntos de merge acumulan los UD de los
   // alimentadores.
   // Preferir mergesFrom de los datos crudos; caer a la detección por grafo de conectividad.
-  const keyOf = (t: Tramo) => t._key || t.id;
+  const keyOf = (t: Tramo) => tramoKeyOf(t);
   const byKey = new Map(tramosSan.map((t) => [keyOf(t), t]));
   const mergeBranches: Record<string, string[]> = {};
   for (const plan of plans || []) {
@@ -525,7 +525,7 @@ export function buildSanConnectivity(
   for (const branchId of allBranchIds) {
     if (mergeBranches[branchId]) continue;
     if ((childrenMap[branchId] || []).length > 0) continue;
-    const t = tramosSan.find((x) => (x._key || x.id) === branchId);
+    const t = tramosSan.find((x) => tramoKeyOf(x) === branchId);
     if (t) componentTotalMap[branchId] = calcUDparcial(t, mergedBase);
   }
 

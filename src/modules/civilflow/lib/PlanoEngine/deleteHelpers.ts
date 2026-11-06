@@ -10,6 +10,8 @@ import { allocTributaryNumber } from './PlanoState.ts';
 // Yee doble: los dos brazos están a ~10 unidades a lo largo del tronco, no comparten vértice
 // exacto — se busca primero coincidencia exacta (0.5) y en segunda pasada hasta 20px.
 // Ítem 4: reasignación validada contra la estructura final + re-etiqueta inmediata.
+/** Reasigna los tributarios del ramal borrado al ramal hermano (el otro brazo de la unión).
+ *  Ej: al borrar RAC4, su tributario TIN pasa a RAC3 en vez de desaparecer con él. */
 export function reassignTributariosToHermano(
   engine: IPlanoEngineCore,
   deleted: PlanoRamal,

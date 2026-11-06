@@ -4,6 +4,7 @@ import { devError } from '../../../utils/devError.ts';
 import { PLANS_META_KEY, TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
 import { NETS } from '../lib/PlanoEngine/PlanoState.ts';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 
 export type { CrossFloorGhost };
 
@@ -250,10 +251,7 @@ export function removeCrossFloorGhost(
  *  Ej: con pisos 1 y 2 guardados → ['civilflow_trazos_1', 'civilflow_trazos_2']. */
 function clavesPisosTrazos(): string[] {
   const claves: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(TRAZOS_PLAN_PREFIX)) claves.push(k);
-  }
+  claves.push(...listRawKeys(TRAZOS_PLAN_PREFIX));
   return claves;
 }
 

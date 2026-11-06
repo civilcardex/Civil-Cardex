@@ -4,11 +4,7 @@ import ModalPrimeraCalibracion from './ModalFirstCalibration';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { usePlanFileLoader } from './usePlanFileLoader.ts';
-import {
-  TOAST_BG,
-  PlanoConfigurator_S1,
-  PlanoConfigurator_S2,
-} from './PlanoConfigurator.styles.ts';
+import { TOAST_BG, PlanoConfigurator_S1, PlanoConfigurator_S2 } from './PlanConfigurator.styles.ts';
 import { useCalibration } from './useCalibration';
 import { dibujaOverlayCalibracion } from './calibrationOverlay.ts';
 import { PanelCalibracion } from './CalibrationPanel';

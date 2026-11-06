@@ -19,10 +19,10 @@ import {
   type PlanTrazos,
 } from './localStorage.ts';
 import type { CrossFloorGhost } from '../../lib/shared/crossFloorGhostTypes.ts';
-import type { SupabaseRow } from './planoRowMappers.ts';
+import type { SupabaseRow } from './planRowMappers.ts';
 import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents.ts';
 import { countKey } from '../../utils/keys.ts';
-import { journalTrazos } from './trazosJournal.ts';
+import { journalTrazos } from './strokesJournal.ts';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -46,7 +46,7 @@ import {
   rowToGuideLine,
   ghostToRow,
   rowToGhost,
-} from './planoRowMappers.ts';
+} from './planRowMappers.ts';
 /** Avisa de un fallo de guardado a BD. Delega en el contrato compartido (utils/guardaEnNube)
  *  para que el proveedor global de alertas lo escuche desde cualquier ruta. */
 export function emitBdSaveError(reason: string, message: string): void {

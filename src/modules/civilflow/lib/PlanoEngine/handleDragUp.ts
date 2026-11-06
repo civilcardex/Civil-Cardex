@@ -163,6 +163,9 @@ function segIntersectsRect(
   return true;
 }
 
+/** Cierra el gesto de arrastre: confirma marquee (selección por caja), suelta el arrastre de
+ *  elementos y resuelve uniones/snapping del punto final. Ej: soltar un ramal sobre la cabeza
+ *  de otro forma el nudo con su split automático. */
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
   if (engine.marqueeRect) {
     const { x1, y1, x2, y2 } = engine.marqueeRect;

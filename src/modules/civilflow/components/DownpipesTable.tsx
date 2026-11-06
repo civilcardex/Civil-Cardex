@@ -18,6 +18,7 @@ import type { DrawingData } from '../utils/drawingSync.ts';
 import { EV_SAN_SYNC } from '../utils/fixtureEvents.ts';
 import { DownpipesHeader } from './downpipes/DownpipesHeader.tsx';
 import { DownpipesRow } from './downpipes/DownpipesRow.tsx';
+import { tramoKeyPisoOf } from '../utils/keys.ts';
 
 const BajantesTable = memo(function BajantesTable_() {
   const [edit, setEdit] = useState(false);
@@ -195,7 +196,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 );
               return banTramos.map((t) => (
                 <DownpipesRow
-                  key={t._key || `${t.id}-${t.piso}`}
+                  key={tramoKeyPisoOf(t)}
                   t={t}
                   fila={calculaFilaBajante(t, ctxBajante)}
                   edit={edit}

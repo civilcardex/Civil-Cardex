@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react';
-import { loadPlanCrop } from '../../../utils/planoCrop.ts';
+import { loadPlanCrop } from '../../../utils/planCrop.ts';
 import type { IsoRamal, IsoBajante } from './geometry';
 import type { IsoCanvas, IsoSegment } from './useIsometryInteraction.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';

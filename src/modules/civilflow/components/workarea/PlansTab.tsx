@@ -19,7 +19,7 @@ import {
 } from '../../constants/storage-keys.ts';
 import { REQ_ITEMS, pisoLbl } from '../../constants';
 
-import { PlanoConfigurator } from './PlanoConfigurator.tsx';
+import { PlanoConfigurator } from './PlanConfigurator.tsx';
 import { origenDePlan } from '../../utils/crossFloorStorage.ts';
 import { sanearAsociacionesTrasRecalibrar } from '../../utils/sanitizeAssociations';
 import {
@@ -31,22 +31,22 @@ import {
   PlanosTab_S6,
   PlanosTab_S7,
   PlanosTab_reqBtnBase,
-} from './PlanosTab.styles.ts';
+} from './PlansTab.styles.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import ModalProtocolo from './ModalProtocol';
 import { PlanCropPanel } from './PlanCropPanel.tsx';
-import { ModalNivelPiso, ModalOrigenPlan } from './planosTab/PlanModals.tsx';
-import { ListaPendientes } from './planosTab/PendingPlansList.tsx';
-import { ListaCargados } from './planosTab/LoadedPlansList.tsx';
+import { ModalNivelPiso, ModalOrigenPlan } from './plansTab/PlanModals.tsx';
+import { ListaPendientes } from './plansTab/PendingPlansList.tsx';
+import { ListaCargados } from './plansTab/LoadedPlansList.tsx';
 import { devError } from '../../../../utils/devError.ts';
-import type { CalibrationData } from './planosTabCalibration.ts';
+import type { CalibrationData } from './plansTabCalibration.ts';
 import {
   calDataDePlan,
   seedCalData,
   computeGlobalCal,
   computeOrigenesCompartidos,
   stampCalibracion,
-} from './planosTabCalibration.ts';
+} from './plansTabCalibration.ts';
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -97,7 +97,12 @@ function PlanosTab({ state }: PlanosTabProps) {
   // TAMBIÉN SIEMBRA: el initializer de calData corre una sola vez y en un remount plans
   // suele llegar vacío (restauración async de PlansContext) — sin siembra, globalCal quedaba
   // null para siempre y "Asignar piso" desaparecía tras cerrar y reabrir (bug 2026-09-22).
+  // Siembra intencional en efecto (no derivable en render: plans llega vacío en el remount
+  // y se restaura async — el initializer de useState corrió una sola vez).
   useEffect(() => {
+    // Siembra intencional en efecto (no derivable en render: plans llega vacío en el remount
+    // y se restaura async — el initializer corrió una sola vez).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCalData((prev) => {
       const { next, changed } = seedCalData(prev, plans);
       return changed ? next : prev;

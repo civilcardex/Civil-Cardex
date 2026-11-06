@@ -9,7 +9,7 @@ import {
 } from '../../services/storageService.ts';
 import { markPlanTrazosFresh, planContentLoaded } from '../../utils/drawingSync.ts';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
-import { journalTrazos } from '../../services/storage/trazosJournal.ts';
+import { journalTrazos } from '../../services/storage/strokesJournal.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { splitCount } from '../../utils/keys.ts';

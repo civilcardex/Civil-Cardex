@@ -10,7 +10,7 @@ import { InfTab } from './workareaContent/reportTab.tsx';
 import type { useWorkAreaState } from './useWorkAreaState.ts';
 
 import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
-const PlanosTab = lazy(() => import('./workarea/PlanosTab.tsx'));
+const PlanosTab = lazy(() => import('./workarea/PlansTab.tsx'));
 const BaseDatos = lazy(() => import('./DesignParameters.tsx'));
 const Normativa = lazy(() => import('./Regulations/Regulations.tsx'));
 const IsometriaTab = lazy(() =>

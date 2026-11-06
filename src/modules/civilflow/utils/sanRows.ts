@@ -4,6 +4,7 @@ import { diametroManning, caudalHunterLPS, factorSimultaneidad } from './calcSan
 import { calcHydraulicCheck } from './hydraulicCheck.ts';
 import { DIAM_OPTIONS_SAN } from '../constants';
 import { type MergedApBase } from './sanConnectivity';
+import { tramoKeyPisoOf } from './keys.ts';
 
 /** Fila san (Sanitaria) (UD (Unidades de Desague), Q (Caudal) Hunter (metodo de probabilidad de uso simultaneo) y chequeo hidráulico). */
 export interface SanRow {
@@ -50,7 +51,7 @@ export function computeSanRows(
   const byKey = new Map<string, Tramo>();
   if (allTramos) {
     for (const tr of allTramos) {
-      const k1 = tr._key || `${tr.id}-${tr.piso}`;
+      const k1 = tramoKeyPisoOf(tr);
       byKey.set(k1, tr);
       if (tr.planId) byKey.set(`${tr.id}-${tr.planId}`, tr);
     }
@@ -63,7 +64,7 @@ export function computeSanRows(
     for (const kids of Object.values(fullChildrenMap)) for (const k of kids) graphedChildren.add(k);
   }
   return displayTramos.toSorted(compareTramosPisoDesc).map((t) => {
-    const tKey = t._key || `${t.id}-${t.piso}`;
+    const tKey = tramoKeyPisoOf(t);
     const tPlanKey = t.planId ? `${t.id}-${t.planId}` : tKey;
     let udPropias = calcUDparcial(t, mergedBase);
     // Tributarios que descargan en este ramal (directos o en cadena anidada) cuentan como
@@ -74,7 +75,7 @@ export function computeSanRows(
       const isTrib = (tr: Tramo) => tr.tipo === 'tributario' && !tr.esBajante;
       const samePlan = (tr: Tramo) => !(tr.planId && t.planId && tr.planId !== t.planId);
       const hasGraphHome = (ct: Tramo) => {
-        const ck = ct._key || `${ct.id}-${ct.piso}`;
+        const ck = tramoKeyPisoOf(ct);
         const ckAlt = ct.planId ? `${ct.id}-${ct.planId}` : ck;
         return graphedChildren.has(ck) || graphedChildren.has(ckAlt);
       };
@@ -82,7 +83,7 @@ export function computeSanRows(
         const out: Tramo[] = [];
         const seenKid = new Set<string>();
         const push = (ct: Tramo) => {
-          const ck = ct._key || `${ct.id}-${ct.piso}`;
+          const ck = tramoKeyPisoOf(ct);
           const ckAlt = ct.planId ? `${ct.id}-${ct.planId}` : ck;
           if (seenKid.has(ck) || seenKid.has(ckAlt)) return;
           seenKid.add(ck);
@@ -109,14 +110,14 @@ export function computeSanRows(
       const stack = tribKidsOf(t.id, [tKey, tPlanKey]);
       while (stack.length > 0) {
         const ct = stack.pop()!;
-        const ck = ct._key || `${ct.id}-${ct.piso}`;
+        const ck = tramoKeyPisoOf(ct);
         const ckAlt = ct.planId ? `${ct.id}-${ct.planId}` : ck;
         if (visited.has(ck) || visited.has(ckAlt)) continue;
         visited.add(ck);
         visited.add(ckAlt);
         tribUD += calcUDparcial(ct, mergedBase);
         for (const gc of tribKidsOf(ct.id, [ck, ckAlt])) {
-          const gk = gc._key || `${gc.id}-${gc.piso}`;
+          const gk = tramoKeyPisoOf(gc);
           const gkAlt = gc.planId ? `${gc.id}-${gc.planId}` : gk;
           if (!visited.has(gk) && !visited.has(gkAlt)) stack.push(gc);
         }

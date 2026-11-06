@@ -15,7 +15,6 @@ import {
   ContadorTramoEditor,
   CalentadorTramoEditor,
   CanalTramoEditor,
-  BajanteHeaderFields,
   AreaHeaderFields,
   RejillasSectorFields,
   TextHeaderFields,
@@ -94,6 +93,18 @@ function TramoEditorInner() {
       engineRef.current?._isGhostSel) ||
     false;
   const isBajMont = selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante');
+  /* Gabinete GABn (RCI): su panel derecho SOLO lleva "Ramales asociados" (ped. usuario) —
+   * nada de Datos del tramo ni Datos específicos (material/diámetro). */
+  const isGab = selElement?.tipo === 'gabinete' ? true : false;
+  /* Cajas CAN/CALL: por tipo Y por código (cajas viejas guardadas sin tipo 'caja_*' llegan
+   * como 'bajante' — el código CAN#/CALL# es la marca estable). */
+  const esCaja =
+    selElement?.tipo === 'caja_san' ||
+    selElement?.tipo === 'caja_ll' ||
+    !!(selElement as { code?: string } | null)?.code?.match(/^(CAN|CALL)\d+$/) ||
+    !!selElement?.id?.match(/^(CAN|CALL)\d+$/)
+      ? true
+      : false;
   const isArea = selElement && selElement.id?.startsWith('AR');
   const isText = selElement && selElement.id?.startsWith('T');
   // Las guías también llevan una polilínea `pts` (reutilizada para la detección de clics, como un ramal)
@@ -108,92 +119,83 @@ function TramoEditorInner() {
 
   return (
     <form onSubmit={(e) => e.preventDefault()}>
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 6,
-          }}
-        >
+      {/* Montantes, bajantes, gabinetes y CAJAS AN/ALL sin "Datos del tramo" (ped. usuario). */}
+      {!isBajMont && !esCaja && !isGab && (
+        <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
           <div
             style={{
-              fontFamily: "'Geist',monospace",
-              fontSize: 12,
-              color: '#9BA8AA',
-              textTransform: 'uppercase',
-              letterSpacing: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 6,
             }}
           >
-            {isGhostSel
-              ? 'Datos del bajante fantasma'
-              : isArea
-                ? 'Datos del área'
-                : isGuide
-                  ? 'Línea guía'
-                  : 'Datos del tramo'}
-          </div>
-          {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
-            <button
-              type="button"
-              onClick={handleRotateLabel}
-              title="Rotar etiqueta (0°/45°/90°/-90°/-45°)"
-              style={ROTATE_LABEL_BTN_STYLE}
+            <div
+              style={{
+                fontFamily: "'Geist',monospace",
+                fontSize: 12,
+                color: '#9BA8AA',
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
             >
-              <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
-              <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
-            </button>
-          )}
-        </div>
-        {selElement ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {isRamal && <RamalHeaderFields />}
-            {isBajMont && <BajanteHeaderFields />}
-            {isText && <TextHeaderFields />}
-            {isArea && <AreaHeaderFields />}
-            {isArea && ctx.rejillasActive && <RejillasSectorFields />}
-            {selElement.pts && (
-              <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
-                L={selElement.totalL}m · {selElement.pts.length} pts
-                {selElement.tipo ? ` · ${selElement.tipo}` : ''}
-              </div>
+              {isGhostSel
+                ? 'Datos del bajante fantasma'
+                : isArea
+                  ? 'Datos del área'
+                  : isGuide
+                    ? 'Línea guía'
+                    : 'Datos del tramo'}
+            </div>
+            {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
+              <button
+                type="button"
+                onClick={handleRotateLabel}
+                title="Rotar etiqueta (0°/45°/90°/-90°/-45°)"
+                style={ROTATE_LABEL_BTN_STYLE}
+              >
+                <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
+                <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
+              </button>
             )}
           </div>
-        ) : (
-          <div
-            style={{
-              fontSize: 12,
-              color: '#8AB4D6',
-              fontFamily: "'Geist',monospace",
-              padding: '4px 0',
-            }}
-          >
-            Selecciona un elemento en el plano
-          </div>
-        )}
-      </div>
+          {selElement ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {isRamal && <RamalHeaderFields />}
+              {isText && <TextHeaderFields />}
+              {isArea && <AreaHeaderFields />}
+              {isArea && ctx.rejillasActive && <RejillasSectorFields />}
+              {selElement.pts && (
+                <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
+                  L={selElement.totalL}m · {selElement.pts.length} pts
+                  {selElement.tipo ? ` · ${selElement.tipo}` : ''}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              style={{
+                fontSize: 12,
+                color: '#8AB4D6',
+                fontFamily: "'Geist',monospace",
+                padding: '4px 0',
+              }}
+            >
+              Selecciona un elemento en el plano
+            </div>
+          )}
+        </div>
+      )}
 
-      {selElement && !isArea && isBajMont && <BajanteEditorSection />}
+      {selElement && !isArea && isBajMont && !isGab && !esCaja && <BajanteEditorSection />}
       {selElement &&
         !isArea &&
         !isBajMont &&
+        !isGab &&
+        !esCaja &&
         !isGuide &&
         selElement.tipo !== 'caja_san' &&
         selElement.tipo !== 'caja_ll' && <RamalEditorSection />}
-      {(selElement?.tipo === 'caja_san' || selElement?.tipo === 'caja_ll') && (
-        <div
-          style={{
-            fontSize: 11,
-            color: '#849495',
-            fontFamily: "'Geist',monospace",
-            padding: '6px 0',
-          }}
-        >
-          Caja de recolección seleccionada — sin propiedades hidráulicas (se configura por diámetro
-          del canal).
-        </div>
-      )}
     </form>
   );
 }

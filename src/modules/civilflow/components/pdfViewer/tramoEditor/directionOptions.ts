@@ -1,4 +1,4 @@
-// Las 3 direcciones posibles de un bajante entre pisos (valor interno + etiqueta del botón).
+/** Las 3 direcciones que puede tomar un bajante entre pisos: cada entrada es [valor interno, etiqueta del botón]. Ej: ['sube', '↑ Sube'] guarda 'sube' y pinta el botón «↑ Sube». */
 export const DIRECCIONES: Array<readonly ['sube' | 'baja' | 'continua', string]> = [
   ['sube', '↑ Sube'],
   ['baja', '↓ Baja'],

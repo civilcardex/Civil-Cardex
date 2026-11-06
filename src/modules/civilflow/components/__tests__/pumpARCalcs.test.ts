@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcsDe, INPUTS_DEFAULT, type BombaInputs } from '../PumpARDesign';
+import { calcsDe, INPUTS_DEFAULT, type BombaInputs } from '../pumpARCalcs';
 
 // Regresión de la cadena de pérdidas a PRECISIÓN COMPLETA (auditoría r5 C-4, commit 8b03312):
 // el Excel encadena Hf→Hac→Hfri→Hm sin redondear eslabones intermedios y solo muestra 3 dec.

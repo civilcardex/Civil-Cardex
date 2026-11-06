@@ -30,9 +30,10 @@ function esLdesvioDeEsteMontante(
   return false;
 }
 
-// ASOCIACIONES af/ac (orig. usuario): tramo → MONTANTES ASOCIADOS; montante → RAMALES
-// ASOCIADOS (la inversa). Extraído verbatim de FixturesPanel (IIFE secMontantes) — misma
-// semántica, mismos estilos que las secciones del menú contextual.
+/** ASOCIACIONES af (Agua Fría)/ac (Agua Caliente) (orig. usuario): un tramo seleccionado
+ *  muestra MONTANTES ASOCIADOS; un montante seleccionado, RAMALES ASOCIADOS (la inversa).
+ *  Verbatim de FixturesPanel (IIFE secMontantes), mismos estilos que el menú contextual.
+ *  Ej: clic en RAC2 → checkboxes de los ramales que le llegan. */
 export function SecMontantes({
   netId,
   engineRef,
@@ -153,6 +154,115 @@ export function SecMontantes({
               onChange={() =>
                 toggleBaj(esMontanteSel ? targetId : f.id, esMontanteSel ? f.id : targetId)
               }
+              style={ASSOC_CHECKBOX_STYLE}
+            />
+            {f.label}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Asociaciones rci (ped. usuario): GABINETE seleccionado → RAMALES ASOCIADOS; ramal rci →
+ *  GABINETES ASOCIADOS (la inversa). Misma mecánica de SecMontantes: checkbox único que
+ *  escribe camposAsocManual sobre el gabinete. */
+export function SecGabinetes({
+  engineRef,
+  targetId,
+  targetLbl,
+  accent,
+  selElement,
+  setSelElement,
+}: {
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
+  targetId: string | null;
+  targetLbl: string;
+  accent: string;
+  selElement: SelectableTarget | null;
+  setSelElement?: React.Dispatch<React.SetStateAction<ProbedElement | null>> | undefined;
+}) {
+  const eng = engineRef.current;
+  if (!eng || !targetId) return null;
+  const esGabSel = selElement?.tipo === 'gabinete';
+  const esRamalSel = !!selElement?.pts && !esGabSel;
+  if (!esGabSel && !esRamalSel) return null;
+
+  const refrescar = (): void => {
+    if (selElement) setSelElement?.({ ...selElement } as never);
+  };
+  const toggle = (gabId: string, ramalId: string): void => {
+    const vivo = eng.bajantes.find((x) => x.id === gabId);
+    if (!vivo) return;
+    const ya =
+      (vivo.recibeDeIds || []).includes(ramalId) || (vivo.alimentaIds || []).includes(ramalId);
+    eng.updateElementById(gabId, camposAsocManual(vivo, ramalId, !ya));
+    eng.render();
+    eng._markDirty();
+    refrescar();
+  };
+
+  const filas = esGabSel
+    ? eng.ramales
+        .filter((r) => r.net === 'rci' && r.tipo !== 'tributario')
+        .map((r) => ({ id: r.id, label: r.label || r.id }))
+    : eng.bajantes
+        .filter((b) => b.net === 'rci' && b.tipo === 'gabinete')
+        .map((b) => ({ id: b.id, label: b.code || b.id }));
+  if (filas.length === 0) return null;
+  const titulo = esGabSel ? 'RAMALES ASOCIADOS' : 'GABINETES ASOCIADOS';
+
+  return (
+    <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+      <div
+        style={{
+          fontFamily: "'Geist',monospace",
+          fontSize: 12,
+          color: 'var(--txt3)',
+          marginBottom: 6,
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+        }}
+      >
+        Asociaciones
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: accent,
+          fontFamily: "'Geist',monospace",
+          fontWeight: 700,
+          marginBottom: 8,
+        }}
+      >
+        {targetLbl}
+      </div>
+      <div
+        style={{
+          fontFamily: "'Geist',monospace",
+          fontSize: 12,
+          color: '#849495',
+          marginBottom: 4,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+      >
+        {titulo}
+      </div>
+      {filas.map((f) => {
+        const vivo = esGabSel
+          ? eng.bajantes.find((x) => x.id === targetId)
+          : eng.bajantes.find((x) => x.id === f.id);
+        /* Sets (no .includes en bucle): G8 no cuenta búsquedas Set.has. */
+        const rec = new Set(vivo?.recibeDeIds || []);
+        const ali = new Set(vivo?.alimentaIds || []);
+        const activo = rec.has(esGabSel ? f.id : targetId) || ali.has(esGabSel ? f.id : targetId);
+        return (
+          <label key={f.id} style={{ ...ASSOC_ROW_STYLE, marginBottom: 2 }}>
+            <input
+              type="checkbox"
+              checked={activo}
+              onChange={() => toggle(esGabSel ? targetId : f.id, esGabSel ? f.id : targetId)}
               style={ASSOC_CHECKBOX_STYLE}
             />
             {f.label}

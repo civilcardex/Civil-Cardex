@@ -20,7 +20,7 @@ import type { YeeJunction } from './yees';
  * (si no hay codo manual en el extremo) + 1 bushing "4_2".
  */
 export function calcularBushing(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   bajanteDrawing: BajanteDibujo[],
   drawingRamales: RamalDibujo[],
   tribDrawing: TribDibujo[],
@@ -196,17 +196,129 @@ export function calcularBushing(
     }
   }
 
-  // Gas (y cualquier red sin `tramos`): los accesorios de extremo/inicio se leen directo del
-  // dibujo (hidroData key `${net}_${id}_${planId}`, que calcHydroAccessories escribe).
-  if (net === 'gas') {
-    for (const r of drawingRamales) {
-      const key = `gas_${r.id}_${r.planId}`;
+  // Gas y RCI (redes sin `tramos` del contexto): los accesorios de extremo/inicio se leen
+  // directo del dibujo (hidroData key `${net}_${id}_${planId}`, que calcHydroAccessories
+  // escribe). Regla «Ø del punto» (ped. usuario): con diámetros de extremo en el ramal, cada
+  // extremo/accMed cuenta al Ø de su punta (más cercana por índice); sin taper, al global.
+  if (net === 'gas' || net === 'rci') {
+    // RAMAL O TRIBUTARIO (ped. usuario): el hidroData del motor usa la misma clave para ambos
+    // — sus accesorios aparecen igual en el resumen.
+    for (const r of [...drawingRamales, ...tribDrawing]) {
+      const key = `${net}_${r.id}_${r.planId}`;
       const srcAcc = hidroData[key]?.accesorios || {};
       const mainDiamStr = fmtPulg(diamPulgFromLabel(r.diametro) || pulgById[r.id] || 0);
+      const dI = fmtPulg(
+        diamPulgFromLabel(r.diametroInicio || '') || diamPulgFromLabel(r.diametro),
+      );
+      const dF = fmtPulg(diamPulgFromLabel(r.diametroFin || '') || diamPulgFromLabel(r.diametro));
+      const taper = dI !== dF;
+      const yaEnPunto = new Set<string>();
+      /* RCI: cada ROCIADOR lleva su tee de reducción a ½" (ped. usuario): la conexión del
+       * rociador es siempre ½", así que n rociadores a Ø D = n tees `D×1/2"`. */
+      const addRci = (accId: string, dStr: string, n: number): void => {
+        addAcc(dStr, accId, n);
+        if (net === 'rci' && /rociador/i.test(accId) && n > 0)
+          addAcc(`${dStr}×1/2"`, 'teeDirecto', n);
+      };
+      // Extremos con su propio Ø (≠ global) van a su columna.
+      for (const [acc, dStr] of [
+        [r.accesorioInicio, dI],
+        [r.accesorioFin, dF],
+      ] as const) {
+        if (!acc) continue;
+        if (HYDRO_TEE_IDS.has(acc)) continue;
+        const v = srcAcc[acc] || 0;
+        if (v > 0 && taper && dStr !== mainDiamStr) {
+          addRci(acc, dStr, v);
+          yaEnPunto.add(acc);
+        }
+      }
+      // accMed al Ø del extremo más cercano (por índice de vértice).
+      if (taper && r.accMed && r.pts.length > 1) {
+        const n = r.pts.length;
+        for (const [k, val] of Object.entries(r.accMed)) {
+          if (!val || HYDRO_TEE_IDS.has(val)) continue;
+          const v = srcAcc[val] || 0;
+          if (v <= 0) continue;
+          const m = k.match(/^accMed(\d+)$/);
+          if (!m) continue;
+          const dStr = parseInt(m[1], 10) / (n - 1) < 0.5 ? dI : dF;
+          if (dStr === mainDiamStr) continue;
+          addRci(val, dStr, v);
+          yaEnPunto.add(val);
+        }
+      }
       for (const a of catalog) {
         if (HYDRO_TEE_IDS.has(a.id)) continue;
+        if (yaEnPunto.has(a.id)) continue;
         const v = srcAcc[a.id] || 0;
-        if (v > 0) addAcc(mainDiamStr, a.id, v);
+        if (v > 0) addRci(a.id, mainDiamStr, v);
+      }
+    }
+
+    /* Auto-tee de conexión en RCI (misma regla del CALC, ExtractNetwork: «si el flujo gira en
+     * el nudo y no hay tee dibujada ahí, 1 auto»): cada ramal cuyo EXTREMO aterriza en el
+     * INTERIOR de otro ramal lleva 1 tee en ese nudo — nomenclatura de 3 brazos
+     * host×host×ramal. Se omite si hay tee dibujada (marcador accMed o extremo tee de
+     * cualquier pieza) en el punto. Extremo sobre EXTREMO del host = unión/codo, no tee. */
+    const teeDibujadaEn = (pt: number[]): boolean =>
+      [...drawingRamales, ...tribDrawing].some((r) => {
+        if (r.accMed && Object.values(r.accMed).some((v) => HYDRO_TEE_IDS.has(v))) {
+          const m = Object.keys(r.accMed).find((k) => {
+            const idx = parseInt(k.replace(/^accMed/, ''), 10);
+            return (
+              !isNaN(idx) &&
+              r.pts[idx] &&
+              Math.hypot(r.pts[idx][0] - pt[0], r.pts[idx][1] - pt[1]) < 0.5
+            );
+          });
+          if (m) return true;
+        }
+        return [r.accesorioInicio, r.accesorioFin].some(
+          (v, i) =>
+            !!v &&
+            HYDRO_TEE_IDS.has(v) &&
+            Math.hypot(
+              r.pts[i === 0 ? 0 : r.pts.length - 1][0] - pt[0],
+              r.pts[i === 0 ? 0 : r.pts.length - 1][1] - pt[1],
+            ) < 0.5,
+        );
+      });
+    const piezas = [...drawingRamales, ...tribDrawing];
+    for (const r of piezas) {
+      const rD = fmtPulg(diamPulgFromLabel(r.diametro) || pulgById[r.id] || 0);
+      if (!rD || rD === '—') continue;
+      for (const [ext, pt] of [
+        [r.accesorioInicio, r.pts[0]],
+        [r.accesorioFin, r.pts[r.pts.length - 1]],
+      ] as const) {
+        if (ext && HYDRO_TEE_IDS.has(ext)) continue;
+        if (teeDibujadaEn(pt)) continue;
+        for (const host of piezas) {
+          if (host.id === r.id && host.planId === r.planId) continue;
+          let conto = false;
+          for (let i = 0; i < host.pts.length - 1 && !conto; i++) {
+            const [ax, ay] = host.pts[i];
+            const [bx, by] = host.pts[i + 1];
+            if (distToSegment(pt, [ax, ay], [bx, by]) >= 0.5) continue;
+            // El punto no puede ser un extremo del host (eso es unión, no tee).
+            if (
+              Math.hypot(ax - pt[0], ay - pt[1]) < 0.5 ||
+              Math.hypot(bx - pt[0], by - pt[1]) < 0.5
+            )
+              continue;
+            const hD = fmtPulg(
+              diamPulgFromLabel(host.diametro) ||
+                pulgById[host.id] ||
+                pulgById[`${host.id}-${host.planId}`] ||
+                0,
+            );
+            if (!hD || hD === '—') continue;
+            addAcc(`${hD}×${hD}×${rD}`, 'teeDirecto', 1);
+            conto = true;
+          }
+          if (conto) break;
+        }
       }
     }
   }

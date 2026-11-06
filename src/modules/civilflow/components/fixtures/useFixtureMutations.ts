@@ -65,6 +65,9 @@ function mutarConteo(
   }
 }
 
+/** El "+" del panel: agrega UN aparato a la pieza seleccionada y lo escribe en el libro del
+ *  disco (persistencia síncrona) antes de propagar por la red; respeta los candados (solo
+ *  lectura, espejo, unión, máx. 1 por ramal). Ej: +1 lavamanos en RAF1 → 4 UC en la pieza. */
 export function mutarInc(ctx: FixtureMutationCtx, apId: string): void {
   const {
     storageKey,

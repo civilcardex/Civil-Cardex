@@ -27,6 +27,7 @@ import {
   ASSOC_CHECKBOX_STYLE,
   ASSOC_ROW_STYLE,
   CanalesAsociadosRamalSection,
+  GabinetesAsociadosSection,
   MontantesAsociadosSection,
   refrescarMenu,
 } from './associatedChannels';
@@ -36,6 +37,8 @@ import { convertirARamal, convertirATributario, tribCandidatesDe } from './ramal
 import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';
 import { ElementCodeEditor } from './elementEditor.tsx';
 
+/** Cuerpo del menú: arma las secciones del ramal (accesorio en medio, dirección, conversiones
+ *  a tributario, asociaciones y canales) sobre el estado vivo del menú contextual. */
 export function RamalMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx;
@@ -696,6 +699,8 @@ export function RamalMenu() {
       {(ctx.activeNet === 'af' || ctx.activeNet === 'ac' || ctx.activeNet === 'gas') && (
         <MontantesAsociadosSection ctx={ctx} ramal={ramalEl} />
       )}
+      {/* Gabinetes GABn (ped. usuario): la sección de asociados de la red rci. */}
+      {ctx.activeNet === 'rci' && <GabinetesAsociadosSection ctx={ctx} ramal={ramalEl} />}
     </>
   );
 }

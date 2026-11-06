@@ -33,6 +33,7 @@ import type { PlanItem } from '../context/PlansContext.tsx';
 import { mapUdBombaDesdeTrazos, propagarHerenciaBomba } from './pumpInheritance';
 import type { BombaRow } from './pumpQueries.ts';
 import { emitAparatosClear, EV_STORAGE } from './fixtureEvents.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 
 /** Enlaza la bomba del piso inferior con el bajante superior: escribe bombaEnId + direccion 'sube', crea el desvío (LD (ramal desvio entrepisos)/anillo/fantasma XFG) y propaga las UD (Unidades de Desague) en vivo. */
 export function asociarBomba(
@@ -346,9 +347,7 @@ function limpiarArtefactosDesvioBomba(
 export function desasociarBombaEnTrazos(bombaId: string, bombaPlanId: string): void {
   if (!bombaId) return;
   const sufijo = '|' + bombaId;
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  for (const k of listRawKeys(TRAZOS_PLAN_PREFIX)) {
     const pid = k.slice(TRAZOS_PLAN_PREFIX.length);
     const raw = loadFromStorage<{
       bajantes?: Array<{

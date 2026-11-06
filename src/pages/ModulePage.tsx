@@ -1,17 +1,14 @@
 import { useState, type ComponentType } from 'react';
 import ModulePageLayout from '../components/ModulePageLayout.tsx';
 import FlowHero from '../modules/civilflow/components/modulePage/FlowHero.tsx';
-import StructureHero from '../components/modulePage/StructureHero.tsx';
-import TerrainHero from '../components/modulePage/TerrainHero.tsx';
 import ManageHero from '../components/modulePage/ManageHero.tsx';
-import RoadsHero from '../components/modulePage/RoadsHero.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
 import { MODULES_DATA } from './moduleData.ts';
 import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
 
 import { SR_ONLY_STYLE } from '../components/shared/sharedStyles.ts';
@@ -26,10 +23,7 @@ interface HeroProps {
 
 const HERO_BY_LAYOUT: Record<string, ComponentType<HeroProps>> = {
   flow: FlowHero,
-  structure: StructureHero,
-  terrain: TerrainHero,
   manage: ManageHero,
-  roads: RoadsHero,
 };
 
 // Columnas de la tabla de especificaciones (orden fijo, espejo de Spec en moduleData).
@@ -74,19 +68,70 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
 
   if (!cfg) return null;
 
-  const Hero = HERO_BY_LAYOUT[cfg.customLayout ?? 'roads'];
+  // Módulos SIN construir (ped. usuario): pantalla única «En construcción» al entrar a su
+  // landing (y a cualquier ruta relativa — todas caen aquí). Sin hero ni specs fabricadas;
+  // el H1 y el SoftwareApplication JSON-LD se conservan para el SEO prerenderizado.
+  if (moduleId !== 'flow' && moduleId !== 'manage') {
+    return (
+      <ModulePageLayout title={cfg.title} mainClassName="flex flex-col" fitViewport>
+        <script type="application/ld+json">{JSON.stringify(softwareAppJsonLd)}</script>
+        <section className="relative flex flex-col items-center justify-center text-center gap-5 flex-1 px-6">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1 border"
+            style={{ background: '#1A1D23', borderColor: cfg.accent }}
+          >
+            <img
+              src={cfg.logo}
+              alt=""
+              className="h-4 w-4 object-contain"
+              width={16}
+              height={16}
+              loading="lazy"
+            />
+            <span
+              className="text-[13px] uppercase"
+              style={{ fontFamily: 'Geist, monospace', color: cfg.accent }}
+            >
+              {cfg.badgeLabel}
+            </span>
+          </div>
+          <h1
+            className="text-3xl md:text-5xl font-bold tracking-tight"
+            style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
+          >
+            {cfg.title}
+          </h1>
+          <p className="text-base text-on-surface-variant max-w-xl leading-relaxed">
+            {cfg.description}
+          </p>
+          <span
+            className="inline-flex items-center gap-2 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.08em] border border-outline-variant text-on-surface"
+            style={{ fontFamily: 'Geist, monospace' }}
+          >
+            <span
+              className="material-symbols-outlined text-base!"
+              style={{ fontVariationSettings: "'FILL' 1", color: cfg.accent }}
+            >
+              construction
+            </span>
+            En construcción
+          </span>
+          <Link
+            to="/"
+            className="text-[12px] font-bold uppercase tracking-[0.08em] text-primary hover:underline"
+            style={{ fontFamily: 'Geist, monospace' }}
+          >
+            ← Volver al inicio
+          </Link>
+        </section>
+      </ModulePageLayout>
+    );
+  }
+
+  const Hero = HERO_BY_LAYOUT[cfg.customLayout ?? 'flow'];
 
   return (
-    <ModulePageLayout
-      title={cfg.title}
-      mainClassName={
-        cfg.customLayout === 'terrain'
-          ? 'pt-20 px-6 lg:px-8 pb-12 relative overflow-hidden'
-          : cfg.customLayout === 'roads'
-            ? 'flex flex-col relative z-0'
-            : 'flex flex-col w-full'
-      }
-    >
+    <ModulePageLayout title={cfg.title} mainClassName="flex flex-col w-full">
       <script type="application/ld+json">{JSON.stringify(softwareAppJsonLd)}</script>
       {/* Hero Section */}
       <Hero
@@ -125,79 +170,42 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
       {/* Features / Details Section */}
       <section
         className={
-          cfg.customLayout === 'terrain'
-            ? 'relative z-10 max-w-7xl mx-auto'
-            : cfg.customLayout === 'roads'
-              ? 'py-20 px-6 lg:px-8'
-              : cfg.customLayout === 'manage'
-                ? 'py-20 px-6 lg:px-8'
-                : 'w-full px-6 lg:px-8 py-20 border-b border-outline-variant'
+          cfg.customLayout === 'manage'
+            ? 'py-20 px-6 lg:px-8'
+            : 'w-full px-6 lg:px-8 py-20 border-b border-outline-variant'
         }
         style={
-          cfg.customLayout === 'roads'
-            ? { background: '#0F1115' }
-            : cfg.customLayout === 'manage'
-              ? { background: '#1a1c20' }
-              : cfg.customLayout === 'terrain'
-                ? {}
-                : { background: '#111317' }
+          cfg.customLayout === 'manage' ? { background: '#1a1c20' } : { background: '#111317' }
         }
       >
-        {cfg.customLayout === 'terrain' ? (
+        <div className="flex flex-col gap-2 mb-12">
           <h2
-            className="text-xl font-bold text-primary mb-8 border-b border-outline-variant pb-4"
+            className="text-xl font-semibold text-on-surface"
             style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
           >
-            Capacidades Técnicas
+            Capacidades del sistema
           </h2>
-        ) : cfg.customLayout === 'roads' ? (
-          <>
-            <h2
-              className="text-2xl md:text-4xl lg:text-[32px] font-bold text-on-background mb-2"
-              style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-            >
-              Capacidades del Módulo
-            </h2>
-            <p className="text-base text-on-surface-variant mt-2 max-w-2xl mb-12">
-              Herramientas especializadas para el diseño integral de infraestructuras viales y
-              espacios urbanos.
-            </p>
-          </>
-        ) : (
-          <div className="flex flex-col gap-2 mb-12">
-            <h2
-              className="text-xl font-semibold text-on-surface"
-              style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-            >
-              Capacidades del sistema
-            </h2>
-            <p
-              className="text-[13px] text-outline uppercase"
-              style={{ fontFamily: 'Geist, monospace' }}
-            >
-              Módulos de integración activos
-            </p>
-          </div>
-        )}
+          <p
+            className="text-[13px] text-outline uppercase"
+            style={{ fontFamily: 'Geist, monospace' }}
+          >
+            Módulos de integración activos
+          </p>
+        </div>
 
         <div
           className={
-            cfg.customLayout === 'roads'
-              ? 'grid grid-cols-1 md:grid-cols-12 gap-3'
-              : cfg.customLayout === 'manage'
-                ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-[320px]'
-                : 'grid grid-cols-1 md:grid-cols-3 gap-3'
+            cfg.customLayout === 'manage'
+              ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-[320px]'
+              : 'grid grid-cols-1 md:grid-cols-3 gap-3'
           }
         >
           {cfg.features.map((f, i) => {
-            const isSpan =
-              cfg.customLayout === 'roads'
-                ? f.span
-                : f.span
-                  ? cfg.customLayout === 'manage'
-                    ? 'md:col-span-2'
-                    : 'col-span-1 md:col-span-2 lg:col-span-2'
-                  : '';
+            const isSpan = f.span
+              ? cfg.customLayout === 'manage'
+                ? 'md:col-span-2'
+                : 'col-span-1 md:col-span-2 lg:col-span-2'
+              : '';
             return (
               <div
                 key={i}
@@ -270,52 +278,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 )}
 
                 {/* Custom feature-specific widgets */}
-                {cfg.customLayout === 'terrain' && f.title.includes('Volúmenes') && (
-                  <div
-                    className="mt-4 border border-outline-variant p-4 grid grid-cols-2 gap-4"
-                    style={{ background: '#111317' }}
-                  >
-                    <div>
-                      <div
-                        className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant mb-1 uppercase"
-                        style={{ fontFamily: 'Geist, monospace' }}
-                      >
-                        Volumen de Corte
-                      </div>
-                      <div
-                        className="text-[13px]"
-                        style={{ fontFamily: 'Geist, monospace', color: '#ffb4ab' }}
-                      >
-                        45,230.5 m³
-                      </div>
-                    </div>
-                    <div>
-                      <div
-                        className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant mb-1 uppercase"
-                        style={{ fontFamily: 'Geist, monospace' }}
-                      >
-                        Volumen de Relleno
-                      </div>
-                      <div
-                        className="text-[13px] text-primary"
-                        style={{ fontFamily: 'Geist, monospace', color: 'var(--acc)' }}
-                      >
-                        38,105.2 m³
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {cfg.customLayout === 'terrain' && f.title.includes('CivilRoads') && (
-                  <div className="mt-auto pt-4 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-secondary rounded-full" />
-                    <span
-                      className="text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                      style={{ fontFamily: 'Geist, monospace' }}
-                    >
-                      Seamless Sync Active
-                    </span>
-                  </div>
-                )}
                 {cfg.customLayout === 'manage' && f.title.includes('Costos') && (
                   <div
                     className="flex items-end gap-2 font-bold text-[13px]"
@@ -335,20 +297,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     <div className="w-1/3" style={{ background: '#3a494a' }} />
                     <div className="w-1/2" style={{ background: cfg.accent }} />
                     <div className="w-1/6" style={{ background: '#37393e' }} />
-                  </div>
-                )}
-                {cfg.customLayout === 'roads' && f.title.includes('Diseño Geométrico') && (
-                  <div
-                    className="mt-8 flex items-center gap-2 uppercase cursor-pointer hover:underline"
-                    style={{
-                      fontFamily: 'Geist, monospace',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: '#00dce5',
-                    }}
-                  >
-                    Explorar Herramientas{' '}
-                    <span className="material-symbols-outlined text-sm!">arrow_outward</span>
                   </div>
                 )}
               </div>

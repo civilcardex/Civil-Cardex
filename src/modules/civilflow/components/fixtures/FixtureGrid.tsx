@@ -59,6 +59,9 @@ interface FixtureGridProps {
   disabled?: boolean;
 }
 
+/** Grilla del panel con los botones +/− de cada aparato: suma o resta UN aparato de la pieza
+ *  seleccionada y muestra el conteo (UC (Unidades de Consumo) en af (Agua Fría)/ac (Agua
+ *  Caliente), UD (Unidades de Desagüe) en san/ll). Ej: 2 lavamanos en RAF1 → la celda "2". */
 export default function FixtureGrid({
   items,
   currentMap,

@@ -27,6 +27,8 @@ export interface EngineFull extends IPlanoEngineCore {
   _cachedRect(): DOMRect;
   /** Reajusta el lienzo de DIBUJO al área visible del visor. */
   ensureCanvasSize(): void;
+  /** Re-mide el canvas (width/height + transform DPR) a un tamaño explícito (export). */
+  resizeCanvas(w: number, h: number): void;
   /** Tiempos del último render (los lee `__cfPerf` en DEV). */
   _perf: { frames: number; totalMs: number; capas: Record<string, number> };
   /** Historial de deshacer/rehacer: loadWork lo resetea al aterrizar un piso nuevo. */
@@ -44,4 +46,24 @@ export interface EngineFull extends IPlanoEngineCore {
   _wheelMY: number;
   /** Último transform aplicado al wrapper: reescribirlo cada cuadro dispara re-raster. */
   _lastTransform: string;
+  /** Handlers de touch con preventDefault (los registra events/canvasSetup.ts). */
+  _touchStartHandler?: (e: TouchEvent) => void;
+  _touchMoveHandler?: (e: TouchEvent) => void;
+  _touchEndHandler?: (e: TouchEvent) => void;
+  /** Handlers del canvas atados en el constructor (mousedown/move/up, wheel, keydown). */
+  _onDown: (e: MouseEvent | TouchEvent) => void;
+  _onMove: (e: MouseEvent | TouchEvent) => void;
+  _onUp: (e: MouseEvent | TouchEvent) => void;
+  _onDblClick: (e: MouseEvent) => void;
+  _onWheel: (e: WheelEvent) => void;
+  _onKeyDown: (e: KeyboardEvent) => void;
+  /** Envuelve un handler de touch con preventDefault (el canvas no scrollea la página). */
+  _wrapTouch(fn: (e: TouchEvent) => void): (e: TouchEvent) => void;
+  /** Clave del último encuadre (bbox + página): igual → skip en reEncuadrarContenido. */
+  _encuadreKey: string;
+  /** Tamaño actual del lienzo de dibujo (lo fija ensureCanvasSize). */
+  _canvasW: number;
+  _canvasH: number;
+  /** ResizeObserver del contenedor visible (watchContainerSize/stop). */
+  _observarResize: ResizeObserver | null;
 }

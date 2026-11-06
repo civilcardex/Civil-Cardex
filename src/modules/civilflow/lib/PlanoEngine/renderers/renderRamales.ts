@@ -236,16 +236,19 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // renderVentCodos ya no existe.
   // Tiempo de las uniones (tee/yee): va dentro de `capas.ramales`, se separa para saber si el
   // costo del frame está en el trazo o en las uniones (lo lee `__cfPerf` en DEV).
+  // Cronómetro solo en DEV (en prod los performance.now() por frame son costo puro):
+  // UNA sola llamada a renderJunctions en ambas modalidades.
+  const tJun = import.meta.env.DEV ? performance.now() : 0;
+  renderJunctions(ctx, engine);
   if (import.meta.env.DEV) {
-    const tJun = performance.now();
-    renderJunctions(ctx, engine);
     const perf = (engine as { _perf?: { capas: Record<string, number> } })._perf;
     if (perf) perf.capas.junctions = performance.now() - tJun;
-  } else {
-    renderJunctions(ctx, engine);
   }
 }
 
+/** Pinta el ramal EN EDICIÓN (el que está siendo trazado o arrastrado) con su color de red,
+ *  puntos de control y cota en vivo. Ej: mientras dibujas RAF1, este render muestra la
+ *  polilínea que sigue al cursor antes de confirmar. */
 export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine.activeRamal) return;
   const ar = engine.activeRamal;

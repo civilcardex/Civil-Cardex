@@ -84,8 +84,9 @@ function desasociarPorBajante(engine: IPlanoEngineCore, baj: PlanoBajante): void
   }
 }
 
-/** Borra la seleccion con cascada (limpia fantasmas y renumera las redes tocadas). */
-
+/** Borra la selección con cascada (limpia fantasmas y renumera las redes tocadas). Con `ids`
+ *  borra ese lote; sin ellos, la selección viva. Ej: deleteSelected(engine) tras Supr borra el
+ *  ramal, sus tributarios se reasignan al hermano y los junction markers quedan limpios. */
 import { cascadeMontanteAssociation, purgarEstadoRamalesBorrados } from './deleteCascade.ts';
 import { desasociarBombaEnTrazos } from '../../utils/pumpAssociation';
 import { cleanupJunctionsAfterRamalDelete, cleanupTeeMarkersAt } from './deleteJunctionCleanup.ts';

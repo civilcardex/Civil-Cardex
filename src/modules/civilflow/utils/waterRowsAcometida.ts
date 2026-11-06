@@ -14,6 +14,7 @@ import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { distToPolyline } from '../lib/shared/geometry';
 import { isContador, isAC1, isAC2, type BajanteRaw } from './waterRowsShared.ts';
 import { perfilDe } from '../constants/countryStandards';
+import { tramoKeyOf } from './keys.ts';
 /** Resumen de la acometida: tramos red→contador y contador→montante, con presiones y validez. */
 export interface AcometidaSummary {
   tr1: {
@@ -180,7 +181,7 @@ export function computeAcometidaSummary(
   }
   const adj: Record<string, string[]> = {};
   for (const t of tramos) {
-    const key = t._key || t.id;
+    const key = tramoKeyOf(t);
     adj[key] = [];
   }
   for (const [parentKey, children] of Object.entries(calculoMap)) {
@@ -193,7 +194,7 @@ export function computeAcometidaSummary(
   }
   const componentTotalMap = computeComponentTotals(
     tramos,
-    (t) => t._key || t.id,
+    (t) => tramoKeyOf(t),
     adj,
     (t) => calcUCparcial(t, AP, 'uc'),
   );
@@ -249,7 +250,7 @@ export function computeAcometidaSummary(
   for (const t of tramos) ucTotal += calcUCparcial(t, AP, 'uc');
   const Qaco = (() => {
     if (tr2) {
-      const ownKey = tr2._key || tr2.id;
+      const ownKey = tramoKeyOf(tr2);
       const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
       if (qTr2 > 0) {
         return qTr2;

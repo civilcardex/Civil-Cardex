@@ -12,4 +12,4 @@ export {
 export { handleCanalDown, commitCanalAncho } from './creations/channels';
 export { handleRedPublicaDown, handleContadorDown } from './creations/publicNetwork';
 export { handleCreateBomba } from './creations/pump';
-export { handleGabineteDown, GABINETE_PFX } from './creations/gabinete';
+export { handleGabineteDown, GABINETE_PFX } from './creations/cabinet';

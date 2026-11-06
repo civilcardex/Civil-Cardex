@@ -1,6 +1,6 @@
 import { pisoLbl } from '../../../constants';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
-import { PlanosTab_S13, PlanosTab_S14, PlanosTab_verBtn } from '../PlanosTab.styles.ts';
+import { PlanosTab_S13, PlanosTab_S14, PlanosTab_verBtn } from '../PlansTab.styles.ts';
 
 /**
  * Lista los planos ya confirmados con su piso, calibración y avisos de origen compartido.

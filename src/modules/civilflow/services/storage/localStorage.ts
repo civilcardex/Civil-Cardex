@@ -3,7 +3,7 @@
 import { devError } from '../../../../utils/devError.ts';
 import { TRAZOS_PREFIX, ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys.ts';
 import type { PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
-import { journalTrazos } from './trazosJournal.ts';
+import { journalTrazos } from './strokesJournal.ts';
 
 const PREFIX = 'civilflow_';
 
@@ -13,6 +13,18 @@ const PREFIX = 'civilflow_';
  * @param fallback - Valor por defecto cuando la clave no existe o el parseo falla.
  * @returns Valor parseado de tipo T, o fallback ante error.
  */
+/** Enumera las claves CRUDAS de localStorage que empiezan por  (con el
+ *  'civilflow_' incluido). Reemplaza el bucle localStorage.key(i) copiado por N sitios; el
+ *  filtro fino (bak, vigentes, parseo) se queda en cada uno. Ej: listRawKeys(TRAZOS_PLAN_PREFIX). */
+export function listRawKeys(prefix: string): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(prefix)) out.push(k);
+  }
+  return out;
+}
+
 export function loadFromStorage<T>(key: string, fallback: T): T {
   const fullKey = PREFIX + key;
   try {

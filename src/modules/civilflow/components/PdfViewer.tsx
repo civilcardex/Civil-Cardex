@@ -12,7 +12,7 @@
  * pasa a "Guardado".
  */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
-import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch.ts';
+import { usePlanLoadSwitch } from './pdfViewer/usePlanLoadSwitch.ts';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
 import { decideEscalaPorDefectoDelPlan } from '../utils/loadDiagnostics.ts';
@@ -468,11 +468,11 @@ function PdfViewer_({
   useNetColorsInit();
 
   // Cambio de PISO en vuelo: velo translúcido sobre el canvas (el overlay grande solo corre
-  // en la primera entrada). Estado espejo de loadingPlanRef — lo pide usePlanoLoadSwitch.
+  // en la primera entrada). Estado espejo de loadingPlanRef — lo pide usePlanLoadSwitch.
   const [cambioPiso, setCambioPiso] = useState(false);
   const handleCambioPiso = useCallback((v: boolean) => setCambioPiso(v), []);
 
-  usePlanoLoadSwitch({
+  usePlanLoadSwitch({
     engineRef,
     engineReady,
     currentId,
@@ -515,7 +515,7 @@ function PdfViewer_({
     window.addEventListener(EV_STORAGE, syncDrawings);
     return () => window.removeEventListener(EV_STORAGE, syncDrawings);
   }, [syncDrawings]);
-  // Nota: el listener `civilflow_diametro_validation` vive en GlobalAlertDialogProvider en la
+  // Nota: el listener `civilflow_diametro_validation` vive en GlobalAlertDialog en la
   // raíz de la app — permanece montado entre cambios de ruta para que las ediciones de la tabla
   // de diseño siempre muestren su alerta, no solo cuando el visor de PDF está en pantalla.
 

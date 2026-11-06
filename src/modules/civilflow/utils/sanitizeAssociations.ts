@@ -3,6 +3,7 @@ import { devError } from '../../../utils/devError.ts';
 import { splitPtr } from './keys.ts';
 import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
 import { EV_STORAGE } from './fixtureEvents.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 import {
   loadData,
   saveData,
@@ -36,9 +37,7 @@ export function sanearAsociacionesTrasRecalibrar(
 
   let tocado = false;
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+    for (const k of listRawKeys(TRAZOS_PLAN_PREFIX)) {
       const docId = k.slice(TRAZOS_PLAN_PREFIX.length);
       const raw = localStorage.getItem(k) || '';
       // Sin anillos/LDs ni ghosts no hay nada que trasladar — no se parsea.

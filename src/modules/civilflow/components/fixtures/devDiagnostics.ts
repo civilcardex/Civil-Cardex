@@ -11,7 +11,8 @@ import { collectSourceAgg, trazaDeUltimoGrupo } from '../../utils/bajanteAssocia
 import { diagUltimaPropagacion, propagarAparatosPresion } from '../../utils/propagation';
 import { leerPlansMeta } from '../../utils/plansMeta.ts';
 import { loadAll } from '../fixturesStorage.ts';
-import { leerJournalTrazos, limpiarJournalTrazos } from '../../services/storage/trazosJournal.ts';
+import { leerJournalTrazos, limpiarJournalTrazos } from '../../services/storage/strokesJournal.ts';
+import { listRawKeys } from '../../services/storage/localStorage.ts';
 
 declare global {
   interface Window {
@@ -22,6 +23,9 @@ declare global {
   }
 }
 
+/** Instala los ganchos de diagnóstico en window — SOLO DEV (en producción el bundle ni
+ *  incluye este módulo). Ej: __cfDiag('ac') corre la propagación y vuelca piezas/libros/
+ *  enlaces en la consola; __cfScale() fotografía la escala por piso para cazar derivas. */
 export function instalarDiagnosticoDev(): void {
   if (typeof window === 'undefined' || !import.meta.env.DEV) return;
   // Diagnóstico (orig. usuario): __cfDiag('ac') en consola corre la propagación y devuelve el
@@ -41,9 +45,7 @@ export function instalarDiagnosticoDev(): void {
     try {
       const counts = loadAll();
       const asoc: Record<string, unknown> = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (!k || !k.startsWith(`civilflow_${TRAZOS_PREFIX}`)) continue;
+      for (const k of listRawKeys(`civilflow_${TRAZOS_PREFIX}`)) {
         const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
         let d: {
           bajantes?: Array<Record<string, unknown>>;
@@ -115,9 +117,7 @@ export function instalarDiagnosticoDev(): void {
       const meta = leerPlansMeta();
       const global = meta.find((m) => m.calGlobal === true && m.origen && m.scale);
       const pisos: Record<string, unknown> = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (!k || !k.startsWith(`civilflow_${TRAZOS_PREFIX}`)) continue;
+      for (const k of listRawKeys(`civilflow_${TRAZOS_PREFIX}`)) {
         const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
         try {
           const d = JSON.parse(localStorage.getItem(k) || '{}') as {

@@ -16,7 +16,7 @@ import type { MemoriaTable } from '../exportReportFinal.ts';
  * yees, conteo, bushing, filas); este archivo solo los encadena.
  */
 export function computeAccesoriosTable(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   tramos: Tramo[],
   plans: PlanItem[],
 ): MemoriaTable | null {
@@ -84,7 +84,7 @@ export function computeAccesoriosTable(
  * era ilegible en el PDF. La pantalla sigue leyendo la matriz (computeAccesoriosTable).
  */
 export function computeAccesoriosTableLarga(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   tramos: Tramo[],
   plans: PlanItem[],
 ): MemoriaTable | null {

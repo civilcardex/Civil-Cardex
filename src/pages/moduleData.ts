@@ -101,7 +101,7 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     customLayout: 'flow',
   },
   structure: {
-    title: 'Estructuras',
+    title: 'Civil Structure',
     ruta: '/civilstructure',
     accent: '#00f5ff',
     logo: '/logos/civilStructurelogo.webp',
@@ -136,7 +136,7 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     customLayout: 'structure',
   },
   terrain: {
-    title: 'Terreno',
+    title: 'Civil Terrain',
     ruta: '/civilterrain',
     accent: '#79ff5b',
     logo: '/logos/civilTerrainlogo.webp',
@@ -207,7 +207,7 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     customLayout: 'manage',
   },
   roads: {
-    title: 'Vías',
+    title: 'Civil Roads',
     ruta: '/civilroads',
     accent: '#FFC107',
     logo: '/logos/civilRoadslogo.webp',

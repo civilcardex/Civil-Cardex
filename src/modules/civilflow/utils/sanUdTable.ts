@@ -4,6 +4,7 @@ import { pisoCorto } from '../constants';
 
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportReportFinal.ts';
 import { buildSanConnectivity, type MergedApBase } from './sanConnectivity';
+import { tramoKeyPisoOf } from './keys.ts';
 
 // Cálculo de unidades de descarga — mismo grafo de conectividad que computeSanRows, columnas
 // distintas (conteos de aparato por tramo en vez del chequeo de diseño hidráulico).
@@ -54,7 +55,7 @@ export function computeUdTable(
     'Unidades de descarga totales',
   ];
   const rows = displayTramos.map((t) => {
-    const tKey = t._key || `${t.id}-${t.piso}`;
+    const tKey = tramoKeyPisoOf(t);
     const acum = componentTotalMap[tKey] || 0;
     // Para bajante, acum ya incluye tributarios vía displayMap; no duplicar ramal
     const ini =
@@ -84,7 +85,7 @@ export function computeUdTable(
     // Filtrar a tramos con aparatos (ramal/tributario) para desglose
     const extraFixtures: Record<string, number> = { ...t.fixtures };
     for (const ck of descendantKeys) {
-      const ct = sanOnly.find((x) => (x._key || `${x.id}-${x.piso}`) === ck);
+      const ct = sanOnly.find((x) => tramoKeyPisoOf(x) === ck);
       if (!ct || ct.esBajante) continue;
       if (ct.tipo !== 'ramal' && ct.tipo !== 'tributario') continue;
       for (const d of mergedBase)

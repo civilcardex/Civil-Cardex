@@ -1,7 +1,7 @@
 /** Modal de recorte del plano: dibuja el recuadro sobre el PDF y guarda el crop (recorte)
  *  por plano. Ej: seleccionar el área útil -> los pisos abren ya sin márgenes. */
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import type { PlanCrop } from '../../../utils/planoCrop.ts';
+import type { PlanCrop } from '../../../utils/planCrop.ts';
 import { getPdfjs } from '../../../utils/lazyPdfjs.ts';
 import { useTour } from '../../../../../components/tour/useTour.tsx';
 import {

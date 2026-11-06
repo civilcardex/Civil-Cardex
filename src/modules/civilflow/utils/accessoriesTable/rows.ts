@@ -5,7 +5,7 @@ import type { RamalDibujo, TribDibujo, BajanteDibujo } from './collection';
 
 /** Arma las filas de la tabla (totales por diámetro) y la devuelve lista para pintar. */
 export function armarTabla(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   title: string,
   summaryCatalog: { id: string; nombre: string }[],
   totals: Record<string, Record<string, number>>,

@@ -55,12 +55,15 @@ import {
   realMmToCanvasPx as realMmToCanvasPxLib,
   labelScaleM as labelScaleMLib,
 } from './planoCoords.ts';
+import { zoomAnclado } from './planoCamera.ts';
+import { setupCanvasEvents, teardownCanvasEvents } from './events/canvasSetup.ts';
 import {
-  zoomAnclado,
-  tamanoLienzoDibujo,
-  encuadrarDibujo,
-  ptsDeDibujoConDims,
-} from './planoCamera.ts';
+  reEncuadrarContenido,
+  fitPage,
+  ensureCanvasSize,
+  watchContainerSize,
+  stopWatchingContainerSize,
+} from './viewport.ts';
 import { handleKeyDown } from './handleKeyDown.ts';
 import {
   selectAt as _selectAt,
@@ -240,9 +243,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _hiddenNets!: Set<string>;
   _lockedNets!: Set<string>;
   activeNetworks!: Set<string> | undefined;
-  private _touchStartHandler?: (e: TouchEvent) => void;
-  private _touchMoveHandler?: (e: TouchEvent) => void;
-  private _touchEndHandler?: (e: TouchEvent) => void;
+  _touchStartHandler?: (e: TouchEvent) => void;
+  _touchMoveHandler?: (e: TouchEvent) => void;
+  _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | number | null;
   /** Puente al modal "¿qué sentido tiene esta tubería?" del re-enraizamiento (regla 5 del memo). */
   private _onOpcionesCb:
@@ -741,45 +744,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return rect;
   }
 
+  /** (cuerpo en events/canvasSetup.ts — extraído por el guard de líneas) */
   private _setupCanvasEvents(): void {
-    this._touchStartHandler = this._wrapTouch(this._onDown as (e: TouchEvent) => void);
-    this._touchMoveHandler = this._wrapTouch(this._onMove as (e: TouchEvent) => void);
-    this._touchEndHandler = (e: TouchEvent) => {
-      e.preventDefault();
-      if (e.touches.length < 2) this._pinchDist0 = null;
-      this._onUp(e);
-    };
-
-    this.canv.addEventListener('mousedown', this._onDown);
-    this.canv.addEventListener('mousemove', this._onMove);
-    this.canv.addEventListener('mouseup', this._onUp);
-    this.canv.addEventListener('mouseleave', this._onUp);
-    this.canv.addEventListener('dblclick', this._onDblClick);
-    this.canv.addEventListener('wheel', this._onWheel, { passive: false });
-    this.canv.addEventListener('touchstart', this._touchStartHandler, { passive: false });
-    this.canv.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
-    this.canv.addEventListener('touchend', this._touchEndHandler, { passive: false });
-    // Llamada/gesture del SO interrumpen el touch sin touchend: sin este reset, panning/drag
-    // quedan huérfanos y el próximo touchmove de 1 dedo arrastra o panea sin querer.
-    this.canv.addEventListener('touchcancel', this._touchEndHandler);
-    document.addEventListener('keydown', this._onKeyDown);
+    setupCanvasEvents(this);
   }
 
   private _teardownCanvasEvents(): void {
-    this.canv.removeEventListener('mousedown', this._onDown);
-    this.canv.removeEventListener('mousemove', this._onMove);
-    this.canv.removeEventListener('mouseup', this._onUp);
-    this.canv.removeEventListener('mouseleave', this._onUp);
-    this.canv.removeEventListener('dblclick', this._onDblClick);
-    this.canv.removeEventListener('wheel', this._onWheel);
-    if (this._touchStartHandler)
-      this.canv.removeEventListener('touchstart', this._touchStartHandler);
-    if (this._touchMoveHandler) this.canv.removeEventListener('touchmove', this._touchMoveHandler);
-    if (this._touchEndHandler) {
-      this.canv.removeEventListener('touchend', this._touchEndHandler);
-      this.canv.removeEventListener('touchcancel', this._touchEndHandler);
-    }
-    document.removeEventListener('keydown', this._onKeyDown);
+    teardownCanvasEvents(this);
   }
 
   _statusMsg(): string {
@@ -991,48 +962,20 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Clave del último encuadre (bbox + tamaño de página): igual → skip. Las 3 llamadas de
    *  una carga (loader local, arbitración BD, post-raster) computan lo MISMO — sin guard,
    *  cualquier fuente de bbox divergente reintroduciría el salto por esta puerta. */
-  private _encuadreKey = '';
+  _encuadreKey = '';
   /** Re-encuadra el DIBUJO (no la lámina) tras un loadWork: contenido nuevo → bbox nuevo →
    *  misma doctrina de entrada siempre centrado. La arbitración local-vs-BD que aterriza
    *  después del raster no puede mover los elementos a la vista (orig. usuario: «salto
    *  residual mientras se acomodan»). Sin dibujo cae a la hoja completa. Cámara quieta si el
    *  bbox y la lámina no cambiaron (mismo resultado, cero renders extra). */
+  /** (cuerpo en viewport.ts — extraído por el guard de líneas) */
   reEncuadrarContenido(): void {
-    const bbox = ptsDeDibujoConDims(this);
-    if (!bbox) {
-      this.fitPage();
-      this._encuadreKey = '';
-      return;
-    }
-    const clave = `${bbox.minX.toFixed(1)},${bbox.minY.toFixed(1)},${bbox.maxX.toFixed(1)},${bbox.maxY.toFixed(1)}|${this.pageW.toFixed(1)}x${this.pageH.toFixed(1)}`;
-    if (clave === this._encuadreKey) return;
-    const enc = encuadrarDibujo({
-      visW: this.cw.clientWidth,
-      visH: this.cw.clientHeight,
-      pageW: this.pageW,
-      pageH: this.pageH,
-      bbox,
-    });
-    this.zoom = enc.zoom;
-    this.offX = enc.offX;
-    this.offY = enc.offY;
-    this._encuadreKey = clave;
+    reEncuadrarContenido(this);
   }
 
   /** Ajusta la página PDF dentro del viewport con margen. */
   fitPage(): void {
-    if (!this.pageW || !this.pageH) return;
-    const s = Math.min(
-      (this.cw.clientWidth - 20) / this.pageW,
-      (this.cw.clientHeight - 36) / this.pageH,
-    );
-    this.zoom = s;
-    // El lienzo mide el ÁREA VISIBLE (no la hoja): centrar es viewport − hoja·zoom. La fórmula
-    // anterior (pageW·(1−s)/2) suponía un lienzo del tamaño de la hoja y dejaba la hoja
-    // corrida a un lado desde que el lienzo pasó a ser la vista.
-    this.offX = (this.cw.clientWidth - this.pageW * s) / 2;
-    this.offY = (this.cw.clientHeight - this.pageH * s) / 2;
-    this.render();
+    fitPage(this);
   }
 
   /** Último transform aplicado al wrapper: re-escribirlo cada cuadro dispara al
@@ -1043,40 +986,24 @@ export default class PlanoEngine implements IPlanoEngineCore {
    *  que trababa el paneo (hasta ~50 MP por frame, orig. usuario).
    *  En un motor DESACOPLADO (exportación de planos: contenedor fuera del DOM) no manda el
    *  viewport: ahí el tamaño lo fija `resizeCanvas` explícitamente. */
+  /** (cuerpo en viewport.ts — extraído por el guard de líneas) */
   ensureCanvasSize(): void {
-    if (!this.cw || !this.cw.isConnected) return;
-    const t = tamanoLienzoDibujo({
-      visW: this.cw.clientWidth || 0,
-      visH: this.cw.clientHeight || 0,
-    });
-    if (t.w === this._canvasW && t.h === this._canvasH) return;
-    this._canvasW = t.w;
-    this._canvasH = t.h;
-    this.resizeCanvas(t.w, t.h);
+    ensureCanvasSize(this);
   }
-  private _canvasW = 0;
-  private _canvasH = 0;
+  _canvasW = 0;
+  _canvasH = 0;
 
   /** Re-mide el lienzo cuando cambia el ÁREA VISIBLE (plegar una barra, redimensionar la
    *  ventana): sin esto el trazo se cortaba antes que el PDF de fondo (CSS) — orig. usuario. */
-  private _observarResize: ResizeObserver | null = null;
+  _observarResize: ResizeObserver | null = null;
 
   /** Empieza a vigilar el tamaño del contenedor visible. */
   watchContainerSize(): void {
-    if (this._observarResize || !this.cw || typeof ResizeObserver === 'undefined') return;
-    this._observarResize = new ResizeObserver(() => {
-      // El observer dispara también con el cambio de tamaño del lienzo (que cuelga del
-      // contenedor): se compara el tamaño para no re-pintar en bucle. scheduleRender (no
-      // render) coalesca la ráfaga del RO durante la transición CSS de las barras.
-      this.ensureCanvasSize();
-      this.scheduleRender();
-    });
-    this._observarResize.observe(this.cw);
+    watchContainerSize(this);
   }
 
   stopWatchingContainerSize(): void {
-    this._observarResize?.disconnect();
-    this._observarResize = null;
+    stopWatchingContainerSize(this);
   }
 
   /** Repinta el canvas con todas las capas (cotas, ramales, bajantes y activos). */

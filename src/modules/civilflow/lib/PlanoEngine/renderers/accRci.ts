@@ -7,7 +7,7 @@ const DIAG = Math.SQRT1_2;
 /** Símbolos de rci (Red Contra Incendio): los 5 rociadores de la simbología del PDF de
  *  referencia (montante, colgante seco, de pared, oculto, que fluye) y las 3 riostras sísmicas
  *  (transversal, longitudinal, cuatro vías). Trazo negro como el resto de glifos del plano.
- *  Ej: un rociador de pared se lee como base + domo con X sobre el ramal rci. true = dibujó. */
+ *  Ej: un rociador oculto se lee como anillo discontinuo con X sobre el ramal rci. true = dibujó. */
 export function drawRciSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py } = a;
   // Mismo tamaño que las válvulas (rad × 1.25): la familia se lee pareja sobre el trazo.
@@ -45,36 +45,6 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
     anillo(ctx, c.x, c.y, r * 0.34);
     // La X cruza por encima del circulito central (PDF).
     cruzDiagonal(ctx, c.x, c.y, r * 0.9);
-    return true;
-  }
-
-  if (accType === 'rociadorPared') {
-    estilo(ctx, engine);
-    const a0 = Math.atan2(dy, dx);
-    // Base a lo largo del ramal (el muro), un poco más ancha que el domo.
-    ctx.beginPath();
-    ctx.moveTo(c.x - dx * r * 1.35, c.y - dy * r * 1.35);
-    ctx.lineTo(c.x + dx * r * 1.35, c.y + dy * r * 1.35);
-    ctx.stroke();
-    // Domo hacia −px (contra el muro), relleno blanco para tapar el trazo del ramal.
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, r * 0.85, a0, a0 - Math.PI, true);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    // X dentro del domo: dos radios a 45° de la base.
-    ctx.beginPath();
-    ctx.moveTo(c.x, c.y);
-    ctx.lineTo(
-      c.x + Math.cos(a0 - Math.PI / 4) * r * 0.8,
-      c.y + Math.sin(a0 - Math.PI / 4) * r * 0.8,
-    );
-    ctx.moveTo(c.x, c.y);
-    ctx.lineTo(
-      c.x + Math.cos(a0 - (3 * Math.PI) / 4) * r * 0.8,
-      c.y + Math.sin(a0 - (3 * Math.PI) / 4) * r * 0.8,
-    );
-    ctx.stroke();
     return true;
   }
 

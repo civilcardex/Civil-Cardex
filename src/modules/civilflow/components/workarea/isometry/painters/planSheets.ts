@@ -1,6 +1,6 @@
 import { project } from '../geometry';
 import type { PlanItem } from '../../../../context/PlansContext.tsx';
-import type { PlanCrop } from '../../../../utils/planoCrop.ts';
+import type { PlanCrop } from '../../../../utils/planCrop.ts';
 import type { VistaIso } from './isoView.ts';
 
 /** Pase 1 de la isometría: pinta las láminas de fondo (el PDF de cada piso) como imágenes

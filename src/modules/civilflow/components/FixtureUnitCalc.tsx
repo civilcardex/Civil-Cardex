@@ -11,6 +11,7 @@ import { APARATOS_DEF, SAN_UC_IDS, pisoCorto } from '../constants';
 import { buildSanConnectivity } from '../utils/sanitaryRows.ts';
 
 import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
+import { tramoKeyPisoOf } from '../utils/keys.ts';
 /** Todos los tramos que cuelgan de una clave (hijos, nietos…), recorridos uno por uno con
  *  una pila; la lista de visitados corta los ciclos cuando dos tramos comparten destino. */
 function descendientesDe(fullChildrenMap: Record<string, string[]>, start: string): string[] {
@@ -71,7 +72,7 @@ function CalculoUD() {
   // descendiente (era O(n²·m), visible con tablas grandes).
   const tramosByKey = useMemo(() => {
     const m = new Map<string, (typeof tramosSan)[number]>();
-    for (const x of tramosSan) m.set(x._key || `${x.id}-${x.piso}`, x);
+    for (const x of tramosSan) m.set(tramoKeyPisoOf(x), x);
     return m;
   }, [tramosSan]);
 
@@ -82,7 +83,7 @@ function CalculoUD() {
     const desc = new Map<string, string[]>();
     const detalle = new Map<string, Record<string, string>>();
     for (const t of displayTramos) {
-      const tKey = t._key || `${t.id}-${t.piso}`;
+      const tKey = tramoKeyPisoOf(t);
       const descendantKeys = descendientesDe(fullChildrenMap, tKey);
       desc.set(tKey, descendantKeys);
       const fila: Record<string, string> = {};
@@ -216,7 +217,7 @@ function CalculoUD() {
                   <EmptyRow colSpan={3 + mergedBase.length + 1} fontSize={12} />
                 ) : (
                   displayTramos.map((t) => {
-                    const tKey = t._key || `${t.id}-${t.piso}`;
+                    const tKey = tramoKeyPisoOf(t);
                     const acum = componentTotalMap[tKey] || 0;
                     const descendantKeys = detallePorTramo.desc.get(tKey) ?? [];
                     // Desglose de aparatos: incluye tributarios y ramales que llegan vía fullChildrenMap transitivo

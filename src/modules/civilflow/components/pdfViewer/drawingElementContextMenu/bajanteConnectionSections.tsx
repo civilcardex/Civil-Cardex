@@ -16,6 +16,9 @@ import type {
 } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
 
+/** Sección "Ramales asociados" del menú: un checkbox por ramal de la red — marcar conecta el
+ *  ramal al bajante (o montante) y desmarcar lo desconecta, validando tope y compatibilidad
+ *  de diámetros antes de escribir. Solo redes san (Sanitaria)/ll (Lluvias) y solo bajantes. */
 export function RamalesAsociadosGrid({
   element,
   isGhostClick = false,

@@ -35,7 +35,7 @@ import { origenDePlan } from '../../utils/crossFloorStorage.ts';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents.ts';
-import { journalTrazos, resumenTrazos } from '../../services/storage/trazosJournal.ts';
+import { journalTrazos, resumenTrazos } from '../../services/storage/strokesJournal.ts';
 
 interface UseTrazosLoaderParams {
   activeNetRef: React.RefObject<string>;

@@ -1,4 +1,4 @@
-import { splitPtr } from './keys.ts';
+import { splitPtr, tramoKeyOf } from './keys.ts';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { leerDocDePlan } from './readPlanDrawing';
 import { pisoLbl } from '../constants';
@@ -320,12 +320,12 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
   // Calcular totales de componentes conexas
   const tramoById: Record<string, Tramo> = {};
   for (const t of tramosSan) {
-    const key = t._key || t.id;
+    const key = tramoKeyOf(t);
     if (key) tramoById[key] = t;
   }
   const parcialMap: Record<string, number> = {};
   for (const t of tramosSan) {
-    const key = t._key || t.id;
+    const key = tramoKeyOf(t);
     if (key) parcialMap[key] = calcUDparcial(t, udBase);
   }
   return [orientedConexiones, vMap, ventRamalDiamMap, components] as const;

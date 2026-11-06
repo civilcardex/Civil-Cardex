@@ -18,6 +18,7 @@ import {
   type SanRow,
 } from '../../utils/sanitaryRows.ts';
 import { aplicarCambioDiametroSan } from '../sanDiamChange.ts';
+import { tramoKeyPisoOf } from '../../utils/keys.ts';
 
 /** Firma del escritor de tramos sanitarios (la misma de TramosContext). */
 export type UpdTramoSan = (id: string, field: string, val: string | number | boolean) => void;
@@ -101,7 +102,7 @@ export function useSanitaryRows({
   const keyToLabel = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of tramosSan) {
-      const k = t._key || `${t.id}-${t.piso}`;
+      const k = tramoKeyPisoOf(t);
       m.set(k, t.label || t.id);
     }
     return m;
@@ -112,7 +113,7 @@ export function useSanitaryRows({
   // por defecto permanentemente indefinidos.
   useEffect(() => {
     for (const t of displayTramos) {
-      const tKey = t._key || `${t.id}-${t.piso}`;
+      const tKey = tramoKeyPisoOf(t);
       const idKey = t._key || t.id;
       const udAcum = componentTotalMap[tKey] || 0;
       const nSalidas = t.nSalidas ?? 0;

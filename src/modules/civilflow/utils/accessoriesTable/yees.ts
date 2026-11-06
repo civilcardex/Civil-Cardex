@@ -20,7 +20,7 @@ export interface YeeJunction {
  * dos ramales unidos contaba la misma unión dos veces) y los diámetros de cada brazo.
  */
 export function detectarYees(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   drawingRamales: RamalDibujo[],
   tribDrawing: TribDibujo[],
   ventRamales: VentDibujo[],

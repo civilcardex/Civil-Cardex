@@ -8,9 +8,9 @@ const PREFIJOS_PREFERENCIAS = [
   'civilflow_net_',
 ];
 
-import { setActiveProyectoId } from './storage/localStorage.ts';
+import { listRawKeys, setActiveProyectoId } from './storage/localStorage.ts';
 import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
-import { journalTrazos } from './storage/trazosJournal.ts';
+import { journalTrazos } from './storage/strokesJournal.ts';
 
 export interface ClearLocalWorkspaceOptions {
   /** Ids de plano del proyecto que se está ABRIENDO. Sus copias locales de trazos
@@ -29,9 +29,7 @@ export interface ClearLocalWorkspaceOptions {
 export function clearLocalWorkspace(opts: ClearLocalWorkspaceOptions = {}): void {
   const vigentes = opts.planosVigentes ? new Set(opts.planosVigentes.map(String)) : null;
   const lsKeys: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith('civilflow_')) continue;
+  for (const k of listRawKeys('civilflow_')) {
     if (PREFIJOS_PREFERENCIAS.some((p) => k.startsWith(p))) continue;
     if (vigentes && k.startsWith(TRAZOS_PLAN_PREFIX)) {
       const pid = k.slice(TRAZOS_PLAN_PREFIX.length);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { handleGabineteDown } from '../creations/gabinete.ts';
+import { handleGabineteDown } from '../creations/cabinet.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 // Gabinete rci (Red Contra Incendio) — FASE 2 RCI: caja pequeña (GABn) que suelta la

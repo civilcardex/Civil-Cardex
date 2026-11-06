@@ -5,7 +5,7 @@ import { CODO_MEDIO_90, type HidroEntry } from '../sanFittingsCatalog.ts';
 import type { RamalDibujo, VentDibujo, TribDibujo, BajanteDibujo } from './collection';
 
 /** Catálogo de accesorios de la red y título de la tabla. */
-export function catalogoDeRed(net: 'san' | 'll' | 'af' | 'ac' | 'gas'): {
+export function catalogoDeRed(net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci'): {
   catalog: typeof SAN_ACCESORIOS;
   title: string;
 } {
@@ -20,7 +20,9 @@ export function catalogoDeRed(net: 'san' | 'll' | 'af' | 'ac' | 'gas'): {
           // sola fila por codo ("Codo 90° estándar horizontal" y "Codo 90° radio largo
           // horizontal") que suma todas las orientaciones (ver codoTarget abajo).
           GAS_ACCESORIOS.filter((a) => !a.id.endsWith('_sube') && !a.id.endsWith('_baja'))
-        : ACCESORIOS_HIDRO;
+        : // af/ac/rci comparten catálogo: ACCESORIOS_HIDRO ya trae válvulas, fittings Y los
+          // rociadores/riostras de RCI (cat 'Válvulas'). Solo cambia el título.
+          ACCESORIOS_HIDRO;
   const title =
     net === 'san'
       ? 'Resumen de accesorios sanitarios por diámetro'
@@ -30,7 +32,9 @@ export function catalogoDeRed(net: 'san' | 'll' | 'af' | 'ac' | 'gas'): {
           ? 'Resumen de accesorios por diámetro — agua fría'
           : net === 'ac'
             ? 'Resumen de accesorios por diámetro — agua caliente'
-            : 'Resumen de accesorios por diámetro — gas';
+            : net === 'rci'
+              ? 'Resumen de accesorios por diámetro — red contra incendio'
+              : 'Resumen de accesorios por diámetro — gas';
   return { catalog, title };
 }
 
@@ -38,7 +42,7 @@ export function catalogoDeRed(net: 'san' | 'll' | 'af' | 'ac' | 'gas'): {
  * Resumen del catálogo visible + los datos de hidro (accesorios de fitting) del storage.
  */
 export function resumenCatalogo(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   catalog: typeof SAN_ACCESORIOS,
   drawingRamales: RamalDibujo[],
   tribDrawing: TribDibujo[],

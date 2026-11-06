@@ -154,3 +154,14 @@ export function renombrarIdEnClave(key: string, oldId: string, newId: string): s
   if (renamed == null) return null;
   return `${fam}_${renamed}${plan != null ? `_${plan}` : ''}`;
 }
+
+/** Clave de un tramo: la _key estable si la trae, si no su id. Ej: tramoKeyOf(t) === 'RAC2'. */
+export function tramoKeyOf(t: { _key?: string; id: string }): string {
+  return t._key || t.id;
+}
+
+/** Clave de un tramo SAN con piso: _key estable, si no `${id}-${piso}` (el _key de tramos
+ *  sanitarios se compone con el planId del piso). Ej: tramoKeyPisoOf(t) === 'TR2-p1'. */
+export function tramoKeyPisoOf(t: { _key?: string; id: string; piso?: string | number }): string {
+  return t._key || `${t.id}-${t.piso}`;
+}

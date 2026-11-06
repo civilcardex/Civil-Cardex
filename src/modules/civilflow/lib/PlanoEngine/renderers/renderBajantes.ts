@@ -316,15 +316,24 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-inSide / 2, -inSide / 2, inSide, inSide);
       ctx.stroke();
     } else if (b.tipo === 'gabinete') {
-      // Gabinete rci (GABn): UN cuadrado pequeño a escala real (60×60cm, la tapa del gabinete
-      // contra incendio), color de SU red — la etiqueta GABn-Pn la dibuja el pipeline de b.code.
+      // Gabinete rci (GABn): rectángulo horizontal a escala real (60×33 cm, la puerta del
+      // gabinete) + la bandeja inferior (línea desde la esquina inferior-izquierda), color de
+      // SU red. La etiqueta GABn-Pn va SIEMPRE DENTRO (el label se ancla al centro abajo).
       const netObj = NETS.find((n) => n.id === b.net);
       const col = netObj ? netObj.col : '#e2e2e8';
-      const side = engine.realMmToCanvasPx(600);
+      const w = engine.realMmToCanvasPx(600);
+      const h = w * 0.55;
+      const g = h * 0.35;
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
       ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom * (engine.lineWidthScale || 1);
       ctx.beginPath();
-      ctx.rect(-side / 2, -side / 2, side, side);
+      ctx.rect(-w / 2, -h / 2, w, h);
+      ctx.stroke();
+      // Bandeja: baja de la esquina inferior-izquierda y corre ~55% del ancho.
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, h / 2);
+      ctx.lineTo(-w / 2, h / 2 + g);
+      ctx.lineTo(-w / 2 + w * 0.55, h / 2 + g);
       ctx.stroke();
     } else {
       const netObj = NETS.find((n) => n.id === b.net);
@@ -397,15 +406,18 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // isDirectionGhost calculado arriba; todo este bloque es inalcanzable para ese caso de todos
     // modos (retorno temprano arriba).
     if (!isDirectionGhost && (b.code || b.code === '')) {
+      /* Gabinete: etiqueta SIEMPRE DENTRO del rectángulo (ped. usuario) — ancla al centro, sin
+       * leader ni desplazamiento perpendicular; el drag de etiqueta no la saca. */
+      const esGab = b.tipo === 'gabinete';
       const lx = b.labelX ?? b.x;
       const ly = b.labelY ?? b.y + 20;
-      const offDx = (lx - b.x) * engine.zoom;
-      let offDy = (ly - b.y) * engine.zoom;
+      const offDx = esGab ? 0 : (lx - b.x) * engine.zoom;
+      let offDy = esGab ? 0 : (ly - b.y) * engine.zoom;
 
       // Item 2: Aplicar desplazamiento perpendicular mínimo para que la etiqueta no quede sobre
       // el ramal
       const minPerpPx = engine.mm2cvs(3);
-      if (Math.abs(offDy) < minPerpPx) {
+      if (!esGab && Math.abs(offDy) < minPerpPx) {
         offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
       }
 
@@ -443,7 +455,21 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
         line1 = v.line1;
         dirText = v.dirText;
       }
-      renderBajanteLabel(ctx, engine, b, c, r, angle, offDx, offDy, line1, dirText, '_labelBox', 1);
+      renderBajanteLabel(
+        ctx,
+        engine,
+        b,
+        c,
+        r,
+        angle,
+        offDx,
+        offDy,
+        line1,
+        dirText,
+        '_labelBox',
+        1,
+        esGab ? { skipLeader: true } : undefined,
+      );
     } else {
       b._labelBox = undefined;
     }

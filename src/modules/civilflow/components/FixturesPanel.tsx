@@ -11,7 +11,7 @@ import { NETS } from '../lib/PlanoEngine/PlanoState.ts';
 import { usePlans } from '../context/PlansContext.tsx';
 import { useApparatus } from '../context/ApparatusContext.tsx';
 import FixtureGrid from './fixtures/FixtureGrid.tsx';
-import { SecMontantes } from './fixtures/montantesSection';
+import { SecGabinetes, SecMontantes } from './fixtures/montantesSection';
 import { usePanelStorageSync } from './fixtures/usePanelStorageSync.ts';
 import {
   UNIDAD,
@@ -89,7 +89,7 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const [hidroData, setHidroData] = useState<HidroDataMap>(loadHidroData);
   const [gasAcc, setGasAcc] = useState<GasAccMap>(loadGasAcc);
-  // Señal de fin de carga de un piso (usePlanoLoadSwitch dispara EV_PLAN_LOADED): el
+  // Señal de fin de carga de un piso (usePlanLoadSwitch dispara EV_PLAN_LOADED): el
   // efecto de espejos/herencia se SALTA mientras carga (anti-carrera) y con este tick vuelve a
   // correr justo después — sin él, la herencia bomba→bajante no se reescribía al abrir el piso
   // y el bajante quedaba con el valor viejo (orig. usuario).
@@ -426,9 +426,22 @@ const AparatosPanel = memo(function AparatosPanel_({
     );
   }
   if (!visible) {
-    // RCI (ped. usuario): SIN sección de cuantificación — la red no lleva aparatos y el
-    // bloque "Esta red no cuantifica…" no aporta nada. vent/otras conservan el aviso.
-    return netId === 'rci' ? null : <PanelNoCuantifica />;
+    // RCI (ped. usuario): SIN cuantificación de aparatos — el panel muestra SOLO la sección
+    // de Gabinetes asociados (ambas direcciones). vent/otras conservan el aviso.
+    if (netId === 'rci') {
+      const netObj = NETS.find((n) => n.id === 'rci');
+      return (
+        <SecGabinetes
+          engineRef={engineRef}
+          targetId={targetId}
+          targetLbl={targetLbl}
+          accent={netObj?.col || '#F04545'}
+          selElement={selElement}
+          setSelElement={setSelElement}
+        />
+      );
+    }
+    return <PanelNoCuantifica />;
   }
 
   const netObj = NETS.find((n) => n.id === netId);
@@ -439,15 +452,28 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   return (
     <>
-      <SecMontantes
-        netId={netId}
-        engineRef={engineRef}
-        targetId={targetId}
-        targetLbl={targetLbl}
-        accent={accent}
-        selElement={selElement}
-        setSelElement={setSelElement}
-      />
+      {netId === 'rci' ? (
+        /* RCI (ped. usuario): la sección de asociados del panel derecho — Gabinetes
+         * asociados (ramal rci) / Ramales asociados (gabinete seleccionado). */
+        <SecGabinetes
+          engineRef={engineRef}
+          targetId={targetId}
+          targetLbl={targetLbl}
+          accent={accent}
+          selElement={selElement}
+          setSelElement={setSelElement}
+        />
+      ) : (
+        <SecMontantes
+          netId={netId}
+          engineRef={engineRef}
+          targetId={targetId}
+          targetLbl={targetLbl}
+          accent={accent}
+          selElement={selElement}
+          setSelElement={setSelElement}
+        />
+      )}
       <div ref={containerRef} style={containerStyle(pulse, accent)}>
         <PanelHeader
           open={open}

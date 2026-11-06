@@ -4,16 +4,19 @@ import Navbar from './Navbar.tsx';
 
 const MODULE_NAMES: Record<string, string> = {
   civilflow: 'Civil Flow',
-  civilstructure: 'Estructuras',
-  civilterrain: 'Terreno',
+  civilstructure: 'Civil Structure',
+  civilterrain: 'Civil Terrain',
   civilmanager: 'Civil Manager',
-  civilroads: 'Vías',
+  civilroads: 'Civil Roads',
 };
 
 interface ModulePageLayoutProps {
   title: string;
   children: React.ReactNode;
   mainClassName?: string;
+  /** Ajusta el main al hueco EXACTO entre navbar y footer (sin scroll de página). Para
+   *  pantallas de una vista (p. ej. «En construcción»); el footer mide ~5.5rem fijos. */
+  fitViewport?: boolean;
 }
 
 /** Esqueleto de las páginas de módulo: Navbar + footer + JSON-LD BreadcrumbList (Inicio > Módulo) y enlace "saltar al contenido" (a11y). */
@@ -21,6 +24,7 @@ export default function ModulePageLayout({
   title: _title,
   children,
   mainClassName = '',
+  fitViewport = false,
 }: ModulePageLayoutProps) {
   const loc = useLocation();
   const breadRef = useRef<HTMLScriptElement>(null);
@@ -59,7 +63,11 @@ export default function ModulePageLayout({
       <main
         id="main-content"
         className={`flex-grow pt-16 ${mainClassName}`}
-        style={{ background: '#111317', minHeight: '100vh' }}
+        style={{
+          background: '#111317',
+          minHeight: fitViewport ? 'calc(100dvh - 5.5rem)' : '100vh',
+          ...(fitViewport ? { overflow: 'hidden' as const } : {}),
+        }}
       >
         {children}
       </main>

@@ -1,6 +1,7 @@
 import { loadFromStorage, saveToStorage } from '../../services/storageService.ts';
 import { despacharStorage } from './books';
 import { TRAZOS_PREFIX, BAJADAS_RECEPTORAS_KEY } from '../../constants/storage-keys.ts';
+import { listRawKeys } from '../../services/storage/localStorage.ts';
 import {
   cntVacio,
   mezclarMax,
@@ -19,13 +20,10 @@ import {
 function idsDePlanos(): string[] {
   const out: string[] = [];
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(`civilflow_${TRAZOS_PREFIX}`)) {
-        const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
-        if (pid.endsWith('_bak')) continue;
-        out.push(pid);
-      }
+    for (const k of listRawKeys(`civilflow_${TRAZOS_PREFIX}`)) {
+      const pid = k.slice(`civilflow_${TRAZOS_PREFIX}`.length);
+      if (pid.endsWith('_bak')) continue;
+      out.push(pid);
     }
   } catch {
     return [];

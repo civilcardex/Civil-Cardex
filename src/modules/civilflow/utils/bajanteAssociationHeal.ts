@@ -4,6 +4,7 @@ import {
   saveTrazosLocales,
   saveTrazosToDB,
 } from '../services/storageService.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 import {
   TRAZOS_PLAN_PREFIX,
   APARATOS_BY_TRAMO_KEY,
@@ -39,9 +40,7 @@ export function healHerenciaInvertida(
   let hydroDirty = false;
   const bogusIds = new Map<string, number>(); // id → nivel del piso donde vivía el libro falso
 
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key || !key.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  for (const key of listRawKeys(TRAZOS_PLAN_PREFIX)) {
     const raw = localStorage.getItem(key) || '';
     if (!raw.includes('"ucAplicado"')) continue;
     const pid = key.slice(TRAZOS_PLAN_PREFIX.length);

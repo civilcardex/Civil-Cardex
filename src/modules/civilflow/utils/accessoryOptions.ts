@@ -10,7 +10,6 @@ export const RCI_ACCESORIOS = new Set<string>([
   'rociador',
   'rociadorMontante',
   'rociadorSeco',
-  'rociadorPared',
   'rociadorOculto',
   'rociadorArea',
   'riostraLat',

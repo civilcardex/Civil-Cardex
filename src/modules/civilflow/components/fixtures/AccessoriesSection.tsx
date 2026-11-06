@@ -44,6 +44,8 @@ interface AccessoriesSectionProps {
   merge?: Record<string, string[]>;
 }
 
+/** Sección desplegable "Accesorios" del panel derecho: contadores +/− de piezas del tramo
+ *  elegido (codos, tees, tapones…), fusionando en una sola fila las que `merge` indica. */
 export default function AccessoriesSection({
   targetId,
   curHidro,

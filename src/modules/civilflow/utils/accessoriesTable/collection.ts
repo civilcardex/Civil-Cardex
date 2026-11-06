@@ -8,6 +8,10 @@ export type RamalDibujo = {
   id: string;
   label: string;
   diametro: string;
+  /** Diámetros de extremo (cuando el ramal cambia de Ø a lo largo): base de la regla
+   *  «Ø del punto» del resumen de accesorios. Ausentes = ramal de un solo Ø. */
+  diametroInicio?: string;
+  diametroFin?: string;
   pts: number[][];
   accMed?: Record<string, string>;
   accesorioInicio?: string;
@@ -29,6 +33,9 @@ export type TribDibujo = {
   id: string;
   label: string;
   diametro: string;
+  /** Diámetros de extremo (regla «Ø del punto» del resumen). */
+  diametroInicio?: string;
+  diametroFin?: string;
   pts: number[][];
   accesorioInicio?: string;
   accesorioFin?: string;
@@ -51,7 +58,7 @@ export type BajanteDibujo = {
 
 /** Recolecta las piezas dibujadas de los planos confirmados (ramales, ventilación, tributarios y bajantes). */
 export function coleccionarPiezas(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   plans: PlanItem[],
 ): {
   drawingRamales: RamalDibujo[];
@@ -63,6 +70,8 @@ export function coleccionarPiezas(
     id: string;
     label: string;
     diametro: string;
+    diametroInicio?: string;
+    diametroFin?: string;
     pts: number[][];
     accMed?: Record<string, string>;
     accesorioInicio?: string;
@@ -86,6 +95,8 @@ export function coleccionarPiezas(
     id: string;
     label: string;
     diametro: string;
+    diametroInicio?: string;
+    diametroFin?: string;
     pts: number[][];
     accesorioInicio?: string;
     accesorioFin?: string;
@@ -174,6 +185,8 @@ export function coleccionarPiezas(
             id: string;
             label?: string;
             diametro?: string;
+            diametroInicio?: string;
+            diametroFin?: string;
             pts?: number[][];
             tipo?: string;
             net?: string;
@@ -203,6 +216,8 @@ export function coleccionarPiezas(
           id: r.id,
           label: r.label || r.id,
           diametro: r.diametro || '',
+          diametroInicio: r.diametroInicio,
+          diametroFin: r.diametroFin,
           pts: r.pts,
           accesorioInicio: r.accesorioInicio || '',
           accesorioFin: r.accesorioFin || '',
@@ -216,6 +231,8 @@ export function coleccionarPiezas(
           id: r.id,
           label: r.label || r.id,
           diametro: r.diametro || '',
+          diametroInicio: r.diametroInicio,
+          diametroFin: r.diametroFin,
           pts: r.pts,
           accMed: r.accMed,
           accesorioInicio: r.accesorioInicio || '',

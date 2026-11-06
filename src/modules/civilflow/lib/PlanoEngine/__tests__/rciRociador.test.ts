@@ -14,7 +14,6 @@ import type { IPlanoEngineCore } from '../PlanoState.ts';
 const RCI_NUEVOS = [
   'rociadorMontante',
   'rociadorSeco',
-  'rociadorPared',
   'rociadorOculto',
   'rociadorArea',
   'riostraLat',

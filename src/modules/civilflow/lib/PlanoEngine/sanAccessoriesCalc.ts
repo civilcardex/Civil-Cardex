@@ -4,12 +4,18 @@ import { ANGLE_EPS } from './drawingAngles.ts';
 import { assignCodoAfterBranchDelete } from './deleteJunctionCleanup.ts';
 import { EV_STORAGE } from '../../utils/fixtureEvents.ts';
 
+/** Entrada de hidráulica por tramo san/ll: accesorios contados, longitud horizontal (m) y
+ *  n.º de salidas. Ej: {accesorios:{c90:2,tee:1}, Lh:6.4, nSalidas:3} alimenta el resumen
+ *  de accesorios por diámetro. */
 export interface HidroTramoEntry {
   accesorios: Record<string, number>;
   Lh: number;
   nSalidas: number;
 }
 
+/** Cuenta los accesorios de los ramales san (Sanitaria)/vent (Ventilación) del piso y escribe
+ *  su hidráulica (tramo_hidro_data) para las tablas de accesorios por diámetro. Ej: 2 codos y
+ *  una tee en RAF1 aparecen en la fila 2" del resumen. */
 export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;

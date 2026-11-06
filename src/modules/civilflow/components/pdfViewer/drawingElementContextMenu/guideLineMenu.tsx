@@ -33,6 +33,8 @@ import {
 import { recortarEnPrimerCruce } from '../../../lib/PlanoEngine/intersectionTrim.ts';
 import { puntoEnCaja } from '../../../lib/PlanoEngine/junctionAutoSplit.ts';
 
+/** Resuelve en vivo la red que la guía cruza (no la activa al dibujarla) para mostrar solo
+ *  los botones de ángulo válidos, y arma el resto del menú con esa red efectiva. */
 export function GuideLineMenu() {
   const ctx = useDrawingElementContextMenu();
   const guide = ctx.element as PlanoGuideLine;

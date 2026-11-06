@@ -12,6 +12,7 @@ import { indicePorId } from './indices';
 import { hunterK, hunterQ } from '../components/waterNetworkDesign/rowPhysics.ts';
 import { leerHeredadosPresion } from './propagation';
 import { resolveJunctionEntrant } from './flowDirection.ts';
+import { tramoKeyOf } from './keys.ts';
 
 import {
   isAf,
@@ -260,7 +261,7 @@ export function computeWaterNetworkRows(
   // arrays — O(n²) al podar).
   const adj: Record<string, Set<string>> = {};
   for (const t of tramos) {
-    const key = t._key || t.id;
+    const key = tramoKeyOf(t);
     adj[key] = new Set();
   }
   for (const [parentKey, children] of calculoMap) {
@@ -342,13 +343,13 @@ export function computeWaterNetworkRows(
   // dirigida de componente completa de computeComponentTotals (todo tramo mostrando el mismo
   // total general) sin ninguna indicación de que algo había salido mal.
   // índice de claves de tramo: el .some por cada nodo de la adyacencia era O(n²).
-  const clavesDeTramo = new Set(tramos.map((t) => t._key || t.id));
+  const clavesDeTramo = new Set(tramos.map((t) => tramoKeyOf(t)));
   const rootT =
     tramos.find(isAC2) ||
     tramos.find(
       (t) => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'),
     );
-  let rootKey = rootT ? rootT._key || rootT.id : null;
+  let rootKey = rootT ? tramoKeyOf(rootT) : null;
   // Ninguna heurística encontró raíz (p. ej. una red AC sin tramo de calentador dibujado aún, o
   // con nomenclatura ini/fin no estándar) — caer a ninguna raíz significaba que
   // computeDirectedTotals terminaba en la suma no dirigida de componente completa de
@@ -380,14 +381,14 @@ export function computeWaterNetworkRows(
   // clave. mergeBranches queda para conectividad/etiquetas, ya no reescribe totales.
   const componentTotalMap: Record<string, number> = {};
   for (const t of tramos) {
-    componentTotalMap[t._key || t.id] = calcUCparcial(t, AP, 'uc');
+    componentTotalMap[tramoKeyOf(t)] = calcUCparcial(t, AP, 'uc');
   }
   // Flujo probable (curva de Hunter, K·f(UC)) por tramo — `total` lee
   // componentTotalMap[key], lectura directa de la clave (carga ya propagada). La fórmula
   // corre sobre el total UC correcto de cada tramo, mergeado o no.
   const qpropMap: Record<string, number> = {};
   for (const t of tramos) {
-    const key = t._key || t.id;
+    const key = tramoKeyOf(t);
     const nDesc = t.nSalidas || 0;
     qpropMap[key] = hunterQ(componentTotalMap[key] || 0, nDesc);
   }
@@ -408,10 +409,10 @@ export function computeWaterNetworkRows(
     }
   }
 
-  const tramoKeySet = new Set(tramos.map((t) => t._key || t.id));
+  const tramoKeySet = new Set(tramos.map((t) => tramoKeyOf(t)));
   const tramoParentOf: Record<string, string> = {};
   for (const t of tramos) {
-    const key = t._key || t.id;
+    const key = tramoKeyOf(t);
     let cur = nodeParentOf[key];
     while (cur && !tramoKeySet.has(cur)) cur = nodeParentOf[cur];
     if (cur) tramoParentOf[key] = cur;
@@ -426,7 +427,7 @@ export function computeWaterNetworkRows(
     const hered = t._aparatosKey ? leerHeredadosPresion(t._aparatosKey) : {};
     let hUc = 0;
     for (const d of AP) hUc += (hered[d.id] || 0) * (Number(d.uc) || 0);
-    propiaMap[t._key || t.id] = Math.max(0, calcUCparcial(t, AP, 'uc') - hUc);
+    propiaMap[tramoKeyOf(t)] = Math.max(0, calcUCparcial(t, AP, 'uc') - hUc);
   }
 
   const pRed = parseFloat(pRedStr) || 20;
@@ -475,12 +476,12 @@ export function computeWaterNetworkRows(
   let ucTotal = 0;
   for (const t of tramos) {
     if (t.tipo === 'tributario') continue;
-    ucTotal += propiaMap[t._key || t.id] || 0;
+    ucTotal += propiaMap[tramoKeyOf(t)] || 0;
   }
 
   const Qaco = (() => {
     if (tr2) {
-      const ownKey = tr2._key || tr2.id;
+      const ownKey = tramoKeyOf(tr2);
       const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
       if (qTr2 > 0) {
         return qTr2;
@@ -533,10 +534,10 @@ export function computeWaterNetworkRows(
         (t) => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'),
       )?.pFin ?? null);
 
-  const byKey = new Map(tramosOrden.map((t) => [t._key || t.id, t]));
+  const byKey = new Map(tramosOrden.map((t) => [tramoKeyOf(t), t]));
 
   const pipeLoss = (t: Tramo) => {
-    const ownKey = t._key || t.id;
+    const ownKey = tramoKeyOf(t);
     const isTr2Row = t === tr2;
     const Qprob = isTr2Row ? Qaco : qpropMap[ownKey] || 0;
     const disPulg = t.diamDisPulg || 0;
@@ -602,10 +603,10 @@ export function computeWaterNetworkRows(
     result[key] = { Pin, Pfin };
     return result[key];
   };
-  for (const t of tramosOrden) resolve(t._key || t.id);
+  for (const t of tramosOrden) resolve(tramoKeyOf(t));
 
   return tramosOrden.map((t) => {
-    const ownKey = t._key || t.id;
+    const ownKey = tramoKeyOf(t);
     const propia = propiaMap[ownKey] || 0;
     const total = componentTotalMap[ownKey] || 0;
     const isTr2Row = t === tr2;

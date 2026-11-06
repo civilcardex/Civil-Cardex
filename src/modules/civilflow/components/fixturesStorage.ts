@@ -134,6 +134,10 @@ export function isCountableTarget(el: SelectableTarget | null): boolean {
     // bajantes (original/fantasma/asociado). Los ids `MON{n}_{red}` no entran por prefijo.
     el.tipo === 'montante' ||
     el.id?.startsWith('MON') ||
+    // Gabinete RCI: sin esto su targetId sale null y el panel derecho no muestra "Ramales
+    // asociados" (la sección SecGabinetes devuelve null sin target).
+    el.tipo === 'gabinete' ||
+    el.id?.startsWith('GAB') ||
     // Cajas CAN/CALL (aguas negras/lluvias): panel de UDs en modo solo lectura.
     el.tipo === 'caja_san' ||
     el.tipo === 'caja_ll' ||

@@ -30,6 +30,7 @@ import {
 } from './context.ts';
 import { BajanteMenu } from './bajanteMenu';
 import { BombaAsociarBajantesSection } from './pumpMenu';
+import { GabineteMenu } from './cabinetMenu';
 import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otherMenus.tsx';
 import { GuideLineMenu } from './guideLineMenu.tsx';
 import { RamalMenu } from './ramalMenu';
@@ -406,6 +407,7 @@ function DrawingElementContextMenuInner() {
     element.tipo === 'montante' ||
     element.tipo === 'caja_san' ||
     element.tipo === 'caja_ll' ||
+    element.tipo === 'gabinete' ||
     element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
   // Las líneas guía también llevan `pts` (reutilizado para la detección de clics) pero nunca
@@ -477,6 +479,10 @@ function DrawingElementContextMenuInner() {
               )
             }
           />
+        ) : tipo === 'gabinete' ? (
+          /* Gabinete GABn (ped. usuario): menú mínimo SOLO con "Ramales asociados" — antes
+           * del isBajanteTipo (gabinete es un bajante, caería en el menú completo). */
+          <GabineteMenu />
         ) : isBajanteTipo && !hasPts ? (
           <BajanteMenu />
         ) : isArea ? (

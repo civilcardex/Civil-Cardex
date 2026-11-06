@@ -30,7 +30,7 @@ interface UsePlanoLoadSwitchParams {
 }
 
 /** Piso entrante SIN datos guardados → resetea el motor vacío (ramales/bajantes a cero). */
-export function usePlanoLoadSwitch({
+export function usePlanLoadSwitch({
   engineRef,
   engineReady,
   currentId,

@@ -9,6 +9,10 @@ export interface RouteMeta {
   description: string;
   changefreq: 'monthly' | 'weekly' | 'yearly';
   priority: string;
+  /** Última fecha en que cambió el CONTENIDO de la ruta (YYYY-MM-DD). No es la fecha de
+   *  build: un lastmod que se mueve en cada deploy sin cambio real hace que el crawler
+   *  deje de confiar en él. Actualizar a mano SOLO al cambiar contenido. Ej: '2026-10-20'. */
+  lastmod: string;
 }
 
 /** Dominio canónico del sitio: arma canonical/og:url del prerender y del sitemap. */
@@ -22,6 +26,7 @@ export const ROUTE_META: RouteMeta[] = [
     description: 'Plataforma de ingeniería civil para diseño hidráulico, sanitario y estructural',
     changefreq: 'monthly',
     priority: '1.0',
+    lastmod: '2026-10-20',
   },
   {
     path: '/pricing',
@@ -30,6 +35,7 @@ export const ROUTE_META: RouteMeta[] = [
       'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual, semestral o anual, con descuentos acumulativos. Pago seguro con tarjeta (Lemon Squeezy).',
     changefreq: 'weekly',
     priority: '0.7',
+    lastmod: '2026-10-20',
   },
   {
     path: '/docs',
@@ -38,6 +44,7 @@ export const ROUTE_META: RouteMeta[] = [
       'Guía completa de CivilCardex. Normas NTC 1500, RAS 2000, NTC 3728. Tutoriales de diseño hidrosanitario y estructural.',
     changefreq: 'weekly',
     priority: '0.7',
+    lastmod: '2026-10-20',
   },
   {
     path: '/civilflow',
@@ -45,20 +52,23 @@ export const ROUTE_META: RouteMeta[] = [
     description: MODULES_DATA.flow.description,
     changefreq: 'monthly',
     priority: '0.8',
+    lastmod: '2026-10-20',
   },
   {
     path: '/civilstructure',
-    title: 'Estructuras',
+    title: 'Civil Structure',
     description: MODULES_DATA.structure.description,
     changefreq: 'monthly',
     priority: '0.8',
+    lastmod: '2026-10-20',
   },
   {
     path: '/civilterrain',
-    title: 'Terreno',
+    title: 'Civil Terrain',
     description: MODULES_DATA.terrain.description,
     changefreq: 'monthly',
     priority: '0.8',
+    lastmod: '2026-10-20',
   },
   {
     path: '/civilmanager',
@@ -66,13 +76,15 @@ export const ROUTE_META: RouteMeta[] = [
     description: MODULES_DATA.manage.description,
     changefreq: 'monthly',
     priority: '0.8',
+    lastmod: '2026-10-20',
   },
   {
     path: '/civilroads',
-    title: 'Vías',
+    title: 'Civil Roads',
     description: MODULES_DATA.roads.description,
     changefreq: 'monthly',
     priority: '0.8',
+    lastmod: '2026-10-20',
   },
   {
     path: '/terminos',
@@ -81,6 +93,7 @@ export const ROUTE_META: RouteMeta[] = [
       'Términos y condiciones de uso de CivilCardex: cuenta de usuario, suscripciones por módulo con renovación manual, propiedad intelectual, datos personales y ley aplicable colombiana.',
     changefreq: 'yearly',
     priority: '0.3',
+    lastmod: '2026-10-20',
   },
   {
     path: '/privacidad',
@@ -89,6 +102,7 @@ export const ROUTE_META: RouteMeta[] = [
       'Política de tratamiento de datos personales de CivilCardex conforme a la Ley 1581 de 2012: datos tratados, finalidades, derechos del titular y procedimientos.',
     changefreq: 'yearly',
     priority: '0.3',
+    lastmod: '2026-10-20',
   },
   {
     path: '/cookies',
@@ -97,6 +111,7 @@ export const ROUTE_META: RouteMeta[] = [
       'Política de cookies y almacenamiento local de CivilCardex: qué se guarda, para qué, y cómo gestionar el consentimiento.',
     changefreq: 'yearly',
     priority: '0.3',
+    lastmod: '2026-10-20',
   },
 ];
 

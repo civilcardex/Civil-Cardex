@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, type RefObject } from 'react';
-import type { ExistingCal } from './PlanoConfigurator.tsx';
+import type { ExistingCal } from './PlanConfigurator.tsx';
 
 /** Estados y modos de la calibración del plano (origen + escala X/Y + promedio): convierte
  *  píxeles del overlay en scaleM (escala metros por pixel) para que las medidas salgan en m.

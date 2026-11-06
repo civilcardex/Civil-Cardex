@@ -3,6 +3,7 @@ import { loadFromStorage, saveToStorage, trazosDocHasContent } from '../services
 import { splitPtr } from './keys.ts';
 import { registrarLdesvioComoAsociado } from './bajanteAssocShared.ts';
 import { TRAZOS_PLAN_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes.ts';
 import {
   loadData,
@@ -482,9 +483,7 @@ export function healLdesvioLabels(data: LocalGhostDrawingData): boolean {
 /** Barrido global: borra LD_ (ramal desvio entrepisos) que viven en piso distinto al de su anillo. */
 export function sweepMisplacedLdesvios(): void {
   const plans: Array<{ pid: string; data: LocalGhostDrawingData }> = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  for (const k of listRawKeys(TRAZOS_PLAN_PREFIX)) {
     const raw = localStorage.getItem(k) || '';
     // Un piso sin mención de 'LD_' no aporta al mapa de anillos ni tiene LD_ que barrer —
     // no se parsea (los planes son JSON grandes y este barrido corre en cada carga).

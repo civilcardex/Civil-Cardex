@@ -173,14 +173,6 @@ export const ACCESORIOS_HIDRO = [
     cat: 'Válvulas',
   },
   {
-    // Rociador de pared: deflector contra el muro (base + domo + X en el glifo).
-    id: 'rociadorPared',
-    emoji: '🚿',
-    nombre: 'Rociador de pared',
-    icono: '/iconos_civilflow/accesorios/otros.webp',
-    cat: 'Válvulas',
-  },
-  {
     // Rociador oculto: bajo el cielorraso (anillo discontinuo + X en el glifo).
     id: 'rociadorOculto',
     emoji: '🚿',

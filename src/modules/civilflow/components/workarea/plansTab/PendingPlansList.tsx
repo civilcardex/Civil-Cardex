@@ -8,7 +8,7 @@ import {
   PlanosTab_S12,
   PlanosTab_verBtn,
   PlanosTab_pendingLi,
-} from '../PlanosTab.styles.ts';
+} from '../PlansTab.styles.ts';
 
 /**
  * Lista los planos subidos pero sin confirmar, con su estado de calibración y acciones por fila.

@@ -7,6 +7,7 @@ import {
   type LocalGhostDrawingData,
 } from './crossFloorStorage.ts';
 import { TRAZOS_PLAN_PREFIX } from '../constants/storage-keys.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 
 export type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes.ts';
 export { enrichCrossFloorGhosts } from './crossFloorGhosts.ts';
@@ -162,9 +163,7 @@ export function renameBajanteAcrossFloorReferences(
   // origen) — id y sourceBajanteId — y cualquier puntero descargaEnId/origenId apuntando a
   // `${thisPlanId}|${oldId}` (cubre a este bajante como destino de descarga del origen de otro
   // piso, o como origen al que el destino de otro piso apunta de vuelta).
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+  for (const k of listRawKeys(TRAZOS_PLAN_PREFIX)) {
     const otherPlanId = k.slice(TRAZOS_PLAN_PREFIX.length);
     if (otherPlanId === thisPlanId) continue;
     try {

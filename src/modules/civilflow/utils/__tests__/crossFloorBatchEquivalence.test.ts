@@ -14,7 +14,7 @@ import {
 
 // El diario de trazos escribe claves de diagnóstico (con stack, distinto por camino) y el push a
 // BD es async: fuera de alcance — aquí se compara el ESTADO LOCAL de los pisos.
-vi.mock('../../services/storage/trazosJournal.ts', () => ({
+vi.mock('../../services/storage/strokesJournal.ts', () => ({
   journalTrazos: () => {},
   leerJournalTrazos: () => [],
   limpiarJournalTrazos: () => {},

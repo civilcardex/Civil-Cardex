@@ -52,3 +52,6 @@ export const TD: React.CSSProperties = {
 export const TH_R: React.CSSProperties = { fontSize: 11, padding: '2px 4px' };
 /** Celda compacta de las tablas EP. */
 export const TD_R: React.CSSProperties = { fontSize: 11, padding: '3px 4px' };
+
+/** Cabecera de tabla a 12 px (la familia rci de tablas de resultados). Ej: RciTramosTable. */
+export const TH10: React.CSSProperties = { ...TH, fontSize: 12 };

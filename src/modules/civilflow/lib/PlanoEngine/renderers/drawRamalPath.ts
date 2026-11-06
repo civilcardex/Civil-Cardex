@@ -181,6 +181,39 @@ export function drawRamalPath(
     clipToEdge(pts.length - 1, rr.fin || undefined, true);
   }
 
+  // Gabinete GABn (RCI, ped. usuario): el trazo NO llega al centro — se detiene en el borde
+  // del rectángulo (60×33 cm) MÁS CERCANO por donde el trazo se acerca. Se calcula la
+  // intersección del segmento (desde el punto previo hacia el centro) con el contorno del
+  // rect, y el extremo se recorta ahí. Mutando SOLO cvsPts (draw-local, jamás el modelo).
+  if (pts.length >= 2 && engine.bajantes?.some((b) => b.tipo === 'gabinete')) {
+    const w = engine.realMmToCanvasPx(600);
+    const hw = w / 2;
+    const hh = (w * 0.55) / 2;
+    const trimGab = (i: number, j: number): void => {
+      const gab = engine.bajantes.find(
+        (b) => b.tipo === 'gabinete' && Math.hypot(b.x - pts[i][0], b.y - pts[i][1]) < 0.5,
+      );
+      if (!gab) return;
+      const c = engine.toCvs(gab.x, gab.y);
+      const b2 = cvsPts[j];
+      // Dirección DESDE el centro hacia el punto previo (hacia afuera, por donde llegó el trazo).
+      const ox = b2.x - c.x;
+      const oy = b2.y - c.y;
+      const l = Math.hypot(ox, oy);
+      if (l < 1e-6) return;
+      const ux = ox / l;
+      const uy = oy / l;
+      // Distancia del centro al borde del rect a lo largo de esa dirección.
+      const t = Math.min(hw / Math.max(Math.abs(ux), 1e-9), hh / Math.max(Math.abs(uy), 1e-9));
+      if (l <= t) return;
+      const a = cvsPts[i];
+      a.x = c.x + ux * t;
+      a.y = c.y + uy * t;
+    };
+    trimGab(0, 1);
+    trimGab(pts.length - 1, pts.length - 2);
+  }
+
   // Codo de plano en un extremo compartido: recortar el cuerpo hasta el punto de tangencia del
   // arco (mismo actualRad que drawCornerCodoArc).
   if (r && pts.length >= 2) {

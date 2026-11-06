@@ -5,7 +5,7 @@ import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
-import { GlobalAlertDialog } from './modules/civilflow/components/GlobalAlertDialogProvider.tsx';
+import { GlobalAlertDialog } from './modules/civilflow/components/GlobalAlertDialog.tsx';
 import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders.tsx';
 import { CargandoProyecto } from './modules/civilflow/components/shared/LoadingProject';
 

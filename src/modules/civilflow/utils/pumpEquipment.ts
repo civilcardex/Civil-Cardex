@@ -1,4 +1,5 @@
 import { loadFromStorage } from '../services/storageService.ts';
+import { listRawKeys } from '../services/storage/localStorage.ts';
 import { TRAZOS_PLAN_PREFIX, TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { APARATOS_DEF } from '../constants';
 import { mapUdBombaDesdeTrazos } from './pumpInheritance';
@@ -38,10 +39,8 @@ export function udsDeMapa(
 export function equiposBombaDesdeTrazos(udOverride?: Record<string, number>): EquipoBomba[] {
   const out: EquipoBomba[] = [];
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      // Claves CRUDAS de localStorage ('civilflow_trazos_<id>') — usar el prefijo completo.
-      if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+    // Claves CRUDAS ('civilflow_trazos_<id>') — el slice quita el prefijo completo.
+    for (const k of listRawKeys(TRAZOS_PLAN_PREFIX)) {
       const planId = k.slice(TRAZOS_PLAN_PREFIX.length);
       // loadFromStorage antepone 'civilflow_' — pasar el prefijo lógico, no la clave cruda.
       const trazos = loadFromStorage<{

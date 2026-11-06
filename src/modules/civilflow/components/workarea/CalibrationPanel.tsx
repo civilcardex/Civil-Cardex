@@ -15,7 +15,7 @@ import {
   PlanoConfigurator_stepHeader,
   PlanoConfigurator_origenBtn,
   PlanoConfigurator_trazarBtn,
-} from './PlanoConfigurator.styles.ts';
+} from './PlanConfigurator.styles.ts';
 
 /**
  * Panel de calibración a la derecha del visor: asignar nivel, marcar origen, calibrar X/Y y guardar.

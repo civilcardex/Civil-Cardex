@@ -72,6 +72,7 @@ export function ramalHasCodoReventilado(r: PlanoRamal | null): boolean {
 // ── Estilos compartidos de los editores (inputs centrados, select, grid de checkboxes,
 // filas de material) — un solo look en todo el panel derecho.
 
+/** Select desplegable del editor de tramos: diámetro, material o nivel de piso. Ej: elegir 3" en el Ø del bajante. */
 export const SELECT_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',
@@ -83,6 +84,7 @@ export const SELECT_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   cursor: 'pointer',
 };
+/** Input centrado del editor (números y textos cortos). Ej: el largo de un canal se escribe aquí y el valor queda al centro. */
 export const INPUT_CENTER_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',
@@ -94,6 +96,7 @@ export const INPUT_CENTER_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   textAlign: 'center',
 };
+/** Contenedor de casillas en 2 columnas con scroll (tope 120 px de alto) para listas largas. Ej: los aparatos marcados en el ramal. */
 export const CHECK_GRID_STYLE: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
@@ -105,6 +108,7 @@ export const CHECK_GRID_STYLE: React.CSSProperties = {
   border: '1px solid #3a494a',
   borderRadius: 3,
 };
+/** Fila de casilla dentro del grid (checkbox + etiqueta a 12 px). Ej: 'Lavamanos' en la lista de aparatos del bajante. */
 export const CHECK_ROW_STYLE: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -115,6 +119,7 @@ export const CHECK_ROW_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   minWidth: 0,
 };
+/** Campo de solo lectura centrado: muestra valores que vienen del dibujo y no se pueden editar. Ej: la longitud del tramo seleccionado. */
 export const READONLY_CENTER_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '3px 5px',
@@ -126,6 +131,7 @@ export const READONLY_CENTER_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   textAlign: 'center',
 };
+/** Select centrado: mismo desplegable pero con el valor al centro, para las filas de material/Ø del ramal. Ej: el material del ramal de gas. */
 export const SELECT_CENTER_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',
@@ -138,6 +144,7 @@ export const SELECT_CENTER_STYLE: React.CSSProperties = {
   cursor: 'pointer',
   textAlign: 'center',
 };
+/** Fila del material en el editor del ramal: reparte nombre y control a los extremos. Ej: 'Ferro cemento 3"' con su Ø al lado. */
 export const MAT_ROW_STYLE: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -148,6 +155,7 @@ export const MAT_ROW_STYLE: React.CSSProperties = {
   border: '1px solid #282a2e',
   borderRadius: 3,
 };
+/** El nombre del material dentro de MAT_ROW_STYLE: a 12 px y corta con «…» si no cabe. */
 export const MAT_NAME_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#b9caca',
@@ -159,6 +167,7 @@ export const MAT_NAME_STYLE: React.CSSProperties = {
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 };
+/** Input a media anchura (50 %) para compartir fila con otro campo. Ej: el código del elemento junto a su nivel. */
 export const INPUT_50_STYLE: React.CSSProperties = {
   width: '50%',
   padding: '3px 5px',
@@ -169,6 +178,7 @@ export const INPUT_50_STYLE: React.CSSProperties = {
   fontSize: 12,
   fontFamily: "'Geist',monospace",
 };
+/** Input genérico de ancho completo del editor. Ej: la etiqueta (label) del tramo o su texto libre. */
 export const INPUT_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '3px 5px',
@@ -180,6 +190,7 @@ export const INPUT_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   minWidth: 0,
 };
+/** Campo de solo lectura con fondo más apagado (texto a la izquierda). Ej: el área m² calculada del elemento. */
 export const READONLY_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '3px 5px',

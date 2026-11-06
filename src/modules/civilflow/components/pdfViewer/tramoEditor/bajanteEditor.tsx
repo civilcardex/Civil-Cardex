@@ -11,7 +11,12 @@ import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
 import { entradaPor } from '../../../utils/diamLookup';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
-import { SELECT_STYLE, INPUT_CENTER_STYLE, READONLY_CENTER_STYLE } from './context.ts';
+import {
+  SELECT_STYLE,
+  INPUT_CENTER_STYLE,
+  READONLY_CENTER_STYLE,
+  INPUT_50_STYLE,
+} from './context.ts';
 import { useCaudalLl } from './useFlowLl';
 import { BajanteGhostEditor } from './bajanteGhostEditor.tsx';
 import { RamalesAsociadosGrid } from './AssociatedRamalesGrid.tsx';
@@ -78,6 +83,35 @@ export function BajanteEditor({
         Datos específicos
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Código DE PRIMERAS (ped. usuario): la sección "Datos del tramo" ya no existe para
+         *  montantes/bajantes — el código vive aquí. */}
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              color: '#8AB4D6',
+              fontFamily: "'Geist',monospace",
+              marginBottom: 2,
+              textTransform: 'uppercase',
+              letterSpacing: 0.3,
+            }}
+          >
+            Código
+          </div>
+          <input
+            value={selElement.code || ''}
+            placeholder="Código bajante"
+            aria-label="Código"
+            onChange={(e) => {
+              if (engineRef.current) {
+                const v = e.target.value;
+                engineRef.current.updateSelected({ code: v });
+                setSelElement({ ...selElement, code: v });
+              }
+            }}
+            style={INPUT_50_STYLE}
+          />
+        </div>
         {/* Fila 1: H | Diámetro en montantes; Diámetro | Llenado en el resto (sin H). */}
         <div style={{ display: 'flex', gap: 6 }}>
           {mostrarH && (

@@ -9,7 +9,7 @@ import {
   type MemoriaData,
 } from '../../utils/exportReportFinal.ts';
 import { getPdfjs } from '../../utils/lazyPdfjs';
-import { downloadPlanosPdf } from '../../utils/exportPlanos.ts';
+import { downloadPlanosPdf } from '../../utils/exportPlans.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { useInfTablas } from './useReportTables.ts';
 import { REDES } from '../../constants/uiConfig';

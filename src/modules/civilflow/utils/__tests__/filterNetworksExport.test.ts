@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filtraRedesParaExport } from '../exportPlanos.ts';
+import { filtraRedesParaExport } from '../exportPlans.ts';
 
 // "Redes a descargar": el filtro de la exportación de planos es a nivel de DATOS — el
 // trazo de una red excluida deja de EXISTIR en el motor headless, así que ninguna capa

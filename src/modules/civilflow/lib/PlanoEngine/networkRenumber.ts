@@ -483,6 +483,9 @@ function migrarClave<T>(
   }
 }
 
+/** Renombra el id de un ramal en TODO el sistema (motor + storage): sus claves de UDs/
+ *  hidráulica, las referencias de otros ramales y los punteros de asociación. Ej:
+ *  renameRamalId(eng,'RAC3','RAC7') deja RAC7 con la misma carga y asociaciones de RAC3. */
 export function renameRamalId(
   engine: IPlanoEngineCore,
   oldId: string,

@@ -296,6 +296,56 @@ export function MontantesAsociadosSection({
   );
 }
 
+/** Sección "Ramales asociados" — GABINETE GABn rci (ped. usuario): la inversa de
+ *  "Gabinetes asociados", para gestionar la asociación desde el gabinete. Igual que la del
+ *  montante: checkbox único → camposAsocManual sobre el gabinete. */
+export function RamalesAsociadosGabSection({
+  ctx,
+  gabinete,
+}: {
+  ctx: CtxMin;
+  gabinete: { id: string; net?: string };
+}) {
+  const eng = ctx.engineRef.current;
+  if (!eng) return null;
+  const vivo = eng.bajantes.find((x) => x.id === gabinete.id);
+  if (!vivo) return null;
+  const ramales = eng.ramales.filter((r) => r.net === 'rci' && r.tipo !== 'tributario');
+  if (ramales.length === 0) return null;
+  const ramalPorId = new Map(eng.ramales.map((r) => [r.id, r]));
+  return (
+    <div style={ASSOC_SECTION_STYLE}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales asociados</div>
+      <div style={MENU_GRID_2COL_STYLE}>
+        {ramales.map((r) => {
+          const rec = new Set(vivo.recibeDeIds || []);
+          const ali = new Set(vivo.alimentaIds || []);
+          const activo = rec.has(r.id) || ali.has(r.id);
+          return (
+            <label key={r.id} style={MENU_CHECK_LABEL_STYLE}>
+              <input
+                type="checkbox"
+                style={ASSOC_CHECKBOX_STYLE}
+                checked={activo}
+                onChange={() => {
+                  const e2 = ctx.engineRef.current;
+                  const vivo2 = e2?.bajantes.find((x) => x.id === gabinete.id);
+                  if (!e2 || !vivo2) return;
+                  e2.updateElementById(gabinete.id, camposAsocManual(vivo2, r.id, !activo));
+                  e2.render();
+                  e2._markDirty();
+                  refrescarMenu(ctx.setContextMenuState);
+                }}
+              />
+              <span style={CELL_SPAN_STYLE}>{ramalPorId.get(r.id)?.label || r.id}</span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** Sección "Ramales asociados" — MONTANTE af (Agua Fria)/ac (Agua Caliente)/gas (Gas) (orig. usuario): la inversa de la anterior, para gestionar la asociación desde el montante. */
 export function RamalesAsociadosMontSection({
   ctx,
@@ -334,6 +384,57 @@ export function RamalesAsociadosMontSection({
                 }}
               />
               <span style={CELL_SPAN_STYLE}>{r.label || r.id}</span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Sección "Gabinetes asociados" — RAMAL rci (Red Contra Incendio) (ped. usuario): igual que
+ *  "Montantes asociados" pero con los gabinetes GABn dibujados en el plano. La asociación
+ *  vive en el gabinete (recibeDeIds/alimentaIds/asocManual vía camposAsocManual). */
+export function GabinetesAsociadosSection({
+  ctx,
+  ramal,
+}: {
+  ctx: CtxMin;
+  ramal: { id: string; net?: string };
+}) {
+  const eng = ctx.engineRef.current;
+  if (!eng) return null;
+  const gabinetes = eng.bajantes.filter((b) => b.net === 'rci' && b.tipo === 'gabinete');
+  if (gabinetes.length === 0) return null;
+  /* Índice id→gabinete (Map, no find en bucle: G8). */
+  const gabPorId = new Map(eng.bajantes.map((b) => [b.id, b]));
+  return (
+    <div style={ASSOC_SECTION_STYLE}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Gabinetes asociados</div>
+      <div style={MENU_GRID_2COL_STYLE}>
+        {gabinetes.map((m) => {
+          /* Sets (no .includes en bucle): G8 no cuenta búsquedas Set.has. */
+          const rec = new Set(m.recibeDeIds || []);
+          const ali = new Set(m.alimentaIds || []);
+          const activo = rec.has(ramal.id) || ali.has(ramal.id);
+          return (
+            <label key={m.id} style={MENU_CHECK_LABEL_STYLE}>
+              <input
+                type="checkbox"
+                style={ASSOC_CHECKBOX_STYLE}
+                checked={activo}
+                onChange={() => {
+                  const e2 = ctx.engineRef.current;
+                  if (!e2) return;
+                  const vivo = gabPorId.get(m.id);
+                  if (!vivo) return;
+                  e2.updateElementById(m.id, camposAsocManual(vivo, ramal.id, !activo));
+                  e2.render();
+                  e2._markDirty();
+                  refrescarMenu(ctx.setContextMenuState);
+                }}
+              />
+              <span style={CELL_SPAN_STYLE}>{m.code || m.id}</span>
             </label>
           );
         })}

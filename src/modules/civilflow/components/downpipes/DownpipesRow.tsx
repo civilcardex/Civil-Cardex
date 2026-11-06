@@ -11,6 +11,7 @@ import { DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../../constants';
 import { fmt, planIdDeKey } from '../../utils/formatUtils.ts';
 import { entradaPor } from '../../utils/diamLookup';
 import { clavesRamalesVentDeBajantes } from '../../utils/ventDiameterFanout.ts';
+import { tramoKeyPisoOf } from '../../utils/keys.ts';
 import {
   writeBajantePropToDrawing,
   writeDiametroToDrawing,
@@ -82,7 +83,7 @@ export function DownpipesRow({
   const planIdStr = t.planId || planIdDeKey(t._key);
   const ramalesAsocVal = fila.ramalesAsoc.length > 0 ? fila.ramalesAsoc.join(', ') : '—';
   return (
-    <tr key={t._key || `${t.id}-${t.piso}`}>
+    <tr key={tramoKeyPisoOf(t)}>
       <td className="c">
         <span className="sigla" style={{ fontSize: 11 }}>
           {t.code || t.id}

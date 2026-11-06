@@ -18,7 +18,7 @@ export type AddAcc = (diam: string, accId: string, count: number) => void;
  * accesorios de extremo. Devuelve el total y las dos funciones que usa el bloque de bushing.
  */
 export function contarAccesorios(
-  net: 'san' | 'll' | 'af' | 'ac' | 'gas',
+  net: 'san' | 'll' | 'af' | 'ac' | 'gas' | 'rci',
   catalog: { id: string; nombre: string }[],
   summaryCatalog: { id: string; nombre: string }[],
   drawingRamales: RamalDibujo[],
@@ -64,6 +64,11 @@ export function contarAccesorios(
   // la columna "Codo medio 90°" (abajo) y esa misma porción se resta de lo que calcHydroAccessories
   // arrastró a hidroData con el id de catálogo del codo elegido, para no contarla dos veces. El
   // codo de 45° (codo45rc) va en su propia fila de catálogo, con el mismo patrón de dedupe.
+  /* Ramales del dibujo por `id-planId`: para la regla «Ø del punto» (vértices accMed de un
+     ramal que cambia de diámetro). Ej: 'RAF2-7' → su RamalDibujo con accMed y pts. */
+  const ramalPorClave = new Map(
+    [...drawingRamales, ...tribDrawing].map((r) => [`${r.id}-${r.planId}`, r]),
+  );
   const accMedCodoCounts: Record<string, Record<string, number>> = {};
   const accMed45Counts: Record<string, Record<string, number>> = {};
   const countAccMedCodos = (r: { id: string; planId: string; accMed?: Record<string, string> }) => {
@@ -174,6 +179,35 @@ export function contarAccesorios(
       }
       const codoMed = accMedCodoCounts[String(t._key || `${t.id}-${t.planId}`)] || {};
       const codo45Med = accMed45Counts[String(t._key || `${t.id}-${t.planId}`)] || {};
+      /* Ø del punto en el TRIBUTARIO con taper (misma regla que la rama principal): accMed al
+       * Ø del extremo más cercano; lo movido se resta del pool (otrosDiam). */
+      const dIniT = fmtPulg(
+        pulgOf(t.diametroInicio || t.diametro || t.diametroOriginal, t.diamDisPulg || t.diamPulg),
+      );
+      const dFinT = fmtPulg(
+        pulgOf(t.diametroFin || t.diametro || t.diametroOriginal, t.diamDisPulg || t.diamPulg),
+      );
+      const otrosDiamT: Record<string, number> = {};
+      if (
+        (net === 'af' || net === 'ac' || net === 'gas' || net === 'rci') &&
+        dIniT !== dFinT &&
+        (t.diametroInicio || t.diametroFin)
+      ) {
+        const ram = ramalPorClave.get(`${t.id}-${t.planId}`);
+        if (ram?.accMed && ram.pts && ram.pts.length > 1) {
+          const n = ram.pts.length;
+          for (const [k, val] of Object.entries(ram.accMed)) {
+            if (!val || HYDRO_TEE_IDS.has(val) || ACC_MED_CODOS.has(val) || val === 'codo45rc')
+              continue;
+            const m = k.match(/^accMed(\d+)$/);
+            if (!m) continue;
+            const dStr = parseInt(m[1], 10) / (n - 1) < 0.5 ? dIniT : dFinT;
+            if (dStr === mainDiamStr) continue;
+            addAcc(dStr, val, 1);
+            otrosDiamT[val] = (otrosDiamT[val] || 0) + 1;
+          }
+        }
+      }
       // El motor es dueño del conteo de yees cuando YA recalculó este tramo (claves yee
       // presentes): uniones ENTRE tributarios se registran bajo el id del tributario host y
       // DEBEN mostrarse en su fila — antes el skip incondicional las hacía desaparecer del
@@ -190,7 +224,11 @@ export function contarAccesorios(
         }
         const extra = Math.max(
           0,
-          (srcAcc[a.id] || 0) - (direct[a.id] || 0) - (codoMed[a.id] || 0) - (codo45Med[a.id] || 0),
+          (srcAcc[a.id] || 0) -
+            (direct[a.id] || 0) -
+            (codoMed[a.id] || 0) -
+            (codo45Med[a.id] || 0) -
+            (otrosDiamT[a.id] || 0),
         );
         if (extra > 0) addAcc(mainDiamStr, a.id, extra);
       }
@@ -216,15 +254,58 @@ export function contarAccesorios(
             : net === 'san' && acc === 'codo45'
               ? 'codo45rc'
               : acc;
-      for (const acc of [t.accesorioInicio, t.accesorioFin]) {
+      /* Ø del PUNTO (ped. usuario): un accesorio cuenta al diámetro del tramo donde cayó, no
+       * al global. Extremos: SU diámetro (diametroInicio/Fin). accMed: el Ø del extremo más
+       * cercano por índice de vértice. Todo lo contado a Ø ≠ global se resta del pool de
+       * hidroData (otrosDiam) para no duplicar en el genérico de abajo. Sin taper el
+       * comportamiento es idéntico al anterior. */
+      const dIni = fmtPulg(
+        pulgOf(t.diametroInicio || t.diametro || t.diametroOriginal, t.diamDisPulg || t.diamPulg),
+      );
+      const dFin = fmtPulg(
+        pulgOf(t.diametroFin || t.diametro || t.diametroOriginal, t.diamDisPulg || t.diamPulg),
+      );
+      const otrosDiam: Record<string, number> = {};
+      for (const [acc, dStr] of [
+        [t.accesorioInicio, dIni],
+        [t.accesorioFin, dFin],
+      ] as const) {
         if (!acc) continue;
         const id = directAccId(acc);
-        directCount[id] = (directCount[id] || 0) + 1;
+        if (dStr === mainDiamStr) {
+          directCount[id] = (directCount[id] || 0) + 1;
+        } else {
+          addAcc(dStr, id, 1);
+          otrosDiam[id] = (otrosDiam[id] || 0) + 1;
+        }
+      }
+      if (
+        (net === 'af' || net === 'ac' || net === 'gas' || net === 'rci') &&
+        dIni !== dFin &&
+        (t.diametroInicio || t.diametroFin)
+      ) {
+        const ram = ramalPorClave.get(`${t.id}-${t.planId}`);
+        if (ram?.accMed && ram.pts && ram.pts.length > 1) {
+          const n = ram.pts.length;
+          for (const [k, val] of Object.entries(ram.accMed)) {
+            if (!val || HYDRO_TEE_IDS.has(val) || ACC_MED_CODOS.has(val) || val === 'codo45rc')
+              continue;
+            const m = k.match(/^accMed(\d+)$/);
+            if (!m) continue;
+            const dStr = parseInt(m[1], 10) / (n - 1) < 0.5 ? dIni : dFin;
+            if (dStr === mainDiamStr) continue;
+            addAcc(dStr, val, 1);
+            otrosDiam[val] = (otrosDiam[val] || 0) + 1;
+          }
+        }
       }
       for (const a of catalog) {
         const fromSrc = Math.max(
           0,
-          (srcAcc[a.id] || 0) - (codoMed[a.id] || 0) - (codo45Med[a.id] || 0),
+          (srcAcc[a.id] || 0) -
+            (codoMed[a.id] || 0) -
+            (codo45Med[a.id] || 0) -
+            (otrosDiam[a.id] || 0),
         );
         const v = Math.max(fromSrc, directCount[a.id] || 0);
         if (a.id === 'yeeSimple') {

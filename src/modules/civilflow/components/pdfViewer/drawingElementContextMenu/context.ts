@@ -97,6 +97,7 @@ export { DrawingElementContextMenuCtx };
 // ── Estilos del menú (select, botones de dirección, grids de checkboxes y botones de
 // acción) — look único del menú contextual.
 
+/** Select del menú contextual (clic derecho sobre un elemento): elegir material, Ø o piso sin salir del plano. Ej: cambiar el Ø en el menú del ramal. */
 export const MENU_SELECT_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',
@@ -142,6 +143,7 @@ export const MENU_FANTASMA_BTN_STYLE: React.CSSProperties = {
   borderTop: '1px solid #3a494a',
   width: '100%',
 };
+/** Grid de casillas del menú en 2 columnas con scroll (tope 120 px). Ej: marcar qué canales recibe el bajante (associatedChannels). */
 export const MENU_GRID_2COL_STYLE: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
@@ -153,6 +155,7 @@ export const MENU_GRID_2COL_STYLE: React.CSSProperties = {
   borderRadius: 3,
   padding: 4,
 };
+/** Fila de casilla del menú (checkbox + etiqueta a 11 px, un paso menor que el editor lateral). Ej: 'Canal C3' en la lista de canales asociados. */
 export const MENU_CHECK_LABEL_STYLE: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -162,6 +165,7 @@ export const MENU_CHECK_LABEL_STYLE: React.CSSProperties = {
   color: '#b9caca',
   fontFamily: "'Geist',monospace",
 };
+/** Grid de casillas más alto (tope 160 px) para listas largas. Ej: los aparatos de la sección del ramal (ramalMenu). */
 export const MENU_GRID_2COL_TALL_STYLE: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(2, 1fr)',
@@ -173,6 +177,7 @@ export const MENU_GRID_2COL_TALL_STYLE: React.CSSProperties = {
   borderRadius: 3,
   padding: 4,
 };
+/** Botón de acción del menú con borde punteado celeste: resalta la operación principal de la sección. Ej: conectar/desconectar en el panel de conexión del bajante. */
 export const MENU_ACTION_BTN_STYLE: React.CSSProperties = {
   width: '100%',
   padding: '6px 8px',
@@ -188,6 +193,7 @@ export const MENU_ACTION_BTN_STYLE: React.CSSProperties = {
 };
 // ponytail: mismo estilo de fila-checkbox que tramoEditor — una sola definición.
 export { CHECK_ROW_STYLE as MENU_CHECK_ROW_STYLE } from '../tramoEditor/context.ts';
+/** La caja flotante del menú contextual: se posiciona donde cae el clic derecho (ancho 170-320 px) y contiene todas las secciones. */
 export const MENU_PANEL_STYLE: React.CSSProperties = {
   position: 'absolute',
   zIndex: 101,
@@ -211,6 +217,7 @@ export const MENU_PANEL_BAJANTE_STYLE: React.CSSProperties = {
   maxWidth: 480,
 };
 
+/** Título de sección del menú en MAYÚSCULAS (12 px, gris). Ej: 'MATERIAL' sobre el selector de material. */
 export const MENU_SECTION_LABEL_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#849495',
@@ -220,6 +227,7 @@ export const MENU_SECTION_LABEL_STYLE: React.CSSProperties = {
   letterSpacing: 0.5,
 };
 
+/** Misma etiqueta de sección pero como fila propia con margen inferior de 4 px: la variante que usan casi todas las secciones. Ej: 'DIRECCIÓN' sobre los botones de dirección. */
 export const MENU_SECTION_LABEL_ROW_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: '#849495',
