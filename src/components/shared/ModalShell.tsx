@@ -13,7 +13,9 @@ export function ModalOverlay(props: {
   const { onClose, zIndex = 9999, children } = props;
   return (
     // Backdrop con cierre por click-fuera: patrón estándar de modal (el Escape lo maneja
-    // useEscapeKey en el consumidor; el dialog interior es el interactivo).
+    // useEscapeKey en el consumidor; el dialog interior es el interactivo). Cierra SOLO con
+    // clic en el propio backdrop (target===currentTarget): si no, cualquier clic dentro del
+    // diálogo burbujea hasta aquí y lo cierra (bug guía de diseño RCI).
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
       role="presentation"
@@ -27,7 +29,9 @@ export function ModalOverlay(props: {
         background: 'rgba(0,0,0,.6)',
         padding: 20,
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
     >
       {children}
     </div>

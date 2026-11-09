@@ -35,5 +35,6 @@ export {
   AreaHeaderFields,
   TextHeaderFields,
   RamalHeaderFields,
+  RectFuegoFields,
 } from './headerFields.tsx';
 export { BajanteEditorSection, RamalEditorSection } from './editorSections.tsx';

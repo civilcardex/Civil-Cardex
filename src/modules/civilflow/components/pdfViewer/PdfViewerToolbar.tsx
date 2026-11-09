@@ -32,6 +32,8 @@ export function isToolDisabledForNet(
   if (toolId === 'caja') return !['san', 'll'].includes(net);
   // Gabinete GABn: solo rci (guard del motor: handleGabineteDown).
   if (toolId === 'gab') return net !== 'rci';
+  // Muro: solo rci (la verificación de distancia de ramales a muros es del módulo RCI).
+  if (toolId === 'muro') return net !== 'rci';
   return false;
 }
 
@@ -238,6 +240,16 @@ function PdfViewerToolbar_({
     ico: '▦',
     icoCol: '#d29922',
     shortcut: 'J',
+  });
+  // Muro (SOLO rci, ped. usuario): dibuja la pared para la verificación de distancia de
+  // ramales a muros — misma mecánica de línea guía pero nace esMuro nativo (roja) y su menú
+  // solo ofrece quitarla. Atajo 'W' (wall).
+  netTools.splice(7, 0, {
+    id: 'muro',
+    label: 'Muro',
+    ico: '▬',
+    icoCol: '#f87171',
+    shortcut: 'W',
   });
 
   const visibleTools = netTools.filter(

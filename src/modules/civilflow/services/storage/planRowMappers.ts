@@ -307,6 +307,7 @@ export function areaToRow(planoId: number, userId: string, a: PlanoArea) {
     area_m2: a.areaM2,
     net: a.net ?? null,
     altura_m: a.alturaM ?? null,
+    es_rect_fuego: a.esRectFuego ?? false,
   };
 }
 
@@ -324,6 +325,7 @@ export function rowToArea(row: SupabaseRow): PlanoArea {
     areaM2: g(row, 'area_m2', 0),
     net: g(row, 'net', undefined),
     alturaM: g(row, 'altura_m', undefined),
+    esRectFuego: g(row, 'es_rect_fuego', false),
   };
 }
 
@@ -394,6 +396,7 @@ export function guideLineToRow(planoId: number, userId: string, g: PlanoGuideLin
     ...baseRow(planoId, userId, g.id),
     net: g.net,
     pts: g.pts ?? [],
+    es_muro: g.esMuro ?? false,
   };
 }
 
@@ -403,6 +406,7 @@ export function rowToGuideLine(row: SupabaseRow): PlanoGuideLine {
     id: g(row, 'client_id', ''),
     net: g(row, 'net', ''),
     pts: g(row, 'pts', [] as unknown as [number, number][]),
+    esMuro: g(row, 'es_muro', false),
   };
 }
 

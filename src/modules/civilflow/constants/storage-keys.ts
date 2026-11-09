@@ -99,3 +99,8 @@ export const CHEQUEOS_PRESION_KEY = 'chequeos_presion_v1';
 export const PDF_HIDDEN_NETS_KEY = 'pdf_hidden_nets';
 /** Redes bloqueadas en el visor (ids): se ven pero el motor las marca no editables. */
 export const PDF_LOCKED_NETS_KEY = 'pdf_locked_nets';
+
+/** Espejo LOCAL del estado RCI vivo (RciState): RCIDesign lo escribe en cada guardado
+ *  debounced para que el visor (menú de dibujo automático S/L) lea el valor FRESCO de la
+ *  tabla Datos del rociador sin esperar la BD. Ej: st.roc.S = 3.2 → el modal nace con 3.2. */
+export const RCI_ESTADO_VIVO_KEY = 'rci_estado_vivo';

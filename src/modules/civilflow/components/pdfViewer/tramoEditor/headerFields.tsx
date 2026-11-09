@@ -46,6 +46,84 @@ export function BajanteHeaderFields() {
   );
 }
 
+/** Sección única del RECTÁNGULO DE FUEGO (área de la red rci, ped. usuario): toggle definir/
+ *  quitar + área calculada. Escribe PlanoArea.esRectFuego con updateSelected (persiste gratis).
+ *  Ej: definir un área de 15 m² la deja con borde rojo discontinuo en el dibujo. */
+export function RectFuegoFields() {
+  const { selElement: rawSelElement, engineRef, setSelElement } = useTramoEditorContext();
+  if (!rawSelElement) return null;
+  const selElement = rawSelElement as PlanoArea;
+  const eng = engineRef.current;
+  const marca = selElement.esRectFuego === true;
+  const toggle = (): void => {
+    if (!eng) return;
+    eng.updateSelected({ esRectFuego: !marca });
+    eng.render();
+    eng._markDirty();
+    setSelElement({ ...selElement, esRectFuego: !marca } as never);
+  };
+  return (
+    <div style={{ borderTop: '1px solid #3a494a', padding: '8px 14px 10px' }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: '#9BA8AA',
+          fontFamily: "'Geist',monospace",
+          textTransform: 'uppercase',
+          letterSpacing: 1,
+          marginBottom: 6,
+        }}
+      >
+        Rectángulo de fuego
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          color: '#849495',
+          fontFamily: "'Geist',monospace",
+          marginBottom: 6,
+        }}
+      >
+        Área: {(selElement.areaM2 ?? 0).toFixed(2)} m² {marca ? '· definido' : ''}
+      </div>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          border: marca ? 'none' : '1.5px solid var(--rci, #f87171)',
+          background: marca ? 'var(--rci, #f87171)' : 'transparent',
+          color: marca ? '#fff' : 'var(--rci, #f87171)',
+          borderRadius: 6,
+          padding: '6px 12px',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          boxShadow: marca ? '0 2px 8px rgba(248,113,113,.35)' : 'none',
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+          <rect
+            x="2"
+            y="2"
+            width="12"
+            height="12"
+            fill={marca ? 'rgba(255,255,255,.18)' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeDasharray={marca ? undefined : '3 2'}
+          />
+        </svg>
+        {marca ? 'Quitar definición' : 'Definir como rectángulo de fuego'}
+      </button>
+    </div>
+  );
+}
+
 /** Sección del módulo Rejillas de ventilación (NTC (Norma Tecnica Colombiana) 3631) para áreas de sector dibujadas con la pestaña Gas (Gas): la Etiqueta del área es el nombre del Sector y
  * aquí se define su altura libre (m) — ambos alimentan las columnas Sector/Área/Alto de la tabla Tipologías. */
 export function RejillasSectorFields() {

@@ -17,6 +17,7 @@ import {
   CanalTramoEditor,
   AreaHeaderFields,
   RejillasSectorFields,
+  RectFuegoFields,
   TextHeaderFields,
   RamalHeaderFields,
   BajanteEditorSection,
@@ -106,6 +107,9 @@ function TramoEditorInner() {
       ? true
       : false;
   const isArea = selElement && selElement.id?.startsWith('AR');
+  /* Área de la red rci (ped. usuario): SOLO la sección rectángulo de fuego — sin Datos del
+   * tramo ni Asociar bajante. */
+  const esAreaRci = !!isArea && (selElement as { net?: string } | null)?.net === 'rci';
   const isText = selElement && selElement.id?.startsWith('T');
   // Las guías también llevan una polilínea `pts` (reutilizada para la detección de clics, como un ramal)
   // pero no tienen `tipo` ni están en engine.ramales — sin esta exclusión, al seleccionar una guía
@@ -119,8 +123,9 @@ function TramoEditorInner() {
 
   return (
     <form onSubmit={(e) => e.preventDefault()}>
-      {/* Montantes, bajantes, gabinetes y CAJAS AN/ALL sin "Datos del tramo" (ped. usuario). */}
-      {!isBajMont && !esCaja && !isGab && (
+      {/* Montantes, bajantes, gabinetes y CAJAS AN/ALL sin "Datos del tramo" (ped. usuario).
+          Área rci: tampoco — su panel es solo la sección Rectángulo de fuego. */}
+      {!isBajMont && !esCaja && !isGab && !esAreaRci && (
         <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
           <div
             style={{
@@ -187,6 +192,8 @@ function TramoEditorInner() {
         </div>
       )}
 
+      {/* Área rci: SOLO la sección rectángulo de fuego (ped. usuario). */}
+      {esAreaRci && <RectFuegoFields />}
       {selElement && !isArea && isBajMont && !isGab && !esCaja && <BajanteEditorSection />}
       {selElement &&
         !isArea &&

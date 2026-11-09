@@ -31,8 +31,8 @@ import {
   setSyncLoadedLiveIds,
 } from '../utils/drawingSync.ts';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService.ts';
-import { ACTIVE_NETS_KEY } from '../constants/storage-keys.ts';
-import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
+import { ACTIVE_NETS_KEY, RCI_ESTADO_VIVO_KEY } from '../constants/storage-keys.ts';
+import { emitAparatosClear, EV_STORAGE, EV_RCI_VIVO_SAVED } from '../utils/fixtureEvents.ts';
 
 import { useNetVisibilityState } from './pdfViewer/useNetVisibilityState.ts';
 import { useViewerDialogs } from './pdfViewer/useViewerDialogs.ts';
@@ -314,7 +314,13 @@ function PdfViewer_({
   }, [selectedNivel, planos]);
 
   useEffect(() => {
-    if (selElement?.net) setActiveNet(selElement.net);
+    /* Las GUÍAS son anotaciones neutrales (ped. usuario): seleccionarlas NO cambia la red
+     * activa — su menú resuelve la red en vivo según lo que cruzan (effectiveNet). Sin esto,
+     * una guía dibujada con af activa mandaba el selector a af en cada selección.
+     * Estructural: es guía si su id vive en engine.guideLines (no sniffing del prefijo del id). */
+    const esGuia =
+      !!selElement && !!engineRef.current?.guideLines.some((g) => g.id === selElement.id);
+    if (selElement?.net && !esGuia) setActiveNet(selElement.net);
     if (selElement?.id) {
       // Seleccionar la propia línea guía (para su menú contextual de rotar/crear-ramal) no debe
       // sacar al usuario del modo guía — de lo contrario la barra lateral bloqueada reaparece en
@@ -328,6 +334,27 @@ function PdfViewer_({
       if (tool !== 'sel' && tool !== 'guide') setTool('sel');
     }
   }, [selElement, tool, setTool]);
+
+  /* Dmuro (RCI) INYECTADO al motor: el motor jamás lee storage — la capa React le pasa el
+   * valor del espejo local del módulo RCI al montar, cada vez que RCI lo reescribe
+   * (EV_RCI_VIVO_SAVED) y cuando cambia de pestaña (EV_STORAGE cross-tab). null = apagado. */
+  useEffect(() => {
+    const inyectar = (): void => {
+      const vivo = loadFromStorage<{ roc?: { Dmuro?: number | string } } | null>(
+        RCI_ESTADO_VIVO_KEY,
+        null,
+      );
+      const dm = parseFloat(String(vivo?.roc?.Dmuro ?? '').replace(',', '.'));
+      if (engineRef.current) engineRef.current.dmuroRci = dm > 0 ? dm : null;
+    };
+    inyectar();
+    window.addEventListener(EV_RCI_VIVO_SAVED, inyectar);
+    window.addEventListener(EV_STORAGE, inyectar);
+    return () => {
+      window.removeEventListener(EV_RCI_VIVO_SAVED, inyectar);
+      window.removeEventListener(EV_STORAGE, inyectar);
+    };
+  }, []);
 
   useEffect(() => {
     if (currentId == null) return;

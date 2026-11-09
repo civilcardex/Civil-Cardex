@@ -9,6 +9,7 @@ import {
 } from '../../services/storageService.ts';
 import { markPlanTrazosFresh, planContentLoaded } from '../../utils/drawingSync.ts';
 import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { emitTrazosSaved } from '../../utils/fixtureEvents.ts';
 import { journalTrazos } from '../../services/storage/strokesJournal.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
@@ -114,6 +115,7 @@ export function persistTrazosSnapshot(
   }
   saveTrazosLocales(id, work as Record<string, unknown>);
   markPlanTrazosFresh(id);
+  emitTrazosSaved();
   if (id !== 'work') {
     saveTrazosToDB(String(id), work);
   }

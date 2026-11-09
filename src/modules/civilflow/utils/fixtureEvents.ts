@@ -10,6 +10,12 @@ export const EV_SAN_SYNC = 'civilflow_san_sync_changed';
 export const EV_HIDRO_SYNC = 'civilflow_hidro_sync_changed';
 /** El piso terminó de cargar (motor + trazos) → quien conta ramales recalcula. */
 export const EV_PLAN_LOADED = 'civilflow_plan_loaded';
+/** El autosave del visor acabó de escribir el doc de trazos de un piso: el módulo RCI lo
+ *  escucha para re-leer la geometría fresca (muros, gabinetes) sin recargar el piso. */
+export const EV_TRAZOS_SAVED = 'civilflow_trazos_saved';
+/** El módulo RCI acaba de escribir su espejo local (RCI_ESTADO_VIVO_KEY): el visor lo
+ *  escucha para re-inyectar Dmuro al motor (mismo patrón que EV_TRAZOS_SAVED). */
+export const EV_RCI_VIVO_SAVED = 'civilflow_rci_vivo_saved';
 /** Evento nativo del navegador (se dispara con CUALQUIER localStorage.setItem). */
 export const EV_STORAGE = 'storage';
 
@@ -32,4 +38,12 @@ export function emitHidroSync(detail?: unknown): void {
 /** Dispara EV_PLAN_LOADED (el piso terminó de cargar). */
 export function emitPlanLoaded(): void {
   emit(EV_PLAN_LOADED);
+}
+/** Dispara EV_TRAZOS_SAVED (el autosave escribió el doc de trazos). */
+export function emitTrazosSaved(): void {
+  emit(EV_TRAZOS_SAVED);
+}
+/** Dispara EV_RCI_VIVO_SAVED (RCI escribió su espejo local). */
+export function emitRciVivoSaved(): void {
+  emit(EV_RCI_VIVO_SAVED);
 }

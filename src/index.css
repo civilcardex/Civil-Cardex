@@ -107,3 +107,12 @@
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* Guía de diseño RCI (modal .guia-rci): TODAS las listas de contenido llevan disco blanco
+ * relleno (ped. usuario) — sin esto el marcador no se distingue del fondo oscuro. */
+.guia-rci ul {
+  list-style: disc outside;
+}
+.guia-rci li::marker {
+  color: #fff;
+}
