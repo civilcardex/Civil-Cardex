@@ -21,7 +21,7 @@ import {
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 import { asociarRamalABajantes } from './drawingUtils.ts';
-import { chequeoMurosTrazo } from './rciAutoDraw.ts';
+import { chequeoMurosTrazo } from './RCIAutoDraw.ts';
 import { canalMarco, esquinasCanalOBB } from './channelAssociation';
 
 // Las uniones de san/ll/vent (tee/codo/yee) se crean solas vía calcSanitaryAccessories +

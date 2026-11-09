@@ -1,12 +1,12 @@
 /** Visor 3D de rci (Red Contra Incendio): escena three.js con la red armada y su sidebar de
  *  catálogo. Ej: añadir un gabinete desde el sidebar -> aparece en la escena. */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import RciSidebar from './RciSidebar.tsx';
-import { COMPONENTS, RCI_MONO } from './rci3dData.ts';
-import { useRci3DScene, type Rci3DApi } from './useRci3DScene.ts';
-import { useRciCarga } from './useRciLoad.ts';
-import { resetVista, vistaIso, vistaOrto, type VistaKey } from './viewsRci.ts';
-import { dibujarEtiquetasRci, resetEtiquetasRci } from './labelsRci.ts';
+import RciSidebar from './RCISidebar.tsx';
+import { COMPONENTS, RCI_MONO } from './RCI3dData.ts';
+import { useRci3DScene, type Rci3DApi } from './useRCI3DScene.ts';
+import { useRciCarga } from './useRCILoad.ts';
+import { resetVista, vistaIso, vistaOrto, type VistaKey } from './viewsRCI.ts';
+import { dibujarEtiquetasRci, resetEtiquetasRci } from './labelsRCI.ts';
 
 // Visor 3D "Cuarto de Bombas RCI" — port del HTML standalone a React + three 0.185 con la
 // arquitectura de aparatos3d (escena en hook, carga secuencial GLB, vistas y gizmo). El

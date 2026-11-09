@@ -16,8 +16,8 @@ import {
 } from './RCIUI.tsx';
 import { filasTipologias, resumenTipologias } from '../../utils/rci/RCIRowsModel.ts';
 import { ElevSvg } from './RCISvgBuilding.tsx';
-import { TablaPisos } from './RciFloorsTable.tsx';
-import { TablaTipologias } from './RciTypologiesTable.tsx';
+import { TablaPisos } from './RCIFloorsTable.tsx';
+import { TablaTipologias } from './RCITypologiesTable.tsx';
 import type { NumIn, PisoRow, Tips } from '../../lib/rci/types.ts';
 
 /** Sub-pestañas de la pestaña Tipologías (ids alineados con SUBS_POR_TAB['pisos']/RUTA_DE, que

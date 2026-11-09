@@ -60,7 +60,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 652, // +5: IPlanoEngineCore.dmuroRci (inyección; motor sin storage) + flags RCI (esMuro/esRectFuego),
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 160,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 826, // +4: espejo S/L manda sobre BD (arreglo auditoría) + sección Dibujo automático (S rociadores / L paralelos + modal),
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 823, // +4: espejo S/L manda sobre BD (arreglo auditoría) + sección Dibujo automático (S rociadores / L paralelos + modal),
   'pages/PricingPage.tsx': 430,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 615, // +15: chequeo en vivo de muros al terminar trazo rci (banda 2·Dmuro, Dmuro inyectado),
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 554,

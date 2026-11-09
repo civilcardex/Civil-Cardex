@@ -1,4 +1,4 @@
-import type { Three } from '../rci3d/useRci3DScene.ts';
+import type { Three } from '../rci3d/useRCI3DScene.ts';
 
 // Parser GLB del HTML Isometrico_RCI_Open_Code_v19 (port fiel, §431+): los GLB de la RED
 // traen jerarquía de nodos con transforms de AutoCAD — a diferencia de los del cuarto de

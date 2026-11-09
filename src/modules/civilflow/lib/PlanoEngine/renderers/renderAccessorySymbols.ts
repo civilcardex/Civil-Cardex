@@ -4,7 +4,7 @@ import { drawSifonSymbol } from './accTraps';
 import { drawCodoSymbols } from './accElbows';
 import { drawTeeSymbols } from './accTees';
 import { drawValveSymbols } from './accValves';
-import { drawRciSymbols } from './accRci';
+import { drawRciSymbols } from './accRCI';
 import { drawFallbackSymbol } from './accFallback';
 export { drawCornerCodoArc } from './cornerElbowArc.ts';
 

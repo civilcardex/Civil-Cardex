@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { dibujarGizmoEjes } from '../aparatos3d/axisGizmo.ts';
-import { RCI_FOV } from './rci3dData.ts';
+import { RCI_FOV } from './RCI3dData.ts';
 import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controls3d';
 import { devError } from '../../../../utils/devError.ts';
 

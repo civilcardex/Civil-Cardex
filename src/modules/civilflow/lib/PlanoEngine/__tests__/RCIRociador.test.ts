@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import { calcHydroAccessories } from '../networkSanitary.ts';
 import { drawValveSymbols } from '../renderers/accValves.ts';
-import { drawRciSymbols } from '../renderers/accRci.ts';
+import { drawRciSymbols } from '../renderers/accRCI.ts';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 
 // Rociadores y riostras rci (Red Contra Incendio) — simbología del PDF de referencia: los 6

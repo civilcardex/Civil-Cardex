@@ -1,8 +1,8 @@
 /** Sidebar del visor 3D de la red rci (Red Contra Incendio): componentes del catálogo con
  *  descripción para montarlos en la escena de la red completa. */
-import { COMPONENTS, COMP_DESC } from './rciNetworkData.ts';
-import { RCI_MONO } from '../rci3d/rci3dData.ts';
-import { NotaDisenoRci } from '../rci3d/RciSidebar.tsx';
+import { COMPONENTS, COMP_DESC } from './RCINetworkData.ts';
+import { RCI_MONO } from '../rci3d/RCI3dData.ts';
+import { NotaDisenoRci } from '../rci3d/RCISidebar.tsx';
 import { NormaTxt } from '../shared/standardsLinks.tsx';
 import ViewerSidebar, { nombreLegible } from '../shared/ViewerSidebar.tsx';
 

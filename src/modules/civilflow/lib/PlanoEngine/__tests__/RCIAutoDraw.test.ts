@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { sembrarRociadores, crearRamalesParalelos } from '../rciAutoDraw.ts';
+import { sembrarRociadores, crearRamalesParalelos } from '../RCIAutoDraw.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 /** Engine mínimo para las funciones de dibujo automático: escala 0.5 m/px estándar
@@ -139,7 +139,7 @@ describe('crearRamalesParalelos', () => {
   });
 });
 
-import { chequeoMurosTrazo } from '../rciAutoDraw.ts';
+import { chequeoMurosTrazo } from '../RCIAutoDraw.ts';
 
 describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
   it('muro sin ramal cerca → mensaje con la distancia y el Dmuro', () => {

@@ -11,9 +11,9 @@ import { setAyudaContext } from '../../../../components/help/helpContext.ts';
 // en Redes). Estado local de sub-pestaña (variante PressureEquipmentDesign).
 
 const Aparatos3D = React.lazy(() => import('../aparatos3d/DetailAparatosViewer.tsx'));
-const RciCuartoBombasViewer = React.lazy(() => import('../rci3d/RciViewer'));
+const RciCuartoBombasViewer = React.lazy(() => import('../rci3d/RCIViewer'));
 const Epc3D = React.lazy(() => import('../epc3d/EpcViewer'));
-const RciRed3D = React.lazy(() => import('../rciNetwork3d/RciNetworkViewer'));
+const RciRed3D = React.lazy(() => import('../rciNetwork3d/RCINetworkViewer'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 const SUBTABS = [

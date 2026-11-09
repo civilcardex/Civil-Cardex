@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { EditTablaBtn, useEditarTabla } from './RCIUI.tsx';
 import { useEscapeKey } from '../../../../components/shared/ModalShell.tsx';
 import { celdaEditable } from './RCIEditableCell.tsx';
-import { BTN, IN, NOTA, TDC12, type EditarRci } from './RciCmatTable.tsx';
+import { BTN, IN, NOTA, TDC12, type EditarRci } from './RCICmatTable.tsx';
 import { TH10 } from '../../styles/sharedTableStyles.ts';
 import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import { NOM } from '../../lib/rci/tables.ts';

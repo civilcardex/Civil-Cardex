@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
-import { sembrarRociadores, crearRamalesParalelos } from '../../../lib/PlanoEngine/rciAutoDraw.ts';
+import { sembrarRociadores, crearRamalesParalelos } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 import { loadRciDatos } from '../../../services/projectDataService.ts';
 import { loadFromStorage, getActiveProyectoId } from '../../../services/storageService.ts';
 import { RCI_ESTADO_VIVO_KEY } from '../../../constants/storage-keys.ts';
@@ -41,7 +41,7 @@ import { ramalHasInterconnections } from './ramalMenuHelpers.ts';
 import { convertirARamal, convertirATributario, tribCandidatesDe } from './ramalMenuConvert.ts';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';
 import { ElementCodeEditor } from './elementEditor.tsx';
-import { RciAutoDrawModal } from './RciAutoDrawModal.tsx';
+import { RciAutoDrawModal } from './RCIAutoDrawModal.tsx';
 
 /** Cuerpo del menú: arma las secciones del ramal (accesorio en medio, dirección, conversiones
  *  a tributario, asociaciones y canales) sobre el estado vivo del menú contextual. */

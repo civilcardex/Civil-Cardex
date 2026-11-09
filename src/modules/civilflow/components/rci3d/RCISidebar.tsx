@@ -1,4 +1,4 @@
-import { COMPONENTS, COMP_DESC, RCI_MONO } from './rci3dData.ts';
+import { COMPONENTS, COMP_DESC, RCI_MONO } from './RCI3dData.ts';
 import { NormaLink, NormaTxt } from '../shared/standardsLinks.tsx';
 import { usePerfilIso } from '../shared/isoStandardsNote';
 import ViewerSidebar, { nombreLegible } from '../shared/ViewerSidebar.tsx';

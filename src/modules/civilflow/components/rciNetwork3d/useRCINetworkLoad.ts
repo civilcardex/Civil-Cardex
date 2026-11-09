@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import type { Rci3DApi, Rci3DApiRef } from '../rci3d/useRci3DScene.ts';
-import { parseGLBRed } from './rciNetworkParser.ts';
-import { GLB_POSITIONS, INITIAL_SCALES, ISO_DEFAULT, SPLIT_BUILDS } from './rciNetworkData.ts';
+import type { Rci3DApi, Rci3DApiRef } from '../rci3d/useRCI3DScene.ts';
+import { parseGLBRed } from './RCINetworkParser.ts';
+import { GLB_POSITIONS, INITIAL_SCALES, ISO_DEFAULT, SPLIT_BUILDS } from './RCINetworkData.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { cargarModelosSecuencial, sleep } from '../shared/sequentialLoad.ts';
 import { cargarGlbBuffer, glbEnCache } from '../shared/glbCache';

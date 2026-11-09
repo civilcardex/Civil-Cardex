@@ -3,7 +3,7 @@
  *  «Clase de sistema». Solo recibe cerrar — la clase la fija el código, no el diseñador.
  *  Ej: <RciClassesModal cerrar={() => setClasesAbiertas(false)} />. */
 import { FILAS_CLASE } from './RCIInputDefs.ts';
-import { BTN, NOTA, TDCB } from './RciCmatTable.tsx';
+import { BTN, NOTA, TDCB } from './RCICmatTable.tsx';
 import { TH10 } from '../../styles/sharedTableStyles.ts';
 import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 /* ---------------- Modal «¿Qué clase elegir?» ---------------- */

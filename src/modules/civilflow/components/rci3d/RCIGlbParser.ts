@@ -1,5 +1,5 @@
 import type * as THREE_NS from 'three';
-import type { Three } from './useRci3DScene.ts';
+import type { Three } from './useRCI3DScene.ts';
 
 // Parser GLB del HTML original (port): los GLB del cuarto de bombas solo traen
 // POSITION/NORMAL/COLOR_0 (uint8 VEC4) + índices, sin materiales usables — GLTFLoader daría

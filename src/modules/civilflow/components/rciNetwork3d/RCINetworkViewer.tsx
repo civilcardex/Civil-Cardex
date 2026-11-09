@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import RciRedSidebar from './RciNetworkSidebar.tsx';
-import { COMPONENTS, LABEL_POSITIONS } from './rciNetworkData.ts';
-import type { RciRedLabel } from './rciNetworkData.ts';
-import { useRci3DScene, type Rci3DApi } from '../rci3d/useRci3DScene.ts';
-import { useRciRedCarga } from './useRciNetworkLoad.ts';
+import RciRedSidebar from './RCINetworkSidebar.tsx';
+import { COMPONENTS, LABEL_POSITIONS } from './RCINetworkData.ts';
+import type { RciRedLabel } from './RCINetworkData.ts';
+import { useRci3DScene, type Rci3DApi } from '../rci3d/useRCI3DScene.ts';
+import { useRciRedCarga } from './useRCINetworkLoad.ts';
 import { useLupa } from '../rci3d/useMagnifier';
-import { vistaOrto, resetVista, type VistaKey } from '../rci3d/viewsRci.ts';
+import { vistaOrto, resetVista, type VistaKey } from '../rci3d/viewsRCI.ts';
 import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniViewerNetwork';
 
 // ponytail: MONO_3D (components/shared/config3d.ts) es 'Geist', NO esta fuente — usarlo

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ModalOverlay, useEscapeKey } from '../../../../../components/shared/ModalShell.tsx';
-import type { LadoParalelo } from '../../../lib/PlanoEngine/rciAutoDraw.ts';
+import type { LadoParalelo } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 
 const IN: React.CSSProperties = {
   background: 'var(--bg3)',

@@ -12,10 +12,10 @@ import { SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx
 import { GrupoTabla } from './RCIGroupTable.tsx';
 import { GRUPOS, ICONO_SUB, NOTA_SUB, notaDeps } from './RCIInputDefs.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
-import { TablaCmat } from './RciCmatTable.tsx';
-import { TablaEsp } from './RciSpecialAccTable.tsx';
-import { ModalClases } from './RciClassesModal.tsx';
-import { TablaCuarto } from './RciRoomTable.tsx';
+import { TablaCmat } from './RCICmatTable.tsx';
+import { TablaEsp } from './RCISpecialAccTable.tsx';
+import { ModalClases } from './RCIClassesModal.tsx';
+import { TablaCuarto } from './RCIRoomTable.tsx';
 
 const SUB_POR_ID = new Map(SUBS_POR_TAB.entradas.map((s) => [s.id, s]));
 /* ---------------- La pestaña ---------------- */

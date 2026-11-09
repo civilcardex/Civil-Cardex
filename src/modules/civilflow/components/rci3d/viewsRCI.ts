@@ -1,6 +1,6 @@
 import type * as THREE_NS from 'three';
-import type { Rci3DApi } from './useRci3DScene.ts';
-import { RCI_FOV } from './rci3dData.ts';
+import type { Rci3DApi } from './useRCI3DScene.ts';
+import { RCI_FOV } from './RCI3dData.ts';
 import { animarCamaraHacia, aspectDe, proyeccionEsquinas } from '../shared/controls3d';
 
 // FORK DELIBERADO de aparatos3d/vistasCamara (mismo esqueleto, otro pipeline/encuadre): no

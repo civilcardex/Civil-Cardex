@@ -34,7 +34,7 @@ import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './channelAssociation';
 import { recortarEnPrimerCruce } from './intersectionTrim.ts';
 import { mergeExtensionPorExtremoConFallback } from './finishRamalMergeExtreme.ts';
-import { chequeoMurosTrazo } from './rciAutoDraw.ts';
+import { chequeoMurosTrazo } from './RCIAutoDraw.ts';
 
 /** Cierra la tubería que venías dibujando: revisa que sea válida, la crea, parte las uniones en T
  *  que toque y la engancha a los bajantes cercanos. */

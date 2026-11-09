@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import type { Rci3DApi, Rci3DApiRef } from './useRci3DScene.ts';
-import { parseGLB } from './rciGlbParser.ts';
-import { CHEQUE_GROUPS, GLB_POSITIONS, MODELO_KEYS, glbUrl } from './rci3dData.ts';
+import type { Rci3DApi, Rci3DApiRef } from './useRCI3DScene.ts';
+import { parseGLB } from './RCIGlbParser.ts';
+import { CHEQUE_GROUPS, GLB_POSITIONS, MODELO_KEYS, glbUrl } from './RCI3dData.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { cargarModelosSecuencial, disposeGrupo, sleep } from '../shared/sequentialLoad.ts';
 import { cargarGlbBuffer } from '../shared/glbCache';
