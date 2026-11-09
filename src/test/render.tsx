@@ -17,7 +17,6 @@ declare global {
 
 export interface RenderResult {
   container: HTMLElement;
-  rerender: (ui: React.ReactNode) => Promise<void>;
   unmount: () => Promise<void>;
   /** Espera a que se vacíen los efectos y las microtareas pendientes. */
   flush: () => Promise<void>;
@@ -31,11 +30,6 @@ export async function renderEnJsdom(ui: React.ReactNode): Promise<RenderResult> 
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root: Root = createRoot(container);
-  const rerender = async (next: React.ReactNode) => {
-    await act(async () => {
-      root.render(next);
-    });
-  };
   const flush = async () => {
     await act(async () => {
       await Promise.resolve();
@@ -50,7 +44,7 @@ export async function renderEnJsdom(ui: React.ReactNode): Promise<RenderResult> 
   await act(async () => {
     root.render(ui);
   });
-  return { container, rerender, unmount, flush };
+  return { container, unmount, flush };
 }
 
 /** Monta, ejecuta y desmonta: para tests que solo quieren ver el resultado. */
@@ -64,18 +58,5 @@ export async function renderYVer(ui: React.ReactNode): Promise<HTMLElement> {
  * React 17+ mapea `onBlur` al evento `focusout` (no a `blur`) y `onChange` a `input`:
  * disparar los eventos del DOM a mano sin esos nombres NO llega al handler.
  */
-
-/** Escribe un valor en un input controlado y avisa a React (onChange). */
-export function escribirEnInput(el: HTMLInputElement | HTMLTextAreaElement, valor: string): void {
-  const setter = Object.getOwnPropertyDescriptor(
-    el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
-    'value',
-  )?.set;
-  setter?.call(el, valor);
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-/** Dispara el blur de React (focusout) sobre un input. */
-export function blurEnInput(el: HTMLInputElement | HTMLTextAreaElement): void {
-  el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
-}
+// ponytail: escribirEnInput/blurEnInput borradas (auditoría ponytail) — 0 tests reales las
+// usaban (solo el self-test). Si un test de formulario las necesita, resucitar del historial.

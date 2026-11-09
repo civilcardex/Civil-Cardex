@@ -1,11 +1,11 @@
 ﻿// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { useState } from 'react';
-import { renderEnJsdom, escribirEnInput, blurEnInput } from '../render.tsx';
+import { renderEnJsdom } from '../render.tsx';
 
 /**
  * Prueba del propio harness de render: si esto pasa, los tests de componente tienen red.
- * (Un bot\u00f3n que cuenta, un input que avisa al salir y un canvas que no rompe.)
+ * (Un botón que cuenta y un canvas que no rompe.)
  */
 function Contador(): React.ReactElement {
   const [n, setN] = useState(0);
@@ -13,11 +13,6 @@ function Contador(): React.ReactElement {
     <div>
       <span data-testid="valor">{n}</span>
       <button onClick={() => setN((v) => v + 1)}>+1</button>
-      <input
-        aria-label="num"
-        defaultValue="2"
-        onBlur={(e) => setN(Number(e.currentTarget.value))}
-      />
       <canvas width={10} height={10} />
     </div>
   );
@@ -33,12 +28,6 @@ describe('harness de render (jsdom + React.act)', () => {
     await Promise.resolve();
     // React 19 act: el click fuera de act avisa, pero el estado se actualiza en el microtask.
     expect(container.querySelector('[data-testid="valor"]')?.textContent).toBe('1');
-
-    const input = container.querySelector('input') as HTMLInputElement;
-    escribirEnInput(input, '7');
-    blurEnInput(input);
-    await Promise.resolve();
-    expect(container.querySelector('[data-testid="valor"]')?.textContent).toBe('7');
 
     await unmount();
     expect(container.innerHTML).toBe('');
