@@ -119,16 +119,12 @@ export function calcularTotalCentavos(
 }
 
 /** Centavos de USD a texto: "US$25.00". Lleva el prefijo US$ a propósito — en países con peso (CO, MX, AR…) cobrar con "$" suelto se lee como la moneda local. */
+// ponytail: sin try/catch — el constructor Intl con locale/options válidos nunca lanza.
 export function formatUSD(centavos: number): string {
-  try {
-    return `US$${new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(centavos / 100)}`;
-  } catch (e) {
-    devError('formatUSD:', e);
-    return `US$${(centavos / 100).toFixed(2)}`;
-  }
+  return `US$${new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(centavos / 100)}`;
 }
 
 import { supabase } from '../supabase';

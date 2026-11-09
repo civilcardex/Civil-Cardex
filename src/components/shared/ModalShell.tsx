@@ -61,18 +61,10 @@ export function ModalShell(props: {
   children: React.ReactNode;
 }): React.ReactElement {
   const { minWidth = 360, ariaLabel, children } = props;
+  // Comparte la CAPA con ModalOverlay (sin onClose: el backdrop NO cierra — el checkout
+  // ni la confirmación se descartan por un clic fuera).
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)',
-      }}
-    >
+    <ModalOverlay>
       <div
         role={ariaLabel ? 'dialog' : undefined}
         aria-modal={ariaLabel ? true : undefined}
@@ -89,6 +81,6 @@ export function ModalShell(props: {
       >
         {children}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
