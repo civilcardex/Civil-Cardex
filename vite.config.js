@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig(({ isSsrBuild }) => ({
   server: {
@@ -23,10 +22,7 @@ export default defineConfig(({ isSsrBuild }) => ({
         );
       },
     },
-    process.env.VITE_ANALYZE
-      ? visualizer({ filename: 'dist/stats.html', open: false, gzipSize: true })
-      : null,
-  ].filter(Boolean),
+  ],
   build: {
     chunkSizeWarningLimit: 900,
     // El bundle SSR (src/seo/prerenderEntry.tsx) solo se EJECUTA en Node para producir el HTML
