@@ -6,6 +6,11 @@ import { useState, useEffect } from 'react';
 import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
+import { sembrarRociadores, crearRamalesParalelos } from '../../../lib/PlanoEngine/rciAutoDraw.ts';
+import { loadRciDatos } from '../../../services/projectDataService.ts';
+import { loadFromStorage, getActiveProyectoId } from '../../../services/storageService.ts';
+import { RCI_ESTADO_VIVO_KEY } from '../../../constants/storage-keys.ts';
+import type { NumIn } from '../../../lib/rci/types.ts';
 import {
   flipRamalFlow,
   ramalFlowDirectionCheck,
@@ -36,6 +41,7 @@ import { ramalHasInterconnections } from './ramalMenuHelpers.ts';
 import { convertirARamal, convertirATributario, tribCandidatesDe } from './ramalMenuConvert.ts';
 import { BajanteConnectionPanel } from './bajanteConnectionPanel.tsx';
 import { ElementCodeEditor } from './elementEditor.tsx';
+import { RciAutoDrawModal } from './RciAutoDrawModal.tsx';
 
 /** Cuerpo del menú: arma las secciones del ramal (accesorio en medio, dirección, conversiones
  *  a tributario, asociaciones y canales) sobre el estado vivo del menú contextual. */
@@ -47,6 +53,89 @@ export function RamalMenu() {
   useEffect(() => {
     setTribConvOpen(false);
   }, [contextMenuState]);
+
+  /* Dibujo automático rci (ped. usuario): S/L NO se preguntan — salen SIEMPRE de la tabla
+   * «Datos del rociador» (espejo local del estado vivo + BD). El modal solo pide n.º de
+   * ramales y lado para los paralelos. */
+  const [autoDraw, setAutoDraw] = useState(false);
+  const [rciSL, setRciSL] = useState<{ s: string; l: string }>({ s: '', l: '' });
+  useEffect(() => {
+    setAutoDraw(false);
+    /* S/L de la tabla al ABRIR el menú: el espejo LOCAL manda (fresco, post-debounce de RCI);
+     * la BD es FALLBACK solo si el espejo no trae nada — si la BD respondiera DESPUÉS pisaría
+     * el valor fresco con el rancio (la BD puede ir detrás del debounce de guardado). */
+    const vivo = loadFromStorage<{ roc?: { S?: NumIn; L?: NumIn } } | null>(
+      RCI_ESTADO_VIVO_KEY,
+      null,
+    );
+    if (vivo?.roc && (vivo.roc.S !== undefined || vivo.roc.L !== undefined)) {
+      setRciSL({ s: String(vivo.roc.S ?? ''), l: String(vivo.roc.L ?? '') });
+      return;
+    }
+    const pid = String(getActiveProyectoId() ?? '');
+    if (!pid) return;
+    void loadRciDatos(pid).then((st) => {
+      if (st?.roc) setRciSL({ s: String(st.roc.S ?? ''), l: String(st.roc.L ?? '') });
+    });
+  }, [contextMenuState]);
+  const numDe = (v: string): number => parseFloat(v.replace(',', '.'));
+  /** «Dibujar rociadores»: sin modal — siembra directo con el S de la tabla (éxito silencioso,
+   *  ped. usuario: sin cartel). */
+  const dibujarRociadores = (): void => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const s = numDe(rciSL.s);
+    if (!(s > 0)) {
+      eng.triggerAlert(
+        'Sin separación S',
+        'Defina S en RCI → Rociadores → Datos del rociador y vuelva a intentarlo.',
+      );
+      return;
+    }
+    sembrarRociadores(eng, ramalEl.id, s);
+    ctx.setContextMenuState(null);
+  };
+  /** «Dibujar ramales paralelos»: abre el modal (n.º + lado); L sale de la tabla al confirmar.
+   *  Éxito silencioso (ped. usuario: sin cartel). */
+  const confirmarParalelos = (v: { n: number; lado: 'izq' | 'der' }): void => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const l = numDe(rciSL.l);
+    if (!(l > 0)) {
+      eng.triggerAlert(
+        'Sin separación L',
+        'Defina L en RCI → Rociadores → Datos del rociador y vuelva a intentarlo.',
+      );
+      return;
+    }
+    crearRamalesParalelos(eng, ramalEl.id, l, v.n, v.lado);
+    setAutoDraw(false);
+    ctx.setContextMenuState(null);
+  };
+  /* Etiquetas de los dos lados según la GEOMETRÍA del primer segmento (ped. usuario: trazo
+   * horizontal → Arriba/Abajo; vertical → Izquierda/Derecha — la etiqueta dice la dirección
+   * real de pantalla del lado, sin importar el sentido en que se dibujó el trazo). */
+  const ladoEtiquetas = (() => {
+    const dx = (ramalEl.pts?.[1]?.[0] ?? 0) - (ramalEl.pts?.[0]?.[0] ?? 0);
+    const dy = (ramalEl.pts?.[1]?.[1] ?? 0) - (ramalEl.pts?.[0]?.[1] ?? 0);
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      // Trazo horizontal: la normal del lado 'izq' interno es (−dy,dx) → su componente y es dx
+      // (trazo →+x: izq = +y = Abajo en pantalla; trazo →−x: izq = −y = Arriba).
+      const izqY = dx;
+      return izqY > 0
+        ? { izq: 'Abajo', der: 'Arriba' }
+        : izqY < 0
+          ? { izq: 'Arriba', der: 'Abajo' }
+          : { izq: 'Izquierda', der: 'Derecha' };
+    }
+    // Trazo vertical: normal (−dy,dx) → componente x: dy>0 (hacia abajo) → izq = −x (izquierda).
+    const izqX = -dy;
+    return izqX > 0
+      ? { izq: 'Izquierda', der: 'Derecha' }
+      : izqX < 0
+        ? { izq: 'Derecha', der: 'Izquierda' }
+        : { izq: 'Arriba', der: 'Abajo' };
+  })();
 
   // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
@@ -258,6 +347,25 @@ export function RamalMenu() {
             </button>
           </div>
         )}
+      {/* Dibujo automático rci (ped. usuario, sección ARRIBA): S siembra rociadores colgantes
+          desde el inicio del trazo; n+«¿En qué sentido?» crea los paralelos DE ESTE ramal
+          (disponible en todos, no solo el primero). S/L NO se preguntan: salen de la tabla
+          Datos del rociador. */}
+      {ramalEl.net === 'rci' && ramalEl.tipo !== 'tributario' && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Dibujo automático</div>
+          <button type="button" onClick={dibujarRociadores} style={MENU_ACTION_BTN_STYLE}>
+            Dibujar rociadores (S = {rciSL.s || '—'} m)
+          </button>
+          <button
+            type="button"
+            onClick={() => setAutoDraw(true)}
+            style={{ ...MENU_ACTION_BTN_STYLE, marginTop: 4 }}
+          >
+            Dibujar ramales paralelos (L = {rciSL.l || '—'} m)
+          </button>
+        </div>
+      )}
       {contextMenuState.ramalEndpoint && ramalEl.net === 'af' && !isOccupiedTee && (
         <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
           <button
@@ -701,6 +809,14 @@ export function RamalMenu() {
       )}
       {/* Gabinetes GABn (ped. usuario): la sección de asociados de la red rci. */}
       {ctx.activeNet === 'rci' && <GabinetesAsociadosSection ctx={ctx} ramal={ramalEl} />}
+      {autoDraw && (
+        <RciAutoDrawModal
+          lTxt={rciSL.l}
+          etiquetas={ladoEtiquetas}
+          onConfirm={confirmarParalelos}
+          onClose={() => setAutoDraw(false)}
+        />
+      )}
     </>
   );
 }

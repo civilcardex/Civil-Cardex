@@ -31,7 +31,14 @@ import {
 import { BajanteMenu } from './bajanteMenu';
 import { BombaAsociarBajantesSection } from './pumpMenu';
 import { GabineteMenu } from './cabinetMenu';
-import { AreaMenu, ContadorMenu, CalentadorMenu, CanalMenu } from './otherMenus.tsx';
+import {
+  AreaMenu,
+  ContadorMenu,
+  CalentadorMenu,
+  CanalMenu,
+  RectFuegoMenu,
+  MuroMenu,
+} from './otherMenus.tsx';
 import { GuideLineMenu } from './guideLineMenu.tsx';
 import { RamalMenu } from './ramalMenu';
 
@@ -485,8 +492,14 @@ function DrawingElementContextMenuInner() {
           <GabineteMenu />
         ) : isBajanteTipo && !hasPts ? (
           <BajanteMenu />
+        ) : isArea && (element as { net?: string }).net === 'rci' ? (
+          /* Área de la red rci (ped. usuario): SOLO la sección rectángulo de fuego. */
+          <RectFuegoMenu />
         ) : isArea ? (
           <AreaMenu />
+        ) : isGuide && (element as { esMuro?: boolean }).esMuro ? (
+          /* MURO (guía esMuro): menú reducido — solo «Quitar muro» (ped. usuario). */
+          <MuroMenu />
         ) : isGuide ? (
           <GuideLineMenu />
         ) : hasPts ? (

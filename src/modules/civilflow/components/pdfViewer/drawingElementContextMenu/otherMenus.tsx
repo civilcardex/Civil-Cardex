@@ -22,6 +22,125 @@ import {
 import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal.ts';
 import { EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 
+/** Menú del MURO (guía esMuro, herramienta Muro de rci): reducido a UNA acción — «Quitar
+ *  muro» la vuelve guía normal (sin la marca; el elemento no se pierde). Sin las opciones de
+ *  guía (crear ramal/tributario/ángulo): un muro no es una tubería. */
+export function MuroMenu() {
+  const ctx = useDrawingElementContextMenu();
+  const guiaEl = ctx.element as { id: string; esMuro?: boolean };
+  const eng = ctx.engineRef.current;
+  const quitar = (): void => {
+    if (!eng) return;
+    const vivo = (
+      eng as unknown as { guideLines?: Array<Record<string, unknown>> }
+    ).guideLines?.find((g) => g.id === guiaEl.id);
+    if (vivo) vivo.esMuro = false;
+    eng.render();
+    eng._markDirty();
+    ctx.setSelElement?.(null);
+    ctx.setContextMenuState(null);
+  };
+  return (
+    <div style={{ padding: '6px 10px 10px' }}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Muro</div>
+      <button
+        type="button"
+        onClick={quitar}
+        style={{
+          border: '1.5px solid var(--rci, #f87171)',
+          background: 'transparent',
+          color: 'var(--rci, #f87171)',
+          borderRadius: 6,
+          padding: '5px 10px',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          width: '100%',
+        }}
+      >
+        Quitar muro
+      </button>
+    </div>
+  );
+}
+
+/** Menú del RECTÁNGULO DE FUEGO (área de la red rci, ped. usuario): UNA sola sección —
+ *  toggle «Definir como rectángulo de fuego» / «Quitar definición» + el área calculada.
+ *  Escribe PlanoArea.esRectFuego con updateElementById y refresca el menú. */
+export function RectFuegoMenu() {
+  const ctx = useDrawingElementContextMenu();
+  const areaEl = ctx.element as PlanoBajante & {
+    esRectFuego?: boolean;
+    areaM2?: number;
+    net?: string;
+  };
+  const eng = ctx.engineRef.current;
+  const marca = areaEl.esRectFuego === true;
+  const toggle = (): void => {
+    if (!eng) return;
+    eng.updateElementById(areaEl.id, { esRectFuego: !marca });
+    eng.render();
+    eng._markDirty();
+    /* Refresco del probe con el elemento VIVO del engine (no el spread del viejo): así el
+     * panel derecho (y el propio botón) reflejan la marca EN TIEMPO REAL, se defina desde el
+     * menú o desde el panel (ped. usuario). */
+    const vivo = (eng as unknown as { areas?: Array<Record<string, unknown>> }).areas?.find(
+      (a) => a.id === areaEl.id,
+    );
+    ctx.setSelElement?.({ ...(vivo ?? areaEl) } as never);
+    ctx.setContextMenuState(null);
+  };
+  return (
+    <div style={{ padding: '4px 8px 8px' }}>
+      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Rectángulo de fuego</div>
+      <div
+        style={{
+          fontSize: 11,
+          color: 'var(--txt2)',
+          fontFamily: 'var(--mono)',
+          margin: '2px 0 6px',
+        }}
+      >
+        Área: {(areaEl.areaM2 ?? 0).toFixed(2)} m² {marca ? '· definido' : ''}
+      </div>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          border: marca ? 'none' : '1.5px solid var(--rci, #f87171)',
+          background: marca ? 'var(--rci, #f87171)' : 'transparent',
+          color: marca ? '#fff' : 'var(--rci, #f87171)',
+          borderRadius: 6,
+          padding: '5px 10px',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          boxShadow: marca ? '0 2px 8px rgba(248,113,113,.35)' : 'none',
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+          <rect
+            x="2"
+            y="2"
+            width="12"
+            height="12"
+            fill={marca ? 'rgba(255,255,255,.18)' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeDasharray={marca ? undefined : '3 2'}
+          />
+        </svg>
+        {marca ? 'Quitar definición' : 'Definir como rectángulo de fuego'}
+      </button>
+    </div>
+  );
+}
+
 /** Menú contextual de un área del plano: reutiliza el editor de código/etiqueta genérico
  *  (ElementCodeEditor) para el elemento seleccionado. */
 export function AreaMenu() {

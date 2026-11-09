@@ -10,9 +10,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedEffect } from '../../../../hooks/useDebouncedEffect.ts';
 import { usePlans } from '../../context/PlansContext.tsx';
 import { useProject } from '../../context/ProjectContext.tsx';
-import { loadFromStorage, getActiveProyectoId } from '../../services/storageService.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  getActiveProyectoId,
+} from '../../services/storageService.ts';
 import { loadRciDatos, saveRciDatos } from '../../services/projectDataService.ts';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import {
+  TRAZOS_PREFIX,
+  RCI_ESTADO_VIVO_KEY,
+  VISOR_ACTIVE_PLAN_ID_KEY,
+} from '../../constants/storage-keys.ts';
+import { EV_TRAZOS_SAVED, EV_PLAN_LOADED, emitRciVivoSaved } from '../../utils/fixtureEvents.ts';
 import { pisoLbl } from '../../constants/index.ts';
 import { extraerGris, mezclarOverrides } from '../../utils/rci/extract.ts';
 import { TECHO_DEF } from '../../utils/rci/ExtractNetwork.ts';
@@ -20,7 +29,11 @@ import type { PisoRciFuente } from '../../utils/rci/extract.ts';
 import { sembrarRci } from '../../utils/rci/RCIRowsModel.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { clasificar, compute, num } from '../../lib/rci/index.ts';
+import type { DibujoPiso } from '../../lib/rci/checks.ts';
 import type { RciState, TipCalc } from '../../lib/rci/types.ts';
+import { escalaDeDoc } from '../../utils/planScale.ts';
+import { factorMPorPx } from '../../lib/PlanoEngine/planoCoords.ts';
+import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
 import type { DrawingData } from '../../utils/drawingSyncTypes.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import {
@@ -76,6 +89,15 @@ function RciDesign() {
   const [guiaOpen, setGuiaOpen] = useState(false);
   const estadoRef = useRef<RciState | null>(null);
   const cargadoRef = useRef(false);
+  /* Tick que refresca TODO lo leído del doc de trazos cuando el autosave del visor escribe
+   * (muros/ramales/rociadores nuevos): sin él «Ramales del piso» y las verificaciones leían el
+   * doc rancio de al montar (orig. usuario). Se consume en fuentes/dibujo/rectFuego. */
+  const [trazosTick, setTrazosTick] = useState(0);
+  useEffect(() => {
+    const h = (): void => setTrazosTick((t) => t + 1);
+    window.addEventListener(EV_TRAZOS_SAVED, h);
+    return () => window.removeEventListener(EV_TRAZOS_SAVED, h);
+  }, []);
 
   /** Fuentes por plano confirmado: label y NPT del piso del proyecto + doc de trazos RCI. */
   const fuentes = useMemo<PisoRciFuente[]>(() => {
@@ -94,7 +116,11 @@ function RciDesign() {
       });
     }
     return out;
-  }, [plans, pisos]);
+    // ponytail: trazosTick es la dependencia viva (EV_TRAZOS_SAVED del autosave del visor) —
+    // sin él, los ramales/muros/rociadores dibujados DESPUÉS de montar RCI no llegaban a
+    // «Ramales del piso» ni a las verificaciones (doc rancio, orig. usuario).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, pisos, trazosTick]);
 
   /** Techo (m) con el que se extrae el gris: el de la tipología del piso activo — la misma vía
    *  que RciHidraulica (tip.roc.HtFt/3.28084, que para la tipología ACTIVA es el htecho de
@@ -122,7 +148,7 @@ function RciDesign() {
       setHuerfanos(
         mezcla.huerfanos.map(
           (h) =>
-            `${TIPO_HUERFANO[h.tipo] || 'El dato'} "${h.nombre}" ya no está en el dibujo; sus datos quedan guardados y se rescata al redibujarlo.`,
+            `${TIPO_HUERFANO[h.tipo] || 'El dato'} "${h.nombre}" ya no está en el dibujo; sus datos digitados NO se conservan automáticamente. Redibuje el elemento y vuelva a digitarlos.`,
         ),
       );
       setPlanActivo((cur) => {
@@ -136,12 +162,17 @@ function RciDesign() {
     };
   }, [gris, proy.nombre]);
 
-  /* Persistencia debounced: cada edición recalcula y guarda 600 ms después de la última tecla. */
+  /* Persistencia debounced: cada edición recalcula y guarda 600 ms después de la última tecla.
+     Espejo LOCAL junto al guardado: el visor (dibujo automático S/L) lee el valor FRESCO de la
+     tabla Datos del rociador sin esperar la BD. */
   useDebouncedEffect(
     () => {
       const proyectoId = getActiveProyectoId();
       const est = estadoRef.current;
       if (!proyectoId || !est || !cargadoRef.current) return;
+      saveToStorage(RCI_ESTADO_VIVO_KEY, est);
+      /* El espejo local cambió → el visor re-inyecta Dmuro al motor (motor no lee storage). */
+      emitRciVivoSaved();
       void saveRciDatos(proyectoId, est);
     },
     600,
@@ -157,7 +188,106 @@ function RciDesign() {
   }, []);
 
   const tips = useMemo(() => (estado ? clasificar(estado) : null), [estado]);
-  const R = useMemo(() => (estado && tips ? compute(estado, tips) : null), [estado, tips]);
+  const planIdActivo = planActivo;
+  /* El piso ACTIVO DEL VISOR manda (orig. usuario: el chequeo de muros es del piso donde
+   * dibujas) — antes arrancaba con la 1.ª red extraída y el chequeo evaluaba OTRO piso.
+   * Se sincroniza al montar y cada vez que el visor carga un piso. */
+  useEffect(() => {
+    const sync = (): void => {
+      const id = localStorage.getItem(VISOR_ACTIVE_PLAN_ID_KEY);
+      if (id) setPlanActivo(id);
+    };
+    sync();
+    window.addEventListener(EV_PLAN_LOADED, sync);
+    return () => window.removeEventListener(EV_PLAN_LOADED, sync);
+  }, []);
+  /** Geometría del piso activo para las verificaciones de dibujo (muros vs ramales, ped.
+   *  usuario): guías marcadas esMuro + ramales rci del doc de trazos, convertidos px→m con la
+   *  escala del doc. Sin piso activo no hay verificación de muros. */
+  const dibujo = useMemo<DibujoPiso | null>(() => {
+    if (!planIdActivo) return null;
+    const doc = loadFromStorage<DrawingData | null>(
+      TRAZOS_PREFIX + planIdActivo,
+      null,
+    ) as unknown as {
+      ramales?: Array<{ net?: string; tipo?: string; pts?: number[][] }>;
+      guideLines?: Array<{ esMuro?: boolean; pts?: number[][] }>;
+    } | null;
+    if (!doc) return null;
+    const mPorPx = factorMPorPx(escalaDeDoc(planIdActivo) ?? 0.5);
+    const conv = (pts: number[][]): number[][] => pts.map(([x, y]) => [x * mPorPx, y * mPorPx]);
+    return {
+      muros: (doc.guideLines || []).filter((g) => g.esMuro).map((g) => conv(g.pts || [])),
+      ramPts: (doc.ramales || [])
+        .filter((r) => r.net === 'rci' && r.tipo === 'ramal')
+        .map((r) => conv(r.pts || [])),
+    };
+    // ponytail: trazosTick es la dependencia viva — el doc se re-lee de localStorage por tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planIdActivo, trazosTick]);
+  /** Rectángulo de fuego DEFINIDO (área esRectFuego del piso activo) para la sub Rociadores →
+   *  Rectángulo de fuego: polígono/rociadores en m + conteo real de ramales y rociadores
+   *  dentro (ray casting). Presente solo si el usuario lo marcó en el dibujo. */
+  const rectFuego = useMemo<NonNullable<RciCtx['rectFuego']> | null>(() => {
+    if (!planIdActivo) return null;
+    const doc = loadFromStorage<DrawingData | null>(
+      TRAZOS_PREFIX + planIdActivo,
+      null,
+    ) as unknown as {
+      ramales?: Array<{
+        id?: string;
+        net?: string;
+        tipo?: string;
+        pts?: number[][];
+        accMed?: Record<string, string>;
+        accesorioInicio?: string;
+      }>;
+      areas?: Array<{ esRectFuego?: boolean; net?: string; pts?: number[][]; areaM2?: number }>;
+    } | null;
+    if (!doc) return null;
+    const area = (doc.areas || []).find((a) => a.esRectFuego);
+    if (!area || !area.pts || area.pts.length < 3) return null;
+    const mPorPx = factorMPorPx(escalaDeDoc(planIdActivo) ?? 0.5);
+    const conv = (pts: number[][]): number[][] => pts.map(([x, y]) => [x * mPorPx, y * mPorPx]);
+    const ptsM = conv(area.pts);
+    const rocPts: number[][] = [];
+    const ramalesDentro: string[] = [];
+    const ramPtsM: number[][][] = [];
+    for (const r of doc.ramales || []) {
+      if (r.net !== 'rci' || r.tipo === 'tributario' || !r.pts) continue;
+      ramPtsM.push(conv(r.pts));
+      /* TODOS los rociadores del ramal entran a rocPts (no pre-filtrados): quien clasifica
+       * dentro/fuera es el CONSUMIDOR con puntoEnPoligono — así el canvas puede pintar grises
+       * y el banner mostrar «N de M dentro». ramalesDentro sí filtra (su semántica es esa). */
+      let rociadoresDentro = 0;
+      const posDe = (pt: number[] | undefined): number[] | null => (pt ? conv([pt])[0] : null);
+      const inicioM =
+        r.accesorioInicio && /rociador/i.test(r.accesorioInicio) ? posDe(r.pts[0]) : null;
+      if (inicioM) {
+        rocPts.push(inicioM);
+        if (puntoEnPoligono(inicioM, ptsM)) rociadoresDentro++;
+      }
+      const acc = r.accMed || {};
+      for (const [k, v] of Object.entries(acc)) {
+        if (!/rociador/i.test(v)) continue;
+        const m = k.match(/^accMed(\d+)$/);
+        const idx = m ? +m[1] : -1;
+        const ptM = posDe(r.pts[idx]);
+        if (ptM) {
+          rocPts.push(ptM);
+          if (puntoEnPoligono(ptM, ptsM)) rociadoresDentro++;
+        }
+      }
+      if (rociadoresDentro > 0 && r.id) ramalesDentro.push(r.id);
+    }
+    return { ptsM, areaM2: area.areaM2 ?? 0, rocPts, ramalesDentro, ramPtsM };
+    // ponytail: trazosTick vive — relectura de localStorage por tick (doc fresco).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planIdActivo, trazosTick]);
+  const R = useMemo(
+    () => (estado && tips ? compute(estado, tips, dibujo ?? undefined) : null),
+    [estado, tips, dibujo],
+  );
 
   /** Índice de fila por planId (los ids de plano son estables aunque se renombre el piso). */
   const idxPorPlanId = useMemo(() => {
@@ -170,7 +300,6 @@ function RciDesign() {
     return m;
   }, [estado]);
 
-  const planIdActivo = planActivo;
   const idxActivo = planIdActivo ? idxPorPlanId.get(planIdActivo) : undefined;
   const tipIdActivo = tips && idxActivo !== undefined ? (tips.tipOf[idxActivo] ?? null) : null;
   const tipActivo: TipCalc | null = R && tipIdActivo ? (R.edif.typ[tipIdActivo] ?? null) : null;
@@ -229,7 +358,7 @@ function RciDesign() {
 
   /* RciCtx exige `edit`: queda fijo en false — la edición por tabla (useEditarTabla propio)
      reemplazó al botón EDITAR global de la barra; nadie ya lee el flag global. */
-  const ctx: RciCtx = { estado, R, tips, edit: false, editar };
+  const ctx: RciCtx = { estado, R, tips, edit: false, editar, rectFuego: rectFuego ?? undefined };
   const avisosGris = gris.avisos.map((a) => `${a.piso}: ${a.msg}`);
   const noCumplen = R.count['NO CUMPLE'] || 0;
 

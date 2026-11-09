@@ -3,6 +3,7 @@
  *  colores resueltos (temaResuelto()).
  *  Ej: dibujaRectangulo(ctx, cv.clientWidth, 360, R.roc, temaResuelto()). */
 import type { BombaResult, Criterios } from '../../lib/rci/types';
+import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
 import { COL_RCI, fmtNum, niceStep, type TemaRci } from './RCISvgTheme.tsx';
 /* ---------------- Canvas: rectángulo de fuego y curva de la bomba ---------------- */
 
@@ -201,4 +202,109 @@ export function dibujaCurvaBomba(
       (h - pad.b + pad.t) / 2,
     );
   }
+}
+
+/** Geometría del rectángulo de fuego DEFINIDO en el dibujo (lo arma RCIDesign del doc de
+ *  trazos del piso activo): polígono del área marcada, polilíneas de ramales y posiciones de
+ *  rociadores — todo en METROS. Ej: { ptsM, ramPtsM, rocPts }. */
+export interface RectFuegoDibujo {
+  ptsM: number[][];
+  ramPtsM: number[][][];
+  rocPts: number[][];
+}
+
+/** Rectángulo de fuego desde el DIBUJO REAL (ped. usuario): ramales en gris, el polígono del
+ *  área definida en rojo sólido, los rociadores del dibujo verdes (dentro del área) o grises
+ *  (fuera) y la envolvente de los que quedan dentro. Escala: fit al bbox de todo.
+ *  Ej: dibujaRectFuegoDibujo(g, w, h, { ptsM, ramPtsM, rocPts }, temaResuelto()). */
+export function dibujaRectFuegoDibujo(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  rect: RectFuegoDibujo,
+  tema: TemaRci = COL_RCI,
+): void {
+  const g = ctx;
+  g.clearRect(0, 0, w, h);
+  g.font = `12px ${tema.font}`;
+  const todos = [...rect.ptsM, ...rect.rocPts, ...rect.ramPtsM.flat()];
+  if (!todos.length) return;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+  for (const [x, y] of todos) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const margen = Math.max((maxX - minX) * 0.08, (maxY - minY) * 0.08, 0.5);
+  minX -= margen;
+  minY -= margen;
+  maxX += margen;
+  maxY += margen;
+  const pad = { l: 20, r: 16, t: 30, b: 20 };
+  const sc = Math.min((w - pad.l - pad.r) / (maxX - minX), (h - pad.t - pad.b) / (maxY - minY));
+  const ox = pad.l + (w - pad.l - pad.r - sc * (maxX - minX)) / 2;
+  const oy = h - pad.b - (h - pad.t - pad.b - sc * (maxY - minY)) / 2;
+  const X = (x: number) => ox + (x - minX) * sc;
+  const Y = (y: number) => oy - (y - minY) * sc;
+
+  /* Ramales del dibujo (gris fino). */
+  g.strokeStyle = tema.lineStrong;
+  g.lineWidth = 1.2;
+  for (const pts of rect.ramPtsM) {
+    if (pts.length < 2) continue;
+    g.beginPath();
+    g.moveTo(X(pts[0][0]), Y(pts[0][1]));
+    for (let i = 1; i < pts.length; i++) g.lineTo(X(pts[i][0]), Y(pts[i][1]));
+    g.stroke();
+  }
+
+  /* Polígono del rectángulo DEFINIDO: rojo sólido (el estado de la marca en el dibujo). */
+  g.strokeStyle = tema.fire;
+  g.lineWidth = 2.5;
+  g.beginPath();
+  g.moveTo(X(rect.ptsM[0][0]), Y(rect.ptsM[0][1]));
+  for (let i = 1; i < rect.ptsM.length; i++) g.lineTo(X(rect.ptsM[i][0]), Y(rect.ptsM[i][1]));
+  g.closePath();
+  g.stroke();
+
+  /* Envolvente de los rociadores DENTRO del área (gris claro). */
+  const dentro = rect.rocPts.filter((p) => puntoEnPoligono(p, rect.ptsM));
+  if (dentro.length > 1) {
+    let bMinX = Infinity,
+      bMinY = Infinity,
+      bMaxX = -Infinity,
+      bMaxY = -Infinity;
+    for (const [x, y] of dentro) {
+      if (x < bMinX) bMinX = x;
+      if (x > bMaxX) bMaxX = x;
+      if (y < bMinY) bMinY = y;
+      if (y > bMaxY) bMaxY = y;
+    }
+    g.strokeStyle = tema.line;
+    g.lineWidth = 1.5;
+    g.strokeRect(X(bMinX), Y(bMaxY), (bMaxX - bMinX) * sc, (bMaxY - bMinY) * sc);
+  }
+
+  /* Roociadores del dibujo: verde = dentro del rectángulo, gris = fuera. */
+  for (const p of rect.rocPts) {
+    const adentro = puntoEnPoligono(p, rect.ptsM);
+    g.beginPath();
+    g.arc(X(p[0]), Y(p[1]), 5, 0, Math.PI * 2);
+    g.fillStyle = adentro ? tema.ok : tema.muted;
+    g.fill();
+    g.strokeStyle = tema.surf;
+    g.lineWidth = 1.5;
+    g.stroke();
+  }
+
+  g.fillStyle = tema.muted;
+  g.fillText(
+    `${rect.rocPts.length} rociadores del dibujo · ${dentro.length} dentro del área definida`,
+    pad.l,
+    18,
+  );
 }

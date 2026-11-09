@@ -492,6 +492,8 @@ export function grupoDeCheck(v: Verificacion): string {
      aunque sus «Ir al dato» apunten a Hidráulica/Tipologías. */
   if (v.lab === 'Rociadores compatibles con el sistema' || v.lab.startsWith('Sistema seco:'))
     return 'rociadores';
+  /* Distancia de ramales a muros (ped. usuario): grupo Rociadores (depende de Dmuro). */
+  if (v.lab === 'Distancia de ramales a muros ≤ Dmuro') return 'rociadores';
   if (go0 === 'pisos' || go1.startsWith('piso:')) return 'tipologias';
   if (go1.startsWith('local.') || go0 === 'sismo') return 'normativa';
   if (go1.startsWith('clas.') || go1.startsWith('roc.')) return 'tipologias';

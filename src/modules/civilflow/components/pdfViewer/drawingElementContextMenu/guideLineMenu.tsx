@@ -375,6 +375,27 @@ export function GuideLineMenu() {
           + Crear tributario a partir de línea guía
         </button>
       )}
+      {/* MURO (red rci, ped. usuario): la guía marcada esMuro participa en la verificación de
+          distancia de ramales a muros (checks RCI). Toggle sobre el elemento vivo. */}
+      {effectiveNet === 'rci' && (
+        <button
+          type="button"
+          onClick={() => {
+            const eng = ctx.engineRef.current;
+            if (!eng) return;
+            const vivo = eng.guideLines.find((g) => g.id === guide.id);
+            if (!vivo) return;
+            vivo.esMuro = !vivo.esMuro;
+            eng.render();
+            eng._markDirty();
+            ctx.setSelElement?.({ ...ctx.selElement } as never);
+            ctx.setContextMenuState(null);
+          }}
+          style={MENU_ACTION_BTN_STYLE}
+        >
+          {guide.esMuro ? 'Quitar muro' : 'Definir como muro'}
+        </button>
+      )}
     </div>
   );
 }

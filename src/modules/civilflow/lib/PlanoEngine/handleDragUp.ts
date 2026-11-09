@@ -21,10 +21,38 @@ import {
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 import { asociarRamalABajantes } from './drawingUtils.ts';
+import { chequeoMurosTrazo } from './rciAutoDraw.ts';
 import { canalMarco, esquinasCanalOBB } from './channelAssociation';
 
 // Las uniones de san/ll/vent (tee/codo/yee) se crean solas vía calcSanitaryAccessories +
 // renderJunctions — solo AF/AC/gas necesitan que el usuario elija el tipo de tee.
+/** Cola post-arrastre común a TODA red (después de las validaciones particulares): propaga la
+ *  posición del bajante de origen al piso vecino si el ramal es su Ldesvio, forma el split de
+ *  unión en T (revirtiendo el arrastre si la conexión queda bloqueada) y dispara el modal de
+ *  accesorios de tee si la red lo pide. Ej: postDragRamal(engine, ram, origPts, srcBaj). */
+function postDragRamal(
+  engine: IPlanoEngineCore,
+  ram: IPlanoEngineCore['ramales'][number],
+  origPts: [number, number][] | null,
+  srcBaj: IPlanoEngineCore['bajantes'][number] | null | undefined,
+): void {
+  if (srcBaj) {
+    const sourcePlanId = String(engine._loadedPlanId ?? '');
+    updateCrossFloorGhostPositionBySource(sourcePlanId, srcBaj.id, srcBaj.x, srcBaj.y);
+    return;
+  }
+  if (autoSplitJunctionAndSumFlow(engine, ram)) {
+    // Conexión bloqueada (a tributario): revertir el arrastre como el caso de flujo.
+    if (origPts) {
+      ram.pts = origPts;
+      engine._markDirty();
+      engine.render();
+    }
+    return;
+  }
+  checkAccesorioTrigger(engine, ram.id);
+}
+
 function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void {
   if (!engine.triggerAccesorioModal) return;
   const r = engine.ramales.find((x) => x.id === ramalId);
@@ -732,18 +760,21 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           engine._markDirty();
           engine.render();
         }
-      } else if (srcBaj) {
-        const sourcePlanId = String(engine._loadedPlanId ?? '');
-        updateCrossFloorGhostPositionBySource(sourcePlanId, srcBaj.id, srcBaj.x, srcBaj.y);
-      } else if (autoSplitJunctionAndSumFlow(engine, ram)) {
-        // Conexión bloqueada (a tributario): revertir el arrastre como el caso de flujo.
-        // (srcBaj ya fue manejado por la rama anterior — aquí siempre es null.)
-        if (origPts) {
-          ram.pts = origPts;
-          engine._markDirty();
-          engine.render();
-        }
-      } else checkAccesorioTrigger(engine, ram.id);
+      } else if (ram.net === 'rci' && ram.tipo === 'ramal') {
+        /* Distancia de ramales a muros EN VIVO también al MOVER un trazo ya dibujado (ped.
+           usuario): si el ramal movido deja un muro de su BANDA (a ≤ 2·Dmuro de él) a >
+           Dmuro del ramal más cercano, el movimiento se revierte con la alerta. El ramal ya
+           está movido en engine.ramales — chequeoMurosTrazo evalúa el estado post-movimiento. */
+        const errMuro = chequeoMurosTrazo(engine, ram.pts, engine.dmuroRci);
+        if (errMuro) {
+          engine.triggerAlert('Distancia a muro', errMuro);
+          if (origPts) {
+            ram.pts = origPts;
+            engine._markDirty();
+            engine.render();
+          }
+        } else postDragRamal(engine, ram, origPts, srcBaj);
+      } else postDragRamal(engine, ram, origPts, srcBaj);
     }
   }
 }

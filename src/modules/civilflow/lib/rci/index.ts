@@ -9,7 +9,7 @@ import { isSi, num, route } from './hydraulics';
 import { criterios } from './criteria';
 import { edificio, numMontantesDibujados } from './building';
 import { siamesaCalc, bombaPerfilCalc, tanqueCalc } from './pump';
-import { checks } from './checks';
+import { checks, type DibujoPiso } from './checks';
 import type { CalcCtx, RciResult, RciState, Tips } from './types';
 
 export { clasificar, edificio } from './building';
@@ -28,7 +28,7 @@ export {
   cOf,
 } from './hydraulics';
 export { interpPV, siamesaCalc, bombaPerfilCalc, tanqueCalc } from './pump';
-export { checks } from './checks';
+export { checks, type DibujoPiso } from './checks';
 export { ejemploVerificacion } from './example';
 export {
   type RciState,
@@ -66,8 +66,9 @@ export {
 } from './types';
 
 /** Motor de cálculo completo. tips = agrupación de pisos (clasificar(st)); si falta, edificio()
- *  usa la red de Entradas como única tipología implícita. Igual que RCI.compute del HTML. */
-export function compute(st: RciState, tips?: Tips): RciResult {
+ *  usa la red de Entradas como única tipología implícita. `dibujo` = geometría del piso activo
+ *  del visor (muros/ramales en m) para las verificaciones de dibujo. Igual que RCI.compute del HTML. */
+export function compute(st: RciState, tips?: Tips, dibujo?: DibujoPiso): RciResult {
   const R = {} as RciResult;
   const c = st.clas,
     ro = st.roc;
@@ -138,7 +139,7 @@ export function compute(st: RciState, tips?: Tips): RciResult {
   R.tanque = tanqueCalc(st, R, R.roc.hz);
 
   /* ---------- Verificaciones ---------- */
-  R.checks = checks(st, R);
+  R.checks = checks(st, R, dibujo);
   R.count = R.checks.reduce(
     (a, k) => ((a[k.st] = (a[k.st] || 0) + 1), a),
     {} as Record<string, number>,

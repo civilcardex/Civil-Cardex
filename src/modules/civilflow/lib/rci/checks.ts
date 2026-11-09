@@ -8,6 +8,7 @@ import { CDEF, PIPES } from './tables';
 import { fmtEs as f1 } from './fmtEs.ts';
 import { isSi, num } from './hydraulics';
 import { zonaSis } from './criteria';
+import { distSegSeg } from '../shared/geometry.ts';
 import type {
   Criterios,
   Demanda,
@@ -20,9 +21,10 @@ import type {
   Verificacion,
 } from './types';
 
-/** Evalúa las 44 verificaciones sobre el resultado R. No lanza: todo problema de datos se
- *  refleja en el estado o en la guía de la verificación correspondiente. */
-export function checks(st: RciState, R: RciResult): Verificacion[] {
+/** Evalúa las verificaciones sobre el resultado R. `dibujo` (opcional, del piso activo del
+ *  visor) habilita la verificación de distancia de ramales a muros. No lanza: todo problema de
+ *  datos se refleja en el estado o en la guía de la verificación correspondiente. */
+export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verificacion[] {
   const ro = R.roc,
     bo = R.bomba,
     c = st.clas,
@@ -874,5 +876,77 @@ export function checks(st: RciState, R: RciResult): Verificacion[] {
     'Registre el código local y, si exige rociadores o montantes, el artículo correspondiente.',
     ['entradas', 'local.codLocal'],
   );
+
+  /* Distancia de ramales a muros (ped. usuario): cada guía marcada como MURO del piso activo
+     debe quedar a ≤ Dmuro (distancia máx. a muro de la tabla Datos del rociador) del ramal rci
+     más cercano. La geometría llega del doc de trazos del piso activo ya convertida a METROS
+     (compute la pasa opcionalmente); sin dibujo no aplica. */
+  if (dibujo) {
+    const dm = num(st.roc.Dmuro) ?? 0;
+    if (!(dm > 0)) {
+      add(
+        'Distancia de ramales a muros ≤ Dmuro',
+        'PENDIENTE',
+        'Sin Dmuro definido',
+        'NFPA 13-2025 cap. 10 — defina la distancia máxima de rociador a muro en Datos del rociador',
+        'Defina la distancia al muro en RCI → Rociadores → Datos del rociador.',
+        ['rociadores', 'rectangulo'],
+      );
+    } else if (!dibujo.ramPts.length) {
+      add(
+        'Distancia de ramales a muros ≤ Dmuro',
+        'PENDIENTE',
+        `Sin ramales rci en el piso activo (${dibujo.muros.length} muro(s) marcados)`,
+        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano`,
+        'Dibuje los ramales de la red en el piso activo.',
+        ['rociadores', 'rectangulo'],
+      );
+    } else if (!dibujo.muros.length) {
+      add(
+        'Distancia de ramales a muros ≤ Dmuro',
+        'PENDIENTE',
+        'Sin muros marcados',
+        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano`,
+        'Marque muros con la herramienta Guía (menú → Definir como muro).',
+        ['rociadores', 'rectangulo'],
+      );
+    } else {
+      let peor = 0;
+      let peoresCount = 0;
+      for (const muro of dibujo.muros) {
+        let mejor = Infinity;
+        for (const pts of dibujo.ramPts) {
+          for (let i = 0; i < muro.length - 1; i++) {
+            for (let j = 0; j < pts.length - 1; j++) {
+              mejor = Math.min(mejor, distSegSeg(muro[i], muro[i + 1], pts[j], pts[j + 1]));
+            }
+          }
+        }
+        if (mejor > peor) peor = mejor;
+        if (mejor > dm + 1e-9) peoresCount++;
+      }
+      add(
+        'Distancia de ramales a muros ≤ Dmuro',
+        peoresCount ? 'NO CUMPLE' : 'CUMPLE',
+        `${peoresCount} de ${dibujo.muros.length} muro(s) fuera · peor ${f1(peor, 2)} m`,
+        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (Dmuro = ${f1(dm, 2)} m)`,
+        peoresCount
+          ? 'Acerque un ramal al muro señalado o mueva el muro: la distancia al ramal más cercano no puede superar el Dmuro de Datos del rociador.'
+          : '',
+        ['rociadores', 'rectangulo'],
+      );
+    }
+  }
   return L;
 }
+
+/** Geometría del piso activo del visor para las verificaciones que dependen del dibujo:
+ *  muros = polilíneas de guías marcadas esMuro; ramPts = polilíneas de ramales rci (tipo
+ *  ramal, sin tributarios). Coordenadas ya convertidas a METROS por el llamador. */
+export interface DibujoPiso {
+  muros: number[][][];
+  ramPts: number[][][];
+}
+
+// distSegSeg (distancia mínima entre dos segmentos, con test de cruce) vive en
+// lib/shared/geometry — única copia compartida con el chequeo EN VIVO del visor (rciAutoDraw).

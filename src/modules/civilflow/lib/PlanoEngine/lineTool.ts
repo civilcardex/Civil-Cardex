@@ -32,7 +32,8 @@ export type ToolType =
   | 'canal'
   | 'caja'
   | 'gab'
-  | 'guide';
+  | 'guide'
+  | 'muro';
 
 function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
@@ -45,8 +46,9 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   if (engine.activeArea && t !== 'area') finishArea(engine);
   if (t !== 'dim') engine._dimStart = null;
   // Ítem 2: salir de la herramienta commitea la guía multisegmento (≥2 vértices) en vez de
-  // descartarla; con 0-1 vértices commitOpenGuide la descarta.
-  if (t !== 'guide') commitOpenGuide(engine);
+  // descartarla; con 0-1 vértices commitOpenGuide la descarta. El MURO comparte el gesto de
+  // guía (misma mecánica, esMuro nativo) — salir de él también commitea.
+  if (t !== 'guide' && t !== 'muro') commitOpenGuide(engine);
   if (t !== 'canal') {
     engine._canalStart = null;
     engine._canalEje = null;

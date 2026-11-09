@@ -34,6 +34,7 @@ import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './channelAssociation';
 import { recortarEnPrimerCruce } from './intersectionTrim.ts';
 import { mergeExtensionPorExtremoConFallback } from './finishRamalMergeExtreme.ts';
+import { chequeoMurosTrazo } from './rciAutoDraw.ts';
 
 /** Cierra la tubería que venías dibujando: revisa que sea válida, la crea, parte las uniones en T
  *  que toque y la engancha a los bajantes cercanos. */
@@ -327,6 +328,20 @@ export function finishRamal(engine: IPlanoEngineCore): void {
           'T sin ramal entrante — revisa las direcciones de flujo de los aparatos.',
         );
       }
+    }
+  }
+
+  /* Distancia de ramales a muros EN VIVO (ped. usuario): los muros de la BANDA del trazo (a
+     ≤ 2·Dmuro de él) deben quedar a ≤ Dmuro del ramal rci más cercano (el nuevo incluido).
+     Si alguno queda descubierto → modal de alerta y el trazo NO se crea (aborto limpio;
+     el estado no cambió — sin _markDirty, que dispararía un autosave inútil). */
+  if (r.net === 'rci' && !isTrib) {
+    const errMuro = chequeoMurosTrazo(engine, r.pts, engine.dmuroRci);
+    if (errMuro) {
+      engine.triggerAlert('Distancia a muro', errMuro);
+      engine.activeRamal = null;
+      engine.render();
+      return;
     }
   }
 

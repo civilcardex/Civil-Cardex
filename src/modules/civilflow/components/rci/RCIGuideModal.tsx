@@ -145,6 +145,7 @@ export default function RciGuiaModal({
   return createPortal(
     <ModalOverlay zIndex={99999} onClose={onClose}>
       <div
+        className="guia-rci"
         role="dialog"
         aria-modal="true"
         aria-label="Guía de diseño contra incendio"

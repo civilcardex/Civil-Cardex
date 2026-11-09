@@ -14,8 +14,15 @@ export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     const selected = engine.selId === g.id || (engine.multiSel || []).includes(g.id);
 
     ctx.save();
-    ctx.strokeStyle = selected ? '#000000' : '#888888';
-    ctx.lineWidth = (selected ? 1.5 : 1) * engine.zoom * (engine.lineWidthScale || 1);
+    // MURO (red rci, ped. usuario): guía marcada esMuro se pinta gruesa y roja — confirmación
+    // visual de que participa en la verificación de distancia de ramales a muros.
+    if (g.esMuro) {
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 2.5 * engine.zoom * (engine.lineWidthScale || 1);
+    } else {
+      ctx.strokeStyle = selected ? '#000000' : '#888888';
+      ctx.lineWidth = (selected ? 1.5 : 1) * engine.zoom * (engine.lineWidthScale || 1);
+    }
     ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
     ctx.beginPath();
     g.pts.forEach((p, i) => {
@@ -25,6 +32,28 @@ export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     });
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Flecha amarilla de selección (ped. usuario): mismo lenguaje visual que textos/bajantes —
+    // triángulo #FFEB3B con borde negro en el EXTREMO INICIAL de la guía, apuntando al
+    // vértice. Ej: clic en una guía → el triángulo marca cuál está seleccionada.
+    if (selected && g.pts.length >= 2) {
+      const a = engine.toCvs(g.pts[0][0], g.pts[0][1]);
+      const r = 7 * engine.zoom;
+      const ox = a.x + 14 * engine.zoom;
+      ctx.fillStyle = '#FFEB3B';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5 * engine.zoom * (engine.lineWidthScale || 1);
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 6 * engine.zoom;
+      ctx.beginPath();
+      ctx.moveTo(ox - r, a.y);
+      ctx.lineTo(ox, a.y - r * 0.5);
+      ctx.lineTo(ox, a.y + r * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
     ctx.restore();
 
     // Caja de hit-test para clic derecho/selección (guías de 2 puntos): un rectángulo fino
@@ -69,9 +98,12 @@ function guideConnCircle(
   ctx.fill();
 }
 
-/** Guía EN CURSO (herramienta guide): vértices fijos + segmento al cursor YA CORREGIDO por el snap de ángulo — preview WYSIWYG de lo que quedará al hacer clic. */
+/** Guía/MURO EN CURSO: vértices fijos + segmento al cursor YA CORREGIDO por el snap de ángulo —
+ *  preview WYSIWYG de lo que quedará al hacer clic. Con el tool muro el preview sale rojo
+ *  (nace esMuro nativo). */
 export function renderGuideGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  if (!engine._guideStart || engine.tool !== 'guide') return;
+  if (!engine._guideStart || (engine.tool !== 'guide' && engine.tool !== 'muro')) return;
+  const esMuro = engine.tool === 'muro';
   const mp = engine.toPlane(engine.mouseX, engine.mouseY);
   const raw = snapGuidePoint(engine, engine._guideStart, mp.x, mp.y);
   // Ítems 3/4: preview WYSIWYG — el segmento al cursor se muestra YA CORREGIDO si va a
@@ -79,8 +111,8 @@ export function renderGuideGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   const snapped = snapGuideSegmentToRamal(engine, engine._guideStart, raw);
 
   ctx.save();
-  ctx.strokeStyle = '#888888';
-  ctx.lineWidth = 1 * engine.zoom * (engine.lineWidthScale || 1);
+  ctx.strokeStyle = esMuro ? '#f87171' : '#888888';
+  ctx.lineWidth = (esMuro ? 2.5 : 1) * engine.zoom * (engine.lineWidthScale || 1);
   ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
   ctx.beginPath();
   // Ítem 2: la guía en construcción muestra sus vértices fijos + el segmento al cursor.

@@ -25,6 +25,15 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
 
     ctx.fillStyle = a.color || 'rgba(0,220,229,0.12)';
     ctx.fill();
+    // Rectángulo de fuego definido (ped. usuario): borde rojo discontinuo var(--rci) debajo
+    // del borde normal, para ver el estado de la marca a simple vista.
+    if (a.esRectFuego) {
+      ctx.strokeStyle = '#f87171';
+      ctx.setLineDash([8 * (engine.zoom || 1), 5 * (engine.zoom || 1)]);
+      ctx.lineWidth = 2.5 * (engine.zoom || 1) * (engine.lineWidthScale || 1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     // PUNTO (orig. usuario): el borde del área seleccionada usa el COLOR DE SU RED (no cyan).
     const netCol = NETS.find((nn) => nn.id === a.net)?.col || '#00dce5';
     ctx.strokeStyle = sel

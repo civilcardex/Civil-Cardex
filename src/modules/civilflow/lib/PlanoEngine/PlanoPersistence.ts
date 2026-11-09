@@ -159,6 +159,9 @@ const CAMPOS_ASOC = [
   'asocManual',
   'desplazamientos',
   'ghostData',
+  // El tipo (ej: 'gabinete' RCI) sobrevive aunque la copia que gane el dedup no lo trajera —
+  // perderlo desmantelaba el gabinete (salía del extractor de RCI que filtra por tipo).
+  'tipo',
 ] as const;
 
 /** Solo el anillo de desplazamientos vacío cuenta como "no puesto" (recibeDeIds (ramales que

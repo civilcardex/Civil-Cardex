@@ -16,6 +16,8 @@ import {
 } from '../../utils/rci/RCIRowsModel.ts';
 import { datosRectangulo } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { dibujaRectangulo, fmtNum, temaResuelto } from './RCISvgSchemas.tsx';
+import { dibujaRectFuegoDibujo } from './RCISvgCanvas.ts';
+import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
 import type { Criterios } from '../../lib/rci/types.ts';
 
 /** Sub-pestañas de la pestaña Rociadores: los ids 'datos' y 'criterios' son los de
@@ -74,7 +76,7 @@ function CardLectura({
  *  S×L, rectángulo teórico 1,2·√A en rojo discontinuo y rociadores en operación rellenos.
  *  Re-pinta con DPR (devicePixelRatio, nitidez en pantallas HiDPI) al cambiar la tipología o el
  *  ancho del contenedor. Ej: <RectFuegoCanvas ro={tip.roc} /> con 3+3+1 rociadores activos. */
-function RectFuegoCanvas({ ro }: { ro: Criterios }) {
+function RectFuegoCanvas({ ro, rect }: { ro: Criterios; rect?: RciCtx['rectFuego'] }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const cv = ref.current;
@@ -88,13 +90,24 @@ function RectFuegoCanvas({ ro }: { ro: Criterios }) {
       const g = cv.getContext('2d');
       if (!g) return;
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      dibujaRectangulo(g, w, h, ro, temaResuelto());
+      /* CON rectángulo definido (ped. usuario): el esquema pinta el DIBUJO real — ramales,
+       * polígono del área marcada y los rociadores del dibujo (verde dentro / gris fuera).
+       * Sin definición queda el teórico (S/L de la tabla). */
+      if (rect)
+        dibujaRectFuegoDibujo(
+          g,
+          w,
+          h,
+          { ptsM: rect.ptsM, ramPtsM: rect.ramPtsM, rocPts: rect.rocPts },
+          temaResuelto(),
+        );
+      else dibujaRectangulo(g, w, h, ro, temaResuelto());
     };
     pintar();
     const obs = new ResizeObserver(pintar);
     obs.observe(cv);
     return () => obs.disconnect();
-  }, [ro]);
+  }, [ro, rect]);
   return (
     <canvas
       ref={ref}
@@ -130,6 +143,7 @@ function DatosRociador({ ctx, ro }: { ctx: RciCtx; ro: Criterios }) {
       num: true,
       uni: 'psi',
       ayu: 'Mínimo 7 psi o la del listado',
+      rango: () => ({ min: 7 }),
     },
     {
       path: 'roc.S',
@@ -137,6 +151,7 @@ function DatosRociador({ ctx, ro }: { ctx: RciCtx; ro: Criterios }) {
       num: true,
       uni: 'm',
       ayu: () => `Entre 1,80 y ${fmtNum(ro.hz.s)} m; S × L ≤ ${fmtNum(ro.Acmax * 0.092903)} m²`,
+      rango: () => ({ min: 1.8, max: ro.hz.s }),
     },
     {
       path: 'roc.L',
@@ -144,6 +159,7 @@ function DatosRociador({ ctx, ro }: { ctx: RciCtx; ro: Criterios }) {
       num: true,
       uni: 'm',
       ayu: () => `Entre 1,80 y ${fmtNum(ro.hz.l)} m`,
+      rango: () => ({ min: 1.8, max: ro.hz.l }),
     },
     {
       path: 'roc.Dmuro',
@@ -151,6 +167,7 @@ function DatosRociador({ ctx, ro }: { ctx: RciCtx; ro: Criterios }) {
       num: true,
       uni: 'm',
       ayu: () => `Entre 0,10 y ${fmtNum(ro.hz.s / 2)} m (S máx/2), en las dos direcciones`,
+      rango: () => ({ min: 0.1, max: ro.hz.s / 2 }),
     },
   ];
   return (
@@ -261,20 +278,59 @@ function ItemLeyenda({
   );
 }
 
-/** Sub "Rectángulo de fuego": canvas + leyenda (rociador en operación vs fuera) + la tabla
- *  rectTable del HTML (lado largo 1,2·√A, lado corto, reparto por ramales). Ej: el ejemplo da
- *  11,94 × 8,29 m con 3 × 3 ramales (último parcial de 1) y 7 rociadores en 1066,24 ft². */
-function RectanguloFuego({ ro }: { ro: Criterios }) {
+/** Sub "Rectángulo de fuego": canvas + leyenda + la tabla rectTable del HTML. CON rectángulo
+ *  definido en el dibujo (ctx.rectFuego, ped. usuario) la tabla se alimenta del DIBUJO: lados
+ *  del bbox del área marcada y conteo REAL de ramales/rociadores dentro (ray casting); el
+ *  teórico queda como fila de comparación. Ej: definido 99 m² con 11 rociadores dentro. */
+function RectanguloFuego({ ro, rect }: { ro: Criterios; rect?: RciCtx['rectFuego'] }) {
   const d = datosRectangulo(ro);
-  const filas: KvRci[] = [
-    { l: 'Lado largo (1,2·√A)', v: fmtNum(d.Llargo), u: 'm', nota: 'paralelo a los ramales' },
-    { l: 'Lado corto (A / lado largo)', v: fmtNum(d.Acorto), u: 'm' },
-    {
-      l: 'Ramales × rociadores por ramal',
-      v: `${d.Nramales} × ${d.Nramal}`,
-      nota: `${d.Nreq} rociadores en operación · área ${fmtNum(d.Adis, 1)} ft²`,
-    },
-  ];
+  const filas: KvRci[] = rect
+    ? (() => {
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity;
+        for (const [x, y] of rect.ptsM) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+        const largo = Math.max(maxX - minX, maxY - minY);
+        const corto = Math.min(maxX - minX, maxY - minY);
+        const nr = rect.ramalesDentro.length;
+        const nroc = rect.rocPts.length;
+        const porRamal = nr > 0 ? nroc / nr : 0;
+        return [
+          {
+            l: 'Lado largo (dibujo)',
+            v: fmtNum(largo),
+            u: 'm',
+            nota: 'lado mayor del rectángulo definido',
+          },
+          { l: 'Lado corto (dibujo)', v: fmtNum(corto), u: 'm' },
+          {
+            l: 'Ramales × rociadores por ramal',
+            v: `${nr} × ${Number.isInteger(porRamal) ? porRamal : porRamal.toFixed(1)}`,
+            nota: `${nroc} rociadores en operación · área definida ${fmtNum(rect.areaM2, 1)} m²`,
+          },
+          {
+            l: 'Teórico (A × 1,2√A)',
+            v: `${fmtNum(d.Llargo)} × ${fmtNum(d.Acorto)}`,
+            u: 'm',
+            nota: `${d.Nreq} rociadores · área ${fmtNum(d.Adis, 1)} ft²`,
+          },
+        ];
+      })()
+    : [
+        { l: 'Lado largo (1,2·√A)', v: fmtNum(d.Llargo), u: 'm', nota: 'paralelo a los ramales' },
+        { l: 'Lado corto (A / lado largo)', v: fmtNum(d.Acorto), u: 'm' },
+        {
+          l: 'Ramales × rociadores por ramal',
+          v: `${d.Nramales} × ${d.Nramal}`,
+          nota: `${d.Nreq} rociadores en operación · área ${fmtNum(d.Adis, 1)} ft²`,
+        },
+      ];
   return (
     <div
       style={{
@@ -292,18 +348,51 @@ function RectanguloFuego({ ro }: { ro: Criterios }) {
           padding: 10,
         }}
       >
-        <RectFuegoCanvas ro={ro} />
+        <RectFuegoCanvas ro={ro} rect={rect} />
       </div>
       <div>
+        {rect ? (
+          <div
+            style={{
+              border: '1px solid var(--rci, #f87171)',
+              background: 'rgba(248,113,113,.08)',
+              borderRadius: 6,
+              padding: '4px 10px',
+              marginBottom: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--rci, #f87171)',
+            }}
+          >
+            Alimentado del rectángulo DEFINIDO en el dibujo · área {fmtNum(rect.areaM2, 1)} m² ·{' '}
+            {rect.rocPts.length} rociadores del dibujo (
+            {rect.rocPts.filter((p) => puntoEnPoligono(p, rect.ptsM)).length} dentro)
+          </div>
+        ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <ItemLeyenda borde="2px dashed var(--rci, #f87171)">
-            Rectángulo teórico (A × 1,2√A)
-          </ItemLeyenda>
-          <ItemLeyenda borde="2px solid var(--txt3, #8a9496)">
-            Envolvente de rociadores en operación
-          </ItemLeyenda>
-          <ItemLeyenda punto="var(--rci, #f87171)">Rociador en operación</ItemLeyenda>
-          <ItemLeyenda punto="var(--txt3, #8a9496)">Rociador fuera del área</ItemLeyenda>
+          {rect ? (
+            <>
+              <ItemLeyenda borde="2px solid var(--rci, #f87171)">
+                Rectángulo DEFINIDO en el dibujo (área marcada)
+              </ItemLeyenda>
+              <ItemLeyenda borde="2px solid var(--txt3, #8a9496)">
+                Envolvente de rociadores dentro del área
+              </ItemLeyenda>
+              <ItemLeyenda punto="var(--succ, #5DBB83)">Rociador del dibujo (dentro)</ItemLeyenda>
+              <ItemLeyenda punto="var(--txt3, #8a9496)">Rociador del dibujo (fuera)</ItemLeyenda>
+            </>
+          ) : (
+            <>
+              <ItemLeyenda borde="2px dashed var(--rci, #f87171)">
+                Rectángulo teórico (A × 1,2√A)
+              </ItemLeyenda>
+              <ItemLeyenda borde="2px solid var(--txt3, #8a9496)">
+                Envolvente de rociadores en operación
+              </ItemLeyenda>
+              <ItemLeyenda punto="var(--rci, #f87171)">Rociador en operación</ItemLeyenda>
+              <ItemLeyenda punto="var(--txt3, #8a9496)">Rociador fuera del área</ItemLeyenda>
+            </>
+          )}
         </div>
         <div style={{ marginTop: 10 }}>
           <KvTabla filas={filas} />
@@ -351,7 +440,7 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
       ) : null}
       {activa === 'rectangulo' ? (
         <CardLectura titulo="Rectángulo de fuego" icono="/iconos/rectangulo_fuego.webp">
-          <RectanguloFuego ro={ro} />
+          <RectanguloFuego ro={ro} rect={ctx.rectFuego} />
         </CardLectura>
       ) : null}
     </SubTabsRci>

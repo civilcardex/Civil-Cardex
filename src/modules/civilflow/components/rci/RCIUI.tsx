@@ -19,6 +19,19 @@ export interface RciCtx {
   edit: boolean;
   /** Aplica un cambio amarillo al estado (inmutable). */
   editar: (fn: (e: RciState) => RciState) => void;
+  /** Rectángulo de fuego DEFINIDO en el dibujo del piso activo (área marcada esRectFuego):
+   *  polígono y rociadores en metros. Presente solo si el usuario lo marcó y hay piso activo —
+   *  la pestaña Rociadores prefiere esta info a la teórica. */
+  rectFuego?: {
+    ptsM: number[][];
+    areaM2: number;
+    /** Posiciones (m) de todos los rociadores sembrados/dibujados de los ramales rci. */
+    rocPts: number[][];
+    /** Ids de ramales rci con al menos un rociador dentro del rectángulo. */
+    ramalesDentro: string[];
+    /** Polilíneas (m) de los ramales rci del piso — para pintarlos en el esquema del dibujo. */
+    ramPtsM: number[][][];
+  };
 }
 
 /* ---------- Edición por tabla (cada tabla editable con su propio EDITAR/LISTO) ---------- */

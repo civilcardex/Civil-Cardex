@@ -250,6 +250,9 @@ export interface PlanoArea {
   net?: string;
   // Altura libre del sector (m) — módulo Rejillas de ventilación (NTC 3631).
   alturaM?: number;
+  // Rectángulo de fuego definido a mano (red rci): se marca desde el menú contextual. Persiste
+  // gratis con el área (precedente alturaM); el extractor RCI lo leería de doc.areas.
+  esRectFuego?: boolean;
   // Igual que en PlanoRamal: etiqueta movida a mano (ver comentario allá).
   labelMoved?: boolean;
   _labelBox?: LabelBoxCorners;
@@ -291,6 +294,9 @@ export interface PlanoGuideLine {
   id: string;
   net: string;
   pts: [number, number][];
+  // MURO (red rci, ped. usuario): segmento de pared para la verificación de distancia de
+  // ramales a muros (≤ S/2). Persiste gratis con la guía (PlanoPersistence strip no lo toca).
+  esMuro?: boolean;
   _labelBox?: LabelBoxCorners;
 }
 
@@ -396,6 +402,11 @@ export interface IPlanoEngineCore {
   tipoTramo: string;
   scaleM: number;
   definedScaleM: number;
+  /** Dmuro (distancia máx. ramal↔muro del RCI, tabla Datos del rociador) INYECTADO por la
+   *  capa React (PdfViewer lo lee del espejo local del módulo RCI): el motor jamás lee
+   *  storage — recibe el valor. null/undefined = chequeo de muros apagado. Ej: 1.7 → los
+   *  trazos rci se validan contra 1,7 m. */
+  dmuroRci?: number | null;
   canv: HTMLCanvasElement;
   cw: HTMLElement;
   dpr: number;

@@ -603,7 +603,7 @@ export function PasoGuia({
                   >
                     {t}
                   </th>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     <ChipEstado st={chk(pre)} />
                   </td>
                   <td style={{ textAlign: 'right' }}>

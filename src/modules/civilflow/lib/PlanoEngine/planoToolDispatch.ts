@@ -28,6 +28,10 @@ export const TOOL_DOWN: Record<string, ToolDown> = {
   line: (e, px, py) => handleLineDown(e, px, py),
   dim: (e, px, py) => handleDimDown(e, px, py),
   guide: (e, px, py) => handleGuideDown(e, px, py),
+  // MURO (red rci): misma mecánica de guía (vértices + doble clic/Esc) — commitOpenGuide lo
+  // marca esMuro nativo según el tool activo; el render rojo y el chequeo de finishRamal leen
+  // esMuro. Ej: tool 'muro' en rci dibuja la pared para la verificación de distancia.
+  muro: (e, px, py) => handleGuideDown(e, px, py),
   text: (e, px, py) => handleTextDown(e, px, py),
   baj: (e, px, py) => handleBajanteDown(e, px, py),
   mon: (e, px, py) => handleMontanteDown(e, px, py),

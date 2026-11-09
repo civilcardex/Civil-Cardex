@@ -247,6 +247,7 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       uni: 'pulg',
       dep: 'local.exigeSP',
       ayu: 'Mín. 4"; combinado 6" salvo cálculo hidráulico. El diámetro de cálculo es el del montante (abajo)',
+      rango: () => ({ min: 4 }),
     },
     {
       path: 'sp.zMinSalida',
@@ -281,6 +282,7 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       num: true,
       uni: 'm',
       ayu: 'Centro de la válvula sobre el NPT (Nivel de Piso Terminado). NFPA 14: entre 0,90 y 1,50 m. Cota = NPT + altura',
+      rango: () => ({ min: 0.9, max: 1.5 }),
     },
     {
       path: 'mont.hD',
@@ -342,6 +344,7 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       uni: 'm',
       ayu: 'NFPA 14: entre 0,46 y 1,22 m (18 y 48 in)',
       dep: 'local.exigeSP',
+      rango: () => ({ min: 0.46, max: 1.22 }),
     },
     {
       path: 'sia.mat',
@@ -439,6 +442,7 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       lbl: 'Presión a caudal cero / nominal',
       num: true,
       ayu: 'Dato del fabricante; NFPA 20: ≤ 1,40',
+      rango: () => ({ max: 1.4 }),
     },
     {
       path: 'bomba.etaN',
@@ -576,6 +580,7 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       uni: 'gpm',
       ayu: (r) =>
         `Entre 1 gpm y ${r.roc.Q1.toFixed(1)} gpm (un rociador). Arranque ${r.bomba.JkStart.toFixed(0)} / parada ${r.bomba.JkStop.toFixed(0)} psi; la principal arranca a ${r.bomba.PpStart.toFixed(0)} psi`,
+      rango: (_e, r) => ({ min: 1, max: r.roc.Q1 }),
     },
   ],
   tanque: [

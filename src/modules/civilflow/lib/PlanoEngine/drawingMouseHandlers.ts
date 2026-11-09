@@ -39,8 +39,13 @@ export function handleDoubleClick(engine: IPlanoEngineCore): void {
   if (engine.tool === 'area' && engine.activeArea && engine.activeArea.pts.length >= 3) {
     finishArea(engine);
   }
-  // Ítem 2: doble-click commitea la guía multisegmento en construcción.
-  if (engine.tool === 'guide' && engine._guidePts && engine._guidePts.length >= 2) {
+  // Ítem 2: doble-click commitea la guía multisegmento en construcción (el MURO comparte el
+  // mismo gesto con su tool propio).
+  if (
+    (engine.tool === 'guide' || engine.tool === 'muro') &&
+    engine._guidePts &&
+    engine._guidePts.length >= 2
+  ) {
     commitOpenGuide(engine);
   }
   // Canal: el 2º click de un doble-clic queda como "fase 1" fantasma justo después del

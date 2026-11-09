@@ -147,6 +147,9 @@ export function commitOpenGuide(engine: IPlanoEngineCore): void {
     id: 'GL' + Date.now(),
     net: engine.activeNet,
     pts: finalPts,
+    // MURO (ped. usuario): dibujada con la herramienta Muro (solo rci) nace esMuro nativo —
+    // sin conversión posterior. La herramienta Guía la crea normal (sin la marca).
+    esMuro: engine.tool === 'muro',
   });
   engine.render();
   engine._markDirty();

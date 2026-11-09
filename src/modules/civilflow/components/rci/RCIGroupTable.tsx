@@ -3,7 +3,7 @@
  *  naturaleza (TAGS_RCI: qué fija la norma y qué decide el diseñador) y la ayuda SIEMPRE
  *  visible en la columna Observación (además del title de la etiqueta). Ej:
  *  <GrupoTabla titulo="Normativa" campos={GRUPOS.normativa} estado={estado} R={R} editar={editar} grande />. */
-import type { CSSProperties } from 'react';
+import { Fragment, useState, type CSSProperties } from 'react';
 import { EditTablaBtn, TagRci, useEditarTabla, type RciCtx } from './RCIUI.tsx';
 import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
@@ -107,6 +107,10 @@ export interface DefCampo {
   /** Clave de modal que la celda Observación ofrece con un botón pequeño. Ej: 'clases' →
    *  «¿Qué clase elegir?» (el modal vive en la pestaña, RciInputs). */
   abreModal?: string;
+  /** Rango normativo de la fila (ped. usuario): si el valor queda fuera, NO se escribe y la
+   *  fila muestra la alerta roja. Se resuelve con el estado y el resultado vivos porque los
+   *  límites dependen del riesgo (ej: roc.S ≤ S máx de HZ). Ej: roc.S → { min: 1.8, max: ro.hz.s }. */
+  rango?: (e: RciState, R: RciResult) => { min?: number; max?: number } | null;
 }
 
 /* ---------------- Estilos locales ---------------- */
@@ -234,6 +238,48 @@ export function GrupoTabla({
   compacta,
 }: PropsGrupo) {
   const [edit, toggleEdit] = useEditarTabla();
+  /* Gate de rango (ped. usuario): el input es un BORRADOR mientras se teclea; el valor solo se
+   * escribe al estado cuando cae dentro del rango del def. Inválido → queda en el input con la
+   * alerta roja bajo la fila y al salir (blur) la celda VUELVE al valor persistido (el
+   * borrador se descarta sin escribir nada — un '' persistido rompería las derivadas del
+   * motor). Así teclear «0,5» rumbo a «2,5» no se traba en el 0. */
+  const [draft, setDraft] = useState<{ path: string; val: string } | null>(null);
+  const [errPath, setErrPath] = useState<string | null>(null);
+  const [errMsg, setErrMsg] = useState('');
+  /** Texto del rango para la alerta: «entre X y Y» / «mínimo X» / «máximo X». */
+  const txtRango = (rg: { min?: number; max?: number }): string => {
+    const partes: string[] = [];
+    if (rg.min !== undefined) partes.push(`mínimo ${rg.min}`);
+    if (rg.max !== undefined) partes.push(`máximo ${rg.max}`);
+    return partes.join(' y ');
+  };
+  /** Cambio de un campo numérico con rango: valida y solo persiste lo válido. */
+  const onChangeNum = (d: DefCampo, v: string) => {
+    const rg = d.rango?.(estado, R) ?? null;
+    if (rg && v !== '') {
+      const n = parseFloat(v.replace(',', '.'));
+      const fuera =
+        isNaN(n) || (rg.min !== undefined && n < rg.min) || (rg.max !== undefined && n > rg.max);
+      if (fuera) {
+        setDraft({ path: d.path, val: v });
+        setErrPath(d.path);
+        setErrMsg(`Fuera de rango: ${txtRango(rg)} — no se guarda.`);
+        return;
+      }
+    }
+    setDraft(null);
+    setErrPath(null);
+    setErrMsg('');
+    setP(d.path)(v);
+  };
+  /** Sale del input con borrador inválido: se descarta y la celda vuelve al valor persistido
+   *  (el wiring value={draft?.path === d.path ? draft.val : v} lo pinta solo). NUNCA se
+   *  persiste '' — un hueco rompe las derivadas del motor (NaN en zMinSalida, etc.). */
+  const blurNum = (): void => {
+    setDraft(null);
+    setErrPath(null);
+    setErrMsg('');
+  };
   /** Lee un path 'seccion.hoja' del estado (ej: 'local.exigeSP'). */
   const get = (path: string): string | number => {
     const [sec, hoja] = path.split('.');
@@ -337,53 +383,78 @@ export function GrupoTabla({
                  * (clas.constr 'Combustible obstruida…') necesita hasta 60ch para leerse. */
                 const anchoCtl = `calc(${Math.min(60, Math.max(6, v.length + 2))}ch + 30px)`;
                 return (
-                  <tr key={d.path} style={off ? { opacity: 0.55 } : undefined}>
-                    <td style={lblS} title={ayu}>
-                      {d.lbl}
-                    </td>
-                    <td style={tdS}>
-                      {celdaEditable(
-                        edit && !off,
-                        d.opts || d.optsPar ? (
-                          <select
-                            data-campo={d.path}
-                            value={v}
-                            onChange={(e) => set?.(e.target.value)}
-                            title={titulo}
-                            style={{ ...ctrlS, width: anchoCtl }}
-                          >
-                            {pares.map(([val, lbl]) => (
-                              <option key={val} value={val}>
-                                {val === '' ? '— / Auto' : lbl}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            data-campo={d.path}
-                            type={d.num ? 'number' : 'text'}
-                            step="any"
-                            value={v}
-                            title={titulo}
-                            onChange={(e) => set?.(e.target.value)}
-                            style={{ ...ctrlS, width: anchoCtl }}
-                          />
-                        ),
-                      )}
-                    </td>
-                    <td style={uniS}>{d.uni || ''}</td>
-                    <td style={tdS}>
-                      <TagRci tag={TAGS_RCI[d.path]} />
-                    </td>
-                    <td style={obsS}>
-                      {ayu}
-                      {abrirModal ? (
-                        <button type="button" onClick={abrirModal} style={BTN_OBS}>
-                          ¿Qué clase elegir?
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
+                  <Fragment key={d.path}>
+                    <tr style={off ? { opacity: 0.55 } : undefined}>
+                      <td style={lblS} title={ayu}>
+                        {d.lbl}
+                      </td>
+                      <td style={tdS}>
+                        {celdaEditable(
+                          edit && !off,
+                          d.opts || d.optsPar ? (
+                            <select
+                              data-campo={d.path}
+                              value={v}
+                              onChange={(e) => set?.(e.target.value)}
+                              title={titulo}
+                              style={{ ...ctrlS, width: anchoCtl }}
+                            >
+                              {pares.map(([val, lbl]) => (
+                                <option key={val} value={val}>
+                                  {val === '' ? '— / Auto' : lbl}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              data-campo={d.path}
+                              /* Con rango: type="text" + inputMode decimal (misma vía que el
+                               * modal de dibujo automático) — el number nativo en locale en
+                               * devuelve '' para «2,5» (coma) y el valor inválido burlaba el
+                               * gate a mitad de tecleo. El parseo coma→punto lo hace
+                               * onChangeNum. Sin rango: number nativo como siempre. */
+                              type={d.num && !d.rango ? 'number' : 'text'}
+                              inputMode={d.rango ? 'decimal' : undefined}
+                              step="any"
+                              value={draft?.path === d.path ? draft.val : v}
+                              title={titulo}
+                              onChange={(e) =>
+                                d.rango ? onChangeNum(d, e.target.value) : set?.(e.target.value)
+                              }
+                              onBlur={d.rango ? blurNum : undefined}
+                              style={{
+                                ...ctrlS,
+                                width: anchoCtl,
+                                ...(errPath === d.path
+                                  ? { borderColor: 'var(--err, #F04545)' }
+                                  : {}),
+                              }}
+                            />
+                          ),
+                        )}
+                      </td>
+                      <td style={uniS}>{d.uni || ''}</td>
+                      <td style={tdS}>
+                        <TagRci tag={TAGS_RCI[d.path]} />
+                      </td>
+                      <td style={obsS}>
+                        {ayu}
+                        {abrirModal ? (
+                          <button type="button" onClick={abrirModal} style={BTN_OBS}>
+                            ¿Qué clase elegir?
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                    {/* Alerta de rango (ped. usuario): valor inválido NO persistido. */}
+                    {errPath === d.path ? (
+                      <tr>
+                        <td colSpan={5} style={{ ...tdS, color: 'var(--err, #F04545)' }}>
+                          {errMsg}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>

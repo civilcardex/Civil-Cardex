@@ -45,6 +45,7 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     s: 'sel',
     d: 'dim',
     u: 'guide',
+    w: 'muro',
     a: 'area',
     e: 'erase',
     x: 'delm',
@@ -108,8 +109,8 @@ export function handleKeyDown(engine: IPlanoEngineCore, e: KeyboardEvent): void 
     } else if (engine.activeArea) {
       engine.finishArea();
       e.preventDefault();
-    } else if (engine.tool === 'guide' && engine._guideStart) {
-      // Ítem 2: Enter también cierra (commitea) la guía en construcción.
+    } else if ((engine.tool === 'guide' || engine.tool === 'muro') && engine._guideStart) {
+      // Ítem 2: Enter también cierra (commitea) la guía/muro en construcción.
       commitOpenGuide(engine);
       e.preventDefault();
     } else if (engine.tool === 'canal' && engine._canalEje) {

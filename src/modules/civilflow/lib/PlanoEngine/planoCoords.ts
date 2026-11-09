@@ -32,6 +32,14 @@ export function pxToM(scaleM: number, px: number): number {
   return +((px / 96) * 2.54 * scaleM).toFixed(3);
 }
 
+/** Factor px-del-plano → metros reales (la versión VECTORIAL de {@link pxToM}, sin redondeo,
+ *  para convertir polilíneas completas de una vez). Única fuente: el chequeo en vivo del
+ *  visor y las verificaciones de tabla del RCI comparten esta conversión — si difirieran,
+ *  el mismo trazo pasaría en vivo y fallaría en tabla. Ej: factorMPorPx(0.05) * 100 → 0.13. */
+export function factorMPorPx(scaleM: number): number {
+  return (2.54 * (scaleM || 0.5)) / 96;
+}
+
 /** Pasa milímetros de papel (la medida tal como viene en la lámina PDF) a píxeles de pantalla:
  *  el papel son 96 píxeles por pulgada. Ej: un codo de 15 mm a zoom 1 ocupa ~57 px de pantalla. */
 export function mm2cvs(mm: number, zoom: number): number {
