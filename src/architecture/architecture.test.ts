@@ -31,19 +31,20 @@ const TOPE_NUEVO = 700;
 const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/PdfViewer.tsx': 845, // +23: esGuia estructural + inyección Dmuro al motor (arreglo auditoría) · ronda RCI: guías no cambian red activa,
   'modules/civilflow/components/rci/RCITypologies.tsx': 142, // F10: TablaPisos → RciFloorsTable (608) + TablaTipologias → RciTypologiesTable (208); quedan SubTabs+Corte,
+  'modules/civilflow/components/rci/RCIInputDefs.ts': 700, // datos de defs ENTRADAS + ayudas por país (perfilRciDe),
   'modules/civilflow/components/rci/RCIInputs.tsx': 155, // F10: salieron RciCmatTable (141) + RciSpecialAccTable (178) + RciClassesModal (102) + RciRoomTable (291),
   'modules/civilflow/components/rci/RCIPumpTank.tsx': 342, // bgrid 2 columnas del HTML en Demanda/selección/succión,
   'modules/civilflow/components/rci/RCIGuideSteps.tsx': 748,
-  'modules/civilflow/components/rci/RCIHydraulics.tsx': 460, // F9: las 2 tablas salieron a RciRamalesTable (477) y RciTramosTable (329); quedan Hbars+paneles,
+  'modules/civilflow/components/rci/RCIHydraulics.tsx': 487, // F9: las 2 tablas salieron a RciRamalesTable (477) y RciTramosTable (329); quedan Hbars+paneles,
   'modules/civilflow/components/rci/RCISvgSchemas.tsx': 9, // F10: fachada — Theme/Seismic/Pump/Canvas,
   'modules/civilflow/components/rci/RCISvgFloorplan.tsx': 812,
-  'modules/civilflow/lib/rci/checks.ts': 953, // -25: distSegSeg mudó a lib/shared/geometry (única copia; arreglo auditoría) · ronda RCI: verificación ramales↔muros con Dmuro (DibujoPiso),
+  'modules/civilflow/lib/rci/checks.ts': 990, // mínimo ramal–muro ≥ 0,10 m (por ramal, MIN_MURO_M) + máximo por MURO (Dmuro) · distSegSeg en shared/geometry,
   'modules/civilflow/lib/rci/types.ts': 723, // F10: ejemploVerificacion → example.ts (273),
-  'modules/civilflow/utils/rci/ExtractNetwork.ts': 727,
+  'modules/civilflow/utils/rci/ExtractNetwork.ts': 749, // +22: XFG proyectado como montante en pisos superiores + aviso de sueltos CONTADO · SOLO contacto real (sin proximidad),
   'modules/civilflow/utils/rci/RCIRowsModel.ts': 710, // +2: grupoDeCheck manda «Distancia de ramales a muros» a Rociadores · filas de ramales/tramos del HTML; -50 lote muerto,
   'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 707, // +3: JSDoc del export (ronda JSDoc),
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 739,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1103, // +2: campo dmuroRci inyectado (arreglo auditoría) · F10: events/canvasSetup + viewport,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1109, // +6: corrección de escala en _getPos (cursor sigue el trazo) · dmuroRci inyectado (arreglo auditoría),
   'modules/civilflow/components/workareaContent/useReportTables.ts': 690,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 414, // +2: cronómetro de uniones con UNA sola llamada (gate DEV)
   'modules/civilflow/utils/waterRowsCore.ts': 697, // +1/-12: claves por tramoKeyOf (12 sitios),
@@ -60,7 +61,7 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 652, // +5: IPlanoEngineCore.dmuroRci (inyección; motor sin storage) + flags RCI (esMuro/esRectFuego),
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 160,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 823, // +4: espejo S/L manda sobre BD (arreglo auditoría) + sección Dibujo automático (S rociadores / L paralelos + modal),
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 817, // verificación de muros en paralelos + alerta si no siembra + conector · espejo S/L,
   'pages/PricingPage.tsx': 430,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 615, // +15: chequeo en vivo de muros al terminar trazo rci (banda 2·Dmuro, Dmuro inyectado),
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 554,
@@ -550,18 +551,18 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 15,
   'modules/civilflow/utils/propagation/edges.ts': 13,
   'modules/civilflow/utils/rainwaterRows.ts': 9,
-  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 2,
   'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 11,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 2,
+  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 2,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSections.tsx': 9,
-  'modules/civilflow/utils/bajanteVentRows.ts': 9,
   'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 4,
+  'modules/civilflow/utils/bajanteVentRows.ts': 9,
   'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 8,
   'modules/civilflow/lib/PlanoEngine/renderers/bajanteGhosts.ts': 8,
   'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 8,
   'modules/civilflow/utils/bajanteRowModel.ts': 8,
-  'modules/civilflow/components/pdfViewer/useFloorRamales.ts': 7,
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 0,
+  'modules/civilflow/components/pdfViewer/useFloorRamales.ts': 7,
   'modules/civilflow/components/workarea/IsometryGeneral.tsx': 7,
   'modules/civilflow/lib/PlanoEngine/mouseDownDrags.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
@@ -593,7 +594,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 502;
+const TOTAL_FOCOS_BASE = 515;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
