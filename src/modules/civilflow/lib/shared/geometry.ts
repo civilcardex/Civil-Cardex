@@ -1,3 +1,9 @@
+/** Distancia mínima ramal↔muro (NFPA 13, RCI): un ramal no puede quedar pegado ni cruzar
+ *  un muro. Única copia — la comparten el chequeo EN VIVO del visor y la verificación de
+ *  tabla del módulo RCI (si difirieran, el mismo trazo pasaría en el dibujo y fallaría en
+ *  la tabla). Ej: distSegSeg(muro, ramal) < MIN_MURO_M → violación. */
+export const MIN_MURO_M = 0.1;
+
 /** Distancia mínima entre dos segmentos AB y CD (en las unidades que vengan). Punto-a-
  *  segmento en ambos sentidos + test de cruce (se cruzan → 0). Ej: un muro que atraviesa el
  *  ramal queda a 0 m aunque sus extremos estén lejos (verificación ramales↔muros del RCI). */
