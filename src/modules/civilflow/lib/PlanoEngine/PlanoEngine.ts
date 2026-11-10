@@ -733,7 +733,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _getPos(e: MouseEvent | TouchEvent): Point {
     const r = this._cachedRect();
     const t = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-    return { x: t.clientX - r.left, y: t.clientY - r.top };
+    /* Corrección de ESCALA (ped. usuario: en ciertos tamaños el cursor no seguía el trazo):
+     * clientX-rect.left está en px de PANTALLA (post-escala del navegador/transform de
+     * ancestros), pero el dibujo usa px CSS locales del lienzo. El factor rect.width ↔
+     * canv.width/dpr los alinea — es 1 cuando coincide, así que nunca estorba. */
+    const sx = r.width > 0 ? this.canv.width / this.dpr / r.width : 1;
+    const sy = r.height > 0 ? this.canv.height / this.dpr / r.height : 1;
+    return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy };
   }
 
   /** Rect del canvas con caché de 32ms: rueda/pinch/mousemove lo piden 60-120/s. */

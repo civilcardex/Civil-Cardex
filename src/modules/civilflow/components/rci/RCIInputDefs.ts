@@ -5,6 +5,7 @@
  *  GRUPOS.siamesa[0].path === 'sia.n'. ponytail: no inscrito en MODULOS_NUEVOS (G5 exigiría un
  *  test artificial de datos puros); techo de facto = TOPE_NUEVO (700) del guard G1. */
 import type { DefCampo } from './RCIGroupTable.tsx';
+import { perfilRciDe } from '../../constants/rciCountryStandards.ts';
 import {
   CLASES_SP,
   CONSTR_OPCIONES,
@@ -33,9 +34,15 @@ const CONSTR_PARES: readonly (readonly [string, string])[] = [
 export const GRUPOS: Record<string, DefCampo[]> = {
   normativa: [
     {
+      path: 'meta.pais',
+      lbl: 'País del proyecto',
+      soloLectura: true,
+      ayu: (_r, e) => `Del país escogido: ${e.meta.pais || 'Colombia'}`,
+    },
+    {
       path: 'local.codLocal',
       lbl: 'Código de edificación aplicable',
-      ayu: 'Código local vigente; queda citado en la memoria (ej.: NSR-10 Títulos J y K, NFPA 101)',
+      ayu: (_r, e) => `Precargado: ${perfilRciDe(e.meta.pais).codLocal}`,
     },
     {
       path: 'local.ocupLocal',
@@ -46,52 +53,55 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       path: 'local.exigeRoc',
       lbl: '¿El código local exige rociadores?',
       opts: SINO,
-      ayu: 'NFPA 13 define cómo diseñar, no cuándo es obligatorio',
+      ayu: (_r, e) => `Perfil: ${perfilRciDe(e.meta.pais).exigeRoc}`,
     },
     {
       path: 'local.refRoc',
       lbl: 'Artículo que exige rociadores',
-      ayu: 'Artículo exacto del código local; queda citado en la memoria',
+      ayu: (_r, e) => perfilRciDe(e.meta.pais).refRoc || 'Artículo del código local',
       dep: 'local.exigeRoc',
     },
     {
       path: 'local.exigeSP',
       lbl: '¿Exige montantes / gabinetes?',
       opts: SINO,
-      ayu: 'Si es Sí, se habilitan montantes, gabinetes y siamesa',
+      ayu: (_r, e) => `Perfil: ${perfilRciDe(e.meta.pais).exigeSP}`,
     },
     {
       path: 'local.refSP',
       lbl: 'Artículo que exige montantes',
-      ayu: 'Artículo exacto del código local; queda citado en la memoria',
+      ayu: (_r, e) => perfilRciDe(e.meta.pais).refSP || 'Artículo del código local',
       dep: 'local.exigeSP',
     },
     {
       path: 'local.adopNac',
       lbl: 'Adopción nacional de NFPA 13 / 14',
-      ayu: 'Dejar vacío si no aplica',
+      ayu: (_r, e) => perfilRciDe(e.meta.pais).adopNac,
     },
     {
       path: 'local.normElec',
       lbl: 'Norma eléctrica local',
-      ayu: 'Complementa NFPA 70 art. 695 (bomba contra incendio)',
+      ayu: (_r, e) => perfilRciDe(e.meta.pais).normElec,
     },
     {
       path: 'local.reqSismo',
       lbl: '¿Requiere diseño sísmico de la red?',
       opts: SINO,
-      ayu: 'Si es Sí, se habilitan norma, parámetro y zona sísmica',
+      ayu: (_r, e) =>
+        perfilRciDe(e.meta.pais).reqSismo
+          ? 'Perfil del país: Sí'
+          : 'Sin regla sísmica RCI en el perfil del país',
     },
     {
       path: 'local.normSis',
       lbl: 'Norma sísmica local',
-      ayu: 'Ej.: ASCE 7 o la norma nacional (NSR-10 en Colombia)',
+      ayu: (_r, e) => perfilRciDe(e.meta.pais).normSis || 'Ej.: ASCE 7 o la norma nacional',
       dep: 'local.reqSismo',
     },
     {
       path: 'local.parSismo',
       lbl: 'Parámetro sísmico de referencia',
-      ayu: "Ej.: 'Aa 0.15, Av 0.20' — con el perfil Colombia calcula la zona sola",
+      ayu: (_r, e) => perfilRciDe(e.meta.pais).parLabel || "Ej.: 'Aa 0.15, Av 0.20'",
       dep: 'local.reqSismo',
     },
     {
@@ -100,12 +110,15 @@ export const GRUPOS: Record<string, DefCampo[]> = {
       opts: ZONAS_SIS,
       dep: 'local.reqSismo',
       ayu: (_r, e) => {
+        const p = perfilRciDe(e.meta.pais);
         const z = zonaSis(e);
         if (z.auto)
           return `Auto con NSR-10: zona ${z.z} (mayor de Aa y Av = ${z.a?.toFixed(2)}). Elija otra solo si la autoridad lo indica`;
         if (e.meta.pais === 'Colombia' && !e.local.zonaSis)
           return 'Con NSR-10 se calcula sola al escribir Aa y Av en el parámetro sísmico';
-        return 'Según la norma sísmica local. Define el alcance de la guía de la pestaña Soportes sísmicos';
+        return `Según la norma sísmica del país (${p.normSis || 'norma local'}). ${
+          p.zonaAuto ? p.zonaAuto + '. ' : ''
+        }Define el alcance de la guía de la pestaña Soportes sísmicos`;
       },
     },
     {

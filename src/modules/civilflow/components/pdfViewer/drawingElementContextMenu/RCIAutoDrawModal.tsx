@@ -36,29 +36,37 @@ const BTN_PRIM: React.CSSProperties = {
 
 export function RciAutoDrawModal({
   lTxt,
-  etiquetas,
+  horizontal,
   onConfirm,
   onClose,
 }: {
   /** L de la tabla Datos del rociador (solo para mostrarla como info). */
   lTxt: string;
-  /** Etiqueta de cada lado según la GEOMETRÍA del trazo (ped. usuario): horizontal →
-   *  {izq:'Abajo'|'Arriba', der:'Arriba'|'Abajo'}; vertical → Izquierda/Derecha. */
-  etiquetas: { izq: string; der: string };
+  /** Orientación dominante del trazo (ped. usuario): horizontal → opciones Arriba/Abajo
+   *  (−y/+y); vertical → Izquierda/Derecha (−x/+x). Devuelve la dirección absoluta elegida. */
+  horizontal: boolean;
   onConfirm: (v: { n: number; lado: LadoParalelo }) => void;
   onClose: () => void;
 }) {
   const [nTxt, setNTxt] = useState('2');
-  const [lado, setLado] = useState<LadoParalelo>('izq');
+  /* Default = ABAJO (horizontal) / IZQUIERDA (vertical): el primer Dibujar nunca crea un
+   * ramal por encima del base (ped. usuario: «no debe hacerse el ramal superior»). */
+  const [segundo, setSegundo] = useState(horizontal);
   const [err, setErr] = useState('');
   useEscapeKey(onClose);
 
   const confirmar = (): void => {
     const nv = Math.round(parseFloat(nTxt.replace(',', '.')));
     if (!(nv >= 1 && nv <= 50)) return setErr('N.º de ramales entre 1 y 50.');
-    onConfirm({ n: nv, lado });
+    /* Dirección ABSOLUTA de pantalla (ped. usuario): 'Derecha' SIEMPRE sale hacia +x,
+     * 'Arriba' hacia −y, sin importar el sentido en que se dibujó el trazo. */
+    onConfirm({
+      n: nv,
+      lado: horizontal ? (segundo ? 'abajo' : 'arriba') : segundo ? 'der' : 'izq',
+    });
   };
-  /* Glifo de flecha según la etiqueta: Izquierda ◀ / Derecha ▶ / Arriba ▲ / Abajo ▼. */
+  const op1 = horizontal ? 'Arriba' : 'Izquierda';
+  const op2 = horizontal ? 'Abajo' : 'Derecha';
   const glifo = (txt: string): string =>
     txt.startsWith('Izq')
       ? '◀ '
@@ -67,8 +75,8 @@ export function RciAutoDrawModal({
         : txt.startsWith('Arriba')
           ? '▲ '
           : '▼ ';
-  const etiquetaLado = lado === 'izq' ? etiquetas.izq : etiquetas.der;
-  const alternar = (): void => setLado((l) => (l === 'izq' ? 'der' : 'izq'));
+  const etiquetaLado = segundo ? op2 : op1;
+  const alternar = (): void => setSegundo((s) => !s);
 
   return createPortal(
     /* ModalOverlay compartida (backdrop-click con guard target===currentTarget) en vez de un

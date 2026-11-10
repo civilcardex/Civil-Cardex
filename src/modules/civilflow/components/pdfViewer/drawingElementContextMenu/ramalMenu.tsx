@@ -6,7 +6,11 @@ import { useState, useEffect } from 'react';
 import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions.ts';
 import type { PlanoRamal } from '../../../lib/PlanoEngine/PlanoState.ts';
-import { sembrarRociadores, crearRamalesParalelos } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
+import {
+  sembrarRociadores,
+  crearRamalesParalelos,
+  type LadoParalelo,
+} from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 import { loadRciDatos } from '../../../services/projectDataService.ts';
 import { loadFromStorage, getActiveProyectoId } from '../../../services/storageService.ts';
 import { RCI_ESTADO_VIVO_KEY } from '../../../constants/storage-keys.ts';
@@ -92,12 +96,16 @@ export function RamalMenu() {
       );
       return;
     }
-    sembrarRociadores(eng, ramalEl.id, s);
+    if (sembrarRociadores(eng, ramalEl.id, s) === 0)
+      eng.triggerAlert(
+        'Sin rociadores sembrados',
+        'El ramal mide menos que S y su extremo inicial ya tiene accesorio. Aleje un rociador a mano o use un ramal más largo.',
+      );
     ctx.setContextMenuState(null);
   };
   /** «Dibujar ramales paralelos»: abre el modal (n.º + lado); L sale de la tabla al confirmar.
-   *  Éxito silencioso (ped. usuario: sin cartel). */
-  const confirmarParalelos = (v: { n: number; lado: 'izq' | 'der' }): void => {
+   *  Verifica muros (mín 0,10 m / máx Dmuro): si viola, alerta y NO se crea ninguno. */
+  const confirmarParalelos = (v: { n: number; lado: LadoParalelo }): void => {
     const eng = engineRef.current;
     if (!eng) return;
     const l = numDe(rciSL.l);
@@ -108,34 +116,20 @@ export function RamalMenu() {
       );
       return;
     }
-    crearRamalesParalelos(eng, ramalEl.id, l, v.n, v.lado);
+    const res = crearRamalesParalelos(eng, ramalEl.id, l, v.n, v.lado, eng.dmuroRci);
+    if (res.error) {
+      eng.triggerAlert('Distancia a muro', res.error);
+      return;
+    }
     setAutoDraw(false);
     ctx.setContextMenuState(null);
   };
-  /* Etiquetas de los dos lados según la GEOMETRÍA del primer segmento (ped. usuario: trazo
-   * horizontal → Arriba/Abajo; vertical → Izquierda/Derecha — la etiqueta dice la dirección
-   * real de pantalla del lado, sin importar el sentido en que se dibujó el trazo). */
-  const ladoEtiquetas = (() => {
-    const dx = (ramalEl.pts?.[1]?.[0] ?? 0) - (ramalEl.pts?.[0]?.[0] ?? 0);
-    const dy = (ramalEl.pts?.[1]?.[1] ?? 0) - (ramalEl.pts?.[0]?.[1] ?? 0);
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      // Trazo horizontal: la normal del lado 'izq' interno es (−dy,dx) → su componente y es dx
-      // (trazo →+x: izq = +y = Abajo en pantalla; trazo →−x: izq = −y = Arriba).
-      const izqY = dx;
-      return izqY > 0
-        ? { izq: 'Abajo', der: 'Arriba' }
-        : izqY < 0
-          ? { izq: 'Arriba', der: 'Abajo' }
-          : { izq: 'Izquierda', der: 'Derecha' };
-    }
-    // Trazo vertical: normal (−dy,dx) → componente x: dy>0 (hacia abajo) → izq = −x (izquierda).
-    const izqX = -dy;
-    return izqX > 0
-      ? { izq: 'Izquierda', der: 'Derecha' }
-      : izqX < 0
-        ? { izq: 'Derecha', der: 'Izquierda' }
-        : { izq: 'Arriba', der: 'Abajo' };
-  })();
+  /* Orientación dominante del primer segmento (ped. usuario): trazo horizontal ofrece
+   * Arriba/Abajo y vertical Izquierda/Derecha — direcciones ABSOLUTAS de pantalla que el
+   * motor respeta al proyectar la normal. */
+  const dxP = (ramalEl.pts?.[1]?.[0] ?? 0) - (ramalEl.pts?.[0]?.[0] ?? 0);
+  const dyP = (ramalEl.pts?.[1]?.[1] ?? 0) - (ramalEl.pts?.[0]?.[1] ?? 0);
+  const horizontal = Math.abs(dxP) >= Math.abs(dyP);
 
   // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
@@ -812,7 +806,7 @@ export function RamalMenu() {
       {autoDraw && (
         <RciAutoDrawModal
           lTxt={rciSL.l}
-          etiquetas={ladoEtiquetas}
+          horizontal={horizontal}
           onConfirm={confirmarParalelos}
           onClose={() => setAutoDraw(false)}
         />

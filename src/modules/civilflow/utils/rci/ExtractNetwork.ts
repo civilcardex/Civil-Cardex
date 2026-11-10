@@ -319,7 +319,10 @@ function derivacionDe(
 }
 
 /** Mejor conexión de un ramal: su punta más cercana al tronco, al montante (derivación) o a un
- *  ramal ya conectado (cadena ramal→ramal hereda su nudo). Null si nada queda a TOL_PUNTO. */
+ *  ramal ya conectado (cadena ramal→ramal hereda su nudo). Null si nada queda a TOL_PUNTO.
+ *  SOLO CONTACTO REAL (auditoría): sin tolerancia por proximidad — los paralelos de «Dibujar
+ *  ramales paralelos» conectan por su CONECTOR físico (crea sus cabezas sobre él); el aviso
+ *  de ramal suelto vuelve a dispararse para cualquier trazo huérfano. */
 function mejorConexion(
   t: TrazoDib,
   troncoPos: readonly TramoTronco[],
@@ -412,6 +415,23 @@ export function extraerRedDePiso(
       continue;
     montantesDib.push(b);
   }
+  /* PROYECCIÓN (XFG): en pisos superiores el montante NO se redibuja — llega la proyección del
+   * piso inferior (crossFloorGhosts de la red rci). Cuenta como punto de derivación igual que
+   * un montante real (mismo code/x/y); sin esto P2 decía «ningún montante conectado» con la
+   * red bien dibujada. Ej: BRCI1 proyectado en P2 arranca la red de ese piso. */
+  for (const g of (doc.crossFloorGhosts || []) as Array<{
+    net?: string;
+    code?: string;
+    x?: number;
+    y?: number;
+  }>) {
+    if (g.net !== 'rci' || !g.code || g.x == null || g.y == null) continue;
+    montantesDib.push({
+      code: g.code,
+      x: g.x,
+      y: g.y,
+    } as BajanteRaw);
+  }
 
   const deriv = derivacionDe(trazos, montantesDib);
   if (!deriv) {
@@ -480,13 +500,15 @@ export function extraerRedDePiso(
       }
     }
   }
-  for (const t of trazos) {
-    if (t.roci > 0 && !conexiones.has(t.orden)) {
-      avisos.push({
-        piso: piso.label,
-        msg: 'Un ramal con rociadores no toca la red (ni otro ramal conectado) y no se exportó.',
-      });
-    }
+  /* Avisos CONTADOS (ped. usuario: la captura mostraba 2 líneas idénticas): un solo aviso con
+     el n.º de ramales excluidos y la salida práctica (paralelos nacen conectados; un ramal
+     manual debe tocar la red con su extremo). */
+  const sueltos = trazos.filter((t) => t.roci > 0 && !conexiones.has(t.orden));
+  if (sueltos.length > 0) {
+    avisos.push({
+      piso: piso.label,
+      msg: `${sueltos.length} ramal(es) con rociadores no tocan la red y NO entran al cálculo: sus extremos deben tocar el montante, el tronco u otro ramal ya conectado. Los paralelos de «Dibujar ramales paralelos» nacen conectados; si lo dibujó a mano, arrastre su extremo hasta la red.`,
+    });
   }
   if (conexiones.size === 0) {
     avisos.push({

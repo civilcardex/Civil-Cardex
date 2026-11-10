@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedEffect } from '../../../../hooks/useDebouncedEffect.ts';
 import { usePlans } from '../../context/PlansContext.tsx';
 import { useProject } from '../../context/ProjectContext.tsx';
+import { perfilRciDe } from '../../constants/rciCountryStandards.ts';
 import {
   loadFromStorage,
   saveToStorage,
@@ -69,6 +70,36 @@ const TIPO_HUERFANO: Record<string, string> = {
 function primeraSub(tab: TabRci): string | null {
   const subs = SUBS_POR_TAB[tab];
   return subs && subs.length ? subs[0].id : null;
+}
+
+/** PAÍS → NORMATIVA (ped. usuario): aplica el marco legal del perfil del país del proyecto
+ *  al estado RCI SIEMPRE que meta.pais difiera del país del proyecto (cambiar país ES cambiar
+ *  de marco legal). Si coincide no toca nada — lo digitado propio (ocupLocal, artículos
+ *  editados) se conserva. Corre en la CARGA del estado (no en un efecto aparte: al montar
+ *  estadoRef es null y el efecto aparte no volvería a correr — país nunca aplicado). Corre
+ *  también al cambiar el país con el módulo abierto (proy.pais es dep del efecto de carga).
+ *  Ej: proyecto 'Perú' con estado CO → codLocal/refRoc/exigeSP/sismo del perfil PE y
+ *  meta.pais = 'Perú'; segunda pasada → no-op. */
+function aplicarPerfilPais(e: RciState, pais: string | undefined): RciState {
+  const nuevo = (pais || 'Colombia').trim();
+  if ((e.meta.pais || '').trim() === nuevo) return e;
+  const p = perfilRciDe(nuevo);
+  const L = { ...e.local };
+  L.codLocal = p.codLocal;
+  L.exigeRoc = p.exigeRoc;
+  L.refRoc = p.refRoc;
+  L.exigeSP = p.exigeSP;
+  L.refSP = p.refSP;
+  L.adopNac = p.adopNac;
+  L.normElec = p.normElec;
+  /* Sísmico: el perfil manda en las dos direcciones — país con regla sísmica la enciende con
+   * su norma/parámetro; país sin regla la apaga (antes quedaba encendido del país anterior). */
+  L.reqSismo = p.reqSismo ? 'Sí' : 'No';
+  if (p.reqSismo) {
+    L.normSis = p.normSis || L.normSis;
+    L.parSismo = p.parLabel || L.parSismo;
+  }
+  return { ...e, meta: { ...e.meta, pais: nuevo }, local: L };
 }
 
 /** Componente raíz (el export default): monta el shell de pestañas y corre en vivo el ciclo
@@ -141,7 +172,7 @@ function RciDesign() {
       if (cancelled) return;
       const base = cargadoRef.current && estadoRef.current ? estadoRef.current : prev;
       const mezcla = mezclarOverrides(gris, base);
-      const est = sembrarRci(mezcla.estado, proy.nombre);
+      const est = aplicarPerfilPais(sembrarRci(mezcla.estado, proy.nombre), proy.pais);
       estadoRef.current = est;
       setEstado(est);
       cargadoRef.current = true;
@@ -160,7 +191,7 @@ function RciDesign() {
     return () => {
       cancelled = true;
     };
-  }, [gris, proy.nombre]);
+  }, [gris, proy.nombre, proy.pais]);
 
   /* Persistencia debounced: cada edición recalcula y guarda 600 ms después de la última tecla.
      Espejo LOCAL junto al guardado: el visor (dibujo automático S/L) lee el valor FRESCO de la

@@ -115,6 +115,8 @@ const LevelsCard = React.memo(function LevelsCard({
                           : p.n < 0
                             ? 'var(--txt3)'
                             : 'var(--acc2)'),
+                      /* Opacidad con EDITAR off (mismo lenguaje que las tablas RCI). */
+                      opacity: isEditing ? 1 : 0.55,
                     }}
                   >
                     <span

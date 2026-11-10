@@ -55,28 +55,3 @@ export function NivelCelda({
     </select>,
   );
 }
-
-/** Celda Salidas: GRIS (solo lectura) — la salida la fija el DIBUJO (ped. usuario): 'Sí' si el
- *  piso tiene gabinete GAB dibujado, 'Ninguna' si no (la escribe el extractor). Ej: 'Sí'. */
-export function SalidaCelda({ salida }: { salida: string }) {
-  const valor = salida || 'Ninguna';
-  return (
-    <span
-      title={`${AYUDA_SALIDA} — se fija con un gabinete (GAB) dibujado en el plano de ese piso`}
-      style={{
-        fontSize: 13,
-        fontFamily: 'var(--mono)',
-        color: 'var(--txt3)',
-        background: 'var(--bg3)',
-        border: '1px solid var(--line)',
-        borderRadius: 2,
-        padding: '1px 6px',
-        display: 'inline-block',
-        minWidth: 44,
-        textAlign: 'center',
-      }}
-    >
-      {valor === 'Ninguna' ? 'Ninguna' : valor}
-    </span>
-  );
-}

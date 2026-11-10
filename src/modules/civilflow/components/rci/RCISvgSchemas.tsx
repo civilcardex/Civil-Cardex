@@ -5,4 +5,4 @@
 export * from './RCISvgTheme.tsx';
 export { SismoSvg } from './RCISvgSeismic.tsx';
 export { PumpSvg } from './RCISvgPump.tsx';
-export { dibujaRectangulo, dibujaCurvaBomba } from './RCISvgCanvas.ts';
+export { dibujaCurvaBomba } from './RCISvgCanvas.ts';

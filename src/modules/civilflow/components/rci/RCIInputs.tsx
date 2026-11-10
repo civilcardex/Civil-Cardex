@@ -107,7 +107,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
           ) : sub === 'seleccion' ? null : (
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <GrupoTabla
-                minAncho={sub === 'clasificacion' ? 720 : sub === 'normativa' ? 1320 : undefined}
+                minAncho={sub === 'clasificacion' ? 720 : sub === 'normativa' ? 1600 : undefined}
                 titulo={SUB_POR_ID.get(sub)?.l || sub}
                 nota={NOTA_SUB[sub]}
                 icono={ICONO_SUB[sub]}

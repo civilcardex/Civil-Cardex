@@ -30,6 +30,10 @@ import RciRamalesTable from './RCIRamalesTable.tsx';
 import RciTramosTable from './RCITramosTable.tsx';
 import { cOf } from '../../lib/rci/hydraulics.ts';
 import type { Red, TipCalc } from '../../lib/rci/types.ts';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
+import { TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
+import { emitTrazosSaved } from '../../utils/fixtureEvents.ts';
+import type { DrawingData } from '../../utils/drawingSyncTypes.ts';
 import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 /** Barra horizontal de controles de la red (el .hbar del HTML): campos + nota al pie. */
@@ -171,7 +175,30 @@ export function RciHidraulica({
       ? String(nodoRaiz.z)
       : '';
 
-  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) =>
+  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) => {
+    /* MATERIAL → DIBUJO (ped. usuario): lo digitado en la tabla se refleja en el trazo del
+     * visor (material + etiqueta del canvas). La fila sabe su trazo por id estable
+     * `planId|idTrazo`; se escribe el doc de trazos del piso con ts FRESCO + BD (regla del
+     * repo: la copia local solo gana a la BD por ts — sin ts, al reabrir el visor la BD
+     * revierte el material). Solo 'mat' — el Ø lo decide el cálculo/auto. */
+    if (k === 'mat') {
+      const filaId = String(red?.ramales?.[i]?.id ?? red?.ramales?.[i]?.nombre ?? '');
+      const elId = filaId.includes('|') ? filaId.slice(filaId.indexOf('|') + 1) : '';
+      if (elId && redKey) {
+        const doc = loadFromStorage<DrawingData | null>(
+          TRAZOS_PREFIX + redKey,
+          null,
+        ) as unknown as { ts?: number; ramales?: Array<{ id?: string; material?: string }> } | null;
+        const trazo = doc?.ramales?.find((r) => r.id === elId);
+        if (doc && trazo && (trazo.material || '') !== v) {
+          trazo.material = v;
+          doc.ts = Date.now();
+          const ok = saveToStorage(TRAZOS_PREFIX + redKey, doc, { sinDiario: true });
+          if (ok) saveTrazosToDB(String(redKey), doc);
+          emitTrazosSaved();
+        }
+      }
+    }
     editar((e) => {
       const r = e.redes[redKey];
       if (!r) return e;
@@ -183,6 +210,7 @@ export function RciHidraulica({
         },
       };
     });
+  };
   const setTramo = (i: number, k: 'dn' | 'mat') => (v: string) =>
     editar((e) => {
       const r = e.redes[redKey];

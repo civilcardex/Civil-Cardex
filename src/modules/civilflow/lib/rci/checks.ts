@@ -8,7 +8,8 @@ import { CDEF, PIPES } from './tables';
 import { fmtEs as f1 } from './fmtEs.ts';
 import { isSi, num } from './hydraulics';
 import { zonaSis } from './criteria';
-import { distSegSeg } from '../shared/geometry.ts';
+import { rciTxt } from '../../constants/rciCountryStandards.ts';
+import { distSegSeg, MIN_MURO_M } from '../shared/geometry.ts';
 import type {
   Criterios,
   Demanda,
@@ -29,6 +30,9 @@ export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verific
     bo = R.bomba,
     c = st.clas,
     L: Verificacion[] = [];
+  /* Cita de la norma de diseño con el marco legal del país del proyecto (meta.pais →
+   * perfilRciDe; lista única de Identificación). Ej: CO → 'NFPA 13-2025 (NSR-10 J)'. */
+  const cita = rciTxt(st.meta.pais);
 
   const add = (
     lab: string,
@@ -233,53 +237,38 @@ export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verific
       : 'Arrume > 3,66 m: el diseño debe hacerse con NFPA 13 cap. 20–25 (CMDA, CMSA o ESFR). Este aplicativo no cubre ese caso.',
     ['entradas', 'clas.arrumeH'],
   );
-  addT(
-    'Separación entre rociadores 1,8 m ≤ S ≤ S máx.',
-    'NFPA 13-2025 cap. 10',
-    ['entradas', 'roc.S'],
-    (t) => {
-      const o = t.ro;
-      return {
-        st: o.S >= 1.8 && o.S <= o.hz.s ? 'CUMPLE' : 'NO CUMPLE',
-        val: `${f1(o.S)} ≤ ${f1(o.hz.s)} m`,
-        guide:
-          o.S > o.hz.s
-            ? `Reduzca S a ${f1(o.hz.s)} m o menos (añada rociadores en el ramal).`
-            : 'Aumente S a 1,80 m o más, o use pantallas entre rociadores.',
-      };
-    },
-  );
-  addT(
-    'Separación entre ramales 1,8 m ≤ L ≤ L máx.',
-    'NFPA 13-2025 cap. 10',
-    ['entradas', 'roc.L'],
-    (t) => {
-      const o = t.ro;
-      return {
-        st: o.L >= 1.8 && o.L <= o.hz.l ? 'CUMPLE' : 'NO CUMPLE',
-        val: `${f1(o.L)} ≤ ${f1(o.hz.l)} m`,
-        guide:
-          o.L > o.hz.l
-            ? `Reduzca L a ${f1(o.hz.l)} m o menos (añada un ramal).`
-            : 'Aumente L a 1,80 m o más.',
-      };
-    },
-  );
-  addT(
-    'Área por rociador ≤ cobertura máxima',
-    'NFPA 13-2025 cap. 10',
-    ['entradas', 'roc.L'],
-    (t) => {
-      const o = t.ro;
-      return {
-        st: o.Areal <= o.Acmax ? 'CUMPLE' : 'NO CUMPLE',
-        val: `${f1(o.Areal, 0)} ≤ ${o.Acmax} ft²`,
-        guide: `Reduzca S × L a ${f1(o.Acmax * 0.092903)} m² o menos. Con S = ${f1(o.S)} m, L ≤ ${f1((o.Acmax * 0.092903) / o.S)} m.`,
-      };
-    },
-  );
+  addT('Separación entre rociadores 1,8 m ≤ S ≤ S máx.', cita, ['entradas', 'roc.S'], (t) => {
+    const o = t.ro;
+    return {
+      st: o.S >= 1.8 && o.S <= o.hz.s ? 'CUMPLE' : 'NO CUMPLE',
+      val: `${f1(o.S)} ≤ ${f1(o.hz.s)} m`,
+      guide:
+        o.S > o.hz.s
+          ? `Reduzca S a ${f1(o.hz.s)} m o menos (añada rociadores en el ramal).`
+          : 'Aumente S a 1,80 m o más, o use pantallas entre rociadores.',
+    };
+  });
+  addT('Separación entre ramales 1,8 m ≤ L ≤ L máx.', cita, ['entradas', 'roc.L'], (t) => {
+    const o = t.ro;
+    return {
+      st: o.L >= 1.8 && o.L <= o.hz.l ? 'CUMPLE' : 'NO CUMPLE',
+      val: `${f1(o.L)} ≤ ${f1(o.hz.l)} m`,
+      guide:
+        o.L > o.hz.l
+          ? `Reduzca L a ${f1(o.hz.l)} m o menos (añada un ramal).`
+          : 'Aumente L a 1,80 m o más.',
+    };
+  });
+  addT('Área por rociador ≤ cobertura máxima', cita, ['entradas', 'roc.L'], (t) => {
+    const o = t.ro;
+    return {
+      st: o.Areal <= o.Acmax ? 'CUMPLE' : 'NO CUMPLE',
+      val: `${f1(o.Areal, 0)} ≤ ${o.Acmax} ft²`,
+      guide: `Reduzca S × L a ${f1(o.Acmax * 0.092903)} m² o menos. Con S = ${f1(o.S)} m, L ≤ ${f1((o.Acmax * 0.092903) / o.S)} m.`,
+    };
+  });
   const dm = num(st.roc.Dmuro);
-  addT('Distancia a muro ≤ S máx./2', 'NFPA 13-2025 cap. 10', ['entradas', 'roc.Dmuro'], (t) =>
+  addT('Distancia a muro ≤ S máx./2', cita, ['entradas', 'roc.Dmuro'], (t) =>
     dm === null
       ? {
           st: 'PENDIENTE',
@@ -872,8 +861,10 @@ export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verific
     'Exigencia del código local registrada',
     codOk ? 'CUMPLE' : 'PENDIENTE',
     ls.codLocal || 'Sin código',
-    'Código local (dato del usuario)',
-    'Registre el código local y, si exige rociadores o montantes, el artículo correspondiente.',
+    `Código local del país (${cita})`,
+    codOk
+      ? ''
+      : 'Registre el código local y, si exige rociadores o montantes, el artículo correspondiente (precargados del perfil del país; editables).',
     ['entradas', 'local.codLocal'],
   );
 
@@ -911,8 +902,12 @@ export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verific
         ['rociadores', 'rectangulo'],
       );
     } else {
+      /* POR MURO (regla del campo «Dmuro»): cada MURO debe quedar a ≤ Dmuro del ramal rci más
+         cercano — los ramales interiores NO se juzgan (no tienen muro que cubrir junto a
+         ellos; exigírselo a un recinto ancho haría la red imdibujable). Una pasada calcula la
+         distancia ramal↔muro de la que salen las dos filas. */
       let peor = 0;
-      let peoresCount = 0;
+      let descubiertos = 0;
       for (const muro of dibujo.muros) {
         let mejor = Infinity;
         for (const pts of dibujo.ramPts) {
@@ -923,15 +918,42 @@ export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verific
           }
         }
         if (mejor > peor) peor = mejor;
-        if (mejor > dm + 1e-9) peoresCount++;
+        if (mejor > dm + 1e-9) descubiertos++;
       }
       add(
         'Distancia de ramales a muros ≤ Dmuro',
-        peoresCount ? 'NO CUMPLE' : 'CUMPLE',
-        `${peoresCount} de ${dibujo.muros.length} muro(s) fuera · peor ${f1(peor, 2)} m`,
+        descubiertos ? 'NO CUMPLE' : 'CUMPLE',
+        `${descubiertos} de ${dibujo.muros.length} muro(s) descubiertos · peor ${f1(peor, 2)} m`,
         `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (Dmuro = ${f1(dm, 2)} m)`,
-        peoresCount
-          ? 'Acerque un ramal al muro señalado o mueva el muro: la distancia al ramal más cercano no puede superar el Dmuro de Datos del rociador.'
+        descubiertos
+          ? 'Acerque un ramal al muro señalado: la distancia al ramal más cercano no puede superar el Dmuro de Datos del rociador.'
+          : '',
+        ['rociadores', 'rectangulo'],
+      );
+
+      /* MÍNIMO por ramal: ningún ramal puede quedar pegado ni cruzar un muro — distancia
+         ramal↔muro ≥ MIN_MURO_M (0,10 m, NFPA 13). Fila propia para no mezclar con el máximo. */
+      let pegados = 0;
+      let menor = Infinity;
+      for (const pts of dibujo.ramPts) {
+        let mejor = Infinity;
+        for (const muro of dibujo.muros) {
+          for (let i = 0; i < muro.length - 1; i++) {
+            for (let j = 0; j < pts.length - 1; j++) {
+              mejor = Math.min(mejor, distSegSeg(muro[i], muro[i + 1], pts[j], pts[j + 1]));
+            }
+          }
+        }
+        if (mejor < menor) menor = mejor;
+        if (mejor < MIN_MURO_M - 1e-9) pegados++;
+      }
+      add(
+        'Distancia mínima ramal–muro ≥ 0,10 m',
+        pegados ? 'NO CUMPLE' : 'CUMPLE',
+        `${pegados} de ${dibujo.ramPts.length} ramal(es) pegados · menor ${f1(menor, 2)} m`,
+        'NFPA 13-2025 cap. 10 — distancia mínima ramal–muro 0,10 m (ni pegado ni cruzando el muro)',
+        pegados
+          ? 'Aleje el ramal señalado del muro: la distancia mínima ramal–muro es de 0,10 m (NFPA 13).'
           : '',
         ['rociadores', 'rectangulo'],
       );

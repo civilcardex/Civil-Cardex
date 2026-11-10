@@ -101,6 +101,9 @@ export interface DefCampo {
   num?: boolean;
   uni?: string;
   dep?: string;
+  /** Fila SIEMPRE gris (solo lectura): el valor llega de otra parte y no se edita aquí.
+   *  Ej: meta.pais — lista única del proyecto (Identificación), no del módulo RCI. */
+  soloLectura?: boolean;
   /** Forma compacta del valor para el title del control (no cambia el estado ni el value).
    *  Ej: mont.dn '1 1/2"' → title «… · formato: 1-1/2"». */
   fmtValor?: (v: string) => string;
@@ -301,7 +304,13 @@ export function GrupoTabla({
   const uniS: CSSProperties = { ...UNI_TD, fontSize: compacta ? 11 : 13 };
   const ctrlS: CSSProperties = { ...CTRL, fontSize: compacta ? 12 : 14 };
   const tdS: CSSProperties = compacta ? { ...TDC, fontSize: 11 } : TDC;
-  const obsS: CSSProperties = compacta ? { ...OBS_TD, fontSize: 11.5 } : OBS_TD;
+  /* Tabla MUY ancha (normativa, minAncho ≥ 1600): la observación envuelve en 1 línea — el
+   * scroll vertical de la pestaña se iba por las observaciones a 2 líneas (ped. usuario). */
+  const obsS: CSSProperties = compacta
+    ? { ...OBS_TD, fontSize: 11.5 }
+    : minAncho && minAncho >= 1600
+      ? { ...OBS_TD, maxWidth: undefined }
+      : OBS_TD;
   return (
     <section className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
       <div className="card-h" style={{ padding: compacta ? '4px 10px' : '6px 12px' }}>
@@ -365,7 +374,7 @@ export function GrupoTabla({
             </thead>
             <tbody>
               {campos.map((d) => {
-                const off = d.dep ? String(get(d.dep)) !== 'Sí' : false;
+                const off = d.soloLectura || (d.dep ? String(get(d.dep)) !== 'Sí' : false);
                 const ayu = typeof d.ayu === 'function' ? d.ayu(R, estado) : d.ayu;
                 const set = edit && !off ? setP(d.path) : undefined;
                 const v = String(get(d.path) ?? '');

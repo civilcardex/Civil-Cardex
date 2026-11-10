@@ -89,8 +89,8 @@ export const COL_TEMA: TemaRci = {
 export const temaRci = (rep = false): TemaRci => (rep ? COL_RCI : COL_TEMA);
 
 /** Paleta con colores RESUELTOS (hex) leídos de las variables CSS del documento: la que hay
- *  que pasarle a dibujaRectangulo/dibujaCurvaBomba cuando el esquema va sobre canvas.
- *  Ej: const cv = document.querySelector('canvas'); dibujaRectangulo(cv.getContext('2d')!, cv.clientWidth, 360, roc, temaResuelto()). */
+ *  que pasarle a dibujaRectFuegoDibujo/dibujaCurvaBomba cuando el esquema va sobre canvas.
+ *  Ej: dibujaCurvaBomba(cv.getContext('2d')!, cv.clientWidth, 360, R.bomba, temaResuelto()). */
 export function temaResuelto(): TemaRci {
   const fijo = COL_RCI;
   if (typeof window === 'undefined' || typeof document === 'undefined') return fijo;

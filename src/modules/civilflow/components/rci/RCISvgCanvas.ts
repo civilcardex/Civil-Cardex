@@ -1,112 +1,11 @@
 /** Curvas de canvas del módulo RCI (extraídas de RCISvgSchemas por el guard de líneas):
- *  rectángulo de fuego (NFPA 13) y curva de la bomba (NFPA 20). NO usan var(--x): reciben
- *  colores resueltos (temaResuelto()).
- *  Ej: dibujaRectangulo(ctx, cv.clientWidth, 360, R.roc, temaResuelto()). */
-import type { BombaResult, Criterios } from '../../lib/rci/types';
+ *  rectángulo de fuego DESDE EL DIBUJO (NFPA 13) y curva de la bomba (NFPA 20). NO usan
+ *  var(--x): reciben colores resueltos (temaResuelto()).
+ *  Ej: dibujaRectFuegoDibujo(ctx, w, h, rect, temaResuelto()). */
+import type { BombaResult } from '../../lib/rci/types';
 import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
 import { COL_RCI, fmtNum, niceStep, type TemaRci } from './RCISvgTheme.tsx';
 /* ---------------- Canvas: rectángulo de fuego y curva de la bomba ---------------- */
-
-/** Rectángulo de fuego (NFPA 13) sobre canvas: ramales en gris, envolvente S×L, el rectángulo
- *  teórico 1,2√A en rojo discontinuo y los rociadores en operación rellenos.
- *  w/h son el tamaño CSS del canvas (la función asume que el contexto ya está escalado por DPR;
- *  NO usa var(--x): pase colores resueltos, p. ej. temaResuelto()).
- *  Ej: dibujaRectangulo(ctx, cv.clientWidth, 360, R.roc, temaResuelto()). */
-export function dibujaRectangulo(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  roc: Criterios,
-  tema: TemaRci = COL_RCI,
-): void {
-  const g = ctx;
-  const o = roc;
-  g.clearRect(0, 0, w, h);
-  g.font = `12px ${tema.font}`;
-  if (!(o.S > 0 && o.L > 0 && o.Nramal > 0)) {
-    g.fillStyle = tema.muted;
-    g.fillText('Ingrese S y L en Entradas', 20, 30);
-    return;
-  }
-  const nx = o.Nramal,
-    ny = o.Nramales,
-    W = nx * o.S,
-    H = ny * o.L;
-  const x0r = W / 2 - o.Llargo / 2,
-    y0r = H / 2 - o.Acorto / 2;
-  const minX = Math.min(-o.S, x0r) - 0.3,
-    maxX = Math.max(W + o.S, x0r + o.Llargo) + 0.3;
-  const minY = Math.min(-o.L, y0r) - 0.3,
-    maxY = Math.max(H + o.L * 0.6, y0r + o.Acorto) + 0.3;
-  const pad = { l: 46, r: 16, t: 34, b: 30 };
-  const sc = Math.min((w - pad.l - pad.r) / (maxX - minX), (h - pad.t - pad.b) / (maxY - minY));
-  const ox = pad.l + (w - pad.l - pad.r - sc * (maxX - minX)) / 2,
-    oy = h - pad.b - (h - pad.t - pad.b - sc * (maxY - minY)) / 2;
-  const X = (x: number) => ox + (x - minX) * sc,
-    Y = (y: number) => oy - (y - minY) * sc;
-  // ramales
-  g.strokeStyle = tema.lineStrong;
-  g.lineWidth = 1;
-  for (let j = -1; j <= ny; j++) {
-    const y = (j + 0.5) * o.L;
-    if (y < minY || y > maxY) continue;
-    g.beginPath();
-    g.moveTo(X(minX + 0.2), Y(y));
-    g.lineTo(X(maxX - 0.2), Y(y));
-    g.stroke();
-  }
-  // envolvente
-  g.strokeStyle = tema.muted;
-  g.lineWidth = 1.2;
-  g.setLineDash([]);
-  g.strokeRect(X(0), Y(H), W * sc, H * sc);
-  // rectángulo teórico
-  g.strokeStyle = tema.fire;
-  g.lineWidth = 2.2;
-  g.setLineDash([8, 5]);
-  g.strokeRect(X(x0r), Y(y0r + o.Acorto), o.Llargo * sc, o.Acorto * sc);
-  g.setLineDash([]);
-  // rociadores
-  let k = 0;
-  for (let j = -1; j <= ny; j++)
-    for (let i = -1; i <= nx; i++) {
-      const x = (i + 0.5) * o.S,
-        y = (j + 0.5) * o.L;
-      if (x < minX || x > maxX || y < minY || y > maxY) continue;
-      const on = i >= 0 && i < nx && j >= 0 && j < ny && j * nx + i < o.Nreq;
-      g.beginPath();
-      g.arc(X(x), Y(y), on ? 5.5 : 4, 0, Math.PI * 2);
-      if (on) {
-        g.fillStyle = tema.fire;
-        g.fill();
-        k++;
-      } else {
-        g.strokeStyle = tema.lineStrong;
-        g.lineWidth = 1.5;
-        g.stroke();
-      }
-    }
-  // cotas
-  g.fillStyle = tema.ink;
-  g.textAlign = 'center';
-  g.fillText(
-    `Lado largo ${fmtNum(o.Llargo)} m (1,2√A)`,
-    X(x0r + o.Llargo / 2),
-    Y(y0r + o.Acorto) - 8,
-  );
-  g.save();
-  g.translate(X(x0r) - 10, Y(y0r + o.Acorto / 2));
-  g.rotate(-Math.PI / 2);
-  g.fillText(`${fmtNum(o.Acorto)} m`, 0, 0);
-  g.restore();
-  g.fillStyle = tema.muted;
-  g.textAlign = 'left';
-  g.fillText(
-    `Ramales →   S = ${fmtNum(o.S)} m   L = ${fmtNum(o.L)} m   ${k} rociadores en operación   Área ${fmtNum(o.Adis * 0.092903)} m²`,
-    10,
-    16,
-  );
-}
 
 /** Curva de la bomba (NFPA 20) sobre canvas: rejilla con pasos "bonitos", líneas de 100 % y
  *  150 % del caudal, la curva P = a·Q² + b·Q + churn y los puntos de demanda D1/D2.
@@ -247,9 +146,9 @@ export function dibujaRectFuegoDibujo(
   const pad = { l: 20, r: 16, t: 30, b: 20 };
   const sc = Math.min((w - pad.l - pad.r) / (maxX - minX), (h - pad.t - pad.b) / (maxY - minY));
   const ox = pad.l + (w - pad.l - pad.r - sc * (maxX - minX)) / 2;
-  const oy = h - pad.b - (h - pad.t - pad.b - sc * (maxY - minY)) / 2;
+  const oy = pad.t + (h - pad.t - pad.b - sc * (maxY - minY)) / 2; // Y hacia abajo: oy ancla ARRIBA
   const X = (x: number) => ox + (x - minX) * sc;
-  const Y = (y: number) => oy - (y - minY) * sc;
+  const Y = (y: number) => oy + (y - minY) * sc; // MISMA orientación que el dibujo (Y hacia abajo)
 
   /* Ramales del dibujo (gris fino). */
   g.strokeStyle = tema.lineStrong;
@@ -262,13 +161,16 @@ export function dibujaRectFuegoDibujo(
     g.stroke();
   }
 
-  /* Polígono del rectángulo DEFINIDO: rojo sólido (el estado de la marca en el dibujo). */
+  /* Polígono del rectángulo DEFINIDO: rojo sólido + RELLENO verde translúcido — tal cual se
+   * ve en el dibujo de diseño de redes (ped. usuario). */
   g.strokeStyle = tema.fire;
   g.lineWidth = 2.5;
   g.beginPath();
   g.moveTo(X(rect.ptsM[0][0]), Y(rect.ptsM[0][1]));
   for (let i = 1; i < rect.ptsM.length; i++) g.lineTo(X(rect.ptsM[i][0]), Y(rect.ptsM[i][1]));
   g.closePath();
+  g.fillStyle = 'rgba(93,187,131,.14)';
+  g.fill();
   g.stroke();
 
   /* Envolvente de los rociadores DENTRO del área (gris claro). */
@@ -286,7 +188,7 @@ export function dibujaRectFuegoDibujo(
     }
     g.strokeStyle = tema.line;
     g.lineWidth = 1.5;
-    g.strokeRect(X(bMinX), Y(bMaxY), (bMaxX - bMinX) * sc, (bMaxY - bMinY) * sc);
+    g.strokeRect(X(bMinX), Y(bMinY), (bMaxX - bMinX) * sc, (bMaxY - bMinY) * sc);
   }
 
   /* Roociadores del dibujo: verde = dentro del rectángulo, gris = fuera. */
