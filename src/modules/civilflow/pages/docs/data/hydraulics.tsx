@@ -16,9 +16,6 @@ const hidraulica = {
             gravedad en un fluido.
           </p>
           {fx('Fr = v / √(g · DH)')}
-          <div>
-            <span className="text-on-surface-variant">Donde:</span>
-          </div>
           {donde([
             ['v', 'velocidad del agua (m/s)'],
             ['g', 'gravedad = 9.81 m/s²'],
@@ -68,9 +65,6 @@ const hidraulica = {
               <sup>2/3</sup> · √S
             </>,
           )}
-          <div>
-            <span className="text-on-surface-variant">Donde:</span>
-          </div>
           {donde([
             ['V', 'velocidad (m/s)'],
             ['n', 'coeficiente de rugosidad de Manning'],
@@ -100,9 +94,6 @@ const hidraulica = {
               T<sub>0</sub> = &gamma; · R · S
             </>,
           )}
-          <div>
-            <span className="text-on-surface-variant">Donde:</span>
-          </div>
           {donde([
             [
               <>
@@ -180,9 +171,6 @@ const hidraulica = {
               S<sub>c</sub> = (4.579 &times; 10<sup>−4</sup>) / d<sup>3</sup>
             </>,
           )}
-          <div>
-            <span className="text-on-surface-variant">Donde:</span>
-          </div>
           {donde([
             [
               <>
@@ -203,49 +191,52 @@ const hidraulica = {
     {
       title: 'Elementos hidráulicos por sección',
       body: (
-        <div className="space-y-4">
-          <div>
-            <span className="text-[13px] font-semibold text-cyan-400">Rectangular</span>
-            {fx(
-              <>
-                A = b · y
-                <br />
-                P = b + 2 · y
-                <br />R<sub>h</sub> = (b · y) / (b + 2 · y)
-                <br />T = b
-              </>,
-            )}
+        <div className="space-y-3">
+          {/* 3 secciones en 3 columnas, una por fila (ped. usuario). */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <span className="text-[13px] font-semibold text-cyan-400">Rectangular</span>
+              {fx(
+                <>
+                  A = b · y
+                  <br />
+                  P = b + 2 · y
+                  <br />R<sub>h</sub> = (b · y) / (b + 2 · y)
+                  <br />T = b
+                </>,
+                true,
+              )}
+            </div>
+            <div>
+              <span className="text-[13px] font-semibold text-yellow-400">Trapezoidal</span>
+              {fx(
+                <>
+                  A = (b + z · y) · y
+                  <br />
+                  P = b + 2 · y · &radic;(1 + z²)
+                  <br />R<sub>h</sub> = ((b + z · y) · y) / (b + 2 · y · &radic;(1 + z²))
+                  <br />T = b + 2 · z · y
+                </>,
+                true,
+              )}
+            </div>
+            <div>
+              <span className="text-[13px] font-semibold text-green-400">
+                Circular (parcialmente lleno)
+              </span>
+              {fx(
+                <>
+                  A = (D²/4) · (&theta; − sen(&theta;)) / 2
+                  <br />
+                  P = D · &theta; / 2
+                  <br />R<sub>h</sub> = D/4 · (1 − sen(&theta;) / &theta;)
+                  <br />T = D · sen(&theta;/2)
+                </>,
+                true,
+              )}
+            </div>
           </div>
-          <div>
-            <span className="text-[13px] font-semibold text-yellow-400">Trapezoidal</span>
-            {fx(
-              <>
-                A = (b + z · y) · y
-                <br />
-                P = b + 2 · y · &radic;(1 + z²)
-                <br />R<sub>h</sub> = ((b + z · y) · y) / (b + 2 · y · &radic;(1 + z²))
-                <br />T = b + 2 · z · y
-              </>,
-            )}
-          </div>
-          <div>
-            <span className="text-[13px] font-semibold text-green-400">
-              Circular (parcialmente lleno)
-            </span>
-            {fx(
-              <>
-                A = (D²/4) · (&theta; − sen(&theta;)) / 2
-                <br />
-                P = D · &theta; / 2
-                <br />R<sub>h</sub> = D/4 · (1 − sen(&theta;) / &theta;)
-                <br />T = D · sen(&theta;/2)
-              </>,
-            )}
-            <div className="text-[11px] text-on-surface-variant ml-4">con &theta; en radianes</div>
-          </div>
-          <div>
-            <span className="text-on-surface-variant">Donde:</span>
-          </div>
+          <div className="text-[11px] text-on-surface-variant">con &theta; en radianes</div>
           {donde([
             ['b', 'ancho de base (m)'],
             ['y', 'calado o profundidad del flujo (m)'],

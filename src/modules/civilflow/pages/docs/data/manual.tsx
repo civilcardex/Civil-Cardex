@@ -9,36 +9,6 @@ const manual = {
   color: '#4D8FF7',
   sections: [
     {
-      title: 'Introducción',
-      body: (
-        <div className="space-y-3">
-          <p>
-            CIVILFLOW 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing.
-            Camilo Cárdenas Chacón. Permite elaborar memorias de cálculo completas para redes de
-            agua fría, agua caliente, sanitaria, aguas lluvias, gas y red contra incendio.
-          </p>
-          <p className="text-[13px] font-semibold">Normas aplicadas:</p>
-          <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">
-              NTC 1500:2020
-            </span>
-            <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">
-              RAS 2000
-            </span>
-            <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">
-              NTC 3728
-            </span>
-            <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">
-              NSR-10 Título J
-            </span>
-            <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">
-              NFPA 13
-            </span>
-          </div>
-        </div>
-      ),
-    },
-    {
       title: 'Interfaz del aplicativo',
       body: (
         <div className="space-y-4">
@@ -165,26 +135,6 @@ const manual = {
             ['8', 'Bomba AR', 'Aguas residuales en sótano'],
             ['9', 'Recirculación AC', 'L de AC > 15 m'],
             ['10', 'Contra incendio', 'Según NSR-10 Título J'],
-          ]}
-        />
-      ),
-    },
-    {
-      title: 'Flujo de trabajo completo',
-      body: (
-        <Tabla
-          head={['#', 'Tarea']}
-          rows={[
-            ['1', 'Datos del proyecto (Sidebar)'],
-            ['2', 'Generar niveles'],
-            ['3', 'Seleccionar materiales'],
-            ['4', 'Activar redes'],
-            ['5', 'Ajustar aparatos (UC, UD, Q gas)'],
-            ['6', 'Ingresar cubierta (áreas, I)'],
-            ['7', 'Calcular red de gas (Renouard)'],
-            ['8', 'Seleccionar calentador'],
-            ['9', 'Verificar validación'],
-            ['10', 'Verificar validación final'],
           ]}
         />
       ),

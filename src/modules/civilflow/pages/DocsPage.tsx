@@ -95,7 +95,8 @@ function DocsPage() {
   const filteredSections =
     search.trim() === ''
       ? activeCategory?.sections || []
-      : allSections.filter((s) => {
+      : // Buscador SOLO dentro de la categoría activa (ped. usuario): no cruza módulos.
+        (activeCategory?.sections || []).filter((s) => {
           const key = `${s.categoryId}:${s.title}`;
           return (
             s.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -103,10 +104,8 @@ function DocsPage() {
           );
         });
 
-  // En búsqueda el listado cruza todas las categorías: el hero deja de representar
-  // a la categoría activa (neutro) y el H1 describe lo que realmente se ve.
-  const enBusqueda = search.trim().length > 0;
-  const heroColor = enBusqueda ? '#6b7480' : (activeCategory?.color ?? '#4D8FF7');
+  // En búsqueda el listado queda dentro de la categoría activa: el hero sigue representándola.
+  const heroColor = activeCategory?.color ?? '#4D8FF7';
 
   const selectCat = (id: string) => {
     setActiveCat(id);
@@ -306,16 +305,14 @@ function DocsPage() {
                   border: `1px solid ${heroColor}44`,
                 }}
               >
-                {enBusqueda ? 'search' : activeCategory?.icon}
+                {activeCategory?.icon}
               </span>
               <div className="flex-1 min-w-[200px]">
                 <h1 className="text-headline-sm font-bold text-on-surface leading-tight">
-                  {enBusqueda ? 'Resultados de búsqueda' : activeCategory?.name}
+                  {activeCategory?.name}
                 </h1>
                 <p className="text-[12px] text-on-surface-variant mt-0.5 leading-snug">
-                  {enBusqueda
-                    ? `${filteredSections.length} coincidencia(s) en todas las categorías`
-                    : activeCategory?.desc}
+                  {activeCategory?.desc}
                 </p>
               </div>
               <div className="w-full md:w-72">
@@ -348,9 +345,7 @@ function DocsPage() {
             </div>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <span className="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant border border-outline-variant rounded-full px-2.5 py-0.5">
-                {search.trim()
-                  ? `${filteredSections.length} coincidencias en todas las categorías`
-                  : `${filteredSections.length} secciones · categoría ${activeCategory?.id}`}
+                {`${filteredSections.length} secciones · categoría ${activeCategory?.id}`}
               </span>
               <button
                 type="button"

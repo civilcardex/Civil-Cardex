@@ -1,5 +1,6 @@
 import { Tabla } from './ui';
 import { NORMAS_PAIS } from '../../../constants/countryStandards';
+import { NORMAS_RCI_PAIS, perfilRciDe } from '../../../constants/rciCountryStandards.ts';
 
 /** Documentación de los perfiles normativos por país (constants/countryStandards.ts).
  *  Las tablas se generan DESDE los perfiles — una sola verdad: si se ajusta un rango
@@ -104,9 +105,41 @@ const normasPais = {
       ),
     },
     {
-      title: 'Fuentes de los perfiles (artículo + URL + fecha)',
+      title: 'Protección contra incendios — marco legal por país',
       body: (
         <Tabla
+          envolver
+          head={[
+            'País',
+            'Código local',
+            'Exige rociadores',
+            'Exige montantes',
+            'Adopción NFPA',
+            'Eléctrica',
+            'Sísmico',
+            'Norma de diseño',
+          ]}
+          rows={NORMAS_PAIS.map((p) => {
+            const r = NORMAS_RCI_PAIS[p.id] || perfilRciDe(p.nombre);
+            return [
+              p.nombre,
+              r.codLocal,
+              r.exigeRoc === 'Sí' ? `Sí — ${r.refRoc}` : 'No',
+              r.exigeSP === 'Sí' ? `Sí — ${r.refSP}` : 'No',
+              r.adopNac,
+              r.normElec,
+              r.reqSismo ? `Sí — ${r.normSis} (${r.parLabel || ''})` : '—',
+              r.citaRci,
+            ];
+          })}
+        />
+      ),
+    },
+    {
+      title: 'Fuentes de los perfiles',
+      body: (
+        <Tabla
+          envolver
           head={['País', 'AF/AC', 'Sanitaria', 'Lluvias', 'Gas', 'RCI']}
           rows={NORMAS_PAIS.map((p) => [
             p.nombre,
