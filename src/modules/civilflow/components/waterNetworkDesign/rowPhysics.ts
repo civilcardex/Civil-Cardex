@@ -5,9 +5,9 @@ import { calcLeAcces } from '../../utils/fittingsUtils.ts';
 // Fórmula de Hunter (caudal probable): K depende del número de descargas y el caudal es
 // K·f(UC totales), con el cambio de fórmula en 240 UC. Misma operación (y mismos redondeos)
 // que se aplicaba inline en la tabla, el efecto de memoria y el de velocidad.
-/** Coeficiente K de la fórmula de Hunter (metodo de probabilidad de uso simultaneo) según el número de descargas simultáneas. Ej: 1 descarga → 1; 3 descargas → 1/√2 ≈ 0.71. */
+/** Coeficiente K de la fórmula de Hunter (metodo de probabilidad de uso simultaneo) según el número de descargas simultáneas, SIN redondeo (la NTC define K = 1/√(N−1) exacto — el round a 2 dec era un artefacto del HTML de referencia que costaba precisión: K(3) daba 0.71 en vez de 0.7071 y Qaco caía de 0.133 a 0.132). Ej: 1 descarga → 1; 3 descargas → 1/√2 ≈ 0.7071. */
 export function hunterK(nDesc: number): number {
-  return nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+  return nDesc > 0 ? (nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) : 0;
 }
 
 /** Caudal probable de Hunter (metodo de probabilidad de uso simultaneo) (L/s aprox.): K·f(UC (Unidades de Consumo) totales), con

@@ -1,53 +1,18 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useContext, useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import WorkArea from '../components/WorkAreaCivilFlow.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
-import { devError } from '../../../utils/devError.ts';
-import { marcarNavInterna } from '../../../utils/internalNavigation.ts';
-import { ProjectContext, PROY_DEFAULTS, type Proyecto } from '../context/ProjectContext.tsx';
+import { ProjectContext } from '../context/ProjectContext.tsx';
 import { PlansContext } from '../context/PlansContext.tsx';
 import { fetchProyectos } from '../services/projectsService.ts';
-import { loadProyectoData } from '../services/projectDataService.ts';
-import { clearLocalWorkspace } from '../services/workspaceReset.ts';
-import { clearAllPDFs } from '../services/idbStorage.ts';
-import {
-  getActiveProyectoId,
-  setActiveProyectoId,
-  saveToStorage,
-} from '../services/storageService.ts';
-import { ACTIVE_NETS_KEY, PLANS_META_KEY } from '../constants/storage-keys.ts';
-import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
+import { getActiveProyectoId, setActiveProyectoId } from '../services/storageService.ts';
+import { abrirProyectoDesdeUrl } from '../services/workspaceReset.ts';
+import { EnlaceLegacyBanner } from './EnlaceLegacyBanner.tsx';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
 import { parseFlowSplat, rutaFlow } from '../components/workarea/tabRoute.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 
 import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
-/** Enlace legacy (id sin formato uuid, de antes del cambio a identificadores universales):
- *  aviso centrado SIN workspace montado — abrir el activo en silencio haría que el usuario
- *  dibuje en el proyecto equivocado. */
-const ENLACE_LEGACY_STYLE: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 12,
-  height: '100%',
-  padding: 24,
-  textAlign: 'center',
-};
-
-const ENLACE_LEGACY_AVISO_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  padding: '10px 16px',
-  background: 'rgba(180, 83, 9, 0.15)',
-  border: '1px solid rgba(217, 119, 6, 0.4)',
-  borderRadius: 6,
-  color: '#fbbf24',
-  fontSize: 13,
-  fontFamily: 'var(--body)',
-};
-
 /** Abre el proyecto del enlace (/civilflowareatrabajo/:id) o el activo si no hay id. Si el id cambió, recarga todo para no mezclar dibujos entre proyectos. Ej: uuid del activo. */
 function WorkAreaCivilFlowPage() {
   usePageMeta(
@@ -120,53 +85,21 @@ function WorkAreaCivilFlowPage() {
     void (async () => {
       // Fuera del cuerpo síncrono del efecto (regla set-state-in-effect).
       await Promise.resolve();
-      // Proyecto activo ANTES del switch: lo único que permite hacer rollback del puntero.
-      const idAnterior = getActiveProyectoId();
       setSwitching(true);
-      try {
-        // Pausar PRIMERO (mismo orden que ProfilePage): los resets de abajo disparan los
-        // efectos debounced de guardado — sin pausa vaciarían el proyecto en la nube.
-        projectCtx?.pauseCloudSync();
-        plansCtx?.pauseCloudSync();
-        // Cargar ANTES de destruir: si el proyecto no existe o no es accesible, el
-        // workspace actual debe quedar intacto (el catch recarga al proyecto previo).
-        const data = await loadProyectoData(wantsId);
-        if (!data) throw new Error('proyecto-no-encontrado-o-sin-acceso');
-        // Conserva las copias locales de trazos de ESTE proyecto (ver clearLocalWorkspace):
-        // son el único respaldo de un piso cuyo guardado en la nube falló.
-        clearLocalWorkspace({ planosVigentes: (data?.plans_meta ?? []).map((m) => m.id) });
-        await clearAllPDFs();
-        plansCtx?.resetPlans();
-        projectCtx?.resetToDefaults();
-        setActiveProyectoId(wantsId);
-        // Escritura vía saveToStorage (aplica el 2º prefijo civilflow_ que leen los
-        // providers al montar — mismo contrato de hand-off documentado en ProfilePage).
-        if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
-        const proyToSave =
-          data?.proy && Object.keys(data.proy).length
-            ? ({ ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) } as Proyecto)
-            : PROY_DEFAULTS;
-        saveToStorage('civilflow_proy', proyToSave);
-        if (data?.mats && Object.keys(data.mats).length) saveToStorage('civilflow_mats', data.mats);
-        if (data?.profs && data.profs.length) saveToStorage('civilflow_profs', data.profs);
-        if (data?.crits && data.crits.length) saveToStorage('civilflow_crits', data.crits);
-        if (data?.redesActivas && data.redesActivas.length)
-          saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
-        if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
-        // Reload completo: providers re-nacen leyendo el storage recién volcado.
-        marcarNavInterna();
-        window.location.replace(rutaFlow(wantsId, tabUrl));
-      } catch (e) {
-        devError('abrir proyecto desde URL:', e);
-        // Rollback: recarga completa — el workspace del proyecto previo ya no existe en
-        // memoria (la destrucción pudo correr antes del fallo); los providers se re-nacen
-        // con la recarga, un resume in situ dejaría un workspace vacío sin sync.
-        if (idAnterior) setActiveProyectoId(idAnterior);
-        // Ruta limpia: el redirect al uuid del activo lo hace el efecto de entrada.
-        marcarNavInterna();
-        window.location.replace(idAnterior ? '/civilflowareatrabajo' : '/perfil');
-        return;
-      }
+      await abrirProyectoDesdeUrl({
+        wantsId,
+        pausar: () => {
+          projectCtx?.pauseCloudSync();
+          plansCtx?.pauseCloudSync();
+        },
+        resetear: () => {
+          plansCtx?.resetPlans();
+          projectCtx?.resetToDefaults();
+        },
+        activar: (id) => setActiveProyectoId(String(id)),
+        rutaConId: rutaFlow(wantsId, tabUrl),
+        rutaBase: '/civilflowareatrabajo',
+      });
     })();
     // El volcado corre una sola vez por id entrante; switchingRef evita re-entradas.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,20 +108,7 @@ function WorkAreaCivilFlowPage() {
   // Hook ANTES de cualquier early return (reglas-de-hooks), incluido el banner legacy de
 
   // Enlace con id no-uuid (numérico legacy): banner + link al perfil, SIN montar workspace.
-  if (enlaceLegacy) {
-    return (
-      <main className="h-full" style={ENLACE_LEGACY_STYLE}>
-        <h1 style={SR_ONLY_STYLE}>Área de trabajo</h1>
-        <div role="alert" style={ENLACE_LEGACY_AVISO_STYLE}>
-          Este enlace corresponde a una versión antigua del proyecto — ábrelo desde tu lista de
-          proyectos.
-        </div>
-        <Link to="/perfil" style={{ color: 'var(--acc, #4d8ff7)', fontSize: 13, fontWeight: 600 }}>
-          Ir a mis proyectos
-        </Link>
-      </main>
-    );
-  }
+  if (enlaceLegacy) return <EnlaceLegacyBanner />;
 
   // Una sola pantalla percibida al abrir/cambiar proyecto: el Suspense del chunk y estos dos
   // gates usan el mismo texto (antes encadenaban "Cargando planos y redes…" → "Abriendo

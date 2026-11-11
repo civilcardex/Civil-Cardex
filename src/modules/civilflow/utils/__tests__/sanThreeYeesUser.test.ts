@@ -162,7 +162,7 @@ describe('replay usuario — 3 yees simples + 1 doble (coordenadas exactas)', ()
       totalSimple += ys;
       totalDoble += yd;
     }
-    // eslint-disable-next-line no-console
+
     expect(totalSimple).toBe(3);
     expect(totalDoble).toBe(1);
   });

@@ -24,7 +24,7 @@ export function Tabla({
         <tbody>
           <tr>
             {head.map((h, i) => (
-              <th key={i} className={thCls}>
+              <th scope="col" key={i} className={thCls}>
                 {h}
               </th>
             ))}

@@ -1,12 +1,13 @@
 /** Rejillas de vent (Ventilación sanitaria): cálculo de aberturas libre/inferior por recinto
  *  y su alzado. Ej: baño con 2 sanitarios -> rejilla con el área libre que exige la norma. */
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import type { RejResultado } from '../utils/rejillasCalc.ts';
 import type { RejFila } from './rejillasVentilation/rejillasShared.ts';
 import { AlzadoMuro } from './rejillasVentilation/WallElevation';
 import { TablaTipologias } from './rejillasVentilation/TableTypologies';
 import { useRejillasData } from './rejillasVentilation/useRejillasData.ts';
 import EditButton from './shared/EditButton.tsx';
+import { ModalOverlay } from '../../../components/shared/ModalShell.tsx';
 
 // Módulo Rejillas de ventilación (NTC 3631, 3ª actualización) — tabla Tipologías por sector.
 /** Alertas del sector seleccionado + notas generales (visible también vacío). */
@@ -72,16 +73,6 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
   const sel = Math.min(selIdx, filas.length - 1);
   const selFila = filas.length ? filas[Math.max(sel, 0)] : undefined;
   const selRes = filas.length ? resultados[Math.max(sel, 0)] : undefined;
-
-  // Escape cierra el modal (listener a nivel documento, patrón HelpPanel).
-  useEffect(() => {
-    if (!alzadoAbierto) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setAlzadoAbierto(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [alzadoAbierto]);
 
   return (
     <>
@@ -225,31 +216,19 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
         </div>
       </section>
       {alzadoAbierto && selRes && (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setAlzadoAbierto(false);
-          }}
-          role="presentation"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,.6)',
-            padding: 20,
-          }}
+        // ModalOverlay (dialog nativo): click-fuera y Escape cierran (el listener manual
+        // de Escape se borró con la migración); el rol/aria-modal los da el <dialog>.
+        <ModalOverlay
+          onClose={() => setAlzadoAbierto(false)}
+          ariaLabel={`Alzado de muro de «${selFila?.sector ?? ''}»`}
         >
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Alzado de muro de «${selFila?.sector ?? ''}»`}
             style={{
               background: 'var(--bg2)',
               border: '1px solid var(--line)',
               borderRadius: 8,
-              width: 'min(640px, 100%)',
+              // Dentro de <dialog> el padre es fit-content: un 100% colapsa la card al contenido.
+              width: 'min(640px, calc(100vw - 40px))',
               maxHeight: '90vh',
               overflowY: 'auto',
               boxShadow: '0 12px 30px rgba(0,0,0,.5)',
@@ -306,7 +285,7 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
               )}
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </>
   );

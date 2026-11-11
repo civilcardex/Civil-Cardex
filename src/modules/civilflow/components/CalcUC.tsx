@@ -102,7 +102,6 @@ function CalculoUC({ tipo }: CalculoUCProps) {
         return s + (propia[d.id] || 0);
       }, 0),
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [AP, tramos, field, heredMap, foldMap]);
 
   // Celda final de la Σ (como sanitaria): Σ aparatos × UC contados una vez.
@@ -193,6 +192,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 <tr>
                   {AP.map((d) => (
                     <th
+                      scope="col"
                       key={d.id}
                       className={`col-h ${clsHeader}`}
                       title={`${d.nombre}: ${d[field]} UC por aparato.`}

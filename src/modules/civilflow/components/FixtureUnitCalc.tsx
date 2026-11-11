@@ -200,6 +200,7 @@ function CalculoUD() {
                 <tr>
                   {mergedBase.map((d) => (
                     <th
+                      scope="col"
                       key={d.id}
                       className="col-h san"
                       title={`${d.nombre}: ${d.ud} UD por aparato (NTC 1500).`}

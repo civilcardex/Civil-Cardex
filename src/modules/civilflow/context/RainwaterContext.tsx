@@ -210,7 +210,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   // Flush SOLO al desmontar (cambio visor→tablas): antes el timer se cancelaba y la edición
   // del dibujo nunca llegaba a BD — la tabla (provider nuevo, lee BD) no la mostraba.
   // Efecto con [] para no disparar en cada edición (mataría el debounce).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(
     () => () => {
       if (!sucioRef.current) return;

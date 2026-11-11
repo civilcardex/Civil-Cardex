@@ -1,4 +1,5 @@
 /** Contenido de la sección "Agua fría" de la página /docs: UC (Unidades de Consumo), Hazen-Williams y verificación de presión/velocidad de af (Agua Fría). */
+import { Link } from 'react-router-dom';
 import { Tabla, donde, fx } from './ui';
 
 const agua_fria = {
@@ -27,6 +28,11 @@ const agua_fria = {
               ['Lavadero', '0.75', '0.75', '2'],
             ]}
           />
+          <p>
+            Profundiza en el método:{' '}
+            <Link to="/aprende/hunter-ntc-1500">Método Hunter en la NTC 1500</Link> (por qué a
+            partir de 240 UC cambia la fórmula).
+          </p>
         </div>
       ),
     },

@@ -44,6 +44,9 @@ export function useSuscripciones() {
   const [accesos, setAccesos] = useState<ModuloId[]>(propia?.accesos ?? []);
 
   useEffect(() => {
+    // Feature apagada: nada consume rows/accesos/flag (bloqueando=false fijo; el dialog del
+    // perfil va directo con !subsBloqueando) — cero round-trips de red, sin setState.
+    if (!SUSCRIPCIONES_ACTIVAS) return;
     // Invalidación de la caché de sesión al cambiar de usuario (fuera del render — regla
     // de pureza del react-compiler).
     if (cacheSesion && cacheSesion.userId !== userId) cacheSesion = null;

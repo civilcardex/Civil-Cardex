@@ -94,7 +94,6 @@ function WaterNetworkDesign({
     window.addEventListener(EV_STORAGE, h);
     correr();
     return () => window.removeEventListener(EV_STORAGE, h);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [networkType]);
   useEffect(() => {
     if (propTick === 0) return;

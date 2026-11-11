@@ -37,7 +37,7 @@ function Tabla({ rows }: { rows: typeof CATALOGO_BASE }) {
             'Uso',
             'Origen',
           ].map((h) => (
-            <th key={h} style={TH}>
+            <th scope="col" key={h} style={TH}>
               {h}
             </th>
           ))}

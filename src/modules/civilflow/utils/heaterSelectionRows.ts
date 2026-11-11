@@ -82,7 +82,7 @@ export function computeHeaterSelectionTables(
     recText = `Recomendado: usar equipo mayor a ${parsedHeaters[parsedHeaters.length - 1]?.cap || 21} LPM o múltiples unidades`;
   else recText = 'No requiere calentador';
 
-  let cumpleTxt = '—';
+  let cumpleTxt = ''; // vacío = sin equipo seleccionado → la fila muestra recText ('No requiere calentador' / 'Recomendado…') en vez de un '—' mudo
   if (selectedHeaterId && selectedHeater) {
     const match = selectedHeater.id.match(/\d+/);
     const cap = match ? parseInt(match[0]) : 0;
@@ -108,7 +108,7 @@ export function computeHeaterSelectionTables(
     ['Factor de simultaneidad (%)', resolvedFactorSim],
     ['Caudal ajustado (LPM)', fmt(caudalAjustado, 2)],
     ['Calentador seleccionado', selectedHeater ? selectedHeater.n : 'Ninguno'],
-    ['Chequeo', cumpleTxt || recText],
+    ['Chequeo', cumpleTxt || recText || '—'],
   ];
 
   return [

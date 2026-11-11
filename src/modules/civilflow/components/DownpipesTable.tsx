@@ -81,7 +81,6 @@ const BajantesTable = memo(function BajantesTable_() {
       if (ids.length) mapa[`${t.id}-${String(t.planId ?? '')}`] = ids;
     }
     return mapa;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tramosSan, storageByPlan]);
   // Keep buildBajanteGraph only for vent mapping + components (UD now from sanitaryRows)
   const [, ventToSanMap, ventRamalDiamMap, components] = useMemo(

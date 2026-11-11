@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { rangoAfTxt } from '../../constants/countryStandards';
 
-// ponytail: los 28 <th> comparten 2 estilos base (fila 1 con padding 2px, fila 2 con padding 0)
+// ponytail: los 28 <th scope="col"> comparten 2 estilos base (fila 1 con padding 2px, fila 2 con padding 0)
 // más extras puntuales (borde inferior, anchos) — antes el literal iba repetido a mano en cada th.
 const TH_FILA1: CSSProperties = { textAlign: 'center', padding: '2px 1px', fontSize: 10.5 };
 const TH_FILA2: CSSProperties = { textAlign: 'center', padding: '0 1px', fontSize: 10.5 };

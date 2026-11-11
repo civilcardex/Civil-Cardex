@@ -221,7 +221,7 @@ export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: s
       flushRedes();
     },
     1200,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [redes, redesRestoreDone],
   );
   useEffect(() => {

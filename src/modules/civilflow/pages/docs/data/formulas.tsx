@@ -1,4 +1,5 @@
 /** Contenido de la sección "Fórmulas del sistema" de la página /docs: catálogo completo de las fórmulas que la app aplica en cada cálculo, con variables, límites y norma de origen. */
+import { Link } from 'react-router-dom';
 import { NormaLink } from '../../../components/shared/standardsLinks.tsx';
 import { Tabla, donde, fx } from './ui';
 
@@ -117,6 +118,13 @@ const formulas = {
           <p className="text-[13px]">
             Si no cumple: aumenta la pendiente del tramo. Es la razón de las pendientes mínimas por
             diámetro de <NormaLink nombre="NTC 1500">NTC 1500</NormaLink>.
+          </p>
+          <p>
+            Profundiza:{' '}
+            <Link to="/aprende/fuerza-tractiva-sanitaria">
+              Fuerza tractiva mínima — autolimpieza y RAS 2000
+            </Link>
+            .
           </p>
         </div>
       ),

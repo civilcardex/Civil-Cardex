@@ -68,3 +68,14 @@ export function origenDe(r: { pts?: number[][] | null; _tribReversed?: boolean }
   if (pts.length < 2) return [];
   return r._tribReversed ? (pts[pts.length - 1] as number[]) : (pts[0] as number[]);
 }
+
+/** Colapsa vectores casi-colineales: conserva uno por dirección (u·v > 0.99). Umbral ÚNICO
+ *  compartido por detección de yees (san/rci) — cambiarlo aquí cambia las 3 reglas a la vez.
+ *  Ej: [0°, 180°, 90°] → 2 direcciones (0° y 180° son la misma recta). */
+export function uniqDirs<T extends { x: number; y: number }>(vectors: T[]): T[] {
+  const uniq: T[] = [];
+  for (const v of vectors) {
+    if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
+  }
+  return uniq;
+}

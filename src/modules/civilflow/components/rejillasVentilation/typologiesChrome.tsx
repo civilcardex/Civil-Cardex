@@ -22,16 +22,16 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
   return (
     <thead>
       <tr>
-        <th rowSpan={2} style={TH}>
+        <th scope="col" rowSpan={2} style={TH}>
           #
         </th>
-        <th rowSpan={2} style={{ ...TH, width: 56, minWidth: 56 }}>
+        <th scope="col" rowSpan={2} style={{ ...TH, width: 56, minWidth: 56 }}>
           Apto
         </th>
-        <th style={THG} colSpan={5}>
+        <th scope="col" style={THG} colSpan={5}>
           Recinto
         </th>
-        <th style={{ ...THG }} colSpan={4}>
+        <th scope="col" style={{ ...THG }} colSpan={4}>
           Gasodomésticos
           <button
             type="button"
@@ -92,108 +92,136 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
             −
           </button>
         </th>
-        <th style={THG} colSpan={3}>
+        <th scope="col" style={THG} colSpan={3}>
           Verificación
         </th>
-        <th style={THG} colSpan={2}>
+        <th scope="col" style={THG} colSpan={2}>
           Solución
         </th>
-        <th style={THG} colSpan={4}>
+        <th scope="col" style={THG} colSpan={4}>
           Cálculo
         </th>
-        <th style={THG} colSpan={3}>
+        <th scope="col" style={THG} colSpan={3}>
           Rejillas sugeridas
         </th>
-        <th rowSpan={2} style={TH}>
+        <th scope="col" rowSpan={2} style={TH}>
           Estado
         </th>
       </tr>
       <tr>
-        <th style={THS} title="Nombre del sector (etiqueta del área dibujada)">
+        <th scope="col" style={THS} title="Nombre del sector (etiqueta del área dibujada)">
           Sector
         </th>
-        <th style={THS} title="Área en planta del sector (m²) — del polígono dibujado">
+        <th scope="col" style={THS} title="Área en planta del sector (m²) — del polígono dibujado">
           Área
         </th>
-        <th style={{ ...THS, width: 74, minWidth: 74 }} title="Altura libre del sector (m)">
+        <th
+          scope="col"
+          style={{ ...THS, width: 74, minWidth: 74 }}
+          title="Altura libre del sector (m)"
+        >
           Alto
         </th>
         <th
+          scope="col"
           style={THS}
           title="Mono espacio: una sola planta, sin muros internos; ambientes divididos solo por muebles (Anexo B)"
         >
           Mono Espacio
         </th>
-        <th style={THS} title="Volumen del recinto, en m³ = Área × Alto">
+        <th scope="col" style={THS} title="Volumen del recinto, en m³ = Área × Alto">
           Volumen del recinto
         </th>
         <th
+          scope="col"
           style={{ ...THS, minWidth: 120 }}
           title="Gasodomésticos asignados al sector — el ＋ añade otra subfila"
         >
           Aparato
         </th>
-        <th style={THS} title="Cantidad de unidades de este aparato en el sector">
+        <th scope="col" style={THS} title="Cantidad de unidades de este aparato en el sector">
           UN
         </th>
         <th
+          scope="col"
           style={THS}
           title="Potencia nominal, en kW — la fija el catálogo NTC 3728 según el tipo de gas"
         >
           P
         </th>
         <th
+          scope="col"
           style={THS}
           title="Tipo de recinto A/B/C (NTC 3631): define el coeficiente cm²/kW de las aberturas"
         >
           Tipo
         </th>
-        <th style={THS} title="Suma de UN × P sin artefactos Tipo C, en kW">
+        <th scope="col" style={THS} title="Suma de UN × P sin artefactos Tipo C, en kW">
           Total P
         </th>
-        <th style={THS} title="Volumen requerido (m³) = 3,4 m³ por kW, sin Tipo C (num. 4.1.1)">
+        <th
+          scope="col"
+          style={THS}
+          title="Volumen requerido (m³) = 3,4 m³ por kW, sin Tipo C (num. 4.1.1)"
+        >
           Volumen Requerido
         </th>
-        <th style={THS} title="Clasificación del recinto según su volumen (num. 4.1)">
+        <th scope="col" style={THS} title="Clasificación del recinto según su volumen (num. 4.1)">
           Chequeo Volumen / Clasificación del Recinto
         </th>
-        <th style={THS} title="Estrategia de ventilación del sector (num. 4.1.2, 4.2, 4.3)">
+        <th
+          scope="col"
+          style={THS}
+          title="Estrategia de ventilación del sector (num. 4.1.2, 4.2, 4.3)"
+        >
           Tipo de Ventilación
         </th>
         <th
+          scope="col"
           style={THS}
           title="Volumen Recinto Adjunto (m³): espacio comunicado por aberturas interiores (solo Interior/Combinación)"
         >
           VRA
         </th>
         <th
+          scope="col"
           style={THS}
           title="Potencia Recinto Adjunto (kW): gasodomésticos del espacio adjunto (sin Tipo C)"
         >
           PRA
         </th>
         <th
+          scope="col"
           style={THS}
           title="Área Conectores de Evacuación (cm²): suma de secciones π·D²/4 (solo Método 2)"
         >
           ACE
         </th>
-        <th style={THS} title="Solución que resulta del cálculo">
+        <th scope="col" style={THS} title="Solución que resulta del cálculo">
           Solución aplicada
         </th>
-        <th style={THS} title="Área libre mínima por abertura en cm² (redondeo por arriba)">
+        <th
+          scope="col"
+          style={THS}
+          title="Área libre mínima por abertura en cm² (redondeo por arriba)"
+        >
           Área Libre Requerida por Abertura
         </th>
-        <th style={THS} title="Coeficiente en cm²/kW según la solución aplicada">
+        <th scope="col" style={THS} title="Coeficiente en cm²/kW según la solución aplicada">
           Coeficiente de Área
         </th>
         <th
+          scope="col"
           style={THS}
           title="Rejillas del catálogo sugeridas por área efectiva del fabricante: superior/única (método 1 o 2) e inferior (método 1)"
         >
           Rejillas Sugeridas
         </th>
-        <th style={THS} title="Área efectiva instalada en cm²: la menor entre las aberturas">
+        <th
+          scope="col"
+          style={THS}
+          title="Área efectiva instalada en cm²: la menor entre las aberturas"
+        >
           Área Efectiva Instalada
         </th>
       </tr>

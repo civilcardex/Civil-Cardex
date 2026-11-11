@@ -1,5 +1,5 @@
 import { compactYeeDiam } from '../sanFittingsCatalog.ts';
-import { distToSegment } from '../../lib/shared/geometry';
+import { distToSegment, uniqDirs } from '../../lib/shared/geometry';
 import { fmtPulg } from '../formatUtils.ts';
 import { diamPulgFromLabel } from '../diamInchesFromLabel.ts';
 import type { RamalDibujo, TribDibujo, VentDibujo } from './collection';
@@ -98,10 +98,7 @@ export function detectarYees(
             }
           }
         }
-        const uniq: Vec[] = [];
-        for (const v of vectors) {
-          if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
-        }
+        const uniq: Vec[] = uniqDirs(vectors);
         if (uniq.length < 3 || uniq.length > 4) continue;
         let bi = -1;
         let bj = -1;
