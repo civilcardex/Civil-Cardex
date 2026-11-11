@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore } from './PlanoState.ts';
+import { uniqDirs } from '../shared/geometry.ts';
 
 /** Cuando un punto de unión se vuelve una T (3+ tuberías), el codo que ahí quedó sobra: se detecta y se limpia para que la T geométrica tome el lugar. */
 
@@ -33,11 +34,7 @@ function collectVectorsAtPoint(
       }
     }
   }
-  const uniq: typeof vectors = [];
-  for (const v of vectors) {
-    if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
-  }
-  return uniq;
+  return uniqDirs(vectors);
 }
 
 /** ¿Hay una T en el punto? Cuenta direcciones distintas de tuberías que tocan (3+ = T). */

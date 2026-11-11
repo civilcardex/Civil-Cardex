@@ -1,5 +1,4 @@
-import { NETS, initNetCounts } from './PlanoState.ts';
-import { devError } from '../../../../utils/devError.ts';
+import { NETS } from './PlanoState.ts';
 import type {
   PlanoElement,
   PlanoRamal,
@@ -16,7 +15,6 @@ import type {
   MultiDragOrigData,
 } from './PlanoState.ts';
 import type { IPlanoEngineCore } from './PlanoState.ts';
-import { chequearRed, REDES_PRESION } from './nodos';
 import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
 import { snapToSegment } from './HitTester.ts';
 import {
@@ -56,7 +54,8 @@ import {
   labelScaleM as labelScaleMLib,
 } from './planoCoords.ts';
 import { zoomAnclado } from './planoCamera.ts';
-import { setupCanvasEvents, teardownCanvasEvents } from './events/canvasSetup.ts';
+import { teardownCanvasEvents } from './events/canvasSetup.ts';
+import { initEngineState } from './engineInit.ts';
 import {
   reEncuadrarContenido,
   fitPage,
@@ -75,10 +74,19 @@ import {
   resetLabel as _resetLabel,
 } from './PlanoEngineSelection.ts';
 import { deleteSelected as _deleteSelected } from './deleteSelected.ts';
-import { handleDragUp } from './handleDragUp.ts';
 import { handlePointerDown } from './events/pointerDown.ts';
 import { handlePointerMove } from './events/pointerMove.ts';
 import { handleWheel } from './events/wheelZoom.ts';
+import { handlePointerUp } from './events/pointerUp.ts';
+import { markDirty } from './dirtyPipeline.ts';
+import {
+  emitStatus,
+  emitSelect,
+  emitDelete,
+  triggerAlert as triggerAlertFn,
+  triggerOpciones as triggerOpcionesFn,
+  triggerAccesorioModal as triggerAccesorioModalFn,
+} from './engineEmitters.ts';
 import { renderFrame } from './render/frame.ts';
 import { loadWorkCommand } from './commands/loadWork.ts';
 import {
@@ -95,15 +103,7 @@ import {
   _renumberBajantes as _doRenumberBajantes,
   _renumberMontantes as _doRenumberMontantes,
   _renumberAreas as _doRenumberAreas,
-  calcSanitaryAccessories,
-  calcHydroAccessories,
-  autoDetectRamalConnections,
-  podarReferenciasStaleDeBajantes,
-  ensureRpCntRamal,
 } from './PlanoEngineNetwork.ts';
-import { sellarAsociacionesCanalBajante } from './channelAssociation';
-import { fixVentCodoToTee } from './ventElbowTeeFix';
-import { healTribPadres } from './junctionAutoSplit.ts';
 import { PlanoHistory } from './PlanoHistory.ts';
 
 export { NETS };
@@ -123,10 +123,10 @@ import type {
  *  red (af (Agua Fría), san (Sanitaria), ll (Lluvias)...). Aquí viven el zoom, las herramientas de
  *  dibujo y el deshacer/rehacer de cada cambio. */
 export default class PlanoEngine implements IPlanoEngineCore {
-  cw: HTMLElement;
-  pdfWrap: HTMLElement | null;
-  canv: HTMLCanvasElement;
-  ctx: CanvasRenderingContext2D;
+  cw!: HTMLElement;
+  pdfWrap!: HTMLElement | null;
+  canv!: HTMLCanvasElement;
+  ctx!: CanvasRenderingContext2D;
 
   zoom!: number;
   offX!: number;
@@ -249,9 +249,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _touchMoveHandler?: (e: TouchEvent) => void;
   _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | number | null;
-  /** Puente al modal "¿qué sentido tiene esta tubería?" del re-enraizamiento (regla 5 del memo). */
-  private _onOpcionesCb:
-    ((title: string, msg: string, opciones: string[]) => Promise<number>) | null = null;
+  /** Puente al modal "¿qué sentido tiene esta tubería?" del re-enraizamiento (regla 5 del memo).
+   *  Lo lee engineEmitters.ts (triggerOpciones extraído). */
+  _onOpcionesCb: ((title: string, msg: string, opciones: string[]) => Promise<number>) | null =
+    null;
   planId?: string | number;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;
@@ -270,18 +271,18 @@ export default class PlanoEngine implements IPlanoEngineCore {
   panX!: number;
   panY!: number;
 
-  _onDown: (e: MouseEvent | TouchEvent) => void;
-  _onMove: (e: MouseEvent | TouchEvent) => void;
-  _onUp: (e: MouseEvent | TouchEvent) => void;
-  _onDblClick: (e: MouseEvent) => void;
-  _onWheel: (e: WheelEvent) => void;
-  _onKeyDown: (e: KeyboardEvent) => void;
+  _onDown!: (e: MouseEvent | TouchEvent) => void;
+  _onMove!: (e: MouseEvent | TouchEvent) => void;
+  _onUp!: (e: MouseEvent | TouchEvent) => void;
+  _onDblClick!: (e: MouseEvent) => void;
+  _onWheel!: (e: WheelEvent) => void;
+  _onKeyDown!: (e: KeyboardEvent) => void;
 
-  _onSelectCb: SelectCallback | null;
-  _onStatusCb: StatusCallback | null;
-  _onUpdateCb: UpdateCallback | null;
-  _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _onContextMenuCb:
+  _onSelectCb!: SelectCallback | null;
+  _onStatusCb!: StatusCallback | null;
+  _onUpdateCb!: UpdateCallback | null;
+  _onRequestTextCb!: ((x: number, y: number, cb: (text: string) => void) => void) | null;
+  _onContextMenuCb!:
     | ((
         bajante: PlanoElement,
         x: number,
@@ -291,10 +292,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
         midRamalHit?: { segmentIdx: number; x: number; y: number } | null,
       ) => void)
     | null;
-  _onDeleteCb: ((ids: string[]) => void) | null;
-  _onActiveNetChangeCb: ((net: string) => void) | null;
-  _onAlertCb: ((title: string, msg: string) => void) | null;
-  _onAccesorioModalCb:
+  _onDeleteCb!: ((ids: string[]) => void) | null;
+  _onActiveNetChangeCb!: ((net: string) => void) | null;
+  _onAlertCb!: ((title: string, msg: string) => void) | null;
+  _onAccesorioModalCb!:
     | ((data: {
         ramalId: string;
         angleDeg: number;
@@ -304,14 +305,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
         isTee?: boolean;
       }) => void)
     | null;
-  _dirty: boolean;
+  _dirty!: boolean;
   /** Input congelado (cambio de piso en vuelo): mousedown no dibuja ni arrastra. */
-  _frozen: boolean;
-  _lastRightClickTime: number;
+  _frozen!: boolean;
+  _lastRightClickTime!: number;
 
   _ramalDefaults!: PlanoRamalDefaults | null;
 
-  _history: PlanoHistory;
+  _history!: PlanoHistory;
 
   _isGhostSel!: boolean;
   _lblDragIsParent?: boolean;
@@ -323,116 +324,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _needsRender = false;
   private _rafId: number | null = null;
 
-  /** Deja listo (zoom, posición y tamaño) el lienzo donde se va a dibujar. */
+  /** Deja listo (zoom, posición y tamaño) el lienzo donde se va a dibujar.
+   *  (cuerpo en engineInit.ts — extraído por el guard de líneas) */
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
-    this.cw = cw;
-    this.pdfWrap = pdfWrap;
-    this.canv = canv;
-    this.ctx = canv.getContext('2d')!;
-
-    this.zoom = 1;
-    this.offX = 0;
-    this.offY = 0;
-    this.lineWidthScale = 1;
-    this.dpr = 1;
-    this.tool = 'sel';
-    this.activeNet = 'af';
-    this.tipoTramo = 'ramal';
-    this.snapMode = true;
-    this.gridMode = true;
-    this.scaleM = 0.5;
-    this.definedScaleM = 0;
-    this.pageW = 0;
-    this.pageH = 0;
-
-    this.ramales = [];
-    this.dims = [];
-    this.textAnnots = [];
-    this.bajantes = [];
-    this.crossFloorGhosts = [];
-    this.guideLines = [];
-    this.areas = [];
-    this.activeRamal = null;
-    this.padreTributario = null;
-    this._ventFirstSegDir = null;
-    this.activeArea = null;
-    this.selId = null;
-    this.selectedGhostId = null;
-    this._isGhostSel = false;
-    this._yeeFlashKey = null;
-    this.areaDrag = null;
-    this.areaPtDrag = null;
-    this._dimPreviewPt = null;
-    this._areaClickCandidate = null;
-    this.dimDrag = null;
-    this.panning = false;
-    this.panX0 = 0;
-    this.panY0 = 0;
-    this.mouseX = 0;
-    this.mouseY = 0;
-    this.ghostDrag = null;
-    this.guideDrag = null;
-    this.lblDrag = null;
-    this.txtDrag = null;
-    this.txtResize = null;
-    this.dimLblDrag = null;
-    this.bajDrag = null;
-    this.canalResizeDrag = null;
-    this.ptDrag = null;
-    this.ramalDrag = null;
-    this.multiSel = [];
-    this.multiDrag = null;
-    this.marqueeRect = null;
-    this._dimStart = null;
-    this._guideStart = null;
-    this._guidePts = null;
-    this._canalStart = null;
-    this._canalEje = null;
-    this.nivelActual = null;
-    this.nptLevels = [];
-    this._hiddenNets = new Set<string>();
-    this._lockedNets = new Set<string>();
-    this._loadedPlanId = null;
-    this._onDirtyCb = null;
-    this._lastMouseCvs = { x: 0, y: 0 };
-
-    initNetCounts(this);
-
-    this.MM = {
-      lblName: 1.5,
-      lblInfo: 1.2,
-      lblCode: 1.4,
-      flowEmoji: 2.0,
-      coord: 1.2,
-    };
-
-    this._ramalDefaults = null;
-
-    this._history = new PlanoHistory(this);
-
-    this._onDown = this._onDownHandler.bind(this) as (e: MouseEvent | TouchEvent) => void;
-    this._onMove = this._onMouseMoveHandler.bind(this) as (e: MouseEvent | TouchEvent) => void;
-    this._onUp = this._onMouseUpHandler.bind(this) as (e: MouseEvent | TouchEvent) => void;
-    this._onDblClick = this._onDblClickHandler.bind(this);
-    this._onWheel = this._onWheelHandler.bind(this);
-    this._onKeyDown = this._onKeyDownHandler.bind(this);
-
-    this._setupCanvasEvents();
-
-    this._onSelectCb = null;
-    this._onStatusCb = null;
-    this._onRequestTextCb = null;
-    this._onContextMenuCb = null;
-    this._onDeleteCb = null;
-    this._onActiveNetChangeCb = null;
-    this._onAlertCb = null;
-    this._onAccesorioModalCb = null;
-    this._dirty = false;
-    this._frozen = false;
-    this._lastRightClickTime = 0;
-    this._onUpdateCb = null;
-    this._loadedPlanId = null;
-    this._pinchDist0 = null;
+    initEngineState(this, cw, pdfWrap, canv);
   }
 
   /** Distancia inicial del pinch (2 dedos); null = sin pinch activo. */
@@ -498,8 +393,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onAccesorioModalCb = cb;
   }
 
+  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
   triggerAlert(title: string, msg: string): void {
-    if (this._onAlertCb) this._onAlertCb(title, msg);
+    triggerAlertFn(this, title, msg);
   }
 
   /** Conecta el modal de opciones del re-enraizamiento: devuelve el número de opción elegida por
@@ -509,35 +405,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   /** Modal de opciones: resuelve cuando el usuario elige (o -1 si cancela). */
+  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
   triggerOpciones(title: string, msg: string, opciones: string[]): Promise<number> {
-    if (this._onOpcionesCb) return this._onOpcionesCb(title, msg, opciones);
-    return Promise.resolve(-1);
+    return triggerOpcionesFn(this, title, msg, opciones);
   }
 
-  /** Último hash de incidencias por red — anti-spam del modal (solo alerta si cambió). */
-  private _chequeoHash: Record<string, string> = {};
+  /** Último hash de incidencias por red — anti-spam del modal (solo alerta si cambió). Lo
+   *  lee dirtyPipeline.ts (cuerpo extraído). */
+  _chequeoHash: Record<string, string> = {};
 
-  /** Revisa las tuberías a presión — af (Agua Fría), ac (Agua Caliente), gas (Gas) y rci (Red Contra
-   *  Incendio): cada tramo debe tener por dónde le llega el agua y por dónde sale. Avisa UNA vez por
-   *  problema nuevo (el hash evita el mismo modal en cada clic). */
-  private chequearPresionGlobal(): void {
-    const nets = new Set<string>();
-    for (const r of this.ramales) if (REDES_PRESION.has(r.net || '')) nets.add(r.net);
-    for (const net of nets) {
-      const incs = chequearRed(this, net);
-      const errores = incs.filter((i) => i.nivel === 'error');
-      const hash = errores.map((i) => `${i.tipo}:${i.ramalId}`).join('|');
-      const antes = this._chequeoHash[net];
-      if (antes === hash) continue;
-      this._chequeoHash[net] = hash;
-      // Primera pasada tras CARGAR un plano existente: silenciosa (no molestar al abrir).
-      if (antes === undefined) continue;
-      if (!hash) continue; // quedó limpio: sin alerta
-      const lista = errores.map((i, ix) => `${ix + 1}. ${i.msg}`).join('\n');
-      this.triggerAlert(`Red ${net.toUpperCase()} — ${errores.length} incidencia(s)`, lista);
-    }
-  }
-
+  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
   triggerAccesorioModal(data: {
     ramalId: string;
     angleDeg: number;
@@ -546,7 +423,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     net: string;
     isTee?: boolean;
   }): void {
-    if (this._onAccesorioModalCb) this._onAccesorioModalCb(data);
+    triggerAccesorioModalFn(this, data);
   }
 
   destroy(): void {
@@ -560,7 +437,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this._wheelAccum = 0;
     }
     this.stopWatchingContainerSize();
-    this._teardownCanvasEvents();
+    teardownCanvasEvents(this);
   }
 
   setPageSize(w: number, h: number): void {
@@ -614,86 +491,28 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return labelScaleMLib(this);
   }
 
+  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
   _emitStatus(msg: string): void {
-    if (this._onStatusCb) this._onStatusCb(msg);
+    emitStatus(this, msg);
   }
 
+  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
   _emitSelect(
     el: PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | null,
   ): void {
-    if (!this._onSelectCb) return;
-    if (!el) {
-      this._onSelectCb(null);
-      return;
-    }
-    const rest: Record<string, unknown> = { ...el };
-    delete rest._circ;
-    delete rest._ghost;
-    delete rest._box;
-    delete rest._polyBox;
-    delete rest._labelBox;
-    this._onSelectCb(rest);
+    emitSelect(this, el);
   }
 
+  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
   _emitDelete(ids: string[]): void {
-    if (this._onDeleteCb) this._onDeleteCb(ids);
+    emitDelete(this, ids);
   }
 
   /** Marca el trabajo como sucio: recalcula conexiones de red y accesorios, guarda un snapshot
    *  de historial y dispara el callback onDirty (que es quien guarda a disco/BD). */
+  /** (cuerpo en dirtyPipeline.ts — extraído por el guard de líneas) */
   _markDirty(): void {
-    this._dirty = true;
-    // ponytail: los cálculos de red/contadores NO deben romper el guardado. El callback
-    // _onDirtyCb (PdfViewer) es quien hace saveWork()+saveTrazosToDB(); si un cálculo lanza
-    // antes, el guardado se perdía en silencio. Se aísla cada paso y siempre se notifica dirty.
-    try {
-      autoDetectRamalConnections(this);
-      // Poda de referencias stale (después del auto-detect: fin/ini ya saneados) — un trazo
-      // recortado/borrado deja de figurar en recibeDeIds/alimentaIds de la caja/bajante.
-      podarReferenciasStaleDeBajantes(this);
-      // Sello automático canal↔bajante por ramal (solo suma campos explícitos para que
-      // menús/paneles lo muestren; nunca lanza).
-      sellarAsociacionesCanalBajante(this);
-    } catch (e) {
-      devError('PlanoEngine _markDirty autoDetect:', e);
-    }
-    try {
-      ensureRpCntRamal(this);
-    } catch (e) {
-      devError('PlanoEngine _markDirty ensureRpCnt:', e);
-    }
-    try {
-      // ponytail: vent codo 90° that now forms T must become T, before counting
-      fixVentCodoToTee(this);
-    } catch (_e) {
-      void _e;
-    }
-    try {
-      // Sanado global de padres de tributarios: el label manda (T{n}{raíz}) — cualquier
-      // camino que haya asignado un padre equivocado al tramo autocreado queda corregido.
-      healTribPadres(this);
-    } catch (e) {
-      devError('PlanoEngine _markDirty healTribPadres:', e);
-    }
-    try {
-      calcSanitaryAccessories(this);
-    } catch (e) {
-      devError('PlanoEngine _markDirty calcSanitary:', e);
-    }
-    try {
-      calcHydroAccessories(this);
-      this.chequearPresionGlobal();
-    } catch (e) {
-      devError('PlanoEngine _markDirty calcHydro:', e);
-    }
-    try {
-      if (this._history) {
-        this._history.saveSnapshot();
-      }
-    } catch (e) {
-      devError('PlanoEngine _markDirty history:', e);
-    }
-    if (this._onDirtyCb) this._onDirtyCb();
+    markDirty(this);
   }
 
   snapAngle(x0: number, y0: number, x1: number, y1: number, net?: string, tipo?: string): Point {
@@ -750,15 +569,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const rect = this.canv.getBoundingClientRect();
     this._rectCache = { rect, t: now };
     return rect;
-  }
-
-  /** (cuerpo en events/canvasSetup.ts — extraído por el guard de líneas) */
-  private _setupCanvasEvents(): void {
-    setupCanvasEvents(this);
-  }
-
-  private _teardownCanvasEvents(): void {
-    teardownCanvasEvents(this);
   }
 
   _statusMsg(): string {
@@ -1076,14 +886,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     handlePointerMove(this, e);
   }
 
+  /** (cuerpo en events/pointerUp.ts — extraído por el guard de líneas) */
   _onMouseUpHandler(e: MouseEvent | TouchEvent): void {
-    if (this.panning) {
-      this.panning = false;
-      this.canv.style.cursor =
-        this.tool === 'pan' ? 'grab' : this.tool === 'sel' ? 'default' : 'crosshair';
-    }
-    const isCtrl = (e instanceof MouseEvent && e.ctrlKey) || false;
-    handleDragUp(this, isCtrl);
+    handlePointerUp(this, e);
   }
 
   _onDblClickHandler(e: MouseEvent): void {

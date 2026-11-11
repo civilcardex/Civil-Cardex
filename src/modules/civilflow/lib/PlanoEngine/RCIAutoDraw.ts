@@ -257,7 +257,7 @@ export function crearRamalesParalelos(
       if (peor > 0) {
         return {
           ids: [],
-          error: `Los ramales no se pueden crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (Dmuro) es de ${String(dm).replace('.', ',')} m. Dibuje un ramal más cerca de ese muro o aumente Dmuro en RCI → Rociadores → Datos del rociador.`,
+          error: `Los ramales no se pueden crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje un ramal más cerca de ese muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`,
         };
       }
     }
@@ -323,5 +323,5 @@ export function chequeoMurosTrazo(
     if (mejorM > dm + 1e-9 && mejorM > peor) peor = mejorM;
   }
   if (peor === 0) return null;
-  return `El trazo no se puede crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (Dmuro) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente Dmuro en RCI → Rociadores → Datos del rociador.`;
+  return `El trazo no se puede crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
 }

@@ -121,7 +121,7 @@ describe('conteo yee 4 vectores en un punto', () => {
       'tramo_hidro_data_v3',
       {},
     );
-    // eslint-disable-next-line no-console
+
     const all = JSON.stringify(hidro2);
     expect(all.includes('"yeeSimple"')).toBe(false);
     expect(all.includes('"yeeDoble"')).toBe(true);

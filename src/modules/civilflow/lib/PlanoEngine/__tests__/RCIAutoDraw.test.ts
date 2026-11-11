@@ -237,7 +237,7 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
     );
     expect(err).toBeTruthy();
     expect(err).toContain('un muro de su zona quedaría a 2,65 m');
-    expect(err).toContain('(Dmuro) es de 1,7 m');
+    expect(err).toContain('(DMR) es de 1,7 m');
   });
 
   it('trazo que cubre el muro (≤ Dmuro) → null (se crea)', () => {
