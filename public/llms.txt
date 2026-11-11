@@ -16,6 +16,12 @@ Civil Cardex es una aplicación web por módulos dirigida a ingenieros civiles, 
 
 - [Documentación completa](https://civilcardex.com/docs): normas NTC 1500, RAS 2000, NTC 3728; tutoriales de diseño hidrosanitario y estructural.
 
+## Aprende (artículos técnicos)
+
+- [Aprende (índice)](https://civilcardex.com/aprende): artículos técnicos de diseño hidrosanitario colombiano (NTC 1500, RAS 2000, método Hunter) con ejemplos numéricos paso a paso.
+- [Método Hunter en la NTC 1500: por qué a partir de 240 UC cambia la fórmula](https://civilcardex.com/aprende/hunter-ntc-1500): cómo la curva de Hunter convierte UC (Unidades de Consumo) en caudal de diseño, el factor de simultaneidad K = 1/√(N−1), el quiebre de la fórmula en 240 UC y un ejemplo numérico completo con errores comunes.
+- [Fuerza tractiva en redes sanitarias: autolimpieza y RAS 2000](https://civilcardex.com/aprende/fuerza-tractiva-sanitaria): qué es la tensión tractiva (τ = ρ·g·Rh·S), los criterios de autolimpieza (0.10–0.15 kg/m²), por qué subir el diámetro "por si acaso" mata la autolimpieza y los límites de velocidad y llenado del RAS 2000 con ejemplo numérico.
+
 ## Precios
 
 - Suscripción por módulo: 25 USD/mes, 150 USD/6 meses o 300 USD/año, con descuentos acumulativos por módulos adicionales. Detalles en [Precios](https://civilcardex.com/pricing).

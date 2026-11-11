@@ -10,7 +10,10 @@ function Layout() {
         Saltar al contenido principal
       </a>
       <div className="h-screen overflow-hidden bg-surface-bg flex flex-col">
-        <Navbar />
+        {/* header landmark: la navbar es fixed (fuera de flujo), el wrapper no altera el layout. */}
+        <header>
+          <Navbar />
+        </header>
         <div className="flex flex-1 overflow-hidden pt-14">
           {/* overflow-y auto: las páginas altas (perfil, módulos) scrollean aquí; el workarea
               no desborda (usa h-full + scroll interno propio), así que no cambia para él. */}

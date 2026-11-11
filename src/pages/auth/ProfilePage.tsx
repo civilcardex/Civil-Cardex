@@ -127,7 +127,7 @@ function ProfilePage() {
   );
   // Fetch-on-mount from Supabase — a legitimate external-system sync, not state
   // derivable from props/state already available during render.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+
   useEffect(() => {
     let ignore = false;
     async function fetchPerfil() {
@@ -178,7 +178,7 @@ function ProfilePage() {
   // Fetch-on-mount from Supabase — loads as soon as the profile page opens, not when the
   // "Proyectos" accordion is expanded, so the list is already there (no loading flash) by the
   // time the user clicks to expand it. Ahora trae CF + CM en paralelo.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+
   useEffect(() => {
     let ignore = false;
     async function loadProyectos() {
@@ -326,7 +326,9 @@ function ProfilePage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-screen">
+    /* min-h-full (no screen): el contenedor vive dentro del <main> de Layout que ya mide
+     * 100vh − 56px (pt-14) — con screen el mínimo sobrepasa el viewport y garantiza scroll. */
+    <div className="flex flex-col flex-1 min-h-full">
       <div className="space-y-6 max-w-[1200px] mx-auto w-full px-4 lg:px-6 flex-1">
         <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
         {/* Con suscripciones activas, "Nuevo proyecto" pregunta primero por el módulo

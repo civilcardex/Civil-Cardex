@@ -25,7 +25,6 @@ export default function TypewriterText({ text, delay = 800, className, style }: 
     // Vaciado pre-paint: tras el mount (texto ya en el HTML) y antes del paint.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- necesario por diseño SEO
     setDisplayedText('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- vaciado ÚNICO de montaje
   }, [prefersReducedMotion]);
 
   useEffect(() => {

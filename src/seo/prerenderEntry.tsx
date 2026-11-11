@@ -8,6 +8,9 @@ import ModulePage from '../pages/ModulePage.tsx';
 import TermsPage from '../pages/TermsPage.tsx';
 import PrivacyPage from '../pages/PrivacyPage.tsx';
 import CookiesPage from '../pages/CookiesPage.tsx';
+import HunterNtc1500Page from '../pages/learn/HunterNtc1500Page.tsx';
+import SanTractiveForcePage from '../pages/learn/SanTractiveForcePage.tsx';
+import LearnIndexPage from '../pages/learn/LearnIndexPage.tsx';
 
 /** Páginas públicas prerenderizables — las mismas rutas de ROUTE_META (src/seo/routeMeta.ts).
  *  Import DIRECTO (no lazy): renderToString de un lazy renderiza el fallback vacío. */
@@ -23,6 +26,9 @@ const PAGES: Record<string, React.ReactNode> = {
   '/terminos': <TermsPage />,
   '/privacidad': <PrivacyPage />,
   '/cookies': <CookiesPage />,
+  '/aprende': <LearnIndexPage />,
+  '/aprende/hunter-ntc-1500': <HunterNtc1500Page />,
+  '/aprende/fuerza-tractiva-sanitaria': <SanTractiveForcePage />,
 };
 
 /** Render SSR de una ruta pública. Sin datos de usuario (AuthProvider arranca sin sesión,

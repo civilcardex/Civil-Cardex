@@ -364,9 +364,12 @@ function PricingPage() {
                     {plan.desc}
                   </p>
                 </div>
-                <div className="flex-1 space-y-3 mb-8">
+                <ul
+                  className="flex-1 space-y-3 mb-8"
+                  style={{ listStyle: 'none', margin: 0, padding: 0 }}
+                >
                   {plan.features.map((f, i) => (
-                    <div key={i} className="flex items-start gap-2">
+                    <li key={i} className="flex items-start gap-2">
                       <span
                         className="material-symbols-outlined text-sm! mt-0.5"
                         style={{ color: '#2ff801', fontSize: 16 }}
@@ -374,10 +377,10 @@ function PricingPage() {
                         check_circle
                       </span>
                       <span className="text-[13px] text-on-surface-variant">{f}</span>
-                    </div>
+                    </li>
                   ))}
                   {plan.missing.map((f, i) => (
-                    <div key={'m' + i} className="flex items-start gap-2 opacity-40">
+                    <li key={'m' + i} className="flex items-start gap-2 opacity-40">
                       <span
                         className="material-symbols-outlined text-sm! mt-0.5"
                         style={{ color: '#849495', fontSize: 16 }}
@@ -385,9 +388,9 @@ function PricingPage() {
                         remove
                       </span>
                       <span className="text-[13px] text-on-surface-variant">{f}</span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
                 <Link
                   to={plan.to}
                   className="block text-center py-3 uppercase tracking-widest font-bold transition-all"

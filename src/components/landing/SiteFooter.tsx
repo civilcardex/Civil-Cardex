@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 /** Enlaces internos del pie (mismo estilo); el botón de correo va aparte (no es Link). */
 const LINKS: [string, string][] = [
   ['/docs', 'Documentación'],
+  ['/aprende', 'Aprende'],
   ['/pricing', 'Precios'],
   ['/terminos', 'Términos'],
 ];

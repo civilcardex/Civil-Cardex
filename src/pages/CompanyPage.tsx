@@ -228,9 +228,13 @@ function PanelSuscripcion({
         <table style={{ width: '100%', marginTop: 12, borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ textAlign: 'left', color: 'var(--on-surface-variant, #9ba8aa)' }}>
-              <th style={{ padding: '6px 8px', fontWeight: 600 }}>Miembro</th>
-              <th style={{ padding: '6px 8px', fontWeight: 600 }}>Puede editar</th>
-              <th style={{ padding: '6px 8px' }} aria-label="Acciones" />
+              <th scope="col" style={{ padding: '6px 8px', fontWeight: 600 }}>
+                Miembro
+              </th>
+              <th scope="col" style={{ padding: '6px 8px', fontWeight: 600 }}>
+                Puede editar
+              </th>
+              <th scope="col" style={{ padding: '6px 8px' }} aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>
@@ -323,7 +327,8 @@ export default function CompanyPage() {
   if (!SUSCRIPCIONES_ACTIVAS) {
     return (
       <div className="container mx-auto px-6 py-10" style={{ maxWidth: 860 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Equipo</h1>
+        {/* h2: la rama real de esta misma ruta ya usa el único h1 de la vista. */}
+        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Equipo</h2>
         <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', marginBottom: 16 }}>
           Asigna puestos de tus planes empresariales por correo (el miembro debe tener cuenta
           registrada) y define quién puede editar los proyectos de la empresa.

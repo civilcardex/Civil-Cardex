@@ -61,6 +61,9 @@ const ProfilePage = React.lazy(() => import('./pages/auth/ProfilePage.tsx'));
 // Rutas pesadas - lazy
 const ViewerPage = React.lazy(() => import('./modules/civilflow/pages/ViewerPage.tsx'));
 const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPage.tsx'));
+const HunterNtc1500Page = React.lazy(() => import('./pages/learn/HunterNtc1500Page.tsx'));
+const SanTractiveForcePage = React.lazy(() => import('./pages/learn/SanTractiveForcePage.tsx'));
+const LearnIndexPage = React.lazy(() => import('./pages/learn/LearnIndexPage.tsx'));
 const WorkAreaCivilFlowPage = React.lazy(
   () => import('./modules/civilflow/pages/WorkAreaCivilFlowPage.tsx'),
 );
@@ -120,62 +123,28 @@ function App() {
                 </Lazy>
               }
             />
-            <Route
-              path="/login"
-              element={
-                <Lazy>
-                  <LoginPage />
-                </Lazy>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <Lazy>
-                  <RegisterPage />
-                </Lazy>
-              }
-            />
-            <Route
-              path="/restablecer"
-              element={
-                <Lazy>
-                  <ResetPasswordPage />
-                </Lazy>
-              }
-            />
-            <Route
-              path="/terminos"
-              element={
-                <Lazy>
-                  <TermsPage />
-                </Lazy>
-              }
-            />
-            <Route
-              path="/privacidad"
-              element={
-                <Lazy>
-                  <PrivacyPage />
-                </Lazy>
-              }
-            />
-            <Route
-              path="/cookies"
-              element={
-                <Lazy>
-                  <CookiesPage />
-                </Lazy>
-              }
-            />
-            <Route
-              path="/pricing"
-              element={
-                <Lazy>
-                  <PricingPage />
-                </Lazy>
-              }
-            />
+            {/* Rutas ligeras (import directo + Lazy: frontera de error sin Suspense) */}
+            {(
+              [
+                ['/login', LoginPage],
+                ['/register', RegisterPage],
+                ['/restablecer', ResetPasswordPage],
+                ['/terminos', TermsPage],
+                ['/privacidad', PrivacyPage],
+                ['/cookies', CookiesPage],
+                ['/pricing', PricingPage],
+              ] as const
+            ).map(([path, Pagina]) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <Lazy>
+                    <Pagina />
+                  </Lazy>
+                }
+              />
+            ))}
             <Route
               path="/dibujoRedes/:proyectoId?"
               element={
@@ -189,7 +158,7 @@ function App() {
               }
             />
 
-            {/* Rutas lazy públicas */}
+            {/* Rutas lazy públicas (envoltura idéntica → mapa; las de envoltura distinta van aparte) */}
             <Route
               path="/docs"
               element={
@@ -198,46 +167,42 @@ function App() {
                 </Guarded>
               }
             />
-            <Route
-              path="/civilflow"
-              element={
-                <Guarded>
-                  <ModulePage moduleId="flow" />
-                </Guarded>
-              }
-            />
-            <Route
-              path="/civilstructure"
-              element={
-                <Guarded>
-                  <ModulePage moduleId="structure" />
-                </Guarded>
-              }
-            />
-            <Route
-              path="/civilterrain"
-              element={
-                <Guarded>
-                  <ModulePage moduleId="terrain" />
-                </Guarded>
-              }
-            />
-            <Route
-              path="/civilmanager"
-              element={
-                <Guarded>
-                  <ModulePage moduleId="manage" />
-                </Guarded>
-              }
-            />
-            <Route
-              path="/civilroads"
-              element={
-                <Guarded>
-                  <ModulePage moduleId="roads" />
-                </Guarded>
-              }
-            />
+            {(
+              [
+                ['/civilflow', 'flow'],
+                ['/civilstructure', 'structure'],
+                ['/civilterrain', 'terrain'],
+                ['/civilmanager', 'manage'],
+                ['/civilroads', 'roads'],
+              ] as const
+            ).map(([path, modulo]) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <Guarded>
+                    <ModulePage moduleId={modulo} />
+                  </Guarded>
+                }
+              />
+            ))}
+            {(
+              [
+                ['/aprende', LearnIndexPage],
+                ['/aprende/hunter-ntc-1500', HunterNtc1500Page],
+                ['/aprende/fuerza-tractiva-sanitaria', SanTractiveForcePage],
+              ] as const
+            ).map(([path, Pagina]) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <Guarded>
+                    <Pagina />
+                  </Guarded>
+                }
+              />
+            ))}
 
             {/* Redirects */}
             <Route path="/visor/*" element={<Navigate to="/dibujoRedes" replace />} />

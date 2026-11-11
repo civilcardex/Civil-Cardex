@@ -27,17 +27,17 @@ export default function PricingFaq({ modulosProx }: PricingFaqProps) {
         >
           Próximamente
         </h2>
-        <div className="flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-2" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {modulosProx.map((m) => (
-            <span
+            <li
               key={m}
               className="text-[12px] px-3 py-1.5 border"
               style={{ borderColor: '#3a494a', color: '#849495', borderRadius: 8 }}
             >
               {m}
-            </span>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
       <section

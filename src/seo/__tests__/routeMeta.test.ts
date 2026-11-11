@@ -23,6 +23,37 @@ describe('ROUTE_META', () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
+  it('hay 14 rutas (11 de producto/legal + índice /aprende + 2 artículos) — suma 1 al registrar un artículo nuevo', () => {
+    expect(ROUTE_META).toHaveLength(14);
+  });
+
+  it('/aprende existe como índice: SIN articulo (no es un artículo)', () => {
+    const indice = ROUTE_META.find((m) => m.path === '/aprende');
+    expect(indice).toBeTruthy();
+    expect(indice?.articulo).toBeUndefined();
+    expect(indice?.title.length).toBeGreaterThan(0);
+    // el índice lista las entradas con articulo: al menos los 2 artículos actuales
+    expect(ROUTE_META.filter((m) => m.articulo).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('las rutas de artículo (/aprende/*) llevan articulo completo y ninguna otra lo lleva', () => {
+    for (const m of ROUTE_META) {
+      if (m.path.startsWith('/aprende/')) {
+        expect(m.articulo, `${m.path} sin articulo`).toBeTruthy();
+        expect(m.articulo?.autor.length, `${m.path} sin autor`).toBeGreaterThan(0);
+        expect(m.articulo?.fechaPublicacion, `${m.path} sin fecha YYYY-MM-DD`).toMatch(
+          /^\d{4}-\d{2}-\d{2}$/,
+        );
+        expect(
+          m.articulo?.descripcion.length,
+          `${m.path} sin descripción de artículo`,
+        ).toBeGreaterThan(50);
+      } else {
+        expect(m.articulo, `${m.path} no debería llevar articulo`).toBeUndefined();
+      }
+    }
+  });
+
   it('las rutas privadas (login, registro, visor) NO se prerenderizan', () => {
     const paths = ROUTE_META.map((m) => m.path);
     for (const privada of ['/login', '/register', '/restablecer', '/visor', '/perfil']) {

@@ -76,7 +76,7 @@ async function main() {
       out = out.slice(0, a + ROOT_OPEN.length) + html + out.slice(b);
       // 2) head por ruta (title/description/canonical/og/twitter) — mismos formatos que
       // usePageMeta. CADA replace se aserta: si el template cambia, falla RUIDOSO (A-2)
-      // en vez de publicar 13 rutas con metas de la home.
+      // en vez de publicar 14 rutas con metas de la home.
       const swap = (re, reemplazo, tag) => {
         if (!re.test(out)) {
           const n = (out.match(/<link rel="canonical"/g) || []).length;
@@ -84,35 +84,39 @@ async function main() {
         }
         out = out.replace(re, reemplazo);
       };
-      swap(/<title>[\s\S]*?<\/title>/s, `<title>${title}</title>`, 'title');
-      swap(
-        /<meta name="description" content="[^"]*"/,
-        `<meta name="description" content="${meta.description.replace(/"/g, '&quot;')}"`,
-        'description',
-      );
-      swap(
-        /<meta property="og:title" content="[^"]*"/,
-        `<meta property="og:title" content="${title}"`,
-        'og:title',
-      );
-      swap(
-        /<meta property="og:description" content="[^"]*"/,
-        `<meta property="og:description" content="${meta.description.replace(/"/g, '&quot;')}"`,
-        'og:description',
-      );
-      swap(/<meta property="og:url" content="[^"]*"/, `<meta property="og:url" content="${url}"`, 'og:url');
-      swap(/<link rel="canonical" [^>]*href="[^"]*"/, `<link rel="canonical" id="canonical-link" href="${url}"`, 'canonical');
-      swap(
-        /<meta name="twitter:title" content="[^"]*"/,
-        `<meta name="twitter:title" content="${title}"`,
-        'twitter:title',
-      );
-      swap(
-        /<meta name="twitter:description" content="[^"]*"/,
-        `<meta name="twitter:description" content="${meta.description.replace(/"/g, '&quot;')}"`,
-        'twitter:description',
-      );
-      // 3) BreadcrumbList por ruta (inicio → sección)
+      // [regex, contenido, tag] — cada entrada se aserta como las swap individuales de antes.
+      const desc = meta.description.replace(/"/g, '&quot;');
+      for (const [re, contenido, tag] of [
+        [/<title>[\s\S]*?<\/title>/s, `<title>${title}</title>`, 'title'],
+        [/<meta name="description" content="[^"]*"/, `<meta name="description" content="${desc}"`, 'description'],
+        [/<meta property="og:title" content="[^"]*"/, `<meta property="og:title" content="${title}"`, 'og:title'],
+        [/<meta property="og:description" content="[^"]*"/, `<meta property="og:description" content="${desc}"`, 'og:description'],
+        [/<meta property="og:url" content="[^"]*"/, `<meta property="og:url" content="${url}"`, 'og:url'],
+        [/<link rel="canonical" [^>]*href="[^"]*"/, `<link rel="canonical" id="canonical-link" href="${url}"`, 'canonical'],
+        [/<meta name="twitter:title" content="[^"]*"/, `<meta name="twitter:title" content="${title}"`, 'twitter:title'],
+        [/<meta name="twitter:description" content="[^"]*"/, `<meta name="twitter:description" content="${desc}"`, 'twitter:description'],
+      ]) {
+        swap(re, contenido, tag);
+      }
+      // 3) Article JSON-LD SOLO para rutas de contenido editorial (ROUTE_META.articulo):
+      // mismo mecanismo del breadcrumb (script antes de </body>). Los datos salen de la
+      // fuente única — el prerender no vuelve a declarar autor ni fecha.
+      if (meta.articulo) {
+        const articulo = JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: meta.title,
+          description: meta.articulo.descripcion || meta.description,
+          author: { '@type': 'Person', name: meta.articulo.autor },
+          datePublished: meta.articulo.fechaPublicacion,
+          inLanguage: 'es-CO',
+        });
+        out = out.replace(
+          '</body>',
+          `<script type="application/ld+json">${articulo}</script></body>`,
+        );
+      }
+      // 4) BreadcrumbList por ruta (inicio → sección)
       // El nombre de la sección es el title de la ruta (fuente única: ROUTE_META).
       // La HOME no lleva breadcrumb: un BreadcrumbList que apunta a sí misma
       // («Inicio → Inicio») es schema ruidoso/inválido para el crawler.
@@ -130,7 +134,7 @@ async function main() {
           `<script type="application/ld+json">${crumb}</script></body>`,
         );
       }
-      // 4) destino: '/' sobrescribe dist/index.html; resto dist/<ruta>/index.html
+      // 5) destino: '/' sobrescribe dist/index.html; resto dist/<ruta>/index.html
       const destino = meta.path === '/' ? DIST : join(DIST, meta.path);
       mkdirSync(destino, { recursive: true });
       writeFileSync(join(destino, 'index.html'), out);

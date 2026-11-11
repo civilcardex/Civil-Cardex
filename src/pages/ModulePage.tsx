@@ -193,12 +193,13 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
           </p>
         </div>
 
-        <div
+        <ul
           className={
             cfg.customLayout === 'manage'
               ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-[320px]'
               : 'grid grid-cols-1 md:grid-cols-3 gap-3'
           }
+          style={{ listStyle: 'none', margin: 0, padding: 0 }}
         >
           {cfg.features.map((f, i) => {
             const isSpan = f.span
@@ -207,7 +208,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 : 'col-span-1 md:col-span-2 lg:col-span-2'
               : '';
             return (
-              <div
+              <li
                 key={i}
                 className={`border p-6 flex flex-col justify-between group transition-all relative overflow-hidden ${isSpan}`}
                 style={{
@@ -299,13 +300,13 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     <div className="w-1/6" style={{ background: '#37393e' }} />
                   </div>
                 )}
-              </div>
+              </li>
             );
           })}
 
           {/* Extra block for layouts */}
           {cfg.customLayout === 'structure' && (
-            <div
+            <li
               className="border border-outline-variant flex flex-col hidden lg:flex"
               style={{ background: '#1a1c20' }}
             >
@@ -343,9 +344,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                   <span>5.12 Hz</span>
                 </div>
               </div>
-            </div>
+            </li>
           )}
-        </div>
+        </ul>
 
         {/* Specifications table section (Only for Flow) */}
         {cfg.specs && (

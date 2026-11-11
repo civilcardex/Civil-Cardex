@@ -72,7 +72,8 @@ export default function AuthLayout({
                 {subtitulo}
               </p>
             </div>
-            {children}
+            {/* main landmark propio de auth: id distinto al #app-content de App.tsx para no duplicar. */}
+            <main id="contenido-auth">{children}</main>
           </div>
         </div>
       </div>
