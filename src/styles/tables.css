@@ -40,6 +40,39 @@
   border-bottom: none;
 }
 
+/* Pantallas menores al monitor de 27": las tablas densas estrechan tipografía y padding
+   para que quepan sin aparecer el scroll horizontal del wrapper (elección de producto).
+   Bajo ~1280px manda el wrapper con overflow ya existente (línea base). */
+@media (max-width: 1680px) {
+  .tbl {
+    font-size: 12.5px;
+  }
+  .tbl th {
+    padding: 5px 8px;
+  }
+  .tbl td {
+    padding: 5px 7px;
+  }
+}
+
+@media (max-width: 1366px) {
+  .tbl {
+    font-size: 12px;
+  }
+  .tbl th {
+    font-size: 9.5px;
+    padding: 4px 6px;
+    letter-spacing: 0.2px;
+  }
+  .tbl td {
+    padding: 4px 6px;
+  }
+  .col-h {
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+}
+
 /* Header pegajoso: títulos de columna visibles al desplazar (fondo opaco en th ya exists). */
 .tbl thead th {
   position: sticky;

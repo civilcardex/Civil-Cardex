@@ -33,7 +33,7 @@ export default function AuthLayout({
       <Navbar />
 
       <div
-        className={`flex-1 flex items-center justify-center relative pt-16${py12 ? ' py-12' : ''}`}
+        className={`flex-1 flex items-center justify-center relative pt-16 overflow-hidden${py12 ? ' py-12' : ''}`}
       >
         <div className="absolute inset-0 login-grid pointer-events-none" />
         <div

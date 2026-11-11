@@ -99,6 +99,8 @@ export default function PricingHero({ modo, setModo, periodo, setPeriodo }: Pric
           padding: 4,
           background: '#16191d',
           gap: 4,
+          flexWrap: 'wrap',
+          maxWidth: '100%',
         }}
       >
         {(['mensual', 'semestral', 'anual'] as const).map((p) => {

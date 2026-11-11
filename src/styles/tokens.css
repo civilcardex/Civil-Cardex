@@ -63,6 +63,11 @@
   --font-sans: 'Hanken Grotesk', sans-serif;
   --font-mono: 'Geist', monospace;
 
+  /* Tamaños de headline (h1 de páginas sin jerarquía Tailwind fija: perfil, docs, /aprende).
+   *  Sin estas vars la clase no se genera y el heading cae al tamaño default del navegador. */
+  --text-headline-sm: 1.5rem;
+  --text-headline-md: 1.875rem;
+
   /* Espaciado extra. */
   --spacing-gutters: 12px;
 }

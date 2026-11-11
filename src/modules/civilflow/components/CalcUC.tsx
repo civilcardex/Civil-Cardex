@@ -135,7 +135,13 @@ function CalculoUC({ tipo }: CalculoUCProps) {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            <table ref={tablaRef} className="tbl" style={{ minWidth: 800 }}>
+            {/* minWidth clamp: en pantallas <27" la tabla cabe sin scroll (bajo 1280px manda
+                el wrapper .scroll-top ya existente). Mismo patrón en todas las tablas densas. */}
+            <table
+              ref={tablaRef}
+              className="tbl"
+              style={{ minWidth: 'min(800px, calc(100vw - 260px))' }}
+            >
               <caption style={SR_ONLY_STYLE}>{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>

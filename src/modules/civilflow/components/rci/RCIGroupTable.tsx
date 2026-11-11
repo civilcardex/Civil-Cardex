@@ -346,7 +346,7 @@ export function GrupoTabla({
               fontSize: compacta ? 11 : 12,
               borderCollapse: 'collapse',
               width: 'auto',
-              minWidth: minAncho,
+              minWidth: `min(${minAncho}px, calc(100vw - 260px))`,
               maxWidth: '100%',
             }}
           >

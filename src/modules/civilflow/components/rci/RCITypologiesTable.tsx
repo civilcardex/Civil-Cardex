@@ -81,7 +81,14 @@ function TablaTipologias({
   return (
     <SecRci id="tipos" titulo="Tipologías" icono="/iconos/tipologias.webp">
       <div style={{ overflowX: 'auto' }}>
-        <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse', minWidth: 980 }}>
+        <table
+          className="tbl"
+          style={{
+            fontSize: 11,
+            borderCollapse: 'collapse',
+            minWidth: 'min(980px, calc(100vw - 260px))',
+          }}
+        >
           <caption
             style={{
               position: 'absolute',

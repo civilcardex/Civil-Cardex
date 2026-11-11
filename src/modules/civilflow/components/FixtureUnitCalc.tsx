@@ -147,7 +147,11 @@ function CalculoUD() {
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            <table ref={tablaRef} className="tbl" style={{ minWidth: 900 }}>
+            <table
+              ref={tablaRef}
+              className="tbl"
+              style={{ minWidth: 'min(900px, calc(100vw - 260px))' }}
+            >
               <caption style={SR_ONLY_STYLE}>Cálculo de unidades de descarga</caption>
               <thead>
                 <tr>

@@ -38,7 +38,7 @@ export default function SiteFooter() {
               <span className="ccx-gold"> Cardex</span>
             </span>
           </Link>
-          <nav aria-label="Pie de página" className="flex gap-6">
+          <nav aria-label="Pie de página" className="flex flex-wrap justify-center gap-x-6 gap-y-2">
             {LINKS.map(([to, label]) => (
               <Link
                 key={to}

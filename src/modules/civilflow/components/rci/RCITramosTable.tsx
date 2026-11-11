@@ -45,7 +45,14 @@ export function RciTramosTable({
 }) {
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 860 }}>
+      <table
+        className="tbl"
+        style={{
+          fontSize: 12,
+          borderCollapse: 'collapse',
+          minWidth: 'min(860px, calc(100vw - 260px))',
+        }}
+      >
         <caption
           style={{
             position: 'absolute',

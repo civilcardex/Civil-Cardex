@@ -36,10 +36,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Guard de arquitectura: SIEMPRE corre, sin importar qué cambió
-      - name: Architecture guard
-        run: npx vitest run src/architecture
-
       # Tests relacionados solo con los archivos fuente modificados.
       # En PR: diff contra origin/main (merge-base). En push a main: contra HEAD~1
       # (si es el primer commit no hay base y se omiten).

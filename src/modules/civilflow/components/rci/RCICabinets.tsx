@@ -181,7 +181,11 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
               <div style={{ overflowX: 'auto' }}>
                 <table
                   className="tbl"
-                  style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 980 }}
+                  style={{
+                    fontSize: 12,
+                    borderCollapse: 'collapse',
+                    minWidth: 'min(980px, calc(100vw - 260px))',
+                  }}
                 >
                   <caption
                     style={{
@@ -373,7 +377,11 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                 <div style={{ overflowX: 'auto' }}>
                   <table
                     className="tbl"
-                    style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 560 }}
+                    style={{
+                      fontSize: 12,
+                      borderCollapse: 'collapse',
+                      minWidth: 'min(560px, calc(100vw - 260px))',
+                    }}
                   >
                     <caption
                       style={{

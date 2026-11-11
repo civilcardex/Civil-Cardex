@@ -42,7 +42,11 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
           <div style={{ overflowX: 'auto' }}>
             <table
               className="tbl"
-              style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 760 }}
+              style={{
+                fontSize: 12,
+                borderCollapse: 'collapse',
+                minWidth: 'min(760px, calc(100vw - 260px))',
+              }}
             >
               <caption
                 style={{
@@ -178,7 +182,11 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
               <div style={{ overflowX: 'auto' }}>
                 <table
                   className="tbl"
-                  style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 640 }}
+                  style={{
+                    fontSize: 12,
+                    borderCollapse: 'collapse',
+                    minWidth: 'min(640px, calc(100vw - 260px))',
+                  }}
                 >
                   <caption
                     style={{
