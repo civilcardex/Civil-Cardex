@@ -134,3 +134,11 @@ These policies prevent unauthorized access or tampering with drawing data belong
 ## Historial de sesiones
 
 Archivado en docs/sesiones/historial.md (movido el 2026-10-16 para mantener este archivo magro como guía viva).
+
+## Accesibilidad de modales (regla del repo)
+
+- Todo modal pasa por `ModalOverlay`/`ModalShell` (`src/components/shared/ModalShell.tsx`): `<dialog>` nativo con `showModal` — foco atrapado, Escape dispara `cancel`, foco devuelto al opener. Cero hooks de foco/teclado a mano.
+- PROHIBIDO `role="dialog"` manual y overlay hand-rolled (portal a body con `position: 'fixed'` + `inset: 0`): los guards **G9/G10** de `src/architecture/architecture.test.ts` lo exigen; excepciones solo en sus listas blancas (`DIALOG_ROL_OK`/`OVERLAY_OK`), que se vacían, nunca crecen.
+- **Top layer**: `showModal` pinta encima de TODO z-index — un portal a body mientras hay un modal abierto queda DEBAJO. Lo flotante desde un modal vive DENTRO del `<dialog>` (patrón `container` de `useTour`).
+- Ratchet lint: `--max-warnings 0` en package.json — subirlo solo con acuerdo explícito; bajarlo (reducir warnings reales) siempre que se pueda. jsx-a11y estricto en `error` en `eslint.config.js` (flat, ESLint 9 — el config viejo .eslintrc.cjs ya no existe).
+- Estado 2026-11-11: TODOS los modales migrados salvo 2 excepciones PERMANENTES (TourOverlay spotlight no-modal; el menú contextual ya no lleva role). Axe en 7 superficies (modales + páginas auth/empresa) con cola serial; contraste de tokens verificado offline (`contrastTokens.test.ts`, acc3/bg 2.77 excluido documentado).
