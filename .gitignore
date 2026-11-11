@@ -53,3 +53,6 @@ supabase/.temp/
 
 # Generado por scripts/generarBaselineComplejidad.mjs (el baseline vive en el guard)
 scripts/baselineComplejidad.txt
+
+# Reportes de cobertura (vitest run --coverage)
+coverage/
