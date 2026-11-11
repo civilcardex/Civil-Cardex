@@ -18,6 +18,8 @@ export type ProbedElement = PlanoElement & {
   textAngle?: number;
   totalL?: number;
   net?: string;
+  diametro?: string;
+  pendiente?: number;
 };
 
 /** Lo que el editor de tramos (panel derecho del visor) necesita: motor, selección, pisos/

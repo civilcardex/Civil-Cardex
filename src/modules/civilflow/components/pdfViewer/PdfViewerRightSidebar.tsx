@@ -98,7 +98,7 @@ export function PdfViewerRightSidebar({
   drawnElements,
 }: PdfViewerRightSidebarProps) {
   return (
-    <div className="visor-sidebar-right" style={style}>
+    <div className="visor-sidebar-right" role="region" aria-label="Panel de edición" style={style}>
       <h2 style={srOnlyStyle}>Panel de edición</h2>
       <div
         data-tour="visor-nivel"

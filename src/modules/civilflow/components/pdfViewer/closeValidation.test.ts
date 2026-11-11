@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { validateBeforeClose } from '../PdfViewer';
+import { validateBeforeClose } from './closeValidation';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState.ts';
 

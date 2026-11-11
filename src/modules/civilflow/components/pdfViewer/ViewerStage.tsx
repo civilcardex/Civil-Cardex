@@ -361,7 +361,13 @@ export function ViewerStage(props: ViewerStageProps) {
       </div>
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0, position: 'relative', minWidth: 0 }}>
-        <div className="visor-sidebar" data-tour="toolbar" style={dynamicLeftStyle}>
+        <div
+          className="visor-sidebar"
+          data-tour="toolbar"
+          role="region"
+          aria-label="Barra de herramientas y capas"
+          style={dynamicLeftStyle}
+        >
           <h2 style={SR_ONLY_STYLE}>Panel de capas</h2>
           <div
             style={{
@@ -399,6 +405,8 @@ export function ViewerStage(props: ViewerStageProps) {
 
         <div
           data-tour="canvas"
+          role="region"
+          aria-label="Lienzo del visor de planos"
           style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
         >
           <h2 style={SR_ONLY_STYLE}>Visor de planos</h2>

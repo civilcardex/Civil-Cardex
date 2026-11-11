@@ -442,8 +442,6 @@ function DrawingElementContextMenuInner() {
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <form
         ref={menuRef}
-        role="dialog"
-        aria-modal="true"
         aria-label="Menú contextual de elemento"
         onSubmit={(e) => e.preventDefault()}
         onKeyDown={(e) => {

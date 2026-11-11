@@ -11,41 +11,30 @@ import React, {
   useMemo,
   useSyncExternalStore,
 } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../../../components/Navbar.tsx';
 import PdfViewer from '../components/PdfViewer';
 import { RainwaterProvider } from '../context/RainwaterContext.tsx';
 import { PlansContext, usePlans } from '../context/PlansContext.tsx';
-import {
-  ProjectContext,
-  PROY_DEFAULTS,
-  useProject,
-  type Proyecto,
-} from '../context/ProjectContext.tsx';
+import { ProjectContext, useProject } from '../context/ProjectContext.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
-import { devError } from '../../../utils/devError.ts';
 import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
-import { marcarNavInterna } from '../../../utils/internalNavigation.ts';
 import { fetchProyectos } from '../services/projectsService.ts';
-import { loadProyectoData } from '../services/projectDataService.ts';
-import { clearLocalWorkspace } from '../services/workspaceReset.ts';
-import { clearAllPDFs } from '../services/idbStorage.ts';
+import { abrirProyectoDesdeUrl } from '../services/workspaceReset.ts';
+import { EnlaceLegacyBanner } from './EnlaceLegacyBanner.tsx';
 import {
   getActiveProyectoId,
   setActiveProyectoId,
-  saveToStorage,
   loadFromStorage,
 } from '../services/storageService.ts';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import {
   ACTIVE_NETS_KEY,
   NETS_CHANGED_EVENT,
-  PLANS_META_KEY,
   VISOR_ACTIVE_PLAN_ID_KEY,
   VISOR_ACTIVE_INDEX_KEY,
 } from '../constants/storage-keys.ts';
 import { setAyudaContext } from '../../../components/help/helpContext.ts';
-import type { Piso, PlanMeta } from '../lib/shared/projectTypes.ts';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
@@ -84,7 +73,7 @@ const pdfReadyStore = {
  * la orquestación de la página.
  */
 export default function ViewerPage() {
-  const { plans, addPlans, removePlan, restoreDone, cloudRestoreDone } = usePlans();
+  const { plans, addPlans, restoreDone, cloudRestoreDone } = usePlans();
   const { pisos } = useProject();
   const [rawActiveIndex, setActiveIndex] = useState(() => {
     try {
@@ -190,42 +179,23 @@ export default function ViewerPage() {
     if (wantsId === getActiveProyectoId()) return;
     switchingRef.current = true;
     void (async () => {
+      // Fuera del cuerpo síncrono del efecto (regla set-state-in-effect).
       await Promise.resolve();
-      const idAnterior = getActiveProyectoId();
       setSwitching(true);
-      try {
-        projectCtx?.pauseCloudSync();
-        plansCtx?.pauseCloudSync();
-        const data = await loadProyectoData(wantsId);
-        if (!data) throw new Error('proyecto-no-encontrado-o-sin-acceso');
-        // Conserva las copias locales de trazos de ESTE proyecto (ver clearLocalWorkspace):
-        // son el único respaldo de un piso cuyo guardado en la nube falló.
-        clearLocalWorkspace({ planosVigentes: (data?.plans_meta ?? []).map((m) => m.id) });
-        await clearAllPDFs();
-        plansCtx?.resetPlans();
-        projectCtx?.resetToDefaults();
-        setActiveProyectoId(wantsId);
-        if (data?.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
-        const proyToSave =
-          data?.proy && Object.keys(data.proy).length
-            ? ({ ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) } as Proyecto)
-            : PROY_DEFAULTS;
-        saveToStorage('civilflow_proy', proyToSave);
-        if (data?.mats && Object.keys(data.mats).length) saveToStorage('civilflow_mats', data.mats);
-        if (data?.profs && data.profs.length) saveToStorage('civilflow_profs', data.profs);
-        if (data?.crits && data.crits.length) saveToStorage('civilflow_crits', data.crits);
-        if (data?.redesActivas && data.redesActivas.length)
-          saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
-        if (data?.plans_meta) saveToStorage(PLANS_META_KEY, data.plans_meta as PlanMeta[]);
-        marcarNavInterna();
-        window.location.replace(`/dibujoRedes/${wantsId}`);
-      } catch (e) {
-        devError('abrir proyecto desde URL (visor):', e);
-        if (idAnterior) setActiveProyectoId(idAnterior);
-        marcarNavInterna();
-        window.location.replace(idAnterior ? '/dibujoRedes' : '/perfil');
-        return;
-      }
+      await abrirProyectoDesdeUrl({
+        wantsId,
+        pausar: () => {
+          projectCtx?.pauseCloudSync();
+          plansCtx?.pauseCloudSync();
+        },
+        resetear: () => {
+          plansCtx?.resetPlans();
+          projectCtx?.resetToDefaults();
+        },
+        activar: (id) => setActiveProyectoId(String(id)),
+        rutaConId: `/dibujoRedes/${wantsId}`,
+        rutaBase: '/dibujoRedes',
+      });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wantsId]);
@@ -309,14 +279,6 @@ export default function ViewerPage() {
     }
     e.target.value = '';
   };
-
-  const handleRemovePlan = useCallback(
-    (idx: number) => {
-      removePlan(plans[idx].id);
-      setActiveIndex((prev) => Math.max(0, prev >= plans.length - 1 ? plans.length - 2 : prev));
-    },
-    [plans, removePlan],
-  );
 
   const handleSelectPlan = useCallback((idx: number) => {
     setActiveIndex(idx);
@@ -424,41 +386,7 @@ export default function ViewerPage() {
   }, [plans.length, hasFilesReady]);
 
   // Enlace con id no-uuid (numérico legacy): banner + link al perfil, SIN montar visor.
-  if (enlaceLegacy) {
-    return (
-      <main
-        className="h-full"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 12,
-          height: '100%',
-          padding: 24,
-          textAlign: 'center',
-        }}
-      >
-        <div
-          role="alert"
-          style={{
-            padding: '10px 16px',
-            background: 'rgba(180, 83, 9, 0.15)',
-            border: '1px solid rgba(217, 119, 6, 0.4)',
-            borderRadius: 6,
-            color: '#fbbf24',
-            fontSize: 13,
-          }}
-        >
-          Este enlace corresponde a una versión antigua del proyecto — ábrelo desde tu lista de
-          proyectos.
-        </div>
-        <Link to="/perfil" style={{ color: 'var(--acc, #4d8ff7)', fontSize: 13, fontWeight: 600 }}>
-          Ir a mis proyectos
-        </Link>
-      </main>
-    );
-  }
+  if (enlaceLegacy) return <EnlaceLegacyBanner />;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>
@@ -654,8 +582,6 @@ export default function ViewerPage() {
             files={files}
             activeIndex={activeIndex}
             onSelectPlan={handleSelectPlan}
-            onAddPlan={handleAddPlan}
-            onRemovePlan={handleRemovePlan}
             planos={plans}
             pisos={pisos}
             activeNetworks={activeNetworks}

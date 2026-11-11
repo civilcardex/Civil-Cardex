@@ -17,9 +17,8 @@ import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
 import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
 import { decideEscalaPorDefectoDelPlan } from '../utils/loadDiagnostics.ts';
 import { escalaDeDoc } from '../utils/planScale.ts';
-import { useNavigate } from 'react-router-dom';
 import PlanoEngine, { type ElementItem } from '../lib/PlanoEngine/PlanoEngine.ts';
-import type { PlanoElement } from '../lib/PlanoEngine/PlanoState.ts';
+import type { ProbedElement } from './pdfViewer/tramoEditor/context.ts';
 import type { Piso } from '../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { DEFAULT_PENDIENTE_PCT } from '../constants';
@@ -30,18 +29,17 @@ import {
   writeHydroDrawingSync,
   setSyncLoadedLiveIds,
 } from '../utils/drawingSync.ts';
-import { loadFromStorage, getActiveProyectoId } from '../services/storageService.ts';
-import { ACTIVE_NETS_KEY, RCI_ESTADO_VIVO_KEY } from '../constants/storage-keys.ts';
-import { emitAparatosClear, EV_STORAGE, EV_RCI_VIVO_SAVED } from '../utils/fixtureEvents.ts';
+import { useActiveNetState } from './pdfViewer/useActiveNetState.ts';
+import { useDmuroRciInjection } from './pdfViewer/useDmuroRciInjection.ts';
+import { ScaleText, PlanoAsocInfo } from './pdfViewer/viewerInfoPanels.tsx';
+import { useCloseViewer } from './pdfViewer/useCloseViewer.ts';
+
+import { emitAparatosClear, EV_STORAGE } from '../utils/fixtureEvents.ts';
 
 import { useNetVisibilityState } from './pdfViewer/useNetVisibilityState.ts';
 import { useViewerDialogs } from './pdfViewer/useViewerDialogs.ts';
 import { useViewerToolbarActions } from './pdfViewer/useViewerToolbarActions.ts';
-import { validateBeforeClose } from './pdfViewer/closeValidation.ts';
-export { validateBeforeClose };
-import { sleep } from './shared/sequentialLoad.ts';
 import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit.ts';
-import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { applyAccesorioPlacement } from './pdfViewer/fittingPlacement.ts';
 import { useSessionVisorPrefs } from './pdfViewer/useSessionViewerPrefs.ts';
 import { useNetColorsInit } from './pdfViewer/useNetColorsInit.ts';
@@ -57,24 +55,12 @@ import { ViewerStage, LEFT_COLLAPSED_WIDTH } from './pdfViewer/ViewerStage.tsx';
 
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
 
-// Sonda estructural de la unión PlanoElement: permite leer `tipo`/`net`/`diametro`/`pendiente`
-// (presentes en unos tipos de elemento, ausentes en otros) sin repetir narrowing con los
-// type guards exportados en cada punto de acceso.
-type ProbedElement = PlanoElement & {
-  tipo?: string;
-  net?: string;
-  diametro?: string;
-  pendiente?: number;
-};
-
 interface PdfViewerProps {
   files: Array<{ id: number; file: File }>;
   /** Avisa a la página si el visor ya pintó (lámina + trazos + cámara en sitio). */
   onLoadingChange?: (loading: boolean) => void;
   activeIndex: number;
   onSelectPlan: (idx: number) => void;
-  onAddPlan: () => void;
-  onRemovePlan: (idx: number) => void;
   pisos?: Piso[];
   planos?: PlanItem[];
   activeNetworks: Set<string>;
@@ -113,7 +99,6 @@ function PdfViewer_({
   onReady,
   onLoadingChange,
 }: PdfViewerProps) {
-  const navigate = useNavigate();
   const { mats } = useProject();
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
@@ -178,29 +163,8 @@ function PdfViewer_({
   }, [loading]);
   const { tool, setTool, tipoTramo, setTipoTramo, snapOn, setSnapOn, gridOn, setGridOn } =
     useSessionVisorPrefs();
-  const [activeNet, setActiveNet] = useState(() => {
-    if (activeNetworks && activeNetworks.size > 0) {
-      if (activeNetworks.has('af')) return 'af';
-      return Array.from(activeNetworks)[0];
-    }
-    try {
-      const parsed = loadFromStorage<string[] | null>(ACTIVE_NETS_KEY, null);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        const valid = parsed.filter((id) => id !== 'ep' && id !== 'bom');
-        if (valid.length > 0) {
-          if (parsed.includes('af')) return 'af';
-          return valid[0];
-        }
-      }
-    } catch {}
-    return 'af';
-  });
-
-  useEffect(() => {
-    if (activeNetworks && activeNetworks.size > 0 && !activeNetworks.has(activeNet)) {
-      setActiveNet(Array.from(activeNetworks)[0]);
-    }
-  }, [activeNetworks, activeNet]);
+  // (init lazy + sincronía de activeNet extraídos a useActiveNetState — verbatim)
+  const [activeNet, setActiveNet] = useActiveNetState(activeNetworks);
 
   const [scaleM, setScaleM] = useState('0.5');
   // Escala única del proyecto: scale/100 del plan calibrado con calGlobal (fuente de verdad
@@ -333,28 +297,12 @@ function PdfViewer_({
         engineRef.current.setTool('sel');
       if (tool !== 'sel' && tool !== 'guide') setTool('sel');
     }
-  }, [selElement, tool, setTool]);
+    // setActiveNet es el setState del hook (identidad estable).
+  }, [selElement, tool, setTool, setActiveNet]);
 
-  /* Dmuro (RCI) INYECTADO al motor: el motor jamás lee storage — la capa React le pasa el
-   * valor del espejo local del módulo RCI al montar, cada vez que RCI lo reescribe
-   * (EV_RCI_VIVO_SAVED) y cuando cambia de pestaña (EV_STORAGE cross-tab). null = apagado. */
-  useEffect(() => {
-    const inyectar = (): void => {
-      const vivo = loadFromStorage<{ roc?: { Dmuro?: number | string } } | null>(
-        RCI_ESTADO_VIVO_KEY,
-        null,
-      );
-      const dm = parseFloat(String(vivo?.roc?.Dmuro ?? '').replace(',', '.'));
-      if (engineRef.current) engineRef.current.dmuroRci = dm > 0 ? dm : null;
-    };
-    inyectar();
-    window.addEventListener(EV_RCI_VIVO_SAVED, inyectar);
-    window.addEventListener(EV_STORAGE, inyectar);
-    return () => {
-      window.removeEventListener(EV_RCI_VIVO_SAVED, inyectar);
-      window.removeEventListener(EV_STORAGE, inyectar);
-    };
-  }, []);
+  /* Dmuro (RCI) INYECTADO al motor (hook useDmuroRciInjection — prefiere la DMR del piso
+   * activo, cae a la global): al montar, al reescribir RCI, al cambiar piso/pestaña. null = off. */
+  useDmuroRciInjection(engineRef, currentId);
 
   useEffect(() => {
     if (currentId == null) return;
@@ -671,82 +619,19 @@ function PdfViewer_({
     }),
     [selElement],
   );
-  const scaleText = useMemo(() => {
-    const planoAsoc = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
-    if (planoAsoc && planoAsoc.scale) return <span>1:{Math.round(planoAsoc.scale)}</span>;
-    const map: Record<string, string> = {
-      '0.5': '1:50',
-      '0.75': '1:75',
-      '1.0': '1:100',
-      '1.25': '1:125',
-      '2.0': '1:200',
-    };
-    return <span>{map[scaleM] || '1:100'}</span>;
-  }, [selectedNivel, planos, scaleM]);
+  // (memos de escala y tarjeta del plano asociado extraídos a viewerInfoPanels — verbatim)
+  const scaleText = <ScaleText selectedNivel={selectedNivel} planos={planos} scaleM={scaleM} />;
 
-  const planoAsocInfo = useMemo(() => {
-    if (selectedNivel === null) return null;
-    const planoAsoc = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
-    if (!planoAsoc) return null;
-    return (
-      <div
-        style={{
-          marginTop: 8,
-          padding: '6px 10px',
-          background: '#1e2024',
-          borderRadius: 3,
-          border: '1px solid rgba(0,220,229,.2)',
-        }}
-      >
-        <div
-          style={{
-            fontSize: 12,
-            color: '#00dce5',
-            fontFamily: "'Geist',monospace",
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          📄 {planoAsoc.name}
-        </div>
-        <div
-          style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", marginTop: 2 }}
-        >
-          Escala 1:{Math.round(planoAsoc.scale)}
-        </div>
-      </div>
-    );
-  }, [selectedNivel, planos]);
+  const planoAsocInfo = <PlanoAsocInfo selectedNivel={selectedNivel} planos={planos} />;
 
-  // Cierre del visor (antes closure inline del onClose de la barra de redes): mismo cuerpo.
-  // Deps = todo lo que el cuerpo lee por render (planos/handleSave cambian juntos al refrescar).
-  const handleCerrarVisor = useCallback(() => {
-    // Idempotente: el doble click no re-dispara el flujo. El prefetch que asegura la
-    // caché de TODOS los pisos tiene tope de 4s — una red colgada no bloquea el cierre
-    // para siempre (valida con la caché que haya, igual que si el prefetch fallara).
-    if (cerrandoRef.current) return;
-    cerrandoRef.current = true;
-    void (async () => {
-      try {
-        await Promise.race([prefetchAllTrazos(planos), sleep(4000)]);
-      } catch {
-        /* validar con la caché que haya */
-      }
-      const eng = engineRef.current;
-      if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) {
-        cerrandoRef.current = false;
-        return;
-      }
-      handleSave();
-      // Volver con el proyecto en la URL (orig. usuario: se perdía el /:proyectoId).
-      {
-        const pid = getActiveProyectoId();
-        navigate(pid ? `/civilflowareatrabajo/${pid}` : '/civilflowareatrabajo');
-      }
-    })();
-  }, [planos, onAlertHandler, handleSave, navigate]);
+  // Cierre del visor (hook useCloseViewer — verbatim: prefetch con tope, validación y navegación).
+  const handleCerrarVisor = useCloseViewer({
+    cerrandoRef,
+    engineRef,
+    planos,
+    onAlertHandler,
+    handleSave,
+  });
 
   return (
     <ViewerStage

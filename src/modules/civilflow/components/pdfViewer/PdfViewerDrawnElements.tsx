@@ -1,5 +1,5 @@
 /** Lista lateral "Elementos de red": agrupa lo dibujado de la red activa (bajantes, ramales, tributarios...), permite seleccionar cada uno y desplegar su detalle (longitud, diámetro, pendiente). Ej: clic en RAF1 aquí = clic sobre RAF1 en el plano. */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import PlanoEngine, { type ElementItem } from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement } from '../../lib/PlanoEngine/PlanoState.ts';
 
@@ -53,6 +53,13 @@ export default function PdfViewerDrawnElements({
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k)!.push(el);
   }
+  // Ramales por id para el label del padre de tributarios: find() dentro del .map() era O(n²)
+  // con cientos de elementos; el Map lo deja en O(n).
+  const ramalPorId = useMemo(() => {
+    const m = new Map<string, ElementItem>();
+    for (const el of drawnElements) if (el.tipo === 'ramal') m.set(el.id, el);
+    return m;
+  }, [drawnElements]);
   const orderedKeys = [
     ...GROUP_ORDER.filter((k) => groups.has(k)),
     ...[...groups.keys()].filter((k) => !(GROUP_ORDER as readonly string[]).includes(k)),
@@ -168,9 +175,7 @@ export default function PdfViewerDrawnElements({
                         {el.tipo === 'tributario'
                           ? (() => {
                               try {
-                                const p = drawnElements.find(
-                                  (x) => x.id === el.padre && x.tipo === 'ramal',
-                                );
+                                const p = el.padre ? ramalPorId.get(el.padre) : undefined;
                                 return p ? p.label : el.label;
                               } catch {
                                 return el.label;
