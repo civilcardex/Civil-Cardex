@@ -31,7 +31,8 @@ const r2 = (v: unknown): number | null => {
 };
 
 /** Llave de criterios de un piso: riesgo, sistema, techo, QR, construcción, pendiente, ocultos,
- *  K, S, L (+ planta). Pisos con la misma llave y planta comparten tipología y red. */
+ *  K, S, L, DMR (distancia máxima de rociador a muro) (+ planta). Pisos con la misma llave y
+ *  planta comparten tipología y red. */
 const critKey = (
   p: {
     riesgo: string;
@@ -44,6 +45,7 @@ const critKey = (
     K: NumIn;
     S: NumIn;
     L: NumIn;
+    Dmuro?: NumIn;
     planta?: string;
   },
   planta = true,
@@ -61,6 +63,7 @@ const critKey = (
         r2(p.K),
         r2(p.S),
         r2(p.L),
+        r2(p.Dmuro),
         ...(planta
           ? [
               String(p.planta || '')
@@ -153,11 +156,24 @@ export function clasificar(st: RciState): Tips {
         techoIncl: rp.techoIncl,
         ocultoComb: rp.ocultoComb,
       },
-      { K: rp.K, Pmin: st.roc.Pmin, S: rp.S, L: rp.L },
+      {
+        K: rp.K,
+        Pmin: st.roc.Pmin,
+        S: rp.S,
+        L: rp.L,
+        /* DMR vacío = la global (roc.Dmuro), igual que el resto de defaults del proyecto. */
+        Dmuro: rp.Dmuro === undefined || rp.Dmuro === '' ? st.roc.Dmuro : rp.Dmuro,
+      },
     );
     g.hts = [...new Set(g.pisos.map((i) => r2(rows[i].htecho)))];
+    /* La llave compara el DMR EFECTIVO (vacío = la global, igual que la línea del criterio de
+     * arriba): si comparara el crudo, una fila sin DMR no matchearía Entradas aunque el
+     * criterio con el que se calcula sea idéntico. */
     g.enEntradas =
-      critKey(rp, false) ===
+      critKey(
+        { ...rp, Dmuro: rp.Dmuro === undefined || rp.Dmuro === '' ? st.roc.Dmuro : rp.Dmuro },
+        false,
+      ) ===
       critKey(
         {
           riesgo: st.clas.riesgo,
@@ -170,6 +186,7 @@ export function clasificar(st: RciState): Tips {
           K: st.roc.K,
           S: st.roc.S,
           L: st.roc.L,
+          Dmuro: st.roc.Dmuro,
         },
         false,
       );

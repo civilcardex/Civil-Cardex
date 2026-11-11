@@ -14,7 +14,7 @@ import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { Criterios } from '../../lib/rci/types.ts';
 import type { RedResult } from '../../lib/rci/types.ts';
 import type { Red } from '../../lib/rci/types.ts';
-import { ModalOverlay, useEscapeKey } from '../../../../components/shared/ModalShell.tsx';
+import { RciHelpModal } from './RCIHelpModal.tsx';
 
 const THW: CSSProperties = {
   ...TH,
@@ -159,7 +159,6 @@ export function RciRamalesTable({
   roc: Criterios;
 }) {
   const [finAyuda, setFinAyuda] = useState(false);
-  useEscapeKey(() => setFinAyuda(false), finAyuda);
   return (
     <>
       <div style={{ overflowX: 'auto' }}>
@@ -182,20 +181,22 @@ export function RciRamalesTable({
             {/* Grupos del HTML (tr.grp): Recorrido / Rociadores / Tubería del ramal (Ø único) /
               Cota / Resultados / Orden. */}
             <tr>
-              <th colSpan={3} style={THW}>
+              <th scope="col" colSpan={3} style={THW}>
                 Recorrido
               </th>
-              <th colSpan={3} style={THW}>
+              <th scope="col" colSpan={3} style={THW}>
                 Rociadores
               </th>
-              <th colSpan={4} style={THW}>
+              <th scope="col" colSpan={4} style={THW}>
                 Tubería del ramal (Ø único)
               </th>
-              <th style={THW}>Cota</th>
-              <th colSpan={12} style={THW}>
+              <th scope="col" style={THW}>
+                Cota
+              </th>
+              <th scope="col" colSpan={12} style={THW}>
                 Resultados
               </th>
-              <th style={THW} />
+              <th scope="col" style={THW} />
             </tr>
             <tr>
               <th scope="col" style={THW}>
@@ -228,7 +229,7 @@ export function RciRamalesTable({
                     font: 'inherit',
                     fontSize: 10,
                     fontWeight: 500,
-                    color: 'var(--steel)',
+                    color: 'var(--acc)',
                     textDecoration: 'underline',
                     cursor: 'pointer',
                   }}
@@ -578,50 +579,11 @@ export function RciRamalesTable({
           </tfoot>
         </table>
       </div>
-      {/* Panel «Ver ayuda» de Fin (el PHELP.con del HTML): mini-modal con nudo SVG y reglas. */}
+      {/* Panel «Ver ayuda» de Fin (el PHELP.con del HTML): tarjeta compartida con nudo SVG y reglas. */}
       {finAyuda ? (
-        <ModalOverlay onClose={() => setFinAyuda(false)}>
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Conecta en: nudos y tramos"
-            style={{
-              background: 'var(--bg2)',
-              border: '1px solid var(--line)',
-              borderTop: '3px solid var(--steel)',
-              borderRadius: 8,
-              width: 'min(560px, 100%)',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '10px 14px 12px',
-              boxShadow: '0 12px 30px rgba(0,0,0,.5)',
-              fontSize: 13,
-              lineHeight: 1.45,
-              color: 'var(--txt)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <b style={{ fontSize: 14 }}>Conecta en: nudos y tramos</b>
-              <button
-                type="button"
-                onClick={() => setFinAyuda(false)}
-                aria-label="Cerrar ayuda"
-                style={{
-                  marginLeft: 'auto',
-                  border: 0,
-                  background: 'none',
-                  fontSize: 18,
-                  lineHeight: 1,
-                  cursor: 'pointer',
-                  color: 'var(--txt3)',
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            {FIN_AYUDA}
-          </div>
-        </ModalOverlay>
+        <RciHelpModal titulo="Conecta en: nudos y tramos" onClose={() => setFinAyuda(false)}>
+          {FIN_AYUDA}
+        </RciHelpModal>
       ) : null}
     </>
   );

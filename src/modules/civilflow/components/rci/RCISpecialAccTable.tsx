@@ -63,12 +63,22 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
           <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH10C}>Código</th>
-                <th style={TH10C}>Accesorio</th>
-                <th style={TH10C}>Cómo se da la pérdida</th>
-                <th style={TH10C}>Valor</th>
-                <th style={TH10C}>Q ref. (gpm)</th>
-                <th style={TH10C} />
+                <th scope="col" style={TH10C}>
+                  Código
+                </th>
+                <th scope="col" style={TH10C}>
+                  Accesorio
+                </th>
+                <th scope="col" style={TH10C}>
+                  Cómo se da la pérdida
+                </th>
+                <th scope="col" style={TH10C}>
+                  Valor
+                </th>
+                <th scope="col" style={TH10C}>
+                  Q ref. (gpm)
+                </th>
+                <th scope="col" style={TH10C} />
               </tr>
             </thead>
             <tbody>

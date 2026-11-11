@@ -1,8 +1,7 @@
 /**
  * Bloque RCI (Red Contra Incendio) para la memoria de cálculo del Informe: corre el motor
  * sobre el estado guardado y lo aplana a una tabla compacta de 2 columnas (Concepto/Valor) —
- * misma forma en que gas agrega su tabla y ep la suya. Ej: construirInformeRci(
- * ejemploVerificacion()).tabla.rows termina con la fila ['Verificaciones', '… de 44 CUMPLE'].
+ * misma forma en que gas agrega su tabla y ep la suya.
  */
 import { clasificar, compute, num } from '../../lib/rci/index.ts';
 import type { RciState } from '../../lib/rci/types.ts';

@@ -32,14 +32,15 @@ const CHIP: CSSProperties = {
 /** Chip "Red" de una tipología desde R.edif.typ: sin entrada → '—', ok → Calculada,
  *  pend → Sin red (la planta no tiene trazos), resto → Incompleta (cerró con errores).
  *  Los colores son los del ChipEstado (CUMPLE/REVISAR/NO CUMPLE) con palabra propia. */
-function ChipRed({ t, planta }: { t: TipCalc | undefined; planta: string }) {
+function ChipRed({ t, nombresPisos }: { t: TipCalc | undefined; nombresPisos: string }) {
   if (!t) return <span style={{ ...CHIP, color: 'var(--txt3)' }}>—</span>;
   const st = t.ok ? 'CUMPLE' : t.pend ? 'REVISAR' : 'NO CUMPLE';
   return (
     <ChipEstado
       st={st}
       label={t.ok ? 'Calculada' : t.pend ? 'Sin red' : 'Incompleta'}
-      title={t.pend ? `La planta ${planta} no tiene red todavía` : undefined}
+      /* Sin el planId interno (ped. usuario): los NOMBRES de los pisos de la tipología. */
+      title={t.pend ? `${nombresPisos} sin red todavía` : undefined}
     />
   );
 }
@@ -159,7 +160,13 @@ function TablaTipologias({
                     {nptRep !== null && !isNaN(nptRep) ? `${nptRep.toFixed(2)} m` : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
-                    <ChipRed t={t} planta={g.planta} />
+                    <ChipRed
+                      t={t}
+                      nombresPisos={[...g.pisos]
+                        .reverse()
+                        .map((i) => rows[i].nombre || '(sin nombre)')
+                        .join(' + ')}
+                    />
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     {g.enEntradas ? (

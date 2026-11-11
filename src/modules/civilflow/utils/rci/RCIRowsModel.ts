@@ -99,17 +99,23 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
    * Base→CB en Entradas → Selección de bomba. */
   const mont = { ...est.mont };
 
-  /* Por piso SOLO se siembra la planta (mapeo piso→red, ver doc de arriba): los criterios,
-   * la salida y la tipología NO se copian — la salida la fija el dibujo (gabinetes GAB) y
-   * lo demás lo digita el diseñador (ped. usuario: nada fabricado). */
+  /* Por piso SOLO se siembra la planta (mapeo piso→red, ver doc de arriba) y la DMR (distancia
+   * máxima de rociador a muro): los criterios, la salida y la tipología NO se copian — la salida
+   * la fija el dibujo (gabinetes GAB) y lo demás lo digita el diseñador (ped. usuario: nada
+   * fabricado). La DMR nace con la global del proyecto para que los proyectos viejos muestren en
+   * Pisos del edificio el valor que el motor ya aplica. */
   const rows = est.pisos.rows.map((r) => {
-    if (!vacio(r.planta)) return r;
-    cambio = true;
-    const planId = String((r as PisoRow & { planId?: string }).planId || '');
-    return {
-      ...r,
-      planta: planId || 'A',
-    };
+    let fila = r;
+    if (vacio(r.planta)) {
+      cambio = true;
+      const planId = String((r as PisoRow & { planId?: string }).planId || '');
+      fila = { ...fila, planta: planId || 'A' };
+    }
+    if (vacio(r.Dmuro) && !vacio(roc.Dmuro)) {
+      cambio = true;
+      fila = { ...fila, Dmuro: roc.Dmuro };
+    }
+    return fila;
   });
 
   /* Material de cada red (el selector "Material de los ramales" del HTML, amarillo): si el
@@ -179,6 +185,8 @@ export interface FilaTipologia {
   K: string;
   S: string;
   L: string;
+  /** Distancia máxima de rociador a muro (m); vacío = la global del proyecto. */
+  Dmuro: string;
   salida: string;
   vreg: string;
   vrp: string;
@@ -218,6 +226,7 @@ export function filasTipologias(est: RciState, tips: Tips | null): FilaTipologia
       K: txtDe(r.K),
       S: txtDe(r.S),
       L: txtDe(r.L),
+      Dmuro: txtDe(r.Dmuro),
       salida: txtDe(r.salida) || 'Ninguna',
       vreg: txtDe(r.vreg) || 'auto',
       vrp: txtDe(r.vrp) || 'auto',
@@ -494,7 +503,7 @@ export function grupoDeCheck(v: Verificacion): string {
     return 'rociadores';
   /* Distancia de ramales a muros (ped. usuario): grupo Rociadores (depende de Dmuro). */
   if (v.lab === 'Distancia de ramales a muros ≤ Dmuro') return 'rociadores';
-  if (go0 === 'pisos' || go1.startsWith('piso:')) return 'tipologias';
+  if (go0 === 'tipologias' || go0 === 'pisos' || go1.startsWith('piso:')) return 'tipologias';
   if (go1.startsWith('local.') || go0 === 'sismo') return 'normativa';
   if (go1.startsWith('clas.') || go1.startsWith('roc.')) return 'tipologias';
   if (go1.startsWith('mont.') || go1.startsWith('sia.') || go1.startsWith('sp.'))

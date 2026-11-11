@@ -625,10 +625,11 @@ describe('rowsModelRci2 · mapa de navegación (RUTA_DE + SUBS_POR_TAB)', () => 
     expect(RUTA_DE(['rociadores', 'clas.qr']).sub).toBe('datos');
     expect(RUTA_DE(['rociadores']).sub).toBe('criterios');
     expect(RUTA_DE(['pisos', 'piso:0:vrp'])).toEqual({
-      tab: 'pisos',
+      tab: 'tipologias',
       sub: 'pisos',
       campo: 'piso:0:vrp',
     });
+    expect(RUTA_DE(['tipologias', 'pisos'])).toEqual({ tab: 'tipologias', sub: 'pisos' });
     expect(RUTA_DE(['hidraulica'])).toEqual({ tab: 'hidraulica', sub: 'ramales' });
     expect(RUTA_DE(['hidraulica', '', 'tramos']).sub).toBe('tramos');
     expect(RUTA_DE(['gabinetes'])).toEqual({ tab: 'gabinetes', sub: 'ruta' });

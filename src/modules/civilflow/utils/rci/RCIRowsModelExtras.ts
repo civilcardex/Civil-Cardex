@@ -527,7 +527,11 @@ export const SUBS_POR_TAB: Record<string, SubTab[]> = {
     { id: 'datos', l: 'Datos del proyecto' },
     { id: 'criterios', l: 'Criterios NFPA 13' },
   ],
-  pisos: [{ id: 'pisos', l: 'Pisos y tipologías' }],
+  tipologias: [
+    { id: 'pisos', l: 'Pisos del edificio' },
+    { id: 'tipos', l: 'Tipologías y avisos' },
+    { id: 'corte', l: 'Corte esquemático' },
+  ],
   hidraulica: [
     { id: 'ramales', l: 'Ramales' },
     { id: 'tramos', l: 'Tramos y nudos' },
@@ -619,8 +623,19 @@ export function RUTA_DE(go: string[]): RutaCheck {
             campo,
           }
         : { tab, sub: 'criterios' };
+    case 'tipologias': {
+      /* go = ['tipologias', 'pisos']: el segundo elemento nombra la SUB-pestaña, no un campo
+       * (los checks de S/L/DMR no apuntan a una celda concreta). */
+      const dato = campo && campo !== 'pisos' ? campo : undefined;
+      return dato
+        ? { tab: 'tipologias', sub: 'pisos', campo: dato }
+        : { tab: 'tipologias', sub: 'pisos' };
+    }
     case 'pisos':
-      return campo ? { tab, sub: 'pisos', campo } : { tab, sub: 'pisos' };
+      /* Compatibilidad con los go viejos: la pestaña 'pisos' ahora se llama 'tipologias'. */
+      return campo
+        ? { tab: 'tipologias', sub: 'pisos', campo }
+        : { tab: 'tipologias', sub: 'pisos' };
     case 'hidraulica':
       return { tab, sub: (go[2] || '').includes('tramos') ? 'tramos' : 'ramales' };
     case 'gabinetes':

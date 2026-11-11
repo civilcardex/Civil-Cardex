@@ -4,7 +4,6 @@
  *  Ej: <TablaPisos filas={filas} nota="3 piso(s)" grupos={['T1']} setPiso={setPiso} />. */
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { EditTablaBtn, SecRci, useEditarTabla } from './RCIUI.tsx';
-import { useEscapeKey } from '../../../../components/shared/ModalShell.tsx';
 import { celdaEditable, CELDA12 } from './RCIEditableCell.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import {
@@ -15,7 +14,8 @@ import {
   SISTEMAS,
   type FilaTipologia,
 } from '../../utils/rci/RCIRowsModel.ts';
-import { AYUDA_NIVEL, AYUDA_SALIDA, NivelCelda } from './RCIFloorCells.tsx';
+import { AYUDA_SALIDA } from './RCIFloorCells.tsx';
+import { RciHelpModal } from './RCIHelpModal.tsx';
 import type { PisoRow } from '../../lib/rci/types.ts';
 /** Columnas de la tabla de pisos (tooltip = ayuda resumida del HTML de referencia). Las que
  *  traen `ph` llevan el botón «Ver ayuda» (el panel del HTML, PISOS_PHELP). */
@@ -23,10 +23,6 @@ const COLS: { l: string; tip?: string; ph?: string }[] = [
   { l: 'Piso', tip: 'Nombre y NPT: llegan del PLANO (gris 🔒).' },
   { l: 'NPT (m)', tip: 'Nivel de Piso Terminado. Necesario para el perfil de presiones.' },
   { l: 'Uso', tip: 'Uso del piso (texto libre, informativo — siempre editable).' },
-  {
-    l: 'Planta',
-    tip: AYUDA_NIVEL,
-  },
   {
     l: 'Riesgo NFPA 13',
     tip: 'Clasificación de riesgo (NFPA 13 cap. 4). "Sin rociadores" saca el piso del cálculo de red.',
@@ -59,6 +55,10 @@ const COLS: { l: string; tip?: string; ph?: string }[] = [
   { l: 'S (m)', tip: 'Separación entre rociadores en el ramal.' },
   { l: 'L (m)', tip: 'Separación entre ramales.' },
   {
+    l: 'DMR (m)',
+    tip: 'Distancia máxima de rociador a muro (DMR): ningún rociador debe quedar más lejos de un muro o partición. NFPA 13 la limita a S máx/2 en las dos direcciones; vacío = la DMR global del proyecto.',
+  },
+  {
     l: 'Salidas',
     tip: AYUDA_SALIDA,
     ph: 'salida',
@@ -81,10 +81,10 @@ const COLS: { l: string; tip?: string; ph?: string }[] = [
  *  La fila de arriba reparte colSpan y la de abajo lista las columnas — la suma debe ser
  *  COLS.length. Ej: 'Rociador' cubre QR y K. */
 const GRUPOS_PISOS: [string, number][] = [
-  ['Identificación', 4], // Piso · NPT (m) · Uso · Planta
+  ['Identificación', 3], // Piso · NPT (m) · Uso
   ['Clasificación NFPA 13', 6], // Riesgo · Sistema · H techo · Techo · Pend. · Ocultos
   ['Rociador', 2], // Resp. rápida (QR) · K
-  ['Separación', 2], // S (m) · L (m)
+  ['Separación', 3], // S (m) · L (m) · DMR (m) — la distancia a muro es el límite de S/2
   ['Montante', 3], // Salidas · V.reg · VRP
   ['Asignación', 1], // Tip.
 ];
@@ -103,9 +103,9 @@ const PISOS_PHELP: Record<string, { t: string; h: React.ReactNode }> = {
         <table>
           <thead>
             <tr>
-              <th>Opción</th>
-              <th>Cuándo</th>
-              <th>Cobertura máx. riesgo leve</th>
+              <th scope="col">Opción</th>
+              <th scope="col">Cuándo</th>
+              <th scope="col">Cobertura máx. riesgo leve</th>
             </tr>
           </thead>
           <tbody>
@@ -194,8 +194,8 @@ const PISOS_PHELP: Record<string, { t: string; h: React.ReactNode }> = {
         <table>
           <thead>
             <tr>
-              <th>Opción</th>
-              <th>Qué es</th>
+              <th scope="col">Opción</th>
+              <th scope="col">Qué es</th>
             </tr>
           </thead>
           <tbody>
@@ -279,7 +279,6 @@ function TablaPisos({
   const [edit, toggleEdit] = useEditarTabla();
   /* Panel «Ver ayuda» de las columnas (el phelp del HTML): una clave a la vez. */
   const [ph, setPh] = useState<string | null>(null);
-  useEscapeKey(() => setPh(null), !!ph);
   const ayudaDe = (c: { l: string; ph?: string }): ReactNode =>
     c.ph ? (
       <button
@@ -296,7 +295,7 @@ function TablaPisos({
           font: 'inherit',
           fontSize: 10,
           fontWeight: 500,
-          color: 'var(--steel)',
+          color: 'var(--acc)',
           textDecoration: 'underline',
           cursor: 'pointer',
         }}
@@ -304,17 +303,10 @@ function TablaPisos({
         Ver ayuda
       </button>
     ) : null;
-  /* Desplegable de Nivel: un par por piso (value = planId, la llave de la red; label = nombre).
-   * Orden de filas: niveles menores primero (NPT asc) — la cubierta, al final. */
-  const vistos = new Set<string>();
   /* La cubierta no participa en la tabla ni en el desplegable: sin rociadores, no tiene red
    * que calcular. Match EXACTO del nombre («Cubierta técnica» sigue siendo piso editable).
    * Se filtra SOLO la vista — los datos quedan intactos para el motor. */
   const SIN_CUBIERTA = filas.filter((f) => f.nombre.trim().toLowerCase() !== 'cubierta');
-  const OPCIONES_NIVEL = SIN_CUBIERTA.slice()
-    .sort((x, y) => (Number(x.npt) || 0) - (Number(y.npt) || 0))
-    .map((f2) => ({ v: f2.planta, l: f2.nombre }))
-    .filter((o) => o.v && !vistos.has(o.v) && vistos.add(o.v));
   return (
     <SecRci
       id="tipologias"
@@ -380,14 +372,6 @@ function TablaPisos({
                       style={{ ...CELDA12, width: 84 }}
                     />,
                   )}
-                </td>
-                <td className="c" style={TDP}>
-                  <NivelCelda
-                    edit={edit}
-                    planta={f.planta}
-                    opciones={OPCIONES_NIVEL}
-                    set={setPiso(f.i, 'planta')}
-                  />
                 </td>
                 <td className="c" style={TDP}>
                   {celdaEditable(
@@ -534,6 +518,19 @@ function TablaPisos({
                     />,
                   )}
                 </td>
+                <td className="c" style={TDP}>
+                  {/* DMR: distancia máxima de rociador a muro (vacío = la global del proyecto). */}
+                  {celdaEditable(
+                    edit,
+                    <input
+                      type="number"
+                      step="any"
+                      value={f.Dmuro}
+                      onChange={(e) => setPiso(f.i, 'Dmuro')(e.target.value)}
+                      style={{ ...CELDA12, width: 60 }}
+                    />,
+                  )}
+                </td>
                 <td className="c" style={{ ...TDP, whiteSpace: 'nowrap' }}>
                   {celdaEditable(
                     edit,
@@ -613,65 +610,11 @@ function TablaPisos({
           </tbody>
         </table>
       </div>
-      {/* Panel «Ver ayuda» (el phelp del HTML): mini-modal con la ayuda rica de la columna. */}
+      {/* Panel «Ver ayuda» (el phelp del HTML): tarjeta compartida con la ayuda de la columna. */}
       {ph && PISOS_PHELP[ph] ? (
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setPh(null);
-          }}
-          role="presentation"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 60,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,.6)',
-            padding: 20,
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={PISOS_PHELP[ph].t}
-            style={{
-              background: 'var(--bg2)',
-              border: '1px solid var(--line)',
-              borderTop: '3px solid var(--steel)',
-              borderRadius: 8,
-              width: 'min(560px, 100%)',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '10px 14px 12px',
-              boxShadow: '0 12px 30px rgba(0,0,0,.5)',
-              fontSize: 13,
-              lineHeight: 1.45,
-              color: 'var(--txt)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <b style={{ fontSize: 14 }}>{PISOS_PHELP[ph].t}</b>
-              <button
-                type="button"
-                onClick={() => setPh(null)}
-                aria-label="Cerrar ayuda"
-                style={{
-                  marginLeft: 'auto',
-                  border: 0,
-                  background: 'none',
-                  fontSize: 18,
-                  lineHeight: 1,
-                  cursor: 'pointer',
-                  color: 'var(--txt3)',
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="phelp-body">{PISOS_PHELP[ph].h}</div>
-          </div>
-        </div>
+        <RciHelpModal titulo={PISOS_PHELP[ph].t} onClose={() => setPh(null)}>
+          {PISOS_PHELP[ph].h}
+        </RciHelpModal>
       ) : null}
     </SecRci>
   );

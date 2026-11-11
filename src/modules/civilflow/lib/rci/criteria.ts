@@ -7,16 +7,17 @@ import { ceilE, isSi, num } from './hydraulics';
 import type { Criterios, RciClas, RciRoc } from './types';
 
 /** Área de diseño, rociadores requeridos y presión del rociador más remoto para una
- *  clasificación (riesgo, sistema, QR, techo…) y una geometría (K, Pmin, S, L en m). */
+ *  clasificación (riesgo, sistema, QR, techo…) y una geometría (K, Pmin, S, L y Dmuro en m). */
 export function criterios(
   c: Pick<RciClas, 'riesgo' | 'sistema' | 'htecho' | 'qr' | 'constr' | 'techoIncl' | 'ocultoComb'>,
-  ro: Pick<RciRoc, 'K' | 'Pmin' | 'S' | 'L'>,
+  ro: Pick<RciRoc, 'K' | 'Pmin' | 'S' | 'L' | 'Dmuro'>,
 ): Criterios {
   const hz = HZ[c.riesgo] || HZ['Riesgo leve'];
   const K = num(ro.K) || 5.6,
     Pmin = num(ro.Pmin) || 7,
     S = num(ro.S) || 0,
-    L = num(ro.L) || 0;
+    L = num(ro.L) || 0,
+    Dmuro = num(ro.Dmuro) || 0;
   const HtFt = (num(c.htecho) || 0) * 3.28084;
   const FSeco = c.sistema === 'Seco' ? 1.3 : 1;
   const RedQR =
@@ -48,6 +49,7 @@ export function criterios(
     Pmin,
     S,
     L,
+    Dmuro,
     HtFt,
     FSeco,
     RedQR,

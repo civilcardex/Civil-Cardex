@@ -40,6 +40,7 @@ import type { Piso } from '../../lib/shared/projectTypes.ts';
 import {
   AvisosRci,
   NavRciProvider,
+  TABS_RCI,
   TabBarRci,
   COLOR_ESTADO,
   type RciCtx,
@@ -195,7 +196,7 @@ function RciDesign() {
 
   /* Persistencia debounced: cada edición recalcula y guarda 600 ms después de la última tecla.
      Espejo LOCAL junto al guardado: el visor (dibujo automático S/L) lee el valor FRESCO de la
-     tabla Datos del rociador sin esperar la BD. */
+     tabla de Pisos del edificio sin esperar la BD. */
   useDebouncedEffect(
     () => {
       const proyectoId = getActiveProyectoId();
@@ -392,6 +393,12 @@ function RciDesign() {
   const ctx: RciCtx = { estado, R, tips, edit: false, editar, rectFuego: rectFuego ?? undefined };
   const avisosGris = gris.avisos.map((a) => `${a.piso}: ${a.msg}`);
   const noCumplen = R.count['NO CUMPLE'] || 0;
+  /* El selector de piso activo vive donde el contenido depende del piso: desde Rociadores en
+   * adelante (la tipología activa y el rectángulo de fuego se calculan sobre el piso activo).
+   * Entradas y Tipologías muestran TODOS los pisos en su tabla, ahí el desplegable sobra. */
+  const idxTab = TABS_RCI.findIndex((t) => t.id === tab);
+  const idxRoc = TABS_RCI.findIndex((t) => t.id === 'rociadores');
+  const verPiso = idxTab >= idxRoc;
 
   /** Conteo por estado para el chip resumen de la barra (clic → Verificaciones/Todas). */
   const conteo: { st: string; n: number }[] = ['CUMPLE', 'NO CUMPLE', 'REVISAR', 'PENDIENTE'].map(
@@ -437,39 +444,44 @@ function RciDesign() {
           >
             Guía de diseño
           </button>
-          <span style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
-            PISO ACTIVO
-          </span>
-          {/* Desplegable (ped. usuario): con muchos pisos los chips no caben en la fila. */}
-          {fuentes.length > 0 ? (
-            <select
-              value={planIdActivo || ''}
-              onChange={(e) => elegirPiso(e.target.value)}
-              aria-label="Piso activo"
-              style={{
-                border: '1px solid var(--line)',
-                borderRadius: 'var(--r)',
-                padding: '3px 8px',
-                fontSize: 12,
-                fontFamily: 'var(--body)',
-                color: 'var(--txt)',
-                background: 'var(--bg3)',
-                cursor: 'pointer',
-              }}
-            >
-              {[...fuentes]
-                .sort((x, y) => y.npt - x.npt)
-                .map((f) => (
-                  <option key={f.planId} value={f.planId}>
-                    {f.label}
-                  </option>
-                ))}
-            </select>
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--txt3)' }}>
-              Sin planos confirmados: confirme planos para registrar los pisos.
-            </span>
-          )}
+          {verPiso ? (
+            <>
+              <span style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
+                PISO ACTIVO
+              </span>
+              {/* Desplegable (ped. usuario): con muchos pisos los chips no caben en la fila. Solo
+                  en las páginas que calculan por piso (posteriores a Rociadores). */}
+              {fuentes.length > 0 ? (
+                <select
+                  value={planIdActivo || ''}
+                  onChange={(e) => elegirPiso(e.target.value)}
+                  aria-label="Piso activo"
+                  style={{
+                    border: '1px solid var(--line)',
+                    borderRadius: 'var(--r)',
+                    padding: '3px 8px',
+                    fontSize: 12,
+                    fontFamily: 'var(--body)',
+                    color: 'var(--txt)',
+                    background: 'var(--bg3)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {[...fuentes]
+                    .sort((x, y) => y.npt - x.npt)
+                    .map((f) => (
+                      <option key={f.planId} value={f.planId}>
+                        {f.label}
+                      </option>
+                    ))}
+                </select>
+              ) : (
+                <span style={{ fontSize: 11, color: 'var(--txt3)' }}>
+                  Sin planos confirmados: confirme planos para registrar los pisos.
+                </span>
+              )}
+            </>
+          ) : null}
           {/* Avisos del merge CENTRADOS entre los chips de pisos y los de verificaciones
               (ped. usuario): contenedor flex-1 centrado — los extremos quedan anclados. */}
           <div

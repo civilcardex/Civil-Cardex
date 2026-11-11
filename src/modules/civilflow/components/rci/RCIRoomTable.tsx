@@ -5,7 +5,6 @@
  *  Ej: L = 2,80 m con 2 codos calcula sus pérdidas en la pestaña Bomba y tanque. */
 import { useState } from 'react';
 import { EditTablaBtn, useEditarTabla } from './RCIUI.tsx';
-import { useEscapeKey } from '../../../../components/shared/ModalShell.tsx';
 import { celdaEditable } from './RCIEditableCell.tsx';
 import { BTN, IN, NOTA, TDC12, type EditarRci } from './RCICmatTable.tsx';
 import { TH10 } from '../../styles/sharedTableStyles.ts';
@@ -33,8 +32,6 @@ const FC_CUARTO: [string, string][] = [
 function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }) {
   const [edit, toggleEdit] = useEditarTabla();
   const [esquema, setEsquema] = useState(false);
-  /* Escape cierra el esquema (patrón HelpPanel). */
-  useEscapeKey(() => setEsquema(false), esquema);
   const filas = estado.mont.cuarto || [];
   const setC =
     (i: number, k: string, esNum = false) =>
@@ -94,39 +91,56 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
           <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th colSpan={2} style={TH10}>
+                <th scope="col" colSpan={2} style={TH10}>
                   Recorrido
                 </th>
-                <th colSpan={3} style={TH10}>
+                <th scope="col" colSpan={3} style={TH10}>
                   Tubería
                 </th>
-                <th colSpan={9} style={TH10}>
+                <th scope="col" colSpan={9} style={TH10}>
                   Accesorios (un)
                 </th>
-                <th colSpan={2} style={TH10}>
+                <th scope="col" colSpan={2} style={TH10}>
                   Cotas (m)
                 </th>
               </tr>
               <tr>
-                <th style={TH10}>Desde</th>
-                <th style={TH10}>Hasta</th>
-                <th style={TH10}>Material</th>
-                <th style={TH10}>Ø</th>
-                <th style={TH10}>L (m)</th>
+                <th scope="col" style={TH10}>
+                  Desde
+                </th>
+                <th scope="col" style={TH10}>
+                  Hasta
+                </th>
+                <th scope="col" style={TH10}>
+                  Material
+                </th>
+                <th scope="col" style={TH10}>
+                  Ø
+                </th>
+                <th scope="col" style={TH10}>
+                  L (m)
+                </th>
                 {FC_CUARTO.map(([k, t]) => (
-                  <th key={k} style={TH10}>
+                  <th scope="col" key={k} style={TH10}>
                     {t}
                   </th>
                 ))}
                 <th
+                  scope="col"
                   style={TH10}
                   title="Códigos del catálogo de accesorios especiales (Tubería y mangueras), p. ej. VA+DF"
                 >
                   Especiales
                 </th>
-                <th style={TH10}>Leq otros (m)</th>
-                <th style={TH10}>Inicio</th>
-                <th style={TH10}>Fin</th>
+                <th scope="col" style={TH10}>
+                  Leq otros (m)
+                </th>
+                <th scope="col" style={TH10}>
+                  Inicio
+                </th>
+                <th scope="col" style={TH10}>
+                  Fin
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -239,7 +253,8 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
               background: 'var(--bg2)',
               border: '1px solid var(--line)',
               borderRadius: 8,
-              width: 'min(920px, 100%)',
+              // Dentro de <dialog> el padre es fit-content: un 100% colapsa la card al contenido.
+              width: 'min(920px, calc(100vw - 40px))',
               maxHeight: '90vh',
               overflowY: 'auto',
               padding: 14,

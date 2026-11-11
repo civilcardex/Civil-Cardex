@@ -105,19 +105,35 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
           <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH10C} title="Material de la tubería">
+                <th scope="col" style={TH10C} title="Material de la tubería">
                   Material
                 </th>
-                <th style={{ ...TH10C, fontSize: 10 }} title="C de NFPA 13 en sistema húmedo">
+                <th
+                  scope="col"
+                  style={{ ...TH10C, fontSize: 10 }}
+                  title="C de NFPA 13 en sistema húmedo"
+                >
                   NFPA 13·húm.
                 </th>
-                <th style={{ ...TH10C, fontSize: 10 }} title="C de NFPA 13 en sistema seco">
+                <th
+                  scope="col"
+                  style={{ ...TH10C, fontSize: 10 }}
+                  title="C de NFPA 13 en sistema seco"
+                >
                   NFPA 13·seco
                 </th>
-                <th style={{ ...TH10C, fontSize: 10 }} title="C adoptado · húmedo (editable)">
+                <th
+                  scope="col"
+                  style={{ ...TH10C, fontSize: 10 }}
+                  title="C adoptado · húmedo (editable)"
+                >
                   Adoptado húmedo
                 </th>
-                <th style={{ ...TH10C, fontSize: 10 }} title="C adoptado · seco (editable)">
+                <th
+                  scope="col"
+                  style={{ ...TH10C, fontSize: 10 }}
+                  title="C adoptado · seco (editable)"
+                >
                   Adoptado seco
                 </th>
               </tr>

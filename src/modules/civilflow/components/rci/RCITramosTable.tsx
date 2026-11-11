@@ -60,16 +60,16 @@ export function RciTramosTable({
         <thead>
           {/* Grupos del HTML (tr.grp): Recorrido / Tubería / Accesorios y cotas / Resultados. */}
           <tr>
-            <th colSpan={3} style={TH10}>
+            <th scope="col" colSpan={3} style={TH10}>
               Recorrido
             </th>
-            <th colSpan={3} style={TH10}>
+            <th scope="col" colSpan={3} style={TH10}>
               Tubería
             </th>
-            <th colSpan={2} style={TH10}>
+            <th scope="col" colSpan={2} style={TH10}>
               Accesorios y cotas
             </th>
-            <th colSpan={10} style={TH10}>
+            <th scope="col" colSpan={10} style={TH10}>
               Resultados
             </th>
           </tr>

@@ -159,32 +159,32 @@ export function PasoGuia({
             <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th>Riesgo</th>
-                  <th>
+                  <th scope="col">Riesgo</th>
+                  <th scope="col">
                     Densidad
                     <br />
                     gpm/ft²
                   </th>
-                  <th>
+                  <th scope="col">
                     Área
                     <br />
                     ft²
                   </th>
-                  <th>
+                  <th scope="col">
                     Cobertura
                     <br />
                     máx. ft²
                   </th>
-                  <th>
+                  <th scope="col">
                     S, L máx.
                     <br />m
                   </th>
-                  <th>
+                  <th scope="col">
                     Mangueras
                     <br />
                     gpm
                   </th>
-                  <th>
+                  <th scope="col">
                     Duración
                     <br />
                     min
@@ -464,12 +464,12 @@ export function PasoGuia({
                 <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
-                      <th>Tipología</th>
-                      <th>Pisos</th>
-                      <th>N.º</th>
-                      <th>Representativo ★</th>
-                      <th>Planta</th>
-                      <th>Red</th>
+                      <th scope="col">Tipología</th>
+                      <th scope="col">Pisos</th>
+                      <th scope="col">N.º</th>
+                      <th scope="col">Representativo ★</th>
+                      <th scope="col">Planta</th>
+                      <th scope="col">Red</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -575,10 +575,10 @@ export function PasoGuia({
           'Altura de arrume',
           ['entradas', 'clas.arrumeH'],
         ],
-        ['Separación S dentro de límites', 'Separación entre rociadores', ['entradas', 'roc.S']],
-        ['Separación L dentro de límites', 'Separación entre ramales', ['entradas', 'roc.L']],
-        ['Área por rociador ≤ cobertura máxima', 'Área por rociador', ['entradas', 'roc.L']],
-        ['Distancia a muro dentro de límites', 'Distancia a muro', ['entradas', 'roc.Dmuro']],
+        ['Separación S dentro de límites', 'Separación entre rociadores', ['tipologias', 'pisos']],
+        ['Separación L dentro de límites', 'Separación entre ramales', ['tipologias', 'pisos']],
+        ['Área por rociador ≤ cobertura máxima', 'Área por rociador', ['tipologias', 'pisos']],
+        ['Distancia a muro dentro de límites', 'Distancia a muro', ['tipologias', 'pisos']],
       ];
       const listo = items.every((it) => chk(it[1]) === 'CUMPLE');
       return (
@@ -592,6 +592,7 @@ export function PasoGuia({
               {items.map(([t, pre, go]) => (
                 <tr key={pre}>
                   <th
+                    scope="row"
                     style={{
                       textAlign: 'left',
                       textTransform: 'none',

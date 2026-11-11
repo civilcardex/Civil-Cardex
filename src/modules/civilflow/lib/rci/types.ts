@@ -255,8 +255,9 @@ export interface PisoGen {
 }
 
 /** Fila de la tabla «Pisos del edificio»: nombre/NPT (Nivel de Piso Terminado) y planta
- *  llegan del PLANO (gris); riesgo, sistema, techo, QR, K, S, L y salidas se editan. Ej:
- *  salida='2½" + 1½"' marca un gabinete Clase III en ese piso. */
+ *  llegan del PLANO (gris); riesgo, sistema, techo, QR, K, S, L, DMR (distancia máxima de
+ *  rociador a muro) y salidas se editan. Ej: salida='2½" + 1½"' marca un gabinete Clase III
+ *  en ese piso. */
 export interface PisoRow {
   nombre: string;
   npt: NumIn;
@@ -272,6 +273,8 @@ export interface PisoRow {
   K: NumIn;
   S: NumIn;
   L: NumIn;
+  /** Distancia máxima de rociador a muro (m). Vacío = la global de roc.Dmuro. */
+  Dmuro?: NumIn;
   salida: string;
   tip: string;
   /** Id del plano dueño de la fila (lo escribe el extractor; GRIS). Ej: '12'. */
@@ -476,6 +479,8 @@ export interface Criterios {
   Pmin: number;
   S: number;
   L: number;
+  /** Distancia máxima de rociador a muro (m); 0 = sin dato (check PENDIENTE). */
+  Dmuro: number;
   HtFt: number;
   FSeco: number;
   RedQR: number;

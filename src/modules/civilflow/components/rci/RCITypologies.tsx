@@ -3,7 +3,8 @@
  *  dato»; tabla gris = nombre y NPT (Nivel de Piso Terminado, del PLANO) / amarillo = editable,
  *  EDITAR en el header), "Tipologías" (+ bloque "Avisos" cuando hay tipologías sin red) y
  *  "Corte esquemático" (pisos apilados por NPT con montante y bomba). Los defaults ya NO se
- *  editan aquí: clas.qr y roc.* viven en Rociadores → "Datos del rociador". Ej: marcar P3 con
+ *  editan aquí: clas.qr, roc.K y roc.Pmin viven en Rociadores → "Datos del rociador"; S, L y
+ *  DMR se digitan por piso en la tabla de esta pestaña. Ej: marcar P3 con
  *  «★ aquí» calcula la red de T1 sobre el NPT de P3. */
 import { type CSSProperties } from 'react';
 import {
@@ -20,8 +21,8 @@ import { TablaPisos } from './RCIFloorsTable.tsx';
 import { TablaTipologias } from './RCITypologiesTable.tsx';
 import type { NumIn, PisoRow, Tips } from '../../lib/rci/types.ts';
 
-/** Sub-pestañas de la pestaña Tipologías (ids alineados con SUBS_POR_TAB['pisos']/RUTA_DE, que
- *  manda los «Ir al dato» de pisos a la sub 'pisos'). Ej: setSub('corte') muestra el ElevSvg. */
+/** Sub-pestañas de la pestaña Tipologías (ids alineados con SUBS_POR_TAB['tipologias']/RUTA_DE,
+ *  que manda los «Ir al dato» de pisos a la sub 'pisos'). Ej: setSub('corte') muestra el ElevSvg. */
 const SUBS: SubItemRci[] = [
   { id: 'pisos', titulo: 'Pisos del edificio' },
   { id: 'tipos', titulo: 'Tipologías y avisos' },
@@ -91,7 +92,7 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
     .filter((t) => !t.conRed)
     .map(
       (t) =>
-        `${t.id} (${t.pisos}) sin red calculada: revise que su planta (${t.planta}) tenga trazos rci con montante conectado.`,
+        `${t.id} (${t.pisos}) sin red calculada: revise que la planta tenga trazos RCI con montante conectado.`,
     );
 
   const setPiso = (i: number, k: keyof PisoRow) => (v: string) =>

@@ -352,22 +352,31 @@ export function GrupoTabla({
           >
             <thead>
               <tr>
-                <th style={thS} title="Nombre del dato; al pasar el mouse muestra su ayuda">
+                <th
+                  scope="col"
+                  style={thS}
+                  title="Nombre del dato; al pasar el mouse muestra su ayuda"
+                >
                   Dato
                 </th>
-                <th style={thS} title="Amarillo = editable cuando activas EDITAR">
+                <th scope="col" style={thS} title="Amarillo = editable cuando activas EDITAR">
                   Valor
                 </th>
-                <th style={thS} title="Unidad del valor (psi, gpm, m…)">
+                <th scope="col" style={thS} title="Unidad del valor (psi, gpm, m…)">
                   Unidad
                 </th>
                 <th
+                  scope="col"
                   style={thS}
                   title="Naturaleza del dato: Norma, Rango, Fabricante, Proyecto o Criterio"
                 >
                   Tipo
                 </th>
-                <th style={thS} title="Ayuda del dato, siempre visible (sin pasar el mouse)">
+                <th
+                  scope="col"
+                  style={thS}
+                  title="Ayuda del dato, siempre visible (sin pasar el mouse)"
+                >
                   Observación
                 </th>
               </tr>

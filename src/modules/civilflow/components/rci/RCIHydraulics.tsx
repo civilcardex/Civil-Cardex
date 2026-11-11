@@ -289,7 +289,7 @@ export function RciHidraulica({
           <SecRci
             id="hidraulica"
             titulo="Ramales del piso"
-            nota={tip ? `tipología ${tip.g.id} · planta ${tip.g.planta}` : 'sin red para este piso'}
+            nota={tip ? `tipología ${tip.g.id}` : 'sin red para este piso'}
             icono="/iconos/ramales_piso.webp"
             extra={<EditTablaBtn on={editRam} onToggle={toggleEditRam} />}
           >
@@ -458,7 +458,7 @@ export function RciHidraulica({
               background: 'var(--bg2)',
               border: '1px solid var(--line)',
               borderRadius: 8,
-              width: 'min(880px, 100%)',
+              width: 'min(880px, calc(100vw - 40px))', // <dialog> padre fit-content: un 100% colapsa
               maxHeight: '90vh',
               overflowY: 'auto',
               padding: '12px 16px',

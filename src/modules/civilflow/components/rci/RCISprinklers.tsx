@@ -1,8 +1,9 @@
 /** Pestaña Rociadores del diseño RCI (Red Contra Incendio) en 3 sub-pestañas verticales
- *  (patrón .entr del HTML de referencia): "Datos del rociador" (QR (respuesta rápida) y
- *  K/Pmin/S/L/Dmuro en GrupoTabla, EDITAR propio — siembran los pisos nuevos), "Criterios de
- *  diseño" (NFPA 13 (norma de rociadores), tarjeta de solo lectura del motor) y "Rectángulo de
- *  fuego" (canvas + tabla + leyenda). Los badges por sub vienen de las verificaciones vía
+ *  (patrón .entr del HTML de referencia): "Datos del rociador" (QR (respuesta rápida), K y
+ *  Pmin en GrupoTabla, EDITAR propio), "Criterios de diseño" (NFPA 13 (norma de rociadores),
+ *  tarjeta de solo lectura del motor) y "Rectángulo de fuego" (canvas + tabla + leyenda).
+ *  La separación S, la L y la DMR (distancia máxima de rociador a muro) viven por piso en
+ *  Tipologías → Pisos del edificio. Los badges por sub vienen de las verificaciones vía
  *  RUTA_DE. Ej: con QR y techo de 5,30 m el área baja de 1500 a 1066 ft². */
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
@@ -119,9 +120,10 @@ function RectFuegoCanvas({ rect }: { rect?: RciCtx['rectFuego'] }) {
 }
 
 /** Sub "Datos del rociador" (el grupo formRoc del HTML) como GrupoTabla: QR (Criterio) y
- *  K/Pmin (Fabricante) y S/L/Dmuro (Rango). Los límites de las ayudas salen de los criterios de
- *  la tipología activa (ro). Ej: con riesgo leve S máx = 4,60 m y cobertura 168 ft² ≈ 15,6 m². */
-function DatosRociador({ ctx, ro }: { ctx: RciCtx; ro: Criterios }) {
+ *  K/Pmin (Fabricante). S, L y DMR ya no se editan aquí: son datos por piso en Tipologías →
+ *  Pisos del edificio (columna DMR). Los límites de las ayudas salen de los criterios de la
+ *  tipología activa (ro). Ej: con riesgo leve Pmin mínima 7 psi. */
+function DatosRociador({ ctx }: { ctx: RciCtx }) {
   const { estado, editar, R } = ctx;
   const campos: DefCampo[] = [
     {
@@ -145,37 +147,11 @@ function DatosRociador({ ctx, ro }: { ctx: RciCtx; ro: Criterios }) {
       ayu: (_r, e) => `Mínimo 7 psi o la del listado · ${rciTxt(e.meta.pais)}`,
       rango: () => ({ min: 7 }),
     },
-    {
-      path: 'roc.S',
-      lbl: 'Separación entre rociadores en el ramal, S',
-      num: true,
-      uni: 'm',
-      ayu: (_r, e) =>
-        `Entre 1,80 y ${fmtNum(ro.hz.s)} m; S × L ≤ ${fmtNum(ro.Acmax * 0.092903)} m² · ${rciTxt(e.meta.pais)}`,
-      rango: () => ({ min: 1.8, max: ro.hz.s }),
-    },
-    {
-      path: 'roc.L',
-      lbl: 'Separación entre ramales, L',
-      num: true,
-      uni: 'm',
-      ayu: (_r, e) => `Entre 1,80 y ${fmtNum(ro.hz.l)} m · ${rciTxt(e.meta.pais)}`,
-      rango: () => ({ min: 1.8, max: ro.hz.l }),
-    },
-    {
-      path: 'roc.Dmuro',
-      lbl: 'Distancia máxima de rociador a muro',
-      num: true,
-      uni: 'm',
-      ayu: (_r, e) =>
-        `Entre 0,10 y ${fmtNum(ro.hz.s / 2)} m (S máx/2), en las dos direcciones · ${rciTxt(e.meta.pais)}`,
-      rango: () => ({ min: 0.1, max: ro.hz.s / 2 }),
-    },
   ];
   return (
     <GrupoTabla
       titulo="Datos del rociador"
-      nota="Corresponden a la tipología activa: siembran los pisos nuevos y gobiernan el cálculo cuando una tipología no trae datos propios"
+      nota="QR, K y Pmin son la base de la tipología activa; S, L y DMR se digitan por piso en Tipologías → Pisos del edificio"
       icono="/iconos/datos_rociador.webp"
       campos={campos}
       estado={estado}
@@ -419,7 +395,7 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
       {activa === 'datos' ? (
         /* Centrada en la sección (ped. usuario). */
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <DatosRociador ctx={ctx} ro={ro} />
+          <DatosRociador ctx={ctx} />
         </div>
       ) : null}
       {activa === 'criterios' ? (
