@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Typecheck, lint, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Historia completa para que `git diff origin/main...HEAD` funcione en PRs
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Guard de arquitectura: SIEMPRE corre, sin importar qué cambió
+      - name: Architecture guard
+        run: npx vitest run src/architecture
+
+      # Tests relacionados solo con los archivos fuente modificados.
+      # En PR: diff contra origin/main (merge-base). En push a main: contra HEAD~1
+      # (si es el primer commit no hay base y se omiten).
+      - name: Related tests
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            if git rev-parse -q --verify "HEAD~1" >/dev/null 2>&1; then
+              DIFF=$(git diff --name-only HEAD~1 HEAD -- 'src/**')
+            else
+              echo "Primer commit en main: sin base para diff; se omiten los tests relacionados."
+              DIFF=""
+            fi
+          else
+            DIFF=$(git diff --name-only origin/main...HEAD -- 'src/**')
+          fi
+          CHANGED=$(printf '%s' "$DIFF" | grep -E '\.(ts|tsx)$' | grep -v '.test.' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "Archivos fuente modificados:"
+            echo "$CHANGED"
+            # Sin comillas: cada archivo es un argumento aparte para vitest related
+            npx vitest related --run $CHANGED
+          else
+            echo "Sin archivos .ts/.tsx modificados; se omiten los tests relacionados."
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
