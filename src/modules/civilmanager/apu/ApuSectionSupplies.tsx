@@ -60,13 +60,13 @@ export function ApuSeccionInsumos({ apu, onChange }: Props) {
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Insumo</th>
-              <th>Consumo</th>
-              <th>Desperdicio %</th>
-              <th>Costo Unit.</th>
-              <th>Subtotal</th>
-              <th aria-label="Acciones" />
+              <th scope="col">#</th>
+              <th scope="col">Insumo</th>
+              <th scope="col">Consumo</th>
+              <th scope="col">Desperdicio %</th>
+              <th scope="col">Costo Unit.</th>
+              <th scope="col">Subtotal</th>
+              <th scope="col" aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

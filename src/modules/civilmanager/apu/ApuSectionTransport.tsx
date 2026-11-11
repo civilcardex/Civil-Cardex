@@ -48,12 +48,12 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Unidad</th>
-              <th>Tarifa</th>
-              <th>Distancia (km)</th>
-              <th>Subtotal</th>
-              <th aria-label="Acciones" />
+              <th scope="col">#</th>
+              <th scope="col">Unidad</th>
+              <th scope="col">Tarifa</th>
+              <th scope="col">Distancia (km)</th>
+              <th scope="col">Subtotal</th>
+              <th scope="col" aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

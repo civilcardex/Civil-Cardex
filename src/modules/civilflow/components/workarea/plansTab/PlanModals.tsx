@@ -1,5 +1,6 @@
 import { pisoLbl } from '../../../constants';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
+import { ModalOverlay } from '../../../../../components/shared/ModalShell.tsx';
 
 /**
  * Modales de carga de planos: asignar un piso libre y avisar que una lámina necesita su propio origen.
@@ -31,23 +32,13 @@ export function ModalNivelPiso(props: ModalNivelPisoProps) {
   const { planId, onSelect, onClose } = props;
   if (planId === null) return null;
   const libres = pisosLibres(props);
+  // ModalOverlay (dialog nativo): click-fuera y Escape -> onClose, foco atrapado.
   return (
-    // Backdrop con cierre por click-fuera: patrón estándar de modal.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.5)',
-      }}
-      onClick={onClose}
-    >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+    <ModalOverlay onClose={onClose}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Asignar piso al plano"
         style={{
           background: 'var(--bg2)',
           border: '1px solid var(--line)',
@@ -57,7 +48,6 @@ export function ModalNivelPiso(props: ModalNivelPisoProps) {
           maxWidth: 300,
           boxShadow: '0 8px 32px rgba(0,0,0,.4)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--txt)' }}>
           Asignar piso al plano
@@ -121,7 +111,7 @@ export function ModalNivelPiso(props: ModalNivelPisoProps) {
           Cancelar
         </button>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
 
@@ -140,23 +130,12 @@ export function ModalOrigenPlan(props: ModalOrigenPlanProps) {
   if (planId === null) return null;
   return (
     // Modal de flujo: "esta lámina necesita SU propio origen". Al confirmar, el
-    // configurador abre directo en modo marcado de origen.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.5)',
-      }}
-      onClick={onClose}
-    >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+    // configurador abre directo en modo marcado de origen. Dialog nativo: click-fuera y
+    // Escape -> onClose.
+    <ModalOverlay onClose={onClose}>
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Definir origen de la lámina"
         style={{
           background: 'var(--bg2)',
@@ -167,7 +146,6 @@ export function ModalOrigenPlan(props: ModalOrigenPlanProps) {
           maxWidth: 360,
           boxShadow: '0 8px 32px rgba(0,0,0,.4)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--txt)' }}>
           📍 Define el origen de este plano
@@ -195,6 +173,6 @@ export function ModalOrigenPlan(props: ModalOrigenPlanProps) {
           📍 Marcar origen
         </button>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

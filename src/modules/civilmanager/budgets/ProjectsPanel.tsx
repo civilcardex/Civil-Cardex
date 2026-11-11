@@ -94,15 +94,26 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único del presupuesto, generado automáticamente.">Código</th>
-                  <th title="Nombre del proyecto o presupuesto.">Nombre</th>
-                  <th title="Tipo de presupuesto (obra, estudio, etc.).">Tipo</th>
-                  <th title="Borrador, en cierre o cerrado; controla si se puede editar.">
+                  <th scope="col">#</th>
+                  <th scope="col" title="Código único del presupuesto, generado automáticamente.">
+                    Código
+                  </th>
+                  <th scope="col" title="Nombre del proyecto o presupuesto.">
+                    Nombre
+                  </th>
+                  <th scope="col" title="Tipo de presupuesto (obra, estudio, etc.).">
+                    Tipo
+                  </th>
+                  <th
+                    scope="col"
+                    title="Borrador, en cierre o cerrado; controla si se puede editar."
+                  >
                     Estado
                   </th>
-                  <th title="Cantidad de ítems del presupuesto.">Ítems</th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" title="Cantidad de ítems del presupuesto.">
+                    Ítems
+                  </th>
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

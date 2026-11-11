@@ -1,6 +1,6 @@
 /** Panel "Copiar desde otro plano": elige piso origen, tipos de elemento (ramales, bajantes...) y trae el dibujo al piso actual. Ej: replicar la red af (Agua Fria) del Piso 1 en el Piso 2 con un clic, sin redibujar. */
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 import { devError } from '../../../../utils/devError.ts';
 import { origenDePlan } from '../../utils/crossFloorStorage.ts';
 import { pisoLbl } from '../../constants';
@@ -133,19 +133,9 @@ function CopyFromPlanPanel_({
   const [netSelections, setNetSelections] = useState<Record<string, Set<string>>>({});
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
-  // Modal de fantasmas: null = cerrado; si el origen tiene fantasmas se pregunta qué copiar.
+  // Modal de fantasmas: false = cerrado; si el origen tiene fantasmas se pregunta qué copiar.
   const [fantModal, setFantModal] = useState(false);
   const [fantPick, setFantPick] = useState<'fantasmas' | 'originales' | 'ambos'>('ambos');
-
-  // Escape cierra el modal (listener a nivel documento: el dialog no captura teclado).
-  useEffect(() => {
-    if (!fantModal) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setFantModal(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [fantModal]);
 
   const currentNivel = useMemo(() => {
     const targetId = currentId || currentIdRef.current;
@@ -547,22 +537,13 @@ function CopyFromPlanPanel_({
         </div>
       )}
 
-      {createPortal(
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 2000,
-            display: fantModal ? 'flex' : 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.5)',
-          }}
-        >
+      {/* ModalOverlay (dialog nativo, top layer): monta SOLO con fantModal (antes era un
+          portal SIEMPRE montado con display toggle — el dialog no lo necesita). CAMBIO de
+          comportamiento aceptado: click-fuera ahora también cierra; Escape antes se
+          manejaba con listener manual, hoy lo da el evento cancel nativo del dialog. */}
+      {fantModal && (
+        <ModalOverlay onClose={() => setFantModal(false)} ariaLabel="Qué copiar con fantasmas">
           <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Qué copiar con fantasmas"
             style={{
               background: 'var(--bg2)',
               color: 'var(--txt)',
@@ -643,8 +624,7 @@ function CopyFromPlanPanel_({
               </button>
             </div>
           </div>
-        </div>,
-        document.body,
+        </ModalOverlay>
       )}
     </div>
   );

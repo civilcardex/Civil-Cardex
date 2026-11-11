@@ -14,6 +14,8 @@ import { contarFocosPorArchivo, totalFocos } from './complexity';
  *  G4 Pureza: los módulos de cálculo no importan React (son testeables en node).
  *  G5 Cobertura: cada módulo nuevo tiene al menos un test que lo importa.
  *  G8 Complejidad: las búsquedas lineales dentro de bucles (focos O(n²)) no crecen.
+ *  G9 A11y modales: sin role="dialog" escrito a mano (el rol lo da el <dialog> nativo).
+ *  G10 A11y modales: sin overlay hand-rolled (createPortal + fixed inset:0 fuera de ModalOverlay).
  */
 
 const RAIZ = resolve(process.cwd(), 'src');
@@ -29,39 +31,39 @@ const TOPE_NUEVO = 700;
  * su tamaño actual como techo: si uno CRECE, el guard avisa (el monolito volvió a crecer).
  */
 const CONOCIDOS: Record<string, number> = {
-  'modules/civilflow/components/PdfViewer.tsx': 845, // +23: esGuia estructural + inyección Dmuro al motor (arreglo auditoría) · ronda RCI: guías no cambian red activa,
-  'modules/civilflow/components/rci/RCITypologies.tsx': 142, // F10: TablaPisos → RciFloorsTable (608) + TablaTipologias → RciTypologiesTable (208); quedan SubTabs+Corte,
-  'modules/civilflow/components/rci/RCIInputDefs.ts': 700, // datos de defs ENTRADAS + ayudas por país (perfilRciDe),
+  'modules/civilflow/components/PdfViewer.tsx': 733, // orquestador: activeNet→useActiveNetState + Dmuro→useDmuroRciInjection + paneles escala→viewerInfoPanels + cierre→useCloseViewer · -14: props muertos + ProbedElement compartido (ponytail),
+  'modules/civilflow/components/rci/RCITypologies.tsx': 143, // F10: TablaPisos → RciFloorsTable (608) + TablaTipologias → RciTypologiesTable (208); quedan SubTabs+Corte,
+  'modules/civilflow/components/rci/RCIInputDefs.ts': 703, // datos de defs ENTRADAS + ayudas por país (perfilRciDe),
   'modules/civilflow/components/rci/RCIInputs.tsx': 155, // F10: salieron RciCmatTable (141) + RciSpecialAccTable (178) + RciClassesModal (102) + RciRoomTable (291),
   'modules/civilflow/components/rci/RCIPumpTank.tsx': 342, // bgrid 2 columnas del HTML en Demanda/selección/succión,
   'modules/civilflow/components/rci/RCIGuideSteps.tsx': 748,
-  'modules/civilflow/components/rci/RCIHydraulics.tsx': 487, // F9: las 2 tablas salieron a RciRamalesTable (477) y RciTramosTable (329); quedan Hbars+paneles,
+  'modules/civilflow/components/rci/RCIHydraulics.tsx': 488, // F9: las 2 tablas salieron a RciRamalesTable (477) y RciTramosTable (329); quedan Hbars+paneles,
   'modules/civilflow/components/rci/RCISvgSchemas.tsx': 9, // F10: fachada — Theme/Seismic/Pump/Canvas,
-  'modules/civilflow/components/rci/RCISvgFloorplan.tsx': 812,
-  'modules/civilflow/lib/rci/checks.ts': 990, // mínimo ramal–muro ≥ 0,10 m (por ramal, MIN_MURO_M) + máximo por MURO (Dmuro) · distSegSeg en shared/geometry,
-  'modules/civilflow/lib/rci/types.ts': 723, // F10: ejemploVerificacion → example.ts (273),
+  'modules/civilflow/components/rci/RCISvgFloorplan.tsx': 15, // fachada: Corte/Plan/Vrp/Cotas extraídos (verbatim, geometría HTML literal),
+  'modules/civilflow/lib/rci/checks.ts': 133, // split F4a: fachada que compone checks/ por dominio (add/addT/addR → checks/helpers.ts) · mínimo ramal–muro ≥ 0,10 m (por ramal, MIN_MURO_M) + máximo por MURO (Dmuro) · distSegSeg en shared/geometry,
+  'modules/civilflow/lib/rci/types.ts': 728, // F10: ejemploVerificacion → example.ts (273),
   'modules/civilflow/utils/rci/ExtractNetwork.ts': 749, // +22: XFG proyectado como montante en pisos superiores + aviso de sueltos CONTADO · SOLO contacto real (sin proximidad),
-  'modules/civilflow/utils/rci/RCIRowsModel.ts': 710, // +2: grupoDeCheck manda «Distancia de ramales a muros» a Rociadores · filas de ramales/tramos del HTML; -50 lote muerto,
+  'modules/civilflow/utils/rci/RCIRowsModel.ts': 719, // +2: grupoDeCheck manda «Distancia de ramales a muros» a Rociadores · filas de ramales/tramos del HTML; -50 lote muerto,
   'modules/civilflow/lib/PlanoEngine/deleteSelected.ts': 707, // +3: JSDoc del export (ronda JSDoc),
   'modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts': 739,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 1109, // +6: corrección de escala en _getPos (cursor sigue el trazo) · dmuroRci inyectado (arreglo auditoría),
+  'modules/civilflow/lib/PlanoEngine/PlanoEngine.ts': 914, // fachada de la clase: pipeline sucio→dirtyPipeline.ts + emisores→engineEmitters.ts + mouseUp→events/pointerUp.ts (cuerpos verbatim),
   'modules/civilflow/components/workareaContent/useReportTables.ts': 690,
   'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 414, // +2: cronómetro de uniones con UNA sola llamada (gate DEV)
   'modules/civilflow/utils/waterRowsCore.ts': 697, // +1/-12: claves por tramoKeyOf (12 sitios),
   'modules/civilflow/components/workarea/PlansTab.tsx': 715, // +5: disable justificado de siembra calData en efecto,
-  'modules/civilflow/components/DownpipesTable.tsx': 216, // +1/-2: tramoKeyPisoOf,
+  'modules/civilflow/components/DownpipesTable.tsx': 215, // +1/-2: tramoKeyPisoOf; -1: directiva rancia (eslint-disable sin uso, migración ESLint 9),
   'modules/civilflow/utils/bajanteAssocShared.ts': 726,
   'modules/civilflow/components/GasDesign.tsx': 369,
   'modules/civilflow/components/FixturesPanel.tsx': 551, // rci: sin sección de cuantificación (return null),
-  'modules/civilflow/components/workarea/PlanConfigurator.tsx': 600,
+  'modules/civilflow/components/workarea/PlanConfigurator.tsx': 599, // -1: directiva rancia (eslint-disable sin uso, migración ESLint 9),
   'modules/civilflow/components/RainChannelsCheck.tsx': 539,
   'modules/civilflow/constants/rejillasNTC3631.ts': 978,
   'modules/civilflow/lib/PlanoEngine/handleDragMove.ts': 62,
-  'pages/auth/ProfilePage.tsx': 581,
+  'pages/auth/ProfilePage.tsx': 583, // +2: min-h-full (scroll sobrante del perfil) — nota del fix,
   'modules/civilflow/lib/PlanoEngine/PlanoState.ts': 652, // +5: IPlanoEngineCore.dmuroRci (inyección; motor sin storage) + flags RCI (esMuro/esRectFuego),
   'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 160,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 683,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 817, // verificación de muros en paralelos + alerta si no siembra + conector · espejo S/L,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 716, // verificación de muros en paralelos + alerta si no siembra + conector · espejo S/L · split: sección Dibujo automático rci → RciAutoDrawSection.tsx (160),
   'pages/PricingPage.tsx': 430,
   'modules/civilflow/lib/PlanoEngine/finishRamal.ts': 615, // +15: chequeo en vivo de muros al terminar trazo rci (banda 2·Dmuro, Dmuro inyectado),
   'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 554,
@@ -69,16 +71,16 @@ const CONOCIDOS: Record<string, number> = {
   'modules/civilflow/components/DesignParameters.tsx': 638,
   'modules/civilflow/utils/equipmentRows.ts': 488,
   'modules/civilflow/components/PumpARDesign.tsx': 373, // F10: las 4 páginas de tabla → pumpARPages.tsx (519); quedan estado+persistencia+ctx
-  'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 813,
+  'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 70, // orquestador: geometría→sanJunctionGeometry + detección→sanJunctionDetect + tapones→sanTaponValidation + conteo→sanAccessoryCount (verbatim),
   'components/help/helpGuideFlow.tsx': 21, // F10: datos → 5 dominios (Project/Viewer/Networks/Reports/Isometry); fachada spread,
   'modules/civilflow/components/SanitaryDesign.tsx': 73,
   // Cuerpo verbatim de tablas extraído de SanitaryDesign (794→72): monolito conocido, no nuevo.
   'modules/civilflow/components/sanitary/SanitaryTables.tsx': 669,
-  'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 790, // +12: botón Muro (solo rci, esMuro nativo),
+  'modules/civilflow/components/pdfViewer/PdfViewerToolbar.tsx': 119, // fachada: regla red→toolbarNetTools.ts + markup colapsada/expandida → toolbarButtons.tsx (verbatim),
   'modules/civilflow/components/ep/EPVerificationPage.tsx': 753, // -2: TH_R/TD_R a sharedTableStyles,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/midRamalAccessorySelector.tsx': 257,
   'modules/civilflow/context/RainwaterContext.tsx': 755,
-  'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 781, // +5: cola post-arrastre unificada (postDragRamal) + Dmuro inyectado · ronda RCI: chequeo de muros al mover trazo rci,
+  'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 74, // dispatcher: bloques dragUp* → drags/ (marqueeSelect/dragUpBajante/dragUpVertex/dragUpRamalBody/dragValidation),
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/diameterSelector.tsx': 715,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 702,
   'modules/civilflow/components/SupplyConnection.tsx': 10,
@@ -529,6 +531,138 @@ const MODULOS_NUEVOS: Array<{ ruta: string; maxLineas: number; puro: boolean; te
     puro: true,
     test: 'typologiesChrome',
   },
+  {
+    ruta: 'modules/civilflow/components/rci/RCISvgCotas.tsx',
+    maxLineas: 90,
+    puro: false,
+    test: 'rciSvgFloorplan',
+  },
+  {
+    ruta: 'modules/civilflow/components/rci/RCISvgCorte.tsx',
+    maxLineas: 200,
+    puro: false,
+    test: 'rciSvgFloorplan',
+  },
+  {
+    ruta: 'modules/civilflow/components/rci/RCISvgPlan.tsx',
+    maxLineas: 360,
+    puro: false,
+    test: 'rciSvgFloorplan',
+  },
+  {
+    ruta: 'modules/civilflow/components/rci/RCISvgVrp.tsx',
+    maxLineas: 260,
+    puro: false,
+    test: 'rciSvgFloorplan',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/toolbarNetTools.ts',
+    maxLineas: 150,
+    puro: true,
+    test: 'toolbarNetTools',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/toolbarButtons.tsx',
+    maxLineas: 660,
+    puro: false,
+    test: 'toolbarNetTools',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/drags/dragValidation.ts',
+    maxLineas: 120,
+    puro: true,
+    test: 'dragsUpModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/drags/marqueeSelect.ts',
+    maxLineas: 210,
+    puro: true,
+    test: 'dragsUpModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/drags/dragUpBajante.ts',
+    maxLineas: 180,
+    puro: true,
+    test: 'dragsUpModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/drags/dragUpVertex.ts',
+    maxLineas: 190,
+    puro: true,
+    test: 'dragsUpModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/drags/dragUpRamalBody.ts',
+    maxLineas: 140,
+    puro: true,
+    test: 'dragsUpModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/sanJunctionGeometry.ts',
+    maxLineas: 160,
+    puro: true,
+    test: 'sanSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/sanJunctionDetect.ts',
+    maxLineas: 210,
+    puro: true,
+    test: 'sanSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/sanTaponValidation.ts',
+    maxLineas: 150,
+    puro: true,
+    test: 'sanSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/sanAccessoryCount.ts',
+    maxLineas: 420,
+    puro: true,
+    test: 'sanSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/dirtyPipeline.ts',
+    maxLineas: 110,
+    puro: true,
+    test: 'engineSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/engineEmitters.ts',
+    maxLineas: 100,
+    puro: true,
+    test: 'engineSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/lib/PlanoEngine/events/pointerUp.ts',
+    maxLineas: 40,
+    puro: true,
+    test: 'engineSplitModules',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/useActiveNetState.ts',
+    maxLineas: 50,
+    puro: false,
+    test: 'viewerExtractedHooks',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/useDmuroRciInjection.ts',
+    maxLineas: 50,
+    puro: false,
+    test: 'viewerExtractedHooks',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/viewerInfoPanels.tsx',
+    maxLineas: 90,
+    puro: false,
+    test: 'viewerExtractedHooks',
+  },
+  {
+    ruta: 'modules/civilflow/components/pdfViewer/useCloseViewer.ts',
+    maxLineas: 70,
+    puro: false,
+    test: 'viewerExtractedHooks',
+  },
 ];
 
 /**
@@ -550,43 +684,36 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
   'modules/civilflow/utils/assocLayoutMigration.ts': 16,
   'modules/civilflow/utils/copyDrawingFromPlan.ts': 15,
   'modules/civilflow/utils/propagation/edges.ts': 13,
-  'modules/civilflow/utils/rainwaterRows.ts': 9,
   'modules/civilflow/lib/PlanoEngine/renderers/renderJunctions.ts': 11,
-  'modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts': 2,
-  'modules/civilflow/components/pdfViewer/tramoEditor/bajanteEditor.tsx': 2,
   'modules/civilflow/components/pdfViewer/tramoEditor/editorSections.tsx': 9,
-  'modules/civilflow/lib/PlanoEngine/deleteYeePreserve.ts': 4,
   'modules/civilflow/utils/bajanteVentRows.ts': 9,
-  'modules/civilflow/lib/PlanoEngine/handleDragUp.ts': 8,
+  'modules/civilflow/utils/rainwaterRows.ts': 9,
+  'modules/civilflow/components/fixtures/montantesSection.tsx': 8,
   'modules/civilflow/lib/PlanoEngine/renderers/bajanteGhosts.ts': 8,
-  'modules/civilflow/lib/PlanoEngine/sanAccessoriesCalc.ts': 8,
   'modules/civilflow/utils/bajanteRowModel.ts': 8,
-  'modules/civilflow/components/workarea/isometry/useIsometryRender.ts': 0,
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/associatedChannels.tsx': 7,
   'modules/civilflow/components/pdfViewer/useFloorRamales.ts': 7,
   'modules/civilflow/components/workarea/IsometryGeneral.tsx': 7,
   'modules/civilflow/lib/PlanoEngine/mouseDownDrags.ts': 7,
   'modules/civilflow/utils/accessoriesTable/bushing.ts': 7,
   'modules/civilflow/utils/buildTramos.ts': 7,
-  'modules/civilflow/components/fixtures/montantesSection.tsx': 8,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/associatedChannels.tsx': 7,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionSections.tsx': 6,
-  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenu.tsx': 4,
-  'modules/civilflow/components/RainDownpipesCheck.tsx': 2,
+  'modules/civilflow/components/pdfViewer/tramoEditor/AssociatedRamalesGrid.tsx': 6,
   'modules/civilflow/lib/PlanoEngine/channelSeal.ts': 6,
+  'modules/civilflow/lib/PlanoEngine/drags/marqueeSelect.ts': 6,
   'modules/civilflow/lib/PlanoEngine/networkRenumber.ts': 6,
-  'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 5,
+  'modules/civilflow/lib/PlanoEngine/sanJunctionDetect.ts': 4,
   'modules/civilflow/utils/waterRowsAcometida.ts': 6,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/bajanteConnectionPanel.tsx': 5,
   'modules/civilflow/components/pdfViewer/drawingElementContextMenu/ramalMenuHelpers.ts': 5,
   'modules/civilflow/components/rejillasVentilation/TableTypologies.tsx': 5,
   'modules/civilflow/context/RainwaterContext.tsx': 5,
   'modules/civilflow/lib/PlanoEngine/handleMouseDown.ts': 5,
-  'modules/civilflow/utils/accessoriesTable/yees.ts': 5,
+  'modules/civilflow/lib/PlanoEngine/PlanoEngineNetwork.ts': 5,
+  'modules/civilflow/utils/accessoriesTable/yees.ts': 4,
   'modules/civilflow/utils/buildBajanteGraph.ts': 5,
   'modules/civilflow/utils/drawingWrites/diameters.ts': 5,
   'modules/civilflow/utils/sanConnectivity.ts': 5,
-  'pages/ModulePage.tsx': 2, // -3: terrain/roads ramas muertas fuera (pantalla En construcción),
-  'modules/civilflow/components/pdfViewer/tramoEditor/AssociatedRamalesGrid.tsx': 6,
 };
 
 /**
@@ -594,7 +721,7 @@ const FOCOS_CONOCIDOS: Record<string, number> = {
  * aunque un archivo nuevo aparezca con 1 foco, el total no puede subir. Baja cuando se
  * arregla algo (y entonces hay que bajar también su número en FOCOS_CONOCIDOS).
  */
-const TOTAL_FOCOS_BASE = 515;
+const TOTAL_FOCOS_BASE = 497;
 
 /** API pública que los archivos conservados deben seguir exportando (G2). */
 const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
@@ -603,6 +730,51 @@ const API_PUBLICA: Array<{ ruta: string; simbolos: string[] }> = [
     simbolos: ['useInfTablas'],
   },
 ];
+
+/**
+ * G9 · Archivos con `role="dialog"` escrito a mano permitidos HOY (inventario 2026-11-11:
+ * 9 apariciones en 8 archivos, todas atributos JSX reales — ninguna en comentario/string).
+ *
+ * El rol de diálogo lo da NATIVO el `<dialog>` de ModalOverlay/ModalShell: escribirlo a mano
+ * es redundante y delata un modal hand-rolled. Los marcados «redundante» ya viven dentro de
+ * un ModalOverlay y quitar el atributo es seguro (pase futuro). La ÚNICA entrada hand-rolled
+ * que QUEDA es TourOverlay y es PERMANENTE: su spotlight no es un modal (la app queda viva),
+ * así que nunca migrará a showModal.
+ */
+const DIALOG_ROL_OK: Record<string, string> = {
+  // — Redundantes: dentro de ModalOverlay (<dialog> nativo ya da el rol). Quitar atributo.
+  'modules/civilflow/components/pdfViewer/drawingElementContextMenu/RCIAutoDrawModal.tsx':
+    'redundante: el div vive dentro de ModalOverlay',
+  'modules/civilflow/components/rci/RCIClassesModal.tsx':
+    'redundante: el div vive dentro de ModalOverlay',
+  'modules/civilflow/components/rci/RCIGuideModal.tsx':
+    'redundante: el div vive dentro de ModalOverlay',
+  'modules/civilflow/components/rci/RCIHydraulics.tsx':
+    'redundante: el div vive dentro de ModalOverlay',
+  'modules/civilflow/components/rci/RCIPumpTank.tsx':
+    'redundante: el div vive dentro de ModalOverlay',
+  'modules/civilflow/components/rci/RCIRoomTable.tsx':
+    'redundante: el div vive dentro de ModalOverlay',
+  'modules/civilflow/components/workarea/plansTab/PlanModals.tsx':
+    'redundante ×2: ModalNivelPiso y ModalOrigenLamina viven dentro de ModalOverlay',
+  // — Excepción PERMANENTE (no es modal, no migrar).
+  'components/tour/TourOverlay.tsx':
+    'PERMANENTE: spotlight del tour, la app queda viva — dialog NO modal sin aria-modal; nunca va dentro de showModal',
+};
+
+/**
+ * G10 · Archivos con overlay hand-rolled permitidos HOY: `createPortal` + `position: 'fixed'`
+ * + `inset: 0` en el MISMO .tsx (el patrón exacto de los overlays viejos a body).
+ *
+ * Los overlays viejos migraron a ModalOverlay (fantModal incluido, 2026-11-11). Queda UNO y
+ * es PERMANENTE: el spotlight del tour guía sobre la app VIVA (no bloquea), así que no es un
+ * modal y nunca usará showModal/top layer. Los overlays full-screen LEGÍTIMOS sin portal no
+ * caen en el grep: PlanCropModal es `<dialog>` directo y los visores 3D anclan en su contenedor.
+ */
+const OVERLAY_OK: Record<string, string> = {
+  'components/tour/TourOverlay.tsx':
+    'PERMANENTE: spotlight del tour sobre la app viva — NO es modal (su tarjeta es dialog NO modal → ver DIALOG_ROL_OK)',
+};
 
 /** Ciclos de import conocidos (se permiten; la lista NO debe crecer). */
 
@@ -805,6 +977,57 @@ describe('G8 · los focos de complejidad no crecen', () => {
       if (n < tope) viejos.push(`${ruta}: el código tiene ${n}, el baseline dice ${tope}`);
     }
     expect(viejos).toEqual([]);
+  });
+});
+
+describe('G9 · a11y de modales', () => {
+  it('ningún role="dialog" escrito a mano fuera de DIALOG_ROL_OK (el rol lo da el <dialog> nativo)', () => {
+    // ModalOverlay/ModalShell renderizan <dialog>.showModal(): el navegador da el rol,
+    // atrapa el foco y devuelve el foco al opener. Un role="dialog" manual es redundante
+    // y señal de modal hand-rolled. Si este test falla: usa ModalOverlay/ModalShell —
+    // no vuelvas a escribir la accesibilidad a mano.
+    const re = /role\s*=\s*["']dialog["']/;
+    const violaciones: string[] = [];
+    for (const p of todosLosArchivos) {
+      if (!p.endsWith('.tsx')) continue;
+      const ruta = REL(p);
+      if (ruta in DIALOG_ROL_OK) continue;
+      readFileSync(p, 'utf8')
+        .split('\n')
+        .forEach((linea, i) => {
+          if (re.test(linea))
+            violaciones.push(
+              `${ruta}:${i + 1} — usa ModalOverlay/ModalShell (el <dialog> nativo ya da el rol)`,
+            );
+        });
+    }
+    expect(violaciones).toEqual([]);
+  });
+});
+
+describe('G10 · a11y de modales', () => {
+  it('ningún overlay hand-rolled (createPortal + fixed + inset:0 en el mismo archivo) fuera de OVERLAY_OK', () => {
+    // Criterio (documento del guard): el overlay viejo era un portal a body con capa fixed a
+    // pantalla completa; ese patrón compite con el top layer del <dialog> y pierde (quedará
+    // DEBAJO de cualquier modal abierto). Si este grep llegara a pescar overlays legítimos de
+    // tour/visor, refinar exigiendo además backdrop `rgba(0,0,0` o `role="presentation"` en el
+    // mismo archivo — hoy (2026-11-11) pescó solo 2 y ambos están en OVERLAY_OK con motivo.
+    const violaciones: string[] = [];
+    for (const p of todosLosArchivos) {
+      if (!p.endsWith('.tsx')) continue;
+      const ruta = REL(p);
+      if (ruta in OVERLAY_OK || ruta === 'components/shared/ModalShell.tsx') continue;
+      const src = readFileSync(p, 'utf8');
+      if (!src.includes('createPortal')) continue;
+      if (!/position:\s*['"]fixed['"]/.test(src)) continue;
+      src.split('\n').forEach((linea, i) => {
+        if (/inset:\s*['"]?0/.test(linea))
+          violaciones.push(
+            `${ruta}:${i + 1} — overlay hand-rolled: usa ModalOverlay (top layer) o mete lo flotante DENTRO del dialog`,
+          );
+      });
+    }
+    expect(violaciones).toEqual([]);
   });
 });
 

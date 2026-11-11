@@ -53,11 +53,17 @@ export function UnidadesPanel() {
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th title="Símbolo corto de la unidad (m2, kg, und…).">Abreviatura</th>
-                <th title="Nombre completo de la unidad de medida.">Descripción</th>
-                <th title="Clase de unidad (longitud, área, volumen…).">Tipo</th>
-                <th aria-label="Acciones" />
+                <th scope="col">#</th>
+                <th scope="col" title="Símbolo corto de la unidad (m2, kg, und…).">
+                  Abreviatura
+                </th>
+                <th scope="col" title="Nombre completo de la unidad de medida.">
+                  Descripción
+                </th>
+                <th scope="col" title="Clase de unidad (longitud, área, volumen…).">
+                  Tipo
+                </th>
+                <th scope="col" aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>

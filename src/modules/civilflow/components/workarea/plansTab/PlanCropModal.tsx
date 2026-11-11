@@ -47,10 +47,23 @@ export function PlanCropModal({
   onClose: () => void;
   onSave: (crop: PlanCrop) => void;
 }) {
+  // Dialog nativo: el editor completo vive en el top layer (foco atrapado, sin que el
+  // fondo de la workarea quede alcanzable por Tab). El tour propio se portaliza DENTRO
+  // (container): un portal a body quedaría por DEBAJO del top layer y no se vería. El
+  // elemento va a ESTADO (callback ref) porque useTour lo necesita al renderizar el tour.
+  const [dialogEl, setDialogEl] = useState<HTMLDialogElement | null>(null);
+  useEffect(() => {
+    const dlg = dialogEl;
+    if (!dlg || dlg.open) return;
+    dlg.showModal();
+    return () => {
+      if (dlg.open) dlg.close();
+    };
+  }, [dialogEl]);
   // Tour PROPIO del editor de recorte (ped. usuario): corre la primera vez que se abre.
   // Repetirlo es cosa de la Ayuda de este contexto: su botón «⟲ REPETIR TOUR» del pie
   // lanza 'cf:recorte' (tourDe) y cierra el panel para que el overlay se vea.
-  const tour = useTour('cf:recorte');
+  const tour = useTour('cf:recorte', true, dialogEl);
   // Mientras el editor está abierto la AYUDA de la navbar muestra SU sección (no la de Carga
   // de planos): su «Repetir tour» lanza este tour. Al cerrar se restaura el contexto previo.
   const ayudaActual = useAyudaContext();
@@ -420,224 +433,244 @@ export function PlanCropModal({
   };
 
   return (
-    <div
+    // Editor a pantalla completa como dialog nativo: showModal lo pone en el top layer y
+    // da Escape (cancel) + foco atrapado + foco devuelto al opener al cerrar. Con el tour
+    // activo Escape SOLO termina el tour (comportamiento previo: el editor no respondía a
+    // Escape por sí mismo).
+
+    <dialog
+      ref={setDialogEl}
+      aria-label="Definir recorte del plano"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!tour) onClose();
+      }}
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1000,
+        width: '100vw',
+        height: '100vh',
+        margin: 0,
+        border: 'none',
+        padding: 0,
         background: 'rgba(10,11,13,0.96)',
-        display: 'flex',
-        flexDirection: 'column',
+        color: 'inherit',
       }}
     >
-      {tour}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          padding: '10px 16px',
-          borderBottom: '1px solid var(--line)',
-          flexShrink: 0,
-        }}
-      >
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#F5A623', whiteSpace: 'nowrap' }}>
-          Definir recorte
-        </span>
+      {/* El flex vive en un HIJO, no en el dialog: el display inline pisaría el
+          display:none del dialog cerrado y lo pintaría visible 1 frame antes del
+          showModal() (sin backdrop ni top layer). */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {tour}
         <div
-          data-tour="recorte-gestos"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
-        >
-          {[
-            { lbl: 'Clic izquierdo', desc: 'dibujar / mover esquina' },
-            { lbl: 'Clic central', desc: 'mover el plano' },
-            { lbl: 'Rueda', desc: 'zoom' },
-          ].map((h) => (
-            <span key={h.lbl} style={hintChipStyle}>
-              <span style={{ color: 'var(--txt)', fontWeight: 600 }}>{h.lbl}</span>
-              <span style={{ color: 'var(--txt3)' }}>{h.desc}</span>
-            </span>
-          ))}
-        </div>
-        <div
-          data-tour="recorte-acciones"
           style={{
-            flex: 1,
             display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 8,
             alignItems: 'center',
+            gap: 14,
+            padding: '10px 16px',
+            borderBottom: '1px solid var(--line)',
+            flexShrink: 0,
           }}
         >
-          {rectNorm && (
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#F5A623', whiteSpace: 'nowrap' }}>
+            Definir recorte
+          </span>
+          <div
+            data-tour="recorte-gestos"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+          >
+            {[
+              { lbl: 'Clic izquierdo', desc: 'dibujar / mover esquina' },
+              { lbl: 'Clic central', desc: 'mover el plano' },
+              { lbl: 'Rueda', desc: 'zoom' },
+            ].map((h) => (
+              <span key={h.lbl} style={hintChipStyle}>
+                <span style={{ color: 'var(--txt)', fontWeight: 600 }}>{h.lbl}</span>
+                <span style={{ color: 'var(--txt3)' }}>{h.desc}</span>
+              </span>
+            ))}
+          </div>
+          <div
+            data-tour="recorte-acciones"
+            style={{
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: 8,
+              alignItems: 'center',
+            }}
+          >
+            {rectNorm && (
+              <button
+                type="button"
+                onClick={() => setRect(null)}
+                style={{ ...modalSecondaryBtnStyle, color: '#ef5350' }}
+              >
+                Borrar rectángulo
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setRect(null)}
-              style={{ ...modalSecondaryBtnStyle, color: '#ef5350' }}
+              onClick={onClose}
+              style={{ ...modalSecondaryBtnStyle, color: 'var(--txt2)' }}
             >
-              Borrar rectángulo
+              Volver
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ ...modalSecondaryBtnStyle, color: 'var(--txt2)' }}
-          >
-            Volver
-          </button>
-          <button
-            type="button"
-            disabled={!rectNorm || rectNorm.w < 0.02 || rectNorm.h < 0.02}
-            onClick={() => {
-              if (rectNorm && rectNorm.w >= 0.02 && rectNorm.h >= 0.02) onSave(rectNorm);
-            }}
-            style={{
-              padding: '5px 14px',
-              background: 'rgba(14,204,122,0.15)',
-              border: '1.5px solid rgba(14,204,122,0.4)',
-              borderRadius: 'var(--r)',
-              color: '#0ECC7A',
-              cursor: rectNorm ? 'pointer' : 'default',
-              opacity: rectNorm ? 1 : 0.5,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            Guardar recorte
-          </button>
-        </div>
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          flexShrink: 0,
-          background: '#141416',
-          borderBottom: '1px solid var(--line)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '8px 16px',
-            borderLeft: '3px solid #F5A623',
-            background: 'rgba(245,166,35,0.08)',
-          }}
-        >
-          <span
-            style={{
-              flexShrink: 0,
-              padding: '2px 8px',
-              borderRadius: 999,
-              background: 'rgba(245,166,35,0.18)',
-              color: '#F5A623',
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 0.6,
-              textTransform: 'uppercase',
-            }}
-          >
-            Solo isometría
-          </span>
-          <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--txt)' }}>
-            No afecta el visor de dibujo ni el plano original. Es un ajuste <strong>global</strong>:
-            se aplica a todos los planos ya cargados, no solo al que estás viendo ahora.
-          </span>
+            <button
+              type="button"
+              disabled={!rectNorm || rectNorm.w < 0.02 || rectNorm.h < 0.02}
+              onClick={() => {
+                if (rectNorm && rectNorm.w >= 0.02 && rectNorm.h >= 0.02) onSave(rectNorm);
+              }}
+              style={{
+                padding: '5px 14px',
+                background: 'rgba(14,204,122,0.15)',
+                border: '1.5px solid rgba(14,204,122,0.4)',
+                borderRadius: 'var(--r)',
+                color: '#0ECC7A',
+                cursor: rectNorm ? 'pointer' : 'default',
+                opacity: rectNorm ? 1 : 0.5,
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              Guardar recorte
+            </button>
+          </div>
         </div>
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '8px 16px',
-            borderLeft: '3px solid var(--line)',
-          }}
-        >
-          <span
-            style={{
-              flexShrink: 0,
-              padding: '2px 8px',
-              borderRadius: 999,
-              background: 'var(--bg3)',
-              color: 'var(--txt3)',
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 0.6,
-              textTransform: 'uppercase',
-            }}
-          >
-            Recomendación
-          </span>
-          <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--txt3)' }}>
-            Define el recorte al final, cuando ya hayas cargado todos los planos, para no repetir el
-            ajuste.
-          </span>
-        </div>
-      </div>
-      <div style={{ flex: 1, minHeight: 0, padding: 20, display: 'flex' }}>
-        <div
-          data-tour="recorte-canvas"
-          ref={containerRef}
-          style={{
-            position: 'relative',
-            flex: 1,
+            flexDirection: 'column',
+            flexShrink: 0,
             background: '#141416',
-            border: '1px solid var(--line)',
-            borderRadius: 'var(--r)',
-            overflow: 'hidden',
+            borderBottom: '1px solid var(--line)',
           }}
         >
-          {!pageCanvas && !loadError && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--txt3)',
-                fontSize: 13,
-              }}
-            >
-              Cargando plano…
-            </div>
-          )}
-          {loadError && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ef5350',
-                fontSize: 13,
-              }}
-            >
-              {loadError}
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
+          <div
             style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              touchAction: 'none',
-              cursor: isPanning ? 'grabbing' : hoverCorner ? 'nwse-resize' : 'crosshair',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 16px',
+              borderLeft: '3px solid #F5A623',
+              background: 'rgba(245,166,35,0.08)',
             }}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerLeave={onPointerLeave}
-            onContextMenu={(e) => e.preventDefault()}
-            onAuxClick={(e) => e.preventDefault()}
-          />
+          >
+            <span
+              style={{
+                flexShrink: 0,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: 'rgba(245,166,35,0.18)',
+                color: '#F5A623',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}
+            >
+              Solo isometría
+            </span>
+            <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--txt)' }}>
+              No afecta el visor de dibujo ni el plano original. Es un ajuste{' '}
+              <strong>global</strong>: se aplica a todos los planos ya cargados, no solo al que
+              estás viendo ahora.
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 16px',
+              borderLeft: '3px solid var(--line)',
+            }}
+          >
+            <span
+              style={{
+                flexShrink: 0,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: 'var(--bg3)',
+                color: 'var(--txt3)',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+              }}
+            >
+              Recomendación
+            </span>
+            <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--txt3)' }}>
+              Define el recorte al final, cuando ya hayas cargado todos los planos, para no repetir
+              el ajuste.
+            </span>
+          </div>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, padding: 20, display: 'flex' }}>
+          <div
+            data-tour="recorte-canvas"
+            ref={containerRef}
+            style={{
+              position: 'relative',
+              flex: 1,
+              background: '#141416',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--r)',
+              overflow: 'hidden',
+            }}
+          >
+            {!pageCanvas && !loadError && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--txt3)',
+                  fontSize: 13,
+                }}
+              >
+                Cargando plano…
+              </div>
+            )}
+            {loadError && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ef5350',
+                  fontSize: 13,
+                }}
+              >
+                {loadError}
+              </div>
+            )}
+            <canvas
+              ref={canvasRef}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                touchAction: 'none',
+                cursor: isPanning ? 'grabbing' : hoverCorner ? 'nwse-resize' : 'crosshair',
+              }}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerLeave={onPointerLeave}
+              onContextMenu={(e) => e.preventDefault()}
+              onAuxClick={(e) => e.preventDefault()}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

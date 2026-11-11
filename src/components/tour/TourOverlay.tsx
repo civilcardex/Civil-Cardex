@@ -31,8 +31,19 @@ function rectDe(sel?: string): Rect | null {
   return { x: r.left, y: r.top, w: r.width, h: r.height };
 }
 
-/** El tour mismo: oscurece la pantalla con un "agujero" (box-shadow gigante, sin dependencias) sobre el ancla del paso actual y muestra la tarjeta Anterior/Siguiente/Saltar. */
-export function TourOverlay({ steps, onEnd }: { steps: TourStep[]; onEnd: () => void }) {
+/** El tour mismo: oscurece la pantalla con un "agujero" (box-shadow gigante, sin dependencias) sobre el ancla del paso actual y muestra la tarjeta Anterior/Siguiente/Saltar.
+ *  `container`: dónde portalizar. OBLIGATORIO pasarlo cuando el ancla vive dentro de un
+ *  modal <dialog> (showModal = top layer): un portal a body quedaría DEBAJO del dialog y el
+ *  tour sería invisible. Ej: PlanCropModal pasa su propio dialog como container. */
+export function TourOverlay({
+  steps,
+  onEnd,
+  container,
+}: {
+  steps: TourStep[];
+  onEnd: () => void;
+  container?: HTMLElement | null;
+}) {
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState<Rect | null>(() => rectDe(steps[0]?.sel));
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -120,10 +131,11 @@ export function TourOverlay({ steps, onEnd }: { steps: TourStep[]; onEnd: () => 
   return createPortal(
     <div style={{ position: 'fixed', inset: 0, zIndex: 999999 }}>
       <div style={hueco} />
+      {/* Spotlight de tour: NO es modal (la app queda viva) — dialog NO modal, excepción
+          PERMANENTE G9/G10. Sin aria-modal: nada queda bloqueado detrás del spotlight. */}
       <div
         ref={cardRef}
         role="dialog"
-        aria-modal="true"
         aria-label={`Tour: ${paso?.titulo ?? ''}`}
         tabIndex={-1}
         style={{
@@ -196,6 +208,6 @@ export function TourOverlay({ steps, onEnd }: { steps: TourStep[]; onEnd: () => 
         </div>
       </div>
     </div>,
-    document.body,
+    container ?? document.body,
   );
 }

@@ -29,7 +29,7 @@ export function EquiposTab() {
   }, [state.apus]);
   const tryDelete = useReferentialDelete(countUsage, 'APU(s)');
 
-  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, handleKeyDown, excel } =
+  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, del, handleKeyDown, excel } =
     useCrudTable<Equipo>({
       items: state.equipos,
       onChange: (equipos) => patch({ equipos }),
@@ -46,6 +46,7 @@ export function EquiposTab() {
       }),
       searchKeys: ['codigo', 'nombre', 'tipo'],
       confirmDel: '¿Eliminar este equipo?',
+      tryDelete,
       excelConfig: {
         title: 'Equipos',
         sheetName: 'Equipos',
@@ -67,16 +68,6 @@ export function EquiposTab() {
       },
     });
 
-  function del(i: number) {
-    const item = filtered[i];
-    const realIdx = state.equipos.findIndex((e) => e.id === item.id);
-    tryDelete(
-      item.id,
-      () => patch({ equipos: state.equipos.filter((_, j) => j !== realIdx) }),
-      '¿Eliminar este equipo?',
-    );
-  }
-
   return (
     <EditableSection dim={false}>
       <XlWrap>
@@ -86,21 +77,35 @@ export function EquiposTab() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único del equipo (EQ-xxx), generado automáticamente.">
+                  <th scope="col">#</th>
+                  <th
+                    scope="col"
+                    title="Código único del equipo (EQ-xxx), generado automáticamente."
+                  >
                     Código
                   </th>
-                  <th title="Nombre descriptivo del equipo.">Nombre</th>
-                  <th title="Clasificación: maquinaria pesada, equipo menor, transporte… (lista editable en Configuración).">
+                  <th scope="col" title="Nombre descriptivo del equipo.">
+                    Nombre
+                  </th>
+                  <th
+                    scope="col"
+                    title="Clasificación: maquinaria pesada, equipo menor, transporte… (lista editable en Configuración)."
+                  >
                     Tipo
                   </th>
-                  <th title="Tarifa por hora que el APU multiplica por el rendimiento del equipo.">
+                  <th
+                    scope="col"
+                    title="Tarifa por hora que el APU multiplica por el rendimiento del equipo."
+                  >
                     Costo/Hora
                   </th>
-                  <th title="Fecha de la última cotización; se resalta cuando está desactualizada.">
+                  <th
+                    scope="col"
+                    title="Fecha de la última cotización; se resalta cuando está desactualizada."
+                  >
                     Cotizado
                   </th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

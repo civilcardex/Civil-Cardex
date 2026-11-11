@@ -384,13 +384,20 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
         if (del.error) devError(`delete ${table}:`, del.error);
       }
     };
-    await upsert('cm_factores_prestacionales', state.factoresPrestaciones);
-    await upsert('cm_cargos', state.cargos);
-    await upsert('cm_proveedores', state.proveedores);
-    await upsert(
-      'cm_cuadrillas',
-      state.cuadrillas.map(({ integrantes: _integrantes, ...q }) => q),
-    );
+    // Dos olas paralelas respetando FKs (antes ~20 round-trips secuenciales). upsert() y el
+    // bloque de integrantes tragan sus errores con devError: ninguno rechaza, Promise.all seguro.
+    // OLA 1 — tablas sin dependencias entre sí (solo apuntan a auth.users / cm_proyectos).
+    await Promise.all([
+      upsert('cm_factores_prestacionales', state.factoresPrestaciones),
+      upsert('cm_cargos', state.cargos),
+      upsert('cm_proveedores', state.proveedores),
+      upsert(
+        'cm_cuadrillas',
+        state.cuadrillas.map(({ integrantes: _integrantes, ...q }) => q),
+      ),
+      upsert('cm_apus', state.apus),
+      upsert('cm_presupuestos', state.presupuestos),
+    ]);
     const allIntegrantes = state.cuadrillas.flatMap((q) =>
       q.integrantes
         .filter((it) => it.cargo_id)
@@ -406,51 +413,58 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
         })),
     );
     const cuadrillaIds = state.cuadrillas.map((q) => q.id);
-    if (cuadrillaIds.length > 0) {
+    const guardarIntegrantes = async () => {
+      if (cuadrillaIds.length === 0) return;
       // Upsert PRIMERO y borrado SOLO de ids que ya no existen, DESPUÉS de un insert exitoso:
       // el delete-all + insert anterior vaciaba las cuadrillas en la BD cuando el insert
       // fallaba (400 de validación, red). Cubre también "todas las integrantes eliminadas".
       const ins = await supabase.from('cm_cuadrilla_integrantes').upsert(allIntegrantes as never);
       if (ins.error) {
         devError('upsert cm_cuadrilla_integrantes:', ins.error);
-      } else {
-        const existentes = await supabase
-          .from('cm_cuadrilla_integrantes')
-          .select('id')
-          .in('cuadrilla_id', cuadrillaIds);
-        if (existentes.error) {
-          devError('select cm_cuadrilla_integrantes:', existentes.error);
-        } else {
-          const keep = new Set(allIntegrantes.map((r) => r.id));
-          const stale = existentes.data.map((r) => r.id).filter((id) => !keep.has(id));
-          if (stale.length > 0) {
-            const del = await supabase.from('cm_cuadrilla_integrantes').delete().in('id', stale);
-            if (del.error) devError('delete cm_cuadrilla_integrantes:', del.error);
-          }
-        }
+        return;
       }
-    }
-    await upsert('cm_equipos', state.equipos);
-    await upsert('cm_insumos', state.insumos);
-    await upsert('cm_apus', state.apus);
-    await upsert('cm_presupuestos', state.presupuestos);
-    const cfgRes = await supabase.from('cm_config').upsert(
-      {
-        user_id: userId,
-        config: state.config,
-        config_listas: state.config_listas,
-        categorias_apu: state.categorias_apu,
-      },
-      { onConflict: 'user_id' },
-    );
-    if (cfgRes.error) {
-      devError('upsert cm_config:', cfgRes.error);
-    }
+      const existentes = await supabase
+        .from('cm_cuadrilla_integrantes')
+        .select('id')
+        .in('cuadrilla_id', cuadrillaIds);
+      if (existentes.error) {
+        devError('select cm_cuadrilla_integrantes:', existentes.error);
+        return;
+      }
+      const keep = new Set(allIntegrantes.map((r) => r.id));
+      const stale = existentes.data.map((r) => r.id).filter((id) => !keep.has(id));
+      if (stale.length > 0) {
+        const del = await supabase.from('cm_cuadrilla_integrantes').delete().in('id', stale);
+        if (del.error) devError('delete cm_cuadrilla_integrantes:', del.error);
+      }
+    };
+    // OLA 2 — dependen de la ola 1: integrantes (FK cuadrillas+cargos), equipos/insumos (FK proveedor).
+    const cfgRes = await Promise.all([
+      guardarIntegrantes(),
+      upsert('cm_equipos', state.equipos),
+      upsert('cm_insumos', state.insumos),
+      supabase
+        .from('cm_config')
+        .upsert(
+          {
+            user_id: userId,
+            config: state.config,
+            config_listas: state.config_listas,
+            categorias_apu: state.categorias_apu,
+          },
+          { onConflict: 'user_id' },
+        )
+        .then((r) => {
+          if (r.error) devError('upsert cm_config:', r.error);
+        }),
+    ]);
+    void cfgRes;
   } catch (e) {
     devError('saveToSupabase:', e);
-    // El guardado hace ~10 upserts encadenados: si uno falla, el resto no se ejecuta y
-    // la BD queda a medias. Tragar el error dejaba la UI diciendo "guardado" mientras la
-    // BD tenía la versión anterior -> al recargar, presupuestos y APU revertidos.
+    // Los upserts por tabla tragan SUS errores (devError), pero un fallo fuera de ellos
+    // (e.g. el select/delete de integrantes, preparación de datos) deja la BD a medias.
+    // Tragar el error dejaba la UI diciendo "guardado" mientras la BD tenía la versión
+    // anterior -> al recargar, presupuestos y APU revertidos.
     throw e instanceof Error ? e : new Error(String(e));
   }
 }

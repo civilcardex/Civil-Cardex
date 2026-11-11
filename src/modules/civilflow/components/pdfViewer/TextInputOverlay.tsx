@@ -1,16 +1,5 @@
 /** Modal de texto sobre el plano: escribir/editar la etiqueta de una anotación (Enter confirma, Escape/click-fuera cancela). Ej: la herramienta "texto" ('c') lo abre en el punto del clic. */
-const TextInputOverlay_S1: React.CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  zIndex: 100,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'rgba(17,19,23,0.5)',
-};
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 const TextInputOverlay_S2: React.CSSProperties = {
   background: '#1a1c20',
   border: '2px solid #4D8FF7',
@@ -74,45 +63,19 @@ export default function TextInputOverlay({
   if (!textOverlay) return null;
 
   return (
-    // Backdrop con cierre por click-fuera: el input interior ya maneja Escape/Enter y el
-    // diálogo tiene focus trap por Tab; el backdrop no debe ser focuseable.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div
-      style={TextInputOverlay_S1}
-      onClick={() => {
+    // Migrado a ModalOverlay (dialog nativo): click-fuera y Escape llaman onClose (cancela
+    // con cb('')), el foco queda atrapado y Tab cicla solo. CAMBIOS aceptados del dialog
+    // nativo: (a) el mini-modal ahora se centra en el VIEWPORT (antes en el stage del
+    // visor — cambio visual menor); (b) el Escape ya NO va en el onKeyDown del input: ahí
+    // quedaba doble cancelación (la rama propia + el cancel nativo), hoy solo el nativo.
+    <ModalOverlay
+      onClose={() => {
         textOverlay.cb('');
         setTextOverlay(null);
       }}
+      ariaLabel="Ingresar texto"
     >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Ingresar texto"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Tab') {
-            const focusable = e.currentTarget.querySelectorAll(
-              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-            );
-            if (focusable.length === 0) return;
-            const first = focusable[0] as HTMLElement;
-            const last = focusable[focusable.length - 1] as HTMLElement;
-            if (e.shiftKey) {
-              if (document.activeElement === first) {
-                last.focus();
-                e.preventDefault();
-              }
-            } else {
-              if (document.activeElement === last) {
-                first.focus();
-                e.preventDefault();
-              }
-            }
-          }
-        }}
-        style={TextInputOverlay_S2}
-      >
+      <div style={TextInputOverlay_S2}>
         <div
           style={{
             fontSize: 12,
@@ -129,11 +92,10 @@ export default function TextInputOverlay({
           value={textOverlay.value}
           onChange={(e) => setTextOverlay({ ...textOverlay, value: e.target.value })}
           onKeyDown={(e) => {
+            // SOLO Enter confirma: el Escape lo captura antes el dialog (evento cancel
+            // nativo) y llamar cb('') aquí sería la segunda llamada del mismo cierre.
             if (e.key === 'Enter') {
               textOverlay.cb(textOverlay.value);
-              setTextOverlay(null);
-            } else if (e.key === 'Escape') {
-              textOverlay.cb('');
               setTextOverlay(null);
             }
           }}
@@ -166,6 +128,6 @@ export default function TextInputOverlay({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

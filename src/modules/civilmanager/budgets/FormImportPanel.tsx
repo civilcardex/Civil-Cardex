@@ -197,12 +197,12 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                 <table className="cm-tbl">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Ítem</th>
-                      <th>Descripción</th>
-                      <th>Unidad</th>
-                      <th>Cantidad</th>
-                      <th>Capítulo</th>
+                      <th scope="col">#</th>
+                      <th scope="col">Ítem</th>
+                      <th scope="col">Descripción</th>
+                      <th scope="col">Unidad</th>
+                      <th scope="col">Cantidad</th>
+                      <th scope="col">Capítulo</th>
                     </tr>
                   </thead>
                   <tbody>

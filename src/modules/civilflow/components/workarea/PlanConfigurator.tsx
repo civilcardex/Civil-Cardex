@@ -196,7 +196,6 @@ function PlanoConfiguratorBase({
     // La etiqueta "→ ref: X m" del texto de arriba se calcula con factorX/factorY/lenX/lenY/
     // isPdf/preScaleM — sin incluirlos en deps, teclear la longitud sin mover el cursor no
     // repintaba la anotación (orig. auditoría).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     origen,
     calStart,
@@ -481,7 +480,7 @@ function PlanoConfiguratorBase({
         {/* Izquierda: visor interactivo */}
         {/* Superficie de dibujo CAD: interacciones de pointer (drag/pan) inherentes al lienzo; la
             alternativa de teclado es el modelo de interacción completo del editor, fuera de alcance. */}
-        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
         <div
           ref={overlayContRef}
           style={{

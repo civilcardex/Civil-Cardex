@@ -92,15 +92,26 @@ export function ApuCatalog() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único del APU (APU-xxx), generado automáticamente.">Código</th>
-                  <th title="Nombre de la actividad o partida del APU.">Nombre</th>
-                  <th title="Categoría del APU (lista editable en Configuración).">Categoría</th>
-                  <th title="Unidad de obra del APU (m2, m3, ml…).">Unidad</th>
-                  <th title="Costo directo calculado: mano de obra + equipo + insumos + transporte.">
+                  <th scope="col">#</th>
+                  <th scope="col" title="Código único del APU (APU-xxx), generado automáticamente.">
+                    Código
+                  </th>
+                  <th scope="col" title="Nombre de la actividad o partida del APU.">
+                    Nombre
+                  </th>
+                  <th scope="col" title="Categoría del APU (lista editable en Configuración).">
+                    Categoría
+                  </th>
+                  <th scope="col" title="Unidad de obra del APU (m2, m3, ml…).">
+                    Unidad
+                  </th>
+                  <th
+                    scope="col"
+                    title="Costo directo calculado: mano de obra + equipo + insumos + transporte."
+                  >
                     Costo Unitario
                   </th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

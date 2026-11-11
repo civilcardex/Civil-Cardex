@@ -1,7 +1,6 @@
 /** Modal de primera calibración: al abrir un plano sin escala known, guía al usuario a fijar
  *  scaleM (escala metros por pixel). Ej: medir una puerta de 0.9 m -> todo el dibujo queda en m. */
-import { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 interface ModalPrimeraCalibracionProps {
   onConfirm: () => void;
@@ -52,66 +51,16 @@ export default function ModalPrimeraCalibracion({
   onConfirm,
   onCancel,
 }: ModalPrimeraCalibracionProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const prevActiveEl = useRef<Element | null>(null);
-
-  useEffect(() => {
-    prevActiveEl.current = document.activeElement;
-    if (modalRef.current) {
-      const first = modalRef.current.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      first?.focus();
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      (prevActiveEl.current as HTMLElement)?.focus?.();
-    };
-  }, [onCancel]);
-
-  const modalContent = (
-    // Backdrop con cierre por click-fuera: patrón estándar de modal (cierre por Escape ya
-    // cubierto por el listener de teclado de este componente; el backdrop no debe ser focuseable
-    // porque robaría el Tab del contenido del modal).
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div
-      ref={modalRef}
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="modal-primera-calibracion-title"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        background: 'rgba(0,0,0,0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-      onClick={onCancel}
-    >
-      {/* Caja del modal: el stopPropagation evita que el click interior cierre el diálogo. */}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-      <div style={ModalPrimeraCalibracion_S1} onClick={(e) => e.stopPropagation()}>
+  // ModalOverlay (dialog nativo): foco atrapado, Escape y click-fuera -> onCancel; el foco
+  // vuelve al opener al desmontar — todo lo daba este componente a mano y ahora es gratis.
+  return (
+    <ModalOverlay onClose={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="modal-primera-calibracion-title"
+        style={ModalPrimeraCalibracion_S1}
+      >
         <div style={ModalPrimeraCalibracion_S2}>
           <span style={{ fontSize: 18 }}>📐</span>
           <span
@@ -144,8 +93,6 @@ export default function ModalPrimeraCalibracion({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
-
-  return createPortal(modalContent, document.body);
 }

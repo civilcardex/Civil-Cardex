@@ -77,11 +77,12 @@ export function EditTablaBtn({ on, onToggle }: { on: boolean; onToggle: () => vo
 
 /* ---------- Navegación (pestaña + sub-pestaña activas) ---------- */
 
-/** Ids de las pestañas principales, el orden del HTML de referencia. */
+/** Ids de las pestañas principales, el orden del HTML de referencia (Tipologías antes que
+ *  Rociadores: primero se registran los pisos y sus tipologías, luego sus criterios). */
 export const TABS_RCI = [
   { id: 'entradas', lbl: 'Entradas' },
-  { id: 'rociadores', lbl: 'Rociadores' },
   { id: 'tipologias', lbl: 'Tipologías' },
+  { id: 'rociadores', lbl: 'Rociadores' },
   { id: 'hidraulica', lbl: 'Hidráulica' },
   { id: 'gabinetes', lbl: 'Gabinetes' },
   { id: 'perfil', lbl: 'Perfil de presiones' },
@@ -369,8 +370,8 @@ export function SecRci({
           {titulo}
         </h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-          {extra}
           {nota ? <span className="card-s">{nota}</span> : null}
+          {extra}
         </div>
       </div>
       <div style={{ padding: 8 }}>{children}</div>
@@ -434,6 +435,7 @@ export function KvTabla({
         <thead>
           <tr>
             <th
+              scope="col"
               style={{
                 fontSize: 12,
                 padding: '3px 6px',
@@ -446,6 +448,7 @@ export function KvTabla({
               Concepto
             </th>
             <th
+              scope="col"
               style={{
                 fontSize: 12,
                 padding: '3px 6px',
@@ -458,6 +461,7 @@ export function KvTabla({
               Valor
             </th>
             <th
+              scope="col"
               style={{
                 fontSize: 12,
                 padding: '3px 6px',

@@ -23,7 +23,8 @@ function ModalClases({ cerrar }: { cerrar: () => void }) {
           border: '1px solid var(--line)',
           borderRadius: 8,
           width: 'fit-content',
-          maxWidth: 'min(880px, 100%)',
+          // Dentro de <dialog> el padre es fit-content: un 100% colapsa la card al contenido.
+          maxWidth: 'min(880px, calc(100vw - 40px))',
           maxHeight: '90vh',
           overflowY: 'auto',
           boxShadow: '0 12px 30px rgba(0,0,0,.5)',
@@ -60,12 +61,24 @@ function ModalClases({ cerrar }: { cerrar: () => void }) {
           <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH10}>Clase</th>
-                <th style={TH10}>Salida en cada punto</th>
-                <th style={TH10}>Quién la usa</th>
-                <th style={TH10}>Presión mín. remota</th>
-                <th style={TH10}>Caudal</th>
-                <th style={TH10}>Elíjala cuando el código pide…</th>
+                <th scope="col" style={TH10}>
+                  Clase
+                </th>
+                <th scope="col" style={TH10}>
+                  Salida en cada punto
+                </th>
+                <th scope="col" style={TH10}>
+                  Quién la usa
+                </th>
+                <th scope="col" style={TH10}>
+                  Presión mín. remota
+                </th>
+                <th scope="col" style={TH10}>
+                  Caudal
+                </th>
+                <th scope="col" style={TH10}>
+                  Elíjala cuando el código pide…
+                </th>
               </tr>
             </thead>
             <tbody>

@@ -102,13 +102,20 @@ function CuadrillasCuerpo() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único de la cuadrilla (CU-xxx), generado automáticamente.">
+                  <th scope="col">#</th>
+                  <th
+                    scope="col"
+                    title="Código único de la cuadrilla (CU-xxx), generado automáticamente."
+                  >
                     Código
                   </th>
-                  <th title="Nombre de la cuadrilla.">Descripción</th>
-                  <th title="Cuántos cargos componen la cuadrilla.">Integrantes</th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" title="Nombre de la cuadrilla.">
+                    Descripción
+                  </th>
+                  <th scope="col" title="Cuántos cargos componen la cuadrilla.">
+                    Integrantes
+                  </th>
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>
@@ -197,12 +204,17 @@ function CuadrillasCuerpo() {
                 <table>
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th title="Rol del integrante; su costo/hora viene del catálogo de colaboradores.">
+                      <th scope="col">#</th>
+                      <th
+                        scope="col"
+                        title="Rol del integrante; su costo/hora viene del catálogo de colaboradores."
+                      >
                         Cargo
                       </th>
-                      <th title="Número de personas de ese cargo en la cuadrilla.">Cantidad</th>
-                      <th aria-label="Acciones" />
+                      <th scope="col" title="Número de personas de ese cargo en la cuadrilla.">
+                        Cantidad
+                      </th>
+                      <th scope="col" aria-label="Acciones" />
                     </tr>
                   </thead>
                   <tbody>

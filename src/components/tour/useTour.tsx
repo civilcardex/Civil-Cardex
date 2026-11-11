@@ -30,8 +30,14 @@ export function repetirTour(clave: TourClave): void {
   window.dispatchEvent(new CustomEvent(EV_TOUR_REPETIR, { detail: clave }));
 }
 
-/** Lanza el tour la PRIMERA vez que se entra a la pantalla (marca localStorage por navegador) y devuelve el overlay listo para pintar (null si ya se vio o no hay pasos). */
-export function useTour(clave: TourClave, listo = true): React.ReactElement | null {
+/** Lanza el tour la PRIMERA vez que se entra a la pantalla (marca localStorage por navegador) y devuelve el overlay listo para pintar (null si ya se vio o no hay pasos).
+ *  `container`: portaliza el tour DENTRO de ese elemento — obligatorio si la pantalla vive
+ *  en un <dialog> modal (top layer taparía un portal a body). Ej: useTour('cf:recorte', true, dlgRef.current). */
+export function useTour(
+  clave: TourClave,
+  listo = true,
+  container?: HTMLElement | null,
+): React.ReactElement | null {
   const [activo, setActivo] = useState(false);
   const pasos = TOURS[clave];
 
@@ -68,5 +74,7 @@ export function useTour(clave: TourClave, listo = true): React.ReactElement | nu
 
   if (!pasos || !activo) return null;
   // key={clave}: cambio de pestaña remonta el overlay → idx nace en el primer paso.
-  return <TourOverlay key={clave} steps={pasos} onEnd={() => setActivo(false)} />;
+  return (
+    <TourOverlay key={clave} steps={pasos} onEnd={() => setActivo(false)} container={container} />
+  );
 }

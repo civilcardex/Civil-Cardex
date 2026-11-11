@@ -46,12 +46,12 @@ export function ApuSeccionEquipo({ apu, onChange }: Props) {
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Equipo</th>
-              <th>Rendimiento</th>
-              <th>Costo/Hora</th>
-              <th>Subtotal</th>
-              <th aria-label="Acciones" />
+              <th scope="col">#</th>
+              <th scope="col">Equipo</th>
+              <th scope="col">Rendimiento</th>
+              <th scope="col">Costo/Hora</th>
+              <th scope="col">Subtotal</th>
+              <th scope="col" aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

@@ -30,18 +30,35 @@ export function PerfilPaisPanel() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código ISO del país (CO, PA…).">Código</th>
-                  <th title="Nombre del país.">País</th>
-                  <th title="Moneda oficial para mostrar valores.">Moneda</th>
-                  <th title="Salario mínimo mensual legal vigente.">SMMLV</th>
-                  <th title="Auxilio de transporte legal mensual.">Auxilio transporte</th>
-                  <th title="Días laborales por mes; divide el salario en jornales.">Días/mes</th>
-                  <th title="Horas laborales por mes; base del costo hora.">Horas/mes</th>
-                  <th title="Si el salario se define por mes o por hora (jornal).">
+                  <th scope="col">#</th>
+                  <th scope="col" title="Código ISO del país (CO, PA…).">
+                    Código
+                  </th>
+                  <th scope="col" title="Nombre del país.">
+                    País
+                  </th>
+                  <th scope="col" title="Moneda oficial para mostrar valores.">
+                    Moneda
+                  </th>
+                  <th scope="col" title="Salario mínimo mensual legal vigente.">
+                    SMMLV
+                  </th>
+                  <th scope="col" title="Auxilio de transporte legal mensual.">
+                    Auxilio transporte
+                  </th>
+                  <th scope="col" title="Días laborales por mes; divide el salario en jornales.">
+                    Días/mes
+                  </th>
+                  <th scope="col" title="Horas laborales por mes; base del costo hora.">
+                    Horas/mes
+                  </th>
+                  <th scope="col" title="Si el salario se define por mes o por hora (jornal).">
                     Unidad salario
                   </th>
-                  <th title="País en uso; Usar cambia salario, moneda y jornadas de todo el módulo.">
+                  <th
+                    scope="col"
+                    title="País en uso; Usar cambia salario, moneda y jornadas de todo el módulo."
+                  >
                     Activo
                   </th>
                 </tr>

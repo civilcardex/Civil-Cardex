@@ -66,13 +66,20 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th title="Código del factor (FP-xxx).">Código</th>
-                <th title="Nombre del factor (cesantías, vacaciones, aportes…).">Nombre</th>
-                <th title="Porcentaje que se suma al jornal; el subtotal de cada tipo aparece al pie.">
+                <th scope="col">#</th>
+                <th scope="col" title="Código del factor (FP-xxx).">
+                  Código
+                </th>
+                <th scope="col" title="Nombre del factor (cesantías, vacaciones, aportes…).">
+                  Nombre
+                </th>
+                <th
+                  scope="col"
+                  title="Porcentaje que se suma al jornal; el subtotal de cada tipo aparece al pie."
+                >
                   Factor %
                 </th>
-                <th aria-label="Acciones" />
+                <th scope="col" aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>

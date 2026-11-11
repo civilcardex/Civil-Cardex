@@ -1,26 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AyudaContexto } from './helpContext.ts';
 import { GUIA, iconoDeGrupo, type GuiaGrupo } from './helpGuide.tsx';
 import { repetirTour } from '../tour/useTour.tsx';
 import { tourDe } from '../tour/tourSteps.ts';
+import { ModalOverlay } from '../shared/ModalShell.tsx';
 
 // Panel de ayuda IN-PLACE (orig. usuario: el botón AYUDA de la navbar NO redirige a otra
-// página): modal con portal — mismo patrón que ModalProtocolo (backdrop, Escape, foco
-// inicial) — que muestra la GUÍA de la pestaña activa: para qué sirve cada parte de la UI.
-// Acordeones propios con estilos inline (sin Tailwind/SectionAccordion: dentro del modal
-// esas clases apilaban mal, orig. usuario "pestañas superpuestas").
-
-const PANEL_STYLE: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 99999,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'rgba(0,0,0,0.7)',
-  padding: 16,
-};
+// página): modal via ModalOverlay (dialog nativo: backdrop, Escape, foco atrapado y
+// devuelto los da el navegador) que muestra la GUÍA de la pestaña activa: para qué sirve
+// cada parte de la UI. Acordeones propios con estilos inline (sin Tailwind/SectionAccordion:
+// dentro del modal esas clases apilaban mal, orig. usuario "pestañas superpuestas").
 
 const BOX_STYLE: React.CSSProperties = {
   background: 'var(--bg)',
@@ -119,41 +109,7 @@ function FilaItem({ it }: { it: { nombre: string; desc: string } }): React.JSX.E
 
 /** Modal de AYUDA contextual: intro de la pestaña activa + guía (grupos colapsables de elementos) + botón REPETIR TOUR. Ej: en Sanitaria lista las herramientas de la tab sanitaria. */
 function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
-
-  /** Trap de foco + restauración: `aria-modal="true"` promete fondo inerte, así que Tab cicla solo por los focusables del panel (shift+Tab invertido) y al
-   * desmontar el foco vuelve al elemento que abrió el diálogo en lugar de caer a <body>. */
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-      if (e.key !== 'Tab' || !panelRef.current) return;
-      const focusables = panelRef.current.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const primero = focusables[0];
-      const ultimo = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === primero) {
-        e.preventDefault();
-        ultimo.focus();
-      } else if (!e.shiftKey && document.activeElement === ultimo) {
-        e.preventDefault();
-        primero.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      prev?.focus();
-    };
-  }, [onClose]);
 
   const toggle = (key: string) => setOpen((p) => ({ ...p, [key]: !p[key] }));
 
@@ -166,20 +122,12 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
     : GUIA[ctx.key] || [];
 
   return (
-    // Backdrop con cierre por click-fuera: patrón estándar de modal (cierre por Escape ya
-    // cubierto por el listener de teclado de este componente).
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div style={PANEL_STYLE} onClick={onClose}>
-      {/* stopPropagation: los clics del contenido NO deben cerrar el modal (orig. usuario). */}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-      <div
-        ref={panelRef}
-        style={BOX_STYLE}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Ayuda: ${ctx.modulo} — ${ctx.seccion}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+    // ModalOverlay (dialog nativo): click-fuera y Escape cierran, foco atrapado dentro y
+    // devuelto al opener — nada programado a mano (el trap/restore propio se borró aquí).
+    <ModalOverlay onClose={onClose} ariaLabel={`Ayuda: ${ctx.modulo} — ${ctx.seccion}`}>
+      {/* Los clics dentro de la caja no cierran: ModalOverlay solo cierra con target fuera
+          del contenido (orig. usuario "no cerrar al hacer clic dentro"). */}
+      <div style={BOX_STYLE}>
         <div
           style={{
             display: 'flex',
@@ -219,7 +167,6 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
             </div>
           </div>
           <button
-            ref={closeRef}
             type="button"
             onClick={onClose}
             aria-label="Cerrar ayuda"
@@ -432,7 +379,7 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
           </Link>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
 

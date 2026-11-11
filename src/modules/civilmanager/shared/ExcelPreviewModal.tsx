@@ -1,5 +1,6 @@
 import { ActionIcon } from './icons.tsx';
 import type { ExcelPreview } from '../excelImport.tsx';
+import { ModalOverlay } from '../../../components/shared/ModalShell.tsx';
 
 interface ExcelHandle {
   previewModal: ExcelPreview | null;
@@ -15,18 +16,13 @@ export function ExcelPreviewModal({ excel }: { excel: ExcelHandle }) {
   const isExport = pm.type === 'export';
 
   return (
-    // Backdrop con cierre por click-fuera. Gap conocido: sin cierre por Escape ni focus trap —
-    // agregar en un pase futuro (ver plan de accesibilidad, sección 1.4).
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div className="cm-modal-overlay" role="presentation" onClick={excel.doImportCancel}>
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
-      <div
-        className="cm-modal-box cm-modal-wide"
-        role="dialog"
-        aria-modal="true"
-        aria-label={isExport ? 'Previsualizar exportación' : 'Previsualizar importación'}
-        onClick={(e) => e.stopPropagation()}
-      >
+    // Migrado a ModalOverlay (dialog nativo): el cierre por click-fuera y Escape con foco
+    // atrapado ya no se programan a mano (el gap de accesibilidad del overlay viejo muere aquí).
+    <ModalOverlay
+      onClose={excel.doImportCancel}
+      ariaLabel={isExport ? 'Previsualizar exportación' : 'Previsualizar importación'}
+    >
+      <div className="cm-modal-box cm-modal-wide">
         <div className="cm-modal-head cm-modal-head-row">
           <span>{isExport ? 'Previsualizar Exportación' : 'Previsualizar Importación'}</span>
           <button
@@ -42,9 +38,13 @@ export function ExcelPreviewModal({ excel }: { excel: ExcelHandle }) {
           <table className="cm-tbl">
             <thead>
               <tr>
-                <th className="cm-col-rn">#</th>
+                <th scope="col" className="cm-col-rn">
+                  #
+                </th>
                 {pm.headers.map((h, i) => (
-                  <th key={i}>{h}</th>
+                  <th scope="col" key={i}>
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -80,6 +80,6 @@ export function ExcelPreviewModal({ excel }: { excel: ExcelHandle }) {
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

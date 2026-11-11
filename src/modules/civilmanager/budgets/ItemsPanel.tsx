@@ -62,21 +62,35 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Número o código del ítem dentro del presupuesto.">Ítem</th>
-                  <th title="Descripción de la actividad o material presupuestado.">Descripción</th>
-                  <th title="Unidad de medida de la obra (m2, m3, und…).">Unidad</th>
-                  <th title="Cantidad de obra a ejecutar; multiplica el valor unitario.">
+                  <th scope="col">#</th>
+                  <th scope="col" title="Número o código del ítem dentro del presupuesto.">
+                    Ítem
+                  </th>
+                  <th scope="col" title="Descripción de la actividad o material presupuestado.">
+                    Descripción
+                  </th>
+                  <th scope="col" title="Unidad de medida de la obra (m2, m3, und…).">
+                    Unidad
+                  </th>
+                  <th
+                    scope="col"
+                    title="Cantidad de obra a ejecutar; multiplica el valor unitario."
+                  >
                     Cantidad
                   </th>
-                  <th title="Análisis de precios unitarios que le pone precio al ítem; rojo si falta asignarlo.">
+                  <th
+                    scope="col"
+                    title="Análisis de precios unitarios que le pone precio al ítem; rojo si falta asignarlo."
+                  >
                     APU
                   </th>
-                  <th title="Precio unitario resultante del APU (con AIU si aplica).">
+                  <th scope="col" title="Precio unitario resultante del APU (con AIU si aplica).">
                     Vr. Unitario
                   </th>
-                  <th title="Cantidad × valor unitario.">Vr. Total</th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" title="Cantidad × valor unitario.">
+                    Vr. Total
+                  </th>
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

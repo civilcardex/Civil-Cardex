@@ -4,7 +4,6 @@
  *  botones «Ir a…» saltan con irA(tab, sub, campo) y cierran el modal; Escape también cierra.
  *  Ej: RciDesign monta <RciGuiaModal ctx pisoNombre onClose /> al pulsar «Guía de diseño». */
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactNode } from 'react';
 import { useNavRci, type RciCtx, type TabRci } from './RCIUI.tsx';
 import { RUTA_DE } from '../../utils/rci/RCIRowsModelExtras.ts';
@@ -68,14 +67,7 @@ export default function RciGuiaModal({
   const [paso, setPaso] = useState(0);
   const cuerpoRef = useRef<HTMLDivElement | null>(null);
 
-  /* Escape cierra el modal (listener a nivel documento, patrón HelpPanel). */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  /* Escape cierra el modal: el cancel nativo del <dialog> de ModalOverlay ya lo hace. */
 
   /* Cada cambio de paso vuelve arriba (el renderGuide del HTML hacía scrollIntoView). */
   useEffect(() => {
@@ -93,13 +85,17 @@ export default function RciGuiaModal({
   }, []);
 
   /** «Ir a…»: salta y cierra el modal. Los go del HTML se adaptan a donde VIVE el dato en el
-   *  repo (S/L/Dmuro se mudaron de Entradas a Rociadores; la pestaña 'pisos' es 'tipologías'). */
+   *  repo (S/L/DMR se mudaron a Tipologías → Pisos del edificio; la pestaña 'pisos' es
+   *  'tipologías' y QR sigue en Rociadores → Datos del rociador). */
   const irGo = (go: string[]): void => {
     const campo = go[1];
-    if (go[0] === 'pisos') {
-      irA('tipologias');
-    } else if (go[0] === 'entradas' && (campo?.startsWith('roc.') || campo === 'clas.qr')) {
+    if (go[0] === 'pisos' || go[0] === 'tipologias') {
+      irA('tipologias', 'pisos');
+    } else if (go[0] === 'entradas' && campo === 'clas.qr') {
       irA('rociadores', 'datos', campo);
+    } else if (go[0] === 'entradas' && campo?.startsWith('roc.')) {
+      /* S, L y DMR viven en la tabla de pisos (columnas), no en Datos del rociador. */
+      irA('tipologias', 'pisos');
     } else if (go[0] === 'rociadores') {
       irA('rociadores', 'rectangulo');
     } else {
@@ -122,7 +118,7 @@ export default function RciGuiaModal({
       case 0:
         return <BotonIr txt="Ir a la clasificación" go={['entradas', 'clas.riesgo']} />;
       case 1:
-        return <BotonIr txt="Ir a S y L" go={['entradas', 'roc.S']} />;
+        return <BotonIr txt="Ir a S, L y DMR" go={['tipologias', 'pisos']} />;
       case 3:
         return <BotonIr txt="Ver el rectángulo de fuego" go={['rociadores']} />;
       case 4:
@@ -142,7 +138,9 @@ export default function RciGuiaModal({
   };
 
   const fase = PASOS[paso].fase;
-  return createPortal(
+  return (
+    // ponytail: sin portal — showModal() pinta en top layer por encima de todo, el portal
+    // a body no aporta nada (y quedaba DEBAJO si otro modal estaba abierto).
     <ModalOverlay zIndex={99999} onClose={onClose}>
       <div
         className="guia-rci"
@@ -153,7 +151,9 @@ export default function RciGuiaModal({
           background: 'var(--bg2)',
           border: '1px solid var(--line)',
           borderRadius: 8,
-          width: 'min(1120px, 100%)',
+          /* Viewport-based: dentro de <dialog> el padre es fit-content y un 100%
+           * colapsaría la card al contenido (descentrado). 40px = padding del dialog. */
+          width: 'min(1120px, calc(100vw - 40px))',
           height: 'auto',
           maxHeight: '88vh',
           display: 'flex',
@@ -308,7 +308,6 @@ export default function RciGuiaModal({
           ) : null}
         </div>
       </div>
-    </ModalOverlay>,
-    document.body,
+    </ModalOverlay>
   );
 }

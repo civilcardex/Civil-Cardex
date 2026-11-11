@@ -31,7 +31,7 @@ export function ColaboradoresTab() {
   }, [state.cuadrillas, state.apus]);
   const tryDelete = useReferentialDelete(countUsage, 'referencia(s) en cuadrillas/APU');
 
-  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, handleKeyDown, excel } =
+  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, del, handleKeyDown, excel } =
     useCrudTable<Cargo>({
       items: state.cargos,
       onChange: (cargos) => patch({ cargos }),
@@ -44,6 +44,7 @@ export function ColaboradoresTab() {
       }),
       searchKeys: ['codigo', 'descripcion'],
       confirmDel: '¿Eliminar este colaborador?',
+      tryDelete,
       excelConfig: {
         title: 'Colaboradores',
         sheetName: 'Colaboradores',
@@ -63,16 +64,6 @@ export function ColaboradoresTab() {
 
   const calcMap = useMemo(() => new Map(cargosCalc.map((c) => [c.id, c])), [cargosCalc]);
 
-  function del(i: number) {
-    const item = filtered[i];
-    const realIdx = state.cargos.findIndex((c) => c.id === item.id);
-    tryDelete(
-      item.id,
-      () => patch({ cargos: state.cargos.filter((_, j) => j !== realIdx) }),
-      '¿Eliminar este colaborador?',
-    );
-  }
-
   return (
     <EditableSection dim={false}>
       <XlWrap>
@@ -82,20 +73,35 @@ export function ColaboradoresTab() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único del cargo (MO-xxx), generado automáticamente.">Código</th>
-                  <th title="Nombre del cargo (ayudante, oficial, maestro…).">Descripción</th>
-                  <th title="Cuántos salarios mínimos gana este cargo.">N° Salarios Base</th>
-                  <th title="Jornal del cargo = salarios base × salario del país activo.">
+                  <th scope="col">#</th>
+                  <th
+                    scope="col"
+                    title="Código único del cargo (MO-xxx), generado automáticamente."
+                  >
+                    Código
+                  </th>
+                  <th scope="col" title="Nombre del cargo (ayudante, oficial, maestro…).">
+                    Descripción
+                  </th>
+                  <th scope="col" title="Cuántos salarios mínimos gana este cargo.">
+                    N° Salarios Base
+                  </th>
+                  <th
+                    scope="col"
+                    title="Jornal del cargo = salarios base × salario del país activo."
+                  >
                     Valor Básico
                   </th>
-                  <th title="Jornal + prestaciones y seguridad social (costo empresa por día).">
+                  <th
+                    scope="col"
+                    title="Jornal + prestaciones y seguridad social (costo empresa por día)."
+                  >
                     Costo Total Día
                   </th>
-                  <th title="Costo día ÷ horas laboradas por día según el país activo.">
+                  <th scope="col" title="Costo día ÷ horas laboradas por día según el país activo.">
                     Costo Total Hora
                   </th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

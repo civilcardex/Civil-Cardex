@@ -51,13 +51,13 @@ export function ApuSeccionMO({ apu, onChange }: Props) {
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Cargo</th>
-              <th>Cant. Personas</th>
-              <th>Rendimiento</th>
-              <th>Jornal</th>
-              <th>Subtotal</th>
-              <th aria-label="Acciones" />
+              <th scope="col">#</th>
+              <th scope="col">Cargo</th>
+              <th scope="col">Cant. Personas</th>
+              <th scope="col">Rendimiento</th>
+              <th scope="col">Jornal</th>
+              <th scope="col">Subtotal</th>
+              <th scope="col" aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>

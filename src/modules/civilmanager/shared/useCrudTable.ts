@@ -33,6 +33,9 @@ interface UseCrudTableOptions<T extends { id: string; codigo?: string }> {
   defaultItem: () => T;
   searchKeys: (keyof T)[];
   confirmDel: string;
+  /** Borrado con chequeo de referencias (useReferentialDelete): si viene, del() delega en él
+   *  (resuelve el índice filtrado → id); si falta, pide confirmación y borra directo. */
+  tryDelete?: (id: string, doDelete: () => void, msg: string) => void;
   excelConfig?: Omit<UseExcelImportExportOptions<T>, 'items' | 'onImport' | 'prefix'>;
 }
 
@@ -48,6 +51,7 @@ export function useCrudTable<T extends { id: string; codigo?: string }>({
   defaultItem,
   searchKeys,
   confirmDel,
+  tryDelete,
   excelConfig,
 }: UseCrudTableOptions<T>) {
   const [editIdxState, setEditIdxState] = useState<number | null>(null);
@@ -85,21 +89,33 @@ export function useCrudTable<T extends { id: string; codigo?: string }>({
     setEditIdx(n.length - 1);
   }, [items, onChange, defaultItem, setEditIdx]);
 
-  const del = useCallback(
-    async (i: number) => {
-      if (!(await askConfirm(confirmDel))) return;
-      setEditIdxState((cur) => (cur === i ? null : cur));
-      onChange(items.filter((_, j) => j !== i));
-    },
-    [items, onChange, confirmDel],
-  );
-
+  // del recibe el índice de la FILA VISIBLE (filtered): resuelve el id y borra por id —
   const filtered = useMemo(() => {
     if (!search) return items;
     return items.filter((item) =>
       searchKeys.some((k) => norm(String(item[k] ?? '')).includes(norm(search))),
     );
   }, [items, search, searchKeys]);
+
+  // del recibe el índice de la FILA VISIBLE (filtered): resuelve el id y borra por id —
+  // con tryDelete (chequeo de referencias) o con confirmación plana.
+  const del = useCallback(
+    (i: number) => {
+      const item = filtered[i];
+      if (!item) return;
+      const doDelete = () => onChange(items.filter((x) => x.id !== item.id));
+      if (tryDelete) {
+        tryDelete(item.id, doDelete, confirmDel);
+        return;
+      }
+      void (async () => {
+        if (!(await askConfirm(confirmDel))) return;
+        setEditIdxState((cur) => (cur === i ? null : cur));
+        doDelete();
+      })();
+    },
+    [filtered, items, onChange, confirmDel, tryDelete],
+  );
 
   const handleKeyDown = handleTabKeyDown(setEditIdx);
 

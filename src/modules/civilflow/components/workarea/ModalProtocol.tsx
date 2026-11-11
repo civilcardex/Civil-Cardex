@@ -1,7 +1,6 @@
 /** Modal de protocolo de calibración: pasos guiados (clic en 2 puntos + medida real) para
  *  fijar scaleM (escala metros por pixel) del plano activo. */
-import { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 const ModalProtocolo_S1: React.CSSProperties = {
   background: 'var(--bg)',
   border: '1px solid var(--line)',
@@ -51,64 +50,16 @@ interface ModalProtocoloProps {
 }
 
 export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const prevActiveEl = useRef<Element | null>(null);
-
-  useEffect(() => {
-    prevActiveEl.current = document.activeElement;
-    if (modalRef.current) {
-      const first = modalRef.current.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      first?.focus();
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusable.length === 0) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      (prevActiveEl.current as HTMLElement)?.focus?.();
-    };
-  }, [onClose]);
-
-  const modalContent = (
-    // Backdrop con cierre por click-fuera: patrón estándar de modal (cierre por Escape ya
-    // cubierto por el listener de teclado de este componente).
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
-    <div
-      ref={modalRef}
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="modal-protocolo-title"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        background: 'rgba(0,0,0,0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-      onClick={onClose}
-    >
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
-      <div style={ModalProtocolo_S1} onClick={(e) => e.stopPropagation()}>
+  // ModalOverlay (dialog nativo): foco atrapado, Escape y click-fuera -> onClose; el foco
+  // vuelve al opener al desmontar — todo lo daba este componente a mano y ahora es gratis.
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="modal-protocolo-title"
+        style={ModalProtocolo_S1}
+      >
         <div style={ModalProtocolo_S2}>
           <span style={{ fontSize: 18 }}>📋</span>
           <span
@@ -171,9 +122,13 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
             <table className="tbl" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ width: 160 }}>Parámetro</th>
-                  <th style={{ width: 180 }}>Valor recomendado</th>
-                  <th>Por qué importa</th>
+                  <th scope="col" style={{ width: 160 }}>
+                    Parámetro
+                  </th>
+                  <th scope="col" style={{ width: 180 }}>
+                    Valor recomendado
+                  </th>
+                  <th scope="col">Por qué importa</th>
                 </tr>
               </thead>
               <tbody>
@@ -247,9 +202,13 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
             <table className="tbl" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th style={{ width: 180 }}>Error</th>
-                  <th style={{ width: 200 }}>Causa</th>
-                  <th>Solución</th>
+                  <th scope="col" style={{ width: 180 }}>
+                    Error
+                  </th>
+                  <th scope="col" style={{ width: 200 }}>
+                    Causa
+                  </th>
+                  <th scope="col">Solución</th>
                 </tr>
               </thead>
               <tbody>
@@ -291,10 +250,8 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
-
-  return createPortal(modalContent, document.body);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

@@ -21,7 +21,7 @@ export function ProveedoresTab() {
   }, [state.equipos, state.insumos]);
   const tryDelete = useReferentialDelete(countUsage, 'equipo(s)/insumo(s)');
 
-  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, handleKeyDown, excel } =
+  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, del, handleKeyDown, excel } =
     useCrudTable<Proveedor>({
       items: state.proveedores,
       onChange: (proveedores) => patch({ proveedores }),
@@ -44,6 +44,7 @@ export function ProveedoresTab() {
       }),
       searchKeys: ['codigo', 'nombre', 'nit', 'ciudad'],
       confirmDel: '¿Eliminar este proveedor?',
+      tryDelete,
       excelConfig: {
         title: 'Proveedores',
         sheetName: 'Proveedores',
@@ -71,16 +72,6 @@ export function ProveedoresTab() {
       },
     });
 
-  function del(i: number) {
-    const item = filtered[i];
-    const realIdx = state.proveedores.findIndex((p) => p.id === item.id);
-    tryDelete(
-      item.id,
-      () => patch({ proveedores: state.proveedores.filter((_, j) => j !== realIdx) }),
-      '¿Eliminar este proveedor?',
-    );
-  }
-
   return (
     <EditableSection dim={false}>
       <XlWrap>
@@ -90,16 +81,29 @@ export function ProveedoresTab() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único del proveedor (PR-xxx), generado automáticamente.">
+                  <th scope="col">#</th>
+                  <th
+                    scope="col"
+                    title="Código único del proveedor (PR-xxx), generado automáticamente."
+                  >
                     Código
                   </th>
-                  <th title="Razón social o nombre comercial.">Nombre</th>
-                  <th title="Número de identificación tributaria.">NIT</th>
-                  <th title="Persona de contacto del proveedor.">Contacto</th>
-                  <th title="Teléfono principal de contacto.">Teléfono</th>
-                  <th title="Ciudad de origen; afecta tiempos y costos de transporte.">Ciudad</th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" title="Razón social o nombre comercial.">
+                    Nombre
+                  </th>
+                  <th scope="col" title="Número de identificación tributaria.">
+                    NIT
+                  </th>
+                  <th scope="col" title="Persona de contacto del proveedor.">
+                    Contacto
+                  </th>
+                  <th scope="col" title="Teléfono principal de contacto.">
+                    Teléfono
+                  </th>
+                  <th scope="col" title="Ciudad de origen; afecta tiempos y costos de transporte.">
+                    Ciudad
+                  </th>
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

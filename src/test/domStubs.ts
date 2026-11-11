@@ -45,6 +45,21 @@ export function aplicarStubsDom(): void {
       disconnect(): void {}
     };
   }
+  if (!g.IntersectionObserver) {
+    // LandingPage (aparición de secciones al hacer scroll): sin observación real, el
+    // callback nunca dispara y las secciones quedan como estén — no afecta a axe.
+    g.IntersectionObserver = class {
+      root = null;
+      rootMargin = '';
+      thresholds = [];
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+      takeRecords(): IntersectionObserverEntry[] {
+        return [];
+      }
+    };
+  }
   const w = globalThis as unknown as {
     matchMedia?: unknown;
     requestAnimationFrame?: unknown;
@@ -75,4 +90,32 @@ export function aplicarStubsDom(): void {
     // null y avisa por consola (los componentes que dibujan se romperían).
     proto.getContext = () => contexto2DFalso();
   }
+  aplicarStubDialog();
+}
+
+/**
+ * Stub de <dialog>: jsdom 26 tiene la propiedad `open` y los eventos cancel/close pero NO
+ * los métodos showModal/show/close que usan los modales de la app al montar/desmontar. El
+ * stub replica lo mínimo observable: alterna el atributo open y dispara `close` (el
+ * navegador además manejaría top layer y foco, cosas que jsdom no puede simular).
+ */
+function aplicarStubDialog(): void {
+  const proto = (
+    globalThis as unknown as { HTMLDialogElement?: { prototype: Record<string, unknown> } }
+  ).HTMLDialogElement?.prototype;
+  if (!proto || typeof proto.showModal === 'function') return;
+  const abrir = function abrir(this: HTMLDialogElement): void {
+    if (this.hasAttribute('open')) {
+      throw new DOMException('El dialog ya está abierto', 'InvalidStateError');
+    }
+    this.setAttribute('open', '');
+  };
+  proto.showModal = abrir;
+  proto.show = abrir;
+  proto.close = function close(this: HTMLDialogElement, valorRetorno?: string): void {
+    if (!this.hasAttribute('open')) return;
+    this.removeAttribute('open');
+    if (valorRetorno !== undefined) this.returnValue = valorRetorno;
+    this.dispatchEvent(new Event('close'));
+  };
 }

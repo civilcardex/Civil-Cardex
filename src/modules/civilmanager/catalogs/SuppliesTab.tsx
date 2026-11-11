@@ -29,7 +29,7 @@ export function InsumosTab() {
     [apusBasicoCalc],
   );
 
-  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, handleKeyDown, excel } =
+  const { filtered, editIdx, setEditIdx, search, setSearch, upd, add, del, handleKeyDown, excel } =
     useCrudTable<Insumo>({
       items: state.insumos,
       onChange: (insumos) => patch({ insumos }),
@@ -50,6 +50,7 @@ export function InsumosTab() {
       }),
       searchKeys: ['codigo', 'nombre', 'categoria'],
       confirmDel: '¿Eliminar este insumo?',
+      tryDelete,
       excelConfig: {
         title: 'Insumos',
         sheetName: 'Insumos',
@@ -82,16 +83,6 @@ export function InsumosTab() {
       },
     });
 
-  function del(i: number) {
-    const item = filtered[i];
-    const realIdx = state.insumos.findIndex((x) => x.id === item.id);
-    tryDelete(
-      item.id,
-      () => patch({ insumos: state.insumos.filter((_, j) => j !== realIdx) }),
-      '¿Eliminar este insumo?',
-    );
-  }
-
   return (
     <EditableSection dim={false}>
       <XlWrap>
@@ -101,24 +92,41 @@ export function InsumosTab() {
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th title="Código único del insumo (IN-xxx), generado automáticamente.">
+                  <th scope="col">#</th>
+                  <th
+                    scope="col"
+                    title="Código único del insumo (IN-xxx), generado automáticamente."
+                  >
                     Código
                   </th>
-                  <th title="Nombre comercial o descripción del material.">Nombre</th>
-                  <th title="Unidad de medida del insumo (lista editable en Configuración).">
+                  <th scope="col" title="Nombre comercial o descripción del material.">
+                    Nombre
+                  </th>
+                  <th
+                    scope="col"
+                    title="Unidad de medida del insumo (lista editable en Configuración)."
+                  >
                     Unidad
                   </th>
-                  <th title="Local, Nacional o Preparado en obra; si es preparado, el costo viene del APU básico.">
+                  <th
+                    scope="col"
+                    title="Local, Nacional o Preparado en obra; si es preparado, el costo viene del APU básico."
+                  >
                     Origen
                   </th>
-                  <th title="Precio de compra del insumo; se reparte según el consumo en el APU.">
+                  <th
+                    scope="col"
+                    title="Precio de compra del insumo; se reparte según el consumo en el APU."
+                  >
                     Costo Unitario
                   </th>
-                  <th title="Fecha de la última cotización; se resalta cuando está desactualizada.">
+                  <th
+                    scope="col"
+                    title="Fecha de la última cotización; se resalta cuando está desactualizada."
+                  >
                     Cotizado
                   </th>
-                  <th aria-label="Acciones" />
+                  <th scope="col" aria-label="Acciones" />
                 </tr>
               </thead>
               <tbody>

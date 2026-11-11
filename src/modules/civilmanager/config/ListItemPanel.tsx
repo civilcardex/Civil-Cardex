@@ -77,11 +77,18 @@ export function ListaItemPanel({
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th title="Código único del ítem de la lista, generado automáticamente.">Código</th>
-                <th>{labelHeader}</th>
-                <th title="Detalle del ítem; la columna anterior es su nombre.">Descripción</th>
-                <th aria-label="Acciones" />
+                <th scope="col">#</th>
+                <th
+                  scope="col"
+                  title="Código único del ítem de la lista, generado automáticamente."
+                >
+                  Código
+                </th>
+                <th scope="col">{labelHeader}</th>
+                <th scope="col" title="Detalle del ítem; la columna anterior es su nombre.">
+                  Descripción
+                </th>
+                <th scope="col" aria-label="Acciones" />
               </tr>
             </thead>
             <tbody>

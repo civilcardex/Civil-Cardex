@@ -2,8 +2,7 @@
  *  y lado — la separación L NO se pregunta (ped. usuario): sale SIEMPRE de la tabla «Datos del
  *  rociador» y llega ya resuelta en `lTxt` para mostrarla como info. Ej: 3 ramales lado ◀. */
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
-import { ModalOverlay, useEscapeKey } from '../../../../../components/shared/ModalShell.tsx';
+import { ModalOverlay } from '../../../../../components/shared/ModalShell.tsx';
 import type { LadoParalelo } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 
 const IN: React.CSSProperties = {
@@ -40,7 +39,7 @@ export function RciAutoDrawModal({
   onConfirm,
   onClose,
 }: {
-  /** L de la tabla Datos del rociador (solo para mostrarla como info). */
+  /** L del piso (Tipologías → Pisos del edificio; solo para mostrarla como info). */
   lTxt: string;
   /** Orientación dominante del trazo (ped. usuario): horizontal → opciones Arriba/Abajo
    *  (−y/+y); vertical → Izquierda/Derecha (−x/+x). Devuelve la dirección absoluta elegida. */
@@ -53,7 +52,6 @@ export function RciAutoDrawModal({
    * ramal por encima del base (ped. usuario: «no debe hacerse el ramal superior»). */
   const [segundo, setSegundo] = useState(horizontal);
   const [err, setErr] = useState('');
-  useEscapeKey(onClose);
 
   const confirmar = (): void => {
     const nv = Math.round(parseFloat(nTxt.replace(',', '.')));
@@ -78,9 +76,10 @@ export function RciAutoDrawModal({
   const etiquetaLado = segundo ? op2 : op1;
   const alternar = (): void => setSegundo((s) => !s);
 
-  return createPortal(
+  return (
+    // ponytail: sin portal — showModal() ya pinta en top layer; el portal a body no aporta.
     /* ModalOverlay compartida (backdrop-click con guard target===currentTarget) en vez de un
-     * overlay propio — mismo cierre por fondo y Escape vía useEscapeKey como todo modal. */
+     * overlay propio — cierre por fondo y Escape nativo del <dialog> como todo modal. */
     <ModalOverlay zIndex={100000} onClose={onClose}>
       <div
         role="dialog"
@@ -91,7 +90,8 @@ export function RciAutoDrawModal({
           border: '1px solid var(--line)',
           borderRadius: 8,
           padding: '8px 12px',
-          width: 'min(300px, 100%)',
+          // Dentro de <dialog> el padre es fit-content: un 100% colapsa la card al contenido.
+          width: 'min(300px, calc(100vw - 40px))',
           fontSize: 12,
           color: 'var(--txt)',
         }}
@@ -105,7 +105,7 @@ export function RciAutoDrawModal({
             fontFamily: 'var(--mono)',
           }}
         >
-          L = {lTxt || '—'} m (tabla Datos del rociador)
+          L = {lTxt || '—'} m (Pisos del edificio)
         </div>
         <div style={{ marginTop: 6, display: 'grid', gridTemplateColumns: '1fr auto', gap: 6 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
@@ -141,7 +141,6 @@ export function RciAutoDrawModal({
           </button>
         </div>
       </div>
-    </ModalOverlay>,
-    document.body,
+    </ModalOverlay>
   );
 }
